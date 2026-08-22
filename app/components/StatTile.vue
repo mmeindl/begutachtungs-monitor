@@ -1,0 +1,22 @@
+<script setup lang="ts">
+const props = defineProps<{
+  label: string
+  value: number | string
+  hint?: string
+}>()
+
+/* Numbers get de-AT grouping; strings render as given.
+ * Deliberately NO tabular-nums: large standalone values read best with the
+ * font's proportional figures (dataviz rule — tabular only in columns). */
+const display = computed(() =>
+  typeof props.value === 'number' ? formatNumberDe(props.value) : props.value,
+)
+</script>
+
+<template>
+  <div class="rounded-xl border border-hairline bg-surface p-5">
+    <p class="text-sm text-ink-secondary">{{ label }}</p>
+    <p class="mt-1 text-3xl font-semibold text-ink sm:text-4xl">{{ display }}</p>
+    <p v-if="hint" class="mt-1 text-sm text-ink-muted">{{ hint }}</p>
+  </div>
+</template>

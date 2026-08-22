@@ -1,0 +1,130 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/*
+ * Design tokens — light mode only for the prototype (dark mode is a
+ * deliberate later step, see docs/architecture.md).
+ * Ink/surface/status values follow the validated brand-neutral reference
+ * palette; swap here once the product has its own brand.
+ *
+ * `static`: Nuxt UI references the accent scale at RUNTIME
+ * (--ui-color-primary-N → var(--color-accent-N)); without `static`,
+ * Tailwind strips unused steps from the build and filled buttons lose
+ * their background color.
+ */
+@theme static {
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Surfaces */
+  --color-page: #f9f9f7;
+  --color-surface: #fcfcfb;
+
+  /* Ink — AAA contrast system (WCAG 2.2, 1.4.6: 7:1 for body text,
+     computationally verified, see docs/architecture.md §8):
+       ink            18.7:1
+       ink-secondary   7.5:1
+       ink-muted       7.1:1 (darkened from the reference value #898781)
+     The gray hierarchy is deliberately flat as a result — hierarchy comes
+     from size and weight, no longer from lightness. */
+  --color-ink: #0b0b0b;
+  --color-ink-secondary: #52514e;
+  --color-ink-muted: #57554f;
+
+  /* Lines */
+  --color-hairline: #e1e0d9;
+  --color-baseline: #c3c2b7;
+
+  /* Accent (single data hue — bars, links, primary actions).
+     Full scale from the validated sequential blue ramp; Nuxt UI's
+     'primary' alias consumes it (see app.config.ts). */
+  /* accent-deep is the TEXT-safe accent (links): #104281 = step 800,
+     ≥7:1 on page (9.4), surface (9.7) AND accent-wash (7.5) — AAA everywhere.
+     accent (500) stays reserved for bar fills / non-text. */
+  --color-accent: #2a78d6;
+  --color-accent-deep: #104281;
+  /* On accent-wash only ink (14.9:1) and accent-deep (7.5:1) stay AAA —
+     ink-secondary lands at 6.0:1 and ink-muted at 5.6:1, both below 7:1.
+     Never put secondary/muted text on the wash. */
+  --color-accent-wash: #cde2fb;
+  --color-accent-50: #e6f0fd;
+  --color-accent-100: #cde2fb;
+  --color-accent-200: #9ec5f4;
+  --color-accent-300: #6da7ec;
+  --color-accent-400: #3987e5;
+  --color-accent-500: #2a78d6;
+  --color-accent-600: #1c5cab;
+  --color-accent-700: #184f95;
+  --color-accent-800: #104281;
+  --color-accent-900: #0d366b;
+  --color-accent-950: #092647;
+
+  /* Status (reserved for state, never decoration; always paired with text) */
+  --color-status-good: #0ca30c;
+  --color-status-warning: #fab219;
+  --color-status-serious: #ec835a;
+  --color-status-critical: #d03b3b;
+}
+
+/*
+ * Nuxt UI theme mapping. Solid primary components (buttons) use the 700 step
+ * (#184f95): white-on-700 is 8.1:1 (AAA 7:1); 500/600 miss it (4.4/6.6:1).
+ * Nuxt UI's internal grays are remapped onto our AAA ink tokens so its
+ * components (select, input, placeholder text) inherit the same contrast.
+ */
+:root {
+  --ui-primary: var(--ui-color-primary-700);
+  --ui-radius: 0.375rem;
+  --ui-text-dimmed: var(--color-ink-muted);
+  --ui-text-muted: var(--color-ink-muted);
+  --ui-text-toned: var(--color-ink-secondary);
+  --ui-text: var(--color-ink);
+  --ui-text-highlighted: var(--color-ink);
+  --ui-bg: var(--color-surface);
+  --ui-border: var(--color-hairline);
+  --ui-border-accented: var(--color-baseline);
+}
+
+/*
+ * WCAG 2.5.5 (AAA) target size: interactive controls at least 44×44 px.
+ * Applies to all buttons and form fields (including Nuxt UI's);
+ * link chips and standalone links get the height via a class.
+ */
+:where(button, [role="button"], input, select, textarea) {
+  min-height: 2.75rem;
+}
+
+/*
+ * 44px target size for inline links WITHOUT layout shift: the padding
+ * creates the hit area, the negative margins cancel it out in the layout.
+ * Named once here instead of copied per link.
+ */
+@utility tap-target {
+  @apply -my-2 inline-flex min-h-11 items-center py-2;
+}
+
+body {
+  background-color: var(--color-page);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Keyboard focus: one visible accent ring for every focusable element
+ * (links, buttons, inputs). Outline follows border-radius in modern
+ * browsers, so cards and pills get correctly rounded rings for free.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Calm product: no spinning/transitions for users who opted out of motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
