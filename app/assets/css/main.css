@@ -2,10 +2,25 @@
 @import "@nuxt/ui";
 
 /*
+ * Heading face: Source Serif 4 SemiBold, self-hosted from public/fonts
+ * (SIL OFL, license alongside the file) — the zero-third-party-requests
+ * story stays true. Body text deliberately stays system-ui; the serif
+ * carries wordmark, h1/h2 and stat values only: Aktenlage, not Startup.
+ */
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-Semibold.woff2") format("woff2");
+}
+
+/*
  * Design tokens — light mode only for the prototype (dark mode is a
  * deliberate later step, see docs/architecture.md).
- * Ink/surface/status values follow the validated brand-neutral reference
- * palette; swap here once the product has its own brand.
+ * Identity: Tinte, Papier, Textmarker — warm black ink and white sheets
+ * on a deeper warm paper; ONE brand highlight (the marker); links and
+ * data bars stay blue (usability convention, not brand).
  *
  * `static`: Nuxt UI references the accent scale at RUNTIME
  * (--ui-color-primary-N → var(--color-accent-N)); without `static`,
@@ -14,32 +29,36 @@
  */
 @theme static {
   --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Source Serif 4", Georgia, "Times New Roman", serif;
 
-  /* Surfaces */
-  --color-page: #f9f9f7;
-  --color-surface: #fcfcfb;
+  /* Surfaces — Papier & Blätter: cards are true white sheets on a deeper
+     warm paper, so the surface change is perceptible (it wasn't at
+     #fcfcfb on #f9f9f7). */
+  --color-page: #f5f4ef;
+  --color-surface: #ffffff;
 
   /* Ink — AAA contrast system (WCAG 2.2, 1.4.6: 7:1 for body text,
      computationally verified, see docs/architecture.md §8):
-       ink            18.7:1
-       ink-secondary   7.5:1
-       ink-muted       7.1:1 (darkened from the reference value #898781)
-     The gray hierarchy is deliberately flat as a result — hierarchy comes
-     from size and weight, no longer from lightness. */
-  --color-ink: #0b0b0b;
-  --color-ink-secondary: #52514e;
-  --color-ink-muted: #57554f;
+       ink            16.9:1 on page, 18.4:1 on surface
+       ink-secondary   8.2:1 on page,  9.0:1 on surface
+     ink-muted is an ALIAS of ink-secondary: the two old grays were
+     visually indistinguishable, and #57554f fell below 7:1 on the deeper
+     paper. Hierarchy comes from size and weight, not from lightness. */
+  --color-ink: #14120d;
+  --color-ink-secondary: #4a4945;
+  --color-ink-muted: #4a4945;
 
-  /* Lines */
-  --color-hairline: #e1e0d9;
+  /* Lines (hairline darkened one step for the white sheets) */
+  --color-hairline: #deddd5;
   --color-baseline: #c3c2b7;
 
   /* Accent (single data hue — bars, links, primary actions).
      Full scale from the validated sequential blue ramp; Nuxt UI's
      'primary' alias consumes it (see app.config.ts). */
   /* accent-deep is the TEXT-safe accent (links): #104281 = step 800,
-     ≥7:1 on page (9.4), surface (9.7) AND accent-wash (7.5) — AAA everywhere.
-     accent (500) stays reserved for bar fills / non-text. */
+     ≥7:1 on page (9.0), surface (9.7), accent-wash (7.5) AND mark-wash
+     (8.9) — AAA everywhere. accent (500) stays reserved for bar fills /
+     non-text. */
   --color-accent: #2a78d6;
   --color-accent-deep: #104281;
   /* On accent-wash only ink (14.9:1) and accent-deep (7.5:1) stay AAA —
@@ -122,6 +141,13 @@ body {
   background-color: var(--color-page);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Page and section headings carry the serif; h3 and below stay in the UI
+ * face — small headings read better in the sans. */
+h1,
+h2 {
+  font-family: var(--font-heading);
 }
 
 /*

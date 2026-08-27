@@ -45,7 +45,7 @@ const lastSyncLabel = computed(() =>
 <template>
   <div class="mx-auto w-full max-w-5xl">
     <header class="max-w-2xl">
-      <h1 class="text-2xl font-semibold text-ink sm:text-3xl">
+      <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
         Was passiert in der Begutachtung – und was wird daraus?
       </h1>
       <p class="mt-3 text-ink-secondary">

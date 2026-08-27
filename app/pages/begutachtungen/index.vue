@@ -86,7 +86,9 @@ const selectClasses =
 <template>
   <div class="mx-auto w-full max-w-4xl">
     <header>
-      <h1 class="text-2xl font-semibold text-ink sm:text-3xl">Begutachtungen</h1>
+      <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+        Begutachtungen
+      </h1>
       <p class="mt-2 text-ink-secondary">
         Ministerialentwürfe im Begutachtungsverfahren – laufend und abgeschlossen.
       </p>

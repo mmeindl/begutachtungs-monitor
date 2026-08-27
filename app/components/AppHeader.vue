@@ -1,9 +1,11 @@
 <script setup lang="ts">
 const route = useRoute()
 
+// Four items and capped there — a nav that stays scannable is the IA.
 const navItems = [
   { label: 'Aktuell', to: '/' },
   { label: 'Begutachtungen', to: '/begutachtungen' },
+  { label: "So funktioniert's", to: '/so-funktionierts' },
   { label: 'Über', to: '/ueber' },
 ] as const
 
@@ -30,9 +32,9 @@ function isActive(to: string): boolean {
              Decorative next to the wordmark, hence aria-hidden. -->
         <span
           aria-hidden="true"
-          class="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-mark font-serif text-[15px] font-semibold text-ink"
+          class="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-mark font-heading text-[15px] font-semibold text-ink"
         >§</span>
-        Begutachtungs-Monitor
+        <span class="font-heading text-lg">Begutachtungs-Monitor</span>
       </NuxtLink>
       <nav aria-label="Hauptnavigation">
         <ul class="flex items-center gap-4 sm:gap-6">

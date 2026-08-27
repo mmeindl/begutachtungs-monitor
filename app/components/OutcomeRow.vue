@@ -50,9 +50,10 @@ const chipLabel = computed(() => {
         </span>
       </p>
     </div>
-    <!-- Plain span, not an anchor: the whole row is already the link. -->
+    <!-- Plain span, not an anchor: the whole row is already the link.
+         Marker wash: the highlighter marks outcomes (accent-deep 8.9:1). -->
     <span
-      class="inline-flex shrink-0 items-center self-start whitespace-nowrap rounded-full bg-accent-wash px-2.5 py-0.5 text-xs font-medium text-accent-deep sm:self-center"
+      class="inline-flex shrink-0 items-center self-start whitespace-nowrap rounded-full bg-mark-wash px-2.5 py-0.5 text-xs font-medium text-accent-deep sm:self-center"
     >
       {{ chipLabel }}
     </span>
