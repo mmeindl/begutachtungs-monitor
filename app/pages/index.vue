@@ -25,6 +25,13 @@ const { data: outcomes, status: outcomesStatus } = useFetch<DashboardOutcomes>(
 
 const topMax = computed(() => data.value?.topByStatements[0]?.statementCount ?? 0)
 
+// Rank-bar width vs. the section's #1 — decorative (aria-hidden); the
+// bold count in the card's meta line carries the number.
+function rankWidth(count: number): string {
+  if (topMax.value <= 0 || count <= 0) return '0%'
+  return `${Math.min(100, (count / topMax.value) * 100)}%`
+}
+
 // A concrete date means something to non-insiders; a roman numeral does
 // not. The date alone is the load-bearing part — "Gesetzgebungsperiode"
 // wording stays out of the hint (tile 4 already scopes the row, and the
@@ -223,17 +230,22 @@ const lastSyncLabel = computed(() =>
           Die Entwürfe mit den meisten Stellungnahmen in dieser
           Gesetzgebungsperiode – offene und abgeschlossene.
         </p>
-        <div class="mt-4 space-y-3">
-          <VolumeBar
-            v-for="c in data.topByStatements"
-            :key="`${c.gp}-${c.inr}`"
-            :label="c.title"
-            :value="c.statementCount"
-            :max="topMax"
-            :href="`/begutachtungen/${c.gp}/${c.inr}`"
-            :meta="c.active ? 'läuft noch' : 'abgeschlossen'"
-          />
-        </div>
+        <!-- Same card anatomy as the sections above — status lives in the
+             familiar right-hand slot, the rank bar in the card's footer. -->
+        <ul class="mt-4 space-y-3">
+          <li v-for="c in data.topByStatements" :key="`${c.gp}-${c.inr}`">
+            <ConsultationCard :consultation="c">
+              <template #footer>
+                <div class="h-2 w-full rounded-r-[4px] bg-accent-wash" aria-hidden="true">
+                  <div
+                    class="h-2 rounded-r-[4px] bg-accent"
+                    :style="{ width: rankWidth(c.statementCount) }"
+                  />
+                </div>
+              </template>
+            </ConsultationCard>
+          </li>
+        </ul>
       </section>
 
       <p v-if="lastSyncLabel" class="mt-12 text-xs text-ink-muted">
