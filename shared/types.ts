@@ -73,6 +73,12 @@ export interface StatementsSummary {
   organisations: number
   privatePersons: number
   nonPublic: number
+  /**
+   * Set when list 142 was unavailable or inconsistent with list 81: `total`
+   * then comes from the list-81 counter and the breakdown/topOrganisations
+   * are unknown (zeros/empty) — render a hint instead of the panel.
+   */
+  degraded?: boolean
   /** Organisations only — private persons are never listed by name */
   topOrganisations: {
     name: string

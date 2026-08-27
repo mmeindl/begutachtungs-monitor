@@ -292,15 +292,41 @@ export async function requireConsultation(gp: string, inr: number): Promise<Cons
   return reconcileActive(summary)
 }
 
-/** List 142 of one ME, GDPR-filtered and mapped, date descending. Leaf cache. */
+/**
+ * List 142 of one ME, GDPR-filtered and mapped, date descending. Leaf cache.
+ *
+ * Inconsistency guard: list 142 sometimes answers EMPTY although list 81
+ * still counts statements (observed 2026-08-27: 88/ME had 707 in list 81,
+ * 0 rows in list 142 — reproducible with the filter definition embedded in
+ * parlament.gv.at's own detail page). A cached empty would freeze that
+ * glitch for 30 minutes, so: one retry, then throw — errors are never
+ * cached, and callers degrade explicitly instead of lying with a zero.
+ */
 export const getStatementsForMe = defineCachedFunction(
   async (gp: string, inr: number): Promise<StatementMeta[]> => {
-    const res = await fetchFilterList(142, {
-      BEZUG_GP_CODE: [gp],
-      BEZUG_ITYP: ['ME'],
-      BEZUG_INR: [inr],
-    })
-    const rows = res.rows ?? []
+    const query = () =>
+      fetchFilterList(142, {
+        BEZUG_GP_CODE: [gp],
+        BEZUG_ITYP: ['ME'],
+        BEZUG_INR: [inr],
+      })
+    let res = await query()
+    let rows = res.rows ?? []
+    if (rows.length === 0) {
+      const { items } = await getConsultationsForGp(gp)
+      const claimed = items.find((i) => i.inr === inr)?.statementCount ?? 0
+      if (claimed > 0) {
+        res = await query()
+        rows = res.rows ?? []
+        if (rows.length === 0) {
+          throw createError({
+            statusCode: 502,
+            statusMessage:
+              'Stellungnahmen-Liste ist auf parlament.gv.at derzeit nicht abrufbar',
+          })
+        }
+      }
+    }
     assertRowsMatchGp(rows, gp, 142)
     const items = rows.map(mapStatementRow)
     items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
@@ -373,7 +399,10 @@ export async function getConsultationDetail(
   const [summary, detail, statementItems] = await Promise.all([
     requireConsultation(gp, inr),
     getGegenstand(gp, 'ME', inr),
-    getStatementsForMe(gp, inr),
+    // Statements must not take the whole page down: on failure (including
+    // the list-142 inconsistency guard) the page degrades to the list-81
+    // count without a breakdown.
+    getStatementsForMe(gp, inr).catch(() => null),
   ])
   const content = detail.content ?? {}
 
@@ -401,9 +430,10 @@ export async function getConsultationDetail(
   }
 
   // The list-81 counter (row[13]) is dropped here: the detail response
-  // carries exactly ONE statements number, and it comes from list 142 — the
-  // same source as the breakdown below it (shared/types.ts).
-  const { statementCount: _listCount, ...base } = summary
+  // carries exactly ONE statements number — from list 142, the same source
+  // as the breakdown below it. Sole exception: when list 142 is down, the
+  // list-81 count is the only truth left and travels flagged as `degraded`.
+  const { statementCount: listCount, ...base } = summary
 
   return {
     ...base,
@@ -412,7 +442,16 @@ export async function getConsultationDetail(
     documents: mapDocuments(content.documents),
     trace,
     textEvolution: mapTextEvolution(content.statements?.documents),
-    statements: buildStatementsSummary(statementItems),
+    statements: statementItems
+      ? buildStatementsSummary(statementItems)
+      : {
+          total: listCount,
+          organisations: 0,
+          privatePersons: 0,
+          nonPublic: 0,
+          topOrganisations: [],
+          degraded: true,
+        },
     enactment,
   }
 }
