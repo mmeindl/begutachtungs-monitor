@@ -15,6 +15,20 @@ export function formatDateDe(iso: string | null | undefined): string {
   }).format(d)
 }
 
+/** ISO date → "Mo., 31.08.2026" (de-AT, short weekday). Deadline planning
+ * happens by calendar date, not by countdown — the weekday orients it. */
+export function formatDateWeekdayDe(iso: string | null | undefined): string {
+  if (!iso) return '–'
+  const d = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso)
+  if (Number.isNaN(d.getTime())) return '–'
+  return new Intl.DateTimeFormat('de-AT', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(d)
+}
+
 /** ISO timestamp → "24.08.2026, 14:30" (de-AT) */
 export function formatDateTimeDe(iso: string | null | undefined): string {
   if (!iso) return '–'

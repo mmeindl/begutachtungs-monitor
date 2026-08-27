@@ -65,9 +65,27 @@ export default defineEventHandler(async (event): Promise<ConsultationsResponse> 
   const availableGps = listAvailableGps(currentGp)
   if (!availableGps.includes(gp)) availableGps.push(gp)
 
+  // Open first, nearest Frist leading (the acting audience's order: "which
+  // deadline ends next?"); closed after, most recently ended first. A dead
+  // item must never lead the page while consultations end this week.
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1
+    if (a.active) {
+      if (a.deadline && b.deadline) {
+        return a.deadline.localeCompare(b.deadline) || b.inr - a.inr
+      }
+      // Open without Frist has no urgency — after the dated ones.
+      if (a.deadline !== b.deadline) return a.deadline ? -1 : 1
+      return b.arrivedAt.localeCompare(a.arrivedAt) || b.inr - a.inr
+    }
+    const aEnd = a.deadline ?? a.arrivedAt
+    const bEnd = b.deadline ?? b.arrivedAt
+    return bEnd.localeCompare(aEnd) || b.inr - a.inr
+  })
+
   return {
-    items: filtered,
-    total: filtered.length,
+    items: sorted,
+    total: sorted.length,
     gp,
     availableGps,
     ministries,

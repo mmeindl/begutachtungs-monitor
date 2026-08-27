@@ -1,29 +1,19 @@
 <script setup lang="ts">
+import type { DeadlineTone } from '#shared/utils/deadlines'
+
 const props = defineProps<{
   deadline: string | null
   active: boolean
 }>()
 
-type Tone = 'critical' | 'serious' | 'neutral' | 'inactive'
-
-const tone = computed<Tone>(() => {
-  if (!props.active) return 'inactive'
-  const days = daysUntil(props.deadline)
-  if (days === null) return 'neutral'
-  // Defense in depth alongside server-side reconcileActive: even with stale
-  // client data an expired deadline renders muted, never as a red pill.
-  if (days < 0) return 'inactive'
-  if (days <= DEADLINE_CRITICAL_DAYS) return 'critical'
-  if (days <= DEADLINE_SERIOUS_DAYS) return 'serious'
-  return 'neutral'
-})
+const tone = computed(() => deadlineTone(props.deadline, props.active))
 
 const label = computed(() => fristLabel(props.deadline, props.active))
 
 /* Status hue lives in dot + wash; the text stays in ink tokens so the pill
  * passes AA contrast at text-xs and meaning never rides on color alone —
  * the label text itself says how urgent it is. */
-const pillClass: Record<Tone, string> = {
+const pillClass: Record<DeadlineTone, string> = {
   critical: 'bg-status-critical/10 text-ink',
   serious: 'bg-status-serious/15 text-ink',
   neutral: 'bg-accent-wash text-ink',
@@ -31,7 +21,7 @@ const pillClass: Record<Tone, string> = {
   inactive: 'bg-ink-muted/15 text-ink',
 }
 
-const dotClass: Record<Tone, string> = {
+const dotClass: Record<DeadlineTone, string> = {
   critical: 'bg-status-critical',
   serious: 'bg-status-serious',
   neutral: 'bg-accent',
