@@ -82,15 +82,23 @@ export function buildRssFeed(siteUrl: string, items: ConsultationSummary[]): str
 
   const entries = sorted.map((item) => {
     const url = pageUrl(siteUrl, item)
+    // No statement count here: guid-keyed readers freeze first-seen text,
+    // and the count is near zero at publication — frozen forever. The
+    // Frist is stable (known tradeoff: a later extension won't reach
+    // readers that already cached the item).
     const description = [
       item.ministryName,
       item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist',
-      countLabelDe(item.statementCount, 'Stellungnahme', 'Stellungnahmen'),
     ].join(' · ')
+    // Deadline into the TITLE: list views of most readers show titles
+    // only, and the Frist is the one fact a subscriber triages by.
+    const fristSuffix = item.deadline
+      ? ` – Frist ${item.deadline.slice(8, 10)}.${item.deadline.slice(5, 7)}.`
+      : ''
     const pubDate = rfc1123(item.arrivedAt)
     return [
       '    <item>',
-      `      <title>${escapeXml(`${item.citation}: ${item.title}`)}</title>`,
+      `      <title>${escapeXml(`${item.citation}: ${item.title}${fristSuffix}`)}</title>`,
       `      <link>${escapeXml(url)}</link>`,
       `      <guid isPermaLink="true">${escapeXml(url)}</guid>`,
       ...(pubDate ? [`      <pubDate>${pubDate}</pubDate>`] : []),
