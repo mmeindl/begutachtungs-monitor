@@ -58,8 +58,10 @@ function submitterLabel(s: StatementMeta): string {
   return 'Privatperson'
 }
 
+/* "Zustimmung" is the Parliament's own term (upstream field: approvals) —
+ * the vocabulary must survive the click-through to parlament.gv.at. */
 function endorsementLabel(n: number): string {
-  return countLabelDe(n, 'Unterstützung', 'Unterstützungen')
+  return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
 }
 
 const miniStats = computed(() => [
@@ -73,6 +75,13 @@ const miniStats = computed(() => [
  * always-visible top organisations — otherwise it merely repeats them. */
 const listAddsMore = computed(
   () => props.summary.total > props.summary.topOrganisations.length,
+)
+
+/* "Top" is only honest when the list actually is a selection. */
+const orgHeading = computed(() =>
+  props.summary.organisations <= props.summary.topOrganisations.length
+    ? 'Organisationen'
+    : 'Organisationen mit den meisten Zustimmungen',
 )
 </script>
 
@@ -88,9 +97,18 @@ const listAddsMore = computed(
       </div>
     </dl>
 
+    <!-- Visible text, not a tooltip: the two terms the panel can't do
+         without, explained once (AAA: no hover-only information). -->
+    <p class="mt-3 text-sm text-ink-secondary">
+      Zustimmungen: Personen, die sich einer veröffentlichten Stellungnahme
+      auf parlament.gv.at angeschlossen haben. Nicht öffentlich:
+      Stellungnahmen, die auf Wunsch der Einbringer:innen nicht
+      veröffentlicht wurden.
+    </p>
+
     <!-- Top organisations -->
     <section v-if="summary.topOrganisations.length" class="mt-6">
-      <h3 class="text-sm font-medium text-ink">Top-Organisationen</h3>
+      <h3 class="text-sm font-medium text-ink">{{ orgHeading }}</h3>
       <ul class="mt-1 divide-y divide-hairline">
         <li
           v-for="org in summary.topOrganisations"
@@ -104,7 +122,12 @@ const listAddsMore = computed(
           >
             <span class="truncate">{{ org.name }}</span>
           </ExternalLink>
-          <span class="shrink-0 text-sm tabular-nums text-ink-secondary">
+          <!-- Same guard as the lazy list below: a column of
+               "0 Zustimmungen" is pure noise on small consultations. -->
+          <span
+            v-if="org.endorsements > 0"
+            class="shrink-0 text-sm tabular-nums text-ink-secondary"
+          >
             {{ endorsementLabel(org.endorsements) }}
           </span>
         </li>

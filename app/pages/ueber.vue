@@ -30,9 +30,9 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Genauso wichtig ist der Blick zurück: Was wurde aus dem Input? Der
           Monitor verfolgt den Weg vom Ministerialentwurf über die
-          Regierungsvorlage bis zur Kundmachung im Bundesgesetzblatt.
-          Änderungen nach der Begutachtung werden dabei genauso gezeigt wie
-          Verfahren ohne weiteren Verlauf – Nachverfolgung, nicht Bewertung.
+          Regierungsvorlage bis zur Kundmachung im Bundesgesetzblatt – und
+          zeigt Verfahren mit weiterem Verlauf genauso wie Verfahren ohne.
+          Nachverfolgung, nicht Bewertung.
         </p>
       </section>
 
@@ -50,6 +50,30 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           im Zwischenspeicher; eine eigene Datenbank gibt es nicht. Es gibt
           keine Konten, kein Tracking und keine Cookies.
         </p>
+      </section>
+
+      <section aria-labelledby="about-roadmap">
+        <h2 id="about-roadmap" class="text-lg font-semibold text-ink">
+          Woran gearbeitet wird
+        </h2>
+        <p class="mt-3 leading-relaxed text-ink-secondary">
+          Der Monitor ist ein Prototyp. Die nächsten Schritte, in dieser
+          Reihenfolge:
+        </p>
+        <ol
+          class="mt-3 list-decimal space-y-2 pl-5 leading-relaxed text-ink-secondary marker:text-ink-muted"
+        >
+          <li>
+            Textvergleich zwischen Entwurf und Regierungsvorlage – was hat
+            sich nach der Begutachtung geändert? Das ist der Kern der
+            Nachverfolgung und existiert heute nirgends.
+          </li>
+          <li>E-Mail-Benachrichtigungen zu Fristen.</li>
+          <li>
+            Statistiken über hunderte Verfahren: Wie oft ändern sich Entwürfe
+            nach der Begutachtung tatsächlich?
+          </li>
+        </ol>
       </section>
 
       <section aria-labelledby="about-subscribe">
