@@ -355,6 +355,20 @@ export const getGegenstand = defineCachedFunction(
   },
 )
 
+/**
+ * Last-good statements aggregations, consulted ONLY in the catch path when
+ * the live list-142 fetch fails — an upstream hiccup must not delete the
+ * flagship aggregation for a whole cache window (88/ME, the showcase,
+ * degraded exactly this way in practice). In-memory, dies on restart —
+ * acceptable, because staleness is always visible (staleAsOf travels to
+ * the UI). Deliberately NOT Nitro staleMaxAge: that is the stale-served-
+ * as-fresh SWR behavior this codebase banned after being burned.
+ */
+const lastGoodStatements = new Map<
+  string,
+  { items: StatementMeta[]; fetchedAt: string }
+>()
+
 function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
   const organisations: StatementMeta[] = []
   let privatePersons = 0
@@ -420,13 +434,28 @@ export async function getConsultationDetail(
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
   // client. List 142 then just returns zero rows.
-  const [summary, detail, statementItems] = await Promise.all([
+  const statementsKey = `${gp}-${inr}`
+  const [summary, detail, statementsResult] = await Promise.all([
     requireConsultation(gp, inr),
     getGegenstand(gp, 'ME', inr),
     // Statements must not take the whole page down: on failure (including
-    // the list-142 inconsistency guard) the page degrades to the list-81
-    // count without a breakdown.
-    getStatementsForMe(gp, inr).catch(() => null),
+    // the list-142 inconsistency guard) the last-good aggregation is
+    // served with visible staleness, and only without one does the page
+    // degrade to the list-81 count.
+    getStatementsForMe(gp, inr)
+      .then((items) => {
+        lastGoodStatements.set(statementsKey, {
+          items,
+          fetchedAt: new Date().toISOString(),
+        })
+        return { items, staleAsOf: null as string | null }
+      })
+      .catch(() => {
+        const lastGood = lastGoodStatements.get(statementsKey)
+        return lastGood
+          ? { items: lastGood.items, staleAsOf: lastGood.fetchedAt }
+          : null
+      }),
   ])
   const content = detail.content ?? {}
 
@@ -466,8 +495,12 @@ export async function getConsultationDetail(
     documents: mapDocuments(content.documents),
     trace,
     textEvolution: mapTextEvolution(content.statements?.documents),
-    statements: statementItems
-      ? buildStatementsSummary(statementItems)
+    statements: statementsResult
+      ? {
+          ...buildStatementsSummary(statementsResult.items),
+          overviewTotal: listCount,
+          staleAsOf: statementsResult.staleAsOf,
+        }
       : {
           total: listCount,
           organisations: 0,

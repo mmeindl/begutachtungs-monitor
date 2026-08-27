@@ -219,6 +219,22 @@ export function mapConsultationRow(row: unknown[]): ConsultationSummary {
 // [4] (dd.mm.yyyy) serves only as fallback.
 // ---------------------------------------------------------------------------
 
+/**
+ * Display normalization for organisation names, whitespace/separators ONLY:
+ * upstream free text carries space runs and inconsistent separator spacing
+ * ("Fakultät ; Institut" vs. "Fakultät; Institut"), which renders as
+ * duplicate-looking rows. Deliberately NO fuzzy matching or grouping —
+ * distinct institutes of one organisation must stay distinct.
+ */
+export function normalizeOrgName(name: string): string {
+  return name
+    .replace(/\s+/g, ' ')
+    // "Fakultät ; Institut" / "Arbeiter,und" → "Fakultät; Institut" /
+    // "Arbeiter, und". Letter-lookahead spares decimal commas ("1,5").
+    .replace(/\s*([;,])\s*(?=\p{L})/gu, '$1 ')
+    .trim()
+}
+
 export function mapStatementRow(row: unknown[]): StatementMeta {
   const gp = asString(row[0])
   const snmeInr = asNumber(row[2])
@@ -235,7 +251,7 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
     citation,
     date: parseIsoDate(row[5]) ?? parseGermanDate(asString(row[4])),
     submitterKind: kind,
-    submitterName: name,
+    submitterName: name !== null ? normalizeOrgName(name) : null,
     endorsements: asNumber(row[12]),
     parliamentUrl: `${PARLIAMENT_BASE}/gegenstand/${gp}/SNME/${snmeInr}`,
   }

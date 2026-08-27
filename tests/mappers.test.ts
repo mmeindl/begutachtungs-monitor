@@ -11,6 +11,7 @@ import {
   mapInvitedBy,
   mapStatementRow,
   mapTextEvolution,
+  normalizeOrgName,
   parseFristsort,
   parseGermanDate,
   parseShortinfo,
@@ -111,6 +112,23 @@ describe('mapConsultationRow', () => {
     const mapped = mapConsultationRow(row)
     expect(mapped.active).toBe(false)
     expect(mapped.deadline).toBeNull()
+  })
+})
+
+describe('normalizeOrgName', () => {
+  it('collapses whitespace runs and normalizes separator spacing', () => {
+    expect(
+      normalizeOrgName('Universität Wien / Rechtswissenschaftliche Fakultät ; Institut'),
+    ).toBe('Universität Wien / Rechtswissenschaftliche Fakultät; Institut')
+    expect(normalizeOrgName('Kammer  für   Arbeiter,und Angestellte')).toBe(
+      'Kammer für Arbeiter, und Angestellte',
+    )
+  })
+
+  it('never merges distinct names — display cleanup only', () => {
+    expect(normalizeOrgName('Rechtswisssenschaftliche Fakultät')).toBe(
+      'Rechtswisssenschaftliche Fakultät',
+    )
   })
 })
 
