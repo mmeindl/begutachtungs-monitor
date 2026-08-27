@@ -39,17 +39,23 @@ defineProps<{
           {{ consultation.statementCount === 1 ? 'Stellungnahme' : 'Stellungnahmen' }}
         </span>
         <!-- Closed cards seed the product's question — honest at zero data
-             cost, the detail page always answers it (showOutcome on !active). -->
-        <template v-if="!consultation.active">
+             cost, the detail page always answers it (showOutcome on !active).
+             Suppressed when an aside slot is provided: the outcome chip
+             there already IS the answer. -->
+        <template v-if="!consultation.active && !$slots.aside">
           <span aria-hidden="true">·</span>
           <span class="font-medium text-accent-deep">Was wurde daraus?&nbsp;→</span>
         </template>
       </p>
     </div>
-    <DeadlineBlock
-      :deadline="consultation.deadline"
-      :active="consultation.active"
-      class="shrink-0"
-    />
+    <!-- Right-hand slot: DeadlineBlock by default, outcome chip on the
+         dashboard's closed section — one card anatomy for both states. -->
+    <slot name="aside">
+      <DeadlineBlock
+        :deadline="consultation.deadline"
+        :active="consultation.active"
+        class="shrink-0"
+      />
+    </slot>
   </NuxtLink>
 </template>

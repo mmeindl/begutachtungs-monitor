@@ -135,13 +135,15 @@ const lastSyncLabel = computed(() =>
             label="Verläufe werden geladen …"
           />
           <template v-else-if="outcomes?.recent.length">
-            <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
-              <ul class="divide-y divide-hairline">
-                <li v-for="o in outcomes.recent" :key="`${o.gp}-${o.inr}`">
-                  <OutcomeRow :outcome="o" />
-                </li>
-              </ul>
-            </div>
+            <!-- Same card as "Läuft gerade" — only the aside differs
+                 (outcome chip instead of deadline block). -->
+            <ul class="space-y-3">
+              <li v-for="o in outcomes.recent" :key="`${o.gp}-${o.inr}`">
+                <ConsultationCard :consultation="o">
+                  <template #aside><OutcomeChip :outcome="o" /></template>
+                </ConsultationCard>
+              </li>
+            </ul>
             <template v-if="outcomes.lastEnacted">
               <h3 class="mt-4 text-sm font-medium text-ink">
                 {{
@@ -150,10 +152,12 @@ const lastSyncLabel = computed(() =>
                     : 'Zuletzt mit Regierungsvorlage'
                 }}
               </h3>
-              <div
-                class="mt-2 overflow-hidden rounded-xl border border-hairline bg-surface"
-              >
-                <OutcomeRow :outcome="outcomes.lastEnacted" />
+              <div class="mt-2">
+                <ConsultationCard :consultation="outcomes.lastEnacted">
+                  <template #aside>
+                    <OutcomeChip :outcome="outcomes.lastEnacted" />
+                  </template>
+                </ConsultationCard>
               </div>
             </template>
             <p class="mt-3 text-xs text-ink-muted">

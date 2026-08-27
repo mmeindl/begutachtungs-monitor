@@ -165,16 +165,11 @@ export interface DashboardPayload {
   lastSync: string | null
 }
 
-/** One recently closed consultation with its resolved chain state. */
-export interface ClosedOutcome {
-  gp: string
-  inr: number
-  citation: string
-  title: string
-  ministryCode: string
-  ministryName: string
-  deadline: string | null
-  statementCount: number
+/** One recently closed consultation with its resolved chain state.
+ *  Extends the summary so the SAME card component renders both the open
+ *  list and the outcome section — one anatomy, one hover, no sibling
+ *  component drift. */
+export interface ClosedOutcome extends ConsultationSummary {
   /** e.g. "474 d.B." — null while no Regierungsvorlage exists */
   rvCitation: string | null
   /** e.g. "Bundesgesetzblatt I Nr. 37/2026" — null while not enacted */
