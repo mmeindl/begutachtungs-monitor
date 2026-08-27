@@ -83,6 +83,34 @@ const orgHeading = computed(() =>
     ? 'Organisationen'
     : 'Organisationen mit den meisten Zustimmungen',
 )
+
+/* Submitter mix as one stacked bar — "707, davon 96 % Privatpersonen" in a
+ * glance (org-mobilization vs. citizen-wave is a journalistic signature).
+ * The <dl> above IS the legend with exact numbers, so the bar itself stays
+ * aria-hidden decoration; segment order mirrors the <dl>. */
+const mixSegments = computed(() => {
+  const t = props.summary.total
+  if (t <= 0) return []
+  return [
+    { key: 'orgs', count: props.summary.organisations, class: 'bg-accent' },
+    { key: 'persons', count: props.summary.privatePersons, class: 'bg-accent-200' },
+    /* baseline, not hairline: hairline on surface is ~1.2:1, invisible */
+    { key: 'nonpublic', count: props.summary.nonPublic, class: 'bg-baseline' },
+  ]
+    .filter((s) => s.count > 0)
+    .map((s) => ({ ...s, pct: (s.count / t) * 100 }))
+})
+
+const maxEndorsements = computed(() =>
+  Math.max(0, ...props.summary.topOrganisations.map((o) => o.endorsements)),
+)
+
+/* CSS max() keeps every non-zero bar visible: 1 of 355 is 0.3 % — sub-pixel
+ * without the 3px floor, and the spread IS the story (355 vs 1). */
+function endorsementBarWidth(endorsements: number): string {
+  if (endorsements <= 0 || maxEndorsements.value <= 0) return '0'
+  return `max(${(endorsements / maxEndorsements.value) * 100}%, 3px)`
+}
 </script>
 
 <template>
@@ -99,6 +127,20 @@ const orgHeading = computed(() =>
       </div>
     </dl>
 
+    <!-- Mix bar (decorative; the <dl> above is the legend) -->
+    <div
+      v-if="mixSegments.length"
+      class="mt-3 flex h-2 w-full overflow-hidden rounded-[2px] border border-hairline"
+      aria-hidden="true"
+    >
+      <div
+        v-for="seg in mixSegments"
+        :key="seg.key"
+        :class="seg.class"
+        :style="{ width: `${seg.pct}%` }"
+      />
+    </div>
+
     <!-- Visible text, not a tooltip: the two terms the panel can't do
          without, explained once (AAA: no hover-only information). -->
     <p class="mt-3 text-sm text-ink-secondary">
@@ -112,26 +154,37 @@ const orgHeading = computed(() =>
     <section v-if="summary.topOrganisations.length" class="mt-6">
       <h3 class="text-sm font-medium text-ink">{{ orgHeading }}</h3>
       <ul class="mt-1 divide-y divide-hairline">
-        <li
-          v-for="org in summary.topOrganisations"
-          :key="org.parliamentUrl"
-          class="flex items-baseline justify-between gap-4 py-2.5"
-        >
-          <ExternalLink
-            :href="org.parliamentUrl"
-            :aria-label="`Stellungnahme von ${org.name} auf parlament.gv.at öffnen`"
-            class="tap-target min-w-0 text-sm font-medium text-accent-deep hover:underline"
+        <li v-for="org in summary.topOrganisations" :key="org.parliamentUrl" class="py-2.5">
+          <div class="flex items-baseline justify-between gap-4">
+            <ExternalLink
+              :href="org.parliamentUrl"
+              :aria-label="`Stellungnahme von ${org.name} auf parlament.gv.at öffnen`"
+              class="tap-target min-w-0 text-sm font-medium text-accent-deep hover:underline"
+            >
+              <span class="truncate">{{ org.name }}</span>
+            </ExternalLink>
+            <!-- Same guard as the lazy list below: a column of
+                 "0 Zustimmungen" is pure noise on small consultations. -->
+            <span
+              v-if="org.endorsements > 0"
+              class="shrink-0 text-sm tabular-nums text-ink-secondary"
+            >
+              {{ endorsementLabel(org.endorsements) }}
+            </span>
+          </div>
+          <!-- Decorative scale (VolumeBar pattern: value in text, bar
+               aria-hidden): the spread is the story — one Betriebsrat can
+               out-mobilize the other hundred statements combined. -->
+          <div
+            v-if="maxEndorsements > 0"
+            class="mt-1.5 h-1.5 w-full rounded-r-[2px] bg-accent-wash"
+            aria-hidden="true"
           >
-            <span class="truncate">{{ org.name }}</span>
-          </ExternalLink>
-          <!-- Same guard as the lazy list below: a column of
-               "0 Zustimmungen" is pure noise on small consultations. -->
-          <span
-            v-if="org.endorsements > 0"
-            class="shrink-0 text-sm tabular-nums text-ink-secondary"
-          >
-            {{ endorsementLabel(org.endorsements) }}
-          </span>
+            <div
+              class="h-1.5 rounded-r-[2px] bg-accent"
+              :style="{ width: endorsementBarWidth(org.endorsements) }"
+            />
+          </div>
         </li>
       </ul>
     </section>
