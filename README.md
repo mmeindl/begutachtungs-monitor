@@ -6,6 +6,8 @@ Wer heute eine Stellungnahme schreibt, schreibt ins Leere. Das soll sich ändern
 
 **Status:** Prototyp online — <https://begutachtungs-monitor.at> (seit August 2026).
 
+Worum es geht, ausführlich auf Deutsch: [begutachtungs-monitor.at/ueber](https://begutachtungs-monitor.at/ueber)
+
 ---
 
 *An open-source monitor for Austria's pre-parliamentary law consultation stage (Begutachtungsverfahren): running consultations, deadlines, submission volumes — and what became of the public's input.*
@@ -18,4 +20,4 @@ Wer heute eine Stellungnahme schreibt, schreibt ins Leere. Das soll sich ändern
 
 ---
 
-**Lizenz:** [AGPL-3.0-or-later](LICENSE) · Datenquelle: Republik Österreich – Parlamentsdirektion ([parlament.gv.at](https://www.parlament.gv.at)), Metadaten CC BY 4.0
+**Lizenz:** [AGPL-3.0-or-later](LICENSE) · Datenquelle: Republik Österreich – Parlamentsdirektion ([parlament.gv.at](https://www.parlament.gv.at)), Metadaten CC BY 4.0 · **Kontakt:** <kontakt@begutachtungs-monitor.at>
