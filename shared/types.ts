@@ -164,3 +164,36 @@ export interface DashboardPayload {
   /** Upstream lastSync, normalized to ISO-8601 server-side; null if absent */
   lastSync: string | null
 }
+
+/** One recently closed consultation with its resolved chain state. */
+export interface ClosedOutcome {
+  gp: string
+  inr: number
+  citation: string
+  title: string
+  ministryCode: string
+  ministryName: string
+  deadline: string | null
+  statementCount: number
+  /** e.g. "474 d.B." — null while no Regierungsvorlage exists */
+  rvCitation: string | null
+  /** e.g. "Bundesgesetzblatt I Nr. 37/2026" — null while not enacted */
+  bgblNumber: string | null
+}
+
+/**
+ * Payload of /api/dashboard/outcomes — the "Zuletzt abgeschlossen – was
+ * wurde daraus?" section. Fetched deferred/client-side by the dashboard:
+ * resolving the pool can hit many cold upstream fetches and must never
+ * block first paint.
+ */
+export interface DashboardOutcomes {
+  /** Most recently ended consultations, strict recency order — never
+      sorted by outcome (Nachverfolgung, not a scoreboard). */
+  recent: ClosedOutcome[]
+  /** The pool's most recent item that reached RV/BGBl, when `recent`
+      itself shows no progression — keeps the full chain demonstrable
+      during the months of normal ME→RV latency. Null when `recent`
+      already contains one (or none exists in the pool). */
+  lastEnacted: ClosedOutcome | null
+}

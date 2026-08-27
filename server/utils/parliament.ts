@@ -379,6 +379,30 @@ function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
 }
 
 /**
+ * Chain state of one consultation (RV citation + BGBl number) WITHOUT the
+ * statements fetch — the dashboard's recently-closed section needs only
+ * the outcome, and getConsultationDetail would drag list 142 along for
+ * every pool item. Pure composition over the Gegenstand leaf caches,
+ * deliberately uncached (same reasoning as getConsultationDetail below).
+ */
+export async function getConsultationOutcome(
+  gp: string,
+  inr: number,
+): Promise<{ rvCitation: string | null; bgblNumber: string | null }> {
+  const detail = await getGegenstand(gp, 'ME', inr)
+  const rvLink = findLastRvLink(parseStages(detail.content?.stages))
+  if (!rvLink) return { rvCitation: null, bgblNumber: null }
+  let bgblNumber: string | null = null
+  try {
+    const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
+    bgblNumber = extractBgblLink(rv.content?.status?.bgbllinks)?.number ?? null
+  } catch {
+    // RV enrichment is optional: the RV citation alone is still an answer.
+  }
+  return { rvCitation: rvLink.label, bgblNumber }
+}
+
+/**
  * Detail assembly (docs/architecture.md §5):
  * list-81 row (404 if absent) + detail JSON + statements summary +
  * RV enrichment (latest RV; BGBl via Abfrage=BgblAuth; RV errors → nulls).

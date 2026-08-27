@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardPayload } from '#shared/types'
+import type { DashboardOutcomes, DashboardPayload } from '#shared/types'
 
 const pageDescription =
   'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
@@ -14,7 +14,27 @@ useSeoMeta({
 
 const { data, error, refresh, status } = await useFetch<DashboardPayload>('/api/dashboard')
 
+// Deferred + client-only: resolving the outcome pool can hit ~24 cold
+// upstream fetches — that must never block the dashboard's first paint.
+const { data: outcomes, status: outcomesStatus } = useFetch<DashboardOutcomes>(
+  '/api/dashboard/outcomes',
+  { server: false, lazy: true },
+)
+
 const topMax = computed(() => data.value?.topByStatements[0]?.statementCount ?? 0)
+
+// A concrete date means something to non-insiders; a roman numeral does
+// not. gp is server-derived and rolls over — map known GPs, fall back to
+// the numeral.
+const GP_START: Record<string, string> = { XXVIII: 'seit Okt. 2024' }
+const gpHint = computed(() => {
+  const gp = data.value?.gp
+  if (!gp) return undefined
+  const start = GP_START[gp]
+  return start
+    ? `in der laufenden Gesetzgebungsperiode (${start})`
+    : `Gesetzgebungsperiode ${gp}`
+})
 
 // lastSync arrives ISO-normalized from the server (or null → line is omitted).
 const lastSyncLabel = computed(() =>
@@ -42,20 +62,27 @@ const lastSyncLabel = computed(() =>
       <ErrorState @retry="refresh()" />
     </div>
     <template v-else-if="data">
+      <!-- Tile row as a narrative: open → urgent → participation → outcomes. -->
       <div class="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatTile label="Offene Begutachtungen" :value="data.stats.openCount" />
+        <StatTile
+          label="Offene Begutachtungen"
+          :value="data.stats.openCount"
+          to="/begutachtungen?status=open"
+        />
         <StatTile
           :label="`Enden in den nächsten ${DEADLINE_SERIOUS_DAYS} Tagen`"
           :value="data.stats.closingWithin7Days"
         />
         <StatTile
-          label="Stellungnahmen in der GP"
+          label="Stellungnahmen"
           :value="data.stats.statementsTotalGp"
-          :hint="`Gesetzgebungsperiode ${data.gp}`"
+          :hint="gpHint"
         />
         <StatTile
-          label="Begutachtungen in der GP"
-          :value="data.stats.consultationsTotalGp"
+          label="Abgeschlossen in dieser Periode"
+          :value="data.stats.consultationsTotalGp - data.stats.openCount"
+          hint="Was wurde daraus? ↓"
+          to="#outcomes-heading"
         />
       </div>
 
@@ -81,6 +108,63 @@ const lastSyncLabel = computed(() =>
             title="Derzeit keine offenen Begutachtungen"
             description="Neue Ministerialentwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
           />
+        </div>
+      </section>
+
+      <!-- The accountability layer on the front door: mechanism 1 (shelving
+           visible) and mechanism 3 (wins equally visible) in one section. -->
+      <section class="mt-12 scroll-mt-6" aria-labelledby="outcomes-heading">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+          <h2 id="outcomes-heading" class="text-lg font-semibold text-ink">
+            Zuletzt abgeschlossen – was wurde daraus?
+          </h2>
+          <NuxtLink
+            to="/begutachtungen?status=closed"
+            class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
+          >
+            Alle abgeschlossenen →
+          </NuxtLink>
+        </div>
+        <p class="mt-1 text-sm text-ink-secondary">
+          Zuletzt beendete Begutachtungen und ihr weiterer Weg – in beide
+          Richtungen.
+        </p>
+        <div class="mt-4">
+          <LoadingState
+            v-if="outcomesStatus === 'pending' || outcomesStatus === 'idle'"
+            label="Verläufe werden geladen …"
+          />
+          <template v-else-if="outcomes?.recent.length">
+            <div class="overflow-hidden rounded-xl border border-hairline bg-surface">
+              <ul class="divide-y divide-hairline">
+                <li v-for="o in outcomes.recent" :key="`${o.gp}-${o.inr}`">
+                  <OutcomeRow :outcome="o" />
+                </li>
+              </ul>
+            </div>
+            <template v-if="outcomes.lastEnacted">
+              <h3 class="mt-4 text-sm font-medium text-ink">
+                {{
+                  outcomes.lastEnacted.bgblNumber
+                    ? 'Zuletzt kundgemacht'
+                    : 'Zuletzt mit Regierungsvorlage'
+                }}
+              </h3>
+              <div
+                class="mt-2 overflow-hidden rounded-xl border border-hairline bg-surface"
+              >
+                <OutcomeRow :outcome="outcomes.lastEnacted" />
+              </div>
+            </template>
+            <p class="mt-3 text-xs text-ink-muted">
+              Zwischen Begutachtungsende und Regierungsvorlage liegen häufig
+              mehrere Monate – „bisher keine Regierungsvorlage“ heißt oft nur:
+              noch nicht.
+            </p>
+          </template>
+          <p v-else class="text-sm text-ink-muted">
+            Die Verläufe sind derzeit nicht abrufbar.
+          </p>
         </div>
       </section>
 
