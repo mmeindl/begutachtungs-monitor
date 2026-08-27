@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import type { DashboardPayload } from '#shared/types'
 
+const pageDescription =
+  'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
+
 useSeoMeta({
   title: 'Aktuell',
-  description:
-    'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen, Stellungnahmen – und was daraus wurde.',
+  description: pageDescription,
+  // Homepage shares (the demo case) get the product name, not "Aktuell".
+  ogTitle: 'Begutachtungs-Monitor',
+  ogDescription: pageDescription,
 })
 
 const { data, error, refresh, status } = await useFetch<DashboardPayload>('/api/dashboard')
@@ -21,11 +26,12 @@ const lastSyncLabel = computed(() =>
   <div class="mx-auto w-full max-w-5xl">
     <header class="max-w-2xl">
       <h1 class="text-2xl font-semibold text-ink sm:text-3xl">
-        Was passiert gerade in der Begutachtung?
+        Was passiert in der Begutachtung – und was wird daraus?
       </h1>
       <p class="mt-3 text-ink-secondary">
-        Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen,
-        Stellungnahmen – und was daraus wurde.
+        Alle laufenden Begutachtungen österreichischer Gesetzesentwürfe:
+        Fristen und Stellungnahmen auf einen Blick. Und für jeden Entwurf
+        danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts.
       </p>
     </header>
 

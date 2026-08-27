@@ -56,6 +56,17 @@ const outcomeChip = computed(() => {
   return null
 })
 
+// Months of pipeline latency between Begutachtungsende and RV are normal,
+// so a recently ended consultation must not read as shelved — the second
+// sentence of the no-RV card carries that temporal honesty.
+const noRvNote = computed(() => {
+  const days = daysUntil(data.value?.deadline)
+  const recent = days !== null && days >= -RV_LATENCY_CONTEXT_DAYS
+  return recent
+    ? 'Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere Monate – dieser Stand kann sich noch ändern.'
+    : 'Ob und wie es weitergeht, ist offen.'
+})
+
 const seoTitle = computed(() => {
   const t = data.value?.title
   return t ? truncate(t, 60) : 'Begutachtung'
@@ -68,14 +79,42 @@ const seoDescription = computed(() => {
   // "Ziel" wastes the ~160 characters a search result actually shows.
   const prose = description.value
     .flatMap((b) => (b.kind === 'heading' ? [] : b.kind === 'list' ? b.items : [b.text]))
-    .join(' ')
+    .join(' · ')
     .replace(/\s+/g, ' ')
     .trim()
   if (prose) return truncate(prose, 160)
   return `Ministerialentwurf ${d.citation}: Frist, Stellungnahmen und weiterer Verlauf.`
 })
 
-useSeoMeta({ title: seoTitle, description: seoDescription })
+// Structured facts travel better than prose when a link unfurls in
+// Slack/Signal/X: the preview answers "when, how much, who" at a glance.
+const ogFacts = computed(() => {
+  const d = data.value
+  if (!d) return null
+  const frist = d.active
+    ? d.deadline
+      ? `Frist bis ${formatDateDe(d.deadline)}`
+      : 'Begutachtung läuft'
+    : d.deadline
+      ? `Begutachtung endete am ${formatDateDe(d.deadline)}`
+      : 'Begutachtung abgeschlossen'
+  return [
+    frist,
+    countLabelDe(d.statements.total, 'Stellungnahme', 'Stellungnahmen'),
+    d.ministryName,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+})
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  // The full official title for shares — journalists cite exactly.
+  ogTitle: () => data.value?.title ?? 'Begutachtung',
+  ogDescription: ogFacts,
+  ogType: 'article',
+})
 
 const linkClasses =
   'rounded text-accent-deep underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
@@ -146,6 +185,14 @@ const linkClasses =
         </ExternalLink>
       </div>
 
+      <!-- The documented base fact (drafts get revised routinely), no
+           per-Stellungnahme causality — the honest interim form of
+           "your input changed §5" until the diff layer exists. -->
+      <p v-if="data.active" class="mt-3 max-w-prose text-sm text-ink-secondary">
+        Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
+        Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
+      </p>
+
       <!-- Section order is lifecycle-adaptive by construction: showOutcome is
            false for a typical active consultation, so during the Frist the page
            reads Kurzinfo → CTA → Stellungnahmen → Dokumente, while closed
@@ -175,9 +222,18 @@ const linkClasses =
           </p>
         </div>
 
-        <p v-if="!data.enactment && !data.active" class="mt-4 text-sm text-ink-muted">
-          Bisher keine Regierungsvorlage zu diesem Entwurf.
-        </p>
+        <!-- Framing rule: both outcomes get the same card shape and type
+             scale — tone differs (wash vs. surface), weight never does. -->
+        <div
+          v-if="!data.enactment && !data.active"
+          class="mt-4 rounded-xl border border-hairline bg-surface p-5"
+        >
+          <p class="font-medium">Bisher keine Regierungsvorlage</p>
+          <p class="mt-1.5 text-sm text-ink-secondary">
+            Der Entwurf wurde nach Ende der Begutachtung bislang nicht als
+            Regierungsvorlage eingebracht. {{ noRvNote }}
+          </p>
+        </div>
 
         <div v-if="data.trace.length" class="mt-6">
           <TraceTimeline :steps="data.trace" />
