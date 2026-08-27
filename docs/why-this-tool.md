@@ -64,15 +64,24 @@ procedures?" — are structurally impossible to answer there. The monitor's
 dashboard is that view; the base-rate statistics are on the roadmap and are
 the evidence layer this project ultimately exists for.
 
+### 5. Subscription without accounts
+
+Following consultations upstream means re-checking the filter page; there
+is no subscribable calendar of consultation deadlines. The monitor offers
+one (`/kalender.ics`, webcal): every Begutachtungsfrist lands in the
+calendar people already use, as an all-day event that updates itself when
+a deadline is extended — plus an RSS feed of new consultations
+(`/feed.xml`) for any feed reader. No account, no e-mail address, no
+tracking.
+
 ## What the monitor does not do yet (roadmap, in order)
 
 1. **Text diff ME → RV** — showing *what* changed after the consultation,
    not just *that* a next stage exists. Available nowhere today; the core of
    the accountability layer.
 2. **E-mail deadline alerts** — the predecessor's (OffenesParlament.at)
-   most-loved feature. The account-free tier already exists: an RSS feed of
-   new consultations (`/feed.xml`) and a subscribable deadline calendar
-   (`/kalender.ics`); e-mail needs persistence and consent flows and comes
+   most-loved feature. The account-free tier already exists (see
+   difference 5); e-mail needs persistence and consent flows and comes
    with grant funding.
 3. **Base rates across procedures** — the statistical layer described above.
 4. **Statement-corpus synthesis** (clustering/summarizing large statement

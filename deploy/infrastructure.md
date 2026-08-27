@@ -31,7 +31,8 @@ web UI under **Nameserver → begutachtungs-monitor.at**.
 | MX | *(apex)*, Prio 10 | `smtp-in0.prod0.webspace.bz` |
 | MX | *(apex)*, Prio 20 | `smtp-in1.prod0.webspace.bz` |
 
-`www.` is 301-redirected to the bare domain by Caddy.
+`www.` is 301-redirected to the bare domain by Caddy. The zone is
+DNSSEC-signed (INWX automatic signing; keys managed by INWX).
 
 ## E-mail — INWX Mail Easy
 
