@@ -14,6 +14,8 @@ useSeoMeta({
 
 const { data, error, refresh, status } = await useFetch<DashboardPayload>('/api/dashboard')
 
+const { webcalUrl, googleCalUrl } = useFeedUrls()
+
 // Deferred + client-only: resolving the outcome pool can hit ~24 cold
 // upstream fetches — that must never block the dashboard's first paint.
 const { data: outcomes, status: outcomesStatus } = useFetch<DashboardOutcomes>(
@@ -86,6 +88,33 @@ const lastSyncLabel = computed(() =>
         />
       </div>
 
+      <!-- The account-free alert tier at the moment of need — right where
+           "Enden in den nächsten 7 Tagen" was just read. Footer keeps the
+           full version with the manual URL. -->
+      <p class="mt-4 text-sm text-ink-secondary">
+        <UIcon
+          name="i-lucide-calendar-plus"
+          class="me-1 inline-block size-4 align-text-bottom"
+          aria-hidden="true"
+        />
+        Keine Frist verpassen:
+        <a
+          :href="webcalUrl"
+          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >Fristen-Kalender abonnieren</a>
+        (Apple/Outlook) ·
+        <ExternalLink
+          :href="googleCalUrl"
+          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >Google Kalender</ExternalLink>
+        ·
+        <a
+          href="/feed.xml"
+          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >RSS</a>
+        – ohne Konto, ohne Tracking.
+      </p>
+
       <section class="mt-12" aria-labelledby="open-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
           <h2 id="open-heading" class="text-lg font-semibold text-ink">
@@ -104,10 +133,19 @@ const lastSyncLabel = computed(() =>
           </li>
         </ul>
         <div v-else class="mt-4">
+          <!-- The no-open moment is exactly the moment to subscribe. -->
           <EmptyState
             title="Derzeit keine offenen Begutachtungen"
             description="Neue Ministerialentwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
-          />
+          >
+            <p class="text-sm text-ink-secondary">
+              <a
+                :href="webcalUrl"
+                class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+              >Fristen-Kalender abonnieren</a>
+              – die nächste Begutachtung landet automatisch im Kalender.
+            </p>
+          </EmptyState>
         </div>
       </section>
 
@@ -180,6 +218,12 @@ const lastSyncLabel = computed(() =>
         <h2 id="top-heading" class="text-lg font-semibold text-ink">
           Die meisten Stellungnahmen
         </h2>
+        <!-- Volumetric, not "gerade": the ranking spans the whole GP,
+             open and closed — the suffix per bar says which is which. -->
+        <p class="mt-1 text-sm text-ink-secondary">
+          Die Entwürfe mit den meisten Stellungnahmen in dieser
+          Gesetzgebungsperiode – offene und abgeschlossene.
+        </p>
         <div class="mt-4 space-y-3">
           <VolumeBar
             v-for="c in data.topByStatements"
@@ -188,6 +232,7 @@ const lastSyncLabel = computed(() =>
             :value="c.statementCount"
             :max="topMax"
             :href="`/begutachtungen/${c.gp}/${c.inr}`"
+            :meta="c.active ? 'läuft noch' : 'abgeschlossen'"
           />
         </div>
       </section>

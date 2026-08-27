@@ -49,7 +49,7 @@ describe('buildRssFeed', () => {
     const xml = buildRssFeed(SITE, [consultation({ title: 'Bäckerei & Konditorei' })])
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain(`<atom:link href="${SITE}/feed.xml" rel="self"`)
-    expect(xml).toContain('<title>88/ME: Bäckerei &amp; Konditorei</title>')
+    expect(xml).toContain('<title>88/ME: Bäckerei &amp; Konditorei – Frist 08.04.</title>')
     expect(xml).toContain(`<guid isPermaLink="true">${SITE}/begutachtungen/XXVIII/88</guid>`)
   })
 
@@ -78,6 +78,17 @@ describe('buildRssFeed', () => {
     const xml = buildRssFeed(SITE, [consultation({ deadline: '2026-04-08', active: true })])
     expect(xml).toContain('Frist bis 08.04.2026')
     expect(xml).not.toMatch(/[Nn]och \d+ Tag/)
+  })
+
+  it('omits the Frist title suffix and keeps "Ohne Frist" without a deadline', () => {
+    const xml = buildRssFeed(SITE, [consultation({ deadline: null })])
+    expect(xml).toContain('<title>88/ME: Umsatzsteuergesetz, Änderung</title>')
+    expect(xml).toContain('Ohne Frist')
+  })
+
+  it('leaves the volatile statement count out of descriptions (frozen in readers)', () => {
+    const xml = buildRssFeed(SITE, [consultation({ statementCount: 707 })])
+    expect(xml).not.toContain('707 Stellungnahmen')
   })
 
   it('omits pubDate (and lastBuildDate) for unparseable arrival dates', () => {

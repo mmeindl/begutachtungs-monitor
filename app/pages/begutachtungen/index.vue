@@ -139,10 +139,13 @@ const selectClasses =
           </select>
         </div>
 
+        <!-- The corpus size in the placeholder is the trust signal
+             (kleineAnfragen pattern) — and it tracks the active filters,
+             which is what q actually searches within. -->
         <UInput
           v-model="q"
           type="search"
-          placeholder="Titel oder Nummer suchen …"
+          :placeholder="`In ${countLabelDe(data.total, 'Begutachtung', 'Begutachtungen')} suchen …`"
           aria-label="Suche"
           class="min-w-48 flex-1"
         />
