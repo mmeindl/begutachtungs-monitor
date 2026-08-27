@@ -97,6 +97,23 @@ describe('buildRssFeed', () => {
     expect(xml).not.toContain('Invalid Date')
     expect(xml).not.toContain('lastBuildDate')
   })
+
+  it('scopes channel title and self-link to a Ressort when given', () => {
+    const xml = buildRssFeed(SITE, [consultation()], {
+      code: 'BMF',
+      name: 'Bundesministerium für Finanzen',
+    })
+    expect(xml).toContain(
+      '<title>Begutachtungs-Monitor – Begutachtungsverfahren (Bundesministerium für Finanzen)</title>',
+    )
+    expect(xml).toContain(`<atom:link href="${SITE}/feed.xml?ressort=BMF" rel="self"`)
+  })
+
+  it('falls back to the Ressort code when no name is known', () => {
+    const xml = buildRssFeed(SITE, [], { code: 'BMF', name: null })
+    expect(xml).toContain('(BMF)</title>')
+    expect(xml).toContain('</rss>')
+  })
 })
 
 describe('buildSitemap', () => {

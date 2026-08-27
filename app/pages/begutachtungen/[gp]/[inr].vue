@@ -80,14 +80,17 @@ const compareLinks = computed(() => {
 })
 
 // Months of pipeline latency between Begutachtungsende and RV are normal,
-// so a recently ended consultation must not read as shelved — the second
-// sentence of the no-RV card carries that temporal honesty.
-const noRvNote = computed(() => {
-  const days = daysUntil(data.value?.deadline)
-  const recent = days !== null && days >= -RV_LATENCY_CONTEXT_DAYS
-  return recent
-    ? 'Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere Monate – dieser Stand kann sich noch ändern.'
-    : 'Ob und wie es weitergeht, ist offen.'
+// so a recently ended consultation must not read as shelved. Once the
+// quiet stretch exceeds the latency window, the card leads with the
+// quotable verdict sentence — elapsed time as the honesty bracket.
+const noRvBody = computed(() => {
+  const verdict = noRvVerdictDe(data.value?.deadline)
+  if (verdict) return `${verdict} Ob und wie es weitergeht, ist offen.`
+  const context =
+    daysUntil(data.value?.deadline) === null
+      ? 'Ob und wie es weitergeht, ist offen.'
+      : 'Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere Monate – dieser Stand kann sich noch ändern.'
+  return `Der Entwurf wurde nach Ende der Begutachtung bislang nicht als Regierungsvorlage eingebracht. ${context}`
 })
 
 const seoTitle = computed(() => {
@@ -395,8 +398,7 @@ const linkClasses =
         >
           <p class="font-medium">Bisher keine Regierungsvorlage</p>
           <p class="mt-1.5 text-sm text-ink-secondary">
-            Der Entwurf wurde nach Ende der Begutachtung bislang nicht als
-            Regierungsvorlage eingebracht. {{ noRvNote }}
+            {{ noRvBody }}
           </p>
         </div>
 

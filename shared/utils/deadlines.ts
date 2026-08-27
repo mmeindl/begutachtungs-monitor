@@ -38,3 +38,26 @@ export function deadlineTone(
  * with the measured median once base-rate data exists (NLnet WP4).
  */
 export const RV_LATENCY_CONTEXT_DAYS = 180
+
+const AVG_DAYS_PER_MONTH = 30.44
+
+/**
+ * The quotable verdict sentence for a long-quiet consultation
+ * (TheyWorkForYou pattern): a fixed, controlled vocabulary with elapsed
+ * time as the honesty bracket — the journalist's lede, pre-written so it
+ * cannot be editorialized into "shelved". Null while the deadline is
+ * missing/unparseable or still within RV_LATENCY_CONTEXT_DAYS, where the
+ * latency context speaks instead of a verdict.
+ */
+export function noRvVerdictDe(deadline: string | null | undefined): string | null {
+  const days = daysUntil(deadline)
+  if (days === null || days >= -RV_LATENCY_CONTEXT_DAYS) return null
+  const months = Math.floor(-days / AVG_DAYS_PER_MONTH)
+  const elapsed =
+    months >= 24
+      ? `vor über ${Math.floor(months / 12)} Jahren`
+      : months >= 12
+        ? 'vor über einem Jahr'
+        : `vor ${months} Monaten`
+  return `Seit Ende der Begutachtungsfrist ${elapsed} liegt keine Regierungsvorlage vor.`
+}

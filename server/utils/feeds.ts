@@ -74,8 +74,17 @@ function rfc1123(isoDate: string): string | null {
 /**
  * RSS feed of consultations, newest arrival first. Deterministic:
  * lastBuildDate is the newest item's arrival date, not "now".
+ *
+ * With `ressort` the channel is scoped to one ministry (entity-scoped
+ * following): title and self-link carry the scope so a reader's
+ * subscription list stays legible. Filtering the items is the caller's
+ * job — the builder only labels what it is given.
  */
-export function buildRssFeed(siteUrl: string, items: ConsultationSummary[]): string {
+export function buildRssFeed(
+  siteUrl: string,
+  items: ConsultationSummary[],
+  ressort?: { code: string; name: string | null },
+): string {
   const sorted = [...items]
     .sort((a, b) => b.arrivedAt.localeCompare(a.arrivedAt) || b.inr - a.inr)
     .slice(0, RSS_MAX_ITEMS)
@@ -109,15 +118,22 @@ export function buildRssFeed(siteUrl: string, items: ConsultationSummary[]): str
 
   const lastBuild = sorted[0] ? rfc1123(sorted[0].arrivedAt) : null
 
+  const channelTitle = ressort
+    ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
+    : 'Begutachtungs-Monitor – Begutachtungsverfahren'
+  const selfUrl = ressort
+    ? `${siteUrl}/feed.xml?ressort=${encodeURIComponent(ressort.code)}`
+    : `${siteUrl}/feed.xml`
+
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
     '  <channel>',
-    '    <title>Begutachtungs-Monitor – Begutachtungsverfahren</title>',
+    `    <title>${escapeXml(channelTitle)}</title>`,
     `    <link>${escapeXml(siteUrl)}</link>`,
     '    <description>Neue Begutachtungsverfahren zu österreichischen Gesetzesentwürfen: Fristen, Stellungnahmen und was daraus wurde.</description>',
     '    <language>de-at</language>',
-    `    <atom:link href="${escapeXml(`${siteUrl}/feed.xml`)}" rel="self" type="application/rss+xml"/>`,
+    `    <atom:link href="${escapeXml(selfUrl)}" rel="self" type="application/rss+xml"/>`,
     ...(lastBuild ? [`    <lastBuildDate>${lastBuild}</lastBuildDate>`] : []),
     ...entries,
     '  </channel>',
