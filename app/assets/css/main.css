@@ -102,6 +102,13 @@
   @apply -my-2 inline-flex min-h-11 items-center py-2;
 }
 
+/* In-page anchor jumps glide — but only for users without reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   background-color: var(--color-page);
   color: var(--color-ink);

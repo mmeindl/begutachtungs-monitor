@@ -68,6 +68,12 @@ const miniStats = computed(() => [
   { label: 'Privatpersonen', value: props.summary.privatePersons },
   { label: 'Nicht öffentlich', value: props.summary.nonPublic },
 ])
+
+/* The expandable list earns its button only when it adds entries beyond the
+ * always-visible top organisations — otherwise it merely repeats them. */
+const listAddsMore = computed(
+  () => props.summary.total > props.summary.topOrganisations.length,
+)
 </script>
 
 <template>
@@ -106,7 +112,7 @@ const miniStats = computed(() => [
     </section>
 
     <!-- Full list (lazy) -->
-    <div class="mt-6">
+    <div v-if="listAddsMore" class="mt-6">
       <UButton
         color="neutral"
         variant="outline"

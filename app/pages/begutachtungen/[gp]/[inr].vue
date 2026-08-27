@@ -30,17 +30,30 @@ const description = computed(() =>
   Array.isArray(data.value?.description) ? data.value.description : [],
 )
 
-// "Was wurde daraus?" renders whenever there is process history to show —
-// or, for closed consultations, at least the neutral no-RV note.
+// "Was wurde daraus?" leads the page for closed consultations (trace,
+// text versions, or at least the neutral no-RV note). While the Frist
+// runs it appears only if a real outcome (RV) already exists: an active
+// consultation's trace/text links merely repeat the header and the
+// document list, and the question itself isn't answerable yet.
 const showOutcome = computed(() => {
   const d = data.value
   if (!d) return false
-  return (
-    Boolean(d.enactment) ||
-    d.trace.length > 0 ||
-    d.textEvolution.length > 0 ||
-    !d.active
-  )
+  return Boolean(d.enactment) || !d.active
+})
+
+// Compact answer to the page's core question, shown in the header status
+// row; links to the full section. Mirrors showOutcome's gating, and stays
+// neutral in every state (Nachverfolgung, not a scoreboard).
+const outcomeChip = computed(() => {
+  const d = data.value
+  if (!d) return null
+  if (d.enactment?.bgblNumber) {
+    // Chip real estate: canonical short citation; the card below keeps the long form.
+    return `Kundgemacht: ${d.enactment.bgblNumber.replace(/^Bundesgesetzblatt\b/, 'BGBl.')}`
+  }
+  if (d.enactment) return 'Regierungsvorlage liegt vor'
+  if (!d.active) return 'Bisher keine Regierungsvorlage'
+  return null
 })
 
 const seoTitle = computed(() => {
@@ -82,6 +95,16 @@ const linkClasses =
           <span class="text-sm font-medium text-ink-muted">{{ data.citation }}</span>
           <MinistryBadge :code="data.ministryCode" :name="data.ministryName" />
           <DeadlineBadge :deadline="data.deadline" :active="data.active" />
+          <a v-if="outcomeChip" href="#outcome-heading" class="tap-target rounded-full">
+            <!-- Only ink + accent-deep are AAA on accent-wash (see main.css). -->
+            <span
+              class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-accent-wash px-2.5 py-0.5 text-xs font-medium text-accent-deep hover:underline"
+            >
+              {{ outcomeChip }}
+              <UIcon name="i-lucide-arrow-down" class="size-3" aria-hidden="true" />
+              <span class="sr-only">– zum Abschnitt „Was wurde daraus?“</span>
+            </span>
+          </a>
         </div>
         <h1 class="mt-3 text-2xl font-semibold text-ink sm:text-3xl">
           {{ data.title }}
@@ -123,39 +146,11 @@ const linkClasses =
         </ExternalLink>
       </div>
 
-      <section v-if="data.documents.length" class="mt-10" aria-labelledby="docs-heading">
-        <h2 id="docs-heading" class="text-lg font-semibold text-ink">
-          Entwurfsdokumente
-        </h2>
-        <div class="mt-4">
-          <DocumentList :documents="data.documents" />
-        </div>
-      </section>
-
-      <section class="mt-10" aria-labelledby="statements-heading">
-        <h2 id="statements-heading" class="text-lg font-semibold text-ink">
-          Stellungnahmen
-        </h2>
-        <div class="mt-4">
-          <StatementsPanel
-            v-if="data.statements.total > 0"
-            :gp="gp"
-            :inr="inr"
-            :summary="data.statements"
-          />
-          <EmptyState
-            v-else
-            title="Noch keine Stellungnahmen"
-            :description="
-              data.active
-                ? 'Zu diesem Entwurf ist noch keine Stellungnahme eingelangt – die Frist läuft.'
-                : 'Zu diesem Entwurf sind keine Stellungnahmen eingelangt.'
-            "
-          />
-        </div>
-      </section>
-
-      <section v-if="showOutcome" class="mt-10" aria-labelledby="outcome-heading">
+      <!-- Section order is lifecycle-adaptive by construction: showOutcome is
+           false for a typical active consultation, so during the Frist the page
+           reads Kurzinfo → CTA → Stellungnahmen → Dokumente, while closed
+           consultations lead with the accountability answer. -->
+      <section v-if="showOutcome" class="mt-10 scroll-mt-6" aria-labelledby="outcome-heading">
         <h2 id="outcome-heading" class="text-lg font-semibold text-ink">
           Was wurde daraus?
         </h2>
@@ -200,6 +195,49 @@ const linkClasses =
               </ExternalLink>
             </li>
           </ul>
+        </div>
+      </section>
+
+      <section class="mt-10" aria-labelledby="statements-heading">
+        <h2 id="statements-heading" class="text-lg font-semibold text-ink">
+          Stellungnahmen
+        </h2>
+        <div class="mt-4">
+          <p
+            v-if="data.statements.degraded"
+            class="rounded-xl border border-hairline bg-surface p-5 text-sm leading-relaxed text-ink-secondary"
+          >
+            {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
+            laut Übersicht – die Liste ist auf parlament.gv.at derzeit nicht
+            abrufbar, daher können Details hier nicht angezeigt werden.
+            <ExternalLink :href="data.parliamentUrl" :class="linkClasses"
+              >Auf parlament.gv.at ansehen</ExternalLink
+            >
+          </p>
+          <StatementsPanel
+            v-else-if="data.statements.total > 0"
+            :gp="gp"
+            :inr="inr"
+            :summary="data.statements"
+          />
+          <EmptyState
+            v-else
+            title="Noch keine Stellungnahmen"
+            :description="
+              data.active
+                ? 'Zu diesem Entwurf ist noch keine Stellungnahme eingelangt – die Frist läuft.'
+                : 'Zu diesem Entwurf sind keine Stellungnahmen eingelangt.'
+            "
+          />
+        </div>
+      </section>
+
+      <section v-if="data.documents.length" class="mt-10" aria-labelledby="docs-heading">
+        <h2 id="docs-heading" class="text-lg font-semibold text-ink">
+          Entwurfsdokumente
+        </h2>
+        <div class="mt-4">
+          <DocumentList :documents="data.documents" />
         </div>
       </section>
 
