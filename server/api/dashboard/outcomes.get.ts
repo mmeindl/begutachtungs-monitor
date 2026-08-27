@@ -19,18 +19,7 @@ const DISPLAY_COUNT = 4
 async function resolveOutcome(item: ConsultationSummary): Promise<ClosedOutcome | null> {
   try {
     const outcome = await getConsultationOutcome(item.gp, item.inr)
-    return {
-      gp: item.gp,
-      inr: item.inr,
-      citation: item.citation,
-      title: item.title,
-      ministryCode: item.ministryCode,
-      ministryName: item.ministryName,
-      deadline: item.deadline,
-      statementCount: item.statementCount,
-      rvCitation: outcome.rvCitation,
-      bgblNumber: outcome.bgblNumber,
-    }
+    return { ...item, rvCitation: outcome.rvCitation, bgblNumber: outcome.bgblNumber }
   } catch {
     // Per-item tolerance: one failing Gegenstand must not kill the section.
     return null
