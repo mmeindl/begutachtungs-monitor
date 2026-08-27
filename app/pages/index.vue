@@ -26,16 +26,15 @@ const { data: outcomes, status: outcomesStatus } = useFetch<DashboardOutcomes>(
 const topMax = computed(() => data.value?.topByStatements[0]?.statementCount ?? 0)
 
 // A concrete date means something to non-insiders; a roman numeral does
-// not. gp is server-derived and rolls over — map known GPs, fall back to
-// the numeral.
+// not. The date alone is the load-bearing part — "Gesetzgebungsperiode"
+// wording stays out of the hint (tile 4 already scopes the row, and the
+// term is explained on /so-funktionierts). gp is server-derived and rolls
+// over — map known GPs, fall back to the numeral.
 const GP_START: Record<string, string> = { XXVIII: 'seit Okt. 2024' }
 const gpHint = computed(() => {
   const gp = data.value?.gp
   if (!gp) return undefined
-  const start = GP_START[gp]
-  return start
-    ? `in der laufenden Gesetzgebungsperiode (${start})`
-    : `Gesetzgebungsperiode ${gp}`
+  return GP_START[gp] ?? `Gesetzgebungsperiode ${gp}`
 })
 
 // lastSync arrives ISO-normalized from the server (or null → line is omitted).

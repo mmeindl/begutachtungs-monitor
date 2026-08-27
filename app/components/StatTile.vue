@@ -18,16 +18,19 @@ const display = computed(() =>
 </script>
 
 <template>
+  <!-- Description above, number bottom-anchored: labels wrap freely while
+       the row of figures keeps one shared baseline across all tiles — the
+       hint therefore belongs to the description, never below the number. -->
   <component
     :is="to ? NuxtLink : 'div'"
     :to="to"
-    class="block rounded-xl border border-hairline bg-surface p-5"
+    class="flex h-full flex-col rounded-xl border border-hairline bg-surface p-5"
     :class="to ? 'transition-colors hover:border-baseline' : ''"
   >
     <p class="text-sm text-ink-secondary">{{ label }}</p>
-    <p class="mt-1 font-heading text-3xl font-semibold text-ink sm:text-4xl">
+    <p v-if="hint" class="mt-0.5 text-sm text-ink-muted">{{ hint }}</p>
+    <p class="mt-auto pt-2 font-heading text-3xl font-semibold text-ink sm:text-4xl">
       {{ display }}
     </p>
-    <p v-if="hint" class="mt-1 text-sm text-ink-muted">{{ hint }}</p>
   </component>
 </template>
