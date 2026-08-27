@@ -25,9 +25,12 @@ const display = computed(() =>
     :is="to ? NuxtLink : 'div'"
     :to="to"
     class="flex h-full flex-col rounded-xl border border-hairline bg-surface p-5"
-    :class="to ? 'transition-colors hover:border-baseline' : ''"
+    :class="to ? 'group transition-colors hover:border-baseline' : ''"
   >
-    <p class="text-sm text-ink-secondary">{{ label }}</p>
+    <!-- Hover grammar (main.css): the label is the tile's primary text. -->
+    <p class="text-sm text-ink-secondary" :class="to ? 'group-hover:underline' : ''">
+      {{ label }}
+    </p>
     <p v-if="hint" class="mt-0.5 text-sm text-ink-muted">{{ hint }}</p>
     <p class="mt-auto pt-2 font-heading text-3xl font-semibold text-ink sm:text-4xl">
       {{ display }}

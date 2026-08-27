@@ -24,7 +24,7 @@ const widthPct = computed(() => {
     <div class="flex items-baseline gap-2">
       <span
         class="min-w-0 truncate text-sm text-ink-secondary"
-        :class="href ? 'group-hover:text-ink group-hover:underline' : ''"
+        :class="href ? 'transition-colors group-hover:text-ink group-hover:underline' : ''"
         :title="label"
       >
         {{ label }}
