@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://begutachtungs-monitor.at/sitemap.xml

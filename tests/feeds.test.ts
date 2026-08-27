@@ -3,6 +3,7 @@ import type { ConsultationSummary } from '../shared/types'
 import {
   buildIcsCalendar,
   buildRssFeed,
+  buildSitemap,
   escapeIcsText,
   escapeXml,
   foldIcsLine,
@@ -84,6 +85,23 @@ describe('buildRssFeed', () => {
     expect(xml).not.toContain('pubDate')
     expect(xml).not.toContain('Invalid Date')
     expect(xml).not.toContain('lastBuildDate')
+  })
+})
+
+describe('buildSitemap', () => {
+  it('lists the static pages plus one loc per consultation', () => {
+    const xml = buildSitemap(SITE, [consultation()])
+    expect(xml).toContain(`<loc>${SITE}</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/begutachtungen</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/ueber</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/begutachtungen/XXVIII/88</loc>`)
+  })
+
+  it('yields only the static pages for an empty list, well-formed', () => {
+    const xml = buildSitemap(SITE, [])
+    expect(xml.match(/<loc>/g)).toHaveLength(3)
+    expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    expect(xml.trimEnd().endsWith('</urlset>')).toBe(true)
   })
 })
 

@@ -15,14 +15,23 @@ function isActive(to: string): boolean {
 
 <template>
   <header class="border-b border-hairline bg-surface">
+    <!-- Marker rule: the identity color as a quiet signature across the
+         viewport. Decorative (no contrast obligation). -->
+    <div class="h-0.75 bg-mark" aria-hidden="true" />
     <div
       class="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2 sm:px-6"
     >
       <!-- min-h-11 = 44px AAA target size (WCAG 2.5.5) -->
       <NuxtLink
         to="/"
-        class="inline-flex min-h-11 items-center rounded-sm font-semibold text-ink"
+        class="inline-flex min-h-11 items-center gap-2 rounded-sm font-semibold text-ink"
       >
+        <!-- § on the marker tile — same mark as favicon and og:image.
+             Decorative next to the wordmark, hence aria-hidden. -->
+        <span
+          aria-hidden="true"
+          class="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-mark font-serif text-[15px] font-semibold text-ink"
+        >§</span>
         Begutachtungs-Monitor
       </NuxtLink>
       <nav aria-label="Hauptnavigation">

@@ -58,9 +58,18 @@
   --color-accent-900: #0d366b;
   --color-accent-950: #092647;
 
-  /* Status (reserved for state, never decoration; always paired with text) */
+  /* Brand highlight — der Textmarker. NEVER a text color, only a ground
+     carrying full ink: ink on mark 13.5:1, ink on mark-wash 16.9:1,
+     accent-deep on mark-wash 8.9:1 — all AAA. Red stays reserved for
+     deadline status; the marker marks what became of the input. */
+  --color-mark: #ffd84d;
+  --color-mark-wash: #fff3c8;
+
+  /* Status (reserved for state, never decoration; always paired with text).
+     Warning sits in the orange zone, NOT yellow — yellow is the brand
+     marker above, and a warning must never read as a highlight. */
   --color-status-good: #0ca30c;
-  --color-status-warning: #fab219;
+  --color-status-warning: #b45309;
   --color-status-serious: #ec835a;
   --color-status-critical: #d03b3b;
 }

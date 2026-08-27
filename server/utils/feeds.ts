@@ -119,6 +119,33 @@ export function buildRssFeed(siteUrl: string, items: ConsultationSummary[]): str
 }
 
 // ---------------------------------------------------------------------------
+// Sitemap
+// ---------------------------------------------------------------------------
+
+/**
+ * Sitemap of the static pages plus every consultation detail page of the
+ * current GP — organic search for a draft's name is how citizens who
+ * submitted input find their consultation. Deterministic (no timestamps):
+ * upstream provides no reliable per-item change date, and a wrong lastmod
+ * is worse for crawlers than none.
+ */
+export function buildSitemap(siteUrl: string, items: ConsultationSummary[]): string {
+  const urls = [
+    siteUrl,
+    `${siteUrl}/begutachtungen`,
+    `${siteUrl}/ueber`,
+    ...items.map((item) => pageUrl(siteUrl, item)),
+  ]
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...urls.map((u) => `  <url><loc>${escapeXml(u)}</loc></url>`),
+    '</urlset>',
+    '',
+  ].join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // iCalendar (RFC 5545)
 // ---------------------------------------------------------------------------
 
