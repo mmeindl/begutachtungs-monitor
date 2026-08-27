@@ -172,9 +172,9 @@ function endorsementBarWidth(endorsements: number): string {
               {{ endorsementLabel(org.endorsements) }}
             </span>
           </div>
-          <!-- Decorative scale (VolumeBar pattern: value in text, bar
-               aria-hidden): the spread is the story — one Betriebsrat can
-               out-mobilize the other hundred statements combined. -->
+          <!-- Decorative scale (value in text, bar aria-hidden): the
+               spread is the story — one Betriebsrat can out-mobilize the
+               other hundred statements combined. -->
           <div
             v-if="maxEndorsements > 0"
             class="mt-1.5 h-1.5 w-full rounded-r-[2px] bg-accent-wash"
