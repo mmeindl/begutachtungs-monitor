@@ -125,9 +125,14 @@ const lastSyncLabel = computed(() =>
             Alle abgeschlossenen →
           </NuxtLink>
         </div>
-        <p class="mt-1 text-sm text-ink-secondary">
+        <!-- The latency context belongs BEFORE the chips, not after them:
+             it frames "bisher keine Regierungsvorlage" as "noch nicht"
+             while the reader scans — a guard below the list fires too late. -->
+        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
           Zuletzt beendete Begutachtungen und ihr weiterer Weg – in beide
-          Richtungen.
+          Richtungen. Zwischen Begutachtungsende und Regierungsvorlage liegen
+          häufig mehrere Monate – „bisher keine Regierungsvorlage“ heißt oft
+          nur: noch nicht.
         </p>
         <div class="mt-4">
           <LoadingState
@@ -160,11 +165,6 @@ const lastSyncLabel = computed(() =>
                 </ConsultationCard>
               </div>
             </template>
-            <p class="mt-3 text-xs text-ink-muted">
-              Zwischen Begutachtungsende und Regierungsvorlage liegen häufig
-              mehrere Monate – „bisher keine Regierungsvorlage“ heißt oft nur:
-              noch nicht.
-            </p>
           </template>
           <p v-else class="text-sm text-ink-muted">
             Die Verläufe sind derzeit nicht abrufbar.
