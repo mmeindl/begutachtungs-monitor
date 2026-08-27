@@ -27,7 +27,9 @@ defineProps<{
       <p v-if="step.date" class="text-sm tabular-nums text-ink-muted">
         {{ formatDateDe(step.date) }}
       </p>
-      <p class="mt-0.5 text-sm text-ink">{{ step.text }}</p>
+      <!-- Event larger than its timestamp: the flat grays can't separate
+           them, so size does (main.css hierarchy doctrine). -->
+      <p class="mt-0.5 text-base text-ink">{{ step.text }}</p>
       <ul v-if="step.links.length" class="mt-2 flex flex-wrap gap-2">
         <li v-for="link in step.links" :key="link.url">
           <!-- URLs are absolute per contract (shared/types.ts TraceStep.links).

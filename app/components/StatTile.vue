@@ -25,7 +25,9 @@ const display = computed(() =>
     :class="to ? 'transition-colors hover:border-baseline' : ''"
   >
     <p class="text-sm text-ink-secondary">{{ label }}</p>
-    <p class="mt-1 text-3xl font-semibold text-ink sm:text-4xl">{{ display }}</p>
+    <p class="mt-1 font-heading text-3xl font-semibold text-ink sm:text-4xl">
+      {{ display }}
+    </p>
     <p v-if="hint" class="mt-1 text-sm text-ink-muted">{{ hint }}</p>
   </component>
 </template>

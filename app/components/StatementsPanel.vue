@@ -91,7 +91,9 @@ const orgHeading = computed(() =>
     <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
       <div v-for="stat in miniStats" :key="stat.label">
         <dt class="text-sm text-ink-secondary">{{ stat.label }}</dt>
-        <dd class="mt-0.5 text-xl font-semibold text-ink">
+        <!-- Number scale: tiles 3xl–4xl (StatTile), inline stats 2xl —
+             nothing in between. -->
+        <dd class="mt-0.5 font-heading text-2xl font-semibold text-ink">
           {{ formatNumberDe(stat.value) }}
         </dd>
       </div>

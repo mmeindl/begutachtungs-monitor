@@ -5,11 +5,11 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
 <template>
   <footer class="border-t border-hairline">
     <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <section aria-labelledby="subscribe-heading" class="rounded-xl bg-accent-wash p-5">
+      <section aria-labelledby="subscribe-heading" class="rounded-xl bg-mark-wash p-5">
         <h2 id="subscribe-heading" class="text-base font-semibold text-ink">
           Keine Frist verpassen
         </h2>
-        <!-- Only ink + accent-deep are AAA on accent-wash (see main.css). -->
+        <!-- Only ink + accent-deep are AAA on mark-wash (see main.css). -->
         <div class="mt-2 space-y-1.5 text-sm leading-relaxed text-ink">
           <p>
             <UIcon

@@ -166,6 +166,14 @@ const linkClasses =
           :active="data.active"
           :enactment="data.enactment"
         />
+        <p class="mt-4 text-xs">
+          <NuxtLink
+            to="/so-funktionierts"
+            class="tap-target rounded text-ink-muted underline underline-offset-2 hover:text-ink"
+          >
+            Wie funktioniert das Verfahren? →
+          </NuxtLink>
+        </p>
       </div>
 
       <section
@@ -236,7 +244,9 @@ const linkClasses =
           Was wurde daraus?
         </h2>
 
-        <div v-if="data.enactment" class="mt-4 rounded-xl bg-accent-wash p-5">
+        <!-- The marker moment: the highlighter marks what became of the
+             input. Ink and accent-deep are AAA on mark-wash (main.css). -->
+        <div v-if="data.enactment" class="mt-4 rounded-xl bg-mark-wash p-5">
           <p class="font-medium">
             <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses">
               Regierungsvorlage {{ data.enactment.rvCitation }}

@@ -13,7 +13,9 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
 
 <template>
   <div class="mx-auto w-full max-w-2xl">
-    <h1 class="text-2xl font-semibold text-ink sm:text-3xl">Über das Projekt</h1>
+    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+      Über das Projekt
+    </h1>
 
     <div class="mt-10 space-y-10">
       <section aria-labelledby="about-mission">
