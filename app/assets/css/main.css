@@ -130,6 +130,16 @@
   @apply -my-2 inline-flex min-h-11 items-center py-2;
 }
 
+/*
+ * Hover grammar for clickable surfaces — one shared signature, one
+ * container response fitted to the anatomy:
+ *   always:            the primary text underlines (group-hover:underline)
+ *   bordered sheet:    border darkens   (hover:border-baseline)
+ *   row inside sheet:  paper tint       (hover:bg-page — rows own no border)
+ *   naked bar/label:   text only
+ * Inline links invert instead: underlined at rest, hover:no-underline.
+ */
+
 /* In-page anchor jumps glide — but only for users without reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
   html {
