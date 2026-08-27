@@ -32,13 +32,15 @@ export default defineNuxtConfig({
         {
           name: 'description',
           content:
-            'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen, Stellungnahmen – und was daraus wurde.',
+            'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.',
         },
       ],
       link: [
         {
+          // § on the marker-yellow tile — the one identity mark (also the
+          // header brand and the og:image). Inline SVG, zero external assets.
           rel: 'icon',
-          href: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔍</text></svg>',
+          href: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ffd84d%22/><text x=%2250%22 y=%2274%22 font-family=%22Georgia,serif%22 font-size=%2268%22 text-anchor=%22middle%22 fill=%22%230b0b0b%22>%C2%A7</text></svg>',
         },
         {
           rel: 'alternate',

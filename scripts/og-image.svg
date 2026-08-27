@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Source for public/og.png (the site-wide share image).
+     Render: rsvg-convert -w 1200 -h 630 -o public/og.png scripts/og-image.svg
+     Identity: Tinte, Papier, Textmarker — same tokens as app/assets/css/main.css. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Papier -->
+  <rect width="1200" height="630" fill="#f5f4ef"/>
+  <!-- Marker rule -->
+  <rect width="1200" height="10" fill="#ffd84d"/>
+  <!-- § tile -->
+  <rect x="80" y="96" width="96" height="96" rx="20" fill="#ffd84d"/>
+  <text x="128" y="167" font-family="Georgia, serif" font-size="66" font-weight="600" text-anchor="middle" fill="#14120d">§</text>
+  <!-- Wordmark -->
+  <text x="80" y="326" font-family="Georgia, serif" font-size="74" font-weight="600" fill="#14120d">Begutachtungs-Monitor</text>
+  <!-- Claim on a marker sweep -->
+  <rect x="72" y="376" width="716" height="62" fill="#ffd84d"/>
+  <text x="88" y="420" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="38" font-weight="500" fill="#14120d">Was wurde aus den Stellungnahmen?</text>
+  <!-- URL -->
+  <text x="80" y="552" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="28" fill="#4a4945">begutachtungs-monitor.at</text>
+</svg>
