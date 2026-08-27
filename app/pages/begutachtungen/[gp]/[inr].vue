@@ -357,12 +357,34 @@ const linkClasses =
               >Auf parlament.gv.at ansehen</ExternalLink
             >
           </p>
-          <StatementsPanel
-            v-else-if="data.statements.total > 0"
-            :gp="gp"
-            :inr="inr"
-            :summary="data.statements"
-          />
+          <template v-else-if="data.statements.total > 0">
+            <StatementsPanel :gp="gp" :inr="inr" :summary="data.statements" />
+            <!-- Silent disagreement between the two upstream sources is the
+                 one option that serves nobody — a journalist who cites the
+                 card's number and screenshots this page must not find a
+                 contradiction. -->
+            <p
+              v-if="
+                data.statements.overviewTotal != null &&
+                data.statements.overviewTotal !== data.statements.total
+              "
+              class="mt-3 text-xs text-ink-muted"
+            >
+              Die Übersicht des Parlaments zählt
+              {{ formatNumberDe(data.statements.overviewTotal) }} Stellungnahmen
+              – davon hier aufgeschlüsselt:
+              {{ formatNumberDe(data.statements.total) }}.
+              <template v-if="data.statements.overviewTotal > data.statements.total">
+                Die Übersichtszahl kann Einträge enthalten, die noch nicht in
+                der Liste veröffentlicht sind.
+              </template>
+            </p>
+            <p v-if="data.statements.staleAsOf" class="mt-3 text-xs text-ink-muted">
+              Stand der Liste: {{ formatDateTimeDe(data.statements.staleAsOf) }}
+              – die aktuelle Liste ist auf parlament.gv.at derzeit nicht
+              abrufbar.
+            </p>
+          </template>
           <EmptyState
             v-else
             title="Noch keine Stellungnahmen"

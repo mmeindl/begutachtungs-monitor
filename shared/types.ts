@@ -79,6 +79,18 @@ export interface StatementsSummary {
    * are unknown (zeros/empty) — render a hint instead of the panel.
    */
   degraded?: boolean
+  /**
+   * The list-81 overview counter (what the cards show). The two upstream
+   * sources drift systematically — when it disagrees with `total`, the UI
+   * states the provenance instead of silently contradicting itself.
+   */
+  overviewTotal?: number | null
+  /**
+   * Set when the live list-142 fetch failed and a previously fetched
+   * aggregation is served instead (ISO timestamp of that fetch) —
+   * staleness is always visible, never silent.
+   */
+  staleAsOf?: string | null
   /** Organisations only — private persons are never listed by name */
   topOrganisations: {
     name: string
