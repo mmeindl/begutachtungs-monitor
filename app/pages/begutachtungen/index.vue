@@ -10,10 +10,12 @@ useSeoMeta({
 const route = useRoute()
 const router = useRouter()
 
+// Default first: the leftmost segment reads as "where am I" — it must be
+// the state the page actually lands in.
 const statusOptions: { value: ConsultationStatus; label: string }[] = [
+  { value: 'all', label: 'Alle' },
   { value: 'open', label: 'Offen' },
   { value: 'closed', label: 'Abgeschlossen' },
-  { value: 'all', label: 'Alle' },
 ]
 
 function parseStatus(v: unknown): ConsultationStatus {
@@ -149,12 +151,25 @@ const selectClasses =
       </p>
 
       <h2 class="sr-only">Ergebnisse</h2>
-      <ul v-if="data.items.length" class="mt-3 space-y-3">
+      <!-- Two densities, CSS-switched (SSR-safe, no JS): generous cards on
+           mobile, a dense divider-list on md+ where scanning 100+ items
+           is the job. -->
+      <ul v-if="data.items.length" class="mt-3 space-y-3 md:hidden">
         <li v-for="c in data.items" :key="`${c.gp}-${c.inr}`">
           <ConsultationCard :consultation="c" />
         </li>
       </ul>
-      <div v-else class="mt-3">
+      <div
+        v-if="data.items.length"
+        class="mt-3 hidden overflow-hidden rounded-xl border border-hairline bg-surface md:block"
+      >
+        <ul class="divide-y divide-hairline">
+          <li v-for="c in data.items" :key="`row-${c.gp}-${c.inr}`">
+            <ConsultationRow :consultation="c" />
+          </li>
+        </ul>
+      </div>
+      <div v-if="!data.items.length" class="mt-3">
         <EmptyState
           title="Keine Begutachtungen gefunden"
           description="Andere Filter oder einen anderen Suchbegriff versuchen."
