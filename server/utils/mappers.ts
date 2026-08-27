@@ -257,6 +257,43 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
   }
 }
 
+/**
+ * Colloquial short name from the official title — journalists say "die
+ * Novelle" or "BuStAG", never the 200-character Sammeltitel. Two defensive
+ * forms: a trailing parenthetical ("… (Budgetbegleitgesetz 2026)") or a
+ * trailing comma token ("…, BuStAG"). Only clearly name-like candidates;
+ * anything else → null and the full title leads.
+ */
+export function deriveShortTitle(title: string): string | null {
+  const paren = title.match(/\(([^()]{3,80})\)\s*$/)
+  const comma = title.match(/,\s*([A-ZÄÖÜ][\wÄÖÜäöüß./-]{2,60}(?:\s+(?:19|20)\d{2})?)\s*$/)
+  const candidate = (paren?.[1] ?? comma?.[1])?.trim()
+  if (!candidate) return null
+  if (/gesetz|novelle|paket|verordnung/i.test(candidate)) return candidate
+  // Acronym form: BuStAG, EABG, StGB-Nov … — ends in the G of "…gesetz".
+  if (/^[A-ZÄÖÜ][\wÄÖÜäöüß.-]{2,}G(?:\s+(?:19|20)\d{2})?$/.test(candidate)) return candidate
+  return null
+}
+
+/**
+ * Milestones in the trace: the RV step (identified by its link), the end
+ * of the consultation window, and the Kundmachung. Text patterns are
+ * defensive — anything unmatched simply stays a routine step.
+ */
+const MILESTONE_TEXT_RE = /Begutachtungsfrist|Kundmachung|Bundesgesetzblatt|BGBl/
+
+export function markTraceMilestones(
+  trace: TraceStep[],
+  rvUrl: string | null,
+): TraceStep[] {
+  return trace.map((step) => {
+    const isRvStep = rvUrl !== null && step.links.some((link) => link.url === rvUrl)
+    return isRvStep || MILESTONE_TEXT_RE.test(step.text)
+      ? { ...step, kind: 'milestone' as const }
+      : step
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Detail JSON: stages, documents, text evolution, short info, RV/BGBl
 // ---------------------------------------------------------------------------

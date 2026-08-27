@@ -9,8 +9,10 @@ import {
   mapConsultationRow,
   mapDocuments,
   mapInvitedBy,
+  deriveShortTitle,
   mapStatementRow,
   mapTextEvolution,
+  markTraceMilestones,
   normalizeOrgName,
   parseFristsort,
   parseGermanDate,
@@ -112,6 +114,61 @@ describe('mapConsultationRow', () => {
     const mapped = mapConsultationRow(row)
     expect(mapped.active).toBe(false)
     expect(mapped.deadline).toBeNull()
+  })
+})
+
+describe('deriveShortTitle', () => {
+  it('extracts a trailing parenthetical law name', () => {
+    expect(
+      deriveShortTitle('Bundesgesetz, mit dem … geändert werden (Budgetbegleitgesetz 2026)'),
+    ).toBe('Budgetbegleitgesetz 2026')
+  })
+
+  it('extracts a trailing comma acronym ending in G', () => {
+    expect(
+      deriveShortTitle(
+        'Bundesgesetz über die Bundesstaatsanwaltschaft; Bundesgesetz zur Einführung einer Bundesstaatsanwaltschaft, BuStAG',
+      ),
+    ).toBe('BuStAG')
+  })
+
+  it('rejects non-name trailers and titles without a handle', () => {
+    expect(deriveShortTitle('Umsatzsteuergesetz, Änderung')).toBeNull()
+    expect(deriveShortTitle('ReFuelEU Aviation-Gesetz')).toBeNull()
+    expect(deriveShortTitle('Bundesgesetz über Dinge (siehe Anlage)')).toBeNull()
+  })
+})
+
+describe('markTraceMilestones', () => {
+  const step = (text: string, url?: string) => ({
+    date: '2026-04-08',
+    text,
+    links: url ? [{ label: 'x', url }] : [],
+  })
+
+  it('marks the RV step (by link), Fristende and Kundmachung; routine stays plain', () => {
+    const marked = markTraceMilestones(
+      [
+        step('Einlangen im Nationalrat'),
+        step('Ende der Begutachtungsfrist 08.04.2026'),
+        step('Übermittlung an das Bundesministerium'),
+        step('Regierungsvorlage (474 d.B.)', 'https://x/rv'),
+        step('Kundmachung BGBl. I Nr. 37/2026'),
+      ],
+      'https://x/rv',
+    )
+    expect(marked.map((s) => s.kind)).toEqual([
+      undefined,
+      'milestone',
+      undefined,
+      'milestone',
+      'milestone',
+    ])
+  })
+
+  it('marks nothing without an RV url or matching text', () => {
+    const marked = markTraceMilestones([step('Einlangen im Nationalrat')], null)
+    expect(marked[0]!.kind).toBeUndefined()
   })
 })
 

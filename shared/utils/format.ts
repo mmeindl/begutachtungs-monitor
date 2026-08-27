@@ -51,9 +51,15 @@ export function countLabelDe(n: number, singular: string, plural: string): strin
   return n === 1 ? `1 ${singular}` : `${formatNumberDe(n)} ${plural}`
 }
 
-/** Cap at max characters; overlength ends in "…" (e.g. for SEO meta). */
+/** Cap at max characters at a word boundary; overlength ends in "…".
+ * Mid-word cuts ("…Bundesges…") read broken in tabs and search results;
+ * the boundary backtrack is skipped when it would eat >40% of the budget
+ * (single-token strings). */
 export function truncate(s: string, max: number): string {
-  return s.length > max ? `${s.slice(0, max - 3).trimEnd()}…` : s
+  if (s.length <= max) return s
+  const cut = s.slice(0, max - 1)
+  const brk = cut.lastIndexOf(' ')
+  return `${(brk > (max - 1) * 0.6 ? cut.slice(0, brk) : cut).trimEnd()}…`
 }
 
 /**

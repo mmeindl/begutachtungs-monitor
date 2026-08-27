@@ -66,6 +66,9 @@ export interface TraceStep {
   text: string
   /** Absolute URLs extracted from the stage HTML */
   links: TraceLink[]
+  /** Milestone (RV step, consultation end, Kundmachung) — rendered with
+      emphasis; routine procedural steps fold behind a toggle. */
+  kind?: 'milestone'
 }
 
 export interface StatementsSummary {
@@ -119,6 +122,10 @@ export interface EnactmentInfo {
  * practice (card said 4, detail page said 1).
  */
 export interface ConsultationDetail extends Omit<ConsultationSummary, 'statementCount'> {
+  /** Colloquial short name derived from the official title ("BuStAG",
+      "Budgetbegleitgesetz 2026") — journalists cite by it and it fits a
+      tab; null when no clearly name-like handle exists. */
+  shortTitle: string | null
   /** Kurzinformation (Ziel, Inhalt, …) as typed blocks; empty when absent */
   description: DescriptionBlock[]
   /** Minister who submitted the draft ("Übermittelt von"), null if absent */
