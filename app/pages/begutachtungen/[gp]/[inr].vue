@@ -3,8 +3,25 @@ import type { ConsultationDetail } from '#shared/types'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
 definePageMeta({
+  // Messenger/autocorrect lowercasing kills valid shared links — 301 to
+  // the canonical uppercase URL instead of 404ing (one URL truth for SEO).
+  middleware: [
+    (to) => {
+      const gpParam = String(to.params.gp ?? '')
+      const canonical = gpParam.toUpperCase()
+      if (gpParam !== canonical && GP_RE.test(canonical)) {
+        return navigateTo(
+          `/begutachtungen/${canonical}/${String(to.params.inr ?? '')}`,
+          { redirectCode: 301 },
+        )
+      }
+    },
+  ],
+  // Case-insensitive so the middleware gets to redirect regardless of
+  // middleware/validate ordering; non-GP garbage still 404s.
   validate: (route) =>
-    GP_RE.test(String(route.params.gp ?? '')) && INR_RE.test(String(route.params.inr ?? '')),
+    GP_RE.test(String(route.params.gp ?? '').toUpperCase()) &&
+    INR_RE.test(String(route.params.inr ?? '')),
 })
 
 const route = useRoute()
@@ -74,9 +91,40 @@ const noRvNote = computed(() => {
 })
 
 const seoTitle = computed(() => {
-  const t = data.value?.title
-  return t ? truncate(t, 60) : 'Begutachtung'
+  const d = data.value
+  if (!d) return 'Begutachtung'
+  // The short name is what fits a tab and what insiders search for;
+  // og:title keeps the full official title for exact citation.
+  return truncate(d.shortTitle ?? d.title, 60)
 })
+
+const { siteUrl } = useRuntimeConfig().public
+
+// Ready-made citation for the clipboard — the journalist's copy-paste
+// lede: citation, name, deadline state, canonical URL.
+const copied = ref(false)
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+async function copyCitation() {
+  const d = data.value
+  if (!d) return
+  const frist = d.deadline
+    ? d.active
+      ? ` – Begutachtungsfrist bis ${formatDateDe(d.deadline)}`
+      : ` – Begutachtung endete am ${formatDateDe(d.deadline)}`
+    : ''
+  const text = `${d.citation} (${d.gp}. GP): ${d.shortTitle ?? d.title}${frist}. ${siteUrl}/begutachtungen/${d.gp}/${d.inr}`
+  try {
+    await navigator.clipboard.writeText(text)
+    copied.value = true
+    clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => {
+      copied.value = false
+    }, 2000)
+  } catch {
+    // Clipboard blocked (permissions/insecure context) — nothing to confirm.
+  }
+}
+onUnmounted(() => clearTimeout(copiedTimer))
 
 const seoDescription = computed(() => {
   const d = data.value
@@ -135,15 +183,55 @@ const linkClasses =
       <ErrorState @retry="refresh()" />
     </div>
     <article v-else-if="data">
+      <!-- Shared-link landers (the declared primary case) need a way into
+           the corpus that preserves the item's GP — the nav loses it. -->
+      <div class="mb-4">
+        <NuxtLink
+          :to="`/begutachtungen?gp=${data.gp}`"
+          class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
+        >
+          ← Alle Begutachtungen (GP {{ data.gp }})
+        </NuxtLink>
+      </div>
       <header>
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-sm font-medium text-ink-muted">{{ data.citation }}</span>
-          <MinistryBadge :code="data.ministryCode" :name="data.ministryName" />
+          <!-- Every Ressort gets a de-facto page for free: the filtered
+               list URL. Only here — cards are themselves links. -->
+          <NuxtLink
+            :to="`/begutachtungen?ministry=${data.ministryCode}&gp=${data.gp}`"
+            :aria-label="`Alle Begutachtungen des Ressorts ${data.ministryName} anzeigen`"
+            class="tap-target rounded"
+          >
+            <MinistryBadge
+              :code="data.ministryCode"
+              :name="data.ministryName"
+              class="transition-colors hover:border-baseline"
+            />
+          </NuxtLink>
           <DeadlineBadge :deadline="data.deadline" :active="data.active" />
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="sm"
+            icon="i-lucide-link"
+            class="ml-auto"
+            @click="copyCitation"
+          >
+            {{ copied ? 'Kopiert' : 'Link kopieren' }}
+          </UButton>
+          <span aria-live="polite" class="sr-only">{{
+            copied ? 'Zitierlink in die Zwischenablage kopiert' : ''
+          }}</span>
         </div>
         <h1 class="mt-3 text-2xl font-semibold text-ink sm:text-3xl">
-          {{ data.title }}
+          {{ data.shortTitle ?? data.title }}
         </h1>
+        <!-- The official Sammeltitel stays on the page (and in og:title)
+             so citations remain exact — it just no longer IS the h1. -->
+        <p v-if="data.shortTitle" class="mt-1 text-sm text-ink-secondary">
+          {{ data.title }}
+        </p>
         <p class="mt-2 text-sm text-ink-secondary">
           Eingelangt am {{ formatDateDe(data.arrivedAt) }} ·
           <template v-if="data.deadline">

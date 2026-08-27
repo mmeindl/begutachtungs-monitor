@@ -22,6 +22,7 @@ import type {
 import { GP_RE } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
 import {
+  deriveShortTitle,
   extractBgblLink,
   findLastRvLink,
   intToRoman,
@@ -30,6 +31,7 @@ import {
   mapInvitedBy,
   mapStatementRow,
   mapTextEvolution,
+  markTraceMilestones,
   parseShortinfo,
   parseStages,
   PARLIAMENT_BASE,
@@ -490,10 +492,11 @@ export async function getConsultationDetail(
 
   return {
     ...base,
+    shortTitle: deriveShortTitle(summary.title),
     description: parseShortinfo(content.shortinfo),
     invitedBy: mapInvitedBy(content.names),
     documents: mapDocuments(content.documents),
-    trace,
+    trace: markTraceMilestones(trace, rvLink?.url ?? null),
     textEvolution: mapTextEvolution(content.statements?.documents),
     statements: statementsResult
       ? {
