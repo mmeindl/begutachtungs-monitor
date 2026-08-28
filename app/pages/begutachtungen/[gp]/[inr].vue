@@ -209,7 +209,7 @@ const linkClasses =
             <MinistryBadge
               :code="data.ministryCode"
               :name="data.ministryName"
-              class="transition-colors hover:border-baseline"
+              class="transition-colors hover:border-baseline hover:underline"
             />
           </NuxtLink>
           <DeadlineBadge :deadline="data.deadline" :active="data.active" />
@@ -260,7 +260,7 @@ const linkClasses =
         <p class="mt-4 text-xs">
           <NuxtLink
             to="/so-funktionierts"
-            class="tap-target rounded text-ink-muted underline underline-offset-2 hover:text-ink"
+            class="tap-target rounded text-ink-muted hover:text-ink hover:underline"
           >
             Wie funktioniert das Verfahren? →
           </NuxtLink>
