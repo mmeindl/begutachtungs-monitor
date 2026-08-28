@@ -105,29 +105,73 @@ const { siteUrl } = useRuntimeConfig().public
 
 // Ready-made citation for the clipboard — the journalist's copy-paste
 // lede: citation, name, deadline state, canonical URL.
-const copied = ref(false)
-let copiedTimer: ReturnType<typeof setTimeout> | undefined
-async function copyCitation() {
+const citationText = computed(() => {
   const d = data.value
-  if (!d) return
+  if (!d) return ''
   const frist = d.deadline
     ? d.active
       ? ` – Begutachtungsfrist bis ${formatDateDe(d.deadline)}`
       : ` – Begutachtung endete am ${formatDateDe(d.deadline)}`
     : ''
-  const text = `${d.citation} (${d.gp}. GP): ${d.shortTitle ?? d.title}${frist}. ${siteUrl}/begutachtungen/${d.gp}/${d.inr}`
+  return `${d.citation} (${d.gp}. GP): ${d.shortTitle ?? d.title}${frist}. ${siteUrl}/begutachtungen/${d.gp}/${d.inr}`
+})
+
+/* The async clipboard API is denied in embedded webviews and non-HTTPS
+ * origins — fall back to the legacy execCommand path, and when both are
+ * blocked SAY so and reveal the text itself (a silent catch here cost a
+ * real user their copy: nothing happened, nothing explained). */
+type CopyState = 'idle' | 'copied' | 'blocked'
+const copyState = ref<CopyState>('idle')
+let copiedTimer: ReturnType<typeof setTimeout> | undefined
+
+function writeClipboardFallback(text: string): boolean {
   try {
-    await navigator.clipboard.writeText(text)
-    copied.value = true
-    clearTimeout(copiedTimer)
-    copiedTimer = setTimeout(() => {
-      copied.value = false
-    }, 2000)
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    ta.remove()
+    return ok
   } catch {
-    // Clipboard blocked (permissions/insecure context) — nothing to confirm.
+    return false
+  }
+}
+
+async function copyCitation() {
+  if (!citationText.value) return
+  let ok = false
+  try {
+    await navigator.clipboard.writeText(citationText.value)
+    ok = true
+  } catch {
+    ok = writeClipboardFallback(citationText.value)
+  }
+  copyState.value = ok ? 'copied' : 'blocked'
+  clearTimeout(copiedTimer)
+  // The blocked state stays: it carries the manual-copy recourse.
+  if (ok) {
+    copiedTimer = setTimeout(() => {
+      copyState.value = 'idle'
+    }, 2000)
   }
 }
 onUnmounted(() => clearTimeout(copiedTimer))
+
+const COPY_LABEL: Record<CopyState, string> = {
+  idle: 'Zitierlink kopieren',
+  copied: 'Kopiert',
+  blocked: 'Kopieren blockiert',
+}
+const COPY_ANNOUNCE: Record<CopyState, string> = {
+  idle: '',
+  copied: 'Zitierlink in die Zwischenablage kopiert',
+  blocked:
+    'Der Browser hat den Zugriff auf die Zwischenablage blockiert. Der Zitierlink wird zum manuellen Kopieren angezeigt.',
+}
 
 const seoDescription = computed(() => {
   const d = data.value
@@ -221,12 +265,20 @@ const linkClasses =
             class="ml-auto"
             @click="copyCitation"
           >
-            {{ copied ? 'Kopiert' : 'Link kopieren' }}
+            {{ COPY_LABEL[copyState] }}
           </UButton>
           <span aria-live="polite" class="sr-only">{{
-            copied ? 'Zitierlink in die Zwischenablage kopiert' : ''
+            COPY_ANNOUNCE[copyState]
           }}</span>
         </div>
+        <!-- Manual recourse when the clipboard is blocked: the citation
+             itself, one tap/click to select. -->
+        <p
+          v-if="copyState === 'blocked'"
+          class="mt-2 select-all rounded-md border border-hairline bg-surface p-2.5 text-sm text-ink-secondary"
+        >
+          {{ citationText }}
+        </p>
         <h1 class="mt-3 text-2xl font-semibold text-ink sm:text-3xl">
           {{ data.shortTitle ?? data.title }}
         </h1>
