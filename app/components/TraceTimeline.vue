@@ -76,7 +76,7 @@ const visible = computed(() =>
             <ExternalLink
               :href="link.url"
               :aria-label="`${step.text}: ${link.label} auf parlament.gv.at öffnen`"
-              class="inline-flex min-h-11 items-center gap-1 rounded-md border border-hairline bg-surface px-3 text-sm font-medium text-accent-deep transition-colors hover:border-baseline"
+              class="inline-flex min-h-11 items-center gap-1 rounded-md border border-hairline bg-surface px-3 text-sm font-medium text-accent-deep transition-colors hover:border-baseline hover:underline"
             >
               {{ link.label }}
             </ExternalLink>

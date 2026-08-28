@@ -41,12 +41,12 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Datenquelle: Republik Österreich – Parlamentsdirektion
           (<ExternalLink
             href="https://www.parlament.gv.at"
-            class="underline underline-offset-2 hover:text-ink"
+            class="underline underline-offset-2 hover:no-underline"
             >parlament.gv.at</ExternalLink
           >), Lizenz
           <ExternalLink
             href="https://creativecommons.org/licenses/by/4.0/deed.de"
-            class="underline underline-offset-2 hover:text-ink"
+            class="underline underline-offset-2 hover:no-underline"
             >CC BY 4.0</ExternalLink
           >. Kein amtliches Angebot.
         </p>
@@ -54,13 +54,13 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Prototyp in Entwicklung –
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor"
-            class="underline underline-offset-2 hover:text-ink"
+            class="underline underline-offset-2 hover:no-underline"
             >Quellcode auf GitHub</ExternalLink
           >
           · Kontakt:
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            class="underline underline-offset-2 hover:text-ink"
+            class="underline underline-offset-2 hover:no-underline"
             >kontakt@begutachtungs-monitor.at</a
           >
         </p>
