@@ -121,9 +121,9 @@ const lastSyncLabel = computed(() =>
         – ohne Konto, ohne Tracking.
       </p>
 
-      <section class="mt-12" aria-labelledby="open-heading">
+      <section class="page-section" aria-labelledby="open-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <h2 id="open-heading" class="text-lg font-semibold text-ink">
+          <h2 id="open-heading" class="section-heading">
             Läuft gerade
           </h2>
           <NuxtLink
@@ -157,9 +157,9 @@ const lastSyncLabel = computed(() =>
 
       <!-- The accountability layer on the front door: mechanism 1 (shelving
            visible) and mechanism 3 (wins equally visible) in one section. -->
-      <section class="mt-12 scroll-mt-6" aria-labelledby="outcomes-heading">
+      <section class="page-section scroll-mt-6" aria-labelledby="outcomes-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <h2 id="outcomes-heading" class="text-lg font-semibold text-ink">
+          <h2 id="outcomes-heading" class="section-heading">
             Zuletzt abgeschlossen – was wurde daraus?
           </h2>
           <NuxtLink
@@ -194,7 +194,7 @@ const lastSyncLabel = computed(() =>
               </li>
             </ul>
             <template v-if="outcomes.lastEnacted">
-              <h3 class="mt-4 text-sm font-medium text-ink">
+              <h3 class="mt-6 text-base font-semibold text-ink">
                 {{
                   outcomes.lastEnacted.bgblNumber
                     ? 'Zuletzt kundgemacht'
@@ -218,10 +218,10 @@ const lastSyncLabel = computed(() =>
 
       <section
         v-if="data.topByStatements.length"
-        class="mt-12"
+        class="page-section"
         aria-labelledby="top-heading"
       >
-        <h2 id="top-heading" class="text-lg font-semibold text-ink">
+        <h2 id="top-heading" class="section-heading">
           Die meisten Stellungnahmen
         </h2>
         <!-- Volumetric, not "gerade": the ranking spans the whole GP,

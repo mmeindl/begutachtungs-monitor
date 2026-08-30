@@ -152,7 +152,7 @@ function endorsementBarWidth(endorsements: number): string {
 
     <!-- Top organisations -->
     <section v-if="summary.topOrganisations.length" class="mt-6">
-      <h3 class="text-sm font-medium text-ink">{{ orgHeading }}</h3>
+      <h3 class="text-base font-semibold text-ink">{{ orgHeading }}</h3>
       <ul class="mt-1 divide-y divide-hairline">
         <li v-for="org in summary.topOrganisations" :key="org.parliamentUrl" class="py-2.5">
           <div class="flex items-baseline justify-between gap-4">
