@@ -64,11 +64,11 @@ const sections = computed<Section[]>(() => {
     >
       <summary
         v-if="section.collapsed"
-        class="cursor-pointer rounded py-3 text-sm font-semibold text-ink marker:text-ink-muted"
+        class="cursor-pointer rounded py-3 text-base font-semibold text-ink marker:text-ink-muted"
       >
         {{ section.heading }}
       </summary>
-      <h3 v-else-if="section.heading" class="text-sm font-semibold text-ink">
+      <h3 v-else-if="section.heading" class="text-base font-semibold text-ink">
         {{ section.heading }}
       </h3>
 

@@ -58,6 +58,12 @@ export interface TraceLink {
   url: string
 }
 
+/** A TraceLink that knows which station of the process it belongs to. */
+export interface TextVersion extends TraceLink {
+  /** "Regierungsvorlage", "Geändert im Ausschuss", … */
+  station: string
+}
+
 /** One step of the parliamentary process history (from ME detail stages[]) */
 export interface TraceStep {
   /** ISO date, null when the stage carries no date */
@@ -66,9 +72,18 @@ export interface TraceStep {
   text: string
   /** Absolute URLs extracted from the stage HTML */
   links: TraceLink[]
-  /** Milestone (RV step, consultation end, Kundmachung) — rendered with
-      emphasis; routine procedural steps fold behind a toggle. */
-  kind?: 'milestone'
+}
+
+/**
+ * Parliament forwarding the Stellungnahmen to the ressort — across the
+ * XXVIII corpus the only stage that is neither Einlangen, Fristende nor
+ * Regierungsvorlage, and the moment the ball is back with the ministry.
+ */
+export interface Handoff {
+  /** ISO date, null when the stage carries none */
+  date: string | null
+  /** Recipient as parliament words it ("das Bundesministerium für Justiz") */
+  recipient: string
 }
 
 export interface StatementsSummary {
@@ -107,6 +122,16 @@ export interface EnactmentInfo {
   /** e.g. "2238 d.B." */
   rvCitation: string
   rvUrl: string
+  /** The Regierungsvorlage's own Gesetzestext (PDF) — the text to hold
+      against the draft. Null when upstream ships no text for it. */
+  rvTextUrl: string | null
+  /** Date of the stage carrying the RV link — the RV station's date in the
+      StageBar. Null when that stage is undated. */
+  rvDate: string | null
+  /** Earlier Regierungsvorlagen from the same draft. ME→RV is 1:n and the
+      split is real (4 of 132 in the XXVIII corpus, e.g. 74/ME → 443 + 444
+      d.B.); without this the extra RVs are invisible. */
+  furtherRv: TraceLink[]
   /** e.g. "Bundesgesetzblatt I Nr. 5/2024" — null while not enacted */
   bgblNumber: string | null
   bgblRisUrl: string | null
@@ -131,8 +156,13 @@ export interface ConsultationDetail extends Omit<ConsultationSummary, 'statement
   /** Minister who submitted the draft ("Übermittelt von"), null if absent */
   invitedBy: string | null
   documents: ConsultationDocument[]
+  /** The complete upstream stage record. Kept as raw material (accountability
+      layer, history snapshots); the UI renders it condensed into the StageBar
+      and `handoff` rather than as a second timeline. */
   trace: TraceStep[]
-  /** Text evolution links: Gesetzestext → amended in committee → plenary */
+  handoff: Handoff | null
+  /** Versions AFTER the Regierungsvorlage (committee, plenary). The RV's own
+      text is `enactment.rvTextUrl`, so no station appears twice on the page. */
   textEvolution: TraceLink[]
   statements: StatementsSummary
   enactment: EnactmentInfo | null

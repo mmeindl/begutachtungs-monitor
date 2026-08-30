@@ -4,7 +4,9 @@ import {
   decodeEntities,
   extractBgblLink,
   extractLinks,
+  findHandoff,
   findLastRvLink,
+  findRvLinks,
   intToRoman,
   mapConsultationRow,
   mapDocuments,
@@ -12,7 +14,6 @@ import {
   deriveShortTitle,
   mapStatementRow,
   mapTextEvolution,
-  markTraceMilestones,
   normalizeOrgName,
   parseFristsort,
   parseGermanDate,
@@ -139,36 +140,30 @@ describe('deriveShortTitle', () => {
   })
 })
 
-describe('markTraceMilestones', () => {
-  const step = (text: string, url?: string) => ({
-    date: '2026-04-08',
+describe('findHandoff', () => {
+  const step = (text: string, date: string | null = '2026-04-08') => ({
+    date,
     text,
-    links: url ? [{ label: 'x', url }] : [],
+    links: [],
   })
 
-  it('marks the RV step (by link), Fristende and Kundmachung; routine stays plain', () => {
-    const marked = markTraceMilestones(
-      [
-        step('Einlangen im Nationalrat'),
-        step('Ende der Begutachtungsfrist 08.04.2026'),
-        step('Übermittlung an das Bundesministerium'),
-        step('Regierungsvorlage (474 d.B.)', 'https://x/rv'),
-        step('Kundmachung BGBl. I Nr. 37/2026'),
-      ],
-      'https://x/rv',
+  it('reads recipient and date from the Übermittlung stage', () => {
+    expect(
+      findHandoff([
+        step('Einlangen im Nationalrat', '2026-01-27'),
+        step('Übermittlung an das Bundesministerium für Justiz', '2026-02-27'),
+      ]),
+    ).toEqual({ date: '2026-02-27', recipient: 'das Bundesministerium für Justiz' })
+  })
+
+  it('passes any recipient wording through (BKA, Ministerinnenbüro)', () => {
+    expect(findHandoff([step('Übermittlung an das Bundeskanzleramt')])?.recipient).toBe(
+      'das Bundeskanzleramt',
     )
-    expect(marked.map((s) => s.kind)).toEqual([
-      undefined,
-      'milestone',
-      undefined,
-      'milestone',
-      'milestone',
-    ])
   })
 
-  it('marks nothing without an RV url or matching text', () => {
-    const marked = markTraceMilestones([step('Einlangen im Nationalrat')], null)
-    expect(marked[0]!.kind).toBeUndefined()
+  it('claims nothing without an Übermittlung stage', () => {
+    expect(findHandoff([step('Ende der Begutachtungsfrist 21.08.2026')])).toBeNull()
   })
 })
 
@@ -271,24 +266,40 @@ describe('parseStages / extractLinks', () => {
   })
 })
 
-describe('findLastRvLink', () => {
-  it('takes the LAST RV link (ME→RV is 1:n)', () => {
-    const trace = parseStages([
-      { date: '01.06.2021', text: 'RV (<a href="/gegenstand/XXVII/I/471">471 d.B.</a>)' },
-      { date: '01.07.2021', text: 'RV (<a href="/gegenstand/XXVII/I/733">733 d.B.</a>)' },
+describe('findRvLinks / findLastRvLink', () => {
+  const SPLIT = [
+    { date: '01.06.2021', text: 'RV (<a href="/gegenstand/XXVII/I/471">471 d.B.</a>)' },
+    { date: '01.07.2021', text: 'RV (<a href="/gegenstand/XXVII/I/733">733 d.B.</a>)' },
+  ]
+
+  it('keeps every RV in stage order, each with its stage date', () => {
+    expect(findRvLinks(parseStages(SPLIT))).toEqual([
+      {
+        gp: 'XXVII',
+        inr: 471,
+        label: '471 d.B.',
+        url: 'https://www.parlament.gv.at/gegenstand/XXVII/I/471',
+        date: '2021-06-01',
+      },
+      {
+        gp: 'XXVII',
+        inr: 733,
+        label: '733 d.B.',
+        url: 'https://www.parlament.gv.at/gegenstand/XXVII/I/733',
+        date: '2021-07-01',
+      },
     ])
-    expect(findLastRvLink(trace)).toEqual({
-      gp: 'XXVII',
-      inr: 733,
-      label: '733 d.B.',
-      url: 'https://www.parlament.gv.at/gegenstand/XXVII/I/733',
-    })
+  })
+
+  it('takes the LAST RV link (ME→RV is 1:n)', () => {
+    expect(findLastRvLink(parseStages(SPLIT))?.inr).toBe(733)
   })
 
   it('ignores non-RV links (SNME, ME) → null', () => {
     const trace = parseStages([
       { text: '<a href="/gegenstand/XXVIII/SNME/3699">SN</a> <a href="/gegenstand/XXVIII/ME/88">ME</a>' },
     ])
+    expect(findRvLinks(trace)).toEqual([])
     expect(findLastRvLink(trace)).toBeNull()
   })
 })
@@ -328,11 +339,38 @@ describe('mapDocuments / mapTextEvolution', () => {
     expect(mapDocuments(null)).toEqual([])
   })
 
-  it('flattens the text evolution into labeled links', () => {
-    expect(mapTextEvolution([RAW_DOCS[1]])).toEqual([
-      { label: 'Gesetzestext (PDF)', url: 'https://www.parlament.gv.at/dokument/XXVIII/ME/88/fname_1744270.pdf' },
-      { label: 'Gesetzestext (HTML)', url: 'https://www.parlament.gv.at/dokument/XXVIII/ME/88/fnameorig_1744270.html' },
+  /* The RV's text carries the same upstream title as the draft's own —
+   * unrenamed, one page shows "Gesetzestext" twice for two different PDFs. */
+  const RAW_RV_DOCS = [
+    {
+      title: 'Gesetzestext',
+      documents: [
+        { link: '/dokument/XXVIII/I/476/fname_1753703.pdf', type: 'PDF' },
+        { link: '/dokument/XXVIII/I/476/fnameorig_1753703.html', type: 'HTML' },
+      ],
+    },
+    {
+      title: 'Geändert im Ausschuss',
+      documents: [{ link: '/dokument/XXVIII/I/476/fname_1760001.pdf', type: 'PDF' }],
+    },
+  ]
+
+  it('names the stations, not the documents', () => {
+    expect(mapTextEvolution(RAW_RV_DOCS).map((v) => [v.station, v.label])).toEqual([
+      ['Regierungsvorlage', 'Regierungsvorlage (PDF)'],
+      ['Regierungsvorlage', 'Regierungsvorlage (HTML)'],
+      ['Geändert im Ausschuss', 'Geändert im Ausschuss (PDF)'],
     ])
+  })
+
+  it('drops what merely repeats the draft: without an RV upstream relists the ME text', () => {
+    const meUrls = new Set(mapDocuments(RAW_DOCS).flatMap((d) => d.formats.map((f) => f.url)))
+    expect(mapTextEvolution([RAW_DOCS[1]], meUrls)).toEqual([])
+  })
+
+  it('keeps genuine later versions when the draft URLs are excluded', () => {
+    const meUrls = new Set(mapDocuments(RAW_DOCS).flatMap((d) => d.formats.map((f) => f.url)))
+    expect(mapTextEvolution(RAW_RV_DOCS, meUrls)).toHaveLength(3)
   })
 })
 

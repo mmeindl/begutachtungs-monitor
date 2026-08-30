@@ -72,25 +72,41 @@ const compareLinks = computed(() => {
       url: mePdf ?? meDoc?.formats[0]?.url ?? d.parliamentUrl,
       label: mePdf ? 'Ministerialentwurf (PDF)' : 'Ministerialentwurf',
     },
+    // Distinct from the card headline above it, which links the RV's
+    // Gegenstand page — this one is the text to hold against the draft.
     rv: {
-      url: d.textEvolution[0]?.url ?? d.enactment.rvUrl,
-      label: 'Regierungsvorlage',
+      url: d.enactment.rvTextUrl ?? d.enactment.rvUrl,
+      label: d.enactment.rvTextUrl ? 'Regierungsvorlage (PDF)' : 'Regierungsvorlage',
     },
   }
 })
 
-// Months of pipeline latency between Begutachtungsende and RV are normal,
-// so a recently ended consultation must not read as shelved. Once the
-// quiet stretch exceeds the latency window, the card leads with the
-// quotable verdict sentence — elapsed time as the honesty bracket.
+// The StageBar already states "Regierungsvorlage · bisher keine", so the
+// card must not say it again. Its job is the bracket the bar cannot carry:
+// elapsed time. Once the quiet stretch exceeds the latency window, the
+// quotable verdict sentence leads; before that there is no headline at
+// all — months of pipeline latency are normal, and a fresh silence is
+// "noch nicht", not a verdict to put in bold.
+const noRvVerdict = computed(() => noRvVerdictDe(data.value?.deadline))
+
 const noRvBody = computed(() => {
-  const verdict = noRvVerdictDe(data.value?.deadline)
-  if (verdict) return `${verdict} Ob und wie es weitergeht, ist offen.`
-  const context =
-    daysUntil(data.value?.deadline) === null
-      ? 'Ob und wie es weitergeht, ist offen.'
-      : 'Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere Monate – dieser Stand kann sich noch ändern.'
-  return `Der Entwurf wurde nach Ende der Begutachtung bislang nicht als Regierungsvorlage eingebracht. ${context}`
+  if (noRvVerdict.value) return 'Ob und wie es weitergeht, ist offen.'
+  // No Frist, no bracket to measure — the only branch where the card
+  // restates the bar, because otherwise it would say nothing at all.
+  if (daysUntil(data.value?.deadline) === null) {
+    return 'Der Entwurf wurde bislang nicht als Regierungsvorlage eingebracht. Ob und wie es weitergeht, ist offen.'
+  }
+  return 'Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere Monate – dieser Stand kann sich noch ändern.'
+})
+
+/* The one fact the upstream stage list holds that the StageBar cannot:
+ * when parliament handed the Stellungnahmen to the ressort. That is where
+ * the ministry's clock starts, so it belongs to "Was wurde daraus?" as a
+ * sentence — temporal, no causality claimed (framing rule). */
+const handoffSentence = computed(() => {
+  const h = data.value?.handoff
+  if (!h?.date) return null
+  return `Die Stellungnahmen wurden am ${formatDateDe(h.date)} an ${h.recipient} übermittelt.`
 })
 
 const seoTitle = computed(() => {
@@ -256,7 +272,14 @@ const linkClasses =
               class="transition-colors hover:border-baseline hover:underline"
             />
           </NuxtLink>
-          <DeadlineBadge :deadline="data.deadline" :active="data.active" />
+          <!-- Only while it runs: the badge exists to carry urgency (tone +
+               "Noch 3 Tage"). Closed, it degrades to "Endete am …" — which
+               the StageBar states 100px below, better. -->
+          <DeadlineBadge
+            v-if="data.active"
+            :deadline="data.deadline"
+            :active="data.active"
+          />
           <UButton
             color="neutral"
             variant="outline"
@@ -287,15 +310,11 @@ const linkClasses =
         <p v-if="data.shortTitle" class="mt-1 text-sm text-ink-secondary">
           {{ data.title }}
         </p>
-        <p class="mt-2 text-sm text-ink-secondary">
-          Eingelangt am {{ formatDateDe(data.arrivedAt) }} ·
-          <template v-if="data.deadline">
-            Frist bis {{ formatDateDe(data.deadline) }}
-          </template>
-          <template v-else>keine Frist</template>
-          <template v-if="data.invitedBy">
-            · Übermittelt von {{ data.invitedBy }}
-          </template>
+        <!-- Eingelangt/Frist deliberately absent: the StageBar below states
+             both, and the pill above already repeats the Frist. What is left
+             is the one fact no other surface carries. -->
+        <p v-if="data.invitedBy" class="mt-2 text-sm text-ink-secondary">
+          Übermittelt von {{ data.invitedBy }}
         </p>
       </header>
 
@@ -321,11 +340,16 @@ const linkClasses =
 
       <section
         v-if="description.length"
-        class="mt-6"
+        class="page-section"
         aria-labelledby="kurzinfo-heading"
       >
-        <h2 id="kurzinfo-heading" class="sr-only">Kurzinformation</h2>
-        <DraftSummary :blocks="description" />
+        <!-- Was sr-only: sighted readers got a section whose first visible
+             marker was a 14px "Ziel". The page now reads as a question
+             sequence — worum geht es, was wurde daraus. -->
+        <h2 id="kurzinfo-heading" class="section-heading">Worum geht es?</h2>
+        <div class="mt-4">
+          <DraftSummary :blocks="description" />
+        </div>
       </section>
 
       <!-- Deadline, action and calendar welded into one card: the page's
@@ -382,8 +406,12 @@ const linkClasses =
            false for a typical active consultation, so during the Frist the page
            reads Kurzinfo → CTA → Stellungnahmen → Dokumente, while closed
            consultations lead with the accountability answer. -->
-      <section v-if="showOutcome" class="mt-10 scroll-mt-6" aria-labelledby="outcome-heading">
-        <h2 id="outcome-heading" class="text-lg font-semibold text-ink">
+      <section
+        v-if="showOutcome"
+        class="page-section scroll-mt-6"
+        aria-labelledby="outcome-heading"
+      >
+        <h2 id="outcome-heading" class="section-heading">
           Was wurde daraus?
         </h2>
 
@@ -394,6 +422,16 @@ const linkClasses =
             <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses">
               Regierungsvorlage {{ data.enactment.rvCitation }}
             </ExternalLink>
+          </p>
+          <!-- ME→RV is 1:n: without this the second Regierungsvorlage of a
+               split draft is invisible (4 of 132 in the XXVIII corpus). -->
+          <p v-if="data.enactment.furtherRv.length" class="mt-1.5 text-sm">
+            Aus dem Entwurf ging außerdem
+            <template v-for="(rv, i) in data.enactment.furtherRv" :key="rv.url"
+              ><span v-if="i > 0">, </span
+              ><ExternalLink :href="rv.url" :class="linkClasses">{{ rv.label }}</ExternalLink></template
+            >
+            hervor.
           </p>
           <p v-if="data.enactment.bgblNumber" class="mt-1.5 text-sm">
             <ExternalLink
@@ -448,22 +486,34 @@ const linkClasses =
           v-if="!data.enactment && !data.active"
           class="mt-4 rounded-xl border border-hairline bg-surface p-5"
         >
-          <p class="font-medium">Bisher keine Regierungsvorlage</p>
-          <p class="mt-1.5 text-sm text-ink-secondary">
+          <p v-if="noRvVerdict" class="font-medium">{{ noRvVerdict }}</p>
+          <p
+            class="text-sm text-ink-secondary"
+            :class="noRvVerdict ? 'mt-1.5' : ''"
+          >
             {{ noRvBody }}
           </p>
         </div>
 
-        <div v-if="data.trace.length" class="mt-6">
-          <TraceTimeline :steps="data.trace" />
-        </div>
+        <!-- The record under the StageBar's claim. Its own h3, like the
+             sibling "Textfassungen im Verlauf": two timelines on one page
+             must read as summary and detail, not as the answer twice. -->
+        <!-- The moment the ressort takes over — the accountability clock's
+             start, and the only thing the raw stage list adds. -->
+        <p v-if="handoffSentence" class="mt-3 text-sm text-ink-secondary">
+          {{ handoffSentence }}
+        </p>
 
-        <div v-if="data.textEvolution.length" class="mt-6">
-          <h3 class="text-sm font-semibold text-ink">Textfassungen im Verlauf</h3>
+        <div v-if="data.textEvolution.length" class="mt-8">
+          <h3 class="text-base font-semibold text-ink">Spätere Textfassungen</h3>
           <!-- A first-time reader cannot know these chips ARE the law text
-               at successive stations — say it once. -->
+               at successive stations — say it once. The Regierungsvorlage
+               itself is not among them: the comparison above offers it, and
+               the same link under two headings is what this page had too
+               much of. -->
           <p class="mt-1 text-sm text-ink-secondary">
-            Der Gesetzestext an den Stationen des Verfahrens:
+            Der Text wurde nach der Regierungsvorlage im Parlament weiter
+            geändert:
           </p>
           <!-- rounded-md, not -full: interactive chip, not status pill
                (shape grammar, see TraceTimeline chips). -->
@@ -483,8 +533,8 @@ const linkClasses =
         </div>
       </section>
 
-      <section class="mt-10" aria-labelledby="statements-heading">
-        <h2 id="statements-heading" class="text-lg font-semibold text-ink">
+      <section class="page-section" aria-labelledby="statements-heading">
+        <h2 id="statements-heading" class="section-heading">
           Stellungnahmen
         </h2>
         <div class="mt-4">
@@ -537,10 +587,16 @@ const linkClasses =
             "
           />
         </div>
+        <!-- The one half of the old page-foot source note the footer does
+             not already carry — and it is a fact about Stellungnahmen, so
+             it lives with them (CC BY excludes the full texts). -->
+        <p class="mt-4 text-xs text-ink-muted">
+          Volltexte der Stellungnahmen sind nur auf parlament.gv.at verfügbar.
+        </p>
       </section>
 
-      <section v-if="data.documents.length" class="mt-10" aria-labelledby="docs-heading">
-        <h2 id="docs-heading" class="text-lg font-semibold text-ink">
+      <section v-if="data.documents.length" class="page-section" aria-labelledby="docs-heading">
+        <h2 id="docs-heading" class="section-heading">
           Entwurfsdokumente
         </h2>
         <div class="mt-4">
@@ -548,10 +604,6 @@ const linkClasses =
         </div>
       </section>
 
-      <p class="mt-12 text-xs text-ink-muted">
-        Quelle: Parlamentsdirektion, parlament.gv.at (CC BY 4.0). Volltexte der
-        Stellungnahmen nur auf parlament.gv.at.
-      </p>
     </article>
   </div>
 </template>

@@ -131,6 +131,49 @@
 }
 
 /*
+ * Section rhythm. The page's strongest visual objects are white bordered
+ * sheets INSIDE sections; an 18px heading floating in whitespace lost to
+ * them, so section boundaries were invisible. The heading outranks anything
+ * it contains:
+ *   h1   24/30px   page
+ *   h2   24px      section  (serif via the h1,h2 rule above)
+ *   h3   16px      subsection — never smaller than the body text it heads
+ *
+ * The boundary is SPACE plus a mark, deliberately not a rule and not a
+ * section background:
+ *   - a full-width hairline would be the token's fifth job (card edge, chip
+ *     edge, list divider, region edge) — and `border-t border-hairline` is
+ *     literally what the collapsed Kurzinfo sections use;
+ *   - a per-section ground would be the brand's job: `surface` means "a
+ *     sheet", `mark-wash` means "what became of the input", the status
+ *     washes mean deadline state. It would also need every ink token
+ *     re-verified at AAA against each new ground (ink-secondary is already
+ *     below 7:1 on accent-wash), and inside a max-w column it renders as
+ *     one more card.
+ * So: 80px of paper above the heading against 16px below it (5:1 — space
+ * separates reliably from ~3:1), and a short ink bar that cannot be read as
+ * a container edge: short where borders run full width, ink where they are
+ * hairline grey, above the heading rather than around content.
+ */
+@utility page-section {
+  @apply mt-20;
+}
+
+@utility section-heading {
+  @apply relative pt-3.5 text-2xl font-semibold text-ink;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    inset-inline-start: 0;
+    width: 2rem;
+    height: 2px;
+    background-color: var(--color-ink);
+  }
+}
+
+/*
  * Hover grammar for clickable surfaces — one shared signature, one
  * container response fitted to the anatomy:
  *   always:            the primary text underlines (group-hover:underline)

@@ -17,9 +17,9 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       Über das Projekt
     </h1>
 
-    <div class="mt-10 space-y-10">
+    <div class="mt-10 space-y-20">
       <section aria-labelledby="about-mission">
-        <h2 id="about-mission" class="text-lg font-semibold text-ink">
+        <h2 id="about-mission" class="section-heading">
           Worum es geht
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -39,7 +39,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-how">
-        <h2 id="about-how" class="text-lg font-semibold text-ink">
+        <h2 id="about-how" class="section-heading">
           Wie es funktioniert
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -55,7 +55,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-roadmap">
-        <h2 id="about-roadmap" class="text-lg font-semibold text-ink">
+        <h2 id="about-roadmap" class="section-heading">
           Woran gearbeitet wird
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -79,7 +79,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-subscribe">
-        <h2 id="about-subscribe" class="text-lg font-semibold text-ink">
+        <h2 id="about-subscribe" class="section-heading">
           Abonnieren
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -103,7 +103,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-license">
-        <h2 id="about-license" class="text-lg font-semibold text-ink">
+        <h2 id="about-license" class="section-heading">
           Daten &amp; Lizenz
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -119,7 +119,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-privacy">
-        <h2 id="about-privacy" class="text-lg font-semibold text-ink">
+        <h2 id="about-privacy" class="section-heading">
           Privatpersonen &amp; DSGVO
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -135,7 +135,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-a11y">
-        <h2 id="about-a11y" class="text-lg font-semibold text-ink">
+        <h2 id="about-a11y" class="section-heading">
           Barrierefreiheit
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -152,7 +152,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-sovereignty">
-        <h2 id="about-sovereignty" class="text-lg font-semibold text-ink">
+        <h2 id="about-sovereignty" class="section-heading">
           Digitale Souveränität
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -165,7 +165,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-history">
-        <h2 id="about-history" class="text-lg font-semibold text-ink">
+        <h2 id="about-history" class="section-heading">
           Vorgeschichte
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -184,7 +184,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-status">
-        <h2 id="about-status" class="text-lg font-semibold text-ink">Status</h2>
+        <h2 id="about-status" class="section-heading">Status</h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Begutachtungs-Monitor ist ein Prototyp (Stand: August 2026).
           „Begutachtungs-Monitor“ ist ein Arbeitstitel. Das Projekt ist ein
@@ -194,7 +194,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </section>
 
       <section aria-labelledby="about-contact">
-        <h2 id="about-contact" class="text-lg font-semibold text-ink">
+        <h2 id="about-contact" class="section-heading">
           Kontakt
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">

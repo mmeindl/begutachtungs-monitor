@@ -8,6 +8,11 @@ import type { EnactmentInfo } from '#shared/types'
  * (the unfilled remainder IS the answer, no accusatory copy), a completed
  * chain is visibly complete. State is carried by the text under each
  * stage, never by dot fill alone (AAA).
+ *
+ * This is the page's ONLY procedural chronology: the stage list upstream
+ * holds a closed four-item vocabulary (Einlangen, Fristende, Übermittlung,
+ * Regierungsvorlage) and never exceeds six entries, so a second timeline
+ * beside this one could only restate it.
  */
 const props = defineProps<{
   arrivedAt: string
@@ -21,8 +26,13 @@ type StageState = 'done' | 'current' | 'open'
 interface Stage {
   name: string
   state: StageState
-  /** Visible text carrying the state (date, citation, "ausstehend", …) */
-  info: string
+  /** Row 2, the same row for every station — that shared baseline is what
+      makes the bar readable as a chronology. Null where no date exists;
+      the slot stays reserved so row 3 keeps its line. */
+  date: string | null
+  /** Row 3: the citation of what the station produced, or the word carrying
+      the state while it is unreached ("ausstehend", "bisher keine"). */
+  label: string | null
   /** Upstream evidence link (RV, BGBl) */
   href?: string | null
 }
@@ -33,31 +43,41 @@ const stages = computed<Stage[]>(() => {
     {
       name: 'Entwurf',
       state: 'done',
-      info: formatDateDe(props.arrivedAt),
+      date: formatDateDe(props.arrivedAt),
+      label: null,
     },
     {
       name: 'Begutachtung',
       state: props.active ? 'current' : 'done',
-      info: props.active
-        ? fristLabel(props.deadline, true)
-        : props.deadline
-          ? `endete am ${formatDateDe(props.deadline)}`
-          : 'abgeschlossen',
+      // The countdown deliberately stays with the badge and the CTA —
+      // repeating "Noch 1 Tag" here put the same three words on the page
+      // three times. The bar carries the date.
+      date: !props.deadline
+        ? null
+        : props.active
+          ? `läuft bis ${formatDateDe(props.deadline)}`
+          : `endete am ${formatDateDe(props.deadline)}`,
+      label: props.deadline ? null : 'keine Frist angegeben',
     },
     {
       name: 'Regierungsvorlage',
       state: e ? 'done' : 'open',
+      date: e?.rvDate ? formatDateDe(e.rvDate) : null,
       // "bisher keine" is temporal, never accusatory (framing rule) — and
       // only claimed once the Frist has ended.
-      info: e ? e.rvCitation : props.active ? 'ausstehend' : 'bisher keine',
+      label: e ? e.rvCitation : props.active ? 'ausstehend' : 'bisher keine',
       href: e?.rvUrl ?? null,
     },
     {
       name: 'Bundesgesetzblatt',
       state: e?.bgblNumber ? 'done' : 'open',
+      // Parliament ships no Kundmachungsdatum: the RV's phases end at the
+      // Bundesrat decision and status.bgbllinks carries number + link only.
+      // The empty slot is honest — the date exists, we just have no source.
+      date: null,
       // "ausstehend" while the chain can still continue; the bare dash
       // only once the Frist ended without any RV.
-      info: e?.bgblNumber
+      label: e?.bgblNumber
         ? e.bgblNumber.replace(/^Bundesgesetzblatt\b/, 'BGBl.')
         : e || props.active
           ? 'ausstehend'
@@ -104,15 +124,22 @@ const dotClass: Record<StageState, string> = {
         >
           {{ stage.name }}
         </p>
-        <p class="text-xs tabular-nums text-ink-secondary">
+        <p v-if="stage.date" class="text-xs tabular-nums text-ink-secondary">
+          {{ stage.date }}
+        </p>
+        <!-- Reserved date slot, so row 3 stays on row 3 across all four
+             stations. Only in the horizontal layout — stacked on mobile
+             there is no row to hold. -->
+        <p v-else aria-hidden="true" class="hidden text-xs sm:block">&nbsp;</p>
+        <p v-if="stage.label" class="text-xs tabular-nums text-ink-secondary">
           <ExternalLink
             v-if="stage.href"
             :href="stage.href"
             class="tap-target rounded text-accent-deep underline underline-offset-2 hover:no-underline"
           >
-            {{ stage.info }}
+            {{ stage.label }}
           </ExternalLink>
-          <template v-else>{{ stage.info }}</template>
+          <template v-else>{{ stage.label }}</template>
         </p>
       </div>
     </li>

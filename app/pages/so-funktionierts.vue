@@ -87,7 +87,7 @@ const steps = [
       </li>
     </ol>
 
-    <p class="mt-12 border-t border-hairline pt-6 leading-relaxed text-ink-secondary">
+    <p class="mt-16 leading-relaxed text-ink-secondary">
       Der Monitor zeigt Verfahren mit weiterem Verlauf genauso wie Verfahren
       ohne – Nachverfolgung, nicht Bewertung.
       <NuxtLink

@@ -24,14 +24,16 @@ import { daysUntil } from '#shared/utils/format'
 import {
   deriveShortTitle,
   extractBgblLink,
+  findHandoff,
   findLastRvLink,
+  findRvLinks,
   intToRoman,
   mapConsultationRow,
   mapDocuments,
   mapInvitedBy,
   mapStatementRow,
   mapTextEvolution,
-  markTraceMilestones,
+  RV_STATION,
   parseShortinfo,
   parseStages,
   PARLIAMENT_BASE,
@@ -464,11 +466,18 @@ export async function getConsultationDetail(
   const trace = parseStages(content.stages)
 
   let enactment: EnactmentInfo | null = null
-  const rvLink = findLastRvLink(trace)
+  const rvLinks = findRvLinks(trace)
+  const rvLink = rvLinks.at(-1) ?? null
   if (rvLink) {
     enactment = {
       rvCitation: rvLink.label,
       rvUrl: rvLink.url,
+      // Filled below, once the text versions are mapped.
+      rvTextUrl: null,
+      rvDate: rvLink.date,
+      // Everything before the latest one — the 1:n split, which used to be
+      // visible only in the raw stage list.
+      furtherRv: rvLinks.slice(0, -1).map((rv) => ({ label: rv.label, url: rv.url })),
       bgblNumber: null,
       bgblRisUrl: null,
     }
@@ -490,14 +499,34 @@ export async function getConsultationDetail(
   // list-81 count is the only truth left and travels flagged as `degraded`.
   const { statementCount: listCount, ...base } = summary
 
+  const documents = mapDocuments(content.documents)
+  // The draft's own document URLs are what upstream repeats while no RV
+  // exists — excluded, so only what really came after the ME survives.
+  const versions = mapTextEvolution(
+    content.statements?.documents,
+    new Set(documents.flatMap((doc) => doc.formats.map((f) => f.url))),
+  )
+  if (enactment) {
+    enactment.rvTextUrl =
+      versions.find((v) => v.station === RV_STATION && v.url.endsWith('.pdf'))?.url ??
+      versions.find((v) => v.station === RV_STATION)?.url ??
+      null
+  }
+
   return {
     ...base,
     shortTitle: deriveShortTitle(summary.title),
     description: parseShortinfo(content.shortinfo),
     invitedBy: mapInvitedBy(content.names),
-    documents: mapDocuments(content.documents),
-    trace: markTraceMilestones(trace, rvLink?.url ?? null),
-    textEvolution: mapTextEvolution(content.statements?.documents),
+    documents,
+    trace,
+    handoff: findHandoff(trace),
+    // Later stations only: the RV's own text is enactment.rvTextUrl, where
+    // the comparison offers it — listing it here too put the same link
+    // under two headings.
+    textEvolution: versions
+      .filter((v) => v.station !== RV_STATION)
+      .map(({ label, url }) => ({ label, url })),
     statements: statementsResult
       ? {
           ...buildStatementsSummary(statementsResult.items),

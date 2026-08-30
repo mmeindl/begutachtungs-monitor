@@ -12,7 +12,9 @@ import type {
   ConsultationSummary,
   DescriptionBlock,
   DocumentFormat,
+  Handoff,
   StatementMeta,
+  TextVersion,
   TraceLink,
   TraceStep,
 } from '../../shared/types'
@@ -275,25 +277,6 @@ export function deriveShortTitle(title: string): string | null {
   return null
 }
 
-/**
- * Milestones in the trace: the RV step (identified by its link), the end
- * of the consultation window, and the Kundmachung. Text patterns are
- * defensive — anything unmatched simply stays a routine step.
- */
-const MILESTONE_TEXT_RE = /Begutachtungsfrist|Kundmachung|Bundesgesetzblatt|BGBl/
-
-export function markTraceMilestones(
-  trace: TraceStep[],
-  rvUrl: string | null,
-): TraceStep[] {
-  return trace.map((step) => {
-    const isRvStep = rvUrl !== null && step.links.some((link) => link.url === rvUrl)
-    return isRvStep || MILESTONE_TEXT_RE.test(step.text)
-      ? { ...step, kind: 'milestone' as const }
-      : step
-  })
-}
-
 // ---------------------------------------------------------------------------
 // Detail JSON: stages, documents, text evolution, short info, RV/BGBl
 // ---------------------------------------------------------------------------
@@ -316,28 +299,54 @@ export interface RvLink {
   inr: number
   label: string
   url: string
+  /** Date of the stage carrying the link, null when that stage is undated */
+  date: string | null
 }
 
 /**
- * LAST /gegenstand/{gp}/I/{nr} link in the process history = latest
- * Regierungsvorlage (ME→RV is 1:n, docs/architecture.md §5).
+ * Every /gegenstand/{gp}/I/{nr} link in the process history, in stage order
+ * = the Regierungsvorlagen this draft produced (ME→RV is 1:n,
+ * docs/architecture.md §5). Each carries the date of the stage it sits in —
+ * the RV station's date in the StageBar, available nowhere else.
  */
-export function findLastRvLink(trace: TraceStep[]): RvLink | null {
-  let found: RvLink | null = null
+export function findRvLinks(trace: TraceStep[]): RvLink[] {
+  const found: RvLink[] = []
   for (const step of trace) {
     for (const link of step.links) {
       const m = /\/gegenstand\/([IVXLC]+)\/I\/(\d+)(?:[/?#]|$)/.exec(link.url)
       if (m?.[1] && m[2]) {
-        found = {
+        found.push({
           gp: m[1],
           inr: Number(m[2]),
           label: link.label || `${m[2]} d.B.`,
           url: link.url,
-        }
+          date: step.date,
+        })
       }
     }
   }
   return found
+}
+
+/** The latest RV — the one the outcome and the BGBl enrichment hang off. */
+export function findLastRvLink(trace: TraceStep[]): RvLink | null {
+  return findRvLinks(trace).at(-1) ?? null
+}
+
+/**
+ * The Übermittlung stage → who received the Stellungnahmen and when. Text
+ * is ministries' free wording behind a fixed prefix ("Übermittlung an das
+ * Bundesministerium für …", "… an das Bundeskanzleramt"), so match the
+ * prefix and pass the rest through verbatim; no match → no claim.
+ */
+const HANDOFF_RE = /^Übermittlung an\s+(.+?)\s*$/
+
+export function findHandoff(trace: TraceStep[]): Handoff | null {
+  for (const step of trace) {
+    const m = HANDOFF_RE.exec(step.text)
+    if (m?.[1]) return { date: step.date, recipient: m[1] }
+  }
+  return null
 }
 
 /** content.documents[] → draft documents with pdf/html formats. */
@@ -361,17 +370,48 @@ export function mapDocuments(groups: RawDocumentGroup[] | null | undefined): Con
 }
 
 /**
- * content.statements.documents[] (misleading key!) → text-evolution links:
- * Gesetzestext (RV) → amended in committee → amended in plenary.
+ * Upstream titles the stations by the document, not by the station. The
+ * first entry is the Regierungsvorlage's text but is called "Gesetzestext"
+ * — the same word the Ministerialentwurf's own text carries in the document
+ * list on the same page, pointing at a different PDF. Rename to the station;
+ * the later two already name theirs.
  */
-export function mapTextEvolution(groups: RawDocumentGroup[] | null | undefined): TraceLink[] {
-  const links: TraceLink[] = []
+export const RV_STATION = 'Regierungsvorlage'
+
+const STATION_TITLES: Record<string, string> = {
+  Gesetzestext: RV_STATION,
+}
+
+/**
+ * content.statements.documents[] (misleading key!) → the law text at the
+ * stations AFTER the Ministerialentwurf: Regierungsvorlage → geändert im
+ * Ausschuss → geändert im Plenum.
+ *
+ * The field is "the text as it stands now", not "the text after the
+ * Begutachtung": while no Regierungsvorlage exists it simply repeats the
+ * draft's own Gesetzestext — in the XXVIII corpus for exactly the 42 of 132
+ * consultations without an RV, byte-identical URLs, no exceptions. Those are
+ * not a further version, so `excludeUrls` (the ME's own document URLs) drops
+ * them and the section disappears instead of relisting the same PDF under a
+ * heading that promises evolution.
+ */
+export function mapTextEvolution(
+  groups: RawDocumentGroup[] | null | undefined,
+  excludeUrls: ReadonlySet<string> = new Set(),
+): TextVersion[] {
+  const versions: TextVersion[] = []
   for (const doc of mapDocuments(groups)) {
+    const station = STATION_TITLES[doc.title.trim()] ?? doc.title
     for (const format of doc.formats) {
-      links.push({ label: `${doc.title} (${format.type.toUpperCase()})`, url: format.url })
+      if (excludeUrls.has(format.url)) continue
+      versions.push({
+        station,
+        label: `${station} (${format.type.toUpperCase()})`,
+        url: format.url,
+      })
     }
   }
-  return links
+  return versions
 }
 
 /**
