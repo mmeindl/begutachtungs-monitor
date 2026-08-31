@@ -33,6 +33,10 @@ interface Stage {
   /** Row 3: the citation of what the station produced, or the word carrying
       the state while it is unreached ("ausstehend", "bisher keine"). */
   label: string | null
+  /** `label` names a produced document. Only those hold the empty date slot
+      open, so citations line up across stations — a bare state word does not
+      earn a hole above it and moves up into row 2. */
+  cited?: boolean
   /** Upstream evidence link (RV, BGBl) */
   href?: string | null
 }
@@ -66,6 +70,7 @@ const stages = computed<Stage[]>(() => {
       // "bisher keine" is temporal, never accusatory (framing rule) — and
       // only claimed once the Frist has ended.
       label: e ? e.rvCitation : props.active ? 'ausstehend' : 'bisher keine',
+      cited: Boolean(e),
       href: e?.rvUrl ?? null,
     },
     {
@@ -82,6 +87,7 @@ const stages = computed<Stage[]>(() => {
         : e || props.active
           ? 'ausstehend'
           : '–',
+      cited: Boolean(e?.bgblNumber),
       href: e?.bgblRisUrl ?? null,
     },
   ]
@@ -127,10 +133,18 @@ const dotClass: Record<StageState, string> = {
         <p v-if="stage.date" class="text-xs tabular-nums text-ink-secondary">
           {{ stage.date }}
         </p>
-        <!-- Reserved date slot, so row 3 stays on row 3 across all four
-             stations. Only in the horizontal layout — stacked on mobile
-             there is no row to hold. -->
-        <p v-else aria-hidden="true" class="hidden text-xs sm:block">&nbsp;</p>
+        <!-- Reserved date slot, so citations stay on a shared row across
+             stations. Held open only where a document exists to align: a
+             station that never got one ("bisher keine", "ausstehend") uses
+             the row itself rather than sitting under a hole. Horizontal
+             layout only — stacked on mobile there is no row to hold. -->
+        <p
+          v-else-if="stage.cited"
+          aria-hidden="true"
+          class="hidden text-xs sm:block"
+        >
+          &nbsp;
+        </p>
         <p v-if="stage.label" class="text-xs tabular-nums text-ink-secondary">
           <ExternalLink
             v-if="stage.href"
