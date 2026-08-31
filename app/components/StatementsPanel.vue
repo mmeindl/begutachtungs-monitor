@@ -46,6 +46,15 @@ const filtered = computed<StatementMeta[]>(() => {
 const visible = computed(() => filtered.value.slice(0, visibleCount.value))
 const hasMore = computed(() => filtered.value.length > visibleCount.value)
 
+/* One staleness sentence per page. When the summary above is already a
+ * last-good fallback, the detail page states it under this panel and the
+ * list would only repeat it. This note is for the other case: the summary
+ * rendered live, and by the time the user expanded the list the cache
+ * window had passed and the list-142 fetch failed. */
+const listStaleAsOf = computed(() =>
+  !props.summary.staleAsOf ? (data.value?.staleAsOf ?? null) : null,
+)
+
 watch(filter, () => {
   visibleCount.value = PAGE_SIZE
 })
@@ -233,6 +242,13 @@ function endorsementBarWidth(endorsements: number): string {
             angezeigt
           </p>
         </div>
+
+        <!-- Same wording as the summary-level note on the detail page: a
+             stale list must never read as the current one. -->
+        <p v-if="listStaleAsOf" class="mt-3 text-xs text-ink-muted">
+          Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} – die
+          aktuelle Liste ist auf parlament.gv.at derzeit nicht abrufbar.
+        </p>
 
         <EmptyState
           v-if="filtered.length === 0"

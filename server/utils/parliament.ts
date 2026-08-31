@@ -7,10 +7,14 @@
  * list call (the API silently ignores unknown filter keys),
  * 2 retries on 5xx/network errors.
  *
- * CACHE ARCHITECTURE (two rules, both learned the hard way — see UPSTREAM_TTL_S):
+ * CACHE ARCHITECTURE (three rules, all learned the hard way — see
+ * UPSTREAM_TTL_S and lastgood.ts):
  * 1. Caching happens ONLY at the leaves, i.e. at the upstream calls
  *    themselves. Derived aggregates (getConsultationDetail) stay uncached.
  * 2. No SWR — `swr: false` must be set explicitly.
+ * 3. Stale data is never served as fresh, but it IS served as stale: the
+ *    last-good statements aggregation is persisted (lastgood.ts) and
+ *    labelled with `staleAsOf` when the live list-142 fetch fails.
  */
 import type {
   ConsultationDetail,
@@ -44,6 +48,11 @@ import {
   type RawShortinfo,
   type RawStage,
 } from './mappers'
+import {
+  loadLastGoodStatements,
+  saveLastGoodStatements,
+  type LastGoodStatements,
+} from './lastgood'
 
 /**
  * TTL of all upstream caches. `swr: false` is NOT redundant: Nitro defaults
@@ -334,6 +343,7 @@ export const getStatementsForMe = defineCachedFunction(
     assertRowsMatchGp(rows, gp, 142)
     const items = rows.map(mapStatementRow)
     items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    await rememberStatements(gp, inr, items)
     return items
   },
   {
@@ -361,17 +371,83 @@ export const getGegenstand = defineCachedFunction(
 
 /**
  * Last-good statements aggregations, consulted ONLY in the catch path when
- * the live list-142 fetch fails — an upstream hiccup must not delete the
- * flagship aggregation for a whole cache window (88/ME, the showcase,
- * degraded exactly this way in practice). In-memory, dies on restart —
- * acceptable, because staleness is always visible (staleAsOf travels to
- * the UI). Deliberately NOT Nitro staleMaxAge: that is the stale-served-
- * as-fresh SWR behavior this codebase banned after being burned.
+ * the live list-142 fetch fails — an upstream outage must not delete the
+ * flagship aggregation (88/ME, the showcase, degraded exactly this way in
+ * practice). Deliberately NOT Nitro staleMaxAge: that is the stale-served-
+ * as-fresh SWR behavior this codebase banned after being burned. Staleness
+ * stays visible instead — `staleAsOf` travels to the UI.
+ *
+ * Two layers over ONE record: this map is the hot path, `lastgood.ts`
+ * persists it. The map alone died on every restart and every deploy, so a
+ * page that had lost its live data lost its fallback with the next release
+ * — and list 142 drops whole MEs for days, not minutes (see lastgood.ts).
  */
-const lastGoodStatements = new Map<
-  string,
-  { items: StatementMeta[]; fetchedAt: string }
->()
+const lastGoodStatements = new Map<string, LastGoodStatements>()
+
+/**
+ * Success path, called from inside the leaf cache — i.e. once per real
+ * upstream fetch, not once per request, which also makes `fetchedAt` the
+ * time the data actually came from upstream.
+ */
+async function rememberStatements(
+  gp: string,
+  inr: number,
+  items: StatementMeta[],
+): Promise<void> {
+  // An empty list is never worth remembering, and must never overwrite a
+  // real one: "0 rows" is the shape the list-142 outage takes, and a stale
+  // zero would render as "Noch keine Stellungnahmen" — the one degraded
+  // state that carries no staleness note at all (the UI shows it only for
+  // total > 0).
+  if (items.length === 0) return
+  const record: LastGoodStatements = { items, fetchedAt: new Date().toISOString() }
+  lastGoodStatements.set(`${gp}-${inr}`, record)
+  await saveLastGoodStatements(gp, inr, record)
+}
+
+/** Failure path: memory first, then disk — a disk hit warms the memory. */
+async function recallStatements(
+  gp: string,
+  inr: number,
+): Promise<LastGoodStatements | null> {
+  const key = `${gp}-${inr}`
+  const cached = lastGoodStatements.get(key)
+  if (cached) return cached
+  const stored = await loadLastGoodStatements(gp, inr)
+  if (stored) lastGoodStatements.set(key, stored)
+  return stored
+}
+
+export interface StatementsResult {
+  items: StatementMeta[]
+  /** Set only when `items` is a last-good fallback, never for live data. */
+  staleAsOf: string | null
+}
+
+/**
+ * List 142 with the last-good fallback — THE one place that decides what a
+ * failed statements fetch degrades to, so the detail page and the list
+ * endpoint cannot answer that question differently (they did: the summary
+ * fell back to the last-good aggregation while the list below it showed an
+ * error box).
+ *
+ * Rethrows when there is no record to fall back to: the original error
+ * carries the accurate reason (list-142 inconsistency vs. timeout vs.
+ * upstream 5xx), which a null return would flatten. Callers that prefer a
+ * degraded answer over an error catch it — `getConsultationDetail` does.
+ */
+export async function getStatementsWithFallback(
+  gp: string,
+  inr: number,
+): Promise<StatementsResult> {
+  try {
+    return { items: await getStatementsForMe(gp, inr), staleAsOf: null }
+  } catch (err) {
+    const lastGood = await recallStatements(gp, inr)
+    if (!lastGood) throw err
+    return { items: lastGood.items, staleAsOf: lastGood.fetchedAt }
+  }
+}
 
 function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
   const organisations: StatementMeta[] = []
@@ -438,7 +514,6 @@ export async function getConsultationDetail(
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
   // client. List 142 then just returns zero rows.
-  const statementsKey = `${gp}-${inr}`
   const [summary, detail, statementsResult] = await Promise.all([
     requireConsultation(gp, inr),
     getGegenstand(gp, 'ME', inr),
@@ -446,20 +521,7 @@ export async function getConsultationDetail(
     // the list-142 inconsistency guard) the last-good aggregation is
     // served with visible staleness, and only without one does the page
     // degrade to the list-81 count.
-    getStatementsForMe(gp, inr)
-      .then((items) => {
-        lastGoodStatements.set(statementsKey, {
-          items,
-          fetchedAt: new Date().toISOString(),
-        })
-        return { items, staleAsOf: null as string | null }
-      })
-      .catch(() => {
-        const lastGood = lastGoodStatements.get(statementsKey)
-        return lastGood
-          ? { items: lastGood.items, staleAsOf: lastGood.fetchedAt }
-          : null
-      }),
+    getStatementsWithFallback(gp, inr).catch(() => null),
   ])
   const content = detail.content ?? {}
 

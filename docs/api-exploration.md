@@ -105,6 +105,38 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/142?js=eval&
 - Document links are NOT in the row → fetch the SNME detail.
 - The list definition is embedded in every ME detail under `.content.statements.filter.data.definition`.
 
+**⚠ Upstream index gap (measured 2026-08-31, first observed 2026-08-27 — still open).**
+List 142 silently under-delivers when filtered via `BEZUG_*`. For GP XXVIII
+list 81 counts **5,977** Stellungnahmen, list 142 returns **2,916** rows:
+
+| | MEs | missing SN |
+|---|---|---|
+| absent from the index entirely | 47 | 1,705 |
+| partial, delta > 5 | 42 | 1,303 |
+| partial, delta ≤ 5 (plausibly the normal publication lag) | 26 | 53 |
+| complete | 17 | – |
+
+Worst cases: **88/ME 707 → 0**, 8/ME 143 → 1, 104/ME 101 → 0, 62/ME 101 → 1,
+44/ME 616 → 485, 32/ME 572 → 484. Both of the demo links used in outreach
+(8/ME, 88/ME) are affected.
+
+- Not a request-shape problem: the body above is byte-identical to the
+  `fixedParams` parliament.gv.at embeds in its own 88/ME page, and the
+  variants (with/without `js=eval`, `sortrnr`, `pagesize`) all return 0.
+- Not a filter that fails to grip: `{"BEZUG_GP_CODE":["XXVIII"],
+  "BEZUG_ITYP":["ME"]}` returns 2,916 rows, and **none** of them carries
+  `BEZUG_INR = "88"` (85 distinct MEs present, 88 not among them).
+- The items themselves are intact: `GET /gegenstand/XXVIII/SNME/3699?json=True`
+  still resolves to `476/SN-88/ME`. Data is not deleted, the index is
+  incomplete.
+- `lastSync` is current (identical on lists 81 and 142), so nothing in the
+  response signals the gap — a consumer cannot tell "0 rows" from "0
+  Stellungnahmen" without the list-81 counter.
+- Consequence for us: `getStatementsForMe` throws rather than caching a
+  zero, and the persisted last-good store (`server/utils/lastgood.ts`)
+  keeps the aggregation alive across restarts. Reported to
+  `ogd@parlament.gv.at` — draft + full per-ME CSV in `outreach/`.
+
 ### SNME detail — a Stellungnahme as its own item
 
 ```bash
