@@ -63,7 +63,7 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) |
 | `GET /api/consultations?gp&status&ministry&q` | `ConsultationsResponse` | List 81; `status`: `open\|closed\|all` (default `all`), `q` searches title/citation/ministry server-side |
 | `GET /api/consultations/:gp/:inr` | `ConsultationDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
-| `GET /api/consultations/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending |
+| `GET /api/consultations/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
 | `GET /feed.xml` | RSS 2.0 | Current GP, newest arrival first, max 50 items; deterministic output (no `Date.now()`, absolute dates in descriptions — never countdowns), ETag/304; builders in `server/utils/feeds.ts` (pure, tested) |
 | `GET /kalender.ics` | iCalendar (RFC 5545) | All deadlines of the current GP as all-day transparent events; UID domain FROZEN (`@begutachtungs-monitor.at`, survives renames); DTSTAMP follows the deadline so extensions propagate through import paths; ETag/304 |
 
@@ -72,6 +72,7 @@ Param validation: `gp` = Roman numerals (`/^[IVXLC]+$/`), `inr` = positive integ
 Server internals (`server/utils/`):
 
 - `parliament.ts` — upstream client (`fetchFilterList`, `fetchGegenstand`, `getCurrentGp`, cached `getConsultationsForGp`, `getStatementsForMe`, `getGegenstand`; **uncached** assembly `getConsultationDetail`).
+- `lastgood.ts` — on-disk store for the last-good statements aggregation of one ME (one JSON record per ME, write-then-rename, versioned; read back only when the live list-142 fetch fails). State directory: `BM_STATE_DIR` → systemd `STATE_DIRECTORY` (`/var/lib/begutachtungs-monitor`) → `./.data`. Deliberately outside the app dir — `deploy.sh` rsyncs `.output/` with `--delete`.
 
 **Cache rules (August 2026, forced by a real failure):**
 
@@ -94,6 +95,22 @@ Server internals (`server/utils/`):
    carries only `statements.total` from list 142 — the same source as the
    breakdown. Otherwise two independently aged numbers for the same fact sat
    next to each other on one page (card said 4, detail said 1).
+4. **Stale is never served as fresh — but it is served as stale.** List 142
+   does not merely hiccup: it loses whole MEs for days (measured 2026-08-31,
+   GP XXVIII: 47 of 132 MEs absent from the index, among them 88/ME with all
+   707 Stellungnahmen — `docs/api-exploration.md` §list 142). So a failing
+   list-142 fetch never caches a zero; it falls back to the last successful
+   aggregation, persisted in `lastgood.ts` and labelled with `staleAsOf` in
+   the UI ("Stand der Liste: …"). `getStatementsWithFallback` is the single
+   place that decides this, because the detail summary and the list endpoint
+   must not answer it differently — they did once: the summary served the
+   last-good aggregation while the list below it showed an error box. The
+   staleness sentence renders once per page: `StatementsPanel` suppresses
+   its own when the summary above it is already flagged. Without any record the page degrades to
+   the list-81 counter alone (`degraded: true`). An empty result is never
+   remembered — "0 rows" is the shape the outage takes, and a stale zero
+   would render as "Noch keine Stellungnahmen", the one degraded state that
+   carries no staleness note.
 - `mappers.ts` — rows→types. **List 81, 0-based:** 0 gp, 2 inr, 4 title, 5 citation, 6 ministry code, 7 path, 8 deadline (display), 10 arrival (ISO "Datesort"), 11 active `'J'`, 13 statement count, 14 fristsort (`yyyymmdd` → ISO; empty → null), 16 full ministry name. **List 142, 0-based:** 2 snmeInr, 4 date, 6 submitter (HTML `<a>`), 12 endorsements, 15 citation. Stage texts: strip HTML, extract + absolutize links.
 - RV enrichment: last `/gegenstand/{gp}/I/{nr}` link from the stages (ME→RV is 1:n → we take the latest RV); RV JSON: `content.status.bgbllinks[]`, entry with `Abfrage=BgblAuth` (never blindly `[0]`).
 - Documents: `content.documents[]`; text evolution: `content.statements.documents[]` (misleading key, intentional upstream!).
@@ -173,11 +190,11 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-`tests/privacy.test.ts` (classifier: orgs, persons with titles/postal-code suffix, placeholder, edge cases → safe default) and `tests/mappers.test.ts` (row mapping, deadline parsing, stage HTML extraction) with Vitest; keep the modules involved free of Nuxt auto-imports (relative imports).
+`tests/privacy.test.ts` (classifier: orgs, persons with titles/postal-code suffix, placeholder, edge cases → safe default), `tests/mappers.test.ts` (row mapping, deadline parsing, stage HTML extraction), `tests/feeds.test.ts`, `tests/deadlines.test.ts` and `tests/lastgood.test.ts` (round-trip, version/corruption/empty-record rejection, path validation, I/O failure degrades instead of throwing — point `BM_STATE_DIR` at a temp dir) with Vitest; keep the modules involved free of Nuxt auto-imports (relative imports).
 
 ## 10. Operations (v1)
 
-`npm run dev` (local), `npm run build` → `.output/` (Node server). Hosting (settled Aug 2026, §13.8): **netcup VPS pico G11s** (1 vCPU/1 GB, Ubuntu LTS, Nuremberg, DE) — Nitro bundle as a systemd service behind Caddy (auto-TLS). Build runs locally; the self-contained `.output/` is rsynced (no toolchain on the server; bootstrap adds a 1 GB swapfile). Runbook + scripts: `deploy/`; **live since 2026-08-26** — the inventory (domain/DNS at INWX, IPs, TLS, costs) is `deploy/infrastructure.md`.
+`npm run dev` (local), `npm run build` → `.output/` (Node server). Hosting (settled Aug 2026, §13.8): **netcup VPS pico G11s** (1 vCPU/1 GB, Ubuntu LTS, Nuremberg, DE) — Nitro bundle as a systemd service behind Caddy (auto-TLS). Build runs locally; the self-contained `.output/` is rsynced (no toolchain on the server; bootstrap adds a 1 GB swapfile). Runbook + scripts: `deploy/`; **live since 2026-08-26** — the inventory (domain/DNS at INWX, IPs, TLS, costs) is `deploy/infrastructure.md`. The one piece of persistent state is the last-good statements store in `/var/lib/begutachtungs-monitor` (systemd `StateDirectory=`, §5 cache rule 4) — losing it costs a degraded page, never data; there is nothing to back up.
 
 **EU sovereignty (hard invariant):** at runtime the application loads
 **no** third-party resources — no web fonts (system sans), no icon/script

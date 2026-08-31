@@ -185,6 +185,13 @@ export interface StatementMeta {
 
 export interface StatementsResponse {
   items: StatementMeta[]
+  /**
+   * Set when list 142 was unavailable and the persisted last-good
+   * aggregation is served instead (ISO timestamp of that fetch) — same
+   * contract as `StatementsSummary.staleAsOf`: stale is served, never
+   * as fresh.
+   */
+  staleAsOf?: string | null
 }
 
 export type ConsultationStatus = 'open' | 'closed' | 'all'

@@ -1,9 +1,12 @@
 # Deployment
 
 Target: one small EU-owned VPS (settled: **netcup VPS pico G11s**, Nuremberg,
-DE — see `docs/architecture.md` §10/§13). The app is stateless
-(in-memory cache only), so the whole production setup is: Node runs the Nitro
-bundle as a systemd service, Caddy terminates TLS in front of it.
+DE — see `docs/architecture.md` §10/§13). The whole production setup is: Node
+runs the Nitro bundle as a systemd service, Caddy terminates TLS in front of
+it. No database — the only persistent state is the last-good Stellungnahmen
+fallback in `/var/lib/begutachtungs-monitor` (systemd `StateDirectory=`,
+architecture.md §5 cache rule 4). Nothing there needs backing up: losing it
+costs a degraded page until the next successful upstream fetch.
 
 The build runs **locally**; the self-contained `.output/` bundle (pure JS,
 platform-independent) is rsynced to the server. The server needs no git, pnpm,
@@ -60,6 +63,20 @@ SERVER=root@<SERVER_IP> ./deploy/deploy.sh
 
 That is: local `pnpm build`, rsync `.output/` to `/srv/begutachtungs-monitor`,
 restart the service, smoke-check that it answers on localhost.
+
+**When the systemd unit changes** (it did on 2026-08-31: `StateDirectory=`),
+`deploy.sh` is not enough — it only ships `.output/`. Re-run the bootstrap,
+which is idempotent and rewrites the unit:
+
+```sh
+scp deploy/bootstrap.sh root@<SERVER_IP>:
+ssh root@<SERVER_IP> 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'
+```
+
+Until that runs, the app falls back to `/srv/begutachtungs-monitor/.data`
+(its working directory) — which works, but `rsync --delete` wipes it on every
+deploy. Verify with
+`ssh root@<SERVER_IP> ls /var/lib/begutachtungs-monitor/statements`.
 
 ## Notes
 

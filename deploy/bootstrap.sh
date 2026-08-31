@@ -86,6 +86,12 @@ User=app
 Group=app
 WorkingDirectory=$APP_DIR
 ExecStart=/usr/bin/node $APP_DIR/server/index.mjs
+# Persistent app state in /var/lib/begutachtungs-monitor (created and
+# chowned to the service user by systemd, exported as \$STATE_DIRECTORY).
+# Must live OUTSIDE $APP_DIR: deploy.sh rsyncs .output/ with --delete.
+# Currently used for the last-good Stellungnahmen fallback
+# (server/utils/lastgood.ts) — losing it costs a degraded page, not data.
+StateDirectory=begutachtungs-monitor
 Environment=NODE_ENV=production
 Environment=NITRO_HOST=127.0.0.1
 Environment=NITRO_PORT=3000
