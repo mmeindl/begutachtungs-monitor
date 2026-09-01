@@ -93,7 +93,7 @@ export interface StatementsSummary {
   nonPublic: number
   /**
    * Set when list 142 was unavailable or inconsistent with list 81: `total`
-   * then comes from the list-81 counter and the breakdown/topOrganisations
+   * then comes from the list-81 counter and the breakdown/organisationList
    * are unknown (zeros/empty) — render a hint instead of the panel.
    */
   degraded?: boolean
@@ -109,8 +109,16 @@ export interface StatementsSummary {
    * staleness is always visible, never silent.
    */
   staleAsOf?: string | null
-  /** Organisations only — private persons are never listed by name */
-  topOrganisations: {
+  /**
+   * EVERY organisation that filed, not a top-n selection — private persons
+   * are never listed by name. Sorted by endorsements desc, then name: the
+   * UI splits it at "endorsements > 0" but the ordering is the contract.
+   *
+   * Capped (ORG_LIST_CAP) above every population measured in GP XXVIII
+   * (32/ME: 100 organisations). `organisations` stays the true count, so a
+   * capped list is detectable: organisations > organisationList.length.
+   */
+  organisationList: {
     name: string
     endorsements: number
     parliamentUrl: string

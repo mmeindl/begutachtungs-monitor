@@ -15,11 +15,6 @@ const PAGE_SIZE = 25
 
 const expanded = ref(false)
 const listId = useId()
-const filter = ref<'all' | 'organisations'>('all')
-const filterOptions = [
-  { value: 'all', label: 'Alle' },
-  { value: 'organisations', label: 'Nur Organisationen' },
-] as const
 const visibleCount = ref(PAGE_SIZE)
 
 /* Lazy: nothing is requested until the user expands the list the first time
@@ -36,15 +31,19 @@ async function toggleList() {
   }
 }
 
-const filtered = computed<StatementMeta[]>(() => {
-  const items = data.value?.items ?? []
-  return filter.value === 'organisations'
-    ? items.filter((s) => s.submitterKind === 'organisation')
-    : items
-})
+/* Organisations are deliberately NOT in this list: the section above already
+ * names every one of them, so including them here showed each organisation
+ * twice on the same page. What is left is the half no summary can represent —
+ * private persons and non-public submissions are anonymous by design, so the
+ * only thing to offer per row is its date and the link to the full text
+ * upstream. That makes this list the page's one path to individual citizen
+ * input, and nothing else on the page duplicates it. */
+const individual = computed<StatementMeta[]>(() =>
+  (data.value?.items ?? []).filter((s) => s.submitterKind !== 'organisation'),
+)
 
-const visible = computed(() => filtered.value.slice(0, visibleCount.value))
-const hasMore = computed(() => filtered.value.length > visibleCount.value)
+const visible = computed(() => individual.value.slice(0, visibleCount.value))
+const hasMore = computed(() => individual.value.length > visibleCount.value)
 
 /* One staleness sentence per page. When the summary above is already a
  * last-good fallback, the detail page states it under this panel and the
@@ -55,9 +54,6 @@ const listStaleAsOf = computed(() =>
   !props.summary.staleAsOf ? (data.value?.staleAsOf ?? null) : null,
 )
 
-watch(filter, () => {
-  visibleCount.value = PAGE_SIZE
-})
 
 /* GDPR defense in depth: persons and non-public submissions always render a
  * fixed label — never a name — regardless of what the API delivered. */
@@ -80,17 +76,44 @@ const miniStats = computed(() => [
   { label: 'Nicht öffentlich', value: props.summary.nonPublic },
 ])
 
-/* The expandable list earns its button only when it adds entries beyond the
- * always-visible top organisations — otherwise it merely repeats them. */
-const listAddsMore = computed(
-  () => props.summary.total > props.summary.topOrganisations.length,
+/* The button exists only when there is something the organisation section
+ * cannot show. Counted from the summary, not from the fetched list, because
+ * the fetch does not happen until the button is pressed. */
+const individualCount = computed(
+  () => props.summary.privatePersons + props.summary.nonPublic,
 )
 
-/* "Top" is only honest when the list actually is a selection. */
+/* Split by endorsements, not by rank. The server ships every organisation
+ * (see StatementsSummary.organisationList), but a flat list of all of them
+ * would be mostly zero-width bars: on 88/ME two of 23 organisations carry an
+ * endorsement, on 8/ME 15 of 35. So the ranked block holds the ones a bar can
+ * say something about, and the rest stay on the page as plain names — folded,
+ * but in the SSR HTML, which is what lets an organisation find itself here via
+ * find-in-page or a search engine. */
+const rankedOrgs = computed(() =>
+  props.summary.organisationList.filter((o) => o.endorsements > 0),
+)
+
+/* Alphabetical, not upstream order: without a ranking to convey, the only
+ * useful order is the one you can scan for a name. (filter() copies, so this
+ * never sorts the prop.) */
+const furtherOrgs = computed(() =>
+  props.summary.organisationList
+    .filter((o) => o.endorsements === 0)
+    .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+)
+
+/* ORG_LIST_CAP is set far above every population measured in GP XXVIII, so
+ * this is a guard against a future outlier, not a normal state. */
+const hiddenOrgCount = computed(() =>
+  Math.max(0, props.summary.organisations - props.summary.organisationList.length),
+)
+
+/* "Mit den meisten Zustimmungen" is only honest while something is left out. */
 const orgHeading = computed(() =>
-  props.summary.organisations <= props.summary.topOrganisations.length
-    ? 'Organisationen'
-    : 'Organisationen mit den meisten Zustimmungen',
+  rankedOrgs.value.length && (furtherOrgs.value.length || hiddenOrgCount.value)
+    ? 'Organisationen mit den meisten Zustimmungen'
+    : 'Organisationen',
 )
 
 /* Submitter mix as one stacked bar — "707, davon 96 % Privatpersonen" in a
@@ -111,7 +134,7 @@ const mixSegments = computed(() => {
 })
 
 const maxEndorsements = computed(() =>
-  Math.max(0, ...props.summary.topOrganisations.map((o) => o.endorsements)),
+  Math.max(0, ...rankedOrgs.value.map((o) => o.endorsements)),
 )
 
 /* CSS max() keeps every non-zero bar visible: 1 of 355 is 0.3 % — sub-pixel
@@ -159,11 +182,11 @@ function endorsementBarWidth(endorsements: number): string {
       veröffentlicht wurden.
     </p>
 
-    <!-- Top organisations -->
-    <section v-if="summary.topOrganisations.length" class="mt-6">
+    <!-- Organisations: ranked by endorsements, the rest folded below -->
+    <section v-if="summary.organisationList.length" class="mt-6">
       <h3 class="text-base font-semibold text-ink">{{ orgHeading }}</h3>
-      <ul class="mt-1 divide-y divide-hairline">
-        <li v-for="org in summary.topOrganisations" :key="org.parliamentUrl" class="py-2.5">
+      <ul v-if="rankedOrgs.length" class="mt-1 divide-y divide-hairline">
+        <li v-for="org in rankedOrgs" :key="org.parliamentUrl" class="py-2.5">
           <div class="flex items-baseline justify-between gap-4">
             <ExternalLink
               :href="org.parliamentUrl"
@@ -172,12 +195,9 @@ function endorsementBarWidth(endorsements: number): string {
             >
               <span class="truncate">{{ org.name }}</span>
             </ExternalLink>
-            <!-- Same guard as the lazy list below: a column of
-                 "0 Zustimmungen" is pure noise on small consultations. -->
-            <span
-              v-if="org.endorsements > 0"
-              class="shrink-0 text-sm tabular-nums text-ink-secondary"
-            >
+            <!-- No zero guard needed here: this block is the >0 half of the
+                 split. The zero half renders as names only, below. -->
+            <span class="shrink-0 text-sm tabular-nums text-ink-secondary">
               {{ endorsementLabel(org.endorsements) }}
             </span>
           </div>
@@ -185,7 +205,6 @@ function endorsementBarWidth(endorsements: number): string {
                spread is the story — one Betriebsrat can out-mobilize the
                other hundred statements combined. -->
           <div
-            v-if="maxEndorsements > 0"
             class="mt-1.5 h-1.5 w-full rounded-r-[2px] bg-accent-wash"
             aria-hidden="true"
           >
@@ -196,10 +215,44 @@ function endorsementBarWidth(endorsements: number): string {
           </div>
         </li>
       </ul>
+
+      <!-- Native <details> for the same reason as DraftSummary: no hydration,
+           keyboard accessible as-is, find-in-page reveals it, and the names
+           stay in the SSR HTML. A plain <div> when there is no ranked block
+           above it — nothing to be "weitere" than. -->
+      <component
+        :is="rankedOrgs.length ? 'details' : 'div'"
+        v-if="furtherOrgs.length"
+        :class="rankedOrgs.length ? 'mt-4 border-t border-hairline' : undefined"
+      >
+        <summary
+          v-if="rankedOrgs.length"
+          class="cursor-pointer rounded py-3 text-sm font-medium text-ink-secondary marker:text-ink-muted"
+        >
+          Weitere {{ formatNumberDe(furtherOrgs.length) }} Organisationen ohne
+          Zustimmungen
+        </summary>
+        <ul class="mt-1 divide-y divide-hairline">
+          <li v-for="org in furtherOrgs" :key="org.parliamentUrl" class="py-2.5">
+            <ExternalLink
+              :href="org.parliamentUrl"
+              :aria-label="`Stellungnahme von ${org.name} auf parlament.gv.at öffnen`"
+              class="tap-target block min-w-0 text-sm font-medium text-accent-deep hover:underline"
+            >
+              <span class="truncate">{{ org.name }}</span>
+            </ExternalLink>
+          </li>
+        </ul>
+      </component>
+
+      <p v-if="hiddenOrgCount > 0" class="mt-3 text-sm text-ink-muted">
+        und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen — in der
+        vollständigen Liste unten.
+      </p>
     </section>
 
-    <!-- Full list (lazy) -->
-    <div v-if="listAddsMore" class="mt-6">
+    <!-- The anonymous half, lazily fetched (organisations are above) -->
+    <div v-if="individualCount > 0" class="mt-6">
       <UButton
         color="neutral"
         variant="outline"
@@ -207,7 +260,11 @@ function endorsementBarWidth(endorsements: number): string {
         :aria-controls="listId"
         @click="toggleList"
       >
-        {{ expanded ? 'Alle Stellungnahmen ausblenden' : 'Alle Stellungnahmen anzeigen' }}
+        {{
+          expanded
+            ? 'Weitere Stellungnahmen ausblenden'
+            : `Weitere ${formatNumberDe(individualCount)} Stellungnahmen anzeigen`
+        }}
       </UButton>
     </div>
 
@@ -222,23 +279,17 @@ function endorsementBarWidth(endorsements: number): string {
         @retry="execute()"
       />
       <template v-else-if="data">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <UFieldGroup role="group" aria-label="Stellungnahmen filtern">
-            <UButton
-              v-for="opt in filterOptions"
-              :key="opt.value"
-              :color="filter === opt.value ? 'primary' : 'neutral'"
-              :variant="filter === opt.value ? 'subtle' : 'outline'"
-              :aria-pressed="filter === opt.value"
-              @click="filter = opt.value"
-            >
-              {{ opt.label }}
-            </UButton>
-          </UFieldGroup>
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+          <!-- Says what this list is, in place of a filter whose only option
+               would have been "Nur Organisationen" — all of them are above. -->
+          <p class="text-sm text-ink-secondary">
+            Privatpersonen und nicht-öffentliche Einreichungen – die
+            Organisationen stehen oben.
+          </p>
           <p class="text-sm text-ink-muted">
             <span class="tabular-nums">{{ formatNumberDe(visible.length) }}</span>
             von
-            <span class="tabular-nums">{{ formatNumberDe(filtered.length) }}</span>
+            <span class="tabular-nums">{{ formatNumberDe(individual.length) }}</span>
             angezeigt
           </p>
         </div>
@@ -251,9 +302,9 @@ function endorsementBarWidth(endorsements: number): string {
         </p>
 
         <EmptyState
-          v-if="filtered.length === 0"
-          title="Keine Stellungnahmen"
-          description="Für diese Auswahl liegen keine Stellungnahmen vor."
+          v-if="individual.length === 0"
+          title="Keine weiteren Stellungnahmen"
+          description="Alle Einreichungen zu diesem Entwurf stammen von Organisationen – sie stehen oben."
           class="mt-4"
         />
         <ul v-else class="mt-2 divide-y divide-hairline">
