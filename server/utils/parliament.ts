@@ -449,6 +449,22 @@ export async function getStatementsWithFallback(
   }
 }
 
+/**
+ * Headroom, not curation: the detail page ships EVERY organisation, so that an
+ * organisation can find itself on the page — the point of the feedback layer —
+ * and so the names sit in the SSR HTML for find-in-page and crawlers.
+ *
+ * Org populations don't scale with Stellungnahmen (88/ME: 707 statements, 23
+ * organisations — the mass is private persons), but they do vary: measured in
+ * GP XXVIII, 32/ME carries 100, 62/ME 43, 8/ME 35. The cap is a guard against
+ * a pathological Verfahren, not a display limit, hence set above all of those.
+ * 150 rows ≈ 20 KB worst case on one page, and the summary has exactly one
+ * consumer (the detail page), so this multiplies with nothing. When it does
+ * bind, `organisations` is still the true count — the UI says how many it
+ * dropped instead of silently showing a subset.
+ */
+const ORG_LIST_CAP = 150
+
 function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
   const organisations: StatementMeta[] = []
   let privatePersons = 0
@@ -458,13 +474,20 @@ function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
     else if (s.submitterKind === 'person') privatePersons++
     else nonPublic++
   }
-  organisations.sort((a, b) => b.endorsements - a.endorsements)
+  /* Name as tiebreaker: two thirds of the organisations on a typical
+   * Verfahren have zero endorsements, and a stable order beats upstream's
+   * arbitrary one — the UI lists that block alphabetically. */
+  organisations.sort(
+    (a, b) =>
+      b.endorsements - a.endorsements ||
+      (a.submitterName ?? '').localeCompare(b.submitterName ?? '', 'de'),
+  )
   return {
     total: items.length,
     organisations: organisations.length,
     privatePersons,
     nonPublic,
-    topOrganisations: organisations.slice(0, 8).map((s) => ({
+    organisationList: organisations.slice(0, ORG_LIST_CAP).map((s) => ({
       name: s.submitterName ?? '',
       endorsements: s.endorsements,
       parliamentUrl: s.parliamentUrl,
@@ -600,7 +623,7 @@ export async function getConsultationDetail(
           organisations: 0,
           privatePersons: 0,
           nonPublic: 0,
-          topOrganisations: [],
+          organisationList: [],
           degraded: true,
         },
     enactment,
