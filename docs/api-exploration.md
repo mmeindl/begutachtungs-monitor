@@ -105,7 +105,12 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/142?js=eval&
 - Document links are NOT in the row → fetch the SNME detail.
 - The list definition is embedded in every ME detail under `.content.statements.filter.data.definition`.
 
-**⚠ Upstream index gap (measured 2026-08-31, first observed 2026-08-27 — still open).**
+**Upstream index gap — RESOLVED 2026-09-01** (first observed 2026-08-27). Parliament
+rebuilt the index and confirmed the fix by mail; re-measured the same day:
+88/ME returns its full 707 rows, and `{GP: XXVIII, ITYP: ME}` returns 6,008
+rows against list 81's 5,977. The incident stays documented because the
+failure mode is silent and can recur — that is what the last-good store
+guards against, and question 2 below is still unanswered upstream.
 List 142 silently under-delivers when filtered via `BEZUG_*`. For GP XXVIII
 list 81 counts **5,977** Stellungnahmen, list 142 returns **2,916** rows:
 
@@ -134,8 +139,13 @@ Worst cases: **88/ME 707 → 0**, 8/ME 143 → 1, 104/ME 101 → 0, 62/ME 101 �
   Stellungnahmen" without the list-81 counter.
 - Consequence for us: `getStatementsForMe` throws rather than caching a
   zero, and the persisted last-good store (`server/utils/lastgood.ts`)
-  keeps the aggregation alive across restarts. Reported to
-  `ogd@parlament.gv.at` — draft + full per-ME CSV in `outreach/`.
+  keeps the aggregation alive across restarts — the defence that outlives
+  this incident.
+- Open question the fix does not answer: an API consumer still cannot
+  distinguish "0 rows" from "0 Stellungnahmen" without cross-checking the
+  list-81 counter. Worth raising if there is ever a second occasion.
+- Evidence of the outage: `outreach/list142-luecke-2026-08-31.csv`
+  (per-ME comparison, 2026-08-31).
 
 ### SNME detail — a Stellungnahme as its own item
 
