@@ -1,0 +1,16 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Begutachtungs-Monitor//Live//DE
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:live-demokratiewoche-2026@begutachtungs-monitor.at
+DTSTAMP:20260904T000000Z
+DTSTART:20261022T170000Z
+DTEND:20261022T183000Z
+SUMMARY:Begutachtungs-Monitor live – Was wurde aus den Stellungnahmen?
+DESCRIPTION:Online-Workshop bei der Demokratiewoche 2026.
+LOCATION:https://begutachtungs-monitor.at/live
+URL:https://begutachtungs-monitor.at/live
+END:VEVENT
+END:VCALENDAR
