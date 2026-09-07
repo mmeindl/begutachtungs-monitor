@@ -88,3 +88,11 @@ deploy. Verify with
   adds a 1 GB swapfile as headroom for the running app.
 - Before a public launch: uptime monitoring (architecture.md §12.7 — the
   predecessor died in operation).
+- **RIS prewarm:** `begutachtungs-monitor-prewarm.timer` curls
+  `/api/ris-map/aktuell` nightly at 04:30 and `deploy.sh` starts the same
+  oneshot after every deploy, so the ~46-request RIS corpus fetch never lands
+  on a visitor. A server bootstrapped **before Sept 2026** does not have the
+  units yet: copy the two `cat > /etc/systemd/system/begutachtungs-monitor-prewarm.*`
+  blocks from `bootstrap.sh` onto the server once, then
+  `systemctl daemon-reload && systemctl enable --now begutachtungs-monitor-prewarm.timer`.
+  Check: `systemctl list-timers begutachtungs-monitor-prewarm.timer`.

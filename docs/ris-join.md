@@ -125,8 +125,15 @@ the product ("nicht im RIS veröffentlicht"), not an error.
   Diagnostic endpoint for now; not yet exercised against the live API from
   the app itself (the fetch parameters and envelope were verified with
   curl and the corpus-test scripts).
-- Not yet done: the RIS link on the consultation detail page, a nightly
-  prewarm, and the ruleVersion 2 changes.
+- Consultation detail: `risDraft` on `ConsultationDetail`, rendered as the
+  "Entwurf im RIS" block with the RIS entry, HTML/PDF text, a Fristabweichung
+  note, and "im RIS nicht veröffentlicht" as a shown state.
+- Nightly prewarm: systemd timer + oneshot in `deploy/bootstrap.sh`, also
+  started by `deploy.sh` after each deploy; corpus TTL 20 h so the daily run
+  always refreshes. Existing server needs the units applied once
+  (`deploy/README.md`, Notes).
+- Not yet done: the ruleVersion 2 changes (need a fresh corpus run) and a
+  GP XXVIII review of the ministry lineage groups.
 
 ## 5. Artefact
 
