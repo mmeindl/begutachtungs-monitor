@@ -27,7 +27,9 @@ const RIS_TIMEOUT_MS = 20_000
 const RIS_MAX_RETRIES = 2
 const RIS_RETRY_BACKOFF_MS = 1_000
 const RIS_PAGE_PAUSE_MS = 300
-const RIS_CORPUS_TTL_S = 60 * 60 * 24
+// 20 h, not 24: the prewarm timer fires daily, and a TTL equal to its period
+// would let the timer find a still-valid cache and refresh nothing.
+const RIS_CORPUS_TTL_S = 60 * 60 * 20
 const RIS_MAP_TTL_S = 60 * 30
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 

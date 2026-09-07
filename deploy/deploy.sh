@@ -25,4 +25,8 @@ ssh "$SERVER" \
    && curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' http://127.0.0.1:3000/ \
    || { journalctl -u begutachtungs-monitor -n 20 --no-pager; exit 1; }"
 
+# Warm the RIS↔ME map in the background (in-memory cache is empty after the
+# restart). `|| true`: servers bootstrapped before the unit existed just skip it.
+ssh "$SERVER" "systemctl start --no-block begutachtungs-monitor-prewarm.service 2>/dev/null || true"
+
 echo "✔ deployed"

@@ -220,7 +220,7 @@ regions — CLOUD Act). The build-time dependency on the npm registry remains
 5. **Broadlistening (stage 2)** — only once stage 1 has users.
 6. **Dark mode** (tokens are prepared), **i18n**, **a11y audit** beyond the basics, **OG images**, sitemap/robots.
 7. **Monitoring/uptime alerting** — the predecessor died in operation; set up before a public launch.
-8. **Nightly prewarm/sync cron** instead of cache-on-demand, once traffic is real.
+8. **Nightly prewarm/sync cron** instead of cache-on-demand, once traffic is real. First instance exists (Sept 2026): a systemd timer warms the RIS↔ME map (`deploy/bootstrap.sh`), because that fetch is too slow to land on a visitor.
 9. **Classifier review loop**: ~~a manual org allowlist~~ the allowlist mechanism exists (`ORG_ALLOWLIST` in `server/utils/privacy.ts`, first entry: epicenter.works, Aug 2026). Still deferred: a review loop that surfaces *candidates* (e.g. hidden submitters with many endorsements) instead of finding them by accident. Note: in dev, Nitro persists cached-function results to `.nuxt/cache/nitro/` across restarts — after classifier changes, delete that directory.
 
 ## 13. Open questions
