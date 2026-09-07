@@ -114,14 +114,29 @@ export interface StatementsSummary {
    * are never listed by name. Sorted by endorsements desc, then name: the
    * UI splits it at "endorsements > 0" but the ordering is the contract.
    *
+   * ONE ENTRY PER ORGANISATION, not per Stellungnahme: the same office can
+   * file more than once in one Verfahren (132/ME: Amt der Tiroler
+   * Landesregierung as 95/SN and 103/SN), which used to render the same name
+   * twice with nothing to tell the rows apart.
+   *
    * Capped (ORG_LIST_CAP) above every population measured in GP XXVIII
-   * (32/ME: 100 organisations). `organisations` stays the true count, so a
-   * capped list is detectable: organisations > organisationList.length.
+   * (32/ME: 100 organisations). `organisations` stays the true count of
+   * organisation *statements*, so both the partition above and a capped
+   * list stay detectable.
    */
   organisationList: {
     name: string
+    /** Summed over this organisation's statements (usually exactly one). */
     endorsements: number
-    parliamentUrl: string
+    /** Chronological; every one of them links to its own upstream page. */
+    statements: {
+      /** e.g. "95/SN-132/ME" */
+      citation: string
+      /** ISO date, null when upstream ships none */
+      date: string | null
+      endorsements: number
+      parliamentUrl: string
+    }[]
   }[]
 }
 

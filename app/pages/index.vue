@@ -12,16 +12,38 @@ useSeoMeta({
   ogDescription: pageDescription,
 })
 
-const { data, error, refresh, status } = await useFetch<DashboardPayload>('/api/dashboard')
+/* Both fetches are started here and awaited below, so they overlap instead
+ * of queueing: the outcomes endpoint shares its cached leaves with
+ * /api/dashboard, and awaiting them one after the other would add its
+ * latency to the page's instead of hiding inside it. */
+const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard')
+
+/* Server-rendered on purpose. This section IS the product's point
+ * (mechanism 1: shelving visible, mechanism 3: wins equally visible), and
+ * client-only kept it out of the SSR HTML entirely — invisible to crawlers
+ * and shared previews, absent without JS, and a "Verläufe werden geladen …"
+ * flash for everyone else, on the one section the homepage exists for.
+ *
+ * What this replaces: "resolving the outcome pool can hit ~24 cold upstream
+ * fetches — that must never block the first paint." Measured 2026-09-07
+ * against a cleared cache: the fan-out is parallel (Promise.all over the
+ * pool, then the RV leg), one Gegenstand costs ~100 ms, and the endpoint
+ * answers in 0.41 s fully cold — extension probe included — and 5 ms warm.
+ * The request count was never the latency.
+ *
+ * `timeout` is what keeps that judgement safe if upstream ever turns slow:
+ * past it useFetch reports an error and the section falls back to its
+ * "derzeit nicht abrufbar" line rather than holding the whole page. No
+ * automatic client retry — during a real upstream outage that would add one
+ * uncached fan-out per visitor and change nothing. */
+const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
+  timeout: 4000,
+})
+
+const { data, error, refresh, status } = await dashboardFetch
+const { data: outcomes, status: outcomesStatus } = await outcomesFetch
 
 const { webcalUrl, googleCalUrl } = useFeedUrls()
-
-// Deferred + client-only: resolving the outcome pool can hit ~24 cold
-// upstream fetches — that must never block the dashboard's first paint.
-const { data: outcomes, status: outcomesStatus } = useFetch<DashboardOutcomes>(
-  '/api/dashboard/outcomes',
-  { server: false, lazy: true },
-)
 
 const topMax = computed(() => data.value?.topByStatements[0]?.statementCount ?? 0)
 
