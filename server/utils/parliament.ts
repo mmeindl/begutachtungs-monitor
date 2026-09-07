@@ -54,6 +54,7 @@ import {
   saveLastGoodStatements,
   type LastGoodStatements,
 } from './lastgood'
+import { withinBudget } from './budget'
 
 /**
  * TTL of all upstream caches. `swr: false` is NOT redundant: Nitro defaults
@@ -494,6 +495,24 @@ function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
 }
 
 /**
+ * How long a page waits for the RIS join before rendering without it.
+ *
+ * The join is enrichment: matched, unmatched and "we could not ask" all end
+ * up as a block that either shows RIS links or isn't there. The cold cost is
+ * not: the corpus is ~46 paged RIS requests, and on 2026-09-07 the first
+ * detail-page hit after a deploy took **61 s** in production while the
+ * prewarm unit was still running (it starts with --no-block after the
+ * restart, so a visitor can arrive first — and the 20 h corpus TTL expires
+ * during the day too, where swr:false makes the next request pay).
+ *
+ * Past the budget the reader gets the page and the fetch keeps running, so
+ * the cache still fills — whoever pays the cold cost, it is never a visitor.
+ * The unbounded call stays where it belongs: /api/ris-map, which is what the
+ * prewarm timer hits.
+ */
+const RIS_JOIN_BUDGET_MS = 2_000
+
+/**
  * Chain state of one consultation (RV citation + BGBl number) WITHOUT the
  * statements fetch — the dashboard's recently-closed section needs only
  * the outcome, and getConsultationDetail would drag list 142 along for
@@ -543,9 +562,10 @@ export async function getConsultationDetail(
     // served with visible staleness, and only without one does the page
     // degrade to the list-81 count.
     getStatementsWithFallback(gp, inr).catch(() => null),
-    // RIS is a second upstream; its outage must not cost the page either.
-    // (Nitro auto-import from ./ris — an explicit import would be a cycle.)
-    getRisMapForGp(gp).catch(() => null),
+    // RIS is a second upstream; neither its outage nor its latency must
+    // cost the page. (Nitro auto-import from ./ris — an explicit import
+    // would be a cycle.)
+    withinBudget(getRisMapForGp(gp), RIS_JOIN_BUDGET_MS),
   ])
   const content = detail.content ?? {}
 
