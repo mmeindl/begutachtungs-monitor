@@ -104,38 +104,11 @@ PrivateTmp=true
 WantedBy=multi-user.target
 UNIT
 
-# --- nightly prewarm of the RIS↔ME map ---------------------------------------
-# The RIS corpus fetch is ~46 upstream requests (docs/ris-join.md §4a); the
-# Nitro cache is in-memory and empty after every restart. Without this the
-# first visitor of a consultation page after a deploy waits for it.
-# deploy.sh starts the same oneshot right after the health check.
-cat > /etc/systemd/system/begutachtungs-monitor-prewarm.service <<UNIT
-[Unit]
-Description=Begutachtungs-Monitor: warm the RIS↔ME map of the current GP
-After=begutachtungs-monitor.service
-Requires=begutachtungs-monitor.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell
-UNIT
-
-cat > /etc/systemd/system/begutachtungs-monitor-prewarm.timer <<UNIT
-[Unit]
-Description=Begutachtungs-Monitor: nightly RIS prewarm
-
-[Timer]
-OnCalendar=*-*-* 04:30:00
-RandomizedDelaySec=20m
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-UNIT
-
+# The prewarm timer (deploy/systemd/*) is not installed here: bootstrap.sh
+# is scp'd alone and cannot see the repo. deploy.sh rsyncs the unit files on
+# every deploy and enables the timer.
 systemctl daemon-reload
 systemctl enable begutachtungs-monitor
-systemctl enable --now begutachtungs-monitor-prewarm.timer
 # The app itself is not started here — there is nothing to run until the
 # first deploy; deploy.sh does `systemctl restart`, which also performs the
 # first start.

@@ -17,7 +17,13 @@ pnpm build
 
 # macOS ships openrsync (no --chown) → chown in a separate step.
 rsync -az --delete .output/ "$SERVER:$APP_DIR/"
-ssh "$SERVER" "chown -R app:app $APP_DIR && systemctl restart begutachtungs-monitor"
+# systemd units live in git (deploy/systemd/) and are installed on every
+# deploy — idempotent, no manual step on the server when a unit changes.
+rsync -az deploy/systemd/ "$SERVER:/etc/systemd/system/"
+ssh "$SERVER" "chown -R app:app $APP_DIR \
+  && systemctl daemon-reload \
+  && systemctl enable --now --quiet begutachtungs-monitor-prewarm.timer \
+  && systemctl restart begutachtungs-monitor"
 
 sleep 2
 ssh "$SERVER" \
@@ -25,8 +31,8 @@ ssh "$SERVER" \
    && curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' http://127.0.0.1:3000/ \
    || { journalctl -u begutachtungs-monitor -n 20 --no-pager; exit 1; }"
 
-# Warm the RIS↔ME map in the background (in-memory cache is empty after the
-# restart). `|| true`: servers bootstrapped before the unit existed just skip it.
-ssh "$SERVER" "systemctl start --no-block begutachtungs-monitor-prewarm.service 2>/dev/null || true"
+# Warm the RIS↔ME map in the background — the in-memory cache is empty
+# after the restart.
+ssh "$SERVER" "systemctl start --no-block begutachtungs-monitor-prewarm.service"
 
 echo "✔ deployed"

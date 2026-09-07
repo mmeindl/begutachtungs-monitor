@@ -128,10 +128,9 @@ the product ("nicht im RIS veröffentlicht"), not an error.
 - Consultation detail: `risDraft` on `ConsultationDetail`, rendered as the
   "Entwurf im RIS" block with the RIS entry, HTML/PDF text, a Fristabweichung
   note, and "im RIS nicht veröffentlicht" as a shown state.
-- Nightly prewarm: systemd timer + oneshot in `deploy/bootstrap.sh`, also
-  started by `deploy.sh` after each deploy; corpus TTL 20 h so the daily run
-  always refreshes. Existing server needs the units applied once
-  (`deploy/README.md`, Notes).
+- Nightly prewarm: systemd timer + oneshot in `deploy/systemd/`, installed
+  and enabled by `deploy.sh` on every deploy and started after each restart;
+  corpus TTL 20 h so the daily run always refreshes.
 - Not yet done: the ruleVersion 2 changes (need a fresh corpus run) and a
   GP XXVIII review of the ministry lineage groups.
 
