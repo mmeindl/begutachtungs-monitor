@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import type { ConsultationDocument } from '#shared/types'
 
-defineProps<{
-  documents: ConsultationDocument[]
-}>()
+/** A row may carry its own sub-line: source-specific hints (the RIS
+ *  Entwurfstext) have no place in the shared DOC_HINTS prefix table,
+ *  which describes the ministries' standard parliament document set. */
+type DocumentListItem = ConsultationDocument & { hint?: string }
+
+withDefaults(
+  defineProps<{
+    documents: DocumentListItem[]
+    /** Named in the aria-label so screen-reader users hear where a link
+     *  goes — the page shows the same documents from two sources. */
+    source?: string
+  }>(),
+  { source: 'parlament.gv.at' },
+)
 
 const formatNames: Record<'pdf' | 'html', string> = { pdf: 'PDF', html: 'HTML' }
 
@@ -19,8 +30,9 @@ const DOC_HINTS: [prefix: string, hint: string][] = [
   ['Textgegenüberstellung', 'Geltendes Recht und Entwurf nebeneinander – zeigt, was sich ändern würde'],
 ]
 
-function docHint(title: string): string | null {
-  const t = title.trim()
+function docHint(doc: DocumentListItem): string | null {
+  if (doc.hint) return doc.hint
+  const t = doc.title.trim()
   const hit = DOC_HINTS.find(([prefix]) => t === prefix || t.startsWith(prefix))
   return hit ? hit[1] : null
 }
@@ -35,8 +47,8 @@ function docHint(title: string): string | null {
     >
       <div class="min-w-0">
         <p class="text-sm text-ink">{{ doc.title }}</p>
-        <p v-if="docHint(doc.title)" class="mt-0.5 text-xs text-ink-muted">
-          {{ docHint(doc.title) }}
+        <p v-if="docHint(doc)" class="mt-0.5 text-xs text-ink-muted">
+          {{ docHint(doc) }}
         </p>
       </div>
       <span class="flex shrink-0 gap-2">
@@ -50,7 +62,7 @@ function docHint(title: string): string | null {
           color="neutral"
           variant="outline"
           class="min-h-11"
-          :aria-label="`${doc.title} als ${formatNames[fmt.type]} auf parlament.gv.at öffnen`"
+          :aria-label="`${doc.title} als ${formatNames[fmt.type]} auf ${source} öffnen`"
         >
           {{ formatNames[fmt.type] }}<span aria-hidden="true"> ↗</span>
         </UButton>

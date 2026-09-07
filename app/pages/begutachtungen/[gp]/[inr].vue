@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ConsultationDetail } from '#shared/types'
+import type { ConsultationDetail, ConsultationDocument } from '#shared/types'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
 definePageMeta({
@@ -64,6 +64,22 @@ const showOutcome = computed(() => {
 const divergence = computed(() =>
   fristDivergence(data.value?.risDraft ?? null, Boolean(data.value?.active)),
 )
+
+/* One draft text, up to three formats — a DocumentList row, not a chip per
+ * format: a chip has to carry the format in its label ("Entwurfstext (PDF)"),
+ * so the noun repeats and the row grows with every format RIS adds. The
+ * RIS-Eintrag itself is a catalogue page, not a document, and stays a link
+ * in the lead sentence. */
+const risDocuments = computed<(ConsultationDocument & { hint?: string })[]>(() => {
+  const doc = data.value?.risDraft?.risDocument
+  if (!doc) return []
+  const formats = ([['pdf', doc.pdf], ['html', doc.html]] as const)
+    .filter((pair): pair is readonly ['pdf' | 'html', string] => Boolean(pair[1]))
+    .map(([type, url]) => ({ type, url }))
+  return formats.length
+    ? [{ title: 'Entwurfstext', hint: 'Fassung im RIS des Bundes', formats }]
+    : []
+})
 
 // "Vergleichen Sie selbst": the honest manual precursor of the diff layer —
 // the ME Gesetzestext next to the RV text, reader does the comparison.
@@ -558,49 +574,6 @@ const linkClasses =
             Der direkte Textvergleich Entwurf ↔ Regierungsvorlage ist geplant.
           </p>
         </div>
-
-        <!-- The same draft in the second official source. RIS carries the
-             text as HTML/XML back to 2004 — the raw material of the planned
-             comparison. "Not in RIS" is a state worth showing, not an error
-             (docs/ris-join.md §2): a dozen drafts per GP never get there. -->
-        <div v-if="data.risDraft" class="mt-8">
-          <h3 class="text-base font-semibold text-ink">Entwurf im Rechtsinformationssystem (RIS)</h3>
-          <template v-if="data.risDraft.risUrl">
-            <p class="mt-1 text-sm text-ink-secondary">
-              Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
-              und Textgegenüberstellung.
-            </p>
-            <ul class="mt-2 flex flex-wrap gap-2">
-              <li>
-                <ExternalLink
-                  :href="data.risDraft.risUrl"
-                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
-                >
-                  RIS-Eintrag
-                </ExternalLink>
-              </li>
-              <li v-if="data.risDraft.risDocument?.html">
-                <ExternalLink
-                  :href="data.risDraft.risDocument.html"
-                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
-                >
-                  Entwurfstext (HTML)
-                </ExternalLink>
-              </li>
-              <li v-if="data.risDraft.risDocument?.pdf">
-                <ExternalLink
-                  :href="data.risDraft.risDocument.pdf"
-                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
-                >
-                  Entwurfstext (PDF)
-                </ExternalLink>
-              </li>
-            </ul>
-          </template>
-          <p v-else class="mt-1 text-sm text-ink-secondary">
-            Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
-          </p>
-        </div>
       </section>
 
       <section class="page-section" aria-labelledby="statements-heading">
@@ -665,12 +638,48 @@ const linkClasses =
         </p>
       </section>
 
-      <section v-if="data.documents.length" class="page-section" aria-labelledby="docs-heading">
+      <!-- Both sources of the SAME draft live here, not under "Was wurde
+           daraus?": the RIS entry is the draft at this stage from a second
+           authority, not an outcome — and showOutcome is false for an open
+           consultation, which hid the RIS text on exactly the pages that
+           want it. Two lists under two headings rather than one merged
+           list: merged, "Gesetzestext" would appear twice with nothing to
+           tell the sources apart. -->
+      <section
+        v-if="data.documents.length || data.risDraft"
+        class="page-section"
+        aria-labelledby="docs-heading"
+      >
         <h2 id="docs-heading" class="section-heading">
           Entwurfsdokumente
         </h2>
-        <div class="mt-4">
+        <div v-if="data.documents.length" class="mt-4">
           <DocumentList :documents="data.documents" />
+        </div>
+
+        <!-- RIS carries the text as HTML/XML back to 2004 — the raw material
+             of the planned Entwurf ↔ Regierungsvorlage comparison. "Not in
+             RIS" is a state worth showing, not an error (docs/ris-join.md
+             §2): a dozen drafts per GP never get there. -->
+        <div v-if="data.risDraft" class="mt-8">
+          <h3 class="text-base font-semibold text-ink">
+            Zweite Quelle: Rechtsinformationssystem (RIS)
+          </h3>
+          <template v-if="data.risDraft.risUrl">
+            <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+              Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
+              und Textgegenüberstellung im
+              <ExternalLink :href="data.risDraft.risUrl" :class="linkClasses"
+                >RIS-Eintrag</ExternalLink
+              >.
+            </p>
+            <div v-if="risDocuments.length" class="mt-2">
+              <DocumentList :documents="risDocuments" source="ris.bka.gv.at" />
+            </div>
+          </template>
+          <p v-else class="mt-1 max-w-prose text-sm text-ink-secondary">
+            Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
+          </p>
         </div>
       </section>
 
