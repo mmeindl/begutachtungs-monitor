@@ -7,6 +7,7 @@ import {
   findHandoff,
   findLastRvLink,
   findRvLinks,
+  groupOrganisationStatements,
   intToRoman,
   mapConsultationRow,
   mapDocuments,
@@ -22,6 +23,7 @@ import {
   romanToInt,
   stripHtmlToText,
 } from '../server/utils/mappers'
+import type { StatementMeta } from '../shared/types'
 
 // Real list-81 row (sample from 2026-08-15, 133/ME XXVIII)
 const LIST81_ROW = [
@@ -480,5 +482,75 @@ describe('helpers', () => {
     expect(romanToInt('XIV')).toBe(14)
     expect(romanToInt('IIX')).toBeNull()
     expect(romanToInt('abc')).toBeNull()
+  })
+})
+
+
+describe('groupOrganisationStatements', () => {
+  /* The real case that produced this function: 132/ME, where the same office
+   * filed twice and the panel rendered its name in two identical-looking
+   * rows (95/SN on 26.08.2026, 103/SN on 07.09.2026). */
+  const org = (
+    name: string,
+    citation: string,
+    date: string | null,
+    endorsements = 0,
+  ): StatementMeta => ({
+    citation,
+    date,
+    submitterKind: 'organisation',
+    submitterName: name,
+    endorsements,
+    parliamentUrl: `https://www.parlament.gv.at/gegenstand/XXVIII/SNME/${citation}`,
+  })
+
+  it('collapses repeated submissions of one organisation into one entry', () => {
+    const entries = groupOrganisationStatements([
+      org('Amt der Tiroler Landesregierung', '95/SN-132/ME', '2026-08-26'),
+      org('Amt der Tiroler Landesregierung', '103/SN-132/ME', '2026-09-07'),
+      org('UX Melange GmbH', '30/SN-132/ME', '2026-08-04'),
+    ])
+    expect(entries.map((e) => e.name)).toEqual([
+      'Amt der Tiroler Landesregierung',
+      'UX Melange GmbH',
+    ])
+    // Chronological inside the group, and every statement stays reachable.
+    expect(entries[0]!.statements.map((s) => s.citation)).toEqual([
+      '95/SN-132/ME',
+      '103/SN-132/ME',
+    ])
+    expect(entries[1]!.statements).toHaveLength(1)
+  })
+
+  it('sums endorsements over a group and ranks by that total', () => {
+    const entries = groupOrganisationStatements([
+      org('Zweimal', 'a', '2026-01-01', 3),
+      org('Zweimal', 'b', '2026-02-01', 4),
+      org('Einmal', 'c', '2026-01-15', 5),
+    ])
+    expect(entries.map((e) => [e.name, e.endorsements])).toEqual([
+      ['Zweimal', 7],
+      ['Einmal', 5],
+    ])
+    // The per-statement numbers survive the grouping.
+    expect(entries[0]!.statements.map((s) => s.endorsements)).toEqual([3, 4])
+  })
+
+  it('keeps the distinctions upstream makes — no fuzzy merging', () => {
+    const entries = groupOrganisationStatements([
+      org('epicenter.works', '14/SN-8/ME', '2025-04-22', 22),
+      org('epicenter.works - Plattform Grundrechtspolitik', '27/SN-62/ME', '2025-11-13', 2),
+    ])
+    expect(entries).toHaveLength(2)
+  })
+
+  it('orders equal-endorsement groups by name and undated statements last', () => {
+    const entries = groupOrganisationStatements([
+      org('Zeta', 'z', '2026-01-01'),
+      org('Alpha', 'a1', null),
+      org('Alpha', 'a2', '2026-03-01'),
+    ])
+    expect(entries.map((e) => e.name)).toEqual(['Alpha', 'Zeta'])
+    expect(entries[0]!.statements.map((s) => s.citation)).toEqual(['a2', 'a1'])
   })
 })

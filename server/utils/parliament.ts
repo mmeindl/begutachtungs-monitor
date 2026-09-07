@@ -31,6 +31,7 @@ import {
   findHandoff,
   findLastRvLink,
   findRvLinks,
+  groupOrganisationStatements,
   intToRoman,
   mapConsultationRow,
   mapDocuments,
@@ -460,8 +461,12 @@ export async function getStatementsWithFallback(
  * a pathological Verfahren, not a display limit, hence set above all of those.
  * 150 rows ≈ 20 KB worst case on one page, and the summary has exactly one
  * consumer (the detail page), so this multiplies with nothing. When it does
- * bind, `organisations` is still the true count — the UI says how many it
- * dropped instead of silently showing a subset.
+ * bind, `organisations` is still the true statement count — the UI says how
+ * many it dropped instead of silently showing a subset.
+ *
+ * Counts GROUPED organisations (one row = one organisation, however often it
+ * filed), which is what the page renders — so the cap binds even later than
+ * the measured populations suggest.
  */
 const ORG_LIST_CAP = 150
 
@@ -474,24 +479,17 @@ function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
     else if (s.submitterKind === 'person') privatePersons++
     else nonPublic++
   }
-  /* Name as tiebreaker: two thirds of the organisations on a typical
-   * Verfahren have zero endorsements, and a stable order beats upstream's
-   * arbitrary one — the UI lists that block alphabetically. */
-  organisations.sort(
-    (a, b) =>
-      b.endorsements - a.endorsements ||
-      (a.submitterName ?? '').localeCompare(b.submitterName ?? '', 'de'),
-  )
   return {
     total: items.length,
+    /* Statements, not distinct organisations: this number is one part of the
+     * partition of `total` that the panel renders as a legend and a mix bar,
+     * and it has to keep adding up. The entry count of organisationList is
+     * the distinct-organisation number, and the panel says so where it
+     * differs. */
     organisations: organisations.length,
     privatePersons,
     nonPublic,
-    organisationList: organisations.slice(0, ORG_LIST_CAP).map((s) => ({
-      name: s.submitterName ?? '',
-      endorsements: s.endorsements,
-      parliamentUrl: s.parliamentUrl,
-    })),
+    organisationList: groupOrganisationStatements(organisations).slice(0, ORG_LIST_CAP),
   }
 }
 

@@ -94,6 +94,16 @@ const rankedOrgs = computed(() =>
   props.summary.organisationList.filter((o) => o.endorsements > 0),
 )
 
+/* One organisation, several Stellungnahmen: the entry is grouped server-side,
+ * so a row can stand for more than one submission. Such a row renders the
+ * name as text and each statement as its own dated link below it — there is
+ * no single "the" statement to point the name at, and every submission has
+ * to stay one click away, which is the point of listing organisations at
+ * all. A single-statement row (the normal case) is unchanged: name = link. */
+function statementCountLabel(n: number): string {
+  return countLabelDe(n, 'Stellungnahme', 'Stellungnahmen')
+}
+
 /* Alphabetical, not upstream order: without a ranking to convey, the only
  * useful order is the one you can scan for a name. (filter() copies, so this
  * never sorts the prop.) */
@@ -104,10 +114,24 @@ const furtherOrgs = computed(() =>
 )
 
 /* ORG_LIST_CAP is set far above every population measured in GP XXVIII, so
- * this is a guard against a future outlier, not a normal state. */
-const hiddenOrgCount = computed(() =>
-  Math.max(0, props.summary.organisations - props.summary.organisationList.length),
+ * this is a guard against a future outlier, not a normal state. Counted in
+ * statements on both sides: `organisations` counts statements, and a listed
+ * entry can stand for several of them. */
+const listedOrgStatements = computed(() =>
+  props.summary.organisationList.reduce((n, o) => n + o.statements.length, 0),
 )
+const hiddenOrgCount = computed(() =>
+  Math.max(0, props.summary.organisations - listedOrgStatements.value),
+)
+
+/* Stated only when the two numbers differ — otherwise it is noise. This is
+ * also the line that keeps the legend above honest: it partitions
+ * Stellungnahmen, so "Organisationen 4" can stand over three rows. */
+const orgGroupNote = computed(() => {
+  const entries = props.summary.organisationList.length
+  if (!entries || listedOrgStatements.value === entries) return null
+  return `${formatNumberDe(listedOrgStatements.value)} Stellungnahmen von ${formatNumberDe(entries)} Organisationen – manche haben mehrfach eingereicht.`
+})
 
 /* "Mit den meisten Zustimmungen" is only honest while something is left out. */
 const orgHeading = computed(() =>
@@ -185,20 +209,33 @@ function endorsementBarWidth(endorsements: number): string {
     <!-- Organisations: ranked by endorsements, the rest folded below -->
     <section v-if="summary.organisationList.length" class="mt-6">
       <h3 class="text-base font-semibold text-ink">{{ orgHeading }}</h3>
+      <!-- Says out loud why four Stellungnahmen can stand over three rows —
+           the legend above partitions submissions, this list groups them. -->
+      <p v-if="orgGroupNote" class="mt-1 text-sm text-ink-secondary">
+        {{ orgGroupNote }}
+      </p>
       <ul v-if="rankedOrgs.length" class="mt-1 divide-y divide-hairline">
-        <li v-for="org in rankedOrgs" :key="org.parliamentUrl" class="py-2.5">
+        <li v-for="org in rankedOrgs" :key="org.name" class="py-2.5">
           <div class="flex items-baseline justify-between gap-4">
             <ExternalLink
-              :href="org.parliamentUrl"
+              v-if="org.statements.length === 1"
+              :href="org.statements[0]!.parliamentUrl"
               :aria-label="`Stellungnahme von ${org.name} auf parlament.gv.at öffnen`"
               class="tap-target min-w-0 text-sm font-medium text-accent-deep hover:underline"
             >
               <span class="truncate">{{ org.name }}</span>
             </ExternalLink>
+            <span v-else class="min-w-0 truncate text-sm font-medium text-ink">
+              {{ org.name }}
+            </span>
             <!-- No zero guard needed here: this block is the >0 half of the
-                 split. The zero half renders as names only, below. -->
+                 split. The zero half renders as names only, below. Summed
+                 over the row's statements, hence the count next to it. -->
             <span class="shrink-0 text-sm tabular-nums text-ink-secondary">
               {{ endorsementLabel(org.endorsements) }}
+              <template v-if="org.statements.length > 1">
+                · {{ statementCountLabel(org.statements.length) }}
+              </template>
             </span>
           </div>
           <!-- Decorative scale (value in text, bar aria-hidden): the
@@ -213,6 +250,7 @@ function endorsementBarWidth(endorsements: number): string {
               :style="{ width: endorsementBarWidth(org.endorsements) }"
             />
           </div>
+          <OrganisationStatementLinks v-if="org.statements.length > 1" :org="org" />
         </li>
       </ul>
 
@@ -233,14 +271,26 @@ function endorsementBarWidth(endorsements: number): string {
           Zustimmungen
         </summary>
         <ul class="mt-1 divide-y divide-hairline">
-          <li v-for="org in furtherOrgs" :key="org.parliamentUrl" class="py-2.5">
+          <li v-for="org in furtherOrgs" :key="org.name" class="py-2.5">
             <ExternalLink
-              :href="org.parliamentUrl"
+              v-if="org.statements.length === 1"
+              :href="org.statements[0]!.parliamentUrl"
               :aria-label="`Stellungnahme von ${org.name} auf parlament.gv.at öffnen`"
               class="tap-target block min-w-0 text-sm font-medium text-accent-deep hover:underline"
             >
               <span class="truncate">{{ org.name }}</span>
             </ExternalLink>
+            <template v-else>
+              <div class="flex items-baseline justify-between gap-4">
+                <span class="min-w-0 truncate text-sm font-medium text-ink">
+                  {{ org.name }}
+                </span>
+                <span class="shrink-0 text-sm tabular-nums text-ink-secondary">
+                  {{ statementCountLabel(org.statements.length) }}
+                </span>
+              </div>
+              <OrganisationStatementLinks :org="org" />
+            </template>
           </li>
         </ul>
       </component>

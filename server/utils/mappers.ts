@@ -14,6 +14,7 @@ import type {
   DocumentFormat,
   Handoff,
   StatementMeta,
+  StatementsSummary,
   TextVersion,
   TraceLink,
   TraceStep,
@@ -257,6 +258,57 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
     endorsements: asNumber(row[12]),
     parliamentUrl: `${PARLIAMENT_BASE}/gegenstand/${gp}/SNME/${snmeInr}`,
   }
+}
+
+export type OrganisationEntry = StatementsSummary['organisationList'][number]
+
+/**
+ * One entry per organisation, not per Stellungnahme. The same office files
+ * twice often enough to matter (132/ME: Amt der Tiroler Landesregierung as
+ * 95/SN on 26.08.2026 and 103/SN on 07.09.2026), and the panel then showed
+ * the identical name in two rows — indistinguishable from a bug in our own
+ * aggregation, on the page whose whole job is to be trusted.
+ *
+ * Grouped on the display name exactly as `normalizeOrgName` left it: that
+ * already folds the whitespace and separator variants which made two rows
+ * look identical, and nothing beyond it is merged — the distinctions
+ * upstream carries are real ("epicenter.works" vs "epicenter.works -
+ * Plattform Grundrechtspolitik" are different submitters), so fuzzy
+ * matching would invent a merge nobody asked for.
+ *
+ * Endorsements are summed: the group's own total is what the ranking
+ * compares, and every grouped row states how many statements it stands for.
+ * Persons never reach this function — it takes organisation statements
+ * only, and `submitterName` is null for everyone else by GDPR contract.
+ */
+export function groupOrganisationStatements(statements: StatementMeta[]): OrganisationEntry[] {
+  const byName = new Map<string, OrganisationEntry>()
+  for (const s of statements) {
+    const name = (s.submitterName ?? '').trim()
+    let entry = byName.get(name)
+    if (!entry) {
+      entry = { name, endorsements: 0, statements: [] }
+      byName.set(name, entry)
+    }
+    entry.endorsements += s.endorsements
+    entry.statements.push({
+      citation: s.citation,
+      date: s.date,
+      endorsements: s.endorsements,
+      parliamentUrl: s.parliamentUrl,
+    })
+  }
+  /* Chronological inside a group: two statements from one office are a
+   * sequence ("filed again later"), and undated rows sort last. */
+  for (const entry of byName.values()) {
+    entry.statements.sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999'))
+  }
+  /* Name as tiebreaker: two thirds of the organisations on a typical
+   * Verfahren have zero endorsements, and a stable order beats upstream's
+   * arbitrary one — the UI lists that block alphabetically. */
+  return [...byName.values()].sort(
+    (a, b) => b.endorsements - a.endorsements || a.name.localeCompare(b.name, 'de'),
+  )
 }
 
 /**
