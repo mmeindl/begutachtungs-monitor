@@ -215,7 +215,7 @@ regions — CLOUD Act). The build-time dependency on the npm registry remains
 
 1. **RIS integration** (clean XML draft texts, ME↔RIS join): blocked on the join-key test at corpus level; needed for the diff layer ("§5 was amended").
 2. **Diff layer ME→RV** (the actual accountability core): needs RIS texts or parliament HTML parsing + a diff algorithm. v1 shows the chain + text-version links.
-3. **Deadline alerts**: ~~e-mail/RSS~~ the stateless tier shipped Aug 2026 — own RSS feed (`/feed.xml`) and ICS deadline calendar (`/kalender.ics`), both without accounts or persistence (§5). Still deferred: **e-mail subscriptions** — they need everything the stateless design avoids (SQLite for subscribers + seen-set, nightly diff job, double opt-in + one-click unsubscribe, privacy page, EU-sovereign ESP with SPF/DKIM). Planned as an NLnet work package, not prototype work: ops-heavy alerting is what killed the predecessor.
+3. **Deadline alerts**: ~~e-mail/RSS~~ the stateless tier shipped Aug 2026 — own RSS feed (`/feed.xml`) and ICS deadline calendar (`/kalender.ics`), both without accounts or persistence (§5). Still deferred: **e-mail subscriptions** — they need everything the stateless design avoids (SQLite for subscribers + seen-set, nightly diff job, double opt-in + one-click unsubscribe, privacy page, EU-sovereign ESP with SPF/DKIM). Planned as a grant-funded work package, not prototype work: ops-heavy alerting is what killed the predecessor.
 4. **Persistence & history**: detecting deadline extensions, statement growth over time, base rates for mechanism 2 ("evidence base") — needs snapshots instead of a cache.
 5. **Broadlistening (stage 2)** — only once stage 1 has users.
 6. **Dark mode** (tokens are prepared), **i18n**, **a11y audit** beyond the basics, **OG images**, sitemap/robots.
@@ -231,7 +231,7 @@ regions — CLOUD Act). The build-time dependency on the npm registry remains
 4. Multiple RVs (ME→RV 1:n): is "latest RV" enough or does the UI need all strands?
 5. Marker for dead MEs (never became an RV): watch the `vhg_fertig` field.
 6. Rate limits of the Parliament API are undocumented; behavior under load unknown. Weigh cache TTL (30 min) against freshness for tight deadlines.
-7. Type-filter vocabulary of list 101 (low priority, the `preconst` route bypasses it).
+7. ~~Type-filter vocabulary of list 101~~ **Resolved (Sept 2026):** `VHG`/`DOKTYP` values such as `VOLKBG`, `E`, `PET`, `BI` — `docs/volksbegehren.md` §5.1.
 8. ~~Hosting~~ **Settled (Aug 2026): netcup VPS pico G11s 12M** (€1.85/month incl. 20% AT VAT — the list price €1.84 carries 19% DE VAT —, 12-month term, €0 setup, Nuremberg). EU-owned (DE) like all candidates. Decisive arithmetic: Hetzner's real no-commitment price (CX23, €7.19/month incl. VAT) means one netcup *year* ≈ three Hetzner *months* — the 12-month commitment risks at most ~€15 even if the project stops early, and the app is stateless, so a later provider move is ~30 min (scripts are provider-agnostic). (Historical fallback while the limited pico batch could have been sold out: Hetzner CX23.) Ordered and **live since 2026-08-26**. Setup: `deploy/README.md`; inventory: `deploy/infrastructure.md`.
 9. Product name (working title remains "Begutachtungs-Monitor").
 10. Semantics of list-81 column "Engagement" and `content.status.number` (5 = promulgated?).

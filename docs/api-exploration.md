@@ -266,8 +266,8 @@ Private persons are **fully identifiable on three levels** straight from the API
 ## 5. Open questions
 
 1. **Does the RIS↔Parliament composite key scale to corpus level?** (Deadline extensions one-sided? Consultations without a parliament counterpart?) → Test a batch join across a whole GP.
-2. Type-filter syntax on list 101 (inspect the value vocabulary via browser XHR) — low priority, the `preconst` route bypasses it.
-3. RSS export of the filter lists as a cheap change feed (URL scheme unexplored).
+2. ~~Type-filter syntax on list 101~~ **Resolved 2026-09-06:** the type filter is `VHG` (or `DOKTYP`) with values such as `VOLKBG`, `E`, `PET`, `BI` — see `docs/volksbegehren.md` §5.1.
+3. ~~RSS export of the filter lists~~ **Resolved 2026-09-06:** `GET /Filter/api/filter/rss/{listId}?FIELD=value` honours the same filter dimensions, e.g. `rss/81?AKTIV=J` — see `docs/volksbegehren.md` §5.1.
 4. Is `Allgemein.Geaendert` bumped on deadline extensions (is history polling enough)? Does `IncludeDeletedDocuments` return withdrawn drafts?
 5. How to recognize dead MEs (never became an RV)? Watch the `vhg_fertig` field on the ME detail.
 6. Rate limits are undocumented; ~40-request sessions ran unthrottled. Test a nightly full sync (Parliament ~1 request via `showAll`, RIS ~46). Occasional 502s observed → plan retry logic.
