@@ -17,6 +17,7 @@ Worum es geht, ausführlich auf Deutsch: [begutachtungs-monitor.at/ueber](https:
 - [Why this tool?](docs/why-this-tool.md) — what the monitor adds over parlament.gv.at, roadmap, non-goals
 - [Architecture](docs/architecture.md) — binding spec and decision log
 - [API exploration](docs/api-exploration.md) — verified reference for the Parliament filter API and RIS OGD API
+- [Volksbegehren](docs/volksbegehren.md) — research memo: could the monitor track Volksbegehren too? Verdict, verified data paths, and a first-pass outcome table for all 81
 
 ---
 
