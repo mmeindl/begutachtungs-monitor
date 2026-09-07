@@ -4,9 +4,11 @@
  * PURE MODULE — no Nuxt auto-imports, no I/O, so vitest can execute it
  * directly and the regression test can replay the GP XXVII corpus.
  *
- * Port of the corpus-test scorer (ruleVersion 1, 2026-09-06). Any change
- * to weights, bands or normalisation must keep tests/risJoin.test.ts green
- * or bump `RULE_VERSION` and regenerate data/ris-me-map-gp27.json.
+ * ruleVersion 1 (2026-09-06) is the corpus-test scorer; ruleVersion 2
+ * (2026-09-07) adds what the first live GP XXVIII run taught (docs/ris-join.md
+ * §3a). Any change to weights, bands or normalisation must keep
+ * tests/risJoin.test.ts green on BOTH GPs or bump `RULE_VERSION` and
+ * regenerate data/ris-me-map-gp27.json.
  */
 
 import type { ConsultationSummary } from '../../shared/types'
@@ -79,7 +81,7 @@ export interface TitleScore {
   lcp: number
   nA: number
   nB: number
-  field: 'kurztitel' | 'titel' | null
+  field: 'kurztitel' | 'titel' | 'abk' | null
   score: number
   abkMatch: boolean
   exactTitle: boolean
@@ -122,13 +124,18 @@ export interface JoinRow {
 // Rule parameters (ruleVersion 1)
 // ---------------------------------------------------------------------------
 
-export const RULE_VERSION = 1
+export const RULE_VERSION = 2
 
-export const JOIN_WEIGHTS = { date: 0.3, end: 0.2, ministry: 0.15, title: 0.35 }
+/** v2: Ende outweighs Beginn — it is the sharper signal (336/337 on GP XXVII). */
+export const JOIN_WEIGHTS = { date: 0.2, end: 0.3, ministry: 0.15, title: 0.35 }
 export const CLASS_PENALTY: Record<RisClass, number> = { gesetz: 0, other: 0.05, verordnung: 0.15 }
 export const ACCEPT_THRESHOLD = 0.75
 export const AMBIGUITY_MARGIN = 0.1
-/** Candidate window for RIS Beginn relative to Parliament arrival, days. */
+/**
+ * Candidate window for RIS Beginn relative to Parliament arrival, days.
+ * v2: a record whose Ende equals the Frist is a candidate regardless of the
+ * Beginn offset (12/ME XXVIII: RIS published 18 days before Parliament).
+ */
 export const BEGINN_WINDOW: readonly [number, number] = [-14, 7]
 
 /** RIS spells some codes without umlauts. */
@@ -146,6 +153,12 @@ export const MINISTRY_LINEAGE: readonly (readonly string[])[] = [
   ['BMVIT', 'BMK', 'BMNT'],
   ['BMJ', 'BMVRDJ'],
   ['BKA', 'BMEUV', 'BMFFIM', 'BMVRDJ', 'BMKÖS'],
+  // GP XXVIII (government of March 2025): successor codes
+  ['BMBWF', 'BMB', 'BMFWF'],
+  ['BMK', 'BMLUK', 'BMIMI', 'BML'],
+  ['BMSGPK', 'BMASGPK'],
+  ['BMAW', 'BMWET', 'BMWKMS', 'BMDW'],
+  ['BKA', 'BMEIF'],
 ]
 
 // ---------------------------------------------------------------------------
@@ -375,6 +388,7 @@ export function ministryCodeOf(stelle: string | null): string {
   const s = (stelle ?? '').toLowerCase()
   if (s.includes('eu und verfassung')) return 'BMEUV'
   if (s.includes('frauen, familie, integration und medien')) return 'BMFFIM'
+  if (s.includes('europa, integration und familie')) return 'BMEIF'
   return stelle ?? ''
 }
 
@@ -420,7 +434,10 @@ export function endScore(offset: number | null): number {
 export function titleScore(meCore: string, meAbks: ReadonlySet<string>, r: RisBegutRecord, description: string | null): TitleScore {
   let best: TitleScore | null = null
   const normDesc = description ? normalizeTitleText(description) : null
-  for (const field of ['kurztitel', 'titel'] as const) {
+  // v2: RIS `Abkuerzung` is a third title field — ministries put the whole
+  // package name there ("MinroG-Novelle IE-R 2025"), which is what
+  // Parliament uses as the title.
+  for (const field of ['kurztitel', 'titel', 'abk'] as const) {
     const text = r[field]
     if (!text) continue
     const c = titleComponents(meCore, text)
@@ -531,8 +548,8 @@ export function joinRisToMe(mes: readonly MeItem[], ris: readonly RisBegutRecord
     const candidates: JoinCandidate[] = []
     for (const r of scored) {
       const off = daysBetween(m.arrival, r.beginn!)
-      if (off < BEGINN_WINDOW[0] || off > BEGINN_WINDOW[1]) continue
       const endOffset = r.ende && m.frist ? daysBetween(m.frist, r.ende) : null
+      if ((off < BEGINN_WINDOW[0] || off > BEGINN_WINDOW[1]) && endOffset !== 0) continue
       const t = titleScore(core, abks, r, m.description)
       const ds = dateScore(off)
       const es = endScore(endOffset)
@@ -585,8 +602,28 @@ export function joinRisToMe(mes: readonly MeItem[], ris: readonly RisBegutRecord
     }
     const best = c[0]!
     if (best.score < ACCEPT_THRESHOLD) {
+      // v2 Fristabweichung: Beginn, ministry and title all exact, only the
+      // Ende disagrees between the two official publications (84/ME XXVII:
+      // RIS typo one month off; 56/ME XXVIII: same). Three of four signals
+      // is a match; the deadline discrepancy is data to show, not a reason
+      // to drop the row.
+      const frist = c.filter(
+        (x) => x.dateScore === 1 && x.ministryScore === 1 && x.title.score >= 0.9 && x.risClass !== 'verordnung' && !assignedRis.has(x.risId),
+      )
+      // Rivals that are Verordnungen do not count: they are never MEs (84/ME
+      // XXVII sits next to two HSWO Verordnungen with the same dates).
+      if (frist.length === 1 && c.every((x) => x === frist[0] || x.risClass === 'verordnung' || x.score < 0.6)) {
+        row.status = 'matched'
+        row.tier = 'B'
+        row.risId = frist[0]!.risId
+        row.reason = `Fristabweichung: RIS-Ende ${frist[0]!.endOffset === null ? 'fehlt' : `${frist[0]!.endOffset > 0 ? '+' : ''}${frist[0]!.endOffset} Tage`}`
+        assignedRis.set(frist[0]!.risId, row.cite)
+        continue
+      }
       const weak = c.filter(
-        (x) => x.dateScore >= 0.8 && x.endScore === 1 && x.ministryScore === 1 && x.risClass === 'gesetz' && !assignedRis.has(x.risId),
+        // v2: class 'other' admitted — RIS titles like "Verbot der … Genitalbilder"
+        // (11/ME XXVIII, a StGB amendment) carry no type word at all.
+        (x) => x.dateScore >= 0.8 && x.endScore === 1 && x.ministryScore === 1 && x.risClass !== 'verordnung' && !assignedRis.has(x.risId),
       )
       if (weak.length === 1 && c.every((x) => x === weak[0] || x.score < 0.5)) {
         row.status = 'matched_weak'
