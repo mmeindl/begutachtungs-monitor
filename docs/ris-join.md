@@ -167,6 +167,26 @@ Effort estimate: first §-level diff view on GP XXVIII with Parliament HTML
 only, five to seven focused days. RIS join plus XML parser adds about two
 more and buys the historical corpus.
 
+## 6a. First live run on GP XXVIII (2026-09-07)
+
+| Measure | Result |
+|---|---|
+| MEs on list 81 | 132 |
+| Matched | 128 (tier A 122, tier B 6) |
+| Ambiguous | 0 |
+| Unmatched | 4 (11/ME, 12/ME, 56/ME, 60/ME), all with a best candidate below 0.75 |
+| Ende offset among matches | 0 for all 128 |
+| Beginn offset | 0 for 109, −1 for 12, the rest within −13..+1 |
+
+The prewarm took 54 s cold. One unmatched case is instructive: 56/ME
+(MinroG-Novelle, BMF, Beginn 2025-10-03) has its RIS record with the same
+Beginn, ministry and title, but RIS says Ende 2025-11-10 where Parliament
+says 2025-10-10. Under ruleVersion 1 the Ende mismatch costs the match
+(score 0.50). That is exactly the **Fristabweichung** the product should
+show rather than hide, so ruleVersion 2 must let exact Beginn + ministry +
+strong title carry a match with a flagged deadline discrepancy. The other
+three were not checked against the full corpus yet.
+
 ## 7. Open questions left
 
 - Does `Allgemein.Geaendert` move on RIS deadline extensions (history sync)?
