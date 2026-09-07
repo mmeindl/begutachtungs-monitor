@@ -174,6 +174,9 @@ export interface ConsultationDetail extends Omit<ConsultationSummary, 'statement
   textEvolution: TraceLink[]
   statements: StatementsSummary
   enactment: EnactmentInfo | null
+  /** The RIS Begut record of this draft (docs/ris-join.md); null when the
+      RIS map was unavailable. `status` says whether RIS has the draft at all. */
+  risDraft: RisMapRow | null
 }
 
 export type SubmitterKind = 'organisation' | 'person' | 'nonpublic'

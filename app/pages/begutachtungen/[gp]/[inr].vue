@@ -531,6 +531,58 @@ const linkClasses =
             Der direkte Textvergleich Entwurf ↔ Regierungsvorlage ist geplant.
           </p>
         </div>
+
+        <!-- The same draft in the second official source. RIS carries the
+             text as HTML/XML back to 2004 — the raw material of the planned
+             comparison. "Not in RIS" is a state worth showing, not an error
+             (docs/ris-join.md §2): a dozen drafts per GP never get there. -->
+        <div v-if="data.risDraft" class="mt-8">
+          <h3 class="text-base font-semibold text-ink">Entwurf im Rechtsinformationssystem (RIS)</h3>
+          <template v-if="data.risDraft.risUrl">
+            <p class="mt-1 text-sm text-ink-secondary">
+              Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
+              und Textgegenüberstellung.
+            </p>
+            <ul class="mt-2 flex flex-wrap gap-2">
+              <li>
+                <ExternalLink
+                  :href="data.risDraft.risUrl"
+                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
+                >
+                  RIS-Eintrag
+                </ExternalLink>
+              </li>
+              <li v-if="data.risDraft.risDocument?.html">
+                <ExternalLink
+                  :href="data.risDraft.risDocument.html"
+                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
+                >
+                  Entwurfstext (HTML)
+                </ExternalLink>
+              </li>
+              <li v-if="data.risDraft.risDocument?.pdf">
+                <ExternalLink
+                  :href="data.risDraft.risDocument.pdf"
+                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
+                >
+                  Entwurfstext (PDF)
+                </ExternalLink>
+              </li>
+            </ul>
+            <p
+              v-if="data.risDraft.endeOffsetDays"
+              class="mt-2 text-xs text-ink-muted"
+            >
+              Hinweis: Das im RIS angegebene Fristende weicht um
+              {{ Math.abs(data.risDraft.endeOffsetDays) }}
+              {{ Math.abs(data.risDraft.endeOffsetDays) === 1 ? 'Tag' : 'Tage' }}
+              vom Parlament ab.
+            </p>
+          </template>
+          <p v-else class="mt-1 text-sm text-ink-secondary">
+            Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
+          </p>
+        </div>
       </section>
 
       <section class="page-section" aria-labelledby="statements-heading">
