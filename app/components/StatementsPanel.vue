@@ -259,31 +259,50 @@ const expectedCount = computed(() => {
   }
 })
 
-/* How much of the segment is on screen — no sort label any more, the control
- * above says that. Announced (aria-live), since switching a control changes
- * the list below without moving focus. */
-const countLine = computed(() => {
+const segmentTotal = computed(() =>
+  status.value === 'success' ? items.value.length : expectedCount.value,
+)
+
+/* How large the chosen segment is. Two lines, not one: this says what the
+ * set IS, and the progress line at the foot says how much of it is on
+ * screen — that one belongs beside the button that changes it, not 25 rows
+ * above it, where a reader at the button cannot see it. */
+const setLine = computed(() => {
   if (!needsList.value) {
     const orgs = countLabelDe(
       sortedOrgs.value.length,
       'Organisation',
       'Organisationen',
     )
-    /* Both numbers in one line when they differ, so "22 Organisationen" is
+    /* Both numbers in one line when they differ, so "25 Organisationen" is
      * not stated twice under each other. */
-    const head = orgsFiledRepeatedly.value
+    return orgsFiledRepeatedly.value
       ? `${statementCountLabel(listedOrgStatements.value)} von ${orgs}`
       : orgs
-    return head
   }
-  const total = status.value === 'success' ? items.value.length : expectedCount.value
-  const shown = Math.min(visibleCount.value, total)
-  const head =
-    shown < total
-      ? `${formatNumberDe(shown)} von ${formatNumberDe(total)} angezeigt`
-      : statementCountLabel(total)
-  return head
+  return statementCountLabel(segmentTotal.value)
 })
+
+/* The size of a segment is already a number in the <dl> above — "58" under
+ * Privatpersonen IS this line — so stating it again three centimetres lower
+ * is the same sentence twice. The ONE thing the <dl> cannot say is that 26
+ * statements came from 25 organisations, because its four counts must sum to
+ * Gesamt and are therefore all statement counts.
+ *
+ * So the line stays in the DOM and goes visually silent everywhere else: it
+ * is the panel's live region, and switching a segment swaps the list without
+ * moving focus, which leaves a screen-reader user with no other feedback that
+ * anything happened. */
+const setLineRedundant = computed(
+  () => needsList.value || !orgsFiledRepeatedly.value,
+)
+
+/* Only while something is still hidden: "58 von 58" beside a button that is
+ * no longer there describes nothing. */
+const progressLine = computed(
+  () =>
+    `${formatNumberDe(Math.min(visibleCount.value, segmentTotal.value))} von ${formatNumberDe(segmentTotal.value)} angezeigt`,
+)
 
 /* Submitter mix as one stacked bar — "707, davon 96 % Privatpersonen" in a
  * glance (org-mobilization vs. citizen-wave is a journalistic signature).
@@ -332,15 +351,6 @@ const mixSegments = computed(() => {
       />
     </div>
 
-    <!-- Visible text, not a tooltip: the two terms the panel can't do
-         without, explained once (AAA: no hover-only information). -->
-    <p class="mt-3 text-sm text-ink-secondary">
-      Zustimmungen: Personen, die sich einer veröffentlichten Stellungnahme
-      auf parlament.gv.at angeschlossen haben. Nicht öffentlich:
-      Stellungnahmen, die auf Wunsch der Einbringer:innen nicht
-      veröffentlicht wurden.
-    </p>
-
     <!-- Two axes, two groups: WHO filed (the legend's own four groups, so the
          counts stay up there and these labels carry none) and IN WHICH ORDER.
          Keeping them apart is what let the count line stop naming the sort. -->
@@ -381,10 +391,18 @@ const mixSegments = computed(() => {
       </UFieldGroup>
     </div>
 
-    <p class="mt-4 text-sm text-ink-muted" aria-live="polite">{{ countLine }}</p>
+    <p
+      :class="[
+        'text-sm text-ink-muted',
+        setLineRedundant ? 'sr-only' : 'mt-4',
+      ]"
+      aria-live="polite"
+    >{{ setLine }}</p>
     <!-- Same wording as the summary-level note on the detail page: a stale
-         list must never read as the current one. -->
-    <p v-if="needsList && listStaleAsOf" class="mt-1 text-xs text-ink-muted">
+         list must never read as the current one. mt-4, not mt-1: the line
+         above is sr-only in every state this note can appear in (it needs
+         the item list), so there is no visible box to sit under. -->
+    <p v-if="needsList && listStaleAsOf" class="mt-4 text-xs text-ink-muted">
       Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} – die aktuelle
       Liste ist auf parlament.gv.at derzeit nicht abrufbar.
     </p>
@@ -470,7 +488,11 @@ const mixSegments = computed(() => {
       </template>
     </div>
 
-    <div v-if="hasMore" class="mt-4 text-center">
+    <!-- Where the reader actually asks "how far in am I?": at the end of the
+         list, beside the control that answers it. The count leads and the
+         button follows, so the number is read before the action it explains. -->
+    <div v-if="hasMore" class="mt-4 flex flex-col items-center gap-2">
+      <p class="text-sm text-ink-muted">{{ progressLine }}</p>
       <UButton
         color="neutral"
         variant="outline"

@@ -630,12 +630,6 @@ const linkClasses =
             "
           />
         </div>
-        <!-- The one half of the old page-foot source note the footer does
-             not already carry — and it is a fact about Stellungnahmen, so
-             it lives with them (CC BY excludes the full texts). -->
-        <p class="mt-4 text-xs text-ink-muted">
-          Volltexte der Stellungnahmen sind nur auf parlament.gv.at verfügbar.
-        </p>
       </section>
 
       <!-- Both sources of the SAME draft live here, not under "Was wurde
