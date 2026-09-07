@@ -8,45 +8,53 @@ import type { StatementsSummary } from '#shared/types'
  * row — this is where they stay individually reachable, in the SSR HTML like
  * every other name and citation on the page.
  *
- * Only rendered for grouped rows; a single-statement row links its name
- * directly and never mounts this.
+ * Mounted for every organisation that filed more than once. The row above
+ * cannot carry this: a Zustimmung is counted per Stellungnahme, and which of
+ * two submissions collected them is exactly what a grouped row would flatten
+ * away into a sum.
+ *
+ * Same row grammar as every other list in the panel (StatementRow), indented
+ * under the organisation that owns them. The identity column stays empty —
+ * the name is on the row above — so the citations land in the same column,
+ * and carry the link exactly as they do everywhere else.
+ *
+ * Zustimmungen stay on the sub-rows: upstream counts them per
+ * Stellungnahme, and which of two submissions collected them is the point of
+ * showing both. What made the same endorsement read as two was the group's
+ * SUM printed identically one line above — the row above says "gesamt" now.
  */
-const props = defineProps<{
+defineProps<{
   org: StatementsSummary['organisationList'][number]
 }>()
 
-/* The date is the useful discriminator between two submissions of one
- * office; the citation is the precise one and the only handle when upstream
- * ships no date. Both are shown — the citation is what a reader quotes. */
-function linkLabel(date: string | null): string {
-  return date ? formatDateDe(date) : 'ohne Datum'
-}
 
 function endorsementLabel(n: number): string {
   return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
 }
-
-const orgName = computed(() => props.org.name)
 </script>
 
 <template>
-  <ul class="mt-1.5 flex flex-wrap gap-x-5 gap-y-1">
-    <li
+  <!-- -mr-4 cancels the row padding this list sits inside, so the sub-rows
+       end at the same right edge as their parent and the two fixed
+       right-hand grid tracks stay one column down the panel.
+       The rule brackets the sub-rows in both layouts. On a phone it is the
+       only cue there is: a sub-row is just its meta line, with the identity
+       column hidden. In the columns the hairlines (which divide the parent
+       <li>s only, so a group is one unbroken band) and the indented date
+       carry the nesting as well — the rule states plainly what those two
+       leave to inference. -->
+  <ul class="-mr-4 mt-1 border-l border-hairline pl-3 row-cols:pl-6">
+    <StatementRow
       v-for="st in org.statements"
       :key="st.parliamentUrl"
-      class="flex items-baseline gap-2 text-sm"
+      :date="st.date"
+      label=""
+      :links="[{ citation: st.citation, href: st.parliamentUrl }]"
+      :submitter="org.name"
     >
-      <ExternalLink
-        :href="st.parliamentUrl"
-        :aria-label="`Stellungnahme ${st.citation} von ${orgName} auf parlament.gv.at öffnen`"
-        class="tap-target tabular-nums text-accent-deep hover:underline"
-      >
-        {{ linkLabel(st.date) }}
-      </ExternalLink>
-      <span class="text-ink-muted">{{ st.citation }}</span>
-      <span v-if="st.endorsements > 0" class="tabular-nums text-ink-secondary">
+      <template v-if="st.endorsements > 0" #meta>
         {{ endorsementLabel(st.endorsements) }}
-      </span>
-    </li>
+      </template>
+    </StatementRow>
   </ul>
 </template>

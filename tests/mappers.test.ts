@@ -536,10 +536,67 @@ describe('groupOrganisationStatements', () => {
     expect(entries[0]!.statements.map((s) => s.endorsements)).toEqual([3, 4])
   })
 
-  it('keeps the distinctions upstream makes — no fuzzy merging', () => {
+  it('keeps the distinctions upstream makes — a suffix is not a typo', () => {
     const entries = groupOrganisationStatements([
       org('epicenter.works', '14/SN-8/ME', '2025-04-22', 22),
       org('epicenter.works - Plattform Grundrechtspolitik', '27/SN-62/ME', '2025-11-13', 2),
+    ])
+    expect(entries).toHaveLength(2)
+  })
+
+  it('merges separator variants of one name', () => {
+    const entries = groupOrganisationStatements([
+      org('Universität Wien / Rechtswissenschaftliche Fakultät', 'a', '2026-08-18'),
+      org('Universität Wien, Rechtswissenschaftliche Fakultät', 'b', '2026-08-18'),
+    ])
+    expect(entries).toHaveLength(1)
+    expect(entries[0]!.statements).toHaveLength(2)
+  })
+
+  /* The live case: 126/ME listed one institute three times, twice under a
+   * spelling with a doubled s. */
+  it('merges a one-letter typo and keeps the majority spelling', () => {
+    const correct =
+      'Universität Wien / Rechtswissenschaftliche Fakultät; Institut für Strafrecht und Kriminologie'
+    const typo =
+      'Universität Wien, Rechtswisssenschaftliche Fakultät; Institut für Strafrecht und Kriminologie'
+    const entries = groupOrganisationStatements([
+      org(correct, '453/SN-126/ME', '2026-08-18', 0),
+      org(correct, '455/SN-126/ME', '2026-08-18', 1),
+      org(typo, '452/SN-126/ME', '2026-08-18', 1),
+    ])
+    expect(entries).toHaveLength(1)
+    expect(entries[0]!.name).toBe(correct)
+    expect(entries[0]!.endorsements).toBe(2)
+    expect(entries[0]!.statements.map((s) => s.citation)).toEqual([
+      '452/SN-126/ME',
+      '453/SN-126/ME',
+      '455/SN-126/ME',
+    ])
+  })
+
+  it('never merges on a digit — numbered units are distinct bodies', () => {
+    const entries = groupOrganisationStatements([
+      org('Amt der Kärntner Landesregierung; Abteilung 1 – Verfassungsdienst', 'a', '2026-01-01'),
+      org('Amt der Kärntner Landesregierung; Abteilung 2 – Verfassungsdienst', 'b', '2026-01-01'),
+    ])
+    expect(entries).toHaveLength(2)
+  })
+
+  it('never merges on a trailing letter — that is an enumeration', () => {
+    const entries = groupOrganisationStatements([
+      org('Amt der Kärntner Landesregierung; Abteilung I', 'a', '2026-01-01'),
+      org('Amt der Kärntner Landesregierung; Abteilung II', 'b', '2026-01-01'),
+    ])
+    expect(entries).toHaveLength(2)
+  })
+
+  /* Bezirksgericht Linz and Bezirksgericht Lienz are one edit apart and two
+   * different courts: in a short name every character carries meaning. */
+  it('never merges short names — no length to absorb a typo', () => {
+    const entries = groupOrganisationStatements([
+      org('Bezirksgericht Linz', 'a', '2026-01-01'),
+      org('Bezirksgericht Lienz', 'b', '2026-01-01'),
     ])
     expect(entries).toHaveLength(2)
   })
