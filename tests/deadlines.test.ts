@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { deadlineTone, noRvVerdictDe, RV_LATENCY_CONTEXT_DAYS } from '../shared/utils/deadlines'
+import {
+  deadlineTone,
+  fristDivergence,
+  noRvVerdictDe,
+  RV_LATENCY_CONTEXT_DAYS,
+} from '../shared/utils/deadlines'
 
 /**
  * ISO date exactly N days before today — anchored on the LOCAL calendar
@@ -40,5 +45,50 @@ describe('noRvVerdictDe', () => {
   it('switches to the year vocabulary past twelve months', () => {
     expect(noRvVerdictDe(daysAgo(400))).toContain('vor über einem Jahr')
     expect(noRvVerdictDe(daysAgo(800))).toContain('vor über 2 Jahren')
+  })
+})
+
+describe('fristDivergence', () => {
+  /* The real case: 56/ME (GP XXVIII, MinroG-Novelle IE-R 2025). Both
+   * sources start the Frist on 03.10.2025, then Parliament ends it on
+   * 10.10.2025 and RIS on 10.11.2025 — a 7-day versus a 38-day
+   * Begutachtung, which is exactly the kind of divergence a submitter
+   * needs to see before the earlier of the two dates passes. */
+  const ris = {
+    endeOffsetDays: 31,
+    risEnde: '2025-11-10',
+    risUrl:
+      'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=BEGUT_EBB0D040_71B0_41A4_8F4D_7CC31664E5F2',
+  }
+
+  it('reports a later RIS date while the Frist runs', () => {
+    expect(fristDivergence(ris, true)).toEqual({
+      date: '2025-11-10',
+      url: ris.risUrl,
+      days: 31,
+      later: true,
+    })
+  })
+
+  /* The sign is the direction a submitter acts on — a flip would name the
+   * wrong date, so both directions are pinned. */
+  it('reports an earlier RIS date as earlier', () => {
+    expect(fristDivergence({ ...ris, endeOffsetDays: -4 }, true)?.later).toBe(false)
+    expect(fristDivergence({ ...ris, endeOffsetDays: -4 }, true)?.days).toBe(4)
+  })
+
+  it('stays silent once the Frist is over — then it is trivia, not a decision', () => {
+    expect(fristDivergence(ris, false)).toBeNull()
+  })
+
+  it('stays silent when the sources agree or RIS has no date', () => {
+    expect(fristDivergence({ ...ris, endeOffsetDays: 0 }, true)).toBeNull()
+    expect(fristDivergence({ ...ris, endeOffsetDays: null }, true)).toBeNull()
+    expect(fristDivergence({ ...ris, risEnde: null }, true)).toBeNull()
+    expect(fristDivergence(null, true)).toBeNull()
+  })
+
+  it('survives an unmatched RIS row without a link', () => {
+    expect(fristDivergence({ ...ris, risUrl: null }, true)?.url).toBeNull()
   })
 })

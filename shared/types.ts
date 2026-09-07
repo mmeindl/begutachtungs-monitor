@@ -299,6 +299,13 @@ export interface RisMapRow {
   beginnOffsetDays: number | null
   /** RIS Ende − Parliament Frist, days; a non-zero value is a Fristabweichung */
   endeOffsetDays: number | null
+  /**
+   * RIS's own end of the Begutachtungsfrist (ISO date). Carried so a page can
+   * NAME the diverging date instead of only the offset — while the Frist
+   * runs, "the other official source says the 21st" is actionable and "31
+   * days off" is a riddle.
+   */
+  risEnde: string | null
   reason: string | null
 }
 

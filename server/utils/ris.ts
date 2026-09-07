@@ -177,6 +177,7 @@ function toMapRow(
     score: c?.score ?? null,
     beginnOffsetDays: c?.dateOffset ?? null,
     endeOffsetDays: c?.endOffset ?? null,
+    risEnde: c?.ende ?? null,
     reason: row.reason,
   }
 }
