@@ -136,6 +136,12 @@ Geschäftszahl tie-breaker, which needs PDF text.
 - Consultation detail: `risDraft` on `ConsultationDetail`, rendered as the
   "Entwurf im RIS" block with the RIS entry, HTML/PDF text, a Fristabweichung
   note, and "im RIS nicht veröffentlicht" as a shown state.
+- Detail pages wait at most 2 s for the join (`withinBudget`, `server/utils/budget.ts`)
+  and otherwise render without the RIS block — the prewarm starts with
+  `--no-block` after a restart, so a visitor can arrive before it finishes
+  (measured 61 s on the first detail-page hit after the 2026-09-07 deploy).
+  The dropped fetch is not aborted and still warms the cache; `/api/ris-map`
+  keeps the unbounded call, which is what the prewarm hits.
 - Nightly prewarm: systemd timer + oneshot in `deploy/systemd/`, installed
   and enabled by `deploy.sh` on every deploy and started after each restart;
   corpus TTL 20 h so the daily run always refreshes.
