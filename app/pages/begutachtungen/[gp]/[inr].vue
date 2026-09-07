@@ -58,6 +58,13 @@ const showOutcome = computed(() => {
   return Boolean(d.enactment) || !d.active
 })
 
+/* Decision and sign convention live in shared/utils/deadlines.ts, next to
+ * the other deadline rules and covered by tests — a flipped sign here would
+ * tell a submitter the wrong date. */
+const divergence = computed(() =>
+  fristDivergence(data.value?.risDraft ?? null, Boolean(data.value?.active)),
+)
+
 // "Vergleichen Sie selbst": the honest manual precursor of the diff layer —
 // the ME Gesetzestext next to the RV text, reader does the comparison.
 // Doc titles are ministries' free text, so match defensively and fall back
@@ -364,6 +371,26 @@ const linkClasses =
             – die Frist endet am {{ formatDateDe(data.deadline) }}</template
           >
         </p>
+        <!-- Directly under the date it qualifies, above the CTA: whoever is
+             about to submit reads it before acting, and the sentence ends by
+             naming the date that governs. -->
+        <p v-if="divergence" class="mt-2 max-w-prose text-sm text-ink-secondary">
+          Zweite amtliche Quelle, andere Frist: Das Rechtsinformationssystem
+          nennt als Fristende
+          <ExternalLink
+            v-if="divergence.url"
+            :href="divergence.url"
+            class="tap-target rounded font-medium text-accent-deep hover:underline"
+          >
+            {{ formatDateDe(divergence.date) }}</ExternalLink
+          ><span v-else class="font-medium text-ink">{{
+            formatDateDe(divergence.date)
+          }}</span>
+          – {{ countLabelDe(divergence.days, 'Tag', 'Tage') }}
+          {{ divergence.later ? 'später' : 'früher' }}. Eingebracht wird beim
+          Parlament<template v-if="data.deadline">, maßgeblich ist daher der
+          {{ formatDateDe(data.deadline) }}</template>.
+        </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
           <UButton
             :to="data.parliamentUrl"
@@ -569,15 +596,6 @@ const linkClasses =
                 </ExternalLink>
               </li>
             </ul>
-            <p
-              v-if="data.risDraft.endeOffsetDays"
-              class="mt-2 text-xs text-ink-muted"
-            >
-              Hinweis: Das im RIS angegebene Fristende weicht um
-              {{ Math.abs(data.risDraft.endeOffsetDays) }}
-              {{ Math.abs(data.risDraft.endeOffsetDays) === 1 ? 'Tag' : 'Tage' }}
-              vom Parlament ab.
-            </p>
           </template>
           <p v-else class="mt-1 text-sm text-ink-secondary">
             Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.

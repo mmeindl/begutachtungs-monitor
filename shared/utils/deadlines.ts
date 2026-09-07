@@ -31,6 +31,45 @@ export function deadlineTone(
   return 'neutral'
 }
 
+export interface FristDivergence {
+  /** RIS's end of the Frist (ISO date) */
+  date: string
+  /** RIS entry of the draft, so the claim is checkable; null when unmatched */
+  url: string | null
+  /** Absolute difference in days — the direction is in `later` */
+  days: number
+  /** true = RIS names a LATER date, the direction that can cost a deadline */
+  later: boolean
+}
+
+/**
+ * The two official sources disagree about when the Begutachtungsfrist ends.
+ *
+ * Only while the Frist runs: this is the one RIS fact a submitter can act on,
+ * and it used to render inside the RIS block, which appears only once the
+ * Verfahren is closed — shown exactly when it had become trivia. Afterwards
+ * the divergence is a data-quality curiosity and stays in `/api/ris-map`.
+ *
+ * Sign convention is the join's (`RisMapRow.endeOffsetDays` = RIS Ende −
+ * Parliament Frist): positive means RIS is later. Getting this backwards
+ * would tell a submitter the wrong thing, which is why it is tested.
+ *
+ * Rare by measurement: one draft per Gesetzgebungsperiode (56/ME in XXVIII,
+ * one in XXVII, both exactly 31 days).
+ */
+export function fristDivergence(
+  ris: { endeOffsetDays: number | null; risEnde: string | null; risUrl: string | null } | null,
+  active: boolean,
+): FristDivergence | null {
+  if (!active || !ris?.endeOffsetDays || !ris.risEnde) return null
+  return {
+    date: ris.risEnde,
+    url: ris.risUrl,
+    days: Math.abs(ris.endeOffsetDays),
+    later: ris.endeOffsetDays > 0,
+  }
+}
+
 /**
  * Deadline ended ≤ N days ago → the no-RV note adds pipeline-latency context
  * ("häufig mehrere Monate"), so a fresh "Bisher keine Regierungsvorlage"

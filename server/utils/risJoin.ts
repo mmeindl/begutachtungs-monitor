@@ -272,7 +272,7 @@ const componentCache = new Map<string, TitleComponents>()
  * Jaccard alone fails because RIS enumerates every amended law.
  */
 export function titleComponents(meCore: string, risText: string): TitleComponents {
-  const key = `${meCore} ${risText}`
+  const key = `${meCore}\0${risText}`
   const cached = componentCache.get(key)
   if (cached) return cached
   const A = tokenSet(meCore)
