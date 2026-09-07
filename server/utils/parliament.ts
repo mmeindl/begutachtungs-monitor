@@ -537,7 +537,7 @@ export async function getConsultationDetail(
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
   // client. List 142 then just returns zero rows.
-  const [summary, detail, statementsResult] = await Promise.all([
+  const [summary, detail, statementsResult, risMap] = await Promise.all([
     requireConsultation(gp, inr),
     getGegenstand(gp, 'ME', inr),
     // Statements must not take the whole page down: on failure (including
@@ -545,6 +545,9 @@ export async function getConsultationDetail(
     // served with visible staleness, and only without one does the page
     // degrade to the list-81 count.
     getStatementsWithFallback(gp, inr).catch(() => null),
+    // RIS is a second upstream; its outage must not cost the page either.
+    // (Nitro auto-import from ./ris — an explicit import would be a cycle.)
+    getRisMapForGp(gp).catch(() => null),
   ])
   const content = detail.content ?? {}
 
@@ -612,6 +615,7 @@ export async function getConsultationDetail(
     textEvolution: versions
       .filter((v) => v.station !== RV_STATION)
       .map(({ label, url }) => ({ label, url })),
+    risDraft: risMap?.rows.find((r) => r.inr === inr) ?? null,
     statements: statementsResult
       ? {
           ...buildStatementsSummary(statementsResult.items),
