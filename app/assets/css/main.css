@@ -122,6 +122,49 @@
 }
 
 /*
+ * Tailwind v4's preflight dropped v3's `button, [role="button"] { cursor:
+ * pointer }` and follows the browser default instead — which for a <button>
+ * is `default`, so every button in the app (segmented filters, "Mehr laden",
+ * "Erneut versuchen", the citation copy) read as unclickable on hover. The
+ * <summary> elements already carried a hand-written `cursor-pointer` for the
+ * same reason; this is that fix in one place.
+ *
+ * In @layer base, not unlayered, so a `cursor-*` utility still wins where a
+ * control wants a different arrow; disabled controls keep theirs, where "not
+ * clickable" is the truth.
+ */
+@layer base {
+  :where(button, [role="button"]):not(:disabled, [aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+/*
+ * The Stellungnahmen row (StatementRow) has two layouts: below the threshold
+ * the identity gets a line of its own, with date, citation(s) and
+ * Zustimmungen packed into one meta line beneath it; above it, four columns
+ * on one left edge.
+ *
+ * The switch is on the width of the ROW'S LIST, not of the window. The list
+ * sits in a max-w-3xl column, so a window breakpoint measures the wrong box —
+ * and with the switch at sm (640px window) a window of 640-690px turned the
+ * columns on while the column had already run out of room for them, which is
+ * how the citation ended up under the date and the Zustimmungen alone at the
+ * far right. Only the row's own container knows whether four columns fit.
+ * (A container query measures the CONTENT box, so the panel's 1px borders
+ * count against it.)
+ *
+ * 45rem = 720px of list width. Not the width at which the tracks first fit —
+ * that is ~600px — but the width at which the identity column reaches ~280px:
+ * 720 - 32 row inset - 96 date - 128 citation - 144 Zustimmungen - 3x12 gap.
+ * Below that the name clamps mid-name, and what tells these submitters apart
+ * sits at the END of it ("… Abteilung 1 – Verfassungsdienst"). The stacked
+ * layout gives the name the full width, so under the threshold it is not the
+ * compromise, it is the better row.
+ */
+@custom-variant row-cols (@container list (min-width: 45rem));
+
+/*
  * 44px target size for inline links WITHOUT layout shift: the padding
  * creates the hit area, the negative margins cancel it out in the layout.
  * Named once here instead of copied per link.

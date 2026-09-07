@@ -13,47 +13,110 @@ const props = defineProps<{
 
 const PAGE_SIZE = 25
 
-const expanded = ref(false)
-const listId = useId()
+/**
+ * One list with a filter, not three stacked lists. The panel used to show a
+ * ranked organisation block, a fold with the rest of the organisations, and a
+ * second fold with the anonymous half — three row shapes and two disclosures
+ * for what is one set of Stellungnahmen. The segments below are the same four
+ * groups the legend above counts, so the filter needs no explaining, and the
+ * old ranked/folded split collapses into a sort: the top of the organisation
+ * list IS "die meisten Zustimmungen".
+ */
+type StatementFilter = 'organisations' | 'persons' | 'nonpublic' | 'all'
+
+/* Default first, as on the archive page: the leftmost segment reads as "where
+ * am I", so it must be the state the page lands in. That has to be
+ * Organisationen — they come from the SSR summary, while everything else needs
+ * the lazy list-142 fetch, and 700 rows have no business in every page view. */
+const filterOptions: { value: StatementFilter; label: string }[] = [
+  { value: 'organisations', label: 'Organisationen' },
+  { value: 'persons', label: 'Privatpersonen' },
+  { value: 'nonpublic', label: 'Nicht öffentlich' },
+  { value: 'all', label: 'Alle' },
+]
+
+const filter = ref<StatementFilter>('organisations')
+
+/**
+ * Sort is its own axis, independent of the filter: the two orders answer
+ * different questions — "who mobilized" and "what came in last" — and neither
+ * is the right default for every reader. Zustimmungen leads because it is the
+ * only key that ranks an anonymous row, and because it is the order the
+ * segments had before this control existed.
+ *
+ * ISO dates sort lexicographically, and a missing date ends up last, where it
+ * belongs: it carries no position in a chronology.
+ */
+type StatementSort = 'endorsements' | 'date'
+
+const sortOptions: { value: StatementSort; label: string }[] = [
+  { value: 'endorsements', label: 'Meiste Zustimmungen' },
+  { value: 'date', label: 'Neueste' },
+]
+
+const sort = ref<StatementSort>('endorsements')
 const visibleCount = ref(PAGE_SIZE)
 
-/* Lazy: nothing is requested until the user expands the list the first time
+/* Lazy: nothing is requested until a segment needs the item list
  * (immediate: false leaves status at 'idle' until execute()). */
 const { data, status, execute } = useFetch<StatementsResponse>(
   () => `/api/consultations/${props.gp}/${props.inr}/statements`,
   { immediate: false },
 )
 
-async function toggleList() {
-  expanded.value = !expanded.value
-  if (expanded.value && status.value === 'idle') {
+const needsList = computed(() => filter.value !== 'organisations')
+
+watch(filter, async (value) => {
+  visibleCount.value = PAGE_SIZE
+  if (value !== 'organisations' && status.value === 'idle') {
     await execute()
   }
+})
+
+/* A new order means a new first page — keeping 75 rows open across a re-sort
+ * would show the top of one order and the middle of the other. */
+watch(sort, () => {
+  visibleCount.value = PAGE_SIZE
+})
+
+type SortableRow = { endorsements: number; date: string | null }
+
+/* Both keys are always applied; the control only decides which one leads. */
+function compareRows(a: SortableRow, b: SortableRow): number {
+  const byEndorsements = b.endorsements - a.endorsements
+  const byDate = (b.date ?? '').localeCompare(a.date ?? '')
+  return sort.value === 'endorsements'
+    ? byEndorsements || byDate
+    : byDate || byEndorsements
 }
 
-/* Organisations are deliberately NOT in this list: the section above already
- * names every one of them, so including them here showed each organisation
- * twice on the same page. What is left is the half no summary can represent —
- * private persons and non-public submissions are anonymous by design, so the
- * only thing to offer per row is its date and the link to the full text
- * upstream. That makes this list the page's one path to individual citizen
- * input, and nothing else on the page duplicates it. */
-const individual = computed<StatementMeta[]>(() =>
-  (data.value?.items ?? []).filter((s) => s.submitterKind !== 'organisation'),
-)
+/* The item list is one row per Stellungnahme — no grouping. An organisation
+ * that filed twice therefore appears twice under "Alle", which is what a raw
+ * list should show; the grouped view is the Organisationen segment. */
+const items = computed<StatementMeta[]>(() => {
+  const all = [...(data.value?.items ?? [])].sort(compareRows)
+  if (filter.value === 'persons') {
+    return all.filter((s) => s.submitterKind === 'person')
+  }
+  if (filter.value === 'nonpublic') {
+    return all.filter((s) => s.submitterKind === 'nonpublic')
+  }
+  return all
+})
 
-const visible = computed(() => individual.value.slice(0, visibleCount.value))
-const hasMore = computed(() => individual.value.length > visibleCount.value)
+const visibleItems = computed(() => items.value.slice(0, visibleCount.value))
+const hasMore = computed(
+  () => needsList.value && items.value.length > visibleCount.value,
+)
 
 /* One staleness sentence per page. When the summary above is already a
  * last-good fallback, the detail page states it under this panel and the
  * list would only repeat it. This note is for the other case: the summary
- * rendered live, and by the time the user expanded the list the cache
+ * rendered live, and by the time the user switched segments the cache
  * window had passed and the list-142 fetch failed. */
 const listStaleAsOf = computed(() =>
   !props.summary.staleAsOf ? (data.value?.staleAsOf ?? null) : null,
 )
-
 
 /* GDPR defense in depth: persons and non-public submissions always render a
  * fixed label — never a name — regardless of what the API delivered. */
@@ -63,10 +126,19 @@ function submitterLabel(s: StatementMeta): string {
   return 'Privatperson'
 }
 
+/* Same guard for the link's accessible name: only an organisation is named. */
+function submitterName(s: StatementMeta): string | null {
+  return s.submitterKind === 'organisation' ? s.submitterName : null
+}
+
 /* "Zustimmung" is the Parliament's own term (upstream field: approvals) —
  * the vocabulary must survive the click-through to parlament.gv.at. */
 function endorsementLabel(n: number): string {
   return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
+}
+
+function statementCountLabel(n: number): string {
+  return countLabelDe(n, 'Stellungnahme', 'Stellungnahmen')
 }
 
 const miniStats = computed(() => [
@@ -76,41 +148,78 @@ const miniStats = computed(() => [
   { label: 'Nicht öffentlich', value: props.summary.nonPublic },
 ])
 
-/* The button exists only when there is something the organisation section
- * cannot show. Counted from the summary, not from the fetched list, because
- * the fetch does not happen until the button is pressed. */
-const individualCount = computed(
-  () => props.summary.privatePersons + props.summary.nonPublic,
-)
+type OrgEntry = StatementsSummary['organisationList'][number]
 
-/* Split by endorsements, not by rank. The server ships every organisation
- * (see StatementsSummary.organisationList), but a flat list of all of them
- * would be mostly zero-width bars: on 88/ME two of 23 organisations carry an
- * endorsement, on 8/ME 15 of 35. So the ranked block holds the ones a bar can
- * say something about, and the rest stay on the page as plain names — folded,
- * but in the SSR HTML, which is what lets an organisation find itself here via
- * find-in-page or a search engine. */
-const rankedOrgs = computed(() =>
-  props.summary.organisationList.filter((o) => o.endorsements > 0),
-)
-
-/* One organisation, several Stellungnahmen: the entry is grouped server-side,
- * so a row can stand for more than one submission. Such a row renders the
- * name as text and each statement as its own dated link below it — there is
- * no single "the" statement to point the name at, and every submission has
- * to stay one click away, which is the point of listing organisations at
- * all. A single-statement row (the normal case) is unchanged: name = link. */
-function statementCountLabel(n: number): string {
-  return countLabelDe(n, 'Stellungnahme', 'Stellungnahmen')
+/* Same comparator as the item lists, so the whole panel orders alike. A
+ * grouped entry sorts by its LATEST submission, and prints that same date
+ * when its statements span more than one day — so a row always sits where
+ * its printed date says it does. The name breaks remaining ties, which is
+ * most of them: without endorsements and on a shared date, a name you can
+ * scan for is the only useful order.
+ * (Spread first: this must never sort the prop.) */
+function orgSortDate(org: OrgEntry): string | null {
+  return org.statements.reduce<string | null>(
+    (latest, s) => ((s.date ?? '') > (latest ?? '') ? s.date : latest),
+    null,
+  )
 }
 
-/* Alphabetical, not upstream order: without a ranking to convey, the only
- * useful order is the one you can scan for a name. (filter() copies, so this
- * never sorts the prop.) */
-const furtherOrgs = computed(() =>
-  props.summary.organisationList
-    .filter((o) => o.endorsements === 0)
-    .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+const sortedOrgs = computed(() =>
+  [...props.summary.organisationList].sort(
+    (a, b) =>
+      compareRows(
+        { endorsements: a.endorsements, date: orgSortDate(a) },
+        { endorsements: b.endorsements, date: orgSortDate(b) },
+      ) || a.name.localeCompare(b.name, 'de'),
+  ),
+)
+
+/**
+ * One organisation, several Stellungnahmen: the entry is grouped
+ * server-side, so a row can stand for more than one submission — and then it
+ * always opens into the sub-list.
+ *
+ * Because the number that matters is counted PER STELLUNGNAHME: a Zustimmung
+ * means someone read that text and signed it. A row that folds three
+ * documents into one line can only show their sum, which is an index number
+ * — it explains where the row sits in "Meiste Zustimmungen" and describes
+ * nothing anyone endorsed. So the parts get their own rows, and the sum
+ * stays on the group row wearing the word "gesamt".
+ */
+
+/* The day the organisation filed when that is one day, the latest otherwise
+ * (the sub-list carries the exact ones then). "–" stays what it has to mean:
+ * upstream ships no date for this submission. */
+function orgRowDate(org: OrgEntry): string | null {
+  const dates = org.statements.map((s) => s.date)
+  return new Set(dates).size === 1 ? (dates[0] ?? null) : orgSortDate(org)
+}
+
+const orgRows = computed(() =>
+  sortedOrgs.value.map((org) => {
+    const expanded = org.statements.length > 1
+    return {
+      /* The sub-rows obey the control the reader set, like every other row
+       * in the panel: under "Neueste" a group whose parent prints its LATEST
+       * date must not open with its oldest submission, and under "Meiste
+       * Zustimmungen" it would be the one list ignoring the key everything
+       * else is ranked by. The comparator applies both keys, so the sequence
+       * a multi-day group is there to show survives either way — reversed
+       * under "Neueste", which is the direction the reader asked for.
+       * (Copy, never a sort in place: `summary` is a prop.) */
+      org: { ...org, statements: [...org.statements].sort(compareRows) },
+      expanded,
+      row: {
+        date: orgRowDate(org),
+        label: org.name,
+        links: expanded
+          ? null
+          : org.statements.map((s) => ({ citation: s.citation, href: s.parliamentUrl })),
+        detail: expanded ? statementCountLabel(org.statements.length) : null,
+        submitter: org.name,
+      },
+    }
+  }),
 )
 
 /* ORG_LIST_CAP is set far above every population measured in GP XXVIII, so
@@ -124,21 +233,57 @@ const hiddenOrgCount = computed(() =>
   Math.max(0, props.summary.organisations - listedOrgStatements.value),
 )
 
-/* Stated only when the two numbers differ — otherwise it is noise. This is
- * also the line that keeps the legend above honest: it partitions
- * Stellungnahmen, so "Organisationen 4" can stand over three rows. */
-const orgGroupNote = computed(() => {
-  const entries = props.summary.organisationList.length
-  if (!entries || listedOrgStatements.value === entries) return null
-  return `${formatNumberDe(listedOrgStatements.value)} Stellungnahmen von ${formatNumberDe(entries)} Organisationen – manche haben mehrfach eingereicht.`
+/* True when a row can stand for more than one submission. Decides the shape
+ * of the count line, which is the whole explanation: "23 Stellungnahmen von
+ * 22 Organisationen" says a row holds more than one without a sentence
+ * saying so, and the grouped row itself states its count and lists them. */
+const orgsFiledRepeatedly = computed(
+  () =>
+    props.summary.organisationList.length > 0 &&
+    listedOrgStatements.value !== props.summary.organisationList.length,
+)
+
+/* What the segment would hold, known from the summary before the list is
+ * fetched — so the count line says something during the first load instead
+ * of flashing a zero. */
+const expectedCount = computed(() => {
+  switch (filter.value) {
+    case 'organisations':
+      return props.summary.organisationList.length
+    case 'persons':
+      return props.summary.privatePersons
+    case 'nonpublic':
+      return props.summary.nonPublic
+    default:
+      return props.summary.total
+  }
 })
 
-/* "Mit den meisten Zustimmungen" is only honest while something is left out. */
-const orgHeading = computed(() =>
-  rankedOrgs.value.length && (furtherOrgs.value.length || hiddenOrgCount.value)
-    ? 'Organisationen mit den meisten Zustimmungen'
-    : 'Organisationen',
-)
+/* How much of the segment is on screen — no sort label any more, the control
+ * above says that. Announced (aria-live), since switching a control changes
+ * the list below without moving focus. */
+const countLine = computed(() => {
+  if (!needsList.value) {
+    const orgs = countLabelDe(
+      sortedOrgs.value.length,
+      'Organisation',
+      'Organisationen',
+    )
+    /* Both numbers in one line when they differ, so "22 Organisationen" is
+     * not stated twice under each other. */
+    const head = orgsFiledRepeatedly.value
+      ? `${statementCountLabel(listedOrgStatements.value)} von ${orgs}`
+      : orgs
+    return head
+  }
+  const total = status.value === 'success' ? items.value.length : expectedCount.value
+  const shown = Math.min(visibleCount.value, total)
+  const head =
+    shown < total
+      ? `${formatNumberDe(shown)} von ${formatNumberDe(total)} angezeigt`
+      : statementCountLabel(total)
+  return head
+})
 
 /* Submitter mix as one stacked bar — "707, davon 96 % Privatpersonen" in a
  * glance (org-mobilization vs. citizen-wave is a journalistic signature).
@@ -157,16 +302,6 @@ const mixSegments = computed(() => {
     .map((s) => ({ ...s, pct: (s.count / t) * 100 }))
 })
 
-const maxEndorsements = computed(() =>
-  Math.max(0, ...rankedOrgs.value.map((o) => o.endorsements)),
-)
-
-/* CSS max() keeps every non-zero bar visible: 1 of 355 is 0.3 % — sub-pixel
- * without the 3px floor, and the spread IS the story (355 vs 1). */
-function endorsementBarWidth(endorsements: number): string {
-  if (endorsements <= 0 || maxEndorsements.value <= 0) return '0'
-  return `max(${(endorsements / maxEndorsements.value) * 100}%, 3px)`
-}
 </script>
 
 <template>
@@ -206,191 +341,149 @@ function endorsementBarWidth(endorsements: number): string {
       veröffentlicht wurden.
     </p>
 
-    <!-- Organisations: ranked by endorsements, the rest folded below -->
-    <section v-if="summary.organisationList.length" class="mt-6">
-      <h3 class="text-base font-semibold text-ink">{{ orgHeading }}</h3>
-      <!-- Says out loud why four Stellungnahmen can stand over three rows —
-           the legend above partitions submissions, this list groups them. -->
-      <p v-if="orgGroupNote" class="mt-1 text-sm text-ink-secondary">
-        {{ orgGroupNote }}
-      </p>
-      <ul v-if="rankedOrgs.length" class="mt-1 divide-y divide-hairline">
-        <li v-for="org in rankedOrgs" :key="org.name" class="py-2.5">
-          <div class="flex items-baseline justify-between gap-4">
-            <ExternalLink
-              v-if="org.statements.length === 1"
-              :href="org.statements[0]!.parliamentUrl"
-              :aria-label="`Stellungnahme von ${org.name} auf parlament.gv.at öffnen`"
-              class="tap-target min-w-0 text-sm font-medium text-accent-deep hover:underline"
-            >
-              <span class="truncate">{{ org.name }}</span>
-            </ExternalLink>
-            <span v-else class="min-w-0 truncate text-sm font-medium text-ink">
-              {{ org.name }}
-            </span>
-            <!-- No zero guard needed here: this block is the >0 half of the
-                 split. The zero half renders as names only, below. Summed
-                 over the row's statements, hence the count next to it. -->
-            <span class="shrink-0 text-sm tabular-nums text-ink-secondary">
-              {{ endorsementLabel(org.endorsements) }}
-              <template v-if="org.statements.length > 1">
-                · {{ statementCountLabel(org.statements.length) }}
-              </template>
-            </span>
-          </div>
-          <!-- Decorative scale (value in text, bar aria-hidden): the
-               spread is the story — one Betriebsrat can out-mobilize the
-               other hundred statements combined. -->
-          <div
-            class="mt-1.5 h-1.5 w-full rounded-r-[2px] bg-accent-wash"
-            aria-hidden="true"
+    <!-- Two axes, two groups: WHO filed (the legend's own four groups, so the
+         counts stay up there and these labels carry none) and IN WHICH ORDER.
+         Keeping them apart is what let the count line stop naming the sort. -->
+    <div class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <!-- Four labels this long cannot fit a phone column — the text alone is
+           ~330px against 288px at 320px wide — and left to overflow, the
+           browser scales the whole page down to fit them. So this one group
+           scrolls sideways instead; the sort group beside it fits and stays
+           whole on its own line. -->
+      <div class="min-w-0 max-w-full overflow-x-auto">
+        <UFieldGroup role="group" aria-label="Stellungnahmen nach Einbringer:in filtern">
+          <UButton
+            v-for="opt in filterOptions"
+            :key="opt.value"
+            :color="filter === opt.value ? 'primary' : 'neutral'"
+            :variant="filter === opt.value ? 'subtle' : 'outline'"
+            :aria-pressed="filter === opt.value"
+            class="min-h-11"
+            @click="filter = opt.value"
           >
-            <div
-              class="h-1.5 rounded-r-[2px] bg-accent"
-              :style="{ width: endorsementBarWidth(org.endorsements) }"
-            />
-          </div>
-          <OrganisationStatementLinks v-if="org.statements.length > 1" :org="org" />
-        </li>
-      </ul>
+            {{ opt.label }}
+          </UButton>
+        </UFieldGroup>
+      </div>
 
-      <!-- Native <details> for the same reason as DraftSummary: no hydration,
-           keyboard accessible as-is, find-in-page reveals it, and the names
-           stay in the SSR HTML. A plain <div> when there is no ranked block
-           above it — nothing to be "weitere" than. -->
-      <component
-        :is="rankedOrgs.length ? 'details' : 'div'"
-        v-if="furtherOrgs.length"
-        :class="rankedOrgs.length ? 'mt-4 border-t border-hairline' : undefined"
-      >
-        <summary
-          v-if="rankedOrgs.length"
-          class="cursor-pointer rounded py-3 text-sm font-medium text-ink-secondary marker:text-ink-muted"
+      <UFieldGroup role="group" aria-label="Stellungnahmen sortieren">
+        <UButton
+          v-for="opt in sortOptions"
+          :key="opt.value"
+          :color="sort === opt.value ? 'primary' : 'neutral'"
+          :variant="sort === opt.value ? 'subtle' : 'outline'"
+          :aria-pressed="sort === opt.value"
+          class="min-h-11"
+          @click="sort = opt.value"
         >
-          Weitere {{ formatNumberDe(furtherOrgs.length) }} Organisationen ohne
-          Zustimmungen
-        </summary>
-        <ul class="mt-1 divide-y divide-hairline">
-          <li v-for="org in furtherOrgs" :key="org.name" class="py-2.5">
-            <ExternalLink
-              v-if="org.statements.length === 1"
-              :href="org.statements[0]!.parliamentUrl"
-              :aria-label="`Stellungnahme von ${org.name} auf parlament.gv.at öffnen`"
-              class="tap-target block min-w-0 text-sm font-medium text-accent-deep hover:underline"
-            >
-              <span class="truncate">{{ org.name }}</span>
-            </ExternalLink>
-            <template v-else>
-              <div class="flex items-baseline justify-between gap-4">
-                <span class="min-w-0 truncate text-sm font-medium text-ink">
-                  {{ org.name }}
-                </span>
-                <span class="shrink-0 text-sm tabular-nums text-ink-secondary">
-                  {{ statementCountLabel(org.statements.length) }}
-                </span>
-              </div>
-              <OrganisationStatementLinks :org="org" />
-            </template>
-          </li>
-        </ul>
-      </component>
-
-      <p v-if="hiddenOrgCount > 0" class="mt-3 text-sm text-ink-muted">
-        und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen — in der
-        vollständigen Liste unten.
-      </p>
-    </section>
-
-    <!-- The anonymous half, lazily fetched (organisations are above) -->
-    <div v-if="individualCount > 0" class="mt-6">
-      <UButton
-        color="neutral"
-        variant="outline"
-        :aria-expanded="expanded"
-        :aria-controls="listId"
-        @click="toggleList"
-      >
-        {{
-          expanded
-            ? 'Weitere Stellungnahmen ausblenden'
-            : `Weitere ${formatNumberDe(individualCount)} Stellungnahmen anzeigen`
-        }}
-      </UButton>
+          {{ opt.label }}
+        </UButton>
+      </UFieldGroup>
     </div>
 
-    <div v-if="expanded" :id="listId" class="mt-4">
-      <LoadingState
-        v-if="status === 'pending'"
-        label="Stellungnahmen werden geladen …"
-      />
-      <ErrorState
-        v-else-if="status === 'error'"
-        title="Stellungnahmen konnten nicht geladen werden"
-        @retry="execute()"
-      />
-      <template v-else-if="data">
-        <div class="flex flex-wrap items-baseline justify-between gap-3">
-          <!-- Says what this list is, in place of a filter whose only option
-               would have been "Nur Organisationen" — all of them are above. -->
-          <p class="text-sm text-ink-secondary">
-            Privatpersonen und nicht-öffentliche Einreichungen – die
-            Organisationen stehen oben.
-          </p>
-          <p class="text-sm text-ink-muted">
-            <span class="tabular-nums">{{ formatNumberDe(visible.length) }}</span>
-            von
-            <span class="tabular-nums">{{ formatNumberDe(individual.length) }}</span>
-            angezeigt
-          </p>
-        </div>
+    <p class="mt-4 text-sm text-ink-muted" aria-live="polite">{{ countLine }}</p>
+    <!-- Same wording as the summary-level note on the detail page: a stale
+         list must never read as the current one. -->
+    <p v-if="needsList && listStaleAsOf" class="mt-1 text-xs text-ink-muted">
+      Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} – die aktuelle
+      Liste ist auf parlament.gv.at derzeit nicht abrufbar.
+    </p>
 
-        <!-- Same wording as the summary-level note on the detail page: a
-             stale list must never read as the current one. -->
-        <p v-if="listStaleAsOf" class="mt-3 text-xs text-ink-muted">
-          Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} – die
-          aktuelle Liste ist auf parlament.gv.at derzeit nicht abrufbar.
-        </p>
-
-        <EmptyState
-          v-if="individual.length === 0"
-          title="Keine weiteren Stellungnahmen"
-          description="Alle Einreichungen zu diesem Entwurf stammen von Organisationen – sie stehen oben."
-          class="mt-4"
-        />
-        <ul v-else class="mt-2 divide-y divide-hairline">
-          <li
-            v-for="item in visible"
-            :key="item.parliamentUrl"
-            class="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-3"
+    <h3 class="sr-only">Liste der Stellungnahmen</h3>
+    <!-- Named query container: the rows inside decide their layout on THIS
+         box's width (row-cols in main.css), not on the window's — the panel
+         never gets wider than the page's max-w-3xl column. -->
+    <div
+      class="@container/list mt-3 overflow-hidden rounded-xl border border-hairline bg-surface"
+    >
+      <!-- Organisations: from the SSR summary, so they are in the HTML a
+           crawler and a find-in-page see — which is what lets an organisation
+           find itself on this page. -->
+      <template v-if="!needsList">
+        <ul v-if="orgRows.length" class="divide-y divide-hairline">
+          <StatementRow
+            v-for="{ org, row, expanded } in orgRows"
+            :key="org.name"
+            v-bind="row"
           >
-            <span class="text-sm tabular-nums text-ink-muted">
-              {{ formatDateDe(item.date) }}
-            </span>
-            <span class="min-w-0 text-sm font-medium text-ink">
-              {{ submitterLabel(item) }}
-            </span>
-            <span
-              v-if="item.endorsements > 0"
-              class="text-sm text-ink-secondary"
-            >
-              {{ endorsementLabel(item.endorsements) }}
-            </span>
-            <ExternalLink
-              :href="item.parliamentUrl"
-              :aria-label="`Stellungnahme ${item.citation} auf parlament.gv.at öffnen`"
-              class="tap-target ml-auto shrink-0 text-sm text-accent-deep hover:underline"
-            >
-              Auf parlament.gv.at
-            </ExternalLink>
-          </li>
+            <!-- Upstream counts Zustimmungen per Stellungnahme; this is the
+                 organisation's sum, and it says so on every row that stands
+                 for more than one of them — not only where the sub-list puts
+                 the parts on screen. A row citing three documents otherwise
+                 states a number that belongs to none of them alone, and the
+                 reader who clicks one through finds a smaller one. The parts
+                 stay upstream, one click away. -->
+            <template v-if="org.endorsements > 0" #meta>
+              {{ endorsementLabel(org.endorsements) }}
+              <span
+                v-if="expanded"
+                class="text-xs text-ink-muted row-cols:block"
+              >gesamt</span>
+            </template>
+            <!-- The v-if belongs on the slot, not inside it: passing a
+                 default slot that renders nothing still costs the row its
+                 full-width slot line and the gap above it. -->
+            <template v-if="expanded" #default>
+              <OrganisationStatementLinks :org="org" />
+            </template>
+          </StatementRow>
         </ul>
+        <div v-else class="p-5">
+          <EmptyState
+            title="Keine Organisationen"
+            description="Zu diesem Entwurf haben nur Privatpersonen eingereicht."
+          />
+        </div>
+      </template>
 
-        <div v-if="hasMore" class="mt-4 text-center">
-          <UButton color="neutral" variant="outline" @click="visibleCount += PAGE_SIZE">
-            Mehr laden
-          </UButton>
+      <!-- Everything else needs the item list, fetched on the first switch -->
+      <template v-else>
+        <div v-if="status === 'pending'" class="p-5">
+          <LoadingState label="Stellungnahmen werden geladen …" />
+        </div>
+        <div v-else-if="status === 'error'" class="p-5">
+          <ErrorState
+            title="Stellungnahmen konnten nicht geladen werden"
+            @retry="execute()"
+          />
+        </div>
+        <ul v-else-if="visibleItems.length" class="divide-y divide-hairline">
+          <StatementRow
+            v-for="item in visibleItems"
+            :key="item.parliamentUrl"
+            :date="item.date"
+            :label="submitterLabel(item)"
+            :links="[{ citation: item.citation, href: item.parliamentUrl }]"
+            :submitter="submitterName(item)"
+          >
+            <template v-if="item.endorsements > 0" #meta>
+              {{ endorsementLabel(item.endorsements) }}
+            </template>
+          </StatementRow>
+        </ul>
+        <div v-else class="p-5">
+          <EmptyState
+            title="Keine Stellungnahmen in dieser Auswahl"
+            description="Ein anderes Filter-Segment zeigt die übrigen Einreichungen."
+          />
         </div>
       </template>
     </div>
+
+    <div v-if="hasMore" class="mt-4 text-center">
+      <UButton
+        color="neutral"
+        variant="outline"
+        class="min-h-11"
+        @click="visibleCount += PAGE_SIZE"
+      >
+        Mehr laden
+      </UButton>
+    </div>
+
+    <p v-if="!needsList && hiddenOrgCount > 0" class="mt-3 text-sm text-ink-muted">
+      und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen – sie
+      stehen im Segment „Alle“.
+    </p>
   </div>
 </template>
