@@ -87,18 +87,26 @@ the product ("nicht im RIS veröffentlicht"), not an error.
    the result as a committed JSON artefact with score and tier, plus a
    manual-override map for the few cases a human decided.
 
-### Recommended for ruleVersion 2 (from the verification pass, not yet tested)
+### 3a. ruleVersion 2 (2026-09-07, in force)
 
-- Exact normalized `description` == RIS Titel/Kurztitel as an explicit
-  tier before fuzzy scoring (covers ~290 of 350 with zero ambiguity).
-- Reweight: ende 0.30, title 0.35, date 0.20, ministry 0.15.
-- Geschäftszahl (`\d{4}-0\.\d{3}\.\d{3}`) from both cover letters as a
-  deterministic tie-breaker for margins below 0.10. Needs PDF text, so a
-  tie-breaker, not a primary key.
-- Abbreviation dictionary seeded from RIS `Abkuerzung` (lifts StVO-Novelle
-  and UVP-G style titles).
-- A **Fristabweichung** flag whenever the two official publications
-  disagree on the deadline. That is accountability data in its own right.
+Driven by the first live GP XXVIII run (§6a) and the verifier's critique.
+Checked against both GPs: on GP XXVII every accepted RIS id is unchanged,
+15 rows move from tier B to A, and 84/ME keeps its match with the
+discrepancy now flagged.
+
+| Change | Why | Effect |
+|---|---|---|
+| Weights: date 0.20, **ende 0.30**, ministry 0.15, title 0.35 | Ende is the sharper signal (§2) | 12/ME XXVIII becomes reachable; tiers sharpen |
+| A record whose Ende equals the Frist is a candidate regardless of Beginn offset | 12/ME XXVIII: RIS published 18 days before Parliament's Einlangen | recovers early RIS publications |
+| RIS `Abkuerzung` is a third title field | 56/ME XXVIII: the whole package name "MinroG-Novelle IE-R 2025" sits in `Abkuerzung`, Parliament uses it as the title | title 1.0 instead of 0.13 |
+| **Fristabweichung rescue**: Beginn exact, ministry exact, title ≥ 0.9, not a Verordnung, no non-Verordnung rival ≥ 0.6 → matched, tier B, reason `Fristabweichung: RIS-Ende ±N Tage` | 84/ME XXVII (RIS typo) and 56/ME XXVIII (one month apart). Three of four signals agree; the disagreement is data to show | both matched and flagged |
+| Weak tier C admits class `other` | 11/ME XXVIII: RIS title "Verbot der unaufgeforderten Übermittlung von Genitalbildern" has no type word, dates + ministry unique | matched_weak |
+| `ministryCodeOf` maps the long name "Europa, Integration und Familie" → BMEIF | RIS carries no code for that Staatssekretariat | 2 matches gain ministry 1.0 |
+| Lineage groups for GP XXVIII: BMBWF/BMB/BMFWF, BMK/BMLUK/BMIMI/BML, BMSGPK/BMASGPK, BMAW/BMWET/BMWKMS/BMDW, BKA/BMEIF | successor codes after the March 2025 government; not yet needed by any pair, both sides used the same code | none observed, guards the seam |
+
+Still open for a later version: exact normalized `description` (detail JSON)
+as a tier before fuzzy scoring, which needs one detail fetch per ME; the
+Geschäftszahl tie-breaker, which needs PDF text.
 
 ## 4. Operating it
 
@@ -131,17 +139,21 @@ the product ("nicht im RIS veröffentlicht"), not an error.
 - Nightly prewarm: systemd timer + oneshot in `deploy/systemd/`, installed
   and enabled by `deploy.sh` on every deploy and started after each restart;
   corpus TTL 20 h so the daily run always refreshes.
-- Not yet done: the ruleVersion 2 changes (need a fresh corpus run) and a
-  GP XXVIII review of the ministry lineage groups.
+- ruleVersion 2 (§3a) with GP XXVIII fixtures and regression tests; the
+  ministry lineage review for GP XXVIII is folded into it.
 
 ## 5. Artefact
 
 `data/ris-me-map-gp27.json`: one row per ME with status, tier, RIS id,
 Kurztitel, score, Beginn/Ende offsets, duplicates and reason. 350 rows.
-Test fixtures `tests/fixtures/ris-begut-gp27.json` (993 RIS records around
-the GP window, CC-BY 4.0 metadata) and `tests/fixtures/me-gp27.json`
-(353 list-81 rows) let the TypeScript port be checked against the verified
-result without network access.
+Regenerate from the current rule with
+`REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts` and read the diff
+before committing: every changed RIS id is a claim that needs a look.
+Test fixtures (CC-BY 4.0 metadata, no network needed):
+`tests/fixtures/ris-begut-gp27.json` (993 RIS records around the GP
+window) and `me-gp27.json` (353 list-81 rows); `ris-begut-gp28.json`
+(340 records since 2024-09-15) and `me-gp28.json` (132 rows as of
+2026-09-07).
 
 ## 6. Consequence for the diff layer
 
@@ -178,14 +190,17 @@ more and buys the historical corpus.
 | Ende offset among matches | 0 for all 128 |
 | Beginn offset | 0 for 109, −1 for 12, the rest within −13..+1 |
 
-The prewarm took 54 s cold. One unmatched case is instructive: 56/ME
-(MinroG-Novelle, BMF, Beginn 2025-10-03) has its RIS record with the same
-Beginn, ministry and title, but RIS says Ende 2025-11-10 where Parliament
-says 2025-10-10. Under ruleVersion 1 the Ende mismatch costs the match
-(score 0.50). That is exactly the **Fristabweichung** the product should
-show rather than hide, so ruleVersion 2 must let exact Beginn + ministry +
-strong title carry a match with a flagged deadline discrepancy. The other
-three were not checked against the full corpus yet.
+The prewarm took 54 s cold. The four misses, resolved offline against the
+RIS records of the period (fixtures in `tests/fixtures/*gp28*`):
+
+| ME | Finding | ruleVersion 2 |
+|---|---|---|
+| 56/ME MinroG-Novelle (BMF) | RIS record exists: Beginn, ministry equal, package name in RIS `Abkuerzung`; RIS Ende 2025-11-10 vs Parliament 2025-10-10 | matched B, `Fristabweichung: RIS-Ende +31 Tage` |
+| 12/ME Wehrgesetz (BMLV) | RIS published 2025-04-11, Parliament Einlangen 2025-04-29 (−18 days, outside the window); Ende equal | matched |
+| 11/ME StGB (BMJ) | RIS title "Verbot der unaufgeforderten Übermittlung von Genitalbildern", no type word; dates and ministry unique | matched_weak C |
+| 60/ME Eltern-Kind-Pass (BMASGPK) | no RIS record with these dates or this title | unmatched, correctly |
+
+Under ruleVersion 2: 130 matched, 1 weak, 1 unmatched, 0 ambiguous.
 
 ## 7. Open questions left
 

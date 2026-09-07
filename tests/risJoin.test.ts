@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   classifyRisRecord,
@@ -7,9 +7,11 @@ import {
   dedupeMeRows,
   endScore,
   joinRisToMe,
+  JOIN_WEIGHTS,
   ministryCodeOf,
   ministryScore,
   normalizeTitleText,
+  RULE_VERSION,
   splitParliamentTitle,
   titleTokens,
   type MeListRow,
@@ -30,6 +32,7 @@ interface MapFile {
   ruleVersion: number
   counts: { status: Record<string, number>; tier: Record<string, number> }
   rows: MapRow[]
+  [k: string]: unknown
 }
 
 describe('title normalisation', () => {
@@ -108,8 +111,9 @@ describe('GP XXVII corpus regression (docs/ris-join.md)', () => {
   })
 
   it('reproduces the verified mapping row by row', () => {
-    expect(expected.ruleVersion).toBe(1)
     const rows = joinRisToMe(dedupeMeRows(meRows), ris)
+    if (process.env.REGEN_RIS_MAP) writeGp27Artefact(rows, expected)
+    else expect(expected.ruleVersion).toBe(RULE_VERSION)
     const byInr = new Map(rows.map((r) => [r.inr, r]))
     const diffs: string[] = []
     for (const e of expected.rows) {
@@ -129,4 +133,77 @@ describe('GP XXVII corpus regression (docs/ris-join.md)', () => {
     for (const r of rows) status[r.status] = (status[r.status] ?? 0) + 1
     expect(status).toEqual(expected.counts.status)
   })
+
+  it('keeps the 84/ME RIS-typo case as a match with a flagged Fristabweichung', () => {
+    const row = joinRisToMe(dedupeMeRows(meRows), ris).find((r) => r.inr === 84)!
+    expect(row.status).toBe('matched')
+    expect(row.reason).toMatch(/^Fristabweichung/)
+  })
 })
+
+describe('GP XXVIII first live run (docs/ris-join.md §6a)', () => {
+  const ris = read<RisBegutRecord[]>('./fixtures/ris-begut-gp28.json')
+  const meRows = read<MeListRow[]>('./fixtures/me-gp28.json')
+  const rows = joinRisToMe(dedupeMeRows(meRows), ris)
+  const byInr = new Map(rows.map((r) => [r.inr, r]))
+  const chosen = (inr: number) => byInr.get(inr)!.candidates.find((c) => c.risId === byInr.get(inr)!.risId)!
+
+  it('matches 130 of 132, one weak, one genuinely absent from RIS', () => {
+    const status: Record<string, number> = {}
+    for (const r of rows) status[r.status] = (status[r.status] ?? 0) + 1
+    expect(status).toEqual({ matched: 130, matched_weak: 1, unmatched: 1 })
+    expect(rows.filter((r) => r.status === 'ambiguous')).toHaveLength(0)
+    expect(byInr.get(60)!.status).toBe('unmatched')
+  })
+
+  it('carries the three v2 cases', () => {
+    // 56/ME: RIS Abkuerzung equals the Parliament title; Ende differs by a month
+    expect(byInr.get(56)!.status).toBe('matched')
+    expect(chosen(56).endOffset).toBe(31)
+    expect(byInr.get(56)!.reason).toMatch(/^Fristabweichung/)
+    // 12/ME: RIS published 18 days before Parliament's Einlangen, Ende equal
+    expect(byInr.get(12)!.status).toBe('matched')
+    expect(chosen(12).dateOffset).toBe(-18)
+    // 11/ME: RIS title without a type word, class 'other', dates+ministry unique
+    expect(byInr.get(11)!.status).toBe('matched_weak')
+  })
+
+  it('reads the BMEIF long name as a code', () => {
+    expect(chosen(22).ministryScore).toBe(1)
+  })
+})
+
+/** REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts — rewrites the artefact from the current rule. */
+function writeGp27Artefact(rows: ReturnType<typeof joinRisToMe>, previous: MapFile): void {
+  const status: Record<string, number> = {}
+  const tier: Record<string, number> = {}
+  for (const r of rows) {
+    status[r.status] = (status[r.status] ?? 0) + 1
+    tier[String(r.tier)] = (tier[String(r.tier)] ?? 0) + 1
+  }
+  const out = {
+    ...previous,
+    ruleVersion: RULE_VERSION,
+    weights: JOIN_WEIGHTS,
+    counts: { status, tier },
+    rows: [...rows]
+      .sort((a, b) => a.inr - b.inr)
+      .map((r) => {
+        const c = r.candidates.find((x) => x.risId === r.risId) ?? null
+        return {
+          cite: r.cite,
+          inr: r.inr,
+          status: r.status,
+          tier: r.tier,
+          risId: r.risId,
+          risKurztitel: c?.risKurztitel ?? null,
+          score: c?.score ?? null,
+          beginnOffsetDays: c?.dateOffset ?? null,
+          endeOffsetDays: c?.endOffset ?? null,
+          duplicates: r.duplicates,
+          reason: r.reason,
+        }
+      }),
+  }
+  writeFileSync(new URL('../data/ris-me-map-gp27.json', import.meta.url), JSON.stringify(out, null, 1) + '\n')
+}
