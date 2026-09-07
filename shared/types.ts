@@ -256,3 +256,40 @@ export interface DashboardOutcomes {
       already contains one (or none exists in the pool). */
   lastEnacted: ClosedOutcome | null
 }
+
+// ---------------------------------------------------------------------------
+// RIS ↔ ME mapping (docs/ris-join.md)
+// ---------------------------------------------------------------------------
+
+export type RisJoinStatus = 'matched' | 'matched_weak' | 'ambiguous' | 'unmatched'
+
+export interface RisMapRow {
+  citation: string
+  inr: number
+  status: RisJoinStatus
+  /** A ≥ 0.90, B ≥ 0.75, C = weak dates+ministry rule; null when not matched */
+  tier: 'A' | 'B' | 'C' | null
+  /** RIS Technisch.ID, e.g. BEGUT_COO_2026_100_2_1836568 */
+  risId: string | null
+  risKurztitel: string | null
+  /** Human-readable RIS page of the draft */
+  risUrl: string | null
+  /** RIS main document (draft text) in the formats RIS offers */
+  risDocument: { html: string | null; xml: string | null; pdf: string | null } | null
+  score: number | null
+  /** RIS Beginn − Parliament Einlangen, days */
+  beginnOffsetDays: number | null
+  /** RIS Ende − Parliament Frist, days; a non-zero value is a Fristabweichung */
+  endeOffsetDays: number | null
+  reason: string | null
+}
+
+export interface RisMapResponse {
+  gp: string
+  ruleVersion: number
+  /** ISO timestamp of the RIS fetch this map was computed from */
+  risFetchedAt: string
+  risRecordsConsidered: number
+  counts: Record<RisJoinStatus, number>
+  rows: RisMapRow[]
+}
