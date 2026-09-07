@@ -1,0 +1,12 @@
+# Installed by deploy/deploy.sh on every deploy (rsync + daemon-reload).
+# Warms the RIS↔ME map of the current GP: ~46 upstream requests that must
+# not land on a visitor (docs/ris-join.md §4a). Started by the timer nightly
+# and by deploy.sh after each restart, because the Nitro cache is in-memory.
+[Unit]
+Description=Begutachtungs-Monitor: warm the RIS↔ME map of the current GP
+After=begutachtungs-monitor.service
+Requires=begutachtungs-monitor.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell

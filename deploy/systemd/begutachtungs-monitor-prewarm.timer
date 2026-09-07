@@ -1,0 +1,12 @@
+# Installed by deploy/deploy.sh on every deploy. Corpus cache TTL is 20 h
+# (server/utils/ris.ts), so a daily run always refreshes.
+[Unit]
+Description=Begutachtungs-Monitor: nightly RIS prewarm
+
+[Timer]
+OnCalendar=*-*-* 04:30:00
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
