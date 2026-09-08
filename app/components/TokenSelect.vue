@@ -11,12 +11,17 @@ defineProps<{ id?: string; ariaLabel?: string }>()
 </script>
 
 <template>
-  <span class="relative inline-flex">
+  <!-- Shrink-to-fit, but never wider than the container: a native <select>
+       takes its width from the widest option (a Ressort name runs 60-odd
+       characters), and its automatic minimum size would otherwise defeat the
+       caller's max-width and push the page into horizontal scroll on mobile.
+       Callers that are flex items need min-w-0 for the same reason. -->
+  <span class="relative inline-flex min-w-0 max-w-full">
     <select
       :id="id"
       v-model="model"
       :aria-label="ariaLabel"
-      class="min-h-11 appearance-none rounded-md border border-hairline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-baseline"
+      class="min-h-11 w-full min-w-0 appearance-none truncate rounded-md border border-hairline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-baseline"
     >
       <slot />
     </select>

@@ -330,7 +330,13 @@ const linkClasses =
         >
           {{ citationText }}
         </p>
-        <h1 class="mt-3 text-2xl font-semibold text-ink sm:text-3xl">
+        <!-- German compounds: "Elektrizitätswirtschaftsgesetz" at text-2xl is
+             wider than a 320px viewport's content box, so the title hyphenates
+             (lang="de-AT" is set) and breaks as a last resort rather than
+             scrolling the page sideways. -->
+        <h1
+          class="mt-3 text-2xl font-semibold text-ink hyphens-auto break-words sm:text-3xl"
+        >
           {{ data.shortTitle ?? data.title }}
         </h1>
         <!-- The official Sammeltitel stays on the page (and in og:title)

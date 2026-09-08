@@ -51,14 +51,6 @@ withDefaults(
             {{ consultation.statementCount === 1 ? 'Stellungnahme' : 'Stellungnahmen' }}
           </span>
         </template>
-        <!-- Closed cards seed the product's question — honest at zero data
-             cost, the detail page always answers it (showOutcome on !active).
-             Suppressed when an aside slot is provided: the outcome chip
-             there already IS the answer. -->
-        <template v-if="!consultation.active && !$slots.aside">
-          <span aria-hidden="true">·</span>
-          <span class="font-medium text-accent-deep">Was wurde daraus?&nbsp;→</span>
-        </template>
       </p>
     </div>
     <!-- Right-hand slot, one card anatomy for every list: the Frist by
