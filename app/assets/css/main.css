@@ -92,8 +92,10 @@
      the diff direction in the Textvergleich, red for a passage that goes,
      green for one that arrives — the convention every reader knows from
      GitHub. Still state, never decoration, and never colour alone: the
-     block names it in words and a removal is struck through. Grounds use
-     the /10 and /15 washes with full ink, like DeadlineBadge. */
+     block names it in words and the gutter repeats it. The strikethrough
+     stays in the word-level diff only — on a whole removed passage it would
+     just make the text harder to read. Grounds use the /10 and /15 washes
+     with full ink, like DeadlineBadge. */
   --color-status-good: #0ca30c;
   --color-status-warning: #b45309;
   --color-status-serious: #ec835a;
