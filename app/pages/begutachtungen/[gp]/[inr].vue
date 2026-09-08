@@ -570,10 +570,13 @@ const linkClasses =
               </ExternalLink>
             </li>
           </ul>
-          <p class="mt-2 text-xs text-ink-muted">
-            Der direkte Textvergleich Entwurf ↔ Regierungsvorlage ist geplant.
-          </p>
         </div>
+
+        <!-- The accountability core: what became of the draft, § by §, both
+             ways — changed and unchanged alike (CLAUDE.md framing rule). Only
+             once a Regierungsvorlage exists; before that there is nothing to
+             hold the draft against. -->
+        <LawDiffSection v-if="data.enactment" :gp="data.gp" :inr="data.inr" />
       </section>
 
       <section class="page-section" aria-labelledby="statements-heading">
