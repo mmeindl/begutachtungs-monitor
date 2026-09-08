@@ -17,26 +17,53 @@ const { data, status } = await useFetch<LawDiffResponse>(() => `/api/consultatio
 
 const open = ref<Set<string>>(new Set())
 
-type Filter = 'alle' | 'geändert' | 'neu' | 'entfallen' | 'unverändert'
+type Badge = LawDiffUnit['change'] | 'editorial'
+
+/** One pill style for rows and group summaries alike. */
+const BADGE_CLASS: Record<Badge, string> = {
+  changed: 'bg-accent-50 text-accent-deep',
+  editorial: 'bg-page text-ink-muted',
+  unchanged: 'bg-page text-ink-muted',
+  inserted: 'bg-mark-wash text-ink',
+  removed: 'border border-hairline text-ink-secondary line-through',
+}
+const BADGE_LABEL: Record<Badge, string> = {
+  changed: 'geändert',
+  editorial: 'redaktionell',
+  unchanged: 'unverändert',
+  inserted: 'neu',
+  removed: 'entfallen',
+}
+/**
+ * Strongest event first: whole paragraphs appearing or disappearing, then
+ * edits deep before shallow, the unchanged baseline last — the order every
+ * diff view has trained readers on. Pills and filter chips share it.
+ */
+const BADGE_ORDER: Badge[] = ['inserted', 'removed', 'changed', 'editorial', 'unchanged']
+
+function badgeOf(u: LawDiffUnit): Badge {
+  return isMinor(u) ? 'editorial' : u.change
+}
+
+/** Filter values are the badge kinds plus 'alle'; chips and pills share one order. */
+type Filter = 'alle' | Badge
 const filter = ref<Filter>('alle')
 const query = ref('')
 
-const FILTER_CHANGE: Record<Exclude<Filter, 'alle'>, LawDiffUnit['change']> = {
-  geändert: 'changed',
-  neu: 'inserted',
-  entfallen: 'removed',
-  unverändert: 'unchanged',
-}
 const filterOptions = computed<{ value: Filter; label: string; count: number }[]>(() => {
   const s = data.value?.stats
   if (!s) return []
+  const counts: Record<Badge, number> = {
+    inserted: s.inserted,
+    removed: s.removed,
+    changed: s.changed - (s.editorial ?? 0),
+    editorial: s.editorial ?? 0,
+    unchanged: s.unchanged,
+  }
   return [
-    { value: 'alle', label: 'alle', count: s.total },
-    { value: 'geändert', label: 'geändert', count: s.changed },
-    { value: 'neu', label: 'neu', count: s.inserted },
-    { value: 'entfallen', label: 'entfallen', count: s.removed },
-    { value: 'unverändert', label: 'unverändert', count: s.unchanged },
-  ].filter((o) => o.value === 'alle' || o.count > 0) as { value: Filter; label: string; count: number }[]
+    { value: 'alle' as Filter, label: 'alle', count: s.total },
+    ...BADGE_ORDER.map((b) => ({ value: b as Filter, label: BADGE_LABEL[b], count: counts[b] })),
+  ].filter((o) => o.value === 'alle' || o.count > 0)
 })
 
 function key(u: LawDiffUnit): string {
@@ -53,7 +80,7 @@ function toggle(u: LawDiffUnit) {
 const visibleUnits = computed(() => {
   const q = query.value.trim().toLowerCase()
   return (data.value?.units ?? []).filter((u) => {
-    if (filter.value !== 'alle' && u.change !== FILTER_CHANGE[filter.value]) return false
+    if (filter.value !== 'alle' && badgeOf(u) !== filter.value) return false
     if (!q) return true
     return [u.id, u.meId, u.heading, u.article, u.meText, u.rvText].some((t) => t?.toLowerCase().includes(q))
   })
@@ -72,28 +99,6 @@ interface ArticleGroup {
   counts: Record<LawDiffUnit['change'] | 'editorial', number>
 }
 
-type Badge = LawDiffUnit['change'] | 'editorial'
-
-/** One pill style for rows and group summaries alike. */
-const BADGE_CLASS: Record<Badge, string> = {
-  changed: 'bg-accent-50 text-accent-deep',
-  editorial: 'bg-page text-ink-muted',
-  unchanged: 'bg-page text-ink-muted',
-  inserted: 'bg-mark-wash text-ink',
-  removed: 'border border-hairline text-ink-secondary line-through',
-}
-const BADGE_LABEL: Record<Badge, string> = {
-  changed: 'geändert',
-  editorial: 'redaktionell',
-  unchanged: 'unverändert',
-  inserted: 'neu',
-  removed: 'entfallen',
-}
-const BADGE_ORDER: Badge[] = ['changed', 'editorial', 'inserted', 'removed', 'unchanged']
-
-function badgeOf(u: LawDiffUnit): Badge {
-  return isMinor(u) ? 'editorial' : u.change
-}
 const groups = computed<ArticleGroup[]>(() => {
   const out: ArticleGroup[] = []
   const byArticle = new Map<string, ArticleGroup>()
