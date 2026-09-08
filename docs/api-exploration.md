@@ -173,6 +173,111 @@ MEs are **not** included here (all type filters with `ME` → `count=0`); the li
 
 ---
 
+## 2a. RIS OGD API — `Applikation=BrKons` (konsolidiertes Bundesrecht)
+
+Explored 2026-09-08 for the consolidated-text package (`architecture.md`
+§12.12) and the § title lookup speaking names need (§12.11). Same endpoint and
+version as `Begut`, no auth:
+
+```
+GET https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=BrKons&Titel=…
+```
+
+**One document per paragraph, not per law.** IDs are `NOR…`, and the metadata
+block `Bundesrecht.BrKons` carries what a lookup needs:
+
+| Field | Example | Why it matters |
+|---|---|---|
+| `Abkuerzung` | `GSpG` | the join key from a draft's Promulgationsklausel to the law |
+| `ArtikelParagraphAnlage` / `Paragraphnummer` | `§ 0` / `0` | addresses the single § |
+| `Inkrafttretensdatum` | `1990-01-01` | … |
+| `Ausserkrafttretensdatum` | `2026-07-29` | **… together: every historical version is its own document with a validity interval** |
+| `Kundmachungsorgan`, `StammnormBgblnummer` | `BGBl. Nr. 620/1989` | identity of the Stammnorm |
+| `Aenderung` | `BGBl. Nr. 532/1993 (NR: GP XVIII RV 1130 AB 1170 …)` | every amending BGBl **with its Regierungsvorlage number and GP** |
+| `Eli` | `…/eli/bgbl/1989/620/P0/NOR11004660` | stable address |
+
+**Consequence for the verification harness.** Because each § version carries
+Inkrafttreten and Außerkrafttreten, the version *before* an amendment and the
+version *after* are both addressable. An engine that applies
+Novellierungsanordnungen can therefore be measured against ground truth for
+every already-promulgated amendment — in GP XXVII alone, 296 of 353 drafts
+became a Regierungsvorlage, most of them enacted. Nothing about this is
+blocked; what remains is enumerating the instruction forms and building the
+harness.
+
+**`Aenderung` is a backwards chain.** The tool currently walks ME → RV → BGBl
+forwards. This field walks it back: from a law in force to the
+Regierungsvorlage that changed it, with GP and number. Not needed for the
+diff, but it is the missing direction for "which consultation produced the § I
+am reading".
+
+**Gotcha, and it is a silent one:** unsupported query parameters are
+**ignored, not rejected**. `Paragraf=9` and `Abkuerzung=GSpG` both returned
+441.147 hits — the entire corpus — with HTTP 200. Always sanity-check the hit
+count against expectations before treating a result as filtered (same failure
+class as the list-142 gap, `§list 142`).
+
+## 2b. RIS OGD API — die übrigen `Bundesrecht`-Anwendungen
+
+Explored 2026-09-08 while building the amendment engine (`architecture.md`
+§12.12). The complete list is not in the documentation but falls out of an
+error message: an invalid child element makes the endpoint answer with
+**every** application it accepts.
+
+```
+Suchworte, Titel, BrKons, BgblAuth, BgblPdf, BgblAlt, Begut, RegV, Erv
+```
+
+`RegV` is the one to note: **the RIS also publishes Regierungsvorlagen.** The
+diff layer currently takes them from Parliament HTML (GP XXVIII on) and falls
+back to Begut XML for older periods (`ris-join.md` §6b/§6c) — `RegV` is an
+untested third path and possibly the better one for old GPs. Not needed for
+what ships today; worth a look before more effort goes into HTML variants.
+
+### `Applikation=BgblAuth` — the authentic Bundesgesetzblatt
+
+18.911 documents (2026-09-08), IDs `BGBLA_<Jahr>_<Teil>_<Nummer>`, e.g.
+`BGBLA_2022_I_187`. Metadata under `Bundesrecht.BgblAuth`: `Bgblnummer`
+("BGBl. I Nr. 187/2022"), `Ausgabedatum`, `Einbringer`.
+
+**The decisive property: the main document is the same legistic XML as
+`Begut`** — `absatz typ="novao1|novao2"`, `<gldsym>`, `ueberschrift
+typ="para"`. So `parseRisXml` + `segmentUnits` read a promulgated amendment
+without a single new line of parsing, and the instructions are the *enacted*
+ones — no drift between draft and law.
+
+Useful filter for a harness: the title of a single-law amendment is
+formulaic, `Bundesgesetz, mit dem das <Gesetz> geändert wird`. Those are the
+cases whose result can be scored against one law.
+
+### The exact join from a Bundesgesetzblatt to the text it produced
+
+Every consolidated paragraph version (`BrKons`, §2a) carries in
+`Kundmachungsorgan`:
+
+```
+BGBl. Nr. 620/1989 zuletzt geändert durch BGBl. I Nr. 187/2022
+```
+
+So for a given BGBl number, the version it created and the version it replaced
+are both addressable — which is what makes the verification harness possible.
+The field is in the **list** response, so no per-document fetch is needed to
+find the pair.
+
+**Two caveats, both learned by getting them wrong first:**
+
+- **Dates cannot substitute for the pair.** Amendments are routinely
+  retroactive: GSpG § 20 was promulgated 2022-12-06 and applies from
+  2022-01-01, so `Fassung.FassungVom` on the promulgation date already returns
+  the *amended* text. Any before/after derived from the Kundmachungsdatum
+  compares the new law against itself.
+- **`zuletzt geändert durch` names the law's most recent amendment, not the
+  paragraph's author.** RIS cuts one consolidated version per effective date,
+  so a version can also carry a long-dated change from an earlier amendment
+  (GSpG § 17 in the 2022-12-07 cut). Ground truth at paragraph level is
+  therefore slightly coarser than the question "what did *this* amendment
+  do" — see `architecture.md` §12.12 for how the harness handles it.
+
 ## 2. RIS OGD API — `Applikation=Begut`
 
 ```
