@@ -187,34 +187,46 @@ function displayId(id: string): string {
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
       </div>
 
-      <button
-        type="button"
-        class="mt-4 inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
+      <UButton
+        color="neutral"
+        variant="outline"
+        class="mt-4 min-h-11"
+        :trailing-icon="listOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
         :aria-expanded="listOpen"
         @click="listOpen = !listOpen"
       >
         {{ listOpen ? 'Liste ausblenden' : `Alle ${data.stats.total} ${isNovelle ? 'Änderungsanordnungen' : 'Paragraphen'} anzeigen` }}
-      </button>
+      </UButton>
 
       <template v-if="listOpen">
+        <!-- Same controls as the Stellungnahmen panel below: one joined
+             segmented group, primary-subtle for the active state, and the
+             group scrolls sideways on narrow screens instead of wrapping. -->
         <div class="mt-4 flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Filter" class="flex flex-wrap gap-1">
-            <button
-              v-for="o in filterOptions"
-              :key="o.value"
-              type="button"
-              class="min-h-11 rounded-md border px-3 text-sm"
-              :class="filter === o.value ? 'border-ink bg-ink text-surface' : 'border-hairline bg-surface text-ink-secondary hover:border-baseline'"
-              :aria-pressed="filter === o.value"
-              @click="filter = o.value"
-            >
-              {{ o.label }} <span class="tabular-nums opacity-70">{{ o.count }}</span>
-            </button>
+          <div class="min-w-0 max-w-full overflow-x-auto">
+            <UFieldGroup role="group" aria-label="Änderungen nach Art filtern">
+              <UButton
+                v-for="o in filterOptions"
+                :key="o.value"
+                :color="filter === o.value ? 'primary' : 'neutral'"
+                :variant="filter === o.value ? 'subtle' : 'outline'"
+                :aria-pressed="filter === o.value"
+                class="min-h-11"
+                @click="filter = o.value"
+              >
+                {{ o.label }} <span class="tabular-nums opacity-70">{{ o.count }}</span>
+              </UButton>
+            </UFieldGroup>
           </div>
-          <label class="ml-auto flex min-h-11 min-w-56 flex-1 items-center gap-2 rounded-md border border-hairline bg-surface px-3 text-sm sm:flex-none">
-            <span class="sr-only">Im Text suchen</span>
-            <input v-model="query" type="search" placeholder="Im Text suchen …" class="w-full bg-transparent text-ink outline-none placeholder:text-ink-muted" />
-          </label>
+          <UInput
+            v-model="query"
+            type="search"
+            icon="i-lucide-search"
+            placeholder="Im Text suchen …"
+            aria-label="Im Text suchen"
+            class="ml-auto min-w-56 flex-1 sm:flex-none"
+            :ui="{ base: 'min-h-11' }"
+          />
         </div>
 
         <div class="mt-3 border-y border-hairline">
@@ -228,7 +240,13 @@ function displayId(id: string): string {
             >
               <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Ohne Titel' }}</span>
               <span class="shrink-0 text-xs text-ink-muted">{{ groupSummary(g) }}</span>
-              <span class="shrink-0 text-xs text-ink-muted">{{ groupOpen(g) ? 'zuklappen' : 'aufklappen' }}</span>
+              <UIcon
+                name="i-lucide-chevron-down"
+                class="size-4 shrink-0 self-center text-ink-muted transition-transform"
+                :class="{ 'rotate-180': groupOpen(g) }"
+                aria-hidden="true"
+              />
+              <span class="sr-only">{{ groupOpen(g) ? 'zuklappen' : 'aufklappen' }}</span>
             </button>
             <ol v-if="groupOpen(g)" class="divide-y divide-hairline" :class="{ 'border-t border-hairline': multiLaw }">
               <li v-for="u in g.units" :key="key(u)">
@@ -256,7 +274,13 @@ function displayId(id: string): string {
                     </span>
                     <span v-if="u.heading" class="text-ink-secondary"> {{ u.heading }}</span>
                   </span>
-                  <span class="shrink-0 text-xs text-ink-muted">{{ open.has(key(u)) ? 'schließen' : 'ansehen' }}</span>
+                  <UIcon
+                    name="i-lucide-chevron-down"
+                    class="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform"
+                    :class="{ 'rotate-180': open.has(key(u)) }"
+                    aria-hidden="true"
+                  />
+                  <span class="sr-only">{{ open.has(key(u)) ? 'schließen' : 'ansehen' }}</span>
                 </button>
 
                 <div v-if="open.has(key(u))" class="px-3 pb-4 text-sm leading-relaxed">
