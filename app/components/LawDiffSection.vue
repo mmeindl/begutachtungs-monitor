@@ -16,17 +16,24 @@ const { data, status } = await useFetch<LawDiffResponse>(() => `/api/consultatio
   server: false,
 })
 
-const open = ref<Set<string>>(new Set())
-
 type Badge = LawDiffUnit['change'] | 'editorial'
 
 /** One pill style for rows and group summaries alike. */
+/**
+ * Red for what goes, green for what arrives — the diff convention everyone
+ * has read on GitHub (Manu, 08.09.2026; the note in main.css follows). Text
+ * on a wash is always `text-ink`: ink-secondary drops below 7:1 there, the
+ * same reason DeadlineBadge carries full ink.
+ *
+ * Meaning never rides on colour alone: the pill says the word, a removal is
+ * struck through, and the gutter repeats the state beside the block.
+ */
 const BADGE_CLASS: Record<Badge, string> = {
   changed: 'bg-accent-50 text-accent-deep',
   editorial: 'bg-page text-ink-muted',
   unchanged: 'bg-page text-ink-muted',
-  inserted: 'bg-mark-wash text-ink',
-  removed: 'border border-hairline text-ink-secondary line-through',
+  inserted: 'bg-status-good/15 text-ink',
+  removed: 'bg-status-critical/10 text-ink line-through',
 }
 const BADGE_LABEL: Record<Badge, string> = {
   changed: 'geändert',
@@ -41,6 +48,19 @@ const BADGE_LABEL: Record<Badge, string> = {
  * diff view has trained readers on. Pills and filter chips share it.
  */
 const BADGE_ORDER: Badge[] = ['inserted', 'removed', 'changed', 'editorial', 'unchanged']
+/**
+ * The gutter repeats the pill's colour, so state reads at a glance down the
+ * page: red gone, green new, blue edited, grey formalities. `mark` stays out
+ * of it — it is the brand's "what became of the input" ground, and a fifth
+ * colour in one row helps nobody.
+ */
+const GUTTER_CLASS: Record<Badge, string> = {
+  changed: 'border-accent-deep/50',
+  inserted: 'border-status-good',
+  removed: 'border-status-critical',
+  editorial: 'border-hairline',
+  unchanged: 'border-hairline',
+}
 
 function badgeOf(u: LawDiffUnit): Badge {
   return isMinor(u) ? 'editorial' : u.change
@@ -72,13 +92,6 @@ const filterOptions = computed<{ value: Filter; label: string; count: number; op
 
 function key(u: LawDiffUnit): string {
   return `${u.article ?? ''}|${u.id}|${u.change}`
-}
-function toggle(u: LawDiffUnit) {
-  const k = key(u)
-  const next = new Set(open.value)
-  if (next.has(k)) next.delete(k)
-  else next.add(k)
-  open.value = next
 }
 
 const visibleUnits = computed(() => {
@@ -119,6 +132,18 @@ const groups = computed<ArticleGroup[]>(() => {
   }
   return out
 })
+/**
+ * Always closed, one law included: the header row is the survey (law name
+ * plus the count pills), and a single law is no guarantee of a short page —
+ * 58/ME is one law with 413 units. Nothing opens unasked.
+ *
+ * What changed on 08.09.2026 is what ONE click buys: the whole law as
+ * flowing text with the changes marked, instead of a row per amendment
+ * instruction that had to be opened one by one (Feedback epicenter.works —
+ * without attribution of a change to an actor, splitting them apart buys
+ * nothing). A search opens every group, because then the reader has named
+ * what they are looking for.
+ */
 const openGroups = ref<Set<string>>(new Set())
 function toggleGroup(article: string) {
   const next = new Set(openGroups.value)
@@ -133,6 +158,59 @@ function groupBadges(g: ArticleGroup): { badge: Badge; count: number }[] {
   return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
 }
 
+/**
+ * Blocks in reading order: every change as flowing text, runs of untouched
+ * units folded into one line of context — the way a diff reads on GitHub.
+ * Nothing has to be opened to be read.
+ */
+type Block = { kind: 'unit'; unit: LawDiffUnit } | { kind: 'context'; units: LawDiffUnit[] }
+
+/** Changes rendered before the "show the rest" line. 74/ME has 366 of them. */
+const SHOWN_CHANGES = 30
+
+const fullyShown = ref<Set<string>>(new Set())
+function showAll(article: string) {
+  fullyShown.value = new Set(fullyShown.value).add(article)
+}
+
+function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Block[]; hidden: number } {
+  // Filtering or searching IS the reader asking for specific units — then
+  // nothing gets folded away behind a context line.
+  const folding = filter.value === 'alle' && !query.value.trim()
+  const limit = fullyShown.value.has(article) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
+  const blocks: Block[] = []
+  let context: LawDiffUnit[] = []
+  let shown = 0
+  let hidden = 0
+  const flush = () => {
+    if (context.length) blocks.push({ kind: 'context', units: context })
+    context = []
+  }
+  for (const u of units) {
+    if (folding && badgeOf(u) === 'unchanged') {
+      context.push(u)
+      continue
+    }
+    if (shown >= limit) {
+      hidden++
+      continue
+    }
+    flush()
+    blocks.push({ kind: 'unit', unit: u })
+    shown++
+  }
+  flush()
+  return { blocks, hidden }
+}
+
+const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocksOf(g.units, g.article) })))
+
+/** What one unit is called, so a context line can count them. */
+function unitNoun(n: number): string {
+  if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
+  return n === 1 ? 'Paragraf' : 'Paragrafen'
+}
+
 /** Server-decided: every changed piece is a citation, number, date or punctuation. */
 function isMinor(u: LawDiffUnit): boolean {
   return u.editorial
@@ -144,6 +222,24 @@ const isNovelle = computed(() => {
   return units.length > 0 && units.every((u) => /^Z\d/.test(u.id))
 })
 const hasZiffern = computed(() => (data.value?.units ?? []).some((u) => /^Z\d/.test(u.id)))
+
+/**
+ * The heading, but only where it says something the block does not.
+ *
+ * For a § of a Stammgesetz it is the § title ("Anwendungsbereich") — real
+ * information. For a Novellierungsanordnung it IS the instruction line, cut
+ * at the colon or after 100 characters (`novaoHeading`): it exists so that
+ * renumbered Ziffern can pair by heading, and it was the row label back when
+ * the text sat behind a click. Now that every block shows its text, printing
+ * a truncated copy of the same sentence above it is noise.
+ */
+function extraHeading(u: LawDiffUnit): string | null {
+  if (!u.heading) return null
+  const norm = (s: string) => s.replace(/\s*…\s*$/, '').replace(/\s+/g, ' ').trim().toLowerCase()
+  const heading = norm(u.heading)
+  const body = norm((u.change === 'removed' ? u.meText : u.rvText) ?? '')
+  return heading && body.startsWith(heading) ? null : u.heading
+}
 
 /** "§5" → "§ 5", "Z3" → "Z 3" */
 function displayId(id: string): string {
@@ -194,7 +290,8 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
         Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt der Text
         nicht; die Erläuterungen der Regierungsvorlage oft schon.
         „Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder
-        Satzzeichen geändert, kein einziges Wort.
+        Satzzeichen geändert, kein einziges Wort. Unveränderte Stellen sind
+        eingeklappt.
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
@@ -229,7 +326,7 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
         </div>
 
         <div class="mt-3 border-y border-hairline">
-          <section v-for="g in groups" :key="g.article" class="border-b border-hairline last:border-b-0">
+          <section v-for="g in renderedGroups" :key="g.article" class="border-b border-hairline last:border-b-0">
             <button
               type="button"
               class="flex w-full min-h-11 flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
@@ -257,61 +354,73 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                 </span>
               </span>
             </button>
-            <ol v-if="groupOpen(g)" class="divide-y divide-hairline border-t border-hairline">
-              <li v-for="u in g.units" :key="key(u)">
-                <button
-                  type="button"
-                  class="flex w-full min-h-11 items-start gap-3 px-3 py-2 text-left hover:bg-page"
-                  :aria-expanded="open.has(key(u))"
-                  @click="toggle(u)"
-                >
-                  <span
-                    class="mt-0.5 inline-flex w-24 shrink-0 justify-center rounded-full px-2 py-0.5 text-xs font-medium"
-                    :class="BADGE_CLASS[badgeOf(u)]"
-                  >
-                    {{ BADGE_LABEL[badgeOf(u)] }}
-                  </span>
-                  <span class="min-w-0 flex-1 text-sm">
-                    <span class="font-medium text-ink">
-                      {{ displayId(u.id) }}
-                      <span v-if="u.meId && u.meId !== u.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(u.meId) }})</span>
-                    </span>
-                    <span v-if="u.heading" class="text-ink-secondary"> {{ u.heading }}</span>
-                  </span>
-                  <UIcon
-                    name="i-lucide-chevron-down"
-                    class="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform"
-                    :class="{ 'rotate-180': open.has(key(u)) }"
-                    aria-hidden="true"
-                  />
-                  <span class="sr-only">{{ open.has(key(u)) ? 'schließen' : 'ansehen' }}</span>
-                </button>
-
-                <div v-if="open.has(key(u))" class="px-3 pb-4 text-sm leading-relaxed">
-                  <p v-if="u.change === 'changed' && u.segments" class="hyphens-auto text-ink">
-                    <template v-for="(s, i) in u.segments" :key="i">
-                      <del v-if="s.type === 'removed'" class="rounded bg-page px-0.5 text-ink-secondary line-through decoration-status-critical/70">{{ s.text }}</del>
-                      <ins v-else-if="s.type === 'inserted'" class="rounded bg-mark-wash px-0.5 no-underline">{{ s.text }}</ins>
-                      <span v-else>{{ s.text }}</span>
-                      {{ ' ' }}
-                    </template>
-                  </p>
-                  <div v-else-if="u.change === 'changed'" class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Entwurf</p>
-                      <p class="text-ink-secondary">{{ u.meText }}</p>
-                    </div>
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Regierungsvorlage</p>
-                      <p class="text-ink">{{ u.rvText }}</p>
-                    </div>
+            <div v-if="groupOpen(g)" class="border-t border-hairline">
+              <template v-for="(b, bi) in g.blocks" :key="bi">
+                <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
+                  <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
+                    <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                    {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
+                  </summary>
+                  <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
+                    <p v-for="u in b.units" :key="key(u)" class="hyphens-auto">
+                      <span class="font-medium text-ink">{{ displayId(u.id) }}</span>
+                      <span v-if="extraHeading(u)"> {{ extraHeading(u) }}</span>
+                      <span> — {{ u.rvText }}</span>
+                    </p>
                   </div>
-                  <p v-else-if="u.change === 'inserted'" class="text-ink">{{ u.rvText }}</p>
-                  <p v-else-if="u.change === 'removed'" class="text-ink-secondary">{{ u.meText }}</p>
-                  <p v-else class="text-ink-secondary">{{ u.rvText }}</p>
+                </details>
+
+                <div v-else class="border-b border-hairline px-3 py-3 last:border-b-0">
+                  <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
+                    <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                      <span
+                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                        :class="BADGE_CLASS[badgeOf(b.unit)]"
+                      >
+                        {{ BADGE_LABEL[badgeOf(b.unit)] }}
+                      </span>
+                      <span class="font-medium text-ink">
+                        {{ displayId(b.unit.id) }}
+                        <span v-if="b.unit.meId && b.unit.meId !== b.unit.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(b.unit.meId) }})</span>
+                      </span>
+                      <span v-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
+                    </p>
+
+                    <p v-if="b.unit.change === 'changed' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
+                      <template v-for="(s, i) in b.unit.segments" :key="i">
+                        <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
+                        <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
+                        <span v-else>{{ s.text }}</span>
+                        {{ ' ' }}
+                      </template>
+                    </p>
+                    <div v-else-if="b.unit.change === 'changed'" class="grid gap-4 text-sm leading-relaxed sm:grid-cols-2">
+                      <div>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Entwurf</p>
+                        <p class="hyphens-auto text-ink-secondary">{{ b.unit.meText }}</p>
+                      </div>
+                      <div>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Regierungsvorlage</p>
+                        <p class="hyphens-auto text-ink">{{ b.unit.rvText }}</p>
+                      </div>
+                    </div>
+                    <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.rvText }}</p>
+                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink line-through">{{ b.unit.meText }}</p>
+                    <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.rvText }}</p>
+                  </div>
                 </div>
-              </li>
-            </ol>
+              </template>
+
+              <button
+                v-if="g.hidden"
+                type="button"
+                class="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+                @click="showAll(g.article)"
+              >
+                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
+                {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
+              </button>
+            </div>
           </section>
         </div>
         <p v-if="!visibleUnits.length" class="mt-2 text-sm text-ink-secondary">
