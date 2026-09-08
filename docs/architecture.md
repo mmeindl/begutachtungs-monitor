@@ -288,7 +288,7 @@ The cheap half needs neither: a curated alias per procedure
 (`shared/utils/aliases.ts`) — "Bundestrojaner" appears in no official title,
 so the tool was unfindable under the name the public uses.
 
-### 12.12 Consolidated law text (deferred — the diff a reader expects)
+### 12.12 Consolidated law text — engine built, not yet published
 
 Today a Novelle compares *amendment instructions*: "In § 9 Abs. 1 wird nach
 der Wortfolge 'Eingriff in das' die Wortfolge … eingefügt". Since 2026-09-08
@@ -304,11 +304,88 @@ to it — "in § 9 Abs. 1 nach der Wortfolge X die Wortfolge Y einfügen" as a
 text operation, for every instruction form the legistic guidelines allow.
 The instruction forms are the hard part, not the fetching.
 
-Grant-sized, and the single strongest upgrade to the accountability core: it
-turns "42 instructions changed" into "this is what the paragraph now says".
-The cheap half of the same prerequisite — resolving a § *title* without
-applying anything — is what §12.11 needs for speaking names, so the two are
-one work package with two stages.
+The single strongest upgrade to the accountability core: it turns "42
+instructions changed" into "this is what the paragraph now says". The cheap
+half of the same prerequisite — resolving a § *title* without applying
+anything — is what §12.11 needs for speaking names, so the two are one work
+package with two stages, and only the second is large.
+
+**And the cost is verification, not typing** (revised 2026-09-08). A wrongly
+applied instruction publishes a law text that does not exist — the worst
+error this tool can make, worse than showing the instruction. The work is
+therefore: enumerate the instruction forms against a corpus, decide what
+happens to the residue that cannot be applied with confidence, and above all
+build the harness. There is an elegant one available: for a law already
+promulgated, RIS holds the **later consolidated version**, so the engine can
+be run against the truth and its hit rate measured exactly. Publish only what
+that harness vouches for.
+
+**Built 2026-09-08 — and measured before anything of it goes online.** Four
+pure modules plus a harness, none of it wired to a page yet:
+
+| Modul | Aufgabe |
+|---|---|
+| `server/utils/novao.ts` | Novellierungsanordnung → typisierte Operation |
+| `server/utils/lawStructure.ts` | RIS-BrKons-Paragraph → adressierbarer Baum (§ → Abs → Z → lit) |
+| `server/utils/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
+| `server/utils/risKons.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
+| `scripts/novao-corpus.ts`, `novao-forms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
+| `scripts/kons-harness.ts` | Prüfstand gegen die echte konsolidierte Fassung |
+
+**Die Grammatik ist klein, der Schwanz sitzt in der Adresse.** Über 6.576
+Anweisungen aus 300 Entwürfen tragen sechs Verben 98,6 %: *lautet* 28 %,
+*ersetzt* 26 %, *angefügt* 19 %, *eingefügt* 17 %, *entfällt* 13 %,
+*Bezeichnung* 1,4 %. Typisiert werden 86 %; die 2.840 verschiedenen
+Satzmuster entstehen durch die Adressierung („§ 9 Abs. 1 Z 3 lit. b zweiter
+Satz", „§ 17 Abs. 4, § 19 Abs. 1 … und § 46 Abs. 2"), nicht durch die Verben.
+
+**Der Prüfstand ist das eigentliche Ergebnis.** Für eine kundgemachte Novelle
+führt das RIS beide Seiten: den Bestand davor und den danach. Der authentische
+BGBl-Text (`Applikation=BgblAuth`) liefert die *beschlossenen* Anweisungen im
+gleichen legistischen XML wie `Begut`, und jede konsolidierte Fassung nennt in
+ihrem `Kundmachungsorgan` die Novelle, die sie erzeugt hat — das Fassungspaar
+ist also exakt bestimmbar (`api-exploration.md` §2b). Über acht Ein-Gesetz-
+Novellen, 209 Anweisungen, 117 geprüfte Paragraphen:
+
+| | |
+|---|---|
+| grammatikalisch gelesen | 193 (92,3 %) |
+| angewendet | 164 (78,5 %) |
+| **identisch mit dem RIS** | **54 (46,2 %)** |
+| unverändert gelassen | 13 (11,1 %) |
+| unvollständig, nichts Eigenes erfunden | 49 (41,9 %) |
+| **eigene Abweichung** | **1 (0,9 %)** |
+
+Die letzte Zeile ist die einzige gefährliche Klasse, und sie ist der Grund,
+das Vorhaben für machbar zu halten: die Engine erfindet praktisch nie Text.
+Was fehlt, ist Vollständigkeit — und ein unvollständig geänderter Paragraph
+wird nicht als Text gezeigt, sondern bleibt Anweisung. Die Trennung wird
+symmetrisch geprüft: eine selbst gelöschte Wortfolge zählt so schwer wie eine
+erfundene.
+
+**Drei Befunde, die den Aufwand neu einschätzen.**
+
+1. *Verweigern schlägt Deckung.* Eine Zwischenversion las 88,4 % der
+   Anweisungen statt 86,2 % — aber die 144 zusätzlichen waren Zeilen mit zwei
+   Operationen („A durch B **und** C durch D ersetzt"), von denen nur die
+   erste angewendet wurde. Erfolg gemeldet, Gesetz halb geändert. Die
+   niedrigere Zahl ist die bessere.
+2. *Der Prüfstand ist grobkörniger als die Frage.* Das RIS schneidet eine
+   Fassung pro Wirksamkeitsdatum. Fällt in denselben Schnitt eine langfristig
+   terminierte Änderung aus einer früheren Novelle (GSpG § 17, BGBl. I Nr.
+   187/2022), sieht das wie ein Fehler der Engine aus und ist keiner. Darum
+   die Teilmengenprüfung statt eines reinen Textvergleichs.
+3. *Datumsrechnen geht nicht.* Novellen wirken routinemäßig rückwirkend —
+   GSpG § 20 wurde am 2022-12-06 kundgemacht und gilt ab 2022-01-01. Der
+   Vorher-Stand lässt sich nur über das Fassungspaar bestimmen, nie über die
+   Kundmachung.
+
+**Was für die Veröffentlichung noch fehlt:** die Adressformen der restlichen
+14 % (Anlagen, Abschnitte, Satzteile, „im gesamten Gesetzestext"), die
+Vollständigkeit je Paragraph, und eine Anzeige, die den geprüften Paragraphen
+als Text zeigt und den ungeprüften als Anweisung — sichtbar unterschieden.
+Der Prüfstand läuft dann als Regressionslauf über eine feste Novellenliste,
+nicht als Einmalmessung.
 
 ## 13. Open questions
 
