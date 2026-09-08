@@ -131,13 +131,6 @@ function isMinor(u: LawDiffUnit): boolean {
   return u.editorial
 }
 
-const CHANGE_LABEL: Record<LawDiffUnit['change'], string> = {
-  unchanged: 'unverändert',
-  changed: 'geändert',
-  inserted: 'neu',
-  removed: 'entfallen',
-}
-
 /** A Novelle has no §§ of its own; its units are the numbered amendment instructions. */
 const isNovelle = computed(() => {
   const units = data.value?.units ?? []
