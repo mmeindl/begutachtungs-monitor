@@ -77,10 +77,24 @@ async function getJson(url: string): Promise<any> {
   throw new Error(`RIS BrKons nicht abrufbar: ${String(lastError)}`)
 }
 
+/**
+ * Retried like `getJson`: a consolidated law is hundreds of documents, and a
+ * single transient failure used to drop a whole Novelle out of a harness run
+ * — which silently changed the sample the percentages were computed over.
+ */
 export async function getText(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS) })
-  if (!res.ok) throw new Error(`HTTP ${res.status} für ${url}`)
-  return await res.text()
+  let lastError: unknown
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS) })
+      if (!res.ok) throw new Error(`HTTP ${res.status} für ${url}`)
+      return await res.text()
+    } catch (err) {
+      lastError = err
+      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)))
+    }
+  }
+  throw new Error(`RIS-Dokument nicht abrufbar (${url}): ${String(lastError)}`)
 }
 
 function query(params: Record<string, string>): string {

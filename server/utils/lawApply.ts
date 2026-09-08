@@ -97,14 +97,21 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
       continue
     }
     const lm = LIT_LINE.exec(line)
-    if (lm && z) {
-      z.children.push(makeNode('lit', lm[1]!, `${lm[1]})`, line.slice(lm[0].length)))
+    if (lm) {
+      const lit = makeNode('lit', lm[1]!, `${lm[1]})`, line.slice(lm[0].length))
+      if (z) z.children.push(lit)
+      else if (abs) abs.children.push(lit)
+      else out.push(lit)
       continue
     }
     const zm = Z_LINE.exec(line)
-    if (zm && abs) {
+    if (zm) {
+      // "Dem § 3 wird folgende Z 15 angefügt:" installs a Ziffer with no
+      // Absatz above it. Falling through left the marker inside the text,
+      // and the harness scored the leaked number as invented law.
       z = makeNode('z', zm[1]!, `${zm[1]}.`, line.slice(zm[0].length))
-      abs.children.push(z)
+      if (abs) abs.children.push(z)
+      else out.push(z)
       continue
     }
     if (abs) abs.text = `${abs.text} ${line}`.trim()
@@ -132,6 +139,23 @@ export function stripPayloadQuotes(lines: readonly string[]): string[] {
 }
 
 /**
+ * One payload block as a printed line.
+ *
+ * A § symbol arrives separately in `gld`, but a Ziffer or Litera marker is
+ * part of the block text and RIS prints it without a space ("1.Altersprädikat").
+ * `parsePayload` then fails to see a marker and the number leaks into the law
+ * text — which the harness scored as the engine inventing a token. The space
+ * is restored here rather than in the parser, because the ME↔RV comparison
+ * reads the same blocks from two sources that print markers differently, and
+ * changing what counts as compared text there stops units from pairing.
+ */
+function payloadLine(b: { kind: string; text: string; gld: string | null }): string {
+  if (b.gld) return `${b.gld} ${b.text}`
+  if (b.kind !== 'ziff') return b.text
+  return b.text.replace(/^(\d+[a-z]*\.|[a-z]\))(?=\S)/, '$1 ')
+}
+
+/**
  * The instructions of a parsed Novelle, each with the text it installs.
  *
  * A unit can hold more than one instruction: "§ 20 wird wie folgt geändert:"
@@ -146,7 +170,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
     const groups: { line: string; payload: string[] }[] = []
     for (const b of unit.blocks) {
       if (b.kind === 'novao') groups.push({ line: b.text, payload: [] })
-      else if (groups.length) groups[groups.length - 1]!.payload.push(b.gld ? `${b.gld} ${b.text}` : b.text)
+      else if (groups.length) groups[groups.length - 1]!.payload.push(payloadLine(b))
     }
     let container: NovaoAddress | null = null
     for (const group of groups) {
@@ -377,9 +401,17 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'append': {
       const host = resolveTarget(law, op.target)
       if (!host) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      if (payload.length === 0) return 'Anfügung ohne Text'
+      // A Satz is not a node: it joins the target's own text. Common enough
+      // that refusing it cost a fifth of the appends in the harness.
+      if (op.child === 'satz') {
+        const added = payload.map((p) => plainText(p)).join(' ').trim()
+        if (!added) return 'Anfügung ohne Text'
+        host.text = `${host.text} ${added}`.replace(/\s+/g, ' ').trim()
+        return null
+      }
       const level = levelOf(op.child)
       if (!level) return 'Angefügte Einheit nicht bestimmbar'
-      if (payload.length === 0) return 'Anfügung ohne Text'
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) if (n.id && childById(host, level, n.id)) return `${n.marker} existiert bereits`
       host.children.push(...nodes)
