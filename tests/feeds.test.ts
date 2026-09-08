@@ -121,13 +121,16 @@ describe('buildSitemap', () => {
     const xml = buildSitemap(SITE, [consultation()])
     expect(xml).toContain(`<loc>${SITE}</loc>`)
     expect(xml).toContain(`<loc>${SITE}/begutachtungen</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/so-funktionierts</loc>`)
     expect(xml).toContain(`<loc>${SITE}/ueber</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/impressum</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/datenschutz</loc>`)
     expect(xml).toContain(`<loc>${SITE}/begutachtungen/XXVIII/88</loc>`)
   })
 
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
-    expect(xml.match(/<loc>/g)).toHaveLength(3)
+    expect(xml.match(/<loc>/g)).toHaveLength(6)
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
     expect(xml.trimEnd().endsWith('</urlset>')).toBe(true)
   })

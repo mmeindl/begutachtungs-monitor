@@ -157,7 +157,10 @@ export function buildSitemap(siteUrl: string, items: ConsultationSummary[]): str
   const urls = [
     siteUrl,
     `${siteUrl}/begutachtungen`,
+    `${siteUrl}/so-funktionierts`,
     `${siteUrl}/ueber`,
+    `${siteUrl}/impressum`,
+    `${siteUrl}/datenschutz`,
     ...items.map((item) => pageUrl(siteUrl, item)),
   ]
   return [
