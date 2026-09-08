@@ -200,11 +200,15 @@ sequence fallback, never by § number alone.
   24 h. `available: false` with a German reason when no RV exists yet or a
   text is PDF-only.
 - `app/components/LawDiffSection.vue` on the consultation page, once an RV
-  exists: "Was sich nach der Begutachtung geändert hat". §§ in RV order with
-  geändert / neu / entfallen / unverändert, "redaktionell" for similarity
-  ≥ 0.95 (cross-reference renumbering, date formats), expandable word-level
-  diff, unchanged §§ on request, both sources linked with CC BY attribution.
-  Lazy client-side load so the page never waits for the two documents.
+  exists: "Was sich nach der Begutachtung geändert hat". The summary sentence
+  stands alone; the list opens on request (32/ME has 330 units). Inside:
+  filter chips alle / geändert / neu / entfallen / unverändert with counts, a
+  text search over ids, headings and both texts, and one collapsible group
+  per Gesetz of the package with its own counts (a single-law text has no
+  group header). Rows in RV order with geändert / neu / entfallen /
+  unverändert and "redaktionell" (see below), expandable word-level diff,
+  both sources linked with CC BY attribution. Lazy client-side load so the
+  page never waits for the two documents.
 
 Live numbers, 2026-09-08: 43/ME → 449 d.B. gives 74 units, 8 unchanged,
 58 changed (26 of them redaktionell), 6 inserted, 2 removed; 2.3 s cold,

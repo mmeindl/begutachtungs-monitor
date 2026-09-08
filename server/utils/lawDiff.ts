@@ -294,9 +294,9 @@ type TokenClass = 'number' | 'citation' | 'connective' | 'punct' | 'word'
 function classifyToken(raw: string): TokenClass {
   const t = raw.replace(/^[„“"'(]+|[„“"'),;:]+$/g, '').toLowerCase()
   if (!t) return 'punct'
+  if (CITATION_WORDS.has(t)) return 'citation' // before punct: "§" is a punctuation character
   if (PUNCT_RE.test(t)) return 'punct'
   if (NUMBER_RE.test(t)) return 'number'
-  if (CITATION_WORDS.has(t)) return 'citation'
   if (CONNECTIVES.has(t)) return 'connective'
   return 'word'
 }
@@ -309,14 +309,33 @@ function classifyToken(raw: string): TokenClass {
 export function isEditorialChange(segments: readonly LawDiffSegment[] | null): boolean {
   if (!segments) return false
   let sawChange = false
-  for (const s of segments) {
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i]!
     if (s.type === 'equal') continue
     sawChange = true
-    const classes = s.text.split(/\s+/).filter(Boolean).map(classifyToken)
+    const tokens = s.text.split(/\s+/).filter(Boolean)
+    const classes = tokens.map(classifyToken)
     if (classes.includes('word')) return false
     if (classes.every((c) => c === 'connective' || c === 'punct') && classes.includes('connective')) return false
+    // A bare number is a reference only next to a citation word ("Abs. 6" → "Abs. 4");
+    // "6 Wochen" → "4 Wochen" is a real change. Dates are always formatting.
+    if (classes.includes('number') && !classes.includes('citation')) {
+      const isDate = tokens.some((t) => /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(t))
+      if (!isDate && !citationAdjacent(segments, i)) return false
+    }
   }
   return sawChange
+}
+
+/** Does the equal text around a changed piece end or start with a citation word? Looks past a sibling change ("6" removed, "4" inserted). */
+function citationAdjacent(segments: readonly LawDiffSegment[], i: number): boolean {
+  let before = i - 1
+  while (before >= 0 && segments[before]!.type !== 'equal') before--
+  let after = i + 1
+  while (after < segments.length && segments[after]!.type !== 'equal') after++
+  const lastBefore = before >= 0 ? segments[before]!.text.trim().split(/\s+/).slice(-2) : []
+  const firstAfter = after < segments.length ? segments[after]!.text.trim().split(/\s+/).slice(0, 1) : []
+  return [...lastBefore, ...firstAfter].some((t) => classifyToken(t) === 'citation')
 }
 
 // ---------------------------------------------------------------------------
