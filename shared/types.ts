@@ -184,9 +184,10 @@ export interface ConsultationDetail extends Omit<ConsultationSummary, 'statement
       and `handoff` rather than as a second timeline. */
   trace: TraceStep[]
   handoff: Handoff | null
-  /** Versions AFTER the Regierungsvorlage (committee, plenary). The RV's own
-      text is `enactment.rvTextUrl`, so no station appears twice on the page. */
-  textEvolution: TraceLink[]
+  /** Versions AFTER the Regierungsvorlage (committee, plenary), one document
+      per station with its formats — rendered like the Entwurfsdokumente. The
+      RV's own text is `enactment.rvTextUrl`, so no station appears twice. */
+  textEvolution: ConsultationDocument[]
   statements: StatementsSummary
   enactment: EnactmentInfo | null
   /** The RIS Begut record of this draft (docs/ris-join.md); null when the
