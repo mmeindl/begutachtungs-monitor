@@ -138,7 +138,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   let current: LawUnit | null = null
   let novelleMode = false
 
-  const push = (id: string, heading: string | null, first: TextBlock) => {
+  const push = (id: string, heading: string | null, first: TextBlock): LawUnit => {
     const article = articleTitle ?? articleNumber
     const key = `${article ?? '?'} ${id}`
     const existing = byKey.get(key)
@@ -153,9 +153,10 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         finalId = `${id}#dup`
       }
     }
-    current = { article, id: finalId, heading, text: first.text, blocks: [first] }
-    units.push(current)
-    byKey.set(`${article ?? '?'} ${finalId}`, current)
+    const unit: LawUnit = { article, id: finalId, heading, text: first.text, blocks: [first] }
+    units.push(unit)
+    byKey.set(`${article ?? '?'} ${finalId}`, unit)
+    return unit
   }
 
   for (const b of blocks) {
@@ -190,7 +191,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         current.blocks.push(b)
         continue
       }
-      push(id, pendingHeading, b)
+      current = push(id, pendingHeading, b)
       pendingHeading = null
       continue
     }
@@ -199,7 +200,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       const m = NOVAO_NUMBER_RE.exec(b.text)
       if (m) {
         novelleMode = true
-        push(`Z${m[1]}`, null, b)
+        current = push(`Z${m[1]}`, null, b)
         continue
       }
     }
