@@ -138,16 +138,20 @@ const isNovelle = computed(() => {
 })
 const hasZiffern = computed(() => (data.value?.units ?? []).some((u) => /^Z\d/.test(u.id)))
 
-const summarySentence = computed(() => {
+const unitNoun = computed(() => (isNovelle.value ? 'Änderungsanordnungen' : hasZiffern.value ? 'Einheiten' : 'Paragraphen'))
+
+/** The whole text's counts as the same pills the rows and groups use; geändert excludes redaktionell. */
+const summaryBadges = computed<{ badge: Badge; count: number }[]>(() => {
   const s = data.value?.stats
-  if (!s) return ''
-  const parts: string[] = []
-  if (s.changed) parts.push(s.editorial ? `${s.changed} geändert (davon ${s.editorial} nur redaktionell)` : `${s.changed} geändert`)
-  if (s.inserted) parts.push(`${s.inserted} neu`)
-  if (s.removed) parts.push(`${s.removed} entfallen`)
-  if (s.unchanged) parts.push(`${s.unchanged} unverändert`)
-  const noun = isNovelle.value ? 'Änderungsanordnungen' : hasZiffern.value ? 'Einheiten' : 'Paragraphen'
-  return `${s.total} ${noun}: ${parts.join(', ')}.`
+  if (!s) return []
+  const counts: Record<Badge, number> = {
+    changed: s.changed - (s.editorial ?? 0),
+    editorial: s.editorial ?? 0,
+    inserted: s.inserted,
+    removed: s.removed,
+    unchanged: s.unchanged,
+  }
+  return BADGE_ORDER.filter((b) => counts[b] > 0).map((b) => ({ badge: b, count: counts[b] }))
 })
 
 /** "§5" → "§ 5", "Z3" → "Z 3" */
@@ -191,7 +195,17 @@ function displayId(id: string): string {
         „Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder
         Satzzeichen geändert, kein einziges Wort.
       </p>
-      <p class="mt-2 text-sm text-ink">{{ summarySentence }}</p>
+      <p class="mt-3 flex flex-wrap items-center gap-1.5 text-sm text-ink">
+        <span class="me-1 font-medium tabular-nums">{{ data.stats.total }} {{ unitNoun }}:</span>
+        <span
+          v-for="b in summaryBadges"
+          :key="b.badge"
+          class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums"
+          :class="BADGE_CLASS[b.badge]"
+        >
+          {{ b.count }} {{ BADGE_LABEL[b.badge] }}
+        </span>
+      </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <span>Quellen (CC BY 4.0, Parlament):</span>
@@ -207,7 +221,7 @@ function displayId(id: string): string {
         :aria-expanded="listOpen"
         @click="listOpen = !listOpen"
       >
-        {{ listOpen ? 'Liste ausblenden' : `Alle ${data.stats.total} ${isNovelle ? 'Änderungsanordnungen' : 'Paragraphen'} anzeigen` }}
+        {{ listOpen ? 'Liste ausblenden' : `Alle ${data.stats.total} ${unitNoun} anzeigen` }}
       </UButton>
 
       <template v-if="listOpen">
