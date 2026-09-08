@@ -79,14 +79,21 @@
 
   /* Brand highlight — der Textmarker. NEVER a text color, only a ground
      carrying full ink: ink on mark 13.5:1, ink on mark-wash 16.9:1,
-     accent-deep on mark-wash 8.9:1 — all AAA. Red stays reserved for
-     deadline status; the marker marks what became of the input. */
+     accent-deep on mark-wash 8.9:1 — all AAA. The marker marks what became
+     of the input; it never carries the diff direction, which is red/green
+     (see status below). */
   --color-mark: #ffd84d;
   --color-mark-wash: #fff3c8;
 
   /* Status (reserved for state, never decoration; always paired with text).
      Warning sits in the orange zone, NOT yellow — yellow is the brand
-     marker above, and a warning must never read as a highlight. */
+     marker above, and a warning must never read as a highlight.
+     Since 08.09.2026 critical/good carry a second state besides deadlines:
+     the diff direction in the Textvergleich, red for a passage that goes,
+     green for one that arrives — the convention every reader knows from
+     GitHub. Still state, never decoration, and never colour alone: the
+     block names it in words and a removal is struck through. Grounds use
+     the /10 and /15 washes with full ink, like DeadlineBadge. */
   --color-status-good: #0ca30c;
   --color-status-warning: #b45309;
   --color-status-serious: #ec835a;
