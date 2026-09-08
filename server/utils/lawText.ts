@@ -35,9 +35,11 @@ export interface TextBlock {
 export interface LawUnit {
   /** Article title if the package has Artikel, else the law title, else null */
   article: string | null
+  /** "Artikel 3" when the package has Artikel, else null */
+  articleNumber: string | null
   /** "§5", "Art.3" or "Z4" (Novellierungsanordnung number) */
   id: string
-  /** The § heading (45UeberschrPara) when present */
+  /** The § heading (45UeberschrPara); for a Ziffer the instruction line ("§ 6 Abs. 1 Z 9 lautet") */
   heading: string | null
   text: string
   blocks: TextBlock[]
@@ -125,6 +127,23 @@ export function normalizeGld(g: string): string {
 const NOVAO_NUMBER_RE = /^(\d+)[a-z]?\.\s/
 
 /**
+ * Heading of a Novellierungsanordnung: its instruction line without the
+ * number, cut before the colon that opens the quoted text. "2. § 6 Abs. 1
+ * Z 9 lautet: „…“" → "§ 6 Abs. 1 Z 9 lautet". Stable while the quoted text
+ * changes, so it doubles as the alignment key across renumbering.
+ */
+export function novaoHeading(text: string): string {
+  let t = normalizeText(text).replace(NOVAO_NUMBER_RE, '')
+  const colon = t.indexOf(':')
+  if (colon > 0 && colon <= 140) t = t.slice(0, colon)
+  if (t.length > 100) {
+    const cut = t.lastIndexOf(' ', 100)
+    t = `${t.slice(0, cut > 40 ? cut : 100)} …`
+  }
+  return t.trim()
+}
+
+/**
  * Blocks → units. A Stammgesetz yields one unit per §; a Novelle yields one
  * unit per Novellierungsanordnung (Z1, Z2, …) with the quoted § text inside.
  * Articles of a package reset the numbering, so the key is (article, id).
@@ -153,7 +172,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         finalId = `${id}#dup`
       }
     }
-    const unit: LawUnit = { article, id: finalId, heading, text: first.text, blocks: [first] }
+    const unit: LawUnit = { article, articleNumber, id: finalId, heading, text: first.text, blocks: [first] }
     units.push(unit)
     byKey.set(`${article ?? '?'} ${finalId}`, unit)
     return unit
@@ -200,7 +219,8 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       const m = NOVAO_NUMBER_RE.exec(b.text)
       if (m) {
         novelleMode = true
-        current = push(`Z${m[1]}`, null, b)
+        // The Ziffer number goes into the id, not the compared text — like the § symbol.
+        current = push(`Z${m[1]}`, novaoHeading(b.text), { ...b, text: b.text.replace(NOVAO_NUMBER_RE, '') })
         continue
       }
     }

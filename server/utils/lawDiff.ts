@@ -6,7 +6,11 @@
  * Alignment is the whole difficulty. Never by § number alone: in the EABG
  * chain the Regierungsvorlage inserted two paragraphs and a by-number diff
  * marked 41 of 45 shifted paragraphs as "changed". Order of alignment:
- *   1. same article + same § heading (unique on both sides)
+ *   0. articles: by the law they name (draft "Änderung des UStG 1994" vs
+ *      bill "Bundesgesetz, mit dem das UStG 1994 geändert wird"), then by
+ *      article number; units only pair within paired articles
+ *   1. same article + same heading (unique on both sides) — for a Ziffer the
+ *      heading is its instruction line, so renumbered Ziffern pair too
  *   2. same article + same id, when at least one side has no heading
  *   3. remaining units of the same article by text similarity ≥ 0.6
  * Everything left is inserted (RV only) or removed (ME only).
@@ -89,8 +93,102 @@ function bagSimilarity(a: string[], b: string[]): number {
 }
 
 // ---------------------------------------------------------------------------
+// Article pairing
+// ---------------------------------------------------------------------------
+
+// A Set, not a \b regex: JavaScript word boundaries are ASCII-only, "änderung" would survive.
+const ARTICLE_BOILERPLATE = new Set(
+  'bundesgesetz bundesverfassungsgesetz mit dem der das die des und sowie geändert geaendert wird werden änderung aenderung novelle artikel erlassen aufgehoben ein eine eines über ueber'.split(
+    ' ',
+  ),
+)
+
+/** Token set naming the law an article is about, stemmed, boilerplate removed. */
+export function lawNameTokens(title: string | null): Set<string> {
+  const t = normalizeText(title ?? '')
+    .toLowerCase()
+    .replace(/ß/g, 'ss')
+    .replace(/[„“"'(),;:.\-–]/g, ' ')
+  const out = new Set<string>()
+  for (const raw of t.split(/\s+/)) {
+    if (!raw || ARTICLE_BOILERPLATE.has(raw) || (raw.length < 3 && !/^\d+$/.test(raw))) continue
+    out.add(raw.replace(/(gesetz|buch|ordnung|statut|vertrag)es$/, '$1').replace(/(gesetz|buch)s$/, '$1'))
+  }
+  return out
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0
+  let inter = 0
+  for (const x of a) if (b.has(x)) inter++
+  return inter / (a.size + b.size - inter)
+}
+
+interface ArticleRef {
+  article: string | null
+  number: string | null
+}
+
+function distinctArticles(units: readonly LawUnit[]): ArticleRef[] {
+  const seen = new Set<string>()
+  const out: ArticleRef[] = []
+  for (const u of units) {
+    const k = u.article ?? ''
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push({ article: u.article, number: u.articleNumber })
+  }
+  return out
+}
+
+/**
+ * ME article → RV article, so that differently titled articles about the
+ * same law compare with each other. Returns the canonical (RV) article title
+ * per ME article title.
+ */
+export function pairArticles(me: readonly LawUnit[], rv: readonly LawUnit[]): Map<string | null, string | null> {
+  const meArts = distinctArticles(me)
+  const rvArts = distinctArticles(rv)
+  const map = new Map<string | null, string | null>()
+  const usedRv = new Set<ArticleRef>()
+  if (meArts.length === 1 && rvArts.length === 1) {
+    map.set(meArts[0]!.article, rvArts[0]!.article)
+    return map
+  }
+  const scored: { m: ArticleRef; r: ArticleRef; s: number }[] = []
+  for (const m of meArts) {
+    const mt = lawNameTokens(m.article)
+    for (const r of rvArts) scored.push({ m, r, s: jaccard(mt, lawNameTokens(r.article)) })
+  }
+  scored.sort((x, y) => y.s - x.s)
+  for (const { m, r, s } of scored) {
+    if (s < 0.5 || map.has(m.article) || usedRv.has(r)) continue
+    map.set(m.article, r.article)
+    usedRv.add(r)
+  }
+  for (const m of meArts) {
+    if (map.has(m.article) || !m.number) continue
+    const r = rvArts.find((x) => !usedRv.has(x) && x.number === m.number)
+    if (r) {
+      map.set(m.article, r.article)
+      usedRv.add(r)
+    }
+  }
+  return map
+}
+
+// ---------------------------------------------------------------------------
 // Alignment
 // ---------------------------------------------------------------------------
+
+/** Units keyed by the canonical article so both sides use the RV's title. */
+function canonical(units: readonly LawUnit[], map: Map<string | null, string | null>, isMe: boolean): LawUnit[] {
+  if (!isMe) return [...units]
+  return units.map((u) => {
+    if (!map.has(u.article)) return { ...u, article: `${u.article ?? ''}\u0000unpaired` }
+    return { ...u, article: map.get(u.article) ?? null }
+  })
+}
 
 const headingKey = (u: LawUnit) => (u.heading ? `${u.article ?? ''}|${compareKey(u.heading).toLowerCase()}` : null)
 const idKey = (u: LawUnit) => `${u.article ?? ''}|${u.id}`
@@ -113,7 +211,12 @@ export interface Alignment {
   onlyRv: LawUnit[]
 }
 
-export function alignUnits(me: readonly LawUnit[], rv: readonly LawUnit[]): Alignment {
+export function alignUnits(meUnits: readonly LawUnit[], rv: readonly LawUnit[]): Alignment {
+  const articleMap = pairArticles(meUnits, rv)
+  const meCanonical = canonical(meUnits, articleMap, true)
+  // Alignment works on canonical copies; results are mapped back to the originals.
+  const original = new Map(meCanonical.map((c, i) => [c, meUnits[i]!]))
+  const me = meCanonical
   const pairs: { me: LawUnit; rv: LawUnit }[] = []
   const pairedMe = new Set<LawUnit>()
   const pairedRv = new Set<LawUnit>()
@@ -164,8 +267,8 @@ export function alignUnits(me: readonly LawUnit[], rv: readonly LawUnit[]): Alig
   }
 
   return {
-    pairs,
-    onlyMe: me.filter((u) => !pairedMe.has(u)),
+    pairs: pairs.map((p) => ({ me: original.get(p.me)!, rv: p.rv })),
+    onlyMe: me.filter((u) => !pairedMe.has(u)).map((u) => original.get(u)!),
     onlyRv: rv.filter((u) => !pairedRv.has(u)),
   }
 }
