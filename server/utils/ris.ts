@@ -31,12 +31,27 @@ const RIS_PAGE_PAUSE_MS = 300
 // would let the timer find a still-valid cache and refresh nothing.
 const RIS_CORPUS_TTL_S = 60 * 60 * 20
 const RIS_MAP_TTL_S = 60 * 30
+/**
+ * Part of both cache keys, so adding a field to `RisBegutFlat` invalidates
+ * what is already stored. Without it the persisted cache kept serving
+ * records from before the change for up to 20 hours after a deploy — and a
+ * missing field reads as "the draft has no Textgegenüberstellung", which is
+ * a wrong answer rather than a stale one. Bump on every shape change.
+ */
+const CORPUS_SHAPE_VERSION = 2
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 
-/** RIS record plus the main-document URLs the UI needs. */
+/** RIS record plus the document URLs the UI needs. */
 export interface RisBegutFlat extends RisBegutRecord {
   geaendert: string | null
   mainDocument: { html: string | null; xml: string | null; pdf: string | null }
+  /**
+   * The ressort's own Textgegenüberstellung, when the draft carries one.
+   * RIS offers it as XML, Parliament only as PDF (docs/api-exploration.md
+   * §2c) — which is why this comes from here and not from the Parliament
+   * document list the rest of the detail page uses.
+   */
+  textComparison: { html: string | null; xml: string | null; pdf: string | null } | null
 }
 
 export interface RisBegutCorpus {
@@ -66,6 +81,13 @@ function str(v: unknown): string | null {
   return typeof v === 'string' && v.length > 0 ? v : null
 }
 
+/**
+ * The annex is named inconsistently across ressorts: "Textgegenüberstellung",
+ * "TGÜ", "TGG", and a misspelt "Textgegenbüberstellung" all occur in the
+ * corpus, so the match has to be loose (docs/api-exploration.md §2c).
+ */
+const TEXT_COMPARISON_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
+
 /** Human-readable RIS page of one Begut record. */
 export function risDocumentUrl(id: string): string {
   return `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=${encodeURIComponent(id)}`
@@ -79,9 +101,13 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
   if (!id) return null
   const b = meta?.Bundesrecht ?? {}
   const bg = b?.Begut ?? {}
-  const main = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
+  const references = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
+  const main = references.find((c) => c?.ContentType === 'MainDocument')
   const urls = asArray<any>(main?.Urls?.ContentUrl)
   const urlOf = (type: string) => str(urls.find((u) => u?.DataType === type)?.Url)
+  const annex = references.find((c) => TEXT_COMPARISON_NAME.test(String(c?.Name ?? '').trim()))
+  const annexUrls = asArray<any>(annex?.Urls?.ContentUrl)
+  const annexUrlOf = (type: string) => str(annexUrls.find((u) => u?.DataType === type)?.Url)
   return {
     id,
     kurztitel: str(b?.Kurztitel),
@@ -92,6 +118,7 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     ende: isoDate(bg?.EndeBegutachtungsfrist),
     geaendert: isoDate(meta?.Allgemein?.Geaendert),
     mainDocument: { html: urlOf('Html'), xml: urlOf('Xml'), pdf: urlOf('Pdf') },
+    textComparison: annex ? { html: annexUrlOf('Html'), xml: annexUrlOf('Xml'), pdf: annexUrlOf('Pdf') } : null,
   }
 }
 
@@ -156,7 +183,7 @@ export const getRisBegutCorpus = defineCachedFunction(
     }
     return { fetchedAt: new Date().toISOString(), hits, records }
   },
-  { name: 'ris-begut-corpus', getKey: () => 'all', maxAge: RIS_CORPUS_TTL_S, swr: false },
+  { name: 'ris-begut-corpus', getKey: () => `all-v${CORPUS_SHAPE_VERSION}`, maxAge: RIS_CORPUS_TTL_S, swr: false },
 )
 
 function toMapRow(
@@ -174,6 +201,7 @@ function toMapRow(
     risKurztitel: c?.risKurztitel ?? null,
     risUrl: row.risId ? risDocumentUrl(row.risId) : null,
     risDocument: rec?.mainDocument ?? null,
+    textComparison: rec?.textComparison ?? null,
     score: c?.score ?? null,
     beginnOffsetDays: c?.dateOffset ?? null,
     endeOffsetDays: c?.endOffset ?? null,
@@ -201,5 +229,5 @@ export const getRisMapForGp = defineCachedFunction(
       rows,
     }
   },
-  { name: 'ris-map-gp', getKey: (gp: string) => gp, maxAge: RIS_MAP_TTL_S, swr: false },
+  { name: 'ris-map-gp', getKey: (gp: string) => `${gp}-v${CORPUS_SHAPE_VERSION}`, maxAge: RIS_MAP_TTL_S, swr: false },
 )

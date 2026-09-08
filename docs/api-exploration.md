@@ -309,6 +309,8 @@ months:**
 
 So **roughly 39 % of drafts have a machine-readable official comparison** —
 and "available as XML" is not the same as readable, which is the trap here.
+For the running GP XXVIII specifically the share is higher: of 132 drafts,
+109 carry the annex with XML and **65 of those are readable (49 %)**.
 The name varies: `Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
 `Textgegenbüberstellung`, so matching has to be loose.
 
