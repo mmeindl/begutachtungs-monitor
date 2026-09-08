@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, diffLawUnits, diffTokens, isEditorialChange, lawNameTokens, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
+import { alignUnits, diffLawPackage, diffLawUnits, diffTokens, isEditorialChange, lawNameTokens, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, parseParliamentHtml, parseRisXml } from '../server/utils/lawText'
 import { readFileSync } from 'node:fs'
 
@@ -141,6 +141,96 @@ describe('article pairing across differing titles', () => {
     const units = diffLawUnits(me, rv)
     expect(units.map((u) => `${u.id}:${u.change}`)).toEqual(['Z1:unchanged', 'Z2:inserted', 'Z3:changed', 'Z4:unchanged'])
     expect(units[0]!.article).toBe('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird')
+  })
+})
+
+describe('the Artikel marker sits on a different heading level per document', () => {
+  // 125/ME (Glücksspielgesetz) against 594 d.B.: the draft puts the package
+  // title in 41UeberschrG1 and "Artikel 1" one level down in 43UeberschrG2,
+  // the bill does it the other way round. Read by class, the draft's units
+  // end up with article null, nothing pairs, and all 108 units read as
+  // inserted or removed.
+  const ziffern = ['1. &sect;&nbsp;1 Abs.&nbsp;4 lautet: &bdquo;Text&ldquo;', '2. &sect;&nbsp;2 wird wie folgt ge&auml;ndert:']
+  const body = ziffern.map((z) => `<p class=21NovAo1>${z}</p>`).join('')
+  const draft =
+    '<html><body><p class=41UeberschrG1>Bundesgesetz, mit dem das Gl&uuml;cksspielgesetz ge&auml;ndert wird</p>' +
+    '<p class=43UeberschrG2>Artikel&nbsp;1</p><p class=43UeberschrG2>&Auml;nderung des Gl&uuml;cksspielgesetzes</p>' +
+    body +
+    '</body></html>'
+  const bill =
+    '<html><body><p class=11Titel>Bundesgesetz, mit dem das Gl&uuml;cksspielgesetz ge&auml;ndert wird</p>' +
+    '<p class=41UeberschrG1>Artikel&nbsp;1</p><p class=43UeberschrG2>&Auml;nderung des Gl&uuml;cksspielgesetzes</p>' +
+    body +
+    '</body></html>'
+
+  it('reads the article from the text, whichever class carries it', () => {
+    const me = parseLawUnits(draft)
+    const rv = parseLawUnits(bill)
+    expect(me.map((u) => u.article)).toEqual(['Änderung des Glücksspielgesetzes', 'Änderung des Glücksspielgesetzes'])
+    expect(me.map((u) => u.article)).toEqual(rv.map((u) => u.article))
+  })
+
+  it('accepts the X placeholder a draft for a collective act uses', () => {
+    const withX = draft.replace('Artikel&nbsp;1', 'Artikel&nbsp;X1')
+    expect(parseLawUnits(withX).map((u) => u.article)).toEqual(['Änderung des Glücksspielgesetzes', 'Änderung des Glücksspielgesetzes'])
+  })
+
+  it('pairs the units instead of reporting a rewritten law', () => {
+    const units = diffLawUnits(parseLawUnits(draft), parseLawUnits(bill))
+    expect(units.map((u) => u.change)).toEqual(['unchanged', 'unchanged'])
+  })
+})
+
+describe('a Regierungsvorlage that merges several drafts', () => {
+  // 22/ME: three articles from the Bundeskanzleramt, 138 in the bill that
+  // merged every ministry's IFG draft. Counted unit by unit that reads as
+  // "98 % new" — a verdict on a draft that never contained those laws.
+  const pkg = (laws: { title: string; ziffern: string[] }[]) =>
+    '<html><body>' +
+    laws
+      .map(
+        (l, i) =>
+          `<p class=41UeberschrG1>Artikel&nbsp;${i + 1}</p><p class=43UeberschrG2>${l.title}</p>` +
+          l.ziffern.map((z) => `<p class=21NovAo1>${z}</p>`).join(''),
+      )
+      .join('') +
+    '</body></html>'
+
+  const draft = pkg([{ title: '&Auml;nderung des Auskunftspflichtgesetzes', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;alt&ldquo;', '2. &sect;&nbsp;2 lautet: &bdquo;gleich&ldquo;'] }])
+  const bill = pkg([
+    { title: 'Bundesgesetz, mit dem das Auskunftspflichtgesetz ge&auml;ndert wird', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;neu&ldquo;', '2. &sect;&nbsp;2 lautet: &bdquo;gleich&ldquo;'] },
+    { title: '&Auml;nderung des Datenschutzgesetzes', ziffern: ['1. &sect;&nbsp;4 lautet: &bdquo;x&ldquo;', '2. &sect;&nbsp;5 lautet: &bdquo;y&ldquo;'] },
+    { title: '&Auml;nderung des Sicherheitspolizeigesetzes', ziffern: ['1. &sect;&nbsp;9 lautet: &bdquo;z&ldquo;'] },
+  ])
+
+  it('compares only the law both texts carry', () => {
+    const d = diffLawPackage(parseLawUnits(draft), parseLawUnits(bill))
+    expect(summarizeDiff(d.units)).toMatchObject({ total: 2, changed: 1, unchanged: 1, inserted: 0, removed: 0 })
+  })
+
+  it('names the merged-in laws instead of counting their paragraphs as new', () => {
+    const d = diffLawPackage(parseLawUnits(draft), parseLawUnits(bill))
+    expect(d.lawsOnlyInRv).toEqual([
+      { article: 'Änderung des Datenschutzgesetzes', units: 2 },
+      { article: 'Änderung des Sicherheitspolizeigesetzes', units: 1 },
+    ])
+    expect(d.lawsOnlyInMe).toEqual([])
+    // Without the scoping the same pair reads as a rewrite.
+    expect(summarizeDiff(diffLawUnits(parseLawUnits(draft), parseLawUnits(bill))).inserted).toBe(3)
+  })
+
+  it('reports a law the package lost on the way', () => {
+    const d = diffLawPackage(parseLawUnits(bill), parseLawUnits(draft))
+    expect(d.lawsOnlyInMe.map((l) => l.article)).toEqual(['Änderung des Datenschutzgesetzes', 'Änderung des Sicherheitspolizeigesetzes'])
+    expect(d.lawsOnlyInRv).toEqual([])
+  })
+
+  it('leaves an ordinary one-law comparison untouched', () => {
+    const one = pkg([{ title: '&Auml;nderung des Auskunftspflichtgesetzes', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;alt&ldquo;'] }])
+    const d = diffLawPackage(parseLawUnits(one), parseLawUnits(one))
+    expect(d.lawsOnlyInRv).toEqual([])
+    expect(d.lawsOnlyInMe).toEqual([])
+    expect(d.units).toHaveLength(1)
   })
 })
 

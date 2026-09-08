@@ -6,7 +6,7 @@
  * the client: the first request per consultation fetches and parses two
  * documents, and the page must not wait for that.
  */
-import type { LawDiffResponse, LawDiffUnit } from '#shared/types'
+import type { LawDiffResponse, LawDiffUnit, LawPackageEntry } from '#shared/types'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
@@ -149,6 +149,39 @@ function displayId(id: string): string {
   return id.replace(/^§/, '§ ').replace(/^Z(\d)/, 'Z $1')
 }
 
+/** "A, B, C und 133 weitere" — a merged package can carry over a hundred laws. */
+function lawList(entries: LawPackageEntry[], max = 3): string {
+  const names = entries.map((e) => e.article)
+  if (names.length <= max) return names.length > 1 ? `${names.slice(0, -1).join(', ')} und ${names.at(-1)}` : (names[0] ?? '')
+  return `${names.slice(0, max).join(', ')} und ${names.length - max} weitere`
+}
+
+/**
+ * Laws only one document carries are reported as laws, never as their
+ * paragraphs: a Regierungsvorlage that merges several drafts would otherwise
+ * report hundreds of paragraphs as "neu" and read as a verdict on this draft.
+ */
+const mergedNote = computed(() => {
+  const laws = data.value?.lawsOnlyInRv ?? []
+  if (!laws.length) return null
+  const one = laws.length === 1
+  return (
+    `Die Regierungsvorlage ändert ${one ? 'ein weiteres Gesetz' : `${laws.length} weitere Gesetze`}, ` +
+    `${one ? 'das' : 'die'} in diesem Entwurf nicht vorkommt: ${lawList(laws)}. ` +
+    'Eine Regierungsvorlage fasst häufig mehrere Ministerialentwürfe zusammen; verglichen wird deshalb, was in beiden Texten steht.'
+  )
+})
+
+const droppedNote = computed(() => {
+  const laws = data.value?.lawsOnlyInMe ?? []
+  if (!laws.length) return null
+  const one = laws.length === 1
+  return (
+    `Der Entwurf ändert ${one ? 'ein Gesetz' : `${laws.length} Gesetze`}, ` +
+    `${one ? 'das' : 'die'} in dieser Regierungsvorlage nicht vorkommt: ${lawList(laws)}. ` +
+    'Ein Entwurf kann in mehrere Regierungsvorlagen münden — möglicherweise steht das Gesetz in einer anderen.'
+  )
+})
 </script>
 
 <template>
@@ -191,6 +224,11 @@ function displayId(id: string): string {
         <span>{{ data.meSource === 'ris' ? 'Quellen (CC BY 4.0, RIS und Parlament):' : 'Quellen (CC BY 4.0, Parlament):' }}</span>
         <ExternalLink v-if="data.me" :href="data.me.url" class="text-accent-deep hover:underline">{{ data.me.label }}</ExternalLink>
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
+      </div>
+
+      <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
+        <p v-if="mergedNote">{{ mergedNote }}</p>
+        <p v-if="droppedNote" :class="mergedNote ? 'mt-1.5' : ''">{{ droppedNote }}</p>
       </div>
 
       <template v-if="data.units.length">

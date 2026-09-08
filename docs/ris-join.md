@@ -265,6 +265,60 @@ untested; Erläuterungen are not compared. Effort spent: about one focused day
 against the five to seven estimated, because the corpus-test prototype
 already held the parser and the alignment lesson.
 
+### 6d. The Sammelgesetz problem, and the article marker (2026-09-08)
+
+A corpus run over all 132 GP XXVIII drafts (90 have a comparison: 87 from
+Parliament HTML, 3 from RIS XML) turned up two defects in the first version.
+
+**1. The article marker was read from the CSS class.** `41UeberschrG1` without
+"Artikel n" was correctly demoted to a section heading, but `43UeberschrG2`
+*with* it was never promoted. 125/ME (Glücksspielgesetz) puts the package
+title in `41UeberschrG1` and "Artikel 1" one level down; its Regierungsvorlage
+does it the other way round. Every unit of the draft came out with
+`article: null`, no article paired, and all 108 units read as new or dropped.
+Now the text decides, not the class — including the placeholder numbering
+("Artikel X1") a draft uses when it is written for a collective act whose
+final article count is not known yet (22/ME, IFG-Anpassung of the BKA).
+
+| | before | after |
+|---|---|---|
+| 125/ME | 108 units, 0 unchanged, 55 new, 52 dropped | 59 units, 11 unchanged, 6 new, 3 dropped |
+| 58/ME Vergaberecht | 503 units, 192 unchanged, 133 new, 101 dropped | 413 units, 293 unchanged, 16 new, 11 dropped |
+| 14 drafts changed in total | | every one an improvement, 76 untouched |
+
+**2. ME→RV is not always 1:1, and the unit diff cannot say so.** Ten of the 90
+reported 83–98 % of the bill as new. Not a parser fault: those bills are
+collective acts. 22/ME is the Bundeskanzleramt's three articles, its
+Regierungsvorlage merges every ministry's IFG draft into 138. Diffed unit by
+unit that reads as "the ministry rewrote everything" — the false accusation
+the framing rule forbids, only pointing the other way.
+
+`diffLawPackage` therefore scopes the comparison to the laws both documents
+carry and reports the rest as laws, not as paragraphs (`lawsOnlyInRv`,
+`lawsOnlyInMe`). The fact survives, the false precision goes:
+
+| ME | new before | new after |
+|---|---|---|
+| 12/ME Wehrgesetz | 603 | 1 |
+| 17/ME IFG-Anpassung BMI | 586 | 7 |
+| 21/ME Eisenbahngesetz | 610 | 8 |
+| 22/ME IFG-Anpassung BKA | 611 | 2 |
+| 24/ME IFG-Anpassung BMWKMS | 546 | 0 |
+
+32 of 90 drafts scope out at least one law; drafts above 50 % new fall from 16
+to 3 (19/ME, 62/ME, 103/ME — 62/ME verified as real: the Regierungsvorlage
+more than doubled the StVO-Novelle). Units without an article always stay in,
+and when no article pairs at all the scoping is skipped — an empty comparison
+helps nobody.
+
+**Consequence for §13.4 of `architecture.md` (ME→RV 1:n).** The run produced
+the evidence that question was waiting for: 27/ME (IFG-Anpassung BMF) has two
+Regierungsvorlagen, 134 d.B. and 129 d.B., both dated 2025-06-18. Against the
+one the tool picks, 25 of its laws look absent — they are plausibly in the
+other. Until the UI handles all strands, the copy says "in dieser
+Regierungsvorlage" and adds that a draft can end up in more than one. It must
+never read as "the law was dropped".
+
 ## 6a. First live run on GP XXVIII (2026-09-07)
 
 | Measure | Result |
