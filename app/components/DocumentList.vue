@@ -17,6 +17,11 @@ withDefaults(
 )
 
 const formatNames: Record<'pdf' | 'html', string> = { pdf: 'PDF', html: 'HTML' }
+const FORMAT_ORDER = ['pdf', 'html'] as const
+
+function formatOf(doc: DocumentListItem, type: 'pdf' | 'html') {
+  return doc.formats.find((f) => f.type === type) ?? null
+}
 
 /* The standard draft-document types, explained for non-insiders — the
  * Textgegenüberstellung line quietly routes first-timers to the one
@@ -42,32 +47,49 @@ function docHint(doc: DocumentListItem): string | null {
 </script>
 
 <template>
-  <ul class="divide-y divide-hairline">
-    <li
-      v-for="(doc, i) in documents"
-      :key="`${doc.title}-${i}`"
-      class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
-    >
-      <div class="min-w-0">
-        <p class="text-sm text-ink">{{ doc.title }}</p>
-        <p v-if="docHint(doc)" class="mt-0.5 text-xs text-ink-muted">
-          {{ docHint(doc) }}
-        </p>
-      </div>
-      <!-- Text links, not buttons: everything that leaves the page reads as
-           accent text with the ↗ arrow; outline buttons and chips are for
-           actions inside the page. Padding keeps the 44px hit area. -->
-      <span class="flex shrink-0 gap-1">
-        <ExternalLink
-          v-for="fmt in doc.formats"
-          :key="fmt.type"
-          :href="fmt.url"
-          class="inline-flex min-h-11 items-center rounded px-2 text-sm font-medium text-accent-deep hover:underline"
-          :aria-label="`${doc.title} als ${formatNames[fmt.type]} auf ${source} öffnen`"
-        >
-          {{ formatNames[fmt.type] }}
-        </ExternalLink>
-      </span>
-    </li>
-  </ul>
+  <div>
+    <!-- The arrow once, for the whole list: every row's tags leave for the
+         same host. Eight arrows in one block were texture, not information. -->
+    <p class="mb-1 text-right text-xs text-ink-muted">
+      öffnet auf {{ source }}<span aria-hidden="true"> ↗</span>
+    </p>
+    <ul class="divide-y divide-hairline">
+      <li
+        v-for="(doc, i) in documents"
+        :key="`${doc.title}-${i}`"
+        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
+      >
+        <div class="min-w-0">
+          <p class="text-sm text-ink">{{ doc.title }}</p>
+          <p v-if="docHint(doc)" class="mt-0.5 text-xs text-ink-muted">
+            {{ docHint(doc) }}
+          </p>
+        </div>
+        <!-- Two fixed columns, PDF then HTML, empty where a format is
+             missing — so the same label never jumps between rows. A format
+             is a small bordered accent tag: not a tall neutral button (an
+             action inside the page) and not bare text (too light to scan).
+             The <a> keeps the 44px hit area, the visible tag is smaller. -->
+        <span class="grid shrink-0 grid-cols-2 gap-1">
+          <template v-for="type in FORMAT_ORDER" :key="type">
+            <a
+              v-if="formatOf(doc, type)"
+              :href="formatOf(doc, type)!.url"
+              target="_blank"
+              rel="noopener"
+              class="group flex min-h-11 items-center justify-center rounded"
+              :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen`"
+            >
+              <span
+                class="inline-flex min-w-14 justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-accent group-hover:bg-accent-wash"
+              >
+                {{ formatNames[type] }}
+              </span>
+            </a>
+            <span v-else aria-hidden="true" />
+          </template>
+        </span>
+      </li>
+    </ul>
+  </div>
 </template>
