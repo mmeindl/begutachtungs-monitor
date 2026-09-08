@@ -69,7 +69,31 @@ const visibleUnits = computed(() => {
 interface ArticleGroup {
   article: string
   units: LawDiffUnit[]
-  counts: Record<LawDiffUnit['change'], number>
+  /** `changed` excludes editorial units, so the pills add up to the group's total like the rows do */
+  counts: Record<LawDiffUnit['change'] | 'editorial', number>
+}
+
+type Badge = LawDiffUnit['change'] | 'editorial'
+
+/** One pill style for rows and group summaries alike. */
+const BADGE_CLASS: Record<Badge, string> = {
+  changed: 'bg-accent-50 text-accent-deep',
+  editorial: 'bg-page text-ink-muted',
+  unchanged: 'bg-page text-ink-muted',
+  inserted: 'bg-mark-wash text-ink',
+  removed: 'border border-hairline text-ink-secondary line-through',
+}
+const BADGE_LABEL: Record<Badge, string> = {
+  changed: 'geändert',
+  editorial: 'redaktionell',
+  unchanged: 'unverändert',
+  inserted: 'neu',
+  removed: 'entfallen',
+}
+const BADGE_ORDER: Badge[] = ['changed', 'editorial', 'inserted', 'removed', 'unchanged']
+
+function badgeOf(u: LawDiffUnit): Badge {
+  return isMinor(u) ? 'editorial' : u.change
 }
 const groups = computed<ArticleGroup[]>(() => {
   const out: ArticleGroup[] = []
@@ -78,12 +102,12 @@ const groups = computed<ArticleGroup[]>(() => {
     const key = u.article ?? ''
     let g = byArticle.get(key)
     if (!g) {
-      g = { article: key, units: [], counts: { unchanged: 0, changed: 0, inserted: 0, removed: 0 } }
+      g = { article: key, units: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 } }
       byArticle.set(key, g)
       out.push(g)
     }
     g.units.push(u)
-    g.counts[u.change]++
+    g.counts[badgeOf(u)]++
   }
   return out
 })
@@ -98,13 +122,8 @@ function toggleGroup(article: string) {
 function groupOpen(g: ArticleGroup): boolean {
   return !multiLaw.value || openGroups.value.has(g.article) || query.value.trim().length > 0
 }
-function groupSummary(g: ArticleGroup): string {
-  const parts: string[] = []
-  if (g.counts.changed) parts.push(`${g.counts.changed} geändert`)
-  if (g.counts.inserted) parts.push(`${g.counts.inserted} neu`)
-  if (g.counts.removed) parts.push(`${g.counts.removed} entfallen`)
-  if (g.counts.unchanged) parts.push(`${g.counts.unchanged} unverändert`)
-  return parts.join(', ')
+function groupBadges(g: ArticleGroup): { badge: Badge; count: number }[] {
+  return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
 }
 
 /** Server-decided: every changed piece is a citation, number, date or punctuation. */
@@ -234,19 +253,30 @@ function displayId(id: string): string {
             <button
               v-if="multiLaw"
               type="button"
-              class="flex w-full min-h-11 items-baseline gap-3 bg-page px-3 py-2 text-left hover:bg-hairline/40"
+              class="flex w-full min-h-11 flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
               :aria-expanded="groupOpen(g)"
               @click="toggleGroup(g.article)"
             >
-              <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Ohne Titel' }}</span>
-              <span class="shrink-0 text-xs text-ink-muted">{{ groupSummary(g) }}</span>
-              <UIcon
-                name="i-lucide-chevron-down"
-                class="size-4 shrink-0 self-center text-ink-muted transition-transform"
-                :class="{ 'rotate-180': groupOpen(g) }"
-                aria-hidden="true"
-              />
-              <span class="sr-only">{{ groupOpen(g) ? 'zuklappen' : 'aufklappen' }}</span>
+              <span class="flex w-full items-start gap-3">
+                <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Ohne Titel' }}</span>
+                <UIcon
+                  name="i-lucide-chevron-down"
+                  class="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform"
+                  :class="{ 'rotate-180': groupOpen(g) }"
+                  aria-hidden="true"
+                />
+                <span class="sr-only">{{ groupOpen(g) ? 'zuklappen' : 'aufklappen' }}</span>
+              </span>
+              <span class="flex flex-wrap gap-1.5">
+                <span
+                  v-for="b in groupBadges(g)"
+                  :key="b.badge"
+                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums"
+                  :class="BADGE_CLASS[b.badge]"
+                >
+                  {{ b.count }} {{ BADGE_LABEL[b.badge] }}
+                </span>
+              </span>
             </button>
             <ol v-if="groupOpen(g)" class="divide-y divide-hairline" :class="{ 'border-t border-hairline': multiLaw }">
               <li v-for="u in g.units" :key="key(u)">
@@ -257,15 +287,10 @@ function displayId(id: string): string {
                   @click="toggle(u)"
                 >
                   <span
-                    class="mt-0.5 inline-flex w-20 shrink-0 justify-center rounded-full px-2 py-0.5 text-xs font-medium"
-                    :class="{
-                      'bg-accent-50 text-accent-deep': u.change === 'changed' && !isMinor(u),
-                      'bg-page text-ink-muted': u.change === 'unchanged' || isMinor(u),
-                      'bg-mark-wash text-ink': u.change === 'inserted',
-                      'border border-hairline text-ink-secondary line-through': u.change === 'removed',
-                    }"
+                    class="mt-0.5 inline-flex w-24 shrink-0 justify-center rounded-full px-2 py-0.5 text-xs font-medium"
+                    :class="BADGE_CLASS[badgeOf(u)]"
                   >
-                    {{ isMinor(u) ? 'redaktionell' : CHANGE_LABEL[u.change] }}
+                    {{ BADGE_LABEL[badgeOf(u)] }}
                   </span>
                   <span class="min-w-0 flex-1 text-sm">
                     <span class="font-medium text-ink">
