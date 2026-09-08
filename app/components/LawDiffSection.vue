@@ -191,25 +191,20 @@ function displayId(id: string): string {
       </div>
 
       <template v-if="data.units.length">
-        <!-- Same controls as the Stellungnahmen panel below: one joined
-             segmented group, primary-subtle for the active state, and the
-             group scrolls sideways on narrow screens instead of wrapping. -->
-        <div class="mt-4 flex flex-wrap items-center gap-2">
-          <div class="min-w-0 max-w-full overflow-x-auto">
-            <UFieldGroup role="group" aria-label="Änderungen nach Art filtern">
-              <UButton
-                v-for="o in filterOptions"
-                :key="o.value"
-                :color="filter === o.value ? 'primary' : 'neutral'"
-                :variant="filter === o.value ? 'subtle' : 'outline'"
-                :aria-pressed="filter === o.value"
-                class="min-h-11"
-                @click="filter = o.value"
-              >
-                {{ o.label }} <span class="tabular-nums opacity-70">{{ o.count }}</span>
-              </UButton>
-            </UFieldGroup>
-          </div>
+        <!-- One compact select instead of six chips (the counts live on the
+             law headers anyway). Native <select>, not USelect — same reason
+             and same token styling as the list page (Vite 8 + Nuxt UI 4.10
+             hydration crash, see pages/begutachtungen/index.vue). -->
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <label class="flex min-h-11 items-center gap-2 text-sm text-ink-secondary">
+            <span>Anzeigen:</span>
+            <select
+              v-model="filter"
+              class="min-h-11 rounded-md border border-hairline bg-surface px-3 py-2 text-sm text-ink"
+            >
+              <option v-for="o in filterOptions" :key="o.value" :value="o.value">{{ o.label }} ({{ o.count }})</option>
+            </select>
+          </label>
           <UInput
             v-model="query"
             type="search"
