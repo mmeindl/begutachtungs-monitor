@@ -19,19 +19,53 @@ function pageUrl(siteUrl: string, item: ConsultationSummary): string {
 }
 
 /**
- * Strong ETag for a deterministic feed body — FNV-1a 64-bit, dependency-free
- * (the server tsconfig has no Node types, so no node:crypto here). Cache
- * validation needs collision-unlikeliness, not cryptographic strength.
+ * FNV-1a 64-bit, as two 32-bit halves.
+ *
+ * The readable implementation uses BigInt, and this one did — but BigInt
+ * *literals* are ES2020 while the server bundle is transpiled to ES2019, so
+ * esbuild warned "may crash at run-time" on every build. Writing `BigInt(…)`
+ * instead would only silence the warning: the arithmetic needs ES2020 either
+ * way. Four 16-bit limbs need nothing beyond ES5, and save allocating a
+ * BigInt per byte of every feed response.
+ *
+ * The multiply is four products rather than sixteen because only two limbs
+ * of the prime 0x100000001b3 are non-zero: 0x01b3 at 2^0 and 0x0100 at 2^32.
+ * Every intermediate stays below 2^31, so the shifts are safe.
+ */
+export function fnv1a64(bytes: Uint8Array): { hi: number; lo: number } {
+  // Offset basis 0xcbf29ce484222325, least significant limb first.
+  let h0 = 0x2325
+  let h1 = 0x8422
+  let h2 = 0x9ce4
+  let h3 = 0xcbf2
+  for (const byte of bytes) {
+    h0 ^= byte
+    const t0 = h0 * 0x01b3
+    const t1 = h1 * 0x01b3
+    const t2 = h2 * 0x01b3 + h0 * 0x0100
+    const t3 = h3 * 0x01b3 + h1 * 0x0100
+    const s1 = t1 + (t0 >>> 16)
+    const s2 = t2 + (s1 >>> 16)
+    const s3 = t3 + (s2 >>> 16)
+    h0 = t0 & 0xffff
+    h1 = s1 & 0xffff
+    h2 = s2 & 0xffff
+    h3 = s3 & 0xffff
+  }
+  return { hi: h3 * 0x10000 + h2, lo: h1 * 0x10000 + h0 }
+}
+
+/**
+ * Strong ETag for a deterministic feed body — dependency-free (the server
+ * tsconfig has no Node types, so no node:crypto here). Cache validation
+ * needs collision-unlikeliness, not cryptographic strength.
+ *
+ * The low half is padded to the 7 base-36 digits 2^32-1 occupies, so the two
+ * halves cannot run together into an ambiguous string.
  */
 export function bodyEtag(body: string): string {
-  let hash = 0xcbf29ce484222325n
-  const prime = 0x100000001b3n
-  const mask = 0xffffffffffffffffn
-  for (const byte of utf8.encode(body)) {
-    hash ^= BigInt(byte)
-    hash = (hash * prime) & mask
-  }
-  return `"${hash.toString(36)}-${body.length.toString(36)}"`
+  const { hi, lo } = fnv1a64(utf8.encode(body))
+  return `"${hi.toString(36)}${lo.toString(36).padStart(7, '0')}-${body.length.toString(36)}"`
 }
 
 // ---------------------------------------------------------------------------

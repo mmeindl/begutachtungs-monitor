@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { ConsultationSummary } from '../shared/types'
 import {
+  bodyEtag,
   buildIcsCalendar,
   buildRssFeed,
   buildSitemap,
   escapeIcsText,
   escapeXml,
+  fnv1a64,
   foldIcsLine,
 } from '../server/utils/feeds'
 
@@ -213,5 +215,54 @@ describe('buildIcsCalendar', () => {
     for (const line of ics.split('\r\n')) {
       expect(Buffer.byteLength(line, 'utf8')).toBeLessThanOrEqual(75)
     }
+  })
+})
+
+describe('fnv1a64', () => {
+  const utf8 = new TextEncoder()
+  const hex = (s: string) => {
+    const { hi, lo } = fnv1a64(utf8.encode(s))
+    return hi.toString(16).padStart(8, '0') + lo.toString(16).padStart(8, '0')
+  }
+
+  it('matches the published FNV-1a 64 vectors', () => {
+    expect(hex('')).toBe('cbf29ce484222325')
+    expect(hex('a')).toBe('af63dc4c8601ec8c')
+    expect(hex('foobar')).toBe('85944171f73967e8')
+  })
+
+  it('agrees with the BigInt implementation it replaced', () => {
+    // The limb version exists only because BigInt literals need ES2020; it
+    // must compute the same hash, not merely a plausible one.
+    const reference = (input: string): string => {
+      let hash = BigInt('0xcbf29ce484222325')
+      const prime = BigInt('0x100000001b3')
+      const mask = BigInt('0xffffffffffffffff')
+      for (const byte of utf8.encode(input)) {
+        hash ^= BigInt(byte)
+        hash = (hash * prime) & mask
+      }
+      return hash.toString(16).padStart(16, '0')
+    }
+    const samples = ['', 'a', 'ä', '§ 5 Abs. 1', 'x'.repeat(1000), '\u0000\u00ff', 'Glücksspielgesetz — Novelle 2026']
+    for (const sample of samples) expect(hex(sample), sample.slice(0, 20)).toBe(reference(sample))
+  })
+})
+
+describe('bodyEtag', () => {
+  it('is deterministic, quoted, and separates hash from length', () => {
+    expect(bodyEtag('hello')).toBe(bodyEtag('hello'))
+    expect(bodyEtag('hello')).toMatch(/^"[0-9a-z]+-[0-9a-z]+"$/)
+  })
+
+  it('distinguishes bodies of equal length', () => {
+    // Length alone is a weak validator; the hash has to carry the difference.
+    expect(bodyEtag('abcd')).not.toBe(bodyEtag('abce'))
+  })
+
+  it('pads the low half so two hashes cannot run together', () => {
+    // hi=1, lo=0 must not render as "10" and collide with hi=10, lo=0.
+    const short = bodyEtag('')
+    expect(short.split('-')[0]!.length).toBeGreaterThanOrEqual(8)
   })
 })
