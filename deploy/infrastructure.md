@@ -79,7 +79,7 @@ on any Ubuntu VPS (the scripts are provider-agnostic).
 | Deploy | `SERVER=root@85.235.66.11 ./deploy/deploy.sh` |
 | Uptime: run the probe now | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor` (or the "Run workflow" button in the Actions tab) |
 | Uptime: test the alarm mail | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor -f simulate=down` — opens a `downtime` issue titled "Testalarm" with the @mention (= the e-mail an outage sends); the next scheduled run, at most 30 min later, closes it. First tested 08.09.2026 |
-| Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab |
+| Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab. **Timing:** GitHub's cron is best-effort — after the workflow was first pushed (08.09.2026, 11:35 UTC) the first scheduled run came at 15:17 UTC, six slots later, and runs start ~10 min after their slot. Good enough to catch an outage of hours, not one of minutes |
 | App logs | `ssh root@85.235.66.11 journalctl -u begutachtungs-monitor -f` |
 | Service status | `ssh root@85.235.66.11 'systemctl status begutachtungs-monitor caddy'` |
 | Re-run setup | `scp deploy/bootstrap.sh root@85.235.66.11: && ssh root@85.235.66.11 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'` |
