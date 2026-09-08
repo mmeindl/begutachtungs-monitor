@@ -54,21 +54,19 @@ function docHint(doc: DocumentListItem): string | null {
           {{ docHint(doc) }}
         </p>
       </div>
-      <span class="flex shrink-0 gap-2">
-        <UButton
+      <!-- Text links, not buttons: everything that leaves the page reads as
+           accent text with the ↗ arrow; outline buttons and chips are for
+           actions inside the page. Padding keeps the 44px hit area. -->
+      <span class="flex shrink-0 gap-1">
+        <ExternalLink
           v-for="fmt in doc.formats"
           :key="fmt.type"
-          :to="fmt.url"
-          target="_blank"
-          rel="noopener"
-          size="sm"
-          color="neutral"
-          variant="outline"
-          class="min-h-11"
+          :href="fmt.url"
+          class="inline-flex min-h-11 items-center rounded px-2 text-sm font-medium text-accent-deep hover:underline"
           :aria-label="`${doc.title} als ${formatNames[fmt.type]} auf ${source} öffnen`"
         >
-          {{ formatNames[fmt.type] }}<span aria-hidden="true"> ↗</span>
-        </UButton>
+          {{ formatNames[fmt.type] }}
+        </ExternalLink>
       </span>
     </li>
   </ul>
