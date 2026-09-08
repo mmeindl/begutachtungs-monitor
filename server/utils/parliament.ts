@@ -18,6 +18,7 @@
  */
 import type {
   ConsultationDetail,
+  ConsultationDocument,
   ConsultationSummary,
   EnactmentInfo,
   StatementMeta,
@@ -630,9 +631,7 @@ export async function getConsultationDetail(
     // Later stations only: the RV's own text is enactment.rvTextUrl, where
     // the comparison offers it — listing it here too put the same link
     // under two headings.
-    textEvolution: versions
-      .filter((v) => v.station !== RV_STATION)
-      .map(({ label, url }) => ({ label, url })),
+    textEvolution: groupVersionsByStation(versions.filter((v) => v.station !== RV_STATION)),
     risDraft: risMap?.rows.find((r) => r.inr === inr) ?? null,
     statements: statementsResult
       ? {
@@ -650,4 +649,18 @@ export async function getConsultationDetail(
         },
     enactment,
   }
+}
+
+/** One DocumentList row per station ("Geändert im Plenum") with its PDF/HTML formats. */
+function groupVersionsByStation(versions: readonly { station: string; url: string }[]): ConsultationDocument[] {
+  const out: ConsultationDocument[] = []
+  for (const v of versions) {
+    let doc = out.find((d) => d.title === v.station)
+    if (!doc) {
+      doc = { title: v.station, formats: [] }
+      out.push(doc)
+    }
+    doc.formats.push({ type: v.url.toLowerCase().endsWith('.html') ? 'html' : 'pdf', url: v.url })
+  }
+  return out
 }

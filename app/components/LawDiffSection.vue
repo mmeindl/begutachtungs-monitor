@@ -144,7 +144,8 @@ function displayId(id: string): string {
 </script>
 
 <template>
-  <div class="mt-8">
+  <!-- id: the outcome card above links here ("der Vergleich der beiden Texte"). -->
+  <div id="textvergleich" class="mt-8 scroll-mt-24">
     <h3 class="text-base font-semibold text-ink">Was sich nach der Begutachtung geändert hat</h3>
 
     <p v-if="status === 'pending' || status === 'idle'" class="mt-1 text-sm text-ink-secondary">

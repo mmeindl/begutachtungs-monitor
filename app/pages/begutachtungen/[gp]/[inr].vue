@@ -81,29 +81,6 @@ const risDocuments = computed<(ConsultationDocument & { hint?: string })[]>(() =
     : []
 })
 
-// "Vergleichen Sie selbst": the honest manual precursor of the diff layer —
-// the ME Gesetzestext next to the RV text, reader does the comparison.
-// Doc titles are ministries' free text, so match defensively and fall back
-// to the two Gegenstand pages (which always carry the texts).
-const compareLinks = computed(() => {
-  const d = data.value
-  if (!d?.enactment) return null
-  const meDoc = d.documents.find((doc) => doc.title.trim().startsWith('Gesetzestext'))
-  const mePdf = meDoc?.formats.find((f) => f.type === 'pdf')?.url
-  return {
-    me: {
-      url: mePdf ?? meDoc?.formats[0]?.url ?? d.parliamentUrl,
-      label: mePdf ? 'Ministerialentwurf (PDF)' : 'Ministerialentwurf',
-    },
-    // Distinct from the card headline above it, which links the RV's
-    // Gegenstand page — this one is the text to hold against the draft.
-    rv: {
-      url: d.enactment.rvTextUrl ?? d.enactment.rvUrl,
-      label: d.enactment.rvTextUrl ? 'Regierungsvorlage (PDF)' : 'Regierungsvorlage',
-    },
-  }
-})
-
 // The StageBar already states "Regierungsvorlage · bisher keine", so the
 // card must not say it again. Its job is the bracket the bar cannot carry:
 // elapsed time. Once the quiet stretch exceeds the latency window, the
@@ -491,36 +468,22 @@ const linkClasses =
           <!-- Mechanism 3, manual edition: invite the comparison the diff
                layer will one day automate. Temporal narrative, not causal.
                Only ink + accent-deep are AAA on accent-wash (main.css). -->
-          <template v-if="compareLinks">
-            <p class="mt-4 text-sm leading-relaxed text-ink">
-              <template v-if="data.deadline && data.statements.total > 0">
-                Bis zum Fristende am {{ formatDateDe(data.deadline) }} gingen
-                {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
-                ein.
-              </template>
-              Die Regierungsvorlage ist die Fassung, die die Regierung nach
-              der Begutachtung dem Nationalrat vorgelegt hat. Ob und wie der
-              Entwurf geändert wurde, zeigt der Vergleich der beiden Texte:
-            </p>
-            <ul class="mt-2 flex flex-wrap gap-2">
-              <li>
-                <ExternalLink
-                  :href="compareLinks.me.url"
-                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm font-medium text-accent-deep hover:border-baseline hover:underline"
-                >
-                  {{ compareLinks.me.label }}
-                </ExternalLink>
-              </li>
-              <li>
-                <ExternalLink
-                  :href="compareLinks.rv.url"
-                  class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm font-medium text-accent-deep hover:border-baseline hover:underline"
-                >
-                  {{ compareLinks.rv.label }}
-                </ExternalLink>
-              </li>
-            </ul>
-          </template>
+          <!-- The card states the outcome; the comparison itself lives in
+               its own section below and is linked, not duplicated — the two
+               source PDFs used to sit here as chips, a placeholder from
+               before the diff existed. -->
+          <p v-if="data.enactment" class="mt-4 text-sm leading-relaxed text-ink">
+            <template v-if="data.deadline && data.statements.total > 0">
+              Bis zum Fristende am {{ formatDateDe(data.deadline) }} gingen
+              {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
+              ein.
+            </template>
+            Die Regierungsvorlage ist die Fassung, die die Regierung nach
+            der Begutachtung dem Nationalrat vorgelegt hat. Ob und wie der
+            Entwurf geändert wurde, zeigt
+            <a href="#textvergleich" class="font-medium text-accent-deep underline decoration-hairline underline-offset-2 hover:decoration-current">der Vergleich der beiden Texte</a>
+            weiter unten.
+          </p>
         </div>
 
         <!-- Framing rule: both outcomes get the same card shape and type
@@ -549,7 +512,7 @@ const linkClasses =
 
         <div v-if="data.textEvolution.length" class="mt-8">
           <h3 class="text-base font-semibold text-ink">Spätere Textfassungen</h3>
-          <!-- A first-time reader cannot know these chips ARE the law text
+          <!-- A first-time reader cannot know these rows ARE the law text
                at successive stations — say it once. The Regierungsvorlage
                itself is not among them: the comparison above offers it, and
                the same link under two headings is what this page had too
@@ -558,18 +521,12 @@ const linkClasses =
             Der Text wurde nach der Regierungsvorlage im Parlament weiter
             geändert:
           </p>
-          <!-- rounded-md, not -full: interactive chip, not status pill
-               (shape grammar, see TraceTimeline chips). -->
-          <ul class="mt-2 flex flex-wrap gap-2">
-            <li v-for="link in data.textEvolution" :key="link.url">
-              <ExternalLink
-                :href="link.url"
-                class="inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
-              >
-                {{ link.label }}
-              </ExternalLink>
-            </li>
-          </ul>
+          <!-- Documents wear the Entwurfsdokumente pattern: one row per
+               station, formats as buttons. Chips are for actions inside the
+               page. -->
+          <div class="mt-2">
+            <DocumentList :documents="data.textEvolution" />
+          </div>
         </div>
 
         <!-- The accountability core: what became of the draft, § by §, both
