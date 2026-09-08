@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, diffLawUnits, diffTokens, lawNameTokens, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
+import { alignUnits, diffLawUnits, diffTokens, isEditorialChange, lawNameTokens, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseParliamentHtml } from '../server/utils/lawText'
 
 /** Minimal Word-filtered Parliament HTML in the legistic template classes. */
@@ -75,6 +75,26 @@ describe('parseLawUnits', () => {
     expect(novaoHeading('2. § 6 Abs. 1 Z 9 lautet: „9. Umsätze …“')).toBe('§ 6 Abs. 1 Z 9 lautet')
     expect(novaoHeading('14. Nach § 11 wird folgender § 11a samt Überschrift eingefügt:')).toBe('Nach § 11 wird folgender § 11a samt Überschrift eingefügt')
     expect(novaoHeading(`3. ${'Wort '.repeat(40)}`).length).toBeLessThanOrEqual(104)
+  })
+})
+
+describe('editorial vs substantive', () => {
+  const seg = (a: string, b: string) => diffTokens(a, b).segments
+  it('shifted cross-references and date formats are editorial', () => {
+    expect(isEditorialChange(seg('Die Behörde gemäß § 15 Abs. 2 entscheidet.', 'Die Behörde gemäß § 16 Abs. 2 entscheidet.'))).toBe(true)
+    expect(isEditorialChange(seg('in der Fassung vom 26.6.2024', 'in der Fassung vom 26.06.2024'))).toBe(true)
+    expect(isEditorialChange(seg('nach den §§ 1 und 2', 'nach den §§ 1 bis 3'))).toBe(true)
+    expect(isEditorialChange(seg('gilt Art. 3 lit. a;', 'gilt Art. 3 lit. b,'))).toBe(true)
+  })
+  it('one ordinary word is substantive, however long the paragraph', () => {
+    const long = 'Wort '.repeat(150)
+    expect(isEditorialChange(seg(`${long}Die Frist beträgt sechs Wochen.`, `${long}Die Frist beträgt acht Wochen.`))).toBe(false)
+    expect(isEditorialChange(seg('Anlagen und Leitungen', 'Anlagen oder Leitungen'))).toBe(false)
+    expect(isEditorialChange(seg('den §§ 1 bis 10', 'diesem Bundesgesetz mit Ausnahme der in'))).toBe(false)
+  })
+  it('is false without segments', () => {
+    expect(isEditorialChange(null)).toBe(false)
+    expect(isEditorialChange([{ type: 'equal', text: 'x' }])).toBe(false)
   })
 })
 
@@ -163,7 +183,8 @@ describe('diffLawUnits: the renumbering trap', () => {
     const changed = units.find((u) => u.change === 'changed')!
     expect(changed.meId).toBe('§3')
     expect(changed.segments!.some((s) => s.type === 'removed' && s.text === 'sechs')).toBe(true)
-    expect(summarizeDiff(units)).toEqual({ total: 5, unchanged: 3, changed: 1, inserted: 1, removed: 0 })
+    expect(summarizeDiff(units)).toEqual({ total: 5, unchanged: 3, changed: 1, editorial: 0, inserted: 1, removed: 0 })
+    expect(changed.editorial).toBe(false)
   })
 
   it('places a removed § where it stood in the draft', () => {
