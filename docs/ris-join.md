@@ -210,9 +210,19 @@ Live numbers, 2026-09-08: 43/ME → 449 d.B. gives 74 units, 8 unchanged,
 58 changed (26 of them redaktionell), 6 inserted, 2 removed; 2.3 s cold,
 14 ms warm. 100/ME (a Novelle) gives 13 Z units, 6 changed, 2 new, 2 gone.
 
-Known limits of this version: Novellierungsanordnungen have no heading, so
-a renumbered Z n that was also rewritten shows as one removed and one new
-unit rather than one changed; the Erläuterungen passage on the
+Follow-up 2026-09-08, after the first screenshot: the draft and the bill
+may title the same article differently ("Änderung des Umsatzsteuergesetzes
+1994" vs "Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird"),
+which made every Ziffer of 88/ME appear once as new and once as removed.
+Articles are now paired first, by the law they name (stemmed title tokens
+with the legistic boilerplate removed, Jaccard ≥ 0.5), then by article
+number. Each Ziffer carries its instruction line as heading ("§ 6 Abs. 1 Z 9
+lautet"), which is both the label a reader needs and the alignment key that
+survives renumbering; the Ziffer number itself, like the § symbol, is kept
+out of the compared text. The section explains Z 1, Z 2 … when the draft is
+a Novelle.
+
+Known limits of this version: the Erläuterungen passage on the
 Begutachtungsverfahren is not yet quoted; no RIS XML path yet, so GP XXVII
 and earlier report "nur als PDF". Effort spent: about one focused day
 against the five to seven estimated, because the corpus-test prototype

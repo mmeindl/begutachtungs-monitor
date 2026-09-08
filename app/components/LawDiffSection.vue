@@ -43,6 +43,13 @@ const CHANGE_LABEL: Record<LawDiffUnit['change'], string> = {
   removed: 'entfallen',
 }
 
+/** A Novelle has no §§ of its own; its units are the numbered amendment instructions. */
+const isNovelle = computed(() => {
+  const units = data.value?.units ?? []
+  return units.length > 0 && units.every((u) => /^Z\d/.test(u.id))
+})
+const hasZiffern = computed(() => (data.value?.units ?? []).some((u) => /^Z\d/.test(u.id)))
+
 const summarySentence = computed(() => {
   const s = data.value?.stats
   if (!s) return ''
@@ -51,8 +58,14 @@ const summarySentence = computed(() => {
   if (s.inserted) parts.push(`${s.inserted} neu`)
   if (s.removed) parts.push(`${s.removed} entfallen`)
   if (s.unchanged) parts.push(`${s.unchanged} unverändert`)
-  return `${s.total} Paragraphen: ${parts.join(', ')}.`
+  const noun = isNovelle.value ? 'Änderungsanordnungen' : hasZiffern.value ? 'Einheiten' : 'Paragraphen'
+  return `${s.total} ${noun}: ${parts.join(', ')}.`
 })
+
+/** "§5" → "§ 5", "Z3" → "Z 3" */
+function displayId(id: string): string {
+  return id.replace(/^§/, '§ ').replace(/^Z(\d)/, 'Z $1')
+}
 
 /** Article headings only when the package has more than one law. */
 const articleBefore = (idx: number): string | null => {
@@ -83,9 +96,19 @@ const articleBefore = (idx: number): string | null => {
 
     <template v-else>
       <p class="mt-1 text-sm text-ink-secondary">
-        Paragraph für Paragraph, Entwurf gegen Regierungsvorlage. Ob eine
-        Änderung auf eine Stellungnahme zurückgeht, sagt der Text nicht; die
-        Erläuterungen der Regierungsvorlage oft schon.
+        <template v-if="isNovelle">
+          Dieser Entwurf ändert ein bestehendes Gesetz. Verglichen werden
+          deshalb die nummerierten Änderungsanordnungen (Z 1, Z 2 …), jede
+          sagt, was an welcher Stelle des geltenden Gesetzes geändert wird.
+        </template>
+        <template v-else-if="hasZiffern">
+          Paragraph für Paragraph, Entwurf gegen Regierungsvorlage. Wo der
+          Entwurf ein bestehendes Gesetz ändert, sind die Einheiten die
+          nummerierten Änderungsanordnungen (Z 1, Z 2 …).
+        </template>
+        <template v-else>Paragraph für Paragraph, Entwurf gegen Regierungsvorlage.</template>
+        Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt der Text
+        nicht; die Erläuterungen der Regierungsvorlage oft schon.
       </p>
       <p class="mt-2 text-sm text-ink">{{ summarySentence }}</p>
 
@@ -95,7 +118,7 @@ const articleBefore = (idx: number): string | null => {
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
         <label class="ml-auto inline-flex min-h-11 cursor-pointer items-center gap-2">
           <input v-model="showUnchanged" type="checkbox" class="size-4 accent-accent" />
-          unveränderte Paragraphen anzeigen
+          {{ isNovelle ? 'unveränderte Änderungsanordnungen anzeigen' : 'unveränderte Paragraphen anzeigen' }}
         </label>
       </div>
 
@@ -124,8 +147,8 @@ const articleBefore = (idx: number): string | null => {
               </span>
               <span class="min-w-0 flex-1 text-sm">
                 <span class="font-medium text-ink">
-                  {{ u.id.replace('§', '§ ') }}
-                  <span v-if="u.meId && u.meId !== u.id" class="font-normal text-ink-muted">(im Entwurf {{ u.meId.replace('§', '§ ') }})</span>
+                  {{ displayId(u.id) }}
+                  <span v-if="u.meId && u.meId !== u.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(u.meId) }})</span>
                 </span>
                 <span v-if="u.heading" class="text-ink-secondary"> {{ u.heading }}</span>
               </span>

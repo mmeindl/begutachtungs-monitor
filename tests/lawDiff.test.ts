@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, diffLawUnits, diffTokens, summarizeDiff } from '../server/utils/lawDiff'
-import { normalizeGld, parseLawUnits, parseParliamentHtml } from '../server/utils/lawText'
+import { alignUnits, diffLawUnits, diffTokens, lawNameTokens, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
+import { normalizeGld, novaoHeading, parseLawUnits, parseParliamentHtml } from '../server/utils/lawText'
 
 /** Minimal Word-filtered Parliament HTML in the legistic template classes. */
 function law(parts: { heading?: string; gld: string; abs: string[]; ziff?: string[] }[], opts: { article?: string; title?: string } = {}) {
@@ -66,7 +66,55 @@ describe('parseLawUnits', () => {
     const units = parseLawUnits(html)
     expect(units.map((u) => u.id)).toEqual(['Z1', 'Z2'])
     expect(units[0]!.article).toBe('Änderung des Z-Gesetzes')
+    expect(units[0]!.articleNumber).toBe('Artikel 2')
     expect(units[0]!.text).toContain('Neuer Text.')
+    expect(units.map((u) => u.heading)).toEqual(['§ 3 lautet', 'In § 7 entfällt Abs. 2.'])
+  })
+
+  it('derives a Ziffer heading from the instruction line', () => {
+    expect(novaoHeading('2. § 6 Abs. 1 Z 9 lautet: „9. Umsätze …“')).toBe('§ 6 Abs. 1 Z 9 lautet')
+    expect(novaoHeading('14. Nach § 11 wird folgender § 11a samt Überschrift eingefügt:')).toBe('Nach § 11 wird folgender § 11a samt Überschrift eingefügt')
+    expect(novaoHeading(`3. ${'Wort '.repeat(40)}`).length).toBeLessThanOrEqual(104)
+  })
+})
+
+describe('article pairing across differing titles', () => {
+  it('names the same law from draft and bill titles', () => {
+    expect(lawNameTokens('Änderung des Umsatzsteuergesetzes 1994')).toEqual(new Set(['umsatzsteuergesetz', '1994']))
+    expect(lawNameTokens('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird')).toEqual(new Set(['umsatzsteuergesetz', '1994']))
+  })
+
+  const novelle = (title: string, ziffern: string[]) =>
+    `<html><body><p class=41UeberschrG1>Artikel&nbsp;1</p><p class=43UeberschrG2>${title}</p>` +
+    ziffern.map((z) => `<p class=21NovAo1>${z}</p>`).join('') +
+    `</body></html>`
+  const me = parseLawUnits(
+    novelle('&Auml;nderung des Umsatzsteuergesetzes 1994', [
+      '1. In &sect;&nbsp;3 Abs.&nbsp;1 wird das Wort &bdquo;sechs&ldquo; durch &bdquo;acht&ldquo; ersetzt.',
+      '2. &sect;&nbsp;6 Abs.&nbsp;1 Z&nbsp;9 lautet: &bdquo;alter Text&ldquo;',
+      '3. &sect;&nbsp;28 Abs.&nbsp;60 lautet: &bdquo;Inkrafttreten alt&ldquo;',
+    ]),
+  )
+  const rv = parseLawUnits(
+    novelle('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 ge&auml;ndert wird', [
+      '1. In &sect;&nbsp;3 Abs.&nbsp;1 wird das Wort &bdquo;sechs&ldquo; durch &bdquo;acht&ldquo; ersetzt.',
+      '2. In &sect;&nbsp;4 Abs.&nbsp;2 entf&auml;llt der letzte Satz.',
+      '3. &sect;&nbsp;6 Abs.&nbsp;1 Z&nbsp;9 lautet: &bdquo;neuer Text&ldquo;',
+      '4. &sect;&nbsp;28 Abs.&nbsp;60 lautet: &bdquo;Inkrafttreten alt&ldquo;',
+    ]),
+  )
+
+  it('pairs the articles by the law they name', () => {
+    const map = pairArticles(me, rv)
+    expect(map.get('Änderung des Umsatzsteuergesetzes 1994')).toBe('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird')
+  })
+
+  it('pairs renumbered Ziffern by their instruction line, not by number', () => {
+    const a = alignUnits(me, rv)
+    expect(a.pairs.map((p) => `${p.me.id}>${p.rv.id}`)).toEqual(['Z1>Z1', 'Z2>Z3', 'Z3>Z4'])
+    const units = diffLawUnits(me, rv)
+    expect(units.map((u) => `${u.id}:${u.change}`)).toEqual(['Z1:unchanged', 'Z2:inserted', 'Z3:changed', 'Z4:unchanged'])
+    expect(units[0]!.article).toBe('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird')
   })
 })
 
