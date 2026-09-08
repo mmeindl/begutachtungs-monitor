@@ -16,7 +16,30 @@ const { data, status } = await useFetch<LawDiffResponse>(() => `/api/consultatio
 })
 
 const open = ref<Set<string>>(new Set())
-const showUnchanged = ref(false)
+/** The list can run to 70+ rows; it opens on request, the summary stands alone. */
+const listOpen = ref(false)
+
+type Filter = 'alle' | 'geändert' | 'neu' | 'entfallen' | 'unverändert'
+const filter = ref<Filter>('alle')
+const query = ref('')
+
+const FILTER_CHANGE: Record<Exclude<Filter, 'alle'>, LawDiffUnit['change']> = {
+  geändert: 'changed',
+  neu: 'inserted',
+  entfallen: 'removed',
+  unverändert: 'unchanged',
+}
+const filterOptions = computed<{ value: Filter; label: string; count: number }[]>(() => {
+  const s = data.value?.stats
+  if (!s) return []
+  return [
+    { value: 'alle', label: 'alle', count: s.total },
+    { value: 'geändert', label: 'geändert', count: s.changed },
+    { value: 'neu', label: 'neu', count: s.inserted },
+    { value: 'entfallen', label: 'entfallen', count: s.removed },
+    { value: 'unverändert', label: 'unverändert', count: s.unchanged },
+  ].filter((o) => o.value === 'alle' || o.count > 0) as { value: Filter; label: string; count: number }[]
+})
 
 function key(u: LawDiffUnit): string {
   return `${u.article ?? ''}|${u.id}|${u.change}`
@@ -29,7 +52,60 @@ function toggle(u: LawDiffUnit) {
   open.value = next
 }
 
-const visibleUnits = computed(() => (data.value?.units ?? []).filter((u) => showUnchanged.value || u.change !== 'unchanged'))
+const visibleUnits = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return (data.value?.units ?? []).filter((u) => {
+    if (filter.value !== 'alle' && u.change !== FILTER_CHANGE[filter.value]) return false
+    if (!q) return true
+    return [u.id, u.meId, u.heading, u.article, u.meText, u.rvText].some((t) => t?.toLowerCase().includes(q))
+  })
+})
+
+/**
+ * One group per Gesetz (article of the package). 32/ME has 330 units in
+ * three laws; a flat list is unreadable, so every law folds. A single-law
+ * text has no group header and is open.
+ */
+interface ArticleGroup {
+  article: string
+  units: LawDiffUnit[]
+  counts: Record<LawDiffUnit['change'], number>
+}
+const groups = computed<ArticleGroup[]>(() => {
+  const out: ArticleGroup[] = []
+  const byArticle = new Map<string, ArticleGroup>()
+  for (const u of visibleUnits.value) {
+    const key = u.article ?? ''
+    let g = byArticle.get(key)
+    if (!g) {
+      g = { article: key, units: [], counts: { unchanged: 0, changed: 0, inserted: 0, removed: 0 } }
+      byArticle.set(key, g)
+      out.push(g)
+    }
+    g.units.push(u)
+    g.counts[u.change]++
+  }
+  return out
+})
+const multiLaw = computed(() => new Set((data.value?.units ?? []).map((u) => u.article ?? '')).size > 1)
+const openGroups = ref<Set<string>>(new Set())
+function toggleGroup(article: string) {
+  const next = new Set(openGroups.value)
+  if (next.has(article)) next.delete(article)
+  else next.add(article)
+  openGroups.value = next
+}
+function groupOpen(g: ArticleGroup): boolean {
+  return !multiLaw.value || openGroups.value.has(g.article) || query.value.trim().length > 0
+}
+function groupSummary(g: ArticleGroup): string {
+  const parts: string[] = []
+  if (g.counts.changed) parts.push(`${g.counts.changed} geändert`)
+  if (g.counts.inserted) parts.push(`${g.counts.inserted} neu`)
+  if (g.counts.removed) parts.push(`${g.counts.removed} entfallen`)
+  if (g.counts.unchanged) parts.push(`${g.counts.unchanged} unverändert`)
+  return parts.join(', ')
+}
 
 /** Server-decided: every changed piece is a citation, number, date or punctuation. */
 function isMinor(u: LawDiffUnit): boolean {
@@ -67,15 +143,6 @@ function displayId(id: string): string {
   return id.replace(/^§/, '§ ').replace(/^Z(\d)/, 'Z $1')
 }
 
-/** Article headings only when the package has more than one law. */
-const articleBefore = (idx: number): string | null => {
-  const u = visibleUnits.value[idx]
-  if (!u?.article) return null
-  const prev = visibleUnits.value[idx - 1]
-  if (prev && prev.article === u.article) return null
-  const distinct = new Set(visibleUnits.value.map((x) => x.article))
-  return distinct.size > 1 ? u.article : null
-}
 </script>
 
 <template>
@@ -118,74 +185,111 @@ const articleBefore = (idx: number): string | null => {
         <span>Quellen (CC BY 4.0, Parlament):</span>
         <ExternalLink v-if="data.me" :href="data.me.url" class="text-accent-deep hover:underline">{{ data.me.label }}</ExternalLink>
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
-        <label class="ml-auto inline-flex min-h-11 cursor-pointer items-center gap-2">
-          <input v-model="showUnchanged" type="checkbox" class="size-4 accent-accent" />
-          {{ isNovelle ? 'unveränderte Änderungsanordnungen anzeigen' : 'unveränderte Paragraphen anzeigen' }}
-        </label>
       </div>
 
-      <ol class="mt-3 divide-y divide-hairline border-y border-hairline">
-        <template v-for="(u, idx) in visibleUnits" :key="key(u)">
-          <li v-if="articleBefore(idx)" class="bg-page px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            {{ articleBefore(idx) }}
-          </li>
-          <li>
-            <button
-              type="button"
-              class="flex w-full min-h-11 items-start gap-3 px-3 py-2 text-left hover:bg-page"
-              :aria-expanded="open.has(key(u))"
-              @click="toggle(u)"
-            >
-              <span
-                class="mt-0.5 inline-flex w-20 shrink-0 justify-center rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="{
-                  'bg-accent-50 text-accent-deep': u.change === 'changed' && !isMinor(u),
-                  'bg-page text-ink-muted': u.change === 'unchanged' || isMinor(u),
-                  'bg-mark-wash text-ink': u.change === 'inserted',
-                  'border border-hairline text-ink-secondary line-through': u.change === 'removed',
-                }"
-              >
-                {{ isMinor(u) ? 'redaktionell' : CHANGE_LABEL[u.change] }}
-              </span>
-              <span class="min-w-0 flex-1 text-sm">
-                <span class="font-medium text-ink">
-                  {{ displayId(u.id) }}
-                  <span v-if="u.meId && u.meId !== u.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(u.meId) }})</span>
-                </span>
-                <span v-if="u.heading" class="text-ink-secondary"> {{ u.heading }}</span>
-              </span>
-              <span class="shrink-0 text-xs text-ink-muted">{{ open.has(key(u)) ? 'schließen' : 'ansehen' }}</span>
-            </button>
+      <button
+        type="button"
+        class="mt-4 inline-flex min-h-11 items-center rounded-md border border-hairline bg-surface px-3.5 text-sm text-accent-deep hover:border-baseline hover:underline"
+        :aria-expanded="listOpen"
+        @click="listOpen = !listOpen"
+      >
+        {{ listOpen ? 'Liste ausblenden' : `Alle ${data.stats.total} ${isNovelle ? 'Änderungsanordnungen' : 'Paragraphen'} anzeigen` }}
+      </button>
 
-            <div v-if="open.has(key(u))" class="px-3 pb-4 text-sm leading-relaxed">
-              <p v-if="u.change === 'changed' && u.segments" class="hyphens-auto text-ink">
-                <template v-for="(s, i) in u.segments" :key="i">
-                  <del v-if="s.type === 'removed'" class="rounded bg-page px-0.5 text-ink-secondary line-through decoration-status-critical/70">{{ s.text }}</del>
-                  <ins v-else-if="s.type === 'inserted'" class="rounded bg-mark-wash px-0.5 no-underline">{{ s.text }}</ins>
-                  <span v-else>{{ s.text }}</span>
-                  {{ ' ' }}
-                </template>
-              </p>
-              <div v-else-if="u.change === 'changed'" class="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Entwurf</p>
-                  <p class="text-ink-secondary">{{ u.meText }}</p>
+      <template v-if="listOpen">
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Filter" class="flex flex-wrap gap-1">
+            <button
+              v-for="o in filterOptions"
+              :key="o.value"
+              type="button"
+              class="min-h-11 rounded-md border px-3 text-sm"
+              :class="filter === o.value ? 'border-ink bg-ink text-surface' : 'border-hairline bg-surface text-ink-secondary hover:border-baseline'"
+              :aria-pressed="filter === o.value"
+              @click="filter = o.value"
+            >
+              {{ o.label }} <span class="tabular-nums opacity-70">{{ o.count }}</span>
+            </button>
+          </div>
+          <label class="ml-auto flex min-h-11 min-w-56 flex-1 items-center gap-2 rounded-md border border-hairline bg-surface px-3 text-sm sm:flex-none">
+            <span class="sr-only">Im Text suchen</span>
+            <input v-model="query" type="search" placeholder="Im Text suchen …" class="w-full bg-transparent text-ink outline-none placeholder:text-ink-muted" />
+          </label>
+        </div>
+
+        <div class="mt-3 border-y border-hairline">
+          <section v-for="g in groups" :key="g.article" class="border-b border-hairline last:border-b-0">
+            <button
+              v-if="multiLaw"
+              type="button"
+              class="flex w-full min-h-11 items-baseline gap-3 bg-page px-3 py-2 text-left hover:bg-hairline/40"
+              :aria-expanded="groupOpen(g)"
+              @click="toggleGroup(g.article)"
+            >
+              <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Ohne Titel' }}</span>
+              <span class="shrink-0 text-xs text-ink-muted">{{ groupSummary(g) }}</span>
+              <span class="shrink-0 text-xs text-ink-muted">{{ groupOpen(g) ? 'zuklappen' : 'aufklappen' }}</span>
+            </button>
+            <ol v-if="groupOpen(g)" class="divide-y divide-hairline" :class="{ 'border-t border-hairline': multiLaw }">
+              <li v-for="u in g.units" :key="key(u)">
+                <button
+                  type="button"
+                  class="flex w-full min-h-11 items-start gap-3 px-3 py-2 text-left hover:bg-page"
+                  :aria-expanded="open.has(key(u))"
+                  @click="toggle(u)"
+                >
+                  <span
+                    class="mt-0.5 inline-flex w-20 shrink-0 justify-center rounded-full px-2 py-0.5 text-xs font-medium"
+                    :class="{
+                      'bg-accent-50 text-accent-deep': u.change === 'changed' && !isMinor(u),
+                      'bg-page text-ink-muted': u.change === 'unchanged' || isMinor(u),
+                      'bg-mark-wash text-ink': u.change === 'inserted',
+                      'border border-hairline text-ink-secondary line-through': u.change === 'removed',
+                    }"
+                  >
+                    {{ isMinor(u) ? 'redaktionell' : CHANGE_LABEL[u.change] }}
+                  </span>
+                  <span class="min-w-0 flex-1 text-sm">
+                    <span class="font-medium text-ink">
+                      {{ displayId(u.id) }}
+                      <span v-if="u.meId && u.meId !== u.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(u.meId) }})</span>
+                    </span>
+                    <span v-if="u.heading" class="text-ink-secondary"> {{ u.heading }}</span>
+                  </span>
+                  <span class="shrink-0 text-xs text-ink-muted">{{ open.has(key(u)) ? 'schließen' : 'ansehen' }}</span>
+                </button>
+
+                <div v-if="open.has(key(u))" class="px-3 pb-4 text-sm leading-relaxed">
+                  <p v-if="u.change === 'changed' && u.segments" class="hyphens-auto text-ink">
+                    <template v-for="(s, i) in u.segments" :key="i">
+                      <del v-if="s.type === 'removed'" class="rounded bg-page px-0.5 text-ink-secondary line-through decoration-status-critical/70">{{ s.text }}</del>
+                      <ins v-else-if="s.type === 'inserted'" class="rounded bg-mark-wash px-0.5 no-underline">{{ s.text }}</ins>
+                      <span v-else>{{ s.text }}</span>
+                      {{ ' ' }}
+                    </template>
+                  </p>
+                  <div v-else-if="u.change === 'changed'" class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Entwurf</p>
+                      <p class="text-ink-secondary">{{ u.meText }}</p>
+                    </div>
+                    <div>
+                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Regierungsvorlage</p>
+                      <p class="text-ink">{{ u.rvText }}</p>
+                    </div>
+                  </div>
+                  <p v-else-if="u.change === 'inserted'" class="text-ink">{{ u.rvText }}</p>
+                  <p v-else-if="u.change === 'removed'" class="text-ink-secondary">{{ u.meText }}</p>
+                  <p v-else class="text-ink-secondary">{{ u.rvText }}</p>
                 </div>
-                <div>
-                  <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Regierungsvorlage</p>
-                  <p class="text-ink">{{ u.rvText }}</p>
-                </div>
-              </div>
-              <p v-else-if="u.change === 'inserted'" class="text-ink">{{ u.rvText }}</p>
-              <p v-else-if="u.change === 'removed'" class="text-ink-secondary">{{ u.meText }}</p>
-              <p v-else class="text-ink-secondary">{{ u.rvText }}</p>
-            </div>
-          </li>
-        </template>
-      </ol>
-      <p v-if="!visibleUnits.length" class="mt-2 text-sm text-ink-secondary">
-        Kein Paragraph wurde geändert; der Text der Regierungsvorlage entspricht dem Entwurf.
-      </p>
+              </li>
+            </ol>
+          </section>
+        </div>
+        <p v-if="!visibleUnits.length" class="mt-2 text-sm text-ink-secondary">
+          {{ query ? 'Nichts gefunden.' : 'Keine Einträge in dieser Auswahl.' }}
+        </p>
+      </template>
     </template>
   </div>
 </template>

@@ -86,6 +86,11 @@ describe('editorial vs substantive', () => {
     expect(isEditorialChange(seg('nach den §§ 1 und 2', 'nach den §§ 1 bis 3'))).toBe(true)
     expect(isEditorialChange(seg('gilt Art. 3 lit. a;', 'gilt Art. 3 lit. b,'))).toBe(true)
   })
+  it('a bare number is editorial only next to a citation word', () => {
+    expect(isEditorialChange(seg('nach Abs. 6 gilt', 'nach Abs. 4 gilt'))).toBe(true)
+    expect(isEditorialChange(seg('innerhalb von 6 Wochen', 'innerhalb von 4 Wochen'))).toBe(false)
+    expect(isEditorialChange(seg('spätestens 2026 in Kraft', 'spätestens 2027 in Kraft'))).toBe(false)
+  })
   it('one ordinary word is substantive, however long the paragraph', () => {
     const long = 'Wort '.repeat(150)
     expect(isEditorialChange(seg(`${long}Die Frist beträgt sechs Wochen.`, `${long}Die Frist beträgt acht Wochen.`))).toBe(false)
