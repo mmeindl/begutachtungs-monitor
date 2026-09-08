@@ -312,9 +312,27 @@ const linkClasses =
         </p>
         <!-- Eingelangt/Frist deliberately absent: the StageBar below states
              both, and the pill above already repeats the Frist. What is left
-             is the one fact no other surface carries. -->
-        <p v-if="data.invitedBy" class="mt-2 text-sm text-ink-secondary">
-          Übermittelt von {{ data.invitedBy }}
+             is the one fact no other surface carries — plus the provenance
+             link, which belongs next to the item's identity rather than
+             floating mid-page as an action it isn't. Present in both
+             lifecycle states: the mid-page CTA stays the only door, this is
+             the receipt. -->
+        <p
+          class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary"
+        >
+          <template v-if="data.invitedBy">
+            <span>Übermittelt von {{ data.invitedBy }}</span>
+            <span aria-hidden="true">·</span>
+          </template>
+          <!-- linkClasses, i.e. underlined at rest: sharing a line with
+               body text of the same size, colour alone would not mark it
+               (WCAG 1.4.1) — the standalone styling it wore mid-page no
+               longer applies. tap-target restores the 44px it had there. -->
+          <ExternalLink
+            :href="data.parliamentUrl"
+            :class="[linkClasses, 'tap-target']"
+            >Auf parlament.gv.at ansehen</ExternalLink
+          >
         </p>
       </header>
 
@@ -353,8 +371,8 @@ const linkClasses =
       </section>
 
       <!-- Deadline, action and calendar welded into one card: the page's
-           single door while the Frist runs. The plain upstream link earns
-           its place only on closed pages, where it is the sole source link. -->
+           single door while the Frist runs. Closed, the card goes with the
+           Frist — the source link lives in the header's provenance line. -->
       <div
         v-if="data.active"
         class="mt-6 rounded-xl border border-hairline bg-surface p-5"
@@ -412,14 +430,6 @@ const linkClasses =
           Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
           Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
         </p>
-      </div>
-      <div v-else class="mt-6">
-        <ExternalLink
-          :href="data.parliamentUrl"
-          class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
-        >
-          Auf parlament.gv.at ansehen
-        </ExternalLink>
       </div>
 
       <!-- Section order is lifecycle-adaptive by construction: showOutcome is
@@ -481,7 +491,7 @@ const linkClasses =
             Die Regierungsvorlage ist die Fassung, die die Regierung nach
             der Begutachtung dem Nationalrat vorgelegt hat. Ob und wie der
             Entwurf geändert wurde, zeigt
-            <a href="#textvergleich" class="font-medium text-accent-deep underline decoration-hairline underline-offset-2 hover:decoration-current">der Vergleich der beiden Texte</a>
+            <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>
             weiter unten.
           </p>
         </div>
