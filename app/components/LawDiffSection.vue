@@ -25,15 +25,19 @@ type Badge = LawDiffUnit['change'] | 'editorial'
  * on a wash is always `text-ink`: ink-secondary drops below 7:1 there, the
  * same reason DeadlineBadge carries full ink.
  *
- * Meaning never rides on colour alone: the pill says the word, a removal is
- * struck through, and the gutter repeats the state beside the block.
+ * Meaning never rides on colour alone: the pill says the state in words and
+ * the gutter repeats it beside the block. The strikethrough is reserved for
+ * the word-level diff, where deleted and inserted words share one sentence
+ * and the line says which to skip — on a whole removed § it would only make
+ * the passage this tool exists to show harder to read, and GitHub does not
+ * strike removed lines either.
  */
 const BADGE_CLASS: Record<Badge, string> = {
   changed: 'bg-accent-50 text-accent-deep',
   editorial: 'bg-page text-ink-muted',
   unchanged: 'bg-page text-ink-muted',
   inserted: 'bg-status-good/15 text-ink',
-  removed: 'bg-status-critical/10 text-ink line-through',
+  removed: 'bg-status-critical/10 text-ink',
 }
 const BADGE_LABEL: Record<Badge, string> = {
   changed: 'geändert',
@@ -408,7 +412,7 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                       </div>
                     </div>
                     <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.rvText }}</p>
-                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink line-through">{{ b.unit.meText }}</p>
+                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.meText }}</p>
                     <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.rvText }}</p>
                   </div>
                 </div>
