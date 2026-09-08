@@ -1,42 +1,39 @@
 <script setup lang="ts">
-const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
+/**
+ * Kolophon, keine Marketingfläche.
+ *
+ * Das Abo-Angebot stand hier als Kasten auf jeder Seite und war die fünfte
+ * Kopie derselben Einladung: Startseite unter dem Hero, Startseite im
+ * Leerzustand, Ressort-Feed in der Liste, Abonnieren-Abschnitt auf /ueber.
+ * "Subscribe at need" ist auf den Seiten passiert — der Kasten war das, was
+ * davor übrig blieb. Dazu trug er mark-wash, den Ton, der laut main.css
+ * "was aus dem Input wurde" bedeutet; unter einer Datenschutzerklärung war
+ * er ohnehin fehl am Platz. Die Einladung steht jetzt auf der Liste, wo der
+ * Bedarf entsteht.
+ *
+ * Was bleibt, bleibt aus einem Grund pro Zeile:
+ *   - Quelle + CC BY 4.0 — Lizenzauflage, keine Höflichkeit;
+ *   - "Kein amtliches Angebot" — die tragende Zeile auf einer .at-Adresse
+ *     über Ministerien;
+ *   - Quellcode — AGPL § 13 verlangt, Nutzern bei Netzwerkinteraktion den
+ *     Quelltext anzubieten: dieser Link ist die Umsetzung, kein Extra;
+ *   - Kontakt — die Adressaten des Projekts sollen dafür nicht erst ins
+ *     Impressum gehen müssen;
+ *   - Impressum/Datenschutz — § 25 Abs 1 MedienG, "ständig leicht und
+ *     unmittelbar auffindbar".
+ *
+ * Nicht mehr hier: das Wort „Prototyp". Es entwertete die Metadaten, die
+ * eine unveränderte Spiegelung der amtlichen Schnittstelle sind, und warnte
+ * zugleich nicht vor dem Textvergleich, wo ein Fehler tatsächlich entstehen
+ * kann. Der Vorbehalt steht jetzt konkret im Impressum, die echten Grenzen
+ * im Status-Abschnitt auf /ueber.
+ */
 </script>
 
 <template>
   <footer class="border-t border-hairline">
     <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <section aria-labelledby="subscribe-heading" class="rounded-xl bg-mark-wash p-5">
-        <h2 id="subscribe-heading" class="text-base font-semibold text-ink">
-          Keine Frist verpassen
-        </h2>
-        <!-- Only ink + accent-deep are AAA on mark-wash (see main.css). -->
-        <div class="mt-2 space-y-1.5 text-sm leading-relaxed text-ink">
-          <p>
-            <UIcon
-              name="i-lucide-calendar-plus"
-              class="me-1 inline-block size-4 align-text-bottom"
-              aria-hidden="true"
-            />
-            Fristen-Kalender abonnieren:
-            <a :href="webcalUrl" class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline">Apple/Outlook</a>
-            ·
-            <ExternalLink :href="googleCalUrl" class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline">Google Kalender</ExternalLink>
-            · manuell:
-            <span class="select-all font-medium">{{ icsDisplayUrl }}</span>
-          </p>
-          <p>
-            <UIcon
-              name="i-lucide-rss"
-              class="me-1 inline-block size-4 align-text-bottom"
-              aria-hidden="true"
-            />
-            Neue Begutachtungen verfolgen:
-            <a href="/feed.xml" class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline">RSS-Feed</a>
-          </p>
-        </div>
-      </section>
-
-      <div class="mt-6 flex flex-col gap-2 text-sm leading-relaxed text-ink-muted">
+      <div class="flex flex-col gap-2 text-sm leading-relaxed text-ink-muted">
         <p>
           Datenquelle: Republik Österreich – Parlamentsdirektion
           (<ExternalLink
@@ -51,7 +48,6 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           >. Kein amtliches Angebot.
         </p>
         <p>
-          Prototyp in Entwicklung –
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor"
             class="underline underline-offset-2 hover:no-underline"
@@ -64,11 +60,6 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
             >kontakt@begutachtungs-monitor.at</a
           >
         </p>
-        <!-- § 25 Abs 1 MedienG: die Offenlegung muss "ständig leicht und
-             unmittelbar auffindbar" sein — daher auf jeder Seite, und als
-             eigene Zeile statt im Fließtext der Absätze darüber. Eigene
-             tap-target-Größe, weil das hier Navigation ist und kein Link
-             im Satz. -->
         <nav aria-label="Rechtliches">
           <ul class="flex flex-wrap items-center gap-x-4">
             <li>

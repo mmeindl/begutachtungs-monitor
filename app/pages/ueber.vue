@@ -59,7 +59,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Woran gearbeitet wird
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Monitor ist ein Prototyp. Die nächsten Schritte, in dieser
+          Der Monitor wird weitergebaut. Die nächsten Schritte, in dieser
           Reihenfolge:
         </p>
         <ol
@@ -186,10 +186,40 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         </p>
       </section>
 
+      <!-- Konkrete Grenzen statt eines pauschalen Etiketts: das entwertete
+           die Metadaten, die die amtliche Schnittstelle unverändert
+           spiegeln, und warnte nicht vor dem Textvergleich, wo ein Fehler
+           entstehen kann. Beim Ausbau mitziehen — diese Liste IST der
+           Statusbericht. -->
       <section aria-labelledby="about-status">
         <h2 id="about-status" class="section-heading">Status</h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Begutachtungs-Monitor ist ein Prototyp (Stand: August 2026).
+          Stand: September 2026. Der Monitor läuft im Dauerbetrieb; was er
+          zeigt, stammt unverändert aus der amtlichen Schnittstelle und ist
+          bei jeder Angabe dorthin verlinkt. Drei Grenzen sind derzeit
+          bekannt:
+        </p>
+        <ul
+          class="mt-3 list-disc space-y-2 pl-5 leading-relaxed text-ink-secondary marker:text-ink-muted"
+        >
+          <li>
+            Der Textvergleich ist eine Ableitung, keine amtliche Fassung. Bei
+            Novellen vergleicht er die Änderungs<em>anweisungen</em>, nicht
+            den Gesetzestext, wie er danach lautet. Im Zweifel gilt das
+            verlinkte Original.
+          </li>
+          <li>
+            Benachrichtigungen gibt es nur als Feed und Kalender, nicht per
+            E-Mail.
+          </li>
+          <li>
+            Es wird keine Historie geführt: Fristverlängerungen und das
+            Anwachsen der Stellungnahmen sind im Nachhinein nicht ablesbar.
+            Angekündigte, noch nicht gestartete Begutachtungen kennt die
+            Schnittstelle nicht.
+          </li>
+        </ul>
+        <p class="mt-3 leading-relaxed text-ink-secondary">
           „Begutachtungs-Monitor“ ist ein Arbeitstitel. Das Projekt ist ein
           unabhängiges Civic-Tech-Vorhaben und steht in keiner Verbindung zum
           Parlament oder zu Bundesministerien.

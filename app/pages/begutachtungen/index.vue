@@ -30,6 +30,8 @@ const ministry = ref(firstQueryValue(route.query.ministry) ?? '')
 const q = ref(firstQueryValue(route.query.q) ?? '')
 const qDebounced = ref(q.value)
 
+const { webcalUrl } = useFeedUrls()
+
 let qTimer: ReturnType<typeof setTimeout> | undefined
 watch(q, (value) => {
   clearTimeout(qTimer)
@@ -144,15 +146,31 @@ const countLabel = computed(() =>
 
       <p class="mt-6 text-sm text-ink-muted" aria-live="polite">
         {{ countLabel }}
-        <!-- Entity-scoped following: the ministry filter is the moment a
-             reader decides "I watch this Ressort" — offer the feed there. -->
+      </p>
+
+      <!-- Abonnieren steht hier, nicht mehr im Footer, und bewusst AUSSERHALB
+           der Live-Region darüber: sonst liest ein Screenreader die Einladung
+           bei jedem Tastendruck in der Suche mit vor. Zwei Angebote, nach
+           dem, was die Filterleiste gerade sagt — der Ressort-Filter ist der
+           Moment, in dem jemand entscheidet „dieses Ressort verfolge ich“. -->
+      <p class="mt-1 text-sm text-ink-muted">
         <template v-if="ministry">
-          ·
           <a
             :href="`/feed.xml?ressort=${ministry}`"
             class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
           >RSS-Feed für dieses Ressort</a>
+          ·
         </template>
+        <a
+          :href="webcalUrl"
+          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >Fristen-Kalender abonnieren</a>
+        ·
+        <a
+          href="/feed.xml"
+          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >RSS</a>
+        – ohne Konto, ohne Tracking.
       </p>
 
       <h2 class="sr-only">Ergebnisse</h2>
