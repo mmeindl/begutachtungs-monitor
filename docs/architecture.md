@@ -330,7 +330,8 @@ pure modules plus a harness, none of it wired to a page yet:
 | `server/utils/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
 | `server/utils/risKons.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
 | `scripts/novao-corpus.ts`, `novao-forms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
-| `scripts/kons-harness.ts` | Prüfstand gegen die echte konsolidierte Fassung |
+| `server/utils/applyReport.ts` | bewertet einen Lauf gegen die echte Fassung |
+| `scripts/kons-harness.ts` | Prüfstand: BGBl-Anweisungen anwenden, Ergebnis vergleichen |
 
 **Die Grammatik ist klein, der Schwanz sitzt in der Adresse.** Über 6.576
 Anweisungen aus 300 Entwürfen tragen sechs Verben 98,6 %: *lautet* 28 %,
@@ -350,20 +351,30 @@ Novellen, 209 Anweisungen, 117 geprüfte Paragraphen:
 | | |
 |---|---|
 | grammatikalisch gelesen | 193 (92,3 %) |
-| angewendet | 164 (78,5 %) |
-| **identisch mit dem RIS** | **54 (46,2 %)** |
-| unverändert gelassen | 13 (11,1 %) |
-| unvollständig, nichts Eigenes erfunden | 49 (41,9 %) |
-| **eigene Abweichung** | **1 (0,9 %)** |
+| angewendet | 177 (84,7 %) |
+| **identisch mit dem RIS** | **65 (55,6 %)** |
+| unverändert gelassen | 12 (10,3 %) |
+| unvollständig, nichts Eigenes erfunden | 12 (10,3 %) |
+| **eigene Abweichung** | **28 (23,9 %)** |
 
-Die letzte Zeile ist die einzige gefährliche Klasse, und sie ist der Grund,
-das Vorhaben für machbar zu halten: die Engine erfindet praktisch nie Text.
-Was fehlt, ist Vollständigkeit — und ein unvollständig geänderter Paragraph
-wird nicht als Text gezeigt, sondern bleibt Anweisung. Die Trennung wird
-symmetrisch geprüft: eine selbst gelöschte Wortfolge zählt so schwer wie eine
-erfundene.
+Die letzte Zeile ist die einzige gefährliche Klasse, und sie ist mit knapp
+einem Viertel **zu hoch, um irgendetwas davon zu veröffentlichen**. Die Engine
+schreibt in jedem vierten Paragraphen Text, den das RIS nicht hat. Die
+Trennung wird symmetrisch geprüft: eine selbst gelöschte Wortfolge zählt so
+schwer wie eine erfundene, und ein Vergleich, der zu lang zum Rechnen war,
+zählt als Abweichung und nie als bestanden.
 
-**Drei Befunde, die den Aufwand neu einschätzen.**
+**Vier Befunde, die den Aufwand neu einschätzen.**
+
+0. *Der Prüfstand braucht selbst einen Prüfstand.* Die erste Messung meldete
+   0,9 % gefährliche Abweichungen statt 23,9 %. Die Bewertungsfunktion filterte
+   Diff-Segmente nach den Typen `insert` und `delete`, während
+   `LawDiffSegment` `inserted` und `removed` heißt — beide Mengen blieben leer,
+   jede Abweichung sah harmlos aus. Der Code lag in `scripts/`, und `scripts/`
+   ist von `nuxt typecheck` nicht erfasst, also fiel der unmögliche Vergleich
+   niemandem auf. Die Bewertungslogik liegt seit der Korrektur in
+   `server/utils/applyReport.ts` mit Tests: der Teil eines Prüfstands, der ein
+   Urteil fällt, trägt genauso viel wie der geprüfte Code.
 
 1. *Verweigern schlägt Deckung.* Eine Zwischenversion las 88,4 % der
    Anweisungen statt 86,2 % — aber die 144 zusätzlichen waren Zeilen mit zwei
@@ -380,12 +391,22 @@ erfundene.
    Vorher-Stand lässt sich nur über das Fassungspaar bestimmen, nie über die
    Kundmachung.
 
-**Was für die Veröffentlichung noch fehlt:** die Adressformen der restlichen
-14 % (Anlagen, Abschnitte, Satzteile, „im gesamten Gesetzestext"), die
-Vollständigkeit je Paragraph, und eine Anzeige, die den geprüften Paragraphen
-als Text zeigt und den ungeprüften als Anweisung — sichtbar unterschieden.
-Der Prüfstand läuft dann als Regressionslauf über eine feste Novellenliste,
-nicht als Einmalmessung.
+**Was für die Veröffentlichung fehlt, ist nicht Politur.** Bei 23,9 % eigenen
+Abweichungen ist die Engine keine Quelle für angezeigten Gesetzestext. Die
+gefundenen Ursachen waren bisher jedes Mal konkret und behebbar — ein Ziffern-
+Marker, der ohne vorangehenden Absatz im Text hängen blieb; „folgender Satz
+angefügt", das keine eigene Ebene hat und deshalb ganz verweigert wurde; beide
+zusammen hoben *identisch* von 46,2 auf 55,6 % —, aber die verbleibenden
+Abweichungen enthalten auch echte Überlöschungen, bei denen die Engine Text
+entfernt, den das Gesetz behält. Erst wenn diese Klasse gegen null geht, ist
+die Frage der Anzeige überhaupt dran.
+
+**Und die Anzeige braucht die Engine womöglich gar nicht.** Rund 39 % der
+Entwürfe tragen eine maschinenlesbare amtliche **Textgegenüberstellung**
+(`api-exploration.md` §2c) — die Gegenüberstellung, die dieses Paket
+nachbauen will, vom Ressort selbst erstellt und selbst hervorgehoben. Wo sie
+existiert, ist sie die bessere Quelle; die Engine ist die Antwort für den
+Rest, nicht der erste Schritt.
 
 ## 13. Open questions
 

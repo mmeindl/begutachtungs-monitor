@@ -30,7 +30,7 @@ import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../server
 import { plainText, type LawNode } from '../server/utils/lawStructure'
 import { parseRisXml, segmentUnits } from '../server/utils/lawText'
 import { fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
-import { diffTokens } from '../server/utils/lawDiff'
+import { extraTokens, verdictFor } from '../server/utils/applyReport'
 
 interface Verdict {
   bgbl: string
@@ -44,31 +44,6 @@ interface Verdict {
   incomplete: number
   divergent: number
   note: string | null
-}
-
-/**
- * A divergence is only dangerous when the engine wrote something RIS did not.
- * When everything the engine changed is also changed by RIS, the engine did
- * *less*, not something else — and doing less is safe, because a paragraph
- * with unapplied instructions is never published as text.
- *
- * The distinction is not academic: RIS cuts one consolidated version per
- * effective date, so a version can carry changes from a *different*, earlier
- * amendment that took effect on the same day (GSpG § 17, BGBl. I Nr.
- * 187/2022). Scoring those as engine errors would blame the engine for the
- * ground truth being coarser than the question.
- */
-function isSubsetOfRis(before: string, got: string, expected: string): boolean {
-  // Both directions matter: a word the engine deleted on its own is as wrong
-  // as one it invented.
-  const changed = (a: string, b: string, type: 'insert' | 'delete') =>
-    new Set((diffTokens(a, b).segments ?? []).filter((seg) => seg.type === type).flatMap((seg) => seg.text.split(/\s+/)).filter(Boolean))
-  for (const type of ['insert', 'delete'] as const) {
-    const byEngine = changed(before, got, type)
-    const byRis = changed(before, expected, type)
-    for (const token of byEngine) if (!byRis.has(token)) return false
-  }
-  return true
 }
 
 const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
@@ -178,7 +153,7 @@ async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
   let identical = 0
   let untouched = 0
   let incomplete = 0
-  const divergences: { label: string; got: string; expected: string }[] = []
+  const divergences: { label: string; got: string; expected: string; before: string }[] = []
   for (const [label, pair] of [...pairs].sort()) {
     const id = /(\d+[a-z]*)/.exec(label)?.[1]
     const node = after.paragraphs.find((p) => p.id === id)
@@ -189,30 +164,21 @@ async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
     const expected = plainText(truthTree)
     const beforeNode = law.paragraphs.find((p) => p.id === id)
     const beforeText = beforeNode ? plainText(beforeNode) : null
-    let mark: string
-    if (got === expected) {
-      identical++
-      mark = '✓'
-    } else if (beforeText !== null && got === beforeText) {
-      untouched++
-      mark = '·'
-    } else if (beforeText !== null && isSubsetOfRis(beforeText, got, expected)) {
-      incomplete++
-      mark = '~'
-    } else {
-      divergences.push({ label, got, expected })
-      mark = '✗'
-    }
+    const verdict = verdictFor(beforeText, got, expected)
+    const mark = { identisch: '✓', 'unverändert': '·', 'unvollständig': '~', abweichend: '✗' }[verdict]
+    if (verdict === 'identisch') identical++
+    else if (verdict === 'unverändert') untouched++
+    else if (verdict === 'unvollständig') incomplete++
+    else divergences.push({ label, got, expected, before: beforeText ?? '' })
     if (verbose) {
-      const what = mark === '✓' ? `identisch (Fassung ab ${pair.after.inkrafttreten})` : mark === '·' ? 'unverändert gelassen' : mark === '~' ? 'unvollständig — nichts Eigenes erfunden' : 'eigene Abweichung'
+      const what = verdict === 'identisch' ? `identisch (Fassung ab ${pair.after.inkrafttreten})` : verdict === 'unvollständig' ? 'unvollständig — nichts Eigenes erfunden' : verdict === 'unverändert' ? 'unverändert gelassen' : 'eigene Abweichung'
       console.log(`    ${mark}  ${label.padEnd(9)} ${what}`)
     }
   }
   if (verbose) {
-    for (const d of divergences.slice(0, 2)) {
-      console.log(`    --- ${d.label} ---`)
-      console.log(`      Engine : ${firstDifference(d.got, d.expected)}`)
-      console.log(`      RIS    : ${firstDifference(d.expected, d.got)}`)
+    for (const d of divergences) {
+      const extra = extraTokens(d.before, d.got, d.expected)
+      console.log(`    --- ${d.label} — Engine änderte, RIS nicht: +[${extra.inserted.slice(0, 8).join(' ')}] -[${extra.removed.slice(0, 8).join(' ')}]`)
     }
   }
 

@@ -278,6 +278,53 @@ find the pair.
   therefore slightly coarser than the question "what did *this* amendment
   do" — see `architecture.md` §12.12 for how the harness handles it.
 
+## 2c. Die amtliche Textgegenüberstellung
+
+Explored 2026-09-08. The consolidated comparison the accountability layer
+wants to compute **already exists for a large share of drafts**, written by
+the ministry itself.
+
+A `Textgegenüberstellung` is a standard annex to an Austrian
+Ministerialentwurf, regulated by a BKA Rundschreiben of 27.03.2002
+(GZ 600.824/003-V/2/2001): two columns headed **`Geltende Fassung`** and
+**`Vorgeschlagene Fassung`**, the headings repeated on every page, and
+unchanged text between two changes abbreviated as a designation plus three
+dots ("2. bis 26b. …").
+
+**RIS carries it as XML, Parliament only as PDF.** For XXVIII/ME/125 the
+Parliament document list offers `Textgegenüberstellung` in PDF alone, while
+the RIS `Begut` record has the same annex as Xml, Html, Pdf and often Rtf.
+Anything built on this must therefore come from RIS, not from the Parliament
+HTML the ME→RV diff uses.
+
+**Availability, measured over the 200 drafts published in the last twelve
+months:**
+
+| | |
+|---|---|
+| with a Textgegenüberstellung | 121 (60 %) |
+| of those, offered as XML | 121 (100 %) |
+| of those, XML that is actually a table | 78 (60 %) |
+| XML that is only scanned images (`<binary datatype="gif">`) | 53 (40 %) |
+
+So **roughly 39 % of drafts have a machine-readable official comparison** —
+and "available as XML" is not the same as readable, which is the trap here.
+The name varies: `Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
+`Textgegenbüberstellung`, so matching has to be loose.
+
+**Structure of the readable ones** (one `<table>`, 153 `<tr>` in the sample):
+
+- row 0 is the header pair, `<ueberschrift typ="tgue">`
+- `<td colspan="2">` spans an Artikel heading over both columns
+- a normal row pairs one cell of current law with one of proposed law
+- an empty left cell is an insertion, an empty right cell a deletion
+- `<gldsym>` gives the § marker, `<symbol>` the Ziffer marker
+- **`<span style="background:yellow">` is the ministry's own change marking** —
+  8.769 of them across 9.142 rows in the sample
+
+That last point is the valuable part: the author marks what changed, so the
+comparison needs no engine and carries no risk of inventing law text.
+
 ## 2. RIS OGD API — `Applikation=Begut`
 
 ```
