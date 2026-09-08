@@ -50,7 +50,7 @@ type Filter = 'alle' | Badge
 const filter = ref<Filter>('alle')
 const query = ref('')
 
-const filterOptions = computed<{ value: Filter; label: string; count: number }[]>(() => {
+const filterOptions = computed<{ value: Filter; label: string; count: number; optionLabel: string }[]>(() => {
   const s = data.value?.stats
   if (!s) return []
   const counts: Record<Badge, number> = {
@@ -60,9 +60,12 @@ const filterOptions = computed<{ value: Filter; label: string; count: number }[]
     editorial: s.editorial ?? 0,
     unchanged: s.unchanged,
   }
+  // The verb sits inside the option text so the closed control reads as a
+  // sentence ("Alle anzeigen (330)") without a label beside it.
+  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
   return [
-    { value: 'alle' as Filter, label: 'alle', count: s.total },
-    ...BADGE_ORDER.map((b) => ({ value: b as Filter, label: BADGE_LABEL[b], count: counts[b] })),
+    { value: 'alle' as Filter, label: 'alle', count: s.total, optionLabel: `Alle anzeigen (${s.total})` },
+    ...BADGE_ORDER.map((b) => ({ value: b as Filter, label: BADGE_LABEL[b], count: counts[b], optionLabel: `${cap(BADGE_LABEL[b])} anzeigen (${counts[b]})` })),
   ].filter((o) => o.value === 'alle' || o.count > 0)
 })
 
@@ -196,15 +199,9 @@ function displayId(id: string): string {
              and same token styling as the list page (Vite 8 + Nuxt UI 4.10
              hydration crash, see pages/begutachtungen/index.vue). -->
         <div class="mt-4 flex flex-wrap items-center gap-3">
-          <label class="flex min-h-11 items-center gap-2 text-sm text-ink-secondary">
-            <span>Anzeigen:</span>
-            <select
-              v-model="filter"
-              class="min-h-11 rounded-md border border-hairline bg-surface px-3 py-2 text-sm text-ink"
-            >
-              <option v-for="o in filterOptions" :key="o.value" :value="o.value">{{ o.label }} ({{ o.count }})</option>
-            </select>
-          </label>
+          <TokenSelect v-model="filter" aria-label="Welche Paragraphen anzeigen">
+            <option v-for="o in filterOptions" :key="o.value" :value="o.value">{{ o.optionLabel }}</option>
+          </TokenSelect>
           <UInput
             v-model="query"
             type="search"
