@@ -236,3 +236,68 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
 export function parseLawUnits(html: string): LawUnit[] {
   return segmentUnits(parseParliamentHtml(html))
 }
+
+// ---------------------------------------------------------------------------
+// RIS layout XML (Applikation=Begut main document) → the same blocks
+// ---------------------------------------------------------------------------
+
+/**
+ * RIS types → block kinds. Verified on three GP XXVII drafts (IFG, EAG,
+ * EABG): ueberschrift typ para|g1|g1min|g2|titel|anlage, absatz typ
+ * abs|novao1|novao2|satz|promkleinlsatz|tabtext|tabtextb|kz, listelem,
+ * inhaltsvz. Page header/footer (`kzinhalt`) and `layoutdaten` are noise.
+ */
+const RIS_HEADING_KIND: Record<string, BlockKind> = {
+  para: 'para_head',
+  g1: 'article',
+  g1min: 'section',
+  g2: 'section',
+  anlage: 'section',
+  titel: 'title',
+}
+const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
+  abs: 'abs',
+  novao1: 'novao',
+  novao2: 'novao',
+}
+
+const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
+const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
+
+function risText(inner: string): string {
+  return stripTags(inner.replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' '))
+}
+
+/** RIS Begut main-document XML → flat block list, same kinds as the Parliament HTML parser. */
+export function parseRisXml(xml: string): TextBlock[] {
+  const body = xml.replace(/<kzinhalt[\s\S]*?<\/kzinhalt>/g, '').replace(/<layoutdaten[\s\S]*?<\/layoutdaten>/g, '')
+  const blocks: TextBlock[] = []
+  for (const m of body.matchAll(RIS_BLOCK_RE)) {
+    const tag = m[1]!
+    const typ = /typ="([^"]+)"/.exec(m[2]!)?.[1] ?? ''
+    const inner = m[3]!
+    const gldMatch = RIS_GLD_RE.exec(inner)
+    const gld = gldMatch ? risText(gldMatch[1]!) : null
+    const text = risText(gldMatch ? inner.replace(gldMatch[0], ' ') : inner)
+    if (!text && !gld) continue
+    let kind: BlockKind
+    if (tag === 'ueberschrift') {
+      kind = RIS_HEADING_KIND[typ] ?? 'other'
+      if (kind === 'article' && !/^Artikel\s+\d+/.test(text)) kind = 'section'
+    } else if (tag === 'absatz') {
+      if (typ === 'kz') continue
+      kind = RIS_ABSATZ_KIND[typ] ?? 'other'
+    } else if (tag === 'listelem') {
+      kind = 'ziff'
+    } else {
+      kind = 'toc'
+    }
+    blocks.push({ kind, cls: `${tag}/${typ}`, text, gld: gld || null })
+  }
+  return blocks
+}
+
+/** Convenience: RIS XML → units. */
+export function parseLawUnitsFromRis(xml: string): LawUnit[] {
+  return segmentUnits(parseRisXml(xml))
+}

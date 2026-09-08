@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { alignUnits, diffLawUnits, diffTokens, isEditorialChange, lawNameTokens, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
-import { normalizeGld, novaoHeading, parseLawUnits, parseParliamentHtml } from '../server/utils/lawText'
+import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, parseParliamentHtml, parseRisXml } from '../server/utils/lawText'
+import { readFileSync } from 'node:fs'
 
 /** Minimal Word-filtered Parliament HTML in the legistic template classes. */
 function law(parts: { heading?: string; gld: string; abs: string[]; ziff?: string[] }[], opts: { article?: string; title?: string } = {}) {
@@ -195,5 +196,36 @@ describe('diffLawUnits: the renumbering trap', () => {
   it('places a removed § where it stood in the draft', () => {
     const units = diffLawUnits(rv, me) // reverse direction: § 3 Beteiligung disappears
     expect(units.map((u) => `${u.id}:${u.change}`)).toEqual(['§1:unchanged', '§2:unchanged', '§3:removed', '§3:changed', '§4:unchanged'])
+  })
+})
+
+describe('RIS XML draft against Parliament HTML bill (GP XXVII, Informationsfreiheitsgesetz)', () => {
+  const read = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8')
+  const meBlocks = parseRisXml(read('./fixtures/ris-begut-95me-xxvii.xml'))
+  const me = parseLawUnitsFromRis(read('./fixtures/ris-begut-95me-xxvii.xml'))
+  const rv = parseLawUnits(read('./fixtures/parl-rv-2238-xxvii.html'))
+
+  it('maps RIS types onto the same block kinds', () => {
+    const kinds = new Set(meBlocks.map((b) => b.kind))
+    expect(kinds).toContain('para_head')
+    expect(kinds).toContain('novao')
+    expect(kinds).toContain('article')
+    expect(meBlocks.some((b) => b.gld === 'Artikel 22a.')).toBe(true)
+    expect(meBlocks.filter((b) => b.cls.startsWith('inhaltsvz')).every((b) => b.kind === 'toc')).toBe(true)
+  })
+
+  it('segments the RIS draft into § and Z units with headings', () => {
+    expect(me.length).toBeGreaterThan(20)
+    expect(me.some((u) => /^Z\d/.test(u.id))).toBe(true)
+    expect(me.some((u) => u.id === '§1' && u.heading === 'Anwendungsbereich')).toBe(true)
+  })
+
+  it('aligns most of the draft with the bill across the two sources', () => {
+    const units = diffLawUnits(me, rv)
+    const s = summarizeDiff(units)
+    const paired = s.unchanged + s.changed
+    expect(paired).toBeGreaterThan(s.inserted + s.removed)
+    expect(paired).toBeGreaterThanOrEqual(Math.floor(me.length * 0.6))
+    expect(s.unchanged).toBeGreaterThan(0)
   })
 })

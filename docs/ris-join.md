@@ -235,9 +235,33 @@ directions on 43/ME: of 26 units above it only 3 are editorial, 13 hide term
 changes such as "Vorhaben" → "Energieanlagen"; one unit below it (§ 34,
 0.92) is pure reference shifting.
 
-Known limits of this version: the Erläuterungen passage on the
-Begutachtungsverfahren is not yet quoted; no RIS XML path yet, so GP XXVII
-and earlier report "nur als PDF". Effort spent: about one focused day
+### 6c. RIS XML path and the Erläuterungen question (2026-09-08)
+
+**RIS XML path shipped.** When Parliament has no HTML for the draft (GP
+XXVII and earlier), `lawDiffService` looks up the draft's RIS record via the
+GP map and reads the main document as layout XML; `parseRisXml` emits the
+same blocks as the HTML parser (ueberschrift typ para/g1/g1min/g2/titel/
+anlage, absatz typ abs/novao1/novao2, listelem, inhaltsvz; `kzinhalt` and
+`layoutdaten` stripped), so segmentation, alignment and diff are shared.
+The bill side stays Parliament HTML, which existed for RVs in GP XXVII.
+Attribution switches to "RIS und Parlament"; `meSource` says which.
+Fixture: 95/ME XXVII (Informationsfreiheitsgesetz) from RIS against 2238
+d.B. from Parliament — 43 draft units, 30 bill units, 8 unchanged, 21
+changed, 1 inserted, 14 removed. The 14 are real: the draft's Artikel 3 and
+4 (Rechnungshofgesetz, Verfassungsgerichtshofgesetz) are not in the bill.
+When a draft has no RIS record or RIS offers no XML, the section says so.
+
+**Erläuterungen passage: not built, on evidence.** Sampled 2026-09-08:
+of 18 GP XXVIII Regierungsvorlagen, 17 have HTML Erläuterungen, and exactly
+one paragraph in all of them mentions "Begutachtung" or "Stellungnahme" —
+a false positive about a different kind of Stellungnahme. Ministries do not
+account for the Begutachtungsverfahren in the RV Erläuterungen, so a quote
+feature would say "nothing here" almost every time. Dropped; the absence
+itself is an argument for the respond-or-explain rule (mechanism 2), not a
+UI element.
+
+Known limits of this version: RIS XML variants from before ~2010 are
+untested; Erläuterungen are not compared. Effort spent: about one focused day
 against the five to seven estimated, because the corpus-test prototype
 already held the parser and the alignment lesson.
 

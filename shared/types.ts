@@ -366,6 +366,8 @@ export interface LawDiffResponse {
   /** The two compared documents, for attribution and links */
   me: TraceLink | null
   rv: TraceLink | null
+  /** Where the draft text was read: Parliament HTML, or the RIS XML when Parliament has only a PDF (GP XXVII and earlier) */
+  meSource: 'parlament' | 'ris' | null
   /** `editorial` counts the subset of `changed` that is only citations, numbers, dates, punctuation */
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
   units: LawDiffUnit[]

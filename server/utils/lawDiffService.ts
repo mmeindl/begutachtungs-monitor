@@ -10,9 +10,10 @@
  */
 import type { LawDiffResponse, TraceLink } from '#shared/types'
 import { diffLawUnits, summarizeDiff } from './lawDiff'
-import { parseLawUnits } from './lawText'
+import { parseLawUnits, parseLawUnitsFromRis } from './lawText'
 import { mapDocuments, mapTextEvolution, RV_STATION, type RawDocumentGroup } from './mappers'
 import { getGegenstand } from './parliament'
+import { getRisMapForGp } from './ris'
 
 const HTML_TTL_S = 60 * 60 * 24
 const DIFF_TTL_S = 60 * 60 * 24
@@ -95,24 +96,39 @@ export const getLawDiff = defineCachedFunction(
     const detail = await getGegenstand(gp, 'ME', inr)
     const content = detail.content ?? {}
     const sources = findDiffSources(content)
-    const empty = (reason: string): LawDiffResponse => ({
+    const empty = (reason: string, me: TraceLink | null = sources.me, meSource: LawDiffResponse['meSource'] = null): LawDiffResponse => ({
       gp,
       inr,
       available: false,
       unavailableReason: reason,
-      me: sources.me,
+      me,
       rv: sources.rv,
+      meSource,
       stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
       units: [],
     })
     if (!sources.hasRv) return empty('Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.')
-    if (!sources.me) return empty('Der Gesetzestext des Entwurfs liegt nur als PDF vor; der Vergleich braucht die HTML-Fassung, die das Parlament seit der XXVIII. GP veröffentlicht.')
     if (!sources.rv) return empty('Der Gesetzestext der Regierungsvorlage liegt nur als PDF vor.')
 
-    const [meHtml, rvHtml] = await Promise.all([fetchLawHtml(sources.me.url), fetchLawHtml(sources.rv.url)])
-    const units = diffLawUnits(parseLawUnits(meHtml), parseLawUnits(rvHtml))
-    if (units.length === 0) return empty('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.')
-    return { gp, inr, available: true, unavailableReason: null, me: sources.me, rv: sources.rv, stats: summarizeDiff(units), units }
+    // Draft text: Parliament HTML (GP XXVIII on), else the RIS XML of the
+    // joined Begut record (GP XXVII and earlier are PDF-only at Parliament).
+    let meUnits
+    let me = sources.me
+    let meSource: LawDiffResponse['meSource'] = 'parlament'
+    if (sources.me) {
+      meUnits = parseLawUnits(await fetchLawHtml(sources.me.url))
+    } else {
+      const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
+      const xmlUrl = row?.risDocument?.xml ?? null
+      if (!row?.risId) return empty('Der Gesetzestext des Entwurfs liegt beim Parlament nur als PDF vor und ist im RIS nicht veröffentlicht.')
+      if (!xmlUrl) return empty('Der Gesetzestext des Entwurfs liegt beim Parlament nur als PDF vor, und das RIS bietet ihn nicht als XML an.')
+      me = { label: 'Ministerialentwurf, Gesetzestext (RIS)', url: row.risUrl ?? xmlUrl }
+      meSource = 'ris'
+      meUnits = parseLawUnitsFromRis(await fetchLawHtml(xmlUrl))
+    }
+    const units = diffLawUnits(meUnits, parseLawUnits(await fetchLawHtml(sources.rv.url)))
+    if (units.length === 0) return empty('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', me, meSource)
+    return { gp, inr, available: true, unavailableReason: null, me, rv: sources.rv, meSource, stats: summarizeDiff(units), units }
   },
   { name: 'law-diff', getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DIFF_TTL_S, swr: false },
 )

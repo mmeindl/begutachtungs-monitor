@@ -180,7 +180,7 @@ function displayId(id: string): string {
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <span>Quellen (CC BY 4.0, Parlament):</span>
+        <span>{{ data.meSource === 'ris' ? 'Quellen (CC BY 4.0, RIS und Parlament):' : 'Quellen (CC BY 4.0, Parlament):' }}</span>
         <ExternalLink v-if="data.me" :href="data.me.url" class="text-accent-deep hover:underline">{{ data.me.label }}</ExternalLink>
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
       </div>
