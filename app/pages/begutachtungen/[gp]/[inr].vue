@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ConsultationDetail, ConsultationDocument } from '#shared/types'
+import { aliasesFor } from '#shared/utils/aliases'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
 definePageMeta({
@@ -120,6 +121,9 @@ const noRvBody = computed(() => {
  * fast (shared/utils/outcomes.ts). Numbers, so the reader can weigh the
  * silence without the page weighing it for them. */
 const noRvBaseRate = computed(() => (lapsed.value ? null : rvBaseRateSentenceDe(data.value?.gp)))
+
+/** Debate names for this procedure, if any (`shared/utils/aliases.ts`). */
+const aliases = computed(() => (data.value ? aliasesFor(data.value.gp, data.value.inr) : []))
 
 /* A related draft is named by citation and GP; the GP only where it
  * differs from this page's, which is the case that carries information. */
@@ -343,6 +347,14 @@ const linkClasses =
              so citations remain exact — it just no longer IS the h1. -->
         <p v-if="data.shortTitle" class="mt-1 text-sm text-ink-secondary">
           {{ data.title }}
+        </p>
+        <!-- The debate's name for the thing, where it has one — findable by
+             search, and stated as what it is. The heading stays the official
+             title: the framing rule forbids adopting a campaign term as the
+             tool's own naming (`shared/utils/aliases.ts`). -->
+        <p v-if="aliases.length" class="mt-1 text-sm text-ink-secondary">
+          In der öffentlichen Debatte:
+          <span class="text-ink">{{ aliases.map((a) => `„${a}“`).join(' · ') }}</span>
         </p>
         <!-- Eingelangt/Frist deliberately absent: the StageBar below states
              both, and the pill above already repeats the Frist. What is left

@@ -379,6 +379,12 @@ export interface LawDiffUnit {
   /** The draft's id for the same unit; differs from `id` after renumbering */
   meId: string | null
   heading: string | null
+  /**
+   * The § heading(s) the unit quotes — a readable name for a change whose own
+   * text is a legistic instruction. Quoted from the law, never generated, so
+   * it needs no machine-generated marking (docs/architecture.md §12.11).
+   */
+  quotedHeading: string | null
   change: LawUnitChange
   /**
    * Changed, but every inserted or removed piece is a citation, a number, a

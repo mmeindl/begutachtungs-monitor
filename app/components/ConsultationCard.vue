@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ConsultationSummary } from '#shared/types'
+import { aliasesFor } from '#shared/utils/aliases'
 
 withDefaults(
   defineProps<{
@@ -14,6 +15,15 @@ withDefaults(
   }>(),
   { emphasis: 'deadline' },
 )
+/**
+ * The debate name, where the procedure has one — the recognition key for
+ * someone who searched "Bundestrojaner" and now has to spot their case in a
+ * list of official Sammeltitel (`shared/utils/aliases.ts`). Quoted, because
+ * it is someone else's word, not the tool's naming: only the first one, the
+ * detail page carries the rest.
+ */
+const debateName = (c: ConsultationSummary) => aliasesFor(c.gp, c.inr)[0] ?? null
+
 </script>
 
 <template>
@@ -32,6 +42,10 @@ withDefaults(
         class="mt-auto flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary"
       >
         <span>{{ consultation.citation }}</span>
+        <template v-if="debateName(consultation)">
+          <span aria-hidden="true">·</span>
+          <span class="text-ink">„{{ debateName(consultation) }}“</span>
+        </template>
         <span aria-hidden="true">·</span>
         <MinistryBadge
           :code="consultation.ministryCode"

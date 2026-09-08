@@ -4,6 +4,7 @@
  * and ministry server-side (docs/architecture.md §5).
  */
 import type { ConsultationsResponse, ConsultationStatus } from '#shared/types'
+import { aliasHaystack } from '#shared/utils/aliases'
 import { GP_RE } from '#shared/utils/gp'
 
 const STATUS_VALUES: ConsultationStatus[] = ['open', 'closed', 'all']
@@ -55,8 +56,10 @@ export default defineEventHandler(async (event): Promise<ConsultationsResponse> 
     if (status === 'closed' && item.active) return false
     if (ministry && item.ministryCode.toUpperCase() !== ministry) return false
     if (q) {
+      // Aliases are part of the haystack, not of the title: someone who only
+      // knows "Bundestrojaner" has to find 8/ME (`shared/utils/aliases.ts`).
       const haystack =
-        `${item.title} ${item.citation} ${item.ministryName} ${item.ministryCode}`.toLowerCase()
+        `${item.title} ${item.citation} ${item.ministryName} ${item.ministryCode} ${aliasHaystack(item.gp, item.inr)}`.toLowerCase()
       if (!haystack.includes(q)) return false
     }
     return true

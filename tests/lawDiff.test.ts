@@ -254,6 +254,41 @@ describe('a Regierungsvorlage that merges several drafts', () => {
   })
 })
 
+describe('a § heading quoted inside a Novellierungsanordnung', () => {
+  // "§ 5 lautet samt Überschrift:" installs a heading. Consumed as a pending
+  // heading and dropped, it took the only readable name in the instruction
+  // with it — and a Regierungsvorlage that changed nothing but that heading
+  // produced no diff hit at all.
+  const novelle = (heading: string, body: string) =>
+    '<html><body><p class=41UeberschrG1>Artikel&nbsp;1</p><p class=43UeberschrG2>&Auml;nderung des Gl&uuml;cksspielgesetzes</p>' +
+    '<p class=21NovAo1>1. &sect;&nbsp;5 lautet samt &Uuml;berschrift:</p>' +
+    `<p class=45UeberschrPara>${heading}</p>` +
+    `<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;5.</span> ${body}</p>` +
+    '</body></html>'
+
+  it('keeps the heading as the readable name', () => {
+    const units = parseLawUnits(novelle('Landesausspielungen', 'Ausspielungen sind zul&auml;ssig.'))
+    expect(units).toHaveLength(1)
+    expect(units[0]!.quotedHeadings).toEqual(['Landesausspielungen'])
+    expect(units[0]!.text).toContain('Landesausspielungen')
+  })
+
+  it('surfaces it on the diff unit', () => {
+    const a = parseLawUnits(novelle('Landesausspielungen', 'Ausspielungen sind zul&auml;ssig.'))
+    const b = parseLawUnits(novelle('Landesausspielungen', 'Ausspielungen sind verboten.'))
+    const [u] = diffLawUnits(a, b)
+    expect(u!.quotedHeading).toBe('Landesausspielungen')
+    expect(u!.change).toBe('changed')
+  })
+
+  it('sees a change that is only the heading', () => {
+    const a = parseLawUnits(novelle('Landesausspielungen', 'Ausspielungen sind zul&auml;ssig.'))
+    const b = parseLawUnits(novelle('Ausspielungen der L&auml;nder', 'Ausspielungen sind zul&auml;ssig.'))
+    const [u] = diffLawUnits(a, b)
+    expect(u!.change).toBe('changed')
+  })
+})
+
 describe('diffTokens', () => {
   it('finds word-level changes and a similarity', () => {
     const d = diffTokens('Die Frist beträgt sechs Wochen.', 'Die Frist beträgt acht Wochen.')

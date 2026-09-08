@@ -380,6 +380,13 @@ function citationAdjacent(segments: readonly LawDiffSegment[], i: number): boole
 // Diff
 // ---------------------------------------------------------------------------
 
+/** The quoted § headings as one label; three is already a mouthful. */
+function quotedHeadingOf(u: LawUnit | null): string | null {
+  const heads = u?.quotedHeadings ?? []
+  if (!heads.length) return null
+  return heads.length > 2 ? `${heads.slice(0, 2).join(' · ')} · …` : heads.join(' · ')
+}
+
 function toUnit(change: LawUnitChange, me: LawUnit | null, rv: LawUnit | null, diff: TokenDiff | null): LawDiffUnit {
   const ref = rv ?? me!
   return {
@@ -387,6 +394,7 @@ function toUnit(change: LawUnitChange, me: LawUnit | null, rv: LawUnit | null, d
     id: ref.id,
     meId: me?.id ?? null,
     heading: rv?.heading ?? me?.heading ?? null,
+    quotedHeading: quotedHeadingOf(rv) ?? quotedHeadingOf(me),
     change,
     editorial: change === 'changed' && isEditorialChange(diff?.segments ?? null),
     similarity: diff ? Math.round(diff.similarity * 1000) / 1000 : null,
