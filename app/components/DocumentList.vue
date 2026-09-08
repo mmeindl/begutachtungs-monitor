@@ -67,7 +67,9 @@ function docHint(doc: DocumentListItem): string | null {
              The <a> keeps the 44px hit area, the visible tag is smaller.
              The ↗ stays on the tag: it is the page-wide mark for "leaves
              the page", and the aria-label names the host. -->
-        <span class="grid shrink-0 grid-cols-2 gap-1">
+        <!-- Fixed track widths: every row's grid is the same width, so PDF
+             sits at the same x whether or not an HTML tag follows. -->
+        <span class="grid shrink-0 grid-cols-[4.75rem_4.75rem] gap-1">
           <template v-for="type in FORMAT_ORDER" :key="type">
             <a
               v-if="formatOf(doc, type)"
@@ -78,7 +80,7 @@ function docHint(doc: DocumentListItem): string | null {
               :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen`"
             >
               <span
-                class="inline-flex min-w-14 justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-accent group-hover:bg-accent-wash"
+                class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-accent group-hover:bg-accent-wash"
               >
                 {{ formatNames[type] }}<span aria-hidden="true"> ↗</span>
               </span>
