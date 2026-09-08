@@ -10,10 +10,12 @@ deliberately deferred and what is still open.
   proxy in front of the Parliament API (`defineCachedFunction`, 30 min TTL,
   **no SWR** — rationale in §5). Deliberately "boring": the predecessor died
   in operation, not in construction.
-- **Parliament API only in v1, no RIS.** The Parliament API covers all UI
-  features (incl. draft PDFs/HTML). RIS brings clean XML texts for the later
-  diff layer but hangs on the unresolved join-key risk
-  (`docs/api-exploration.md` §3/§5) → deferred.
+- **Parliament API first; RIS as a second upstream since Sept 2026.** The
+  Parliament API covers all UI features (incl. draft PDFs/HTML). RIS is
+  joined per GP (`docs/ris-join.md`, corpus-tested) and shows the draft's
+  RIS entry and documents on the detail page; its XML texts are the path to
+  a comparison for GP XXVII and earlier. The §-level diff itself runs on
+  Parliament HTML (GP XXVIII on), no RIS needed.
 - **German, light mode only, no i18n** in v1.
 
 ## 2. Data flow
@@ -25,7 +27,9 @@ Browser ──> Nuxt SSR / client nav
                           ├─> POST parlament.gv.at/Filter/api/filter/data/81   (ME list per GP)
                           ├─> POST .../filter/data/142                          (Stellungnahmen per ME)
                           ├─> GET  .../gegenstand/{GP}/ME/{INR}?json=True       (detail)
-                          └─> GET  .../gegenstand/{GP}/I/{NR}?json=True         (RV enrichment)
+                          ├─> GET  .../gegenstand/{GP}/I/{NR}?json=True         (RV enrichment)
+                          ├─> GET  .../dokument/{GP}/ME/{INR}/…html + …/I/{NR}/…html   (Gesetzestext ME + RV → §-diff, 24 h)
+                          └─> GET  data.bka.gv.at/ris/api/v2.6/Bundesrecht?Applikation=Begut   (RIS corpus, 46 pages, 20 h, prewarmed nightly)
 ```
 
 Rules for upstream calls (rationales in `docs/api-exploration.md`):
@@ -65,6 +69,8 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/consultations?gp&status&ministry&q` | `ConsultationsResponse` | List 81; `status`: `open\|closed\|all` (default `all`), `q` searches title/citation/ministry server-side |
 | `GET /api/consultations/:gp/:inr` | `ConsultationDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
 | `GET /api/consultations/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
+| `GET /api/consultations/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → aligned → word diff; cached 24 h. `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
+| `GET /api/ris-map/:gp` (or `aktuell`) | `RisMapResponse` | RIS Begut record per ME of the GP with status/tier/score, RIS URL and document URLs, Beginn/Ende offsets (a non-zero Ende offset is a Fristabweichung). Cached 30 min on top of the 20-h corpus cache; the nightly prewarm timer calls `aktuell`. `docs/ris-join.md` §3a |
 | `GET /feed.xml` | RSS 2.0 | Current GP, newest arrival first, max 50 items; deterministic output (no `Date.now()`, absolute dates in descriptions — never countdowns), ETag/304; builders in `server/utils/feeds.ts` (pure, tested) |
 | `GET /kalender.ics` | iCalendar (RFC 5545) | All deadlines of the current GP as all-day transparent events; UID domain FROZEN (`@begutachtungs-monitor.at`, survives renames); DTSTAMP follows the deadline so extensions propagate through import paths; ETag/304 |
 
@@ -74,6 +80,9 @@ Server internals (`server/utils/`):
 
 - `parliament.ts` — upstream client (`fetchFilterList`, `fetchGegenstand`, `getCurrentGp`, cached `getConsultationsForGp`, `getStatementsForMe`, `getGegenstand`; **uncached** assembly `getConsultationDetail`).
 - `budget.ts` — `withinBudget(promise, ms)`: waits at most `ms`, then answers `null` WITHOUT aborting the call, so the dropped fetch still fills its cache for the next reader. Used for the RIS join on the detail page (2 s): after a restart the RIS corpus is ~46 requests cold, and on 2026-09-07 the first detail-page hit after a deploy took 61 s in production while the prewarm unit was still running. Only for enrichment whose absence the page already handles — never for a fact the page asserts.
+- `ris.ts` — RIS OGD client: full Begut corpus (paged, retries, HTTP-200 error envelope), flattened records with main-document URLs; `getRisMapForGp` joins the cached list 81 against it.
+- `risJoin.ts` — **pure**: the ME↔RIS join (ruleVersion 2), regression-tested against `data/ris-me-map-gp27.json` and the GP XXVIII fixtures.
+- `lawText.ts` / `lawDiff.ts` — **pure**: Parliament Word-template HTML → § units (or Novellierungsanordnungen); article pairing by law name, unit alignment by heading, LCS word diff, editorial-vs-substantive rule. `lawDiffService.ts` fetches and caches around them.
 - `lastgood.ts` — on-disk store for the last-good statements aggregation of one ME (one JSON record per ME, write-then-rename, versioned; read back only when the live list-142 fetch fails). State directory: `BM_STATE_DIR` → systemd `STATE_DIRECTORY` (`/var/lib/begutachtungs-monitor`) → `./.data`. Deliberately outside the app dir — `deploy.sh` rsyncs `.output/` with `--delete`.
 
 **Cache rules (August 2026, forced by a real failure):**
@@ -144,7 +153,8 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 | `MinistryBadge` | `code: string; name: string` | Ministry chip (code visible, full name as `title`/sr-only) |
 | `ConsultationCard` | `consultation: ConsultationSummary` | Linked row card: title (2-line clamp), ministry, DeadlineBadge, statement count, arrival date |
 | `TraceTimeline` | `steps: TraceStep[]` | Vertical process timeline: date, text, link chips |
-| `DocumentList` | `documents: ConsultationDocument[]` | Document rows with PDF/HTML buttons (external, `rel="noopener"`) |
+| `DocumentList` | `documents: ConsultationDocument[]; source?: string` | Document rows: title + hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons and chips act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
+| `LawDiffSection` | `gp: string; inr: number` | "Was sich nach der Begutachtung geändert hat": lazy client fetch of `/diff`; filter chips (UFieldGroup), search (UInput), one folded group per Gesetz with count pills, rows with geändert / redaktionell / neu / entfallen / unverändert and an expandable word-level diff; both sources linked with CC BY attribution. Anchor `#textvergleich`, linked from the outcome card |
 | `StatementsPanel` | `gp: string; inr: number; summary: StatementsSummary` | Summary tiles (total/orgs/private/non-public), top organisations; full list lazy via the statements route, paginated client-side (steps of 25), persons as "Privatperson" |
 | `EmptyState` | `title: string; description?: string` | Empty state |
 | `ErrorState` | `title?: string; description?: string` + emit `retry` | Error state with "Erneut versuchen" |

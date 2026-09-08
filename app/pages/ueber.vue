@@ -68,7 +68,10 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           <li>
             Textvergleich zwischen Entwurf und Regierungsvorlage – was hat
             sich nach der Begutachtung geändert? Das ist der Kern der
-            Nachverfolgung und existiert heute nirgends.
+            Nachverfolgung. Seit September 2026 gibt es ihn für Verfahren ab
+            der XXVIII. Gesetzgebungsperiode, Paragraph für Paragraph; als
+            Nächstes folgen ältere Verfahren über das Rechtsinformationssystem
+            und die Erläuterungen der Ministerien zum Begutachtungsverfahren.
           </li>
           <li>E-Mail-Benachrichtigungen zu Fristen.</li>
           <li>
