@@ -429,6 +429,19 @@ const linkClasses =
         </div>
       </section>
 
+      <!-- The third question of the page, between "worum geht es" and "was
+           wurde daraus": what would this draft do to the law in force? It is
+           answered from the ressort's own Textgegenüberstellung, not computed
+           — and unlike the ME→RV comparison it is there from the first day of
+           the Begutachtung, while a Stellungnahme can still change something.
+           Rendered unconditionally: about half the drafts carry no readable
+           annex, and saying so (with the ministry's PDF where one exists) is
+           an answer, not noise. -->
+      <section id="gegenueberstellung" class="page-section scroll-mt-6" aria-labelledby="comparison-heading">
+        <h2 id="comparison-heading" class="section-heading">Was ändert der Entwurf?</h2>
+        <TextComparisonSection :gp="data.gp" :inr="data.inr" />
+      </section>
+
       <!-- Deadline, action and calendar welded into one card: the page's
            single door while the Frist runs. Closed, the card goes with the
            Frist — the source link lives in the header's provenance line. -->

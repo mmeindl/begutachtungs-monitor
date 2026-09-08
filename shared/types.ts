@@ -334,6 +334,12 @@ export interface RisMapRow {
   risUrl: string | null
   /** RIS main document (draft text) in the formats RIS offers */
   risDocument: { html: string | null; xml: string | null; pdf: string | null } | null
+  /**
+   * The ressort's Textgegenüberstellung — current law against proposed law,
+   * written by the ministry itself. Null when the draft carries none;
+   * `xml` null when RIS offers only a scan (docs/api-exploration.md §2c).
+   */
+  textComparison: { html: string | null; xml: string | null; pdf: string | null } | null
   score: number | null
   /** RIS Beginn − Parliament Einlangen, days */
   beginnOffsetDays: number | null
@@ -368,6 +374,41 @@ export type LawUnitChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
 export interface LawDiffSegment {
   type: 'equal' | 'removed' | 'inserted'
   text: string
+}
+
+/** One row of the ressort's Textgegenüberstellung (docs/api-exploration.md §2c). */
+export interface TextComparisonRow {
+  kind: 'article' | 'pair'
+  heading: string | null
+  gld: string | null
+  current: string
+  proposed: string
+  change: LawUnitChange
+  /** The ressort's own yellow marking — recorded, but the word diff decides */
+  marked: boolean
+  /** "2. bis 26b. …": unchanged text the annex leaves out on purpose */
+  elided: boolean
+  segments: LawDiffSegment[] | null
+  editorial: boolean
+}
+
+/**
+ * GET /api/consultations/:gp/:inr/gegenueberstellung — the draft's official
+ * comparison of current law against proposed law, when it carries one.
+ * `available: false` with a German reason otherwise; roughly six in ten
+ * drafts have the annex and four in ten of those only as a scan.
+ */
+export interface TextComparisonResponse {
+  gp: string
+  inr: number
+  available: boolean
+  unavailableReason: string | null
+  /** The ressort's document, in the formats RIS offers */
+  source: TraceLink | null
+  /** A PDF to fall back to when the XML is a scan */
+  pdf: TraceLink | null
+  stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
+  rows: TextComparisonRow[]
 }
 
 /** One § (or one Novellierungsanordnung) of the law text, in both versions. */

@@ -408,6 +408,44 @@ nachbauen will, vom Ressort selbst erstellt und selbst hervorgehoben. Wo sie
 existiert, ist sie die bessere Quelle; die Engine ist die Antwort für den
 Rest, nicht der erste Schritt.
 
+### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
+
+Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
+Engine: `server/utils/textComparison.ts` (Parser), `textComparisonService.ts`
+(Nitro-Glue), `/api/consultations/:gp/:inr/gegenueberstellung`,
+`app/components/TextComparisonSection.vue`. In GP XXVIII tragen 65 von 132
+Entwürfen eine lesbare Gegenüberstellung.
+
+**Warum diese Sektion über dem Textvergleich steht.** Der ME→RV-Vergleich
+braucht eine Regierungsvorlage und kommt Monate später; die
+Gegenüberstellung liegt am ersten Tag der Begutachtung vor — also dann, wenn
+eine Stellungnahme noch etwas ändern kann. Sie beantwortet damit die Frage,
+die jemand *vor* dem Schreiben hat, und nicht die Frage danach. Auf der Seite
+ist sie deshalb die dritte Frage der Sequenz: worum geht es → was ändert der
+Entwurf → was wurde daraus.
+
+**Die Wortwahl ist keine Erfindung, sondern ein Nachschlagewerk** — dieselbe
+Lektion wie bei den sprechenden Namen (§12.11). Die Spaltentitel *Geltende
+Fassung* und *Vorgeschlagene Fassung* schreibt ein BKA-Rundschreiben vom
+27.03.2002 vor; für eine berechnete, unverbindliche Fassung ist *nicht
+amtliche konsolidierte Lesefassung* der etablierte deutschsprachige Begriff.
+Die Seite braucht also weder „geprüft" noch „ungeprüft": solange die Quelle
+der amtliche Anhang ist, steht dort schlicht, wessen Dokument man liest.
+
+**Die Markierung des Ressorts ist verlässlich, aber unvollständig.** Von
+8.430 Zeilenpaaren sind 3 hervorgehoben ohne Textunterschied, aber 1.395
+unterscheiden sich ohne Hervorhebung. Angezeigt wird deshalb der berechnete
+Wortdiff (vollständig, und dieselbe rot/grün-Sprache wie §12.10); die gelbe
+Markierung wird mitgelesen, aber nicht verlassen.
+
+**Ein Fallstrick beim Ausrollen, teuer und stumm.** Ein neues Feld auf
+`RisBegutFlat` machte den persistierten Nitro-Cache still falsch: die
+gespeicherten Datensätze hatten das Feld nicht, und ein fehlendes Feld liest
+sich als „dieser Entwurf hat keine Textgegenüberstellung" — eine falsche
+Antwort, keine veraltete, und das bis zu 20 Stunden nach dem Deploy. Beide
+Cache-Schlüssel tragen jetzt `CORPUS_SHAPE_VERSION`; bei jeder Formänderung
+hochzählen.
+
 ## 13. Open questions
 
 1. **Legal:** do the inline full texts (web-form Stellungnahmen) fall under the CC-BY metadata or under the full-text exclusion? (Transport format ≠ license.) Clarify before stage 2, ideally with a university partner (§ 42h UrhG).
