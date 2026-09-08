@@ -16,8 +16,6 @@ const { data, status } = await useFetch<LawDiffResponse>(() => `/api/consultatio
 })
 
 const open = ref<Set<string>>(new Set())
-/** The list can run to 70+ rows; it opens on request, the summary stands alone. */
-const listOpen = ref(false)
 
 type Filter = 'alle' | 'geändert' | 'neu' | 'entfallen' | 'unverändert'
 const filter = ref<Filter>('alle')
@@ -62,9 +60,10 @@ const visibleUnits = computed(() => {
 })
 
 /**
- * One group per Gesetz (article of the package). 32/ME has 330 units in
- * three laws; a flat list is unreadable, so every law folds. A single-law
- * text has no group header and is open.
+ * One group per Gesetz (article of the package), folded by default. 32/ME
+ * has 330 units in three laws; a flat list is unreadable. A single-law text
+ * is one group under its own title, so the page shows the summary pills and
+ * one folded header until the reader asks for more.
  */
 interface ArticleGroup {
   article: string
@@ -111,7 +110,6 @@ const groups = computed<ArticleGroup[]>(() => {
   }
   return out
 })
-const multiLaw = computed(() => new Set((data.value?.units ?? []).map((u) => u.article ?? '')).size > 1)
 const openGroups = ref<Set<string>>(new Set())
 function toggleGroup(article: string) {
   const next = new Set(openGroups.value)
@@ -120,7 +118,7 @@ function toggleGroup(article: string) {
   openGroups.value = next
 }
 function groupOpen(g: ArticleGroup): boolean {
-  return !multiLaw.value || openGroups.value.has(g.article) || query.value.trim().length > 0
+  return openGroups.value.has(g.article) || query.value.trim().length > 0
 }
 function groupBadges(g: ArticleGroup): { badge: Badge; count: number }[] {
   return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
@@ -213,18 +211,7 @@ function displayId(id: string): string {
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
       </div>
 
-      <UButton
-        color="neutral"
-        variant="outline"
-        class="mt-4 min-h-11"
-        :trailing-icon="listOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-        :aria-expanded="listOpen"
-        @click="listOpen = !listOpen"
-      >
-        {{ listOpen ? 'Liste ausblenden' : `Alle ${data.stats.total} ${unitNoun} anzeigen` }}
-      </UButton>
-
-      <template v-if="listOpen">
+      <template v-if="data.units.length">
         <!-- Same controls as the Stellungnahmen panel below: one joined
              segmented group, primary-subtle for the active state, and the
              group scrolls sideways on narrow screens instead of wrapping. -->
@@ -258,14 +245,13 @@ function displayId(id: string): string {
         <div class="mt-3 border-y border-hairline">
           <section v-for="g in groups" :key="g.article" class="border-b border-hairline last:border-b-0">
             <button
-              v-if="multiLaw"
               type="button"
               class="flex w-full min-h-11 flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
               :aria-expanded="groupOpen(g)"
               @click="toggleGroup(g.article)"
             >
               <span class="flex w-full items-start gap-3">
-                <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Ohne Titel' }}</span>
+                <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Gesetzestext' }}</span>
                 <UIcon
                   name="i-lucide-chevron-down"
                   class="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform"
@@ -285,7 +271,7 @@ function displayId(id: string): string {
                 </span>
               </span>
             </button>
-            <ol v-if="groupOpen(g)" class="divide-y divide-hairline" :class="{ 'border-t border-hairline': multiLaw }">
+            <ol v-if="groupOpen(g)" class="divide-y divide-hairline border-t border-hairline">
               <li v-for="u in g.units" :key="key(u)">
                 <button
                   type="button"
