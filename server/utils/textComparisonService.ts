@@ -34,20 +34,20 @@ export const getTextComparison = defineCachedFunction(
     })
 
     const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
-    if (!row?.risId) return empty('Der Entwurf ließ sich keinem RIS-Dokument zuordnen, und die Textgegenüberstellung liegt nur dort.')
+    if (!row?.risId) return empty('Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort liegt die Textgegenüberstellung.')
     const annex = row.textComparison
-    if (!annex) return empty('Dieser Entwurf enthält keine Textgegenüberstellung. Sie ist nicht verpflichtend — bei einem neuen Gesetz gibt es auch nichts gegenüberzustellen.')
+    if (!annex) return empty('Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.')
 
     const pdf: TraceLink | null = annex.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: annex.pdf } : null
     if (!annex.xml) return empty('Die Textgegenüberstellung liegt nur als PDF vor.', null, pdf)
 
     const xml = await fetchLawHtml(annex.xml)
     if (isScanned(xml)) {
-      return empty('Die Textgegenüberstellung wurde eingescannt und enthält keinen Text, der sich auslesen ließe.', null, pdf)
+      return empty('Die Textgegenüberstellung liegt nur als Scan vor, ohne auslesbaren Text.', null, pdf)
     }
 
     const rows = parseTextComparison(xml)
-    if (rows.length === 0) return empty('Die Textgegenüberstellung ließ sich nicht in Zeilen gliedern.', null, pdf)
+    if (rows.length === 0) return empty('Die Textgegenüberstellung ließ sich nicht auslesen.', null, pdf)
 
     const source: TraceLink = { label: 'Textgegenüberstellung des Ressorts', url: annex.html ?? annex.xml }
     return { gp, inr, available: true, unavailableReason: null, source, pdf, stats: summarizeComparison(rows), rows }
