@@ -64,6 +64,27 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
             >kontakt@begutachtungs-monitor.at</a
           >
         </p>
+        <!-- § 25 Abs 1 MedienG: die Offenlegung muss "ständig leicht und
+             unmittelbar auffindbar" sein — daher auf jeder Seite, und als
+             eigene Zeile statt im Fließtext der Absätze darüber. Eigene
+             tap-target-Größe, weil das hier Navigation ist und kein Link
+             im Satz. -->
+        <nav aria-label="Rechtliches">
+          <ul class="flex flex-wrap items-center gap-x-4">
+            <li>
+              <NuxtLink
+                to="/impressum"
+                class="tap-target rounded underline underline-offset-2 hover:no-underline"
+              >Impressum &amp; Offenlegung</NuxtLink>
+            </li>
+            <li>
+              <NuxtLink
+                to="/datenschutz"
+                class="tap-target rounded underline underline-offset-2 hover:no-underline"
+              >Datenschutz</NuxtLink>
+            </li>
+          </ul>
+        </nav>
       </div>
     </div>
   </footer>
