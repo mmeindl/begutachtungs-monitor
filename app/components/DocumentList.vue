@@ -80,7 +80,7 @@ function docHint(doc: DocumentListItem): string | null {
               :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen`"
             >
               <span
-                class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-accent group-hover:bg-accent-wash"
+                class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-baseline group-hover:underline"
               >
                 {{ formatNames[type] }}<span aria-hidden="true"> ↗</span>
               </span>
