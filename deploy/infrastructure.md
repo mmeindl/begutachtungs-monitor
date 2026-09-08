@@ -78,6 +78,7 @@ on any Ubuntu VPS (the scripts are provider-agnostic).
 |---|---|
 | Deploy | `SERVER=root@85.235.66.11 ./deploy/deploy.sh` |
 | Uptime: run the probe now | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor` (or the "Run workflow" button in the Actions tab) |
+| Uptime: test the alarm mail | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor -f simulate=down` — opens a `downtime` issue titled "Testalarm" with the @mention (= the e-mail an outage sends); the next scheduled run, at most 30 min later, closes it. First tested 08.09.2026 |
 | Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab |
 | App logs | `ssh root@85.235.66.11 journalctl -u begutachtungs-monitor -f` |
 | Service status | `ssh root@85.235.66.11 'systemctl status begutachtungs-monitor caddy'` |
