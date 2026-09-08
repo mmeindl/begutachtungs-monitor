@@ -48,11 +48,6 @@ function docHint(doc: DocumentListItem): string | null {
 
 <template>
   <div>
-    <!-- The arrow once, for the whole list: every row's tags leave for the
-         same host. Eight arrows in one block were texture, not information. -->
-    <p class="mb-1 text-right text-xs text-ink-muted">
-      öffnet auf {{ source }}<span aria-hidden="true"> ↗</span>
-    </p>
     <ul class="divide-y divide-hairline">
       <li
         v-for="(doc, i) in documents"
@@ -69,7 +64,9 @@ function docHint(doc: DocumentListItem): string | null {
              missing — so the same label never jumps between rows. A format
              is a small bordered accent tag: not a tall neutral button (an
              action inside the page) and not bare text (too light to scan).
-             The <a> keeps the 44px hit area, the visible tag is smaller. -->
+             The <a> keeps the 44px hit area, the visible tag is smaller.
+             The ↗ stays on the tag: it is the page-wide mark for "leaves
+             the page", and the aria-label names the host. -->
         <span class="grid shrink-0 grid-cols-2 gap-1">
           <template v-for="type in FORMAT_ORDER" :key="type">
             <a
@@ -83,7 +80,7 @@ function docHint(doc: DocumentListItem): string | null {
               <span
                 class="inline-flex min-w-14 justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-accent group-hover:bg-accent-wash"
               >
-                {{ formatNames[type] }}
+                {{ formatNames[type] }}<span aria-hidden="true"> ↗</span>
               </span>
             </a>
             <span v-else aria-hidden="true" />
