@@ -721,6 +721,20 @@ const linkClasses =
         </div>
       </section>
 
+      <!-- The debate name of a procedure is knowable from usage, not from
+           the official record — and the people who follow a debate are the
+           ones using this page. Asking them costs nothing and needs no
+           curation session (`shared/utils/aliases.ts`). Stated with its
+           purpose, so it reads as a concrete request rather than a feedback
+           box: the name goes into the search. -->
+      <p class="mt-10 border-t border-hairline pt-4 max-w-prose text-sm text-ink-secondary">
+        Wird dieses Verfahren öffentlich unter einem anderen Namen diskutiert?
+        Hinweise an
+        <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
+          >kontakt@begutachtungs-monitor.at</a
+        > — die Suche findet den Entwurf dann auch darunter.
+      </p>
+
     </article>
   </div>
 </template>

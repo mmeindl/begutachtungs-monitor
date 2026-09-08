@@ -273,6 +273,11 @@ describe('a § heading quoted inside a Novellierungsanordnung', () => {
     expect(units[0]!.text).toContain('Landesausspielungen')
   })
 
+  it('drops the instructions own quotation marks around it', () => {
+    const units = parseLawUnits(novelle('&bdquo;Landesausspielungen&ldquo; ', 'Text.'))
+    expect(units[0]!.quotedHeadings).toEqual(['Landesausspielungen'])
+  })
+
   it('surfaces it on the diff unit', () => {
     const a = parseLawUnits(novelle('Landesausspielungen', 'Ausspielungen sind zul&auml;ssig.'))
     const b = parseLawUnits(novelle('Landesausspielungen', 'Ausspielungen sind verboten.'))

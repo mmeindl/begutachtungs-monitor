@@ -68,6 +68,16 @@ export function normalizeText(t: string): string {
     .trim()
 }
 
+/**
+ * A quoted § heading arrives inside the quotation marks of the instruction
+ * that installs it ("§ 5 lautet samt Überschrift: \u0022Landesausspielungen\u0022").
+ * The marks belong to the instruction, not to the heading — and the UI puts
+ * its own around it, so leaving them nests two pairs.
+ */
+export function stripQuotes(t: string): string {
+  return normalizeText(t).replace(/^["'\u00ab\u00bb\u2039\u203a\s]+|["'\u00ab\u00bb\u2039\u203a\s]+$/g, '')
+}
+
 /** Whitespace-insensitive comparison form (PDF and HTML render spaces differently). */
 export function compareKey(t: string): string {
   return normalizeText(t).replace(/\s+/g, '')
@@ -233,8 +243,11 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         // rewrote nothing else produced no diff hit at all. Measured
         // 2026-09-08: 1.341 headings dropped across 180 documents.
         if (pendingHeading) {
-          current.quotedHeadings.push(pendingHeading)
-          current.blocks.push({ kind: 'para_head', cls: 'quoted', text: pendingHeading, gld: null })
+          const bare = stripQuotes(pendingHeading)
+          if (bare) {
+            current.quotedHeadings.push(bare)
+            current.blocks.push({ kind: 'para_head', cls: 'quoted', text: bare, gld: null })
+          }
           pendingHeading = null
         }
         current.blocks.push(b)
