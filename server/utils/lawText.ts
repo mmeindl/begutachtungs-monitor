@@ -41,6 +41,13 @@ export interface LawUnit {
   id: string
   /** The § heading (45UeberschrPara); for a Ziffer the instruction line ("§ 6 Abs. 1 Z 9 lautet") */
   heading: string | null
+  /**
+   * § headings quoted inside a Novellierungsanordnung ("§ 12a lautet samt
+   * Überschrift: '§ 12a. Übertragung bestimmter Lotterien'"). The one
+   * human-readable name in an otherwise legistic instruction — and part of
+   * the compared text, because "samt Überschrift" changes the heading.
+   */
+  quotedHeadings: string[]
   text: string
   blocks: TextBlock[]
 }
@@ -185,7 +192,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         finalId = `${id}#dup`
       }
     }
-    const unit: LawUnit = { article, articleNumber, id: finalId, heading, text: first.text, blocks: [first] }
+    const unit: LawUnit = { article, articleNumber, id: finalId, heading, quotedHeadings: [], text: first.text, blocks: [first] }
     units.push(unit)
     byKey.set(`${article ?? '?'} ${finalId}`, unit)
     return unit
@@ -219,7 +226,17 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     if (b.gld) {
       const id = normalizeGld(b.gld)
       if (novelleMode && current) {
-        // A quoted § inside a Novellierungsanordnung stays in the Z unit.
+        // A quoted § inside a Novellierungsanordnung stays in the Z unit —
+        // and so does the heading in front of it. Dropping it lost the only
+        // readable name in the instruction, and worse: "§ 5 lautet samt
+        // Überschrift" changes that heading, so a Regierungsvorlage that
+        // rewrote nothing else produced no diff hit at all. Measured
+        // 2026-09-08: 1.341 headings dropped across 180 documents.
+        if (pendingHeading) {
+          current.quotedHeadings.push(pendingHeading)
+          current.blocks.push({ kind: 'para_head', cls: 'quoted', text: pendingHeading, gld: null })
+          pendingHeading = null
+        }
         current.blocks.push(b)
         continue
       }

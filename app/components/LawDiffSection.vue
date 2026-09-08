@@ -139,10 +139,11 @@ const groups = computed<ArticleGroup[]>(() => {
  *
  * What changed on 08.09.2026 is what ONE click buys: the whole law as
  * flowing text with the changes marked, instead of a row per amendment
- * instruction that had to be opened one by one (Feedback epicenter.works —
- * without attribution of a change to an actor, splitting them apart buys
- * nothing). A search opens every group, because then the reader has named
- * what they are looking for.
+ * instruction that had to be opened one by one — user feedback, and the
+ * argument behind it: without attribution of a change to an actor (which
+ * Austria does not have), splitting the instructions apart buys nothing.
+ * A search opens every group, because then the reader has named what they
+ * are looking for.
  */
 const openGroups = ref<Set<string>>(new Set())
 function toggleGroup(article: string) {
@@ -364,7 +365,8 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                   <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
                     <p v-for="u in b.units" :key="key(u)" class="hyphens-auto">
                       <span class="font-medium text-ink">{{ displayId(u.id) }}</span>
-                      <span v-if="extraHeading(u)"> {{ extraHeading(u) }}</span>
+                      <span v-if="u.quotedHeading" class="font-medium text-ink"> {{ u.quotedHeading }}</span>
+                      <span v-else-if="extraHeading(u)"> {{ extraHeading(u) }}</span>
                       <span> — {{ u.rvText }}</span>
                     </p>
                   </div>
@@ -383,7 +385,8 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                         {{ displayId(b.unit.id) }}
                         <span v-if="b.unit.meId && b.unit.meId !== b.unit.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(b.unit.meId) }})</span>
                       </span>
-                      <span v-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
+                      <span v-if="b.unit.quotedHeading" class="min-w-0 font-medium text-ink">{{ b.unit.quotedHeading }}</span>
+                      <span v-else-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
                     </p>
 
                     <p v-if="b.unit.change === 'changed' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">

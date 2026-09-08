@@ -238,6 +238,78 @@ regions — CLOUD Act). The build-time dependency on the npm registry remains
 9. **Classifier review loop**: ~~a manual org allowlist~~ the allowlist mechanism exists (`ORG_ALLOWLIST` in `server/utils/privacy.ts`, first entry: epicenter.works, Aug 2026). Still deferred: a review loop that surfaces *candidates* (e.g. hidden submitters with many endorsements) instead of finding them by accident. Note: in dev, Nitro persists cached-function results to `.nuxt/cache/nitro/` across restarts — after changes to the classifier or to the diff/join code (`law-diff`, `ris-map-gp`), delete that directory, or the dev server keeps serving results of the old code for up to 24 h.
 10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/rv-latency.mjs`, hand-copied into `shared/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
 
+### 12.11 Speaking names — mostly a lookup, not a language model
+
+Asked for in user feedback (2026-09-08): speaking names for procedures and
+for single changes, wherever they exist. A legistic instruction line ("In § 9
+Abs. 1 wird nach der Wortfolge … eingefügt") is unreadable for anyone who is
+not a policy specialist, and that is most readers.
+
+**Shipped 2026-09-08, the free part.** A Novellierungsanordnung that installs
+a whole § quotes that §'s own heading, and `segmentUnits` used to consume it
+as a pending heading and drop it. It is now kept: as the unit's readable name
+(`quotedHeading`) and as part of the compared text — because "lautet samt
+Überschrift" changes the heading, so dropping it made a heading-only change
+invisible. Corpus effect: 2 of 5.335 units moved from unchanged to changed
+(125/ME, 69/ME), which is exactly the blind spot; nothing else shifted.
+
+**Coverage measured, and it is small:** 266 of 3.092 changed units (9 %) get a
+name this way. A quoted heading only exists where a whole § is re-enacted;
+most instructions edit a phrase inside a § that keeps its title.
+
+**Which is where the interesting finding is.** For those, the readable name is
+the *title of the § being amended* — "In § 9 Abs. 1 …" → what is § 9 called in
+the standing law? That is a **lookup in RIS Bundesrecht**, not a generated
+summary: exact, quoted, no machine-generated marking, no running cost. It
+shares its prerequisite with the consolidated-text package (§12.12), and the
+lookup half is far smaller than an amendment engine — no Novellierung has to
+be applied, only a heading resolved.
+
+**AI is therefore not what this needs.** It would buy something different: a
+summary of what a change *does* ("Überwachung verschlüsselter Nachrichten"),
+which is an optional product on top, not the precondition for legibility. If
+it is ever built, three conditions hold, and the cost is why:
+
+1. **Generated once per document into a data file**, keyed by a content hash
+   of the unit text (published documents never change, so the hash is stable
+   across parser changes too). Never an LLM call in the request path. The
+   closest comparable project — a private German bill tracker using GPT-4 plus
+   a hosted automation service — runs at ~€110/month and is donation-financed.
+   This project's survival argument is the opposite: €40/year, boring, nothing
+   that breaks when nobody looks for three months. The predecessor died in
+   operation, not in construction.
+2. **Marked as machine-generated**, and never replacing the legistic text —
+   only sitting above it. netidee requires an AI disclosure regardless.
+3. **Only for drafts, never for statements.** Draft texts and Vorblätter are
+   CC-BY open data; the licence exclusion that shapes this project covers the
+   *Stellungnahmen* (§13.1). Do not blur that line.
+
+The cheap half needs neither: a curated alias per procedure
+(`shared/utils/aliases.ts`) — "Bundestrojaner" appears in no official title,
+so the tool was unfindable under the name the public uses.
+
+### 12.12 Consolidated law text (deferred — the diff a reader expects)
+
+Today a Novelle compares *amendment instructions*: "In § 9 Abs. 1 wird nach
+der Wortfolge 'Eingriff in das' die Wortfolge … eingefügt". Since 2026-09-08
+that reads as flowing text with the changes marked, which is a large step —
+but it is still an instruction, not the law that comes out of it. The reading
+a user expects (and asked for) is the paragraph as it now stands, against the
+paragraph as the draft proposed it.
+
+That needs two things this project does not have yet: the standing law from
+**RIS Bundesrecht** (a second RIS application besides `Begut`, joined per law
+and per version date), and an engine that **applies** Novellierungsanordnungen
+to it — "in § 9 Abs. 1 nach der Wortfolge X die Wortfolge Y einfügen" as a
+text operation, for every instruction form the legistic guidelines allow.
+The instruction forms are the hard part, not the fetching.
+
+Grant-sized, and the single strongest upgrade to the accountability core: it
+turns "42 instructions changed" into "this is what the paragraph now says".
+The cheap half of the same prerequisite — resolving a § *title* without
+applying anything — is what §12.11 needs for speaking names, so the two are
+one work package with two stages.
+
 ## 13. Open questions
 
 1. **Legal:** do the inline full texts (web-form Stellungnahmen) fall under the CC-BY metadata or under the full-text exclusion? (Transport format ≠ license.) Clarify before stage 2, ideally with a university partner (§ 42h UrhG).
