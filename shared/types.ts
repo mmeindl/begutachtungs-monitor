@@ -140,6 +140,25 @@ export interface StatementsSummary {
   }[]
 }
 
+/**
+ * Another Ministerialentwurf whose title names the same laws — equal
+ * normalised title tokens (docs/architecture.md §12.10), nearest by
+ * arrival. The claim the UI may make is exactly that, "gleichlautend", never
+ * "the same text": "Tierschutzgesetz, Änderung" recurs every few years.
+ */
+export interface RelatedDraft {
+  gp: string
+  inr: number
+  /** e.g. "32/ME" */
+  citation: string
+  title: string
+  /** ISO date (Einlangen) */
+  arrivedAt: string
+  deadline: string | null
+  /** Whether that draft produced a Regierungsvorlage; null when not checked */
+  hasRv: boolean | null
+}
+
 /** "Was wurde daraus" — filled once a Regierungsvorlage exists */
 export interface EnactmentInfo {
   /** e.g. "2238 d.B." */
@@ -193,6 +212,26 @@ export interface ConsultationDetail extends Omit<ConsultationSummary, 'statement
   /** The RIS Begut record of this draft (docs/ris-join.md); null when the
       RIS map was unavailable. `status` says whether RIS has the draft at all. */
   risDraft: RisMapRow | null
+  /**
+   * The draft's Gesetzgebungsperiode is over — a later GP is running. A
+   * Ministerialentwurf stays with the GP it was filed in; measured on GP
+   * XXVII, 4 of the 61 drafts still without a Regierungsvorlage at the
+   * GP's end got one in the next GP, so "bisher keine" turns into a
+   * boundary statement here, not into "never" (shared/utils/outcomes.ts).
+   */
+  gpEnded: boolean
+  /** Its last day (the day before the next Nationalrat convened, Art. 27
+      B-VG); null while it runs, or when the boundary predates the table
+      in shared/utils/gp.ts (before GP XX). */
+  gpEndedOn: string | null
+  /** Earlier same-title draft that produced NO Regierungsvorlage — the
+      "second attempt" context on the later draft's page. Null otherwise: a
+      routine repeat amendment of a law that did pass is not a relation
+      worth a sentence. Searched in this and the previous GP. */
+  predecessor: RelatedDraft | null
+  /** Later same-title draft; only while this one has no Regierungsvorlage,
+      searched in this and the next GP. `hasRv` stays null (not checked). */
+  successor: RelatedDraft | null
 }
 
 export type SubmitterKind = 'organisation' | 'person' | 'nonpublic'

@@ -21,10 +21,11 @@ import type {
   ConsultationDocument,
   ConsultationSummary,
   EnactmentInfo,
+  RelatedDraft,
   StatementMeta,
   StatementsSummary,
 } from '#shared/types'
-import { GP_RE } from '#shared/utils/gp'
+import { GP_RE, gpEndedOn, gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
 import {
   deriveShortTitle,
@@ -33,7 +34,6 @@ import {
   findLastRvLink,
   findRvLinks,
   groupOrganisationStatements,
-  intToRoman,
   mapConsultationRow,
   mapDocuments,
   mapInvitedBy,
@@ -43,7 +43,6 @@ import {
   parseShortinfo,
   parseStages,
   PARLIAMENT_BASE,
-  romanToInt,
   type RawBgblLink,
   type RawDocumentGroup,
   type RawName,
@@ -56,6 +55,7 @@ import {
   type LastGoodStatements,
 } from './lastgood'
 import { withinBudget } from './budget'
+import { findRelatedDrafts } from './related'
 
 /**
  * TTL of all upstream caches. `swr: false` is NOT redundant: Nitro defaults
@@ -555,7 +555,7 @@ export async function getConsultationDetail(
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
   // client. List 142 then just returns zero rows.
-  const [summary, detail, statementsResult, risMap] = await Promise.all([
+  const [summary, detail, statementsResult, risMap, currentGp] = await Promise.all([
     requireConsultation(gp, inr),
     getGegenstand(gp, 'ME', inr),
     // Statements must not take the whole page down: on failure (including
@@ -567,6 +567,9 @@ export async function getConsultationDetail(
     // cost the page. (Nitro auto-import from ./ris — an explicit import
     // would be a cycle.)
     withinBudget(getRisMapForGp(gp), RIS_JOIN_BUDGET_MS),
+    // Whether this draft's GP is over is decided against the running one
+    // (24 h leaf cache; the fallback value can only err towards "läuft").
+    getCurrentGp(),
   ])
   const content = detail.content ?? {}
 
@@ -599,6 +602,10 @@ export async function getConsultationDetail(
       // RV enrichment is optional: bgblNumber/bgblRisUrl stay null.
     }
   }
+
+  // Same-title drafts before and after this one — after the outcome is
+  // known, because a successor is only offered while no RV exists.
+  const related = await findRelated(summary, currentGp, enactment !== null)
 
   // The list-81 counter (row[13]) is dropped here: the detail response
   // carries exactly ONE statements number — from list 142, the same source
@@ -633,6 +640,10 @@ export async function getConsultationDetail(
     // under two headings.
     textEvolution: groupVersionsByStation(versions.filter((v) => v.station !== RV_STATION)),
     risDraft: risMap?.rows.find((r) => r.inr === inr) ?? null,
+    gpEnded: gpHasEnded(gp, currentGp),
+    gpEndedOn: gpEndedOn(gp),
+    predecessor: related.predecessor,
+    successor: related.successor,
     statements: statementsResult
       ? {
           ...buildStatementsSummary(statementsResult.items),
@@ -649,6 +660,50 @@ export async function getConsultationDetail(
         },
     enactment,
   }
+}
+
+/**
+ * Same-title drafts in this, the previous and — once this GP is over — the
+ * next Gesetzgebungsperiode (docs/architecture.md §12.10). Pure composition
+ * over the list-81 leaf caches: the extra lists cost one upstream call per
+ * GP per TTL, the adjacent GPs are where re-submissions happen (310/ME
+ * XXVII → 32/ME XXVIII after the change of government), and further back
+ * a same title is a routine repeat amendment, not a relation.
+ *
+ * Enrichment, never a dependency: a failing list or Gegenstand claims no
+ * relation. A predecessor is kept only when it produced NO
+ * Regierungsvorlage — that is the "second attempt" fact; a predecessor
+ * that passed is a different amendment cycle and stays silent.
+ */
+async function findRelated(
+  summary: ConsultationSummary,
+  currentGp: string,
+  hasRv: boolean,
+): Promise<{ predecessor: RelatedDraft | null; successor: RelatedDraft | null }> {
+  const n = romanToInt(summary.gp)
+  const gps = [summary.gp]
+  if (n !== null && n - 1 >= OLDEST_GP_WITH_ME) gps.push(intToRoman(n - 1))
+  if (n !== null && gpHasEnded(summary.gp, currentGp)) gps.push(intToRoman(n + 1))
+  const lists = await Promise.all(
+    gps.map((g) =>
+      getConsultationsForGp(g)
+        .then((r) => r.items)
+        .catch(() => [] as ConsultationSummary[]),
+    ),
+  )
+  const { predecessor, successor } = findRelatedDrafts(summary, lists.flat())
+
+  let checkedPredecessor: RelatedDraft | null = null
+  if (predecessor) {
+    try {
+      const prev = await getGegenstand(predecessor.gp, 'ME', predecessor.inr)
+      const prevHasRv = findLastRvLink(parseStages(prev.content?.stages)) !== null
+      if (!prevHasRv) checkedPredecessor = { ...predecessor, hasRv: false }
+    } catch {
+      // Unknown outcome → no claim.
+    }
+  }
+  return { predecessor: checkedPredecessor, successor: hasRv ? null : successor }
 }
 
 /** One DocumentList row per station ("Geändert im Plenum") with its PDF/HTML formats. */
