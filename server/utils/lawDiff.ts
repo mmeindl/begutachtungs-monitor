@@ -285,17 +285,42 @@ const CITATION_WORDS = new Set(
 )
 /** Words that only glue citations together; a change made of these alone is substantive ("und" → "oder"). */
 const CONNECTIVES = new Set('bis und oder sowie in im der des dem den die das gemäß gemaess nach vom von zu zum zur bzw bzw. jeweils folgender folgende folgenden'.split(' '))
+/**
+ * The connectives that carry no meaning of their own: articles, and the two case
+ * variants a Novellierungsanweisung uses interchangeably ("In § 28 wird folgender
+ * Abs. angefügt" → "Dem § 28 …"). Deliberately excludes the logical ones — "und" →
+ * "oder" and "bis" change the norm — and the directional ones: "nach" → "vor" moves
+ * an insertion.
+ */
+const FUNCTION_WORDS = new Set('der die das dem den des in im'.split(' '))
 // Numbers, letter-suffixed numbers, dates, BGBl numbers, roman numerals, and single letters (lit. a, lit. b).
 const NUMBER_RE = /^\(?\d+[a-z]?\.?\)?$|^\d{1,2}\.\d{1,2}\.\d{4}$|^\d+\/\d+$|^[ivxlc]+\.?$|^[a-z]\)?\.?$/i
 const PUNCT_RE = /^[\p{P}\p{S}]+$/u
 
-type TokenClass = 'number' | 'citation' | 'connective' | 'punct' | 'word'
+type TokenClass = 'number' | 'placeholder' | 'citation' | 'connective' | 'punct' | 'word'
+
+/** The quotes and brackets a token carries into the diff are not part of it. */
+function bare(raw: string): string {
+  return raw.replace(/^[„“"'(]+|[„“"'),;:]+$/g, '').toLowerCase()
+}
+
+/**
+ * A value the draft left open for the Regierungsvorlage to fill in: "(xx)", "XX",
+ * "20xx". Two x's or an x next to digits — a lone "X" is either a roman numeral or
+ * a genuine blank ("X Wochen"), where naming the number is a decision, not typesetting.
+ */
+function isPlaceholder(t: string): boolean {
+  if (!/^[x\d]+$/i.test(t)) return false
+  const xs = (t.match(/x/gi) ?? []).length
+  return xs >= 2 || (xs === 1 && /\d/.test(t))
+}
 
 function classifyToken(raw: string): TokenClass {
-  const t = raw.replace(/^[„“"'(]+|[„“"'),;:]+$/g, '').toLowerCase()
+  const t = bare(raw)
   if (!t) return 'punct'
   if (CITATION_WORDS.has(t)) return 'citation' // before punct: "§" is a punctuation character
   if (PUNCT_RE.test(t)) return 'punct'
+  if (isPlaceholder(t)) return 'placeholder' // before NUMBER_RE: "xx" also reads as a roman numeral
   if (NUMBER_RE.test(t)) return 'number'
   if (CONNECTIVES.has(t)) return 'connective'
   return 'word'
@@ -316,15 +341,28 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null): b
     const tokens = s.text.split(/\s+/).filter(Boolean)
     const classes = tokens.map(classifyToken)
     if (classes.includes('word')) return false
-    if (classes.every((c) => c === 'connective' || c === 'punct') && classes.includes('connective')) return false
+    // "und" → "oder" is a real change; swapping an article or the case of a
+    // Novellierungsanweisung is not.
+    if (classes.every((c) => c === 'connective' || c === 'punct') && classes.includes('connective')) {
+      if (!tokens.every((t) => FUNCTION_WORDS.has(bare(t)) || classifyToken(t) === 'punct')) return false
+    }
     // A bare number is a reference only next to a citation word ("Abs. 6" → "Abs. 4");
-    // "6 Wochen" → "4 Wochen" is a real change. Dates are always formatting.
+    // "6 Wochen" → "4 Wochen" is a real change. Dates, and numbers that replace a
+    // placeholder, are always formatting.
     if (classes.includes('number') && !classes.includes('citation')) {
       const isDate = tokens.some((t) => /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(t))
-      if (!isDate && !citationAdjacent(segments, i)) return false
+      if (!isDate && !citationAdjacent(segments, i) && !fillsPlaceholder(segments, i)) return false
     }
   }
   return sawChange
+}
+
+/** "(xx)" → "(69)": is the piece on the other side of this change the placeholder it replaces? */
+function fillsPlaceholder(segments: readonly LawDiffSegment[], i: number): boolean {
+  return [segments[i - 1], segments[i + 1]].some((s) => {
+    if (!s || s.type === 'equal') return false
+    return s.text.split(/\s+/).filter(Boolean).some((t) => classifyToken(t) === 'placeholder')
+  })
 }
 
 /** Does the equal text around a changed piece end or start with a citation word? Looks past a sibling change ("6" removed, "4" inserted). */
