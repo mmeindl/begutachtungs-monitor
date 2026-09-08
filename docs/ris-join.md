@@ -222,6 +222,15 @@ survives renumbering; the Ziffer number itself, like the § symbol, is kept
 out of the compared text. The section explains Z 1, Z 2 … when the draft is
 a Novelle.
 
+"Redaktionell" is decided by what changed, not by how much: a changed unit
+is editorial only if every inserted or removed piece is a citation, a
+number, a date, a single letter (lit. a) or punctuation; a piece of
+connectives alone ("und" → "oder") or any ordinary word makes it
+substantive. The earlier similarity threshold (≥ 0.95) was wrong in both
+directions on 43/ME: of 26 units above it only 3 are editorial, 13 hide term
+changes such as "Vorhaben" → "Energieanlagen"; one unit below it (§ 34,
+0.92) is pure reference shifting.
+
 Known limits of this version: the Erläuterungen passage on the
 Begutachtungsverfahren is not yet quoted; no RIS XML path yet, so GP XXVII
 and earlier report "nur als PDF". Effort spent: about one focused day

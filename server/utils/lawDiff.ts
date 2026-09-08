@@ -274,6 +274,52 @@ export function alignUnits(meUnits: readonly LawUnit[], rv: readonly LawUnit[]):
 }
 
 // ---------------------------------------------------------------------------
+// Editorial or substantive?
+// ---------------------------------------------------------------------------
+
+/** Legal citation vocabulary: a change made only of these plus numbers is a shifted reference. */
+const CITATION_WORDS = new Set(
+  '§ §§ abs abs. z lit lit. art art. artikel nr nr. anlage anhang satz halbsatz ziffer ziff. pkt pkt. idf ivm bgbl bgbl. teil abschnitt hauptstück hauptstueck unterabsatz uabs uabs. sublit sublit. buchstabe fassung'.split(
+    ' ',
+  ),
+)
+/** Words that only glue citations together; a change made of these alone is substantive ("und" → "oder"). */
+const CONNECTIVES = new Set('bis und oder sowie in im der des dem den die das gemäß gemaess nach vom von zu zum zur bzw bzw. jeweils folgender folgende folgenden'.split(' '))
+// Numbers, letter-suffixed numbers, dates, BGBl numbers, roman numerals, and single letters (lit. a, lit. b).
+const NUMBER_RE = /^\(?\d+[a-z]?\.?\)?$|^\d{1,2}\.\d{1,2}\.\d{4}$|^\d+\/\d+$|^[ivxlc]+\.?$|^[a-z]\)?\.?$/i
+const PUNCT_RE = /^[\p{P}\p{S}]+$/u
+
+type TokenClass = 'number' | 'citation' | 'connective' | 'punct' | 'word'
+
+function classifyToken(raw: string): TokenClass {
+  const t = raw.replace(/^[„“"'(]+|[„“"'),;:]+$/g, '').toLowerCase()
+  if (!t) return 'punct'
+  if (PUNCT_RE.test(t)) return 'punct'
+  if (NUMBER_RE.test(t)) return 'number'
+  if (CITATION_WORDS.has(t)) return 'citation'
+  if (CONNECTIVES.has(t)) return 'connective'
+  return 'word'
+}
+
+/**
+ * True when every inserted or removed piece is citation, number, date or
+ * punctuation. A piece made of connectives alone ("und" → "oder") is a real
+ * change; a piece with any ordinary word is a real change.
+ */
+export function isEditorialChange(segments: readonly LawDiffSegment[] | null): boolean {
+  if (!segments) return false
+  let sawChange = false
+  for (const s of segments) {
+    if (s.type === 'equal') continue
+    sawChange = true
+    const classes = s.text.split(/\s+/).filter(Boolean).map(classifyToken)
+    if (classes.includes('word')) return false
+    if (classes.every((c) => c === 'connective' || c === 'punct') && classes.includes('connective')) return false
+  }
+  return sawChange
+}
+
+// ---------------------------------------------------------------------------
 // Diff
 // ---------------------------------------------------------------------------
 
@@ -285,6 +331,7 @@ function toUnit(change: LawUnitChange, me: LawUnit | null, rv: LawUnit | null, d
     meId: me?.id ?? null,
     heading: rv?.heading ?? me?.heading ?? null,
     change,
+    editorial: change === 'changed' && isEditorialChange(diff?.segments ?? null),
     similarity: diff ? Math.round(diff.similarity * 1000) / 1000 : null,
     meText: me?.text ?? null,
     rvText: rv?.text ?? null,
@@ -330,8 +377,11 @@ export function diffLawUnits(me: readonly LawUnit[], rv: readonly LawUnit[]): La
   return out
 }
 
-export function summarizeDiff(units: readonly LawDiffUnit[]): Record<LawUnitChange, number> & { total: number } {
-  const s = { total: units.length, unchanged: 0, changed: 0, inserted: 0, removed: 0 }
-  for (const u of units) s[u.change]++
+export function summarizeDiff(units: readonly LawDiffUnit[]): Record<LawUnitChange, number> & { total: number; editorial: number } {
+  const s = { total: units.length, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
+  for (const u of units) {
+    s[u.change]++
+    if (u.editorial) s.editorial++
+  }
   return s
 }

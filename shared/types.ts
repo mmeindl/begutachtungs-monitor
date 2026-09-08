@@ -340,6 +340,13 @@ export interface LawDiffUnit {
   meId: string | null
   heading: string | null
   change: LawUnitChange
+  /**
+   * Changed, but every inserted or removed piece is a citation, a number, a
+   * date or punctuation (shifted cross-references, date formats). Decided by
+   * what the changed words are, not by how many there are. False for the
+   * other states and when the word diff was too long to compute.
+   */
+  editorial: boolean
   /** 0..1 token similarity for changed units, null otherwise */
   similarity: number | null
   meText: string | null
@@ -358,7 +365,8 @@ export interface LawDiffResponse {
   /** The two compared documents, for attribution and links */
   me: TraceLink | null
   rv: TraceLink | null
-  stats: { total: number; unchanged: number; changed: number; inserted: number; removed: number }
+  /** `editorial` counts the subset of `changed` that is only citations, numbers, dates, punctuation */
+  stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
   units: LawDiffUnit[]
 }
 

@@ -102,7 +102,7 @@ export const getLawDiff = defineCachedFunction(
       unavailableReason: reason,
       me: sources.me,
       rv: sources.rv,
-      stats: { total: 0, unchanged: 0, changed: 0, inserted: 0, removed: 0 },
+      stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
       units: [],
     })
     if (!sources.hasRv) return empty('Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.')

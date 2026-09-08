@@ -31,9 +31,9 @@ function toggle(u: LawDiffUnit) {
 
 const visibleUnits = computed(() => (data.value?.units ?? []).filter((u) => showUnchanged.value || u.change !== 'unchanged'))
 
-/** Cross-reference renumbering and formatting edits look like changes; say so. */
+/** Server-decided: every changed piece is a citation, number, date or punctuation. */
 function isMinor(u: LawDiffUnit): boolean {
-  return u.change === 'changed' && (u.similarity ?? 0) >= 0.95
+  return u.editorial
 }
 
 const CHANGE_LABEL: Record<LawDiffUnit['change'], string> = {
@@ -54,7 +54,7 @@ const summarySentence = computed(() => {
   const s = data.value?.stats
   if (!s) return ''
   const parts: string[] = []
-  if (s.changed) parts.push(`${s.changed} geändert`)
+  if (s.changed) parts.push(s.editorial ? `${s.changed} geändert (davon ${s.editorial} nur redaktionell)` : `${s.changed} geändert`)
   if (s.inserted) parts.push(`${s.inserted} neu`)
   if (s.removed) parts.push(`${s.removed} entfallen`)
   if (s.unchanged) parts.push(`${s.unchanged} unverändert`)
@@ -109,6 +109,8 @@ const articleBefore = (idx: number): string | null => {
         <template v-else>Paragraph für Paragraph, Entwurf gegen Regierungsvorlage.</template>
         Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt der Text
         nicht; die Erläuterungen der Regierungsvorlage oft schon.
+        „Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder
+        Satzzeichen geändert, kein einziges Wort.
       </p>
       <p class="mt-2 text-sm text-ink">{{ summarySentence }}</p>
 
