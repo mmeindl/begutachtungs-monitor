@@ -318,3 +318,47 @@ export interface RisMapResponse {
   counts: Record<RisJoinStatus, number>
   rows: RisMapRow[]
 }
+
+// ---------------------------------------------------------------------------
+// ME → RV text comparison (docs/ris-join.md §6)
+// ---------------------------------------------------------------------------
+
+export type LawUnitChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
+
+export interface LawDiffSegment {
+  type: 'equal' | 'removed' | 'inserted'
+  text: string
+}
+
+/** One § (or one Novellierungsanordnung) of the law text, in both versions. */
+export interface LawDiffUnit {
+  /** Artikel title of a package, law title otherwise, null when unknown */
+  article: string | null
+  /** Unit id in the Regierungsvorlage (or the draft, for removed units): "§5", "Z3" */
+  id: string
+  /** The draft's id for the same unit; differs from `id` after renumbering */
+  meId: string | null
+  heading: string | null
+  change: LawUnitChange
+  /** 0..1 token similarity for changed units, null otherwise */
+  similarity: number | null
+  meText: string | null
+  rvText: string | null
+  /** Word-level diff for changed units; null when unchanged, inserted, removed or too long */
+  segments: LawDiffSegment[] | null
+}
+
+export interface LawDiffResponse {
+  gp: string
+  inr: number
+  /** False when one of the two texts is not available as HTML (GP XXVII and earlier: PDF only). */
+  available: boolean
+  /** German, user-facing: why no comparison can be shown */
+  unavailableReason: string | null
+  /** The two compared documents, for attribution and links */
+  me: TraceLink | null
+  rv: TraceLink | null
+  stats: { total: number; unchanged: number; changed: number; inserted: number; removed: number }
+  units: LawDiffUnit[]
+}
+
