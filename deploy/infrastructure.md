@@ -11,6 +11,7 @@ is [README.md](README.md). Last verified: 2026-08-26.
 | Server | netcup ([customercontrolpanel.de](https://www.customercontrolpanel.de)) | VPS pico G11s 12M, Nuremberg (DE) | €1.85/month (incl. 20% AT VAT), 12-month term |
 | E-mail | INWX ("Mail Easy") | receive-only forwarding: `kontakt@begutachtungs-monitor.at` | €0.29/month, 12-month term |
 | TLS | Let's Encrypt via Caddy | auto-issued, auto-renewed | free |
+| Uptime monitoring | GitHub Actions (`.github/workflows/uptime.yml`) | probes `/` twice an hour from GitHub's runners (HTTP 200 + keyword "Begutachtung"); on failure opens one issue labelled `downtime` and @mentions the owner — GitHub mails it —, closes it on recovery. No account, no server component | free (public repo) |
 | **Total** | | | **≈ €41/year** |
 
 Both providers are EU-owned — INWX (Berlin, DE); netcup (Karlsruhe, DE,
@@ -76,6 +77,8 @@ on any Ubuntu VPS (the scripts are provider-agnostic).
 | Task | Command (from the repo root) |
 |---|---|
 | Deploy | `SERVER=root@85.235.66.11 ./deploy/deploy.sh` |
+| Uptime: run the probe now | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor` (or the "Run workflow" button in the Actions tab) |
+| Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab |
 | App logs | `ssh root@85.235.66.11 journalctl -u begutachtungs-monitor -f` |
 | Service status | `ssh root@85.235.66.11 'systemctl status begutachtungs-monitor caddy'` |
 | Re-run setup | `scp deploy/bootstrap.sh root@85.235.66.11: && ssh root@85.235.66.11 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'` |
