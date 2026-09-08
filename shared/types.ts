@@ -395,6 +395,18 @@ export interface LawDiffUnit {
   segments: LawDiffSegment[] | null
 }
 
+/**
+ * One law of a package that only one of the two documents carries — the
+ * Regierungsvorlage merged it in from another draft, or the package lost it
+ * on the way. Reported as a law, never as its individual paragraphs.
+ */
+export interface LawPackageEntry {
+  /** The article title, i.e. the law it changes */
+  article: string
+  /** How many units (§§ or Novellierungsanordnungen) it brings */
+  units: number
+}
+
 export interface LawDiffResponse {
   gp: string
   inr: number
@@ -409,6 +421,10 @@ export interface LawDiffResponse {
   meSource: 'parlament' | 'ris' | null
   /** `editorial` counts the subset of `changed` that is only citations, numbers, dates, punctuation */
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
+  /** Laws the Regierungsvorlage carries and the draft never had — a collective act merged in from other drafts. Their units are NOT in `units` or `stats`. */
+  lawsOnlyInRv: LawPackageEntry[]
+  /** Laws the draft carried and the Regierungsvorlage does not — dropped from the package. Their units are NOT in `units` or `stats`. */
+  lawsOnlyInMe: LawPackageEntry[]
   units: LawDiffUnit[]
 }
 

@@ -86,9 +86,22 @@ const KIND_BY_CLASS: Record<string, BlockKind> = {
   '11Titel': 'title',
 }
 
+/**
+ * "Artikel 3" — the article marker. Which heading level carries it is not
+ * fixed: 125/ME puts it in 43UeberschrG2 and the package title in
+ * 41UeberschrG1, its Regierungsvorlage the other way round. So the text
+ * decides, not the class — otherwise the articles never pair and every § of
+ * the package reads as inserted.
+ *
+ * The X is a placeholder: a draft written for a collective act numbers its
+ * articles "Artikel X1", "Artikel X2" because the final count is only known
+ * once every ministry's draft is merged (22/ME, IFG-Anpassung of the BKA).
+ */
+const ARTICLE_RE = /^Artikel\s+X?\d+/
+
 function kindOf(cls: string, text: string): BlockKind {
   const mapped = KIND_BY_CLASS[cls]
-  if (mapped === 'article') return /^Artikel\s+\d+/.test(text) ? 'article' : 'section'
+  if (mapped === 'article' || mapped === 'section') return ARTICLE_RE.test(text) ? 'article' : 'section'
   if (mapped) return mapped
   if (cls.startsWith('52') || cls.startsWith('53')) return 'ziff'
   if (cls.startsWith('3')) return 'toc'
@@ -283,7 +296,7 @@ export function parseRisXml(xml: string): TextBlock[] {
     let kind: BlockKind
     if (tag === 'ueberschrift') {
       kind = RIS_HEADING_KIND[typ] ?? 'other'
-      if (kind === 'article' && !/^Artikel\s+\d+/.test(text)) kind = 'section'
+      if (kind === 'article' || kind === 'section') kind = ARTICLE_RE.test(text) ? 'article' : 'section'
     } else if (tag === 'absatz') {
       if (typ === 'kz') continue
       kind = RIS_ABSATZ_KIND[typ] ?? 'other'

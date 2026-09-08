@@ -15,7 +15,7 @@
  *   3. remaining units of the same article by text similarity ≥ 0.6
  * Everything left is inserted (RV only) or removed (ME only).
  */
-import type { LawDiffSegment, LawDiffUnit, LawUnitChange } from '../../shared/types'
+import type { LawDiffSegment, LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../shared/types'
 import { compareKey, normalizeText, type LawUnit } from './lawText'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
@@ -394,6 +394,51 @@ export function diffLawUnits(me: readonly LawUnit[], rv: readonly LawUnit[]): La
   }
   flushRemovedBefore(null)
   return out
+}
+
+export interface LawPackageDiff {
+  units: LawDiffUnit[]
+  lawsOnlyInRv: LawPackageEntry[]
+  lawsOnlyInMe: LawPackageEntry[]
+}
+
+/** Units of articles the other side does not have, counted per law. */
+function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): LawPackageEntry[] {
+  const counts = new Map<string, number>()
+  for (const u of units) {
+    if (u.article === null || keep(u.article)) continue
+    counts.set(u.article, (counts.get(u.article) ?? 0) + 1)
+  }
+  return [...counts].map(([article, n]) => ({ article, units: n }))
+}
+
+/**
+ * The comparison, scoped to the laws both documents carry.
+ *
+ * A Sammelgesetz breaks the unit-by-unit reading: 22/ME is the Bundeskanzleramt's
+ * three articles, its Regierungsvorlage merges every ministry's IFG draft into
+ * 138. Diffed unit by unit that reports 98 % of the bill as new — true of the
+ * bill, false of the ministry, and read as a verdict on the draft it is simply
+ * wrong. Ten of the 90 comparable GP XXVIII drafts sit above 83 % that way.
+ *
+ * So laws only one side carries leave the § list and are named as what they
+ * are: a package that grew or shrank. That keeps the fact (the bill added or
+ * dropped a law) and drops the false precision (600 paragraphs "new").
+ * Units without an article always stay in the comparison, and when no article
+ * pairs at all the scoping is skipped — an empty comparison helps nobody.
+ */
+export function diffLawPackage(me: readonly LawUnit[], rv: readonly LawUnit[]): LawPackageDiff {
+  const map = pairArticles(me, rv)
+  if (map.size === 0) return { units: diffLawUnits(me, rv), lawsOnlyInRv: [], lawsOnlyInMe: [] }
+  const pairedMe = new Set(map.keys())
+  const pairedRv = new Set(map.values())
+  const keepMe = (u: LawUnit) => u.article === null || pairedMe.has(u.article)
+  const keepRv = (u: LawUnit) => u.article === null || pairedRv.has(u.article)
+  return {
+    units: diffLawUnits(me.filter(keepMe), rv.filter(keepRv)),
+    lawsOnlyInRv: lawsOf(rv, (a) => pairedRv.has(a)),
+    lawsOnlyInMe: lawsOf(me, (a) => pairedMe.has(a)),
+  }
 }
 
 export function summarizeDiff(units: readonly LawDiffUnit[]): Record<LawUnitChange, number> & { total: number; editorial: number } {

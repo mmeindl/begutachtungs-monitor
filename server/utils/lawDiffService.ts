@@ -9,7 +9,7 @@
  * has nothing to compare yet.
  */
 import type { LawDiffResponse, TraceLink } from '#shared/types'
-import { diffLawUnits, summarizeDiff } from './lawDiff'
+import { diffLawPackage, summarizeDiff } from './lawDiff'
 import { parseLawUnits, parseLawUnitsFromRis } from './lawText'
 import { mapDocuments, mapTextEvolution, RV_STATION, type RawDocumentGroup } from './mappers'
 import { getGegenstand } from './parliament'
@@ -105,6 +105,8 @@ export const getLawDiff = defineCachedFunction(
       rv: sources.rv,
       meSource,
       stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
+      lawsOnlyInRv: [],
+      lawsOnlyInMe: [],
       units: [],
     })
     if (!sources.hasRv) return empty('Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.')
@@ -126,9 +128,9 @@ export const getLawDiff = defineCachedFunction(
       meSource = 'ris'
       meUnits = parseLawUnitsFromRis(await fetchLawHtml(xmlUrl))
     }
-    const units = diffLawUnits(meUnits, parseLawUnits(await fetchLawHtml(sources.rv.url)))
+    const { units, lawsOnlyInRv, lawsOnlyInMe } = diffLawPackage(meUnits, parseLawUnits(await fetchLawHtml(sources.rv.url)))
     if (units.length === 0) return empty('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', me, meSource)
-    return { gp, inr, available: true, unavailableReason: null, me, rv: sources.rv, meSource, stats: summarizeDiff(units), units }
+    return { gp, inr, available: true, unavailableReason: null, me, rv: sources.rv, meSource, stats: summarizeDiff(units), lawsOnlyInRv, lawsOnlyInMe, units }
   },
   { name: 'law-diff', getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DIFF_TTL_S, swr: false },
 )
