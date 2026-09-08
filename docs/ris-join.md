@@ -147,6 +147,7 @@ Geschäftszahl tie-breaker, which needs PDF text.
   corpus TTL 20 h so the daily run always refreshes.
 - ruleVersion 2 (§3a) with GP XXVIII fixtures and regression tests; the
   ministry lineage review for GP XXVIII is folded into it.
+- The first §-level diff view (§6b).
 
 ## 5. Artefact
 
@@ -181,9 +182,41 @@ paragraphs and a by-number diff marked 41 of 45 "changed" paragraphs that
 were merely shifted. Align by Artikel heading and § heading with a
 sequence fallback, never by § number alone.
 
-Effort estimate: first §-level diff view on GP XXVIII with Parliament HTML
-only, five to seven focused days. RIS join plus XML parser adds about two
-more and buys the historical corpus.
+### 6b. Shipped (2026-09-08): the first §-level view
+
+- `server/utils/lawText.ts`: Word-template HTML → blocks → units. A unit is
+  one § with its Absätze and Ziffern, or one Novellierungsanordnung (Z n)
+  with the quoted § inside. The Gliederungssymbol is kept out of the unit
+  text so a renumbered § compares equal.
+- `server/utils/lawDiff.ts`: alignment in three passes — article + § heading
+  (unique on both sides), then article + id where at least one side has no
+  heading and the texts are ≥ 0.5 similar, then remaining units of the same
+  article by similarity ≥ 0.6. LCS word diff with a 2.5 M-cell cap (long
+  units get a similarity but no segments). Output in RV reading order,
+  removed §§ placed where they stood in the draft.
+- `server/utils/lawDiffService.ts` + `GET /api/consultations/:gp/:inr/diff`:
+  finds the two Gesetzestext HTMLs on the ME detail (RV via
+  `statements.documents`), fetches with a leaf cache per URL, diffs, caches
+  24 h. `available: false` with a German reason when no RV exists yet or a
+  text is PDF-only.
+- `app/components/LawDiffSection.vue` on the consultation page, once an RV
+  exists: "Was sich nach der Begutachtung geändert hat". §§ in RV order with
+  geändert / neu / entfallen / unverändert, "redaktionell" for similarity
+  ≥ 0.95 (cross-reference renumbering, date formats), expandable word-level
+  diff, unchanged §§ on request, both sources linked with CC BY attribution.
+  Lazy client-side load so the page never waits for the two documents.
+
+Live numbers, 2026-09-08: 43/ME → 449 d.B. gives 74 units, 8 unchanged,
+58 changed (26 of them redaktionell), 6 inserted, 2 removed; 2.3 s cold,
+14 ms warm. 100/ME (a Novelle) gives 13 Z units, 6 changed, 2 new, 2 gone.
+
+Known limits of this version: Novellierungsanordnungen have no heading, so
+a renumbered Z n that was also rewritten shows as one removed and one new
+unit rather than one changed; the Erläuterungen passage on the
+Begutachtungsverfahren is not yet quoted; no RIS XML path yet, so GP XXVII
+and earlier report "nur als PDF". Effort spent: about one focused day
+against the five to seven estimated, because the corpus-test prototype
+already held the parser and the alignment lesson.
 
 ## 6a. First live run on GP XXVIII (2026-09-07)
 
