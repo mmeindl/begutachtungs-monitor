@@ -75,12 +75,8 @@ const countLabel = computed(() =>
   countLabelDe(data.value?.total ?? 0, 'Begutachtung', 'Begutachtungen'),
 )
 
-/* Native <select> instead of USelect: in the combination Vite 8 (rolldown) +
- * Nuxt UI 4.10, reka-ui's SelectItem arrives in the browser without a render
- * function and crashes the page's hydration. Native selects are robust and
- * accessible; USelect can return once the upstream problem is fixed. */
-const selectClasses =
-  'rounded-md border border-hairline bg-surface px-3 py-2 text-sm text-ink'
+/* Selects are TokenSelect (native <select> in token styling with the
+ * page-wide chevron) — see that component for why not USelect. */
 </script>
 
 <template>
@@ -117,26 +113,21 @@ const selectClasses =
 
         <div>
           <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
-          <select id="filter-gp" v-model="selectedGp" :class="selectClasses">
+          <TokenSelect id="filter-gp" v-model="selectedGp">
             <option v-for="g in data.availableGps" :key="g" :value="g">
               GP {{ g }}
             </option>
-          </select>
+          </TokenSelect>
         </div>
 
-        <div>
+        <div class="max-w-64">
           <label for="filter-ministry" class="sr-only">Ressort</label>
-          <select
-            id="filter-ministry"
-            v-model="ministry"
-            class="max-w-64"
-            :class="selectClasses"
-          >
+          <TokenSelect id="filter-ministry" v-model="ministry">
             <option value="">Alle Ressorts</option>
             <option v-for="m in data.ministries" :key="m.code" :value="m.code">
               {{ m.name || m.code }}
             </option>
-          </select>
+          </TokenSelect>
         </div>
 
         <!-- The corpus size in the placeholder is the trust signal

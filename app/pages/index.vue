@@ -45,15 +45,6 @@ const { data: outcomes, status: outcomesStatus } = await outcomesFetch
 
 const { webcalUrl, googleCalUrl } = useFeedUrls()
 
-const topMax = computed(() => data.value?.topByStatements[0]?.statementCount ?? 0)
-
-// Rank-bar width vs. the section's #1 — decorative (aria-hidden); the
-// bold count in the card's meta line carries the number.
-function rankWidth(count: number): string {
-  if (topMax.value <= 0 || count <= 0) return '0%'
-  return `${Math.min(100, (count / topMax.value) * 100)}%`
-}
-
 // A concrete date means something to non-insiders; a roman numeral does
 // not. The date alone is the load-bearing part — "Gesetzgebungsperiode"
 // wording stays out of the hint (tile 4 already scopes the row, and the
@@ -247,27 +238,21 @@ const lastSyncLabel = computed(() =>
           Die meisten Stellungnahmen
         </h2>
         <!-- Volumetric, not "gerade": the ranking spans the whole GP,
-             open and closed — the suffix per bar says which is which. -->
+             open and closed — the Frist line under each count says which
+             is which. -->
         <p class="mt-1 text-sm text-ink-secondary">
           Die Entwürfe mit den meisten Stellungnahmen in dieser
           Gesetzgebungsperiode – offene und abgeschlossene.
         </p>
-        <!-- Same card anatomy as the sections above — status lives in the
-             familiar right-hand slot, the rank bar in the card's footer. -->
-        <ul class="mt-4 space-y-3">
+        <!-- Same card anatomy as the sections above, and the ranked figure
+             in the same right-hand slot the others use for their key fact:
+             right-aligned behind one suffix, the counts read as a column.
+             An ordered list, because here the order carries meaning. -->
+        <ol class="mt-4 space-y-3">
           <li v-for="c in data.topByStatements" :key="`${c.gp}-${c.inr}`">
-            <ConsultationCard :consultation="c">
-              <template #footer>
-                <div class="h-2 w-full rounded-r-[4px] bg-accent-wash" aria-hidden="true">
-                  <div
-                    class="h-2 rounded-r-[4px] bg-accent"
-                    :style="{ width: rankWidth(c.statementCount) }"
-                  />
-                </div>
-              </template>
-            </ConsultationCard>
+            <ConsultationCard :consultation="c" emphasis="volume" />
           </li>
-        </ul>
+        </ol>
       </section>
 
       <p v-if="lastSyncLabel" class="mt-12 text-xs text-ink-muted">
