@@ -60,13 +60,21 @@ const sections = computed<Section[]>(() => {
       :is="section.collapsed ? 'details' : 'div'"
       v-for="(section, s) in sections"
       :key="s"
-      :class="['mt-5 first:mt-0', section.collapsed ? 'border-t border-hairline' : '']"
+      :class="['mt-5 first:mt-0', section.collapsed ? 'group border-t border-hairline' : '']"
     >
+      <!-- Native <details> keeps the no-script behaviour; the marker is the
+           page-wide chevron on the right (as on the diff groups), rotating
+           when open, instead of the browser's triangle on the left. -->
       <summary
         v-if="section.collapsed"
-        class="cursor-pointer rounded py-3 text-base font-semibold text-ink marker:text-ink-muted"
+        class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded py-3 text-base font-semibold text-ink [&::-webkit-details-marker]:hidden"
       >
-        {{ section.heading }}
+        <span>{{ section.heading }}</span>
+        <UIcon
+          name="i-lucide-chevron-down"
+          class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        />
       </summary>
       <h3 v-else-if="section.heading" class="text-base font-semibold text-ink">
         {{ section.heading }}
