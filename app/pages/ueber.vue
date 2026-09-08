@@ -36,6 +36,15 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           zeigt Verfahren mit weiterem Verlauf genauso wie Verfahren ohne.
           Nachverfolgung, nicht Bewertung.
         </p>
+        <!-- Als Frage formuliert, nicht als Vorhaben: eine Frage, die das
+             Werkzeug stellt, veraltet nicht, ein Fahrplan schon. Genau daran
+             ist der Abschnitt „Woran gearbeitet wird" gescheitert — er stand
+             keinen Tag, ohne dass ein Punkt davon schon überholt war. -->
+        <p class="mt-3 leading-relaxed text-ink-secondary">
+          Über viele Verfahren hinweg wird daraus eine Frage, die bisher
+          niemand beantworten kann: Wie oft ändern sich Entwürfe nach der
+          Begutachtung tatsächlich?
+        </p>
       </section>
 
       <section aria-labelledby="about-how">
@@ -52,33 +61,6 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           im Zwischenspeicher; eine eigene Datenbank gibt es nicht. Es gibt
           keine Konten, kein Tracking und keine Cookies.
         </p>
-      </section>
-
-      <section aria-labelledby="about-roadmap">
-        <h2 id="about-roadmap" class="section-heading">
-          Woran gearbeitet wird
-        </h2>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Monitor wird weitergebaut. Die nächsten Schritte, in dieser
-          Reihenfolge:
-        </p>
-        <ol
-          class="mt-3 list-decimal space-y-2 pl-5 leading-relaxed text-ink-secondary marker:text-ink-muted"
-        >
-          <li>
-            Textvergleich zwischen Entwurf und Regierungsvorlage – was hat
-            sich nach der Begutachtung geändert? Das ist der Kern der
-            Nachverfolgung. Seit September 2026 gibt es ihn für Verfahren ab
-            der XXVIII. Gesetzgebungsperiode, Paragraph für Paragraph; als
-            Nächstes folgen ältere Verfahren über das Rechtsinformationssystem
-            und die Erläuterungen der Ministerien zum Begutachtungsverfahren.
-          </li>
-          <li>E-Mail-Benachrichtigungen zu Fristen.</li>
-          <li>
-            Statistiken über hunderte Verfahren: Wie oft ändern sich Entwürfe
-            nach der Begutachtung tatsächlich?
-          </li>
-        </ol>
       </section>
 
       <section aria-labelledby="about-subscribe">
