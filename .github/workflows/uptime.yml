@@ -1,0 +1,89 @@
+# Uptime check without a monitoring account (docs/architecture.md §12.7,
+# deploy/infrastructure.md): GitHub's runners probe the live site twice an
+# hour. On failure the workflow opens ONE issue labelled `downtime` and
+# @mentions the owner — GitHub mails that — and closes it when the site
+# answers again. The job itself stays green so a night of downtime is one
+# issue, not 20 failed-run e-mails.
+#
+# What counts as "up": HTTP 200 on the start page AND the word
+# "Begutachtung" in the body. A Caddy error page or an empty shell is down.
+#
+# Known trap: GitHub disables scheduled workflows in repositories without
+# commits for 60 days and sends a mail when it does. Re-enable it in the
+# Actions tab, or make any commit.
+name: Uptime
+
+on:
+  schedule:
+    # Off the full and half hour: GitHub's cron is congested there.
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+env:
+  SITE: https://begutachtungs-monitor.at/
+  KEYWORD: Begutachtung
+  LABEL: downtime
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe the start page
+        id: probe
+        run: |
+          set +e
+          tmp=$(mktemp)
+          code=$(curl -sS -L --max-time 30 --retry 2 --retry-delay 15 --retry-all-errors \
+                   -o "$tmp" -w '%{http_code}' "$SITE" 2>"$tmp.err")
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            reason="curl failed (exit $rc): $(tr -d '\n' < "$tmp.err" | cut -c1-200)"
+          elif [ "$code" != "200" ]; then
+            reason="HTTP $code"
+          elif ! grep -q "$KEYWORD" "$tmp"; then
+            reason="HTTP 200, but the page does not contain \"$KEYWORD\""
+          else
+            reason=""
+          fi
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          if [ -n "$reason" ]; then echo "::warning::DOWN — $reason"; else echo "up (HTTP 200, keyword present)"; fi
+
+      - name: Open or close the downtime issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REASON: ${{ steps.probe.outputs.reason }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          now=$(date -u '+%Y-%m-%d %H:%M UTC')
+          gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --force \
+            --color B60205 --description "Opened and closed by the Uptime workflow" >/dev/null
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
+                   --json number --jq '.[0].number // empty')
+          if [ -n "$REASON" ]; then
+            if [ -z "$open" ]; then
+              body=$(printf '%s\n\n%s\n%s\n\n%s' \
+                "@$OWNER — the start page failed the uptime probe at $now." \
+                "**Reason:** $REASON" \
+                "**Probe:** $RUN_URL" \
+                "The workflow re-checks twice an hour and closes this issue when the site answers again. Runbook: \`deploy/infrastructure.md\` (service status, app logs, redeploy).")
+              gh issue create --repo "$GITHUB_REPOSITORY" --label "$LABEL" \
+                --title "Downtime: begutachtungs-monitor.at — $REASON" \
+                --body "$body"
+            else
+              echo "still down, issue #$open already open"
+            fi
+          elif [ -n "$open" ]; then
+            gh issue close "$open" --repo "$GITHUB_REPOSITORY" \
+              --comment "Back up at $now (HTTP 200, keyword present). Probe: $RUN_URL"
+          fi
