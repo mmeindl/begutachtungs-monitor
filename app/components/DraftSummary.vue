@@ -67,7 +67,7 @@ const sections = computed<Section[]>(() => {
            when open, instead of the browser's triangle on the left. -->
       <summary
         v-if="section.collapsed"
-        class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded py-3 text-base font-semibold text-ink [&::-webkit-details-marker]:hidden"
+        class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-base font-semibold text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
       >
         <span>{{ section.heading }}</span>
         <UIcon
