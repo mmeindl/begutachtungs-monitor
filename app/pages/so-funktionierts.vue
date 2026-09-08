@@ -26,7 +26,7 @@ const steps = [
   {
     id: 'regierungsvorlage',
     name: 'Regierungsvorlage',
-    text: 'Das Ministerium überarbeitet den Entwurf, oft auf Basis der Stellungnahmen; die Regierung beschließt die Vorlage an den Nationalrat. Manche Entwürfe kommen nie so weit – auch das zeigt der Monitor.',
+    text: 'Das Ministerium überarbeitet den Entwurf, oft auf Basis der Stellungnahmen; die Regierung beschließt die Vorlage an den Nationalrat. Manche Entwürfe kommen nie so weit – auch das zeigt der Monitor. Endet die Gesetzgebungsperiode vorher, wird ein Entwurf nur selten noch eingebracht; meist beginnt die nächste Regierung mit einer neuen Begutachtung.',
   },
   {
     id: 'parlament',

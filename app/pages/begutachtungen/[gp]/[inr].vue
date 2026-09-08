@@ -87,9 +87,25 @@ const risDocuments = computed<(ConsultationDocument & { hint?: string })[]>(() =
 // quotable verdict sentence leads; before that there is no headline at
 // all — months of pipeline latency are normal, and a fresh silence is
 // "noch nicht", not a verdict to put in bold.
-const noRvVerdict = computed(() => noRvVerdictDe(data.value?.deadline))
+//
+// Third state: the draft's Gesetzgebungsperiode is over. Then the boundary
+// is the headline (a date, not a verdict), the body gives the measured
+// rarity of a late Regierungsvorlage, and the elapsed-time sentence is
+// subsumed — "vor über einem Jahr" says less than "die GP endete am".
+const lapsed = computed(() => {
+  const d = data.value
+  return Boolean(d && !d.enactment && !d.active && d.gpEnded)
+})
+
+const noRvVerdict = computed(() => {
+  const d = data.value
+  if (!d) return null
+  if (lapsed.value) return gpEndedHeadlineDe(d.gp, d.gpEndedOn)
+  return noRvVerdictDe(d.deadline)
+})
 
 const noRvBody = computed(() => {
+  if (lapsed.value) return gpEndedBodyDe(data.value?.gp ?? '')
   if (noRvVerdict.value) return 'Ob und wie es weitergeht, ist offen.'
   // No Frist, no bracket to measure — the only branch where the card
   // restates the bar, because otherwise it would say nothing at all.
@@ -98,6 +114,18 @@ const noRvBody = computed(() => {
   }
   return 'Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere Monate – dieser Stand kann sich noch ändern.'
 })
+
+/* The base rate under the waiting sentence, while the GP still runs: how
+ * many drafts of the last closed GP got their Regierungsvorlage and how
+ * fast (shared/utils/outcomes.ts). Numbers, so the reader can weigh the
+ * silence without the page weighing it for them. */
+const noRvBaseRate = computed(() => (lapsed.value ? null : rvBaseRateSentenceDe(data.value?.gp)))
+
+/* A related draft is named by citation and GP; the GP only where it
+ * differs from this page's, which is the case that carries information. */
+function relatedGpSuffix(gp: string): string {
+  return gp === data.value?.gp ? '' : ` (${gp}. GP)`
+}
 
 /* The one fact the upstream stage list holds that the StageBar cannot:
  * when parliament handed the Stellungnahmen to the ressort. That is where
@@ -345,7 +373,20 @@ const linkClasses =
           :deadline="data.deadline"
           :active="data.active"
           :enactment="data.enactment"
+          :gp-ended="data.gpEnded"
         />
+        <!-- The "second attempt" fact, in both lifecycle states: a same-title
+             draft ran before and produced no Regierungsvorlage. Same title
+             is all that is claimed (the sentence says "gleichlautend"); the
+             link lets the reader judge whether it is the same text. -->
+        <p v-if="data.predecessor" class="mt-4 max-w-prose text-sm text-ink-secondary">
+          Ein gleichlautender Entwurf war bereits in Begutachtung:
+          <NuxtLink
+            :to="`/begutachtungen/${data.predecessor.gp}/${data.predecessor.inr}`"
+            :class="linkClasses"
+            >{{ data.predecessor.citation }}</NuxtLink
+          >{{ relatedGpSuffix(data.predecessor.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
+        </p>
         <p class="mt-4 text-xs">
           <NuxtLink
             to="/so-funktionierts"
@@ -508,6 +549,21 @@ const linkClasses =
             :class="noRvVerdict ? 'mt-1.5' : ''"
           >
             {{ noRvBody }}
+          </p>
+          <p v-if="noRvBaseRate" class="mt-1.5 text-sm text-ink-secondary">
+            {{ noRvBaseRate }}
+          </p>
+          <!-- The win side of the same mechanism: the draft that finds a
+               lapsed one also finds the one that took its place. Ink, not
+               secondary — it is the one actionable line in the card. -->
+          <p v-if="data.successor" class="mt-3 text-sm text-ink">
+            Ein gleichlautender späterer Entwurf liegt vor:
+            <NuxtLink
+              :to="`/begutachtungen/${data.successor.gp}/${data.successor.inr}`"
+              :class="linkClasses"
+              >{{ data.successor.citation }}</NuxtLink
+            >{{ relatedGpSuffix(data.successor.gp) }}, eingelangt am
+            {{ formatDateDe(data.successor.arrivedAt) }}.
           </p>
         </div>
 

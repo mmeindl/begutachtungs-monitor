@@ -8,7 +8,6 @@ import {
   findLastRvLink,
   findRvLinks,
   groupOrganisationStatements,
-  intToRoman,
   mapConsultationRow,
   mapDocuments,
   mapInvitedBy,
@@ -20,7 +19,6 @@ import {
   parseGermanDate,
   parseShortinfo,
   parseStages,
-  romanToInt,
   stripHtmlToText,
 } from '../server/utils/mappers'
 import type { StatementMeta } from '../shared/types'
@@ -474,14 +472,6 @@ describe('helpers', () => {
 
   it('stripHtmlToText decodes numeric entities', () => {
     expect(stripHtmlToText('<p>&#167; 5 &amp; &#x00A7; 6</p>')).toBe('§ 5 & § 6')
-  })
-
-  it('Roman numerals: round trip and strict rejection', () => {
-    expect(romanToInt('XXVIII')).toBe(28)
-    expect(intToRoman(28)).toBe('XXVIII')
-    expect(romanToInt('XIV')).toBe(14)
-    expect(romanToInt('IIX')).toBeNull()
-    expect(romanToInt('abc')).toBeNull()
   })
 })
 

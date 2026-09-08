@@ -19,6 +19,9 @@ const props = defineProps<{
   deadline: string | null
   active: boolean
   enactment: EnactmentInfo | null
+  /** The draft's Gesetzgebungsperiode is over: "bisher keine" would keep
+      promising a continuation that has become the rare exception. */
+  gpEnded?: boolean
 }>()
 
 type StageState = 'done' | 'current' | 'open'
@@ -68,8 +71,17 @@ const stages = computed<Stage[]>(() => {
       state: e ? 'done' : 'open',
       date: e?.rvDate ? formatDateDe(e.rvDate) : null,
       // "bisher keine" is temporal, never accusatory (framing rule) — and
-      // only claimed once the Frist has ended.
-      label: e ? e.rvCitation : props.active ? 'ausstehend' : 'bisher keine',
+      // only claimed once the Frist has ended. Once the GP itself is over
+      // the temporal word would mislead the other way; the boundary is
+      // the state then, and the outcome card carries the date and the
+      // measured rarity of a late Regierungsvorlage.
+      label: e
+        ? e.rvCitation
+        : props.active
+          ? 'ausstehend'
+          : props.gpEnded
+            ? 'keine – GP beendet'
+            : 'bisher keine',
       cited: Boolean(e),
       href: e?.rvUrl ?? null,
     },

@@ -19,7 +19,6 @@ import type {
   TraceLink,
   TraceStep,
 } from '../../shared/types'
-import { GP_RE } from '../../shared/utils/gp'
 import { classifySubmitter } from './privacy'
 
 export const PARLIAMENT_BASE = 'https://www.parlament.gv.at'
@@ -678,42 +677,3 @@ export function extractBgblLink(
 // Roman numerals (GP codes) — for availableGps
 // ---------------------------------------------------------------------------
 
-const ROMAN_TOKENS: [string, number][] = [
-  ['C', 100],
-  ['XC', 90],
-  ['L', 50],
-  ['XL', 40],
-  ['X', 10],
-  ['IX', 9],
-  ['V', 5],
-  ['IV', 4],
-  ['I', 1],
-]
-
-export function intToRoman(n: number): string {
-  if (!Number.isInteger(n) || n <= 0 || n > 399) return ''
-  let rest = n
-  let out = ''
-  for (const [token, value] of ROMAN_TOKENS) {
-    while (rest >= value) {
-      out += token
-      rest -= value
-    }
-  }
-  return out
-}
-
-/** Strict inverse — "IIX" and the like → null. */
-export function romanToInt(roman: string): number | null {
-  if (!GP_RE.test(roman)) return null
-  let total = 0
-  let i = 0
-  for (const [token, value] of ROMAN_TOKENS) {
-    while (roman.startsWith(token, i)) {
-      total += value
-      i += token.length
-    }
-  }
-  if (i !== roman.length) return null
-  return intToRoman(total) === roman ? total : null
-}
