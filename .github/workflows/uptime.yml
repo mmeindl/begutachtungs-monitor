@@ -18,6 +18,12 @@ on:
     # Off the full and half hour: GitHub's cron is congested there.
     - cron: '7,37 * * * *'
   workflow_dispatch:
+    inputs:
+      simulate:
+        description: 'Testalarm: "down" reports the site as down without probing it, so the issue + e-mail path can be tested; the next scheduled run closes the issue again'
+        type: choice
+        options: [none, down]
+        default: none
 
 permissions:
   contents: read
@@ -39,8 +45,15 @@ jobs:
     steps:
       - name: Probe the start page
         id: probe
+        env:
+          SIMULATE: ${{ inputs.simulate || 'none' }}
         run: |
           set +e
+          if [ "$SIMULATE" = "down" ]; then
+            echo "reason=Testalarm – manuell ausgelöst, die Seite ist erreichbar" >> "$GITHUB_OUTPUT"
+            echo "::notice::simulated downtime, no probe sent"
+            exit 0
+          fi
           tmp=$(mktemp)
           code=$(curl -sS -L --max-time 30 --retry 2 --retry-delay 15 --retry-all-errors \
                    -o "$tmp" -w '%{http_code}' "$SITE" 2>"$tmp.err")
