@@ -111,7 +111,7 @@ const countLabel = computed(() =>
           </UButton>
         </UFieldGroup>
 
-        <div>
+        <div class="min-w-0">
           <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
           <TokenSelect id="filter-gp" v-model="selectedGp">
             <option v-for="g in data.availableGps" :key="g" :value="g">
@@ -120,7 +120,7 @@ const countLabel = computed(() =>
           </TokenSelect>
         </div>
 
-        <div class="max-w-64">
+        <div class="min-w-0 max-w-64">
           <label for="filter-ministry" class="sr-only">Ressort</label>
           <TokenSelect id="filter-ministry" v-model="ministry">
             <option value="">Alle Ressorts</option>

@@ -37,7 +37,10 @@ function isActive(to: string): boolean {
         <span class="font-heading text-lg">Begutachtungs-Monitor</span>
       </NuxtLink>
       <nav aria-label="Hauptnavigation">
-        <ul class="flex items-center gap-4 sm:gap-6">
+        <!-- Wraps rather than scrolls the page: the four labels are 31px too
+             wide for a 320px viewport, and a nav item is not worth a
+             horizontal scrollbar on the whole document. -->
+        <ul class="flex flex-wrap items-center gap-x-4 gap-y-1 sm:gap-x-6">
           <li v-for="item in navItems" :key="item.to">
             <NuxtLink
               :to="item.to"

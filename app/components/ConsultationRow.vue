@@ -33,10 +33,6 @@ defineProps<{
           }}</span>
           {{ consultation.statementCount === 1 ? 'Stellungnahme' : 'Stellungnahmen' }}
         </span>
-        <template v-if="!consultation.active">
-          <span aria-hidden="true">·</span>
-          <span class="font-medium text-accent-deep">Was wurde daraus?&nbsp;→</span>
-        </template>
       </p>
     </div>
     <MinistryBadge
