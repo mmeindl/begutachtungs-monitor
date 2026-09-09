@@ -163,8 +163,9 @@ async function fetchRisPage(page: number): Promise<{ hits: number; docs: any[] }
  * concern by construction. In production they would earn nothing: page and
  * corpus share the 20 h TTL and expire together, so a rebuild re-fetches
  * either way — and until then the raw pages hold the whole corpus a second
- * time in its bulkier form (measured 2026-09-09 on the VPS: 92 → 133 MB of
- * 952, for no hit that would not have happened anyway).
+ * time in its bulkier form, for no hit that would not have happened anyway
+ * (measured 2026-09-09, warm resident memory on the VPS: 133 MB with the
+ * pages cached, 90 MB without, of 952).
  */
 const risPage = defineCachedFunction(
   async (page: number): ReturnType<typeof fetchRisPage> => {
