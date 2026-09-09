@@ -31,9 +31,10 @@ import { plainText, type LawNode } from '../server/utils/lawStructure'
 import { parseRisXml, segmentUnits, type TextBlock } from '../server/utils/lawText'
 import { promulgationByArticle } from '../server/utils/lawTitles'
 import type { NovaoAddress } from '../server/utils/novao'
-import { fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
-import { extraTokens, verdictFor } from '../server/utils/applyReport'
+import { amendedBy, fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
+import { extraTokens, isSubsetOfRis, verdictForTrees } from '../server/utils/applyReport'
 import { installFetchCache } from './harness-cache'
+import { appendFileSync, writeFileSync } from 'node:fs'
 
 interface Verdict {
   bgbl: string
@@ -54,11 +55,21 @@ interface Verdict {
   note: string | null
 }
 
-type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef }
+type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef; afters: KonsParagraphRef[] }
 
 const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
 const verbose = !process.argv.includes('--quiet')
+/**
+ * `--dump=<file>` writes one JSON line per checked paragraph: verdict, the
+ * three texts, the trees before and after, and every instruction that
+ * addressed the paragraph with its operands. The detector work
+ * (`server/utils/applyGuard.ts`) needs to be evaluated against exactly this
+ * record set, and a dump makes that a one-second offline loop instead of a
+ * reason to keep adding flags to this script (2026-09-09).
+ */
+const dumpFile = process.argv.find((a) => a.startsWith('--dump='))?.slice('--dump='.length) ?? null
+if (dumpFile) writeFileSync(dumpFile, '')
 if (process.argv.includes('--cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -85,7 +96,7 @@ function asArray<T>(x: T | T[] | null | undefined): T[] {
  */
 async function discoverSingleLawAmendments(count: number): Promise<{ id: string; law: string }[]> {
   const out: { id: string; law: string }[] = []
-  for (let page = 1; page <= 5 && out.length < count; page++) {
+  for (let page = 1; page <= 12 && out.length < count; page++) {
     const body = await risJson({
       Applikation: 'BgblAuth',
       DokumenteProSeite: 'OneHundred',
@@ -96,7 +107,10 @@ async function discoverSingleLawAmendments(count: number): Promise<{ id: string;
     for (const ref of asArray<any>(body?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)) {
       const id = ref?.Data?.Metadaten?.Technisch?.ID
       const titel = String(ref?.Data?.Metadaten?.Bundesrecht?.Titel ?? '').replace(/<br\/>[\s\S]*/, '').trim()
-      const m = /^Bundesgesetz, mit dem (?:das \S[^,]*? erlassen und )?das ([^,]+?) geändert wird$/.exec(titel)
+      // "das", "die" and "der": the first version of this filter took only
+      // neuter laws and so skipped every -ordnung (Gewerbeordnung,
+      // Exekutionsordnung, Strafprozeßordnung …), a quarter of the corpus.
+      const m = /^Bundesgesetz, mit dem (?:(?:das|die|der) \S[^,]*? erlassen und )?(?:das|die|der) ([^,]+?) geändert wird$/.exec(titel)
       if (id && m && out.length < count) out.push({ id, law: m[1]! })
     }
   }
@@ -335,18 +349,66 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   for (const [label, pair] of [...pairs].sort()) {
     const id = /(\d+[a-z]*)/.exec(label)?.[1]
     const node = after.paragraphs.find((p) => p.id === id)
-    const truthTree = await fetchParagraphTree(pair.after)
-    if (!node || !truthTree) continue
+    // Every version this BGBl created is law text that exists; the engine's
+    // end state is scored against the best match among them (see
+    // `versionPairFor`). The report names the version that matched.
+    const truths: { ref: KonsParagraphRef; text: string; tree: LawNode }[] = []
+    for (const ref of pair.afters) {
+      const tree = await fetchParagraphTree(ref)
+      if (tree) truths.push({ ref, text: plainText(tree), tree })
+    }
+    if (!node || truths.length === 0) continue
     checked++
     const got = plainText(node)
-    const expected = plainText(truthTree)
     const beforeNode = law.paragraphs.find((p) => p.id === id)
     const beforeText = beforeNode ? plainText(beforeNode) : null
-    const verdict = verdictFor(beforeText, got, expected)
+    const rank = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, abweichend: 3 }
+    const best = truths
+      .map((t) => ({ ...t, verdict: verdictForTrees(beforeNode ?? null, node, t.tree) }))
+      .sort((a, b) => rank[a.verdict] - rank[b.verdict])[0]!
+    let verdict = best.verdict
+    const expected = best.text
+    const matched = best.ref
+    // A word diff too large for the DP grid is neither confirmed nor refuted.
+    const comparable = beforeText === null || verdict !== 'abweichend' || extraTokens(beforeText, got, expected).comparable
+    // Several cuts, and the engine's end state matches none of them alone —
+    // "In § 5 werden folgende Abs. 4 bis 6 angefügt" in force from 2028 while
+    // Abs. 2a from 2026 (ORF-Beitrags-Gesetz, BGBl. I Nr. 59/2025). If every
+    // token the engine wrote is in *some* cut, it did not invent anything;
+    // the harness simply has no single text to hold it against.
+    const staged = verdict === 'abweichend' && comparable && truths.length > 1 && isSubsetOfRis(beforeText ?? '', got, truths.map((t) => t.text).join(' '))
+    if (staged) verdict = 'unvollständig'
     if (id && !refusedIds.has(id)) {
       cleanTotal++
       if (verdict === 'identisch') cleanIdentical++
-      else if (verdict === 'abweichend') cleanDivergent++
+      else if (verdict === 'abweichend' && comparable) cleanDivergent++
+    }
+    if (dumpFile) {
+      const touching = instructions
+        .map((ins, i) => ({ ins, res: results[i]! }))
+        .filter(({ ins }) => {
+          const op = ins.op
+          const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+          if (address?.level === 'document') return true
+          if (address?.para && paraId(address.para) === id) return true
+          // An instruction that creates this § names its anchor, not the § itself.
+          if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return ins.payload.some((p) => p.id === id)
+          return false
+        })
+        .map(({ ins, res }) => ({
+          kind: ins.op.kind,
+          applied: res.applied,
+          reason: res.reason,
+          line: ins.line,
+          op: ins.op,
+          payload: ins.payload,
+        }))
+      const refusedLines = refused.filter((r) => /§+\s*(\d+[a-z]*)/.exec(r.line)?.[1] === id)
+      const history = (versions.get(label) ?? []).map((v) => ({ inkrafttreten: v.inkrafttreten, amendedBy: amendedBy(v) }))
+      appendFileSync(
+        dumpFile,
+        `${JSON.stringify({ bgbl: bgblNumber, law: kurztitel, label, id, verdict, refused: id !== undefined && refusedIds.has(id), before: beforeText, got, expected, beforeTree: beforeNode ?? null, afterTree: node, touching, refusedLines, afterVersion: matched.inkrafttreten, history, comparable, staged })}\n`,
+      )
     }
     const mark = { identisch: '✓', 'unverändert': '·', 'unvollständig': '~', abweichend: '✗' }[verdict]
     if (verdict === 'identisch') identical++
@@ -356,10 +418,10 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     // `abweichend` because the gate must not pass what it cannot check. For
     // the headline number that conflates two different facts: "checked and
     // wrong" and "too long to check". The gate stays strict; the report splits.
-    else if (beforeText !== null && !extraTokens(beforeText, got, expected).comparable) unverifiable++
+    else if (!comparable) unverifiable++
     else divergences.push({ label, got, expected, before: beforeText ?? '' })
     if (verbose) {
-      const what = verdict === 'identisch' ? `identisch (Fassung ab ${pair.after.inkrafttreten})` : verdict === 'unvollständig' ? 'unvollständig — nichts Eigenes erfunden' : verdict === 'unverändert' ? 'unverändert gelassen' : 'eigene Abweichung'
+      const what = verdict === 'identisch' ? `identisch (Fassung ab ${matched.inkrafttreten}${pair.afters.length > 1 ? `, ${pair.afters.length} Schnitte` : ''})` : staged ? `gestaffelt — ${truths.length} Schnitte, in keinem allein, in allen zusammen` : verdict === 'unvollständig' ? 'unvollständig — nichts Eigenes erfunden' : verdict === 'unverändert' ? 'unverändert gelassen' : comparable ? 'eigene Abweichung' : 'nicht prüfbar (Wortdiff zu groß)'
       console.log(`    ${mark}  ${label.padEnd(9)} ${what}`)
     }
   }

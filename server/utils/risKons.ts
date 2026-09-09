@@ -21,8 +21,15 @@ import { sameBgbl, type BgblCitation } from './lawTitles'
 export const RIS_KONS_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 const TIMEOUT_MS = 20_000
-/** A single law never has this many paragraph documents; more means the filter was ignored. */
-const IMPLAUSIBLE_HITS = 3_000
+/**
+ * More hits than this means the filter was ignored (the whole corpus is
+ * ~441.000 documents). It used to be 3.000, "more than any single law has" —
+ * the ASVG has 5.115 paragraph versions, and two of its Novellen dropped out
+ * of the harness with a phantom "RIS ignorierte den Filter" (2026-09-09).
+ * The per-document check below is what actually guards against an ignored
+ * filter; the number is only a fast fail for the pathological case.
+ */
+const IMPLAUSIBLE_HITS = 50_000
 
 export interface KonsParagraphRef {
   nor: string
@@ -189,6 +196,7 @@ export async function fetchAllVersions(gesetzesnummer: string): Promise<Map<stri
     for (const r of refs) {
       const p = refOf(r)
       if (!p) continue
+      if (p.gesetzesnummer && p.gesetzesnummer !== gesetzesnummer) throw new Error(`RIS ignorierte den Filter: Gesetzesnummer ${p.gesetzesnummer} statt ${gesetzesnummer}`)
       const list = out.get(p.label) ?? []
       list.push(p)
       out.set(p.label, list)
@@ -204,11 +212,26 @@ export async function fetchAllVersions(gesetzesnummer: string): Promise<Map<stri
  * The version a given amendment produced, and the version it replaced —
  * the exact pair a verification run needs. Returns null when this BGBl did
  * not touch the paragraph.
+ *
+ * `afters` lists *every* version this BGBl created, oldest first. A Novelle
+ * routinely stages its instructions — "19,4%" becomes "23%" from 2027 and
+ * "21%" from 2030 in one BGBl (Dienstgeberabgabegesetz § 1, BGBl. I Nr.
+ * 73/2026) — and RIS cuts one version per effective date. An engine that
+ * applies every instruction produces the end state, so scoring against the
+ * first cut alone called it wrong for writing what it was told to write; 5
+ * of 33 divergences in the 261-paragraph corpus were this. Scoring against
+ * the last cut alone fails the other way: RIS also cuts a version when an
+ * Absatz *expires*, and prints an editorial note in its place (LWA-G § 1,
+ * "Anm.: Abs. 2 mit Ablauf des 30.12.2029 außer Kraft getreten"). Each of
+ * the cuts is law text that exists, so a harness accepts a match with any
+ * of them (2026-09-09).
  */
-export function versionPairFor(versions: readonly KonsParagraphRef[], bgblNumber: string): { before: KonsParagraphRef | null; after: KonsParagraphRef } | null {
-  const index = versions.findIndex((v) => amendedBy(v) === bgblNumber)
-  if (index < 0) return null
-  return { before: versions[index - 1] ?? null, after: versions[index]! }
+export function versionPairFor(versions: readonly KonsParagraphRef[], bgblNumber: string): { before: KonsParagraphRef | null; after: KonsParagraphRef; afters: KonsParagraphRef[] } | null {
+  const first = versions.findIndex((v) => amendedBy(v) === bgblNumber)
+  if (first < 0) return null
+  let last = first
+  while (last + 1 < versions.length && amendedBy(versions[last + 1]!) === bgblNumber) last++
+  return { before: versions[first - 1] ?? null, after: versions[first]!, afters: versions.slice(first, last + 1) }
 }
 
 export interface KonsLawAtDate {

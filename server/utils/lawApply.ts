@@ -19,7 +19,7 @@
  */
 import { childById, makeNode, plainText, type LawNode, type NodeLevel } from './lawStructure'
 import { normalizeText, type LawUnit } from './lawText'
-import { parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
+import { expandRange, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
 
 export interface StandingLaw {
   /** Paragraphs in printed order; insert and append change this list */
@@ -61,21 +61,69 @@ const Z_LINE = /^(\d+[a-z]*)\.\s+/
 const LIT_LINE = /^([a-z]{1,2})\)\s+/
 
 /**
+ * One printed line of the quoted new text. A heading line is marked as such
+ * by the block it came from (`ueberschrift typ="para"`), because it cannot
+ * be told from text by looking at it: "§ 15. Dauer der Verleihung." is a
+ * heading with an inline § marker, "§ 30. Mit der Vollziehung …" is text.
+ */
+export type PayloadLine = string | { text: string; heading: boolean }
+
+function lineText(l: PayloadLine): string {
+  return typeof l === 'string' ? l : l.text
+}
+
+/**
  * The quoted text of an instruction, as printed lines → nodes. The draft
  * prints its new text with the same markers the law uses, which is what
  * makes an inserted Absatz addressable the moment it lands.
  */
-export function parsePayload(lines: readonly string[]): LawNode[] {
+export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
   const out: LawNode[] = []
   let para: LawNode | null = null
   let abs: LawNode | null = null
   let z: LawNode | null = null
   /** "§ 5 lautet samt Überschrift:" prints the new heading on its own line, above the §. */
   let pendingHeading: string | null = null
+
+  /**
+   * A heading followed by "(1) …" without a § line of its own — the § symbol
+   * sits inside the heading ("§ 15. Dauer der Verleihung.") or nowhere. The
+   * heading used to be dropped at the end because `out` was not empty, so
+   * "§ 15 lautet:" kept the old heading while RIS installed the new one
+   * (Privatschulgesetz §§ 1, 15, 27b, 2026-09-09). The heading opens an
+   * implicit § instead, and the content hangs off it.
+   */
+  const host = (): LawNode[] => {
+    if (para) return para.children
+    if (pendingHeading !== null) {
+      para = makeNode('para', '', '', '', pendingHeading)
+      pendingHeading = null
+      out.push(para)
+      return para.children
+    }
+    return out
+  }
+
   for (const raw of lines) {
-    const line = normalizeText(raw)
+    const line = normalizeText(lineText(raw))
     if (!line) continue
+    const isHeading = typeof raw !== 'string' && raw.heading
     const pm = PARA_LINE.exec(line)
+    if (pm && isHeading) {
+      // "„§ 27b. Übergangsbestimmungen …“" — marker and heading in one line.
+      // The heading keeps the marker as printed, because RIS BrKons prints
+      // it the same way in laws of this style and the texts must compare.
+      para = makeNode('para', pm[1]!, `§ ${pm[1]}.`, '', line)
+      pendingHeading = null
+      out.push(para)
+      abs = null
+      z = null
+      continue
+    }
+    if (isHeading) {
+      pendingHeading = line
+      continue
+    }
     if (pm) {
       para = makeNode('para', pm[1]!, `§ ${pm[1]}.`, '', pendingHeading)
       pendingHeading = null
@@ -92,8 +140,15 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
     if (am) {
       abs = makeNode('abs', am[1]!, `(${am[1]})`, line.slice(am[0].length))
       z = null
-      if (para) para.children.push(abs)
-      else out.push(abs)
+      host().push(abs)
+      // "(1) 1. …": an Absatz whose first Ziffer shares its line.
+      const nested = Z_LINE.exec(abs.text)
+      if (nested) {
+        z = makeNode('z', nested[1]!, `${nested[1]}.`, abs.text.slice(nested[0].length))
+        abs.text = ''
+        abs.children.push(z)
+        splitLit(z)
+      }
       continue
     }
     const lm = LIT_LINE.exec(line)
@@ -101,7 +156,7 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
       const lit = makeNode('lit', lm[1]!, `${lm[1]})`, line.slice(lm[0].length))
       if (z) z.children.push(lit)
       else if (abs) abs.children.push(lit)
-      else out.push(lit)
+      else host().push(lit)
       continue
     }
     const zm = Z_LINE.exec(line)
@@ -111,7 +166,10 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
       // and the harness scored the leaked number as invented law.
       z = makeNode('z', zm[1]!, `${zm[1]}.`, line.slice(zm[0].length))
       if (abs) abs.children.push(z)
-      else out.push(z)
+      else host().push(z)
+      // RIS prints a Ziffer and its first Litera as one symbol, "1. a)", so
+      // the "a)" leaked into the text (Luftfahrtgesetz § 44, 2026-09-09).
+      splitLit(z)
       continue
     }
     if (abs) {
@@ -123,12 +181,28 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
       // law the same way, so the two sides now render in the same order.
       if (abs.children.length) abs.children.push(makeNode('schluss', 'schluss', '', line))
       else abs.text = `${abs.text} ${line}`.trim()
-    } else if (pendingHeading === null) pendingHeading = line
-    else out.push(makeNode('abs', '', '', line))
+    } else if (pendingHeading === null && !para && out.length === 0) {
+      // The first bare line of a payload: a heading when a marked line
+      // follows, the text itself when the payload is one sentence (a § or an
+      // Absatz without inner numbering).
+      pendingHeading = line
+    } else {
+      abs = makeNode('abs', '', '', line)
+      host().push(abs)
+    }
   }
-  // A heading with nothing behind it is the payload of "Die Überschrift … lautet:".
+  // A lone bare line is the payload of "Die Überschrift … lautet:" or of a
+  // sentence-level instruction; a heading-only node carries it either way.
   if (pendingHeading !== null && out.length === 0) out.push(makeNode('para', '', '', '', pendingHeading))
   return out
+}
+
+/** "1. a) text" → the Ziffer's text starts with its first Litera. */
+function splitLit(z: LawNode): void {
+  const lm = LIT_LINE.exec(z.text)
+  if (!lm) return
+  z.children.push(makeNode('lit', lm[1]!, `${lm[1]})`, z.text.slice(lm[0].length)))
+  z.text = ''
 }
 
 /**
@@ -137,19 +211,22 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
  * \u0022(44) …\u0022". Leaving them in put a stray quote into the consolidated
  * text and made an otherwise perfect § 60 fail the harness (2026-09-08).
  */
-export function stripPayloadQuotes(lines: readonly string[]): string[] {
-  const out = lines.map((l) => normalizeText(l)).filter(Boolean)
+export function stripPayloadQuotes(lines: readonly PayloadLine[]): PayloadLine[] {
+  const out = lines.map((l) => (typeof l === 'string' ? normalizeText(l) : { ...l, text: normalizeText(l.text) })).filter((l) => lineText(l))
   if (out.length === 0) return out
+  const edit = (i: number, f: (t: string) => string): void => {
+    const l = out[i]!
+    out[i] = typeof l === 'string' ? f(l) : { ...l, text: f(l.text) }
+  }
   // The opening quote does not always come first. RIS keeps the paragraph
   // symbol in its own `gldsym`, so a replacement prints as `§ 69.` + `" (1)
   // Im Antrag …` and `payloadLine` joins them with the quote in the middle,
   // where an anchored strip cannot see it. Three §§ of the Luftfahrtgesetz
   // carried a stray `" (1)` into the consolidated text that way (2026-09-09).
-  out[0] = out[0]!.replace(/^((?:§+\s*\d+[a-z]*\.\s*)?)["\u00ab\u2039]\s*/, '$1')
-  const last = out.length - 1
+  edit(0, (t) => t.replace(/^((?:§+\s*\d+[a-z]*\.\s*)?)["\u00ab\u2039]\s*/, '$1'))
   // A closing quote is sometimes followed by the instruction's own full stop
   // ("… zu verlangen."."), which left `verlangen".` in the text.
-  out[last] = out[last]!.replace(/\s*["\u00bb\u203a]\s*\.?$/, '')
+  edit(out.length - 1, (t) => t.replace(/\s*["\u00bb\u203a]\s*\.?$/, ''))
   return out
 }
 
@@ -164,7 +241,8 @@ export function stripPayloadQuotes(lines: readonly string[]): string[] {
  * reads the same blocks from two sources that print markers differently, and
  * changing what counts as compared text there stops units from pairing.
  */
-function payloadLine(b: { kind: string; text: string; gld: string | null }): string {
+function payloadLine(b: { kind: string; text: string; gld: string | null }): PayloadLine {
+  if (b.kind === 'para_head') return { text: b.text, heading: true }
   if (b.gld) return `${b.gld} ${b.text}`
   if (b.kind !== 'ziff') return b.text
   return b.text.replace(/^(\d+[a-z]*\.|[a-z]\))(?=\S)/, '$1 ')
@@ -182,7 +260,7 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
   const instructions: Instruction[] = []
   const refused: { line: string; reason: string }[] = []
   for (const unit of units) {
-    const groups: { line: string; payload: string[] }[] = []
+    const groups: { line: string; payload: PayloadLine[] }[] = []
     for (const b of unit.blocks) {
       if (b.kind === 'novao') groups.push({ line: b.text, payload: [] })
       else if (groups.length) groups[groups.length - 1]!.payload.push(payloadLine(b))
@@ -190,7 +268,12 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
     let container: NovaoAddress | null = null
     for (const group of groups) {
       const parsed = parseInstruction(group.line, container)
-      if (parsed.ops.length === 0) {
+      // A compound line with one half unread is refused whole. Applying the
+      // half that parsed — "am Ende des zweiten Satzes der Punkt durch einen
+      // Beistrich ersetzt und es wird folgende Wendung angefügt" turned a
+      // full stop into a comma and stopped — publishes a sentence that ends
+      // in mid-air and reports success (Privatschulgesetz § 23, 2026-09-09).
+      if (parsed.ops.length === 0 || parsed.reason !== null) {
         refused.push({ line: group.line, reason: parsed.reason ?? 'nicht gelesen' })
         continue
       }
@@ -311,18 +394,96 @@ interface Slot {
 const textSlot = (node: LawNode): Slot => ({ read: () => node.text, write: (v) => { node.text = v } })
 const headingSlot = (node: LawNode): Slot => ({ read: () => node.heading ?? '', write: (v) => { node.heading = v } })
 
-/** The addressed sentence of a node, as a slot that writes back into the whole. */
-function sentenceSlot(node: LawNode, satz: string): Slot | null {
-  const parts = node.text.match(/[^.!?]+[.!?]+(?:\s|$)/g)
+/**
+ * Tokens a full stop does not end a sentence after. Legistic German is dense
+ * with them, and the earlier splitter (`[^.!?]+[.!?]+`) cut "§ 5 Abs. 2" into
+ * two sentences — so "erster Satz lautet" replaced a fragment and kept the
+ * rest, in 11 of 33 divergences of the 261-paragraph corpus (2026-09-09).
+ */
+const ABBREVIATIONS = new Set(
+  'abs nr z lit art bgbl bzw vgl gem dr mag usw ua iVm idf idgf zb hrsg bd ff dh etc mio mrd inkl exkl ca max min anm abl abk geb ggf sog isd isv ivm insb ivz jän jan feb mär apr jun jul aug sep sept okt nov dez st sp lgbl rgbl stgbl jgs celex unterabs ubs ziff'
+    .toLowerCase()
+    .split(' '),
+)
+/** After "1." these are ordinals, not sentence ends: "am 1. Jänner", "im 2. Abschnitt". */
+const ORDINAL_FOLLOWERS = /^(?:J[äa]nner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Satz|Halbsatz|Abschnitt|Hauptstück|Teil|Unterabschnitt|Kapitel|Stufe|Instanz|Klasse|Kategorie|Quartal|Halbjahr|Jahr|Lebensjahr|Schuljahr|Kalenderjahr|Semester|Absatz|Ziffer|Fall|Alternative|Variante|Tatbestand|Spiegelstrich|Anstrich|Untergliederung|Rate|Tranche|Runde|Wahlgang|Lesung|Auflage|Ausfertigung|Stock|Ebene)\b/
+
+/**
+ * Sentences of a node's text, or null when a boundary is not decidable.
+ *
+ * A period ends a sentence when the word before it is neither an
+ * abbreviation nor a bare number or single letter, and the text goes on with
+ * a capital, a quote or a §. A period after a number followed by a capital
+ * — "gemäß Z 3. Der Bundesminister" against "am 1. Jänner" — is decided by
+ * the following word where it is a month or an ordinal noun, and refused
+ * otherwise. Quotes are tracked so a full stop inside a quoted warning text
+ * ("… abhängig macht. Es wird …") does not count.
+ */
+export function splitSentences(text: string): string[] | null {
+  const t = text.trim()
+  if (!t) return null
+  const out: string[] = []
+  let start = 0
+  let quoteDepth = 0
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i]!
+    if (ch === '"') quoteDepth ^= 1
+    if (ch !== '.' && ch !== '!' && ch !== '?') continue
+    // Consume closing quotes and brackets that belong to the sentence.
+    let j = i + 1
+    let depthAfter = quoteDepth
+    while (j < t.length && /["')\]]/.test(t[j]!)) {
+      if (t[j] === '"') depthAfter ^= 1
+      j++
+    }
+    if (j < t.length && !/\s/.test(t[j]!)) continue
+    if (depthAfter === 1) continue
+    let k = j
+    while (k < t.length && /\s/.test(t[k]!)) k++
+    const rest = t.slice(k)
+    const wordBefore = /(\S+)$/.exec(t.slice(start, i))?.[1] ?? ''
+    const lower = wordBefore.replace(/^[("„'§]+/, '').toLowerCase()
+    if (ch === '.' && rest) {
+      if (ABBREVIATIONS.has(lower)) continue
+      if (/^\d+$/.test(lower) || /^[a-z]$/.test(lower) || /^[ivx]+$/.test(lower)) {
+        if (!/^[A-ZÄÖÜ"„§(]/.test(rest)) continue
+        if (ORDINAL_FOLLOWERS.test(rest)) continue
+        return null
+      }
+      if (/^[a-zäöüß]/.test(rest)) continue
+    }
+    out.push(t.slice(start, j).trim())
+    start = k
+    i = k - 1
+    quoteDepth = depthAfter
+  }
+  const tail = t.slice(start).trim()
+  if (tail) out.push(tail)
+  return out.length ? out : null
+}
+
+/**
+ * The sentences an address names, as one slot that writes back into the
+ * node. "einleitung" is the node's own text in front of its list and needs
+ * that list to exist; "schluss" is the Schlussteil behind it. `count` widens
+ * an ordinal to a run ("die ersten beiden Sätze").
+ */
+function sentenceSlot(node: LawNode, satz: string, count = 1): Slot | null {
+  if (satz === 'einleitung') return node.children.length ? textSlot(node) : null
+  if (satz === 'schluss') {
+    const schluss = [...node.children].reverse().find((c) => c.level === 'schluss')
+    return schluss ? textSlot(schluss) : null
+  }
+  const parts = splitSentences(node.text)
   if (!parts) return null
-  const index = satz === 'letzter' ? parts.length - 1 : satz === 'vorletzter' ? parts.length - 2 : (ORDINALS[satz] ?? -1)
-  if (index < 0 || index >= parts.length) return null
+  const n = Math.max(1, count)
+  const first = satz === 'letzter' ? parts.length - n : satz === 'vorletzter' ? parts.length - 2 : (ORDINALS[satz] ?? -1)
+  if (first < 0 || first + n > parts.length) return null
   return {
-    read: () => parts[index]!,
+    read: () => parts.slice(first, first + n).join(' '),
     write: (v) => {
-      const next = [...parts]
-      next[index] = v === '' ? '' : v.endsWith(' ') ? v : `${v} `
-      node.text = next.join('').replace(/\s{2,}/g, ' ').trim()
+      const next = [...parts.slice(0, first), ...(v.trim() ? [v.trim()] : []), ...parts.slice(first + n)]
+      node.text = next.join(' ').replace(/\s{2,}/g, ' ').trim()
     },
   }
 }
@@ -338,7 +499,7 @@ function phraseSlots(law: StandingLaw, a: NovaoAddress): Slot[] | null {
   const slots: Slot[] = []
   for (const node of scope) {
     if (a.satz) {
-      const only = sentenceSlot(node, a.satz)
+      const only = sentenceSlot(node, a.satz, a.satzCount)
       if (!only) return null
       slots.push(only)
       continue
@@ -375,16 +536,6 @@ function uniqueSlot(slots: readonly Slot[], needle: string): { slot: Slot } | { 
 
 const ORDINALS: Record<string, number> = {
   erster: 0, zweiter: 1, dritter: 2, vierter: 3, fünfter: 4, sechster: 5, siebenter: 6, siebter: 6, achter: 7, neunter: 8, zehnter: 9,
-}
-
-/** Sentence-level addressing ("§ 5 Abs. 1 zweiter Satz"), on the node's own text. */
-function replaceSentence(node: LawNode, satz: string, replacement: string): string | null {
-  const parts = node.text.match(/[^.!?]+[.!?]+(?:\s|$)/g)
-  if (!parts) return null
-  const index = satz === 'letzter' ? parts.length - 1 : satz === 'vorletzter' ? parts.length - 2 : (ORDINALS[satz] ?? -1)
-  if (index < 0 || index >= parts.length) return null
-  parts[index] = replacement.endsWith(' ') ? replacement : `${replacement} `
-  return parts.join('').trim()
 }
 
 function levelOf(child: string): NodeLevel | null {
@@ -442,6 +593,12 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         // designation, because there "§ 5 lautet:" renumbers nothing.
         if (!single && blocks.length !== outgoing.length) {
           if (blocks.length === 0) return 'Ersetzung ohne neuen Text'
+          // Only "durch folgende §§ 7 bis 14 ersetzt" may change the count. A
+          // plain "§ 30 lautet:" with two blocks means the payload picked up
+          // text that is not § 30's — a stale heading of the § before it
+          // inserted a § 27b consisting of that heading alone (Privatschul-
+          // gesetz, 2026-09-09).
+          if (!op.run) return `${outgoing.length} Ziel, ${blocks.length} Textblöcke`
           return spliceRun(law.paragraphs, outgoing, blocks, 'para')
         }
         if (single) {
@@ -451,17 +608,23 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           // the designation stays the one the standing law already carries.
           const para = outgoing[0]!
           const at = law.paragraphs.indexOf(para)
-          const heading = op.withHeading ? (payload.find((p) => p.heading)?.heading ?? para.heading) : para.heading
-          law.paragraphs.splice(at, 1, { level: 'para' as const, id: para.id, marker: para.marker, heading, text: '', children: payload })
+          if (op.withHeading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
+          law.paragraphs.splice(at, 1, { level: 'para' as const, id: para.id, marker: para.marker, heading: para.heading, text: '', children: payload })
           return null
         }
         for (const [i, para] of outgoing.entries()) {
           // The payload of a § replacement is the § itself; a heading line in
           // front of it is that §'s new Überschrift, not a block of its own.
+          // A printed heading is the new heading whether or not the line
+          // says "samt Überschrift" — RIS installs it either way
+          // (Privatschulgesetz § 15, 2026-09-09); "samt Überschrift" without
+          // a printed heading is an instruction the payload does not fulfil.
           const replacement = blocks[i]
           if (!replacement) return 'Ersetzung ohne neuen Text'
+          if (op.withHeading && !replacement.heading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
+          if (!replacement.heading && replacement.children.length === 0 && !replacement.text) return 'Neufassung ohne Text'
           const at = law.paragraphs.indexOf(para)
-          law.paragraphs.splice(at, 1, { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: op.withHeading ? replacement.heading : para.heading })
+          law.paragraphs.splice(at, 1, { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: replacement.heading ?? para.heading })
         }
         return null
       }
@@ -472,6 +635,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // Sätze" replaces text inside a node, not the node.
       if (!op.target.satz && payload.length > 0 && ids.length !== payload.length) {
         const level = op.target.lit ? 'lit' : op.target.z ? 'z' : 'abs'
+        if (!op.run) return `${ids.length} Ziel(e), ${payload.length} Textblöcke`
         if (payload.some((p) => p.level !== level)) return `${ids.length} Ziele, aber ${payload.length} Textblöcke`
         const outgoing: LawNode[] = []
         for (const id of ids) {
@@ -489,9 +653,11 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         const block = payload[i] ?? payload[0]
         if (!block) return 'Ersetzung ohne neuen Text'
         if (op.target.satz) {
-          const next = replaceSentence(node, op.target.satz, plainText(block))
-          if (next === null) return `Satz ${op.target.satz} nicht auffindbar`
-          node.text = next
+          // The whole payload replaces the addressed sentence(s): "der zweite
+          // Satz durch folgende Sätze ersetzt" installs several at once.
+          const slot = sentenceSlot(node, op.target.satz, op.target.satzCount)
+          if (!slot) return `Satz ${op.target.satz} nicht auffindbar`
+          slot.write(payload.map((p) => plainText(p)).join(' '))
         } else {
           node.text = block.text || plainText(block)
           node.children = block.children
@@ -508,7 +674,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (op.target.satz) {
         const node = resolveTarget(law, op.target)
         if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-        const only = sentenceSlot(node, op.target.satz)
+        const only = sentenceSlot(node, op.target.satz, op.target.satzCount)
         if (!only) return `Satz ${op.target.satz} nicht auffindbar`
         only.write('')
         return null
@@ -539,7 +705,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (op.child === 'satz') {
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Anfügung ohne Text'
-        host.text = `${host.text} ${added}`.replace(/\s+/g, ' ').trim()
+        // "Dem Abs. 2 wird folgender Satz angefügt" puts the sentence at the
+        // end of the Absatz. When the Absatz carries a list, its end is
+        // behind the list — the Schlussteil — not the text in front of it.
+        const schluss = [...host.children].reverse().find((c) => c.level === 'schluss')
+        if (schluss) schluss.text = `${schluss.text} ${added}`.replace(/\s+/g, ' ').trim()
+        else if (host.children.length) host.children.push(makeNode('schluss', 'schluss', '', added))
+        else host.text = `${host.text} ${added}`.replace(/\s+/g, ' ').trim()
         return null
       }
       const level = levelOf(op.child)
@@ -557,9 +729,25 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (level === 'para') {
         const anchor = findParagraph(law, op.anchor)
         if (!anchor) return `Anker nicht im geltenden Text: ${op.anchor.para}`
-        for (const p of payload) if (p.id && law.paragraphs.some((x) => x.id === p.id)) return `§ ${p.id} existiert bereits`
+        // A payload without a § line of its own is the body of one new §:
+        // "(1) …" straight after the instruction. Inserting those Absätze as
+        // §§ gave them ids "1", "2", … and either collided ("§ 1 existiert
+        // bereits", Privatschulgesetz § 27b) or, worse, would have shadowed
+        // real paragraphs. The instruction announced the § ("folgender
+        // § 27b"), and only a one-to-one announcement is taken.
+        let blocks = payload
+        if (!payload.every((p) => p.level === 'para')) {
+          if (payload.some((p) => p.level === 'para')) return 'Neuer Paragraph und lose Absätze gemischt'
+          blocks = [{ ...makeNode('para', '', '', ''), children: payload }]
+        }
+        const unnamed = blocks.filter((p) => !p.id)
+        if (unnamed.length > 0) {
+          if (unnamed.length !== blocks.length || op.childIds.length !== blocks.length) return 'Neuer Paragraph ohne eigene Bezeichnung'
+          blocks = blocks.map((p, i) => ({ ...p, id: op.childIds[i]!, marker: `§ ${op.childIds[i]}.` }))
+        }
+        for (const p of blocks) if (law.paragraphs.some((x) => x.id === p.id)) return `§ ${p.id} existiert bereits`
         const at = law.paragraphs.indexOf(anchor)
-        law.paragraphs.splice(op.where === 'after' ? at + 1 : at, 0, ...payload.map((p) => ({ ...p, level: 'para' as const })))
+        law.paragraphs.splice(op.where === 'after' ? at + 1 : at, 0, ...blocks.map((p) => ({ ...p, level: 'para' as const })))
         return null
       }
       // A sub-unit insert names its anchor at the same level inside the §.
@@ -574,15 +762,8 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       return null
     }
 
-    case 'renumber': {
-      const node = op.target.level === 'para' ? findParagraph(law, op.target) : resolveTarget(law, op.target)
-      if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-      const id = idOf(op.to) ?? op.to.replace(/[^\w]/g, '')
-      if (!id) return 'Neue Bezeichnung nicht lesbar'
-      node.id = id
-      node.marker = op.to
-      return null
-    }
+    case 'renumber':
+      return renumberBatch(law, [{ op, payload }])
 
     case 'replacePhrase': {
       const slots = phraseSlots(law, op.target)
@@ -600,7 +781,9 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       }
       const found = uniqueSlot(slots, op.from)
       if ('error' in found) return found.error
-      found.slot.write(found.slot.read().replace(op.from, op.to))
+      const current = found.slot.read()
+      const at = current.indexOf(op.from)
+      found.slot.write(joinPhrase(current.slice(0, at), op.to, current.slice(at + op.from.length)))
       return null
     }
 
@@ -613,8 +796,8 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       const at = current.indexOf(op.anchor)
       found.slot.write(
         op.where === 'after'
-          ? `${current.slice(0, at + op.anchor.length)} ${op.text}${current.slice(at + op.anchor.length)}`.replace(/\s+/g, ' ')
-          : `${current.slice(0, at)}${op.text} ${current.slice(at)}`.replace(/\s+/g, ' '),
+          ? joinPhrase(current.slice(0, at + op.anchor.length), op.text, current.slice(at + op.anchor.length))
+          : joinPhrase(current.slice(0, at), op.text, current.slice(at)),
       )
       return null
     }
@@ -628,6 +811,50 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       return null
     }
   }
+}
+
+/**
+ * One or several renumberings applied at once. Every target must exist, the
+ * new designations must be as many as the units they name, and no new id may
+ * collide with a unit that is *not* moving — units that are moving in the
+ * same batch may swap freely.
+ */
+function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' | 'payload'>[]): string | null {
+  const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[] }[] = []
+  for (const { op } of batch) {
+    if (op.kind !== 'renumber') return 'keine Umbenennung'
+    const ids = [deepestId(op.target), ...op.target.siblings]
+    const nodes: LawNode[] = []
+    for (const id of ids) {
+      const node = op.target.level === 'para' ? (law.paragraphs.find((p) => p.id === id) ?? null) : resolveTarget(law, op.target, id)
+      if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      nodes.push(node)
+    }
+    const first = idOf(op.to) ?? op.to.replace(/[^\w]/g, '')
+    if (!first) return 'Neue Bezeichnung nicht lesbar'
+    // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“": the
+    // new run must be exactly as long as the old one, or nothing moves.
+    let newIds = [first]
+    if (op.toLast) {
+      const range = expandRange(first, idOf(op.toLast) ?? '')
+      if (!range) return `Zielbezeichnungen ${op.to} bis ${op.toLast} nicht aufzählbar`
+      newIds = [first, ...range]
+    }
+    if (newIds.length !== nodes.length) return `${nodes.length} Einheiten, ${newIds.length} neue Bezeichnungen`
+    const siblings = op.target.level === 'para' ? law.paragraphs : (parentOf(law, nodes[0]!)?.children ?? [])
+    nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings }))
+  }
+  const moving = new Set(moves.map((m) => m.node))
+  for (const m of moves) {
+    const clash = m.siblings.find((n) => !moving.has(n) && n.level === m.level && n.id === m.id)
+    if (clash) return `Bezeichnung ${m.id} existiert bereits`
+  }
+  if (new Set(moves.map((m) => `${m.level}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
+  for (const m of moves) {
+    m.node.id = m.id
+    m.node.marker = m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
+  }
+  return null
 }
 
 /**
@@ -687,6 +914,27 @@ function parentOf(law: StandingLaw, node: LawNode): LawNode | null {
   return null
 }
 
+/**
+ * `left` + `text` + `right` with the whitespace of the two junctions decided
+ * here, and nothing else touched. An operand is quoted with its own leading
+ * space — "die Wort- und Zeichenfolge „ , 10c, 10f“" — and inserting it
+ * after a word left "Erzeugnissen , die" where the law reads "Erzeugnissen,
+ * die"; four §§ of the Tabakgesetz and Luftfahrtgesetz diverged on nothing
+ * but that space, and "TierÄG ,BGBl." needs the space on the other side
+ * (2026-09-09). The first attempt normalised the whole Absatz, and undid a
+ * space RIS itself prints in the standing text ("gegenüberzustellen ,",
+ * ORF-G § 10a) — so only the seams are edited. Digits stay: "27,5 vH".
+ */
+export function joinPhrase(left: string, text: string, right: string): string {
+  const l = left.replace(/\s+$/, '')
+  const r = right.replace(/^\s+/, '')
+  let t = text.trim().replace(/^([,;])(?=[^\s\d])/, '$1 ')
+  if (!t) return `${l} ${r}`.replace(/\s+([,.;:])(?=\s|$)/g, '$1').trim()
+  const sepLeft = !l || /^[,.;:]/.test(t) || /[(„"]$/.test(l) ? '' : ' '
+  const sepRight = !r || /^[,.;:)]/.test(r) || /[(„"]$/.test(t) ? '' : ' '
+  return `${l}${sepLeft}${t}${sepRight}${r}`.trim()
+}
+
 /** Deep copy, so a refused run leaves the standing law untouched. */
 export function cloneLaw(law: StandingLaw): StandingLaw {
   const clone = (n: LawNode): LawNode => ({ ...n, children: n.children.map(clone) })
@@ -702,18 +950,50 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
   const law = cloneLaw(input)
   const results: ApplyResult[] = []
   const unresolved = new Set<string>()
-  for (const instruction of instructions) {
+  /**
+   * Where a renumbering has been carried out so far: inside which §§, and
+   * whether §§ themselves were moved (which changes every later § address).
+   */
+  const renumberedIn = new Set<string>()
+  let paragraphsRenumbered = false
+  const extra: ApplyResult[] = []
+  for (let i = 0; i < instructions.length; i++) {
+    const instruction = instructions[i]!
     const { op, line } = instruction
     const target = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
     const para = target?.para ?? null
     let reason: string | null
     try {
-      reason = applyOne(law, instruction)
+      // "§ 107 Z 6 (neu) lautet:" addresses the numbering *after* an earlier
+      // renumbering. If that renumbering was not applied — refused because
+      // the standing § 107 has no Z 9, or not read — the address silently
+      // lands on the old Z 6 (LMSVG, 2026-09-09). A renumbering elsewhere in
+      // the Novelle does not license it; moved §§ do, for every § address.
+      const renumbered = paragraphsRenumbered || (para !== null && renumberedIn.has(para))
+      if (target && /\(neu\)/i.test(target.raw) && !renumbered) reason = '„(neu)" ohne vorangehende Umbenennung'
+      else if (op.kind === 'renumber') {
+        // Renumberings printed as one line happen at once: "Die §§ 5 bis 7
+        // erhalten die Bezeichnungen § 7 bis § 9; die §§ 8 bis 13 erhalten
+        // die Bezeichnungen § 15 bis § 20" — applied one after the other, the
+        // first collides with the § 8 the second is about to move
+        // (IVS-Gesetz, 2026-09-09).
+        const batch = [instruction]
+        while (i + 1 < instructions.length && instructions[i + 1]!.op.kind === 'renumber' && instructions[i + 1]!.line === line) batch.push(instructions[++i]!)
+        reason = renumberBatch(law, batch)
+        // One result per instruction, in instruction order — callers zip the two.
+        for (const b of batch.slice(1)) extra.push({ line: b.line, kind: 'renumber', applied: reason === null, reason, para: 'target' in b.op ? b.op.target.para : null })
+      } else reason = applyOne(law, instruction)
     } catch (err) {
       reason = `Fehler beim Anwenden: ${String(err)}`
     }
-    results.push({ line, kind: op.kind, applied: reason === null, reason, para })
+    if (reason === null && op.kind === 'renumber') {
+      if (op.target.level === 'para') paragraphsRenumbered = true
+      else if (para) renumberedIn.add(para)
+    }
+    results.push({ line, kind: op.kind, applied: reason === null, reason, para }, ...extra)
     if (reason !== null && para) unresolved.add(para)
+    for (const r of extra) if (r.reason !== null && r.para) unresolved.add(r.para)
+    extra.length = 0
   }
   return { law, results, unresolved }
 }

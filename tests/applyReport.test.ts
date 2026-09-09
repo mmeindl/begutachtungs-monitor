@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { extraTokens, isSubsetOfRis, verdictFor } from '../server/utils/applyReport'
+import { extraTokens, isSubsetOfRis, verdictFor, verdictForTrees } from '../server/utils/applyReport'
+import type { LawNode } from '../server/utils/lawStructure'
 
 const before = 'Zuständig ist die Behörde am Sitz der Partei.'
 
@@ -57,5 +58,33 @@ describe('verdictFor on a paragraph the Novelle creates', () => {
 
   it('still calls invented text divergent', () => {
     expect(verdictFor(null, 'Der Bund traegt saemtliche Kosten.', 'Der Bund traegt die Kosten.')).toBe('abweichend')
+  })
+})
+
+describe('verdictForTrees', () => {
+  const node = (text: string, children: string[] = []): LawNode => ({
+    level: 'para',
+    id: '1',
+    marker: '§ 1.',
+    heading: null,
+    text,
+    children: children.map((t, i) => ({ level: 'abs' as const, id: String(i + 1), marker: `(${i + 1})`, heading: null, text: t, children: [] })),
+  })
+  const long = (word: string) => Array.from({ length: 1700 }, () => word).join(' ')
+
+  it('agrees with the text verdict where the diff is computable', () => {
+    expect(verdictForTrees(node('', ['alt']), node('', ['neu']), node('', ['neu']))).toBe('identisch')
+    expect(verdictForTrees(node('', ['alt']), node('', ['falsch']), node('', ['neu']))).toBe('abweichend')
+  })
+
+  it('falls back to the Absätze when the whole § is too long to diff', () => {
+    // Two long Absätze: the § as a whole exceeds the DP grid, each Absatz does not.
+    const before = node('', [long('a'), long('b')])
+    const ris = node('', [long('a'), long('b'), 'Neu.'])
+    expect(verdictForTrees(before, node('', [long('a'), long('b'), 'Neu.']), ris)).toBe('identisch')
+    expect(verdictForTrees(before, node('', [long('a'), long('b')]), ris)).toBe('unverändert')
+    expect(verdictForTrees(before, node('', [long('a'), long('b'), 'Falsch.']), ris)).toBe('abweichend')
+    // An Absatz the engine has and RIS does not is invented law.
+    expect(verdictForTrees(before, node('', [long('a'), long('b'), 'Neu.', 'Extra.']), ris)).toBe('abweichend')
   })
 })
