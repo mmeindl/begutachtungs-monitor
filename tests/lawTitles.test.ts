@@ -170,6 +170,18 @@ describe('draftArticles', () => {
     expect(first!.title).toBe('Änderung des Verfassungsgerichtshofgesetzes 1953')
   })
 
+  // A package may number its Artikel in Roman numerals. Reading only Arabic
+  // ones filed those headings as section titles, so the draft appeared to
+  // have no Artikel at all — and an annex divided into Artikel that the draft
+  // does not know is refused, which is the check indicting the draft parser.
+  it('reads Roman-numbered Artikel', () => {
+    const xml = doc(
+      article('Artikel I', 'Änderung des Aktiengesetzes', 'Das Aktiengesetz, BGBl. Nr. 98/1965, wird wie folgt geändert:', ['§ 1 lautet:']) +
+      article('Artikel II', 'Änderung des Bankwesengesetzes', 'Das BWG, BGBl. Nr. 532/1993, wird wie folgt geändert:', ['§ 2 lautet:']),
+    )
+    expect(draftArticles(parseRisXml(xml)).map((a) => a.numeral)).toEqual(['I', 'II'])
+  })
+
   it('gives a draft without Artikel one entry, so callers see one shape', () => {
     const xml = doc(
       `<ueberschrift typ="titel">Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird</ueberschrift>` +
