@@ -341,6 +341,11 @@ function risText(inner: string): string {
 /** RIS Begut main-document XML → flat block list, same kinds as the Parliament HTML parser. */
 export function parseRisXml(xml: string): TextBlock[] {
   const body = xml.replace(/<kzinhalt[\s\S]*?<\/kzinhalt>/g, '').replace(/<layoutdaten[\s\S]*?<\/layoutdaten>/g, '')
+  // Blocks inside a table keep their kind (the ME→RV comparison reads cell
+  // text like any other) but carry a `table:` prefix in `cls`, so the
+  // amendment engine can refuse a payload that is a table.
+  const tables = [...body.matchAll(/<table\b[\s\S]*?<\/table>/g)].map((t) => [t.index!, t.index! + t[0].length] as const)
+  const inTable = (at: number): boolean => tables.some(([from, to]) => at >= from && at < to)
   const blocks: TextBlock[] = []
   for (const m of body.matchAll(RIS_BLOCK_RE)) {
     const tag = m[1]!
@@ -367,7 +372,7 @@ export function parseRisXml(xml: string): TextBlock[] {
     } else {
       kind = 'toc'
     }
-    blocks.push({ kind, cls: `${tag}/${typ}`, text, gld: gld || null })
+    blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null })
   }
   return blocks
 }

@@ -90,6 +90,12 @@ function text(inner: string): string {
 export function parseKonsParagraph(xml: string): LawNode | null {
   let body = xml
   for (const re of STRIP) body = body.replace(re, '')
+  // A table has no place in the tree (§ → Abs → Z → lit); its cells would
+  // be read as Absätze in document order and any instruction on the § would
+  // edit a text that is not the law's. Not representable, so not loaded —
+  // every instruction on such a § is then refused as "nicht im geltenden
+  // Text" (NEHG §§ 24, 26, 27, BGBl. I Nr. 60/2024, 2026-09-09).
+  if (/<table\b/.test(body)) return null
 
   const paraId = /<absatz[^>]*ct="artikel_anlage"[^>]*>([\s\S]*?)<\/absatz>/.exec(body)
   const idText = paraId ? text(paraId[1]!) : ''
