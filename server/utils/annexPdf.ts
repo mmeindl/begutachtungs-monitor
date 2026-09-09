@@ -19,8 +19,10 @@
  * elements, so a row has to be inferred — and the paragraph marker is the only
  * boundary the layout guarantees.
  */
+import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
 import { diffTokens, isEditorialChange } from './lawDiff'
 import { normalizeText } from './lawText'
+import type { DraftArticle } from './lawTitles'
 import { classify, ELIDED_RE, HEADER_CURRENT, HEADER_PROPOSED, type ComparisonRow } from './textComparison'
 
 /** One positioned text run, in PDF user space (origin bottom-left). */
@@ -120,18 +122,10 @@ const TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
  * provisions (2026-09-09). The marker itself is group 1, without the prefix.
  */
 const UNIT_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*\d+[a-z]*\.|Art(?:\.|ikel)\s*\d+[a-z]*(?=\s)|Anlage\s+[\dIVXL]+[a-z]?|Anhang\s+[\dIVXL]+[a-z]?)/
-/**
- * A law boundary inside a package: "Artikel 3", "Artikel 3 (Änderung des …)",
- * "Artikel VI". Three things this must *not* match, all observed:
- * "Art. 31 EUStA-VO" is a citation, "Artikel 10. (1) Bundessache ist …" is a
- * *provision* of a law that is itself organised in Artikel (B-VG), and
- * "Artikel 29b der Bilanz-Richtlinie" is a citation whose title starts with an
- * article. Hence: the full word, no trailing period, and a title that does not
- * open with a genitive article (2026-09-09).
- */
-const LAW_BOUNDARY_RE = /^Artikel\s+(X?\d+[a-z]?|[IVXL]+)(?:\s+(?!der\b|des\b|Abs\.)(.+))?$/
-/** "Änderung des Aktiengesetzes" — the law's name, printed under its Artikel line. */
-const LAW_TITLE_RE = /^(?:Änderung(?:en)?\s+(?:des|der)\b|Bundesgesetz,|Aufhebung\s+(?:des|der)\b)/i
+/** "Artikel 3" with nothing else on the line. */
+const BARE_ARTICLE_RE = /^Artikel\s+(?:X?\d+[a-z]?|[IVXL]+)$/
+/** A qualifier that stands where the law's name would, and is not one. */
+const QUALIFIER_RE = /^\((?:Verfassungs|Grundsatz)bestimmung(?:en)?\)$/i
 
 /**
  * A PDF stores no spaces between text runs — it moves the cursor instead. So
@@ -317,13 +311,14 @@ function idOfMarker(gld: string): string | null {
   return `${kind}:${number}`
 }
 
-function rowOf(gld: string | null, current: string, proposed: string, context: string | null = null): ComparisonRow | null {
+function rowOf(law: string | null, gld: string | null, current: string, proposed: string, context: string | null = null): ComparisonRow | null {
   if (!current && !proposed) return null
   const elided = ELIDED_RE.test(current) && ELIDED_RE.test(proposed)
   const change = classify(current, proposed)
   const segments = change === 'changed' && !elided ? diffTokens(current, proposed).segments : null
   return {
     kind: 'pair',
+    law,
     heading: context,
     gld,
     current,
@@ -340,47 +335,140 @@ function rowOf(gld: string | null, current: string, proposed: string, context: s
 }
 
 /**
+ * The text of a line that is a heading by construction, or null.
+ *
+ * Two structural facts do the work, and neither needs a font or a font size —
+ * 30 of the real boundary headings are set at body size, so type is evidence
+ * and not a test. A run that **crosses the gutter** cannot belong to either
+ * column. A line that **did not reach the column edge** did not wrap, and a
+ * heading never wraps while body text almost always does. Without the wrap
+ * test a mirrored line of running text that happens to start "Artikel 8 EMRK
+ * garantiert …" reads as a law boundary.
+ */
+function headingText(line: AnnexLine): string | null {
+  if (line.spanning) return line.spanning
+  if (line.leftWrapped || line.rightWrapped) return null
+  if (line.left && line.left === line.right) return line.left
+  if (line.left && !line.right) return line.left
+  if (line.right && !line.left) return line.right
+  return null
+}
+
+/** What a line does in the document, decided before any of them is read as text. */
+type Role =
+  | { role: 'candidate'; at: number }
+  | { role: 'title'; at: number }
+  | { role: 'heading' }
+
+/**
+ * The lines that might open a law, with the title that belongs to each.
+ *
+ * The law's name sits on the line *below* its Artikel number, so a candidate
+ * reaches forward for it — past "(Verfassungsbestimmung)", which stands where
+ * the name would but is a qualifier, and stopping at anything that opens a
+ * provision.
+ */
+function candidateLines(lines: readonly AnnexLine[]): { candidates: BoundaryCandidate[]; roles: Map<number, Role> } {
+  const candidates: BoundaryCandidate[] = []
+  const roles = new Map<number, Role>()
+
+  for (const [i, line] of lines.entries()) {
+    if (roles.has(i)) continue
+    const text = headingText(line)
+    if (text === null) continue
+    const candidate = candidateOf(text)
+    if (!candidate) {
+      if (line.spanning) roles.set(i, { role: 'heading' })
+      continue
+    }
+    // A one-sided line is the ordinary shape of an inserted or repealed
+    // provision, not of a heading. Only the bare "Artikel 3" is taken from
+    // one — an annex that leaves the other cell empty at a boundary does
+    // print it bare (2026-09-09).
+    const oneSided = !line.spanning && line.left !== line.right
+    if (oneSided && !BARE_ARTICLE_RE.test(text)) continue
+
+    const at = candidates.length
+    if (candidate.numeral !== null && !candidate.title) {
+      for (let j = i + 1; j < lines.length; j++) {
+        const next = headingText(lines[j]!)
+        if (next === null) break
+        if (QUALIFIER_RE.test(next)) {
+          roles.set(j, { role: 'title', at })
+          continue
+        }
+        if (/^[§(]/.test(next) || candidateOf(next)?.numeral) break
+        candidate.title = next
+        roles.set(j, { role: 'title', at })
+        break
+      }
+    }
+    candidates.push(candidate)
+    roles.set(i, { role: 'candidate', at })
+  }
+  return { candidates, roles }
+}
+
+export interface AnnexParse {
+  rows: ComparisonRow[]
+  /**
+   * Why the package's laws could not be told apart, in words fit to show a
+   * reader; null when they could. The rows are still worth showing — they
+   * just carry no law of their own.
+   */
+  refusal: string | null
+}
+
+/**
  * The annex PDF's pages → the same rows the XML path produces.
  *
  * Rows are cut at the paragraph designation: a PDF carries no row elements,
  * and the provision is the only boundary the two columns are guaranteed to
  * share. That is coarser than the XML path's cell pairs, and aligned on
  * something the layout actually promises.
+ *
+ * `articles` is the draft's own Artikel list (`draftArticles`). It is not
+ * optional in substance: without it every heading that *looks* like a law
+ * boundary would have to be believed, and the annex prints four different
+ * things in that shape. Passing an empty list says "no draft to check
+ * against", and the annex is then read as one undivided law.
  */
-export function parseAnnexPdf(pages: readonly AnnexPage[]): ComparisonRow[] {
+export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly DraftArticle[] = []): AnnexParse {
   const rows: ComparisonRow[] = []
   const boundary = columnBoundary(pages)
   const lines = pages.flatMap((page) => linesFromPage(page, boundary)).filter((line) => !isChrome(line))
 
-  // An Artikel heading spans both columns and starts a new law inside a
-  // package. Everything between two of them is one law's comparison, parsed
-  // per column and joined on the designation.
-  const sections: { heading: string | null; lines: AnnexLine[] }[] = [{ heading: null, lines: [] }]
+  const { candidates, roles } = candidateLines(lines)
+  const resolution = resolveBoundaries(candidates, articles)
+
+  const sections: { article: DraftArticle | null; opened: boolean; lines: AnnexLine[] }[] = [
+    { article: resolution.whole, opened: false, lines: [] },
+  ]
   /** Context headings waiting for the provision they stand over. */
   let pendingHeading: string[] = []
   const contextFor = new Map<AnnexLine, string>()
-  for (const line of lines) {
-    // Two different things, and conflating them cost five tests. A run that
-    // genuinely *crosses* the column boundary is a heading. Text that merely
-    // reads the same in both columns is the ordinary case for a provision the
-    // draft leaves unchanged — treating that as a heading swallowed the law.
-    const crossing = line.spanning
-    const mirrored = line.left && line.left === line.right ? line.left : null
-    const section = sections[sections.length - 1]!
 
-    // A law boundary is printed either way: spanning, or repeated in each cell.
-    const boundary = [crossing, mirrored].find((t) => t && LAW_BOUNDARY_RE.test(t))
-    if (boundary) {
-      sections.push({ heading: boundary, lines: [] })
+  for (const [i, line] of lines.entries()) {
+    const role = roles.get(i)
+    if (role?.role === 'candidate') {
+      const article = resolution.accepted.get(role.at)
+      if (article) {
+        sections.push({ article, opened: true, lines: [] })
+        continue
+      }
+      // A candidate the draft does not confirm is an internal heading — a
+      // Roman division of one law, or a provision of a law that is itself
+      // organised in Artikel. It stands over the rows below it.
+      pendingHeading.push(candidates[role.at]!.text)
       continue
     }
-    // The law's name sits on the line below its Artikel number and completes it.
-    const title = [crossing, mirrored].find((t) => t && LAW_TITLE_RE.test(t))
-    if (title && section.heading && section.lines.length === 0) {
-      section.heading = `${section.heading} — ${title}`
+    // The title line of a candidate: part of the heading when the candidate
+    // opened a law, context for the rows below when it did not.
+    if (role?.role === 'title') {
+      if (!resolution.accepted.has(role.at)) pendingHeading.push(headingText(line) ?? '')
       continue
     }
-    // Every *other* heading across both columns — Abschnitt, Hauptstück, a
+    // Every other heading across both columns — Abschnitt, Hauptstück, a
     // heading over a group of §§ — is context for the provision beneath it,
     // not a group of its own. Emitting one row each turned 109 annexes into
     // 2.154 "Artikel" rows where there are some 400 boundaries.
@@ -388,22 +476,22 @@ export function parseAnnexPdf(pages: readonly AnnexPage[]): ComparisonRow[] {
     // It goes into the row's `heading`, not into its text. Written inline it
     // was identical on both sides and so harmless to the diff, but it put
     // words into the provision that the standing law files above it — every
-    // such § then failed the check against RIS through no fault of the parse
-    // (2026-09-09).
-    if (crossing) {
-      pendingHeading.push(crossing)
+    // such § then failed the check against RIS through no fault of the parse.
+    if (role?.role === 'heading') {
+      pendingHeading.push(headingText(line) ?? '')
       continue
     }
     if (pendingHeading.length > 0) {
-      contextFor.set(line, pendingHeading.join(' '))
+      contextFor.set(line, pendingHeading.filter(Boolean).join(' '))
       pendingHeading = []
     }
-    section.lines.push(line)
+    sections[sections.length - 1]!.lines.push(line)
   }
 
   for (const section of sections) {
-    if (section.heading) {
-      rows.push({ kind: 'article', heading: section.heading, gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+    const law = section.article?.key ?? null
+    if (section.opened && section.article) {
+      rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
     }
     const left = unitsOfColumn(section.lines.map((l) => ({ text: l.left, wrapped: l.leftWrapped, context: contextFor.get(l) })))
     const right = unitsOfColumn(section.lines.map((l) => ({ text: l.right, wrapped: l.rightWrapped, context: contextFor.get(l) })))
@@ -413,16 +501,16 @@ export function parseAnnexPdf(pages: readonly AnnexPage[]): ComparisonRow[] {
     for (const unit of right) {
       const mate = unit.id ? byId.get(unit.id) : undefined
       if (mate?.id) used.add(mate.id)
-      const row = rowOf(unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
+      const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
       if (row) rows.push(row)
     }
     // A § the draft repeals appears only on the left. Printed in the proposed
     // column's order everything else follows, it would otherwise vanish.
     for (const unit of left) {
       if (!unit.id || used.has(unit.id)) continue
-      const row = rowOf(unit.gld, unit.text, '', unit.context)
+      const row = rowOf(law, unit.gld, unit.text, '', unit.context)
       if (row) rows.push(row)
     }
   }
-  return rows
+  return { rows, refusal: resolution.refusal }
 }

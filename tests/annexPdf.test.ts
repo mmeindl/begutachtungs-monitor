@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annexPdf'
+import type { DraftArticle } from '../server/utils/lawTitles'
+
+/**
+ * The draft the annex belongs to. Every law boundary in an annex has to be one
+ * of the draft's own Artikel, so a fixture that expects a boundary has to say
+ * which draft it is an annex to.
+ */
+function draft(...articles: { n?: string; title?: string | null; amends?: boolean }[]): DraftArticle[] {
+  return articles.map((a, index) => ({
+    index,
+    number: a.n ? `Artikel ${a.n}` : null,
+    numeral: a.n ?? null,
+    title: a.title ?? null,
+    key: a.title ?? (a.n ? `Artikel ${a.n}` : null),
+    amends: a.amends ?? true,
+    bgbl: null,
+  }))
+}
+
+/** One law, no Artikel structure — the shape of two drafts in three. */
+const ONE_LAW = draft({ title: 'Änderung des Sicherheitspolizeigesetzes' })
+
+const parse = (pages: readonly AnnexPage[], articles: DraftArticle[] = ONE_LAW) => parseAnnexPdf(pages, articles).rows
 
 /**
  * The annex is a two-column table. These fixtures place text runs the way a
@@ -63,7 +86,7 @@ describe('linesFromPage', () => {
 
 describe('parseAnnexPdf', () => {
   it('pairs a changed paragraph across the two columns', () => {
-    const rows = parseAnnexPdf([page([
+    const rows = parse([page([
       { y: 700, left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' },
       { y: 660, left: '§ 5. (1) Die Behörde entscheidet.', right: '§ 5. (1) Das Gericht entscheidet.' },
     ])])
@@ -75,7 +98,7 @@ describe('parseAnnexPdf', () => {
   })
 
   it('drops the column headers and the page number', () => {
-    const rows = parseAnnexPdf([page([
+    const rows = parse([page([
       { y: 760, right: '3 von 18' },
       { y: 700, left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' },
       { y: 660, left: '§ 5. Text.', right: '§ 5. Text.' },
@@ -90,7 +113,7 @@ describe('parseAnnexPdf', () => {
   // inserted § (8/ME: "Information Betroffener" became the standing text of
   // the new § 15c).
   it('does not borrow the other column’s text for an inserted paragraph', () => {
-    const rows = parseAnnexPdf([page([
+    const rows = parse([page([
       { y: 700, left: '§ 15. (1) Alt.', right: '§ 15. (1) Alt.' },
       { y: 660, right: '§ 15c. (1) Ganz neu.' },
       { y: 620, left: 'Information Betroffener', right: 'Information Betroffener' },
@@ -104,7 +127,7 @@ describe('parseAnnexPdf', () => {
   })
 
   it('keeps a repealed paragraph that appears only on the left', () => {
-    const rows = parseAnnexPdf([page([
+    const rows = parse([page([
       { y: 700, left: '§ 7. (1) Wird aufgehoben.', right: '§ 8. (1) Bleibt.' },
     ])])
     const removed = rows.find((r) => r.gld === '§ 7.')!
@@ -115,7 +138,7 @@ describe('parseAnnexPdf', () => {
   // "§§ 242, 246 oder 247a StGB" is a citation inside running text. Treating
   // every line-initial § as a row boundary cut sentences in half.
   it('does not start a row on a citation', () => {
-    const rows = parseAnnexPdf([page([
+    const rows = parse([page([
       { y: 700, left: '§ 5. (1) Strafbar nach', right: '§ 5. (1) Strafbar nach' },
       { y: 680, left: '§§ 242, 246 oder 247a StGB.', right: '§§ 242, 246 oder 247b StGB.' },
     ])])
@@ -123,20 +146,22 @@ describe('parseAnnexPdf', () => {
     expect(rows[0]!.current).toBe('§ 5. (1) Strafbar nach §§ 242, 246 oder 247a StGB.')
   })
 
-  it('opens a new section at an Artikel heading', () => {
-    const rows = parseAnnexPdf([{
+  it('opens a new section at an Artikel heading the draft confirms', () => {
+    const rows = parse([{
       width: PAGE_WIDTH,
       items: [
         { x: 300, y: 700, width: 260, text: 'Artikel 2' },
         ...page([{ y: 660, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items,
       ],
-    }])
-    expect(rows[0]).toMatchObject({ kind: 'article', heading: 'Artikel 2' })
-    expect(rows[1]!.gld).toBe('§ 1.')
+    }], draft({ n: '1', title: 'Änderung des Aktiengesetzes' }, { n: '2', title: 'Änderung des GmbH-Gesetzes' }))
+    // The heading is the draft's wording, not the annex's: the annex prints
+    // "Artikel 2" bare, the draft names the law it amends.
+    expect(rows[0]).toMatchObject({ kind: 'article', heading: 'Artikel 2 — Änderung des GmbH-Gesetzes', law: 'Änderung des GmbH-Gesetzes' })
+    expect(rows[1]).toMatchObject({ gld: '§ 1.', law: 'Änderung des GmbH-Gesetzes' })
   })
 
   it('marks the ressort’s elision as elided rather than as a change', () => {
-    const rows = parseAnnexPdf([page([
+    const rows = parse([page([
       { y: 700, left: '§ 5. (1) und (2) …', right: '§ 5. (1) und (2) …' },
     ])])
     expect(rows[0]!.elided).toBe(true)
@@ -169,10 +194,10 @@ describe('headings that span both columns', () => {
   const spanning = (y: number, text: string): AnnexItem => ({ x: 300, y, width: 260, text })
 
   it('opens a group only for a real Artikel line', () => {
-    const rows = parseAnnexPdf([{
+    const rows = parse([{
       width: PAGE_WIDTH,
       items: [spanning(700, 'Artikel 2'), spanning(680, 'Änderung des Aktiengesetzes'), ...page([{ y: 640, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items],
-    }])
+    }], draft({ n: '1', title: 'Änderung des Bankwesengesetzes' }, { n: '2', title: 'Änderung des Aktiengesetzes' }))
     expect(rows.filter((r) => r.kind === 'article').map((r) => r.heading)).toEqual(['Artikel 2 — Änderung des Aktiengesetzes'])
   })
 
@@ -181,7 +206,7 @@ describe('headings that span both columns', () => {
   // where there are about 400 boundaries — and writing them into the text put
   // words into the provision that the standing law files above it.
   it('records any other spanning heading as the row’s context, not as its text', () => {
-    const rows = parseAnnexPdf([{
+    const rows = parse([{
       width: PAGE_WIDTH,
       items: [spanning(700, '3. Abschnitt'), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items],
     }])
@@ -194,7 +219,7 @@ describe('headings that span both columns', () => {
   // A provision the draft leaves untouched reads identically in both columns.
   // Treating identical text as a heading swallowed the law itself.
   it('does not mistake an unchanged provision for a heading', () => {
-    const rows = parseAnnexPdf([page([{ y: 700, left: '§ 9. (1) Unverändert.', right: '§ 9. (1) Unverändert.' }])])
+    const rows = parse([page([{ y: 700, left: '§ 9. (1) Unverändert.', right: '§ 9. (1) Unverändert.' }])])
     expect(rows).toHaveLength(1)
     expect(rows[0]!.change).toBe('unchanged')
     expect(rows[0]!.current).toBe('§ 9. (1) Unverändert.')
@@ -204,7 +229,7 @@ describe('headings that span both columns', () => {
   // provision of a law that is itself organised in Artikel (B-VG).
   it('does not treat a citation or an Artikel-numbered provision as a boundary', () => {
     for (const text of ['Art. 31 EUStA-VO', 'Artikel 10. (1) Bundessache ist die Gesetzgebung.', 'Artikel 29b der Bilanz-Richtlinie']) {
-      const rows = parseAnnexPdf([{ width: PAGE_WIDTH, items: [spanning(700, text), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items] }])
+      const rows = parse([{ width: PAGE_WIDTH, items: [spanning(700, text), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items] }])
       expect(rows.filter((r) => r.kind === 'article'), text).toHaveLength(0)
     }
   })

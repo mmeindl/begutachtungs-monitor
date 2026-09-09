@@ -64,11 +64,155 @@ export function sameBgbl(a: BgblCitation, b: BgblCitation): boolean {
 }
 
 /**
+ * Words that appear in almost every Artikel title and so carry no evidence.
+ * "Änderung des …" is the template, not the name.
+ */
+const TITLE_STOPWORDS = new Set([
+  'änderung', 'änderungen', 'aufhebung', 'bundesgesetz', 'bundesgesetzes', 'gesetz', 'gesetzes',
+  'über', 'sowie', 'mit', 'dem', 'des', 'der', 'die', 'das', 'den', 'und', 'von', 'zum', 'zur',
+])
+
+/**
+ * A German title word reduced far enough that a genitive matches a nominative:
+ * the draft writes "Änderung des Staatsanwaltschaftsgesetzes", the annex may
+ * write "Staatsanwaltschaftsgesetz". Years survive intact and are the best
+ * discriminator a title has ("Strafprozeßordnung 1975").
+ */
+function stem(word: string): string {
+  return word.replace(/ß/g, 'ss').replace(/(?<=.{5})(?:es|en|s|n)$/, '')
+}
+
+function titleTokens(title: string): Set<string> {
+  const words = normalizeText(title)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .split(' ')
+    .filter((w) => w.length > 3 && !TITLE_STOPWORDS.has(w))
+  return new Set(words.map(stem))
+}
+
+/**
+ * How much two law names have in common, 0 to 1 (Jaccard over content words).
+ *
+ * Used wherever two namings of the same law have to be recognised as one: the
+ * annex's Artikel heading against the draft's, and an amending Artikel against
+ * the Kurztitel RIS carries. Deliberately blunt — a law's name is a compound
+ * noun and a year, so word overlap decides and word order does not.
+ */
+export function lawNameScore(a: string, b: string): number {
+  const x = titleTokens(a)
+  const y = titleTokens(b)
+  if (x.size === 0 || y.size === 0) return 0
+  let shared = 0
+  for (const w of x) if (y.has(w)) shared++
+  return shared / (x.size + y.size - shared)
+}
+
+/**
  * A Promulgationsklausel announces that an existing law is being amended.
  * A Stammgesetz has none — it creates law rather than changing it, so there
  * is nothing to look up and nothing to name.
  */
 const AMENDS_RE = /\bwird wie folgt geändert|\bwerden wie folgt geändert|\bwird geändert\b/i
+
+/** A qualifier printed where the law's name would be, and not a name. */
+const QUALIFIER_RE = /^\((?:Verfassungs|Grundsatz)bestimmung(?:en)?\)$/i
+
+/** The numeral of an Artikel heading: "3", "III", "X1". */
+const ARTICLE_NUMERAL_RE = /^Artikel\s+(X?\d+[a-z]?|[IVXL]+)\b/
+
+/**
+ * One Artikel of a draft — the unit a package's annex divides into.
+ *
+ * A draft without Artikel yields a single entry with `number: null`, so that
+ * a Novelle of one law and a package of twelve are the same shape to callers.
+ */
+export interface DraftArticle {
+  /** Position in printed order, 0-based. The annex must not reorder these. */
+  index: number
+  /** "Artikel 3" as printed, or null for a draft without Artikel. */
+  number: string | null
+  /** The numeral alone: "3", "III", "X1". Null without Artikel. */
+  numeral: string | null
+  /**
+   * The law's name under the Artikel line, with a bare "(Verfassungs-
+   * bestimmung)" skipped — that is a qualifier, not a name, and matching an
+   * annex heading against it would join on a word the annex never prints.
+   */
+  title: string | null
+  /**
+   * The key `segmentUnits` and `promulgationByArticle` use (`articleTitle ??
+   * articleNumber`), qualifier and all, so a row joins onto the diff units
+   * without a second convention.
+   */
+  key: string | null
+  /**
+   * Whether the Artikel carries a Promulgationsklausel at all. Not the same
+   * as `bgbl !== null`: the UGB's Stammnorm is "dRGBl. S. 219/1897", which is
+   * no BGBl and so unresolvable — the Artikel still amends a law.
+   */
+  amends: boolean
+  /** The Stammnorm this Artikel amends; null when it creates law instead. */
+  bgbl: BgblCitation | null
+}
+
+/**
+ * A draft's Artikel in printed order, each with the law it amends.
+ *
+ * `promulgationByArticle` answers "which law does this key amend"; this
+ * answers "which laws does the draft contain, in what order, under what
+ * numbers" — the question the annex's Artikel headings have to be checked
+ * against. A heading in the annex that matches no entry here is not a law
+ * boundary but an internal heading, and that single test removes every
+ * pseudo-boundary the annex itself cannot distinguish (2026-09-09).
+ */
+export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
+  const out: DraftArticle[] = []
+  let seenNovao = false
+  let current: DraftArticle = { index: 0, number: null, numeral: null, title: null, key: null, amends: false, bgbl: null }
+  /** An implicit leading article is only real once it carries something. */
+  const filled = (a: DraftArticle): boolean => a.number !== null || a.key !== null || a.amends
+
+  const close = (): void => {
+    if (filled(current)) out.push(current)
+  }
+
+  for (const b of blocks) {
+    if (b.kind === 'article') {
+      close()
+      current = { index: out.length, number: b.text, numeral: ARTICLE_NUMERAL_RE.exec(b.text)?.[1] ?? null, title: null, key: null, amends: false, bgbl: null }
+      seenNovao = false
+      continue
+    }
+    if (b.kind === 'section') {
+      if (current.number === null) continue
+      if (current.key === null) current.key = b.text
+      if (current.title === null && !QUALIFIER_RE.test(b.text.trim())) current.title = b.text
+      continue
+    }
+    if (b.kind === 'title') {
+      // The law's own title, for a draft without Artikel. The last one wins,
+      // as it did before: a draft that prints Lang- and Kurztitel names
+      // itself in the shorter one.
+      if (current.number !== null) continue
+      current.key = b.text
+      if (!QUALIFIER_RE.test(b.text.trim())) current.title = b.text
+      continue
+    }
+    if (b.kind === 'novao') {
+      seenNovao = true
+      continue
+    }
+    // The clause stands between the Artikel heading and the first
+    // instruction; anything later that cites a BGBl is a cross-reference.
+    if (seenNovao || current.amends) continue
+    if (!AMENDS_RE.test(b.text)) continue
+    current.amends = true
+    current.bgbl = stammnormOf(b.text)
+  }
+  close()
+  return out
+}
 
 /**
  * Artikel title → the Stammnorm of the law it amends.
@@ -79,37 +223,8 @@ const AMENDS_RE = /\bwird wie folgt geändert|\bwerden wie folgt geändert|\bwir
  */
 export function promulgationByArticle(blocks: readonly TextBlock[]): Map<string | null, BgblCitation> {
   const out = new Map<string | null, BgblCitation>()
-  let articleNumber: string | null = null
-  let articleTitle: string | null = null
-  let seenNovao = false
-
-  const key = (): string | null => articleTitle ?? articleNumber
-
-  for (const b of blocks) {
-    if (b.kind === 'article') {
-      articleNumber = b.text
-      articleTitle = null
-      seenNovao = false
-      continue
-    }
-    if (b.kind === 'section') {
-      if (articleNumber && articleTitle === null) articleTitle = b.text
-      continue
-    }
-    if (b.kind === 'title') {
-      if (articleNumber === null) articleTitle = b.text
-      continue
-    }
-    if (b.kind === 'novao') {
-      seenNovao = true
-      continue
-    }
-    // The clause stands between the Artikel heading and the first
-    // instruction; anything later that cites a BGBl is a cross-reference.
-    if (seenNovao || out.has(key())) continue
-    if (!AMENDS_RE.test(b.text)) continue
-    const bgbl = stammnormOf(b.text)
-    if (bgbl) out.set(key(), bgbl)
+  for (const article of draftArticles(blocks)) {
+    if (article.bgbl && !out.has(article.key)) out.set(article.key, article.bgbl)
   }
   return out
 }
