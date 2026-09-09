@@ -114,7 +114,7 @@ const KIND_BY_CLASS: Record<string, BlockKind> = {
  * articles "Artikel X1", "Artikel X2" because the final count is only known
  * once every ministry's draft is merged (22/ME, IFG-Anpassung of the BKA).
  */
-const ARTICLE_RE = /^Artikel\s+X?\d+/
+const ARTICLE_RE = /^Artikel\s+(?:X?\d+|[IVXL]+)(?=\s|$|[.,])/
 
 function kindOf(cls: string, text: string): BlockKind {
   const mapped = KIND_BY_CLASS[cls]
