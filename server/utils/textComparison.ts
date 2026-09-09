@@ -248,6 +248,44 @@ const DIVISION_WORD = '(?:Abschnitt|Unterabschnitt|Hauptstück|Teil|Kapitel)'
 const DIVISION_RE = new RegExp(`^(?:\\d+[a-z]*\\.\\s*${DIVISION_WORD}\\b|${DIVISION_WORD}\\s+(?:[IVXL]+|\\d+[a-z]*)\\b)`, 'i')
 const DIVISION_MAX = 60
 
+/**
+ * Where an Anlage or Anhang begins — the one division that ends the paragraph
+ * sequence instead of subdividing it.
+ *
+ * A § continues across an Abschnitt or a Hauptstück, so those leave the open
+ * designation alone. A schedule does not: what stands under "Anhang" is
+ * addressed as the Anlage, and everything the annex prints there carries no §
+ * of its own. The rows inherited the last § before the schedule all the same
+ * — in the VerKRÄG annex fourteen rows of the Anhang went out as § 14 of the
+ * Verbraucherbehördenkooperationsgesetz, which the RIS check then withheld
+ * with "der geltende Text dieser Stelle steht so nicht im RIS": true of § 14,
+ * and false about the annex, which never claimed they were § 14. Measured
+ * 2026-09-10 over the 400 most recent RIS-Begut records (126 readable XML
+ * annexes): 951 rows in 61 schedules, 230 of them shown as a change.
+ *
+ * The schedule's own line becomes the designation rather than null, and that
+ * is the point of doing it here: 213 of those 230 rows now carry a
+ * designation RIS can be asked about ("Anlage 1" → `Anl. 1`), where before
+ * they were scored against the § in front of the schedule. Where the line
+ * names no numeral ("Anhang"), `designationKey` reads nothing and the rows
+ * stay unchecked — which is what they were owed.
+ *
+ * Two tests, because both occur. `typ="anlage"` is RIS's own markup and says
+ * it outright; it also sits on the subtitle lines beneath such a heading, and
+ * resetting on those is harmless because the schedule is already open. The
+ * wording is the fallback for the twelve rows in that window that open a
+ * schedule without the markup ("Anlage 1", "ANHANG I"), and it carries the
+ * same length cap as the division rule: a provision that merely starts with
+ * the word "Anhang" is longer than a heading.
+ */
+const ANLAGE_TYP_RE = /<ueberschrift\b[^>]*\btyp="anlage"/i
+const ANLAGE_TEXT_RE = /^(?:Anlage|Anhang)\b/i
+
+function opensAnlage(text: string, html: string): boolean {
+  if (ANLAGE_TYP_RE.test(html)) return true
+  return text.length <= DIVISION_MAX && ANLAGE_TEXT_RE.test(text)
+}
+
 /** The § heading a cell carries, when it holds one. */
 const PARA_HEADING_RE = /<ueberschrift\b[^>]*\btyp="para"[^>]*>([\s\S]*?)<\/ueberschrift\s*>/
 
@@ -396,6 +434,27 @@ function coversTheWidth(cells: readonly Element[]): boolean[] {
  * new § 1159 Abs. 6 from it. A nested table that prints the header pair
  * itself is a comparison whatever wraps it; one wider than two columns is
  * content whatever wraps it, because a comparison has two columns.
+ *
+ * **The width test alone is not enough for the header-less half** (measured
+ * 2026-09-10 over the 2.000 most recent RIS-Begut records, 403 of them with a
+ * readable XML annex). That branch fires on 73 nested tables, and it has to:
+ * 6 of them carry §§ of their own — the ABGB's § 1159 among them — and others
+ * hold an Artikel line or an Abschnitt that divides the comparison. But 18
+ * are two-column tables *of the law*, sitting alone in a cell, and their two
+ * columns were read as "geltend" against "vorgeschlagen": "Attribut | Wert"
+ * from the Bildungsdokumentation, "Gattung oder Art | Schadorganismen" from
+ * the Pflanzgutverordnung, "Module | ECTS-Anrechnungspunkte" from the
+ * Hochschul-Curriculaverordnung — whose annex consists of nothing else, so
+ * all 19 of its rows were invented changes and it now reports itself
+ * unreadable instead.
+ *
+ * `isTableContent` refuses those, and it asks RIS's own markup rather than
+ * guessing at the shape: `<absatz typ="tabtext…">` is how RIS types the text
+ * of a table cell, and it is never how it types a provision. Every one of the
+ * 18 is caught and none of the 6 comparisons is, so the discriminator has no
+ * overlap with the real comparisons in the corpus; 128 rows shown as
+ * "geändert" go away with them (9.819 → 9.691 over that window, 3.057 →
+ * 3.037 over the 400 most recent records).
  */
 function liftTables(cellInner: string, alone: boolean): { text: string; tables: string[] } {
   const tables = outermost(cellInner, 'table')
@@ -405,12 +464,43 @@ function liftTables(cellInner: string, alone: boolean): { text: string; tables: 
   let at = 0
   for (const table of tables) {
     kept.push(cellInner.slice(at, table.open))
-    if (isComparisonTable(table.inner) || (alone && !widerThanAComparison(table.inner))) lifted.push(table.inner)
+    const lift = isComparisonTable(table.inner) || (alone && !widerThanAComparison(table.inner) && !isTableContent(table.inner))
+    if (lift) lifted.push(table.inner)
     else kept.push(flattenTable(table.inner))
     at = table.close
   }
   kept.push(cellInner.slice(at))
   return { text: kept.join(' '), tables: lifted }
+}
+
+/** RIS's own type for the text of a table cell; a provision never carries it. */
+const TABTEXT_RE = /<absatz\b[^>]*\btyp="tabtext/i
+/** What a provision carries instead: a designation, a heading, or a typed Absatz. */
+const PROVISION_MARKUP_RE = /<gldsym\b|<ueberschrift\b|<absatz\b[^>]*\btyp="(?!tabtext)/i
+
+/**
+ * Is this table content of the law rather than a comparison?
+ *
+ * Only asked of a table that does *not* print the mandated header pair, so
+ * the question is genuinely open: without the header, nothing but the markup
+ * says whether the two columns are the law's own or the annex's. Every
+ * non-empty cell has to be typed as table text and none of them as a
+ * provision — one Absatz, one heading or one Gliederungssymbol anywhere in it
+ * is enough to leave the table alone, because the cost of refusing a real
+ * comparison (its §§ vanish from the page) is worse than the cost of
+ * flattening a data table (its cells read as "Zelle | Zelle" in both columns,
+ * where the word diff still compares them).
+ */
+function isTableContent(inner: string): boolean {
+  let cells = 0
+  for (const row of outermost(inner, 'tr')) {
+    for (const cell of outermost(row.inner, 'td')) {
+      if (cellText(cell.inner) === '') continue
+      if (PROVISION_MARKUP_RE.test(cell.inner) || !TABTEXT_RE.test(cell.inner)) return false
+      cells++
+    }
+  }
+  return cells > 0
 }
 
 /**
@@ -446,14 +536,16 @@ const ANNEX_TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
  * a table does — two annexes print *both* their Artikel that way, and reading
  * only table rows lost both boundaries (2026-09-09).
  */
-type Item = { kind: 'heading'; text: string; at: number } | { kind: 'row'; inner: string; at: number }
+type Item = { kind: 'heading'; text: string; at: number; html: string } | { kind: 'row'; inner: string; at: number }
 
 function itemsInOrder(body: string): Item[] {
   const tables = outermost(body, 'table').map((t) => [t.at, t.at + t.inner.length] as const)
   const inTable = (at: number): boolean => tables.some(([from, to]) => at >= from && at < to)
   const headings: Item[] = [...body.matchAll(/<ueberschrift\b[^>]*>([\s\S]*?)<\/ueberschrift\s*>/g)]
     .filter((m) => !inTable(m.index))
-    .map((m) => ({ kind: 'heading' as const, text: cellText(m[1]!), at: m.index }))
+    // The opening tag is kept: `typ="anlage"` is how RIS says that a schedule
+    // starts, and the § sequence ends there (`opensAnlage`).
+    .map((m) => ({ kind: 'heading' as const, text: cellText(m[1]!), at: m.index, html: m[0] }))
     .filter((h) => h.text !== '' && !ANNEX_TITLE_RE.test(h.text.replace(/\s+/g, '')))
   const rows: Item[] = rowsInOrder(body).map((r) => ({ kind: 'row' as const, inner: r.inner, at: r.at }))
   // A stable sort keeps the rows of one table in their own order while the
@@ -682,6 +774,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     // heading over a group of §§ — is context for the provision beneath it,
     // not a group of its own.
     if (p.heading !== null) {
+      if (opensAnlage(p.heading, p.item.kind === 'heading' ? p.item.html : p.item.inner)) openPara = p.heading
       pendingHeading.push(p.heading)
       continue
     }
@@ -693,6 +786,12 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       pendingHeading.push(p.mirrored)
       continue
     }
+    // An Anlage or Anhang ends the paragraph sequence rather than dividing it
+    // (`opensAnlage`), so it becomes the designation the rows beneath it
+    // inherit — its own, not the § before it. The line stays the pair row it
+    // is: the annex prints it in both columns, and it is part of what changed
+    // or did not.
+    if (p.mirrored !== null && opensAnlage(p.mirrored, p.item.kind === 'row' ? p.item.inner : '')) openPara = p.mirrored
 
     const raw = columnsOf(p.cells, span)
     // The § heading sits in the *same* cell as the Absatz, above it — that is

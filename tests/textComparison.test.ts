@@ -187,6 +187,36 @@ describe('a table the law itself contains', () => {
     const rows = parse(annex([pair(`<absatz typ="abs"><gldsym>§ 2.</gldsym> Alt.</absatz>${spacer}`, `<absatz typ="abs"><gldsym>§ 2.</gldsym> Alt.</absatz>${spacer}`)]))
     expect(rows[0]).toMatchObject({ current: 'Alt.', proposed: 'Alt.', change: 'unchanged' })
   })
+
+  // The other half of the lift: a data table alone in a cell, its sibling
+  // empty. It covers the width, so the width test alone lifted it and read
+  // its two columns as "geltend" against "vorgeschlagen" — the
+  // Bildungsdokumentation reported "Attribut" turning into "Wert", the
+  // Hochschul-Curriculaverordnung "Bildungswissenschaftliche Grundlagen" into
+  // "10". 18 tables in the corpus window, one of them the entire annex
+  // (2026-09-10). RIS types those cells `typ="tabtext"` and never types a
+  // provision that way, so the markup decides and the shape does not.
+  it('does not lift a data table that stands alone in a cell', () => {
+    const data = `<table>
+      <tr><td><absatz typ="tabtext-fett">Module</absatz></td><td><absatz typ="tabtext-fett">ECTS-Anrechnungspunkte</absatz></td></tr>
+      <tr><td><absatz typ="tabtext">Fachdidaktik</absatz></td><td><absatz typ="tabtext">20</absatz></td></tr>
+    </table>`
+    const rows = parse(annex([`<tr><td></td><td>${data}</td></tr>`]))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ kind: 'pair', change: 'inserted', current: '' })
+    expect(rows[0]!.proposed).toBe('Module | ECTS-Anrechnungspunkte Fachdidaktik | 20')
+  })
+
+  // …and the wrapper the lift exists for keeps working: the ABGB annex writes
+  // `<td colspan="2">` with the comparison inside and an empty cell beside it,
+  // and the rows inside carry provisions rather than table text.
+  it('still lifts a comparison that stands alone in a cell', () => {
+    const inner = `<table>
+      <tr><td><absatz typ="abs"><gldsym>§ 1159.</gldsym> (6) Alt.</absatz></td><td><absatz typ="abs"><gldsym>§ 1159.</gldsym> (6) Neu.</absatz></td></tr>
+    </table>`
+    const rows = parse(annex([`<tr><td colspan="2">${inner}</td><td /></tr>`]))
+    expect(rows.find((r) => r.gld === '§ 1159.')).toMatchObject({ current: '(6) Alt.', proposed: '(6) Neu.', change: 'changed' })
+  })
 })
 
 describe('the laws of a package', () => {
@@ -372,5 +402,47 @@ describe('which § a row belongs to', () => {
       pair('<absatz typ="abs">(3) Ohne eigene Bezeichnung, alt.</absatz>', '<absatz typ="abs">(3) Ohne eigene Bezeichnung, neu.</absatz>'),
     ]), pkg)
     expect(rows.filter((r) => r.kind === 'pair').map((r) => r.para)).toEqual(['§ 82.', null])
+  })
+
+  // An Anlage leaves the § sequence instead of subdividing it, and the rows
+  // beneath it used to inherit the last § before the schedule: in the VerKRÄG
+  // annex fourteen rows of the Anhang went out as § 14 of the
+  // Verbraucherbehördenkooperationsgesetz, which the RIS check then withheld
+  // saying the standing text does not carry them — true of § 14, and false
+  // about the annex. 951 rows in the corpus window, 230 of them shown as a
+  // change (2026-09-10).
+  it('leaves the § sequence at an Anlage and files the rows under it', () => {
+    const rows = parse(annex([
+      pair('<absatz typ="abs"><gldsym>§ 14.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 14.</gldsym> (1) Neu.</absatz>'),
+      pair('<ueberschrift typ="anlage">Anlage 1</ueberschrift>', '<ueberschrift typ="anlage">Anlage 1</ueberschrift>'),
+      pair('<absatz typ="abs">a) Richtlinie 2000/31/EG, alt.</absatz>', '<absatz typ="abs">a) Richtlinie 2000/31/EG, neu.</absatz>'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 14.', 'Anlage 1', 'Anlage 1'])
+    // Named, so the RIS check can look the schedule up as RIS prints it
+    // ("Anl. 1") instead of scoring it against the § before it.
+    expect(rows[2]).toMatchObject({ change: 'changed', gld: null })
+  })
+
+  // Only Anlage and Anhang. A § runs on across an Abschnitt or a Hauptstück,
+  // and resetting there would strip the designation from the rest of the law.
+  it('carries the § across a division that only subdivides the law', () => {
+    const rows = parse(annex([
+      pair('<absatz typ="abs"><gldsym>§ 2.</gldsym> Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 2.</gldsym> Neu.</absatz>'),
+      pair('9b. Abschnitt', '9b. Abschnitt'),
+      pair('<absatz typ="abs">(2) Ohne eigene Bezeichnung, alt.</absatz>', '<absatz typ="abs">(2) Ohne eigene Bezeichnung, neu.</absatz>'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 2.', '§ 2.'])
+  })
+
+  // The markup is not always there: 12 rows of the corpus open a schedule
+  // with the wording alone. The length cap is the division rule's — a
+  // provision that merely begins with the word is longer than a heading.
+  it('reads a schedule the annex opens without the markup', () => {
+    const rows = parse(annex([
+      pair('<absatz typ="abs"><gldsym>§ 9.</gldsym> Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 9.</gldsym> Neu.</absatz>'),
+      pair('ANHANG I', 'ANHANG I'),
+      pair('<absatz typ="abs">1. Alt.</absatz>', '<absatz typ="abs">1. Neu.</absatz>'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 9.', 'ANHANG I', 'ANHANG I'])
   })
 })

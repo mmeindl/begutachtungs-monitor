@@ -123,6 +123,27 @@ describe('the XML annex of the Verbraucherkreditrechts-Änderungsgesetz 2026', (
     expect(rows[11]).toMatchObject({ gld: null, para: '§ 41.', change: 'inserted' })
   })
 
+  // The last Artikel ends with § 14 and then prints the Anhang. Until
+  // 2026-09-10 the fourteen rows of that Anhang inherited "§ 14." — the RIS
+  // check looked them up as § 14 of the Verbraucherbehördenkooperations-
+  // gesetz, found the standing text does not carry them, and withheld them
+  // with "der geltende Text dieser Stelle steht so nicht im RIS": true of
+  // § 14, and false about the annex, which never claimed they were § 14. An
+  // Anlage leaves the paragraph sequence rather than subdividing it, so the
+  // schedule is now the designation those rows carry — its own, and one RIS
+  // itself can be asked about ("Anl. 1").
+  it('files the Anhang under itself, not under the last § before it', () => {
+    expect(rows.map((r) => r.para)).toEqual([
+      null, '§ 34.', '§ 34.', '§ 34.', '§ 34.', '§ 34.', '§ 39.', '§ 39.', '§ 39.', '§ 39.', '§ 41.', '§ 41.',
+      null, '§ 13a.', '§ 13a.', '§ 13a.', '§ 13a.', '§ 13a.', '§ 13a.', '§ 13a.', '§ 41a.', '§ 41a.',
+      null, '§ 14.', '§ 14.',
+      'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang', 'Anhang',
+    ])
+    // The line that opens it is printed in both columns and stays the pair
+    // row it is; it opens no paragraph, so `gld` stays null.
+    expect(rows[25]).toMatchObject({ gld: null, para: 'Anhang', current: 'Anhang', change: 'unchanged' })
+  })
+
   it('shows the substantive change to § 34 Abs. 2 Z 2 of the Maklergesetz', () => {
     // Read off the document: the citation moves from § 9 Abs. 2 Z 4, 7 und 8
     // VKrG to § 20 Abs. 2 Z 3, 7 und 8 of the new Verbraucherkreditgesetz 2026.
