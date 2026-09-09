@@ -138,6 +138,28 @@ export function isScanned(xml: string): boolean {
   return !/<tr\b/.test(xml) && /<binary\b/.test(xml)
 }
 
+/**
+ * A structural division of the law — "3. Abschnitt", "Abschnitt XI",
+ * "2. Hauptstück", "7. Teil", with or without its title on the same line.
+ *
+ * Keyed on the vocabulary, and deliberately not on the shape of the line.
+ * The obvious test — short, and without a closing full stop — matches 2.100
+ * of the mirrored rows in GP XXVIII, and most of those are law text: an
+ * Absatz that introduces a list ends in "dass", a Ziffer in a comma, a
+ * litera in nothing at all. Lifting those out of the comparison would
+ * delete law text from it, which is worse than the misfiling it fixes. The
+ * vocabulary matches 210 rows, and every one is a division.
+ *
+ * The numeral is what makes it a division rather than a sentence that opens
+ * with the same word: it stands either before the keyword ("3. Abschnitt")
+ * or after it ("Abschnitt XI"), never neither. Without that test, "Teil der
+ * Anlage ist die Beschreibung der Verfahren" reads as a heading and its text
+ * leaves the comparison. The length cap is the same guard once more.
+ */
+const DIVISION_WORD = '(?:Abschnitt|Unterabschnitt|Hauptstück|Teil|Kapitel)'
+const DIVISION_RE = new RegExp(`^(?:\\d+[a-z]*\\.\\s*${DIVISION_WORD}\\b|${DIVISION_WORD}\\s+(?:[IVXL]+|\\d+[a-z]*)\\b)`, 'i')
+const DIVISION_MAX = 60
+
 /** The § heading a cell carries, when it holds one. */
 const PARA_HEADING_RE = /<ueberschrift\b[^>]*\btyp="para"[^>]*>([\s\S]*?)<\/ueberschrift\s*>/
 
@@ -427,6 +449,14 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     // not a group of its own.
     if (p.heading !== null) {
       pendingHeading.push(p.heading)
+      continue
+    }
+    // The same, for a division the ressort typeset as an ordinary row in
+    // both columns rather than as a heading. It reached the comparison as a
+    // mirrored pair row and was filed under whichever § stood open above it
+    // — "9b. Abschnitt" under § 2, "10. Abschnitt" under § 54j.
+    if (p.mirrored !== null && p.mirrored.length <= DIVISION_MAX && DIVISION_RE.test(p.mirrored)) {
+      pendingHeading.push(p.mirrored)
       continue
     }
 
