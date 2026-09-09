@@ -110,3 +110,22 @@ describe('parseInstruction', () => {
     expect(op('§ 5 wird wie folgt geändert:')).toMatchObject({ kind: 'container', target: { para: '§ 5' } })
   })
 })
+
+describe('laws organised in Artikel', () => {
+  // "Art. II § 1" resolved to the document's first § — Art. 1's
+  // Verfassungsbestimmung — and only missed editing it because that § had no
+  // Abs. 5. Refused until the Artikel is part of a paragraph's identity.
+  it('refuses a § addressed inside an Artikel', () => {
+    expect(parseInstruction('Art. II § 1 Abs. 5 lautet:').ops).toHaveLength(0)
+    expect(parseInstruction('In Art. 2 § 7 Abs. 1 entfällt die Wortfolge "und".').ops).toHaveLength(0)
+  })
+
+  it('still reads an Artikel address that names no §', () => {
+    expect(parseInstruction('Art. 3 Abs. 2 lautet:').ops).toHaveLength(1)
+  })
+
+  it('still reads a citation of an EU article after the §', () => {
+    const parsed = parseInstruction('In § 120 Abs. 1 wird die Wortfolge "Art. 9 der Verordnung (EG) Nr. 550/2004" durch die Wortfolge "Art. 10" ersetzt.')
+    expect(parsed.ops).toHaveLength(1)
+  })
+})

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyNovelle, parsePayload, resolveTarget, type Instruction, type StandingLaw } from '../server/utils/lawApply'
+import { applyNovelle, parsePayload, resolveTarget, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/lawApply'
 import { makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawStructure'
 import { parseInstruction } from '../server/utils/novao'
 
@@ -159,5 +159,75 @@ describe('parseKonsParagraph', () => {
     // The metadata header must not leak into the law text.
     expect(plainText(node)).not.toContain('Bundesrecht konsolidiert')
     expect(renderNode(node)).toContain('§ 9. (1) Sofortlotterien')
+  })
+})
+
+describe('a run of units replaced by a different number of units', () => {
+  // "In § 1 wird der Abs. 3 durch folgende Abs. 3 bis 5 ersetzt" installed the
+  // first block and silently dropped the rest, which deleted standing law
+  // (IVS-Gesetz and Privatschulgesetz, 2026-09-09).
+  it('splices one Absatz into three', () => {
+    const { law: out, results } = run(law(), instr('In § 6 wird der Abs. 1 durch folgende Abs. 1 bis 3 ersetzt:', ['(1) Erster.', '(2) Zweiter.', '(3) Dritter.']))
+    expect(results[0]!.reason).toBeNull()
+    const abs = out.paragraphs.find((p) => p.id === '6')!.children
+    expect(abs.map((a) => a.marker)).toEqual(['(1)', '(2)', '(3)'])
+    expect(plainText(abs[2]!)).toBe('Dritter.')
+  })
+
+  it('splices two §§ into three, and the run keeps its place', () => {
+    const { law: out, results } = run(law(), instr('Die §§ 5 und 6 werden durch folgende §§ 5 bis 7 ersetzt:', ['§ 5. (1) Neu fünf.', '§ 6. (1) Neu sechs.', '§ 7. (1) Neu sieben.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['5', '6', '7'])
+  })
+
+  it('refuses when a new designation would shadow a § outside the run', () => {
+    const { law: out, results } = run(law(), instr('§ 5 wird durch folgende §§ 5 und 6 ersetzt:', ['§ 5. (1) Neu fünf.', '§ 6. (1) Kollision.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/existiert bereits/)
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['5', '6'])
+  })
+
+  it('keeps every Absatz when a § is restated in full', () => {
+    const { law: out } = run(law(), instr('§ 6 lautet:', ['(1) Erster.', '(2) Zweiter.', '(3) Dritter.']))
+    const six = out.paragraphs.find((p) => p.id === '6')!
+    expect(six.heading).toBe('Zuständigkeit')
+    expect(six.children.map((a) => a.marker)).toEqual(['(1)', '(2)', '(3)'])
+  })
+})
+
+describe('payload quoting and Schlussteil', () => {
+  // RIS keeps the § symbol in its own `gldsym`, so the opening quote arrives
+  // after it: `§ 69.` + `" (1) …`. An anchored strip never saw it.
+  it('strips an opening quote that follows the paragraph symbol', () => {
+    expect(plainText(parsePayload(stripPayloadQuotes(['§ 9. " (1) Der Text.']))[0]!)).toBe('Der Text.')
+  })
+
+  it('strips a closing quote followed by the instruction full stop', () => {
+    expect(plainText(parsePayload(stripPayloadQuotes(['"(1) Der Text zu verlangen.".']))[0]!)).toBe('Der Text zu verlangen.')
+  })
+
+  // "… hat jede Veränderung, insbesondere a) … e) … der Behörde anzuzeigen":
+  // the closing part belongs behind the list, not folded into the Absatz text.
+  it('renders a Schlussteil after the list it closes', () => {
+    const nodes = parsePayload(['(1) Er hat jede Veränderung, insbesondere', 'a) in seiner Person,', 'b) in der Organisation', 'der Behörde anzuzeigen.'])
+    expect(plainText(nodes[0]!)).toBe('Er hat jede Veränderung, insbesondere in seiner Person, in der Organisation der Behörde anzuzeigen.')
+  })
+})
+
+describe('phrase operations address headings and single sentences', () => {
+  it('deletes a phrase from the Überschrift, not from the text', () => {
+    const { law: out, results } = run(law(), instr('In der Überschrift zu § 5 entfällt die Wortfolge "Anwendungs".'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.find((p) => p.id === '5')!.heading).toBe('bereich')
+  })
+
+  // "In § 169 Abs. 5 dritter Satz wird das Wort X ersetzt": searching the
+  // whole Absatz found X twice and refused as ambiguous. The sentence is the
+  // scope the instruction named.
+  it('replaces inside the addressed sentence when the word repeats elsewhere', () => {
+    const l: StandingLaw = { paragraphs: [para('9', 'Halter', ['Der Halter haftet. Der Halter meldet. Der Halter zahlt.'])] }
+    const { law: out, results } = run(l, instr('In § 9 Abs. 1 zweiter Satz wird das Wort "Halter" durch das Wort "Betreiber" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Der Halter haftet. Der Betreiber meldet. Der Halter zahlt.')
   })
 })

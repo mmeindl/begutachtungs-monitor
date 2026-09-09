@@ -49,7 +49,15 @@ export interface NovaoAddress {
   raw: string
 }
 
-const ORDINAL_SATZ = /\b(erster|zweiter|dritter|vierter|fünfter|sechster|siebenter|siebter|achter|neunter|zehnter|letzter|vorletzter)\s+Satz\b/i
+/**
+ * German declines the ordinal: "der zweite Satz entfällt" (nominative) next
+ * to "wird der zweite Satz ersetzt" and "nach dem zweiten Satz". Matching only
+ * the "-er" form left `satz` null on the nominative, the address fell back to
+ * the Absatz, and `entfällt` then deleted the whole Absatz instead of one
+ * sentence — silent over-deletion (LMSVG 75/2026, LWA-G 30/2026, 2026-09-09).
+ * The captured stem is normalised back to the "-er" form the ordinal table uses.
+ */
+const ORDINAL_SATZ = /\b(erste|zweite|dritte|vierte|fünfte|sechste|siebente|siebte|achte|neunte|zehnte|letzte|vorletzte)[rnsm]?\s+Satz\b/i
 
 const PARA_RE = /(?:§+\s*(\d+[a-z]*(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?)|\b(Anlage|Anhang)\s+([\dIVXL]+[a-z]*))/i
 const ABS_RE = /\bAbs\.?\s*(\d+[a-z]*)/i
@@ -140,6 +148,18 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const t = maskQuotes(normalizeText(text))
   const heading = HEADING_TARGET_RE.test(t)
 
+  // A law organised in Artikel addresses a § that exists only inside one of
+  // them: "Art. II § 1 Abs. 5 lautet". Neither this address model nor the
+  // standing law carries the Artikel, so the § resolved against the whole
+  // document — in the Lebensmittelbewirtschaftungsgesetz "Art. II § 1" found
+  // Art. 1's Verfassungsbestimmung and missed editing it by a single Absatz
+  // (2026-09-09). An `Art.` *after* the § is a citation ("die Wortfolge Art. 9
+  // der Verordnung"), not a container, so only the leading form is refused.
+  // Until the Artikel is part of a paragraph's identity this is a refusal.
+  const artikel = /\bArt(?:\.|ikel)\s*[\dIVXL]+/i.exec(t)
+  const paragraphAt = t.indexOf('§')
+  if (artikel && paragraphAt > artikel.index) return null
+
   if (DOCUMENT_RE.test(t)) {
     return { para: null, abs: null, z: null, lit: null, satz: null, siblings: [], level: 'document', heading: false, raw: t }
   }
@@ -169,7 +189,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const abs = am?.[1] ?? (pm ? null : inherited?.abs) ?? null
   const z = zm?.[1] ?? null
   const lit = lm?.[1] ?? null
-  const satz = satzMatch ? satzMatch[1]!.toLowerCase() : null
+  const satz = satzMatch ? `${satzMatch[1]!.toLowerCase()}r` : null
   const level: UnitLevel = satz ? 'satz' : lit ? 'lit' : z ? 'z' : abs ? 'abs' : 'para'
 
   // The enumeration attaches to the deepest numbered component.
@@ -278,10 +298,13 @@ function instructionHead(t: string): string {
 /**
  * The words legistic drafting uses for "a piece of text". Extended from the
  * corpus: Verweis, Fundstelle and Zeichenfolge appeared only in the refusal
- * list of the first measurement.
+ * list of the first measurement; Zitierung, Wortgruppe and the mirror form
+ * "Zeichen- und Wortfolge" only in the second (2026-09-09). Order matters —
+ * the alternation is tried left to right, so a compound has to precede the
+ * word it starts with, or "Zeichen- und Wortfolge" matches as bare "Zeichen".
  */
 const PHRASE_OBJECT =
-  '(?:Wort-\\s*und\\s*Zeichenfolge|Wortfolge|Wortlaut|Worte|Wort|Wendung|Ausdruck|Zitat|Klammerausdruck|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Eintrag)'
+  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Ausdruck|Zitierung|Zitat|Klammerausdruck|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Eintrag)'
 const PHRASE_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'i')
 const AFTER_ANCHOR_RE = new RegExp(`\\bnach (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
 const BEFORE_ANCHOR_RE = new RegExp(`\\bvor (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
@@ -439,7 +462,16 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     return { ops: targets.map((t) => ({ kind: 'delete' as const, target: t, withHeading })), reason: null, line }
   }
 
-  if (/\blaute[nt]\b|\berhäl?t folgende Fassung\b|\berhalten folgende Fassung\b/i.test(head)) {
+  // A unit replacement written with `ersetzt` instead of `lautet`: "In § 24j
+  // Abs. 3 wird der letzte Satz durch folgende Sätze ersetzt:". Reaching this
+  // line means no phrase noun was named, so the thing replaced is the
+  // addressed unit itself. The `durch folgende` anchor is required rather
+  // than a bare `ersetzt`, because a compound like "… durch einen Beistrich
+  // ersetzt und danach folgender Satz angefügt" also carries both words and
+  // is an append. Worth 15 of the corpus's refusals (2026-09-09).
+  const replacedByPayload = payload !== '' && /\bdurch\s+(?:die|den|das|der)?\s*folgende/i.test(head) && /\bersetzt\b/i.test(head)
+
+  if (/\blaute[nt]\b|\berhäl?t folgende Fassung\b|\berhalten folgende Fassung\b/i.test(head) || replacedByPayload) {
     // Several §§ with one quoted block: which text belongs to which § is not
     // decidable from the instruction alone.
     if (targets.length > 1) return fail(`${targets.length} Ziele für eine Neufassung`)
