@@ -24,13 +24,23 @@ export interface LawNode {
   marker: string
   /** Only on a paragraph: its Überschrift */
   heading: string | null
+  /**
+   * Only on a paragraph: the headings RIS prints *above* it — "3. Teil",
+   * "1. Hauptstück", "1. Abschnitt". They belong to a group of §§ rather than
+   * to this one, so they stay out of `plainText`: a Novelle that replaces the
+   * § does not replace them, and counting them as the §'s own text would make
+   * every such replacement look like a loss. They are recorded because the
+   * ressort's Textgegenüberstellung prints them over the § and something has
+   * to be able to recognise them (§ 12 of one law carries six).
+   */
+  context: string[]
   /** The node's own text, without marker and without children */
   text: string
   children: LawNode[]
 }
 
 export function makeNode(level: NodeLevel, id: string, marker: string, text: string, heading: string | null = null): LawNode {
-  return { level, id, marker, heading, text, children: [] }
+  return { level, id, marker, heading, context: [], text, children: [] }
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +113,40 @@ export function parseKonsParagraph(xml: string): LawNode | null {
 
   let root: LawNode | null = null
   let heading: string | null = null
+  const context: string[] = []
   let currentAbs: LawNode | null = null
+
+  /**
+   * The § node, created on first need.
+   *
+   * It used to be created only from an `<absatz>` block, so a document that
+   * has none — an Anlage is a bare list of `<listelem>` — parsed to null and
+   * vanished (6.521 characters of Anlage 1 of one law became nothing).
+   */
+  const para = (): LawNode => {
+    if (!root) root = makeNode('para', idMatch?.[1] ?? '?', idText || '', '', heading)
+    root.heading ??= heading
+    root.context = context
+    return root
+  }
+
+  /**
+   * The Absatz a Ziffer hangs off, created on first need.
+   *
+   * A § whose text is nothing but its designation followed by a list — every
+   * Inkrafttretensbestimmung is built that way — has no numbered Absatz at
+   * all, and every one of its Ziffern was dropped on the floor: § 26c of one
+   * law is 48.010 characters of XML and 149 Ziffern, and it parsed to the
+   * empty string (2026-09-09). That is the standing text the amendment engine
+   * applies instructions to, so it was not only a gap in a measurement.
+   */
+  const absatz = (): LawNode => {
+    if (!currentAbs) {
+      currentAbs = makeNode('abs', '', '', '')
+      para().children.push(currentAbs)
+    }
+    return currentAbs
+  }
 
   for (const m of body.matchAll(BLOCK_RE)) {
     const tag = m[1]!
@@ -113,9 +156,14 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     const typ = /typ="([^"]+)"/.exec(attrs)?.[1] ?? ''
 
     if (tag === 'ueberschrift') {
-      // A paragraph can carry several headings (Abschnitt above it); the last
-      // one before the first Absatz is the § heading.
-      if (typ === 'para' || root === null) heading = text(inner)
+      // The § heading is the one marked as such. Letting a group heading
+      // stand in for it gave a § the name of the Abschnitt above it — a wrong
+      // name, and a wrong name on someone's paragraph is worse than none.
+      if (typ === 'para') heading = text(inner)
+      else if (root === null) {
+        const t = text(inner)
+        if (t) context.push(t)
+      }
       continue
     }
 
@@ -133,8 +181,8 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       const lit = LIT_MARKER_RE.exec(marker)
       const node = makeNode(z ? 'z' : lit ? 'lit' : 'z', z?.[1] ?? lit?.[1] ?? marker.replace(/[.)]$/, ''), marker, t)
       // Litera hang off the Ziffer above them, Ziffern off the Absatz.
-      const host = node.level === 'lit' ? ([...(currentAbs?.children ?? [])].reverse().find((c) => c.level === 'z') ?? currentAbs) : currentAbs
-      if (host) host.children.push(node)
+      const host = node.level === 'lit' ? ([...absatz().children].reverse().find((c) => c.level === 'z') ?? absatz()) : absatz()
+      host.children.push(node)
       continue
     }
 
@@ -145,20 +193,20 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     if (gld && root === null) {
       const marker = text(gld[1]!)
       root = makeNode('para', idMatch?.[1] ?? marker.replace(/^[§\s]*/, '').replace(/\.$/, ''), marker, '', heading)
+      root.context = context
     }
-    if (root === null) root = makeNode('para', idMatch?.[1] ?? '?', idText || '', '', heading)
+    para()
 
     const am = ABS_MARKER_RE.exec(rest)
     if (am) {
       currentAbs = makeNode('abs', am[1]!, `(${am[1]})`, rest.slice(am[0].length))
-      root.children.push(currentAbs)
+      root!.children.push(currentAbs)
     } else if (currentAbs) {
       // A continuation paragraph of the same Absatz (Satz block).
       if (rest) currentAbs.text = `${currentAbs.text} ${rest}`.trim()
     } else if (rest) {
       // A § without Absatz numbering: the whole text is one implicit Absatz.
-      currentAbs = makeNode('abs', '', '', rest)
-      root.children.push(currentAbs)
+      absatz().text = rest
     }
   }
   return root

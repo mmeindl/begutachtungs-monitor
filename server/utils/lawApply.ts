@@ -660,7 +660,9 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           const para = outgoing[0]!
           const at = law.paragraphs.indexOf(para)
           if (op.withHeading) return 'samt Überschrift, aber keine Überschrift im neuen Text'
-          law.paragraphs.splice(at, 1, { level: 'para' as const, id: para.id, marker: para.marker, heading: para.heading, text: '', children: payload })
+          // The group headings above the § are not the §'s own text and a
+          // replacement does not touch them, so they carry over unchanged.
+          law.paragraphs.splice(at, 1, { level: 'para' as const, id: para.id, marker: para.marker, heading: para.heading, context: para.context, text: '', children: payload })
           return null
         }
         for (const [i, para] of outgoing.entries()) {
