@@ -347,6 +347,9 @@ function rowOf(law: string | null, gld: string | null, current: string, proposed
     law,
     heading: context,
     gld,
+    // A PDF row already collects a whole provision, so the § it belongs to is
+    // the § it opens; there are no continuation rows to inherit anything.
+    para: gld,
     current,
     proposed,
     change,
@@ -517,7 +520,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   for (const section of sections) {
     const law = section.article?.key ?? null
     if (section.opened && section.article) {
-      rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+      rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
     }
     const left = unitsOfColumn(section.lines.map((l) => ({ text: l.left, wrapped: l.leftWrapped, context: contextFor.get(l) })))
     const right = unitsOfColumn(section.lines.map((l) => ({ text: l.right, wrapped: l.rightWrapped, context: contextFor.get(l) })))

@@ -406,7 +406,10 @@ export interface TextComparisonRow {
    */
   law: string | null
   heading: string | null
+  /** "§ 5." when the row opens a paragraph; null for a row that continues one */
   gld: string | null
+  /** The § the row belongs to, inherited where the row opens none of its own */
+  para: string | null
   current: string
   proposed: string
   change: LawUnitChange

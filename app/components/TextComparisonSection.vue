@@ -225,7 +225,7 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
                 </summary>
                 <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
                   <p v-for="(r, ri) in b.rows" :key="ri" class="hyphens-auto">
-                    <span v-if="r.gld" class="font-medium text-ink">{{ r.gld }} </span>{{ r.current }}
+                    <span v-if="r.gld" class="font-medium text-ink">{{ r.gld }} </span><span v-else-if="r.para" class="text-ink-muted">{{ r.para }} </span>{{ r.current }}
                   </p>
                 </div>
               </details>
@@ -239,7 +239,13 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
                       {{ BADGE_LABEL[badgeOf(b.row)] }}
                     </span>
+                    <!-- The annex prints one row per Absatz, so two rows in
+                         three open no § of their own. Showing nothing there
+                         left "geändert" over a text starting "(26) …" with no
+                         way to tell which § that is; the inherited
+                         designation is set quieter than an own one. -->
                     <span v-if="b.row.gld" class="font-medium text-ink">{{ b.row.gld }}</span>
+                    <span v-else-if="b.row.para" class="text-ink-muted">{{ b.row.para }}</span>
                   </p>
 
                   <p v-if="b.row.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
