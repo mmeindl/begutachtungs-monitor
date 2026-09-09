@@ -263,6 +263,41 @@ describe('the § heading inside the cell', () => {
   })
 })
 
+describe('a division of the law printed as an ordinary row', () => {
+  // "9b. Abschnitt" typeset in both columns rather than as a heading. It
+  // reached the comparison as a mirrored pair row and was filed under
+  // whichever § stood open above it — 205 such rows in GP XXVIII.
+  const gld = (n: string, text: string) => `<span class="gldsym"><gldsym>§ ${n}.</gldsym></span> ${text}`
+
+  it('reads it as context, not as an unchanged provision', () => {
+    const rows = parse(
+      annex([
+        pair(gld('2', '(1) Der alte Text.'), gld('2', '(1) Der neue Text.')),
+        pair('9b. Abschnitt', '9b. Abschnitt'),
+        pair(gld('54c', '(1) Etwas anderes.'), gld('54c', '(1) Etwas anderes.')),
+      ]),
+    )
+    expect(rows.map((r) => r.current)).not.toContain('9b. Abschnitt')
+    // The § below it keeps its own designation — the division is not a § and
+    // must not become one.
+    expect(rows.filter((r) => r.kind === 'pair').map((r) => r.gld)).toEqual(['§ 2.', '§ 54c.'])
+  })
+
+  it('leaves law text that merely looks like a heading where it is', () => {
+    // Each of these is a mirrored row without a closing full stop, which is
+    // what an earlier version of the rule keyed on: an Absatz introducing a
+    // list, a Ziffer, a litera. Reading them as headings deleted law text.
+    const lines = [
+      '(3) Der Plattform-Anbieter hat darüber hinaus dafür zu sorgen, dass',
+      '1. die mangelnde Funktionsfähigkeit',
+      'a) des eingerichteten Melde- und Bewertungssystems nach § 54e Abs. 1 Z 1 bis 3,',
+      'Teil der Anlage ist die Beschreibung der Verfahren',
+    ]
+    const rows = parse(annex(lines.map((l) => pair(l, l))))
+    expect(rows.filter((r) => r.kind === 'pair').map((r) => r.current)).toEqual(lines)
+  })
+})
+
 describe('which § a row belongs to', () => {
   // The annex prints one row per Absatz, so two rows in three open no § of
   // their own — 66 of 100 in one annex, 37 of them carrying a change. Those
