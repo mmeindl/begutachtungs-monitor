@@ -161,10 +161,9 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
 
     <template v-else>
       <p class="text-sm text-ink-secondary">
-        Aus der Textgegenüberstellung, die das Ressort dem Entwurf beilegt:
-        rot das geltende Recht, grün der Vorschlag. Der Text stammt von dort,
-        die Markierung von uns. „Redaktionell“ heißt: nur Verweise, Zahlen,
-        Daten oder Satzzeichen.
+        Das Ressort legt dem Entwurf eine Textgegenüberstellung bei. Der Text
+        stammt von dort, die Markierung von uns. „Redaktionell“ heißt: nur
+        Verweise, Zahlen, Daten oder Satzzeichen.
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
