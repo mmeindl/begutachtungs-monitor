@@ -114,8 +114,16 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
       else out.push(z)
       continue
     }
-    if (abs) abs.text = `${abs.text} ${line}`.trim()
-    else if (pendingHeading === null) pendingHeading = line
+    if (abs) {
+      // An unmarked line after list items is a Schlussteil — it closes the
+      // enumeration and belongs *behind* it ("… insbesondere a) … e) … der
+      // Schulbehörde unverzüglich anzuzeigen"). Folding it into the Absatz's
+      // own text put that closing sentence in front of the list and left the
+      // §  looking amended-but-wrong. `lawStructure.ts` builds the standing
+      // law the same way, so the two sides now render in the same order.
+      if (abs.children.length) abs.children.push(makeNode('schluss', 'schluss', '', line))
+      else abs.text = `${abs.text} ${line}`.trim()
+    } else if (pendingHeading === null) pendingHeading = line
     else out.push(makeNode('abs', '', '', line))
   }
   // A heading with nothing behind it is the payload of "Die Überschrift … lautet:".
@@ -132,9 +140,16 @@ export function parsePayload(lines: readonly string[]): LawNode[] {
 export function stripPayloadQuotes(lines: readonly string[]): string[] {
   const out = lines.map((l) => normalizeText(l)).filter(Boolean)
   if (out.length === 0) return out
-  out[0] = out[0]!.replace(/^["\u00ab\u2039]\s*/, '')
+  // The opening quote does not always come first. RIS keeps the paragraph
+  // symbol in its own `gldsym`, so a replacement prints as `§ 69.` + `" (1)
+  // Im Antrag …` and `payloadLine` joins them with the quote in the middle,
+  // where an anchored strip cannot see it. Three §§ of the Luftfahrtgesetz
+  // carried a stray `" (1)` into the consolidated text that way (2026-09-09).
+  out[0] = out[0]!.replace(/^((?:§+\s*\d+[a-z]*\.\s*)?)["\u00ab\u2039]\s*/, '$1')
   const last = out.length - 1
-  out[last] = out[last]!.replace(/\s*["\u00bb\u203a]$/, '')
+  // A closing quote is sometimes followed by the instruction's own full stop
+  // ("… zu verlangen."."), which left `verlangen".` in the text.
+  out[last] = out[last]!.replace(/\s*["\u00bb\u203a]\s*\.?$/, '')
   return out
 }
 
@@ -278,16 +293,80 @@ function countOccurrences(haystack: string, needle: string): number {
 }
 
 /**
- * Rule 1 in practice: find the one node whose text contains `needle` exactly
- * once, across the whole addressed scope. Anything else — not found,
- * found twice, found in two nodes — is a refusal, not a choice.
+ * One piece of writable text a phrase operation can act on.
+ *
+ * A phrase operation does not always address a node's body. "In der
+ * Überschrift zu § 120d entfällt die Wortfolge …" addresses the heading,
+ * which is not part of `text` at all, and "§ 169 Abs. 5 dritter Satz"
+ * addresses one sentence inside it. Searching the node's whole text for both
+ * meant the heading case never found its phrase and the sentence case found
+ * it twice and refused as ambiguous — five instructions of the Luftfahrt-
+ * gesetz between them (2026-09-09).
  */
-function uniqueHost(scope: LawNode, needle: string): { node: LawNode } | { error: string } {
-  const hosts = textNodes(scope).filter((n) => n.text.includes(needle))
-  const total = textNodes(scope).reduce((sum, n) => sum + countOccurrences(n.text, needle), 0)
+interface Slot {
+  read: () => string
+  write: (value: string) => void
+}
+
+const textSlot = (node: LawNode): Slot => ({ read: () => node.text, write: (v) => { node.text = v } })
+const headingSlot = (node: LawNode): Slot => ({ read: () => node.heading ?? '', write: (v) => { node.heading = v } })
+
+/** The addressed sentence of a node, as a slot that writes back into the whole. */
+function sentenceSlot(node: LawNode, satz: string): Slot | null {
+  const parts = node.text.match(/[^.!?]+[.!?]+(?:\s|$)/g)
+  if (!parts) return null
+  const index = satz === 'letzter' ? parts.length - 1 : satz === 'vorletzter' ? parts.length - 2 : (ORDINALS[satz] ?? -1)
+  if (index < 0 || index >= parts.length) return null
+  return {
+    read: () => parts[index]!,
+    write: (v) => {
+      const next = [...parts]
+      next[index] = v === '' ? '' : v.endsWith(' ') ? v : `${v} `
+      node.text = next.join('').replace(/\s{2,}/g, ' ').trim()
+    },
+  }
+}
+
+/** Every slot an address opens up for a phrase operation. */
+function phraseSlots(law: StandingLaw, a: NovaoAddress): Slot[] | null {
+  const scope = scopeOf(law, a)
+  if (!scope) return null
+  if (a.heading) {
+    const titled = scope.filter((n) => (n.heading ?? '') !== '')
+    return titled.length ? titled.map(headingSlot) : null
+  }
+  const slots: Slot[] = []
+  for (const node of scope) {
+    if (a.satz) {
+      const only = sentenceSlot(node, a.satz)
+      if (!only) return null
+      slots.push(only)
+      continue
+    }
+    slots.push(...textNodes(node).map(textSlot))
+  }
+  return slots
+}
+
+/**
+ * Rule 1 in practice: find the one slot containing `needle` exactly once,
+ * across the whole addressed scope. Anything else — not found, found twice,
+ * found in two units — is a refusal, not a choice.
+ */
+function uniqueSlot(slots: readonly Slot[], needle: string): { slot: Slot } | { error: string } {
+  if (!needle) return { error: 'Textstelle ohne Inhalt' }
+  let total = 0
+  let hit: Slot | null = null
+  for (const slot of slots) {
+    const n = countOccurrences(slot.read(), needle)
+    if (n > 0) {
+      total += n
+      hit ??= slot
+    }
+  }
   if (total === 0) return { error: `Textstelle nicht gefunden: "${needle.slice(0, 60)}"` }
   if (total > 1) return { error: `Textstelle ${total}× gefunden, nicht eindeutig: "${needle.slice(0, 60)}"` }
-  return { node: hosts[0]! }
+  return { slot: hit! }
 }
 
 // ---------------------------------------------------------------------------
@@ -349,19 +428,60 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'replace': {
       const ids = [op.target.level === 'para' ? (idOf(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
       if (op.target.level === 'para') {
-        const para = findParagraph(law, op.target)
-        if (!para) return `§ nicht im geltenden Text: ${op.target.para}`
-        // The payload of a § replacement is the § itself; a heading line in
-        // front of it is that §'s new Überschrift, not a block of its own.
-        const replacement = payload.find((p) => p.level === 'para') ?? payload[0]
-        if (!replacement) return 'Ersetzung ohne neuen Text'
-        const at = law.paragraphs.indexOf(para)
-        const next = { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: op.withHeading ? replacement.heading : para.heading }
-        law.paragraphs.splice(at, 1, next)
+        const paras = ids.map((id) => law.paragraphs.find((p) => p.id === id) ?? null)
+        if (paras.some((p) => p === null)) return `§ nicht im geltenden Text: ${op.target.para}`
+        const outgoing = paras as LawNode[]
+        // "§ 7 lautet:" can arrive without a para-level block at all, when the
+        // payload opens straight into "(1) …" and the § symbol stayed in the
+        // instruction. One target and one block is still a 1:1 replacement.
+        const blocks = payload.filter((p) => p.level === 'para')
+        const single = outgoing.length === 1 && blocks.length === 0 && payload.length > 0
+        // Taking the first block and dropping the rest looked like a success
+        // and deleted seven §§ of the IVS-Gesetz (2026-09-09). A run that
+        // changes length is spliced; only a 1:1 replacement keeps the old
+        // designation, because there "§ 5 lautet:" renumbers nothing.
+        if (!single && blocks.length !== outgoing.length) {
+          if (blocks.length === 0) return 'Ersetzung ohne neuen Text'
+          return spliceRun(law.paragraphs, outgoing, blocks, 'para')
+        }
+        if (single) {
+          // The payload is the § *body*: "§ 7 lautet:" followed by (1) … (6).
+          // Treating the first Absatz as the whole § dropped the other five
+          // (Privatschulgesetz, 2026-09-09) — they are all its children, and
+          // the designation stays the one the standing law already carries.
+          const para = outgoing[0]!
+          const at = law.paragraphs.indexOf(para)
+          const heading = op.withHeading ? (payload.find((p) => p.heading)?.heading ?? para.heading) : para.heading
+          law.paragraphs.splice(at, 1, { level: 'para' as const, id: para.id, marker: para.marker, heading, text: '', children: payload })
+          return null
+        }
+        for (const [i, para] of outgoing.entries()) {
+          // The payload of a § replacement is the § itself; a heading line in
+          // front of it is that §'s new Überschrift, not a block of its own.
+          const replacement = blocks[i]
+          if (!replacement) return 'Ersetzung ohne neuen Text'
+          const at = law.paragraphs.indexOf(para)
+          law.paragraphs.splice(at, 1, { ...replacement, level: 'para' as const, id: para.id, marker: para.marker, heading: op.withHeading ? replacement.heading : para.heading })
+        }
         return null
       }
-      if (ids.length !== payload.length && payload.length > 0 && ids.length > 1) {
-        return `${ids.length} Ziele, aber ${payload.length} Textblöcke`
+      // A sub-unit run that changes length is the same form one level down:
+      // "In § 1 wird der Abs. 3 durch folgende Abs. 3 bis 5 ersetzt" quietly
+      // lost two Absätze before this existed (2026-09-09). It only applies
+      // when the address names no sentence — "der zweite Satz durch folgende
+      // Sätze" replaces text inside a node, not the node.
+      if (!op.target.satz && payload.length > 0 && ids.length !== payload.length) {
+        const level = op.target.lit ? 'lit' : op.target.z ? 'z' : 'abs'
+        if (payload.some((p) => p.level !== level)) return `${ids.length} Ziele, aber ${payload.length} Textblöcke`
+        const outgoing: LawNode[] = []
+        for (const id of ids) {
+          const node = resolveTarget(law, op.target, id)
+          if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+          outgoing.push(node)
+        }
+        const parent = parentOf(law, outgoing[0]!)
+        if (!parent) return 'Elternknoten nicht gefunden'
+        return spliceRun(parent.children, outgoing, payload, level)
       }
       for (const [i, id] of ids.entries()) {
         const node = resolveTarget(law, op.target, id)
@@ -381,6 +501,18 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'delete': {
+      // "In § 37 Abs. 2 entfällt der zweite Satz" removes a sentence, not the
+      // Absatz. This case read only the unit level and dropped the whole node
+      // — the engine's worst failure mode, deleting standing law while
+      // reporting success (LMSVG 75/2026, LWA-G 30/2026, 2026-09-09).
+      if (op.target.satz) {
+        const node = resolveTarget(law, op.target)
+        if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+        const only = sentenceSlot(node, op.target.satz)
+        if (!only) return `Satz ${op.target.satz} nicht auffindbar`
+        only.write('')
+        return null
+      }
       const ids = [deepestId(op.target), ...op.target.siblings]
       for (const id of ids) {
         if (op.target.level === 'para') {
@@ -453,47 +585,75 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'replacePhrase': {
-      const scope = scopeOf(law, op.target)
-      if (!scope) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      const slots = phraseSlots(law, op.target)
+      if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       if (op.everywhere) {
         let hits = 0
-        for (const n of scope.flatMap(textNodes)) {
-          const c = countOccurrences(n.text, op.from)
+        for (const slot of slots) {
+          const c = countOccurrences(slot.read(), op.from)
           if (c) {
             hits += c
-            n.text = n.text.split(op.from).join(op.to)
+            slot.write(slot.read().split(op.from).join(op.to))
           }
         }
         return hits === 0 ? `Textstelle nicht gefunden: "${op.from.slice(0, 60)}"` : null
       }
-      const found = uniqueHostIn(scope, op.from)
+      const found = uniqueSlot(slots, op.from)
       if ('error' in found) return found.error
-      found.node.text = found.node.text.replace(op.from, op.to)
+      found.slot.write(found.slot.read().replace(op.from, op.to))
       return null
     }
 
     case 'insertPhrase': {
-      const scope = scopeOf(law, op.target)
-      if (!scope) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-      const found = uniqueHostIn(scope, op.anchor)
+      const slots = phraseSlots(law, op.target)
+      if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      const found = uniqueSlot(slots, op.anchor)
       if ('error' in found) return found.error
-      const node = found.node
-      const at = node.text.indexOf(op.anchor)
-      node.text = op.where === 'after'
-        ? `${node.text.slice(0, at + op.anchor.length)} ${op.text}${node.text.slice(at + op.anchor.length)}`.replace(/\s+/g, ' ')
-        : `${node.text.slice(0, at)}${op.text} ${node.text.slice(at)}`.replace(/\s+/g, ' ')
+      const current = found.slot.read()
+      const at = current.indexOf(op.anchor)
+      found.slot.write(
+        op.where === 'after'
+          ? `${current.slice(0, at + op.anchor.length)} ${op.text}${current.slice(at + op.anchor.length)}`.replace(/\s+/g, ' ')
+          : `${current.slice(0, at)}${op.text} ${current.slice(at)}`.replace(/\s+/g, ' '),
+      )
       return null
     }
 
     case 'deletePhrase': {
-      const scope = scopeOf(law, op.target)
-      if (!scope) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-      const found = uniqueHostIn(scope, op.text)
+      const slots = phraseSlots(law, op.target)
+      if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      const found = uniqueSlot(slots, op.text)
       if ('error' in found) return found.error
-      found.node.text = found.node.text.replace(op.text, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim()
+      found.slot.write(found.slot.read().replace(op.text, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
       return null
     }
   }
+}
+
+/**
+ * A run of units replaced by a different number of units: "Die §§ 7 bis 9
+ * werden durch folgende §§ 7 bis 14 ersetzt", "In § 1 wird der Abs. 3 durch
+ * folgende Abs. 3 bis 5 ersetzt". Six of these sit in two laws of the
+ * 17-Novellen corpus, so it is a form, not an oddity (2026-09-09).
+ *
+ * Determinate, and therefore applicable rather than refusable, because the
+ * address expands to the whole outgoing run and every incoming block carries
+ * its own marker: the run comes out, the blocks go in at its place. Two
+ * conditions have to hold, or the result would be law that does not exist —
+ * the outgoing units must be contiguous siblings, and no incoming id may
+ * collide with a unit outside the run, which would shadow standing text.
+ */
+function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[], level: NodeLevel): string | null {
+  const positions = outgoing.map((n) => siblings.indexOf(n))
+  if (positions.some((i) => i < 0)) return 'Zu ersetzende Einheit nicht am erwarteten Ort'
+  const at = Math.min(...positions)
+  const contiguous = positions.slice().sort((a, b) => a - b).every((pos, i) => pos === at + i)
+  if (!contiguous) return `${outgoing.length} zu ersetzende Einheiten sind nicht zusammenhängend`
+  if (incoming.some((n) => !n.id)) return 'Neuer Textblock ohne eigene Bezeichnung'
+  const survivors = new Set(siblings.filter((n) => !outgoing.includes(n)).map((n) => `${n.level}|${n.id}`))
+  for (const n of incoming) if (survivors.has(`${level}|${n.id}`)) return `${n.marker} existiert bereits`
+  siblings.splice(at, outgoing.length, ...incoming.map((n) => ({ ...n, level })))
+  return null
 }
 
 function deepestId(a: NovaoAddress): string {
@@ -513,13 +673,7 @@ function scopeOf(law: StandingLaw, a: NovaoAddress): LawNode[] | null {
   return nodes
 }
 
-function uniqueHostIn(scope: LawNode[], needle: string): { node: LawNode } | { error: string } {
-  if (scope.length === 1) return uniqueHost(scope[0]!, needle)
-  const hits = scope.map((s) => uniqueHost(s, needle)).filter((r): r is { node: LawNode } => 'node' in r)
-  if (hits.length === 0) return { error: `Textstelle nicht gefunden: "${needle.slice(0, 60)}"` }
-  if (hits.length > 1) return { error: `Textstelle in ${hits.length} Einheiten, nicht eindeutig` }
-  return hits[0]!
-}
+
 
 function parentOf(law: StandingLaw, node: LawNode): LawNode | null {
   for (const para of law.paragraphs) {
