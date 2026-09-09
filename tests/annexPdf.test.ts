@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annexPdf'
+import { uprightRuns, type RawRun } from '../server/utils/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawTitles'
 
 /**
@@ -22,7 +23,17 @@ function draft(...articles: { n?: string; title?: string | null; amends?: boolea
 /** One law, no Artikel structure — the shape of two drafts in three. */
 const ONE_LAW = draft({ title: 'Änderung des Sicherheitspolizeigesetzes' })
 
-const parse = (pages: readonly AnnexPage[], articles: DraftArticle[] = ONE_LAW) => parseAnnexPdf(pages, articles).rows
+/**
+ * The mandated header pair, on a title page of its own.
+ *
+ * `parseAnnexPdf` refuses a PDF that never prints it: it is the only evidence
+ * that the two columns were split where the ressort split them, and every
+ * annex repeats it on every page. Prepending it leaves each fixture's own
+ * geometry untouched.
+ */
+const headerPage = (): AnnexPage => page([{ y: 800, left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' }])
+
+const parse = (pages: readonly AnnexPage[], articles: DraftArticle[] = ONE_LAW) => parseAnnexPdf([headerPage(), ...pages], articles).rows
 
 /**
  * The annex is a two-column table. These fixtures place text runs the way a
@@ -276,5 +287,97 @@ describe('what looks like a provision but is not', () => {
       { y: 660, left: '§ 1.09 Alte Fassung der Sichtzeichen.', right: '§ 1.09 Neue Fassung der Sichtzeichen.' },
     ])])
     expect(rows.map((r) => r.gld)).toEqual(['§ 1.08', '§ 1.09'])
+  })
+})
+
+describe('the header pair as the gate on the geometry', () => {
+  // Every line of this path is read out of a coordinate, and nothing in the
+  // text itself would reveal that the coordinates were misread — the words
+  // are real, only their arrangement is ours. The Rundschreiben's header pair,
+  // found as a left/right line, is the proof that the columns were split where
+  // the ressort split them; 113 of the 114 GP-XXVIII PDF annexes print it, and
+  // the 114th only fails because its pages are turned (2026-09-10).
+  it('refuses a PDF that never prints the two column headings', () => {
+    const parsed = parseAnnexPdf([page([
+      { y: 700, left: '§ 5. (1) Die Behörde entscheidet.', right: '§ 5. (1) Das Gericht entscheidet.' },
+    ])], ONE_LAW)
+    expect(parsed.rows).toEqual([])
+    expect(parsed.unreadable).toContain('Spaltenüberschriften')
+  })
+
+  // Three of the 114 qualify or rename the heading — "Geltende Fassung nach
+  // Inkrafttreten EuGB-VVG", "Geltender Text"/"Vorgeschlagener Text" — and an
+  // exact-equality test read those as ordinary law text.
+  it('accepts the wordings the corpus prints, and keeps them out of the rows', () => {
+    for (const [left, right] of [['Geltende Fassung nach Inkrafttreten EuGB-VVG', 'Vorgeschlagene Fassung'], ['Geltender Text', 'Vorgeschlagener Text']]) {
+      const rows = parseAnnexPdf([page([
+        { y: 800, left, right },
+        { y: 700, left: '§ 5. Alt.', right: '§ 5. Neu.' },
+      ])], ONE_LAW).rows
+      expect(rows.map((r) => r.gld), left).toEqual(['§ 5.'])
+    }
+  })
+})
+
+describe('uprightRuns', () => {
+  /** pdf.js's viewport for an unrotated A4 portrait page: the y flip, nothing else. */
+  const A4 = { transform: [1, 0, 0, -1, 0, 841.92], width: 595.32, height: 841.92 }
+  const run = (transform: number[], width: number, text: string): RawRun => ({ transform, width, text })
+
+  it('leaves an upright page where it was, in PDF user space', () => {
+    // 113 of the 114 GP-XXVIII annexes are this case, and it has to come
+    // through bit for bit: x is the run's own x, y grows upward.
+    const upright = uprightRuns([run([10, 0, 0, 10, 60, 700], 76, 'Geltende Fassung')], A4)
+    expect(upright.width).toBeCloseTo(595.32, 2)
+    expect(upright.items[0]).toMatchObject({ x: 60, y: 700, width: 76, text: 'Geltende Fassung' })
+  })
+
+  // The UWG annex sets `/Rotate 0` and turns the *text matrix* instead: every
+  // run reads [0, 9.96, -9.96, 0, x, y], so the baseline runs along the y axis
+  // and the two columns arrive stacked — "Geltende Fassung" at (121, 215) and
+  // "Vorgeschlagene Fassung" at (121, 537) are one line, not two columns.
+  it('turns a page whose text matrix is a quarter turn back upright', () => {
+    const turned = uprightRuns([
+      run([0, 10, -10, 0, 121, 215], 76, 'Geltende Fassung'),
+      run([0, 10, -10, 0, 121, 537], 104, 'Vorgeschlagene Fassung'),
+      run([0, 10, -10, 0, 156, 89], 63, 'Bundesgesetz'),
+    ], A4)
+    // The long side of the page becomes its width.
+    expect(turned.width).toBeCloseTo(841.92, 2)
+    const [current, proposed, below] = turned.items
+    // The two headings share a baseline, and the current column is left of the
+    // proposed one.
+    expect(current!.y).toBeCloseTo(proposed!.y, 2)
+    expect(current!.x).toBeLessThan(proposed!.x)
+    expect(current!.x).toBeCloseTo(215, 2)
+    expect(proposed!.x).toBeCloseTo(537, 2)
+    // A later line sits lower on the page, which is what `linesFromPage` sorts
+    // on — and the advance along the baseline is unchanged by a quarter turn.
+    expect(below!.y).toBeLessThan(current!.y)
+    expect(below!.width).toBe(63)
+  })
+
+  it('finds the two columns of a turned page where the parse expects them', () => {
+    const turned = uprightRuns([
+      run([0, 10, -10, 0, 121, 215], 76, 'Geltende Fassung'),
+      run([0, 10, -10, 0, 121, 537], 104, 'Vorgeschlagene Fassung'),
+      run([0, 10, -10, 0, 156, 215], 60, '§ 5. Alt.'),
+      run([0, 10, -10, 0, 156, 537], 60, '§ 5. Neu.'),
+    ], A4)
+    const lines = linesFromPage(turned, columnBoundary([turned]))
+    expect(lines[0]).toMatchObject({ left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' })
+    expect(lines[1]).toMatchObject({ left: '§ 5. Alt.', right: '§ 5. Neu.' })
+  })
+
+  it('takes the majority turn when a page carries a stray run of its own', () => {
+    // A page number set upright on an otherwise turned page must not decide
+    // the frame for the body text.
+    const turned = uprightRuns([
+      run([10, 0, 0, 10, 41, 727], 30, '1 von 9'),
+      run([0, 10, -10, 0, 121, 215], 76, 'Geltende Fassung'),
+      run([0, 10, -10, 0, 121, 537], 104, 'Vorgeschlagene Fassung'),
+    ], A4)
+    expect(turned.width).toBeCloseTo(841.92, 2)
+    expect(turned.items[1]!.y).toBeCloseTo(turned.items[2]!.y, 2)
   })
 })

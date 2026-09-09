@@ -372,6 +372,111 @@ Dinge, die der Prüfstand auf dem Weg dorthin gelernt hat:
   gegen ihn muss das aushalten, und er bestätigt entsprechend weniger, als er
   könnte — nie mehr.
 
+### Was die beiden Parser 2026-09-10 falsch gelesen haben
+
+Gemessen über die **240 Beilagen der GP XXVIII** (400 RIS-Begut-Datensätze,
+Gesetze und Verordnungen; 126 lesbare XML-Tabellen, 114 über die PDF-Geometrie).
+Der RIS-Abgleich (`annexCheck.ts`) prüft nur Zeilen, die eine
+Paragraphenbezeichnung tragen **und** als „geändert"/„entfällt" angezeigt
+werden — alles andere muss der Parser allein richtig haben. Genau dort lagen
+die fünf Befunde.
+
+| | vorher | nachher |
+|---|---:|---:|
+| Zeilen insgesamt | 21.117 | 15.677 |
+| geändert | 9.335 | 5.904 |
+| neu | 4.799 | 3.244 |
+| entfällt | 1.311 | 838 |
+| als „ausgelassen" verworfen | 3.352 | 2.496 |
+| davon mit einer Änderung darin | **919** | **41** |
+
+- **„Ausgelassen" hieß nur „endet mit drei Punkten".** Der Test las beide
+  Spalten auf ein Schluss-`…` — und auf dem PDF-Weg ist eine Zeile ein ganzer
+  Paragraph, also fiel jeder Paragraph darunter, dessen *letzter* Absatz
+  ausgelassen ist. 919 Zeilen trugen eine echte Änderung und wurden trotzdem
+  verworfen (die UI blendet sie aus, der RIS-Abgleich überspringt sie), während
+  `stats.changed` sie weiterzählte: die GAP-Strategieplan-Anwendungsverordnung
+  verlor so eine Definition von Grünland und einen Satz von 20 % auf 50 %.
+  Jetzt muss die Zeile *ausschließlich* aus Auslassungssyntax bestehen —
+  Bezeichnungen, „bis"/„und", Bindestrich-Bereiche, das Platzhalter-„xx", Punkte
+  —, davor höchstens eine Überschrift von maximal 80 Zeichen und nur, wenn beide
+  Spalten sie gleich drucken. Rest: 41 Zeilen, in denen sich nur die Auslassung
+  selbst unterscheidet („1. bis 59. …" gegen „1. bis 60. …", „..." gegen „…") —
+  vergleichbaren Gesetzestext trägt dort keine Spalte.
+- **PDF: der Vorspann wurde als neues Recht gezeigt.** Was eine Spalte vor
+  ihrem ersten `§`-Marker druckt, bildet eine Einheit ohne Bezeichnung; die
+  beiden Spalten teilen dafür keinen Schlüssel. Aus der rechten allein
+  ausgegeben wurde daraus eine „neu"-Zeile: 134 Zeilen in 62 der 114
+  PDF-Beilagen zeigten Inhaltsverzeichnis, „E n t w u r f", Langtitel oder
+  „Präambel/Promulgationsklausel" als Zusatz des Entwurfs, eine davon 94.000
+  Zeichen lang. Die linke Spalte fiel schon vorher stillschweigend weg — die
+  Asymmetrie war die ganze Behauptung. Beide Seiten fallen jetzt weg und werden
+  gezählt (`AnnexParse.unplaced`, 272 Blöcke im Korpus). Preis: zwei Beilagen
+  liefern damit gar keine Zeilen mehr, darunter eine Verordnung mit genau einer
+  Bestimmung ohne `§`-Marker. Das ist der bewusste Tausch — eine positionelle
+  Paarung wäre geraten, und „neu" für unverändertes Recht ist die schlechtere
+  Fehlerart.
+- **PDF: gedrehte Seiten.** Die UWG-Novelle setzt `/Rotate 0` und dreht
+  stattdessen die *Textmatrix*: jeder Lauf trägt `[0, 9.96, -9.96, 0, x, y]`,
+  die Grundlinie läuft entlang der y-Achse, und „Geltende Fassung" (121, 215)
+  und „Vorgeschlagene Fassung" (121, 537) liegen übereinander statt
+  nebeneinander. `transform[4]`/`[5]` roh gelesen ergab zwei Zeilen
+  geschütteltes Wortmaterial, angezeigt als neues Recht. `annexPdfPages.ts`
+  rechnet jetzt `viewport.transform` (das trägt `/Rotate`) in jede
+  Lauf-Matrix, bestimmt aus deren Grundlinienrichtung die dominante
+  Vierteldrehung der Seite und dreht die Seite in ein aufrechtes Bild zurück
+  (Ursprung unten links, y nach oben — dieselbe Konvention, in der
+  `annexPdf.ts` sortiert und in der jede Fixture geschrieben ist). Aufrechte
+  Seiten kommen unverändert durch. Ergebnis für diese Beilage: 2 Unsinnszeilen
+  → 7 echte Paragraphen (§§ 1, 1a, 2, 7a, 33a, 44, 45).
+- **Dazu ein Tor.** Jede Zeile dieses Wegs wird aus einer Koordinate
+  erschlossen, und am Text selbst wäre nie zu sehen, dass die Koordinaten
+  falsch gelesen wurden: die Wörter sind echt, nur ihre Anordnung ist unsere.
+  Findet sich das vorgeschriebene Kopfpaar auf keiner Zeile als links/rechts,
+  liefert der Parser nichts (`AnnexParse.unreadable`). Es kostet nach der
+  Drehungskorrektur **keine einzige** der 114 Beilagen — vorher hätte es drei
+  gekostet, zwei davon nur wegen der Schreibweise: „Geltende Fassung nach
+  Inkrafttreten EuGB-VVG" und „Geltender Text"/„Vorgeschlagener Text". Die
+  Kopfzeilen werden deshalb über ein Muster erkannt, nicht über
+  Zeichengleichheit.
+- **XML: verschachtelte Inhaltstabellen wurden zu erfundenen Änderungen.**
+  Der Lift war für den Layout-Fall gebaut — eine Wrapper-Zeile, eine Zelle über
+  die volle Breite, die Gegenüberstellung darin — und feuerte auf *jede*
+  verschachtelte Tabelle. 443 der 458 verschachtelten Tabellen der GP XXVIII
+  sitzen aber in einer Zelle *innerhalb* einer Spalte, und ihre Spalten sind
+  nicht „geltend" und „vorgeschlagen": das Finanzausgleichsgesetz § 11 meldete
+  „Grunderwerbsteuer" → „5,702 0,556 93,742", die Fruchtsaftverordnung 158
+  geänderte Zeilen aus einer „Fruchtnektar aus | Mindestgehalt"-Tabelle, die
+  Universitätsfinanzierungsverordnung 672 aus einer ISCED-Codeliste. Gehoben
+  wird jetzt nur noch, was die Breite deckt (alle anderen Zellen der Zeile
+  leer) oder selbst mit dem Kopfpaar beginnt; alles andere wird als Text in die
+  Zelle geschrieben — Zeilen mit " ", Zellen mit " | " —, steht damit in beiden
+  Spalten und wird vom Wortdiff verglichen. Das Kriterium „Wrapper-Zeile hat
+  genau eine Zelle" wäre zu eng gewesen: das ABGB schreibt
+  `<td colspan="2">…Vergleich…</td><td/>` und verlor damit den neuen § 1159
+  Abs. 6.
+- **XML: eine Zeile muss die Spaltenbreiten des Kopfes nicht einhalten.** Das
+  Verbraucherkreditrechts-Änderungsgesetz 2026 setzt den Kopf `colspan="5"`
+  gegen `colspan="1"` und den Anhang `4` gegen `3`: beide Zellen landeten unter
+  „Geltende Fassung", die rechte Spalte blieb leer, und elf Zeilen wurden als
+  **entfällt** gemeldet, die der Anhang in beiden Spalten gleich druckt. Keine
+  davon trägt eine Paragraphenbezeichnung, der RIS-Abgleich sieht sie also nie.
+  Bleibt eine Seite leer, wird jetzt nach den Breiten der Zeile selbst geteilt.
+- **XML: Kopf fehlt ganz.** Genau eine der 126 lesbaren Beilagen druckt das
+  Kopfpaar nicht (Kurztitel beginnt „Änderung der Universitäts- und
+  Hochschulstatistik-…"). Sie *ist* eine zweispaltige Gegenüberstellung, nur
+  ohne Überschrift; die Spaltenbreiten kommen deshalb aus der häufigsten
+  Zeilenform statt aus einer Annahme, und ein Dokument, dessen Zeilen nicht
+  zwei Zellen breit sind, liefert nichts statt Paaren aus unverwandten Zellen.
+
+**Offen: zwei Beilagen-Dokumente pro Datensatz.** 2 der 240 Datensätze mit
+Beilage tragen zwei davon — „Textgegenüberstellung (Verordnung)" +
+„Textgegenüberstellung (Anlagen)" (Methodenverordnung Wasser) und
+„Textgegenüberstellung (Artikel1)" + „Textgegenüberstellung (Artikel 2)"
+(Weinrecht-Sammelverordnung 2026). `ris.ts` nimmt das erste; die zweite Hälfte
+der Gegenüberstellung wird nicht gezeigt und auch nicht erwähnt. Nicht
+behoben.
+
 ## 2. RIS OGD API — `Applikation=Begut`
 
 ```

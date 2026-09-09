@@ -117,13 +117,15 @@ describe('an annex that spans its columns', () => {
   })
 })
 
-describe('an annex with a nested table', () => {
-  // A non-greedy <tr>…</tr> match stops at the *first* closing tag, so the
-  // outer row was cut off at the inner table's first row. 17 of 65 annexes
-  // nest tables; their rows are provisions, not decoration.
+describe('an annex that wraps its comparison in a layout table', () => {
+  // Some annexes put the whole comparison inside one full-width cell of an
+  // outer table. A non-greedy <tr>…</tr> match stopped at the *first* closing
+  // tag, so the wrapper row was cut off at the inner table's first row and
+  // every following row was lost — 53 rows in one GP-XXVIII annex, 90 in
+  // another.
   const xml = `<table>
     <tr><td>Geltende Fassung</td><td>Vorgeschlagene Fassung</td></tr>
-    <tr><td><table><tr><td><gldsym>§ 9.</gldsym>Alter Text.</td><td>Neuer Text.</td></tr></table></td><td></td></tr>
+    <tr><td colspan="2"><table><tr><td><gldsym>§ 9.</gldsym>Alter Text.</td><td>Neuer Text.</td></tr></table></td></tr>
   </table>`
 
   it('keeps the nested row and its two columns', () => {
@@ -136,6 +138,54 @@ describe('an annex with a nested table', () => {
   it('does not repeat the nested text in the wrapping row', () => {
     const withAlt = parse(xml).filter((r) => r.kind === 'pair' && r.current.includes('Alter Text.'))
     expect(withAlt).toHaveLength(1)
+  })
+
+  // A nested table that prints the header pair itself is the comparison,
+  // whatever wraps it.
+  it('lifts a nested table that carries the header pair', () => {
+    const wrapped = `<table><tr><td>Aussen</td><td><table>
+      <tr><td>Geltende Fassung</td><td>Vorgeschlagene Fassung</td></tr>
+      <tr><td><gldsym>§ 3.</gldsym>Alt.</td><td><gldsym>§ 3.</gldsym>Neu.</td></tr>
+    </table></td></tr></table>`
+    expect(parse(wrapped).find((r) => r.gld === '§ 3.')).toMatchObject({ current: 'Alt.', proposed: 'Neu.', change: 'changed' })
+  })
+})
+
+describe('a table the law itself contains', () => {
+  // The lift above was built for layout wrappers, and it fired on every nested
+  // table. A wrapper row that already has two cells *is* a comparison row, so
+  // a table inside one of its cells sits within a column — its columns are not
+  // "geltend" and "vorgeschlagen". Read as a comparison, the
+  // Finanzausgleichsgesetz § 11 reported "Grunderwerbsteuer" turning into
+  // "5,702 0,556 93,742" and the Fruchtsaftverordnung produced 158 changed
+  // rows out of a "Fruchtnektar aus | Mindestgehalt" table (2026-09-10).
+  const rate = (bund: string) => `<absatz typ="abs"><gldsym>§ 11.</gldsym> Die Erträge werden geteilt:</absatz><table>
+    <tr><td /><td>Bund</td><td>Länder</td><td>Gemeinden</td></tr>
+    <tr><td>Grunderwerbsteuer</td><td>${bund}</td><td>0,556</td><td>93,742</td></tr>
+  </table>`
+  const xml = annex([pair(rate('5,702'), rate('4,000'))])
+
+  it('does not turn its columns into a comparison of their own', () => {
+    const rows = parse(xml)
+    expect(rows).toHaveLength(1)
+    expect(rows.some((r) => r.current === 'Grunderwerbsteuer')).toBe(false)
+    expect(rows.some((r) => r.proposed.startsWith('Bund'))).toBe(false)
+  })
+
+  it('carries the table into both columns as text, so the word diff sees it', () => {
+    const row = parse(xml)[0]!
+    expect(row.gld).toBe('§ 11.')
+    expect(row.current).toContain('Grunderwerbsteuer | 5,702 | 0,556 | 93,742')
+    expect(row.proposed).toContain('Grunderwerbsteuer | 4,000 | 0,556 | 93,742')
+    expect(row.change).toBe('changed')
+    // The one number that moved, and nothing else.
+    expect(row.segments!.filter((s) => s.type !== 'equal').map((s) => s.text)).toEqual(['5,702', '4,000'])
+  })
+
+  it('drops the spacer tables some annexes use for vertical rhythm', () => {
+    const spacer = '<table><tr><td /><td /></tr><tr><td /><td /></tr></table>'
+    const rows = parse(annex([pair(`<absatz typ="abs"><gldsym>§ 2.</gldsym> Alt.</absatz>${spacer}`, `<absatz typ="abs"><gldsym>§ 2.</gldsym> Alt.</absatz>${spacer}`)]))
+    expect(rows[0]).toMatchObject({ current: 'Alt.', proposed: 'Alt.', change: 'unchanged' })
   })
 })
 
