@@ -259,3 +259,30 @@ describe('the § heading inside the cell', () => {
     expect(rows[0]).toMatchObject({ gld: '§ 65a.', heading: 'Aufbewahrung von Protokollen' })
   })
 })
+
+describe('which § a row belongs to', () => {
+  // The annex prints one row per Absatz, so two rows in three open no § of
+  // their own — 66 of 100 in one annex, 37 of them carrying a change. Those
+  // read as "geändert" over a text beginning "(26) Für das Inkrafttreten …",
+  // with nothing to say which § that is.
+  it('inherits the § from the row that opened it', () => {
+    const rows = parse(annex([
+      pair('<absatz typ="abs"><gldsym>§ 82.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 82.</gldsym> (1) Neu.</absatz>'),
+      pair('<absatz typ="abs">(26) Für das Inkrafttreten gilt Folgendes: alt.</absatz>', '<absatz typ="abs">(26) Für das Inkrafttreten gilt Folgendes: neu.</absatz>'),
+    ]))
+    expect(rows.map((r) => [r.gld, r.para])).toEqual([['§ 82.', '§ 82.'], [null, '§ 82.']])
+  })
+
+  // A package's next law restarts its numbering, so the § does not carry over
+  // a boundary.
+  it('does not carry a § across a law boundary', () => {
+    const pkg = draft({ n: '1', title: 'Änderung des Aktiengesetzes' }, { n: '2', title: 'Änderung des GmbH-Gesetzes' })
+    const rows = parse(annex([
+      '<tr><td colspan="2">Artikel 1 Änderung des Aktiengesetzes</td></tr>',
+      pair('<absatz typ="abs"><gldsym>§ 82.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 82.</gldsym> (1) Neu.</absatz>'),
+      '<tr><td colspan="2">Artikel 2 Änderung des GmbH-Gesetzes</td></tr>',
+      pair('<absatz typ="abs">(3) Ohne eigene Bezeichnung, alt.</absatz>', '<absatz typ="abs">(3) Ohne eigene Bezeichnung, neu.</absatz>'),
+    ]), pkg)
+    expect(rows.filter((r) => r.kind === 'pair').map((r) => r.para)).toEqual(['§ 82.', null])
+  })
+})

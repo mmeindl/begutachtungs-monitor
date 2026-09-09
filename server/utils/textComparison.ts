@@ -43,8 +43,20 @@ export interface ComparisonRow {
   law: string | null
   /** Text of an article row */
   heading: string | null
-  /** "§ 5." when the row opens a paragraph */
+  /** "§ 5." when the row *opens* a paragraph; null for a row that continues one */
   gld: string | null
+  /**
+   * The § the row belongs to — its own designation, or the one inherited from
+   * the row that opened the paragraph.
+   *
+   * The annex prints one row per Absatz, so two thirds of the rows open no
+   * paragraph of their own: 66 of 100 in one annex, 37 of them carrying a
+   * change. Those read as "geändert" over a text beginning "(26) Für das
+   * Inkrafttreten …", with nothing to say which § that is. `gld` cannot carry
+   * it — "does this row open a paragraph" is a different question, and the
+   * oracle's heading detection depends on the difference.
+   */
+  para: string | null
   current: string
   proposed: string
   change: ComparisonChange
@@ -378,6 +390,8 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
   // Pass 3: emit.
   const rows: ComparisonRow[] = []
   let law = resolution.whole?.key ?? null
+  /** The § currently open — a new law restarts the numbering. */
+  let openPara: string | null = null
   let pendingHeading: string[] = []
   for (const [i, p] of parsed.entries()) {
     const mark = candidateAt.get(i)
@@ -385,7 +399,8 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       const article = resolution.accepted.get(mark.at)
       if (article) {
         law = article.key
-        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+        openPara = null
+        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
         pendingHeading = []
         continue
       }
@@ -432,6 +447,8 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       continue
     }
     const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
+    const gld = gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null
+    if (gld) openPara = gld
     const elided = ELIDED_RE.test(current) && ELIDED_RE.test(proposed)
     const change = classify(current, proposed)
     // The ressort's yellow marking is reliable where present but incomplete:
@@ -443,7 +460,8 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       kind: 'pair',
       law,
       heading: [pendingHeading.join(' '), lift ? ownHeading : ''].filter(Boolean).join(' · ') || null,
-      gld: gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null,
+      gld,
+      para: openPara,
       current,
       proposed,
       change,

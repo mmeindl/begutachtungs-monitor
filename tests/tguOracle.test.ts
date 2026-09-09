@@ -4,9 +4,9 @@ import type { ComparisonRow } from '../server/utils/textComparison'
 
 function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {
   const change = !current && proposed ? 'inserted' : current && !proposed ? 'removed' : current === proposed ? 'unchanged' : 'changed'
-  return { kind: 'pair', law, heading: null, gld, current, proposed, change, marked: false, elided, segments: null, editorial: false }
+  return { kind: 'pair', law, heading: null, gld, para: gld, current, proposed, change, marked: false, elided, segments: null, editorial: false }
 }
-const article = (heading: string, law: string | null = null): ComparisonRow => ({ kind: 'article', law, heading, gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+const article = (heading: string, law: string | null = null): ComparisonRow => ({ kind: 'article', law, heading, gld: null, para: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
 
 describe('rowsByParagraph', () => {
   // A package's second law starts its own § 5, and in the multi-law annexes
