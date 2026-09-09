@@ -121,7 +121,18 @@ const TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
  * of its Anlagen onto §§ 1 to 6 and scored 11–45 % against the wrong
  * provisions (2026-09-09). The marker itself is group 1, without the prefix.
  */
-const UNIT_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*\d+[a-z]*\.|Art(?:\.|ikel)\s*\d+[a-z]*(?=\s)|Anlage\s+[\dIVXL]+[a-z]?|Anhang\s+[\dIVXL]+[a-z]?)/
+const UNIT_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*\d+[a-z]*\.\d+\.?|§\s*\d+[a-z]*\.|Art(?:\.|ikel)\s*\d+[a-z]*(?=\s)|Anlage\s+[\dIVXL]+[a-z]?|Anhang\s+[\dIVXL]+[a-z]?)/
+/**
+ * What follows a designation that is a *citation* rather than a provision.
+ *
+ * "Art. 92 Abs. 1 Buchstabe d der Verordnung (EU) 2024/1689" is running text,
+ * and a wrapped line beginning with one opened a provision that does not
+ * exist — which the check against RIS then looked up as § 92. A designation
+ * that opens a provision is followed by the provision, not by a subdivision
+ * of something else. 23 of the worst-scoring rows carrying real prose were
+ * this one shape (2026-09-09).
+ */
+const CITATION_TAIL_RE = /^\s*(?:Abs\.|Z\s|lit\b|Buchstabe|Unterabsatz|Nr\.|Nummer|der\b|des\b|dieser\b|dieses\b|und\b|bis\b|sowie\b|zur\b|zum\b|in\b)/
 /** "Artikel 3" with nothing else on the line. */
 const BARE_ARTICLE_RE = /^Artikel\s+(?:X?\d+[a-z]?|[IVXL]+)$/
 /** A qualifier that stands where the law's name would, and is not one. */
@@ -259,24 +270,37 @@ const SENTENCE_END = /[.;:!?…]["»›)]?$/
  * a heading does neither, which is what distinguishes it.
  */
 function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context?: string }[]): ColumnUnit[] {
-  const units: { gld: string | null; context: string | null; parts: { text: string; wrapped: boolean }[] }[] = []
-  let current: { gld: string | null; context: string | null; parts: { text: string; wrapped: boolean }[] } = { gld: null, context: null, parts: [] }
+  type Line = { text: string; wrapped: boolean }
+  type Unit = { gld: string | null; context: string | null; parts: Line[]; opener: Line | null }
+  const units: Unit[] = []
+  let current: Unit = { gld: null, context: null, parts: [], opener: null }
 
   for (const line of lines) {
     if (!line.text) continue
     const marker = UNIT_RE.exec(line.text)
-    if (!marker) {
+    // "§ 5." can only be a designation. "Art. 92", "Anlage 4" and "Anhang I"
+    // are as often citations, and there the text after the number decides.
+    const cited = marker !== null && !marker[1]!.startsWith('§') && CITATION_TAIL_RE.test(line.text.slice(marker[0].length))
+    if (!marker || cited) {
       current.parts.push(line)
       continue
     }
-    const carried: { text: string; wrapped: boolean }[] = []
+    const carried: Line[] = []
     while (current.parts.length > 0 && carried.length < 3) {
       const last = current.parts[current.parts.length - 1]!
+      // A unit's own marker line is never handed to the next unit. It could
+      // be: a line that opens a § and ends without a full stop looks exactly
+      // like a heading, and every line of an **Inhaltsverzeichnis** is of
+      // that shape. Annexes reprint the table of contents, so each entry was
+      // dragged three §§ forward — "[§ 5.] § 2. Bezugnahme auf Unionsrecht" —
+      // and 126 of the worst-scoring rows in the corpus were that one bug
+      // (2026-09-09).
+      if (last === current.opener) break
       if (last.wrapped || SENTENCE_END.test(last.text)) break
       carried.unshift(current.parts.pop()!)
     }
     if (current.gld !== null || current.parts.length > 0) units.push(current)
-    current = { gld: normalizeText(marker[1] ?? marker[0]), context: line.context ?? null, parts: [...carried, line] }
+    current = { gld: normalizeText(marker[1] ?? marker[0]), context: line.context ?? null, parts: [...carried, line], opener: line }
   }
   if (current.gld !== null || current.parts.length > 0) units.push(current)
 
@@ -305,7 +329,9 @@ function unitsOfColumn(lines: readonly { text: string; wrapped: boolean; context
 }
 
 function idOfMarker(gld: string): string | null {
-  const number = /(\d+[a-z]*|[IVXL]+)/.exec(gld)?.[1]
+  // A law numbered in decimals ("§ 1.08") keeps the whole number: cut at the
+  // first period, every one of its §§ collapses onto "1".
+  const number = /(\d+[a-z]*(?:\.\d+)?|[IVXL]+)/.exec(gld)?.[1]
   if (!number) return null
   const kind = /^(?:Anlage|Anhang)/i.test(gld) ? 'anlage' : /^Art/i.test(gld) ? 'artikel' : 'para'
   return `${kind}:${number}`
