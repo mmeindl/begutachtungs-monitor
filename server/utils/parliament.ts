@@ -15,6 +15,12 @@
  * 3. Stale data is never served as fresh, but it IS served as stale: the
  *    last-good statements aggregation is persisted (lastgood.ts) and
  *    labelled with `staleAsOf` when the live list-142 fetch fails.
+ * 4. Two layers by provenance (§5 rule 5, `cacheBase.ts`). Rule 1 says where
+ *    to cache; this says in which layer. The upstream answers are cached as
+ *    they arrived; everything this module derives from them — the row
+ *    mappings, `findGpCode`, the classified statements — takes
+ *    `base: DERIVED_CACHE` and never reaches the disk. List 142 has no
+ *    cached fetch at all: its rows name private persons.
  */
 import type {
   ConsultationDetail,
@@ -226,24 +232,30 @@ function findGpCode(node: unknown): string | null {
   return null
 }
 
+/** The ME list's page configuration, as served. Leaf cache. */
+const meListConfig = defineCachedFunction(
+  (): Promise<unknown> =>
+    upstreamJson<unknown>(`${PARLIAMENT_BASE}/recherchieren/gegenstaende/ministerialentwuerfe?json=True`),
+  { name: 'parliament-me-config', getKey: () => 'config', maxAge: 60 * 60 * 24, swr: false },
+)
+
 /**
- * Current GP from the page configuration of the ME list
- * (…definition.params.GP_CODE[0]), cached for 24 h, fallback 'XXVIII'.
+ * Current GP from that configuration (…definition.params.GP_CODE[0]),
+ * fallback 'XXVIII'. Derived: `findGpCode` is our search through a foreign
+ * document, so it belongs in the layer that dies with the code
+ * (`cacheBase.ts`). The configuration underneath it is the cached half.
  */
 export const getCurrentGp = defineCachedFunction(
   async (): Promise<string> => {
     try {
-      const config = await upstreamJson<unknown>(
-        `${PARLIAMENT_BASE}/recherchieren/gegenstaende/ministerialentwuerfe?json=True`,
-      )
-      const gp = findGpCode(config)
+      const gp = findGpCode(await meListConfig())
       if (gp) return gp
     } catch {
       // Fallback below
     }
     return FALLBACK_GP
   },
-  { name: 'current-gp', getKey: () => 'current', maxAge: 60 * 60 * 24, swr: false },
+  { name: 'current-gp', base: DERIVED_CACHE, getKey: () => 'current', maxAge: 60 * 60 * 24, swr: false },
 )
 
 export interface GpConsultations {
@@ -259,19 +271,35 @@ function toIsoTimestamp(value: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
-/** List 81 of one GP, mapped and sanity-checked. Leaf cache. */
+/**
+ * List 81 of one GP, exactly as the API answered. Leaf cache — one entry per
+ * distinct upstream call, holding nothing we made.
+ *
+ * The GP check runs *inside* the cache on purpose. It exists because the API
+ * silently ignores unknown filter keys, and a response that ignored the
+ * filter is the whole dataset: caching it first and checking afterwards
+ * would store that answer and then throw on it for half an hour.
+ */
+const consultationRows = defineCachedFunction(
+  async (gp: string): Promise<FilterListResponse> => {
+    const res = await fetchFilterList(81, { GP_CODE: [gp] }, { sortrnr: '11', ascDesc: 'DESC' })
+    assertRowsMatchGp(res.rows ?? [], gp, 81)
+    return res
+  },
+  { name: 'consultations-list', getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+)
+
+/** The same list, mapped to our types. Derived — `mapConsultationRow` is ours. */
 export const getConsultationsForGp = defineCachedFunction(
   async (gp: string): Promise<GpConsultations> => {
-    const res = await fetchFilterList(81, { GP_CODE: [gp] }, { sortrnr: '11', ascDesc: 'DESC' })
-    const rows = res.rows ?? []
-    assertRowsMatchGp(rows, gp, 81)
+    const res = await consultationRows(gp)
     return {
       gp,
       lastSync: toIsoTimestamp(res.lastSync),
-      items: rows.map(mapConsultationRow),
+      items: (res.rows ?? []).map(mapConsultationRow),
     }
   },
-  { name: 'consultations-gp', getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+  { name: 'consultations-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
 )
 
 /**
@@ -309,7 +337,19 @@ export async function requireConsultation(gp: string, inr: number): Promise<Cons
 }
 
 /**
- * List 142 of one ME, GDPR-filtered and mapped, date descending. Leaf cache.
+ * List 142 of one ME, GDPR-filtered and mapped, date descending. Derived —
+ * and the one upstream call with **no cached fetch underneath it**, for two
+ * independent reasons (`cacheBase.ts`).
+ *
+ * The raw rows name private persons. `mapStatementRow` drops those names
+ * before anything is stored, so what may be kept is the classified result,
+ * never the response it came from — and the persistent layer is a directory
+ * on disk. The second reason is the guard below: a cached raw response would
+ * hand the retry the same empty answer it is retrying.
+ *
+ * The classified rows are cached, but derived, so they die with the code
+ * that classified them — a change to `classifySubmitter` shows on the next
+ * request instead of in half an hour.
  *
  * Inconsistency guard: list 142 sometimes answers EMPTY although list 81
  * still counts statements (observed 2026-08-27: 88/ME had 707 in list 81,
@@ -351,6 +391,7 @@ export const getStatementsForMe = defineCachedFunction(
   },
   {
     name: 'statements-me',
+    base: DERIVED_CACHE,
     getKey: (gp: string, inr: number) => `${gp}-${inr}`,
     maxAge: UPSTREAM_TTL_S,
     swr: false,
