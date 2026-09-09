@@ -221,16 +221,29 @@ const checkNote = computed<string | null>(() => {
 })
 
 /**
- * A law whose §§ fail in a cluster. Named, because the cause is not ours:
- * the annex was written against another version of that law than the one RIS
- * holds for the day the consultation opened. The §§ that did verify are
- * still shown — they verified against the standing text.
+ * A law whose §§ fail in a cluster. Named, and the cause named honestly with
+ * it — which depends on where the rows came from.
+ *
+ * On the ressort's XML table the pairing is the ressort's own, so a cluster
+ * points at the annex quoting an older version of the law than RIS holds for
+ * the first day of the consultation. On the PDF path we inferred the rows
+ * from the page geometry ourselves, and a cluster is at least as likely to
+ * be our reading — 21 of the 24 clusters in GP XXVIII are on that path. It
+ * would be both wrong and against the framing of this project to hand the
+ * ministry the blame for our own row pairing.
+ *
+ * The §§ that did verify are shown either way: they verified against the
+ * standing text.
  */
 const doubtfulNote = computed<string | null>(() => {
   const laws = data.value?.verification?.doubtfulLaws ?? []
   if (laws.length === 0) return null
   const named = laws.length === 1 ? `„${laws[0]}“` : laws.map((l) => `„${l}“`).join(', ')
-  return `Auffällig viele Stellen weichen ab bei ${named} — die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen als das RIS zum Beginn der Begutachtung.`
+  const cause =
+    data.value?.readFrom === 'pdf'
+      ? 'Das kann daran liegen, dass wir die Zeilen des PDF falsch einander zugeordnet haben, oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.'
+      : 'Die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen als das RIS zum Beginn der Begutachtung.'
+  return `Auffällig viele Stellen weichen vom geltenden Text ab bei ${named}. ${cause}`
 })
 </script>
 
@@ -257,6 +270,16 @@ const doubtfulNote = computed<string | null>(() => {
         Das Ressort legt dem Entwurf eine Textgegenüberstellung bei. Der Text
         stammt von dort, die Markierung von uns. „Redaktionell“ heißt: nur
         Verweise, Zahlen, Daten oder Satzzeichen.
+      </p>
+
+      <!-- On the PDF path more than the marking is ours: RIS publishes this
+           annex only as images, so the rows were inferred from the page
+           layout. That is a weaker claim than the ressort's own table and
+           has to be made in the open, not left to the source link. -->
+      <p v-if="data.readFrom === 'pdf'" class="mt-2 text-sm text-ink-secondary">
+        Diese Gegenüberstellung liegt im RIS nur als Bild vor. Der Text ist aus
+        dem PDF des Ressorts gelesen, die Zuordnung der Zeilen zueinander haben
+        wir aus dem Seitenlayout erschlossen — sie kann daneben liegen.
       </p>
 
       <!-- Several laws in one draft, and the annex does not say where one

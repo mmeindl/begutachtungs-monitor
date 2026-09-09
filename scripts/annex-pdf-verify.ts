@@ -23,9 +23,9 @@
  *
  * Usage:  npx vite-node scripts/annex-pdf-verify.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
  */
-import { getDocumentProxy } from 'unpdf'
 import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows } from '../server/utils/annexCheck'
-import { parseAnnexPdf, type AnnexPage } from '../server/utils/annexPdf'
+import { parseAnnexPdf } from '../server/utils/annexPdf'
+import { pagesOf } from '../server/utils/annexPdfPages'
 import { plainText } from '../server/utils/lawStructure'
 import { parseRisXml } from '../server/utils/lawText'
 import { draftArticles, type DraftArticle } from '../server/utils/lawTitles'
@@ -47,21 +47,6 @@ async function risJson(params: Record<string, string>): Promise<any> {
   return await res.json()
 }
 
-async function pagesOf(bytes: Uint8Array): Promise<AnnexPage[]> {
-  const doc = await getDocumentProxy(bytes)
-  const out: AnnexPage[] = []
-  for (let n = 1; n <= doc.numPages; n++) {
-    const page = await doc.getPage(n)
-    const content = await page.getTextContent()
-    out.push({
-      width: page.getViewport({ scale: 1 }).width,
-      items: content.items
-        .filter((i: any) => typeof i.str === 'string')
-        .map((i: any) => ({ x: i.transform[4], y: i.transform[5], width: i.width ?? 0, text: i.str })),
-    })
-  }
-  return out
-}
 
 interface DraftResult {
   cite: string
