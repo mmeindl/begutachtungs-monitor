@@ -25,11 +25,40 @@ const sources: AnnexSources = {
   resolveLaw: (organ, nummer, date, title) => resolveKonsLaw(organ, nummer, date, title),
   standingText: async (ref) => {
     if (!ref.xmlUrl) return null
-    const tree = parseKonsParagraph(await fetchParagraphXml(ref.nor, ref.xmlUrl))
-    return tree ? [...tree.context, plainText(tree)].join(' ') : null
+    // The fetch is outside the try on purpose. A RIS that will not answer is
+    // not a statement about this §, and `verifyAnnex` turns a thrown error
+    // into an unavailable section rather than into a cached "ungeprüft"; a
+    // document we *did* receive and cannot make sense of is the opposite —
+    // a stable property of that document, and null is the right answer for
+    // it (`lawStructure.ts` already returns null for a § held as a table).
+    const xml = await fetchParagraphXml(ref.nor, ref.xmlUrl)
+    try {
+      const tree = parseKonsParagraph(xml)
+      return tree ? [...tree.context, plainText(tree)].join(' ') : null
+    } catch {
+      return null
+    }
   },
 }
 
+/**
+ * The verdicts for one annex.
+ *
+ * **Nothing here is cached unless it is an answer.** `verifyAnnex` throws
+ * whatever RIS threw, and a `defineCachedFunction` stores only what its body
+ * returns — so an outage propagates to the caller, the section reports itself
+ * unavailable, and the next request tries again. The alternative that shipped
+ * (`.catch(() => null)` at the call site) turned a timeout into "keine
+ * Prüfung" for 24 hours, which reads on the page exactly like a draft that
+ * has no standing law to check against.
+ *
+ * `rows` and `articles` are outside the key deliberately: they are derived
+ * from the same two documents `gp`/`inr`/`asOf` address, and the verdict map
+ * is keyed by the annex's own § designations — if a parser change moved those,
+ * a stale map matches no row and every row comes out `unchecked`, which is
+ * the safe direction. The derived cache dies with the worker anyway
+ * (`cacheBase.ts`).
+ */
 export const getAnnexVerification = defineCachedFunction(
   async (gp: string, inr: number, asOf: string, rows: readonly ComparisonRow[], articles: readonly DraftArticle[]): Promise<AnnexVerification> =>
     verifyAnnex(rows, articles, asOf, sources),

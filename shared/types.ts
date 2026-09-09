@@ -432,10 +432,15 @@ export interface TextComparisonRow {
    * How the row's "Geltende Fassung" fared against the standing law in RIS
    * (`annexCheck.ts`).
    *
-   * - `verified` — the standing § accounts for the column; the diff beside
-   *   it means what it says.
-   * - `unchecked` — no Stammnorm resolved, RIS holds no such §, or the
-   *   ceiling cut the run short. Shown, and said to be unchecked.
+   * - `verified` — the row's § carried enough prose to judge and the
+   *   standing § accounts for it; the diff beside it means what it says.
+   *   Nothing else earns this label: it is a claim we make, not a default.
+   * - `unchecked` — everything the check did not vouch for. No Stammnorm
+   *   resolved, RIS holds no such §, the § is held there as a table, the
+   *   ceiling cut the run short, the check never ran at all, the row shows
+   *   too little text to judge — or the row carries no § designation, so no
+   *   verdict can address it. Shown, and said to be unchecked. Article
+   *   heading rows are `unchecked` too: they carry no law text to check.
    * - `withheld` — the standing § does *not* account for the column, so the
    *   row is mis-paired or quotes a superseded version. `current`,
    *   `proposed` and `segments` are emptied before the response leaves the
@@ -480,11 +485,33 @@ export interface TextComparisonResponse {
   boundaryNote: string | null
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
   /**
-   * What the RIS check made of the annex. Null when no check ran at all.
-   * The page states these counts: a comparison that quietly drops §§ is a
-   * different kind of wrong answer from one that says what it dropped.
+   * What the RIS check made of the annex — **never null while `available` is
+   * true**, and null only alongside it. The page states these counts: a
+   * comparison that quietly drops §§ is a different kind of wrong answer
+   * from one that says what it dropped.
    */
   verification: {
+    /**
+     * At least one § was actually compared against a standing text from RIS.
+     *
+     * The field exists because the page could not previously tell "nothing
+     * failed" from "nothing was looked at" — both showed `judged: 0`, and
+     * the rows went out labelled as verified regardless. False here means
+     * the comparison is entirely unvouched-for.
+     */
+    ran: boolean
+    /**
+     * Why no § could be judged, as a German sentence fragment fit to print
+     * after "Nichts konnte geprüft werden: …" — for example "im RIS fehlt
+     * der Beginn der Begutachtungsfrist" or "der Entwurf schafft neues Recht
+     * oder ist eine Verordnung — es gibt keinen geltenden Text im RIS
+     * Bundesrecht". Null exactly when `judged > 0`.
+     *
+     * A RIS outage never appears here: the request fails instead of
+     * answering, so no cache can hold a definitive-sounding sentence about a
+     * network hiccup (`textComparisonService.ts`).
+     */
+    notRunReason: string | null
     /** §§ with enough prose to judge, and how many cleared the threshold */
     judged: number
     verified: number
@@ -498,6 +525,14 @@ export interface TextComparisonResponse {
     doubtfulLaws: string[]
     /** §§ shown without a check */
     uncheckedParagraphs: number
+    /**
+     * Rows shown as a change that carry no § designation at all, so no §
+     * verdict can address them — counted apart from `uncheckedParagraphs`,
+     * which counts §§. They are shown as `unchecked`. Measured 2026-09-10
+     * over GP XXVIII: the table path emits 285 rows without a designation,
+     * 83 of them shown as a change; the PDF path 125, none shown as a change.
+     */
+    rowsWithoutParagraph: number
   } | null
   rows: TextComparisonRow[]
 }

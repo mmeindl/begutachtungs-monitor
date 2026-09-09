@@ -762,31 +762,47 @@ Wortdiff auf der Seite, über einem geltenden Text, zu dem die Zeile nicht
 gehört — falsch gepaart oder gegen einen überholten Stand des Gesetzes
 gestellt.
 
-**Das Tor, drei Zustände.** `annexGuardService.ts` hält jeden Paragraphen
-gegen RIS Bundesrecht, zum `BeginnBegutachtungsfrist` — dem Tag, an dem das
-Ressort die Beilage geschrieben hat.
+**Das Tor, drei Urteile je Paragraph.** `annexGuardService.ts` hält jeden
+Paragraphen gegen RIS Bundesrecht, zum `BeginnBegutachtungsfrist` — dem Tag,
+an dem das Ressort die Beilage geschrieben hat.
 
+- **bestätigt**, wenn der Paragraph genug Fließtext für ein Urteil trug
+  *und* der geltende Text ihn deckt. Nur das. Es ist eine Behauptung, die
+  wir aufstellen, kein Standardwert.
 - **einbehalten**, wenn der geltende Text die Spalte nicht deckt. Text und
   Wortdiff werden im Server geleert, nicht in der Komponente versteckt: eine
   falsche Gegenüberstellung darf von keinem Client darstellbar sein.
-- **ungeprüft**, wenn gar nicht geprüft werden konnte — ein Entwurf, der
-  neues Recht schafft, hat keine Stammnorm, eine Verordnung steht nicht im
-  Bundesrecht. Wird gezeigt und als ungeprüft benannt. Das zu verweigern
-  hätte gesunde Arbeit weggeworfen, ohne etwas sicherer zu machen; „geprüft
-  und falsch" und „nicht prüfbar" sind verschiedene Zustände.
-- **auffällig** für ein Gesetz, dessen Paragraphen gehäuft abweichen: ein
-  Satz für die Leserin, keine Einbehaltung. Wer 95 % Deckung über echten
-  Fließtext erreicht, hat das nicht zufällig getan — bei einem abweichenden
-  Stand sind also genau die unveränderten Paragraphen richtig, und ihre
-  Diffs auch. Eine erste Fassung verweigerte das ganze Gesetz und behielt 59
-  Paragraphen ein, die einzeln gegen RIS bestanden hatten. Ein Anteil braucht
-  außerdem einen Nenner: 14 der ursprünglich 18 Markierungen betrafen
-  Gesetze mit einem oder zwei geprüften Paragraphen.
+- **ungeprüft** in jedem anderen Fall — keine Stammnorm (ein Entwurf, der
+  neues Recht schafft, hat keine; eine Verordnung steht nicht im
+  Bundesrecht), kein solcher Paragraph im RIS, der RIS-Paragraph ist eine
+  Tabelle, die Zeile zeigt zu wenig Text, die Zeile trägt gar keine
+  Paragraphenangabe, oder die Prüfung lief nicht. Wird gezeigt und als
+  ungeprüft benannt. Das zu verweigern hätte gesunde Arbeit weggeworfen,
+  ohne etwas sicherer zu machen; „geprüft und falsch" und „nicht prüfbar"
+  sind verschiedene Zustände.
 
-Wirkung über die 126 Entwürfe mit lesbarer Beilage: 1.055 Paragraphen
-geprüft, 965 bestätigt, 90 einbehalten, 584 als ungeprüft gezeigt, 8 Gesetze
-markiert — und **kein gezeigter Paragraph** liegt noch unter der Schwelle.
-Kalte Antwortzeit 8,3 s bei 400 Zeilen; die Sektion lädt nachgelagert.
+Dazu **auffällig** für ein Gesetz, dessen Paragraphen gehäuft abweichen: ein
+Satz für die Leserin, keine Einbehaltung. Wer 95 % Deckung über echten
+Fließtext erreicht, hat das nicht zufällig getan — bei einem abweichenden
+Stand sind also genau die unveränderten Paragraphen richtig, und ihre
+Diffs auch. Eine erste Fassung verweigerte das ganze Gesetz und behielt 59
+Paragraphen ein, die einzeln gegen RIS bestanden hatten. Ein Anteil braucht
+außerdem einen Nenner: 14 der ursprünglich 18 Markierungen betrafen
+Gesetze mit einem oder zwei geprüften Paragraphen.
+
+Und **ein vierter Zustand über der ganzen Beilage**: `ran` sagt, ob überhaupt
+ein Paragraph gegen RIS gehalten wurde, `notRunReason` warum nicht — „im RIS
+fehlt der Beginn der Begutachtungsfrist", „der Entwurf schafft neues Recht
+oder ist eine Verordnung", „die Gesetze der Beilage ließen sich nicht
+abgrenzen". Ohne das kann die Seite „nichts konnte geprüft werden" nicht von
+„nichts ist durchgefallen" unterscheiden: beide zählen null.
+
+Wirkung über die 126 RIS-Datensätze mit lesbarer XML-Beilage (Stand
+2026-09-10): 1.054 Paragraphen gegen das RIS gehalten, 1.040 davon mit genug
+Fließtext für ein Urteil — 967 bestätigt, 73 einbehalten; weitere 764 werden
+als ungeprüft gezeigt. **Kein gezeigter Paragraph** liegt noch unter der
+Schwelle. Kalte Antwortzeit 8,3 s bei 400 Zeilen; die Sektion lädt
+nachgelagert.
 
 **Beide Quellen sind angeschlossen (2026-09-09).** Wo die RIS-XML eine echte
 Tabelle ist, wird sie dort gelesen; wo RIS die Beilage in Bilder gerastert
@@ -836,9 +852,102 @@ ein fehlendes Wort 75 % bedeutet, und fällt zur Hälfte durch. Also fünf
 `RisBegutFlat` machte den persistierten Nitro-Cache still falsch: die
 gespeicherten Datensätze hatten das Feld nicht, und ein fehlendes Feld liest
 sich als „dieser Entwurf hat keine Textgegenüberstellung" — eine falsche
-Antwort, keine veraltete, und das bis zu 20 Stunden nach dem Deploy. Beide
-Cache-Schlüssel tragen jetzt `CORPUS_SHAPE_VERSION`; bei jeder Formänderung
-hochzählen.
+Antwort, keine veraltete, und das bis zu 20 Stunden nach dem Deploy. *Korrektur
+2026-09-10:* hier stand, beide Cache-Schlüssel trügen jetzt
+`CORPUS_SHAPE_VERSION` und seien bei jeder Formänderung hochzuzählen. Diese
+Konstante existiert nicht mehr — die Trennung der Cache-Ebenen hat sie noch
+am selben Tag ersetzt (§5). `flattenRisRecord` entscheidet, ob ein Entwurf
+eine Beilage hat, also ist der Korpus etwas, das **wir** gemacht haben, und
+`ris-begut-corpus` trägt `base: DERIVED_CACHE`: er liegt im Speicher und
+stirbt mit dem Worker beziehungsweise mit `systemctl restart`. Persistent
+bleiben nur die RIS-Rohseiten darunter, deren Form uns nicht gehört. Damit
+ist der Fallstrick weg, ohne dass jemand einen Zähler erinnern muss —
+`tests/cacheLayers.test.ts` hält jede neue gecachte Funktion an dieselbe
+Entscheidung.
+
+**Das Tor stand offen, wo niemand hingesehen hatte (2026-09-10).** Gemessen
+war bisher die *Deckung* — welcher Anteil der linken Spalte im RIS steht —,
+nicht die *Entscheidung*, die daraus folgt. Die Entscheidung lag im Service
+und lautete `unchecked.has(key) ? 'unchecked' : 'verified'`: geprüft, außer
+die Prüfung hat ausdrücklich widersprochen. Damit war „geprüft" der
+Standardwert und kein Befund, und über die GP XXVIII trugen ihn:
+
+- **21 Entwürfe, bei denen überhaupt kein Paragraph geprüft wurde** (6 auf
+  dem Tabellen-, 15 auf dem PDF-Pfad) — jede Zeile davon als geprüft
+  ausgeliefert;
+- **83 Zeilen, die als Änderung gezeigt werden und gar keine
+  Paragraphenangabe tragen**, also von keinem Urteil erreichbar sind (285
+  Zeilen ohne Angabe insgesamt; auf dem PDF-Pfad 125, davon keine als
+  Änderung gezeigt);
+- **jeder Paragraph, der nachgeschlagen, aber nie beurteilt wurde** — kein
+  Eintrag im RIS, RIS-Paragraph als Tabelle, zu wenig vergleichbarer Text,
+  oder das Gesetz kam gar nicht erst zustande.
+
+Ehrlich gezählt verschiebt das auf dem Tabellenpfad 180 Paragraphen von
+„bestätigt" nach „ungeprüft" (584 → 764); 967 bleiben, die wirklich geprüft
+und bestätigt sind.
+
+Die Urteilslogik liegt jetzt vollständig in `annexCheck.ts`: `verifyAnnex`
+gibt eine Urteilstabelle je Paragraph zurück statt zweier Listen, und
+`checkAnnexRows` setzt sie auf die Zeilen. Beide sind rein und getestet, der
+Service macht nur noch I/O. Der Prüfstand ruft dieselben zwei Funktionen auf
+(`annex-pdf-verify.ts`, `runGate`) und prüft drei Zusicherungen über den
+Korpus, die alle auf null stehen müssen und stehen: keine als geprüft
+ausgelieferte Zeile ohne bestätigtes Urteil, kein Paragraph ohne Eintrag in
+der Urteilstabelle, keine einbehaltene Zeile mit Text.
+
+Damit sieht das Tor über die ganze GP XXVIII so aus (RIS-Begut-Population,
+also einschließlich der Verordnungen — nicht die 132 Entwürfe des
+Parlaments):
+
+| 2026-09-10 | Entwürfe | bestätigt | einbehalten | ungeprüft | ohne jede Prüfung |
+|---|---:|---:|---:|---:|---:|
+| XML-Tabelle | 117 | 967 | 73 | 764 | 6 |
+| PDF-Textebene | 96 | 895 | 198 | 2.388 | 15 |
+
+Der PDF-Pfad ist auch hier der rauere: viermal so viele Paragraphen bleiben
+ungeprüft, und die Ursachen stehen jetzt beim Namen — sechsmal „das RIS
+Bundesrecht führt diese Paragraphen nicht", viermal „der geltende Paragraph
+steht im RIS als Tabelle".
+
+**Drei Fehler derselben Familie, mitgefunden.**
+
+1. *„§ 5" fand „§ 5a".* Die Paragraphensuche baute aus der Kennung ein
+   Präfix-Muster (`^§+\s*5(?![.\d])`) und nahm das erste passende RIS-Label —
+   und dieses Muster passt auf **„§ 5a"**. Welcher der beiden Paragraphen
+   gewann, entschied die Reihenfolge des RIS. Von 195.000 Labels im
+   Zwischenspeicher tragen 34.000 einen Buchstabenzusatz, das ist kein
+   Randfall. `designationKey` normalisiert und vergleicht jetzt exakt und
+   liest dabei auch die Formen, die das Präfix-Muster nie traf: „§ 373i1"
+   (zwei Provisionen, beide zu „373i" verkürzt), „Anl. 1/59" (nicht
+   „Anl. 1"), „Art. 3 § 5" (ein Paragraph eines artikelgegliederten Gesetzes,
+   der genau wie in der Engine unerreichbar bleiben *muss*). Auf dem
+   Tabellenpfad sinkt die Zahl der einbehaltenen Paragraphen damit von 90 auf
+   73 — Paragraphen, die gegen den Text eines *anderen* Paragraphen gemessen
+   worden waren.
+2. *Schwache Zuordnungen zeigten fremde Beilagen.* Die Sektion zeigte die
+   Beilage zu jedem RIS-Datensatz mit `risId`, also auch zu `matched_weak` —
+   Tier C, das nur über Fristen und Ressort zuordnet und den Titel gar nicht
+   liest (`ris-join.md` §3a). Das ist der eine Fehler, den die RIS-Prüfung
+   prinzipiell nicht fangen kann: die Beilage eines *anderen* Entwurfs zitiert
+   das geltende Recht genauso getreu, besteht also jede Deckungsprüfung. Es
+   ist selten (1 von 132 Entwürfen in der GP XXVIII, 1 von 350 in der GP
+   XXVII) und deshalb gerade gefährlich. Jetzt verlangt die Sektion
+   `status === 'matched'`; sonst nennt sie die Unsicherheit und verlinkt den
+   Datensatz, damit die Leserin selbst nachsehen kann.
+3. *Ein Ausfall wurde als Auskunft gecacht.* Jeder Aufruf im Service endete
+   auf `.catch(() => null)`, und die Antwort daraus liegt 24 Stunden im
+   Cache. Ein Timeout beim RIS wurde damit zu „Der Entwurf ließ sich keinem
+   RIS-Dokument zuordnen", zu „liegt nur als Scan vor" (mitsamt Umschwenken
+   auf den PDF-Pfad) oder zu einer Gegenüberstellung mit stillgelegtem Tor —
+   einen Tag lang, als Tatsache über den Entwurf formuliert. Die Regel ist
+   jetzt eine Zeile: **echte Zustände antworten, Ausfälle werfen.** Kein
+   RIS-Datensatz, keine Beilage, ein Scan ohne PDF, ein Dokument, das kein
+   Parser lesen kann — das sind Antworten und werden gecacht. Alles andere
+   fliegt bis in die Route, die Sektion sagt „gerade nicht verfügbar", und der
+   nächste Aufruf versucht es erneut. Auch `resolveKonsLaw` fängt nicht mehr:
+   „das Gesetz gibt es nicht" ist eine cachebare Null, „das RIS antwortet
+   nicht" ist keine.
 
 ## 13. Open questions
 
