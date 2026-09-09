@@ -425,7 +425,8 @@ zählt als Abweichung und nie als bestanden.
    Kundmachung.
 
 **Was für die Veröffentlichung fehlt, ist nicht Politur.** Bei 23,9 % eigenen
-Abweichungen ist die Engine keine Quelle für angezeigten Gesetzestext. Die
+Abweichungen (erste Messung; siehe die zweite weiter unten) ist die Engine
+keine Quelle für angezeigten Gesetzestext. Die
 gefundenen Ursachen waren bisher jedes Mal konkret und behebbar — ein Ziffern-
 Marker, der ohne vorangehenden Absatz im Text hängen blieb; „folgender Satz
 angefügt", das keine eigene Ebene hat und deshalb ganz verweigert wurde; beide
@@ -440,6 +441,65 @@ Entwürfe tragen eine maschinenlesbare amtliche **Textgegenüberstellung**
 nachbauen will, vom Ressort selbst erstellt und selbst hervorgehoben. Wo sie
 existiert, ist sie die bessere Quelle; die Engine ist die Antwort für den
 Rest, nicht der erste Schritt.
+
+**Zweite Messung, 2026-09-09: 12,6 % statt 20,5 %.** Die erste Zahl war keine
+Grenze, sondern der Punkt, an dem die Messung aufgehört hatte. Der Prüfstand
+lief über 23 Novellen und 261 Paragraphen (vorher 17 und 210), und die
+Abweichungsquote fiel, während der Korpus wuchs:
+
+| | 2026-09-08 | 2026-09-09 |
+|---|---|---|
+| Novellen / Paragraphen | 17 / 210 | 23 / 261 |
+| identisch mit dem RIS | 43,3 % | **53,3 %** |
+| eigene Abweichung | 20,5 % | **12,6 %** |
+
+Die Ursachen waren wieder konkret, und zwei davon waren gefährlicher als die
+Quote nahelegte:
+
+- **`<schlussteil>` fehlte in `parseRisXml`.** Der Abschlussteil einer
+  Aufzählung („… hat jede Veränderung, insbesondere a) … e) … *der Behörde
+  anzuzeigen*") wurde aus jedem RIS-XML-Dokument stillschweigend entfernt.
+  `lawStructure.ts` kannte das Tag von Anfang an, `lawText.ts` nicht — der
+  Fehler blieb unsichtbar, weil **beide Seiten des ME→RV-Vergleichs** ihn
+  symmetrisch trugen. Das betrifft nicht nur die Engine, sondern den
+  ausgelieferten Diff für GP XXVII und früher.
+- **Satzlöschung löschte den ganzen Absatz.** `case 'delete'` las `target.satz`
+  nie, und `ORDINAL_SATZ` kannte nur die Form auf „-er", nicht den Nominativ
+  („entfällt der zweite Satz"). Beides zusammen ist genau die Überlöschung,
+  gegen die dieses Modul gebaut ist: geltendes Recht entfernt, Erfolg gemeldet.
+- **Ein Ziel, mehrere Textblöcke.** „Die §§ 7 bis 9 werden durch folgende
+  §§ 7 bis 14 ersetzt" setzte den ersten Block ein und verwarf sieben
+  Paragraphen — als Erfolg gemeldet. Jetzt ein Splice mit Kollisionsprüfung,
+  oder eine Verweigerung.
+- **Artikelgegliederte Gesetze sind jetzt eine bewusste Verweigerung.**
+  „Art. II § 1 Abs. 5 lautet" landete auf dem ersten § des ganzen Dokuments —
+  im Lebensmittelbewirtschaftungsgesetz auf der Verfassungsbestimmung von
+  Art. 1 — und verfehlte die falsche Änderung nur um einen Absatz. Solange
+  der Artikel nicht Teil der Identität eines Paragraphen ist, wird die
+  Adresse abgelehnt statt geraten.
+- Kleineres: `Zitierung` fehlte im Operanden-Vokabular; das öffnende
+  Anführungszeichen steht bei RIS *hinter* dem `gldsym` und überlebte den
+  Strip; Phrasenoperationen konnten weder eine Überschrift noch einen
+  einzelnen Satz adressieren.
+
+**Der Prüfstand selbst war der Engpass.** Er hatte über den Kurztitel
+gejoint, obwohl `resolveLawByBgbl` längst existierte — 8 von 25 Novellen
+fielen ungemessen heraus. Über die Stammnorm sind es 23 von 25, und erst
+dieser breitere Korpus macht die Quote belastbar: sie fiel, *während* 6
+Gesetze und 51 Paragraphen dazukamen.
+
+Ein Fund daraus betrifft die Produktion (§12.11): steht in der
+Promulgationsklausel keine BGBl-Stammnorm (das UGB ist `dRGBl. S. 219/1897`),
+nahm `parseBgbl` die erste BGBl-Zahl der Klausel — die letzte Novelle — und
+löste auf ein **anderes Gesetz** auf, ohne Fehler. `stammnormOf` liest jetzt
+nur den Kopf der Klausel und verweigert, wenn dort keine BGBl steht.
+
+**Was bleibt.** 12,6 % sind immer noch zu viel für angezeigten Gesetzestext.
+Die größte offene Klasse sind artikelgegliederte Gesetze (echte Unterstützung
+statt Verweigerung), dann Adressformen wie „In den §§ 11 Abs. 5 und 180
+Abs. 5", und `parseKonsParagraph`-Lücken (eine `<liste>` direkt unter dem
+`<gldsym>` verliert alle Listenelemente). Keine davon sieht nach einer Grenze
+aus; das ist der Grund, den Satz „geht nicht" nicht zu schreiben.
 
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
