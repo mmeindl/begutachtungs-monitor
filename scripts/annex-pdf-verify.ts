@@ -23,7 +23,18 @@
  *
  * Usage:  npx vite-node scripts/annex-pdf-verify.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
  */
-import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows } from '../server/utils/annexCheck'
+import {
+  MIN_PROSE_TOKENS,
+  annexParagraphKey,
+  checkAnnexRows,
+  coverageOf,
+  designationKey,
+  displayedChangeRows,
+  isDisplayedChange,
+  notRunReason,
+  verifyAnnex,
+  type AnnexSources,
+} from '../server/utils/annexCheck'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
 import { pagesOf } from '../server/utils/annexPdfPages'
 import { plainText } from '../server/utils/lawStructure'
@@ -45,6 +56,21 @@ async function risJson(params: Record<string, string>): Promise<any> {
   const res = await fetch(`${RIS}?${new URLSearchParams(params)}`, { headers: UA, signal: AbortSignal.timeout(30_000) })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return await res.json()
+}
+
+/**
+ * The standing law for the gate, uncached — the same two lookups the request
+ * path injects through `annexGuardService.ts`, minus Nitro. That is what
+ * `AnnexSources` is for: the verdict logic runs here exactly as it runs in a
+ * request, so the corpus measures the shipped decision instead of a copy of
+ * it that can drift.
+ */
+const gateSources: AnnexSources = {
+  resolveLaw: (organ, nummer, date, title) => resolveLawByBgbl({ organ, nummer }, date, title || undefined),
+  standingText: async (ref) => {
+    const tree = await fetchParagraphTree(ref)
+    return tree ? [...tree.context, plainText(tree)].join(' ') : null
+  },
 }
 
 
@@ -73,6 +99,29 @@ interface DraftResult {
   unresolvedLaw: number
   /** Rows whose RIS paragraph is a table, which is refused rather than mangled */
   unrepresentable: number
+  /**
+   * The gate as the request path applies it (`verifyAnnex` + `checkAnnexRows`,
+   * the very functions the service calls), so the harness measures the shipped
+   * decision and not a replica of it.
+   */
+  gate: GateResult
+}
+
+/** What the shipped gate did with this draft, and whether it kept its promises. */
+interface GateResult {
+  ran: boolean
+  notRunReason: string | null
+  judged: number
+  verifiedParas: number
+  withheldParas: number
+  uncheckedParas: number
+  /** Pair rows without any § designation, and the subset the page shows as a change */
+  rowsNoPara: number
+  changeRowsNoPara: number
+  /** Invariants. Every one of these has to stay at zero. */
+  verdictless: number
+  wronglyVerified: number
+  withheldWithText: number
 }
 
 async function verify(doc: any): Promise<DraftResult | null> {
@@ -80,7 +129,8 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const begut = meta?.Bundesrecht?.Begut
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0 })
+  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0 }
+  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -156,8 +206,12 @@ async function verify(doc: any): Promise<DraftResult | null> {
   for (const group of groups.values()) {
     const row = { gld: group.gld, law: group.law, current: displayedChangeRows(group.rows).map((r) => r.current).join(' ') }
     if (!row.current) continue
-    const id = /(\d+[a-z]*(?:\.\d+)?|[IVXL]+)/.exec(row.gld)?.[1]
-    if (!id) continue
+    // Exact designation match, the rule the service uses (`designationKey`):
+    // the prefix regex this line used to build matched "§ 5a" for id "5", so
+    // whichever label RIS returned first decided which text a § was scored
+    // against — and the harness taught the service that mistake.
+    const key = designationKey(row.gld)
+    if (!key) continue
     const law = await lawOf(row.law)
     if (!law) {
       unattributed++
@@ -166,11 +220,10 @@ async function verify(doc: any): Promise<DraftResult | null> {
       continue
     }
     attributed++
-    // RIS prints an Anlage as "Anl. 1", never as "§ 1" — looking it up among
-    // the paragraphs compared a schedule against an unrelated provision.
-    const isAnlage = /^(?:Anlage|Anhang)/i.test(row.gld)
-    const wanted = isAnlage ? new RegExp(`^Anl\\.?\\s*${id}\\b`, 'i') : new RegExp(`^§+\\s*${id.replace('.', '\\.')}(?![.\\d])`)
-    const entry = Object.entries(law.paragraphs).find(([label]) => wanted.test(label))
+    // RIS prints an Anlage as "Anl. 1", never as "§ 1", an article-structured
+    // law's § as "Art. 3 § 5", and a split schedule as "Anl. 1/59" —
+    // `designationKey` reads all of those and compares them exactly.
+    const entry = Object.entries(law.paragraphs).find(([label]) => designationKey(label) === key)
     if (!entry) continue
     const tree = await fetchParagraphTree(entry[1])
     // A § that contains a table is deliberately not represented as a tree
@@ -202,7 +255,68 @@ async function verify(doc: any): Promise<DraftResult | null> {
       console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
     }
   }
-  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable }
+  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, gate: await runGate(parsed.rows, articles, beginn) }
+}
+
+/**
+ * The shipped gate over the same annex, and its promises checked.
+ *
+ * The loop above measures *coverage*; this measures the **decision**, by
+ * calling the two functions the request path calls. It exists because the
+ * decision was the part nobody was measuring: the service labelled a row
+ * `verified` unless the check had explicitly named it, so a check that never
+ * ran, and every row without a § designation, went out vouched for. A number
+ * for the ratio distribution says nothing about that.
+ *
+ * The three invariants are the gate's whole claim, and each of them has to
+ * stay at zero over the corpus:
+ *
+ *  - no displayed change is labelled `verified` unless its § was judged and
+ *    passed;
+ *  - no § the annex names is missing from the verdict map;
+ *  - no withheld row still carries text.
+ */
+async function runGate(rows: readonly ComparisonRow[], articles: readonly DraftArticle[], beginn: string): Promise<GateResult> {
+  const check = await verifyAnnex(rows, articles, beginn, gateSources)
+  const checked = checkAnnexRows(rows, check)
+
+  let rowsNoPara = 0
+  let changeRowsNoPara = 0
+  let verdictless = 0
+  let wronglyVerified = 0
+  for (const row of rows) {
+    if (row.kind !== 'pair') continue
+    const para = row.gld ?? row.para
+    if (para === null) {
+      rowsNoPara++
+      if (isDisplayedChange(row)) changeRowsNoPara++
+      continue
+    }
+    if (check.verdicts[annexParagraphKey(row.law, para)] === undefined) verdictless++
+  }
+  for (const [i, row] of checked.rows.entries()) {
+    if (row.check !== 'verified') continue
+    const para = row.gld ?? row.para
+    const verdict = para === null ? undefined : check.verdicts[annexParagraphKey(row.law, para)]
+    if (verdict !== 'verified') {
+      wronglyVerified++
+      if (dumpWorst) console.log(`    !!! Zeile ${i} als geprüft ausgeliefert, Urteil ${verdict ?? 'keines'}`)
+    }
+  }
+  const verdicts = Object.values(check.verdicts)
+  return {
+    ran: check.ran,
+    notRunReason: notRunReason(check),
+    judged: check.judged,
+    verifiedParas: verdicts.filter((v) => v === 'verified').length,
+    withheldParas: verdicts.filter((v) => v === 'withheld').length,
+    uncheckedParas: verdicts.filter((v) => v === 'unchecked').length,
+    rowsNoPara,
+    changeRowsNoPara,
+    verdictless,
+    wronglyVerified,
+    withheldWithText: checked.rows.filter((r) => r.check === 'withheld' && (r.current !== '' || r.proposed !== '' || r.segments !== null)).length,
+  }
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -261,6 +375,21 @@ console.log(`  Zeilen ohne Gesetzeszuordnung: ${scored.reduce((n, r) => n + r.un
 console.log(`    außerhalb jeder Artikelgrenze: ${scored.reduce((n, r) => n + r.noLaw, 0)}`)
 console.log(`    Stammnorm im RIS nicht auflösbar: ${scored.reduce((n, r) => n + r.unresolvedLaw, 0)}`)
 console.log(`  RIS-Paragraph ist eine Tabelle (nicht darstellbar, verweigert): ${scored.reduce((n, r) => n + r.unrepresentable, 0)}`)
+
+// The gate as it ships, over every draft with a readable annex — including
+// the ones the coverage loop scores as zero, because "nothing was checked" is
+// exactly the state that used to leave the server labelled "geprüft".
+const gated = results.filter((r) => r.note === null)
+const gsum = (pick: (g: GateResult) => number) => gated.reduce((n, r) => n + pick(r.gate), 0)
+console.log(`\n  Das Tor, wie es ausgeliefert wird (${gated.length} Entwürfe)`)
+console.log(`    Paragraphen bestätigt / einbehalten / ungeprüft: ${gsum((g) => g.verifiedParas)} / ${gsum((g) => g.withheldParas)} / ${gsum((g) => g.uncheckedParas)}`)
+console.log(`    Entwürfe ohne jede Prüfung   : ${gated.filter((r) => !r.gate.ran).length}`)
+console.log(`    Zeilen ohne Paragraphenangabe: ${gsum((g) => g.rowsNoPara)}, davon als Änderung gezeigt: ${gsum((g) => g.changeRowsNoPara)}`)
+console.log(`    Zusicherungen (müssen 0 sein): ohne Urteil ${gsum((g) => g.verdictless)}, zu Unrecht geprüft ${gsum((g) => g.wronglyVerified)}, einbehalten mit Text ${gsum((g) => g.withheldWithText)}`)
+for (const [reason, n] of [...gated.filter((r) => !r.gate.ran).reduce((m, r) => m.set(r.gate.notRunReason ?? '—', (m.get(r.gate.notRunReason ?? '—') ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])) {
+  console.log(`      ${String(n).padStart(3)}× ${reason}`)
+}
+
 const all = scored.flatMap((r) => r.ratios).sort((a, b) => a - b)
 if (all.length) {
   const q = (p: number) => all[Math.min(all.length - 1, Math.floor(all.length * p))]!

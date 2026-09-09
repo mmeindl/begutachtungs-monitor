@@ -39,9 +39,17 @@ export const fetchParagraphXml = defineCachedFunction(
  * Bankwesengesetz from the Bausparkassengesetz when both came from BGBl. Nr.
  * 532/1993. It is part of the key, because a lookup with a title and one
  * without can legitimately give different answers.
+ *
+ * **Null is an answer; a failure is not.** `resolveLawByBgbl` returns null
+ * when RIS knows no such law or cannot tell two apart, and that is a stable
+ * fact worth keeping for a day. It *throws* when RIS is unreachable or
+ * ignored the filter, and that has to leave here: an error caught into null
+ * was cached like the answer, so one hiccup made a law "unresolvable" for
+ * twenty-four hours and every § of it went out labelled as if there were
+ * nothing to check against.
  */
 export const resolveKonsLaw = defineCachedFunction(
-  async (organ: string, nummer: string, date: string, title: string) => resolveLawByBgbl({ organ, nummer }, date, title || undefined).catch(() => null),
+  async (organ: string, nummer: string, date: string, title: string) => resolveLawByBgbl({ organ, nummer }, date, title || undefined),
   {
     name: 'kons-law-by-bgbl',
     base: DERIVED_CACHE,
