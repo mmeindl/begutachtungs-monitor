@@ -311,6 +311,27 @@ So **roughly 39 % of drafts have a machine-readable official comparison** —
 and "available as XML" is not the same as readable, which is the trap here.
 For the running GP XXVIII specifically the share is higher: of 132 drafts,
 109 carry the annex with XML and **65 of those are readable (49 %)**.
+
+**The "scans" are not scans (2026-09-09).** The 40 % above is a property of
+the RIS *XML* rendering, which rasterises the annex into
+`<binary datatype="gif">`. The **PDF of the very same annex** is Word output
+with a full text layer: across all 44 rasterised GP-XXVIII annexes there is
+not one image XObject, and there are 955 font references. The text was never
+lost — the project was reading the one format that had thrown it away. So the
+readable share for GP XXVIII is not 49 % but **109 of 132 (82 %)**: 65 from
+the XML table (`textComparison.ts`) and 44 from the PDF's positioned text
+runs (`annexPdf.ts`, geometry, because a PDF has no row elements and the
+paragraph marker is the only boundary the layout guarantees).
+
+**Both paths need the RIS check before anything is shown**
+(`annexCheck.ts`, `architecture.md` §12.13). Neither is a parse that can be
+trusted on sight: the left column claims to be the standing law, and holding
+that claim against RIS Bundesrecht is the only self-check either path has.
+Measured over the readable XML annexes, 86,9 % of paragraphs with real prose
+cover the standing text to 99 % or better and 4,7 % fall below 80 %; on the
+PDF path the same ruler gives 70,2 %. Where the check fails, the row is
+mis-paired or the ministry quoted a superseded version — and the page would
+otherwise print a word diff over a provision the row does not belong to.
 The name varies: `Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
 `Textgegenbüberstellung`, so matching has to be loose.
 

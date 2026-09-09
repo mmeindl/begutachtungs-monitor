@@ -319,6 +319,46 @@ other. Until the UI handles all strands, the copy says "in dieser
 Regierungsvorlage" and adds that a draft can end up in more than one. It must
 never read as "the law was dropped".
 
+### 6e. The instruction number, and what a lost instruction costs (2026-09-09)
+
+`segmentUnits` opened a unit only on `^\d+\.\s`, and a Novellierungsanordnung
+whose number is not in that exact form fell through into the *previous*
+unit's text. That is worse than losing it: two units then carry text that
+belongs to neither, and both read as "geändert". Measured over the 131
+GP-XXVIII drafts with a RIS document, three classes:
+
+| | drafts | instructions |
+|---|---|---|
+| separator missing or unusual — "2.§ 30", "13 § 178", "4 . Dem", "222- Im" | 8 | 15 |
+| RIS tagged the instruction as plain text (`absatz typ="satz"`) | 6 | 7 |
+| first instruction of a law, unnumbered | 10 | 10 |
+
+The third class matters most for coverage: a law amended in a single respect
+carries no Ziffer, because there is nothing to count. For 110/ME and 59/ME
+that one line *is* the whole Novelle — both segmented to zero units and their
+comparison was refused outright. What makes such a line recognisable is the
+**Promulgationsklausel directly above it**, and only that: three lines that
+look identical follow something else (a continuation fragment, an instruction
+quoted inside a payload, and the clause itself where RIS mistags it).
+
+Promoting a block RIS did *not* tag needs two independent signals — the next
+number in sequence, and standing outside any quoted payload. On the twelve
+candidates in the corpus the two agreed every time: all seven outside a
+payload were the next number, all five inside it were law text that merely
+began with a numeral. Only an Absatz may be promoted; a `listelem` is a
+Ziffer of a quoted list, numbered from 1 like an instruction, and satisfies
+both signals by coincidence.
+
+Two findings against the obvious simplification: `novao2` is **not** a
+sub-item — 2.243 numbered `novao2` blocks are genuine first-level
+instructions that RIS merely tags differently, and demoting them would melt
+down a third of all units. And the 211 litera lines ("a) In Abs. 3 lautet der
+erste Satz:") already sit correctly inside the numbered instruction above
+them; RIS uses `novao1` and `novao2` for them interchangeably, so the class
+is no guide.
+
+Effect: 6.165 → 6.196 units, 20 drafts, two rescued from zero.
+
 ## 6a. First live run on GP XXVIII (2026-09-07)
 
 | Measure | Result |
