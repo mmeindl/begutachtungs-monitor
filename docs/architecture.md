@@ -752,7 +752,7 @@ geltende Recht zu sein, und das RIS hält diesen Text unabhängig.
 
 | GP XXVIII, Paragraphen mit Fließtext | ≥ 99 % gedeckt | < 80 % |
 |---|---|---|
-| XML-Beilagen (ausgeliefert) | 86,9 % | 4,7 % |
+| XML-Beilagen | 86,9 % | 4,7 % |
 | PDF-Beilagen (Textebene) | 70,2 % | — |
 
 Der ausgelieferte Pfad ist damit *besser* als der PDF-Pfad, nicht schlechter.
@@ -787,6 +787,42 @@ Wirkung über die 126 Entwürfe mit lesbarer Beilage: 1.055 Paragraphen
 geprüft, 965 bestätigt, 90 einbehalten, 584 als ungeprüft gezeigt, 8 Gesetze
 markiert — und **kein gezeigter Paragraph** liegt noch unter der Schwelle.
 Kalte Antwortzeit 8,3 s bei 400 Zeilen; die Sektion lädt nachgelagert.
+
+**Beide Quellen sind angeschlossen (2026-09-09).** Wo die RIS-XML eine echte
+Tabelle ist, wird sie dort gelesen; wo RIS die Beilage in Bilder gerastert
+hat, trägt das PDF desselben Dokuments den Text weiter, und `annexPdfService.ts`
+liest die Zeilen aus der Seitengeometrie. Beide Parser liefern
+`ComparisonRow`, also gilt alles danach — Prüfung, Zahlen, Sektion —
+unverändert. Damit zeigt die GP XXVIII 109 von 132 Entwürfen statt 65, und
+keine Absage lautet mehr „nur als Scan": von den 23 übrigen tragen 21 keine
+Beilage und 2 haben keinen RIS-Datensatz.
+
+| | Entwürfe | geprüft | bestätigt | einbehalten | Gesetze markiert |
+|---|---:|---:|---:|---:|---:|
+| XML-Tabelle | 65 | 651 | 618 (94,9 %) | 33 | 3 |
+| PDF-Textebene | 44 | 821 | 676 (82,3 %) | 145 | 21 |
+
+Das ist der Grund, warum das Tor zuerst kommen musste: der PDF-Pfad ist
+messbar rauer, weil seine Zeilen erschlossen und nicht gelesen sind. Ohne
+Tor wären das 145 Paragraphen mit fremdem Text auf der Seite; mit Tor keine
+einzige — über alle 132 Entwürfe trägt keine einbehaltene Zeile noch Text.
+
+Zwei Zurechnungen hängen daran. 21 der 24 markierten Gesetze liegen auf dem
+PDF-Pfad, und dort ist eine Häufung mindestens so wahrscheinlich *unsere*
+Zeilenzuordnung wie ein abweichender Stand beim Ressort — der Satz auf der
+Seite nennt deshalb beide Ursachen, je nach `readFrom`. Und auf dem PDF-Pfad
+sagt die Sektion offen, dass nicht nur die Markierung von uns kommt, sondern
+auch die Zuordnung der Zeilen: „die Tabelle des Ressorts" und „der Text des
+Ressorts, von uns gelesen" sind nicht dieselbe Behauptung.
+
+*Was es kostet.* Der dynamische Import hält pdf.js (1,7 MB von 7,02 MB
+Bundle) aus dem Startpfad; nur 44 der 132 Entwürfe brauchen es. Gegen den
+gebauten Server gemessen: 52 MB Resident nach zwölf gleichzeitigen Anfragen,
+sieben davon auf dem PDF-Pfad, 46 MB nach allen 132. Die Bytes werden nur im
+Dev gecacht, wie die RIS-Ergebnisseiten — in Produktion hält der abgeleitete
+Vergleich einen Tag, also wird jede Beilage höchstens einmal täglich geholt,
+und alle 44 resident zu halten wäre dieselbe Rechnung, die die Rohseiten aus
+dem Produktionsspeicher genommen hat.
 
 **Die Schwellen sind gemessen, nicht gesetzt.** `MIN_PROSE_TOKENS` stammte
 aus der Bewertung einzelner *Zeilen* und ließ jeden Paragraphen unter 15

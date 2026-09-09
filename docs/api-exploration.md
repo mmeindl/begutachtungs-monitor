@@ -321,7 +321,9 @@ lost — the project was reading the one format that had thrown it away. So the
 readable share for GP XXVIII is not 49 % but **109 of 132 (82 %)**: 65 from
 the XML table (`textComparison.ts`) and 44 from the PDF's positioned text
 runs (`annexPdf.ts`, geometry, because a PDF has no row elements and the
-paragraph marker is the only boundary the layout guarantees).
+paragraph marker is the only boundary the layout guarantees). Both are on
+the page since 2026-09-09; no draft is refused as "nur ein Scan" any more,
+and of the 23 that stay unavailable 21 carry no annex at all.
 
 **Both paths need the RIS check before anything is shown**
 (`annexCheck.ts`, `architecture.md` §12.13). Neither is a parse that can be
