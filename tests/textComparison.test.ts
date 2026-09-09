@@ -65,3 +65,50 @@ describe('parseTextComparison', () => {
     expect(isScanned(annex([pair('a', 'b')]))).toBe(false)
   })
 })
+
+describe('an annex that spans its columns', () => {
+  // The rule "the first cell spans more than one column, so this is an Artikel
+  // heading" only holds when each column is one cell wide. Where the header
+  // itself reads colspan="2" twice, every ordinary pair row looked like a
+  // heading: one annex turned 157 of 163 rows into headings (2026-09-09).
+  const xml = `<table>
+    <tr><td colspan="2">Geltende Fassung</td><td colspan="2">Vorgeschlagene Fassung</td></tr>
+    <tr><td colspan="2"><gldsym>§ 5.</gldsym>Die Behoerde entscheidet.</td><td colspan="2">Das Gericht entscheidet.</td></tr>
+    <tr><td colspan="4">Artikel 2</td></tr>
+  </table>`
+
+  it('reads a spanned pair row as a pair, not as a heading', () => {
+    const rows = parseTextComparison(xml)
+    const pair = rows.find((r) => r.kind === 'pair')!
+    expect(pair.gld).toBe('§ 5.')
+    expect(pair.current).toContain('Die Behoerde entscheidet.')
+    expect(pair.proposed).toBe('Das Gericht entscheidet.')
+    expect(pair.change).toBe('changed')
+  })
+
+  it('still reads a full-width cell as a heading', () => {
+    expect(parseTextComparison(xml).filter((r) => r.kind === 'article').map((r) => r.heading)).toEqual(['Artikel 2'])
+  })
+})
+
+describe('an annex with a nested table', () => {
+  // A non-greedy <tr>…</tr> match stops at the *first* closing tag, so the
+  // outer row was cut off at the inner table's first row. 17 of 65 annexes
+  // nest tables; their rows are provisions, not decoration.
+  const xml = `<table>
+    <tr><td>Geltende Fassung</td><td>Vorgeschlagene Fassung</td></tr>
+    <tr><td><table><tr><td><gldsym>§ 9.</gldsym>Alter Text.</td><td>Neuer Text.</td></tr></table></td><td></td></tr>
+  </table>`
+
+  it('keeps the nested row and its two columns', () => {
+    const pairs = parseTextComparison(xml).filter((r) => r.kind === 'pair')
+    const nested = pairs.find((r) => r.gld === '§ 9.')!
+    expect(nested.current).toContain('Alter Text.')
+    expect(nested.proposed).toBe('Neuer Text.')
+  })
+
+  it('does not repeat the nested text in the wrapping row', () => {
+    const withAlt = parseTextComparison(xml).filter((r) => r.kind === 'pair' && r.current.includes('Alter Text.'))
+    expect(withAlt).toHaveLength(1)
+  })
+})
