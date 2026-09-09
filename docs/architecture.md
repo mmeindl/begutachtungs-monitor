@@ -265,6 +265,39 @@ shares its prerequisite with the consolidated-text package (§12.12), and the
 lookup half is far smaller than an amendment engine — no Novellierung has to
 be applied, only a heading resolved.
 
+**Built 2026-09-09** (`server/utils/lawTitles.ts`, `paraTitleService.ts`,
+`/api/consultations/:gp/:inr/paragraphtitel`). Named changes went from 11,2 %
+to **32,6 %** of changed units, measured over 12 Novellen and 457 units.
+8/ME now reads "Erweiterte Gefahrenerforschung und Schutz vor
+verfassungsgefährdenden Angriffen" where it read "§ 6 Abs. 1 Z 9 lautet".
+
+**The join is exact, not fuzzy** — which is why this was an afternoon and not
+a research project. Every amending Artikel opens with its Promulgationsklausel
+("Das Strafgesetzbuch, BGBl. Nr. 60/1974, … wird wie folgt geändert"), and RIS
+carries the same pair as `StammnormPublikationsorgan` + `StammnormBgblnummer`.
+`Kundmachungsorgannummer` narrows, the Stammnorm pair decides. Resolved on
+25 of 25 Novellen tested. The Teil is load-bearing: `84/2001` is both the
+Audiovisuelle Mediendienste-Gesetz (BGBl. I) and an Amtssitz law (BGBl. III).
+Where the match is ambiguous the change simply keeps no name.
+
+**Two traps, both of the "silently wrong" kind.**
+
+1. *An instruction that creates a § names its anchor.* "Nach § 5 wird
+   folgender § 5a eingefügt" addresses § 5, but the change is § 5a — titling
+   it from § 5 would put a real heading from the standing law onto a
+   paragraph it does not describe. `addressedParagraph` returns null for
+   those; they carry the draft's own quoted heading anyway.
+2. *A `Map` does not survive `defineCachedFunction`.* It serialises to JSON,
+   so the resolved law came back as `{}` from the cache and the lookup worked
+   exactly once per process. Cached shapes are plain records now. Second
+   cache-shape bug of the day, after the missing field on `RisBegutFlat`
+   (§12.13) — the pattern is that a cache turns a shape change into a *wrong
+   answer*, not a stale one.
+
+**Why its own endpoint.** A draft can address dozens of paragraphs across
+three laws. On the diff's critical path that is a slow first request and a
+shared failure; beside it, the names simply appear when they arrive.
+
 **AI is therefore not what this needs.** It would buy something different: a
 summary of what a change *does* ("Überwachung verschlüsselter Nachrichten"),
 which is an optional product on top, not the precondition for legibility. If

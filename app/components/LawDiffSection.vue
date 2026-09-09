@@ -6,7 +6,7 @@
  * the client: the first request per consultation fetches and parses two
  * documents, and the page must not wait for that.
  */
-import type { LawDiffResponse, LawDiffUnit } from '#shared/types'
+import type { LawDiffResponse, LawDiffUnit, ParagraphTitlesResponse } from '#shared/types'
 import { droppedLawsNote, mergedLawsNote } from '#shared/utils/lawPackage'
 
 const props = defineProps<{ gp: string; inr: number }>()
@@ -15,6 +15,29 @@ const { data, status } = await useFetch<LawDiffResponse>(() => `/api/consultatio
   lazy: true,
   server: false,
 })
+
+/**
+ * The name of each amended § (docs/architecture.md §12.11), fetched
+ * separately so a slow lookup never delays the comparison and a failing one
+ * never takes it down. Names appear when they arrive.
+ */
+const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(() => `/api/consultations/${props.gp}/${props.inr}/paragraphtitel`, {
+  lazy: true,
+  server: false,
+})
+
+/**
+ * What to call a change. The draft's own quoted heading wins — it is the
+ * name the § will carry once the amendment passes. Otherwise the heading it
+ * carries today, looked up in the standing law. Both are quoted from an
+ * official text; neither is generated, so neither needs a marking.
+ */
+function unitName(u: LawDiffUnit): string | null {
+  return u.quotedHeading ?? paraTitles.value?.titles?.[`${u.article ?? ''}|${u.id}`] ?? null
+}
+
+/** Whether any name on screen was looked up, which decides the source note. */
+const namedCount = computed(() => Object.keys(paraTitles.value?.titles ?? {}).length)
 
 type Badge = LawDiffUnit['change'] | 'editorial'
 
@@ -303,6 +326,9 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
         <span>{{ data.meSource === 'ris' ? 'Quellen (CC BY 4.0, RIS und Parlament):' : 'Quellen (CC BY 4.0, Parlament):' }}</span>
         <ExternalLink v-if="data.me" :href="data.me.url" class="text-accent-deep hover:underline">{{ data.me.label }}</ExternalLink>
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
+        <!-- The § names come from a third source; a page that shows text has
+             to say where it is from, even when the text is one word long. -->
+        <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
       </div>
 
       <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
@@ -369,7 +395,7 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                   <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
                     <p v-for="u in b.units" :key="key(u)" class="hyphens-auto">
                       <span class="font-medium text-ink">{{ displayId(u.id) }}</span>
-                      <span v-if="u.quotedHeading" class="font-medium text-ink"> {{ u.quotedHeading }}</span>
+                      <span v-if="unitName(u)" class="font-medium text-ink"> {{ unitName(u) }}</span>
                       <span v-else-if="extraHeading(u)"> {{ extraHeading(u) }}</span>
                       <span> — {{ u.rvText }}</span>
                     </p>
@@ -389,7 +415,7 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                         {{ displayId(b.unit.id) }}
                         <span v-if="b.unit.meId && b.unit.meId !== b.unit.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(b.unit.meId) }})</span>
                       </span>
-                      <span v-if="b.unit.quotedHeading" class="min-w-0 font-medium text-ink">{{ b.unit.quotedHeading }}</span>
+                      <span v-if="unitName(b.unit)" class="min-w-0 font-medium text-ink">{{ unitName(b.unit) }}</span>
                       <span v-else-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
                     </p>
 

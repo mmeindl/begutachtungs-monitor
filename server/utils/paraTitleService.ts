@@ -1,0 +1,117 @@
+/**
+ * The name of each § a change amends (docs/architecture.md §12.11).
+ *
+ * "In § 9 Abs. 1 wird die Wortfolge …" is unreadable; "§ 9 Sofortlotterien"
+ * is not. That name is the § heading in the standing law, so this is a
+ * lookup in RIS Bundesrecht — quoted, exact, never generated. Measured
+ * 2026-09-08: quoted headings inside the instructions cover 9 % of changed
+ * units, and this covers the rest.
+ *
+ * Deliberately its **own endpoint**, not a field on the diff. A draft can
+ * address dozens of paragraphs across three laws, and a slow or failing
+ * lookup must not delay the comparison or take it down with it. The section
+ * merges the names in when they arrive.
+ *
+ * Two rules, both the same rule: **a wrong name is worse than none.** The law
+ * is identified by the Stammnorm of its Promulgationsklausel, not by title
+ * matching, and `resolveLawByBgbl` returns nothing when the match is
+ * ambiguous. Anything unresolved is simply absent from the map.
+ */
+import type { ParagraphTitlesResponse } from '#shared/types'
+import { fetchLawHtml, findDiffSources } from './lawDiffService'
+import { parseParliamentHtml, parseRisXml, segmentUnits, type TextBlock } from './lawText'
+import { promulgationByArticle } from './lawTitles'
+import { addressedParagraph } from './lawTitles'
+import { getConsultationsForGp, getGegenstand } from './parliament'
+import { getRisMapForGp } from './ris'
+import { fetchParagraphTree, resolveLawByBgbl, type KonsParagraphRef } from './risKons'
+
+const TTL_S = 60 * 60 * 24
+/** A NOR version document never changes, so its heading can be kept for a long time. */
+const HEADING_TTL_S = 60 * 60 * 24 * 30
+/** Ceiling on lookups per draft, so one monster Sammelgesetz cannot hang a request. */
+const MAX_HEADINGS = 120
+const CONCURRENCY = 4
+
+const fetchHeading = defineCachedFunction(
+  async (ref: KonsParagraphRef): Promise<string | null> => {
+    const tree = await fetchParagraphTree(ref).catch(() => null)
+    return tree?.heading ?? null
+  },
+  { name: 'kons-para-heading', getKey: (ref: KonsParagraphRef) => ref.nor, maxAge: HEADING_TTL_S, swr: false },
+)
+
+const resolveLaw = defineCachedFunction(
+  async (organ: string, nummer: string, date: string) => resolveLawByBgbl({ organ, nummer }, date).catch(() => null),
+  { name: 'kons-law-by-bgbl', getKey: (organ: string, nummer: string, date: string) => `${organ}|${nummer}|${date}`, maxAge: TTL_S, swr: false },
+)
+
+/** The draft's law text as blocks: Parliament HTML where it exists, else the RIS XML. */
+async function draftBlocks(gp: string, inr: number, detail: Awaited<ReturnType<typeof getGegenstand>>): Promise<TextBlock[]> {
+  const sources = findDiffSources(detail.content ?? {})
+  if (sources.me) return parseParliamentHtml(await fetchLawHtml(sources.me.url))
+  const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
+  const xml = row?.risDocument?.xml
+  return xml ? parseRisXml(await fetchLawHtml(xml)) : []
+}
+
+export const getParagraphTitles = defineCachedFunction(
+  async (gp: string, inr: number): Promise<ParagraphTitlesResponse> => {
+    const detail = await getGegenstand(gp, 'ME', inr)
+    // The reference date is the draft's Einlangen — the law as the draft
+    // found it, not as it stands today. It lives on the list row, not on the
+    // Gegenstand, and the list is cached anyway.
+    const listed = (await getConsultationsForGp(gp).catch(() => null))?.items.find((i) => i.inr === inr) ?? null
+    const asOf = listed?.arrivedAt || null
+    const empty: ParagraphTitlesResponse = { gp, inr, asOf, titles: {} }
+    if (!asOf) return empty
+
+    const blocks = await draftBlocks(gp, inr, detail)
+    if (blocks.length === 0) return empty
+
+    const clauses = promulgationByArticle(blocks)
+    if (clauses.size === 0) return empty
+
+    // Which § each instruction addresses, grouped by the law it belongs to.
+    const wanted = new Map<string | null, Map<string, string[]>>()
+    let planned = 0
+    for (const unit of segmentUnits(blocks)) {
+      const first = unit.blocks[0]
+      if (!first || first.kind !== 'novao') continue
+      if (!clauses.has(unit.article)) continue
+      const para = addressedParagraph(first.text)
+      if (!para) continue
+      const byPara = wanted.get(unit.article) ?? new Map<string, string[]>()
+      const keys = byPara.get(para) ?? []
+      keys.push(`${unit.article ?? ''}|${unit.id}`)
+      byPara.set(para, keys)
+      wanted.set(unit.article, byPara)
+      planned++
+    }
+
+    const titles: Record<string, string> = {}
+    let fetched = 0
+    for (const [article, byPara] of wanted) {
+      const bgbl = clauses.get(article)
+      if (!bgbl) continue
+      const law = await resolveLaw(bgbl.organ, bgbl.nummer, asOf)
+      if (!law) continue
+      const jobs = [...byPara].filter(([para]) => law.paragraphs[para] !== undefined)
+      const queue = [...jobs]
+      const worker = async () => {
+        for (;;) {
+          const job = queue.shift()
+          if (!job || fetched >= MAX_HEADINGS) return
+          fetched++
+          const [para, keys] = job
+          const heading = await fetchHeading(law.paragraphs[para]!).catch(() => null)
+          if (!heading) continue
+          for (const key of keys) titles[key] = heading
+        }
+      }
+      await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+    }
+    return { gp, inr, asOf, titles }
+  },
+  { name: 'para-titles', getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+)

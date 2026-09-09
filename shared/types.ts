@@ -376,6 +376,22 @@ export interface LawDiffSegment {
   text: string
 }
 
+/**
+ * GET /api/consultations/:gp/:inr/paragraphtitel — the heading of each § a
+ * change amends, looked up in the standing law (docs/architecture.md §12.11).
+ *
+ * Keyed `${article}|${unitId}` so it merges straight onto the diff units. A
+ * missing key means no name could be resolved with certainty, which is the
+ * normal case for a Stammgesetz and for any § the lookup could not verify.
+ */
+export interface ParagraphTitlesResponse {
+  gp: string
+  inr: number
+  /** ISO date of the law version the titles were read from (the draft's Einlangen) */
+  asOf: string | null
+  titles: Record<string, string>
+}
+
 /** One row of the ressort's Textgegenüberstellung (docs/api-exploration.md §2c). */
 export interface TextComparisonRow {
   kind: 'article' | 'pair'
