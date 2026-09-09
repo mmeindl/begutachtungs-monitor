@@ -13,7 +13,9 @@
  * read" are different things to a reader — and in the second case the PDF is
  * still worth linking.
  */
-import type { TextComparisonResponse, TraceLink } from '#shared/types'
+import type { TextComparisonResponse, TextComparisonRow, TraceLink } from '#shared/types'
+import { annexParagraphKey } from './annexCheck'
+import { getAnnexVerification } from './annexGuardService'
 import { fetchLawHtml } from './lawDiffService'
 import { parseRisXml } from './lawText'
 import { draftArticles } from './lawTitles'
@@ -33,6 +35,7 @@ export const getTextComparison = defineCachedFunction(
       pdf,
       boundaryNote: null,
       stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
+      verification: null,
       rows: [],
     })
 
@@ -59,7 +62,46 @@ export const getTextComparison = defineCachedFunction(
     if (rows.length === 0) return empty('Die Textgegenüberstellung ließ sich nicht auslesen.', null, pdf)
 
     const source: TraceLink = { label: 'Textgegenüberstellung des Ressorts', url: annex.html ?? annex.xml }
-    return { gp, inr, available: true, unavailableReason: null, source, pdf, boundaryNote: refusal, stats: summarizeComparison(rows), rows }
+
+    // The annex's left column claims to be the standing law; RIS holds that
+    // text independently, so the claim is checked before the rows are sent.
+    // The reference date is RIS's own start of the Begutachtungsfrist — the
+    // day the ministry wrote the annex, not today.
+    const check = row.risBeginn ? await getAnnexVerification(gp, inr, row.risBeginn, rows, articles).catch(() => null) : null
+    const withheld = new Set(check?.withheld ?? [])
+    const unchecked = new Set(check?.unchecked ?? [])
+    const checked: TextComparisonRow[] = rows.map((r) => {
+      const key = r.kind === 'pair' ? annexParagraphKey(r.law, r.gld ?? r.para ?? '') : null
+      if (key !== null && withheld.has(key)) {
+        // Emptied here, not hidden in the component: a row the standing law
+        // does not account for must not be renderable by any client.
+        return { ...r, current: '', proposed: '', segments: null, check: 'withheld' as const }
+      }
+      return { ...r, check: key !== null && unchecked.has(key) ? ('unchecked' as const) : ('verified' as const) }
+    })
+
+    return {
+      gp,
+      inr,
+      available: true,
+      unavailableReason: null,
+      source,
+      pdf,
+      boundaryNote: refusal,
+      // Counted over the rows as sent, so the numbers on the page and the
+      // rows on the page cannot disagree.
+      stats: summarizeComparison(checked.filter((r) => r.check !== 'withheld')),
+      verification: check
+        ? {
+            judged: check.judged,
+            verified: check.verified,
+            withheldParagraphs: check.withheld.length,
+            doubtfulLaws: check.doubtfulLaws.map((l) => l.law).filter((l): l is string => l !== null),
+            uncheckedParagraphs: check.unchecked.length,
+          }
+        : null,
+      rows: checked,
+    }
   },
   { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
 )

@@ -341,6 +341,15 @@ export interface RisMapRow {
    */
   textComparison: { html: string | null; xml: string | null; pdf: string | null } | null
   score: number | null
+  /**
+   * RIS's own start of the Begutachtungsfrist (ISO date) — the day the annex
+   * was written, and therefore the version of the standing law its left
+   * column claims to quote. The reference date for checking that claim
+   * (`annexCheck.ts`): taking it from anywhere else moved one draft's score
+   * from 66,7 % to 88,9 %, which made the measurement an argument about the
+   * date rather than about the parse.
+   */
+  risBeginn: string | null
   /** RIS Beginn − Parliament Einlangen, days */
   beginnOffsetDays: number | null
   /** RIS Ende − Parliament Frist, days; a non-zero value is a Fristabweichung */
@@ -419,6 +428,20 @@ export interface TextComparisonRow {
   elided: boolean
   segments: LawDiffSegment[] | null
   editorial: boolean
+  /**
+   * How the row's "Geltende Fassung" fared against the standing law in RIS
+   * (`annexCheck.ts`).
+   *
+   * - `verified` — the standing § accounts for the column; the diff beside
+   *   it means what it says.
+   * - `unchecked` — no Stammnorm resolved, RIS holds no such §, or the
+   *   ceiling cut the run short. Shown, and said to be unchecked.
+   * - `withheld` — the standing § does *not* account for the column, so the
+   *   row is mis-paired or quotes a superseded version. `current`,
+   *   `proposed` and `segments` are emptied before the response leaves the
+   *   server: a wrong comparison must not be renderable at all.
+   */
+  check: 'verified' | 'unchecked' | 'withheld'
 }
 
 /**
@@ -443,6 +466,26 @@ export interface TextComparisonResponse {
    */
   boundaryNote: string | null
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
+  /**
+   * What the RIS check made of the annex. Null when no check ran at all.
+   * The page states these counts: a comparison that quietly drops §§ is a
+   * different kind of wrong answer from one that says what it dropped.
+   */
+  verification: {
+    /** §§ with enough prose to judge, and how many cleared the threshold */
+    judged: number
+    verified: number
+    /** §§ whose text was withheld because the standing law does not carry it */
+    withheldParagraphs: number
+    /**
+     * Laws where so many §§ failed that the annex probably quotes another
+     * version of the law. Named for the reader; the §§ that verified are
+     * still shown, because they verified against the standing text.
+     */
+    doubtfulLaws: string[]
+    /** §§ shown without a check */
+    uncheckedParagraphs: number
+  } | null
   rows: TextComparisonRow[]
 }
 

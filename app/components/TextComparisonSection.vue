@@ -111,7 +111,16 @@ function groupBadges(g: Group): { badge: Badge; count: number }[] {
   return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
 }
 
-type Block = { kind: 'row'; row: TextComparisonRow } | { kind: 'context'; rows: TextComparisonRow[] }
+type Block =
+  | { kind: 'row'; row: TextComparisonRow }
+  | { kind: 'context'; rows: TextComparisonRow[] }
+  /**
+   * Changes the RIS check would not vouch for. The server sends these rows
+   * without their text (`annexCheck.ts`), so there is nothing to render but
+   * the fact — and that fact is worth a line: a comparison that silently
+   * drops a § is a different kind of wrong answer from one that says it did.
+   */
+  | { kind: 'withheld'; count: number }
 
 /** Changes rendered before the "show the rest" line — LawDiffSection's cap. */
 const SHOWN_CHANGES = 30
@@ -148,9 +157,12 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
   let context: TextComparisonRow[] = []
   let shown = 0
   let hidden = 0
+  let withheld = 0
   const flush = () => {
     if (context.length) current.blocks.push({ kind: 'context', rows: context })
     context = []
+    if (withheld > 0) current.blocks.push({ kind: 'withheld', count: withheld })
+    withheld = 0
   }
   for (const row of g.rows) {
     const key = row.para ?? ''
@@ -161,6 +173,10 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
     }
     // The heading belongs to the paragraph, not to the Absatz that carries it.
     current.heading ??= row.heading
+    if (row.check === 'withheld') {
+      withheld++
+      continue
+    }
     if (row.change === 'unchanged') {
       context.push(row)
       continue
@@ -178,6 +194,44 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
 }
 
 const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasOf(g) })))
+
+/**
+ * What the RIS check found, in one sentence.
+ *
+ * The annex's left column claims to be the law in force; RIS holds that text
+ * independently, so the claim is checked before anything is shown
+ * (`annexCheck.ts`). Saying so is not a disclaimer — it is the difference
+ * between a comparison the reader can rely on and one they cannot, and the
+ * count of what was withheld is the honest part of it.
+ *
+ * §§ that could not be checked at all are counted separately and never as a
+ * fault: a draft creating new law has no standing text to check against.
+ */
+const checkNote = computed<string | null>(() => {
+  const v = data.value?.verification
+  if (!v || v.judged === 0) return null
+  const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen stimmen mit dem geltenden Text im RIS zusammen`]
+  if (v.withheldParagraphs > 0) {
+    parts.push(`${v.withheldParagraphs} ${v.withheldParagraphs === 1 ? 'Stelle wird' : 'Stellen werden'} deshalb nicht gezeigt`)
+  }
+  if (v.uncheckedParagraphs > 0) {
+    parts.push(`${v.uncheckedParagraphs} ${v.uncheckedParagraphs === 1 ? 'Paragraph ließ' : 'Paragraphen ließen'} sich nicht prüfen`)
+  }
+  return `${parts.join('; ')}.`
+})
+
+/**
+ * A law whose §§ fail in a cluster. Named, because the cause is not ours:
+ * the annex was written against another version of that law than the one RIS
+ * holds for the day the consultation opened. The §§ that did verify are
+ * still shown — they verified against the standing text.
+ */
+const doubtfulNote = computed<string | null>(() => {
+  const laws = data.value?.verification?.doubtfulLaws ?? []
+  if (laws.length === 0) return null
+  const named = laws.length === 1 ? `„${laws[0]}“` : laws.map((l) => `„${l}“`).join(', ')
+  return `Auffällig viele Stellen weichen ab bei ${named} — die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen als das RIS zum Beginn der Begutachtung.`
+})
 </script>
 
 <template>
@@ -209,6 +263,12 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasO
            ends. Shown undivided, and said so: dividing it wrongly would put
            one law's § 5 under another law's name. -->
       <p v-if="data.boundaryNote" class="mt-3 text-sm text-ink-secondary">{{ data.boundaryNote }}</p>
+
+      <!-- What the RIS check made of the annex. Stated rather than implied:
+           the reader is looking at the ministry's own text, and how much of
+           it we could hold against the standing law is part of reading it. -->
+      <p v-if="checkNote" class="mt-3 text-sm text-ink-secondary">{{ checkNote }}</p>
+      <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <span>Quelle (CC BY 4.0, RIS):</span>
@@ -258,7 +318,11 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasO
               </p>
 
               <div v-for="(b, bi) in p.blocks" :key="bi" :class="bi > 0 ? 'mt-3' : ''">
-              <details v-if="b.kind === 'context'" class="group">
+              <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
+                {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt: der geltende Text
+                dieser Stelle steht so nicht im RIS. Die Beilage des Ressorts sagt, was sich ändert.
+              </p>
+              <details v-else-if="b.kind === 'context'" class="group">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                   {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
