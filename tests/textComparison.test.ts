@@ -40,7 +40,10 @@ describe('parseTextComparison', () => {
     const rows = parse(annex([pair('<absatz typ="abs"><gldsym>§ 5.</gldsym> (1) Alter Text.</absatz>', `<absatz typ="abs"><gldsym>§ 5.</gldsym> (1) ${marked('Neuer')} Text.</absatz>`)]))
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ kind: 'pair', gld: '§ 5.', change: 'changed', marked: true })
-    expect(rows[0]!.current).toBe('§ 5. (1) Alter Text.')
+    // The designation lives in `gld`, not in the compared text — printed in
+    // both it appeared twice on the page.
+    expect(rows[0]!.gld).toBe('§ 5.')
+    expect(rows[0]!.current).toBe('(1) Alter Text.')
   })
 
   it('spans an Artikel heading over both columns', () => {
@@ -236,7 +239,7 @@ describe('the § heading inside the cell', () => {
   it('lifts a heading both columns share out of the text', () => {
     const rows = parse(withHeading(['Wiederholung von Teilprüfungen', 'Wiederholung von Teilprüfungen'], ['(1) Alt.', '(1) Neu.']))
     expect(rows[0]!.heading).toBe('Wiederholung von Teilprüfungen')
-    expect(rows[0]!.current).toBe('§ 40. (1) Alt.')
+    expect(rows[0]!.current).toBe('(1) Alt.')
   })
 
   // "§ 12a lautet samt Überschrift" — the draft changes the heading itself.
