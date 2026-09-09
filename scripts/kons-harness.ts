@@ -25,6 +25,12 @@
  *   angewendet — instructions the engine could carry out at all
  *   geprüft    — paragraphs RIS can confirm or refute
  *   identisch  — paragraphs where the engine produced the law that exists
+ *
+ * The line to read for a gate is "kein geltender Text": a paragraph is
+ * dangerous when its text is not the law, which is a wider class than a
+ * paragraph with an invented word in it. Reporting only the invented words
+ * put 9,3 % of the corpus on the harmless side of the report
+ * (`applyReport.ts`, `halbangewendet`).
  */
 import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/lawApply'
 import { plainText, type LawNode } from '../server/utils/lawStructure'
@@ -49,12 +55,14 @@ interface Verdict {
   identical: number
   untouched: number
   incomplete: number
+  halfApplied: number
   divergent: number
   unverifiable: number
   /** Paragraphs whose instructions all applied — the set a per-paragraph gate would publish */
   cleanTotal: number
   cleanIdentical: number
   cleanDivergent: number
+  cleanNotLaw: number
   note: string | null
 }
 
@@ -363,7 +371,7 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
 async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   const meta = await risJson({ Applikation: 'BgblAuth', Suchworte: bgblId, DokumenteProSeite: 'Ten' })
   const ref = asArray<any>(meta?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference).find((r) => r?.Data?.Metadaten?.Technisch?.ID === bgblId)
-  const blank = (note: string): Verdict => ({ bgbl: bgblId, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, note })
+  const blank = (note: string): Verdict => ({ bgbl: bgblId, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, note })
   if (!ref) return blank('BGBl nicht gefunden')
 
   const bundesrecht = ref.Data.Metadaten.Bundesrecht
@@ -461,10 +469,12 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   let identical = 0
   let untouched = 0
   let incomplete = 0
+  let halfApplied = 0
   let unverifiable = 0
   let cleanTotal = 0
   let cleanIdentical = 0
   let cleanDivergent = 0
+  let cleanNotLaw = 0
   const divergences: { label: string; got: string; expected: string; before: string }[] = []
   for (const [label, pair] of [...pairs].sort()) {
     const id = /(\d+[a-z]*)/.exec(label)?.[1]
@@ -482,7 +492,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     const got = plainText(node)
     const beforeNode = law.paragraphs.find((p) => p.id === (id === undefined ? id : (originOf.get(id) ?? id)))
     const beforeText = beforeNode ? plainText(beforeNode) : null
-    const rank = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, abweichend: 3 }
+    const rank = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, halbangewendet: 3, abweichend: 4 }
     const best = truths
       .map((t) => ({ ...t, verdict: verdictForTrees(beforeNode ?? null, node, t.tree) }))
       .sort((a, b) => rank[a.verdict] - rank[b.verdict])[0]!
@@ -502,6 +512,11 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
       cleanTotal++
       if (verdict === 'identisch') cleanIdentical++
       else if (verdict === 'abweichend' && comparable) cleanDivergent++
+      // What a gate would actually put on a page that is not the law. A
+      // half-applied § invents no word, so it passes every test the engine
+      // can run on itself — and its text is still not law. Reporting only
+      // the divergences understated this line by a factor of four.
+      if (verdict === 'halbangewendet' || (verdict === 'abweichend' && comparable)) cleanNotLaw++
     }
     // The draft-time gate: refusal, plausibility, and — where the draft has
     // an annex — the ressort's own comparison. Tallied against the RIS truth.
@@ -580,10 +595,11 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
         `${JSON.stringify({ bgbl: bgblNumber, law: kurztitel, label, id, verdict, refused: id !== undefined && refusedIds.has(id), before: beforeText, got, expected, beforeTree: beforeNode ?? null, afterTree: node, touching, refusedLines, afterVersion: matched.inkrafttreten, history, comparable, staged })}\n`,
       )
     }
-    const mark = { identisch: '✓', 'unverändert': '·', 'unvollständig': '~', abweichend: '✗' }[verdict]
+    const mark = { identisch: '✓', 'unverändert': '·', 'unvollständig': '~', halbangewendet: '!', abweichend: '✗' }[verdict]
     if (verdict === 'identisch') identical++
     else if (verdict === 'unverändert') untouched++
     else if (verdict === 'unvollständig') incomplete++
+    else if (verdict === 'halbangewendet') halfApplied++
     // A word diff the DP grid refused (lawDiff MAX_DP_CELLS) lands in
     // `abweichend` because the gate must not pass what it cannot check. For
     // the headline number that conflates two different facts: "checked and
@@ -591,7 +607,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     else if (!comparable) unverifiable++
     else divergences.push({ label, got, expected, before: beforeText ?? '' })
     if (verbose) {
-      const what = verdict === 'identisch' ? `identisch (Fassung ab ${matched.inkrafttreten}${pair.afters.length > 1 ? `, ${pair.afters.length} Schnitte` : ''})` : staged ? `gestaffelt — ${truths.length} Schnitte, in keinem allein, in allen zusammen` : verdict === 'unvollständig' ? 'unvollständig — nichts Eigenes erfunden' : verdict === 'unverändert' ? 'unverändert gelassen' : comparable ? 'eigene Abweichung' : 'nicht prüfbar (Wortdiff zu groß)'
+      const what = verdict === 'identisch' ? `identisch (Fassung ab ${matched.inkrafttreten}${pair.afters.length > 1 ? `, ${pair.afters.length} Schnitte` : ''})` : staged ? `gestaffelt — ${truths.length} Schnitte, in keinem allein, in allen zusammen` : verdict === 'unvollständig' ? 'unvollständig — nichts Eigenes erfunden' : verdict === 'halbangewendet' ? 'halb angewendet — Einfügung ohne die zugehörige Löschung' : verdict === 'unverändert' ? 'unverändert gelassen' : comparable ? 'eigene Abweichung' : 'nicht prüfbar (Wortdiff zu groß)'
       console.log(`    ${mark}  ${label.padEnd(9)} ${what}`)
     }
   }
@@ -602,7 +618,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     }
   }
 
-  return { bgbl: bgblNumber, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, note: null }
+  return { bgbl: bgblNumber, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, halfApplied, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, cleanNotLaw, note: null }
 }
 
 /** The first place two texts part company, with context on both sides. */
@@ -644,14 +660,16 @@ console.log(`  angewendet             : ${sum((v) => v.applied)} (${pct(sum((v) 
 console.log(`  geprüfte Paragraphen   : ${sum((v) => v.checked)}`)
 console.log(`    identisch mit dem RIS: ${sum((v) => v.identical)} (${pct(sum((v) => v.identical), sum((v) => v.checked))})`)
 console.log(`    unverändert gelassen : ${sum((v) => v.untouched)} (${pct(sum((v) => v.untouched), sum((v) => v.checked))})  — ungefährlich, wird verweigert`)
-console.log(`    unvollständig        : ${sum((v) => v.incomplete)} (${pct(sum((v) => v.incomplete), sum((v) => v.checked))})  — nichts Eigenes erfunden`)
-console.log(`    eigene Abweichung    : ${sum((v) => v.divergent)} (${pct(sum((v) => v.divergent), sum((v) => v.checked))})  — die einzige gefährliche Klasse`)
+console.log(`    unvollständig        : ${sum((v) => v.incomplete)} (${pct(sum((v) => v.incomplete), sum((v) => v.checked))})  — der Text des RIS mit Auslassungen`)
+console.log(`    halb angewendet      : ${sum((v) => v.halfApplied)} (${pct(sum((v) => v.halfApplied), sum((v) => v.checked))})  — kein erfundenes Wort, trotzdem kein geltender Text`)
+console.log(`    eigene Abweichung    : ${sum((v) => v.divergent)} (${pct(sum((v) => v.divergent), sum((v) => v.checked))})  — erfundene Wörter, die schärfste Klasse`)
 console.log(`    nicht prüfbar        : ${sum((v) => v.unverifiable)} (${pct(sum((v) => v.unverifiable), sum((v) => v.checked))})  — Wortdiff zu groß, weder bestätigt noch widerlegt`)
 const clean = sum((v) => v.cleanTotal)
 console.log(`\n  Nur Paragraphen ohne jede Verweigerung (das, was ein Gate anzeigen würde):`)
 console.log(`    davon geprüft        : ${clean} von ${sum((v) => v.checked)}`)
 console.log(`    identisch            : ${sum((v) => v.cleanIdentical)} (${pct(sum((v) => v.cleanIdentical), clean)})`)
-console.log(`    eigene Abweichung    : ${sum((v) => v.cleanDivergent)} (${pct(sum((v) => v.cleanDivergent), clean)})  — die Restgefahr eines Gates`)
+console.log(`    eigene Abweichung    : ${sum((v) => v.cleanDivergent)} (${pct(sum((v) => v.cleanDivergent), clean)})  — erfundene Wörter`)
+console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum((v) => v.cleanNotLaw), clean)})  — die Restgefahr eines Gates: Abweichung *und* halb angewendet`)
 {
   const sumKeys = (map: Map<string, number>, pred: (parts: string[]) => boolean): number => [...map].filter(([k]) => pred(k.split('|'))).reduce((n, [, v]) => n + v, 0)
   const line = (name: string, pred: (parts: string[]) => boolean) => {

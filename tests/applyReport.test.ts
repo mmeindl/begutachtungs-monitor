@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extraTokens, isSubsetOfRis, verdictFor, verdictForTrees } from '../server/utils/applyReport'
+import { extraTokens, isOmissionOf, isSubsetOfRis, verdictFor, verdictForTrees } from '../server/utils/applyReport'
 import type { LawNode } from '../server/utils/lawStructure'
 
 const before = 'Zuständig ist die Behörde am Sitz der Partei.'
@@ -36,14 +36,46 @@ describe('verdictFor', () => {
     expect(verdictFor(before, 'Zuständig ist die Bezirksverwaltungsbehörde am Wohnsitz der Partei.', ris)).toBe('abweichend')
   })
 
-  it('counts a partial application as incomplete, not as wrong', () => {
+  it('separates a half-applied change from a pure omission', () => {
+    // Both did less than RIS, and only one of them left law behind. The
+    // engine applied the first replacement and not the second, so the § still
+    // says "der Partei" where the law says "des Antragstellers": no word was
+    // invented, and the result is not a version the law ever had. Counting
+    // that as harmless is what put 108 of 139 paragraphs on the safe side of
+    // the report.
     const twoChanges = 'Zuständig ist die Bezirksverwaltungsbehörde am Sitz des Antragstellers.'
     const halfDone = 'Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei.'
-    expect(verdictFor(before, halfDone, twoChanges)).toBe('unvollständig')
+    expect(verdictFor(before, halfDone, twoChanges)).toBe('halbangewendet')
+
+    // A pure omission: the engine's text is the law with words left out.
+    expect(verdictFor(before, 'Zuständig ist die Bezirksverwaltungsbehörde am Sitz.', twoChanges)).toBe('unvollständig')
+  })
+
+  it('catches the insert applied without its delete', () => {
+    // The shape of the largest case in the corpus: 547 words produced against
+    // 414 in RIS, every one of the 414 present — the old text kept *and* the
+    // new text added.
+    const was = 'Die Behörde entscheidet.'
+    const ris2 = 'Das Gericht entscheidet.'
+    const kept = 'Die Behörde Das Gericht entscheidet.'
+    // Every word the engine added, RIS added too — it simply never removed
+    // the words RIS replaced.
+    expect(isSubsetOfRis(was, kept, ris2)).toBe(true)
+    expect(isOmissionOf(kept, ris2)).toBe(false)
+    expect(verdictFor(was, kept, ris2)).toBe('halbangewendet')
+  })
+
+  it('judges an omission without needing the word diff', () => {
+    // A very long pair skips the word diff. That must not stop a pure
+    // omission from being recognised as one — the segment comparison could
+    // never prove it, so every long paragraph fell through to a divergence.
+    const long = (n: number) => Array.from({ length: n }, (_, i) => `wort${i}`).join(' ')
+    expect(verdictFor(null, long(2000), long(3000))).toBe('unvollständig')
   })
 
   it('never passes a paragraph whose diff could not be computed', () => {
     // A very long pair skips the word diff; that must not read as harmless.
+    // Its text is no omission either, so nothing rescues it.
     const long = (word: string) => Array.from({ length: 3000 }, () => word).join(' ')
     expect(verdictFor(long('a'), long('b'), long('c'))).toBe('abweichend')
   })
