@@ -261,6 +261,27 @@ only with **EU-owned providers** (no US hyperscaler, not even their EU
 regions — CLOUD Act). The build-time dependency on the npm registry remains
 (documented compromise; the mitigation would be an EU registry mirror).
 
+**Dependency advisories (2026-09-09).** `pnpm audit` is clean. The seven
+advisories GitHub reported that day were all build- or test-time, none of them
+reachable from the deployed artefact — `tiptap`, `svgo` and `esbuild` appear in
+zero files of `.output`, and the app has no editor and no user input at all.
+Fixed regardless, because "not reachable today" is an argument that expires:
+`vitest` moved to 4, `svgo` came right with a lockfile refresh, and
+`fontless>esbuild` plus the whole `@tiptap` family are pinned in
+`pnpm.overrides`. That tiptap block is long for a reason — `@nuxt/ui` declares
+those packages in **both** `dependencies` (`^3.31.3`) and `peerDependencies`
+(`^3`), pnpm resolves the loose peer, and the family pins itself to exact
+versions, so it only moves as a unit. Cost: the `@nuxt/ui` 4.10 → 4.11 bump
+that came with it adds ~0.2 MB gzip to the server bundle (now 5.26 MB, 1.23 MB
+gzip).
+
+Trap worth knowing before trusting a size number: `node_modules` keeps
+orphaned packages across repeated installs and override changes, and Nitro's
+dependency trace picks them up — the same commit built to 13.8 MB with a
+polluted tree and 5.26 MB after `rm -rf node_modules .output`. It even
+bundled two Vue runtimes that the lockfile did not contain. Measure only
+after a clean install.
+
 ## 11. Why no …
 
 - **No Pinia/state layer**: `useFetch` suffices; there is no shared client state.
