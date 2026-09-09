@@ -132,5 +132,5 @@ export const getLawDiff = defineCachedFunction(
     if (units.length === 0) return empty('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', me, meSource)
     return { gp, inr, available: true, unavailableReason: null, me, rv: sources.rv, meSource, stats: summarizeDiff(units), lawsOnlyInRv, lawsOnlyInMe, units }
   },
-  { name: 'law-diff', getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DIFF_TTL_S, swr: false },
+  { name: 'law-diff', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DIFF_TTL_S, swr: false },
 )

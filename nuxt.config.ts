@@ -6,6 +6,12 @@ export default defineNuxtConfig({
     public: { siteUrl: 'https://begutachtungs-monitor.at' },
   },
   css: ['~/assets/css/main.css'],
+  // Cached-function storage, split by provenance (server/utils/cacheBase.ts):
+  // the default `cache` mount keeps documents we fetched and stays on disk,
+  // `derived` keeps what we computed and is memory, so a parser change shows
+  // on the next request instead of in 24 hours. Production mounts neither —
+  // there both are memory already.
+  nitro: { devStorage: { derived: { driver: 'memory' } } },
   ui: {
     // Light-only prototype: Nuxt UI's color-mode integration would flip its
     // tokens dark on OS preference while our custom tokens stay light.

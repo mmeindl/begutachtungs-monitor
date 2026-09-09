@@ -31,14 +31,6 @@ const RIS_PAGE_PAUSE_MS = 300
 // would let the timer find a still-valid cache and refresh nothing.
 const RIS_CORPUS_TTL_S = 60 * 60 * 20
 const RIS_MAP_TTL_S = 60 * 30
-/**
- * Part of both cache keys, so adding a field to `RisBegutFlat` invalidates
- * what is already stored. Without it the persisted cache kept serving
- * records from before the change for up to 20 hours after a deploy — and a
- * missing field reads as "the draft has no Textgegenüberstellung", which is
- * a wrong answer rather than a stale one. Bump on every shape change.
- */
-const CORPUS_SHAPE_VERSION = 2
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 
 /** RIS record plus the document URLs the UI needs. */
@@ -160,16 +152,36 @@ async function fetchRisPage(page: number): Promise<{ hits: number; docs: any[] }
   }
   throw createError({ statusCode: 502, statusMessage: 'RIS-API nicht erreichbar', cause: lastError })
 }
+/**
+ * One page of the result set, as RIS sent it. Leaf cache — and the
+ * politeness pause sits inside it, so it is paid on a fetch and not on a
+ * hit: re-flattening the corpus from 46 cached pages must not cost 14
+ * seconds of sleeping.
+ */
+const risPage = defineCachedFunction(
+  async (page: number): ReturnType<typeof fetchRisPage> => {
+    await sleep(RIS_PAGE_PAUSE_MS)
+    return fetchRisPage(page)
+  },
+  { name: 'ris-begut-page', getKey: (page: number) => String(page), maxAge: RIS_CORPUS_TTL_S, swr: false },
+)
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-/** The whole Begut corpus, flattened and deduped by ID. Leaf cache, 24 h. */
+/**
+ * The whole Begut corpus, flattened and deduped by ID.
+ *
+ * Derived, not fetched: `flattenRisRecord` decides among other things
+ * whether a draft has a Textgegenüberstellung, and a field it stopped
+ * writing would read as "there is none" — a wrong answer, not a stale one.
+ * The pages underneath are the cached half (`cacheBase.ts`).
+ */
 export const getRisBegutCorpus = defineCachedFunction(
   async (): Promise<RisBegutCorpus> => {
     const seen = new Set<string>()
     const records: RisBegutFlat[] = []
     let hits = 0
     for (let page = 1; page <= RIS_MAX_PAGES; page++) {
-      const res = await fetchRisPage(page)
+      const res = await risPage(page)
       hits = res.hits
       for (const doc of res.docs) {
         const flat = flattenRisRecord(doc)
@@ -179,11 +191,10 @@ export const getRisBegutCorpus = defineCachedFunction(
         }
       }
       if (res.docs.length < RIS_PAGE_SIZE || page * RIS_PAGE_SIZE >= hits) break
-      await sleep(RIS_PAGE_PAUSE_MS)
     }
     return { fetchedAt: new Date().toISOString(), hits, records }
   },
-  { name: 'ris-begut-corpus', getKey: () => `all-v${CORPUS_SHAPE_VERSION}`, maxAge: RIS_CORPUS_TTL_S, swr: false },
+  { name: 'ris-begut-corpus', base: DERIVED_CACHE, getKey: () => 'all', maxAge: RIS_CORPUS_TTL_S, swr: false },
 )
 
 function toMapRow(
@@ -229,5 +240,5 @@ export const getRisMapForGp = defineCachedFunction(
       rows,
     }
   },
-  { name: 'ris-map-gp', getKey: (gp: string) => `${gp}-v${CORPUS_SHAPE_VERSION}`, maxAge: RIS_MAP_TTL_S, swr: false },
+  { name: 'ris-map-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: RIS_MAP_TTL_S, swr: false },
 )
