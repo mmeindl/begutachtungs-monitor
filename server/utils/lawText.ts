@@ -154,7 +154,64 @@ export function normalizeGld(g: string): string {
   return normalizeText(g).replace(/\s+/g, '').replace(/^Artikel/, 'Art.').replace(/\.$/, '')
 }
 
-const NOVAO_NUMBER_RE = /^(\d+)[a-z]?\.\s/
+/**
+ * The words a Novellierungsanordnung can open with. Used only to confirm a
+ * number whose separator is missing or unusual — without it, "5 Jahre nach
+ * Inkrafttreten" at the head of a line would read as instruction 5.
+ */
+const OPENER = '(?:§|Art\\b|Abs\\b|Z\\b|In\\b|Im\\b|Dem\\b|Den\\b|Der\\b|Die\\b|Das\\b|Nach\\b|Vor\\b|Es\\b|Anlage\\b|Inhaltsverzeichnis\\b)'
+
+/**
+ * The instruction number at the head of a Novellierungsanordnung, in the
+ * forms the sources actually print.
+ *
+ * RIS and the Parliament template agree on "3. " and disagree on everything
+ * around it: "2.§ 30 Abs. 3 lautet" (no space), "13 § 178 Abs. 3 lautet" (no
+ * period), "4 . Dem § 67" (a space before it), "222- Im Schlussteil" (a dash
+ * instead). Fifteen instructions across nine GP-XXVIII drafts were lost to
+ * the strict form, measured 2026-09-09 — and a lost instruction is worse
+ * than a missing one: it becomes tail text of the instruction above it, so
+ * two units carry text that belongs to neither and both read as "geändert"
+ * in the ME→RV comparison.
+ *
+ * A number is capped at three digits, and one whose separator is not a
+ * period must be followed by a legistic opener, so that "20 000 Euro" or
+ * "2,5 Millionen" at the head of a line stays text.
+ */
+const NOVAO_NUMBER_RE = new RegExp(`^(\\d{1,3})[a-z]?(?:\\s*\\.\\s*(?=\\S)|\\s*[-,:]\\s+(?=${OPENER})|\\s+(?=${OPENER}))`)
+
+/** The instruction number at the head of `text`, or null. */
+export function novaoNumber(text: string): string | null {
+  return NOVAO_NUMBER_RE.exec(normalizeText(text))?.[1] ?? null
+}
+
+/**
+ * The promulgation clause that opens a Novelle for one law — "Das
+ * Bundesgesetz …, BGBl. I Nr. 620/1989, … wird wie folgt geändert:".
+ *
+ * It is what makes an *unnumbered* first instruction recognisable. A law
+ * amended in a single respect carries no Ziffer, because there is nothing to
+ * count: "Dem § 143 werden folgende Abs. 108 und 109 angefügt:" stands
+ * alone directly under the clause. Ten such instructions sit in GP XXVIII,
+ * and for two drafts (110/ME, 59/ME) that one line is the entire Novelle —
+ * both segmented to zero units and their comparison refused outright.
+ *
+ * The clause is the boundary that separates them from the lines that only
+ * look alike: a continuation fragment ("durch folgenden Eintrag ersetzt:",
+ * 123/ME), an instruction nested inside a quoted payload (116/ME) and the
+ * clause itself where RIS mistags it as an instruction (92/ME) all follow
+ * something else.
+ */
+const PROMULGATION_RE = /\bwird\s+(?:wie\s+folgt\s+)?geändert\s*:\s*$|\bwerden\s+wie\s+folgt\s+geändert\s*:\s*$/
+
+/**
+ * A litera sub-instruction — "a) In Abs. 3 lautet der erste Satz:". It
+ * belongs inside the numbered instruction above it ("2. § 2 wird wie folgt
+ * geändert:"), which is where an unnumbered line lands anyway; 211 of them
+ * sit in GP XXVIII and none may open a unit of its own. RIS tags them
+ * `novao1` and `novao2` interchangeably, so the class is no guide.
+ */
+const LITERA_RE = /^[a-z]{1,2}\s*\)/
 
 /**
  * Heading of a Novellierungsanordnung: its instruction line without the
@@ -174,6 +231,23 @@ export function novaoHeading(text: string): string {
 }
 
 /**
+ * How a block changes the quotation state. A payload is enclosed in
+ * quotation marks: `normalizeText` folds „ “ ” to ", so that pair is a
+ * parity bit, while »…« nests around an instruction quoted inside another
+ * one and is counted as a depth.
+ */
+function quoteShift(text: string): { flips: number; depth: number } {
+  let flips = 0
+  let depth = 0
+  for (const ch of text) {
+    if (ch === '"') flips++
+    else if (ch === '»') depth++
+    else if (ch === '«') depth--
+  }
+  return { flips, depth }
+}
+
+/**
  * Blocks → units. A Stammgesetz yields one unit per §; a Novelle yields one
  * unit per Novellierungsanordnung (Z1, Z2, …) with the quoted § text inside.
  * Articles of a package reset the numbering, so the key is (article, id).
@@ -186,6 +260,15 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   let pendingHeading: string | null = null
   let current: LawUnit | null = null
   let novelleMode = false
+  // Quotation state of everything *before* the block being read, and the
+  // last instruction number opened for the current law. Both decide whether
+  // a line that carries no usable number is an instruction; both reset with
+  // the Artikel, because a package numbers each law from 1.
+  let quoted = false
+  let guillemets = 0
+  let lastNovao = 0
+  let afterPromulgation = false
+  let prev: TextBlock | null = null
 
   const push = (id: string, heading: string | null, first: TextBlock): LawUnit => {
     const article = articleTitle ?? articleNumber
@@ -209,6 +292,15 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   }
 
   for (const b of blocks) {
+    if (prev) {
+      const { flips, depth } = quoteShift(prev.text)
+      if (flips % 2 === 1) quoted = !quoted
+      guillemets = Math.max(0, guillemets + depth)
+      afterPromulgation = PROMULGATION_RE.test(prev.text)
+    }
+    prev = b
+    const inPayload = quoted || guillemets > 0
+
     switch (b.kind) {
       case 'article':
         articleNumber = b.text
@@ -216,6 +308,9 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         novelleMode = false
         current = null
         pendingHeading = null
+        quoted = false
+        guillemets = 0
+        lastNovao = 0
         continue
       case 'section':
         // The first heading after "Artikel n" is the article's law title.
@@ -274,13 +369,47 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       continue
     }
 
+    // Opening an instruction unit. The number goes into the id, not into the
+    // compared text — like the § symbol.
+    const openNovao = (n: string): void => {
+      novelleMode = true
+      lastNovao = Number(n)
+      current = push(`Z${n}`, novaoHeading(b.text), { ...b, text: b.text.replace(NOVAO_NUMBER_RE, '') })
+      pendingHeading = null
+    }
+
     if (b.kind === 'novao') {
-      const m = NOVAO_NUMBER_RE.exec(b.text)
-      if (m) {
-        novelleMode = true
-        // The Ziffer number goes into the id, not the compared text — like the § symbol.
-        current = push(`Z${m[1]}`, novaoHeading(b.text), { ...b, text: b.text.replace(NOVAO_NUMBER_RE, '') })
-        pendingHeading = null
+      const n = novaoNumber(b.text)
+      if (n) {
+        openNovao(n)
+        continue
+      }
+      // No number. The first instruction of a law carries none when the law
+      // is amended in a single respect — recognisable because the
+      // promulgation clause stands directly above it, and only there.
+      if (afterPromulgation && lastNovao === 0 && !inPayload && !LITERA_RE.test(b.text)) {
+        openNovao('1')
+        continue
+      }
+    } else if ((b.kind === 'abs' || b.kind === 'other') && !inPayload) {
+      // RIS sometimes tags an instruction as plain text (`absatz typ="satz"`
+      // or `"abs"`), and then nothing above recognises it: seven such lines
+      // in GP XXVIII became tail text of the instruction before them
+      // (125/ME §§ 29, 31, 42, 46, measured 2026-09-09). Two independent
+      // signals have to agree before a non-instruction block is promoted —
+      // it must continue the number sequence, and it must stand outside any
+      // payload. On the twelve candidates in the corpus the two agreed
+      // every time: all seven outside a payload were the next number, all
+      // five inside it were law text that merely began with a numeral.
+      //
+      // Only an Absatz may be promoted. A `listelem` is a Ziffer of a quoted
+      // list and is numbered from 1 like an instruction, so it satisfies both
+      // signals by coincidence — an early version of this branch read three
+      // list items of Mineralrohstoffgesetz § 156 (27/ME) and one of
+      // Markenschutzgesetz § 68j (83/ME) as instructions.
+      const n = novelleMode ? novaoNumber(b.text) : null
+      if (n && Number(n) === lastNovao + 1) {
+        openNovao(n)
         continue
       }
     }
