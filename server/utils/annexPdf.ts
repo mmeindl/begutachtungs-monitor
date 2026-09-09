@@ -23,9 +23,13 @@ import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } fro
 import { diffTokens, isEditorialChange } from './lawDiff'
 import { normalizeText } from './lawText'
 import type { DraftArticle } from './lawTitles'
-import { classify, ELIDED_RE, HEADER_CURRENT, HEADER_PROPOSED, type ComparisonRow } from './textComparison'
+import { classify, HEADER_CURRENT_RE, HEADER_PROPOSED_RE, isElidedPair, type ComparisonRow } from './textComparison'
 
-/** One positioned text run, in PDF user space (origin bottom-left). */
+/**
+ * One positioned text run, in PDF user space: origin bottom-left, y upward,
+ * x along the reading direction. A turned page is put into this frame by
+ * `uprightRuns` in `annexPdfPages.ts`, so everything here can assume it.
+ */
 export interface AnnexItem {
   x: number
   y: number
@@ -207,6 +211,17 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
     }))
 }
 
+/**
+ * The mandated header pair, left against right.
+ *
+ * It is chrome — it repeats on every page — and it is also the one piece of
+ * evidence that the column geometry was read the way the ressort typeset it,
+ * which is what `parseAnnexPdf` gates on.
+ */
+function isHeaderLine(line: AnnexLine): boolean {
+  return HEADER_CURRENT_RE.test(line.left.trim()) && HEADER_PROPOSED_RE.test(line.right.trim())
+}
+
 /** Page furniture the Rundschreiben requires on every page — not content. */
 function isChrome(line: AnnexLine): boolean {
   const both = `${line.left} ${line.right} ${line.spanning ?? ''}`.trim()
@@ -214,9 +229,7 @@ function isChrome(line: AnnexLine): boolean {
   if (PAGE_NUMBER_RE.test(line.right.trim()) && !line.left.trim()) return true
   if (PAGE_NUMBER_RE.test(line.left.trim()) && !line.right.trim()) return true
   if (TITLE_RE.test((line.spanning ?? both).replace(/\s+/g, ''))) return true
-  const l = line.left.trim().toLowerCase()
-  const r = line.right.trim().toLowerCase()
-  return l === HEADER_CURRENT && r === HEADER_PROPOSED
+  return isHeaderLine(line)
 }
 
 /**
@@ -339,7 +352,7 @@ function idOfMarker(gld: string): string | null {
 
 function rowOf(law: string | null, gld: string | null, current: string, proposed: string, context: string | null = null): ComparisonRow | null {
   if (!current && !proposed) return null
-  const elided = ELIDED_RE.test(current) && ELIDED_RE.test(proposed)
+  const elided = isElidedPair(current, proposed)
   const change = classify(current, proposed)
   const segments = change === 'changed' && !elided ? diffTokens(current, proposed).segments : null
   return {
@@ -446,6 +459,21 @@ export interface AnnexParse {
    * just carry no law of their own.
    */
   refusal: string | null
+  /**
+   * Why the PDF could not be read as a comparison at all. `rows` is then
+   * empty, which the caller already treats as "not readable" — this only says
+   * which of the ways it failed, for the harnesses and the log.
+   */
+  unreadable?: string
+  /**
+   * Blocks of the annex that belong to no provision and were left out —
+   * everything a column prints before its first § marker.
+   *
+   * Optional and not yet read anywhere: a caller that wants to disclose "so
+   * many blocks of the annex are not shown" can, and until one does the
+   * number is at least in the harness output rather than nowhere.
+   */
+  unplaced?: number
 }
 
 /**
@@ -465,7 +493,20 @@ export interface AnnexParse {
 export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly DraftArticle[] = []): AnnexParse {
   const rows: ComparisonRow[] = []
   const boundary = columnBoundary(pages)
-  const lines = pages.flatMap((page) => linesFromPage(page, boundary)).filter((line) => !isChrome(line))
+  const placed = pages.flatMap((page) => linesFromPage(page, boundary))
+
+  // The one structural check this path has. Everything below reads a column
+  // out of a coordinate, and nothing in the text itself would reveal that the
+  // coordinates were misread: the words are real, only their arrangement is
+  // ours. The Rundschreiben's header pair, found as a left/right line, is the
+  // proof that the two columns were separated where the ressort separated
+  // them — 113 of the 114 GP-XXVIII PDF annexes print it, the 114th only
+  // because its pages are turned (2026-09-10). Without it the geometry is a
+  // guess, and a guessed comparison is worse than none.
+  if (!placed.some(isHeaderLine)) {
+    return { rows: [], refusal: null, unreadable: 'Die beiden Spaltenüberschriften der Beilage waren nicht zu finden; die Seitengeometrie ist damit nicht belegt.' }
+  }
+  const lines = placed.filter((line) => !isChrome(line))
 
   const { candidates, roles } = candidateLines(lines)
   const resolution = resolveBoundaries(candidates, articles)
@@ -517,6 +558,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     sections[sections.length - 1]!.lines.push(line)
   }
 
+  let unplaced = 0
   for (const section of sections) {
     const law = section.article?.key ?? null
     if (section.opened && section.article) {
@@ -527,8 +569,23 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     const byId = new Map(left.filter((u) => u.id).map((u) => [u.id!, u]))
     const used = new Set<string>()
 
+    // Everything a column prints before its first § marker is one unit
+    // without an identifier: the annex's front matter — "Inhaltsverzeichnis",
+    // "E n t w u r f", "Gesamte Rechtsvorschrift für …",
+    // "Präambel/Promulgationsklausel", a Langtitel. The two columns share no
+    // key for it, so it cannot be paired; emitted from the proposed side
+    // alone it became an `inserted` row and the page said the draft *adds*
+    // the table of contents — 134 such rows across 62 of the 114 GP-XXVIII
+    // PDF annexes, one of them 94.000 characters of Inhaltsverzeichnis
+    // (2026-09-10). The left column's front matter was already dropped
+    // silently, so the asymmetry was the whole of the claim. Both sides are
+    // dropped now, and counted.
     for (const unit of right) {
-      const mate = unit.id ? byId.get(unit.id) : undefined
+      if (!unit.id) {
+        unplaced++
+        continue
+      }
+      const mate = byId.get(unit.id)
       if (mate?.id) used.add(mate.id)
       const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
       if (row) rows.push(row)
@@ -536,10 +593,14 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     // A § the draft repeals appears only on the left. Printed in the proposed
     // column's order everything else follows, it would otherwise vanish.
     for (const unit of left) {
-      if (!unit.id || used.has(unit.id)) continue
+      if (!unit.id) {
+        unplaced++
+        continue
+      }
+      if (used.has(unit.id)) continue
       const row = rowOf(law, unit.gld, unit.text, '', unit.context)
       if (row) rows.push(row)
     }
   }
-  return { rows, refusal: resolution.refusal }
+  return { rows, refusal: resolution.refusal, unplaced }
 }

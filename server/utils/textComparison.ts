@@ -14,11 +14,14 @@
  * paragraph-paired, and incapable of inventing law text. RIS publishes it as
  * XML; Parliament only as PDF, so this reads RIS.
  *
- * Roughly 39 % of drafts have a readable one — of the 60 % that carry the
- * annex at all, 40 % are scanned images with no text (measured over the 200
- * drafts of the last twelve months, 2026-09-08). `parseTextComparison`
- * returns an empty list for those, which the caller must treat as "not
- * available", never as "nothing changed".
+ * **This module reads the XML table only.** Where RIS rasterised the annex
+ * into `<binary datatype="gif">` — 114 of the 240 GP-XXVIII annexes — the
+ * same document's PDF still carries a full text layer, and `annexPdf.ts`
+ * reads it from the page geometry. `isScanned` tells the two apart and the
+ * caller picks the path (`textComparisonService.ts`); this one returns an
+ * empty list for a rasterised document, which must be read as "not
+ * available", never as "nothing changed". Both parsers emit `ComparisonRow`,
+ * so everything downstream is the same for both (api-exploration §2c).
  */
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
 import { diffTokens, isEditorialChange } from './lawDiff'
@@ -97,7 +100,6 @@ const STRIP = [
   /<layoutdaten[\s\S]*?<\/layoutdaten>/g,
   /<inhaltsvz[\s\S]*?<\/inhaltsvz>/g,
 ]
-const CELL_RE = /<td\b([^>]*)>([\s\S]*?)<\/td\s*>/g
 /**
  * The row's designation is the **Gliederungssymbol** only. `<symbol>` is the
  * marker of a list item, and reading it as the row's designation printed
@@ -108,11 +110,97 @@ const CELL_RE = /<td\b([^>]*)>([\s\S]*?)<\/td\s*>/g
 const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/
 const COLSPAN_RE = /colspan="(\d+)"/i
 const MARK_RE = /background\s*:\s*yellow/i
-/** The three-dots convention: "2. bis 26b. …" or a bare "…". */
-export const ELIDED_RE = /(?:\.\.\.|…)\s*$/
 
-export const HEADER_CURRENT = 'geltende fassung'
-export const HEADER_PROPOSED = 'vorgeschlagene fassung'
+/**
+ * The mandated column headings, in the wordings the corpus actually prints.
+ *
+ * The Rundschreiben says "Geltende Fassung" and "Vorgeschlagene Fassung", and
+ * 111 of the 114 GP-XXVIII PDF annexes print exactly that. The other three
+ * qualify or rename it — "Geltende Fassung nach Inkrafttreten EuGB-VVG",
+ * "Geltender Text"/"Vorgeschlagener Text" — and an exact-equality test read
+ * those as ordinary law text (2026-09-10). The XML side is uniform: 129
+ * header cells, all "Geltende Fassung".
+ */
+export const HEADER_CURRENT_RE = /^geltende[rn]?\s+(?:fassung|text)\b/i
+export const HEADER_PROPOSED_RE = /^vorgeschlagene[rn]?\s+(?:fassung|text)\b/i
+
+/** Any of the annex's three-dots marks, anywhere in the text. */
+const ELISION_MARK_RE = /\.\.\.|…/
+
+/**
+ * The row's own words, with the annex's elision syntax taken out.
+ *
+ * Mirrors `ELISION_RE` in `annexCheck.ts`, which discounts the same syntax
+ * before scoring a row against the standing law. Deliberately duplicated
+ * rather than imported: that module is about coverage against RIS, this one
+ * about what a row *is*, and welding the two together would mean every future
+ * change to one silently moves the other. Kept in step by hand — both mean
+ * "designations joined by bis/und, closed by three dots".
+ *
+ * Written as a chain of removals rather than as one anchored alternation, and
+ * that is not a style choice: `^(?:token|token|…)*$` over an alternation that
+ * can match a single character backtracks catastrophically, and it hung on
+ * the first 2.000-character row it met. Removing one kind of token at a time
+ * is linear, and "is anything left" answers the same question.
+ *
+ * Ranges are printed with a hyphen as often as with "bis" ("(1) - (4) …"),
+ * designations run to litterae ("a. bis d. …") and to Anlagen, and the
+ * ressort's placeholder for a number it has not fixed yet is "xx"
+ * ("1. bis xxx. …") — all measured over the 3.352 rows the old rule called
+ * elided (2026-09-10).
+ */
+function withoutElision(text: string): string {
+  return text
+    .replace(/\.\.\.|…/g, ' ')
+    .replace(/\b(?:bis|und|sowie|oder)\b/gi, ' ')
+    .replace(/§+/g, ' ')
+    .replace(/\b(?:Abs|Z|lit|Art|Artikel|Anlage|Anhang|Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel)\b\.?/gi, ' ')
+    .replace(/\d+[a-z]*(?:\.\d+)?/gi, ' ')
+    .replace(/\b[a-z]{1,2}\s*[).]/gi, ' ')
+    .replace(/\bx{2,4}\b/gi, ' ')
+    .replace(/[()[\].,;:\-–—"'/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * A § heading may stand in front of the elision; a provision may not.
+ *
+ * On the PDF path a row is a whole §, so a § the annex leaves out entirely
+ * reads "Kennzeichnung § 7. (1) bis (6) …" — the heading, then nothing. 80
+ * characters is where the corpus stops printing headings and starts printing
+ * law: below it the remainders are heading stacks ("2. Unterabschnitt Prüfung
+ * der Angebote und Ausscheiden von Angeboten"), above it whole Absätze.
+ * Dropping an unchanged Absatz because it happens to end in dots is the same
+ * mistake as the old rule, one size smaller.
+ */
+const ELISION_HEADING_MAX = 80
+
+/**
+ * Is this row nothing but the annex's own "unchanged, left out" notation?
+ *
+ * Per the Rundschreiben unchanged stretches are abbreviated as a designation
+ * plus three dots. The old test — both cells *end* in dots — was true of any
+ * row whose last Absatz was elided, and on the PDF path a row is a whole §:
+ * 919 of the 3.352 rows it called elided carried a change, and an elided row
+ * is dropped by the UI and skipped by the RIS check, so those changes left no
+ * trace while `stats.changed` still counted them (measured 2026-09-10). The
+ * GAP-Strategieplan-Anwendungsverordnung lost a definition of Grünland and a
+ * rate going from 20 % to 50 % that way.
+ *
+ * So: the row has to consist *solely* of elision syntax. The one text allowed
+ * in front of it is a heading, and only when both columns print it
+ * identically — a heading that differs is a change ("samt Überschrift") and
+ * has to stay visible. That leaves 48 rows elided-and-changed, every one of
+ * them a difference in the elision itself ("1. bis 59. …" against "1. bis
+ * 60. …", "..." against "…") over columns that carry no comparable text.
+ */
+export function isElidedPair(current: string, proposed: string): boolean {
+  if (!ELISION_MARK_RE.test(current) || !ELISION_MARK_RE.test(proposed)) return false
+  const rest = withoutElision(current)
+  if (rest === '' && withoutElision(proposed) === '') return true
+  return current === proposed && rest.length <= ELISION_HEADING_MAX
+}
 
 function cellText(html: string): string {
   return normalizeText(
@@ -188,11 +276,22 @@ function stripGld(html: string): string {
  * readable annexes nest tables — 70 tables over 584 rows — and each of them
  * lost around 140 rows that way (measured 2026-09-09).
  */
-function outermost(html: string, tag: string): { attrs: string; inner: string; at: number }[] {
+interface Element {
+  attrs: string
+  inner: string
+  /** Where the inner HTML starts — the document order the rest of the parse sorts on. */
+  at: number
+  /** Where the opening tag starts and the closing tag ends, for cutting the element out. */
+  open: number
+  close: number
+}
+
+function outermost(html: string, tag: string): Element[] {
   const re = new RegExp(`<(/?)${tag}\\b([^>]*)>`, 'gi')
-  const out: { attrs: string; inner: string; at: number }[] = []
+  const out: Element[] = []
   let depth = 0
   let start = -1
+  let open = -1
   let attrs = ''
   let m: RegExpExecArray | null
   while ((m = re.exec(html)) !== null) {
@@ -202,7 +301,7 @@ function outermost(html: string, tag: string): { attrs: string; inner: string; a
     if (closing) {
       depth--
       if (depth === 0 && start >= 0) {
-        out.push({ attrs, inner: html.slice(start, m.index), at: start })
+        out.push({ attrs, inner: html.slice(start, m.index), at: start, open, close: m.index + m[0].length })
         start = -1
       }
       if (depth < 0) depth = 0
@@ -210,6 +309,7 @@ function outermost(html: string, tag: string): { attrs: string; inner: string; a
     }
     if (depth === 0) {
       start = m.index + m[0].length
+      open = m.index
       attrs = m[2] ?? ''
     }
     depth++
@@ -217,19 +317,100 @@ function outermost(html: string, tag: string): { attrs: string; inner: string; a
   return out
 }
 
+/** Does this table open with the mandated header pair? Then it *is* a comparison. */
+function isComparisonTable(inner: string): boolean {
+  const first = outermost(inner, 'tr')[0]
+  if (!first) return false
+  const cells = outermost(first.inner, 'td')
+  if (cells.length < 2) return false
+  return HEADER_CURRENT_RE.test(cellText(cells[0]!.inner)) && HEADER_PROPOSED_RE.test(cellText(cells[1]!.inner))
+}
+
+/** A comparison has two columns. A wider table is one the law itself contains. */
+function widerThanAComparison(inner: string): boolean {
+  return outermost(inner, 'tr').some((r) => outermost(r.inner, 'td').length > 2)
+}
+
 /**
- * A cell's own content, with any table it contains lifted out.
+ * A table the *law* contains, rendered as text: cells joined by " | ", rows by
+ * a space. Empty cells and empty rows drop out, or the spacer tables some
+ * annexes use for vertical rhythm would print "| | |" into the provision.
  *
- * The nested rows are content in their own right — they carry provisions, not
- * decoration — so they are flattened into the row sequence at the position
- * where they stood, and the cell keeps only the text that is genuinely its own.
+ * Kept as HTML fragments with literal separators between them rather than as
+ * finished text, so `cellText` still decodes each entity exactly once.
  */
-function liftTables(cellInner: string): { text: string; tables: string[] } {
+function flattenTable(inner: string): string {
+  return outermost(inner, 'tr')
+    .map((row) =>
+      outermost(row.inner, 'td')
+        .map((cell) => flattenCell(cell.inner))
+        .filter((html) => cellText(html) !== '')
+        .join(' | '),
+    )
+    .filter((row) => row !== '')
+    .join(' ')
+}
+
+function flattenCell(cellInner: string): string {
+  return liftTables(cellInner, false).text
+}
+
+/**
+ * For each cell of a row: does every *other* cell hold no text? Then this one
+ * covers the whole width, and a table inside it is the layout case above.
+ *
+ * `cellText` on the raw HTML is enough — it strips every tag, so a cell whose
+ * only content is a nested table reads as that table's text, which is exactly
+ * the question. Flattening first would give the same answer for twice the work.
+ */
+function coversTheWidth(cells: readonly Element[]): boolean[] {
+  const filled = cells.map((c) => cellText(c.inner) !== '')
+  return cells.map((_, i) => filled.every((f, j) => j === i || !f))
+}
+
+/**
+ * A cell's own content, with any table it contains either lifted out into the
+ * row sequence or flattened into the cell's text.
+ *
+ * Some annexes wrap the whole comparison in an outer table for page layout:
+ * one row, one full-width cell, the comparison inside it. Those inner rows are
+ * the comparison — 53 rows in one annex, 90 in another — and reading only the
+ * outer table lost every one of them, so they are lifted into the sequence at
+ * the position where they stood.
+ *
+ * **But most nested tables are not that.** Where the wrapper row's *other*
+ * cell carries text of its own, the row is already a comparison row and the
+ * table sits inside one of its two columns: it is a table of the law's own,
+ * and its columns are not "geltend" and "vorgeschlagen". Lifting those
+ * fabricated changes — the Finanzausgleichsgesetz § 11 reported
+ * "Grunderwerbsteuer" turning into "5,702 0,556 93,742", the
+ * Fruchtsaftverordnung produced 158 changed rows out of a "Fruchtnektar aus |
+ * Mindestgehalt" table, and the Universitätsfinanzierungsverordnung 672 rows
+ * out of an ISCED code list (2026-09-10).
+ *
+ * So `alone` is the test, and it is the same structural question the parse
+ * asks of every row: does this cell cover the whole width, or one column? A
+ * wrapper cell whose siblings are empty covers the width — the ABGB annex
+ * writes exactly that, `<td colspan="2">` with the comparison inside and an
+ * empty cell beside it, and a rule keyed on "one cell in the row" lost the
+ * new § 1159 Abs. 6 from it. A nested table that prints the header pair
+ * itself is a comparison whatever wraps it; one wider than two columns is
+ * content whatever wraps it, because a comparison has two columns.
+ */
+function liftTables(cellInner: string, alone: boolean): { text: string; tables: string[] } {
   const tables = outermost(cellInner, 'table')
   if (tables.length === 0) return { text: cellInner, tables: [] }
-  let text = cellInner
-  for (const t of tables) text = text.replace(t.inner, ' ')
-  return { text: text.replace(/<\/?table\b[^>]*>/gi, ' '), tables: tables.map((t) => t.inner) }
+  const lifted: string[] = []
+  const kept: string[] = []
+  let at = 0
+  for (const table of tables) {
+    kept.push(cellInner.slice(at, table.open))
+    if (isComparisonTable(table.inner) || (alone && !widerThanAComparison(table.inner))) lifted.push(table.inner)
+    else kept.push(flattenTable(table.inner))
+    at = table.close
+  }
+  kept.push(cellInner.slice(at))
+  return { text: kept.join(' '), tables: lifted }
 }
 
 /**
@@ -239,12 +420,13 @@ function liftTables(cellInner: string): { text: string; tables: string[] } {
  * document-level headings can be merged into the sequence without disturbing
  * the order of rows that came out of one table together.
  */
-function rowsInOrder(html: string, at?: number): { attrs: string; inner: string; at: number }[] {
-  const out: { attrs: string; inner: string; at: number }[] = []
+function rowsInOrder(html: string, at?: number): Element[] {
+  const out: Element[] = []
   for (const row of outermost(html, 'tr')) {
     const pos = at ?? row.at
     const cells = outermost(row.inner, 'td')
-    const nested = cells.flatMap((c) => liftTables(c.inner).tables)
+    const wide = coversTheWidth(cells)
+    const nested = cells.flatMap((c, i) => liftTables(c.inner, wide[i]!).tables)
     // The wrapper row itself may hold nothing but the inner table; it then
     // contributes no text and falls out of the parse on its own.
     out.push({ ...row, at: pos })
@@ -280,7 +462,8 @@ function itemsInOrder(body: string): Item[] {
 }
 
 /**
- * Which columns a row's cells occupy, from the mandated header pair.
+ * Which columns a row's cells occupy, from the mandated header pair — or null
+ * when the document is not a two-column comparison at all.
  *
  * The shipped rule was "the first cell spans more than one column, so this is
  * an Artikel heading". That is only true when each column is one cell wide.
@@ -289,17 +472,32 @@ function itemsInOrder(body: string): Item[] {
  * rows into headings and rendered a single-law Novelle as 161 groups with six
  * comparisons, and 221 pair rows were swallowed across 7 annexes (2026-09-09).
  */
-function columnSpans(rows: readonly { inner: string }[]): { left: number; right: number } {
+function columnSpans(rows: readonly { inner: string }[]): { left: number; right: number } | null {
+  const spanOf = (cell: Element): number => Number(COLSPAN_RE.exec(cell.attrs)?.[1] ?? 1)
+  /** How often each row shape occurs, for the annexes that print no header. */
+  const shapes = new Map<string, number>()
   for (const row of rows) {
-    const cells = [...row.inner.matchAll(CELL_RE)]
+    const cells = outermost(row.inner, 'td')
     if (cells.length < 2) continue
-    const first = cellText(liftTables(cells[0]![2]!).text).toLowerCase()
-    const second = cellText(liftTables(cells[1]![2]!).text).toLowerCase()
-    if (first === HEADER_CURRENT && second === HEADER_PROPOSED) {
-      return { left: Number(COLSPAN_RE.exec(cells[0]![1]!)?.[1] ?? 1), right: Number(COLSPAN_RE.exec(cells[1]![1]!)?.[1] ?? 1) }
+    const first = cellText(liftTables(cells[0]!.inner, false).text)
+    const second = cellText(liftTables(cells[1]!.inner, false).text)
+    if (HEADER_CURRENT_RE.test(first) && HEADER_PROPOSED_RE.test(second)) {
+      return { left: spanOf(cells[0]!), right: spanOf(cells[1]!) }
     }
+    const shape = cells.map(spanOf).join('+')
+    shapes.set(shape, (shapes.get(shape) ?? 0) + 1)
   }
-  return { left: 1, right: 1 }
+  // No header pair — 1 of the 126 readable GP-XXVIII annexes, and it *is* a
+  // two-column comparison, it just omits the mandated heading (2026-09-10).
+  // The shipped fallback assumed {1, 1} for it and happened to be right; that
+  // is not a reason to keep assuming. The rows themselves say how wide the
+  // columns are, and a document whose rows are not two cells wide is not a
+  // comparison at all — pairing its cells would invent a Gegenüberstellung
+  // out of an ordinary table, so it yields nothing instead.
+  const dominant = [...shapes].sort((a, b) => b[1] - a[1])[0]
+  const spans = dominant?.[0].split('+').map(Number) ?? []
+  if (spans.length !== 2) return null
+  return { left: spans[0]!, right: spans[1]! }
 }
 
 /**
@@ -307,16 +505,46 @@ function columnSpans(rows: readonly { inner: string }[]): { left: number; right:
  *
  * Cells are assigned by where they *start*, not by their index: the current
  * side can be several cells wide.
+ *
+ * **A row need not use the header's split.** The Verbraucherkreditrechts-
+ * Änderungsgesetz heads its table `colspan="5"` against `colspan="1"` and then
+ * typesets its Anhang `4` against `3`: the second cell starts at 4, which is
+ * still inside the header's left column, so both cells landed under "Geltende
+ * Fassung" and the proposed column came out empty. Eleven rows of that annex
+ * read "Anhang Anhang" and were reported as **entfällt** — text the annex
+ * prints unchanged in both columns, shown as deleted, and none of them carries
+ * a § designation, so the RIS check never sees them (2026-09-10).
+ *
+ * A pair row has two sides by definition, so a split that leaves one empty is
+ * wrong whatever the header said; the row's own widths are then the better
+ * evidence, and the split that balances them best is taken. Measured over GP
+ * XXVIII this fires on those 11 rows and nothing else — where the header's
+ * split works, it is kept.
  */
 function columnsOf(cells: readonly { html: string; span: number }[], span: { left: number; right: number }): { currentHtml: string; proposedHtml: string } {
+  const sides: string[][] = [[], []]
   let at = 0
-  const leftHtml: string[] = []
-  const rightHtml: string[] = []
   for (const cell of cells) {
-    ;(at < span.left ? leftHtml : rightHtml).push(cell.html)
+    sides[at < span.left ? 0 : 1]!.push(cell.html)
     at += cell.span
   }
-  return { currentHtml: leftHtml.join(' '), proposedHtml: rightHtml.join(' ') }
+  if (sides[1]!.length === 0 && cells.length >= 2) {
+    const total = cells.reduce((sum, c) => sum + c.span, 0)
+    let cut = 1
+    let closest = Number.POSITIVE_INFINITY
+    let left = 0
+    for (let k = 1; k < cells.length; k++) {
+      left += cells[k - 1]!.span
+      const gap = Math.abs(left - (total - left))
+      if (gap < closest) {
+        closest = gap
+        cut = k
+      }
+    }
+    sides[0] = cells.slice(0, cut).map((c) => c.html)
+    sides[1] = cells.slice(cut).map((c) => c.html)
+  }
+  return { currentHtml: sides[0]!.join(' '), proposedHtml: sides[1]!.join(' ') }
 }
 
 export interface ComparisonParse {
@@ -327,6 +555,12 @@ export interface ComparisonParse {
    * it just carries no law of its own.
    */
   refusal: string | null
+  /**
+   * Why the document could not be read as a comparison at all. `rows` is then
+   * empty, which the caller already treats as "not readable" — this only says
+   * which of the ways it failed, for the harnesses and the log.
+   */
+  unreadable?: string
 }
 
 /** What a heading or row does in the document, decided before any is emitted. */
@@ -355,6 +589,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
 
   const items = itemsInOrder(body)
   const span = columnSpans(items.filter((i): i is Extract<Item, { kind: 'row' }> => i.kind === 'row'))
+  if (span === null) return { rows: [], refusal: null, unreadable: 'Das Dokument ist keine zweispaltige Gegenüberstellung.' }
 
   // Pass 1: what each item is.
   const parsed: Parsed[] = []
@@ -363,10 +598,9 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       parsed.push({ item, heading: item.text, mirrored: null, cells: [] })
       continue
     }
-    const cells = outermost(item.inner, 'td').map((c) => {
-      const lifted = liftTables(c.inner)
-      return { html: lifted.text, span: Number(COLSPAN_RE.exec(c.attrs)?.[1] ?? 1) }
-    })
+    const own = outermost(item.inner, 'td')
+    const wide = coversTheWidth(own)
+    const cells = own.map((c, i) => ({ html: liftTables(c.inner, wide[i]!).text, span: Number(COLSPAN_RE.exec(c.attrs)?.[1] ?? 1) }))
     if (cells.length === 0) continue
     // A heading occupies the whole width. Anything narrower is a pair row,
     // however many columns each of its cells happens to span.
@@ -380,7 +614,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     const current = cellText(currentHtml)
     const proposed = cellText(proposedHtml)
     // The mandated column headings repeat on every page; they are chrome.
-    if (current.toLowerCase() === HEADER_CURRENT && proposed.toLowerCase() === HEADER_PROPOSED) continue
+    if (HEADER_CURRENT_RE.test(current) && HEADER_PROPOSED_RE.test(proposed)) continue
     if (!current && !proposed) continue
     // An Artikel line is often printed once per column rather than across
     // both, and read as an ordinary pair row it left the boundary invisible.
@@ -493,7 +727,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     // A row that prints nothing but the designation is a marker, not a
     // comparison; the § it opens is remembered and the next row inherits it.
     if (!current && !proposed) continue
-    const elided = ELIDED_RE.test(current) && ELIDED_RE.test(proposed)
+    const elided = isElidedPair(current, proposed)
     const change = classify(current, proposed)
     // The ressort's yellow marking is reliable where present but incomplete:
     // of 8.430 row pairs, 1.395 differ in text without being marked, while
