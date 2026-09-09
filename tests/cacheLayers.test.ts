@@ -25,6 +25,7 @@ const FETCHED: Record<string, string> = {
   gegenstand: 'the upstream detail JSON, passed through unmapped',
   'kons-para-xml': 'a RIS paragraph document; its heading is parsed fresh on every call',
   'ris-begut-page': 'one page of the RIS result set, as it arrived — cached in dev only',
+  'annex-pdf': "the ressort's annex PDF, byte for byte as base64 — cached in dev only",
   'consultations-list': 'list 81 of one GP, exactly as the API answered',
   'parliament-me-config': "the ME list's page configuration, as served",
 }

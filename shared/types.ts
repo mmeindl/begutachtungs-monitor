@@ -460,6 +460,19 @@ export interface TextComparisonResponse {
   /** A PDF to fall back to when the XML is a scan */
   pdf: TraceLink | null
   /**
+   * Which document the rows were read from, because the two are not the same
+   * claim. `table` is the ressort's own XML table — its structure, its
+   * pairing. `pdf` is the ressort's text with **our** reading of its page
+   * geometry on top, for the annexes RIS publishes only as images.
+   *
+   * The page needs the difference for its wording: where a whole law's §§
+   * fail the RIS check, the cause on the table path is most likely the
+   * ministry quoting an older version, and on the PDF path just as likely
+   * our own row pairing. Blaming the ministry for the second would be both
+   * wrong and against the framing rule.
+   */
+  readFrom: 'table' | 'pdf' | null
+  /**
    * Set when the draft amends several laws and the annex does not mark where
    * one ends and the next begins. The comparison is shown undivided, and this
    * says why — the alternative is to divide it wrongly.
