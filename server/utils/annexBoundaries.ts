@@ -173,7 +173,30 @@ export function resolveBoundaries(candidates: readonly BoundaryCandidate[], arti
     furthest = Math.max(furthest, article.index)
   }
 
-  if (accepted.size > 0) return { accepted, whole: null, refusal: null }
+  if (accepted.size > 0) {
+    // One last check, and it is the one that decides whether the attribution
+    // may be shown at all. An annex need not print every law of its draft —
+    // one marks only its Artikel 4 and 5 and leaves the first three in an
+    // undivided opening section, which is safe, because that section carries
+    // no law either way. What is *not* safe is a law the annex skips **after**
+    // a boundary: its provisions then follow the previous law's without any
+    // heading between them, and every one of them would be filed under the
+    // previous law's name. So each section is sound only if the draft's next
+    // amending Artikel has a boundary of its own.
+    const withBoundary = new Set([...accepted.values()].map((a) => a.index))
+    const unsound = [...accepted.values()].filter((a) => {
+      const next = amending.find((x) => x.index > a.index)
+      return next !== undefined && !withBoundary.has(next.index)
+    })
+    if (unsound.length > 0) {
+      return {
+        accepted: new Map(),
+        whole: null,
+        refusal: `Die Beilage überspringt ${unsound.length === 1 ? 'ein Gesetz' : `${unsound.length} Gesetze`} des Entwurfs; die Paragraphen danach ließen sich keinem einzelnen zuordnen.`,
+      }
+    }
+    return { accepted, whole: null, refusal: null }
+  }
 
   // Nothing survived. Either there was nothing to find, or the annex does not
   // mark what the draft says is there.

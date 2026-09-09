@@ -397,6 +397,14 @@ export interface ParagraphTitlesResponse {
 /** One row of the ressort's Textgegenüberstellung (docs/api-exploration.md §2c). */
 export interface TextComparisonRow {
   kind: 'article' | 'pair'
+  /**
+   * Which law of the package the row belongs to. Null when the draft amends
+   * one law, and null when the annex does not mark its boundaries: § 5 of the
+   * second law of a package is a different provision from § 5 of the first,
+   * and 15,1 % of designations in the multi-law annexes recur in another law
+   * of the same package — so an unattributed row is the honest answer.
+   */
+  law: string | null
   heading: string | null
   gld: string | null
   current: string
@@ -425,6 +433,12 @@ export interface TextComparisonResponse {
   source: TraceLink | null
   /** A PDF to fall back to when the XML is a scan */
   pdf: TraceLink | null
+  /**
+   * Set when the draft amends several laws and the annex does not mark where
+   * one ends and the next begins. The comparison is shown undivided, and this
+   * says why — the alternative is to divide it wrongly.
+   */
+  boundaryNote: string | null
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
   rows: TextComparisonRow[]
 }

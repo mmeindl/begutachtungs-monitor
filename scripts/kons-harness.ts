@@ -29,13 +29,13 @@
 import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/lawApply'
 import { plainText, type LawNode } from '../server/utils/lawStructure'
 import { parseRisXml, segmentUnits, type TextBlock } from '../server/utils/lawText'
-import { promulgationByArticle } from '../server/utils/lawTitles'
+import { draftArticles, promulgationByArticle } from '../server/utils/lawTitles'
 import type { NovaoAddress } from '../server/utils/novao'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../server/utils/applyReport'
 import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
 import { isScanned, parseTextComparison, type ComparisonRow } from '../server/utils/textComparison'
-import { oracleVerdict, rowsByParagraph, stripMarkers, type OracleVerdict } from '../server/utils/tguOracle'
+import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../server/utils/tguOracle'
 import { installFetchCache } from './harness-cache'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
@@ -349,11 +349,14 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
   if (!xmlUrl) return { note: 'Textgegenüberstellung nur als PDF' }
   const xml = await getText(xmlUrl)
   if (isScanned(xml)) return { note: 'Textgegenüberstellung ist ein Scan' }
-  const rows = parseTextComparison(xml)
+  // The harness verifies one law at a time (`resolveLaw` refuses a package),
+  // so the annex's own Artikel list is what the draft says it is.
+  const mainRef = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
+  const mainUrl = asArray<any>(mainRef?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
+  const draftBlocks = mainUrl ? parseRisXml(await getText(mainUrl)) : []
+  const rows = parseTextComparison(xml, draftArticles(draftBlocks)).rows
   if (rows.length === 0) return { note: 'Textgegenüberstellung nicht lesbar' }
-  const main = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
-  const mainXml = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
-  const meLines = mainXml ? linesByParagraph(parseRisXml(await getText(mainXml))) : new Map<string, Set<string>>()
+  const meLines = linesByParagraph(draftBlocks)
   return { rows: rowsByParagraph(rows), me: String(me.zitation ?? `${me.inr}/ME`), meLines }
 }
 
@@ -516,7 +519,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     if (id && refusedIds.has(id)) flags.add('verweigert')
     const dangerous = verdict === 'abweichend' && comparable
     const outcome = dangerous ? 'abweichend' : verdict
-    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, oracle.rows.get(id) ?? []) : null
+    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id)) : null
     const oracleKey: OracleVerdict | 'kein Orakel' = oracleReport?.verdict ?? 'kein Orakel'
     tally(oracleTally, `${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
     if (oracle && id && bgblLines) {

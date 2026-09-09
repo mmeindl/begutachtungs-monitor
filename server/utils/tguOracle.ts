@@ -57,21 +57,20 @@ export function paraIdOfGld(gld: string | null): string | null {
 
 /**
  * The annex's rows grouped by the § they belong to: a row opens a § with its
- * `gld`, every following row without one continues it. Article rows reset
- * the grouping (a Sammelnovelle's next law starts its own § 1).
+ * `gld`, every following row without one continues it.
+ *
+ * Keyed by **law and designation**, because a Sammelnovelle's next law starts
+ * its own § 1 and 15,1 % of § designations in the multi-law annexes recur in
+ * another law of the same package. The key was a running counter over the
+ * annex's article rows, which drifted in 26 of 36 packages — every heading
+ * advanced it, whether or not it opened a law — and the caller then asked for
+ * the bare designation and silently got the *first* law's § 5 (2026-09-09).
  */
 export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, ComparisonRow[]> {
   const out = new Map<string, ComparisonRow[]>()
   let current: string | null = null
-  // The first law's §§ are keyed by bare id; a Sammelnovelle's further laws
-  // get "5@2", "5@3" — so their § 5 never merges into the first one's, and a
-  // single-law caller can still ask for "5".
-  let article = 0
-  let seenRows = false
   for (const [i, row] of rows.entries()) {
     if (row.kind === 'article') {
-      if (seenRows) article++
-      seenRows = false
       current = null
       continue
     }
@@ -84,14 +83,31 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
     // that §'s heading.
     const next = rows[i + 1]
     if (!id && next && next.kind === 'pair' && paraIdOfGld(next.gld) && isHeadingRow(row)) id = paraIdOfGld(next.gld)
-    if (id) current = article === 0 ? id : `${id}@${article + 1}`
+    if (id) current = paragraphKey(id, row.law)
     if (!current) continue
-    seenRows = true
     const list = out.get(current) ?? []
     list.push(row)
     out.set(current, list)
   }
   return out
+}
+
+/** The key `rowsByParagraph` files a § under. */
+export function paragraphKey(id: string, law: string | null): string {
+  return `${law ?? ''}#${id}`
+}
+
+/**
+ * The annex rows of one § — of a named law where the annex divides its laws.
+ *
+ * A caller that does not know which law of a package it means may only ask
+ * when there is exactly one candidate. Answering anyway is what the running
+ * counter did, and it held the engine's § 5 against another law's § 5.
+ */
+export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: string, law?: string | null): ComparisonRow[] {
+  if (law !== undefined) return byParagraph.get(paragraphKey(id, law)) ?? []
+  const hits = [...byParagraph].filter(([k]) => k.endsWith(`#${id}`))
+  return hits.length === 1 ? hits[0]![1] : []
 }
 
 function isHeadingRow(row: ComparisonRow): boolean {

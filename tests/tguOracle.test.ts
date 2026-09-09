@@ -1,29 +1,55 @@
 import { describe, expect, it } from 'vitest'
-import { oracleVerdict, paraIdOfGld, rowsByParagraph, stripMarkers } from '../server/utils/tguOracle'
+import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/tguOracle'
 import type { ComparisonRow } from '../server/utils/textComparison'
 
-function pair(current: string, proposed: string, gld: string | null = null, elided = false): ComparisonRow {
+function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {
   const change = !current && proposed ? 'inserted' : current && !proposed ? 'removed' : current === proposed ? 'unchanged' : 'changed'
-  return { kind: 'pair', heading: null, gld, current, proposed, change, marked: false, elided, segments: null, editorial: false }
+  return { kind: 'pair', law, heading: null, gld, current, proposed, change, marked: false, elided, segments: null, editorial: false }
 }
-const article = (heading: string): ComparisonRow => ({ kind: 'article', heading, gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+const article = (heading: string, law: string | null = null): ComparisonRow => ({ kind: 'article', law, heading, gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
 
 describe('rowsByParagraph', () => {
-  it('groups rows under the § that opened them and resets at an Artikel', () => {
-    const rows = [pair('§ 5. (1) a', '§ 5. (1) b', '§ 5.'), pair('(2) c', '(2) c'), article('Artikel 2'), pair('§ 5. (1) x', '§ 5. (1) y', '§ 5.')]
+  // A package's second law starts its own § 5, and in the multi-law annexes
+  // 15,1 % of designations recur in another law of the same package. The key
+  // is therefore the law and the designation, never a counter over headings.
+  it('files a § under its own law', () => {
+    const rows = [
+      pair('§ 5. (1) a', '§ 5. (1) b', '§ 5.', false, 'Änderung des Aktiengesetzes'),
+      pair('(2) c', '(2) c', null, false, 'Änderung des Aktiengesetzes'),
+      article('Artikel 2 — Änderung des GmbH-Gesetzes', 'Änderung des GmbH-Gesetzes'),
+      pair('§ 5. (1) x', '§ 5. (1) y', '§ 5.', false, 'Änderung des GmbH-Gesetzes'),
+    ]
     const grouped = rowsByParagraph(rows)
-    expect(grouped.get('5')).toHaveLength(2)
-    expect(grouped.get('5@2')).toHaveLength(1)
+    expect(grouped.get('Änderung des Aktiengesetzes#5')).toHaveLength(2)
+    expect(grouped.get('Änderung des GmbH-Gesetzes#5')).toHaveLength(1)
     expect(paraIdOfGld('§ 12a.')).toBe('12a')
     expect(paraIdOfGld('1.')).toBeNull()
+  })
+
+  // Asking for a bare "§ 5" of a package has no answer. The counter answered
+  // anyway, with the first law's § 5, and that silently held the engine's
+  // result against a different provision.
+  it('is silent when a bare designation could mean two laws', () => {
+    const rows = [
+      pair('§ 5. (1) a', '§ 5. (1) b', '§ 5.', false, 'Änderung des Aktiengesetzes'),
+      pair('§ 5. (1) x', '§ 5. (1) y', '§ 5.', false, 'Änderung des GmbH-Gesetzes'),
+    ]
+    const grouped = rowsByParagraph(rows)
+    expect(paragraphRows(grouped, '5')).toEqual([])
+    expect(paragraphRows(grouped, '5', 'Änderung des GmbH-Gesetzes')).toHaveLength(1)
+  })
+
+  it('answers a bare designation where the annex has one law', () => {
+    const grouped = rowsByParagraph([pair('§ 5. (1) a', '§ 5. (1) b', '§ 5.', false, 'Änderung des Aktiengesetzes')])
+    expect(paragraphRows(grouped, '5')).toHaveLength(1)
   })
 
   it('attaches a heading row to the § that follows it, not the one before', () => {
     // The annex prints "Tabakfreie Nikotinerzeugnisse" above "§ 10h. (1) …".
     const rows = [pair('§ 10g. (1) alt', '§ 10g. (1) neu', '§ 10g.'), pair('', 'Tabakfreie Nikotinerzeugnisse'), pair('', '§ 10h. (1) Jedes Erzeugnis.', '§ 10h.')]
     const grouped = rowsByParagraph(rows)
-    expect(grouped.get('10g')).toHaveLength(1)
-    expect(grouped.get('10h')!.map((r) => r.proposed)).toEqual(['Tabakfreie Nikotinerzeugnisse', '§ 10h. (1) Jedes Erzeugnis.'])
+    expect(paragraphRows(grouped, '10g')).toHaveLength(1)
+    expect(paragraphRows(grouped, '10h').map((r) => r.proposed)).toEqual(['Tabakfreie Nikotinerzeugnisse', '§ 10h. (1) Jedes Erzeugnis.'])
   })
 })
 

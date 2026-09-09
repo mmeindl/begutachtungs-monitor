@@ -15,6 +15,8 @@
  */
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
 import { fetchLawHtml } from './lawDiffService'
+import { parseRisXml } from './lawText'
+import { draftArticles } from './lawTitles'
 import { getRisMapForGp } from './ris'
 import { isScanned, parseTextComparison, summarizeComparison } from './textComparison'
 
@@ -29,6 +31,7 @@ export const getTextComparison = defineCachedFunction(
       unavailableReason: reason,
       source,
       pdf,
+      boundaryNote: null,
       stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
       rows: [],
     })
@@ -46,11 +49,17 @@ export const getTextComparison = defineCachedFunction(
       return empty('Die Textgegenüberstellung liegt nur als Scan vor, ohne auslesbaren Text.', null, pdf)
     }
 
-    const rows = parseTextComparison(xml)
+    // The annex's Artikel headings mean nothing on their own — an internal
+    // Roman division and a real law boundary are typeset alike. The draft's
+    // own Artikel list decides, so it is fetched even though the annex is
+    // what is being shown (`annexBoundaries.ts`).
+    const draft = row.risDocument?.xml ? await fetchLawHtml(row.risDocument.xml).catch(() => null) : null
+    const articles = draft ? draftArticles(parseRisXml(draft)) : []
+    const { rows, refusal } = parseTextComparison(xml, articles)
     if (rows.length === 0) return empty('Die Textgegenüberstellung ließ sich nicht auslesen.', null, pdf)
 
     const source: TraceLink = { label: 'Textgegenüberstellung des Ressorts', url: annex.html ?? annex.xml }
-    return { gp, inr, available: true, unavailableReason: null, source, pdf, stats: summarizeComparison(rows), rows }
+    return { gp, inr, available: true, unavailableReason: null, source, pdf, boundaryNote: refusal, stats: summarizeComparison(rows), rows }
   },
   { name: 'text-comparison', getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
 )
