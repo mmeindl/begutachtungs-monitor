@@ -47,6 +47,10 @@ interface Verdict {
   incomplete: number
   divergent: number
   unverifiable: number
+  /** Paragraphs whose instructions all applied — the set a per-paragraph gate would publish */
+  cleanTotal: number
+  cleanIdentical: number
+  cleanDivergent: number
   note: string | null
 }
 
@@ -242,7 +246,7 @@ function missingTargetNote(address: NovaoAddress, resolved: ResolvedLaw, before:
 async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   const meta = await risJson({ Applikation: 'BgblAuth', Suchworte: bgblId, DokumenteProSeite: 'Ten' })
   const ref = asArray<any>(meta?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference).find((r) => r?.Data?.Metadaten?.Technisch?.ID === bgblId)
-  const blank = (note: string): Verdict => ({ bgbl: bgblId, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, divergent: 0, unverifiable: 0, note })
+  const blank = (note: string): Verdict => ({ bgbl: bgblId, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, note })
   if (!ref) return blank('BGBl nicht gefunden')
 
   const bundesrecht = ref.Data.Metadaten.Bundesrecht
@@ -294,7 +298,15 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   }
   const law: StandingLaw = { paragraphs }
 
-  const { law: after, results } = applyNovelle(law, instructions)
+  const { law: after, results, unresolved } = applyNovelle(law, instructions)
+  // The question a per-paragraph publication gate turns on: when the engine
+  // reports no refusal for a §, is that § actually right? Refusals are known
+  // at draft time; correctness is not, because the law has not been passed yet.
+  const refusedIds = new Set([...unresolved].map((p) => /(\d+[a-z]*)/.exec(p)?.[1] ?? p))
+  for (const r of refused) {
+    const m = /§+\s*(\d+[a-z]*)/.exec(r.line)
+    if (m) refusedIds.add(m[1]!)
+  }
   const applied = results.filter((r) => r.applied).length
 
   if (verbose) {
@@ -316,6 +328,9 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   let untouched = 0
   let incomplete = 0
   let unverifiable = 0
+  let cleanTotal = 0
+  let cleanIdentical = 0
+  let cleanDivergent = 0
   const divergences: { label: string; got: string; expected: string; before: string }[] = []
   for (const [label, pair] of [...pairs].sort()) {
     const id = /(\d+[a-z]*)/.exec(label)?.[1]
@@ -328,6 +343,11 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     const beforeNode = law.paragraphs.find((p) => p.id === id)
     const beforeText = beforeNode ? plainText(beforeNode) : null
     const verdict = verdictFor(beforeText, got, expected)
+    if (id && !refusedIds.has(id)) {
+      cleanTotal++
+      if (verdict === 'identisch') cleanIdentical++
+      else if (verdict === 'abweichend') cleanDivergent++
+    }
     const mark = { identisch: '✓', 'unverändert': '·', 'unvollständig': '~', abweichend: '✗' }[verdict]
     if (verdict === 'identisch') identical++
     else if (verdict === 'unverändert') untouched++
@@ -350,7 +370,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     }
   }
 
-  return { bgbl: bgblNumber, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, divergent: divergences.length, unverifiable, note: null }
+  return { bgbl: bgblNumber, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, note: null }
 }
 
 /** The first place two texts part company, with context on both sides. */
@@ -395,6 +415,11 @@ console.log(`    unverändert gelassen : ${sum((v) => v.untouched)} (${pct(sum((
 console.log(`    unvollständig        : ${sum((v) => v.incomplete)} (${pct(sum((v) => v.incomplete), sum((v) => v.checked))})  — nichts Eigenes erfunden`)
 console.log(`    eigene Abweichung    : ${sum((v) => v.divergent)} (${pct(sum((v) => v.divergent), sum((v) => v.checked))})  — die einzige gefährliche Klasse`)
 console.log(`    nicht prüfbar        : ${sum((v) => v.unverifiable)} (${pct(sum((v) => v.unverifiable), sum((v) => v.checked))})  — Wortdiff zu groß, weder bestätigt noch widerlegt`)
+const clean = sum((v) => v.cleanTotal)
+console.log(`\n  Nur Paragraphen ohne jede Verweigerung (das, was ein Gate anzeigen würde):`)
+console.log(`    davon geprüft        : ${clean} von ${sum((v) => v.checked)}`)
+console.log(`    identisch            : ${sum((v) => v.cleanIdentical)} (${pct(sum((v) => v.cleanIdentical), clean)})`)
+console.log(`    eigene Abweichung    : ${sum((v) => v.cleanDivergent)} (${pct(sum((v) => v.cleanDivergent), clean)})  — die Restgefahr eines Gates`)
 if (missingCauses.size > 0) {
   console.log(`  „nicht im geltenden Text" (${[...missingCauses.values()].reduce((a, b) => a + b, 0)}), laut RIS:`)
   for (const [cause, n] of [...missingCauses].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${cause}`)
