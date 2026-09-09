@@ -253,8 +253,8 @@ describe('parseStages / extractLinks', () => {
 
   it('stage without a date → date null; entities are decoded', () => {
     const steps = parseStages([{ text: '&Uuml;bermittlung an das Bundesministerium f&uuml;r Justiz' }])
-    expect(steps[0].date).toBeNull()
-    expect(steps[0].text).toBe('Übermittlung an das Bundesministerium für Justiz')
+    expect(steps[0]!.date).toBeNull()
+    expect(steps[0]!.text).toBe('Übermittlung an das Bundesministerium für Justiz')
   })
 
   it('extractLinks keeps absolute URLs and uses the URL as label fallback', () => {
@@ -365,7 +365,7 @@ describe('mapDocuments / mapTextEvolution', () => {
 
   it('drops what merely repeats the draft: without an RV upstream relists the ME text', () => {
     const meUrls = new Set(mapDocuments(RAW_DOCS).flatMap((d) => d.formats.map((f) => f.url)))
-    expect(mapTextEvolution([RAW_DOCS[1]], meUrls)).toEqual([])
+    expect(mapTextEvolution([RAW_DOCS[1]!], meUrls)).toEqual([])
   })
 
   it('keeps genuine later versions when the draft URLs are excluded', () => {
@@ -396,7 +396,7 @@ describe('extractBgblLink', () => {
   })
 
   it('no BgblAuth entry / no links → null', () => {
-    expect(extractBgblLink([BGBLLINKS[1]])).toBeNull()
+    expect(extractBgblLink([BGBLLINKS[1]!])).toBeNull()
     expect(extractBgblLink([])).toBeNull()
     expect(extractBgblLink(null)).toBeNull()
   })

@@ -8,6 +8,7 @@
     "build": "nuxt build",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
+    "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
     "test": "vitest run",
     "harness:kons": "vite-node scripts/kons-harness.ts --",
     "harness:annex": "vite-node scripts/annex-pdf-verify.ts --",
