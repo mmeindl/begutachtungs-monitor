@@ -79,6 +79,137 @@ describe('parseLawUnits', () => {
   })
 })
 
+describe('a Novellierungsanordnung whose number is not in the strict form', () => {
+  // Each form below is printed by a real GP-XXVIII draft. A number the
+  // parser does not recognise does not merely lose its instruction: the
+  // line becomes tail text of the instruction above it, so two units carry
+  // text that belongs to neither.
+  const novelle = (...lines: string[]) =>
+    '<html><body><p class=41UeberschrG1>Artikel&nbsp;1</p><p class=43UeberschrG2>&Auml;nderung des X-Gesetzes</p>' +
+    lines.map((l) => `<p class=21NovAo1>${l}</p>`).join('') +
+    '</body></html>'
+
+  it('reads the number when the separator is missing or unusual', () => {
+    const units = parseLawUnits(
+      novelle(
+        '1. &sect;&nbsp;1 lautet:', // the strict form
+        '2.&sect;&nbsp;30 Abs.&nbsp;3 lautet:', // 126/ME, no space
+        '13 &sect;&nbsp;178 Abs.&nbsp;3 lautet:', // 126/ME, no period
+        '4 . Dem &sect;&nbsp;67 werden folgende Abs. angef&uuml;gt:', // 7/ME, space before it
+        '222- Im Schlussteil des &sect;&nbsp;27 Abs.&nbsp;1 entf&auml;llt die Wortfolge:', // 74/ME, a dash
+      ),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z1', 'Z2', 'Z13', 'Z4', 'Z222'])
+    // The number never reaches the compared text or the heading.
+    expect(units[1]!.heading).toBe('§ 30 Abs. 3 lautet')
+    expect(units[1]!.text).toBe('§ 30 Abs. 3 lautet:')
+  })
+
+  it('leaves a leading number that is an amount, not an instruction', () => {
+    const units = parseLawUnits(novelle('1. &sect;&nbsp;2 lautet:', '20 000 Euro sind zu entrichten.', '2,5 Millionen Euro entfallen.'))
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.text).toContain('20 000 Euro')
+  })
+})
+
+describe('a Novellierungsanordnung with no number at all', () => {
+  // A law amended in a single respect carries no Ziffer — there is nothing
+  // to count. Two GP-XXVIII drafts (110/ME, 59/ME) are one such line and
+  // nothing else; both segmented to zero units, so their comparison was
+  // refused outright. The promulgation clause above the line is what tells
+  // it apart from the lines that only look alike.
+  const ris = (...blocks: string[]) =>
+    `<dokument><ueberschrift typ="titel">Bundesgesetz, mit dem das X-Gesetz ge&auml;ndert wird</ueberschrift>${blocks.join('')}</dokument>`
+  const clause = '<absatz typ="promkleinlsatz">Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt ge&auml;ndert:</absatz>'
+
+  it('opens a unit for the first instruction under the promulgation clause', () => {
+    const units = parseLawUnitsFromRis(
+      ris(clause, '<absatz typ="novao1">Dem &sect; 143 werden folgende Abs. 108 und 109 angef&uuml;gt:</absatz>', '<absatz typ="abs">"(108) Neuer Text."</absatz>'),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.heading).toBe('Dem § 143 werden folgende Abs. 108 und 109 angefügt')
+    expect(units[0]!.text).toContain('(108) Neuer Text.')
+  })
+
+  it('refuses a line that continues the instruction above it', () => {
+    // 123/ME: "Im Inhaltsverzeichnis wird der Eintrag …" / "durch folgenden
+    // Eintrag ersetzt:" — one instruction over two blocks, no clause above.
+    const units = parseLawUnitsFromRis(
+      ris(clause, '<absatz typ="novao1">1. Im Inhaltsverzeichnis wird der Eintrag zu &sect; 5</absatz>', '<absatz typ="novao1">durch folgenden Eintrag ersetzt:</absatz>'),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.text).toContain('durch folgenden Eintrag ersetzt:')
+  })
+
+  it('refuses the promulgation clause where RIS mistags it as an instruction', () => {
+    // 92/ME. The clause names the law it opens; read as an instruction it
+    // would put the whole Novelle under a unit called Z1.
+    const units = parseLawUnitsFromRis(
+      ris('<absatz typ="novao1">Das LWA-G, BGBl. I Nr. 93/2022, wird wie folgt ge&auml;ndert:</absatz>', '<absatz typ="novao1">1. &sect; 2 lautet:</absatz>'),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.heading).toBe('§ 2 lautet')
+  })
+
+  it('refuses a litera sub-instruction', () => {
+    const units = parseLawUnitsFromRis(
+      ris(clause, '<absatz typ="novao1">1. &sect; 2 wird wie folgt ge&auml;ndert:</absatz>', '<absatz typ="novao1">a) Abs. 1 lautet:</absatz>', '<absatz typ="novao2">b) Abs. 2 entf&auml;llt.</absatz>'),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.text).toContain('a) Abs. 1 lautet:')
+    expect(units[0]!.text).toContain('b) Abs. 2 entfällt.')
+  })
+})
+
+describe('an instruction RIS did not tag as one', () => {
+  // RIS sometimes prints an instruction as plain text (`absatz typ="satz"`).
+  // Nothing then recognises it, and it becomes tail text of the instruction
+  // above — four §§ of 125/ME (Glücksspielgesetz §§ 29, 31, 42, 46) were
+  // compared against the wrong text this way. Promotion needs two
+  // independent signals: the next number in sequence, and standing outside
+  // any quoted payload.
+  const ris = (...blocks: string[]) =>
+    `<dokument><ueberschrift typ="titel">Bundesgesetz</ueberschrift><absatz typ="promkleinlsatz">Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt ge&auml;ndert:</absatz>${blocks.join('')}</dokument>`
+
+  it('promotes an Absatz that continues the number sequence outside a payload', () => {
+    const units = parseLawUnitsFromRis(
+      ris('<absatz typ="novao1">20. &sect; 28 lautet:</absatz>', '<absatz typ="satz">21. In &sect; 29 Abs. 3 entf&auml;llt die Wortfolge.</absatz>'),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z20', 'Z21'])
+    expect(units[1]!.heading).toBe('In § 29 Abs. 3 entfällt die Wortfolge.')
+  })
+
+  it('leaves a numbered line inside a quoted payload alone', () => {
+    // 38/ME: a definition list inside the new § text — "27. \u0022EU-Rezept\u0022: …".
+    const units = parseLawUnitsFromRis(
+      ris(
+        '<absatz typ="novao1">8. &sect; 3 lautet:</absatz>',
+        '<absatz typ="abs">"&sect; 3. Im Sinne dieses Gesetzes gilt:</absatz>',
+        '<absatz typ="satz">9. "EU-Rezept": eine Anwendung, die verwendet wird."</absatz>',
+      ),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z8'])
+    expect(units[0]!.text).toContain('"EU-Rezept"')
+  })
+
+  it('leaves a numbered line that breaks the sequence alone', () => {
+    const units = parseLawUnitsFromRis(
+      ris('<absatz typ="novao1">8. &sect; 3 lautet:</absatz>', '<absatz typ="satz">1. &sect; 2 Abs. 10 in der Fassung des Bundesgesetzes tritt in Kraft.</absatz>'),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z8'])
+  })
+
+  it('never promotes a Ziffer of a quoted list', () => {
+    // 27/ME: three list items of Mineralrohstoffgesetz § 156 are numbered
+    // from 1 like instructions and satisfy both signals by coincidence.
+    const units = parseLawUnitsFromRis(
+      ris('<absatz typ="novao1">1. &sect; 156 Abs. 4 lautet:</absatz>', '<listelem>2. Angaben zu Bergbaugebieten;</listelem>', '<listelem>3. Angaben zu Grundst&uuml;cken.</listelem>'),
+    )
+    expect(units.map((u) => u.id)).toEqual(['Z1'])
+    expect(units[0]!.text).toContain('Angaben zu Bergbaugebieten;')
+  })
+})
+
 describe('editorial vs substantive', () => {
   const seg = (a: string, b: string) => diffTokens(a, b).segments
   it('shifted cross-references and date formats are editorial', () => {
