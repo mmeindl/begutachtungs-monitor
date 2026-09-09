@@ -70,8 +70,8 @@ describe('resolveBoundaries', () => {
   // The load-bearing rule. "Artikel VI" inside one law is typeset exactly like
   // a law boundary; only the draft's own Artikel list says it is not one.
   it('refuses a heading the draft does not have', () => {
-    const { accepted } = resolveBoundaries(cands('Artikel 1', 'Artikel VI', 'Artikel 2'), pkg)
-    expect([...accepted.values()].map((a) => a.numeral)).toEqual(['1', '2'])
+    const { accepted } = resolveBoundaries(cands('Artikel 1', 'Artikel VI', 'Artikel 2', 'Artikel 3'), pkg)
+    expect([...accepted.values()].map((a) => a.numeral)).toEqual(['1', '2', '3'])
   })
 
   // A law that divides itself into Artikel I, II, III is the reason Roman
@@ -95,28 +95,50 @@ describe('resolveBoundaries', () => {
   // "Zivildienstgesetz". The number decides, because nothing else fits.
   it('keeps the number when the title matches no other law either', () => {
     const other = draft({ n: '1', title: 'Bundesgesetz über den Zivildienst' }, { n: '2', title: 'Änderung des Wehrgesetzes 2001' })
-    const { accepted } = resolveBoundaries(cands('Artikel 1 Zivildienstgesetz'), other)
+    const { accepted } = resolveBoundaries(cands('Artikel 1 Zivildienstgesetz', 'Artikel 2 Änderung des Wehrgesetzes 2001'), other)
     expect(accepted.get(0)?.numeral).toBe('1')
   })
 
-  // "Artikel VI" between the real Artikel 3 and 4 of a Roman-numbered draft
-  // joins by number and would otherwise open a law twice over.
+  // A heading whose only evidence is its number and which jumps backwards is
+  // an internal division, not a law. Dropping it then leaves a law of the
+  // draft without a boundary — and that, in turn, is refused below.
   it('rejects a heading that jumps backwards on the number alone', () => {
     const roman = draft({ n: 'I' }, { n: 'II' }, { n: 'III' })
-    const { accepted } = resolveBoundaries(cands('Artikel I', 'Artikel III', 'Artikel II'), roman)
-    expect([...accepted.values()].map((a) => a.numeral)).toEqual(['I', 'III'])
+    const { accepted, refusal } = resolveBoundaries(cands('Artikel I', 'Artikel III', 'Artikel II'), roman)
+    expect(accepted.size).toBe(0)
+    expect(refusal).toContain('überspringt')
   })
 
   it('does not open the same law twice', () => {
-    expect(resolveBoundaries(cands('Artikel 1', 'Artikel 1'), pkg).accepted.size).toBe(1)
+    const one = draft({ n: '1', title: 'Änderung des Aktiengesetzes' })
+    expect(resolveBoundaries(cands('Artikel 1', 'Artikel 1'), one).accepted.size).toBe(1)
     // Annexes repeat a law's title over its later pages; that is not a second law.
-    expect(resolveBoundaries(cands('Änderung des GmbH-Gesetzes', 'Änderung des GmbH-Gesetzes'), pkg).accepted.size).toBe(1)
+    expect(resolveBoundaries(cands('Änderung des Aktiengesetzes', 'Änderung des Aktiengesetzes'), one).accepted.size).toBe(1)
   })
 
   // Some annexes print only the law titles, without the Artikel numbers.
   it('joins a title-only heading when it names exactly one amending Artikel', () => {
-    const { accepted } = resolveBoundaries(cands('Änderung des GmbH-Gesetzes', 'Änderung des Bankwesengesetzes'), pkg)
-    expect([...accepted.values()].map((a) => a.numeral)).toEqual(['2', '3'])
+    const { accepted } = resolveBoundaries(cands('Änderung des Aktiengesetzes', 'Änderung des GmbH-Gesetzes', 'Änderung des Bankwesengesetzes'), pkg)
+    expect([...accepted.values()].map((a) => a.numeral)).toEqual(['1', '2', '3'])
+  })
+
+  // A law the annex skips *before* its first boundary costs nothing: the
+  // opening section carries no law either way. One annex marks only its
+  // Artikel 4 and 5 and leaves the first three undivided.
+  it('accepts boundaries even when earlier laws are unmarked', () => {
+    const five = draft({ n: '1' }, { n: '2' }, { n: '3' }, { n: '4', title: 'Änderung der Bohrarbeitenverordnung' }, { n: '5', title: 'Änderung der Tagbauarbeitenverordnung' })
+    const { accepted, refusal } = resolveBoundaries(cands('Artikel 4', 'Artikel 5'), five)
+    expect(refusal).toBeNull()
+    expect([...accepted.values()].map((a) => a.numeral)).toEqual(['4', '5'])
+  })
+
+  // A law the annex skips *after* a boundary is the dangerous one: its
+  // provisions follow the previous law's with no heading between them, and
+  // every one of them would be filed under the previous law's name.
+  it('refuses when a law is skipped after a boundary', () => {
+    const { accepted, refusal } = resolveBoundaries(cands('Artikel 1', 'Artikel 2'), pkg)
+    expect(accepted.size).toBe(0)
+    expect(refusal).toContain('überspringt')
   })
 
   it('ignores a title-only heading that names no law of the draft', () => {

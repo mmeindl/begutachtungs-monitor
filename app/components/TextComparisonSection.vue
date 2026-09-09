@@ -55,47 +55,57 @@ function badgeOf(row: TextComparisonRow): Badge {
 }
 
 interface Group {
+  /** Stable identity for the open/expanded state — the law, not its label */
+  key: string
   article: string
   rows: TextComparisonRow[]
   counts: Record<Badge, number>
 }
 
 /**
- * One group per Artikel of the package, as the annex prints it. Rows the
- * ressort abbreviated to "2. bis 26b. …" carry no text and only interrupt
- * the read, so they drop out — the context line already says how much is
- * unchanged.
+ * One group per **law** of the package, not per heading the annex prints.
+ *
+ * Grouping by heading made one group per Abschnitt, per Hauptstück and per
+ * heading over a group of §§: one draft showed 38 groups for its 5 laws.
+ * `row.law` is the law the draft itself names (`annexBoundaries.ts`), so a
+ * heading that divides *one* law now stands over its rows instead of
+ * splitting the comparison.
+ *
+ * Rows the ressort abbreviated to "2. bis 26b. …" carry no text and only
+ * interrupt the read, so they drop out — the context line already says how
+ * much is unchanged.
  */
 const groups = computed<Group[]>(() => {
   if (!data.value?.available) return []
   const out: Group[] = []
-  let current: Group | null = null
-  const start = (article: string) => {
-    current = { article, rows: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 } }
-    out.push(current)
+  const start = (row: TextComparisonRow): Group => {
+    const group: Group = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 } }
+    out.push(group)
+    return group
   }
+  let current: Group | null = null
   for (const row of data.value.rows) {
     if (row.kind === 'article') {
-      start(row.heading ?? '')
+      current = start(row)
       continue
     }
     if (row.elided) continue
-    if (!current) start('')
-    current!.rows.push(row)
-    current!.counts[badgeOf(row)]++
+    if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
+    current.rows.push(row)
+    current.counts[badgeOf(row)]++
   }
   return out.filter((g) => g.rows.length > 0)
 })
 
 const openGroups = ref<Set<string>>(new Set())
-function toggleGroup(article: string) {
+function toggleGroup(key: string) {
   const next = new Set(openGroups.value)
-  if (next.has(article)) next.delete(article)
-  else next.add(article)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
   openGroups.value = next
 }
 function groupOpen(g: Group): boolean {
-  return openGroups.value.has(g.article)
+  return openGroups.value.has(g.key)
 }
 function groupBadges(g: Group): { badge: Badge; count: number }[] {
   return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
@@ -107,12 +117,12 @@ type Block = { kind: 'row'; row: TextComparisonRow } | { kind: 'context'; rows: 
 const SHOWN_CHANGES = 30
 
 const fullyShown = ref<Set<string>>(new Set())
-function showAll(article: string) {
-  fullyShown.value = new Set(fullyShown.value).add(article)
+function showAll(key: string) {
+  fullyShown.value = new Set(fullyShown.value).add(key)
 }
 
 function blocksOf(g: Group): { blocks: Block[]; hidden: number } {
-  const limit = fullyShown.value.has(g.article) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
+  const limit = fullyShown.value.has(g.key) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
   const blocks: Block[] = []
   let context: TextComparisonRow[] = []
   let shown = 0
@@ -166,18 +176,23 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
         Verweise, Zahlen, Daten oder Satzzeichen.
       </p>
 
+      <!-- Several laws in one draft, and the annex does not say where one
+           ends. Shown undivided, and said so: dividing it wrongly would put
+           one law's § 5 under another law's name. -->
+      <p v-if="data.boundaryNote" class="mt-3 text-sm text-ink-secondary">{{ data.boundaryNote }}</p>
+
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <span>Quelle (CC BY 4.0, RIS):</span>
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
       </div>
 
       <div class="mt-3 border-y border-hairline">
-        <section v-for="g in renderedGroups" :key="g.article" class="border-b border-hairline last:border-b-0">
+        <section v-for="g in renderedGroups" :key="g.key" class="border-b border-hairline last:border-b-0">
           <button
             type="button"
             class="flex w-full min-h-11 flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
             :aria-expanded="groupOpen(g)"
-            @click="toggleGroup(g.article)"
+            @click="toggleGroup(g.key)"
           >
             <span class="flex w-full items-start gap-3">
               <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Gesetzestext' }}</span>
@@ -217,6 +232,9 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
 
               <div v-else class="border-b border-hairline px-3 py-3 last:border-b-0">
                 <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
+                  <!-- "3. Abschnitt" and headings over a group of §§ used to
+                       open a group of their own; they belong over the row. -->
+                  <p v-if="b.row.heading" class="mb-1 text-xs text-ink-muted">{{ b.row.heading }}</p>
                   <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
                       {{ BADGE_LABEL[badgeOf(b.row)] }}
@@ -253,7 +271,7 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
               v-if="g.hidden"
               type="button"
               class="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
-              @click="showAll(g.article)"
+              @click="showAll(g.key)"
             >
               <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
               {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen

@@ -20,8 +20,10 @@
  * returns an empty list for those, which the caller must treat as "not
  * available", never as "nothing changed".
  */
+import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
 import { diffTokens, isEditorialChange } from './lawDiff'
 import { normalizeText } from './lawText'
+import type { DraftArticle } from './lawTitles'
 import { decodeEntities } from './mappers'
 import type { LawDiffSegment } from '../../shared/types'
 
@@ -107,9 +109,9 @@ export function isScanned(xml: string): boolean {
  * readable annexes nest tables — 70 tables over 584 rows — and each of them
  * lost around 140 rows that way (measured 2026-09-09).
  */
-function outermost(html: string, tag: string): { attrs: string; inner: string }[] {
+function outermost(html: string, tag: string): { attrs: string; inner: string; at: number }[] {
   const re = new RegExp(`<(/?)${tag}\\b([^>]*)>`, 'gi')
-  const out: { attrs: string; inner: string }[] = []
+  const out: { attrs: string; inner: string; at: number }[] = []
   let depth = 0
   let start = -1
   let attrs = ''
@@ -121,7 +123,7 @@ function outermost(html: string, tag: string): { attrs: string; inner: string }[
     if (closing) {
       depth--
       if (depth === 0 && start >= 0) {
-        out.push({ attrs, inner: html.slice(start, m.index) })
+        out.push({ attrs, inner: html.slice(start, m.index), at: start })
         start = -1
       }
       if (depth < 0) depth = 0
@@ -151,18 +153,51 @@ function liftTables(cellInner: string): { text: string; tables: string[] } {
   return { text: text.replace(/<\/?table\b[^>]*>/gi, ' '), tables: tables.map((t) => t.inner) }
 }
 
-/** Every row of the document in printed order, nested tables flattened in place. */
-function rowsInOrder(html: string): { attrs: string; inner: string }[] {
-  const out: { attrs: string; inner: string }[] = []
+/**
+ * Every row of the document in printed order, nested tables flattened in place.
+ *
+ * `at` is the position of the *outermost* row a nested one sits in, so that
+ * document-level headings can be merged into the sequence without disturbing
+ * the order of rows that came out of one table together.
+ */
+function rowsInOrder(html: string, at?: number): { attrs: string; inner: string; at: number }[] {
+  const out: { attrs: string; inner: string; at: number }[] = []
   for (const row of outermost(html, 'tr')) {
+    const pos = at ?? row.at
     const cells = outermost(row.inner, 'td')
     const nested = cells.flatMap((c) => liftTables(c.inner).tables)
     // The wrapper row itself may hold nothing but the inner table; it then
     // contributes no text and falls out of the parse on its own.
-    out.push(row)
-    for (const table of nested) out.push(...rowsInOrder(table))
+    out.push({ ...row, at: pos })
+    for (const table of nested) out.push(...rowsInOrder(table, pos))
   }
   return out
+}
+
+/** The annex's own title, printed once over the whole document. Chrome. */
+const ANNEX_TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
+
+/**
+ * Headings and rows in printed order, including headings that stand outside
+ * every table.
+ *
+ * A `<ueberschrift>` at document level divides the annex exactly as one inside
+ * a table does — two annexes print *both* their Artikel that way, and reading
+ * only table rows lost both boundaries (2026-09-09).
+ */
+type Item = { kind: 'heading'; text: string; at: number } | { kind: 'row'; inner: string; at: number }
+
+function itemsInOrder(body: string): Item[] {
+  const tables = outermost(body, 'table').map((t) => [t.at, t.at + t.inner.length] as const)
+  const inTable = (at: number): boolean => tables.some(([from, to]) => at >= from && at < to)
+  const headings: Item[] = [...body.matchAll(/<ueberschrift\b[^>]*>([\s\S]*?)<\/ueberschrift\s*>/g)]
+    .filter((m) => !inTable(m.index))
+    .map((m) => ({ kind: 'heading' as const, text: cellText(m[1]!), at: m.index }))
+    .filter((h) => h.text !== '' && !ANNEX_TITLE_RE.test(h.text.replace(/\s+/g, '')))
+  const rows: Item[] = rowsInOrder(body).map((r) => ({ kind: 'row' as const, inner: r.inner, at: r.at }))
+  // A stable sort keeps the rows of one table in their own order while the
+  // document-level headings fall into place between the tables.
+  return [...headings, ...rows].sort((a, b) => a.at - b.at)
 }
 
 /**
@@ -188,48 +223,156 @@ function columnSpans(rows: readonly { inner: string }[]): { left: number; right:
   return { left: 1, right: 1 }
 }
 
-/** One Textgegenüberstellung XML → its rows, in printed order. */
-export function parseTextComparison(xml: string): ComparisonRow[] {
+/**
+ * A row's cells, split into the current and the proposed column.
+ *
+ * Cells are assigned by where they *start*, not by their index: the current
+ * side can be several cells wide.
+ */
+function columnsOf(cells: readonly { html: string; span: number }[], span: { left: number; right: number }): { currentHtml: string; proposedHtml: string } {
+  let at = 0
+  const leftHtml: string[] = []
+  const rightHtml: string[] = []
+  for (const cell of cells) {
+    ;(at < span.left ? leftHtml : rightHtml).push(cell.html)
+    at += cell.span
+  }
+  return { currentHtml: leftHtml.join(' '), proposedHtml: rightHtml.join(' ') }
+}
+
+export interface ComparisonParse {
+  rows: ComparisonRow[]
+  /**
+   * Why the package's laws could not be told apart, in words fit to show a
+   * reader; null when they could. The comparison is still worth showing —
+   * it just carries no law of its own.
+   */
+  refusal: string | null
+}
+
+/** What a heading or row does in the document, decided before any is emitted. */
+interface Parsed {
+  item: Item
+  /** Heading text, for a heading row or a document-level heading */
+  heading: string | null
+  /** Set when the row is a pair row printing the same text in both columns */
+  mirrored: string | null
+  cells: { html: string; span: number }[]
+}
+
+/**
+ * One Textgegenüberstellung XML → its rows, in printed order.
+ *
+ * `articles` is the draft's own Artikel list (`draftArticles`). Every law
+ * boundary the annex prints has to be one of them: the annex sets an internal
+ * Roman division, a provision of a law organised in Artikel, and a real law
+ * boundary in the same shape, and § 5 of the second law of a package is a
+ * different provision from § 5 of the first. Passing an empty list says "no
+ * draft to check against", and the annex is then read as one undivided law.
+ */
+export function parseTextComparison(xml: string, articles: readonly DraftArticle[] = []): ComparisonParse {
   let body = xml
   for (const re of STRIP) body = body.replace(re, '')
 
-  const rows: ComparisonRow[] = []
-  const source = rowsInOrder(body)
-  const span = columnSpans(source)
+  const items = itemsInOrder(body)
+  const span = columnSpans(items.filter((i): i is Extract<Item, { kind: 'row' }> => i.kind === 'row'))
 
-  for (const row of source) {
-    const cells = outermost(row.inner, 'td').map((c) => {
+  // Pass 1: what each item is.
+  const parsed: Parsed[] = []
+  for (const item of items) {
+    if (item.kind === 'heading') {
+      parsed.push({ item, heading: item.text, mirrored: null, cells: [] })
+      continue
+    }
+    const cells = outermost(item.inner, 'td').map((c) => {
       const lifted = liftTables(c.inner)
-      return { attrs: c.attrs, html: lifted.text, span: Number(COLSPAN_RE.exec(c.attrs)?.[1] ?? 1) }
+      return { html: lifted.text, span: Number(COLSPAN_RE.exec(c.attrs)?.[1] ?? 1) }
     })
     if (cells.length === 0) continue
-
     // A heading occupies the whole width. Anything narrower is a pair row,
     // however many columns each of its cells happens to span.
     const firstFilled = cells.find((c) => cellText(c.html) !== '') ?? cells[0]!
     if (cells.length === 1 || firstFilled.span >= span.left + span.right) {
       const heading = cellText(firstFilled.html)
-      if (heading) rows.push({ kind: 'article', law: null, heading, gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+      if (heading) parsed.push({ item, heading, mirrored: null, cells })
       continue
     }
-
-    // Cells are assigned to a column by where they start, not by their index:
-    // the current side can be several cells wide.
-    let at = 0
-    const leftHtml: string[] = []
-    const rightHtml: string[] = []
-    for (const cell of cells) {
-      ;(at < span.left ? leftHtml : rightHtml).push(cell.html)
-      at += cell.span
-    }
-    const currentHtml = leftHtml.join(' ')
-    const proposedHtml = rightHtml.join(' ')
+    const { currentHtml, proposedHtml } = columnsOf(cells, span)
     const current = cellText(currentHtml)
     const proposed = cellText(proposedHtml)
     // The mandated column headings repeat on every page; they are chrome.
     if (current.toLowerCase() === HEADER_CURRENT && proposed.toLowerCase() === HEADER_PROPOSED) continue
     if (!current && !proposed) continue
+    // An Artikel line is often printed once per column rather than across
+    // both, and read as an ordinary pair row it left the boundary invisible.
+    parsed.push({ item, heading: null, mirrored: current && current === proposed ? current : null, cells })
+  }
 
+  // Pass 2: which of the heading-shaped lines open a law.
+  const candidates: BoundaryCandidate[] = []
+  /** Index in `parsed` → index in `candidates`, and whether the line was a heading row. */
+  const candidateAt = new Map<number, { at: number; fromHeading: boolean }>()
+  const titleOf = new Map<number, number>()
+  for (const [i, p] of parsed.entries()) {
+    if (candidateAt.has(i) || titleOf.has(i)) continue
+    const text = p.heading ?? p.mirrored
+    if (!text) continue
+    const candidate = candidateOf(text)
+    if (!candidate) continue
+    const at = candidates.length
+    // The law's name sits on the line below its Artikel number.
+    if (candidate.numeral !== null && !candidate.title) {
+      for (let j = i + 1; j < parsed.length; j++) {
+        const next = parsed[j]!.heading ?? parsed[j]!.mirrored
+        if (!next) break
+        if (/^[§(]/.test(next) || candidateOf(next)?.numeral) break
+        candidate.title = next
+        titleOf.set(j, at)
+        break
+      }
+    }
+    candidates.push(candidate)
+    candidateAt.set(i, { at, fromHeading: p.heading !== null })
+  }
+  const resolution = resolveBoundaries(candidates, articles)
+
+  // Pass 3: emit.
+  const rows: ComparisonRow[] = []
+  let law = resolution.whole?.key ?? null
+  let pendingHeading: string[] = []
+  for (const [i, p] of parsed.entries()) {
+    const mark = candidateAt.get(i)
+    if (mark) {
+      const article = resolution.accepted.get(mark.at)
+      if (article) {
+        law = article.key
+        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+        pendingHeading = []
+        continue
+      }
+      // A candidate the draft does not confirm is an internal heading. One
+      // printed across the width is context for the rows below it; one printed
+      // in both columns is law text and stays the pair row it is.
+      if (mark.fromHeading) {
+        pendingHeading.push(p.heading!)
+        continue
+      }
+    }
+    if (titleOf.has(i)) {
+      if (!resolution.accepted.has(titleOf.get(i)!)) pendingHeading.push((p.heading ?? p.mirrored)!)
+      continue
+    }
+    // Every other heading across both columns — Abschnitt, Hauptstück, a
+    // heading over a group of §§ — is context for the provision beneath it,
+    // not a group of its own.
+    if (p.heading !== null) {
+      pendingHeading.push(p.heading)
+      continue
+    }
+
+    const { currentHtml, proposedHtml } = columnsOf(p.cells, span)
+    const current = cellText(currentHtml)
+    const proposed = cellText(proposedHtml)
     const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
     const elided = ELIDED_RE.test(current) && ELIDED_RE.test(proposed)
     const change = classify(current, proposed)
@@ -240,8 +383,8 @@ export function parseTextComparison(xml: string): ComparisonRow[] {
     const segments = change === 'changed' && !elided ? diffTokens(current, proposed).segments : null
     rows.push({
       kind: 'pair',
-      law: null,
-      heading: null,
+      law,
+      heading: pendingHeading.length > 0 ? pendingHeading.join(' ') : null,
       gld: gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null,
       current,
       proposed,
@@ -251,8 +394,9 @@ export function parseTextComparison(xml: string): ComparisonRow[] {
       segments,
       editorial: isEditorialChange(segments),
     })
+    pendingHeading = []
   }
-  return rows
+  return { rows, refusal: resolution.refusal }
 }
 
 export function classify(current: string, proposed: string): ComparisonChange {
