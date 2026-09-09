@@ -34,9 +34,12 @@
  * catches the parse throws away the fetch with it. Split those in two, a
  * cached fetch under a fresh parse, as `paraTitleService.ts` and `ris.ts`
  * do; do not pick which half to get wrong. `tests/cacheLayers.test.ts`
- * holds every cached function to that choice, and records the one
- * deliberate exception: `statements-me` persists the *classified* rows,
- * because the raw list-142 response names private persons and those may
- * not go to disk.
+ * holds every cached function to that choice.
+ *
+ * A third case decides itself: a response that may not be persisted at all.
+ * List 142 names private persons, so it gets no cached fetch — only the
+ * classified rows above it are kept, and those are derived, hence memory.
+ * The rule that falls out is simpler than the exception it replaced: **the
+ * directory on disk holds upstream payloads and nothing else.**
  */
 export const DERIVED_CACHE = '/derived'
