@@ -304,7 +304,17 @@ const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
   novao2: 'novao',
 }
 
-const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
+/**
+ * `schlussteil` is the text that closes an enumeration — "… hat jede
+ * Veränderung, insbesondere a) …, b) …, e) … *der Schulbehörde unverzüglich
+ * anzuzeigen*". Leaving it out of this list dropped that closing sentence
+ * from every RIS-XML document silently: from the payload of an amendment
+ * instruction, and from both sides of the ME→RV comparison for GP XXVII and
+ * earlier. `lawStructure.ts` had it from the start; this parser did not, and
+ * the mismatch surfaced only when the two were compared against RIS
+ * (Privatschulgesetz § 4, 2026-09-09).
+ */
+const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
 
 function risText(inner: string): string {
@@ -332,6 +342,11 @@ export function parseRisXml(xml: string): TextBlock[] {
       kind = RIS_ABSATZ_KIND[typ] ?? 'other'
     } else if (tag === 'listelem') {
       kind = 'ziff'
+    } else if (tag === 'schlussteil') {
+      // Continuation of the Absatz that opened the list, not a unit of its
+      // own — `parsePayload` and `segmentUnits` both append an unmarked
+      // block to the Absatz above it, which is exactly right here.
+      kind = 'abs'
     } else {
       kind = 'toc'
     }
