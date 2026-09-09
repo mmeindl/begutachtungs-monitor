@@ -1,0 +1,16 @@
+{
+  // Scripts and tests are outside `nuxt typecheck` — that one only sees the
+  // app, the server and `shared/`, because `tsconfig.json` extends
+  // `.nuxt/tsconfig.json` and Nuxt builds that from its own source
+  // directories. Twice now a shipped bug lived in the half nothing checked:
+  // the verdict logic in `scripts/annex-pdf-verify.ts` (§12.13) and the apply
+  // report before it (§12.12). So the tools get their own project.
+  //
+  // It extends the *server* config, not the app one: these files import
+  // `server/utils/*` and `shared/*` and never a Vue component, and the server
+  // config is the one that carries `#shared/*` and the Nitro auto-import
+  // types. Run with `pnpm typecheck:tools`; CI runs both.
+  "extends": "./.nuxt/tsconfig.server.json",
+  "include": ["scripts/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["node_modules", ".nuxt", ".output"]
+}

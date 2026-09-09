@@ -1,0 +1,58 @@
+# Tests and typecheck on every push and pull request.
+#
+# Until 2026-09-10 the only workflow in this repository probed the live site;
+# nothing ran the 500-odd tests, so a red suite could reach `main` and only be
+# noticed on the next local run. This is the cheap half of that gap.
+#
+# Three commands, and the third one exists because of a hole the docs blame
+# twice for shipped bugs (`docs/architecture.md` §12.12, §12.13): `nuxt
+# typecheck` sees the app, the server and `shared/`, but neither `scripts/`
+# nor `tests/`. `tsconfig.tools.json` covers those, and both projects need
+# `.nuxt/tsconfig*.json`, which `nuxt prepare` writes — `pnpm install` runs it
+# as `postinstall`, so the install step is also the generate step.
+#
+# Node 22 is what the server runs (`deploy/infrastructure.md`); pnpm 10 is
+# what the lockfile (v9.0 format) was written with. Neither is pinned in
+# `package.json`, so they are pinned here, and a bump belongs in both places.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Before setup-node: its pnpm cache needs the store path, which only
+      # exists once pnpm is installed.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies (runs `nuxt prepare` via postinstall)
+        run: pnpm install --frozen-lockfile
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Typecheck (app, server, shared)
+        run: pnpm typecheck
+
+      - name: Typecheck (scripts, tests)
+        run: pnpm typecheck:tools

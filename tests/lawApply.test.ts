@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/lawApply'
 import { makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawStructure'
-import { parseInstruction } from '../server/utils/novao'
+import { parseInstruction, type NovaoAddress } from '../server/utils/novao'
 
 /** A § with numbered Absätze, the shape RIS BrKons delivers. */
 function para(id: string, heading: string, absaetze: (string | { text: string; ziffern: string[] })[]): LawNode {
@@ -45,11 +45,22 @@ describe('parsePayload', () => {
   })
 })
 
+/**
+ * The address of the instruction's first operation. Every kind of `NovaoOp`
+ * carries one except `insertAfter`, which addresses an *anchor* — so the
+ * narrowing is the type saying that, not a formality.
+ */
+function targetOf(instruction: string): NovaoAddress {
+  const op = parseInstruction(instruction).ops[0]!
+  if (!('target' in op)) throw new Error(`Anweisung ohne Ziel: ${instruction}`)
+  return op.target
+}
+
 describe('resolveTarget', () => {
   it('descends the address ladder and refuses a partial match', () => {
     const l = law()
-    expect(resolveTarget(l, parseInstruction('§ 5 Abs. 2 Z 1 lautet:').ops[0]!.target!)).toMatchObject({ level: 'z', id: '1' })
-    expect(resolveTarget(l, parseInstruction('§ 5 Abs. 9 lautet:').ops[0]!.target!)).toBeNull()
+    expect(resolveTarget(l, targetOf('§ 5 Abs. 2 Z 1 lautet:'))).toMatchObject({ level: 'z', id: '1' })
+    expect(resolveTarget(l, targetOf('§ 5 Abs. 9 lautet:'))).toBeNull()
   })
 })
 

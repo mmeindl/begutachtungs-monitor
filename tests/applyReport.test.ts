@@ -99,8 +99,9 @@ describe('verdictForTrees', () => {
     id: '1',
     marker: '§ 1.',
     heading: null,
+    context: [],
     text,
-    children: children.map((t, i) => ({ level: 'abs' as const, id: String(i + 1), marker: `(${i + 1})`, heading: null, text: t, children: [] })),
+    children: children.map((t, i) => ({ level: 'abs' as const, id: String(i + 1), marker: `(${i + 1})`, heading: null, context: [], text: t, children: [] })),
   })
   const long = (word: string) => Array.from({ length: 1700 }, () => word).join(' ')
 
