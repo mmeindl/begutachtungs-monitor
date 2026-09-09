@@ -26,11 +26,14 @@
  *   geprüft    — paragraphs RIS can confirm or refute
  *   identisch  — paragraphs where the engine produced the law that exists
  */
-import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../server/utils/lawApply'
+import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/lawApply'
 import { plainText, type LawNode } from '../server/utils/lawStructure'
-import { parseRisXml, segmentUnits } from '../server/utils/lawText'
-import { fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
+import { parseRisXml, segmentUnits, type TextBlock } from '../server/utils/lawText'
+import { promulgationByArticle } from '../server/utils/lawTitles'
+import type { NovaoAddress } from '../server/utils/novao'
+import { fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
 import { extraTokens, verdictFor } from '../server/utils/applyReport'
+import { installFetchCache } from './harness-cache'
 
 interface Verdict {
   bgbl: string
@@ -43,12 +46,16 @@ interface Verdict {
   untouched: number
   incomplete: number
   divergent: number
+  unverifiable: number
   note: string | null
 }
+
+type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef }
 
 const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
 const verbose = !process.argv.includes('--quiet')
+if (process.argv.includes('--cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 async function risJson(params: Record<string, string>): Promise<any> {
@@ -61,7 +68,17 @@ function asArray<T>(x: T | T[] | null | undefined): T[] {
   return x === null || x === undefined ? [] : Array.isArray(x) ? x : [x]
 }
 
-/** The Bundesgesetze that amend exactly one law — the cases a harness can score. */
+/**
+ * The Bundesgesetze that amend exactly one law — the cases a harness can score.
+ *
+ * The captured name is only a *hint* for the title fallback in `resolveLaw`;
+ * the law's identity comes from its Promulgationsklausel. The optional
+ * "das X erlassen und" skips a Stammgesetz enacted in the same BGBl
+ * ("… mit dem das ESG-Rating-Verordnung-Vollzugsgesetz erlassen und das
+ * Finanzmarktaufsichtsbehördengesetz geändert wird", BGBl. I Nr. 28/2026):
+ * one law is amended, which is what the harness needs, and the old capture
+ * swallowed both names into one unusable title (2026-09-09).
+ */
 async function discoverSingleLawAmendments(count: number): Promise<{ id: string; law: string }[]> {
   const out: { id: string; law: string }[] = []
   for (let page = 1; page <= 5 && out.length < count; page++) {
@@ -75,17 +92,157 @@ async function discoverSingleLawAmendments(count: number): Promise<{ id: string;
     for (const ref of asArray<any>(body?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)) {
       const id = ref?.Data?.Metadaten?.Technisch?.ID
       const titel = String(ref?.Data?.Metadaten?.Bundesrecht?.Titel ?? '').replace(/<br\/>[\s\S]*/, '').trim()
-      const m = /^Bundesgesetz, mit dem das ([^,]+?) geändert wird$/.exec(titel)
+      const m = /^Bundesgesetz, mit dem (?:das \S[^,]*? erlassen und )?das ([^,]+?) geändert wird$/.exec(titel)
       if (id && m && out.length < count) out.push({ id, law: m[1]! })
     }
   }
   return out
 }
 
-async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
+/**
+ * The law's name as the Promulgationsklausel writes it — "Das
+ * Unternehmensgesetzbuch - UGB, dRGBl. S. 219/1897, …" → "Unternehmensgesetzbuch".
+ * A long title with the short one in parentheses ("Das Bundesgesetz
+ * betreffend die Bundesstraßen (Bundesstraßengesetz 1971 - BStG 1971), …")
+ * yields the parenthesised short title.
+ */
+function lawNameFromClause(blocks: readonly TextBlock[]): string | null {
+  const clause = blocks.find((b) => b.kind !== 'novao' && /\bwird wie folgt geändert\b/i.test(b.text))
+  if (!clause) return null
+  const m = /^(?:Das|Die|Der)\s+(.+?),\s*(?:d?RGBl|BGBl|StGBl|JGS)\b/i.exec(clause.text)
+  if (!m) return null
+  const paren = /\(([^()]+?)(?:\s+[-–]\s+[^()]+)?\)\s*$/.exec(m[1]!)
+  const name = paren ? paren[1]! : m[1]!
+  return name.replace(/\s+[-–]\s+\S+(?:\s+\d{4})?$/, '').trim() || null
+}
+
+interface ResolvedLaw {
+  gesetzesnummer: string
+  kurztitel: string
+  versions: Map<string, KonsParagraphRef[]>
+  pairs: Map<string, VersionPair>
+  via: string
+}
+
+/**
+ * Which law the Novelle amends — confirmed by the law itself.
+ *
+ * The join runs on the Promulgationsklausel's Stammnorm (`lawTitles.ts`),
+ * because titles do not match: the BgblAuth Kurztitel is "Änderung des
+ * Luftfahrtgesetzes", and the name lifted from the Titel fails whenever RIS
+ * drops a year ("Bundesgesetz gegen den unlauteren Wettbewerb 1984") or the
+ * Titel carries a long form. 6 of 25 Novellen dropped out of a run on the
+ * title join alone (2026-09-09).
+ *
+ * A candidate counts only when a version of that law names this BGBl in its
+ * Kundmachungsorgan — the same join the before/after pairs rest on. Without
+ * that check the Stammnorm join scored the UGB Novelle (BGBl. I Nr. 26/2026)
+ * against the Drittlandunternehmen-Berichterstattungsgesetz: the UGB's
+ * Stammnorm is a dRGBl citation, so the clause's first *BGBl* is its last
+ * amendment, and that BGBl happened to create a different law.
+ *
+ * The Stammnorm join also returns null when one Sammel-BGBl created several
+ * laws (LMSVG in BGBl. I Nr. 13/2006 next to the Kontroll- und
+ * Digitalisierungs-Durchführungsgesetz; UStG 1994 next to its Anhang) — the
+ * production resolver refuses ambiguity by design. The title hint and the
+ * clause name then pick the law out, checked the same way.
+ */
+async function resolveLaw(blocks: readonly TextBlock[], bgblNumber: string, kundmachung: string, titleHint: string | undefined): Promise<ResolvedLaw | { note: string }> {
+  const stammnormen = [...promulgationByArticle(blocks).values()]
+  if (stammnormen.length > 1) return { note: `Sammelnovelle: ${stammnormen.length} Stammnormen` }
+  const candidates: { gesetzesnummer: string; kurztitel: string; via: string }[] = []
+  const tried: string[] = []
+  const add = (gesetzesnummer: string | null, kurztitel: string, via: string): void => {
+    if (gesetzesnummer && !candidates.some((c) => c.gesetzesnummer === gesetzesnummer)) candidates.push({ gesetzesnummer, kurztitel, via })
+  }
+  if (stammnormen[0]) {
+    const law = await resolveLawByBgbl(stammnormen[0], kundmachung)
+    tried.push(`Stammnorm ${stammnormen[0].organ} ${stammnormen[0].nummer}`)
+    add(law?.gesetzesnummer ?? null, law?.kurztitel ?? '', 'Stammnorm')
+  }
+  const clauseName = lawNameFromClause(blocks)
+  for (const [name, via] of [[titleHint, 'Titel'], [clauseName, 'Promulgationsklausel']] as const) {
+    if (!name) continue
+    tried.push(`Kurztitel "${name}"`)
+    add(await resolveGesetzesnummer(name), name, via)
+  }
+  for (const c of candidates) {
+    const versions = await fetchAllVersions(c.gesetzesnummer)
+    const pairs = new Map<string, VersionPair>()
+    for (const [label, list] of versions) {
+      const pair = versionPairFor(list, bgblNumber)
+      if (pair) pairs.set(label, pair)
+    }
+    if (pairs.size > 0) return { ...c, versions, pairs }
+  }
+  if (candidates.length === 0) return { note: `Gesetz nicht im BrKons gefunden (${tried.join(', ') || 'keine Promulgationsklausel'})` }
+  return { note: `${bgblNumber} in keiner Fassung von ${candidates.map((c) => c.kurztitel || c.gesetzesnummer).join(' / ')} als Kundmachungsorgan genannt` }
+}
+
+/**
+ * The key an instruction's address and a RIS label share. RIS prints an
+ * Anlage as "Anl. 2"; an instruction says "Anlage 2" (or "Anhang 2"). §§ and
+ * Artikel already agree ("§ 5", "Art. 3"). Without this the anchor of "Nach
+ * der Anlage 2 wird folgende Anlage 3 eingefügt" (UStG, BGBl. I Nr. 37/2026)
+ * was never loaded and the refusal looked like the engine's (2026-09-09).
+ *
+ * "Art. 2 § 7" — a law organised in Artikel — stays unmatched on purpose:
+ * which Artikel a bare "§ 7" means is a question for the engine, and a
+ * harness that guessed would hide that the engine cannot ask it yet.
+ */
+function labelKey(label: string): string {
+  return label.replace(/\s+/g, ' ').trim().replace(/^(?:Anlage|Anhang)\b/, 'Anl.')
+}
+
+/** "§ 5" → "5", the id `parseKonsParagraph` gives a paragraph — mirrors the engine's own lookup. */
+function paraId(label: string): string | null {
+  return /(\d+[a-z]*(?:\.\d+)?)/.exec(label)?.[1] ?? null
+}
+
+const missingCauses = new Map<string, number>()
+
+/**
+ * What RIS knows about a target the engine could not find. The count alone
+ * cannot tell a harness gap from an engine gap: of 42 such refusals in one
+ * run, one was a label the harness never loaded, four followed a renumbering
+ * the grammar had refused, two addressed an Absatz an *earlier* instruction
+ * had wrongly deleted whole, and 32 were "Art. II § 7" addressing the engine
+ * does not read (2026-09-09). Each line says which it is, so the next run
+ * needs no archaeology.
+ */
+function missingTargetNote(address: NovaoAddress, resolved: ResolvedLaw, before: StandingLaw, unparsed: ReadonlySet<string>, kundmachung: string): string {
+  const count = (cause: string): string => {
+    missingCauses.set(cause, (missingCauses.get(cause) ?? 0) + 1)
+    return cause
+  }
+  if (!address.para) return count('Adresse ohne Paragraph')
+  const key = labelKey(address.para)
+  const byKey = new Map([...resolved.versions.keys()].map((l) => [labelKey(l), l] as const))
+  const label = byKey.get(key)
+  if (!label) {
+    // "§ 19" in a law organised in Artikel is "Art. 2 § 19" to RIS; "§ 1" may also collide with "Art. 1".
+    const id = paraId(address.para)
+    const similar = [...resolved.versions.keys()].filter((l) => l !== key && (l.endsWith(` ${key}`) || paraId(l) === id)).slice(0, 3)
+    return `${count('RIS kennt das Label nicht')}: "${address.para}"${similar.length ? ` — RIS hat: ${similar.join(', ')}` : ''}`
+  }
+  const pair = resolved.pairs.get(label)
+  if (pair && !pair.before) return `${count('entsteht erst durch diese Novelle')}: ${label}`
+  if (unparsed.has(label)) return `${count('RIS-Dokument geladen, aber nicht als Paragraph lesbar')}: ${label}`
+  const node = before.paragraphs.find((p) => p.id === paraId(label))
+  if (!node) return `${count('im RIS vorhanden, vom Prüfstand nicht geladen')}: ${label}`
+  const sub = address.abs ?? address.z ?? address.lit
+  if (!sub) return `${count('Paragraph stand im Ausgangstext — eine frühere Anweisung hat ihn entfernt oder umbenannt')}: ${label}`
+  const ids = [address.lit ?? address.z ?? address.abs!, ...address.siblings]
+  const missing = ids.filter((id) => resolveTarget(before, address, id) === null)
+  if (missing.length === 0) return count('Untereinheit stand im Ausgangstext — eine frühere Anweisung hat sie entfernt')
+  const before_ = resolved.pairs.get(label)?.before ?? null
+  return `${count('Untereinheit nicht im Ausgangstext')}: ${label} ${address.lit ? 'lit.' : address.z ? 'Z' : 'Abs.'} ${missing.join(', ')} (RIS-Fassung ${before_?.inkrafttreten ?? `vor ${kundmachung}`})`
+}
+
+async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   const meta = await risJson({ Applikation: 'BgblAuth', Suchworte: bgblId, DokumenteProSeite: 'Ten' })
   const ref = asArray<any>(meta?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference).find((r) => r?.Data?.Metadaten?.Technisch?.ID === bgblId)
-  const blank = (note: string): Verdict => ({ bgbl: bgblId, law: kurztitelArg ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, divergent: 0, note })
+  const blank = (note: string): Verdict => ({ bgbl: bgblId, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, divergent: 0, unverifiable: 0, note })
   if (!ref) return blank('BGBl nicht gefunden')
 
   const bundesrecht = ref.Data.Metadaten.Bundesrecht
@@ -96,21 +253,16 @@ async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
     .find((u) => u.DataType === 'Xml')?.Url
   if (!xmlUrl) return blank('kein XML')
 
-  const units = segmentUnits(parseRisXml(await getText(xmlUrl)))
+  const blocks = parseRisXml(await getText(xmlUrl))
+  const units = segmentUnits(blocks)
   const { instructions, refused } = instructionsFromUnits(units.filter((u) => u.blocks.some((b) => b.kind === 'novao')))
   const total = instructions.length + refused.length
   if (total === 0) return blank('keine Novellierungsanordnungen')
 
-  const kurztitel = kurztitelArg ?? String(bundesrecht.Kurztitel ?? '')
-  const gesetzesnummer = await resolveGesetzesnummer(kurztitel)
-  if (!gesetzesnummer) return { ...blank(`Kurztitel "${kurztitel}" nicht im BrKons`), law: kurztitel, instructions: total, read: instructions.length }
-
-  const versions = await fetchAllVersions(gesetzesnummer)
-  const pairs = new Map<string, { before: KonsParagraphRef | null; after: KonsParagraphRef }>()
-  for (const [label, list] of versions) {
-    const pair = versionPairFor(list, bgblNumber)
-    if (pair) pairs.set(label, pair)
-  }
+  const resolved = await resolveLaw(blocks, bgblNumber, kundmachung, titleHint)
+  if ('note' in resolved) return { ...blank(resolved.note), bgbl: bgblNumber, law: titleHint ?? String(bundesrecht.Kurztitel ?? ''), instructions: total, read: instructions.length }
+  const { versions, pairs } = resolved
+  const kurztitel = resolved.kurztitel || titleHint || String(bundesrecht.Kurztitel ?? '')
 
   /** The newest version that already existed when this amendment was promulgated. */
   const lastBefore = (list: readonly KonsParagraphRef[]): KonsParagraphRef | null => {
@@ -121,21 +273,24 @@ async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
   // Only the paragraphs the instructions name are fetched — a law like the
   // Umsatzsteuergesetz has hundreds, and loading all to change six is a
   // minute of RIS traffic for nothing. "Im gesamten Gesetzestext" needs all.
-  const wanted = new Set<string>(pairs.keys())
+  const wanted = new Set<string>([...pairs.keys()].map(labelKey))
   let wholeText = false
   for (const { op } of instructions) {
     const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
     if (!address) continue
     if (address.level === 'document') wholeText = true
-    if (address.para) wanted.add(address.para.replace(/\s+/g, ' '))
+    if (address.para) wanted.add(labelKey(address.para))
   }
   const paragraphs: LawNode[] = []
+  /** Fetched, but `parseKonsParagraph` found no paragraph in the document — an Anlage without `<absatz>` blocks, for one. */
+  const unparsed = new Set<string>()
   for (const [label, list] of versions) {
-    if (!wholeText && !wanted.has(label)) continue
+    if (!wholeText && !wanted.has(labelKey(label))) continue
     const chosen = pairs.get(label)?.before ?? (pairs.has(label) ? null : lastBefore(list))
     if (!chosen) continue
     const tree = await fetchParagraphTree(chosen)
     if (tree) paragraphs.push(tree)
+    else unparsed.add(label)
   }
   const law: StandingLaw = { paragraphs }
 
@@ -143,16 +298,24 @@ async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
   const applied = results.filter((r) => r.applied).length
 
   if (verbose) {
-    console.log(`\n${bgblNumber} vom ${kundmachung} — ${kurztitel}`)
+    console.log(`\n${bgblNumber} vom ${kundmachung} — ${kurztitel} (Join: ${resolved.via})`)
     console.log(`  ${total} Anweisungen, ${instructions.length} gelesen, ${applied} angewendet; ${law.paragraphs.length}/${versions.size} Paragraphen geladen`)
     for (const r of refused) console.log(`    ✗ [Grammatik] ${r.reason} — ${r.line.slice(0, 100)}`)
-    for (const r of results.filter((x) => !x.applied)) console.log(`    ✗ [Anwendung] ${r.reason} — ${r.line.slice(0, 100)}`)
+    for (const [i, r] of results.entries()) {
+      if (r.applied) continue
+      console.log(`    ✗ [Anwendung] ${r.reason} — ${r.line.slice(0, 100)}`)
+      if (!/nicht im geltenden Text/i.test(r.reason ?? '')) continue
+      const op = instructions[i]!.op
+      const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+      if (address) console.log(`        ↳ RIS: ${missingTargetNote(address, resolved, law, unparsed, kundmachung)}`)
+    }
   }
 
   let checked = 0
   let identical = 0
   let untouched = 0
   let incomplete = 0
+  let unverifiable = 0
   const divergences: { label: string; got: string; expected: string; before: string }[] = []
   for (const [label, pair] of [...pairs].sort()) {
     const id = /(\d+[a-z]*)/.exec(label)?.[1]
@@ -169,6 +332,11 @@ async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
     if (verdict === 'identisch') identical++
     else if (verdict === 'unverändert') untouched++
     else if (verdict === 'unvollständig') incomplete++
+    // A word diff the DP grid refused (lawDiff MAX_DP_CELLS) lands in
+    // `abweichend` because the gate must not pass what it cannot check. For
+    // the headline number that conflates two different facts: "checked and
+    // wrong" and "too long to check". The gate stays strict; the report splits.
+    else if (beforeText !== null && !extraTokens(beforeText, got, expected).comparable) unverifiable++
     else divergences.push({ label, got, expected, before: beforeText ?? '' })
     if (verbose) {
       const what = verdict === 'identisch' ? `identisch (Fassung ab ${pair.after.inkrafttreten})` : verdict === 'unvollständig' ? 'unvollständig — nichts Eigenes erfunden' : verdict === 'unverändert' ? 'unverändert gelassen' : 'eigene Abweichung'
@@ -182,7 +350,7 @@ async function verify(bgblId: string, kurztitelArg?: string): Promise<Verdict> {
     }
   }
 
-  return { bgbl: bgblNumber, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, divergent: divergences.length, note: null }
+  return { bgbl: bgblNumber, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, divergent: divergences.length, unverifiable, note: null }
 }
 
 /** The first place two texts part company, with context on both sides. */
@@ -226,4 +394,9 @@ console.log(`    identisch mit dem RIS: ${sum((v) => v.identical)} (${pct(sum((v
 console.log(`    unverändert gelassen : ${sum((v) => v.untouched)} (${pct(sum((v) => v.untouched), sum((v) => v.checked))})  — ungefährlich, wird verweigert`)
 console.log(`    unvollständig        : ${sum((v) => v.incomplete)} (${pct(sum((v) => v.incomplete), sum((v) => v.checked))})  — nichts Eigenes erfunden`)
 console.log(`    eigene Abweichung    : ${sum((v) => v.divergent)} (${pct(sum((v) => v.divergent), sum((v) => v.checked))})  — die einzige gefährliche Klasse`)
+console.log(`    nicht prüfbar        : ${sum((v) => v.unverifiable)} (${pct(sum((v) => v.unverifiable), sum((v) => v.checked))})  — Wortdiff zu groß, weder bestätigt noch widerlegt`)
+if (missingCauses.size > 0) {
+  console.log(`  „nicht im geltenden Text" (${[...missingCauses.values()].reduce((a, b) => a + b, 0)}), laut RIS:`)
+  for (const [cause, n] of [...missingCauses].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${cause}`)
+}
 for (const v of verdicts.filter((x) => x.note)) console.log(`  ? ${v.bgbl}: ${v.note}`)

@@ -63,10 +63,19 @@ export function isSubsetOfRis(before: string, got: string, expected: string): bo
   return extra.comparable && extra.inserted.length === 0 && extra.removed.length === 0
 }
 
-/** The verdict for one paragraph. */
+/**
+ * The verdict for one paragraph.
+ *
+ * A paragraph the Novelle *creates* has no earlier version, and `before` is
+ * null. Falling straight through to `abweichend` there counted every created
+ * § as dangerous even when the engine had invented nothing — the subset test
+ * still means something against an empty base: it asks whether every token
+ * the engine wrote also appears in the text RIS published. Only `unverändert`
+ * genuinely needs a predecessor (2026-09-09).
+ */
 export function verdictFor(before: string | null, got: string, expected: string): ApplyVerdict {
   if (got === expected) return 'identisch'
   if (before !== null && got === before) return 'unverändert'
-  if (before !== null && isSubsetOfRis(before, got, expected)) return 'unvollständig'
+  if (isSubsetOfRis(before ?? '', got, expected)) return 'unvollständig'
   return 'abweichend'
 }

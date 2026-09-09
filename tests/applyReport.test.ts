@@ -47,3 +47,15 @@ describe('verdictFor', () => {
     expect(verdictFor(long('a'), long('b'), long('c'))).toBe('abweichend')
   })
 })
+
+describe('verdictFor on a paragraph the Novelle creates', () => {
+  // No earlier version exists, so `before` is null. The engine must still be
+  // judged on whether it invented text, not counted dangerous by default.
+  it('calls a fragment of the published text incomplete, not divergent', () => {
+    expect(verdictFor(null, 'Der Bund traegt die Kosten.', 'Der Bund traegt die Kosten. Das Naehere regelt eine Verordnung.')).toBe('unvollständig')
+  })
+
+  it('still calls invented text divergent', () => {
+    expect(verdictFor(null, 'Der Bund traegt saemtliche Kosten.', 'Der Bund traegt die Kosten.')).toBe('abweichend')
+  })
+})

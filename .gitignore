@@ -18,3 +18,4 @@ outreach/
 
 # scripts/rv-latency.mjs default cache
 .cache/
+.harness-cache/
