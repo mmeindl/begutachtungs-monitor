@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annexPdf'
+import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annexPdf'
 
 /**
  * The annex is a two-column table. These fixtures place text runs the way a
@@ -141,5 +141,71 @@ describe('parseAnnexPdf', () => {
     ])])
     expect(rows[0]!.elided).toBe(true)
     expect(rows[0]!.change).toBe('unchanged')
+  })
+})
+
+describe('columnBoundary', () => {
+  // The columns are not symmetric. On one annex the proposed column starts at
+  // x = 414,7 while the page midline is 421, so the midline filed its body
+  // text as crossing both columns — 1.258 phantom Artikel rows. The gutter is
+  // the only anchor the layout actually guarantees.
+  it('finds the gutter when the right column starts left of the midline', () => {
+    const items: AnnexItem[] = []
+    for (let n = 0; n < 12; n++) {
+      items.push({ x: 60, y: 700 - n * 14, width: 345, text: 'Text der geltenden Fassung in voller Breite' })
+      items.push({ x: 414.7, y: 700 - n * 14, width: 360, text: 'Text der vorgeschlagenen Fassung in Breite' })
+    }
+    const boundary = columnBoundary([{ width: 841.92, items }])
+    expect(boundary).toBeGreaterThan(405)
+    expect(boundary).toBeLessThanOrEqual(414)
+  })
+
+  it('falls back to the middle when there is no text to find a gutter in', () => {
+    expect(columnBoundary([{ width: 800, items: [] }])).toBe(400)
+  })
+})
+
+describe('headings that span both columns', () => {
+  const spanning = (y: number, text: string): AnnexItem => ({ x: 300, y, width: 260, text })
+
+  it('opens a group only for a real Artikel line', () => {
+    const rows = parseAnnexPdf([{
+      width: PAGE_WIDTH,
+      items: [spanning(700, 'Artikel 2'), spanning(680, 'Änderung des Aktiengesetzes'), ...page([{ y: 640, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items],
+    }])
+    expect(rows.filter((r) => r.kind === 'article').map((r) => r.heading)).toEqual(['Artikel 2 — Änderung des Aktiengesetzes'])
+  })
+
+  // "3. Abschnitt", "10. Hauptstück" and a heading over a group of §§ all span
+  // both columns too. One row each turned 109 annexes into 2.154 Artikel rows
+  // where there are about 400 boundaries — and writing them into the text put
+  // words into the provision that the standing law files above it.
+  it('records any other spanning heading as the row’s context, not as its text', () => {
+    const rows = parseAnnexPdf([{
+      width: PAGE_WIDTH,
+      items: [spanning(700, '3. Abschnitt'), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items],
+    }])
+    expect(rows.filter((r) => r.kind === 'article')).toHaveLength(0)
+    expect(rows[0]!.heading).toBe('3. Abschnitt')
+    expect(rows[0]!.current).toBe('§ 4. Alt.')
+    expect(rows[0]!.gld).toBe('§ 4.')
+  })
+
+  // A provision the draft leaves untouched reads identically in both columns.
+  // Treating identical text as a heading swallowed the law itself.
+  it('does not mistake an unchanged provision for a heading', () => {
+    const rows = parseAnnexPdf([page([{ y: 700, left: '§ 9. (1) Unverändert.', right: '§ 9. (1) Unverändert.' }])])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.change).toBe('unchanged')
+    expect(rows[0]!.current).toBe('§ 9. (1) Unverändert.')
+  })
+
+  // "Art. 31 EUStA-VO" is a citation; "Artikel 10. (1) Bundessache ist …" is a
+  // provision of a law that is itself organised in Artikel (B-VG).
+  it('does not treat a citation or an Artikel-numbered provision as a boundary', () => {
+    for (const text of ['Art. 31 EUStA-VO', 'Artikel 10. (1) Bundessache ist die Gesetzgebung.', 'Artikel 29b der Bilanz-Richtlinie']) {
+      const rows = parseAnnexPdf([{ width: PAGE_WIDTH, items: [spanning(700, text), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items] }])
+      expect(rows.filter((r) => r.kind === 'article'), text).toHaveLength(0)
+    }
   })
 })

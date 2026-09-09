@@ -70,6 +70,9 @@ async function pagesOf(bytes: Uint8Array): Promise<AnnexPage[]> {
  * - **Abschnitt and Hauptstück headings**, which sit above a § and belong to
  *   no § in RIS. `annexPdf.ts` deliberately keeps headings inline.
  */
+/** Below this many comparable words a row says nothing about the parse. */
+const MIN_PROSE_TOKENS = 15
+
 const ELISION_RE = /\((\d+[a-z]*)\)(?:\s*(?:bis|und|,)\s*\(?(\d+[a-z]*)\)?)*\s*(?:\.\.\.|…)/g
 const STRUCTURE_RE = /\b(?:inhaltsverzeichnis|abschnitt|hauptstück|teil|anlage|anhang)\b/gi
 
@@ -93,6 +96,10 @@ interface DraftResult {
   worst: string[]
   /** Every row's coverage ratio, for the distribution — a mean hides the shape */
   ratios: number[]
+  /** Rows carrying enough prose to be evidence either way, and their clean count */
+  substantial: number
+  substantialClean: number
+  tooShort: number
 }
 
 async function verify(doc: any): Promise<DraftResult | null> {
@@ -100,7 +107,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const begut = meta?.Bundesrecht?.Begut
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const blank = (note: string): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [] })
+  const blank = (note: string): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], substantial: 0, substantialClean: 0, tooShort: 0 })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -131,9 +138,12 @@ async function verify(doc: any): Promise<DraftResult | null> {
   let clean = 0
   const worst: string[] = []
   const ratios: number[] = []
+  let substantial = 0
+  let substantialClean = 0
+  let tooShort = 0
   for (const row of rows) {
     if (row.kind !== 'pair' || !row.gld || !row.current) continue
-    const id = /(\d+[a-z]*)/.exec(row.gld)?.[1]
+    const id = /(\d+[a-z]*|[IVXL]+)/.exec(row.gld)?.[1]
     if (!id) continue
     // RIS prints an Anlage as "Anl. 1", never as "§ 1" — looking it up among
     // the paragraphs compared a schedule against an unrelated provision.
@@ -150,16 +160,31 @@ async function verify(doc: any): Promise<DraftResult | null> {
     const missing = want.filter((w) => !have.has(w))
     const ratio = 1 - missing.length / want.length
     ratios.push(ratio)
+    // A row that is a heading plus "(1) bis (3) …" carries almost no prose:
+    // the annex deliberately shows nothing of the provision, and RIS files the
+    // group heading above it elsewhere. Such a row is not evidence about the
+    // parse in either direction, so it is counted and set aside rather than
+    // scored (2026-09-09).
+    if (want.length >= MIN_PROSE_TOKENS) {
+      substantial++
+      if (ratio >= 0.99) substantialClean++
+    } else tooShort++
     if (ratio >= 0.99) clean++
     else worst.push(`${row.gld} ${(ratio * 100).toFixed(0)} % (fehlt: ${missing.slice(0, 6).join(' ')})`)
+    if (dumpWorst && ratio < 0.5) {
+      console.log(`\n    ### ${cite} ${row.gld} — ${(ratio * 100).toFixed(0)} % gedeckt`)
+      console.log(`      SPALTE: ${row.current.slice(0, 230)}`)
+      console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
+    }
   }
-  return { cite, source: 'pdf', checked, clean, note: null, worst, ratios }
+  return { cite, source: 'pdf', checked, clean, note: null, worst, ratios, substantial, substantialClean, tooShort }
 }
 
 // --- CLI ----------------------------------------------------------------------
 const gp = process.argv.find((a) => a.startsWith('--gp='))?.slice('--gp='.length) ?? 'XXVIII'
 const limit = Number(process.argv.find((a) => a.startsWith('--limit='))?.slice('--limit='.length) ?? 400)
 const only = process.argv.find((a) => a.startsWith('--only='))?.slice('--only='.length) ?? null
+const dumpWorst = process.argv.includes('--dump-worst')
 
 const docs: any[] = []
 for (let page = 1; page <= 4 && docs.length < limit; page++) {
@@ -198,6 +223,11 @@ console.log(`Gerasterte Beilagen mit PDF-Textebene, gegen den geltenden Text im 
 console.log(`  auswertbare Entwürfe   : ${scored.length} von ${results.length} mit gerasterter Beilage`)
 console.log(`  geprüfte Paragraphen   : ${checked}`)
 console.log(`  ≥99 % im RIS gedeckt   : ${clean} (${checked ? ((clean / checked) * 100).toFixed(1) : '—'} %)`)
+const sub = scored.reduce((n, r) => n + r.substantial, 0)
+const subClean = scored.reduce((n, r) => n + r.substantialClean, 0)
+console.log(`  davon mit echtem Fließtext (≥ ${MIN_PROSE_TOKENS} Wörter): ${sub}`)
+console.log(`    ≥99 % gedeckt        : ${subClean} (${sub ? ((subClean / sub) * 100).toFixed(1) : '—'} %)`)
+console.log(`  zu kurz zum Prüfen (Überschrift/Auslassung): ${scored.reduce((n, r) => n + r.tooShort, 0)}`)
 const all = scored.flatMap((r) => r.ratios).sort((a, b) => a - b)
 if (all.length) {
   const q = (p: number) => all[Math.min(all.length - 1, Math.floor(all.length * p))]!
