@@ -160,6 +160,72 @@ describe('parseKonsParagraph', () => {
     expect(plainText(node)).not.toContain('Bundesrecht konsolidiert')
     expect(renderNode(node)).toContain('§ 9. (1) Sofortlotterien')
   })
+
+  // Every Inkrafttretensbestimmung is built this way: the designation, then a
+  // bare list, with no numbered Absatz anywhere. The Ziffern hung off an
+  // Absatz that did not exist and were dropped on the floor — § 26c of one
+  // law is 48.010 characters of XML and 149 Ziffern, and it parsed to the
+  // empty string (2026-09-09). That is the text the engine applies
+  // instructions to, so it was never only a gap in a measurement.
+  it('keeps the Ziffern of a § that has no numbered Absatz', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 26c</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 26c.</gldsym></absatz>
+      <liste><aufzaehlung>
+        <listelem ct="text"><symbol stellen="2">1.</symbol>§ 11 ist erstmals 2005 anzuwenden.</listelem>
+        <listelem ct="text"><symbol stellen="2">2.</symbol>§ 22 tritt mit 1. Jänner 2006 in Kraft.</listelem>
+      </aufzaehlung></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(node.children[0]!.children.map((c) => c.id)).toEqual(['1', '2'])
+    expect(plainText(node)).toContain('§ 22 tritt mit 1. Jänner 2006 in Kraft.')
+  })
+
+  // An Anlage is a bare list with no <absatz> at all, so the § node was never
+  // created and the whole document parsed to null (6.521 characters of one
+  // law's Anlage 1 became nothing).
+  it('reads an Anlage that has no Absatz at all', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">Anlage 1</absatz>
+      <ueberschrift typ="anlage" ct="text">Anlage 1</ueberschrift>
+      <liste><aufzaehlung><listelem ct="text"><symbol stellen="2">1.</symbol>Verteilerleitungen der Netzebene 1</listelem></aufzaehlung></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(node.id).toBe('1')
+    expect(plainText(node)).toContain('Verteilerleitungen der Netzebene 1')
+  })
+
+  // RIS ships the headings of a group of §§ inside each § document: § 12 of
+  // one law carries six of them above its own. They are not the §'s text — a
+  // Novelle replacing the § does not replace them — but the ressort's
+  // comparison prints them over the § and something has to recognise them.
+  it('separates the headings above a § from the §’s own', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 12</absatz>
+      <ueberschrift typ="g1" ct="text">3. Teil</ueberschrift>
+      <ueberschrift typ="g2" ct="text">Der Betrieb von Netzen</ueberschrift>
+      <ueberschrift typ="g1min" ct="text">1. Hauptstück</ueberschrift>
+      <ueberschrift typ="para" ct="text">Marktgebiete</ueberschrift>
+      <absatz typ="abs" ct="text"><gldsym>§ 12.</gldsym> (1) Das Leitungsnetz besteht aus Marktgebieten.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(node.heading).toBe('Marktgebiete')
+    expect(node.context).toEqual(['3. Teil', 'Der Betrieb von Netzen', '1. Hauptstück'])
+    expect(plainText(node)).not.toContain('Hauptstück')
+  })
+
+  // A § without its own heading used to take the name of the Abschnitt above
+  // it — a wrong name on someone's paragraph, which is worse than none.
+  it('does not give a § the name of the Abschnitt above it', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 4</absatz>
+      <ueberschrift typ="g1" ct="text">2. Abschnitt</ueberschrift>
+      <absatz typ="abs" ct="text"><gldsym>§ 4.</gldsym> (1) Der Antrag ist schriftlich zu stellen.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(node.heading).toBeNull()
+    expect(node.context).toEqual(['2. Abschnitt'])
+  })
 })
 
 describe('a run of units replaced by a different number of units', () => {
