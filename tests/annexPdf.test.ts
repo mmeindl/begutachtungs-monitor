@@ -1,0 +1,145 @@
+import { describe, expect, it } from 'vitest'
+import { linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annexPdf'
+
+/**
+ * The annex is a two-column table. These fixtures place text runs the way a
+ * Word-generated PDF does — no spaces between runs, position carries the
+ * meaning — so the geometry is exercised without shipping a binary.
+ */
+const PAGE_WIDTH = 842
+const LEFT_X = 60
+const RIGHT_X = 470
+const CHAR = 5
+
+/** A line of runs in one column, at baseline `y`. */
+function run(x: number, y: number, text: string): AnnexItem {
+  return { x, y, width: text.length * CHAR, text }
+}
+
+function page(lines: { y: number; left?: string; right?: string; spanning?: string }[]): AnnexPage {
+  const items: AnnexItem[] = []
+  for (const l of lines) {
+    if (l.left) items.push(run(LEFT_X, l.y, l.left))
+    if (l.right) items.push(run(RIGHT_X, l.y, l.right))
+    if (l.spanning) items.push(run(LEFT_X, l.y, l.spanning))
+  }
+  return { width: PAGE_WIDTH, items }
+}
+
+describe('linesFromPage', () => {
+  it('splits the two columns at the midline', () => {
+    const lines = linesFromPage(page([{ y: 700, left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' }]))
+    expect(lines[0]!.left).toBe('Geltende Fassung')
+    expect(lines[0]!.right).toBe('Vorgeschlagene Fassung')
+  })
+
+  // A centred title starts left of the midline and crosses it. Assigning runs
+  // by their left edge filed "Textgegenüberstellung" as current law.
+  it('treats a run that crosses the midline as spanning both columns', () => {
+    const wide: AnnexPage = { width: PAGE_WIDTH, items: [{ x: 300, y: 700, width: 260, text: 'Artikel 1' }] }
+    expect(linesFromPage(wide)[0]!.spanning).toBe('Artikel 1')
+  })
+
+  // A PDF moves the cursor instead of storing spaces, so the runs of one line
+  // have to be re-spaced from their geometry — otherwise the text arrives as
+  // "EinverfassungsgefährdenderAngriff".
+  it('restores the spaces a PDF does not store', () => {
+    const items: AnnexItem[] = [
+      { x: 60, y: 700, width: 20, text: 'Ein' },
+      { x: 86, y: 700, width: 55, text: 'verfassungsgefährdender' },
+      { x: 147, y: 700, width: 35, text: 'Angriff' },
+    ]
+    expect(linesFromPage({ width: PAGE_WIDTH, items })[0]!.left).toBe('Ein verfassungsgefährdender Angriff')
+  })
+
+  it('does not insert a space inside a kerned word', () => {
+    const items: AnnexItem[] = [
+      { x: 60, y: 700, width: 20, text: 'Ver' },
+      { x: 80.2, y: 700, width: 25, text: 'fahren' },
+    ]
+    expect(linesFromPage({ width: PAGE_WIDTH, items })[0]!.left).toBe('Verfahren')
+  })
+})
+
+describe('parseAnnexPdf', () => {
+  it('pairs a changed paragraph across the two columns', () => {
+    const rows = parseAnnexPdf([page([
+      { y: 700, left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' },
+      { y: 660, left: '§ 5. (1) Die Behörde entscheidet.', right: '§ 5. (1) Das Gericht entscheidet.' },
+    ])])
+    const pair = rows.find((r) => r.gld === '§ 5.')!
+    expect(pair.change).toBe('changed')
+    expect(pair.current).toBe('§ 5. (1) Die Behörde entscheidet.')
+    expect(pair.proposed).toBe('§ 5. (1) Das Gericht entscheidet.')
+    expect(pair.segments).not.toBeNull()
+  })
+
+  it('drops the column headers and the page number', () => {
+    const rows = parseAnnexPdf([page([
+      { y: 760, right: '3 von 18' },
+      { y: 700, left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' },
+      { y: 660, left: '§ 5. Text.', right: '§ 5. Text.' },
+    ])])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.gld).toBe('§ 5.')
+  })
+
+  // The columns do not advance together. Where the draft inserts a §, the
+  // proposed column runs on while the current column is blank — a single
+  // shared cursor dragged the next heading of the current column into the
+  // inserted § (8/ME: "Information Betroffener" became the standing text of
+  // the new § 15c).
+  it('does not borrow the other column’s text for an inserted paragraph', () => {
+    const rows = parseAnnexPdf([page([
+      { y: 700, left: '§ 15. (1) Alt.', right: '§ 15. (1) Alt.' },
+      { y: 660, right: '§ 15c. (1) Ganz neu.' },
+      { y: 620, left: 'Information Betroffener', right: 'Information Betroffener' },
+      { y: 600, left: '§ 16. (1) Bestehend.', right: '§ 16. (1) Bestehend.' },
+    ])])
+    const inserted = rows.find((r) => r.gld === '§ 15c.')!
+    expect(inserted.change).toBe('inserted')
+    expect(inserted.current).toBe('')
+    // The heading sits above the § it names, in its own column.
+    expect(rows.find((r) => r.gld === '§ 16.')!.current).toContain('Information Betroffener')
+  })
+
+  it('keeps a repealed paragraph that appears only on the left', () => {
+    const rows = parseAnnexPdf([page([
+      { y: 700, left: '§ 7. (1) Wird aufgehoben.', right: '§ 8. (1) Bleibt.' },
+    ])])
+    const removed = rows.find((r) => r.gld === '§ 7.')!
+    expect(removed.change).toBe('removed')
+    expect(removed.proposed).toBe('')
+  })
+
+  // "§§ 242, 246 oder 247a StGB" is a citation inside running text. Treating
+  // every line-initial § as a row boundary cut sentences in half.
+  it('does not start a row on a citation', () => {
+    const rows = parseAnnexPdf([page([
+      { y: 700, left: '§ 5. (1) Strafbar nach', right: '§ 5. (1) Strafbar nach' },
+      { y: 680, left: '§§ 242, 246 oder 247a StGB.', right: '§§ 242, 246 oder 247b StGB.' },
+    ])])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.current).toBe('§ 5. (1) Strafbar nach §§ 242, 246 oder 247a StGB.')
+  })
+
+  it('opens a new section at an Artikel heading', () => {
+    const rows = parseAnnexPdf([{
+      width: PAGE_WIDTH,
+      items: [
+        { x: 300, y: 700, width: 260, text: 'Artikel 2' },
+        ...page([{ y: 660, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items,
+      ],
+    }])
+    expect(rows[0]).toMatchObject({ kind: 'article', heading: 'Artikel 2' })
+    expect(rows[1]!.gld).toBe('§ 1.')
+  })
+
+  it('marks the ressort’s elision as elided rather than as a change', () => {
+    const rows = parseAnnexPdf([page([
+      { y: 700, left: '§ 5. (1) und (2) …', right: '§ 5. (1) und (2) …' },
+    ])])
+    expect(rows[0]!.elided).toBe(true)
+    expect(rows[0]!.change).toBe('unchanged')
+  })
+})
