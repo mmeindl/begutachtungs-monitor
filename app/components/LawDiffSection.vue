@@ -7,6 +7,7 @@
  * documents, and the page must not wait for that.
  */
 import type { LawDiffResponse, LawDiffUnit, ParagraphTitlesResponse } from '#shared/types'
+import { unitKey } from '#shared/utils/diffKey'
 import { droppedLawsNote, mergedLawsNote } from '#shared/utils/lawPackage'
 
 const props = defineProps<{ gp: string; inr: number }>()
@@ -33,7 +34,7 @@ const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(() => `/api
  * official text; neither is generated, so neither needs a marking.
  */
 function unitName(u: LawDiffUnit): string | null {
-  return u.quotedHeading ?? paraTitles.value?.titles?.[`${u.article ?? ''}|${u.id}`] ?? null
+  return u.quotedHeading ?? paraTitles.value?.titles?.[unitKey(u)] ?? null
 }
 
 /** Whether any name on screen was looked up, which decides the source note. */
@@ -118,7 +119,7 @@ const filterOptions = computed<{ value: Filter; label: string; count: number; op
 })
 
 function key(u: LawDiffUnit): string {
-  return `${u.article ?? ''}|${u.id}|${u.change}`
+  return unitKey(u)
 }
 
 const visibleUnits = computed(() => {

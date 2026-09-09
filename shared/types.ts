@@ -380,7 +380,9 @@ export interface LawDiffSegment {
  * GET /api/consultations/:gp/:inr/paragraphtitel — the heading of each § a
  * change amends, looked up in the standing law (docs/architecture.md §12.11).
  *
- * Keyed `${article}|${unitId}` so it merges straight onto the diff units. A
+ * Keyed by `unitKey` (shared/utils/diffKey.ts) so it merges straight onto the
+ * diff units — `article|id|change`, because a Regierungsvorlage can carry a
+ * removed and an inserted unit with the same Ziffer number. A
  * missing key means no name could be resolved with certainty, which is the
  * normal case for a Stammgesetz and for any § the lookup could not verify.
  */

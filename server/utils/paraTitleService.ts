@@ -12,15 +12,22 @@
  * lookup must not delay the comparison or take it down with it. The section
  * merges the names in when they arrive.
  *
+ * It nevertheless keys off the **diff's own units**, not off a fresh parse of
+ * the draft. `LawDiffUnit.id` is the Regierungsvorlage's numbering, and an RV
+ * routinely inserts and renumbers instructions — keying by the draft's Ziffer
+ * numbers put a real § heading onto the wrong change wherever the two
+ * diverged (SNG 8/ME, Z 5, caught on screen 2026-09-09).
+ *
  * Two rules, both the same rule: **a wrong name is worse than none.** The law
  * is identified by the Stammnorm of its Promulgationsklausel, not by title
  * matching, and `resolveLawByBgbl` returns nothing when the match is
  * ambiguous. Anything unresolved is simply absent from the map.
  */
 import type { ParagraphTitlesResponse } from '#shared/types'
-import { fetchLawHtml, findDiffSources } from './lawDiffService'
-import { parseParliamentHtml, parseRisXml, segmentUnits, type TextBlock } from './lawText'
+import { fetchLawHtml, findDiffSources, getLawDiff } from './lawDiffService'
+import { parseParliamentHtml, parseRisXml, type TextBlock } from './lawText'
 import { promulgationByArticle } from './lawTitles'
+import { unitKey } from '#shared/utils/diffKey'
 import { addressedParagraph } from './lawTitles'
 import { getConsultationsForGp, getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
@@ -46,13 +53,21 @@ const resolveLaw = defineCachedFunction(
   { name: 'kons-law-by-bgbl', getKey: (organ: string, nummer: string, date: string) => `${organ}|${nummer}|${date}`, maxAge: TTL_S, swr: false },
 )
 
-/** The draft's law text as blocks: Parliament HTML where it exists, else the RIS XML. */
-async function draftBlocks(gp: string, inr: number, detail: Awaited<ReturnType<typeof getGegenstand>>): Promise<TextBlock[]> {
+/**
+ * Every document that can carry a Promulgationsklausel, draft first and
+ * Regierungsvorlage last so the RV's wording wins on merge.
+ */
+async function clauseBlocks(gp: string, inr: number, detail: Awaited<ReturnType<typeof getGegenstand>>): Promise<TextBlock[][]> {
   const sources = findDiffSources(detail.content ?? {})
-  if (sources.me) return parseParliamentHtml(await fetchLawHtml(sources.me.url))
-  const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
-  const xml = row?.risDocument?.xml
-  return xml ? parseRisXml(await fetchLawHtml(xml)) : []
+  const out: TextBlock[][] = []
+  if (sources.me) out.push(parseParliamentHtml(await fetchLawHtml(sources.me.url)))
+  else {
+    const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
+    const xml = row?.risDocument?.xml
+    if (xml) out.push(parseRisXml(await fetchLawHtml(xml)))
+  }
+  if (sources.rv) out.push(parseParliamentHtml(await fetchLawHtml(sources.rv.url)))
+  return out
 }
 
 export const getParagraphTitles = defineCachedFunction(
@@ -66,27 +81,34 @@ export const getParagraphTitles = defineCachedFunction(
     const empty: ParagraphTitlesResponse = { gp, inr, asOf, titles: {} }
     if (!asOf) return empty
 
-    const blocks = await draftBlocks(gp, inr, detail)
-    if (blocks.length === 0) return empty
-
-    const clauses = promulgationByArticle(blocks)
+    // Clauses come from whichever documents exist; the RV wins where both
+    // name an Artikel, because the diff's articles are the RV's.
+    const clauses = new Map<string | null, ReturnType<typeof promulgationByArticle> extends Map<infer _K, infer V> ? V : never>()
+    for (const blocks of await clauseBlocks(gp, inr, detail)) {
+      for (const [article, bgbl] of promulgationByArticle(blocks)) clauses.set(article, bgbl)
+    }
     if (clauses.size === 0) return empty
 
-    // Which § each instruction addresses, grouped by the law it belongs to.
+    const diff = await getLawDiff(gp, inr).catch(() => null)
+    if (!diff?.available) return empty
+
+    // Which § each change addresses, grouped by the law its Artikel amends.
     const wanted = new Map<string | null, Map<string, string[]>>()
-    let planned = 0
-    for (const unit of segmentUnits(blocks)) {
-      const first = unit.blocks[0]
-      if (!first || first.kind !== 'novao') continue
+    for (const unit of diff.units) {
       if (!clauses.has(unit.article)) continue
-      const para = addressedParagraph(first.text)
+      // `heading` is the instruction line cut to about 100 characters for
+      // display, which silently loses the longer instructions — and a closing
+      // quotation mark with them, so the parse fails rather than degrades.
+      // The unit's own text is the untruncated original.
+      const line = unit.rvText ?? unit.meText ?? unit.heading
+      if (!line) continue
+      const para = addressedParagraph(line)
       if (!para) continue
       const byPara = wanted.get(unit.article) ?? new Map<string, string[]>()
       const keys = byPara.get(para) ?? []
-      keys.push(`${unit.article ?? ''}|${unit.id}`)
+      keys.push(unitKey(unit))
       byPara.set(para, keys)
       wanted.set(unit.article, byPara)
-      planned++
     }
 
     const titles: Record<string, string> = {}
