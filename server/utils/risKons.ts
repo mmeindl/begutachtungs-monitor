@@ -16,7 +16,7 @@
  *   it stood on any given day.
  */
 import { parseKonsParagraph, type LawNode } from './lawStructure'
-import { sameBgbl, type BgblCitation } from './lawTitles'
+import { sameBgbl, lawNameScore, type BgblCitation } from './lawTitles'
 
 export const RIS_KONS_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
@@ -257,11 +257,25 @@ export interface KonsLawAtDate {
  * (BGBl. III). It also matches versions whose *amendment* carried that
  * number, which the same check drops.
  *
+ * That still leaves the commonest ambiguity, because **one BGBl regularly
+ * creates several laws**: 532/1993 promulgated the Bankwesengesetz and the
+ * Bausparkassengesetz, 107/2017 the Börsegesetz 2018, the E-Geldgesetz 2010
+ * and the Alternativfinanzierungsgesetz, 663/1994 the Umsatzsteuergesetz and
+ * its Binnenmarkt-Anhang. The Stammnorm pair cannot separate those, and 90 of
+ * the 342 laws in this period's collective drafts failed on exactly that —
+ * with the right citation (measured 2026-09-09).
+ *
+ * `name` resolves it where the caller knows which law it means: the amending
+ * Artikel says "Änderung des Bankwesengesetzes", and RIS carries the Kurztitel
+ * of every law it returns. The name has to fit one candidate clearly better
+ * than every other, so this disambiguates on evidence and still refuses when
+ * there is none.
+ *
  * Returns null unless exactly one law survives. An ambiguous or missing
  * match must yield no heading rather than a heading from the wrong law:
  * a wrong name on someone's paragraph is worse than no name.
  */
-export async function resolveLawByBgbl(bgbl: BgblCitation, date: string): Promise<KonsLawAtDate | null> {
+export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: string | null): Promise<KonsLawAtDate | null> {
   const byLaw = new Map<string, { kurztitel: string; paragraphs: Record<string, KonsParagraphRef> }>()
   let seen = 0
   for (let page = 1; page <= 20; page++) {
@@ -283,9 +297,33 @@ export async function resolveLawByBgbl(bgbl: BgblCitation, date: string): Promis
     seen += refs.length
     if (seen >= hits || refs.length === 0) break
   }
-  if (byLaw.size !== 1) return null
-  const [gesetzesnummer, entry] = [...byLaw][0]!
+  if (byLaw.size === 0) return null
+  const chosen = byLaw.size === 1 ? [...byLaw][0]! : (name ? pickByName(byLaw, name) : null)
+  if (!chosen) return null
+  const [gesetzesnummer, entry] = chosen
   return { gesetzesnummer, kurztitel: entry.kurztitel, paragraphs: entry.paragraphs }
+}
+
+/**
+ * Of several laws born from the same BGBl, the one the caller named — or none.
+ *
+ * "Clearly better than every other" is the whole test: two laws of one BGBl
+ * are often near-namesakes ("Umsatzsteuergesetz 1994" and "Umsatzsteuergesetz
+ * 1994 – Anhang (Binnenmarkt)"), and a tie has to end in a refusal rather
+ * than in whichever RIS happened to return first.
+ */
+function pickByName<T extends { kurztitel: string }>(byLaw: Map<string, T>, name: string): [string, T] | null {
+  let best: { entry: [string, T]; score: number } | null = null
+  let runnerUp = 0
+  for (const candidate of byLaw) {
+    const score = lawNameScore(name, candidate[1].kurztitel)
+    if (!best || score > best.score) {
+      runnerUp = best?.score ?? 0
+      best = { entry: candidate, score }
+    } else if (score > runnerUp) runnerUp = score
+  }
+  if (!best || best.score < 0.6 || best.score <= runnerUp) return null
+  return best.entry
 }
 
 /** The § heading ("Sofortlotterien"), or null when the document has none. */

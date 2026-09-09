@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
+import { addressedParagraph, draftArticles, lawNameScore, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
 import { parseRisXml } from '../server/utils/lawText'
 import { unitKey } from '../shared/utils/diffKey'
 
@@ -119,5 +119,77 @@ describe('stammnormOf', () => {
   it('refuses when the law was not promulgated in a BGBl at all', () => {
     expect(stammnormOf('Das Unternehmensgesetzbuch - UGB, dRGBl. S. 219/1897, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 6/2026, wird wie folgt geändert:'))
       .toBeNull()
+  })
+})
+
+describe('draftArticles', () => {
+  it('lists a package’s Artikel in printed order with number, title and Stammnorm', () => {
+    const xml = doc(
+      article('Artikel 1', 'Änderung des Aktiengesetzes', 'Das Aktiengesetz, BGBl. Nr. 98/1965, wird wie folgt geändert:', ['§ 1 lautet:']) +
+      article('Artikel 2', 'Änderung des GmbH-Gesetzes', 'Das GmbH-Gesetz, RGBl. Nr. 58/1906, wird wie folgt geändert:', ['§ 2 lautet:']),
+    )
+    const articles = draftArticles(parseRisXml(xml))
+    expect(articles.map((a) => [a.index, a.numeral, a.title, a.amends, a.bgbl?.nummer ?? null])).toEqual([
+      [0, '1', 'Änderung des Aktiengesetzes', true, '98/1965'],
+      // A Stammnorm that is no BGBl leaves nothing to resolve — and the
+      // Artikel still amends a law, which `amends` says and `bgbl` cannot.
+      [1, '2', 'Änderung des GmbH-Gesetzes', true, null],
+    ])
+  })
+
+  it('keys an Artikel exactly as promulgationByArticle does', () => {
+    const xml = doc(article('Artikel 3', 'Änderung des Bankwesengesetzes', 'Das Bankwesengesetz, BGBl. Nr. 532/1993, wird wie folgt geändert:', ['§ 1 lautet:']))
+    const [first] = draftArticles(parseRisXml(xml))
+    expect(first!.key).toBe('Änderung des Bankwesengesetzes')
+    expect([...promulgationByArticle(parseRisXml(xml)).keys()]).toEqual([first!.key])
+  })
+
+  // A draft that creates a law has no Promulgationsklausel; one that amends
+  // several has one per Artikel. Telling them apart is what decides whether an
+  // unmarked annex may be given to a single law.
+  it('marks an Artikel that creates law rather than changing it', () => {
+    const xml = doc(
+      `<ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">Bundesgesetz über die Bundesstaatsanwaltschaft</ueberschrift><absatz typ="abs">(1) Diese Behörde wird errichtet.</absatz>` +
+      article('Artikel 2', 'Änderung des Strafgesetzbuches', 'Das Strafgesetzbuch, BGBl. Nr. 60/1974, wird wie folgt geändert:', ['§ 1 lautet:']),
+    )
+    const articles = draftArticles(parseRisXml(xml))
+    expect(articles.map((a) => a.amends)).toEqual([false, true])
+  })
+
+  // "(Verfassungsbestimmung)" stands where the law's name would and is not
+  // one. The key keeps it — `segmentUnits` does — but nothing may be matched
+  // against it, because the annex never prints it as a law title.
+  it('does not read a qualifier as the law’s name', () => {
+    const xml = doc(
+      `<ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">(Verfassungsbestimmung)</ueberschrift>` +
+      `<ueberschrift typ="g2">Änderung des Verfassungsgerichtshofgesetzes 1953</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Das VfGG, BGBl. Nr. 85/1953, wird wie folgt geändert:</absatz>`,
+    )
+    const [first] = draftArticles(parseRisXml(xml))
+    expect(first!.key).toBe('(Verfassungsbestimmung)')
+    expect(first!.title).toBe('Änderung des Verfassungsgerichtshofgesetzes 1953')
+  })
+
+  it('gives a draft without Artikel one entry, so callers see one shape', () => {
+    const xml = doc(
+      `<ueberschrift typ="titel">Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Das Bäderhygienegesetz, BGBl. Nr. 254/1976, wird wie folgt geändert:</absatz>`,
+    )
+    expect(draftArticles(parseRisXml(xml))).toEqual([
+      { index: 0, number: null, numeral: null, title: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', key: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', amends: true, bgbl: { organ: 'BGBl. Nr.', nummer: '254/1976' } },
+    ])
+  })
+})
+
+describe('lawNameScore', () => {
+  // One BGBl regularly creates several laws: 532/1993 the Bankwesengesetz and
+  // the Bausparkassengesetz, 663/1994 the Umsatzsteuergesetz and its Anhang.
+  // The amending Artikel's own title is what separates them.
+  it('separates the laws one BGBl created', () => {
+    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bankwesengesetz')).toBe(1)
+    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bausparkassengesetz')).toBe(0)
+    expect(lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994')).toBeGreaterThan(
+      lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994 – Anhang (Binnenmarkt)'),
+    )
   })
 })

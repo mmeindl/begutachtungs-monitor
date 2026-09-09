@@ -31,6 +31,14 @@ export type ComparisonChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
 export interface ComparisonRow {
   /** An Artikel heading spanning both columns, or a paired row of law text */
   kind: 'article' | 'pair'
+  /**
+   * Which law of the package the row belongs to — `segmentUnits`' article key,
+   * so it joins onto the diff units and onto `promulgationByArticle`. Null
+   * when the draft amends one law only, and null when the annex does not mark
+   * its boundaries at all: § 5 of the second law is a different provision
+   * from § 5 of the first, and guessing which is worse than not saying.
+   */
+  law: string | null
   /** Text of an article row */
   heading: string | null
   /** "§ 5." when the row opens a paragraph */
@@ -201,7 +209,7 @@ export function parseTextComparison(xml: string): ComparisonRow[] {
     const firstFilled = cells.find((c) => cellText(c.html) !== '') ?? cells[0]!
     if (cells.length === 1 || firstFilled.span >= span.left + span.right) {
       const heading = cellText(firstFilled.html)
-      if (heading) rows.push({ kind: 'article', heading, gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+      if (heading) rows.push({ kind: 'article', law: null, heading, gld: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
       continue
     }
 
@@ -232,6 +240,7 @@ export function parseTextComparison(xml: string): ComparisonRow[] {
     const segments = change === 'changed' && !elided ? diffTokens(current, proposed).segments : null
     rows.push({
       kind: 'pair',
+      law: null,
       heading: null,
       gld: gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null,
       current,

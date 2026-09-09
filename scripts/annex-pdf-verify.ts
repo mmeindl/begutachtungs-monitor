@@ -13,10 +13,13 @@
  * to 88,9 % on one and the same document (8/ME, 2026-09-09) — the measurement
  * was then saying more about the argument than about the parser.
  *
- * Multi-law packages are skipped, not guessed: two thirds of drafts amend
- * several laws in one document, and attributing a § to the wrong one of them
- * would score the parser against unrelated text. That subset needs the annex's
- * Artikel boundaries first.
+ * Multi-law packages are scored per law. The annex's Artikel headings are
+ * cross-checked against the draft's own Artikel list (`annexBoundaries.ts`),
+ * each § is looked up in the Stammnorm of *its* law, and a package whose
+ * boundaries do not survive that check is refused rather than guessed — in
+ * the multi-law annexes 15,1 % of § designations recur in another law of the
+ * same package, so a misplaced boundary scores the parser against unrelated
+ * text and would flatter or damn it at random.
  *
  * Usage:  npx vite-node scripts/annex-pdf-verify.ts --gp=XXVIII [--limit=N] [--only=8]
  */
@@ -24,8 +27,8 @@ import { getDocumentProxy } from 'unpdf'
 import { parseAnnexPdf, type AnnexPage } from '../server/utils/annexPdf'
 import { plainText } from '../server/utils/lawStructure'
 import { parseRisXml } from '../server/utils/lawText'
-import { promulgationByArticle } from '../server/utils/lawTitles'
-import { fetchParagraphTree, getText, resolveLawByBgbl } from '../server/utils/risKons'
+import { draftArticles, type DraftArticle } from '../server/utils/lawTitles'
+import { fetchParagraphTree, getText, resolveLawByBgbl, type KonsLawAtDate } from '../server/utils/risKons'
 import { isScanned } from '../server/utils/textComparison'
 import { installFetchCache } from './harness-cache'
 
@@ -100,6 +103,14 @@ interface DraftResult {
   substantial: number
   substantialClean: number
   tooShort: number
+  /** Amending Artikel in the draft — 1 for a plain Novelle, N for a package */
+  laws: number
+  /** Rows the boundary check could attribute to a law, and rows it could not */
+  attributed: number
+  unattributed: number
+  /** Why a row carries no law: the annex left it outside every boundary, or RIS has no such law */
+  noLaw: number
+  unresolvedLaw: number
 }
 
 async function verify(doc: any): Promise<DraftResult | null> {
@@ -107,7 +118,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const begut = meta?.Bundesrecht?.Begut
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const blank = (note: string): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], substantial: 0, substantialClean: 0, tooShort: 0 })
+  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0 })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -123,16 +134,28 @@ async function verify(doc: any): Promise<DraftResult | null> {
 
   const mainXml = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
   if (!mainXml) return blank('Entwurf ohne XML')
-  const articles = promulgationByArticle(parseRisXml(await getText(mainXml)))
-  if (articles.size === 0) return blank('keine Promulgationsklausel — Stammgesetz oder unlesbar')
-  if (articles.size > 1) return blank(`Sammelgesetz (${articles.size} Gesetze) — Artikelgrenzen nötig`)
-
-  const bgbl = [...articles.values()][0]!
-  const law = await resolveLawByBgbl(bgbl, beginn)
-  if (!law) return blank(`Stammnorm ${bgbl.organ} ${bgbl.nummer} nicht auflösbar`)
+  const articles = draftArticles(parseRisXml(await getText(mainXml)))
+  const amending = articles.filter((a) => a.amends)
+  if (amending.length === 0) return blank('keine Promulgationsklausel — Stammgesetz oder unlesbar')
 
   const bytes = new Uint8Array(await (await fetch(pdfUrl, { headers: { 'User-Agent': UA['User-Agent'] } })).arrayBuffer())
-  const rows = parseAnnexPdf(await pagesOf(bytes))
+  const parsed = parseAnnexPdf(await pagesOf(bytes), articles)
+  if (parsed.refusal) return blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length)
+
+  // One RIS lookup per law of the package, not per row. A law whose Stammnorm
+  // is not a BGBl at all (the UGB is "dRGBl. S. 219/1897") has nothing to
+  // resolve — its rows are set aside, not scored against a wrong law.
+  const byKey = new Map<string | null, DraftArticle>(articles.map((a) => [a.key, a]))
+  const resolved = new Map<string | null, KonsLawAtDate | null>()
+  const lawOf = async (key: string | null): Promise<KonsLawAtDate | null> => {
+    if (resolved.has(key)) return resolved.get(key)!
+    const article = key === null ? (amending.length === 1 ? amending[0]! : null) : byKey.get(key)
+    // The Artikel's own title is what tells the Bankwesengesetz from the
+    // Bausparkassengesetz when both were promulgated by BGBl. Nr. 532/1993.
+    const law = article?.bgbl ? await resolveLawByBgbl(article.bgbl, beginn, article.title).catch(() => null) : null
+    resolved.set(key, law)
+    return law
+  }
 
   let checked = 0
   let clean = 0
@@ -141,10 +164,22 @@ async function verify(doc: any): Promise<DraftResult | null> {
   let substantial = 0
   let substantialClean = 0
   let tooShort = 0
-  for (const row of rows) {
+  let attributed = 0
+  let unattributed = 0
+  let noLaw = 0
+  let unresolvedLaw = 0
+  for (const row of parsed.rows) {
     if (row.kind !== 'pair' || !row.gld || !row.current) continue
     const id = /(\d+[a-z]*|[IVXL]+)/.exec(row.gld)?.[1]
     if (!id) continue
+    const law = await lawOf(row.law)
+    if (!law) {
+      unattributed++
+      if (row.law === null) noLaw++
+      else unresolvedLaw++
+      continue
+    }
+    attributed++
     // RIS prints an Anlage as "Anl. 1", never as "§ 1" — looking it up among
     // the paragraphs compared a schedule against an unrelated provision.
     const isAnlage = /^(?:Anlage|Anhang)/i.test(row.gld)
@@ -173,11 +208,12 @@ async function verify(doc: any): Promise<DraftResult | null> {
     else worst.push(`${row.gld} ${(ratio * 100).toFixed(0)} % (fehlt: ${missing.slice(0, 6).join(' ')})`)
     if (dumpWorst && ratio < 0.5) {
       console.log(`\n    ### ${cite} ${row.gld} — ${(ratio * 100).toFixed(0)} % gedeckt`)
+      console.log(`      LAW   : ${row.law ?? '—'}`)
       console.log(`      SPALTE: ${row.current.slice(0, 230)}`)
       console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
     }
   }
-  return { cite, source: 'pdf', checked, clean, note: null, worst, ratios, substantial, substantialClean, tooShort }
+  return { cite, source: 'pdf', checked, clean, note: null, worst, ratios, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw }
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -211,7 +247,7 @@ for (const doc of docs.slice(0, limit)) {
     if (r.note) console.log(`  ·  ${r.cite.padEnd(9)} ${r.note}`)
     else console.log(`  ${r.clean === r.checked ? '✓' : '✗'}  ${r.cite.padEnd(9)} ${r.clean}/${r.checked} Paragraphen ≥99 % im RIS${r.worst.length ? ` — ${r.worst.slice(0, 2).join('; ')}` : ''}`)
   } catch (err) {
-    console.log(`  ?  ${nr.padEnd(9)} ${String(err).slice(0, 90)}`)
+    console.log(`  ?  ${String(doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '?').slice(0, 9).padEnd(9)} ${String(err).slice(0, 90)}`)
   }
 }
 
@@ -228,6 +264,11 @@ const subClean = scored.reduce((n, r) => n + r.substantialClean, 0)
 console.log(`  davon mit echtem Fließtext (≥ ${MIN_PROSE_TOKENS} Wörter): ${sub}`)
 console.log(`    ≥99 % gedeckt        : ${subClean} (${sub ? ((subClean / sub) * 100).toFixed(1) : '—'} %)`)
 console.log(`  zu kurz zum Prüfen (Überschrift/Auslassung): ${scored.reduce((n, r) => n + r.tooShort, 0)}`)
+const packages = results.filter((r) => r.laws > 1)
+console.log(`  Sammelgesetze              : ${packages.length} (${packages.reduce((n, r) => n + r.laws, 0)} Gesetze), abgegrenzt: ${packages.filter((r) => r.note === null).length}`)
+console.log(`  Zeilen ohne Gesetzeszuordnung: ${scored.reduce((n, r) => n + r.unattributed, 0)} von ${scored.reduce((n, r) => n + r.attributed + r.unattributed, 0)}`)
+console.log(`    außerhalb jeder Artikelgrenze: ${scored.reduce((n, r) => n + r.noLaw, 0)}`)
+console.log(`    Stammnorm im RIS nicht auflösbar: ${scored.reduce((n, r) => n + r.unresolvedLaw, 0)}`)
 const all = scored.flatMap((r) => r.ratios).sort((a, b) => a - b)
 if (all.length) {
   const q = (p: number) => all[Math.min(all.length - 1, Math.floor(all.length * p))]!
