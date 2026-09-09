@@ -132,6 +132,8 @@ interface DraftResult {
   /** Why a row carries no law: the annex left it outside every boundary, or RIS has no such law */
   noLaw: number
   unresolvedLaw: number
+  /** Rows whose RIS paragraph is a table, which is refused rather than mangled */
+  unrepresentable: number
 }
 
 async function verify(doc: any): Promise<DraftResult | null> {
@@ -139,7 +141,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const begut = meta?.Bundesrecht?.Begut
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0 })
+  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0 })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -189,6 +191,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   let unattributed = 0
   let noLaw = 0
   let unresolvedLaw = 0
+  let unrepresentable = 0
   for (const row of parsed.rows) {
     if (row.kind !== 'pair' || !row.gld || !row.current) continue
     const id = /(\d+[a-z]*(?:\.\d+)?|[IVXL]+)/.exec(row.gld)?.[1]
@@ -208,7 +211,15 @@ async function verify(doc: any): Promise<DraftResult | null> {
     const entry = Object.entries(law.paragraphs).find(([label]) => wanted.test(label))
     if (!entry) continue
     const tree = await fetchParagraphTree(entry[1])
-    if (!tree) continue
+    // A § that contains a table is deliberately not represented as a tree
+    // (`lawStructure.ts`): its cells would read as Absätze in document order.
+    // That is the right answer for the engine and it makes the row
+    // incomparable here — counted, so the denominator stays honest, rather
+    // than dropped silently.
+    if (!tree) {
+      unrepresentable++
+      continue
+    }
     checked++
     // The headings above the § belong to a group of §§ and are deliberately
     // out of `plainText`; the annex prints them over the § all the same.
@@ -236,7 +247,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
       console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
     }
   }
-  return { cite, source: 'pdf', checked, clean, note: null, worst, ratios, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw }
+  return { cite, source: 'pdf', checked, clean, note: null, worst, ratios, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable }
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -292,6 +303,7 @@ console.log(`  Sammelgesetze              : ${packages.length} (${packages.reduc
 console.log(`  Zeilen ohne Gesetzeszuordnung: ${scored.reduce((n, r) => n + r.unattributed, 0)} von ${scored.reduce((n, r) => n + r.attributed + r.unattributed, 0)}`)
 console.log(`    außerhalb jeder Artikelgrenze: ${scored.reduce((n, r) => n + r.noLaw, 0)}`)
 console.log(`    Stammnorm im RIS nicht auflösbar: ${scored.reduce((n, r) => n + r.unresolvedLaw, 0)}`)
+console.log(`  RIS-Paragraph ist eine Tabelle (nicht darstellbar, verweigert): ${scored.reduce((n, r) => n + r.unrepresentable, 0)}`)
 const all = scored.flatMap((r) => r.ratios).sort((a, b) => a - b)
 if (all.length) {
   const q = (p: number) => all[Math.min(all.length - 1, Math.floor(all.length * p))]!

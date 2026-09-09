@@ -214,6 +214,33 @@ describe('parseKonsParagraph', () => {
     expect(plainText(node)).not.toContain('Hauptstück')
   })
 
+  // An Anlage's body is written as `<absatz typ="erltext" ct="text">` and it
+  // is binding law. Read as metadata, three Anlagen of one Verordnung parsed
+  // to nothing.
+  it('reads an Anlage whose body is written as erltext', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">Anlage 2</absatz>
+      <ueberschrift typ="anlage" ct="text">Anlage 2 zu § 5</ueberschrift>
+      <absatz typ="erltext" ct="text">Die Radonkonzentration ist in den beiden meistgenützten Aufenthaltsräumen zu messen.</absatz>
+      <absatz typ="erltext" ct="text">Die Messdauer hat mindestens sechs Monate zu betragen.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(node.id).toBe('2')
+    expect(plainText(node)).toContain('Die Messdauer hat mindestens sechs Monate zu betragen.')
+  })
+
+  // In a § that has proper Absätze the same tag carries something else, and
+  // taking it as text glued it onto the last Absatz — 15 paragraphs the
+  // engine had reproduced exactly then counted as incomplete.
+  it('ignores erltext where the § has Absätze of its own', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 4</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 4.</gldsym> (1) Der Antrag ist schriftlich zu stellen.</absatz>
+      <absatz typ="erltext" ct="text">Angefügter Block, der nicht zum Absatz gehört.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    expect(plainText(parseKonsParagraph(xml)!)).not.toContain('Angefügter Block')
+  })
+
   // A § without its own heading used to take the name of the Abschnitt above
   // it — a wrong name on someone's paragraph, which is worse than none.
   it('does not give a § the name of the Abschnitt above it', () => {
