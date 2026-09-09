@@ -3,14 +3,25 @@
  * (docs/api-exploration.md §2c, docs/architecture.md §12.12, §12.13).
  *
  * Nuxt-aware glue around the pure modules `textComparison.ts` and
- * `annexCheck.ts`. The annex is only in RIS — Parliament publishes it as PDF
- * — so this goes through the RIS↔ME map rather than the Parliament document
- * list the rest of the detail page uses.
+ * `annexCheck.ts`. The rows are read from RIS, which is the only source that
+ * carries the annex as a table, so this goes through the RIS↔ME map rather
+ * than the Parliament document list the rest of the detail page uses.
  *
  * Unavailability is a normal answer, not an error: about four in ten drafts
  * carry no annex. Each case gets its own sentence, because "no comparison"
  * and "a comparison we cannot read" are different things to a reader — and
  * in the second case the PDF is still worth linking.
+ *
+ * **"Not in RIS" is not "does not exist" (2026-09-10).** Parliament publishes
+ * the annex too, on the ME's own document list, and for 11 of the 130 matched
+ * GP-XXVIII drafts it is there while the RIS record has none — 8 of them with
+ * an HTML version. Saying "keine Textgegenüberstellung" about a draft that
+ * has one, on a page whose whole claim is that it traces documents, is the
+ * worst kind of wrong answer here. So before any such sentence is written the
+ * Parliament document list is asked, and where it carries the annex the page
+ * says so and links it. It is not read: Parliament's HTML is Word output in a
+ * shape neither parser knows, and a parser for it is its own piece of work
+ * (`TODO.md`).
  *
  * **Two sources, one shape.** Where the RIS XML is a real table it is read
  * from there; where RIS rasterised the annex into images, the same document's
@@ -37,10 +48,43 @@ import { annexFromPdf } from './annexPdfService'
 import { fetchLawHtml } from './lawDiffService'
 import { parseRisXml } from './lawText'
 import { draftArticles } from './lawTitles'
+import { mapDocuments } from './mappers'
+import { getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
 import { isScanned, parseTextComparison } from './textComparison'
 
 const TTL_S = 60 * 60 * 24
+
+/**
+ * The same loose match `ris.ts` uses on the RIS side: ressorts write
+ * "Textgegenüberstellung", "TGÜ", "TGG" and a misspelt
+ * "Textgegenbüberstellung" (docs/api-exploration.md §2c). Over GP XXVIII
+ * every one of the 121 Parliament document groups it matches is titled
+ * "Textgegenüberstellung" exactly, so the looseness costs nothing here and
+ * keeps the two sides reading the same vocabulary.
+ */
+const ANNEX_NAME_RE = /gegen.?über|^TG(Ü|G|UE)$/i
+
+/**
+ * The annex on Parliament's own document list for this ME, in the formats it
+ * offers — the second place the ressort's Textgegenüberstellung is published.
+ *
+ * Fetched only where RIS has nothing to show, because it is one more upstream
+ * call and the RIS record answers for 109 of 132 drafts on its own. Failures
+ * are not caught: a Parliament timeout is not a statement about the draft,
+ * and this function's answer is cached for a day (§12.13).
+ */
+async function parliamentAnnex(gp: string, inr: number): Promise<{ pdf: TraceLink | null; html: TraceLink | null }> {
+  const detail = await getGegenstand(gp, 'ME', inr)
+  const group = mapDocuments(detail.content?.documents).find((d) => ANNEX_NAME_RE.test(d.title.trim()))
+  const of = (type: 'pdf' | 'html'): string | null => group?.formats.find((f) => f.type === type)?.url ?? null
+  const pdf = of('pdf')
+  const html = of('html')
+  return {
+    pdf: pdf ? { label: 'Textgegenüberstellung des Ressorts beim Parlament (PDF)', url: pdf } : null,
+    html: html ? { label: 'Textgegenüberstellung des Ressorts beim Parlament (HTML)', url: html } : null,
+  }
+}
 
 export const getTextComparison = defineCachedFunction(
   async (gp: string, inr: number): Promise<TextComparisonResponse> => {
@@ -58,12 +102,31 @@ export const getTextComparison = defineCachedFunction(
       rows: [],
     })
 
+    /** What Parliament publishes, and the sentence that follows from it. */
+    const fromParliament = async (
+      whenPresent: string,
+      whenAbsent: string,
+      source: TraceLink | null = null,
+    ): Promise<TextComparisonResponse> => {
+      const parl = await parliamentAnnex(gp, inr)
+      const document = parl.pdf ?? parl.html
+      if (!document) return empty(whenAbsent, source)
+      // `source` and `pdf` are rendered side by side, so the same URL must
+      // not land in both: the HTML twin only goes into `source` when the PDF
+      // is the document being linked.
+      return empty(whenPresent, source ?? (document === parl.pdf ? parl.html : null), document)
+    }
+
     const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
     if (!row?.risId) {
-      return empty(
+      return fromParliament(
+        // One sentence for both states below: with no RIS record and with
+        // several possible ones, the outcome for the reader is the same —
+        // the annex exists, and we cannot say which RIS document is its twin.
+        'Die Textgegenüberstellung liegt beim Parlament vor. Im RIS, wo wir sie auslesen, lässt sie sich diesem Entwurf nicht sicher zuordnen — aus dem Dokument des Parlaments lesen wir sie noch nicht aus.',
         row?.status === 'ambiguous'
           ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Gegenüberstellung aus dem falschen zu zeigen wäre schlechter als keine.'
-          : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort liegt die Textgegenüberstellung.',
+          : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Textgegenüberstellung aus.',
       )
     }
     const annex = row.textComparison
@@ -75,15 +138,27 @@ export const getTextComparison = defineCachedFunction(
     // this one's would, so every § of it verifies and the page presents a
     // comparison belonging to a different bill. The document is linked
     // instead, and the doubt is stated.
+    //
+    // Parliament's copy carries no such doubt — it is addressed by this
+    // draft's own number — so where it exists it is the one to link, and the
+    // RIS record stays beside it for the reader who wants to judge the join.
     if (row.status !== 'matched') {
-      return empty(
+      const doubt =
         'Die Zuordnung dieses Entwurfs zum RIS-Datensatz stützt sich nur auf Fristen und Ressort, nicht auf den Titel. '
-          + 'Eine Gegenüberstellung, die zu einem anderen Entwurf gehören kann, wird deshalb nicht angezeigt.',
-        row.risUrl ? { label: `RIS-Datensatz, der infrage kommt${row.risKurztitel ? `: ${row.risKurztitel}` : ''}`, url: row.risUrl } : null,
-        annex?.pdf ? { label: 'Textgegenüberstellung dieses RIS-Datensatzes (PDF)', url: annex.pdf } : null,
+        + 'Eine Gegenüberstellung, die zu einem anderen Entwurf gehören kann, wird deshalb nicht angezeigt.'
+      const record: TraceLink | null = row.risUrl
+        ? { label: `RIS-Datensatz, der infrage kommt${row.risKurztitel ? `: ${row.risKurztitel}` : ''}`, url: row.risUrl }
+        : null
+      const parl = await parliamentAnnex(gp, inr)
+      if (parl.pdf ?? parl.html) return empty(`${doubt} Beim Parlament liegt sie unter der Nummer dieses Entwurfs.`, record, parl.pdf ?? parl.html)
+      return empty(doubt, record, annex?.pdf ? { label: 'Textgegenüberstellung dieses RIS-Datensatzes (PDF)', url: annex.pdf } : null)
+    }
+    if (!annex) {
+      return fromParliament(
+        'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht; von dort lesen wir sie noch nicht aus.',
+        'Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.',
       )
     }
-    if (!annex) return empty('Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.')
 
     const pdf: TraceLink | null = annex.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: annex.pdf } : null
 
@@ -106,7 +181,12 @@ export const getTextComparison = defineCachedFunction(
       return empty('Die Textgegenüberstellung ließ sich auch aus dem PDF nicht auslesen.', null, pdf)
     }
     const { rows, refusal } = parsed
-    if (rows.length === 0) return empty('Die Textgegenüberstellung ließ sich nicht auslesen.', null, pdf)
+    // The parsers say *which* way a document defeated them — "no header pair
+    // on any line", "not a two-column comparison" — and that is a better
+    // sentence than the generic one, because it is about this document rather
+    // than about our luck. The generic one stays for the paths that have no
+    // reason to give.
+    if (rows.length === 0) return empty(parsed.unreadable ?? 'Die Textgegenüberstellung ließ sich nicht auslesen.', null, pdf)
 
     // Which document was actually read. The XML table is the ressort's own
     // structure; the PDF is the ressort's text with our reading of its
@@ -139,6 +219,10 @@ export const getTextComparison = defineCachedFunction(
       verification: {
         ran: verification.ran,
         notRunReason: notRunReason(verification),
+        // The day the ministry wrote the annex, so the page can name the
+        // version of the law its left column was held against instead of
+        // leaving the reader to assume "today".
+        asOf: row.risBeginn ?? null,
         judged: verification.judged,
         verified: verification.verified,
         withheldParagraphs: checked.withheldParagraphs,

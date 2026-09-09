@@ -460,9 +460,18 @@ export interface TextComparisonResponse {
   inr: number
   available: boolean
   unavailableReason: string | null
-  /** The ressort's document, in the formats RIS offers */
+  /**
+   * The document the rows were read from, in the format they were read from —
+   * and where nothing could be read, the next best thing to look at: the
+   * annex's HTML version at Parliament, or the RIS record whose assignment to
+   * this draft is in doubt. The label says which; the page prints it.
+   */
   source: TraceLink | null
-  /** A PDF to fall back to when the XML is a scan */
+  /**
+   * The annex as a PDF, for a reader to open where we could not read it: the
+   * RIS scan, or Parliament's copy for the drafts whose RIS record carries no
+   * annex at all (11 of 130 matched GP-XXVIII drafts, measured 2026-09-10).
+   */
   pdf: TraceLink | null
   /**
    * Which document the rows were read from, because the two are not the same
@@ -512,6 +521,16 @@ export interface TextComparisonResponse {
      * network hiccup (`textComparisonService.ts`).
      */
     notRunReason: string | null
+    /**
+     * The date the standing law was read at — RIS's own start of the
+     * Begutachtungsfrist, the day the ministry wrote the annex, ISO or null.
+     *
+     * Named on the page, because "checked against the law in force" is
+     * ambiguous without it: a comparison written in March and read today has
+     * been held against the March text, and that is the right one to hold it
+     * against.
+     */
+    asOf: string | null
     /** §§ with enough prose to judge, and how many cleared the threshold */
     judged: number
     verified: number
@@ -523,14 +542,27 @@ export interface TextComparisonResponse {
      * still shown, because they verified against the standing text.
      */
     doubtfulLaws: string[]
-    /** §§ shown without a check */
+    /**
+     * §§ that show at least one change and carry no verdict — the part of
+     * what the reader sees that is unvouched-for.
+     *
+     * Not every § without a verdict: one whose rows are all unchanged is
+     * folded away behind a count and needs no check, and one the draft
+     * *inserts* has no standing text to check against, which is the point of
+     * it rather than a gap. Counting those made the sentence "… ließen sich
+     * nicht prüfen" read as an alarm about the ministry's annex.
+     */
     uncheckedParagraphs: number
     /**
      * Rows shown as a change that carry no § designation at all, so no §
      * verdict can address them — counted apart from `uncheckedParagraphs`,
-     * which counts §§. They are shown as `unchecked`. Measured 2026-09-10
-     * over GP XXVIII: the table path emits 285 rows without a designation,
-     * 83 of them shown as a change; the PDF path 125, none shown as a change.
+     * which counts §§. They are shown as `unchecked`.
+     *
+     * A property of the table path. Measured 2026-09-10: it emits 285 rows
+     * without a designation, 83 of them shown as a change. On the PDF path a
+     * row *is* a provision, cut at the § marker, and the front matter that
+     * carries no marker is dropped by the parser instead of being shown as
+     * new law — so every row it emits carries a designation and this is 0.
      */
     rowsWithoutParagraph: number
   } | null

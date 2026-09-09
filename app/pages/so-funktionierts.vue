@@ -8,7 +8,7 @@
 useSeoMeta({
   title: "So funktioniert's",
   description:
-    'Wie ein Gesetz in Österreich entsteht: vom Ministerialentwurf über die Begutachtung und die Regierungsvorlage bis zur Kundmachung im Bundesgesetzblatt.',
+    'Wie ein Gesetz in Österreich entsteht: vom Ministerialentwurf über die Begutachtung und die Regierungsvorlage bis zur Kundmachung im Bundesgesetzblatt. Und woher die Textgegenüberstellung kommt, die zeigt, was ein Entwurf am geltenden Recht ändert.',
 })
 
 const steps = [
@@ -87,7 +87,75 @@ const steps = [
       </li>
     </ol>
 
-    <p class="mt-16 leading-relaxed text-ink-secondary">
+    <!-- Not a sixth station: a note on one section of the detail page, which
+         links here from its check sentence ("Wie wir prüfen"). It stands
+         apart from the numbered list because it describes a document, not a
+         step of the procedure — but keeps the page's typography, because it
+         answers the same kind of question. -->
+    <section id="gegenueberstellung" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
+      <h2 class="text-lg font-semibold text-ink">Woher „Was ändert der Entwurf?“ kommt</h2>
+
+      <p class="mt-3 leading-relaxed text-ink-secondary">
+        Zu den meisten Entwürfen legt das Ministerium eine
+        <strong class="font-medium text-ink">Textgegenüberstellung</strong> bei:
+        links die geltende Fassung, rechts die vorgeschlagene. Ein Rundschreiben
+        des Bundeskanzleramts vom 27.03.2002 schreibt diese Form vor – die
+        Spaltentitel, und dass unveränderter Text dazwischen abgekürzt wird
+        („2. bis 26b. …“). Der Text auf unserer Seite stammt aus diesem
+        Dokument des Ministeriums, Wort für Wort.
+      </p>
+
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Von uns stammt die <strong class="font-medium text-ink">Markierung</strong>:
+        Wir vergleichen die beiden Spalten Wort für Wort und heben hervor, was
+        wegfällt und was dazukommt. „Redaktionell“ heißt dabei, dass sich nur
+        Verweise, Zahlen, Daten oder Satzzeichen geändert haben.
+      </p>
+
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Die linke Spalte behauptet, das geltende Recht zu sein – und das lässt
+        sich nachsehen. Wir halten sie gegen den Text im
+        <strong class="font-medium text-ink">RIS Bundesrecht</strong>, und zwar
+        zum Beginn der Begutachtungsfrist: das ist der Stand, den das
+        Ministerium beim Schreiben vor sich hatte. Was dabei herauskommt, steht
+        über der Gegenüberstellung. Zwei Ergebnisse brauchen eine Erklärung:
+      </p>
+
+      <dl class="mt-4 space-y-3 leading-relaxed text-ink-secondary">
+        <div>
+          <dt class="font-medium text-ink">„nicht gezeigt“</dt>
+          <dd>
+            Der geltende Text im RIS deckt diese Stelle nicht. Dann gehört die
+            Zeile entweder nicht zu dem Paragraphen, unter dem sie steht, oder
+            die Beilage legt einen älteren Stand des Gesetzes zugrunde. Wir
+            blenden den Vergleich dort aus, statt einen falschen zu zeigen –
+            und verlinken die Beilage des Ministeriums, die die Frage
+            beantwortet.
+          </dd>
+        </div>
+        <div>
+          <dt class="font-medium text-ink">„nicht geprüft“</dt>
+          <dd>
+            Es gibt nichts zum Vergleichen. Ein Entwurf, der neues Recht
+            schafft, hat keinen geltenden Text; eine Verordnung steht nicht im
+            Bundesrecht; manchmal führt das RIS den Paragraphen nicht oder hält
+            ihn als Tabelle. Das ist kein Befund über den Entwurf, sondern
+            einer über die Prüfbarkeit.
+          </dd>
+        </div>
+      </dl>
+
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Ein Vorbehalt zum Schluss: Bei einem Teil der Entwürfe veröffentlicht
+        das RIS die Beilage nur als Bild. Dann lesen wir das PDF des
+        Ministeriums und erschließen aus dem Seitenlayout, welche Zeile links
+        zu welcher Zeile rechts gehört. Der Text ist auch dort der des
+        Ministeriums – die Zuordnung ist unsere, und sie kann daneben liegen.
+        Auf solchen Seiten steht das ausdrücklich dabei.
+      </p>
+    </section>
+
+    <p class="mt-12 leading-relaxed text-ink-secondary">
       Der Monitor zeigt Verfahren mit weiterem Verlauf genauso wie Verfahren
       ohne – Nachverfolgung, nicht Bewertung.
       <NuxtLink
