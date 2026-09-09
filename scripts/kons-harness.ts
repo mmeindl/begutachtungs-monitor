@@ -530,7 +530,12 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
       if (verbose && unchanged && oracleReport && (oracleReport.verdict === 'widersprochen' || oracleReport.verdict === 'fremd')) console.log(`        ↳ Orakel-Fehler? gleiche Anweisungen im ME (${oracle.me}), RIS: ${verdict} — ${oracleReport.note}`)
     }
     const plausible = !flags.has('verweigert') && guard?.plausible !== false
-    tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}`)
+    // The refusal state is its own axis. Without it the "ohne Verweigerung"
+    // row could not be computed from this tally at all, and the predicate that
+    // stood here carried a second operand that can never be true — so the row
+    // silently reprinted the plausible subset and the guard looked like it
+    // filtered nothing (2026-09-09).
+    tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
     if (verbose && oracleReport && oracleReport.verdict !== 'stumm' && oracleReport.verdict !== 'bestätigt') {
       console.log(`        ↳ Orakel ${oracleReport.verdict} [RIS: ${verdict}]: ${oracleReport.note ?? ''}`)
       if (process.argv.includes('--oracle-debug') && verdict === 'identisch') {
@@ -654,7 +659,7 @@ console.log(`    eigene Abweichung    : ${sum((v) => v.cleanDivergent)} (${pct(s
   }
   console.log(`\n  Gate zur Entwurfszeit (Verweigerung + Plausibilität${withOracle ? ' + Textgegenüberstellung' : ''}), gegen die RIS-Wahrheit:`)
   line('alle geprüften Paragraphen', () => true)
-  line('ohne Verweigerung', (p) => p[0] === 'plausibel' || sumKeys(oracleTally, (q) => q[2] === 'ohne Verweigerung') < 0)
+  line('ohne Verweigerung', (p) => p[3] === 'ohne Verweigerung')
   line('plausibel (Verweigerung + Signale)', (p) => p[0] === 'plausibel')
   if (withOracle) {
     line('plausibel, Orakel bestätigt', (p) => p[0] === 'plausibel' && p[1] === 'bestätigt')
