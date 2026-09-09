@@ -63,27 +63,48 @@ async function pagesOf(bytes: Uint8Array): Promise<AnnexPage[]> {
 }
 
 /**
- * The annex prints things RIS does not keep inside a paragraph, and counting
- * those as missing measured the ruler instead of the parse (2026-09-09):
+ * What is not comparable, on either side.
+ *
+ * Three of these were the ruler blaming the parse for its own gaps
+ * (2026-09-09), which is the third time in this project that the measuring
+ * instrument was worse than the thing measured:
  *
  * - **Elision.** "(1) bis (3) …" says three Absätze are unchanged and left
  *   out. It is the annex's own syntax; "bis" is not law text, and it was the
- *   single most frequent "missing" word in the corpus.
- * - **Table of contents.** The Inhaltsverzeichnis is its own RIS document.
- * - **Abschnitt and Hauptstück headings**, which sit above a § and belong to
- *   no § in RIS. `annexPdf.ts` deliberately keeps headings inline.
+ *   single most frequent "missing" word in the corpus. The same syntax runs
+ *   over §§ and Ziffern too: "§ 21. bis § 25. …", "1. bis 100. …".
+ * - **The row's own designation.** RIS keeps "§ 217." as the paragraph's
+ *   marker, not as its text, so the column's designation can never be found
+ *   and "217" counted as a missing word.
+ * - **RIS's editorial notes.** "(Anm.: Abs. 2 aufgehoben durch …)" is not
+ *   law; `lawStructure.ts` strips it from the RIS side, and the annex copies
+ *   it verbatim — so it has to go from the column side as well, or the
+ *   asymmetry is scored against the parse.
+ * - **RIS web-view boilerplate.** A few annexes paste "Beachte für folgende
+ *   Bestimmung" along with the text; it is in no XML.
+ *
+ * What is *no longer* discounted: Abschnitt, Hauptstück and Teil headings.
+ * The premise was that RIS files them outside the §. It does not — they are
+ * inside every § document, and `parseKonsParagraph` was dropping them
+ * (§ 12 of one law carries six). They are compared now, from `node.context`.
  */
 /** Below this many comparable words a row says nothing about the parse. */
 const MIN_PROSE_TOKENS = 15
 
-const ELISION_RE = /\((\d+[a-z]*)\)(?:\s*(?:bis|und|,)\s*\(?(\d+[a-z]*)\)?)*\s*(?:\.\.\.|…)/g
-const STRUCTURE_RE = /\b(?:inhaltsverzeichnis|abschnitt|hauptstück|teil|anlage|anhang)\b/gi
+/** A chain of designations joined by "bis"/"und", closed by three dots. */
+const ELISION_RE = /(?:§+\s*)?\(?\d+[a-z]*\)?\.?(?:\s*(?:bis|und|,)\s*(?:§+\s*)?\(?\d+[a-z]*\)?\.?)*\s*(?:\.\.\.|…)/g
+/** "§ 217." — the designation form, which ends in a period; a citation does not. */
+const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
+const ANNOTATION_RE = /\(Anm\.:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+const BOILERPLATE_RE = /Beachte für folgende Bestimmung/gi
 
 const tokens = (t: string): string[] =>
   t
+    .replace(ANNOTATION_RE, ' ')
+    .replace(BOILERPLATE_RE, ' ')
     .replace(ELISION_RE, ' ')
+    .replace(DESIGNATION_RE, ' ')
     .replace(/(?:\.\.\.|…)/g, ' ')
-    .replace(STRUCTURE_RE, ' ')
     .toLowerCase()
     .replace(/[„“”"'‚‘’]/g, '')
     .replace(/[­‑]/g, '-')
@@ -170,7 +191,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   let unresolvedLaw = 0
   for (const row of parsed.rows) {
     if (row.kind !== 'pair' || !row.gld || !row.current) continue
-    const id = /(\d+[a-z]*|[IVXL]+)/.exec(row.gld)?.[1]
+    const id = /(\d+[a-z]*(?:\.\d+)?|[IVXL]+)/.exec(row.gld)?.[1]
     if (!id) continue
     const law = await lawOf(row.law)
     if (!law) {
@@ -183,13 +204,15 @@ async function verify(doc: any): Promise<DraftResult | null> {
     // RIS prints an Anlage as "Anl. 1", never as "§ 1" — looking it up among
     // the paragraphs compared a schedule against an unrelated provision.
     const isAnlage = /^(?:Anlage|Anhang)/i.test(row.gld)
-    const wanted = isAnlage ? new RegExp(`^Anl\\.?\\s*${id}\\b`, 'i') : new RegExp(`^§+\\s*${id}\\b`)
+    const wanted = isAnlage ? new RegExp(`^Anl\\.?\\s*${id}\\b`, 'i') : new RegExp(`^§+\\s*${id.replace('.', '\\.')}(?![.\\d])`)
     const entry = Object.entries(law.paragraphs).find(([label]) => wanted.test(label))
     if (!entry) continue
     const tree = await fetchParagraphTree(entry[1])
     if (!tree) continue
     checked++
-    const have = new Set(tokens(plainText(tree)))
+    // The headings above the § belong to a group of §§ and are deliberately
+    // out of `plainText`; the annex prints them over the § all the same.
+    const have = new Set(tokens([...tree.context, plainText(tree)].join(' ')))
     const want = tokens(row.current)
     if (want.length === 0) continue
     const missing = want.filter((w) => !have.has(w))
