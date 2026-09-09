@@ -16,6 +16,7 @@
  *   it stood on any given day.
  */
 import { parseKonsParagraph, type LawNode } from './lawStructure'
+import { sameBgbl, type BgblCitation } from './lawTitles'
 
 export const RIS_KONS_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
@@ -40,6 +41,9 @@ export interface KonsParagraphRef {
    * date derived from the promulgation can identify the version pair.
    */
   kundmachungsorgan: string | null
+  /** The law's Stammnorm — the exact join key from a draft's Promulgationsklausel */
+  stammnorm: BgblCitation | null
+  gesetzesnummer: string | null
   xmlUrl: string | null
 }
 
@@ -117,6 +121,11 @@ function refOf(ref: any): KonsParagraphRef | null {
     inkrafttreten: b.Inkrafttretensdatum ?? null,
     ausserkrafttreten: b.Ausserkrafttretensdatum ?? null,
     kundmachungsorgan: typeof b.Kundmachungsorgan === 'string' ? b.Kundmachungsorgan.trim() : null,
+    stammnorm:
+      typeof b.StammnormPublikationsorgan === 'string' && typeof b.StammnormBgblnummer === 'string'
+        ? { organ: b.StammnormPublikationsorgan.trim(), nummer: b.StammnormBgblnummer.trim() }
+        : null,
+    gesetzesnummer: typeof b.Gesetzesnummer === 'string' ? b.Gesetzesnummer : null,
     xmlUrl,
   }
 }
@@ -200,6 +209,66 @@ export function versionPairFor(versions: readonly KonsParagraphRef[], bgblNumber
   const index = versions.findIndex((v) => amendedBy(v) === bgblNumber)
   if (index < 0) return null
   return { before: versions[index - 1] ?? null, after: versions[index]! }
+}
+
+export interface KonsLawAtDate {
+  gesetzesnummer: string
+  kurztitel: string
+  /**
+   * The paragraphs in force on the requested date, by printed label ("§ 20").
+   *
+   * A plain record, not a Map: results of this shape are put through
+   * `defineCachedFunction`, which serialises to JSON. A Map survives the
+   * first call in-process and comes back as `{}` from the cache afterwards —
+   * so the lookup worked exactly once and then silently returned nothing.
+   */
+  paragraphs: Record<string, KonsParagraphRef>
+}
+
+/**
+ * The law a Promulgationsklausel names, as it stood on `date`.
+ *
+ * `Kundmachungsorgannummer` narrows to the BGBl number; the Stammnorm pair
+ * then decides, because the number alone collides across Teile — 84/2001 is
+ * both the Audiovisuelle Mediendienste-Gesetz (BGBl. I) and an Amtssitz law
+ * (BGBl. III). It also matches versions whose *amendment* carried that
+ * number, which the same check drops.
+ *
+ * Returns null unless exactly one law survives. An ambiguous or missing
+ * match must yield no heading rather than a heading from the wrong law:
+ * a wrong name on someone's paragraph is worse than no name.
+ */
+export async function resolveLawByBgbl(bgbl: BgblCitation, date: string): Promise<KonsLawAtDate | null> {
+  const byLaw = new Map<string, { kurztitel: string; paragraphs: Record<string, KonsParagraphRef> }>()
+  let seen = 0
+  for (let page = 1; page <= 20; page++) {
+    const body = await getJson(
+      query({ Kundmachungsorgannummer: bgbl.nummer, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred', Seitennummer: String(page) }),
+    )
+    const results = body?.OgdSearchResult?.OgdDocumentResults
+    const hits = Number(results?.Hits?.['#text'] ?? 0)
+    if (hits > IMPLAUSIBLE_HITS) throw new Error(`RIS ignorierte den Filter: ${hits} Treffer für ${bgbl.organ} ${bgbl.nummer}`)
+    const refs = asArray<any>(results?.OgdDocumentReference)
+    for (const r of refs) {
+      const p = refOf(r)
+      if (!p?.gesetzesnummer || !p.stammnorm || !sameBgbl(p.stammnorm, bgbl)) continue
+      const entry = byLaw.get(p.gesetzesnummer) ?? { kurztitel: r?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '', paragraphs: {} as Record<string, KonsParagraphRef> }
+      // One version per label at a given date; keep the first RIS returns.
+      entry.paragraphs[p.label] ??= p
+      byLaw.set(p.gesetzesnummer, entry)
+    }
+    seen += refs.length
+    if (seen >= hits || refs.length === 0) break
+  }
+  if (byLaw.size !== 1) return null
+  const [gesetzesnummer, entry] = [...byLaw][0]!
+  return { gesetzesnummer, kurztitel: entry.kurztitel, paragraphs: entry.paragraphs }
+}
+
+/** The § heading ("Sofortlotterien"), or null when the document has none. */
+export async function fetchParagraphHeading(ref: KonsParagraphRef): Promise<string | null> {
+  const tree = await fetchParagraphTree(ref)
+  return tree?.heading ?? null
 }
 
 /** The paragraph document as a tree. */
