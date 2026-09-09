@@ -75,8 +75,13 @@ const fetchAnnexPdf = defineCachedFunction(
  * the whole reason the geometry was made to emit `ComparisonRow`.
  */
 export async function annexFromPdf(url: string, articles: readonly DraftArticle[]): Promise<AnnexParse | null> {
-  const base64 = await fetchAnnexPdf(url).catch(() => null)
-  if (base64 === null) return null
+  // The fetch is not caught: a PDF RIS would not hand over is not a property
+  // of the annex, and the caller caches whatever this returns for a day — a
+  // swallowed timeout used to become "ließ sich auch aus dem PDF nicht
+  // auslesen" as a fact about the draft (same rule as `textComparisonService`,
+  // 2026-09-10). A document we did receive and pdf.js cannot open is such a
+  // property, so that case stays null.
+  const base64 = await fetchAnnexPdf(url)
   const pages = await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null)
   // pdf.js reads a damaged file as an *empty* document rather than failing,
   // so "no pages" and "no text on any page" both have to count as unreadable
