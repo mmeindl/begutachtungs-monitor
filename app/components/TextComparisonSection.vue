@@ -246,26 +246,29 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasO
           </button>
 
           <div v-if="groupOpen(g)" class="border-t border-hairline">
-            <section v-for="(p, pi) in g.paras" :key="pi" class="border-b border-hairline last:border-b-0">
+            <section v-for="(p, pi) in g.paras" :key="pi" class="border-b border-hairline px-3 py-3 last:border-b-0">
               <!-- The paragraph as law prints it: designation and title on one
-                   line, once, above its Absätze. -->
-              <p v-if="p.gld || p.heading" class="flex flex-wrap items-baseline gap-x-2 gap-y-1 bg-page px-3 py-2 text-sm">
-                <span v-if="p.gld" class="font-semibold text-ink">{{ p.gld }}</span>
-                <span v-if="p.heading" class="text-ink-secondary">{{ p.heading }}</span>
+                   line, once, above its Absätze — and no rule between the two,
+                   because the line belongs to what follows it rather than
+                   heading a band of its own. LawDiffSection sets a unit's
+                   designation and name the same way. -->
+              <p v-if="p.gld || p.heading" class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}</span>
+                <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
               </p>
 
-              <template v-for="(b, bi) in p.blocks" :key="bi">
-              <details v-if="b.kind === 'context'" class="group border-t border-hairline">
-                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
+              <div v-for="(b, bi) in p.blocks" :key="bi" :class="bi > 0 ? 'mt-3' : ''">
+              <details v-if="b.kind === 'context'" class="group">
+                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                   {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
                 </summary>
-                <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
+                <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
                   <p v-for="(r, ri) in b.rows" :key="ri" class="hyphens-auto">{{ r.current }}</p>
                 </div>
               </details>
 
-              <div v-else class="border-t border-hairline px-3 py-3">
+              <div v-else>
                 <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
                   <p class="mb-1 text-sm">
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
@@ -296,7 +299,7 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasO
                   </div>
                 </div>
               </div>
-              </template>
+              </div>
             </section>
 
             <button

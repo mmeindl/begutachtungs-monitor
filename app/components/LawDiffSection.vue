@@ -404,20 +404,28 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                 </details>
 
                 <div v-else class="border-b border-hairline px-3 py-3 last:border-b-0">
+                  <!-- Designation and name on a line of their own, above the
+                       badge. Beside it they had to share one line with the
+                       status, so "geändert Z 4 Geheimhaltung" read as a single
+                       token — and the Textgegenüberstellung, where a § heads
+                       several Absätze, cannot put them there at all. One shape
+                       for both sections: what this is, then how it changed. -->
+                  <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                    <span class="font-medium text-ink">
+                      {{ displayId(b.unit.id) }}
+                      <span v-if="b.unit.meId && b.unit.meId !== b.unit.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(b.unit.meId) }})</span>
+                    </span>
+                    <span v-if="unitName(b.unit)" class="min-w-0 text-ink-secondary">{{ unitName(b.unit) }}</span>
+                    <span v-else-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
+                  </p>
                   <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
-                    <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                    <p class="mb-1 text-sm">
                       <span
                         class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
                         :class="BADGE_CLASS[badgeOf(b.unit)]"
                       >
                         {{ BADGE_LABEL[badgeOf(b.unit)] }}
                       </span>
-                      <span class="font-medium text-ink">
-                        {{ displayId(b.unit.id) }}
-                        <span v-if="b.unit.meId && b.unit.meId !== b.unit.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(b.unit.meId) }})</span>
-                      </span>
-                      <span v-if="unitName(b.unit)" class="min-w-0 font-medium text-ink">{{ unitName(b.unit) }}</span>
-                      <span v-else-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
                     </p>
 
                     <p v-if="b.unit.change === 'changed' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
