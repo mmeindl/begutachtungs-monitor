@@ -61,5 +61,5 @@ export const getTextComparison = defineCachedFunction(
     const source: TraceLink = { label: 'Textgegenüberstellung des Ressorts', url: annex.html ?? annex.xml }
     return { gp, inr, available: true, unavailableReason: null, source, pdf, boundaryNote: refusal, stats: summarizeComparison(rows), rows }
   },
-  { name: 'text-comparison', getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+  { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
 )

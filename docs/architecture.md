@@ -93,7 +93,9 @@ Server internals (`server/utils/`):
    cache on top of it freezes a snapshot of its inputs and stamps it as
    fresh. Observed: the detail cache held a nine-day-old statements count
    (`total: 1`) with a current `mtime`, while the leaf cache next to it
-   already held the correct 4 entries.
+   already held the correct 4 entries. Qualified by rule 5: a derived value
+   may be cached, but only in a layer that does not outlive the code that
+   produced it.
 2. **Set `swr: false` explicitly.** Nitro defaults to `swr: true`
    (`defaultCacheOptions`). With SWR an expired entry keeps serving the old
    value and only revalidates in the background — **and** the storage entry
@@ -123,6 +125,38 @@ Server internals (`server/utils/`):
    remembered — "0 rows" is the shape the outage takes, and a stale zero
    would render as "Noch keine Stellungnahmen", the one degraded state that
    carries no staleness note.
+5. **Cache by provenance, and in two layers (2026-09-09).** Rule 1 was
+   quietly broken by the diff and annex work: a parse *is* a derived
+   aggregate, and four of them had grown their own caches (`law-diff`,
+   `text-comparison`, `para-titles`, `ris-map-gp`). Nitro's own guard does
+   not catch it — the default integrity is `hash([fn, opts])`, which sees
+   the cached wrapper's source and nothing about the parser the closure
+   calls in another module. So editing a parser left localhost serving
+   yesterday's parse for up to 24 h with nothing on screen to say so. That
+   cost an hour on 2026-09-09, and worse than the hour: the stale page read
+   as evidence that the fix had not worked. Each cached function now
+   declares which half it is. **Documents we fetched** stay in the default
+   `cache` mount, on disk in dev, because a restart must not re-fetch 46
+   pages of RIS. **Anything we computed** takes `base: DERIVED_CACHE`
+   (`server/utils/cacheBase.ts`), mounted `memory` in dev
+   (`nuxt.config.ts`), so it dies with the Nitro worker — which is to say
+   with every edit to a server file. Production is untouched either way:
+   the `node-server` preset mounts no storage, both layers are memory
+   there, and `systemctl restart` empties them. A function that fetched
+   *and* parsed could not be made correct without splitting it, because any
+   invalidation that catches the parse throws away the fetch with it — so
+   `kons-para-heading` became a cached document under a fresh parse
+   (`kons-para-xml`), and the RIS corpus became cached pages under a
+   derived flattening (`ris-begut-page`, politeness pause moved inside the
+   cached call so it is paid on a miss, not on a hit). That retired
+   `CORPUS_SHAPE_VERSION`, a counter someone had to remember to bump.
+   `tests/cacheLayers.test.ts` holds every cached function to the choice: a
+   new one fails the suite until it is classified. **One deliberate
+   exception**, `statements-me`: it persists the *classified* rows, because
+   the raw list-142 response names private persons and the persistent layer
+   must not hold those (§3). Privacy outranks cache hygiene, so a change to
+   `classifySubmitter` is the one change that still needs
+   `rm -rf .nuxt/cache/nitro/functions/statements-me`.
 - `mappers.ts` — rows→types. **List 81, 0-based:** 0 gp, 2 inr, 4 title, 5 citation, 6 ministry code, 7 path, 8 deadline (display), 10 arrival (ISO "Datesort"), 11 active `'J'`, 13 statement count, 14 fristsort (`yyyymmdd` → ISO; empty → null), 16 full ministry name. **List 142, 0-based:** 2 snmeInr, 4 date, 6 submitter (HTML `<a>`), 12 endorsements, 15 citation. Stage texts: strip HTML, extract + absolutize links.
 - RV enrichment: last `/gegenstand/{gp}/I/{nr}` link from the stages (ME→RV is 1:n → we take the latest RV); RV JSON: `content.status.bgbllinks[]`, entry with `Abfrage=BgblAuth` (never blindly `[0]`).
 - Documents: `content.documents[]`; text evolution: `content.statements.documents[]` (misleading key, intentional upstream!).
@@ -235,7 +269,7 @@ regions — CLOUD Act). The build-time dependency on the npm registry remains
 6. **Dark mode** (tokens are prepared), **i18n**, **a11y audit** beyond the basics, **OG images**, sitemap/robots.
 7. **Monitoring/uptime alerting** — ~~the predecessor died in operation; set up before a public launch.~~ **Done (2026-09-08), deliberately minimal:** `.github/workflows/uptime.yml` probes `/` from GitHub's runners twice an hour (HTTP 200 + keyword) and keeps exactly one `downtime` issue open while the site fails, @mentioning the owner — the issue is the alert and the state, so an outage is one mail, not one per run. Off-box by construction (a monitor on the VPS would go blind with it), no third-party account, no server component. Not built, on purpose: a health endpoint (stale upstream is already labelled on the pages), a dead man's switch for the prewarm timer (a failed prewarm costs the first visitor two seconds, not an outage), a status page. Trap: GitHub disables schedules after 60 commit-free days and mails about it — `deploy/infrastructure.md`.
 8. **Nightly prewarm/sync cron** instead of cache-on-demand, once traffic is real. First instance exists (Sept 2026): a systemd timer warms the RIS↔ME map (`deploy/systemd/`, installed by `deploy.sh`), because that fetch is too slow to land on a visitor.
-9. **Classifier review loop**: ~~a manual org allowlist~~ the allowlist mechanism exists (`ORG_ALLOWLIST` in `server/utils/privacy.ts`, first entry: epicenter.works, Aug 2026). Still deferred: a review loop that surfaces *candidates* (e.g. hidden submitters with many endorsements) instead of finding them by accident. Note: in dev, Nitro persists cached-function results to `.nuxt/cache/nitro/` across restarts — after changes to the classifier or to the diff/join code (`law-diff`, `ris-map-gp`), delete that directory, or the dev server keeps serving results of the old code for up to 24 h.
+9. **Classifier review loop**: ~~a manual org allowlist~~ the allowlist mechanism exists (`ORG_ALLOWLIST` in `server/utils/privacy.ts`, first entry: epicenter.works, Aug 2026). Still deferred: a review loop that surfaces *candidates* (e.g. hidden submitters with many endorsements) instead of finding them by accident. Note: the classifier runs inside the `statements-me` cache, which persists across dev restarts on purpose (§5 cache rule 5 — the raw rows may not go to disk). After a change to `classifySubmitter`, delete `.nuxt/cache/nitro/functions/statements-me`, or the dev server keeps serving the old classification for up to 30 minutes. Parser and join changes no longer need this.
 10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/rv-latency.mjs`, hand-copied into `shared/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
 
 ### 12.11 Speaking names — mostly a lookup, not a language model

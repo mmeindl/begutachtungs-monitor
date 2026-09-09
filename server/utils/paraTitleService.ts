@@ -29,28 +29,38 @@ import { parseParliamentHtml, parseRisXml, type TextBlock } from './lawText'
 import { promulgationByArticle } from './lawTitles'
 import { unitKey } from '#shared/utils/diffKey'
 import { addressedParagraph } from './lawTitles'
+import { parseKonsParagraph } from './lawStructure'
 import { getConsultationsForGp, getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
-import { fetchParagraphTree, resolveLawByBgbl, type KonsParagraphRef } from './risKons'
+import { getText, resolveLawByBgbl, type KonsParagraphRef } from './risKons'
 
 const TTL_S = 60 * 60 * 24
-/** A NOR version document never changes, so its heading can be kept for a long time. */
-const HEADING_TTL_S = 60 * 60 * 24 * 30
+/** A NOR version document never changes, so it can be kept for a long time. */
+const DOCUMENT_TTL_S = 60 * 60 * 24 * 30
 /** Ceiling on lookups per draft, so one monster Sammelgesetz cannot hang a request. */
 const MAX_HEADINGS = 120
 const CONCURRENCY = 4
 
-const fetchHeading = defineCachedFunction(
-  async (ref: KonsParagraphRef): Promise<string | null> => {
-    const tree = await fetchParagraphTree(ref).catch(() => null)
-    return tree?.heading ?? null
-  },
-  { name: 'kons-para-heading', getKey: (ref: KonsParagraphRef) => ref.nor, maxAge: HEADING_TTL_S, swr: false },
+/**
+ * One paragraph document as RIS sent it. Cached, but not its heading: the
+ * heading rules live in `lawStructure.ts` and that is where they keep
+ * changing, so a cached *heading* would hide the next change to them for a
+ * month (`cacheBase.ts`). The parse costs microseconds; the fetch does not.
+ */
+const fetchParagraphXml = defineCachedFunction(
+  (nor: string, xmlUrl: string): Promise<string> => getText(xmlUrl),
+  { name: 'kons-para-xml', getKey: (nor: string) => nor, maxAge: DOCUMENT_TTL_S, swr: false },
 )
+
+/** The § heading ("Sofortlotterien"), parsed on every call — see above. */
+async function fetchHeading(ref: KonsParagraphRef): Promise<string | null> {
+  if (!ref.xmlUrl) return null
+  return parseKonsParagraph(await fetchParagraphXml(ref.nor, ref.xmlUrl))?.heading ?? null
+}
 
 const resolveLaw = defineCachedFunction(
   async (organ: string, nummer: string, date: string) => resolveLawByBgbl({ organ, nummer }, date).catch(() => null),
-  { name: 'kons-law-by-bgbl', getKey: (organ: string, nummer: string, date: string) => `${organ}|${nummer}|${date}`, maxAge: TTL_S, swr: false },
+  { name: 'kons-law-by-bgbl', base: DERIVED_CACHE, getKey: (organ: string, nummer: string, date: string) => `${organ}|${nummer}|${date}`, maxAge: TTL_S, swr: false },
 )
 
 /**
@@ -135,5 +145,5 @@ export const getParagraphTitles = defineCachedFunction(
     }
     return { gp, inr, asOf, titles }
   },
-  { name: 'para-titles', getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+  { name: 'para-titles', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
 )
