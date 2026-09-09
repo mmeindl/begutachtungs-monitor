@@ -62,10 +62,10 @@ const GLD_RE = /<(?:gldsym|symbol)\b[^>]*>([\s\S]*?)<\/(?:gldsym|symbol)>/
 const COLSPAN_RE = /colspan="(\d+)"/i
 const MARK_RE = /background\s*:\s*yellow/i
 /** The three-dots convention: "2. bis 26b. …" or a bare "…". */
-const ELIDED_RE = /(?:\.\.\.|…)\s*$/
+export const ELIDED_RE = /(?:\.\.\.|…)\s*$/
 
-const HEADER_CURRENT = 'geltende fassung'
-const HEADER_PROPOSED = 'vorgeschlagene fassung'
+export const HEADER_CURRENT = 'geltende fassung'
+export const HEADER_PROPOSED = 'vorgeschlagene fassung'
 
 function cellText(html: string): string {
   return normalizeText(
@@ -142,7 +142,7 @@ export function parseTextComparison(xml: string): ComparisonRow[] {
   return rows
 }
 
-function classify(current: string, proposed: string): ComparisonChange {
+export function classify(current: string, proposed: string): ComparisonChange {
   if (!current && proposed) return 'inserted'
   if (current && !proposed) return 'removed'
   return current === proposed ? 'unchanged' : 'changed'
