@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph, parseBgbl, promulgationByArticle, sameBgbl } from '../server/utils/lawTitles'
+import { addressedParagraph, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
 import { parseRisXml } from '../server/utils/lawText'
 import { unitKey } from '../shared/utils/diffKey'
 
@@ -105,5 +105,19 @@ describe('unitKey', () => {
     const unit = { article: null, id: '§5', change: 'changed' as const }
     expect(unitKey(unit)).toBe('|§5|changed')
     expect(unitKey(unit)).toBe(unitKey({ ...unit }))
+  })
+})
+
+describe('stammnormOf', () => {
+  it('reads the Stammnorm, not the most recent amendment', () => {
+    expect(stammnormOf('Das Bundesgesetz X, BGBl. I Nr. 100/2000, zuletzt geändert durch BGBl. I Nr. 50/2020, wird wie folgt geändert:'))
+      .toEqual({ organ: 'BGBl. I Nr.', nummer: '100/2000' })
+  })
+
+  // The UGB's Stammnorm is "dRGBl. S. 219/1897". Taking the first BGBl in the
+  // whole clause returned the last amendment and resolved to another law.
+  it('refuses when the law was not promulgated in a BGBl at all', () => {
+    expect(stammnormOf('Das Unternehmensgesetzbuch - UGB, dRGBl. S. 219/1897, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 6/2026, wird wie folgt geändert:'))
+      .toBeNull()
   })
 })
