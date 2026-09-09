@@ -229,6 +229,7 @@ function toMapRow(
     risDocument: rec?.mainDocument ?? null,
     textComparison: rec?.textComparison ?? null,
     score: c?.score ?? null,
+    risBeginn: rec?.beginn ?? null,
     beginnOffsetDays: c?.dateOffset ?? null,
     endeOffsetDays: c?.endOffset ?? null,
     risEnde: c?.ende ?? null,
