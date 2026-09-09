@@ -107,6 +107,9 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // Text" (NEHG §§ 24, 26, 27, BGBl. I Nr. 60/2024, 2026-09-09).
   if (/<table\b/.test(body)) return null
 
+  /** Does the document carry Absatz-shaped law text of its own? */
+  const hasAbsaetze = /<absatz[^>]*typ="(?:abs|satz)"[^>]*ct="text"/.test(body)
+
   const paraId = /<absatz[^>]*ct="artikel_anlage"[^>]*>([\s\S]*?)<\/absatz>/.exec(body)
   const idText = paraId ? text(paraId[1]!) : ''
   const idMatch = /(?:§|Art\.?|Artikel|Anlage)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
@@ -187,7 +190,20 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     }
 
     // tag === 'absatz'
-    if (typ !== 'abs' && typ !== 'satz' && typ !== '') continue
+    //
+    // `erltext` counts as law text only where nothing else does. An Anlage's
+    // body is written as `<absatz typ="erltext" ct="text">` and it is binding:
+    // "Die Messdauer hat mindestens sechs Monate zu betragen" is a provision
+    // of the Radonschutzverordnung's Anlage 2, and read as metadata three
+    // Anlagen of that one Verordnung parsed to nothing (2026-09-09).
+    //
+    // In a § that has proper Absätze the same tag carries something else, and
+    // taking it as text glued it onto the last Absatz: 15 paragraphs the
+    // engine had reproduced exactly then counted as incomplete, because an
+    // instruction replacing that Absatz dropped the appended block. So the
+    // fallback applies to the documents that need it and to no others.
+    if (typ === 'erltext' && hasAbsaetze) continue
+    if (typ !== 'abs' && typ !== 'satz' && typ !== '' && typ !== 'erltext') continue
     const gld = GLD_RE.exec(inner)
     const rest = text(gld ? inner.replace(gld[0], ' ') : inner)
     if (gld && root === null) {
