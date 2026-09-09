@@ -153,17 +153,31 @@ async function fetchRisPage(page: number): Promise<{ hits: number; docs: any[] }
   throw createError({ statusCode: 502, statusMessage: 'RIS-API nicht erreichbar', cause: lastError })
 }
 /**
- * One page of the result set, as RIS sent it. Leaf cache — and the
- * politeness pause sits inside it, so it is paid on a fetch and not on a
- * hit: re-flattening the corpus from 46 cached pages must not cost 14
- * seconds of sleeping.
+ * One page of the result set, as RIS sent it. The politeness pause sits
+ * inside the function, so it is paid on a fetch and not on a cache hit:
+ * re-flattening the corpus from 46 cached pages must not cost 14 seconds of
+ * sleeping. Bypassing the cache keeps the pause, because it is part of `fn`.
+ *
+ * **Cached in dev only.** The pages exist so that re-deriving the corpus
+ * after a worker reload costs no network (`cacheBase.ts`), and that is a dev
+ * concern by construction. In production they would earn nothing: page and
+ * corpus share the 20 h TTL and expire together, so a rebuild re-fetches
+ * either way — and until then the raw pages hold the whole corpus a second
+ * time in its bulkier form (measured 2026-09-09 on the VPS: 92 → 133 MB of
+ * 952, for no hit that would not have happened anyway).
  */
 const risPage = defineCachedFunction(
   async (page: number): ReturnType<typeof fetchRisPage> => {
     await sleep(RIS_PAGE_PAUSE_MS)
     return fetchRisPage(page)
   },
-  { name: 'ris-begut-page', getKey: (page: number) => String(page), maxAge: RIS_CORPUS_TTL_S, swr: false },
+  {
+    name: 'ris-begut-page',
+    getKey: (page: number) => String(page),
+    maxAge: RIS_CORPUS_TTL_S,
+    swr: false,
+    shouldBypassCache: () => !import.meta.dev,
+  },
 )
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
