@@ -246,7 +246,46 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-`tests/privacy.test.ts` (classifier: orgs, persons with titles/postal-code suffix, placeholder, edge cases → safe default), `tests/mappers.test.ts` (row mapping, deadline parsing, stage HTML extraction), `tests/feeds.test.ts`, `tests/deadlines.test.ts` and `tests/lastgood.test.ts` (round-trip, version/corruption/empty-record rejection, path validation, I/O failure degrades instead of throwing — point `BM_STATE_DIR` at a temp dir) with Vitest; keep the modules involved free of Nuxt auto-imports (relative imports).
+Vitest, 25 files, ~520 cases, no network and no Nitro: everything under test is
+a pure module with relative imports, which is why the modules are cut that way
+in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
+app/server/`shared`, and `pnpm typecheck:tools` covers `scripts/` and `tests/`
+(`tsconfig.tools.json`) — the half that `nuxt typecheck` does not see and that
+the log below blames twice for shipped bugs. All three run in CI on every push
+(`.github/workflows/ci.yml`).
+
+- **Upstream → our types:** `mappers` (entity decoding, row mapping, deadline
+  parsing, stage HTML), `privacy` (classifier: orgs, persons with
+  titles/postal-code suffix, placeholder, edge cases → safe default), `gp`
+  (Roman numerals), `related`, `aliases`, `budget`, `deadlines`, `outcomes`
+  (the base rates quoted in the UI), `feeds` (RSS/ICS escaping), `lastgood`
+  (round-trip, version/corruption/empty-record rejection, path validation, I/O
+  failure degrades instead of throwing — point `BM_STATE_DIR` at a temp dir),
+  `cacheLayers` (every cached function declares its layer, §5).
+- **RIS join and the ME→RV diff:** `risJoin` (title normalisation, tiers),
+  `lawDiff`, `lawTitles`, `lawPackage`.
+- **Amendment engine (§12.12):** `novao` (instruction parsing), `lawApply`,
+  `applyGuard`, `applyReport`, `tguOracle`.
+- **Textgegenüberstellung (§12.13):** `textComparison` (the XML table),
+  `annexPdf` (page geometry), `annexBoundaries` (which heading opens a law),
+  `annexCheck` (the gate), `annexGolden`.
+
+`annexGolden` is the only one that is not synthetic, and deliberately: two real
+RIS documents are checked in verbatim (CC-BY 4.0) because synthetic fixtures
+only ever contain what was already understood. `annex-vkrg.xml` is the
+Textgegenüberstellung of the Verbraucherkreditrechts-Änderungsgesetz 2026 — a
+five-Artikel package whose Anhang splits its columns differently from its own
+header — and `annex-uwg-pages.json` is the page geometry of the UWG-Novelle,
+whose pages are turned a quarter turn (the geometry rather than the PDF, so the
+test needs no pdf.js).
+
+Four invariants hold over every parse, whichever document and whichever path:
+no elided row carries a change, no row shown as a change lacks a designation, a
+word diff exists exactly where two sides differ and both carry text, and no row
+claims a change it cannot show. Three more hold over the gate and are checked
+against the whole corpus by `scripts/annex-pdf-verify.ts` (`runGate`), all of
+them on nil: no row delivered as `verified` without a confirmed verdict, no §
+missing from the verdict map, no withheld row still carrying text.
 
 ## 10. Operations (v1)
 
@@ -714,10 +753,14 @@ Entwurf keine hat.
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
-Engine: `server/utils/textComparison.ts` (Parser), `textComparisonService.ts`
-(Nitro-Glue), `/api/consultations/:gp/:inr/gegenueberstellung`,
-`app/components/TextComparisonSection.vue`. In GP XXVIII tragen 65 von 132
-Entwürfen eine lesbare Gegenüberstellung.
+Engine: `server/utils/textComparison.ts` (Parser der XML-Tabelle),
+`annexPdf.ts` (Seitengeometrie), `annexCheck.ts` (das Tor),
+`textComparisonService.ts` (Nitro-Glue),
+`/api/consultations/:gp/:inr/gegenueberstellung`,
+`app/components/TextComparisonSection.vue`. In GP XXVIII zeigt die Seite die
+Gegenüberstellung für **109 von 132 Entwürfen** — 65 aus der XML-Tabelle,
+44 aus der Textebene des PDF, seit beide Quellen angeschlossen sind
+(2026-09-09, weiter unten). Die 65 sind die Zahl, mit der das hier begann.
 
 **Warum diese Sektion über dem Textvergleich steht.** Der ME→RV-Vergleich
 braucht eine Regierungsvorlage und kommt Monate später; die
@@ -948,6 +991,61 @@ steht im RIS als Tabelle".
    nächste Aufruf versucht es erneut. Auch `resolveKonsLaw` fängt nicht mehr:
    „das Gesetz gibt es nicht" ist eine cachebare Null, „das RIS antwortet
    nicht" ist keine.
+
+**Was das Tor findet, muss auch dastehen (2026-09-10).** Das Tor unterscheidet
+seit einem Tag drei Urteile, die Sektion sagte davon eines: Sie druckte einen
+Satz nur, wenn mindestens ein Paragraph beurteilt worden war — und schwieg in
+genau den 21 Entwürfen, in denen *nichts* geprüft werden konnte. Schweigen ist
+auf einer Seite, die sonst über ihre Prüfungen berichtet, keine Enthaltung,
+sondern ein Unbedenklichkeitszeugnis. Der Satz steht jetzt immer, im
+Nichtprüf-Fall mit dem Grund aus `notRunReason` („die Beilage nennt keine
+Paragraphen", „im RIS fehlt der Beginn der Begutachtungsfrist"), und er nennt
+das **Datum**: geprüft wird gegen den Stand zum Beginn der Begutachtungsfrist,
+nicht gegen heute (`verification.asOf`).
+
+Drei Zahlen daran waren mehrdeutig oder alarmierend:
+
+- *Einheiten.* „N Stellen werden nicht gezeigt" zählte Paragraphen, las sich
+  aber als Zeilen — der Hinweis im Block daneben zählt Zeilen („2 Änderungen
+  hier nicht gezeigt"). Jetzt nennt jeder Satzteil seine Einheit.
+- *„ließen sich nicht prüfen"* zählte jeden Paragraphen ohne Urteil, also auch
+  die, die keines brauchen: ein Paragraph, der nur Unverändertes zeigt, ist
+  ohnehin eingeklappt, und ein **neu geschaffener** hat keinen geltenden Text
+  — das ist sein Zweck, kein Mangel. Gezählt werden jetzt nur Paragraphen, die
+  eine Änderung zeigen und kein Urteil tragen (`checkAnnexRows`).
+- *Die Zählpille am Gesetzeskopf* zählte einbehaltene Zeilen mit, `stats` nicht
+  — die Überschrift konnte „12 geändert" sagen, wo der Block darunter drei
+  davon als nicht gezeigt auswies.
+
+Dazu zwei Zurechnungen: der Einbehalt-Hinweis nennt auf dem PDF-Pfad *unsere*
+Zeilenzuordnung als mögliche Ursache, so wie es der Auffällig-Satz schon tat;
+und die Sektion verlinkt „Wie wir prüfen" auf `/so-funktionierts#gegenueberstellung`,
+wo Herkunft (Rundschreiben 27.03.2002), Markierung, Prüfung und die beiden
+Wörter „nicht gezeigt" und „nicht geprüft" einmal ausführlich stehen.
+
+**„Nicht im RIS" ist nicht „gibt es nicht" (2026-09-10).** Der Service las die
+Beilage ausschließlich über den RIS-Datensatz und schrieb sonst „Keine
+Textgegenüberstellung: Sie ist nicht verpflichtend …" — eine Aussage über den
+Entwurf, hergeleitet aus einer Eigenschaft *einer* Quelle. Gemessen über die
+GP XXVIII: bei **11 der 130 zugeordneten Entwürfe** trägt die Dokumentenliste
+des Parlaments eine Textgegenüberstellung, während der RIS-Datensatz keine hat
+(8 davon auch als HTML, 3 nur als Bild-PDF). Auf einer Seite, deren ganzer
+Anspruch das Nachverfolgen von Dokumenten ist, ist das die schlechteste Art
+von falscher Antwort. Der Service fragt jetzt die Parlaments-Dokumentenliste
+(`getGegenstand` + `mapDocuments`, dasselbe Muster wie `findDiffSources`),
+bevor er so etwas behauptet — auch beim fehlenden und beim schwach
+zugeordneten RIS-Datensatz, wo das Parlaments-Dokument sogar die *bessere*
+Quelle ist, weil es unter der Nummer dieses Entwurfs liegt und die Zuordnung
+gar nicht erst geraten werden muss. **Gelesen wird es nicht:** ein Parser für
+den Parlaments-Anhang ist eigene Arbeit (`TODO.md`), die Zeile verlinkt ihn.
+Der Aufruf passiert nur in diesen Zweigen, also für rund 20 der 132 Entwürfe,
+und er fängt keine Fehler — dieselbe Regel wie oben.
+
+Und die Absagen werden genauer: sagt ein Parser, *wie* ihn ein Dokument
+abgewiesen hat (`ComparisonParse.unreadable`, `AnnexParse.unreadable` — „Das
+Dokument ist keine zweispaltige Gegenüberstellung", „Die beiden
+Spaltenüberschriften waren nicht zu finden"), steht dieser Satz auf der Seite
+statt des allgemeinen „ließ sich nicht auslesen".
 
 ## 13. Open questions
 

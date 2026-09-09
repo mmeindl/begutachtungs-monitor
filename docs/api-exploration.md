@@ -291,11 +291,39 @@ Ministerialentwurf, regulated by a BKA Rundschreiben of 27.03.2002
 unchanged text between two changes abbreviated as a designation plus three
 dots ("2. bis 26b. …").
 
-**RIS carries it as XML, Parliament only as PDF.** For XXVIII/ME/125 the
+**Both publish it; only RIS publishes it as a table.** For XXVIII/ME/125 the
 Parliament document list offers `Textgegenüberstellung` in PDF alone, while
-the RIS `Begut` record has the same annex as Xml, Html, Pdf and often Rtf.
-Anything built on this must therefore come from RIS, not from the Parliament
-HTML the ME→RV diff uses.
+the RIS `Begut` record has the same annex as Xml, Html, Pdf and often Rtf —
+and that observation was written up as the general rule. It is not one.
+Measured over all 132 GP-XXVIII Ministerialentwürfe on 2026-09-10 (Parliament
+`content.documents[]`, group title `Textgegenüberstellung`, against the joined
+RIS record):
+
+| GP XXVIII, 132 MEs | Parlament: PDF **und** HTML | Parlament: nur PDF | Parlament: nichts |
+|---|---:|---:|---:|
+| RIS-XML lesbar (65) | 64 | 1 | 0 |
+| RIS-XML gerastert (44) | 0 | 44 | 0 |
+| RIS ohne Beilage (23, davon 2 ohne Datensatz) | 9 | 3 | 11 |
+
+Three things follow, and each one contradicts a sentence that was here before:
+
+1. **Parliament offers HTML for 73 of the 121 MEs that have an annex at all** —
+   XXVIII/ME/125 is one of the 48 exceptions, not the rule.
+2. **Every single one of the 44 rasterised RIS annexes is PDF-only at
+   Parliament too.** The HTML twin exists exactly where RIS already has a
+   readable XML table, so Parliament's HTML would buy nothing for the path
+   that needs it most. (Parliament marks the scans in the file name:
+   `imfname_*.pdf` rather than `fname_*.pdf`.)
+3. **11 drafts have an annex at Parliament and none in RIS** — 8 of them with
+   HTML, 3 only as an `imfname_` scan. Reading the annex from RIS alone is
+   therefore right for the *rows* and wrong for the *sentence*: until
+   2026-09-10 those 11 were told "Keine Textgegenüberstellung", which is a
+   statement about RIS dressed up as one about the draft
+   (`architecture.md` §12.13).
+
+Also measured, and worth writing down because §2c has an open item about it:
+**no** GP-XXVIII ME carries two Textgegenüberstellung documents at Parliament.
+The two-annex case below is a RIS-side phenomenon.
 
 **Availability, measured over the 200 drafts published in the last twelve
 months:**
@@ -469,6 +497,40 @@ die fünf Befunde.
   Zeilenform statt aus einer Annahme, und ein Dokument, dessen Zeilen nicht
   zwei Zellen breit sind, liefert nichts statt Paaren aus unverwandten Zellen.
 
+Zwei weitere Befunde derselben Runde (2026-09-10, gemessen über die 2.000
+jüngsten RIS-Begut-Datensätze, 403 davon mit lesbarer XML-Beilage — die
+Zahlen in Klammern über die 400 jüngsten, das Fenster der Tabellen oben):
+
+- **XML: eine Datentabelle allein in einer Zelle wurde zur Gegenüberstellung.**
+  Der Lift greift ohne Kopfpaar, wenn eine Zelle die volle Breite deckt — und
+  das muss er, denn so schreibt das ABGB seinen § 1159, und so stehen Artikel-
+  und Abschnittszeilen in mehreren Beilagen. Er feuert auf 73 verschachtelte
+  Tabellen; 18 davon sind aber Tabellen **des Gesetzes**, die zufällig allein
+  in ihrer Zelle stehen, und ihre zwei Spalten wurden als „geltend" gegen
+  „vorgeschlagen" gelesen: die Bildungsdokumentation meldete „Attribut" →
+  „Wert", die Pflanzgutverordnung „Gattung oder Art" → „Schadorganismen", die
+  Hochschul-Curriculaverordnung „Bildungswissenschaftliche Grundlagen" → „10".
+  Bei letzterer besteht die ganze Beilage aus solchen Tabellen: alle 19 Zeilen
+  waren erfunden, sie liefert jetzt nichts und sagt warum. Entschieden wird
+  über die Auszeichnung des RIS, nicht über die Form: `<absatz typ="tabtext…">`
+  ist, wie das RIS Tabellenzellen typisiert, und es typisiert damit nie eine
+  Bestimmung. Alle 18 werden erkannt, keine der 6 echten verschachtelten
+  Gegenüberstellungen — 128 (20) Zeilen weniger, die „geändert" hießen.
+- **Eine Anlage beendet die Paragraphenfolge, sie gliedert sie nicht.** Zeilen
+  ohne eigene Bezeichnung erben den zuletzt geöffneten Paragraphen, und das
+  galt auch über „Anhang" hinweg: im VerKRÄG gingen vierzehn Zeilen des Anhangs
+  als § 14 des Verbraucherbehördenkooperationsgesetzes hinaus, wurden vom
+  RIS-Abgleich einbehalten und der Leserin mit „der geltende Text dieser Stelle
+  steht so nicht im RIS" erklärt — wahr über § 14 und falsch über die Beilage,
+  die das nie behauptet hat. Erkannt wird die Anlage über `typ="anlage"` und,
+  wo die Auszeichnung fehlt (12 Zeilen im Fenster), über die Wortwahl mit
+  derselben Längenschranke wie bei Abschnitt/Hauptstück. Betroffen: 1.982 (951)
+  Zeilen in 168 (61) Anlagen, davon 678 (230) als Änderung gezeigt. Sie tragen
+  jetzt die Anlage als Bezeichnung statt des Paragraphen davor — 522 (213) mit
+  einer Bezeichnung, die das RIS beantworten kann („Anlage 1" → `Anl. 1`); wo
+  die Zeile keine Nummer nennt („Anhang"), bleiben sie ungeprüft, was ihnen
+  zusteht.
+
 **Offen: zwei Beilagen-Dokumente pro Datensatz.** 2 der 240 Datensätze mit
 Beilage tragen zwei davon — „Textgegenüberstellung (Verordnung)" +
 „Textgegenüberstellung (Anlagen)" (Methodenverordnung Wasser) und
@@ -538,6 +600,7 @@ Every format incl. Html/Xml is **optional per file**. URL pattern: `https://www.
 - `Hits` is `{"@pageNumber":"1","@pageSize":"10","#text":"4566"}` — numbers as strings.
 - **Errors arrive as HTTP 200** with an `OgdSearchResult.Error` object (SOAP schema message) — check every response for it. Useful: a deliberately invalid enum value returns the valid values in the error text.
 - Record IDs: new `BEGUT_{GUID}`, old `BEGUT_COO_2026_100_2_{n}` — the "2026" is **not a year**, never parse data out of IDs.
+- **`Begut.Gesetzgebungsperiode` is silently ignored** (verified 2026-09-10): `?Applikation=Begut&Begut.Gesetzgebungsperiode=XXVIII` and the same query without it both return 4.570 hits. Unknown filter keys are dropped without an error — the same trap the Parliament API has (§1), and the reason `assertRowsMatchGp` exists there. Consequence for the record: `scripts/annex-pdf-verify.ts` passes that parameter and takes the first four pages, so what it labels "GP XXVIII" is really **the 400 most recent Begut records** (default sort is newest first; their Begutachtungsbeginn runs 2024-04-29 … 2026-09-08, so roughly a quarter of them predate GP XXVIII). Corpus figures quoted from that harness — 240 Beilagen, 126 lesbare XML-Tabellen, 114 PDF — carry that caveat. Numbers about *the 132 Ministerialentwürfe* are joined through Parliament's list 81 instead and are exact.
 - Docs: the HTML help pages are empty ASP.NET boilerplate. The real reference: `data.bka.gv.at/ris/api/v2.6/Content/Examples.zip` (→ `begut.html` with all enums) and the XSDs under `data.bka.gv.at/ris/ogd/v2.6/XSD/`.
 - **License:** the response carries no license field; the data.gv.at dataset "RIS Daten Version 2.6" (Bundeskanzleramt) licenses all distributions **CC-BY 4.0**.
 
