@@ -327,6 +327,28 @@ The name varies: `Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
 That last point is the valuable part: the author marks what changed, so the
 comparison needs no engine and carries no risk of inventing law text.
 
+**Als Orakel für die Engine (2026-09-09, `architecture.md` §12.12).** Drei
+Dinge, die der Prüfstand auf dem Weg dorthin gelernt hat:
+
+- **Der Rückweg BGBl → Entwurf ist exakt.** `Aenderung` im BrKons nennt die
+  Regierungsvorlage („BGBl. I Nr. 31/2026 (NR: GP XXVIII RV 447 …)"), und das
+  Parlament-JSON der Regierungsvorlage (`/gegenstand/XXVIII/I/447?json=True`)
+  trägt in `content.preconst[]` den Ministerialentwurf (`ityp: "ME"`, `inr`).
+  Von dort zum RIS-Begut-Satz über Titel und Beginn (±21 Tage um das
+  Einlangen). Initiativanträge („IA 951/A") und Ausschussanträge haben keinen
+  Entwurf und damit nie eine Gegenüberstellung — im 54-Novellen-Korpus 25 von
+  54; weitere 9 Regierungsvorlagen haben `preconst: null`.
+- **Regierungsvorlagen tragen die Gegenüberstellung uneinheitlich:** als HTML
+  (518 d.B.), nur als PDF (447 d.B.), gar nicht (531 d.B.). Wer die Deckung
+  des Orakels erhöhen will, muss den Parlaments-Anhang der RV lesen, wo der
+  Entwurf keinen hat — offen.
+- **Der Anhang hat eigene Fehler.** Er ist handgeschrieben: Tippfehler
+  gegenüber dem Gesetzestext desselben Entwurfs („therapeutischem" gegen
+  „therapeutischen"), Platzhalter für die spätere Kundmachungsnummer
+  („BGBl. I Nr. xxx/2025"), eigene Anführungszeichen um Zitate. Ein Vergleich
+  gegen ihn muss das aushalten, und er bestätigt entsprechend weniger, als er
+  könnte — nie mehr.
+
 ## 2. RIS OGD API — `Applikation=Begut`
 
 ```

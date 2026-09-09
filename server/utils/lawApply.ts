@@ -502,6 +502,14 @@ function sentenceSlot(node: LawNode, satz: string, count = 1): Slot | null {
     const schluss = [...node.children].reverse().find((c) => c.level === 'schluss')
     return schluss ? textSlot(schluss) : null
   }
+  // An Absatz that carries a list has no countable sentences: "…sind die
+  // Ordinationsstätten von 1. … 2. …, denen die Anerkennung erteilt worden
+  // ist." runs from the Einleitungssatz through the Ziffern into the
+  // Schlussteil. "erster Satz lautet" then replaced the fragment in front
+  // of the list and left the list standing (Ärztegesetz §§ 12, 12a, 13,
+  // BGBl. I Nr. 21/2024, 2026-09-09). Only Einleitungssatz and Schlussteil
+  // are addressable there.
+  if (node.children.length) return null
   const parts = splitSentences(node.text)
   if (!parts) return null
   const n = Math.max(1, count)

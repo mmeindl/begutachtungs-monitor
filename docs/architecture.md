@@ -501,6 +501,113 @@ Abs. 5", und `parseKonsParagraph`-Lücken (eine `<liste>` direkt unter dem
 `<gldsym>` verliert alle Listenelemente). Keine davon sieht nach einer Grenze
 aus; das ist der Grund, den Satz „geht nicht" nicht zu schreiben.
 
+**Dritte Messung, 2026-09-09: 3,8 % auf 133 Novellen — und was ein Gate
+daraus machen darf.** Der Tag begann mit einem Befund, der die Restquote
+zweitrangig machte: Von 261 Paragraphen meldeten 190 keine Verweigerung, und
+genau 12,6 % davon wichen ab — dieselbe Quote wie im Gesamtfeld. Die
+Verweigerung erkennt, dass die Engine *nichts* getan hat, nicht, dass sie
+etwas *falsch* getan hat. Ohne ein zweites Signal gibt es keine anzeigbare
+Teilmenge, auch nicht bei 5 %.
+
+*Zuerst war der Prüfstand falsch, nicht die Engine.* 5 der 33 Abweichungen
+waren gestaffelte Wirksamkeitsdaten: „19,4%" wird ab 2027 zu „23%" und ab
+2030 zu „21%" (Dienstgeberabgabegesetz § 1), das RIS schneidet pro Datum eine
+Fassung, und der Prüfstand hielt den Endstand gegen den *ersten* Schnitt. Er
+akzeptiert jetzt einen Treffer mit jeder Fassung, die diese BGBl erzeugt hat
+— nur der *letzte* Schnitt wäre wieder falsch, weil das RIS auch beim
+Außerkrafttreten eines Absatzes schneidet und dort „(Anm.: … außer Kraft
+getreten)" druckt (LWA-G § 1). `versionPairFor` liefert deshalb `afters`.
+
+*Dann die Engine, und die größte Klasse war ein Satz.* 46 von 459 Anweisungen
+adressieren Sätze, in 26 Formen; gelesen wurde nur „der zweite Satz", alles
+andere fiel auf den ganzen Absatz zurück — „entfallen die letzten beiden
+Sätze" löschte Luftfahrtgesetz § 169 Abs. 3 komplett. Der Satztrenner schnitt
+außerdem an jedem Punkt, also mitten durch „§ 5 Abs. 2". Beides ersetzt
+(`parseSatz`, `splitSentences`), und ein Satzwort, das der Parser nicht
+einordnen kann, verweigert die Adresse, statt sie zu weiten; ein Absatz mit
+Liste hat keine zählbaren Sätze, nur Einleitungssatz und Schlussteil. Weitere
+Klassen desselben Tages, jede mit der Novelle im Kommentar: Überschriften mit
+eingedrucktem §-Zeichen, die in der Segmentierung verloren gingen oder in der
+nächsten Anweisung auftauchten; halb angewendete zusammengesetzte Zeilen;
+Umbenennungen, die nacheinander statt gleichzeitig liefen; „(neu)" ohne
+vorangegangene Umbenennung; „in der jeweils grammatikalisch richtigen Form"
+(nicht mechanisch — Verweigerung); „jeweils" bei mehreren Zielen; „/" durch
+„bzw." ohne Fugen; „entfällt die Absatzbezeichnung" als Löschung des
+Absatzes; „Nach § 408a wird folgender § 408b angefügt" als Kind von § 408a;
+Tabellen im neuen wie im geltenden Text (nicht abbildbar, verweigert).
+
+| Korpus | Novellen / §§ | identisch | eigene Abweichung | ohne Verweigerung: abweichend |
+|---|---|---|---|---|
+| A (bisheriger) vorher | 23 / 261 | 54,4 % | 11,1 % | 21 / 190 (11,1 %) |
+| A nachher | 23 / 261 | **67,0 %** | **1,1 %** | **0 / 182** |
+| B (Titelfilter auch für -ordnungen) vorher | 52 / 438 | 51,4 % | 11,6 % | 39 / 323 (12,1 %) |
+| B nachher | 54 / 443 | 63,4 % | 0,9 % | 0 / 321 |
+| C (bis 2023 zurück, *vor* Korrekturen daraus) | 133 / 1.198 | 62,8 % | 5,0 % | 31 / 888 (3,5 %) |
+| C nachher | 133 / 1.199 | 63,6 % | **3,8 %** | **17 / 885 (1,9 %)** |
+
+Die Zeile C-vorher ist die wichtigste: Sie ist der einzige *Held-out*-Wert.
+Auf 54 Novellen stand nach den Korrekturen eine Null, die auf 79 weiteren,
+älteren Novellen 3,5 % war. Jede Null in dieser Tabelle ist ein In-Sample-Wert
+und so zu lesen; der ehrliche Erwartungswert für die nächste unbekannte
+Novelle liegt bei einigen Prozent, nicht bei null.
+
+*Der Detektor, gemessen gegen die alten Fehler.* `server/utils/applyGuard.ts`
+prüft ein Ergebnis zur Entwurfszeit auf Plausibilität — Umfang (weicht die
+Textlänge um mehr als 4 Zeichen von dem ab, was die Operanden wiegen?),
+Fugen, Marker im Text, unerklärte Wörter. `scripts/guard-eval.ts` spielt
+einen Prüfstand-Dump durch das echte Modul; gemessen wurde bewusst am Dump
+der Engine *vor* den Korrekturen (54 Fehler in 438 §§), weil das der beste
+Ersatz für den nächsten unbekannten Fehler ist:
+
+| Gate | lässt durch | davon abweichend | Recall korrekter §§ |
+|---|---|---|---|
+| nur Verweigerung | 314 | 38 (12,1 %) | 95,6 % |
+| Verweigerung + Umfang | 297 | 27 (9,1 %) | 94,7 % |
+| Verweigerung + Umfang + Fugen + Marker | 271 | 18 (6,6 %) | 87,6 % |
+| alle Signale | 257 | 15 (5,8 %) | 84,0 % |
+
+Auf Korpus C (45 Fehler in 1.199 §§): Verweigerung 17 (1,9 %) → mit Umfang 14
+(1,6 %) bei 94,2 % Recall → alle Signale 12 (1,6 %) bei 85,4 %. Der Rest ist
+immer von einer Art: *falsch gelesen und dann konsequent angewendet* —
+Einleitungssatz als ganzer Absatz, eine verschluckte Umbenennung, ein Payload
+mit verklebter Überschrift. Eine Prüfung des Ergebnisses gegen die eigene
+Lesart kann das per Konstruktion nicht sehen. Der Detektor ist ein Filter am
+Rand, keine Verifikation; das ist das Negativergebnis dieses Tages.
+
+*Die zweite Quelle: das Orakel.* `server/utils/tguOracle.ts` hält das
+Ergebnis gegen die Textgegenüberstellung des Ministerialentwurfs (§12.13) —
+vom Ressort geschrieben, am ersten Tag der Begutachtung, unabhängig von der
+Engine. Drei Enthaltenseins-Prüfungen pro § statt Textgleichheit, weil der
+Anhang Unverändertes auslässt und Marker druckt. Der Prüfstand
+(`--oracle`) findet den Entwurf über BGBl → Regierungsvorlage (RIS
+`Aenderung`) → Ministerialentwurf (Parlament `preconst`) → RIS-Begut-Satz
+(Titel und Beginn). Über 54 Novellen: 11 mit lesbarem Orakel — 22 sind
+Initiativanträge und hatten nie einen Entwurf, 3 Ausschussanträge, 5 Scans,
+9 Regierungsvorlagen ohne Entwurf. 29 Paragraphen bestätigt, **0 davon
+abweichend**. Wo ME und BGBl dieselben Anweisungen tragen, bestätigt es 17
+von 33 und widerspricht 7 — 5 zu Recht (die Engine hatte weniger getan) und
+2 wegen Tippfehlern im Anhang selbst („therapeutischem" gegen „-en"). Wo die
+Regierungsvorlage den Entwurf geändert hat, widerspricht es, wie es soll;
+in der Produktion liefe die Engine auf den Anweisungen des Entwurfs und
+dieser Fall entfiele. Die Deckung ist der Engpass: rund ein Fünftel der
+Novellen im Korpus, in der laufenden GP eher die Hälfte (§2c).
+
+*Was ein Gate heute darf:* anzeigen, was ohne Verweigerung, plausibel und vom
+Orakel bestätigt ist — im Korpus 21 von 443 Paragraphen, keiner davon falsch.
+Alles andere bleibt Anweisung. Nichts davon ist an eine Seite angeschlossen.
+
+*Was bleibt, nach Gewicht.* Artikelgegliederte Gesetze (bewusste
+Verweigerung, ~31 Anweisungen); `parseKonsParagraph` verliert eine `<liste>`
+direkt unter dem `<gldsym>` (EStG § 124b, 835 Elemente) — das ist auch ein
+Prüfstandsfehler, weil die Wahrheit dieselben Elemente verliert; die
+Litera-Schreibweise „a." statt „a)"; Bindestriche, die BgblAuth mit Leerzeichen
+druckt und BrKons ohne („MedKF - TG"); RIS-Fassungen, die *keinem*
+Zwischenstand der Engine entsprechen, wenn eine Novelle staffelt *und* etwas
+außer Kraft tritt (ORF-Beitrags-Gesetz § 5); ein Sammel-Titelfilter für
+Sammelnovellen. Und der größte Hebel für die Deckung des Orakels: die
+Gegenüberstellung der Regierungsvorlage aus dem Parlament lesen, wo der
+Entwurf keine hat.
+
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
