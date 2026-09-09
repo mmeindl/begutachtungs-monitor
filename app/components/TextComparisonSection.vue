@@ -73,7 +73,10 @@ interface Group {
  *
  * Rows the ressort abbreviated to "2. bis 26b. …" carry no text and only
  * interrupt the read, so they drop out — the context line already says how
- * much is unchanged.
+ * much is unchanged. Since 2026-09-10 a row is `elided` only when it consists
+ * of nothing *but* that syntax (`isElidedPair`), so the skip drops exactly
+ * what it means to: the 919 rows that carried a real change behind a trailing
+ * "…" are no longer among them.
  */
 const groups = computed<Group[]>(() => {
   if (!data.value?.available) return []
@@ -92,7 +95,11 @@ const groups = computed<Group[]>(() => {
     if (row.elided) continue
     if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
     current.rows.push(row)
-    current.counts[badgeOf(row)]++
+    // A withheld row keeps its `change` but lost its text, so counting it
+    // would put a change in the header pill that the block below says is not
+    // shown — and `stats` already leaves those rows out. The block notice is
+    // where a withheld change is accounted for.
+    if (row.check !== 'withheld') current.counts[badgeOf(row)]++
   }
   return out.filter((g) => g.rows.length > 0)
 })
@@ -196,7 +203,8 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
 const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasOf(g) })))
 
 /**
- * What the RIS check found, in one sentence.
+ * What the RIS check found, in one sentence — and, where it found nothing,
+ * that it found nothing.
  *
  * The annex's left column claims to be the law in force; RIS holds that text
  * independently, so the claim is checked before anything is shown
@@ -204,21 +212,64 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasO
  * between a comparison the reader can rely on and one they cannot, and the
  * count of what was withheld is the honest part of it.
  *
- * §§ that could not be checked at all are counted separately and never as a
- * fault: a draft creating new law has no standing text to check against.
+ * **Never null while the comparison is shown.** Until 2026-09-10 this fell
+ * silent whenever no § could be judged — 21 drafts of GP XXVIII — and silence
+ * on a page that otherwise reports its checks reads as "checked, nothing to
+ * report". `notRunReason` is the server's own fragment for that case
+ * (`REASON_*` in `annexCheck.ts`, lower-case, joined by "; "), written to
+ * follow a colon.
+ *
+ * **Units, twice over.** `withheldParagraphs` and `uncheckedParagraphs` count
+ * §§; the notice inside a block counts rows ("2 Änderungen hier nicht
+ * gezeigt"). Both nouns therefore appear here explicitly — "3 Paragraphen
+ * werden nicht gezeigt" against "2 Änderungen" — rather than the earlier
+ * "Stellen", which read as rows and counted §§. `rowsWithoutParagraph` is the
+ * third quantity and the only one that really is rows: changes the annex
+ * attributes to no § at all, so no verdict can reach them. It is named as
+ * changes, and printed only when there are any — for most drafts it is zero,
+ * and a clause about an empty set is noise.
+ *
+ * §§ that could not be checked are counted, never as a fault: a draft
+ * creating new law has no standing text to check against, and only §§ that
+ * actually show a change are counted at all (`checkAnnexRows`).
  */
-const checkNote = computed<string | null>(() => {
-  const v = data.value?.verification
-  if (!v || v.judged === 0) return null
-  const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen stimmen mit dem geltenden Text im RIS zusammen`]
+const checkNote = computed<string>(() => {
+  const v = data.value?.verification ?? null
+  // Null verification with `available: true` is not a state the server
+  // produces; if it ever did, the honest reading is "no check happened".
+  if (!v || v.judged === 0) {
+    const why = v?.notRunReason
+    return why
+      ? `Nichts an dieser Gegenüberstellung konnte gegen den geltenden Text im RIS geprüft werden: ${why}.`
+      : 'Diese Gegenüberstellung wurde nicht gegen den geltenden Text im RIS geprüft.'
+  }
+  const asOf = v.asOf ? ` (Stand ${formatDateDe(v.asOf)}, dem Beginn der Begutachtungsfrist)` : ''
+  const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen stimmen mit dem geltenden Text im RIS überein${asOf}`]
   if (v.withheldParagraphs > 0) {
-    parts.push(`${v.withheldParagraphs} ${v.withheldParagraphs === 1 ? 'Stelle wird' : 'Stellen werden'} deshalb nicht gezeigt`)
+    parts.push(v.withheldParagraphs === 1 ? 'ein Paragraph wird deshalb nicht gezeigt' : `${v.withheldParagraphs} Paragraphen werden deshalb nicht gezeigt`)
   }
   if (v.uncheckedParagraphs > 0) {
-    parts.push(`${v.uncheckedParagraphs} ${v.uncheckedParagraphs === 1 ? 'Paragraph ließ' : 'Paragraphen ließen'} sich nicht prüfen`)
+    parts.push(`${v.uncheckedParagraphs} ${v.uncheckedParagraphs === 1 ? 'Paragraph mit Änderungen ließ' : 'Paragraphen mit Änderungen ließen'} sich nicht prüfen`)
+  }
+  if (v.rowsWithoutParagraph > 0) {
+    parts.push(`dazu ${v.rowsWithoutParagraph} ${v.rowsWithoutParagraph === 1 ? 'gezeigte Änderung ohne Paragraphenangabe' : 'gezeigte Änderungen ohne Paragraphenangabe'}, ebenfalls ungeprüft`)
   }
   return `${parts.join('; ')}.`
 })
+
+/**
+ * Why a withheld block might be withheld — the same two causes as
+ * `doubtfulNote`, and the same reason for naming ours first on the PDF path:
+ * there the rows were inferred from the page geometry by us, so "the standing
+ * text does not carry this" is at least as likely to be our pairing as the
+ * ministry's version. Handing the ministry the blame for our own reading
+ * would be both wrong and against the framing of this project.
+ */
+const withheldCause = computed<string | null>(() =>
+  data.value?.readFrom === 'pdf'
+    ? 'Das kann daran liegen, dass wir die Zeilen des PDF falsch einander zugeordnet haben, oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.'
+    : null,
+)
 
 /**
  * A law whose §§ fail in a cluster. Named, and the cause named honestly with
@@ -259,9 +310,14 @@ const doubtfulNote = computed<string | null>(() => {
 
     <template v-else-if="!data.available">
       <p class="text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
-      <!-- A scan is unreadable for us but not for a person: still link it. -->
-      <p v-if="data.pdf" class="mt-3 text-xs text-ink-muted">
-        <ExternalLink :href="data.pdf.url" class="text-accent-deep hover:underline">{{ data.pdf.label }}</ExternalLink>
+      <!-- Unreadable for us is not unreadable for a person: whatever document
+           exists gets linked. `source` carries the annex's HTML version at
+           Parliament, or the RIS record whose assignment to this draft is in
+           doubt; `pdf` the annex itself. Both are labelled, so both can be
+           printed side by side. -->
+      <p v-if="data.pdf || data.source" class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+        <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
+        <ExternalLink v-if="data.pdf" :href="data.pdf.url" class="text-accent-deep hover:underline">{{ data.pdf.label }}</ExternalLink>
       </p>
     </template>
 
@@ -289,8 +345,13 @@ const doubtfulNote = computed<string | null>(() => {
 
       <!-- What the RIS check made of the annex. Stated rather than implied:
            the reader is looking at the ministry's own text, and how much of
-           it we could hold against the standing law is part of reading it. -->
-      <p v-if="checkNote" class="mt-3 text-sm text-ink-secondary">{{ checkNote }}</p>
+           it we could hold against the standing law is part of reading it.
+           Always present — a comparison nothing could be checked in says so
+           rather than falling silent, which reads as a clean bill. -->
+      <p class="mt-3 text-sm text-ink-secondary">
+        {{ checkNote }}
+        <NuxtLink to="/so-funktionierts#gegenueberstellung" class="rounded text-accent-deep underline underline-offset-2 hover:no-underline">Wie wir prüfen</NuxtLink>
+      </p>
       <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
@@ -343,7 +404,8 @@ const doubtfulNote = computed<string | null>(() => {
               <div v-for="(b, bi) in p.blocks" :key="bi" :class="bi > 0 ? 'mt-3' : ''">
               <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
                 {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt: der geltende Text
-                dieser Stelle steht so nicht im RIS. Die Beilage des Ressorts sagt, was sich ändert.
+                dieser Stelle steht so nicht im RIS.<template v-if="withheldCause"> {{ withheldCause }}</template>
+                Die Beilage des Ressorts sagt, was sich ändert.
               </p>
               <details v-else-if="b.kind === 'context'" class="group">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">

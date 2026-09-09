@@ -9,6 +9,7 @@ import {
   REASON_NO_ASOF,
   REASON_NO_PARAGRAPHS,
   REASON_NO_SUCH_PARAGRAPH,
+  REASON_NOTHING_TO_COMPARE,
   REASON_NOT_REPRESENTABLE,
   REASON_TOO_SHORT,
   REASON_UNRESOLVED,
@@ -304,12 +305,28 @@ describe('verifyAnnex', () => {
     // "geprüft" because nothing had named it.
     const rows = [
       row({ gld: '§ 1.', para: '§ 1.', current: PROSE }),
-      row({ gld: '§ 2.', para: '§ 2.', current: '(1) bis (3) …', elided: false }),
+      row({ gld: '§ 2.', para: '§ 2.', current: 'Der Bund entscheidet.' }),
     ]
     const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
     expect(check.verdicts['#§ 2.']).toBe('unchecked')
     expect(check.reasons).toContain(REASON_TOO_SHORT)
     expect(check.judged).toBe(1)
+  })
+
+  it('says a § shows no standing text at all rather than "too little text"', async () => {
+    // Two ways to reach zero comparable words, and both used to borrow the
+    // sentence about too little text. That sentence only started reaching
+    // readers on 2026-09-10 (§12.13), and 99/ME — an annex that inserts §§
+    // and does nothing else — is where it read false: a screenful of new
+    // provisions is not "zu wenig Text".
+    const rows = [
+      row({ gld: '§ 1.', para: '§ 1.', current: '', proposed: 'Ein ganz neuer Paragraf mit reichlich Text.', change: 'inserted' }),
+      row({ gld: '§ 2.', para: '§ 2.', current: '(1) bis (3) …', elided: false }),
+    ]
+    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
+    expect(check.judged).toBe(0)
+    expect(check.reasons).toEqual([REASON_NOTHING_TO_COMPARE])
+    expect(notRunReason(check)).toBe(REASON_NOTHING_TO_COMPARE)
   })
 
   it('doubts a law whose §§ fail in a cluster without withholding the sound ones', async () => {
@@ -503,6 +520,25 @@ describe('checkAnnexRows', () => {
     expect(out.stats).toMatchObject({ total: 2, changed: 1, unchanged: 1 })
     expect(out.withheldParagraphs).toBe(1)
     expect(out.uncheckedParagraphs).toBe(0)
+  })
+
+  it('counts as unchecked only the §§ that show a change', () => {
+    // The page prints this number after "… ließen sich nicht prüfen", so it
+    // has to mean "this much of what you see is unvouched-for". A § whose
+    // rows are unchanged is folded away behind a count and needs no check;
+    // one the draft *inserts* has no standing text to check against, which is
+    // the point of it and not a gap.
+    const rows = [
+      row({ gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu' }),
+      row({ gld: '§ 2.', para: '§ 2.', current: 'gleich', proposed: 'gleich', change: 'unchanged' }),
+      row({ gld: '§ 3.', para: '§ 3.', current: '', proposed: 'ganz neu', change: 'inserted' }),
+      row({ gld: '§ 4.', para: '§ 4.', current: 'entfällt', proposed: '', change: 'removed' }),
+      row({ gld: '§ 5.', para: '§ 5.', current: '§ 5. …', proposed: '§ 5. …', change: 'unchanged', elided: true }),
+    ]
+    const verdicts = { '#§ 1.': 'unchecked', '#§ 2.': 'unchecked', '#§ 3.': 'unchecked', '#§ 4.': 'unchecked', '#§ 5.': 'unchecked' } as const
+    expect(checkAnnexRows(rows, verification({ verdicts })).uncheckedParagraphs).toBe(2)
+    // A verdict of its own takes a § out of the count whichever way it went.
+    expect(checkAnnexRows(rows, verification({ verdicts: { ...verdicts, '#§ 1.': 'verified', '#§ 4.': 'withheld' } })).uncheckedParagraphs).toBe(0)
   })
 
   it('carries the verdict of the § a continuation row inherited', () => {

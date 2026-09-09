@@ -317,6 +317,18 @@ export const REASON_NO_SUCH_PARAGRAPH = 'das RIS Bundesrecht führt diese Paragr
 export const REASON_NOT_REPRESENTABLE = 'der geltende Paragraph steht im RIS als Tabelle und ist so nicht vergleichbar'
 export const REASON_CEILING = 'die Beilage nennt mehr Paragraphen, als in einer Anfrage geprüft werden können'
 export const REASON_TOO_SHORT = 'die gezeigten Änderungen tragen zu wenig Text für einen Abgleich'
+/**
+ * The same silence as `REASON_TOO_SHORT`, one step further: not a few words
+ * but none at all. A § whose changes are all *insertions* has no "Geltende
+ * Fassung" to check — which is the point of an insertion — and so has one
+ * whose only displayed change is elision syntax.
+ *
+ * Split off on 2026-09-10 because the page started printing these reasons
+ * (§12.13): 99/ME inserts §§ and nothing else, and telling its reader that
+ * "die gezeigten Änderungen tragen zu wenig Text" about a screen full of new
+ * provisions is false in the ordinary reading of it.
+ */
+export const REASON_NOTHING_TO_COMPARE = 'die Beilage zeigt an diesen Stellen keinen geltenden Text, der sich vergleichen ließe'
 
 /** What the check concluded about one § of the annex. */
 export type ParagraphVerdict = 'verified' | 'withheld' | 'unchecked'
@@ -586,9 +598,11 @@ export async function verifyAnnex(
     for (const [para, cover] of byPara) {
       compared++
       // Looked at, and silent: a § whose displayed changes carry almost no
-      // comparable words says nothing either way, so it is not a pass.
+      // comparable words says nothing either way, so it is not a pass. None
+      // at all is its own state and its own sentence — a § the draft only
+      // inserts has no standing text by definition.
       if (!cover.prose) {
-        reasons.add(REASON_TOO_SHORT)
+        reasons.add(cover.comparable === 0 ? REASON_NOTHING_TO_COMPARE : REASON_TOO_SHORT)
         continue
       }
       // Withholding is per §, whatever the law's verdict: a § that cleared
@@ -619,13 +633,28 @@ export interface CheckedComparison {
   stats: ComparisonStats
   /** §§ whose text was withheld because the standing law does not carry it */
   withheldParagraphs: number
-  /** §§ shown without a check */
+  /**
+   * §§ that show at least one change and carry no verdict.
+   *
+   * Only those. Counting every unchecked verdict put §§ into the sentence
+   * "… ließen sich nicht prüfen" that need no check at all: a § whose rows
+   * are unchanged is folded away behind a count, and a § the draft *inserts*
+   * has no standing text to check against — that is the point of it, not a
+   * gap. The number the page prints has to mean "this much of what you see is
+   * unvouched-for", or it reads as an alarm about the ministry's annex.
+   */
   uncheckedParagraphs: number
   /**
    * Rows the page shows as a change that carry no § designation at all, so no
-   * § verdict can address them. Shown as `unchecked`. Measured over GP XXVIII
-   * on 2026-09-10: the table path emits 285 rows without a designation, 83 of
-   * them shown as a change; the PDF path 125, none of them shown as a change.
+   * § verdict can address them. Shown as `unchecked`.
+   *
+   * A property of the table path only. Measured 2026-09-10: it emits 285 rows
+   * without a designation, 83 of them shown as a change. On the PDF path a
+   * row *is* a provision — it is cut at the § marker — so a unit without one
+   * is the annex's front matter, and since 2026-09-10 the parser drops it
+   * instead of emitting it as new law (`annexPdf.ts`, `AnnexParse.unplaced`).
+   * Every row that path emits carries a designation by construction, so this
+   * is 0 there.
    */
   rowsWithoutParagraph: number
 }
@@ -652,6 +681,13 @@ export interface CheckedComparison {
  */
 export function checkAnnexRows(rows: readonly ComparisonRow[], verification: AnnexVerification): CheckedComparison {
   let rowsWithoutParagraph = 0
+  /** §§ the page shows at least one change for — the only ones a check is owed. */
+  const showsChange = new Set<string>()
+  for (const row of rows) {
+    if (row.kind !== 'pair' || !isDisplayedChange(row)) continue
+    const para = row.gld ?? row.para
+    if (para !== null) showsChange.add(annexParagraphKey(row.law, para))
+  }
   const out: TextComparisonRow[] = rows.map((row) => {
     // An Artikel heading is a divider, not law text: nothing to check, and
     // nothing to vouch for either.
@@ -665,12 +701,11 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
     if (verdict !== 'withheld') return { ...row, check: verdict }
     return { ...row, current: '', proposed: '', segments: null, check: 'withheld' as const }
   })
-  const verdicts = Object.values(verification.verdicts)
   return {
     rows: out,
     stats: summarizeComparison(out.filter((r) => r.check !== 'withheld')),
-    withheldParagraphs: verdicts.filter((v) => v === 'withheld').length,
-    uncheckedParagraphs: verdicts.filter((v) => v === 'unchecked').length,
+    withheldParagraphs: Object.values(verification.verdicts).filter((v) => v === 'withheld').length,
+    uncheckedParagraphs: [...showsChange].filter((key) => (verification.verdicts[key] ?? 'unchecked') === 'unchecked').length,
     rowsWithoutParagraph,
   }
 }
