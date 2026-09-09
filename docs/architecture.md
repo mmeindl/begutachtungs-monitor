@@ -659,6 +659,46 @@ Novellen im Korpus, in der laufenden GP eher die Hälfte (§2c).
 Orakel bestätigt ist — im Korpus 21 von 443 Paragraphen, keiner davon falsch.
 Alles andere bleibt Anweisung. Nichts davon ist an eine Seite angeschlossen.
 
+**Vierte Messung, 2026-09-09: die harmlose Seite war zu groß.** `unvollständig`
+hieß „jede Änderung, die die Engine gemacht hat, hat das RIS auch gemacht —
+sie hat weniger getan, nicht etwas anderes", und der Test dazu verglich die
+*Änderungen* als Mengen. Ein Fall fällt dabei durch: die Einfügung angewendet,
+die zugehörige Löschung nicht. Kein Wort ist erfunden — jedes eingefügte Wort
+fügt das RIS auch ein, und eine unterlassene Löschung ist überhaupt keine
+Änderung — und der Paragraph trägt Text, den keine Fassung des Gesetzes je
+hatte. Von 152 so eingeordneten Paragraphen waren 53 echte Auslassungen; der
+größte der übrigen produzierte 547 Wörter gegen 414 im RIS, alle 414
+enthalten.
+
+`applyReport.ts` kennt dafür jetzt ein fünftes Urteil, `halbangewendet`, und
+prüft eine echte Auslassung am *Ergebnis* statt an den Änderungen
+(`isOmissionOf`: steht der Text der Engine im RIS-Text, in Reihenfolge, mit
+ausgelassenen Wörtern?). Das braucht den Wortdiff nicht und schließt damit
+eine Lücke — ein Paragraph mit dreitausend Wörtern war „nicht prüfbar" und
+konnte nie als Auslassung erkannt werden.
+
+| 133 BGBl, 1.059 Paragraphen | vorher | jetzt |
+|---|---|---|
+| identisch | 64,3 % | 64,3 % |
+| unverändert gelassen | 18,3 % | 18,3 % |
+| unvollständig | 14,3 % | **5,0 %** |
+| halb angewendet | — | **9,3 %** |
+| eigene Abweichung | 2,8 % | 2,8 % |
+
+**Und damit die Zahl, auf die es für ein Gate ankommt:** Paragraphen ohne
+jede Verweigerung, deren Text nicht das geltende Recht ist — **6,7 %**, nicht
+1,5 %. Ein Gate misst sich daran, ob es falschen Gesetzestext anzeigt, und
+das ist eine weitere Klasse als „ein erfundenes Wort". Das ist die Zahl für
+den Förderantrag, nicht die alte.
+
+**Die Population ist außerdem nicht die des Produkts.** Der Prüfstand filtert
+über den Titel auf einzelgesetzliche Novellen; 64 der 109 Entwürfe mit
+Beilage in der GP XXVIII sind Sammelnovellen (59 %). Die Engine ist auf
+Sammelnovellen unvermessen und hat noch nie die Anweisungen eines
+*Ministerialentwurfs* gelesen, sondern immer die des kundgemachten BGBl. Was
+gemessen ist, ist BGBl→BrKons; was die Seite zeigen würde, ist etwas
+anderes.
+
 *Was bleibt, nach Gewicht.* Artikelgegliederte Gesetze (bewusste
 Verweigerung, ~31 Anweisungen); `parseKonsParagraph` verliert eine `<liste>`
 direkt unter dem `<gldsym>` (EStG § 124b, 835 Elemente) — das ist auch ein
@@ -700,6 +740,61 @@ der amtliche Anhang ist, steht dort schlicht, wessen Dokument man liest.
 unterscheiden sich ohne Hervorhebung. Angezeigt wird deshalb der berechnete
 Wortdiff (vollständig, und dieselbe rot/grün-Sprache wie §12.10); die gelbe
 Markierung wird mitgelesen, aber nicht verlassen.
+
+**Der ausgelieferte Pfad war nie gemessen (2026-09-09).** Geprüft wurde die
+Beilage nur auf dem *nicht* ausgelieferten PDF-Weg, und der Grund war die
+Architektur: die Urteilslogik lag in `scripts/annex-pdf-verify.ts`, also dort,
+wo sie weder getestet noch angewendet werden kann — dieselbe Lektion wie bei
+`applyReport.ts`, zum zweiten Mal. Sie liegt jetzt in
+`server/utils/annexCheck.ts` (rein, testbar), der Prüfstand bekommt `--xml`,
+und beide Pfade messen mit demselben Maßstab: die linke Spalte behauptet, das
+geltende Recht zu sein, und das RIS hält diesen Text unabhängig.
+
+| GP XXVIII, Paragraphen mit Fließtext | ≥ 99 % gedeckt | < 80 % |
+|---|---|---|
+| XML-Beilagen (ausgeliefert) | 86,9 % | 4,7 % |
+| PDF-Beilagen (Textebene) | 70,2 % | — |
+
+Der ausgelieferte Pfad ist damit *besser* als der PDF-Pfad, nicht schlechter.
+Die 4,7 % sind trotzdem die gefährlichste Restklasse des Projekts, weil sie
+ausgeliefert wird: 45 Paragraphen, 29 davon unter 50 % Deckung, jeder als
+Wortdiff auf der Seite, über einem geltenden Text, zu dem die Zeile nicht
+gehört — falsch gepaart oder gegen einen überholten Stand des Gesetzes
+gestellt.
+
+**Das Tor, drei Zustände.** `annexGuardService.ts` hält jeden Paragraphen
+gegen RIS Bundesrecht, zum `BeginnBegutachtungsfrist` — dem Tag, an dem das
+Ressort die Beilage geschrieben hat.
+
+- **einbehalten**, wenn der geltende Text die Spalte nicht deckt. Text und
+  Wortdiff werden im Server geleert, nicht in der Komponente versteckt: eine
+  falsche Gegenüberstellung darf von keinem Client darstellbar sein.
+- **ungeprüft**, wenn gar nicht geprüft werden konnte — ein Entwurf, der
+  neues Recht schafft, hat keine Stammnorm, eine Verordnung steht nicht im
+  Bundesrecht. Wird gezeigt und als ungeprüft benannt. Das zu verweigern
+  hätte gesunde Arbeit weggeworfen, ohne etwas sicherer zu machen; „geprüft
+  und falsch" und „nicht prüfbar" sind verschiedene Zustände.
+- **auffällig** für ein Gesetz, dessen Paragraphen gehäuft abweichen: ein
+  Satz für die Leserin, keine Einbehaltung. Wer 95 % Deckung über echten
+  Fließtext erreicht, hat das nicht zufällig getan — bei einem abweichenden
+  Stand sind also genau die unveränderten Paragraphen richtig, und ihre
+  Diffs auch. Eine erste Fassung verweigerte das ganze Gesetz und behielt 59
+  Paragraphen ein, die einzeln gegen RIS bestanden hatten. Ein Anteil braucht
+  außerdem einen Nenner: 14 der ursprünglich 18 Markierungen betrafen
+  Gesetze mit einem oder zwei geprüften Paragraphen.
+
+Wirkung über die 126 Entwürfe mit lesbarer Beilage: 1.055 Paragraphen
+geprüft, 965 bestätigt, 90 einbehalten, 584 als ungeprüft gezeigt, 8 Gesetze
+markiert — und **kein gezeigter Paragraph** liegt noch unter der Schwelle.
+Kalte Antwortzeit 8,3 s bei 400 Zeilen; die Sektion lädt nachgelagert.
+
+**Die Schwellen sind gemessen, nicht gesetzt.** `MIN_PROSE_TOKENS` stammte
+aus der Bewertung einzelner *Zeilen* und ließ jeden Paragraphen unter 15
+vergleichbaren Wörtern ungeprüft durch. Die Bande 5–14 Wörter umfasst 66
+Paragraphen und bestätigt mit 89 % genauso gut wie das Gesamtfeld — sieben
+davon wurden zu Unrecht entschuldigt; die Bande 1–4 ist Rauschen, weil dort
+ein fehlendes Wort 75 % bedeutet, und fällt zur Hälfte durch. Also fünf
+(`--calibrate`).
 
 **Ein Fallstrick beim Ausrollen, teuer und stumm.** Ein neues Feld auf
 `RisBegutFlat` machte den persistierten Nitro-Cache still falsch: die
