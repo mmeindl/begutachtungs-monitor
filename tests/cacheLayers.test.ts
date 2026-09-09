@@ -28,7 +28,7 @@ const FETCHED: Record<string, string> = {
   'law-html': 'a published Gesetzestext document, byte for byte',
   gegenstand: 'the upstream detail JSON, passed through unmapped',
   'kons-para-xml': 'a RIS paragraph document; its heading is parsed fresh on every call',
-  'ris-begut-page': 'one page of the RIS result set, as it arrived',
+  'ris-begut-page': 'one page of the RIS result set, as it arrived — cached in dev only',
   'consultations-gp': 'list 81 rows, mapped field for field (residual, see above)',
   'statements-me': 'list 142 rows, classified — the raw rows must not be persisted (see above)',
   'current-gp': 'one GP code read out of the list configuration (residual, see above)',

@@ -148,7 +148,10 @@ Server internals (`server/utils/`):
    `kons-para-heading` became a cached document under a fresh parse
    (`kons-para-xml`), and the RIS corpus became cached pages under a
    derived flattening (`ris-begut-page`, politeness pause moved inside the
-   cached call so it is paid on a miss, not on a hit). That retired
+   cached call so it is paid on a miss, not on a hit; cached in dev only —
+   in production page and corpus expire together, so the raw pages would
+   hold the corpus a second time for no hit that would not have happened
+   anyway, measured at 92 → 133 MB of 952). That retired
    `CORPUS_SHAPE_VERSION`, a counter someone had to remember to bump.
    `tests/cacheLayers.test.ts` holds every cached function to the choice: a
    new one fails the suite until it is classified. **One deliberate
