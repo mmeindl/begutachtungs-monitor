@@ -234,3 +234,47 @@ describe('headings that span both columns', () => {
     }
   })
 })
+
+describe('what looks like a provision but is not', () => {
+  // Annexes reprint the law's Inhaltsverzeichnis: "§ 1. Unmittelbare
+  // Bundesvollziehung", one line each. Such a line opens a § and ends without
+  // a full stop — exactly the shape of a heading — so the carry that hands a
+  // heading down to the § below it handed each entry to the next § instead,
+  // dragging the whole table of contents three §§ forward. 126 of the
+  // worst-scoring rows of the corpus were that one bug (2026-09-09).
+  it('does not drag a table of contents into the provisions below it', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 1. Unmittelbare Bundesvollziehung', right: '§ 1. Unmittelbare Bundesvollziehung' },
+      { y: 686, left: '§ 2. Bezugnahme auf Unionsrecht', right: '§ 2. Bezugnahme auf Unionsrecht' },
+      { y: 672, left: '§ 3. Anwendungsbereich', right: '§ 3. Anwendungsbereich' },
+      { y: 640, left: '§ 1. (1) Die Vollziehung ist Bundessache.', right: '§ 1. (1) Die Vollziehung ist Landessache.' },
+    ])])
+    expect(rows.find((r) => r.gld === '§ 2.')!.current).toBe('§ 2. Bezugnahme auf Unionsrecht')
+    expect(rows.find((r) => r.gld === '§ 3.')!.current).toBe('§ 3. Anwendungsbereich')
+    // The substantive occurrence wins over the entry in the contents.
+    expect(rows.find((r) => r.gld === '§ 1.')!.current).toContain('Die Vollziehung ist Bundessache.')
+  })
+
+  // "Art. 92 Abs. 1 Buchstabe d der Verordnung (EU) 2024/1689" is a citation
+  // inside running text. On a wrapped line it opened a provision that does
+  // not exist, and the check against RIS looked it up as § 92.
+  it('does not open a provision on a citation of an Artikel or an Anhang', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 5. (1) Die Behörde prüft die Anforderungen nach', right: '§ 5. (1) Das Gericht prüft die Anforderungen nach' },
+      { y: 686, left: 'Art. 92 Abs. 1 Buchstabe d der Verordnung (EU) 2024/1689.', right: 'Art. 92 Abs. 1 Buchstabe d der Verordnung (EU) 2024/1689.' },
+    ])])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.gld).toBe('§ 5.')
+    expect(rows[0]!.current).toContain('Art. 92 Abs. 1 Buchstabe d')
+  })
+
+  // A law numbered in decimals ("§ 1.08") lost everything after the first
+  // period and every one of its §§ collapsed onto "§ 1".
+  it('keeps a decimal paragraph number whole', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 1.08 Alte Fassung des Fahrverbots.', right: '§ 1.08 Neue Fassung des Fahrverbots.' },
+      { y: 660, left: '§ 1.09 Alte Fassung der Sichtzeichen.', right: '§ 1.09 Neue Fassung der Sichtzeichen.' },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 1.08', '§ 1.09'])
+  })
+})
