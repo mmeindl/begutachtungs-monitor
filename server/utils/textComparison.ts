@@ -65,9 +65,35 @@ export interface ComparisonRow {
   editorial: boolean
 }
 
-const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/g, /<layoutdaten[\s\S]*?<\/layoutdaten>/g]
+/**
+ * Removed before anything is read.
+ *
+ * `<inhaltsvz>` is the law's **table of contents**, and RIS names it as such.
+ * Annexes reprint it, and it is a two-column table of its own — "Paragraf" and
+ * "Gegenstand". Flattened into the comparison, those two columns landed under
+ * "Geltende Fassung" and "Vorgeschlagene Fassung", so the page reported that
+ * the draft changes "§ 21." into "Registrierungs- und Meldepflichten für
+ * Abfälle": 222 rows across 23 of the 65 readable annexes, every one of them
+ * marked "geändert" (measured 2026-09-09). Not a display problem — an invented
+ * change, in the one section whose whole justification is that it cannot
+ * invent law text. The Inhaltsverzeichnis is its own RIS document and no part
+ * of any comparison.
+ */
+const STRIP = [
+  /<kzinhalt[\s\S]*?<\/kzinhalt>/g,
+  /<fzinhalt[\s\S]*?<\/fzinhalt>/g,
+  /<layoutdaten[\s\S]*?<\/layoutdaten>/g,
+  /<inhaltsvz[\s\S]*?<\/inhaltsvz>/g,
+]
 const CELL_RE = /<td\b([^>]*)>([\s\S]*?)<\/td\s*>/g
-const GLD_RE = /<(?:gldsym|symbol)\b[^>]*>([\s\S]*?)<\/(?:gldsym|symbol)>/
+/**
+ * The row's designation is the **Gliederungssymbol** only. `<symbol>` is the
+ * marker of a list item, and reading it as the row's designation printed
+ * "geändert 1." where 1. is a Ziffer inside a running Absatz — it reads like
+ * a paragraph and is none. A row that opens with a Ziffer carries no
+ * designation of its own, and saying nothing is right.
+ */
+const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/
 const COLSPAN_RE = /colspan="(\d+)"/i
 const MARK_RE = /background\s*:\s*yellow/i
 /** The three-dots convention: "2. bis 26b. …" or a bare "…". */
@@ -98,6 +124,19 @@ function cellText(html: string): string {
  */
 export function isScanned(xml: string): boolean {
   return !/<tr\b/.test(xml) && /<binary\b/.test(xml)
+}
+
+/** The § heading a cell carries, when it holds one. */
+const PARA_HEADING_RE = /<ueberschrift\b[^>]*\btyp="para"[^>]*>([\s\S]*?)<\/ueberschrift\s*>/
+
+function paraHeading(html: string): string | null {
+  const m = PARA_HEADING_RE.exec(html)
+  const text = m ? cellText(m[1]!) : ''
+  return text || null
+}
+
+function stripParaHeading(html: string): string {
+  return html.replace(PARA_HEADING_RE, ' ')
 }
 
 /**
@@ -370,9 +409,28 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       continue
     }
 
-    const { currentHtml, proposedHtml } = columnsOf(p.cells, span)
+    const raw = columnsOf(p.cells, span)
+    // The § heading sits in the *same* cell as the Absatz, above it — that is
+    // how the ressort typesets it, so the cell's text really does read
+    // "Wiederholung von Teilprüfungen … § 40. (1) Wurden …". Faithful, and
+    // unreadable: it belongs over the row, not inside its text.
+    //
+    // Only lifted when both columns carry the same heading. One that differs
+    // between them, or stands on one side only, is a change the draft makes
+    // ("samt Überschrift") and has to stay where the word diff can see it.
+    const ownHeading = paraHeading(raw.currentHtml)
+    const lift = ownHeading !== null && ownHeading === paraHeading(raw.proposedHtml)
+    const currentHtml = lift ? stripParaHeading(raw.currentHtml) : raw.currentHtml
+    const proposedHtml = lift ? stripParaHeading(raw.proposedHtml) : raw.proposedHtml
     const current = cellText(currentHtml)
     const proposed = cellText(proposedHtml)
+    if (lift && !current && !proposed) {
+      // The heading had a row of its own. It belongs to the § *below* it —
+      // read in printed order it landed in the § before, which once put
+      // another §'s title onto a provision.
+      pendingHeading.push(ownHeading)
+      continue
+    }
     const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
     const elided = ELIDED_RE.test(current) && ELIDED_RE.test(proposed)
     const change = classify(current, proposed)
@@ -384,7 +442,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     rows.push({
       kind: 'pair',
       law,
-      heading: pendingHeading.length > 0 ? pendingHeading.join(' ') : null,
+      heading: [pendingHeading.join(' '), lift ? ownHeading : ''].filter(Boolean).join(' · ') || null,
       gld: gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null,
       current,
       proposed,

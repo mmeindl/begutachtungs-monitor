@@ -188,3 +188,74 @@ describe('the laws of a package', () => {
     expect(rows.every((r) => r.law === null)).toBe(true)
   })
 })
+
+describe('what the annex prints that is not a comparison', () => {
+  // RIS names the law's table of contents `<inhaltsvz>`, and annexes reprint
+  // it. It is a two-column table of its own — "Paragraf" and "Gegenstand" —
+  // so flattened into the comparison its two columns landed under "Geltende
+  // Fassung" and "Vorgeschlagene Fassung", and the page reported that the
+  // draft changes "§ 66." into "Kundmachung von Verordnungen": 222 rows over
+  // 23 of the 65 readable annexes, every one marked "geändert" (2026-09-09).
+  // An invented change, in the section whose justification is that it cannot
+  // invent law text.
+  it('drops the table of contents instead of comparing its columns', () => {
+    const xml = annex([
+      `<tr><td><table>
+        <tr><td colspan="2"><inhaltsvz typ="ueberschrift">Inhaltsverzeichnis</inhaltsvz></td></tr>
+        <tr><td><inhaltsvz typ="spalte">Paragraf</inhaltsvz></td><td><inhaltsvz typ="spalte">Gegenstand</inhaltsvz></td></tr>
+        <tr><td><inhaltsvz typ="eintrag">§ 66.</inhaltsvz></td><td><inhaltsvz typ="eintrag">Kundmachung von Verordnungen</inhaltsvz></td></tr>
+      </table></td></tr>`,
+      pair('<absatz typ="abs"><gldsym>§ 66.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 66.</gldsym> (1) Neu.</absatz>'),
+    ])
+    const rows = parse(xml)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ gld: '§ 66.', change: 'changed' })
+    expect(rows.some((r) => r.proposed.includes('Kundmachung von Verordnungen'))).toBe(false)
+  })
+
+  // `<symbol>` is a list item's marker. Read as the row's designation it
+  // printed "geändert 1." where 1. is a Ziffer inside a running Absatz — it
+  // reads like a paragraph and is none.
+  it('does not read a Ziffer marker as the row’s designation', () => {
+    const rows = parse(annex([pair('<listelem><symbol>1.</symbol>Erste Ziffer alt</listelem>', '<listelem><symbol>1.</symbol>Erste Ziffer neu</listelem>')]))
+    expect(rows[0]!.gld).toBeNull()
+    expect(rows[0]!.current).toBe('1. Erste Ziffer alt')
+  })
+})
+
+describe('the § heading inside the cell', () => {
+  const withHeading = (heads: [string, string], texts: [string, string]) =>
+    annex([pair(
+      `<ueberschrift typ="para">${heads[0]}</ueberschrift><absatz typ="abs"><gldsym>§ 40.</gldsym> ${texts[0]}</absatz>`,
+      `<ueberschrift typ="para">${heads[1]}</ueberschrift><absatz typ="abs"><gldsym>§ 40.</gldsym> ${texts[1]}</absatz>`,
+    )])
+
+  // The ressort puts the § heading in the same cell as the Absatz, so the
+  // cell's text really reads "Wiederholung von Teilprüfungen … § 40. (1) …".
+  // Faithful, and unreadable as prose: it belongs over the row.
+  it('lifts a heading both columns share out of the text', () => {
+    const rows = parse(withHeading(['Wiederholung von Teilprüfungen', 'Wiederholung von Teilprüfungen'], ['(1) Alt.', '(1) Neu.']))
+    expect(rows[0]!.heading).toBe('Wiederholung von Teilprüfungen')
+    expect(rows[0]!.current).toBe('§ 40. (1) Alt.')
+  })
+
+  // "§ 12a lautet samt Überschrift" — the draft changes the heading itself.
+  // That is a change and has to stay where the word diff can see it.
+  it('keeps a heading the draft changes inside the compared text', () => {
+    const rows = parse(withHeading(['Alte Überschrift', 'Neue Überschrift'], ['(1) Text.', '(1) Text.']))
+    expect(rows[0]!.heading).toBeNull()
+    expect(rows[0]!.current).toContain('Alte Überschrift')
+    expect(rows[0]!.proposed).toContain('Neue Überschrift')
+    expect(rows[0]!.change).toBe('changed')
+  })
+
+  // Some annexes give the heading a row of its own, above the § it names.
+  it('carries a heading that stands in its own row down to the § below it', () => {
+    const rows = parse(annex([
+      pair('<ueberschrift typ="para">Aufbewahrung von Protokollen</ueberschrift>', '<ueberschrift typ="para">Aufbewahrung von Protokollen</ueberschrift>'),
+      pair('<absatz typ="abs"><gldsym>§ 65a.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 65a.</gldsym> (1) Neu.</absatz>'),
+    ]))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ gld: '§ 65a.', heading: 'Aufbewahrung von Protokollen' })
+  })
+})
