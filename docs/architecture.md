@@ -151,7 +151,8 @@ Server internals (`server/utils/`):
    cached call so it is paid on a miss, not on a hit; cached in dev only —
    in production page and corpus expire together, so the raw pages would
    hold the corpus a second time for no hit that would not have happened
-   anyway, measured at 92 → 133 MB of 952). That retired
+   anyway: warm resident memory measured 133 MB with them and 90 MB
+   without, of 952 on the VPS). That retired
    `CORPUS_SHAPE_VERSION`, a counter someone had to remember to bump.
    `tests/cacheLayers.test.ts` holds every cached function to the choice: a
    new one fails the suite until it is classified. **One deliberate
