@@ -42,6 +42,23 @@ export function parseBgbl(text: string): BgblCitation | null {
   return { organ: m[1] ? `BGBl. ${m[1]} Nr.` : 'BGBl. Nr.', nummer: m[2]! }
 }
 
+/**
+ * The *Stammnorm* citation of a Promulgationsklausel: the BGBl that created
+ * the law, printed directly after its name and before any amendment history.
+ *
+ * Reading the whole clause took the first BGBl anywhere in it, which is the
+ * last amendment whenever the Stammnorm is not a BGBl at all — the UGB is
+ * "dRGBl. S. 219/1897", so the lookup resolved to a different law entirely,
+ * one that the cited amendment happened to create, and said nothing about it
+ * (2026-09-09). A clause whose head names no BGBl has no usable Stammnorm;
+ * returning null there is the whole point, because the alternative is a
+ * confident wrong answer.
+ */
+export function stammnormOf(text: string): BgblCitation | null {
+  const head = normalizeText(text).split(/\bzuletzt geändert\b|\bin der Fassung\b|\bgeändert durch\b/i)[0] ?? ''
+  return parseBgbl(head)
+}
+
 export function sameBgbl(a: BgblCitation, b: BgblCitation): boolean {
   return a.organ === b.organ && a.nummer === b.nummer
 }
@@ -91,7 +108,7 @@ export function promulgationByArticle(blocks: readonly TextBlock[]): Map<string 
     // instruction; anything later that cites a BGBl is a cross-reference.
     if (seenNovao || out.has(key())) continue
     if (!AMENDS_RE.test(b.text)) continue
-    const bgbl = parseBgbl(b.text)
+    const bgbl = stammnormOf(b.text)
     if (bgbl) out.set(key(), bgbl)
   }
   return out
