@@ -16,6 +16,7 @@
  * where tests and the compiler can reach it. Only the I/O stays in a script.
  */
 import { diffTokens } from './lawDiff'
+import { plainText, type LawNode } from './lawStructure'
 import type { LawDiffSegment } from '../../shared/types'
 
 /** How an engine result relates to the version RIS actually holds. */
@@ -78,4 +79,47 @@ export function verdictFor(before: string | null, got: string, expected: string)
   if (before !== null && got === before) return 'unverändert'
   if (isSubsetOfRis(before ?? '', got, expected)) return 'unvollständig'
   return 'abweichend'
+}
+
+/**
+ * The verdict for a paragraph given as trees. Equal to `verdictFor` on the
+ * plain texts, except where the word diff of the whole § is too long to
+ * compute (`lawDiff` MAX_DP_CELLS): then the children are compared one by
+ * one, by level and id, and the worst child verdict is the paragraph's. A
+ * child the engine has and RIS does not, or the other way round, is a
+ * divergence. Three §§ of the 446-paragraph corpus — Übergangsbestimmungen
+ * with dozens of Absätze — were "nicht prüfbar" as a whole and are decidable
+ * this way (2026-09-09). Nothing here is more forgiving than the whole-text
+ * comparison: a child still too long stays incomparable, which is a
+ * divergence.
+ */
+export function verdictForTrees(before: LawNode | null, got: LawNode, expected: LawNode): ApplyVerdict {
+  const gotText = plainText(got)
+  const expectedText = plainText(expected)
+  const beforeText = before ? plainText(before) : null
+  if (gotText === expectedText) return 'identisch'
+  if (beforeText !== null && gotText === beforeText) return 'unverändert'
+  if (extraTokens(beforeText ?? '', gotText, expectedText).comparable) return verdictFor(beforeText, gotText, expectedText)
+
+  const key = (n: LawNode): string => `${n.level}|${n.id}`
+  const byKey = (n: LawNode): Map<string, LawNode> => new Map(n.children.map((c) => [key(c), c]))
+  const g = byKey(got)
+  const e = byKey(expected)
+  const b = before ? byKey(before) : new Map<string, LawNode>()
+  if ([...g.keys()].some((k) => !e.has(k))) return 'abweichend'
+  const rank: Record<ApplyVerdict, number> = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, abweichend: 3 }
+  let worst: ApplyVerdict = 'identisch'
+  for (const [k, child] of e) {
+    const mine = g.get(k)
+    const was = b.get(k)
+    // RIS has a child the engine lacks: the engine did less, unless it
+    // deleted something that stood there before.
+    const v: ApplyVerdict = mine ? verdictFor(was ? plainText(was) : null, plainText(mine), plainText(child)) : was ? 'abweichend' : 'unvollständig'
+    if (rank[v] > rank[worst]) worst = v
+  }
+  // Heading and own text of the § itself.
+  const own = (n: LawNode | null): string => (n ? `${n.heading ?? ''} ${n.text}`.trim() : '')
+  const ownVerdict = own(got) === own(expected) ? 'identisch' : verdictFor(before ? own(before) : null, own(got), own(expected))
+  if (rank[ownVerdict] > rank[worst]) worst = ownVerdict
+  return worst
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyNovelle, parsePayload, resolveTarget, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/lawApply'
+import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/lawApply'
 import { makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawStructure'
 import { parseInstruction } from '../server/utils/novao'
 
@@ -229,5 +229,183 @@ describe('phrase operations address headings and single sentences', () => {
     const { law: out, results } = run(l, instr('In § 9 Abs. 1 zweiter Satz wird das Wort "Halter" durch das Wort "Betreiber" ersetzt.'))
     expect(results[0]!.reason).toBeNull()
     expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Der Halter haftet. Der Betreiber meldet. Der Halter zahlt.')
+  })
+})
+
+describe('sentence splitting (2026-09-09)', () => {
+  // The old splitter cut at every full stop, so "§ 5 Abs. 2" counted as two
+  // sentences and "erster Satz lautet" replaced a fragment — 11 of 33
+  // divergences in the 261-paragraph harness were this.
+  it('does not end a sentence after an abbreviation or an ordinal date', () => {
+    expect(splitSentences('Die Behörde nach § 5 Abs. 2 entscheidet. Sie hört den Antragsteller.')).toEqual(['Die Behörde nach § 5 Abs. 2 entscheidet.', 'Sie hört den Antragsteller.'])
+    expect(splitSentences('Das Gesetz tritt am 1. Jänner 2027 in Kraft. Es gilt bis 2030.')).toEqual(['Das Gesetz tritt am 1. Jänner 2027 in Kraft.', 'Es gilt bis 2030.'])
+    expect(splitSentences('Es gilt BGBl. I Nr. 25/2025. Der Rest bleibt.')).toEqual(['Es gilt BGBl. I Nr. 25/2025.', 'Der Rest bleibt.'])
+  })
+
+  it('keeps a full stop inside a quotation in its sentence', () => {
+    expect(splitSentences('Der Hinweis "Nikotin macht abhängig. Nicht für Nichtraucher." ist anzubringen. Er muss lesbar sein.')).toHaveLength(2)
+  })
+
+  it('refuses when a number before the full stop leaves the boundary open', () => {
+    // "gemäß Z 3. Der Bund" — sentence end, or an ordinal like "1. Jänner"?
+    expect(splitSentences('Es gilt Z 3. Der Bund zahlt.')).toBeNull()
+  })
+})
+
+describe('sentence operations (2026-09-09)', () => {
+  const l = (): StandingLaw => ({
+    paragraphs: [para('9', 'Halter', ['Der Halter nach § 5 Abs. 2 haftet. Der Halter meldet. Der Halter zahlt. Der Halter schweigt.'])],
+  })
+
+  it('replaces exactly the addressed sentence, abbreviations notwithstanding', () => {
+    const { law: out, results } = run(l(), instr('§ 9 Abs. 1 erster Satz lautet:', ['Der Betreiber haftet.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Der Betreiber haftet. Der Halter meldet. Der Halter zahlt. Der Halter schweigt.')
+  })
+
+  it('deletes a run of sentences, and only that run', () => {
+    // "entfallen die letzten beiden Sätze" used to delete the whole Absatz.
+    const { law: out, results } = run(l(), instr('In § 9 Abs. 1 entfallen die letzten beiden Sätze.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Der Halter nach § 5 Abs. 2 haftet. Der Halter meldet.')
+  })
+
+  it('replaces two sentences by the whole payload', () => {
+    const { law: out } = run(l(), instr('§ 9 Abs. 1 erster und zweiter Satz lautet:', ['Neu eins. Neu zwei.']))
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Neu eins. Neu zwei. Der Halter zahlt. Der Halter schweigt.')
+  })
+
+  it('replaces the Einleitungssatz and keeps the list beneath it', () => {
+    // "In § 40 Abs. 1 lautet der Einleitungssatz:" replaced the whole Absatz,
+    // list included (Luftfahrtgesetz, 2026-09-09).
+    const { law: out, results } = run(law(), instr('In § 5 Abs. 2 lautet der Einleitungssatz:', ['Nicht erfasst sind:']))
+    expect(results[0]!.reason).toBeNull()
+    const abs = out.paragraphs[0]!.children[1]!
+    expect(abs.text).toBe('Nicht erfasst sind:')
+    expect(abs.children).toHaveLength(2)
+  })
+
+  it('refuses an Einleitungssatz where there is no list, and a Schlusssatz where there is none', () => {
+    expect(run(law(), instr('In § 5 Abs. 1 lautet der Einleitungssatz:', ['Neu.'])).results[0]!.applied).toBe(false)
+    expect(run(law(), instr('In § 5 Abs. 2 entfällt der Schlusssatz.')).results[0]!.applied).toBe(false)
+  })
+
+  it('refuses a sentence address when the boundaries are not decidable', () => {
+    const l2: StandingLaw = { paragraphs: [para('9', 'H', ['Es gilt Z 3. Der Bund zahlt. Ende.'])] }
+    const { results } = run(l2, instr('§ 9 Abs. 1 zweiter Satz lautet:', ['Neu.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/nicht auffindbar/)
+  })
+})
+
+describe('payload headings and nested markers (2026-09-09)', () => {
+  it('reads a heading line that carries the § symbol, and hangs the Absätze off it', () => {
+    // "„§ 15. Dauer der Verleihung.“" then "(1) …": the heading was dropped
+    // and "§ 15 lautet:" kept the old one while RIS installed the new.
+    const nodes = parsePayload([{ text: '§ 15. Dauer der Verleihung.', heading: true }, '(1) Erster.', '(2) Zweiter.'])
+    expect(nodes).toHaveLength(1)
+    expect(nodes[0]).toMatchObject({ level: 'para', id: '15', heading: '§ 15. Dauer der Verleihung.' })
+    expect(nodes[0]!.children.map((c) => c.id)).toEqual(['1', '2'])
+  })
+
+  it('wraps a heading and a bare sentence into one §', () => {
+    const nodes = parsePayload([{ text: '§ 1. Geltungsbereich.', heading: true }, 'Dieses Bundesgesetz regelt die Privatschulen.'])
+    expect(nodes).toHaveLength(1)
+    expect(plainText(nodes[0]!)).toBe('§ 1. Geltungsbereich. Dieses Bundesgesetz regelt die Privatschulen.')
+  })
+
+  it('splits "1. a) …" into a Ziffer with its first Litera', () => {
+    // RIS prints Ziffer and first Litera as one symbol; the "a)" leaked into the text.
+    const nodes = parsePayload(['1. a) die Staatsangehörigkeit besitzt, oder', 'b) eine juristische Person ist'])
+    expect(nodes[0]).toMatchObject({ level: 'z', id: '1', text: '' })
+    expect(nodes[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['a:die Staatsangehörigkeit besitzt, oder', 'b:eine juristische Person ist'])
+  })
+
+  it('installs the printed heading even without "samt Überschrift", and refuses "samt Überschrift" without one', () => {
+    const l = law()
+    const swapped = run(l, [{ op: parseInstruction('§ 5 lautet:').ops[0]!, payload: parsePayload([{ text: 'Geltungsbereich', heading: true }, '§ 5. (1) Neu.']), line: '§ 5 lautet:' }])
+    expect(swapped.law.paragraphs[0]!.heading).toBe('Geltungsbereich')
+    const refused = run(law(), instr('§ 5 lautet samt Überschrift:', ['§ 5. (1) Neu.']))
+    expect(refused.results[0]!.applied).toBe(false)
+  })
+
+  it('refuses a plain "lautet" whose payload holds more §§ than it names', () => {
+    // A stale heading of the § before made "§ 30 lautet:" carry two blocks;
+    // splicing them in inserted a § 27b that consisted of a heading alone.
+    const { results, law: out } = run(law(), instr('§ 6 lautet:', ['§ 5a. (1) Fremd.', '§ 6. (1) Neu.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['5', '6'])
+  })
+
+  it('names an inserted § from the instruction when the payload has no marker line', () => {
+    const { results, law: out } = run(law(), instr('Nach § 5 wird folgender § 5a eingefügt:', ['(1) Ohne Symbol.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['5', '5a', '6'])
+  })
+})
+
+describe('renumbering (2026-09-09)', () => {
+  it('renumbers a run and lets a later "(neu)" address land on the new numbering', () => {
+    // A Vollziehungsklausel hangs its Ziffern off an unnumbered Absatz.
+    const p = makeNode('para', '107', '§ 107.', '', 'Vollziehung')
+    const body = makeNode('abs', '', '', 'Betraut sind:')
+    ;['eins', 'zwei', 'drei', 'vier', 'fünf'].forEach((t, i) => body.children.push(makeNode('z', String(i + 1), `${i + 1}.`, t)))
+    p.children.push(body)
+    const l: StandingLaw = { paragraphs: [p] }
+    const { law: out, results } = run(
+      l,
+      instr('In § 107 entfällt Z 2; die Z 3 bis 5 erhalten die Ziffernbezeichnungen "2." bis "4".'),
+      instr('§ 107 Z 3 (neu) lautet:', ['3. neu vier']),
+    )
+    expect(results.every((r) => r.applied)).toBe(true)
+    expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:eins', '2:drei', '3:neu vier', '4:fünf'])
+  })
+
+  it('refuses a "(neu)" address when no renumbering in that § went through', () => {
+    // LMSVG § 107: the standing § had no Z 9, the renumbering was refused,
+    // and "Z 6 (neu)" would have landed on the old Z 6.
+    const { results } = run(law(), instr('§ 5 Abs. 2 Z 1 (neu) lautet:', ['1. neu']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/neu/)
+  })
+
+  it('applies the renumberings of one line at once, so a swap does not collide with itself', () => {
+    // "Die §§ 5 bis 7 erhalten § 7 bis § 9; die §§ 8 bis 13 erhalten § 15 bis
+    // § 20": one after the other, § 5 → § 7 collides with the § 7 the second
+    // half is about to move (IVS-Gesetz).
+    const l: StandingLaw = { paragraphs: [para('5', 'A', ['a']), para('6', 'B', ['b']), para('7', 'C', ['c'])] }
+    const { law: out, results } = run(l, instr('Die §§ 5 und 6 erhalten die Paragraphenbezeichnungen "§ 6." bis "§ 7."; § 7 erhält die Paragraphenbezeichnung "§ 9.".'))
+    expect(results.map((r) => r.applied)).toEqual([true, true])
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['6', '7', '9'])
+  })
+
+  it('refuses when the new run is not as long as the old one, or collides', () => {
+    const l = (): StandingLaw => ({ paragraphs: [para('5', 'A', ['a']), para('6', 'B', ['b']), para('8', 'C', ['c'])] })
+    expect(run(l(), instr('Die §§ 5 und 6 erhalten die Paragraphenbezeichnungen "§ 6." bis "§ 8."')).results[0]!.applied).toBe(false)
+    expect(run(l(), instr('§ 5 erhält die Paragraphenbezeichnung "§ 8."')).results[0]!.applied).toBe(false)
+  })
+})
+
+describe('compound lines and punctuation (2026-09-09)', () => {
+  it('refuses a compound line whole when one half is not read', () => {
+    // Half-applying turned a full stop into a comma and stopped there.
+    const units = [{ article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], text: '', blocks: [{ kind: 'novao' as const, cls: '', text: '1. In § 5 Abs. 1 wird der Punkt am Ende durch einen Beistrich ersetzt und es wird folgende Wendung angefügt:', gld: null }, { kind: 'abs' as const, cls: '', text: '"sofern nichts anderes bestimmt ist."', gld: null }] }]
+    const { instructions, refused } = instructionsFromUnits(units)
+    expect(instructions).toHaveLength(0)
+    expect(refused).toHaveLength(1)
+  })
+
+  it('leaves no space in front of a comma the operand brought along', () => {
+    // "die Wort- und Zeichenfolge „ , 10c“" inserted after a word read
+    // "Erzeugnissen , die"; four §§ diverged on that space alone.
+    const { law: out } = run(law(), instr('In § 6 Abs. 1 wird nach dem Wort "Behörde" die Wort- und Zeichenfolge " , die zuständig ist," eingefügt.'))
+    expect(out.paragraphs[1]!.children[0]!.text).toBe('Zuständig ist die Behörde, die zuständig ist, am Sitz der Partei.')
+    const glued = run(law(), instr('In § 6 Abs. 1 wird nach dem Wort "Behörde" die Wortfolge " ,BGBl. Nr. 1/2000," eingefügt.'))
+    expect(glued.law.paragraphs[1]!.children[0]!.text).toBe('Zuständig ist die Behörde, BGBl. Nr. 1/2000, am Sitz der Partei.')
+  })
+
+  it('appends a sentence behind the list of an Absatz, not in front of it', () => {
+    const { law: out } = run(law(), instr('Dem § 5 Abs. 2 wird folgender Satz angefügt:', ['Weitere Ausnahmen regelt die Verordnung.']))
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Ausgenommen sind: Verfahren nach dem AVG, Verfahren vor Gerichten. Weitere Ausnahmen regelt die Verordnung.')
   })
 })

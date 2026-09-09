@@ -47,9 +47,22 @@ const ABS_MARKER_RE = /^\((\d+[a-z]*)\)\s*/
 const Z_MARKER_RE = /^(\d+[a-z]*)\.$/
 const LIT_MARKER_RE = /^([a-z]{1,2})\)$/
 
+/**
+ * RIS prints its own editorial notes into the consolidated text, in italics:
+ * "(Anm.: Abs. 2 aufgehoben durch Art. 1 Z 21, BGBl. I Nr. 68/2025)", "(Anm.:
+ * lit. c aufgehoben durch …)". They are not law, no Novelle can address them,
+ * and one that stood behind Abs. 1 without a marker of its own was folded
+ * into Abs. 1 — so "§ 40d Abs. 1 lautet:" wiped it while RIS kept it, and
+ * the harness called that a divergence (BGBl. I Nr. 68/2025, 2026-09-09).
+ * Stripped from every block; an Absatz that consisted of one keeps its
+ * marker and an empty text.
+ */
+const ANNOTATION_RE = /\(Anm\.:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+
 function text(inner: string): string {
   return normalizeText(
     inner
+      .replace(ANNOTATION_RE, ' ')
       .replace(/<gdash\s*\/>/g, '-')
       .replace(/<nbsp\s*\/>/g, ' ')
       .replace(/<[^>]*>/g, ' ')
@@ -135,7 +148,7 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       root.children.push(currentAbs)
     } else if (currentAbs) {
       // A continuation paragraph of the same Absatz (Satz block).
-      currentAbs.text = `${currentAbs.text} ${rest}`.trim()
+      if (rest) currentAbs.text = `${currentAbs.text} ${rest}`.trim()
     } else if (rest) {
       // A § without Absatz numbering: the whole text is one implicit Absatz.
       currentAbs = makeNode('abs', '', '', rest)

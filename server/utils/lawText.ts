@@ -227,6 +227,22 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       case 'toc':
         continue
       case 'para_head':
+        // Inside a Novelle a § heading is quoted text and goes straight into
+        // the current instruction's unit. It used to wait for the § symbol
+        // block behind it — and when the payload continued with "(1) …"
+        // instead (the symbol printed inside the heading, "§ 15. Dauer der
+        // Verleihung."), the heading was lost, or worse, surfaced in the
+        // *next* instruction's unit as a stray § (Privatschulgesetz §§ 15,
+        // 27b, 30, 2026-09-09). Outside a Novelle it is the § heading of the
+        // unit the next symbol opens.
+        if (novelleMode && current) {
+          const bare = stripQuotes(b.text)
+          if (bare) {
+            current.quotedHeadings.push(bare.replace(/^§+\s*\d+[a-z]*\.\s*/, ''))
+            current.blocks.push({ kind: 'para_head', cls: 'quoted', text: bare, gld: null })
+          }
+          continue
+        }
         pendingHeading = b.text
         continue
       default:
@@ -264,6 +280,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         novelleMode = true
         // The Ziffer number goes into the id, not the compared text — like the § symbol.
         current = push(`Z${m[1]}`, novaoHeading(b.text), { ...b, text: b.text.replace(NOVAO_NUMBER_RE, '') })
+        pendingHeading = null
         continue
       }
     }
