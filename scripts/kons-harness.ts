@@ -33,6 +33,9 @@ import { promulgationByArticle } from '../server/utils/lawTitles'
 import type { NovaoAddress } from '../server/utils/novao'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../server/utils/applyReport'
+import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
+import { isScanned, parseTextComparison, type ComparisonRow } from '../server/utils/textComparison'
+import { oracleVerdict, rowsByParagraph, stripMarkers, type OracleVerdict } from '../server/utils/tguOracle'
 import { installFetchCache } from './harness-cache'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
@@ -69,12 +72,22 @@ const verbose = !process.argv.includes('--quiet')
  * reason to keep adding flags to this script (2026-09-09).
  */
 const dumpFile = process.argv.find((a) => a.startsWith('--dump='))?.slice('--dump='.length) ?? null
+/**
+ * `--oracle` compares every checked paragraph with the Textgegenüberstellung
+ * of the Ministerialentwurf the Novelle came from (`tguOracle.ts`). The chain
+ * is BGBl → Regierungsvorlage (RIS `Aenderung`) → Ministerialentwurf
+ * (Parliament `preconst`) → RIS Begut record (title and Beginn) → annex XML.
+ * Initiativanträge and Ausschussanträge have no Ministerialentwurf and drop
+ * out; so do drafts without a readable annex.
+ */
+const withOracle = process.argv.includes('--oracle')
 if (dumpFile) writeFileSync(dumpFile, '')
 if (process.argv.includes('--cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 async function risJson(params: Record<string, string>): Promise<any> {
-  const res = await fetch(`${RIS}?${new URLSearchParams(params)}`, { headers: UA, signal: AbortSignal.timeout(30_000) })
+  const url = params.__url ?? `${RIS}?${new URLSearchParams(params)}`
+  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(30_000) })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return await res.json()
 }
@@ -96,7 +109,7 @@ function asArray<T>(x: T | T[] | null | undefined): T[] {
  */
 async function discoverSingleLawAmendments(count: number): Promise<{ id: string; law: string }[]> {
   const out: { id: string; law: string }[] = []
-  for (let page = 1; page <= 12 && out.length < count; page++) {
+  for (let page = 1; page <= 40 && out.length < count; page++) {
     const body = await risJson({
       Applikation: 'BgblAuth',
       DokumenteProSeite: 'OneHundred',
@@ -257,6 +270,93 @@ function missingTargetNote(address: NovaoAddress, resolved: ResolvedLaw, before:
   return `${count('Untereinheit nicht im Ausgangstext')}: ${label} ${address.lit ? 'lit.' : address.z ? 'Z' : 'Abs.'} ${missing.join(', ')} (RIS-Fassung ${before_?.inkrafttreten ?? `vor ${kundmachung}`})`
 }
 
+const PARLIAMENT = 'https://www.parlament.gv.at'
+const TGU_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
+
+interface Oracle {
+  rows: Map<string, ComparisonRow[]>
+  me: string
+  /** The Ministerialentwurf's instruction lines per § — to tell a genuine ME→BGBl change from an oracle error */
+  meLines: Map<string, Set<string>>
+}
+
+/** Instruction lines by the § they address, normalised for comparison. */
+function linesByParagraph(blocks: readonly TextBlock[]): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>()
+  const units = segmentUnits(blocks).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
+  const { instructions } = instructionsFromUnits(units)
+  for (const { op, line, payload } of instructions) {
+    const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+    const ids = new Set<string>()
+    if (address?.para) ids.add(paraId(address.para) ?? '')
+    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) ids.add(p.id)
+    // Line plus payload: the same instruction with a different quoted text is a different change.
+    const key = `${line.replace(/^\d+[a-z]?\.\s*/, '')}::${payload.map((p) => plainText(p)).join(' ')}`
+    for (const id of ids) {
+      const set = out.get(id) ?? new Set<string>()
+      set.add(key)
+      out.set(id, set)
+    }
+  }
+  return out
+}
+
+const oracleNotes = new Map<string, number>()
+/** instructions identical between ME and BGBl? × oracle verdict × harness verdict */
+const sameTally = new Map<string, number>()
+/** oracle verdict × harness verdict × refusal */
+const oracleTally = new Map<string, number>()
+const gateTally = new Map<string, number>()
+const tally = (map: Map<string, number>, key: string): void => {
+  map.set(key, (map.get(key) ?? 0) + 1)
+}
+
+/** The Ministerialentwurf's Textgegenüberstellung for this Novelle, or the reason there is none. */
+async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachung: string): Promise<Oracle | { note: string }> {
+  // 1. BGBl → Regierungsvorlage, from the law's own amendment history.
+  const list = await risJson({ Applikation: 'BrKons', Gesetzesnummer: gesetzesnummer, DokumenteProSeite: 'OneHundred', Seitennummer: '1' })
+  const aenderungen = new Set<string>()
+  for (const ref of asArray<any>(list?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)) {
+    for (const line of String(ref?.Data?.Metadaten?.Bundesrecht?.BrKons?.Aenderung ?? '').split(/\r?\n/)) aenderungen.add(line.trim())
+  }
+  const escaped = bgblNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const origin = [...aenderungen].map((l) => new RegExp(`^${escaped} \\(NR: GP ([IVXL]+) (RV|IA|AB) (\\d+)`).exec(l)).find(Boolean)
+  if (!origin) return { note: 'Herkunft (RV/IA) nicht in der Änderungshistorie' }
+  if (origin[2] !== 'RV') return { note: `kein Ministerialentwurf (${origin[2]})` }
+  const gp = origin[1]!
+  // 2. Regierungsvorlage → Ministerialentwurf.
+  const rv = await risJson({ __url: `${PARLIAMENT}/gegenstand/${gp}/I/${origin[3]}?json=True` })
+  const me = asArray<any>(rv?.content?.preconst).find((p) => p?.ityp === 'ME')
+  if (!me?.inr) return { note: `Regierungsvorlage ohne Ministerialentwurf (RV ${origin[3]}, preconst: ${JSON.stringify(rv?.content?.preconst ?? null).slice(0, 80)})` }
+  const meJson = await risJson({ __url: `${PARLIAMENT}/gegenstand/${me.gp_code ?? gp}/ME/${me.inr}?json=True` })
+  const einlangen = /(\d{4})-(\d{2})-(\d{2})|(\d{2})\.(\d{2})\.(\d{4})/.exec(String(meJson?.content?.einlangen ?? ''))
+  const arrived = einlangen ? (einlangen[1] ? `${einlangen[1]}-${einlangen[2]}-${einlangen[3]}` : `${einlangen[6]}-${einlangen[5]}-${einlangen[4]}`) : null
+  if (!arrived) return { note: 'Ministerialentwurf ohne Einlangensdatum' }
+  // 3. Ministerialentwurf → RIS Begut record: same law in the title, Beginn near the Einlangen.
+  const name = String(meJson?.content?.title ?? me.betreff ?? '').split(',')[0]!.trim()
+  const begut = await risJson({ Applikation: 'Begut', Titel: name, DokumenteProSeite: 'OneHundred' })
+  const days = (a: string, b: string): number => Math.round((Date.parse(a) - Date.parse(b)) / 86_400_000)
+  const candidates = asArray<any>(begut?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)
+    .map((ref) => ({ ref, beginn: String(ref?.Data?.Metadaten?.Bundesrecht?.Begut?.BeginnBegutachtungsfrist ?? '').slice(0, 10) }))
+    .filter((c) => c.beginn && Math.abs(days(c.beginn, arrived)) <= 21 && c.beginn < kundmachung)
+    .sort((a, b) => Math.abs(days(a.beginn, arrived)) - Math.abs(days(b.beginn, arrived)))
+  if (candidates.length === 0) return { note: `kein RIS-Begut-Datensatz zu ${me.zitation ?? me.inr}` }
+  const record = candidates[0]!.ref
+  // 4. The annex.
+  const annex = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => TGU_NAME.test(String(c?.Name ?? '').trim()))
+  const xmlUrl = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
+  if (!annex) return { note: 'Entwurf ohne Textgegenüberstellung' }
+  if (!xmlUrl) return { note: 'Textgegenüberstellung nur als PDF' }
+  const xml = await getText(xmlUrl)
+  if (isScanned(xml)) return { note: 'Textgegenüberstellung ist ein Scan' }
+  const rows = parseTextComparison(xml)
+  if (rows.length === 0) return { note: 'Textgegenüberstellung nicht lesbar' }
+  const main = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
+  const mainXml = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
+  const meLines = mainXml ? linesByParagraph(parseRisXml(await getText(mainXml))) : new Map<string, Set<string>>()
+  return { rows: rowsByParagraph(rows), me: String(me.zitation ?? `${me.inr}/ME`), meLines }
+}
+
 async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   const meta = await risJson({ Applikation: 'BgblAuth', Suchworte: bgblId, DokumenteProSeite: 'Ten' })
   const ref = asArray<any>(meta?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference).find((r) => r?.Data?.Metadaten?.Technisch?.ID === bgblId)
@@ -281,6 +381,15 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   if ('note' in resolved) return { ...blank(resolved.note), bgbl: bgblNumber, law: titleHint ?? String(bundesrecht.Kurztitel ?? ''), instructions: total, read: instructions.length }
   const { versions, pairs } = resolved
   const kurztitel = resolved.kurztitel || titleHint || String(bundesrecht.Kurztitel ?? '')
+  let oracle: Oracle | null = null
+  if (withOracle) {
+    const loaded = await loadOracle(resolved.gesetzesnummer, bgblNumber, kundmachung).catch((err) => ({ note: `Orakel nicht ladbar: ${String(err).slice(0, 80)}` }))
+    if ('note' in loaded) tally(oracleNotes, loaded.note)
+    else {
+      oracle = loaded
+      tally(oracleNotes, 'Orakel geladen')
+    }
+  }
 
   /** The newest version that already existed when this amendment was promulgated. */
   const lastBefore = (list: readonly KonsParagraphRef[]): KonsParagraphRef | null => {
@@ -312,7 +421,15 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   }
   const law: StandingLaw = { paragraphs }
 
-  const { law: after, results, unresolved } = applyNovelle(law, instructions)
+  const bgblLines = withOracle ? linesByParagraph(blocks) : null
+  const { law: after, results, unresolved, renamed } = applyNovelle(law, instructions)
+  // After "die §§ 8 bis 13 erhalten die Paragraphenbezeichnungen § 15 bis
+  // § 20" the result's § 15 is the old § 8. The engine-side "before" of a §
+  // is looked up by that origin, RIS's by label (RIS keeps its history per
+  // label, so its "before § 15" is the old § 15 — which is what the harness
+  // has to live with, and why renumbered §§ mostly score as created).
+  const originOf = new Map<string, string>()
+  for (const r of renamed) if (r.level === 'para') originOf.set(r.to, originOf.get(r.from) ?? r.from)
   // The question a per-paragraph publication gate turns on: when the engine
   // reports no refusal for a §, is that § actually right? Refusals are known
   // at draft time; correctness is not, because the law has not been passed yet.
@@ -360,7 +477,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     if (!node || truths.length === 0) continue
     checked++
     const got = plainText(node)
-    const beforeNode = law.paragraphs.find((p) => p.id === id)
+    const beforeNode = law.paragraphs.find((p) => p.id === (id === undefined ? id : (originOf.get(id) ?? id)))
     const beforeText = beforeNode ? plainText(beforeNode) : null
     const rank = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, abweichend: 3 }
     const best = truths
@@ -383,6 +500,51 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
       if (verdict === 'identisch') cleanIdentical++
       else if (verdict === 'abweichend' && comparable) cleanDivergent++
     }
+    // The draft-time gate: refusal, plausibility, and — where the draft has
+    // an annex — the ressort's own comparison. Tallied against the RIS truth.
+    const touching = instructions
+      .map((instruction, i) => ({ instruction, result: results[i]! }))
+      .filter(({ instruction: { op, payload } }) => {
+        const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+        if (address?.level === 'document') return true
+        if (address?.para && paraId(address.para) === id) return true
+        if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
+        return false
+      })
+    const guard = id ? guardParagraph(id, law, beforeNode ?? null, node, touching) : null
+    const flags = new Set<GuardFlag>(guard?.flags ?? [])
+    if (id && refusedIds.has(id)) flags.add('verweigert')
+    const dangerous = verdict === 'abweichend' && comparable
+    const outcome = dangerous ? 'abweichend' : verdict
+    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, oracle.rows.get(id) ?? []) : null
+    const oracleKey: OracleVerdict | 'kein Orakel' = oracleReport?.verdict ?? 'kein Orakel'
+    tally(oracleTally, `${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
+    if (oracle && id && bgblLines) {
+      const same = (a: Set<string> | undefined, b: Set<string> | undefined): boolean => {
+        const x = a ?? new Set<string>()
+        const y = b ?? new Set<string>()
+        return x.size === y.size && [...x].every((l) => y.has(l))
+      }
+      const unchanged = same(oracle.meLines.get(id), bgblLines.get(id))
+      tally(sameTally, `${unchanged ? 'ME=BGBl' : 'ME≠BGBl'}|${oracleKey}|${outcome}`)
+      if (verbose && unchanged && oracleReport && (oracleReport.verdict === 'widersprochen' || oracleReport.verdict === 'fremd')) console.log(`        ↳ Orakel-Fehler? gleiche Anweisungen im ME (${oracle.me}), RIS: ${verdict} — ${oracleReport.note}`)
+    }
+    const plausible = !flags.has('verweigert') && guard?.plausible !== false
+    tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}`)
+    if (verbose && oracleReport && oracleReport.verdict !== 'stumm' && oracleReport.verdict !== 'bestätigt') {
+      console.log(`        ↳ Orakel ${oracleReport.verdict} [RIS: ${verdict}]: ${oracleReport.note ?? ''}`)
+      if (process.argv.includes('--oracle-debug') && verdict === 'identisch') {
+        const rows = oracle!.rows.get(id!) ?? []
+        for (const row of rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')) {
+          const p = stripMarkers(row.proposed).replace(/\s+/g, '')
+          const g = stripMarkers(got).replace(/\s+/g, '')
+          const at = (() => { let i = 0; const start = g.indexOf(p.slice(0, 20)); if (start < 0) return -1; while (i < p.length && g[start + i] === p[i]) i++; return i })()
+          console.log(`          Zeile (${row.change}): "${row.proposed.slice(0, 90)}"`)
+          console.log(`          gemeinsam bis ${at}/${p.length}: …${p.slice(Math.max(0, at - 30), at + 40)}…  ↔ got: …${(() => { const start = g.indexOf(p.slice(0, 20)); return start < 0 ? '(Anfang nicht gefunden)' : g.slice(Math.max(0, start + at - 30), start + at + 40) })()}…`)
+        }
+      }
+    }
+    if (verbose && guard && !guard.plausible && verdict === 'identisch') console.log(`        ↳ Gate hätte verweigert (${guard.flags.join(', ')}) — RIS: identisch`)
     if (dumpFile) {
       const touching = instructions
         .map((ins, i) => ({ ins, res: results[i]! }))
@@ -482,6 +644,36 @@ console.log(`\n  Nur Paragraphen ohne jede Verweigerung (das, was ein Gate anzei
 console.log(`    davon geprüft        : ${clean} von ${sum((v) => v.checked)}`)
 console.log(`    identisch            : ${sum((v) => v.cleanIdentical)} (${pct(sum((v) => v.cleanIdentical), clean)})`)
 console.log(`    eigene Abweichung    : ${sum((v) => v.cleanDivergent)} (${pct(sum((v) => v.cleanDivergent), clean)})  — die Restgefahr eines Gates`)
+{
+  const sumKeys = (map: Map<string, number>, pred: (parts: string[]) => boolean): number => [...map].filter(([k]) => pred(k.split('|'))).reduce((n, [, v]) => n + v, 0)
+  const line = (name: string, pred: (parts: string[]) => boolean) => {
+    const total = sumKeys(gateTally, pred)
+    const ident = sumKeys(gateTally, (p) => pred(p) && p[2] === 'identisch')
+    const div = sumKeys(gateTally, (p) => pred(p) && p[2] === 'abweichend')
+    console.log(`    ${name.padEnd(46)} ${String(total).padStart(4)}   identisch ${String(ident).padStart(3)}   abweichend ${String(div).padStart(2)} (${pct(div, total)})`)
+  }
+  console.log(`\n  Gate zur Entwurfszeit (Verweigerung + Plausibilität${withOracle ? ' + Textgegenüberstellung' : ''}), gegen die RIS-Wahrheit:`)
+  line('alle geprüften Paragraphen', () => true)
+  line('ohne Verweigerung', (p) => p[0] === 'plausibel' || sumKeys(oracleTally, (q) => q[2] === 'ohne Verweigerung') < 0)
+  line('plausibel (Verweigerung + Signale)', (p) => p[0] === 'plausibel')
+  if (withOracle) {
+    line('plausibel, Orakel bestätigt', (p) => p[0] === 'plausibel' && p[1] === 'bestätigt')
+    line('plausibel, Orakel stumm', (p) => p[0] === 'plausibel' && p[1] === 'stumm')
+    line('plausibel, Orakel widerspricht/fremd', (p) => p[0] === 'plausibel' && (p[1] === 'widersprochen' || p[1] === 'fremd'))
+    line('plausibel, kein Orakel für die Novelle', (p) => p[0] === 'plausibel' && p[1] === 'kein Orakel')
+    line('Orakel bestätigt, egal ob plausibel', (p) => p[1] === 'bestätigt')
+    console.log(`\n  Orakel nach Herkunft der Anweisungen (identische Anweisungen im ME und im BGBl → ein Widerspruch ist ein Fehler des Orakels):`)
+    const sameLine = (name: string, pred: (parts: string[]) => boolean) => {
+      const total = sumKeys(sameTally, pred)
+      const ident = sumKeys(sameTally, (p) => pred(p) && p[2] === 'identisch')
+      const div = sumKeys(sameTally, (p) => pred(p) && p[2] === 'abweichend')
+      console.log(`    ${name.padEnd(46)} ${String(total).padStart(4)}   identisch ${String(ident).padStart(3)}   abweichend ${String(div).padStart(2)}`)
+    }
+    for (const origin of ['ME=BGBl', 'ME≠BGBl']) for (const v of ['bestätigt', 'widersprochen', 'fremd', 'stumm']) sameLine(`${origin}, Orakel ${v}`, (p) => p[0] === origin && p[1] === v)
+    console.log(`\n  Orakel je Novelle:`)
+    for (const [note, n] of [...oracleNotes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${note}`)
+  }
+}
 if (missingCauses.size > 0) {
   console.log(`  „nicht im geltenden Text" (${[...missingCauses.values()].reduce((a, b) => a + b, 0)}), laut RIS:`)
   for (const [cause, n] of [...missingCauses].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${cause}`)

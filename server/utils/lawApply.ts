@@ -44,11 +44,28 @@ export interface ApplyResult {
   para: string | null
 }
 
+/** One unit that changed its designation: "§ 8" became "§ 15". */
+export interface Renaming {
+  level: NodeLevel
+  /** The § the unit sits in; equals `to` for a § itself */
+  para: string
+  from: string
+  to: string
+}
+
 export interface ApplyReport {
   law: StandingLaw
   results: ApplyResult[]
   /** Paragraphs with at least one refused instruction — never publishable as text */
   unresolved: Set<string>
+  /**
+   * Every renumbering carried out, in order. A caller that pairs the result
+   * with the standing law by id needs this: after "die §§ 8 bis 13 erhalten
+   * die Paragraphenbezeichnungen § 15 bis § 20", the § 15 of the result is
+   * the old § 8, and comparing it with the old § 15 scores a correct run as
+   * a divergence (IVS-Gesetz, 2026-09-09).
+   */
+  renamed: Renaming[]
 }
 
 // ---------------------------------------------------------------------------
@@ -261,12 +278,23 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
   const refused: { line: string; reason: string }[] = []
   for (const unit of units) {
     const groups: { line: string; payload: PayloadLine[] }[] = []
+    const tables = new Set<number>()
     for (const b of unit.blocks) {
       if (b.kind === 'novao') groups.push({ line: b.text, payload: [] })
-      else if (groups.length) groups[groups.length - 1]!.payload.push(payloadLine(b))
+      else if (groups.length) {
+        groups[groups.length - 1]!.payload.push(payloadLine(b))
+        if (b.cls.startsWith('table:')) tables.add(groups.length - 1)
+      }
     }
     let container: NovaoAddress | null = null
-    for (const group of groups) {
+    for (const [gi, group] of groups.entries()) {
+      // A table in the new text has no place in the tree — its cells would
+      // become Absätze in whatever order the parser met them. Seven §§ of the
+      // NEHG diverged that way (BGBl. I Nr. 60/2024, 2026-09-09). Refused.
+      if (tables.has(gi)) {
+        refused.push({ line: group.line, reason: 'Tabelle im neuen Text — nicht als Gesetzestext abbildbar' })
+        continue
+      }
       const parsed = parseInstruction(group.line, container)
       // A compound line with one half unread is refused whole. Applying the
       // half that parsed — "am Ende des zweiten Satzes der Punkt durch einen
@@ -488,6 +516,15 @@ function sentenceSlot(node: LawNode, satz: string, count = 1): Slot | null {
   }
 }
 
+/**
+ * The text a sentence-level address reads — for the guard's size accounting,
+ * which charged the whole Absatz for a one-sentence replacement and flagged
+ * every correct one (2026-09-09). Null where the engine would refuse.
+ */
+export function addressedSentence(node: LawNode, satz: string, count = 1): string | null {
+  return sentenceSlot(node, satz, count)?.read() ?? null
+}
+
 /** Every slot an address opens up for a phrase operation. */
 function phraseSlots(law: StandingLaw, a: NovaoAddress): Slot[] | null {
   const scope = scopeOf(law, a)
@@ -570,8 +607,14 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'replaceHeading': {
       const para = findParagraph(law, op.target)
       if (!para) return `§ nicht im geltenden Text: ${op.target.para}`
-      const heading = payload.map((p) => plainText(p)).join(' ').trim()
+      // "Es entfällt die Überschrift des § 19 und § 19 lautet:" read as a
+      // heading replacement made the whole new § the heading (NEHG, BGBl. I
+      // Nr. 60/2024, 2026-09-09). A heading is one short line without inner
+      // numbering; anything else is body text and the instruction misread.
+      if (payload.length !== 1 || payload[0]!.children.length > 0) return 'Überschrift mit Fließtext — Anweisung nicht eindeutig'
+      const heading = plainText(payload[0]!).trim()
       if (!heading) return 'Überschrift ohne neuen Text'
+      if (heading.length > 200 || /\(\d+[a-z]*\)/.test(heading)) return 'Überschrift mit Fließtext — Anweisung nicht eindeutig'
       para.heading = heading
       return null
     }
@@ -763,7 +806,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'renumber':
-      return renumberBatch(law, [{ op, payload }])
+      return renumberBatch(law, [{ op, payload }], [])
 
     case 'replacePhrase': {
       const slots = phraseSlots(law, op.target)
@@ -771,11 +814,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (op.everywhere) {
         let hits = 0
         for (const slot of slots) {
-          const c = countOccurrences(slot.read(), op.from)
-          if (c) {
-            hits += c
-            slot.write(slot.read().split(op.from).join(op.to))
-          }
+          const parts = slot.read().split(op.from)
+          if (parts.length < 2) continue
+          hits += parts.length - 1
+          // Seam by seam: "/" replaced by "bzw." inside "Bundesministerin/der"
+          // needs the spaces a plain split-and-join does not add
+          // (Tierschutzgesetz, BGBl. I Nr. 124/2024, 2026-09-09).
+          slot.write(parts.slice(1).reduce((acc, rest) => joinPhrase(acc, op.to, rest), parts[0]!))
         }
         return hits === 0 ? `Textstelle nicht gefunden: "${op.from.slice(0, 60)}"` : null
       }
@@ -819,8 +864,8 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
  * collide with a unit that is *not* moving — units that are moving in the
  * same batch may swap freely.
  */
-function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' | 'payload'>[]): string | null {
-  const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[] }[] = []
+function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' | 'payload'>[], renamed: Renaming[] = []): string | null {
+  const moves: { node: LawNode; id: string; level: NodeLevel; siblings: LawNode[]; para: string }[] = []
   for (const { op } of batch) {
     if (op.kind !== 'renumber') return 'keine Umbenennung'
     const ids = [deepestId(op.target), ...op.target.siblings]
@@ -830,8 +875,11 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
       if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       nodes.push(node)
     }
-    const first = idOf(op.to) ?? op.to.replace(/[^\w]/g, '')
-    if (!first) return 'Neue Bezeichnung nicht lesbar'
+    // `to === ''` is the Wegfall of a designation: the unit keeps its text
+    // and loses its number ("entfällt die Absatzbezeichnung „(1)“").
+    const first = op.to === '' ? '' : (idOf(op.to) ?? op.to.replace(/[^\w]/g, ''))
+    if (!first && op.to !== '') return 'Neue Bezeichnung nicht lesbar'
+    if (first === '' && (op.toLast || nodes.length !== 1)) return 'Wegfall einer Bezeichnung nur für eine Einheit'
     // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“": the
     // new run must be exactly as long as the old one, or nothing moves.
     let newIds = [first]
@@ -842,7 +890,7 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     }
     if (newIds.length !== nodes.length) return `${nodes.length} Einheiten, ${newIds.length} neue Bezeichnungen`
     const siblings = op.target.level === 'para' ? law.paragraphs : (parentOf(law, nodes[0]!)?.children ?? [])
-    nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings }))
+    nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings, para: op.target.para ?? '' }))
   }
   const moving = new Set(moves.map((m) => m.node))
   for (const m of moves) {
@@ -851,8 +899,9 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
   }
   if (new Set(moves.map((m) => `${m.level}|${m.id}`)).size !== moves.length) return 'Zwei Einheiten erhalten dieselbe Bezeichnung'
   for (const m of moves) {
+    renamed.push({ level: m.level, para: m.level === 'para' ? `§ ${m.id}` : m.para, from: m.node.id, to: m.id })
     m.node.id = m.id
-    m.node.marker = m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
+    m.node.marker = m.id === '' ? '' : m.level === 'para' ? `§ ${m.id}.` : m.level === 'abs' ? `(${m.id})` : m.level === 'lit' ? `${m.id})` : `${m.id}.`
   }
   return null
 }
@@ -957,6 +1006,7 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
   const renumberedIn = new Set<string>()
   let paragraphsRenumbered = false
   const extra: ApplyResult[] = []
+  const renamed: Renaming[] = []
   for (let i = 0; i < instructions.length; i++) {
     const instruction = instructions[i]!
     const { op, line } = instruction
@@ -979,7 +1029,7 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
         // (IVS-Gesetz, 2026-09-09).
         const batch = [instruction]
         while (i + 1 < instructions.length && instructions[i + 1]!.op.kind === 'renumber' && instructions[i + 1]!.line === line) batch.push(instructions[++i]!)
-        reason = renumberBatch(law, batch)
+        reason = renumberBatch(law, batch, renamed)
         // One result per instruction, in instruction order — callers zip the two.
         for (const b of batch.slice(1)) extra.push({ line: b.line, kind: 'renumber', applied: reason === null, reason, para: 'target' in b.op ? b.op.target.para : null })
       } else reason = applyOne(law, instruction)
@@ -995,5 +1045,5 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
     for (const r of extra) if (r.reason !== null && r.para) unresolved.add(r.para)
     extra.length = 0
   }
-  return { law, results, unresolved }
+  return { law, results, unresolved, renamed }
 }

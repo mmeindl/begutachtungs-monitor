@@ -220,3 +220,18 @@ describe('the explicit run form is marked', () => {
     expect(op('Die §§ 7 bis 9 werden durch folgende §§ 7 bis 14 ersetzt:')).toMatchObject({ kind: 'replace', run: true })
   })
 })
+
+describe('forms from the held-out corpus (2026-09-09)', () => {
+  it('reads the Wegfall of a designation as a renumbering to nothing, not as a deletion', () => {
+    // "entfällt die Absatzbezeichnung „(1)“" deleted § 33 Abs. 1 of the Tierschutzgesetz.
+    expect(op('In § 33 Abs. 1 entfällt die Absatzbezeichnung "(1)".')).toMatchObject({ kind: 'renumber', to: '', target: { abs: '1' } })
+  })
+
+  it('places a § appended "nach § X" behind it, not inside it', () => {
+    expect(op('Nach § 408a wird folgender § 408b samt Überschrift angefügt:')).toMatchObject({ kind: 'insertAfter', child: 'para', childIds: ['408b'], where: 'after' })
+  })
+
+  it('reads the third comma form', () => {
+    expect(op('In § 5 Abs. 1 wird nach der Wortfolge "S. 1" ein Beistrich sowie die Wortfolge "in der jeweils geltenden Fassung" angefügt.')).toMatchObject({ kind: 'insertPhrase', text: ', in der jeweils geltenden Fassung' })
+  })
+})

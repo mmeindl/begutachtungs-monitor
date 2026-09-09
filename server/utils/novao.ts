@@ -551,7 +551,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // eingefügt": two insertions in one clause, and the first one carries
       // no quotation marks. Reading only the quoted pair dropped the comma
       // (Luftfahrtgesetz §§ 9, 131, 2026-09-09).
-      const punctFirst = /\b(?:ein|der|das)\s+(Beistrich|Strichpunkt|Punkt|Doppelpunkt)\s+(?:gesetzt\s+und\s+danach|und\s+die)\b/i.exec(head)
+      const punctFirst = /\b(?:ein|der|das)\s+(Beistrich|Strichpunkt|Punkt|Doppelpunkt)\s+(?:gesetzt\s+und\s+danach|(?:und|sowie)\s+die)\b/i.exec(head)
       const text = punctFirst ? `${PUNCT_WORD[punctFirst[1]!.toLowerCase()]} ${quotes[1]!}` : quotes[1]!
       return { ops: targets.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text })), reason: null, line }
     }
@@ -568,6 +568,15 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   }
 
   const withHeading = /samt Überschrift/i.test(head)
+
+  // "In § 33 Abs. 1 entfällt die Absatzbezeichnung „(1)“": the *number* goes,
+  // the text stays — the § simply has one unnumbered Absatz from then on.
+  // Read as a unit deletion this removed the Absatz (Tierschutzgesetz,
+  // BGBl. I Nr. 124/2024, 2026-09-09). A renumbering to the empty designation.
+  if (/\w*bezeichnung\b/i.test(head) && /\bentfäll[te]\b|\bentfallen\b/i.test(head)) {
+    if (targets.length > 1 || target.level === 'para' || target.level === 'satz') return fail('Wegfall einer Bezeichnung — Ziel nicht eindeutig')
+    return ok({ kind: 'renumber', target, to: '', toLast: null })
+  }
 
   if (/\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b/i.test(head)) {
     return { ops: targets.map((t) => ({ kind: 'delete' as const, target: t, withHeading })), reason: null, line }
@@ -598,6 +607,14 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
 
   if (/\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i.test(head)) {
     const child = childLevel(payload || whole)
+    // "Nach § 408a wird folgender § 408b samt Überschrift angefügt": a new §
+    // behind the named one, not a child of it. As an append it was pushed
+    // into § 408a's children and became part of its text (ASVG, BGBl. I Nr.
+    // 38/2024, 2026-09-09).
+    if (child === 'para') {
+      if (targets.length > 1) return fail(`${targets.length} Anker für einen neuen Paragraphen`)
+      return ok({ kind: 'insertAfter', anchor: target, child, childIds: childIds(payload, child), where: 'after' })
+    }
     // "§ 3 Abs. 1 und § 4 Abs. 1 wird jeweils folgender Satz angefügt" names
     // two places; appending to the first alone reported success on a law
     // that was half amended (Bildungsinvestitionsgesetz, 2026-09-09).

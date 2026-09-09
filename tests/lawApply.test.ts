@@ -409,3 +409,32 @@ describe('compound lines and punctuation (2026-09-09)', () => {
     expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Ausgenommen sind: Verfahren nach dem AVG, Verfahren vor Gerichten. Weitere Ausnahmen regelt die Verordnung.')
   })
 })
+
+describe('forms from the held-out corpus (2026-09-09)', () => {
+  it('replaces every occurrence with proper seams', () => {
+    // "/" → "bzw." inside "Bundesministerin/der" read "Bundesministerinbzw.der".
+    const l: StandingLaw = { paragraphs: [para('9', 'Z', ['Die Bundesministerin/der Bundesminister und die Landesrätin/der Landesrat.'])] }
+    const { law: out } = run(l, instr('In § 9 Abs. 1 wird jeweils das Zeichen "/" durch die Wort- und Zeichenfolge "bzw." ersetzt.'))
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Bundesministerin bzw. der Bundesminister und die Landesrätin bzw. der Landesrat.')
+  })
+
+  it('drops an Absatz designation and keeps the text', () => {
+    const { law: out, results } = run(law(), instr('In § 6 Abs. 1 entfällt die Absatzbezeichnung "(1)".'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[1]!.children[0]).toMatchObject({ id: '', marker: '', text: 'Zuständig ist die Behörde am Sitz der Partei.' })
+  })
+
+  it('refuses a heading replacement whose payload is a whole §', () => {
+    const { results } = run(law(), instr('Es entfällt die Überschrift des § 6 und § 6 lautet:', ['§ 6. (1) Erster.', '(2) Zweiter.']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/Fließtext/)
+  })
+
+  it('refuses a payload that is a table, and a standing § that holds one', () => {
+    const units = [{ article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], text: '', blocks: [{ kind: 'novao' as const, cls: '', text: '1. § 6 Abs. 1 lautet:', gld: null }, { kind: 'other' as const, cls: 'table:absatz/tabtext', text: '2022 7,5 Mio. Euro', gld: null }] }]
+    const { instructions, refused } = instructionsFromUnits(units)
+    expect(instructions).toHaveLength(0)
+    expect(refused[0]!.reason).toMatch(/Tabelle/)
+    expect(parseKonsParagraph('<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 26.</gldsym> Text</absatz><table><tr><td><absatz typ="tabtext" ct="text">Zelle</absatz></td></tr></table></abschnitt></nutzdaten></risdok>')).toBeNull()
+  })
+})
