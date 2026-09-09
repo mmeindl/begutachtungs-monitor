@@ -9,6 +9,8 @@
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
     "test": "vitest run",
+    "harness:kons": "vite-node scripts/kons-harness.ts --",
+    "harness:annex": "vite-node scripts/annex-pdf-verify.ts --",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
     "@types/node": "^22.20.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
+    "vite-node": "^6.0.0",
     "vitest": "^4.1.11",
     "vue-tsc": "^3.3.11"
   },

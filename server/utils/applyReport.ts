@@ -25,9 +25,25 @@ export type ApplyVerdict =
   | 'identisch'
   /** The engine left the paragraph alone; RIS changed it */
   | 'unverändert'
-  /** Every change the engine made, RIS made too — it did less, not something else */
+  /**
+   * The engine's text is the law with whole words left out, in order, and
+   * nothing else — it did less and invented nothing.
+   */
   | 'unvollständig'
-  /** The engine wrote something RIS did not: the only dangerous outcome */
+  /**
+   * Every edit the engine made, RIS made too, but the result still carries
+   * text RIS replaced: the insert was applied and the matching delete was
+   * not. Nothing was invented word by word, and the § as a whole is
+   * nevertheless not law.
+   *
+   * Split off from `unvollständig` on 2026-09-09, because it had been
+   * counted as harmless. Of 139 paragraphs filed as incomplete, only 31 were
+   * pure omissions; the largest of the rest produced 547 words against RIS's
+   * 414 with all 414 present — the old text kept *and* the new text added.
+   * That is a § no version of the law ever had, reported as safe.
+   */
+  | 'halbangewendet'
+  /** The engine wrote a word RIS does not have: silent wrongness */
   | 'abweichend'
 
 function changedTokens(a: string, b: string, type: LawDiffSegment['type']): string[] | null {
@@ -58,10 +74,49 @@ export function extraTokens(before: string, got: string, expected: string): { in
  * Both directions matter: a word the engine deleted on its own is as wrong as
  * one it invented. An incomparable diff counts as a divergence, never as a
  * pass — the harness must not be more forgiving than it can justify.
+ *
+ * This asks only whether the engine's *edits* are a subset of RIS's. It says
+ * nothing about the resulting text, which is why it is not on its own a
+ * verdict: half-applying a replacement passes it (the insert is RIS's, and
+ * the missing delete is not an edit at all) while leaving a § that is not
+ * law. `isOmissionOf` is the test on the result.
  */
 export function isSubsetOfRis(before: string, got: string, expected: string): boolean {
   const extra = extraTokens(before, got, expected)
   return extra.comparable && extra.inserted.length === 0 && extra.removed.length === 0
+}
+
+/**
+ * Comparison words: the two sources hyphenate and quote differently, and
+ * "36," and "36" are the same word.
+ */
+function words(t: string): string[] {
+  return t
+    .replace(/[„“”"'‚‘’]/g, '')
+    .replace(/[­‑–]/g, '-')
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.replace(/^[(\[]+|[),.;:\]]+$/g, ''))
+    .filter(Boolean)
+}
+
+/**
+ * Whether `got` is `expected` with whole words left out, in order — a pure
+ * omission and nothing else.
+ *
+ * A direct test on the two texts, not on their diff, so it holds for a
+ * paragraph whose word diff is too long to compute. That closes the hole the
+ * segment comparison had: a § of three thousand words was incomparable and
+ * therefore never provably an omission.
+ */
+export function isOmissionOf(got: string, expected: string): boolean {
+  const g = words(got)
+  const e = words(expected)
+  let i = 0
+  for (const word of e) {
+    if (i < g.length && g[i] === word) i++
+  }
+  return i === g.length
 }
 
 /**
@@ -77,7 +132,10 @@ export function isSubsetOfRis(before: string, got: string, expected: string): bo
 export function verdictFor(before: string | null, got: string, expected: string): ApplyVerdict {
   if (got === expected) return 'identisch'
   if (before !== null && got === before) return 'unverändert'
-  if (isSubsetOfRis(before ?? '', got, expected)) return 'unvollständig'
+  if (isOmissionOf(got, expected)) return 'unvollständig'
+  // Nothing invented word by word, but the result is not the law: an insert
+  // applied without its delete.
+  if (isSubsetOfRis(before ?? '', got, expected)) return 'halbangewendet'
   return 'abweichend'
 }
 
@@ -107,7 +165,7 @@ export function verdictForTrees(before: LawNode | null, got: LawNode, expected: 
   const e = byKey(expected)
   const b = before ? byKey(before) : new Map<string, LawNode>()
   if ([...g.keys()].some((k) => !e.has(k))) return 'abweichend'
-  const rank: Record<ApplyVerdict, number> = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, abweichend: 3 }
+  const rank: Record<ApplyVerdict, number> = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, halbangewendet: 3, abweichend: 4 }
   let worst: ApplyVerdict = 'identisch'
   for (const [k, child] of e) {
     const mine = g.get(k)
