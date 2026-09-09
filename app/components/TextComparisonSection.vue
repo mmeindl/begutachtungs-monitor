@@ -121,17 +121,46 @@ function showAll(key: string) {
   fullyShown.value = new Set(fullyShown.value).add(key)
 }
 
-function blocksOf(g: Group): { blocks: Block[]; hidden: number } {
+/**
+ * One block per **paragraph**, its Absätze beneath it.
+ *
+ * The annex prints one row per Absatz, so a § arrives as a run of rows of
+ * which only the first carries the designation and the heading. Rendered row
+ * by row that put the § heading over a single Absatz, repeated the
+ * designation on every row that had one — and printed it twice, because the
+ * text began with it as well — and set an inherited designation in a
+ * different weight from an own one, which is a distinction about our parse
+ * and not about the law. Collected per §, all three questions disappear:
+ * designation and title stand once, on one line, the way law is printed.
+ */
+interface Para {
+  /** "§ 40." — null for rows that precede the first designation */
+  gld: string | null
+  /** The annex's own heading for the paragraph */
+  heading: string | null
+  blocks: Block[]
+}
+
+function parasOf(g: Group): { paras: Para[]; hidden: number } {
   const limit = fullyShown.value.has(g.key) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
-  const blocks: Block[] = []
+  const paras: Para[] = []
+  let current: Para & { key: string } = { key: '\u0000', gld: null, heading: null, blocks: [] }
   let context: TextComparisonRow[] = []
   let shown = 0
   let hidden = 0
   const flush = () => {
-    if (context.length) blocks.push({ kind: 'context', rows: context })
+    if (context.length) current.blocks.push({ kind: 'context', rows: context })
     context = []
   }
   for (const row of g.rows) {
+    const key = row.para ?? ''
+    if (current.key !== key) {
+      flush()
+      current = { key, gld: row.para, heading: null, blocks: [] }
+      paras.push(current)
+    }
+    // The heading belongs to the paragraph, not to the Absatz that carries it.
+    current.heading ??= row.heading
     if (row.change === 'unchanged') {
       context.push(row)
       continue
@@ -141,14 +170,14 @@ function blocksOf(g: Group): { blocks: Block[]; hidden: number } {
       continue
     }
     flush()
-    blocks.push({ kind: 'row', row })
+    current.blocks.push({ kind: 'row', row })
     shown++
   }
   flush()
-  return { blocks, hidden }
+  return { paras: paras.filter((p) => p.blocks.length > 0), hidden }
 }
 
-const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocksOf(g) })))
+const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasOf(g) })))
 </script>
 
 <template>
@@ -217,35 +246,31 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
           </button>
 
           <div v-if="groupOpen(g)" class="border-t border-hairline">
-            <template v-for="(b, bi) in g.blocks" :key="bi">
-              <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
+            <section v-for="(p, pi) in g.paras" :key="pi" class="border-b border-hairline last:border-b-0">
+              <!-- The paragraph as law prints it: designation and title on one
+                   line, once, above its Absätze. -->
+              <p v-if="p.gld || p.heading" class="flex flex-wrap items-baseline gap-x-2 gap-y-1 bg-page px-3 py-2 text-sm">
+                <span v-if="p.gld" class="font-semibold text-ink">{{ p.gld }}</span>
+                <span v-if="p.heading" class="text-ink-secondary">{{ p.heading }}</span>
+              </p>
+
+              <template v-for="(b, bi) in p.blocks" :key="bi">
+              <details v-if="b.kind === 'context'" class="group border-t border-hairline">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                   {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
                 </summary>
                 <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
-                  <p v-for="(r, ri) in b.rows" :key="ri" class="hyphens-auto">
-                    <span v-if="r.gld" class="font-medium text-ink">{{ r.gld }} </span><span v-else-if="r.para" class="text-ink-muted">{{ r.para }} </span>{{ r.current }}
-                  </p>
+                  <p v-for="(r, ri) in b.rows" :key="ri" class="hyphens-auto">{{ r.current }}</p>
                 </div>
               </details>
 
-              <div v-else class="border-b border-hairline px-3 py-3 last:border-b-0">
+              <div v-else class="border-t border-hairline px-3 py-3">
                 <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
-                  <!-- "3. Abschnitt" and headings over a group of §§ used to
-                       open a group of their own; they belong over the row. -->
-                  <p v-if="b.row.heading" class="mb-1 text-xs text-ink-muted">{{ b.row.heading }}</p>
-                  <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                  <p class="mb-1 text-sm">
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
                       {{ BADGE_LABEL[badgeOf(b.row)] }}
                     </span>
-                    <!-- The annex prints one row per Absatz, so two rows in
-                         three open no § of their own. Showing nothing there
-                         left "geändert" over a text starting "(26) …" with no
-                         way to tell which § that is; the inherited
-                         designation is set quieter than an own one. -->
-                    <span v-if="b.row.gld" class="font-medium text-ink">{{ b.row.gld }}</span>
-                    <span v-else-if="b.row.para" class="text-ink-muted">{{ b.row.para }}</span>
                   </p>
 
                   <p v-if="b.row.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
@@ -271,7 +296,8 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
                   </div>
                 </div>
               </div>
-            </template>
+              </template>
+            </section>
 
             <button
               v-if="g.hidden"

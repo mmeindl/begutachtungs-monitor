@@ -151,6 +151,12 @@ function stripParaHeading(html: string): string {
   return html.replace(PARA_HEADING_RE, ' ')
 }
 
+const GLD_ALL_RE = /<gldsym\b[^>]*>[\s\S]*?<\/gldsym>/g
+
+function stripGld(html: string): string {
+  return html.replace(GLD_ALL_RE, ' ')
+}
+
 /**
  * Elements of one kind at the outermost nesting level, as their inner HTML.
  *
@@ -437,8 +443,16 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     const lift = ownHeading !== null && ownHeading === paraHeading(raw.proposedHtml)
     const currentHtml = lift ? stripParaHeading(raw.currentHtml) : raw.currentHtml
     const proposedHtml = lift ? stripParaHeading(raw.proposedHtml) : raw.proposedHtml
-    const current = cellText(currentHtml)
-    const proposed = cellText(proposedHtml)
+    const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
+    const gld = gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null
+    if (gld) openPara = gld
+    // The designation is a `<gldsym>` element of its own, so it is data rather
+    // than prose — and it is already carried in `gld`. Left in the text as
+    // well, 1.183 of the 1.198 rows that have one printed it twice: "§ 40."
+    // beside the badge and "§ 40. (1) Wurden …" underneath it. A consumer that
+    // wants the provision as printed joins `gld` and `current`.
+    const current = cellText(stripGld(currentHtml))
+    const proposed = cellText(stripGld(proposedHtml))
     if (lift && !current && !proposed) {
       // The heading had a row of its own. It belongs to the § *below* it —
       // read in printed order it landed in the § before, which once put
@@ -446,9 +460,9 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       pendingHeading.push(ownHeading)
       continue
     }
-    const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
-    const gld = gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null
-    if (gld) openPara = gld
+    // A row that prints nothing but the designation is a marker, not a
+    // comparison; the § it opens is remembered and the next row inherits it.
+    if (!current && !proposed) continue
     const elided = ELIDED_RE.test(current) && ELIDED_RE.test(proposed)
     const change = classify(current, proposed)
     // The ressort's yellow marking is reliable where present but incomplete:
