@@ -285,6 +285,12 @@ describe('sentence operations (2026-09-09)', () => {
     expect(abs.children).toHaveLength(2)
   })
 
+  it('refuses an ordinal sentence on an Absatz that carries a list', () => {
+    // The first "sentence" of § 5 Abs. 2 runs through its Ziffern.
+    const { results } = run(law(), instr('§ 5 Abs. 2 erster Satz lautet:', ['Neu.']))
+    expect(results[0]!.applied).toBe(false)
+  })
+
   it('refuses an Einleitungssatz where there is no list, and a Schlusssatz where there is none', () => {
     expect(run(law(), instr('In § 5 Abs. 1 lautet der Einleitungssatz:', ['Neu.'])).results[0]!.applied).toBe(false)
     expect(run(law(), instr('In § 5 Abs. 2 entfällt der Schlusssatz.')).results[0]!.applied).toBe(false)
