@@ -16,8 +16,11 @@
  *
  * **The right column has two references of its own (2026-09-10).** It is not
  * unverifiable, as this file said for two days: what it shows as *new* must
- * not already stand in the law, and it must occur in the draft's own
- * Gesetzestext, which RIS publishes beside the annex. Both are checked here
+ * not already stand in the law, and it must occur in the Novellierungs-
+ * anordnungen the draft addresses to *that* § — its Gesetzestext stands in
+ * the same RIS document as the annex (`draftBags`, since 2026-09-10: the
+ * reference was the whole draft for a day, which is blind to text dragged out
+ * of a neighbouring §). Both are checked here
  * (`rightColumnCheck`), and the reason they had to be is measured: dropping
  * the second sentence of a verified §'s left column passed the one-sided
  * gate in **1.019 of 1.092 injected cases (93,3 %)**, and the word diff then
@@ -53,6 +56,7 @@
  * this and labelled a row `verified` unless the check had named it, which
  * turned every one of those states into a vouched-for comparison.
  */
+import { draftUnits } from './annexDraft'
 import { normalizeText, type TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import type { KonsLawAtDate, KonsParagraphRef } from './risKons'
@@ -276,6 +280,18 @@ export const MIN_STANDING_STRETCH = 6
  * a ministry's name ("Mobilität Infrastruktur", FSG §§ 4b and 16a), a
  * spelling ("Massnahmen", Finanzkonglomerategesetz § 14). A ratio alone
  * cannot tell 2 of 12 from 39 of 89.
+ *
+ * All three were **kept** when the reference narrowed to one § (`draftBags`,
+ * 2026-09-10). They were calibrated on how tightly the annex's new words
+ * follow the draft's wording, and narrowing the reference does not loosen
+ * that: it removes words the § was never entitled to draw on. Re-measured
+ * with the narrow reference, the rule fires on **20 §§ of the PDF path and 3
+ * of the table path** (against 7 and 0), and all sixteen new ones were read
+ * one by one before this shipped — none of them is a sound annex
+ * (docs/architecture.md §12.13). A *ceiling* on the missing share was the one
+ * variant tried and rejected there: it would have cost the table path its
+ * whole gain (R-neu 184 → 64 catches, below the 76 the whole-draft bag
+ * already had).
  */
 export const MIN_NEW_WORDS = 10
 export const MIN_MISSING_WORDS = 8
@@ -329,7 +345,15 @@ export function insertedStretches(rows: readonly ComparisonRow[]): string[] {
   return out
 }
 
-/** The draft's own Gesetzestext as one string — `gld` included, since a § marker is text here. */
+/**
+ * The draft's own Gesetzestext as one string — `gld` included, since a § marker
+ * is text here.
+ *
+ * Since 2026-09-10 this is rule 2's *fallback* rather than its reference: the
+ * whole draft is what a § may draw on where the draft's instructions could not
+ * be segmented at all (`draftReference`). Everything else reads them one by
+ * one.
+ */
 export function draftTextOf(blocks: readonly TextBlock[]): string {
   return blocks.map((b) => `${b.gld ?? ''} ${b.text}`).join(' ')
 }
@@ -351,6 +375,200 @@ export function draftWordBag(text: string): Set<string> {
     bag.add(withoutHyphens(w))
   }
   return bag
+}
+
+/**
+ * What rule 2 asks of the draft's words.
+ *
+ * Two questions, and they are deliberately separate. The rule took a `Set`
+ * and asked `size > 0` to decide whether it had anything to compare against
+ * — which was the same question as "does this § have words" only as long as
+ * the bag was the whole draft. With a reference per §, an *empty* bag is the
+ * finding rather than the excuse: a § the draft's instructions never address
+ * is the annex showing a change nobody ordered. So the disarm switch names
+ * what it means — was the Gesetzestext readable at all — and a bag with no
+ * words for this § still speaks.
+ *
+ * An interface rather than a `Set` because a per-§ reference is the union of
+ * up to three bags, and a view over them beats a third copy per §.
+ */
+export interface WordBag {
+  /** Does the draft's Gesetzestext offer this word for this §? */
+  has: (word: string) => boolean
+  /** Was there a Gesetzestext to compare against at all? */
+  read: boolean
+}
+
+/**
+ * The draft's words, per law and per §, plus what could not be addressed.
+ *
+ * Rule 2's reference used to be the whole draft, which is blind to the fault
+ * it meets most often: a sentence dragged out of a *neighbouring*
+ * Novellierungsanordnung is in the draft, only in the wrong §. Measured by
+ * fault injection over GP XXVIII (`scripts/annex-fault-injection.ts`), the
+ * whole-draft bag caught 12,0 % of such faults on the PDF path and 32,5 % on
+ * the table path — the weakest number the gate had.
+ *
+ * `general` is what keeps the narrowing honest. An instruction whose address
+ * could not be read contributes its words to every § of its law, so a parse
+ * failure of ours can only *weaken* the rule and never fail a §. Every per-§
+ * bag is a subset of `whole` — `annexDraft.ts` reads a unit's blocks with the
+ * same Gliederungssymbole `draftTextOf` reads the whole draft with — so no
+ * catch the wide reference had can be lost; the whole risk of the change is
+ * false alarms, and that is the number the harness watches. Building it costs
+ * a median 1,4 ms per draft and 60 ms for the largest of GP XXVIII, once per
+ * draft per day behind `annexGuardService.ts`.
+ */
+export interface DraftBags {
+  /** Law key → § key (`designationKey`) → the words its own instructions carry. */
+  byLaw: Map<string | null, Map<string, Set<string>>>
+  /** Law key → the words of its instructions that name no § at all. */
+  general: Map<string | null, Set<string>>
+  /** Every word of the draft — the fallback where a law could not be addressed. */
+  whole: Set<string>
+  /** Instructions read, and how many named a §. For the coverage line. */
+  units: number
+  addressed: number
+  /** Why the others did not, counted by reason. */
+  reasons: Map<string, number>
+}
+
+/** An address `designationKey` reads as no § at all: "Abschnitt 9b", the title. */
+const REASON_NOT_A_PARAGRAPH = 'die Anordnung adressiert keinen Paragraphen, sondern einen Abschnitt oder den Titel'
+
+/**
+ * Group the draft's instructions into the bags rule 2 compares against.
+ *
+ * Pure and inside the gate on purpose: the caller passes the draft's blocks
+ * and the *rule* decides what a § may draw on, so the harness measures the
+ * shipped decision rather than a caller's copy of it — the mistake this
+ * module was extracted to undo.
+ */
+export function draftBags(blocks: readonly TextBlock[]): DraftBags {
+  const byLaw = new Map<string | null, Map<string, Set<string>>>()
+  const general = new Map<string | null, Set<string>>()
+  const reasons = new Map<string, number>()
+  /** Law → the designation pairs a renumbering declares to be one provision. */
+  const aliases = new Map<string | null, [string, string][]>()
+  let addressed = 0
+  const units = draftUnits(blocks)
+  for (const unit of units) {
+    for (const [from, to] of unit.aliases) {
+      const a = designationKey(from)
+      const b = designationKey(to)
+      if (a === null || b === null || a === b) continue
+      const pairs = aliases.get(unit.law) ?? []
+      pairs.push([a, b])
+      aliases.set(unit.law, pairs)
+    }
+    const words = draftWordBag(unit.text)
+    // A § key that cannot be read is not an address: `designationKey` refuses
+    // an Abschnitt heading and a bare "(Titel)", and those units belong in
+    // the general bag rather than under an invented key.
+    const keys = unit.paras.map((p) => designationKey(p)).filter((k): k is string => k !== null)
+    if (keys.length === 0) {
+      const into = general.get(unit.law) ?? new Set<string>()
+      for (const w of words) into.add(w)
+      general.set(unit.law, into)
+      // Two different silences, and the report keeps them apart: the
+      // instruction named nothing (`unit.reason`), or it named a unit that is
+      // not a § — an Abschnitt heading, the law's title — which addresses a
+      // group of §§ and so belongs to all of them.
+      const reason = unit.reason ?? REASON_NOT_A_PARAGRAPH
+      reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
+      continue
+    }
+    addressed++
+    const law = byLaw.get(unit.law) ?? new Map<string, Set<string>>()
+    for (const key of keys) {
+      const into = law.get(key) ?? new Set<string>()
+      for (const w of words) into.add(w)
+      law.set(key, into)
+    }
+    byLaw.set(unit.law, law)
+  }
+  // A renumbered § is one provision under two numbers, and the two documents
+  // use different ones: the annex prints the § as the standing law designates
+  // it, while every instruction after the renumbering addresses it by its new
+  // number. So the two designations share a bag — one hop, from the snapshot,
+  // because a chain of renumberings ("§ 2 wird § 3, § 3 wird § 4, …") would
+  // otherwise merge a whole Verordnung into one bag and the reference would
+  // be back to where it started.
+  for (const [law, pairs] of aliases) {
+    const map = byLaw.get(law)
+    if (!map) continue
+    const before = new Map([...map].map(([k, v]) => [k, new Set(v)]))
+    for (const [a, b] of pairs) {
+      for (const [x, y] of [[a, b], [b, a]] as const) {
+        const from = before.get(y)
+        if (!from) continue
+        const into = map.get(x) ?? new Set<string>()
+        for (const w of from) into.add(w)
+        map.set(x, into)
+      }
+    }
+  }
+  return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, reasons }
+}
+
+/**
+ * The reference rule 2 holds one law's §§ against, as a lookup per §.
+ *
+ * Three bags, and each of the last two is there because a narrower reference
+ * without it would report our own gap as the ministry's:
+ *
+ * - **the §'s own** instructions — the point of the exercise;
+ * - **the law's unreadable** instructions (`general`), because an
+ *   instruction whose address nobody could read must weaken the check and
+ *   never fail a §;
+ * - **the §§ the annex shows no block of its own for** (`shown`). This is the
+ *   one the corpus insisted on. Where the annex prints no block for § 8, its
+ *   text is not absent from the page — it sits inside the block of § 7,
+ *   whose designation the rows inherited. Counting it as "not in the draft"
+ *   names the wrong finding: the draft has that text, the *page* has merged
+ *   two provisions. Measured over GP XXVIII, it takes the table path from
+ *   **15 alarms to 7** (the renumbering pairs below take it from 7 to 3) —
+ *   and the PDF path only from 21 to 20, which is the tell: there a row *is*
+ *   a provision, cut at the § marker, so almost every § has a block of its
+ *   own and the merge cannot happen. It costs the injected faults nothing
+ *   worth counting, because their donor is a § the annex does show.
+ *
+ * A `renumber` op makes two designations one provision, so the two share a
+ * bag (`draftBags`): the annex prints the § under the designation the
+ * standing law gives it and the instruction addresses the other one, and
+ * without that link every renumbered § of a Verordnung reads as unexplained.
+ * Worth **4 of the table path's 7 remaining alarms** — three §§ of the
+ * Straßenverkehrs-Sicherheitsmanagement-VO, which renumbers its whole text
+ * one step up, and one of the Tierschutz-Sonderhaltungsverordnung.
+ *
+ * The fallback is per law: where a law's instructions could not be read at
+ * all — no Artikel key of the draft matches the annex's attribution, a
+ * Gesetzestext that segmented to nothing — the whole draft is the reference
+ * again and the rule is exactly what shipped before.
+ */
+export function draftReference(bags: DraftBags, law: string | null, shown: ReadonlySet<string>): (para: string) => WordBag {
+  // Whether anything was read at all is a property of the draft, not of one
+  // §, and it is the only thing that may disarm the rule.
+  const read = bags.whole.size > 0
+  const own = bags.byLaw.get(law)
+  const general = bags.general.get(law)
+  const wide: WordBag = { has: (w) => bags.whole.has(w), read }
+  if (own === undefined && general === undefined) return () => wide
+  // Everything every § of this law may draw on, built once: the unreadable
+  // instructions, and the ones addressed to §§ the annex does not show.
+  const inherited = new Set<string>(general ?? [])
+  if (own !== undefined) {
+    for (const [key, words] of own) {
+      if (shown.has(key)) continue
+      for (const w of words) inherited.add(w)
+    }
+  }
+  return (para: string): WordBag => {
+    const key = designationKey(para)
+    const mine = key === null ? undefined : own?.get(key)
+    if (mine === undefined) return { has: (w) => inherited.has(w), read }
+    return { has: (w) => mine.has(w) || inherited.has(w), read }
+  }
 }
 
 /** "Land- **und** Forstwirtschaft": an Ergänzungsstrich, not a broken word. */
@@ -394,7 +612,7 @@ function newWordsOf(inserted: readonly string[], left: ReadonlySet<string>, head
   return items.filter((it) => !left.has(it.word) && !heading.has(it.word))
 }
 
-function inDraft(bag: ReadonlySet<string>, it: NewWord): boolean {
+function inDraft(bag: WordBag, it: NewWord): boolean {
   if (bag.has(it.word) || bag.has(withoutHyphens(it.word))) return true
   return it.joined.some((j) => bag.has(j) || bag.has(withoutHyphens(j)))
 }
@@ -412,6 +630,15 @@ export interface RightColumnCheck {
   newWords: number
   /** …of those, the ones the draft's Gesetzestext does not have */
   missingWords: number
+  /**
+   * …and which words those are, for the report.
+   *
+   * Every false alarm of this rule has to be inspectable, and a count cannot
+   * be: "39 of 89 missing" is a finding, "a ministry's name and a spelling"
+   * is a verdict on it. `Coverage.missing` carries the same for the left
+   * column and for the same reason.
+   */
+  missing: string[]
   /** The first stretch that fired rule 1, for the report */
   standingStretch: string | null
 }
@@ -439,8 +666,10 @@ export interface RightColumnCheck {
  *
  * **Rule 2, „nicht im Entwurf".** Everything the annex shows as new should
  * come from the draft's own Gesetzestext, which RIS publishes beside the
- * annex. An empty bag proves nothing, so a draft whose text could not be read
- * disarms this rule rather than condemning every §.
+ * annex — and from the part of it that is addressed to *this* §. A draft
+ * whose text could not be read disarms this rule rather than condemning every
+ * § of it (`WordBag.read`), and so does every instruction whose address
+ * nobody could read: those words go to every § of their law (`draftBags`).
  *
  * Neither rule may *verify* anything, and the caller must not let them: the
  * bag test in particular passes happily on garbage lifted from another part
@@ -451,7 +680,23 @@ export interface RightColumnCheck {
  * 1.092 (42,5 %)**, rule 2 catches 181 of the same faults (a sentence the
  * parser loses is unchanged law, so the draft's instructions usually do not
  * quote it either), together **567, 51,9 %** — against 73 (6,7 %) for the
- * left check alone. Of rule 1's 628 misses, **464 are not misses**: the draft
+ * left check alone.
+ *
+ * Those are the numbers for the whole-draft reference. With the reference per
+ * § (`draftBags`, 2026-09-10) rule 2 roughly triples on its own fault and
+ * more than doubles on the other two, measured per path with
+ * `scripts/annex-fault-injection.ts`:
+ *
+ * | Fehler | Regel 2, ganzer Entwurf | Regel 2, je § |
+ * |---|---:|---:|
+ * | R-neu, PDF-Pfad     | 106 (12,0 %) | 665 (75,6 %) |
+ * | R-neu, Tabellenpfad |  76 (32,5 %) | 184 (78,6 %) |
+ * | R-alt, PDF-Pfad     | 218 (24,7 %) | 584 (66,3 %) |
+ * | R-alt, Tabellenpfad |  97 (41,3 %) | 178 (75,7 %) |
+ * | L, PDF-Pfad         | 144 (15,7 %) | 332 (36,2 %) |
+ * | L, Tabellenpfad     |  49 (20,2 %) |  90 (37,0 %) |
+ *
+ * Of rule 1's 628 misses, **464 are not misses**: the draft
  * changes that sentence too, so its proposed wording really is new and no
  * honest rule may fire. 130 are annex wordings that are not verbatim in RIS
  * at all, 29 are stretch boundaries (below), 5 sentences still stood on the
@@ -473,12 +718,21 @@ export interface RightColumnCheck {
  *   injected faults than the whole-stretch rule (423 against 540 of 1.074)
  *   and add false positives from legitimately repeated sentences
  *   ("Gesetzliche Verpflichtungen zur Verschwiegenheit bleiben unberührt.").
- * - **A per-§ draft bag** — only the Novellierungsanordnungen addressed to
- *   this § — would sharpen rule 2 against text misfiled from a *neighbouring*
- *   § of the same draft. It needs instruction addressing
- *   (`lawTitles.addressedParagraph`) and is a later step (`TODO.md`).
+ * - **A ceiling on the missing share** — the obvious way to keep the per-§
+ *   reference from firing where a § block spans two provisions, since those
+ *   §§ are mostly unexplained while a *contaminated* § keeps its own new text
+ *   as well. Measured and rejected: at 50 % it would cost the table path its
+ *   whole gain (R-neu 184 → 64 catches, below the 76 the whole-draft bag had),
+ *   because a § with little new text of its own is exactly the case where an
+ *   injected sentence dominates the share.
+ *
+ * The **per-§ reference** itself is no longer among them: it shipped on
+ * 2026-09-10 (`draftBags`), together with the two things that keep it honest
+ * — the general bag for instructions nobody could address, and the rule that
+ * text of a § the annex prints no block of its own for is inherited rather
+ * than missing.
  */
-export function rightColumnCheck(rows: readonly ComparisonRow[], standing: StandingText, draft: ReadonlySet<string>): RightColumnCheck {
+export function rightColumnCheck(rows: readonly ComparisonRow[], standing: StandingText, draft: WordBag): RightColumnCheck {
   const pairs = rows.filter((r) => r.kind === 'pair')
   const standingTokens = comparableTokens(normalizeText(standing.text))
   // The whole left column, unchanged and elided rows included: a stretch the
@@ -498,14 +752,14 @@ export function rightColumnCheck(rows: readonly ComparisonRow[], standing: Stand
   }
 
   const words = newWordsOf(inserted, leftBag, headingBag)
-  const found = words.filter((it) => inDraft(draft, it)).length
-  const missing = words.length - found
-  // An empty bag is not evidence that a word is absent: a draft whose XML
-  // could not be read disarms the rule instead of failing every § of it. The
-  // counts stay honest either way, so a report cannot read "nothing missing"
-  // where the truth is "nothing was compared".
-  const notInDraft = draft.size > 0 && words.length >= MIN_NEW_WORDS && missing >= MIN_MISSING_WORDS && found / words.length < DRAFT_THRESHOLD
-  return { alreadyStanding: standingStretch !== null, notInDraft, newWords: words.length, missingWords: missing, standingStretch }
+  const missing = words.filter((it) => !inDraft(draft, it))
+  // A draft whose XML could not be read disarms the rule instead of failing
+  // every § of it — but a bag that is empty *for this §* does not: since the
+  // reference is per § (`draftBags`), that is the annex showing a change no
+  // instruction of the draft orders. The counts stay honest either way, so a
+  // report cannot read "nothing missing" where nothing was compared.
+  const notInDraft = draft.read && words.length >= MIN_NEW_WORDS && missing.length >= MIN_MISSING_WORDS && (words.length - missing.length) / words.length < DRAFT_THRESHOLD
+  return { alreadyStanding: standingStretch !== null, notInDraft, newWords: words.length, missingWords: missing.length, missing: missing.map((it) => it.word), standingStretch }
 }
 
 /**
@@ -598,11 +852,17 @@ export interface AnnexDraft {
    */
   asOf: string
   /**
-   * The draft's Gesetzestext as one string (`draftTextOf`), for rule 2. Empty
-   * where the draft's XML could not be read — which disarms that rule instead
-   * of condemning every §.
+   * The draft's own Gesetzestext, as blocks, for rule 2 — empty where the
+   * draft's XML could not be read, which disarms that rule instead of
+   * condemning every §.
+   *
+   * The blocks rather than the joined string, because the rule needs to know
+   * *which* Novellierungsanordnung wrote which words: the whole draft as one
+   * bag passes text dragged out of a neighbouring § (`draftBags`). Splitting
+   * them is the gate's own business, so the caller hands over what it read
+   * and nothing more.
    */
-  text: string
+  blocks: readonly TextBlock[]
 }
 
 /** Ceiling on § lookups per draft, so one monster Sammelgesetz cannot hang a request. */
@@ -841,7 +1101,27 @@ export async function verifyAnnex(
   if (groups.size === 0) return nothing(REASON_NO_PARAGRAPHS)
   if (!asOf) return nothing(REASON_NO_ASOF)
 
-  const draftBag = draftWordBag(draft.text)
+  const bags = draftBags(draft.blocks)
+  // What the annex prints a block of its own for, per law. A § that is
+  // *not* in here has its text somewhere inside another §'s block, and its
+  // words must not be counted as missing there (`draftReference`).
+  const shown = new Map<string | null, Set<string>>()
+  for (const group of groups.values()) {
+    const key = designationKey(group.para)
+    if (key === null) continue
+    const into = shown.get(group.law) ?? new Set<string>()
+    into.add(key)
+    shown.set(group.law, into)
+  }
+  const references = new Map<string | null, (para: string) => WordBag>()
+  const draftWords = (law: string | null, para: string): WordBag => {
+    let reference = references.get(law)
+    if (!reference) {
+      reference = draftReference(bags, law, shown.get(law) ?? new Set<string>())
+      references.set(law, reference)
+    }
+    return reference(para)
+  }
   const amending = articles.filter((a) => a.amends)
   if (articles.length === 0) reasons.add(REASON_NO_ARTICLES)
   else if (amending.length === 0) reasons.add(REASON_NO_AMENDING)
@@ -917,7 +1197,7 @@ export async function verifyAnnex(
         const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
         byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
         coverage.set(group.law, byPara)
-        rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, draftBag))
+        rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, draftWords(group.law, group.para)))
       } catch (err) {
         // Stop the other workers too: a RIS that just failed four times over
         // is not worth another 150 requests, and the answer is thrown away.
@@ -1001,8 +1281,7 @@ export interface CheckedComparison {
    * carries exactly one cause. The page names them separately because they
    * are three different things to a reader — the ministry's left column not
    * matching RIS, the right column repeating law that already stands, and
-   * the right column carrying text the draft's own Gesetzestext does not
-   * have.
+   * the right column carrying text the draft does not order for this §.
    */
   withheldByCause: Record<AnnexWithheldCause, number>
   /**

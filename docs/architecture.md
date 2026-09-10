@@ -769,7 +769,8 @@ Entwurf keine hat.
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
 Engine: `server/utils/textComparison.ts` (Parser der XML-Tabelle),
 `annexPdf.ts` (Seitengeometrie), `annexCheck.ts` (das Tor),
-`textComparisonService.ts` (Nitro-Glue),
+`annexDraft.ts` (welche Paragraphen eine Novellierungsanordnung adressiert —
+der Bezug von Regel 2), `textComparisonService.ts` (Nitro-Glue),
 `/api/consultations/:gp/:inr/gegenueberstellung`,
 `app/components/TextComparisonSection.vue`. In GP XXVIII zeigt die Seite die
 Gegenüberstellung für **109 von 132 Entwürfen** — 65 aus der XML-Tabelle,
@@ -1083,9 +1084,11 @@ dahin als unprüfbar. Sie ist es nicht — sie hat zwei Bezugspunkte:
   Gesetzes geschrieben wurden.
 - **„nicht im Entwurf".** Der Gesetzestext des Entwurfs liegt im selben
   RIS-Dokument neben der Beilage; jedes Wort, das die Beilage als neu zeigt,
-  sollte dort vorkommen. Über 1.145 Paragraphen mit mindestens zehn neuen
-  Wörtern liegt der Fundanteil im Median bei 100 % und bei p10 bei 98 % — der
-  Bezug ist also eng. Einbehalten wird ab **zehn neuen Wörtern, acht
+  sollte dort vorkommen — und zwar in den Novellierungsanordnungen, die der
+  Entwurf *diesem* Paragraphen widmet (der Bezug war einen Tag lang der ganze
+  Entwurf, siehe „Der Bezug ist je Paragraph" unten). Über 1.145 Paragraphen
+  mit mindestens zehn neuen Wörtern liegt der Fundanteil im Median bei 100 %
+  und bei p10 bei 98 % — der Bezug ist also eng. Einbehalten wird ab **zehn neuen Wörtern, acht
   fehlenden und einem Fundanteil unter 0,9**. Die absolute Untergrenze ist
   nicht Zierrat: sie trennt die sechs echten Verunreinigungen —
   Glücksspielreformgesetz § 56 (89 %, darunter zweimal „daß", also Text von
@@ -1134,6 +1137,120 @@ das Problem sind nicht zerhackte, sondern zu lange Strecken, und beheben
 könnte sie nur der Teillauf-Ansatz, der wegen 191 Fehlalarmen verworfen ist.
 29 Fälle sind dieser Preis nicht wert.
 
+**Der Bezug ist je Paragraph (10.09.2026).** Der erste Wurf von Regel 2 hielt
+die als neu gezeigten Wörter gegen den *ganzen* Gesetzestext des Entwurfs, und
+ein ganzer Entwurf ist blind für den Fehler, der am nächsten liegt: Text, der
+aus einer **Nachbar**-Novellierungsanordnung desselben Entwurfs in die rechte
+Spalte gerutscht ist, steht im Entwurf — nur an der falschen Stelle. Die
+Fehlerinjektion bezifferte diese Blindheit als erste: von den injizierten
+Nachbarsätzen (R-neu) fing die Regel 12,0 % auf dem PDF-Pfad und 32,5 % auf dem
+Tabellenpfad, ihr schwächster Wert überhaupt.
+
+Der Bezug ist jetzt die Menge der Anordnungen, die den einzelnen Paragraphen
+adressieren. `annexDraft.ts` liest die Adressierung — jedes `target`/`anchor`
+der Operationen, die neu *geschaffenen* Paragraphen einer Einfügung, die
+Bereiche („§§ 7 bis 14"), beide Bezeichnungen einer Umbenennung, die
+Gliederungssymbole eines „lautet:"-Textes und die Buchstaben-Unteranordnungen
+innerhalb derselben Einheit —, `annexCheck.draftBags` baut daraus die Säcke.
+Drei Zutaten halten das ehrlich, und jede ist gemessen:
+
+- **Der allgemeine Sack.** Eine Anordnung, deren Adresse niemand lesen kann,
+  geht in einen Sack, den *jeder* Paragraph ihres Gesetzes bekommt. Über GP
+  XXVIII nennen **4.359 von 5.007** Anordnungen des PDF-Korpus einen
+  Paragraphen (87,1 %) und 2.408 von 2.797 auf dem Tabellenpfad (86,1 %); die
+  übrigen dürfen die Prüfung schwächen und niemals einen Paragraphen
+  durchfallen lassen. Häufigste Gründe, gezählt über die 5.497 Anordnungen
+  des PDF-Injektionslaufs: „keine auflösbare Adresse" (185), „kein Paragraph
+  adressiert" (180), „kein bekanntes Verb" (90), dazu ein langer Schwanz von
+  Mehrfach-Operanden („4 Operanden, Paarbildung unklar" und Verwandte). Die
+  Liste ist damit zugleich eine Aufgabenliste für `novao.ts`.
+- **Umbenennungen paaren zwei Bezeichnungen.** „Der bisherige § 3 erhält die
+  Paragraphenbezeichnung „§ 4."" macht aus zwei Nummern eine Bestimmung, und
+  die beiden Dokumente benutzen verschiedene: die Beilage druckt den
+  Paragraphen so, wie das geltende Recht ihn bezeichnet, die folgenden
+  Anordnungen adressieren ihn unter der neuen Nummer. Ohne dieses Paar lesen
+  sich drei Paragraphen der Straßenverkehrs-Sicherheitsmanagement-Verordnung
+  als unerklärt, obwohl an ihnen nichts falsch ist — dazu einer der
+  Tierschutz-Sonderhaltungsverordnung, zusammen **4 der 7 Meldungen**, die
+  nach der Regel unten noch übrig sind. Gepaart wird ein Schritt weit, nicht
+  transitiv — sonst verschmilzt eine Kette („§ 2 wird § 3, § 3 wird § 4, …")
+  die ganze Verordnung zu einem Sack und der Bezug ist wieder der alte.
+- **Paragraphen ohne eigenen Block in der Beilage sind geerbt, nicht
+  fehlend.** Druckt die Beilage keinen Block für § 8, dann fehlt sein Text
+  nicht auf der Seite — er steht im Block des § 7, dessen Bezeichnung die
+  Zeilen geerbt haben. „Steht nicht im Entwurf" wäre dort der falsche Befund:
+  der Entwurf hat den Text, die *Seite* hat zwei Bestimmungen verschmolzen.
+  Diese Unterscheidung bringt den Tabellenpfad von **15 Meldungen auf 7**
+  (die Umbenennungs-Paare darüber dann von 7 auf 3) — und den PDF-Pfad nur
+  von 21 auf 20, was der eigentliche Befund ist: dort *ist* eine Zeile eine
+  Bestimmung, am Paragraphenzeichen geschnitten, also hat fast jeder
+  Paragraph seinen eigenen Block und die Verschmelzung kann nicht passieren.
+
+Was das kostet und bringt, beide Pfade, mit `scripts/annex-fault-injection.ts`
+in einem Lauf gemessen (die Schwellen 10 / 8 / 0,9 bleiben unverändert):
+
+| Fehler | Regel 2, ganzer Entwurf | Regel 2, je Paragraph |
+|---|---:|---:|
+| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 880 (12,0 %) | **665 (75,6 %)** |
+| R-neu, Tabellenpfad | 76 von 234 (32,5 %) | **184 (78,6 %)** |
+| R-alt (fremder geltender Satz), PDF | 218 von 881 (24,7 %) | 584 (66,3 %) |
+| R-alt, Tabellenpfad | 97 von 235 (41,3 %) | 178 (75,7 %) |
+| L (Satzverlust links), PDF | 144 von 918 (15,7 %) | 332 (36,2 %) |
+| L, Tabellenpfad | 49 von 243 (20,2 %) | 90 (37,0 %) |
+
+Zusammen mit Regel 1 steigt die Reichweite gegen den Satzverlust von 49,0 auf
+61,3 % (PDF) und von 65,0 auf 70,4 % (Tabelle). **Der Preis** sind Meldungen
+auf unversehrten Beilagen: über denselben Korpus 7 → 20 auf dem PDF-Pfad und
+0 → 3 auf dem Tabellenpfad. Das ist mehr als eine Handvoll, deshalb wurde
+jeder der sechzehn neuen Fälle einzeln gelesen. **Fünfzehn benennen eine
+echte Abweichung** zwischen Beilage und Entwurf; der sechzehnte ist unsere
+eigene Bezeichnungslesung:
+
+- **Vier Paragraphen, die der Entwurf überhaupt nicht anordnet** —
+  Niederlassungs- und Aufenthaltsgesetz §§ 58 und 58a (die Beilage zeigt dort
+  einen eingefügten Satz, den der Entwurf den §§ 41, 41a, 47 und 49 widmet,
+  nicht diesen beiden), Bundesvergabegesetz 2018 § 301,
+  Bundesvergabegesetz Konzessionen 2018 § 81. Keine Anordnung des Entwurfs
+  adressiert sie, auch keine unlesbare — das ist genau der Fall, für den die
+  Regel gedacht ist.
+- **Sechs Paragraphen, deren fehlende Wörter in einem *anderen Gesetz*
+  desselben Sammelgesetzes stehen** — Energie-Control-Gesetz §§ 27, 41, 43 und
+  44 (die Wörter stehen im neuen Elektrizitätswirtschaftsgesetz desselben
+  Pakets), Immobilien-Investmentfondsgesetz § 43a, Wertpapieraufsichtsgesetz
+  § 117. Dort zeigt der Block der Beilage ein Mehrfaches an neuem Text, als die
+  Anordnung für diesen Paragraphen trägt.
+- **Fünf Paragraphen mit Parallelbestimmungen** — NAG § 42,
+  Landeslehrer-Dienstrechtsgesetz § 123, Land- und forstwirtschaftliches
+  Landeslehrer-Dienstrechtsgesetz § 127, Blutspenderverordnung § 9,
+  Strafprozeßordnung § 108a: dieselbe Wortfolge steht in einer benachbarten
+  Bestimmung, die ihren **eigenen** Block hat — und die Anordnung zu diesem
+  Paragraphen ist eine kleine Wortfolgen-Änderung, während die Beilage einen
+  ganzen Absatz als neu zeigt (StPO § 108a: 4 Wörter in der Anordnung gegen
+  33 als neu gezeigte).
+- **Ein Fall ist unsere Schuld, und zwar an anderer Stelle:** die Beilage der
+  Blutspenderverordnung schreibt „§ 1 3 ." mit Leerzeichen, und
+  `designationKey` liest daraus **§ 1**. Der Paragraph wird also gegen die
+  Anordnungen zu § 1 gehalten — und, schwerer, seine linke Spalte gegen den
+  geltenden § 1. Derselbe Fehler trifft „§ 28 c ." im
+  Gesundheitstelematikgesetz. Das ist ein eigener Befund über die
+  Bezeichnungslesung, kein Argument gegen den Bezug je Paragraph; er steht in
+  `TODO.md`.
+
+**Eine Variante gemessen und verworfen:** eine *Obergrenze* auf den
+unerklärten Anteil. Sie liegt nahe, weil ein Block, der zwei Bestimmungen
+umspannt, fast vollständig unerklärt ist, während ein bloß verunreinigter
+Paragraph seinen eigenen neuen Text behält. Bei 50 % kostet sie den
+Tabellenpfad seinen ganzen Gewinn: R-neu fällt von 184 auf 64 Treffer und
+damit **unter** die 76 des ganzen Entwurfs — ein Paragraph mit wenig eigenem
+neuen Text ist eben der Fall, in dem ein injizierter Satz den Anteil dominiert.
+
+Und ein Satz auf der Seite musste sich ändern. „Text, der im Gesetzestext des
+Entwurfs nicht vorkommt" war mit dem neuen Bezug in der Mehrheit der Fälle
+schlicht **falsch** — der Text kommt vor, einen Paragraphen weiter. Der Befund
+heißt jetzt „Text, den der Entwurf für diesen Paragraphen nicht anordnet", und
+die Ursachenzeile nennt die neue Möglichkeit („der Entwurf ordnet diese
+Änderung an einer anderen Stelle an") neben den beiden alten.
+
 | 2026-09-10, GP XXVIII | bestätigt | einbehalten | davon links / bereits geltend / nicht im Entwurf | ungeprüft |
 |---|---:|---:|---|---:|
 | XML-Tabelle, vorher | 989 | 57 | 57 / – / – | 814 |
@@ -1141,6 +1258,8 @@ könnte sie nur der Teillauf-Ansatz, der wegen 191 Fehlalarmen verworfen ist.
 | PDF-Textebene, vorher | 1.349 | 244 | 244 / – / – | 1.894 |
 | PDF-Textebene, nachher | 1.286 | 312 | 243 / 63 / 6 | 1.889 |
 | PDF-Textebene, nach dem Seitentor und der Kantenmessung (unten) | 1.347 | 234 | 212 / 15 / 7 | 1.902 |
+| XML-Tabelle, mit dem Bezug je Paragraph | 981 | 66 | 57 / 6 / 3 | 813 |
+| PDF-Textebene, mit dem Bezug je Paragraph | 1.342 | 243 | 212 / 15 / 16 | 1.898 |
 
 Die „vorher"-Zeilen sind heute gegen den Stand des Repositoriums gemessen und
 widersprechen deshalb der Tabelle weiter oben (967/73/764 und 895/198/2.388):
@@ -1157,6 +1276,14 @@ einbehalten, solange er besteht — die Zahl fällt, sobald die Zeilenpaarung im
 PDF-Pfad ihn nicht mehr erzeugt. Der Satz im Block nennt deshalb auf dem
 PDF-Pfad unsere Lesung als erste mögliche Ursache, für alle drei Gründe
 getrennt formuliert.
+
+Die beiden letzten Zeilen sind der Bezug je Paragraph. Auf dem PDF-Pfad
+meldet Regel 2 dort 16 statt 7 Paragraphen — vier weniger als die 20 des
+Injektions-Prüfstands, weil `MAX_PARAGRAPHS` den Schwanz der Sammelnovellen
+gar nicht erreicht. Bestätigt fällt um 5 (PDF) und 2 (Tabelle), einbehalten
+steigt um 9 und 3: die Differenz kommt aus *ungeprüft*, denn ein eingefügter
+Paragraph ohne beurteilbaren linken Text kann jetzt an der rechten Spalte
+scheitern — genau der Fall „erfundenes Recht".
 
 *Nachtrag desselben Tages:* genau das ist eingetreten. Die Ursache war die
 asymmetrische Kantenmessung (unten, „Die Überschriften-Übernahme war

@@ -30,7 +30,7 @@ import {
   coverageOf,
   designationKey,
   displayedChangeRows,
-  draftTextOf,
+  draftBags,
   isDisplayedChange,
   notRunReason,
   verifyAnnex,
@@ -110,6 +110,20 @@ interface DraftResult {
    */
   droppedPages: number
   /**
+   * How far rule 2's reference reaches: instructions read, instructions that
+   * addressed at least one §, and the annex's §§ split by whether the draft's
+   * instructions name them (`annexCheck.draftBags`).
+   *
+   * Poor addressing does not fail a § — the words of an unreadable
+   * instruction go to every § of its law — so it shows up nowhere in the
+   * verdicts. It has to be printed, or the rule quietly returns to the
+   * whole-draft reference it was narrowed away from.
+   */
+  units: number
+  addressedUnits: number
+  parasWithOwnBag: number
+  parasWithoutOwnBag: number
+  /**
    * The gate as the request path applies it (`verifyAnnex` + `checkAnnexRows`,
    * the very functions the service calls), so the harness measures the shipped
    * decision and not a replica of it.
@@ -145,7 +159,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
   const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0 }
-  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, droppedPages: 0, gate: noGate })
+  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, droppedPages: 0, units: 0, addressedUnits: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -282,7 +296,18 @@ async function verify(doc: any): Promise<DraftResult | null> {
       console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
     }
   }
-  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, gate: await runGate(parsed.rows, { articles, asOf: beginn, text: draftTextOf(draftBlocks) }) }
+  // The same index the gate builds, for the coverage line only — the verdicts
+  // below come from `verifyAnnex` itself, so nothing here decides anything.
+  const bags = draftBags(draftBlocks)
+  let parasWithOwnBag = 0
+  let parasWithoutOwnBag = 0
+  for (const group of groups.values()) {
+    const key = designationKey(group.gld)
+    if (key === null) continue
+    if (bags.byLaw.get(group.law)?.get(key) === undefined) parasWithoutOwnBag++
+    else parasWithOwnBag++
+  }
+  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, parasWithOwnBag, parasWithoutOwnBag, gate: await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }) }
 }
 
 /**
@@ -429,9 +454,13 @@ console.log(`    Paragraphen bestätigt / einbehalten / ungeprüft: ${gsum((g) =
 // on 2026-09-10; before them the first line was the whole story.
 console.log(`    einbehalten, weil die geltende Fassung so nicht im RIS steht : ${gsum((g) => g.withheldStanding)}`)
 console.log(`    einbehalten, weil die vorgeschlagene Fassung Geltendes als neu zeigt: ${gsum((g) => g.withheldAlreadyStanding)}`)
-console.log(`    einbehalten, weil sie Text ohne Deckung im Gesetzestext des Entwurfs trägt: ${gsum((g) => g.withheldNotInDraft)}`)
+console.log(`    einbehalten, weil sie Text trägt, den der Entwurf für diesen Paragraphen nicht anordnet: ${gsum((g) => g.withheldNotInDraft)}`)
 console.log(`    Entwürfe ohne jede Prüfung   : ${gated.filter((r) => !r.gate.ran).length}`)
 console.log(`    Zeilen ohne Paragraphenangabe: ${gsum((g) => g.rowsNoPara)}, davon als Änderung gezeigt: ${gsum((g) => g.changeRowsNoPara)}`)
+const dsum = (pick: (r: DraftResult) => number): number => gated.reduce((n, r) => n + pick(r), 0)
+const units = dsum((r) => r.units)
+const addressed = dsum((r) => r.addressedUnits)
+console.log(`    Adressierung der Anordnungen: ${addressed} von ${units} nennen einen Paragraphen${units ? ` (${((addressed / units) * 100).toFixed(1)} %)` : ''}; Paragraphen der Beilage mit eigenem Sack ${dsum((r) => r.parasWithOwnBag)}, ohne ${dsum((r) => r.parasWithoutOwnBag)}`)
 console.log(`    Zusicherungen (müssen 0 sein): ohne Urteil ${gsum((g) => g.verdictless)}, zu Unrecht geprüft ${gsum((g) => g.wronglyVerified)}, einbehalten mit Text ${gsum((g) => g.withheldWithText)}, einbehalten ohne Grund ${gsum((g) => g.withheldWithoutCause)}`)
 for (const [reason, n] of [...gated.filter((r) => !r.gate.ran).reduce((m, r) => m.set(r.gate.notRunReason ?? '—', (m.get(r.gate.notRunReason ?? '—') ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])) {
   console.log(`      ${String(n).padStart(3)}× ${reason}`)

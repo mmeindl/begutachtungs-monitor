@@ -42,7 +42,7 @@
  * and the section says it is unavailable right now.
  */
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { checkAnnexRows, draftTextOf, notRunReason } from './annexCheck'
+import { checkAnnexRows, notRunReason } from './annexCheck'
 import { getAnnexVerification } from './annexGuardService'
 import { annexFromPdf } from './annexPdfService'
 import { fetchLawHtml } from './lawDiffService'
@@ -215,7 +215,7 @@ export const getTextComparison = defineCachedFunction(
     // the Begutachtungsfrist — the day the ministry wrote the annex, not
     // today. Called even without one: `verifyAnnex` then reports why it could
     // check nothing, which the page needs to be able to say.
-    const verification = await getAnnexVerification(gp, inr, row.risBeginn ?? '', rows, articles, draftTextOf(draftBlocks))
+    const verification = await getAnnexVerification(gp, inr, row.risBeginn ?? '', rows, articles, draftBlocks)
     const checked = checkAnnexRows(rows, verification)
 
     return {
