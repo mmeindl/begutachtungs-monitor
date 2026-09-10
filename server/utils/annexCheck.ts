@@ -59,6 +59,7 @@
 import { draftUnits } from './annexDraft'
 import { normalizeText, type TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
+import { NO_PARAGRAPH_ADDRESSED } from './novao'
 import type { KonsLawAtDate, KonsParagraphRef } from './risKons'
 import { summarizeComparison, type ComparisonRow, type ComparisonStats } from './textComparison'
 import type { AnnexWithheldCause, TextComparisonRow } from '../../shared/types'
@@ -406,8 +407,9 @@ export interface WordBag {
  * it meets most often: a sentence dragged out of a *neighbouring*
  * Novellierungsanordnung is in the draft, only in the wrong §. Measured by
  * fault injection over GP XXVIII (`scripts/annex-fault-injection.ts`), the
- * whole-draft bag caught 12,0 % of such faults on the PDF path and 32,5 % on
- * the table path — the weakest number the gate had.
+ * whole-draft bag caught 12,0 % of such faults on the PDF path and 32,3 % on
+ * the table path — the weakest number the gate had. Per § it is 77,0 % and
+ * 82,1 %.
  *
  * `general` is what keeps the narrowing honest. An instruction whose address
  * could not be read contributes its words to every § of its law, so a parse
@@ -429,6 +431,15 @@ export interface DraftBags {
   /** Instructions read, and how many named a §. For the coverage line. */
   units: number
   addressed: number
+  /**
+   * …and how many of the rest name no § *by nature* rather than by our
+   * failure: the table of contents, the law's title, an Abschnitt heading, an
+   * instruction to the whole text. Those belong in the general bag and always
+   * will, so a residual that counts them reads as a bigger gap than it is —
+   * on GP XXVIII they are 173 of the PDF path's 321 remaining units and 93 of
+   * the table path's 184.
+   */
+  rightlyWithoutParagraph: number
   /** Why the others did not, counted by reason. */
   reasons: Map<string, number>
 }
@@ -451,6 +462,7 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
   /** Law → the designation pairs a renumbering declares to be one provision. */
   const aliases = new Map<string | null, [string, string][]>()
   let addressed = 0
+  let rightlyWithoutParagraph = 0
   const units = draftUnits(blocks)
   for (const unit of units) {
     for (const [from, to] of unit.aliases) {
@@ -475,6 +487,10 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
       // not a § — an Abschnitt heading, the law's title — which addresses a
       // group of §§ and so belongs to all of them.
       const reason = unit.reason ?? REASON_NOT_A_PARAGRAPH
+      // Both of those are the instruction *read*: it names an Abschnitt, the
+      // title, the table of contents or the whole text, and there is no § for
+      // it to name. Only the remaining reasons are a gap in the grammar.
+      if (reason === REASON_NOT_A_PARAGRAPH || reason === NO_PARAGRAPH_ADDRESSED) rightlyWithoutParagraph++
       reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
       continue
     }
@@ -508,7 +524,7 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
       }
     }
   }
-  return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, reasons }
+  return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, rightlyWithoutParagraph, reasons }
 }
 
 /**
@@ -685,16 +701,20 @@ export interface RightColumnCheck {
  * Those are the numbers for the whole-draft reference. With the reference per
  * § (`draftBags`, 2026-09-10) rule 2 roughly triples on its own fault and
  * more than doubles on the other two, measured per path with
- * `scripts/annex-fault-injection.ts`:
+ * `scripts/annex-fault-injection.ts`. The last column is the same reference
+ * with the addressing of 2026-09-11 — 93,6 % of the draft's instructions name
+ * a § instead of 87,1 % (`novao.refusedAddresses`) — which is a narrower
+ * reference at unchanged thresholds, and cost exactly one more alarm on an
+ * intact annex, itself a true finding (docs/architecture.md §12.13):
  *
- * | Fehler | Regel 2, ganzer Entwurf | Regel 2, je § |
- * |---|---:|---:|
- * | R-neu, PDF-Pfad     | 106 (12,0 %) | 665 (75,6 %) |
- * | R-neu, Tabellenpfad |  76 (32,5 %) | 184 (78,6 %) |
- * | R-alt, PDF-Pfad     | 218 (24,7 %) | 584 (66,3 %) |
- * | R-alt, Tabellenpfad |  97 (41,3 %) | 178 (75,7 %) |
- * | L, PDF-Pfad         | 144 (15,7 %) | 332 (36,2 %) |
- * | L, Tabellenpfad     |  49 (20,2 %) |  90 (37,0 %) |
+ * | Fehler | ganzer Entwurf | je §, 87 % | je §, 93 % |
+ * |---|---:|---:|---:|
+ * | R-neu, PDF-Pfad     | 106 (12,0 %) | 665 (75,6 %) | 678 (77,0 %) |
+ * | R-neu, Tabellenpfad |  76 (32,3 %) | 184 (78,3 %) | 193 (82,1 %) |
+ * | R-alt, PDF-Pfad     | 218 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
+ * | R-alt, Tabellenpfad |  97 (41,1 %) | 178 (75,4 %) | 181 (76,7 %) |
+ * | L, PDF-Pfad         | 144 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
+ * | L, Tabellenpfad     |  49 (20,1 %) |  90 (36,9 %) |  94 (38,5 %) |
  *
  * Of rule 1's 628 misses, **464 are not misses**: the draft
  * changes that sentence too, so its proposed wording really is new and no

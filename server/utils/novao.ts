@@ -669,6 +669,10 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
  * the same provision under two numbers — which of them is printed where is
  * the ressort's choice, and the corpus shows both.
  *
+ * The same divergence runs one level up: `parseInstruction` refuses an
+ * instruction whose *operation* it cannot type, and most of those name their §
+ * perfectly well. `refusedAddresses` reads it, under its own three refusals.
+ *
  * `reason` is what makes a miss usable rather than silent: an instruction
  * nobody could read must weaken a check, never fail a §, and the caller can
  * only honour that if it knows which instructions it lost.
@@ -701,6 +705,89 @@ function designationOf(para: string, id: string): string {
 function numeralOf(designation: string): string | null {
   return /(\d+[a-z]*)/.exec(designation)?.[1] ?? null
 }
+
+/**
+ * An instruction the grammar refused still names its §, and the reason it was
+ * refused is nearly always the *verb*, not the address.
+ *
+ * Measured over GP XXVIII (2026-09-11): of the 731 units the PDF corpus filed
+ * in the general bag, only 185 failed on „keine auflösbare Adresse". The other
+ * 546 had an address `parseAddressList` had already read — and `parseOne` threw
+ * it away because it could not type the operation: "4 Operanden, Paarbildung
+ * unklar" (40), "3 Operanden" (40), "Ersetzung ohne zwei Operanden" (34),
+ * "kein bekanntes Verb" (90) and a long tail of the same shape. Those refusals
+ * are right for `lawApply.ts`, which has to *perform* the instruction; they are
+ * beside the point for the question this file's collector asks, which is only
+ * which §§ an instruction may print text for.
+ *
+ * So the address is read again where no operation came out at all — never
+ * beside one, because an instruction that produced an op has already said what
+ * it addresses, and a `toc` op says on purpose that it addresses no §.
+ *
+ * **Three refusals of its own**, each measured against the corpus, because a
+ * wrong address is worse than none — it takes an instruction's words out of the
+ * general bag that every § of the law receives, and the § that really owns them
+ * then shows them as unexplained:
+ *
+ * - **no legistic verb** (or a colon opening a quoted payload). A line that
+ *   orders nothing is not an instruction, and its §§ are citations: "der
+ *   Regierungsberater gemäß § 5 Abs. 1 Bundes-Krisensicherheitsgesetz" is law
+ *   text RIS tagged as `novao1`. Costs 5 units on each path — among them two
+ *   ministry typos ("eingfügt", "entfälllt") and two of the renumbering form
+ *   "Der bisherige § 9 wird zu § 16.", which is left in the general bag on
+ *   purpose: reading it would file the unit under § 9 alone while § 16 lost
+ *   the same words.
+ * - **`§§` with a single designation.** "In den §§ 156 Abs. 2 und 317 Abs. 2 …"
+ *   names two provisions and `parseAddressList` resolves one, because the
+ *   second half carries no § sign of its own. Filing the unit under § 156 would
+ *   take its words from § 317. Costs 4 units on the PDF path and none on the
+ *   table path, and all four are in the Bundesvergabegesetz. The plural sign
+ *   is read on the *masked* head — "die Wortfolge „gemäß §§ 52b oder 52c"" is
+ *   an operand, and testing the raw text cost seven sound units.
+ * - **any part of a compound that does not resolve.** "…ersetzt sowie folgende
+ *   Z 9 angefügt" is two instructions, and reading one of them files the whole
+ *   unit — whose text covers both — under half its §§.
+ *
+ * Payload and head are cut exactly as `parseOne` cuts them, so the §§ a
+ * payload *creates* are not mistaken for the ones it addresses; `annexDraft.ts`
+ * picks those up from the quoted Gliederungssymbole, where they are not a
+ * guess.
+ */
+const INSTRUCTION_VERB_RE =
+  /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\beingereiht\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b|\bentfernt\b|\bvorangestellt\b|\bhinzugefügt\b|\bangeschlossen\b|\bergänzt\b|\bgesetzt\b|\beinzufügen\b|\bgeändert\b|bezeichnung(?:en)?\b|an (?:die )?Stelle\b|\berhäl?t folgende\b|\berhalten folgende\b/i
+
+/** A head that ends in the colon opening its quoted text is an instruction too: "§ 19 Abs. 3 erster Satz:". */
+const OPENS_PAYLOAD_RE = /:\s*$/
+
+export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): string[] | null {
+  const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
+  const paras: string[] = []
+  // The second half of "Dem Text des § 5 wird die Absatzbezeichnung „(1)"
+  // vorangestellt; folgender Abs. 2 wird angefügt:" has no address of its own
+  // and inherits the first half's — the same carry `parseInstruction` does.
+  let context = inherited ?? null
+  for (const part of splitCompound(line)) {
+    if (!INSTRUCTION_VERB_RE.test(part) && !OPENS_PAYLOAD_RE.test(part)) return null
+    const head = instructionHead(part)
+    const { scope } = splitPayloadScope(head)
+    const found = parseAddressList(scope || head, context)
+    if (!found) return null
+    context = found[0] ?? context
+    const named: string[] = []
+    for (const a of found) {
+      if (!a.para) continue
+      named.push(a.para)
+      if (a.level === 'para') for (const id of a.siblings) named.push(designationOf(a.para, id))
+    }
+    if (named.length === 0) return null
+    if (/§§/.test(maskQuotes(scope || head)) && new Set(named).size < 2) return null
+    paras.push(...named)
+  }
+  return paras.length > 0 ? paras : null
+}
+
+/** The instruction was read and names no § because none is meant: the table of contents, the whole text. */
+export const NO_PARAGRAPH_ADDRESSED = 'kein Paragraph adressiert'
 
 export function addressedUnits(line: string, inherited?: NovaoAddress | null): AddressedUnits {
   const { ops, reason } = parseInstruction(line, inherited)
@@ -738,5 +825,8 @@ export function addressedUnits(line: string, inherited?: NovaoAddress | null): A
       if (from !== null && to !== null) for (const id of expandRange(from, to) ?? []) paras.add(designationOf(op.target.para ?? '§', id))
     }
   }
-  return { paras: [...paras], aliases, reason: paras.size > 0 ? null : (reason ?? 'kein Paragraph adressiert') }
+  // Nothing could be typed — but the address may still be readable, and a
+  // refusal of the *verb* is no reason to widen the reference of a whole law.
+  if (ops.length === 0) for (const para of refusedAddresses(line, inherited) ?? []) paras.add(para)
+  return { paras: [...paras], aliases, reason: paras.size > 0 ? null : (reason ?? NO_PARAGRAPH_ADDRESSED) }
 }

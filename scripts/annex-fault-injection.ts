@@ -33,9 +33,9 @@
  *   dragged out of a neighbouring provision of the same draft. It was the
  *   known blind spot of rule 2 as long as its word bag was built for the
  *   whole draft: the words are in the draft, only in the wrong §. This run is
- *   what measured that (12,0 % caught on the PDF path, 32,5 % on the table
- *   path) and what measured the per-§ reference that answered it (75,6 % and
- *   78,6 %).
+ *   what measured that (12,0 % caught on the PDF path, 32,3 % on the table
+ *   path) and what measured the per-§ reference that answered it (77,0 % and
+ *   82,1 %).
  *
  * The left column is untouched in both R faults, so "die linke Prüfung
  * besteht" reads 100 % there by construction — that is the statement, not a
@@ -57,25 +57,29 @@
  * `annex-pdf-verify.ts` over the same population, so the two harnesses
  * cross-check each other.
  *
- * **What it said on 2026-09-10** (GP XXVIII, both paths run separately):
+ * **What it said on 2026-09-11** (GP XXVIII, both paths run separately, with
+ * 93,6 % / 93,4 % of the drafts' instructions addressed to a §):
  *
  * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
  * |---|---:|---:|---:|---:|---:|---:|
- * | L, PDF-Pfad    | 918 | 847 (92,3 %) | 358 (39,0 %) | 144 (15,7 %) | 332 (36,2 %) | 563 (61,3 %) |
- * | L, Tabellenpfad| 243 | 243 (100 %)  | 146 (60,1 %) |  49 (20,2 %) |  90 (37,0 %) | 171 (70,4 %) |
- * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 (24,7 %) | 584 (66,3 %) | 586 (66,5 %) |
- * | R-alt, Tabelle | 235 | 235 (100 %)  |   1 ( 0,4 %) |  97 (41,3 %) | 178 (75,7 %) | 178 (75,7 %) |
- * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 665 (75,6 %) | 665 (75,6 %) |
- * | R-neu, Tabelle | 234 | 234 (100 %)  |   1 ( 0,4 %) |  76 (32,5 %) | 184 (78,6 %) | 185 (79,1 %) |
+ * | L, PDF-Pfad    | 918 | 847 (92,3 %) | 358 (39,0 %) | 144 (15,7 %) | 344 (37,5 %) | 570 (62,1 %) |
+ * | L, Tabellenpfad| 244 | 244 (100 %)  | 146 (59,8 %) |  49 (20,1 %) |  94 (38,5 %) | 172 (70,5 %) |
+ * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 (24,7 %) | 588 (66,7 %) | 590 (67,0 %) |
+ * | R-alt, Tabelle | 236 | 236 (100 %)  |   1 ( 0,4 %) |  97 (41,1 %) | 181 (76,7 %) | 181 (76,7 %) |
+ * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 678 (77,0 %) | 678 (77,0 %) |
+ * | R-neu, Tabelle | 235 | 235 (100 %)  |   1 ( 0,4 %) |  76 (32,3 %) | 193 (82,1 %) | 194 (82,6 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
  * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
  * was measurably weakest on until its reference narrowed to one §. False
- * alarms without any fault: 18 and 20 §§ on the PDF path (rule 1 and rule 2)
+ * alarms without any fault: 18 and 21 §§ on the PDF path (rule 1 and rule 2)
  * and 6 and 3 on the table path — rule 2 stood at 7 and 0 with the
- * whole-draft reference, and all sixteen extra ones are named in
- * docs/architecture.md §12.13.
+ * whole-draft reference; sixteen of the extra ones are named in
+ * docs/architecture.md §12.13, the seventeenth is the one the better
+ * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
+ * column runs on into the next Novellierungsanordnung — the R-neu fault,
+ * found unstaged in the corpus).
  *
  * The reach stated in `annexCheck.ts` — 1.019 of 1.092, rule 1 464, rule 2
  * 181, together 567 — was measured over both paths at once and with a
@@ -281,6 +285,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
   const wide: WordBag = { has: (w) => bags.whole.has(w), read: bags.whole.size > 0 }
   coverage.units += bags.units
   coverage.addressed += bags.addressed
+  coverage.rightly += bags.rightlyWithoutParagraph
   for (const [reason, n] of bags.reasons) coverage.reasons.set(reason, (coverage.reasons.get(reason) ?? 0) + n)
 
   const parsed = readable
@@ -467,7 +472,7 @@ const xmlMode = process.argv.includes('--xml')
 /** The corpus without any fault — the number that has to stay small. */
 const corpus = { held: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, newAlarms: [] as string[], lostAlarms: [] as string[] }
 /** How far the §-wise addressing reaches — the precondition of the whole change. */
-const coverage = { units: 0, addressed: 0, reasons: new Map<string, number>(), ownBag: 0, noOwnBag: 0, noLawBag: 0 }
+const coverage = { units: 0, addressed: 0, rightly: 0, reasons: new Map<string, number>(), ownBag: 0, noOwnBag: 0, noLawBag: 0 }
 const faults = {
   L: tally('L     zweiter Satz links verloren'),
   Rold: tally('R-alt fremder geltender Satz rechts'),
@@ -524,6 +529,11 @@ for (const line of corpus.lostAlarms) console.log(`      - ${line}`)
 console.log(`\n  Adressierung der Novellierungsanordnungen`)
 console.log(`    Anordnungen gelesen              : ${coverage.units}`)
 console.log(`    davon mit mindestens einem §     : ${coverage.addressed} (${pct(coverage.addressed, coverage.units)})`)
+// The rest is two different things, and a residual that adds them up reads as
+// a bigger gap than it is: an Inhaltsverzeichnis, a Titel and an Abschnitt
+// heading name no § and belong in the general bag whatever the grammar learns.
+console.log(`    ohne Paragraph, zu Recht         : ${coverage.rightly} (${pct(coverage.rightly, coverage.units)})`)
+console.log(`    ohne Paragraph, ungelesen        : ${coverage.units - coverage.addressed - coverage.rightly} (${pct(coverage.units - coverage.addressed - coverage.rightly, coverage.units)})`)
 console.log(`    Paragraphen der Beilage mit eigenem Sack : ${coverage.ownBag}`)
 console.log(`    …nur mit dem allgemeinen Sack ihres Gesetzes: ${coverage.noOwnBag}`)
 console.log(`    …ohne jede Anordnung für ihr Gesetz (Rückfall auf den ganzen Entwurf): ${coverage.noLawBag}`)

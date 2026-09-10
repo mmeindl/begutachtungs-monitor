@@ -121,6 +121,8 @@ interface DraftResult {
    */
   units: number
   addressedUnits: number
+  /** …of the rest, the ones that name no § by nature (`DraftBags`) */
+  rightlyWithoutParagraph: number
   parasWithOwnBag: number
   parasWithoutOwnBag: number
   /**
@@ -159,7 +161,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
   const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0 }
-  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, droppedPages: 0, units: 0, addressedUnits: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
+  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -307,7 +309,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
     if (bags.byLaw.get(group.law)?.get(key) === undefined) parasWithoutOwnBag++
     else parasWithOwnBag++
   }
-  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, parasWithOwnBag, parasWithoutOwnBag, gate: await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }) }
+  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, gate: await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }) }
 }
 
 /**
@@ -460,7 +462,12 @@ console.log(`    Zeilen ohne Paragraphenangabe: ${gsum((g) => g.rowsNoPara)}, da
 const dsum = (pick: (r: DraftResult) => number): number => gated.reduce((n, r) => n + pick(r), 0)
 const units = dsum((r) => r.units)
 const addressed = dsum((r) => r.addressedUnits)
+const rightly = dsum((r) => r.rightlyWithoutParagraph)
 console.log(`    Adressierung der Anordnungen: ${addressed} von ${units} nennen einen Paragraphen${units ? ` (${((addressed / units) * 100).toFixed(1)} %)` : ''}; Paragraphen der Beilage mit eigenem Sack ${dsum((r) => r.parasWithOwnBag)}, ohne ${dsum((r) => r.parasWithoutOwnBag)}`)
+// A residual that lumps the two together reads as a bigger gap than it is: an
+// Inhaltsverzeichnis, a Titel and an Abschnitt heading have no § to name and
+// belong in the general bag whatever the grammar learns.
+console.log(`      davon ohne Paragraph zu Recht (Inhaltsverzeichnis, Titel, Abschnitt, ganzer Text): ${rightly}; ungelesen: ${units - addressed - rightly}`)
 console.log(`    Zusicherungen (müssen 0 sein): ohne Urteil ${gsum((g) => g.verdictless)}, zu Unrecht geprüft ${gsum((g) => g.wronglyVerified)}, einbehalten mit Text ${gsum((g) => g.withheldWithText)}, einbehalten ohne Grund ${gsum((g) => g.withheldWithoutCause)}`)
 for (const [reason, n] of [...gated.filter((r) => !r.gate.ran).reduce((m, r) => m.set(r.gate.notRunReason ?? '—', (m.get(r.gate.notRunReason ?? '—') ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])) {
   console.log(`      ${String(n).padStart(3)}× ${reason}`)
