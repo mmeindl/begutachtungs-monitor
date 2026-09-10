@@ -25,7 +25,7 @@
  * lost, and the harness can only report the coverage if it is countable.
  */
 import { segmentUnits, type LawUnit, type TextBlock } from './lawText'
-import { addressedUnits, parseAddress } from './novao'
+import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from './novao'
 
 /** One Novellierungsanordnung (or one § of a Stammgesetz), and what it addresses. */
 export interface DraftUnit {
@@ -74,8 +74,9 @@ function textOf(unit: LawUnit): string {
  *
  * - **the instruction line** — every `target`/`anchor` of every op
  *   `parseInstruction` returns, the §§ an insertion *creates*, the ranges
- *   `expandRange` expanded, and both designations of a renumbering
- *   (`novao.addressedUnits`);
+ *   `expandRange` expanded, both designations of a renumbering, and — where no
+ *   operation could be typed at all — the address the refused line still names
+ *   (`novao.addressedUnits`, `novao.refusedAddresses`);
  * - **the sub-instructions inside the same unit** — "a) In Abs. 3 lautet der
  *   erste Satz:" under "2. § 2 wird wie folgt geändert:". They inherit the
  *   container's address, so they normally confirm its § rather than adding
@@ -118,7 +119,7 @@ export function draftUnits(blocks: readonly TextBlock[]): DraftUnit[] {
       id: unit.id,
       paras: [...paras],
       aliases,
-      reason: paras.size > 0 ? null : (reason ?? (instructions.length === 0 ? NO_INSTRUCTION : 'kein Paragraph adressiert')),
+      reason: paras.size > 0 ? null : (reason ?? (instructions.length === 0 ? NO_INSTRUCTION : NO_PARAGRAPH_ADDRESSED)),
       text: textOf(unit),
     }
   })

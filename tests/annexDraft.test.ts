@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { draftUnits } from '../server/utils/annexDraft'
 import type { TextBlock } from '../server/utils/lawText'
-import { addressedUnits } from '../server/utils/novao'
+import { addressedUnits, parseInstruction, refusedAddresses } from '../server/utils/novao'
 
 const instruction = (text: string): TextBlock => ({ kind: 'novao', cls: 'absatz/novao1', text, gld: null })
 const quoted = (text: string, gld: string | null = null): TextBlock => ({ kind: 'abs', cls: 'absatz/abs', text, gld })
@@ -119,5 +119,77 @@ describe('draftUnits', () => {
   it('reads a Stammgesetz § from its own symbol', () => {
     const units = draftUnits([quoted('Dieses Bundesgesetz regelt den Zugang.', '§ 1.')])
     expect(units[0]!.paras).toEqual(['§ 1.'])
+  })
+})
+
+/**
+ * The §§ an instruction names although its *operation* could not be typed
+ * (`novao.refusedAddresses`). Measured over GP XXVIII on 2026-09-11: of the 731
+ * units the PDF corpus filed in the general bag, only 185 failed on the
+ * address — the other 546 had one `parseAddressList` had already read, and
+ * `parseOne` dropped it because the verb or the operands were not understood.
+ */
+describe('addressedUnits on a refused instruction', () => {
+  it('keeps the § of an instruction whose operands could not be paired', () => {
+    // "4 Operanden, Paarbildung unklar" — 40 units on the PDF path. The two
+    // substitutions are not applicable; the § is not in doubt.
+    const line = 'In § 4 Abs. 2 wird nach der Wortfolge "Vorgaben des Abschnittes II" die Wortfolge "und VI" eingefügt, das Wort "Gesamtabwassers" durch das Wort "Abwassers" und das Wort "Gesamtabwasserstrom" durch das Wort "Abwasserstrom" ersetzt.'
+    expect(parseInstruction(line).ops).toHaveLength(0)
+    expect(paras(line)).toEqual(['§ 4'])
+  })
+
+  it('keeps the § of an instruction whose verb it does not know', () => {
+    const line = 'Dem Text des § 5 wird die Absatzbezeichnung "(1)" vorangestellt; folgender Abs. 2 wird angefügt:'
+    expect(parseInstruction(line).ops).toHaveLength(0)
+    expect(paras(line)).toEqual(['§ 5'])
+  })
+
+  it('keeps the § of a bare address that opens its quoted text', () => {
+    // "§ 19 Abs. 3 erster Satz:" — the colon is the verb; 8 units on the PDF path.
+    expect(paras('§ 19 Abs. 3 erster Satz:')).toEqual(['§ 19'])
+  })
+
+  it('never reads the address beside an operation that was typed', () => {
+    // A `toc` op says on purpose that it addresses no §, and the fallback must
+    // not undo that: the entry to § 11 is derived from § 11, not text of it.
+    const found = addressedUnits('Im Inhaltsverzeichnis lautet der Eintrag zu § 11:')
+    expect(found.paras).toEqual([])
+    expect(found.reason).toBeTruthy()
+  })
+
+  it('refuses a line that orders nothing, because its §§ are then citations', () => {
+    // Law text RIS tagged as a Novellierungsanordnung (`absatz typ="novao1"`).
+    // Read as an address it would file a quoted list under § 5 of its law.
+    const line = 'der Regierungsberater gemäß § 5 Abs. 1 Bundes-Krisensicherheitsgesetz (B-KSG), BGBl. I Nr. 89/2023.'
+    expect(refusedAddresses(line)).toBeNull()
+    expect(paras(line)).toEqual([])
+  })
+
+  it('refuses a plural "§§" that resolved to a single designation', () => {
+    // "In den §§ 156 Abs. 2 und 317 Abs. 2 …": the second half carries no §
+    // sign, so only § 156 comes out — and filing the unit there would take its
+    // words out of the general bag § 317 lives on. Four such units in the
+    // Bundesvergabegesetz alone.
+    const line = 'In den §§ 156 Abs. 2 und 317 Abs. 2 wird nach der Wortfolge "durchgeführt wird" jeweils die Wortfolge ", eine Rahmenvereinbarung abgeschlossen wird" und nach der Wortfolge "erteilt werden soll" die Wortfolge "bzw." eingefügt.'
+    expect(refusedAddresses(line)).toBeNull()
+  })
+
+  it('reads a "§§" inside a quoted operand as an operand, not as a plural target', () => {
+    // The same guard on the raw text cost seven sound units: the plural sign
+    // stands inside the phrase the instruction replaces.
+    const line = 'In § 52f wird die Wortfolge "vom Finanzamt Österreich" durch die Wortfolge "von der Glücksspielaufsichtsbehörde" ersetzt und nach der Wortfolge "gemäß §§ 52b oder 52c" die Wortfolge "und dem Amt für Betrugsbekämpfung" eingefügt.'
+    expect(paras(line)).toEqual(['§ 52f'])
+  })
+
+  it('refuses a compound whose other half does not resolve', () => {
+    // The unit's text covers both halves, so filing it under one half's § takes
+    // those words from the other's.
+    expect(refusedAddresses('In § 5 wird das Wort "alt" ersetzt; im gesamten Gesetzestext wird der Ausdruck ersetzt.')).toBeNull()
+  })
+
+  it('still lands an instruction with no readable address in the general bag', () => {
+    const found = addressedUnits('In der Tarifpost 1 lautet die Anmerkung 9:')
+    expect(found.paras).toEqual([])
+    expect(found.reason).toBeTruthy()
   })
 })

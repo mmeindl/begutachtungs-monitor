@@ -1156,14 +1156,61 @@ Drei Zutaten halten das ehrlich, und jede ist gemessen:
 
 - **Der allgemeine Sack.** Eine Anordnung, deren Adresse niemand lesen kann,
   geht in einen Sack, den *jeder* Paragraph ihres Gesetzes bekommt. Über GP
-  XXVIII nennen **4.359 von 5.007** Anordnungen des PDF-Korpus einen
-  Paragraphen (87,1 %) und 2.408 von 2.797 auf dem Tabellenpfad (86,1 %); die
+  XXVIII nennen **4.686 von 5.007** Anordnungen des PDF-Korpus einen
+  Paragraphen (93,6 %) und 2.613 von 2.797 auf dem Tabellenpfad (93,4 %); die
   übrigen dürfen die Prüfung schwächen und niemals einen Paragraphen
-  durchfallen lassen. Häufigste Gründe, gezählt über die 5.497 Anordnungen
-  des PDF-Injektionslaufs: „keine auflösbare Adresse" (185), „kein Paragraph
-  adressiert" (180), „kein bekanntes Verb" (90), dazu ein langer Schwanz von
-  Mehrfach-Operanden („4 Operanden, Paarbildung unklar" und Verwandte). Die
-  Liste ist damit zugleich eine Aufgabenliste für `novao.ts`.
+  durchfallen lassen.
+
+  Diese Zahlen standen am 10.09.2026 bei 87,1 % und 86,1 %, und die Ursache
+  war eine Verwechslung zweier Fragen (11.09.2026). Von den 731 Anordnungen,
+  die der PDF-Korpus in den allgemeinen Sack legte, scheiterten nur 185 an
+  der **Adresse**; die übrigen 546 hatten eine, die `parseAddressList` bereits
+  gelesen hatte, und `parseInstruction` warf sie weg, weil es die **Operation**
+  nicht typisieren konnte: „4 Operanden, Paarbildung unklar" (40),
+  „3 Operanden" (40), „Ersetzung ohne zwei Operanden" (34), „kein bekanntes
+  Verb" (90) und ein langer Schwanz derselben Form. Diese Verweigerungen sind
+  für `lawApply.ts` richtig, das die Anweisung *ausführen* muss — für die
+  Frage, welche Paragraphen eine Anordnung bedrucken darf, sind sie ohne
+  Belang. `novao.refusedAddresses` liest die Adresse deshalb dort noch einmal,
+  wo überhaupt keine Operation herauskam, nie *neben* einer: eine
+  `toc`-Operation sagt absichtlich, dass sie keinen Paragraphen adressiert.
+
+  Drei eigene Verweigerungen halten das ehrlich, jede am Korpus gemessen,
+  denn eine **falsche** Adresse ist schlimmer als keine — sie nimmt die Wörter
+  einer Anordnung aus dem allgemeinen Sack, und der Paragraph, dem sie
+  wirklich gehören, zeigt sie dann als unerklärt: (1) kein legistisches Verb
+  (oder ein Doppelpunkt, der den zitierten Text öffnet) — „der
+  Regierungsberater gemäß § 5 Abs. 1 Bundes-Krisensicherheitsgesetz" ist
+  Gesetzestext, den das RIS als `novao1` ausgezeichnet hat, und sein § ist ein
+  Zitat; (2) ein „§§" im maskierten Kopf, aus dem nur **eine** Bezeichnung
+  herauskam — „In den §§ 156 Abs. 2 und 317 Abs. 2 …" nennt zwei Bestimmungen,
+  und § 317 verlöre die Wörter; (3) ein Verbundsatz, dessen anderer Teil nicht
+  auflöst, denn der Text der Einheit deckt beide Hälften ab. Preis, gemessen:
+  das Verb-Tor kostet 5 Anordnungen je Pfad — darunter zwei
+  Ressort-Tippfehler („eingfügt", „entfälllt") und zweimal die
+  Umbenennungsform „Der bisherige § 9 wird zu § 16.", die absichtlich im
+  allgemeinen Sack bleibt (gelesen würde sie die Einheit unter § 9 ablegen,
+  während § 16 dieselben Wörter verliert) —, das „§§"-Tor 4 auf dem PDF-Pfad
+  und keine auf dem Tabellenpfad, alle vier im Bundesvergabegesetz.
+
+  **Der Rest ist zweierlei, und die Prüfstände zählen es seitdem getrennt.**
+  Von den verbliebenen 321 Anordnungen des PDF-Pfads nennen **173 zu Recht**
+  keinen Paragraphen — Inhaltsverzeichnis, Titel, Abschnittsüberschrift, eine
+  Anordnung an den ganzen Text —, und sie werden es immer tun, gleich was die
+  Grammatik noch lernt; ungelesen bleiben **148**. Auf dem Tabellenpfad sind
+  es 93 zu Recht und 91 ungelesen. Häufigste Gründe der ungelesenen, über die
+  5.497 Anordnungen des PDF-Injektionslaufs: „keine auflösbare Adresse" (185)
+  und, weit dahinter, „keine Novellierungsanordnung" (5) und einzelne
+  Operanden-Fälle. Die Liste ist damit zugleich eine Aufgabenliste für
+  `novao.ts` — und eine kurze.
+
+  Verworfen und gemessen: **»…« wie ein Anführungszeichen zu maskieren.**
+  `maskQuotes` maskiert nur "…", ein Zitat in Guillemets wird also als Adresse
+  gelesen. Über GP XXVIII benutzen genau **8 Anordnungen** Guillemets, bei 4
+  ändert die Maskierung die Adressierung — und nicht einheitlich zum Guten:
+  zwei davon sind ganze Anordnungen, die *in* Guillemets stehen, und verlören
+  ihren Paragraphen ganz. Für vier Fälle, von denen zwei schlechter würden,
+  wird `maskQuotes` nicht angefasst, das die ME→RV-Ebene mitbenutzt.
 - **Umbenennungen paaren zwei Bezeichnungen.** „Der bisherige § 3 erhält die
   Paragraphenbezeichnung „§ 4."" macht aus zwei Nummern eine Bestimmung, und
   die beiden Dokumente benutzen verschiedene: die Beilage druckt den
@@ -1189,17 +1236,21 @@ Drei Zutaten halten das ehrlich, und jede ist gemessen:
 Was das kostet und bringt, beide Pfade, mit `scripts/annex-fault-injection.ts`
 in einem Lauf gemessen (die Schwellen 10 / 8 / 0,9 bleiben unverändert):
 
-| Fehler | Regel 2, ganzer Entwurf | Regel 2, je Paragraph |
-|---|---:|---:|
-| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 880 (12,0 %) | **665 (75,6 %)** |
-| R-neu, Tabellenpfad | 76 von 234 (32,5 %) | **184 (78,6 %)** |
-| R-alt (fremder geltender Satz), PDF | 218 von 881 (24,7 %) | 584 (66,3 %) |
-| R-alt, Tabellenpfad | 97 von 235 (41,3 %) | 178 (75,7 %) |
-| L (Satzverlust links), PDF | 144 von 918 (15,7 %) | 332 (36,2 %) |
-| L, Tabellenpfad | 49 von 243 (20,2 %) | 90 (37,0 %) |
+Die dritte Spalte ist die Adressierung von 11.09.2026 (93,6 % bzw. 93,4 %),
+die zweite die von 10.09.2026 (87,1 % / 86,1 %) — derselbe Bezug, nur besser
+adressiert; die Schwellen sind in beiden dieselben.
+
+| Fehler | Regel 2, ganzer Entwurf | je Paragraph, 87 % adressiert | je Paragraph, 93 % adressiert |
+|---|---:|---:|---:|
+| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 880 (12,0 %) | 665 (75,6 %) | **678 (77,0 %)** |
+| R-neu, Tabellenpfad | 76 von 235 (32,3 %) | 184 (78,3 %) | **193 (82,1 %)** |
+| R-alt (fremder geltender Satz), PDF | 218 von 881 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
+| R-alt, Tabellenpfad | 97 von 236 (41,1 %) | 178 (75,4 %) | 181 (76,7 %) |
+| L (Satzverlust links), PDF | 144 von 918 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
+| L, Tabellenpfad | 49 von 244 (20,1 %) | 90 (36,9 %) | 94 (38,5 %) |
 
 Zusammen mit Regel 1 steigt die Reichweite gegen den Satzverlust von 49,0 auf
-61,3 % (PDF) und von 65,0 auf 70,4 % (Tabelle). **Der Preis** sind Meldungen
+62,1 % (PDF) und von 64,8 auf 70,5 % (Tabelle). **Der Preis** sind Meldungen
 auf unversehrten Beilagen: über denselben Korpus 7 → 20 auf dem PDF-Pfad und
 0 → 3 auf dem Tabellenpfad. Das ist mehr als eine Handvoll, deshalb wurde
 jeder der sechzehn neuen Fälle einzeln gelesen. **Fünfzehn benennen eine
@@ -1247,6 +1298,26 @@ eigene Bezeichnungslesung:
   Meldung der Regel 2 auf § 13 bleibt und hat einen zweiten, echten Grund:
   die Beilage zeigt dort eine Inkrafttretensbestimmung, die der Entwurf an
   anderer Stelle anordnet.
+
+**Die bessere Adressierung (11.09.2026) kostete genau eine Meldung mehr**, und
+sie ist keine falsche: PDF-Pfad 20 → 21 im Prüfstand, 16 → 17 im Tor mit
+Deckelung; Tabellenpfad unverändert 3 → 3, dort ändert sich kein einziges
+Urteil. Die eine ist die **Obstweinverordnung § 13** der
+Weinrecht-Sammelverordnung 2024, und sie ist der Zielfall, hier ungestellt im
+Korpus gefunden: Die rechte Spalte des § 13 endet nicht mit seinem Text,
+sondern trägt dahinter den Anfang der nächsten Anordnung — „5. In
+§ 16 Abs. 1 wird die Wortfolge „Kosten der Untersuchung: 60 Punkte = € 72
+(Punktewert: € 1,20)" durch …". Ob unsere Zeilenlesung die Zelle über ihr Ende
+hinaus verlängert hat oder die Beilage das so druckt, entscheidet erst der
+Blick ins PDF — der Regel ist es gleich, an diese Stelle gehört der Text
+nicht. Die 8 fehlenden von 20 als neu gezeigten
+Wörtern sind genau diese Gebührenformel, zweimal, weil beide Operanden
+zitiert sind. Bis 10.09.2026 lag Anordnung 5 im allgemeinen Sack (ihre vier
+Operanden ließen sich nicht paaren), § 13 durfte sich also daran bedienen und
+die Regel schwieg. Das ist derselbe Fehler, den die Injektion als R-neu
+künstlich erzeugt — nur echt, und auf der Seite grün als neues Recht.
+Sonst ändert sich auf dem PDF-Pfad kein Urteil, und alle vier Zusicherungen
+beider Prüfstände bleiben 0.
 
 **Eine Variante gemessen und verworfen:** eine *Obergrenze* auf den
 unerklärten Anteil. Sie liegt nahe, weil ein Block, der zwei Bestimmungen
