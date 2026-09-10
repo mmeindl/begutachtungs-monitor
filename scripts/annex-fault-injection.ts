@@ -58,28 +58,40 @@
  * cross-check each other.
  *
  * **What it said on 2026-09-11** (GP XXVIII, both paths run separately, with
- * 93,6 % / 93,4 % of the drafts' instructions addressed to a §):
+ * 93,6 % / 93,4 % of the drafts' instructions addressed to a § and the shared markup rule of
+ * `lawText.stripMarkup` in place):
  *
  * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
  * |---|---:|---:|---:|---:|---:|---:|
  * | L, PDF-Pfad    | 918 | 847 (92,3 %) | 358 (39,0 %) | 144 (15,7 %) | 344 (37,5 %) | 570 (62,1 %) |
- * | L, Tabellenpfad| 244 | 244 (100 %)  | 146 (59,8 %) |  49 (20,1 %) |  94 (38,5 %) | 172 (70,5 %) |
+ * | L, Tabellenpfad| 245 | 245 (100 %)  | 145 (59,2 %) |  49 (20,0 %) |  95 (38,8 %) | 171 (69,8 %) |
  * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 (24,7 %) | 588 (66,7 %) | 590 (67,0 %) |
- * | R-alt, Tabelle | 236 | 236 (100 %)  |   1 ( 0,4 %) |  97 (41,1 %) | 181 (76,7 %) | 181 (76,7 %) |
+ * | R-alt, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  97 (40,9 %) | 183 (77,2 %) | 183 (77,2 %) |
  * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 678 (77,0 %) | 678 (77,0 %) |
- * | R-neu, Tabelle | 235 | 235 (100 %)  |   1 ( 0,4 %) |  76 (32,3 %) | 193 (82,1 %) | 194 (82,6 %) |
+ * | R-neu, Tabelle | 236 | 236 (100 %)  |   1 ( 0,4 %) |  76 (32,2 %) | 194 (82,2 %) | 195 (82,6 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
  * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
  * was measurably weakest on until its reference narrowed to one §. False
  * alarms without any fault: 18 and 21 §§ on the PDF path (rule 1 and rule 2)
- * and 6 and 3 on the table path — rule 2 stood at 7 and 0 with the
+ * and 6 and 4 on the table path — rule 2 stood at 7 and 0 with the
  * whole-draft reference; sixteen of the extra ones are named in
  * docs/architecture.md §12.13, the seventeenth is the one the better
  * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
- * column runs on into the next Novellierungsanordnung — the R-neu fault,
- * found unstaged in the corpus).
+ * column carries the start of the next Novellierungsanordnung — whether our
+ * line reading or the annex's print put it there, the PDF decides; the R-neu
+ * fault, found unstaged in the corpus), the eighteenth the one the shared
+ * markup rule handed from the left check to rule 2 (MPBV § 11, below).
+ *
+ * **Moved on 2026-09-11, table path only** (`lawText.stripMarkup`): the
+ * population grew, because §§ whose words the ressort's markup used to cut in
+ * half now pass the left check and reach the injection at all — L 244 → 245,
+ * R-alt 236 → 237, R-neu 235 → 236. The rates are the same within a
+ * percentage point (L together 69,8 %, R-alt 77,2 %, R-neu 82,2 %), and rule
+ * 2's corpus alarms go from 3 to 4: MPBV § 11, which was withheld before too,
+ * only by the left check and for a reason of our own making. The PDF path is
+ * unchanged in every cell.
  *
  * The reach stated in `annexCheck.ts` — 1.019 of 1.092, rule 1 464, rule 2
  * 181, together 567 — was measured over both paths at once and with a

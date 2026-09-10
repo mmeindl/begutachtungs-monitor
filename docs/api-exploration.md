@@ -364,7 +364,10 @@ parser corrections it reads 88,9 % (930 of 1.046 §§ with prose) on the table
 path and 76,1 % (1.421 of 1.867) on the PDF path** (2026-09-10) — the PDF
 path gained six points from the per-page geometry gate, the per-column edges
 and the hyphen rule (`architecture.md` §12.13), and stays the rougher of the
-two. Where the check fails, the row is mis-paired or the ministry quoted a
+two. **The table path reads 91,4 % (955 of 1.045) since 2026-09-11**, when
+inline markup stopped being a word boundary on all three sides of the
+comparison at once; the PDF number is unchanged, because a text layer carries
+no markup to begin with. Where the check fails, the row is mis-paired or the ministry quoted a
 superseded version — and the page would otherwise print a word diff over a
 provision the row does not belong to. The name varies:
 `Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
@@ -384,7 +387,10 @@ median and 98 % at p10. Both checks matter because containment is
 one-directional — text a parser loses on the left passes the RIS check and is
 then painted green as an addition, which happened in 1.019 of 1.092 injected
 cases (93,3 %); the two rules together catch 567 of those, 51,9 % with the
-whole draft as the reference and 61,3 % (PDF) / 70,4 % (table) with it per §.
+whole draft as the reference and 62,1 % (PDF) / 69,8 % (table) with it per §
+— the table figure over 245 injection sites since 2026-09-11, two more than
+the run it was first measured on, because §§ the left check used to fail now
+reach the injection at all.
 Thresholds, the honest reach, the addressing coverage and the rejected
 variants: `architecture.md` §12.13. A parser detail
 found on the way: the PDF text layer writes RIS's editorial note as

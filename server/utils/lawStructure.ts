@@ -9,7 +9,7 @@
  * addresses: § → Absatz → Ziffer/Litera, plus the Schlussteil that trails a
  * list. `lawApply.ts` operates on that tree; nothing here changes anything.
  */
-import { normalizeText } from './lawText'
+import { normalizeText, stripMarkup } from './lawText'
 
 export type NodeLevel = 'para' | 'abs' | 'z' | 'lit' | 'schluss'
 
@@ -69,13 +69,28 @@ const LIT_MARKER_RE = /^([a-z]{1,2})\)$/
  */
 const ANNOTATION_RE = /\(Anm\.:[^()]*(?:\([^()]*\)[^()]*)*\)/g
 
+/**
+ * A block's text. `stripMarkup` carries the block/inline distinction, and it
+ * is shared with the annex on purpose: this is the text the annex's left
+ * column is scored against, so a rule applied to one side alone would be the
+ * asymmetry, not the fix (`lawText.stripMarkup`, 2026-09-11).
+ *
+ * `ANNOTATION_RE` runs before it, unchanged: RIS sets its editorial note in
+ * italics, and the pattern has always seen the note's own text. What the
+ * shared rule adds is the note whose *markup* used to break it apart — eight
+ * of the twelve standing blocks that change a comparable word at all (BWG
+ * §§ 2 and 107, SchUG § 82), where "(Anm.: von Novelle nicht betroffen)" left
+ * "anm", "aufgehoben" and "novelle" in the standing bag that the annex column
+ * never offered.
+ */
 function text(inner: string): string {
   return normalizeText(
-    inner
-      .replace(ANNOTATION_RE, ' ')
-      .replace(/<gdash\s*\/>/g, '-')
-      .replace(/<nbsp\s*\/>/g, ' ')
-      .replace(/<[^>]*>/g, ' ')
+    stripMarkup(
+      inner
+        .replace(ANNOTATION_RE, ' ')
+        .replace(/<gdash\s*\/>/g, '-')
+        .replace(/<nbsp\s*\/>/g, ' '),
+    )
       .replace(/&auml;/g, 'ä')
       .replace(/&ouml;/g, 'ö')
       .replace(/&uuml;/g, 'ü')

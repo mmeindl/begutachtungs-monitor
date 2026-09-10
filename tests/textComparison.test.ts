@@ -95,6 +95,46 @@ describe('parseTextComparison', () => {
     expect(rows[0]!.current).toBe('Alter Text.')
   })
 
+  // The rest of the same finding, and the part that reaches the RIS check:
+  // the ressorts mark the changed *letters* of a word, not only of a
+  // designation. "Schlepplifte n," is two tokens the standing § does not
+  // have, so the § was withheld for our own reading of it — six §§ of
+  // GP XXVIII, and 314 of the 45.920 cells change a comparable word
+  // (2026-09-11, `lawText.stripMarkup`).
+  it('reads a word whose changed letters are marked as one word', () => {
+    const rows = parse(
+      annex([
+        pair(`das Förderseil bei Schlepplifte${marked('n,')}`, `das Förderseil bei Schlepplifte<i>${marked('n,')}</i>`),
+        pair('an der Universi<b>tät</b> tätig', 'an der Universi<b>tät</b> tätig'),
+      ]),
+    )
+    expect(rows[0]!.current).toBe('das Förderseil bei Schleppliften,')
+    expect(rows[1]!.current).toBe('an der Universität tätig')
+  })
+
+  it('still breaks a word at a block boundary and at a line break', () => {
+    // The other half of the rule, and the reason it cannot simply drop every
+    // tag: an `<absatz>`, a `<listelem>` and a `<br/>` are where one sentence
+    // ends and the next begins.
+    const rows = parse(
+      annex([
+        pair('<absatz typ="abs">Erster Satz</absatz><absatz typ="abs">Zweiter Satz</absatz>', '<absatz typ="abs">Erster Satz</absatz><absatz typ="abs">Dritter Satz</absatz>'),
+        pair('1. Abschnitt<br/>Grundlagen', '1. Abschnitt<br/>Grundlagen neu'),
+      ]),
+    )
+    expect(rows[0]!.current).toBe('Erster Satz Zweiter Satz')
+    expect(rows[1]!.current).toBe('1. Abschnitt Grundlagen')
+  })
+
+  it('leaves a superscript where the two readings disagree about the word', () => {
+    // `cm<super>2</super>` belongs to the token, `Meerkatzen<super>1)</super>`
+    // is a footnote mark that does not, and nothing in the markup tells them
+    // apart. Both sides of the comparison carry the tag, so a space is
+    // symmetric — and welding them moved no verdict in either harness.
+    const rows = parse(annex([pair('Mindestgrundfläche in cm<super>2</super>', 'Mindestgrundfläche in cm<super>2</super> je Tier')]))
+    expect(rows[0]!.current).toBe('Mindestgrundfläche in cm 2')
+  })
+
   it('separates an editorial change from a substantive one', () => {
     const rows = parse(
       annex([

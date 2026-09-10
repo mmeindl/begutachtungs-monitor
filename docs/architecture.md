@@ -1238,19 +1238,23 @@ in einem Lauf gemessen (die Schwellen 10 / 8 / 0,9 bleiben unverändert):
 
 Die dritte Spalte ist die Adressierung von 11.09.2026 (93,6 % bzw. 93,4 %),
 die zweite die von 10.09.2026 (87,1 % / 86,1 %) — derselbe Bezug, nur besser
-adressiert; die Schwellen sind in beiden dieselben.
+adressiert; die Schwellen sind in beiden dieselben. Die Tabellenzeilen der
+ersten und dritten Spalte sind seit der geteilten Markup-Regel (unten) über
+245/237/236 Stellen gemessen statt 244/236/235: Paragraphen, die die linke
+Prüfung vorher an einem zerschnittenen Wort verfehlten, erreichen die
+Injektion jetzt.
 
 | Fehler | Regel 2, ganzer Entwurf | je Paragraph, 87 % adressiert | je Paragraph, 93 % adressiert |
 |---|---:|---:|---:|
 | R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 880 (12,0 %) | 665 (75,6 %) | **678 (77,0 %)** |
-| R-neu, Tabellenpfad | 76 von 235 (32,3 %) | 184 (78,3 %) | **193 (82,1 %)** |
+| R-neu, Tabellenpfad | 76 von 236 (32,2 %) | 184 (78,3 %) | **194 (82,2 %)** |
 | R-alt (fremder geltender Satz), PDF | 218 von 881 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
-| R-alt, Tabellenpfad | 97 von 236 (41,1 %) | 178 (75,4 %) | 181 (76,7 %) |
+| R-alt, Tabellenpfad | 97 von 237 (40,9 %) | 178 (75,4 %) | 183 (77,2 %) |
 | L (Satzverlust links), PDF | 144 von 918 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
-| L, Tabellenpfad | 49 von 244 (20,1 %) | 90 (36,9 %) | 94 (38,5 %) |
+| L, Tabellenpfad | 49 von 245 (20,0 %) | 90 (36,9 %) | 95 (38,8 %) |
 
 Zusammen mit Regel 1 steigt die Reichweite gegen den Satzverlust von 49,0 auf
-62,1 % (PDF) und von 64,8 auf 70,5 % (Tabelle). **Der Preis** sind Meldungen
+62,1 % (PDF) und von 63,7 auf 69,8 % (Tabelle). **Der Preis** sind Meldungen
 auf unversehrten Beilagen: über denselben Korpus 7 → 20 auf dem PDF-Pfad und
 0 → 3 auf dem Tabellenpfad. Das ist mehr als eine Handvoll, deshalb wurde
 jeder der sechzehn neuen Fälle einzeln gelesen. **Fünfzehn benennen eine
@@ -1289,7 +1293,8 @@ eigene Bezeichnungslesung:
   GTelG § 28c, Blutspenderverordnung §§ 11, 13 und 14 — daneben 20 weitere
   Schreibweisen („§ 27 ." für § 27), die nur die Anzeige trafen, 153 Zeilen
   zusammen. Die Bezeichnung wird jetzt ohne Auszeichnungsmarkup gelesen
-  (`textComparison.designationText`).
+  (zunächst über ein eigenes `designationText`, seit der geteilten Regel
+  unten über `lawText.stripMarkup`).
   Was es kostete, ist gemessen und war **nicht** die befürchtete falsche
   Bestätigung: sechs der sieben zeigen links höchstens ein vergleichbares
   Wort und bleiben ungeprüft; § 11 dagegen wurde mit 11 % Deckung gegen den
@@ -1298,6 +1303,68 @@ eigene Bezeichnungslesung:
   Meldung der Regel 2 auf § 13 bleibt und hat einen zweiten, echten Grund:
   die Beilage zeigt dort eine Inkrafttretensbestimmung, die der Entwurf an
   anderer Stelle anordnet.
+
+**Dieselbe Regel über alle drei Seiten (11.09.2026).** Die Bezeichnung war
+nur der teuerste Fall; die Ressorts markieren die geänderten Buchstaben
+*jedes* Wortes gelb — `Schlepplifte<i><span
+style="background:yellow">n</span></i>,` —, und ein Tag als Leerzeichen macht
+daraus zwei Wörter, die der geltende Paragraph nicht hat. Die
+Unterscheidung liegt jetzt an einer Stelle (`lawText.stripMarkup`): ein
+Blocktag ist eine Wortgrenze, ein Auszeichnungstag nicht. Sie **musste**
+geteilt werden — der Vergleich hat drei Seiten (Beilage, geltender Text aus
+dem RIS, Gesetzestext des Entwurfs), und eine Regel auf nur einer davon baut
+genau die Asymmetrie wieder auf, gegen die `ANNOTATION_RE` existiert. Der
+geltende Text las übrigens nie über `lawText`, sondern über eine zweite
+Kopie derselben Zeile in `lawStructure.ts`; das war der Grund, warum die
+Symmetrie vorher nicht zu sehen war.
+
+*Gemessen* über die GP XXVIII (126 lesbare Beilagen, die 3.858 vom Tor
+nachgeschlagenen geltenden Paragraphen, 240 Gesetzestexte): das Zerschneiden
+von Wörtern ist fast nur eine Eigenschaft der **Beilage** — `i` steht dort
+3.101-mal von 37.522 mitten im Wort, im geltenden Recht 11-mal von 4.664; für
+`span` sind es 3.155 gegen **0**. Vergleichbare Wörter ändern sich in 314 von
+45.920 Zellen, aber nur in 12 von 202.966 Blöcken des geltenden Rechts und 6
+von 48.355 des Entwurfs. Wirkung: Tabellenpfad **982/65/800 → 986/60/801**
+Paragraphen, ≥ 99 % gedeckt 936 → 961, alle vier Zusicherungen 0. Der
+PDF-Pfad ist **Zeile für Zeile unverändert** — seine Beilage trägt gar kein
+Markup, und die zwölf geänderten Blöcke des geltenden Rechts bewegen dort
+kein Urteil.
+
+**Sechs Paragraphen ändern ihr Urteil, alle auf dem Tabellenpfad, jeder
+einzeln gelesen** — vier davon bekommt die Leserin dazu:
+
+| Paragraph | vorher | nachher | Ursache |
+|---|---|---|---|
+| InfoSiG § 1 | einbehalten, 90,9 % | **bestätigt**, 96,0 % | fehlten: „klassifizierte", „volksanw", „schaft" |
+| InfoSiG § 4 | einbehalten, 76,9 % | **bestätigt**, 100 % | dasselbe, auf 13 vergleichbaren Wörtern |
+| StRegG 1968 § 9c | einbehalten, 93,8 % | **bestätigt**, 100 % | fehlten: „mitgliedsta", „ates" |
+| BHygV § 56 | einbehalten, 84,6 % | **bestätigt**, 100 % | ein zerschnittenes Wort von zwölf |
+| BHygV Anlage 5 | einbehalten, 60,0 % | **ungeprüft**, 100 % | n fällt von 5 auf 4, unter `MIN_PROSE_TOKENS` |
+| MPBV § 11 | einbehalten (links), 95,0 % | einbehalten (**Regel 2**), 99,2 % | fehlten: „raft", „retens", „ärz" |
+
+Die letzten beiden sind der Preis und beide sind ehrlicher als vorher.
+**Anlage 5** deckt den geltenden Text jetzt vollständig, hat aber nach dem
+Zusammenfügen ein vergleichbares Wort weniger als die Schwelle verlangt — die
+Zeile ist zu kurz, um etwas zu beweisen, und „ungeprüft" ist dafür der
+richtige Zustand, nicht „einbehalten". **MPBV § 11** besteht die linke Prüfung
+jetzt und fällt dafür der Regel 2 zu (64 von 159 neuen Wörtern stehen nicht in
+den Anordnungen zu diesem Paragraphen); dass sie im *ganzen* Entwurf stehen —
+die Zeile „nicht im Entwurf, ganzer Entwurf" bleibt bei 0 — macht es zur
+bekannten Klasse „der Entwurf ordnet diese Änderung an einer anderen Stelle
+an", wie schon bei Blutspenderverordnung § 13. Der Paragraph war vorher
+einbehalten und ist es weiter; geändert hat sich nur, dass der genannte Grund
+stimmt.
+
+**`<sup>`/`<sub>`/`<super>` bleiben draußen, gemessen.** Sie stehen 152-mal in
+den Beilagen, 785-mal im geltenden Recht und 338-mal im Entwurf direkt an
+einem Wort, und die beiden Bedeutungen sind **an der Form nicht zu
+unterscheiden**: `CO<sub>2</sub>` gehört zum Wort, `Meerkatzen<super>1)</super>`
+ist ein Fußnotenzeichen und gehört nicht dazu. Sie zusammenzuziehen bewegt
+**kein einziges Urteil** auf beiden Pfaden, hebt aber die berichtete Deckung
+von 961 auf 962 (Tabelle) und von 1.617 auf 1.622 Paragraphen (PDF). Dieser
+Gewinn gehört zu einer *anderen* Asymmetrie und damit in einen eigenen
+Schritt: die PDF-Textebene trägt überhaupt kein Markup, also ist
+`KW<sub>el</sub>` dort ein Wort und hier zwei.
 
 **Die bessere Adressierung (11.09.2026) kostete genau eine Meldung mehr**, und
 sie ist keine falsche: PDF-Pfad 20 → 21 im Prüfstand, 16 → 17 im Tor mit
@@ -1344,6 +1411,7 @@ die Ursachenzeile nennt die neue Möglichkeit („der Entwurf ordnet diese
 | XML-Tabelle, mit dem Bezug je Paragraph | 981 | 66 | 57 / 6 / 3 | 813 |
 | PDF-Textebene, mit dem Bezug je Paragraph | 1.342 | 243 | 212 / 15 / 16 | 1.898 |
 | XML-Tabelle, nach der Bezeichnungslesung (oben) | 982 | 65 | 56 / 6 / 3 | 800 |
+| XML-Tabelle, mit der geteilten Markup-Regel (11.09.2026) | 986 | 60 | 50 / 6 / 4 | 801 |
 
 Die „vorher"-Zeilen sind heute gegen den Stand des Repositoriums gemessen und
 widersprechen deshalb der Tabelle weiter oben (967/73/764 und 895/198/2.388):

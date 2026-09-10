@@ -25,7 +25,7 @@
  */
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
 import { diffTokens, isEditorialChange } from './lawDiff'
-import { normalizeText } from './lawText'
+import { normalizeText, stripMarkup } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import { decodeEntities } from './mappers'
 import type { LawDiffSegment } from '../../shared/types'
@@ -110,39 +110,6 @@ const STRIP = [
 const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/
 const COLSPAN_RE = /colspan="(\d+)"/i
 const MARK_RE = /background\s*:\s*yellow/i
-
-/**
- * Emphasis markup, which inside a designation is not a word boundary.
- *
- * `cellText` turns every tag into a space, and for the text it has to: a
- * `<absatz>` or `<listelem>` boundary is where one sentence ends and the next
- * begins. Inside a `<gldsym>` the same rule cuts the number in half, because
- * ressorts mark the **changed digit of the designation itself** in yellow:
- *
- *     <gldsym>§ 32<i><span style="background:yellow">2</span></i>.</gldsym>
- *
- * § 322 then reads "§ 32 2 .", and `annexCheck.designationKey` stops at the
- * first space and calls it **§ 32** — an existing provision of the same law.
- * So the § was scored against the standing § 32, filed under § 32's bag of
- * draft instructions, and printed under a designation the law does not have.
- * Seven designations in three drafts of GP XXVIII, measured 2026-09-10:
- * StGB §§ 322, 323 and 324 (Strafrechtsänderungsgesetz 2026), GTelG § 28c,
- * and §§ 11, 13 and 14 of the Blutspenderverordnung. What it cost is in
- * `docs/architecture.md` §12.13 — § 11 was withheld at 11 % coverage against
- * the standing § 1 and covers the standing § 11 in full.
- *
- * Only inside the designation, deliberately. Over every cell of the corpus
- * the same rule changes 2.268 of 45.920 cells, mostly for the better ("Z 4 ,",
- * "Reißleinen ;", "Schlepplifte n," → "Schleppliften,") — but that is a
- * finding about the annex text with its own blast radius against the RIS
- * side, and it is not what a wrong § lookup needs.
- */
-const EMPHASIS_RE = /<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>/gi
-
-/** A designation as the ressort typeset it, its emphasis markup taken out. */
-function designationText(html: string): string {
-  return cellText(html.replace(EMPHASIS_RE, ''))
-}
 
 /**
  * The mandated column headings, in the wordings the corpus actually prints.
@@ -235,17 +202,33 @@ export function isElidedPair(current: string, proposed: string): boolean {
   return current === proposed && rest.length <= ELISION_HEADING_MAX
 }
 
+/**
+ * A cell's own words.
+ *
+ * The block/inline distinction lives in `lawText.stripMarkup`, shared with the
+ * two texts this one is scored against, and it is what keeps a marked word in
+ * one piece: the ressorts mark the changed *characters* in yellow, so
+ * `Schlepplifte<i><span style="background:yellow">n</span></i>,` used to come
+ * out as "Schlepplifte n," — two tokens the standing § does not have, and the
+ * § was withheld for our own reading of it. The same rule inside a `<gldsym>`
+ * is what made "§ 322" read as "§ 32" (2026-09-10); the designation needs no
+ * reading of its own since 2026-09-11.
+ *
+ * What stays a space here on top of the block tags: `<br/>` (a line break the
+ * ressort typesets between a heading and its title), `<nbsp/>`, and the
+ * closing tag of a marker — RIS prints "<symbol>1.</symbol>Altersprädikat"
+ * with nothing between, so the number would fuse into the first word.
+ */
 function cellText(html: string): string {
   return normalizeText(
     decodeEntities(
-      html
-        .replace(/<nbsp\s*\/>/g, ' ')
-        .replace(/<gdash\s*\/>/g, '-')
-        .replace(/<br\s*\/?>/gi, ' ')
-        // A marker sits flush against its text ("1.Altersprädikat"); the
-        // space has to come back or the number fuses into the first word.
-        .replace(/<\/(?:gldsym|symbol)>/g, '$& ')
-        .replace(/<[^>]*>/g, ' '),
+      stripMarkup(
+        html
+          .replace(/<nbsp\s*\/>/g, ' ')
+          .replace(/<gdash\s*\/>/g, '-')
+          .replace(/<br\s*\/?>/gi, ' ')
+          .replace(/<\/(?:gldsym|symbol)>/g, '$& '),
+      ),
     ),
   )
 }
@@ -840,7 +823,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     const currentHtml = lift ? stripParaHeading(raw.currentHtml) : raw.currentHtml
     const proposedHtml = lift ? stripParaHeading(raw.proposedHtml) : raw.proposedHtml
     const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
-    const gld = gldMatch ? designationText(gldMatch[1]!) : null
+    const gld = gldMatch ? cellText(gldMatch[1]!) : null
     if (gld) openPara = gld
     // The designation is a `<gldsym>` element of its own, so it is data rather
     // than prose — and it is already carried in `gld`. Left in the text as

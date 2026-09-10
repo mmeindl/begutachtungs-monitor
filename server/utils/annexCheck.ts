@@ -705,16 +705,18 @@ export interface RightColumnCheck {
  * with the addressing of 2026-09-11 — 93,6 % of the draft's instructions name
  * a § instead of 87,1 % (`novao.refusedAddresses`) — which is a narrower
  * reference at unchanged thresholds, and cost exactly one more alarm on an
- * intact annex, itself a true finding (docs/architecture.md §12.13):
+ * intact annex, itself a true finding (docs/architecture.md §12.13). The table-path rows
+ * count 245/237/236 sites since `lawText.stripMarkup` let §§ with a
+ * markup-split word reach the injection at all:
  *
  * | Fehler | ganzer Entwurf | je §, 87 % | je §, 93 % |
  * |---|---:|---:|---:|
  * | R-neu, PDF-Pfad     | 106 (12,0 %) | 665 (75,6 %) | 678 (77,0 %) |
- * | R-neu, Tabellenpfad |  76 (32,3 %) | 184 (78,3 %) | 193 (82,1 %) |
+ * | R-neu, Tabellenpfad |  76 (32,2 %) | 184 (78,3 %) | 194 (82,2 %) |
  * | R-alt, PDF-Pfad     | 218 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
- * | R-alt, Tabellenpfad |  97 (41,1 %) | 178 (75,4 %) | 181 (76,7 %) |
+ * | R-alt, Tabellenpfad |  97 (40,9 %) | 178 (75,4 %) | 183 (77,2 %) |
  * | L, PDF-Pfad         | 144 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
- * | L, Tabellenpfad     |  49 (20,1 %) |  90 (36,9 %) |  94 (38,5 %) |
+ * | L, Tabellenpfad     |  49 (20,0 %) |  90 (36,9 %) |  95 (38,8 %) |
  *
  * Of rule 1's 628 misses, **464 are not misses**: the draft
  * changes that sentence too, so its proposed wording really is new and no
