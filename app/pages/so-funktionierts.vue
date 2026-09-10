@@ -117,8 +117,7 @@ const steps = [
         sich nachsehen. Wir halten sie gegen den Text im
         <strong class="font-medium text-ink">RIS Bundesrecht</strong>, und zwar
         zum Beginn der Begutachtungsfrist: das ist der Stand, den das
-        Ministerium beim Schreiben vor sich hatte. Was dabei herauskommt, steht
-        über der Gegenüberstellung. Zwei Ergebnisse brauchen eine Erklärung:
+        Ministerium beim Schreiben vor sich hatte.
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
@@ -127,11 +126,14 @@ const steps = [
         markiert ist, darf im geltenden Paragraphen nicht schon so stehen – tut
         es das, fehlt der Text links, weil er beim Lesen verloren ging oder die
         Beilage einen älteren Stand zugrunde legt, und der Entwurf sieht
-        umfangreicher aus, als er ist. Und es muss im
-        <strong class="font-medium text-ink">Gesetzestext des Entwurfs</strong>
-        vorkommen, den dasselbe RIS-Dokument neben der Beilage veröffentlicht.
-        Text, den weder das geltende Recht noch der Entwurf trägt, gehört an
-        diese Stelle nicht.
+        umfangreicher aus, als er ist. Und es muss in den
+        <strong class="font-medium text-ink">Novellierungsanordnungen</strong>
+        vorkommen, die der Entwurf für genau diesen Paragraphen trifft – der
+        Gesetzestext des Entwurfs steht im selben RIS-Dokument neben der
+        Beilage. Text, den weder das geltende Recht noch der Entwurf an dieser
+        Stelle anordnet, gehört dorthin nicht. Was bei beiden Prüfungen
+        herauskommt, steht über der Gegenüberstellung. Zwei Ergebnisse brauchen
+        eine Erklärung:
       </p>
 
       <dl class="mt-4 space-y-3 leading-relaxed text-ink-secondary">
@@ -140,10 +142,10 @@ const steps = [
           <dd>
             Eine der drei Prüfungen ist an dieser Stelle nicht aufgegangen: der
             geltende Text im RIS deckt die linke Spalte nicht, oder die rechte
-            zeigt Geltendes als neu, oder sie trägt Text ohne Entsprechung im
-            Gesetzestext des Entwurfs. Dann gehört die Zeile entweder nicht zu
-            dem Paragraphen, unter dem sie steht, oder die Beilage legt einen
-            älteren Stand des Gesetzes zugrunde. Wir blenden den Vergleich dort
+            zeigt Geltendes als neu, oder sie trägt Text, den der Entwurf für
+            diesen Paragraphen nicht anordnet. Dann gehört die Zeile entweder
+            nicht zu dem Paragraphen, unter dem sie steht, oder die Beilage
+            legt einen älteren Stand des Gesetzes zugrunde. Wir blenden den Vergleich dort
             aus, statt einen falschen zu zeigen – und verlinken die Beilage des
             Ministeriums, die die Frage beantwortet. Über der Stelle steht
             jeweils, welche der drei Prüfungen es war.

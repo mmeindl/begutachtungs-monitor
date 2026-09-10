@@ -30,37 +30,52 @@
  *   column. Old law misfiled into the proposed column; the GSpG § 56 shape,
  *   where the annex's right column carries "daß" twice.
  * - **R-neu** — append a sentence of another §'s *proposed* column. Text
- *   dragged out of a neighbouring provision of the same draft. It is the
- *   known blind spot of rule 2, whose word bag is built for the whole draft:
- *   the words are in the draft, only in the wrong § (`TODO.md`).
+ *   dragged out of a neighbouring provision of the same draft. It was the
+ *   known blind spot of rule 2 as long as its word bag was built for the
+ *   whole draft: the words are in the draft, only in the wrong §. This run is
+ *   what measured that (12,0 % caught on the PDF path, 32,5 % on the table
+ *   path) and what measured the per-§ reference that answered it (75,6 % and
+ *   78,6 %).
  *
  * The left column is untouched in both R faults, so "die linke Prüfung
  * besteht" reads 100 % there by construction — that is the statement, not a
  * defect of the run.
  *
+ * **Both references in one run.** Rule 2 is measured twice per §: against the
+ * whole draft's Gesetzestext, as it was until 2026-09-10, and against the
+ * Novellierungsanordnungen addressed to that § (`annexCheck.draftReference`).
+ * One run rather than two, because a comparison across two runs of a script
+ * whose corpus can change is not a comparison.
+ *
  * **How to read the table.** Per fault: how many §§ it could be injected into,
  * how many still pass the left check, and how many each rule catches. Beside
  * it, the corpus false-positive side, which is the number that has to stay
  * small — a rule that fires on sound annexes withholds real law, and this
- * harness would otherwise reward exactly that. The counts printed there are
- * the two right-column causes of `annex-pdf-verify.ts` over the same
- * population, so the two harnesses cross-check each other.
+ * harness would otherwise reward exactly that. Every § that only the narrow
+ * reference refuses is printed with the words it is missing, because a count
+ * cannot be inspected. The counts are the two right-column causes of
+ * `annex-pdf-verify.ts` over the same population, so the two harnesses
+ * cross-check each other.
  *
  * **What it said on 2026-09-10** (GP XXVIII, both paths run separately):
  *
- * | | §§ | linke Prüfung | Regel 1 | Regel 2 | zusammen |
- * |---|---:|---:|---:|---:|---:|
- * | L, PDF-Pfad    | 918 | 847 (92,3 %) | 358 (39,0 %) | 144 | 450 (49,0 %) |
- * | L, Tabellenpfad| 243 | 243 (100 %)  | 146 (60,1 %) |  49 | 158 (65,0 %) |
- * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 | 222 (25,2 %) |
- * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 | 111 (12,6 %) |
+ * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
+ * |---|---:|---:|---:|---:|---:|---:|
+ * | L, PDF-Pfad    | 918 | 847 (92,3 %) | 358 (39,0 %) | 144 (15,7 %) | 332 (36,2 %) | 563 (61,3 %) |
+ * | L, Tabellenpfad| 243 | 243 (100 %)  | 146 (60,1 %) |  49 (20,2 %) |  90 (37,0 %) | 171 (70,4 %) |
+ * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 (24,7 %) | 584 (66,3 %) | 586 (66,5 %) |
+ * | R-alt, Tabelle | 235 | 235 (100 %)  |   1 ( 0,4 %) |  97 (41,3 %) | 178 (75,7 %) | 178 (75,7 %) |
+ * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 665 (75,6 %) | 665 (75,6 %) |
+ * | R-neu, Tabelle | 234 | 234 (100 %)  |   1 ( 0,4 %) |  76 (32,5 %) | 184 (78,6 %) | 185 (79,1 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
- * one that answers it. R-alt is rule 2's own case, and R-neu is the fault it
- * is measurably weakest on — the misfiled words are in the draft, only in
- * another §, and rule 2's word bag is built for the whole draft (`TODO.md`).
- * False alarms without any fault stay at 18 and 7 §§ (PDF) and 6 and 0 (XML).
+ * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
+ * was measurably weakest on until its reference narrowed to one §. False
+ * alarms without any fault: 18 and 20 §§ on the PDF path (rule 1 and rule 2)
+ * and 6 and 3 on the table path — rule 2 stood at 7 and 0 with the
+ * whole-draft reference, and all sixteen extra ones are named in
+ * docs/architecture.md §12.13.
  *
  * The reach stated in `annexCheck.ts` — 1.019 of 1.092, rule 1 464, rule 2
  * 181, together 567 — was measured over both paths at once and with a
@@ -88,10 +103,11 @@ import {
   comparableTokens,
   coverageOfParagraph,
   designationKey,
-  draftTextOf,
-  draftWordBag,
+  draftBags,
+  draftReference,
   rightColumnCheck,
   type StandingText,
+  type WordBag,
 } from '../server/utils/annexCheck'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
 import { pagesOf } from '../server/utils/annexPdfPages'
@@ -141,12 +157,21 @@ const MIN_SITE_SENTENCES = 3
 /** …and enough prose that losing one sentence still leaves a judgeable § */
 const MIN_SITE_TOKENS = 30
 
-/** What one fault did to one §. */
+/**
+ * What one fault did to one §, under both references rule 2 can have.
+ *
+ * The two bags are measured in the same run on purpose: the whole-draft bag
+ * and the per-§ bag differ only in what rule 2 may draw on, and a comparison
+ * across two runs of a script whose corpus can change is not a comparison.
+ */
 interface Verdict {
   /** The left check on the faulted rows — 100 % by construction for R faults */
   leftPasses: boolean
   rule1: boolean
-  rule2: boolean
+  /** Rule 2 against the whole draft's Gesetzestext */
+  rule2Wide: boolean
+  /** …and against the §'s own Novellierungsanordnungen plus its law's unreadable ones */
+  rule2Para: boolean
 }
 
 /** One fault over the corpus. */
@@ -155,25 +180,31 @@ interface FaultTally {
   tried: number
   leftPasses: number
   rule1: number
-  rule2: number
-  either: number
+  rule2Wide: number
+  rule2Para: number
+  eitherWide: number
+  eitherPara: number
   /** Catches that were already firing without any fault — not this fault's */
   rule1Already: number
-  rule2Already: number
+  rule2WideAlready: number
+  rule2ParaAlready: number
 }
 
 function tally(label: string): FaultTally {
-  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2: 0, either: 0, rule1Already: 0, rule2Already: 0 }
+  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, rule1Already: 0, rule2WideAlready: 0, rule2ParaAlready: 0 }
 }
 
 function record(into: FaultTally, verdict: Verdict, base: Verdict): void {
   into.tried++
   if (verdict.leftPasses) into.leftPasses++
   if (verdict.rule1) into.rule1++
-  if (verdict.rule2) into.rule2++
-  if (verdict.rule1 || verdict.rule2) into.either++
+  if (verdict.rule2Wide) into.rule2Wide++
+  if (verdict.rule2Para) into.rule2Para++
+  if (verdict.rule1 || verdict.rule2Wide) into.eitherWide++
+  if (verdict.rule1 || verdict.rule2Para) into.eitherPara++
   if (verdict.rule1 && base.rule1) into.rule1Already++
-  if (verdict.rule2 && base.rule2) into.rule2Already++
+  if (verdict.rule2Wide && base.rule2Wide) into.rule2WideAlready++
+  if (verdict.rule2Para && base.rule2Para) into.rule2ParaAlready++
 }
 
 /** One § of one annex, resolved against RIS and ready to be broken. */
@@ -189,10 +220,16 @@ interface Judged {
 }
 
 /** The whole gate on one §'s rows, so a fault and its absence are measured alike. */
-function judge(rows: readonly ComparisonRow[], standing: StandingText, bag: ReadonlySet<string>): Verdict {
+function judge(rows: readonly ComparisonRow[], standing: StandingText, wide: WordBag, para: WordBag): Verdict {
   const cover = coverageOfParagraph(rows, standing.text)
-  const right = rightColumnCheck(rows, standing, bag)
-  return { leftPasses: cover.prose && cover.ratio >= PARAGRAPH_THRESHOLD, rule1: right.alreadyStanding, rule2: right.notInDraft }
+  const right = rightColumnCheck(rows, standing, wide)
+  const narrow = rightColumnCheck(rows, standing, para)
+  return {
+    leftPasses: cover.prose && cover.ratio >= PARAGRAPH_THRESHOLD,
+    rule1: right.alreadyStanding,
+    rule2Wide: right.notInDraft,
+    rule2Para: narrow.notInDraft,
+  }
 }
 
 /** The rows of a § with one row replaced — the fault, and nothing else, changed. */
@@ -233,8 +270,18 @@ async function inject(doc: any): Promise<DraftResult | null> {
   const articles = draftArticles(draftBlocks)
   const amending = articles.filter((a) => a.amends)
   if (amending.length === 0) return null
-  // Rule 2's reference, built as the service builds it (`draftTextOf`).
-  const bag = draftWordBag(draftTextOf(draftBlocks))
+  // Rule 2's two references, both built as the gate builds them: the whole
+  // draft's Gesetzestext, and the §-wise index over its Novellierungs-
+  // anordnungen (`draftBags`). Which of the two a § of the annex gets is
+  // `bagFor`'s decision, not this script's.
+  const bags = draftBags(draftBlocks)
+  // The reference as it was until 2026-09-10: every word of the draft, for
+  // whichever § asks. Kept beside the new one so the two are measured in the
+  // same run over the same corpus.
+  const wide: WordBag = { has: (w) => bags.whole.has(w), read: bags.whole.size > 0 }
+  coverage.units += bags.units
+  coverage.addressed += bags.addressed
+  for (const [reason, n] of bags.reasons) coverage.reasons.set(reason, (coverage.reasons.get(reason) ?? 0) + n)
 
   const parsed = readable
     ? parseTextComparison(annexXmlText, articles)
@@ -308,15 +355,62 @@ async function inject(doc: any): Promise<DraftResult | null> {
   // never reaches the right-column causes). The counts are therefore the two
   // "einbehalten" lines of `annex-pdf-verify.ts`, up to `MAX_PARAGRAPHS` —
   // see the note under the table.
+  /**
+   * The §-wise reference for one § of the annex — `draftReference`'s own
+   * decision, so the script measures the shipped lookup and not a second
+   * reading of the index. `shown` is what the annex prints a block of its own
+   * for, per law, which is the distinction that keeps a merged block from
+   * reading as unexplained text.
+   */
+  const shown = new Map<string | null, Set<string>>()
+  for (const group of groups.values()) {
+    const key = designationKey(group.para)
+    if (key === null) continue
+    const into = shown.get(group.law) ?? new Set<string>()
+    into.add(key)
+    shown.set(group.law, into)
+  }
+  const references = new Map<string | null, (para: string) => WordBag>()
+  const bagOf = (para: Judged): WordBag => {
+    let reference = references.get(para.law)
+    if (!reference) {
+      reference = draftReference(bags, para.law, shown.get(para.law) ?? new Set<string>())
+      references.set(para.law, reference)
+    }
+    return reference(para.para)
+  }
+  // Where that lookup landed, which is the coverage question: a § whose law
+  // the index does not know falls back to the whole draft (the rule as it
+  // shipped), and a § its law knows but never addresses gets the general bag
+  // alone — the only class that can produce a new false alarm.
+  for (const para of judgedParas) {
+    if (!bags.byLaw.has(para.law) && !bags.general.has(para.law)) coverage.noLawBag++
+    else if (bags.byLaw.get(para.law)?.get(designationKey(para.para) ?? '') === undefined) coverage.noOwnBag++
+    else coverage.ownBag++
+  }
+
   const base = new Map<Judged, Verdict>()
   for (const para of judgedParas) {
-    const verdict = judge(para.rows, para.standing, bag)
+    const verdict = judge(para.rows, para.standing, wide, bagOf(para))
     base.set(para, verdict)
     if (para.prose && !para.leftPasses) continue
     corpus.held++
     if (verdict.rule1) corpus.rule1++
-    if (verdict.rule2) corpus.rule2++
-    if (verdict.rule1 || verdict.rule2) corpus.either++
+    if (verdict.rule2Wide) corpus.rule2Wide++
+    if (verdict.rule2Para) corpus.rule2Para++
+    if (verdict.rule1 || verdict.rule2Wide) corpus.eitherWide++
+    if (verdict.rule1 || verdict.rule2Para) corpus.eitherPara++
+    // The whole risk of the narrower reference. Every § that only the per-§
+    // bag refuses is named here with the words it is missing, because a false
+    // alarm withholds real law and a count cannot be inspected.
+    if (verdict.rule2Para && !verdict.rule2Wide) {
+      const check = rightColumnCheck(para.rows, para.standing, bagOf(para))
+      const own = bags.byLaw.get(para.law)?.get(designationKey(para.para) ?? '')
+      corpus.newAlarms.push(`${cite} ${para.para}${para.law ? ` [${para.law.slice(0, 28)}]` : ''} — ${check.missingWords}/${check.newWords} fehlen${own ? '' : ', ohne eigenen Sack'}: ${check.missing.slice(0, 9).join(' ')}`)
+    }
+    if (verdict.rule2Wide && !verdict.rule2Para) {
+      corpus.lostAlarms.push(`${cite} ${para.para} — nur der ganze Entwurf meldete`)
+    }
   }
 
   let injected = 0
@@ -344,7 +438,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // recomputed, exactly as it would have been had the parser lost the line.
     const lostCurrent = sentencesOf(site.current).filter((_, i) => i !== 1).join(' ')
     const faultL = withRow(para.rows, site, { ...site, current: lostCurrent, segments: diffTokens(lostCurrent, site.proposed).segments })
-    record(faults.L, judge(faultL, para.standing, bag), baseVerdict)
+    record(faults.L, judge(faultL, para.standing, wide, bagOf(para)), baseVerdict)
 
     // Both R faults take their donor from another § of the same law that the
     // gate also confirmed — one from the standing text RIS holds for it, one
@@ -358,7 +452,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
       if (donor === null) continue
       const garbled = `${site.proposed} ${donor}`
       const faultR = withRow(para.rows, site, { ...site, proposed: garbled, segments: diffTokens(site.current, garbled).segments })
-      record(into, judge(faultR, para.standing, bag), baseVerdict)
+      record(into, judge(faultR, para.standing, wide, bagOf(para)), baseVerdict)
     }
   }
   return { cite, judged: confirmed.length, injected }
@@ -371,7 +465,9 @@ const only = process.argv.find((a) => a.startsWith('--only='))?.slice('--only='.
 const xmlMode = process.argv.includes('--xml')
 
 /** The corpus without any fault — the number that has to stay small. */
-const corpus = { held: 0, rule1: 0, rule2: 0, either: 0 }
+const corpus = { held: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, newAlarms: [] as string[], lostAlarms: [] as string[] }
+/** How far the §-wise addressing reaches — the precondition of the whole change. */
+const coverage = { units: 0, addressed: 0, reasons: new Map<string, number>(), ownBag: 0, noOwnBag: 0, noLawBag: 0 }
 const faults = {
   L: tally('L     zweiter Satz links verloren'),
   Rold: tally('R-alt fremder geltender Satz rechts'),
@@ -413,20 +509,38 @@ console.log(`  auswertbare Entwürfe : ${drafts}`)
 console.log(`\n  Ohne Injektion — Fehlalarme über die Paragraphen, die die linke Prüfung nicht verfehlen`)
 console.log(`  (dieselbe Grundmenge wie die beiden Einbehalt-Zeilen in annex-pdf-verify.ts, ${corpus.held} Paragraphen;`)
 console.log(`   dieser Lauf kennt keine MAX_PARAGRAPHS-Decke, zählt also auch den Schwanz der Sammelnovellen mit)`)
-console.log(`    „bereits geltend"  : ${String(corpus.rule1).padStart(4)} (${pct(corpus.rule1, corpus.held)})`)
-console.log(`    „nicht im Entwurf" : ${String(corpus.rule2).padStart(4)} (${pct(corpus.rule2, corpus.held)})`)
-console.log(`    eine der beiden    : ${String(corpus.either).padStart(4)} (${pct(corpus.either, corpus.held)})`)
+console.log(`    „bereits geltend"                      : ${String(corpus.rule1).padStart(4)} (${pct(corpus.rule1, corpus.held)})`)
+console.log(`    „nicht im Entwurf", ganzer Entwurf     : ${String(corpus.rule2Wide).padStart(4)} (${pct(corpus.rule2Wide, corpus.held)})`)
+console.log(`    „nicht im Entwurf", je Paragraph       : ${String(corpus.rule2Para).padStart(4)} (${pct(corpus.rule2Para, corpus.held)})`)
+console.log(`    eine der beiden, ganzer Entwurf        : ${String(corpus.eitherWide).padStart(4)} (${pct(corpus.eitherWide, corpus.held)})`)
+console.log(`    eine der beiden, je Paragraph          : ${String(corpus.eitherPara).padStart(4)} (${pct(corpus.eitherPara, corpus.held)})`)
+for (const line of corpus.newAlarms) console.log(`      + ${line}`)
+for (const line of corpus.lostAlarms) console.log(`      - ${line}`)
 
-console.log(`\n  Mit Injektion, je Fehler`)
-console.log(`  Fehler                                §§   linke Prüfung besteht   „bereits geltend"   „nicht im Entwurf"    eine der beiden`)
+// Whether the §-wise reference reaches the §§ at all. It is the precondition
+// of the whole change: an instruction nobody could address contributes to the
+// general bag, so poor coverage does not fail a § — it silently returns the
+// rule to the whole-draft bag, and a rate nobody prints cannot say so.
+console.log(`\n  Adressierung der Novellierungsanordnungen`)
+console.log(`    Anordnungen gelesen              : ${coverage.units}`)
+console.log(`    davon mit mindestens einem §     : ${coverage.addressed} (${pct(coverage.addressed, coverage.units)})`)
+console.log(`    Paragraphen der Beilage mit eigenem Sack : ${coverage.ownBag}`)
+console.log(`    …nur mit dem allgemeinen Sack ihres Gesetzes: ${coverage.noOwnBag}`)
+console.log(`    …ohne jede Anordnung für ihr Gesetz (Rückfall auf den ganzen Entwurf): ${coverage.noLawBag}`)
+for (const [reason, n] of [...coverage.reasons].sort((a, b) => b[1] - a[1])) {
+  console.log(`      ${String(n).padStart(4)}× im allgemeinen Sack: ${reason}`)
+}
+
+console.log(`\n  Mit Injektion, je Fehler ("nicht im Entwurf" mit beiden Bezügen)`)
+console.log(`  Fehler                                §§   linke Prüfung besteht   „bereits geltend"    n.i.E. ganz         n.i.E. je §         beide ganz          beide je §`)
 for (const fault of [faults.L, faults.Rold, faults.Rnew]) {
   const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
-  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.leftPasses)}   ${cell(fault.rule1)}   ${cell(fault.rule2)}   ${cell(fault.either)}`)
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.leftPasses)}   ${cell(fault.rule1)}   ${cell(fault.rule2Wide)}   ${cell(fault.rule2Para)}   ${cell(fault.eitherWide)}   ${cell(fault.eitherPara)}`)
 }
 // A rule that was already firing on the sound § did not catch the fault; it
 // was there before it. Small by construction (the false-positive rate above),
 // and printed rather than assumed.
 for (const fault of [faults.L, faults.Rold, faults.Rnew]) {
-  if (fault.rule1Already === 0 && fault.rule2Already === 0) continue
-  console.log(`    ${fault.label.trim()}: davon schon ohne Injektion gemeldet — Regel 1 ${fault.rule1Already}, Regel 2 ${fault.rule2Already}`)
+  if (fault.rule1Already === 0 && fault.rule2WideAlready === 0 && fault.rule2ParaAlready === 0) continue
+  console.log(`    ${fault.label.trim()}: davon schon ohne Injektion gemeldet — Regel 1 ${fault.rule1Already}, Regel 2 ganz ${fault.rule2WideAlready}, je § ${fault.rule2ParaAlready}`)
 }

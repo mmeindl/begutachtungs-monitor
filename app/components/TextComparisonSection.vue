@@ -263,7 +263,7 @@ const checkNote = computed<string>(() => {
     return `${head}${withheld}.`
   }
   const asOf = v.asOf ? ` (Stand ${formatDateDe(v.asOf)}, dem Beginn der Begutachtungsfrist)` : ''
-  const method = `Geprüft wird beides: die geltende Fassung gegen das RIS Bundesrecht${asOf}, die vorgeschlagene gegen denselben Text und gegen den Gesetzestext des Entwurfs.`
+  const method = `Geprüft wird beides: die geltende Fassung gegen das RIS Bundesrecht${asOf}, die vorgeschlagene gegen denselben Text und gegen die Novellierungsanordnungen, die der Entwurf für den jeweiligen Paragraphen trifft.`
   const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen halten beidem stand`]
   if (v.withheldParagraphs > 0) parts.push(withheldClause(v.withheldParagraphs, v.withheldByCause))
   if (v.uncheckedParagraphs > 0) {
@@ -292,7 +292,7 @@ function withheldClause(total: number, by: Record<AnnexWithheldCause, number>): 
   if (by.notInDraft > 0) {
     // "sie" only where the clause before it named the vorgeschlagene Fassung.
     const subject = by.alreadyStanding > 0 ? 'sie' : 'die vorgeschlagene Fassung'
-    causes.push(`${atCount(by.notInDraft)} enthält ${subject} Text, der im Gesetzestext des Entwurfs nicht vorkommt`)
+    causes.push(`${atCount(by.notInDraft)} enthält ${subject} Text, den der Entwurf für diese Paragraphen nicht anordnet`)
   }
   return causes.length > 0 ? `${head}: ${causes.join(', ')}` : head
 }
@@ -316,17 +316,17 @@ function withheldClause(total: number, by: Record<AnnexWithheldCause, number>): 
 const WITHHELD_FINDING: Record<AnnexWithheldCause, string> = {
   standing: 'der geltende Text dieser Stelle steht so nicht im RIS.',
   alreadyStanding: 'die vorgeschlagene Fassung zeigt Text als neu, der im RIS schon gilt.',
-  notInDraft: 'die vorgeschlagene Fassung enthält Text, der im Gesetzestext des Entwurfs nicht vorkommt.',
+  notInDraft: 'die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen Paragraphen nicht anordnet.',
 }
 const WITHHELD_FROM_PDF: Record<AnnexWithheldCause, string> = {
   standing: 'Das kann daran liegen, dass wir die Zeilen des PDF falsch einander zugeordnet haben, oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.',
   alreadyStanding: 'Das kann daran liegen, dass unsere Lesung der linken Spalte hier Text verloren hat, oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.',
-  notInDraft: 'Das kann daran liegen, dass wir beim Lesen des PDF Text aus einer Nachbarzeile in die rechte Spalte gezogen haben, oder daran, dass die Beilage nicht zum Gesetzestext des Entwurfs passt.',
+  notInDraft: 'Das kann daran liegen, dass wir beim Lesen des PDF Text aus einer Nachbarzeile in die rechte Spalte gezogen haben, dass der Entwurf diese Änderung an einer anderen Stelle anordnet, oder dass die Beilage nicht zu seinem Gesetzestext passt.',
 }
 const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
   standing: null,
   alreadyStanding: 'In der linken Spalte der Beilage fehlt dieser Text; sie dürfte dort einen anderen Stand des Gesetzes zugrunde legen als das RIS zum Beginn der Begutachtung.',
-  notInDraft: 'Entweder ist die Beilage älter als der Gesetzestext des Entwurfs, oder wir haben die Stelle dem falschen Paragraphen zugeordnet.',
+  notInDraft: 'Entweder ordnet der Entwurf diese Änderung an einer anderen Stelle an, oder die Beilage ist älter als sein Gesetzestext, oder wir haben die Stelle dem falschen Paragraphen zugeordnet.',
 }
 
 function withheldText(cause: AnnexWithheldCause | null): string {

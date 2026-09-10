@@ -16,11 +16,15 @@
  * Since 2026-09-10 the check has a second reference, and it comes from the
  * caller too: the draft's own Gesetzestext, against which the *right* column
  * is held (`annexCheck.rightColumnCheck`). Both references are read from the
- * two documents the cache key already names, so the key does not change.
+ * two documents the cache key already names, so the key does not change. The
+ * Gesetzestext travels as *blocks* rather than as one string, because the
+ * check reads it per Novellierungsanordnung (`annexCheck.draftBags`) — which
+ * of them a § may draw on is the rule's decision, not the caller's.
  */
 import { verifyAnnex, type AnnexSources, type AnnexVerification } from './annexCheck'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { parseKonsParagraph, plainText } from './lawStructure'
+import type { TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import type { ComparisonRow } from './textComparison'
 
@@ -62,7 +66,7 @@ const sources: AnnexSources = {
  * Prüfung" for 24 hours, which reads on the page exactly like a draft that
  * has no standing law to check against.
  *
- * `rows`, `articles` and `draftText` are outside the key deliberately: all
+ * `rows`, `articles` and `draftBlocks` are outside the key deliberately: all
  * three are derived from the same two documents `gp`/`inr`/`asOf` address,
  * and the verdict map is keyed by the annex's own § designations — if a
  * parser change moved those, a stale map matches no row and every row comes
@@ -76,7 +80,7 @@ export const getAnnexVerification = defineCachedFunction(
     asOf: string,
     rows: readonly ComparisonRow[],
     articles: readonly DraftArticle[],
-    draftText: string,
-  ): Promise<AnnexVerification> => verifyAnnex(rows, { articles, asOf, text: draftText }, sources),
+    draftBlocks: readonly TextBlock[],
+  ): Promise<AnnexVerification> => verifyAnnex(rows, { articles, asOf, blocks: draftBlocks }, sources),
   { name: 'annex-verification', base: DERIVED_CACHE, getKey: (gp: string, inr: number, asOf: string) => `${gp}-${inr}-${asOf}`, maxAge: TTL_S, swr: false },
 )

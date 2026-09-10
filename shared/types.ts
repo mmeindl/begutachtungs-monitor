@@ -422,11 +422,16 @@ export interface ParagraphTitlesResponse {
  *   existing law: a sentence merely moved within the § is present on the left
  *   and never counted here.
  * - `notInDraft` — the right column carries at least eight words that occur
- *   neither in the left column nor in the draft's own Gesetzestext, and less
- *   than 90 % of what it shows as new can be found there. Text has been
- *   misfiled into the column. Does not mean the draft is incoherent — where
- *   the draft's text could not be read at all, this check is disarmed rather
- *   than failed.
+ *   neither in the left column nor in the Novellierungsanordnungen the draft
+ *   addresses to *this* §, and less than 90 % of what it shows as new can be
+ *   found there. Text has been misfiled into the column, or the draft orders
+ *   this change somewhere else than the annex shows it. Not a claim that the
+ *   words are absent from the draft as a whole: since 2026-09-10 the
+ *   reference is per § (`annexCheck.draftBags`), because the whole draft is
+ *   blind to text dragged out of a neighbouring §. Where the Gesetzestext
+ *   could not be read at all, the check is disarmed rather than failed, and
+ *   text of a § the annex prints no block of its own for is never counted —
+ *   that text is inherited by the block it stands in, not missing.
  */
 export type AnnexWithheldCause = 'standing' | 'alreadyStanding' | 'notInDraft'
 

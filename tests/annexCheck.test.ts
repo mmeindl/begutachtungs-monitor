@@ -24,6 +24,8 @@ import {
   coverageOfParagraph,
   designationKey,
   displayedChangeRows,
+  draftBags,
+  draftReference,
   draftTextOf,
   draftWordBag,
   insertedStretches,
@@ -36,7 +38,9 @@ import {
   type AnnexVerification,
   type Coverage,
   type StandingText,
+  type WordBag,
 } from '../server/utils/annexCheck'
+import type { TextBlock } from '../server/utils/lawText'
 import type { DraftArticle } from '../server/utils/lawTitles'
 import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/risKons'
 import type { ComparisonRow } from '../server/utils/textComparison'
@@ -192,7 +196,13 @@ function foreignRows(): ComparisonRow[] {
   })]
 }
 
-const NO_DRAFT = draftWordBag('')
+/** The draft's words as rule 2 receives them, for the tests that pass a text. */
+const bag = (text: string): WordBag => {
+  const words = draftWordBag(text)
+  return { has: (w) => words.has(w), read: true }
+}
+/** A draft nobody could read — the one state that disarms rule 2. */
+const NO_DRAFT: WordBag = { has: () => false, read: false }
 
 describe('insertedStretches', () => {
   it('takes what the page shows as new, and nothing the annex left out', () => {
@@ -244,7 +254,7 @@ describe('rightColumnCheck — „bereits geltend"', () => {
 
 describe('rightColumnCheck — „nicht im Entwurf"', () => {
   it('catches a right column carrying text the draft never wrote', () => {
-    const check = rightColumnCheck(foreignRows(), STANDING, draftWordBag('Die Behörde entscheidet über den Antrag.'))
+    const check = rightColumnCheck(foreignRows(), STANDING, bag('Die Behörde entscheidet über den Antrag.'))
     expect(check.newWords).toBeGreaterThanOrEqual(MIN_NEW_WORDS)
     expect(check.missingWords).toBeGreaterThanOrEqual(MIN_MISSING_WORDS)
     expect(check.notInDraft).toBe(true)
@@ -254,7 +264,7 @@ describe('rightColumnCheck — „nicht im Entwurf"', () => {
     // The next candidates below the ratio are all false positives with two or
     // three missing words — a ministry's name, a spelling. A ratio alone
     // cannot tell 2 of 12 from 39 of 89.
-    const draftHasMost = draftWordBag('Die Behörde entscheidet über den Antrag. Rechtsgeschäfte über Grundstücke bedürfen zwingend')
+    const draftHasMost = bag('Die Behörde entscheidet über den Antrag. Rechtsgeschäfte über Grundstücke bedürfen zwingend')
     const check = rightColumnCheck(foreignRows(), STANDING, draftHasMost)
     expect(check.missingWords).toBe(7)
     expect(check.newWords > 0 && (check.newWords - check.missingWords) / check.newWords).toBeLessThan(DRAFT_THRESHOLD)
@@ -281,7 +291,7 @@ describe('rightColumnCheck — „nicht im Entwurf"', () => {
     const shown = 'Die Land- und Forstwirtschaft sowie die Schieneninfrastruktur- Dienstleistungsgesellschaft haben die Meldung unverzüglich zu erstatten'
     const written = 'Die Land- und Forstwirtschaft sowie die Schieneninfrastruktur-Dienstleistungsgesellschaft haben die Meldung unverzüglich zu erstatten'
     const rows = [row({ gld: '§ 1.', para: '§ 1.', change: 'inserted', current: '', proposed: shown })]
-    const check = rightColumnCheck(rows, STANDING, draftWordBag(written))
+    const check = rightColumnCheck(rows, STANDING, bag(written))
     expect(check.newWords).toBeGreaterThanOrEqual(MIN_NEW_WORDS)
     expect(check.missingWords).toBe(0)
     expect(check.notInDraft).toBe(false)
@@ -304,6 +314,111 @@ describe('draftTextOf', () => {
       { kind: 'abs', cls: 'absatz/abs', text: 'Die Behörde entscheidet.', gld: '§ 5.' },
       { kind: 'abs', cls: 'absatz/abs', text: 'Der Bescheid ergeht schriftlich.', gld: null },
     ])).toBe('§ 5. Die Behörde entscheidet.  Der Bescheid ergeht schriftlich.')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The draft as a reference per §
+// ---------------------------------------------------------------------------
+
+describe('draftBags and draftReference', () => {
+  const instruction = (text: string): TextBlock => ({ kind: 'novao', cls: 'absatz/novao1', text, gld: null })
+  const NEIGHBOUR = 'Rechtsgeschäfte über Grundstücke bedürfen zwingend behördlicher Zustimmung wenn Nutzungsrechte begründet werden sollen.'
+  /** Two instructions of one law: § 1 keeps its own text, § 2 gets the neighbour's. */
+  const TWO = [instruction(`1. § 1 lautet: "${PROSE}"`), instruction(`2. § 2 lautet: "${NEIGHBOUR}"`)]
+  /** § 1's block shows the *neighbour's* proposed text as new — the R-neu fault. */
+  const draggedIn = (): ComparisonRow[] => [row({
+    gld: '§ 1.',
+    para: '§ 1.',
+    current: PROSE,
+    proposed: `${PROSE} ${NEIGHBOUR}`,
+    segments: [{ type: 'equal', text: PROSE }, { type: 'inserted', text: NEIGHBOUR }],
+  })]
+  const standing: StandingText = { text: PROSE, heading: '' }
+  /** What the annex prints a block of its own for. */
+  const shown = (...keys: string[]): Set<string> => new Set(keys)
+
+  it('catches a neighbour §s text that the whole draft let through', () => {
+    // The fault the whole-draft reference cannot see: the words are in the
+    // draft, only in another §. Measured over GP XXVIII, the wide bag caught
+    // 12,0 % of these on the PDF path and 32,5 % on the table path; the
+    // per-§ reference catches 75,6 % and 78,6 %.
+    const bags = draftBags(TWO)
+    expect(rightColumnCheck(draggedIn(), standing, { has: (w) => bags.whole.has(w), read: true }).notInDraft).toBe(false)
+    const reference = draftReference(bags, null, shown('§ 1', '§ 2'))
+    expect(rightColumnCheck(draggedIn(), standing, reference('§ 1.')).notInDraft).toBe(true)
+  })
+
+  it('does not fire on text of a § the annex shows no block of its own for', () => {
+    // Where the annex prints no § 2, its text is not absent from the page —
+    // it sits inside the block of § 1, whose designation the rows inherited.
+    // "Not in the draft" would name the wrong finding; the draft has it, the
+    // page has merged two provisions. Over GP XXVIII this takes the table
+    // path from 15 alarms to 7.
+    const reference = draftReference(draftBags(TWO), null, shown('§ 1'))
+    expect(rightColumnCheck(draggedIn(), standing, reference('§ 1.')).notInDraft).toBe(false)
+  })
+
+  it('does not fire on words from an instruction nobody could address', () => {
+    // An unreadable instruction may weaken the check and must never fail a §:
+    // 13 % of the corpus's instructions land in that bag.
+    const unreadable = [instruction(`1. § 1 lautet: "${PROSE}"`), instruction(`2. In den Bestimmungen dieses Bundesgesetzes: "${NEIGHBOUR}"`)]
+    const bags = draftBags(unreadable)
+    expect(bags.addressed).toBe(1)
+    expect([...bags.reasons.values()].reduce((a, b) => a + b, 0)).toBe(1)
+    const reference = draftReference(bags, null, shown('§ 1'))
+    expect(rightColumnCheck(draggedIn(), standing, reference('§ 1.')).notInDraft).toBe(false)
+  })
+
+  it('pairs the two designations of a renumbering', () => {
+    // The annex prints the § under the designation the standing law gives it,
+    // while the instructions after the renumbering address its new number.
+    // Four §§ of the table-path corpus read as unexplained without this —
+    // three of them in a Verordnung that renumbers its whole text one up.
+    const renumbered = [
+      instruction('1. Der bisherige § 1 erhält die Paragraphenbezeichnung "§ 2." .'),
+      instruction(`2. Der nunmehrige § 2 lautet: "${NEIGHBOUR}"`),
+    ]
+    const reference = draftReference(draftBags(renumbered), null, shown('§ 1', '§ 2'))
+    const asNumberedToday = [row({
+      gld: '§ 1.',
+      para: '§ 1.',
+      current: PROSE,
+      proposed: NEIGHBOUR,
+      segments: [{ type: 'removed', text: PROSE }, { type: 'inserted', text: NEIGHBOUR }],
+    })]
+    expect(rightColumnCheck(asNumberedToday, standing, reference('§ 1.')).notInDraft).toBe(false)
+  })
+
+  it('keeps the § 5 of two laws of one package apart', () => {
+    const bags = draftBags([
+      { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 1', gld: null },
+      { kind: 'section', cls: 'ueberschrift/g1min', text: 'Änderung des Aktiengesetzes', gld: null },
+      instruction(`1. § 5 lautet: "${PROSE}"`),
+      { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 2', gld: null },
+      { kind: 'section', cls: 'ueberschrift/g1min', text: 'Änderung des GmbH-Gesetzes', gld: null },
+      instruction(`1. § 5 lautet: "${NEIGHBOUR}"`),
+    ])
+    const aktien = draftReference(bags, 'Änderung des Aktiengesetzes', shown('§ 5'))
+    const rows = [row({ law: 'Änderung des Aktiengesetzes', gld: '§ 5.', para: '§ 5.', current: PROSE, proposed: `${PROSE} ${NEIGHBOUR}`, segments: [{ type: 'equal', text: PROSE }, { type: 'inserted', text: NEIGHBOUR }] })]
+    expect(rightColumnCheck(rows, standing, aktien('§ 5.')).notInDraft).toBe(true)
+  })
+
+  it('falls back to the whole draft where no instruction could be read at all', () => {
+    // Then the rule is exactly what shipped before — and it is still armed,
+    // because the Gesetzestext was there to compare against.
+    const noUnits = [{ kind: 'abs' as const, cls: 'absatz/abs', text: `${PROSE} ${NEIGHBOUR}`, gld: null }]
+    const bags = draftBags(noUnits)
+    expect(bags.units).toBe(0)
+    const reference = draftReference(bags, null, shown('§ 1'))
+    expect(reference('§ 1.').read).toBe(true)
+    expect(rightColumnCheck(draggedIn(), standing, reference('§ 1.')).notInDraft).toBe(false)
+  })
+
+  it('stays disarmed where the Gesetzestext could not be read', () => {
+    const reference = draftReference(draftBags([]), null, shown('§ 1'))
+    expect(reference('§ 1.').read).toBe(false)
+    expect(rightColumnCheck(draggedIn(), standing, reference('§ 1.')).notInDraft).toBe(false)
   })
 })
 
@@ -458,16 +573,26 @@ function fakeSources(laws: Record<string, FakeLaw>, over: Partial<AnnexSources> 
 const PROSE = 'Die Behörde entscheidet über den Antrag binnen sechs Wochen nach seiner Einbringung.'
 const OTHER_PROSE = 'Der Bund trägt die Kosten des Datenrechenzentrums nach Anhörung der Landesregierung.'
 
+/** One Novellierungsanordnung, in the shape `parseRisXml` hands it over. */
+const instruction = (text: string): TextBlock => ({ kind: 'novao', cls: 'absatz/novao1', text, gld: null })
+
 /**
  * The draft's own Gesetzestext, the second reference the right column is held
  * against. Non-empty by default in every test below, so a rule that started
  * firing on ordinary annexes would show up here rather than only in its own
- * test — an empty one disarms rule 2 on purpose (`rightColumnCheck`).
+ * test — an unreadable draft disarms rule 2 on purpose (`rightColumnCheck`).
+ *
+ * Blocks, not one string: since 2026-09-10 the rule reads them per
+ * instruction, so a fixture of two instructions is what separates "the draft
+ * writes this" from "the draft writes this *here*".
  */
-const DRAFT_TEXT = `§ 1 lautet: "${PROSE}" § 2 lautet: "${OTHER_PROSE}"`
+const DRAFT_BLOCKS: TextBlock[] = [
+  instruction(`1. § 1 lautet: "${PROSE}"`),
+  instruction(`2. § 2 lautet: "${OTHER_PROSE}"`),
+]
 
 function draft(over: Partial<AnnexDraft> = {}): AnnexDraft {
-  return { articles: [article()], asOf: '2026-01-01', text: DRAFT_TEXT, ...over }
+  return { articles: [article()], asOf: '2026-01-01', blocks: DRAFT_BLOCKS, ...over }
 }
 
 describe('verifyAnnex', () => {
@@ -530,7 +655,7 @@ describe('verifyAnnex', () => {
     expect(check.withheldCauses['#§ 2.']).toBe('notInDraft')
     // …and the same § comes through where the draft's text could not be read,
     // because an empty bag proves nothing.
-    const blind = await verifyAnnex(foreignRows(), draft({ text: '' }), fakeSources({ 'BGBl. I 1/2020': { '§ 2': STANDING_BODY } }))
+    const blind = await verifyAnnex(foreignRows(), draft({ blocks: [] }), fakeSources({ 'BGBl. I 1/2020': { '§ 2': STANDING_BODY } }))
     expect(blind.verdicts['#§ 2.']).toBe('verified')
   })
 

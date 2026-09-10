@@ -651,3 +651,92 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
   if (ops.length === 0) return { ops: [], reason: reasons[0] ?? 'kein bekanntes Verb', line }
   return { ops, reason: reasons.length ? `Teil nicht gelesen: ${reasons[0]}` : null, line }
 }
+
+/**
+ * Every top-level unit one instruction may print text for, in the
+ * designations the draft itself writes ("§ 5a", "Anlage 2").
+ *
+ * `lawTitles.addressedParagraph` answers a neighbouring question and answers
+ * it deliberately narrowly: which single § of the *standing* law may lend
+ * this change its heading. So it refuses an insertion — the new § has no
+ * standing heading — and it refuses two §§, because two have no one name.
+ *
+ * Here the question is the opposite one, and every refusal there is a hit
+ * here: which §§ can this instruction legitimately carry text for. The §§ it
+ * *creates* are the clearest case of all, since a payload's words are
+ * evidence for exactly the § it installs; and a renumbering carries both
+ * designations, in both directions, because a reader of two documents meets
+ * the same provision under two numbers — which of them is printed where is
+ * the ressort's choice, and the corpus shows both.
+ *
+ * `reason` is what makes a miss usable rather than silent: an instruction
+ * nobody could read must weaken a check, never fail a §, and the caller can
+ * only honour that if it knows which instructions it lost.
+ */
+export interface AddressedUnits {
+  /** Designations as written, for `annexCheck.designationKey` to key. */
+  paras: string[]
+  /**
+   * Designations this instruction declares to be *one* provision: the old and
+   * the new number of a renumbering.
+   *
+   * They are not the same as two addressed §§. A caller that holds a
+   * document against the standing law meets the two numbers in two different
+   * documents — the annex prints the § under the designation the standing law
+   * gives it, the following instructions address it under its new one — and
+   * without the pair it reads one provision as two.
+   */
+  aliases: [string, string][]
+  /** Why the list is empty — null whenever it is not. */
+  reason: string | null
+}
+
+/** "§" + "5a" → "§ 5a": a sibling or child id in the form its address is written in. */
+function designationOf(para: string, id: string): string {
+  const prefix = /^(§|Art\.|Anlage|Anhang)/.exec(para)
+  return `${prefix ? prefix[1] : '§'} ${id}`
+}
+
+/** The numeral inside a new designation: "„§ 11.“" → "11", "4." → "4". */
+function numeralOf(designation: string): string | null {
+  return /(\d+[a-z]*)/.exec(designation)?.[1] ?? null
+}
+
+export function addressedUnits(line: string, inherited?: NovaoAddress | null): AddressedUnits {
+  const { ops, reason } = parseInstruction(line, inherited)
+  const paras = new Set<string>()
+  const aliases: [string, string][] = []
+  for (const op of ops) {
+    // The table of contents is derived from the law text, never text of its
+    // own; an instruction that only touches it addresses no § (`NovaoOp`).
+    if (op.kind === 'toc') continue
+    const address = 'target' in op ? op.target : op.anchor
+    if (address.para) {
+      paras.add(address.para)
+      // A trailing enumeration attaches to the address's *deepest* component,
+      // so "§ 5 Abs. 2 und 3" lists Absätze and names one §. Only at para
+      // level do the siblings name §§ of their own — "§§ 7 bis 14", which
+      // `parseAddress` has already expanded through `expandRange`.
+      if (address.level === 'para') for (const id of address.siblings) paras.add(designationOf(address.para, id))
+    }
+    // "Nach § 5 wird folgender § 5a eingefügt": § 5 is the anchor and § 5a is
+    // what the payload spells out. Both belong here — the anchor because an
+    // insertion inside a § is common enough to be worth its words, the child
+    // because it is the § the annex will print the payload under.
+    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
+      for (const id of op.childIds) paras.add(designationOf(address.para ?? '§', id))
+    }
+    if (op.kind === 'renumber') {
+      if (op.to) {
+        paras.add(op.to)
+        if (op.target.para) aliases.push([op.target.para, op.to])
+      }
+      // "die §§ 5 bis 9 erhalten die Paragrafenbezeichnungen „6.“ bis „10.“":
+      // the numbers in between are renumbered too and the annex shows them.
+      const from = numeralOf(op.to)
+      const to = op.toLast === null ? null : numeralOf(op.toLast)
+      if (from !== null && to !== null) for (const id of expandRange(from, to) ?? []) paras.add(designationOf(op.target.para ?? '§', id))
+    }
+  }
+  return { paras: [...paras], aliases, reason: paras.size > 0 ? null : (reason ?? 'kein Paragraph adressiert') }
+}
