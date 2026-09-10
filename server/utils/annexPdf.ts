@@ -67,13 +67,16 @@ interface AnnexLine {
   /** A heading that runs across both columns — an Artikel or a law title */
   spanning: string | null
   /**
-   * Where the left column's text starts. Read by nothing: a centred heading
-   * was to be told from a wrapped body line by its equal slack on both sides,
-   * and over the corpus that does not separate them — 833 lines of plain body
-   * text are as symmetric as 1.564 headings, because a justified line ends at
-   * the edge and starts at the margin, so both slacks are zero (2026-09-10).
+   * Where each column's text starts. Not a heading test: a centred heading was
+   * to be told from a wrapped body line by its equal slack on both sides, and
+   * over the corpus that does not separate them — 833 lines of plain body text
+   * are as symmetric as 1.564 headings, because a justified line ends at the
+   * edge and starts at the margin, so both slacks are zero (2026-09-10). What
+   * they are read for is `headerSeam`, on the one line whose two cells the
+   * Rundschreiben fixes.
    */
   leftStart: number
+  rightStart: number
   /** Where each column's text ends — the evidence that a line wrapped */
   leftEnd: number
   rightEnd: number
@@ -324,13 +327,13 @@ function joinRuns(runs: { x: number; width: number; text: string }[]): string {
 export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
   const mid = boundary ?? page.width / 2
   type Run = { x: number; width: number; text: string }
-  const buckets: { y: number; left: Run[]; right: Run[]; spanning: Run[]; leftEnd: number; rightEnd: number; leftStart: number }[] = []
+  const buckets: { y: number; left: Run[]; right: Run[]; spanning: Run[]; leftEnd: number; rightEnd: number; leftStart: number; rightStart: number }[] = []
 
   for (const item of page.items) {
     if (!item.text.trim()) continue
     let bucket = buckets.find((b) => Math.abs(b.y - item.y) <= BASELINE_TOLERANCE)
     if (!bucket) {
-      bucket = { y: item.y, left: [], right: [], spanning: [], leftEnd: 0, rightEnd: 0, leftStart: Number.POSITIVE_INFINITY }
+      bucket = { y: item.y, left: [], right: [], spanning: [], leftEnd: 0, rightEnd: 0, leftStart: Number.POSITIVE_INFINITY, rightStart: Number.POSITIVE_INFINITY }
       buckets.push(bucket)
     }
     const right = item.x + item.width
@@ -345,6 +348,7 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
     } else {
       bucket.right.push({ x: item.x, width: item.width, text: item.text })
       bucket.rightEnd = Math.max(bucket.rightEnd, right)
+      bucket.rightStart = Math.min(bucket.rightStart, item.x)
     }
   }
 
@@ -355,6 +359,7 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
       right: joinRuns(b.right),
       spanning: b.spanning.length ? joinRuns(b.spanning) : null,
       leftStart: b.leftStart,
+      rightStart: b.rightStart,
       leftEnd: b.leftEnd,
       rightEnd: b.rightEnd,
     }))
@@ -369,6 +374,76 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
  */
 function isHeaderLine(line: AnnexLine): boolean {
   return HEADER_CURRENT_RE.test(line.left.trim()) && HEADER_PROPOSED_RE.test(line.right.trim())
+}
+
+/**
+ * Where this page puts the seam between its two columns, said by the ressort.
+ *
+ * The header pair is centred over the two columns, so the midpoint between the
+ * two labels is the page's own account of where one column ends and the other
+ * begins — the very number `columnBoundary` estimates from the ink for the
+ * whole document. A page whose columns sit elsewhere says so here.
+ *
+ * **Neither label on its own carries it.** A label's own centre moves when the
+ * ressort re-sets the title page: the Weinrecht-Sammelverordnung 2024 sets
+ * "Geltende Fassung" 8,2 pt further right on page 1 and "Vorgeschlagene
+ * Fassung" 4,9 pt further left, so a gate on one label would refuse a page
+ * that is set exactly like its neighbours. The midpoint of the two moves 1,6 pt
+ * (2026-09-11) — the labels shifted toward each other, and the seam between
+ * them did not move. Three of the 114 annexes qualify the wording ("Geltende
+ * Fassung nach Inkrafttreten EuGB-VVG"), which changes a label's width and
+ * again not the midpoint.
+ */
+function headerSeam(lines: readonly AnnexLine[]): number | null {
+  for (const line of lines) {
+    if (!isHeaderLine(line)) continue
+    if (!Number.isFinite(line.leftStart) || !Number.isFinite(line.rightStart)) continue
+    // The midpoint of the two label centres — ((l0 + l1)/2 + (r0 + r1)/2)/2.
+    return (line.leftStart + line.leftEnd + line.rightStart + line.rightEnd) / 4
+  }
+  return null
+}
+
+/**
+ * How far a page's seam may sit from the one its document agrees on.
+ *
+ * Measured over the 3.121 header pages of the 114 GP-XXVIII annexes
+ * (2026-09-11): 3.118 lie within 0,5 pt of their document's seam and three
+ * between 1,59 and 1,74 pt — two pages of the Informationsfreiheits-
+ * anpassungsgesetz and the Weinrecht title page. Nothing lies between 1,74 pt
+ * and the width of the page, so the tolerance is set at more than twice the
+ * largest deviation the corpus prints, and it is still the widest value that
+ * refuses a page displaced by 5 pt — the smallest displacement measured to
+ * change the parse (41 of 114 annexes at +5 pt, 72 at −5 pt).
+ */
+const SEAM_TOLERANCE = 4
+
+/**
+ * The seam the document's header pages agree on: the one most of them share.
+ *
+ * A median would be the obvious choice and is the wrong one for exactly the
+ * case this gate is for. Where a document mixes two layouts the seams are two
+ * clusters, and the median of two clusters is the empty space between them —
+ * both clusters would then be more than the tolerance away, and the parse
+ * would refuse the whole annex rather than the odd page. Plurality cannot do
+ * that: the winning value is one the pages actually printed.
+ *
+ * A tie keeps the earliest page's seam, as `dominantWidth` keeps the earliest
+ * width. No document in the corpus needs the rule: 110 of the 114 print one
+ * single seam value on every page they head, and the other four spread it over
+ * 1,74 pt at most (2026-09-11).
+ */
+function agreedSeam(seams: readonly number[]): number | null {
+  let best: number | null = null
+  let support = 0
+  for (const candidate of seams) {
+    const n = seams.filter((seam) => Math.abs(seam - candidate) <= SEAM_TOLERANCE).length
+    if (n > support) {
+      support = n
+      best = candidate
+    }
+  }
+  return best
 }
 
 /** Page furniture the Rundschreiben requires on every page — not content. */
@@ -700,16 +775,58 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   const rows: ComparisonRow[] = []
   // The pages this parse will stand behind. A page set differently from the
   // rest of the document is left unread rather than sliced at a boundary that
-  // is not its own, and the boundary and the column edges below are measured
-  // over the proven pages alone.
+  // is not its own — twice over: `isProven` on its width, turn and skew, and
+  // the seam of its header pair on where its columns lie. The boundary and the
+  // column edges below are measured over the survivors alone.
   const width = dominantWidth(pages)
   const proven = pages.filter((page) => isProven(page, width))
-  const droppedPages = pages.length - proven.length
-  if (droppedPages > 0 && proven.every((page) => page.geometry.runs === 0)) {
-    return { rows: [], refusal: null, droppedPages, unreadable: 'Auf keiner Seite der Beilage war die Seitengeometrie belegt: Breite, Drehung oder Schräglage der Textläufe weichen voneinander ab.' }
+  if (pages.length > proven.length && proven.every((page) => page.geometry.runs === 0)) {
+    return { rows: [], refusal: null, droppedPages: pages.length - proven.length, unreadable: 'Auf keiner Seite der Beilage war die Seitengeometrie belegt: Breite, Drehung oder Schräglage der Textläufe weichen voneinander ab.' }
   }
-  const boundary = columnBoundary(proven)
-  const placed = proven.flatMap((page) => linesFromPage(page, boundary))
+  const estimate = columnBoundary(proven)
+  const read = proven.map((page) => {
+    const lines = linesFromPage(page, estimate)
+    return { page, lines, seam: headerSeam(lines) }
+  })
+
+  // The second half of the page gate. `isProven` vouches for a page's width,
+  // turn and skew — for how it was read *inside itself* — and not for its
+  // columns standing where the document's do. That is the harder failure,
+  // because the boundary is one number for every page: a page whose columns
+  // sit elsewhere is not read differently but *wrongly*, in words that are all
+  // real, and its two columns bleed into one another as "neu" and "entfällt".
+  //
+  // The header pair answers it where a page prints one, which is 3.121 of the
+  // 3.213 pages. Measured 2026-09-11 by shifting one page of each annex
+  // sideways and re-parsing through this very function: a displacement of 5 pt
+  // already changes the parse of 41 annexes and one of 40 pt changes 104, and
+  // the gate refuses 663 of the 683 displacements that changed anything
+  // (97,1 %) while refusing none of the 3.213 pages as they stand. Of the 20 it
+  // misses, 15 are the two pages that print no header pair, and 5 are the one
+  // annex whose header pair appears on a single page — a page held against
+  // nothing is held against itself (7 of the 114 print it once).
+  //
+  // The 92 pages without a header pair keep today's behaviour. A title or
+  // continuation page states no seam, and 78 of them carry real two-column
+  // lines, so refusing *those* was measured and rejected the day before.
+  //
+  // **A displaced page is refused even where it would have come out right** —
+  // 176 of 229 such pages in the same run. Asking additionally that splitting
+  // at the page's own seam would put some run in another column was measured:
+  // it would spare 134 of them and lose 99 of the real faults, because a page
+  // can also be misread through the column *edges* — its lines are judged for
+  // wrapping against the document's edge, and that is how 70 §§ once showed
+  // their own standing heading as new text. A refused page is a hole the
+  // reader is told about; a misread one is words nobody can tell from the
+  // ressort's. So the seam decides, not its consequences.
+  const agreed = agreedSeam(read.map((p) => p.seam).filter((seam): seam is number => seam !== null))
+  const vouched = agreed === null ? read : read.filter((p) => p.seam === null || Math.abs(p.seam - agreed) <= SEAM_TOLERANCE)
+  const droppedPages = pages.length - vouched.length
+  // Boundary and column edges are measured over the pages the parse stands
+  // behind, so a page refused here must not be in them either. Re-measuring is
+  // only worth it when the gate actually took one — today it never does.
+  const boundary = vouched.length === read.length ? estimate : columnBoundary(vouched.map((p) => p.page))
+  const placed = vouched.length === read.length ? vouched.flatMap((p) => p.lines) : vouched.flatMap((p) => linesFromPage(p.page, boundary))
 
   // The one structural check this path has. Everything below reads a column
   // out of a coordinate, and nothing in the text itself would reveal that the
@@ -725,7 +842,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   const lines = placed.filter((line) => !isChrome(line))
   // Measured over the whole document, like the boundary: a single page need
   // not print one line that reaches its column's edge.
-  const edges = columnEdges(placed, boundary, proven[0]?.width ?? width)
+  const edges = columnEdges(placed, boundary, vouched[0]?.page.width ?? width)
 
   const { candidates, roles } = candidateLines(lines, edges)
   const resolution = resolveBoundaries(candidates, articles)

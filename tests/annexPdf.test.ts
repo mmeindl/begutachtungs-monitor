@@ -399,6 +399,67 @@ describe('the page geometry as the second gate', () => {
   })
 })
 
+describe('the seam of the header pair as the third gate', () => {
+  const full = (pages: readonly AnnexPage[]) => parseAnnexPdf([headerPage(), ...pages], ONE_LAW)
+  /** A page with the mandated header pair over a provision, both columns set. */
+  const spread = (gld: string) => page([
+    { y: 800, left: 'Geltende Fassung', right: 'Vorgeschlagene Fassung' },
+    { y: 700, left: `${gld} (1) Alt.`, right: `${gld} (1) Neu.` },
+  ])
+  /** The same page, its whole content moved sideways — the fault the gate is for. */
+  const moved = (p: AnnexPage, by: number): AnnexPage => ({ ...p, items: p.items.map((i) => ({ ...i, x: i.x + by })) })
+
+  /**
+   * The two labels are centred over the two columns, so the midpoint between
+   * them is the page's own account of where the columns part. Over the 3.213
+   * pages of the 114 GP-XXVIII annexes it deviates from its document's by more
+   * than 0,5 pt on three pages and never by more than 1,74 pt; a displacement
+   * of 5 pt already changes the parse of 41 annexes (2026-09-11).
+   *
+   * This page's runs would still fall in the right columns — the fixture's
+   * text sits nowhere near the boundary — and it is refused all the same. That
+   * is the decision, not an accident of the fixture: a refused page is a hole
+   * the reader is told about, a misread one is not.
+   */
+  it('does not read a page whose header pair puts the columns elsewhere', () => {
+    const parsed = full([spread('§ 5.'), moved(spread('§ 9.'), 40)])
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 5.'])
+    expect(parsed.droppedPages).toBe(1)
+  })
+
+  // The tolerance is not zero on purpose: a ressort re-sets the labels of a
+  // title page by a point or two without moving the columns.
+  it('reads a page whose seam is a point off', () => {
+    const parsed = full([spread('§ 5.'), moved(spread('§ 9.'), 3)])
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 5.', '§ 9.'])
+    expect(parsed.droppedPages).toBe(0)
+  })
+
+  // 92 pages of the corpus print no header pair, 78 of them with real
+  // two-column lines. They state no seam, so the gate has nothing to hold them
+  // against and they keep the behaviour they had.
+  it('reads a page that prints no header pair, wherever its text sits', () => {
+    const parsed = full([moved(page([{ y: 700, left: '§ 9. (1) Alt.', right: '§ 9. (1) Neu.' }]), 30)])
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 9.'])
+    expect(parsed.droppedPages).toBe(0)
+  })
+
+  /**
+   * Plurality, not the median: where a document mixes two layouts the seams
+   * are two clusters, and the median between them is a value no page printed —
+   * both clusters would be refused and the annex would come out empty.
+   */
+  it('keeps the layout most of the pages share and drops the odd one', () => {
+    const parsed = parseAnnexPdf([moved(spread('§ 1.'), 40), spread('§ 5.'), spread('§ 9.')], ONE_LAW)
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 5.', '§ 9.'])
+    expect(parsed.droppedPages).toBe(1)
+  })
+
+  it('counts no dropped page for a document set one way throughout', () => {
+    expect(full([spread('§ 5.'), spread('§ 9.')]).droppedPages).toBe(0)
+  })
+})
+
 describe('each column measured against its own edge', () => {
   /**
    * A § whose heading runs over two lines, printed in **both** columns.
