@@ -86,12 +86,23 @@ interface AnnexLine {
  * The column boundary: the emptiest vertical strip in the middle of the page.
  *
  * Two anchors were tried and both failed. The page midline is wrong because
- * the columns are not symmetric — on one annex the proposed column *starts* at
- * x = 414,7 while the midline is 421, so 1.321 right-column lines were filed
- * as crossing both columns and produced 1.258 phantom Artikel rows. The
- * midpoint between the two header labels is no better: it landed at 415,9,
- * still to the *right* of that column's first character, so the same lines
- * still straddled it.
+ * the columns are not symmetric — on the Abgabenänderungsgesetz 2025 the
+ * proposed column *starts* at x = 414,7 while the midline is 421, so 1.321
+ * right-column lines were filed as crossing both columns and produced 1.258
+ * phantom Artikel rows. The midpoint between the two header labels is no
+ * better: it landed at 415,9, still to the *right* of that column's first
+ * character, so the same lines still straddled it.
+ *
+ * **And the reason that midpoint fails is arithmetic, not luck** (measured
+ * again over all 114 GP-XXVIII annexes on 2026-09-11, §12.13). Both labels are
+ * centred over their cells, so `headerSeam` is the mean of the two column
+ * *centres* — and that equals the gutter only where the two columns are the
+ * same width. Otherwise it sits a quarter of the width difference away from
+ * it: on the Abgabenänderungsgesetz 2025 the right column is 19,1 pt wider,
+ * the gutter is 412,96 and the seam 415,93, which slices 1.285 right-column
+ * runs; on the Abgrenzungsverordnung 2004 the right column is 62,6 pt wider,
+ * the gutter is 395,09 and the seam 410,71 — 11,9 pt past that column's first
+ * character, slicing 101 of its runs.
  *
  * What the layout does guarantee is a gutter: a strip of page that no line of
  * either column reaches into. Counting how many text runs cover each
@@ -99,6 +110,15 @@ interface AnnexLine {
  * symmetry, a header, or a template — a spanning heading crosses the gutter,
  * but only a handful do, while every body line piles up on one side or the
  * other (2026-09-09).
+ *
+ * The ink can be wrong too, and once in the corpus it is: the
+ * EU-ESG-Rating-Verordnung-Vollzugsgesetz sets two pages, one of them a title
+ * page whose full-width block is most of the document's ink, so the emptiest
+ * strip lands at 381 — inside the left column, whose text runs to 434,5 — and
+ * one word of it ("behördlichen") is filed under the proposed version. There
+ * the seam is right to 0,03 pt, because that annex's columns happen to be the
+ * same width (328,8 against 329,0). One annex is not a rule, and the trade is
+ * measured below at `parseAnnexPdf`.
  */
 export function columnBoundary(pages: readonly AnnexPage[]): number {
   const width = pages[0]?.width ?? 842
@@ -380,9 +400,18 @@ function isHeaderLine(line: AnnexLine): boolean {
  * Where this page puts the seam between its two columns, said by the ressort.
  *
  * The header pair is centred over the two columns, so the midpoint between the
- * two labels is the page's own account of where one column ends and the other
- * begins — the very number `columnBoundary` estimates from the ink for the
- * whole document. A page whose columns sit elsewhere says so here.
+ * two labels is the page's own account of where its columns lie. A page whose
+ * columns sit elsewhere says so here.
+ *
+ * **It is a displacement detector and not the gutter**, and the two must not be
+ * confused (measured 2026-09-11, `columnBoundary`): the midpoint of two centred
+ * labels is the mean of the two column centres, so it coincides with the gutter
+ * only where the columns are the same width and otherwise sits a quarter of the
+ * width difference off — up to 15,6 pt in this corpus. That bias belongs to the
+ * document's template, so it is the *same on every one of its pages*, which is
+ * exactly what makes the seam a sound gate and an unsound estimator: a page
+ * displaced sideways by 5 pt moves its seam by 5 pt whatever the column widths,
+ * and that is all this number is asked.
  *
  * **Neither label on its own carries it.** A label's own centre moves when the
  * ressort re-sets the title page: the Weinrecht-Sammelverordnung 2024 sets
@@ -825,6 +854,25 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   // Boundary and column edges are measured over the pages the parse stands
   // behind, so a page refused here must not be in them either. Re-measuring is
   // only worth it when the gate actually took one — today it never does.
+  //
+  // **The seam gates the pages; it does not cut them**, and that was measured
+  // rather than assumed (2026-09-11, §12.13). Over the 114 annexes the ink
+  // estimate and the document's seam agree within 0,5 pt in 100 of them and
+  // within 4 pt in 112; the two that disagree are the
+  // EU-ESG-Rating-Verordnung-Vollzugsgesetz (57,0 pt, where the seam is right)
+  // and the Abgrenzungsverordnung 2004 (13,7 pt, where the ink is). Cutting at
+  // the seam repairs the first — one § of a two-page annex, whose one misplaced
+  // word the gate withholds today and would go on withholding — and wrecks the
+  // Abgabenänderungsgesetz 2025, whose 1.285 sliced runs turn into spanning
+  // headings: 111 §§ change text, §§ 73b MinBestG and 85a BAO disappear, and
+  // three verdicts move, one of them a § the check had *withheld* coming out
+  // verified. Three further rules were measured and each cost an annex of its
+  // own: the seam as the *anchor* of the ink's search window, and the gutter
+  // measured as the gap most lines share, both drop that same EU-ESG § into a
+  // heading instead of repairing it; measuring either over the header pages
+  // alone finally reaches it and loses the Bilanzbuchhaltungsgesetz 2014
+  // instead, which prints the header pair on 2 of its 7 pages. So the ink keeps
+  // the cut.
   const boundary = vouched.length === read.length ? estimate : columnBoundary(vouched.map((p) => p.page))
   const placed = vouched.length === read.length ? vouched.flatMap((p) => p.lines) : vouched.flatMap((p) => linesFromPage(p.page, boundary))
 

@@ -1527,9 +1527,11 @@ weil der Entwurf dort einfügt.
 
 **Das Kopfpaar sagt nicht nur, dass es da ist, sondern wo (11.09.2026).** Die
 beiden Etiketten stehen zentriert über den beiden Spalten, also ist die Mitte
-zwischen ihnen die Aussage des Ressorts darüber, wo seine Spalten sich teilen
-— dieselbe Zahl, die `columnBoundary` für das ganze Dokument aus der Tinte
-schätzt. Diese **Naht** (`headerSeam`) ist über den Korpus stabil, wie es
+zwischen ihnen die Aussage des Ressorts darüber, wo seine Spalten *liegen*.
+(Hier stand zuerst „dieselbe Zahl, die `columnBoundary` aus der Tinte schätzt";
+das ist widerlegt — sie ist der Bundsteg nur bei gleich breiten Spalten, siehe
+„Die Naht ist ein Verrückungsmesser" unten.) Diese **Naht** (`headerSeam`) ist
+über den Korpus stabil, wie es
 keiner der Inhaltswerte ist: von den 3.121 Seiten mit Kopfpaar liegen 3.118
 innerhalb von 0,5 pt der Naht ihres Dokuments, drei zwischen 1,59 und 1,74 pt,
 und 110 der 114 Beilagen drucken auf jeder Kopfseite denselben Wert. Die
@@ -1593,6 +1595,88 @@ Vier der 114 Beilagen drucken überhaupt mehr als einen Nahtwert, und deren
 Streuung ist 1,74 pt. `droppedPages` bleibt für alle 114 bei 0, beide
 Prüfstände Zeile für Zeile unverändert. Das Tor ist damit dasselbe Geschäft
 wie das vom Vortag: es vor der ersten solchen Seite zu haben statt nach ihr.
+
+**Die Naht ist ein Verrückungsmesser, kein Bundsteg (11.09.2026).** Naheliegend
+war, sie auch *schneiden* zu lassen: das Ressort druckt doch, wo seine Spalten
+sich teilen, während `columnBoundary` dieselbe Stelle aus der Tinte schätzt.
+Über die 114 Beilagen liegen beide in **100** Fällen innerhalb von 0,5 pt
+beieinander und in **112** innerhalb von 4 pt; genau zwei weichen weiter ab —
+die **Abgrenzungsverordnung 2004** um 13,7 pt und das
+**EU-ESG-Rating-Verordnung-Vollzugsgesetz** um 57,0 pt. An ihnen zeigt sich,
+dass die Naht den Bundsteg gar nicht behaupten *kann*: jedes Etikett ist über
+seiner eigenen Zelle zentriert, die Mitte zwischen ihnen ist also das Mittel
+der beiden Spalten**mitten** — und das ist der Bundsteg nur bei gleich breiten Spalten,
+sonst liegt es ein Viertel der Breitendifferenz daneben. Nachgerechnet an den
+drei Beilagen, an denen es zählt:
+
+| Beilage | Bundsteg | Tinte | Naht | rechte Spalte breiter um |
+|---|---:|---:|---:|---:|
+| EU-ESG-Rating-VO-Vollzugsgesetz | 438,01 | 381 | 437,98 | 0,2 pt |
+| Abgabenänderungsgesetz 2025 | 412,96 | 413 | 415,93 | 19,1 pt |
+| Abgrenzungsverordnung 2004 | 395,09 | 397 | 410,71 | 62,6 pt |
+
+Die Verzerrung gehört der Vorlage und ist deshalb auf **jeder** Seite eines
+Dokuments dieselbe. Genau das macht die Naht zum guten Tor und zum schlechten
+Schätzer: eine um 5 pt verrückte Seite verschiebt ihre Naht um 5 pt, gleich wie
+breit die Spalten sind.
+
+*Was der Tausch gebracht und gekostet hätte, durch `parseAnnexPdf` selbst
+gemessen.* Die Naht als Schnitt repariert **eine** Beilage. Das
+EU-ESG-Vollzugsgesetz hat zwei Seiten, davon eine Titelseite, deren Block über
+die volle Breite den größten Teil der Tinte des Dokuments stellt; der leerste
+Streifen liegt deshalb bei 381 und damit *innerhalb* der linken Spalte, die bis
+434,5 läuft. Das Wort „behördlichen" steht folglich heute in der
+vorgeschlagenen Fassung, wo es nicht hingehört — die Naht trifft den Bundsteg
+dieser Beilage auf 0,03 pt. Sie zerstört dafür das **Abgabenänderungsgesetz
+2025**: 1.285 Läufe der rechten Spalte zerschneidet sie, die damit zu
+spannenden Überschriften werden. 111 Paragraphen ändern ihren Text, § 73b
+Mindestbesteuerungsgesetz und § 85a BAO verschwinden ganz, drei Urteile wandern
+— darunter § 70 Mindestbesteuerungsgesetz von **einbehalten auf bestätigt**,
+also eine Zusicherung über einen zerlegten Absatz. Dazu die
+Abgrenzungsverordnung 2004, deren Anlagentabelle in § 7 zu Wortsalat wird.
+Zusammen: 5 Beilagen betroffen, 3 besser, 2 schlechter, 7 Urteile bewegt.
+
+Und der Gewinn wäre **kein Gewinn auf der Seite**: der eine reparierte
+Paragraph, FMABG § 2, wird heute vom Tor einbehalten (94 % Deckung) und bliebe
+es auch mit der Naht. Sein Text und sein Wortdiff werden also so oder so im
+Server geleert; die Reparatur änderte für die Leserin nichts, der Schaden
+dagegen ginge live.
+
+**Drei weitere Regeln gemessen und verworfen**, damit sie niemand neu erfindet:
+
+- **Die Naht als Anker des Suchfensters** statt als Antwort. `columnBoundary`
+  sucht den leersten Streifen in [0,45 w; 0,55 w] — einem Fenster um die
+  Seitenmitte, die niemandes Aussage über irgendetwas ist. Um die Naht gelegt,
+  findet es beim EU-ESG-Vollzugsgesetz 416 statt 381; dort überhängt
+  „behördlichen" den Schnitt aber um 18,5 pt, gilt damit als spannende
+  Überschrift, und die ganze Zeile fällt aus *beiden* Spalten. Eine Beilage
+  schlechter, keine besser.
+- **Der Bundsteg als die Lücke, die die meisten Zeilen teilen** — Deckung je
+  Zeile statt je Lauf, wobei jede Zeile nur ihre eigene größte Lücke frei
+  lässt. Repariert die 7 Paragraphen des Informationsfreiheits-
+  Anpassungsgesetzes BMWET, deren rechte Spaltenzeilen heute knapp als spannend
+  gelesen werden, hilft dem EU-ESG-Vollzugsgesetz aber nicht: dessen Titelseite
+  trägt drei Zeilen über die volle Breite, die überall decken.
+- **Beides nur über die Kopfseiten gemessen**, also über die Seiten, die
+  überhaupt zwei Spalten tragen. Das trifft endlich das EU-ESG-Vollzugsgesetz
+  (die Titelseite fällt heraus, Ergebnis 438) und kostet die
+  Bilanzbuchhaltungsgesetz-Novelle, die ihr Kopfpaar auf 2 von 7 Seiten druckt:
+  § 365m Gewerbeordnung verschwindet, §§ 365n und 366b werden zu Bruchstücken.
+
+Auch die naheliegendste Notbremse — **die Beilage verweigern, wenn Tinte und
+Naht zu weit auseinanderliegen** — ist keine Messung, sondern eine Zahl zwischen
+zwei Punkten: zwischen 13,71 pt (Abgrenzungsverordnung, Tinte richtig) und
+56,98 pt (EU-ESG, Naht richtig) liegt im Korpus nichts. Jede Schwelle dort ist
+an n = 1 angepasst, und der Preis eines Irrtums wäre eine ganze Beilage.
+
+**Also bleibt die Tinte der Schnitt und die Naht das Tor.** Kein Paragraph, kein
+Urteil, keine Zeile ändert sich: PDF-Pfad 1.341/244/1.898, Tabellenpfad
+986/60/801, `droppedPages` 0, alle vier Zusicherungen 0 — vorher wie nachher.
+Die UWG-Beilage der Golden-Tests druckt auf allen neun Seiten dieselbe Naht
+(420,89) und ihre Tinte liegt 0,11 pt daneben, die Fixture bewegt sich also
+unter keiner der Regeln. Der Befund steht als Kommentar bei `columnBoundary`
+und `headerSeam` und als Test in `tests/annexPdf.test.ts`: eine Beilage mit
+ungleich breiten Spalten schneidet am Bundsteg, nicht an ihrer Naht.
 
 **Die Überschriften-Übernahme war asymmetrisch, und das kostete 70
 Paragraphen (2026-09-10).** Eine Überschrift steht *über* dem Paragraphen,
