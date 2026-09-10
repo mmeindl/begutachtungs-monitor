@@ -51,6 +51,14 @@ export interface RawViewport {
 }
 
 const QUARTER = Math.PI / 2
+/**
+ * A baseline further off a quarter turn than this is skewed rather than
+ * turned. Over the 3.213 pages of the 114 GP-XXVIII annexes not one run is
+ * skewed at all, so the number decides nothing today; it exists because a
+ * skewed page is read wrong *silently* — the words are real and only their
+ * arrangement is ours — and the parse has to be able to refuse it.
+ */
+const SKEW_TOLERANCE = Math.PI / 180
 
 /**
  * pdf.js's runs for one page → upright runs, y growing upward.
@@ -73,10 +81,12 @@ const QUARTER = Math.PI / 2
  * is undone here and the convention is stated once, in `AnnexItem`.
  *
  * Only quarter turns are handled: the angle is rounded to the nearest 90°,
- * and a page whose runs disagree keeps the majority's frame. A page that is
- * skewed rather than turned comes out wrong — and is then caught by the
- * header gate in `parseAnnexPdf`, which is where "we cannot read this
- * geometry" belongs.
+ * and a page whose runs disagree keeps the majority's frame. That decision is
+ * **reported rather than swallowed**: how many runs the page carries, how many
+ * disagreed with the frame it was read in, and how many are skewed off any
+ * quarter turn go onto the page as `geometry`, so `parseAnnexPdf` can refuse a
+ * page instead of reading it wrong. A page read in the wrong frame produces
+ * real words in an arrangement of ours, and nothing downstream would notice.
  *
  * The run's `width` is its advance *along the baseline*, so a quarter turn at
  * scale 1 leaves it unchanged; it is carried over as it is.
@@ -86,12 +96,19 @@ export function uprightRuns(runs: readonly RawRun[], viewport: RawViewport): Ann
   const placed = runs.map((run) => ({ m: compose(vp, run.transform as Matrix), width: run.width, text: run.text }))
 
   const turns = new Map<number, number>()
+  let withText = 0
+  let skewed = 0
   for (const run of placed) {
     if (!run.text.trim()) continue
-    const quarter = (((Math.round(Math.atan2(run.m[1], run.m[0]) / QUARTER) % 4) + 4) % 4)
+    withText++
+    const angle = Math.atan2(run.m[1], run.m[0])
+    const nearest = Math.round(angle / QUARTER)
+    if (Math.abs(angle - nearest * QUARTER) > SKEW_TOLERANCE) skewed++
+    const quarter = (((nearest % 4) + 4) % 4)
     turns.set(quarter, (turns.get(quarter) ?? 0) + 1)
   }
-  const quarter = [...turns].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0
+  const majority = [...turns].sort((a, b) => b[1] - a[1])[0] ?? [0, 0]
+  const quarter = majority[0]
   const cos = Math.round(Math.cos(quarter * QUARTER))
   const sin = Math.round(Math.sin(quarter * QUARTER))
   // Rotate by -θ so the reading direction becomes +x, then flip y so the page
@@ -109,7 +126,7 @@ export function uprightRuns(runs: readonly RawRun[], viewport: RawViewport): Ann
     const at = place(run.m[4], run.m[5])
     return { x: at.x - minX, y: at.y - minY, width: run.width, text: run.text }
   })
-  return { width, items }
+  return { width, items, geometry: { runs: withText, offTurn: withText - majority[1], skewed } }
 }
 
 /**

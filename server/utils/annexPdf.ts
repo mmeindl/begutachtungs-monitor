@@ -37,9 +37,27 @@ export interface AnnexItem {
   text: string
 }
 
+/**
+ * What `uprightRuns` had to decide to put this page into that frame.
+ *
+ * Not optional, and that is the point: every page the request path reads comes
+ * from `uprightRuns`, and a page that cannot say how it was read would have to
+ * be believed. The gate below is the same kind of check as the header pair —
+ * evidence that the arrangement is the ressort's and not ours.
+ */
+export interface PageGeometry {
+  /** Text runs on the page; a run without visible text says nothing. */
+  runs: number
+  /** Runs whose baseline points a different quarter turn from the frame chosen. */
+  offTurn: number
+  /** Runs whose baseline is off *every* quarter turn by more than a degree. */
+  skewed: number
+}
+
 export interface AnnexPage {
   width: number
   items: readonly AnnexItem[]
+  geometry: PageGeometry
 }
 
 /** A visual line, already split at the column boundary. */
@@ -48,11 +66,17 @@ interface AnnexLine {
   right: string
   /** A heading that runs across both columns — an Artikel or a law title */
   spanning: string | null
-  /** Left and right edge of the left column's text, for detecting a centred heading */
+  /**
+   * Where the left column's text starts. Read by nothing: a centred heading
+   * was to be told from a wrapped body line by its equal slack on both sides,
+   * and over the corpus that does not separate them — 833 lines of plain body
+   * text are as symmetric as 1.564 headings, because a justified line ends at
+   * the edge and starts at the margin, so both slacks are zero (2026-09-10).
+   */
   leftStart: number
+  /** Where each column's text ends — the evidence that a line wrapped */
   leftEnd: number
-  leftWrapped: boolean
-  rightWrapped: boolean
+  rightEnd: number
 }
 
 /**
@@ -105,10 +129,136 @@ export function columnBoundary(pages: readonly AnnexPage[]): number {
   return best
 }
 
+/** How far a page's width may fall from the document's before it is another page. */
+const WIDTH_TOLERANCE = 0.01
+/** Runs allowed to disagree with the frame the page was read in. */
+const OFF_TURN_SHARE = 0.05
+
+/**
+ * Whether this page is set the way the rest of the document is.
+ *
+ * Everything below reads a column out of a coordinate, and the document-wide
+ * boundary is one number for every page — so a page that is set differently is
+ * not read differently, it is read *wrongly*, and in words that are all real.
+ * A portrait continuation page in a landscape annex, a page whose text was
+ * scanned at an angle, a block rotated inside an otherwise upright page: none
+ * of those would show up anywhere downstream.
+ *
+ * Measured over the 3.213 pages of the 114 GP-XXVIII annexes: no document
+ * mixes page widths, no page carries a run that disagrees with its majority
+ * quarter turn, and no run is skewed (2026-09-10). **The gate costs nothing
+ * today** — that is what makes it worth having before the corpus produces the
+ * first such page rather than after.
+ *
+ * A single stray run must not refuse a sound page: a page number set upright
+ * on an otherwise turned page is one run against thirty. Above a twentieth of
+ * the page's runs the frame is no longer a majority but a coin toss.
+ */
+function isProven(page: AnnexPage, width: number): boolean {
+  // A page without text cannot be misread, and refusing it would report a
+  // loss the reader did not suffer.
+  if (page.geometry.runs === 0) return true
+  if (Math.abs(page.width - width) > width * WIDTH_TOLERANCE) return false
+  if (page.geometry.skewed > 0) return false
+  return page.geometry.offTurn <= page.geometry.runs * OFF_TURN_SHARE
+}
+
+/** The width the document is set in: the one most of its pages share. */
+function dominantWidth(pages: readonly AnnexPage[]): number {
+  const byWidth = new Map<number, number>()
+  for (const page of pages) {
+    const rounded = Math.round(page.width)
+    byWidth.set(rounded, (byWidth.get(rounded) ?? 0) + 1)
+  }
+  // Insertion order is page order, so a tie keeps the earliest width. No
+  // document in the corpus has one.
+  let best = pages[0] ? Math.round(pages[0].width) : 842
+  for (const [rounded, n] of byWidth) if (n > (byWidth.get(best) ?? 0)) best = rounded
+  return best
+}
+
 /** Lines within this many points of each other sit on one baseline. */
 const BASELINE_TOLERANCE = 2.5
-/** A line whose text reaches this close to the column edge was wrapped, not ended. */
-const MARGIN_TOLERANCE = 18
+/**
+ * How far past the gutter a run has to reach before it belongs to neither
+ * column. A left-column line may overhang the emptiest strip by a few points
+ * — the strip is a point, the gutter is a band — and a centred heading crosses
+ * it outright.
+ */
+const GUTTER_TOLERANCE = 18
+
+/** Where each column's text ends, in x. */
+interface ColumnEdges {
+  left: number
+  right: number
+}
+
+/**
+ * A column's edge has to be measured from that column, and the same number
+ * cannot serve both.
+ *
+ * "This line wrapped" is decided by whether the line reached the edge of its
+ * column, and the rule used to measure the left column against the gutter and
+ * the right column against the *page* edge. But the right column's text stops
+ * some 85 pt short of the page (median over the 114 GP-XXVIII annexes: 84,8 pt;
+ * min 18,5, max 88,5), so `> width − 18` never fired: over the whole corpus not
+ * one right-column line counted as wrapped, while the left column's did.
+ *
+ * That asymmetry is not cosmetic. A § heading set over two lines has a first
+ * line that fills the column — wrapped by the test on the left, not wrapped on
+ * the right — so the carry in `unitsOfColumn` stopped at it on the left and
+ * carried it on the right. The § then read as *changed*, with its own standing
+ * heading shown as new text: 70 §§ over the corpus, "Schutz vor Radon bei
+ * Überschreitung des Referenzwertes und bei" and the like (2026-09-10).
+ *
+ * The edge is read off the lines themselves rather than assumed: the annexes
+ * are one template (left edge 417,6 pt, right 757,1 pt on an 842 pt page in
+ * almost every one of the 114), but the one that is not — an annex whose right
+ * column starts at 382 and ends at 799 — would be mis-measured by any constant.
+ *
+ * **The longest line is not the edge.** A handful of runs escape the column:
+ * the Budgetbegleitgesetz 2027-2028 has three left-column lines beyond its
+ * edge (438,7 / 435,7 / 422,6 against 417,6) and two on the right, and taking
+ * the maximum moved the threshold far enough out that 1.651 wrapped lines
+ * became 3 — body text would then have been read as headings. So the top 1 %
+ * of lines is set aside, and at least one line always is. On the corpus that
+ * lands on the edge in every one of the 114 documents, and the left column's
+ * verdicts barely move (1.651 → 1.659 lines on the Budgetbegleitgesetz).
+ */
+function columnEdge(ends: readonly number[], limit: number): number {
+  // An edge measured from a handful of lines is not measured. The smallest
+  // column in the corpus prints 10 lines; below that the column's outer limit
+  // stands, which is what the rule did everywhere before.
+  if (ends.length < 10) return limit
+  const sorted = [...ends].sort((a, b) => b - a)
+  return sorted[Math.max(1, Math.round(sorted.length / 100))] ?? limit
+}
+
+function columnEdges(lines: readonly AnnexLine[], boundary: number, width: number): ColumnEdges {
+  return {
+    left: columnEdge(lines.filter((l) => l.left).map((l) => l.leftEnd), boundary),
+    right: columnEdge(lines.filter((l) => l.right).map((l) => l.rightEnd), width),
+  }
+}
+
+/**
+ * Did this line run to the edge of its column, or did the drafter end it there?
+ *
+ * How close is close enough used to be the gutter tolerance, and is worth
+ * its own number, because the annexes are set **justified**: over the 114
+ * documents 39.078 lines stop within a point of their column's edge and 30.768
+ * within 3 to 4 points of it — two spikes, the second being the right column,
+ * whose few widest lines put the estimate 3,5 pt beyond where its body text
+ * ends. From 6 pt outward the histogram is a thin tail (868 lines in 6–7 pt
+ * against 8.859 in 4–5). A wrapped line therefore stops at the edge, and the
+ * lines standing 6 to 18 pt short of it — which the old tolerance still called
+ * wrapped — are centred headings and line-final text.
+ */
+const WRAP_TOLERANCE = 6
+
+function reachedEdge(end: number, edge: number): boolean {
+  return end > edge - WRAP_TOLERANCE
+}
 
 const PAGE_NUMBER_RE = /^\d+\s+von\s+\d+$/i
 const TITLE_RE = /^textgeg(?:en)?b?ü?berstellung$/i
@@ -184,7 +334,7 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
       buckets.push(bucket)
     }
     const right = item.x + item.width
-    if (item.x < mid && right > mid + MARGIN_TOLERANCE) {
+    if (item.x < mid && right > mid + GUTTER_TOLERANCE) {
       bucket.spanning.push({ x: item.x, width: item.width, text: item.text })
       continue
     }
@@ -206,8 +356,7 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
       spanning: b.spanning.length ? joinRuns(b.spanning) : null,
       leftStart: b.leftStart,
       leftEnd: b.leftEnd,
-      leftWrapped: b.leftEnd > mid - MARGIN_TOLERANCE,
-      rightWrapped: b.rightEnd > page.width - MARGIN_TOLERANCE,
+      rightEnd: b.rightEnd,
     }))
 }
 
@@ -265,6 +414,43 @@ interface ColumnUnit {
 }
 
 const SENTENCE_END = /[.;:!?…]["»›)]?$/
+/** The same marks, anywhere in a text: does this passage contain a sentence at all? */
+const SENTENCE_MARK = /[.;:!?…]/
+
+/**
+ * A designation, a title, and nothing else, in one column only: the annex's
+ * **Inhaltsverzeichnis**, not a provision.
+ *
+ * `unitsOfColumn` already drops a contents entry where the annex also prints
+ * the § itself — the longer occurrence wins. What survived that were the
+ * entries of §§ the annex never prints, and they left no mate in the other
+ * column either, so the page announced them as *new law*. Four of the five in
+ * the corpus are provisions that have been in force for years, with the very
+ * heading the annex prints: § 79a Mindestbesteuerungsgesetz
+ * ("Währungsumrechnungen"), § 13a GAP-Strategieplan-Anwendungsverordnung,
+ * § 11 Energie-Control-Gesetz, § 77d BWG — and two of those drafts say in so
+ * many words that they are amending the *table of contents* ("Im
+ * Inhaltsverzeichnis werden nach dem Eintrag zu § 77c folgende Einträge …
+ * eingefügt"). The fifth, § 49a Schifffahrtsgesetz, is a genuinely new § whose
+ * contents entry stands in the reprinted Inhaltsverzeichnis at the head of the
+ * annex while the annex prints §§ 47a, 47b, 48a and 49b in full below it — so
+ * the line dropped there is the contents entry, not the provision
+ * (all measured 2026-09-10).
+ *
+ * A provision has a body, and a body contains a sentence. A contents entry
+ * does not: the five tails run from 20 to 58 characters and carry no sentence
+ * mark at all. **Nothing after the designation** is a different case and stays
+ * — a repealed "§ 5." with an empty proposed column says something — and so
+ * does the ressort's elision, because "§ 4a. Kontrollregister …" is the annex
+ * stating that it left the text out.
+ */
+function isContentsEntry(gld: string | null, text: string): boolean {
+  if (gld === null) return false
+  const at = text.indexOf(gld)
+  if (at < 0) return false
+  const tail = text.slice(at + gld.length).trim()
+  return tail !== '' && !SENTENCE_MARK.test(tail)
+}
 
 /**
  * One column's lines → its units.
@@ -387,9 +573,9 @@ function rowOf(law: string | null, gld: string | null, current: string, proposed
  * test a mirrored line of running text that happens to start "Artikel 8 EMRK
  * garantiert …" reads as a law boundary.
  */
-function headingText(line: AnnexLine): string | null {
+function headingText(line: AnnexLine, edges: ColumnEdges): string | null {
   if (line.spanning) return line.spanning
-  if (line.leftWrapped || line.rightWrapped) return null
+  if (reachedEdge(line.leftEnd, edges.left) || reachedEdge(line.rightEnd, edges.right)) return null
   if (line.left && line.left === line.right) return line.left
   if (line.left && !line.right) return line.left
   if (line.right && !line.left) return line.right
@@ -410,13 +596,13 @@ type Role =
  * the name would but is a qualifier, and stopping at anything that opens a
  * provision.
  */
-function candidateLines(lines: readonly AnnexLine[]): { candidates: BoundaryCandidate[]; roles: Map<number, Role> } {
+function candidateLines(lines: readonly AnnexLine[], edges: ColumnEdges): { candidates: BoundaryCandidate[]; roles: Map<number, Role> } {
   const candidates: BoundaryCandidate[] = []
   const roles = new Map<number, Role>()
 
   for (const [i, line] of lines.entries()) {
     if (roles.has(i)) continue
-    const text = headingText(line)
+    const text = headingText(line, edges)
     if (text === null) continue
     const candidate = candidateOf(text)
     if (!candidate) {
@@ -433,7 +619,7 @@ function candidateLines(lines: readonly AnnexLine[]): { candidates: BoundaryCand
     const at = candidates.length
     if (candidate.numeral !== null && !candidate.title) {
       for (let j = i + 1; j < lines.length; j++) {
-        const next = headingText(lines[j]!)
+        const next = headingText(lines[j]!, edges)
         if (next === null) break
         if (QUALIFIER_RE.test(next)) {
           roles.set(j, { role: 'title', at })
@@ -467,13 +653,23 @@ export interface AnnexParse {
   unreadable?: string
   /**
    * Blocks of the annex that belong to no provision and were left out —
-   * everything a column prints before its first § marker.
+   * everything a column prints before its first § marker, and the entries of
+   * a reprinted Inhaltsverzeichnis that no provision of the annex answers.
    *
    * Optional and not yet read anywhere: a caller that wants to disclose "so
    * many blocks of the annex are not shown" can, and until one does the
    * number is at least in the harness output rather than nowhere.
    */
   unplaced?: number
+  /**
+   * Pages whose geometry the parse could not vouch for and therefore did not
+   * read — 0 when none, which is every document of GP XXVIII (`isProven`).
+   * Counted rather than explained: the caller phrases what a missing page
+   * means to a reader, and only it knows how many rows are left.
+   *
+   * Pages without any text do not count: nothing on them could be misread.
+   */
+  droppedPages: number
 }
 
 /**
@@ -492,8 +688,18 @@ export interface AnnexParse {
  */
 export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly DraftArticle[] = []): AnnexParse {
   const rows: ComparisonRow[] = []
-  const boundary = columnBoundary(pages)
-  const placed = pages.flatMap((page) => linesFromPage(page, boundary))
+  // The pages this parse will stand behind. A page set differently from the
+  // rest of the document is left unread rather than sliced at a boundary that
+  // is not its own, and the boundary and the column edges below are measured
+  // over the proven pages alone.
+  const width = dominantWidth(pages)
+  const proven = pages.filter((page) => isProven(page, width))
+  const droppedPages = pages.length - proven.length
+  if (droppedPages > 0 && proven.every((page) => page.geometry.runs === 0)) {
+    return { rows: [], refusal: null, droppedPages, unreadable: 'Auf keiner Seite der Beilage war die Seitengeometrie belegt: Breite, Drehung oder Schräglage der Textläufe weichen voneinander ab.' }
+  }
+  const boundary = columnBoundary(proven)
+  const placed = proven.flatMap((page) => linesFromPage(page, boundary))
 
   // The one structural check this path has. Everything below reads a column
   // out of a coordinate, and nothing in the text itself would reveal that the
@@ -504,11 +710,14 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   // because its pages are turned (2026-09-10). Without it the geometry is a
   // guess, and a guessed comparison is worse than none.
   if (!placed.some(isHeaderLine)) {
-    return { rows: [], refusal: null, unreadable: 'Die beiden Spaltenüberschriften der Beilage waren nicht zu finden; die Seitengeometrie ist damit nicht belegt.' }
+    return { rows: [], refusal: null, droppedPages, unreadable: 'Die beiden Spaltenüberschriften der Beilage waren nicht zu finden; die Seitengeometrie ist damit nicht belegt.' }
   }
   const lines = placed.filter((line) => !isChrome(line))
+  // Measured over the whole document, like the boundary: a single page need
+  // not print one line that reaches its column's edge.
+  const edges = columnEdges(placed, boundary, proven[0]?.width ?? width)
 
-  const { candidates, roles } = candidateLines(lines)
+  const { candidates, roles } = candidateLines(lines, edges)
   const resolution = resolveBoundaries(candidates, articles)
 
   const sections: { article: DraftArticle | null; opened: boolean; lines: AnnexLine[] }[] = [
@@ -535,7 +744,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     // The title line of a candidate: part of the heading when the candidate
     // opened a law, context for the rows below when it did not.
     if (role?.role === 'title') {
-      if (!resolution.accepted.has(role.at)) pendingHeading.push(headingText(line) ?? '')
+      if (!resolution.accepted.has(role.at)) pendingHeading.push(headingText(line, edges) ?? '')
       continue
     }
     // Every other heading across both columns — Abschnitt, Hauptstück, a
@@ -548,7 +757,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     // words into the provision that the standing law files above it — every
     // such § then failed the check against RIS through no fault of the parse.
     if (role?.role === 'heading') {
-      pendingHeading.push(headingText(line) ?? '')
+      pendingHeading.push(headingText(line, edges) ?? '')
       continue
     }
     if (pendingHeading.length > 0) {
@@ -564,8 +773,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     if (section.opened && section.article) {
       rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
     }
-    const left = unitsOfColumn(section.lines.map((l) => ({ text: l.left, wrapped: l.leftWrapped, context: contextFor.get(l) })))
-    const right = unitsOfColumn(section.lines.map((l) => ({ text: l.right, wrapped: l.rightWrapped, context: contextFor.get(l) })))
+    const left = unitsOfColumn(section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), context: contextFor.get(l) })))
+    const right = unitsOfColumn(section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), context: contextFor.get(l) })))
     const byId = new Map(left.filter((u) => u.id).map((u) => [u.id!, u]))
     const used = new Set<string>()
 
@@ -586,6 +795,12 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
         continue
       }
       const mate = byId.get(unit.id)
+      // A one-sided entry of the annex's Inhaltsverzeichnis, which would go
+      // out as an insertion — counted, like the front matter above it.
+      if (!mate && isContentsEntry(unit.gld, unit.text)) {
+        unplaced++
+        continue
+      }
       if (mate?.id) used.add(mate.id)
       const row = rowOf(law, unit.gld ?? mate?.gld ?? null, mate?.text ?? '', unit.text, unit.context ?? mate?.context ?? null)
       if (row) rows.push(row)
@@ -598,9 +813,13 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
         continue
       }
       if (used.has(unit.id)) continue
+      if (isContentsEntry(unit.gld, unit.text)) {
+        unplaced++
+        continue
+      }
       const row = rowOf(law, unit.gld, unit.text, '', unit.context)
       if (row) rows.push(row)
     }
   }
-  return { rows, refusal: resolution.refusal, unplaced }
+  return { rows, refusal: resolution.refusal, unplaced, droppedPages }
 }

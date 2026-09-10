@@ -16,12 +16,13 @@ const bytes = /^https?:/.test(src)
 // (1056c1f), and the script kept destructuring nothing — it crashed on
 // "rows is not iterable" from then until 2026-09-09. `scripts/` is outside
 // the typecheck, which is how that stayed invisible.
-const { rows, refusal, unreadable, unplaced } = parseAnnexPdf(await pagesOf(bytes))
+const { rows, refusal, unreadable, unplaced, droppedPages } = parseAnnexPdf(await pagesOf(bytes))
 if (refusal) console.log(`Gesetzesgrenzen verweigert: ${refusal}\n`)
-// The header gate and the blocks that belong to no provision, both of which
-// end in rows that are *not* printed — worth saying so rather than showing a
+// The two gates and the blocks that belong to no provision, all of which end
+// in rows that are *not* printed — worth saying so rather than showing a
 // short list and letting it read as the whole annex.
 if (unreadable) console.log(`Nicht auslesbar: ${unreadable}\n`)
+if (droppedPages) console.log(`${droppedPages} Seite(n) nicht gelesen: Breite, Drehung oder Schräglage weichen vom Dokument ab\n`)
 if (unplaced) console.log(`${unplaced} Block(e) ohne Paragraphenbezug ausgelassen (Vorspann, Inhaltsverzeichnis, Langtitel)\n`)
 const n = { article: 0, unchanged: 0, changed: 0, inserted: 0, removed: 0, elided: 0 }
 for (const r of rows) {
