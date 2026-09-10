@@ -1421,11 +1421,14 @@ dieselbe Regel wie bei den einbehaltenen Paragraphen. Optional durfte das
 Feld nicht sein: die Sektion prüft `> 0`, und `undefined > 0` ist stumm
 falsch.
 
-**Was das Seitentor nicht belegt.** Es belegt Breite, Drehung und Schräglage
-*innerhalb* einer Seite — nicht, dass die Spalten dieser Seite dort liegen,
-wo sie im übrigen Dokument liegen. Das Kopfpaar bleibt deshalb eine Forderung
-an das Dokument und wird keine an die einzelne Seite. Drei Kandidaten dafür wurden
-gemessen und verworfen:
+**Was das Seitentor nicht belegte, und was es seit 11.09.2026 belegt.** Es
+belegte Breite, Drehung und Schräglage *innerhalb* einer Seite — nicht, dass
+die Spalten dieser Seite dort liegen, wo sie im übrigen Dokument liegen. Das
+war die härtere Fehlerart, denn die Spaltengrenze ist eine Zahl für alle
+Seiten: eine Seite, deren Bundsteg woanders sitzt, wird nicht anders gelesen,
+sondern falsch, und ihre beiden Spalten laufen ineinander — als „neu" und
+„entfällt". Vier Kandidaten für ein Tor je Seite waren dafür schon gemessen
+und verworfen, drei am 10.09. und einer am 11.09.:
 
 - **Kopfzeile je Seite.** 78 einwandfreie Seiten in 16 Dokumenten drucken das
   Kopfpaar nicht — Titel- und Fortsetzungsseiten. Ein Tor daraus hätte
@@ -1435,11 +1438,93 @@ gemessen und verworfen:
 - **Anteil spannender Läufe.** Über 30 % nur auf Titelseiten und auf den
   Seiten von Sammelnovellen, wo Gesetzestitel über beide Spalten stehen — als
   Tor hätte er die Dokumente getroffen, die den Parser am meisten fordern.
+- **Spaltenanfänge je Seite gegen die Seiten mit Kopfpaar** — der Kandidat,
+  der als nächster vorgemerkt war. **Gemessen und verworfen (11.09.2026):** der linke
+  Textrand einer Seite sagt nichts über ihr Layout, sondern über ihren Inhalt.
+  320 einwandfreie Seiten weichen links um mehr als 8 pt vom Dokumentwert ab,
+  272 rechts, im Höchstfall um 130 pt — Anlagen und Tabellenseiten, deren
+  Zeilen allesamt eingerückt sind (Vergaberechtsgesetz 2026 S. 144–158,
+  Pflanzgutverordnung, Abgrenzungsverordnung 2004). Eine Toleranz ohne Kosten
+  an gesunden Seiten läge bei 131 pt und finge 1 von 683 gemessenen
+  Verrutschungen; eine, die 88 % fängt (8 pt), verwürfe 440 gesunde Seiten
+  (13,7 %). Kein Tor, sondern eine Messung des Einzugs.
 
 Auch die Spaltengrenze je Seite zu messen ist *schlechter* als sie über das
 Dokument zu messen: 46 Seiten liegen mehr als 10 pt neben der dokumentweiten
 Grenze, eine dünn besetzte Titelseite 43 pt. Auf einer Seite mit wenig Text
-ist der leerste Streifen nicht der Bundsteg, sondern leeres Papier.
+ist der leerste Streifen nicht der Bundsteg, sondern leeres Papier. Mit einem
+weiteren Fenster gemessen (11.09.2026) sind es 73 Seiten über 20 pt daneben,
+und alle sind gesund: es sind die Seiten, auf denen eine Spalte fast leer ist,
+weil der Entwurf dort einfügt.
+
+**Das Kopfpaar sagt nicht nur, dass es da ist, sondern wo (11.09.2026).** Die
+beiden Etiketten stehen zentriert über den beiden Spalten, also ist die Mitte
+zwischen ihnen die Aussage des Ressorts darüber, wo seine Spalten sich teilen
+— dieselbe Zahl, die `columnBoundary` für das ganze Dokument aus der Tinte
+schätzt. Diese **Naht** (`headerSeam`) ist über den Korpus stabil, wie es
+keiner der Inhaltswerte ist: von den 3.121 Seiten mit Kopfpaar liegen 3.118
+innerhalb von 0,5 pt der Naht ihres Dokuments, drei zwischen 1,59 und 1,74 pt,
+und 110 der 114 Beilagen drucken auf jeder Kopfseite denselben Wert. Die
+*Anwesenheit* des Kopfpaars bleibt dabei eine Forderung an das Dokument und
+wird keine an die Seite — je Seite geprüft wird nur seine **Lage**, und nur
+dort, wo eine Seite es überhaupt druckt.
+
+Einzeln genommen taugt kein Etikett dafür: die Weinrecht-Sammelverordnung 2024
+setzt „Geltende Fassung" auf Seite 1 um 8,2 pt weiter rechts und
+„Vorgeschlagene Fassung" um 4,9 pt weiter links, ein Tor auf ein Etikett hätte
+also eine einwandfreie Seite verworfen. Die Etiketten sind aufeinander
+zugerückt, die Naht zwischen ihnen ist um 1,6 pt gewandert. Dasselbe gilt für
+die drei Beilagen, die die Überschrift qualifizieren („Geltende Fassung nach
+Inkrafttreten EuGB-VVG") — das ändert die Breite eines Etiketts und nicht die
+Mitte zwischen beiden.
+
+Die Toleranz ist **4 pt**: mehr als das Doppelte der größten Abweichung, die
+der Korpus druckt, und zugleich der weiteste Wert, der eine um 5 pt verrückte
+Seite noch verwirft — 5 pt ist die kleinste Verrückung, die überhaupt gemessen
+etwas ändert. Der Bezugswert ist nicht der Median der Nähte, sondern die
+**Mehrheit**: mischt ein Dokument zwei Layouts, sind die Nähte zwei Haufen,
+und der Median zwischen zwei Haufen ist ein Wert, den keine Seite gedruckt hat
+— beide Haufen lägen jenseits der Toleranz und die ganze Beilage käme leer
+heraus.
+
+*Reichweite und Kosten, gemessen durch `parseAnnexPdf` selbst:* je eine Seite
+jeder der 114 Beilagen um −40 bis +40 pt verschoben und neu geparst. Eine
+Verschiebung um 5 pt ändert den Parse von 41 Beilagen, eine um 40 pt den von
+104; das Tor verwirft **663 der 683 Verschiebungen, die etwas geändert haben
+(97,1 %)** und **keine einzige der 3.213 unveränderten Seiten**. Von den 20
+Verfehlungen sind 15 die zwei Zielseiten ohne Kopfpaar und 5 die eine Beilage,
+deren Kopfpaar nur auf einer einzigen Seite steht — eine Seite, die gegen
+nichts gehalten wird, wird gegen sich selbst gehalten (7 der 114 drucken es
+genau einmal). Das ist die ehrliche Grenze des Tors, und sie ist die Grenze
+des Belegs, nicht der Regel.
+
+**Verworfen, mit Zahlen, auf demselben Prüfstand:**
+
+- **Läufe über die Grenze ohne die spannenden.** Der alte Kandidat „ein Lauf
+  kreuzt die Grenze" trifft 276 Seiten, weil er die Überschriften mitzählt;
+  ohne sie tragen nur 12 Seiten einen solchen Lauf, zwei tragen zwei, keine
+  drei. Ein Tor bei „mehr als zwei" kostet heute nichts und fängt 50 % — aber
+  seine Reichweite schwankt zwischen 13 % (−20 pt) und 96 % (+20 pt) und
+  bricht bei ±40 pt wieder ein, weil ein Lauf, der die Grenze um mehr als
+  18 pt überhängt, definitionsgemäß als spannende Überschrift durchgeht. Er
+  ist also gerade dort blind, wo der Fehler am größten ist, und feuert
+  daneben auf 41 % der Seiten, die verrückt sind, ohne dass es etwas ändert.
+- **Die Naht erst dann verlangen, wenn sie etwas ändert** — also nur
+  verwerfen, wenn ein Lauf bei einem Schnitt an der eigenen Naht in der
+  anderen Spalte landete. Das schonte 134 der 229 gesunden, aber verrückten
+  Seiten und kostete 99 der 683 echten Fehler. Denn eine Seite kann auch über
+  die **Spaltenkanten** falsch gelesen werden: ihre Zeilen werden gegen die
+  Kante des Dokuments auf Umbruch geprüft, und genau so zeigten 70 Paragraphen
+  einmal ihre eigene geltende Überschrift als neuen Text. Eine verworfene
+  Seite ist ein Loch, von dem die Leserin erfährt; eine falsch gelesene sind
+  Wörter, die niemand von denen des Ressorts unterscheiden kann. Also
+  entscheidet die Naht und nicht ihre Folgen.
+
+Und der Befund, der über allen steht: **GP XXVIII enthält keine solche Seite.**
+Vier der 114 Beilagen drucken überhaupt mehr als einen Nahtwert, und deren
+Streuung ist 1,74 pt. `droppedPages` bleibt für alle 114 bei 0, beide
+Prüfstände Zeile für Zeile unverändert. Das Tor ist damit dasselbe Geschäft
+wie das vom Vortag: es vor der ersten solchen Seite zu haben statt nach ihr.
 
 **Die Überschriften-Übernahme war asymmetrisch, und das kostete 70
 Paragraphen (2026-09-10).** Eine Überschrift steht *über* dem Paragraphen,
