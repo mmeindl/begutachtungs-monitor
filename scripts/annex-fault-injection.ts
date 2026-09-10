@@ -64,11 +64,11 @@
  * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
  * |---|---:|---:|---:|---:|---:|---:|
  * | L, PDF-Pfad    | 918 | 847 (92,3 %) | 358 (39,0 %) | 144 (15,7 %) | 344 (37,5 %) | 570 (62,1 %) |
- * | L, Tabellenpfad| 245 | 245 (100 %)  | 145 (59,2 %) |  49 (20,0 %) |  95 (38,8 %) | 171 (69,8 %) |
+ * | L, Tabellenpfad| 246 | 246 (100 %)  | 145 (58,9 %) |  49 (19,9 %) |  95 (38,6 %) | 171 (69,5 %) |
  * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 (24,7 %) | 588 (66,7 %) | 590 (67,0 %) |
- * | R-alt, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  97 (40,9 %) | 183 (77,2 %) | 183 (77,2 %) |
+ * | R-alt, Tabelle | 238 | 238 (100 %)  |   1 ( 0,4 %) |  97 (40,8 %) | 183 (76,9 %) | 183 (76,9 %) |
  * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 678 (77,0 %) | 678 (77,0 %) |
- * | R-neu, Tabelle | 236 | 236 (100 %)  |   1 ( 0,4 %) |  76 (32,2 %) | 194 (82,2 %) | 195 (82,6 %) |
+ * | R-neu, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  76 (32,1 %) | 195 (82,3 %) | 196 (82,7 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
@@ -91,7 +91,10 @@
  * percentage point (L together 69,8 %, R-alt 77,2 %, R-neu 82,2 %), and rule
  * 2's corpus alarms go from 3 to 4: MPBV § 11, which was withheld before too,
  * only by the left check and for a reason of our own making. The PDF path is
- * unchanged in every cell.
+ * unchanged in every cell. The second designation per row (2026-09-11,
+ * `textComparison.stripGld`) moved the table-path population once more, to
+ * 246/238/237, with L 171, R-alt 183 and R-neu 195 — the table above shows
+ * that state.
  *
  * The reach stated in `annexCheck.ts` — 1.019 of 1.092, rule 1 464, rule 2
  * 181, together 567 — was measured over both paths at once and with a

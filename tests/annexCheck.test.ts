@@ -518,14 +518,37 @@ describe('designationKey', () => {
   it('stops the number at the first space, and has to', () => {
     // Whitespace inside a designation is never the document's: it is what a
     // parser makes of markup or of PDF geometry, and it has to be taken out
-    // where it appears (for the annex table, `textComparison.designationText`).
-    // Gluing the parts back together *here* was measured and decided against —
-    // the sequence "numeral, space, numeral, full stop" is also how a real
-    // pair of designations reads, and it is common:
+    // where it appears (for the annex table, `lawText.stripMarkup`, which the
+    // designation has been read through since 2026-09-11). Gluing the parts
+    // back together *here* was measured and decided against — the sequence
+    // "numeral, space, numeral, full stop" is also how a real pair of
+    // designations reads, and it is common:
     expect(designationKey('§ 5 3. Abschnitt')).toBe('§ 5')
     expect(designationKey('§ 5 Abs. 3')).toBe('§ 5')
     expect(designationKey('§§ 5 und 6')).toBe('§ 5')
     expect(designationKey('Anl. 1 zu § 5 Abs. 1')).toBe('Anl 1 § 5')
+  })
+
+  it('ignores whatever stands beside the designation, and that was measured', () => {
+    // The truncation is silent, so the question was whether an *unexplained*
+    // remainder should make the key null — a row unkeyed and therefore never
+    // checked against a possibly wrong §. Measured over GP XXVIII on
+    // 2026-09-11: of the 11.169 table-path rows carrying a designation, 555
+    // have anything at all beside it, and the classes are clean — but they say
+    // the opposite of that rule. 434 of the 555 are schedule headings the
+    // annex prints with their title ("Anlage 1 Mindestgliederung Bilanz",
+    // "Anlage 3 zu § 10 und § 11"), and unkeying those would cost the §§ whose
+    // key is right today to save the handful whose key is wrong. On the RIS
+    // side the question does not arise at all: of the 1.959 distinct labels
+    // the GP-XXVIII laws carry, **none** has a remainder, so `indexOf` reads
+    // pure designations and its near-injectivity is untouched.
+    expect(designationKey('Anlage 1 Mindestgliederung Bilanz')).toBe('Anl 1')
+    expect(designationKey('Anlage 1 (wird hier nicht abgebildet)')).toBe('Anl 1')
+    // The residual the same measurement named, and it is a *wrong* key rather
+    // than a truncation: a schedule whose title cites §§ reads as a composite
+    // RIS never holds, so all 12 such §§ of GP XXVIII stay unchecked. Written
+    // down as it behaves, not as it should behave.
+    expect(designationKey('Anlage 3 zu § 10 und § 11')).toBe('Anl 3 § 10 § 11')
   })
 })
 
