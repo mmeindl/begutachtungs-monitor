@@ -121,16 +121,32 @@ const steps = [
         über der Gegenüberstellung. Zwei Ergebnisse brauchen eine Erklärung:
       </p>
 
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Auch die rechte Spalte hat Bezugspunkte, und seit 10.09.2026 prüfen wir
+        sie: Was dort grün als <strong class="font-medium text-ink">neu</strong>
+        markiert ist, darf im geltenden Paragraphen nicht schon so stehen – tut
+        es das, fehlt der Text links, weil er beim Lesen verloren ging oder die
+        Beilage einen älteren Stand zugrunde legt, und der Entwurf sieht
+        umfangreicher aus, als er ist. Und es muss im
+        <strong class="font-medium text-ink">Gesetzestext des Entwurfs</strong>
+        vorkommen, den dasselbe RIS-Dokument neben der Beilage veröffentlicht.
+        Text, den weder das geltende Recht noch der Entwurf trägt, gehört an
+        diese Stelle nicht.
+      </p>
+
       <dl class="mt-4 space-y-3 leading-relaxed text-ink-secondary">
         <div>
           <dt class="font-medium text-ink">„nicht gezeigt“</dt>
           <dd>
-            Der geltende Text im RIS deckt diese Stelle nicht. Dann gehört die
-            Zeile entweder nicht zu dem Paragraphen, unter dem sie steht, oder
-            die Beilage legt einen älteren Stand des Gesetzes zugrunde. Wir
-            blenden den Vergleich dort aus, statt einen falschen zu zeigen –
-            und verlinken die Beilage des Ministeriums, die die Frage
-            beantwortet.
+            Eine der drei Prüfungen ist an dieser Stelle nicht aufgegangen: der
+            geltende Text im RIS deckt die linke Spalte nicht, oder die rechte
+            zeigt Geltendes als neu, oder sie trägt Text ohne Entsprechung im
+            Gesetzestext des Entwurfs. Dann gehört die Zeile entweder nicht zu
+            dem Paragraphen, unter dem sie steht, oder die Beilage legt einen
+            älteren Stand des Gesetzes zugrunde. Wir blenden den Vergleich dort
+            aus, statt einen falschen zu zeigen – und verlinken die Beilage des
+            Ministeriums, die die Frage beantwortet. Über der Stelle steht
+            jeweils, welche der drei Prüfungen es war.
           </dd>
         </div>
         <div>

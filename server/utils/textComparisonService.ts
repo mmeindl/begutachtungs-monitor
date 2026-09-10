@@ -42,7 +42,7 @@
  * and the section says it is unavailable right now.
  */
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { checkAnnexRows, notRunReason } from './annexCheck'
+import { checkAnnexRows, draftTextOf, notRunReason } from './annexCheck'
 import { getAnnexVerification } from './annexGuardService'
 import { annexFromPdf } from './annexPdfService'
 import { fetchLawHtml } from './lawDiffService'
@@ -167,8 +167,13 @@ export const getTextComparison = defineCachedFunction(
     // own Artikel list decides, so it is fetched even though the annex is
     // what is being shown (`annexBoundaries.ts`). Both parsers need it, and
     // so does the RIS check: without it every § is unattributable.
+    //
+    // Parsed once for two uses. The same blocks are also the check's second
+    // reference: what the annex shows as *new* has to occur in the draft's
+    // own Gesetzestext (`annexCheck.rightColumnCheck`).
     const draft = row.risDocument?.xml ? await fetchLawHtml(row.risDocument.xml) : null
-    const articles = draft ? draftArticles(parseRisXml(draft)) : []
+    const draftBlocks = draft ? parseRisXml(draft) : []
+    const articles = draftArticles(draftBlocks)
 
     const xml = annex.xml ? await fetchLawHtml(annex.xml) : null
     const rasterised = xml === null || isScanned(xml)
@@ -195,13 +200,14 @@ export const getTextComparison = defineCachedFunction(
       ? { label: 'Textgegenüberstellung des Ressorts, aus dem PDF gelesen', url: annex.pdf! }
       : { label: 'Textgegenüberstellung des Ressorts', url: annex.html ?? annex.xml! }
 
-    // The annex's left column claims to be the standing law; RIS holds that
-    // text independently, so the claim is checked before the rows are sent.
-    // The reference date is RIS's own start of the Begutachtungsfrist — the
-    // day the ministry wrote the annex, not today. Called even without one:
-    // `verifyAnnex` then reports why it could check nothing, which the page
-    // needs to be able to say.
-    const verification = await getAnnexVerification(gp, inr, row.risBeginn ?? '', rows, articles)
+    // Both columns are checked before the rows are sent. The left one claims
+    // to be the standing law and RIS holds that text independently; the right
+    // one must not show as new what already stands there, and must occur in
+    // the draft's own Gesetzestext. The reference date is RIS's own start of
+    // the Begutachtungsfrist — the day the ministry wrote the annex, not
+    // today. Called even without one: `verifyAnnex` then reports why it could
+    // check nothing, which the page needs to be able to say.
+    const verification = await getAnnexVerification(gp, inr, row.risBeginn ?? '', rows, articles, draftTextOf(draftBlocks))
     const checked = checkAnnexRows(rows, verification)
 
     return {
@@ -226,6 +232,7 @@ export const getTextComparison = defineCachedFunction(
         judged: verification.judged,
         verified: verification.verified,
         withheldParagraphs: checked.withheldParagraphs,
+        withheldByCause: checked.withheldByCause,
         doubtfulLaws: verification.doubtfulLaws.map((l) => l.law).filter((l): l is string => l !== null),
         uncheckedParagraphs: checked.uncheckedParagraphs,
         rowsWithoutParagraph: checked.rowsWithoutParagraph,

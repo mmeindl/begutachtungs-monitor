@@ -1047,6 +1047,116 @@ Dokument ist keine zweispaltige Gegenüberstellung", „Die beiden
 Spaltenüberschriften waren nicht zu finden"), steht dieser Satz auf der Seite
 statt des allgemeinen „ließ sich nicht auslesen".
 
+**Das Tor prüft jetzt beide Spalten (2026-09-10).** Die Deckungsprüfung ist
+einseitig: sie fragt, ob der geltende Paragraph die linke Spalte deckt, nie
+ob die linke Spalte den Paragraphen deckt. Text, den der Parser links
+*verliert*, kommt damit durch — und der Wortdiff malt ihn rechts grün an, die
+Seite behauptet also, der Entwurf füge etwas hinzu, was das Gesetz längst
+enthält. Mit Fehlerinjektion über den Korpus gemessen (zweiter Satz der linken
+Spalte eines bestätigten Paragraphen gestrichen): **1.019 von 1.092 Fällen
+bestehen das einseitige Tor weiterhin, 93,3 %.** Die rechte Spalte galt bis
+dahin als unprüfbar. Sie ist es nicht — sie hat zwei Bezugspunkte:
+
+- **„bereits geltend".** Eine als neu gezeigte Strecke von mindestens sechs
+  vergleichbaren Wörtern, die als *zusammenhängende Folge* im geltenden
+  Paragraphen steht und in der linken Spalte dieses Paragraphen nicht
+  vorkommt. Ganze Strecke, zusammenhängend, exakt. Die linke Spalte ist
+  ausgenommen, und das ist der Kern: ein bloß *verschobener* Satz steht dort
+  und darf nicht melden. Auf dem Tabellenpfad — den eigenen Zellen des
+  Ressorts — trifft die Regel 6 Paragraphen, alle echt: WiEReG § 5,
+  Ärztegesetz §§ 12 und 12a, Organtransplantationsgesetz § 4, FSG § 26,
+  IVS-Gesetz § 3. Vermutlich Beilagen, die gegen einen älteren Stand des
+  Gesetzes geschrieben wurden.
+- **„nicht im Entwurf".** Der Gesetzestext des Entwurfs liegt im selben
+  RIS-Dokument neben der Beilage; jedes Wort, das die Beilage als neu zeigt,
+  sollte dort vorkommen. Über 1.145 Paragraphen mit mindestens zehn neuen
+  Wörtern liegt der Fundanteil im Median bei 100 % und bei p10 bei 98 % — der
+  Bezug ist also eng. Einbehalten wird ab **zehn neuen Wörtern, acht
+  fehlenden und einem Fundanteil unter 0,9**. Die absolute Untergrenze ist
+  nicht Zierrat: sie trennt die sechs echten Verunreinigungen —
+  Glücksspielreformgesetz § 56 (89 %, darunter zweimal „daß", also Text von
+  vor 1996), Geräte- und Maschinenlärm-VO § 2 (68 %), Bäderhygiene-VO § 36
+  (80 %), AVG § 44g (56 %, 39 von 89), Energie-Control-Gesetz §§ 3 und 42 — von den
+  Fehlalarmen mit zwei oder drei fehlenden Wörtern (ein Ministeriumsname, eine
+  Schreibweise). Ein Anteil allein kann 2 von 12 nicht von 39 von 89
+  unterscheiden.
+
+**Keine der beiden Regeln darf etwas bestätigen.** „Bestätigt" heißt jetzt:
+die linke Spalte ist durch den geltenden Paragraphen gedeckt *und* keine der
+beiden Regeln hat gefeuert. Ein Paragraph ohne beurteilbaren linken Text
+bleibt ungeprüft, außer eine Regel feuert — dann wird er einbehalten; ein
+eingefügter Paragraph, dessen Text im Entwurf nicht vorkommt, ist genau der
+Fall „erfundenes Recht". Umgekehrt darf die Sacktest-Regel niemanden
+befördern: Müll aus einem anderen Teil desselben Entwurfs besteht sie mühelos.
+
+**Zwei Varianten gemessen und verworfen**, damit sie niemand neu erfindet.
+*Längster gemeinsamer Lauf* einer eingefügten Strecke im Paragraphen fängt
+87 % der injizierten Verluste, feuert aber auf 191 Paragraphen des Korpus bei
+k = 6 (116 bei k = 8, 60 bei k = 10) — juristische Sprache wiederholt Formeln,
+„begeht eine Verwaltungsübertretung und ist von der FMA mit Geldstrafe bis zu
+… zu bestrafen" steht 29 Token lang zweimal in BWG § 98. *Satzweise Prüfung*
+der rechten Spalte fängt **weniger** als die Ganzstrecken-Regel (423 gegen 540
+von 1.074) und holt sich Fehlalarme von rechtmäßig wiederholten Sätzen.
+
+**Was das Tor damit erreicht, ehrlich beziffert** (dieselbe Injektion, 1.092
+Paragraphen): Regel 1 fängt **464 (42,5 %)**, Regel 2 fängt 181 derselben
+Fälle — ein Satz, den der Parser verliert, ist unverändertes Recht, also
+zitieren ihn die Novellierungsanordnungen meist auch nicht —, zusammen
+**567 (51,9 %)**. Die linke Prüfung allein fing 73, also 6,7 %.
+
+Von den 628 Fällen, die Regel 1 nicht fängt, sind **464 gar keine Verfehlung**:
+Dort ändert der Entwurf genau diesen Satz, seine vorgeschlagene Fassung ist
+also wirklich neu, und keine ehrliche Regel darf feuern. 130 sind Formulierungen
+der Beilage, die im RIS überhaupt nicht wörtlich stehen; 5 Sätze standen noch
+links. Bleiben **29**, bei denen die Wörter im Eingefügten stehen, aber die
+Streckengrenzen des Wortdiffs daneben liegen — meist weil der Diff den
+verlorenen Satz mit echten Neuerungen zu *einer* längeren Strecke verschmilzt.
+Auf der Teilmenge, auf der die Regel überhaupt anwendbar ist, fängt sie 464 von
+628, also 74 %.
+
+Das korrigiert eine plausible Vermutung: Ein „semantisches Aufräumen" des
+Wortdiffs im Myers-Stil würde die Trefferquote **nicht** nennenswert heben —
+das Problem sind nicht zerhackte, sondern zu lange Strecken, und beheben
+könnte sie nur der Teillauf-Ansatz, der wegen 191 Fehlalarmen verworfen ist.
+29 Fälle sind dieser Preis nicht wert.
+
+| 2026-09-10, GP XXVIII | bestätigt | einbehalten | davon links / bereits geltend / nicht im Entwurf | ungeprüft |
+|---|---:|---:|---|---:|
+| XML-Tabelle, vorher | 989 | 57 | 57 / – / – | 814 |
+| XML-Tabelle, nachher | 983 | 63 | 57 / 6 / 0 | 814 |
+| PDF-Textebene, vorher | 1.349 | 244 | 244 / – / – | 1.894 |
+| PDF-Textebene, nachher | 1.286 | 312 | 243 / 63 / 6 | 1.889 |
+
+Die „vorher"-Zeilen sind heute gegen den Stand des Repositoriums gemessen und
+widersprechen deshalb der Tabelle weiter oben (967/73/764 und 895/198/2.388):
+Entwurfszahl und „ohne jede Prüfung" sind identisch — 117 und 6, 96 und 15 —,
+die Population also dieselbe; verschoben haben die Parser-Korrekturen desselben
+Tages (Auslassungssyntax, Vorspann, verschachtelte Tabellen, Drehung, Anlagen).
+Die obere Tabelle ist der Stand *vor* ihnen und bleibt als solcher stehen.
+
+Die 63 auf dem PDF-Pfad sind zum großen Teil **eine Asymmetrie unseres
+eigenen Parsers**, nicht der Beilagen: die Paragraphenüberschrift landet dort
+oft nur in der rechten Spalte, also zeigt der Diff sie als „neu", und das
+RIS führt sie längst. Das ist ein echter Fehler auf der Seite und gehört
+einbehalten, solange er besteht — die Zahl fällt, sobald die Zeilenpaarung im
+PDF-Pfad ihn nicht mehr erzeugt. Der Satz im Block nennt deshalb auf dem
+PDF-Pfad unsere Lesung als erste mögliche Ursache, für alle drei Gründe
+getrennt formuliert.
+
+**Mitgefunden: eine Fußnote, die nur auf einer Seite verschwand.** RIS druckt
+eigene redaktionelle Anmerkungen in den konsolidierten Text („(Anm.: Abs. 2
+aufgehoben durch …)"); `lawStructure.ts` entfernt sie auf der RIS-Seite, und
+`annexCheck.ts` tat es mit demselben Muster auf der Spaltenseite. Über den
+Korpus überlebten es trotzdem 110 Vorkommen von „Anm", und die Ursache war
+eine einzige Form: **„(Anm. : aufgehoben durch …)"**, mit Leerzeichen vor dem
+Doppelpunkt — so setzt die Textebene des PDF die Zeichenläufe zusammen. Die
+Beilage trug damit Wörter, die der geltende Text nie angeboten bekam, und die
+Asymmetrie wurde dem Parser angelastet (BWG §§ 7, 22, 35, 44, 63, 64, 70a,
+77a, 79, 99c). Nicht mitgeweitet wurden zwei Nachbarformen: „(Anm. 1)" ist
+eine Fußnotenmarke, die beide Seiten behalten, und „Anmerkung 4: …" in der
+Anlage 1 der Bäderhygieneverordnung ist die **eigene** Fußnote der Anlage,
+also Gesetzestext.
+
 ## 13. Open questions
 
 1. **Legal:** do the inline full texts (web-form Stellungnahmen) fall under the CC-BY metadata or under the full-text exclusion? (Transport format ≠ license.) Clarify before stage 2, ideally with a university partner (§ 42h UrhG).

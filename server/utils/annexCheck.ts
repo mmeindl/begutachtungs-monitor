@@ -6,14 +6,23 @@
  *
  * The left column of a Textgegenüberstellung claims to be the standing law
  * on the day the consultation opens. RIS holds that text independently, so
- * the claim is checkable — and it is the only self-check either annex path
- * has. The right column cannot be checked against anything: it is the law
- * the draft proposes, which exists nowhere else yet.
+ * the claim is checkable — and it was long the only self-check either annex
+ * path had.
  *
  * That makes this module the whole basis of the gate. Where the left column
  * matches, the pairing is sound and the word diff beside it means what it
  * says. Where it does not, the page is diffing displayed text against a
  * provision it does not belong to — and the reader has no way to tell.
+ *
+ * **The right column has two references of its own (2026-09-10).** It is not
+ * unverifiable, as this file said for two days: what it shows as *new* must
+ * not already stand in the law, and it must occur in the draft's own
+ * Gesetzestext, which RIS publishes beside the annex. Both are checked here
+ * (`rightColumnCheck`), and the reason they had to be is measured: dropping
+ * the second sentence of a verified §'s left column passed the one-sided
+ * gate in **1.019 of 1.092 injected cases (93,3 %)**, and the word diff then
+ * painted the lost sentence green — the page claiming the draft adds text the
+ * law already contains.
  *
  * Measured 2026-09-09 over the annexes the page shows today (101 evaluable
  * drafts, 964 §§ with real prose): 86,9 % cover the standing § to 99 % or
@@ -44,11 +53,11 @@
  * this and labelled a row `verified` unless the check had named it, which
  * turned every one of those states into a vouched-for comparison.
  */
-import { normalizeText } from './lawText'
+import { normalizeText, type TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import type { KonsLawAtDate, KonsParagraphRef } from './risKons'
 import { summarizeComparison, type ComparisonRow, type ComparisonStats } from './textComparison'
-import type { TextComparisonRow } from '../../shared/types'
+import type { AnnexWithheldCause, TextComparisonRow } from '../../shared/types'
 
 /**
  * What is not comparable, on either side.
@@ -75,7 +84,26 @@ import type { TextComparisonRow } from '../../shared/types'
 const ELISION_RE = /(?:§+\s*)?\(?\d+[a-z]*\)?\.?(?:\s*(?:bis|und|,)\s*(?:§+\s*)?\(?\d+[a-z]*\)?\.?)*\s*(?:\.\.\.|…)/g
 /** "§ 217." — the designation form, which ends in a period; a citation does not. */
 const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
-const ANNOTATION_RE = /\(Anm\.:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+/**
+ * "(Anm.: Abs. 2 aufgehoben durch …)" — and the spellings the PDF text layer
+ * makes of it.
+ *
+ * `lawStructure.ts` strips this shape from the RIS side, so an annex copy the
+ * pattern misses is an asymmetry scored against the parse: the column carries
+ * words the standing text was never offered. Measured over the GP-XXVIII
+ * corpus on 2026-09-10, 110 occurrences of "Anm" survived both sides of the
+ * filter, and the misses were one form — **"(Anm. : aufgehoben durch …)"**,
+ * a space between the period and the colon, which is how the PDF's positioned
+ * runs come out. It cost the Bankwesengesetz annex "anm" and "aufgehoben" in
+ * §§ 7, 22, 35, 44, 63, 64, 70a, 77a, 79 and 99c. The period is optional for
+ * the same reason.
+ *
+ * Deliberately *not* widened to two neighbouring forms. "(Anm. 1)" is a
+ * footnote marker RIS keeps on both sides, so dropping it here would create
+ * the reverse asymmetry; and "Anmerkung 4: …" in the Bäderhygieneverordnung's
+ * Anlage 1 is the schedule's **own** footnote text, which is law.
+ */
+const ANNOTATION_RE = /\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
 const BOILERPLATE_RE = /Beachte für folgende Bestimmung/gi
 
 /**
@@ -215,6 +243,271 @@ export function coverageOfParagraph(rows: readonly ComparisonRow[], standing: st
   return coverageOf(displayedChangeRows(rows).map((r) => r.current).join(' '), standing)
 }
 
+// ---------------------------------------------------------------------------
+// The right column: „bereits geltend" and „nicht im Entwurf" (2026-09-10)
+// ---------------------------------------------------------------------------
+
+/**
+ * Rule 1's floor: an inserted stretch shorter than this says nothing.
+ *
+ * Six comparable words, exact and in order. Below that, ordinary legal
+ * phrasing collides by itself — and above it, the rule fires on 8 §§ of the
+ * GP-XXVIII corpus through the ressort's own XML cells, every one of them a
+ * true positive (WiEReG § 5, Ärztegesetz §§ 12 and 12a, OTPG § 4, FSG § 26 …),
+ * plus the § headings the PDF path loses on the left.
+ */
+export const MIN_STANDING_STRETCH = 6
+
+/**
+ * Rule 2's floors: how much unexplained new text is evidence.
+ *
+ * Over the 1.145 §§ of the corpus with at least ten new words, the share
+ * found in the draft's own Gesetzestext is 100 % at the median and 98 % at
+ * p10 — the reference is that tight. Exactly **6 §§** have ≥ 8 missing words
+ * *and* a ratio below 0,9, and each one is a genuine right-column
+ * contamination: GSpG § 56 (89 %, 23 of 213 missing, "daß" twice — pre-1996
+ * spelling, which can only be old standing text misfiled into the right
+ * column), the Geräte- und Maschinenlärm-VO § 2 (68 %, 30 of 94), the
+ * Bäderhygiene-VO § 36 (80 %, 16 of 80), AVG § 44g (56 %, 39 of 89), the
+ * Energie-Control-Gesetz §§ 3 (83 %) and 42 (78 %, a Firmenbuchnummer).
+ *
+ * The absolute floor of 8 is what separates those from the next candidates
+ * below 0,9, which are all false positives with two or three missing words:
+ * a ministry's name ("Mobilität Infrastruktur", FSG §§ 4b and 16a), a
+ * spelling ("Massnahmen", Finanzkonglomerategesetz § 14). A ratio alone
+ * cannot tell 2 of 12 from 39 of 89.
+ */
+export const MIN_NEW_WORDS = 10
+export const MIN_MISSING_WORDS = 8
+export const DRAFT_THRESHOLD = 0.9
+
+/**
+ * The standing text of one §, in the two shapes the check needs.
+ *
+ * `text` is everything the annex may print over the provision: the Abschnitt
+ * and Hauptstück lines RIS files above the §, the § heading, and the body.
+ * A word the offer leaves out counts against the parse, so all three go in.
+ *
+ * `heading` is the same minus the body, and it exists for rule 2 alone. RIS
+ * files the heading above the § and the annex reprints it, while the draft's
+ * Novellierungsanordnung usually does not repeat it — so heading words would
+ * count as "new words the draft does not carry", and 20 of them did before
+ * this was split out (measured 2026-09-10).
+ */
+export interface StandingText {
+  text: string
+  heading: string
+}
+
+/** Comparable words in order, since a bag test cannot see a *moved* sentence. */
+function seqContains(hay: readonly string[], needle: readonly string[]): boolean {
+  if (needle.length === 0 || needle.length > hay.length) return false
+  for (let i = 0; i + needle.length <= hay.length; i++) {
+    let j = 0
+    while (j < needle.length && hay[i + j] === needle[j]) j++
+    if (j === needle.length) return true
+  }
+  return false
+}
+
+/**
+ * The stretches of text the page shows as **new** in one §.
+ *
+ * An `inserted` row's whole proposed column, and every `inserted` segment of
+ * a `changed` row's word diff. An `elided` row is the annex saying it left
+ * text out and carries no claim either way.
+ */
+export function insertedStretches(rows: readonly ComparisonRow[]): string[] {
+  const out: string[] = []
+  for (const row of rows) {
+    if (row.kind !== 'pair' || row.elided) continue
+    if (row.change === 'inserted' && row.proposed) out.push(row.proposed)
+    else if (row.change === 'changed' && row.segments) {
+      for (const s of row.segments) if (s.type === 'inserted') out.push(s.text)
+    }
+  }
+  return out
+}
+
+/** The draft's own Gesetzestext as one string — `gld` included, since a § marker is text here. */
+export function draftTextOf(blocks: readonly TextBlock[]): string {
+  return blocks.map((b) => `${b.gld ?? ''} ${b.text}`).join(' ')
+}
+
+const withoutHyphens = (w: string): string => w.replace(/-/g, '')
+
+/**
+ * Every comparable word of the draft's Gesetzestext, hyphen-insensitive.
+ *
+ * Both spellings of each word go in, because the two documents break lines in
+ * different places: the annex's PDF splits
+ * "Schieneninfrastruktur-Dienstleistungsgesellschaft" across a line and the
+ * draft does not, or the other way round.
+ */
+export function draftWordBag(text: string): Set<string> {
+  const bag = new Set<string>()
+  for (const w of comparableTokens(normalizeText(text))) {
+    bag.add(w)
+    bag.add(withoutHyphens(w))
+  }
+  return bag
+}
+
+/** "Land- **und** Forstwirtschaft": an Ergänzungsstrich, not a broken word. */
+const HYPHEN_JOINER_RE = /^(?:und|oder|bzw|sowie|beziehungsweise)$/
+
+/** One word the § shows as new, with the spellings the draft may carry it in. */
+interface NewWord {
+  word: string
+  /** The hyphen fragment before it, glued on with and without the hyphen */
+  joined: string[]
+}
+
+/**
+ * The words of a § that are new to the reader — inserted, and in neither the
+ * left column nor the standing heading.
+ *
+ * A token ending in "-" is a fragment either way and never counts on its own:
+ * in "Land- und Forstwirtschaft" it is an Ergänzungsstrich, in
+ * "Schieneninfrastruktur-|Dienstleistungsgesellschaft" a line break. What
+ * differs is the *next* token — after a joiner it stands for itself, and
+ * otherwise it may be the tail of one word, so it is offered to the draft bag
+ * glued to the fragment as well. Left unhandled, hyphen breaks were 36 of the
+ * missing words in the corpus (2026-09-10).
+ */
+function newWordsOf(inserted: readonly string[], left: ReadonlySet<string>, heading: ReadonlySet<string>): NewWord[] {
+  const items: NewWord[] = []
+  let i = 0
+  while (i < inserted.length) {
+    const word = inserted[i]!
+    i++
+    if (word.endsWith('-')) {
+      const next = inserted[i]
+      if (next !== undefined && !HYPHEN_JOINER_RE.test(next)) {
+        items.push({ word: next, joined: [word.slice(0, -1) + next, word + next] })
+        i++
+      }
+      continue
+    }
+    items.push({ word, joined: [] })
+  }
+  return items.filter((it) => !left.has(it.word) && !heading.has(it.word))
+}
+
+function inDraft(bag: ReadonlySet<string>, it: NewWord): boolean {
+  if (bag.has(it.word) || bag.has(withoutHyphens(it.word))) return true
+  return it.joined.some((j) => bag.has(j) || bag.has(withoutHyphens(j)))
+}
+
+/** What the two right-column rules made of one §. */
+export interface RightColumnCheck {
+  /**
+   * The § shows as new a stretch of ≥ `MIN_STANDING_STRETCH` comparable words
+   * that stands verbatim in the RIS § and is absent from the left column.
+   */
+  alreadyStanding: boolean
+  /** Too much of what the § shows as new is missing from the draft's Gesetzestext. */
+  notInDraft: boolean
+  /** Words shown as new that the left column and the § heading do not carry */
+  newWords: number
+  /** …of those, the ones the draft's Gesetzestext does not have */
+  missingWords: number
+  /** The first stretch that fired rule 1, for the report */
+  standingStretch: string | null
+}
+
+/**
+ * Hold the §'s right column against the standing law and against the draft.
+ *
+ * Pure, and exported so the harness measures the shipped decision instead of
+ * a replica of it — the mistake this module was extracted to undo.
+ *
+ * **Why the left check alone is not enough.** Containment is one-directional:
+ * it asks whether the standing § accounts for the column, never whether the
+ * column accounts for the §. Text the parse *loses* on the left therefore
+ * passes, and the word diff beside it paints that text green as an addition —
+ * the page then claims the draft adds what the law already contains.
+ * Injected over the corpus (drop the second sentence of a verified §'s left
+ * column, re-diff, 1.092 §§, 2026-09-10): **1.019 of them, 93,3 %, still pass
+ * the left check.**
+ *
+ * **Rule 1, „bereits geltend".** Whole stretch, contiguous, exact after
+ * `comparableTokens`: no partial runs and no bag ratio, both measured and
+ * rejected (below). The left column is checked too, and that exception is the
+ * point — a sentence the ministry *moved* within the § is present on the left
+ * and must not fire.
+ *
+ * **Rule 2, „nicht im Entwurf".** Everything the annex shows as new should
+ * come from the draft's own Gesetzestext, which RIS publishes beside the
+ * annex. An empty bag proves nothing, so a draft whose text could not be read
+ * disarms this rule rather than condemning every §.
+ *
+ * Neither rule may *verify* anything, and the caller must not let them: the
+ * bag test in particular passes happily on garbage lifted from another part
+ * of the same draft.
+ *
+ * **Reach, measured against the same injection** — stated because a gate
+ * whose reach is unstated gets read as complete. Rule 1 catches **464 of
+ * 1.092 (42,5 %)**, rule 2 catches 181 of the same faults (a sentence the
+ * parser loses is unchanged law, so the draft's instructions usually do not
+ * quote it either), together **567, 51,9 %** — against 73 (6,7 %) for the
+ * left check alone. Of rule 1's 628 misses, **464 are not misses**: the draft
+ * changes that sentence too, so its proposed wording really is new and no
+ * honest rule may fire. 130 are annex wordings that are not verbatim in RIS
+ * at all, 29 are stretch boundaries (below), 5 sentences still stood on the
+ * left. On the subset where the rule can apply, it catches 464 of 628, 74 %.
+ *
+ * **Variants measured and rejected — so nobody re-invents them:**
+ *
+ * - **Longest common run** of an inserted stretch inside the standing § (the
+ *   obvious relaxation of rule 1) catches 87 % of the injected losses but
+ *   fires on 191 §§ of the corpus at k = 6, 116 at k = 8, 60 at k = 10.
+ *   Legal drafting repeats formulae: "begeht eine Verwaltungsübertretung und
+ *   ist von der FMA mit Geldstrafe bis zu … zu bestrafen" recurs 29 tokens
+ *   long inside BWG § 98, "tritt mit dem auf die Kundmachung folgenden Tag
+ *   in Kraft" in every Inkrafttreten-§. A rule that fires on legal boilerplate
+ *   withholds sound law. Those 29 boundary misses are what it would buy, and
+ *   191 false positives is not the price for 29.
+ * - **Whole sentences of the right column** that stand in the § and are
+ *   absent left (abbreviation-aware splitter, ≥ 8 tokens) catch *fewer*
+ *   injected faults than the whole-stretch rule (423 against 540 of 1.074)
+ *   and add false positives from legitimately repeated sentences
+ *   ("Gesetzliche Verpflichtungen zur Verschwiegenheit bleiben unberührt.").
+ * - **A per-§ draft bag** — only the Novellierungsanordnungen addressed to
+ *   this § — would sharpen rule 2 against text misfiled from a *neighbouring*
+ *   § of the same draft. It needs instruction addressing
+ *   (`lawTitles.addressedParagraph`) and is a later step (`TODO.md`).
+ */
+export function rightColumnCheck(rows: readonly ComparisonRow[], standing: StandingText, draft: ReadonlySet<string>): RightColumnCheck {
+  const pairs = rows.filter((r) => r.kind === 'pair')
+  const standingTokens = comparableTokens(normalizeText(standing.text))
+  // The whole left column, unchanged and elided rows included: a stretch the
+  // annex prints on both sides is shown, not lost.
+  const leftTokens = comparableTokens(normalizeText(pairs.map((r) => r.current).join(' ')))
+  const leftBag = new Set(leftTokens)
+  const headingBag = new Set(comparableTokens(normalizeText(standing.heading)))
+
+  let standingStretch: string | null = null
+  const inserted: string[] = []
+  for (const stretch of insertedStretches(pairs)) {
+    const tokens = comparableTokens(normalizeText(stretch))
+    inserted.push(...tokens)
+    if (standingStretch === null && tokens.length >= MIN_STANDING_STRETCH && seqContains(standingTokens, tokens) && !seqContains(leftTokens, tokens)) {
+      standingStretch = stretch
+    }
+  }
+
+  const words = newWordsOf(inserted, leftBag, headingBag)
+  const found = words.filter((it) => inDraft(draft, it)).length
+  const missing = words.length - found
+  // An empty bag is not evidence that a word is absent: a draft whose XML
+  // could not be read disarms the rule instead of failing every § of it. The
+  // counts stay honest either way, so a report cannot read "nothing missing"
+  // where the truth is "nothing was compared".
+  const notInDraft = draft.size > 0 && words.length >= MIN_NEW_WORDS && missing >= MIN_MISSING_WORDS && found / words.length < DRAFT_THRESHOLD
+  return { alreadyStanding: standingStretch !== null, notInDraft, newWords: words.length, missingWords: missing, standingStretch }
+}
+
 /**
  * What the check concluded about a law.
  *
@@ -281,7 +574,35 @@ export interface AnnexSources {
    * as a tree, and a § that cannot be represented is left unjudged rather
    * than scored against nothing.
    */
-  standingText: (ref: KonsParagraphRef) => Promise<string | null>
+  standingText: (ref: KonsParagraphRef) => Promise<StandingText | null>
+}
+
+/**
+ * What the draft itself contributes, beside its annex.
+ *
+ * One object rather than three parameters, because two of them are strings:
+ * an ISO date and a whole Gesetzestext, adjacent in the call and silently
+ * interchangeable. Transposed, `asOf` would be truthy nonsense and the RIS
+ * lookup would answer for a date that does not exist.
+ */
+export interface AnnexDraft {
+  /**
+   * The draft's own Artikel list — the same list that decides the annex's law
+   * boundaries, because the Artikel's title is what tells the Bankwesengesetz
+   * from the Bausparkassengesetz when one BGBl promulgated both.
+   */
+  articles: readonly DraftArticle[]
+  /**
+   * RIS's own `BeginnBegutachtungsfrist`: the day the ministry wrote the
+   * annex, and therefore the version of the law its left column claims.
+   */
+  asOf: string
+  /**
+   * The draft's Gesetzestext as one string (`draftTextOf`), for rule 2. Empty
+   * where the draft's XML could not be read — which disarms that rule instead
+   * of condemning every §.
+   */
+  text: string
 }
 
 /** Ceiling on § lookups per draft, so one monster Sammelgesetz cannot hang a request. */
@@ -354,13 +675,31 @@ export interface AnnexVerification {
    */
   verdicts: Record<string, ParagraphVerdict>
   /**
+   * Why each withheld § was withheld, under the same key as `verdicts`.
+   *
+   * One cause per §, the first that fired in the order the checks are worth
+   * to a reader: the left column first, then the two right-column rules. A §
+   * can fail more than one — the counts have to sum to the total the page
+   * prints, so only the first is kept.
+   */
+  withheldCauses: Record<string, AnnexWithheldCause>
+  /**
    * Laws where enough §§ failed to doubt the whole annex for that law. Named
    * on the page; their §§ are withheld only where each failed on its own.
+   *
+   * Left-column coverage only, deliberately: `LAW_THRESHOLD` is calibrated on
+   * it, and the sentence the page builds from it says the annex deviates from
+   * the *standing text*. A cluster of right-column failures is a different
+   * claim and does not belong under that wording.
    */
   doubtfulLaws: LawCheck[]
   /** §§ that carried enough prose to judge */
   judged: number
-  /** …of those, the ones that cleared the threshold */
+  /**
+   * …of those, the ones that came through everything: the standing text
+   * accounts for the left column **and** neither right-column rule fired.
+   * Counted off the verdict map, so it cannot drift from what is shown.
+   */
   verified: number
 }
 
@@ -464,12 +803,12 @@ function paragraphGroups(rows: readonly ComparisonRow[]): Map<string, { law: str
 }
 
 /**
- * Check every § of a parsed comparison against RIS.
+ * Check every § of a parsed comparison against RIS and against the draft.
  *
- * `articles` is the draft's own Artikel list — the same list that decides the
- * annex's law boundaries — because the Artikel's title is what tells the
- * Bankwesengesetz from the Bausparkassengesetz when one BGBl promulgated
- * both.
+ * Both columns are held to something: the left one to the standing § from RIS
+ * Bundesrecht at `draft.asOf`, the right one to that same § (nothing shown as
+ * new may already stand there) and to the draft's own Gesetzestext (whatever
+ * is shown as new has to occur in it). See `rightColumnCheck`.
  *
  * **Throws when RIS does.** An error from `sources` is not an answer about
  * the annex, and the caller caches whatever it is handed: a swallowed timeout
@@ -479,13 +818,13 @@ function paragraphGroups(rows: readonly ComparisonRow[]): Map<string, { law: str
  */
 export async function verifyAnnex(
   rows: readonly ComparisonRow[],
-  articles: readonly DraftArticle[],
-  asOf: string,
+  draft: AnnexDraft,
   sources: AnnexSources,
   options: AnnexCheckOptions = {},
 ): Promise<AnnexVerification> {
   const maxParagraphs = options.maxParagraphs ?? MAX_PARAGRAPHS
   const concurrency = options.concurrency ?? CONCURRENCY
+  const { articles, asOf } = draft
 
   const groups = paragraphGroups(rows)
   const reasons = new Set<string>()
@@ -494,13 +833,15 @@ export async function verifyAnnex(
   // and it vouched for §§ the check had never looked at.
   const verdicts: Record<string, ParagraphVerdict> = {}
   for (const key of groups.keys()) verdicts[key] = 'unchecked'
+  const withheldCauses: Record<string, AnnexWithheldCause> = {}
   const nothing = (reason: string): AnnexVerification => {
     reasons.add(reason)
-    return { ran: false, reasons: [...reasons], verdicts, doubtfulLaws: [], judged: 0, verified: 0 }
+    return { ran: false, reasons: [...reasons], verdicts, withheldCauses, doubtfulLaws: [], judged: 0, verified: 0 }
   }
   if (groups.size === 0) return nothing(REASON_NO_PARAGRAPHS)
   if (!asOf) return nothing(REASON_NO_ASOF)
 
+  const draftBag = draftWordBag(draft.text)
   const amending = articles.filter((a) => a.amends)
   if (articles.length === 0) reasons.add(REASON_NO_ARTICLES)
   else if (amending.length === 0) reasons.add(REASON_NO_AMENDING)
@@ -542,6 +883,7 @@ export async function verifyAnnex(
   }
 
   const coverage = new Map<string | null, Map<string, Coverage>>()
+  const rightColumn = new Map<string, RightColumnCheck>()
   const queue = [...groups.values()]
   let looked = 0
   let failure: unknown = null
@@ -573,8 +915,9 @@ export async function verifyAnnex(
           continue
         }
         const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
-        byPara.set(group.para, coverageOfParagraph(group.rows, standing))
+        byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
         coverage.set(group.law, byPara)
+        rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, draftBag))
       } catch (err) {
         // Stop the other workers too: a RIS that just failed four times over
         // is not worth another 150 requests, and the answer is thrown away.
@@ -589,29 +932,49 @@ export async function verifyAnnex(
   const doubtfulLaws: LawCheck[] = []
   let compared = 0
   let judged = 0
-  let verified = 0
   for (const [law, byPara] of coverage) {
     const check = lawCheck(law, byPara)
     judged += check.judged
-    verified += check.verified
     if (check.verdict === 'doubtful') doubtfulLaws.push(check)
     for (const [para, cover] of byPara) {
       compared++
+      const key = annexParagraphKey(law, para)
+      const right = rightColumn.get(key)
+      // The order is what the reader is owed first, and it decides which of
+      // several causes is recorded — the counts on the page have to sum.
+      const cause: AnnexWithheldCause | null =
+        cover.prose && cover.ratio < PARAGRAPH_THRESHOLD
+          ? 'standing'
+          : right?.alreadyStanding
+            ? 'alreadyStanding'
+            : right?.notInDraft
+              ? 'notInDraft'
+              : null
+      if (cause !== null) {
+        // Withholding is per §, whatever the law's verdict: a § that cleared
+        // the threshold cleared it against the standing text, and a cluster
+        // of failures around it does not make it wrong.
+        verdicts[key] = 'withheld'
+        withheldCauses[key] = cause
+        continue
+      }
       // Looked at, and silent: a § whose displayed changes carry almost no
       // comparable words says nothing either way, so it is not a pass. None
       // at all is its own state and its own sentence — a § the draft only
-      // inserts has no standing text by definition.
+      // inserts has no standing text by definition. Neither right-column rule
+      // may promote such a § either: the draft bag passes happily on garbage
+      // lifted from another part of the same draft.
       if (!cover.prose) {
         reasons.add(cover.comparable === 0 ? REASON_NOTHING_TO_COMPARE : REASON_TOO_SHORT)
         continue
       }
-      // Withholding is per §, whatever the law's verdict: a § that cleared
-      // the threshold cleared it against the standing text, and a cluster of
-      // failures around it does not make it wrong.
-      verdicts[annexParagraphKey(law, para)] = cover.ratio >= PARAGRAPH_THRESHOLD ? 'verified' : 'withheld'
+      verdicts[key] = 'verified'
     }
   }
-  return { ran: compared > 0, reasons: [...reasons], verdicts, doubtfulLaws, judged, verified }
+  // Counted off the verdicts rather than summed per law, so "bestätigt" means
+  // "came through everything" and cannot drift from what the rows show.
+  const verified = Object.values(verdicts).filter((v) => v === 'verified').length
+  return { ran: compared > 0, reasons: [...reasons], verdicts, withheldCauses, doubtfulLaws, judged, verified }
 }
 
 /**
@@ -631,8 +994,17 @@ export interface CheckedComparison {
   rows: TextComparisonRow[]
   /** Counted over the rows as sent, withheld ones excluded */
   stats: ComparisonStats
-  /** §§ whose text was withheld because the standing law does not carry it */
+  /** §§ whose text was withheld, whichever of the three checks refused them */
   withheldParagraphs: number
+  /**
+   * The same number split by cause, and it always sums to it: a withheld §
+   * carries exactly one cause. The page names them separately because they
+   * are three different things to a reader — the ministry's left column not
+   * matching RIS, the right column repeating law that already stands, and
+   * the right column carrying text the draft's own Gesetzestext does not
+   * have.
+   */
+  withheldByCause: Record<AnnexWithheldCause, number>
   /**
    * §§ that show at least one change and carry no verdict.
    *
@@ -697,15 +1069,36 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
       if (isDisplayedChange(row)) rowsWithoutParagraph++
       return { ...row, check: 'unchecked' as const }
     }
-    const verdict = verification.verdicts[annexParagraphKey(row.law, para)] ?? 'unchecked'
+    const key = annexParagraphKey(row.law, para)
+    const verdict = verification.verdicts[key] ?? 'unchecked'
     if (verdict !== 'withheld') return { ...row, check: verdict }
-    return { ...row, current: '', proposed: '', segments: null, check: 'withheld' as const }
+    // The cause travels with the row, because the notice that replaces the
+    // text stands inside the § and has to name what was found there.
+    return { ...row, current: '', proposed: '', segments: null, check: 'withheld' as const, withheldCause: causeOf(verification, key) }
   })
+  const withheldByCause: Record<AnnexWithheldCause, number> = { standing: 0, alreadyStanding: 0, notInDraft: 0 }
+  for (const [key, verdict] of Object.entries(verification.verdicts)) {
+    if (verdict === 'withheld') withheldByCause[causeOf(verification, key)]++
+  }
   return {
     rows: out,
     stats: summarizeComparison(out.filter((r) => r.check !== 'withheld')),
     withheldParagraphs: Object.values(verification.verdicts).filter((v) => v === 'withheld').length,
+    withheldByCause,
     uncheckedParagraphs: [...showsChange].filter((key) => (verification.verdicts[key] ?? 'unchecked') === 'unchecked').length,
     rowsWithoutParagraph,
   }
+}
+
+/**
+ * The recorded cause of a withholding, falling back to the one every
+ * withholding meant before 2026-09-10.
+ *
+ * `verifyAnnex` writes verdict and cause together, so the fallback is
+ * unreachable — and the harness keeps it that way (`withheldWithoutCause`
+ * has to stay at zero over the corpus). It exists so that the split the page
+ * prints always sums to the total it prints beside it.
+ */
+function causeOf(verification: AnnexVerification, key: string): AnnexWithheldCause {
+  return verification.withheldCauses[key] ?? 'standing'
 }

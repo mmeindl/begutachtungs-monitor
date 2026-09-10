@@ -12,6 +12,11 @@
  * column claims to quote. Not today's date, and not a value passed in:
  * taking it from the command line once moved a single draft's score from
  * 66,7 % to 88,9 %, which made the measurement an argument about the date.
+ *
+ * Since 2026-09-10 the check has a second reference, and it comes from the
+ * caller too: the draft's own Gesetzestext, against which the *right* column
+ * is held (`annexCheck.rightColumnCheck`). Both references are read from the
+ * two documents the cache key already names, so the key does not change.
  */
 import { verifyAnnex, type AnnexSources, type AnnexVerification } from './annexCheck'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
@@ -34,7 +39,12 @@ const sources: AnnexSources = {
     const xml = await fetchParagraphXml(ref.nor, ref.xmlUrl)
     try {
       const tree = parseKonsParagraph(xml)
-      return tree ? [...tree.context, plainText(tree)].join(' ') : null
+      if (!tree) return null
+      // `plainText` opens with the § heading; `context` holds the Abschnitt
+      // and Hauptstück lines above it. The headings are offered a second time
+      // on their own because the draft check has to be able to discount them:
+      // the annex reprints them, the draft's instruction does not.
+      return { text: [...tree.context, plainText(tree)].join(' '), heading: [...tree.context, tree.heading ?? ''].join(' ') }
     } catch {
       return null
     }
@@ -52,15 +62,21 @@ const sources: AnnexSources = {
  * Prüfung" for 24 hours, which reads on the page exactly like a draft that
  * has no standing law to check against.
  *
- * `rows` and `articles` are outside the key deliberately: they are derived
- * from the same two documents `gp`/`inr`/`asOf` address, and the verdict map
- * is keyed by the annex's own § designations — if a parser change moved those,
- * a stale map matches no row and every row comes out `unchecked`, which is
- * the safe direction. The derived cache dies with the worker anyway
- * (`cacheBase.ts`).
+ * `rows`, `articles` and `draftText` are outside the key deliberately: all
+ * three are derived from the same two documents `gp`/`inr`/`asOf` address,
+ * and the verdict map is keyed by the annex's own § designations — if a
+ * parser change moved those, a stale map matches no row and every row comes
+ * out `unchecked`, which is the safe direction. The derived cache dies with
+ * the worker anyway (`cacheBase.ts`).
  */
 export const getAnnexVerification = defineCachedFunction(
-  async (gp: string, inr: number, asOf: string, rows: readonly ComparisonRow[], articles: readonly DraftArticle[]): Promise<AnnexVerification> =>
-    verifyAnnex(rows, articles, asOf, sources),
+  async (
+    gp: string,
+    inr: number,
+    asOf: string,
+    rows: readonly ComparisonRow[],
+    articles: readonly DraftArticle[],
+    draftText: string,
+  ): Promise<AnnexVerification> => verifyAnnex(rows, { articles, asOf, text: draftText }, sources),
   { name: 'annex-verification', base: DERIVED_CACHE, getKey: (gp: string, inr: number, asOf: string) => `${gp}-${inr}-${asOf}`, maxAge: TTL_S, swr: false },
 )
