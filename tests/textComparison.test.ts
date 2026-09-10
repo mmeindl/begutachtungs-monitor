@@ -69,6 +69,32 @@ describe('parseTextComparison', () => {
     expect(rows[0]!.current).toBe('1. Altersprädikat: alt')
   })
 
+  // The other half of that space, and the expensive one. Ressorts mark the
+  // *changed digit of the designation itself* in yellow, so the number
+  // arrives cut in two — "§ 32 2 ." for § 322 — and `designationKey` stops at
+  // the first space and reads § 32, a provision the same law really has.
+  // Seven designations in three drafts of GP XXVIII (2026-09-10).
+  it('reads a designation the ressort marks inside the number as one number', () => {
+    const gld = (d: string) => `<absatz typ="abs"><gldsym>${d}</gldsym> (1) Text.</absatz>`
+    const rows = parse(
+      annex([
+        pair(gld(`§ 32<i>${marked('2')}</i>.`), gld(`§ 32<i>${marked('2')}</i>.`)),
+        pair(gld(`§ 1${marked('3')}.`), gld(`§ 1${marked('3')}.`)),
+        pair(gld(`§ 28${marked('c')}.`), gld(`§ 28${marked('c')}.`)),
+        pair(gld(`Artikel 52a${marked('.')}`), gld(`Artikel 52a${marked('.')}`)),
+      ]),
+    )
+    expect(rows.map((r) => r.gld)).toEqual(['§ 322.', '§ 13.', '§ 28c.', 'Artikel 52a.'])
+  })
+
+  it('still separates the designation from the text it stands against', () => {
+    // The space is only wrong *inside* the designation: `</gldsym>` keeps its
+    // own, or "§ 5." fuses into the first word of the provision.
+    const rows = parse(annex([pair(`<gldsym>§ ${marked('5')}.</gldsym>Alter Text.`, '<gldsym>§ 5.</gldsym>Neuer Text.')]))
+    expect(rows[0]!.gld).toBe('§ 5.')
+    expect(rows[0]!.current).toBe('Alter Text.')
+  })
+
   it('separates an editorial change from a substantive one', () => {
     const rows = parse(
       annex([
