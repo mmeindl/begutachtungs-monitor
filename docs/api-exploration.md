@@ -387,8 +387,8 @@ median and 98 % at p10. Both checks matter because containment is
 one-directional — text a parser loses on the left passes the RIS check and is
 then painted green as an addition, which happened in 1.019 of 1.092 injected
 cases (93,3 %); the two rules together catch 567 of those, 51,9 % with the
-whole draft as the reference and 62,1 % (PDF) / 69,8 % (table) with it per §
-— the table figure over 245 injection sites since 2026-09-11, two more than
+whole draft as the reference and 62,1 % (PDF) / 69,5 % (table) with it per §
+— the table figure over 246 injection sites since 2026-09-11, three more than
 the run it was first measured on, because §§ the left check used to fail now
 reach the injection at all.
 Thresholds, the honest reach, the addressing coverage and the rejected
@@ -406,6 +406,10 @@ ours.
 - a normal row pairs one cell of current law with one of proposed law
 - an empty left cell is an insertion, an empty right cell a deletion
 - `<gldsym>` gives the § marker, `<symbol>` the Ziffer marker
+- **a row can carry two `<gldsym>`, one per column, and they need not agree**:
+  where the draft renumbers a provision the annex prints the standing "§ 7."
+  on the left and the proposed "§ 8." on the right, in one and the same row
+  (42 rows in GP XXVIII, 2026-09-11 — `architecture.md` §12.13)
 - **`<span style="background:yellow">` is the ministry's own change marking** —
   8.769 of them across 9.142 rows in the sample
 

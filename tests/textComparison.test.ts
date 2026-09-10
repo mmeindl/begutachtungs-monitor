@@ -512,3 +512,95 @@ describe('which § a row belongs to', () => {
     expect(rows.map((r) => r.para)).toEqual(['§ 9.', 'ANHANG I', 'ANHANG I'])
   })
 })
+
+// A draft that renumbers a provision prints both numbers in one row: the
+// standing "§ 7." on the left and the proposed "§ 8." on the right. 42 rows of
+// GP XXVIII do (2026-09-11), almost every one of them a renumbering — B-VG
+// Art. 90a→94a, the Konfitürenverordnung § 7→§ 8, the Strafregistergesetz
+// § 2→§ 1a, the Blutspenderverordnung shifting §§ 9 to 14 down by one.
+describe('a row whose two columns carry different designations', () => {
+  const renumbered = (a: string, b: string, text: string, text2 = text) =>
+    pair(`<absatz typ="abs"><gldsym>${a}</gldsym> ${text}</absatz>`, `<absatz typ="abs"><gldsym>${b}</gldsym> ${text2}</absatz>`)
+
+  it('files the row under the standing designation and leaves the proposed one in the text', () => {
+    // The badge has to stay the *left* number: that is the § the RIS check
+    // holds the left column against. Taking the right one out as well deleted
+    // it from the page altogether — neither badge nor word — and the reader
+    // saw two provisions under one number with nothing to say so.
+    const rows = parse(annex([renumbered('§ 7.', '§ 8.', 'Durch diese Verordnung wird die Richtlinie umgesetzt.', 'Durch diese Verordnung werden folgende Richtlinien umgesetzt:')]))
+    expect(rows[0]!.gld).toBe('§ 7.')
+    expect(rows[0]!.current).toBe('Durch diese Verordnung wird die Richtlinie umgesetzt.')
+    expect(rows[0]!.proposed).toBe('§ 8. Durch diese Verordnung werden folgende Richtlinien umgesetzt:')
+  })
+
+  it('shows a pure renumbering as a change instead of as unchanged text', () => {
+    // Same words, new number. Stripping both designations made the two columns
+    // identical, so the row went out as "unchanged" and the page folded it
+    // away behind a count: 25 rows of GP XXVIII, every one a renumbering the
+    // reader could not see.
+    const rows = parse(annex([renumbered('§ 322.', '§ 324.', 'Wer die Tat begeht, ist zu bestrafen.')]))
+    expect(rows[0]).toMatchObject({ gld: '§ 322.', change: 'changed' })
+    expect(rows[0]!.proposed).toBe('§ 324. Wer die Tat begeht, ist zu bestrafen.')
+  })
+
+  it('still takes the designation out where both columns print the same one', () => {
+    const rows = parse(annex([renumbered('§ 5.', '§ 5.', '(1) Alter Text.', '(1) Neuer Text.')]))
+    expect(rows[0]!.current).toBe('(1) Alter Text.')
+    expect(rows[0]!.proposed).toBe('(1) Neuer Text.')
+  })
+
+  it('reads a designation from the proposed column where the left has none', () => {
+    // An inserted § — the left cell is empty, and the row is still that §'s.
+    const rows = parse(annex([pair('<nbsp />', '<absatz typ="abs"><gldsym>§ 7.</gldsym> Neu.</absatz>')]))
+    expect(rows[0]).toMatchObject({ gld: '§ 7.', change: 'inserted', proposed: 'Neu.' })
+  })
+})
+
+// Per the Rundschreiben an unchanged stretch is abbreviated as a designation
+// plus three dots, so "§ 16 Abs. 1 bis 24 …" *is* the annex saying that § 16
+// begins here. Where a ressort writes it that way it prints no `<gldsym>`: in
+// the Verbrechensopfergesetz annex the new § 16 Abs. 25 and the new § 9b
+// Abs. 6 went out under §§ 10 and 7c (2026-09-11).
+describe('an elision line that names its own §', () => {
+  const open = pair('<absatz typ="abs"><gldsym>§ 10.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 10.</gldsym> (1) Neu.</absatz>')
+
+  it('opens the § it names, and the rows below inherit it', () => {
+    const rows = parse(annex([
+      open,
+      pair('§ 16 Abs. 1 bis 24 …', '§ 16 Abs. 1 bis 24 …'),
+      pair('', '<absatz typ="abs">(25) § 4 Abs. 5 tritt mit 1. Jänner 2026 in Kraft.</absatz>'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 10.', '§ 16.', '§ 16.'])
+    // The full stop is put back on so the § is grouped with its own
+    // `<gldsym>` spelling rather than standing on the page twice.
+    expect(rows[1]!.elided).toBe(true)
+  })
+
+  it('reads the spellings the corpus prints', () => {
+    const rows = parse(annex([
+      open,
+      pair('§ 2 Z 1 bis 9 …', '§ 2 Z 1 bis 9 …'),
+      pair('§ 4 Ab. 1 bis 4 …', '§ 4 Ab. 1 bis 4 …'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 10.', '§ 2.', '§ 4.'])
+  })
+
+  it('refuses a line that leaves out a whole range of §§', () => {
+    // "§§ 1. bis 26. …" omits twenty-six provisions and opens none of them.
+    // Without the subordinate unit the line is a range, and reading § 1 out of
+    // it would hand the rows below to a § the annex never showed.
+    const rows = parse(annex([
+      open,
+      pair('§§ 1. bis 26. …', '§§ 1. bis 26. …'),
+      pair('§ 21. bis 25. …', '§ 21. bis 25. …'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 10.', '§ 10.', '§ 10.'])
+  })
+
+  it('refuses a one-sided elision', () => {
+    // An elision the two columns print differently is a change to the elision
+    // itself and says nothing about where a § starts.
+    const rows = parse(annex([open, pair('§ 16 Abs. 1 bis 24 …', '§ 16 Abs. 1 bis 25 …')]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 10.', '§ 10.'])
+  })
+})

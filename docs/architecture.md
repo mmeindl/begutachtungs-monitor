@@ -246,7 +246,7 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-Vitest, 25 files, ~550 cases, no network and no Nitro: everything under test is
+Vitest, 27 files, ~610 cases, no network and no Nitro: everything under test is
 a pure module with relative imports, which is why the modules are cut that way
 in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
 app/server/`shared`, and `pnpm typecheck:tools` covers `scripts/` and `tests/`
@@ -1232,6 +1232,9 @@ Drei Zutaten halten das ehrlich, und jede ist gemessen:
   von 21 auf 20, was der eigentliche Befund ist: dort *ist* eine Zeile eine
   Bestimmung, am Paragraphenzeichen geschnitten, also hat fast jeder
   Paragraph seinen eigenen Block und die Verschmelzung kann nicht passieren.
+  Die Regel entschärft die Meldung; die Verschmelzung selbst blieb, und
+  woher sie kommt, steht am Ende dieses Abschnitts („Zwei Bestimmungen unter
+  einer Nummer", 11.09.2026).
 
 Was das kostet und bringt, beide Pfade, mit `scripts/annex-fault-injection.ts`
 in einem Lauf gemessen (die Schwellen 10 / 8 / 0,9 bleiben unverändert):
@@ -1239,22 +1242,23 @@ in einem Lauf gemessen (die Schwellen 10 / 8 / 0,9 bleiben unverändert):
 Die dritte Spalte ist die Adressierung von 11.09.2026 (93,6 % bzw. 93,4 %),
 die zweite die von 10.09.2026 (87,1 % / 86,1 %) — derselbe Bezug, nur besser
 adressiert; die Schwellen sind in beiden dieselben. Die Tabellenzeilen der
-ersten und dritten Spalte sind seit der geteilten Markup-Regel (unten) über
-245/237/236 Stellen gemessen statt 244/236/235: Paragraphen, die die linke
+ersten und dritten Spalte sind seit der geteilten Markup-Regel und der zweiten
+Bezeichnung je Zeile (beide unten) über 246/238/237 Stellen gemessen statt
+244/236/235: Paragraphen, die die linke
 Prüfung vorher an einem zerschnittenen Wort verfehlten, erreichen die
 Injektion jetzt.
 
 | Fehler | Regel 2, ganzer Entwurf | je Paragraph, 87 % adressiert | je Paragraph, 93 % adressiert |
 |---|---:|---:|---:|
 | R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 880 (12,0 %) | 665 (75,6 %) | **678 (77,0 %)** |
-| R-neu, Tabellenpfad | 76 von 236 (32,2 %) | 184 (78,3 %) | **194 (82,2 %)** |
+| R-neu, Tabellenpfad | 76 von 237 (32,1 %) | 184 (78,3 %) | **195 (82,3 %)** |
 | R-alt (fremder geltender Satz), PDF | 218 von 881 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
-| R-alt, Tabellenpfad | 97 von 237 (40,9 %) | 178 (75,4 %) | 183 (77,2 %) |
+| R-alt, Tabellenpfad | 97 von 238 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
 | L (Satzverlust links), PDF | 144 von 918 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
-| L, Tabellenpfad | 49 von 245 (20,0 %) | 90 (36,9 %) | 95 (38,8 %) |
+| L, Tabellenpfad | 49 von 246 (19,9 %) | 90 (36,9 %) | 95 (38,6 %) |
 
 Zusammen mit Regel 1 steigt die Reichweite gegen den Satzverlust von 49,0 auf
-62,1 % (PDF) und von 63,7 auf 69,8 % (Tabelle). **Der Preis** sind Meldungen
+62,1 % (PDF) und von 63,4 auf 69,5 % (Tabelle). **Der Preis** sind Meldungen
 auf unversehrten Beilagen: über denselben Korpus 7 → 20 auf dem PDF-Pfad und
 0 → 3 auf dem Tabellenpfad. Das ist mehr als eine Handvoll, deshalb wurde
 jeder der sechzehn neuen Fälle einzeln gelesen. **Fünfzehn benennen eine
@@ -1412,6 +1416,7 @@ die Ursachenzeile nennt die neue Möglichkeit („der Entwurf ordnet diese
 | PDF-Textebene, mit dem Bezug je Paragraph | 1.342 | 243 | 212 / 15 / 16 | 1.898 |
 | XML-Tabelle, nach der Bezeichnungslesung (oben) | 982 | 65 | 56 / 6 / 3 | 800 |
 | XML-Tabelle, mit der geteilten Markup-Regel (11.09.2026) | 986 | 60 | 50 / 6 / 4 | 801 |
+| XML-Tabelle, mit der zweiten Bezeichnung je Zeile (11.09.2026, unten) | 998 | 62 | 52 / 6 / 4 | 791 |
 
 Die „vorher"-Zeilen sind heute gegen den Stand des Repositoriums gemessen und
 widersprechen deshalb der Tabelle weiter oben (967/73/764 und 895/198/2.388):
@@ -1801,6 +1806,105 @@ Satz. Und `unplaced` mischt jetzt
 zwei Dinge: den Vorspann einer Spalte und die Einträge eines nachgedruckten
 Inhaltsverzeichnisses (272 → 283 Blöcke). Gezählt wird beides, gesagt wird
 der Leserin keines von beiden.
+
+**Zwei Bestimmungen unter einer Nummer: die Beilage hat die Zelle, wir haben
+sie weggeworfen (11.09.2026).** Offen stand die Frage, ob die Beilage dort,
+wo die Seite zwei Bestimmungen unter einer Nummer zeigt, wirklich keine
+Zelle mit „§ 8." druckt oder ob unser Tabellenparser sie verliert. Nachgesehen
+in den Beilagen selbst, Fall für Fall: **beides kommt vor, und die Mehrheit
+ist unsere Schuld.**
+
+- **Die Zelle steht in der *rechten* Spalte.** Benennt ein Entwurf eine
+  Bestimmung um, druckt die Beilage beide Nummern in **einer** Zeile — links
+  die geltende „§ 7.", rechts die vorgeschlagene „§ 8." —, und
+  `parseTextComparison` las die linke und entfernte anschließend *jedes*
+  `<gldsym>` aus dem Text. Die zweite Nummer verschwand damit vollständig:
+  kein Etikett, kein Wort. Über die GP XXVIII tun das **42 Zeilen**, und sie
+  sind fast durchwegs Umbenennungen — B-VG Art. 90a→94a, Konfitürenverordnung
+  § 7→§ 8, Strafregistergesetz § 2→§ 1a, Blutspenderverordnung §§ 9 bis 14 um
+  eins nach unten, StGB §§ 322/323/324→324/326/328. Das Etikett muss die
+  **linke** Nummer bleiben — gegen sie hält die RIS-Prüfung die linke Spalte —,
+  also bleibt die rechte künftig dort stehen, wo das Ressort sie gedruckt hat:
+  im Text ihrer Spalte, wo der Wortdiff sie als das zeigt, was sie ist.
+- **Die Beilage nennt den Paragraphen in ihrer Auslassungszeile.** „§ 16
+  Abs. 1 bis 24 …" ist nach dem Rundschreiben die Aussage, dass § 16 hier
+  beginnt und seine ersten 24 Absätze unverändert sind — ein `<gldsym>` steht
+  dort keines. Im Verbrechensopfergesetz gingen der neue § 16 Abs. 25 und der
+  neue § 9b Abs. 6 deshalb unter §§ 10 und 7c hinaus. Diese eine Beilage ist
+  die ganze Grundmenge der GP XXVIII: **5 Zeilen dieser Form unter 2.285
+  ausgelassenen**, die übrigen 121 lesbaren Beilagen haben keine. Gelesen wird
+  sie nur mit Untergliederung (`Abs.`/`Z`/`lit`) und nur, wenn beide Spalten
+  dieselbe Zeile drucken — „§§ 1. bis 26. …" lässt sechsundzwanzig Paragraphen
+  aus und eröffnet keinen.
+- **Die Beilage hat wirklich keine Zelle.** Im Strafvollzugsgesetz setzt das
+  Ressort den neuen § 20a als fett-kursiv markierten *Text* in einen
+  `<absatz typ="satz">` — „20a. (1) Die Strafvollzugsbehörden können …" —, und
+  das Paragraphenzeichen fehlt in der XML ganz. Hier ist nichts zu reparieren,
+  ohne aus Typografie eine Bezeichnung zu raten; dieselbe Entscheidung wie bei
+  `<symbol>`, das eine Ziffer ist und keine Bestimmung.
+- **Und ein Rest, der eine andere Frage ist:** eine *einseitige* Überschrift.
+  Steht die `<ueberschrift typ="para">` eines neuen Paragraphen nur in der
+  rechten Spalte, greift die Regel nicht, die eine beidseitig gedruckte
+  Überschrift dem Paragraphen *darunter* zuschlägt, und die Zeile erbt den
+  darüber: SchOG § 129 trägt so die Überschrift des § 130d, GTelG § 23 den
+  „6. Abschnitt" samt Überschriften, Tierschutz-SV § 17 den „7. Abschnitt".
+  Die Zeile einfach fallen zu lassen wäre falsch — sie *ist* eine Einfügung,
+  und eine gezeigte Änderung verschwinden zu lassen ist derselbe Fehler wie
+  bei der Auslassungssyntax. Nicht gebaut, benannt.
+
+*Gemessen* (`annex-pdf-verify.ts --xml`, GP XXVIII): Tabellenpfad
+**986/60/801 → 998/62/791** Paragraphen, nach Ursache 50/6/4 → 52/6/4,
+≥ 99 % gedeckt 961 → 973, Zeilen ohne Paragraphenangabe 273 → 266 (als
+Änderung gezeigt 79 → 77), alle vier Zusicherungen 0. Der **PDF-Pfad ist
+Zeichen für Zeichen unverändert** — `parseTextComparison` wird dort nicht
+aufgerufen —, und die Fehlerinjektion bleibt in jeder Zelle gleich (Grundmenge
+245/237/236 → 246/238/237, L 171, R-alt 183, R-neu 194 → 195; Fehlalarme ohne
+Injektion unverändert 6 und 4, dieselben vier Paragraphen).
+
+**Dreizehn Urteile ändern sich, jedes einzeln gelesen, keines zum
+Schlechteren gegenüber einer Zusage:** elf gehen von *ungeprüft* auf
+**bestätigt** (B-VG Art. 52a und 52b, StGB §§ 322, 323, 324, VOG § 7a,
+Straßenverkehrs-Sicherheitsmanagement-VO § 8, StRegG § 15, Blutspender-VO
+§§ 10 und 14, BohrarbV § 19), zwei von *ungeprüft* auf **einbehalten** (IVS-G
+§§ 9 und 14). Die Ursache ist in allen dreizehn dieselbe: bei reiner
+Umbenennung waren beide Spalten nach dem Entfernen der Bezeichnungen
+wortgleich, die Zeile ging als **unverändert** hinaus und wurde hinter einer
+Zahl eingeklappt — **25 Zeilen der GP XXVIII**, jede eine Umbenennung, die die
+Leserin nicht sehen konnte. Jetzt sind es Änderungen, also wird der Paragraph
+geprüft. Die beiden IVS-Paragraphen fallen dabei an einer *bekannten*
+Schwäche durch, nicht an einer neuen: diese Beilage druckt die Überschrift des
+nächsten Paragraphen ans Ende der Zelle des vorigen („… BGBl. Nr. 99/1988.
+Strafbestimmung"), und weil die beiden Spalten verschiedene Überschriften
+tragen, bleibt sie im Text stehen. Der Einbehalt ist damit richtig — die linke
+Spalte, wie *wir* sie lesen, ist nicht der geltende § 9 —, und er trifft
+Paragraphen, die vorher gar kein Urteil hatten. Dazu kommen vier neue
+Paragraphen der Auslassungsregel (VOG §§ 2, 4, 9b, 16), von denen einer
+bestätigt wird und drei ungeprüft bleiben, weil eine Einfügung keinen
+geltenden Text hat, gegen den sie zu halten wäre.
+
+**`designationKey` bleibt, wie es ist — und das ist gemessen, nicht
+vermutet.** Der Schlüssel schneidet still ab: er liest die führende
+Bezeichnung und ignoriert den Rest. Vorgeschlagen war, einen *unerklärten*
+Rest zum `null` zu machen, damit eine Zeile lieber ungeprüft bleibt als gegen
+den falschen Paragraphen gehalten zu werden. Über die GP XXVIII tragen von
+**11.169 Zeilen mit Bezeichnung** genau **555** überhaupt etwas neben ihr, und
+die Klassen sind sauber — sie sagen nur das Gegenteil: **434 davon sind
+Anlagenüberschriften mit Titel** („Anlage 1 Mindestgliederung Bilanz", „Anlage
+3 zu § 10 und § 11"), deren Schlüssel heute überwiegend *richtig* ist. Die
+Regel würde also viele richtige Schlüssel wegwerfen, um eine Handvoll falsche
+zu verhindern. Auf der RIS-Seite stellt sich die Frage gar nicht: von den
+**1.959 verschiedenen Labels** der beteiligten Gesetze trägt **keines** einen
+Rest, `indexOf` liest also reine Bezeichnungen und die Aussage über seine
+Beinahe-Injektivität bleibt unberührt.
+
+Die Messung hat dafür einen anderen Rest benannt, und der ist kein Abschneiden
+sondern ein *falscher* Schlüssel: zitiert der Titel einer Anlage Paragraphen,
+baut `designationKey` daraus einen zusammengesetzten Schlüssel („Anlage 3 zu
+§ 10 und § 11" → `Anl 3 § 10 § 11`), den das RIS nie führt. **12 Paragraphen
+der GP XXVIII** bleiben deshalb ungeprüft. Ein „bis zum ersten *zu* lesen"
+wäre die naheliegende Regel; sie gehört in `designationKey`, also auch auf den
+PDF-Pfad und in die Adressierung der Anordnungen, und ist damit ein eigener
+Schritt mit eigener Messung.
 
 ## 13. Open questions
 

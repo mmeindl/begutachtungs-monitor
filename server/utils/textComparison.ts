@@ -203,6 +203,46 @@ export function isElidedPair(current: string, proposed: string): boolean {
 }
 
 /**
+ * "§ 16 Abs. 1 bis 24 …" — a single § whose *Absätze* the annex leaves out.
+ *
+ * The subordinate unit is what makes the line a designation rather than a
+ * range, and it is the whole guard: "§ 21. bis 25. …" and "§§ 1. bis 26. …"
+ * leave out five and twenty-six §§ and open none of them, so reading § 21 or
+ * § 1 out of them would hand the rows below to a provision the annex never
+ * showed. `Ab.` is not a typo of ours — the Verbrechensopfergesetz annex
+ * writes it that way.
+ */
+const ELISION_HEAD_RE = /^(§\s*\d+[a-z]*(?:\.\d+)?)\s*(?:Abs?|Z|lit)\b/
+
+/**
+ * The § an elision line opens, when it names one — null otherwise.
+ *
+ * The Rundschreiben's own notation: an unchanged stretch is abbreviated as a
+ * designation plus three dots, so "§ 16 Abs. 1 bis 24 …" *is* the annex saying
+ * that § 16 begins here and its first 24 Absätze are unchanged. Where the
+ * ressort writes it that way it prints no `<gldsym>`, and the § went on being
+ * the one above: in the Verbrechensopfergesetz annex the new § 16 Abs. 25 and
+ * the new § 9b Abs. 6 went out under §§ 10 and 7c — two provisions under one
+ * number. That annex is the whole population of GP XXVIII: 5 lines of this
+ * shape out of 2.285 elided rows, and the other 121 readable annexes have
+ * none (measured 2026-09-11).
+ *
+ * Only where **both columns print the same line**, because a one-sided
+ * elision is a change to the elision itself and says nothing about where a §
+ * starts.
+ *
+ * The full stop is put back on because the annex writes its designations with
+ * one everywhere else ("§ 10." in the `<gldsym>`), and the § is grouped by
+ * that string: without it the same § 10 would stand on the page twice, once
+ * under each spelling.
+ */
+function elisionOpens(current: string, proposed: string): string | null {
+  if (current !== proposed) return null
+  const head = ELISION_HEAD_RE.exec(current)
+  return head ? `${head[1]!.replace(/\s+/g, ' ').trim()}.` : null
+}
+
+/**
  * A cell's own words.
  *
  * The block/inline distinction lives in `lawText.stripMarkup`, shared with the
@@ -315,10 +355,30 @@ function stripParaHeading(html: string): string {
   return html.replace(PARA_HEADING_RE, ' ')
 }
 
-const GLD_ALL_RE = /<gldsym\b[^>]*>[\s\S]*?<\/gldsym>/g
+const GLD_ALL_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/g
 
-function stripGld(html: string): string {
-  return html.replace(GLD_ALL_RE, ' ')
+/**
+ * Take the row's own designation out of the column's text — and only that one.
+ *
+ * A designation is data rather than prose and is already carried in `gld`, so
+ * leaving it in the text as well printed it twice (below). But a row can carry
+ * **two** designations, one per column, and then only one of them is the row's:
+ * where a draft renumbers a provision the annex writes the standing "§ 7." on
+ * the left and the proposed "§ 8." on the right, in one and the same row. The
+ * row is filed under the left one — that is the § the RIS check holds the left
+ * column against — and stripping every `<gldsym>` then deleted the second
+ * number from the page altogether: neither a badge nor a word, so the reader
+ * saw two provisions under one number with nothing to say so.
+ *
+ * 42 rows of GP XXVIII carry two designations that differ (2026-09-11), and
+ * they are renumberings almost to the row: B-VG Art. 90a→94a, the
+ * Konfitürenverordnung § 7→§ 8, the Strafregistergesetz § 2→§ 1a, the
+ * Blutspenderverordnung shifting §§ 9 to 14 down by one. The second
+ * designation now stays where the ressort printed it, inside its column's
+ * text, and the word diff shows it as what it is — a change to the number.
+ */
+function stripGld(html: string, own: string | null): string {
+  return html.replace(GLD_ALL_RE, (all, inner: string) => (own !== null && cellText(inner) === own ? ' ' : all))
 }
 
 /**
@@ -829,9 +889,10 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     // than prose — and it is already carried in `gld`. Left in the text as
     // well, 1.183 of the 1.198 rows that have one printed it twice: "§ 40."
     // beside the badge and "§ 40. (1) Wurden …" underneath it. A consumer that
-    // wants the provision as printed joins `gld` and `current`.
-    const current = cellText(stripGld(currentHtml))
-    const proposed = cellText(stripGld(proposedHtml))
+    // wants the provision as printed joins `gld` and `current`. A designation
+    // the row does *not* carry stays in the text (`stripGld`).
+    const current = cellText(stripGld(currentHtml, gld))
+    const proposed = cellText(stripGld(proposedHtml, gld))
     if (lift && !current && !proposed) {
       // The heading had a row of its own. It belongs to the § *below* it —
       // read in printed order it landed in the § before, which once put
@@ -843,6 +904,9 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     // comparison; the § it opens is remembered and the next row inherits it.
     if (!current && !proposed) continue
     const elided = isElidedPair(current, proposed)
+    // An elision line that names its § opens it (`elisionOpens`) — the row is
+    // that §'s, and so are the rows below it until the next designation.
+    if (elided && gld === null) openPara = elisionOpens(current, proposed) ?? openPara
     const change = classify(current, proposed)
     // The ressort's yellow marking is reliable where present but incomplete:
     // of 8.430 row pairs, 1.395 differ in text without being marked, while
