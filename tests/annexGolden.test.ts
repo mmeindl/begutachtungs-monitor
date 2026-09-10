@@ -33,6 +33,14 @@ import { parseTextComparison, type ComparisonRow } from '../server/utils/textCom
  *   `linesFromPage` and `columnBoundary` both skip them — and the coordinates
  *   are rounded to two decimals; the parse is identical either way, and the
  *   dump goes from 146 kB to 61 kB.
+ *
+ *   Each page carries the `geometry` `uprightRuns` reported for it — how many
+ *   runs it holds, how many disagree with the quarter turn it was read in, how
+ *   many are skewed — because `parseAnnexPdf` refuses a page that cannot say
+ *   (2026-09-10). All nine pages of this annex agree on their turn and none is
+ *   skewed, so the gate drops none of them and every number below is the one
+ *   the fixture produced before the field existed. Regenerated from the PDF
+ *   above; runs and page widths came out identical to the byte.
  */
 const fixture = (name: string): string => readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), 'utf8')
 

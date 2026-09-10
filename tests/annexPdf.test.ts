@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage } from '../server/utils/annexPdf'
+import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage, type PageGeometry } from '../server/utils/annexPdf'
 import { uprightRuns, type RawRun } from '../server/utils/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawTitles'
 
@@ -50,6 +50,23 @@ function run(x: number, y: number, text: string): AnnexItem {
   return { x, y, width: text.length * CHAR, text }
 }
 
+/** A run whose advance is stated rather than derived: for setting a column's edge. */
+function wide(x: number, y: number, text: string, advance: number): AnnexItem {
+  return { x, y, width: advance, text }
+}
+
+/**
+ * A page as `uprightRuns` hands it over, evidence included.
+ *
+ * `PageGeometry` is required on purpose — `parseAnnexPdf` does not read a page
+ * that cannot say how it was read — and these runs are axis-aligned by
+ * construction, so nothing disagrees with the frame and nothing is skewed.
+ * The geometry gate's own tests pass their own numbers.
+ */
+function pageOf(items: readonly AnnexItem[], width = PAGE_WIDTH, geometry: Partial<PageGeometry> = {}): AnnexPage {
+  return { width, items, geometry: { runs: items.filter((i) => i.text.trim()).length, offTurn: 0, skewed: 0, ...geometry } }
+}
+
 function page(lines: { y: number; left?: string; right?: string; spanning?: string }[]): AnnexPage {
   const items: AnnexItem[] = []
   for (const l of lines) {
@@ -57,7 +74,7 @@ function page(lines: { y: number; left?: string; right?: string; spanning?: stri
     if (l.right) items.push(run(RIGHT_X, l.y, l.right))
     if (l.spanning) items.push(run(LEFT_X, l.y, l.spanning))
   }
-  return { width: PAGE_WIDTH, items }
+  return pageOf(items)
 }
 
 describe('linesFromPage', () => {
@@ -70,8 +87,8 @@ describe('linesFromPage', () => {
   // A centred title starts left of the midline and crosses it. Assigning runs
   // by their left edge filed "Textgegenüberstellung" as current law.
   it('treats a run that crosses the midline as spanning both columns', () => {
-    const wide: AnnexPage = { width: PAGE_WIDTH, items: [{ x: 300, y: 700, width: 260, text: 'Artikel 1' }] }
-    expect(linesFromPage(wide)[0]!.spanning).toBe('Artikel 1')
+    const crossing = pageOf([{ x: 300, y: 700, width: 260, text: 'Artikel 1' }])
+    expect(linesFromPage(crossing)[0]!.spanning).toBe('Artikel 1')
   })
 
   // A PDF moves the cursor instead of storing spaces, so the runs of one line
@@ -83,7 +100,7 @@ describe('linesFromPage', () => {
       { x: 86, y: 700, width: 55, text: 'verfassungsgefährdender' },
       { x: 147, y: 700, width: 35, text: 'Angriff' },
     ]
-    expect(linesFromPage({ width: PAGE_WIDTH, items })[0]!.left).toBe('Ein verfassungsgefährdender Angriff')
+    expect(linesFromPage(pageOf(items))[0]!.left).toBe('Ein verfassungsgefährdender Angriff')
   })
 
   it('does not insert a space inside a kerned word', () => {
@@ -91,7 +108,7 @@ describe('linesFromPage', () => {
       { x: 60, y: 700, width: 20, text: 'Ver' },
       { x: 80.2, y: 700, width: 25, text: 'fahren' },
     ]
-    expect(linesFromPage({ width: PAGE_WIDTH, items })[0]!.left).toBe('Verfahren')
+    expect(linesFromPage(pageOf(items))[0]!.left).toBe('Verfahren')
   })
 })
 
@@ -158,13 +175,10 @@ describe('parseAnnexPdf', () => {
   })
 
   it('opens a new section at an Artikel heading the draft confirms', () => {
-    const rows = parse([{
-      width: PAGE_WIDTH,
-      items: [
-        { x: 300, y: 700, width: 260, text: 'Artikel 2' },
-        ...page([{ y: 660, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items,
-      ],
-    }], draft({ n: '1', title: 'Änderung des Aktiengesetzes' }, { n: '2', title: 'Änderung des GmbH-Gesetzes' }))
+    const rows = parse([pageOf([
+      { x: 300, y: 700, width: 260, text: 'Artikel 2' },
+      ...page([{ y: 660, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items,
+    ])], draft({ n: '1', title: 'Änderung des Aktiengesetzes' }, { n: '2', title: 'Änderung des GmbH-Gesetzes' }))
     // The heading is the draft's wording, not the annex's: the annex prints
     // "Artikel 2" bare, the draft names the law it amends.
     expect(rows[0]).toMatchObject({ kind: 'article', heading: 'Artikel 2 — Änderung des GmbH-Gesetzes', law: 'Änderung des GmbH-Gesetzes' })
@@ -191,13 +205,13 @@ describe('columnBoundary', () => {
       items.push({ x: 60, y: 700 - n * 14, width: 345, text: 'Text der geltenden Fassung in voller Breite' })
       items.push({ x: 414.7, y: 700 - n * 14, width: 360, text: 'Text der vorgeschlagenen Fassung in Breite' })
     }
-    const boundary = columnBoundary([{ width: 841.92, items }])
+    const boundary = columnBoundary([pageOf(items, 841.92)])
     expect(boundary).toBeGreaterThan(405)
     expect(boundary).toBeLessThanOrEqual(414)
   })
 
   it('falls back to the middle when there is no text to find a gutter in', () => {
-    expect(columnBoundary([{ width: 800, items: [] }])).toBe(400)
+    expect(columnBoundary([pageOf([], 800)])).toBe(400)
   })
 })
 
@@ -205,10 +219,8 @@ describe('headings that span both columns', () => {
   const spanning = (y: number, text: string): AnnexItem => ({ x: 300, y, width: 260, text })
 
   it('opens a group only for a real Artikel line', () => {
-    const rows = parse([{
-      width: PAGE_WIDTH,
-      items: [spanning(700, 'Artikel 2'), spanning(680, 'Änderung des Aktiengesetzes'), ...page([{ y: 640, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items],
-    }], draft({ n: '1', title: 'Änderung des Bankwesengesetzes' }, { n: '2', title: 'Änderung des Aktiengesetzes' }))
+    const rows = parse([pageOf([spanning(700, 'Artikel 2'), spanning(680, 'Änderung des Aktiengesetzes'), ...page([{ y: 640, left: '§ 1. Alt.', right: '§ 1. Neu.' }]).items])],
+      draft({ n: '1', title: 'Änderung des Bankwesengesetzes' }, { n: '2', title: 'Änderung des Aktiengesetzes' }))
     expect(rows.filter((r) => r.kind === 'article').map((r) => r.heading)).toEqual(['Artikel 2 — Änderung des Aktiengesetzes'])
   })
 
@@ -217,10 +229,7 @@ describe('headings that span both columns', () => {
   // where there are about 400 boundaries — and writing them into the text put
   // words into the provision that the standing law files above it.
   it('records any other spanning heading as the row’s context, not as its text', () => {
-    const rows = parse([{
-      width: PAGE_WIDTH,
-      items: [spanning(700, '3. Abschnitt'), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items],
-    }])
+    const rows = parse([pageOf([spanning(700, '3. Abschnitt'), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items])])
     expect(rows.filter((r) => r.kind === 'article')).toHaveLength(0)
     expect(rows[0]!.heading).toBe('3. Abschnitt')
     expect(rows[0]!.current).toBe('§ 4. Alt.')
@@ -240,7 +249,7 @@ describe('headings that span both columns', () => {
   // provision of a law that is itself organised in Artikel (B-VG).
   it('does not treat a citation or an Artikel-numbered provision as a boundary', () => {
     for (const text of ['Art. 31 EUStA-VO', 'Artikel 10. (1) Bundessache ist die Gesetzgebung.', 'Artikel 29b der Bilanz-Richtlinie']) {
-      const rows = parse([{ width: PAGE_WIDTH, items: [spanning(700, text), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items] }])
+      const rows = parse([pageOf([spanning(700, text), ...page([{ y: 660, left: '§ 4. Alt.', right: '§ 4. Neu.' }]).items])])
       expect(rows.filter((r) => r.kind === 'article'), text).toHaveLength(0)
     }
   })
@@ -316,6 +325,141 @@ describe('the header pair as the gate on the geometry', () => {
       ])], ONE_LAW).rows
       expect(rows.map((r) => r.gld), left).toEqual(['§ 5.'])
     }
+  })
+})
+
+describe('the page geometry as the second gate', () => {
+  const full = (pages: readonly AnnexPage[]) => parseAnnexPdf([headerPage(), ...pages], ONE_LAW)
+  const provision = (gld: string) => page([{ y: 700, left: `${gld} (1) Alt.`, right: `${gld} (1) Neu.` }])
+
+  // The column boundary is one number for the whole document, so a page set
+  // differently is not read differently — it is read wrongly, in words that
+  // are all real. No document of GP XXVIII mixes page widths, no page carries
+  // a run against its majority turn and no run is skewed (3.213 pages,
+  // 2026-09-10): the gate costs nothing today, which is why it can be had
+  // before the first such page rather than after.
+  it('does not read a page that is not set like the rest of the document', () => {
+    const odd = pageOf(provision('§ 9.').items, 595)
+    const parsed = full([provision('§ 5.'), odd])
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 5.'])
+    expect(parsed.droppedPages).toBe(1)
+  })
+
+  it('does not read a page whose text is skewed off every quarter turn', () => {
+    const parsed = full([provision('§ 5.'), pageOf(provision('§ 9.').items, PAGE_WIDTH, { skewed: 1 })])
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 5.'])
+    expect(parsed.droppedPages).toBe(1)
+  })
+
+  it('does not read a page a tenth of whose runs disagree with its frame', () => {
+    const parsed = full([provision('§ 5.'), pageOf(provision('§ 9.').items, PAGE_WIDTH, { runs: 20, offTurn: 2 })])
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 5.'])
+    expect(parsed.droppedPages).toBe(1)
+  })
+
+  // A page number set upright on an otherwise turned page is one run against
+  // thirty. `uprightRuns` reads such a page in the majority's frame, and that
+  // is the right answer, not a defect to refuse.
+  it('reads a page that carries a single stray run in another frame', () => {
+    const parsed = full([pageOf(provision('§ 9.').items, PAGE_WIDTH, { runs: 20, offTurn: 1 })])
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 9.'])
+    expect(parsed.droppedPages).toBe(0)
+  })
+
+  it('says which way it failed when no page can be vouched for', () => {
+    const parsed = parseAnnexPdf([pageOf(provision('§ 5.').items, PAGE_WIDTH, { skewed: 3 })], ONE_LAW)
+    expect(parsed.rows).toEqual([])
+    expect(parsed.droppedPages).toBe(1)
+    expect(parsed.unreadable).toContain('Seitengeometrie')
+  })
+
+  it('counts no dropped page for a document read whole', () => {
+    expect(full([provision('§ 5.')]).droppedPages).toBe(0)
+  })
+})
+
+describe('each column measured against its own edge', () => {
+  /**
+   * A § whose heading runs over two lines, printed in **both** columns.
+   *
+   * Ten body lines state where each column's text ends — 340 pt of type, so
+   * the left column ends at 400 and the right at 810; fewer than ten lines is
+   * not a measurement and the column's outer limit would stand instead. The
+   * heading's first line is set 10 pt wider, which is what a centred heading
+   * that nearly fills its column looks like.
+   *
+   * The rule used to measure the left column against the gutter (421) and the
+   * right against the page edge (842), so that first line counted as wrapped
+   * on the left — where it blocked the carry — and never on the right, where
+   * it was handed to § 5 as if the draft had written it. 70 §§ of the corpus
+   * showed their own standing heading as new text this way (2026-09-10). Both
+   * columns now measure against their own edge, so the same line falls the
+   * same way twice, and § 5 reads as the unchanged provision it is.
+   */
+  const heading = 'Besondere Voraussetzungen für die Bewilligung von Anlagen'
+  const body = (n: number, y: number): AnnexItem[] => [
+    wide(LEFT_X, y, `(${n}) Die Behörde hat die Voraussetzungen von Amts wegen zu prüfen.`, 340),
+    wide(RIGHT_X, y, `(${n}) Die Behörde hat die Voraussetzungen von Amts wegen zu prüfen.`, 340),
+  ]
+  const twoLineHeading = (): AnnexPage => pageOf([
+    ...page([{ y: 740, left: '§ 4. (1) Die Behörde entscheidet mit Bescheid.', right: '§ 4. (1) Die Behörde entscheidet mit Bescheid.' }]).items,
+    ...Array.from({ length: 10 }, (_, i) => body(i + 2, 720 - i * 20)).flat(),
+    wide(LEFT_X, 500, heading, 350),
+    wide(RIGHT_X, 500, heading, 350),
+    ...page([
+      { y: 480, left: 'in besonderen Fällen', right: 'in besonderen Fällen' },
+      { y: 460, left: '§ 5. (1) Der Antrag ist schriftlich zu stellen.', right: '§ 5. (1) Der Antrag ist schriftlich zu stellen.' },
+    ]).items,
+  ])
+
+  it('hands a two-line heading to the same side twice', () => {
+    const rows = parse([twoLineHeading()])
+    const five = rows.find((r) => r.gld === '§ 5.')!
+    expect(five.current).toBe(five.proposed)
+    expect(five.change).toBe('unchanged')
+    // The heading's short second line is carried to the § it stands over; its
+    // first line reached the edge of both columns and stays with § 4 — in both
+    // columns, which is the whole point.
+    expect(five.current).toContain('in besonderen Fällen')
+    expect(five.current).not.toContain('Besondere Voraussetzungen')
+    const four = rows.find((r) => r.gld === '§ 4.')!
+    expect(four.change).toBe('unchanged')
+    expect(four.current).toContain('Besondere Voraussetzungen')
+  })
+})
+
+describe('an entry of the annex’s own table of contents', () => {
+  // Five one-sided rows of the corpus were entries of a reprinted
+  // Inhaltsverzeichnis for §§ the annex never prints — announced as new law.
+  // Four of them have been in force for years with exactly the heading the
+  // annex prints (§ 79a Mindestbesteuerungsgesetz, § 13a GAP-Strategieplan-
+  // Anwendungsverordnung, § 11 Energie-Control-Gesetz, § 77d BWG), and two of
+  // those drafts say in so many words that they amend the *table of contents*
+  // (2026-09-10). A provision has a body; a contents entry has none.
+  it('is not shown as an inserted provision, and is counted', () => {
+    const parsed = parseAnnexPdf([headerPage(), page([
+      { y: 700, left: '§ 12. (1) Bestehend.', right: '§ 12. (1) Bestehend.' },
+      { y: 680, right: '§ 13a. Verbot der Umgehung rechtlicher Vorschriften' },
+      // The mirror image has no case in the corpus and would read as a
+      // repeal: "the draft deletes § 11a", over a line that is a contents
+      // entry. Both sides are dropped, as with the front matter.
+      { y: 660, left: '§ 11a. Arbeitsweise der Regulierungskommission' },
+      { y: 640, left: '§ 14. (1) Weiter.', right: '§ 14. (1) Weiter.' },
+    ])], ONE_LAW)
+    expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 12.', '§ 14.'])
+    expect(parsed.unplaced).toBe(2)
+  })
+
+  // Two shapes stay: an elision is the annex saying it left the text out, and
+  // a designation with nothing after it says something of its own — a § the
+  // draft repeals, with an empty proposed column.
+  it('is not the ressort’s elision, and not a bare designation', () => {
+    const rows = parse([page([
+      { y: 700, left: '§ 12. (1) Bestehend.', right: '§ 12. (1) Bestehend.' },
+      { y: 680, right: '§ 13a. Kontrollregister …' },
+      { y: 660, left: '§ 15.', right: '' },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 12.', '§ 13a.', '§ 15.'])
   })
 })
 
