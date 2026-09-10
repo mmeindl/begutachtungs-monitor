@@ -365,6 +365,25 @@ otherwise print a word diff over a provision the row does not belong to.
 The name varies: `Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
 `Textgegenbüberstellung`, so matching has to be loose.
 
+**The right column has references too (2026-09-10).** It was called
+unverifiable here — "the law the draft proposes, which exists nowhere else
+yet" — and that is wrong twice over. What the annex shows as *new* must not
+already stand in the § (RIS holds that text), and it must occur in the
+draft's own Gesetzestext, which the very same RIS `Begut` record publishes as
+its `MainDocument` beside the annex. The second one is the tighter reference
+of the two: over 1.145 GP-XXVIII paragraphs with at least ten new words, the
+share found in the draft's text is 100 % at the median and 98 % at p10. Both
+checks matter because containment is one-directional — text a parser loses on
+the left passes the RIS check and is then painted green as an addition, which
+happened in 1.019 of 1.092 injected cases (93,3 %); the two rules together
+catch 567 of those, 51,9 %. Thresholds, the honest reach and the two rejected
+variants: `architecture.md` §12.13. A parser detail
+found on the way: the PDF text layer writes RIS's editorial note as
+"(Anm. **:** aufgehoben durch …)", with a space before the colon, so a
+pattern built for the XML spelling leaves it in the column while the standing
+side has dropped it — an asymmetry that reads as the ministry's error and is
+ours.
+
 **Structure of the readable ones** (one `<table>`, 153 `<tr>` in the sample):
 
 - row 0 is the header pair, `<ueberschrift typ="tgue">`

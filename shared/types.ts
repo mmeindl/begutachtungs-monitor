@@ -403,6 +403,33 @@ export interface ParagraphTitlesResponse {
   titles: Record<string, string>
 }
 
+/**
+ * Why a § of the Textgegenüberstellung is not shown (`annexCheck.ts`).
+ *
+ * Three different findings, and the page keeps them apart because they mean
+ * different things to a reader — and because two of them can just as well be
+ * *our* reading of a PDF as the ministry's document.
+ *
+ * - `standing` — the annex's **left** column is not accounted for by the
+ *   standing § in RIS Bundesrecht. The row is mis-paired, or the annex quotes
+ *   a superseded version of the law. Does not mean the ministry got the law
+ *   wrong: on the PDF path our own row pairing is at least as likely.
+ * - `alreadyStanding` — the **right** column shows as new a run of at least
+ *   six comparable words that stands verbatim in the § and is absent from the
+ *   left column. Either the left column lost that text (ours to answer for on
+ *   the PDF path, the annex's on the table path) or the annex was written
+ *   against an older version. Does *not* mean the ministry re-enacted
+ *   existing law: a sentence merely moved within the § is present on the left
+ *   and never counted here.
+ * - `notInDraft` — the right column carries at least eight words that occur
+ *   neither in the left column nor in the draft's own Gesetzestext, and less
+ *   than 90 % of what it shows as new can be found there. Text has been
+ *   misfiled into the column. Does not mean the draft is incoherent — where
+ *   the draft's text could not be read at all, this check is disarmed rather
+ *   than failed.
+ */
+export type AnnexWithheldCause = 'standing' | 'alreadyStanding' | 'notInDraft'
+
 /** One row of the ressort's Textgegenüberstellung (docs/api-exploration.md §2c). */
 export interface TextComparisonRow {
   kind: 'article' | 'pair'
@@ -432,21 +459,28 @@ export interface TextComparisonRow {
    * How the row's "Geltende Fassung" fared against the standing law in RIS
    * (`annexCheck.ts`).
    *
-   * - `verified` — the row's § carried enough prose to judge and the
-   *   standing § accounts for it; the diff beside it means what it says.
-   *   Nothing else earns this label: it is a claim we make, not a default.
+   * - `verified` — the row's § carried enough prose to judge, the standing §
+   *   accounts for its left column, and neither right-column rule fired; the
+   *   diff beside it means what it says. Nothing else earns this label: it is
+   *   a claim we make, not a default.
    * - `unchecked` — everything the check did not vouch for. No Stammnorm
    *   resolved, RIS holds no such §, the § is held there as a table, the
    *   ceiling cut the run short, the check never ran at all, the row shows
    *   too little text to judge — or the row carries no § designation, so no
    *   verdict can address it. Shown, and said to be unchecked. Article
    *   heading rows are `unchecked` too: they carry no law text to check.
-   * - `withheld` — the standing § does *not* account for the column, so the
-   *   row is mis-paired or quotes a superseded version. `current`,
-   *   `proposed` and `segments` are emptied before the response leaves the
-   *   server: a wrong comparison must not be renderable at all.
+   * - `withheld` — one of the three checks refused the § (`withheldCause`).
+   *   `current`, `proposed` and `segments` are emptied before the response
+   *   leaves the server: a wrong comparison must not be renderable at all.
    */
   check: 'verified' | 'unchecked' | 'withheld'
+  /**
+   * Which check refused the row's §, present only on a withheld row. The
+   * notice that replaces the text stands inside the §, so it has to be able
+   * to name what was found *there* rather than one sentence for all three
+   * causes.
+   */
+  withheldCause?: AnnexWithheldCause
 }
 
 /**
@@ -531,11 +565,29 @@ export interface TextComparisonResponse {
      * against.
      */
     asOf: string | null
-    /** §§ with enough prose to judge, and how many cleared the threshold */
+    /**
+     * §§ with enough prose to judge, and how many came through every check
+     * — the standing text accounts for the left column and neither
+     * right-column rule fired.
+     *
+     * `judged` counts §§ whose *left* column carried enough words to score,
+     * so a § withheld by a right-column rule without any judgeable left text
+     * is in `withheldParagraphs` and not in `judged`. The two numbers answer
+     * different questions and are not meant to subtract.
+     */
     judged: number
     verified: number
-    /** §§ whose text was withheld because the standing law does not carry it */
+    /** §§ whose text was withheld, whichever of the three checks refused them */
     withheldParagraphs: number
+    /**
+     * The same number split by cause; it sums to `withheldParagraphs`,
+     * because a withheld § carries exactly the first cause that fired. The
+     * page names the causes separately: "the current version is not in RIS
+     * like that", "it shows text as new that already applies" and "it carries
+     * text the draft's own Gesetzestext does not have" are three different
+     * things to a reader, and only the first is about the left column.
+     */
+    withheldByCause: Record<AnnexWithheldCause, number>
     /**
      * Laws where so many §§ failed that the annex probably quotes another
      * version of the law. Named for the reader; the §§ that verified are

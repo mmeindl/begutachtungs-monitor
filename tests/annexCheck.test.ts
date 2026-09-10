@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DRAFT_THRESHOLD,
   LAW_THRESHOLD,
+  MIN_MISSING_WORDS,
+  MIN_NEW_WORDS,
+  MIN_STANDING_STRETCH,
   PARAGRAPH_THRESHOLD,
   REASON_BOUNDARY,
   REASON_CEILING,
@@ -20,12 +24,18 @@ import {
   coverageOfParagraph,
   designationKey,
   displayedChangeRows,
+  draftTextOf,
+  draftWordBag,
+  insertedStretches,
   lawCheck,
   notRunReason,
+  rightColumnCheck,
   verifyAnnex,
+  type AnnexDraft,
   type AnnexSources,
   type AnnexVerification,
   type Coverage,
+  type StandingText,
 } from '../server/utils/annexCheck'
 import type { DraftArticle } from '../server/utils/lawTitles'
 import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/risKons'
@@ -140,6 +150,163 @@ describe('coverageOfParagraph', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// The right column: „bereits geltend" and „nicht im Entwurf"
+// ---------------------------------------------------------------------------
+
+/** A § of three sentences, as RIS holds it. */
+const STANDING_BODY = 'Die Behörde entscheidet über den Antrag. Der Bescheid ergeht schriftlich und ist zu begründen. Eine Beschwerde hat keine aufschiebende Wirkung.'
+const STANDING: StandingText = { text: STANDING_BODY, heading: '' }
+/** The middle sentence — what a parse loses on the left and the diff then paints green. */
+const LOST = 'Der Bescheid ergeht schriftlich und ist zu begründen.'
+const KEPT = 'Die Behörde entscheidet über den Antrag. Eine Beschwerde hat keine aufschiebende Wirkung.'
+
+/** The § after the left column lost `LOST`: the word diff calls it an addition. */
+function lostSentenceRows(current = KEPT): ComparisonRow[] {
+  return [row({
+    gld: '§ 1.',
+    para: '§ 1.',
+    current,
+    proposed: STANDING_BODY,
+    segments: [
+      { type: 'equal', text: 'Die Behörde entscheidet über den Antrag.' },
+      { type: 'inserted', text: LOST },
+      { type: 'equal', text: 'Eine Beschwerde hat keine aufschiebende Wirkung.' },
+    ],
+  })]
+}
+
+/** Twelve words of law belonging to no part of this draft — a contaminated right column. */
+const FOREIGN = 'Rechtsgeschäfte über Grundstücke bedürfen zwingend behördlicher Zustimmung wenn Nutzungsrechte begründet werden sollen.'
+
+function foreignRows(): ComparisonRow[] {
+  return [row({
+    gld: '§ 2.',
+    para: '§ 2.',
+    current: 'Die Behörde entscheidet über den Antrag.',
+    proposed: `Die Behörde entscheidet über den Antrag. ${FOREIGN}`,
+    segments: [
+      { type: 'equal', text: 'Die Behörde entscheidet über den Antrag.' },
+      { type: 'inserted', text: FOREIGN },
+    ],
+  })]
+}
+
+const NO_DRAFT = draftWordBag('')
+
+describe('insertedStretches', () => {
+  it('takes what the page shows as new, and nothing the annex left out', () => {
+    const rows = [
+      row({ change: 'inserted', proposed: 'ein ganz neuer Absatz' }),
+      row({ change: 'changed', proposed: 'egal', segments: [{ type: 'equal', text: 'alt' }, { type: 'inserted', text: 'dazu' }, { type: 'removed', text: 'weg' }] }),
+      // The annex saying it left unchanged text out makes no claim either way.
+      row({ change: 'inserted', proposed: '(2) bis (4) …', elided: true }),
+      row({ change: 'removed', current: 'entfällt' }),
+      row({ kind: 'article', heading: 'Artikel 2' }),
+    ]
+    expect(insertedStretches(rows)).toEqual(['ein ganz neuer Absatz', 'dazu'])
+  })
+})
+
+describe('rightColumnCheck — „bereits geltend"', () => {
+  it('catches a lost sentence the diff paints as an addition', () => {
+    // The fault the one-sided gate could not see: 93,6 % of injected losses
+    // passed it, because containment asks only whether the standing § accounts
+    // for the column, never the other way round.
+    const check = rightColumnCheck(lostSentenceRows(), STANDING, NO_DRAFT)
+    expect(check.alreadyStanding).toBe(true)
+    expect(check.standingStretch).toBe(LOST)
+  })
+
+  it('stays silent when the same sentence merely moved inside the §', () => {
+    // Present on the left, so nothing was lost — the ministry reordered the
+    // provision, which is an ordinary change and not a parse failure.
+    const moved = lostSentenceRows(`${LOST} ${KEPT}`)
+    expect(rightColumnCheck(moved, STANDING, NO_DRAFT).alreadyStanding).toBe(false)
+  })
+
+  it('needs six comparable words, because legal phrasing collides below that', () => {
+    const stretch = (text: string): ComparisonRow[] => [row({ gld: '§ 1.', para: '§ 1.', current: KEPT, proposed: STANDING_BODY, segments: [{ type: 'inserted', text }] })]
+    expect(MIN_STANDING_STRETCH).toBe(6)
+    // "bescheid ergeht schriftlich und ist" — five comparable words, and a
+    // verbatim run of the standing §. Not evidence.
+    expect(rightColumnCheck(stretch('Bescheid ergeht schriftlich und ist'), STANDING, NO_DRAFT).alreadyStanding).toBe(false)
+    expect(rightColumnCheck(stretch('Der Bescheid ergeht schriftlich und ist'), STANDING, NO_DRAFT).alreadyStanding).toBe(true)
+  })
+
+  it('is a sequence test, not a bag test', () => {
+    // Every word of this stands in the § and none of it is the §. A bag test
+    // fires here; that is why the rule takes the whole stretch, in order.
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: KEPT, proposed: STANDING_BODY, segments: [{ type: 'inserted', text: 'Eine Beschwerde entscheidet über den Bescheid und die Behörde' }] })]
+    expect(rightColumnCheck(rows, STANDING, NO_DRAFT).alreadyStanding).toBe(false)
+  })
+})
+
+describe('rightColumnCheck — „nicht im Entwurf"', () => {
+  it('catches a right column carrying text the draft never wrote', () => {
+    const check = rightColumnCheck(foreignRows(), STANDING, draftWordBag('Die Behörde entscheidet über den Antrag.'))
+    expect(check.newWords).toBeGreaterThanOrEqual(MIN_NEW_WORDS)
+    expect(check.missingWords).toBeGreaterThanOrEqual(MIN_MISSING_WORDS)
+    expect(check.notInDraft).toBe(true)
+  })
+
+  it('needs eight missing words, not just a ratio', () => {
+    // The next candidates below the ratio are all false positives with two or
+    // three missing words — a ministry's name, a spelling. A ratio alone
+    // cannot tell 2 of 12 from 39 of 89.
+    const draftHasMost = draftWordBag('Die Behörde entscheidet über den Antrag. Rechtsgeschäfte über Grundstücke bedürfen zwingend')
+    const check = rightColumnCheck(foreignRows(), STANDING, draftHasMost)
+    expect(check.missingWords).toBe(7)
+    expect(check.newWords > 0 && (check.newWords - check.missingWords) / check.newWords).toBeLessThan(DRAFT_THRESHOLD)
+    expect(check.notInDraft).toBe(false)
+  })
+
+  it('does not count the § heading as missing', () => {
+    // RIS files the heading above the body and the annex reprints it; the
+    // draft's Novellierungsanordnung usually does not repeat it. Unhandled,
+    // heading words were 20 of the missing words in the corpus.
+    const heading = 'Zustimmung zu Rechtsgeschäften über Grundstücke und Nutzungsrechte'
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: 'Die Behörde entscheidet über den Antrag.', proposed: `${heading} Die Behörde entscheidet über den Antrag.`, segments: [{ type: 'inserted', text: heading }, { type: 'equal', text: 'Die Behörde entscheidet über den Antrag.' }] })]
+    const withHeading: StandingText = { text: `${heading} ${STANDING_BODY}`, heading }
+    expect(rightColumnCheck(rows, withHeading, NO_DRAFT).missingWords).toBe(0)
+    // …and the same words do count where they are body text. Five, not six:
+    // "über" already stands in the left column and was never new.
+    expect(rightColumnCheck(rows, { text: withHeading.text, heading: '' }, NO_DRAFT).missingWords).toBe(5)
+  })
+
+  it('reads a hyphen as an Ergänzungsstrich and as a line break', () => {
+    // "Land- und Forstwirtschaft" is one word split by a conjunction;
+    // "Schieneninfrastruktur-|Dienstleistungsgesellschaft" is one word split
+    // by the PDF's line break. Unhandled, hyphens were 36 of the missing words.
+    const shown = 'Die Land- und Forstwirtschaft sowie die Schieneninfrastruktur- Dienstleistungsgesellschaft haben die Meldung unverzüglich zu erstatten'
+    const written = 'Die Land- und Forstwirtschaft sowie die Schieneninfrastruktur-Dienstleistungsgesellschaft haben die Meldung unverzüglich zu erstatten'
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', change: 'inserted', current: '', proposed: shown })]
+    const check = rightColumnCheck(rows, STANDING, draftWordBag(written))
+    expect(check.newWords).toBeGreaterThanOrEqual(MIN_NEW_WORDS)
+    expect(check.missingWords).toBe(0)
+    expect(check.notInDraft).toBe(false)
+  })
+
+  it('is disarmed by a draft text nobody could read', () => {
+    // An empty bag is not evidence that a word is absent. Failing every § of
+    // a draft whose XML was missing would be the loudest possible way to
+    // report our own gap as the ministry's. The counts stay honest, so a
+    // report cannot read "nothing missing" where nothing was compared.
+    const check = rightColumnCheck(foreignRows(), STANDING, NO_DRAFT)
+    expect(check.notInDraft).toBe(false)
+    expect(check.missingWords).toBe(check.newWords)
+  })
+})
+
+describe('draftTextOf', () => {
+  it('keeps the Gliederungssymbol, because a § marker is text on this side', () => {
+    expect(draftTextOf([
+      { kind: 'abs', cls: 'absatz/abs', text: 'Die Behörde entscheidet.', gld: '§ 5.' },
+      { kind: 'abs', cls: 'absatz/abs', text: 'Der Bescheid ergeht schriftlich.', gld: null },
+    ])).toBe('§ 5. Die Behörde entscheidet.  Der Bescheid ergeht schriftlich.')
+  })
+})
+
 describe('lawCheck', () => {
   const cov = (ratio: number, prose = true): Coverage => ({ ratio, missing: [], comparable: prose ? 40 : 3, prose })
 
@@ -249,17 +416,23 @@ const article = (over: Partial<DraftArticle> = {}): DraftArticle => ({
   ...over,
 })
 
-/** label → standing text, or null for a § RIS holds as a table. */
-type FakeLaw = Record<string, string | null>
+/**
+ * label → standing text, or null for a § RIS holds as a table.
+ *
+ * A bare string is a § whose headings play no part; the object form gives the
+ * Abschnitt lines and the § heading separately, which is what rule 2 needs to
+ * discount them.
+ */
+type FakeLaw = Record<string, string | StandingText | null>
 
 function fakeSources(laws: Record<string, FakeLaw>, over: Partial<AnnexSources> = {}): AnnexSources {
-  const texts = new Map<string, string | null>()
+  const texts = new Map<string, StandingText | null>()
   const built = new Map<string, KonsLawAtDate>()
   for (const [bgbl, paragraphs] of Object.entries(laws)) {
     const refs: Record<string, KonsParagraphRef> = {}
     for (const [label, text] of Object.entries(paragraphs)) {
       const nor = `${bgbl}|${label}`
-      texts.set(nor, text)
+      texts.set(nor, typeof text === 'string' ? { text, heading: '' } : text)
       refs[label] = {
         nor,
         label,
@@ -285,13 +458,25 @@ function fakeSources(laws: Record<string, FakeLaw>, over: Partial<AnnexSources> 
 const PROSE = 'Die Behörde entscheidet über den Antrag binnen sechs Wochen nach seiner Einbringung.'
 const OTHER_PROSE = 'Der Bund trägt die Kosten des Datenrechenzentrums nach Anhörung der Landesregierung.'
 
+/**
+ * The draft's own Gesetzestext, the second reference the right column is held
+ * against. Non-empty by default in every test below, so a rule that started
+ * firing on ordinary annexes would show up here rather than only in its own
+ * test — an empty one disarms rule 2 on purpose (`rightColumnCheck`).
+ */
+const DRAFT_TEXT = `§ 1 lautet: "${PROSE}" § 2 lautet: "${OTHER_PROSE}"`
+
+function draft(over: Partial<AnnexDraft> = {}): AnnexDraft {
+  return { articles: [article()], asOf: '2026-01-01', text: DRAFT_TEXT, ...over }
+}
+
 describe('verifyAnnex', () => {
   it('verifies a § the standing text accounts for and withholds one it does not', async () => {
     const rows = [
       row({ gld: '§ 1.', para: '§ 1.', current: PROSE }),
       row({ gld: '§ 2.', para: '§ 2.', current: OTHER_PROSE }),
     ]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
     expect(check.ran).toBe(true)
     expect(check.judged).toBe(2)
     expect(check.verified).toBe(1)
@@ -307,7 +492,7 @@ describe('verifyAnnex', () => {
       row({ gld: '§ 1.', para: '§ 1.', current: PROSE }),
       row({ gld: '§ 2.', para: '§ 2.', current: 'Der Bund entscheidet.' }),
     ]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
     expect(check.verdicts['#§ 2.']).toBe('unchecked')
     expect(check.reasons).toContain(REASON_TOO_SHORT)
     expect(check.judged).toBe(1)
@@ -323,16 +508,62 @@ describe('verifyAnnex', () => {
       row({ gld: '§ 1.', para: '§ 1.', current: '', proposed: 'Ein ganz neuer Paragraf mit reichlich Text.', change: 'inserted' }),
       row({ gld: '§ 2.', para: '§ 2.', current: '(1) bis (3) …', elided: false }),
     ]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))
     expect(check.judged).toBe(0)
     expect(check.reasons).toEqual([REASON_NOTHING_TO_COMPARE])
     expect(notRunReason(check)).toBe(REASON_NOTHING_TO_COMPARE)
   })
 
+  it('withholds a § that shows as new what already stands, and does not verify it', async () => {
+    // Judged on the left and clean there — the whole point: the one-sided
+    // check passed 93,6 % of injected losses of exactly this shape.
+    const check = await verifyAnnex(lostSentenceRows(), draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': STANDING_BODY } }))
+    expect(check.verdicts['#§ 1.']).toBe('withheld')
+    expect(check.withheldCauses['#§ 1.']).toBe('alreadyStanding')
+    expect(check.judged).toBe(1)
+    expect(check.verified).toBe(0)
+  })
+
+  it('withholds a § whose proposed column carries text the draft never wrote', async () => {
+    const check = await verifyAnnex(foreignRows(), draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 2': STANDING_BODY } }))
+    expect(check.verdicts['#§ 2.']).toBe('withheld')
+    expect(check.withheldCauses['#§ 2.']).toBe('notInDraft')
+    // …and the same § comes through where the draft's text could not be read,
+    // because an empty bag proves nothing.
+    const blind = await verifyAnnex(foreignRows(), draft({ text: '' }), fakeSources({ 'BGBl. I 1/2020': { '§ 2': STANDING_BODY } }))
+    expect(blind.verdicts['#§ 2.']).toBe('verified')
+  })
+
+  it('withholds an inserted § whose text is nowhere in the draft, and vouches for none', async () => {
+    // A § with no left column cannot be judged — but text that appears
+    // neither in the draft nor in the standing law is invented, and that is
+    // worth withholding. The bag test may never promote in the other
+    // direction: it passes happily on garbage lifted from another part of
+    // the same draft.
+    const invented = [row({ gld: '§ 3.', para: '§ 3.', change: 'inserted', current: '', proposed: FOREIGN })]
+    const check = await verifyAnnex(invented, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 3': STANDING_BODY } }))
+    expect(check.verdicts['#§ 3.']).toBe('withheld')
+    expect(check.withheldCauses['#§ 3.']).toBe('notInDraft')
+    expect(check.judged).toBe(0)
+
+    const sound = [row({ gld: '§ 3.', para: '§ 3.', change: 'inserted', current: '', proposed: OTHER_PROSE })]
+    const passed = await verifyAnnex(sound, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 3': STANDING_BODY } }))
+    expect(passed.verdicts['#§ 3.']).toBe('unchecked')
+    expect(passed.verified).toBe(0)
+  })
+
+  it('names the left column first when a § fails on both sides', async () => {
+    // Several causes can fire on one §; only the first is recorded, so the
+    // split the page prints sums to the total beside it.
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: OTHER_PROSE, proposed: STANDING_BODY, segments: [{ type: 'inserted', text: LOST }] })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': STANDING_BODY } }))
+    expect(check.withheldCauses['#§ 1.']).toBe('standing')
+  })
+
   it('doubts a law whose §§ fail in a cluster without withholding the sound ones', async () => {
     const rows = ['§ 1.', '§ 2.'].map((p) => row({ gld: p, para: p, current: OTHER_PROSE }))
     rows.push(row({ gld: '§ 3.', para: '§ 3.', current: PROSE }))
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE, '§ 3': PROSE } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE, '§ 3': PROSE } }))
     expect(check.doubtfulLaws.map((l) => l.law)).toEqual([null])
     expect(check.verdicts).toEqual({ '#§ 1.': 'withheld', '#§ 2.': 'withheld', '#§ 3.': 'verified' })
   })
@@ -340,7 +571,7 @@ describe('verifyAnnex', () => {
   it('scores § 5 against § 5, even when RIS returns § 5a first', async () => {
     const rows = [row({ gld: '§ 5.', para: '§ 5.', current: PROSE })]
     const laws = { 'BGBl. I 1/2020': { '§ 5a': OTHER_PROSE, '§ 5': PROSE } }
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources(laws))
+    const check = await verifyAnnex(rows, draft(), fakeSources(laws))
     expect(check.verdicts['#§ 5.']).toBe('verified')
   })
 
@@ -348,13 +579,13 @@ describe('verifyAnnex', () => {
     // RIS files a schedule as "Anl. 1", never as "§ 1"; looking one up among
     // the paragraphs compared a schedule against an unrelated provision.
     const rows = [row({ gld: 'Anlage 1', para: 'Anlage 1', current: PROSE })]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': OTHER_PROSE, 'Anl. 1': PROSE } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': OTHER_PROSE, 'Anl. 1': PROSE } }))
     expect(check.verdicts['#Anlage 1']).toBe('verified')
   })
 
   it('resolves an unattributed row when the draft amends exactly one law', async () => {
     const rows = [row({ law: null, gld: '§ 1.', para: '§ 1.', current: PROSE })]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
     expect(check.verdicts['#§ 1.']).toBe('verified')
   })
 
@@ -363,7 +594,7 @@ describe('verifyAnnex', () => {
     // the multi-law annexes recur in another law of the same package.
     const articles = [article(), article({ index: 1, number: 'Artikel 2', numeral: '2', title: 'Y-Gesetz', key: 'Y-Gesetz', bgbl: { organ: 'BGBl. I', nummer: '2/2020' } })]
     const rows = [row({ law: null, gld: '§ 1.', para: '§ 1.', current: PROSE })]
-    const check = await verifyAnnex(rows, articles, '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE }, 'BGBl. I 2/2020': { '§ 1': PROSE } }))
+    const check = await verifyAnnex(rows, draft({ articles }), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE }, 'BGBl. I 2/2020': { '§ 1': PROSE } }))
     expect(check.ran).toBe(false)
     expect(check.verdicts['#§ 1.']).toBe('unchecked')
     expect(notRunReason(check)).toBe(REASON_BOUNDARY)
@@ -371,7 +602,7 @@ describe('verifyAnnex', () => {
 
   it('leaves a § unchecked when RIS holds it as a table', async () => {
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': null } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': null } }))
     expect(check.ran).toBe(false)
     expect(check.verdicts['#§ 1.']).toBe('unchecked')
     expect(notRunReason(check)).toBe(REASON_NOT_REPRESENTABLE)
@@ -379,14 +610,14 @@ describe('verifyAnnex', () => {
 
   it('leaves a § unchecked when RIS has no such paragraph', async () => {
     const rows = [row({ gld: '§ 9.', para: '§ 9.', current: PROSE })]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
     expect(check.verdicts['#§ 9.']).toBe('unchecked')
     expect(notRunReason(check)).toBe(REASON_NO_SUCH_PARAGRAPH)
   })
 
   it('leaves everything unchecked when the law does not resolve', async () => {
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources({}))
+    const check = await verifyAnnex(rows, draft(), fakeSources({}))
     expect(check.ran).toBe(false)
     expect(check.verdicts['#§ 1.']).toBe('unchecked')
     expect(notRunReason(check)).toBe(REASON_UNRESOLVED)
@@ -394,7 +625,7 @@ describe('verifyAnnex', () => {
 
   it('names the reason when the draft amends nothing at all', async () => {
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
-    const check = await verifyAnnex(rows, [article({ amends: false, bgbl: null })], '2026-01-01', fakeSources({}))
+    const check = await verifyAnnex(rows, draft({ articles: [article({ amends: false, bgbl: null })] }), fakeSources({}))
     expect(notRunReason(check)).toBe(REASON_NO_AMENDING)
   })
 
@@ -402,13 +633,13 @@ describe('verifyAnnex', () => {
     // `articles` is empty when the draft's own RIS XML was missing, and the
     // reason has to say that instead of "der Entwurf schafft neues Recht".
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
-    const check = await verifyAnnex(rows, [], '2026-01-01', fakeSources({}))
+    const check = await verifyAnnex(rows, draft({ articles: [] }), fakeSources({}))
     expect(notRunReason(check)).toBe(REASON_NO_ARTICLES)
   })
 
   it('does not run without a reference date, and says so', async () => {
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
-    const check = await verifyAnnex(rows, [article()], '', fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    const check = await verifyAnnex(rows, draft({ asOf: '' }), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
     expect(check.ran).toBe(false)
     // Every § the annex names is still in the map, as unchecked — otherwise
     // the row mapping has nothing to refuse with.
@@ -417,7 +648,7 @@ describe('verifyAnnex', () => {
   })
 
   it('says so when the annex names no paragraph at all', async () => {
-    const check = await verifyAnnex([row({ gld: null, para: null, current: PROSE })], [article()], '2026-01-01', fakeSources({}))
+    const check = await verifyAnnex([row({ gld: null, para: null, current: PROSE })], draft(), fakeSources({}))
     expect(check.ran).toBe(false)
     expect(check.verdicts).toEqual({})
     expect(notRunReason(check)).toBe(REASON_NO_PARAGRAPHS)
@@ -426,7 +657,7 @@ describe('verifyAnnex', () => {
   it('stops at the ceiling and leaves the rest unchecked', async () => {
     const rows = ['§ 1.', '§ 2.', '§ 3.'].map((p) => row({ gld: p, para: p, current: PROSE }))
     const laws = { 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE, '§ 3': PROSE } }
-    const check = await verifyAnnex(rows, [article()], '2026-01-01', fakeSources(laws), { maxParagraphs: 1, concurrency: 1 })
+    const check = await verifyAnnex(rows, draft(), fakeSources(laws), { maxParagraphs: 1, concurrency: 1 })
     expect(check.judged).toBe(1)
     expect(Object.values(check.verdicts).filter((v) => v === 'unchecked')).toHaveLength(2)
     expect(check.reasons).toContain(REASON_CEILING)
@@ -443,7 +674,7 @@ describe('verifyAnnex', () => {
         throw new Error('RIS-Dokument nicht abrufbar')
       },
     })
-    await expect(verifyAnnex(rows, [article()], '2026-01-01', failing)).rejects.toThrow('RIS-Dokument nicht abrufbar')
+    await expect(verifyAnnex(rows, draft(), failing)).rejects.toThrow('RIS-Dokument nicht abrufbar')
   })
 
   it('throws when the law lookup fails, not once per paragraph', async () => {
@@ -455,7 +686,7 @@ describe('verifyAnnex', () => {
         throw new Error('RIS BrKons nicht abrufbar')
       },
     })
-    await expect(verifyAnnex(rows, [article()], '2026-01-01', failing)).rejects.toThrow('RIS BrKons nicht abrufbar')
+    await expect(verifyAnnex(rows, draft(), failing)).rejects.toThrow('RIS BrKons nicht abrufbar')
     expect(calls).toBe(1)
   })
 })
@@ -468,6 +699,7 @@ const verification = (over: Partial<AnnexVerification> = {}): AnnexVerification 
   ran: true,
   reasons: [],
   verdicts: {},
+  withheldCauses: {},
   doubtfulLaws: [],
   judged: 0,
   verified: 0,
@@ -477,9 +709,23 @@ const verification = (over: Partial<AnnexVerification> = {}): AnnexVerification 
 describe('checkAnnexRows', () => {
   it('empties a withheld row so no client can render it', () => {
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu', segments: [{ type: 'equal', text: 'alt' }] })]
-    const out = checkAnnexRows(rows, verification({ verdicts: { '#§ 1.': 'withheld' } }))
-    expect(out.rows[0]).toMatchObject({ check: 'withheld', current: '', proposed: '', segments: null })
+    const out = checkAnnexRows(rows, verification({ verdicts: { '#§ 1.': 'withheld' }, withheldCauses: { '#§ 1.': 'alreadyStanding' } }))
+    expect(out.rows[0]).toMatchObject({ check: 'withheld', current: '', proposed: '', segments: null, withheldCause: 'alreadyStanding' })
     expect(out.withheldParagraphs).toBe(1)
+  })
+
+  it('splits the withheld count by cause, and the split sums to the total', () => {
+    // The page prints both numbers in one sentence — "3 Paragraphen werden
+    // nicht gezeigt: bei einem …, bei einem …, bei einem …" — so they cannot
+    // be allowed to disagree.
+    const rows = ['§ 1.', '§ 2.', '§ 3.', '§ 4.'].map((p) => row({ gld: p, para: p, current: 'alt', proposed: 'neu' }))
+    const out = checkAnnexRows(rows, verification({
+      verdicts: { '#§ 1.': 'withheld', '#§ 2.': 'withheld', '#§ 3.': 'withheld', '#§ 4.': 'verified' },
+      withheldCauses: { '#§ 1.': 'standing', '#§ 2.': 'alreadyStanding', '#§ 3.': 'notInDraft' },
+    }))
+    expect(out.withheldByCause).toEqual({ standing: 1, alreadyStanding: 1, notInDraft: 1 })
+    expect(Object.values(out.withheldByCause).reduce((a, b) => a + b, 0)).toBe(out.withheldParagraphs)
+    expect(out.rows.map((r) => r.withheldCause)).toEqual(['standing', 'alreadyStanding', 'notInDraft', undefined])
   })
 
   it('vouches for nothing the check did not name', () => {

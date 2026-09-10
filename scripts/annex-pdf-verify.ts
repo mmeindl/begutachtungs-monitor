@@ -30,9 +30,11 @@ import {
   coverageOf,
   designationKey,
   displayedChangeRows,
+  draftTextOf,
   isDisplayedChange,
   notRunReason,
   verifyAnnex,
+  type AnnexDraft,
   type AnnexSources,
 } from '../server/utils/annexCheck'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
@@ -69,7 +71,8 @@ const gateSources: AnnexSources = {
   resolveLaw: (organ, nummer, date, title) => resolveLawByBgbl({ organ, nummer }, date, title || undefined),
   standingText: async (ref) => {
     const tree = await fetchParagraphTree(ref)
-    return tree ? [...tree.context, plainText(tree)].join(' ') : null
+    if (!tree) return null
+    return { text: [...tree.context, plainText(tree)].join(' '), heading: [...tree.context, tree.heading ?? ''].join(' ') }
   },
 }
 
@@ -114,6 +117,10 @@ interface GateResult {
   judged: number
   verifiedParas: number
   withheldParas: number
+  /** …split by which of the three checks refused the §, and it has to sum */
+  withheldStanding: number
+  withheldAlreadyStanding: number
+  withheldNotInDraft: number
   uncheckedParas: number
   /** Pair rows without any § designation, and the subset the page shows as a change */
   rowsNoPara: number
@@ -122,6 +129,7 @@ interface GateResult {
   verdictless: number
   wronglyVerified: number
   withheldWithText: number
+  withheldWithoutCause: number
 }
 
 async function verify(doc: any): Promise<DraftResult | null> {
@@ -129,7 +137,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const begut = meta?.Bundesrecht?.Begut
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0 }
+  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0 }
   const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
@@ -151,7 +159,12 @@ async function verify(doc: any): Promise<DraftResult | null> {
 
   const mainXml = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
   if (!mainXml) return blank('Entwurf ohne XML')
-  const articles = draftArticles(parseRisXml(await getText(mainXml)))
+  // The same blocks twice: the Artikel list that bounds the annex's laws, and
+  // the draft's own Gesetzestext, which is the check's second reference —
+  // built here exactly as the service builds it (`draftTextOf`), so the
+  // harness measures the shipped decision and not a copy of it.
+  const draftBlocks = parseRisXml(await getText(mainXml))
+  const articles = draftArticles(draftBlocks)
   const amending = articles.filter((a) => a.amends)
   if (amending.length === 0) return blank('keine Promulgationsklausel — Stammgesetz oder unlesbar')
 
@@ -255,7 +268,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
       console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
     }
   }
-  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, gate: await runGate(parsed.rows, articles, beginn) }
+  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, gate: await runGate(parsed.rows, { articles, asOf: beginn, text: draftTextOf(draftBlocks) }) }
 }
 
 /**
@@ -268,16 +281,18 @@ async function verify(doc: any): Promise<DraftResult | null> {
  * ran, and every row without a § designation, went out vouched for. A number
  * for the ratio distribution says nothing about that.
  *
- * The three invariants are the gate's whole claim, and each of them has to
+ * The four invariants are the gate's whole claim, and each of them has to
  * stay at zero over the corpus:
  *
  *  - no displayed change is labelled `verified` unless its § was judged and
  *    passed;
  *  - no § the annex names is missing from the verdict map;
- *  - no withheld row still carries text.
+ *  - no withheld row still carries text;
+ *  - no withheld § without a recorded cause — otherwise the split the page
+ *    prints would not sum to the total beside it (2026-09-10).
  */
-async function runGate(rows: readonly ComparisonRow[], articles: readonly DraftArticle[], beginn: string): Promise<GateResult> {
-  const check = await verifyAnnex(rows, articles, beginn, gateSources)
+async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promise<GateResult> {
+  const check = await verifyAnnex(rows, draft, gateSources)
   const checked = checkAnnexRows(rows, check)
 
   let rowsNoPara = 0
@@ -310,12 +325,16 @@ async function runGate(rows: readonly ComparisonRow[], articles: readonly DraftA
     judged: check.judged,
     verifiedParas: verdicts.filter((v) => v === 'verified').length,
     withheldParas: verdicts.filter((v) => v === 'withheld').length,
+    withheldStanding: checked.withheldByCause.standing,
+    withheldAlreadyStanding: checked.withheldByCause.alreadyStanding,
+    withheldNotInDraft: checked.withheldByCause.notInDraft,
     uncheckedParas: verdicts.filter((v) => v === 'unchecked').length,
     rowsNoPara,
     changeRowsNoPara,
     verdictless,
     wronglyVerified,
     withheldWithText: checked.rows.filter((r) => r.check === 'withheld' && (r.current !== '' || r.proposed !== '' || r.segments !== null)).length,
+    withheldWithoutCause: Object.entries(check.verdicts).filter(([key, v]) => v === 'withheld' && check.withheldCauses[key] === undefined).length,
   }
 }
 
@@ -383,9 +402,14 @@ const gated = results.filter((r) => r.note === null)
 const gsum = (pick: (g: GateResult) => number) => gated.reduce((n, r) => n + pick(r.gate), 0)
 console.log(`\n  Das Tor, wie es ausgeliefert wird (${gated.length} Entwürfe)`)
 console.log(`    Paragraphen bestätigt / einbehalten / ungeprüft: ${gsum((g) => g.verifiedParas)} / ${gsum((g) => g.withheldParas)} / ${gsum((g) => g.uncheckedParas)}`)
+// Which of the three checks refused a §. The two right-column rules are new
+// on 2026-09-10; before them the first line was the whole story.
+console.log(`    einbehalten, weil die geltende Fassung so nicht im RIS steht : ${gsum((g) => g.withheldStanding)}`)
+console.log(`    einbehalten, weil die vorgeschlagene Fassung Geltendes als neu zeigt: ${gsum((g) => g.withheldAlreadyStanding)}`)
+console.log(`    einbehalten, weil sie Text ohne Deckung im Gesetzestext des Entwurfs trägt: ${gsum((g) => g.withheldNotInDraft)}`)
 console.log(`    Entwürfe ohne jede Prüfung   : ${gated.filter((r) => !r.gate.ran).length}`)
 console.log(`    Zeilen ohne Paragraphenangabe: ${gsum((g) => g.rowsNoPara)}, davon als Änderung gezeigt: ${gsum((g) => g.changeRowsNoPara)}`)
-console.log(`    Zusicherungen (müssen 0 sein): ohne Urteil ${gsum((g) => g.verdictless)}, zu Unrecht geprüft ${gsum((g) => g.wronglyVerified)}, einbehalten mit Text ${gsum((g) => g.withheldWithText)}`)
+console.log(`    Zusicherungen (müssen 0 sein): ohne Urteil ${gsum((g) => g.verdictless)}, zu Unrecht geprüft ${gsum((g) => g.wronglyVerified)}, einbehalten mit Text ${gsum((g) => g.withheldWithText)}, einbehalten ohne Grund ${gsum((g) => g.withheldWithoutCause)}`)
 for (const [reason, n] of [...gated.filter((r) => !r.gate.ran).reduce((m, r) => m.set(r.gate.notRunReason ?? '—', (m.get(r.gate.notRunReason ?? '—') ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])) {
   console.log(`      ${String(n).padStart(3)}× ${reason}`)
 }
