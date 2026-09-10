@@ -43,7 +43,7 @@ import {
 import type { TextBlock } from '../server/utils/lawText'
 import type { DraftArticle } from '../server/utils/lawTitles'
 import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/risKons'
-import type { ComparisonRow } from '../server/utils/textComparison'
+import { parseTextComparison, type ComparisonRow } from '../server/utils/textComparison'
 
 const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
   kind: 'pair',
@@ -514,6 +514,19 @@ describe('designationKey', () => {
     expect(designationKey('Präambel')).toBeNull()
     expect(designationKey('')).toBeNull()
   })
+
+  it('stops the number at the first space, and has to', () => {
+    // Whitespace inside a designation is never the document's: it is what a
+    // parser makes of markup or of PDF geometry, and it has to be taken out
+    // where it appears (for the annex table, `textComparison.designationText`).
+    // Gluing the parts back together *here* was measured and decided against —
+    // the sequence "numeral, space, numeral, full stop" is also how a real
+    // pair of designations reads, and it is common:
+    expect(designationKey('§ 5 3. Abschnitt')).toBe('§ 5')
+    expect(designationKey('§ 5 Abs. 3')).toBe('§ 5')
+    expect(designationKey('§§ 5 und 6')).toBe('§ 5')
+    expect(designationKey('Anl. 1 zu § 5 Abs. 1')).toBe('Anl 1 § 5')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -675,6 +688,27 @@ describe('verifyAnnex', () => {
     const passed = await verifyAnnex(sound, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 3': STANDING_BODY } }))
     expect(passed.verdicts['#§ 3.']).toBe('unchecked')
     expect(passed.verified).toBe(0)
+  })
+
+  it('holds a § whose designation the ressort marked against that §, not against its first digit', async () => {
+    // End to end, because this failed *between* the two modules. The ressort
+    // marks the changed digit of the designation — "§ 1<i>3</i>." — every tag
+    // became a space, the row read "§ 1 3 ." and the key came out as § 1: the
+    // left column of § 13 was then held against the standing § 1 and its
+    // right column against § 1's instructions. Blutspenderverordnung and two
+    // others, GP XXVIII (2026-09-10, docs/architecture.md §12.13).
+    const annex = `<risdok><nutzdaten><abschnitt>
+      <ueberschrift typ="g2">Textgegenüberstellung</ueberschrift>
+      <table>
+        <tr><td><ueberschrift typ="tgue">Geltende Fassung</ueberschrift></td><td><ueberschrift typ="tgue">Vorgeschlagene Fassung</ueberschrift></td></tr>
+        <tr><td><absatz typ="abs"><gldsym>§ 1<i><span style="background:yellow">3</span></i>.</gldsym> ${PROSE}</absatz></td><td><absatz typ="abs"><gldsym>§ 1<i><span style="background:yellow">3</span></i>.</gldsym> ${OTHER_PROSE}</absatz></td></tr>
+      </table></abschnitt></nutzdaten></risdok>`
+    const rows = parseTextComparison(annex, [article()]).rows
+    expect(rows[0]!.gld).toBe('§ 13.')
+    // § 1 holds text § 13's column does not have: read as § 1 the § failed the
+    // left check, read as § 13 it passes it.
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': OTHER_PROSE, '§ 13': PROSE } }))
+    expect(check.verdicts).toEqual({ 'X-Gesetz#§ 13.': 'verified' })
   })
 
   it('names the left column first when a § fails on both sides', async () => {

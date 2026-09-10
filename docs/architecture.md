@@ -1227,14 +1227,26 @@ eigene Bezeichnungslesung:
   Paragraphen ist eine kleine Wortfolgen-Änderung, während die Beilage einen
   ganzen Absatz als neu zeigt (StPO § 108a: 4 Wörter in der Anordnung gegen
   33 als neu gezeigte).
-- **Ein Fall ist unsere Schuld, und zwar an anderer Stelle:** die Beilage der
-  Blutspenderverordnung schreibt „§ 1 3 ." mit Leerzeichen, und
-  `designationKey` liest daraus **§ 1**. Der Paragraph wird also gegen die
-  Anordnungen zu § 1 gehalten — und, schwerer, seine linke Spalte gegen den
-  geltenden § 1. Derselbe Fehler trifft „§ 28 c ." im
-  Gesundheitstelematikgesetz. Das ist ein eigener Befund über die
-  Bezeichnungslesung, kein Argument gegen den Bezug je Paragraph; er steht in
-  `TODO.md`.
+- **Ein Fall ist unsere Schuld, und die Ursache lag zwei Module früher**
+  (behoben am 10.09.2026): das Leerzeichen in „§ 1 3 ." steht in keinem
+  Dokument, `cellText` erzeugt es. Die Ressorts markieren die geänderte
+  Ziffer der Bezeichnung *selbst* gelb — `<gldsym>§ 32<i><span
+  style="background:yellow">2</span></i>.</gldsym>` —, und weil dort jedes
+  Tag zu einem Leerzeichen wurde, zerfiel die Nummer; `designationKey` liest
+  davon den ersten Teil, also § 32 statt § 322. Sieben Bezeichnungen in drei
+  Entwürfen, alle auf dem Tabellenpfad: StGB §§ 322, 323 und 324,
+  GTelG § 28c, Blutspenderverordnung §§ 11, 13 und 14 — daneben 20 weitere
+  Schreibweisen („§ 27 ." für § 27), die nur die Anzeige trafen, 153 Zeilen
+  zusammen. Die Bezeichnung wird jetzt ohne Auszeichnungsmarkup gelesen
+  (`textComparison.designationText`).
+  Was es kostete, ist gemessen und war **nicht** die befürchtete falsche
+  Bestätigung: sechs der sieben zeigen links höchstens ein vergleichbares
+  Wort und bleiben ungeprüft; § 11 dagegen wurde mit 11 % Deckung gegen den
+  geltenden § 1 *einbehalten* und deckt den geltenden § 11 zu 100 % — dem
+  Leser wurde geltendes Recht vorenthalten, nicht falsches bestätigt. Die
+  Meldung der Regel 2 auf § 13 bleibt und hat einen zweiten, echten Grund:
+  die Beilage zeigt dort eine Inkrafttretensbestimmung, die der Entwurf an
+  anderer Stelle anordnet.
 
 **Eine Variante gemessen und verworfen:** eine *Obergrenze* auf den
 unerklärten Anteil. Sie liegt nahe, weil ein Block, der zwei Bestimmungen
@@ -1260,6 +1272,7 @@ die Ursachenzeile nennt die neue Möglichkeit („der Entwurf ordnet diese
 | PDF-Textebene, nach dem Seitentor und der Kantenmessung (unten) | 1.347 | 234 | 212 / 15 / 7 | 1.902 |
 | XML-Tabelle, mit dem Bezug je Paragraph | 981 | 66 | 57 / 6 / 3 | 813 |
 | PDF-Textebene, mit dem Bezug je Paragraph | 1.342 | 243 | 212 / 15 / 16 | 1.898 |
+| XML-Tabelle, nach der Bezeichnungslesung (oben) | 982 | 65 | 56 / 6 / 3 | 800 |
 
 Die „vorher"-Zeilen sind heute gegen den Stand des Repositoriums gemessen und
 widersprechen deshalb der Tabelle weiter oben (967/73/764 und 895/198/2.388):

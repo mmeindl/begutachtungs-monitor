@@ -112,6 +112,39 @@ const COLSPAN_RE = /colspan="(\d+)"/i
 const MARK_RE = /background\s*:\s*yellow/i
 
 /**
+ * Emphasis markup, which inside a designation is not a word boundary.
+ *
+ * `cellText` turns every tag into a space, and for the text it has to: a
+ * `<absatz>` or `<listelem>` boundary is where one sentence ends and the next
+ * begins. Inside a `<gldsym>` the same rule cuts the number in half, because
+ * ressorts mark the **changed digit of the designation itself** in yellow:
+ *
+ *     <gldsym>§ 32<i><span style="background:yellow">2</span></i>.</gldsym>
+ *
+ * § 322 then reads "§ 32 2 .", and `annexCheck.designationKey` stops at the
+ * first space and calls it **§ 32** — an existing provision of the same law.
+ * So the § was scored against the standing § 32, filed under § 32's bag of
+ * draft instructions, and printed under a designation the law does not have.
+ * Seven designations in three drafts of GP XXVIII, measured 2026-09-10:
+ * StGB §§ 322, 323 and 324 (Strafrechtsänderungsgesetz 2026), GTelG § 28c,
+ * and §§ 11, 13 and 14 of the Blutspenderverordnung. What it cost is in
+ * `docs/architecture.md` §12.13 — § 11 was withheld at 11 % coverage against
+ * the standing § 1 and covers the standing § 11 in full.
+ *
+ * Only inside the designation, deliberately. Over every cell of the corpus
+ * the same rule changes 2.268 of 45.920 cells, mostly for the better ("Z 4 ,",
+ * "Reißleinen ;", "Schlepplifte n," → "Schleppliften,") — but that is a
+ * finding about the annex text with its own blast radius against the RIS
+ * side, and it is not what a wrong § lookup needs.
+ */
+const EMPHASIS_RE = /<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>/gi
+
+/** A designation as the ressort typeset it, its emphasis markup taken out. */
+function designationText(html: string): string {
+  return cellText(html.replace(EMPHASIS_RE, ''))
+}
+
+/**
  * The mandated column headings, in the wordings the corpus actually prints.
  *
  * The Rundschreiben says "Geltende Fassung" and "Vorgeschlagene Fassung", and
@@ -807,7 +840,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     const currentHtml = lift ? stripParaHeading(raw.currentHtml) : raw.currentHtml
     const proposedHtml = lift ? stripParaHeading(raw.proposedHtml) : raw.proposedHtml
     const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
-    const gld = gldMatch ? normalizeText(cellText(gldMatch[1]!)) : null
+    const gld = gldMatch ? designationText(gldMatch[1]!) : null
     if (gld) openPara = gld
     // The designation is a `<gldsym>` element of its own, so it is data rather
     // than prose — and it is already carried in `gld`. Left in the text as
