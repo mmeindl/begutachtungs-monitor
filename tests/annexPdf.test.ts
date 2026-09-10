@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
-import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage, type PageGeometry } from '../server/utils/annexPdf'
+import { describe, expect, expectTypeOf, it } from 'vitest'
+import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annexPdf'
 import { uprightRuns, type RawRun } from '../server/utils/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawTitles'
+import type { TextComparisonResponse } from '../shared/types'
 
 /**
  * The draft the annex belongs to. Every law boundary in an annex has to be one
@@ -376,6 +377,26 @@ describe('the page geometry as the second gate', () => {
   it('counts no dropped page for a document read whole', () => {
     expect(full([provision('§ 5.')]).droppedPages).toBe(0)
   })
+
+  /**
+   * The count reaches the reader, and that is a claim about a type.
+   *
+   * There is no cheap runtime test for the rest of the way: the service needs
+   * Nitro and the sentence lives in a Vue component. The shape can still be
+   * held, because `tsconfig.tools.json` typechecks this file — so an
+   * `AnnexParse.droppedPages` that stopped being a required number, or a
+   * response that lost the field, fails `pnpm typecheck:tools` instead of
+   * failing quietly in a browser. Optional is the harmful shape: the section
+   * prints its sentence on `> 0`, and `undefined > 0` is silently false, so
+   * the page would go back to showing a comparison with an unmentioned hole
+   * in it.
+   */
+  it('travels to the response as a required number, 0 on the table path', () => {
+    expectTypeOf<AnnexParse['droppedPages']>().toEqualTypeOf<number>()
+    expectTypeOf<TextComparisonResponse['droppedPages']>().toEqualTypeOf<number>()
+    const fromTable: Pick<TextComparisonResponse, 'readFrom' | 'droppedPages'> = { readFrom: 'table', droppedPages: 0 }
+    expect(fromTable.droppedPages).toBe(0)
+  })
 })
 
 describe('each column measured against its own edge', () => {
@@ -425,6 +446,42 @@ describe('each column measured against its own edge', () => {
     const four = rows.find((r) => r.gld === '§ 4.')!
     expect(four.change).toBe('unchanged')
     expect(four.current).toContain('Besondere Voraussetzungen')
+  })
+})
+
+describe('a line-final hyphen', () => {
+  /**
+   * The evidence that a hyphen is the typesetter's is that the line *carrying*
+   * it ran to the edge of its column — not that the line after it did, which
+   * is what `joinLines` used to ask. With fewer than ten lines a column's
+   * outer limit stands (`columnEdge`), so the left column's edge here is the
+   * gutter at 421 and a run reaching 416 counts as wrapped.
+   */
+  const both = (y: number, text: string, advance: number): AnnexItem[] => [
+    wide(LEFT_X, y, text, advance),
+    wide(RIGHT_X, y, text, advance),
+  ]
+  const REACHES = 356
+  const SHORT = 120
+
+  it('is dissolved when its own line ran to the column edge', () => {
+    const rows = parse([pageOf([
+      ...both(700, '§ 5. (1) Die Aufsicht führt der Nachrichten-', REACHES),
+      // The continuation line is short, which is what the old rule read.
+      ...both(680, 'dienst.', SHORT),
+    ])])
+    expect(rows.find((r) => r.gld === '§ 5.')!.current).toBe('§ 5. (1) Die Aufsicht führt der Nachrichtendienst.')
+  })
+
+  it('stays where the drafter put it, whatever the next line does', () => {
+    const rows = parse([pageOf([
+      ...both(700, '§ 6. (1) Das Staatsschutz-', SHORT),
+      // …and this one does reach the edge, which used to weld the two words.
+      ...both(680, 'und Nachrichtendienst-Gesetz ist anzuwenden,', REACHES),
+      ...both(660, 'soweit nichts anderes bestimmt ist.', SHORT),
+    ])])
+    expect(rows.find((r) => r.gld === '§ 6.')!.current)
+      .toBe('§ 6. (1) Das Staatsschutz- und Nachrichtendienst-Gesetz ist anzuwenden, soweit nichts anderes bestimmt ist.')
   })
 })
 

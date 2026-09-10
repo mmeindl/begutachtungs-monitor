@@ -389,17 +389,27 @@ function isChrome(line: AnnexLine): boolean {
  * "Staatsschutz- und Nachrichtendienst-Gesetz" — so dissolving every
  * line-final hyphen would weld "Staatsschutzund". Reaching the margin is the
  * signal that the hyphen is the typesetter's rather than the drafter's.
+ *
+ * **And it is the line carrying the hyphen that has to have reached it.** This
+ * asked `part.wrapped` — the flag of the line *after* the break, which says
+ * nothing about why the line before it ended in a hyphen. The two mistakes are
+ * mirror images: a hyphen at a real column edge stayed in the text when the
+ * continuation line happened to be short, and a drafter's own hyphen was
+ * dissolved when the line after it happened to be full. Present since the
+ * parser was written and without effect on the right column until 2026-09-10,
+ * because no right-column line ever counted as wrapped before each column was
+ * measured against its own edge (`columnEdge`).
  */
 function joinLines(parts: { text: string; wrapped: boolean }[]): string {
   let out = ''
+  /** Whether the line that `out` currently ends with ran to its column's edge. */
+  let carrierWrapped = false
   for (const part of parts) {
     if (!part.text) continue
-    if (!out) {
-      out = part.text
-      continue
-    }
-    const hyphenated = /[a-zäöüß]-$/.test(out) && part.wrapped
-    out = hyphenated ? `${out.slice(0, -1)}${part.text}` : `${out} ${part.text}`
+    if (out === '') out = part.text
+    else if (/[a-zäöüß]-$/.test(out) && carrierWrapped) out = `${out.slice(0, -1)}${part.text}`
+    else out = `${out} ${part.text}`
+    carrierWrapped = part.wrapped
   }
   return normalizeText(out)
 }

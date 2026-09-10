@@ -51,7 +51,7 @@ import { draftArticles } from './lawTitles'
 import { mapDocuments } from './mappers'
 import { getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
-import { isScanned, parseTextComparison } from './textComparison'
+import { isScanned, parseTextComparison, type ComparisonParse } from './textComparison'
 
 const TTL_S = 60 * 60 * 24
 
@@ -96,6 +96,7 @@ export const getTextComparison = defineCachedFunction(
       source,
       pdf,
       readFrom: null,
+      droppedPages: 0,
       boundaryNote: null,
       stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
       verification: null,
@@ -181,11 +182,18 @@ export const getTextComparison = defineCachedFunction(
       return empty('Die Textgegenüberstellung liegt nur als Scan vor, ohne auslesbaren Text.', null, pdf)
     }
 
-    const parsed = rasterised ? await annexFromPdf(annex.pdf!, articles) : parseTextComparison(xml!, articles)
-    if (parsed === null) {
+    // The PDF parse is held under its own name because it answers one thing
+    // the table parse cannot: how many pages it refused. `'droppedPages' in
+    // parsed` does not narrow a union whose other member simply lacks the
+    // field — the property comes out `unknown` — and the path is known here
+    // anyway.
+    const fromPdf = rasterised ? await annexFromPdf(annex.pdf!, articles) : null
+    if (rasterised && fromPdf === null) {
       return empty('Die Textgegenüberstellung ließ sich auch aus dem PDF nicht auslesen.', null, pdf)
     }
+    const parsed: ComparisonParse = fromPdf ?? parseTextComparison(xml!, articles)
     const { rows, refusal } = parsed
+    const droppedPages = fromPdf?.droppedPages ?? 0
     // The parsers say *which* way a document defeated them — "no header pair
     // on any line", "not a two-column comparison" — and that is a better
     // sentence than the generic one, because it is about this document rather
@@ -218,6 +226,7 @@ export const getTextComparison = defineCachedFunction(
       source,
       pdf,
       readFrom: rasterised ? 'pdf' : 'table',
+      droppedPages,
       boundaryNote: refusal,
       // Counted over the rows as sent, so the numbers on the page and the
       // rows on the page cannot disagree.

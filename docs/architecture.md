@@ -246,7 +246,7 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-Vitest, 25 files, ~520 cases, no network and no Nitro: everything under test is
+Vitest, 25 files, ~550 cases, no network and no Nitro: everything under test is
 a pure module with relative imports, which is why the modules are cut that way
 in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
 app/server/`shared`, and `pnpm typecheck:tools` covers `scripts/` and `tests/`
@@ -282,10 +282,24 @@ test needs no pdf.js).
 Four invariants hold over every parse, whichever document and whichever path:
 no elided row carries a change, no row shown as a change lacks a designation, a
 word diff exists exactly where two sides differ and both carry text, and no row
-claims a change it cannot show. Three more hold over the gate and are checked
+claims a change it cannot show. Four more hold over the gate and are checked
 against the whole corpus by `scripts/annex-pdf-verify.ts` (`runGate`), all of
 them on nil: no row delivered as `verified` without a confirmed verdict, no §
-missing from the verdict map, no withheld row still carrying text.
+missing from the verdict map, no withheld row still carrying text, and no
+withheld § without a recorded cause — otherwise the split the page prints
+would not sum to the total beside it.
+
+The corpus can only ever report what the ressorts happen to have got wrong, so
+`scripts/annex-fault-injection.ts` measures the gate from the other side: it
+breaks §§ the gate has just confirmed — a sentence dropped from the left
+column, another §'s standing text or its proposed text appended to the right
+one — and prints what each rule catches, beside the false alarms the same
+rules produce on the untouched corpus. Those false alarms are the two
+right-column withholdings of `annex-pdf-verify.ts` over the same population,
+so the two harnesses cross-check each other, and the reach `annexCheck.ts`
+states is the number this one prints. It exists because that number was
+measured once in a scratch file, and a claim whose instrument is gone is a
+claim nobody can re-check (§12.13).
 
 ## 10. Operations (v1)
 
@@ -1126,6 +1140,7 @@ könnte sie nur der Teillauf-Ansatz, der wegen 191 Fehlalarmen verworfen ist.
 | XML-Tabelle, nachher | 983 | 63 | 57 / 6 / 0 | 814 |
 | PDF-Textebene, vorher | 1.349 | 244 | 244 / – / – | 1.894 |
 | PDF-Textebene, nachher | 1.286 | 312 | 243 / 63 / 6 | 1.889 |
+| PDF-Textebene, nach dem Seitentor und der Kantenmessung (unten) | 1.347 | 234 | 212 / 15 / 7 | 1.902 |
 
 Die „vorher"-Zeilen sind heute gegen den Stand des Repositoriums gemessen und
 widersprechen deshalb der Tabelle weiter oben (967/73/764 und 895/198/2.388):
@@ -1143,6 +1158,14 @@ PDF-Pfad ihn nicht mehr erzeugt. Der Satz im Block nennt deshalb auf dem
 PDF-Pfad unsere Lesung als erste mögliche Ursache, für alle drei Gründe
 getrennt formuliert.
 
+*Nachtrag desselben Tages:* genau das ist eingetreten. Die Ursache war die
+asymmetrische Kantenmessung (unten, „Die Überschriften-Übernahme war
+asymmetrisch"), und die Zahl fiel von 63 auf 15; der Tabellenpfad bleibt bei
+6. Über beide Pfade zusammen meldet die Regel damit 21 Strecken, davon 13
+eine Paragraphenüberschrift und 8 Fließtext — vorher waren es 70
+Überschriften gegen dieselben 8. Die Überschrift ist also nicht mehr der
+Hauptbefund der Regel, sondern ihr Restrisiko.
+
 **Mitgefunden: eine Fußnote, die nur auf einer Seite verschwand.** RIS druckt
 eigene redaktionelle Anmerkungen in den konsolidierten Text („(Anm.: Abs. 2
 aufgehoben durch …)"); `lawStructure.ts` entfernt sie auf der RIS-Seite, und
@@ -1156,6 +1179,180 @@ Asymmetrie wurde dem Parser angelastet (BWG §§ 7, 22, 35, 44, 63, 64, 70a,
 eine Fußnotenmarke, die beide Seiten behalten, und „Anmerkung 4: …" in der
 Anlage 1 der Bäderhygieneverordnung ist die **eigene** Fußnote der Anlage,
 also Gesetzestext.
+
+**Das Tor gilt jetzt je Seite, nicht je Dokument (2026-09-10).** Das Kopfpaar
+belegt, dass die Spalten dort getrennt wurden, wo das Ressort sie getrennt
+hat — aber es belegt das für *ein Dokument*. Die Spaltengrenze ist eine Zahl
+für alle Seiten, also wird eine anders gesetzte Seite nicht anders gelesen,
+sondern **falsch**, und zwar in Wörtern, die alle echt sind: eine
+Hochformat-Fortsetzung in einer Querformat-Beilage, eine schräg gesetzte
+Seite, ein gedrehter Block in einer sonst aufrechten. Nichts davon wäre
+irgendwo weiter unten aufgefallen. `uprightRuns` berichtet deshalb je Seite,
+was es entscheiden musste (`AnnexPage.geometry`, nicht optional: Läufe mit
+Text, Läufe gegen die gewählte Vierteldrehung, Läufe schräg zu *jeder*
+Vierteldrehung), und `parseAnnexPdf` verwirft eine Seite, deren Breite um mehr
+als 1 % von der dominanten Breite des Dokuments abweicht, die einen schrägen
+Lauf trägt oder deren abweichend gedrehte Läufe 5 % überschreiten — ein
+einzelner Ausreißer darf keine gesunde Seite kosten, eine aufrecht gesetzte
+Seitenzahl auf einer gedrehten Seite ist ein Lauf gegen dreißig. Seiten ohne
+Text zählen nie mit: auf ihnen kann nichts falsch gelesen werden.
+Spaltengrenze und Spaltenkanten werden nur über die belegten Seiten gemessen;
+ist keine Seite belegt, liefert der Parser nichts und sagt, warum.
+
+Die Zahl steht in `AnnexParse.droppedPages`, ist nicht optional und ist
+**heute für alle 114 PDF-Beilagen 0** — genau das macht das Tor billig genug,
+um es vor der ersten solchen Seite zu haben statt nach ihr. Sie geht bis in
+die Antwort und auf die Seite (`TextComparisonResponse.droppedPages`, 0 auf
+dem Tabellenpfad): fehlt etwas, sagt die Sektion neben dem PDF-Hinweis, wie
+viele Seiten nicht gelesen wurden und dass hier fehlt, was auf ihnen steht.
+Eine Gegenüberstellung mit einem stillen Loch wäre die schlechtere Antwort —
+dieselbe Regel wie bei den einbehaltenen Paragraphen. Optional durfte das
+Feld nicht sein: die Sektion prüft `> 0`, und `undefined > 0` ist stumm
+falsch.
+
+**Was das Seitentor nicht belegt.** Es belegt Breite, Drehung und Schräglage
+*innerhalb* einer Seite — nicht, dass die Spalten dieser Seite dort liegen,
+wo sie im übrigen Dokument liegen. Das Kopfpaar bleibt deshalb eine Forderung
+an das Dokument und wird keine an die einzelne Seite. Drei Kandidaten dafür wurden
+gemessen und verworfen:
+
+- **Kopfzeile je Seite.** 78 einwandfreie Seiten in 16 Dokumenten drucken das
+  Kopfpaar nicht — Titel- und Fortsetzungsseiten. Ein Tor daraus hätte
+  gesunde Seiten verworfen.
+- **Saubere Spaltengrenze.** 276 einwandfreie Seiten tragen einen Lauf über
+  der Grenze, meist eine Überschrift, die sie definitionsgemäß kreuzt.
+- **Anteil spannender Läufe.** Über 30 % nur auf Titelseiten und auf den
+  Seiten von Sammelnovellen, wo Gesetzestitel über beide Spalten stehen — als
+  Tor hätte er die Dokumente getroffen, die den Parser am meisten fordern.
+
+Auch die Spaltengrenze je Seite zu messen ist *schlechter* als sie über das
+Dokument zu messen: 46 Seiten liegen mehr als 10 pt neben der dokumentweiten
+Grenze, eine dünn besetzte Titelseite 43 pt. Auf einer Seite mit wenig Text
+ist der leerste Streifen nicht der Bundsteg, sondern leeres Papier.
+
+**Die Überschriften-Übernahme war asymmetrisch, und das kostete 70
+Paragraphen (2026-09-10).** Eine Überschrift steht *über* dem Paragraphen,
+den sie benennt, also übergibt `unitsOfColumn` beim Erreichen eines Markers
+die kurzen Schlusszeilen der vorigen Einheit an die neue — „kurz" heißt: die
+Zeile hat die Kante ihrer Spalte nicht erreicht, ist also nicht umbrochen.
+Gemessen wurde die linke Spalte gegen den Bundsteg (421) und die rechte gegen
+den **Seitenrand** (842). Die rechte Spalte endet aber im Median 84,8 pt vor
+dem Seitenrand (min 18,5, max 88,5), also feuerte `> Breite − 18` dort nie:
+über den ganzen Korpus zählte keine einzige rechte Zeile als umbrochen. An
+der Radonschutzverordnung nachgesehen: die Zeile „Schutz vor Radon bei
+Überschreitung des Referenzwertes und bei" endet links bei x = 407,2 (gegen
+421 umbrochen, Übernahme gestoppt) und rechts bei 743,0 (gegen 842 nie
+umbrochen, übernommen). Die Überschrift landete damit nur in der rechten
+Spalte, der Wortdiff zeigte sie als **neu**, und das RIS führt sie längst.
+
+Jede Spalte wird jetzt an ihrer eigenen Kante gemessen (`columnEdge`), und
+die Kante wird aus den Zeilen selbst gelesen statt angenommen: die Beilagen
+sind eine Vorlage (links 417,6 pt, rechts 757,1 pt auf 842 pt in fast allen
+114), aber die eine, die es nicht ist — rechte Spalte von 382 bis 799 —,
+würde jede Konstante falsch messen. **Die längste Zeile ist nicht die Kante:**
+das Budgetbegleitgesetz 2027-2028 hat drei linke Zeilen jenseits seiner Kante
+(438,7 / 435,7 / 422,6 gegen 417,6), und mit dem Maximum fielen die
+umbrochenen Zeilen von 1.651 auf 3 — Fließtext wäre dann als Überschrift
+gelesen worden. Also wird das oberste Prozent der Zeilenenden beiseitegelegt,
+mindestens aber eine Zeile; unter zehn Zeilen gilt weiter die äußere Grenze
+der Spalte, weil eine Kante aus einer Handvoll Zeilen keine Messung ist.
+
+**Die Toleranz hat eine eigene Zahl bekommen.** „Nahe genug an der Kante" war
+die Bundsteg-Toleranz (18 pt), und die Beilagen sind **im Blocksatz** gesetzt:
+ein 1-pt-Histogramm des Abstands über 163.905 Zeilen zeigt 39.078 Zeilen
+innerhalb eines Punktes ihrer Kante und 30.768 innerhalb von 3 bis 4 Punkten —
+zwei Spitzen, die zweite ist die rechte Spalte, deren wenige breiteste Zeilen
+die Schätzung 3,5 pt über das Ende ihres Fließtexts hinausschieben. Ab 6 pt
+ist es ein dünner Schwanz: 868 Zeilen in 6–7 pt gegen 8.859 in 4–5. Also
+`WRAP_TOLERANCE = 6`, getrennt von `GUTTER_TOLERANCE = 18`. Gegen die
+RIS-Deckung durchgefahren (4, 6, 8, 12, 18): 18 verliert (72,3 %), 4 steht auf
+der Spitze, 6 ist das Tal.
+
+**Fünf Inhaltsverzeichnis-Einträge gingen als neues Recht hinaus
+(2026-09-10).**
+`unitsOfColumn` verwirft einen Eintrag schon, wo die Beilage den Paragraphen
+auch selbst druckt — das längere Vorkommen gewinnt. Übrig blieben die
+Einträge zu Paragraphen, die die Beilage *nie* druckt; die fanden in der
+anderen Spalte keinen Partner und wurden deshalb als „neu" angekündigt. Vier
+der fünf stehen seit Jahren in Geltung, mit genau der Überschrift, die die
+Beilage druckt (§ 79a Mindestbesteuerungsgesetz, § 13a
+GAP-Strategieplan-Anwendungsverordnung, § 11 Energie-Control-Gesetz, § 77d
+BWG), und zwei dieser Entwürfe sagen ausdrücklich, dass sie das
+*Inhaltsverzeichnis* ändern. Der fünfte, § 49a Schifffahrtsgesetz, ist
+wirklich neu — seine Inhaltszeile stand im nachgedruckten
+Inhaltsverzeichnis, während die Beilage §§ 47a, 47b, 48a und 49b darunter
+vollständig druckt; verworfen wird also die Inhaltszeile, nicht die
+Bestimmung. Die Regel dafür braucht keine Längenschranke: eine Bestimmung hat
+einen Körper, und ein Körper enthält einen Satz. Die fünf Schwänze laufen von
+20 bis 58 Zeichen und tragen kein einziges Satzzeichen. Ein blankes „§ 5." und
+die Auslassung des Ressorts („§ 4a. Kontrollregister …") bleiben stehen: das
+erste sagt etwas (ein Paragraph entfällt), das zweite sagt, dass die Beilage
+den Text weggelassen hat.
+
+**Ein Bindestrich wurde auf das Zeugnis der falschen Zeile aufgelöst
+(2026-09-10).** Ein Wortumbruch ist im PDF nichts als ein Bindestrich am
+Zeilenende, und die deutsche Rechtssprache ist voll von echten:
+„Staatsschutz- und Nachrichtendienst-Gesetz". Aufgelöst werden darf er nur,
+wenn die Zeile, **die ihn trägt**, bis an die Spaltenkante gelaufen ist —
+`joinLines` fragte aber die Zeile *danach*. Die beiden Fehler sind
+Spiegelbilder: ein echter Umbruch blieb stehen, wenn die Folgezeile zufällig
+kurz war, und ein Ergänzungsstrich des Verfassers wurde verschweißt, wenn die
+Folgezeile zufällig voll war („Staatsschutzund"). Der Fehler ist so alt wie
+der Parser und war auf der rechten Spalte bis zu diesem Tag wirkungslos, weil
+dort keine Zeile je als umbrochen zählte. Über die 114 PDF-Beilagen ändern sich
+135 Zeilen (121 kürzer, 14 länger), netto −340 Zeichen von 7,46 Mio., und die
+Deckung steigt: ≥ 99 % gedeckt 1.612 → 1.617, bestätigt 1.346 → 1.347,
+einbehalten 235 → 234, kein Deckungsband unter 99 % wächst. Sichtbar an
+„forstassistenten- ausbildungsverordnung" (§ 4 der
+Forstassistenten-Ausbildungsverordnung, 94 → 97 %) und an
+„genehmigungsaufla- gen" in der Gewerbeordnung (1 von 4 → 3 von 4
+Paragraphen ≥ 99 %).
+
+*Wirkung des Seitentors und der Kantenmessung zusammen*, beide Läufe mit
+demselben Tor-Code gemessen:
+
+| PDF-Pfad, GP XXVIII | vorher | nachher |
+|---|---:|---:|
+| geprüfte Paragraphen | 2.188 | 2.161 |
+| ≥ 99 % im RIS gedeckt | 1.584 (72,4 %) | 1.612 (74,6 %) |
+| p10 der Deckung | 90 % | 93 % |
+| bestätigt | 1.286 | 1.346 |
+| einbehalten | 312 | 235 |
+| … geltende Fassung nicht im RIS | 243 | 213 |
+| … zeigt Geltendes als neu | 63 | 15 |
+| … nicht im Entwurf | 6 | 7 |
+| ungeprüft | 1.889 | 1.902 |
+| Zeilen insgesamt | 4.062 | 4.057 |
+| unverändert / geändert / neu | 493 / 2.847 / 279 | 529 / 2.811 / 274 |
+| ausgelassen / ohne Platz | 211 / 272 | 229 / 283 |
+
+Zusicherungen: null, wie vorher. Je Paragraph gerechnet werden 80 besser und
+15 schlechter; der schlechteste Fall ist die
+Bundesvermögen-Ermächtigung § 4 des Budgetbegleitgesetzes (100 → 71 %), wo
+ein Tabellenfragment mitgelesen wird — einbehalten, nicht falsch gezeigt, was
+genau die Fehlerart ist, die das Tor haben soll.
+
+**Gemessen und verworfen, damit es niemand neu erfindet.**
+
+- **Zentrierung als Überschriftentest.** 833 Zeilen reinen Fließtexts sind so
+  symmetrisch wie 1.564 Überschriften — eine Blocksatzzeile endet an der
+  Kante und beginnt am Rand, also sind beide Abstände null. `AnnexLine.leftStart`
+  wird deshalb von nichts gelesen und sagt das im Kommentar.
+- **„Einmal begonnen, weiter übernehmen".** Die Überschriften-Übernahme
+  fortzusetzen, sobald sie begonnen hat, senkt die Meldungen von 15 auf 7 —
+  verschlechtert aber 35 Paragraphen statt der 15 oben, drei davon schwer
+  (Deckung 100 → 43, 57 → 0, 38 → 0 %).
+- **Maximum und p95 als Spaltenkante**, **Toleranz 4** (auf der Spitze des
+  Histogramms) und ein **optionales `geometry`**: eine Seite, die nicht sagen
+  kann, wie sie gelesen wurde, müsste geglaubt werden.
+
+**Was offen bleibt.** Die 13 Überschriften-Meldungen, die die Regel noch
+abgibt, stehen alle auf der Kante der Toleranz — dort unterscheiden sich die
+beiden Spalten um etwa 4 pt in der Breite, also entscheidet sie und nicht der
+Satz. Und `unplaced` mischt jetzt
+zwei Dinge: den Vorspann einer Spalte und die Einträge eines nachgedruckten
+Inhaltsverzeichnisses (272 → 283 Blöcke). Gezählt wird beides, gesagt wird
+der Leserin keines von beiden.
 
 ## 13. Open questions
 
