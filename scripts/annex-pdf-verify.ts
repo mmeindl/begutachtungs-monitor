@@ -43,7 +43,7 @@ import { plainText } from '../server/utils/lawStructure'
 import { parseRisXml } from '../server/utils/lawText'
 import { draftArticles, type DraftArticle } from '../server/utils/lawTitles'
 import { fetchParagraphTree, getText, resolveLawByBgbl, type KonsLawAtDate } from '../server/utils/risKons'
-import { isScanned, parseTextComparison, type ComparisonRow } from '../server/utils/textComparison'
+import { isScanned, parseTextComparison, type ComparisonParse, type ComparisonRow } from '../server/utils/textComparison'
 import { installFetchCache } from './harness-cache'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
@@ -103,6 +103,13 @@ interface DraftResult {
   /** Rows whose RIS paragraph is a table, which is refused rather than mangled */
   unrepresentable: number
   /**
+   * Pages of the PDF whose geometry the parser could not vouch for and did not
+   * read (`annexPdf.ts`, `isProven`). 0 on the XML path and, today, on every
+   * PDF annex of GP XXVIII — which is exactly why it has to be printed: a
+   * number nobody looks at cannot say when that stops being true.
+   */
+  droppedPages: number
+  /**
    * The gate as the request path applies it (`verifyAnnex` + `checkAnnexRows`,
    * the very functions the service calls), so the harness measures the shipped
    * decision and not a replica of it.
@@ -138,7 +145,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
   const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0 }
-  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, gate: noGate })
+  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, droppedPages: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -168,10 +175,17 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const amending = articles.filter((a) => a.amends)
   if (amending.length === 0) return blank('keine Promulgationsklausel — Stammgesetz oder unlesbar')
 
-  const parsed = readable
-    ? parseTextComparison(annexXmlText, articles)
+  // The PDF parse is held under its own name because it answers one thing the
+  // table parse cannot: how many pages it refused for want of provable page
+  // geometry. `'droppedPages' in parsed` would not narrow a union whose other
+  // member simply lacks the field — the property comes out `unknown` — and
+  // which parser ran is known here anyway.
+  const fromPdf = readable
+    ? null
     : parseAnnexPdf(await pagesOf(new Uint8Array(await (await fetch(pdfUrl!, { headers: { 'User-Agent': UA['User-Agent'] } })).arrayBuffer())), articles)
-  if (parsed.refusal) return blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length)
+  const parsed: ComparisonParse = fromPdf ?? parseTextComparison(annexXmlText!, articles)
+  const droppedPages = fromPdf?.droppedPages ?? 0
+  if (parsed.refusal) return { ...blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length), droppedPages }
 
   // One RIS lookup per law of the package, not per row. A law whose Stammnorm
   // is not a BGBl at all (the UGB is "dRGBl. S. 219/1897") has nothing to
@@ -268,7 +282,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
       console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
     }
   }
-  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, gate: await runGate(parsed.rows, { articles, asOf: beginn, text: draftTextOf(draftBlocks) }) }
+  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, gate: await runGate(parsed.rows, { articles, asOf: beginn, text: draftTextOf(draftBlocks) }) }
 }
 
 /**
@@ -368,8 +382,12 @@ for (const doc of docs.slice(0, limit)) {
     const r = await verify(doc)
     if (!r) continue
     results.push(r)
-    if (r.note) console.log(`  ·  ${r.cite.padEnd(9)} ${r.note}`)
-    else console.log(`  ${r.clean === r.checked ? '✓' : '✗'}  ${r.cite.padEnd(9)} ${r.clean}/${r.checked} Paragraphen ≥99 % im RIS${r.worst.length ? ` — ${r.worst.slice(0, 2).join('; ')}` : ''}`)
+    // A dropped page is named on the draft's own line, not only in the total:
+    // it is a hole in *this* annex, and a sum over the corpus cannot say which
+    // document is missing a page.
+    const dropped = r.droppedPages > 0 ? ` [${r.droppedPages} Seite${r.droppedPages === 1 ? '' : 'n'} ungelesen]` : ''
+    if (r.note) console.log(`  ·  ${r.cite.padEnd(9)} ${r.note}${dropped}`)
+    else console.log(`  ${r.clean === r.checked ? '✓' : '✗'}  ${r.cite.padEnd(9)} ${r.clean}/${r.checked} Paragraphen ≥99 % im RIS${dropped}${r.worst.length ? ` — ${r.worst.slice(0, 2).join('; ')}` : ''}`)
   } catch (err) {
     console.log(`  ?  ${String(doc?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '?').slice(0, 9).padEnd(9)} ${String(err).slice(0, 90)}`)
   }
@@ -394,6 +412,11 @@ console.log(`  Zeilen ohne Gesetzeszuordnung: ${scored.reduce((n, r) => n + r.un
 console.log(`    außerhalb jeder Artikelgrenze: ${scored.reduce((n, r) => n + r.noLaw, 0)}`)
 console.log(`    Stammnorm im RIS nicht auflösbar: ${scored.reduce((n, r) => n + r.unresolvedLaw, 0)}`)
 console.log(`  RIS-Paragraph ist eine Tabelle (nicht darstellbar, verweigert): ${scored.reduce((n, r) => n + r.unrepresentable, 0)}`)
+// Summed over every draft with a parse, refusals included: a document whose
+// laws could not be told apart can still have had a page refused, and both
+// are losses the reader is owed.
+const droppedTotal = results.reduce((n, r) => n + r.droppedPages, 0)
+console.log(`  Seiten ohne belegte Seitengeometrie (nicht gelesen): ${droppedTotal}${droppedTotal > 0 ? ` in ${results.filter((r) => r.droppedPages > 0).length} Beilagen` : ''}`)
 
 // The gate as it ships, over every draft with a readable annex — including
 // the ones the coverage loop scores as zero, because "nothing was checked" is

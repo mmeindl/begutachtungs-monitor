@@ -339,6 +339,29 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
 }
 
 /**
+ * Pages of the PDF the parser refused, said as a gap and not as a defect.
+ *
+ * A page set differently from the rest of the document — another width, a
+ * skewed run, runs disagreeing about which way the page is turned — is not
+ * read differently but wrongly: the column boundary is one coordinate for the
+ * whole document, so the words would be real and only their arrangement ours
+ * (`annexPdf.ts`). The parser therefore leaves such a page unread, and that
+ * is a hole in what the reader sees. Silence about it would be the worse
+ * answer: the comparison would simply be missing a provision, with nothing
+ * on the page to say so.
+ *
+ * Null for the table path and for every PDF read whole — which is all 114
+ * GP-XXVIII annexes today. The sentence exists for the first one that is not.
+ */
+const droppedPagesNote = computed<string | null>(() => {
+  const n = data.value?.droppedPages ?? 0
+  if (n === 0) return null
+  return n === 1
+    ? 'Eine Seite des PDF war anders gesetzt als die übrigen und wurde nicht gelesen; was auf ihr steht, fehlt hier.'
+    : `${n} Seiten des PDF waren anders gesetzt als die übrigen und wurden nicht gelesen; was auf ihnen steht, fehlt hier.`
+})
+
+/**
  * A law whose §§ fail in a cluster. Named, and the cause named honestly with
  * it — which depends on where the rows came from.
  *
@@ -403,6 +426,10 @@ const doubtfulNote = computed<string | null>(() => {
         Diese Gegenüberstellung liegt im RIS nur als Bild vor. Der Text ist aus
         dem PDF des Ressorts gelesen, die Zuordnung der Zeilen zueinander haben
         wir aus dem Seitenlayout erschlossen — sie kann daneben liegen.
+        <!-- And where the layout could not be vouched for at all, the page
+             says which part of the annex is missing rather than showing a
+             comparison with a silent hole in it. -->
+        <template v-if="droppedPagesNote"> {{ droppedPagesNote }}</template>
       </p>
 
       <!-- Several laws in one draft, and the annex does not say where one

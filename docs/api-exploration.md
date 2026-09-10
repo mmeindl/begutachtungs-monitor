@@ -357,12 +357,17 @@ and of the 23 that stay unavailable 21 carry no annex at all.
 (`annexCheck.ts`, `architecture.md` §12.13). Neither is a parse that can be
 trusted on sight: the left column claims to be the standing law, and holding
 that claim against RIS Bundesrecht is the only self-check either path has.
-Measured over the readable XML annexes, 86,9 % of paragraphs with real prose
-cover the standing text to 99 % or better and 4,7 % fall below 80 %; on the
-PDF path the same ruler gives 70,2 %. Where the check fails, the row is
-mis-paired or the ministry quoted a superseded version — and the page would
-otherwise print a word diff over a provision the row does not belong to.
-The name varies: `Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
+Measured over the readable XML annexes on 2026-09-09, 86,9 % of paragraphs
+with real prose covered the standing text to 99 % or better and 4,7 % fell
+below 80 %; on the PDF path the same ruler gave 70,2 %. **After that day's
+parser corrections it reads 88,9 % (930 of 1.046 §§ with prose) on the table
+path and 76,1 % (1.421 of 1.867) on the PDF path** (2026-09-10) — the PDF
+path gained six points from the per-page geometry gate, the per-column edges
+and the hyphen rule (`architecture.md` §12.13), and stays the rougher of the
+two. Where the check fails, the row is mis-paired or the ministry quoted a
+superseded version — and the page would otherwise print a word diff over a
+provision the row does not belong to. The name varies:
+`Textgegenüberstellung`, `TGÜ`, `TGG`, and a misspelt
 `Textgegenbüberstellung`, so matching has to be loose.
 
 **The right column has references too (2026-09-10).** It was called
@@ -485,7 +490,14 @@ die fünf Befunde.
   gekostet, zwei davon nur wegen der Schreibweise: „Geltende Fassung nach
   Inkrafttreten EuGB-VVG" und „Geltender Text"/„Vorgeschlagener Text". Die
   Kopfzeilen werden deshalb über ein Muster erkannt, nicht über
-  Zeichengleichheit.
+  Zeichengleichheit. **Ein Bit pro Dokument war das aber**: eine einzelne
+  anders gesetzte Seite in einer sonst geraden Beilage fiel nicht auf. Seit
+  demselben Tag trägt jede Seite ihre eigene Geometrie (`AnnexPage.geometry`
+  aus `uprightRuns`: Läufe, Läufe gegen die Drehung der Seite, schräge Läufe),
+  und `parseAnnexPdf` liest eine Seite nicht, deren Breite um mehr als 1 % von
+  der des Dokuments abweicht, die einen schrägen Lauf trägt oder deren
+  abweichend gedrehte Läufe 5 % überschreiten — `AnnexParse.droppedPages`,
+  heute 0 für alle 114 (`architecture.md` §12.13).
 - **XML: verschachtelte Inhaltstabellen wurden zu erfundenen Änderungen.**
   Der Lift war für den Layout-Fall gebaut — eine Wrapper-Zeile, eine Zelle über
   die volle Breite, die Gegenüberstellung darin — und feuerte auf *jede*
@@ -549,6 +561,33 @@ Zahlen in Klammern über die 400 jüngsten, das Fenster der Tabellen oben):
   einer Bezeichnung, die das RIS beantworten kann („Anlage 1" → `Anl. 1`); wo
   die Zeile keine Nummer nennt („Anhang"), bleiben sie ungeprüft, was ihnen
   zusteht.
+
+Und drei Befunde, die nur den PDF-Weg betreffen (2026-09-10, über die 114
+PDF-Beilagen der GP XXVIII; Zahlen und Varianten in `architecture.md` §12.13):
+
+- **Die Spaltenkante muss aus der Spalte kommen.** „Diese Zeile ist
+  umbrochen" entschied sich links am Bundsteg und rechts am *Seitenrand* —
+  aber die rechte Spalte endet im Median 84,8 pt vor dem Papierrand, also
+  zählte über den ganzen Korpus keine rechte Zeile als umbrochen. Weil die
+  Übernahme einer Überschrift an der umbrochenen Zeile stoppt, landete eine
+  zweizeilige Paragraphenüberschrift nur in der rechten Spalte: **70
+  Paragraphen zeigten ihre eigene geltende Überschrift als Zusatz des
+  Entwurfs**. Jede Spalte wird jetzt an ihrer eigenen, aus ihren Zeilen
+  gemessenen Kante geprüft, und die Toleranz dafür ist eine eigene Zahl
+  (6 pt gegen 18 pt für den Bundsteg), weil die Beilagen im Blocksatz stehen.
+- **Ein nachgedrucktes Inhaltsverzeichnis liefert Bestimmungen, die es
+  nicht gibt.** Fünf einseitige Zeilen des Korpus waren Einträge zu
+  Paragraphen, die die Beilage nie druckt — vier davon seit Jahren in Geltung
+  (§ 79a Mindestbesteuerungsgesetz, § 13a
+  GAP-Strategieplan-Anwendungsverordnung, § 11 Energie-Control-Gesetz,
+  § 77d BWG) — und gingen als „neu" hinaus. Eine Bestimmung hat einen Körper, und ein Körper enthält einen
+  Satz: eine einseitige Einheit, deren Text nach der Bezeichnung nicht leer
+  ist und kein Satzzeichen trägt, ist ein Inhaltsverzeichnis-Eintrag.
+- **Ein Bindestrich am Zeilenende** darf nur aufgelöst werden, wenn die
+  Zeile, die ihn trägt, bis an die Spaltenkante gelaufen ist; gefragt wurde
+  die Zeile danach. Beide Richtungen waren falsch — „Nachrichten- dienst"
+  blieb getrennt, „Staatsschutz- und" wurde zu „Staatsschutzund". 135 Zeilen
+  über die 114 Beilagen, netto −340 Zeichen von 7,46 Mio.
 
 **Offen: zwei Beilagen-Dokumente pro Datensatz.** 2 der 240 Datensätze mit
 Beilage tragen zwei davon — „Textgegenüberstellung (Verordnung)" +

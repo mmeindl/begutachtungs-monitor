@@ -521,6 +521,26 @@ export interface TextComparisonResponse {
    */
   readFrom: 'table' | 'pdf' | null
   /**
+   * Pages of the annex PDF whose geometry the parse could not vouch for and
+   * therefore did not read (`annexPdf.ts`, `isProven`): a page set to another
+   * width than the rest of the document, one carrying a skewed text run, one
+   * whose runs disagree about which way the page is turned. Everything below
+   * this point reads a column out of a coordinate, and a page set differently
+   * is not read differently but *wrongly*, in words that are all real — so it
+   * is refused, and the reader is told that something is missing rather than
+   * left with a comparison that quietly has a hole in it.
+   *
+   * **0 on the table path and whenever nothing was dropped**, never
+   * `undefined`: the page prints the sentence on `> 0`, and an optional field
+   * would make that test silently false wherever the number went missing.
+   * Today it is 0 for all 114 GP-XXVIII PDF annexes (measured 2026-09-10) —
+   * which is what makes it worth wiring before the corpus produces the first
+   * such page rather than after.
+   *
+   * Pages without any text do not count: nothing on them could be misread.
+   */
+  droppedPages: number
+  /**
    * Set when the draft amends several laws and the annex does not mark where
    * one ends and the next begins. The comparison is shown undivided, and this
    * says why — the alternative is to divide it wrongly.
