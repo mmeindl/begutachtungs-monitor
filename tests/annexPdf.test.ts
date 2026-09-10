@@ -216,6 +216,58 @@ describe('columnBoundary', () => {
   })
 })
 
+/**
+ * The seam gates the pages; the ink cuts them. Measured 2026-09-11, §12.13.
+ *
+ * The header pair states where a page's columns lie and is what `parseAnnexPdf`
+ * holds every page against — but it is not the gutter, and the difference is
+ * arithmetic: both labels are centred over their cells, so their midpoint is
+ * the mean of the two column *centres*, which is the gutter only where the two
+ * columns are the same width. This annex's right column is 45 pt wider, so its
+ * seam lands a quarter of that past the gutter — 407,5 + 11,25 = 418,75, which
+ * is past the right column's first character at 415, where it would slice every
+ * one of its lines and file them as spanning headings.
+ *
+ * That is the Abgabenänderungsgesetz 2025 in miniature: cutting at the seam
+ * moves 1.285 of its runs, rewrites 111 §§, loses two, and turns a § the check
+ * had withheld into a verified one. The gutter is 407,5 and the ink finds it.
+ */
+describe('a document whose header pair states a seam that is not its gutter', () => {
+  const LEFT_A = 60, LEFT_B = 400, RIGHT_A = 415, RIGHT_B = 800
+  /** The two labels, each centred over its own column. */
+  const labels = (y: number): AnnexItem[] => [
+    wide(195, y, 'Geltende Fassung', 70),
+    wide(572.5, y, 'Vorgeschlagene Fassung', 70),
+  ]
+  const body = (y: number, left: string, right: string): AnnexItem[] => [
+    wide(LEFT_A, y, left, LEFT_B - LEFT_A),
+    wide(RIGHT_A, y, right, RIGHT_B - RIGHT_A),
+  ]
+  const uneven = pageOf([
+    ...labels(800),
+    ...body(700, '§ 5. (1) Die Behörde entscheidet über den Antrag.', '§ 5. (1) Das Gericht entscheidet über den Antrag.'),
+    ...body(680, '§ 6. (1) Die Frist beträgt vier Wochen ab Zustellung.', '§ 6. (1) Die Frist beträgt sechs Wochen ab Zustellung.'),
+  ])
+
+  it('cuts at the gutter, so both columns arrive as columns', () => {
+    const rows = parseAnnexPdf([uneven], ONE_LAW).rows
+    expect(rows.map((r) => r.gld)).toEqual(['§ 5.', '§ 6.'])
+    expect(rows[0]!.current).toBe('§ 5. (1) Die Behörde entscheidet über den Antrag.')
+    expect(rows[0]!.proposed).toBe('§ 5. (1) Das Gericht entscheidet über den Antrag.')
+  })
+
+  // The mechanism, pinned: at the seam the right column's own lines overhang
+  // the cut by more than `GUTTER_TOLERANCE` and stop being a column at all.
+  it('would file the right column as spanning headings if the seam were the cut', () => {
+    const seam = (195 + 265 + 572.5 + 642.5) / 4
+    expect(seam).toBe(418.75)
+    expect(columnBoundary([uneven])).toBeLessThan(RIGHT_A)
+    const atSeam = linesFromPage(uneven, seam)
+    expect(atSeam.filter((l) => l.spanning !== null)).toHaveLength(2)
+    expect(linesFromPage(uneven, columnBoundary([uneven])).filter((l) => l.spanning !== null)).toHaveLength(0)
+  })
+})
+
 describe('headings that span both columns', () => {
   const spanning = (y: number, text: string): AnnexItem => ({ x: 300, y, width: 260, text })
 
