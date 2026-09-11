@@ -242,14 +242,18 @@ export function coverageOf(column: string, standing: string): Coverage {
  *
  * | | unveränderte Zeilen | §§ mit Prosa | unter der Schwelle | neu einbehalten | davon heute bestätigt |
  * |---|---:|---:|---:|---:|---:|
- * | Tabellenpfad | 1.972 in 609 §§ | 366 | 63 | 59 | 54 |
+ * | Tabellenpfad | 1.738 in 474 §§ | 330 | 13 | 10 |  6 |
  * | PDF-Pfad     |   287 in 287 §§ | 129 | 34 | 34 |  0 |
  *
- * **All 93 were read one by one, and 91 are the annex being right.** On the
- * table path, 52 of 59 are the law's own structural headings — Teil, Abschnitt,
+ * The table-path row is the state after `textComparison.heldTwoSided`
+ * (11.09.2026): a two-sided heading row now becomes the *heading* of the § that
+ * opens below it instead of a row of the § above, which took the class from 59
+ * to 10. **When this was first measured it was 59 and 34, all 93 read one by
+ * one, and 91 were the annex being right.** On the table path, 52 of 59 were
+ * the law's own structural headings — Teil, Abschnitt,
  * Unterabschnitt, the lettered divisions of a Verordnung, the heading of the
- * *following* § — which stand *above* the § they head and are therefore filed
- * under the § before them (57 of the 59 fail on a row that carries no
+ * *following* § — which stand *above* the § they head and were therefore filed
+ * under the § before them (57 of the 59 failed on a row that carries no
  * designation of its own); 3 are the annex's own notation („Anlage 1
  * (wird hier nicht abgebildet)", „[entfällt durch ein früher in Kraft tretendes
  * Vorhaben]"); 1 is orthography (Konfitürenverordnung § 5, „In-Kraft-Treten"
@@ -270,12 +274,19 @@ export function coverageOf(column: string, standing: string): Coverage {
  * may ship: rule 1's 5 table-path alarms are all true, rule 2's floors were set
  * precisely to keep 6 real contaminations apart from two-word false alarms.
  *
- * **What would change the decision** is the heading filing, not a threshold:
- * no floor separates the classes (headings run 0–95 %, the real cases 44–95 %),
- * and at any floor of 20 comparable words nothing at all is caught below 90 %.
- * File a mirrored heading row under the § it heads rather than the one before
- * it, and 52 of the 59 disappear — then the remaining seven are worth another
- * look. Until then the blind spot is stated rather than closed: fault **U** of
+ * **What was expected to change the decision** was the heading filing, not a
+ * threshold: no floor separates the classes (headings run 0–95 %, the real
+ * cases 44–95 %), and at any floor of 20 comparable words nothing at all is
+ * caught below 90 %. That half was right and the other half was not.
+ * *Filing* a mirrored heading row under the § it heads buys almost nothing —
+ * 63 → 62, because RIS's own § documents mostly carry no group headings either
+ * (99 of the 111 rows still uncovered land on a § with an empty `context`).
+ * What works is `lift` one level up: the row stops being a row and becomes the
+ * § 's heading, which took the table path to **13 below the threshold, 10
+ * newly withheld, 6 of them confirmed today** (docs/architecture.md §12.13,
+ * 11.09.2026). The decision itself stands — one true positive against six
+ * confirmations is still not a rule — but the residue is now small enough to
+ * re-read. Until then the blind spot is stated rather than closed: fault **U** of
  * `scripts/annex-fault-injection.ts` injects exactly this row and the gate
  * catches **0 of 238** on the table path and **0 of 883** on the PDF path
  * (every alarm under the fault was already firing without it), and
@@ -778,7 +789,7 @@ export interface RightColumnCheck {
  * | R-neu, PDF-Pfad     | 106 (11,8 %) | 665 (75,6 %) | 693 (77,2 %) |
  * | R-neu, Tabellenpfad |  76 (32,1 %) | 184 (78,3 %) | 196 (82,7 %) |
  * | R-alt, PDF-Pfad     | 220 (24,5 %) | 584 (66,3 %) | 594 (66,1 %) |
- * | R-alt, Tabellenpfad |  97 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
+ * | R-alt, Tabellenpfad |  98 (41,2 %) | 178 (75,4 %) | 183 (76,9 %) |
  * | L, PDF-Pfad         | 144 (15,4 %) | 332 (36,2 %) | 348 (37,2 %) |
  * | L, Tabellenpfad     |  49 (19,9 %) |  90 (36,9 %) |  95 (38,6 %) |
  *
