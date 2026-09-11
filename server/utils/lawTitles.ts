@@ -143,7 +143,8 @@ export interface DraftArticle {
   /**
    * The key `segmentUnits` and `promulgationByArticle` use (`articleTitle ??
    * articleNumber`), qualifier and all, so a row joins onto the diff units
-   * without a second convention.
+   * without a second convention. Null only where both are — a draft that
+   * neither numbers its Artikel nor names itself.
    */
   key: string | null
   /**
@@ -165,6 +166,28 @@ export interface DraftArticle {
  * against. A heading in the annex that matches no entry here is not a law
  * boundary but an internal heading, and that single test removes every
  * pseudo-boundary the annex itself cannot distinguish (2026-09-09).
+ *
+ * **A law is named before its first instruction, and only there.** The window
+ * is the same one the Promulgationsklausel stands in, and it has to be closed
+ * for the name as well: an instruction that rewrites an Anlage or a Kapitel
+ * prints the heading it installs, and RIS tags that quoted heading exactly as
+ * it tags a law title — `ueberschrift typ="anlage"`, `"g2"`, `"titel"`. Read
+ * as a name, it renamed the law half way through the draft, and the annex's
+ * rows then carried a key that the instructions above it do not (the three
+ * false alarms of the UH-Statistik- und Bildungsdokumentationsverordnung,
+ * 2026-09-11).
+ *
+ * The position separates the two classes without a remainder. Measured over
+ * the 400 GP-XXVIII drafts, 2026-09-11: of the **651 Abschnitt headings** this
+ * rule accepted as an Artikel's name, **649 stand before the Artikel's first
+ * Novellierungsanordnung and 2 after it**; of the **405 title blocks**,
+ * **390 before and 15 after**. All **17** late ones are quoted payload — every
+ * one of them opens with a quotation mark, which is the second, independent
+ * signal that they are text rather than structure. The 2 are the Anlage
+ * heading of the UH-Statistik-Verordnung ("Anlage 1 zu § 6 Anhang zum Diplom
+ * …") and the Kapitel heading of the Wasserstraßen-Verkehrsordnung
+ * ("Schallzeichen, Sprechfunk, …"); the 15 are Verordnungen that re-issue a
+ * law in full and print its title inside the instruction.
  */
 export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   const out: DraftArticle[] = []
@@ -174,7 +197,14 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   const filled = (a: DraftArticle): boolean => a.number !== null || a.key !== null || a.amends
 
   const close = (): void => {
-    if (filled(current)) out.push(current)
+    // `segmentUnits` keys its units `articleTitle ?? articleNumber`; an
+    // Artikel that prints no law name under its line therefore answers to its
+    // number, and this key has to be the same string or the annex's rows join
+    // onto no instruction at all. 13 of GP XXVIII's 1.052 Artikel carry no
+    // name, 9 of them a number and 7 an amended law (2026-09-11) — and two of
+    // those seven are the two Artikel of one draft, which a null key merges
+    // into a single entry.
+    if (filled(current)) out.push(current.key === null ? { ...current, key: current.number } : current)
   }
 
   for (const b of blocks) {
@@ -185,16 +215,16 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
       continue
     }
     if (b.kind === 'section') {
-      if (current.number === null) continue
+      if (current.number === null || seenNovao) continue
       if (current.key === null) current.key = b.text
       if (current.title === null && !QUALIFIER_RE.test(b.text.trim())) current.title = b.text
       continue
     }
     if (b.kind === 'title') {
-      // The law's own title, for a draft without Artikel. The last one wins,
-      // as it did before: a draft that prints Lang- and Kurztitel names
-      // itself in the shorter one.
-      if (current.number !== null) continue
+      // The law's own title, for a draft without Artikel. The last one before
+      // the first instruction wins, as it did before: a draft that prints
+      // Lang- and Kurztitel names itself in the shorter one.
+      if (current.number !== null || seenNovao) continue
       current.key = b.text
       if (!QUALIFIER_RE.test(b.text.trim())) current.title = b.text
       continue

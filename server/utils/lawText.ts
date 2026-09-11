@@ -381,11 +381,32 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         lastNovao = 0
         continue
       case 'section':
-        // The first heading after "Artikel n" is the article's law title.
-        if (articleNumber && articleTitle === null) articleTitle = b.text
+        // The first heading after "Artikel n" is the article's law title —
+        // and a law is named before its first instruction, only there. Later
+        // a heading of the same RIS type is *quoted payload*: an instruction
+        // that rewrites an Anlage or a Kapitel prints the heading it
+        // installs, and RIS tags it `ueberschrift typ="anlage"`, `"g2"` or
+        // `"titel"` like any law title. Read as a name it renames the law
+        // half way through, and the units before and after the payload then
+        // sit under two law keys — the UH-Statistik- und Bildungs-
+        // dokumentationsverordnung split into "Artikel 1" (§§ 16, 18, 35, 37)
+        // and the quoted "Anlage 1 zu § 6 …" (its six Anlagen), the
+        // Wasserstraßen-Verkehrsordnung into 26 §§ and 57.
+        // `lawTitles.draftArticles` carries the same rule, because the
+        // annex's rows are keyed from there and the two keys have to be one
+        // string.
+        //
+        // The position separates the classes without a remainder (400
+        // GP-XXVIII drafts, 2026-09-11): of 651 accepted Abschnitt headings
+        // 649 stand before the Artikel's first Novellierungsanordnung, of 405
+        // title blocks 390 — and every one of the 17 late ones opens with a
+        // quotation mark, which is the second signal agreeing with the first.
+        if (articleNumber && articleTitle === null && !novelleMode) articleTitle = b.text
         continue
       case 'title':
-        if (articleNumber === null) articleTitle = b.text
+        // Same window: 15 of those 17 are the title a Verordnung prints
+        // inside the instruction that re-issues a law in full.
+        if (articleNumber === null && !novelleMode) articleTitle = b.text
         continue
       case 'toc':
         continue

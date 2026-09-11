@@ -191,6 +191,100 @@ describe('draftArticles', () => {
       { index: 0, number: null, numeral: null, title: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', key: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', amends: true, bgbl: { organ: 'BGBl. Nr.', nummer: '254/1976' } },
     ])
   })
+
+  // An instruction that rewrites an Anlage prints the heading it installs, and
+  // RIS tags it `ueberschrift typ="anlage"` — the same element a law title
+  // arrives in. Read as a name it renamed the law half way through the draft,
+  // and the annex's rows then carried a key the instructions above them do not
+  // (UH-Statistik- und Bildungsdokumentationsverordnung, §§ 18, 35 and 37).
+  it('does not let a quoted Anlage heading rename the Artikel’s law', () => {
+    const xml = doc(
+      `<ueberschrift typ="g1">Artikel 1</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Die Universitäts- und Hochschulstatistikverordnung, BGBl. II Nr. 301/2022, wird wie folgt geändert:</absatz>` +
+      `<absatz typ="novao1">1. § 16 Abs. 1 lautet:</absatz>` +
+      `<absatz typ="abs">„(1) Neuer Text.“</absatz>` +
+      `<absatz typ="novao1">2. Anlage 1 lautet:</absatz>` +
+      `<ueberschrift typ="anlage">„Anlage 1 zu § 6 Anhang zum Diplom (Diploma Supplement)</ueberschrift>` +
+      `<absatz typ="novao1">3. Anlage 2 lautet:</absatz>`,
+    )
+    const articles = draftArticles(parseRisXml(xml))
+    expect(articles.map((a) => [a.number, a.key])).toEqual([['Artikel 1', 'Artikel 1']])
+    expect(articles[0]!.title).toBeNull()
+  })
+
+  // The same rule must not swallow a real boundary: a second Artikel is a
+  // second law however deep into the draft it stands.
+  it('still opens a second Artikel after the first one’s instructions', () => {
+    const xml = doc(
+      article('Artikel 1', 'Änderung der Wasserstraßen-Verkehrsordnung', 'Die Wasserstraßen-Verkehrsordnung, BGBl. II Nr. 289/2011, wird wie folgt geändert:', ['§ 1.01 lautet:']) +
+      `<ueberschrift typ="g2">„Schallzeichen, Sprechfunk, Informations- und Navigationsgeräte“</ueberschrift>` +
+      article('Artikel 2', 'Änderung der Seen- und Fluss-Verkehrsordnung', 'Die Seen- und Fluss-Verkehrsordnung, BGBl. II Nr. 42/2005, wird wie folgt geändert:', ['§ 3 lautet:']),
+    )
+    const articles = draftArticles(parseRisXml(xml))
+    expect(articles.map((a) => [a.number, a.key, a.bgbl?.nummer ?? null])).toEqual([
+      ['Artikel 1', 'Änderung der Wasserstraßen-Verkehrsordnung', '289/2011'],
+      ['Artikel 2', 'Änderung der Seen- und Fluss-Verkehrsordnung', '42/2005'],
+    ])
+  })
+
+  // A Verordnung that re-issues a law in full prints its title inside the
+  // instruction. 15 of the 405 title blocks in GP XXVIII are of that kind.
+  it('does not let a quoted law title rename a draft without Artikel', () => {
+    const xml = doc(
+      `<ueberschrift typ="titel">Verordnung des Bundesministers für Finanzen, mit der die Eigenstrombefreiungsverordnung geändert wird</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Die Eigenstrombefreiungsverordnung, BGBl. II Nr. 31/2022, wird wie folgt geändert:</absatz>` +
+      `<absatz typ="novao1">1. Der Titel lautet:</absatz>` +
+      `<ueberschrift typ="titel">„Verordnung des Bundesministers für Finanzen betreffend Befreiungen von der Elektrizitätsabgabe“</ueberschrift>`,
+    )
+    const [only] = draftArticles(parseRisXml(xml))
+    expect(only!.key).toBe('Verordnung des Bundesministers für Finanzen, mit der die Eigenstrombefreiungsverordnung geändert wird')
+  })
+
+  // Lang- and Kurztitel both stand above the first instruction, so the later
+  // one still wins — the rule closes the window, it does not move it.
+  it('still lets the last title before the first instruction win', () => {
+    const xml = doc(
+      `<ueberschrift typ="titel">Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird</ueberschrift>` +
+      `<ueberschrift typ="titel">Bäderhygienegesetz-Novelle 2026</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Das Bäderhygienegesetz, BGBl. Nr. 254/1976, wird wie folgt geändert:</absatz>`,
+    )
+    expect(draftArticles(parseRisXml(xml))[0]!.key).toBe('Bäderhygienegesetz-Novelle 2026')
+  })
+
+  // A Stammgesetz prints its Anlage at the end, under a heading of exactly the
+  // same RIS type. It is one law, and the heading is not a second one.
+  it('keeps a Stammgesetz with a trailing Anlage as one law', () => {
+    const xml = doc(
+      `<ueberschrift typ="titel">Bundesgesetz über etwas Neues</ueberschrift>` +
+      `<absatz typ="abs"><gldsym>§ 1.</gldsym> Dieses Gesetz gilt.</absatz>` +
+      `<ueberschrift typ="anlage">Anlage 1 zu § 1</ueberschrift>` +
+      `<absatz typ="abs">Ein Formular.</absatz>`,
+    )
+    const articles = draftArticles(parseRisXml(xml))
+    expect(articles.map((a) => a.key)).toEqual(['Bundesgesetz über etwas Neues'])
+  })
+
+  // `segmentUnits` keys its units `articleTitle ?? articleNumber`; an Artikel
+  // that prints no law name has to answer to its number, or the annex's rows
+  // join onto no instruction. Two nameless Artikel used to share the key
+  // `null`, which merged two laws into one entry.
+  it('falls back to the Artikel number where the draft prints no law name', () => {
+    const xml = doc(
+      `<ueberschrift typ="g1">Artikel 1</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Die Verbrauchsabgabenverordnung, BGBl. II Nr. 11/2020, wird wie folgt geändert:</absatz>` +
+      `<absatz typ="novao1">1. § 1 lautet:</absatz>` +
+      `<ueberschrift typ="g1">Artikel 2</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Die LF-Verbrauchsabgabenverordnung, BGBl. II Nr. 12/2020, wird wie folgt geändert:</absatz>` +
+      `<absatz typ="novao1">1. § 2 lautet:</absatz>`,
+    )
+    const articles = draftArticles(parseRisXml(xml))
+    expect(articles.map((a) => [a.key, a.title])).toEqual([
+      ['Artikel 1', null],
+      ['Artikel 2', null],
+    ])
+    // …and the two laws stay apart in the promulgation map, which keys on it.
+    expect([...promulgationByArticle(parseRisXml(xml)).keys()]).toEqual(['Artikel 1', 'Artikel 2'])
+  })
 })
 
 describe('lawNameScore', () => {
