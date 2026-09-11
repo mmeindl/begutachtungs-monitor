@@ -497,6 +497,133 @@ describe('a § heading printed in one column only', () => {
   })
 })
 
+/**
+ * `lift` reads the § 's own heading only — RIS types that one `typ="para"` — so
+ * a Teil, an Abschnitt, an Unterabschnitt or the heading of the *following* §
+ * stayed an ordinary pair row and was filed under the § **above** it. 507 rows
+ * of GP XXVIII, 331 of them followed by a row that opens a § (2026-09-11); the
+ * Strafvollzugsgesetz § 154 carried „Fünfter Abschnitt — Strafvollzug durch
+ * elektronisch überwachten Hausarrest", which heads the next §'s Abschnitt.
+ */
+describe('a heading of the law printed in both columns', () => {
+  const heading = (typ: string, text: string) => `<ueberschrift typ="${typ}">${text}</ueberschrift>`
+  const para = (n: string, text: string) => `<absatz typ="abs"><gldsym>§ ${n}.</gldsym> ${text}</absatz>`
+  const both = (typ: string, text: string) => pair(heading(typ, text), heading(typ, text))
+
+  it('gives an Abschnitt heading to the § that opens below it', () => {
+    const rows = parse(annex([
+      pair(para('154', '(1) Alt.'), para('154', '(1) Neu.')),
+      both('g1min', 'Fünfter Abschnitt'),
+      both('g2', 'Strafvollzug durch elektronisch überwachten Hausarrest'),
+      pair(para('156b', '(1) Alt.'), para('156b', '(1) Neu.')),
+    ]))
+    // The heading stops being a row: it is the § 's title, not text claiming to
+    // be the provision, and § 154 no longer carries the next Abschnitt's name.
+    expect(rows.map((r) => [r.gld, r.heading])).toEqual([
+      ['§ 154.', null],
+      ['§ 156b.', 'Fünfter Abschnitt Strafvollzug durch elektronisch überwachten Hausarrest'],
+    ])
+  })
+
+  it('keeps a heading the draft changes a visible change', () => {
+    // „samt Überschrift" — the two columns differ, so the row *is* the change
+    // and stays a row of its own, where the word diff can see it. 119 rows of
+    // GP XXVIII. Its § is the one it had: moving that would move a *displayed*
+    // change between the gate's paragraph bags, which is its own measurement.
+    const rows = parse(annex([
+      pair(para('12', '(1) Alt.'), para('12', '(1) Neu.')),
+      pair(heading('g2', 'Alte Abschnittsüberschrift'), heading('g2', 'Neue Abschnittsüberschrift')),
+      pair(para('13', '(1) Alt.'), para('13', '(1) Neu.')),
+    ]))
+    expect(rows.map((r) => [r.change, r.para])).toEqual([
+      ['changed', '§ 12.'],
+      ['changed', '§ 12.'],
+      ['changed', '§ 13.'],
+    ])
+    expect(rows[1]!.current).toBe('Alte Abschnittsüberschrift')
+    expect(rows[1]!.proposed).toBe('Neue Abschnittsüberschrift')
+    expect(rows[1]!.segments!.filter((s) => s.type !== 'equal').map((s) => s.text)).toEqual(['Alte', 'Neue'])
+  })
+
+  it('leaves a heading with the § above when nothing opens below it', () => {
+    // 176 of the 507 open nothing under them — inside a schedule, or before a
+    // row that carries no designation of its own. The row stays a row and keeps
+    // the § it had, so no line leaves the page.
+    const rows = parse(annex([
+      pair(para('18c', '(1) Alt.'), para('18c', '(1) Neu.')),
+      both('g1min', 'Erster Unterabschnitt'),
+      pair('<absatz typ="abs">(2) Ohne eigene Bezeichnung, alt.</absatz>', '<absatz typ="abs">(2) Ohne eigene Bezeichnung, neu.</absatz>'),
+    ]))
+    expect(rows.map((r) => [r.current, r.para])).toEqual([
+      ['(1) Alt.', '§ 18c.'],
+      ['Erster Unterabschnitt', '§ 18c.'],
+      ['(2) Ohne eigene Bezeichnung, alt.', '§ 18c.'],
+    ])
+  })
+
+  it('leaves the last heading of a law where it is', () => {
+    // Nothing follows it at all, so there is no § to move it to — and dropping
+    // it would take a line the annex printed off the page.
+    const rows = parse(annex([
+      pair(para('44', '(1) Alt.'), para('44', '(1) Neu.')),
+      both('g2', 'Schluss- und Übergangsbestimmungen'),
+    ]))
+    expect(rows.map((r) => [r.current, r.para])).toEqual([
+      ['(1) Alt.', '§ 44.'],
+      ['Schluss- und Übergangsbestimmungen', '§ 44.'],
+    ])
+  })
+
+  it('lets a two-sided schedule heading go on opening its own Anlage', () => {
+    // An Anlage heading is a designation, not a title: it opens its own unit
+    // instead of waiting for a § that never comes, and stays the pair row it is.
+    const rows = parse(annex([
+      pair(para('14', '(1) Alt.'), para('14', '(1) Neu.')),
+      both('anlage', 'Anlage 1'),
+      pair('<absatz typ="abs">a) Richtlinie 2000/31/EG, alt.</absatz>', '<absatz typ="abs">a) Richtlinie 2000/31/EG, neu.</absatz>'),
+    ]))
+    expect(rows.map((r) => [r.current, r.para])).toEqual([
+      ['(1) Alt.', '§ 14.'],
+      ['Anlage 1', 'Anlage 1'],
+      ['a) Richtlinie 2000/31/EG, alt.', 'Anlage 1'],
+    ])
+  })
+
+  it('carries a one-sided heading below a two-sided one to the same § below', () => {
+    // The ressort inserts a § with its heading inside a new Abschnitt: the
+    // Abschnitt stands in both columns, the § heading only in the right one.
+    // The first becomes the § 's title, the second stays the insertion it is —
+    // and both belong to the § the row below opens.
+    const rows = parse(annex([
+      pair(para('23', '(1) Alt.'), para('23', '(1) Neu.')),
+      both('g1', '6. Abschnitt'),
+      pair('', heading('para', 'Allgemeine Bestimmungen')),
+      pair('', para('24i', '(1) Ganz neu.')),
+    ]))
+    expect(rows.map((r) => [r.change, r.para, r.heading])).toEqual([
+      ['changed', '§ 23.', null],
+      ['inserted', '§ 24i.', '6. Abschnitt'],
+      ['inserted', '§ 24i.', null],
+    ])
+  })
+
+  it('does not read law text that happens to be mirrored as a heading', () => {
+    // The discriminator is RIS's own markup, not the shape of the line: all 507
+    // rows of the corpus are `<ueberschrift>`, and an Absatz repeated unchanged
+    // in both columns is law and stays a row of its own.
+    const rows = parse(annex([
+      pair('<absatz typ="abs"><gldsym>§ 3.</gldsym> (1) Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 3.</gldsym> (1) Neu.</absatz>'),
+      pair('<absatz typ="abs">(2) Unverändert.</absatz>', '<absatz typ="abs">(2) Unverändert.</absatz>'),
+      pair('<absatz typ="abs"><gldsym>§ 4.</gldsym> Alt.</absatz>', '<absatz typ="abs"><gldsym>§ 4.</gldsym> Neu.</absatz>'),
+    ]))
+    expect(rows.map((r) => [r.current, r.para])).toEqual([
+      ['(1) Alt.', '§ 3.'],
+      ['(2) Unverändert.', '§ 3.'],
+      ['Alt.', '§ 4.'],
+    ])
+  })
+})
+
 describe('a division of the law printed as an ordinary row', () => {
   // "9b. Abschnitt" typeset in both columns rather than as a heading. It
   // reached the comparison as a mirrored pair row and was filed under

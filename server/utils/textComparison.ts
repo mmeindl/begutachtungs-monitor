@@ -852,6 +852,45 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     for (const row of heldHeadings) rows.push({ ...row, para: openPara })
     heldHeadings = []
   }
+  /**
+   * Two-sided heading rows waiting to learn whether a § opens below them.
+   *
+   * `lift` reads the § 's **own** heading and nothing else — RIS types that one
+   * `typ="para"` — so every heading a level up stayed an ordinary pair row: a
+   * Teil, an Abschnitt, an Unterabschnitt, the lettered divisions of a
+   * Verordnung, the law's own title, and the heading of the *following* §.
+   * Printed identically in both columns they come out `unchanged`, and they
+   * were filed under the § **above** them. The Strafvollzugsgesetz § 154 is the
+   * model case: it carried „Fünfter Abschnitt — Strafvollzug durch
+   * elektronisch überwachten Hausarrest", which heads the Abschnitt that begins
+   * with the *next* §.
+   *
+   * Measured over the 126 readable GP-XXVIII annexes (2026-09-11): **507 such
+   * rows**, by RIS's own type 226 `g2`, 124 `g1`, 46 `anlage`, 46 `titel`, 30
+   * `erll`, 24 `g1min`, 4 `tgue`, 3 `erlz`, 2 `art`, 1 `para` — every one of
+   * them marked `<ueberschrift>`, none of them recognised from its wording
+   * (`headingOnly`, the same discriminator d6c47ea used for the one-sided
+   * half). **331 are followed by a row that opens a §**, and that § is theirs;
+   * the other 176 open nothing below them.
+   *
+   * Those 331 stop being rows and become the `heading` of the § below, exactly
+   * as `lift` does one level down. The other 176 stay the row they are, under
+   * the § above — where the corpus says nothing, the answer is the one that
+   * shipped. Filing them under the § below *without* making them its heading
+   * was measured and rejected: it leaves them text that claims to be the
+   * provision, and RIS's own § documents mostly carry no group headings to
+   * hold that text against (docs/architecture.md §12.13).
+   *
+   * **Only where both columns print it.** A heading printed on one side is the
+   * change itself and stays a row (`heldHeadings`); a heading that *differs*
+   * between the columns is „samt Überschrift" and stays inside the compared
+   * text — 119 rows of GP XXVIII, none of them touched here.
+   */
+  let heldTwoSided: ComparisonRow[] = []
+  const releaseTwoSided = (): void => {
+    for (const row of heldTwoSided) rows.push({ ...row, para: openPara })
+    heldTwoSided = []
+  }
   for (const [i, p] of parsed.entries()) {
     const mark = candidateAt.get(i)
     if (mark) {
@@ -859,6 +898,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       if (article) {
         // Still under the old law and the old §: there is no row below them
         // inside this Artikel to take them.
+        releaseTwoSided()
         releaseHeadings()
         law = article.key
         openPara = null
@@ -917,6 +957,14 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
     const gld = gldMatch ? cellText(gldMatch[1]!) : null
     if (gld) openPara = gld
+    // The two-sided headings held above this row were waiting for exactly this:
+    // the row opens a §, so they are its heading and stop being rows of their
+    // own (`heldTwoSided`). `unshift`, because a heading stands above whatever
+    // `pendingHeading` collected after it.
+    if (gld !== null && heldTwoSided.length > 0) {
+      pendingHeading.unshift(...heldTwoSided.map((held) => [held.heading, held.current].filter(Boolean).join(' ')))
+      heldTwoSided = []
+    }
     // The designation is a `<gldsym>` element of its own, so it is data rather
     // than prose — and it is already carried in `gld`. Left in the text as
     // well, 1.183 of the 1.198 rows that have one printed it twice: "§ 40."
@@ -960,6 +1008,16 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       editorial: isEditorialChange(segments),
     }
     pendingHeading = []
+    // A heading the annex prints in **both** columns, in a row of its own and
+    // above the § it heads. Whose it is cannot be known yet — it is the § the
+    // *next* row opens, if one does — so it waits (`heldTwoSided`), and the
+    // schedule heading is the same exception as below: an Anlage opens its own
+    // unit rather than waiting for a § that never comes, and the row stays the
+    // pair row it is.
+    if (gld === null && !elided && current === proposed && headingOnly(currentHtml) && headingOnly(proposedHtml) && !opensAnlage(current, currentHtml)) {
+      heldTwoSided.push(row)
+      continue
+    }
     // A heading the annex prints in **one** column only belongs to the unit
     // below it, exactly as a two-sided one does — the draft inserts a § with
     // its heading, or repeals one, and the column where it does not yet (or no
@@ -997,6 +1055,11 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       // Anlage 10, the Medizinproduktebetreiberverordnung its repealed Anhang 5
       // under Anhang 2.
       if (opensAnlage(only, current === '' ? proposedHtml : currentHtml)) {
+        // Before the schedule opens, so a two-sided heading held above it keeps
+        // the § above and stands where the annex printed it. No annex of
+        // GP XXVIII holds one across this branch, which is why it is written
+        // down rather than left to the next one that does.
+        releaseTwoSided()
         openPara = only
         releaseHeadings()
         rows.push({ ...row, para: openPara })
@@ -1005,9 +1068,13 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       heldHeadings.push(row)
       continue
     }
+    // Two-sided first: where both stacks are open at once — twice in GP XXVIII
+    // — the two-sided rows are the ones the annex printed first.
+    releaseTwoSided()
     releaseHeadings()
     rows.push(row)
   }
+  releaseTwoSided()
   releaseHeadings()
   return { rows, refusal: resolution.refusal }
 }

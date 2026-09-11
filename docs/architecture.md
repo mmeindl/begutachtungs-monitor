@@ -1255,7 +1255,7 @@ vor seiner ersten Anordnung benannt wird (beide unten).
 | R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 898 (11,8 %) | 665 (75,6 %) | **693 (77,2 %)** |
 | R-neu, Tabellenpfad | 76 von 237 (32,1 %) | 184 (78,3 %) | **196 (82,7 %)** |
 | R-alt (fremder geltender Satz), PDF | 220 von 899 (24,5 %) | 584 (66,3 %) | 594 (66,1 %) |
-| R-alt, Tabellenpfad | 97 von 238 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
+| R-alt, Tabellenpfad | 98 von 238 (41,2 %) | 178 (75,4 %) | 183 (76,9 %) |
 | L (Satzverlust links), PDF | 144 von 936 (15,4 %) | 332 (36,2 %) | 348 (37,2 %) |
 | L, Tabellenpfad | 49 von 246 (19,9 %) | 90 (36,9 %) | 95 (38,6 %) |
 
@@ -1540,6 +1540,100 @@ vergleichbaren Wörtern fängt unterhalb von 90 % **gar nichts** mehr. Legt der
 Tabellenparser eine beidspaltige Überschriftszeile unter den Paragraphen, den
 sie überschreibt, statt unter den davor, verschwinden 52 der 59 — dann lohnt
 der zweite Blick auf die restlichen sieben.
+
+*Nachtrag desselben Tages, und die Erwartung stimmte zur Hälfte.* Die Ablage
+ist es — aber **nicht als Ablage**. Die Zeile bloß unter den Paragraphen
+darunter zu legen bringt fast nichts: „unter der Schwelle" fällt dann von **63
+auf 62**, weil 41 Fälle verschwinden und 40 neue entstehen. Der Paragraph
+darunter deckt die Überschrift genauso wenig, und der Grund ist der Maßstab —
+von den 111 Zeilen, die auch nach dem Umzug unter 50 % bleiben, landen **99 auf
+einem Paragraphen, dessen RIS-Dokument gar keinen `context` führt**. Das RIS
+liefert die Teil-, Abschnitts- und Unterabschnittszeilen nicht in jedem
+Paragraphendokument mit; das Strafvollzugsgesetz § 9 bekommt `context: []`,
+während die Beilage sechs Überschriftszeilen darüber druckt. Je *Zeile*
+gemessen wird die Ablage dabei deutlich richtiger — im geltenden Text ihres
+Paragraphen gedeckt **32 → 169** von 506, unter 50 % **161 → 111** —, nur ist
+eine Überschrift eben kein Satz des Paragraphen, und sie gegen dessen geltenden
+Text zu halten fragt das Falsche.
+
+**Was wirkt, ist `lift` eine Ebene höher.** Die beidspaltige Überschriftszeile
+hört auf, eine Zeile zu sein, und wird zur `heading` des Paragraphen darunter —
+genau das, was das Modul für die Paragraphenüberschrift (`typ="para"`) seit
+jeher tut, 1.084-mal im Korpus, und was der spaltenübergreifenden Überschrift
+und der Abschnittszeile nach Wortschatz (`DIVISION_RE`) ebenfalls längst
+widerfährt. `lift` sieht nur `typ="para"`, und daran scheiterte alles eine
+Ebene darüber: Teil, Abschnitt, Unterabschnitt, die Buchstabenabschnitte einer
+Verordnung, der Titel des Gesetzes, die Überschrift des *folgenden* Paragraphen.
+
+Grundmenge, über die 126 lesbaren Beilagen der GP XXVIII (11.09.2026): **507
+solche Zeilen**, nach der Auszeichnung des RIS 226 `g2`, 124 `g1`, 46 `anlage`,
+46 `titel`, 30 `erll`, 24 `g1min`, 4 `tgue`, 3 `erlz`, 2 `art`, 1 `para` — jede
+einzelne ein `<ueberschrift>`, keine am Wortlaut erraten. **331 folgt eine
+Zeile, die einen Paragraphen eröffnet**, die übrigen 176 eröffnen nichts unter
+sich. Dazu 119 Zeilen derselben Form, deren Spalten sich *unterscheiden* — das
+ist „samt Überschrift", eine gezeigte Änderung, und die bleibt unberührt.
+
+| GP XXVIII, Tabellenpfad | unveränderte Zeilen | §§ mit Prosa | unter der Schwelle | neu einbehalten | davon heute bestätigt |
+|---|---:|---:|---:|---:|---:|
+| vorher | 1.972 in 609 §§ | 366 | 63 | 59 | 54 |
+| nur die Ablage verschoben | 2.066 in 642 §§ | 384 | 62 | — | 47 |
+| Überschrift des § darunter | 1.738 in 474 §§ | 330 | **13** | **10** | **6** |
+
+**Aufgelöst wird nur, wo darunter wirklich ein Paragraph aufgeht.** Die reine
+Form — jede beidspaltige Überschriftszeile auflösen — käme auf 10 statt 13,
+**kostet aber 17 Beilagen zusammen 74 Wörter von der Seite**: wo unter der
+Überschrift kein Paragraph aufgeht, hängt sie sich an eine Zeile, deren Block
+schon eine Überschrift trägt, und `TextComparisonSection` druckt nur die erste.
+Am teuersten in der Tierversuchs-Verordnung, deren Anlage 1 ihre inneren
+Gliederungszeilen („3.4. Mindestanforderungen für die Haltung von Hamstern
+(Cricetini)") verlöre. Eine gedruckte Zeile für drei Diagnosezeilen zu opfern
+ist derselbe Handel, den die alte Auslassungsregel über 919 Zeilen verloren
+hat. Mit der Bedingung verliert die Seite **kein einziges Wort** und gewinnt
+30.
+
+Die 13, die bleiben, sind einzeln gelesen. **Sechs sind die Fälle von oben**:
+StGB § 321c und BMSVG § 28 (die Lücke in unserer eigenen RIS-Lesung),
+GTelG § 23 (der eine echte Befund), zweimal „Anlage N (wird hier nicht
+abgebildet)" und Konfitürenverordnung § 5 (Rechtschreibung). **Drei sind
+Überschriften, unter denen kein Paragraph aufgeht** und die deshalb Zeile
+bleiben — StVG §§ 18c und 84, Apothekenbetriebsordnung § 65. **Eine ist der
+Maßstab**: die Prüfungsordnung BMHS § 57g druckt zwei Überschriftsebenen mehr,
+als das RIS in ihrem Paragraphendokument führt (`context` trägt „12c.
+Unterabschnitt" und den Lehrgangstitel, nicht aber „Klausurprüfung" und
+„Mündliche Prüfung"). **Drei sind Fließtext** und haben mit Überschriften
+nichts zu tun: SchOG § 6, KSchG § 13a, Ärztegesetz § 7 — genau der Rest, den
+der zweite Blick meint.
+
+**Kein einziges Urteil bewegt sich**: Tabellenpfad 1.010/53/795 mit 44/5/4 nach
+Ursache, die Urteilsliste Zeile für Zeile identisch, alle vier Zusicherungen 0;
+der PDF-Pfad ist unberührt, weil `parseTextComparison` dort nicht aufgerufen
+wird. Das ist erwartbar und kein Argument gegen den Schritt: die linke Prüfung
+liest `unchanged`-Zeilen ohnehin nicht — sie ist der Grund, warum diese Zeilen
+überhaupt unbemerkt falsch lagen. Was sich bewegt, ist die Voraussetzung: die
+Grundmenge, über der eine spätere Regel entscheiden müsste, ist von 59 auf 10
+gefallen.
+
+*Gemessen und nicht gebaut, mit Zahlen, damit es niemand neu messen muss.*
+Dieselbe Regel für die **geänderte** beidspaltige Überschrift — Zeile bleibt
+Zeile, nur der Paragraph zieht um, also genau `heldHeadings` von d6c47ea eine
+Ebene höher — bewegt **28 Urteile: 19 von einbehalten auf bestätigt**, 2 von
+einbehalten auf ungeprüft, 2 von ungeprüft auf bestätigt (1.008/55/795 →
+1.024/39/795, einbehalten wegen der geltenden Fassung 43 → 27). **Fünf
+bestätigte Paragraphen verlören aber ihre Bestätigung**, und alle fünf sind
+eine Klasse: der **Langtitel des Gesetzes**, den die Novelle mitändert. Die
+Medizinproduktebetreiberverordnung § 1 fällt von 100 % auf 78 %, weil
+„Verordnung der Bundesministerin für Gesundheit, Familie und Jugend über das
+Errichten …" in ihre linke Spalte wandert — Text, den § 1 nie hatte; ebenso
+drei Preisindex-Verordnungen und die LF-VGÜ § 6. Solange die Titelzeile nicht
+als das gelesen wird, was sie ist, kostet diese Erweiterung eine Zusage, und
+d6c47ea hat für sich festgehalten, dass keine verlorenging. Eigener Schritt,
+eigene Messung. Dieselbe Klasse zeigt sich auf der unveränderten Seite
+harmlos: 35 der 507 Zeilen sind Titelzeilen, die jetzt zur Überschrift des
+ersten Paragraphen ihres Gesetzes werden, und 15 davon sind Feldnamen der
+RIS-Webansicht („Text" 9-mal, „Präambel/Promulgationsklausel" 2-mal, „Beachte
+für folgende Bestimmung" 2-mal, „Langtitel", „Gesamte Rechtsvorschrift für
+…"). Als Überschrift gedruckt sind sie Zierrat statt Recht, aber sie standen
+vorher als Zeile in der Beilage und stehen in keinem Sack der Prüfung.
 
 Bis dahin wird der blinde Fleck **benannt statt geschlossen**, und zwar mit
 Zahlen, die jeder Lauf neu erzeugt. `annex-fault-injection.ts` hat dafür einen
@@ -2330,8 +2424,9 @@ die Tierschutz-Sonderhaltungsverordnung § 17 den „7. Abschnitt" des § 27. Di
 übrigen 61 eröffnen nichts unter sich.
 
 **Entschieden, und gegen die naheliegende Regel.** Die beidseitige Überschrift
-verschwindet als Zeile und wird zum `heading` des Paragraphen darunter; das
-hier genauso zu tun wäre falsch. Eine beidseitig gedruckte Überschrift ist per
+verschwindet als Zeile und wird zum `heading` des Paragraphen darunter (seit
+demselben Tag auch oberhalb der Paragraphenebene, `heldTwoSided`, oben in
+diesem Abschnitt); das hier genauso zu tun wäre falsch. Eine beidseitig gedruckte Überschrift ist per
 Definition unverändert, eine einseitige **ist die Änderung** — und eine
 gezeigte Änderung verschwinden zu lassen ist derselbe Fehler, den die alte
 Auslassungsregel über 919 Zeilen gemacht hat. Die Zeile bleibt also eine Zeile,
