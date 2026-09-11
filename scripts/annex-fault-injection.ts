@@ -73,18 +73,18 @@
  *
  * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
  * |---|---:|---:|---:|---:|---:|---:|
- * | L, PDF-Pfad    | 936 | 864 (92,3 %) | 369 (39,4 %) | 144 (15,4 %) | 348 (37,2 %) | 581 (62,1 %) |
+ * | L, PDF-Pfad    | 942 | 870 (92,4 %) | 371 (39,4 %) | 146 (15,5 %) | 350 (37,2 %) | 584 (62,0 %) |
  * | L, Tabellenpfad| 246 | 246 (100 %)  | 145 (58,9 %) |  49 (19,9 %) |  95 (38,6 %) | 171 (69,5 %) |
- * | R-alt, PDF     | 899 | 899 (100 %)  |   7 ( 0,8 %) | 220 (24,5 %) | 594 (66,1 %) | 597 (66,4 %) |
+ * | R-alt, PDF     | 905 | 905 (100 %)  |   7 ( 0,8 %) | 222 (24,5 %) | 596 (65,9 %) | 599 (66,2 %) |
  * | R-alt, Tabelle | 238 | 238 (100 %)  |   1 ( 0,4 %) |  98 (41,2 %) | 183 (76,9 %) | 183 (76,9 %) |
- * | R-neu, PDF     | 898 | 898 (100 %)  |   8 ( 0,9 %) | 106 (11,8 %) | 693 (77,2 %) | 693 (77,2 %) |
+ * | R-neu, PDF     | 904 | 904 (100 %)  |   8 ( 0,9 %) | 107 (11,8 %) | 696 (77,0 %) | 696 (77,0 %) |
  * | R-neu, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  76 (32,1 %) | 196 (82,7 %) | 197 (83,1 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
  * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
  * was measurably weakest on until its reference narrowed to one §. False
- * alarms without any fault: 19 and 21 §§ on the PDF path (rule 1 and rule 2)
+ * alarms without any fault: 19 and 22 §§ on the PDF path (rule 1 and rule 2)
  * and 5 and 4 on the table path — rule 2 stood at 7 and 0 with the
  * whole-draft reference; sixteen of the extra ones are named in
  * docs/architecture.md §12.13, the seventeenth is the one the better
@@ -105,7 +105,11 @@
  * two-column gutter of the same day), with L together unchanged at 62,1 %,
  * R-alt 67,0 → 66,4 % and R-neu 77,0 → 77,2 %. Its rule-1
  * alarms go from 18 to 19, and the one more is § 44 of the Seen- und
- * Fluss-Verkehrsordnung — a § the gate did not judge before at all.
+ * Fluss-Verkehrsordnung — a § the gate did not judge before at all. The closing
+ * clause read under both RIS spellings (`lawStructure`, same evening) added six
+ * §§ more — 942/905/904 — and one rule-2 alarm on the PDF path
+ * (Geräuschemissionsverordnung Anlage 6, which the left check had masked until
+ * then): 19 and 21 → 19 and 22.
  *
  * **Moved on 2026-09-11, table path only** (`lawText.stripMarkup`): the
  * population grew, because §§ whose words the ressort's markup used to cut in

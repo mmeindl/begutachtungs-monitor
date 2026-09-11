@@ -242,8 +242,8 @@ export function coverageOf(column: string, standing: string): Coverage {
  *
  * | | unveränderte Zeilen | §§ mit Prosa | unter der Schwelle | neu einbehalten | davon heute bestätigt |
  * |---|---:|---:|---:|---:|---:|
- * | Tabellenpfad | 1.738 in 474 §§ | 330 | 13 | 10 |  6 |
- * | PDF-Pfad     |   287 in 287 §§ | 129 | 34 | 34 |  0 |
+ * | Tabellenpfad | 1.738 in 474 §§ | 330 | 11 |  — |  4 |
+ * | PDF-Pfad     |   287 in 287 §§ | 129 | 33 | 33 |  0 |
  *
  * The table-path row is the state after `textComparison.heldTwoSided`
  * (11.09.2026): a two-sided heading row now becomes the *heading* of the § that
@@ -257,12 +257,14 @@ export function coverageOf(column: string, standing: string): Coverage {
  * designation of its own); 3 are the annex's own notation („Anlage 1
  * (wird hier nicht abgebildet)", „[entfällt durch ein früher in Kraft tretendes
  * Vorhaben]"); 1 is orthography (Konfitürenverordnung § 5, „In-Kraft-Treten"
- * against „Inkrafttreten"); and **2 are gaps in our own RIS reading** — StGB
+ * against „Inkrafttreten"); and **2 were gaps in our own RIS reading**, closed the same evening
+ * (`lawStructure` reads both RIS spellings of the closing clause) — StGB
  * § 321c and BMSVG § 28, where `lawStructure.plainText` ends an Absatz with its
  * enumeration and drops the clause after it („ist mit Freiheitsstrafe von einem
  * bis zu zehn Jahren zu bestrafen."), so the annex is quoting law the ruler
  * does not offer. That is the third time this project would have scored its own
- * gap as the ministry's. On the PDF path all 34 are Inhaltsverzeichnis lines
+ * gap as the ministry's. On the PDF path 33 of 34 were Inhaltsverzeichnis lines (the 34th the same
+ * closing-clause gap, closed)
  * and Hauptstück headings, and every one of them sits in a § that shows **no
  * change at all**, so the rule would buy nothing a reader can see.
  *
@@ -480,8 +482,8 @@ export interface WordBag {
  * Novellierungsanordnung is in the draft, only in the wrong §. Measured by
  * fault injection over GP XXVIII (`scripts/annex-fault-injection.ts`), the
  * whole-draft bag caught 11,8 % of such faults on the PDF path and 32,1 % on
- * the table path — the weakest number the gate had. Per § it is 77,2 % and
- * 82,7 % (populations of 2026-09-11 evening: 898 and 237 sites).
+ * the table path — the weakest number the gate had. Per § it is 77,0 % and
+ * 82,7 % (populations of 2026-09-11 evening: 904 and 237 sites).
  *
  * `general` is what keeps the narrowing honest. An instruction whose address
  * could not be read contributes its words to every § of its law, so a parse
@@ -780,17 +782,18 @@ export interface RightColumnCheck {
  * intact annex, itself a true finding (docs/architecture.md §12.13). The table-path rows
  * count 246/238/237 sites since `lawText.stripMarkup` and the second
  * designation per row (`textComparison.stripGld`) let more §§ reach the
- * injection at all, the PDF rows 936/899/898 since the gutter is read from the
- * two-column lines (`annexPdf.gutterBand`) and a law is named only before its
- * first instruction (`lawTitles.draftArticles`):
+ * injection at all, the PDF rows 942/905/904 since the gutter is read from the
+ * two-column lines (`annexPdf.gutterBand`), a law is named only before its
+ * first instruction (`lawTitles.draftArticles`) and the closing clause is read
+ * under both RIS spellings (`lawStructure`):
  *
  * | Fehler | ganzer Entwurf | je §, 87 % | je §, 93 % |
  * |---|---:|---:|---:|
- * | R-neu, PDF-Pfad     | 106 (11,8 %) | 665 (75,6 %) | 693 (77,2 %) |
+ * | R-neu, PDF-Pfad     | 107 (11,8 %) | 665 (75,6 %) | 696 (77,0 %) |
  * | R-neu, Tabellenpfad |  76 (32,1 %) | 184 (78,3 %) | 196 (82,7 %) |
- * | R-alt, PDF-Pfad     | 220 (24,5 %) | 584 (66,3 %) | 594 (66,1 %) |
+ * | R-alt, PDF-Pfad     | 222 (24,5 %) | 584 (66,3 %) | 596 (65,9 %) |
  * | R-alt, Tabellenpfad |  98 (41,2 %) | 178 (75,4 %) | 183 (76,9 %) |
- * | L, PDF-Pfad         | 144 (15,4 %) | 332 (36,2 %) | 348 (37,2 %) |
+ * | L, PDF-Pfad         | 146 (15,5 %) | 332 (36,2 %) | 350 (37,2 %) |
  * | L, Tabellenpfad     |  49 (19,9 %) |  90 (36,9 %) |  95 (38,6 %) |
  *
  * Of rule 1's 628 misses, **464 are not misses**: the draft
