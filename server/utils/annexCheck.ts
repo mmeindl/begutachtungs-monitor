@@ -1005,6 +1005,26 @@ export function annexParagraphKey(law: string | null, para: string): string {
 const DESIGNATION_PART_RE = /(§|Art|Anl|Anh)[a-zäöüß.]*\s*(\d+(?:\.\d+)?[a-z]*\d*(?:\/\d+)?)/gi
 /** A Gliederungssymbol that dropped its sign: "5.", "12a". */
 const BARE_NUMERAL_RE = /^\s*(\d+(?:\.\d+)?[a-z]*\d*)\s*\.?\s*$/i
+/**
+ * The word that makes the designation after it a **citation** rather than a
+ * second part of the name: "Anlage 3 *zu* § 10 und § 11" is the schedule's
+ * title saying which §§ it belongs to. RIS calls that schedule "Anl. 3".
+ *
+ * Tested on the gap *between* two parts only, and that is the whole safety of
+ * it: a leading "Zu § 5" — the form the Erläuterungen head their sections with
+ * — keeps its §, because there is no earlier part for the word to separate
+ * from.
+ *
+ * The two classes separate on this one word without a remainder (GP XXVIII,
+ * 2026-09-11). Of the 1.546 designation strings the key reads as composite,
+ * **1.534 are RIS's "Art. 3 § 5"** — an article-structured law, where the
+ * Artikel really is part of the §'s identity — and every one of them joins its
+ * parts with a plain space. The other **12 are the annex's schedule headings**,
+ * and every one of them joins with " zu ". Over all 195.875 RIS label
+ * occurrences in the offline corpus, **not one label contains "zu" at all**,
+ * so the lookup side of the key cannot move.
+ */
+const CITATION_JOINER_RE = /\bzu\b/i
 
 /**
  * A designation as a comparable key — the annex's "§ 5." and RIS's "§ 5" name
@@ -1026,17 +1046,31 @@ const BARE_NUMERAL_RE = /^\s*(\d+(?:\.\d+)?[a-z]*\d*)\s*\.?\s*$/i
  * "Anl. 1/59" (118 labels), which is not "Anl. 1" — matching it would have
  * scored a whole schedule against one fifty-ninth of it.
  *
- * Measured against every RIS label in the cached corpus (195.148 occurrences,
- * 4.198 distinct, 2026-09-10): none is unreadable here, so the exactness
+ * Measured against every RIS label in the cached corpus (195.875 occurrences,
+ * 4.251 distinct, 2026-09-11): none is unreadable here, so the exactness
  * costs no coverage.
+ *
+ * **A composite the RIS never holds is the same mistake mirrored** (fixed
+ * 2026-09-11). The key reads the leading designation and ignores the rest,
+ * which is right for "§ 5 3. Abschnitt" and for "Anlage 1 Mindestgliederung
+ * Bilanz" — but where a schedule's title *cites* §§, the citation was read as
+ * part of the name: "Anlage 3 zu § 10 und § 11" became `Anl 3 § 10 § 11`, a
+ * label no law carries, so the § was looked up, not found, and left
+ * `unchecked` for a reason of our own making. 12 §§ of GP XXVIII, across four
+ * drafts, and the lookup they want exists in every case — RIS holds "Anl. 3".
+ * `CITATION_JOINER_RE` is where the cut is and why it is safe.
  *
  * Null for a text carrying no designation at all.
  */
 export function designationKey(text: string): string | null {
   const parts: string[] = []
+  let end = 0
   for (const m of text.matchAll(DESIGNATION_PART_RE)) {
+    // Everything from a "zu" onwards is the Anlage's title, not its name.
+    if (parts.length > 0 && CITATION_JOINER_RE.test(text.slice(end, m.index))) break
     const word = m[1]!.toLowerCase()
     parts.push(`${word === '§' ? '§' : word === 'art' ? 'Art' : 'Anl'} ${m[2]!.toLowerCase()}`)
+    end = m.index + m[0].length
   }
   if (parts.length > 0) return parts.join(' ')
   // A bare numeral is a §: the annex's Gliederungssymbol drops the sign often
@@ -1057,11 +1091,28 @@ function indexOf(law: KonsLawAtDate): LawIndex {
   for (const [label, ref] of Object.entries(law.paragraphs)) {
     const key = designationKey(label)
     // First wins. RIS returns one version per label at a given date, and the
-    // key is nearly injective: over the 195.148 labels in the cached corpus
-    // (4.198 distinct) not one fails to parse and exactly two keys are
-    // claimed twice — "Anl. 5a"/"Anl. 5A" and "Anl. 5b"/"Anl. 5B", and those
-    // two spellings sit in *different* laws (Gesetzesnummer 20009048 and
-    // 20003820), so no law's index collides (measured 2026-09-10).
+    // key is nearly injective — but "no law's index collides", as this note
+    // claimed until 2026-09-11, is **false**, and a first-wins rule is
+    // precisely where that costs something. Re-measured over all 195.875
+    // label occurrences the offline corpus holds (4.251 distinct): not one
+    // fails to parse, 15 keys are claimed by more than one label, and 13 of
+    // those claims collide *inside a single RIS answer*, which is the
+    // population this map is built from.
+    //
+    // They are one shape, and it is the one the numeral half of
+    // `DESIGNATION_PART_RE` half-covers: a schedule cut into lettered parts.
+    // "Anl. 1/59" is read whole because the suffix is digits, while
+    // "Anl. 1/e", "Anl. 2/m1" and "Anl. 1/01.1" lose theirs and land on
+    // "Anl. 1", "Anl. 2" and "Anl. 1/01" beside the whole schedule. Three
+    // laws carry it (Gesetzesnummer 10008944, 10008568, 20009369) and **no
+    // GP-XXVIII draft amends any of them**, so nothing in the measured corpus
+    // is scored against a fraction of its schedule today. Widening the
+    // numeral is its own step with its own measurement: it moves every
+    // designation on the annex and draft side too, not just the labels here.
+    //
+    // The pair the old note named does hold: "Anl. 5a"/"Anl. 5A" and
+    // "Anl. 5b"/"Anl. 5B" sit in *different* laws (20009048 and 20003820) and
+    // collide in no index. Both spellings are in the GP-XXVIII corpus.
     if (key !== null && !paragraphs.has(key)) paragraphs.set(key, ref)
   }
   return { law, paragraphs }

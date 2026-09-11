@@ -526,7 +526,6 @@ describe('designationKey', () => {
     expect(designationKey('§ 5 3. Abschnitt')).toBe('§ 5')
     expect(designationKey('§ 5 Abs. 3')).toBe('§ 5')
     expect(designationKey('§§ 5 und 6')).toBe('§ 5')
-    expect(designationKey('Anl. 1 zu § 5 Abs. 1')).toBe('Anl 1 § 5')
   })
 
   it('ignores whatever stands beside the designation, and that was measured', () => {
@@ -544,11 +543,29 @@ describe('designationKey', () => {
     // pure designations and its near-injectivity is untouched.
     expect(designationKey('Anlage 1 Mindestgliederung Bilanz')).toBe('Anl 1')
     expect(designationKey('Anlage 1 (wird hier nicht abgebildet)')).toBe('Anl 1')
-    // The residual the same measurement named, and it is a *wrong* key rather
-    // than a truncation: a schedule whose title cites §§ reads as a composite
-    // RIS never holds, so all 12 such §§ of GP XXVIII stay unchecked. Written
-    // down as it behaves, not as it should behave.
-    expect(designationKey('Anlage 3 zu § 10 und § 11')).toBe('Anl 3 § 10 § 11')
+  })
+
+  it('reads a schedule title that cites §§ as a title, not as a name', () => {
+    // The residual the same measurement named, and it was a *wrong* key rather
+    // than a truncation: "Anlage 3 zu § 10 und § 11" became `Anl 3 § 10 § 11`,
+    // which RIS never holds, so the § was looked up, missed, and left
+    // unchecked — 12 §§ of GP XXVIII until 2026-09-11.
+    expect(designationKey('Anlage 3 zu § 10 und § 11')).toBe('Anl 3')
+    expect(designationKey('Anl. 1 zu § 5 Abs. 1')).toBe('Anl 1')
+    expect(designationKey('Anlage 1 zu den §§ 5 und 6')).toBe('Anl 1')
+    // The longest of the twelve, verbatim from the Bildungsdokumentations-VO.
+    expect(designationKey('Anlage 1 zu § 5 Abs. 1, § 7 Abs. 1 und § 25 Teil I Daten der Schulen')).toBe('Anl 1')
+    // The cut is a *joiner* between two parts, never a prefix. "Zu § 5" is how
+    // the Erläuterungen head a section, and it names § 5 as surely as "§ 5"
+    // does — there is no earlier designation for the word to separate from.
+    expect(designationKey('Zu § 5')).toBe('§ 5')
+    expect(designationKey('(zu § 5 Abs. 2)')).toBe('§ 5')
+    // …so the one composite RIS *does* hold has to survive, and it does: its
+    // parts are joined by a plain space. Every composite label reading in the
+    // GP-XXVIII laws is of this shape (1.534 of 1.546), and the rule's own
+    // predicate matches no RIS label anywhere in the offline corpus —
+    // 0 of 195.875 occurrences, 0 of 4.251 distinct (2026-09-11).
+    expect(designationKey('Art. 3 § 5')).toBe('Art 3 § 5')
   })
 })
 
@@ -795,6 +812,19 @@ describe('verifyAnnex', () => {
     const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
     expect(check.verdicts['#§ 9.']).toBe('unchecked')
     expect(notRunReason(check)).toBe(REASON_NO_SUCH_PARAGRAPH)
+  })
+
+  it('finds the standing Anlage behind a heading that cites §§', async () => {
+    // The shape of all 12 §§ GP XXVIII lost to the composite key: the annex
+    // prints the schedule under its full title, RIS holds it as "Anl. 3", and
+    // `Anl 3 § 10 § 11` matched nothing — so a sound row came out unchecked
+    // with "das RIS Bundesrecht führt diese Paragraphen nicht" beside it.
+    const heading = 'Anlage 3 zu § 10 und § 11'
+    const rows = [row({ gld: heading, para: heading, current: PROSE })]
+    const blocks = [instruction(`1. Anlage 3 lautet: "${PROSE}"`)]
+    const check = await verifyAnnex(rows, draft({ blocks }), fakeSources({ 'BGBl. I 1/2020': { 'Anl. 3': PROSE } }))
+    expect(check.verdicts[`#${heading}`]).toBe('verified')
+    expect(check.reasons).not.toContain(REASON_NO_SUCH_PARAGRAPH)
   })
 
   it('leaves everything unchecked when the law does not resolve', async () => {

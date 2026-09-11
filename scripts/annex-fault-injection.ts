@@ -75,14 +75,17 @@
  * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
  * was measurably weakest on until its reference narrowed to one §. False
  * alarms without any fault: 18 and 21 §§ on the PDF path (rule 1 and rule 2)
- * and 5 and 4 on the table path — rule 2 stood at 7 and 0 with the
+ * and 5 and 7 on the table path — rule 2 stood at 7 and 0 with the
  * whole-draft reference; sixteen of the extra ones are named in
  * docs/architecture.md §12.13, the seventeenth is the one the better
  * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
  * column carries the start of the next Novellierungsanordnung — whether our
  * line reading or the annex's print put it there, the PDF decides; the R-neu
  * fault, found unstaged in the corpus), the eighteenth the one the shared
- * markup rule handed from the left check to rule 2 (MPBV § 11, below).
+ * markup rule handed from the left check to rule 2 (MPBV § 11, below); the last
+ * three (UH-Statistik-VO §§ 18, 35, 37) appeared when the Anlage key was
+ * corrected and are the Artikel mis-split named in §12.13 — a cause in
+ * `lawTitles.ts`, not in the rule.
  *
  * **Moved on 2026-09-11, table path only** (`lawText.stripMarkup`): the
  * population grew, because §§ whose words the ressort's markup used to cut in

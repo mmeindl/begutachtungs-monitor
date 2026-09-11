@@ -1890,21 +1890,102 @@ den falschen Paragraphen gehalten zu werden. Über die GP XXVIII tragen von
 **11.169 Zeilen mit Bezeichnung** genau **555** überhaupt etwas neben ihr, und
 die Klassen sind sauber — sie sagen nur das Gegenteil: **434 davon sind
 Anlagenüberschriften mit Titel** („Anlage 1 Mindestgliederung Bilanz", „Anlage
-3 zu § 10 und § 11"), deren Schlüssel heute überwiegend *richtig* ist. Die
-Regel würde also viele richtige Schlüssel wegwerfen, um eine Handvoll falsche
-zu verhindern. Auf der RIS-Seite stellt sich die Frage gar nicht: von den
-**1.959 verschiedenen Labels** der beteiligten Gesetze trägt **keines** einen
-Rest, `indexOf` liest also reine Bezeichnungen und die Aussage über seine
-Beinahe-Injektivität bleibt unberührt.
+3 zu § 10 und § 11"), deren Schlüssel damals überwiegend und seit dem Schritt
+unten durchgehend *richtig* ist. Die Regel würde also viele richtige Schlüssel
+wegwerfen, um eine Handvoll falsche zu verhindern. Auf der RIS-Seite stellt
+sich die Frage gar nicht: von den **1.959 verschiedenen Labels** der
+beteiligten Gesetze trägt **keines** einen Rest, `indexOf` liest also reine
+Bezeichnungen. (Was die Beinahe-Injektivität dieses Index angeht, hat die
+Nachprüfung vom 11.09.2026 die damalige Aussage widerlegt — unten.)
 
-Die Messung hat dafür einen anderen Rest benannt, und der ist kein Abschneiden
+Die Messung hat dafür einen anderen Rest benannt, und der war kein Abschneiden
 sondern ein *falscher* Schlüssel: zitiert der Titel einer Anlage Paragraphen,
-baut `designationKey` daraus einen zusammengesetzten Schlüssel („Anlage 3 zu
-§ 10 und § 11" → `Anl 3 § 10 § 11`), den das RIS nie führt. **12 Paragraphen
-der GP XXVIII** bleiben deshalb ungeprüft. Ein „bis zum ersten *zu* lesen"
-wäre die naheliegende Regel; sie gehört in `designationKey`, also auch auf den
-PDF-Pfad und in die Adressierung der Anordnungen, und ist damit ein eigener
-Schritt mit eigener Messung.
+baute `designationKey` daraus einen zusammengesetzten Schlüssel („Anlage 3 zu
+§ 10 und § 11" → `Anl 3 § 10 § 11`), den das RIS nie führt. **Erledigt
+11.09.2026.** Die beiden Klassen trennen sich an einem Wort, ohne Rest: von
+den **1.546 Bezeichnungen, die der Schlüssel als zusammengesetzt liest**, sind
+**1.534 das „Art. 3 § 5" des RIS** — ein artikelgegliedertes Gesetz, wo der
+Artikel wirklich zur Identität des Paragraphen gehört —, und jede einzelne
+davon verbindet ihre Teile mit einem bloßen Leerzeichen. Die übrigen **12 sind
+Anlagenüberschriften der Beilage**, und jede einzelne davon verbindet mit
+„ zu ". Gelesen wird das Wort nur *zwischen* zwei Teilen: „Zu § 5", wie die
+Erläuterungen ihre Abschnitte überschreiben, behält seinen Paragraphen, weil
+es keinen früheren Teil gibt, von dem das Wort trennen könnte.
+
+Die Nachschlageseite kann sich dabei nicht bewegen, und das ist nachgezählt:
+über **alle 195.875 Label-Vorkommen** des Offline-Korpus (4.251 verschiedene)
+trifft die Regel auf **kein einziges** Label zu.
+
+Was sie bewegt, sind 12 Paragraphen und fünf Urteile. **Zwei werden
+bestätigt** — Anlage 7 und Anlage 8 des Bildungsdokumentationsgesetzes 2020,
+beide mit 100 % Deckung über 48 bzw. 36 vergleichbare Wörter und einem eigenen
+Sack von 174 bzw. 132 Wörtern, der alles Gezeigte erklärt. **Zehn bleiben
+ungeprüft**, aber die Prüfung hält jetzt den richtigen Grund fest: das RIS
+führt sie als Tabelle, und eine Tabelle ist so nicht vergleichbar
+(„RIS-Paragraph ist eine Tabelle" 25 → 35). Vorher hielt sie fest, das RIS
+Bundesrecht führe diese Paragraphen *nicht* — eine Behauptung über eine fremde
+Datenbank, und sie war falsch. Auf der Seite stand dieser Satz allerdings nie,
+und das gehört dazu: `TextComparisonSection.vue` druckt den Grund nur, wenn
+*gar nichts* geprüft werden konnte (`judged === 0`), und das trifft auf keinen
+der vier betroffenen Entwürfe zu — „Entwürfe ohne jede Prüfung" bleibt bei 6
+und die Gründe darunter bleiben Wort für Wort dieselben. Der Gewinn liegt
+also in den zwei Urteilen und in dem, was die Prüfung über sich selbst
+festhält, nicht in einem Satz, den eine Leserin heute anders läse.
+
+**Drei Paragraphen sind der Preis, und sie benennen einen Fehler woanders.**
+Die UH-Statistik- und Bildungsdokumentationsverordnung verliert §§ 18, 35 und
+37 an Regel 2 („nicht im Entwurf"), § 18 davon aus *bestätigt*. Der Grund ist
+nicht die Regel: `lawTitles.draftArticles` liest in diesem Entwurf eine
+zitierte Anlagenüberschrift als **zweiten Artikel** („Anlage 1 zu § 6 Anhang
+zum Diplom …", mit Promulgationsklausel), und die Zeilen der Beilage landen
+alle in dieser zweiten Hälfte, während die Anordnungen zu §§ 16, 18, 35 und 37
+in der ersten stehen. Die drei haben deshalb **keinen eigenen Sack**. Bisher
+lieh ihnen der Zufall einen: die Anlagensäcke des Entwurfs (`Anl 2`,
+`Anl 3`, `Anl 7`, `Anl 10`, `Anl 12`) trafen auf die zusammengesetzten
+Schlüssel der Beilage nicht, galten damit als „Paragraphen, für die die
+Beilage keinen eigenen Block zeigt", und wurden an jeden Paragraphen des
+Gesetzes vererbt. Mit dem richtigen Schlüssel greift `shown` — wie gebaut —
+und die Anleihe entfällt. Nachgemessen steht **jedes** der als fehlend
+gemeldeten Wörter im Entwurf, nur unter dem anderen Gesetzesschlüssel; die
+drei Meldungen sind also Fehlalarme einer bekannten Klasse mit benannter
+Ursache in `lawTitles.ts`, nicht in `designationKey`.
+
+Gemessen über die GP XXVIII: Tabellenpfad **1.007/52/799 → 1.008/55/795**
+Paragraphen, nach Ursache 43/5/4 → **43/5/7**, ≥ 99 % gedeckt 988 → **990**,
+geprüfte Paragraphen 1.070 → 1.072, p10 der Deckung bleibt 100 %, Zeilen ohne
+Paragraphenangabe unverändert 251, alle vier Zusicherungen 0. Die
+Adressierungsdeckung **steigt**: Paragraphen der Beilage mit eigenem Sack
+1.702 → **1.714**, ohne 146 → **134**. Der **PDF-Pfad ist Zeichen für Zeichen
+unverändert**, Prüfstand wie Urteilsliste — `UNIT_RE` schneidet die
+Bezeichnung dort vor dem Titel ab, sodass gar keine zusammengesetzte
+Bezeichnung entsteht (0 von 3.483). Ebenso unverändert ist die Adressierung
+der Anordnungen: von 9.904 Adressen des Entwurfs trägt keine einzige einen
+Zitat-Titel. Die Fehlerinjektion bleibt auf beiden Pfaden in jeder
+Injektionszelle gleich (Tabellenpfad 246/238/237 Stellen, L 69,5 %, R-alt
+76,9 %, R-neu 82,7 %; PDF-Pfad Zeile für Zeile identisch); auf dem
+Tabellenpfad steigen die Meldungen ohne Injektion von 5 und 4 auf 5 und 7 —
+das sind dieselben drei Paragraphen.
+
+**Gemessen und verworfen:** den Zitat-Titel nur für das *Nachschlagen*
+abzuschneiden und für `shown` den zusammengesetzten Schlüssel zu behalten.
+Das hätte die drei Fehlalarme vermieden und wäre genau der Fehler, vor dem
+dieselbe Datei bei `tguOracle.paragraphKey` warnt: zwei Schlüssel für dieselbe
+Sache, von denen einer stillschweigend der falsche ist. `shown` und `byLaw`
+müssen denselben Schlüssel benutzen, sonst sagt der Mechanismus nichts.
+
+**Rest, benannt und nicht gebaut** (`indexOf`): die Aussage „kein
+Gesetzesindex kollidiert" ist **widerlegt**. Nachgemessen über alle 195.875
+Label-Vorkommen beanspruchen 15 Schlüssel mehr als ein Label, und **13 davon
+kollidieren innerhalb einer einzigen RIS-Antwort** — der Grundmenge, aus der
+`indexOf` seinen Index baut. Es ist eine Form: eine in Buchstabenteile
+zerlegte Anlage. „Anl. 1/59" wird ganz gelesen, weil die Endung Ziffern sind,
+während „Anl. 1/e", „Anl. 2/m1" und „Anl. 1/01.1" ihre verlieren und neben der
+ganzen Anlage landen; „first wins" entscheidet dann. Drei Gesetze tragen das
+(10008944, 10008568, 20009369), und **kein Entwurf der GP XXVIII ändert eines
+davon** — im gemessenen Korpus wird also nichts gegen einen Bruchteil seiner
+Anlage gehalten. Den Numeral-Teil zu weiten ist ein eigener Schritt mit eigener
+Messung: er bewegt jede Bezeichnung auch auf der Beilagen- und der
+Entwurfsseite, nicht nur die Labels.
 
 **Eine einseitig gedruckte Überschrift gehört dem Paragraphen darunter
 (11.09.2026).** Fügt ein Entwurf einen Paragraphen samt Überschrift ein oder
