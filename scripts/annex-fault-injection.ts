@@ -68,14 +68,14 @@
  * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 (24,7 %) | 588 (66,7 %) | 590 (67,0 %) |
  * | R-alt, Tabelle | 238 | 238 (100 %)  |   1 ( 0,4 %) |  97 (40,8 %) | 183 (76,9 %) | 183 (76,9 %) |
  * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 678 (77,0 %) | 678 (77,0 %) |
- * | R-neu, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  76 (32,1 %) | 195 (82,3 %) | 196 (82,7 %) |
+ * | R-neu, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  76 (32,1 %) | 196 (82,7 %) | 197 (83,1 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
  * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
  * was measurably weakest on until its reference narrowed to one §. False
  * alarms without any fault: 18 and 21 §§ on the PDF path (rule 1 and rule 2)
- * and 6 and 4 on the table path — rule 2 stood at 7 and 0 with the
+ * and 5 and 4 on the table path — rule 2 stood at 7 and 0 with the
  * whole-draft reference; sixteen of the extra ones are named in
  * docs/architecture.md §12.13, the seventeenth is the one the better
  * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
@@ -93,8 +93,9 @@
  * only by the left check and for a reason of our own making. The PDF path is
  * unchanged in every cell. The second designation per row (2026-09-11,
  * `textComparison.stripGld`) moved the table-path population once more, to
- * 246/238/237, with L 171, R-alt 183 and R-neu 195 — the table above shows
- * that state.
+ * 246/238/237, with L 171, R-alt 183 and R-neu 195; the one-sided heading
+ * rows (`heldHeadings`, same day) then took R-neu to 196 and rule 1's
+ * table-path alarms from 6 to 5 — the table above shows that state.
  *
  * The reach stated in `annexCheck.ts` — 1.019 of 1.092, rule 1 464, rule 2
  * 181, together 567 — was measured over both paths at once and with a

@@ -355,6 +355,24 @@ function stripParaHeading(html: string): string {
   return html.replace(PARA_HEADING_RE, ' ')
 }
 
+/** A heading of any level, not only a §'s own. */
+const HEADING_RE = /<ueberschrift\b[^>]*>[\s\S]*?<\/ueberschrift\s*>/g
+
+/**
+ * Is this column nothing but heading?
+ *
+ * Asked of RIS's own markup rather than of the shape of the line, the same
+ * discriminator `isTableContent` uses and for the same reason: a short line
+ * without a closing full stop is as often a Ziffer as a heading. It costs
+ * nothing here — of the 297 one-sided heading rows in GP XXVIII, RIS types
+ * every single one as `<ueberschrift>`, and none has to be recognised from
+ * its wording (measured 2026-09-11).
+ */
+function headingOnly(html: string): boolean {
+  if (!/<ueberschrift\b/i.test(html)) return false
+  return cellText(html.replace(HEADING_RE, ' ')) === ''
+}
+
 const GLD_ALL_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/g
 
 /**
@@ -823,11 +841,25 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
   /** The § currently open — a new law restarts the numbering. */
   let openPara: string | null = null
   let pendingHeading: string[] = []
+  /**
+   * One-sided heading rows waiting for the row below to say which § they are.
+   *
+   * A row is emitted in printed order, so they are flushed before the next row
+   * is pushed and never outlive their law.
+   */
+  let heldHeadings: ComparisonRow[] = []
+  const releaseHeadings = (): void => {
+    for (const row of heldHeadings) rows.push({ ...row, para: openPara })
+    heldHeadings = []
+  }
   for (const [i, p] of parsed.entries()) {
     const mark = candidateAt.get(i)
     if (mark) {
       const article = resolution.accepted.get(mark.at)
       if (article) {
+        // Still under the old law and the old §: there is no row below them
+        // inside this Artikel to take them.
+        releaseHeadings()
         law = article.key
         openPara = null
         rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
@@ -913,7 +945,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     // only 3 are marked without differing (measured 2026-09-08). So the word
     // diff decides what is shown, and the marking is recorded, not relied on.
     const segments = change === 'changed' && !elided ? diffTokens(current, proposed).segments : null
-    rows.push({
+    const row: ComparisonRow = {
       kind: 'pair',
       law,
       heading: [pendingHeading.join(' '), lift ? ownHeading : ''].filter(Boolean).join(' · ') || null,
@@ -926,9 +958,57 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       elided,
       segments,
       editorial: isEditorialChange(segments),
-    })
+    }
     pendingHeading = []
+    // A heading the annex prints in **one** column only belongs to the unit
+    // below it, exactly as a two-sided one does — the draft inserts a § with
+    // its heading, or repeals one, and the column where it does not yet (or no
+    // longer) exist is empty. `lift` never sees those: it needs the heading in
+    // both columns, so the row went out as an ordinary insertion or deletion
+    // and inherited the § *above*. SchOG § 129 carried the heading of § 130d,
+    // the Blutspenderverordnung § 7 that of § 8, the AWG § 72a that of the
+    // repealed § 72b.
+    //
+    // It may not vanish into `pendingHeading` the way a two-sided heading
+    // does. One printed on both sides is unchanged by definition; a one-sided
+    // heading *is* the change, and making a shown change disappear is the
+    // mistake the old elision rule made over 919 rows. So the row stays a row
+    // and only its § moves.
+    //
+    // Which § that is cannot be known yet: it is the one the *next* row opens.
+    // Held until then, the row takes whatever § is open when the row below is
+    // emitted — the new § where the row below opens one, and the § above where
+    // it does not, so where the corpus says nothing the answer is the one that
+    // shipped.
+    //
+    // Measured over the 126 readable GP-XXVIII annexes (2026-09-11): 297 rows
+    // of this shape out of 11.448, 244 printed right and 53 left. 236 are
+    // followed by a row that opens a §; the other 61 open nothing and keep the
+    // § above. RIS types every one of the 297 as `<ueberschrift>` — none has to
+    // be recognised from its wording (`headingOnly`).
+    if (gld === null && (current === '') !== (proposed === '') && headingOnly(current === '' ? proposedHtml : currentHtml)) {
+      const only = current || proposed
+      // Unless it is a schedule heading, which is a designation and not a
+      // title: what stands under "Anhang" is addressed as the Anlage, so the
+      // line opens its own unit rather than waiting for a § that never comes
+      // (`opensAnlage`, which the two-sided and the full-width heading already
+      // ask). Seven rows of GP XXVIII, and they were filed under the *previous*
+      // schedule — the Bäderhygieneverordnung showed its new Anlage 11 under
+      // Anlage 10, the Medizinproduktebetreiberverordnung its repealed Anhang 5
+      // under Anhang 2.
+      if (opensAnlage(only, current === '' ? proposedHtml : currentHtml)) {
+        openPara = only
+        releaseHeadings()
+        rows.push({ ...row, para: openPara })
+        continue
+      }
+      heldHeadings.push(row)
+      continue
+    }
+    releaseHeadings()
+    rows.push(row)
   }
+  releaseHeadings()
   return { rows, refusal: resolution.refusal }
 }
 

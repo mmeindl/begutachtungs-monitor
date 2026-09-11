@@ -713,7 +713,7 @@ export interface RightColumnCheck {
  * | Fehler | ganzer Entwurf | je §, 87 % | je §, 93 % |
  * |---|---:|---:|---:|
  * | R-neu, PDF-Pfad     | 106 (12,0 %) | 665 (75,6 %) | 678 (77,0 %) |
- * | R-neu, Tabellenpfad |  76 (32,1 %) | 184 (78,3 %) | 195 (82,3 %) |
+ * | R-neu, Tabellenpfad |  76 (32,1 %) | 184 (78,3 %) | 196 (82,7 %) |
  * | R-alt, PDF-Pfad     | 218 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
  * | R-alt, Tabellenpfad |  97 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
  * | L, PDF-Pfad         | 144 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
