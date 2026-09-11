@@ -708,15 +708,16 @@ export interface RightColumnCheck {
  * intact annex, itself a true finding (docs/architecture.md §12.13). The table-path rows
  * count 246/238/237 sites since `lawText.stripMarkup` and the second
  * designation per row (`textComparison.stripGld`) let more §§ reach the
- * injection at all:
+ * injection at all, the PDF rows 920/883/882 since the gutter is read from the
+ * two-column lines (`annexPdf.gutterBand`):
  *
  * | Fehler | ganzer Entwurf | je §, 87 % | je §, 93 % |
  * |---|---:|---:|---:|
- * | R-neu, PDF-Pfad     | 106 (12,0 %) | 665 (75,6 %) | 678 (77,0 %) |
+ * | R-neu, PDF-Pfad     | 106 (12,0 %) | 665 (75,6 %) | 679 (77,0 %) |
  * | R-neu, Tabellenpfad |  76 (32,1 %) | 184 (78,3 %) | 196 (82,7 %) |
- * | R-alt, PDF-Pfad     | 218 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
+ * | R-alt, PDF-Pfad     | 219 (24,8 %) | 584 (66,3 %) | 590 (66,8 %) |
  * | R-alt, Tabellenpfad |  97 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
- * | L, PDF-Pfad         | 144 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
+ * | L, PDF-Pfad         | 144 (15,7 %) | 332 (36,2 %) | 344 (37,4 %) |
  * | L, Tabellenpfad     |  49 (19,9 %) |  90 (36,9 %) |  95 (38,6 %) |
  *
  * Of rule 1's 628 misses, **464 are not misses**: the draft

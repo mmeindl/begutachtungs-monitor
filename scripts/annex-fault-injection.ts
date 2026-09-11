@@ -63,11 +63,11 @@
  *
  * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
  * |---|---:|---:|---:|---:|---:|---:|
- * | L, PDF-Pfad    | 918 | 847 (92,3 %) | 358 (39,0 %) | 144 (15,7 %) | 344 (37,5 %) | 570 (62,1 %) |
+ * | L, PDF-Pfad    | 920 | 849 (92,3 %) | 359 (39,0 %) | 144 (15,7 %) | 344 (37,4 %) | 571 (62,1 %) |
  * | L, Tabellenpfad| 246 | 246 (100 %)  | 145 (58,9 %) |  49 (19,9 %) |  95 (38,6 %) | 171 (69,5 %) |
- * | R-alt, PDF     | 881 | 881 (100 %)  |   6 ( 0,7 %) | 218 (24,7 %) | 588 (66,7 %) | 590 (67,0 %) |
+ * | R-alt, PDF     | 883 | 883 (100 %)  |   6 ( 0,7 %) | 219 (24,8 %) | 590 (66,8 %) | 592 (67,0 %) |
  * | R-alt, Tabelle | 238 | 238 (100 %)  |   1 ( 0,4 %) |  97 (40,8 %) | 183 (76,9 %) | 183 (76,9 %) |
- * | R-neu, PDF     | 880 | 880 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 678 (77,0 %) | 678 (77,0 %) |
+ * | R-neu, PDF     | 882 | 882 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 679 (77,0 %) | 679 (77,0 %) |
  * | R-neu, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  76 (32,1 %) | 196 (82,7 %) | 197 (83,1 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
@@ -98,7 +98,10 @@
  * `textComparison.stripGld`) moved the table-path population once more, to
  * 246/238/237, with L 171, R-alt 183 and R-neu 195; the one-sided heading
  * rows (`heldHeadings`, same day) then took R-neu to 196 and rule 1's
- * table-path alarms from 6 to 5 — the table above shows that state.
+ * table-path alarms from 6 to 5 — the table above shows that state. On the
+ * PDF path the gutter read from the two-column lines (`annexPdf.gutterBand`,
+ * same day) added the two §§ that now carry enough text for a site —
+ * 918/881/880 → 920/883/882 — at unchanged rates.
  *
  * The reach stated in `annexCheck.ts` — 1.019 of 1.092, rule 1 464, rule 2
  * 181, together 567 — was measured over both paths at once and with a

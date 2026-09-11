@@ -1246,15 +1246,16 @@ ersten und dritten Spalte sind seit der geteilten Markup-Regel und der zweiten
 Bezeichnung je Zeile (beide unten) über 246/238/237 Stellen gemessen statt
 244/236/235: Paragraphen, die die linke
 Prüfung vorher an einem zerschnittenen Wort verfehlten, erreichen die
-Injektion jetzt.
+Injektion jetzt. Die PDF-Zeilen zählen 920/883/882 Stellen statt 918/881/880,
+seit der Bundsteg aus den Zweispaltenzeilen gelesen wird (unten).
 
 | Fehler | Regel 2, ganzer Entwurf | je Paragraph, 87 % adressiert | je Paragraph, 93 % adressiert |
 |---|---:|---:|---:|
-| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 880 (12,0 %) | 665 (75,6 %) | **678 (77,0 %)** |
+| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 882 (12,0 %) | 665 (75,6 %) | **679 (77,0 %)** |
 | R-neu, Tabellenpfad | 76 von 237 (32,1 %) | 184 (78,3 %) | **196 (82,7 %)** |
-| R-alt (fremder geltender Satz), PDF | 218 von 881 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
+| R-alt (fremder geltender Satz), PDF | 219 von 883 (24,8 %) | 584 (66,3 %) | 590 (66,8 %) |
 | R-alt, Tabellenpfad | 97 von 238 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
-| L (Satzverlust links), PDF | 144 von 918 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
+| L (Satzverlust links), PDF | 144 von 920 (15,7 %) | 332 (36,2 %) | 344 (37,4 %) |
 | L, Tabellenpfad | 49 von 246 (19,9 %) | 90 (36,9 %) | 95 (38,6 %) |
 
 Zusammen mit Regel 1 steigt die Reichweite gegen den Satzverlust von 49,0 auf
@@ -1378,10 +1379,8 @@ Weinrecht-Sammelverordnung 2024, und sie ist der Zielfall, hier ungestellt im
 Korpus gefunden: Die rechte Spalte des § 13 endet nicht mit seinem Text,
 sondern trägt dahinter den Anfang der nächsten Anordnung — „5. In
 § 16 Abs. 1 wird die Wortfolge „Kosten der Untersuchung: 60 Punkte = € 72
-(Punktewert: € 1,20)" durch …". Ob unsere Zeilenlesung die Zelle über ihr Ende
-hinaus verlängert hat oder die Beilage das so druckt, entscheidet erst der
-Blick ins PDF — der Regel ist es gleich, an diese Stelle gehört der Text
-nicht. Die 8 fehlenden von 20 als neu gezeigten
+(Punktewert: € 1,20)" durch …". Der Regel ist es gleich, an diese Stelle
+gehört der Text nicht. Die 8 fehlenden von 20 als neu gezeigten
 Wörtern sind genau diese Gebührenformel, zweimal, weil beide Operanden
 zitiert sind. Bis 10.09.2026 lag Anordnung 5 im allgemeinen Sack (ihre vier
 Operanden ließen sich nicht paaren), § 13 durfte sich also daran bedienen und
@@ -1389,6 +1388,32 @@ die Regel schwieg. Das ist derselbe Fehler, den die Injektion als R-neu
 künstlich erzeugt — nur echt, und auf der Seite grün als neues Recht.
 Sonst ändert sich auf dem PDF-Pfad kein Urteil, und alle vier Zusicherungen
 beider Prüfstände bleiben 0.
+
+*Wer den Text dorthin gesetzt hat, ist seit 11.09.2026 beantwortet, und es ist
+nicht unsere Zeilenlesung.* Nachgesehen in der Textebene des PDF, Seite 4: die
+rechte Spalte dieser Beilage druckt nicht die vorgeschlagene **Fassung** der
+Bestimmungen, sondern die **Novellierungsanordnungen des Entwurfs**, eine unter
+der anderen und alle im selben Spaltenkasten — „2. Dem § 1 werden folgende Z 9
+und 10 angefügt:" bei x = 426,2, „4. § 13 samt Überschrift lautet:" bei 426,2,
+darunter das Zitat „Herstellungsmeldung … mitzuteilen.“ und unmittelbar darauf
+„5. In § 16 Abs. 1 wird die Wortfolge …" wieder bei 426,2. Die Anführungszeichen
+gehören dazu; für § 16 druckt die Beilage überhaupt keinen vorgeschlagenen Text,
+sondern eben diese Anordnung. Links steht dabei sauber zeilenweise der geltende
+Text (§ 13 bis x = 300,9, § 16 ab y = 149) — es ist also eine echte
+Gegenüberstellungsseite und keine hereingeratene Gesetzestextseite, und die
+Seite trägt ihr Kopfpaar („Geltender Text" / „Vorgeschlagener Text") wie jede
+andere. **Unser Anteil ist allein die Zeilengrenze:** der PDF-Parser schneidet
+eine Zeile am Paragraphenzeichen, und „5. In § 16 Abs. 1 …" eröffnet keinen
+Paragraphen, fällt also in den Block des § 13. Die Beilage hätte hier nichts
+anderes zu bieten, an dem sich schneiden ließe.
+
+Das ist **eine von 114 Beilagen** der GP XXVIII — nur diese eine druckt
+Anordnungen statt Fassungen in der rechten Spalte (15 solcher Zeilen von 685).
+Ein Schnitt an der Nummer einer Novellierungsanordnung wäre die Regel, die
+diesen Fall auflöste; sie ist am Korpus zu messen, bevor sie geschrieben wird,
+und sie steht in `TODO.md`, nicht hier. Solange es sie nicht gibt, tut das Tor
+genau das Richtige: § 13 wird einbehalten, der Text erreicht die Leserin nicht
+als neues Recht, und der Grund, den die Seite nennt, stimmt.
 
 **Eine Variante gemessen und verworfen:** eine *Obergrenze* auf den
 unerklärten Anteil. Sie liegt nahe, weil ein Block, der zwei Bestimmungen
@@ -1417,6 +1442,7 @@ die Ursachenzeile nennt die neue Möglichkeit („der Entwurf ordnet diese
 | XML-Tabelle, nach der Bezeichnungslesung (oben) | 982 | 65 | 56 / 6 / 3 | 800 |
 | XML-Tabelle, mit der geteilten Markup-Regel (11.09.2026) | 986 | 60 | 50 / 6 / 4 | 801 |
 | XML-Tabelle, mit der zweiten Bezeichnung je Zeile (11.09.2026, unten) | 998 | 62 | 52 / 6 / 4 | 791 |
+| PDF-Textebene, mit dem Bundsteg aus den Zweispaltenzeilen (11.09.2026, unten) | 1.342 | 244 | 212 / 15 / 17 | 1.897 |
 
 Die „vorher"-Zeilen sind heute gegen den Stand des Repositoriums gemessen und
 widersprechen deshalb der Tabelle weiter oben (967/73/764 und 895/198/2.388):
@@ -1630,9 +1656,11 @@ gemessen.* Die Naht als Schnitt repariert **eine** Beilage. Das
 EU-ESG-Vollzugsgesetz hat zwei Seiten, davon eine Titelseite, deren Block über
 die volle Breite den größten Teil der Tinte des Dokuments stellt; der leerste
 Streifen liegt deshalb bei 381 und damit *innerhalb* der linken Spalte, die bis
-434,5 läuft. Das Wort „behördlichen" steht folglich heute in der
-vorgeschlagenen Fassung, wo es nicht hingehört — die Naht trifft den Bundsteg
-dieser Beilage auf 0,03 pt. Sie zerstört dafür das **Abgabenänderungsgesetz
+434,5 läuft. Das Wort „behördlichen" stand deshalb in der vorgeschlagenen
+Fassung, wo es nicht hingehört (repariert noch am selben Tag, siehe „Der
+Bundsteg steht in den Zeilen, die zwei Spalten haben" unten) — die Naht trifft
+den Bundsteg dieser Beilage auf 0,03 pt. Sie zerstört dafür das
+**Abgabenänderungsgesetz
 2025**: 1.285 Läufe der rechten Spalte zerschneidet sie, die damit zu
 spannenden Überschriften werden. 111 Paragraphen ändern ihren Text, § 73b
 Mindestbesteuerungsgesetz und § 85a BAO verschwinden ganz, drei Urteile wandern
@@ -1661,7 +1689,10 @@ dagegen ginge live.
   lässt. Repariert die 7 Paragraphen des Informationsfreiheits-
   Anpassungsgesetzes BMWET, deren rechte Spaltenzeilen heute knapp als spannend
   gelesen werden, hilft dem EU-ESG-Vollzugsgesetz aber nicht: dessen Titelseite
-  trägt drei Zeilen über die volle Breite, die überall decken.
+  trägt drei Zeilen über die volle Breite, die überall decken. (Das ist die
+  Richtung, die am selben Tag doch noch getragen hat — es fehlte ihr der Test,
+  der eine Titelzeile von einer Zweispaltenzeile trennt; siehe „Der Bundsteg
+  steht in den Zeilen, die zwei Spalten haben" unten.)
 - **Beides nur über die Kopfseiten gemessen**, also über die Seiten, die
   überhaupt zwei Spalten tragen. Das trifft endlich das EU-ESG-Vollzugsgesetz
   (die Titelseite fällt heraus, Ergebnis 438) und kostet die
@@ -1682,6 +1713,102 @@ Die UWG-Beilage der Golden-Tests druckt auf allen neun Seiten dieselbe Naht
 unter keiner der Regeln. Der Befund steht als Kommentar bei `columnBoundary`
 und `headerSeam` und als Test in `tests/annexPdf.test.ts`: eine Beilage mit
 ungleich breiten Spalten schneidet am Bundsteg, nicht an ihrer Naht.
+
+**Der Bundsteg steht in den Zeilen, die zwei Spalten haben — nicht in der
+Tinte (11.09.2026).** Die drei verworfenen Regeln oben haben eines gemeinsam:
+sie suchen weiter im *ganzen* Papier nach einer Lücke. Die Titelseite des
+EU-ESG-Vollzugsgesetzes ist aber nicht irgendeine Störung, sondern eine Seite,
+die gar nicht zweispaltig gesetzt ist — und eine solche Seite hat nichts
+darüber zu sagen, wo zwei Spalten sich teilen. Fünf der sieben Läufe, die den
+echten Bundsteg bei 438 überdecken, stehen auf ihr; bei 381 hat das Dokument
+zufällig eine Wortlücke, und deshalb landete der Schnitt *innerhalb* der linken
+Spalte, die bis 434,5 läuft.
+
+Gefragt werden deshalb zuerst die **Zeilen, die wirklich zwei Spalten tragen**.
+Eine Zeile trägt zwei Spalten, wenn sie *eine* auffällig breite Lücke hat: ihre
+größte muss mindestens doppelt so breit sein wie jede andere Lücke derselben
+Zeile (`PARTING_DOMINANCE`). Der Test ist **maßstabsfrei**, und das ist der
+Punkt — die beiden Formen, die nicht mitreden dürfen, scheitern beide daran,
+dass bei ihnen keine Lücke heraussticht: eine **gesperrt gesetzte Titelzeile**
+(alle Lücken 12 pt, auf derselben Titelseite auch alle 25 pt) und eine
+**Tabellenzeile** (alle Spaltenabstände gleich breit). Eine absolute Schwelle
+kann das nicht: 12 pt sind auf der Titelseite ein Wortabstand und 10 pt sind
+der ganze Bundsteg der Abgrenzungsverordnung 2004.
+
+Jede solche Zeile stimmt für ihre ganze Lücke ab; der Bundsteg ist das Band,
+das *alle* freilassen — also der Schnitt der Lücken. Über die 114 Beilagen sind
+80 einstimmig, 110 erreichen 92,9 %, und die Bänder sind 1 bis 13 pt breit
+(Median 7).
+
+**Das Band ist aber keine Antwort, und das ist gemessen.** Nur Zeilen mit
+beiden Spalten stimmen ab, also kann eine einseitige Zeile *im* Band beginnen:
+bei der Gewerbeordnungs-/Emissionsschutz-Beilage ist das Band [420, 426],
+während die Fortsetzungszeile „linien umgesetzt:" bei 422,7 anfängt — in der
+Mitte des Bandes geschnitten wird sie zur spannenden Überschrift, und § 382
+verliert die Wörter „linien umgesetzt:" aus der vorgeschlagenen Fassung. Welche
+Stelle des Bandes der Schnitt bekommt, ist eine Frage an *alle* Läufe, und die
+beantwortet die Tinte, mit derselben Regel wie bisher — nur in einem kleineren
+Heuhaufen. Beim EU-ESG-Vollzugsgesetz deckt die Titelseite das ganze Band
+[435, 441] gleichmäßig, der Schnitt landet also in seiner Mitte: 438.
+
+Die Tinte sucht das ganze Fenster nur noch, wenn die Zeilen sich auf kein Band
+einigen, und die eine Bedingung dafür ist strukturell: **ein Band, das aus dem
+Suchfenster hinausläuft, ist keines.** Die Abgrenzungsverordnung 2004 setzt
+ihre rechte Spalte 62,6 pt breiter und rückt die meisten Zeilen ein, das
+breiteste einige Band ist deshalb der Einzug und endet erst am Fensterrand 464
+— die Tinte liest diese Beilage richtig (397) und behält sie. Über die 114
+Beilagen entscheidet das Band 113-mal und die Tinte einmal.
+
+*Verworfen, mit Zahlen:* eine **Mindest-Einigkeit** von 90 % auf das Band. Sie
+klingt richtig — der Bundsteg ist auf *jeder* Zweispaltenzeile frei —,
+entscheidet aber genau eine der 114 Beilagen (eine Lehrberufslisteverordnung
+mit 87,3 %), bewegt dort keinen Paragraphentext und kein Urteil, und
+verwirft die **bessere** Antwort: 424 liegt dort 6,2 pt von der linken Spalte
+und 6,1 pt von der rechten, die 421 der Tinte dagegen 3,2 und 9,1. Eine Zahl,
+die in die 4-Punkte-Lücke zwischen zwei Dokumenten gelegt wird und noch nie
+recht hatte, ist keine Messung. Ebenso geprüft: `PARTING_DOMINANCE` 1,5 und
+`MIN_PARTING` 4 und 10 ändern über den ganzen Korpus **keine einzige**
+Spaltengrenze; erst 3,0 bewegt zwei Beilagen um 2 bis 3 pt, ohne dass ein
+Paragraph oder ein Urteil folgt. Die Konstanten stehen also auf einer Ebene und
+nicht an einer Kante.
+
+*Wirkung, § für § durch `parseAnnexPdf` gemessen.* 23 der 114 Beilagen bekommen
+eine andere Spaltengrenze, 21 davon um 2 oder 3 pt innerhalb ihres eigenen
+Bundstegs und ohne jede Folge. **Keine Beilage verliert ein Zeichen**, eine
+gewinnt 3.826: das Informationsfreiheits-Anpassungsgesetz BMWET, dessen Schnitt
+von 421 auf 419 geht — dort ist der Bundsteg 0,1 pt breit (linke Spalte bis
+419,1, rechte ab 419,2), und 30 Zeilen seiner rechten Spalte galten bei 421 als
+spannende Überschriften. Sieben Paragraphen bekommen ihren Text zurück (§§ 8,
+13, 21, 24, 29, 78, 93), darunter § 93 „… tritt" → „… tritt mit 1. September
+2025 in Kraft." und § 13 „… tritt das Bundesgesetz zur" → „… außer Kraft.".
+
+**Einer davon ist mehr als ein zurückgewonnener Satz**, und er ist der Grund,
+warum diese Lesefehler zählen. Beim **Investitionskontrollgesetz § 21** brachen
+*beide* Spalten an derselben Stelle ab — „… kann in seinem Zuständigkeitsbereich
+und (6) bis (8) …" —, waren damit wortgleich, und die Seite zeigte den
+Paragraphen als **unverändert**, hinter einer Zahl eingeklappt. Der Entwurf
+ändert ihn aber: aus „haftet für die korrekte Behandlung" wird „haftet für die
+korrekte bzw. die rechtmäßige Behandlung". Jetzt steht die Änderung da, und das
+Tor bestätigt sie — 95,8 % Deckung über 72 vergleichbare Wörter, wo es vorher
+19 waren und gar kein Urteil fällig war. Das ist das einzige Urteil, das sich
+über den Korpus bewegt, und es bewegt sich von *ungeprüft* auf *bestätigt*.
+
+Beim EU-ESG-Vollzugsgesetz wandert „behördlichen" aus der vorgeschlagenen in
+die geltende Fassung, wo es hingehört; das Urteil bleibt (einbehalten, 94 %
+Deckung), die Leserin bekommt dort also so oder so nichts zu sehen — der Gewinn
+ist, dass die Lesung stimmt.
+
+Prüfstände: PDF-Pfad **1.341/244/1.898 → 1.342/244/1.897** bei unveränderten
+Ursachen 212 / 15 / 17, ≥ 99 % gedeckt 1.617 wie vorher, `droppedPages` 0, alle
+vier Zusicherungen 0. **Der Tabellenpfad bewegt sich nicht**, Zeile für Zeile:
+1.008/55/795, Ursachen 43 / 5 / 7. Die Fehlerinjektion ist auf dem Tabellenpfad
+Zeile für Zeile identisch; auf dem PDF-Pfad wächst nur die Grundmenge um die
+zwei Paragraphen, die jetzt genug Text für eine Injektionsstelle tragen (918 →
+920, 881 → 883, 880 → 882), die Trefferquoten bleiben L 62,1 %, R-alt 67,0 %,
+R-neu 77,0 % und die Fehlalarme ohne Injektion 18 und 21. Die UWG-Beilage der
+Golden-Tests schneidet unverändert bei 421, die Fixture wurde nicht neu
+erzeugt. Zeilen, die als spannende Überschrift gelesen werden, fallen über den
+Korpus von 836 auf 810.
 
 **Die Überschriften-Übernahme war asymmetrisch, und das kostete 70
 Paragraphen (2026-09-10).** Eine Überschrift steht *über* dem Paragraphen,

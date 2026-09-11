@@ -82,8 +82,173 @@ interface AnnexLine {
   rightEnd: number
 }
 
+/** Lines within this many points of each other sit on one baseline. */
+const BASELINE_TOLERANCE = 2.5
+
 /**
- * The column boundary: the emptiest vertical strip in the middle of the page.
+ * A page's runs, grouped into the visual lines they sit on.
+ *
+ * One definition of "a line" for the whole module: `columnBoundary` reads the
+ * gap between the columns off these groups and `linesFromPage` splits the very
+ * same groups at the boundary that comes out. A gutter measured over a
+ * different grouping than the one it is then applied to would be measuring
+ * something else.
+ *
+ * Order is preserved: a group's position is that of its first run, and within
+ * a group the runs stand as the page listed them.
+ */
+function baselines(page: AnnexPage): AnnexItem[][] {
+  const groups: { y: number; items: AnnexItem[] }[] = []
+  for (const item of page.items) {
+    if (!item.text.trim()) continue
+    let group = groups.find((g) => Math.abs(g.y - item.y) <= BASELINE_TOLERANCE)
+    if (!group) {
+      group = { y: item.y, items: [] }
+      groups.push(group)
+    }
+    group.items.push(item)
+  }
+  return groups.map((g) => g.items)
+}
+
+/**
+ * A gap narrower than this is a word space, not a parting of two columns.
+ *
+ * The floor is deliberately low — the tightest gutter in the corpus is the
+ * 7,1 pt of the EU-ESG-Rating-Verordnung-Vollzugsgesetz (left column to 434,5,
+ * right from 441,6) — because the test that does the work below is the
+ * *relative* one, and an absolute number that decided anything would be a
+ * number fitted to this corpus's page width.
+ */
+const MIN_PARTING = 6
+/**
+ * …and the parting has to be at least this much wider than the line's next
+ * gap. This is the whole discriminator, and it is scale-free on purpose.
+ *
+ * A justified line of body text parts its columns with a gap several times its
+ * word spacing: 26,9 pt against 7,6 pt on the EU-ESG line that carries
+ * "behördlichen". The two shapes that must *not* vote both fail it by having
+ * no gap that stands out — a **letter-spaced title line**, whose gaps are all
+ * 12 pt (or all 25 pt: the same annex's title page prints both), and a **table
+ * row**, whose column gaps are as wide as each other. Both are the reason an
+ * absolute threshold cannot do this job: 12 pt is a word space on the title
+ * page and 10 pt is the whole gutter of the Abgrenzungsverordnung 2004.
+ */
+const PARTING_DOMINANCE = 2
+
+/**
+ * Where this line parts its columns, or null if it does not say.
+ *
+ * "Says" is the point. Most lines of an annex carry ink in one column only, or
+ * run across both as a heading, and such a line is evidence about its own
+ * content and none about the layout. A line that carries one conspicuously
+ * wide gap and text on both sides of it has parted two columns, and the gutter
+ * is somewhere inside that gap.
+ */
+function columnParting(items: readonly AnnexItem[]): [number, number] | null {
+  const sorted = [...items].sort((a, b) => a.x - b.x)
+  let widest = 0
+  let second = 0
+  let at: [number, number] | null = null
+  let cursor = sorted[0] ? sorted[0].x + sorted[0].width : 0
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i]!.x - cursor
+    if (gap > widest) {
+      second = widest
+      widest = gap
+      at = [cursor, sorted[i]!.x]
+    } else if (gap > second) second = gap
+    cursor = Math.max(cursor, sorted[i]!.x + sorted[i]!.width)
+  }
+  if (at === null || widest < MIN_PARTING || widest < second * PARTING_DOMINANCE) return null
+  return at
+}
+
+/**
+ * The widest stretch of `score` that carries its lowest value, as indices.
+ *
+ * The gutter is a band and not a point, at both steps below: the lines that
+ * part their columns agree on a band, and inside it the ink is empty over a
+ * band. Taking the widest one rather than the first keeps a single stray
+ * position from deciding.
+ */
+function lowestStretch(score: readonly number[]): [number, number] {
+  const least = Math.min(...score)
+  let bestFrom = 0
+  let bestTo = -1
+  let start = -1
+  for (let i = 0; i <= score.length; i++) {
+    if (i < score.length && score[i] === least) {
+      if (start < 0) start = i
+    } else if (start >= 0) {
+      if (i - 1 - start > bestTo - bestFrom) {
+        bestFrom = start
+        bestTo = i - 1
+      }
+      start = -1
+    }
+  }
+  return [bestFrom, bestTo]
+}
+
+/**
+ * The band the two-column lines agree the gutter lies in, or null when they
+ * do not agree.
+ *
+ * Every line that parts its columns votes for the whole of its own gap, and
+ * the gutter is where the votes pile up: it is the one strip that *every*
+ * such line leaves free, so in a sound annex the maximum is the intersection
+ * of all their gaps — the band between the left column's widest line and the
+ * right column's leftmost one.
+ *
+ * Measured over the 114 GP-XXVIII annexes (2026-09-11): 80 are unanimous, 110
+ * reach 92,9 %, and the lowest is 76,9 %.
+ *
+ * **A share threshold on that was measured and dropped.** It sounded right —
+ * the gutter is free on *every* two-column line, so a band a tenth of them
+ * print into is not the gutter — but at 90 % it decides exactly one annex of
+ * the 114 (an annex to the Lehrberufsliste, at 87,3 %), changes no §'s text and
+ * no verdict, and what it rejects is the *better* answer: 424 sits 6,2 pt from
+ * that annex's left column and 6,1 from its right, where the ink's 421 sits
+ * 3,2 and 9,1. A number that lies in the 4-point gap between two documents and
+ * has never been right is not a measurement.
+ *
+ * **This is a band and not an answer**, and the difference is a measured one.
+ * Only lines that print in *both* columns vote, so a one-sided line may begin
+ * inside the band: on the Gewerbeordnung/Emissionsschutzgesetz annex the band
+ * is [420, 426] while the continuation line "linien umgesetzt:" starts at
+ * 422,7 — cutting at the band's middle turned it into a spanning heading and
+ * § 382 lost the words "linien umgesetzt:" out of the proposed column
+ * (2026-09-11). Which point of the band to cut at is a question about all the
+ * ink, and `columnBoundary` answers it with the rule it always had.
+ */
+function gutterBand(pages: readonly AnnexPage[], from: number, to: number): [number, number] | null {
+  const votes = new Array<number>(to - from + 1).fill(0)
+  let voters = 0
+  for (const page of pages) {
+    for (const line of baselines(page)) {
+      const parting = columnParting(line)
+      if (parting === null || parting[1] < from || parting[0] > to) continue
+      voters++
+      for (let x = Math.max(from, Math.ceil(parting[0])); x <= Math.min(to, Math.floor(parting[1])); x++) votes[x - from]!++
+    }
+  }
+  if (voters === 0) return null
+  const [bestFrom, bestTo] = lowestStretch(votes.map((v) => -v))
+  // **A band that runs off the search window is not a band this can measure**,
+  // and it is the one guard the corpus needs. The Abgrenzungsverordnung 2004
+  // sets its right column 62,6 pt wider than its left and indents most of its
+  // rows, so the widest agreed strip is the indent rather than the gutter and
+  // it leaves the window at 464 — the band would say 454 to 464 where the
+  // gutter is 395,1. The ink reads that annex correctly (397), so the vote
+  // stands aside — on that one annex of the 114, and on no other.
+  if (bestFrom === 0 || bestTo === votes.length - 1) return null
+  return [from + bestFrom, from + bestTo]
+}
+
+/**
+ * The column boundary: where the two-column lines part, and failing that the
+ * emptiest vertical strip in the middle of the page.
  *
  * Two anchors were tried and both failed. The page midline is wrong because
  * the columns are not symmetric — on the Abgabenänderungsgesetz 2025 the
@@ -111,14 +276,32 @@ interface AnnexLine {
  * but only a handful do, while every body line piles up on one side or the
  * other (2026-09-09).
  *
- * The ink can be wrong too, and once in the corpus it is: the
+ * **The ink can be wrong, and once in the corpus it is** (2026-09-11). The
  * EU-ESG-Rating-Verordnung-Vollzugsgesetz sets two pages, one of them a title
  * page whose full-width block is most of the document's ink, so the emptiest
- * strip lands at 381 — inside the left column, whose text runs to 434,5 — and
- * one word of it ("behördlichen") is filed under the proposed version. There
- * the seam is right to 0,03 pt, because that annex's columns happen to be the
- * same width (328,8 against 329,0). One annex is not a rule, and the trade is
- * measured below at `parseAnnexPdf`.
+ * strip landed at 381 — inside the left column, whose text runs to 434,5 — and
+ * one word of it ("behördlichen") was filed under the proposed version. The
+ * cause is that ink counts every run of every page, and a page that is not set
+ * in two columns has no business saying where two columns part: five of the
+ * seven runs covering the real gutter at 438 belong to that title page, while
+ * at 381 the whole document happens to have a word boundary.
+ *
+ * **So the search is narrowed before the ink counts, not after.** The lines
+ * that really are two-column lines say which band the gutter lies in
+ * (`gutterBand`), and inside that band the ink answers as it always did. That
+ * is not a different statistic but a smaller haystack, and it is the whole
+ * repair: on the EU-ESG annex the band is [435, 441], the title page's ink
+ * covers all of it evenly, and the cut lands at 438 where the gutter is. Where
+ * the two-column lines do not agree on a band — 1 of the 114 — the ink searches
+ * the whole window, exactly as before.
+ *
+ * Over the 114 GP-XXVIII annexes the band decides 113 and the ink 1, and the
+ * answer moves on 23 of them. 21 move by 2 or 3 pt inside their own gutter and
+ * nothing follows — not a §'s text, not a verdict. The two that carry
+ * something are the EU-ESG annex, 381 → 438, and the
+ * Informationsfreiheits-Anpassungsgesetz BMWET, 421 → 419, whose gutter is
+ * 0,1 pt wide and whose right column had 30 lines read as spanning headings
+ * (§12.13). The bands are 1 to 13 pt wide, median 7.
  */
 export function columnBoundary(pages: readonly AnnexPage[]): number {
   const width = pages[0]?.width ?? 842
@@ -128,21 +311,29 @@ export function columnBoundary(pages: readonly AnnexPage[]): number {
   // where the emptiest strip is not the gutter but simply blank paper.
   const from = Math.floor(width * 0.45)
   const to = Math.ceil(width * 0.55)
-  const coverage = new Array<number>(to - from + 1).fill(0)
+  const band = gutterBand(pages, from, to)
+  const [searchFrom, searchTo] = band ?? [from, to]
+  const coverage = new Array<number>(searchTo - searchFrom + 1).fill(0)
   for (const page of pages) {
     for (const item of page.items) {
       if (!item.text.trim()) continue
-      const a = Math.max(from, Math.floor(item.x))
-      const b = Math.min(to, Math.ceil(item.x + item.width))
-      for (let x = a; x <= b; x++) coverage[x - from]!++
+      const a = Math.max(searchFrom, Math.floor(item.x))
+      const b = Math.min(searchTo, Math.ceil(item.x + item.width))
+      for (let x = a; x <= b; x++) coverage[x - searchFrom]!++
     }
+  }
+  // Inside an agreed band the emptiest strip is a band of its own — on the
+  // EU-ESG annex the ink is the same at every point of it — so the cut goes in
+  // its middle. Without a band the old tie-break stands: nearest the middle of
+  // the page, which is where the gutter sits in every annex measured.
+  if (band) {
+    const [lowFrom, lowTo] = lowestStretch(coverage)
+    return Math.round((searchFrom + lowFrom + searchFrom + lowTo) / 2)
   }
   let best = Math.round(width / 2)
   let least = Number.POSITIVE_INFINITY
-  // Ties go to the strip nearest the middle of the page, which is where the
-  // gutter sits in every annex measured.
   for (let i = 0; i < coverage.length; i++) {
-    const x = from + i
+    const x = searchFrom + i
     const score = coverage[i]!
     if (score < least || (score === least && Math.abs(x - width / 2) < Math.abs(best - width / 2))) {
       least = score
@@ -200,8 +391,6 @@ function dominantWidth(pages: readonly AnnexPage[]): number {
   return best
 }
 
-/** Lines within this many points of each other sit on one baseline. */
-const BASELINE_TOLERANCE = 2.5
 /**
  * How far past the gutter a run has to reach before it belongs to neither
  * column. A left-column line may overhang the emptiest strip by a few points
@@ -349,26 +538,24 @@ export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
   type Run = { x: number; width: number; text: string }
   const buckets: { y: number; left: Run[]; right: Run[]; spanning: Run[]; leftEnd: number; rightEnd: number; leftStart: number; rightStart: number }[] = []
 
-  for (const item of page.items) {
-    if (!item.text.trim()) continue
-    let bucket = buckets.find((b) => Math.abs(b.y - item.y) <= BASELINE_TOLERANCE)
-    if (!bucket) {
-      bucket = { y: item.y, left: [], right: [], spanning: [], leftEnd: 0, rightEnd: 0, leftStart: Number.POSITIVE_INFINITY, rightStart: Number.POSITIVE_INFINITY }
-      buckets.push(bucket)
-    }
-    const right = item.x + item.width
-    if (item.x < mid && right > mid + GUTTER_TOLERANCE) {
-      bucket.spanning.push({ x: item.x, width: item.width, text: item.text })
-      continue
-    }
-    if (item.x + item.width / 2 < mid) {
-      bucket.left.push({ x: item.x, width: item.width, text: item.text })
-      bucket.leftEnd = Math.max(bucket.leftEnd, right)
-      bucket.leftStart = Math.min(bucket.leftStart, item.x)
-    } else {
-      bucket.right.push({ x: item.x, width: item.width, text: item.text })
-      bucket.rightEnd = Math.max(bucket.rightEnd, right)
-      bucket.rightStart = Math.min(bucket.rightStart, item.x)
+  for (const group of baselines(page)) {
+    const bucket = { y: group[0]!.y, left: [] as Run[], right: [] as Run[], spanning: [] as Run[], leftEnd: 0, rightEnd: 0, leftStart: Number.POSITIVE_INFINITY, rightStart: Number.POSITIVE_INFINITY }
+    buckets.push(bucket)
+    for (const item of group) {
+      const right = item.x + item.width
+      if (item.x < mid && right > mid + GUTTER_TOLERANCE) {
+        bucket.spanning.push({ x: item.x, width: item.width, text: item.text })
+        continue
+      }
+      if (item.x + item.width / 2 < mid) {
+        bucket.left.push({ x: item.x, width: item.width, text: item.text })
+        bucket.leftEnd = Math.max(bucket.leftEnd, right)
+        bucket.leftStart = Math.min(bucket.leftStart, item.x)
+      } else {
+        bucket.right.push({ x: item.x, width: item.width, text: item.text })
+        bucket.rightEnd = Math.max(bucket.rightEnd, right)
+        bucket.rightStart = Math.min(bucket.rightStart, item.x)
+      }
     }
   }
 
