@@ -1246,16 +1246,17 @@ ersten und dritten Spalte sind seit der geteilten Markup-Regel und der zweiten
 Bezeichnung je Zeile (beide unten) über 246/238/237 Stellen gemessen statt
 244/236/235: Paragraphen, die die linke
 Prüfung vorher an einem zerschnittenen Wort verfehlten, erreichen die
-Injektion jetzt. Die PDF-Zeilen zählen 920/883/882 Stellen statt 918/881/880,
-seit der Bundsteg aus den Zweispaltenzeilen gelesen wird (unten).
+Injektion jetzt. Die PDF-Zeilen zählen 936/899/898 Stellen statt 918/881/880,
+seit der Bundsteg aus den Zweispaltenzeilen gelesen wird und ein Gesetz nur
+vor seiner ersten Anordnung benannt wird (beide unten).
 
 | Fehler | Regel 2, ganzer Entwurf | je Paragraph, 87 % adressiert | je Paragraph, 93 % adressiert |
 |---|---:|---:|---:|
-| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 882 (12,0 %) | 665 (75,6 %) | **679 (77,0 %)** |
+| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 898 (11,8 %) | 665 (75,6 %) | **693 (77,2 %)** |
 | R-neu, Tabellenpfad | 76 von 237 (32,1 %) | 184 (78,3 %) | **196 (82,7 %)** |
-| R-alt (fremder geltender Satz), PDF | 219 von 883 (24,8 %) | 584 (66,3 %) | 590 (66,8 %) |
+| R-alt (fremder geltender Satz), PDF | 220 von 899 (24,5 %) | 584 (66,3 %) | 594 (66,1 %) |
 | R-alt, Tabellenpfad | 97 von 238 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
-| L (Satzverlust links), PDF | 144 von 920 (15,7 %) | 332 (36,2 %) | 344 (37,4 %) |
+| L (Satzverlust links), PDF | 144 von 936 (15,4 %) | 332 (36,2 %) | 348 (37,2 %) |
 | L, Tabellenpfad | 49 von 246 (19,9 %) | 90 (36,9 %) | 95 (38,6 %) |
 
 Zusammen mit Regel 1 steigt die Reichweite gegen den Satzverlust von 49,0 auf
@@ -2148,7 +2149,9 @@ also in den zwei Urteilen und in dem, was die Prüfung über sich selbst
 festhält, nicht in einem Satz, den eine Leserin heute anders läse.
 
 **Drei Paragraphen sind der Preis, und sie benennen einen Fehler woanders.**
-Die UH-Statistik- und Bildungsdokumentationsverordnung verliert §§ 18, 35 und
+**Erledigt 11.09.2026** — die Auflösung steht unten („Ein Gesetz wird vor
+seiner ersten Novellierungsanordnung benannt"). Die UH-Statistik- und
+Bildungsdokumentationsverordnung verliert §§ 18, 35 und
 37 an Regel 2 („nicht im Entwurf"), § 18 davon aus *bestätigt*. Der Grund ist
 nicht die Regel: `lawTitles.draftArticles` liest in diesem Entwurf eine
 zitierte Anlagenüberschrift als **zweiten Artikel** („Anlage 1 zu § 6 Anhang
@@ -2187,6 +2190,114 @@ Das hätte die drei Fehlalarme vermieden und wäre genau der Fehler, vor dem
 dieselbe Datei bei `tguOracle.paragraphKey` warnt: zwei Schlüssel für dieselbe
 Sache, von denen einer stillschweigend der falsche ist. `shown` und `byLaw`
 müssen denselben Schlüssel benutzen, sonst sagt der Mechanismus nichts.
+
+**Ein Gesetz wird vor seiner ersten Novellierungsanordnung benannt — danach
+ist jede Überschrift Zitat** (11.09.2026, `lawTitles.draftArticles` und
+`lawText.segmentUnits`). Ordnet ein Entwurf eine Anlage, ein Kapitel oder
+einen ganzen Gesetzestitel neu an, druckt er die Überschrift, die er einsetzt
+— und das RIS zeichnet diese **zitierte** Überschrift genauso aus wie einen
+Gesetzestitel: `ueberschrift typ="anlage"`, `"g2"`, `"titel"`. Als Name
+gelesen benennt sie das Gesetz mitten im Entwurf um, und die Anordnungen davor
+und dahinter liegen danach unter **zwei** Gesetzesschlüsseln.
+
+Die Stellung trennt die beiden Klassen ohne Rest. Über die 400 Entwürfe der
+GP XXVIII, 11.09.2026: von **651 Abschnittsüberschriften**, die diese Regel
+als Gesetzesnamen annahm, stehen **649 vor der ersten Novellierungsanordnung
+ihres Artikels und 2 dahinter**; von **405 Titelblöcken 390 davor und 15
+dahinter**. Und alle **17** späten beginnen mit einem Anführungszeichen — das
+zweite, unabhängige Signal, das dem ersten zustimmt. Die beiden Fälle unter
+den Abschnittsüberschriften sind die UH-Statistik- und
+Bildungsdokumentationsverordnung („Anlage 1
+zu § 6 Anhang zum Diplom …"), die „Artikel 1" mit §§ 16, 18, 35, 37 und
+Anlage 1 von ihren übrigen sechs Anlagen trennte, und die Wasserstraßen-
+Verkehrsordnung („Schallzeichen, Sprechfunk, …"), die 26 Paragraphen von 57
+trennte; die 15 sind Verordnungen, die ein Gesetz zur Gänze neu erlassen und
+seinen Titel innerhalb der Anordnung drucken.
+
+**Die Regel steht an zwei Stellen und musste an beiden weichen**, und das ist
+gemessen, nicht vermutet — jede Hälfte für sich macht es schlimmer:
+
+| Tabellenpfad, GP XXVIII | bestätigt/einbehalten/ungeprüft | Regel 2 ohne Injektion | eigener Sack / ohne |
+|---|---|---|---|
+| vorher | 1.008 / 55 / 795 | 7 | 1.714 / 134 |
+| nur `draftArticles` | 989 / 78 / 791 | **29** | 1.653 / 195 |
+| nur `segmentUnits` | 1.010 / 51 / 797 | 3 | **1.645 / 203** |
+| beide | **1.010 / 53 / 795** | **4** | **1.722 / 126** |
+
+Nur `draftArticles` verschiebt das Waisenproblem bloß: die Zeilen der Beilage
+tragen dann den richtigen Schlüssel, aber `segmentUnits` teilt weiter, also
+verlieren jetzt die *späteren* Anordnungen ihren Anschluss statt der früheren
+— 22 Fehlalarme mehr. Nur `segmentUnits` räumt die Meldungen weg, indem es die
+Regel **entschärft**: der Schlüssel der Beilage trifft dann auf gar kein
+Gesetz, `draftReference` fällt auf den ganzen Entwurf zurück, und die
+Adressierungsdeckung fällt mit — 1.714 → 1.645 Paragraphen mit eigenem Sack.
+Erst beide zusammen nehmen die Fehlalarme **und** heben die Deckung.
+
+**Zweitens fällt der Schlüssel jetzt auf die Artikelnummer zurück.**
+`segmentUnits` schlüsselt seine Einheiten mit `articleTitle ?? articleNumber`;
+`draftArticles` ließ `key` dagegen `null`, wo unter der Artikelzeile kein Name
+stand — **13 der 1.052 Artikel** der GP XXVIII, 9 davon mit Artikelnummer und
+**7 mit geändertem Gesetz**, und in einem Entwurf (Änderung VbA und LF-VbA)
+sind es **beide** Artikel, die sich damit einen Schlüssel teilten, sodass
+keines der zwei Gesetze aufgelöst wurde. Auf dem PDF-Pfad fallen die
+**Zeilen außerhalb jeder Artikelgrenze von 33 auf 0**.
+
+Gemessen über die GP XXVIII, beide Pfade. Tabellenpfad **1.008/55/795 →
+1.010/53/795** Paragraphen, nach Ursache 43/5/7 → **44/5/4**, geprüfte
+Paragraphen 1.072 → 1.074, ≥ 99 % gedeckt 990 → 991, Zeilen ohne
+Gesetzeszuordnung 97 → 95, alle vier Zusicherungen 0. PDF-Pfad
+**1.342/244/1.897 → 1.364/250/1.869**, nach Ursache 212/15/17 →
+**217/16/17** — Regel 2 bewegt sich dort nicht —, geprüfte Paragraphen 2.162 →
+2.193, ≥ 99 % 1.617 → 1.636, Paragraphen mit eigenem Sack 2.789 → 2.847.
+
+**Kein Urteil geht verloren**, und das ist einzeln nachgezählt: von den 33
+Paragraphen, deren Urteil sich bewegt, kommen 30 aus *ungeprüft*. Tabellenpfad
+(5): UH-Statistik-VO § 18 einbehalten → **bestätigt**, §§ 35 und 37
+einbehalten → **ungeprüft** (ihre gezeigten Änderungen tragen zu wenige
+vergleichbare Wörter, was die Prosaschwelle seit jeher so beantwortet);
+Anpassungsgesetz an das Informationsfreiheitsgesetz § 146 ungeprüft →
+**bestätigt** und § 29 ungeprüft → **einbehalten** (die geltende Fassung deckt
+die linke Spalte nicht). PDF-Pfad (28, alle aus *ungeprüft*, in zwei
+Entwürfen): „Anpassung Materiengesetze an die Informationsfreiheit" — vom
+Eisenbahngesetz 1957 §§ 77 und 82 bestätigt, § 40b einbehalten, vom vierten,
+unter seiner Artikelzeile nicht benannten Gesetz §§ 8, 11 und 25 bestätigt;
+und die Seen- und Fluss-Verkehrsordnung mit §§ 3, 4, 6, 9, 10, 11, 18, 30, 37,
+45, 52, 63, 82, 86, 87, 90 und 127 bestätigt, §§ 35, 39, 64 und 96 einbehalten
+(geltende Fassung) und § 44 einbehalten (bereits geltend).
+
+Die Fehlerinjektion: auf dem **Tabellenpfad ist jede Injektionszelle Zeichen
+für Zeichen unverändert** (246/238/237 Stellen, L 69,5 %, R-alt 76,9 %, R-neu
+83,1 %), und die Meldungen ohne Injektion gehen von 5 und 7 auf **5 und 4** —
+das sind genau die drei Paragraphen der UH-Statistik-VO, die der Prüfstand
+selbst mit ihrem falschen Gesetzesschlüssel ausgewiesen hat. Auf dem
+**PDF-Pfad wächst die Grundmenge**, weil 22 Paragraphen mehr bestätigt und
+damit überhaupt injizierbar sind: 920/883/882 → **936/899/898** Stellen, L
+zusammen 62,1 % unverändert, R-alt 67,0 % → 66,4 %, R-neu 77,0 % → 77,2 %,
+Meldungen ohne Injektion 18 und 21 → **19 und 21**. Die eine Meldung mehr ist
+§ 44 der Seen- und Fluss-Verkehrsordnung, also ein Paragraph, der vorher gar
+nicht geprüft wurde.
+
+**Der ME→RV-Vergleich liest dieselben Einheiten** (`segmentUnits`), und er
+bewegt sich nicht mehr als nötig: über die GP XXVIII bleiben **10.530
+Einheiten 10.530**, mit identischer Nummer, Überschrift und Textlänge; genau
+**364 Einheiten in 13 Entwürfen** wechseln ihren Gesetzesschlüssel vom Zitat
+auf den Namen, den der Entwurf selbst führt. Für den Vergleich ist das die
+Verbesserung, nach der niemand gefragt hat: `lawDiff.pairArticles` paart die
+Gesetze über die Wortüberschneidung ihrer Namen, und ein Name aus zitiertem
+Text ist genau der, den die Regierungsvorlage mitändern kann — wo sie es tat,
+fiel das Paar auseinander und die Paragraphen verließen den Vergleich als
+„Gesetz nur im Entwurf". Nachgeprüft ist das nur an den Einheiten: die
+Parlaments-HTML der Regierungsvorlagen liegt nicht im Offline-Korpus, der
+Vergleich selbst also nicht.
+
+**Gemessen und verworfen:** die Überschrift an ihrer *Form* zu erkennen, am
+führenden Anführungszeichen. Sie trennt dieselben 17 Fälle — aber sie ist eine
+Aussage über Zeichensetzung und nicht über Struktur, und die Stellung
+spiegelt eine Regel, die dieselbe Funktion für die Promulgationsklausel schon
+führt („die Klausel steht zwischen Artikelzeile und erster Anordnung"). Das
+Anführungszeichen bleibt als zweites Signal in der Messung stehen, nicht im
+Code — wie bei der Beförderung eines Absatzes zur Anordnung, wo zwei Signale
+übereinstimmen mussten und nur eines entscheidet.
 
 **Rest, benannt und nicht gebaut** (`indexOf`): die Aussage „kein
 Gesetzesindex kollidiert" ist **widerlegt**. Nachgemessen über alle 195.875

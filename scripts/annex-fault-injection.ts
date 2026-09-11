@@ -73,29 +73,39 @@
  *
  * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
  * |---|---:|---:|---:|---:|---:|---:|
- * | L, PDF-Pfad    | 920 | 849 (92,3 %) | 359 (39,0 %) | 144 (15,7 %) | 344 (37,4 %) | 571 (62,1 %) |
+ * | L, PDF-Pfad    | 936 | 864 (92,3 %) | 369 (39,4 %) | 144 (15,4 %) | 348 (37,2 %) | 581 (62,1 %) |
  * | L, Tabellenpfad| 246 | 246 (100 %)  | 145 (58,9 %) |  49 (19,9 %) |  95 (38,6 %) | 171 (69,5 %) |
- * | R-alt, PDF     | 883 | 883 (100 %)  |   6 ( 0,7 %) | 219 (24,8 %) | 590 (66,8 %) | 592 (67,0 %) |
+ * | R-alt, PDF     | 899 | 899 (100 %)  |   7 ( 0,8 %) | 220 (24,5 %) | 594 (66,1 %) | 597 (66,4 %) |
  * | R-alt, Tabelle | 238 | 238 (100 %)  |   1 ( 0,4 %) |  97 (40,8 %) | 183 (76,9 %) | 183 (76,9 %) |
- * | R-neu, PDF     | 882 | 882 (100 %)  |   7 ( 0,8 %) | 106 (12,0 %) | 679 (77,0 %) | 679 (77,0 %) |
+ * | R-neu, PDF     | 898 | 898 (100 %)  |   8 ( 0,9 %) | 106 (11,8 %) | 693 (77,2 %) | 693 (77,2 %) |
  * | R-neu, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  76 (32,1 %) | 196 (82,7 %) | 197 (83,1 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
  * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
  * was measurably weakest on until its reference narrowed to one §. False
- * alarms without any fault: 18 and 21 §§ on the PDF path (rule 1 and rule 2)
- * and 5 and 7 on the table path — rule 2 stood at 7 and 0 with the
+ * alarms without any fault: 19 and 21 §§ on the PDF path (rule 1 and rule 2)
+ * and 5 and 4 on the table path — rule 2 stood at 7 and 0 with the
  * whole-draft reference; sixteen of the extra ones are named in
  * docs/architecture.md §12.13, the seventeenth is the one the better
  * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
  * column carries the start of the next Novellierungsanordnung — whether our
  * line reading or the annex's print put it there, the PDF decides; the R-neu
  * fault, found unstaged in the corpus), the eighteenth the one the shared
- * markup rule handed from the left check to rule 2 (MPBV § 11, below); the last
- * three (UH-Statistik-VO §§ 18, 35, 37) appeared when the Anlage key was
- * corrected and are the Artikel mis-split named in §12.13 — a cause in
- * `lawTitles.ts`, not in the rule.
+ * markup rule handed from the left check to rule 2 (MPBV § 11, below).
+ *
+ * **Moved on 2026-09-11** by the law-name window (`lawTitles.draftArticles`
+ * and `lawText.segmentUnits`, §12.13: a heading after the Artikel's first
+ * Novellierungsanordnung is quoted payload, not a name). The **table path is
+ * unchanged in every injection cell**, and its corpus alarms drop from 5 and
+ * 7 to 5 and 4 — the three were UH-Statistik-VO §§ 18, 35 and 37, which this
+ * run had been printing under their wrong law key. On the **PDF path the
+ * population grew**, because 22 §§ more are confirmed and so injectable at
+ * all: L 920 → 936, R-alt 883 → 899, R-neu 882 → 898 (measured on top of the
+ * two-column gutter of the same day), with L together unchanged at 62,1 %,
+ * R-alt 67,0 → 66,4 % and R-neu 77,0 → 77,2 %. Its rule-1
+ * alarms go from 18 to 19, and the one more is § 44 of the Seen- und
+ * Fluss-Verkehrsordnung — a § the gate did not judge before at all.
  *
  * **Moved on 2026-09-11, table path only** (`lawText.stripMarkup`): the
  * population grew, because §§ whose words the ressort's markup used to cut in
