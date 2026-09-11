@@ -223,10 +223,71 @@ export function coverageOf(column: string, standing: string): Coverage {
 /**
  * The rows whose left column the page presents as a change.
  *
- * Only these need to hold: an `unchanged` row is folded away behind a count,
- * and an `inserted` row has no left column to check — the provision it
- * proposes does not exist in the standing law, which is the point of it. An
- * `elided` row is the annex saying it left text out.
+ * An `inserted` row has no left column to check — the provision it proposes
+ * does not exist in the standing law, which is the point of it. An `elided`
+ * row is the annex saying it left text out.
+ *
+ * **`unchanged` rows are the third exclusion, and it is a decision rather than
+ * a triviality** (measured 2026-09-11, docs/architecture.md §12.13). A row
+ * printing the same text in both columns shows no change, but its left text
+ * *is* on the page — folded behind „N Stellen unverändert", then printed —
+ * and nothing here ever holds it against RIS. A mirrored row filed under the
+ * wrong § is therefore invisible, which is what this note used to wave away
+ * with "folded away behind a count".
+ *
+ * So the alternative was measured through these same functions over GP XXVIII,
+ * scoring each §'s unchanged rows as a bag of their own (which cannot dilute
+ * the changed rows, unlike one combined bag — that variant *frees* three §§ the
+ * gate withholds today):
+ *
+ * | | unveränderte Zeilen | §§ mit Prosa | unter der Schwelle | neu einbehalten | davon heute bestätigt |
+ * |---|---:|---:|---:|---:|---:|
+ * | Tabellenpfad | 1.972 in 609 §§ | 366 | 63 | 59 | 54 |
+ * | PDF-Pfad     |   287 in 287 §§ | 129 | 34 | 34 |  0 |
+ *
+ * **All 93 were read one by one, and 91 are the annex being right.** On the
+ * table path, 52 of 59 are the law's own structural headings — Teil, Abschnitt,
+ * Unterabschnitt, the lettered divisions of a Verordnung, the heading of the
+ * *following* § — which stand *above* the § they head and are therefore filed
+ * under the § before them (57 of the 59 fail on a row that carries no
+ * designation of its own); 3 are the annex's own notation („Anlage 1
+ * (wird hier nicht abgebildet)", „[entfällt durch ein früher in Kraft tretendes
+ * Vorhaben]"); 1 is orthography (Konfitürenverordnung § 5, „In-Kraft-Treten"
+ * against „Inkrafttreten"); and **2 are gaps in our own RIS reading** — StGB
+ * § 321c and BMSVG § 28, where `lawStructure.plainText` ends an Absatz with its
+ * enumeration and drops the clause after it („ist mit Freiheitsstrafe von einem
+ * bis zu zehn Jahren zu bestrafen."), so the annex is quoting law the ruler
+ * does not offer. That is the third time this project would have scored its own
+ * gap as the ministry's. On the PDF path all 34 are Inhaltsverzeichnis lines
+ * and Hauptstück headings, and every one of them sits in a § that shows **no
+ * change at all**, so the rule would buy nothing a reader can see.
+ *
+ * **One case in the whole corpus is the real finding**: GTelG § 23, whose
+ * unchanged rows print an Abs. 2 („über *Portale*", two Ziffern) that the
+ * standing § does not have („über *Anwendungen*", no Ziffern) — a version
+ * difference the page shows today as unchanged law. One true positive against
+ * 54 confirmed §§ that would lose their whole word diff is not a rule this gate
+ * may ship: rule 1's 5 table-path alarms are all true, rule 2's floors were set
+ * precisely to keep 6 real contaminations apart from two-word false alarms.
+ *
+ * **What would change the decision** is the heading filing, not a threshold:
+ * no floor separates the classes (headings run 0–95 %, the real cases 44–95 %),
+ * and at any floor of 20 comparable words nothing at all is caught below 90 %.
+ * File a mirrored heading row under the § it heads rather than the one before
+ * it, and 52 of the 59 disappear — then the remaining seven are worth another
+ * look. Until then the blind spot is stated rather than closed: fault **U** of
+ * `scripts/annex-fault-injection.ts` injects exactly this row and the gate
+ * catches **0 of 238** on the table path and **0 of 883** on the PDF path
+ * (every alarm under the fault was already firing without it), and
+ * `annex-pdf-verify.ts` prints the population on every run.
+ *
+ * One thing the injection did *not* settle in advance, and it is the sharper
+ * half: a mirrored row is not merely unchecked, it is an **alibi**. Both
+ * right-column rules exempt whatever stands in the left column
+ * (`rightColumnCheck`), every pair row counts towards that, and fault U
+ * silences a previously firing rule in 1 of 883 §§ of the PDF path. Rare, but
+ * it is the direction in which this exclusion can cost rather than merely
+ * miss.
  */
 export function isDisplayedChange(row: ComparisonRow): boolean {
   return row.kind === 'pair' && !row.elided && row.current.length > 0 && (row.change === 'changed' || row.change === 'removed')

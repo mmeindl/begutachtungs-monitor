@@ -36,6 +36,7 @@ import {
   verifyAnnex,
   type AnnexDraft,
   type AnnexSources,
+  type ParagraphVerdict,
 } from '../server/utils/annexCheck'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
 import { pagesOf } from '../server/utils/annexPdfPages'
@@ -103,6 +104,26 @@ interface DraftResult {
   /** Rows whose RIS paragraph is a table, which is refused rather than mangled */
   unrepresentable: number
   /**
+   * The rows the left check never sees: `unchanged`, non-elided, with text.
+   *
+   * Printed because the decision to leave them out is a decision
+   * (`annexCheck.isDisplayedChange`), and a decision nobody measures becomes an
+   * assumption. The page shows their left text — folded behind „N Stellen
+   * unverändert", but shown — so „never held against RIS" is a statement about
+   * text the reader reads.
+   *
+   * `unchangedBelow` is what a rule over them would withhold and
+   * `unchangedBelowVerified` what that would cost: a § the gate confirms today
+   * loses its whole word diff, not just the unchanged line.
+   */
+  unchangedRows: number
+  unchangedParas: number
+  /** …§§ whose unchanged rows together clear `MIN_PROSE_TOKENS` */
+  unchangedProse: number
+  /** …of those, the ones under `PARAGRAPH_THRESHOLD` against the standing § */
+  unchangedBelow: number
+  unchangedBelowVerified: number
+  /**
    * Pages of the PDF whose geometry the parser could not vouch for and did not
    * read (`annexPdf.ts`, `isProven`). 0 on the XML path and, today, on every
    * PDF annex of GP XXVIII — which is exactly why it has to be printed: a
@@ -153,6 +174,8 @@ interface GateResult {
   wronglyVerified: number
   withheldWithText: number
   withheldWithoutCause: number
+  /** The verdict map itself, so a second pass can ask what the gate said. */
+  verdicts: Record<string, ParagraphVerdict>
 }
 
 async function verify(doc: any): Promise<DraftResult | null> {
@@ -160,8 +183,8 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const begut = meta?.Bundesrecht?.Begut
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
-  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0 }
-  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
+  const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {} }
+  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -298,6 +321,45 @@ async function verify(doc: any): Promise<DraftResult | null> {
       console.log(`      RIS   : ${plainText(tree).slice(0, 230)}`)
     }
   }
+  // What the left check never looks at, in a pass of its own.
+  //
+  // Separate on purpose rather than folded into the loop above: that loop
+  // leaves a § with no displayed change before it ever reaches RIS
+  // (`if (!row.current) continue`), and those §§ are exactly where the PDF
+  // path's unchanged rows sit — but counting them there would move
+  // `attributed`, `checked` and `unrepresentable`, whose published numbers say
+  // something else. Nothing here decides anything; the verdicts below still
+  // come from `verifyAnnex`.
+  const gate = await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks })
+  let unchangedRows = 0
+  let unchangedParas = 0
+  let unchangedProse = 0
+  let unchangedBelow = 0
+  let unchangedBelowVerified = 0
+  for (const group of groups.values()) {
+    // Elided rows are the annex saying it left text out; a row with no text at
+    // all is a layout artefact. Neither carries a claim about the standing law.
+    const unchanged = group.rows.filter((r) => r.kind === 'pair' && !r.elided && r.change === 'unchanged' && r.current !== '')
+    if (unchanged.length === 0) continue
+    unchangedRows += unchanged.length
+    unchangedParas++
+    const key = designationKey(group.gld)
+    if (!key) continue
+    const law = await lawOf(group.law)
+    if (!law) continue
+    const entry = Object.entries(law.paragraphs).find(([label]) => designationKey(label) === key)
+    if (!entry) continue
+    const tree = await fetchParagraphTree(entry[1])
+    if (!tree) continue
+    // Per § and not per row, for the same reason the left check is: the annex
+    // splits one provision over as many rows as its layout needs.
+    const cover = coverageOf(unchanged.map((r) => r.current).join(' '), [...tree.context, plainText(tree)].join(' '))
+    if (!cover.prose) continue
+    unchangedProse++
+    if (cover.ratio >= 0.95) continue
+    unchangedBelow++
+    if (gate.verdicts[annexParagraphKey(group.law, group.gld)] === 'verified') unchangedBelowVerified++
+  }
   // The same index the gate builds, for the coverage line only — the verdicts
   // below come from `verifyAnnex` itself, so nothing here decides anything.
   const bags = draftBags(draftBlocks)
@@ -309,7 +371,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
     if (bags.byLaw.get(group.law)?.get(key) === undefined) parasWithoutOwnBag++
     else parasWithOwnBag++
   }
-  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, gate: await runGate(parsed.rows, { articles, asOf: beginn, blocks: draftBlocks }) }
+  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, unchangedRows, unchangedParas, unchangedProse, unchangedBelow, unchangedBelowVerified, gate }
 }
 
 /**
@@ -376,6 +438,7 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promi
     wronglyVerified,
     withheldWithText: checked.rows.filter((r) => r.check === 'withheld' && (r.current !== '' || r.proposed !== '' || r.segments !== null)).length,
     withheldWithoutCause: Object.entries(check.verdicts).filter(([key, v]) => v === 'withheld' && check.withheldCauses[key] === undefined).length,
+    verdicts: check.verdicts,
   }
 }
 
@@ -468,6 +531,13 @@ console.log(`    Adressierung der Anordnungen: ${addressed} von ${units} nennen 
 // Inhaltsverzeichnis, a Titel and an Abschnitt heading have no § to name and
 // belong in the general bag whatever the grammar learns.
 console.log(`      davon ohne Paragraph zu Recht (Inhaltsverzeichnis, Titel, Abschnitt, ganzer Text): ${rightly}; ungelesen: ${units - addressed - rightly}`)
+// What the left check never looks at. Measured and left out (§12.13,
+// 11.09.2026), so the numbers have to stand where the decision can be
+// re-checked: `unchangedBelow` is what a rule over these rows would withhold,
+// and the second number what it would cost — a § the gate confirms today loses
+// its whole word diff, not just the unchanged line.
+console.log(`    Unveränderte Zeilen, nie gegen das RIS gehalten: ${dsum((r) => r.unchangedRows)} in ${dsum((r) => r.unchangedParas)} Paragraphen`)
+console.log(`      davon Paragraphen mit ≥ ${MIN_PROSE_TOKENS} vergleichbaren Wörtern: ${dsum((r) => r.unchangedProse)}, unter der Schwelle: ${dsum((r) => r.unchangedBelow)} (davon heute bestätigt: ${dsum((r) => r.unchangedBelowVerified)})`)
 console.log(`    Zusicherungen (müssen 0 sein): ohne Urteil ${gsum((g) => g.verdictless)}, zu Unrecht geprüft ${gsum((g) => g.wronglyVerified)}, einbehalten mit Text ${gsum((g) => g.withheldWithText)}, einbehalten ohne Grund ${gsum((g) => g.withheldWithoutCause)}`)
 for (const [reason, n] of [...gated.filter((r) => !r.gate.ran).reduce((m, r) => m.set(r.gate.notRunReason ?? '—', (m.get(r.gate.notRunReason ?? '—') ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])) {
   console.log(`      ${String(n).padStart(3)}× ${reason}`)

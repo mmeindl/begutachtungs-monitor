@@ -17,7 +17,7 @@
  * re-check, and the reach is exactly the number that gets read as "the gate is
  * complete" if it is left unstated. This is the instrument, kept.
  *
- * **Three faults, and each one is a real failure mode of this project.**
+ * **Four faults, and each one is a real failure mode of this project.**
  *
  * - **L** — drop the second sentence of a confirmed §'s left column and
  *   re-diff. That is what the PDF path does when a line is filed into the
@@ -36,10 +36,20 @@
  *   what measured that (12,0 % caught on the PDF path, 32,3 % on the table
  *   path) and what measured the per-§ reference that answered it (77,0 % and
  *   82,1 %).
+ * - **U** — add a row printing another §'s standing text **identically in both
+ *   columns**. A mirrored row the annex files under the wrong §, which is the
+ *   shape the table path produces by construction: a Teil-, Abschnitt- or
+ *   Unterabschnitt heading stands above the § it heads and therefore inherits
+ *   the number of the § before it. The gate catches **none of it, by
+ *   construction** — the left check reads only the rows shown as a change and
+ *   both right-column rules read only inserted text — and that is the point of
+ *   running it: the blind spot is stated as a measured 0 %, not assumed. What
+ *   the run does decide is `silenced` (below).
  *
  * The left column is untouched in both R faults, so "die linke Prüfung
  * besteht" reads 100 % there by construction — that is the statement, not a
- * defect of the run.
+ * defect of the run. Fault U reads 100 % there for a different reason: its row
+ * never enters the left bag at all.
  *
  * **Both references in one run.** Rule 2 is measured twice per §: against the
  * whole draft's Gesetzestext, as it was until 2026-09-10, and against the
@@ -214,10 +224,22 @@ interface FaultTally {
   rule1Already: number
   rule2WideAlready: number
   rule2ParaAlready: number
+  /**
+   * The opposite, and the one nobody was counting: a rule that fired on the
+   * sound § and falls silent once the fault is in.
+   *
+   * It is not a hypothetical. Both right-column rules exempt whatever stands in
+   * the *left* column of the § (`rightColumnCheck`, `leftTokens`) — rightly, so
+   * a sentence the ministry merely moved does not read as new — and every pair
+   * row counts towards it, `unchanged` rows included. Text smuggled into the
+   * left column is therefore an alibi for the right one, which is exactly what
+   * fault U tests.
+   */
+  silenced: number
 }
 
 function tally(label: string): FaultTally {
-  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, rule1Already: 0, rule2WideAlready: 0, rule2ParaAlready: 0 }
+  return { label, tried: 0, leftPasses: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, rule1Already: 0, rule2WideAlready: 0, rule2ParaAlready: 0, silenced: 0 }
 }
 
 function record(into: FaultTally, verdict: Verdict, base: Verdict): void {
@@ -231,6 +253,7 @@ function record(into: FaultTally, verdict: Verdict, base: Verdict): void {
   if (verdict.rule1 && base.rule1) into.rule1Already++
   if (verdict.rule2Wide && base.rule2Wide) into.rule2WideAlready++
   if (verdict.rule2Para && base.rule2Para) into.rule2ParaAlready++
+  if ((base.rule1 && !verdict.rule1) || (base.rule2Para && !verdict.rule2Para)) into.silenced++
 }
 
 /** One § of one annex, resolved against RIS and ready to be broken. */
@@ -261,6 +284,23 @@ function judge(rows: readonly ComparisonRow[], standing: StandingText, wide: Wor
 /** The rows of a § with one row replaced — the fault, and nothing else, changed. */
 function withRow(rows: readonly ComparisonRow[], at: ComparisonRow, replacement: ComparisonRow): ComparisonRow[] {
   return rows.map((row) => (row === at ? replacement : row))
+}
+
+/**
+ * The § with one more row, printing the same text in both columns — fault U.
+ *
+ * The shape of a mis-filed mirrored row: the annex prints a line that belongs
+ * to another provision, identically left and right, and the row inherits the
+ * designation of the § it stands under. It is what actually happens on the
+ * table path, where a Teil-, Abschnitt- or Unterabschnitt heading stands
+ * *above* the § it heads and therefore inherits the number of the one before it
+ * (measured 11.09.2026: 52 of the 59 §§ such a rule would newly withhold).
+ *
+ * The donor is another §'s standing text rather than an invented sentence,
+ * because the fault this measures is misfiling, not fabrication.
+ */
+function withMirroredRow(rows: readonly ComparisonRow[], like: ComparisonRow, text: string): ComparisonRow[] {
+  return [...rows, { ...like, gld: null, current: text, proposed: text, change: 'unchanged', elided: false, segments: null, editorial: false }]
 }
 
 interface DraftResult {
@@ -481,6 +521,16 @@ async function inject(doc: any): Promise<DraftResult | null> {
       const faultR = withRow(para.rows, site, { ...site, proposed: garbled, segments: diffTokens(site.current, garbled).segments })
       record(into, judge(faultR, para.standing, wide, bagOf(para)), baseVerdict)
     }
+
+    // Fault U: one more row, another §'s standing text printed in both columns.
+    // The TODO's own wording for the class — „eine falsch gepaarte Zeile, die in
+    // beiden Spalten dasselbe druckt, ist unsichtbar" — and this run is what
+    // turns „unsichtbar" from a fear into a number. Nothing can catch it by
+    // construction: the left check reads only the rows the page shows as a
+    // change (`isDisplayedChange`), and both right-column rules read only what
+    // the word diff shows as *inserted*, of which a mirrored row has nothing.
+    // The number that is not settled in advance is `silenced`.
+    if (oldDonor !== null) record(faults.U, judge(withMirroredRow(para.rows, site, oldDonor), para.standing, wide, bagOf(para)), baseVerdict)
   }
   return { cite, judged: confirmed.length, injected }
 }
@@ -499,6 +549,7 @@ const faults = {
   L: tally('L     zweiter Satz links verloren'),
   Rold: tally('R-alt fremder geltender Satz rechts'),
   Rnew: tally('R-neu fremder Entwurfssatz rechts'),
+  U: tally('U     fremder Satz beidspaltig gleich'),
 }
 
 const docs: any[] = []
@@ -565,14 +616,21 @@ for (const [reason, n] of [...coverage.reasons].sort((a, b) => b[1] - a[1])) {
 
 console.log(`\n  Mit Injektion, je Fehler ("nicht im Entwurf" mit beiden Bezügen)`)
 console.log(`  Fehler                                §§   linke Prüfung besteht   „bereits geltend"    n.i.E. ganz         n.i.E. je §         beide ganz          beide je §`)
-for (const fault of [faults.L, faults.Rold, faults.Rnew]) {
+for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
   const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
   console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.leftPasses)}   ${cell(fault.rule1)}   ${cell(fault.rule2Wide)}   ${cell(fault.rule2Para)}   ${cell(fault.eitherWide)}   ${cell(fault.eitherPara)}`)
 }
 // A rule that was already firing on the sound § did not catch the fault; it
 // was there before it. Small by construction (the false-positive rate above),
 // and printed rather than assumed.
-for (const fault of [faults.L, faults.Rold, faults.Rnew]) {
+for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
   if (fault.rule1Already === 0 && fault.rule2WideAlready === 0 && fault.rule2ParaAlready === 0) continue
   console.log(`    ${fault.label.trim()}: davon schon ohne Injektion gemeldet — Regel 1 ${fault.rule1Already}, Regel 2 ganz ${fault.rule2WideAlready}, je § ${fault.rule2ParaAlready}`)
+}
+// And the other direction: a fault that takes an alarm *away*. Zero is the
+// claim, not the assumption — the left column exempts the right one, so text
+// smuggled left is an alibi.
+for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
+  if (fault.silenced === 0) continue
+  console.log(`    ${fault.label.trim()}: bringt eine vorher feuernde Regel zum Schweigen — ${fault.silenced}`)
 }

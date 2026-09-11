@@ -133,6 +133,24 @@ describe('displayedChangeRows', () => {
     ]
     expect(displayedChangeRows(rows).map((r) => r.current)).toEqual(['geänderter Text', 'entfallener Text'])
   })
+
+  it('leaves out an unchanged row even where it carries foreign prose — measured, not incidental', () => {
+    // The gate's deliberate blind spot (`isDisplayedChange`, 11.09.2026): a row
+    // printing the same text in both columns is shown on the page — folded
+    // behind „N Stellen unverändert", then printed — and never held against
+    // RIS. Scoring these rows was measured over GP XXVIII and rejected: it
+    // withholds 59 §§ of the table path and 35 of the PDF path, of which 92 are
+    // the law's own headings, the annex's notation, an orthography difference
+    // or a gap in our own RIS reading, and exactly one is a real finding.
+    //
+    // The test stands so that a change here is a decision someone makes rather
+    // than a line someone tidies.
+    const rows = [
+      row({ change: 'changed', current: 'geänderter Text' }),
+      row({ change: 'unchanged', current: 'Rechtsgeschäfte über Grundstücke bedürfen zwingend behördlicher Zustimmung.' }),
+    ]
+    expect(displayedChangeRows(rows).map((r) => r.current)).toEqual(['geänderter Text'])
+  })
 })
 
 describe('coverageOfParagraph', () => {
@@ -151,6 +169,25 @@ describe('coverageOfParagraph', () => {
     const c = coverageOfParagraph([row({ change: 'unchanged', current: 'gleich' })], 'irgendein Text')
     expect(c.comparable).toBe(0)
     expect(c.prose).toBe(false)
+  })
+
+  it('counts an unchanged heading row as nothing, however far it is from the §', () => {
+    // The class that decided the measurement: a Teil-, Abschnitt- or
+    // Unterabschnitt heading stands *above* the § it heads, so it inherits the
+    // designation of the § before it and its words are in no standing text this
+    // gate ever asks for. 52 of the 59 §§ a rule over unchanged rows would
+    // newly withhold on the table path are exactly this, among them
+    // Strafvollzugsgesetz § 154 („Fünfter Abschnitt — Strafvollzug durch
+    // elektronisch überwachten Hausarrest", 0 % against § 154, whose displayed
+    // changes cover the standing text to 100 %).
+    const rows = [
+      row({ change: 'unchanged', current: 'FÜNFTER ABSCHNITT' }),
+      row({ change: 'unchanged', current: 'Strafvollzug durch elektronisch überwachten Hausarrest' }),
+      row({ change: 'changed', current: 'Die Behörde entscheidet über den Antrag binnen sechs Wochen nach Einbringung.' }),
+    ]
+    const c = coverageOfParagraph(rows, 'Die Behörde entscheidet über den Antrag binnen sechs Wochen nach Einbringung.')
+    expect(c.ratio).toBe(1)
+    expect(c.prose).toBe(true)
   })
 })
 
@@ -249,6 +286,19 @@ describe('rightColumnCheck — „bereits geltend"', () => {
     // fires here; that is why the rule takes the whole stretch, in order.
     const rows = [row({ gld: '§ 1.', para: '§ 1.', current: KEPT, proposed: STANDING_BODY, segments: [{ type: 'inserted', text: 'Eine Beschwerde entscheidet über den Bescheid und die Behörde' }] })]
     expect(rightColumnCheck(rows, STANDING, NO_DRAFT).alreadyStanding).toBe(false)
+  })
+
+  it('lets an unchanged row exempt the right column — the alibi, kept on purpose', () => {
+    // A row printing the lost sentence in *both* columns shows it, so the rule
+    // must not call it new: that is the same exemption as the moved sentence
+    // above, and it is right. What it costs is the other half of the
+    // 11.09.2026 measurement (`isDisplayedChange`): a mirrored row the annex
+    // files under the wrong § is not merely unchecked, it is an excuse the
+    // right column may draw on. Fault U of `scripts/annex-fault-injection.ts`
+    // puts a number on it — 1 previously firing rule silenced in 881 §§ of the
+    // PDF path — and this test says where that number comes from.
+    const alibi = [...lostSentenceRows(), row({ gld: null, para: '§ 1.', change: 'unchanged', current: LOST, proposed: LOST })]
+    expect(rightColumnCheck(alibi, STANDING, NO_DRAFT).alreadyStanding).toBe(false)
   })
 })
 
@@ -674,6 +724,38 @@ describe('verifyAnnex', () => {
     expect(check.verdicts['#§ 2.']).toBe('unchecked')
     expect(check.reasons).toContain(REASON_TOO_SHORT)
     expect(check.judged).toBe(1)
+  })
+
+  it('keeps a § verified whose unchanged row carries foreign prose, and says so', async () => {
+    // The decision of 11.09.2026, pinned (`isDisplayedChange`). The § reads
+    // like the fear the TODO recorded — a mirrored row belonging to another
+    // provision, invisible to the gate — and it stays `verified`, because
+    // measuring the alternative over GP XXVIII showed the class to be 52
+    // headings, 3 annex notations, 1 orthography difference and 2 gaps in our
+    // own RIS reading against a single real finding (GTelG § 23).
+    const rows = [
+      row({ gld: '§ 1.', para: '§ 1.', current: PROSE }),
+      row({ gld: null, para: '§ 1.', change: 'unchanged', current: FOREIGN, proposed: FOREIGN }),
+    ]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('verified')
+    // …and the reader sees that text: the row keeps it, folded but printed.
+    expect(checkAnnexRows(rows, check).rows[1]!.current).toBe(FOREIGN)
+  })
+
+  it('leaves a § of nothing but unchanged text unchecked, never verified', async () => {
+    // Where the annex prints a whole § identically in both columns — the PDF
+    // path's Inhaltsverzeichnis lines, 288 rows of GP XXVIII — there is no
+    // claim about a change to vouch for. All 35 of those that a rule over
+    // unchanged rows would withhold are §§ in this state, which is why that
+    // rule would have bought a reader nothing.
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', change: 'unchanged', current: PROSE, proposed: PROSE })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('unchecked')
+    expect(check.reasons).toEqual([REASON_NOTHING_TO_COMPARE])
+    expect(check.verified).toBe(0)
+    // Not counted as a gap either: only §§ that show a change are owed one.
+    expect(checkAnnexRows(rows, check).uncheckedParagraphs).toBe(0)
   })
 
   it('says a § shows no standing text at all rather than "too little text"', async () => {

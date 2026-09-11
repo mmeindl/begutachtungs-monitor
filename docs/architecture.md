@@ -1476,6 +1476,94 @@ eine Paragraphenüberschrift und 8 Fließtext — vorher waren es 70
 Überschriften gegen dieselben 8. Die Überschrift ist also nicht mehr der
 Hauptbefund der Regel, sondern ihr Restrisiko.
 
+**Was die linke Prüfung liest — und was nicht (11.09.2026).** In den linken
+Sack kommen nur die Zeilen, die die Seite als **Änderung** zeigt
+(`annexCheck.isDisplayedChange`): `changed` und `removed`, ohne Auslassungen.
+Eine `inserted`-Zeile hat keine linke Spalte, das ist ihr Zweck. Eine
+`unchanged`-Zeile aber **hat** eine, und ihr Text steht auf der Seite —
+eingeklappt hinter „N Stellen unverändert", dann gedruckt. Eine falsch
+abgelegte Zeile, die in beiden Spalten dasselbe druckt, ist damit unsichtbar.
+Das stand als offenes Restrisiko in der Aufgabenliste; hier ist es gemessen.
+
+Gemessen wurde die Gegenprobe durch dieselben ausgelieferten Funktionen, mit
+einem **eigenen Sack** für die unveränderten Zeilen je Paragraph. Ein
+*gemeinsamer* Sack schied vorher aus, und zwar an Zahlen: er verdünnt die
+geänderten Zeilen und **befreit drei Paragraphen**, die das Tor heute
+einbehält (u. a. GTelG § 21, 94,8 % → 98,1 %, weil 133 gut gedeckte
+unveränderte Wörter den Nenner heben) — eine Prüfung, die sich durch mehr Text
+beruhigen lässt, ist keine.
+
+| GP XXVIII | unveränderte Zeilen | §§ mit Prosa | unter der Schwelle | neu einbehalten | davon heute bestätigt |
+|---|---:|---:|---:|---:|---:|
+| Tabellenpfad | 1.972 in 609 §§ | 366 | 63 | 59 | 54 |
+| PDF-Textebene | 287 in 287 §§ | 129 | 34 | 34 | 0 |
+
+**Alle 93 wurden einzeln gelesen, und 91 sind die Beilage, die recht hat.**
+Auf dem Tabellenpfad sind **52 von 59 die Gliederungsüberschriften des
+Gesetzes selbst** — Teil, Abschnitt, Unterabschnitt, die Buchstabenabschnitte
+einer Verordnung, die Überschrift des *folgenden* Paragraphen. Sie stehen
+**über** dem Paragraphen, den sie überschreiben, werden also unter dem
+Paragraphen davor abgelegt, und ihre Wörter stehen in keinem geltenden Text,
+den dieses Tor je anfragt — 57 der 59 scheitern an einer Zeile, die gar keine
+eigene Bezeichnung trägt. Strafvollzugsgesetz § 154 ist der Musterfall: „Fünfter
+Abschnitt — Strafvollzug durch elektronisch überwachten Hausarrest", 0 %
+gegen § 154, dessen gezeigte Änderungen den geltenden Text zu 100 % decken.
+Dazu **3-mal die Notation der Beilage** („Anlage 1 (wird hier nicht
+abgebildet)" zweimal, „[entfällt durch ein früher in Kraft tretendes
+Vorhaben]"), **einmal Rechtschreibung** (Konfitürenverordnung § 5,
+„In-Kraft-Treten" gegen „Inkrafttreten") — und **zweimal eine Lücke in
+unserer eigenen RIS-Lesung**: bei StGB § 321c und BMSVG § 28 endet
+`lawStructure.plainText` den Absatz mit seiner Aufzählung und lässt den Satz
+danach weg („ist mit Freiheitsstrafe von einem bis zu zehn Jahren zu
+bestrafen.", „Verordnungen der FMA nach diesem Absatz bedürfen der Zustimmung
+des Bundesministers für Finanzen."). Die Beilage zitiert dort Recht, das der
+Maßstab gar nicht anbietet — zum dritten Mal in diesem Projekt hätte das
+Messgerät seine eigene Lücke dem Ressort angeschrieben. Auf dem PDF-Pfad sind
+alle 34 Inhaltsverzeichniszeilen und Hauptstücküberschriften, und jede einzelne
+sitzt in einem Paragraphen, der **überhaupt keine Änderung zeigt**; die Regel
+nähme dort also niemandem etwas weg, was er sieht.
+
+**Ein einziger Fall im ganzen Korpus ist der echte Befund**: GTelG § 23, dessen
+unveränderte Zeilen einen Abs. 2 drucken, den der geltende Paragraph nicht hat
+(„über *Portale*", zwei Ziffern, gegen „über *Anwendungen*", keine Ziffern) —
+ein Versionsunterschied, den die Seite heute als unverändertes Recht zeigt.
+Ein Treffer gegen 54 bestätigte Paragraphen, die ihren **ganzen** Wortdiff
+verlören — nicht nur die unveränderte Zeile —, ist keine Regel, die dieses Tor
+ausliefern darf: Regel 1 trifft auf dem Tabellenpfad 5 Paragraphen, alle echt,
+und Regel 2 hat ihre Untergrenzen genau dafür.
+
+**Was die Entscheidung umdrehen würde, ist die Ablage der Überschriften, keine
+Schwelle.** Die Klassen trennen sich an keiner Zahl: Überschriften laufen von
+0 bis 95 %, die echten Fälle von 44 bis 95 %; ab einem Boden von 20
+vergleichbaren Wörtern fängt unterhalb von 90 % **gar nichts** mehr. Legt der
+Tabellenparser eine beidspaltige Überschriftszeile unter den Paragraphen, den
+sie überschreibt, statt unter den davor, verschwinden 52 der 59 — dann lohnt
+der zweite Blick auf die restlichen sieben.
+
+Bis dahin wird der blinde Fleck **benannt statt geschlossen**, und zwar mit
+Zahlen, die jeder Lauf neu erzeugt. `annex-fault-injection.ts` hat dafür einen
+vierten Fehler **U**: eine zusätzliche Zeile mit dem geltenden Text eines
+*anderen* Paragraphen, in beiden Spalten gleich. Das Tor fängt **0 von 238**
+auf dem Tabellenpfad und **0 von 883** auf dem PDF-Pfad — jede Meldung unter
+der Injektion feuerte schon ohne sie —, und das ist keine Überraschung,
+sondern Bauart: die linke Prüfung liest nur gezeigte Änderungen, beide
+Regeln der rechten Spalte nur Eingefügtes. `annex-pdf-verify.ts` druckt
+seitdem die Grundmenge („Unveränderte Zeilen, nie gegen das RIS gehalten").
+
+Was der Lauf **nicht** vorher wusste, ist die schärfere Hälfte: eine
+beidspaltige Zeile ist nicht bloß ungeprüft, sie ist ein **Alibi**. Beide
+Regeln der rechten Spalte nehmen aus, was links steht — richtig so, ein bloß
+verschobener Satz darf nicht melden —, und jede Paarzeile zählt dafür mit.
+Fehler U bringt damit in **1 von 883** Paragraphen des PDF-Pfads eine vorher
+feuernde Regel zum Schweigen. Selten, aber es ist die Richtung, in der dieser
+Ausschluss nicht nur etwas übersieht, sondern etwas kostet. Der neue Zähler
+`silenced` misst das für alle vier Fehler (R-alt und R-neu je 1 auf dem
+Tabellenpfad, L und U je 1 auf dem PDF-Pfad).
+
+Kein Urteil hat sich bewegt: Tabellenpfad 1.008/55/795, PDF-Pfad
+1.342/244/1.897, alle vier Zusicherungen 0, beide Prüfstände Zeile für Zeile
+identisch bis auf die zwei neuen Zeilen.
+
 **Mitgefunden: eine Fußnote, die nur auf einer Seite verschwand.** RIS druckt
 eigene redaktionelle Anmerkungen in den konsolidierten Text („(Anm.: Abs. 2
 aufgehoben durch …)"); `lawStructure.ts` entfernt sie auf der RIS-Seite, und
