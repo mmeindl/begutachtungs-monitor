@@ -1251,7 +1251,7 @@ Injektion jetzt.
 | Fehler | Regel 2, ganzer Entwurf | je Paragraph, 87 % adressiert | je Paragraph, 93 % adressiert |
 |---|---:|---:|---:|
 | R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 880 (12,0 %) | 665 (75,6 %) | **678 (77,0 %)** |
-| R-neu, Tabellenpfad | 76 von 237 (32,1 %) | 184 (78,3 %) | **195 (82,3 %)** |
+| R-neu, Tabellenpfad | 76 von 237 (32,1 %) | 184 (78,3 %) | **196 (82,7 %)** |
 | R-alt (fremder geltender Satz), PDF | 218 von 881 (24,7 %) | 584 (66,3 %) | 588 (66,7 %) |
 | R-alt, Tabellenpfad | 97 von 238 (40,8 %) | 178 (75,4 %) | 183 (76,9 %) |
 | L (Satzverlust links), PDF | 144 von 918 (15,7 %) | 332 (36,2 %) | 344 (37,5 %) |
@@ -1850,7 +1850,7 @@ ist unsere Schuld.**
   „6. Abschnitt" samt Überschriften, Tierschutz-SV § 17 den „7. Abschnitt".
   Die Zeile einfach fallen zu lassen wäre falsch — sie *ist* eine Einfügung,
   und eine gezeigte Änderung verschwinden zu lassen ist derselbe Fehler wie
-  bei der Auslassungssyntax. Nicht gebaut, benannt.
+  bei der Auslassungssyntax. **Gemessen und beantwortet am 11.09.2026, unten.**
 
 *Gemessen* (`annex-pdf-verify.ts --xml`, GP XXVIII): Tabellenpfad
 **986/60/801 → 998/62/791** Paragraphen, nach Ursache 50/6/4 → 52/6/4,
@@ -1905,6 +1905,93 @@ der GP XXVIII** bleiben deshalb ungeprüft. Ein „bis zum ersten *zu* lesen"
 wäre die naheliegende Regel; sie gehört in `designationKey`, also auch auf den
 PDF-Pfad und in die Adressierung der Anordnungen, und ist damit ein eigener
 Schritt mit eigener Messung.
+
+**Eine einseitig gedruckte Überschrift gehört dem Paragraphen darunter
+(11.09.2026).** Fügt ein Entwurf einen Paragraphen samt Überschrift ein oder
+hebt er einen auf, ist die Spalte, in der die Bestimmung noch nicht oder nicht
+mehr steht, leer — die Überschrift steht also **einseitig**. Die Regel, die
+eine beidseitig gedruckte Überschrift dem Paragraphen *darunter* zuschlägt,
+verlangt beide Spalten; einseitig ging die Zeile als gewöhnliche Einfügung oder
+Streichung hinaus und erbte den Paragraphen **darüber**.
+
+*Gemessen* über die 126 lesbaren Beilagen der GP XXVIII: **297 solche Zeilen
+unter 11.448**, 244 rechts und 53 links gedruckt. **236 davon folgt eine Zeile,
+die einen Paragraphen eröffnet** — und der ist ihrer: SchOG § 129 trug die
+Überschrift des § 130d, die Blutspenderverordnung § 7 die des § 8, das AWG
+§ 72a die des aufgehobenen § 72b, das GTelG § 23 den „6. Abschnitt" des § 24i,
+die Tierschutz-Sonderhaltungsverordnung § 17 den „7. Abschnitt" des § 27. Die
+übrigen 61 eröffnen nichts unter sich.
+
+**Entschieden, und gegen die naheliegende Regel.** Die beidseitige Überschrift
+verschwindet als Zeile und wird zum `heading` des Paragraphen darunter; das
+hier genauso zu tun wäre falsch. Eine beidseitig gedruckte Überschrift ist per
+Definition unverändert, eine einseitige **ist die Änderung** — und eine
+gezeigte Änderung verschwinden zu lassen ist derselbe Fehler, den die alte
+Auslassungsregel über 919 Zeilen gemacht hat. Die Zeile bleibt also eine Zeile,
+nur ihr Paragraph zieht um. Er ist beim Lesen der Zeile noch nicht bekannt, denn
+er ist der, den die *nächste* Zeile eröffnet: die Überschrift wird
+zurückgehalten und nimmt den Paragraphen, der offen ist, wenn die Zeile darunter
+ausgegeben wird. Wo darunter keiner eröffnet, bleibt es beim Paragraphen
+darüber — wo der Korpus nichts sagt, bleibt die Antwort die ausgelieferte.
+Erkannt wird die Zeile an der **Auszeichnung des RIS**, nicht an der Form der
+Zeile, dieselbe Entscheidung wie bei `isTableContent`: alle 297 sind als
+`<ueberschrift>` ausgezeichnet, keine müsste am Wortlaut erkannt werden.
+
+Eine Ausnahme, und sie ist dieselbe Regel eine Ebene höher: eine
+**Anlagenüberschrift ist eine Bezeichnung und kein Titel**. Sie eröffnet ihre
+eigene Anlage, statt auf einen Paragraphen zu warten, der nie kommt — was
+`opensAnlage` für die beidseitige und die spaltenübergreifende Überschrift
+schon tut und für die einseitige Zelle als einzige Stelle fehlte. **7 Zeilen**
+der GP XXVIII, und sie standen unter der *vorigen* Anlage: die
+Bäderhygieneverordnung zeigte ihre neue Anlage 11 unter Anlage 10, die
+Medizinproduktebetreiberverordnung ihren aufgehobenen Anhang 5 unter Anhang 2.
+
+*Gemessen* (`annex-pdf-verify.ts --xml`, GP XXVIII): Tabellenpfad
+**998/62/791 → 1.007/52/799** Paragraphen, nach Ursache 52/6/4 → 43/5/4,
+≥ 99 % gedeckt 973 → 988, p10 der Deckung 99 % → 100 %, Zeilen ohne
+Paragraphenangabe 266 → 251 (als Änderung gezeigt 77 → 75), alle vier
+Zusicherungen 0. Der **PDF-Pfad ist Zeichen für Zeichen unverändert** —
+`parseTextComparison` wird dort nicht aufgerufen. Die Fehlerinjektion behält
+ihre Grundmenge (246/238/237) und ihre Fangquoten L 171 (69,5 %) und R-alt 183
+(76,9 %); R-neu geht 195 → 196 (82,3 → 82,7 %), und die **Fehlalarme ohne
+Injektion gehen bei Regel 1 von 6 auf 5**, bei Regel 2 bleiben sie bei 4
+(dieselben vier Paragraphen).
+
+**Zehn Urteile ändern sich, keines zum Schlechteren gegenüber einer Zusage** —
+kein einziger bestätigter Paragraph verliert seine Bestätigung. Sieben gehen
+von *einbehalten* auf **bestätigt**: Blutspenderverordnung § 7, AWG 2002
+§ 72a, EU-JZG § 57 und IVS-G §§ 3, 9, 14, 15. Die Ursache ist in sechs davon
+dieselbe — die einseitige Überschrift des Paragraphen darunter stand in ihrer
+*linken* Spalte und wurde gegen ihren geltenden Text gehalten, was sie unter
+die Deckungsschwelle drückte. Der siebte, IVS-G § 3, fiel an Regel 1
+(„die vorgeschlagene Fassung zeigt Geltendes als neu"): die Beilage druckt
+dessen Überschrift in zwei Zeilen, eine je Spalte, und die linke landete unter
+§ 2 — also fehlte sie im linken Sack des § 3, und die rechte galt als neu.
+Die Meldung war wahr über *die Seite* und falsch über die Beilage.
+
+Drei Urteile gehen von *einbehalten* auf **ungeprüft**, und alle drei sind
+ehrlicher als vorher: Schulzeitgesetz 1985 § 16a, die
+EAG-Investitionszuschüsseverordnung-Strom § 18 und die
+Tierschutz-Sonderhaltungsverordnung § 27 zeigten als einzige gedeckte Änderung
+fremden Text — die Überschrift des § 16e, den Inhalt der Anlage 1 bzw. der
+Anlage 4. Ohne ihn bleibt in ihrer linken Spalte nichts
+Vergleichbares, und „nichts angesehen" ist dafür der richtige Zustand; die
+Leserin bekommt den Text zurück, nur ohne Zusage. Dazu kommen **7 neue
+Einheiten**, die es vorher gar nicht gab, weil ihre Zeilen unter der vorigen
+Anlage standen: MPBV Anhang 5 und TSch-SV Anlage 4 werden **bestätigt**, fünf
+bleiben ungeprüft, weil das RIS ihre Bezeichnung nicht führt (darunter „Anlage
+3a zu § 18 Abs. 1 …", der zusammengesetzte Schlüssel von oben).
+
+**Nicht gebaut, benannt.** Eine Überschrift *innerhalb* einer Textzelle — die
+IVS-G-Beilage druckt die Überschrift des nächsten Paragraphen ans Ende der
+Zelle des vorigen — ist keine Überschriftenzeile, und diese Regel erreicht sie
+nicht. Ebenso wenig eine einseitig gedruckte **Artikelzeile**: „Artikel 2
+Änderung der Zeugnisformularverordnung" nur in einer Spalte wird von
+`candidateOf` gar nicht erst als Grenze angeboten, weil die Zeile weder
+spaltenübergreifend noch spiegelgleich ist — **3 Zeilen** der GP XXVIII
+(IKT-Schulverordnung zweimal, Bildungsdirektionen-Einrichtungsgesetz einmal).
+Das ist eine Frage der Gesetzesabgrenzung und nicht der Paragraphenzuordnung,
+also ein eigener Schritt mit eigener Messung.
 
 ## 13. Open questions
 

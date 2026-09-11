@@ -409,6 +409,94 @@ describe('the § heading inside the cell', () => {
   })
 })
 
+/**
+ * The draft inserts a § with its heading, or repeals one: the column where the
+ * provision does not yet — or no longer — exist is empty, so the heading row is
+ * printed on **one** side. 297 rows of GP XXVIII, and they inherited the §
+ * *above* (SchOG § 129 carried the heading of § 130d).
+ */
+describe('a § heading printed in one column only', () => {
+  const heading = (typ: string, text: string) => `<ueberschrift typ="${typ}">${text}</ueberschrift>`
+  const para = (n: string, text: string) => `<absatz typ="abs"><gldsym>§ ${n}.</gldsym> ${text}</absatz>`
+
+  it('gives a right-only heading to the § the next row opens', () => {
+    const rows = parse(annex([
+      pair(para('129', '(1) Alt.'), para('129', '(1) Neu.')),
+      pair('', heading('para', 'Übergangsbestimmung zur Sommerschule')),
+      pair('', para('130d', '(1) Ganz neu.')),
+    ]))
+    // The heading is an insertion and stays one — dropping a shown change is
+    // the mistake the old elision rule made.
+    expect(rows.map((r) => [r.change, r.para])).toEqual([
+      ['changed', '§ 129.'],
+      ['inserted', '§ 130d.'],
+      ['inserted', '§ 130d.'],
+    ])
+    expect(rows[1]!.proposed).toBe('Übergangsbestimmung zur Sommerschule')
+  })
+
+  it('gives a whole stack of one-sided headings to the same § below', () => {
+    const rows = parse(annex([
+      pair(para('23', '(1) Alt.'), para('23', '(1) Neu.')),
+      pair('', heading('g1', '6. Abschnitt')),
+      pair('', heading('g2', 'Grenzüberschreitende Gesundheitsversorgung')),
+      pair('', heading('para', 'Allgemeine Bestimmungen')),
+      pair('', para('24i', '(1) Ganz neu.')),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 23.', '§ 24i.', '§ 24i.', '§ 24i.', '§ 24i.'])
+  })
+
+  // The repealed § — its heading stands on the left, and scored against the §
+  // above it took that § below the coverage threshold (AWG 2002 § 72a).
+  it('gives a left-only heading to the repealed § below it', () => {
+    const rows = parse(annex([
+      pair(para('72a', '(1) Alt.'), para('72a', '(1) Neu.')),
+      pair(heading('para', 'Elektronische Meldungen'), ''),
+      pair(para('72b', '(1) Entfällt.'), ''),
+    ]))
+    expect(rows.map((r) => [r.change, r.para])).toEqual([
+      ['changed', '§ 72a.'],
+      ['removed', '§ 72b.'],
+      ['removed', '§ 72b.'],
+    ])
+  })
+
+  // Nothing opens below it, so there is no evidence to move it on — and the
+  // answer that shipped is kept rather than guessed at.
+  it('leaves a one-sided heading with the § above when no § follows', () => {
+    const rows = parse(annex([
+      pair(para('11', '(1) Alt.'), para('11', '(1) Neu.')),
+      pair('', heading('erll', 'a. Verpflichtende Beratung')),
+      pair('', '(2) Noch ein Absatz ohne eigene Bezeichnung.'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['§ 11.', '§ 11.', '§ 11.'])
+  })
+
+  // A schedule heading is a designation, not a title: it opens its own unit
+  // instead of waiting for a § — the Bäderhygieneverordnung showed its new
+  // Anlage 11 under Anlage 10.
+  it('lets a one-sided schedule heading open its own Anlage', () => {
+    const rows = parse(annex([
+      pair('Anlage 10', 'Anlage 10'),
+      pair('(1) Bestehende Anlage.', '(1) Bestehende Anlage.'),
+      pair('', heading('anlage', 'Anlage 11')),
+      pair('', '(1) Die neue Anlage.'),
+    ]))
+    expect(rows.map((r) => r.para)).toEqual(['Anlage 10', 'Anlage 10', 'Anlage 11', 'Anlage 11'])
+  })
+
+  // The two-sided case is untouched: an identical heading is not a change and
+  // goes on being lifted out of the text into `heading`.
+  it('still lifts a heading both columns print into the § below', () => {
+    const rows = parse(annex([
+      pair(heading('para', 'Aufbewahrung von Protokollen'), heading('para', 'Aufbewahrung von Protokollen')),
+      pair(para('65a', '(1) Alt.'), para('65a', '(1) Neu.')),
+    ]))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ gld: '§ 65a.', heading: 'Aufbewahrung von Protokollen' })
+  })
+})
+
 describe('a division of the law printed as an ordinary row', () => {
   // "9b. Abschnitt" typeset in both columns rather than as a heading. It
   // reached the comparison as a mirrored pair row and was filed under
