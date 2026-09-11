@@ -246,7 +246,7 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-Vitest, 27 files, ~610 cases, no network and no Nitro: everything under test is
+Vitest, 27 files, ~650 cases, no network and no Nitro: everything under test is
 a pure module with relative imports, which is why the modules are cut that way
 in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
 app/server/`shared`, and `pnpm typecheck:tools` covers `scripts/` and `tests/`
