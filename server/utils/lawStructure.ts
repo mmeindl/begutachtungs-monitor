@@ -48,7 +48,28 @@ export function makeNode(level: NodeLevel, id: string, marker: string, text: str
 // ---------------------------------------------------------------------------
 
 const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/g, /<layoutdaten[\s\S]*?<\/layoutdaten>/g]
-const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil)\b([^>]*)>([\s\S]*?)<\/\1>/g
+/**
+ * The elements that carry law text — and `schluss` beside `schlussteil`,
+ * because RIS spells the closing clause of an enumeration two ways.
+ *
+ * Which spelling a document uses is a property of the **converter that
+ * produced it**, not of the law: converter 4.1 writes `<schlussteil>`, the 3.x
+ * line writes `<schluss typ="…">`, and 4.0 straddles the change. Measured over
+ * the 16.073 § documents of the offline corpus on 2026-09-11: 2.824 carry
+ * `<schlussteil>`, 402 carry `<schluss>`, and **not one carries both**. So
+ * reading only the newer name ended those 402 §§ with their enumeration and
+ * dropped everything behind it — 880 blocks, 23.578 comparable words of
+ * standing law. StGB § 321c lost „ist mit Freiheitsstrafe von einem bis zu
+ * zehn Jahren zu bestrafen." and BMSVG § 28 „Verordnungen der FMA nach diesem
+ * Absatz bedürfen der Zustimmung des Bundesministers für Finanzen.", both of
+ * which the ressort's annex quotes (docs/architecture.md §12.13).
+ *
+ * Read against an independent flat reading of the same documents — every block
+ * in document order, no tree — the tree now reproduces that order for 15.290
+ * of the 15.510 representable § documents, against 14.906 before, and **not a
+ * single document is short of text any more** (386 were).
+ */
+const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
 const SYMBOL_RE = /<symbol\b[^>]*>([\s\S]*?)<\/symbol>/
 /** "(2) " opens an Absatz; "(2a)" and "(2b)" are legal too. */
@@ -102,6 +123,52 @@ function text(inner: string): string {
       .replace(/&nbsp;/g, ' ')
       .replace(/&amp;/g, '&'),
   )
+}
+
+/** The last child of `node` at `level`, or null. */
+function lastChild(node: LawNode, level: NodeLevel): LawNode | null {
+  for (let i = node.children.length - 1; i >= 0; i--) if (node.children[i]!.level === level) return node.children[i]!
+  return null
+}
+
+/**
+ * Which node a closing clause belongs to.
+ *
+ * `<schluss>` names the unit it closes in its `typ` — "Abs" (462 blocks of the
+ * corpus), "Ziff" (276), "Lit" (83), and "e<n>" for the depth of the list that
+ * just ended (59), where the depth is the `ebene` of `<ziffernliste ebene="1">`,
+ * `<literaliste ebene="2">` and their deeper kin. `<schlussteil>` names
+ * nothing, and keeps the Absatz it has always been given.
+ *
+ * Reading the level matters twice, and both are ordering. In `plainText` the
+ * enumeration can *continue* after the clause — „oder" closes Ziffer 1 of
+ * Börsegesetz § 131 Abs. 1 and Ziffer 2 follows it — and filing every clause
+ * on the Absatz instead costs 33 documents their document order. And
+ * `lawApply.textSlot` resolves „Im Schlussteil des § 169 Abs. 1" to the
+ * Absatz's *last* `schluss` child: measured over the corpus, filing them all
+ * on the Absatz puts a Ziffer's or Litera's clause in that slot in **89 §§**
+ * (Börsegesetz § 131, BWG §§ 20, 22, 35, 78, KStG § 26c, B-VG Art. 50 …).
+ * Reading the level takes that to zero, and it never *empties* a slot: over
+ * the 16.073 documents the Absatz's clause changes in 317 of them and in every
+ * one of those it was empty before.
+ *
+ * **`<schlussteil>` carries the same information in `ebene`** — 0 and 0.5 for
+ * the Absatz (4.792 blocks), 1 for the Ziffer (2.640), 2 and deeper for the
+ * Litera (587) — and using it takes the documents whose `plainText` is still
+ * out of document order from 220 to 121. It is deliberately *not* used yet:
+ * it would also empty the Absatz-level Schlussteil slot in 2.352 documents,
+ * and whether the 406 `ebene="1"` clauses that *end* their list close the
+ * Ziffer or the Absatz is exactly the question `ebene` cannot answer on its
+ * own. That needs the amendment engine's harness over a corpus, not this
+ * module (TODO.md).
+ */
+function closingHost(abs: LawNode, typ: string): LawNode {
+  const depth = /^e(\d+)$/i.exec(typ)
+  const level: NodeLevel = depth ? (Number(depth[1]) >= 2 ? 'lit' : 'z') : /^ziff$/i.test(typ) ? 'z' : /^lit$/i.test(typ) ? 'lit' : 'abs'
+  if (level === 'abs') return abs
+  const z = lastChild(abs, 'z')
+  if (z === null) return abs
+  return level === 'z' ? z : (lastChild(z, 'lit') ?? z)
 }
 
 /**
@@ -185,9 +252,9 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       continue
     }
 
-    if (tag === 'schlussteil') {
+    if (tag === 'schlussteil' || tag === 'schluss') {
       const t = text(inner)
-      if (currentAbs && t) currentAbs.children.push(makeNode('schluss', 'schluss', '', t))
+      if (currentAbs && t) closingHost(currentAbs, typ).children.push(makeNode('schluss', 'schluss', '', t))
       continue
     }
 
@@ -199,7 +266,7 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       const lit = LIT_MARKER_RE.exec(marker)
       const node = makeNode(z ? 'z' : lit ? 'lit' : 'z', z?.[1] ?? lit?.[1] ?? marker.replace(/[.)]$/, ''), marker, t)
       // Litera hang off the Ziffer above them, Ziffern off the Absatz.
-      const host = node.level === 'lit' ? ([...absatz().children].reverse().find((c) => c.level === 'z') ?? absatz()) : absatz()
+      const host = node.level === 'lit' ? (lastChild(absatz(), 'z') ?? absatz()) : absatz()
       host.children.push(node)
       continue
     }

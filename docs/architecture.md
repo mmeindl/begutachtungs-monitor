@@ -578,7 +578,11 @@ Quote nahelegte:
   `lawStructure.ts` kannte das Tag von Anfang an, `lawText.ts` nicht — der
   Fehler blieb unsichtbar, weil **beide Seiten des ME→RV-Vergleichs** ihn
   symmetrisch trugen. Das betrifft nicht nur die Engine, sondern den
-  ausgelieferten Diff für GP XXVII und früher.
+  ausgelieferten Diff für GP XXVII und früher. *Nachtrag 11.09.2026:* „von
+  Anfang an" stimmt nur für die neuere Schreibweise. Das RIS führt denselben
+  Abschlussteil je nach Konverter auch als `<schluss typ="…">`, und den kannte
+  bis heute keines der beiden Module (§12.13, „Derselbe Abschlussteil, zwei
+  Namen"); in `parseRisXml` steht er noch offen.
 - **Satzlöschung löschte den ganzen Absatz.** `case 'delete'` las `target.satz`
   nie, und `ORDINAL_SATZ` kannte nur die Form auf „-er", nicht den Nominativ
   („entfällt der zweite Satz"). Beides zusammen ist genau die Überlöschung,
@@ -1246,17 +1250,18 @@ ersten und dritten Spalte sind seit der geteilten Markup-Regel und der zweiten
 Bezeichnung je Zeile (beide unten) über 246/238/237 Stellen gemessen statt
 244/236/235: Paragraphen, die die linke
 Prüfung vorher an einem zerschnittenen Wort verfehlten, erreichen die
-Injektion jetzt. Die PDF-Zeilen zählen 936/899/898 Stellen statt 918/881/880,
-seit der Bundsteg aus den Zweispaltenzeilen gelesen wird und ein Gesetz nur
-vor seiner ersten Anordnung benannt wird (beide unten).
+Injektion jetzt. Die PDF-Zeilen zählen 942/905/904 Stellen statt 918/881/880,
+seit der Bundsteg aus den Zweispaltenzeilen gelesen wird, ein Gesetz nur vor
+seiner ersten Anordnung benannt wird und der Abschlussteil in beiden
+Schreibweisen gelesen wird (alle unten).
 
 | Fehler | Regel 2, ganzer Entwurf | je Paragraph, 87 % adressiert | je Paragraph, 93 % adressiert |
 |---|---:|---:|---:|
-| R-neu (fremder Entwurfssatz), PDF-Pfad | 106 von 898 (11,8 %) | 665 (75,6 %) | **693 (77,2 %)** |
+| R-neu (fremder Entwurfssatz), PDF-Pfad | 107 von 904 (11,8 %) | 665 (75,6 %) | **696 (77,0 %)** |
 | R-neu, Tabellenpfad | 76 von 237 (32,1 %) | 184 (78,3 %) | **196 (82,7 %)** |
-| R-alt (fremder geltender Satz), PDF | 220 von 899 (24,5 %) | 584 (66,3 %) | 594 (66,1 %) |
+| R-alt (fremder geltender Satz), PDF | 222 von 905 (24,5 %) | 584 (66,3 %) | 596 (65,9 %) |
 | R-alt, Tabellenpfad | 98 von 238 (41,2 %) | 178 (75,4 %) | 183 (76,9 %) |
-| L (Satzverlust links), PDF | 144 von 936 (15,4 %) | 332 (36,2 %) | 348 (37,2 %) |
+| L (Satzverlust links), PDF | 146 von 942 (15,5 %) | 332 (36,2 %) | 350 (37,2 %) |
 | L, Tabellenpfad | 49 von 246 (19,9 %) | 90 (36,9 %) | 95 (38,6 %) |
 
 Zusammen mit Regel 1 steigt die Reichweite gegen den Satzverlust von 49,0 auf
@@ -1499,6 +1504,12 @@ beruhigen lässt, ist keine.
 | Tabellenpfad | 1.972 in 609 §§ | 366 | 63 | 59 | 54 |
 | PDF-Textebene | 287 in 287 §§ | 129 | 34 | 34 | 0 |
 
+*Stand der Lesung. Drei der 93 waren unsere eigene Lücke und sind noch am
+selben Abend geschlossen worden (unten, „Derselbe Abschlussteil, zwei
+Namen"); die Prüfstände drucken seitdem 11 bzw. 33 unter der Schwelle, davon
+4 bzw. 0 heute bestätigt — die 11 nach dem Schritt, der die beidspaltigen
+Überschriftszeilen zu Überschriften macht (unten).*
+
 **Alle 93 wurden einzeln gelesen, und 91 sind die Beilage, die recht hat.**
 Auf dem Tabellenpfad sind **52 von 59 die Gliederungsüberschriften des
 Gesetzes selbst** — Teil, Abschnitt, Unterabschnitt, die Buchstabenabschnitte
@@ -1513,16 +1524,18 @@ Dazu **3-mal die Notation der Beilage** („Anlage 1 (wird hier nicht
 abgebildet)" zweimal, „[entfällt durch ein früher in Kraft tretendes
 Vorhaben]"), **einmal Rechtschreibung** (Konfitürenverordnung § 5,
 „In-Kraft-Treten" gegen „Inkrafttreten") — und **zweimal eine Lücke in
-unserer eigenen RIS-Lesung**: bei StGB § 321c und BMSVG § 28 endet
-`lawStructure.plainText` den Absatz mit seiner Aufzählung und lässt den Satz
+unserer eigenen RIS-Lesung**: bei StGB § 321c und BMSVG § 28 endete
+`lawStructure.plainText` den Absatz mit seiner Aufzählung und ließ den Satz
 danach weg („ist mit Freiheitsstrafe von einem bis zu zehn Jahren zu
 bestrafen.", „Verordnungen der FMA nach diesem Absatz bedürfen der Zustimmung
-des Bundesministers für Finanzen."). Die Beilage zitiert dort Recht, das der
-Maßstab gar nicht anbietet — zum dritten Mal in diesem Projekt hätte das
+des Bundesministers für Finanzen."). Die Beilage zitierte dort Recht, das der
+Maßstab gar nicht anbot — zum dritten Mal in diesem Projekt hätte das
 Messgerät seine eigene Lücke dem Ressort angeschrieben. Auf dem PDF-Pfad sind
-alle 34 Inhaltsverzeichniszeilen und Hauptstücküberschriften, und jede einzelne
-sitzt in einem Paragraphen, der **überhaupt keine Änderung zeigt**; die Regel
-nähme dort also niemandem etwas weg, was er sieht.
+33 der 34 Zeilen Inhaltsverzeichnis und Hauptstücküberschrift, und jede
+einzelne sitzt in einem Paragraphen, der **überhaupt keine Änderung zeigt**;
+die Regel nähme dort also niemandem etwas weg, was er sieht. Die 34. war
+dieselbe Lücke wie die beiden anderen (Kulturgüterrückgabegesetz § 3,
+„ausgeführt wurde,").
 
 **Ein einziger Fall im ganzen Korpus ist der echte Befund**: GTelG § 23, dessen
 unveränderte Zeilen einen Abs. 2 drucken, den der geltende Paragraph nicht hat
@@ -1578,6 +1591,7 @@ ist „samt Überschrift", eine gezeigte Änderung, und die bleibt unberührt.
 | vorher | 1.972 in 609 §§ | 366 | 63 | 59 | 54 |
 | nur die Ablage verschoben | 2.066 in 642 §§ | 384 | 62 | — | 47 |
 | Überschrift des § darunter | 1.738 in 474 §§ | 330 | **13** | **10** | **6** |
+| … und der Abschlussteil in beiden Schreibweisen gelesen (unten) | 1.738 in 474 §§ | 330 | **11** | — | **4** |
 
 **Aufgelöst wird nur, wo darunter wirklich ein Paragraph aufgeht.** Die reine
 Form — jede beidspaltige Überschriftszeile auflösen — käme auf 10 statt 13,
@@ -1658,6 +1672,79 @@ Tabellenpfad, L und U je 1 auf dem PDF-Pfad).
 Kein Urteil hat sich bewegt: Tabellenpfad 1.008/55/795, PDF-Pfad
 1.342/244/1.897, alle vier Zusicherungen 0, beide Prüfstände Zeile für Zeile
 identisch bis auf die zwei neuen Zeilen.
+
+**Derselbe Abschlussteil, zwei Namen (11.09.2026, abends).** Die drei oben
+benannten Fälle waren nicht drei Paragraphen, sondern ein Tag. Das RIS
+schreibt den Satz, der eine Aufzählung schließt, unter zwei Namen, und welcher
+gilt, hängt am **Konverter, der das Dokument erzeugt hat**, nicht am Gesetz:
+Version 4.1 schreibt `<schlussteil>`, die 3er-Reihe `<schluss typ="…">`, 4.0
+liegt auf der Grenze. Über die 16.073 Paragraphendokumente des Offline-Korpus
+tragen 2.824 den neuen Namen, 402 den alten, und **kein einziges beide** —
+`lawStructure.ts` las nur den neuen und beendete damit jene 402 Paragraphen mit
+ihrer Aufzählung: 880 Blöcke, 23.578 vergleichbare Wörter geltenden Rechts,
+still verworfen. Gegen eine unabhängige flache Lesung derselben Dokumente
+(jeder Block in Dokumentreihenfolge, ohne Baum) gibt der Baum die Reihenfolge
+jetzt in 15.290 von 15.510 darstellbaren Dokumenten wieder statt in 14.906,
+und **kein Dokument ist mehr zu kurz** (386 waren es).
+
+Der alte Name nennt die Einheit, die der Satz schließt (`typ="Abs"` 462 Blöcke,
+`"Ziff"` 276, `"Lit"` 83, `"e<n>"` 59 für die Ebene der gerade beendeten
+Liste), und das wird gelesen, weil die Ablage zweimal zählt: die Aufzählung
+kann nach dem Satz *weitergehen* — „oder" schließt Ziffer 1 des Börsegesetzes
+§ 131 Abs. 1, Ziffer 2 folgt darauf —, und `lawApply.textSlot` löst „Im
+Schlussteil des § X Abs. n" auf das **letzte** `schluss`-Kind des Absatzes auf.
+Alles auf den Absatz zu legen, wäre einfacher und in **89 Paragraphen** falsch
+(Börsegesetz § 131, BWG §§ 20, 22, 35, 78, KStG § 26c, B-VG Art. 50 …) und
+kostete 33 Dokumente ihre Reihenfolge. Umgekehrt nimmt die Lesung nichts weg:
+der Slot des Absatzes ändert sich in 317 Dokumenten, und in jedem einzelnen war
+er vorher leer.
+
+Wirkung auf die Urteile. Der **Tabellenpfad ist Zeile für Zeile identisch**
+(1.010/53/795) bis auf die Grundmenge des blinden Flecks — 13 → 11 unter der
+Schwelle, davon heute bestätigt 6 → 4, und das sind genau StGB § 321c
+(66,7 % → 100 % über 15 vergleichbare Wörter) und BMSVG § 28 (86,2 % → 100 %
+über 58). Auf dem **PDF-Pfad** steigt „≥ 99 % gedeckt" von 1.636 auf 1.645 und
+das Tor von 1.364/250/1.869 auf **1.369/245/1.869**, Ursache „geltende Fassung
+so nicht im RIS" 217 → 211. Fünf Paragraphen werden bestätigt, jeder einzeln
+gelesen, und in jedem fehlten genau die Wörter des Schlusssatzes:
+Geräuschemissionsverordnung § 11 (62,7 % → 100 % über 440 Wörter) und ihre
+Anlage 8 (91,1 % → 99,0 %), FMABG § 7 (58,3 % → 100 %), Außenwirtschaftsgesetz
+§ 68 (92,9 % → 98,2 %) und § 70 (80,8 % → 100 %). Der sechste, Anlage 6
+derselben Verordnung, bleibt einbehalten und **wechselt nur den Grund**
+(85,1 % → 99,6 %, dann Regel 2): eine Meldung, die vorher hinter der linken
+Prüfung stand, steht jetzt für sich — dieselbe Form wie MPBV § 11, und der
+Grund, den die Seite nennt, stimmt jetzt. Die Fehlerinjektion ist auf dem
+Tabellenpfad identisch; auf dem PDF-Pfad wächst nur die Grundmenge um die sechs
+Paragraphen, die jetzt eine Injektionsstelle tragen (936/899/898 →
+942/905/904), bei gleichen Quoten (L 62,0 %, R-alt 66,2 %, R-neu 77,0 %) und
+Fehlalarmen 19 und 22 statt 19 und 21. Alle vier Zusicherungen 0,
+`droppedPages` 0, der Prüfstand der Änderungsmaschine (`kons-harness.ts`,
+`--discover=8`) Zeile für Zeile unverändert.
+
+**Was gemessen und nicht getan wurde.** `<schlussteil>` trägt dieselbe
+Information in `ebene` — 0 und 0,5 für den Absatz (4.792 Blöcke), 1 für die
+Ziffer (2.640), 2 und tiefer für die Litera (587) —, und sie zu lesen brächte
+die Dokumente, deren `plainText` noch gegen die Dokumentreihenfolge läuft, von
+220 auf 121. Sie bleibt vorerst ungelesen, weil sie in 2.352 Dokumenten den
+Schlussteil-Slot des Absatzes *leert*, und ob die 406 Sätze mit `ebene="1"`,
+die ihre Liste **beenden**, die Ziffer oder den Absatz schließen, ist genau die
+Frage, die `ebene` allein nicht beantwortet. Das entscheidet der Prüfstand der
+Änderungsmaschine über einen Korpus, nicht dieses Modul. Von den verbleibenden
+220 sind mindestens 140 ohnehin eine andere Form: ein unnummerierter
+Fortsetzungsblock, den das RIS *hinter* eine Liste druckt, wird an den Text des
+Absatzes angehängt und deshalb **vor** der Liste ausgegeben. Für die linke
+Prüfung ist das folgenlos (ein Sacktest kennt keine Reihenfolge), für Regel 1
+kostet es Empfindlichkeit, weil sie zusammenhängende Wortfolgen sucht.
+
+**Dieselbe Lücke steht noch in `lawText.parseRisXml`**, das die andere
+RIS-XML-Sorte liest (Gesetzestext des Entwurfs, ME→RV für GP XXVII und früher,
+Anweisungen der Änderungsmaschine): `RIS_BLOCK_RE` kennt `schlussteil`, nicht
+`schluss`. Im Offline-Korpus sind das 98 Dokumente mit 712 Blöcken und 12.100
+Wörtern; live in der GP XXVIII betrifft es die Gesetzestexte von **drei
+Entwürfen des Tabellenpfads und vier des PDF-Pfads**. Dort — anders als bei den
+Paragraphendokumenten — kommen beide Schreibweisen auch **im selben Dokument**
+vor. Eigener Schritt mit eigener Messung, weil er beide Seiten des
+ME→RV-Vergleichs bewegt.
 
 **Mitgefunden: eine Fußnote, die nur auf einer Seite verschwand.** RIS druckt
 eigene redaktionelle Anmerkungen in den konsolidierten Text („(Anm.: Abs. 2

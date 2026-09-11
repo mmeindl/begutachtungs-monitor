@@ -252,6 +252,84 @@ describe('parseKonsParagraph', () => {
     expect(plainText(parseKonsParagraph(xml)!)).not.toContain('Angefügter Block')
   })
 
+  // RIS spells the closing clause of an enumeration two ways, and which one a
+  // document uses depends on the converter that produced it, not on the law:
+  // `<schlussteil>` from version 4.0 on, `<schluss typ="Abs">` before it.
+  // Reading only the newer name ended 402 of the 16.073 cached § documents
+  // with their enumeration — StGB § 321c lost "ist mit Freiheitsstrafe von
+  // einem bis zu zehn Jahren zu bestrafen.", which the annex quotes.
+  it('reads the closing clause of an enumeration in the older spelling', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 321c</absatz>
+      <ueberschrift typ="para" ct="text">Kriegsverbrechen gegen Eigentum</ueberschrift>
+      <absatz typ="abs" ct="text"><gldsym>§ 321c.</gldsym> Wer im Zusammenhang mit einem bewaffneten Konflikt</absatz>
+      <liste><ziffernliste ebene="1">
+        <listelem ct="text"><symbol stellen="2">1.</symbol>plündert,</listelem>
+        <listelem ct="text"><symbol stellen="2">2.</symbol>Kulturgut zerstört, oder</listelem>
+      </ziffernliste>
+      <schluss typ="Abs" ct="text">ist mit Freiheitsstrafe von einem bis zu zehn Jahren zu bestrafen.</schluss></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(plainText(node)).toBe('Kriegsverbrechen gegen Eigentum Wer im Zusammenhang mit einem bewaffneten Konflikt plündert, Kulturgut zerstört, oder ist mit Freiheitsstrafe von einem bis zu zehn Jahren zu bestrafen.')
+    expect(node.children[0]!.children.at(-1)).toMatchObject({ level: 'schluss' })
+  })
+
+  // The older spelling names the unit it closes, and reading that matters
+  // twice: the enumeration can continue after the clause ("oder" closes
+  // Ziffer 1 of Börsegesetz § 131 Abs. 1 and Ziffer 2 follows it), and
+  // `textSlot` resolves "Im Schlussteil des Absatzes" to the Absatz's last
+  // `schluss` child — filing a Ziffer's clause there would take that slot.
+  // Over the corpus that is 89 §§ whose Absatz slot would hold the wrong text.
+  it('hangs a Ziffer’s closing clause off the Ziffer, not off the Absatz', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 131</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 131.</gldsym> (1) Finanzinstrumente sind Instrumente, die</absatz>
+      <liste><ziffernliste ebene="1"><listelem ct="text"><symbol stellen="2">1.</symbol>dem Inhaber bei Fälligkeit</listelem></ziffernliste>
+      <literaliste ebene="2">
+        <listelem ct="text"><symbol stellen="2">a)</symbol>das unbedingte Recht auf Erwerb verleihen,</listelem>
+        <listelem ct="text"><symbol stellen="2">b)</symbol>ein Ermessen verleihen</listelem>
+      </literaliste>
+      <schluss typ="Ziff" ct="text">oder</schluss>
+      <ziffernliste ebene="1"><listelem ct="text"><symbol stellen="2">2.</symbol>nicht unter Z 1 fallen.</listelem></ziffernliste></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const abs = parseKonsParagraph(xml)!.children[0]!
+    expect(plainText(abs)).toBe('Finanzinstrumente sind Instrumente, die dem Inhaber bei Fälligkeit das unbedingte Recht auf Erwerb verleihen, ein Ermessen verleihen oder nicht unter Z 1 fallen.')
+    // The Absatz keeps no Schlussteil of its own; the Ziffer carries it.
+    expect(abs.children.some((c) => c.level === 'schluss')).toBe(false)
+    expect(abs.children[0]!.children.at(-1)).toMatchObject({ level: 'schluss', text: 'oder' })
+  })
+
+  // The newer spelling carries no level and keeps the Absatz it has always
+  // been given, and an Absatz without any enumeration is untouched by all of
+  // this — the regression guard for 2.824 documents that read fine today.
+  it('leaves the newer spelling and an Absatz without enumeration alone', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 4</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 4.</gldsym> (1) Er hat jede Veränderung, insbesondere</absatz>
+      <liste><literaliste ebene="2"><listelem ct="text"><symbol stellen="2">a)</symbol>in seiner Person,</listelem></literaliste>
+      <schlussteil ebene="0" ct="text">der Behörde anzuzeigen.</schlussteil></liste>
+      <absatz typ="abs" ct="text">(2) Der Antrag ist schriftlich zu stellen.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(plainText(node)).toBe('Er hat jede Veränderung, insbesondere in seiner Person, der Behörde anzuzeigen. Der Antrag ist schriftlich zu stellen.')
+    expect(node.children[0]!.children.at(-1)).toMatchObject({ level: 'schluss', text: 'der Behörde anzuzeigen.' })
+    expect(node.children[1]!.children).toEqual([])
+  })
+
+  // 14 of the 47 `typ="e…"` blocks carry nothing but a RIS editorial note.
+  // They are not law, no Novelle can address them, and the standing text is
+  // the ruler the annex is scored against — a note in it is a word the
+  // ressort's column can never offer.
+  it('strips a RIS annotation that stands in a closing clause', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 113</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 113.</gldsym> (4) Der Beförderungsunternehmer hat die Kosten zu ersetzen, die</absatz>
+      <liste><ziffernliste ebene="1"><listelem ct="text"><symbol stellen="2">1.</symbol>für Unterkunft erwachsen,</listelem></ziffernliste>
+      <schluss typ="e1" ct="text"><i>(Anm.: Z 2 aufgehoben durch BGBl. I Nr. 87/2012)</i></schluss></liste>
+    </abschnitt></nutzdaten></risdok>`
+    expect(plainText(parseKonsParagraph(xml)!)).toBe('Der Beförderungsunternehmer hat die Kosten zu ersetzen, die für Unterkunft erwachsen,')
+  })
+
   // A § without its own heading used to take the name of the Abschnitt above
   // it — a wrong name on someone's paragraph, which is worse than none.
   it('does not give a § the name of the Abschnitt above it', () => {
