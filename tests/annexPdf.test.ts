@@ -217,6 +217,163 @@ describe('columnBoundary', () => {
 })
 
 /**
+ * The gutter is measured over the lines that part two columns, not over all
+ * the ink — the EU-ESG-Rating-Verordnung-Vollzugsgesetz in miniature
+ * (2026-09-11, §12.13).
+ *
+ * That annex sets two pages, one of them a title page whose blocks run the
+ * full width of the paper. Counted as ink, those blocks are most of the
+ * document and they cover the real gutter, so the emptiest strip landed at
+ * 381 — inside the left column, whose text runs to 434,5 — and the word
+ * "behördlichen" went out under the *proposed* version.
+ *
+ * The fixture reproduces the mechanism exactly: the left column ends at 434,
+ * the right begins at 442, and the title page carries one block that covers
+ * the gutter, one that stops short of it, and two that are letter-spaced, so
+ * the ink is emptiest at 378 — well inside the left column.
+ */
+describe('a document whose title page carries most of the ink', () => {
+  const LEFT_END = 434
+  const RIGHT_START = 442
+  /**
+   * A title block of evenly spaced runs. Every gap is the same width, so the
+   * line has no gap that stands out and says nothing about where two columns
+   * part — which is exactly what tells it from a two-column line.
+   */
+  const spaced = (y: number, ...runs: [number, number][]): AnnexItem[] =>
+    runs.map(([x, advance]) => wide(x, y, 'Titel', advance))
+
+  const title = pageOf([
+    // The Langtitel, one run across the whole page
+    wide(76, 800, 'Bundesgesetz, mit dem das Vollzugsgesetz erlassen wird', 724),
+    ...spaced(788, [76, 292], [380, 120], [512, 288]),
+    ...spaced(776, [76, 292], [380, 33], [425, 375]),
+    wide(430, 764, 'und das Finanzmarktaufsichtsbehördengesetz geändert wird', 370),
+  ])
+
+  const body = (y: number, left: string, right: string): AnnexItem[] => [
+    wide(105, y, left, LEFT_END - 105),
+    wide(RIGHT_START, y, right, 770 - RIGHT_START),
+  ]
+  const rows = pageOf([
+    // The header pair, each label centred over its own column
+    wide(235, 800, 'Geltende Fassung', 69),
+    wide(571, 800, 'Vorgeschlagene Fassung', 70),
+    ...body(780, '§ 2. (1) und (2) ...', '§ 2. (1) und (2) ...'),
+    // The one line that fills the left column, and its last word is a run of
+    // its own — the shape in which "behördlichen" changed columns.
+    wide(105, 760, '(3) Zur Wertpapieraufsicht zählt die Wahrnehmung der', 275),
+    wide(382, 760, 'behördlichen', 52),
+    wide(RIGHT_START, 760, '(3) Zur Wertpapieraufsicht zählt die Wahrnehmung der behördlichen', 328),
+    // …and eight ragged lines, which is why the ink is emptiest to the left
+    ...[740, 720, 700, 680, 660, 640, 620, 600].flatMap((y) => [
+      wide(105, y, 'Aufgaben und Befugnisse, die', 195),
+      wide(RIGHT_START, y, 'Aufgaben und Befugnisse, die', 328),
+    ]),
+  ])
+
+  it('cuts in the gutter and not in the emptiest strip', () => {
+    const boundary = columnBoundary([title, rows])
+    expect(boundary).toBeGreaterThan(LEFT_END)
+    expect(boundary).toBeLessThan(RIGHT_START)
+  })
+
+  it('keeps the left column’s last word in the current version', () => {
+    const parsed = parseAnnexPdf([title, rows], ONE_LAW).rows
+    expect(parsed).toHaveLength(1)
+    expect(parsed[0]!.current).toContain('Wahrnehmung der behördlichen')
+    // Once, from the ressort's own right-hand cell — not twice
+    expect(parsed[0]!.proposed.match(/behördlichen/g)).toHaveLength(1)
+  })
+
+  // The mechanism, pinned: at the strip the ink alone would have chosen, the
+  // left column's last word is filed under the proposed version.
+  it('would file that word as proposed if the emptiest strip were the cut', () => {
+    const line = linesFromPage(rows, 379).find((l) => l.right.startsWith('behördlichen'))
+    expect(line).toBeDefined()
+    expect(line!.left).not.toContain('behördlichen')
+  })
+
+  // Nothing here reads a header: the pages that state the gutter are the ones
+  // set in two columns, and a title or continuation page prints no header pair.
+  it('needs no header pair to find the gutter', () => {
+    const bare = pageOf(rows.items.filter((i) => !/Fassung$/.test(i.text)))
+    expect(columnBoundary([title, bare])).toBe(columnBoundary([title, rows]))
+  })
+})
+
+/**
+ * One column nearly empty — an inserted § — and the emptiest strip is blank
+ * paper rather than the gutter. A single line that parts the two columns is
+ * enough to say where they part.
+ */
+describe('a document whose left column is nearly empty', () => {
+  /** A letter-spaced heading across the page: even gaps, so it says nothing. */
+  const heading = (y: number): AnnexItem[] => [
+    wide(200, y, 'Neunter Abschnitt', 180),
+    wide(392, y, 'Kontrolle', 78),
+    wide(482, y, 'der Anlagen', 78),
+  ]
+  const page = pageOf([
+    wide(235, 800, 'Geltende Fassung', 69),
+    wide(571, 800, 'Vorgeschlagene Fassung', 70),
+    ...heading(780),
+    ...heading(768),
+    wide(105, 756, '§ 7. Der Antrag ist schriftlich einzubringen.', 329),
+    wide(442, 756, '§ 7. Der Antrag ist elektronisch einzubringen.', 328),
+    ...[740, 728, 716, 704, 692, 680, 668, 656].map((y) => wide(442, y, '(2) Die Behörde entscheidet binnen vier Wochen.', 328)),
+  ])
+
+  it('takes the gutter from the one line that parts the columns', () => {
+    const boundary = columnBoundary([page])
+    expect(boundary).toBeGreaterThan(434)
+    expect(boundary).toBeLessThan(442)
+  })
+
+  // The emptiest strip is the heading's word space, not the gutter: with one
+  // column all but empty there is more blank paper inside the left column than
+  // between the two. Cut there, the standing § 7 overhangs the cut and is
+  // filed as a heading crossing both columns — gone from the comparison.
+  it('is not the emptiest strip on the page', () => {
+    expect(linesFromPage(page, 391).find((l) => l.spanning?.startsWith('§ 7. Der Antrag ist schriftlich'))).toBeDefined()
+    const line = linesFromPage(page, columnBoundary([page])).find((l) => l.left.startsWith('§ 7.'))
+    expect(line?.right).toBe('§ 7. Der Antrag ist elektronisch einzubringen.')
+  })
+})
+
+/**
+ * The agreed band is a band and not an answer (2026-09-11, §12.13).
+ *
+ * Only lines printing in *both* columns vote, so a one-sided continuation line
+ * may begin inside the band they agree on. On the annex to the Gewerbeordnung/
+ * Emissionsschutzgesetz the band is [420, 426] while the right column's
+ * continuation line "linien umgesetzt:" starts at 422,7: cutting in the band's
+ * middle made it a heading crossing both columns, and § 382 lost those words
+ * out of the proposed version. Inside the band the ink decides, and the ink
+ * sees that line.
+ */
+describe('a band with a one-sided line inside it', () => {
+  const page = pageOf([
+    wide(235, 800, 'Geltende Fassung', 69),
+    wide(571, 800, 'Vorgeschlagene Fassung', 70),
+    ...[780, 768, 756, 744].flatMap((y) => [
+      wide(105, y, '§ 9. Die Behörde hat die Anlage zu genehmigen.', 313),
+      wide(428, y, '§ 9. Die Behörde hat die Anlage zu genehmigen.', 342),
+    ]),
+    // The continuation line: right column only, and it starts inside the band
+    wide(421, 732, 'linien umgesetzt:', 79),
+  ])
+
+  it('cuts left of a one-sided line that starts inside the band', () => {
+    const boundary = columnBoundary([page])
+    expect(boundary).toBeLessThanOrEqual(421)
+    const lines = linesFromPage(page, boundary)
+    expect(lines.filter((l) => l.spanning !== null)).toHaveLength(0)
+    expect(lines.find((l) => l.right.startsWith('linien'))).toBeDefined()
+  })
+})
+
+/**
  * The seam gates the pages; the ink cuts them. Measured 2026-09-11, §12.13.
  *
  * The header pair states where a page's columns lie and is what `parseAnnexPdf`
