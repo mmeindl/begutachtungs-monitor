@@ -548,8 +548,19 @@ const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
  * earlier. `lawStructure.ts` had it from the start; this parser did not, and
  * the mismatch surfaced only when the two were compared against RIS
  * (Privatschulgesetz § 4, 2026-09-09).
+ *
+ * **RIS writes that clause under two names**, and which one a document
+ * carries depends on the converter that produced it, not on the law: the 4.1
+ * line writes `<schlussteil>`, the 3.x line `<schluss typ="…">`, 4.0
+ * straddles. `lawStructure.ts` learned the older name on 2026-09-11 (402 of
+ * 16.073 § documents in the offline corpus carry only it); this parser reads
+ * the Begut main documents, where — unlike the § documents — both spellings
+ * occur *inside one document*. Without the older name the payload of an
+ * amendment instruction lost its closing clause, so the draft bags of the
+ * annex check („nicht im Entwurf") lacked words the annex rightly shows as
+ * new, and the ME→RV units lacked the same words on both sides.
  */
-const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
+const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
 
 function risText(inner: string): string {
@@ -582,10 +593,13 @@ export function parseRisXml(xml: string): TextBlock[] {
       kind = RIS_ABSATZ_KIND[typ] ?? 'other'
     } else if (tag === 'listelem') {
       kind = 'ziff'
-    } else if (tag === 'schlussteil') {
+    } else if (tag === 'schlussteil' || tag === 'schluss') {
       // Continuation of the Absatz that opened the list, not a unit of its
       // own — `parsePayload` and `segmentUnits` both append an unmarked
-      // block to the Absatz above it, which is exactly right here.
+      // block to the Absatz above it, which is exactly right here. The older
+      // spelling names the unit it closes in `typ` (Abs, Ziff, Lit, e<n>);
+      // a flat block list has no slot for that level, and document order is
+      // what the consumers need, so both spellings land the same way.
       kind = 'abs'
     } else {
       kind = 'toc'

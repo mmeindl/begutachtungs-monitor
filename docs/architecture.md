@@ -582,7 +582,7 @@ Quote nahelegte:
   Anfang an" stimmt nur für die neuere Schreibweise. Das RIS führt denselben
   Abschlussteil je nach Konverter auch als `<schluss typ="…">`, und den kannte
   bis heute keines der beiden Module (§12.13, „Derselbe Abschlussteil, zwei
-  Namen"); in `parseRisXml` steht er noch offen.
+  Namen"); `parseRisXml` liest ihn seit 12.09.2026 ebenfalls.
 - **Satzlöschung löschte den ganzen Absatz.** `case 'delete'` las `target.satz`
   nie, und `ORDINAL_SATZ` kannte nur die Form auf „-er", nicht den Nominativ
   („entfällt der zweite Satz"). Beides zusammen ist genau die Überlöschung,
@@ -1736,15 +1736,22 @@ Absatzes angehängt und deshalb **vor** der Liste ausgegeben. Für die linke
 Prüfung ist das folgenlos (ein Sacktest kennt keine Reihenfolge), für Regel 1
 kostet es Empfindlichkeit, weil sie zusammenhängende Wortfolgen sucht.
 
-**Dieselbe Lücke steht noch in `lawText.parseRisXml`**, das die andere
+**Dieselbe Lücke stand in `lawText.parseRisXml`** (geschlossen 12.09.2026), das die andere
 RIS-XML-Sorte liest (Gesetzestext des Entwurfs, ME→RV für GP XXVII und früher,
 Anweisungen der Änderungsmaschine): `RIS_BLOCK_RE` kennt `schlussteil`, nicht
 `schluss`. Im Offline-Korpus sind das 98 Dokumente mit 712 Blöcken und 12.100
 Wörtern; live in der GP XXVIII betrifft es die Gesetzestexte von **drei
 Entwürfen des Tabellenpfads und vier des PDF-Pfads**. Dort — anders als bei den
 Paragraphendokumenten — kommen beide Schreibweisen auch **im selben Dokument**
-vor. Eigener Schritt mit eigener Messung, weil er beide Seiten des
-ME→RV-Vergleichs bewegt.
+vor. `RIS_BLOCK_RE` liest jetzt beide Namen, und der ältere landet wie der
+neuere als Fortsetzung des Absatzes an seiner Stelle in der Dokumentreihenfolge
+— die flache Blockliste hat keinen Platz für die Ebene, die `typ` nennt, und
+ihre Leser brauchen die Reihenfolge, nicht die Ebene. Gemessen über die GP
+XXVIII: beide Prüfstände und beide Fehlerinjektionen sind **Zeile für Zeile
+identisch** — keiner der sieben betroffenen Entwürfe hatte ein Urteil, das an
+den fehlenden Wörtern hing. Was sich ändert, ist der Text, den der
+ME→RV-Vergleich für GP XXVII und früher und die Änderungsmaschine lesen: die
+712 Blöcke des Offline-Korpus stehen wieder in ihren Einheiten.
 
 **Mitgefunden: eine Fußnote, die nur auf einer Seite verschwand.** RIS druckt
 eigene redaktionelle Anmerkungen in den konsolidierten Text („(Anm.: Abs. 2
