@@ -102,7 +102,7 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/142?js=eval&
 
 - Without `BEZUG_INR`: all ME Stellungnahmen of the GP (XXVIII: 5,505). Completely unfiltered: 633,416 (all GPs, all types). Careful: `{"GP_CODE":["XXVIII"]}` is a **different** dimension (GP of the SN itself, all types, 8,513 rows) — not interchangeable with `BEZUG_*`.
 - Row (0-based): `[2]` SNME-INR (→ detail URL), `[4]` date, `[6]` submitter as HTML `<a>` with the name, `[12]` endorsements (int, **approximation only** — list 305 is authoritative, a 5-vs-4 discrepancy was observed), `[15]` citation (`476/SN-88/ME`), `[18]` parent path.
-- Document links are NOT in the row → fetch the SNME detail.
+- Document links are NOT in the row → fetch the SNME detail. The monitor resolves them on click through its own redirect (`/api/stellungnahmen/{gp}/{SNME|SN}/{inr}/dokument`), never in advance — 700 rows would be 700 detail calls.
 - The list definition is embedded in every ME detail under `.content.statements.filter.data.definition`.
 - **Header shape:** every entry carries `feldId`, `label` and — for the filterable dimensions only — `feld_name` (`GP_CODE`, `ITYP`, `INR`, `DATUM`, `DATUM_SORT`; the computed columns such as `Von`, `Unterstützungen`, `Nr` have a `label` only). The monitor asserts the positions it reads against this header on every fetch (`server/utils/listHeaders.ts`, lists 81 and 142): a reordered column used to degrade silently into "every submitter is a Privatperson", because that is the classifier's safe default.
 
@@ -158,6 +158,7 @@ curl -s "https://www.parlament.gv.at/gegenstand/XXVIII/SNME/3262?json=True"
 - SNME-INR is a GP-wide sequence, independent of the numbering in the citation (`476/SN-88/ME` has SNME-INR 3699).
 - Non-public submissions appear as the placeholder name `"Nicht-öffentliche Stellungnahme"`.
 
+- Two link shapes for the PDF: `/dokument/XXVII/SNME/81457/imfname_942193.pdf` on a Ministerialentwurf, `/PtWeb/api/s3serv/file/{uuid}` on a Regierungsvorlage (`/gegenstand/XXVII/SN/277139?json=True`) — no extension there, only `type: "PDF"` says what it is. Both are served as `application/pdf`.
 ### List 305 — endorsements
 
 ```bash

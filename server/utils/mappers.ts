@@ -214,11 +214,15 @@ export function mapDraftRow(row: unknown[]): DraftSummary {
 
 // ---------------------------------------------------------------------------
 // List 142 — Stellungnahmen (23 columns, 0-based)
-// 0 gp · 2 snmeInr · 4 date (display) · 5 dateSort (ISO) ·
+// 0 gp · 1 ityp of the Stellungnahme (SNME on a Ministerialentwurf, SN on a
+// Regierungsvorlage) · 2 its INR · 4 date (display) · 5 dateSort (ISO) ·
 // 6 submitter (HTML <a> or placeholder text) · 12 endorsements ·
-// 15 citation
+// 15 citation ("476/SN-88/ME" on an ME, "277139/SN" on an RV)
 // Deviation from §5 noted: [5] DATUM_SORT is ISO and preferred;
 // [4] (dd.mm.yyyy) serves only as fallback.
+// The positions are asserted against the header at fetch time
+// (`listHeaders.ts`), so a reorder upstream fails loudly instead of turning
+// every submitter into "Privatperson".
 // ---------------------------------------------------------------------------
 
 /**
@@ -237,14 +241,74 @@ export function normalizeOrgName(name: string): string {
     .trim()
 }
 
+/** The item types a Stellungnahme comes as — also the path segment of its page. */
+export type StatementItemType = 'SNME' | 'SN'
+
+/**
+ * Our redirect to the Stellungnahme's own document: the PDF when one was
+ * uploaded, its upstream page otherwise (`server/api/stellungnahmen/…`). A
+ * path, not a URL — it is resolved on click, never fetched in advance, so a
+ * list of 700 rows costs 700 links and zero upstream calls.
+ */
+export function statementDocumentPath(gp: string, ityp: StatementItemType, inr: number): string {
+  return `/api/stellungnahmen/${gp}/${ityp}/${inr}/dokument`
+}
+
+/**
+ * The same path, recovered from a stored `parliamentUrl` — for last-good
+ * records written before the field existed. Null when the URL is not a
+ * Stellungnahme page at all.
+ */
+export function statementDocumentPathFromUrl(parliamentUrl: string): string | null {
+  const m = /\/gegenstand\/([IVXLC]+)\/(SNME|SN)\/(\d+)(?:[/?#]|$)/.exec(parliamentUrl)
+  if (!m?.[1] || !m[2] || !m[3]) return null
+  return statementDocumentPath(m[1], m[2] as StatementItemType, Number(m[3]))
+}
+
+export interface StatementDocument {
+  kind: 'pdf' | 'page'
+  url: string
+}
+
+export function statementPageUrl(gp: string, ityp: StatementItemType, inr: number): string {
+  return `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}`
+}
+
+/**
+ * The Stellungnahme's own document out of its detail JSON: the first PDF
+ * in `content.documents[]`, else the page (web-form submissions have no
+ * file; the text is inline). Two link shapes upstream:
+ * `/dokument/XXVII/SNME/81457/imfname_942193.pdf` on a Ministerialentwurf,
+ * `/PtWeb/api/s3serv/file/{uuid}` on a Regierungsvorlage — no extension,
+ * but `type: "PDF"`, which is what decides here.
+ */
+export function pickStatementDocument(
+  groups: RawDocumentGroup[] | null | undefined,
+  pageUrl: string,
+): StatementDocument {
+  for (const group of groups ?? []) {
+    for (const doc of group?.documents ?? []) {
+      if ((doc?.type ?? '').toUpperCase() === 'PDF' && doc?.link) {
+        return { kind: 'pdf', url: absolutizeUrl(doc.link) }
+      }
+    }
+  }
+  return { kind: 'page', url: pageUrl }
+}
+
 export function mapStatementRow(row: unknown[]): StatementMeta {
   const gp = asString(row[0])
-  const snmeInr = asNumber(row[2])
+  // 'SN' is the Stellungnahme on a Regierungsvorlage; everything else is the
+  // SNME the monitor started with — the header check already vouches for
+  // the column, this only keeps the URL well-formed.
+  const ityp: StatementItemType = asString(row[1]) === 'SN' ? 'SN' : 'SNME'
+  const snInr = asNumber(row[2])
   const citation = asString(row[15])
 
-  // "<a …>Mustermann, Maria (237/SN-126/ME)</a>" → "Mustermann, Maria"
+  // "<a …>Mustermann, Maria (237/SN-126/ME)</a>" → "Mustermann, Maria";
+  // on a Regierungsvorlage the bracket reads "(277139/SN)".
   const rawSubmitter = stripHtmlToText(asString(row[6])).replace(
-    /\s*\(\d+\/SN-[^)]*\)\s*$/,
+    /\s*\(\d+\/SN(?:-[^)]*)?\)\s*$/,
     '',
   )
   const { kind, name } = classifySubmitter(rawSubmitter)
@@ -255,7 +319,8 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
     submitterKind: kind,
     submitterName: name !== null ? normalizeOrgName(name) : null,
     endorsements: asNumber(row[12]),
-    parliamentUrl: `${PARLIAMENT_BASE}/gegenstand/${gp}/SNME/${snmeInr}`,
+    parliamentUrl: `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${snInr}`,
+    documentUrl: statementDocumentPath(gp, ityp, snInr),
   }
 }
 
@@ -386,6 +451,7 @@ export function groupOrganisationStatements(statements: StatementMeta[]): Organi
       date: s.date,
       endorsements: s.endorsements,
       parliamentUrl: s.parliamentUrl,
+      documentUrl: s.documentUrl,
     })
   }
 

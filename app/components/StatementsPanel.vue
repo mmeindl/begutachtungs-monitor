@@ -214,7 +214,7 @@ const orgRows = computed(() =>
         label: org.name,
         links: expanded
           ? null
-          : org.statements.map((s) => ({ citation: s.citation, href: s.parliamentUrl })),
+          : org.statements.map((s) => ({ citation: s.citation, href: s.parliamentUrl, document: s.documentUrl })),
         detail: expanded ? statementCountLabel(org.statements.length) : null,
         submitter: org.name,
       },
@@ -471,7 +471,7 @@ const mixSegments = computed(() => {
             :key="item.parliamentUrl"
             :date="item.date"
             :label="submitterLabel(item)"
-            :links="[{ citation: item.citation, href: item.parliamentUrl }]"
+            :links="[{ citation: item.citation, href: item.parliamentUrl, document: item.documentUrl }]"
             :submitter="submitterName(item)"
           >
             <template v-if="item.endorsements > 0" #meta>
