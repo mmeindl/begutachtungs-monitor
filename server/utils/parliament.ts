@@ -45,6 +45,7 @@ import {
   mapInvitedBy,
   mapStatementRow,
   mapTextEvolution,
+  statementDocumentPathFromUrl,
   RV_STATION,
   parseShortinfo,
   parseStages,
@@ -479,8 +480,17 @@ async function recallStatements(
   const cached = lastGoodStatements.get(key)
   if (cached) return cached
   const stored = await loadLastGoodStatements(gp, inr)
-  if (stored) lastGoodStatements.set(key, stored)
-  return stored
+  if (!stored) return null
+  // Records written before the document link existed carry none; the link
+  // is a function of the page URL, so it is restored rather than left out.
+  const items = stored.items.map((item) =>
+    item.documentUrl
+      ? item
+      : { ...item, documentUrl: statementDocumentPathFromUrl(item.parliamentUrl) ?? item.parliamentUrl },
+  )
+  const record = { items, fetchedAt: stored.fetchedAt }
+  lastGoodStatements.set(key, record)
+  return record
 }
 
 export interface StatementsResult {

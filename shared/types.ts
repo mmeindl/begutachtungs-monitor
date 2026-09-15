@@ -136,6 +136,8 @@ export interface StatementsSummary {
       date: string | null
       endorsements: number
       parliamentUrl: string
+      /** See StatementMeta.documentUrl. */
+      documentUrl: string
     }[]
   }[]
 }
@@ -247,6 +249,12 @@ export interface StatementMeta {
   endorsements: number
   /** Public source page on parlament.gv.at */
   parliamentUrl: string
+  /**
+   * Our redirect to the Stellungnahme's own document — the uploaded PDF,
+   * or the page above when the text was typed into the web form. A
+   * relative API path, resolved on click (`/api/stellungnahmen/…`).
+   */
+  documentUrl: string
 }
 
 export interface StatementsResponse {

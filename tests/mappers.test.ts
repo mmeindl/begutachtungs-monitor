@@ -16,6 +16,8 @@ import {
   mapTextEvolution,
   normalizeOrgName,
   parseFristsort,
+  statementDocumentPath,
+  statementDocumentPathFromUrl,
   parseGermanDate,
   parseShortinfo,
   parseStages,
@@ -193,6 +195,7 @@ describe('mapStatementRow', () => {
       submitterName: null,
       endorsements: 0,
       parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SNME/4983',
+      documentUrl: '/api/stellungnahmen/XXVIII/SNME/4983/dokument',
     })
   })
 
@@ -210,7 +213,39 @@ describe('mapStatementRow', () => {
       submitterName: 'Vegane Gesellschaft Österreich',
       endorsements: 12,
       parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SNME/5000',
+      documentUrl: '/api/stellungnahmen/XXVIII/SNME/5000/dokument',
     })
+  })
+
+  it('maps a Stellungnahme on a Regierungsvorlage (item type SN, bare citation)', () => {
+    // Real row, 2238 d.B. XXVII (2026-09-15): type SN, citation without the
+    // "-95/ME" tail, page under /SN/.
+    const row = [
+      'XXVII', 'SN', 277139, null, '19.12.2023', '2023-12-19T12:00:00',
+      '<a href="/gegenstand/XXVII/SN/277139/" target="_blank">Forum Informationsfreiheit (277139/SN)</a>',
+      'XXVII', '2238', 'I', '00000420231219', '20231219000004', 4,
+      'Art:\nStellungnahme\n<br />\nKürzel:\nSN\n<br />\n',
+      null, '277139/SN', '2238/I', null, '/gegenstand/XXVII/I/2238', 'I', 11233010, 277139, '1',
+    ]
+    expect(mapStatementRow(row)).toEqual({
+      citation: '277139/SN',
+      date: '2023-12-19',
+      submitterKind: 'organisation',
+      submitterName: 'Forum Informationsfreiheit',
+      endorsements: 4,
+      parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVII/SN/277139',
+      documentUrl: '/api/stellungnahmen/XXVII/SN/277139/dokument',
+    })
+  })
+
+  it('recovers the document path from a stored page URL, for both item types', () => {
+    expect(statementDocumentPathFromUrl('https://www.parlament.gv.at/gegenstand/XXVIII/SNME/4983')).toBe(
+      statementDocumentPath('XXVIII', 'SNME', 4983),
+    )
+    expect(statementDocumentPathFromUrl('https://www.parlament.gv.at/gegenstand/XXVII/SN/277139/')).toBe(
+      '/api/stellungnahmen/XXVII/SN/277139/dokument',
+    )
+    expect(statementDocumentPathFromUrl('https://www.parlament.gv.at/gegenstand/XXVII/ME/95')).toBeNull()
   })
 
   it('maps a non-public row (placeholder instead of a link)', () => {
@@ -492,6 +527,7 @@ describe('groupOrganisationStatements', () => {
     submitterName: name,
     endorsements,
     parliamentUrl: `https://www.parlament.gv.at/gegenstand/XXVIII/SNME/${citation}`,
+    documentUrl: `/api/stellungnahmen/XXVIII/SNME/${citation}/dokument`,
   })
 
   it('collapses repeated submissions of one organisation into one entry', () => {

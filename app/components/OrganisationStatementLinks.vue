@@ -49,7 +49,7 @@ function endorsementLabel(n: number): string {
       :key="st.parliamentUrl"
       :date="st.date"
       label=""
-      :links="[{ citation: st.citation, href: st.parliamentUrl }]"
+      :links="[{ citation: st.citation, href: st.parliamentUrl, document: st.documentUrl }]"
       :submitter="org.name"
     >
       <template v-if="st.endorsements > 0" #meta>

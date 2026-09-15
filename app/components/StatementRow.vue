@@ -31,8 +31,14 @@ const props = defineProps<{
    * same day. The citation is the precise handle, what a reader quotes, and
    * on the anonymous half the only thing telling apart hundreds of rows
    * that all read "Privatperson".
+   *
+   * `document` is our redirect to the Stellungnahme's own file — the PDF
+   * when one was uploaded, the page above otherwise — resolved on click
+   * (`/api/stellungnahmen/…/dokument`). One click less for the reader who
+   * works through fifty submissions; the citation keeps leading to the page,
+   * which is where the Zustimmungen and the inline texts are.
    */
-  links?: { citation: string; href: string }[] | null
+  links?: { citation: string; href: string; document?: string | null }[] | null
   /**
    * Plain-text stand-in for the citation cell, for a row with no single
    * document to point at ("4 Stellungnahmen", listed below the row).
@@ -49,6 +55,11 @@ const props = defineProps<{
 function linkAriaLabel(citation: string): string {
   const who = props.submitter ? ` von ${props.submitter}` : ''
   return `Stellungnahme ${citation}${who} auf parlament.gv.at öffnen`
+}
+
+function documentAriaLabel(citation: string): string {
+  const who = props.submitter ? ` von ${props.submitter}` : ''
+  return `Dokument der Stellungnahme ${citation}${who} öffnen – das PDF, sonst die Seite auf parlament.gv.at`
 }
 </script>
 
@@ -127,17 +138,32 @@ function linkAriaLabel(citation: string): string {
            kinds of thing. Several citations sit side by side in the phone's
            meta line and stack in the column. -->
       <span
-        class="flex flex-wrap items-baseline gap-x-1 gap-y-1 tabular-nums row-cols:col-start-3 row-cols:row-start-1"
+        class="flex flex-wrap items-baseline gap-x-2 gap-y-1 tabular-nums row-cols:col-start-3 row-cols:row-start-1"
       >
-        <ExternalLink
+        <!-- Citation and document side by side, the document in the quieter
+             weight: the citation is the handle a reader quotes, the document
+             is what they open. -->
+        <span
           v-for="link in links ?? []"
           :key="link.href"
-          :href="link.href"
-          :aria-label="linkAriaLabel(link.citation)"
-          class="tap-target font-medium text-accent-deep hover:underline"
+          class="inline-flex flex-wrap items-baseline gap-x-1"
         >
-          {{ link.citation }}
-        </ExternalLink>
+          <ExternalLink
+            :href="link.href"
+            :aria-label="linkAriaLabel(link.citation)"
+            class="tap-target font-medium text-accent-deep hover:underline"
+          >
+            {{ link.citation }}
+          </ExternalLink>
+          <ExternalLink
+            v-if="link.document"
+            :href="link.document"
+            :aria-label="documentAriaLabel(link.citation)"
+            class="tap-target text-xs text-ink-secondary hover:underline"
+          >
+            Dokument
+          </ExternalLink>
+        </span>
         <span v-if="!links?.length && detail" class="text-ink-muted">{{ detail }}</span>
       </span>
 
