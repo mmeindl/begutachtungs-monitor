@@ -1,5 +1,5 @@
 /**
- * GET /api/consultations/:gp/:inr/statements → StatementsResponse.
+ * GET /api/drafts/:gp/:inr/statements → StatementsResponse.
  * List 142, GDPR-filtered (names of private persons never leave the
  * server), date descending. 404 for an unknown item.
  *
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event): Promise<StatementsResponse> => 
   // Existence check and list 142 are independent → parallel; for an unknown
   // item the 404 wins, the list then just returns zero rows.
   const [, statements] = await Promise.all([
-    requireConsultation(gp, inr),
+    requireDraft(gp, inr),
     getStatementsWithFallback(gp, inr),
   ])
   return { items: statements.items, staleAsOf: statements.staleAsOf }

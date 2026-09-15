@@ -12,7 +12,7 @@ import { droppedLawsNote, mergedLawsNote } from '#shared/utils/lawPackage'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
-const { data, status } = await useFetch<LawDiffResponse>(() => `/api/consultations/${props.gp}/${props.inr}/diff`, {
+const { data, status } = await useFetch<LawDiffResponse>(() => `/api/drafts/${props.gp}/${props.inr}/diff`, {
   lazy: true,
   server: false,
 })
@@ -22,7 +22,7 @@ const { data, status } = await useFetch<LawDiffResponse>(() => `/api/consultatio
  * separately so a slow lookup never delays the comparison and a failing one
  * never takes it down. Names appear when they arrive.
  */
-const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(() => `/api/consultations/${props.gp}/${props.inr}/paragraphtitel`, {
+const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(() => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel`, {
   lazy: true,
   server: false,
 })
@@ -341,7 +341,7 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
         <!-- One compact select instead of six chips (the counts live on the
              law headers anyway). Native <select>, not USelect — same reason
              and same token styling as the list page (Vite 8 + Nuxt UI 4.10
-             hydration crash, see pages/begutachtungen/index.vue). -->
+             hydration crash, see pages/entwuerfe/index.vue). -->
         <div class="mt-4 flex flex-wrap items-center gap-3">
           <TokenSelect v-model="filter" aria-label="Welche Paragraphen anzeigen">
             <option v-for="o in filterOptions" :key="o.value" :value="o.value">{{ o.optionLabel }}</option>

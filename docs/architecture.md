@@ -66,10 +66,10 @@ badges. Tone: factual, precise, no exclamation marks.
 |---|---|---|
 | `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) |
 | `GET /api/dashboard/outcomes` | `DashboardOutcomes` | Bounded fan-out over the most recently closed consultations (≤12 ME-Gegenstand + their RV leg, all through the 30-min leaf caches) + one deeper probe for the newest RV/BGBl item. Server-rendered on `/` with a 4 s timeout — measured 0.41 s fully cold, 5 ms warm, because the fan-out is parallel |
-| `GET /api/consultations?gp&status&ministry&q` | `ConsultationsResponse` | List 81; `status`: `open\|closed\|all` (default `all`), `q` searches title/citation/ministry server-side |
-| `GET /api/consultations/:gp/:inr` | `ConsultationDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
-| `GET /api/consultations/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
-| `GET /api/consultations/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → **scoped to the laws both texts carry** → aligned → word diff; cached 24 h. `lawsOnlyInRv` / `lawsOnlyInMe` name the laws left out, with their unit counts — a Regierungsvorlage that merges several drafts would otherwise report hundreds of §§ as new (§6d). `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
+| `GET /api/drafts?gp&status&ministry&q` | `DraftsResponse` | List 81; `status`: `open\|closed\|all` (default `all`), `q` searches title/citation/ministry server-side |
+| `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
+| `GET /api/drafts/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
+| `GET /api/drafts/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → **scoped to the laws both texts carry** → aligned → word diff; cached 24 h. `lawsOnlyInRv` / `lawsOnlyInMe` name the laws left out, with their unit counts — a Regierungsvorlage that merges several drafts would otherwise report hundreds of §§ as new (§6d). `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
 | `GET /api/ris-map/:gp` (or `aktuell`) | `RisMapResponse` | RIS Begut record per ME of the GP with status/tier/score, RIS URL and document URLs, Beginn/Ende offsets (a non-zero Ende offset is a Fristabweichung). Cached 30 min on top of the 20-h corpus cache; the nightly prewarm timer calls `aktuell`. `docs/ris-join.md` §3a |
 | `GET /feed.xml` | RSS 2.0 | Current GP, newest arrival first, max 50 items; deterministic output (no `Date.now()`, absolute dates in descriptions — never countdowns), ETag/304; builders in `server/utils/feeds.ts` (pure, tested) |
 | `GET /kalender.ics` | iCalendar (RFC 5545) | All deadlines of the current GP as all-day transparent events; UID domain FROZEN (`@begutachtungs-monitor.at`, survives renames); DTSTAMP follows the deadline so extensions propagate through import paths; ETag/304 |
@@ -78,7 +78,7 @@ Param validation: `gp` = Roman numerals (`/^[IVXLC]+$/`), `inr` = positive integ
 
 Server internals (`server/utils/`):
 
-- `parliament.ts` — upstream client (`fetchFilterList`, `fetchGegenstand`, `getCurrentGp`, cached `getConsultationsForGp`, `getStatementsForMe`, `getGegenstand`; **uncached** assembly `getConsultationDetail`).
+- `parliament.ts` — upstream client (`fetchFilterList`, `fetchGegenstand`, `getCurrentGp`, cached `getDraftsForGp`, `getStatementsForMe`, `getGegenstand`; **uncached** assembly `getDraftDetail`).
 - `budget.ts` — `withinBudget(promise, ms)`: waits at most `ms`, then answers `null` WITHOUT aborting the call, so the dropped fetch still fills its cache for the next reader. Used for the RIS join on the detail page (2 s): after a restart the RIS corpus is ~46 requests cold, and on 2026-09-07 the first detail-page hit after a deploy took 61 s in production while the prewarm unit was still running. Only for enrichment whose absence the page already handles — never for a fact the page asserts.
 - `ris.ts` — RIS OGD client: full Begut corpus (paged, retries, HTTP-200 error envelope), flattened records with main-document URLs; `getRisMapForGp` joins the cached list 81 against it.
 - `risJoin.ts` — **pure**: the ME↔RIS join (ruleVersion 2), regression-tested against `data/ris-me-map-gp27.json` and the GP XXVIII fixtures.
@@ -89,7 +89,7 @@ Server internals (`server/utils/`):
 **Cache rules (August 2026, forced by a real failure):**
 
 1. **Cache leaves only.** Only the upstream calls themselves are cached.
-   `getConsultationDetail` is a derived aggregate and stays uncached — a
+   `getDraftDetail` is a derived aggregate and stays uncached — a
    cache on top of it freezes a snapshot of its inputs and stamps it as
    fresh. Observed: the detail cache held a nine-day-old statements count
    (`total: 1`) with a current `mtime`, while the leaf cache next to it
@@ -104,7 +104,7 @@ Server internals (`server/utils/`):
    request. Price: one upstream round trip per TTL window lands on a single
    request's latency, and an upstream outage leads to the error page instead
    of stale data (deliberate — the retry policy and `ErrorState` absorb it).
-3. **One fact, one source per response.** `ConsultationDetail` excludes
+3. **One fact, one source per response.** `DraftDetail` excludes
    `statementCount` (list 81, `row[13]`) via `Omit`; the detail response
    carries only `statements.total` from list 142 — the same source as the
    breakdown. Otherwise two independently aged numbers for the same fact sat
@@ -158,8 +158,8 @@ Server internals (`server/utils/`):
    new one fails the suite until it is classified. Finished the same day: the
    last two persistent caches that still mapped rows were split too, so the
    persistent layer holds only upstream payloads, one entry per distinct call
-   — `consultations-list` and `parliament-me-config` keep the answers, while
-   `mapConsultationRow` and `findGpCode` sit above them in the derived layer.
+   — `drafts-list` and `parliament-me-config` keep the answers, while
+   `mapDraftRow` and `findGpCode` sit above them in the derived layer.
    List 142 is the single call with **no cached fetch underneath**, for two
    independent reasons: its rows name private persons, so only the classified
    result may be kept (§3), and a cached raw response would hand the
@@ -188,16 +188,16 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 | Component | Props | Purpose |
 |---|---|---|
-| `AppHeader` | – | Wordmark, nav: Aktuell `/`, Begutachtungen `/begutachtungen`, Über `/ueber` |
+| `AppHeader` | – | Wordmark, nav: Aktuell `/`, Begutachtungen `/entwuerfe`, Über `/ueber` |
 | `AppFooter` | – | Source attribution (Parlamentsdirektion, CC BY 4.0), prototype note, GitHub placeholder |
 | `StatTile` | `label: string; value: number\|string; hint?: string` | Stat tile: label sentence case without colon, value large/semibold, proportional figures, de-AT format |
 | `DeadlineBadge` | `deadline: string\|null; active: boolean` | Deadline chip with text from `fristLabel()`; dot icon + status color: ≤3 days critical, ≤7 serious, otherwise neutral; expired: muted. **Color never without text** |
 | `StageBar` | `arrivedAt; deadline; active; enactment; gpEnded?` | The ME→RV→BGBl track, dates/citations on reached stations; unreached ones carry a state word — `ausstehend` while the Frist runs, `bisher keine` after it, `keine – GP beendet` once the draft's Gesetzgebungsperiode is over (§12.10). State is always in text, never in dot fill alone |
 | `VolumeBar` | `label: string; value: number; max: number; href?: string` | Single-color horizontal quantity bar: track `accent-wash`, fill `accent`, 8 px tall, 4 px rounded on the right/square on the left, value at the end in ink (never in the data color), `tabular-nums` in the value column |
 | `MinistryBadge` | `code: string; name: string` | Ministry chip (code visible, full name as `title`/sr-only) |
-| `ConsultationCard` | `consultation: ConsultationSummary` | Linked row card: title (2-line clamp), ministry, DeadlineBadge, statement count, arrival date |
+| `DraftCard` | `draft: DraftSummary` | Linked row card: title (2-line clamp), ministry, DeadlineBadge, statement count, arrival date |
 | `TraceTimeline` | `steps: TraceStep[]` | Vertical process timeline: date, text, link chips |
-| `DocumentList` | `documents: ConsultationDocument[]; source?: string` | Document rows: title + hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons and chips act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
+| `DocumentList` | `documents: DraftDocument[]; source?: string` | Document rows: title + hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons and chips act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
 | `LawDiffSection` | `gp: string; inr: number` | "Was sich nach der Begutachtung geändert hat": lazy client fetch of `/diff`; filter chips (UFieldGroup), search (UInput), one folded group per Gesetz with count pills, rows with geändert / redaktionell / neu / entfallen / unverändert and an expandable word-level diff; both sources linked with CC BY attribution; a note above the list names laws only one of the two documents carries. Anchor `#textvergleich`, linked from the outcome card |
 | `StatementsPanel` | `gp: string; inr: number; summary: StatementsSummary` | Summary tiles (total/orgs/private/non-public), top organisations; full list lazy via the statements route, paginated client-side (steps of 25), persons as "Privatperson" |
 | `EmptyState` | `title: string; description?: string` | Empty state |
@@ -207,8 +207,8 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 ## 7. Pages
 
 - `/` **Dashboard**: mission one-liner, 4 StatTiles (open consultations, ending in ≤7 days, Stellungnahmen in the GP, Begutachtungen in the GP), "Läuft gerade" cards (deadline ascending), **"Zuletzt abgeschlossen – was wurde daraus?"** (recently closed consultations with their outcome chip, plus the newest item that reached RV/BGBl — the accountability layer on the front door), "Die meisten Stellungnahmen" as VolumeBar top 5, lastSync note. Both dashboard fetches are server-side and started together, so the outcomes section is in the SSR HTML — it is the section the page exists for, and client-only kept it out of crawls, shares and no-JS.
-- `/begutachtungen` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
-- `/begutachtungen/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
+- `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
+- `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
 - `app/error.vue`: 404/500 in German, link to the home page.
 
@@ -343,8 +343,8 @@ after a clean install.
 
 ## 12. Deliberately deferred (with reasons)
 
-1. **RIS integration** (clean XML draft texts, ME↔RIS join): ~~blocked on the join-key test at corpus level~~ the join is resolved (`docs/ris-join.md`, pure implementation in `server/utils/risJoin.ts`, artefact `data/ris-me-map-gp27.json`). Still deferred: the nightly RIS fetch and wiring the RIS link into `ConsultationDetail`. Needed for the diff layer on GP XXVII and earlier (PDF-only on the Parliament side); GP XXVIII can be diffed from Parliament HTML alone.
-2. **Diff layer ME→RV** (the actual accountability core): ~~needs RIS texts or parliament HTML parsing + a diff algorithm~~ **first version shipped 2026-09-08** from Parliament HTML (GP XXVIII on): `lawText.ts`, `lawDiff.ts`, `lawDiffService.ts`, `GET /api/consultations/:gp/:inr/diff`, `LawDiffSection.vue` — `docs/ris-join.md` §6b. RIS XML path for GP XXVII and earlier shipped 2026-09-08 (§6c). Erläuterungen passage dropped on evidence (§6c). Still deferred: a diff of the Erläuterungen themselves, older RIS XML variants.
+1. **RIS integration** (clean XML draft texts, ME↔RIS join): ~~blocked on the join-key test at corpus level~~ the join is resolved (`docs/ris-join.md`, pure implementation in `server/utils/risJoin.ts`, artefact `data/ris-me-map-gp27.json`). Still deferred: the nightly RIS fetch and wiring the RIS link into `DraftDetail`. Needed for the diff layer on GP XXVII and earlier (PDF-only on the Parliament side); GP XXVIII can be diffed from Parliament HTML alone.
+2. **Diff layer ME→RV** (the actual accountability core): ~~needs RIS texts or parliament HTML parsing + a diff algorithm~~ **first version shipped 2026-09-08** from Parliament HTML (GP XXVIII on): `lawText.ts`, `lawDiff.ts`, `lawDiffService.ts`, `GET /api/drafts/:gp/:inr/diff`, `LawDiffSection.vue` — `docs/ris-join.md` §6b. RIS XML path for GP XXVII and earlier shipped 2026-09-08 (§6c). Erläuterungen passage dropped on evidence (§6c). Still deferred: a diff of the Erläuterungen themselves, older RIS XML variants.
 3. **Deadline alerts**: ~~e-mail/RSS~~ the stateless tier shipped Aug 2026 — own RSS feed (`/feed.xml`) and ICS deadline calendar (`/kalender.ics`), both without accounts or persistence (§5). Still deferred: **e-mail subscriptions** — they need everything the stateless design avoids (SQLite for subscribers + seen-set, nightly diff job, double opt-in + one-click unsubscribe, privacy page, EU-sovereign ESP with SPF/DKIM). Planned as a grant-funded work package, not prototype work: ops-heavy alerting is what killed the predecessor.
 4. **Persistence & history**: detecting deadline extensions, statement growth over time, base rates for mechanism 2 ("evidence base") — needs snapshots instead of a cache.
 5. **Broadlistening (stage 2)** — only once stage 1 has users.
@@ -382,7 +382,7 @@ lookup half is far smaller than an amendment engine — no Novellierung has to
 be applied, only a heading resolved.
 
 **Built 2026-09-09** (`server/utils/lawTitles.ts`, `paraTitleService.ts`,
-`/api/consultations/:gp/:inr/paragraphtitel`). Named changes went from 11,2 %
+`/api/drafts/:gp/:inr/paragraphtitel`). Named changes went from 11,2 %
 to **32,6 %** of changed units, measured over 12 Novellen and 457 units.
 8/ME now reads "Erweiterte Gefahrenerforschung und Schutz vor
 verfassungsgefährdenden Angriffen" where it read "§ 6 Abs. 1 Z 9 lautet".
@@ -775,7 +775,7 @@ Engine: `server/utils/textComparison.ts` (Parser der XML-Tabelle),
 `annexPdf.ts` (Seitengeometrie), `annexCheck.ts` (das Tor),
 `annexDraft.ts` (welche Paragraphen eine Novellierungsanordnung adressiert —
 der Bezug von Regel 2), `textComparisonService.ts` (Nitro-Glue),
-`/api/consultations/:gp/:inr/gegenueberstellung`,
+`/api/drafts/:gp/:inr/gegenueberstellung`,
 `app/components/TextComparisonSection.vue`. In GP XXVIII zeigt die Seite die
 Gegenüberstellung für **109 von 132 Entwürfen** — 65 aus der XML-Tabelle,
 44 aus der Textebene des PDF, seit beide Quellen angeschlossen sind

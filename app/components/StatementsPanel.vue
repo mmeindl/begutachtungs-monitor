@@ -60,7 +60,7 @@ const visibleCount = ref(PAGE_SIZE)
 /* Lazy: nothing is requested until a segment needs the item list
  * (immediate: false leaves status at 'idle' until execute()). */
 const { data, status, execute } = useFetch<StatementsResponse>(
-  () => `/api/consultations/${props.gp}/${props.inr}/statements`,
+  () => `/api/drafts/${props.gp}/${props.inr}/statements`,
   { immediate: false },
 )
 

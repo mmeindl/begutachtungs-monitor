@@ -11,14 +11,14 @@
  * demonstrable without curating anything away. Selection stays strict
  * recency; outcomes never affect the order (Nachverfolgung, no scoreboard).
  */
-import type { ClosedOutcome, ConsultationSummary, DashboardOutcomes } from '#shared/types'
+import type { ClosedOutcome, DraftSummary, DashboardOutcomes } from '#shared/types'
 
 const POOL_SIZE = 12
 const DISPLAY_COUNT = 4
 
-async function resolveOutcome(item: ConsultationSummary): Promise<ClosedOutcome | null> {
+async function resolveOutcome(item: DraftSummary): Promise<ClosedOutcome | null> {
   try {
-    const outcome = await getConsultationOutcome(item.gp, item.inr)
+    const outcome = await getDraftOutcome(item.gp, item.inr)
     return { ...item, rvCitation: outcome.rvCitation, bgblNumber: outcome.bgblNumber }
   } catch {
     // Per-item tolerance: one failing Gegenstand must not kill the section.
@@ -28,7 +28,7 @@ async function resolveOutcome(item: ConsultationSummary): Promise<ClosedOutcome 
 
 export default defineEventHandler(async (): Promise<DashboardOutcomes> => {
   const gp = await getCurrentGp()
-  const { items } = await getConsultationsForGp(gp)
+  const { items } = await getDraftsForGp(gp)
   const closed = items
     .map(reconcileActive)
     .filter((item) => !item.active)

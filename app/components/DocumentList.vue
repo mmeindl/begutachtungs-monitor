@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { ConsultationDocument } from '#shared/types'
+import type { DraftDocument } from '#shared/types'
 
 /** A row may carry its own sub-line: source-specific hints (the RIS
  *  Entwurfstext) have no place in the shared DOC_HINTS prefix table,
  *  which describes the ministries' standard parliament document set. */
-type DocumentListItem = ConsultationDocument & { hint?: string }
+type DocumentListItem = DraftDocument & { hint?: string }
 
 withDefaults(
   defineProps<{
@@ -33,7 +33,7 @@ const DOC_HINTS: [prefix: string, hint: string][] = [
   ['Erläuterungen', 'Die Begründung des Ministeriums'],
   ['Vorblatt und WFA', 'Kurzüberblick und Folgenabschätzung'],
   ['Textgegenüberstellung', 'Geltendes Recht und Entwurf nebeneinander – zeigt, was sich ändern würde'],
-  // Later stations of the same law text (ConsultationDetail.textEvolution)
+  // Later stations of the same law text (DraftDetail.textEvolution)
   ['Geändert im Ausschuss', 'Fassung nach den Beratungen im Ausschuss des Nationalrats'],
   ['Geändert im Plenum', 'Fassung nach der Abstimmung im Nationalrat'],
 ]
@@ -49,10 +49,17 @@ function docHint(doc: DocumentListItem): string | null {
 <template>
   <div>
     <ul class="divide-y divide-hairline">
+      <!-- `py-1.5`, not the `py-3` a text row would take: the format link's
+           44px hit area below already IS the row height, and a document name
+           is one line of text — full padding on top of the target only spaced
+           two invisible boxes apart (68px rows for 20px of text). What is
+           left keeps a sub-line clear of the divider below it. Both row
+           shapes, with and without that sub-line, stay 56px: the 44px target
+           binds in each, so the rhythm holds. -->
       <li
         v-for="(doc, i) in documents"
         :key="`${doc.title}-${i}`"
-        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
+        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-1.5"
       >
         <div class="min-w-0">
           <p class="text-sm text-ink">{{ doc.title }}</p>

@@ -4,7 +4,7 @@ const route = useRoute()
 // Four items and capped there — a nav that stays scannable is the IA.
 const navItems = [
   { label: 'Aktuell', to: '/' },
-  { label: 'Begutachtungen', to: '/begutachtungen' },
+  { label: 'Entwürfe', to: '/entwuerfe' },
   { label: "So funktioniert's", to: '/so-funktionierts' },
   { label: 'Über', to: '/ueber' },
 ] as const

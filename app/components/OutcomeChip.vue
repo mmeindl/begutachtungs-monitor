@@ -2,7 +2,7 @@
 import type { ClosedOutcome } from '#shared/types'
 
 /**
- * Outcome chip + Frist line for ConsultationCard's aside slot: mirrors
+ * Outcome chip + Frist line for DraftCard's aside slot: mirrors
  * DeadlineBlock's two-line anatomy so open and closed cards share one
  * silhouette. One uniform wash for all three states — muting the no-RV
  * state would hide what must stay visible, highlighting it would make a

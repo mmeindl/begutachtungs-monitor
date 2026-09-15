@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import type { ConsultationDetail, ConsultationDocument } from '#shared/types'
+import type { AmendedLawsResponse, DraftDetail, DraftDocument } from '#shared/types'
+import type { ComparisonId, StationId } from '#shared/utils/stations'
+import { parliamentOutcome } from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
@@ -12,7 +14,7 @@ definePageMeta({
       const canonical = gpParam.toUpperCase()
       if (gpParam !== canonical && GP_RE.test(canonical)) {
         return navigateTo(
-          `/begutachtungen/${canonical}/${String(to.params.inr ?? '')}`,
+          `/entwuerfe/${canonical}/${String(to.params.inr ?? '')}`,
           { redirectCode: 301 },
         )
       }
@@ -29,17 +31,62 @@ const route = useRoute()
 
 const gp = computed(() => String(route.params.gp ?? ''))
 const inr = computed(() => Number(route.params.inr ?? 0))
-const url = computed(() => `/api/consultations/${gp.value}/${inr.value}`)
+const url = computed(() => `/api/drafts/${gp.value}/${inr.value}`)
 
-const { data, error, refresh, status } = await useFetch<ConsultationDetail>(url)
+const { data, error, refresh, status } = await useFetch<DraftDetail>(url)
 
 if (error.value?.statusCode === 404) {
   throw createError({
     statusCode: 404,
-    statusMessage: 'Begutachtung nicht gefunden',
+    statusMessage: 'Entwurf nicht gefunden',
     fatal: true,
   })
 }
+
+/* The laws in force the draft would change. Its own request: it has to
+ * parse the draft text and ask RIS once per law, which costs seconds on a
+ * cold cache (13 s for a Sammelgesetz naming forty). Client-side, so the
+ * page renders at its usual speed and the head of the timeline fills in —
+ * exactly as the comparisons do. */
+const { data: amendedLaws } = await useFetch<AmendedLawsResponse>(
+  () => `${url.value}/geltendesrecht`,
+  { lazy: true, server: false },
+)
+
+/* Where each station of the bar leads. Every station now has a section of
+ * its own, and each entry below mirrors that section's `v-if` EXACTLY —
+ * copy the condition, do not paraphrase it, or the bar starts promising
+ * chapters the page did not render. A station without an entry stays plain
+ * text. */
+const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
+  const d = data.value
+  if (!d) return {}
+  return {
+    // Both sections are unconditional — the draft and its Begutachtung are
+    // what the page is about, even when neither has produced anything yet.
+    entwurf: '#entwurf',
+    begutachtung: '#begutachtung',
+    ...(showOutcome.value ? { rv: '#regierungsvorlage' } : {}),
+    ...(d.enactment ? { parlament: '#parlament' } : {}),
+    ...(d.enactment?.bgblNumber ? { bgbl: '#bundesgesetzblatt' } : {}),
+  }
+})
+
+/* What parliament did, for the sentence in "Im Parlament". Same function as
+ * the bar's fact line, so the heading and the row cannot disagree. */
+const parliament = computed(() => (data.value ? parliamentOutcome(data.value) : null))
+
+/* The comparisons, keyed by the question they answer. Two exist today — the
+ * ressort's annex and the ME→RV diff; the committee and plenary comparisons
+ * are not built, so the Parlament station offers none rather than a link to
+ * an empty promise. Both ids are the ones already in circulation.
+ * `#gegenueberstellung` is rendered unconditionally, so it is offered
+ * unconditionally here; whether the question is worth asking for a draft
+ * that creates new law is the station model's call, not this map's. */
+const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => ({
+  vorschlag: '#gegenueberstellung',
+  ...(data.value?.enactment ? { begutachtung: '#textvergleich' } : {}),
+}))
 
 // Array.isArray guards: cached payloads (dev disk cache, future upstream
 // drift) can predate the current DescriptionBlock[] shape — degrade to
@@ -48,11 +95,12 @@ const description = computed(() =>
   Array.isArray(data.value?.description) ? data.value.description : [],
 )
 
-// "Was wurde daraus?" leads the page for closed consultations (trace,
-// text versions, or at least the neutral no-RV note). While the Frist
-// runs it appears only if a real outcome (RV) already exists: an active
-// consultation's trace/text links merely repeat the header and the
-// document list, and the question itself isn't answerable yet.
+// Whether the Regierungsvorlage station has anything to show: the Vorlage
+// itself, or — once the Frist is over — the neutral note that none came,
+// with the base rate that puts the waiting in proportion. While the Frist
+// runs and no Vorlage exists the section stays away: the question is not
+// answerable yet, and an empty chapter under the bar's "ausstehend" row
+// would say less than the row does.
 const showOutcome = computed(() => {
   const d = data.value
   if (!d) return false
@@ -71,7 +119,7 @@ const divergence = computed(() =>
  * so the noun repeats and the row grows with every format RIS adds. The
  * RIS-Eintrag itself is a catalogue page, not a document, and stays a link
  * in the lead sentence. */
-const risDocuments = computed<(ConsultationDocument & { hint?: string })[]>(() => {
+const risDocuments = computed<(DraftDocument & { hint?: string })[]>(() => {
   const doc = data.value?.risDraft?.risDocument
   if (!doc) return []
   const formats = ([['pdf', doc.pdf], ['html', doc.html]] as const)
@@ -82,7 +130,7 @@ const risDocuments = computed<(ConsultationDocument & { hint?: string })[]>(() =
     : []
 })
 
-// The StageBar already states "Regierungsvorlage · bisher keine", so the
+// The bar already states "Regierungsvorlage · bisher keine", so the
 // card must not say it again. Its job is the bracket the bar cannot carry:
 // elapsed time. Once the quiet stretch exceeds the latency window, the
 // quotable verdict sentence leads; before that there is no headline at
@@ -131,10 +179,11 @@ function relatedGpSuffix(gp: string): string {
   return gp === data.value?.gp ? '' : ` (${gp}. GP)`
 }
 
-/* The one fact the upstream stage list holds that the StageBar cannot:
+/* The one fact the upstream stage list holds that no other surface does:
  * when parliament handed the Stellungnahmen to the ressort. That is where
- * the ministry's clock starts, so it belongs to "Was wurde daraus?" as a
- * sentence — temporal, no causality claimed (framing rule). */
+ * the ministry's clock starts and where the Begutachtung ends, so the
+ * sentence closes that section — temporal, no causality claimed (framing
+ * rule). */
 const handoffSentence = computed(() => {
   const h = data.value?.handoff
   if (!h?.date) return null
@@ -161,7 +210,7 @@ const citationText = computed(() => {
       ? ` – Begutachtungsfrist bis ${formatDateDe(d.deadline)}`
       : ` – Begutachtung endete am ${formatDateDe(d.deadline)}`
     : ''
-  return `${d.citation} (${d.gp}. GP): ${d.shortTitle ?? d.title}${frist}. ${siteUrl}/begutachtungen/${d.gp}/${d.inr}`
+  return `${d.citation} (${d.gp}. GP): ${d.shortTitle ?? d.title}${frist}. ${siteUrl}/entwuerfe/${d.gp}/${d.inr}`
 })
 
 /* The async clipboard API is denied in embedded webviews and non-HTTPS
@@ -282,10 +331,10 @@ const linkClasses =
            the corpus that preserves the item's GP — the nav loses it. -->
       <div class="mb-4">
         <NuxtLink
-          :to="`/begutachtungen?gp=${data.gp}`"
+          :to="`/entwuerfe?gp=${data.gp}`"
           class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
         >
-          ← Alle Begutachtungen (GP {{ data.gp }})
+          ← Alle Entwürfe (GP {{ data.gp }})
         </NuxtLink>
       </div>
       <header>
@@ -294,8 +343,8 @@ const linkClasses =
           <!-- Every Ressort gets a de-facto page for free: the filtered
                list URL. Only here — cards are themselves links. -->
           <NuxtLink
-            :to="`/begutachtungen?ministry=${data.ministryCode}&gp=${data.gp}`"
-            :aria-label="`Alle Begutachtungen des Ressorts ${data.ministryName} anzeigen`"
+            :to="`/entwuerfe?ministry=${data.ministryCode}&gp=${data.gp}`"
+            :aria-label="`Alle Entwürfe des Ressorts ${data.ministryName} anzeigen`"
             class="tap-target rounded"
           >
             <MinistryBadge
@@ -306,7 +355,7 @@ const linkClasses =
           </NuxtLink>
           <!-- Only while it runs: the badge exists to carry urgency (tone +
                "Noch 3 Tage"). Closed, it degrades to "Endete am …" — which
-               the StageBar states 100px below, better. -->
+               the bar states 100px below, better. -->
           <DeadlineBadge
             v-if="data.active"
             :deadline="data.deadline"
@@ -356,7 +405,7 @@ const linkClasses =
           In der öffentlichen Debatte:
           <span class="text-ink">{{ aliases.map((a) => `„${a}“`).join(' · ') }}</span>
         </p>
-        <!-- Eingelangt/Frist deliberately absent: the StageBar below states
+        <!-- Eingelangt/Frist deliberately absent: the bar below states
              both, and the pill above already repeats the Frist. What is left
              is the one fact no other surface carries — plus the provenance
              link, which belongs next to the item's identity rather than
@@ -382,17 +431,35 @@ const linkClasses =
         </p>
       </header>
 
-      <!-- The whole track, in both lifecycle states: hollow future stages
-           on open pages say "we track this", the unfilled remainder on a
-           stalled draft IS the answer. Replaces the old outcome chip. -->
-      <div class="mt-6 rounded-xl border border-hairline bg-surface p-5">
-        <StageBar
-          :arrived-at="data.arrivedAt"
-          :deadline="data.deadline"
-          :active="data.active"
-          :enactment="data.enactment"
-          :gp-ended="data.gpEnded"
-        />
+      <!-- The map. Five stations, read vertically, so it needs no more
+           width than a paragraph and lives in the prose column like
+           everything else. Each station links into the section below that
+           holds it, and each comparison into the section that answers it —
+           the bar is this page's table of contents, in the page's order. -->
+      <div class="mt-6">
+        <div class="rounded-xl border border-hairline bg-surface p-5">
+          <!-- The card says what it is, and the way out of it sits on the
+               same line: at the bottom the link read as a footnote to the
+               predecessor paragraph above it, which it is not. -->
+          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p class="text-xs font-medium uppercase tracking-wide text-ink-secondary">
+              Der Text im Verfahren
+            </p>
+            <NuxtLink
+              to="/so-funktionierts"
+              class="tap-target rounded text-xs text-ink-muted hover:text-ink hover:underline"
+            >
+              Wie funktioniert das Verfahren? →
+            </NuxtLink>
+          </div>
+          <SpineRail
+            class="mt-4"
+            :data="data"
+            :anchors="stationAnchors"
+            :comparison-anchors="comparisonAnchors"
+            :creates-new-law="amendedLaws?.createsNewLaw"
+            :amended-law-count="amendedLaws?.laws.length"
+          />
         <!-- The "second attempt" fact, in both lifecycle states: a same-title
              draft ran before and produced no Regierungsvorlage. Same title
              is all that is claimed (the sentence says "gleichlautend"); the
@@ -400,19 +467,12 @@ const linkClasses =
         <p v-if="data.predecessor" class="mt-4 max-w-prose text-sm text-ink-secondary">
           Ein gleichlautender Entwurf war bereits in Begutachtung:
           <NuxtLink
-            :to="`/begutachtungen/${data.predecessor.gp}/${data.predecessor.inr}`"
+            :to="`/entwuerfe/${data.predecessor.gp}/${data.predecessor.inr}`"
             :class="linkClasses"
             >{{ data.predecessor.citation }}</NuxtLink
           >{{ relatedGpSuffix(data.predecessor.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
         </p>
-        <p class="mt-4 text-xs">
-          <NuxtLink
-            to="/so-funktionierts"
-            class="tap-target rounded text-ink-muted hover:text-ink hover:underline"
-          >
-            Wie funktioniert das Verfahren? →
-          </NuxtLink>
-        </p>
+        </div>
       </div>
 
       <section
@@ -425,26 +485,18 @@ const linkClasses =
              sequence — worum geht es, was wurde daraus. -->
         <h2 id="kurzinfo-heading" class="section-heading">Worum geht es?</h2>
         <div class="mt-4">
-          <DraftSummary :blocks="description" />
+          <DraftDescription :blocks="description" />
         </div>
-      </section>
-
-      <!-- The third question of the page, between "worum geht es" and "was
-           wurde daraus": what would this draft do to the law in force? It is
-           answered from the ressort's own Textgegenüberstellung, not computed
-           — and unlike the ME→RV comparison it is there from the first day of
-           the Begutachtung, while a Stellungnahme can still change something.
-           Rendered unconditionally: about half the drafts carry no readable
-           annex, and saying so (with the ministry's PDF where one exists) is
-           an answer, not noise. -->
-      <section id="gegenueberstellung" class="page-section scroll-mt-6" aria-labelledby="comparison-heading">
-        <h2 id="comparison-heading" class="section-heading">Was ändert der Entwurf?</h2>
-        <TextComparisonSection :gp="data.gp" :inr="data.inr" />
       </section>
 
       <!-- Deadline, action and calendar welded into one card: the page's
            single door while the Frist runs. Closed, the card goes with the
-           Frist — the source link lives in the header's provenance line. -->
+           Frist — the source link lives in the header's provenance line.
+
+           This card is the ONE deliberate break with the station order
+           below: it belongs to the Begutachtung, but the Entwurf section
+           with its Gegenüberstellung can run long, and the page's single
+           action must not sink below it. The door stays at the front. -->
       <div
         v-if="data.active"
         class="mt-6 rounded-xl border border-hairline bg-surface p-5"
@@ -486,7 +538,7 @@ const linkClasses =
           </UButton>
           <UButton
             v-if="data.deadline"
-            :to="`/begutachtungen/${gp}/${inr}/frist.ics`"
+            :to="`/entwuerfe/${gp}/${inr}/frist.ics`"
             external
             color="neutral"
             variant="outline"
@@ -504,139 +556,114 @@ const linkClasses =
         </p>
       </div>
 
-      <!-- Section order is lifecycle-adaptive by construction: showOutcome is
-           false for a typical active consultation, so during the Frist the page
-           reads Kurzinfo → CTA → Stellungnahmen → Dokumente, while closed
-           consultations lead with the accountability answer. -->
-      <section
-        v-if="showOutcome"
-        class="page-section scroll-mt-6"
-        aria-labelledby="outcome-heading"
-      >
-        <h2 id="outcome-heading" class="section-heading">
-          Was wurde daraus?
-        </h2>
+      <!-- From here the page follows the STATIONS of the bar, in the bar's
+           order, and each section exists exactly when its station has
+           something to say — the bar is this page's table of contents, so
+           every link in it has to find a chapter. The CTA card above is the
+           one stated exception. -->
 
-        <!-- The marker moment: the highlighter marks what became of the
-             input. Ink and accent-deep are AAA on mark-wash (main.css). -->
-        <div v-if="data.enactment" class="mt-4 rounded-xl bg-mark-wash p-5">
-          <p class="font-medium">
-            <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses">
-              Regierungsvorlage {{ data.enactment.rvCitation }}
-            </ExternalLink>
-          </p>
-          <!-- ME→RV is 1:n: without this the second Regierungsvorlage of a
-               split draft is invisible (4 of 132 in the XXVIII corpus). -->
-          <p v-if="data.enactment.furtherRv.length" class="mt-1.5 text-sm">
-            Aus dem Entwurf ging außerdem
-            <template v-for="(rv, i) in data.enactment.furtherRv" :key="rv.url"
-              ><span v-if="i > 0">, </span
-              ><ExternalLink :href="rv.url" :class="linkClasses">{{ rv.label }}</ExternalLink></template
-            >
-            hervor.
-          </p>
-          <p v-if="data.enactment.bgblNumber" class="mt-1.5 text-sm">
-            <ExternalLink
-              v-if="data.enactment.bgblRisUrl"
-              :href="data.enactment.bgblRisUrl"
-              :class="linkClasses"
-            >
-              Kundgemacht als {{ data.enactment.bgblNumber }}
-            </ExternalLink>
-            <span v-else class="text-accent-deep">
-              Kundgemacht als {{ data.enactment.bgblNumber }}
-            </span>
-          </p>
-          <!-- Mechanism 3, manual edition: invite the comparison the diff
-               layer will one day automate. Temporal narrative, not causal.
-               Only ink + accent-deep are AAA on accent-wash (main.css). -->
-          <!-- The card states the outcome; the comparison itself lives in
-               its own section below and is linked, not duplicated — the two
-               source PDFs used to sit here as chips, a placeholder from
-               before the diff existed. -->
-          <p v-if="data.enactment" class="mt-4 text-sm leading-relaxed text-ink">
-            <template v-if="data.deadline && data.statements.total > 0">
-              Bis zum Fristende am {{ formatDateDe(data.deadline) }} gingen
-              {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
-              ein.
-            </template>
-            Die Regierungsvorlage ist die Fassung, die die Regierung nach
-            der Begutachtung dem Nationalrat vorgelegt hat. Ob und wie der
-            Entwurf geändert wurde, zeigt
-            <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>
-            weiter unten.
-          </p>
-        </div>
+      <!-- The draft and everything that IS the draft: the law it would
+           change, its own documents, the second official copy of them, and
+           the ressort's own comparison. "Geltendes Recht" had a section of
+           its own until the bar became five stations — it is not a step of
+           the procedure, it is what this draft would do to the law. -->
+      <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
+        <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
 
-        <!-- Framing rule: both outcomes get the same card shape and type
-             scale — tone differs (wash vs. surface), weight never does. -->
+        <!-- Keeps `id="recht"`: that anchor is in circulation, and what it
+             named is still here, one level down. The one text version we
+             hold no document for — what we can offer is the consolidated
+             text in RIS, at the version in force when the draft was filed
+             (`amendedLawsService.ts`). -->
         <div
-          v-if="!data.enactment && !data.active"
-          class="mt-4 rounded-xl border border-hairline bg-surface p-5"
+          v-if="amendedLaws && (amendedLaws.laws.length || amendedLaws.createsNewLaw)"
+          id="recht"
+          class="mt-4 scroll-mt-6"
         >
-          <p v-if="noRvVerdict" class="font-medium">{{ noRvVerdict }}</p>
-          <p
-            class="text-sm text-ink-secondary"
-            :class="noRvVerdict ? 'mt-1.5' : ''"
-          >
-            {{ noRvBody }}
+          <h3 class="text-base font-semibold text-ink">Geltendes Recht</h3>
+          <p v-if="amendedLaws.createsNewLaw" class="mt-1 max-w-prose text-sm text-ink-secondary">
+            Dieser Entwurf schafft neues Recht. Es gibt keinen geltenden Text,
+            gegen den er gehalten werden könnte.
           </p>
-          <p v-if="noRvBaseRate" class="mt-1.5 text-sm text-ink-secondary">
-            {{ noRvBaseRate }}
-          </p>
-          <!-- The win side of the same mechanism: the draft that finds a
-               lapsed one also finds the one that took its place. Ink, not
-               secondary — it is the one actionable line in the card. -->
-          <p v-if="data.successor" class="mt-3 text-sm text-ink">
-            Ein gleichlautender späterer Entwurf liegt vor:
-            <NuxtLink
-              :to="`/begutachtungen/${data.successor.gp}/${data.successor.inr}`"
-              :class="linkClasses"
-              >{{ data.successor.citation }}</NuxtLink
-            >{{ relatedGpSuffix(data.successor.gp) }}, eingelangt am
-            {{ formatDateDe(data.successor.arrivedAt) }}.
-          </p>
+          <template v-else>
+            <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+              {{ amendedLaws.laws.length === 1 ? 'Dieses Gesetz würde der Entwurf ändern' : `Diese ${amendedLaws.laws.length} Gesetze würde der Entwurf ändern` }}<template v-if="amendedLaws.asOf">, in der Fassung vom {{ formatDateDe(amendedLaws.asOf) }}</template>:
+            </p>
+            <ul class="mt-2 divide-y divide-hairline">
+              <li v-for="law in amendedLaws.laws" :key="law.title" class="py-3">
+                <p class="text-sm text-ink">
+                  <ExternalLink v-if="law.risUrl" :href="law.risUrl" :class="linkClasses">{{ law.title }}</ExternalLink>
+                  <template v-else>{{ law.title }}</template>
+                </p>
+                <!-- A law whose Stammnorm is no Bundesgesetzblatt has no
+                     consolidated RIS entry to point at (the UGB's is
+                     "dRGBl. S. 219/1897"). Saying so beats dropping it. -->
+                <p class="mt-0.5 text-xs text-ink-muted">
+                  {{ law.bgbl ?? 'Stammfassung ist kein Bundesgesetzblatt – im RIS nicht auffindbar' }}
+                </p>
+              </li>
+            </ul>
+          </template>
         </div>
 
-        <!-- The record under the StageBar's claim. Its own h3, like the
-             sibling "Textfassungen im Verlauf": two timelines on one page
-             must read as summary and detail, not as the answer twice. -->
-        <!-- The moment the ressort takes over — the accountability clock's
-             start, and the only thing the raw stage list adds. -->
-        <p v-if="handoffSentence" class="mt-3 text-sm text-ink-secondary">
-          {{ handoffSentence }}
-        </p>
-
-        <div v-if="data.textEvolution.length" class="mt-8">
-          <h3 class="text-base font-semibold text-ink">Spätere Textfassungen</h3>
-          <!-- A first-time reader cannot know these rows ARE the law text
-               at successive stations — say it once. The Regierungsvorlage
-               itself is not among them: the comparison above offers it, and
-               the same link under two headings is what this page had too
-               much of. -->
-          <p class="mt-1 text-sm text-ink-secondary">
-            Der Text wurde nach der Regierungsvorlage im Parlament weiter
-            geändert:
-          </p>
-          <!-- Documents wear the Entwurfsdokumente pattern: one row per
-               station, formats as buttons. Chips are for actions inside the
-               page. -->
-          <div class="mt-2">
-            <DocumentList :documents="data.textEvolution" />
+        <!-- A heading of its own, because the list is no longer the first
+             thing under the h2: after the Geltendes Recht block above it, an
+             unheaded list read as more of that block. -->
+        <div v-if="data.documents.length" class="mt-8">
+          <h3 class="text-base font-semibold text-ink">Dokumente</h3>
+          <div class="mt-3">
+            <DocumentList :documents="data.documents" />
           </div>
         </div>
 
-        <!-- The accountability core: what became of the draft, § by §, both
-             ways — changed and unchanged alike (CLAUDE.md framing rule). Only
-             once a Regierungsvorlage exists; before that there is nothing to
-             hold the draft against. -->
-        <LawDiffSection v-if="data.enactment" :gp="data.gp" :inr="data.inr" />
+        <!-- The same documents from the other official source, next to them
+             rather than in a "Quellen" appendix nobody scrolled to: RIS
+             carries the text as HTML/XML back to 2004 — the raw material of
+             the Entwurf ↔ Regierungsvorlage comparison. "Not in RIS" is a
+             state worth showing, not an error (docs/ris-join.md §2): a dozen
+             drafts per GP never get there. -->
+        <div v-if="data.risDraft" class="mt-8">
+          <h3 class="text-base font-semibold text-ink">
+            Zweite Quelle: Rechtsinformationssystem (RIS)
+          </h3>
+          <template v-if="data.risDraft.risUrl">
+            <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+              Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
+              und Textgegenüberstellung im
+              <ExternalLink :href="data.risDraft.risUrl" :class="linkClasses"
+                >RIS-Eintrag</ExternalLink
+              >.
+            </p>
+            <div v-if="risDocuments.length" class="mt-3">
+              <DocumentList :documents="risDocuments" source="ris.bka.gv.at" />
+            </div>
+          </template>
+          <p v-else class="mt-1 max-w-prose text-sm text-ink-secondary">
+            Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
+          </p>
+        </div>
+
+        <!-- The ressort's own comparison, available from day one.
+             `#gegenueberstellung` is kept as the anchor because that link is
+             already in circulation. A new law has nothing to be held
+             against, so the question is not asked — the same rule the bar
+             applies. `amendedLaws` arrives on the client, so for the rare
+             Stammgesetz this block can disappear after first paint; that is
+             accepted, the alternative is asking a question we know is
+             wrong on every other draft's first paint. -->
+        <div v-if="!amendedLaws?.createsNewLaw" id="gegenueberstellung" class="mt-8 scroll-mt-6">
+          <h3 class="text-base font-semibold text-ink">Was ändert der Entwurf?</h3>
+          <TextComparisonSection :gp="data.gp" :inr="data.inr" />
+        </div>
       </section>
 
-      <section class="page-section" aria-labelledby="statements-heading">
-        <h2 id="statements-heading" class="section-heading">
-          Stellungnahmen
-        </h2>
+      <!-- The Begutachtung: the Stellungnahmen ARE this station's content,
+           and the moment the ressort takes the file over ends it. What came
+           of it has its own section now — an outcome is a station, not a
+           sub-heading of the stage before it. -->
+      <section id="begutachtung" class="page-section scroll-mt-6" aria-labelledby="begutachtung-heading">
+        <h2 id="begutachtung-heading" class="section-heading">Die Begutachtung</h2>
+        <h3 class="mt-4 text-base font-semibold text-ink">Stellungnahmen</h3>
         <div class="mt-4">
           <p
             v-if="data.statements.degraded"
@@ -687,59 +714,180 @@ const linkClasses =
             "
           />
         </div>
+        <!-- The moment the ressort takes over — the accountability clock's
+             start, and the only thing the raw stage list adds. -->
+        <p v-if="handoffSentence" class="mt-3 text-sm text-ink-secondary">
+          {{ handoffSentence }}
+        </p>
       </section>
 
-      <!-- Both sources of the SAME draft live here, not under "Was wurde
-           daraus?": the RIS entry is the draft at this stage from a second
-           authority, not an outcome — and showOutcome is false for an open
-           consultation, which hid the RIS text on exactly the pages that
-           want it. Two lists under two headings rather than one merged
-           list: merged, "Gesetzestext" would appear twice with nothing to
-           tell the sources apart. -->
+      <!-- The station that had no home: the Regierungsvorlage lived as a
+           sub-heading inside the Begutachtung, which made the outcome read
+           as an appendix to the stage before it. The bar's "bisher keine"
+           row links here, where the base rate explains what waiting means.
+           Present in both outcomes — that is the framing rule: the win and
+           the non-win get the same section, the same card, the same
+           weight. -->
       <section
-        v-if="data.documents.length || data.risDraft"
-        class="page-section"
-        aria-labelledby="docs-heading"
+        v-if="showOutcome"
+        id="regierungsvorlage"
+        class="page-section scroll-mt-6"
+        aria-labelledby="rv-heading"
       >
-        <h2 id="docs-heading" class="section-heading">
-          Entwurfsdokumente
-        </h2>
-        <div v-if="data.documents.length" class="mt-4">
-          <DocumentList :documents="data.documents" />
-        </div>
-
-        <!-- RIS carries the text as HTML/XML back to 2004 — the raw material
-             of the planned Entwurf ↔ Regierungsvorlage comparison. "Not in
-             RIS" is a state worth showing, not an error (docs/ris-join.md
-             §2): a dozen drafts per GP never get there. -->
-        <div v-if="data.risDraft" class="mt-8">
-          <h3 class="text-base font-semibold text-ink">
-            Zweite Quelle: Rechtsinformationssystem (RIS)
-          </h3>
-          <template v-if="data.risDraft.risUrl">
-            <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-              Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
-              und Textgegenüberstellung im
-              <ExternalLink :href="data.risDraft.risUrl" :class="linkClasses"
-                >RIS-Eintrag</ExternalLink
-              >.
-            </p>
-            <div v-if="risDocuments.length" class="mt-2">
-              <DocumentList :documents="risDocuments" source="ris.bka.gv.at" />
-            </div>
-          </template>
-          <p v-else class="mt-1 max-w-prose text-sm text-ink-secondary">
-            Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
+        <h2 id="rv-heading" class="section-heading">Die Regierungsvorlage</h2>
+        <!-- Keeps `id="ergebnis"` on whichever card renders — only one ever
+             does, so the anchor in circulation stays unique. The marker wash
+             this card used to wear now means one thing only, in the bar:
+             where the procedure stands. An outcome is not a state. -->
+        <div
+          v-if="data.enactment"
+          id="ergebnis"
+          class="mt-4 rounded-xl border border-hairline bg-surface p-5"
+        >
+          <p class="font-medium">
+            <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses">
+              Regierungsvorlage {{ data.enactment.rvCitation }}
+            </ExternalLink>
+          </p>
+          <!-- ME→RV is 1:n: without this the second Regierungsvorlage of a
+               split draft is invisible (4 of 132 in the XXVIII corpus). -->
+          <p v-if="data.enactment.furtherRv.length" class="mt-1.5 text-sm">
+            Aus dem Entwurf ging außerdem
+            <template v-for="(rv, i) in data.enactment.furtherRv" :key="rv.url"
+              ><span v-if="i > 0">, </span
+              ><ExternalLink :href="rv.url" :class="linkClasses">{{ rv.label }}</ExternalLink></template
+            >
+            hervor.
+          </p>
+          <!-- Mechanism 3, manual edition: invite the comparison the diff
+               layer will one day automate. Temporal narrative, not causal.
+               The card states the outcome; the comparison itself lives
+               below and is linked, not duplicated. -->
+          <p class="mt-4 text-sm leading-relaxed text-ink">
+            <template v-if="data.deadline && data.statements.total > 0">
+              Bis zum Fristende am {{ formatDateDe(data.deadline) }} gingen
+              {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
+              ein.
+            </template>
+            Die Regierungsvorlage ist die Fassung, die die Regierung nach
+            der Begutachtung dem Nationalrat vorgelegt hat. Ob und wie der
+            Entwurf geändert wurde, zeigt
+            <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>
+            weiter unten.
           </p>
         </div>
+        <div
+          v-if="!data.enactment && !data.active"
+          id="ergebnis"
+          class="mt-4 rounded-xl border border-hairline bg-surface p-5"
+        >
+          <p v-if="noRvVerdict" class="font-medium">{{ noRvVerdict }}</p>
+          <p
+            class="text-sm text-ink-secondary"
+            :class="noRvVerdict ? 'mt-1.5' : ''"
+          >
+            {{ noRvBody }}
+          </p>
+          <p v-if="noRvBaseRate" class="mt-1.5 text-sm text-ink-secondary">
+            {{ noRvBaseRate }}
+          </p>
+          <!-- The win side of the same mechanism: the draft that finds a
+               lapsed one also finds the one that took its place. Ink, not
+               secondary — it is the one actionable line in the card. -->
+          <p v-if="data.successor" class="mt-3 text-sm text-ink">
+            Ein gleichlautender späterer Entwurf liegt vor:
+            <NuxtLink
+              :to="`/entwuerfe/${data.successor.gp}/${data.successor.inr}`"
+              :class="linkClasses"
+              >{{ data.successor.citation }}</NuxtLink
+            >{{ relatedGpSuffix(data.successor.gp) }}, eingelangt am
+            {{ formatDateDe(data.successor.arrivedAt) }}.
+          </p>
+        </div>
+        <!-- The accountability core: what became of the draft, § by §, both
+             ways — changed and unchanged alike (CLAUDE.md framing rule). Only
+             once a Regierungsvorlage exists; before that there is nothing to
+             hold the draft against. -->
+        <LawDiffSection v-if="data.enactment" :gp="data.gp" :inr="data.inr" />
       </section>
 
-      <!-- The debate name of a procedure is knowable from usage, not from
-           the official record — and the people who follow a debate are the
-           ones using this page. Asking them costs nothing and needs no
-           curation session (`shared/utils/aliases.ts`). Stated with its
-           purpose, so it reads as a concrete request rather than a feedback
-           box: the name goes into the search. -->
+      <!-- The station exists as soon as a Regierungsvorlage does, not only
+           when parliament amended it: "der Nationalrat hat den Text
+           unverändert beschlossen" IS a finding, and it had no place on this
+           page before. Where change does happen it is the majority case —
+           52 of the 91 GP-XXVIII drafts that reached a Vorlage were changed
+           again afterwards — and the comparisons for it are not built yet,
+           so the section carries the texts. -->
+      <section
+        v-if="data.enactment"
+        id="parlament"
+        class="page-section scroll-mt-6"
+        aria-labelledby="parlament-heading"
+      >
+        <h2 id="parlament-heading" class="section-heading">Im Parlament</h2>
+        <!-- One sentence per outcome, from the same function the bar's fact
+             line uses (`shared/utils/stations.ts`), so the two can never
+             disagree. "lapsed" says what happened and not why: we observe
+             the end of the GP, never the reason for it. -->
+        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+          <template v-if="parliament === 'unchanged'">
+            Der Nationalrat hat den Text der Regierungsvorlage unverändert
+            beschlossen.
+          </template>
+          <template v-else-if="parliament === 'amended'">
+            Nach der Regierungsvorlage wurde der Text im Parlament weiter
+            geändert. Diese Fassungen sind dabei entstanden:
+          </template>
+          <template v-else-if="parliament === 'pending'">
+            Die Regierungsvorlage ist im Nationalrat in Behandlung.
+          </template>
+          <template v-else>
+            Das Verfahren endete mit der Gesetzgebungsperiode ohne
+            Kundmachung.
+          </template>
+        </p>
+        <!-- A first-time reader cannot know these rows ARE the law text at
+             successive stations — the sentence above says it once. The
+             Regierungsvorlage itself is not among them: the section above
+             offers it, and the same link under two headings is what this
+             page had too much of. Documents wear the Entwurfsdokumente
+             pattern: one row per station, formats as buttons. -->
+        <div v-if="data.textEvolution.length" class="mt-3">
+          <DocumentList :documents="data.textEvolution" />
+        </div>
+        <!-- The parliamentary record itself. Our trace ends at the
+             Regierungsvorlage; its page upstream is where the readings,
+             dates and votes live. -->
+        <p class="mt-3 text-sm text-ink-secondary">
+          <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses"
+            >Verlauf auf parlament.gv.at</ExternalLink
+          >
+        </p>
+      </section>
+
+      <!-- Short by design: the end of the story, and one line is all of it.
+           It used to be a line inside the Regierungsvorlage card, where the
+           law itself was a footnote to the draft for it. This is also the
+           natural home for a later "so steht das Gesetz heute" link into RIS
+           Bundesrecht. -->
+      <section
+        v-if="data.enactment?.bgblNumber"
+        id="bundesgesetzblatt"
+        class="page-section scroll-mt-6"
+        aria-labelledby="bgbl-heading"
+      >
+        <h2 id="bgbl-heading" class="section-heading">Im Bundesgesetzblatt</h2>
+        <p class="mt-4 max-w-prose text-sm text-ink">
+          Kundgemacht als
+          <ExternalLink
+            v-if="data.enactment.bgblRisUrl"
+            :href="data.enactment.bgblRisUrl"
+            :class="linkClasses"
+            >{{ data.enactment.bgblNumber }}</ExternalLink
+          ><span v-else>{{ data.enactment.bgblNumber }}</span>.
+        </p>
+      </section>
+
       <p class="mt-10 border-t border-hairline pt-4 max-w-prose text-sm text-ink-secondary">
         Wird dieses Verfahren öffentlich unter einem anderen Namen diskutiert?
         Hinweise an
@@ -747,7 +895,6 @@ const linkClasses =
           >kontakt@begutachtungs-monitor.at</a
         > — die Suche findet den Entwurf dann auch darunter.
       </p>
-
     </article>
   </div>
 </template>

@@ -8,8 +8,8 @@
  * verified live on 2026-08-15 (list 81: 18 columns, list 142: 23 columns).
  */
 import type {
-  ConsultationDocument,
-  ConsultationSummary,
+  DraftDocument,
+  DraftSummary,
   DescriptionBlock,
   DocumentFormat,
   Handoff,
@@ -193,7 +193,7 @@ function asNumber(v: unknown): number {
 // 13 statement count · 14 fristsort yyyymmdd · 16 full ministry name
 // ---------------------------------------------------------------------------
 
-export function mapConsultationRow(row: unknown[]): ConsultationSummary {
+export function mapDraftRow(row: unknown[]): DraftSummary {
   const gp = asString(row[0])
   const inr = asNumber(row[2])
   const path = asString(row[7]) || `/gegenstand/${gp}/ME/${inr}`
@@ -524,9 +524,9 @@ export function findHandoff(trace: TraceStep[]): Handoff | null {
 }
 
 /** content.documents[] → draft documents with pdf/html formats. */
-export function mapDocuments(groups: RawDocumentGroup[] | null | undefined): ConsultationDocument[] {
+export function mapDocuments(groups: RawDocumentGroup[] | null | undefined): DraftDocument[] {
   if (!Array.isArray(groups)) return []
-  const result: ConsultationDocument[] = []
+  const result: DraftDocument[] = []
   for (const group of groups) {
     const formats: DocumentFormat[] = []
     for (const doc of group?.documents ?? []) {

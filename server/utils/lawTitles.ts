@@ -115,6 +115,19 @@ export function lawNameScore(a: string, b: string): number {
  */
 const AMENDS_RE = /\bwird wie folgt geändert|\bwerden wie folgt geändert|\bwird geändert\b/i
 
+/**
+ * Exported so a caller that has to find the clause for itself uses the same
+ * test rather than a second, drifting one. `draftArticles` cannot always do
+ * it: a single-law Novelle prints no Artikel line and its clause arrives
+ * classified as an instruction, so the article scanner never reaches this
+ * check (92/ME). Without the test a leading BGBl looks like a clause even
+ * when it is a cross-reference inside a new law's own text — which turned
+ * the Stammgesetz 101/ME into an amendment of the law its § 1 cites.
+ */
+export function isAmendmentClause(text: string): boolean {
+  return AMENDS_RE.test(text)
+}
+
 /** A qualifier printed where the law's name would be, and not a name. */
 const QUALIFIER_RE = /^\((?:Verfassungs|Grundsatz)bestimmung(?:en)?\)$/i
 

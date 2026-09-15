@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ConsultationSummary } from '../shared/types'
+import type { DraftSummary } from '../shared/types'
 import {
   bodyEtag,
   buildIcsCalendar,
@@ -13,7 +13,7 @@ import {
 
 const SITE = 'https://begutachtungs-monitor.at'
 
-function consultation(overrides: Partial<ConsultationSummary> = {}): ConsultationSummary {
+function draft(overrides: Partial<DraftSummary> = {}): DraftSummary {
   return {
     gp: 'XXVIII',
     inr: 88,
@@ -48,21 +48,24 @@ describe('escapeXml', () => {
 
 describe('buildRssFeed', () => {
   it('produces a channel with self-link and the item, escaped', () => {
-    const xml = buildRssFeed(SITE, [consultation({ title: 'Bäckerei & Konditorei' })])
+    const xml = buildRssFeed(SITE, [draft({ title: 'Bäckerei & Konditorei' })])
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain(`<atom:link href="${SITE}/feed.xml" rel="self"`)
     expect(xml).toContain('<title>88/ME: Bäckerei &amp; Konditorei – Frist 08.04.</title>')
-    expect(xml).toContain(`<guid isPermaLink="true">${SITE}/begutachtungen/XXVIII/88</guid>`)
+    expect(xml).toContain(`<link>${SITE}/entwuerfe/XXVIII/88</link>`)
+    // Identity, not address: the same string the ICS feed uses as UID, so a
+    // route rename never costs subscribers their read-state again.
+    expect(xml).toContain('<guid isPermaLink="false">me-XXVIII-88@begutachtungs-monitor.at</guid>')
   })
 
   it('formats pubDate as RFC 1123', () => {
-    const xml = buildRssFeed(SITE, [consultation({ arrivedAt: '2026-03-11' })])
+    const xml = buildRssFeed(SITE, [draft({ arrivedAt: '2026-03-11' })])
     expect(xml).toContain('<pubDate>Wed, 11 Mar 2026 00:00:00 GMT</pubDate>')
   })
 
   it('sorts newest arrival first and caps at 50 items', () => {
     const many = Array.from({ length: 55 }, (_, i) =>
-      consultation({ inr: i + 1, citation: `${i + 1}/ME`, arrivedAt: `2026-01-${String((i % 28) + 1).padStart(2, '0')}` }),
+      draft({ inr: i + 1, citation: `${i + 1}/ME`, arrivedAt: `2026-01-${String((i % 28) + 1).padStart(2, '0')}` }),
     )
     const xml = buildRssFeed(SITE, many)
     expect((xml.match(/<item>/g) ?? []).length).toBe(50)
@@ -77,31 +80,31 @@ describe('buildRssFeed', () => {
   })
 
   it('uses stable absolute dates in descriptions, never countdowns', () => {
-    const xml = buildRssFeed(SITE, [consultation({ deadline: '2026-04-08', active: true })])
+    const xml = buildRssFeed(SITE, [draft({ deadline: '2026-04-08', active: true })])
     expect(xml).toContain('Frist bis 08.04.2026')
     expect(xml).not.toMatch(/[Nn]och \d+ Tag/)
   })
 
   it('omits the Frist title suffix and keeps "Ohne Frist" without a deadline', () => {
-    const xml = buildRssFeed(SITE, [consultation({ deadline: null })])
+    const xml = buildRssFeed(SITE, [draft({ deadline: null })])
     expect(xml).toContain('<title>88/ME: Umsatzsteuergesetz, Änderung</title>')
     expect(xml).toContain('Ohne Frist')
   })
 
   it('leaves the volatile statement count out of descriptions (frozen in readers)', () => {
-    const xml = buildRssFeed(SITE, [consultation({ statementCount: 707 })])
+    const xml = buildRssFeed(SITE, [draft({ statementCount: 707 })])
     expect(xml).not.toContain('707 Stellungnahmen')
   })
 
   it('omits pubDate (and lastBuildDate) for unparseable arrival dates', () => {
-    const xml = buildRssFeed(SITE, [consultation({ arrivedAt: '' })])
+    const xml = buildRssFeed(SITE, [draft({ arrivedAt: '' })])
     expect(xml).not.toContain('pubDate')
     expect(xml).not.toContain('Invalid Date')
     expect(xml).not.toContain('lastBuildDate')
   })
 
   it('scopes channel title and self-link to a Ressort when given', () => {
-    const xml = buildRssFeed(SITE, [consultation()], {
+    const xml = buildRssFeed(SITE, [draft()], {
       code: 'BMF',
       name: 'Bundesministerium für Finanzen',
     })
@@ -120,14 +123,14 @@ describe('buildRssFeed', () => {
 
 describe('buildSitemap', () => {
   it('lists the static pages plus one loc per consultation', () => {
-    const xml = buildSitemap(SITE, [consultation()])
+    const xml = buildSitemap(SITE, [draft()])
     expect(xml).toContain(`<loc>${SITE}</loc>`)
-    expect(xml).toContain(`<loc>${SITE}/begutachtungen</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/entwuerfe</loc>`)
     expect(xml).toContain(`<loc>${SITE}/so-funktionierts</loc>`)
     expect(xml).toContain(`<loc>${SITE}/ueber</loc>`)
     expect(xml).toContain(`<loc>${SITE}/impressum</loc>`)
     expect(xml).toContain(`<loc>${SITE}/datenschutz</loc>`)
-    expect(xml).toContain(`<loc>${SITE}/begutachtungen/XXVIII/88</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/entwuerfe/XXVIII/88</loc>`)
   })
 
   it('yields only the static pages for an empty list, well-formed', () => {
@@ -166,26 +169,26 @@ describe('foldIcsLine', () => {
 
 describe('buildIcsCalendar', () => {
   it('emits an all-day event with exclusive DTEND (month rollover)', () => {
-    const ics = buildIcsCalendar(SITE, [consultation({ deadline: '2026-06-30' })])
+    const ics = buildIcsCalendar(SITE, [draft({ deadline: '2026-06-30' })])
     expect(ics).toContain('DTSTART;VALUE=DATE:20260630')
     expect(ics).toContain('DTEND;VALUE=DATE:20260701')
     expect(ics).toContain('UID:me-XXVIII-88@begutachtungs-monitor.at')
   })
 
   it('keeps the UID domain frozen regardless of siteUrl', () => {
-    const ics = buildIcsCalendar('https://some-new-domain.example', [consultation()])
+    const ics = buildIcsCalendar('https://some-new-domain.example', [draft()])
     expect(ics).toContain('UID:me-XXVIII-88@begutachtungs-monitor.at')
   })
 
   it('moves DTSTAMP with the deadline so extensions propagate on import', () => {
-    const before = buildIcsCalendar(SITE, [consultation({ deadline: '2026-04-08' })])
-    const after = buildIcsCalendar(SITE, [consultation({ deadline: '2026-05-08' })])
+    const before = buildIcsCalendar(SITE, [draft({ deadline: '2026-04-08' })])
+    const after = buildIcsCalendar(SITE, [draft({ deadline: '2026-05-08' })])
     expect(before).toContain('DTSTAMP:20260408T000000Z')
     expect(after).toContain('DTSTAMP:20260508T000000Z')
   })
 
   it('marks events transparent and includes refresh hints', () => {
-    const ics = buildIcsCalendar(SITE, [consultation()])
+    const ics = buildIcsCalendar(SITE, [draft()])
     expect(ics).toContain('TRANSP:TRANSPARENT')
     expect(ics).toContain('X-MICROSOFT-CDO-BUSYSTATUS:FREE')
     expect(ics).toContain('REFRESH-INTERVAL;VALUE=DURATION:PT12H')
@@ -193,23 +196,23 @@ describe('buildIcsCalendar', () => {
   })
 
   it('emits the URL property raw (URI value, no TEXT escaping)', () => {
-    const ics = buildIcsCalendar(SITE, [consultation()])
-    expect(ics).toContain(`URL:${SITE}/begutachtungen/XXVIII/88`)
+    const ics = buildIcsCalendar(SITE, [draft()])
+    expect(ics).toContain(`URL:${SITE}/entwuerfe/XXVIII/88`)
   })
 
   it('skips consultations without a deadline', () => {
-    const ics = buildIcsCalendar(SITE, [consultation({ deadline: null })])
+    const ics = buildIcsCalendar(SITE, [draft({ deadline: null })])
     expect(ics).not.toContain('VEVENT')
   })
 
   it('escapes text values', () => {
-    const ics = buildIcsCalendar(SITE, [consultation({ title: 'A, B; C' })])
+    const ics = buildIcsCalendar(SITE, [draft({ title: 'A, B; C' })])
     expect(ics).toContain('A\\, B\\; C')
   })
 
   it('uses CRLF endings and keeps every line within 75 octets', () => {
     const ics = buildIcsCalendar(SITE, [
-      consultation({ title: 'Bundesgesetz über die ganz besonders ausführliche Bezeichnung von Vorhaben, Änderung'.repeat(2) }),
+      draft({ title: 'Bundesgesetz über die ganz besonders ausführliche Bezeichnung von Vorhaben, Änderung'.repeat(2) }),
     ])
     expect(ics.endsWith('\r\n')).toBe(true)
     for (const line of ics.split('\r\n')) {

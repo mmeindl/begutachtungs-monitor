@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import type { ConsultationSummary } from '../shared/types'
+import type { DraftSummary } from '../shared/types'
 import { findRelatedDrafts, titleKey } from '../server/utils/related'
 
 /** The RIS-join fixtures: every list-81 row of GP XXVII (353) and XXVIII (132, as of 2026-09-06). */
@@ -17,7 +17,7 @@ interface FixtureRow {
 const read = (p: string): FixtureRow[] =>
   JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8')) as FixtureRow[]
 
-function toSummary(r: FixtureRow): ConsultationSummary {
+function toSummary(r: FixtureRow): DraftSummary {
   return {
     gp: r.gp,
     inr: r.inr,

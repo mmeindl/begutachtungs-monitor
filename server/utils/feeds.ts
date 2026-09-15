@@ -10,13 +10,30 @@
  * readers would surface daily phantom updates). Deterministic bodies are
  * also what make the routes' ETag/304 handling effective.
  */
-import type { ConsultationSummary } from '../../shared/types'
+import type { DraftSummary } from '../../shared/types'
 import { countLabelDe, formatDateDe } from '../../shared/utils/format'
 
-/** Consultation page URL inside the monitor. */
-function pageUrl(siteUrl: string, item: ConsultationSummary): string {
-  return `${siteUrl}/begutachtungen/${item.gp}/${item.inr}`
+/** Draft page URL inside the monitor. */
+function pageUrl(siteUrl: string, item: DraftSummary): string {
+  return `${siteUrl}/entwuerfe/${item.gp}/${item.inr}`
 }
+
+/**
+ * FROZEN — the feed UID domain token. Deliberately NOT derived from siteUrl:
+ * UIDs must survive a domain move or product rename, otherwise every
+ * subscriber gets 132 duplicate events after the switch. Treat as opaque.
+ */
+const FEED_UID_DOMAIN = 'begutachtungs-monitor.at'
+
+/**
+ * ONE identity per Entwurf, in both feeds: the RSS guid and the ICS UID are
+ * the same string. It is built from gp and inr, never from the URL — a
+ * subscriber's read-state must not depend on our route scheme, which is
+ * exactly what the rename of the detail route would otherwise have cost
+ * them.
+ */
+const feedUid = (item: DraftSummary) =>
+  `me-${item.gp}-${item.inr}@${FEED_UID_DOMAIN}`
 
 /**
  * FNV-1a 64-bit, as two 32-bit halves.
@@ -116,7 +133,7 @@ function rfc1123(isoDate: string): string | null {
  */
 export function buildRssFeed(
   siteUrl: string,
-  items: ConsultationSummary[],
+  items: DraftSummary[],
   ressort?: { code: string; name: string | null },
 ): string {
   const sorted = [...items]
@@ -143,7 +160,11 @@ export function buildRssFeed(
       '    <item>',
       `      <title>${escapeXml(`${item.citation}: ${item.title}${fristSuffix}`)}</title>`,
       `      <link>${escapeXml(url)}</link>`,
-      `      <guid isPermaLink="true">${escapeXml(url)}</guid>`,
+      // isPermaLink="false": the guid is an identity, not an address. It
+      // was the page URL until the route rename, so subscribers see the
+      // current items once more — a one-time cost, paid to make every later
+      // URL change free.
+      `      <guid isPermaLink="false">${escapeXml(feedUid(item))}</guid>`,
       ...(pubDate ? [`      <pubDate>${pubDate}</pubDate>`] : []),
       `      <description>${escapeXml(description)}</description>`,
       '    </item>',
@@ -181,16 +202,16 @@ export function buildRssFeed(
 // ---------------------------------------------------------------------------
 
 /**
- * Sitemap of the static pages plus every consultation detail page of the
+ * Sitemap of the static pages plus every draft detail page of the
  * current GP — organic search for a draft's name is how citizens who
  * submitted input find their consultation. Deterministic (no timestamps):
  * upstream provides no reliable per-item change date, and a wrong lastmod
  * is worse for crawlers than none.
  */
-export function buildSitemap(siteUrl: string, items: ConsultationSummary[]): string {
+export function buildSitemap(siteUrl: string, items: DraftSummary[]): string {
   const urls = [
     siteUrl,
-    `${siteUrl}/begutachtungen`,
+    `${siteUrl}/entwuerfe`,
     `${siteUrl}/so-funktionierts`,
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,
@@ -209,13 +230,6 @@ export function buildSitemap(siteUrl: string, items: ConsultationSummary[]): str
 // ---------------------------------------------------------------------------
 // iCalendar (RFC 5545)
 // ---------------------------------------------------------------------------
-
-/**
- * FROZEN — the UID domain token. Deliberately NOT derived from siteUrl:
- * UIDs must survive a domain move or product rename, otherwise every
- * subscriber gets 132 duplicate events after the switch. Treat as opaque.
- */
-const ICS_UID_DOMAIN = 'begutachtungs-monitor.at'
 
 /** TEXT escaping per RFC 5545 §3.3.11 — backslash first, then , ; newline.
  * TEXT values only; URI values (URL property) are emitted raw. */
@@ -272,9 +286,9 @@ function icsDateNextDay(isoDate: string): string {
  * of the GP that has a deadline, past ones included (dropping them would
  * delete events from subscribed calendars). UIDs are stable per procedure.
  */
-export function buildIcsCalendar(siteUrl: string, items: ConsultationSummary[]): string {
+export function buildIcsCalendar(siteUrl: string, items: DraftSummary[]): string {
   const withDeadline = items
-    .filter((item): item is ConsultationSummary & { deadline: string } => item.deadline !== null)
+    .filter((item): item is DraftSummary & { deadline: string } => item.deadline !== null)
     .sort((a, b) => a.deadline.localeCompare(b.deadline) || a.inr - b.inr)
 
   const lines: string[] = [
@@ -294,7 +308,7 @@ export function buildIcsCalendar(siteUrl: string, items: ConsultationSummary[]):
     const url = pageUrl(siteUrl, item)
     lines.push(
       'BEGIN:VEVENT',
-      `UID:me-${item.gp}-${item.inr}@${ICS_UID_DOMAIN}`,
+      `UID:${feedUid(item)}`,
       // DTSTAMP derives from the DEADLINE, not the arrival date: when a
       // ministry extends a Frist, DTSTAMP moves forward with it, so
       // UID-merging import paths (Google/Outlook file import) accept the

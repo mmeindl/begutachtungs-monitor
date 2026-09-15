@@ -1,5 +1,5 @@
 /**
- * GET /api/consultations/:gp/:inr/gegenueberstellung → TextComparisonResponse:
+ * GET /api/drafts/:gp/:inr/gegenueberstellung → TextComparisonResponse:
  * the ressort's own comparison of current law against proposed law, when the
  * draft carries a machine-readable Textgegenüberstellung
  * (docs/api-exploration.md §2c). `available: false` with a German reason

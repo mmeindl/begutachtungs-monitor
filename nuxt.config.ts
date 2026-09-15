@@ -12,6 +12,15 @@ export default defineNuxtConfig({
   // on the next request instead of in 24 hours. Production mounts neither —
   // there both are memory already.
   nitro: { devStorage: { derived: { driver: 'memory' } } },
+  // The object of a detail page is the Entwurf, not the Begutachtung, and
+  // the URL now says so. Links from the first weeks are in circulation —
+  // the RSS feed, the calendar, shared links — and they are the only thing
+  // this project has that it cannot re-issue, so they keep working.
+  // 301, because the move is permanent.
+  routeRules: {
+    '/begutachtungen': { redirect: { to: '/entwuerfe', statusCode: 301 } },
+    '/begutachtungen/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
+  },
   ui: {
     // Light-only prototype: Nuxt UI's color-mode integration would flip its
     // tokens dark on OS preference while our custom tokens stay light.
