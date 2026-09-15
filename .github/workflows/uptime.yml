@@ -8,6 +8,15 @@
 # What counts as "up": HTTP 200 on the start page AND the word
 # "Begutachtung" in the body. A Caddy error page or an empty shell is down.
 #
+# Second probe, the data canary: one detail page must still name a known
+# organisation among its Stellungnahmen (8/ME XXVIII, the Österreichischer
+# Rechtsanwaltskammertag). That name is in the SSR HTML only if list 142 was
+# read, its columns were where the mapper expects them and the classifier
+# recognised the row — the one failure this catches is the silent one, where
+# every submitter degrades to "Privatperson" and the site looks healthy. An
+# upstream outage does NOT trip it: the page then serves its last-good
+# aggregation, name included, and labels the staleness itself.
+#
 # Known trap: GitHub disables scheduled workflows in repositories without
 # commits for 60 days and sends a mail when it does. Re-enable it in the
 # Actions tab, or make any commit.
@@ -36,6 +45,8 @@ concurrency:
 env:
   SITE: https://begutachtungs-monitor.at/
   KEYWORD: Begutachtung
+  CANARY_SITE: https://begutachtungs-monitor.at/entwuerfe/XXVIII/8
+  CANARY_KEYWORD: Rechtsanwaltskammertag
   LABEL: downtime
 
 jobs:
@@ -67,8 +78,23 @@ jobs:
           else
             reason=""
           fi
+          # The data canary runs only when the site itself is up — a dead
+          # site needs one reason, not two.
+          if [ -z "$reason" ]; then
+            ctmp=$(mktemp)
+            ccode=$(curl -sS -L --max-time 30 --retry 2 --retry-delay 15 --retry-all-errors \
+                      -o "$ctmp" -w '%{http_code}' "$CANARY_SITE" 2>"$ctmp.err")
+            crc=$?
+            if [ "$crc" -ne 0 ]; then
+              reason="canary: curl failed (exit $crc): $(tr -d '\n' < "$ctmp.err" | cut -c1-200)"
+            elif [ "$ccode" != "200" ]; then
+              reason="canary: HTTP $ccode on $CANARY_SITE"
+            elif ! grep -q "$CANARY_KEYWORD" "$ctmp"; then
+              reason="canary: 8/ME no longer names \"$CANARY_KEYWORD\" — Stellungnahmen pipeline (list 142 columns, classifier) suspect"
+            fi
+          fi
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          if [ -n "$reason" ]; then echo "::warning::DOWN — $reason"; else echo "up (HTTP 200, keyword present)"; fi
+          if [ -n "$reason" ]; then echo "::warning::DOWN — $reason"; else echo "up (HTTP 200, keyword present, canary present)"; fi
 
       - name: Open or close the downtime issue
         env:
@@ -98,5 +124,5 @@ jobs:
             fi
           elif [ -n "$open" ]; then
             gh issue close "$open" --repo "$GITHUB_REPOSITORY" \
-              --comment "Back up at $now (HTTP 200, keyword present). Probe: $RUN_URL"
+              --comment "Back up at $now (HTTP 200, keyword and canary present). Probe: $RUN_URL"
           fi

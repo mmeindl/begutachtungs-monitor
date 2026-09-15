@@ -56,6 +56,7 @@ import {
   type RawStage,
 } from './mappers'
 import {
+import { checkListHeader } from './listHeaders'
   loadLastGoodStatements,
   saveLastGoodStatements,
   type LastGoodStatements,
@@ -217,6 +218,24 @@ function findGpCode(node: unknown): string | null {
   }
   if (node && typeof node === 'object') {
     const record = node as Record<string, unknown>
+/**
+ * The header names the columns the mappers read by position
+ * (`listHeaders.ts`). Checked wherever rows are trusted, i.e. next to the GP
+ * check and, like it, before anything is cached — a reordered column would
+ * otherwise degrade silently into "every submitter is a Privatperson".
+ * Only when there are rows: an empty list has no columns to misread.
+ */
+function assertListHeader(listId: number, res: FilterListResponse): void {
+  if (!(res.rows ?? []).length) return
+  const mismatch = checkListHeader(listId, res.header)
+  if (mismatch) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: `Spaltenlayout der Parlaments-API hat sich geändert – ${mismatch}`,
+    })
+  }
+}
+
     const params = (record.definition as Record<string, unknown> | undefined)?.params as
       | Record<string, unknown>
       | undefined
@@ -295,6 +314,7 @@ export const getDraftsForGp = defineCachedFunction(
     const res = await consultationRows(gp)
     return {
       gp,
+    assertListHeader(81, res)
       lastSync: toIsoTimestamp(res.lastSync),
       items: (res.rows ?? []).map(mapDraftRow),
     }
@@ -395,6 +415,7 @@ export const getStatementsForMe = defineCachedFunction(
     getKey: (gp: string, inr: number) => `${gp}-${inr}`,
     maxAge: UPSTREAM_TTL_S,
     swr: false,
+    assertListHeader(142, res)
   },
 )
 

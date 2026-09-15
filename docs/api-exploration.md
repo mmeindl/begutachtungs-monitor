@@ -104,6 +104,7 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/142?js=eval&
 - Row (0-based): `[2]` SNME-INR (→ detail URL), `[4]` date, `[6]` submitter as HTML `<a>` with the name, `[12]` endorsements (int, **approximation only** — list 305 is authoritative, a 5-vs-4 discrepancy was observed), `[15]` citation (`476/SN-88/ME`), `[18]` parent path.
 - Document links are NOT in the row → fetch the SNME detail.
 - The list definition is embedded in every ME detail under `.content.statements.filter.data.definition`.
+- **Header shape:** every entry carries `feldId`, `label` and — for the filterable dimensions only — `feld_name` (`GP_CODE`, `ITYP`, `INR`, `DATUM`, `DATUM_SORT`; the computed columns such as `Von`, `Unterstützungen`, `Nr` have a `label` only). The monitor asserts the positions it reads against this header on every fetch (`server/utils/listHeaders.ts`, lists 81 and 142): a reordered column used to degrade silently into "every submitter is a Privatperson", because that is the classifier's safe default.
 
 **Upstream index gap — RESOLVED 2026-09-01** (first observed 2026-08-27). Parliament
 rebuilt the index and confirmed the fix by mail; re-measured the same day:
