@@ -2591,6 +2591,62 @@ spaltenübergreifend noch spiegelgleich ist — **3 Zeilen** der GP XXVIII
 Das ist eine Frage der Gesetzesabgrenzung und nicht der Paragraphenzuordnung,
 also ein eigener Schritt mit eigener Messung.
 
+### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
+
+Three things from one round of user feedback (2026-09-15), all shipped the
+same day; recorded together because they share a lesson about the upstream
+contract.
+
+**Stellungnahmen on the Regierungsvorlage.** Anyone can file on a Vorlage in
+the Nationalrat the way they filed on the Ministerialentwurf, and the same
+list 142 holds them (`BEZUG_ITYP: I`, item type `SN`, `api-exploration.md`
+§list 142). The monitor showed only the first round until a reader pointed
+at 2238 d.B., the IFG Vorlage, where the organisation that gave the feedback
+had filed itself — one of ten, after 143 on the draft. GP XXVIII: 555 such
+Stellungnahmen on 68 Vorlagen. In the Nachverfolgung reading this is the
+input that can still change the text in the Ausschuss, so it belongs on the
+Vorlage: a fact on the `rv` station ("10 Stellungnahmen zur Vorlage" —
+"zur Vorlage" because the row above already carries the Begutachtung's
+count, and two bare numbers in two rows read as one number said twice; zero
+is not stated, most Vorlagen get none) and a block in the Regierungsvorlage
+section with the organisations in the panel's row grammar
+(`RvStatements.vue`). Client-side like the laws in force: enrichment of a
+station the page already draws, off the SSR path. Sized before it is
+fetched: without `showAll` the API returns one page plus the total, and
+above `RV_STATEMENTS_CAP` (5,000) only the count travels — the COVID-era
+Vorlagen carry tens of thousands (1289 d.B.: 41,376), ten megabytes of names
+for one line. No last-good fallback: a failed fetch costs a line, not the
+page. Not built: the anonymous rows as a list, and the Ausschuss's answer to
+this input (that is the parliament comparison, §12.2).
+
+**The document link.** The row's citation leads to the Stellungnahme's page
+upstream; a journalist working through fifty organisations' submissions
+asked for the PDF itself. The PDF's URL is not in the list row and needs one
+detail call per Stellungnahme, so a page of 700 rows must not fetch it in
+advance. Each row therefore links our redirect
+(`/api/stellungnahmen/{gp}/{SNME|SN}/{inr}/dokument`, `statementDocument.ts`),
+resolved for the one document a reader opens: the PDF when one was uploaded,
+the page when the text was typed into the web form — hence the label
+"Dokument", not "PDF". The detail JSON names the person with postcode and
+town and is fetched uncached like list 142; what is cached is the resolved
+URL, derived layer, a week. Records in the last-good store from before the
+field existed get the path restored from their page URL on recall.
+
+**The header assertion.** The filter API answers positional rows and the
+mappers read fixed indices; the only guard was that every row belongs to
+the requested GP. The predecessor project's post-mortem — tight coupling to
+an upstream layout, broken by a relaunch nobody noticed in time — applied
+here in a quieter form: a reordered or inserted column would have passed
+the GP check and degraded into "every submitter is a Privatperson", because
+that is the classifier's safe default. `listHeaders.ts` now holds the
+header of lists 81 and 142 against the columns we read, at fetch time and
+before anything is cached; a mismatch is a 502 naming the column, the
+last-good store serves the previous aggregation with its staleness visible.
+Only the columns we read are asserted (appended columns shift nothing);
+identity is `feld_name` where the API gives one and the display label
+otherwise. The uptime workflow's data canary (§12.7) is the same guard from
+the outside.
+
 ## 13. Open questions
 
 1. **Legal:** do the inline full texts (web-form Stellungnahmen) fall under the CC-BY metadata or under the full-text exclusion? (Transport format ≠ license.) Clarify before stage 2, ideally with a university partner (§ 42h UrhG).

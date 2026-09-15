@@ -62,6 +62,10 @@ const props = defineProps<{
   createsNewLaw?: boolean
   /** How many laws in force the draft changes — the Entwurf's second fact. */
   amendedLawCount?: number
+  /** From `/rv-stellungnahmen`: how many Stellungnahmen the Vorlage itself
+   *  received — the Regierungsvorlage's second fact, after its date. Arrives
+   *  after mount like the two above. */
+  rvStatementTotal?: number | null
 }>()
 
 /* The house link style: underlined AT REST, because a name or a question
@@ -74,6 +78,7 @@ const LINK = 'rounded text-accent-deep underline underline-offset-2 hover:no-und
 const list = computed(() => stations(props.data, {
   createsNewLaw: props.createsNewLaw,
   amendedLawCount: props.amendedLawCount,
+  rvStatementTotal: props.rvStatementTotal,
 }))
 const marked = computed(() => markedStation(list.value))
 

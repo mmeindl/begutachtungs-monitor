@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AmendedLawsResponse, DraftDetail, DraftDocument } from '#shared/types'
+import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationId } from '#shared/utils/stations'
 import { parliamentOutcome } from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
@@ -51,6 +51,17 @@ if (error.value?.statusCode === 404) {
 const { data: amendedLaws } = await useFetch<AmendedLawsResponse>(
   () => `${url.value}/geltendesrecht`,
   { lazy: true, server: false },
+)
+
+/* The Stellungnahmen on the Regierungsvorlage itself — the second window
+ * for input, on parliament's side, which the Begutachtung's count does not
+ * include. Its own client-side request like the laws in force: it enriches
+ * a station the page already draws, and the list-142 call behind it must
+ * not sit in the SSR path of every detail page. Asked only once a Vorlage
+ * exists; the endpoint answers 404 otherwise. */
+const { data: rvStatements } = await useFetch<RvStatementsResponse>(
+  () => `${url.value}/rv-stellungnahmen`,
+  { lazy: true, server: false, immediate: Boolean(data.value?.enactment) },
 )
 
 /* Where each station of the bar leads. Every station now has a section of
@@ -458,6 +469,7 @@ const linkClasses =
             :anchors="stationAnchors"
             :comparison-anchors="comparisonAnchors"
             :creates-new-law="amendedLaws?.createsNewLaw"
+            :rv-statement-total="rvStatements?.total"
             :amended-law-count="amendedLaws?.laws.length"
           />
         <!-- The "second attempt" fact, in both lifecycle states: a same-title
@@ -804,6 +816,11 @@ const linkClasses =
             {{ formatDateDe(data.successor.arrivedAt) }}.
           </p>
         </div>
+        <!-- The second window for input: what was filed on the Vorlage itself,
+             in the same row grammar as the Begutachtung's panel. Client-side
+             data, so the block appears once it is there and says nothing
+             while it is not — an empty promise here would read as "none". -->
+        <RvStatements v-if="data.enactment && rvStatements" :data="rvStatements" />
         <!-- The accountability core: what became of the draft, § by §, both
              ways — changed and unchanged alike (CLAUDE.md framing rule). Only
              once a Regierungsvorlage exists; before that there is nothing to
