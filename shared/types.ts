@@ -347,6 +347,34 @@ export interface DashboardOutcomes {
   lastEnacted: ClosedOutcome | null
 }
 
+/**
+ * One Regierungsvorlage that is taking Stellungnahmen right now — the second
+ * window for input, which closes with the vote and has no published Frist.
+ */
+export interface OpenVorlage {
+  /** e.g. "594 d.B." */
+  citation: string
+  title: string
+  /** Einlangen im Nationalrat, ISO; '' when upstream has no sortable date. */
+  date: string
+  /** The Vorlage's page, where the form is. */
+  parliamentUrl: string
+  /** Stellungnahmen filed on the Vorlage so far; null when the count failed. */
+  statementCount: number | null
+  /**
+   * The Begutachtung this Vorlage came out of, when there was one — the
+   * monitor's own page for it. Null means the draft never was in
+   * Begutachtung: a quarter of Vorlagen (`docs/begutachtung-uebersprungen.md`),
+   * shown with an external link and said out loud rather than hidden.
+   */
+  draft: { gp: string, inr: number } | null
+}
+
+export interface DashboardSecondRound {
+  /** Filing open, most recent first. Empty is a normal state, not an error. */
+  items: OpenVorlage[]
+}
+
 // ---------------------------------------------------------------------------
 // RIS ↔ ME mapping (docs/ris-join.md)
 // ---------------------------------------------------------------------------

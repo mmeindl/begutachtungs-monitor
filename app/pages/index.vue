@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DashboardOutcomes, DashboardPayload } from '#shared/types'
+import type { DashboardOutcomes, DashboardPayload, DashboardSecondRound } from '#shared/types'
 
 const pageDescription =
   'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
@@ -39,6 +39,18 @@ const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard')
 const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
   timeout: 4000,
 })
+
+/* The second window for input: Regierungsvorlagen that are taking
+ * Stellungnahmen right now. Client-side and lazy on purpose — unlike the
+ * outcomes section this is an ADDITION to the page, not the reason it
+ * exists: nothing above it depends on the answer, an empty result is a
+ * normal state, and a section that can be absent must never be able to hold
+ * the first paint. Costs one list call plus a handful of detail fetches
+ * behind the 30-min leaf caches (`/api/dashboard/zweite-runde`). */
+const { data: secondRound } = await useFetch<DashboardSecondRound>(
+  '/api/dashboard/zweite-runde',
+  { lazy: true, server: false },
+)
 
 const { data, error, refresh, status } = await dashboardFetch
 const { data: outcomes, status: outcomesStatus } = await outcomesFetch
@@ -137,7 +149,7 @@ const lastSyncLabel = computed(() =>
       <section class="page-section" aria-labelledby="open-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
           <h2 id="open-heading" class="section-heading">
-            Läuft gerade
+            Jetzt in Begutachtung
           </h2>
           <NuxtLink
             to="/entwuerfe"
@@ -166,6 +178,32 @@ const lastSyncLabel = computed(() =>
             </p>
           </EmptyState>
         </div>
+      </section>
+
+      <!-- The second window for input, directly under the first. Both
+           sections are "you can take part now"; this one exists because the
+           Vorlage's door is otherwise invisible unless you happen to open
+           the right detail page. Hidden entirely when nothing is open — a
+           bonus section, unlike "Jetzt in Begutachtung", which states its
+           emptiness because the product promises that list. -->
+      <section
+        v-if="secondRound?.items.length"
+        class="page-section"
+        aria-labelledby="second-round-heading"
+      >
+        <h2 id="second-round-heading" class="section-heading">
+          Zweite Runde: Stellungnahme im Nationalrat möglich
+        </h2>
+        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+          Auch zu einer Regierungsvorlage kann Stellung genommen werden – dort
+          kann der Ausschuss den Text noch ändern. Für diese Runde gibt es
+          keine veröffentlichte Frist: Sie endet mit der Abstimmung.
+        </p>
+        <ul class="mt-4 space-y-3">
+          <li v-for="v in secondRound.items" :key="v.citation">
+            <SecondRoundCard :vorlage="v" />
+          </li>
+        </ul>
       </section>
 
       <!-- The accountability layer on the front door: mechanism 1 (shelving
@@ -197,7 +235,7 @@ const lastSyncLabel = computed(() =>
             label="Verläufe werden geladen …"
           />
           <template v-else-if="outcomes?.recent.length">
-            <!-- Same card as "Läuft gerade" — only the aside differs
+            <!-- Same card as "Jetzt in Begutachtung" — only the aside differs
                  (outcome chip instead of deadline block). -->
             <ul class="space-y-3">
               <li v-for="o in outcomes.recent" :key="`${o.gp}-${o.inr}`">

@@ -51,7 +51,50 @@ const HEADER_81 = [
   { label: 'wentry_id' },
 ]
 
+/* List 101, as the API returned it on 2026-09-15 for
+ * `{GP_CODE, ITYP:["I"], VHG:["RV"]}`. Note index 0: `feld_name` is `GP`
+ * here and `GP_CODE` is the *label* — the reverse of lists 81/142, and the
+ * reason this fixture exists rather than a copied expectation. */
+const HEADER_101 = [
+  { feld_name: 'GP', label: 'GP_CODE' },
+  { feld_name: 'ITYP', label: 'ITYP' },
+  { feld_name: 'INR', label: 'INR' },
+  { feld_name: 'ZUKZ', label: 'ZUKZ' },
+  { feld_name: 'DATUM', label: 'Datum' },
+  { feld_name: 'ART', label: 'Art' },
+  { feld_name: 'PFAD', label: 'Betreff' },
+  { feld_name: 'ZITATION', label: 'Nummer' },
+  { feld_name: 'DATUMSORT', label: 'DATUMSORT' },
+  { feld_name: 'PHASEN_BIS', label: 'PHASEN_BIS' },
+  { feld_name: 'STATUS', label: 'Status' },
+  { feld_name: 'DOKTYP', label: 'DOKTYP' },
+  { feld_name: 'ZZZZ', label: 'Zust?' },
+  { feld_name: 'DOKTYP_LANG', label: 'DOKTYP_LANG' },
+  { feld_name: 'HIS_URL', label: 'HIS_URL' },
+]
+
 describe('checkListHeader', () => {
+  it('accepts the observed header of list 101', () => {
+    expect(checkListHeader(101, HEADER_101)).toBeNull()
+  })
+
+  it('rejects list 101 when the status column moves', () => {
+    const shifted = [...HEADER_101]
+    shifted.splice(9, 0, { feld_name: 'NEU', label: 'Neu' })
+    expect(checkListHeader(101, shifted)).toBe(
+      'Liste 101: Spalte 10 ist „PHASEN_BIS“, erwartet feld_name „STATUS“',
+    )
+  })
+
+  it('does not confuse list 101 with the GP_CODE spelling of lists 81/142', () => {
+    // The trap this fixture guards: asserting `feld_name: 'GP_CODE'` at
+    // index 0 would fail on a perfectly healthy list-101 response.
+    const wrong = [{ feld_name: 'GP_CODE', label: 'GP_CODE' }, ...HEADER_101.slice(1)]
+    expect(checkListHeader(101, wrong)).toBe(
+      'Liste 101: Spalte 0 ist „GP_CODE“, erwartet feld_name „GP“',
+    )
+  })
+
   it('accepts the observed headers of lists 81 and 142', () => {
     expect(checkListHeader(81, HEADER_81)).toBeNull()
     expect(checkListHeader(142, HEADER_142)).toBeNull()
