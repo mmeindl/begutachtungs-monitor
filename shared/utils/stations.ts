@@ -41,7 +41,7 @@
  * this fetches nothing.
  */
 import type { DraftDetail } from '../types'
-import { formatDateDe } from './format'
+import { formatDateDe, formatNumberDe } from './format'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -78,6 +78,13 @@ export interface Station {
 export interface StationContext {
   createsNewLaw?: boolean
   amendedLawCount?: number
+  /**
+   * How many Stellungnahmen the Regierungsvorlage itself received on
+   * parliament's side (`/rv-stellungnahmen`) — the second window for input,
+   * which the Begutachtung's count does not include. Undefined while
+   * unknown; the row then carries the date alone.
+   */
+  rvStatementTotal?: number | null
 }
 
 const AUSSCHUSS = 'Geändert im Ausschuss'
@@ -145,7 +152,18 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
     ? d.active ? 'noch keine Stellungnahmen' : 'keine Stellungnahmen'
     : n === 1
       ? '1 Stellungnahme'
-      : `${n} Stellungnahmen`
+      : `${formatNumberDe(n)} Stellungnahmen`
+
+  /** "zur Vorlage", because the row above already says how many came in the
+   *  Begutachtung — two bare counts in two rows read as one number said
+   *  twice. Zero is not stated: most Vorlagen get none, and a row that said
+   *  so on every page would be noise where it is not a finding. */
+  const rvN = ctx.rvStatementTotal ?? 0
+  const rvCount = rvN === 0
+    ? null
+    : rvN === 1
+      ? '1 Stellungnahme zur Vorlage'
+      : `${formatNumberDe(rvN)} Stellungnahmen zur Vorlage`
 
   return [
     {
@@ -184,7 +202,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // temporal word would mislead the other way, and the boundary becomes
       // the state.
       facts: e
-        ? kept(e.rvDate ? formatDateDe(e.rvDate) : e.rvCitation)
+        ? kept(e.rvDate ? formatDateDe(e.rvDate) : e.rvCitation, rvCount)
         : d.active
           ? ['ausstehend']
           : d.gpEnded

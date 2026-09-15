@@ -56,8 +56,8 @@ import {
   type RawShortinfo,
   type RawStage,
 } from './mappers'
-import {
 import { checkListHeader } from './listHeaders'
+import {
   loadLastGoodStatements,
   saveLastGoodStatements,
   type LastGoodStatements,
@@ -175,13 +175,23 @@ async function upstreamJson<T>(
 /**
  * POST to a filter list. `showAll=true` returns all matches —
  * this only works WITHOUT pagesize (an explicit pagesize wins otherwise).
+ *
+ * `all: false` OMITS the parameter: the API then answers one default page
+ * (20 rows) plus `count`, the total — the cheap way to size a list before
+ * fetching it. The parameter's presence is what counts upstream, not its
+ * value; `showAll=false` still returns everything (verified 2026-09-15).
  */
 export function fetchFilterList(
   listId: number,
   body: Record<string, unknown>,
   query: Record<string, string> = {},
+  options: { all?: boolean } = {},
 ): Promise<FilterListResponse> {
-  const params = new URLSearchParams({ js: 'eval', showAll: 'true', ...query })
+  const params = new URLSearchParams({
+    js: 'eval',
+    ...(options.all === false ? {} : { showAll: 'true' }),
+    ...query,
+  })
   const url = `${PARLIAMENT_BASE}/Filter/api/filter/data/${listId}?${params.toString()}`
   return upstreamJson<FilterListResponse>(url, { method: 'POST', body })
 }
@@ -208,17 +218,6 @@ function assertRowsMatchGp(rows: unknown[][], gp: string, listId: number): void 
   }
 }
 
-/** Recursive search for definition.params.GP_CODE[0] in the page configuration. */
-function findGpCode(node: unknown): string | null {
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      const found = findGpCode(item)
-      if (found) return found
-    }
-    return null
-  }
-  if (node && typeof node === 'object') {
-    const record = node as Record<string, unknown>
 /**
  * The header names the columns the mappers read by position
  * (`listHeaders.ts`). Checked wherever rows are trusted, i.e. next to the GP
@@ -237,6 +236,17 @@ function assertListHeader(listId: number, res: FilterListResponse): void {
   }
 }
 
+/** Recursive search for definition.params.GP_CODE[0] in the page configuration. */
+function findGpCode(node: unknown): string | null {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findGpCode(item)
+      if (found) return found
+    }
+    return null
+  }
+  if (node && typeof node === 'object') {
+    const record = node as Record<string, unknown>
     const params = (record.definition as Record<string, unknown> | undefined)?.params as
       | Record<string, unknown>
       | undefined
@@ -304,6 +314,7 @@ const consultationRows = defineCachedFunction(
   async (gp: string): Promise<FilterListResponse> => {
     const res = await fetchFilterList(81, { GP_CODE: [gp] }, { sortrnr: '11', ascDesc: 'DESC' })
     assertRowsMatchGp(res.rows ?? [], gp, 81)
+    assertListHeader(81, res)
     return res
   },
   { name: 'drafts-list', getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
@@ -315,7 +326,6 @@ export const getDraftsForGp = defineCachedFunction(
     const res = await consultationRows(gp)
     return {
       gp,
-    assertListHeader(81, res)
       lastSync: toIsoTimestamp(res.lastSync),
       items: (res.rows ?? []).map(mapDraftRow),
     }
@@ -405,6 +415,7 @@ export const getStatementsForMe = defineCachedFunction(
       }
     }
     assertRowsMatchGp(rows, gp, 142)
+    assertListHeader(142, res)
     const items = rows.map(mapStatementRow)
     items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
     await rememberStatements(gp, inr, items)
@@ -416,7 +427,74 @@ export const getStatementsForMe = defineCachedFunction(
     getKey: (gp: string, inr: number) => `${gp}-${inr}`,
     maxAge: UPSTREAM_TTL_S,
     swr: false,
+  },
+)
+
+/**
+ * Above this many Stellungnahmen on one Regierungsvorlage only the count is
+ * fetched. The COVID-era Vorlagen carry tens of thousands (1289 d.B. of GP
+ * XXVII: 41,376 — ten megabytes of names for one fact line); everything
+ * else measured in GP XXVII/XXVIII stays far below.
+ */
+export const RV_STATEMENTS_CAP = 5_000
+
+export interface RvStatements {
+  /** Upstream's total, known above the cap too. */
+  total: number
+  /** Classified rows, date descending; null above the cap. */
+  items: StatementMeta[] | null
+}
+
+/**
+ * The Stellungnahmen on a Regierungsvorlage — the second window for input,
+ * on parliament's side, which the monitor did not show until a user pointed
+ * at 2238 d.B. (2026-09-15). Same list 142 with `BEZUG_ITYP: I`, item type
+ * SN instead of SNME; the same mapper and the same GDPR path. GP XXVIII:
+ * 555 such Stellungnahmen on 68 Vorlagen.
+ *
+ * Sized before it is fetched: the first call omits `showAll` and gets one
+ * page plus the total. Small lists arrive complete in that page and cost
+ * nothing more; above the cap only the total travels, and the page says the
+ * breakdown is missing instead of showing a subset. Derived cache, like the
+ * ME list: the raw rows name private persons and are never stored.
+ *
+ * No last-good fallback here — this enriches a station the page already
+ * draws, so a failed fetch costs one line, not the page.
+ */
+export const getStatementsForRv = defineCachedFunction(
+  async (gp: string, inr: number): Promise<RvStatements> => {
+    const body = { BEZUG_GP_CODE: [gp], BEZUG_ITYP: ['I'], BEZUG_INR: [inr] }
+    const head = await fetchFilterList(142, body, {}, { all: false })
+    const headRows = head.rows ?? []
+    const total = typeof head.count === 'number' ? head.count : headRows.length
+    if (total === 0) return { total: 0, items: [] }
+    if (total > RV_STATEMENTS_CAP) return { total, items: null }
+
+    let res = headRows.length >= total ? head : await fetchFilterList(142, body)
+    let rows = res.rows ?? []
+    if (rows.length === 0) {
+      // The same index glitch the ME list has: a count with no rows behind it.
+      res = await fetchFilterList(142, body)
+      rows = res.rows ?? []
+      if (rows.length === 0) {
+        throw createError({
+          statusCode: 502,
+          statusMessage: 'Stellungnahmen-Liste ist auf parlament.gv.at derzeit nicht abrufbar',
+        })
+      }
+    }
+    assertRowsMatchGp(rows, gp, 142)
     assertListHeader(142, res)
+    const items = rows.map(mapStatementRow)
+    items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    return { total, items }
+  },
+  {
+    name: 'statements-rv',
+    base: DERIVED_CACHE,
+    getKey: (gp: string, inr: number) => `${gp}-${inr}`,
+    maxAge: UPSTREAM_TTL_S,
+    swr: false,
   },
 )
 
@@ -544,7 +622,7 @@ export async function getStatementsWithFallback(
  */
 const ORG_LIST_CAP = 150
 
-function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
+export function buildStatementsSummary(items: StatementMeta[]): StatementsSummary {
   const organisations: StatementMeta[] = []
   let privatePersons = 0
   let nonPublic = 0

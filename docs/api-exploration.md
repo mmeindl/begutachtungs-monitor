@@ -104,7 +104,10 @@ curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/142?js=eval&
 - Row (0-based): `[2]` SNME-INR (→ detail URL), `[4]` date, `[6]` submitter as HTML `<a>` with the name, `[12]` endorsements (int, **approximation only** — list 305 is authoritative, a 5-vs-4 discrepancy was observed), `[15]` citation (`476/SN-88/ME`), `[18]` parent path.
 - Document links are NOT in the row → fetch the SNME detail. The monitor resolves them on click through its own redirect (`/api/stellungnahmen/{gp}/{SNME|SN}/{inr}/dokument`), never in advance — 700 rows would be 700 detail calls.
 - The list definition is embedded in every ME detail under `.content.statements.filter.data.definition`.
+- **Paging:** without `showAll` the API returns one default page of **20 rows** plus `count`, the total — the cheap way to size a list before fetching it. The parameter's *presence* is what counts: `showAll=false` still returns everything (verified 2026-09-15 on 41,376 rows).
 - **Header shape:** every entry carries `feldId`, `label` and — for the filterable dimensions only — `feld_name` (`GP_CODE`, `ITYP`, `INR`, `DATUM`, `DATUM_SORT`; the computed columns such as `Von`, `Unterstützungen`, `Nr` have a `label` only). The monitor asserts the positions it reads against this header on every fetch (`server/utils/listHeaders.ts`, lists 81 and 142): a reordered column used to degrade silently into "every submitter is a Privatperson", because that is the classifier's safe default.
+
+**The same list holds the Stellungnahmen on Regierungsvorlagen** (found 2026-09-15 after a user pointed at 2238 d.B. — until then the monitor showed only the first round). `BEZUG_ITYP: ["I"]` with the RV's INR; the rows have item type `SN` instead of `SNME`, the citation is bare (`277139/SN`, no `-95/ME` tail), `Zu` reads `2238/I`, and the SN page is `/gegenstand/{GP}/SN/{inr}`. The RV detail JSON embeds the ready-made definition under `.content.statements.filter.data.definition`. Header identical to the ME case (same 23 columns). Sizes: GP XXVIII **555 on 68 Regierungsvorlagen**; GP XXVII **92,037 on 174**, dominated by the COVID-era Vorlagen (1289 d.B. alone: 41,376) — which is why the monitor sizes the list with the paging call above and fetches the breakdown only below a cap (`RV_STATEMENTS_CAP`, `parliament.ts`). Odd but real: `[12]` Unterstützungen is populated on SN rows (4 on 277139/SN) although the RV detail's `approvalstate` says no endorsement is possible for the type. Shown as upstream counts it.
 
 **Upstream index gap — RESOLVED 2026-09-01** (first observed 2026-08-27). Parliament
 rebuilt the index and confirmed the fix by mail; re-measured the same day:
@@ -155,10 +158,10 @@ curl -s "https://www.parlament.gv.at/gegenstand/XXVIII/SNME/3262?json=True"
 ```
 
 - **Web-form submissions: the full text is INLINE in the JSON** (`.content.statement`, HTML string). Upload submissions: `statement=null`, PDF under `.content.documents[]`. Inline vs. PDF follows the **submission channel**, not the submitter type (organisations can be inline too).
+- Two link shapes for the PDF: `/dokument/XXVII/SNME/81457/imfname_942193.pdf` on a Ministerialentwurf, `/PtWeb/api/s3serv/file/{uuid}` on a Regierungsvorlage (`/gegenstand/XXVII/SN/277139?json=True`) — no extension there, only `type: "PDF"` says what it is. Both are served as `application/pdf`.
 - SNME-INR is a GP-wide sequence, independent of the numbering in the citation (`476/SN-88/ME` has SNME-INR 3699).
 - Non-public submissions appear as the placeholder name `"Nicht-öffentliche Stellungnahme"`.
 
-- Two link shapes for the PDF: `/dokument/XXVII/SNME/81457/imfname_942193.pdf` on a Ministerialentwurf, `/PtWeb/api/s3serv/file/{uuid}` on a Regierungsvorlage (`/gegenstand/XXVII/SN/277139?json=True`) — no extension there, only `type: "PDF"` says what it is. Both are served as `application/pdf`.
 ### List 305 — endorsements
 
 ```bash
@@ -702,17 +705,17 @@ Every format incl. Html/Xml is **optional per file**. URL pattern: `https://www.
 
 Private persons are **fully identifiable on three levels** straight from the API: list 142 (last name, first name in the row), SNME detail (name **plus postal code and town**), list 305 (endorsers with name, postal code, town). There is **no structural flag organisation vs. private person** — only name heuristics. Web-form full texts sit inline in the JSON; whether they fall under the CC-BY metadata license or under the full-text exclusion needs legal clarification — **the transport format does not decide the license question.** Our pipeline must enforce the metadata-only/no-names rules; the API does not help.
 
----
-
-## 5. Open questions
-
-1. ~~Does the RIS↔Parliament composite key scale to corpus level?~~ **Resolved 2026-09-06:** yes — 337/350 on GP XXVII, 0 ambiguous, no one-sided deadline extension observed; 12 MEs have no RIS record at all (BMK transport section 2020–Q1 2021, BMEIA), which the product must show as a state, not an error. See `docs/ris-join.md`.
 **What the name heuristic gets wrong, measured (2026-09-15, `scripts/classifier-audit.ts` over all 6,067 GP-XXVIII rows; GP XXVII hits the 100,000-row cap and is COVID-skewed, so only per-item numbers are quoted for it):**
 
 - **Institutions filed as "Privatperson":** at least 334 rows — 221 of them federal ministries in their own short form (`BM f. Finanzen`, `BM f. Justiz`, …), then courts (`Oberlandesgericht Wien; Geschäftsabteilung der Präsidentin`), the Datenschutzbehörde, the FMA, Staats- and Umweltanwaltschaften, and brand-style NGOs without a legal form (`Presseclub Concordia`, `GLOBAL 2000`, `VCÖ`, `WEISSER RING`). A separate cause hid ÖGB, ÖAMTC, SPÖ, ARBÖ: JavaScript's `\b` is ASCII-only, so a word boundary never matches before "Ö". All of these are organisations by pattern now; the cosmetic direction of the error, but for the accountability layer a court's or a ministry's Stellungnahme is exactly the institutional input worth seeing.
 - **Persons published as organisations — the direction that matters:** `Lastname, Firstname; Universität Salzburg`, `Name, Dr.; Rechtsanwalt; … Rechtsanwälte GesbR`, `Name Name, Richterin am Landesgericht …` — a person filing with an affiliation, and the affiliation's keyword won. 239 rows in GP XXVII, 2 in GP XXVIII. Since 2026-09-15 the segment that names the submitter decides (`leadsWithPersonName` in `server/utils/privacy.ts`), checked before any organisation signal.
 - **Not safe as rules, on the same data:** a bare semicolon (persons file as `Mustermann, Florian; Dr. med. dent.`), all-caps (`MUSTERMANN, PETER`), digits (`Muster, Ma8`), and bare two-word heads that are acronyms (`WU Wien, Institut für …`) or split compounds (`Österreichischer Mieter-, Siedler und Wohnungseigentümerbund`).
 
+---
+
+## 5. Open questions
+
+1. ~~Does the RIS↔Parliament composite key scale to corpus level?~~ **Resolved 2026-09-06:** yes — 337/350 on GP XXVII, 0 ambiguous, no one-sided deadline extension observed; 12 MEs have no RIS record at all (BMK transport section 2020–Q1 2021, BMEIA), which the product must show as a state, not an error. See `docs/ris-join.md`.
 2. ~~Type-filter syntax on list 101~~ **Resolved 2026-09-06:** the type filter is `VHG` (or `DOKTYP`) with values such as `VOLKBG`, `E`, `PET`, `BI` — see `docs/volksbegehren.md` §5.1.
 3. ~~RSS export of the filter lists~~ **Resolved 2026-09-06:** `GET /Filter/api/filter/rss/{listId}?FIELD=value` honours the same filter dimensions, e.g. `rss/81?AKTIV=J` — see `docs/volksbegehren.md` §5.1.
 4. Is `Allgemein.Geaendert` bumped on deadline extensions (is history polling enough)? Does `IncludeDeletedDocuments` return withdrawn drafts?

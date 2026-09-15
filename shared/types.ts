@@ -257,6 +257,23 @@ export interface StatementMeta {
   documentUrl: string
 }
 
+/**
+ * The Stellungnahmen on the Regierungsvorlage a draft became — the second
+ * window for input, on parliament's side (`/api/drafts/:gp/:inr/rv-stellungnahmen`).
+ * Same shape as the Begutachtung's summary, so the same rows render it.
+ */
+export interface RvStatementsResponse {
+  /** e.g. "2238 d.B." */
+  rvCitation: string
+  /** The Vorlage's page on parlament.gv.at, which lists them all. */
+  rvUrl: string
+  /** Upstream's count — known above the cap too. */
+  total: number
+  /** Null above `cap`: the count is shown, the breakdown deliberately not fetched. */
+  summary: StatementsSummary | null
+  cap: number
+}
+
 export interface StatementsResponse {
   items: StatementMeta[]
   /**
