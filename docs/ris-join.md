@@ -133,7 +133,7 @@ Geschäftszahl tie-breaker, which needs PDF text.
   Diagnostic endpoint for now; not yet exercised against the live API from
   the app itself (the fetch parameters and envelope were verified with
   curl and the corpus-test scripts).
-- Consultation detail: `risDraft` on `ConsultationDetail`, rendered as the
+- Draft detail: `risDraft` on `DraftDetail`, rendered as the
   "Entwurf im RIS" block with the RIS entry, HTML/PDF text, a Fristabweichung
   note, and "im RIS nicht veröffentlicht" as a shown state.
 - Detail pages wait at most 2 s for the join (`withinBudget`, `server/utils/budget.ts`)
@@ -194,12 +194,12 @@ sequence fallback, never by § number alone.
   article by similarity ≥ 0.6. LCS word diff with a 2.5 M-cell cap (long
   units get a similarity but no segments). Output in RV reading order,
   removed §§ placed where they stood in the draft.
-- `server/utils/lawDiffService.ts` + `GET /api/consultations/:gp/:inr/diff`:
+- `server/utils/lawDiffService.ts` + `GET /api/drafts/:gp/:inr/diff`:
   finds the two Gesetzestext HTMLs on the ME detail (RV via
   `statements.documents`), fetches with a leaf cache per URL, diffs, caches
   24 h. `available: false` with a German reason when no RV exists yet or a
   text is PDF-only.
-- `app/components/LawDiffSection.vue` on the consultation page, once an RV
+- `app/components/LawDiffSection.vue` on the draft page, once an RV
   exists: "Was sich nach der Begutachtung geändert hat". The summary sentence
   stands alone; the list opens on request (32/ME has 330 units). Inside:
   filter chips alle / geändert / neu / entfallen / unverändert with counts, a

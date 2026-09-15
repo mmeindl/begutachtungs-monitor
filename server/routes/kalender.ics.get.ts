@@ -7,7 +7,7 @@
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
-  const { items } = await getConsultationsForGp(gp)
+  const { items } = await getDraftsForGp(gp)
   const body = buildIcsCalendar(siteUrl, items.map(reconcileActive))
 
   const etag = bodyEtag(body)

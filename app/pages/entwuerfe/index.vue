@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { ConsultationStatus, ConsultationsResponse } from '#shared/types'
+import type { DraftStatus, DraftsResponse } from '#shared/types'
 
 useSeoMeta({
-  title: 'Begutachtungen',
+  title: 'Entwürfe',
   description:
     'Alle Ministerialentwürfe in Begutachtung – filterbar nach Status, Gesetzgebungsperiode und Ressort.',
 })
@@ -12,19 +12,19 @@ const router = useRouter()
 
 // Default first: the leftmost segment reads as "where am I" — it must be
 // the state the page actually lands in.
-const statusOptions: { value: ConsultationStatus; label: string }[] = [
+const statusOptions: { value: DraftStatus; label: string }[] = [
   { value: 'all', label: 'Alle' },
   { value: 'open', label: 'Offen' },
   { value: 'closed', label: 'Abgeschlossen' },
 ]
 
-function parseStatus(v: unknown): ConsultationStatus {
+function parseStatus(v: unknown): DraftStatus {
   const s = firstQueryValue(v)
   return s === 'open' || s === 'closed' ? s : 'all'
 }
 
 // Filter state, initialized from the URL so links are shareable.
-const statusFilter = ref<ConsultationStatus>(parseStatus(route.query.status))
+const statusFilter = ref<DraftStatus>(parseStatus(route.query.status))
 const gp = ref(firstQueryValue(route.query.gp) ?? '')
 const ministry = ref(firstQueryValue(route.query.ministry) ?? '')
 const q = ref(firstQueryValue(route.query.q) ?? '')
@@ -48,8 +48,8 @@ const query = computed(() => ({
   q: qDebounced.value || undefined,
 }))
 
-const { data, error, refresh, status } = await useFetch<ConsultationsResponse>(
-  '/api/consultations',
+const { data, error, refresh, status } = await useFetch<DraftsResponse>(
+  '/api/drafts',
   { query },
 )
 
@@ -74,7 +74,7 @@ watch(query, (value) => {
 })
 
 const countLabel = computed(() =>
-  countLabelDe(data.value?.total ?? 0, 'Begutachtung', 'Begutachtungen'),
+  countLabelDe(data.value?.total ?? 0, 'Entwurf', 'Entwürfe'),
 )
 
 /* Selects are TokenSelect (native <select> in token styling with the
@@ -85,7 +85,7 @@ const countLabel = computed(() =>
   <div class="mx-auto w-full max-w-4xl">
     <header>
       <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-        Begutachtungen
+        Entwürfe
       </h1>
       <p class="mt-2 text-ink-secondary">
         Ministerialentwürfe im Begutachtungsverfahren – laufend und abgeschlossen.
@@ -93,7 +93,7 @@ const countLabel = computed(() =>
     </header>
 
     <div v-if="status === 'pending' && !data" class="mt-10">
-      <LoadingState label="Begutachtungen werden geladen …" />
+      <LoadingState label="Entwürfe werden geladen …" />
     </div>
     <div v-else-if="error" class="mt-10">
       <ErrorState @retry="refresh()" />
@@ -138,7 +138,7 @@ const countLabel = computed(() =>
         <UInput
           v-model="q"
           type="search"
-          :placeholder="`In ${countLabelDe(data.total, 'Begutachtung', 'Begutachtungen')} suchen …`"
+          :placeholder="`In ${countLabelDe(data.total, 'Entwurf', 'Entwürfen')} suchen …`"
           aria-label="Suche"
           class="min-w-48 flex-1"
         />
@@ -179,7 +179,7 @@ const countLabel = computed(() =>
            is the job. -->
       <ul v-if="data.items.length" class="mt-3 space-y-3 md:hidden">
         <li v-for="c in data.items" :key="`${c.gp}-${c.inr}`">
-          <ConsultationCard :consultation="c" />
+          <DraftCard :draft="c" />
         </li>
       </ul>
       <div
@@ -188,13 +188,13 @@ const countLabel = computed(() =>
       >
         <ul class="divide-y divide-hairline">
           <li v-for="c in data.items" :key="`row-${c.gp}-${c.inr}`">
-            <ConsultationRow :consultation="c" />
+            <DraftRow :draft="c" />
           </li>
         </ul>
       </div>
       <div v-if="!data.items.length" class="mt-3">
         <EmptyState
-          title="Keine Begutachtungen gefunden"
+          title="Keine Entwürfe gefunden"
           description="Andere Filter oder einen anderen Suchbegriff versuchen."
         />
       </div>

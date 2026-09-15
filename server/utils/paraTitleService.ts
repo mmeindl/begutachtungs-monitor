@@ -30,7 +30,7 @@ import { promulgationByArticle } from './lawTitles'
 import { unitKey } from '#shared/utils/diffKey'
 import { addressedParagraph } from './lawTitles'
 import { parseKonsParagraph } from './lawStructure'
-import { getConsultationsForGp, getGegenstand } from './parliament'
+import { getDraftsForGp, getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import type { KonsParagraphRef } from './risKons'
@@ -69,7 +69,7 @@ export const getParagraphTitles = defineCachedFunction(
     // The reference date is the draft's Einlangen — the law as the draft
     // found it, not as it stands today. It lives on the list row, not on the
     // Gegenstand, and the list is cached anyway.
-    const listed = (await getConsultationsForGp(gp).catch(() => null))?.items.find((i) => i.inr === inr) ?? null
+    const listed = (await getDraftsForGp(gp).catch(() => null))?.items.find((i) => i.inr === inr) ?? null
     const asOf = listed?.arrivedAt || null
     const empty: ParagraphTitlesResponse = { gp, inr, asOf, titles: {} }
     if (!asOf) return empty

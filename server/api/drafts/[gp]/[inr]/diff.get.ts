@@ -1,5 +1,5 @@
 /**
- * GET /api/consultations/:gp/:inr/diff → LawDiffResponse: what changed in
+ * GET /api/drafts/:gp/:inr/diff → LawDiffResponse: what changed in
  * the law text between the Ministerialentwurf and the Regierungsvorlage,
  * § by §. `available: false` with a German reason when there is nothing to
  * compare yet or the texts are PDF-only (docs/ris-join.md §6).

@@ -1,5 +1,5 @@
 /**
- * GET /api/consultations/:gp/:inr/paragraphtitel → ParagraphTitlesResponse:
+ * GET /api/drafts/:gp/:inr/paragraphtitel → ParagraphTitlesResponse:
  * the heading of each § a change amends, from the standing law in RIS
  * (docs/architecture.md §12.11). Unresolved paragraphs are absent from the
  * map rather than guessed.

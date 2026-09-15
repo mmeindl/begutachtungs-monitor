@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Stellungnahmen count for ConsultationCard's aside slot — DeadlineBlock's
+ * Stellungnahmen count for DraftCard's aside slot — DeadlineBlock's
  * two-line anatomy (leading figure, Frist line underneath), so the volume
  * ranking shares one silhouette with the deadline and outcome sections.
  *

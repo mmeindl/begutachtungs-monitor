@@ -1,9 +1,13 @@
 <script setup lang="ts">
 /**
- * The Verfahrens explainer: static, zero data, zero ops — makes every
- * StageBar and TraceTimeline in the product retroactively legible for the
- * audience that lands from a shared link and has never heard the word
- * "Regierungsvorlage". Anchor IDs let detail pages deep-link each term.
+ * The Verfahrens explainer: static, zero data, zero ops. It makes the
+ * five-station bar on every Entwurf page (`SpineRail`, "Der Text im
+ * Verfahren") legible for the audience that lands from a shared link and
+ * has never heard the word "Regierungsvorlage": the same five stations, in
+ * the same order, under the names the bar uses — plus the marks the bar
+ * draws. Anchor IDs let other pages deep-link each term;
+ * `#gegenueberstellung` is linked from `TextComparisonSection` and must
+ * stay.
  */
 useSeoMeta({
   title: "So funktioniert's",
@@ -11,32 +15,43 @@ useSeoMeta({
     'Wie ein Gesetz in Österreich entsteht: vom Ministerialentwurf über die Begutachtung und die Regierungsvorlage bis zur Kundmachung im Bundesgesetzblatt. Und woher die Textgegenüberstellung kommt, die zeigt, was ein Entwurf am geltenden Recht ändert.',
 })
 
+/* The five names and their order are the bar's (`shared/utils/stations.ts`).
+   Kept static here rather than imported, because this page explains the
+   terms and the bar only uses them — but a rename there is a rename here.
+   `monitor` is what the detail page actually shows at that station, so the
+   explainer promises nothing the product does not do. */
 const steps = [
   {
-    id: 'ministerialentwurf',
-    name: 'Ministerialentwurf',
-    text: 'Ein Ministerium legt den Entwurf eines Gesetzes vor. Ab jetzt ist er öffentlich einsehbar – lange bevor das Parlament darüber abstimmt.',
+    id: 'entwurf',
+    name: 'Entwurf',
+    text: 'Ein Ministerium legt den Entwurf eines Gesetzes vor, amtlich Ministerialentwurf. Ab jetzt ist er öffentlich einsehbar – lange bevor das Parlament darüber abstimmt.',
+    monitor: 'Welche Gesetze der Entwurf ändert, seine Dokumente und – aus der Textgegenüberstellung des Ministeriums – was er ändert.',
+    link: { to: '#gegenueberstellung', label: 'Woher die Gegenüberstellung kommt →' },
   },
   {
     id: 'begutachtung',
     name: 'Begutachtung',
     text: 'Mehrere Wochen lang kann jede und jeder eine Stellungnahme abgeben – Privatpersonen genauso wie Kammern, Vereine und Unternehmen. Die Frist dafür setzt das Ministerium; abgegeben wird die Stellungnahme direkt auf parlament.gv.at.',
-    link: { to: '/begutachtungen?status=open', label: 'Alle offenen Begutachtungen →' },
+    monitor: 'Die Frist, die Zahl der Stellungnahmen und wer sie abgegeben hat – Organisationen mit Namen, Privatpersonen ohne.',
+    link: { to: '/entwuerfe?status=open', label: 'Alle offenen Begutachtungen →' },
   },
   {
     id: 'regierungsvorlage',
     name: 'Regierungsvorlage',
-    text: 'Das Ministerium überarbeitet den Entwurf, oft auf Basis der Stellungnahmen; die Regierung beschließt die Vorlage an den Nationalrat. Manche Entwürfe kommen nie so weit – auch das zeigt der Monitor. Endet die Gesetzgebungsperiode vorher, wird ein Entwurf nur selten noch eingebracht; meist beginnt die nächste Regierung mit einer neuen Begutachtung.',
+    text: 'Nach der Begutachtung überarbeitet das Ministerium den Entwurf – die Stellungnahmen liegen ihm dabei vor; die Regierung beschließt die Vorlage an den Nationalrat. Manche Entwürfe kommen nie so weit – auch das zeigt der Monitor. Endet die Gesetzgebungsperiode vorher, wird ein Entwurf nur selten noch eingebracht; meist beginnt die nächste Regierung mit einer neuen Begutachtung.',
+    monitor: 'Ob und wann eine Regierungsvorlage kam, und was sich gegenüber dem Entwurf geändert hat, Paragraph für Paragraph. Kam keine, steht auch das da.',
   },
   {
     id: 'parlament',
     name: 'Parlament',
     text: 'Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern.',
+    monitor: 'Ob der Nationalrat den Text unverändert beschlossen oder im Ausschuss und im Plenum geändert hat – mit den Fassungen, die dabei entstanden sind.',
   },
   {
     id: 'bundesgesetzblatt',
     name: 'Bundesgesetzblatt',
     text: 'Mit der Kundmachung im Bundesgesetzblatt wird das Gesetz verbindlich.',
+    monitor: 'Die Nummer der Kundmachung, verlinkt ins Rechtsinformationssystem.',
   },
 ] as const
 </script>
@@ -47,9 +62,10 @@ const steps = [
       So funktioniert die Begutachtung
     </h1>
     <p class="mt-3 leading-relaxed text-ink-secondary">
-      Bevor ein Gesetzesentwurf ins Parlament kommt, durchläuft er fünf
-      Stationen. Der Monitor verfolgt jeden Entwurf über alle fünf – und
-      zeigt, was aus dem Input der Öffentlichkeit wird.
+      Vom Entwurf eines Ministeriums bis zur Kundmachung im
+      Bundesgesetzblatt durchläuft ein Gesetz fünf Stationen. Der Monitor
+      verfolgt jeden Entwurf über alle fünf – und zeigt, was aus dem Input
+      der Öffentlichkeit wird.
     </p>
 
     <!-- Numbers + text carry the sequence; the connector line and the
@@ -76,6 +92,9 @@ const steps = [
           <span class="sr-only">Schritt {{ i + 1 }}: </span>{{ step.name }}
         </h2>
         <p class="mt-2 leading-relaxed text-ink-secondary">{{ step.text }}</p>
+        <p class="mt-2 text-sm text-ink-secondary">
+          <span class="font-medium text-ink">Im Monitor:</span> {{ step.monitor }}
+        </p>
         <p v-if="'link' in step && step.link" class="mt-2">
           <NuxtLink
             :to="step.link.to"
@@ -86,6 +105,51 @@ const steps = [
         </p>
       </li>
     </ol>
+
+    <!-- The dots repeat SpineRail's classes on purpose: a legend has to look
+         like the thing it explains, and the words next to them carry the
+         meaning (never colour alone). If the bar's dot styles change, this
+         legend changes with them. -->
+    <section id="leiste" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
+      <h2 class="text-lg font-semibold text-ink">Die Leiste auf jeder Entwurfsseite</h2>
+
+      <p class="mt-3 leading-relaxed text-ink-secondary">
+        Oben auf jeder Entwurfsseite stehen dieselben fünf Stationen
+        untereinander, unter der Überschrift „Der Text im Verfahren“. Jede
+        Zeile nennt, was an dieser Station geschehen ist, und führt zu dem
+        Abschnitt der Seite, der sie behandelt.
+      </p>
+
+      <ul class="mt-4 space-y-2 text-sm text-ink-secondary">
+        <li class="flex items-baseline gap-3">
+          <span
+            aria-hidden="true"
+            class="mt-1 box-border size-3 shrink-0 rounded-full border-2 border-ink bg-ink"
+          />
+          <span><span class="font-medium text-ink">Ausgefüllt</span> – diese Station ist passiert.</span>
+        </li>
+        <li class="flex items-baseline gap-3">
+          <span
+            aria-hidden="true"
+            class="mt-1 box-border size-3 shrink-0 rounded-full border-2 border-ink bg-mark"
+          />
+          <span><span class="font-medium text-ink">Gelb</span> – hier steht der Text gerade. Läuft dort etwas, ist die ganze Zeile gelb hinterlegt: während der Frist die Begutachtung, danach die Regierungsvorlage, solange das Ministerium die Stellungnahmen hat.</span>
+        </li>
+        <li class="flex items-baseline gap-3">
+          <span
+            aria-hidden="true"
+            class="mt-1 box-border size-3 shrink-0 rounded-full border-2 border-baseline bg-surface"
+          />
+          <span><span class="font-medium text-ink">Leer</span> – diese Station liegt noch vor dem Text, oder er hat sie nie erreicht; dann steht daneben, warum.</span>
+        </li>
+      </ul>
+
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Die beiden Fragen in der Leiste – „Was ändert der Entwurf?“ und „Was
+        sich nach der Begutachtung geändert hat“ – führen zu den Vergleichen.
+        Die erste beantwortet das Ministerium selbst, die zweite rechnen wir.
+      </p>
+    </section>
 
     <!-- Not a sixth station: a note on one section of the detail page, which
          links here from its check sentence ("Wie wir prüfen"). It stands

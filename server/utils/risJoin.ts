@@ -11,7 +11,7 @@
  * regenerate data/ris-me-map-gp27.json.
  */
 
-import type { ConsultationSummary } from '../../shared/types'
+import type { DraftSummary } from '../../shared/types'
 
 // ---------------------------------------------------------------------------
 // Inputs
@@ -471,7 +471,7 @@ export function titleScore(meCore: string, meAbks: ReadonlySet<string>, r: RisBe
 // ---------------------------------------------------------------------------
 
 /** Adapter: mapped list-81 summaries → join input rows (duplicates per INR are fine). */
-export function toMeListRows(items: readonly ConsultationSummary[]): MeListRow[] {
+export function toMeListRows(items: readonly DraftSummary[]): MeListRow[] {
   return items.map((c) => ({
     gp: c.gp,
     inr: c.inr,

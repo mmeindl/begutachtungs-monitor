@@ -6,7 +6,7 @@ import type { DashboardPayload } from '#shared/types'
 
 export default defineEventHandler(async (): Promise<DashboardPayload> => {
   const gp = await getCurrentGp()
-  const { items: rawItems, lastSync } = await getConsultationsForGp(gp)
+  const { items: rawItems, lastSync } = await getDraftsForGp(gp)
   const items = rawItems.map(reconcileActive)
 
   // Open consultations, deadline ascending (no deadline sorts last).

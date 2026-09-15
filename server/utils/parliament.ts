@@ -10,7 +10,7 @@
  * CACHE ARCHITECTURE (three rules, all learned the hard way — see
  * UPSTREAM_TTL_S and lastgood.ts):
  * 1. Caching happens ONLY at the leaves, i.e. at the upstream calls
- *    themselves. Derived aggregates (getConsultationDetail) stay uncached.
+ *    themselves. Derived aggregates (getDraftDetail) stay uncached.
  * 2. No SWR — `swr: false` must be set explicitly.
  * 3. Stale data is never served as fresh, but it IS served as stale: the
  *    last-good statements aggregation is persisted (lastgood.ts) and
@@ -23,9 +23,9 @@
  *    cached fetch at all: its rows name private persons.
  */
 import type {
-  ConsultationDetail,
-  ConsultationDocument,
-  ConsultationSummary,
+  DraftDetail,
+  DraftDocument,
+  DraftSummary,
   EnactmentInfo,
   RelatedDraft,
   StatementMeta,
@@ -40,7 +40,7 @@ import {
   findLastRvLink,
   findRvLinks,
   groupOrganisationStatements,
-  mapConsultationRow,
+  mapDraftRow,
   mapDocuments,
   mapInvitedBy,
   mapStatementRow,
@@ -258,10 +258,10 @@ export const getCurrentGp = defineCachedFunction(
   { name: 'current-gp', base: DERIVED_CACHE, getKey: () => 'current', maxAge: 60 * 60 * 24, swr: false },
 )
 
-export interface GpConsultations {
+export interface GpDrafts {
   gp: string
   lastSync: string | null
-  items: ConsultationSummary[]
+  items: DraftSummary[]
 }
 
 /** Upstream lastSync (format not contractual) → ISO-8601, else null. */
@@ -286,20 +286,20 @@ const consultationRows = defineCachedFunction(
     assertRowsMatchGp(res.rows ?? [], gp, 81)
     return res
   },
-  { name: 'consultations-list', getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+  { name: 'drafts-list', getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
 )
 
-/** The same list, mapped to our types. Derived — `mapConsultationRow` is ours. */
-export const getConsultationsForGp = defineCachedFunction(
-  async (gp: string): Promise<GpConsultations> => {
+/** The same list, mapped to our types. Derived — `mapDraftRow` is ours. */
+export const getDraftsForGp = defineCachedFunction(
+  async (gp: string): Promise<GpDrafts> => {
     const res = await consultationRows(gp)
     return {
       gp,
       lastSync: toIsoTimestamp(res.lastSync),
-      items: (res.rows ?? []).map(mapConsultationRow),
+      items: (res.rows ?? []).map(mapDraftRow),
     }
   },
-  { name: 'consultations-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+  { name: 'drafts-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
 )
 
 /**
@@ -309,7 +309,7 @@ export const getConsultationsForGp = defineCachedFunction(
  * the cache. All consumers of `active` (dashboard, status filter, detail
  * CTA) read the same reconciled state this way.
  */
-export function reconcileActive(item: ConsultationSummary): ConsultationSummary {
+export function reconcileActive(item: DraftSummary): DraftSummary {
   if (!item.active || item.deadline === null) return item
   const days = daysUntil(item.deadline)
   return days !== null && days < 0 ? { ...item, active: false } : item
@@ -327,11 +327,11 @@ export function listAvailableGps(currentGp: string): string[] {
 }
 
 /** List-81 row of one item; 404 if it does not exist in that GP. */
-export async function requireConsultation(gp: string, inr: number): Promise<ConsultationSummary> {
-  const { items } = await getConsultationsForGp(gp)
+export async function requireDraft(gp: string, inr: number): Promise<DraftSummary> {
+  const { items } = await getDraftsForGp(gp)
   const summary = items.find((item) => item.inr === inr)
   if (!summary) {
-    throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
+    throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
   }
   return reconcileActive(summary)
 }
@@ -369,7 +369,7 @@ export const getStatementsForMe = defineCachedFunction(
     let res = await query()
     let rows = res.rows ?? []
     if (rows.length === 0) {
-      const { items } = await getConsultationsForGp(gp)
+      const { items } = await getDraftsForGp(gp)
       const claimed = items.find((i) => i.inr === inr)?.statementCount ?? 0
       if (claimed > 0) {
         res = await query()
@@ -478,7 +478,7 @@ export interface StatementsResult {
  * Rethrows when there is no record to fall back to: the original error
  * carries the accurate reason (list-142 inconsistency vs. timeout vs.
  * upstream 5xx), which a null return would flatten. Callers that prefer a
- * degraded answer over an error catch it — `getConsultationDetail` does.
+ * degraded answer over an error catch it — `getDraftDetail` does.
  */
 export async function getStatementsWithFallback(
   gp: string,
@@ -557,11 +557,11 @@ const RIS_JOIN_BUDGET_MS = 2_000
 /**
  * Chain state of one consultation (RV citation + BGBl number) WITHOUT the
  * statements fetch — the dashboard's recently-closed section needs only
- * the outcome, and getConsultationDetail would drag list 142 along for
+ * the outcome, and getDraftDetail would drag list 142 along for
  * every pool item. Pure composition over the Gegenstand leaf caches,
- * deliberately uncached (same reasoning as getConsultationDetail below).
+ * deliberately uncached (same reasoning as getDraftDetail below).
  */
-export async function getConsultationOutcome(
+export async function getDraftOutcome(
   gp: string,
   inr: number,
 ): Promise<{ rvCitation: string | null; bgblNumber: string | null }> {
@@ -589,15 +589,15 @@ export async function getConsultationOutcome(
  * is pure composition over the leaf caches and costs nothing without a
  * cache of its own.
  */
-export async function getConsultationDetail(
+export async function getDraftDetail(
   gp: string,
   inr: number,
-): Promise<ConsultationDetail> {
+): Promise<DraftDetail> {
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
   // client. List 142 then just returns zero rows.
   const [summary, detail, statementsResult, risMap, currentGp] = await Promise.all([
-    requireConsultation(gp, inr),
+    requireDraft(gp, inr),
     getGegenstand(gp, 'ME', inr),
     // Statements must not take the whole page down: on failure (including
     // the list-142 inconsistency guard) the last-good aggregation is
@@ -717,7 +717,7 @@ export async function getConsultationDetail(
  * that passed is a different amendment cycle and stays silent.
  */
 async function findRelated(
-  summary: ConsultationSummary,
+  summary: DraftSummary,
   currentGp: string,
   hasRv: boolean,
 ): Promise<{ predecessor: RelatedDraft | null; successor: RelatedDraft | null }> {
@@ -727,9 +727,9 @@ async function findRelated(
   if (n !== null && gpHasEnded(summary.gp, currentGp)) gps.push(intToRoman(n + 1))
   const lists = await Promise.all(
     gps.map((g) =>
-      getConsultationsForGp(g)
+      getDraftsForGp(g)
         .then((r) => r.items)
-        .catch(() => [] as ConsultationSummary[]),
+        .catch(() => [] as DraftSummary[]),
     ),
   )
   const { predecessor, successor } = findRelatedDrafts(summary, lists.flat())
@@ -748,8 +748,8 @@ async function findRelated(
 }
 
 /** One DocumentList row per station ("Geändert im Plenum") with its PDF/HTML formats. */
-function groupVersionsByStation(versions: readonly { station: string; url: string }[]): ConsultationDocument[] {
-  const out: ConsultationDocument[] = []
+function groupVersionsByStation(versions: readonly { station: string; url: string }[]): DraftDocument[] {
+  const out: DraftDocument[] = []
   for (const v of versions) {
     let doc = out.find((d) => d.title === v.station)
     if (!doc) {

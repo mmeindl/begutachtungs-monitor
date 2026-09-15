@@ -1,19 +1,19 @@
 /**
- * GET /api/consultations?gp&status&ministry&q → ConsultationsResponse.
+ * GET /api/drafts?gp&status&ministry&q → DraftsResponse.
  * status: open|closed|all (default all); q searches title, citation,
  * and ministry server-side (docs/architecture.md §5).
  */
-import type { ConsultationsResponse, ConsultationStatus } from '#shared/types'
+import type { DraftsResponse, DraftStatus } from '#shared/types'
 import { aliasHaystack } from '#shared/utils/aliases'
 import { GP_RE } from '#shared/utils/gp'
 
-const STATUS_VALUES: ConsultationStatus[] = ['open', 'closed', 'all']
+const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
 
-function isStatus(s: string): s is ConsultationStatus {
+function isStatus(s: string): s is DraftStatus {
   return (STATUS_VALUES as readonly string[]).includes(s)
 }
 
-export default defineEventHandler(async (event): Promise<ConsultationsResponse> => {
+export default defineEventHandler(async (event): Promise<DraftsResponse> => {
   const query = getQuery(event)
 
   const gpParam = firstQueryValue(query.gp)?.toUpperCase()
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event): Promise<ConsultationsResponse> 
 
   const currentGp = await getCurrentGp()
   const gp = gpParam ?? currentGp
-  const items = (await getConsultationsForGp(gp)).items.map(reconcileActive)
+  const items = (await getDraftsForGp(gp)).items.map(reconcileActive)
 
   // Filter vocabulary of the GP: all ministries, independent of the active filter.
   const ministryMap = new Map<string, string>()

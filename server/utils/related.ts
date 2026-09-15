@@ -19,7 +19,7 @@
  * Because "Tierschutzgesetz, Änderung" recurs every few years, the result
  * is a same-title draft, not "the same text"; the copy says exactly that.
  */
-import type { ConsultationSummary, RelatedDraft } from '../../shared/types'
+import type { DraftSummary, RelatedDraft } from '../../shared/types'
 import { splitParliamentTitle, titleTokens } from './risJoin'
 
 /** Sorted unique title tokens joined by a space; '' when nothing survives normalisation ("Bundesgesetz, Änderung"). */
@@ -34,7 +34,7 @@ export interface RelatedDrafts {
   successor: RelatedDraft | null
 }
 
-function toRelated(c: ConsultationSummary): RelatedDraft {
+function toRelated(c: DraftSummary): RelatedDraft {
   return {
     gp: c.gp,
     inr: c.inr,
@@ -47,7 +47,7 @@ function toRelated(c: ConsultationSummary): RelatedDraft {
 }
 
 /** Arrival first; ties (dual-ministry duplicate rows, same-day filings) by GP number then INR. */
-function order(a: ConsultationSummary, b: ConsultationSummary): number {
+function order(a: DraftSummary, b: DraftSummary): number {
   return a.arrivedAt.localeCompare(b.arrivedAt) || a.gp.localeCompare(b.gp) || a.inr - b.inr
 }
 
@@ -57,8 +57,8 @@ function order(a: ConsultationSummary, b: ConsultationSummary): number {
  * (same GP + INR) are never their own relatives.
  */
 export function findRelatedDrafts(
-  me: Pick<ConsultationSummary, 'gp' | 'inr' | 'title' | 'arrivedAt'>,
-  candidates: readonly ConsultationSummary[],
+  me: Pick<DraftSummary, 'gp' | 'inr' | 'title' | 'arrivedAt'>,
+  candidates: readonly DraftSummary[],
 ): RelatedDrafts {
   const key = titleKey(me.title)
   if (!key) return { predecessor: null, successor: null }

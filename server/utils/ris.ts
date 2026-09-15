@@ -10,7 +10,7 @@
  */
 import type { RisMapResponse, RisMapRow } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
-import { getConsultationsForGp } from './parliament'
+import { getDraftsForGp } from './parliament'
 import {
   dedupeMeRows,
   joinRisToMe,
@@ -241,8 +241,8 @@ function toMapRow(
 export const getRisMapForGp = defineCachedFunction(
   async (gp: string): Promise<RisMapResponse> => {
     if (!GP_RE.test(gp)) throw createError({ statusCode: 400, statusMessage: 'Ungültige Gesetzgebungsperiode' })
-    const [consultations, corpus] = await Promise.all([getConsultationsForGp(gp), getRisBegutCorpus()])
-    const mes = dedupeMeRows(toMeListRows(consultations.items))
+    const [drafts, corpus] = await Promise.all([getDraftsForGp(gp), getRisBegutCorpus()])
+    const mes = dedupeMeRows(toMeListRows(drafts.items))
     const byId = new Map(corpus.records.map((r) => [r.id, r]))
     const rows = joinRisToMe(mes, corpus.records).map((r) => toMapRow(r, byId))
     const counts: RisMapResponse['counts'] = { matched: 0, matched_weak: 0, ambiguous: 0, unmatched: 0 }

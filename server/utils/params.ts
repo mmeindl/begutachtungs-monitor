@@ -1,5 +1,5 @@
 /**
- * Param validation for the /api/consultations/:gp/:inr routes
+ * Param validation for the /api/drafts/:gp/:inr routes
  * (docs/architecture.md §5): gp = Roman numerals, inr = positive integer,
  * otherwise 400.
  */

@@ -8,7 +8,7 @@ import {
   findLastRvLink,
   findRvLinks,
   groupOrganisationStatements,
-  mapConsultationRow,
+  mapDraftRow,
   mapDocuments,
   mapInvitedBy,
   deriveShortTitle,
@@ -91,9 +91,9 @@ describe('parseGermanDate', () => {
   })
 })
 
-describe('mapConsultationRow', () => {
+describe('mapDraftRow', () => {
   it('maps a real list-81 row completely', () => {
-    expect(mapConsultationRow(LIST81_ROW)).toEqual({
+    expect(mapDraftRow(LIST81_ROW)).toEqual({
       gp: 'XXVIII',
       inr: 133,
       citation: '133/ME',
@@ -112,7 +112,7 @@ describe('mapConsultationRow', () => {
     const row = [...LIST81_ROW]
     row[11] = 'N'
     row[14] = ''
-    const mapped = mapConsultationRow(row)
+    const mapped = mapDraftRow(row)
     expect(mapped.active).toBe(false)
     expect(mapped.deadline).toBeNull()
   })

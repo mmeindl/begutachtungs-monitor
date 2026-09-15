@@ -90,7 +90,7 @@ const facts = [
       <p>
         Bis dahin:
         <NuxtLink
-          to="/begutachtungen?status=open"
+          to="/entwuerfe?status=open"
           class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
         >die laufenden Begutachtungen ansehen →</NuxtLink>
       </p>

@@ -19,7 +19,7 @@ import type { AnnexWithheldCause, TextComparisonResponse, TextComparisonRow } fr
 
 const props = defineProps<{ gp: string; inr: number }>()
 
-const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/consultations/${props.gp}/${props.inr}/gegenueberstellung`, {
+const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/drafts/${props.gp}/${props.inr}/gegenueberstellung`, {
   lazy: true,
   server: false,
 })

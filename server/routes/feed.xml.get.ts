@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   const code = ressortParam?.toUpperCase()
 
   const gp = await getCurrentGp()
-  const { items } = await getConsultationsForGp(gp)
+  const { items } = await getDraftsForGp(gp)
   const all = items.map(reconcileActive)
   const scoped = code ? all.filter((item) => item.ministryCode === code) : all
   const body = buildRssFeed(

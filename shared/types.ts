@@ -7,7 +7,7 @@
  * `StatementMeta.submitterName` is non-null only for organisations.
  */
 
-export interface ConsultationSummary {
+export interface DraftSummary {
   /** Gesetzgebungsperiode, e.g. "XXVIII" */
   gp: string
   /** Item number within the GP */
@@ -35,7 +35,7 @@ export interface DocumentFormat {
   url: string
 }
 
-export interface ConsultationDocument {
+export interface DraftDocument {
   title: string
   formats: DocumentFormat[]
 }
@@ -188,7 +188,7 @@ export interface EnactmentInfo {
  * Two independently cached numbers for the same fact drifted apart in
  * practice (card said 4, detail page said 1).
  */
-export interface ConsultationDetail extends Omit<ConsultationSummary, 'statementCount'> {
+export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
   /** Colloquial short name derived from the official title ("BuStAG",
       "Budgetbegleitgesetz 2026") — journalists cite by it and it fits a
       tab; null when no clearly name-like handle exists. */
@@ -197,7 +197,7 @@ export interface ConsultationDetail extends Omit<ConsultationSummary, 'statement
   description: DescriptionBlock[]
   /** Minister who submitted the draft ("Übermittelt von"), null if absent */
   invitedBy: string | null
-  documents: ConsultationDocument[]
+  documents: DraftDocument[]
   /** The complete upstream stage record. Kept as raw material (accountability
       layer, history snapshots); the UI renders it condensed into the StageBar
       and `handoff` rather than as a second timeline. */
@@ -206,7 +206,7 @@ export interface ConsultationDetail extends Omit<ConsultationSummary, 'statement
   /** Versions AFTER the Regierungsvorlage (committee, plenary), one document
       per station with its formats — rendered like the Entwurfsdokumente. The
       RV's own text is `enactment.rvTextUrl`, so no station appears twice. */
-  textEvolution: ConsultationDocument[]
+  textEvolution: DraftDocument[]
   statements: StatementsSummary
   enactment: EnactmentInfo | null
   /** The RIS Begut record of this draft (docs/ris-join.md); null when the
@@ -260,10 +260,10 @@ export interface StatementsResponse {
   staleAsOf?: string | null
 }
 
-export type ConsultationStatus = 'open' | 'closed' | 'all'
+export type DraftStatus = 'open' | 'closed' | 'all'
 
-export interface ConsultationsResponse {
-  items: ConsultationSummary[]
+export interface DraftsResponse {
+  items: DraftSummary[]
   total: number
   gp: string
   availableGps: string[]
@@ -274,7 +274,7 @@ export interface ConsultationsResponse {
 export interface DashboardPayload {
   gp: string
   /** Active consultations, sorted by deadline ascending (soonest first) */
-  open: ConsultationSummary[]
+  open: DraftSummary[]
   stats: {
     openCount: number
     closingWithin7Days: number
@@ -282,7 +282,7 @@ export interface DashboardPayload {
     consultationsTotalGp: number
   }
   /** Top 5 of the GP by statement count, descending */
-  topByStatements: ConsultationSummary[]
+  topByStatements: DraftSummary[]
   /** Upstream lastSync, normalized to ISO-8601 server-side; null if absent */
   lastSync: string | null
 }
@@ -291,7 +291,7 @@ export interface DashboardPayload {
  *  Extends the summary so the SAME card component renders both the open
  *  list and the outcome section — one anatomy, one hover, no sibling
  *  component drift. */
-export interface ClosedOutcome extends ConsultationSummary {
+export interface ClosedOutcome extends DraftSummary {
   /** e.g. "474 d.B." — null while no Regierungsvorlage exists */
   rvCitation: string | null
   /** e.g. "Bundesgesetzblatt I Nr. 37/2026" — null while not enacted */
@@ -386,7 +386,7 @@ export interface LawDiffSegment {
 }
 
 /**
- * GET /api/consultations/:gp/:inr/paragraphtitel — the heading of each § a
+ * GET /api/drafts/:gp/:inr/paragraphtitel — the heading of each § a
  * change amends, looked up in the standing law (docs/architecture.md §12.11).
  *
  * Keyed by `unitKey` (shared/utils/diffKey.ts) so it merges straight onto the
@@ -395,6 +395,31 @@ export interface LawDiffSegment {
  * missing key means no name could be resolved with certainty, which is the
  * normal case for a Stammgesetz and for any § the lookup could not verify.
  */
+/** One law in force that a draft would amend. */
+export interface AmendedLaw {
+  /** The law's Kurztitel from RIS; the draft's own Artikel title where RIS
+   *  could not resolve it; the bare BGBl citation as a last resort. */
+  title: string
+  /** The Stammnorm citation from the Promulgationsklausel, null where the
+   *  clause names none (a Stammnorm that is no BGBl at all, e.g. the UGB's
+   *  "dRGBl. S. 219/1897"). */
+  bgbl: string | null
+  /** RIS consolidated text at `asOf`, null when no Gesetzesnummer resolved. */
+  risUrl: string | null
+}
+
+export interface AmendedLawsResponse {
+  gp: string
+  inr: number
+  /** ISO date of the law version linked — the draft's Einlangen. */
+  asOf: string | null
+  /** The draft creates law rather than amending it, so there is no standing
+   *  text to compare against. Distinct from an empty `laws` list, which can
+   *  also mean the draft text was not readable. */
+  createsNewLaw: boolean
+  laws: AmendedLaw[]
+}
+
 export interface ParagraphTitlesResponse {
   gp: string
   inr: number
@@ -489,7 +514,7 @@ export interface TextComparisonRow {
 }
 
 /**
- * GET /api/consultations/:gp/:inr/gegenueberstellung — the draft's official
+ * GET /api/drafts/:gp/:inr/gegenueberstellung — the draft's official
  * comparison of current law against proposed law, when it carries one.
  * `available: false` with a German reason otherwise; roughly six in ten
  * drafts have the annex and four in ten of those only as a scan.

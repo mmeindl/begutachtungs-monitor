@@ -31,9 +31,9 @@ import { promulgationByArticle } from '../server/utils/lawTitles'
 
 const GP = process.argv[2] ?? 'XXVIII'
 const MAX_DRAFTS = Number(process.argv[3] ?? 40)
-const BASE = `http://localhost:3000/api/consultations/${GP}`
+const BASE = `http://localhost:3000/api/drafts/${GP}`
 const map = await (await fetch(`http://localhost:3000/api/ris-map/${GP}`)).json()
-const list = await (await fetch(`http://localhost:3000/api/consultations?gp=${GP}`)).json()
+const list = await (await fetch(`http://localhost:3000/api/drafts?gp=${GP}`)).json()
 const arrived = new Map<number, string>(list.items.map((i: any) => [i.inr, i.arrivedAt]))
 
 /**

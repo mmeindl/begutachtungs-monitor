@@ -88,7 +88,7 @@ const lastSyncLabel = computed(() =>
         <StatTile
           label="Offene Begutachtungen"
           :value="data.stats.openCount"
-          to="/begutachtungen?status=open"
+          to="/entwuerfe?status=open"
         />
         <StatTile
           :label="`Enden in den nächsten ${DEADLINE_SERIOUS_DAYS} Tagen`"
@@ -140,15 +140,15 @@ const lastSyncLabel = computed(() =>
             Läuft gerade
           </h2>
           <NuxtLink
-            to="/begutachtungen"
+            to="/entwuerfe"
             class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
           >
-            Alle Begutachtungen →
+            Alle Entwürfe →
           </NuxtLink>
         </div>
         <ul v-if="data.open.length" class="mt-4 space-y-3">
           <li v-for="c in data.open" :key="`${c.gp}-${c.inr}`">
-            <ConsultationCard :consultation="c" />
+            <DraftCard :draft="c" />
           </li>
         </ul>
         <div v-else class="mt-4">
@@ -176,7 +176,7 @@ const lastSyncLabel = computed(() =>
             Zuletzt abgeschlossen – was wurde daraus?
           </h2>
           <NuxtLink
-            to="/begutachtungen?status=closed"
+            to="/entwuerfe?status=closed"
             class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
           >
             Alle abgeschlossenen →
@@ -201,9 +201,9 @@ const lastSyncLabel = computed(() =>
                  (outcome chip instead of deadline block). -->
             <ul class="space-y-3">
               <li v-for="o in outcomes.recent" :key="`${o.gp}-${o.inr}`">
-                <ConsultationCard :consultation="o">
+                <DraftCard :draft="o">
                   <template #aside><OutcomeChip :outcome="o" /></template>
-                </ConsultationCard>
+                </DraftCard>
               </li>
             </ul>
             <template v-if="outcomes.lastEnacted">
@@ -215,11 +215,11 @@ const lastSyncLabel = computed(() =>
                 }}
               </h3>
               <div class="mt-2">
-                <ConsultationCard :consultation="outcomes.lastEnacted">
+                <DraftCard :draft="outcomes.lastEnacted">
                   <template #aside>
                     <OutcomeChip :outcome="outcomes.lastEnacted" />
                   </template>
-                </ConsultationCard>
+                </DraftCard>
               </div>
             </template>
           </template>
@@ -250,7 +250,7 @@ const lastSyncLabel = computed(() =>
              An ordered list, because here the order carries meaning. -->
         <ol class="mt-4 space-y-3">
           <li v-for="c in data.topByStatements" :key="`${c.gp}-${c.inr}`">
-            <ConsultationCard :consultation="c" emphasis="volume" />
+            <DraftCard :draft="c" emphasis="volume" />
           </li>
         </ol>
       </section>
