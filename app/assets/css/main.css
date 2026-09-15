@@ -117,6 +117,19 @@
   --ui-text: var(--color-ink);
   --ui-text-highlighted: var(--color-ink);
   --ui-bg: var(--color-surface);
+  /*
+   * Nuxt UI's hover ground for neutral controls (`hover:bg-elevated` on the
+   * ghost and outline variants). Its default is neutral-100 = stone #f5f5f4,
+   * which against our page ground of #f5f4ef is a difference of four
+   * hundredths of a percent in lightness: the ghost button — no border, no
+   * fill — had no hover state at all, and the bordered ones had one nobody
+   * could see.
+   *
+   * One warm step down from the page instead, on the way to the hairline
+   * (#deddd5): visible as a state change, still quiet enough that a row of
+   * controls does not light up like a toolbar.
+   */
+  --ui-bg-elevated: #ebe9e1;
   --ui-border: var(--color-hairline);
   --ui-border-accented: var(--color-baseline);
 }
@@ -172,6 +185,44 @@
  * compromise, it is the better row.
  */
 @custom-variant row-cols (@container list (min-width: 45rem));
+
+/*
+ * `divide-y` for a list whose overflow rows are `hidden` until find-in-page
+ * reveals them (StatementsPanel: the organisation list ships whole so the
+ * names stay in the SSR HTML, and the rows past the page are folded away
+ * with `hidden="until-found"`).
+ *
+ * Tailwind v4's own `divide-y` is `& > :not(:last-child)` — a border under
+ * every row but the structurally last one, which with 90 hidden rows below
+ * means a hairline under the last VISIBLE row, sitting directly on the
+ * container's own bottom border: a 2px edge that moves every time the
+ * reader presses "Weitere 10 anzeigen".
+ *
+ * So the separator goes on TOP of every visible row that follows a visible
+ * row — the rule that holds however many rows between them are folded away.
+ * (This is what Tailwind v3's `divide-*` did, for the same reason.)
+ */
+@utility divide-rows {
+  & > :not([hidden]) ~ :not([hidden]) {
+    border-top: 1px solid var(--color-hairline);
+  }
+
+  /*
+   * `hidden="until-found"` is NOT `display: none` — the UA gives it
+   * `content-visibility: hidden`, which skips the row's CONTENTS but keeps
+   * the row's own box. The padding survives, so 32 folded rows rendered as
+   * 640px of blank paper inside the list's border: the page looked broken
+   * below the tenth row.
+   *
+   * Zero out what makes that box: contents are already size-contained to
+   * nothing, so with no padding and no border the row collapses to 0px and
+   * find-in-page still reaches it.
+   */
+  & > [hidden='until-found'] {
+    padding-block: 0;
+    border-block: 0;
+  }
+}
 
 /*
  * 44px target size for inline links WITHOUT layout shift: the padding

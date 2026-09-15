@@ -11,7 +11,27 @@ const props = defineProps<{
   summary: StatementsSummary
 }>()
 
-const PAGE_SIZE = 25
+/* Ten, not the panel's old twenty-five: this list sits on a detail page with
+ * five other sections, and a first page that fills the viewport makes the
+ * Stellungnahmen the page instead of a part of it. What ten costs — more
+ * presses on the long lists — the search field and "Alle N anzeigen" both
+ * answer. */
+const PAGE_SIZE = 10
+
+/* Above this many still-hidden rows, offer the jump to the end — roughly
+ * four presses, which is where stepping starts to feel like work. 88/ME's
+ * 707 Stellungnahmen are 70 presses otherwise.
+ *
+ * On BOTH segments, not just the long one: the search field finds a name the
+ * reader already knows, and answers nothing for "show me all of them". On the
+ * organisation list the skipped rows are in the DOM already, so the press
+ * only unhides them. */
+const ALL_ABOVE = 30
+
+/* Below this the search field is not offered: on twenty rows the eye is
+ * faster than the keyboard, and the field would be a fourth control on a
+ * panel that already collapsed three lists into one to lose controls. */
+const SEARCH_MIN = 20
 
 /**
  * One list with a filter, not three stacked lists. The panel used to show a
@@ -66,11 +86,31 @@ const { data, status, execute } = useFetch<StatementsResponse>(
 
 const needsList = computed(() => filter.value !== 'organisations')
 
+/**
+ * The organisation search. Only this segment has one: the other three are
+ * lists of "Privatperson" and "Nicht-öffentliche Stellungnahme", where there
+ * is no name to search for — which is the GDPR line, not an omission, and
+ * the empty state says so when someone searches for a person anyway.
+ */
+const orgQuery = ref('')
+
+/* A query that folds to nothing (spaces, a stray hyphen) is not a filter. */
+const searchActive = computed(() => foldForSearch(orgQuery.value).length > 0)
+
 watch(filter, async (value) => {
   visibleCount.value = PAGE_SIZE
+  /* The field is unmounted with the segment; a query left behind would
+   * filter a list the reader can no longer see the field for. */
+  orgQuery.value = ''
   if (value !== 'organisations' && status.value === 'idle') {
     await execute()
   }
+})
+
+/* A narrower set is a new first page — otherwise three matches arrive on
+ * page four of the unfiltered list, i.e. as an empty list. */
+watch(orgQuery, () => {
+  visibleCount.value = PAGE_SIZE
 })
 
 /* A new order means a new first page — keeping 75 rows open across a re-sort
@@ -105,9 +145,6 @@ const items = computed<StatementMeta[]>(() => {
 })
 
 const visibleItems = computed(() => items.value.slice(0, visibleCount.value))
-const hasMore = computed(
-  () => needsList.value && items.value.length > visibleCount.value,
-)
 
 /* One staleness sentence per page. When the summary above is already a
  * last-good fallback, the detail page states it under this panel and the
@@ -222,6 +259,49 @@ const orgRows = computed(() =>
   }),
 )
 
+/* The name and every citation the row carries, so a reader who has the
+ * citation and not the name ("21/SN-8/ME") lands on the same row. */
+function orgHaystack(entry: (typeof orgRows)['value'][number]): string {
+  return [entry.org.name, ...entry.org.statements.map((s) => s.citation)].join(' ')
+}
+
+const matchedOrgRows = computed(() =>
+  searchActive.value
+    ? orgRows.value.filter((entry) => matchesSearch(orgHaystack(entry), orgQuery.value))
+    : orgRows.value,
+)
+
+/**
+ * Two ways of folding a row away, because the two states protect different
+ * things.
+ *
+ * WITHOUT a query every row stays in the DOM and the overflow is hidden with
+ * `hidden="until-found"`: the organisation list ships with the page (the
+ * point of the feedback layer is that an organisation can find ITSELF here),
+ * and the browser — not our JavaScript — reveals a match, so find-in-page
+ * still reaches row 90 for a reader whose JS never ran. That reader has no
+ * search field either, which is exactly why this half cannot be a slice.
+ * Where `until-found` is unsupported the attribute degrades to a plain
+ * `hidden`, i.e. to the slice, never to something worse.
+ *
+ * WITH a query the non-matching rows are gone for real. The reader asked for
+ * them to be gone; find-in-page must not resurrect what the filter excluded.
+ */
+const renderedOrgRows = computed(() =>
+  searchActive.value
+    ? matchedOrgRows.value.slice(0, visibleCount.value)
+    : matchedOrgRows.value,
+)
+
+function orgRowHidden(index: number): 'until-found' | undefined {
+  return !searchActive.value && index >= visibleCount.value ? 'until-found' : undefined
+}
+
+/* Offered on the size of the WHOLE list, not of the current result — a field
+ * that disappears once it has narrowed the list to three rows takes away the
+ * only way back. */
+const showOrgSearch = computed(() => !needsList.value && orgRows.value.length > SEARCH_MIN)
+
 /* ORG_LIST_CAP is set far above every population measured in GP XXVIII, so
  * this is a guard against a future outlier, not a normal state. Counted in
  * statements on both sides: `organisations` counts statements, and a listed
@@ -248,8 +328,6 @@ const orgsFiledRepeatedly = computed(
  * of flashing a zero. */
 const expectedCount = computed(() => {
   switch (filter.value) {
-    case 'organisations':
-      return props.summary.organisationList.length
     case 'persons':
       return props.summary.privatePersons
     case 'nonpublic':
@@ -259,9 +337,14 @@ const expectedCount = computed(() => {
   }
 })
 
-const segmentTotal = computed(() =>
-  status.value === 'success' ? items.value.length : expectedCount.value,
-)
+/* What the pagination counts against. On the organisation segment that is
+ * the SEARCH RESULT, not the whole list: after "3 von 35 Organisationen" a
+ * foot line offering to show 25 more would be counting a different set than
+ * the one on screen. */
+const segmentTotal = computed(() => {
+  if (!needsList.value) return matchedOrgRows.value.length
+  return status.value === 'success' ? items.value.length : expectedCount.value
+})
 
 /* How large the chosen segment is. Two lines, not one: this says what the
  * set IS, and the progress line at the foot says how much of it is on
@@ -269,6 +352,15 @@ const segmentTotal = computed(() =>
  * above it, where a reader at the button cannot see it. */
 const setLine = computed(() => {
   if (!needsList.value) {
+    /* Under a query this line IS the result count — the one number the
+     * reader is waiting for, and the only place it is stated. */
+    if (searchActive.value) {
+      return `${formatNumberDe(matchedOrgRows.value.length)} von ${countLabelDe(
+        orgRows.value.length,
+        'Organisation',
+        'Organisationen',
+      )}`
+    }
     const orgs = countLabelDe(
       sortedOrgs.value.length,
       'Organisation',
@@ -292,16 +384,12 @@ const setLine = computed(() => {
  * So the line stays in the DOM and goes visually silent everywhere else: it
  * is the panel's live region, and switching a segment swaps the list without
  * moving focus, which leaves a screen-reader user with no other feedback that
- * anything happened. */
+ * anything happened.
+ *
+ * Under a query it is never redundant: no number anywhere else on the panel
+ * says how many rows the query found. */
 const setLineRedundant = computed(
-  () => needsList.value || !orgsFiledRepeatedly.value,
-)
-
-/* Only while something is still hidden: "58 von 58" beside a button that is
- * no longer there describes nothing. */
-const progressLine = computed(
-  () =>
-    `${formatNumberDe(Math.min(visibleCount.value, segmentTotal.value))} von ${formatNumberDe(segmentTotal.value)} angezeigt`,
+  () => !searchActive.value && (needsList.value || !orgsFiledRepeatedly.value),
 )
 
 /* Submitter mix as one stacked bar — "707, davon 96 % Privatpersonen" in a
@@ -391,6 +479,24 @@ const mixSegments = computed(() => {
       </UFieldGroup>
     </div>
 
+    <!-- Its own line under the two control groups, not inside them: this is
+         a third axis, and the filter group already overflows its row at
+         320px. Directly above the list, so it reads as searching the thing
+         beneath it. -->
+    <div v-if="showOrgSearch" class="mt-4">
+      <label class="sr-only" for="org-search">Organisation suchen</label>
+      <UInput
+        id="org-search"
+        v-model="orgQuery"
+        type="search"
+        icon="i-lucide-search"
+        placeholder="Organisation suchen"
+        autocomplete="off"
+        class="w-full"
+        :ui="{ base: 'min-h-11' }"
+      />
+    </div>
+
     <p
       :class="[
         'text-sm text-ink-muted',
@@ -418,11 +524,16 @@ const mixSegments = computed(() => {
            crawler and a find-in-page see — which is what lets an organisation
            find itself on this page. -->
       <template v-if="!needsList">
-        <ul v-if="orgRows.length" class="divide-y divide-hairline">
+        <!-- divide-rows, not divide-y: the rows past the first page are
+             `hidden` until find-in-page reveals them, and Tailwind's
+             `:last-child` rule would leave a hairline under the last
+             visible one (main.css). -->
+        <ul v-if="renderedOrgRows.length" class="divide-rows">
           <StatementRow
-            v-for="{ org, row, expanded } in orgRows"
+            v-for="({ org, row, expanded }, i) in renderedOrgRows"
             :key="org.name"
             v-bind="row"
+            :hidden="orgRowHidden(i)"
           >
             <!-- Upstream counts Zustimmungen per Stellungnahme; this is the
                  organisation's sum, and it says so on every row that stands
@@ -446,6 +557,17 @@ const mixSegments = computed(() => {
             </template>
           </StatementRow>
         </ul>
+        <!-- The one thing find-in-page can never say. A reader searching for
+             a private individual's name gets silence from Cmd+F, and silence
+             here reads as "did not file" when the truth is that we do not
+             publish that name (GDPR, CLAUDE.md). The field is ours, so it
+             can say which of the two it is. -->
+        <div v-else-if="searchActive" class="p-5">
+          <EmptyState
+            title="Keine Organisation gefunden"
+            description="Privatpersonen werden nicht namentlich gelistet – gesucht wird nur in den Organisationen und ihren Geschäftszahlen."
+          />
+        </div>
         <div v-else class="p-5">
           <EmptyState
             title="Keine Organisationen"
@@ -488,20 +610,14 @@ const mixSegments = computed(() => {
       </template>
     </div>
 
-    <!-- Where the reader actually asks "how far in am I?": at the end of the
-         list, beside the control that answers it. The count leads and the
-         button follows, so the number is read before the action it explains. -->
-    <div v-if="hasMore" class="mt-4 flex flex-col items-center gap-2">
-      <p class="text-sm text-ink-muted">{{ progressLine }}</p>
-      <UButton
-        color="neutral"
-        variant="outline"
-        class="min-h-11"
-        @click="visibleCount += PAGE_SIZE"
-      >
-        Mehr laden
-      </UButton>
-    </div>
+    <ListMore
+      :visible="visibleCount"
+      :total="segmentTotal"
+      :step="PAGE_SIZE"
+      :all-above="ALL_ABOVE"
+      @more="visibleCount += PAGE_SIZE"
+      @all="visibleCount = segmentTotal"
+    />
 
     <p v-if="!needsList && hiddenOrgCount > 0" class="mt-3 text-sm text-ink-muted">
       und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen – sie

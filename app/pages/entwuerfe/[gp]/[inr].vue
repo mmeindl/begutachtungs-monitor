@@ -64,6 +64,18 @@ const { data: rvStatements } = await useFetch<RvStatementsResponse>(
   { lazy: true, server: false, immediate: Boolean(data.value?.enactment) },
 )
 
+/* The two windows for input, as booleans the card below reads. Both can be
+ * open at once: in GP XXVIII 7 of 91 Regierungsvorlagen arrived before the
+ * draft's Frist had ended (median lead 14 days; GP XXVII: 1 of 296). Then
+ * both are real options, and the one in parliament is arguably the one
+ * that still matters — the government has fixed its text, only the
+ * Ausschuss can change it — so neither hides the other. The Vorlage's flag
+ * is upstream's `statementsstate`, already gated on the GP still running. */
+const windows = computed(() => ({
+  begutachtung: Boolean(data.value?.active),
+  vorlage: Boolean(data.value?.enactment?.filingOpen),
+}))
+
 /* Where each station of the bar leads. Every station now has a section of
  * its own, and each entry below mirrors that section's `v-if` EXACTLY —
  * copy the condition, do not paraphrase it, or the bar starts promising
@@ -502,26 +514,44 @@ const linkClasses =
       </section>
 
       <!-- Deadline, action and calendar welded into one card: the page's
-           single door while the Frist runs. Closed, the card goes with the
-           Frist — the source link lives in the header's provenance line.
+           door, shown while any window for input is open. The Begutachtung
+           while its Frist runs; the Regierungsvorlage while the Nationalrat
+           takes Stellungnahmen on it (the second window most readers do not
+           know exists); both when both are open — see `windows` above for
+           why neither hides the other. Closed, the card goes — the source
+           link lives in the header's provenance line.
 
            This card is the ONE deliberate break with the station order
-           below: it belongs to the Begutachtung, but the Entwurf section
-           with its Gegenüberstellung can run long, and the page's single
-           action must not sink below it. The door stays at the front. -->
+           below: the Entwurf section with its Gegenüberstellung can run
+           long, and the page's action must not sink below it. The door
+           stays at the front and follows the window that is open. -->
       <div
-        v-if="data.active"
+        v-if="windows.begutachtung || windows.vorlage"
         class="mt-6 rounded-xl border border-hairline bg-surface p-5"
       >
-        <p class="font-semibold text-ink">
+        <p v-if="windows.begutachtung" class="font-semibold text-ink">
           {{ fristLabel(data.deadline, true) }}<template v-if="data.deadline">
             – die Frist endet am {{ formatDateDe(data.deadline) }}</template
           >
         </p>
+        <!-- The second window alone: the Begutachtung is over, parliament
+             still listens. No date, because upstream publishes none — the
+             form closes with the vote, and the card says exactly that. -->
+        <p v-else class="font-semibold text-ink">
+          Die Begutachtung ist vorbei – zur Regierungsvorlage
+          {{ data.enactment?.rvCitation }} kann im Nationalrat weiter Stellung
+          genommen werden.
+        </p>
+        <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 max-w-prose text-sm text-ink-secondary">
+          Eine Frist gibt es dafür nicht: möglich, solange der Nationalrat den
+          Text behandelt<template v-if="data.deadline">; die Begutachtungsfrist
+            endete am {{ formatDateDe(data.deadline) }}</template
+          >.
+        </p>
         <!-- Directly under the date it qualifies, above the CTA: whoever is
              about to submit reads it before acting, and the sentence ends by
              naming the date that governs. -->
-        <p v-if="divergence" class="mt-2 max-w-prose text-sm text-ink-secondary">
+        <p v-if="windows.begutachtung && divergence" class="mt-2 max-w-prose text-sm text-ink-secondary">
           Zweite amtliche Quelle, andere Frist: Das Rechtsinformationssystem
           nennt als Fristende
           <ExternalLink
@@ -538,8 +568,18 @@ const linkClasses =
           Parlament<template v-if="data.deadline">, maßgeblich ist daher der
           {{ formatDateDe(data.deadline) }}</template>.
         </p>
+        <!-- Both windows open: stated as a sequence of facts, not as a
+             verdict on the ministry (framing rule). The reader gets both
+             doors and the fact that makes the second one matter. -->
+        <p v-if="windows.begutachtung && windows.vorlage" class="mt-2 max-w-prose text-sm text-ink">
+          Die Regierungsvorlage {{ data.enactment?.rvCitation }} liegt bereits
+          im Nationalrat, obwohl die Begutachtungsfrist noch läuft. Auch dort
+          kann Stellung genommen werden, solange der Nationalrat den Text
+          behandelt.
+        </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
           <UButton
+            v-if="windows.begutachtung"
             :to="data.parliamentUrl"
             target="_blank"
             rel="noopener"
@@ -549,7 +589,7 @@ const linkClasses =
             Stellungnahme auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span>
           </UButton>
           <UButton
-            v-if="data.deadline"
+            v-if="windows.begutachtung && data.deadline"
             :to="`/entwuerfe/${gp}/${inr}/frist.ics`"
             external
             color="neutral"
@@ -558,13 +598,34 @@ const linkClasses =
           >
             Frist in den Kalender (.ics)
           </UButton>
+          <!-- Primary when it is the only door; beside the Begutachtung's
+               button it steps back to an outline, first things first. The
+               target is the Vorlage's page, where parliament renders the
+               form — the same way the Begutachtung's button works. -->
+          <UButton
+            v-if="windows.vorlage && data.enactment"
+            :to="data.enactment.rvUrl"
+            target="_blank"
+            rel="noopener"
+            color="primary"
+            :variant="windows.begutachtung ? 'outline' : 'solid'"
+            class="min-h-11"
+          >
+            Stellungnahme zur Regierungsvorlage auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span>
+          </UButton>
         </div>
         <!-- The documented base fact (drafts get revised routinely), no
              per-Stellungnahme causality — the honest interim form of
-             "your input changed §5" until the diff layer exists. -->
-        <p class="mt-3 max-w-prose text-sm text-ink-secondary">
+             "your input changed §5" until the diff layer exists. Once the
+             Vorlage exists, that comparison IS on the page, so the card
+             points at it instead. -->
+        <p v-if="windows.begutachtung && !data.enactment" class="mt-3 max-w-prose text-sm text-ink-secondary">
           Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
           Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
+        </p>
+        <p v-else class="mt-3 max-w-prose text-sm text-ink-secondary">
+          Was sich zwischen Entwurf und Regierungsvorlage geändert hat, zeigt
+          <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>.
         </p>
       </div>
 
@@ -820,7 +881,11 @@ const linkClasses =
              in the same row grammar as the Begutachtung's panel. Client-side
              data, so the block appears once it is there and says nothing
              while it is not — an empty promise here would read as "none". -->
-        <RvStatements v-if="data.enactment && rvStatements" :data="rvStatements" />
+        <RvStatements
+          v-if="data.enactment && rvStatements"
+          :data="rvStatements"
+          :filing-open="windows.vorlage"
+        />
         <!-- The accountability core: what became of the draft, § by §, both
              ways — changed and unchanged alike (CLAUDE.md framing rule). Only
              once a Regierungsvorlage exists; before that there is nothing to

@@ -51,6 +51,32 @@ export function countLabelDe(n: number, singular: string, plural: string): strin
   return n === 1 ? `1 ${singular}` : `${formatNumberDe(n)} ${plural}`
 }
 
+/**
+ * "10 von 42 angezeigt" — where the reader stands in a paginated list.
+ *
+ * The remainder is deliberately NOT spelled out beside it. "10 von 42"
+ * already says that 32 are left, and the button under this line says how
+ * many the next press adds; a third number would state the same fact a
+ * third time, in the one place on the panel where the reader is counting.
+ */
+export function shownLabelDe(visible: number, total: number): string {
+  return `${formatNumberDe(Math.min(visible, total))} von ${formatNumberDe(total)} angezeigt`
+}
+
+/**
+ * The step button's label, naming what the press will actually add — so the
+ * last page reads "Weitere 3 anzeigen" and the button itself lands the
+ * remainder.
+ *
+ * "anzeigen", never "laden": once a list is fetched nothing more travels,
+ * and the organisation list ships with the page, where nothing ever did. A
+ * button that says "laden" promises a request that does not happen.
+ */
+export function moreLabelDe(remaining: number, step: number): string {
+  const n = Math.min(remaining, step)
+  return n === 1 ? 'Eine weitere anzeigen' : `Weitere ${formatNumberDe(n)} anzeigen`
+}
+
 /** Cap at max characters at a word boundary; overlength ends in "…".
  * Mid-word cuts ("…Bundesges…") read broken in tabs and search results;
  * the boundary backtrack is skipped when it would eat >40% of the budget

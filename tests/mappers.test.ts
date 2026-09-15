@@ -4,6 +4,7 @@ import {
   decodeEntities,
   extractBgblLink,
   extractLinks,
+  isFilingOpen,
   findHandoff,
   findLastRvLink,
   findRvLinks,
@@ -406,6 +407,25 @@ describe('mapDocuments / mapTextEvolution', () => {
   it('keeps genuine later versions when the draft URLs are excluded', () => {
     const meUrls = new Set(mapDocuments(RAW_DOCS).flatMap((d) => d.formats.map((f) => f.url)))
     expect(mapTextEvolution(RAW_RV_DOCS, meUrls)).toHaveLength(3)
+  })
+})
+
+describe('isFilingOpen', () => {
+  it('reads upstream\'s statementsstate as the open/closed flag', () => {
+    // 132/ME with a running Frist and the newest GP-XXVIII Vorlagen: "1".
+    expect(isFilingOpen({ statementsstate: '1' })).toBe(true)
+    expect(isFilingOpen({ statementsstate: 1 })).toBe(true)
+    // The enacted 2238 d.B. and the closed 95/ME: "0".
+    expect(isFilingOpen({ statementsstate: '0' })).toBe(false)
+    expect(isFilingOpen({ statementsstate: 0 })).toBe(false)
+  })
+
+  it('reads anything else as closed — a door to a closed room costs more than a missing one', () => {
+    expect(isFilingOpen({})).toBe(false)
+    expect(isFilingOpen(null)).toBe(false)
+    expect(isFilingOpen(undefined)).toBe(false)
+    expect(isFilingOpen({ statementsstate: 'true' })).toBe(false)
+    expect(isFilingOpen({ statementsstate: '11' })).toBe(false)
   })
 })
 
