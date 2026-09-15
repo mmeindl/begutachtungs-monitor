@@ -175,7 +175,28 @@ One row per endorser: `[0]` full name, `[1]` postal code, `[2]` town, `[5]` date
 
 ### List 101 — Verhandlungsgegenstände (for RV tracking)
 
-MEs are **not** included here (all type filters with `ME` → `count=0`); the list covers the formal parliamentary procedure (RV, resolutions, …). `{"GP_CODE":["XXVII"]}` filters (388,778 → 76,395 rows); the **type filter is unsolved** (VHG/VHG2/DOKTYP with "ME"/RV values did not take effect; the value vocabulary is different, e.g. `ENQ`). Practically irrelevant: for the accountability layer the detail JSONs via `preconst` are the better route (§3).
+MEs are **not** included here (all type filters with `ME` → `count=0`); the list covers the formal parliamentary procedure (RV, resolutions, …). `{"GP_CODE":["XXVII"]}` filters (388,778 → 76,395 rows).
+
+**Type filter — fully solved 2026-09-15** (partially on 2026-09-06, `volksbegehren.md` §5.1). `ITYP` takes the item type, `VHG` the procedure, and the `ART` column (index 5) separates the subtypes:
+
+```bash
+# Every Regierungsvorlage of a period — 117 in GP XXVIII, 365 in GP XXVII:
+curl -s -X POST "https://www.parlament.gv.at/Filter/api/filter/data/101?js=eval&showAll=true" \
+  -H "Content-Type: application/json" \
+  -d '{"GP_CODE":["XXVIII"],"ITYP":["I"],"VHG":["RV"]}'
+
+# Every Antrag; ART separates them (GP XXVIII: 164 A, 837 A(E), 4 AMIN):
+  -d '{"GP_CODE":["XXVIII"],"ITYP":["A"]}'
+```
+
+`ART` values: `RV` Regierungsvorlage · `A` selbständiger Antrag on a Bundesgesetz · `A(E)` Entschließungsantrag (a request to the government, never a law) · `AMIN` Ministeranklage. Only `RV` and `A` can reach the Bundesgesetzblatt — the distinction the skipped-consultation base rate rests on (`docs/begutachtung-uebersprungen.md`).
+
+**Two columns worth knowing:**
+
+- **`Status` (index 10) ⇔ `statementsstate`.** `2` = still in the house and taking Stellungnahmen, `5` = finished. Verified **117/117** against the detail JSON on GP XXVIII (2026-09-15). That makes "which Regierungsvorlagen currently accept Stellungnahmen" **one list call** instead of a detail fetch per item.
+- **`Gruppe` (index 30) is null on all 117 rows**, and `THEMEN` (index 22) does not separate procedure classes: the tag "Budget und Finanzen" covers both the Bundesfinanzgesetz 2026 (exempt from Begutachtung by design) and the Anti-Mogelpackungs-Gesetz (ordinary consumer law). There is **no structured signal for "exempt from Begutachtung"** — it has to be curated by hand.
+
+For the ME→RV direction the detail JSONs via `preconst` remain the better route (§3) — but note `preconst` is **not a universal field**: 126 d.B. carries no `preconst` key at all (and no `stages`), so its absence is not proof of "no Ministerialentwurf" on its own. Cross-check against list 81.
 
 ---
 
