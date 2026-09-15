@@ -21,6 +21,7 @@ function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
       furtherRv: [],
       bgblNumber: 'Bundesgesetzblatt I Nr. 5/2024',
       bgblRisUrl: null,
+      filingOpen: false,
     },
     ...overrides,
   } as unknown as DraftDetail

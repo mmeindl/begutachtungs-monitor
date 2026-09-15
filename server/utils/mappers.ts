@@ -37,6 +37,19 @@ export interface RawDocumentGroup {
   documents?: { link?: string | null; type?: string | null }[] | null
 }
 
+/**
+ * Whether an item currently takes Stellungnahmen, from its detail JSON:
+ * `statementsstate` is "1" while the form is open and "0" afterwards — on a
+ * Ministerialentwurf while the Frist runs, on a Regierungsvorlage while the
+ * Nationalrat has the text (verified 2026-09-15 on 132/ME with a running
+ * Frist, the six newest GP-XXVIII Vorlagen and the enacted 2238 d.B.).
+ * `statements.new` mirrors it as 1/0. Anything else reads as closed.
+ */
+export function isFilingOpen(content: { statementsstate?: unknown } | null | undefined): boolean {
+  const state = content?.statementsstate
+  return state === '1' || state === 1
+}
+
 export interface RawName {
   funktext?: string | null
   name?: string | null

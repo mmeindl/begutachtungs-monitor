@@ -179,6 +179,13 @@ export interface EnactmentInfo {
   /** e.g. "Bundesgesetzblatt I Nr. 5/2024" — null while not enacted */
   bgblNumber: string | null
   bgblRisUrl: string | null
+  /**
+   * Whether parliament currently accepts Stellungnahmen on this Vorlage —
+   * upstream's `statementsstate` on the RV's detail JSON, "1" while the
+   * Nationalrat has the text, "0" once it voted. The second window for
+   * input; false when the RV record could not be read.
+   */
+  filingOpen: boolean
 }
 
 /**

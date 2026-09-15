@@ -40,6 +40,7 @@ import {
   findLastRvLink,
   findRvLinks,
   groupOrganisationStatements,
+  isFilingOpen,
   mapDraftRow,
   mapDocuments,
   mapInvitedBy,
@@ -108,6 +109,8 @@ export interface GegenstandResponse {
     shortinfo?: RawShortinfo | null
     statements?: { documents?: RawDocumentGroup[] | null } | null
     status?: { bgbllinks?: RawBgblLink[] | null } | null
+    /** "1" while the item takes Stellungnahmen, "0" afterwards (`isFilingOpen`). */
+    statementsstate?: string | number | null
   } | null
 }
 
@@ -740,6 +743,7 @@ export async function getDraftDetail(
       furtherRv: rvLinks.slice(0, -1).map((rv) => ({ label: rv.label, url: rv.url })),
       bgblNumber: null,
       bgblRisUrl: null,
+      filingOpen: false,
     }
     try {
       const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
@@ -748,8 +752,12 @@ export async function getDraftDetail(
         enactment.bgblNumber = bgbl.number
         enactment.bgblRisUrl = bgbl.url
       }
+      // The second window for input, from the same payload as the BGBl
+      // link — no request of its own. Only while the GP runs: a Vorlage
+      // that lapsed with its GP takes nothing, whatever a stale flag says.
+      enactment.filingOpen = isFilingOpen(rv.content) && !gpHasEnded(gp, currentGp)
     } catch {
-      // RV enrichment is optional: bgblNumber/bgblRisUrl stay null.
+      // RV enrichment is optional: bgblNumber/bgblRisUrl stay null, filingOpen false.
     }
   }
 

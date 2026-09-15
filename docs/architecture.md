@@ -201,7 +201,8 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 | `TraceTimeline` | `steps: TraceStep[]` | Vertical process timeline: date, text, link chips |
 | `DocumentList` | `documents: DraftDocument[]; source?: string` | Document rows: title + hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons and chips act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
 | `LawDiffSection` | `gp: string; inr: number` | "Was sich nach der Begutachtung geändert hat": lazy client fetch of `/diff`; filter chips (UFieldGroup), search (UInput), one folded group per Gesetz with count pills, rows with geändert / redaktionell / neu / entfallen / unverändert and an expandable word-level diff; both sources linked with CC BY attribution; a note above the list names laws only one of the two documents carries. Anchor `#textvergleich`, linked from the outcome card |
-| `StatementsPanel` | `gp: string; inr: number; summary: StatementsSummary` | Summary tiles (total/orgs/private/non-public), top organisations; full list lazy via the statements route, paginated client-side (steps of 25), persons as "Privatperson" |
+| `StatementsPanel` | `gp: string; inr: number; summary: StatementsSummary` | Summary tiles (total/orgs/private/non-public), top organisations; full list lazy via the statements route, paginated client-side (`ListMore`, steps of 10), organisation search above 20 rows, persons as "Privatperson" |
+| `ListMore` | `visible: number; total: number; step: number; allAbove?: number` | Foot of a client-paginated list: "10 von 42 angezeigt" as the live region, the step button, and "Alle N anzeigen" above `allAbove` remaining |
 | `EmptyState` | `title: string; description?: string` | Empty state |
 | `ErrorState` | `title?: string; description?: string` + emit `retry` | Error state with "Erneut versuchen" |
 | `LoadingState` | `label?: string` | Loading state |
@@ -2619,6 +2620,24 @@ for one line. No last-good fallback: a failed fetch costs a line, not the
 page. Not built: the anonymous rows as a list, and the Ausschuss's answer to
 this input (that is the parliament comparison, §12.2).
 
+**The door follows the open window (2026-09-15, same day).** The head card
+that holds the Frist and the "Stellungnahme abgeben" button used to exist
+only while the Frist ran. Now it shows every window that is open: the
+Begutachtung while its Frist runs, the Vorlage while parliament takes
+Stellungnahmen on it (upstream's `statementsstate` on the RV's detail JSON,
+read from the payload the BGBl link already comes from — `enactment.filingOpen`,
+gated on the GP still running), and both when both are. Both is not a
+corner case: in GP XXVIII 7 of 91 Regierungsvorlagen arrived before the
+draft's Frist had ended, median lead 14 days (GP XXVII: 1 of 296,
+`scripts/rv-latency.mjs`). Then the parliamentary window is arguably the one
+that still matters — the government has fixed its text, only the Ausschuss
+can change it — so neither door hides the other; the card states the
+overlap as a sequence of facts ("liegt bereits im Nationalrat, obwohl die
+Frist noch läuft"), never as a verdict. The Vorlage has no published
+deadline, so its door says so and offers no calendar entry. The RV block in
+the section carries the same fact as one sentence with a link, not a second
+button.
+
 **The document link.** The row's citation leads to the Stellungnahme's page
 upstream; a journalist working through fifty organisations' submissions
 asked for the PDF itself. The PDF's URL is not in the list row and needs one
@@ -2646,6 +2665,71 @@ Only the columns we read are asserted (appended columns shift nothing);
 identity is `feld_name` where the API gives one and the display label
 otherwise. The uptime workflow's data canary (§12.7) is the same guard from
 the outside.
+
+### 12.15 Lange Stellungnahmen-Listen: zwei Faltungen und ein Suchfeld
+
+Die Organisationsliste eines Entwurfs wurde ungekürzt gerendert — 8/ME sind
+42 Zeilen, 32/ME 100, der Deckel (`ORG_LIST_CAP`) liegt bei 150 —, und die
+Liste der Regierungsvorlage ebenso. Der Grund dafür steht im Kommentar zum
+Deckel und gilt weiter: **jeder Name liegt im SSR-HTML**, damit eine
+Organisation sich auf dieser Seite selbst findet. Eine Seitenpaginierung,
+die die überzähligen Zeilen aus dem DOM nimmt, nimmt genau das zurück.
+
+Deshalb zwei Faltungen, nicht eine, mit einer Regel, welche wann gilt:
+
+- **Ohne Suchanfrage** bleiben alle Zeilen im DOM, und was hinter der ersten
+  Seite liegt, trägt `hidden="until-found"`. Das Aufdecken macht der Browser,
+  nicht unser JavaScript — die Seitensuche erreicht Zeile 90 also auch ohne
+  JS, und ohne JS gibt es auch kein Suchfeld. Wo `until-found` fehlt,
+  degradiert das Attribut zum gewöhnlichen `hidden`, also zur Slice, nie zu
+  etwas Schlechterem. Vue 3.5 gibt den Wert unverändert ins SSR-HTML
+  (`hidden` steht nicht in seiner Boolean-Attribut-Liste), Tailwind v4 nimmt
+  `[hidden='until-found']` in Preflight aus.
+- **Mit Suchanfrage** sind die nicht passenden Zeilen wirklich weg. Wer
+  filtert, will sie weg haben; die Seitensuche darf nicht zurückholen, was
+  der Filter ausgeschlossen hat.
+
+**Zwei Fallen, beide in `main.css` (`divide-rows`) abgeräumt.** Erstens ist
+`hidden="until-found"` *nicht* `display: none`, sondern
+`content-visibility: hidden`: der Inhalt entfällt, die **Box der Zeile
+bleibt**. Das Padding der 32 gefalteten Zeilen stand als 640 px leeres
+Papier in der Liste — die Seite sah unterhalb der zehnten Zeile kaputt aus.
+Zweitens ist Tailwinds `divide-y` in v4 `& > :not(:last-child)`; die letzte
+*sichtbare* Zeile bekam damit eine Trennlinie direkt auf die Unterkante des
+Containers. Beides löst dieselbe Utility: Trenner auf `:not([hidden]) ~
+:not([hidden])` (was v3 tat, aus demselben Grund), Padding und Rahmen der
+gefalteten Zeilen auf null.
+
+**Das Suchfeld** (ab 20 Zeilen, nur im Segment Organisationen und im
+RV-Block — die anderen Segmente listen „Privatperson", da ist nichts zu
+suchen) ist kein Ersatz für Strg+F, sondern schlägt es auf dieser Liste
+dreifach: es faltet „Oesterreichischer" auf „Österreichischer", es zeigt
+Treffer, die `line-clamp-3` optisch abgeschnitten hat (und hinten stehen die
+unterscheidenden Teile: „…; Abteilung 1 – Verfassungsdienst"), und es kann
+auf die Suche nach dem Namen einer Privatperson **antworten**: Strg+F
+schweigt, und Schweigen liest sich wie „hat nicht eingebracht", während die
+Wahrheit „den Namen veröffentlichen wir nicht" ist (DSGVO). Gesucht wird
+über Name und Geschäftszahl, tokenweise und in beliebiger Reihenfolge, damit
+„wiener recht" das „Amt der Wiener Landesregierung; Magistratsdirektion -
+Recht" findet. Die Faltung ist bewusst **nicht** `orgMatchKey`
+(`mappers.ts`): die entscheidet über Dubletten und darf unabhängig davon
+driften.
+
+Seitengröße 10 statt 25 — die Liste sitzt auf einer Seite mit fünf weiteren
+Abschnitten —, und ab 30 verbleibenden Zeilen steht „Alle N anzeigen"
+daneben: das Suchfeld findet einen Namen, den man schon kennt, und
+beantwortet „zeig mir alle" nicht. Die Fußzeile sagt „10 von 42 angezeigt"
+und **nicht**, wie viele fehlen: „10 von 42" sagt es bereits, und der Knopf
+darunter sagt, wie viele der nächste Druck bringt — eine dritte Zahl wäre
+dieselbe Auskunft ein drittes Mal, genau dort, wo gezählt wird.
+
+**Nebenbefund, am Geisterknopf aufgefallen:** `--ui-bg-elevated` war nicht
+gemappt, Nuxt UIs Vorgabe ist neutral-100 (#f5f5f4) — gegen unseren
+Seitengrund #f5f4ef praktisch dieselbe Farbe. Die neutralen Knöpfe hovern
+alle auf `bg-elevated`, der Ghost-Knopf hatte damit gar keinen sichtbaren
+Zustandswechsel und die umrandeten einen, den niemand sieht. Jetzt auf
+#ebe9e1 gemappt, einen warmen Schritt unter dem Seitengrund Richtung
+Hairline.
 
 ## 13. Open questions
 
