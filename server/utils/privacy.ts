@@ -1,6 +1,7 @@
 /**
  * GDPR enforcement: classification of submitter names from the
- * Parliament API (list 142 / SNME).
+ * Parliament API (list 142 — SNME on a Ministerialentwurf, SN on a
+ * Regierungsvorlage; the strings have the same shapes).
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports,
  * so vitest can execute the module directly.
@@ -9,6 +10,24 @@
  * must NEVER leave the server. The safe default is therefore `person` with
  * `name: null` — an organisation misclassified as a person is a cosmetic
  * bug, the opposite direction would publish a name.
+ *
+ * The cosmetic bug is not rare and not evenly spread. Measured on every
+ * GP-XXVIII Stellungnahme on 2026-09-15 (`scripts/classifier-audit.ts`): at
+ * least 334 of the 2,996 rows filed as "person" were institutions — 221 of
+ * them federal ministries in their own short form ("BM f. Finanzen"), then
+ * courts, the Datenschutzbehörde, the FMA, the Umweltanwaltschaften and a
+ * handful of brand-style NGOs. Every pattern added that day was held against
+ * the comma-form person names of the same corpus and matched none of them.
+ * Refused on the same evidence: a bare semicolon rule (persons file as
+ * "Mustermann, Florian; Dr. med. dent."), all-caps ("MUSTERMANN, PETER") and digits
+ * ("Muster, Ma8").
+ *
+ * The audit also found the opposite error, which is the one that matters:
+ * "Lastname, Firstname; Universität Salzburg" — a person filing with an
+ * affiliation — was published whole, name included, because the affiliation
+ * carried the keyword. 239 rows in GP XXVII, 2 in GP XXVIII.
+ * `leadsWithPersonName` closes that: the segment that names the submitter
+ * decides, and it is checked before any organisation signal.
  */
 import type { SubmitterKind } from '../../shared/types'
 
@@ -29,11 +48,26 @@ const NONPUBLIC_RE = /nicht-?\s*öffentliche?\s+stellungnahme/i
  * case-insensitively against the full normalized name. Because an entry here
  * publishes the name, this list may contain organisations only, never
  * persons — add entries solely after verifying the exact spelling in the
- * Parliament data (list 142 `names[].name`).
+ * Parliament data (list 142 `names[].name`). `scripts/classifier-audit.ts`
+ * prints the candidates.
  */
 const ORG_ALLOWLIST = new Set([
   'epicenter.works', // verified 2026-08-23 via 14/SN-8/ME (GP XXVIII)
+  'weisser ring', // verified 2026-09-15, list 142 GP XXVIII ("WEISSER RING", 3 rows)
+  'vier pfoten', // verified 2026-09-15, list 142 GP XXVII ("Vier Pfoten; Stiftung für Tierschutz")
 ])
+
+/**
+ * The whole string, or its naming segment: "Vier Pfoten; Stiftung für
+ * Tierschutz" is allowlisted by its first segment, the department after the
+ * semicolon varies from filing to filing.
+ */
+function isAllowlisted(s: string): boolean {
+  const lower = s.toLowerCase()
+  if (ORG_ALLOWLIST.has(lower)) return true
+  const semicolon = lower.indexOf(';')
+  return semicolon >= 0 && ORG_ALLOWLIST.has(lower.slice(0, semicolon).trim())
+}
 
 /** "(4880 St. Georgen im Attergau)" suffix — only ever appears on private persons. */
 const PLZ_SUFFIX_RE = /\s*\(\d{4,5}\s+[^)]+\)\s*$/
@@ -69,6 +103,9 @@ const LEGAL_FORM_PATTERNS: RegExp[] = [
  */
 const STRONG_ORG_PATTERNS: RegExp[] = [
   /ministerium/i,
+  // The ministries' own short form in list 142 ("BM f. Finanzen", "BM f.
+  // Arbeit, Soziales, …") — 221 rows of GP XXVIII read as "Privatperson".
+  /^BM\s?f\.\s/i,
   /kanzleramt/i,
   /(?:wirtschafts|arbeiter|land(?:es)?|landwirtschafts|ärzte|zahnärzte|tierärzte|apotheker|notariats?|rechtsanwalts|ziviltechniker|patentanwalts|ingenieur)kammer/i,
   /kammer\s+(?:für|der|des)\b/i,
@@ -77,6 +114,16 @@ const STRONG_ORG_PATTERNS: RegExp[] = [
   /universität/i,
   /(?:fach)?hochschule/i,
   /gerichtshof|rechnungshof|volksanwaltschaft/i,
+  // Oberlandesgericht Wien, Landesgericht Korneuburg, Verwaltungsgericht Wien;
+  // Staatsanwaltschaft, Umweltanwaltschaft, Kinder- und Jugendanwaltschaft
+  // (never "Anwalt" alone — that is a profession, and persons file as
+  // "Huber, Anna; Rechtsanwältin"); Datenschutzbehörde; Finanzmarktaufsicht.
+  // Strong, because these file in comma form too ("Staatsanwaltschaft
+  // Innsbruck, Staatsanwaltschaft Feldkirch").
+  /gericht(?:e|s|en)?\b/i,
+  /anwaltschaft(?:en)?\b/i,
+  /behörden?\b/i,
+  /aufsicht\b/i,
   /bundesamt|landesamt|gemeindeamt|\bamt\s+der\b/i,
   /landesregierung|landtag\b|magistrat|bezirkshauptmannschaft/i,
   /sozialversicherung|gesundheitskasse|krankenkasse|pensionsversicherung|unfallversicherung/i,
@@ -84,6 +131,13 @@ const STRONG_ORG_PATTERNS: RegExp[] = [
   /bischofskonferenz|erzdiözese|diözese/i,
   /stiftung\b/i,
 ]
+
+/**
+ * Bundesländer as they appear behind "AK"/"BAK" (Arbeiterkammer,
+ * Bundesarbeitskammer) — the chambers file under their initials.
+ */
+const LAENDER =
+  'Wien|Niederösterreich|Oberösterreich|Salzburg|Steiermark|Kärnten|Tirol|Vorarlberg|Burgenland|Österreich'
 
 /** Further org indicators — checked only AFTER the person patterns. */
 const ORG_PATTERNS: RegExp[] = [
@@ -105,16 +159,42 @@ const ORG_PATTERNS: RegExp[] = [
   /kirche\b/i,
   /holding\b|verlag\b|agentur\b/i,
   /interessenvertretung|arbeitsgemeinschaft|dachorganisation|berufsvereinigung/i,
-  /\b(?:ÖGB|WKÖ|WKO|ÖH|ÖAMTC|ARBÖ|SPÖ|ÖVP|FPÖ|NEOS|KPÖ)\b/,
+  // JS `\b` is ASCII-only: before "Ö" there is no word boundary, so the old
+  // `\b(?:ÖGB|…)\b` never matched ÖGB, ÖAMTC, SPÖ or ARBÖ at all — only WKO
+  // and NEOS. Letter/digit lookarounds do what the boundary was meant to.
+  /(?<![\p{L}\d])(?:ÖGB|WKÖ|WKO|ÖH|ÖAMTC|ARBÖ|SPÖ|ÖVP|FPÖ|NEOS|KPÖ)(?![\p{L}\d])/u,
   /partei\b/i,
+  // Added 2026-09-15 from the corpus audit; each one zero hits among the
+  // comma-form persons of GP XXVIII.
+  /österreichisch/i, // "Österreichische Kinderfreunde", "Österreichischer Werberat" — `österreich\b` above misses the adjective
+  /hochschüler/i, // ÖH in words: "Österreichische HochschülerInnenschaft"
+  /[a-zäöüß]vereine?\b/i, // "Bund Österreichischer Frauenvereine", "Sportverein" — `\bverein\b` above needs the bare word
+  /vertretung\b/i, // Studienvertretung, Bundesvertretung, Erwachsenenvertretung
+  /presseclub|\bclub\b/i,
+  /\bnationalbank\b|\bbank\b/i, // "Musterbank, Christine" has no boundary before "bank"
+  /allianz\b/i,
+  /\bliga\b/i, // "Testliga, Dora" is a surname
+  /föderation/i,
+  /kuratorium|fachstelle|\bsektion\b/i,
+  /organisation\b/i,
+  /greenpeace|global\s?2000/i,
+  /gleichbehandlung/i,
+  /\bNGO\b/,
+  /personalvertretung|betriebsrat/i,
+  /(?:interventions|beratungs|service|ombuds|koordinations|anlauf|geschäfts)stelle/i,
+  new RegExp(`^(?:AK|BAK)\\s+(?:${LAENDER})\\b`),
+  /^(?:ÖHGB|ÖVI|VCÖ)(?=[\s;,]|$)/,
 ]
 
 /**
  * Academic titles (leading and trailing). Case-sensitive so that
- * name parts ("Di Marco", "Ma") are not matched.
+ * name parts ("Di Marco", "Ma") are not matched. The degree abbreviations
+ * take an optional dot: "Musterfrau BEd., Renate" is how the form is filled
+ * in, and a title left half-stripped breaks the comma form that would have
+ * protected the name.
  */
 const TITLE_RE =
-  /(?:^|[\s,])(?:(?:o\.|ao\.|em\.)\s?)?(?:Univ\.-?\s?Prof\.|Priv\.-?\s?Doz\.|Dipl\.-?\s?Ing\.|Dipl\.-?\s?Kfm\.|Dipl\.-?\s?Päd\.|MMag\.a?|Mag\.a?|DDr\.|Dr\.in|Dr\.|Ing\.|Prof\.|DI(?=[\s,]|$)|LL\.\s?M\.|LL\.\s?B\.|MSc|BSc|MBA|MPA|MAS|MEd|BEd|MA(?=[\s,]|$)|BA(?=[\s,]|$)|PhD|Bakk\.|iur\.|jur\.|phil\.|rer\.\s?nat\.|rer\.\s?soc\.\s?oec\.|med\.|techn\.|h\.c\.)/g
+  /(?:^|[\s,])(?:(?:o\.|ao\.|em\.)\s?)?(?:Univ\.-?\s?Prof\.|Priv\.-?\s?Doz\.|Dipl\.-?\s?Ing\.|Dipl\.-?\s?Kfm\.|Dipl\.-?\s?Päd\.|MMag\.a?|Mag\.a?|DDr\.|Dr\.in|Dr\.|Ing\.|Prof\.|DI(?=[\s,]|$)|LL\.\s?M\.|LL\.\s?B\.|MSc\.?|BSc\.?|MBA\.?|MPA\.?|MAS\.?|MEd\.?|BEd\.?|MA\.?(?=[\s,]|$)|BA\.?(?=[\s,]|$)|PhD\.?|Bakk\.|iur\.|jur\.|phil\.|rer\.\s?nat\.|rer\.\s?soc\.\s?oec\.|med\.|techn\.|h\.c\.)/g
 
 /** "Lastname, Firstname [middle name]" — nobility particles on the left allowed. */
 const PERSON_COMMA_FORM_RE =
@@ -137,11 +217,95 @@ function stripTitles(s: string): { core: string; hadTitle: boolean } {
   return { core, hadTitle }
 }
 
+/** Any organisation signal at all — legal form, strong or weak keyword. */
+function carriesOrgSignal(s: string): boolean {
+  return matchesAny(LEGAL_FORM_PATTERNS, s) || matchesAny(ORG_PATTERNS, s)
+}
+
+/** Two or three capitalized tokens — a bare "Firstname Lastname". */
+const BARE_NAME_RE = /^\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2}$/u
+/** An acronym ("WU Wien", "ÖH BOKU"), a split compound ("Mieter-, Siedler …")
+ *  or an article ("Die Österreichischen Rechtsanwälte") — none of which
+ *  opens a personal name. */
+const NOT_A_NAME_RE = /(?:^|\s)\p{Lu}{2,}(?:\s|$)|-\s*$|-\s|^(?:Die|Der|Das|Den|Dem|Des)\s/u
+
+/**
+ * Whether a segment on its own reads as a person: "Lastname, Firstname", or
+ * a title with one to three name tokens ("Mustermann Gregor, Dr."). With
+ * `bare`, also two or three capitalized mixed-case tokens without any title
+ * ("Huber Anna") — used only where the rest of the string supplies the
+ * doubt, and never for a single token, an acronym or a hyphen-split word:
+ * "Neustart, gemeinnütziger Verein", "WU Wien, Institut für …" and
+ * "Österreichischer Mieter-, Siedler und Wohnungseigentümerbund" are
+ * organisations, and the corpus comparison of 2026-09-15 is where each of
+ * those shapes was caught.
+ */
+function isPersonShaped(segment: string, bare = false): boolean {
+  if (!segment || /\d/.test(segment) || carriesOrgSignal(segment)) return false
+  const { core: raw, hadTitle } = stripTitles(segment)
+  if (!raw) return false
+  // "mustermann, roland" is a person who did not reach for the shift key; the
+  // shapes below want capitals, so an all-lowercase segment is given them.
+  // Only then: in "Ärzte ohne Grenzen" the lowercase word is the signal
+  // that this is not a name.
+  const core = /\p{Lu}/u.test(raw)
+    ? raw
+    : raw.replace(/(^|[\s,/-])(\p{Ll})/gu, (_, before: string, letter: string) => before + letter.toUpperCase())
+  if (PERSON_COMMA_FORM_RE.test(core)) return true
+  if (hadTitle && SIMPLE_NAME_RE.test(core)) return true
+  return bare && BARE_NAME_RE.test(core) && !NOT_A_NAME_RE.test(core)
+}
+
+/**
+ * Several persons filing together: "Anna Huber/Max Mayer, Studienvertretung
+ * X; …". Every part before the first separator has to read as a bare name;
+ * one organisation among them ("Vier Pfoten/Tierschutz Austria") and the
+ * string is not this shape.
+ */
+const JOINT_SPLIT_RE = /\/|\s(?:und|&)\s/
+
+function leadsWithJointPersonNames(s: string): boolean {
+  const first = s.split(/[;,]/)[0]!.trim()
+  if (first.length === s.length || !JOINT_SPLIT_RE.test(first)) return false
+  const parts = first.split(JOINT_SPLIT_RE).map((part) => part.trim())
+  return parts.length >= 2 && parts.every((part) => isPersonShaped(part, true))
+}
+
+/**
+ * A person first, an institution after: "Lastname, Firstname; Universität
+ * Salzburg", "Mustermann Gregor, Dr.; Rechtsanwalt; … Rechtsanwälte GesbR",
+ * "Huber, Anna, Universität Wien", "Huber Anna, Richterin am Landesgericht
+ * Wien". The institution's keyword used to decide, and the row was published
+ * whole. Here the segment that names the submitter decides instead — before
+ * the legal forms, because "Huber, Anna; Raubal GmbH" names the person first.
+ *
+ * Deliberately narrow about what counts as the naming segment: the text
+ * before the first semicolon, or the first two comma parts, or — with a
+ * single comma — the left part when the right one carries the org signal.
+ * An organisation whose own name is comma-shaped keeps its keyword in that
+ * segment ("Land Tirol, Abteilung Verfassungsdienst; …") and is left alone.
+ * The price is a brand-style organisation filing as "Name Name; Abteilung",
+ * which now stays hidden like every other name the heuristic cannot place.
+ */
+function leadsWithPersonName(s: string): boolean {
+  if (leadsWithJointPersonNames(s)) return true
+  const semicolon = s.indexOf(';')
+  if (semicolon >= 0) return isPersonShaped(s.slice(0, semicolon).trim(), true)
+  const parts = s.split(',')
+  if (parts.length >= 3) return isPersonShaped(`${parts[0]},${parts[1]}`.trim())
+  if (parts.length === 2) {
+    const [left, right] = parts as [string, string]
+    return carriesOrgSignal(right) && isPersonShaped(left.trim(), true)
+  }
+  return false
+}
+
 /**
  * Classifies a raw submitter string from the Parliament API.
  * The rule order is GDPR-driven — do not reorder:
  * person patterns win against weak org indicators; only legal forms
- * and strong org signals win against person patterns.
+ * and strong org signals win against person patterns — and the segment
+ * that names the submitter wins against both.
  */
 export function classifySubmitter(raw: string | null | undefined): SubmitterClassification {
   const s = (raw ?? '').replace(/\s+/g, ' ').trim()
@@ -149,7 +313,7 @@ export function classifySubmitter(raw: string | null | undefined): SubmitterClas
 
   if (NONPUBLIC_RE.test(s)) return NONPUBLIC
 
-  if (ORG_ALLOWLIST.has(s.toLowerCase())) {
+  if (isAllowlisted(s)) {
     return { kind: 'organisation', name: s }
   }
 
@@ -157,6 +321,9 @@ export function classifySubmitter(raw: string | null | undefined): SubmitterClas
   const withoutPlz = s.replace(PLZ_SUFFIX_RE, '').trim()
   if (withoutPlz !== s) return PERSON
   if (!withoutPlz) return PERSON
+
+  // A person with an affiliation is a person, whatever the affiliation is.
+  if (leadsWithPersonName(withoutPlz)) return PERSON
 
   // Legal forms are unambiguous — no person is called "GmbH".
   if (matchesAny(LEGAL_FORM_PATTERNS, withoutPlz)) {
