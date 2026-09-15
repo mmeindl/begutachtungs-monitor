@@ -46,6 +46,7 @@ import {
   mapInvitedBy,
   mapStatementRow,
   mapTextEvolution,
+  mapVorlageRow,
   statementDocumentPathFromUrl,
   RV_STATION,
   parseShortinfo,
@@ -56,6 +57,7 @@ import {
   type RawName,
   type RawShortinfo,
   type RawStage,
+  type VorlageRow,
 } from './mappers'
 import { checkListHeader } from './listHeaders'
 import {
@@ -111,6 +113,14 @@ export interface GegenstandResponse {
     status?: { bgbllinks?: RawBgblLink[] | null } | null
     /** "1" while the item takes Stellungnahmen, "0" afterwards (`isFilingOpen`). */
     statementsstate?: string | number | null
+    /**
+     * Predecessors of this item — on a Regierungsvorlage the Ministerialentwurf
+     * it came from (`ityp: 'ME'`). **Not a universal field:** 126 d.B. carries
+     * no `preconst` key at all, so its absence is not proof that no
+     * Begutachtung happened; cross-check against list 81
+     * (`docs/begutachtung-uebersprungen.md` §2).
+     */
+    preconst?: { gp_code?: string | null, ityp?: string | null, inr?: number | string | null }[] | null
   } | null
 }
 
@@ -334,6 +344,31 @@ export const getDraftsForGp = defineCachedFunction(
     }
   },
   { name: 'drafts-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+)
+
+/**
+ * Every Regierungsvorlage of one Gesetzgebungsperiode, from list 101 —
+ * the candidate pool for "which Vorlagen still take Stellungnahmen".
+ *
+ * ONE call for the whole period (GP XXVIII: 117 rows, GP XXVII: 365). The
+ * `Status` column narrows it to the handful still before the Nationalrat
+ * before any detail JSON is fetched; without it this would be one
+ * Gegenstand request per Vorlage, which is why the section was not built
+ * until the column was found (`docs/api-exploration.md` §101).
+ *
+ * Derived, because `mapVorlageRow` is ours. The type filter is asserted the
+ * way every other list is: rows must belong to the GP, and the header must
+ * still name the columns the mapper reads by position.
+ */
+export const getVorlagenForGp = defineCachedFunction(
+  async (gp: string): Promise<VorlageRow[]> => {
+    const res = await fetchFilterList(101, { GP_CODE: [gp], ITYP: ['I'], VHG: ['RV'] })
+    const rows = res.rows ?? []
+    assertRowsMatchGp(rows, gp, 101)
+    assertListHeader(101, res)
+    return rows.map(mapVorlageRow)
+  },
+  { name: 'vorlagen-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
 )
 
 /**

@@ -10,11 +10,24 @@ useSeoMeta({
 const route = useRoute()
 const router = useRouter()
 
-// Default first: the leftmost segment reads as "where am I" — it must be
-// the state the page actually lands in.
+/* Default first: the leftmost segment reads as "where am I" — it must be
+ * the state the page actually lands in.
+ *
+ * The labels are the StageBar's vocabulary, not a synonym for it: the
+ * homepage section is "Jetzt in Begutachtung" and the station is
+ * "Begutachtung", so the filter that the homepage tile links into
+ * (`/entwuerfe?status=open`) must not greet the reader with a third word
+ * for the same state. Only the label changed — `DraftStatus` stays
+ * `open | closed`, so every shared `?status=` URL keeps working.
+ *
+ * "Abgeschlossen" is the honest name for what it filters (the Frist has
+ * ended) but it currently over-promises finality: a draft whose
+ * Begutachtung is over can still be taking Stellungnahmen in the
+ * Nationalrat — see the "Zweite Runde" section and the follow-up in
+ * `TODO.md`. */
 const statusOptions: { value: DraftStatus; label: string }[] = [
   { value: 'all', label: 'Alle' },
-  { value: 'open', label: 'Offen' },
+  { value: 'open', label: 'In Begutachtung' },
   { value: 'closed', label: 'Abgeschlossen' },
 ]
 
@@ -88,7 +101,7 @@ const countLabel = computed(() =>
         Entwürfe
       </h1>
       <p class="mt-2 text-ink-secondary">
-        Ministerialentwürfe im Begutachtungsverfahren – laufend und abgeschlossen.
+        Ministerialentwürfe im Begutachtungsverfahren – in Begutachtung und abgeschlossen.
       </p>
     </header>
 

@@ -61,8 +61,26 @@ export const LIST_142_COLUMNS: ColumnExpectation[] = [
   { index: 15, label: 'Nr' },
 ]
 
+/**
+ * List 101 — Verhandlungsgegenstände (`mapVorlageRow`). Observed 2026-09-15.
+ *
+ * Note the deviation from lists 81/142: at index 0 the `feld_name` is `GP`,
+ * not `GP_CODE` (which is this list's *label* there). Asserting the
+ * familiar spelling would fail on a healthy response.
+ */
+export const LIST_101_COLUMNS: ColumnExpectation[] = [
+  { index: 0, feldName: 'GP' },
+  { index: 2, feldName: 'INR' },
+  { index: 6, label: 'Betreff' },
+  { index: 7, label: 'Nummer' },
+  { index: 8, feldName: 'DATUMSORT' },
+  { index: 10, feldName: 'STATUS' },
+  { index: 14, feldName: 'HIS_URL' },
+]
+
 const COLUMNS: Record<number, ColumnExpectation[]> = {
   81: LIST_81_COLUMNS,
+  101: LIST_101_COLUMNS,
   142: LIST_142_COLUMNS,
 }
 
