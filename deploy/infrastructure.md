@@ -11,7 +11,7 @@ is [README.md](README.md). Last verified: 2026-08-26.
 | Server | netcup ([customercontrolpanel.de](https://www.customercontrolpanel.de)) | VPS pico G11s 12M, Nuremberg (DE) | €1.85/month (incl. 20% AT VAT), 12-month term |
 | E-mail | INWX ("Mail Easy") | receive-only forwarding: `kontakt@begutachtungs-monitor.at` | €0.29/month, 12-month term |
 | TLS | Let's Encrypt via Caddy | auto-issued, auto-renewed | free |
-| Uptime monitoring | GitHub Actions (`.github/workflows/uptime.yml`) | probes `/` twice an hour from GitHub's runners (HTTP 200 + keyword "Begutachtung"); on failure opens one issue labelled `downtime` and @mentions the owner — GitHub mails it —, closes it on recovery. No account, no server component | free (public repo) |
+| Uptime monitoring | GitHub Actions (`.github/workflows/uptime.yml`) | probes `/` twice an hour from GitHub's runners (HTTP 200 + keyword "Begutachtung"), then the data canary: `/entwuerfe/XXVIII/8` must still name the Österreichischer Rechtsanwaltskammertag among its Stellungnahmen — the silent failure where every submitter degrades to "Privatperson" (since 2026-09-15). On failure opens one issue labelled `downtime` and @mentions the owner — GitHub mails it —, closes it on recovery. No account, no server component | free (public repo) |
 | **Total** | | | **≈ €41/year** |
 
 Both providers are EU-owned — INWX (Berlin, DE); netcup (Karlsruhe, DE,
