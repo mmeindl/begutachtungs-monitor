@@ -435,6 +435,62 @@ Two consequences:
    moved to the point where it is least able to change anything. The second is
    the more interesting finding anyway.
 
+### A third location, and what happens to input that lands there
+
+§ 23b is not the only channel that stays open when no draft is on the table.
+**Petitionen and parlamentarische Bürgerinitiativen** accept statements and
+endorsements for as long as the item is before the house — the same list 142,
+`BEZUG_ITYP: "PET"` or `"BI"`. Measured 2026-09-16, GP XXVIII: **27 Petitionen
+carrying 420 statements, 36 Bürgerinitiativen carrying 792** — 1,212
+submissions across 63 items.
+
+The question worth asking is not how many arrive but what becomes of them, and
+for once a completed period answers it. GP XXVII, from `status.description` on
+each Gegenstand:
+
+| | Bürgerinitiativen (74) | Petitionen (148) |
+|---|---:|---:|
+| Ausschussbericht **zur Kenntnis genommen** | 50 | 115 |
+| carried into the next GP (§ 21 Abs. 1a GOG) | 18 | 0 |
+| Sammelbericht of the Petitionsausschuss | 3 | — |
+| still on a committee agenda / Mitteilung | — | 18 |
+| assigned to a subject committee, **Beratungen nicht aufgenommen** | — | ~5 |
+| **a subject committee actually reported** | **3** | **4** |
+
+The last row is the whole finding. Arbeit und Soziales (×2) and
+Konsumentenschutz took up a Bürgerinitiative and reported; Familie und Jugend,
+Verkehr, Unterricht and Gesundheit did so for a Petition — and the
+Gesundheitsausschuss report carries an **angenommene Entschließung**. So input
+through this channel does occasionally move something. It happens in about
+**4–5 % of cases**.
+
+**The carry-over is not a quiet death, and not an escape either.** All 18
+Bürgerinitiativen marked „Verhandlungsgegenstand der nächstfolgenden GP" carry
+an explicit successor link into GP XXVIII (`XXVIII/BI/1`–`18`) — the data
+records where each went, which is more than the Ministerialentwurf → Antrag
+route does (§4a). Following them through: ten ended in Kenntnisnahme a second
+time, four produced a Mitteilung, three are still on the Petitionsausschuss
+agenda and one reached the Bildungsausschuss. Carrying over buys a second
+round, not a different outcome. Counted through, **60 of 74 GP-XXVII
+Bürgerinitiativen end in Kenntnisnahme**.
+
+**Why this belongs in this memo and not in the product.** It completes the
+migration argument: participation does not disappear when a draft skips the
+Begutachtung, it relocates, and there are now three measured locations for it —
+the ministerial Begutachtung, where a ressort must process what arrives before
+it files; § 23b statements, where nobody is obliged to; and Petitionen/BI,
+where a committee notes it, three times in four.
+
+It is deliberately **not** a work package, for the reason
+`docs/volksbegehren.md` gives: there is no successor document. Even the 4–5 %
+that move produce Petition → Ausschussbericht → perhaps an Entschließung, and
+no two versions of a text to compare. The accountability core — *what became of
+the input, § by §* — has nothing to bite on. One objection from the
+Volksbegehren analysis does *not* carry over, and it should be recorded
+honestly: there, a mechanical tracker could only ever print 47/47
+Kenntnisnahme. Here the wins exist, are identifiable and are nameable. They are
+simply rare.
+
 ## 5. What this is *not*
 
 An Initiativantrag is a legitimate instrument, not a trick. MPs have the
