@@ -17,13 +17,30 @@
 # Begut-Datensätze, also über ein wanderndes Fenster, und eine Regel darüber
 # meldete jede Woche eine Änderung.
 #
+# **Klasse B** vergleicht jeden Entwurf, den wir schon einmal gemessen haben,
+# gegen `tests/fixtures/annex-baseline.json`. Eine NOR-veröffentlichte Beilage
+# ändert sich nie und das Tor hält gegen das RIS zum Beginn der
+# Begutachtungsfrist — gegen ein festes Datum. Derselbe Entwurf muss sich also
+# morgen genauso messen wie heute, und deshalb ist die Regel Gleichheit und
+# kein Toleranzband. Neue Entwürfe zählen nicht mit (für sie gilt Klasse A),
+# und dass einer aus dem Fenster der 400 jüngsten rutscht, ist der Normalfall
+# und keine Meldung.
+#
 # **Wenn der Alarm anschlägt, weil du die Engine absichtlich verbessert hast:**
-# das kann er bei Klasse A nicht — hier steht keine Grundlinie, die nachzuziehen
-# wäre. Schlägt er an, ist entweder eine Zusicherung gebrochen (unser Fehler)
-# oder ein Dokument hat eine neue Gestalt (der Fall, für den das hier gebaut
-# ist). Sobald Klasse B dazukommt, gilt die Regel: die Grundlinie wird im
-# selben Commit nachgezogen wie die Änderung, sonst wird der Alarm zu dem
-# Rauschen, das man wegklickt.
+# bei Klasse A kann er das nicht — da gibt es keine Grundlinie. Bei Klasse B
+# schon, und dann gilt die Regel ohne Ausnahme: die Grundlinie wird im SELBEN
+# Commit nachgezogen wie die Änderung —
+# `npx vite-node scripts/annex-drift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`
+# — sonst wird der Alarm zu dem Rauschen, das man nach dem dritten Mal
+# wegklickt.
+#
+# **Was der Cache unten verdeckt, ehrlich benannt:** er liefert bereits
+# geholte Dokumente von der Platte, also bemerkt Klasse B im CI *keine*
+# nachträgliche Änderung an einem Dokument, das schon einmal geholt wurde.
+# Was sie im CI bemerkt, ist eine Verschiebung durch unseren eigenen Code und
+# alles an neuen Entwürfen. Für die andere Frage — hat das RIS rückwirkend
+# etwas angefasst — muss der Lauf ohne Cache erfolgen; das ist eine Handarbeit
+# und kein Wochenjob.
 #
 # Bekannte Falle, dieselbe wie bei `uptime.yml`: GitHub schaltet geplante
 # Workflows in Repositories ohne Commits nach 60 Tagen ab und schickt eine
@@ -106,14 +123,14 @@ jobs:
           path: annex-*.json
           retention-days: 90
 
-      - name: Klasse A anwenden
+      - name: Klasse A und B anwenden
         id: drift
         # `shell: bash` ist hier nicht Kosmetik: der Standard-Shell eines
         # run-Schritts ist `bash -e {0}` OHNE pipefail, und dann trägt
         # `skript | tee` den Exit-Code von tee — also immer 0. Der Alarm hätte
         # nie ausgelöst.
         shell: bash
-        run: npx vite-node scripts/annex-drift.ts -- annex-xml.json annex-pdf.json | tee drift.md
+        run: npx vite-node scripts/annex-drift.ts -- --grundlinie=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json | tee drift.md
 
       - name: Issue öffnen oder schließen
         # `always()`, weil der Schritt davor bei einem Befund mit 1 endet —

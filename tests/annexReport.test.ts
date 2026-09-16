@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_DRAFTS_WITH_ANNEX, classAFindings, summarize, type AnnexDraftReport, type AnnexReport } from '../scripts/annex-report'
+import { MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, summarize, toBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/annex-report'
 
 /**
  * Der Alarm selbst, gegen erfundene Berichte.
@@ -15,6 +15,7 @@ import { MIN_DRAFTS_WITH_ANNEX, classAFindings, summarize, type AnnexDraftReport
 
 /** Ein Entwurf, an dem nichts auszusetzen ist. */
 const sound = (over: Partial<AnnexDraftReport> = {}): AnnexDraftReport => ({
+  id: 'BEGUT_0000',
   cite: '42/ME',
   source: 'xml',
   note: null,
@@ -48,7 +49,7 @@ const report = (drafts: AnnexDraftReport[], over: Partial<AnnexReport> = {}): An
   path: 'xml',
   limit: 400,
   records: 400,
-  drafts: [...drafts, ...Array.from({ length: MIN_DRAFTS_WITH_ANNEX }, (_, i) => sound({ cite: `${i}/ME` }))],
+  drafts: [...drafts, ...Array.from({ length: MIN_DRAFTS_WITH_ANNEX }, (_, i) => sound({ id: `BEGUT_F${i}`, cite: `${i}/ME` }))],
   ...over,
 })
 
@@ -138,5 +139,54 @@ describe('summarize', () => {
         { kind: 'form', draft: 'c', text: '' },
       ]),
     ).toBe('1× Zusicherung, 2× Gestalt')
+  })
+})
+
+describe('Klasse B: der Entwurf, den wir schon einmal gemessen haben', () => {
+  const before = report([sound({ id: 'BEGUT_A', cite: 'A/ME', verifiedParas: 10 })])
+  const baseline = toBaseline([before])
+
+  it('schweigt, wenn sich nichts bewegt hat', () => {
+    expect(classBFindings(before, baseline)).toEqual([])
+  })
+
+  it('meldet einen Entwurf, dessen Zahlen sich bewegt haben', () => {
+    const now = report([sound({ id: 'BEGUT_A', cite: 'A/ME', verifiedParas: 8, withheldParas: 4, withheldStanding: 4 })])
+    const found = classBFindings(now, baseline)
+    expect(found).toHaveLength(1)
+    expect(found[0]).toMatchObject({ kind: 'grundlinie', draft: 'A/ME' })
+    expect(found[0]!.text).toContain('bestätigt: 10 → 8')
+    expect(found[0]!.text).toContain('einbehalten: 2 → 4')
+  })
+
+  it('fasst einen Entwurf zu einem Befund zusammen, nicht zu einem je Feld', () => {
+    // Ein verschobener Parse bewegt ein Dutzend Zähler auf einmal.
+    const now = report([sound({ id: 'BEGUT_A', cite: 'A/ME', checked: 1, clean: 1, substantial: 1, substantialClean: 1, verifiedParas: 1, uncheckedParas: 99 })])
+    expect(classBFindings(now, baseline)).toHaveLength(1)
+  })
+
+  it('lässt einen neuen Entwurf in Ruhe', () => {
+    // Neu heißt: für ihn gilt Klasse A und sonst nichts.
+    const now = report([sound({ id: 'BEGUT_NEU', cite: 'N/ME', verifiedParas: 3, withheldParas: 0, withheldStanding: 0 })])
+    expect(classBFindings(now, baseline)).toEqual([])
+  })
+
+  it('meldet nicht, dass ein Entwurf aus dem Fenster gerutscht ist', () => {
+    // Das ist der Normalfall des wandernden Fensters, keine Meldung.
+    const now = { ...report([]), drafts: report([]).drafts.slice(0, 5) }
+    expect(classBFindings(now, baseline).filter((f) => f.draft !== null)).toEqual([])
+  })
+
+  it('sagt es, wenn die Grundlinie den Pfad gar nicht kennt', () => {
+    const found = classBFindings({ ...before, path: 'pdf' }, baseline)
+    expect(found).toHaveLength(1)
+    expect(found[0]).toMatchObject({ kind: 'grundlinie', draft: null })
+    expect(found[0]!.text).toContain('PDF-Pfad')
+  })
+
+  it('hält die beiden Pfade auseinander', () => {
+    const both = toBaseline([before, { ...before, path: 'pdf' }])
+    expect(Object.keys(both.paths.xml).length).toBe(Object.keys(both.paths.pdf).length)
+    expect(both.paths.xml['BEGUT_A']).toMatchObject({ cite: 'A/ME', verifiedParas: 10 })
   })
 })

@@ -80,6 +80,15 @@ const gateSources: AnnexSources = {
 
 
 interface DraftResult {
+  /**
+   * Der RIS-Dokumentschlüssel. `cite` taugt als Schlüssel nicht: die meisten
+   * Datensätze im Fenster sind Verordnungen ohne
+   * Begutachtungsverfahrennummer und fallen auf den bei 34 Zeichen
+   * abgeschnittenen Kurztitel zurück — „Verordnung des Bundesministers für"
+   * steht am 16.09.2026 neunmal im Tabellenpfad. Die Grundlinie von Klasse B
+   * braucht eine Identität, die hält.
+   */
+  id: string
   cite: string
   source: 'xml' | 'pdf'
   checked: number
@@ -183,9 +192,10 @@ async function verify(doc: any): Promise<DraftResult | null> {
   const meta = doc?.Data?.Metadaten
   const begut = meta?.Bundesrecht?.Begut
   const cite = String(begut?.Begutachtungsverfahrennummer ?? begut?.Verfahrensnummer ?? meta?.Bundesrecht?.Kurztitel ?? meta?.Technisch?.ID ?? '?').slice(0, 34)
+  const id = String(meta?.Technisch?.ID ?? cite)
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
   const noGate: GateResult = { ran: false, notRunReason: null, judged: 0, verifiedParas: 0, withheldParas: 0, withheldStanding: 0, withheldAlreadyStanding: 0, withheldNotInDraft: 0, uncheckedParas: 0, rowsNoPara: 0, changeRowsNoPara: 0, verdictless: 0, wronglyVerified: 0, withheldWithText: 0, withheldWithoutCause: 0, verdicts: {} }
-  const blank = (note: string, laws = 0): DraftResult => ({ cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
+  const blank = (note: string, laws = 0): DraftResult => ({ id, cite, source: 'pdf', checked: 0, clean: 0, note, worst: [], ratios: [], points: [], substantial: 0, substantialClean: 0, tooShort: 0, laws, attributed: 0, unattributed: 0, noLaw: 0, unresolvedLaw: 0, unrepresentable: 0, unchangedRows: 0, unchangedParas: 0, unchangedProse: 0, unchangedBelow: 0, unchangedBelowVerified: 0, droppedPages: 0, units: 0, addressedUnits: 0, rightlyWithoutParagraph: 0, parasWithOwnBag: 0, parasWithoutOwnBag: 0, gate: noGate })
   if (!beginn) return blank('kein Beginn der Begutachtungsfrist')
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
@@ -372,7 +382,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
     if (bags.byLaw.get(group.law)?.get(key) === undefined) parasWithoutOwnBag++
     else parasWithOwnBag++
   }
-  return { cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, unchangedRows, unchangedParas, unchangedProse, unchangedBelow, unchangedBelowVerified, gate }
+  return { id, cite, source: readable ? 'xml' : 'pdf', checked, clean, note: null, worst, ratios, points, substantial, substantialClean, tooShort, laws: amending.length, attributed, unattributed, noLaw, unresolvedLaw, unrepresentable, droppedPages, units: bags.units, addressedUnits: bags.addressed, rightlyWithoutParagraph: bags.rightlyWithoutParagraph, parasWithOwnBag, parasWithoutOwnBag, unchangedRows, unchangedParas, unchangedProse, unchangedBelow, unchangedBelowVerified, gate }
 }
 
 /**
@@ -598,6 +608,7 @@ if (jsonPath) {
     // Zusicherungen gelten genauso. Die Filter des Prosaberichts sind für
     // Prozentzahlen da, nicht für Zusicherungen.
     drafts: results.map((r) => ({
+      id: r.id,
       cite: r.cite,
       source: r.source,
       note: r.note,
