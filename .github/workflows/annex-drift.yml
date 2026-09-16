@@ -99,10 +99,19 @@ jobs:
       # sich nie, also wird jede Woche nur das geholt, was neu dazugekommen
       # ist — und das ist genau das, was dieser Alarm prüfen soll.
       #
-      # Der Schlüssel rotiert wöchentlich (GitHub räumt Einträge nach 7 Tagen
-      # ohne Treffer weg); `restore-keys` wärmt ihn aus der Vorwoche.
-      - name: RIS-Cache des Prüfstands
-        uses: actions/cache@v4
+      # **Laden und Sichern sind getrennt, und das ist nicht Geschmack.**
+      # `actions/cache` sichert in seinem Post-Schritt nur, wenn der Job
+      # *erfolgreich* war — dieser Job scheitert aber absichtlich, sobald ein
+      # Befund dasteht. Mit dem kombinierten `actions/cache@v4` wurde der
+      # Cache also genau in den Wochen nicht gesichert, in denen etwas
+      # gefunden wurde, und ein stehender Befund hätte ihn nie warm werden
+      # lassen. Beim ersten Lauf am 16.09.2026 stand „Post RIS-Cache:
+      # skipped" im Protokoll.
+      #
+      # Der Schlüssel rotiert je Lauf (ein bestehender Schlüssel würde gar
+      # nicht erst gesichert); `restore-keys` wärmt aus dem letzten Lauf.
+      - name: RIS-Cache des Prüfstands laden
+        uses: actions/cache/restore@v4
         with:
           path: .harness-cache
           key: harness-cache-${{ github.run_id }}
@@ -113,6 +122,17 @@ jobs:
 
       - name: PDF-Pfad messen
         run: npx vite-node scripts/annex-pdf-verify.ts -- --gp=XXVIII --limit=$LIMIT --json=annex-pdf.json
+
+      # Gesichert wird direkt nach den Messungen und mit `always()`: was geholt
+      # wurde, ist dann geholt — auch wenn der Alarm gleich einen Befund
+      # meldet oder eine Messung abgebrochen ist. Ein halb gefüllter Cache ist
+      # besser als keiner, `restore-keys` nimmt ihn beim nächsten Mal mit.
+      - name: RIS-Cache des Prüfstands sichern
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .harness-cache
+          key: harness-cache-${{ github.run_id }}
 
       # Die Berichte bleiben als Artefakt liegen, auch wenn nichts gefunden
       # wurde: die Grundlinie für Klasse B wird aus genau diesen Dateien
