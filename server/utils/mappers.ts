@@ -13,13 +13,14 @@ import type {
   DescriptionBlock,
   DocumentFormat,
   Handoff,
+  StatementDocument,
   StatementMeta,
   StatementsSummary,
   TextVersion,
   TraceLink,
   TraceStep,
 } from '../../shared/types'
-import { classifySubmitter } from './privacy'
+import { classifySubmitter, readUpstreamFlag } from './privacy'
 
 export const PARLIAMENT_BASE = 'https://www.parlament.gv.at'
 
@@ -230,7 +231,8 @@ export function mapDraftRow(row: unknown[]): DraftSummary {
 // 0 gp · 1 ityp of the Stellungnahme (SNME on a Ministerialentwurf, SN on a
 // Regierungsvorlage) · 2 its INR · 4 date (display) · 5 dateSort (ISO) ·
 // 6 submitter (HTML <a> or placeholder text) · 12 endorsements ·
-// 15 citation ("476/SN-88/ME" on an ME, "277139/SN" on an RV)
+// 15 citation ("476/SN-88/ME" on an ME, "277139/SN" on an RV) ·
+// 19 TYP — upstream's organisation ('I') / person ('P') flag
 // Deviation from §5 noted: [5] DATUM_SORT is ISO and preferred;
 // [4] (dd.mm.yyyy) serves only as fallback.
 // The positions are asserted against the header at fetch time
@@ -300,31 +302,7 @@ export function mapVorlageRow(row: unknown[]): VorlageRow {
 /** The item types a Stellungnahme comes as — also the path segment of its page. */
 export type StatementItemType = 'SNME' | 'SN'
 
-/**
- * Our redirect to the Stellungnahme's own document: the PDF when one was
- * uploaded, its upstream page otherwise (`server/api/stellungnahmen/…`). A
- * path, not a URL — it is resolved on click, never fetched in advance, so a
- * list of 700 rows costs 700 links and zero upstream calls.
- */
-export function statementDocumentPath(gp: string, ityp: StatementItemType, inr: number): string {
-  return `/api/stellungnahmen/${gp}/${ityp}/${inr}/dokument`
-}
-
-/**
- * The same path, recovered from a stored `parliamentUrl` — for last-good
- * records written before the field existed. Null when the URL is not a
- * Stellungnahme page at all.
- */
-export function statementDocumentPathFromUrl(parliamentUrl: string): string | null {
-  const m = /\/gegenstand\/([IVXLC]+)\/(SNME|SN)\/(\d+)(?:[/?#]|$)/.exec(parliamentUrl)
-  if (!m?.[1] || !m[2] || !m[3]) return null
-  return statementDocumentPath(m[1], m[2] as StatementItemType, Number(m[3]))
-}
-
-export interface StatementDocument {
-  kind: 'pdf' | 'page'
-  url: string
-}
+export type { StatementDocument }
 
 export function statementPageUrl(gp: string, ityp: StatementItemType, inr: number): string {
   return `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}`
@@ -367,7 +345,10 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
     /\s*\(\d+\/SN(?:-[^)]*)?\)\s*$/,
     '',
   )
-  const { kind, name } = classifySubmitter(rawSubmitter)
+  // Column 19 is upstream's own organisation/person flag (`I`/`P`). It is a
+  // second opinion on the GDPR question, and it can only ever suppress a
+  // name, never publish one — see `classifySubmitter`.
+  const { kind, name } = classifySubmitter(rawSubmitter, readUpstreamFlag(row[19]))
 
   return {
     citation,
@@ -376,7 +357,6 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
     submitterName: name !== null ? normalizeOrgName(name) : null,
     endorsements: asNumber(row[12]),
     parliamentUrl: `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${snInr}`,
-    documentUrl: statementDocumentPath(gp, ityp, snInr),
   }
 }
 
@@ -507,7 +487,6 @@ export function groupOrganisationStatements(statements: StatementMeta[]): Organi
       date: s.date,
       endorsements: s.endorsements,
       parliamentUrl: s.parliamentUrl,
-      documentUrl: s.documentUrl,
     })
   }
 

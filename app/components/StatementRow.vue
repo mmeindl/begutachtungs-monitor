@@ -32,13 +32,15 @@ const props = defineProps<{
    * on the anonymous half the only thing telling apart hundreds of rows
    * that all read "Privatperson".
    *
-   * `document` is our redirect to the Stellungnahme's own file — the PDF
-   * when one was uploaded, the page above otherwise — resolved on click
-   * (`/api/stellungnahmen/…/dokument`). One click less for the reader who
-   * works through fifty submissions; the citation keeps leading to the page,
-   * which is where the Zustimmungen and the inline texts are.
+   * `href` is the statement's page upstream, and it is also the only
+   * address `StatementDocumentTag` needs: the tag reads the GP/type/number
+   * out of it, resolves on approach whether a PDF was uploaded, and links
+   * that file directly. Where none was, no tag appears — the text was typed
+   * into parliament's web form and sits on this very page. Measured
+   * 2026-09-16 on 132/ME: 14 of 60 statements have a PDF, and every
+   * organisation in the sample uploaded one.
    */
-  links?: { citation: string; href: string; document?: string | null }[] | null
+  links?: { citation: string; href: string }[] | null
   /**
    * Plain-text stand-in for the citation cell, for a row with no single
    * document to point at ("4 Stellungnahmen", listed below the row).
@@ -55,11 +57,6 @@ const props = defineProps<{
 function linkAriaLabel(citation: string): string {
   const who = props.submitter ? ` von ${props.submitter}` : ''
   return `Stellungnahme ${citation}${who} auf parlament.gv.at öffnen`
-}
-
-function documentAriaLabel(citation: string): string {
-  const who = props.submitter ? ` von ${props.submitter}` : ''
-  return `Dokument der Stellungnahme ${citation}${who} öffnen – das PDF, sonst die Seite auf parlament.gv.at`
 }
 </script>
 
@@ -84,7 +81,7 @@ function documentAriaLabel(citation: string): string {
        auto-placement would push the date, which sits in the track to its
        left, onto a second row. -->
   <li
-    class="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 row-cols:grid-cols-[6rem_minmax(8rem,1fr)_9rem_9rem]"
+    class="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 row-cols:grid-cols-[6rem_minmax(8rem,1fr)_8.5rem_3.5rem_7.5rem]"
   >
     <!-- Two lines, not one: what distinguishes these submitters sits at the
          END of the name ("Amt der Kärntner Landesregierung; Abteilung 1 –
@@ -135,19 +132,27 @@ function documentAriaLabel(citation: string): string {
            The submitter is who filed, the citation is the document, and it is
            the document that has a page upstream; linking the name on some
            rows and the citation on others made the same object look like two
-           kinds of thing. Several citations sit side by side in the phone's
-           meta line and stack in the column. -->
+           kinds of thing.
+
+           TWO cells, not one: the citation is the handle a reader quotes and
+           the address of the official record, the PDF tag is the file, and
+           the tag needs a column of its own — appended to the citation it
+           started wherever that citation happened to end, so the tags
+           staggered down the list instead of forming a column to scan.
+           Both point at parlament.gv.at, so both are the reader's to copy
+           and cite; nothing on this row routes through us.
+
+           A row can carry several citations (an organisation that filed more
+           than once to the same Regierungsvorlage). Both cells stack in the
+           same order with the same line box, so citation n and tag n stay on
+           one line. -->
       <span
-        class="flex flex-wrap items-baseline gap-x-2 gap-y-1 tabular-nums row-cols:col-start-3 row-cols:row-start-1"
+        class="flex flex-col items-start gap-y-1 tabular-nums row-cols:col-start-3 row-cols:row-start-1"
       >
-        <!-- Citation and document side by side, the document in the quieter
-             weight: the citation is the handle a reader quotes, the document
-             is what they open. -->
-        <span
-          v-for="link in links ?? []"
-          :key="link.href"
-          class="inline-flex flex-wrap items-baseline gap-x-1"
-        >
+        <!-- The line box belongs to the WRAPPER, never to the link: the link
+             carries `tap-target`, whose 44px minimum a `min-h` of its own
+             would silently undercut. -->
+        <span v-for="link in links ?? []" :key="link.href" class="flex min-h-6 items-center">
           <ExternalLink
             :href="link.href"
             :aria-label="linkAriaLabel(link.citation)"
@@ -155,16 +160,23 @@ function documentAriaLabel(citation: string): string {
           >
             {{ link.citation }}
           </ExternalLink>
-          <ExternalLink
-            v-if="link.document"
-            :href="link.document"
-            :aria-label="documentAriaLabel(link.citation)"
-            class="tap-target text-xs text-ink-secondary hover:underline"
-          >
-            Dokument
-          </ExternalLink>
         </span>
-        <span v-if="!links?.length && detail" class="text-ink-muted">{{ detail }}</span>
+        <span v-if="!links?.length && detail" class="flex min-h-6 items-center text-ink-muted">{{ detail }}</span>
+      </span>
+
+      <!-- The file column. Empty on a row whose statement was typed into
+           parliament's web form — there the text is on the page the citation
+           already links to, so the gap is the answer, not a missing link. -->
+      <span
+        class="flex flex-col items-start gap-y-1 row-cols:col-start-4 row-cols:row-start-1"
+      >
+        <StatementDocumentTag
+          v-for="link in links ?? []"
+          :key="link.href"
+          :page-url="link.href"
+          :citation="link.citation"
+          :submitter="submitter"
+        />
       </span>
 
       <!-- Rendered even when empty: the reserved track is what holds the
@@ -173,7 +185,7 @@ function documentAriaLabel(citation: string): string {
            and labels it as one; the sub-rows print what upstream counted for
            each Stellungnahme. -->
       <span
-        class="tabular-nums text-ink-secondary row-cols:col-start-4 row-cols:row-start-1 row-cols:text-right"
+        class="tabular-nums text-ink-secondary row-cols:col-start-5 row-cols:row-start-1 row-cols:text-right"
       >
         <slot name="meta" />
       </span>

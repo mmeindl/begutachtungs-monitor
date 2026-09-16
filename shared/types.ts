@@ -136,8 +136,6 @@ export interface StatementsSummary {
       date: string | null
       endorsements: number
       parliamentUrl: string
-      /** See StatementMeta.documentUrl. */
-      documentUrl: string
     }[]
   }[]
 }
@@ -256,12 +254,18 @@ export interface StatementMeta {
   endorsements: number
   /** Public source page on parlament.gv.at */
   parliamentUrl: string
-  /**
-   * Our redirect to the Stellungnahme's own document — the uploaded PDF,
-   * or the page above when the text was typed into the web form. A
-   * relative API path, resolved on click (`/api/stellungnahmen/…`).
-   */
-  documentUrl: string
+}
+
+/**
+ * Where one Stellungnahme's own text actually is. `pdf` when the submitter
+ * uploaded a file, `page` when they typed into the web form and the text
+ * lives on the parliament page — measured 2026-09-16 over 60 statements of
+ * 132/ME: 14 PDFs against 46 web-form submissions, and every organisation
+ * in that sample uploaded a file.
+ */
+export interface StatementDocument {
+  kind: 'pdf' | 'page'
+  url: string
 }
 
 /**

@@ -177,9 +177,15 @@
  * count against it.)
  *
  * 45rem = 720px of list width. Not the width at which the tracks first fit —
- * that is ~600px — but the width at which the identity column reaches ~280px:
- * 720 - 32 row inset - 96 date - 128 citation - 144 Zustimmungen - 3x12 gap.
- * Below that the name clamps mid-name, and what tells these submitters apart
+ * that is ~600px — but the width at which the identity column still holds a
+ * whole name: 720 - 32 row inset - 96 date - 136 citation - 56 PDF-Tag - 120
+ * Zustimmungen - 4x12 gap = 232px, and at three clamped lines of text-sm
+ * that is ~90 characters — past the longest name measured in GP XXVIII
+ * ("Universität Wien / Rechtswissenschaftliche Fakultät; Institut für
+ * Strafrecht und …"). The threshold was set for a two-line clamp and a
+ * narrower citation track; the clamp went to three lines first, which is
+ * what left the room the PDF tag now takes.
+ * Below it the name clamps mid-name, and what tells these submitters apart
  * sits at the END of it ("… Abteilung 1 – Verfassungsdienst"). The stacked
  * layout gives the name the full width, so under the threshold it is not the
  * compromise, it is the better row.
