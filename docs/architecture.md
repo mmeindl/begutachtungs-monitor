@@ -2638,6 +2638,43 @@ pipefail, `skript | tee` trägt dann den Exit-Code von `tee`; und „konnte nich
 messen" (Exit 2) ist nicht „ohne Befund" — ein gescheiterter Lauf lässt den Job
 rot werden, schließt aber keinen offenen Befund.
 
+**Klasse B, dieselbe Sitzung.** `tests/fixtures/annex-baseline.json` hält je
+Pfad und je RIS-Dokumentschlüssel 17 Kennzahlen fest (240 Entwürfe, 140 kB);
+`classBFindings` meldet jeden Entwurf, der sich heute anders misst. Die Regel
+ist **Gleichheit, kein Band**: eine NOR-veröffentlichte Beilage ändert sich
+nie, und das Tor hält gegen das RIS zum `BeginnBegutachtungsfrist`, also gegen
+ein festes Datum — derselbe Entwurf muss sich morgen genauso messen wie heute.
+Neue Entwürfe zählen nicht mit (für sie gilt Klasse A), und dass einer aus dem
+Fenster der 400 jüngsten rutscht, ist der Normalfall und keine Meldung; beides
+zu melden hieße, wöchentlich die Bewegung des Fensters zu melden.
+
+Der Schlüssel ist der **RIS-Dokumentschlüssel**, nicht `cite`. Das war eine
+Messung und keine Vorsicht: die meisten Datensätze im Fenster sind
+Verordnungen ohne Begutachtungsverfahrennummer und fallen auf den bei 34
+Zeichen abgeschnittenen Kurztitel zurück — „Verordnung des Bundesministers
+für" steht am 16.09.2026 **neunmal** allein im Tabellenpfad. Über `id` sind
+es 126 von 126 und 114 von 114 eindeutig.
+
+Geprüft wurde der Alarm so, wie das Kapitel alles prüft: durch einen
+eingespielten Fehler. Ein Entwurf der Grundlinie bekam drei Paragraphen mehr
+als bestätigt, drei weniger als ungeprüft und eine nicht gelesene Seite; der
+Lauf meldet genau diesen einen Entwurf mit genau diesen drei Feldern und endet
+mit 1. Ohne diesen Schritt wäre nur bewiesen, dass der Alarm schweigt.
+
+Was der Cache im CI **verdeckt**, gehört dazu: er liefert bereits geholte
+Dokumente von der Platte, also bemerkt Klasse B dort keine nachträgliche
+Änderung an einem Dokument, das schon einmal geholt wurde. Im CI fängt sie
+eine Verschiebung durch unseren eigenen Code und alles an neuen Entwürfen. Die
+andere Frage — hat das RIS rückwirkend etwas angefasst — braucht einen Lauf
+ohne Cache und ist Handarbeit, kein Wochenjob.
+
+Die Regel dazu, ohne Ausnahme: **die Grundlinie wird im selben Commit
+nachgezogen wie die Änderung, die sie bewegt**
+(`annex-drift.ts --grundlinie-schreiben=…`). Sonst ist der nächste Lauf ein
+Befund über eine Verbesserung, und nach dem dritten Mal liest niemand mehr hin
+— das ist die Art, wie ein Alarm stirbt, und sie ist häufiger als der Ausfall,
+gegen den er gebaut wurde.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the

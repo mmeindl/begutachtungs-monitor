@@ -34,6 +34,12 @@
 
 /** Was ein Entwurf im Prüfstand ergeben hat, ohne die Kalibrierungsdaten. */
 export interface AnnexDraftReport {
+  /**
+   * Der RIS-Dokumentschlüssel — die Identität, an der die Grundlinie von
+   * Klasse B hängt. Nicht `cite`: das ist für Menschen und kollidiert
+   * (siehe `DraftResult.id` im Prüfstand).
+   */
+  id: string
   /** Begutachtungsverfahrennummer, oder ersatzweise Kurztitel/ID */
   cite: string
   source: 'xml' | 'pdf'
@@ -86,8 +92,10 @@ export interface Finding {
    * `messung` — der Lauf hat nichts oder fast nichts gemessen, das Ergebnis
    * ist also gar keines (`harness-cache.ts`: ein Lauf gegen nichts sieht aus
    * wie ein Befund).
+   * `grundlinie` — Klasse B: ein Entwurf, den wir schon einmal gemessen
+   * haben, misst sich heute anders.
    */
-  kind: 'zusicherung' | 'form' | 'messung'
+  kind: 'zusicherung' | 'form' | 'messung' | 'grundlinie'
   /** Der Entwurf, oder null für eine Aussage über den ganzen Lauf */
   draft: string | null
   text: string
@@ -168,7 +176,116 @@ export function summarize(findings: readonly Finding[]): string {
   const by = (k: Finding['kind']) => findings.filter((f) => f.kind === k).length
   const parts: string[] = []
   if (by('messung')) parts.push(`${by('messung')}× Messung`)
+  if (by('grundlinie')) parts.push(`${by('grundlinie')}× Grundlinie`)
   if (by('zusicherung')) parts.push(`${by('zusicherung')}× Zusicherung`)
   if (by('form')) parts.push(`${by('form')}× Gestalt`)
   return parts.join(', ')
+}
+
+/**
+ * Klasse B: die Kennzahlen, die für eine einmal veröffentlichte Beilage
+ * feststehen — und ihre deutschen Namen für die Meldung.
+ *
+ * Warum Gleichheit und kein Band: eine NOR-veröffentlichte Beilage ändert
+ * sich nie (`annexPdfService.ts` baut den 30-Tage-Cache genau darauf), und
+ * das Tor hält jeden Paragraphen gegen das RIS **zum
+ * `BeginnBegutachtungsfrist`** — gegen ein festes Datum also, nicht gegen
+ * heute. Derselbe Entwurf muss sich morgen genauso messen wie heute. Wo er
+ * das nicht tut, ist etwas passiert, und ein Toleranzband würde nur
+ * verstecken, was.
+ *
+ * Was ein Befund NICHT sagt, ist die Ursache. Zwei kommen in Frage: wir haben
+ * die Engine geändert, ohne die Grundlinie nachzuziehen, oder das RIS hat
+ * einen Datensatz nachträglich angefasst (eine Konsolidierung kann
+ * rückwirkend korrigiert werden). Das auseinanderzuhalten ist Lesearbeit am
+ * Befund, keine Regel.
+ */
+const BASELINE_FIELDS = {
+  note: 'Vermerk',
+  checked: 'geprüfte Paragraphen',
+  clean: '≥99 % gedeckt',
+  substantial: 'Paragraphen mit Fließtext',
+  substantialClean: 'davon ≥99 % gedeckt',
+  noLaw: 'Zeilen außerhalb jeder Artikelgrenze',
+  droppedPages: 'nicht gelesene Seiten',
+  ran: 'geprüft',
+  notRunReason: 'Grund, warum nicht geprüft wurde',
+  verifiedParas: 'bestätigt',
+  withheldParas: 'einbehalten',
+  withheldStanding: 'einbehalten (geltende Fassung steht so nicht im RIS)',
+  withheldAlreadyStanding: 'einbehalten (Geltendes als neu gezeigt)',
+  withheldNotInDraft: 'einbehalten (Text, den der Entwurf nicht anordnet)',
+  uncheckedParas: 'ungeprüft',
+  rowsNoPara: 'Zeilen ohne Paragraphenangabe',
+  changeRowsNoPara: 'davon als Änderung gezeigt',
+} as const satisfies Partial<Record<keyof AnnexDraftReport, string>>
+
+type BaselineField = keyof typeof BASELINE_FIELDS
+
+/** Ein Entwurf in der Grundlinie: die verglichenen Felder, plus `cite` zum Lesen. */
+export type BaselineEntry = Pick<AnnexDraftReport, BaselineField> & { cite: string }
+
+export interface AnnexBaseline {
+  /** Wann die Grundlinie gezogen wurde — die Herkunft eines Befunds */
+  at: string
+  gp: string
+  /** Je Pfad, je RIS-Dokumentschlüssel. Die beiden Pfade sind disjunkt. */
+  paths: Record<'xml' | 'pdf', Record<string, BaselineEntry>>
+}
+
+/** Die Grundlinie aus Berichten ziehen — dasselbe Format, das Klasse B liest. */
+export function toBaseline(reports: readonly AnnexReport[]): AnnexBaseline {
+  const paths: AnnexBaseline['paths'] = { xml: {}, pdf: {} }
+  for (const report of reports) {
+    for (const d of report.drafts) {
+      const entry = { cite: d.cite } as BaselineEntry
+      for (const field of Object.keys(BASELINE_FIELDS) as BaselineField[]) {
+        ;(entry as Record<string, unknown>)[field] = d[field]
+      }
+      paths[report.path][d.id] = entry
+    }
+  }
+  return { at: new Date().toISOString(), gp: reports[0]?.gp ?? 'XXVIII', paths }
+}
+
+/**
+ * Klasse B: jeder Entwurf, den die Grundlinie kennt und der sich heute anders
+ * misst.
+ *
+ * **Nur Entwürfe, die in beiden stehen.** Ein Entwurf, den die Grundlinie
+ * nicht kennt, ist neu — für ihn gilt Klasse A und sonst nichts. Und einer,
+ * der in der Grundlinie steht und im Bericht fehlt, ist aus dem Fenster der
+ * 400 jüngsten Datensätze gerutscht; das ist der Normalfall und keine
+ * Meldung. Beides zu melden hieße, jede Woche die Bewegung des Fensters zu
+ * melden, und genau daran stirbt ein Alarm.
+ *
+ * **Ein Befund je Entwurf, nicht je Feld.** Ein verschobener Parse bewegt ein
+ * Dutzend Zähler auf einmal; als ein Dutzend Meldungen wäre der eine Entwurf
+ * nicht mehr als einer zu erkennen.
+ */
+export function classBFindings(report: AnnexReport, baseline: AnnexBaseline): Finding[] {
+  const known = baseline.paths[report.path]
+  if (!known || Object.keys(known).length === 0) {
+    return [{ kind: 'grundlinie', draft: null, text: `Die Grundlinie kennt den ${report.path === 'xml' ? 'Tabellenpfad' : 'PDF-Pfad'} nicht. Ohne sie prüft Klasse B hier nichts — neu ziehen mit \`annex-drift.ts --grundlinie-schreiben=…\`.` }]
+  }
+
+  const out: Finding[] = []
+  for (const d of report.drafts) {
+    const was = known[d.id]
+    if (!was) continue
+    const moved: string[] = []
+    for (const field of Object.keys(BASELINE_FIELDS) as BaselineField[]) {
+      const before = was[field]
+      const now = d[field]
+      if (before !== now) moved.push(`${BASELINE_FIELDS[field]}: ${JSON.stringify(before)} → ${JSON.stringify(now)}`)
+    }
+    if (moved.length > 0) {
+      out.push({
+        kind: 'grundlinie',
+        draft: d.cite,
+        text: `misst sich anders als beim letzten Mal (${baseline.at.slice(0, 10)}, \`${d.id}\`) — ${moved.join('; ')}.`,
+      })
+    }
+  }
+  return out
 }
