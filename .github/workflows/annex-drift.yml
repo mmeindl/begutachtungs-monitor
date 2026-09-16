@@ -1,0 +1,172 @@
+# Wöchentlicher Drift-Alarm für die Textgegenüberstellung
+# (docs/architecture.md §12.13).
+#
+# Was hier NICHT geprüft wird: ob wir die Engine kaputt gemacht haben. Das
+# fangen `ci.yml` mit 600+ Tests und `tests/annexGolden.test.ts`, das zwei
+# echte Beilagen mit ihren Zahlen einfriert. Geprüft wird die andere Richtung:
+# ein Ressort setzt seine Beilage anders als bisher, und die Seite zeigt
+# lautlos eine Gegenüberstellung, die niemand als falsch erkennt. Das ist die
+# Betriebslast, an der der Vorgänger gestorben ist, also läuft der Alarm auf
+# GitHubs Runnern und nicht als Dienst auf dem 1-GB-VPS.
+#
+# **Klasse A** (`scripts/annex-report.ts`) sind die Befunde, die ohne
+# Grundlinie feststehen: die vier Zusicherungen des Tors, die Summe der
+# Einbehaltungsgründe, nicht gelesene Seiten, und ob der Lauf überhaupt etwas
+# gemessen hat. Kennzahlen, die mit der Zusammensetzung des Korpus wandern,
+# stehen bewusst NICHT darin — der Prüfstand läuft über die 400 jüngsten
+# Begut-Datensätze, also über ein wanderndes Fenster, und eine Regel darüber
+# meldete jede Woche eine Änderung.
+#
+# **Wenn der Alarm anschlägt, weil du die Engine absichtlich verbessert hast:**
+# das kann er bei Klasse A nicht — hier steht keine Grundlinie, die nachzuziehen
+# wäre. Schlägt er an, ist entweder eine Zusicherung gebrochen (unser Fehler)
+# oder ein Dokument hat eine neue Gestalt (der Fall, für den das hier gebaut
+# ist). Sobald Klasse B dazukommt, gilt die Regel: die Grundlinie wird im
+# selben Commit nachgezogen wie die Änderung, sonst wird der Alarm zu dem
+# Rauschen, das man wegklickt.
+#
+# Bekannte Falle, dieselbe wie bei `uptime.yml`: GitHub schaltet geplante
+# Workflows in Repositories ohne Commits nach 60 Tagen ab und schickt eine
+# Mail. Im Actions-Tab wieder einschalten oder irgendetwas committen.
+name: Annex-Drift
+
+on:
+  schedule:
+    # Montag früh, abseits der vollen Stunde: GitHubs Cron ist dort verstopft.
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Wie viele der jüngsten Begut-Datensätze geprüft werden'
+        type: string
+        default: '400'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: annex-drift
+  cancel-in-progress: false
+
+env:
+  LABEL: annex-drift
+  LIMIT: ${{ inputs.limit || '400' }}
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    # Ein kalter Lauf holt einige tausend RIS-Dokumente nacheinander. Mit
+    # warmem Cache (unten) sind es nur die neuen.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Der Prüfstand hat einen eigenen Plattencache (`harness-cache.ts`), der
+      # jeden RIS-Abruf ablegt. Ihn über die Wochen mitzunehmen ist nicht nur
+      # schneller, sondern höflicher: eine NOR-veröffentlichte Beilage ändert
+      # sich nie, also wird jede Woche nur das geholt, was neu dazugekommen
+      # ist — und das ist genau das, was dieser Alarm prüfen soll.
+      #
+      # Der Schlüssel rotiert wöchentlich (GitHub räumt Einträge nach 7 Tagen
+      # ohne Treffer weg); `restore-keys` wärmt ihn aus der Vorwoche.
+      - name: RIS-Cache des Prüfstands
+        uses: actions/cache@v4
+        with:
+          path: .harness-cache
+          key: harness-cache-${{ github.run_id }}
+          restore-keys: harness-cache-
+
+      - name: Tabellenpfad messen
+        run: npx vite-node scripts/annex-pdf-verify.ts -- --gp=XXVIII --xml --limit=$LIMIT --json=annex-xml.json
+
+      - name: PDF-Pfad messen
+        run: npx vite-node scripts/annex-pdf-verify.ts -- --gp=XXVIII --limit=$LIMIT --json=annex-pdf.json
+
+      # Die Berichte bleiben als Artefakt liegen, auch wenn nichts gefunden
+      # wurde: die Grundlinie für Klasse B wird aus genau diesen Dateien
+      # gezogen, und ein Befund lässt sich nur gegen den Bericht lesen, der
+      # ihn erzeugt hat.
+      - name: Berichte aufheben
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: annex-reports
+          path: annex-*.json
+          retention-days: 90
+
+      - name: Klasse A anwenden
+        id: drift
+        # `shell: bash` ist hier nicht Kosmetik: der Standard-Shell eines
+        # run-Schritts ist `bash -e {0}` OHNE pipefail, und dann trägt
+        # `skript | tee` den Exit-Code von tee — also immer 0. Der Alarm hätte
+        # nie ausgelöst.
+        shell: bash
+        run: npx vite-node scripts/annex-drift.ts -- annex-xml.json annex-pdf.json | tee drift.md
+
+      - name: Issue öffnen oder schließen
+        # `always()`, weil der Schritt davor bei einem Befund mit 1 endet —
+        # genau dann ist hier etwas zu tun. Ein Lauf, der gar nicht messen
+        # konnte (Exit 2, RIS weg, Timeout), lässt den Job rot werden und
+        # GitHub schickt die Mail für einen fehlgeschlagenen Lauf: „konnte
+        # nicht prüfen" und „hat etwas gefunden" sind verschiedene Zustände,
+        # und bei einem Lauf pro Woche darf der erste auch laut sein.
+        if: always() && steps.drift.outcome != 'cancelled'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Exit 1 schreibt `count`, Exit 2 (Bericht unlesbar) nicht. An
+          # `outcome` allein sind die beiden nicht zu unterscheiden — ein
+          # gescheiterter Lauf bekäme sonst ein Issue mit leerem Titel.
+          FOUND: ${{ steps.drift.outputs.count != '' }}
+          CLEAN: ${{ steps.drift.outcome == 'success' }}
+          SUMMARY: ${{ steps.drift.outputs.summary }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          now=$(date -u '+%Y-%m-%d %H:%M UTC')
+          gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --force \
+            --color D93F0B --description "Vom Annex-Drift-Workflow geöffnet und geschlossen" >/dev/null
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
+                   --json number --jq '.[0].number // empty')
+          if [ "$FOUND" = "true" ]; then
+            if [ -z "$open" ]; then
+              {
+                echo "@$OWNER — die wöchentliche Messung der Beilage hat am $now etwas gefunden."
+                echo
+                echo "**Lauf:** $RUN_URL (die Berichte hängen als Artefakt \`annex-reports\` daran)"
+                echo
+                cat drift.md
+                echo
+                echo "---"
+                echo "Was die Klassen bedeuten, steht in \`scripts/annex-report.ts\`; die Engine selbst in \`docs/architecture.md\` §12.13."
+                echo "Nachmessen lässt sich das lokal offline: \`pnpm harness:annex --xml\` und ohne \`--xml\` (braucht \`.harness-cache\`)."
+              } > body.md
+              gh issue create --repo "$GITHUB_REPOSITORY" --label "$LABEL" \
+                --title "Beilage: $SUMMARY" --body-file body.md
+            else
+              echo "Befund steht weiter an, Issue #$open ist offen"
+            fi
+          elif [ "$CLEAN" = "true" ] && [ -n "$open" ]; then
+            gh issue close "$open" --repo "$GITHUB_REPOSITORY" \
+              --comment "Ohne Befund am $now. Lauf: $RUN_URL"
+          elif [ "$CLEAN" = "true" ]; then
+            echo "ohne Befund"
+          else
+            # Nur hierher kommt der Lauf, der gar nicht messen konnte. Der
+            # Job ist rot, GitHub schickt die Mail dafür, und ein offener
+            # Befund bleibt offen — eine gescheiterte Messung ist keine
+            # Entwarnung.
+            echo "Lauf gescheitert, ohne Urteil — ein offener Befund bleibt offen"
+          fi

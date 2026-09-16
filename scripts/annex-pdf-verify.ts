@@ -46,6 +46,7 @@ import { draftArticles, type DraftArticle } from '../server/utils/lawTitles'
 import { fetchParagraphTree, getText, resolveLawByBgbl, type KonsLawAtDate } from '../server/utils/risKons'
 import { isScanned, parseTextComparison, type ComparisonParse, type ComparisonRow } from '../server/utils/textComparison'
 import { installFetchCache } from './harness-cache'
+import type { AnnexReport } from './annex-report'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
@@ -573,4 +574,55 @@ if (calibrate) {
     const label = `${lo}-${hi === Number.MAX_SAFE_INTEGER ? '∞' : hi}`
     console.log(`  ${label.padEnd(8)} ${String(band.length).padStart(5)} ${below(0.5)} ${below(0.8)} ${below(0.95)} ${String(band.filter((p) => p.ratio >= 0.95).length).padStart(7)}`)
   }
+}
+
+// --- Bericht für den Drift-Alarm ----------------------------------------------
+// `--json=<pfad>` schreibt dieselbe Messung als Datensatz, zusätzlich zum
+// Bericht oben. Zusätzlich, nicht statt: der Prosabericht ist das, was im
+// CI-Log steht, wenn der Alarm anschlägt und jemand wissen will, warum.
+//
+// Die Urteile stehen nicht hier, sondern in `annex-report.ts` — dieselbe
+// Lehre, die §12.13 schon zweimal zieht: Logik in einem CLI-Skript ist Logik,
+// die kein Test erreicht. Hier wird nur umgefüllt.
+const jsonPath = process.argv.find((a) => a.startsWith('--json='))?.slice('--json='.length) ?? null
+if (jsonPath) {
+  const { writeFileSync } = await import('node:fs')
+  const report: AnnexReport = {
+    at: new Date().toISOString(),
+    gp,
+    path: xmlMode ? 'xml' : 'pdf',
+    limit,
+    records: docs.length,
+    // `results`, nicht `gated` oder `scored`: ein Entwurf, dessen Beilage
+    // verweigert wurde, hat trotzdem Seiten verlieren können, und seine
+    // Zusicherungen gelten genauso. Die Filter des Prosaberichts sind für
+    // Prozentzahlen da, nicht für Zusicherungen.
+    drafts: results.map((r) => ({
+      cite: r.cite,
+      source: r.source,
+      note: r.note,
+      checked: r.checked,
+      clean: r.clean,
+      substantial: r.substantial,
+      substantialClean: r.substantialClean,
+      noLaw: r.noLaw,
+      droppedPages: r.droppedPages,
+      ran: r.gate.ran,
+      notRunReason: r.gate.notRunReason,
+      verifiedParas: r.gate.verifiedParas,
+      withheldParas: r.gate.withheldParas,
+      withheldStanding: r.gate.withheldStanding,
+      withheldAlreadyStanding: r.gate.withheldAlreadyStanding,
+      withheldNotInDraft: r.gate.withheldNotInDraft,
+      uncheckedParas: r.gate.uncheckedParas,
+      rowsNoPara: r.gate.rowsNoPara,
+      changeRowsNoPara: r.gate.changeRowsNoPara,
+      verdictless: r.gate.verdictless,
+      wronglyVerified: r.gate.wronglyVerified,
+      withheldWithText: r.gate.withheldWithText,
+      withheldWithoutCause: r.gate.withheldWithoutCause,
+    })),
+  }
+  writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`)
+  console.log(`\nBericht geschrieben: ${jsonPath} (${report.drafts.length} Entwürfe)`)
 }
