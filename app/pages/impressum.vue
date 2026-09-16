@@ -160,12 +160,62 @@ const linkClasses =
         <h2 id="imp-license" class="section-heading">
           Urheberrecht &amp; Lizenzen
         </h2>
+        <!-- Je Datensatz, nicht pauschal: der Monitor bezieht aus zwei
+             amtlichen Quellen, und ihre Nutzungsbedingungen sind nicht
+             dieselben. Eine gemeinsame Zeile „Metadaten CC BY 4.0" hat das
+             eingeebnet und für die Daten des Begutachtungsverfahrens etwas
+             behauptet, was das Parlament auf seiner eigenen Lizenzseite
+             ausschließt. -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
-          Die Metadaten stammen von der Parlamentsdirektion und stehen unter
-          <ExternalLink
-            href="https://creativecommons.org/licenses/by/4.0/deed.de"
-            :class="linkClasses"
-          >CC BY 4.0</ExternalLink>. Der Quellcode des Monitors ist unter der
+          Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
+          Nutzungsbedingungen unterscheiden sich je nach Datensatz.
+        </p>
+        <dl class="mt-3 space-y-3 leading-relaxed text-ink-secondary">
+          <div>
+            <dt class="font-medium text-ink">
+              Rechtsinformationssystem des Bundes (Bundeskanzleramt)
+            </dt>
+            <dd>
+              Entwurfstexte, Textgegenüberstellungen und geltendes
+              Bundesrecht –
+              <ExternalLink
+                href="https://creativecommons.org/licenses/by/4.0/deed.de"
+                :class="linkClasses"
+              >CC BY 4.0</ExternalLink>.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-ink">
+              Parlamentsdirektion, Stationen nach der Begutachtung
+            </dt>
+            <dd>
+              Regierungsvorlagen und Verhandlungsgegenstände –
+              <ExternalLink
+                href="https://creativecommons.org/licenses/by/4.0/deed.de"
+                :class="linkClasses"
+              >CC BY 4.0</ExternalLink>.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-ink">
+              Parlamentsdirektion, Begutachtungsverfahren
+            </dt>
+            <dd>
+              Ministerialentwürfe, Stellungnahmen und Zustimmungen – für diese
+              Daten weist das Parlament keine Open-Data-Lizenz aus und nimmt
+              sie von der Weiterverwendung als Open Data ausdrücklich aus. Der
+              Monitor zeigt daraus ausschließlich Metadaten: Fristen,
+              Geschäftszahlen, Anzahl der Einreichungen und die Namen
+              einreichender Organisationen. Volltexte von Stellungnahmen
+              übernimmt er nicht, sondern verlinkt sie auf
+              <ExternalLink href="https://www.parlament.gv.at" :class="linkClasses"
+                >parlament.gv.at</ExternalLink
+              >. Namen von Privatpersonen veröffentlicht er nicht.
+            </dd>
+          </div>
+        </dl>
+        <p class="mt-3 leading-relaxed text-ink-secondary">
+          Der Quellcode des Monitors ist unter der
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor"
             :class="linkClasses"

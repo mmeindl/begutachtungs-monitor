@@ -324,7 +324,15 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <span>{{ data.meSource === 'ris' ? 'Quellen (CC BY 4.0, RIS und Parlament):' : 'Quellen (CC BY 4.0, Parlament):' }}</span>
+        <!-- Ohne Lizenzangabe, anders als bei der Textgegenüberstellung: dort
+             ist die Quelle das RIS und die Lizenz für beide Spalten dieselbe.
+             Hier steht der Ministerialentwurf neben der Regierungsvorlage —
+             die Vorlage ist ein lizenzierter Datensatz, der Entwurf gehört
+             zum Begutachtungsverfahren, das das Parlament von der
+             Open-Data-Nutzung ausnimmt. Eine gemeinsame Zeile „CC BY 4.0"
+             wäre für die eine Hälfte falsch; die Angaben je Datensatz stehen
+             im Impressum. -->
+        <span>{{ data.meSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
         <ExternalLink v-if="data.me" :href="data.me.url" class="text-accent-deep hover:underline">{{ data.me.label }}</ExternalLink>
         <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
         <!-- The § names come from a third source; a page that shows text has

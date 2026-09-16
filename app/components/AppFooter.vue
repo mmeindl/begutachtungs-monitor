@@ -12,7 +12,17 @@
  * Bedarf entsteht.
  *
  * Was bleibt, bleibt aus einem Grund pro Zeile:
- *   - Quelle + CC BY 4.0 — Lizenzauflage, keine Höflichkeit;
+ *   - Quellen + Verweis auf die Lizenzangaben — Lizenzauflage, keine
+ *     Höflichkeit. Genannt werden BEIDE Quellen: ein Teil der Daten kommt
+ *     aus dem RIS des Bundes (Bundeskanzleramt), nicht von der
+ *     Parlamentsdirektion, und CC BY verlangt die Nennung des Lizenzgebers.
+ *     Die Lizenz selbst steht hier NICHT mehr: sie ist je Datensatz
+ *     verschieden (Impressum, §„Urheberrecht & Lizenzen"), und eine Zeile,
+ *     die für alle Daten CC BY behauptete, behauptete es auch für die des
+ *     Begutachtungsverfahrens — die das Parlament ausdrücklich von der
+ *     Weiterverwendung als Open Data ausnimmt. CC BY 4.0 § 3 a (2) lässt
+ *     die Erfüllung der Namensnennung ausdrücklich per Link auf eine Seite
+ *     zu, die die Angaben trägt; genau das ist dieser Verweis;
  *   - "Kein amtliches Angebot" — die tragende Zeile auf einer .at-Adresse
  *     über Ministerien;
  *   - Quellcode — AGPL § 13 verlangt, Nutzern bei Netzwerkinteraktion den
@@ -35,16 +45,21 @@
     <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <div class="flex flex-col gap-2 text-sm leading-relaxed text-ink-muted">
         <p>
-          Datenquelle: Republik Österreich – Parlamentsdirektion
+          Datenquellen: Republik Österreich – Parlamentsdirektion
           (<ExternalLink
             href="https://www.parlament.gv.at"
             class="underline underline-offset-2 hover:no-underline"
             >parlament.gv.at</ExternalLink
-          >), Lizenz
-          <ExternalLink
-            href="https://creativecommons.org/licenses/by/4.0/deed.de"
+          >) und Rechtsinformationssystem des Bundes
+          (<ExternalLink
+            href="https://www.ris.bka.gv.at"
             class="underline underline-offset-2 hover:no-underline"
-            >CC BY 4.0</ExternalLink
+            >ris.bka.gv.at</ExternalLink
+          >).
+          <NuxtLink
+            to="/impressum#imp-license"
+            class="underline underline-offset-2 hover:no-underline"
+            >Lizenzen im Impressum</NuxtLink
           >. Kein amtliches Angebot.
         </p>
         <p>
