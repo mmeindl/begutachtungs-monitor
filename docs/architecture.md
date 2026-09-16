@@ -2595,6 +2595,49 @@ spaltenübergreifend noch spiegelgleich ist — **3 Zeilen** der GP XXVIII
 Das ist eine Frage der Gesetzesabgrenzung und nicht der Paragraphenzuordnung,
 also ein eigener Schritt mit eigener Messung.
 
+**Der Drift-Alarm (16.09.2026).** Die Engine bricht nicht daran, dass wir sie
+ändern — dafür gibt es 600+ Tests und `annexGolden.test.ts`, das zwei echte
+Beilagen samt ihren Zahlen einfriert. Sie bricht daran, dass ein Ressort seine
+Beilage anders setzt als bisher, und zwar lautlos: die Seite zeigt dann eine
+Gegenüberstellung, die niemand als falsch erkennt, weil niemand hinsieht.
+Nichts lief den Prüfstand je von selbst. `.github/workflows/annex-drift.yml`
+misst jetzt wöchentlich beide Pfade und macht aus einem Befund ein Issue —
+dieselbe Mechanik wie `uptime.yml` (ein Issue, beim nächsten sauberen Lauf
+geschlossen), auf GitHubs Runnern und nicht als Dienst auf dem VPS.
+
+**Klasse A ist das, was ohne Grundlinie feststeht** (`scripts/annex-report.ts`,
+rein und getestet — die Urteilslogik lag in diesem Kapitel schon zweimal im
+CLI-Skript, wo kein Test sie erreicht): die vier Zusicherungen des Tors, die
+Summe der drei Einbehaltungsgründe gegen `withheldParas`, nicht gelesene
+Seiten, und ob der Lauf überhaupt etwas gemessen hat. Der Grund für den
+Zuschnitt ist das wandernde Fenster: `Begut.Gesetzgebungsperiode` ignoriert das
+RIS still, der Prüfstand misst also die 400 *jüngsten* Datensätze, und jede
+Kennzahl, die mit der Zusammensetzung wandert, meldete wöchentlich eine
+Änderung, bis niemand mehr hinsieht.
+
+Welche Kennzahl dazugehört, war **nicht** aus den Zahlen im Kopf zu raten.
+Gemessen am 16.09.2026 über GP XXVIII:
+
+| Kennzahl | Tabellenpfad | PDF-Pfad |
+|---|---|---|
+| die vier Zusicherungen, `droppedPages` | 0 | 0 |
+| `changeRowsNoPara` | **75** | 0 |
+| Zeilen außerhalb jeder Artikelgrenze | **12** | 0 |
+
+Die beiden unteren sind je auf einem Pfad null und auf dem anderen nicht, und
+der Golden-Test friert ihre Null nur für seine zwei Beilagen ein. Als
+Klasse-A-Regel hätten sie beim ersten Lauf angeschlagen und das Signal
+entwertet; sie gehören in Klasse B (Vergleich je Entwurf gegen eine
+eingecheckte Grundlinie — eine NOR-veröffentlichte Beilage ändert sich nie,
+also ist dort Gleichheit die Regel und kein Band). Im Bericht stehen sie
+trotzdem, damit Klasse B sie vorfindet.
+
+Zwei Fallen, die der Workflow benennt, weil beide den Alarm still abgeschaltet
+hätten: ein `run`-Schritt läuft ohne `shell: bash` als `bash -e {0}` **ohne**
+pipefail, `skript | tee` trägt dann den Exit-Code von `tee`; und „konnte nicht
+messen" (Exit 2) ist nicht „ohne Befund" — ein gescheiterter Lauf lässt den Job
+rot werden, schließt aber keinen offenen Befund.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the
