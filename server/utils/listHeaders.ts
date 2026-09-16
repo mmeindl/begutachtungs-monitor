@@ -59,6 +59,10 @@ export const LIST_142_COLUMNS: ColumnExpectation[] = [
   { index: 6, label: 'Von' },
   { index: 12, label: 'Unterstützungen' },
   { index: 15, label: 'Nr' },
+  // Upstream's own organisation/person flag, which the classifier reads as a
+  // veto on publishing a name. Its `label` is literally "?" — `feld_name`
+  // is the only identity it has, and it is the one asserted here.
+  { index: 19, feldName: 'TYP' },
 ]
 
 /**

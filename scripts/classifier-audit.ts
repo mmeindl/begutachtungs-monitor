@@ -14,6 +14,12 @@
  *     (before the first semicolon, or the first two comma parts) is shaped
  *     like a person. These are published today. Printed with that segment
  *     masked, because if the hypothesis holds they are private persons.
+ *  3. **Upstream says institution, we say person** — the disagreement with
+ *     list 142's own `TYP` flag (column 19). These render as "Privatperson"
+ *     today and the flag alone never changes that: publishing on an
+ *     undocumented upstream column would hand it the hard invariant. The
+ *     list is a review queue — verify an entry, then add it to
+ *     `ORG_ALLOWLIST`, which is what actually publishes it.
  *
  * Run with `pnpm audit:classifier -- --gp XXVIII` (default), optionally
  * `--ityp I` for the Stellungnahmen on Regierungsvorlagen and `--inr 95` for
@@ -22,10 +28,12 @@
  *
  * The first run (2026-09-15, GP XXVIII) found 334+ hidden rows led by the
  * ministries' "BM f." short form and 2 leak candidates; GP XXVII had 239 of
- * the latter. Both findings became rules in `privacy.ts`. Nothing here
- * writes anywhere.
+ * the latter. Both findings became rules in `privacy.ts`. The `TYP` flag was
+ * found on 2026-09-16 and closed a class neither list could see: a person
+ * standing BEHIND an org-shaped naming segment, which list 2 looks straight
+ * past. Nothing here writes anywhere.
  */
-import { classifySubmitter } from '../server/utils/privacy'
+import { classifySubmitter, readUpstreamFlag } from '../server/utils/privacy'
 import { stripHtmlToText } from '../server/utils/mappers'
 
 function arg(name: string, fallback: string): string {
@@ -78,16 +86,28 @@ function namingSegment(s: string): string {
 const counts: Record<string, number> = {}
 const hidden = new Map<string, { rows: number; endorsements: number }>()
 const leaks = new Map<string, number>()
+/** Upstream calls it an institution, we render "Privatperson" — list 3. */
+const flaggedInstitutions = new Map<string, { rows: number; endorsements: number }>()
+/** The flag's own answer, to see at a glance whether the column still speaks. */
+const flagCounts: Record<string, number> = {}
 
 for (const row of rows) {
   const raw = stripHtmlToText(String(row[6] ?? '')).replace(CITATION_SUFFIX, '').replace(PLZ_SUFFIX, '').trim()
-  const { kind } = classifySubmitter(raw)
+  const flag = readUpstreamFlag(row[19])
+  flagCounts[flag ?? 'none'] = (flagCounts[flag ?? 'none'] ?? 0) + 1
+  const { kind } = classifySubmitter(raw, flag)
   counts[kind] = (counts[kind] ?? 0) + 1
   if (kind === 'person' && !looksLikePerson(raw)) {
     const e = hidden.get(raw) ?? { rows: 0, endorsements: 0 }
     e.rows++
     e.endorsements += typeof row[12] === 'number' ? row[12] : 0
     hidden.set(raw, e)
+  }
+  if (kind === 'person' && flag === 'I') {
+    const e = flaggedInstitutions.get(raw) ?? { rows: 0, endorsements: 0 }
+    e.rows++
+    e.endorsements += typeof row[12] === 'number' ? row[12] : 0
+    flaggedInstitutions.set(raw, e)
   }
   if (kind === 'organisation') {
     const seg = namingSegment(raw)
@@ -102,6 +122,7 @@ const mask = (s: string) => {
 
 console.log(`list 142, GP ${gp}, BEZUG_ITYP ${ityp}${inr ? `, INR ${inr}` : ''}: ${rows.length} rows (count ${data.count ?? '?'})`)
 console.log(`classified: ${JSON.stringify(counts)}`)
+console.log(`upstream flag (column 19 TYP): ${JSON.stringify(flagCounts)}`)
 console.log(`\n1. hidden institutions — ${[...hidden.values()].reduce((n, e) => n + e.rows, 0)} rows, ${hidden.size} distinct strings (rows× · Zustimmungen · string)`)
 for (const [name, e] of [...hidden.entries()].sort((a, b) => b[1].rows - a[1].rows || b[1].endorsements - a[1].endorsements)) {
   console.log(`  ${String(e.rows).padStart(3)}× ${String(e.endorsements).padStart(4)}  ${name}`)
@@ -109,4 +130,13 @@ for (const [name, e] of [...hidden.entries()].sort((a, b) => b[1].rows - a[1].ro
 console.log(`\n2. leak candidates — ${[...leaks.values()].reduce((n, c) => n + c, 0)} rows, ${leaks.size} distinct (naming segment masked)`)
 for (const [name, c] of [...leaks.entries()].sort((a, b) => b[1] - a[1])) {
   console.log(`  ${String(c).padStart(3)}×  ${mask(name)}`)
+}
+console.log(
+  `\n3. upstream says institution, we render "Privatperson" — ${[...flaggedInstitutions.values()].reduce((n, e) => n + e.rows, 0)} rows, ${flaggedInstitutions.size} distinct`,
+)
+console.log('   The flag never publishes a name by itself — verify each and add it to ORG_ALLOWLIST.')
+for (const [name, e] of [...flaggedInstitutions.entries()].sort(
+  (a, b) => b[1].rows - a[1].rows || b[1].endorsements - a[1].endorsements,
+)) {
+  console.log(`  ${String(e.rows).padStart(3)}× ${String(e.endorsements).padStart(4)}  ${name}`)
 }
