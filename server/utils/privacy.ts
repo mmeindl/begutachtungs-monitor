@@ -44,29 +44,61 @@ const NONPUBLIC_RE = /nicht-?\s*öffentliche?\s+stellungnahme/i
 
 /**
  * Known organisations the heuristic cannot recognize (architecture.md §12.9):
- * brand-style names without any legal form or org keyword. Matched
+ * brand-style names without any legal form or org keyword, and — since the
+ * upstream `TYP` flag started vetoing (`classifySubmitter`) — organisations
+ * whose staff filed through the private-person registration. Matched
  * case-insensitively against the full normalized name. Because an entry here
  * publishes the name, this list may contain organisations only, never
  * persons — add entries solely after verifying the exact spelling in the
  * Parliament data (list 142 `names[].name`). `scripts/classifier-audit.ts`
- * prints the candidates.
+ * prints the candidates as lists 1 and 3.
+ *
+ * The value is the name to PRINT; `null` prints the upstream string as it
+ * stands. It exists because Parliament's two name fields are "Nachname,
+ * Vorname", and an organisation that fills them in gets stored inverted:
+ * "Pressefreiheit, Institut für", "GmbH, Verkehrsverbund Ost-Region (VOR)".
+ * Those rows were on the site in that shape for as long as they were public.
+ * A display name is a de-inversion READ OFF the same string — never an
+ * invention, and never a person's name.
  */
-const ORG_ALLOWLIST = new Set([
-  'epicenter.works', // verified 2026-08-23 via 14/SN-8/ME (GP XXVIII)
-  'weisser ring', // verified 2026-09-15, list 142 GP XXVIII ("WEISSER RING", 3 rows)
-  'vier pfoten', // verified 2026-09-15, list 142 GP XXVII ("Vier Pfoten; Stiftung für Tierschutz")
+const ORG_ALLOWLIST = new Map<string, string | null>([
+  ['epicenter.works', null], // verified 2026-08-23 via 14/SN-8/ME (GP XXVIII)
+  ['weisser ring', null], // verified 2026-09-15, list 142 GP XXVIII ("WEISSER RING", 3 rows)
+  ['vier pfoten', null], // verified 2026-09-15, list 142 GP XXVII ("Vier Pfoten; Stiftung für Tierschutz")
+
+  /* Verified 2026-09-16 from the TYP-veto corpus comparison — every one an
+   * organisation, none containing a natural person's name. GP XXVIII: */
+  ['dachverband berufliche inklusion, dabei-austria', null],
+  ['fachstelle suchtprävention, soziale dienste bgld gmbh', null],
+  /* GP XXVII: */
+  ['der universität innsbruck, rektorat', 'Universität Innsbruck, Rektorat'],
+  ['tirol kliniken gmbh, rechtsabteilung', null],
+  ['sabaini gmbh, firma', 'Sabaini GmbH'],
+  ['umwelt, forum wissenschaft &', 'Forum Wissenschaft & Umwelt'],
+  ['öh universität innsbruck, stv doktorat phil hist univ. innsbruck', null],
+  ['(tu wien), studienkommission raumplanung', 'TU Wien, Studienkommission Raumplanung'],
+  ['akademie, junge', 'Junge Akademie der Österreichischen Akademie der Wissenschaften'],
+  ['bundestheater holding gmbh, bth', 'Bundestheater-Holding GmbH'],
+  ['pressefreiheit, institut für', 'Institut für Pressefreiheit'],
+  ['gmbh, verkehrsverbund ost-region (vor)', 'Verkehrsverbund Ost-Region (VOR) GmbH'],
+  ['patentanwaltskammer, österr.', 'Österreichische Patentanwaltskammer'],
 ])
 
 /**
  * The whole string, or its naming segment: "Vier Pfoten; Stiftung für
  * Tierschutz" is allowlisted by its first segment, the department after the
  * semicolon varies from filing to filing.
+ *
+ * Returns the name to print, or null when the string is not allowlisted —
+ * so "not listed" and "listed, print as it stands" stay distinguishable.
  */
-function isAllowlisted(s: string): boolean {
+function allowlistedName(s: string): string | null {
   const lower = s.toLowerCase()
-  if (ORG_ALLOWLIST.has(lower)) return true
+  if (ORG_ALLOWLIST.has(lower)) return ORG_ALLOWLIST.get(lower) ?? s
   const semicolon = lower.indexOf(';')
-  return semicolon >= 0 && ORG_ALLOWLIST.has(lower.slice(0, semicolon).trim())
+  if (semicolon < 0) return null
+  const head = lower.slice(0, semicolon).trim()
+  return ORG_ALLOWLIST.has(head) ? (ORG_ALLOWLIST.get(head) ?? s) : null
 }
 
 /** "(4880 St. Georgen im Attergau)" suffix — only ever appears on private persons. */
@@ -301,22 +333,29 @@ function leadsWithPersonName(s: string): boolean {
 }
 
 /**
- * Classifies a raw submitter string from the Parliament API.
- * The rule order is GDPR-driven — do not reorder:
- * person patterns win against weak org indicators; only legal forms
- * and strong org signals win against person patterns — and the segment
- * that names the submitter wins against both.
+ * What list 142 column 19 says about the submitter: `I` for an institution,
+ * `P` for a person, null when the column is missing or holds anything else.
+ *
+ * It records how the submitter REGISTERED, not what their name denotes —
+ * which is exactly why it sees what a name cannot. Measured 2026-09-16 over
+ * 106,626 rows (GP XXVIII/ME, GP XXVII/ME, GP XXVIII RV; present on 100 %
+ * of them), it agrees with the name heuristic on 96.8–99.7 %.
  */
-export function classifySubmitter(raw: string | null | undefined): SubmitterClassification {
-  const s = (raw ?? '').replace(/\s+/g, ' ').trim()
-  if (!s) return PERSON
+export type UpstreamSubmitterFlag = 'I' | 'P' | null
 
-  if (NONPUBLIC_RE.test(s)) return NONPUBLIC
+/** Anything but the two documented values is "no answer", never a guess. */
+export function readUpstreamFlag(value: unknown): UpstreamSubmitterFlag {
+  return value === 'I' || value === 'P' ? value : null
+}
 
-  if (isAllowlisted(s)) {
-    return { kind: 'organisation', name: s }
-  }
-
+/**
+ * The name half of the decision: everything that can be read off the string
+ * itself. The rule order is GDPR-driven — do not reorder: person patterns
+ * win against weak org indicators; only legal forms and strong org signals
+ * win against person patterns — and the segment that names the submitter
+ * wins against both.
+ */
+function classifyByName(s: string): SubmitterClassification {
   // The API delivers the "(postal code town)" suffix only for private persons.
   const withoutPlz = s.replace(PLZ_SUFFIX_RE, '').trim()
   if (withoutPlz !== s) return PERSON
@@ -344,4 +383,55 @@ export function classifySubmitter(raw: string | null | undefined): SubmitterClas
 
   // Safe default: when in doubt, private person with the name suppressed.
   return PERSON
+}
+
+/**
+ * Classifies a raw submitter string from the Parliament API, with the
+ * upstream flag as a second opinion.
+ *
+ * The flag may only ever VETO publication, never authorise it. Both
+ * directions of disagreement were measured on 2026-09-16
+ * (`scripts/classifier-audit.ts`), and they are not symmetric:
+ *
+ *  - Flag `P`, name reads as an organisation (29 rows across the corpora).
+ *    Hand-checked, roughly sixteen of them name a real person the site
+ *    publishes today — "Windland Energieerzeugungs GmbH; <Vorname Nachname>",
+ *    "i.A. <Nachname>, <Verband>", "<Nachname> (für <AG>), <Vorname>". The
+ *    name heuristic cannot reach these: the segment that names the submitter
+ *    is org-shaped and the person stands behind it. The flag does not read
+ *    the name at all, so it sees them. → the name is suppressed.
+ *
+ *  - Flag `I`, name reads as a person (176 / 287 / 30 rows). Mostly real
+ *    institutions rendered as "Privatperson" (Datenschutzrat, KommAustria,
+ *    Amnesty International, Naturhistorisches Museum Wien). Publishing on
+ *    the flag alone would put the hard invariant in the hands of an
+ *    undocumented upstream column: one silent flip and the site republishes
+ *    names. → nothing changes here; `scripts/classifier-audit.ts` lists them
+ *    and `ORG_ALLOWLIST` is where a verified one is published, by hand.
+ *
+ * The allowlist therefore outranks the flag: it is a human statement that
+ * this name is an organisation, and it is the escape hatch for the roughly
+ * eleven organisations per GP whose staff registered privately
+ * ("Bundestheater Holding GmbH, BTH", "Patentanwaltskammer, Österr.").
+ */
+export function classifySubmitter(
+  raw: string | null | undefined,
+  upstreamFlag: UpstreamSubmitterFlag = null,
+): SubmitterClassification {
+  const s = (raw ?? '').replace(/\s+/g, ' ').trim()
+  if (!s) return PERSON
+
+  // Orthogonal to the flag: non-public rows carry both values (902 `P` and
+  // 13 `I` in GP XXVIII alone), because it says who filed, not what is
+  // published. The placeholder string stays the only source of truth here.
+  if (NONPUBLIC_RE.test(s)) return NONPUBLIC
+
+  const allowlisted = allowlistedName(s)
+  if (allowlisted !== null) {
+    return { kind: 'organisation', name: allowlisted }
+  }
+
+  const byName = classifyByName(s)
+  if (byName.kind === 'organisation' && upstreamFlag === 'P') return PERSON
+  return byName
 }

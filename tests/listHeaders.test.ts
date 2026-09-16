@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { checkListHeader } from '../server/utils/listHeaders'
 
-/* The two headers as the API returned them on 2026-09-15, reduced to the
+/* The two headers as the API returned them on 2026-09-15 (list 142 column 19
+ * re-read 2026-09-16, when the classifier started using it), reduced to the
  * keys the check reads. A column the check does not read is kept as `{}` so
  * the positions stay real. */
 const HEADER_142 = [
@@ -24,7 +25,7 @@ const HEADER_142 = [
   { label: 'Zu' },
   { label: 'Beteiligen' },
   { label: 'Bezug_Link' },
-  {},
+  { feld_name: 'TYP', label: '?' },
   { label: 'wentry_id' },
   {},
   {},

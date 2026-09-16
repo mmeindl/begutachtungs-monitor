@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifySubmitter } from '../server/utils/privacy'
+import { classifySubmitter, readUpstreamFlag } from '../server/utils/privacy'
 
 describe('classifySubmitter', () => {
   describe('organisations — the name is preserved', () => {
@@ -235,6 +235,107 @@ describe('classifySubmitter', () => {
       for (const sample of samples) {
         const result = classifySubmitter(sample)
         if (result.kind !== 'organisation') expect(result.name).toBeNull()
+      }
+    })
+  })
+  /**
+   * List 142's own TYP flag (column 19). It records how the submitter
+   * registered, so it sees a person standing behind an org-shaped name —
+   * and it may only ever suppress a name, never publish one. Real strings
+   * from the corpus comparison of 2026-09-16.
+   */
+  describe('the upstream TYP flag', () => {
+    it('reads only the two documented values, never guesses', () => {
+      expect(readUpstreamFlag('I')).toBe('I')
+      expect(readUpstreamFlag('P')).toBe('P')
+      expect(readUpstreamFlag('')).toBeNull()
+      expect(readUpstreamFlag('i')).toBeNull()
+      expect(readUpstreamFlag(null)).toBeNull()
+      expect(readUpstreamFlag(undefined)).toBeNull()
+      expect(readUpstreamFlag(1)).toBeNull()
+    })
+
+    it.each([
+      // The class the name heuristic cannot reach: the naming segment is an
+      // organisation and the person stands behind it.
+      'Windland Energieerzeugungs GmbH; Joachim Falkenhagen',
+      'Verein Erneuerbare Energie Bregenzerwald, Erich Reiner',
+      'i.A. Halvax, dabei-austria/ Dachverband',
+    ])('P suppresses a name the string alone would publish: %s', (name) => {
+      expect(classifySubmitter(name)).toEqual({ kind: 'organisation', name })
+      expect(classifySubmitter(name, 'P')).toEqual({ kind: 'person', name: null })
+    })
+
+    it('never publishes a name on the flag alone — I changes nothing', () => {
+      // Real institutions upstream flags as such; they stay "Privatperson"
+      // until a human puts them in ORG_ALLOWLIST.
+      for (const name of ['Datenschutzrat', 'KommAustria', 'Aktienforum']) {
+        expect(classifySubmitter(name, 'I')).toEqual(classifySubmitter(name))
+      }
+    })
+
+    it('leaves non-public rows alone — the flag says who filed, not what is published', () => {
+      const nonpublic = { kind: 'nonpublic', name: null }
+      expect(classifySubmitter('Nicht-öffentliche Stellungnahme', 'P')).toEqual(nonpublic)
+      expect(classifySubmitter('Nicht-öffentliche Stellungnahme', 'I')).toEqual(nonpublic)
+    })
+
+    it('the allowlist outranks the flag — it is the escape hatch for a false veto', () => {
+      const allowlisted = 'epicenter.works'
+      expect(classifySubmitter(allowlisted).kind).toBe('organisation')
+      expect(classifySubmitter(allowlisted, 'P').kind).toBe('organisation')
+    })
+
+    /* The 13 organisations whose staff filed through the private-person
+     * registration, verified 2026-09-16 from the corpus comparison. Without
+     * the allowlist the veto hides them; each matched exactly one upstream
+     * string in GP XXVIII/XXVII and nothing else. */
+    it.each([
+      ['Bundestheater Holding GmbH, BTH', 'Bundestheater-Holding GmbH'],
+      ['Patentanwaltskammer, Österr.', 'Österreichische Patentanwaltskammer'],
+      ['Tirol Kliniken GmbH, Rechtsabteilung', 'Tirol Kliniken GmbH, Rechtsabteilung'],
+      ['Fachstelle Suchtprävention, Soziale Dienste BGLD GmbH', 'Fachstelle Suchtprävention, Soziale Dienste BGLD GmbH'],
+    ])('stays an organisation under a P flag: %s', (raw, shown) => {
+      expect(classifySubmitter(raw, 'P')).toEqual({ kind: 'organisation', name: shown })
+    })
+  })
+
+  /**
+   * Parliament stores the submitter in two fields shaped "Nachname,
+   * Vorname". An organisation that fills them in comes back inverted, and
+   * was printed that way for as long as the row was public. A display name
+   * de-inverts what the same string already says — it never invents one.
+   */
+  describe('allowlist display names', () => {
+    it('prints the de-inverted name where the upstream string is inverted', () => {
+      expect(classifySubmitter('Pressefreiheit, Institut für').name).toBe(
+        'Institut für Pressefreiheit',
+      )
+      // Matched by the segment before the semicolon, like "Vier Pfoten".
+      expect(
+        classifySubmitter('GmbH, Verkehrsverbund Ost-Region (VOR); Verkehrsverbund Ost-Region (VOR) GmbH').name,
+      ).toBe('Verkehrsverbund Ost-Region (VOR) GmbH')
+    })
+
+    it('prints the upstream string unchanged where no display name is given', () => {
+      // The three entries that predate the mechanism must not have moved.
+      expect(classifySubmitter('epicenter.works').name).toBe('epicenter.works')
+      expect(classifySubmitter('Vier Pfoten; Stiftung für Tierschutz').name).toBe(
+        'Vier Pfoten; Stiftung für Tierschutz',
+      )
+      expect(classifySubmitter('WEISSER RING').name).toBe('WEISSER RING')
+    })
+
+    it('leaves a string that is not allowlisted alone', () => {
+      // Same shape as an entry, different organisation — must not borrow a name.
+      expect(classifySubmitter('Pressefreiheit, Verein für').name).not.toBe(
+        'Institut für Pressefreiheit',
+      )
+    })
+
+    it('without a flag nothing changes — every other caller keeps its behaviour', () => {
+      for (const name of ['Vegane Gesellschaft Österreich', 'Mustermann, Maria', '']) {
+        expect(classifySubmitter(name, null)).toEqual(classifySubmitter(name))
       }
     })
   })
