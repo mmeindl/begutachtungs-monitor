@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationId } from '#shared/utils/stations'
-import { parliamentOutcome } from '#shared/utils/stations'
+import { parliamentOutcome, procedureStatusDe } from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
@@ -461,12 +461,18 @@ const linkClasses =
            the bar is this page's table of contents, in the page's order. -->
       <div class="mt-6">
         <div class="rounded-xl border border-hairline bg-surface p-5">
-          <!-- The card says what it is, and the way out of it sits on the
-               same line: at the bottom the link read as a footnote to the
-               predecessor paragraph above it, which it is not. -->
+          <!-- The card opens with the ANSWER, and the way out of it sits on
+               the same line: at the bottom the link read as a footnote to
+               the predecessor paragraph above it, which it is not.
+               This line was the label "Der Text im Verfahren" until
+               16.09.2026 — a name for the card that told a visitor nothing
+               the five rows below did not already say, in the one place
+               where the whole procedure can be answered in two words. The
+               label survives where it is still doing work: as the list's
+               accessible name in SpineRail. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <p class="text-xs font-medium uppercase tracking-wide text-ink-secondary">
-              Der Text im Verfahren
+            <p class="font-medium text-ink">
+              {{ procedureStatusDe(data) }}
             </p>
             <NuxtLink
               to="/so-funktionierts"

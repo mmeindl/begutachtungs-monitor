@@ -115,8 +115,8 @@ const steps = [
 
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Oben auf jeder Entwurfsseite stehen dieselben fünf Stationen
-        untereinander, unter der Überschrift „Der Text im Verfahren“. Jede
-        Zeile nennt, was an dieser Station geschehen ist, und führt zu dem
+        untereinander. Darüber steht in einem Satz, wo der Text gerade liegt.
+        Jede Station nennt darunter, was dort geschehen ist, und führt zu dem
         Abschnitt der Seite, der sie behandelt.
       </p>
 
