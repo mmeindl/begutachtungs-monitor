@@ -97,7 +97,6 @@ function links(org: OrgEntry) {
   return org.statements.map((s) => ({
     citation: s.citation,
     href: s.parliamentUrl,
-    document: s.documentUrl,
   }))
 }
 

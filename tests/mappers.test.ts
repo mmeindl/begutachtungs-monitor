@@ -18,8 +18,6 @@ import {
   mapVorlageRow,
   normalizeOrgName,
   parseFristsort,
-  statementDocumentPath,
-  statementDocumentPathFromUrl,
   parseGermanDate,
   parseShortinfo,
   parseStages,
@@ -243,7 +241,6 @@ describe('mapStatementRow', () => {
       submitterName: null,
       endorsements: 0,
       parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SNME/4983',
-      documentUrl: '/api/stellungnahmen/XXVIII/SNME/4983/dokument',
     })
   })
 
@@ -254,6 +251,7 @@ describe('mapStatementRow', () => {
       '<a href="/gegenstand/XXVIII/SNME/5000/" target="_blank">Vegane Gesellschaft Österreich (300/SN-126/ME)</a>'
     row[12] = 12
     row[15] = '300/SN-126/ME'
+    row[19] = 'I' // upstream's TYP flag: an institution filed this
     expect(mapStatementRow(row)).toEqual({
       citation: '300/SN-126/ME',
       date: '2026-07-07',
@@ -261,8 +259,23 @@ describe('mapStatementRow', () => {
       submitterName: 'Vegane Gesellschaft Österreich',
       endorsements: 12,
       parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SNME/5000',
-      documentUrl: '/api/stellungnahmen/XXVIII/SNME/5000/dokument',
     })
+  })
+
+  /* The GDPR half of the row: column 19 is upstream's own organisation/person
+   * flag and it can only ever suppress a name. A real case from the corpus
+   * comparison of 2026-09-16 — the naming segment is a company, the person
+   * stands behind it, and only the flag sees them. */
+  it('lets the TYP flag suppress a name the string alone would publish', () => {
+    const row = [...LIST142_PERSON_ROW]
+    row[6] =
+      '<a href="/gegenstand/XXVIII/SNME/4983/">Windland Energieerzeugungs GmbH; Joachim Falkenhagen (237/SN-126/ME)</a>'
+
+    row[19] = 'I'
+    expect(mapStatementRow(row).submitterKind).toBe('organisation')
+
+    row[19] = 'P'
+    expect(mapStatementRow(row)).toMatchObject({ submitterKind: 'person', submitterName: null })
   })
 
   it('maps a Stellungnahme on a Regierungsvorlage (item type SN, bare citation)', () => {
@@ -282,18 +295,7 @@ describe('mapStatementRow', () => {
       submitterName: 'Forum Informationsfreiheit',
       endorsements: 4,
       parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVII/SN/277139',
-      documentUrl: '/api/stellungnahmen/XXVII/SN/277139/dokument',
     })
-  })
-
-  it('recovers the document path from a stored page URL, for both item types', () => {
-    expect(statementDocumentPathFromUrl('https://www.parlament.gv.at/gegenstand/XXVIII/SNME/4983')).toBe(
-      statementDocumentPath('XXVIII', 'SNME', 4983),
-    )
-    expect(statementDocumentPathFromUrl('https://www.parlament.gv.at/gegenstand/XXVII/SN/277139/')).toBe(
-      '/api/stellungnahmen/XXVII/SN/277139/dokument',
-    )
-    expect(statementDocumentPathFromUrl('https://www.parlament.gv.at/gegenstand/XXVII/ME/95')).toBeNull()
   })
 
   it('maps a non-public row (placeholder instead of a link)', () => {
@@ -594,7 +596,6 @@ describe('groupOrganisationStatements', () => {
     submitterName: name,
     endorsements,
     parliamentUrl: `https://www.parlament.gv.at/gegenstand/XXVIII/SNME/${citation}`,
-    documentUrl: `/api/stellungnahmen/XXVIII/SNME/${citation}/dokument`,
   })
 
   it('collapses repeated submissions of one organisation into one entry', () => {

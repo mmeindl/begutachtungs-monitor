@@ -13,7 +13,6 @@ function statement(overrides: Partial<StatementMeta> = {}): StatementMeta {
     submitterName: 'Arbeiterkammer Österreich',
     endorsements: 12,
     parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SNME/3699',
-    documentUrl: '/api/stellungnahmen/XXVIII/SNME/3699/dokument',
     ...overrides,
   }
 }
