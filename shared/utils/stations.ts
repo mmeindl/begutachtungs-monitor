@@ -41,7 +41,7 @@
  * this fetches nothing.
  */
 import type { DraftDetail } from '../types'
-import { formatDateDe, formatNumberDe } from './format'
+import { formatDateDe, formatNumberDe, spanInDays } from './format'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -85,6 +85,75 @@ export interface StationContext {
    * unknown; the row then carries the date alone.
    */
   rvStatementTotal?: number | null
+}
+
+/**
+ * How long the Begutachtungsfrist ran — Einlangen im Nationalrat until
+ * Fristende. The one number that says at a glance whether a consultation
+ * was a real one: the Legistische Richtlinien recommend six weeks, and a
+ * ten-day Frist is the finding, not the dates it sits between.
+ *
+ * Weeks wherever the span is a clean multiple of seven, days otherwise —
+ * and the duration LEADS the fact, because a bare "(42 Tage)" next to a
+ * badge that says "Noch 5 Tage" would read as a second countdown.
+ *
+ * Measured against RIS's own Begutachtungsbeginn on 2026-09-16 (all 133
+ * GP-XXVIII rows of `/api/ris-map`): identical for 112, one day apart for
+ * 12, more than four days apart for 3. So the parliamentary Einlangen is
+ * the Frist's start to within a day in 94 % of cases — and it is the date
+ * the row above states, so a reader can do the subtraction.
+ */
+function fristDurationDe(d: DraftDetail): string | null {
+  const days = spanInDays(d.arrivedAt, d.deadline)
+  if (days === null || days < 1) return null
+  if (days >= 14 && days % 7 === 0) return `${days / 7} Wochen Frist`
+  return days === 1 ? '1 Tag Frist' : `${days} Tage Frist`
+}
+
+/**
+ * How long after the Fristende the Regierungsvorlage came — temporal, never
+ * causal (framing rule). Reads as an apposition to the RV's date rather
+ * than as a fact of its own, so the row keeps at most two middot-separated
+ * parts.
+ *
+ * The negative case is not an error: 115/ME XXVIII was tabled as 525 d.B.
+ * on the day the draft went out, a fortnight before its own Frist ended.
+ * Two identical dates in two rows hid that completely; naming the span is
+ * the whole reason this line exists.
+ */
+function rvLatencyDe(deadline: string | null, rvDate: string | null): string | null {
+  const days = spanInDays(deadline, rvDate)
+  if (days === null) return null
+  if (days < 0) return 'noch vor Fristende'
+  if (days === 0) return 'am Tag des Fristendes'
+  if (days === 1) return '1 Tag nach Fristende'
+  if (days < 60) return `${days} Tage nach Fristende`
+  return `${Math.round(days / 30.44)} Monate nach Fristende`
+}
+
+/**
+ * The card's opening line: where the text stands, in one phrase.
+ *
+ * It replaces the label "Der Text im Verfahren", which named the card
+ * without answering anything — five rows had to be read and added up
+ * before a visitor knew whether this draft became law. The phrase
+ * deliberately carries no countdown: the badge beside the title and the
+ * CTA card below already state the remaining days, and this would have
+ * been the third.
+ */
+export function procedureStatusDe(d: DraftDetail): string {
+  const e = d.enactment
+  if (e?.bgblNumber) return 'Gesetz geworden'
+  if (e) return d.gpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
+  if (d.active) return 'In Begutachtung'
+  // Word for word the homepage chip's (OutcomeChip), and deliberately NOT
+  // "Beim Ressort – bisher keine Regierungsvorlage": the marked row two
+  // lines below already reads "bisher keine · seit 29.06.2026 beim
+  // Ressort", so the longer headline was the same two facts twice, 40px
+  // apart. The headline states the finding, the row says since when.
+  return d.gpEnded
+    ? 'Ohne Regierungsvorlage – Gesetzgebungsperiode beendet'
+    : 'Bisher keine Regierungsvorlage'
 }
 
 const AUSSCHUSS = 'Geändert im Ausschuss'
@@ -147,6 +216,25 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         ? `ändert ${ctx.amendedLawCount} Gesetze`
         : null
 
+  /** Duration first, then the date — "6 Wochen Frist, endete 24.06.2026".
+   *  Without a Frist the sentence is the absence itself. */
+  const dur = fristDurationDe(d)
+  const fristDate = d.deadline
+    ? `${d.active ? 'bis' : 'endete'} ${formatDateDe(d.deadline)}`
+    : null
+  const fristLine = fristDate
+    ? dur ? `${dur}, ${fristDate}` : `Frist ${fristDate}`
+    : 'keine Frist angegeben'
+
+  /** The RV's date with its distance to the Fristende as an apposition —
+   *  one fact, not two, so the row does not grow a third middot. */
+  const latency = e ? rvLatencyDe(d.deadline, e.rvDate) : null
+  const rvWhen = e
+    ? e.rvDate
+      ? latency ? `${formatDateDe(e.rvDate)}, ${latency}` : formatDateDe(e.rvDate)
+      : e.rvCitation
+    : null
+
   const n = d.statements.total
   const count = n === 0
     ? d.active ? 'noch keine Stellungnahmen' : 'keine Stellungnahmen'
@@ -184,12 +272,15 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       state: d.active ? 'current' : 'done',
       // The countdown deliberately stays with the badge and the CTA —
       // repeating "Noch 1 Tag" here put the same three words on the page
-      // three times. The bar carries the date. While the Frist runs that
-      // date leads, because it is the fact a reader can act on; afterwards
-      // the count leads, because it is the result.
+      // three times. The bar carries the date, and since 16.09.2026 the
+      // LENGTH of the Frist with it: how long a ministry gave is the fact
+      // that separates a consultation from a formality, and it was the one
+      // thing five dates on this card left the reader to work out. While
+      // the Frist runs that line leads, because it is what a reader can act
+      // on; afterwards the count leads, because it is the result.
       facts: d.active
-        ? kept(d.deadline ? `Frist bis ${formatDateDe(d.deadline)}` : 'keine Frist angegeben', count)
-        : kept(count, d.deadline ? `Frist endete ${formatDateDe(d.deadline)}` : 'keine Frist angegeben'),
+        ? kept(fristLine, count)
+        : kept(count, fristLine),
       comparison: null,
     },
     {
@@ -202,7 +293,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // temporal word would mislead the other way, and the boundary becomes
       // the state.
       facts: e
-        ? kept(e.rvDate ? formatDateDe(e.rvDate) : e.rvCitation, rvCount)
+        ? kept(rvWhen, rvCount)
         : d.active
           ? ['ausstehend']
           : d.gpEnded

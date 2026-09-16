@@ -117,3 +117,33 @@ export function fristLabel(deadline: string | null | undefined, active: boolean)
   if (days === 1) return 'Noch 1 Tag'
   return `Noch ${days} Tage`
 }
+
+/**
+ * Whole days from one ISO date to another (date-only math, UTC), negative
+ * when `to` lies before `from`; null when either date is missing.
+ *
+ * Separate from `daysUntil`, which measures against today: these are two
+ * different questions, and a "how long did this take" that silently used
+ * the clock would change its answer overnight.
+ *
+ * Not `daysBetween`: `server/utils/risJoin.ts` exports that name for the
+ * same arithmetic on non-null dates, and Nuxt auto-imports both trees —
+ * the duplicate name resolved to the server one and silently shadowed this
+ * everywhere it was called unqualified. Worth consolidating once the join
+ * is touched again; a collision is not worth risking for a nicer name.
+ */
+export function spanInDays(
+  from: string | null | undefined,
+  to: string | null | undefined,
+): number | null {
+  if (!from || !to) return null
+  const day = (iso: string) => Date.UTC(
+    Number(iso.slice(0, 4)),
+    Number(iso.slice(5, 7)) - 1,
+    Number(iso.slice(8, 10)),
+  )
+  const a = day(from)
+  const b = day(to)
+  if (Number.isNaN(a) || Number.isNaN(b)) return null
+  return Math.round((b - a) / 86_400_000)
+}

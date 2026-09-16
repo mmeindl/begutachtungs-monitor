@@ -29,6 +29,22 @@
  * breaking mid-word, and buying the width back cost a breakout from the
  * prose column. A table of contents is a list.
  *
+ * ONE layout at every width, and that is the fix of 16.09.2026: the name on
+ * its line, what happened on the next, the comparison on its own. Before
+ * that the bar had three. From md the name sat in a fixed 12rem column with
+ * the facts beside it — until a fact line outgrew the remainder, when
+ * flex-wrap dropped the whole paragraph to x=0, under the NAME rather than
+ * under the fact column. That hit exactly one row, "Regierungsvorlage" with
+ * the comparison behind it: the card's most important line was the one that
+ * broke its own grid. Below md name and facts ran inline and nothing lined
+ * up but the dots. Stacking costs about five lines of height and buys a
+ * silhouette that is identical on a phone and on a desk, and a fact line
+ * that can take the full measure instead of a leftover column.
+ *
+ * The comparison link is no longer the third item in a middot run. It is
+ * the accountability layer — the reason this project exists — and it was
+ * set as trailing 12px grey punctuation behind a date and a count.
+ *
  * Deliberately NOT a summary of the substance, and it fetches nothing: an
  * earlier version fired all three comparison requests on mount, one of
  * which costs up to 30 s when RIS has the ressort's annex only as a scan.
@@ -68,12 +84,43 @@ const props = defineProps<{
   rvStatementTotal?: number | null
 }>()
 
-/* The house link style: underlined AT REST, because a name or a question
-   sharing the page with plain text is not marked as clickable by colour
-   alone (WCAG 1.4.1, and the same reasoning as `linkClasses` on the detail
-   page). This replaces the icons — an icon said "there is a document here",
-   which is not the same claim as "you can click this". */
-const LINK = 'rounded text-accent-deep underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
+/* Two link styles, and only one of them looks like a link at rest.
+
+   THE QUESTION (`LINK`) is the house style: accent-deep, underlined at
+   rest, because a question sharing the page with plain text is not marked
+   as clickable by colour alone (WCAG 1.4.1, the same reasoning as
+   `linkClasses` on the detail page). It is the accountability layer, it is
+   the click this card exists for, and it is the only blue in it.
+
+   THE STATION NAME (`STATION`) carries no link styling at all. The whole
+   row is the target instead — the rectangle the marker already draws, made
+   hoverable and clickable, with the name underlining on hover. Five station
+   names set in accent-deep made this card seven blue underlined lines out
+   of eleven, and the brand colour stopped carrying information; five names
+   in ink with a grey underline replaced that with five grey underlines.
+   Neither is what a table of contents should look like sitting under a
+   headline. DraftCard settled the same question the same way ("the card
+   around it is already the link").
+
+   Mechanically it is the stretched-link pattern: the anchor stays around
+   the NAME, so its accessible name is exactly the section it leads to, and
+   an `::after` grown over the row does the hit testing. It has to be this
+   way round — two of the five rows carry the comparison question, and an
+   <a> cannot be nested in an <a>. What the overlay costs is text selection
+   over the fact line; the facts it holds are all repeated in the sections
+   below, where they can be selected.
+
+   The at-rest underline comes back where hover cannot be had: on a touch
+   device nothing would ever reveal these rows as targets. */
+const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
+const STATION = [
+  'station rounded underline-offset-4 group-hover:underline',
+  // The hit area, the pointer cursor and the focus ring, all on the row.
+  'after:absolute after:inset-0 after:rounded-md',
+  'focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-accent-deep',
+  '[@media(hover:none)]:underline [@media(hover:none)]:decoration-baseline',
+].join(' ')
+const LINK = `rounded text-accent-deep underline underline-offset-2 hover:no-underline ${FOCUS}`
 
 const list = computed(() => stations(props.data, {
   createsNewLaw: props.createsNewLaw,
@@ -108,6 +155,12 @@ const rows = computed(() => list.value.map((s, i) => {
       ? 'border-ink bg-mark'
       : s.state === 'done' ? 'border-ink bg-ink' : 'border-baseline bg-surface',
     nameClass: reached(s.state) ? 'font-medium text-ink' : 'text-ink-secondary',
+    // The facts are the content, the name is navigation — so the facts
+    // carry full ink at the station the text reached, and read at the same
+    // size as the name rather than two steps below it. They used to be
+    // 12px grey beside a 14px blue link, which decided every row's contest
+    // for attention in favour of the link.
+    factClass: reached(s.state) ? 'text-ink' : 'text-ink-secondary',
     href: props.anchors?.[s.id],
     facts: facts.join(' · '),
     comparison: href && s.comparison ? { href, question: s.comparison.question } : null,
@@ -124,53 +177,81 @@ const rows = computed(() => list.value.map((s, i) => {
 
 <template>
   <!--
-    Paint order without a negative z-index: neither the card nor this list
-    is a stacking context, so a wash sent behind with -z-10 would disappear
-    under the card's white background. Instead it comes FIRST inside its
-    <li> and stays at z-auto, while dots, rails (z-10) and the text
-    container (relative) all paint over it.
+    `isolate` sits on the LIST, and every one of the three layers below
+    depends on which element carries it:
+
+    - The grounds go behind the text with -z-10. "Behind" has to mean
+      behind the list's content and not behind the card's white sheet, so
+      something must be a stacking context — otherwise the wash vanishes
+      under the card. That was once solved by painting the grounds above
+      the text and lifting the text back over them in a `relative`
+      container, which made that container the nearest positioned ancestor:
+      the row link's ::after then sized itself to the TEXT, and the target
+      was a ragged block ending wherever the row's words did.
+    - The rail overflows its own <li> by design — it has to reach the next
+      dot. So it must paint above the NEXT row, which is painted after it.
+      Isolating each <li> takes that away: the rail's z-10 stays trapped in
+      its row, and the marked row's wash cuts the line.
+    - The row link's ::after has to size to the row, so the <li> must be
+      positioned but must NOT be a stacking context: `relative` alone is
+      exactly that (z-index stays auto), which is why the rail can still
+      climb out of it.
   -->
-  <ol aria-label="Der Text im Verfahren" class="flex flex-col">
+  <ol aria-label="Der Text im Verfahren" class="isolate flex flex-col">
     <li
       v-for="row in rows"
       :key="row.id"
-      class="relative flex gap-3 py-1.5"
+      class="group relative -mx-2 flex gap-3 rounded-md px-2 py-2"
       :aria-current="row.current ? 'step' : undefined"
     >
       <span
         v-if="row.current"
         aria-hidden="true"
-        class="absolute -inset-x-2 inset-y-0 rounded-md bg-mark-wash"
+        class="absolute inset-0 -z-10 rounded-md bg-mark-wash"
       />
-      <!-- py-1.5 plus the dot's mt-1 put every dot at y 10–22 of its row, so
-           a line from 22px to 10px past the row's end runs from this dot's
+      <!-- The hover ground, on rows that lead somewhere. Translucent ink
+           rather than a colour of its own, so it reads the same over the
+           white sheet and over the marker's wash — the current row must
+           answer the pointer like every other. -->
+      <span
+        v-if="row.href"
+        aria-hidden="true"
+        class="absolute inset-0 -z-10 rounded-md bg-ink/6 opacity-0 transition-opacity group-hover:opacity-100"
+      />
+      <!-- py-2 plus the dot's mt-1.5 put every dot at y 14–26 of its row, so
+           a line from 26px to 14px past the row's end runs from this dot's
            lower edge to the next one's upper edge and never sits behind a
-           dot. -->
+           dot. Both offsets are constants of the row's TOP, which is why
+           rows of two and three lines can share one rail geometry.
+           pointer-events-none on both: they sit above the link overlay, and
+           a dead spot over the dot would be a hole in the row's target. -->
       <span
         v-if="row.rail"
         aria-hidden="true"
-        class="absolute -bottom-2.5 left-1.25 top-5.5 z-10 w-0.5"
+        class="pointer-events-none absolute -bottom-3.5 left-3.25 top-6.5 z-10 w-0.5"
         :class="row.rail"
       />
       <span
         aria-hidden="true"
-        class="relative z-10 mt-1 box-border size-3 shrink-0 rounded-full border-2"
+        class="pointer-events-none relative z-10 mt-1.5 box-border size-3 shrink-0 rounded-full border-2"
         :class="row.dot"
       />
-      <div class="relative flex min-w-0 flex-wrap items-baseline gap-x-2">
-        <!-- From md the names share a fixed column, so every fact line
-             starts at the same x and the right-hand side reads as its own
-             column. Below md they simply wrap. The link needs no sr-only
-             purpose: its text IS the name of the section it leads to. -->
-        <p class="text-sm md:w-48 md:shrink-0" :class="row.nameClass">
-          <a v-if="row.href" :href="row.href" :class="LINK">{{ row.name }}</a>
+      <!-- One column, at every width: name, then what happened, then the
+           question this station lets you answer. Neither link needs an
+           sr-only purpose — their text IS the name of what they lead to. -->
+      <div class="min-w-0 text-sm">
+        <p :class="row.nameClass">
+          <a v-if="row.href" :href="row.href" :class="STATION">{{ row.name }}</a>
           <template v-else>{{ row.name }}</template>
         </p>
-        <p
-          v-if="row.facts || row.comparison"
-          class="text-xs tabular-nums"
-          :class="row.current ? 'text-ink' : 'text-ink-secondary'"
-        >{{ row.facts }}<template v-if="row.comparison"><span v-if="row.facts"> · </span><a :href="row.comparison.href" :class="LINK">{{ row.comparison.question }} →</a></template></p>
+        <p v-if="row.facts" class="mt-0.5 leading-snug" :class="row.factClass">
+          {{ row.facts }}
+        </p>
+        <!-- Above the row's overlay, so the question keeps its own target,
+             its own focus ring and its own destination. -->
+        <p v-if="row.comparison" class="relative z-10 mt-1 leading-snug">
+          <a :href="row.comparison.href" :class="LINK">{{ row.comparison.question }} →</a>
+        </p>
         <p v-if="row.announce" class="sr-only">{{ row.announce }}</p>
       </div>
     </li>
