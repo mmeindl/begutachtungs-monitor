@@ -73,9 +73,12 @@ env:
 jobs:
   drift:
     runs-on: ubuntu-latest
-    # Ein kalter Lauf holt einige tausend RIS-Dokumente nacheinander. Mit
-    # warmem Cache (unten) sind es nur die neuen.
-    timeout-minutes: 45
+    # Der ERSTE Lauf hat keinen Cache und holt beide Pfade nacheinander: rund
+    # 3.300 RIS-Abrufe für die Paragraphenprüfung plus 240 Beilagen, alles
+    # sequenziell — das sind gut und gern 35 Minuten. Danach liegt der Cache
+    # und es bleiben die neuen Entwürfe, also Minuten. Die Grenze ist für den
+    # kalten Fall bemessen, nicht für den Normalfall.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
