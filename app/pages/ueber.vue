@@ -52,14 +52,19 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Wie es funktioniert
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
-          Alle Daten stammen aus der
+          Alle Daten stammen aus den amtlichen Schnittstellen des
           <ExternalLink
             href="https://www.parlament.gv.at/recherchieren/open-data/"
             :class="linkClasses"
-          >offiziellen Open-Data-Schnittstelle des österreichischen
-            Parlaments</ExternalLink>. Der Monitor ruft sie bei Bedarf ab und hält sie rund 30 Minuten
-          im Zwischenspeicher; eine eigene Datenbank gibt es nicht. Es gibt
-          keine Konten, kein Tracking und keine Cookies.
+          >österreichischen Parlaments</ExternalLink>
+          und des
+          <ExternalLink
+            href="https://www.ris.bka.gv.at"
+            :class="linkClasses"
+          >Rechtsinformationssystems des Bundes</ExternalLink>. Der Monitor
+          ruft sie bei Bedarf ab und hält sie rund 30 Minuten im
+          Zwischenspeicher; eine eigene Datenbank gibt es nicht. Es gibt keine
+          Konten, kein Tracking und keine Cookies.
         </p>
       </section>
 
@@ -92,14 +97,27 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Daten &amp; Lizenz
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
-          Datenquelle ist die Parlamentsdirektion; die Metadaten stehen unter
-          der Lizenz
+          Der Monitor bezieht Daten aus zwei amtlichen Quellen. Entwurfstexte
+          und Textgegenüberstellungen stammen aus dem
+          Rechtsinformationssystem des Bundes, die Stationen nach der
+          Begutachtung von der Parlamentsdirektion; beide stehen unter
           <ExternalLink
             href="https://creativecommons.org/licenses/by/4.0/deed.de"
             :class="linkClasses"
-          >CC BY 4.0</ExternalLink>. Die Volltexte der Stellungnahmen sind von dieser Lizenz
-          ausgenommen – der Monitor zeigt deshalb ausschließlich Metadaten und
-          verlinkt für alle Volltexte auf parlament.gv.at.
+          >CC BY 4.0</ExternalLink>.
+        </p>
+        <p class="mt-3 leading-relaxed text-ink-secondary">
+          Für das Begutachtungsverfahren selbst – Ministerialentwürfe,
+          Stellungnahmen und Zustimmungen – weist das Parlament keine
+          Open-Data-Lizenz aus. Der Monitor zeigt daraus ausschließlich
+          Metadaten: Fristen, Geschäftszahlen, Anzahl der Einreichungen und
+          die Namen einreichender Organisationen. Volltexte übernimmt er
+          nicht, sondern verlinkt sie auf parlament.gv.at; Namen von
+          Privatpersonen veröffentlicht er nicht. Welche Lizenz für welchen
+          Datensatz gilt, steht
+          <NuxtLink to="/impressum#imp-license" :class="linkClasses"
+            >im Impressum</NuxtLink
+          >.
         </p>
       </section>
 
@@ -143,9 +161,10 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor lädt zur Laufzeit keine Ressourcen von Drittanbietern:
           keine externen Schriften, keine Icon- oder Skript-CDNs, keine
-          Analytik. Die einzige Datenquelle ist die österreichische
-          Parlamentsdirektion. Betrieb und Hosting sind auf europäische,
-          EU-eigene Infrastruktur ausgelegt.
+          Analytik. Die Daten kommen ausschließlich aus zwei österreichischen
+          Amtsquellen, der Parlamentsdirektion und dem Rechtsinformationssystem
+          des Bundes. Betrieb und Hosting sind auf europäische, EU-eigene
+          Infrastruktur ausgelegt.
         </p>
       </section>
 
