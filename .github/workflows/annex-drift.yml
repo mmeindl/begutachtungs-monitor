@@ -42,6 +42,11 @@
 # etwas angefasst — muss der Lauf ohne Cache erfolgen; das ist eine Handarbeit
 # und kein Wochenjob.
 #
+# **Die Grundlinie mahnt sich selbst an.** Ab 60 Tagen Alter meldet der Lauf
+# einen Befund der Klasse `wartung` — mit dem Befehl, der es behebt — und
+# öffnet dafür ein Issue wie für jeden anderen Befund. Das Nachziehen bleibt
+# Handarbeit, das Erinnern nicht.
+#
 # Bekannte Falle, dieselbe wie bei `uptime.yml`: GitHub schaltet geplante
 # Workflows in Repositories ohne Commits nach 60 Tagen ab und schickt eine
 # Mail. Im Actions-Tab wieder einschalten oder irgendetwas committen.

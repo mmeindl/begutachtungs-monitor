@@ -2677,6 +2677,20 @@ die Grundlinie nicht nur bei einer Änderung nachgezogen, sondern auch dann und
 wann ohne Anlass, aus den Berichten eines sauberen Laufs (sie hängen als
 Artefakt `annex-reports` an jedem Lauf).
 
+**Erinnert wird der Alarm selbst, nicht der Mensch** (17.09.2026). Die
+Grundlinie trägt ein `at`, also ist ihr Alter prüfbar:
+`maintenanceFindings` meldet ab **60 Tagen** einen Befund der Klasse
+`wartung`, mit Alter, Anzahl der erfassten Entwürfe und dem Befehl, der es
+behebt. Das öffnet ein Issue und schickt eine Mail wie jeder andere Befund —
+eine Erinnerung, die vom Erinnern abhängt, ist keine, und dieser Punkt war der
+einzige der ganzen Konstruktion, der auf Gedächtnis beruhte. Die 60 Tage sind
+dieselbe Frist, nach der GitHub geplante Workflows in einem stillen Repository
+abschaltet: zwei Wartungsfristen mit einer Zahl.
+
+Der Befund sagt ausdrücklich „nichts ist kaputt": eine überalterte Grundlinie
+ist keine Störung, sondern ein Alarm, der schleichend weniger prüft, und die
+Meldung muss von einem echten Bruch unterscheidbar bleiben.
+
 Nicht gebaut, und zwar bewusst: der Workflow könnte die Grundlinie bei einem
 sauberen Lauf selbst fortschreiben. Das wäre ein Schreibrecht mehr im CI, und
 vor allem könnte eine Grundlinie, die sich selbst nachzieht, genau die
