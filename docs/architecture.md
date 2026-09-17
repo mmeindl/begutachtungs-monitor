@@ -3095,11 +3095,39 @@ Alternativen sind und keine Abfolge. Genau dort gewinnt das fremde Werkzeug.
 Spaltendarstellung, statt eine eigene zu haben. Vorher sah eine technische
 Grenze aus wie eine andere Art von Änderung.
 
-**Nicht mitgemacht:** Die Textgegenüberstellung (`TextComparisonSection.vue`)
-hat denselben Notfallzweig, aber gar keine Werkzeugleiste — dort einen
-Umschalter zu setzen hieße, erst eine zu entwerfen. Eigener Schritt; und die
-amtliche Beilage ist konzeptuell ohnehin schon ein Zweispalter, den die Seite
-bewusst harmonisiert liest.
+**Nachtrag 17.09.2026 — die Werkzeugleiste gibt es jetzt auch in der
+Textgegenüberstellung, und dort trägt sie mehr.** Der Umschalter war hier
+zuerst ausgelassen, weil `TextComparisonSection.vue` gar keine Leiste hatte
+und eine zu entwerfen ein eigener Schritt ist. Beim Bauen wurde klar, dass
+das Argument „die Beilage ist ohnehin schon ein Zweispalter" **für** den
+Umschalter spricht und nicht gegen ihn: Die Beilage **ist** eine
+zweispaltige Tabelle, „Geltende Fassung" neben „Vorgeschlagener Fassung",
+und die Seite liest sie bewusst harmonisiert. `Nebeneinander` ist damit
+keine Vorliebe, sondern **die Darstellung, die das Ressort selbst gewählt
+hat** — zurückgegeben, ohne etwas neu zu berechnen, mit den Spaltentiteln
+der Beilage darüber.
+
+Das **Suchfeld** wiegt hier sogar schwerer als im §-Vergleich. Die
+Gegenüberstellung ist konstruktionsgemäß vollständig — jeder Paragraph, den
+die Beilage abdruckt, steht darin, unveränderte eingeschlossen —, also hat
+ein Leser mit einem Begriff im Kopf („Verwaltungsstrafe", „§ 40") sonst
+keinen Weg hinein. Eine Suche öffnet alle Gruppen, und ein Treffer in einer
+*unveränderten* Stelle bekommt einen eigenen Block, statt in der
+Kontextzeile zu verschwinden, die nur zählt.
+
+**Und der Filter ist weg** (`Alle anzeigen (330)`, 17.09.2026). Er bot
+**Isolation** („nur die neuen zeigen"), während die Aufgabe des Lesers
+**Unterdrückung** ist („die redaktionellen ausblenden, damit ich die
+Substanz sehe") — und die war nie im Angebot, weil die Auswahl einwertig
+war. Er beantwortete also eine Frage, die kaum jemand stellt, während die
+gestellte offen blieb; die Zahlen, die er trug, stehen ohnehin auf den
+Gesetzesköpfen, dort je Gesetz statt je Seite. Verloren geht die einzige
+gedruckte **Gesamtsumme**, was nur ein Sammelgesetz betrifft; die Pillen je
+Gesetz sind die nützlichere Granularität, und eine schlichte Summenzeile
+wäre billiger zu lesen als ein Auswahlfeld, falls die Summe fehlt. Damit
+haben beide Vergleiche dieselbe Leiste: Umschalter und Suche — was
+nachträglich begründet, warum die Gegenüberstellung keinen Filter bekommen
+hat.
 
 **Was nicht angefasst wurde, und warum es in die Antwort gehört statt in den
 Code:** Gelobt wurde am fremden Werkzeug auch, dass es mit *verschobenen*

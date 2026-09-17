@@ -15,7 +15,7 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
-import type { AnnexWithheldCause, TextComparisonResponse, TextComparisonRow } from '#shared/types'
+import type { AnnexWithheldCause, LawDiffSegment, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
@@ -23,6 +23,48 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/draf
   lazy: true,
   server: false,
 })
+
+/**
+ * Same two controls as LawDiffSection, and they are worth more here.
+ *
+ * **Nebeneinander is not a preference, it is the source's own shape.** The
+ * annex IS a two-column table — "Geltende Fassung" beside "Vorgeschlagene
+ * Fassung" — and this section deliberately reads it harmonised, as one
+ * sentence with the change marked in place, because that is the better read
+ * for a handful of swapped words. Where a ressort recasts a whole paragraph,
+ * the harmonised reading strikes the entire old text and then prints the
+ * entire new one, and the toggle gives back the presentation the ressort
+ * chose. Nothing is recomputed: `segments` carries `equal | removed |
+ * inserted` per run, so the left column is everything but `inserted` and the
+ * right everything but `removed`.
+ *
+ * **The search matters more here too.** The comparison is complete by
+ * construction — every § the annex prints is here, unchanged ones included —
+ * so a reader with a term in mind ("Verwaltungsstrafe", "§ 40") has no other
+ * way through. The diff section at least lets its pills lead the way.
+ */
+const view = ref<'inline' | 'split'>('inline')
+const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
+  { value: 'inline', label: 'Fließtext' },
+  { value: 'split', label: 'Nebeneinander' },
+]
+
+const query = ref('')
+
+/**
+ * Both columns, the designation and the law are searchable.
+ *
+ * A withheld row can never match: the server empties its text before the
+ * response leaves, so there is nothing to search. That is also why a search
+ * hides the "n Änderungen hier nicht gezeigt" notice of a §, which is the
+ * right behaviour for a view the reader has explicitly narrowed — the
+ * unsearched section states it.
+ */
+function matchesQuery(row: TextComparisonRow, q: string): boolean {
+  return [row.current, row.proposed, row.para, row.gld, row.heading, row.law].some(
+    (t) => t?.toLowerCase().includes(q),
+  )
+}
 
 type Badge = TextComparisonRow['change'] | 'editorial'
 
@@ -86,6 +128,10 @@ const groups = computed<Group[]>(() => {
     out.push(group)
     return group
   }
+  // The query filters here rather than in a step of its own: an `article`
+  // row is structural — it opens a group and carries the law's title — so it
+  // always survives, and a group left without rows drops out below.
+  const q = query.value.trim().toLowerCase()
   let current: Group | null = null
   for (const row of data.value.rows) {
     if (row.kind === 'article') {
@@ -93,6 +139,7 @@ const groups = computed<Group[]>(() => {
       continue
     }
     if (row.elided) continue
+    if (q && !matchesQuery(row, q)) continue
     if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
     current.rows.push(row)
     // A withheld row keeps its `change` but lost its text, so counting it
@@ -112,7 +159,10 @@ function toggleGroup(key: string) {
   openGroups.value = next
 }
 function groupOpen(g: Group): boolean {
-  return openGroups.value.has(g.key)
+  // A search IS the reader naming what they are after — the same rule as in
+  // LawDiffSection, where a query opens every group rather than making the
+  // reader hunt for which one holds the hits.
+  return openGroups.value.has(g.key) || query.value.trim().length > 0
 }
 function groupBadges(g: Group): { badge: Badge; count: number }[] {
   return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
@@ -128,6 +178,30 @@ type Block =
    * drops a § is a different kind of wrong answer from one that says it did.
    */
   | { kind: 'withheld'; count: number; cause: AnnexWithheldCause | null }
+
+function sideSegments(row: TextComparisonRow, side: 'current' | 'proposed'): LawDiffSegment[] {
+  const drop = side === 'current' ? 'inserted' : 'removed'
+  return (row.segments ?? []).filter((seg) => seg.type !== drop)
+}
+
+/**
+ * The row as two columns.
+ *
+ * `segments` is null when the word diff hit its cell ceiling, which is the
+ * case the `sm:grid-cols-2` block already served before this toggle existed.
+ * It now falls into the SAME presentation rather than a private one, so a
+ * technical limit stops looking like a different kind of change — the same
+ * clean-up the § comparison got.
+ */
+function splitRows(row: TextComparisonRow): { current: LawDiffSegment[]; proposed: LawDiffSegment[] } {
+  if (row.segments) {
+    return { current: sideSegments(row, 'current'), proposed: sideSegments(row, 'proposed') }
+  }
+  return {
+    current: row.current ? [{ type: 'removed', text: row.current }] : [],
+    proposed: row.proposed ? [{ type: 'inserted', text: row.proposed }] : [],
+  }
+}
 
 /** Changes rendered before the "show the rest" line — LawDiffSection's cap. */
 const SHOWN_CHANGES = 30
@@ -159,6 +233,10 @@ interface Para {
 
 function parasOf(g: Group): { paras: Para[]; hidden: number } {
   const limit = fullyShown.value.has(g.key) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
+  // Searching means the reader asked for these very rows, so an unchanged
+  // hit gets its own block instead of disappearing into a folded context
+  // line that says only how many there were.
+  const folding = !query.value.trim()
   const paras: Para[] = []
   let current: Para & { key: string } = { key: '\u0000', gld: null, heading: null, blocks: [] }
   let context: TextComparisonRow[] = []
@@ -188,7 +266,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
       withheldCause ??= row.withheldCause ?? null
       continue
     }
-    if (row.change === 'unchanged') {
+    if (row.change === 'unchanged' && folding) {
       context.push(row)
       continue
     }
@@ -205,6 +283,11 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
 }
 
 const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasOf(g) })))
+
+/** Whether the annex has rows at all — the toolbar's condition, unfiltered,
+ *  so a search that finds nothing cannot remove the control that caused it. */
+const hasRows = computed(() => (data.value?.rows ?? []).some((r) => r.kind !== 'article' && !r.elided))
+const matchCount = computed(() => groups.value.reduce((n, g) => n + g.rows.length, 0))
 
 /**
  * What the check found, in two sentences — and, where it found nothing, that
@@ -453,6 +536,36 @@ const doubtfulNote = computed<string | null>(() => {
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
       </div>
 
+      <!-- Same toolbar as the § comparison, same order, so the two sections
+           are operated alike. No filter select: the annex prints every § it
+           touches and the group pills already say how the changes divide —
+           isolating one class was the control this page never needed. -->
+      <div v-if="hasRows" class="mt-4 flex flex-wrap items-center gap-3">
+        <UFieldGroup role="group" aria-label="Darstellung der Gegenüberstellung" class="shrink-0">
+          <UButton
+            v-for="v in VIEW_OPTIONS"
+            :key="v.value"
+            :color="view === v.value ? 'primary' : 'neutral'"
+            :variant="view === v.value ? 'subtle' : 'outline'"
+            :aria-pressed="view === v.value"
+            size="sm"
+            class="min-h-11"
+            @click="view = v.value"
+          >
+            {{ v.label }}
+          </UButton>
+        </UFieldGroup>
+        <UInput
+          v-model="query"
+          type="search"
+          icon="i-lucide-search"
+          placeholder="Im Text suchen …"
+          aria-label="In der Gegenüberstellung suchen"
+          class="ml-auto min-w-56 flex-1 sm:flex-none"
+          :ui="{ base: 'min-h-11' }"
+        />
+      </div>
+
       <div class="mt-3 border-y border-hairline">
         <section v-for="g in renderedGroups" :key="g.key" class="border-b border-hairline last:border-b-0">
           <button
@@ -519,7 +632,11 @@ const doubtfulNote = computed<string | null>(() => {
                     </span>
                   </p>
 
-                  <p v-if="b.row.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
+                  <!-- An unchanged row only reaches a block of its own while
+                       a search is running; both columns hold the same text,
+                       so it reads as the one sentence it is. -->
+                  <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
+                  <p v-else-if="b.row.segments && view === 'inline'" class="hyphens-auto text-sm leading-relaxed text-ink">
                     <template v-for="(s, si) in b.row.segments" :key="si">
                       <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
                       <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
@@ -527,17 +644,35 @@ const doubtfulNote = computed<string | null>(() => {
                       {{ ' ' }}
                     </template>
                   </p>
+                  <!-- A row with only one side has one text; a column to hold
+                       nothing beside it would be a column about our layout,
+                       not about the law. Same rule as in the § comparison. -->
                   <p v-else-if="b.row.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.proposed }}</p>
                   <p v-else-if="b.row.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.current }}</p>
-                  <!-- Both sides present but the word diff was too long to compute. -->
-                  <div v-else class="grid gap-4 text-sm leading-relaxed sm:grid-cols-2">
+                  <!-- The ressort's own two columns, under the ressort's own
+                       headings. ONE shape for two cases: the reader asked for
+                       them, or the word diff was too long to compute and
+                       `splitRows` marks each side whole. -->
+                  <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
                     <div>
                       <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
-                      <p class="hyphens-auto text-ink-secondary">{{ b.row.current }}</p>
+                      <p class="hyphens-auto text-ink">
+                        <template v-for="(s, si) in splitRows(b.row).current" :key="si">
+                          <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
+                          <span v-else>{{ s.text }}</span>
+                          {{ ' ' }}
+                        </template>
+                      </p>
                     </div>
                     <div>
                       <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
-                      <p class="hyphens-auto text-ink">{{ b.row.proposed }}</p>
+                      <p class="hyphens-auto text-ink">
+                        <template v-for="(s, si) in splitRows(b.row).proposed" :key="si">
+                          <ins v-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
+                          <span v-else>{{ s.text }}</span>
+                          {{ ' ' }}
+                        </template>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -557,6 +692,10 @@ const doubtfulNote = computed<string | null>(() => {
           </div>
         </section>
       </div>
+      <!-- A search box with no answer is worse than none: the section would
+           just end, and an empty comparison reads as a claim about the
+           draft. Same wording as the § comparison. -->
+      <p v-if="hasRows && !matchCount" class="mt-2 text-sm text-ink-secondary">Nichts gefunden.</p>
     </template>
   </div>
 </template>
