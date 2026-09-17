@@ -1,7 +1,14 @@
 /**
- * ME → RV comparison at § level (docs/ris-join.md §6).
+ * Comparison of two versions of one law text at § level (docs/ris-join.md §6).
  *
  * PURE MODULE — relative imports only.
+ *
+ * Generic over two unit lists, `from` (the earlier version) and `to` (the
+ * later one). It was written for Ministerialentwurf → Regierungsvorlage and
+ * named after that pair until the station selector shipped
+ * (docs/architecture.md §12.18); nothing in the algorithm ever depended on
+ * which two stations they are, and the Ausschuss- and Plenarfassung come off
+ * the same Word legistics template.
  *
  * Alignment is the whole difficulty. Never by § number alone: in the EABG
  * chain the Regierungsvorlage inserted two paragraphs and a by-number diff
@@ -13,7 +20,7 @@
  *      heading is its instruction line, so renumbered Ziffern pair too
  *   2. same article + same id, when at least one side has no heading
  *   3. remaining units of the same article by text similarity ≥ 0.6
- * Everything left is inserted (RV only) or removed (ME only).
+ * Everything left is inserted (later side only) or removed (earlier side only).
  */
 import type { LawDiffSegment, LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../shared/types'
 import { compareKey, normalizeText, type LawUnit } from './lawText'
@@ -142,36 +149,36 @@ function distinctArticles(units: readonly LawUnit[]): ArticleRef[] {
 }
 
 /**
- * ME article → RV article, so that differently titled articles about the
- * same law compare with each other. Returns the canonical (RV) article title
- * per ME article title.
+ * Earlier article → later article, so that differently titled articles about
+ * the same law compare with each other. Returns the canonical (later) article
+ * title per earlier article title.
  */
-export function pairArticles(me: readonly LawUnit[], rv: readonly LawUnit[]): Map<string | null, string | null> {
-  const meArts = distinctArticles(me)
-  const rvArts = distinctArticles(rv)
+export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): Map<string | null, string | null> {
+  const fromArts = distinctArticles(from)
+  const toArts = distinctArticles(to)
   const map = new Map<string | null, string | null>()
-  const usedRv = new Set<ArticleRef>()
-  if (meArts.length === 1 && rvArts.length === 1) {
-    map.set(meArts[0]!.article, rvArts[0]!.article)
+  const usedTo = new Set<ArticleRef>()
+  if (fromArts.length === 1 && toArts.length === 1) {
+    map.set(fromArts[0]!.article, toArts[0]!.article)
     return map
   }
   const scored: { m: ArticleRef; r: ArticleRef; s: number }[] = []
-  for (const m of meArts) {
+  for (const m of fromArts) {
     const mt = lawNameTokens(m.article)
-    for (const r of rvArts) scored.push({ m, r, s: jaccard(mt, lawNameTokens(r.article)) })
+    for (const r of toArts) scored.push({ m, r, s: jaccard(mt, lawNameTokens(r.article)) })
   }
   scored.sort((x, y) => y.s - x.s)
   for (const { m, r, s } of scored) {
-    if (s < 0.5 || map.has(m.article) || usedRv.has(r)) continue
+    if (s < 0.5 || map.has(m.article) || usedTo.has(r)) continue
     map.set(m.article, r.article)
-    usedRv.add(r)
+    usedTo.add(r)
   }
-  for (const m of meArts) {
+  for (const m of fromArts) {
     if (map.has(m.article) || !m.number) continue
-    const r = rvArts.find((x) => !usedRv.has(x) && x.number === m.number)
+    const r = toArts.find((x) => !usedTo.has(x) && x.number === m.number)
     if (r) {
       map.set(m.article, r.article)
-      usedRv.add(r)
+      usedTo.add(r)
     }
   }
   return map
@@ -181,9 +188,9 @@ export function pairArticles(me: readonly LawUnit[], rv: readonly LawUnit[]): Ma
 // Alignment
 // ---------------------------------------------------------------------------
 
-/** Units keyed by the canonical article so both sides use the RV's title. */
-function canonical(units: readonly LawUnit[], map: Map<string | null, string | null>, isMe: boolean): LawUnit[] {
-  if (!isMe) return [...units]
+/** Units keyed by the canonical article so both sides use the later side's title. */
+function canonical(units: readonly LawUnit[], map: Map<string | null, string | null>, isFrom: boolean): LawUnit[] {
+  if (!isFrom) return [...units]
   return units.map((u) => {
     if (!map.has(u.article)) return { ...u, article: `${u.article ?? ''}\u0000unpaired` }
     return { ...u, article: map.get(u.article) ?? null }
@@ -206,42 +213,42 @@ function uniqueIndex<T>(items: readonly T[], keyOf: (t: T) => string | null): Ma
 }
 
 export interface Alignment {
-  pairs: { me: LawUnit; rv: LawUnit }[]
-  onlyMe: LawUnit[]
-  onlyRv: LawUnit[]
+  pairs: { from: LawUnit; to: LawUnit }[]
+  onlyFrom: LawUnit[]
+  onlyTo: LawUnit[]
 }
 
-export function alignUnits(meUnits: readonly LawUnit[], rv: readonly LawUnit[]): Alignment {
-  const articleMap = pairArticles(meUnits, rv)
-  const meCanonical = canonical(meUnits, articleMap, true)
+export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]): Alignment {
+  const articleMap = pairArticles(fromUnits, to)
+  const fromCanonical = canonical(fromUnits, articleMap, true)
   // Alignment works on canonical copies; results are mapped back to the originals.
-  const original = new Map(meCanonical.map((c, i) => [c, meUnits[i]!]))
-  const me = meCanonical
-  const pairs: { me: LawUnit; rv: LawUnit }[] = []
-  const pairedMe = new Set<LawUnit>()
-  const pairedRv = new Set<LawUnit>()
+  const original = new Map(fromCanonical.map((c, i) => [c, fromUnits[i]!]))
+  const from = fromCanonical
+  const pairs: { from: LawUnit; to: LawUnit }[] = []
+  const pairedFrom = new Set<LawUnit>()
+  const pairedTo = new Set<LawUnit>()
   const pair = (a: LawUnit, b: LawUnit) => {
-    pairs.push({ me: a, rv: b })
-    pairedMe.add(a)
-    pairedRv.add(b)
+    pairs.push({ from: a, to: b })
+    pairedFrom.add(a)
+    pairedTo.add(b)
   }
 
   // 1. heading
-  const rvByHeading = uniqueIndex(rv, headingKey)
-  const meByHeading = uniqueIndex(me, headingKey)
-  for (const u of me) {
+  const toByHeading = uniqueIndex(to, headingKey)
+  const fromByHeading = uniqueIndex(from, headingKey)
+  for (const u of from) {
     const k = headingKey(u)
-    if (!k || !meByHeading.has(k)) continue
-    const partner = rvByHeading.get(k)
-    if (partner && !pairedRv.has(partner)) pair(u, partner)
+    if (!k || !fromByHeading.has(k)) continue
+    const partner = toByHeading.get(k)
+    if (partner && !pairedTo.has(partner)) pair(u, partner)
   }
 
   // 2. id, only when a heading could not decide
-  const rvById = uniqueIndex(rv, idKey)
-  for (const u of me) {
-    if (pairedMe.has(u)) continue
-    const partner = rvById.get(idKey(u))
-    if (!partner || pairedRv.has(partner)) continue
+  const toById = uniqueIndex(to, idKey)
+  for (const u of from) {
+    if (pairedFrom.has(u)) continue
+    const partner = toById.get(idKey(u))
+    if (!partner || pairedTo.has(partner)) continue
     if (u.heading && partner.heading) continue // both headed, headings differ → not the same §
     // Unheaded units (Novellierungsanordnungen) renumber too: the same Z
     // number must also look alike, else step 3 decides by similarity.
@@ -250,26 +257,26 @@ export function alignUnits(meUnits: readonly LawUnit[], rv: readonly LawUnit[]):
   }
 
   // 3. similarity within the article
-  const restMe = me.filter((u) => !pairedMe.has(u))
-  const restRv = rv.filter((u) => !pairedRv.has(u))
-  const candidates: { me: LawUnit; rv: LawUnit; s: number }[] = []
-  for (const a of restMe) {
-    for (const b of restRv) {
+  const restFrom = from.filter((u) => !pairedFrom.has(u))
+  const restTo = to.filter((u) => !pairedTo.has(u))
+  const candidates: { from: LawUnit; to: LawUnit; s: number }[] = []
+  for (const a of restFrom) {
+    for (const b of restTo) {
       if ((a.article ?? '') !== (b.article ?? '')) continue
       const s = diffTokens(a.text, b.text).similarity
-      if (s >= 0.6) candidates.push({ me: a, rv: b, s })
+      if (s >= 0.6) candidates.push({ from: a, to: b, s })
     }
   }
   candidates.sort((x, y) => y.s - x.s)
   for (const c of candidates) {
-    if (pairedMe.has(c.me) || pairedRv.has(c.rv)) continue
-    pair(c.me, c.rv)
+    if (pairedFrom.has(c.from) || pairedTo.has(c.to)) continue
+    pair(c.from, c.to)
   }
 
   return {
-    pairs: pairs.map((p) => ({ me: original.get(p.me)!, rv: p.rv })),
-    onlyMe: me.filter((u) => !pairedMe.has(u)).map((u) => original.get(u)!),
-    onlyRv: rv.filter((u) => !pairedRv.has(u)),
+    pairs: pairs.map((p) => ({ from: original.get(p.from)!, to: p.to })),
+    onlyFrom: from.filter((u) => !pairedFrom.has(u)).map((u) => original.get(u)!),
+    onlyTo: to.filter((u) => !pairedTo.has(u)),
   }
 }
 
@@ -387,50 +394,50 @@ function quotedHeadingOf(u: LawUnit | null): string | null {
   return heads.length > 2 ? `${heads.slice(0, 2).join(' · ')} · …` : heads.join(' · ')
 }
 
-function toUnit(change: LawUnitChange, me: LawUnit | null, rv: LawUnit | null, diff: TokenDiff | null): LawDiffUnit {
-  const ref = rv ?? me!
+function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null, diff: TokenDiff | null): LawDiffUnit {
+  const ref = to ?? from!
   return {
     article: ref.article,
     id: ref.id,
-    meId: me?.id ?? null,
-    heading: rv?.heading ?? me?.heading ?? null,
-    quotedHeading: quotedHeadingOf(rv) ?? quotedHeadingOf(me),
+    fromId: from?.id ?? null,
+    heading: to?.heading ?? from?.heading ?? null,
+    quotedHeading: quotedHeadingOf(to) ?? quotedHeadingOf(from),
     change,
     editorial: change === 'changed' && isEditorialChange(diff?.segments ?? null),
     similarity: diff ? Math.round(diff.similarity * 1000) / 1000 : null,
-    meText: me?.text ?? null,
-    rvText: rv?.text ?? null,
+    fromText: from?.text ?? null,
+    toText: to?.text ?? null,
     segments: diff?.segments ?? null,
   }
 }
 
 /**
- * Units of both texts → one list in reading order of the Regierungsvorlage,
- * with removed units placed where they stood in the draft.
+ * Units of both texts → one list in reading order of the LATER version, with
+ * removed units placed where they stood in the earlier one.
  */
-export function diffLawUnits(me: readonly LawUnit[], rv: readonly LawUnit[]): LawDiffUnit[] {
-  const { pairs, onlyMe, onlyRv } = alignUnits(me, rv)
-  const rvPartner = new Map(pairs.map((p) => [p.rv, p.me]))
-  const removedSet = new Set(onlyMe)
-  const insertedSet = new Set(onlyRv)
+export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
+  const { pairs, onlyFrom, onlyTo } = alignUnits(from, to)
+  const toPartner = new Map(pairs.map((p) => [p.to, p.from]))
+  const removedSet = new Set(onlyFrom)
+  const insertedSet = new Set(onlyTo)
   const out: LawDiffUnit[] = []
-  let meCursor = 0
+  let fromCursor = 0
 
-  const flushRemovedBefore = (meUnit: LawUnit | null) => {
-    const stop = meUnit ? me.indexOf(meUnit) : me.length
-    while (meCursor < stop) {
-      const u = me[meCursor++]!
+  const flushRemovedBefore = (fromUnit: LawUnit | null) => {
+    const stop = fromUnit ? from.indexOf(fromUnit) : from.length
+    while (fromCursor < stop) {
+      const u = from[fromCursor++]!
       if (removedSet.has(u)) out.push(toUnit('removed', u, null, null))
     }
-    if (meUnit) meCursor = Math.max(meCursor, stop + 1)
+    if (fromUnit) fromCursor = Math.max(fromCursor, stop + 1)
   }
 
-  for (const r of rv) {
+  for (const r of to) {
     if (insertedSet.has(r)) {
       out.push(toUnit('inserted', null, r, null))
       continue
     }
-    const m = rvPartner.get(r)!
+    const m = toPartner.get(r)!
     flushRemovedBefore(m)
     if (compareKey(m.text) === compareKey(r.text)) {
       out.push(toUnit('unchanged', m, r, null))
@@ -444,8 +451,8 @@ export function diffLawUnits(me: readonly LawUnit[], rv: readonly LawUnit[]): La
 
 export interface LawPackageDiff {
   units: LawDiffUnit[]
-  lawsOnlyInRv: LawPackageEntry[]
-  lawsOnlyInMe: LawPackageEntry[]
+  lawsOnlyInTo: LawPackageEntry[]
+  lawsOnlyInFrom: LawPackageEntry[]
 }
 
 /** Units of articles the other side does not have, counted per law. */
@@ -466,6 +473,8 @@ function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): 
  * 138. Diffed unit by unit that reports 98 % of the bill as new — true of the
  * bill, false of the ministry, and read as a verdict on the draft it is simply
  * wrong. Ten of the 90 comparable GP XXVIII drafts sit above 83 % that way.
+ * The same applies to the later stations, where a committee can merge one
+ * Vorlage into another.
  *
  * So laws only one side carries leave the § list and are named as what they
  * are: a package that grew or shrank. That keeps the fact (the bill added or
@@ -473,17 +482,17 @@ function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): 
  * Units without an article always stay in the comparison, and when no article
  * pairs at all the scoping is skipped — an empty comparison helps nobody.
  */
-export function diffLawPackage(me: readonly LawUnit[], rv: readonly LawUnit[]): LawPackageDiff {
-  const map = pairArticles(me, rv)
-  if (map.size === 0) return { units: diffLawUnits(me, rv), lawsOnlyInRv: [], lawsOnlyInMe: [] }
-  const pairedMe = new Set(map.keys())
-  const pairedRv = new Set(map.values())
-  const keepMe = (u: LawUnit) => u.article === null || pairedMe.has(u.article)
-  const keepRv = (u: LawUnit) => u.article === null || pairedRv.has(u.article)
+export function diffLawPackage(from: readonly LawUnit[], to: readonly LawUnit[]): LawPackageDiff {
+  const map = pairArticles(from, to)
+  if (map.size === 0) return { units: diffLawUnits(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [] }
+  const pairedFrom = new Set(map.keys())
+  const pairedTo = new Set(map.values())
+  const keepFrom = (u: LawUnit) => u.article === null || pairedFrom.has(u.article)
+  const keepTo = (u: LawUnit) => u.article === null || pairedTo.has(u.article)
   return {
-    units: diffLawUnits(me.filter(keepMe), rv.filter(keepRv)),
-    lawsOnlyInRv: lawsOf(rv, (a) => pairedRv.has(a)),
-    lawsOnlyInMe: lawsOf(me, (a) => pairedMe.has(a)),
+    units: diffLawUnits(from.filter(keepFrom), to.filter(keepTo)),
+    lawsOnlyInTo: lawsOf(to, (a) => pairedTo.has(a)),
+    lawsOnlyInFrom: lawsOf(from, (a) => pairedFrom.has(a)),
   }
 }
 

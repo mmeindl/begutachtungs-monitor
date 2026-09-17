@@ -20,7 +20,7 @@
  * shortened list would misstate what the draft touches.
  */
 import type { AmendedLaw, AmendedLawsResponse } from '#shared/types'
-import { fetchLawHtml, findDiffSources } from './lawDiffService'
+import { fetchLawHtml, findLawStations } from './lawDiffService'
 import { parseParliamentHtml, parseRisXml, type TextBlock } from './lawText'
 import { draftArticles, isAmendmentClause, stammnormOf, type BgblCitation } from './lawTitles'
 import { getDraftsForGp, getGegenstand } from './parliament'
@@ -64,8 +64,8 @@ export function konsLawUrl(gesetzesnummer: string, date: string | null): string 
 /** The draft's own text — never the Regierungsvorlage's: the question is
  *  what the DRAFT proposed to change. */
 async function draftBlocks(gp: string, inr: number, detail: Awaited<ReturnType<typeof getGegenstand>>): Promise<TextBlock[]> {
-  const sources = findDiffSources(detail.content ?? {})
-  if (sources.me) return parseParliamentHtml(await fetchLawHtml(sources.me.url))
+  const me = findLawStations(detail.content ?? {}).get('me')
+  if (me?.html) return parseParliamentHtml(await fetchLawHtml(me.html))
   const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
   const xml = row?.risDocument?.xml
   return xml ? parseRisXml(await fetchLawHtml(xml)) : []

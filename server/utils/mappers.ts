@@ -20,6 +20,7 @@ import type {
   TraceLink,
   TraceStep,
 } from '../../shared/types'
+import { lawStationOf } from '../../shared/utils/lawStations'
 import { classifySubmitter, readUpstreamFlag } from './privacy'
 
 export const PARLIAMENT_BASE = 'https://www.parlament.gv.at'
@@ -677,10 +678,17 @@ export function mapTextEvolution(
   const versions: TextVersion[] = []
   for (const doc of mapDocuments(groups)) {
     const station = STATION_TITLES[doc.title.trim()] ?? doc.title
+    // Upstream's title stays the label; the id is what the comparison may
+    // select. Null for the documents that share this list without being a
+    // version of the law text — a Verhältnismäßigkeitsprüfung (3 drafts in
+    // GP XXVI–XXVIII), a Vertragstext (2). They keep their row in the
+    // document list and are never offered as a side to compare.
+    const stationId = lawStationOf(station)
     for (const format of doc.formats) {
       if (excludeUrls.has(format.url)) continue
       versions.push({
         station,
+        stationId,
         label: `${station} (${format.type.toUpperCase()})`,
         url: format.url,
       })

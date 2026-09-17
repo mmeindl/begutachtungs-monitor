@@ -457,6 +457,26 @@ describe('mapDocuments / mapTextEvolution', () => {
     const meUrls = new Set(mapDocuments(RAW_DOCS).flatMap((d) => d.formats.map((f) => f.url)))
     expect(mapTextEvolution(RAW_RV_DOCS, meUrls)).toHaveLength(3)
   })
+
+  it('types the station, so the comparison can select it', () => {
+    expect(mapTextEvolution(RAW_RV_DOCS).map((v) => v.stationId)).toEqual(['rv', 'rv', 'ausschuss'])
+  })
+
+  it('types no station for a document that is not a version of the text', () => {
+    // The EU proportionality assessment for regulated professions travels in
+    // the same upstream list (171/ME and 309/ME XXVII). It keeps its row in
+    // the document list — nothing disappears from the page — but a §
+    // comparison would make paragraphs out of an annex, so it is never
+    // offered as a side to compare.
+    const versions = mapTextEvolution([
+      { title: 'Verhältnismäßigkeitsprüfung', documents: [{ link: '/dokument/XXVII/I/1435/f_1.html', type: 'HTML' }] },
+      { title: 'Geändert im Plenum', documents: [{ link: '/dokument/XXVII/I/1435/f_2.html', type: 'HTML' }] },
+    ])
+    expect(versions.map((v) => [v.station, v.stationId])).toEqual([
+      ['Verhältnismäßigkeitsprüfung', null],
+      ['Geändert im Plenum', 'plenum'],
+    ])
+  })
 })
 
 describe('isFilingOpen', () => {

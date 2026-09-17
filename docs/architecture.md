@@ -3110,6 +3110,140 @@ Erneuerbaren-Ausbau-Kette. Die Annahme, das Tool arbeite git-artig, ist eine
 Informationslücke, kein Defekt.
 
 
+### 12.18 Vergleich über die Regierungsvorlage hinaus: ein Stationswähler
+
+Der §-Vergleich war auf ein Paar verdrahtet, Ministerialentwurf gegen
+Regierungsvorlage. Die späteren Fassungen lagen die ganze Zeit als Dokumente
+auf der Seite („Geändert im Ausschuss", „Geändert im Plenum"), und verglichen
+hat sie nie jemand — dabei ist genau das die Naht, an der ein
+Begutachtungsergebnis wieder verschwindet: der Abänderungsantrag im Ausschuss
+oder im Plenum, nachdem alle aufgehört haben hinzusehen. Die Seite sagte den
+Befund selbst schon, in einem Kommentar: 52 der 91 GP-XXVIII-Entwürfe, die
+eine Vorlage erreichten, wurden danach **noch einmal** geändert.
+
+**Gemessen vor dem Bau** (`scripts/stations-corpus.ts`, `pnpm audit:stationen`,
+17.09.2026, GP XXVI–XXVIII, 651 Ministerialentwürfe), weil die Notiz zwei
+Risiken vermutete und beide an der falschen Stelle lagen:
+
+| | XXVI | XXVII | XXVIII |
+|---|---|---|---|
+| Ministerialentwürfe | 163 | 353 | 135 |
+| … mit Regierungsvorlage | 112 | 296 | 91 |
+| … mit Ausschussfassung | 40 | 80 | 40 |
+| … mit Plenarfassung | 34 | 59 | 29 |
+| vergleichbar ME → RV | 80 | 231 | 88 |
+| vergleichbar RV → Ausschuss | 40 | 80 | 40 |
+| vergleichbar RV → Plenum | 34 | 59 | 29 |
+
+**Erstes Risiko, erledigt: „Verfügbarkeit je Station (HTML gegen nur PDF)".**
+Von den 154 Ausschuss- und 122 Plenarfassungen der drei Perioden ist **keine
+einzige** PDF-only. Die Sorge saß auf der anderen Seite — fehlendes HTML ist
+ein Problem des *Entwurfstexts* in den älteren Perioden. Damit ist auch eine
+Behauptung im Code korrigiert, die zu bequem formuliert war: „GP XXVII and
+earlier are PDF-only" stand in `lawDiffService.ts`, aber 276 der 353
+GP-XXVII-Entwürfe veröffentlichen ihren Gesetzestext als HTML und alle 296
+Regierungsvorlagen ohnehin. PDF-only ist eine Eigenschaft des einzelnen
+Dokuments, nie der Periode; der RIS-Rückfall hängt jetzt daran und nicht an
+der GP.
+
+**Zweites Risiko, echt: die Titel.** Upstream tippt die Stationsnamen von
+Hand, und in derselben Liste stehen Dokumente, die **keine Fassung des
+Gesetzestexts** sind — „Verhältnismäßigkeitsprüfung" (die EU-Prüfung für
+reglementierte Berufe, 3 Entwürfe) und „Vertragstext" (ein Staatsvertrag, 2).
+Als Station angeboten, hätte der §-Parser aus einer Beilage Paragraphen
+gemacht. Also eine **gemessene Whitelist** exakter Titel
+(`shared/utils/lawStations.ts`), kein Stichwort-Match — dieselbe Regel, die
+`mappers.ts` für die Shortinfo-Überschriften längst befolgt: das Tag lesen,
+nie die Wortwahl. Die Dokumente behalten ihre Zeile in der Dokumentliste,
+sie sind bloß nie eine Seite des Vergleichs (`TextVersion.stationId` ist
+`null`).
+
+Dasselbe auf der Entwurfsseite, und dort hat die Messung eine Falle
+aufgedeckt: drei GP-XXVI-Entwürfe veröffentlichen „Gesetzestext, Vorblatt und
+Erläuterungen" als **ein** Dokument. Ein Präfix-Match hätte diese Datei an
+`parseLawUnits` gegeben und erläuternde Prosa gegen Gesetzestext verglichen.
+Diese Entwürfe haben keinen isolierten Gesetzestext, und die ehrliche Antwort
+ist, dass es nichts zu vergleichen gibt. Nebenbei mitgenommen:
+„Gesetzestext (korrigierte Version)" wird jetzt erkannt (XXVII, 315/ME) — der
+alte Gleichheitsvergleich auf das nackte Wort hat den Text dieses Entwurfs
+schlicht übersehen.
+
+**Die linke Seite folgt der rechten** (`?von=…&bis=…`, `von` ist optional).
+Regel: die Station **unmittelbar vor** `bis`. Der Grund ist nicht die
+Gewohnheit eines Nutzers, sondern Zurechenbarkeit: benachbarte Stationen
+ordnen jede Änderung einem Akteur zu — ME→RV dem Ressort nach der
+Begutachtung, RV→Ausschuss dem Ausschuss, RV→Plenum dem Nationalrat. Eine
+fest auf ME verdrahtete linke Seite würde Ressort und Parlament in eine
+Spalte mischen und keine der beiden Fragen beantworten. `?von=me&bis=plenum`
+bleibt als **ausdrückliche** Wahl erhalten, denn „hat das
+Begutachtungsergebnis bis zum Ende überlebt?" ist eine echte Frage — nur eine
+andere.
+
+**Ein Regler, der Vergleiche anbietet, nicht zwei, die Stationen anbieten.**
+Die Frage des Lesers ist „was hat der Ausschuss geändert?", nicht „welche
+zwei Dokumente wähle ich". Der Regler zählt die geordneten Paare der
+vorhandenen Stationen auf, womit ein unmögliches Paar — verdreht oder mit
+identischen Enden — gar nicht darstellbar ist; zwei unabhängige Selects
+müssten das abfangen und erklären. Beide Enden bleiben frei wählbar, sie sind
+nur aufgezählt. Bei den meisten Entwürfen gibt es genau ein Paar, und dann
+erscheint der Regler nicht: ein Bedienelement, das man nicht bedienen kann,
+ist schlechter als keines.
+
+**Die Typen tragen das Paar jetzt im Namen.** `LawDiffUnit.meText/rvText`
+hieß nach einem Paar, das nicht mehr fest ist, also heißt es `fromText`/
+`toText` (ebenso `fromId`, `lawsOnlyInFrom/To`, `fromDocument`/`toDocument`,
+`fromSource`). Die Zwischenlösung — Felder behalten, „bedeutet jetzt
+links/rechts" dazuschreiben — wäre genau die Halbwahrheit, die der nächste
+Leser teuer bezahlt: `meText` mit dem Text der Ausschussfassung darin. Der
+Rename läuft durch `lawDiff.ts` mit, dessen Algorithmus nie von den zwei
+konkreten Stationen abhing; die gemessenen Beispiele in den Kommentaren
+(EABG-Kette, das IFG-Sammelgesetz) bleiben stehen, weil sie ME→RV betreffen.
+
+**Was am Paar hängt, hängt wirklich am Paar:**
+
+- **Die Überschrift** ist die Frage, die das Paar beantwortet
+  (`lawStationPairQuestion`) — ME→RV behält „Was sich nach der Begutachtung
+  geändert hat", weil die Ergebniskarte darauf verlinkt.
+- **Der Hinweis auf den Grund** zeigt auf ein anderes Dokument: nach der
+  Begutachtung auf die Erläuterungen der Regierungsvorlage, im Parlament auf
+  den **Ausschussbericht**, wo die Abänderungsanträge festgehalten sind. Dass
+  der Vergleich selbst keine Ursache zeigt, sagt jeder der Sätze weiter
+  ausdrücklich.
+- **Die Lizenz.** Steht der Ministerialentwurf auf einer Seite, wäre „CC BY
+  4.0" für diese Hälfte falsch — das Begutachtungsverfahren ist von der
+  Open-Data-Nutzung ausgenommen. Vergleicht der Leser zwei parlamentarische
+  Fassungen, sind **beide** Seiten lizenzierte Datensätze, und dann steht die
+  Angabe auch da (`isLicensedPair`).
+- **Die §-Titel.** `/paragraphtitel` nimmt dasselbe Paar und cacht danach.
+  Eine zwischen zwei Stationen umnummerierte Ziffer adressiert dort einen
+  **anderen** Paragraphen, und ein aus einem fremden Paar übernommener Name
+  wäre genau der falsche Name, den dieses Modul zu verweigern gebaut ist.
+
+**Die Stationenleiste löst eine Reservierung ein.** `ComparisonId` kannte
+`'parlament'` seit dem 15.09.2026, ungenutzt mit der Begründung „der
+Vergleich ist nicht gebaut". Er ist es jetzt, also gibt die Station Parlament
+ihre Frage aus — aber nur, wo eine Ausschuss- oder Plenarfassung existiert.
+Der Link trägt eine Query und nicht bloß einen Anker: auf `#textvergleich`
+allein zu landen zeigte den ME→RV-Vergleich, der die Frage „was hat das
+Parlament geändert?" nicht beantwortet.
+
+**Geprüft an echten Dokumenten** (40/ME XXVIII, 17.09.2026): RV→Ausschuss
+eine geänderte Anordnung (Z 13), RV→Plenum vier (Z 2, Z 13, Z 17, Z 24),
+Ausschuss→Plenum dieselben vier — weil das Plenum Z 13 **noch einmal**
+angefasst hat, was sich im linken Text genau dieser einen Einheit zeigt. Die
+Statistik von ME→Plenum gleicht der von ME→RV in den Zahlen und nicht in den
+Texten: vier rechte Seiten unterscheiden sich. Beides sah nach Cache-Fehler
+aus und war keiner — nachgesehen statt angenommen.
+
+**Offen geblieben:** Der Vergleich endet an der Plenarfassung. Die
+**kundgemachte** Fassung im BGBl ist eine Station weiter und liegt im RIS
+(`BgblAuth`), aber sie ist kein Dokument des Gegenstands — sie braucht den
+Join, den §12.16 für die Verordnungen schon notiert hat. Und die Auswahl
+kennt nur, was Parlament als eigenes Dokument veröffentlicht: ein
+**zugespielter** vollabändernder Abänderungsantrag, der vor der Sitzung
+kursiert, ist kein Datensatz und wird keiner.
+
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. Tracked as E3 in `outreach/verfahrensfragen.md`. The inline web-form texts remain a sub-question of it, not a separate one. Nothing here blocks stage 1, which is metadata-only either way; it blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16.

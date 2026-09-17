@@ -23,8 +23,8 @@
  * matching, and `resolveLawByBgbl` returns nothing when the match is
  * ambiguous. Anything unresolved is simply absent from the map.
  */
-import type { ParagraphTitlesResponse } from '#shared/types'
-import { fetchLawHtml, findDiffSources, getLawDiff } from './lawDiffService'
+import type { LawStationId, ParagraphTitlesResponse } from '#shared/types'
+import { fetchLawHtml, findLawStations, getLawDiff } from './lawDiffService'
 import { parseParliamentHtml, parseRisXml, type TextBlock } from './lawText'
 import { promulgationByArticle } from './lawTitles'
 import { unitKey } from '#shared/utils/diffKey'
@@ -47,24 +47,43 @@ async function fetchHeading(ref: KonsParagraphRef): Promise<string | null> {
 }
 
 /**
- * Every document that can carry a Promulgationsklausel, draft first and
- * Regierungsvorlage last so the RV's wording wins on merge.
+ * Both documents of the compared pair that can carry a
+ * Promulgationsklausel, the EARLIER one first so the later side's wording
+ * wins on merge — the same order the diff's articles are canonicalised in
+ * (`lawDiff.ts`).
+ *
+ * The two stations of the pair, not a fixed ME plus RV: for a comparison of
+ * two parliamentary versions the draft's clause is the wrong reference, and
+ * where the pair renumbers an Artikel the later text is the one whose
+ * numbering the units carry.
  */
-async function clauseBlocks(gp: string, inr: number, detail: Awaited<ReturnType<typeof getGegenstand>>): Promise<TextBlock[][]> {
-  const sources = findDiffSources(detail.content ?? {})
+async function clauseBlocks(
+  gp: string,
+  inr: number,
+  detail: Awaited<ReturnType<typeof getGegenstand>>,
+  from: LawStationId,
+  to: LawStationId,
+): Promise<TextBlock[][]> {
+  const stations = findLawStations(detail.content ?? {})
   const out: TextBlock[][] = []
-  if (sources.me) out.push(parseParliamentHtml(await fetchLawHtml(sources.me.url)))
-  else {
+  for (const id of [from, to]) {
+    const html = stations.get(id)?.html
+    if (html) {
+      out.push(parseParliamentHtml(await fetchLawHtml(html)))
+      continue
+    }
+    // Only the draft has a second source; the parliamentary stations are
+    // published as HTML throughout the measured periods.
+    if (id !== 'me') continue
     const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
     const xml = row?.risDocument?.xml
     if (xml) out.push(parseRisXml(await fetchLawHtml(xml)))
   }
-  if (sources.rv) out.push(parseParliamentHtml(await fetchLawHtml(sources.rv.url)))
   return out
 }
 
 export const getParagraphTitles = defineCachedFunction(
-  async (gp: string, inr: number): Promise<ParagraphTitlesResponse> => {
+  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ParagraphTitlesResponse> => {
     const detail = await getGegenstand(gp, 'ME', inr)
     // The reference date is the draft's Einlangen — the law as the draft
     // found it, not as it stands today. It lives on the list row, not on the
@@ -74,15 +93,16 @@ export const getParagraphTitles = defineCachedFunction(
     const empty: ParagraphTitlesResponse = { gp, inr, asOf, titles: {} }
     if (!asOf) return empty
 
-    // Clauses come from whichever documents exist; the RV wins where both
-    // name an Artikel, because the diff's articles are the RV's.
+    // Clauses come from whichever of the two documents exist; the later
+    // station wins where both name an Artikel, because the diff's articles
+    // are the later side's.
     const clauses = new Map<string | null, ReturnType<typeof promulgationByArticle> extends Map<infer _K, infer V> ? V : never>()
-    for (const blocks of await clauseBlocks(gp, inr, detail)) {
+    for (const blocks of await clauseBlocks(gp, inr, detail, from, to)) {
       for (const [article, bgbl] of promulgationByArticle(blocks)) clauses.set(article, bgbl)
     }
     if (clauses.size === 0) return empty
 
-    const diff = await getLawDiff(gp, inr).catch(() => null)
+    const diff = await getLawDiff(gp, inr, from, to).catch(() => null)
     if (!diff?.available) return empty
 
     // Which § each change addresses, grouped by the law its Artikel amends.
@@ -93,7 +113,7 @@ export const getParagraphTitles = defineCachedFunction(
       // display, which silently loses the longer instructions — and a closing
       // quotation mark with them, so the parse fails rather than degrades.
       // The unit's own text is the untruncated original.
-      const line = unit.rvText ?? unit.meText ?? unit.heading
+      const line = unit.toText ?? unit.fromText ?? unit.heading
       if (!line) continue
       const para = addressedParagraph(line)
       if (!para) continue
@@ -128,5 +148,14 @@ export const getParagraphTitles = defineCachedFunction(
     }
     return { gp, inr, asOf, titles }
   },
-  { name: 'para-titles', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+  {
+    name: 'para-titles',
+    base: DERIVED_CACHE,
+    // Per pair: a Ziffer renumbered between two stations addresses a
+    // different § there, and a § name carried over from another pair would
+    // be exactly the wrong name this module refuses to produce.
+    getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
+    maxAge: TTL_S,
+    swr: false,
+  },
 )
