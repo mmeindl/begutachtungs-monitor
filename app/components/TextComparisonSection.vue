@@ -531,11 +531,6 @@ const doubtfulNote = computed<string | null>(() => {
       </p>
       <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
 
-      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <span>Quelle (CC BY 4.0, RIS):</span>
-        <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
-      </div>
-
       <!-- Same toolbar as the § comparison, same order, so the two sections
            are operated alike. No filter select: the annex prints every § it
            touches and the group pills already say how the changes divide —
@@ -696,6 +691,14 @@ const doubtfulNote = computed<string | null>(() => {
            just end, and an empty comparison reads as a claim about the
            draft. Same wording as the § comparison. -->
       <p v-if="hasRows && !matchCount" class="mt-2 text-sm text-ink-secondary">Nichts gefunden.</p>
+
+      <!-- Provenance under the text it belongs to, the way a source note
+           sits under a table rather than over it (Manu, 17.09.2026): it is
+           looked up while or after reading, never before. -->
+      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+        <span>Quelle (CC BY 4.0, RIS):</span>
+        <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
+      </div>
     </template>
   </div>
 </template>

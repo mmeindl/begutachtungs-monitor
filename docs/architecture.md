@@ -3129,6 +3129,41 @@ haben beide Vergleiche dieselbe Leiste: Umschalter und Suche — was
 nachträglich begründet, warum die Gegenüberstellung keinen Filter bekommen
 hat.
 
+**Und eine Regel, die aus dem ersten Tag mit dem Stationswähler kam
+(17.09.2026):** *Was ein Bedienelement ändert, muss bei ihm oder unter ihm
+stehen — nie darüber.* Der Wähler saß in der Werkzeugleiste und schrieb bei
+jeder Auswahl **vier Blöcke über sich** um: Überschrift, Beschreibungssatz,
+Quellenzeile und die Hinweise zu Gesetzen, die nur eine Seite trägt. Das
+Auge ist beim Regler; alles davon liegt außerhalb des Blickfelds. Drei
+Änderungen folgen daraus:
+
+1. **Die Überschrift steht fest** — sie bleibt „Was sich nach der
+   Begutachtung geändert hat", die Frage des Standardpaars. Das ist kein
+   Kompromiss: Sie benennt die **Epoche**, in die jeder dieser Vergleiche
+   fällt (alles hier ist nach der Begutachtung), während die Zeile unter den
+   Reglern den **Schritt** benennt. Außerdem behält sie die Formulierung,
+   die die zwei Links hierher schon tragen. Die Paar-Frage erscheint nur für
+   die *anderen* Paare — beim Standardpaar wäre sie die Überschrift ein
+   zweites Mal, 40 px darunter.
+2. **Der Wähler wandert in den Kopf des Abschnitts**, direkt unter die
+   Überschrift, und die Leiste darunter behält nur Umschalter und Suche. Das
+   entspricht dem Geltungsbereich: der Wähler ändert, **was** verglichen
+   wird, die anderen zwei, **wie** das Ergebnis gelesen wird. Dabei kam ein
+   latenter Fehler heraus: der Wähler stand im „verfügbar"-Zweig, also
+   verschwand er genau dann, wenn ein Paar nur als PDF vorliegt oder eine
+   Station fehlt — der Leser hätte eine Begründung gesehen und kein Mittel,
+   zurückzukommen. Jetzt steht er außerhalb aller Zweige; `stations` liefert
+   der Server ohnehin immer mit. Nachweis:
+   `/entwuerfe/XXVII/1?von=me&bis=plenum` nennt „Im Plenum wurde keine
+   geänderte Fassung des Gesetzestexts veröffentlicht." **und** behält die
+   drei Paare, die es gibt.
+3. **Die Quellenzeile steht unter der Liste**, in beiden Abschnitten. Eine
+   Quellenangabe ist eine Fußnote: sie wird beim oder nach dem Lesen
+   nachgesehen, nie vorher — so wie unter einer Tabelle und nicht über ihr.
+   Sie war außerdem der vierte Block, der sich über dem Regler umschrieb.
+   Die Lizenzaussage verliert dadurch nichts: sie steht unverändert und
+   unbedingt im selben Abschnitt.
+
 **Was nicht angefasst wurde, und warum es in die Antwort gehört statt in den
 Code:** Gelobt wurde am fremden Werkzeug auch, dass es mit *verschobenen*
 Paragraphen besser umgeht als git. Da ist der Monitor längst auf derselben
