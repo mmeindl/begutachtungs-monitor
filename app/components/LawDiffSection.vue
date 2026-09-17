@@ -6,7 +6,7 @@
  * the client: the first request per consultation fetches and parses two
  * documents, and the page must not wait for that.
  */
-import type { LawDiffResponse, LawDiffUnit, ParagraphTitlesResponse } from '#shared/types'
+import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, ParagraphTitlesResponse } from '#shared/types'
 import { unitKey } from '#shared/utils/diffKey'
 import { droppedLawsNote, mergedLawsNote } from '#shared/utils/lawPackage'
 
@@ -234,6 +234,54 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
 
 const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocksOf(g.units, g.article) })))
 
+/**
+ * Inline or side by side — GitHub's "unified / split", and the same reason.
+ *
+ * Inline is right for most changes and stays the default: a few swapped
+ * words read fastest in one sentence with the old struck out and the new
+ * beside it. It is WRONG for a paragraph that was completely rewritten —
+ * there inline first strikes out the whole old text and then prints the
+ * whole new one, and the reader has to hold two versions in their head to
+ * see that they are alternatives rather than a sequence. That is the case a
+ * domain user named as the one thing a dedicated comparison tool does
+ * better than this page.
+ *
+ * NO new endpoint and no second computation: `segments` already carries
+ * `equal | removed | inserted` per run, so the left column is everything
+ * that is not `inserted` and the right everything that is not `removed` —
+ * the same data projected twice.
+ */
+const view = ref<'inline' | 'split'>('inline')
+
+const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
+  { value: 'inline', label: 'Fließtext' },
+  { value: 'split', label: 'Nebeneinander' },
+]
+
+/** One side of the split, as runs; `removed`/`inserted` keep their marking. */
+function sideSegments(u: LawDiffUnit, side: 'me' | 'rv'): LawDiffSegment[] {
+  const drop = side === 'me' ? 'inserted' : 'removed'
+  return (u.segments ?? []).filter((s) => s.type !== drop)
+}
+
+/**
+ * Whether a unit can be shown side by side at all.
+ *
+ * `segments` is null when the word diff hit its cell ceiling
+ * (`MAX_DP_CELLS`, roughly 1.500 words a side) — the branch that already
+ * rendered two columns before this toggle existed. Those units now use the
+ * SAME column presentation instead of a private one, so the fallback stopped
+ * being a separate shape the reader has to recognise.
+ */
+function splitRows(u: LawDiffUnit): { me: LawDiffSegment[]; rv: LawDiffSegment[] } {
+  if (u.segments) return { me: sideSegments(u, 'me'), rv: sideSegments(u, 'rv') }
+  // No word diff: show both versions whole, marked as wholly differing.
+  return {
+    me: u.meText ? [{ type: 'removed', text: u.meText }] : [],
+    rv: u.rvText ? [{ type: 'inserted', text: u.rvText }] : [],
+  }
+}
+
 /** What one unit is called, so a context line can count them. */
 function unitNoun(n: number): string {
   if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
@@ -354,6 +402,24 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
           <TokenSelect v-model="filter" aria-label="Welche Paragraphen anzeigen">
             <option v-for="o in filterOptions" :key="o.value" :value="o.value">{{ o.optionLabel }}</option>
           </TokenSelect>
+          <!-- Inline / nebeneinander, in the toolbar the filter already
+               owns. A two-button group, not a select: it is a binary view
+               switch the reader flips back and forth, and it has to be
+               readable as the current state at a glance. -->
+          <UFieldGroup role="group" aria-label="Darstellung des Vergleichs" class="shrink-0">
+            <UButton
+              v-for="v in VIEW_OPTIONS"
+              :key="v.value"
+              :color="view === v.value ? 'primary' : 'neutral'"
+              :variant="view === v.value ? 'subtle' : 'outline'"
+              :aria-pressed="view === v.value"
+              size="sm"
+              class="min-h-11"
+              @click="view = v.value"
+            >
+              {{ v.label }}
+            </UButton>
+          </UFieldGroup>
           <UInput
             v-model="query"
             type="search"
@@ -436,7 +502,9 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                       </span>
                     </p>
 
-                    <p v-if="b.unit.change === 'changed' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
+                    <!-- Inline: one sentence, old struck out where the new
+                         stands. The default, and right for most changes. -->
+                    <p v-if="b.unit.change === 'changed' && view === 'inline' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
                       <template v-for="(s, i) in b.unit.segments" :key="i">
                         <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
                         <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
@@ -444,14 +512,32 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                         {{ ' ' }}
                       </template>
                     </p>
-                    <div v-else-if="b.unit.change === 'changed'" class="grid gap-4 text-sm leading-relaxed sm:grid-cols-2">
+                    <!-- Side by side. ONE shape for two cases: the reader
+                         asked for columns, or the word diff hit its ceiling
+                         and there are no segments to inline (then `splitRows`
+                         marks each side whole). The fallback used to be its
+                         own layout, which made a technical limit look like a
+                         different kind of change. -->
+                    <div v-else-if="b.unit.change === 'changed'" class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Entwurf</p>
-                        <p class="hyphens-auto text-ink-secondary">{{ b.unit.meText }}</p>
+                        <p class="hyphens-auto text-ink">
+                          <template v-for="(s, i) in splitRows(b.unit).me" :key="i">
+                            <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
+                            <span v-else>{{ s.text }}</span>
+                            {{ ' ' }}
+                          </template>
+                        </p>
                       </div>
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Regierungsvorlage</p>
-                        <p class="hyphens-auto text-ink">{{ b.unit.rvText }}</p>
+                        <p class="hyphens-auto text-ink">
+                          <template v-for="(s, i) in splitRows(b.unit).rv" :key="i">
+                            <ins v-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
+                            <span v-else>{{ s.text }}</span>
+                            {{ ' ' }}
+                          </template>
+                        </p>
                       </div>
                     </div>
                     <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.rvText }}</p>
