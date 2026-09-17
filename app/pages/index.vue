@@ -146,6 +146,43 @@ const showsRisRow = computed(() => visibleOpenRows.value.some((r) => r.kind === 
  * actually missing (template below).
  */
 
+/**
+ * The volume ranking, each row with the outcome that belongs to it.
+ *
+ * Two sources on purpose. The rows come from `/api/dashboard`, which is
+ * server-rendered and cheap; the outcomes from the deferred endpoint, which
+ * pays upstream fetches for them. So the section renders whole either way,
+ * and a row whose Gegenstand could not be read simply carries no chip —
+ * never "bisher keine Regierungsvorlage", which would be a claim we did not
+ * verify. Open drafts are never in the map by construction: they have no
+ * outcome yet, and their Frist block is the right aside for them.
+ */
+const rankedRows = computed(() => {
+  const byKey = new Map(
+    (outcomes.value?.rankedOutcomes ?? []).map((o) => [`${o.gp}-${o.inr}`, o]),
+  )
+  return (data.value?.topByStatements ?? []).map((draft) => ({
+    draft,
+    outcome: byKey.get(`${draft.gp}-${draft.inr}`) ?? null,
+  }))
+})
+
+/**
+ * Three Vorlagen, then the rest on request.
+ *
+ * The section has no Frist to rank by — the door closes with the vote — so
+ * it cannot be cut by urgency the way the open list is, and it sits between
+ * the two halves the page promises. Six cards were a full screen of "no
+ * deadline, 1–8 Stellungnahmen" ahead of the accountability layer. Three
+ * name the window; the button admits the rest without sending anyone to a
+ * page that does not exist.
+ */
+const SECOND_ROUND_STEP = 3
+const secondRoundShown = ref(SECOND_ROUND_STEP)
+const visibleSecondRound = computed(
+  () => secondRound.value?.items.slice(0, secondRoundShown.value) ?? [],
+)
+
 // lastSync arrives ISO-normalized from the server (or null → line is omitted).
 const lastSyncLabel = computed(() =>
   data.value?.lastSync ? formatDateTimeDe(data.value.lastSync) : null,
@@ -163,12 +200,15 @@ const lastSyncLabel = computed(() =>
            fold was a stat tile's hint ("Was wurde daraus? ↓"); with the
            tiles gone the promise itself carries it, which is the better
            place for it anyway — and it is a fixed string, not a number that
-           has to be read to be found. -->
+           has to be read to be found. Since 18.09. it lands on the ranked
+           section, the first of the two: it is the one where all three
+           states are on screen at once, with the participation that was
+           spent on them beside each. -->
       <p class="mt-3 text-ink-secondary">
         Alle laufenden Begutachtungen österreichischer Gesetzesentwürfe:
         Fristen und Stellungnahmen auf einen Blick. Und für jeden Entwurf
         <a
-          href="#outcomes-heading"
+          href="#ranked-heading"
           class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
         >danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts</a>.
       </p>
@@ -315,15 +355,75 @@ const lastSyncLabel = computed(() =>
           keine veröffentlichte Frist: Sie endet mit der Abstimmung.
         </p>
         <ul class="mt-4 space-y-3">
-          <li v-for="v in secondRound.items" :key="v.citation">
+          <li v-for="v in visibleSecondRound" :key="v.citation">
             <SecondRoundCard :vorlage="v" />
           </li>
         </ul>
+        <ListMore
+          :visible="visibleSecondRound.length"
+          :total="secondRound.items.length"
+          :step="SECOND_ROUND_STEP"
+          @more="secondRoundShown += SECOND_ROUND_STEP"
+        />
+      </section>
+
+      <!-- The accountability layer opens HERE, not with the recency list
+           below it (§12.21). On an ordinary day that list is four rows of
+           „bisher keine Regierungsvorlage" — ME→RV latency, not shelving —
+           and whichever section comes first teaches the reader what the
+           tool is about. These five rows carry both directions with the
+           stakes attached: 707 Stellungnahmen that became a Gesetz, 616
+           that have been waiting since Oktober 2025. Ordered by
+           participation, never by outcome: Nachverfolgung, kein
+           Punktestand. -->
+      <section
+        v-if="rankedRows.length"
+        class="page-section scroll-mt-6"
+        aria-labelledby="ranked-heading"
+      >
+        <h2 id="ranked-heading" class="section-heading">
+          Wo am meisten mitgeredet wurde – und was daraus wurde
+        </h2>
+        <!-- Volumetric, not "gerade": the ranking spans the whole GP,
+             open and closed — the Frist line under each count says which
+             is which. -->
+        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+          Die Entwürfe mit den meisten Stellungnahmen in dieser
+          Gesetzgebungsperiode – offene und abgeschlossene – und daneben, was
+          aus ihnen geworden ist.
+        </p>
+        <!-- Same card anatomy as every other section, and the ranked figure
+             in the same right-hand slot: right-aligned behind one suffix,
+             the counts read as a column. Under it the outcome, so the aside
+             reads in the order the procedure ran — wie viele, bis wann, was
+             daraus wurde. An ordered list, because here the order carries
+             meaning. -->
+        <ol class="mt-4 space-y-3">
+          <li v-for="row in rankedRows" :key="`${row.draft.gp}-${row.draft.inr}`">
+            <DraftCard :draft="row.draft" emphasis="volume">
+              <template v-if="row.outcome" #aside>
+                <div class="shrink-0 sm:text-right">
+                  <StatementCountBlock
+                    :count="row.draft.statementCount"
+                    :deadline="row.draft.deadline"
+                    :active="row.draft.active"
+                    :show-deadline="false"
+                  />
+                  <!-- Chip directly under the figure it answers, and the
+                       Frist under the chip — the aside of the section below
+                       with one line added on top, not a second arrangement
+                       of the same three facts. -->
+                  <OutcomeChip :outcome="row.outcome" class="mt-1.5" />
+                </div>
+              </template>
+            </DraftCard>
+          </li>
+        </ol>
       </section>
 
       <!-- The accountability layer on the front door: mechanism 1 (shelving
            visible) and mechanism 3 (wins equally visible) in one section. -->
-      <section class="page-section scroll-mt-6" aria-labelledby="outcomes-heading">
+      <section class="page-section" aria-labelledby="outcomes-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
           <h2 id="outcomes-heading" class="section-heading">
             Zuletzt abgeschlossen – was wurde daraus?
@@ -380,32 +480,6 @@ const lastSyncLabel = computed(() =>
             Die Verläufe sind derzeit nicht abrufbar.
           </p>
         </div>
-      </section>
-
-      <section
-        v-if="data.topByStatements.length"
-        class="page-section"
-        aria-labelledby="top-heading"
-      >
-        <h2 id="top-heading" class="section-heading">
-          Die meisten Stellungnahmen
-        </h2>
-        <!-- Volumetric, not "gerade": the ranking spans the whole GP,
-             open and closed — the Frist line under each count says which
-             is which. -->
-        <p class="mt-1 text-sm text-ink-secondary">
-          Die Entwürfe mit den meisten Stellungnahmen in dieser
-          Gesetzgebungsperiode – offene und abgeschlossene.
-        </p>
-        <!-- Same card anatomy as the sections above, and the ranked figure
-             in the same right-hand slot the others use for their key fact:
-             right-aligned behind one suffix, the counts read as a column.
-             An ordered list, because here the order carries meaning. -->
-        <ol class="mt-4 space-y-3">
-          <li v-for="c in data.topByStatements" :key="`${c.gp}-${c.inr}`">
-            <DraftCard :draft="c" emphasis="volume" />
-          </li>
-        </ol>
       </section>
 
       <p v-if="lastSyncLabel" class="mt-12 text-xs text-ink-muted">

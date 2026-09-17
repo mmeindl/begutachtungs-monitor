@@ -69,7 +69,7 @@ badges. Tone: factual, precise, no exclamation marks.
 | Route | Response | Source |
 |---|---|---|
 | `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) |
-| `GET /api/dashboard/outcomes` | `DashboardOutcomes` | Bounded fan-out over the most recently closed consultations (≤12 ME-Gegenstand + their RV leg, all through the 30-min leaf caches) + one deeper probe for the newest RV/BGBl item. Server-rendered on `/` with a 4 s timeout — measured 0.41 s fully cold, 5 ms warm, because the fan-out is parallel |
+| `GET /api/dashboard/outcomes` | `DashboardOutcomes` | Bounded fan-out over the most recently closed consultations (≤12 ME-Gegenstand + their RV leg, all through the 30-min leaf caches) + one deeper probe for the newest RV/BGBl item + the outcomes of the volume ranking (`rankedOutcomes`, closed rows only, resolved in the same round). Server-rendered on `/` with a 4 s timeout — measured 0.41 s fully cold, 5 ms warm, because the fan-out is parallel |
 | `GET /api/drafts?gp&status&ministry&q` | `DraftsResponse` | List 81; `status`: `open\|closed\|all` (default `all`), `q` searches title/citation/ministry server-side |
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
 | `GET /api/drafts/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
@@ -210,7 +210,7 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 ## 7. Pages
 
-- `/` **Dashboard**: mission one-liner (its second sentence links to the outcomes section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty), **"Zuletzt abgeschlossen – was wurde daraus?"** (recently closed consultations with their outcome chip, plus the newest item that reached RV/BGBl — the accountability layer on the front door), "Die meisten Stellungnahmen" as VolumeBar top 5, lastSync note. Both dashboard fetches are server-side and started together, so the outcomes section is in the SSR HTML — it is the section the page exists for, and client-only kept it out of crawls, shares and no-JS.
+- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (its second sentence links to the first accountability section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde – und was daraus wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt abgeschlossen – was wurde daraus?"** (recently closed consultations with their outcome chip, plus the newest item that reached RV/BGBl), lastSync note. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
 - `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
 - `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
@@ -3467,6 +3467,94 @@ gemessen, und die vorhandene Zahl (52 von 91) zählt spätere **Textstände**
 im Parlament, nicht Änderungen, die der Begutachtung zuzurechnen wären.
 Die erste Zahl einer Startseite definiert, was das Produkt ist — und das
 ist Nachverfolgung, kein Punktestand.
+
+
+### 12.21 Die Reihenfolge der Listen: zuerst mitreden, dann nachverfolgen
+
+Die Startseite trug am 17.09.2026 vier Listen in dieser Folge: *Jetzt in
+Begutachtung* · *Zweite Runde* · *Zuletzt abgeschlossen* · *Die meisten
+Stellungnahmen*. Gemessen an dem Tag: 8 offene Zeilen (6 sichtbar), 6
+Regierungsvorlagen, 4 abgeschlossene Entwürfe plus eine
+Kundmachungs-Karte, 5 Rangzeilen — rund 23 Karten.
+
+**Der Befund an der letzten Liste.** „Die meisten Stellungnahmen" zeigte
+fünf Zeilen, vier davon abgeschlossen, die älteste 13 Monate alt. Sie
+wechselt ein paarmal pro Gesetzgebungsperiode und stand damit als
+*letztes Wort* der Seite: eine Rangliste. Was sie misst, ist außerdem
+nicht Bedeutung, sondern Mobilisierung — ohne Kampagne bleibt eine
+Begutachtung bei Ländern und Kammern, und 846 gegen 707 rangiert dann
+Aufrufe, nicht Entwürfe. Nach der Zählung aus §12.20 (keine der
+gesammelten Rückmeldungen fragt nach einer Kennzahl) wäre der nächste
+Schritt gewesen, sie zu streichen.
+
+**Stattdessen: dieselben Zeilen mit dem, was aus ihnen wurde.** Gemessen
+am 17.09.2026 über `/api/drafts/XXVIII/…`:
+
+| Entwurf | Stellungnahmen | Stand |
+|---|---|---|
+| 126/ME Bundesstaatsanwaltschaft | 846 | bisher keine RV (Frist 31.08.2026 — normale Latenz) |
+| 88/ME Umsatzsteuergesetz | 707 | **BGBl. I Nr. 37/2026** |
+| 44/ME Kopftuchverbot an Schulen | 616 | Frist 23.10.2025, am 24.10. ans BMB übermittelt, **seither nichts** |
+| 32/ME Elektrizitätswirtschaftsgesetz | 572 | **BGBl. I Nr. 91/2025** |
+| 132/ME AVMD | 158 | läuft noch |
+
+Das ist die Mission als vier Zeilen: zwei Gesetze, ein Entwurf mit 616
+Stellungnahmen und elf Monaten Stille, einer zu früh für ein Urteil. Die
+Zeilen standen längst auf der Seite — nur ohne die Spalte, für die es das
+Werkzeug gibt. Sortiert bleibt nach Beteiligung, **nie** nach Ergebnis:
+Nachverfolgung, kein Punktestand (dieselbe Regel wie im
+Verlaufs-Endpunkt).
+
+**Und sie steht jetzt VOR der Verlaufsliste.** „Zuletzt abgeschlossen"
+zeigt an einem gewöhnlichen Tag vier Karten „Bisher keine
+Regierungsvorlage" — das ist ME→RV-Latenz, nicht Schubladisierung, und
+der Erklärsatz darüber sagt das auch. Aber der Abschnitt, der den Block
+eröffnet, bringt die Lektion bei, und vier Fehlanzeigen als Eröffnung
+sind genau die Zynismus-Maschine, vor der `CLAUDE.md` (Mechanismus 3)
+warnt. Die Rangliste eröffnet in beide Richtungen und mit Einsatz; die
+Verlaufsliste liest sich danach als lebende Kante. Der Anker im zweiten
+Satz der Dachzeile zeigt entsprechend auf den ersten der beiden
+Abschnitte.
+
+**Die Zweite Runde bleibt oben — Deckel statt Umzug.** Der erste Entwurf
+dieser Umstellung schob sie ans Ende: keine Frist, Karten aus Juni bis
+August, 1–8 Stellungnahmen, und sie kostet einen Bildschirm vor dem
+eigentlichen Punkt. Dagegen steht, wofür Leute die Seite öffnen — *wo
+kann ich mich einbringen* —, und beide offenen Türen gehören zusammen;
+die H1 verspricht genau diese Reihenfolge („Was passiert in der
+Begutachtung – und was wird daraus?"). Der Platz war das Problem, nicht
+die Position: drei Zeilen, dann `ListMore`. Die Bestandsmessung
+(6 von 117 Vorlagen am 15.09.2026) sagt nichts über den Ausreißer vor
+einer Plenarwoche; ein Deckel begrenzt ihn, ein „alle ansehen" ginge
+ins Leere, weil es für diese Auswahl keine eigene Seite gibt.
+
+**Anatomie der rechten Spalte.** Beide Verlaufsabschnitte tragen jetzt
+denselben Block: Chip, darunter die Frist — in der Rangliste mit der
+Zahl als zusätzlicher Zeile darüber. Die erste Fassung stellte den Chip
+unter die Frist, was ihn zwischen den beiden Abschnitten die Plätze
+tauschen ließ; in einer Spalte, die man mit den Augen abfährt, ist das
+der sichtbarste Unterschied und der bedeutungsloseste.
+`StatementCountBlock` bekam dafür `showDeadline`, weil die Frist sonst
+zweimal im selben Aside stünde.
+
+**Zwei Quellen für eine Liste, absichtlich.** Die Zeilen kommen aus
+`/api/dashboard` (serverseitig, billig), die Ergebnisse aus dem
+Verlaufs-Endpunkt (bezahlt Upstream-Abrufe). Der Abschnitt rendert
+deshalb in jedem Fall vollständig, und eine Zeile, deren Gegenstand
+nicht gelesen werden konnte, trägt schlicht keinen Chip — **nie**
+„bisher keine Regierungsvorlage", denn ein nicht aufgelöstes Ergebnis
+und eine fehlende Regierungsvorlage sind zwei verschiedene Aussagen, und
+nur eine davon ist unsere. Die Rangfolge selbst steht in
+`shared/utils/draftOrder.ts`, damit die beiden Endpunkte sie nicht
+getrennt herleiten und Chips auf anderen Zeilen landen als den
+gezeigten.
+
+**Nicht gebaut:** keine fünfte Liste. „Kommende Begutachtungen" hat keine
+Quelle (offene Forschungsfrage, `CLAUDE.md`); eine reine Erfolgsliste
+(„Zuletzt Gesetz geworden") wäre ein Punktestand in die andere Richtung,
+und beide Richtungen stehen schon in zwei Abschnitten nebeneinander;
+eine Umschaltung zwischen „nach Beteiligung" und „zuletzt" würde die
+Hälfte der Belege hinter einen Klick legen.
 
 
 ## 13. Open questions

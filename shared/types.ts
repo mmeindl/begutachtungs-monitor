@@ -357,6 +357,19 @@ export interface DashboardOutcomes {
       during the months of normal ME→RV latency. Null when `recent`
       already contains one (or none exists in the pool). */
   lastEnacted: ClosedOutcome | null
+  /**
+   * Outcomes for the volume ranking (`DashboardPayload.topByStatements`) —
+   * the section that holds "wo wurde am meisten mitgeredet" against what
+   * became of it.
+   *
+   * CLOSED ROWS ONLY, and a row whose Gegenstand could not be read is left
+   * out rather than reported as "bisher keine Regierungsvorlage": an
+   * unresolved outcome and a missing Regierungsvorlage are different
+   * claims, and only one of them is ours to make. The rows themselves come
+   * from `/api/dashboard`, so the section renders with or without this —
+   * without it, simply uncharted.
+   */
+  rankedOutcomes: ClosedOutcome[]
 }
 
 /**

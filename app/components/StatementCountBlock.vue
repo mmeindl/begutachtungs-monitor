@@ -9,11 +9,22 @@
  * unlike the bar it carries its own number instead of a width relative to
  * an unlabelled #1.
  */
-const props = defineProps<{
-  count: number
-  deadline: string | null
-  active: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    count: number
+    deadline: string | null
+    active: boolean
+    /**
+     * The Frist line under the figure. Off where an OutcomeChip follows: the
+     * chip carries that date itself, and the aside then reads as the chip's
+     * own two lines with the ranked figure above them — the same silhouette
+     * in both accountability sections, instead of the chip changing places
+     * between them.
+     */
+    showDeadline?: boolean
+  }>(),
+  { showDeadline: true },
+)
 
 const label = computed(() => fristLabel(props.deadline, props.active))
 </script>
@@ -30,7 +41,7 @@ const label = computed(() => fristLabel(props.deadline, props.active))
         count === 1 ? 'Stellungnahme' : 'Stellungnahmen'
       }}</span>
     </p>
-    <p class="mt-0.5 text-xs text-ink-secondary">
+    <p v-if="showDeadline" class="mt-0.5 text-xs text-ink-secondary">
       {{ label }}
     </p>
   </div>

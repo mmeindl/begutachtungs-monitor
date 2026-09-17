@@ -69,6 +69,36 @@ export function draftOrderKey(draft: {
   }
 }
 
+/**
+ * How many rows the volume ranking shows. One constant, because two
+ * endpoints read the ranking: `/api/dashboard` ships the rows and
+ * `/api/dashboard/outcomes` the outcomes belonging to them — a different
+ * length on either side would leave chips without rows or rows without
+ * chips.
+ */
+export const RANKED_BY_STATEMENTS = 5
+
+/**
+ * The volume ranking: most Stellungnahmen first.
+ *
+ * NOT the list order above. That one answers "was kann ich noch
+ * beeinflussen"; this one answers "wo wurde am meisten mitgeredet", and the
+ * homepage holds the answer against what became of those drafts.
+ *
+ * Tie-break by `inr` descending: equal counts are the normal case early in a
+ * GP (a shelf of drafts at 0), and without it their order would depend on
+ * the order the corpus happened to arrive in — different between two
+ * endpoints reading the same list.
+ */
+export function rankByStatements<T extends { inr: number; statementCount: number }>(
+  items: readonly T[],
+  count: number = RANKED_BY_STATEMENTS,
+): T[] {
+  return [...items]
+    .sort((a, b) => b.statementCount - a.statementCount || b.inr - a.inr)
+    .slice(0, count)
+}
+
 export function compareDrafts(a: OrderedDraft, b: OrderedDraft): number {
   if (a.active !== b.active) return a.active ? -1 : 1
   if (a.active) {

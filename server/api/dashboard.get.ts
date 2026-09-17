@@ -3,6 +3,7 @@
  * Source: list 81 of the current GP (leaf-cached).
  */
 import type { DashboardPayload } from '#shared/types'
+import { rankByStatements } from '#shared/utils/draftOrder'
 
 export default defineEventHandler(async (): Promise<DashboardPayload> => {
   const gp = await getCurrentGp()
@@ -19,9 +20,10 @@ export default defineEventHandler(async (): Promise<DashboardPayload> => {
     return days !== null && days >= 0 && days <= DEADLINE_SERIOUS_DAYS
   }).length
 
-  const topByStatements = [...items]
-    .sort((a, b) => b.statementCount - a.statementCount)
-    .slice(0, 5)
+  // The rows of the volume ranking; their outcomes come from
+  // /api/dashboard/outcomes, which derives the same ranking from the same
+  // cached list through the same function (`shared/utils/draftOrder.ts`).
+  const topByStatements = rankByStatements(items)
 
   return {
     gp,
