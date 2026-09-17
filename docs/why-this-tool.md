@@ -1,9 +1,17 @@
 # Why this tool? — What the monitor adds over parlament.gv.at
 
-Everything the Begutachtungs-Monitor shows comes from the Austrian
-Parliament's own open interfaces (CC BY 4.0). The record there is complete
-and authoritative, and the full texts of all documents live there — this
-project does not replace parlament.gv.at and does not want to.
+Everything the Begutachtungs-Monitor shows comes from official sources: the
+Austrian Parliament's own filter interfaces and the RIS Open-Government-Data
+API of the Bundeskanzleramt. **The licence differs per source**, and the site
+states which applies where (`/impressum#imp-license`): the RIS data — draft
+texts, Textgegenüberstellung, Bundesrecht — is CC BY 4.0, as are the
+Parliament datasets for the stations *after* the consultation; the
+Begutachtungsverfahren itself is expressly excluded from open-data reuse by
+Parliament's own licence page, which is one reason this tool stays
+metadata-only there.
+
+The full texts of all documents live upstream — this project does not replace
+parlament.gv.at and does not want to.
 
 The difference is the question each site answers. **parlament.gv.at is an
 archive**: everything is on record, organized per item (Gegenstand), built
@@ -20,6 +28,9 @@ it did not.*
 
 Verified 2026-08-23 against a real procedure (8/ME, XXVIII. GP — the
 "Bundestrojaner" package, and 88/ME, the VAT reduction with 707 statements).
+Differences 1 (comparison) and 5 (the two sources) were added later and rest
+on their own corpus measurements: `docs/ris-join.md` for the join and its
+gaps, `docs/architecture.md` §12.13 for the Textgegenüberstellung.
 
 ### 1. The whole chain on one page
 
@@ -33,6 +44,17 @@ The monitor shows the full chain — Ministerialentwurf → Regierungsvorlage �
 Bundesgesetzblatt (with the RIS link) — on one page, labeled in plain
 language, for every consultation where it exists. Where no RV exists, it says
 so explicitly; a draft that went nowhere is part of the answer too.
+
+Since September 2026 it also shows *what* changed between the first two
+stations: a paragraph-by-paragraph comparison of the draft against the
+Regierungsvorlage, aligned by heading rather than by number so a merely
+renumbered § compares as unchanged — plus the ministry's own
+Textgegenüberstellung, which says what the law reads today and what the draft
+would make of it, on the same page for the drafts that carry one. Both are
+rendered inline, one passage with the changed words marked; a side-by-side
+mode and expandable context are on the roadmap below. What is not compared
+yet are the stations *after* the Regierungsvorlage, where a consultation
+result can still be undone.
 
 ### 2. Statement aggregation
 
@@ -64,7 +86,30 @@ procedures?" — are structurally impossible to answer there. The monitor's
 dashboard is that view; the base-rate statistics are on the roadmap and are
 the evidence layer this project ultimately exists for.
 
-### 5. Subscription without accounts
+### 5. Two official sources, and the gaps between them
+
+An Austrian consultation is published in two places: at Parliament (the
+procedure — arrival, deadline, statements, the later stations) and in the
+RIS `Begut` application of the Bundeskanzleramt (the texts — draft,
+Erläuterungen, Textgegenüberstellung). Neither list is complete. Measured
+across the whole XXVII. legislative period: **12 of 350 Ministerialentwürfe
+have no RIS record at all**, and one RIS draft bill has no Parliament item in
+that window (it was published twelve days before the period ended, so it may
+belong to the next one). Anyone watching a single source will eventually miss
+a consultation, and neither source says when that happens.
+
+The monitor reads both, joins them on a tested composite key
+(`docs/ris-join.md`) and says per consultation which source knows it — "im
+RIS nicht veröffentlicht" is a displayed state, not an error. The join is
+also what puts the ministry's own Textgegenüberstellung on the page.
+
+**One gap is still open and worth naming here:** RIS also publishes
+consultations on **Verordnungsentwürfe**, which never reach Parliament's list
+— in the XXVII. window 624 of them against 342 draft bills. Until they are
+covered (roadmap below), "currently open" on this site means *draft bills*,
+not every consultation running in the country.
+
+### 6. Subscription without accounts
 
 Following consultations upstream means re-checking the filter page; there
 is no subscribable calendar of consultation deadlines. The monitor offers
@@ -76,15 +121,29 @@ tracking.
 
 ## What the monitor does not do yet (roadmap, in order)
 
-1. **Text diff ME → RV** — showing *what* changed after the consultation,
-   not just *that* a next stage exists. Available nowhere today; the core of
-   the accountability layer.
-2. **E-mail deadline alerts** — the predecessor's (OffenesParlament.at)
+1. **Consultations on Verordnungsentwürfe** — see difference 5. The larger
+   half by count, published in RIS only, and invisible here today.
+2. **The Erläuterungen beside the paragraph they explain** — the ministry's
+   reasoning is linked as a document and not read. Its besonderer Teil is
+   written per amendment instruction ("Zu Z 4 (§ 54c …)"), i.e. addressed at
+   exactly the units the comparison already builds, so it can stand next to
+   them instead of in a separate PDF. This is the step that turns "what
+   changed" into "why, according to the ministry" — and it is what makes a
+   relevance decision possible without reading the whole package.
+3. **Comparison beyond the Regierungsvorlage** — committee version, plenary
+   version, promulgated law. The same engine with different inputs; the
+   late, wholesale amendment is the classic way a consultation result
+   disappears, and nobody watches that seam.
+4. **Reading modes for the comparison** — a side-by-side mode next to the
+   inline one, and unchanged passages expandable where they stand instead of
+   only through the filter. A wholly rewritten § is where inline reads
+   worst, and that is exactly the § worth reading.
+5. **E-mail deadline alerts** — the predecessor's (OffenesParlament.at)
    most-loved feature. The account-free tier already exists (see
-   difference 5); e-mail needs persistence and consent flows and comes
+   difference 6); e-mail needs persistence and consent flows and comes
    with grant funding.
-3. **Base rates across procedures** — the statistical layer described above.
-4. **Statement-corpus synthesis** (clustering/summarizing large statement
+6. **Base rates across procedures** — the statistical layer described above.
+7. **Statement-corpus synthesis** (clustering/summarizing large statement
    corpora) — stage 2, only with a research partner, because the full texts
    are excluded from the open-data license and require the § 42h UrhG
    text-and-data-mining exception.
