@@ -7,7 +7,7 @@
  * wait for that.
  *
  * The pair is chosen by the reader and lives in the URL (`?von=…&bis=…`), so
- * a comparison can be linked to — unlike the filter and the view toggle,
+ * a comparison can be linked to — unlike the view toggle and the search,
  * which change how the same thing is read. Default stays
  * Ministerialentwurf → Regierungsvorlage, the question this product is about.
  */
@@ -174,7 +174,7 @@ const BADGE_LABEL: Record<Badge, string> = {
 /**
  * Strongest event first: whole paragraphs appearing or disappearing, then
  * edits deep before shallow, the unchanged baseline last — the order every
- * diff view has trained readers on. Pills and filter chips share it.
+ * diff view has trained readers on. The pills on the law headers follow it.
  */
 const BADGE_ORDER: Badge[] = ['inserted', 'removed', 'changed', 'editorial', 'unchanged']
 /**
@@ -195,29 +195,21 @@ function badgeOf(u: LawDiffUnit): Badge {
   return isMinor(u) ? 'editorial' : u.change
 }
 
-/** Filter values are the badge kinds plus 'alle'; chips and pills share one order. */
-type Filter = 'alle' | Badge
-const filter = ref<Filter>('alle')
+/**
+ * Searching, but no filtering by change kind — the select that offered it was
+ * removed on 17.09.2026 (Manu, with the page in front of him).
+ *
+ * It offered ISOLATION ("show only neu") where the reader's actual task is
+ * SUPPRESSION ("hide the redaktionell ones so I see the substance"), and
+ * suppression was never on offer: the options were single-select. So it
+ * answered a question almost nobody asks while the one they do ask stayed
+ * unavailable — and the counts it carried are on the law headers anyway,
+ * where they are per law instead of per page. What it cost is the only
+ * printed OVERALL total, which matters just for a multi-law package; the
+ * per-law pills are the more useful granularity, and a plain summary line
+ * would be cheaper to read than a dropdown if the total is ever missed.
+ */
 const query = ref('')
-
-const filterOptions = computed<{ value: Filter; label: string; count: number; optionLabel: string }[]>(() => {
-  const s = data.value?.stats
-  if (!s) return []
-  const counts: Record<Badge, number> = {
-    inserted: s.inserted,
-    removed: s.removed,
-    changed: s.changed - (s.editorial ?? 0),
-    editorial: s.editorial ?? 0,
-    unchanged: s.unchanged,
-  }
-  // The verb sits inside the option text so the closed control reads as a
-  // sentence ("Alle anzeigen (330)") without a label beside it.
-  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
-  return [
-    { value: 'alle' as Filter, label: 'alle', count: s.total, optionLabel: `Alle anzeigen (${s.total})` },
-    ...BADGE_ORDER.map((b) => ({ value: b as Filter, label: BADGE_LABEL[b], count: counts[b], optionLabel: `${cap(BADGE_LABEL[b])} anzeigen (${counts[b]})` })),
-  ].filter((o) => o.value === 'alle' || o.count > 0)
-})
 
 function key(u: LawDiffUnit): string {
   return unitKey(u)
@@ -225,11 +217,10 @@ function key(u: LawDiffUnit): string {
 
 const visibleUnits = computed(() => {
   const q = query.value.trim().toLowerCase()
-  return (data.value?.units ?? []).filter((u) => {
-    if (filter.value !== 'alle' && badgeOf(u) !== filter.value) return false
-    if (!q) return true
-    return [u.id, u.fromId, u.heading, u.article, u.fromText, u.toText].some((t) => t?.toLowerCase().includes(q))
-  })
+  if (!q) return data.value?.units ?? []
+  return (data.value?.units ?? []).filter((u) =>
+    [u.id, u.fromId, u.heading, u.article, u.fromText, u.toText].some((t) => t?.toLowerCase().includes(q)),
+  )
 })
 
 /**
@@ -304,9 +295,9 @@ function showAll(article: string) {
 }
 
 function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Block[]; hidden: number } {
-  // Filtering or searching IS the reader asking for specific units — then
-  // nothing gets folded away behind a context line.
-  const folding = filter.value === 'alle' && !query.value.trim()
+  // Searching IS the reader asking for specific units — then nothing gets
+  // folded away behind a context line.
+  const folding = !query.value.trim()
   const limit = fullyShown.value.has(article) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
   const blocks: Block[] = []
   let context: LawDiffUnit[] = []
@@ -501,10 +492,10 @@ const droppedNote = computed(() =>
       </div>
 
       <template v-if="data.units.length">
-        <!-- One compact select instead of six chips (the counts live on the
-             law headers anyway). Native <select>, not USelect — same reason
-             and same token styling as the list page (Vite 8 + Nuxt UI 4.10
-             hydration crash, see pages/entwuerfe/index.vue). -->
+        <!-- Which comparison, how to read it, and a search. Native
+             <select>, not USelect — same reason and same token styling as the
+             list page (Vite 8 + Nuxt UI 4.10 hydration crash, see
+             pages/entwuerfe/index.vue). -->
         <div class="mt-4 flex flex-wrap items-center gap-3">
           <!-- Only when there is a choice to make. Most drafts publish two
                texts, so this is one option and a select over it would be a
@@ -517,13 +508,9 @@ const droppedNote = computed(() =>
           >
             <option v-for="c in comparisons" :key="c.value" :value="c.value">{{ c.label }}</option>
           </TokenSelect>
-          <TokenSelect v-model="filter" aria-label="Welche Paragraphen anzeigen">
-            <option v-for="o in filterOptions" :key="o.value" :value="o.value">{{ o.optionLabel }}</option>
-          </TokenSelect>
-          <!-- Inline / nebeneinander, in the toolbar the filter already
-               owns. A two-button group, not a select: it is a binary view
-               switch the reader flips back and forth, and it has to be
-               readable as the current state at a glance. -->
+          <!-- Inline / nebeneinander. A two-button group, not a select: it
+               is a binary view switch the reader flips back and forth, and it
+               has to be readable as the current state at a glance. -->
           <UFieldGroup role="group" aria-label="Darstellung des Vergleichs" class="shrink-0">
             <UButton
               v-for="v in VIEW_OPTIONS"
@@ -677,9 +664,7 @@ const droppedNote = computed(() =>
             </div>
           </section>
         </div>
-        <p v-if="!visibleUnits.length" class="mt-2 text-sm text-ink-secondary">
-          {{ query ? 'Nichts gefunden.' : 'Keine Einträge in dieser Auswahl.' }}
-        </p>
+        <p v-if="!visibleUnits.length" class="mt-2 text-sm text-ink-secondary">Nichts gefunden.</p>
       </template>
     </template>
   </div>
