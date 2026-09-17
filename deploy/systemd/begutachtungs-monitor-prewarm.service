@@ -2,6 +2,13 @@
 # Warms the RIS↔ME map of the current GP: ~46 upstream requests that must
 # not land on a visitor (docs/ris-join.md §4a). Started by the timer nightly
 # and by deploy.sh after each restart, because the Nitro cache is in-memory.
+#
+# Second call since 2026-09-17: the homepage now also states what is in
+# Begutachtung WITHOUT a Gegenstand at Parliament (docs/architecture.md
+# §12.16). It reads the same corpus the first call warms, so it adds no
+# upstream traffic — but it has its own 30-minute derived cache, and that
+# section is a correction to a claim the page makes, so it must not be the
+# one part of the start page that arrives cold.
 [Unit]
 Description=Begutachtungs-Monitor: warm the RIS↔ME map of the current GP
 After=begutachtungs-monitor.service
@@ -10,3 +17,4 @@ Requires=begutachtungs-monitor.service
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/weitere-entwuerfe?status=open"

@@ -439,6 +439,118 @@ export interface RisMapResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Begutachtungen without a parliamentary Gegenstand (docs/architecture.md §12.16)
+// ---------------------------------------------------------------------------
+
+/**
+ * What kind of legal instrument a RIS-only Begutachtung is about.
+ *
+ * From `classifyRisRecord`, which reads the title — RIS Begut carries no
+ * type field. It was built as a score penalty inside the RIS↔ME join, where
+ * a wrong guess was outvoted by dates and titles; putting it on screen makes
+ * it a factual claim, so it was checked against the join as an oracle
+ * (`pnpm audit:verordnungen`): of 472 records that the join tied to a real
+ * Ministerialentwurf — which Parliament's list 81 only ever carries for
+ * Gesetzesentwürfe — not one is classified `verordnung`.
+ *
+ * `unbestimmt` is the honest third state: a record whose title names no type
+ * word (Staatsverträge, Vereinbarungen, programmes). The UI names the source
+ * rather than guessing a type for it.
+ */
+export type RisConsultationKind = 'verordnung' | 'gesetz' | 'unbestimmt'
+
+/**
+ * One Begutachtung that RIS publishes and Parliament does not have a
+ * Gegenstand for — two thirds of the whole pre-parliamentary corpus
+ * (3.012 of 4.574 records on 2026-09-17).
+ *
+ * Deliberately NOT a `DraftSummary`: almost every field of that shape is a
+ * promise this record cannot keep. There is no Geschäftszahl (the identity
+ * is the RIS document ID), no Stellungnahmen list, no submitter counts and
+ * no ME→RV chain, because none of those exist without a parliamentary
+ * Gegenstand. Modelling it as a draft with null fields would have spread
+ * "unknown" through a type whose readers treat those fields as known.
+ */
+export interface RisConsultation {
+  /** `Metadaten.Technisch.ID` — the only stable identity this record has. */
+  id: string
+  kind: RisConsultationKind
+  /** Kurztitel where RIS has one, else the long Titel. */
+  title: string
+  /** The full official Titel, when it says more than `title`; else null. */
+  longTitle: string | null
+  /** Ressort short code, e.g. "BMLUK"; '' when RIS names no parsable code. */
+  ministryCode: string
+  /** Full ministry name as RIS words it. */
+  ministryName: string
+  /** ISO date — BeginnBegutachtungsfrist; null when RIS has none. */
+  startedAt: string | null
+  /** ISO date — EndeBegutachtungsfrist; null when RIS has none. */
+  deadline: string | null
+  /** Frist still running, computed from `deadline` against today. */
+  active: boolean
+  /** The record's human-readable page on ris.bka.gv.at. */
+  risUrl: string
+}
+
+/**
+ * The same record with its documents — everything the Begutachtung
+ * published, which for two thirds of these is more than the first look
+ * suggested: 72,1 % carry Erläuterungen, 79,4 % a Begleitschreiben.
+ */
+export interface RisConsultationDetail extends RisConsultation {
+  /** The draft text itself; always present in the measured corpus. */
+  mainDocument: RisDocumentFormats
+  /** The ministry's reasoning — Allgemeiner and Besonderer Teil. */
+  explanations: RisDocumentFormats | null
+  /** Current law against proposed law, where the ministry wrote one. */
+  textComparison: RisDocumentFormats | null
+  /**
+   * The Begleitschreiben. It names the address a Stellungnahme goes to, and
+   * for these procedures that is the ONLY way to file one: there is no
+   * parliamentary form, because there is no Gegenstand.
+   */
+  coverLetter: RisDocumentFormats | null
+}
+
+export interface RisDocumentFormats {
+  html: string | null
+  xml: string | null
+  pdf: string | null
+}
+
+export interface RisConsultationsResponse {
+  items: RisConsultation[]
+  /** Rows after the filters — what the result line counts. */
+  total: number
+  /**
+   * Rows in the GP BEFORE any filter. The page states the denominator next
+   * to `withGegenstand`, and that sentence must not move when someone picks
+   * a ministry — it describes the period, not the current view.
+   */
+  gpTotal: number
+  /** The Gesetzgebungsperiode whose window was searched. */
+  gp: string
+  availableGps: string[]
+  /** Distinct ministries present in the result's GP (for the filter UI). */
+  ministries: { code: string; name: string }[]
+  /**
+   * How many of the GP's RIS records DO have a Ministerialentwurf behind
+   * them — the other half of the denominator, so a page can say what it is
+   * leaving out instead of implying it is everything.
+   */
+  withGegenstand: number
+  /**
+   * Ministerialentwürfe whose RIS record the join could not decide
+   * (`ambiguous`). While this is 0 the list above is exact; above 0 it can
+   * carry that many rows too many, because the record belonging to such an
+   * ME stays unclaimed and reads as "no Gegenstand". Measured 0 in GP XXVII
+   * and GP XXVIII — surfaced rather than assumed away.
+   */
+  undecided: number
+}
+
+// ---------------------------------------------------------------------------
 // ME → RV text comparison (docs/ris-join.md §6)
 // ---------------------------------------------------------------------------
 

@@ -22,13 +22,20 @@ export default defineEventHandler(async (event) => {
   const code = ressortParam?.toUpperCase()
 
   const gp = await getCurrentGp()
-  const { items } = await getDraftsForGp(gp)
+  // The Begutachtungen without a parliamentary Gegenstand ride along: a
+  // subscriber asked what is in Begutachtung, and Parliament's half alone
+  // was the wrong answer to that (docs/architecture.md §12.16). They obey
+  // the ?ressort= scope like every other item — the RIS ministry code is
+  // the same vocabulary.
+  const [{ items }, risOnly] = await Promise.all([getDraftsForGp(gp), getRisOnlyForGp(gp)])
   const all = items.map(reconcileActive)
   const scoped = code ? all.filter((item) => item.ministryCode === code) : all
+  const risScoped = code ? risOnly.items.filter((item) => item.ministryCode === code) : risOnly.items
   const body = buildRssFeed(
     siteUrl,
     scoped,
-    code ? { code, name: scoped[0]?.ministryName ?? null } : undefined,
+    code ? { code, name: scoped[0]?.ministryName ?? risScoped[0]?.ministryName ?? null } : undefined,
+    risScoped,
   )
 
   const etag = bodyEtag(body)

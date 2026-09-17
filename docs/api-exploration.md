@@ -688,17 +688,42 @@ Bundesrecht: Kurztitel, Titel,
 
 There is **no document-type field** (bill draft vs. regulation draft only derivable from the title) and **no parliament reference whatsoever** (no GP, no ME number, no parlament.gv.at URL — verified by grepping full records).
 
+**The type split, measured 2026-09-17** over all 4.574 records with `classifyRisRecord`: **3.012 Verordnungen (65,9 %)**, 1.527 Gesetze (33,4 %), 35 with no type word in the title (0,8 %). The Verordnungen share sits between 54 % and 75 % in every year since 2016 — Parliament's list 81 therefore knows roughly a third of the pre-parliamentary Begutachtung, and that third is the only part with a Gegenstand, Stellungnahmen and an ME→RV chain (`docs/architecture.md` §12.16).
+
 ### Attached documents
 
 `Data.Dokumentliste.ContentReference[]`, `ContentType`:
 
 - `MainDocument` — exactly 1 per record, `Name="Hauptdokument"` = the draft text. Always Html+Pdf+Rtf+Xml.
 - `Letter` — 1 per record, cover letter. **Sometimes PDF only** (4 of 39 in the verification sample).
-- `Material` — Erläuterungen, Textgegenüberstellung, Vorblatt/WFA. Names are ministries' free text ("Vorblatt und WFA", "WFA samt Vorblatt", "TGÜ") — **classify by ContentType, never by name**.
+- `Material` — Erläuterungen, Textgegenüberstellung, Vorblatt/WFA. Names are ministries' free text ("Vorblatt und WFA", "WFA samt Vorblatt", "TGÜ") — **classify by ContentType, never by name**. The one exception is *within* `Material`, where the name is all there is: `flattenRisRecord` picks the Erläuterungen and the Textgegenüberstellung by loose name patterns, because `Material` covers both.
 - `Attachment` — annexes.
 - `EmbeddedAttachment` — inline images, massive noise (~5,000 per 100 records), filter out early.
 
 Every format incl. Html/Xml is **optional per file**. URL pattern: `https://www.ris.bka.gv.at/Dokumente/Begut/{ID}/{datei}.{ext}` (PDF download verified: 200, `application/pdf`).
+
+**How often each document is actually there** — whole corpus, 4.574 records, 2026-09-17 (`pnpm audit:verordnungen`, which runs the shipped mapper rather than a second copy of it):
+
+| | Verordnungen (3.012) | Gesetze (1.527) |
+|---|---|---|
+| `MainDocument`, Xml **and** Html | 100 % | 100 % |
+| Erläuterungen | **72,1 %** | 68,2 % |
+| Begleitschreiben (`Letter`) | **79,4 %** | 84,8 % |
+| Textgegenüberstellung | 16,1 % | 44,8 % |
+
+So a Verordnungsentwurf is **not** the thin record it looks like from one
+sample — it carries Erläuterungen slightly *more* often than a
+Gesetzesentwurf. Only the Gegenüberstellung is genuinely rarer, and for a
+sound reason: many Verordnungen are new instruments with no standing text to
+hold against.
+
+**The Begleitschreiben is the Einreichweg, and it is mostly a scan.** For a
+Verordnungsentwurf it is the only published answer to "where do I send my
+Stellungnahme?" — there is no parliamentary form. Reading it out is not
+viable: in a sample of 40 records **34 cover letters had no text layer at
+all** (pure images), and the six readable ones name an individual official's
+work e-mail address. Link the document, do not parse it
+(`docs/architecture.md` §12.16).
 
 ### RIS quirks
 
