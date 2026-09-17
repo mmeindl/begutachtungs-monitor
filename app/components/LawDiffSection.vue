@@ -123,7 +123,29 @@ const selectedComparison = computed({
   },
 })
 
-/** The question the selected pair answers — the section's own heading. */
+/**
+ * The section's heading never changes, and the question of the selected pair
+ * stands BELOW the controls (Manu, 17.09.2026: "we should never change
+ * things above because they can be missed easily").
+ *
+ * The rule is positional and worth stating as one: a reader's eye is at the
+ * control they just used, so whatever a control changes has to be at it or
+ * under it. Before this, picking a pair rewrote four blocks ABOVE the
+ * select — heading, description, source line, package notes — and the select
+ * itself was the only thing in view.
+ *
+ * The heading is the DEFAULT pair's question, and that is not a compromise:
+ * it names the era every one of these comparisons belongs to — everything
+ * here happened after the Begutachtung — while the line under the controls
+ * names the step. It also keeps the wording the two links that point here
+ * already use (the Regierungsvorlage station of the spine, and the outcome
+ * card).
+ */
+const heading = lawStationPairQuestion(DEFAULT_LAW_STATION_PAIR.from, DEFAULT_LAW_STATION_PAIR.to)
+const isDefaultPair = computed(
+  () => pair.value.from === DEFAULT_LAW_STATION_PAIR.from && pair.value.to === DEFAULT_LAW_STATION_PAIR.to,
+)
+/** Only for the other pairs: on the default one it would repeat the heading. */
 const question = computed(() => lawStationPairQuestion(pair.value.from, pair.value.to))
 const fromLabel = computed(() => LAW_STATION_LABEL[pair.value.from])
 const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
@@ -433,7 +455,19 @@ const droppedNote = computed(() =>
 <template>
   <!-- id: the outcome card above links here ("der Vergleich der beiden Texte"). -->
   <div id="textvergleich" class="mt-8 scroll-mt-24">
-    <h3 class="text-base font-semibold text-ink">{{ question }}</h3>
+    <h3 class="text-base font-semibold text-ink">{{ heading }}</h3>
+
+    <!-- Section-level control, and therefore in the section's header rather
+         than in the toolbar of the list: it changes WHAT is compared, while
+         the toggle and the search below change how the result is read.
+         Outside every branch on purpose — a pair whose text is PDF-only
+         answers with a reason and no units, and with the select inside that
+         branch the reader would lose the control that got them there. -->
+    <div v-if="comparisons.length > 1" class="mt-2">
+      <TokenSelect v-model="selectedComparison" aria-label="Welche zwei Fassungen vergleichen">
+        <option v-for="c in comparisons" :key="c.value" :value="c.value">{{ c.label }}</option>
+      </TokenSelect>
+    </div>
 
     <p v-if="status === 'pending' || status === 'idle'" class="mt-1 text-sm text-ink-secondary">
       Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
@@ -449,6 +483,8 @@ const droppedNote = computed(() =>
     </template>
 
     <template v-else>
+      <!-- What the selected pair answers, where the selection happened. -->
+      <p v-if="!isDefaultPair" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
       <p class="mt-1 text-sm text-ink-secondary">
         <template v-if="isNovelle">
           Dieser Text ändert ein bestehendes Gesetz. Verglichen werden
@@ -467,47 +503,15 @@ const droppedNote = computed(() =>
         eingeklappt.
       </p>
 
-      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <!-- Die Lizenz hängt am Paar, nicht an der Seite. Steht der
-             Ministerialentwurf auf einer Seite, wäre eine gemeinsame Zeile
-             „CC BY 4.0" für diese Hälfte falsch: die Vorlage ist ein
-             lizenzierter Datensatz, der Entwurf gehört zum
-             Begutachtungsverfahren, das das Parlament von der
-             Open-Data-Nutzung ausnimmt (CLAUDE.md, Legal constraints).
-             Vergleicht der Leser zwei parlamentarische Fassungen, sind beide
-             Seiten lizenziert und die Angabe gehört dazu — dieselbe
-             quellenweise Aufteilung wie im Impressum. -->
-        <span>{{ data.fromSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
-        <ExternalLink v-if="data.fromDocument" :href="data.fromDocument.url" class="text-accent-deep hover:underline">{{ data.fromDocument.label }}</ExternalLink>
-        <ExternalLink v-if="data.toDocument" :href="data.toDocument.url" class="text-accent-deep hover:underline">{{ data.toDocument.label }}</ExternalLink>
-        <span v-if="isLicensedPair(pair.from, pair.to)">CC BY 4.0</span>
-        <!-- The § names come from a third source; a page that shows text has
-             to say where it is from, even when the text is one word long. -->
-        <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
-      </div>
-
       <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
         <p v-if="mergedNote">{{ mergedNote }}</p>
         <p v-if="droppedNote" :class="mergedNote ? 'mt-1.5' : ''">{{ droppedNote }}</p>
       </div>
 
       <template v-if="data.units.length">
-        <!-- Which comparison, how to read it, and a search. Native
-             <select>, not USelect — same reason and same token styling as the
-             list page (Vite 8 + Nuxt UI 4.10 hydration crash, see
-             pages/entwuerfe/index.vue). -->
+        <!-- How to read the result, and a search: both scope the list below
+             them and nothing above. -->
         <div class="mt-4 flex flex-wrap items-center gap-3">
-          <!-- Only when there is a choice to make. Most drafts publish two
-               texts, so this is one option and a select over it would be a
-               control that cannot be operated; 52 of the 91 GP-XXVIII drafts
-               that reached a Vorlage have more. -->
-          <TokenSelect
-            v-if="comparisons.length > 1"
-            v-model="selectedComparison"
-            aria-label="Welche zwei Fassungen vergleichen"
-          >
-            <option v-for="c in comparisons" :key="c.value" :value="c.value">{{ c.label }}</option>
-          </TokenSelect>
           <!-- Inline / nebeneinander. A two-button group, not a select: it
                is a binary view switch the reader flips back and forth, and it
                has to be readable as the current state at a glance. -->
@@ -666,6 +670,29 @@ const droppedNote = computed(() =>
         </div>
         <p v-if="!visibleUnits.length" class="mt-2 text-sm text-ink-secondary">Nichts gefunden.</p>
       </template>
+
+      <!-- Provenance under the text it belongs to, the way a source note
+           sits under a table rather than over it (Manu, 17.09.2026). It is
+           looked up while or after reading, never before — and it is one
+           more block that used to rewrite itself above the select.
+           Die Lizenz hängt am Paar, nicht an der Seite: steht der
+           Ministerialentwurf auf einer Seite, wäre eine gemeinsame Zeile
+           „CC BY 4.0" für diese Hälfte falsch — die Vorlage ist ein
+           lizenzierter Datensatz, der Entwurf gehört zum
+           Begutachtungsverfahren, das das Parlament von der
+           Open-Data-Nutzung ausnimmt (CLAUDE.md, Legal constraints).
+           Vergleicht der Leser zwei parlamentarische Fassungen, sind beide
+           Seiten lizenziert und die Angabe gehört dazu — dieselbe
+           quellenweise Aufteilung wie im Impressum. -->
+      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+        <span>{{ data.fromSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
+        <ExternalLink v-if="data.fromDocument" :href="data.fromDocument.url" class="text-accent-deep hover:underline">{{ data.fromDocument.label }}</ExternalLink>
+        <ExternalLink v-if="data.toDocument" :href="data.toDocument.url" class="text-accent-deep hover:underline">{{ data.toDocument.label }}</ExternalLink>
+        <span v-if="isLicensedPair(pair.from, pair.to)">CC BY 4.0</span>
+        <!-- The § names come from a third source; a page that shows text has
+             to say where it is from, even when the text is one word long. -->
+        <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
+      </div>
     </template>
   </div>
 </template>
