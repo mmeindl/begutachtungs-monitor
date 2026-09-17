@@ -3061,6 +3061,55 @@ sie nicht zählen.
   kostet eine Weiterleitung; die Feed-UIDs hängen bewusst nicht an der Route.
 
 
+### 12.17 Nebeneinander im Textvergleich — dieselben Daten, zweimal projiziert
+
+Ein Domänen-Nutzer vergleicht Ministerialentwurf und Regierungsvorlage heute
+mit einem fremden Vergleichswerkzeug und nannte als dessen Vorteil eine
+**Side-by-side-Ansicht**. Zwei Dinge daran waren zu prüfen, und nur eines
+stimmte.
+
+**Der Kontext war schon da.** Die Notiz behauptete, die Zeile „12 Paragrafen
+unverändert" lasse sich nur global über Filter oder Suche öffnen. Sie ist
+seit dem 08.09.2026 ein `<details>` mit eigenem Aufklapper, eingebaut in
+demselben Commit wie die harmonisierte Ansicht. Der Lesefluss ist: ein Klick
+öffnet das Gesetz als Fließtext, die Kontextzeilen darin klappen einzeln
+auf. Nichts zu tun.
+
+**Die Spaltenansicht fehlte wirklich** — der `sm:grid-cols-2`-Block war der
+Notfallzweig, der nur greift, wenn der Wortdiff die Zellobergrenze reißt
+(`MAX_DP_CELLS`, grob ab 1.500 Wörtern je Seite). Gebaut ist jetzt ein
+Umschalter `Fließtext | Nebeneinander` in der Werkzeugleiste, und er kostet
+keinen Endpunkt und keine zweite Berechnung: `segments` trägt je Lauf
+`equal | removed | inserted`, also ist die linke Spalte alles außer
+`inserted` und die rechte alles außer `removed`. Dieselben Daten, zweimal
+projiziert.
+
+**Voreinstellung bleibt Fließtext.** Bei einer Handvoll getauschter Wörter
+ist er strikt informativer — alt und neu stehen an derselben Stelle im Satz.
+Der Gewinn der Spalten liegt beim **vollständig neu gefassten Paragraphen**,
+wo inline erst den ganzen alten Text durchstreicht und dann den ganzen neuen
+druckt: Der Leser muss zwei Fassungen im Kopf halten, um zu sehen, dass sie
+Alternativen sind und keine Abfolge. Genau dort gewinnt das fremde Werkzeug.
+
+**Nebenbei aufgeräumt:** Der Notfallzweig fällt jetzt in *dieselbe*
+Spaltendarstellung, statt eine eigene zu haben. Vorher sah eine technische
+Grenze aus wie eine andere Art von Änderung.
+
+**Nicht mitgemacht:** Die Textgegenüberstellung (`TextComparisonSection.vue`)
+hat denselben Notfallzweig, aber gar keine Werkzeugleiste — dort einen
+Umschalter zu setzen hieße, erst eine zu entwerfen. Eigener Schritt; und die
+amtliche Beilage ist konzeptuell ohnehin schon ein Zweispalter, den die Seite
+bewusst harmonisiert liest.
+
+**Was nicht angefasst wurde, und warum es in die Antwort gehört statt in den
+Code:** Gelobt wurde am fremden Werkzeug auch, dass es mit *verschobenen*
+Paragraphen besser umgeht als git. Da ist der Monitor längst auf derselben
+Seite — `lawDiff.ts` richtet über Artikel und §-Überschrift aus, bevor
+Position zählt, gebaut wegen der 41 von 45 bloß umnummerierten §§ der
+Erneuerbaren-Ausbau-Kette. Die Annahme, das Tool arbeite git-artig, ist eine
+Informationslücke, kein Defekt.
+
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. Tracked as E3 in `outreach/verfahrensfragen.md`. The inline web-form texts remain a sub-question of it, not a separate one. Nothing here blocks stage 1, which is metadata-only either way; it blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16.
