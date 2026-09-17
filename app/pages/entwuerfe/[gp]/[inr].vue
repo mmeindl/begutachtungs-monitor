@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationId } from '#shared/utils/stations'
-import { parliamentOutcome, procedureStatusDe } from '#shared/utils/stations'
+import { lastParliamentStation, parliamentOutcome, procedureStatusDe } from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
@@ -99,16 +99,26 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
  * the bar's fact line, so the heading and the row cannot disagree. */
 const parliament = computed(() => (data.value ? parliamentOutcome(data.value) : null))
 
-/* The comparisons, keyed by the question they answer. Two exist today — the
- * ressort's annex and the ME→RV diff; the committee and plenary comparisons
- * are not built, so the Parlament station offers none rather than a link to
- * an empty promise. Both ids are the ones already in circulation.
- * `#gegenueberstellung` is rendered unconditionally, so it is offered
- * unconditionally here; whether the question is worth asking for a draft
- * that creates new law is the station model's call, not this map's. */
+/* The comparisons, keyed by the question they answer. All three exist since
+ * 17.09.2026: the ressort's annex, the ME→RV diff, and — where parliament
+ * published a changed text — the same comparison section with the pair
+ * preselected. `#gegenueberstellung` is rendered unconditionally, so it is
+ * offered unconditionally here; whether the question is worth asking for a
+ * draft that creates new law is the station model's call, not this map's.
+ *
+ * The parliament link carries a query, not just a hash: landing on
+ * `#textvergleich` alone would show the ME→RV comparison, which does not
+ * answer "what did parliament change". `von=rv` follows the rule that keeps
+ * a difference attributable to one actor. */
+const parliamentStation = computed(() =>
+  data.value ? lastParliamentStation(data.value) : null,
+)
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => ({
   vorschlag: '#gegenueberstellung',
   ...(data.value?.enactment ? { begutachtung: '#textvergleich' } : {}),
+  ...(parliamentStation.value
+    ? { parlament: `?von=rv&bis=${parliamentStation.value}#textvergleich` }
+    : {}),
 }))
 
 // Array.isArray guards: cached payloads (dev disk cache, future upstream

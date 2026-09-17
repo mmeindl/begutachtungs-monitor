@@ -40,8 +40,9 @@
  * DraftDetail — the statement count included, so a bar built from
  * this fetches nothing.
  */
-import type { DraftDetail } from '../types'
+import type { DraftDetail, LawStationId } from '../types'
 import { formatDateDe, formatNumberDe, spanInDays } from './format'
+import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from './lawStations'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -49,9 +50,10 @@ export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
  *  never: can no longer be reached (GP over). */
 export type StationState = 'done' | 'current' | 'open' | 'never'
 
-/** 'parlament' is reserved rather than used: the committee and plenary
- *  comparisons are not built (the diff endpoint still takes a fixed ME/RV
- *  pair), so that station hands out no comparison yet. */
+/** All three are in use since 17.09.2026: the diff endpoint takes a pair of
+ *  stations (`?von=…&bis=…`), so the Parlament station hands out the
+ *  comparison it produced — but only where a committee or plenary text
+ *  exists, because that is when there is something to compare. */
 export type ComparisonId = 'vorschlag' | 'begutachtung' | 'parlament'
 
 export interface Station {
@@ -156,11 +158,26 @@ export function procedureStatusDe(d: DraftDetail): string {
     : 'Bisher keine Regierungsvorlage'
 }
 
-const AUSSCHUSS = 'Geändert im Ausschuss'
-const PLENUM = 'Geändert im Plenum'
+/** Upstream's own wording, from the one place that maps it to a station. */
+const AUSSCHUSS = UPSTREAM_AUSSCHUSS_TITLE
+const PLENUM = UPSTREAM_PLENUM_TITLE
 
 const carries = (d: DraftDetail, prefix: string) =>
   d.textEvolution.some((doc) => doc.title.startsWith(prefix))
+
+/**
+ * The latest version parliament published, or null when it published none.
+ *
+ * Which one matters for the comparison the Parlament station offers: against
+ * the Regierungsvorlage, the Plenarfassung is the whole of what parliament
+ * did, and the Ausschussfassung is the whole of it only while no plenary
+ * text exists.
+ */
+export function lastParliamentStation(d: DraftDetail): LawStationId | null {
+  if (carries(d, PLENUM)) return 'plenum'
+  if (carries(d, AUSSCHUSS)) return 'ausschuss'
+  return null
+}
 
 /**
  * What parliament did with the Regierungsvorlage. One function, because the
@@ -327,7 +344,13 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         : outcome === 'unchanged'
           ? ['Text unverändert beschlossen']
           : kept(running, amended),
-      comparison: null,
+      // Only where parliament actually published a changed text. Where it
+      // did not, the station's own fact line already says so, and a link to
+      // a comparison of nothing would be the empty promise this model exists
+      // to avoid.
+      comparison: ausschuss || plenum
+        ? { id: 'parlament', question: 'Was das Parlament am Text geändert hat' }
+        : null,
     },
     {
       id: 'bgbl',

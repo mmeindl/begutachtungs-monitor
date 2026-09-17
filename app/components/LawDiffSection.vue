@@ -1,31 +1,132 @@
 <script setup lang="ts">
 /**
- * "Was sich nach der Begutachtung geändert hat" — the § comparison between
- * draft and Regierungsvorlage (docs/ris-join.md §6). Framing rule: shows
- * both what moved and what stayed, never a blame counter. Loaded lazily on
- * the client: the first request per consultation fetches and parses two
- * documents, and the page must not wait for that.
+ * The § comparison between two versions of the law text (docs/ris-join.md
+ * §6, docs/architecture.md §12.18). Framing rule: shows both what moved and
+ * what stayed, never a blame counter. Loaded lazily on the client: the first
+ * request per pair fetches and parses two documents, and the page must not
+ * wait for that.
+ *
+ * The pair is chosen by the reader and lives in the URL (`?von=…&bis=…`), so
+ * a comparison can be linked to — unlike the filter and the view toggle,
+ * which change how the same thing is read. Default stays
+ * Ministerialentwurf → Regierungsvorlage, the question this product is about.
  */
-import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, ParagraphTitlesResponse } from '#shared/types'
+import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse } from '#shared/types'
 import { unitKey } from '#shared/utils/diffKey'
 import { droppedLawsNote, mergedLawsNote } from '#shared/utils/lawPackage'
+import {
+  DEFAULT_LAW_STATION_PAIR,
+  LAW_STATION_LABEL,
+  defaultFromFor,
+  isLawStationId,
+  isLawStationPair,
+  isLicensedPair,
+  lawStationIndex,
+  lawStationPairHint,
+  lawStationPairQuestion,
+} from '#shared/utils/lawStations'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
-const { data, status } = await useFetch<LawDiffResponse>(() => `/api/drafts/${props.gp}/${props.inr}/diff`, {
-  lazy: true,
-  server: false,
-})
+const route = useRoute()
+const router = useRouter()
+
+/**
+ * The pair from the URL, falling back to the default rather than erroring:
+ * a hand-typed or stale link should show the comparison everyone means, not
+ * a validation message. The server validates the same query independently
+ * (`readLawStationPair`), because a request can arrive without this page.
+ */
+function pairFromRoute(): { from: LawStationId; to: LawStationId } {
+  const bis = route.query.bis
+  const von = route.query.von
+  const to = isLawStationId(bis) ? bis : DEFAULT_LAW_STATION_PAIR.to
+  const from = isLawStationId(von) ? von : defaultFromFor(to)
+  if (!from || !isLawStationPair(from, to)) return { ...DEFAULT_LAW_STATION_PAIR }
+  return { from, to }
+}
+const pair = ref(pairFromRoute())
+
+const { data, status } = await useFetch<LawDiffResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/diff?von=${pair.value.from}&bis=${pair.value.to}`,
+  { lazy: true, server: false },
+)
 
 /**
  * The name of each amended § (docs/architecture.md §12.11), fetched
  * separately so a slow lookup never delays the comparison and a failing one
  * never takes it down. Names appear when they arrive.
+ *
+ * Keyed on the same pair as the comparison: a Ziffer renumbered between two
+ * stations addresses a different §, so names from another pair would be
+ * wrong names.
  */
-const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(() => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel`, {
-  lazy: true,
-  server: false,
+const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel?von=${pair.value.from}&bis=${pair.value.to}`,
+  { lazy: true, server: false },
+)
+
+/**
+ * Every comparison this draft can show, as ordered pairs of the stations it
+ * actually published a text for.
+ *
+ * ONE control offering comparisons, not two offering stations: the reader's
+ * question is "what did the committee change?", not "which two documents
+ * shall I pick". It also makes an impossible pair unrepresentable — no
+ * flipped, no equal ends — which two independent selects would have to catch
+ * and explain. Both ends stay freely selectable, they are just enumerated.
+ *
+ * A station whose text is PDF-only says so in the option: the § parser needs
+ * the HTML export, and a reader who picks it should know beforehand rather
+ * than get an explanation afterwards.
+ */
+const comparisons = computed(() => {
+  const stations = data.value?.stations ?? []
+  const out: { value: string; from: LawStationId; to: LawStationId; label: string }[] = []
+  for (const from of stations) {
+    for (const to of stations) {
+      if (lawStationIndex(from.id) >= lawStationIndex(to.id)) continue
+      const pdfOnly = [from, to].filter((s) => !s.comparable).map((s) => s.label)
+      out.push({
+        value: `${from.id}>${to.id}`,
+        from: from.id,
+        to: to.id,
+        label:
+          `${from.label} → ${to.label}` +
+          (pdfOnly.length ? ` (${pdfOnly.join(' und ')} nur als PDF)` : ''),
+      })
+    }
+  }
+  return out
 })
+
+/** The value of the select, kept in sync with the pair in the URL. */
+const selectedComparison = computed({
+  get: () => `${pair.value.from}>${pair.value.to}`,
+  set: (value: string) => {
+    const choice = comparisons.value.find((c) => c.value === value)
+    if (!choice) return
+    pair.value = { from: choice.from, to: choice.to }
+    // `replace`, not `push`: the pair belongs in the URL so it can be
+    // shared, but flipping between comparisons should not fill the back
+    // button with steps the reader has to walk out of. The default pair
+    // leaves the query empty, so the canonical URL of a draft stays clean.
+    const query = { ...route.query }
+    if (choice.from === DEFAULT_LAW_STATION_PAIR.from && choice.to === DEFAULT_LAW_STATION_PAIR.to) {
+      delete query.von
+      delete query.bis
+    } else {
+      query.von = choice.from
+      query.bis = choice.to
+    }
+    router.replace({ query })
+  },
+})
+
+/** The question the selected pair answers — the section's own heading. */
+const question = computed(() => lawStationPairQuestion(pair.value.from, pair.value.to))
+const fromLabel = computed(() => LAW_STATION_LABEL[pair.value.from])
+const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
 
 /**
  * What to call a change. The draft's own quoted heading wins — it is the
@@ -127,7 +228,7 @@ const visibleUnits = computed(() => {
   return (data.value?.units ?? []).filter((u) => {
     if (filter.value !== 'alle' && badgeOf(u) !== filter.value) return false
     if (!q) return true
-    return [u.id, u.meId, u.heading, u.article, u.meText, u.rvText].some((t) => t?.toLowerCase().includes(q))
+    return [u.id, u.fromId, u.heading, u.article, u.fromText, u.toText].some((t) => t?.toLowerCase().includes(q))
   })
 })
 
@@ -259,8 +360,8 @@ const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
 ]
 
 /** One side of the split, as runs; `removed`/`inserted` keep their marking. */
-function sideSegments(u: LawDiffUnit, side: 'me' | 'rv'): LawDiffSegment[] {
-  const drop = side === 'me' ? 'inserted' : 'removed'
+function sideSegments(u: LawDiffUnit, side: 'from' | 'to'): LawDiffSegment[] {
+  const drop = side === 'from' ? 'inserted' : 'removed'
   return (u.segments ?? []).filter((s) => s.type !== drop)
 }
 
@@ -273,12 +374,12 @@ function sideSegments(u: LawDiffUnit, side: 'me' | 'rv'): LawDiffSegment[] {
  * SAME column presentation instead of a private one, so the fallback stopped
  * being a separate shape the reader has to recognise.
  */
-function splitRows(u: LawDiffUnit): { me: LawDiffSegment[]; rv: LawDiffSegment[] } {
-  if (u.segments) return { me: sideSegments(u, 'me'), rv: sideSegments(u, 'rv') }
+function splitRows(u: LawDiffUnit): { from: LawDiffSegment[]; to: LawDiffSegment[] } {
+  if (u.segments) return { from: sideSegments(u, 'from'), to: sideSegments(u, 'to') }
   // No word diff: show both versions whole, marked as wholly differing.
   return {
-    me: u.meText ? [{ type: 'removed', text: u.meText }] : [],
-    rv: u.rvText ? [{ type: 'inserted', text: u.rvText }] : [],
+    from: u.fromText ? [{ type: 'removed', text: u.fromText }] : [],
+    to: u.toText ? [{ type: 'inserted', text: u.toText }] : [],
   }
 }
 
@@ -314,7 +415,7 @@ function extraHeading(u: LawDiffUnit): string | null {
   if (!u.heading) return null
   const norm = (s: string) => s.replace(/\s*…\s*$/, '').replace(/\s+/g, ' ').trim().toLowerCase()
   const heading = norm(u.heading)
-  const body = norm((u.change === 'removed' ? u.meText : u.rvText) ?? '')
+  const body = norm((u.change === 'removed' ? u.fromText : u.toText) ?? '')
   return heading && body.startsWith(heading) ? null : u.heading
 }
 
@@ -329,18 +430,23 @@ function displayId(id: string): string {
  * report hundreds of paragraphs as "neu" and read as a verdict on this draft.
  * The sentences live in shared/utils/lawPackage.ts, where they are tested.
  */
-const mergedNote = computed(() => mergedLawsNote(data.value?.lawsOnlyInRv ?? []))
-const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? []))
+const mergedNote = computed(() =>
+  mergedLawsNote(data.value?.lawsOnlyInTo ?? [], pair.value.from, pair.value.to),
+)
+const droppedNote = computed(() =>
+  droppedLawsNote(data.value?.lawsOnlyInFrom ?? [], pair.value.from, pair.value.to),
+)
 
 </script>
 
 <template>
   <!-- id: the outcome card above links here ("der Vergleich der beiden Texte"). -->
   <div id="textvergleich" class="mt-8 scroll-mt-24">
-    <h3 class="text-base font-semibold text-ink">Was sich nach der Begutachtung geändert hat</h3>
+    <h3 class="text-base font-semibold text-ink">{{ question }}</h3>
 
     <p v-if="status === 'pending' || status === 'idle'" class="mt-1 text-sm text-ink-secondary">
-      Der Gesetzestext des Entwurfs wird mit dem der Regierungsvorlage verglichen …
+      Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
+      wird mit dem der {{ toLabel }} verglichen …
     </p>
 
     <p v-else-if="status === 'error' || !data" class="mt-1 text-sm text-ink-secondary">
@@ -354,35 +460,36 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
     <template v-else>
       <p class="mt-1 text-sm text-ink-secondary">
         <template v-if="isNovelle">
-          Dieser Entwurf ändert ein bestehendes Gesetz. Verglichen werden
+          Dieser Text ändert ein bestehendes Gesetz. Verglichen werden
           deshalb die nummerierten Änderungsanordnungen (Z 1, Z 2 …), jede
           sagt, was an welcher Stelle des geltenden Gesetzes geändert wird.
         </template>
         <template v-else-if="hasZiffern">
-          Paragraph für Paragraph, Entwurf gegen Regierungsvorlage. Wo der
-          Entwurf ein bestehendes Gesetz ändert, sind die Einheiten die
+          Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}. Wo ein
+          bestehendes Gesetz geändert wird, sind die Einheiten die
           nummerierten Änderungsanordnungen (Z 1, Z 2 …).
         </template>
-        <template v-else>Paragraph für Paragraph, Entwurf gegen Regierungsvorlage.</template>
-        Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt der Text
-        nicht; die Erläuterungen der Regierungsvorlage oft schon.
+        <template v-else>Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}.</template>
+        {{ lawStationPairHint(pair.from, pair.to) }}
         „Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder
         Satzzeichen geändert, kein einziges Wort. Unveränderte Stellen sind
         eingeklappt.
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <!-- Ohne Lizenzangabe, anders als bei der Textgegenüberstellung: dort
-             ist die Quelle das RIS und die Lizenz für beide Spalten dieselbe.
-             Hier steht der Ministerialentwurf neben der Regierungsvorlage —
-             die Vorlage ist ein lizenzierter Datensatz, der Entwurf gehört
-             zum Begutachtungsverfahren, das das Parlament von der
-             Open-Data-Nutzung ausnimmt. Eine gemeinsame Zeile „CC BY 4.0"
-             wäre für die eine Hälfte falsch; die Angaben je Datensatz stehen
-             im Impressum. -->
-        <span>{{ data.meSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
-        <ExternalLink v-if="data.me" :href="data.me.url" class="text-accent-deep hover:underline">{{ data.me.label }}</ExternalLink>
-        <ExternalLink v-if="data.rv" :href="data.rv.url" class="text-accent-deep hover:underline">{{ data.rv.label }}</ExternalLink>
+        <!-- Die Lizenz hängt am Paar, nicht an der Seite. Steht der
+             Ministerialentwurf auf einer Seite, wäre eine gemeinsame Zeile
+             „CC BY 4.0" für diese Hälfte falsch: die Vorlage ist ein
+             lizenzierter Datensatz, der Entwurf gehört zum
+             Begutachtungsverfahren, das das Parlament von der
+             Open-Data-Nutzung ausnimmt (CLAUDE.md, Legal constraints).
+             Vergleicht der Leser zwei parlamentarische Fassungen, sind beide
+             Seiten lizenziert und die Angabe gehört dazu — dieselbe
+             quellenweise Aufteilung wie im Impressum. -->
+        <span>{{ data.fromSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
+        <ExternalLink v-if="data.fromDocument" :href="data.fromDocument.url" class="text-accent-deep hover:underline">{{ data.fromDocument.label }}</ExternalLink>
+        <ExternalLink v-if="data.toDocument" :href="data.toDocument.url" class="text-accent-deep hover:underline">{{ data.toDocument.label }}</ExternalLink>
+        <span v-if="isLicensedPair(pair.from, pair.to)">CC BY 4.0</span>
         <!-- The § names come from a third source; a page that shows text has
              to say where it is from, even when the text is one word long. -->
         <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
@@ -399,6 +506,17 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
              and same token styling as the list page (Vite 8 + Nuxt UI 4.10
              hydration crash, see pages/entwuerfe/index.vue). -->
         <div class="mt-4 flex flex-wrap items-center gap-3">
+          <!-- Only when there is a choice to make. Most drafts publish two
+               texts, so this is one option and a select over it would be a
+               control that cannot be operated; 52 of the 91 GP-XXVIII drafts
+               that reached a Vorlage have more. -->
+          <TokenSelect
+            v-if="comparisons.length > 1"
+            v-model="selectedComparison"
+            aria-label="Welche zwei Fassungen vergleichen"
+          >
+            <option v-for="c in comparisons" :key="c.value" :value="c.value">{{ c.label }}</option>
+          </TokenSelect>
           <TokenSelect v-model="filter" aria-label="Welche Paragraphen anzeigen">
             <option v-for="o in filterOptions" :key="o.value" :value="o.value">{{ o.optionLabel }}</option>
           </TokenSelect>
@@ -472,7 +590,7 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                       <span class="font-medium text-ink">{{ displayId(u.id) }}</span>
                       <span v-if="unitName(u)" class="font-medium text-ink"> {{ unitName(u) }}</span>
                       <span v-else-if="extraHeading(u)"> {{ extraHeading(u) }}</span>
-                      <span> — {{ u.rvText }}</span>
+                      <span> — {{ u.toText }}</span>
                     </p>
                   </div>
                 </details>
@@ -487,7 +605,7 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                   <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                     <span class="font-medium text-ink">
                       {{ displayId(b.unit.id) }}
-                      <span v-if="b.unit.meId && b.unit.meId !== b.unit.id" class="font-normal text-ink-muted">(im Entwurf {{ displayId(b.unit.meId) }})</span>
+                      <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
                     </span>
                     <span v-if="unitName(b.unit)" class="min-w-0 text-ink-secondary">{{ unitName(b.unit) }}</span>
                     <span v-else-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
@@ -520,9 +638,9 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                          different kind of change. -->
                     <div v-else-if="b.unit.change === 'changed'" class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
                       <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Entwurf</p>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
                         <p class="hyphens-auto text-ink">
-                          <template v-for="(s, i) in splitRows(b.unit).me" :key="i">
+                          <template v-for="(s, i) in splitRows(b.unit).from" :key="i">
                             <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
                             <span v-else>{{ s.text }}</span>
                             {{ ' ' }}
@@ -530,9 +648,9 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                         </p>
                       </div>
                       <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Regierungsvorlage</p>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
                         <p class="hyphens-auto text-ink">
-                          <template v-for="(s, i) in splitRows(b.unit).rv" :key="i">
+                          <template v-for="(s, i) in splitRows(b.unit).to" :key="i">
                             <ins v-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
                             <span v-else>{{ s.text }}</span>
                             {{ ' ' }}
@@ -540,9 +658,9 @@ const droppedNote = computed(() => droppedLawsNote(data.value?.lawsOnlyInMe ?? [
                         </p>
                       </div>
                     </div>
-                    <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.rvText }}</p>
-                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.meText }}</p>
-                    <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.rvText }}</p>
+                    <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.toText }}</p>
+                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
+                    <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
                   </div>
                 </div>
               </template>

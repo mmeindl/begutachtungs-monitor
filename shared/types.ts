@@ -60,8 +60,16 @@ export interface TraceLink {
 
 /** A TraceLink that knows which station of the process it belongs to. */
 export interface TextVersion extends TraceLink {
-  /** "Regierungsvorlage", "Geändert im Ausschuss", … */
+  /** Upstream's own wording: "Regierungsvorlage", "Geändert im Ausschuss", … */
   station: string
+  /**
+   * The station as the comparison addresses it, or null for a document that
+   * sits in this list without being a version of the law text — a
+   * Verhältnismäßigkeitsprüfung, a Vertragstext. Those stay listed as
+   * documents and are never offered as a side to compare
+   * (`shared/utils/lawStations.ts`).
+   */
+  stationId: LawStationId | null
 }
 
 /** One step of the parliamentary process history (from ME detail stages[]) */
@@ -554,6 +562,16 @@ export interface RisConsultationsResponse {
 // ME → RV text comparison (docs/ris-join.md §6)
 // ---------------------------------------------------------------------------
 
+/**
+ * A station of the procedure whose law text can be one side of the §
+ * comparison (`shared/utils/lawStations.ts`, docs/architecture.md §12.18).
+ *
+ * Not the same list as the five reader-facing stations in
+ * `shared/utils/stations.ts`: Begutachtung and Bundesgesetzblatt publish no
+ * Gesetzestext of their own, and these four do.
+ */
+export type LawStationId = 'me' | 'rv' | 'ausschuss' | 'plenum'
+
 export type LawUnitChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
 
 export interface LawDiffSegment {
@@ -851,10 +869,10 @@ export interface TextComparisonResponse {
 export interface LawDiffUnit {
   /** Artikel title of a package, law title otherwise, null when unknown */
   article: string | null
-  /** Unit id in the Regierungsvorlage (or the draft, for removed units): "§5", "Z3" */
+  /** Unit id on the later side of the pair (or the earlier one, for removed units): "§5", "Z3" */
   id: string
-  /** The draft's id for the same unit; differs from `id` after renumbering */
-  meId: string | null
+  /** The same unit's id on the earlier side; differs from `id` after renumbering */
+  fromId: string | null
   heading: string | null
   /**
    * The § heading(s) the unit quotes — a readable name for a change whose own
@@ -872,8 +890,10 @@ export interface LawDiffUnit {
   editorial: boolean
   /** 0..1 token similarity for changed units, null otherwise */
   similarity: number | null
-  meText: string | null
-  rvText: string | null
+  /** The text at the earlier station of the compared pair (`LawDiffResponse.from`) */
+  fromText: string | null
+  /** The text at the later station (`LawDiffResponse.to`) */
+  toText: string | null
   /** Word-level diff for changed units; null when unchanged, inserted, removed or too long */
   segments: LawDiffSegment[] | null
 }
@@ -890,24 +910,47 @@ export interface LawPackageEntry {
   units: number
 }
 
+/**
+ * One station this draft has a law text for — the selector's options.
+ *
+ * Present but not comparable is a real state and says which: a text
+ * published only as a PDF can be named and linked, never diffed. Measured
+ * over GP XXVI–XXVIII it never happens for the parliamentary stations and
+ * regularly for the draft itself in the older periods
+ * (`scripts/stations-corpus.ts`).
+ */
+export interface LawStationOption {
+  id: LawStationId
+  label: string
+  /** Whether this station's text can be one side of a comparison. */
+  comparable: boolean
+  /** The document itself, for the source line; null when nothing is published. */
+  document: TraceLink | null
+}
+
 export interface LawDiffResponse {
   gp: string
   inr: number
-  /** False when one of the two texts is not available as HTML (GP XXVII and earlier: PDF only). */
+  /** The compared pair, always earlier → later. */
+  from: LawStationId
+  to: LawStationId
+  /** False when one of the two texts is not available as HTML (the older periods are PDF-only for the draft). */
   available: boolean
   /** German, user-facing: why no comparison can be shown */
   unavailableReason: string | null
   /** The two compared documents, for attribution and links */
-  me: TraceLink | null
-  rv: TraceLink | null
-  /** Where the draft text was read: Parliament HTML, or the RIS XML when Parliament has only a PDF (GP XXVII and earlier) */
-  meSource: 'parlament' | 'ris' | null
+  fromDocument: TraceLink | null
+  toDocument: TraceLink | null
+  /** Where the earlier text was read: Parliament HTML, or the RIS XML when Parliament has only a PDF (older periods, draft side only) */
+  fromSource: 'parlament' | 'ris' | null
+  /** Every station this draft published a text for, in procedural order. */
+  stations: LawStationOption[]
   /** `editorial` counts the subset of `changed` that is only citations, numbers, dates, punctuation */
   stats: { total: number; unchanged: number; changed: number; editorial: number; inserted: number; removed: number }
-  /** Laws the Regierungsvorlage carries and the draft never had — a collective act merged in from other drafts. Their units are NOT in `units` or `stats`. */
-  lawsOnlyInRv: LawPackageEntry[]
-  /** Laws the draft carried and the Regierungsvorlage does not — dropped from the package. Their units are NOT in `units` or `stats`. */
-  lawsOnlyInMe: LawPackageEntry[]
+  /** Laws the later text carries and the earlier one never had — a collective act merged in from other drafts. Their units are NOT in `units` or `stats`. */
+  lawsOnlyInTo: LawPackageEntry[]
+  /** Laws the earlier text carried and the later one does not. Their units are NOT in `units` or `stats`. */
+  lawsOnlyInFrom: LawPackageEntry[]
   units: LawDiffUnit[]
 }
 

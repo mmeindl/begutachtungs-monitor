@@ -288,7 +288,7 @@ describe('article pairing across differing titles', () => {
 
   it('pairs renumbered Ziffern by their instruction line, not by number', () => {
     const a = alignUnits(me, rv)
-    expect(a.pairs.map((p) => `${p.me.id}>${p.rv.id}`)).toEqual(['Z1>Z1', 'Z2>Z3', 'Z3>Z4'])
+    expect(a.pairs.map((p) => `${p.from.id}>${p.to.id}`)).toEqual(['Z1>Z1', 'Z2>Z3', 'Z3>Z4'])
     const units = diffLawUnits(me, rv)
     expect(units.map((u) => `${u.id}:${u.change}`)).toEqual(['Z1:unchanged', 'Z2:inserted', 'Z3:changed', 'Z4:unchanged'])
     expect(units[0]!.article).toBe('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird')
@@ -361,26 +361,26 @@ describe('a Regierungsvorlage that merges several drafts', () => {
 
   it('names the merged-in laws instead of counting their paragraphs as new', () => {
     const d = diffLawPackage(parseLawUnits(draft), parseLawUnits(bill))
-    expect(d.lawsOnlyInRv).toEqual([
+    expect(d.lawsOnlyInTo).toEqual([
       { article: 'Änderung des Datenschutzgesetzes', units: 2 },
       { article: 'Änderung des Sicherheitspolizeigesetzes', units: 1 },
     ])
-    expect(d.lawsOnlyInMe).toEqual([])
+    expect(d.lawsOnlyInFrom).toEqual([])
     // Without the scoping the same pair reads as a rewrite.
     expect(summarizeDiff(diffLawUnits(parseLawUnits(draft), parseLawUnits(bill))).inserted).toBe(3)
   })
 
   it('reports a law the package lost on the way', () => {
     const d = diffLawPackage(parseLawUnits(bill), parseLawUnits(draft))
-    expect(d.lawsOnlyInMe.map((l) => l.article)).toEqual(['Änderung des Datenschutzgesetzes', 'Änderung des Sicherheitspolizeigesetzes'])
-    expect(d.lawsOnlyInRv).toEqual([])
+    expect(d.lawsOnlyInFrom.map((l) => l.article)).toEqual(['Änderung des Datenschutzgesetzes', 'Änderung des Sicherheitspolizeigesetzes'])
+    expect(d.lawsOnlyInTo).toEqual([])
   })
 
   it('leaves an ordinary one-law comparison untouched', () => {
     const one = pkg([{ title: '&Auml;nderung des Auskunftspflichtgesetzes', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;alt&ldquo;'] }])
     const d = diffLawPackage(parseLawUnits(one), parseLawUnits(one))
-    expect(d.lawsOnlyInRv).toEqual([])
-    expect(d.lawsOnlyInMe).toEqual([])
+    expect(d.lawsOnlyInTo).toEqual([])
+    expect(d.lawsOnlyInFrom).toEqual([])
     expect(d.units).toHaveLength(1)
   })
 })
@@ -459,16 +459,16 @@ describe('diffLawUnits: the renumbering trap', () => {
 
   it('aligns by heading, so shifted paragraphs are not "changed"', () => {
     const a = alignUnits(me, rv)
-    expect(a.pairs.map((p) => `${p.me.id}>${p.rv.id}`)).toEqual(['§1>§1', '§2>§2', '§3>§4', '§4>§5'])
-    expect(a.onlyRv.map((u) => u.id)).toEqual(['§3'])
-    expect(a.onlyMe).toEqual([])
+    expect(a.pairs.map((p) => `${p.from.id}>${p.to.id}`)).toEqual(['§1>§1', '§2>§2', '§3>§4', '§4>§5'])
+    expect(a.onlyTo.map((u) => u.id)).toEqual(['§3'])
+    expect(a.onlyFrom).toEqual([])
   })
 
   it('reports one insertion and one real change, in RV order', () => {
     const units = diffLawUnits(me, rv)
     expect(units.map((u) => `${u.id}:${u.change}`)).toEqual(['§1:unchanged', '§2:unchanged', '§3:inserted', '§4:changed', '§5:unchanged'])
     const changed = units.find((u) => u.change === 'changed')!
-    expect(changed.meId).toBe('§3')
+    expect(changed.fromId).toBe('§3')
     expect(changed.segments!.some((s) => s.type === 'removed' && s.text === 'sechs')).toBe(true)
     expect(summarizeDiff(units)).toEqual({ total: 5, unchanged: 3, changed: 1, editorial: 0, inserted: 1, removed: 0 })
     expect(changed.editorial).toBe(false)

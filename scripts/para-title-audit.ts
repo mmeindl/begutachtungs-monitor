@@ -63,12 +63,13 @@ for (const row of map.rows.filter((r: any) => r.risDocument?.xml).slice(0, MAX_D
   const titles = (await (await fetch(`${BASE}/${row.inr}/paragraphtitel`)).json().catch(() => ({ titles: {} }))).titles ?? {}
   if (!Object.keys(titles).length) continue
 
-  // Same sources as the service: the diff's Artikel are the RV's, so the
-  // RV's clauses must be read too, or the audit blames its own blind spot.
+  // Same sources as the service: the diff's Artikel are the later side's, so
+  // that document's clauses must be read too, or the audit blames its own
+  // blind spot. The audit runs the default pair (ME → RV).
   const clauses = new Map<any, any>()
   for (const [a, b] of promulgationByArticle(parseRisXml(await getText(row.risDocument.xml)))) clauses.set(a, b)
-  if (diff.me?.url?.endsWith('.html')) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getText(diff.me.url)))) clauses.set(a, b)
-  if (diff.rv?.url) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getText(diff.rv.url)))) clauses.set(a, b)
+  if (diff.fromDocument?.url?.endsWith('.html')) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getText(diff.fromDocument.url)))) clauses.set(a, b)
+  if (diff.toDocument?.url) for (const [a, b] of promulgationByArticle(parseParliamentHtml(await getText(diff.toDocument.url)))) clauses.set(a, b)
   const laws = new Map<string, any>()
   for (const u of diff.units) {
     const shown = titles[`${u.article ?? ''}|${u.id}|${u.change}`]
@@ -86,7 +87,7 @@ for (const row of map.rows.filter((r: any) => r.risDocument?.xml).slice(0, MAX_D
       if (problems.length < 8) problems.push(`${row.inr}/ME ${u.id} GESETZ: Artikel "${u.article}" ≠ "${law.kurztitel}"`)
       continue
     }
-    const para = paraOf(u.rvText ?? u.meText ?? '')
+    const para = paraOf(u.toText ?? u.fromText ?? '')
     if (!para) { skipped++; continue }
     const ref = law.paragraphs?.[para]
     if (!ref) { skipped++; continue }

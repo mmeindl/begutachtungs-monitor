@@ -10,8 +10,13 @@
  * never a verdict. A law missing from this Regierungsvorlage is not a law
  * that was dropped — a draft can end up in more than one (architecture.md
  * §13.4), and the sentence says so.
+ *
+ * Both take the compared pair, because the comparison is no longer fixed to
+ * Ministerialentwurf → Regierungsvorlage (docs/architecture.md §12.18) and
+ * these sentences name the two sides out loud.
  */
-import type { LawPackageEntry } from '../types'
+import type { LawPackageEntry, LawStationId } from '../types'
+import { LAW_STATION_LABEL } from './lawStations'
 
 /** How many law names a sentence lists before it counts the rest. */
 const MAX_NAMES = 3
@@ -27,28 +32,53 @@ export function formatLawList(entries: readonly LawPackageEntry[], max = MAX_NAM
   return names[0] ?? ''
 }
 
-/** Laws the Regierungsvorlage carries and the draft never had. */
-export function mergedLawsNote(laws: readonly LawPackageEntry[]): string | null {
+/**
+ * How to name a station inside the sentence.
+ *
+ * The draft is "dieser Entwurf" rather than "der Ministerialentwurf": the
+ * sentence stands on the draft's own page, where saying its type back to the
+ * reader is noise. The three later stations are all feminine, so they take
+ * "die"/"dieser" without a special case.
+ */
+const subject = (id: LawStationId) => (id === 'me' ? 'Der Entwurf' : `Die ${LAW_STATION_LABEL[id]}`)
+const inThis = (id: LawStationId) => (id === 'me' ? 'in diesem Entwurf' : `in dieser ${LAW_STATION_LABEL[id]}`)
+
+/** Laws the later text carries and the earlier one never had. */
+export function mergedLawsNote(
+  laws: readonly LawPackageEntry[],
+  from: LawStationId,
+  to: LawStationId,
+): string | null {
   if (!laws.length) return null
   const clause =
     laws.length === 1
-      ? 'ein weiteres Gesetz, das in diesem Entwurf nicht vorkommt'
-      : `${laws.length} weitere Gesetze, die in diesem Entwurf nicht vorkommen`
-  return (
-    `Die Regierungsvorlage ändert ${clause}: ${formatLawList(laws)}. ` +
-    'Eine Regierungsvorlage fasst häufig mehrere Ministerialentwürfe zusammen; verglichen wird deshalb, was in beiden Texten steht.'
-  )
+      ? `ein weiteres Gesetz, das ${inThis(from)} nicht vorkommt`
+      : `${laws.length} weitere Gesetze, die ${inThis(from)} nicht vorkommen`
+  // The second sentence explains the mechanism, and the mechanism differs by
+  // pair: a Regierungsvorlage bundles several Ministerialentwürfe, while a
+  // committee merges and splits Vorlagen already before parliament. Only the
+  // part that is true of the pair at hand is said.
+  const why =
+    from === 'me' && to === 'rv'
+      ? 'Eine Regierungsvorlage fasst häufig mehrere Ministerialentwürfe zusammen; verglichen wird deshalb, was in beiden Texten steht.'
+      : 'Im Parlament werden Vorlagen zusammengefasst und geteilt; verglichen wird deshalb, was in beiden Texten steht.'
+  return `${subject(to)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
 }
 
-/** Laws the draft carried and this Regierungsvorlage does not. */
-export function droppedLawsNote(laws: readonly LawPackageEntry[]): string | null {
+/** Laws the earlier text carried and the later one does not. */
+export function droppedLawsNote(
+  laws: readonly LawPackageEntry[],
+  from: LawStationId,
+  to: LawStationId,
+): string | null {
   if (!laws.length) return null
   const one = laws.length === 1
   const clause = one
-    ? 'ein Gesetz, das in dieser Regierungsvorlage nicht vorkommt'
-    : `${laws.length} Gesetze, die in dieser Regierungsvorlage nicht vorkommen`
-  return (
-    `Der Entwurf ändert ${clause}: ${formatLawList(laws)}. ` +
-    `Ein Entwurf kann in mehrere Regierungsvorlagen münden — möglicherweise ${one ? 'steht es' : 'stehen sie'} in einer anderen.`
-  )
+    ? `ein Gesetz, das ${inThis(to)} nicht vorkommt`
+    : `${laws.length} Gesetze, die ${inThis(to)} nicht vorkommen`
+  const why =
+    from === 'me'
+      ? `Ein Entwurf kann in mehrere Regierungsvorlagen münden — möglicherweise ${one ? 'steht es' : 'stehen sie'} in einer anderen.`
+      : `Der Text kann im Parlament geteilt worden sein — möglicherweise ${one ? 'steht es' : 'stehen sie'} in einer anderen Vorlage.`
+  return `${subject(from)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
 }
