@@ -2842,6 +2842,225 @@ Zustandswechsel und die umrandeten einen, den niemand sieht. Jetzt auf
 #ebe9e1 gemappt, einen warmen Schritt unter dem Seitengrund Richtung
 Hairline.
 
+### 12.16 Die zweite Hälfte der Begutachtung: Entwürfe ohne Gegenstand im Parlament
+
+Die Startseite sagte „Jetzt in Begutachtung" über eine Liste, die aus
+Liste 81 kommt, und Liste 81 kennt nur Ministerialentwürfe. Am 17.09.2026
+waren **4 von 8** laufenden Begutachtungen darin. Das ist kein engerer
+Fokus, sondern eine falsche Vollständigkeitsbehauptung — und der schärfste
+Fall stand im Leerzustand: „Derzeit keine offenen Begutachtungen" wäre in
+jeder Woche ohne Ministerialentwurf, aber mit laufender Verordnung, schlicht
+unwahr gewesen.
+
+Aufgeworfen hat es der Begutachtungs-Beobachter einer NGO, aus der Praxis:
+Er verfolgt die Verfahren über das RIS statt über die Parlamentsseite, weil
+dort auch Verordnungsentwürfe stehen. Das Werkzeug konnte seinen Arbeitsweg
+also gar nicht ablösen — nicht weil es schlechter war, sondern weil ihm
+zwei Drittel des Korpus fehlten.
+
+#### Was gemessen wurde, bevor gebaut wurde
+
+`pnpm audit:verordnungen` läuft über den ganzen Begut-Korpus durch den
+**ausgelieferten** Mapper (`flattenRisRecord`), nicht durch eine zweite
+Implementierung davon. Stand 17.09.2026, 4.574 Sätze:
+
+| | Anteil |
+|---|---|
+| Verordnungen | **3.012 (65,9 %)** |
+| Gesetze | 1.527 (33,4 %) |
+| ohne Typwort im Titel | 35 (0,8 %) |
+
+Der Verordnungsanteil liegt seit 2016 in jedem Jahr zwischen 54 % und 75 %.
+Ein Tag ist eine Anekdote; das hier ist die Grundlinie.
+
+**Die erste Notiz dazu lag daneben, und zwar in die bequeme Richtung.** Sie
+hielt fest, ein Verordnungssatz trage „genau ein Hauptdokument, keine
+Erläuterungen, keine Gegenüberstellung" — abgelesen an *einem* Satz. Über
+den Korpus:
+
+| Dokument | Verordnungen | Gesetze |
+|---|---|---|
+| Hauptdokument (XML **und** HTML) | 100 % | 100 % |
+| Erläuterungen | **72,1 %** | 68,2 % |
+| Begleitschreiben | **79,4 %** | 84,8 % |
+| Textgegenüberstellung | 16,1 % | 44,8 % |
+
+Verordnungen tragen also **häufiger** Erläuterungen als Gesetze. Dünn ist
+allein die Gegenüberstellung, und das aus einem sachlichen Grund: viele
+Verordnungen sind Neuerlassungen, denen keine geltende Fassung
+gegenübersteht. Lehre, wieder einmal: n = 1 ist eine Hoffnung, keine Zahl.
+
+#### Was über die Zugehörigkeit entscheidet — und was nur etikettiert
+
+Ein Satz gehört in diese Liste, wenn der **ausgelieferte RIS↔ME-Join** ihm
+keinen Ministerialentwurf zuordnen konnte. Das ist eine strukturelle
+Tatsache über zwei amtliche Quellen, keine Vermutung über einen Titel.
+
+`classifyRisRecord` **etikettiert** die Zeile danach nur noch. Die
+Reihenfolge ist der Punkt: Der Klassifikator war als Score-Abzug im Join
+gebaut, wo Datum und Titel ihn überstimmen konnten. Hätte er über die
+Zugehörigkeit entschieden, wäre jeder seiner Fehler eine fehlende oder
+erfundene Zeile geworden.
+
+Als Etikett hat er einen Genauigkeitstest bekommen, den er nie hatte —
+mit dem Join als Orakel: **Ein Satz, den der Join an einen
+Ministerialentwurf gebunden hat, kann keine Verordnung sein**, denn
+Liste 81 führt nur Gesetzesentwürfe. Über GP XXVII und XXVIII sind das
+**472 Sätze, davon 0 als `verordnung` etikettiert.** Der Fehler ginge also,
+wenn überhaupt, in die harmlose Richtung: eine Verordnung Gesetz nennen —
+nie einem Gesetz seine Parlamentsseite absprechen.
+
+#### Der Rest ist der eigentliche Fund
+
+13 Sätze sehen aus wie Gesetze und haben keinen Ministerialentwurf. Neun
+davon sind ein Artefakt der Test-Fixtures (das RIS-Fenster überlappt die
+GP-Grenze, die ME-Liste nicht) und treten in der Produktion nicht auf, weil
+dort gegen das richtige GP-Fenster gejoint wird. **Drei sind echt**, jeder
+von Hand gegen den vollständigen Listen-81-Korpus (4.207 Zeilen) geprüft:
+
+- **Teilpensionsgesetz**, Begutachtung ab 18.06.2025
+- **Bäderhygienegesetz-Novelle**, ab 10.08.2026
+- **UWG-Novelle 1984**, ab 10.06.2026
+
+Das ist die Gegenrichtung zu den 12 von 350 MEs der GP XXVII, die *keinen*
+RIS-Satz haben (`docs/ris-join.md` §2) — und zusammen ergeben beide die
+einzige belegbare Aussage, die keine der zwei amtlichen Listen über sich
+selbst aufstellen kann: **vollständiger als jede von beiden, weil beide
+Lücken haben, und wir sagen welche.**
+
+#### Warum eine eigene Liste und nicht ein Filter auf `/entwuerfe`
+
+Das ist die Entscheidung, nicht der Aufwand. Zusammengeworfen ändert sich
+still, was „Alle Entwürfe", die GP-Summen und die Stellungnahmen-Zahl
+zählen — und **jede** Zeile hier hat genau die Beteiligungsdaten nicht, aus
+denen jene Zahlen gebaut sind. Zwei Listen, die je sagen, was sie enthalten,
+schlagen eine Liste, deren Nenner niemand benennen kann. Verbunden sind sie
+über beide Richtungen: die Startseite zeigt beide Abschnitte untereinander
+in derselben Kartenanatomie, jede Liste verlinkt die andere, Feed, Kalender
+und Sitemap tragen beide.
+
+Aus demselben Grund heißt die Kachel jetzt **„Offene Ministerialentwürfe"**
+und nicht mehr „Offene Begutachtungen": Sie zählt Liste 81 und verlinkt auf
+Liste 81. Die drei Kacheln daneben haben auf der RIS-Seite überhaupt kein
+Gegenstück.
+
+#### Was die Detailseite bewusst nicht hat — und eine Korrektur daran
+
+Keine Stellungnahmen, keine Einbringer, kein ME→RV-Vergleich. Nichts davon
+ist „noch nicht gebaut" — es kann nicht existieren, weil jedes davon aus
+einem Parlaments-Gegenstand gespeist wird. Leer gerendert würde es „niemand
+hat Stellung genommen" behaupten, wo „niemand veröffentlicht, wer Stellung
+genommen hat" gilt.
+
+**Bei der Stationenleiste war dieselbe Begründung zu bequem, und sie ist am
+17.09.2026 korrigiert worden.** Der erste Entwurf dieser Seite ließ die
+Leiste ganz weg, mit dem Argument „es gibt keine Kette". Das stimmt nicht:
+Eine Verordnung hat sehr wohl einen weiteren Weg — Begutachtung, Erlassung
+durch das Ressort, **Kundmachung im BGBl II** —, er läuft nur nicht durch
+das Parlament. Und er ist grundsätzlich verfolgbar: `Applikation=BgblAuth`
+führt Teil II mit (`BGBLA_2026_II_250`, geprüft 17.09.2026), und ihr
+Hauptdokument ist dasselbe legistische XML wie das der Begutachtung (§2b).
+
+Damit lagen zwei verschiedene Dinge unter einem Wort:
+
+| | Status |
+|---|---|
+| **Beteiligung** (wer hat Stellung genommen) | strukturell nicht verfügbar |
+| **Ergebnis** (was wurde daraus, BGBl II) | verfügbar, **nur nicht gebaut** |
+
+Eine Seite, die beides verschweigt, behauptet stillschweigend, das Verfahren
+ende hier — genau die Sorte falscher Implikation, die diese Arbeit auf der
+Startseite beseitigt hat. Gebaut ist deshalb der ehrliche Mittelweg: **in
+dem Slot, in dem die Entwurfsseite ihre fünf Stationen zeigt, steht eine
+Karte, die dasselbe in Worten beantwortet** — wo der Entwurf gerade steht,
+und was danach kommt, ausdrücklich mit „verfolgt der Monitor bisher nicht".
+Eine echte Leiste, deren letzte Station dauerhaft „unbekannt" hieße, wäre
+ein Versprechen, keine Karte. Die verfolgte Fassung steht als eigener Punkt
+in `TODO.md`.
+
+#### Dieselbe Anatomie wie die Entwurfsseite
+
+Nach dem Vergleich beider Seiten am 17.09.2026 angeglichen, Slot für Slot,
+damit nicht zwei Produkte entstehen:
+
+| Slot | Entwurfsseite | Diese Seite |
+|---|---|---|
+| Rücksprung | „← Alle Entwürfe (GP …)" | „← Alle weiteren Entwürfe" |
+| Metazeile über dem Titel | Geschäftszahl · Ressort-Badge (verlinkt) · Frist-Pille | **Typwort** · Ressort-Badge (verlinkt) · Frist-Pille |
+| `h1` | Kurztitel | Kurztitel |
+| Unterzeile | amtlicher Sammeltitel | langer RIS-Titel |
+| Herkunftszeile | „Auf parlament.gv.at ansehen ↗" | „Im RIS ansehen ↗" |
+| Karte darunter | Status + SpineRail (5 Stationen) | Status + Verfahrensweg in Worten |
+| CTA-Karte | Frist + Stellungnahme-Knopf + `.ics` | Frist + Begleitschreiben-Knopf + `.ics` |
+| Abschnitte | fünf, den Stationen folgend | einer: Dokumente |
+
+Das Typwort steht dort, wo die Entwurfsseite die Geschäftszahl führt: Diese
+Sätze haben keine, und das Typwort ist das, was sie einem Leser
+identifiziert. Der `.ics`-Knopf hat hier mehr Gewicht als dort — auf einem
+Ministerialentwurf ist die Frist einer von mehreren Wegen zu handeln, hier
+ist sie zusammen mit dem Begleitschreiben die ganze Handlungsfläche.
+
+Die Erläuterungen stehen dabei **über** dem Entwurfstext, gegen die
+Dokumentreihenfolge des RIS. Das ist die Lesereihenfolge, die der
+Beobachter beschrieben hat — erst der Allgemeine Teil, um Relevanz zu
+entscheiden, dann der Text. Auf diesen Seiten wiegt das schwerer als
+anderswo: Es gibt keine parlamentarische Kurzbeschreibung („Worum geht
+es?"), auf die man ausweichen könnte. Auf Nachfrage hat er am 17.09.2026
+bestätigt, dass ihm die parlamentarische Kurzbeschreibung für diese erste
+Einschätzung ohnehin nicht reicht: Sie lasse für seine Arbeit wichtige
+Gesichtspunkte aus und bleibe an der Oberfläche. Damit ist auch die
+Erläuterungen-Frage entschieden, die dafür offen war.
+
+#### Der Einreichweg: verlinkt, nicht ausgelesen
+
+„Wohin schicke ich meine Stellungnahme?" ist die einzige Handlungsfrage, die
+eine solche Seite beantworten kann — es gibt kein Parlamentsformular. Die
+Antwort steht im Begleitschreiben (`ContentType: "Letter"`). Ausgelesen wird
+es trotzdem nicht, und das ist gemessen entschieden: In einer Stichprobe von
+**40 Sätzen trugen 34 Begleitschreiben gar keine Textebene** — reine
+Bildscans. Ein Parser wäre also genau dort blind, wo er gebraucht wird. Die
+sechs lesbaren nennen überdies die **persönliche Dienstadresse einer
+namentlich genannten Person**; das zu republizieren ist eine eigene
+Entscheidung, kein Nebeneffekt eines Parsers. Also: Dokument verlinken,
+benennen was drinsteht, fertig.
+
+#### Kosten und Zeitbudget
+
+Kein zusätzlicher Upstream-Verkehr: Korpus und GP-Join sind dieselben
+gecachten Blätter, die die Entwurfsseiten ohnehin lesen; darüber liegt ein
+eigener 30-Minuten-Cache für die Ableitung. Warm antwortet der Endpunkt in
+~10 ms.
+
+Kalt ist er teuer — der Korpus sind 46 Anfragen mit Höflichkeitspause —,
+deshalb wärmt die Prewarm-Unit ihn seit 17.09.2026 mit (`deploy/systemd/`).
+Das Zeitbudget der Startseite steht auf 6 s statt der 4 s des
+Outcomes-Abschnitts, der kalt in 0,41 s antwortet. Und weil dieser Abschnitt
+eine **Richtigstellung** trägt und keine Anreicherung ist, steht der
+erklärende Absatz außerhalb des Fetch-Ergebnisses: Auch wenn die Zeilen
+fehlen, sagt die Seite weiterhin, dass es sie gibt und dass die Zahlen oben
+sie nicht zählen.
+
+#### Bekannt und offen
+
+- **`ambiguous` im Join.** Eine unentschiedene Zeile wählt keinen RIS-Satz,
+  also bliebe der zugehörige Satz unbeansprucht und stünde hier als „ohne
+  Gegenstand" — das Einzige, was er nicht ist. Die Kandidaten auszuschließen
+  ist nicht die Lösung: `candidates` ist *jeder* Satz im Datumsfenster, das
+  würde die echten Verordnungen daneben verstecken. Die Zahl wird stattdessen
+  angezeigt, sobald sie nicht null ist; sie ist in GP XXVII und XXVIII null.
+- **Sätze ohne `EndeBegutachtungsfrist`** fallen aus jeder „offen"-Zählung,
+  hier wie in der RIS-Abfrage `InBegutachtungAm`. Jede Zahl ist also eine
+  Untergrenze. Gemessen: **1 von 4.574**.
+- **`SAG_TGÜ`** — eine Sammelnovelle kann die Gegenüberstellung pro Gesetz
+  präfixen (135/ME). Der verankerte Teil des Musters findet das nicht. Das
+  Muster zu weiten ändert die Eingabe der Beilagen-Engine, deren Grundlinie
+  je Entwurf festgenagelt und wöchentlich überwacht ist — also ein eigener
+  Schritt mit eigener Messung, kein Nebeneffekt dieser Arbeit.
+- **Der Name der Route** (`/weitere-entwuerfe`) ist eine Arbeitsentscheidung:
+  `/verordnungen` wäre für drei Zeilen gelogen. Eine spätere Umbenennung
+  kostet eine Weiterleitung; die Feed-UIDs hängen bewusst nicht an der Route.
+
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. Tracked as E3 in `outreach/verfahrensfragen.md`. The inline web-form texts remain a sub-question of it, not a separate one. Nothing here blocks stage 1, which is metadata-only either way; it blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16.

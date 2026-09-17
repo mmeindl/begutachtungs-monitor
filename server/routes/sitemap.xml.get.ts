@@ -1,13 +1,15 @@
 /**
- * GET /sitemap.xml — static pages plus every draft detail page of
- * the current GP. Reuses the cached list-81 leaf (no extra upstream load);
- * same ETag pattern as /feed.xml. Referenced from public/robots.txt.
+ * GET /sitemap.xml — static pages plus every detail page of the current GP,
+ * from both halves of the Begutachtung: the Ministerialentwürfe and the
+ * records that have no Gegenstand at Parliament (docs/architecture.md
+ * §12.16). Reuses cached leaves (no extra upstream load); same ETag pattern
+ * as /feed.xml. Referenced from public/robots.txt.
  */
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
-  const { items } = await getDraftsForGp(gp)
-  const body = buildSitemap(siteUrl, items)
+  const [{ items }, risOnly] = await Promise.all([getDraftsForGp(gp), getRisOnlyForGp(gp)])
+  const body = buildSitemap(siteUrl, items, risOnly.items)
 
   const etag = bodyEtag(body)
   setHeader(event, 'ETag', etag)

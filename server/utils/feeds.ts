@@ -10,12 +10,18 @@
  * readers would surface daily phantom updates). Deterministic bodies are
  * also what make the routes' ETag/304 handling effective.
  */
-import type { DraftSummary } from '../../shared/types'
+import type { DraftSummary, RisConsultation } from '../../shared/types'
 import { countLabelDe, formatDateDe } from '../../shared/utils/format'
+import { RIS_KIND_LABEL } from '../../shared/utils/risConsultations'
 
 /** Draft page URL inside the monitor. */
 function pageUrl(siteUrl: string, item: DraftSummary): string {
   return `${siteUrl}/entwuerfe/${item.gp}/${item.inr}`
+}
+
+/** Page URL of a Begutachtung without a parliamentary Gegenstand. */
+function risPageUrl(siteUrl: string, item: RisConsultation): string {
+  return `${siteUrl}/weitere-entwuerfe/${item.id}`
 }
 
 /**
@@ -34,6 +40,89 @@ const FEED_UID_DOMAIN = 'begutachtungs-monitor.at'
  */
 const feedUid = (item: DraftSummary) =>
   `me-${item.gp}-${item.inr}@${FEED_UID_DOMAIN}`
+
+/**
+ * The same identity rule for a Begutachtung without a Gegenstand: built from
+ * the RIS document ID, which is the only stable handle these records have —
+ * they carry no Geschäftszahl. The `ris-` prefix keeps the two namespaces
+ * apart forever, so a subscriber's read-state cannot collide.
+ */
+const risFeedUid = (item: RisConsultation) => `ris-${item.id}@${FEED_UID_DOMAIN}`
+
+/**
+ * One entry, whatever it came from — the shape both builders sort and print.
+ *
+ * Introduced so the Verordnungsentwürfe reach the feeds by the same path as
+ * the Ministerialentwürfe rather than by a parallel one: a subscriber asked
+ * for "what is in Begutachtung", and answering that with only Parliament's
+ * half is the very claim this work exists to correct.
+ */
+interface FeedEntry {
+  uid: string
+  url: string
+  /** Leading text of the RSS title, before the Frist suffix. */
+  title: string
+  /** The RSS description line and the ICS DESCRIPTION prefix. */
+  meta: string
+  /** ISO date the item first appeared; '' when upstream has none. */
+  publishedAt: string
+  deadline: string | null
+  /** SUMMARY of the calendar event. */
+  calendarSummary: string
+  /**
+   * DESCRIPTION of the calendar event, before the URL. Kept separate from
+   * `meta`: the RSS description leads with the Frist, which is the fact a
+   * reader triages by — inside a calendar entry ON that date it would only
+   * repeat what the event already is.
+   */
+  calendarDescription: string
+  /** Stable tie-break within one date. */
+  tieBreak: string
+}
+
+function draftEntry(siteUrl: string, item: DraftSummary): FeedEntry {
+  return {
+    uid: feedUid(item),
+    url: pageUrl(siteUrl, item),
+    title: `${item.citation}: ${item.title}`,
+    // No statement count: guid-keyed readers freeze first-seen text, and the
+    // count is near zero at publication — frozen forever.
+    meta: [
+      item.ministryName,
+      item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist',
+    ].join(' · '),
+    publishedAt: item.arrivedAt,
+    deadline: item.deadline,
+    calendarSummary: `Frist: ${item.title} (${item.citation})`,
+    calendarDescription: item.ministryName,
+    tieBreak: String(item.inr).padStart(9, '0'),
+  }
+}
+
+function risEntry(siteUrl: string, item: RisConsultation): FeedEntry {
+  const kind = RIS_KIND_LABEL[item.kind]
+  return {
+    uid: risFeedUid(item),
+    url: risPageUrl(siteUrl, item),
+    // The type word leads, where a Ministerialentwurf has its citation:
+    // in a reader's list view it is the only thing that says why this
+    // entry has no Stellungnahmen and no parliamentary page.
+    title: `${kind}: ${item.title}`,
+    meta: [
+      item.ministryName,
+      item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist',
+      'ohne Gegenstand im Parlament',
+    ].join(' · '),
+    publishedAt: item.startedAt ?? '',
+    deadline: item.deadline,
+    calendarSummary: `Frist: ${item.title} (${kind})`,
+    // The ministry AND the reason there is no parliament page: a calendar
+    // entry is often read without the page behind it, and "send it where?"
+    // is the only open question these procedures leave.
+    calendarDescription: `${item.ministryName} – Stellungnahme direkt an das Ressort`,
+    tieBreak: item.id,
+  }
+}
 
 /**
  * FNV-1a 64-bit, as two 32-bit halves.
@@ -135,43 +224,35 @@ export function buildRssFeed(
   siteUrl: string,
   items: DraftSummary[],
   ressort?: { code: string; name: string | null },
+  risItems: RisConsultation[] = [],
 ): string {
-  const sorted = [...items]
-    .sort((a, b) => b.arrivedAt.localeCompare(a.arrivedAt) || b.inr - a.inr)
+  const sorted = [...items.map((i) => draftEntry(siteUrl, i)), ...risItems.map((i) => risEntry(siteUrl, i))]
+    .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt) || b.tieBreak.localeCompare(a.tieBreak))
     .slice(0, RSS_MAX_ITEMS)
 
-  const entries = sorted.map((item) => {
-    const url = pageUrl(siteUrl, item)
-    // No statement count here: guid-keyed readers freeze first-seen text,
-    // and the count is near zero at publication — frozen forever. The
-    // Frist is stable (known tradeoff: a later extension won't reach
-    // readers that already cached the item).
-    const description = [
-      item.ministryName,
-      item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist',
-    ].join(' · ')
+  const entries = sorted.map((entry) => {
     // Deadline into the TITLE: list views of most readers show titles
     // only, and the Frist is the one fact a subscriber triages by.
-    const fristSuffix = item.deadline
-      ? ` – Frist ${item.deadline.slice(8, 10)}.${item.deadline.slice(5, 7)}.`
+    const fristSuffix = entry.deadline
+      ? ` – Frist ${entry.deadline.slice(8, 10)}.${entry.deadline.slice(5, 7)}.`
       : ''
-    const pubDate = rfc1123(item.arrivedAt)
+    const pubDate = rfc1123(entry.publishedAt)
     return [
       '    <item>',
-      `      <title>${escapeXml(`${item.citation}: ${item.title}${fristSuffix}`)}</title>`,
-      `      <link>${escapeXml(url)}</link>`,
+      `      <title>${escapeXml(`${entry.title}${fristSuffix}`)}</title>`,
+      `      <link>${escapeXml(entry.url)}</link>`,
       // isPermaLink="false": the guid is an identity, not an address. It
       // was the page URL until the route rename, so subscribers see the
       // current items once more — a one-time cost, paid to make every later
       // URL change free.
-      `      <guid isPermaLink="false">${escapeXml(feedUid(item))}</guid>`,
+      `      <guid isPermaLink="false">${escapeXml(entry.uid)}</guid>`,
       ...(pubDate ? [`      <pubDate>${pubDate}</pubDate>`] : []),
-      `      <description>${escapeXml(description)}</description>`,
+      `      <description>${escapeXml(entry.meta)}</description>`,
       '    </item>',
     ].join('\n')
   })
 
-  const lastBuild = sorted[0] ? rfc1123(sorted[0].arrivedAt) : null
+  const lastBuild = sorted[0] ? rfc1123(sorted[0].publishedAt) : null
 
   const channelTitle = ressort
     ? `Begutachtungs-Monitor – Begutachtungsverfahren (${ressort.name ?? ressort.code})`
@@ -186,7 +267,11 @@ export function buildRssFeed(
     '  <channel>',
     `    <title>${escapeXml(channelTitle)}</title>`,
     `    <link>${escapeXml(siteUrl)}</link>`,
-    '    <description>Neue Begutachtungsverfahren zu österreichischen Gesetzesentwürfen: Fristen, Stellungnahmen und was daraus wurde.</description>',
+    // "Gesetzes- und Verordnungsentwürfen": the feed stopped being about
+    // Parliament's half only when the RIS records joined it, and a channel
+    // description that names one half is the same wrong claim the homepage
+    // heading carried (docs/architecture.md §12.16).
+    '    <description>Neue Begutachtungsverfahren zu österreichischen Gesetzes- und Verordnungsentwürfen: Fristen, Stellungnahmen und was daraus wurde.</description>',
     '    <language>de-at</language>',
     `    <atom:link href="${escapeXml(selfUrl)}" rel="self" type="application/rss+xml"/>`,
     ...(lastBuild ? [`    <lastBuildDate>${lastBuild}</lastBuildDate>`] : []),
@@ -208,15 +293,24 @@ export function buildRssFeed(
  * upstream provides no reliable per-item change date, and a wrong lastmod
  * is worse for crawlers than none.
  */
-export function buildSitemap(siteUrl: string, items: DraftSummary[]): string {
+export function buildSitemap(
+  siteUrl: string,
+  items: DraftSummary[],
+  risItems: RisConsultation[] = [],
+): string {
   const urls = [
     siteUrl,
     `${siteUrl}/entwuerfe`,
+    `${siteUrl}/weitere-entwuerfe`,
     `${siteUrl}/so-funktionierts`,
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,
     `${siteUrl}/datenschutz`,
     ...items.map((item) => pageUrl(siteUrl, item)),
+    // The same reasoning as for the drafts: searching a Verordnung by name
+    // is how someone affected by it finds the consultation at all — and for
+    // these there is no parliament page competing for the result.
+    ...risItems.map((item) => risPageUrl(siteUrl, item)),
   ]
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -286,10 +380,17 @@ function icsDateNextDay(isoDate: string): string {
  * of the GP that has a deadline, past ones included (dropping them would
  * delete events from subscribed calendars). UIDs are stable per procedure.
  */
-export function buildIcsCalendar(siteUrl: string, items: DraftSummary[]): string {
-  const withDeadline = items
-    .filter((item): item is DraftSummary & { deadline: string } => item.deadline !== null)
-    .sort((a, b) => a.deadline.localeCompare(b.deadline) || a.inr - b.inr)
+export function buildIcsCalendar(
+  siteUrl: string,
+  items: DraftSummary[],
+  risItems: RisConsultation[] = [],
+): string {
+  const withDeadline = [
+    ...items.map((i) => draftEntry(siteUrl, i)),
+    ...risItems.map((i) => risEntry(siteUrl, i)),
+  ]
+    .filter((e): e is FeedEntry & { deadline: string } => e.deadline !== null)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline) || a.tieBreak.localeCompare(b.tieBreak))
 
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -304,22 +405,21 @@ export function buildIcsCalendar(siteUrl: string, items: DraftSummary[]): string
     'X-PUBLISHED-TTL:PT12H',
   ]
 
-  for (const item of withDeadline) {
-    const url = pageUrl(siteUrl, item)
+  for (const entry of withDeadline) {
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${feedUid(item)}`,
+      `UID:${entry.uid}`,
       // DTSTAMP derives from the DEADLINE, not the arrival date: when a
       // ministry extends a Frist, DTSTAMP moves forward with it, so
       // UID-merging import paths (Google/Outlook file import) accept the
       // update instead of silently keeping the stale deadline. Still
       // deterministic — no Date.now().
-      `DTSTAMP:${icsDate(item.deadline)}T000000Z`,
-      `DTSTART;VALUE=DATE:${icsDate(item.deadline)}`,
-      `DTEND;VALUE=DATE:${icsDateNextDay(item.deadline)}`,
-      `SUMMARY:${escapeIcsText(`Frist: ${item.title} (${item.citation})`)}`,
-      `DESCRIPTION:${escapeIcsText(`${item.ministryName} – ${url}`)}`,
-      `URL:${url}`,
+      `DTSTAMP:${icsDate(entry.deadline)}T000000Z`,
+      `DTSTART;VALUE=DATE:${icsDate(entry.deadline)}`,
+      `DTEND;VALUE=DATE:${icsDateNextDay(entry.deadline)}`,
+      `SUMMARY:${escapeIcsText(entry.calendarSummary)}`,
+      `DESCRIPTION:${escapeIcsText(`${entry.calendarDescription} – ${entry.url}`)}`,
+      `URL:${entry.url}`,
       // Informational deadlines must not block subscribers' days as "busy".
       'TRANSP:TRANSPARENT',
       'X-MICROSOFT-CDO-BUSYSTATUS:FREE',

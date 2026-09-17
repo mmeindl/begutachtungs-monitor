@@ -17,8 +17,11 @@ import {
   RULE_VERSION,
   toMeListRows,
   type JoinCandidate,
-  type RisBegutRecord,
 } from './risJoin'
+// Record shape and flattening live in `risRecord.ts` (pure, so scripts and
+// vitest can run the shipped mapper); both are auto-imported server-side, so
+// nothing is re-exported here.
+import { asArray, flattenRisRecord, risDocumentUrl, type RisBegutFlat } from './risRecord'
 
 export const RIS_API_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const RIS_PAGE_SIZE = 100
@@ -33,86 +36,18 @@ const RIS_CORPUS_TTL_S = 60 * 60 * 20
 const RIS_MAP_TTL_S = 60 * 30
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 
-/** RIS record plus the document URLs the UI needs. */
-export interface RisBegutFlat extends RisBegutRecord {
-  geaendert: string | null
-  mainDocument: { html: string | null; xml: string | null; pdf: string | null }
-  /**
-   * The ressort's own Textgegenüberstellung, when the draft carries one.
-   * RIS offers it as XML, Parliament only as PDF (docs/api-exploration.md
-   * §2c) — which is why this comes from here and not from the Parliament
-   * document list the rest of the detail page uses.
-   */
-  textComparison: { html: string | null; xml: string | null; pdf: string | null } | null
-}
-
 export interface RisBegutCorpus {
   fetchedAt: string
   hits: number
   records: RisBegutFlat[]
 }
 
-/** XML-to-JSON trap: one element → bare object, several → array. */
-function asArray<T>(x: T | T[] | null | undefined): T[] {
-  if (x === null || x === undefined) return []
-  return Array.isArray(x) ? x : [x]
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** ISO date `YYYY-MM-DD` or null; RIS dates arrive as `YYYY-MM-DD` or `YYYY-MM-DDT…`. */
-function isoDate(v: unknown): string | null {
-  if (typeof v !== 'string') return null
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(v)
-  return m ? m[1]! : null
-}
-
-function str(v: unknown): string | null {
-  return typeof v === 'string' && v.length > 0 ? v : null
-}
-
-/**
- * The annex is named inconsistently across ressorts: "Textgegenüberstellung",
- * "TGÜ", "TGG", and a misspelt "Textgegenbüberstellung" all occur in the
- * corpus, so the match has to be loose (docs/api-exploration.md §2c).
- */
-const TEXT_COMPARISON_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
-
-/** Human-readable RIS page of one Begut record. */
-export function risDocumentUrl(id: string): string {
-  return `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=${encodeURIComponent(id)}`
-}
-
 // Loosely typed: the OGD JSON is generated from XML and not contractual.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function flattenRisRecord(doc: any): RisBegutFlat | null {
-  const meta = doc?.Data?.Metadaten
-  const id = str(meta?.Technisch?.ID)
-  if (!id) return null
-  const b = meta?.Bundesrecht ?? {}
-  const bg = b?.Begut ?? {}
-  const references = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
-  const main = references.find((c) => c?.ContentType === 'MainDocument')
-  const urls = asArray<any>(main?.Urls?.ContentUrl)
-  const urlOf = (type: string) => str(urls.find((u) => u?.DataType === type)?.Url)
-  const annex = references.find((c) => TEXT_COMPARISON_NAME.test(String(c?.Name ?? '').trim()))
-  const annexUrls = asArray<any>(annex?.Urls?.ContentUrl)
-  const annexUrlOf = (type: string) => str(annexUrls.find((u) => u?.DataType === type)?.Url)
-  return {
-    id,
-    kurztitel: str(b?.Kurztitel),
-    titel: str(b?.Titel),
-    abk: str(bg?.Abkuerzung),
-    stelle: str(bg?.EinbringendeStelle) ?? str(meta?.Technisch?.Organ),
-    beginn: isoDate(bg?.BeginnBegutachtungsfrist),
-    ende: isoDate(bg?.EndeBegutachtungsfrist),
-    geaendert: isoDate(meta?.Allgemein?.Geaendert),
-    mainDocument: { html: urlOf('Html'), xml: urlOf('Xml'), pdf: urlOf('Pdf') },
-    textComparison: annex ? { html: annexUrlOf('Html'), xml: annexUrlOf('Xml'), pdf: annexUrlOf('Pdf') } : null,
-  }
-}
 
 async function fetchRisPage(page: number): Promise<{ hits: number; docs: any[] }> {
   const params = new URLSearchParams({

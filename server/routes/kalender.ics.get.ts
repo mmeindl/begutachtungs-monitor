@@ -7,8 +7,11 @@
 export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
-  const { items } = await getDraftsForGp(gp)
-  const body = buildIcsCalendar(siteUrl, items.map(reconcileActive))
+  // Verordnungsfristen too — they are deadlines like any other, and this
+  // calendar is the account-free substitute for the alerts that are not
+  // built (docs/architecture.md §12.3, §12.16).
+  const [{ items }, risOnly] = await Promise.all([getDraftsForGp(gp), getRisOnlyForGp(gp)])
+  const body = buildIcsCalendar(siteUrl, items.map(reconcileActive), risOnly.items)
 
   const etag = bodyEtag(body)
   setHeader(event, 'ETag', etag)

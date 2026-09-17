@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { DashboardOutcomes, DashboardPayload, DashboardSecondRound } from '#shared/types'
+import type {
+  DashboardOutcomes,
+  DashboardPayload,
+  DashboardSecondRound,
+  RisConsultationsResponse,
+} from '#shared/types'
 
 const pageDescription =
   'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
@@ -52,6 +57,28 @@ const { data: secondRound } = await useFetch<DashboardSecondRound>(
   { lazy: true, server: false },
 )
 
+/* The Begutachtungen Parliament has no Gegenstand for — mostly
+ * Verordnungsentwürfe (docs/architecture.md §12.16).
+ *
+ * SERVER-RENDERED, unlike the section above it, and that is the point. This
+ * is not a bonus section: without it "Jetzt in Begutachtung" names a
+ * fraction of what is open and says nothing about the rest — 4 of 8 on
+ * 2026-09-17. A correction to a claim the page makes cannot be the one part
+ * of the page that needs JavaScript to appear.
+ *
+ * It costs no upstream request the page does not already pay: the RIS corpus
+ * and the GP's join map are the same cached leaves the draft pages read. */
+const { data: risOnly, status: risOnlyStatus } = await useFetch<RisConsultationsResponse>(
+  '/api/weitere-entwuerfe',
+  // 4 s is the outcomes section's budget, and that endpoint answers in
+  // 0.41 s cold. This one sits on the RIS corpus — 46 upstream requests with
+  // a politeness pause, warmed nightly by the prewarm unit and held for 20 h.
+  // Warm it is milliseconds; cold it is a minute, and no homepage may wait
+  // for that. 6 s covers a slow-but-answering upstream without ever being
+  // the reason first paint is late.
+  { query: { status: 'open' }, timeout: 6000 },
+)
+
 const { data, error, refresh, status } = await dashboardFetch
 const { data: outcomes, status: outcomesStatus } = await outcomesFetch
 
@@ -97,8 +124,14 @@ const lastSyncLabel = computed(() =>
     <template v-else-if="data">
       <!-- Tile row as a narrative: open → urgent → participation → outcomes. -->
       <div class="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <!-- "Ministerialentwürfe", not "Begutachtungen": this tile counts
+             list 81, it links to the list of list 81, and 4 of the 8
+             consultations open on 2026-09-17 were not in it. The whole row
+             is scoped by this first label — the three tiles beside it have
+             no counterpart on the RIS side at all (nobody publishes
+             Stellungnahmen or a Regierungsvorlage for a Verordnung). -->
         <StatTile
-          label="Offene Begutachtungen"
+          label="Offene Ministerialentwürfe"
           :value="data.stats.openCount"
           to="/entwuerfe?status=open"
         />
@@ -148,8 +181,14 @@ const lastSyncLabel = computed(() =>
 
       <section class="page-section" aria-labelledby="open-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+          <!-- "Ministerialentwürfe", not "Begutachtungen". The heading used
+               to be the unqualified "Jetzt in Begutachtung" over a list
+               that held Parliament's half only — 4 of the 8 consultations
+               open on 2026-09-17. The missing half now has its own section
+               directly below, and this heading names its own denominator
+               instead of claiming both. -->
           <h2 id="open-heading" class="section-heading">
-            Jetzt in Begutachtung
+            Jetzt in Begutachtung: Ministerialentwürfe
           </h2>
           <NuxtLink
             to="/entwuerfe"
@@ -165,9 +204,12 @@ const lastSyncLabel = computed(() =>
         </ul>
         <div v-else class="mt-4">
           <!-- The no-open moment is exactly the moment to subscribe. -->
+          <!-- "keine offenen Begutachtungen" was flatly wrong on any week
+               with a Verordnung in Begutachtung and no Ministerialentwurf —
+               the section below can be full while this one is empty. -->
           <EmptyState
-            title="Derzeit keine offenen Begutachtungen"
-            description="Neue Ministerialentwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen."
+            title="Derzeit kein Ministerialentwurf in Begutachtung"
+            description="Neue Ministerialentwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen. Verordnungsentwürfe stehen im Abschnitt darunter."
           >
             <p class="text-sm text-ink-secondary">
               <a
@@ -178,6 +220,67 @@ const lastSyncLabel = computed(() =>
             </p>
           </EmptyState>
         </div>
+      </section>
+
+      <!-- The other half of what is open right now. Directly under the
+           Ministerialentwürfe, because the two together are the answer to
+           "was läuft gerade?" and either one alone is a wrong answer.
+           Two thirds of the whole pre-parliamentary corpus is here
+           (3.012 of 4.574 records, `pnpm audit:verordnungen`).
+
+           NOT hidden when empty, unlike the Zweite-Runde section below: an
+           empty bonus section is noise, but this one carries a claim about
+           coverage, and a reader who cannot see the section cannot know
+           whether it is empty or missing. -->
+      <section class="page-section" aria-labelledby="ris-only-heading">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+          <h2 id="ris-only-heading" class="section-heading">
+            Jetzt in Begutachtung: Verordnungen und weitere Entwürfe
+          </h2>
+          <NuxtLink
+            to="/weitere-entwuerfe"
+            class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
+          >
+            Alle weiteren Entwürfe →
+          </NuxtLink>
+        </div>
+        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+          Diese Entwürfe haben keinen Gegenstand im Parlament – eine
+          Stellungnahme geht direkt an das Ressort. Sie stehen nur im RIS,
+          und damit auch nicht in den Zahlen oben.
+        </p>
+        <ul v-if="risOnly?.items.length" class="mt-4 space-y-3">
+          <li v-for="c in risOnly.items" :key="c.id">
+            <RisConsultationCard :consultation="c" />
+          </li>
+        </ul>
+        <p
+          v-else-if="risOnlyStatus === 'pending'"
+          class="mt-4 text-sm text-ink-muted"
+        >
+          Wird geladen …
+        </p>
+        <p v-else-if="risOnly" class="mt-4 text-sm text-ink-muted">
+          Derzeit ist kein Verordnungsentwurf in Begutachtung.
+        </p>
+        <!-- The rows can be missing; the correction above must not be. The
+             intro paragraph renders either way, and this line keeps a way
+             through instead of ending at "nicht abrufbar": the RIS corpus is
+             46 upstream requests cold (warmed nightly, `deploy/systemd/`),
+             so the empty-handed case is a restart, not an outage. -->
+        <p v-else class="mt-4 text-sm text-ink-muted">
+          Diese Liste ist gerade nicht abrufbar –
+          <NuxtLink
+            to="/weitere-entwuerfe"
+            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          >noch einmal versuchen</NuxtLink>
+          oder direkt im
+          <ExternalLink
+            href="https://www.ris.bka.gv.at/Begut/"
+            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          >RIS</ExternalLink>
+          nachsehen.
+        </p>
       </section>
 
       <!-- The second window for input, directly under the first. Both

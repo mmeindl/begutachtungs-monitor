@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DraftSummary } from '../shared/types'
+import type { DraftSummary, RisConsultation } from '../shared/types'
 import {
   bodyEtag,
   buildIcsCalendar,
@@ -26,6 +26,23 @@ function draft(overrides: Partial<DraftSummary> = {}): DraftSummary {
     active: false,
     statementCount: 707,
     parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/ME/88',
+    ...overrides,
+  }
+}
+
+/** A Begutachtung without a parliamentary Gegenstand (docs/architecture.md §12.16). */
+function risConsultation(overrides: Partial<RisConsultation> = {}): RisConsultation {
+  return {
+    id: 'BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B',
+    kind: 'verordnung',
+    title: 'Änderung der Druckgeräteaufstellungsverordnung – DGAV',
+    longTitle: null,
+    ministryCode: 'BMWET',
+    ministryName: 'Bundesministerium für Wirtschaft, Energie und Tourismus',
+    startedAt: '2026-09-08',
+    deadline: '2026-10-19',
+    active: true,
+    risUrl: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B',
     ...overrides,
   }
 }
@@ -135,9 +152,85 @@ describe('buildSitemap', () => {
 
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
-    expect(xml.match(/<loc>/g)).toHaveLength(6)
+    expect(xml.match(/<loc>/g)).toHaveLength(7)
+    expect(xml).toContain(`<loc>${SITE}/weitere-entwuerfe</loc>`)
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
     expect(xml.trimEnd().endsWith('</urlset>')).toBe(true)
+  })
+
+  it('lists a RIS-only consultation under its own route', () => {
+    const xml = buildSitemap(SITE, [], [risConsultation()])
+    expect(xml).toContain(
+      `<loc>${SITE}/weitere-entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B</loc>`,
+    )
+  })
+})
+
+/**
+ * Reverse of the RFC 5545 §3.1 folding, so an assertion can read the logical
+ * content line. Without it every check on a DESCRIPTION longer than 75
+ * octets fails on a `\r\n ` the spec requires to be there — which says
+ * nothing about the value under test.
+ */
+const unfoldIcs = (ics: string) => ics.replaceAll('\r\n ', '')
+
+describe('feeds carry the Begutachtungen without a parliamentary Gegenstand', () => {
+  it('names the kind in the RSS title and the reason in the description', () => {
+    const xml = buildRssFeed(SITE, [], undefined, [risConsultation()])
+    expect(xml).toContain(
+      '<title>Verordnungsentwurf: Änderung der Druckgeräteaufstellungsverordnung – DGAV – Frist 19.10.</title>',
+    )
+    expect(xml).toContain('ohne Gegenstand im Parlament')
+    expect(xml).toContain(`<link>${SITE}/weitere-entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B</link>`)
+  })
+
+  it('keeps the two UID namespaces apart so read-state cannot collide', () => {
+    const xml = buildRssFeed(SITE, [draft()], undefined, [risConsultation()])
+    expect(xml).toContain('<guid isPermaLink="false">me-XXVIII-88@begutachtungs-monitor.at</guid>')
+    expect(xml).toContain(
+      '<guid isPermaLink="false">ris-BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B@begutachtungs-monitor.at</guid>',
+    )
+  })
+
+  it('interleaves both kinds by date rather than appending one after the other', () => {
+    const xml = buildRssFeed(
+      SITE,
+      [draft({ inr: 1, citation: '1/ME', arrivedAt: '2026-09-10' })],
+      undefined,
+      [
+        risConsultation({ id: 'BEGUT_A', startedAt: '2026-09-15' }),
+        risConsultation({ id: 'BEGUT_B', startedAt: '2026-09-01' }),
+      ],
+    )
+    const order = [...xml.matchAll(/isPermaLink="false">([^<]+)</g)].map((m) => m[1])
+    expect(order).toEqual([
+      'ris-BEGUT_A@begutachtungs-monitor.at',
+      'me-XXVIII-1@begutachtungs-monitor.at',
+      'ris-BEGUT_B@begutachtungs-monitor.at',
+    ])
+  })
+
+  it('emits a calendar event whose description says where a Stellungnahme goes', () => {
+    const ics = unfoldIcs(buildIcsCalendar(SITE, [], [risConsultation()]))
+    expect(ics).toContain('UID:ris-BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B@begutachtungs-monitor.at')
+    expect(ics).toContain('DTSTART;VALUE=DATE:20261019')
+    expect(ics).toContain('Stellungnahme direkt an das Ressort')
+    expect(ics).toContain(`URL:${SITE}/weitere-entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B`)
+  })
+
+  it('skips a RIS record without a deadline, like a draft without one', () => {
+    const ics = buildIcsCalendar(SITE, [], [risConsultation({ deadline: null })])
+    expect(ics).not.toContain('BEGIN:VEVENT')
+  })
+
+  it('leaves the draft calendar description unchanged (subscribers keep theirs)', () => {
+    const ics = unfoldIcs(buildIcsCalendar(SITE, [draft()]))
+    expect(ics).toContain(
+      `DESCRIPTION:Bundesministerium für Finanzen – ${SITE}/entwuerfe/XXVIII/88`,
+    )
+    // The Frist belongs in the RSS description, not here: inside a calendar
+    // entry ON that date it would only repeat what the event already is.
+    expect(ics).not.toContain('Frist bis')
   })
 })
 

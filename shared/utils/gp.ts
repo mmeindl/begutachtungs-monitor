@@ -91,6 +91,21 @@ export function gpEndedOn(gp: string): string | null {
 }
 
 /**
+ * The calendar window a Gesetzgebungsperiode occupies, as ISO dates; `to`
+ * null while it runs. Null for a GP the table above does not reach.
+ *
+ * Needed because the RIS Begut records carry no GP at all — they precede
+ * the parliamentary stage entirely, so "which period is this Verordnung
+ * from?" can only be answered by its Begutachtungsbeginn falling inside
+ * this range (`server/utils/risOnly.ts`).
+ */
+export function gpWindow(gp: string): { from: string; to: string | null } | null {
+  const from = GP_STARTS[gp]
+  if (!from) return null
+  return { from, to: gpEndedOn(gp) }
+}
+
+/**
  * Whether `gp` lies before the GP that is running (`currentGp`, read from
  * Parliament's page configuration). Falls to false on unparseable codes and
  * when the current GP is unknown — the safe direction: a page never claims
