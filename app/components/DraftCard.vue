@@ -41,6 +41,15 @@ const debateName = (c: DraftSummary) => aliasesFor(c.gp, c.inr)[0] ?? null
       <p
         class="mt-auto flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary"
       >
+        <!-- Type word first, Geschäftszahl with it — the same grammar
+             RisConsultationCard uses, and for the same reason: in a list
+             that mixes both kinds, labelling only one of them makes the
+             unlabelled kind read as the norm and the other as the
+             exception. It is the larger half. "132/ME" identifies the
+             draft but only explains itself to someone who already knows
+             the system; the word does the explaining, the number keeps
+             the citation. No separator between them: one token. -->
+        <span class="text-ink">Ministerialentwurf</span>
         <span>{{ draft.citation }}</span>
         <template v-if="debateName(draft)">
           <span aria-hidden="true">·</span>

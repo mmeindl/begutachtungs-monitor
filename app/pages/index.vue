@@ -3,8 +3,11 @@ import type {
   DashboardOutcomes,
   DashboardPayload,
   DashboardSecondRound,
+  DraftSummary,
+  RisConsultation,
   RisConsultationsResponse,
 } from '#shared/types'
+import { compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
 
 const pageDescription =
   'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
@@ -68,7 +71,7 @@ const { data: secondRound } = await useFetch<DashboardSecondRound>(
  *
  * It costs no upstream request the page does not already pay: the RIS corpus
  * and the GP's join map are the same cached leaves the draft pages read. */
-const { data: risOnly, status: risOnlyStatus } = await useFetch<RisConsultationsResponse>(
+const { data: risOnly } = await useFetch<RisConsultationsResponse>(
   '/api/weitere-entwuerfe',
   // 4 s is the outcomes section's budget, and that endpoint answers in
   // 0.41 s cold. This one sits on the RIS corpus — 46 upstream requests with
@@ -84,17 +87,64 @@ const { data: outcomes, status: outcomesStatus } = await outcomesFetch
 
 const { webcalUrl, googleCalUrl } = useFeedUrls()
 
-// A concrete date means something to non-insiders; a roman numeral does
-// not. The date alone is the load-bearing part — "Gesetzgebungsperiode"
-// wording stays out of the hint (tile 4 already scopes the row, and the
-// term is explained on /so-funktionierts). gp is server-derived and rolls
-// over — map known GPs, fall back to the numeral.
-const GP_START: Record<string, string> = { XXVIII: 'seit Okt. 2024' }
-const gpHint = computed(() => {
-  const gp = data.value?.gp
-  if (!gp) return undefined
-  return GP_START[gp] ?? `Gesetzgebungsperiode ${gp}`
+/**
+ * What is open right now, both kinds, in ONE deadline-ordered list
+ * (docs/architecture.md §12.20).
+ *
+ * Same shape as `/entwuerfe`: two row types, one order, never a pooled
+ * total. What differs is the cap — this is the front door, not the corpus
+ * view.
+ */
+type OpenRow =
+  | { kind: 'me'; key: string; draft: DraftSummary }
+  | { kind: 'ris'; key: string; item: RisConsultation }
+
+/**
+ * Six rows, then "Alle Entwürfe →".
+ *
+ * Measured 2026-09-17 over 2025-01-01 → today: 6 Ministerialentwürfe are
+ * open at the median (p90 10, max 15) and 7 RIS-only records (p90 18, max
+ * 25) — so the merged list runs at ~13 rows typically and has touched 40.
+ * Uncapped it would push the accountability section, which is the reason
+ * this page exists, past a third viewport on an ordinary week. The cap is
+ * what the count line below the list then has to account for.
+ */
+const OPEN_ROW_CAP = 6
+
+const openRows = computed<OpenRow[]>(() => {
+  const out: OpenRow[] = []
+  for (const d of data.value?.open ?? []) {
+    out.push({ kind: 'me', key: `me-${d.gp}-${d.inr}`, draft: d })
+  }
+  for (const c of risOnly.value?.items ?? []) {
+    out.push({ kind: 'ris', key: `ris-${c.id}`, item: c })
+  }
+  return out.sort((a, b) =>
+    compareDrafts(
+      a.kind === 'me' ? draftOrderKey(a.draft) : a.item,
+      b.kind === 'me' ? draftOrderKey(b.draft) : b.item,
+    ),
+  )
 })
+
+const visibleOpenRows = computed(() => openRows.value.slice(0, OPEN_ROW_CAP))
+
+/** Whether the explanation below the list has anything to explain. */
+const showsRisRow = computed(() => visibleOpenRows.value.some((r) => r.kind === 'ris'))
+
+/**
+ * NO count line on this page, unlike `/entwuerfe`.
+ *
+ * There it states a corpus nobody can see (336 rows behind filters); here
+ * the list is six cards and every one of them says on its own row which
+ * kind it is, so "4 Ministerialentwürfe · 4 ohne Gegenstand im Parlament"
+ * only restates what is visible — and a figure inside a line of prose is
+ * the hardest place to find one when you are scanning for exactly that.
+ *
+ * The one thing the line did carry that the rows cannot is the ABSENCE of
+ * the RIS half; that became its own line, rendered only when the half is
+ * actually missing (template below).
+ */
 
 // lastSync arrives ISO-normalized from the server (or null → line is omitted).
 const lastSyncLabel = computed(() =>
@@ -108,10 +158,19 @@ const lastSyncLabel = computed(() =>
       <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
         Was passiert in der Begutachtung – und was wird daraus?
       </h1>
+      <!-- The second sentence links to the section that keeps it. Until
+           17.09.2026 the only pointer to the accountability layer above the
+           fold was a stat tile's hint ("Was wurde daraus? ↓"); with the
+           tiles gone the promise itself carries it, which is the better
+           place for it anyway — and it is a fixed string, not a number that
+           has to be read to be found. -->
       <p class="mt-3 text-ink-secondary">
         Alle laufenden Begutachtungen österreichischer Gesetzesentwürfe:
         Fristen und Stellungnahmen auf einen Blick. Und für jeden Entwurf
-        danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts.
+        <a
+          href="#outcomes-heading"
+          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts</a>.
       </p>
     </header>
 
@@ -122,40 +181,10 @@ const lastSyncLabel = computed(() =>
       <ErrorState @retry="refresh()" />
     </div>
     <template v-else-if="data">
-      <!-- Tile row as a narrative: open → urgent → participation → outcomes. -->
-      <div class="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <!-- "Ministerialentwürfe", not "Begutachtungen": this tile counts
-             list 81, it links to the list of list 81, and 4 of the 8
-             consultations open on 2026-09-17 were not in it. The whole row
-             is scoped by this first label — the three tiles beside it have
-             no counterpart on the RIS side at all (nobody publishes
-             Stellungnahmen or a Regierungsvorlage for a Verordnung). -->
-        <StatTile
-          label="Offene Ministerialentwürfe"
-          :value="data.stats.openCount"
-          to="/entwuerfe?status=open"
-        />
-        <StatTile
-          :label="`Enden in den nächsten ${DEADLINE_SERIOUS_DAYS} Tagen`"
-          :value="data.stats.closingWithin7Days"
-        />
-        <StatTile
-          label="Stellungnahmen"
-          :value="data.stats.statementsTotalGp"
-          :hint="gpHint"
-        />
-        <StatTile
-          label="Abgeschlossen in dieser Periode"
-          :value="data.stats.consultationsTotalGp - data.stats.openCount"
-          hint="Was wurde daraus? ↓"
-          to="#outcomes-heading"
-        />
-      </div>
-
-      <!-- The account-free alert tier at the moment of need — right where
-           "Enden in den nächsten 7 Tagen" was just read. Footer keeps the
-           full version with the manual URL. -->
-      <p class="mt-4 text-sm text-ink-secondary">
+      <!-- The account-free alert tier, directly above the list of Fristen
+           it applies to. Footer keeps the full version with the manual
+           URL. -->
+      <p class="mt-8 text-sm text-ink-secondary">
         <UIcon
           name="i-lucide-calendar-plus"
           class="me-1 inline-block size-4 align-text-bottom"
@@ -179,37 +208,60 @@ const lastSyncLabel = computed(() =>
         – ohne Konto, ohne Tracking.
       </p>
 
+      <!-- ONE list, because the question is one: "was läuft gerade, wo kann
+           ich noch mitreden?" (docs/architecture.md §12.20). Which official
+           register happens to carry a record is plumbing, and plumbing does
+           not belong in the page skeleton — it belongs on the row, which is
+           why both card kinds now lead their meta line with the type word.
+
+           The split cost the page its deadline order: on 17.09.2026 the
+           first card was a Frist ending on the 21st while a Verordnung ended
+           that same day, below a second heading. Urgency is the one thing
+           two lists cannot preserve. -->
       <section class="page-section" aria-labelledby="open-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <!-- "Ministerialentwürfe", not "Begutachtungen". The heading used
-               to be the unqualified "Jetzt in Begutachtung" over a list
-               that held Parliament's half only — 4 of the 8 consultations
-               open on 2026-09-17. The missing half now has its own section
-               directly below, and this heading names its own denominator
-               instead of claiming both. -->
           <h2 id="open-heading" class="section-heading">
-            Jetzt in Begutachtung: Ministerialentwürfe
+            Jetzt in Begutachtung
           </h2>
           <NuxtLink
-            to="/entwuerfe"
+            to="/entwuerfe?status=open"
             class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
           >
             Alle Entwürfe →
           </NuxtLink>
         </div>
-        <ul v-if="data.open.length" class="mt-4 space-y-3">
-          <li v-for="c in data.open" :key="`${c.gp}-${c.inr}`">
-            <DraftCard :draft="c" />
+        <!-- Directly under the heading, not under the list: this one is
+             not provenance but a correction to what the list claims, and a
+             reader who learns at the bottom that rows are missing has
+             already read it as complete. Rendered only when they are. -->
+        <p v-if="!risOnly" class="mt-2 max-w-prose text-sm text-ink-muted">
+          Die Entwürfe ohne Gegenstand im Parlament fehlen hier gerade – sie
+          lassen sich
+          <NuxtLink
+            to="/entwuerfe?art=verordnung&status=open"
+            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          >noch einmal abrufen</NuxtLink>
+          oder direkt im
+          <ExternalLink
+            href="https://www.ris.bka.gv.at/Begut/"
+            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          >RIS</ExternalLink>
+          nachsehen.
+        </p>
+
+        <ul v-if="visibleOpenRows.length" class="mt-4 space-y-3">
+          <li v-for="row in visibleOpenRows" :key="row.key">
+            <DraftCard v-if="row.kind === 'me'" :draft="row.draft" />
+            <RisConsultationCard v-else :consultation="row.item" />
           </li>
         </ul>
-        <div v-else class="mt-4">
-          <!-- The no-open moment is exactly the moment to subscribe. -->
-          <!-- "keine offenen Begutachtungen" was flatly wrong on any week
-               with a Verordnung in Begutachtung and no Ministerialentwurf —
-               the section below can be full while this one is empty. -->
+        <div v-else-if="risOnly" class="mt-4">
+          <!-- The no-open moment is exactly the moment to subscribe. Said
+               only when BOTH halves are known to be empty — with the RIS
+               half missing this would be a claim the page cannot make. -->
           <EmptyState
-            title="Derzeit kein Ministerialentwurf in Begutachtung"
-            description="Neue Ministerialentwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen. Verordnungsentwürfe stehen im Abschnitt darunter."
+            title="Derzeit ist keine Begutachtung offen"
+            description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen – Ministerialentwürfe aus dem Parlament und Verordnungsentwürfe aus dem RIS."
           >
             <p class="text-sm text-ink-secondary">
               <a
@@ -220,67 +272,27 @@ const lastSyncLabel = computed(() =>
             </p>
           </EmptyState>
         </div>
-      </section>
 
-      <!-- The other half of what is open right now. Directly under the
-           Ministerialentwürfe, because the two together are the answer to
-           "was läuft gerade?" and either one alone is a wrong answer.
-           Two thirds of the whole pre-parliamentary corpus is here
-           (3.012 of 4.574 records, `pnpm audit:verordnungen`).
-
-           NOT hidden when empty, unlike the Zweite-Runde section below: an
-           empty bonus section is noise, but this one carries a claim about
-           coverage, and a reader who cannot see the section cannot know
-           whether it is empty or missing. -->
-      <section class="page-section" aria-labelledby="ris-only-heading">
-        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <h2 id="ris-only-heading" class="section-heading">
-            Jetzt in Begutachtung: Verordnungen und weitere Entwürfe
-          </h2>
-          <NuxtLink
-            to="/entwuerfe?art=verordnung"
-            class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
-          >
-            Alle Verordnungsentwürfe →
-          </NuxtLink>
-        </div>
-        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-          Diese Entwürfe haben keinen Gegenstand im Parlament – eine
-          Stellungnahme geht direkt an das Ressort. Sie stehen nur im RIS,
-          und damit auch nicht in den Zahlen oben.
-        </p>
-        <ul v-if="risOnly?.items.length" class="mt-4 space-y-3">
-          <li v-for="c in risOnly.items" :key="c.id">
-            <RisConsultationCard :consultation="c" />
-          </li>
-        </ul>
+        <!-- What sits behind the cap, named rather than implied. -->
         <p
-          v-else-if="risOnlyStatus === 'pending'"
-          class="mt-4 text-sm text-ink-muted"
+          v-if="openRows.length > visibleOpenRows.length"
+          class="mt-3 text-sm text-ink-secondary"
         >
-          Wird geladen …
-        </p>
-        <p v-else-if="risOnly" class="mt-4 text-sm text-ink-muted">
-          Derzeit ist kein Verordnungsentwurf in Begutachtung.
-        </p>
-        <!-- The rows can be missing; the correction above must not be. The
-             intro paragraph renders either way, and this line keeps a way
-             through instead of ending at "nicht abrufbar": the RIS corpus is
-             46 upstream requests cold (warmed nightly, `deploy/systemd/`),
-             so the empty-handed case is a restart, not an outage. -->
-        <p v-else class="mt-4 text-sm text-ink-muted">
-          Diese Liste ist gerade nicht abrufbar –
           <NuxtLink
-            to="/entwuerfe?art=verordnung"
-            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-          >noch einmal versuchen</NuxtLink>
-          oder direkt im
-          <ExternalLink
-            href="https://www.ris.bka.gv.at/Begut/"
-            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-          >RIS</ExternalLink>
-          nachsehen.
+            to="/entwuerfe?status=open"
+            class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          >Alle {{ formatNumberDe(openRows.length) }} offenen Entwürfe ansehen →</NuxtLink>
         </p>
+
+        <!-- Under the list, like a note under a table: the reader meets
+             „nicht im Parlament“ on a row first and looks for the reason
+             afterwards. Only rendered when such a row is actually above. -->
+        <p v-if="showsRisRow" class="mt-4 max-w-prose text-sm text-ink-muted">
+          „Nicht im Parlament“ heißt: zu diesem Entwurf führt das Parlament
+          keinen Gegenstand. Eine Stellungnahme geht direkt an das Ressort,
+          und wer Stellung genommen hat, veröffentlicht niemand.
+        </p>
+
       </section>
 
       <!-- The second window for input, directly under the first. Both

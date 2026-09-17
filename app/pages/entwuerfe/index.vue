@@ -6,7 +6,7 @@ import type {
   RisConsultation,
   RisConsultationsResponse,
 } from '#shared/types'
-import { compareDrafts, type OrderedDraft } from '#shared/utils/draftOrder'
+import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
 import { romanToInt } from '#shared/utils/gp'
 
 /**
@@ -176,14 +176,7 @@ type Row =
   | { kind: 'ris'; key: string; item: RisConsultation }
 
 function orderOf(row: Row): OrderedDraft {
-  return row.kind === 'me'
-    ? {
-        active: row.draft.active,
-        deadline: row.draft.deadline,
-        startedAt: row.draft.arrivedAt,
-        title: row.draft.title,
-      }
-    : row.item
+  return row.kind === 'me' ? draftOrderKey(row.draft) : row.item
 }
 
 const rows = computed<Row[]>(() => {

@@ -10,14 +10,16 @@ import type { RisConsultation } from '#shared/types'
  * directly under "Jetzt in Begutachtung" and the two lists must read as one
  * column rather than as two products.
  *
- * TWO DIFFERENCES, both deliberate:
+ * ONE SHARED RULE and one difference:
  *
- * 1. The meta line LEADS with the type word. On a DraftCard the first token
- *    is the Geschäftszahl, which every row has and which identifies it;
- *    these records have none, and the one thing a reader needs before
- *    anything else is which kind of instrument this is. It is never left
- *    implicit — a Verordnung silently mixed into a list of Gesetzesentwürfe
- *    would trade one wrong completeness claim for a wrong category claim.
+ * 1. The meta line LEADS with the type word — and since 2026-09-17 so does
+ *    DraftCard, which adds its Geschäftszahl to the same token. This used
+ *    to be a difference: the type word stood here because these records
+ *    have no Geschäftszahl to lead with. In a list that mixes both kinds
+ *    that was the wrong asymmetry — labelling one kind and not the other
+ *    makes the unlabelled kind read as the norm and this one as the
+ *    exception, when it is in fact the larger half (median 7 open against
+ *    6, measured 2026-09-17 over 2025-01-01 → today).
  * 2. The right-hand slot carries the Frist and nothing else. There is no
  *    Stellungnahmen count to put there and there cannot be one: without a
  *    parliamentary Gegenstand nobody publishes who filed. Showing "0" would

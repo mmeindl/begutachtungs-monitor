@@ -194,7 +194,6 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 |---|---|---|
 | `AppHeader` | – | Wordmark, nav: Aktuell `/`, Begutachtungen `/entwuerfe`, Über `/ueber` |
 | `AppFooter` | – | Source attribution (Parlamentsdirektion **and** RIS des Bundes — both licensors are named because CC BY binds for part of the data), link to the per-source licence list in the Impressum, "kein amtliches Angebot", source code, contact, Impressum/Datenschutz |
-| `StatTile` | `label: string; value: number\|string; hint?: string` | Stat tile: label sentence case without colon, value large/semibold, proportional figures, de-AT format |
 | `DeadlineBadge` | `deadline: string\|null; active: boolean` | Deadline chip with text from `fristLabel()`; dot icon + status color: ≤3 days critical, ≤7 serious, otherwise neutral; expired: muted. **Color never without text** |
 | `StageBar` | `arrivedAt; deadline; active; enactment; gpEnded?` | The ME→RV→BGBl track, dates/citations on reached stations; unreached ones carry a state word — `ausstehend` while the Frist runs, `bisher keine` after it, `keine – GP beendet` once the draft's Gesetzgebungsperiode is over (§12.10). State is always in text, never in dot fill alone |
 | `VolumeBar` | `label: string; value: number; max: number; href?: string` | Single-color horizontal quantity bar: track `accent-wash`, fill `accent`, 8 px tall, 4 px rounded on the right/square on the left, value at the end in ink (never in the data color), `tabular-nums` in the value column |
@@ -211,7 +210,7 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 ## 7. Pages
 
-- `/` **Dashboard**: mission one-liner, 4 StatTiles (open consultations, ending in ≤7 days, Stellungnahmen in the GP, Begutachtungen in the GP), "Jetzt in Begutachtung" cards (deadline ascending), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty), **"Zuletzt abgeschlossen – was wurde daraus?"** (recently closed consultations with their outcome chip, plus the newest item that reached RV/BGBl — the accountability layer on the front door), "Die meisten Stellungnahmen" as VolumeBar top 5, lastSync note. Both dashboard fetches are server-side and started together, so the outcomes section is in the SSR HTML — it is the section the page exists for, and client-only kept it out of crawls, shares and no-JS.
+- `/` **Dashboard**: mission one-liner (its second sentence links to the outcomes section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty), **"Zuletzt abgeschlossen – was wurde daraus?"** (recently closed consultations with their outcome chip, plus the newest item that reached RV/BGBl — the accountability layer on the front door), "Die meisten Stellungnahmen" as VolumeBar top 5, lastSync note. Both dashboard fetches are server-side and started together, so the outcomes section is in the SSR HTML — it is the section the page exists for, and client-only kept it out of crawls, shares and no-JS.
 - `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
 - `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
@@ -3381,6 +3380,93 @@ entspricht `compareDrafts` exakt.
 Abschnitte „Jetzt in Begutachtung". Ob die zusammenfallen, ist eine eigene
 Frage — sie ändert, was die Kachel darüber zählt, und die gehört mit der
 gemischten Liste vor Augen entschieden, nicht vorher geraten.
+**Entschieden am 17.09.2026: sie fallen zusammen, und die Kachel fällt weg
+— §12.20.**
+
+
+### 12.20 Keine Kacheln: die Startseite zeigt Zeilen, keine Summen
+
+Die vier StatTiles standen seit dem ersten Release (`c277bcb`, 22.08.2026):
+offene Begutachtungen · enden in ≤7 Tagen · Stellungnahmen in der GP ·
+Begutachtungen in der GP. Sie sind die KPI-Leiste eines Produkts, das
+damals „eine Liste laufender Begutachtungen" war. Seither ist der
+Nachverfolgungs-Teil dazugekommen, und an den Kacheln wurde seitdem nur
+noch **geflickt**, damit sie wahr bleiben: Kachel 4 bekam am 27.08. ein
+Label, das einen Link auf den Verlaufsabschnitt trägt (`b9f7a2f`), Kachel 1
+am 17.09. den engeren Nenner „Ministerialentwürfe", weil sie sonst eine
+falsche Vollständigkeit behauptet hätte (`93c2c11`).
+
+**Der Befund, der die Entscheidung trägt:** in der gesammelten
+Korrespondenz mit möglichen Nutzerinnen und Nutzern — NGOs, Journalismus,
+Forschung, Verwaltung — steht **keine einzige Frage, die eine dieser vier
+Zahlen beantwortet**. Gefragt wurde nach Abdeckung (Verordnungen), nach
+Diffs, nach sprechenden Namen, nach Stellungnahmen zur Regierungsvorlage,
+nach der Organisations-/Personen-Einstufung. Das sind Listen- und
+Detailseiten-Anliegen. Eine Kennzahl war nie darunter.
+
+Dazu drei Einzelbefunde:
+
+- **Kachel 1 zählte, was direkt darunter steht.** Acht Karten, und die
+  Kachel sagt „4" — eine Zahl, die das Auge im selben Blickfeld
+  nachzählen kann, und seit der Zusammenlegung von `/entwuerfe` führte ihr
+  Link auf eine Liste mit acht Zeilen.
+- **Kachel 2 war am 17.09.2026 schlicht falsch im Zuschnitt:** „Enden in
+  den nächsten 7 Tagen: 1", während eine Verordnung **an diesem Tag**
+  endete. Sie zählt list 81; die Hälfte ohne Gegenstand kann sie
+  strukturell nicht sehen.
+- **Kachel 4 war ein Link im Kostüm einer Statistik.** Die Zahl („131")
+  beantwortete nichts; getragen hat allein ihr Hinweis „Was wurde daraus?
+  ↓" — bis zum 17.09. der einzige Zeiger auf den Verlaufsabschnitt über
+  dem Falz. Der Zeiger bleibt, als Link im zweiten Satz der Dachzeile; die
+  Zahl geht.
+
+**Und keine Fließtext-Summe an ihrer Stelle.** Der naheliegende Ersatz war
+ein Statussatz („Derzeit laufen 8 Begutachtungen – 4 Ministerialentwürfe
+und 4 Verordnungsentwürfe …"). Dagegen spricht das Scan-Verhalten
+wiederkehrender Leserinnen: wer eine Zahl sucht, springt zu Zahlen, und
+eine Zahl mitten im Satz ist der schlechteste Ort, um gefunden zu werden.
+Die Regel, die daraus folgt und die auch die Zählzeile auf dieser Seite
+erledigt hat: **eine Zahl steht bei dem, was sie zählt** — nie in einer
+Zusammenfassung darüber, nie in einem Satz. Das ist dieselbe Regel wie
+§12.17 für Bedienelemente, eine Ebene weiter.
+
+Die Zählzeile `4 Ministerialentwürfe · 4 ohne Gegenstand im Parlament`
+steht deshalb auf `/entwuerfe` weiter (dort beschreibt sie einen Korpus
+hinter Filtern, den niemand sehen kann) und auf der Startseite **nicht**
+(dort wiederholt sie sechs sichtbare Karten). Was sie dort allein trug —
+dass die RIS-Hälfte **fehlt** —, ist eine eigene Zeile geworden, die nur
+erscheint, wenn sie fehlt, und direkt unter der Überschrift steht: eine
+Korrektur an dem, was die Liste behauptet, kommt nicht als Fußnote unter
+der Liste, sonst ist sie schon als vollständig gelesen worden.
+
+**Der Typ steht jetzt auf der Zeile, nicht in der Überschrift.**
+`DraftCard`/`DraftRow` führen ihre Metazeile mit „Ministerialentwurf
+132/ME" an, `RisConsultationCard`/`-Row` mit „Verordnungsentwurf" — eine
+Grammatik für beide. Vorher trug nur die RIS-Hälfte ein Typwort, und in
+einer gemischten Liste ist das die falsche Asymmetrie: die unbeschriftete
+Art liest sich als Normalfall, die beschriftete als Ausnahme. Sie ist die
+**größere** Hälfte (Median 7 gleichzeitig offen gegen 6, gemessen am
+17.09.2026 über 2025-01-01 → heute). „132/ME" erklärt sich außerdem nur
+dem, der das System schon kennt; das Wort erklärt sich selbst, die Zahl
+bleibt als Zitat daneben.
+
+**Deckel bei 6 Zeilen.** Gemessen am 17.09.2026 über denselben Zeitraum
+sind im Median 6 Ministerialentwürfe offen (p90 10, max 15) und 7
+RIS-Datensätze (p90 18, max 25) — die gemischte Liste läuft also
+typischerweise auf ~13 Zeilen und hat 40 berührt. Ungedeckelt schiebt sie
+den Verlaufsabschnitt, für den es die Seite gibt, an einem gewöhnlichen
+Wochentag hinter das dritte Bildschirmfenster. Gemessen nach dem Umbau:
+`#open-heading` bei 416 px statt 698, drei Karten über dem Falz statt
+keiner, `#outcomes-heading` bei 2.221 px statt 2.805 (1280×800).
+
+**Was bewusst NICHT gebaut wurde:** keine Quote „X % ohne Begutachtung"
+und kein „X Entwürfe nach der Begutachtung geändert" an der Spitze. Die
+erste hat keine Gewinnseite und braucht zwei Schutzsätze, die eine Kachel
+nicht tragen kann; die zweite ist über eine ganze GP schlicht nicht
+gemessen, und die vorhandene Zahl (52 von 91) zählt spätere **Textstände**
+im Parlament, nicht Änderungen, die der Begutachtung zuzurechnen wären.
+Die erste Zahl einer Startseite definiert, was das Produkt ist — und das
+ist Nachverfolgung, kein Punktestand.
 
 
 ## 13. Open questions

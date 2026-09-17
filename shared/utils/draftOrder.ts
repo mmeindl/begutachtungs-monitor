@@ -46,6 +46,29 @@ export interface OrderedDraft {
  *    2026-10-16; without this their order depended on the corpus fetch and
  *    moved between visits.
  */
+/**
+ * A Ministerialentwurf's ordering key: `arrivedAt` is its `startedAt`.
+ *
+ * The one asymmetry between the two kinds — a RIS record already carries
+ * `startedAt` and satisfies `OrderedDraft` as it stands, list 81 calls the
+ * same day `arrivedAt`. Lives here because two pages now interleave the
+ * kinds (`/` and `/entwuerfe`), and a mapping written twice is the same
+ * drift risk as a comparator written twice.
+ */
+export function draftOrderKey(draft: {
+  active: boolean
+  deadline: string | null
+  arrivedAt: string | null
+  title: string
+}): OrderedDraft {
+  return {
+    active: draft.active,
+    deadline: draft.deadline,
+    startedAt: draft.arrivedAt,
+    title: draft.title,
+  }
+}
+
 export function compareDrafts(a: OrderedDraft, b: OrderedDraft): number {
   if (a.active !== b.active) return a.active ? -1 : 1
   if (a.active) {

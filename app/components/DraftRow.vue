@@ -35,6 +35,9 @@ const debateName = (c: DraftSummary) => aliasesFor(c.gp, c.inr)[0] ?? null
         {{ draft.title }}
       </p>
       <p class="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-ink-secondary">
+        <!-- Same one token as DraftCard: the dense row sits in the same
+             mixed list, so it needs the same type word. -->
+        <span class="text-ink">Ministerialentwurf</span>
         <span>{{ draft.citation }}</span>
         <template v-if="debateName(draft)">
           <span aria-hidden="true">·</span>

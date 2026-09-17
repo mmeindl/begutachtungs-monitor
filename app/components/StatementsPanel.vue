@@ -417,8 +417,9 @@ const mixSegments = computed(() => {
     <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
       <div v-for="stat in miniStats" :key="stat.label">
         <dt class="text-sm text-ink-secondary">{{ stat.label }}</dt>
-        <!-- Number scale: tiles 3xl–4xl (StatTile), inline stats 2xl —
-             nothing in between. -->
+        <!-- Number scale: inline stats 2xl. These are the last large
+             figures on the site — the homepage's 3xl–4xl stat tiles were
+             removed on 17.09.2026 (docs/architecture.md §12.20). -->
         <dd class="mt-0.5 font-heading text-2xl font-semibold text-ink">
           {{ formatNumberDe(stat.value) }}
         </dd>

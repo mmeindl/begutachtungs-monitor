@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareDrafts, type OrderedDraft } from '../shared/utils/draftOrder'
+import { compareDrafts, draftOrderKey, type OrderedDraft } from '../shared/utils/draftOrder'
 
 /**
  * The one order both kinds of row use (docs/architecture.md §12.19).
@@ -77,6 +77,43 @@ describe('compareDrafts', () => {
         me('Industriestrompreisgesetz', { deadline: '2026-10-16' }),
       ]),
     ).toEqual(['me:Industriestrompreisgesetz', 'ris:Ökosoziale Kriterien-Verordnung'])
+  })
+})
+
+describe('draftOrderKey', () => {
+  it('reads the Einlangen as the day the Begutachtung started', () => {
+    expect(
+      draftOrderKey({
+        active: true,
+        deadline: '2026-10-16',
+        arrivedAt: '2026-09-08',
+        title: 'Industriestrompreisgesetz',
+      }),
+    ).toEqual({
+      active: true,
+      deadline: '2026-10-16',
+      startedAt: '2026-09-08',
+      title: 'Industriestrompreisgesetz',
+    })
+  })
+
+  it('orders a Ministerialentwurf against a RIS record the same way both pages do', () => {
+    // `/` and `/entwuerfe` both interleave the kinds. The mapping is the
+    // half of that which is NOT symmetric, so it belongs to the comparator
+    // rather than to either page.
+    const me = draftOrderKey({
+      active: true,
+      deadline: '2026-10-16',
+      arrivedAt: '2026-09-08',
+      title: 'Industriestrompreisgesetz',
+    })
+    const ris: OrderedDraft = {
+      active: true,
+      deadline: '2026-10-16',
+      startedAt: '2026-09-03',
+      title: 'Ökosoziale Kriterien-Verordnung',
+    }
+    expect(compareDrafts(me, ris)).toBeLessThan(0)
   })
 })
 
