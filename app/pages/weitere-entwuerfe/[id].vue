@@ -82,11 +82,14 @@ const documents = computed(() => {
     </div>
     <template v-else-if="data">
       <div class="mb-4">
+        <!-- Back into the one list, filtered to this kind of row: since
+             17.09.2026 there is no separate list to return to
+             (docs/architecture.md §12.19). -->
         <NuxtLink
-          to="/weitere-entwuerfe"
+          to="/entwuerfe?art=verordnung"
           class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
         >
-          ← Alle weiteren Entwürfe
+          ← Alle Verordnungsentwürfe
         </NuxtLink>
       </div>
 
@@ -104,8 +107,8 @@ const documents = computed(() => {
                de-facto page for free, here the filtered list. -->
           <NuxtLink
             v-if="data.ministryCode"
-            :to="`/weitere-entwuerfe?ministry=${data.ministryCode}`"
-            :aria-label="`Alle weiteren Entwürfe des Ressorts ${data.ministryName} anzeigen`"
+            :to="`/entwuerfe?art=verordnung&ministry=${data.ministryCode}`"
+            :aria-label="`Alle Verordnungsentwürfe des Ressorts ${data.ministryName} anzeigen`"
             class="tap-target rounded"
           >
             <MinistryBadge

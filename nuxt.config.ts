@@ -20,6 +20,13 @@ export default defineNuxtConfig({
   routeRules: {
     '/begutachtungen': { redirect: { to: '/entwuerfe', statusCode: 301 } },
     '/begutachtungen/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
+    // The Begutachtungen without a Gegenstand had their own list for a few
+    // hours on 17.09.2026; they are a filter on /entwuerfe now
+    // (docs/architecture.md §12.19). Exact path only — the DETAIL pages
+    // `/weitere-entwuerfe/:id` stay, because those records are their own
+    // kind of object with their own page (§12.16), and so does the per-item
+    // `.ics` beneath them.
+    '/weitere-entwuerfe': { redirect: { to: '/entwuerfe?art=verordnung', statusCode: 301 } },
   },
   ui: {
     // Light-only prototype: Nuxt UI's color-mode integration would flip its

@@ -3307,6 +3307,82 @@ kennt nur, was Parlament als eigenes Dokument veröffentlicht: ein
 kursiert, ist kein Datensatz und wird keiner.
 
 
+### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
+
+§12.16 hat die Begutachtungen ohne Gegenstand auf eine **eigene** Seite
+gelegt, mit einem Argument, das ich weiter für richtig halte: Zusammenlegen
+ändert, was „Alle Entwürfe", die GP-Summen und die Stellungnahmen-Summen
+zählen, und zwei Drittel der Zeilen fehlt genau die Beteiligungsdaten, aus
+denen diese Zahlen gebaut sind.
+
+**Das Argument richtet sich gegen das Zusammenzählen, nicht gegen eine
+gemeinsame Seite** — und auf die Seite angewandt kostete es mehr, als es
+brachte. Aufgefallen ist das an drei Symptomen, alle am 17.09.2026 von Manu
+benannt:
+
+1. **Die zweite Liste hatte keinen Eingang.** Die Navigation ist bei vier
+   Einträgen gedeckelt (`AppHeader.vue`: „Four items and capped there — a nav
+   that stays scannable is the IA"), und die vier Labels sind bei 320 px
+   Breite schon 31 px zu breit. Ein fünfter Eintrag war nie verfügbar; die
+   Seite hing an einem Startseiten-Abschnitt.
+2. **Sie erzwang einen Namen, der nichts sagt.** „Weitere Entwürfe" ist
+   relational — weiter als was? — und liest sich wie „weniger wichtig" über
+   zwei Drittel des Korpus. Der Namensdruck war ein *Symptom* der Teilung,
+   keine eigene Frage.
+3. **Sie beantwortete die Frage des Lesers an zwei Orten.** Wer wissen will,
+   was gerade offen ist, musste zwei Seiten besuchen und addieren — genau die
+   Deckungslücke, aus der diese Datenhälfte überhaupt entstanden ist.
+
+**Gebaut ist jetzt:** `/entwuerfe` hält beide Arten, ein Filter
+`?art=ministerialentwurf|verordnung` trennt sie, Voreinstellung ist **alle**.
+`/weitere-entwuerfe` ist ein 301 auf `?art=verordnung` — **nur der exakte
+Pfad**, die Detailseiten `/weitere-entwuerfe/:id` und das `.ics` darunter
+bleiben, weil das eigene Objekte mit eigener Seitenanatomie sind (§12.16).
+
+**Was die Teilung richtig gesehen hat, bleibt erhalten:**
+
+- **Keine gepoolte Gesamtzahl.** Die Zählzeile nennt jede Art getrennt
+  („4 Ministerialentwürfe · 4 ohne Gegenstand im Parlament"); eine
+  Schlagzeile „336 Entwürfe" würde die Stellungnahmen-Zahlen eines Drittels
+  über alle legen. Nur der Platzhalter der Suche nennt die Summe, weil das
+  eine Aussage über den Suchraum ist und nicht über den Korpus.
+- **Zwei Zeilenformen, kein gemeinsames Schema.** Ein Ministerialentwurf hat
+  Geschäftszahl und Stellungnahmen-Zahl, ein Satz ohne Gegenstand hat beides
+  nicht und kann es nicht bekommen. Ein gemeinsames Schema hieße, leere
+  Felder zu erfinden, und eine leere Stellungnahmen-Spalte liest sich als
+  „niemand hat sich gekümmert", wo „niemand zählt" stimmt. Also behalten
+  `DraftCard`/`DraftRow` und `RisConsultationCard`/`RisConsultationRow` ihre
+  Form; geteilt ist nur die **Reihenfolge**.
+- **Der Erklärkasten steht in der Liste**, nicht mehr auf einer eigenen
+  Seite: zwei Arten von Zeilen, und nur zu einer gibt es Stellungnahmen.
+- **Die Periode ist auf der RIS-Hälfte die schwächere Aussage** — diese
+  Sätze tragen gar keine GP, ihre wird aus dem Beginn im Fensterbereich
+  abgeleitet (`gpWindow`). Das steht weiterhin dabei.
+
+**Eine Reihenfolge, nicht zwei** (`shared/utils/draftOrder.ts`). Die
+RIS-Sortierung war von Anfang an „deliberately the SAME order `/api/drafts`
+produces" — als Konvention, die jemand von Hand einhält. Jetzt ist es
+buchstäblich dieselbe Funktion, `compareDrafts`, und `sortConsultations`
+delegiert dorthin. Der Grund ist nicht Ästhetik: die Seite mischt die
+Ergebnisse **zweier** Endpunkte im Client, und eine zweite Implementierung
+würde die gemischte Liste anders sortieren als die Endpunkte, die sie
+füllen — sichtbar als Zeilen, die zu springen scheinen, sobald ein Filter
+auf eine Art einschränkt. Genau das prüft `tests/draftOrder.test.ts`: die
+Reihenfolge der ME-Zeilen innerhalb der gemischten Liste muss ihrer
+Reihenfolge allein gleichen.
+
+**Geprüft am 17.09.2026**, gegen die beiden Endpunkte gerechnet und mit der
+gerenderten Seite verglichen: acht offene Sätze der GP XXVIII erscheinen als
+VO, ME, VO, ME, ME, VO, ME, VO — nach Frist verschränkt, und die vier mit
+Frist 16.10. alphabetisch über beide Arten hinweg. Die DOM-Reihenfolge
+entspricht `compareDrafts` exakt.
+
+**Offen geblieben, bewusst:** die Startseite trägt weiterhin **zwei**
+Abschnitte „Jetzt in Begutachtung". Ob die zusammenfallen, ist eine eigene
+Frage — sie ändert, was die Kachel darüber zählt, und die gehört mit der
+gemischten Liste vor Augen entschieden, nicht vorher geraten.
+
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. Tracked as E3 in `outreach/verfahrensfragen.md`. The inline web-form texts remain a sub-question of it, not a separate one. Nothing here blocks stage 1, which is metadata-only either way; it blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16.

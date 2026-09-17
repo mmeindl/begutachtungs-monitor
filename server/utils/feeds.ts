@@ -300,8 +300,10 @@ export function buildSitemap(
 ): string {
   const urls = [
     siteUrl,
+    // One list for both kinds since 17.09.2026 (docs/architecture.md
+    // §12.19); `/weitere-entwuerfe` 301s onto its filter and a sitemap must
+    // not advertise a redirect.
     `${siteUrl}/entwuerfe`,
-    `${siteUrl}/weitere-entwuerfe`,
     `${siteUrl}/so-funktionierts`,
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,

@@ -5,7 +5,8 @@ import type { RisConsultation } from '#shared/types'
  * Dense sibling of RisConsultationCard for md+ list contexts — one row in a
  * divide-y surface, Frist in a fixed-width right column so the values align
  * into a scannable countdown column. Mirrors DraftRow exactly, because
- * `/weitere-entwuerfe` and `/entwuerfe` are scanned the same way.
+ * both kinds of row sit in ONE list since 17.09.2026 and are scanned in
+ * one pass (docs/architecture.md §12.19).
  *
  * The type word sits where DraftRow puts the Geschäftszahl: first in the
  * meta line, since it is both the identifier-shaped thing and the fact a

@@ -10,6 +10,7 @@
  * Auto-imported; pure module so vitest can import it relatively.
  */
 import type { RisConsultation, RisConsultationKind } from '../types'
+import { compareDrafts } from './draftOrder'
 
 /** The type word on a card or row. Short — it sits in a meta line. */
 export const RIS_KIND_LABEL: Record<RisConsultationKind, string> = {
@@ -44,25 +45,15 @@ export const RIS_KIND_HINT: Record<RisConsultationKind, string> = {
 
 /**
  * Open first with the nearest Frist leading, then the ended ones most
- * recently first.
+ * recently first — `compareDrafts`, the one comparator both kinds of row
+ * use (`shared/utils/draftOrder.ts`).
  *
- * Deliberately the SAME order `/api/drafts` produces for the
- * Ministerialentwürfe: the two lists sit under one another on the homepage
- * and are scanned the same way, so a second ordering would only be a second
- * thing to learn. The acting reader's question is "which deadline ends
- * next?", so a closed item must never lead while something is open.
+ * It was always deliberately the SAME order `/api/drafts` produces, and
+ * since `/entwuerfe` became one list holding both kinds that is no longer a
+ * convention to keep by hand but the literal same function. A second
+ * implementation would sort the merged list differently from the endpoints
+ * that feed it.
  */
 export function sortConsultations(a: RisConsultation, b: RisConsultation): number {
-  if (a.active !== b.active) return a.active ? -1 : 1
-  if (a.active) {
-    if (a.deadline && b.deadline) {
-      return a.deadline.localeCompare(b.deadline) || a.title.localeCompare(b.title, 'de-AT')
-    }
-    // Open without a Frist carries no urgency — after the dated ones.
-    if (a.deadline !== b.deadline) return a.deadline ? -1 : 1
-    return (b.startedAt ?? '').localeCompare(a.startedAt ?? '')
-  }
-  const aEnd = a.deadline ?? a.startedAt ?? ''
-  const bEnd = b.deadline ?? b.startedAt ?? ''
-  return bEnd.localeCompare(aEnd) || a.title.localeCompare(b.title, 'de-AT')
+  return compareDrafts(a, b)
 }

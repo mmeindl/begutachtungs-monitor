@@ -152,8 +152,13 @@ describe('buildSitemap', () => {
 
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
-    expect(xml.match(/<loc>/g)).toHaveLength(7)
-    expect(xml).toContain(`<loc>${SITE}/weitere-entwuerfe</loc>`)
+    expect(xml.match(/<loc>/g)).toHaveLength(6)
+    // The list of the Begutachtungen without a Gegenstand is a filter on
+    // /entwuerfe since 17.09.2026, and `/weitere-entwuerfe` a 301 — a
+    // sitemap must not advertise a redirect. The DETAIL pages stay listed
+    // (the test below).
+    expect(xml).not.toContain(`<loc>${SITE}/weitere-entwuerfe</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/entwuerfe</loc>`)
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
     expect(xml.trimEnd().endsWith('</urlset>')).toBe(true)
   })

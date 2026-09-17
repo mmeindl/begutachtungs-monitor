@@ -238,10 +238,10 @@ const lastSyncLabel = computed(() =>
             Jetzt in Begutachtung: Verordnungen und weitere Entwürfe
           </h2>
           <NuxtLink
-            to="/weitere-entwuerfe"
+            to="/entwuerfe?art=verordnung"
             class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
           >
-            Alle weiteren Entwürfe →
+            Alle Verordnungsentwürfe →
           </NuxtLink>
         </div>
         <p class="mt-1 max-w-prose text-sm text-ink-secondary">
@@ -271,7 +271,7 @@ const lastSyncLabel = computed(() =>
         <p v-else class="mt-4 text-sm text-ink-muted">
           Diese Liste ist gerade nicht abrufbar –
           <NuxtLink
-            to="/weitere-entwuerfe"
+            to="/entwuerfe?art=verordnung"
             class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
           >noch einmal versuchen</NuxtLink>
           oder direkt im
