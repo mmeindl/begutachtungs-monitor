@@ -1,8 +1,28 @@
 {
-  "at": "2026-09-16T20:01:49.584Z",
+  "at": "2026-09-17T06:49:55.146Z",
   "gp": "XXVIII",
   "paths": {
     "xml": {
+      "BEGUT_5EC9F7AA_6595_404D_8FF9_9A21544D71F8": {
+        "cite": "Mehrstimmrechtsaktien-Gesetz",
+        "note": null,
+        "checked": 1,
+        "clean": 1,
+        "substantial": 0,
+        "substantialClean": 0,
+        "noLaw": 0,
+        "droppedPages": 0,
+        "ran": true,
+        "notRunReason": "das RIS Bundesrecht führt diese Paragraphen nicht; die gezeigten Änderungen tragen zu wenig Text für einen Abgleich; die Beilage zeigt an diesen Stellen keinen geltenden Text, der sich vergleichen ließe",
+        "verifiedParas": 0,
+        "withheldParas": 0,
+        "withheldStanding": 0,
+        "withheldAlreadyStanding": 0,
+        "withheldNotInDraft": 0,
+        "uncheckedParas": 3,
+        "rowsNoPara": 0,
+        "changeRowsNoPara": 0
+      },
       "BEGUT_E811DCEF_7477_4213_9E06_D51ABE13740A": {
         "cite": "Änderung des Audiovisuelle Mediend",
         "note": null,
@@ -1843,26 +1863,6 @@
         "rowsNoPara": 0,
         "changeRowsNoPara": 0
       },
-      "BEGUT_D950FF26_334B_4F46_8A63_DE7C634C272E": {
-        "cite": "Anpassungsgesetz an das Informatio",
-        "note": null,
-        "checked": 15,
-        "clean": 13,
-        "substantial": 15,
-        "substantialClean": 13,
-        "noLaw": 0,
-        "droppedPages": 0,
-        "ran": true,
-        "notRunReason": null,
-        "verifiedParas": 14,
-        "withheldParas": 1,
-        "withheldStanding": 1,
-        "withheldAlreadyStanding": 0,
-        "withheldNotInDraft": 0,
-        "uncheckedParas": 20,
-        "rowsNoPara": 8,
-        "changeRowsNoPara": 1
-      },
       "BEGUT_E6585697_A548_4BC8_B19B_B8B67F4DF628": {
         "cite": "Informationsfreiheits-Anpassungsge",
         "note": null,
@@ -2502,49 +2502,9 @@
         "uncheckedParas": 3,
         "rowsNoPara": 0,
         "changeRowsNoPara": 0
-      },
-      "BEGUT_883D1763_5311_464A_A8D7_9441D52F5ADE": {
-        "cite": "Eisenbahngesetznovelle",
-        "note": null,
-        "checked": 0,
-        "clean": 0,
-        "substantial": 0,
-        "substantialClean": 0,
-        "noLaw": 0,
-        "droppedPages": 0,
-        "ran": false,
-        "notRunReason": "im Entwurf steht keine Fundstelle im Bundesgesetzblatt, über die sich das geltende Recht auffinden ließe",
-        "verifiedParas": 0,
-        "withheldParas": 0,
-        "withheldStanding": 0,
-        "withheldAlreadyStanding": 0,
-        "withheldNotInDraft": 0,
-        "uncheckedParas": 54,
-        "rowsNoPara": 0,
-        "changeRowsNoPara": 0
       }
     },
     "pdf": {
-      "BEGUT_C3F4E0AD_D29E_4FC3_91E4_9F592784ABAE": {
-        "cite": "Verordnung, mit der die GAP-Strate",
-        "note": null,
-        "checked": 28,
-        "clean": 21,
-        "substantial": 28,
-        "substantialClean": 21,
-        "noLaw": 0,
-        "droppedPages": 0,
-        "ran": true,
-        "notRunReason": null,
-        "verifiedParas": 24,
-        "withheldParas": 4,
-        "withheldStanding": 4,
-        "withheldAlreadyStanding": 0,
-        "withheldNotInDraft": 0,
-        "uncheckedParas": 4,
-        "rowsNoPara": 0,
-        "changeRowsNoPara": 0
-      },
       "BEGUT_DAF4CB6C_C4C7_4B39_A5CD_6E8EAA3464EC": {
         "cite": "Änderung Bilanzbuchhaltungsgesetz ",
         "note": null,

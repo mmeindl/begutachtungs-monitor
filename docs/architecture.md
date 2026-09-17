@@ -2668,6 +2668,20 @@ eine Verschiebung durch unseren eigenen Code und alles an neuen Entwürfen. Die
 andere Frage — hat das RIS rückwirkend etwas angefasst — braucht einen Lauf
 ohne Cache und ist Handarbeit, kein Wochenjob.
 
+**Die Grundlinie altert auch von selbst.** Das Fenster wandert: schon zwischen
+der ersten lokalen Messung und dem ersten CI-Lauf, keine Stunde später, war
+ein Entwurf neu im Korpus (Mehrstimmrechtsaktien-Gesetz) und drei alte waren
+unten herausgefallen. Für einen Entwurf, den die Grundlinie nicht kennt, gilt
+nur Klasse A — die Deckung von Klasse B sinkt also ohne Zutun. Deshalb wird
+die Grundlinie nicht nur bei einer Änderung nachgezogen, sondern auch dann und
+wann ohne Anlass, aus den Berichten eines sauberen Laufs (sie hängen als
+Artefakt `annex-reports` an jedem Lauf).
+
+Nicht gebaut, und zwar bewusst: der Workflow könnte die Grundlinie bei einem
+sauberen Lauf selbst fortschreiben. Das wäre ein Schreibrecht mehr im CI, und
+vor allem könnte eine Grundlinie, die sich selbst nachzieht, genau die
+Verschiebung aufsaugen, für deren Entdeckung sie da ist.
+
 Die Regel dazu, ohne Ausnahme: **die Grundlinie wird im selben Commit
 nachgezogen wie die Änderung, die sie bewegt**
 (`annex-drift.ts --grundlinie-schreiben=…`). Sonst ist der nächste Lauf ein
