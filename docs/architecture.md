@@ -198,6 +198,7 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 | `StageBar` | `arrivedAt; deadline; active; enactment; gpEnded?` | The ME→RV→BGBl track, dates/citations on reached stations; unreached ones carry a state word — `ausstehend` while the Frist runs, `bisher keine` after it, `keine – GP beendet` once the draft's Gesetzgebungsperiode is over (§12.10). State is always in text, never in dot fill alone |
 | `VolumeBar` | `label: string; value: number; max: number; href?: string` | Single-color horizontal quantity bar: track `accent-wash`, fill `accent`, 8 px tall, 4 px rounded on the right/square on the left, value at the end in ink (never in the data color), `tabular-nums` in the value column |
 | `MinistryBadge` | `code: string; name: string` | Ministry chip (code visible, full name as `title`/sr-only) |
+| `NewBadge` | – | „Neu" on a Begutachtung that began inside the last 7 days (`isNewArrival`); rendered by the call site's `v-if`, merges into the phrase that follows it on the cards (§12.22) |
 | `DraftCard` | `draft: DraftSummary` | Linked row card: title (2-line clamp), ministry, DeadlineBadge, statement count, arrival date |
 | `TraceTimeline` | `steps: TraceStep[]` | Vertical process timeline: date, text, link chips |
 | `DocumentList` | `documents: DraftDocument[]; source?: string` | Document rows: title + hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons and chips act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
@@ -3555,6 +3556,40 @@ Quelle (offene Forschungsfrage, `CLAUDE.md`); eine reine Erfolgsliste
 und beide Richtungen stehen schon in zwei Abschnitten nebeneinander;
 eine Umschaltung zwischen „nach Beteiligung" und „zuletzt" würde die
 Hälfte der Belege hinter einen Klick legen.
+
+
+### 12.22 „Was ist neu" — eine Marke auf der Zeile, keine eigene Liste
+
+Die Startseite beantwortete die zweithäufigste Frage einer
+wiederkehrenden Leserin nicht: *was ist seit meinem letzten Besuch
+dazugekommen?* Die Liste steht nach Frist, nicht nach Einlangen, und sie
+ist bei 6 Zeilen gedeckelt — ein Entwurf, der heute mit sechswöchiger
+Frist einlangt, sortiert hinter alles, was diese Woche endet.
+
+**Keine zweite Liste.** Ihre Zeilen wären dieselben, die die offene Liste
+schon zeigt; „Neu eingelangt" als eigener Abschnitt zeigte dieselbe
+Karte zweimal auf einer Seite. Die Marke reist stattdessen mit der Zeile
+und wirkt damit in jeder Liste, die eine rendert — Karte wie dichte
+Zeile, Startseite wie `/entwuerfe`.
+
+**Sieben Tage, und was das trifft.** Gemessen am 17.09.2026 über
+2025-01-01 → heute: im Median tragen **3 der offenen Zeilen** die Marke
+(p90 8, max 24) — auffindbare Minderheit einer Liste, die typischerweise
+13 Zeilen lang ist.
+
+**Und die Messung sagt zugleich, wo sie NICHT hilft:** von den 6
+sichtbaren Startseiten-Zeilen trägt sie im Median **0** (p90 2, max 5),
+eben weil neue Entwürfe mit langer Frist unter den Deckel rutschen. Am
+17.09.2026 ist genau das zu sehen — 135/ME und 134/ME sind oben markiert,
+136/ME (am selben Tag eingelangt) steht erst auf `/entwuerfe`. Die Marke
+macht die Neuzugänge *auffindbar, wo alle Zeilen stehen*; den Deckel hebt
+sie nicht auf. Das wäre ein Sortier- oder Filterkriterium „zuletzt
+dazugekommen" auf `/entwuerfe` — eigener Schritt, und erst dann lohnt
+auch ein Zeiger von der Startseite dorthin.
+
+**Nicht gebaut:** keine Zählzeile „3 neu diese Woche" über oder unter der
+Liste. Das ist die Zahl im Fließtext, die §12.20 gerade abgeschafft hat —
+die Marke steht bei dem, was sie meint.
 
 
 ## 13. Open questions

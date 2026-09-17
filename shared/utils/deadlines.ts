@@ -10,6 +10,32 @@ export const DEADLINE_CRITICAL_DAYS = 3
 /** Deadline ends in ≤ N days → serious (orange badge tone, dashboard count). */
 export const DEADLINE_SERIOUS_DAYS = 7
 
+/**
+ * Begonnen vor ≤ N Tagen → „Neu" auf der Zeile.
+ *
+ * Sieben Tage, für die Leserin, die einmal pro Woche nachsieht — dieselbe
+ * Woche, die auch die Fristwarnung meint. Gemessen am 17.09.2026 über
+ * 2025-01-01 → heute: im Median tragen 3 der offenen Zeilen die Marke (p90
+ * 8, max 24). In einer Liste, die typischerweise 13 Zeilen lang ist, ist
+ * das eine auffindbare Minderheit und keine Fahnenspalte.
+ */
+export const NEW_ARRIVAL_DAYS = 7
+
+/**
+ * Whether a still-running Begutachtung began inside that window.
+ *
+ * `active` is part of the question, not a caller's concern: "neu" on a
+ * closed Verfahren would mark the one thing nobody can act on any more.
+ */
+export function isNewArrival(
+  startedAt: string | null | undefined,
+  active: boolean,
+): boolean {
+  if (!active) return false
+  const days = daysUntil(startedAt)
+  return days !== null && days <= 0 && days >= -NEW_ARRIVAL_DAYS
+}
+
 export type DeadlineTone = 'critical' | 'serious' | 'neutral' | 'inactive'
 
 /**

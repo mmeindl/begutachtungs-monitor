@@ -61,6 +61,9 @@ const debateName = (c: DraftSummary) => aliasesFor(c.gp, c.inr)[0] ?? null
           :name="draft.ministryName"
         />
         <span aria-hidden="true">·</span>
+        <!-- Reads as one phrase with the line that follows it: "Neu in
+             Begutachtung seit 17.09.2026". -->
+        <NewBadge v-if="isNewArrival(draft.arrivedAt, draft.active)" />
         <span>in Begutachtung seit {{ formatDateDe(draft.arrivedAt) }}</span>
         <!-- Weight-based emphasis: 786 Stellungnahmen must look different
              from 3 — the count is the news signal on a card. Omitted under

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   deadlineTone,
   fristDivergence,
+  isNewArrival,
+  NEW_ARRIVAL_DAYS,
   noRvVerdictDe,
   RV_LATENCY_CONTEXT_DAYS,
 } from '../shared/utils/deadlines'
@@ -90,5 +92,26 @@ describe('fristDivergence', () => {
 
   it('survives an unmatched RIS row without a link', () => {
     expect(fristDivergence({ ...ris, risUrl: null }, true)?.url).toBeNull()
+  })
+})
+
+describe('isNewArrival', () => {
+  it('marks a Begutachtung that began inside the window, including today', () => {
+    expect(isNewArrival(daysAgo(0), true)).toBe(true)
+    expect(isNewArrival(daysAgo(NEW_ARRIVAL_DAYS), true)).toBe(true)
+  })
+
+  it('stops at the boundary', () => {
+    expect(isNewArrival(daysAgo(NEW_ARRIVAL_DAYS + 1), true)).toBe(false)
+  })
+
+  it('never marks a closed Verfahren — "neu" on what nobody can act on', () => {
+    expect(isNewArrival(daysAgo(1), false)).toBe(false)
+  })
+
+  it('says no where upstream ships no start date, and for a future one', () => {
+    expect(isNewArrival(null, true)).toBe(false)
+    expect(isNewArrival(undefined, true)).toBe(false)
+    expect(isNewArrival(daysAgo(-3), true)).toBe(false)
   })
 })

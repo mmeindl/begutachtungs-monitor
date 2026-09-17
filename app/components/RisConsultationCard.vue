@@ -51,6 +51,7 @@ defineProps<{ consultation: RisConsultation }>()
           :name="consultation.ministryName"
         />
         <span v-if="consultation.ministryCode" aria-hidden="true">·</span>
+        <NewBadge v-if="isNewArrival(consultation.startedAt, consultation.active)" />
         <span v-if="consultation.startedAt">
           in Begutachtung seit {{ formatDateDe(consultation.startedAt) }}
         </span>

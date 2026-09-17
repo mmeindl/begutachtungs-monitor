@@ -43,6 +43,10 @@ const debateName = (c: DraftSummary) => aliasesFor(c.gp, c.inr)[0] ?? null
           <span aria-hidden="true">·</span>
           <span class="text-ink">„{{ debateName(draft) }}“</span>
         </template>
+        <template v-if="isNewArrival(draft.arrivedAt, draft.active)">
+          <span aria-hidden="true">·</span>
+          <NewBadge />
+        </template>
         <span aria-hidden="true">·</span>
         <span>
           <span class="font-semibold tabular-nums text-ink">{{

@@ -31,6 +31,7 @@ defineProps<{ consultation: RisConsultation }>()
         <span class="text-ink">{{ RIS_KIND_LABEL[consultation.kind] }}</span>
         <template v-if="consultation.startedAt">
           <span aria-hidden="true">·</span>
+          <NewBadge v-if="isNewArrival(consultation.startedAt, consultation.active)" />
           <span>seit {{ formatDateDe(consultation.startedAt) }}</span>
         </template>
       </p>
