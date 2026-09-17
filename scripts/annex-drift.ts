@@ -22,7 +22,7 @@
  *   annex-drift.ts --grundlinie-schreiben=g.json bericht.json … — neu ziehen
  */
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
-import { classAFindings, classBFindings, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from './annex-report'
+import { classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from './annex-report'
 
 const arg = (name: string): string | null => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null
 const paths = process.argv.slice(2).filter((a) => !a.startsWith('--') && a.endsWith('.json'))
@@ -76,6 +76,19 @@ for (const report of reports) {
   lines.push(`## ${label}`)
   if (findings.length === 0) lines.push('Ohne Befund.')
   else for (const f of findings) lines.push(`- **${f.kind}**${f.draft ? ` · \`${f.draft}\`` : ''}: ${f.text}`)
+  lines.push('')
+}
+
+// Einmal je Lauf, nicht je Bericht: die Grundlinie ist eine Datei für beide
+// Pfade. Zählt in `total` mit, also öffnet eine überalterte Grundlinie ein
+// Issue und schickt eine Mail — eine Erinnerung, die vom Erinnern abhängt,
+// ist keine.
+const upkeep = maintenanceFindings(baseline)
+if (upkeep.length > 0) {
+  total += upkeep.length
+  all.push(...upkeep)
+  lines.push('## Wartung')
+  for (const f of upkeep) lines.push(`- **${f.kind}**: ${f.text}`)
   lines.push('')
 }
 

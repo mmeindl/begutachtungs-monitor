@@ -94,8 +94,11 @@ export interface Finding {
    * wie ein Befund).
    * `grundlinie` — Klasse B: ein Entwurf, den wir schon einmal gemessen
    * haben, misst sich heute anders.
+   * `wartung` — nichts ist kaputt, aber etwas will von Hand nachgezogen
+   * werden. Steht hier, weil eine Erinnerung, die vom Erinnern abhängt,
+   * keine ist.
    */
-  kind: 'zusicherung' | 'form' | 'messung' | 'grundlinie'
+  kind: 'zusicherung' | 'form' | 'messung' | 'grundlinie' | 'wartung'
   /** Der Entwurf, oder null für eine Aussage über den ganzen Lauf */
   draft: string | null
   text: string
@@ -177,6 +180,7 @@ export function summarize(findings: readonly Finding[]): string {
   const parts: string[] = []
   if (by('messung')) parts.push(`${by('messung')}× Messung`)
   if (by('grundlinie')) parts.push(`${by('grundlinie')}× Grundlinie`)
+  if (by('wartung')) parts.push(`${by('wartung')}× Wartung`)
   if (by('zusicherung')) parts.push(`${by('zusicherung')}× Zusicherung`)
   if (by('form')) parts.push(`${by('form')}× Gestalt`)
   return parts.join(', ')
@@ -288,4 +292,52 @@ export function classBFindings(report: AnnexReport, baseline: AnnexBaseline): Fi
     }
   }
   return out
+}
+
+/**
+ * Wie alt die Grundlinie werden darf, bevor der Alarm sie selbst anmahnt.
+ *
+ * Die Grundlinie altert ohne Zutun: das Fenster der 400 jüngsten Datensätze
+ * wandert, neue Entwürfe kommen dazu, und für jeden, den die Grundlinie nicht
+ * kennt, gilt nur Klasse A. Die Deckung von Klasse B sinkt also von selbst,
+ * und zwar lautlos — der Alarm bliebe grün, während er immer weniger prüft.
+ *
+ * 60 Tage, aus zwei Gründen: in dieser Zeit rotieren nach der bisherigen
+ * Frequenz einige Dutzend Datensätze durch das Fenster, und es ist dieselbe
+ * Frist, nach der GitHub geplante Workflows in einem stillen Repository
+ * abschaltet (`uptime.yml`) — zwei Wartungsfristen mit einer Zahl sind
+ * leichter zu behalten als zwei.
+ *
+ * Nachgezogen wird von Hand, nicht vom Workflow: eine Grundlinie, die sich
+ * selbst fortschreibt, könnte genau die Verschiebung aufsaugen, für deren
+ * Entdeckung sie da ist (§12.13).
+ */
+export const MAX_BASELINE_AGE_DAYS = 60
+
+/**
+ * Was von Hand nachzuziehen ist — heute genau eine Sache.
+ *
+ * Wird einmal je Lauf aufgerufen und nicht je Bericht: die Grundlinie ist
+ * eine Datei für beide Pfade, und zweimal dieselbe Mahnung ist Rauschen.
+ * `now` ist ein Parameter, damit der Test nicht warten muss.
+ */
+export function maintenanceFindings(baseline: AnnexBaseline | null, now: Date = new Date()): Finding[] {
+  if (!baseline) return []
+  const at = Date.parse(baseline.at)
+  if (Number.isNaN(at)) {
+    return [{ kind: 'wartung', draft: null, text: `Die Grundlinie trägt kein lesbares Datum (\`at\`: ${JSON.stringify(baseline.at)}), ihr Alter ist also nicht zu beurteilen.` }]
+  }
+  const days = Math.floor((now.getTime() - at) / 86_400_000)
+  if (days < MAX_BASELINE_AGE_DAYS) return []
+  const n = (p: 'xml' | 'pdf') => Object.keys(baseline.paths[p] ?? {}).length
+  return [{
+    kind: 'wartung',
+    draft: null,
+    text:
+      `Die Grundlinie ist ${days} Tage alt (gezogen am ${baseline.at.slice(0, 10)}, Schwelle ${MAX_BASELINE_AGE_DAYS} Tage, ${n('xml')} + ${n('pdf')} Entwürfe). `
+      + 'Seither sind Entwürfe in das Fenster der 400 jüngsten gekommen, die Klasse B nicht kennt — für die gilt nur Klasse A. '
+      + 'Nachziehen aus den Berichten dieses Laufs (Artefakt `annex-reports`): '
+      + '`npx vite-node scripts/annex-drift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`, '
+      + 'dann committen. Nichts ist kaputt; ungenutzt wird der Alarm nur blinder.',
+  }]
 }

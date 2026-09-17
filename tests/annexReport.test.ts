@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, summarize, toBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/annex-report'
+import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/annex-report'
 
 /**
  * Der Alarm selbst, gegen erfundene Berichte.
@@ -188,5 +188,50 @@ describe('Klasse B: der Entwurf, den wir schon einmal gemessen haben', () => {
     const both = toBaseline([before, { ...before, path: 'pdf' }])
     expect(Object.keys(both.paths.xml).length).toBe(Object.keys(both.paths.pdf).length)
     expect(both.paths.xml['BEGUT_A']).toMatchObject({ cite: 'A/ME', verifiedParas: 10 })
+  })
+})
+
+describe('Wartung: die Grundlinie mahnt sich selbst an', () => {
+  const baseline = (at: string) => ({ ...toBaseline([report([sound({ id: 'BEGUT_A' })])]), at })
+  const day = (n: number) => new Date(Date.UTC(2026, 8, 17) + n * 86_400_000)
+  const on = (ageDays: number) => maintenanceFindings(baseline(day(-ageDays).toISOString()), day(0))
+
+  it('schweigt, solange die Grundlinie frisch ist', () => {
+    expect(on(0)).toEqual([])
+    expect(on(MAX_BASELINE_AGE_DAYS - 1)).toEqual([])
+  })
+
+  it('mahnt an der Schwelle, nicht erst danach', () => {
+    const found = on(MAX_BASELINE_AGE_DAYS)
+    expect(found).toHaveLength(1)
+    expect(found[0]).toMatchObject({ kind: 'wartung', draft: null })
+  })
+
+  it('nennt das Alter und den Befehl, mit dem es zu beheben ist', () => {
+    const text = on(90)[0]!.text
+    expect(text).toContain('90 Tage alt')
+    expect(text).toContain('--grundlinie-schreiben=tests/fixtures/annex-baseline.json')
+    // Keine Panik: nichts ist kaputt, nur ungenutzt.
+    expect(text).toContain('Nichts ist kaputt')
+  })
+
+  it('mahnt nur einmal, nicht je Pfad', () => {
+    // Die Grundlinie ist EINE Datei für beide Pfade.
+    expect(on(90)).toHaveLength(1)
+  })
+
+  it('meldet eine Grundlinie ohne lesbares Datum', () => {
+    const found = maintenanceFindings(baseline('irgendwann'), day(0))
+    expect(found).toHaveLength(1)
+    expect(found[0]!.text).toContain('kein lesbares Datum')
+  })
+
+  it('verlangt ohne Grundlinie keine Wartung', () => {
+    // Ohne `--grundlinie` prüft Klasse B nichts; das sagt der Lauf separat.
+    expect(maintenanceFindings(null, day(0))).toEqual([])
+  })
+
+  it('zählt in der Zusammenfassung als eigene Klasse', () => {
+    expect(summarize(on(90))).toBe('1× Wartung')
   })
 })
