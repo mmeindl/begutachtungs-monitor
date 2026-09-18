@@ -232,22 +232,18 @@ const lastSyncLabel = computed(() =>
       <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
         Was passiert in der Begutachtung – und was wird daraus?
       </h1>
-      <!-- The second sentence links to the section that keeps it. Until
-           17.09.2026 the only pointer to the accountability layer above the
-           fold was a stat tile's hint ("Was wurde daraus? ↓"); with the
-           tiles gone the promise itself carries it, which is the better
-           place for it anyway — and it is a fixed string, not a number that
-           has to be read to be found. Since 18.09. it lands on the ranked
-           section, the first of the two: it is the one where all three
-           states are on screen at once, with the participation that was
-           spent on them beside each. -->
+      <!-- NO LINK in this sentence, since 18.09.2026. It carried an anchor
+           to the accountability section, inherited from the stat tile's
+           "Was wurde daraus? ↓" that had been the only pointer above the
+           fold. Two reasons it goes: a promise is not navigation — underlined
+           in the middle of the lede, "Regierungsvorlage, Bundesgesetzblatt"
+           reads as a glossary link to a definition that does not exist — and
+           the reorder took the distance away that an anchor was saving. The
+           sentence still makes the promise; the sections below keep it. -->
       <p class="mt-3 text-ink-secondary">
         Alle laufenden Begutachtungen österreichischer Gesetzesentwürfe:
         Fristen und Stellungnahmen auf einen Blick. Und für jeden Entwurf
-        <a
-          href="#ranked-heading"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts</a>.
+        danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts.
       </p>
     </header>
 
@@ -415,7 +411,7 @@ const lastSyncLabel = computed(() =>
            Punktestand. -->
       <section
         v-if="rankedRows.length"
-        class="page-section scroll-mt-6"
+        class="page-section"
         aria-labelledby="ranked-heading"
       >
         <h2 id="ranked-heading" class="section-heading">
