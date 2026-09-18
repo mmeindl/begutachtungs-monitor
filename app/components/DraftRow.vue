@@ -61,9 +61,20 @@ const debateName = (c: DraftSummary) => aliasesFor(c.gp, c.inr)[0] ?? null
       :name="draft.ministryName"
       class="shrink-0"
     />
-    <!-- Fixed column width aligns the countdown down the list. -->
-    <div class="w-40 shrink-0 text-right">
+    <!-- Fixed column width aligns the countdown down the list — and, once
+         a Frist is over, the station that answers what became of it
+         (§12.26). One column, one question at a time: while the Frist runs
+         it is „bis wann", afterwards „was ist daraus geworden". -->
+    <div class="w-44 shrink-0 text-right">
+      <StationBlock
+        v-if="!draft.active && draft.chain"
+        :chain="draft.chain"
+        :deadline="draft.deadline"
+        dense
+        class="inline-block"
+      />
       <DeadlineBlock
+        v-else
         :deadline="draft.deadline"
         :active="draft.active"
         class="inline-block"

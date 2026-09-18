@@ -12,14 +12,25 @@
  * because the data really is two halves and that is not a layout choice.
  * Never `/api/weitere-…`: „weiter als was" was the word's whole problem.
  */
-import type { DraftStatus, RisConsultationKind, RisConsultationsResponse } from '#shared/types'
+import type {
+  DraftStation,
+  DraftStatus,
+  RisConsultationKind,
+  RisConsultationsResponse,
+} from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
 
 const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
 const KIND_VALUES: RisConsultationKind[] = ['verordnung', 'gesetz', 'unbestimmt']
+const STATION_VALUES: DraftStation[] = ['begutachtung', 'rv', 'parlament', 'bgbl']
 
 export default defineEventHandler(async (event): Promise<RisConsultationsResponse> => {
   const query = getQuery(event)
+
+  const stations = (firstQueryValue(query.station) ?? '')
+    .split(',')
+    .map((v) => v.trim().toLowerCase())
+    .filter((v): v is DraftStation => (STATION_VALUES as readonly string[]).includes(v))
 
   const gpParam = firstQueryValue(query.gp)?.toUpperCase()
   if (gpParam !== undefined && !GP_RE.test(gpParam)) {
@@ -63,7 +74,26 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
     .map(([code, name]) => ({ code, name }))
     .sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
 
+  /* Diese Hälfte steht bei der Begutachtung und kommt nie weiter: kein
+   * Gegenstand im Parlament, also nie eine Regierungsvorlage (§12.16).
+   *
+   * Sie war einen Nachmittag lang aus der Stationsachse GANZ draußen, weil
+   * der Chip „Begutachtung" sonst 245 Zeilen zeigt, davon 198
+   * Verordnungsentwürfe. Das war die falsche Abhilfe gegen eine richtige
+   * Beobachtung: die Zahl ist der Korpus, kein Fehler — und der Preis war
+   * hoch. „Begutachtung + Stellungnahme möglich" zeigte 4 statt 7 Zeilen,
+   * drei laufende Verordnungs-Begutachtungen verschwanden, und der Link der
+   * Startseite („Alle 7 offenen Entwürfe") führte auf eine Liste mit 4.
+   *
+   * Also: unter `begutachtung` gehören sie dazu, weil sie dort stehen. Aus
+   * den SPÄTEREN Stationen sind sie draußen, weil sie sie nicht erreichen
+   * können — das ist keine Auswahl, das ist das Verfahren. Wer nur die eine
+   * Sorte will, hat den Art-Filter daneben, und die Zählzeile nennt beide
+   * Hälften einzeln. */
+  const wantsBegutachtung = !stations.length || stations.includes('begutachtung')
+
   const filtered = items.filter((item) => {
+    if (!wantsBegutachtung) return false
     if (status === 'open' && !item.active) return false
     if (status === 'closed' && item.active) return false
     if (art && item.kind !== art) return false

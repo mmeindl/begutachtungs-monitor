@@ -8,7 +8,15 @@
 # §12.16). It reads the same corpus the first call warms, so it adds no
 # upstream traffic — but it has its own 30-minute derived cache, and that
 # section is a correction to a claim the page makes, so it must not be the
-# one part of the start page that arrives cold.
+# one part of the start page that arrives cold. (Its path followed the
+# rename to /api/ris-drafts on 2026-09-18 — §12.19.)
+#
+# Third call since 2026-09-18: the station map behind the station filter
+# (§12.26). This is the expensive one — 227 upstream requests for GP XXVIII,
+# 650 for XXVII, 35.6 s cold — and the only one that MUST run here: the list
+# reads the map under a 2.5 s budget and simply answers without stations when
+# it is cold, so a map nobody warms is a filter nobody sees. --max-time 900
+# rather than 600 because the timer may fire on a period twice that size.
 [Unit]
 Description=Begutachtungs-Monitor: warm the RIS↔ME map of the current GP
 After=begutachtungs-monitor.service
@@ -17,4 +25,5 @@ Requires=begutachtungs-monitor.service
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell
-ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/weitere-entwuerfe?status=open"
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell

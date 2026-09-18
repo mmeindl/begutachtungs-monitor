@@ -12,7 +12,7 @@
  */
 import type { DraftSummary, RisConsultation } from '../../shared/types'
 import { countLabelDe, formatDateDe } from '../../shared/utils/format'
-import { RIS_KIND_LABEL } from '../../shared/utils/risConsultations'
+import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
 
 /** Draft page URL inside the monitor. */
 function pageUrl(siteUrl: string, item: DraftSummary): string {
@@ -117,7 +117,7 @@ function risEntry(siteUrl: string, item: RisConsultation): FeedEntry {
     meta: [
       item.ministryName,
       item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist',
-      'ohne Gegenstand im Parlament',
+      risFilingNote(item.active),
     ].join(' · '),
     publishedAt: item.startedAt ?? '',
     deadline: item.deadline,
@@ -125,7 +125,7 @@ function risEntry(siteUrl: string, item: RisConsultation): FeedEntry {
     // The ministry AND the reason there is no parliament page: a calendar
     // entry is often read without the page behind it, and "send it where?"
     // is the only open question these procedures leave.
-    calendarDescription: `${item.ministryName} – Stellungnahme direkt an das Ressort`,
+    calendarDescription: `${item.ministryName} – ${risFilingNote(item.active)}`,
     tieBreak: item.id,
   }
 }

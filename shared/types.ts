@@ -28,6 +28,42 @@ export interface DraftSummary {
   statementCount: number
   /** Absolute URL of the parlament.gv.at detail page */
   parliamentUrl: string
+  /**
+   * Where the draft stands, when the station map was readable — absent
+   * means "we could not look", never "nothing happened". The list says
+   * which of the two it is rather than rendering a silent `begutachtung`
+   * over a corpus it failed to resolve.
+   */
+  chain?: DraftChain
+}
+
+/**
+ * Where a draft stands now — the detail page's stations
+ * (`shared/utils/stations.ts`) minus `entwurf`, which is a document, not a
+ * place the procedure can be at. One vocabulary for the spine and the list
+ * filter (docs/architecture.md §12.26).
+ */
+export type DraftStation = 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
+
+/**
+ * Whether a Gesetzgebungsperiode's ME→RV links are in the archive at all,
+ * and therefore whether absence of a Vorlage carries any meaning there
+ * (`shared/utils/draftChain.ts`, docs/architecture.md §12.27). `unknown`
+ * is treated as `unlinked` at every point where a claim would be made.
+ */
+export type ChainCoverage = 'linked' | 'unlinked' | 'unknown'
+
+/** What the stage record says became of a draft. Every field is a fact read
+ *  upstream, never an inference: no Vorlage means the stage record names
+ *  none, which is not the same as "the draft failed". */
+export interface DraftChain {
+  station: DraftStation
+  /** e.g. "594 d.B."; null while the draft is still at its Begutachtung. */
+  rvCitation: string | null
+  /** e.g. "Bundesgesetzblatt I Nr. 81/2026"; null until promulgated. */
+  bgblNumber: string | null
+  /** Stellungnahmen can still be filed on the Vorlage — the zweite Runde. */
+  filingOpen: boolean
 }
 
 export interface DocumentFormat {
@@ -176,7 +212,7 @@ export interface EnactmentInfo {
       against the draft. Null when upstream ships no text for it. */
   rvTextUrl: string | null
   /** Date of the stage carrying the RV link — the RV station's date in the
-      StageBar. Null when that stage is undated. */
+      SpineRail. Null when that stage is undated. */
   rvDate: string | null
   /** Earlier Regierungsvorlagen from the same draft. ME→RV is 1:n and the
       split is real (4 of 132 in the XXVIII corpus, e.g. 74/ME → 443 + 444
@@ -214,7 +250,7 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
   invitedBy: string | null
   documents: DraftDocument[]
   /** The complete upstream stage record. Kept as raw material (accountability
-      layer, history snapshots); the UI renders it condensed into the StageBar
+      layer, history snapshots); the UI renders it condensed into the SpineRail
       and `handoff` rather than as a second timeline. */
   trace: TraceStep[]
   handoff: Handoff | null
@@ -239,6 +275,11 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
       B-VG); null while it runs, or when the boundary predates the table
       in shared/utils/gp.ts (before GP XX). */
   gpEndedOn: string | null
+  /** Whether this GP's ME→RV links exist at all — the gate on every "no
+      Regierungsvorlage" statement this page would otherwise make
+      (docs/architecture.md §12.27). Enrichment, so `unknown` is the
+      answer whenever the station map was not there to ask. */
+  chainCoverage: ChainCoverage
   /** Earlier same-title draft that produced NO Regierungsvorlage — the
       "second attempt" context on the later draft's page. Null otherwise: a
       routine repeat amendment of a law that did pass is not a relation
@@ -313,6 +354,20 @@ export interface DraftsResponse {
   availableGps: string[]
   /** Distinct ministries present in the requested GP (for the filter UI) */
   ministries: { code: string; name: string }[]
+  /**
+   * Whether the station map could be read for this period. False means the
+   * rows carry no `chain` and a station filter was NOT applied — the list
+   * says so instead of showing an unfiltered list under an active filter.
+   */
+  stationsAvailable: boolean
+  /**
+   * Whether this period's ME→RV links are in the archive at all. `unlinked`
+   * means the rows deliberately carry no `chain` although the map was read
+   * fine: not one draft of the period links to a Vorlage, so a station on
+   * every row would have read as "all of them shelved" — a claim list 101
+   * contradicts (docs/architecture.md §12.27).
+   */
+  chainCoverage: ChainCoverage
 }
 
 export interface DashboardPayload {
@@ -327,8 +382,6 @@ export interface DashboardPayload {
   }
   /** Top 5 of the GP by statement count, descending */
   topByStatements: DraftSummary[]
-  /** Upstream lastSync, normalized to ISO-8601 server-side; null if absent */
-  lastSync: string | null
 }
 
 /** One recently closed consultation with its resolved chain state.

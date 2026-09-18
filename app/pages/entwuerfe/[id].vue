@@ -14,7 +14,7 @@ import { RIS_ID_RE } from '#shared/utils/risConsultations'
  * data. The difference is real and stays visible — in the page, not in the
  * path (docs/architecture.md §12.19).
  *
- * WHAT THIS PAGE DELIBERATELY DOES NOT HAVE: the StageBar, the Stellungnahmen
+ * WHAT THIS PAGE DELIBERATELY DOES NOT HAVE: the Stationenleiste, the Stellungnahmen
  * panel, the submitter counts, the ME→RV comparison. Not one of them is
  * "missing" in the sense of not built yet — they cannot exist here, because
  * every one of them is fed by a parliamentary Gegenstand and there is none.
@@ -76,7 +76,7 @@ const documents = computed(() => {
     toDocument(
       'Erläuterungen',
       d.explanations,
-      'Die Begründung des Ressorts – der Allgemeine Teil sagt, was der Entwurf überhaupt soll',
+      'Die Begründung des Ministeriums – der Allgemeine Teil sagt, was der Entwurf überhaupt soll',
     ),
     toDocument('Entwurfstext', d.mainDocument, 'Der Entwurf selbst'),
     toDocument(
@@ -124,7 +124,7 @@ const documents = computed(() => {
           <NuxtLink
             v-if="data.ministryCode"
             :to="`/entwuerfe?art=verordnung&ministry=${data.ministryCode}`"
-            :aria-label="`Alle Verordnungsentwürfe des Ressorts ${data.ministryName} anzeigen`"
+            :aria-label="`Alle Verordnungsentwürfe des Ministeriums ${data.ministryName} anzeigen`"
             class="tap-target rounded"
           >
             <MinistryBadge
@@ -188,21 +188,37 @@ const documents = computed(() => {
             <template v-if="data.startedAt">
               In Begutachtung seit {{ formatDateDe(data.startedAt) }}<template v-if="data.deadline">, Frist bis {{ formatDateWeekdayDe(data.deadline) }}</template>.
             </template>
-            {{ RIS_KIND_HINT[data.kind] }}
-          </p>
-          <!-- What the monitor can and cannot follow from here, said once
-               and plainly, instead of five sections rendered empty. The
-               distinction matters: the participation half is structurally
-               unavailable, the outcome half merely is not built yet, and
-               collapsing the two would claim the procedure ends here. -->
-          <p class="mt-3 max-w-prose text-sm text-ink-secondary">
-            <strong class="font-medium text-ink">Keine Stellungnahmen-Liste und
-            keine Einbringer:</strong> ohne Gegenstand im Parlament
-            veröffentlicht niemand, wer Stellung genommen hat.
-            <template v-if="data.kind === 'verordnung'">
-              Was danach kommt – Erlassung durch das Ressort und Kundmachung im
-              Bundesgesetzblatt II – verfolgt der Monitor bisher nicht.
+            <template v-if="RIS_KIND_HINT[data.kind]">
+              {{ RIS_KIND_HINT[data.kind] }}
             </template>
+          </p>
+          <!-- ONE sentence about what the monitor cannot follow, not two.
+               Bis 18.09.2026 stand hier „Keine Stellungnahmen-Liste und
+               keine Einbringer: ohne Gegenstand im Parlament veröffentlicht
+               niemand …" — dieselbe Aussage, die der Absatz darüber und die
+               Karte darunter schon machen, und sie erklärte eine Abwesenheit
+               im Vergleich zu einer Seite, die der Leser nie gesehen hat.
+
+               Was bleibt, ist die eine Hälfte, die sonst nirgends steht: der
+               weitere Weg. Die Unterscheidung, auf die es ankommt, tragen
+               jetzt zwei verschiedene Orte — die fehlende Beteiligungsliste
+               sagt der Handlungskasten unten dort, wo sie jemandem abgeht;
+               dass die Nachverfolgung hier endet, steht hier. -->
+          <p
+            v-if="data.kind === 'verordnung'"
+            class="mt-3 max-w-prose text-sm text-ink-secondary"
+          >
+            Was danach kommt – Erlassung durch das Ministerium und
+            Kundmachung im Bundesgesetzblatt Teil II – verfolgt der Monitor
+            bisher nicht.
+          </p>
+          <!-- Nach Fristende gibt es keinen Handlungskasten mehr, der sagen
+               könnte, wohin eine Stellungnahme ging. Dann sagt es die Karte,
+               einmal, im Perfekt — die Frage lautet jetzt nicht „wohin",
+               sondern „warum steht hier keine Zahl". -->
+          <p v-if="!data.active" class="mt-3 max-w-prose text-sm text-ink-secondary">
+            Stellungnahmen gingen direkt an das Ministerium; wer Stellung
+            genommen hat, wird nicht veröffentlicht.
           </p>
         </div>
       </div>
@@ -218,10 +234,14 @@ const documents = computed(() => {
         <p class="font-medium text-ink">
           {{ fristLabel(data.deadline, data.active) }}<template v-if="data.deadline"> – die Frist endet am {{ formatDateDe(data.deadline) }}</template>
         </p>
+        <!-- „Ministerium" statt „Ressort", hier und in `risFilingNote`:
+             ein Wort je Sache. Die Seite führte beide nebeneinander, und
+             „Ressort" ist das Wort der Verwaltung, nicht das des Lesers. -->
         <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-          Eine Stellungnahme geht hier direkt an das Ressort – es gibt kein
-          Formular des Parlaments. An welche Adresse, steht im
-          Begleitschreiben, mit dem das Ressort den Entwurf versendet hat.
+          Eine Stellungnahme geht hier direkt an das Ministerium – es gibt
+          kein Formular des Parlaments. An welche Adresse, steht im
+          Begleitschreiben, mit dem das Ministerium den Entwurf versendet
+          hat.
         </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
           <!-- Linked, never read out. Measured 2026-09-17 over 40 records:
@@ -254,7 +274,7 @@ const documents = computed(() => {
         <p v-if="!data.coverLetter" class="mt-3 max-w-prose text-sm text-ink-secondary">
           Zu diesem Entwurf liegt im RIS kein Begleitschreiben – und damit
           keine veröffentlichte Einreichadresse. Der Weg führt über das
-          Ressort selbst; der Datensatz im RIS nennt die einbringende Stelle.
+          Ministerium selbst; der Datensatz im RIS nennt die einbringende Stelle.
         </p>
       </div>
 

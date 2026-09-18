@@ -52,9 +52,37 @@ export function rvBaseRateSentenceDe(gp: string | null | undefined): string {
 }
 
 /**
+ * What the outcome card says INSTEAD of all of the above when the period
+ * links no draft to a Vorlage at all (§12.27, `chainCoverageOf`).
+ *
+ * Every other sentence in this file rests on absence being evidence. Where
+ * the archive never recorded the link, it is not: the card would otherwise
+ * read „ohne Regierungsvorlage zu diesem Entwurf" on all 297 drafts of GP
+ * XVI while list 101 holds 270 Regierungsvorlagen from that same period.
+ * So the card names the gap, refuses the inference, and hands over the fact
+ * that contradicts it — the reader can then go and look, which is the only
+ * honest offer left.
+ */
+export function chainUnlinkedHeadlineDe(gp: string): string {
+  return `Für die ${gp}. Gesetzgebungsperiode ist der weitere Weg der Entwürfe nicht erfasst.`
+}
+
+export function chainUnlinkedBodyDe(): string {
+  return (
+    'Ob aus diesem Entwurf eine Regierungsvorlage wurde, lässt sich hier ' +
+    'nicht sagen – das ist eine Lücke im Datenbestand, kein Befund über den ' +
+    'Entwurf. Regierungsvorlagen aus dieser Periode verzeichnet das Parlament ' +
+    'sehr wohl; nur der Bezug zum Ministerialentwurf fehlt in den Daten.'
+  )
+}
+
+/**
  * Headline of the outcome card once the draft's GP is over without a
  * Regierungsvorlage. States the boundary and the absence — the two facts —
  * and nothing about intent.
+ *
+ * Only ever reached where the period's links exist (`mayClaimOutcome`);
+ * without that gate this sentence is the false accusation itself.
  */
 export function gpEndedHeadlineDe(gp: string, endedOn: string | null): string {
   return endedOn

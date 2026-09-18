@@ -33,14 +33,39 @@ export const RIS_KIND_PLURAL: Record<RisConsultationKind, string> = {
  * What the type means for someone deciding whether to read on. One sentence,
  * procedural — never a judgement about the instrument or the ministry
  * (framing rule, CLAUDE.md).
+ *
+ * Null where the honest answer is nothing. `unbestimmt` used to explain our
+ * own classifier („Der Titel nennt keine Rechtsform, deshalb steht hier
+ * keine") and `gesetz` carried a second sentence about gaps in the official
+ * lists — both are facts about how the monitor is built, told to a reader
+ * who asked about a draft. A page that explains its own machinery to
+ * everyone is answering a question nobody has.
  */
-export const RIS_KIND_HINT: Record<RisConsultationKind, string> = {
+export const RIS_KIND_HINT: Record<RisConsultationKind, string | null> = {
   verordnung:
-    'Eine Verordnung erlässt ein Ministerium selbst, auf Grundlage eines Gesetzes. Sie geht nicht ins Parlament – deshalb gibt es dazu keinen Gegenstand auf parlament.gv.at.',
+    'Eine Verordnung erlässt ein Ministerium selbst, auf Grundlage eines Gesetzes; sie geht nicht durch das Parlament.',
   gesetz:
-    'Ein Gesetzesentwurf, zu dem das Parlament keinen Ministerialentwurf führt. Beide amtlichen Listen haben Lücken; dieser Entwurf steht nur im RIS.',
-  unbestimmt:
-    'Der Titel dieses Entwurfs nennt keine Rechtsform, deshalb steht hier keine. Das Dokument selbst sagt es.',
+    'Ein Gesetzesentwurf, zu dem das Parlament keinen Ministerialentwurf führt.',
+  unbestimmt: null,
+}
+
+/**
+ * The one fact a row of this kind owes the reader — and it changes with the
+ * state, because the question does: while the Frist runs it is where a
+ * Stellungnahme goes, afterwards it is why no count stands where the
+ * neighbouring rows carry one.
+ *
+ * It replaces „nicht im Parlament" (until 18.09.2026). That label named an
+ * absence in the Parliament's own vocabulary, so it had to be glossed —
+ * seven times, in seven wordings, the homepage version leaning on
+ * „Gegenstand", a word the site defines nowhere. Both sentences here state
+ * the fact the absence is made of, which is what a label has to do if the
+ * glosses are to go away.
+ */
+export function risFilingNote(active: boolean): string {
+  return active
+    ? 'Stellungnahme direkt ans Ministerium'
+    : 'Stellungnahmen nicht veröffentlicht'
 }
 
 /**

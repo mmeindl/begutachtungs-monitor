@@ -80,14 +80,26 @@ const debateName = (c: DraftSummary) => aliasesFor(c.gp, c.inr)[0] ?? null
       </p>
     </div>
     <!-- Right-hand slot, one card anatomy for every list: the Frist by
-         default, the ranked count under emphasis="volume", and the outcome
-         chip when the dashboard's closed section fills the slot itself. -->
+         default, the ranked count under emphasis="volume", the station once
+         the Frist is over and the list knows it, and the outcome chip when
+         the dashboard's closed section fills the slot itself.
+
+         Why the station only AFTER the Frist: while it runs, the one thing
+         a reader can act on is the deadline, and no station may push it out
+         of the slot. Afterwards the countdown has nothing left to count and
+         the same slot answers the next question — was ist daraus geworden. -->
     <slot name="aside">
       <StatementCountBlock
         v-if="emphasis === 'volume'"
         :count="draft.statementCount"
         :deadline="draft.deadline"
         :active="draft.active"
+        class="shrink-0"
+      />
+      <StationBlock
+        v-else-if="!draft.active && draft.chain"
+        :chain="draft.chain"
+        :deadline="draft.deadline"
         class="shrink-0"
       />
       <DeadlineBlock

@@ -57,9 +57,12 @@ defineProps<{ consultation: RisConsultation }>()
         </span>
         <!-- Said on every row, not only on the detail page: the reader is
              about to look for a Stellungnahmen count that the row does not
-             have, and the reason is the interesting part. -->
+             have, and the reason is the interesting part. Since 18.09.2026
+             the row states the fact instead of naming the absence
+             („nicht im Parlament"), which is what lets the four glosses
+             elsewhere go — see `risFilingNote`. -->
         <span aria-hidden="true">·</span>
-        <span>nicht im Parlament</span>
+        <span>{{ risFilingNote(consultation.active) }}</span>
       </p>
     </div>
     <DeadlineBlock

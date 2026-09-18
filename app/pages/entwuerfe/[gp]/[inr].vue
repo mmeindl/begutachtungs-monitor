@@ -3,6 +3,9 @@ import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsRespo
 import type { ComparisonId, StationId } from '#shared/utils/stations'
 import { lastParliamentStation, parliamentOutcome, procedureStatusDe } from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
+// Explicit: `draftChain.ts` is a pure module and stays out of the
+// auto-imports, so that server map and vitest run the same functions.
+import { mayClaimOutcome } from '#shared/utils/draftChain'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
 definePageMeta({
@@ -179,14 +182,26 @@ const lapsed = computed(() => {
   return Boolean(d && !d.enactment && !d.active && d.gpEnded)
 })
 
+/* Fourth state, and it overrides the other three: the period records no
+ * link from ANY of its drafts to a Regierungsvorlage (§12.27). Everything
+ * above reads absence as evidence — here absence is the archive, so the
+ * card states that instead and claims nothing. `unknown` counts as unlinked:
+ * when the map was not there to ask, silence is the recoverable mistake. */
+const chainUnlinked = computed(() => {
+  const d = data.value
+  return Boolean(d && !d.enactment && !d.active && !mayClaimOutcome(d.chainCoverage))
+})
+
 const noRvVerdict = computed(() => {
   const d = data.value
   if (!d) return null
+  if (chainUnlinked.value) return chainUnlinkedHeadlineDe(d.gp)
   if (lapsed.value) return gpEndedHeadlineDe(d.gp, d.gpEndedOn)
   return noRvVerdictDe(d.deadline)
 })
 
 const noRvBody = computed(() => {
+  if (chainUnlinked.value) return chainUnlinkedBodyDe()
   if (lapsed.value) return gpEndedBodyDe(data.value?.gp ?? '')
   if (noRvVerdict.value) return 'Ob und wie es weitergeht, ist offen.'
   // No Frist, no bracket to measure — the only branch where the card
@@ -201,7 +216,9 @@ const noRvBody = computed(() => {
  * many drafts of the last closed GP got their Regierungsvorlage and how
  * fast (shared/utils/outcomes.ts). Numbers, so the reader can weigh the
  * silence without the page weighing it for them. */
-const noRvBaseRate = computed(() => (lapsed.value ? null : rvBaseRateSentenceDe(data.value?.gp)))
+const noRvBaseRate = computed(() =>
+  lapsed.value || chainUnlinked.value ? null : rvBaseRateSentenceDe(data.value?.gp),
+)
 
 /** Debate names for this procedure, if any (`shared/utils/aliases.ts`). */
 const aliases = computed(() => (data.value ? aliasesFor(data.value.gp, data.value.inr) : []))
@@ -377,7 +394,7 @@ const linkClasses =
                list URL. Only here — cards are themselves links. -->
           <NuxtLink
             :to="`/entwuerfe?ministry=${data.ministryCode}&gp=${data.gp}`"
-            :aria-label="`Alle Entwürfe des Ressorts ${data.ministryName} anzeigen`"
+            :aria-label="`Alle Entwürfe des Ministeriums ${data.ministryName} anzeigen`"
             class="tap-target rounded"
           >
             <MinistryBadge
@@ -589,7 +606,7 @@ const linkClasses =
              doors and the fact that makes the second one matter. -->
         <p v-if="windows.begutachtung && windows.vorlage" class="mt-2 max-w-prose text-sm text-ink">
           Die Regierungsvorlage {{ data.enactment?.rvCitation }} liegt bereits
-          im Nationalrat, obwohl die Begutachtungsfrist noch läuft. Auch dort
+          im Nationalrat, während die Begutachtungsfrist noch läuft. Auch dort
           kann Stellung genommen werden, solange der Nationalrat den Text
           behandelt.
         </p>
@@ -686,9 +703,15 @@ const linkClasses =
                 </p>
                 <!-- A law whose Stammnorm is no Bundesgesetzblatt has no
                      consolidated RIS entry to point at (the UGB's is
-                     "dRGBl. S. 219/1897"). Saying so beats dropping it. -->
+                     "dRGBl. S. 219/1897"). Saying so beats dropping it.
+
+                     „– im RIS nicht auffindbar" ist am 18.09.2026
+                     weggefallen: Die Frage des Lesers ist, warum hier keine
+                     BGBl-Nummer steht, und die Antwort ist die erste
+                     Hälfte — eine Tatsache über das Gesetz. Dass unsere
+                     Suche nichts gefunden hat, ist eine über uns. -->
                 <p class="mt-0.5 text-xs text-ink-muted">
-                  {{ law.bgbl ?? 'Stammfassung ist kein Bundesgesetzblatt – im RIS nicht auffindbar' }}
+                  {{ law.bgbl ?? 'Stammfassung ist kein Bundesgesetzblatt' }}
                 </p>
               </li>
             </ul>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
   DashboardSecondRound,
+  DraftStation,
   DraftStatus,
   DraftSummary,
   DraftsResponse,
@@ -42,17 +43,48 @@ import { romanToInt } from '#shared/utils/gp'
 useSeoMeta({
   title: 'Entwürfe',
   description:
-    'Alle Begutachtungen: Ministerialentwürfe mit Gegenstand im Parlament und Verordnungsentwürfe, die nur im RIS erscheinen – filterbar nach Art, Status, Gesetzgebungsperiode und Ressort.',
+    'Alle Begutachtungen: Ministerialentwürfe mit Gegenstand im Parlament und Verordnungsentwürfe, die nur im RIS erscheinen – filterbar nach Art, Status, Gesetzgebungsperiode und Ministerium.',
 })
 
 const route = useRoute()
 const router = useRouter()
 
+/**
+ * Zwei Achsen, nicht eine (§12.26).
+ *
+ * **Wo steht es** ist die Station: Begutachtung, Regierungsvorlage,
+ * Parlament, Bundesgesetzblatt — dasselbe Vokabular wie die Zeitleiste der
+ * Detailseite. **Was kann ich tun** ist der Status daneben, und der läuft
+ * quer über die Stationen: „Stellungnahme möglich" heißt laufende Frist
+ * ODER offenes Formular zur Regierungsvorlage.
+ *
+ * Warum „Zweite Runde" kein eigener Chip neben „Regierungsvorlage" ist: sie
+ * wäre keine Station, sondern eine Eigenschaft von einer — wer den Chip
+ * wählte, bekäme sonst auch alle längst beschlossenen Vorlagen dazu. Als
+ * Schnitt aus beiden Achsen ist sie exakt benennbar und bleibt teilbar:
+ * `?status=open&station=rv`.
+ */
 const statusOptions: { value: DraftStatus; label: string }[] = [
   { value: 'all', label: 'Alle' },
-  { value: 'open', label: 'In Begutachtung' },
+  { value: 'open', label: 'Stellungnahme möglich' },
   { value: 'closed', label: 'Abgeschlossen' },
 ]
+
+const stationOptions: { value: DraftStation; label: string }[] = [
+  { value: 'begutachtung', label: 'Begutachtung' },
+  { value: 'rv', label: 'Regierungsvorlage' },
+  { value: 'parlament', label: 'Parlament' },
+  { value: 'bgbl', label: 'Bundesgesetzblatt' },
+]
+const STATION_VALUES = stationOptions.map((o) => o.value)
+
+function parseStations(v: unknown): DraftStation[] {
+  const raw = firstQueryValue(v) ?? ''
+  return raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s): s is DraftStation => (STATION_VALUES as string[]).includes(s))
+}
 
 /**
  * The filter is by WHERE a draft stands in the procedure, not by the type
@@ -61,16 +93,24 @@ const statusOptions: { value: DraftStatus; label: string }[] = [
  *
  * `verordnung` therefore selects all 201 records without a Gegenstand, of
  * which 198 are Verordnungen and the rest are drafts that likewise never
- * reached Parliament. The label says "u. a." rather than pretending, each
- * row carries its own type word, and the box below states the rule. The
- * value is spelled `verordnung` because that is the word a reader would
- * type, and `/weitere-entwuerfe` redirects onto it.
+ * reached Parliament. The label admits that rather than pretending, and
+ * each row carries its own type word. The value is spelled `verordnung`
+ * because that is the word a reader would type, and `/weitere-entwuerfe`
+ * redirects onto it.
+ *
+ * ONE noun, used by the option and by the count line under the filters
+ * (`countLabel`). They named the same set two ways until 18.09.2026 —
+ * „Verordnungsentwürfe u. a." here, „ohne Gegenstand im Parlament" there —
+ * and a reader comparing the two had no way to know it was one set. Written
+ * out rather than „u. a.", which a screen reader reads as „u a".
  */
+const ART_VERORDNUNG_NOUN = 'Verordnungsentwürfe und andere'
+
 type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
 const artOptions: { value: ArtFilter; label: string }[] = [
   { value: '', label: 'Alle Arten' },
   { value: 'ministerialentwurf', label: 'Ministerialentwürfe' },
-  { value: 'verordnung', label: 'Verordnungsentwürfe u. a.' },
+  { value: 'verordnung', label: ART_VERORDNUNG_NOUN },
 ]
 
 /**
@@ -116,6 +156,16 @@ const qDebounced = ref(q.value)
  * whole filtered set, so reordering it costs no request — and the merge of
  * the two halves happens here anyway (`rows`). */
 const sort = ref<SortKey>(parseSort(route.query.sort))
+const stations = ref<DraftStation[]>(parseStations(route.query.station))
+
+/* Ein Chip an/aus. Leere Auswahl heißt „alle Stationen" und steht nicht in
+ * der URL — ein Filter, der nichts ausschließt, gehört nicht in einen Link,
+ * den jemand weitergibt. */
+function toggleStation(value: DraftStation): void {
+  stations.value = stations.value.includes(value)
+    ? stations.value.filter((s) => s !== value)
+    : [...stations.value, value]
+}
 
 const { webcalUrl } = useFeedUrls()
 
@@ -130,6 +180,7 @@ onUnmounted(() => clearTimeout(qTimer))
 
 const query = computed(() => ({
   status: statusFilter.value,
+  station: stations.value.length ? stations.value.join(',') : undefined,
   gp: gp.value || undefined,
   ministry: ministry.value || undefined,
   q: qDebounced.value || undefined,
@@ -154,26 +205,27 @@ const { data: risData, error: risError } = await useFetch<RisConsultationsRespon
 )
 
 /**
- * The other open door — and it is NOT a row of this list.
+ * Das zweite offene Fenster — und seit 18.09.2026 sind es Zeilen, kein
+ * Abschnitt (§12.26).
  *
- * Someone who lands here under „In Begutachtung" is asking where they can
- * still say something, and this page used to answer only half of that: a
- * Regierungsvorlage takes Stellungnahmen in the Nationalrat the same way,
- * but that window was visible on the homepage and on the detail page of a
- * draft that happens to have a Vorlage — never to anyone arriving from the
- * RSS link or a shared URL.
+ * Wer unter „Stellungnahme möglich" hier landet, fragt, wo er jetzt etwas
+ * sagen kann. Zu einer Regierungsvorlage geht das im Nationalrat genauso.
+ * Der Entwurf dahinter ist dafür längst eine Zeile — Station
+ * „Regierungsvorlage", Chip „Zweite Runde". Was dieser Abruf noch beiträgt,
+ * sind die Vorlagen, hinter denen KEIN Entwurf steht (rund ein Viertel,
+ * `docs/begutachtung-uebersprungen.md`): sie haben keine Zeile, die sie
+ * tragen könnte, und werden deshalb selbst eine (`vorlageRows`).
  *
- * So it is shown, and shown as its own section under the list rather than
- * as rows in it. A Vorlage is not in Begutachtung — that is the whole point
- * of calling it a second round — and three things follow from putting it in
- * the result set: the filter label would stop being true of its own rows,
- * the order would have nothing to sort them by (the Vorlage publishes no
- * Frist, the form closes with the vote), and the Zählzeile would pool a
- * third kind into a count the page has gone out of its way never to pool.
+ * Zwei Anläufe standen vorher hier, beide als eigener Abschnitt unter der
+ * Liste, und beide sind an derselben Sache gescheitert: die Startseite zeigt
+ * sechs offene Vorlagen, der Abschnitt zeigte danach eine — „sechs dort,
+ * eine hier" liest sich als Defekt, ganz gleich, wie die Überschrift lautet.
+ * Eine Liste, die beantwortet „wo kann ich etwas sagen", darf die Antwort
+ * nicht auf zwei Orte verteilen.
  *
- * Client-side and lazy, like the homepage's copy: nothing above depends on
- * the answer, an empty result is the normal state, and a section that can
- * be absent must not hold the first paint.
+ * Clientseitig und lazy: nichts über diesem Abruf hängt von ihm ab, ein
+ * leeres Ergebnis ist der Normalfall, und was fehlen kann, darf den ersten
+ * Paint nicht halten.
  */
 const { data: secondRound } = await useFetch<DashboardSecondRound>(
   '/api/dashboard/zweite-runde',
@@ -210,6 +262,7 @@ const ministries = computed(() => {
 watch([query, art, sort], () => {
   const urlQuery: Record<string, string> = {}
   if (statusFilter.value !== 'all') urlQuery.status = statusFilter.value
+  if (stations.value.length) urlQuery.station = stations.value.join(',')
   if (art.value) urlQuery.art = art.value
   if (gp.value) urlQuery.gp = gp.value
   if (ministry.value) urlQuery.ministry = ministry.value
@@ -231,9 +284,34 @@ watch([query, art, sort], () => {
 type Row =
   | { kind: 'me'; key: string; draft: DraftSummary }
   | { kind: 'ris'; key: string; item: RisConsultation }
+  | { kind: 'vorlage'; key: string; vorlage: OpenVorlage }
 
+/**
+ * Die dritte Zeilenart, seit 18.09.2026: eine Regierungsvorlage, zu der es
+ * nie eine Begutachtung gab.
+ *
+ * Sie stand bis dahin in einem eigenen Abschnitt unter der Liste, und das
+ * war der Fehler, den Manu zweimal gemeldet hat: die Startseite zeigt sechs
+ * offene Vorlagen, die Liste zeigte fünf davon als Zeile und eine im
+ * Abschnitt darunter. „Sechs dort, eine hier" liest sich als Defekt, egal
+ * wie der Abschnitt heißt — und die Überschrift war schon zweimal die
+ * falsche Antwort auf die Frage.
+ *
+ * Also gehört sie in dieselbe Liste. Das ist keine Aufweichung von §12.19
+ * („zwei Zeilenformen, nie eine gepoolte Summe"), sondern dieselbe Regel ein
+ * drittes Mal: eigene Zeilenform, eigener Zählterm, gemeinsame Ordnung.
+ * Fachlich ist sie hier richtig, weil diese Liste unter „Stellungnahme
+ * möglich" beantwortet, wo jemand etwas sagen kann — und das kann er hier.
+ */
 function orderOf(row: Row): OrderedDraft {
-  return row.kind === 'me' ? draftOrderKey(row.draft) : row.item
+  if (row.kind === 'me') return draftOrderKey(row.draft)
+  if (row.kind === 'ris') return row.item
+  /* Keine Frist, die laufen könnte — das Formular schließt mit der
+   * Abstimmung. Also `active: false` mit dem Einlangen als Datum: die Zeile
+   * ordnet sich unter die laufenden Fristen und zwischen die zweite Runde,
+   * wo sie hingehört, statt eine Dringlichkeit zu behaupten, die sie nicht
+   * datieren kann. */
+  return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
 }
 
 /**
@@ -258,6 +336,29 @@ function compareByStatements(a: Row, b: Row): number {
   return compareDrafts(orderOf(a), orderOf(b))
 }
 
+/**
+ * Die Vorlagen ohne Begutachtung als Zeilen — unter denselben Bedienelementen
+ * wie alles andere, soweit sie greifen.
+ *
+ * Status: nur wo „Stellungnahme möglich" gefragt ist oder gar nicht gefiltert
+ * wird; unter „Abgeschlossen" hat ein offenes Fenster nichts verloren.
+ * Station: sie stehen bei der Regierungsvorlage. Art: sie sind keine
+ * Verordnungsentwürfe. Ressort: `OpenVorlage` trägt keines, also tritt die
+ * Zeile zurück, sobald danach gefiltert wird — dieselbe Regel wie zuvor im
+ * Abschnitt. Suche: dieselbe Substring-Regel wie oben.
+ */
+const vorlageRows = computed<Row[]>(() => {
+  const list = secondRound.value
+  if (!list || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
+  if (stations.value.length && !stations.value.includes('rv')) return []
+  if (selectedGp.value && selectedGp.value !== list.gp) return []
+  const needle = qDebounced.value.toLowerCase()
+  return list.items
+    .filter((v) => !v.draft)
+    .filter((v) => !needle || `${v.title} ${v.citation}`.toLowerCase().includes(needle))
+    .map((v) => ({ kind: 'vorlage' as const, key: `rv-${v.citation}`, vorlage: v }))
+})
+
 const rows = computed<Row[]>(() => {
   const out: Row[] = []
   if (art.value !== 'verordnung') {
@@ -266,6 +367,7 @@ const rows = computed<Row[]>(() => {
   if (art.value !== 'ministerialentwurf') {
     for (const c of risData.value?.items ?? []) out.push({ kind: 'ris', key: `ris-${c.id}`, item: c })
   }
+  out.push(...vorlageRows.value)
   return out.sort((a, b) =>
     sort.value === 'stellungnahmen' ? compareByStatements(a, b) : compareDrafts(orderOf(a), orderOf(b)),
   )
@@ -284,90 +386,83 @@ const risTotal = computed(() => risData.value?.total ?? 0)
 const visibleTotal = computed(
   () => (art.value === 'verordnung' ? 0 : meTotal.value) + (art.value === 'ministerialentwurf' ? 0 : risTotal.value),
 )
+/* Die Stationskarte kostet beim kalten Bau hunderte Abrufe und kann
+ * ausfallen (`server/utils/stationMap.ts`). Dann steht hier, dass nicht
+ * gefiltert wurde — eine Liste, die unter einem aktiven Filter ungefiltert
+ * dasteht, ist die eine Variante, die niemand bemerkt. */
+/* Stationen und „Verordnungsentwürfe" schließen einander aus: die einen
+ * haben keinen Gegenstand im Parlament, die anderen sind die Frage danach.
+ * Statt „Keine Entwürfe gefunden" — was nach einem zu engen Suchbegriff
+ * klingt — sagt die Seite in diesem Fall, dass die Kombination selbst leer
+ * ist, und bietet den Weg hinaus an. */
+/* Wie viele Zeilen der Liste gerade die zweite Runde sind — die Entwürfe mit
+ * offenem Vorlagen-Formular plus die Vorlagen ohne Begutachtung. Gezählt, um
+ * es über der Liste sagen zu können: wer von der Startseite kommt, hat dort
+ * „Zweite Runde" als Abschnitt gesehen und sucht ihn hier. Er ist nicht weg,
+ * er ist einsortiert. */
+const secondRoundRowCount = computed(
+  () =>
+    (data.value?.items ?? []).filter((d) => d.chain?.filingOpen).length + vorlageRows.value.length,
+)
+
+/* Eine Station NACH der Begutachtung schließt die Verordnungsentwürfe aus:
+ * ohne Gegenstand im Parlament gibt es keine Regierungsvorlage. Unter
+ * „Begutachtung" ist die Kombination dagegen sinnvoll — dort stehen sie. */
+const laterStationsOnly = computed(
+  () => stations.value.length > 0 && !stations.value.includes('begutachtung'),
+)
+const stationConflict = computed(() => laterStationsOnly.value && art.value === 'verordnung')
+
+/* Zwei Gründe, warum an den Zeilen keine Station steht, und sie sagen
+ * Grundverschiedenes: die Karte war gerade nicht abrufbar (vorübergehend,
+ * liegt an uns) – oder die Periode verknüpft ihre Entwürfe gar nicht erst
+ * mit Vorlagen (dauerhaft, liegt am Archiv, §12.27). Nur der zweite Fall
+ * braucht die Erklärung auch ohne aktiven Stationsfilter, weil dort sonst
+ * eine ganze Spalte wortlos verschwindet. */
+const chainUnlinkedPeriod = computed(() => data.value?.chainCoverage === 'unlinked')
+
+const stationsUnavailable = computed(
+  () =>
+    data.value !== null &&
+    data.value?.stationsAvailable === false &&
+    !chainUnlinkedPeriod.value &&
+    stations.value.length > 0,
+)
+
 const countLabel = computed(() => {
   const parts: string[] = []
   if (art.value !== 'verordnung') {
     parts.push(countLabelDe(meTotal.value, 'Ministerialentwurf', 'Ministerialentwürfe'))
   }
+  /* Dritter Term, nie addiert (§12.19): eine Regierungsvorlage ohne
+   * Begutachtung ist weder ein Ministerialentwurf noch ein Verordnungsentwurf
+   * — wer sie in eine der beiden Zahlen schlüge, behauptete über sie, was für
+   * die andere Hälfte gilt. Steht vor dem Stationsfilter-Ausstieg, weil diese
+   * Zeilen unter „Regierungsvorlage" sehr wohl mitkommen. */
+  if (vorlageRows.value.length) {
+    parts.push(
+      `${countLabelDe(vorlageRows.value.length, 'Regierungsvorlage', 'Regierungsvorlagen')} ohne Begutachtung`,
+    )
+  }
+  /* Unter einem Stationsfilter zählt die Verordnungs-Hälfte nicht mit — weder
+   * als „0" noch als „gerade nicht abrufbar". Beides wäre eine Antwort auf
+   * eine Frage, die gar nicht gestellt wurde: sie ist nicht leer und auch
+   * nicht kaputt, sie gehört zu dieser Achse nicht dazu. Der Satz über der
+   * Liste sagt, warum. */
+  if (laterStationsOnly.value) return parts.join(' · ')
+  /* Dasselbe Substantiv wie im Art-Filter, und zwar damit die beiden
+   * Zahlen auf der Seite nicht zweierlei zählen können. „ohne Gegenstand im
+   * Parlament" war die Kategorie der Parlamentsseite, nicht die dieser
+   * Liste — und sie stand neben einem Kasten, der eine Join-Statistik
+   * unter demselben Wort führte. */
   if (art.value !== 'ministerialentwurf') {
     parts.push(
       risError.value
-        ? 'die Entwürfe ohne Gegenstand im Parlament sind gerade nicht abrufbar'
-        : `${formatNumberDe(risTotal.value)} ohne Gegenstand im Parlament`,
+        ? 'die Verordnungsentwürfe sind gerade nicht abrufbar'
+        : `${formatNumberDe(risTotal.value)} ${ART_VERORDNUNG_NOUN}`,
     )
   }
   return parts.join(' · ')
-})
-
-/**
- * Which of the open Vorlagen the section below the list shows — every
- * control above it that CAN reach them, and silence where one cannot.
- *
- *  - **Status.** „In Begutachtung" only. That is the filter whose question
- *    this section answers — wo kann ich jetzt noch etwas sagen. Under
- *    „Alle" it was shown too for a moment, on superset logic (a narrower
- *    filter must not show MORE); that argument loses against the page: there
- *    the section sits under 336 rows, where it reaches nobody and only
- *    dilutes the one reading it belongs to.
- *  - **Art.** A Regierungsvorlage comes out of a Gesetzesentwurf, so it has
- *    no place beside the Verordnungsentwürfe.
- *  - **Periode.** The endpoint answers for the current GP and now says
- *    which one that is; narrowed to an earlier period the section goes.
- *  - **Suche** filters the rows, by the same plain substring rule the list
- *    above uses (`/api/drafts`) — the same field must not behave two ways
- *    on one page.
- *  - **Sortierung** applies here too — see below; a control that skips a
- *    list under it puts two orders on one page.
- *  - **Ressort** it cannot honour: `OpenVorlage` carries no ministry.
- *    Deriving one from the draft pointer would cover most rows and silently
- *    drop the quarter of Vorlagen that never were in Begutachtung, so the
- *    section steps aside instead of pretending to be filtered.
- */
-const secondRoundItems = computed<OpenVorlage[]>(() => {
-  const list = secondRound.value
-  if (!list) return []
-  if (statusFilter.value !== 'open' || art.value === 'verordnung' || ministry.value) return []
-  if (selectedGp.value && selectedGp.value !== list.gp) return []
-  const needle = qDebounced.value.toLowerCase()
-  const matched = needle
-    ? list.items.filter((v) => `${v.title} ${v.citation}`.toLowerCase().includes(needle))
-    : list.items
-  /* Die Sortierung oben formt auch diesen Abschnitt. Ein Bedienelement, das
-   * eine Liste unter sich auslässt, setzt zwei Ordnungen auf eine Seite —
-   * und hier gibt es die Zahl, nach der sortiert wird. Was upstream nicht
-   * gezählt werden konnte (`null`), steht hinten: kein Rang für „nicht
-   * gezählt". Stabil, also fällt der Rest auf die Reihenfolge des
-   * Endpunkts zurück (Einlangen, neueste zuerst). */
-  if (sort.value !== 'stellungnahmen') return matched
-  return [...matched].sort((a, b) => (b.statementCount ?? -1) - (a.statementCount ?? -1))
-})
-
-/* Paged like every other list here, and on the same component — with a
- * handful of rows (6 of 117 Vorlagen on 15.09.2026) ListMore renders
- * nothing at all, which is why the cap can stand without costing anyone a
- * press today. */
-const SECOND_ROUND_STEP = 10
-const secondRoundShown = ref(SECOND_ROUND_STEP)
-const visibleSecondRound = computed(() => secondRoundItems.value.slice(0, secondRoundShown.value))
-// A new filter is a new set: staying expanded would show row 11 of a set
-// whose row 11 the reader never asked to see.
-watch(secondRoundItems, () => {
-  secondRoundShown.value = SECOND_ROUND_STEP
-})
-
-/* Der Anker `#zweite-runde` von der Startseite zeigt auf einen Abschnitt,
- * den es beim ersten Paint noch nicht gibt: dieser Teil lädt clientseitig
- * und lazy. Der Browser springt genau einmal, findet nichts und bleibt
- * oben. Also wird einmal nachgesprungen, sobald die Zeilen stehen — einmal,
- * nicht bei jeder Änderung, sonst reißt es jemanden aus der Liste, der
- * inzwischen selbst weitergescrollt hat. */
-const jumpedToSecondRound = ref(false)
-watch(visibleSecondRound, async (items) => {
-  if (!import.meta.client || jumpedToSecondRound.value) return
-  if (!items.length || route.hash !== '#zweite-runde') return
-  jumpedToSecondRound.value = true
-  await nextTick()
-  document.getElementById('zweite-runde')?.scrollIntoView({ block: 'start' })
 })
 
 /* Selects are TokenSelect (native <select> in token styling with the
@@ -393,28 +488,60 @@ watch(visibleSecondRound, async (items) => {
       <ErrorState @retry="refresh()" />
     </div>
     <template v-else-if="data">
-      <!-- The one thing a reader has to know to read this list: the rows are
-           two kinds, and only one of them can ever carry Stellungnahmen.
-           Stated once, here, instead of being implied by an empty column. -->
-      <p class="mt-4 max-w-prose rounded-lg border border-hairline bg-surface p-4 text-sm text-ink-secondary">
-        Zwei Arten von Zeilen. Zu einem
-        <span class="font-medium text-ink">Ministerialentwurf</span> führt das
-        Parlament einen Gegenstand – es gibt Stellungnahmen, Einbringer und
-        den weiteren Weg bis zum Gesetz. Die übrigen, vor allem
-        <span class="font-medium text-ink">Verordnungsentwürfe</span>,
-        veröffentlichen die Ministerien nur im Rechtsinformationssystem
-        (RIS): dort nennt niemand, wer Stellung genommen hat, und eine
-        Stellungnahme geht direkt an das Ressort.
-        <template v-if="risData && risData.gpTotal">
-          In dieser Periode sind das
-          <span class="font-semibold tabular-nums text-ink">{{ formatNumberDe(risData.gpTotal) }}</span>
-          Entwürfe ohne Gegenstand gegen
-          <span class="font-semibold tabular-nums text-ink">{{ formatNumberDe(risData.withGegenstand) }}</span>
-          mit einem.
-        </template>
-      </p>
+      <!-- KEIN Erklärkasten mehr, seit 18.09.2026. Er stand zwischen der
+           Überschrift und den Filtern — auf 390 px acht Zeilen Prosa über
+           die Herkunft der Daten, bevor irgendeine Zeile der Liste zu sehen
+           war —, und er erklärte, was die Zeilen inzwischen selbst sagen:
+           jede trägt ihr Typwort und, wo es keine Stellungnahmen gibt,
+           warum („Stellungnahme direkt ans Ministerium", `risFilingNote`).
+           Das Verfahren dahinter steht auf /so-funktionierts.
 
-      <div class="mt-6 flex flex-wrap items-center gap-3">
+           Seine Zahlen mussten ohnehin weg. „201 Entwürfe ohne Gegenstand
+           gegen 134 mit einem" las sich als Korpuszahl, war aber eine
+           Join-Statistik: `withGegenstand` zählt RIS-Sätze, denen ein
+           Ministerialentwurf zugeordnet werden konnte, die Zeile 40 px
+           darunter zählt Ministerialentwürfe der Liste 81 — am 18.09.2026
+           134 gegen 135. Beide Zahlen stimmen, die Differenz ist der
+           dokumentierte Fall eines ME ohne RIS-Satz (`docs/ris-join.md`
+           §2). Richtig hinschreiben ließe sich das nur mit einem Nebensatz,
+           den niemand liest. -->
+
+      <!-- Die Stationsleiste steht ÜBER der Statusleiste und damit zuerst:
+           „wo steht es" ist die gröbere Frage, „was kann ich tun" schneidet
+           quer hinein. Mehrfachauswahl, weil zwei Stationen nebeneinander
+           eine sinnvolle Frage sind („Vorlage oder schon Gesetz?") und weil
+           nichts auswählen bereits „alle" heißt — ein Chip „Alle" wäre ein
+           vierter Zustand für etwas, das der leere Zustand schon sagt. -->
+      <!-- Weg, wo die Periode die Frage nicht beantworten kann (§12.27):
+           ein Chip, der nichts filtern kann, ist kein Bedienelement, sondern
+           ein Versprechen. Der Satz über den Zeilen sagt, warum. -->
+      <div v-if="!chainUnlinkedPeriod" class="mt-6 flex flex-wrap items-center gap-2">
+        <span class="mr-1 text-sm text-ink-secondary">Wo steht es:</span>
+        <UButton
+          v-for="opt in stationOptions"
+          :key="opt.value"
+          size="sm"
+          :color="stations.includes(opt.value) ? 'primary' : 'neutral'"
+          :variant="stations.includes(opt.value) ? 'subtle' : 'outline'"
+          :aria-pressed="stations.includes(opt.value)"
+          class="rounded-full"
+          @click="toggleStation(opt.value)"
+        >
+          {{ opt.label }}
+        </UButton>
+        <UButton
+          v-if="stations.length"
+          size="sm"
+          color="neutral"
+          variant="ghost"
+          class="rounded-full"
+          @click="stations = []"
+        >
+          Alle Stationen
+        </UButton>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center gap-3">
         <UFieldGroup role="group" aria-label="Status" class="shrink-0">
           <UButton
             v-for="opt in statusOptions"
@@ -447,9 +574,9 @@ watch(visibleSecondRound, async (items) => {
         </div>
 
         <div class="min-w-0 max-w-64">
-          <label for="filter-ministry" class="sr-only">Ressort</label>
+          <label for="filter-ministry" class="sr-only">Ministerium</label>
           <TokenSelect id="filter-ministry" v-model="ministry">
-            <option value="">Alle Ressorts</option>
+            <option value="">Alle Ministerien</option>
             <option v-for="m in ministries" :key="m.code" :value="m.code">
               {{ m.name || m.code }}
             </option>
@@ -474,9 +601,11 @@ watch(visibleSecondRound, async (items) => {
         <UInput
           v-model="q"
           type="search"
+          icon="i-lucide-search"
           :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
           aria-label="Suche"
           class="min-w-48 flex-1"
+          :ui="{ base: 'min-h-11' }"
         />
       </div>
 
@@ -494,7 +623,7 @@ watch(visibleSecondRound, async (items) => {
           <a
             :href="`/feed.xml?ressort=${ministry}`"
             class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-          >RSS-Feed für dieses Ressort</a>
+          >RSS-Feed für dieses Ministerium</a>
           ·
         </template>
         <a
@@ -510,6 +639,68 @@ watch(visibleSecondRound, async (items) => {
       </p>
 
       <h2 class="sr-only">Ergebnisse</h2>
+      <!-- Wie die Sortier-Einschränkung darunter: eine Aussage darüber, was
+           die Liste gerade NICHT tut, steht über den Zeilen — hinterher
+           gelesen ist sie wertlos. -->
+      <p v-if="stationsUnavailable" class="mt-3 max-w-prose text-sm text-ink-muted">
+        Wo die Entwürfe stehen, lässt sich gerade nicht abrufen – die Liste
+        ist deshalb <span class="font-medium text-ink">nicht</span> nach
+        Station gefiltert.
+      </p>
+      <!-- Die Lücke wird benannt, statt sie als Befund auszugeben: ohne
+           diesen Satz läse eine Liste ohne Stationen sich, als wäre aus
+           keinem dieser Entwürfe je etwas geworden (§12.27). -->
+      <p v-if="chainUnlinkedPeriod" class="mt-3 max-w-prose text-sm text-ink-muted">
+        Was aus diesen Entwürfen wurde, ist für diese Gesetzgebungsperiode
+        nicht erfasst – der Bezug zwischen Ministerialentwurf und
+        Regierungsvorlage fehlt im Datenbestand. Die Zeilen zeigen deshalb
+        keine Station; dass es keine Regierungsvorlagen gab, folgt daraus
+        <span class="font-medium text-ink">nicht</span>.<template v-if="stations.length">
+          Nach Station ist hier deshalb auch
+          <span class="font-medium text-ink">nicht</span> gefiltert.</template>
+      </p>
+      <!-- Die Einschränkung gilt nur für die Stationen NACH der Begutachtung:
+           dorthin kommt nichts ohne Gegenstand im Parlament. Unter
+           „Begutachtung" stehen die Verordnungsentwürfe sehr wohl mit — sie
+           dort wegzulassen kostete die Startseiten-Parität (4 statt 7 unter
+           „Begutachtung + Stellungnahme möglich") und ließ drei laufende
+           Verordnungs-Begutachtungen verschwinden. -->
+      <p
+        v-else-if="laterStationsOnly && art !== 'ministerialentwurf'"
+        class="mt-3 max-w-prose text-sm text-ink-muted"
+      >
+        <template v-if="stationConflict">
+          <span class="font-medium text-ink">Verordnungsentwürfe haben keine
+            Station:</span>
+          Sie führen keinen Gegenstand im Parlament, also auch keine
+          Regierungsvorlage. „Alle Arten" oder
+          <button
+            type="button"
+            class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+            @click="stations = []"
+          >alle Stationen</button>
+          zeigen wieder Zeilen.
+        </template>
+        <template v-else>
+          Verordnungsentwürfe stehen hier nicht: Ohne Gegenstand im Parlament
+          gibt es keine Regierungsvorlage – ihr Weg endet mit der Begutachtung.
+        </template>
+      </p>
+      <!-- Die Antwort auf „wo ist die zweite Runde?" — die Frage, mit der
+           jemand von der Startseite kommt, wo sie ein eigener Abschnitt ist.
+           Hier ist sie einsortiert, nach Dringlichkeit wie alles andere, und
+           jede dieser Zeilen trägt ihren Chip. Nur unter „Stellungnahme
+           möglich", weil die Aussage nur dort über die ganze Liste gilt. -->
+      <p
+        v-if="statusFilter === 'open' && secondRoundRowCount"
+        class="mt-3 max-w-prose text-sm text-ink-muted"
+      >
+        Darunter
+        <span class="font-medium text-ink">{{ secondRoundRowCount }} in zweiter Runde</span>:
+        Die Begutachtung ist vorbei, im Nationalrat kann zur Regierungsvorlage
+        weiter Stellung genommen werden – ohne veröffentlichte Frist, sie endet
+        mit der Abstimmung.
+      </p>
       <!-- Was die Sortierung mit der Hälfte macht, die sie nicht sortieren
            kann — über der Liste, nicht darunter: eine Einschränkung an dem,
            was die Reihenfolge behauptet, muss gelesen sein, bevor die Zeilen
@@ -518,8 +709,8 @@ watch(visibleSecondRound, async (items) => {
         v-if="sort === 'stellungnahmen' && art !== 'ministerialentwurf'"
         class="mt-3 max-w-prose text-sm text-ink-muted"
       >
-        Entwürfe ohne Gegenstand im Parlament führen keine Stellungnahmen –
-        sie stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
+        Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
+        stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
       </p>
       <!-- Two densities, CSS-switched (SSR-safe, no JS): generous cards on
            mobile, a dense divider-list on md+ where scanning 100+ items
@@ -528,6 +719,7 @@ watch(visibleSecondRound, async (items) => {
       <ul v-if="rows.length" class="mt-3 space-y-3 md:hidden">
         <li v-for="row in rows" :key="row.key">
           <DraftCard v-if="row.kind === 'me'" :draft="row.draft" />
+          <SecondRoundCard v-else-if="row.kind === 'vorlage'" :vorlage="row.vorlage" />
           <RisConsultationCard v-else :consultation="row.item" />
         </li>
       </ul>
@@ -538,63 +730,18 @@ watch(visibleSecondRound, async (items) => {
         <ul class="divide-y divide-hairline">
           <li v-for="row in rows" :key="`row-${row.key}`">
             <DraftRow v-if="row.kind === 'me'" :draft="row.draft" />
+            <SecondRoundRow v-else-if="row.kind === 'vorlage'" :vorlage="row.vorlage" />
             <RisConsultationRow v-else :consultation="row.item" />
           </li>
         </ul>
       </div>
-      <div v-if="!rows.length" class="mt-3">
+      <div v-if="!rows.length && !stationConflict" class="mt-3">
         <EmptyState
           title="Keine Entwürfe gefunden"
           description="Andere Filter oder einen anderen Suchbegriff versuchen."
         />
       </div>
 
-      <!-- Unter der Liste, nicht darin: gleiche Frage („wo kann ich jetzt
-           noch etwas sagen?"), anderer Verfahrensstand. Die eigene
-           Überschrift ist der Grund, warum diese Zeilen nicht oben stehen –
-           und die eigene Zahl hält sie aus der Zählzeile heraus, die
-           bewusst nie summiert. -->
-      <section
-        v-if="visibleSecondRound.length"
-        id="zweite-runde"
-        class="page-section scroll-mt-6"
-        aria-labelledby="second-round-heading"
-      >
-        <h2 id="second-round-heading" class="section-heading">
-          Zweite Runde: Stellungnahme im Nationalrat möglich
-        </h2>
-        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-          Diese Entwürfe stehen nicht in der Liste oben: Ihre Begutachtung ist
-          vorbei, sie liegen als Regierungsvorlage im Nationalrat – und auch
-          dort kann Stellung genommen werden, denn der Ausschuss kann den Text
-          noch ändern. Eine Frist wird dafür nicht veröffentlicht: Sie endet
-          mit der Abstimmung.
-        </p>
-        <p class="mt-4 text-sm text-ink-muted">
-          {{ countLabelDe(secondRoundItems.length, 'Regierungsvorlage', 'Regierungsvorlagen') }}
-          mit offener Stellungnahme
-        </p>
-        <!-- Zwei Dichten wie oben, am selben Breakpoint: unter der
-             Zeilenliste dürfen nicht plötzlich Karten stehen. -->
-        <ul class="mt-3 space-y-3 md:hidden">
-          <li v-for="v in visibleSecondRound" :key="v.citation">
-            <SecondRoundCard :vorlage="v" />
-          </li>
-        </ul>
-        <div class="mt-3 hidden overflow-hidden rounded-xl border border-hairline bg-surface md:block">
-          <ul class="divide-y divide-hairline">
-            <li v-for="v in visibleSecondRound" :key="`row-${v.citation}`">
-              <SecondRoundRow :vorlage="v" />
-            </li>
-          </ul>
-        </div>
-        <ListMore
-          :visible="visibleSecondRound.length"
-          :total="secondRoundItems.length"
-          :step="SECOND_ROUND_STEP"
-          @more="secondRoundShown += SECOND_ROUND_STEP"
-        />
-      </section>
     </template>
   </div>
 </template>

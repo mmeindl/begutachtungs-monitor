@@ -34,6 +34,14 @@ defineProps<{ consultation: RisConsultation }>()
           <NewBadge v-if="isNewArrival(consultation.startedAt, consultation.active)" />
           <span>seit {{ formatDateDe(consultation.startedAt) }}</span>
         </template>
+        <!-- In the slot where DraftRow ends with its Stellungnahmen count,
+             and for the same reason: the two row kinds are scanned in one
+             pass, and a row that simply stops there reads as a count of
+             nothing. Until 18.09.2026 only the card carried this, so the
+             densities explained themselves differently — on the breakpoint
+             where a hundred rows are compared, not at all. -->
+        <span aria-hidden="true">·</span>
+        <span>{{ risFilingNote(consultation.active) }}</span>
       </p>
     </div>
     <MinistryBadge

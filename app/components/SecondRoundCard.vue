@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { NuxtLink } from '#components'
 import type { OpenVorlage } from '#shared/types'
 
 /**
@@ -35,13 +36,24 @@ const to = computed(() =>
     : null,
 )
 
+/**
+ * NuxtLink as an imported value, never `resolveComponent('NuxtLink')`.
+ * Resolved by name from inside the template expression it comes back
+ * undefined in the client build, and Vue then renders a literal
+ * `<nuxtlink>` element: a card that looks finished and is not a link,
+ * on the one half of this section that points at the monitor's own pages.
+ * SSR resolved it, the browser did not, so the markup was right until
+ * hydration replaced it. The import binds the component at compile time.
+ */
+const linkComponent = computed(() => (to.value ? NuxtLink : 'a'))
+
 const CARD =
   'group flex h-full flex-col gap-3 rounded-xl border border-hairline bg-surface p-5 transition-colors hover:border-baseline sm:flex-row sm:items-start sm:gap-4'
 </script>
 
 <template>
   <component
-    :is="to ? resolveComponent('NuxtLink') : 'a'"
+    :is="linkComponent"
     v-bind="to ? { to } : { href: vorlage.parliamentUrl, target: '_blank', rel: 'noopener' }"
     :class="CARD"
   >

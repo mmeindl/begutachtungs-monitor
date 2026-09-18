@@ -11,8 +11,13 @@ import type {
 import { HOME_LIST_LENGTH, compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
 import { gpWindow } from '#shared/utils/gp'
 
+/* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
+   „Gesetzesentwürfe" from before the RIS half shipped, and then went on
+   saying it over a list of which roughly half are Verordnungsentwürfe — in
+   the one sentence that travels with every shared link and is the first
+   thing a newcomer reads. */
 const pageDescription =
-  'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
+  'Laufende Begutachtungen österreichischer Gesetzes- und Verordnungsentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
 
 useSeoMeta({
   title: 'Aktuell',
@@ -141,15 +146,12 @@ const openRows = computed<OpenRow[]>(() => {
 
 const visibleOpenRows = computed(() => openRows.value.slice(0, HOME_LIST_LENGTH))
 
-/** Whether the explanation below the list has anything to explain. */
-const showsRisRow = computed(() => visibleOpenRows.value.some((r) => r.kind === 'ris'))
-
 /**
  * NO count line on this page, unlike `/entwuerfe`.
  *
  * There it states a corpus nobody can see (336 rows behind filters); here
  * the list is six cards and every one of them says on its own row which
- * kind it is, so "4 Ministerialentwürfe · 4 ohne Gegenstand im Parlament"
+ * kind it is, so "4 Ministerialentwürfe · 4 Verordnungsentwürfe und andere"
  * only restates what is visible — and a figure inside a line of prose is
  * the hardest place to find one when you are scanning for exactly that.
  *
@@ -218,11 +220,6 @@ const gpStart = computed(() => {
   const from = gpLabel.value ? gpWindow(gpLabel.value)?.from : null
   return from ? formatDateDe(from) : null
 })
-
-// lastSync arrives ISO-normalized from the server (or null → line is omitted).
-const lastSyncLabel = computed(() =>
-  data.value?.lastSync ? formatDateTimeDe(data.value.lastSync) : null,
-)
 </script>
 
 <template>
@@ -240,9 +237,10 @@ const lastSyncLabel = computed(() =>
            the reorder took the distance away that an anchor was saving. The
            sentence still makes the promise; the sections below keep it. -->
       <p class="mt-3 text-ink-secondary">
-        Alle laufenden Begutachtungen österreichischer Gesetzesentwürfe:
-        Fristen und Stellungnahmen auf einen Blick. Und für jeden Entwurf
-        danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts.
+        Alle laufenden Begutachtungen österreichischer Gesetzes- und
+        Verordnungsentwürfe: Fristen und Stellungnahmen auf einen Blick. Und
+        für jeden Entwurf danach: Regierungsvorlage, Bundesgesetzblatt –
+        oder bisher nichts.
       </p>
 
       <!-- The account-free alert tier, IN the header since 18.09.2026, not
@@ -304,7 +302,7 @@ const lastSyncLabel = computed(() =>
       <section class="page-section" aria-labelledby="open-heading">
         <ListHeader
           id="open-heading"
-          to="/entwuerfe?status=open"
+          to="/entwuerfe?status=open&station=begutachtung"
           noun="offenen Entwürfe"
           :total="openRows.length"
           :visible="visibleOpenRows.length"
@@ -315,19 +313,23 @@ const lastSyncLabel = computed(() =>
              not provenance but a correction to what the list claims, and a
              reader who learns at the bottom that rows are missing has
              already read it as complete. Rendered only when they are. -->
+        <!-- Names the missing rows by what they are, not by the register
+             that does not carry them. „Die Entwürfe ohne Gegenstand im
+             Parlament" put the site's densest piece of jargon in the one
+             state where its gloss below the list was suppressed — the
+             gloss only rendered when such a row was present, and this line
+             only renders when none is. -->
         <p v-if="!risOnly" class="mt-2 max-w-prose text-sm text-ink-muted">
-          Die Entwürfe ohne Gegenstand im Parlament fehlen hier gerade – sie
-          lassen sich
+          Die Verordnungsentwürfe aus dem RIS sind gerade nicht abrufbar –
           <NuxtLink
             to="/entwuerfe?art=verordnung&status=open"
             class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-          >noch einmal abrufen</NuxtLink>
-          oder direkt im
+          >noch einmal versuchen</NuxtLink>
+          oder
           <ExternalLink
             href="https://www.ris.bka.gv.at/Begut/"
             class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-          >RIS</ExternalLink>
-          nachsehen.
+          >im RIS nachsehen</ExternalLink>.
         </p>
 
         <ul v-if="visibleOpenRows.length" class="mt-4 space-y-3">
@@ -359,14 +361,13 @@ const lastSyncLabel = computed(() =>
              offenen Entwürfe →"), and both pointed at the same URL
              (§12.24). -->
 
-        <!-- Under the list, like a note under a table: the reader meets
-             „nicht im Parlament“ on a row first and looks for the reason
-             afterwards. Only rendered when such a row is actually above. -->
-        <p v-if="showsRisRow" class="mt-4 max-w-prose text-sm text-ink-muted">
-          „Nicht im Parlament“ heißt: zu diesem Entwurf führt das Parlament
-          keinen Gegenstand. Eine Stellungnahme geht direkt an das Ressort,
-          und wer Stellung genommen hat, veröffentlicht niemand.
-        </p>
+        <!-- NO gloss under the list since 18.09.2026. It explained
+             „nicht im Parlament" with „Gegenstand", a word the site
+             defines nowhere — a gloss that needs a gloss. The rows now
+             state the fact the absence is made of („Stellungnahme direkt
+             ans Ministerium", `risFilingNote`), so there is nothing left
+             to explain here; the procedure behind it belongs on
+             /so-funktionierts, not under the front door's list. -->
 
       </section>
 
@@ -388,7 +389,7 @@ const lastSyncLabel = computed(() =>
              the section render there at all. -->
         <ListHeader
           id="second-round-heading"
-          to="/entwuerfe?status=open#zweite-runde"
+          to="/entwuerfe?status=open&station=rv"
           noun="Regierungsvorlagen"
           :total="secondRound.items.length"
           :visible="visibleSecondRound.length"
@@ -490,16 +491,17 @@ const lastSyncLabel = computed(() =>
            shelving half has not left the page; it sits above, on the rows
            where the wait has become evidence. -->
       <section class="page-section" aria-labelledby="enacted-heading">
-        <!-- The one section whose link carries NO number, and the reason is
-             the link itself: „abgeschlossen" is broader than „Gesetz
-             geworden", so any count beside it would be a count of a
-             different set. A real filter „im Bundesgesetzblatt" would need
-             an outcome per row — 336 Gegenstand-Abrufe — and is a work
-             package, not a link (§12.24). -->
+        <!-- Dieser Link zeigte auf „?status=closed", weil es den Filter
+             „im Bundesgesetzblatt" nicht gab: der hätte eine Station pro
+             Zeile gebraucht, und das war ein Arbeitspaket, kein Link
+             (§12.24). Seit 18.09.2026 gibt es die Stationskarte (§12.26),
+             also zeigt der Link auf genau die Menge, die die Überschrift
+             nennt. Weiterhin ohne Zahl: der Abschnitt zeigt die neuesten
+             Kundmachungen, die Zahl daneben wäre die aller. -->
         <ListHeader
           id="enacted-heading"
-          to="/entwuerfe?status=closed"
-          noun="abgeschlossenen Entwürfe"
+          to="/entwuerfe?station=bgbl"
+          noun="kundgemachten Entwürfe"
         >
           Zuletzt Gesetz geworden
         </ListHeader>
@@ -539,22 +541,6 @@ const lastSyncLabel = computed(() =>
           Die Kundmachungen sind derzeit nicht abrufbar.
         </p>
       </section>
-
-      <p v-if="lastSyncLabel" class="mt-12 text-xs text-ink-muted">
-        Datenstand: {{ lastSyncLabel }}
-      </p>
-      <!-- The pointer, not a second scope statement: the sections name their
-           period where they make their claim, and this says where the other
-           periods are. A link is an action, so it stands where the reading
-           ends, not in the middle of it. -->
-      <p class="mt-2 max-w-prose text-xs text-ink-muted">
-        Ausgewertet wird die laufende Gesetzgebungsperiode. Frühere Perioden –
-        zurück bis 1979 – stehen unter
-        <NuxtLink
-          to="/entwuerfe"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Alle Entwürfe</NuxtLink>, dort lässt sich die Periode wechseln.
-      </p>
     </template>
   </div>
 </template>

@@ -496,7 +496,7 @@ const doubtfulNote = computed<string | null>(() => {
 
     <template v-else>
       <p class="text-sm text-ink-secondary">
-        Das Ressort legt dem Entwurf eine Textgegenüberstellung bei. Der Text
+        Das Ministerium legt dem Entwurf eine Textgegenüberstellung bei. Der Text
         stammt von dort, die Markierung von uns. „Redaktionell“ heißt: nur
         Verweise, Zahlen, Daten oder Satzzeichen.
       </p>
@@ -507,7 +507,7 @@ const doubtfulNote = computed<string | null>(() => {
            has to be made in the open, not left to the source link. -->
       <p v-if="data.readFrom === 'pdf'" class="mt-2 text-sm text-ink-secondary">
         Diese Gegenüberstellung liegt im RIS nur als Bild vor. Der Text ist aus
-        dem PDF des Ressorts gelesen, die Zuordnung der Zeilen zueinander haben
+        dem PDF des Ministeriums gelesen, die Zuordnung der Zeilen zueinander haben
         wir aus dem Seitenlayout erschlossen — sie kann daneben liegen.
         <!-- And where the layout could not be vouched for at all, the page
              says which part of the annex is missing rather than showing a
@@ -607,7 +607,7 @@ const doubtfulNote = computed<string | null>(() => {
               <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
                 {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
                 {{ withheldText(b.cause) }}<template v-if="withheldBlame(b.cause)"> {{ withheldBlame(b.cause) }}</template>
-                Die Beilage des Ressorts sagt, was sich ändert.
+                Die Beilage des Ministeriums sagt, was sich ändert.
               </p>
               <details v-else-if="b.kind === 'context'" class="group">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">

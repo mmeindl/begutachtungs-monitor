@@ -71,7 +71,8 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) |
 | `GET /api/dashboard/outcomes` | `DashboardOutcomes` | The outcomes of the volume ranking (closed rows only, ≤5 ME-Gegenstand + their RV leg through the 30-min leaf caches). Server-rendered on `/` with a 4 s timeout. The recency pool and its extension probe were removed on 18.09.2026 with the section they fed (§12.23) |
 | `GET /api/dashboard/enacted` | `DashboardEnacted` | "Zuletzt Gesetz geworden": list 101 narrowed by `Status` to the finished Vorlagen, detail JSON for the newest 30 of them, ordered by BGBl number (Teil I), deduplicated per draft, top 4 joined against list 81. Server-rendered with a 4 s timeout — measured 0.93 s fully cold (30 parallel Gegenstand fetches: 0.54 s), 14 ms warm |
-| `GET /api/drafts?gp&status&ministry&q` | `DraftsResponse` | List 81; `status`: `open\|closed\|all` (default `all`), `q` searches title/citation/ministry server-side |
+| `GET /api/drafts?gp&status&station&ministry&q` | `DraftsResponse` | List 81 + the station map (§12.26); `status`: `open\|closed\|all` (default `all`), where **`open` = „Stellungnahme möglich"**: laufende Frist ODER offenes Vorlagen-Formular. `station`: comma list of `begutachtung\|rv\|parlament\|bgbl` (default all), read under a 2.5 s budget — on timeout the answer carries `stationsAvailable: false` and is NOT filtered. `q` searches title/citation/ministry server-side |
+| `GET /api/stations/:gp` | counts per station | The station map of one period (`aktuell` = running GP), awaited in full — the prewarm call that pays the cold build (227 requests for GP XXVIII, 650 for XXVII). Its counts are the live base rate of a running period (§12.26) |
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
 | `GET /api/drafts/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
 | `GET /api/drafts/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → **scoped to the laws both texts carry** → aligned → word diff; cached 24 h. `lawsOnlyInRv` / `lawsOnlyInMe` name the laws left out, with their unit counts — a Regierungsvorlage that merges several drafts would otherwise report hundreds of §§ as new (§6d). `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
@@ -214,8 +215,8 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 ## 7. Pages
 
-- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (plain text: the anchor into the accountability section went on 18.09.2026 — a promise is not navigation, and the reorder removed the distance it was saving), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty), **"Wo am meisten mitgeredet wurde"** (the GP's top by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here) — **all four cut to `HOME_LIST_LENGTH` = 5 and each with exactly one link, top right, to the filter that shows the same list uncut (§12.24: `ListHeader`, no `ListMore` on this page)**, lastSync note, and under it the scope line: the accountability sections count over the CURRENT Gesetzgebungsperiode only, named in each subline, with the pointer to the earlier ones on `/entwuerfe`. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
-- `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, Art select, GP select, ministry select (from the response), **sort select (Frist | Meiste Stellungnahmen — §12.24, client-side, the target of the homepage ranking's link)**, search field (debounced); filter state in the URL query; result counter; EmptyState. Under the list, when the status filter is „In Begutachtung": the **„Zweite Runde"** section (`#zweite-runde`, the anchor the homepage links to).
+- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (plain text: the anchor into the accountability section went on 18.09.2026 — a promise is not navigation, and the reorder removed the distance it was saving), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty), **"Wo am meisten mitgeredet wurde"** (the GP's top by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here) — **all four cut to `HOME_LIST_LENGTH` = 5 and each with exactly one link, top right, to the filter that shows the same list uncut (§12.24: `ListHeader`, no `ListMore` on this page)**, and then the page simply ends. Its whole foot went on 18.09.2026, in three steps, and the reasoning is worth keeping because each step failed a different test. The lastSync note, because the field is one global index timestamp, identical for GP XX as for today, so it could never read "old" (`docs/api-exploration.md`). The scope sentence, because the accountability sections count over the CURRENT Gesetzgebungsperiode only and each names it in its own subline — a third statement at the foot added nothing. Note what was NOT done: moving the period down there as a footnote in the manner of the Quelle notes. A source note is looked up after reading and its absence leaves the sentence above true; the period is part of the claim — without it "die Entwürfe mit den meisten Stellungnahmen" reads as an all-time superlative the list is not, and a qualifier below the claim no longer qualifies it. And finally the pointer "Frühere Perioden – zurück bis 1979 – stehen unter Alle Entwürfe", which survived one round on the ground that "back to 1979" was stated nowhere else. Unique is not the same as useful: `/entwuerfe` is already in the main nav on every page and behind all four `ListHeader` links, and the corpus depth is not this project's claim — it is what list 81 hands to anyone who queries it, while the accountability chain is what has to be earned. A foot note advertising the range advertised the wrong thing, and for the older periods it also promises a depth the product does not deliver there (no diff layer, thin chain). Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
+- `/entwuerfe` **List**, filtered on **two axes (§12.26)**: **station chips (multi-select: Begutachtung · Regierungsvorlage · Parlament · Bundesgesetzblatt — where a draft stands)** over the segmented control **Alle / Stellungnahme möglich / Abgeschlossen** (what a reader can do — „Stellungnahme möglich" is a running Frist OR an open Vorlagen-Formular, so „zweite Runde" is the cut `?status=open&station=rv`), Art select, GP select, ministry select (from the response), **sort select (Frist | Meiste Stellungnahmen — §12.24, client-side, the target of the homepage ranking's link)**, search field (debounced); filter state in the URL query; result counter; EmptyState. Rows carry their station in the slot the Frist-Countdown owns while the Frist runs. A station chip takes the RIS half out entirely — those records have no station at all (§12.26) — and „Verordnungsentwürfe u. a." plus a station is an empty set that says so instead of showing an EmptyState. Under the list, when the status filter is „Stellungnahme möglich" and the stations allow it: the section **„Ohne Begutachtung: Stellungnahme im Nationalrat möglich"** (`#zweite-runde`, the anchor the homepage links to), which since §12.26 holds only the Vorlagen **without** a Begutachtung — the others are rows.
 - `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
 - `app/error.vue`: 404/500 in German, link to the home page.
@@ -3929,6 +3930,210 @@ Zwei Folgekosten, beide größer als der Filter selbst:
   Gegenstand enden bei der Begutachtung (§12.16). „Bundesgesetzblatt" leert
   die Liste stillschweigend um zwei Drittel — das muss auf dem Schirm
   stehen, so wie es die Zählzeile heute tut.
+
+### 12.26 Zwei Achsen: wo ein Entwurf steht, und was ich tun kann
+
+§12.25 hat den „Zweite Runde"-Abschnitt unter die Liste gelegt und den
+Stationsfilter als Nachfolger benannt — zurückgestellt, weil nicht der Filter
+teuer ist, sondern seine Datenlage. Gebaut am 18.09.2026 auf Ansage, und die
+Datenlage ist billiger ausgefallen als die Schätzung.
+
+**Die Liste fragt jetzt zwei Dinge getrennt:**
+
+| Achse | Control | Werte | URL |
+| --- | --- | --- | --- |
+| Wo steht es | Chips, Mehrfachauswahl | Begutachtung · Regierungsvorlage · Parlament · Bundesgesetzblatt | `?station=rv,bgbl` |
+| Was kann ich tun | das bisherige Segment | Alle · Stellungnahme möglich · Abgeschlossen | `?status=open` |
+
+Die Stationen sind die der Detailseite (`shared/utils/stations.ts`) minus
+`entwurf` — ein Dokument, kein Ort, an dem ein Verfahren stehen kann. Ein
+Vokabular für Zeitleiste und Liste: wer die Stationen auf einer Seite lernt,
+liest die andere.
+
+**„Zweite Runde" ist kein fünfter Chip, und das ist der Kern.** Sie wäre
+keine Station, sondern eine Eigenschaft von einer — wer „Regierungsvorlage"
+wählte, bekäme sonst auch alle längst beschlossenen Vorlagen. Als Schnitt aus
+beiden Achsen ist sie dagegen exakt benennbar und teilbar:
+`?status=open&station=rv`. Dafür heißt `status=open` jetzt **„Stellungnahme
+möglich"** — laufende Frist ODER offenes Formular zur Vorlage
+(`canParticipate`). Das ist die Verschmelzung, die die Frage des Lesers
+abbildet: *wo kann ich jetzt etwas sagen* kennt keine Verfahrensstufen.
+
+**Was das mit dem Abschnitt aus §12.25 macht: er schrumpft auf seinen Rest.**
+Ein Entwurf in zweiter Runde ist jetzt eine gewöhnliche Zeile — mit Ressort,
+Titel, Stellungnahmenzahl und dem Chip „Zweite Runde" in der Spalte, in der
+sonst der Countdown steht. Beides zu zeigen hieße, denselben Vorgang zweimal
+aufzulisten. Übrig bleiben die rund ein Viertel Vorlagen **ohne**
+Begutachtung: zu ihnen gibt es keinen Ministerialentwurf, also keine Zeile,
+die sie tragen könnte — und ein offenes Fenster, das wir kennen.
+
+**Und damit ändert sich der Name des Abschnitts, entgegen dem Grundsatz
+„dieselbe Sache, derselbe Name".** Er hieß einen Nachmittag lang wörtlich wie
+auf der Startseite. Nur ist es nicht mehr dieselbe Sache: die Startseite zeigt
+alle sechs offenen Vorlagen, hier stehen fünf davon als Zeile und im Abschnitt
+bleibt eine. „Zweite Runde" zu versprechen und eine von sechs zu zeigen liest
+sich als Fehler — und wurde am 18.09.2026 auch prompt als einer gemeldet. Also
+sagt der Name die Teilmenge: **„Ohne Begutachtung: Stellungnahme im
+Nationalrat möglich"**, mit einem Satz darunter, der auf die Zeilen oben
+zeigt. Der Grundsatz gilt weiter; er greift nur nicht, wenn die Menge eine
+andere ist.
+
+**Die rechte Spalte beantwortet eine Frage zur Zeit.** Solange die Frist
+läuft, ist das „bis wann" — kein Stationschip darf den Countdown verdrängen,
+weil die Frist das Einzige ist, worauf jemand noch reagieren kann. Danach hat
+der Countdown nichts mehr zu zählen, und dieselbe Spalte trägt „was ist daraus
+geworden" (`StationBlock`, Anatomie von `DeadlineBlock` und `OutcomeChip`).
+In der dichten Zeile kürzt derselbe Satz, statt ein anderer zu werden:
+„Kundgemacht: BGBl. I Nr. 69/2026" → „BGBl. I 69/2026". „Bisher" überlebt
+jede Kürzung — es ist das Wort, das „keine Regierungsvorlage" zu einem Stand
+macht statt zu einem Urteil.
+
+#### Die Karte: warum vom Entwurf aus, nicht von der Vorlage
+
+Der billige Weg wäre Liste 101 plus `preconst`: ein Abruf je Vorlage, jede
+mit einem Zeiger zurück auf ihren Ministerialentwurf — halb so viele Abrufe.
+`preconst` ist aber kein universelles Feld (`api-exploration.md` §101), ein
+fehlender Zeiger also nicht von „nie eine Vorlage geworden" zu unterscheiden.
+Genau diese Verwechslung darf dieses Produkt nicht machen: „Bisher keine
+Regierungsvorlage" über einem Entwurf, der eine hat, ist eine falsche
+Anschuldigung, erzeugt um einen Abruf zu sparen. Also wird **jeder Entwurf
+über sein eigenes Stufenprotokoll gefragt** (`findLastRvLink`), dieselbe
+Quelle, aus der die Detailseite ihre Kette nennt.
+
+Der Weg ist nicht nur sicherer, er ist **vollständiger**: 592 d.B. trägt zwei
+Ministerialentwürfe (96/ME und 103/ME), von denen die Vorlage einen nennt —
+die Entwurfsseite findet beide.
+
+**Gegenprobe, zweimal unabhängig bestanden.** Die Karte findet für GP XXVII
+296 von 353 Entwürfen eine Regierungsvorlage und für GP XXVI 114 von 163 —
+exakt die Zahlen, die `scripts/rv-latency.mjs` am 08.09.2026 von Hand in
+`shared/utils/outcomes.ts` gemessen hat, live auf einem anderen Weg
+reproduziert.
+
+**Kosten, gemessen am 18.09.2026:** GP XXVIII = 135 Entwürfe → 135 Entwurfs-
++ 91 Vorlagen-Details + 1 Liste = 227 Abrufe; GP XXVII = 353 Entwürfe → 650
+Abrufe, 35,6 s kalt bei 12 gleichzeitig, 8 ms warm. Daraus drei Regeln, und
+alle drei stehen im Code:
+
+1. **Eigener Cache, 6 Stunden** (`stations-gp`, derived). Eine Station
+   bewegt sich in Tagen, nicht in Minuten.
+2. **Ein Budget von 2,5 s in `/api/drafts`.** Läuft es ab, antwortet die
+   Liste ohne Stationen, sagt das (`stationsAvailable: false`, Hinweis über
+   den Zeilen) und filtert **nicht** — der Bau läuft im Hintergrund weiter,
+   die nächste Anfrage hat ihn. Verifiziert an GP XXVI kalt: 2,66 s,
+   ungefiltert, zwei Sekunden später gefiltert.
+3. **Ein Prewarm, der den kalten Bau bezahlt**, wo niemand wartet:
+   `/api/stations/:gp` wartet die Karte voll ab und ist der dritte Aufruf der
+   Prewarm-Unit. Ein Filter, dessen Karte niemand wärmt, ist ein Filter, den
+   niemand sieht.
+
+`shared/utils/outcomes.ts` formuliert die Regel, der das folgt: keine Seite
+darf von 350 Upstream-Abrufen abhängen, *während jemand wartet*.
+
+**Die Hälfte ohne Gegenstand steht bei der Begutachtung — und kommt nie
+weiter.** Was daraus für die Stationsachse folgt, hat am 18.09.2026 zwei
+Anläufe gebraucht, und beide Fehler sind lehrreich:
+
+1. **Erst lief sie überall mit.** Der Chip „Begutachtung" zeigte 245 Zeilen,
+   davon 198 Verordnungsentwürfe — die Station verschwand hinter der Hälfte
+   des Korpus. Als Fehler gemeldet, und die Beobachtung war richtig.
+2. **Dann flog sie ganz aus der Achse** — auch aus „Begutachtung". Das war
+   die falsche Abhilfe gegen die richtige Beobachtung: die 245 sind der
+   Korpus, kein Defekt. Der Preis zeigte sich sofort:
+   „Begutachtung + Stellungnahme möglich" zeigte **4 statt 7** Zeilen, drei
+   laufende Verordnungs-Begutachtungen verschwanden, und der Link der
+   Startseite („Alle 7 offenen Entwürfe →") führte auf eine Liste mit vier.
+   Eine Zahl auf der Startseite und dieselbe Zahl auf ihrem Ziel sind nicht
+   verhandelbar.
+
+**Die Regel, die beide Fehler vermeidet:** unter `begutachtung` gehören sie
+dazu, weil sie dort *stehen*. Aus den **späteren** Stationen sind sie
+draußen, weil sie sie nicht *erreichen können* — ohne Gegenstand im Parlament
+keine Regierungsvorlage (§12.16). Das ist keine Auswahl, sondern das
+Verfahren, und es steht als Satz über der Liste, sobald eine spätere Station
+gewählt ist. Wer nur die eine Sorte will, hat den Art-Filter daneben; die
+Zählzeile nennt die Hälften ohnehin einzeln und summiert nie (§12.19).
+
+**„Verordnungsentwürfe u. a." plus eine spätere Station ist eine leere
+Menge** — nicht „nichts gefunden". Dort steht dieser Satz statt des
+EmptyState, mit dem Weg hinaus („alle Stationen" als Knopf). Vorher lief
+genau diese Kombination in ein wortloses „Keine Entwürfe gefunden".
+
+**Was die Karte nebenbei liefert:** `/api/stations/:gp` zählt die Stationen
+einer Periode. Das ist die Basisrate einer *laufenden* Periode, live statt
+handkopiert — die Datenschicht von Mechanismus 2 (Arbeitspaket 6), von der
+bisher nur ein Skript existierte. Ob daraus eine Aussage auf einer Seite
+wird, ist eine eigene Entscheidung; der Endpunkt stellt nur die Zahl bereit.
+
+**Was die Links gewonnen haben.** §12.24 hielt fest, dass die Überschrift
+„Zuletzt Gesetz geworden" auf `?status=closed` zeigen musste, weil es den
+Filter „im Bundesgesetzblatt" nicht gab — „ein Arbeitspaket, kein Link". Den
+gibt es jetzt: `?station=bgbl`. Umgekehrt zeigt „Jetzt in Begutachtung" auf
+`?status=open&station=begutachtung`, weil die Zahl daneben laufende Fristen
+zählt und `status=open` seit heute mehr umfasst.
+
+### 12.27 Eine Lücke ist kein Befund: wo die Seite über Stationen schweigen muss
+
+Der Stationsfilter aus §12.26 hatte einen blinden Fleck, der genau die
+Aussage betraf, für die es dieses Produkt gibt. „Bisher keine
+Regierungsvorlage" wird aus dem Verfahrensdatensatz des Entwurfs gelesen. In
+den alten Perioden endet dieser Datensatz bei **jedem** Entwurf an der
+Begutachtung — und die Oberfläche machte daraus denselben Satz wie bei einem
+Entwurf, der tatsächlich liegen geblieben ist.
+
+**Wie groß das war:** Wer auf `/entwuerfe` die GP XVI wählte, bekam 297
+Entwürfe, die alle aussahen, als wäre aus keinem etwas geworden. Dieselbe
+Schnittstelle verzeichnet für dieselbe Periode 270 Regierungsvorlagen
+(Zahlen und Methode: `docs/api-exploration.md` §3). Die Seite behauptete also
+nicht bloß etwas Unbelegtes, sondern etwas, dem der Nachbardatensatz
+widerspricht — eine Ablagequote von 100 %, erzeugt aus einer Archivlücke,
+ohne dass ein Ministerium irgendetwas getan hätte. Das ist genau die
+Zynismus-Maschine, vor der CLAUDE.md unter Mechanismus 3 warnt, und sie
+entstand ohne Absicht.
+
+**Warum es pro Entwurf nicht zu lösen ist.** Gemessen am 18.09.2026 trägt ein
+GP-XVI-Entwurf exakt zwei Stage-Einträge — und ein wirklich liegengebliebener
+GP-XX-Entwurf ebenfalls. Die beiden Fälle sind auf Einzelebene
+ununterscheidbar. Erst die **Periode** trennt sie: verknüpft sie *irgendeinen*
+ihrer Entwürfe mit einer Vorlage, dann trägt Abwesenheit wieder Information;
+verknüpft sie keinen einzigen, ist Abwesenheit das Archiv.
+
+**Die Regel** (`chainCoverageOf`, `shared/utils/draftChain.ts`) ist deshalb
+abgeleitet und **kein hinterlegtes Jahr**: eine *beendete* Periode, in der
+kein Entwurf über die Begutachtung hinauskommt, gilt als `unlinked`. Sie
+korrigiert sich selbst, wenn das Parlament nachträglich verknüpft, und sie
+braucht keine Pflege, wenn eine GP endet. Eine *laufende* Periode ist nie
+`unlinked` — dass dort alles an der Begutachtung steht, ist der Kalender.
+`unknown` (keine Karte, oder das Budget hat sie abgeschnitten) zählt überall
+wie `unlinked`: **Schweigen ist reparabel, eine falsche Anschuldigung nicht.**
+
+**Was die Oberfläche daraus macht:**
+
+- Die Liste hängt in einer solchen Periode **keine Station an die Zeilen** und
+  sagt über den Zeilen, warum — die Zeile zeigt stattdessen die Frist, die
+  belegt ist. Ohne diesen Satz läse sich eine Liste ohne Stationen wie ein
+  Befund.
+- **Die Stationsleiste verschwindet dort.** Ein Chip, der nichts filtern kann,
+  ist kein Bedienelement, sondern ein Versprechen (§12.24). Kommt ein
+  `?station=` per URL, sagt der Satz zusätzlich, dass nicht gefiltert wurde.
+- Die Detailseite ersetzt Überschrift, Fließtext **und** die Basisrate durch
+  die Benennung der Lücke (`chainUnlinkedHeadlineDe`). Die Basisrate fiel mit,
+  weil `rvBaseRateFor` sonst still auf die neueste gemessene Periode
+  zurückfällt — auf einer GP-XVI-Seite standen damit GP-XXVII-Zahlen.
+
+**Was bewusst NICHT passiert ist: die alten Perioden aus dem Periodenwähler
+zu nehmen.** Titel, Dokumente und Stellungnahmen-Zahlen von 1979 sind echt und
+kosten nichts. Das Problem war nie, dass die Zeilen existieren, sondern dass
+Abwesenheit als Aussage gerendert wurde.
+
+**Die Grenze dieser Lösung, offen benannt.** Sie greift nur bei *totaler*
+Abwesenheit. In den Übergangsperioden (GP XVIII–XXI, RV-Link bei 3/8 bis 7/8
+im Stichprobenmaß) ist ein Teil der fehlenden Links vermutlich ebenfalls
+Archivlücke — nur lässt sich das dort nicht mehr sauber vom echten
+Liegenbleiben trennen, und eine Warnung auf jeder zweiten Zeile wäre selbst
+wieder eine Aussage. Diese Periodengruppe bleibt damit die schwächste Stelle
+der Nachverfolgung; für Arbeitspaket 6 ist sie der Grund, die Basisraten bei
+GP XXII zu beginnen.
 
 ## 13. Open questions
 

@@ -31,6 +31,7 @@ import type {
   StatementMeta,
   StatementsSummary,
 } from '#shared/types'
+import { chainCoverageOf } from '#shared/utils/draftChain'
 import { GP_RE, gpEndedOn, gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
 import {
@@ -302,15 +303,7 @@ export const getCurrentGp = defineCachedFunction(
 
 export interface GpDrafts {
   gp: string
-  lastSync: string | null
   items: DraftSummary[]
-}
-
-/** Upstream lastSync (format not contractual) → ISO-8601, else null. */
-function toIsoTimestamp(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const d = new Date(value)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
 /**
@@ -338,7 +331,6 @@ export const getDraftsForGp = defineCachedFunction(
     const res = await consultationRows(gp)
     return {
       gp,
-      lastSync: toIsoTimestamp(res.lastSync),
       items: (res.rows ?? []).map(mapDraftRow),
     }
   },
@@ -694,6 +686,21 @@ export function buildStatementsSummary(items: StatementMeta[]): StatementsSummar
 const RIS_JOIN_BUDGET_MS = 2_000
 
 /**
+ * Same bargain for the period's station map, which the detail page needs for
+ * one question only: may this page say „bisher keine Regierungsvorlage" at
+ * all (§12.27)? Per draft the question is undecidable — an archive gap and a
+ * shelved draft leave the identical two-entry stage record — so the answer
+ * has to come from the period.
+ *
+ * Enrichment, never a precondition: past the budget the answer is `unknown`,
+ * which silences the claim rather than risking a false one. Cold this costs
+ * the same hundreds of fetches as on the list, and the same background fill
+ * pays for the next visitor. Warm it is 8 ms, and the current GP is prewarmed
+ * anyway, so the branch that matters most is the one that is never cold.
+ */
+const STATION_MAP_BUDGET_MS = 2_000
+
+/**
  * Chain state of one consultation (RV citation + BGBl number) WITHOUT the
  * statements fetch — the dashboard's recently-closed section needs only
  * the outcome, and getDraftDetail would drag list 142 along for
@@ -735,7 +742,7 @@ export async function getDraftDetail(
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
   // client. List 142 then just returns zero rows.
-  const [summary, detail, statementsResult, risMap, currentGp] = await Promise.all([
+  const [summary, detail, statementsResult, risMap, stationMap, currentGp] = await Promise.all([
     requireDraft(gp, inr),
     getGegenstand(gp, 'ME', inr),
     // Statements must not take the whole page down: on failure (including
@@ -747,6 +754,11 @@ export async function getDraftDetail(
     // cost the page. (Nitro auto-import from ./ris — an explicit import
     // would be a cycle.)
     withinBudget(getRisMapForGp(gp), RIS_JOIN_BUDGET_MS),
+    // Whether the period links its drafts to Vorlagen at all — the gate on
+    // every "no Regierungsvorlage" sentence below (§12.27). Auto-imported
+    // from ./stationMap for the same reason as the RIS map above: an
+    // explicit import would be a cycle.
+    withinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS),
     // Whether this draft's GP is over is decided against the running one
     // (24 h leaf cache; the fallback value can only err towards "läuft").
     getCurrentGp(),
@@ -827,6 +839,10 @@ export async function getDraftDetail(
     risDraft: risMap?.rows.find((r) => r.inr === inr) ?? null,
     gpEnded: gpHasEnded(gp, currentGp),
     gpEndedOn: gpEndedOn(gp),
+    chainCoverage: chainCoverageOf(
+      stationMap ? Object.values(stationMap) : null,
+      gpHasEnded(gp, currentGp),
+    ),
     predecessor: related.predecessor,
     successor: related.successor,
     statements: statementsResult

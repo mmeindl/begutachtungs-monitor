@@ -7,7 +7,7 @@ import { rankByStatements } from '#shared/utils/draftOrder'
 
 export default defineEventHandler(async (): Promise<DashboardPayload> => {
   const gp = await getCurrentGp()
-  const { items: rawItems, lastSync } = await getDraftsForGp(gp)
+  const { items: rawItems } = await getDraftsForGp(gp)
   const items = rawItems.map(reconcileActive)
 
   // Open consultations, deadline ascending (no deadline sorts last).
@@ -35,6 +35,5 @@ export default defineEventHandler(async (): Promise<DashboardPayload> => {
       consultationsTotalGp: items.length,
     },
     topByStatements,
-    lastSync,
   }
 })

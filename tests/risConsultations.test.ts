@@ -5,6 +5,7 @@ import {
   RIS_KIND_HINT,
   RIS_KIND_LABEL,
   RIS_KIND_PLURAL,
+  risFilingNote,
   sortConsultations,
 } from '../shared/utils/risConsultations'
 
@@ -32,12 +33,28 @@ function c(overrides: Partial<RisConsultation> = {}): RisConsultation {
 const ids = (list: RisConsultation[]) => [...list].sort(sortConsultations).map((x) => x.id)
 
 describe('RIS kind vocabulary', () => {
-  it('covers every kind in all three registers', () => {
+  it('names every kind in both registers', () => {
     for (const kind of ['verordnung', 'gesetz', 'unbestimmt'] as const) {
       expect(RIS_KIND_LABEL[kind]).toBeTruthy()
       expect(RIS_KIND_PLURAL[kind]).toBeTruthy()
-      expect(RIS_KIND_HINT[kind]).toBeTruthy()
     }
+  })
+
+  /* A hint is optional since 18.09.2026, and `unbestimmt` deliberately has
+     none: its old sentence explained our own classifier („Der Titel nennt
+     keine Rechtsform, deshalb steht hier keine") to a reader who asked
+     about a draft. What the test still pins is that a hint is either a
+     real sentence or nothing — never the empty string, which renders as a
+     gap nobody chose. */
+  it('carries a real sentence wherever it carries a hint at all', () => {
+    for (const hint of Object.values(RIS_KIND_HINT)) {
+      if (hint === null) continue
+      expect(hint.trim().length).toBeGreaterThan(0)
+    }
+  })
+
+  it('says nothing about the kind whose type the title does not name', () => {
+    expect(RIS_KIND_HINT.unbestimmt).toBeNull()
   })
 
   it('claims no category for a record whose title names no type', () => {
@@ -48,7 +65,27 @@ describe('RIS kind vocabulary', () => {
   it('never frames a kind as a failing — Nachverfolgung, not blame', () => {
     // The framing rule in CLAUDE.md, pinned where the words actually live.
     for (const hint of Object.values(RIS_KIND_HINT)) {
+      if (hint === null) continue
       expect(hint).not.toMatch(/versäum|verheimlich|umgeh|vermeid|trick/i)
+    }
+  })
+})
+
+describe('risFilingNote', () => {
+  /* The label that replaced „nicht im Parlament". Pinned because it is what
+     lets the four glosses elsewhere stay deleted: if it ever stops naming
+     the ministry, the rows go back to describing an absence. */
+  it('tells an open row where a Stellungnahme goes', () => {
+    expect(risFilingNote(true)).toMatch(/Ministerium/)
+  })
+
+  it('tells a closed row why no count stands there', () => {
+    expect(risFilingNote(false)).toMatch(/nicht veröffentlicht/)
+  })
+
+  it('never names the Parliament register a reader cannot know', () => {
+    for (const active of [true, false]) {
+      expect(risFilingNote(active)).not.toMatch(/Gegenstand|nicht im Parlament/i)
     }
   })
 })

@@ -12,13 +12,18 @@ const title = computed(() =>
 const description = computed(() =>
   is404.value
     ? 'Die angeforderte Seite existiert nicht oder wurde verschoben.'
-    : 'Ein unerwarteter Fehler ist aufgetreten. Die Startseite funktioniert weiterhin.',
+    : 'Beim Laden dieser Seite ist ein Fehler aufgetreten.',
 )
 
 useSeoMeta({ title })
 
 function goHome() {
   clearError({ redirect: '/' })
+}
+
+function retry() {
+  // force: umgeht die 10s-Sperre gegen Reload-Schleifen – hier klickt ein Mensch
+  reloadNuxtApp({ force: true })
 }
 </script>
 
@@ -35,7 +40,13 @@ function goHome() {
       <p class="mt-3 text-sm leading-relaxed text-ink-secondary">
         {{ description }}
       </p>
-      <UButton class="mt-6" color="primary" @click="goHome">Zur Startseite</UButton>
+      <div class="mt-6 flex flex-wrap justify-center gap-2">
+        <!-- Kein Reload bei 404: die Seite fehlt, sie lädt nicht bloß nicht -->
+        <UButton v-if="!is404" color="primary" @click="retry">Erneut versuchen</UButton>
+        <UButton :color="is404 ? 'primary' : 'neutral'" :variant="is404 ? 'solid' : 'outline'" @click="goHome">
+          Zur Startseite
+        </UButton>
+      </div>
     </div>
   </div>
 </template>

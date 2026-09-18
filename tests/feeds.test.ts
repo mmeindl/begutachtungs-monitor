@@ -189,7 +189,7 @@ describe('feeds carry the Begutachtungen without a parliamentary Gegenstand', ()
     expect(xml).toContain(
       '<title>Verordnungsentwurf: Änderung der Druckgeräteaufstellungsverordnung – DGAV – Frist 19.10.</title>',
     )
-    expect(xml).toContain('ohne Gegenstand im Parlament')
+    expect(xml).toContain('Stellungnahme direkt ans Ministerium')
     expect(xml).toContain(`<link>${SITE}/entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B</link>`)
   })
 
@@ -223,7 +223,7 @@ describe('feeds carry the Begutachtungen without a parliamentary Gegenstand', ()
     const ics = unfoldIcs(buildIcsCalendar(SITE, [], [risConsultation()]))
     expect(ics).toContain('UID:ris-BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B@begutachtungs-monitor.at')
     expect(ics).toContain('DTSTART;VALUE=DATE:20261019')
-    expect(ics).toContain('Stellungnahme direkt an das Ressort')
+    expect(ics).toContain('Stellungnahme direkt ans Ministerium')
     expect(ics).toContain(`URL:${SITE}/entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B`)
   })
 

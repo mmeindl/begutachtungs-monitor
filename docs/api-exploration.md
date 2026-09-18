@@ -22,6 +22,7 @@ Content-Type: application/json
 - **Body** = filter dimensions as `{"FELD":["wert",...]}`. Multiple keys are AND-combined, values within an array OR-combined. `{}` matches everything.
 - **Query params:** `pagesize=N`, `page=N` (1-based), `sortrnr=<header-rnr>`, `ascDesc=ASC|DESC`. `showAll=true` returns all matches in one response — **but only when `pagesize` is absent** (an explicit `pagesize` always wins). Default without either: 20 rows. `js=eval` is optional (identical response without it).
 - **Response:** `{pages, count, lastSync, header:[...], rows:[[...]]}`. Rows are **positional arrays**; column meaning comes from the `header` array (rnr N = array index N−1), indices differ per list.
+- **`lastSync` is not a freshness marker for the data you asked for.** Measured 18.09.2026: one global value, identical across lists 81, 142 and 101 *and* across GP XXVIII, XXV and XX — the 1995–1999 period reports the same timestamp as today's. It tracks when the search index last ran, was under a minute old when sampled, and stayed put over two minutes. It can therefore never read "old", whatever the state of a given dataset. Do not surface it as a Datenstand.
 
 ### ⚠️ The two most dangerous properties
 
@@ -758,6 +759,29 @@ work e-mail address. Link the document, do not parse it
 - **ME → RV (forward): semi-structured.** Only as an href in `stages[].text` — a one-line regex, or more elegantly via the inverted `preconst` edges. Additionally, the evolved text versions (RV/committee/plenary) sit on the ME page under `.content.statements.documents[]`.
 - **RIS Begut ↔ Parliament ME: a constructed join is required** (no shared key). Tested composite key, matched 2/2 cleanly:
   `BeginnBegutachtungsfrist == ME arrival` (exact in both cases) **+** title prefix match after stripping "Ministerialentwurf betreffend " (Parliament sometimes appends package short names that RIS omits) **+** ministry substring (`"Bundeskanzleramt"` ⊂ `"BKA (Bundeskanzleramt)"`). Title search alone never suffices (2–3 loose hits per search term). **Corpus-tested 2026-09-06 on all 350 MEs of GP XXVII: 337 unique matches, 0 ambiguous, 12 unmatched (all without any RIS record), 25/25 samples verified.** Two corrections from the corpus: `EndeBegutachtungsfrist == Frist` is the *strongest* signal (336/337, no one-sided extension in the whole GP), and Beginn is only exact in 72 % because Parliament's Einlangen lags RIS by 1–14 days. Full rule, numbers and failure modes: `docs/ris-join.md`; code `server/utils/risJoin.ts`; artefact `data/ris-me-map-gp27.json`.
+
+### How far back the chain actually reaches (measured 18.09.2026)
+
+The `stages[]` link that carries ME→RV is **not** present for the whole archive, and the gap is not where one would guess. Corpus counts per Gesetzgebungsperiode, list 81 against list 101 (`{GP_CODE, ITYP:['I'], VHG:['RV']}` — the production filter; `GP_CODE` alone returns the whole Verhandlungsgegenstände list and is useless here):
+
+| GP | MEs | RVs | | GP | MEs | RVs |
+|---|---|---|---|---|---|---|
+| XIV | 19 | 355 | | XXII | 425 | 374 |
+| XV | 5 | 374 | | XXIII | 233 | 176 |
+| XVI | 297 | 270 | | XXIV | 545 | 496 |
+| XVII | 335 | 382 | | XXV | 329 | 331 |
+| XVIII | 451 | 462 | | XXVI | 163 | 117 |
+| XIX | 114 | 96 | | XXVII | 353 | 365 |
+| XX | 412 | 443 | | XXVIII | 135 | 117 |
+| XXI | 391 | 291 | | **total** | **4 207** | |
+
+Both corpora are well populated from GP XVI on — **what is missing is the link between them.** Resolved through the production path (`getStationMapForGp`, so this is the whole period, not a sample): **all 297 drafts of GP XVI stop at the Begutachtung**, while list 101 holds 270 Regierungsvorlagen from that same period. GP XX resolves 412/412. Sampled at n=8 per period, RV links first appear in GP XVIII (3/8) and are reliable from GP XX (7/8); a BGBl number first resolves in GP XXII, a RIS draft text likewise.
+
+Three consequences:
+
+1. **Absence of a Vorlage is only evidence where the period links any at all.** Per draft the two cases are indistinguishable — a GP XVI draft and a genuinely shelved GP XX draft both carry exactly two stage entries. Only the period separates them. What the product does with that: `docs/architecture.md` §12.27.
+2. **GP XIV and XV are stubs on the ME side** — 19 and 5 drafts for eight years. Incomplete digitisation, not history.
+3. **A full ME→RV→BGBl chain exists for ~2 183 Verfahren, GP XXII onward.** That is the sample a base-rate claim may be built on, and the boundary it has to name.
 
 ---
 

@@ -583,7 +583,7 @@ export interface RvLink {
  * Every /gegenstand/{gp}/I/{nr} link in the process history, in stage order
  * = the Regierungsvorlagen this draft produced (ME→RV is 1:n,
  * docs/architecture.md §5). Each carries the date of the stage it sits in —
- * the RV station's date in the StageBar, available nowhere else.
+ * the RV station's date in the SpineRail, available nowhere else.
  */
 export function findRvLinks(trace: TraceStep[]): RvLink[] {
   const found: RvLink[] = []
