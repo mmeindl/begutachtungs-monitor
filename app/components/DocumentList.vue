@@ -84,7 +84,7 @@ function docHint(doc: DocumentListItem): string | null {
               target="_blank"
               rel="noopener"
               class="group flex min-h-11 items-center justify-center rounded"
-              :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen`"
+              :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen (neues Fenster)`"
             >
               <span
                 class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-baseline group-hover:underline"

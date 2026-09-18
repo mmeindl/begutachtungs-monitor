@@ -66,7 +66,7 @@ onBeforeUnmount(() => {
 
 const ariaLabel = computed(() => {
   const who = props.submitter ? ` von ${props.submitter}` : ''
-  return `Stellungnahme ${props.citation}${who} als PDF öffnen`
+  return `Stellungnahme ${props.citation}${who} als PDF öffnen (neues Fenster)`
 })
 </script>
 

@@ -678,7 +678,7 @@ const linkClasses =
             color="primary"
             class="min-h-11"
           >
-            Stellungnahme auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span>
+            Stellungnahme auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
           </UButton>
           <UButton
             v-if="windows.begutachtung && data.deadline"
@@ -703,7 +703,7 @@ const linkClasses =
             :variant="windows.begutachtung ? 'outline' : 'solid'"
             class="min-h-11"
           >
-            Stellungnahme zur Regierungsvorlage auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span>
+            Stellungnahme zur Regierungsvorlage auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
           </UButton>
         </div>
         <!-- The documented base fact (drafts get revised routinely), no

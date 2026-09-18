@@ -273,7 +273,7 @@ const documents = computed(() => {
             color="primary"
             class="min-h-11"
           >
-            Begleitschreiben öffnen<span aria-hidden="true"> ↗</span>
+            Begleitschreiben öffnen<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
           </UButton>
           <UButton
             v-if="data.deadline"

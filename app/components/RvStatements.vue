@@ -119,7 +119,7 @@ const LINK =
       eingebracht werden. Zu dieser Vorlage wurde <template v-if="filingOpen">bisher</template> keine eingebracht<template
         v-if="filingOpen"
       >; möglich ist es, {{ SECOND_ROUND_CLAUSE }}:
-        <ExternalLink :href="data.rvUrl" :class="LINK">Stellungnahme abgeben</ExternalLink></template
+        <ExternalLink :href="data.rvUrl" new-window :class="LINK">Stellungnahme abgeben</ExternalLink></template
       >.
     </p>
 
