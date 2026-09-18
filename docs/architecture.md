@@ -69,7 +69,8 @@ badges. Tone: factual, precise, no exclamation marks.
 | Route | Response | Source |
 |---|---|---|
 | `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) |
-| `GET /api/dashboard/outcomes` | `DashboardOutcomes` | Bounded fan-out over the most recently closed consultations (≤12 ME-Gegenstand + their RV leg, all through the 30-min leaf caches) + one deeper probe for the newest RV/BGBl item + the outcomes of the volume ranking (`rankedOutcomes`, closed rows only, resolved in the same round). Server-rendered on `/` with a 4 s timeout — measured 0.41 s fully cold, 5 ms warm, because the fan-out is parallel |
+| `GET /api/dashboard/outcomes` | `DashboardOutcomes` | The outcomes of the volume ranking (closed rows only, ≤5 ME-Gegenstand + their RV leg through the 30-min leaf caches). Server-rendered on `/` with a 4 s timeout. The recency pool and its extension probe were removed on 18.09.2026 with the section they fed (§12.23) |
+| `GET /api/dashboard/enacted` | `DashboardEnacted` | "Zuletzt Gesetz geworden": list 101 narrowed by `Status` to the finished Vorlagen, detail JSON for the newest 30 of them, ordered by BGBl number (Teil I), deduplicated per draft, top 4 joined against list 81. Server-rendered with a 4 s timeout — measured 0.93 s fully cold (30 parallel Gegenstand fetches: 0.54 s), 14 ms warm |
 | `GET /api/drafts?gp&status&ministry&q` | `DraftsResponse` | List 81; `status`: `open\|closed\|all` (default `all`), `q` searches title/citation/ministry server-side |
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
 | `GET /api/drafts/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
@@ -211,7 +212,7 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 ## 7. Pages
 
-- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (its second sentence links to the first accountability section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde – und was daraus wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt abgeschlossen – was wurde daraus?"** (recently closed consultations with their outcome chip, plus the newest item that reached RV/BGBl), lastSync note. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
+- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (its second sentence links to the first accountability section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde – und was daraus wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden – aus welcher Begutachtung"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here), lastSync note. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
 - `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
 - `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
@@ -3590,6 +3591,84 @@ auch ein Zeiger von der Startseite dorthin.
 **Nicht gebaut:** keine Zählzeile „3 neu diese Woche" über oder unter der
 Liste. Das ist die Zahl im Fließtext, die §12.20 gerade abgeschafft hat —
 die Marke steht bei dem, was sie meint.
+
+
+### 12.23 Das Ende der Kette steht auf der Vorlage, nicht auf dem Entwurf
+
+„Zuletzt abgeschlossen – was wurde daraus?" zeigte die vier zuletzt
+beendeten Begutachtungen mit ihrem Ergebnis-Chip. Am 18.09.2026 ersetzt.
+
+**Der Befund: der Chip war aus dem Datum daneben ablesbar.** Die
+gemessene Latenz Fristende → erste Regierungsvorlage beträgt im Median
+**40 Tage** (p90 189, `RV_BASE_RATES` aus GP XXVII). Die Zeilen des
+Abschnitts waren konstruktionsbedingt die jüngsten Schließungen — am
+17.09.2026 zwischen 13 und 17 Tage alt. In diesem Alter ist „bisher keine
+Regierungsvorlage" kein Ergebnis, sondern die Definition des
+Latenzfensters, und der Erklärsatz über der Liste sagte das auch. Ein
+Abschnitt, dessen jede Zeile wiederholt, was die Überschrift schon
+angekündigt hat, trägt keine Information — er kostet einen Bildschirm und
+vier Fehlanzeigen hintereinander.
+
+Getragen hat ihn allein sein Anhang: die eine Karte „Zuletzt
+kundgemacht", die eine Sondersuche (`lastEnacted`) ins Leben gerufen
+hatte, weil die Liste selbst nie eine Progression zeigte. Der Anhang ist
+jetzt der Abschnitt.
+
+**Warum die Daten von der Vorlage kommen müssen.** Der Ministerialentwurf
+kennt sein eigenes Ende nicht: die Stationen von 88/ME enden mit
+„Regierungsvorlage (474 d.B.)", die Kundmachung steht auf der Vorlage.
+Über die eigenen geschlossenen Entwürfe zu laufen kostete zwei Abrufe je
+Zeile für das, was ein Abruf auf der Vorlage sagt — und verfände ein
+Gesetz nicht, dessen Begutachtung lange vor der Abstimmung endete.
+
+Also: Liste 101 (ein Aufruf für die ganze GP, für die Zweite Runde
+ohnehin gecacht), über die `Status`-Spalte auf die fertigen Vorlagen
+verengt — **111 von 117** in GP XXVIII am 18.09.2026 —, dann ein Detail-
+JSON je Vorlage für die 30 jüngsten. Gemessen am selben Tag: **30
+parallele Gegenstand-Abrufe in 0,54 s** (0,42 s je Anfrage), der ganze
+Endpunkt kalt **0,93 s**, warm **14 ms**. Serverseitig gerendert wie der
+Rest der Rechenschaftsschicht.
+
+**Sortiert wird nach der BGBl-Nummer, nicht nach einem Datum — und das
+ist kein Ersatz, sondern die einzige richtige Ordnung.** Ein
+Kundmachungsdatum erreicht uns nirgends: der Parlamentssatz führt den
+BGBl-Link ohne Datum, und **jede** Datumsspalte der Liste 101 ist das
+Einlangen (`DATUM`, `DATUMSORT`, `DATUM_VON`; `PHASEN_BIS` ist eine
+Phasen-ID, „05", kein Datum). Und die Beschlussdaten ordnen die
+Kundmachungen gerade nicht: 443 d.B. wurde am 03.06.2026 beschlossen und
+als **BGBl. I 81/2026** kundgemacht — nach Gesetzen, die am 16.07.
+beschlossen wurden und als 62–78/2026 erschienen. Innerhalb eines Jahres
+läuft die Nummer in Veröffentlichungsreihenfolge; sie ist der Schlüssel
+(`bgblOrderKey`, nur Teil I — Teil II und III führen eigene Serien).
+
+**Der Scan-Deckel ist gemessen, nicht geraten.** Die Liste lässt sich nur
+nach Einlangen verengen, und der Abstand Einlangen → Beschluss lief in
+der Stichprobe bis **91 Tage** (449 d.B., 26.03. → 25.06.), während 30
+Vorlagen bei 117 pro GP etwa einem halben Jahr Zugänge entsprechen —
+zweifacher Sicherheitsabstand zum größten beobachteten Verzug.
+
+**Zwei Dinge, die der Zuschnitt bewusst weglässt.** Ohne
+Ministerialentwurf keine Zeile: 6 der 30 jüngsten Gesetze waren nie in
+Begutachtung (Bundesfinanzgesetze, UWG-Novelle) — ein
+Begutachtungs-Monitor beantwortete „aus welcher Begutachtung?" bei ihnen
+mit Schweigen. Und ein Entwurf erscheint höchstens einmal: ME → RV ist
+1:n und beide Stränge können ins Bundesgesetzblatt führen (74/ME → 443
+und 444 d.B. → 81/2026 und 39/2026, §13.4); ohne Entdopplung stünde
+dieselbe Karte zweimal, sobald zwei seiner Gesetze ins Fenster fallen.
+
+**Was der Abschnitt nicht kann, und es sagt es selbst:** Der Nationalrat
+beschließt in Blöcken — 17 Gesetze an zwei Tagen im Juli, dann nichts
+bis Ende September. Die Liste steht zwei Monate still und wechselt dann
+fast vollständig. Das ist der Rhythmus des Hauses, keine schale Seite,
+und der Satz unter der Überschrift sagt es, damit niemand es für
+Stillstand hält.
+
+**Und die Schubladen-Hälfte geht dabei nicht verloren** (Rahmenregel,
+Mechanismus 1 gegen 3). Sie steht einen Abschnitt weiter oben, auf den
+Zeilen, wo aus dem Warten Evidenz geworden ist: 846 Stellungnahmen ohne
+Regierungsvorlage, 616 seit elf Monaten. Die Bilanz verbessert sich
+sogar — Schubladisierung dort, wo sie nach dem Latenzfenster etwas
+bedeutet, Erfolge dort, wo sie frisch sind.
 
 
 ## 13. Open questions

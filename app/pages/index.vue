@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  DashboardEnacted,
   DashboardOutcomes,
   DashboardPayload,
   DashboardSecondRound,
@@ -48,6 +49,16 @@ const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
   timeout: 4000,
 })
 
+/* The end of the chain, read from the Vorlage side (§12.23). Server-rendered
+ * for the same reason as the outcomes above it: this is the section that
+ * shows participation arriving somewhere, and it may not depend on
+ * JavaScript. Measured cold on 2026-09-18: 0.93 s for the whole endpoint —
+ * one list-101 call plus 30 parallel Gegenstand fetches at 0.54 s — and
+ * 14 ms warm, so the 4 s budget is a guard, not a plan. */
+const enactedFetch = useFetch<DashboardEnacted>('/api/dashboard/enacted', {
+  timeout: 4000,
+})
+
 /* The second window for input: Regierungsvorlagen that are taking
  * Stellungnahmen right now. Client-side and lazy on purpose — unlike the
  * outcomes section this is an ADDITION to the page, not the reason it
@@ -83,7 +94,8 @@ const { data: risOnly } = await useFetch<RisConsultationsResponse>(
 )
 
 const { data, error, refresh, status } = await dashboardFetch
-const { data: outcomes, status: outcomesStatus } = await outcomesFetch
+const { data: outcomes } = await outcomesFetch
+const { data: enacted } = await enactedFetch
 
 const { webcalUrl, googleCalUrl } = useFeedUrls()
 
@@ -421,12 +433,18 @@ const lastSyncLabel = computed(() =>
         </ol>
       </section>
 
-      <!-- The accountability layer on the front door: mechanism 1 (shelving
-           visible) and mechanism 3 (wins equally visible) in one section. -->
-      <section class="page-section" aria-labelledby="outcomes-heading">
+      <!-- The end of the chain, and the page's last word on purpose
+           (§12.23): participation that arrived somewhere. What stood here
+           until 18.09.2026 was the most recently CLOSED Begutachtungen —
+           four rows whose chip said "bisher keine Regierungsvorlage"
+           because they were two weeks old and the median wait is 40 days.
+           Predictable from the date beside it is not an outcome. The
+           shelving half has not left the page; it sits above, on the rows
+           where the wait has become evidence. -->
+      <section class="page-section" aria-labelledby="enacted-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <h2 id="outcomes-heading" class="section-heading">
-            Zuletzt abgeschlossen – was wurde daraus?
+          <h2 id="enacted-heading" class="section-heading">
+            Zuletzt Gesetz geworden – aus welcher Begutachtung
           </h2>
           <NuxtLink
             to="/entwuerfe?status=closed"
@@ -435,51 +453,35 @@ const lastSyncLabel = computed(() =>
             Alle abgeschlossenen →
           </NuxtLink>
         </div>
-        <!-- The latency context belongs BEFORE the chips, not after them:
-             it frames "bisher keine Regierungsvorlage" as "noch nicht"
-             while the reader scans — a guard below the list fires too late. -->
+        <!-- The rhythm said out loud, because it is the section's one
+             surprise: this list can stand still for two months and then
+             turn over almost completely. Better read as the institution's
+             calendar than as a stale page. -->
         <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-          Zuletzt beendete Begutachtungen und ihr weiterer Weg – in beide
-          Richtungen. Zwischen Begutachtungsende und Regierungsvorlage liegen
-          häufig mehrere Monate – „bisher keine Regierungsvorlage“ heißt oft
-          nur: noch nicht.
+          Die jüngsten Kundmachungen im Bundesgesetzblatt – und die
+          Begutachtung, aus der sie hervorgegangen sind. Der Nationalrat
+          beschließt in Blöcken: zwischen zwei Plenarwochen ändert sich hier
+          nichts.
         </p>
-        <div class="mt-4">
-          <LoadingState
-            v-if="outcomesStatus === 'pending' || outcomesStatus === 'idle'"
-            label="Verläufe werden geladen …"
-          />
-          <template v-else-if="outcomes?.recent.length">
-            <!-- Same card as "Jetzt in Begutachtung" — only the aside differs
-                 (outcome chip instead of deadline block). -->
-            <ul class="space-y-3">
-              <li v-for="o in outcomes.recent" :key="`${o.gp}-${o.inr}`">
-                <DraftCard :draft="o">
-                  <template #aside><OutcomeChip :outcome="o" /></template>
-                </DraftCard>
-              </li>
-            </ul>
-            <template v-if="outcomes.lastEnacted">
-              <h3 class="mt-6 text-base font-semibold text-ink">
-                {{
-                  outcomes.lastEnacted.bgblNumber
-                    ? 'Zuletzt kundgemacht'
-                    : 'Zuletzt mit Regierungsvorlage'
-                }}
-              </h3>
-              <div class="mt-2">
-                <DraftCard :draft="outcomes.lastEnacted">
-                  <template #aside>
-                    <OutcomeChip :outcome="outcomes.lastEnacted" />
-                  </template>
-                </DraftCard>
-              </div>
-            </template>
-          </template>
-          <p v-else class="text-sm text-ink-muted">
-            Die Verläufe sind derzeit nicht abrufbar.
-          </p>
-        </div>
+        <ul v-if="enacted?.items.length" class="mt-4 space-y-3">
+          <!-- Same card and the same chip as the section above: the object
+               is the Begutachtung, and what became of it goes in the aside. -->
+          <li v-for="o in enacted.items" :key="`${o.gp}-${o.inr}`">
+            <DraftCard :draft="o">
+              <template #aside><OutcomeChip :outcome="o" /></template>
+            </DraftCard>
+          </li>
+        </ul>
+        <!-- Two different silences, said differently: nothing promulgated
+             yet is a fact about the period, an unreachable endpoint is a
+             fact about us. -->
+        <p v-else-if="enacted" class="mt-4 text-sm text-ink-muted">
+          Aus dieser Gesetzgebungsperiode ist bisher kein Entwurf im
+          Bundesgesetzblatt kundgemacht worden.
+        </p>
+        <p v-else class="mt-4 text-sm text-ink-muted">
+          Die Kundmachungen sind derzeit nicht abrufbar.
+        </p>
       </section>
 
       <p v-if="lastSyncLabel" class="mt-12 text-xs text-ink-muted">

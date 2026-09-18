@@ -782,6 +782,36 @@ export function extractBgblLink(
   return { number: entry.title?.trim() || null, url: entry.link }
 }
 
+/**
+ * Publication order of a Bundesgesetzblatt citation as upstream words it
+ * ("Bundesgesetzblatt I Nr. 65/2026"), or null for anything that is not
+ * Teil I.
+ *
+ * WHY THE NUMBER AND NOT A DATE: within a year BGBl numbers are handed out
+ * in publication order, and no date of promulgation reaches us — the
+ * Parliament record carries the BGBl link without one, and every date column
+ * of list 101 is the Einlangen date (`docs/api-exploration.md` §101).
+ * Measured 2026-09-18 over the 30 most recently finished Vorlagen of GP
+ * XXVIII: the decision dates do NOT order the promulgations (443 d.B. was
+ * decided on 03.06. and published as 81/2026, after laws decided on 16.07.
+ * that went out as 62–78/2026), so ordering by the number is not a
+ * convenience — it is the only correct order available.
+ *
+ * Teil I only, deliberately: Teil III carries Staatsverträge, whose numbers
+ * run in their own series, and comparing the two would interleave two
+ * sequences into one wrong order. "Gesetz geworden" is Teil I anyway.
+ */
+export function bgblOrderKey(number: string | null | undefined): number | null {
+  if (!number) return null
+  const m = /\bNr\.\s*(\d+)\/(\d{4})\b/.exec(number)
+  if (!m) return null
+  // "Bundesgesetzblatt I Nr. …" — the part sits between the word and "Nr.".
+  if (!/\bBundesgesetzblatt\s+I\s+Nr\./.test(number) && !/\bBGBl\.\s*I\s*Nr\./.test(number)) {
+    return null
+  }
+  return Number(m[2]) * 100_000 + Number(m[1])
+}
+
 // ---------------------------------------------------------------------------
 // Roman numerals (GP codes) — for availableGps
 // ---------------------------------------------------------------------------

@@ -343,25 +343,11 @@ export interface ClosedOutcome extends DraftSummary {
 }
 
 /**
- * Payload of /api/dashboard/outcomes — the "Zuletzt abgeschlossen – was
- * wurde daraus?" section. Fetched deferred/client-side by the dashboard:
- * resolving the pool can hit many cold upstream fetches and must never
- * block first paint.
+ * Payload of /api/dashboard/outcomes — what became of the drafts the volume
+ * ranking shows (`DashboardPayload.topByStatements`).
  */
 export interface DashboardOutcomes {
-  /** Most recently ended consultations, strict recency order — never
-      sorted by outcome (Nachverfolgung, not a scoreboard). */
-  recent: ClosedOutcome[]
-  /** The pool's most recent item that reached RV/BGBl, when `recent`
-      itself shows no progression — keeps the full chain demonstrable
-      during the months of normal ME→RV latency. Null when `recent`
-      already contains one (or none exists in the pool). */
-  lastEnacted: ClosedOutcome | null
   /**
-   * Outcomes for the volume ranking (`DashboardPayload.topByStatements`) —
-   * the section that holds "wo wurde am meisten mitgeredet" against what
-   * became of it.
-   *
    * CLOSED ROWS ONLY, and a row whose Gegenstand could not be read is left
    * out rather than reported as "bisher keine Regierungsvorlage": an
    * unresolved outcome and a missing Regierungsvorlage are different
@@ -370,6 +356,19 @@ export interface DashboardOutcomes {
    * without it, simply uncharted.
    */
   rankedOutcomes: ClosedOutcome[]
+}
+
+/**
+ * Payload of /api/dashboard/enacted — "Zuletzt Gesetz geworden".
+ *
+ * The rows are Ministerialentwürfe again, not Vorlagen: the monitor's object
+ * is the Begutachtung, and the card that renders them is the one every other
+ * section uses. `bgblNumber` is non-null throughout by construction — a row
+ * without a Kundmachung is not in this list.
+ */
+export interface DashboardEnacted {
+  /** Newest promulgation first; empty is a normal state, not an error. */
+  items: ClosedOutcome[]
 }
 
 /**

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   absolutizeUrl,
+  bgblOrderKey,
   decodeEntities,
   extractBgblLink,
   extractLinks,
@@ -723,5 +724,42 @@ describe('groupOrganisationStatements', () => {
     ])
     expect(entries.map((e) => e.name)).toEqual(['Alpha', 'Zeta'])
     expect(entries[0]!.statements.map((s) => s.citation)).toEqual(['a2', 'a1'])
+  })
+})
+
+describe('bgblOrderKey', () => {
+  it('orders by year first, then by the number inside it', () => {
+    const a = bgblOrderKey('Bundesgesetzblatt I Nr. 81/2026')!
+    const b = bgblOrderKey('Bundesgesetzblatt I Nr. 78/2026')!
+    const c = bgblOrderKey('Bundesgesetzblatt I Nr. 5/2027')!
+    expect(a).toBeGreaterThan(b)
+    expect(c).toBeGreaterThan(a)
+  })
+
+  /* The reason this key exists: publication order is NOT decision order.
+   * 443 d.B. was decided on 03.06.2026 and published as 81/2026, after laws
+   * decided six weeks later (measured 2026-09-18). */
+  it('puts a later-published law ahead of a later-decided one', () => {
+    expect(bgblOrderKey('Bundesgesetzblatt I Nr. 81/2026')!).toBeGreaterThan(
+      bgblOrderKey('Bundesgesetzblatt I Nr. 62/2026')!,
+    )
+  })
+
+  it('accepts the short spelling as well', () => {
+    expect(bgblOrderKey('BGBl. I Nr. 37/2026')).toBe(bgblOrderKey('Bundesgesetzblatt I Nr. 37/2026'))
+  })
+
+  /* Teil II and III run their own number series — interleaving them would
+   * order two sequences as one, and "Gesetz geworden" is Teil I anyway. */
+  it('refuses everything that is not Teil I', () => {
+    expect(bgblOrderKey('Bundesgesetzblatt II Nr. 250/2026')).toBeNull()
+    expect(bgblOrderKey('Bundesgesetzblatt III Nr. 12/2026')).toBeNull()
+    expect(bgblOrderKey('Bundesgesetzblatt Nr. 620/1989')).toBeNull()
+  })
+
+  it('says null rather than guessing', () => {
+    expect(bgblOrderKey(null)).toBeNull()
+    expect(bgblOrderKey('')).toBeNull()
+    expect(bgblOrderKey('Kunsttext')).toBeNull()
   })
 })
