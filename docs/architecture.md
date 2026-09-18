@@ -3847,6 +3847,14 @@ dieselbe Rangfolge zweimal zu behaupten.
 
 ### 12.25 Die zweite Runde steht unter der Liste, nicht in ihr — und der Stationsfilter, der sie einmal ablösen wird
 
+> **Überholt am selben Tag, 18.09.2026: §12.26.** Der Stationsfilter ist
+> gebaut, die zweite Runde steht als Zeile IN der Liste, und der Abschnitt
+> unter ihr gibt es nicht mehr. Dieser Abschnitt bleibt stehen, weil die
+> Abwägung darin — warum ein Abschnitt und keine Zeilen, was der Filter
+> kosten würde — die Voraussetzung ist, gegen die §12.26 gemessen wurde: die
+> Kostenschätzung war zu hoch, die Sortier- und Filterbedenken haben sich
+> mit der Stationskarte aufgelöst.
+
 Auf `/entwuerfe` fehlte die Hälfte der Antwort auf die Frage, für die
 jemand den Filter „In Begutachtung" drückt: *wo kann ich jetzt noch etwas
 sagen?* Zu einer Regierungsvorlage kann im Nationalrat genauso Stellung
