@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
-import type { ComparisonId, StationId } from '#shared/utils/stations'
-import { lastParliamentStation, parliamentOutcome, procedureStatusDe } from '#shared/utils/stations'
+import type { ComparisonId, StationContext, StationId } from '#shared/utils/stations'
+import {
+  lastParliamentStation,
+  parliamentOutcome,
+  procedureStatusDe,
+  stationPositionDe,
+  stations,
+} from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
 // Explicit: `draftChain.ts` is a pure module and stays out of the
 // auto-imports, so that server map and vitest run the same functions.
@@ -97,6 +103,21 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
     ...(d.enactment?.bgblNumber ? { bgbl: '#bundesgesetzblatt' } : {}),
   }
 })
+
+/* Die drei Kontextwerte der Stationenleiste, EINMAL benannt: Die Kopfzeile
+ * zählt „Station n von 5" aus derselben Liste, die die Leiste zeichnet, und
+ * zwei Aufrufe mit von Hand kopiertem Kontext wären zwei Zählungen, die
+ * auseinanderlaufen können. Die Leiste bekommt ihre Props unten aus diesem
+ * Objekt. */
+const stationContext = computed<StationContext>(() => ({
+  createsNewLaw: amendedLaws.value?.createsNewLaw,
+  amendedLawCount: amendedLaws.value?.laws.length,
+  rvStatementTotal: rvStatements.value?.total,
+}))
+
+const stationPosition = computed(() =>
+  data.value ? stationPositionDe(stations(data.value, stationContext.value)) : null,
+)
 
 /* What parliament did, for the sentence in "Im Parlament". Same function as
  * the bar's fact line, so the heading and the row cannot disagree. */
@@ -389,7 +410,15 @@ const linkClasses =
       </div>
       <header>
         <div class="flex flex-wrap items-center gap-2">
-          <span class="text-sm font-medium text-ink-muted">{{ data.citation }}</span>
+          <!-- Das Typwort führt, genau wie auf der Karte — und deren
+               Begründung (`DraftCard.vue`) galt hier immer schon: „132/ME"
+               erklärt sich nur dem, der das System kennt, das Wort erklärt
+               es. Bis 18.09.2026 folgte die Karte dem Argument und die
+               Detailseite nicht, obwohl sie die Seite ist, die ein
+               geteilter Link öffnet. -->
+          <span class="text-sm font-medium text-ink-muted">
+            <span class="text-ink">Ministerialentwurf</span> {{ data.citation }}
+          </span>
           <!-- Every Ressort gets a de-facto page for free: the filtered
                list URL. Only here — cards are themselves links. -->
           <NuxtLink
@@ -497,25 +526,41 @@ const linkClasses =
                where the whole procedure can be answered in two words. The
                label survives where it is still doing work: as the list's
                accessible name in SpineRail. -->
+          <!-- Eine ÜBERSCHRIFT, seit 18.09.2026. Sie war ein <p>, und damit
+               übersprang die Überschriftennavigation eines Screenreaders
+               genau den Block, der die Frage der Seite beantwortet: von der
+               h1 direkt auf „Worum geht es?".
+
+               „Station n von 5" steht daneben, nicht in der Überschrift:
+               „Bisher keine Regierungsvorlage" ist der häufigste Zustand
+               und mit dem Zusatz auf dem Telefon dreizeilig. Und der Link
+               trägt jetzt Link-Gewicht — text-xs text-ink-muted war die
+               einzige Orientierungshilfe der Seite, gesetzt, um übersehen
+               zu werden. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <p class="font-medium text-ink">
+            <h2 class="font-medium text-ink">
               {{ procedureStatusDe(data) }}
+            </h2>
+            <p class="flex flex-wrap items-baseline gap-x-2 text-sm">
+              <span v-if="stationPosition" class="text-ink-secondary">
+                {{ stationPosition }}
+              </span>
+              <NuxtLink
+                to="/so-funktionierts"
+                class="tap-target rounded font-medium text-accent-deep hover:underline"
+              >
+                Wie funktioniert das Verfahren? →
+              </NuxtLink>
             </p>
-            <NuxtLink
-              to="/so-funktionierts"
-              class="tap-target rounded text-xs text-ink-muted hover:text-ink hover:underline"
-            >
-              Wie funktioniert das Verfahren? →
-            </NuxtLink>
           </div>
           <SpineRail
             class="mt-4"
             :data="data"
             :anchors="stationAnchors"
             :comparison-anchors="comparisonAnchors"
-            :creates-new-law="amendedLaws?.createsNewLaw"
-            :rv-statement-total="rvStatements?.total"
-            :amended-law-count="amendedLaws?.laws.length"
+            :creates-new-law="stationContext.createsNewLaw"
+            :rv-statement-total="stationContext.rvStatementTotal"
+            :amended-law-count="stationContext.amendedLawCount"
           />
         <!-- The "second attempt" fact, in both lifecycle states: a same-title
              draft ran before and produced no Regierungsvorlage. Same title
@@ -562,19 +607,23 @@ const linkClasses =
         v-if="windows.begutachtung || windows.vorlage"
         class="mt-6 rounded-xl border border-hairline bg-surface p-5"
       >
-        <p v-if="windows.begutachtung" class="font-semibold text-ink">
+        <!-- Überschriften, nicht Absätze (18.09.2026): Das ist die einzige
+             Handlung, die die Seite anbietet, und sie stand für die
+             Überschriftennavigation überhaupt nicht in der Gliederung. Nur
+             eine der beiden rendert je. -->
+        <h2 v-if="windows.begutachtung" class="font-semibold text-ink">
           {{ fristLabel(data.deadline, true) }}<template v-if="data.deadline">
             – die Frist endet am {{ formatDateDe(data.deadline) }}</template
           >
-        </p>
+        </h2>
         <!-- The second window alone: the Begutachtung is over, parliament
              still listens. No date, because upstream publishes none — the
              form closes with the vote, and the card says exactly that. -->
-        <p v-else class="font-semibold text-ink">
+        <h2 v-else class="font-semibold text-ink">
           Die Begutachtung ist vorbei – zur Regierungsvorlage
           {{ data.enactment?.rvCitation }} kann im Nationalrat weiter Stellung
           genommen werden.
-        </p>
+        </h2>
         <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 max-w-prose text-sm text-ink-secondary">
           Eine Frist gibt es dafür nicht: möglich, solange der Nationalrat den
           Text behandelt<template v-if="data.deadline">; die Begutachtungsfrist

@@ -173,16 +173,29 @@ const documents = computed(() => {
            tracked version. -->
       <div class="mt-6">
         <div class="rounded-xl border border-hairline bg-surface p-5">
+          <!-- Überschrift und Link wie auf der Ministerialentwurfsseite:
+               dieselbe Karte, dieselbe Stelle, dieselben Gewichte.
+
+               „Station 2 von 3" NUR während der Frist. Danach hat der
+               Entwurf die Begutachtung verlassen, und wohin er gegangen
+               ist, sieht von außen niemand — eine Zahl stünde dann für
+               etwas, das wir nicht wissen. Die Drei ist die des Verordnungs-
+               wegs auf /so-funktionierts (Entwurf · Begutachtung ·
+               Bundesgesetzblatt II); dass der Monitor die dritte Station
+               noch nicht verfolgt, sagt der Absatz darunter. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <p class="font-medium text-ink">
+            <h2 class="font-medium text-ink">
               {{ data.active ? 'In Begutachtung' : 'Begutachtung beendet' }}
+            </h2>
+            <p class="flex flex-wrap items-baseline gap-x-2 text-sm">
+              <span v-if="data.active" class="text-ink-secondary">Station 2 von 3</span>
+              <NuxtLink
+                to="/so-funktionierts"
+                class="tap-target rounded font-medium text-accent-deep hover:underline"
+              >
+                Wie funktioniert das Verfahren? →
+              </NuxtLink>
             </p>
-            <NuxtLink
-              to="/so-funktionierts"
-              class="tap-target rounded text-xs text-ink-muted hover:text-ink hover:underline"
-            >
-              Wie funktioniert das Verfahren? →
-            </NuxtLink>
           </div>
           <p class="mt-2 max-w-prose text-sm text-ink-secondary">
             <template v-if="data.startedAt">
@@ -231,9 +244,11 @@ const documents = computed(() => {
         v-if="data.active"
         class="mt-6 rounded-xl border border-hairline bg-surface p-5"
       >
-        <p class="font-medium text-ink">
+        <!-- Überschrift, nicht Absatz: die eine Handlung, die die Seite
+             anbietet, gehört in die Gliederung. -->
+        <h2 class="font-medium text-ink">
           {{ fristLabel(data.deadline, data.active) }}<template v-if="data.deadline"> – die Frist endet am {{ formatDateDe(data.deadline) }}</template>
-        </p>
+        </h2>
         <!-- „Ministerium" statt „Ressort", hier und in `risFilingNote`:
              ein Wort je Sache. Die Seite führte beide nebeneinander, und
              „Ressort" ist das Wort der Verwaltung, nicht das des Lesers. -->

@@ -381,3 +381,28 @@ export function markedStation(list: Station[]): StationId | null {
   const done = list.filter((s) => s.state === 'done')
   return done[done.length - 1]?.id ?? null
 }
+
+/**
+ * „Station 2 von 5" — where the marked station sits, in words.
+ *
+ * Two jobs, and the second is the reason it is not decoration:
+ *
+ *  - **It takes the marking off colour.** The current station is drawn with
+ *    a wash and a filled dot, and announced to screen readers through
+ *    `aria-current="step"`. Sighted readers had neither — meaning on colour
+ *    alone, against the AAA claim on /ueber, and the one row that matters
+ *    most was the row that relied on it.
+ *  - **It is the orientation a shared link does not otherwise give.** The
+ *    detail page is this tool's front door in practice. „Station 2 von 5"
+ *    is the shortest sentence that says the procedure has a shape, how far
+ *    along this text is, and that there is more to come.
+ *
+ * Derived from the same list the bar draws, so the two cannot disagree —
+ * which is the whole reason it lives here and not in the page.
+ */
+export function stationPositionDe(list: Station[]): string | null {
+  const id = markedStation(list)
+  if (!id) return null
+  const i = list.findIndex((s) => s.id === id)
+  return i < 0 ? null : `Station ${i + 1} von ${list.length}`
+}
