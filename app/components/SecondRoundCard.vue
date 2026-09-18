@@ -64,7 +64,13 @@ const CARD =
       >
         {{ vorlage.title }}<span v-if="!to" aria-hidden="true"> ↗</span>
       </h3>
+      <!-- Das Typwort führt, wie auf SecondRoundRow und auf beiden anderen
+           Kartenarten. Hier fehlte es bis 18.09.2026, und übrig blieb
+           „594 d.B." – eine Abkürzung, die die Seite nirgends auflöst, als
+           einzige Kennung der Zeile. Genau die Asymmetrie, nur andersherum,
+           die bei den RIS-Zeilen zwischen Karte und Zeile bestand. -->
       <p class="mt-auto flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary">
+        <span class="text-ink">Regierungsvorlage</span>
         <span>{{ vorlage.citation }}</span>
         <!-- The procedural fact, stated plainly: this text never went
              through a Begutachtung, so the monitor has no page for it and
