@@ -212,7 +212,7 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 ## 7. Pages
 
-- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (its second sentence links to the first accountability section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here), lastSync note. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
+- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (its second sentence links to the first accountability section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here), lastSync note, and under it the scope line: the accountability sections count over the CURRENT Gesetzgebungsperiode only, named in each subline, with the pointer to the earlier ones on `/entwuerfe`. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
 - `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
 - `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
@@ -3506,6 +3506,26 @@ Zeilen standen längst auf der Seite — nur ohne die Spalte, für die es das
 Werkzeug gibt. Sortiert bleibt nach Beteiligung, **nie** nach Ergebnis:
 Nachverfolgung, kein Punktestand (dieselbe Regel wie im
 Verlaufs-Endpunkt).
+
+**Die Auswertung ist auf die laufende Gesetzgebungsperiode beschränkt,
+und das steht seit 18.09.2026 auf der Seite.** Beide
+Rechenschaftsabschnitte lesen Liste 81 bzw. 101 nur der aktuellen Periode;
+gesagt wurde das bis dahin einmal, als „in dieser Gesetzgebungsperiode" —
+ein Demonstrativpronomen, das auf nichts zeigt, was zu sehen ist. Jetzt
+nennt jeder Abschnitt die Periode dort, wo er seine Aussage macht (die
+Rangliste zusätzlich mit ihrem Beginn: eine Rangliste von Zählungen ist
+eine Rangliste über ein Fenster), und am Fuß steht der Zeiger auf die
+übrigen Perioden — ein Link ist eine Handlung und gehört ans Ende des
+Lesens, nicht in seine Mitte.
+
+**Warum der Zuschnitt nicht weiter wird — gemessen am 18.09.2026.** Über
+GP XXVII lauten die fünf größten Begutachtungen **106.184**
+(COVID-19-Impfpflichtgesetz), **35.296**, **19.026**, **16.534** und
+**14.334** Stellungnahmen, vier davon Epidemiegesetz-Novellen. Eine
+periodenübergreifende Rangliste ist damit ein COVID-Denkmal, das sich nie
+wieder ändern kann und über das, was gerade entschieden wird, nichts
+sagt — GP XXVIII's größte Begutachtung hat 846. Die Periodengrenze ist
+nicht die bequeme Wahl, sie ist die, die diesen Abschnitt am Leben hält.
 
 **Die Überschrift heißt seit 18.09.2026 nur „Wo am meisten mitgeredet
 wurde"**, ohne „– und was daraus wurde" (dieselbe Kürzung wie §12.23): der

@@ -9,6 +9,7 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
+import { gpWindow } from '#shared/utils/gp'
 
 const pageDescription =
   'Laufende Begutachtungen österreichischer Gesetzesentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
@@ -194,6 +195,30 @@ const secondRoundShown = ref(SECOND_ROUND_STEP)
 const visibleSecondRound = computed(
   () => secondRound.value?.items.slice(0, secondRoundShown.value) ?? [],
 )
+
+/**
+ * The Gesetzgebungsperiode everything below the open list is counted over,
+ * spelled out rather than implied.
+ *
+ * Both accountability sections read list 81/101 of the CURRENT period only,
+ * and until 18.09.2026 the page said so once, in a subline, as „in dieser
+ * Gesetzgebungsperiode" — a demonstrative pronoun pointing at nothing the
+ * reader can see. It names the period now, and the start date with it: a
+ * ranking of counts is a ranking over a window, and the window belongs on
+ * screen.
+ *
+ * Why the scope is not widened (measured 2026-09-18): across GP XXVII the
+ * top five by Stellungnahmen are 106.184 (COVID-19-Impfpflichtgesetz),
+ * 35.296, 19.026, 16.534 and 14.334 — four of them Epidemiegesetz-Novellen.
+ * A cross-period ranking is a COVID monument that can never change again and
+ * says nothing about what is being decided now; GP XXVIII's largest is 846.
+ * The period boundary is what keeps this section alive.
+ */
+const gpLabel = computed(() => data.value?.gp ?? null)
+const gpStart = computed(() => {
+  const from = gpLabel.value ? gpWindow(gpLabel.value)?.from : null
+  return from ? formatDateDe(from) : null
+})
 
 // lastSync arrives ISO-normalized from the server (or null → line is omitted).
 const lastSyncLabel = computed(() =>
@@ -405,9 +430,11 @@ const lastSyncLabel = computed(() =>
              open and closed — the Frist line under each count says which
              is which. -->
         <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-          Die Entwürfe mit den meisten Stellungnahmen in dieser
-          Gesetzgebungsperiode – offene und abgeschlossene – und daneben, was
-          aus ihnen geworden ist.
+          Die Entwürfe mit den meisten Stellungnahmen der
+          <template v-if="gpLabel">{{ gpLabel }}. </template>Gesetzgebungsperiode<template
+            v-if="gpStart"
+          > (seit {{ gpStart }})</template> – offene und abgeschlossene – und
+          daneben, was aus ihnen geworden ist.
         </p>
         <!-- Same card anatomy as every other section, and the ranked figure
              in the same right-hand slot: right-aligned behind one suffix,
@@ -468,10 +495,11 @@ const lastSyncLabel = computed(() =>
              turn over almost completely. Better read as the institution's
              calendar than as a stale page. -->
         <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-          Die jüngsten Kundmachungen im Bundesgesetzblatt – und die
-          Begutachtung, aus der sie hervorgegangen sind. Der Nationalrat
-          beschließt in Blöcken: zwischen zwei Plenarwochen ändert sich hier
-          nichts.
+          Die jüngsten Kundmachungen im Bundesgesetzblatt aus der
+          <template v-if="gpLabel">{{ gpLabel }}. </template>Gesetzgebungsperiode
+          – und die Begutachtung, aus der sie hervorgegangen sind. Der
+          Nationalrat beschließt in Blöcken: zwischen zwei Plenarwochen ändert
+          sich hier nichts.
         </p>
         <ul v-if="enacted?.items.length" class="mt-4 space-y-3">
           <!-- Same card and the same chip as the section above: the object
@@ -496,6 +524,18 @@ const lastSyncLabel = computed(() =>
 
       <p v-if="lastSyncLabel" class="mt-12 text-xs text-ink-muted">
         Datenstand: {{ lastSyncLabel }}
+      </p>
+      <!-- The pointer, not a second scope statement: the sections name their
+           period where they make their claim, and this says where the other
+           periods are. A link is an action, so it stands where the reading
+           ends, not in the middle of it. -->
+      <p class="mt-2 max-w-prose text-xs text-ink-muted">
+        Ausgewertet wird die laufende Gesetzgebungsperiode. Frühere Perioden –
+        zurück bis 1979 – stehen unter
+        <NuxtLink
+          to="/entwuerfe"
+          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >Alle Entwürfe</NuxtLink>, dort lässt sich die Periode wechseln.
       </p>
     </template>
   </div>
