@@ -212,7 +212,7 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 ## 7. Pages
 
-- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (its second sentence links to the first accountability section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde – und was daraus wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden – aus welcher Begutachtung"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here), lastSync note. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
+- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (its second sentence links to the first accountability section), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here), lastSync note. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
 - `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
 - `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
@@ -3507,6 +3507,13 @@ Werkzeug gibt. Sortiert bleibt nach Beteiligung, **nie** nach Ergebnis:
 Nachverfolgung, kein Punktestand (dieselbe Regel wie im
 Verlaufs-Endpunkt).
 
+**Die Überschrift heißt seit 18.09.2026 nur „Wo am meisten mitgeredet
+wurde"**, ohne „– und was daraus wurde" (dieselbe Kürzung wie §12.23): der
+Satz darunter sagt es, und das Ergebnis steht als Chip auf jeder
+abgeschlossenen Zeile. Was diesen Abschnitt von einer Rangliste
+unterscheidet, war nie die Überschrift, sondern die Chips. Überschriften
+sagen, was ein Abschnitt ist; beantwortet werden sie von den Zeilen.
+
 **Und sie steht jetzt VOR der Verlaufsliste.** „Zuletzt abgeschlossen"
 zeigt an einem gewöhnlichen Tag vier Karten „Bisher keine
 Regierungsvorlage" — das ist ME→RV-Latenz, nicht Schubladisierung, und
@@ -3594,6 +3601,13 @@ die Marke steht bei dem, was sie meint.
 
 
 ### 12.23 Das Ende der Kette steht auf der Vorlage, nicht auf dem Entwurf
+
+**Überschrift: „Zuletzt Gesetz geworden", seit 18.09.2026 ohne den Zusatz
+„– aus welcher Begutachtung".** Der Zusatz stand doppelt: der Satz unter
+der Überschrift nennt die Begutachtung ohnehin („und die Begutachtung, aus
+der sie hervorgegangen sind"), und jede Zeile führt ihren
+Ministerialentwurf mit Geschäftszahl. Die Überschrift sagt, was der
+Abschnitt ist; beantwortet wird sie von den Zeilen.
 
 „Zuletzt abgeschlossen – was wurde daraus?" zeigte die vier zuletzt
 beendeten Begutachtungen mit ihrem Ergebnis-Chip. Am 18.09.2026 ersetzt.

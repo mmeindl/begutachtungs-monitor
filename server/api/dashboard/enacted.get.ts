@@ -1,6 +1,6 @@
 /**
- * GET /api/dashboard/enacted → DashboardEnacted ("Zuletzt Gesetz geworden –
- * aus welcher Begutachtung", docs/architecture.md §12.23).
+ * GET /api/dashboard/enacted → DashboardEnacted ("Zuletzt Gesetz geworden",
+ * docs/architecture.md §12.23).
  *
  * The route in, and why it is this one. What the section needs is the END of
  * the chain, and the Ministerialentwurf does not know it: its stage record

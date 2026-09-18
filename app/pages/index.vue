@@ -394,8 +394,13 @@ const lastSyncLabel = computed(() =>
         aria-labelledby="ranked-heading"
       >
         <h2 id="ranked-heading" class="section-heading">
-          Wo am meisten mitgeredet wurde – und was daraus wurde
+          Wo am meisten mitgeredet wurde
         </h2>
+        <!-- „… – und was daraus wurde" left the heading on 18.09.2026, for
+             the reason the section below it lost its second half: the
+             sentence under the heading says it, and the outcome sits as a
+             chip on every closed row. What made this section stop being a
+             leaderboard was never the heading — it was the chips. -->
         <!-- Volumetric, not "gerade": the ranking spans the whole GP,
              open and closed — the Frist line under each count says which
              is which. -->
@@ -444,7 +449,7 @@ const lastSyncLabel = computed(() =>
       <section class="page-section" aria-labelledby="enacted-heading">
         <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
           <h2 id="enacted-heading" class="section-heading">
-            Zuletzt Gesetz geworden – aus welcher Begutachtung
+            Zuletzt Gesetz geworden
           </h2>
           <NuxtLink
             to="/entwuerfe?status=closed"
@@ -453,7 +458,12 @@ const lastSyncLabel = computed(() =>
             Alle abgeschlossenen →
           </NuxtLink>
         </div>
-        <!-- The rhythm said out loud, because it is the section's one
+        <!-- „… – aus welcher Begutachtung" stood in the heading until
+             18.09.2026 and was a duplicate twice over: the sentence below
+             says it in full, and every row names its Ministerialentwurf.
+             The heading states what the section is, the rows answer it.
+
+             The rhythm said out loud, because it is the section's one
              surprise: this list can stand still for two months and then
              turn over almost completely. Better read as the institution's
              calendar than as a stale page. -->
