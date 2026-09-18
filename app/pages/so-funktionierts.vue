@@ -32,6 +32,13 @@
  */
 import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
+/* Das Abo-Schema, nicht `/kalender.ics`. Ein einfacher https-Link lässt den
+   Browser die Datei herunterladen, und importiert wird damit eine
+   Momentaufnahme, die sich nie wieder aktualisiert — genau der Fehler, für
+   den `useFeedUrls` geschrieben wurde. Die Seite bleibt datenfrei: Das sind
+   Adressen aus der Runtime-Config, kein Abruf. */
+const { webcalUrl } = useFeedUrls()
+
 useSeoMeta({
   title: "So funktioniert's",
   description:
@@ -221,9 +228,11 @@ const toc = [
         >RSS-Feed</a>
         und der
         <a
-          href="/kalender.ics"
+          :href="webcalUrl"
           class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Fristen-Kalender</a>, den ein Kalenderprogramm abonnieren kann.
+        >Fristen-Kalender</a>. Wichtig beim Kalender: abonnieren, nicht
+        importieren – nur ein Abo trägt neue und verlängerte Fristen von
+        selbst nach.
       </p>
     </section>
 
@@ -250,11 +259,10 @@ const toc = [
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
-        Genau das zeigt der Monitor – in beide Richtungen. Zu jedem Entwurf
-        stellt er die Fassungen nebeneinander und markiert, was sich
-        Paragraph für Paragraph geändert hat. Und er zeigt die Entwürfe, aus
-        denen nichts wurde: Ein Teil erreicht das Parlament nie, ohne dass
-        das je begründet würde.
+        Genau das zeigt der Monitor. Zu jedem Entwurf stellt er die Fassungen
+        nebeneinander und markiert, was sich Paragraph für Paragraph geändert
+        hat. Und er zeigt die Entwürfe, aus denen nichts wurde: Ein Teil
+        erreicht das Parlament nie, ohne dass das je begründet würde.
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
@@ -265,11 +273,12 @@ const toc = [
         Ressortabstimmung, aus EU-Vorgaben oder aus Rechtsförmlichkeit. Der
         Monitor zeigt, was sich geändert hat, und überlässt das Warum dem,
         der beides gelesen hat.
+        Die Liste lässt sich
         <NuxtLink
-          to="/"
+          to="/entwuerfe?art=ministerialentwurf&sort=stellungnahmen"
           class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Die Entwürfe mit den meisten Stellungnahmen</NuxtLink>
-        stehen auf der Startseite, jeder mit dem, was aus ihm geworden ist.
+        >nach den meisten Stellungnahmen reihen</NuxtLink> – jede Zeile mit
+        dem, was aus dem Entwurf geworden ist.
       </p>
     </section>
 
