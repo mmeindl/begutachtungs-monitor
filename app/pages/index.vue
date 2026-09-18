@@ -10,6 +10,7 @@ import type {
 } from '#shared/types'
 import { HOME_LIST_LENGTH, compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
 import { gpWindow } from '#shared/utils/gp'
+import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
    „Gesetzesentwürfe" from before the RIS half shipped, and then went on
@@ -398,8 +399,7 @@ const gpStart = computed(() => {
         </ListHeader>
         <p class="mt-2 max-w-prose text-sm text-ink-secondary">
           Auch zu einer Regierungsvorlage kann Stellung genommen werden – dort
-          kann der Ausschuss den Text noch ändern. Für diese Runde gibt es
-          keine veröffentlichte Frist: Sie endet mit der Abstimmung.
+          kann der Ausschuss den Text noch ändern. {{ SECOND_ROUND_WINDOW }}
         </p>
         <ul class="mt-4 space-y-3">
           <li v-for="v in visibleSecondRound" :key="v.citation">

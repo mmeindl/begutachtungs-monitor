@@ -560,7 +560,8 @@ const droppedNote = computed(() =>
                   :class="{ 'rotate-180': groupOpen(g) }"
                   aria-hidden="true"
                 />
-                <span class="sr-only">{{ groupOpen(g) ? 'zuklappen' : 'aufklappen' }}</span>
+                <!-- Kein sr-only „aufklappen/zuklappen" — `aria-expanded`
+                     sagt den Zustand schon, siehe TextComparisonSection. -->
               </span>
               <span class="flex flex-wrap gap-1.5">
                 <span
@@ -672,7 +673,14 @@ const droppedNote = computed(() =>
             </div>
           </section>
         </div>
-        <p v-if="!visibleUnits.length" class="mt-2 text-sm text-ink-secondary">Nichts gefunden.</p>
+        <!-- Bleibt als Live-Region im DOM und wird leer, statt zu
+             verschwinden: Eine Region, die erst mit ihrem Text entsteht,
+             wird nicht angesagt — wer suchte und nichts fand, bekäme sonst
+             Stille zurück. -->
+        <p
+          role="status"
+          :class="visibleUnits.length ? 'sr-only' : 'mt-2 text-sm text-ink-secondary'"
+        >{{ visibleUnits.length ? '' : 'Nichts gefunden.' }}</p>
       </template>
 
       <!-- Provenance under the text it belongs to, the way a source note

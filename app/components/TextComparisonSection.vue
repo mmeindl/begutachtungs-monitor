@@ -290,6 +290,27 @@ const hasRows = computed(() => (data.value?.rows ?? []).some((r) => r.kind !== '
 const matchCount = computed(() => groups.value.reduce((n, g) => n + g.rows.length, 0))
 
 /**
+ * Was der Screenreader hört, wenn der Abruf fertig ist.
+ *
+ * Bis 18.09.2026 gar nichts: „Die Textgegenüberstellung wird geladen …"
+ * stand da, wurde clientseitig ersetzt, und niemand sagte Bescheid. Wer die
+ * Seite linear liest, wartet auf eine Ansage, die nie kommt, und der
+ * Abschnitt, der danach der längste der Seite ist, erscheint stumm.
+ *
+ * Leer, solange geladen wird — der sichtbare Absatz sagt das schon, und
+ * eine Region, die beim Einhängen bereits Text trägt, wird von manchen
+ * Screenreadern sofort vorgelesen.
+ */
+const loadAnnouncement = computed(() => {
+  if (status.value === 'pending' || status.value === 'idle') return ''
+  if (status.value === 'error' || !data.value) {
+    return 'Die Gegenüberstellung ist gerade nicht verfügbar.'
+  }
+  if (!data.value.available) return data.value.unavailableReason ?? ''
+  return `Gegenüberstellung geladen, ${countLabelDe(matchCount.value, 'Zeile', 'Zeilen')}.`
+})
+
+/**
  * What the check found, in two sentences — and, where it found nothing, that
  * it found nothing.
  *
@@ -473,6 +494,12 @@ const doubtfulNote = computed<string | null>(() => {
 
 <template>
   <div class="mt-4">
+    <!-- Sagt das Ende des Ladens an, das sonst lautlos passiert. Bleibt im
+         DOM und leer, statt erst beim Fertigwerden zu erscheinen: eine
+         Live-Region, die es beim Eintreten der Änderung noch nicht gibt,
+         wird nicht vorgelesen. -->
+    <p class="sr-only" role="status">{{ loadAnnouncement }}</p>
+
     <p v-if="status === 'pending' || status === 'idle'" class="text-sm text-ink-secondary">
       Die Textgegenüberstellung wird geladen …
     </p>
@@ -577,7 +604,9 @@ const doubtfulNote = computed<string | null>(() => {
                 :class="{ 'rotate-180': groupOpen(g) }"
                 aria-hidden="true"
               />
-              <span class="sr-only">{{ groupOpen(g) ? 'zuklappen' : 'aufklappen' }}</span>
+              <!-- KEIN sr-only „aufklappen/zuklappen": `aria-expanded` am
+                   Button sagt den Zustand bereits, und der Screenreader las
+                   ihn zweimal („… zuklappen, Schaltfläche, erweitert"). -->
             </span>
             <span class="flex flex-wrap gap-1.5">
               <span
@@ -690,7 +719,15 @@ const doubtfulNote = computed<string | null>(() => {
       <!-- A search box with no answer is worse than none: the section would
            just end, and an empty comparison reads as a claim about the
            draft. Same wording as the § comparison. -->
-      <p v-if="hasRows && !matchCount" class="mt-2 text-sm text-ink-secondary">Nichts gefunden.</p>
+      <!-- Bleibt als Live-Region im DOM und wird leer, statt zu
+             verschwinden: Eine Region, die erst mit ihrem Text entsteht,
+             wird nicht angesagt — wer suchte und nichts fand, bekäme sonst
+             Stille zurück. -->
+      <p
+        v-if="hasRows"
+        role="status"
+        :class="matchCount ? 'sr-only' : 'mt-2 text-sm text-ink-secondary'"
+      >{{ matchCount ? '' : 'Nichts gefunden.' }}</p>
 
       <!-- Provenance under the text it belongs to, the way a source note
            sits under a table rather than over it (Manu, 17.09.2026): it is

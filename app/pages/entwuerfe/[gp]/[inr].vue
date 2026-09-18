@@ -2,6 +2,8 @@
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '#shared/utils/stations'
 import {
+  SECOND_ROUND_CLAUSE,
+  SECOND_ROUND_WINDOW,
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
@@ -625,10 +627,10 @@ const linkClasses =
           genommen werden.
         </h2>
         <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 max-w-prose text-sm text-ink-secondary">
-          Eine Frist gibt es dafür nicht: möglich, solange der Nationalrat den
-          Text behandelt<template v-if="data.deadline">; die Begutachtungsfrist
-            endete am {{ formatDateDe(data.deadline) }}</template
-          >.
+          {{ SECOND_ROUND_WINDOW }}<template v-if="data.deadline">
+            Die Begutachtungsfrist endete am
+            {{ formatDateDe(data.deadline) }}.</template
+          >
         </p>
         <!-- Directly under the date it qualifies, above the CTA: whoever is
              about to submit reads it before acting, and the sentence ends by
@@ -656,8 +658,7 @@ const linkClasses =
         <p v-if="windows.begutachtung && windows.vorlage" class="mt-2 max-w-prose text-sm text-ink">
           Die Regierungsvorlage {{ data.enactment?.rvCitation }} liegt bereits
           im Nationalrat, während die Begutachtungsfrist noch läuft. Auch dort
-          kann Stellung genommen werden, solange der Nationalrat den Text
-          behandelt.
+          kann Stellung genommen werden, {{ SECOND_ROUND_CLAUSE }}.
         </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
           <UButton

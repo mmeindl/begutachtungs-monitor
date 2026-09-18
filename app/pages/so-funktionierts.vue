@@ -30,6 +30,8 @@
  * („die beiden Fragen in der Leiste"). The rail says its own state in words
  * instead.
  */
+import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
+
 useSeoMeta({
   title: "So funktioniert's",
   description:
@@ -96,7 +98,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
            einzige feste Adresse: Es wurde auf Listen- und Detailseiten
            fünfmal erklärt und auf der Seite, die das Verfahren erklärt,
            überhaupt nicht. */
-        text: 'Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Regierungsvorlage nimmt der Nationalrat noch Stellungnahmen an – ohne veröffentlichte Frist, bis zur Abstimmung.',
+        text: `Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Vorlage selbst sind noch Stellungnahmen möglich. ${SECOND_ROUND_WINDOW}`,
         monitor:
           'Ob der Nationalrat den Text unverändert beschlossen oder im Ausschuss und im Plenum geändert hat – mit den Fassungen, die dabei entstanden sind, und den Stellungnahmen, die zur Vorlage noch eingegangen sind.',
       },

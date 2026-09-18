@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RvStatementsResponse, StatementsSummary } from '#shared/types'
+import { SECOND_ROUND_CLAUSE } from '#shared/utils/stations'
 
 /**
  * The Stellungnahmen filed on the Regierungsvorlage itself.
@@ -117,7 +118,7 @@ const LINK =
       Auch zur Regierungsvorlage selbst können auf parlament.gv.at Stellungnahmen
       eingebracht werden. Zu dieser Vorlage wurde <template v-if="filingOpen">bisher</template> keine eingebracht<template
         v-if="filingOpen"
-      >; möglich ist es, solange der Nationalrat den Text behandelt:
+      >; möglich ist es, {{ SECOND_ROUND_CLAUSE }}:
         <ExternalLink :href="data.rvUrl" :class="LINK">Stellungnahme abgeben</ExternalLink></template
       >.
     </p>
@@ -200,8 +201,8 @@ const LINK =
         <ExternalLink :href="data.rvUrl" :class="LINK">
           Alle Stellungnahmen zur Vorlage auf parlament.gv.at
         </ExternalLink><template v-if="filingOpen">
-          – dort kann weiter Stellung genommen werden, solange der Nationalrat
-          den Text behandelt.</template
+          – dort kann weiter Stellung genommen werden,
+          {{ SECOND_ROUND_CLAUSE }}.</template
         >
       </p>
     </template>

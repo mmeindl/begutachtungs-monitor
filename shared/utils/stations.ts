@@ -158,6 +158,28 @@ export function procedureStatusDe(d: DraftDetail): string {
     : 'Bisher keine Regierungsvorlage'
 }
 
+/**
+ * Das zweite Fenster: dass zur Regierungsvorlage weiter Stellung genommen
+ * werden kann, und bis wann.
+ *
+ * Es wurde an sechs Stellen erklärt und in sechs Formulierungen — „ohne
+ * veröffentlichte Frist, sie endet mit der Abstimmung", „keine
+ * veröffentlichte Frist: Sie endet mit der Abstimmung", „Eine Frist gibt es
+ * dafür nicht", „solange der Nationalrat den Text behandelt". Zwei
+ * verschiedene Tatsachen waren darin vermischt: dass keine Frist
+ * veröffentlicht wird, und wann das Fenster zugeht.
+ *
+ * Gewählt ist „solange der Nationalrat den Text behandelt" und nicht „endet
+ * mit der Abstimmung": Es deckt auch den Ausschuss ab und verspricht nicht,
+ * dass bis zur Sekunde der Abstimmung eingebracht werden kann.
+ *
+ * Der Satz ist aus dem Nebensatz gebaut, damit beide nicht auseinander
+ * laufen können. Den Nebensatz nimmt, wessen Satz schon läuft.
+ */
+export const SECOND_ROUND_CLAUSE = 'solange der Nationalrat den Text behandelt'
+export const SECOND_ROUND_WINDOW =
+  `Eine veröffentlichte Frist gibt es dafür nicht – möglich, ${SECOND_ROUND_CLAUSE}.`
+
 /** Upstream's own wording, from the one place that maps it to a station. */
 const AUSSCHUSS = UPSTREAM_AUSSCHUSS_TITLE
 const PLENUM = UPSTREAM_PLENUM_TITLE

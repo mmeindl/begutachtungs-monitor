@@ -11,6 +11,7 @@ import type {
 } from '#shared/types'
 import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
 import { romanToInt } from '#shared/utils/gp'
+import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
 /**
  * Every Begutachtung of a period, in ONE list — Ministerialentwürfe and the
@@ -603,7 +604,7 @@ const countLabel = computed(() => {
           type="search"
           icon="i-lucide-search"
           :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
-          aria-label="Suche"
+          aria-label="Entwürfe durchsuchen"
           class="min-w-48 flex-1"
           :ui="{ base: 'min-h-11' }"
         />
@@ -698,8 +699,7 @@ const countLabel = computed(() => {
         Darunter
         <span class="font-medium text-ink">{{ secondRoundRowCount }} in zweiter Runde</span>:
         Die Begutachtung ist vorbei, im Nationalrat kann zur Regierungsvorlage
-        weiter Stellung genommen werden – ohne veröffentlichte Frist, sie endet
-        mit der Abstimmung.
+        weiter Stellung genommen werden. {{ SECOND_ROUND_WINDOW }}
       </p>
       <!-- Was die Sortierung mit der Hälfte macht, die sie nicht sortieren
            kann — über der Liste, nicht darunter: eine Einschränkung an dem,

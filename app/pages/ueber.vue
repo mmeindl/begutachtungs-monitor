@@ -77,7 +77,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           <a href="/feed.xml" :class="linkClasses">RSS-Feed</a> für jeden
           Feed-Reader. Alle Begutachtungsfristen lassen sich als Kalender
           abonnieren:
-          <a :href="webcalUrl" :class="linkClasses">direkt öffnen</a>
+          <a :href="webcalUrl" :class="linkClasses">Fristen-Kalender abonnieren</a>
           (Apple Kalender, Outlook),
           <ExternalLink :href="googleCalUrl" :class="linkClasses"
             >zu Google Kalender hinzufügen</ExternalLink
