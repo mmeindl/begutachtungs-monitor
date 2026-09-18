@@ -1,5 +1,5 @@
 /**
- * GET /weitere-entwuerfe/:id/frist.ics — one Begutachtung ohne Gegenstand as
+ * GET /entwuerfe/:id/frist.ics — one Begutachtung ohne Gegenstand as
  * a single-event iCalendar file ("Frist in den Kalender" on the detail page).
  *
  * The exact counterpart of `/entwuerfe/:gp/:inr/frist.ics`, and for the same
@@ -13,7 +13,7 @@
  * whole of it (docs/architecture.md §12.16), so the calendar file is half
  * the page's actionable surface, not a convenience.
  */
-const RIS_ID_RE = /^BEGUT_[A-Za-z0-9_]{1,120}$/
+import { RIS_ID_RE } from '#shared/utils/risConsultations'
 
 export default defineEventHandler(async (event) => {
   const id = String(getRouterParam(event, 'id') ?? '')

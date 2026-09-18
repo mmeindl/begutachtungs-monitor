@@ -153,21 +153,25 @@ describe('buildSitemap', () => {
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
     expect(xml.match(/<loc>/g)).toHaveLength(6)
-    // The list of the Begutachtungen without a Gegenstand is a filter on
-    // /entwuerfe since 17.09.2026, and `/weitere-entwuerfe` a 301 — a
-    // sitemap must not advertise a redirect. The DETAIL pages stay listed
-    // (the test below).
-    expect(xml).not.toContain(`<loc>${SITE}/weitere-entwuerfe</loc>`)
+    // Nothing under `/weitere-entwuerfe` belongs in a sitemap: the list is
+    // a filter on /entwuerfe since 17.09.2026 and the detail pages moved
+    // into the same namespace on 18.09.2026, so every old path is a 301 —
+    // and a sitemap must not advertise a redirect.
+    expect(xml).not.toContain(`${SITE}/weitere-entwuerfe`)
     expect(xml).toContain(`<loc>${SITE}/entwuerfe</loc>`)
     expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
     expect(xml.trimEnd().endsWith('</urlset>')).toBe(true)
   })
 
-  it('lists a RIS-only consultation under its own route', () => {
-    const xml = buildSitemap(SITE, [], [risConsultation()])
+  it('lists a RIS-only consultation in the same /entwuerfe namespace as a draft', () => {
+    const xml = buildSitemap(SITE, [draft()], [risConsultation()])
     expect(xml).toContain(
-      `<loc>${SITE}/weitere-entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B</loc>`,
+      `<loc>${SITE}/entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B</loc>`,
     )
+    expect(xml).toContain(`<loc>${SITE}/entwuerfe/XXVIII/88</loc>`)
+    // One prefix for both kinds — a crawler (and a reader guessing a URL)
+    // never has to know which half of the corpus a draft is in.
+    expect(xml).not.toContain(`${SITE}/weitere-entwuerfe`)
   })
 })
 
@@ -186,7 +190,7 @@ describe('feeds carry the Begutachtungen without a parliamentary Gegenstand', ()
       '<title>Verordnungsentwurf: Änderung der Druckgeräteaufstellungsverordnung – DGAV – Frist 19.10.</title>',
     )
     expect(xml).toContain('ohne Gegenstand im Parlament')
-    expect(xml).toContain(`<link>${SITE}/weitere-entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B</link>`)
+    expect(xml).toContain(`<link>${SITE}/entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B</link>`)
   })
 
   it('keeps the two UID namespaces apart so read-state cannot collide', () => {
@@ -220,7 +224,7 @@ describe('feeds carry the Begutachtungen without a parliamentary Gegenstand', ()
     expect(ics).toContain('UID:ris-BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B@begutachtungs-monitor.at')
     expect(ics).toContain('DTSTART;VALUE=DATE:20261019')
     expect(ics).toContain('Stellungnahme direkt an das Ressort')
-    expect(ics).toContain(`URL:${SITE}/weitere-entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B`)
+    expect(ics).toContain(`URL:${SITE}/entwuerfe/BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B`)
   })
 
   it('skips a RIS record without a deadline, like a draft without one', () => {

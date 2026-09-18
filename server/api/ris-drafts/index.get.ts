@@ -1,10 +1,16 @@
 /**
- * GET /api/weitere-entwuerfe?gp&status&ministry&art&q → RisConsultationsResponse.
+ * GET /api/ris-drafts?gp&status&ministry&art&q → RisConsultationsResponse.
  *
  * The Begutachtungen RIS publishes that Parliament has no Gegenstand for —
  * mostly Verordnungsentwürfe (docs/architecture.md §12.16). Same query
  * vocabulary as `/api/drafts`, so the two lists are filtered the same way;
  * `art` is the one addition, because here the kind of instrument varies.
+ *
+ * Named for its SOURCE, like `/api/ris-map`, since the pages stopped being
+ * named for it on 18.09.2026 (§12.19): one link namespace for readers,
+ * because a URL is something we hand out — two endpoints underneath,
+ * because the data really is two halves and that is not a layout choice.
+ * Never `/api/weitere-…`: „weiter als was" was the word's whole problem.
  */
 import type { DraftStatus, RisConsultationKind, RisConsultationsResponse } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'

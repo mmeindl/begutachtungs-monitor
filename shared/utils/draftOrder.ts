@@ -70,13 +70,25 @@ export function draftOrderKey(draft: {
 }
 
 /**
- * How many rows the volume ranking shows. One constant, because two
- * endpoints read the ranking: `/api/dashboard` ships the rows and
- * `/api/dashboard/outcomes` the outcomes belonging to them — a different
- * length on either side would leave chips without rows or rows without
- * chips.
+ * How many rows a list on the homepage shows — all four of them
+ * (docs/architecture.md §12.24).
+ *
+ * It was four numbers until 18.09.2026: 6 open rows, 3 Vorlagen, 5 ranked,
+ * 4 Kundmachungen, each with its own argument and two of them living in an
+ * endpoint while the others lived in the page. Four windows onto four
+ * corpora that are cut to four depths read as four kinds of section, and
+ * the reader learns a length per section instead of learning it once.
+ *
+ * Five, because the ranking cannot sensibly be shorter (a top 3 is an
+ * anecdote) and the cap of the open list may not be longer: §12.20 measured
+ * what pushes the accountability sections below the third viewport.
+ *
+ * Also one constant because two endpoints read the ranking — `/api/dashboard`
+ * ships the rows, `/api/dashboard/outcomes` the outcomes belonging to them —
+ * and a different length on either side would leave chips without rows or
+ * rows without chips.
  */
-export const RANKED_BY_STATEMENTS = 5
+export const HOME_LIST_LENGTH = 5
 
 /**
  * The volume ranking: most Stellungnahmen first.
@@ -92,7 +104,7 @@ export const RANKED_BY_STATEMENTS = 5
  */
 export function rankByStatements<T extends { inr: number; statementCount: number }>(
   items: readonly T[],
-  count: number = RANKED_BY_STATEMENTS,
+  count: number = HOME_LIST_LENGTH,
 ): T[] {
   return [...items]
     .sort((a, b) => b.statementCount - a.statementCount || b.inr - a.inr)

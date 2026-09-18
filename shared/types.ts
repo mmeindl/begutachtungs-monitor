@@ -395,6 +395,14 @@ export interface OpenVorlage {
 }
 
 export interface DashboardSecondRound {
+  /**
+   * The period these Vorlagen are from — always the current one, and stated
+   * rather than assumed: `/entwuerfe` shows this section under a period
+   * filter, and a list narrowed to an earlier GP must not carry rows from
+   * this one. Inferring "current" from the newest period in the draft lists
+   * would be a second, silently different answer to the same question.
+   */
+  gp: string
   /** Filing open, most recent first. Empty is a normal state, not an error. */
   items: OpenVorlage[]
 }

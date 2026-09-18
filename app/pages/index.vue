@@ -8,7 +8,7 @@ import type {
   RisConsultation,
   RisConsultationsResponse,
 } from '#shared/types'
-import { compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
+import { HOME_LIST_LENGTH, compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
 import { gpWindow } from '#shared/utils/gp'
 
 const pageDescription =
@@ -84,7 +84,7 @@ const { data: secondRound } = await useFetch<DashboardSecondRound>(
  * It costs no upstream request the page does not already pay: the RIS corpus
  * and the GP's join map are the same cached leaves the draft pages read. */
 const { data: risOnly } = await useFetch<RisConsultationsResponse>(
-  '/api/weitere-entwuerfe',
+  '/api/ris-drafts',
   // 4 s is the outcomes section's budget, and that endpoint answers in
   // 0.41 s cold. This one sits on the RIS corpus — 46 upstream requests with
   // a politeness pause, warmed nightly by the prewarm unit and held for 20 h.
@@ -113,17 +113,16 @@ type OpenRow =
   | { kind: 'ris'; key: string; item: RisConsultation }
 
 /**
- * Six rows, then "Alle Entwürfe →".
+ * Five rows, then out to the filter — `HOME_LIST_LENGTH`, the same length
+ * every list on this page is cut to (§12.24).
  *
  * Measured 2026-09-17 over 2025-01-01 → today: 6 Ministerialentwürfe are
  * open at the median (p90 10, max 15) and 7 RIS-only records (p90 18, max
  * 25) — so the merged list runs at ~13 rows typically and has touched 40.
  * Uncapped it would push the accountability section, which is the reason
- * this page exists, past a third viewport on an ordinary week. The cap is
- * what the count line below the list then has to account for.
+ * this page exists, past a third viewport on an ordinary week. What sits
+ * behind the cap is named in the link above the list, and only there.
  */
-const OPEN_ROW_CAP = 6
-
 const openRows = computed<OpenRow[]>(() => {
   const out: OpenRow[] = []
   for (const d of data.value?.open ?? []) {
@@ -140,7 +139,7 @@ const openRows = computed<OpenRow[]>(() => {
   )
 })
 
-const visibleOpenRows = computed(() => openRows.value.slice(0, OPEN_ROW_CAP))
+const visibleOpenRows = computed(() => openRows.value.slice(0, HOME_LIST_LENGTH))
 
 /** Whether the explanation below the list has anything to explain. */
 const showsRisRow = computed(() => visibleOpenRows.value.some((r) => r.kind === 'ris'))
@@ -181,19 +180,19 @@ const rankedRows = computed(() => {
 })
 
 /**
- * Three Vorlagen, then the rest on request.
+ * Five Vorlagen, and the rest on `/entwuerfe` — no longer three with a
+ * „weitere anzeigen" button under them (§12.24).
  *
  * The section has no Frist to rank by — the door closes with the vote — so
  * it cannot be cut by urgency the way the open list is, and it sits between
- * the two halves the page promises. Six cards were a full screen of "no
- * deadline, 1–8 Stellungnahmen" ahead of the accountability layer. Three
- * name the window; the button admits the rest without sending anyone to a
- * page that does not exist.
+ * the two halves the page promises. What changed on 18.09.2026 is not the
+ * cutting but WHERE THE REST IS: the button grew this page for one reader
+ * and left the same rows unreachable for everyone arriving from a shared
+ * link. The list exists as a filter now, so the way out is a link like
+ * every other section's.
  */
-const SECOND_ROUND_STEP = 3
-const secondRoundShown = ref(SECOND_ROUND_STEP)
 const visibleSecondRound = computed(
-  () => secondRound.value?.items.slice(0, secondRoundShown.value) ?? [],
+  () => secondRound.value?.items.slice(0, HOME_LIST_LENGTH) ?? [],
 )
 
 /**
@@ -245,19 +244,22 @@ const lastSyncLabel = computed(() =>
         Fristen und Stellungnahmen auf einen Blick. Und für jeden Entwurf
         danach: Regierungsvorlage, Bundesgesetzblatt – oder bisher nichts.
       </p>
-    </header>
 
-    <div v-if="status === 'pending' && !data" class="mt-10">
-      <LoadingState label="Daten werden geladen …" />
-    </div>
-    <div v-else-if="error" class="mt-10">
-      <ErrorState @retry="refresh()" />
-    </div>
-    <template v-else-if="data">
-      <!-- The account-free alert tier, directly above the list of Fristen
-           it applies to. Footer keeps the full version with the manual
-           URL. -->
-      <p class="mt-8 text-sm text-ink-secondary">
+      <!-- The account-free alert tier, IN the header since 18.09.2026, not
+           between it and the first section. It stood at `mt-8` with the
+           80px section boundary under it — 1:3, too little to read as its
+           own thing and too much to read as part of the lede, so it
+           belonged to nothing. Its old comment called it "directly above
+           the list of Fristen it applies to"; it was a heading and a
+           section boundary away from that list.
+
+           It is a line about the page, and the header is where the page
+           speaks about itself. The move also takes it out of
+           `v-else-if="data"`: `useFeedUrls()` touches no endpoint, so a
+           failed `/api/dashboard` used to take the one still-working offer
+           down with the data. Footer keeps the full version with the
+           manual URL. -->
+      <p class="mt-4 text-sm text-ink-secondary">
         <UIcon
           name="i-lucide-calendar-plus"
           class="me-1 inline-block size-4 align-text-bottom"
@@ -280,7 +282,15 @@ const lastSyncLabel = computed(() =>
         >RSS</a>
         – ohne Konto, ohne Tracking.
       </p>
+    </header>
 
+    <div v-if="status === 'pending' && !data" class="mt-10">
+      <LoadingState label="Daten werden geladen …" />
+    </div>
+    <div v-else-if="error" class="mt-10">
+      <ErrorState @retry="refresh()" />
+    </div>
+    <template v-else-if="data">
       <!-- ONE list, because the question is one: "was läuft gerade, wo kann
            ich noch mitreden?" (docs/architecture.md §12.20). Which official
            register happens to carry a record is plumbing, and plumbing does
@@ -292,17 +302,15 @@ const lastSyncLabel = computed(() =>
            that same day, below a second heading. Urgency is the one thing
            two lists cannot preserve. -->
       <section class="page-section" aria-labelledby="open-heading">
-        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <h2 id="open-heading" class="section-heading">
-            Jetzt in Begutachtung
-          </h2>
-          <NuxtLink
-            to="/entwuerfe?status=open"
-            class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
-          >
-            Alle Entwürfe →
-          </NuxtLink>
-        </div>
+        <ListHeader
+          id="open-heading"
+          to="/entwuerfe?status=open"
+          noun="offenen Entwürfe"
+          :total="openRows.length"
+          :visible="visibleOpenRows.length"
+        >
+          Jetzt in Begutachtung
+        </ListHeader>
         <!-- Directly under the heading, not under the list: this one is
              not provenance but a correction to what the list claims, and a
              reader who learns at the bottom that rows are missing has
@@ -346,16 +354,10 @@ const lastSyncLabel = computed(() =>
           </EmptyState>
         </div>
 
-        <!-- What sits behind the cap, named rather than implied. -->
-        <p
-          v-if="openRows.length > visibleOpenRows.length"
-          class="mt-3 text-sm text-ink-secondary"
-        >
-          <NuxtLink
-            to="/entwuerfe?status=open"
-            class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-          >Alle {{ formatNumberDe(openRows.length) }} offenen Entwürfe ansehen →</NuxtLink>
-        </p>
+        <!-- NO second link under the list since 18.09.2026: what sits
+             behind the cap is the number in the link above („Alle 13
+             offenen Entwürfe →"), and both pointed at the same URL
+             (§12.24). -->
 
         <!-- Under the list, like a note under a table: the reader meets
              „nicht im Parlament“ on a row first and looks for the reason
@@ -379,10 +381,21 @@ const lastSyncLabel = computed(() =>
         class="page-section"
         aria-labelledby="second-round-heading"
       >
-        <h2 id="second-round-heading" class="section-heading">
+        <!-- The filter this section is a window onto is a SECTION on
+             `/entwuerfe`, not a row filter — a Regierungsvorlage is not in
+             Begutachtung and never appears in that list. The anchor is
+             therefore part of the target, and `?status=open` is what makes
+             the section render there at all. -->
+        <ListHeader
+          id="second-round-heading"
+          to="/entwuerfe?status=open#zweite-runde"
+          noun="Regierungsvorlagen"
+          :total="secondRound.items.length"
+          :visible="visibleSecondRound.length"
+        >
           Zweite Runde: Stellungnahme im Nationalrat möglich
-        </h2>
-        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+        </ListHeader>
+        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
           Auch zu einer Regierungsvorlage kann Stellung genommen werden – dort
           kann der Ausschuss den Text noch ändern. Für diese Runde gibt es
           keine veröffentlichte Frist: Sie endet mit der Abstimmung.
@@ -392,12 +405,6 @@ const lastSyncLabel = computed(() =>
             <SecondRoundCard :vorlage="v" />
           </li>
         </ul>
-        <ListMore
-          :visible="visibleSecondRound.length"
-          :total="secondRound.items.length"
-          :step="SECOND_ROUND_STEP"
-          @more="secondRoundShown += SECOND_ROUND_STEP"
-        />
       </section>
 
       <!-- The accountability layer opens HERE, not with the recency list
@@ -414,9 +421,22 @@ const lastSyncLabel = computed(() =>
         class="page-section"
         aria-labelledby="ranked-heading"
       >
-        <h2 id="ranked-heading" class="section-heading">
+        <!-- The link continues the ranking rather than pointing at the pool
+             it was drawn from: `?sort=stellungnahmen` is the same order,
+             uncut, and `?art=ministerialentwurf` is what the sort can
+             speak about — a draft without a Gegenstand has no Stellungnahmen
+             count and never will (§12.24). The count is the GP's
+             Ministerialentwürfe, which is exactly the set behind the
+             link. -->
+        <ListHeader
+          id="ranked-heading"
+          to="/entwuerfe?art=ministerialentwurf&sort=stellungnahmen"
+          noun="Ministerialentwürfe"
+          :total="data.stats.consultationsTotalGp"
+          :visible="rankedRows.length"
+        >
           Wo am meisten mitgeredet wurde
-        </h2>
+        </ListHeader>
         <!-- „… – und was daraus wurde" left the heading on 18.09.2026, for
              the reason the section below it lost its second half: the
              sentence under the heading says it, and the outcome sits as a
@@ -425,7 +445,7 @@ const lastSyncLabel = computed(() =>
         <!-- Volumetric, not "gerade": the ranking spans the whole GP,
              open and closed — the Frist line under each count says which
              is which. -->
-        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
           Die Entwürfe mit den meisten Stellungnahmen der
           <template v-if="gpLabel">{{ gpLabel }}. </template>Gesetzgebungsperiode<template
             v-if="gpStart"
@@ -470,17 +490,19 @@ const lastSyncLabel = computed(() =>
            shelving half has not left the page; it sits above, on the rows
            where the wait has become evidence. -->
       <section class="page-section" aria-labelledby="enacted-heading">
-        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-          <h2 id="enacted-heading" class="section-heading">
-            Zuletzt Gesetz geworden
-          </h2>
-          <NuxtLink
-            to="/entwuerfe?status=closed"
-            class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
-          >
-            Alle abgeschlossenen →
-          </NuxtLink>
-        </div>
+        <!-- The one section whose link carries NO number, and the reason is
+             the link itself: „abgeschlossen" is broader than „Gesetz
+             geworden", so any count beside it would be a count of a
+             different set. A real filter „im Bundesgesetzblatt" would need
+             an outcome per row — 336 Gegenstand-Abrufe — and is a work
+             package, not a link (§12.24). -->
+        <ListHeader
+          id="enacted-heading"
+          to="/entwuerfe?status=closed"
+          noun="abgeschlossenen Entwürfe"
+        >
+          Zuletzt Gesetz geworden
+        </ListHeader>
         <!-- „… – aus welcher Begutachtung" stood in the heading until
              18.09.2026 and was a duplicate twice over: the sentence below
              says it in full, and every row names its Ministerialentwurf.
@@ -490,7 +512,7 @@ const lastSyncLabel = computed(() =>
              surprise: this list can stand still for two months and then
              turn over almost completely. Better read as the institution's
              calendar than as a stale page. -->
-        <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
           Die jüngsten Kundmachungen im Bundesgesetzblatt aus der
           <template v-if="gpLabel">{{ gpLabel }}. </template>Gesetzgebungsperiode
           – und die Begutachtung, aus der sie hervorgegangen sind. Der

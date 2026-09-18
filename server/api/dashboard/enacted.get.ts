@@ -21,6 +21,7 @@
  * strictly that order — which law gets shown is never a judgement.
  */
 import type { ClosedOutcome, DashboardEnacted, DraftSummary } from '#shared/types'
+import { HOME_LIST_LENGTH } from '#shared/utils/draftOrder'
 
 /** Upstream's "done in the house" (`mapVorlageRow`, verified 117/117). */
 const STATUS_FINISHED = '5'
@@ -37,8 +38,6 @@ const STATUS_FINISHED = '5'
  * newest Kundmachung cannot sit just outside the window.
  */
 const SCAN = 30
-
-const DISPLAY_COUNT = 4
 
 /** One candidate: the Vorlage's Kundmachung plus the draft it came from. */
 interface Candidate {
@@ -105,7 +104,7 @@ export default defineEventHandler(async (): Promise<DashboardEnacted> => {
    * wins, because the list is ordered by exactly that. */
   const seen = new Set<string>()
   for (const c of candidates) {
-    if (items.length >= DISPLAY_COUNT) break
+    if (items.length >= HOME_LIST_LENGTH) break
     const key = `${c.draft.gp}-${c.draft.inr}`
     if (seen.has(key)) continue
     seen.add(key)

@@ -21,12 +21,16 @@ export default defineNuxtConfig({
     '/begutachtungen': { redirect: { to: '/entwuerfe', statusCode: 301 } },
     '/begutachtungen/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
     // The Begutachtungen without a Gegenstand had their own list for a few
-    // hours on 17.09.2026; they are a filter on /entwuerfe now
-    // (docs/architecture.md §12.19). Exact path only — the DETAIL pages
-    // `/weitere-entwuerfe/:id` stay, because those records are their own
-    // kind of object with their own page (§12.16), and so does the per-item
-    // `.ics` beneath them.
+    // hours on 17.09.2026 and their own detail path until 18.09.2026; the
+    // list is a filter on /entwuerfe and the pages are `/entwuerfe/:id`
+    // (docs/architecture.md §12.19). They are still their own kind of
+    // object with their own page anatomy (§12.16) — that difference belongs
+    // in the page, not in a second URL prefix that calls two thirds of the
+    // corpus „weitere". Both rules: the bare path lands on the filter, and
+    // everything beneath it — detail pages and their `.ics` — keeps its
+    // suffix.
     '/weitere-entwuerfe': { redirect: { to: '/entwuerfe?art=verordnung', statusCode: 301 } },
+    '/weitere-entwuerfe/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
   },
   ui: {
     // Light-only prototype: Nuxt UI's color-mode integration would flip its

@@ -19,9 +19,15 @@ function pageUrl(siteUrl: string, item: DraftSummary): string {
   return `${siteUrl}/entwuerfe/${item.gp}/${item.inr}`
 }
 
-/** Page URL of a Begutachtung without a parliamentary Gegenstand. */
+/**
+ * Page URL of a Begutachtung without a parliamentary Gegenstand — the same
+ * `/entwuerfe/` namespace as a draft's since 18.09.2026, told apart by the
+ * RIS id instead of by a second path (docs/architecture.md §12.19). The
+ * feed UIDs below deliberately do not derive from this, so the move costs
+ * subscribers nothing.
+ */
 function risPageUrl(siteUrl: string, item: RisConsultation): string {
-  return `${siteUrl}/weitere-entwuerfe/${item.id}`
+  return `${siteUrl}/entwuerfe/${item.id}`
 }
 
 /**
@@ -300,9 +306,10 @@ export function buildSitemap(
 ): string {
   const urls = [
     siteUrl,
-    // One list for both kinds since 17.09.2026 (docs/architecture.md
-    // §12.19); `/weitere-entwuerfe` 301s onto its filter and a sitemap must
-    // not advertise a redirect.
+    // One list for both kinds since 17.09.2026 and one URL namespace since
+    // 18.09.2026 (docs/architecture.md §12.19); everything under
+    // `/weitere-entwuerfe` 301s into it and a sitemap must not advertise a
+    // redirect.
     `${siteUrl}/entwuerfe`,
     `${siteUrl}/so-funktionierts`,
     `${siteUrl}/ueber`,

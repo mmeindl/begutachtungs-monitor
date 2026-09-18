@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type {
+  DashboardSecondRound,
   DraftStatus,
   DraftSummary,
   DraftsResponse,
+  OpenVorlage,
   RisConsultation,
   RisConsultationsResponse,
 } from '#shared/types'
@@ -71,6 +73,29 @@ const artOptions: { value: ArtFilter; label: string }[] = [
   { value: 'verordnung', label: 'Verordnungsentwürfe u. a.' },
 ]
 
+/**
+ * Two orders, because the homepage has two questions (§12.24).
+ *
+ * „Frist" is the list's own order and the default everywhere: open first,
+ * nearest deadline on top (`compareDrafts`). „Meiste Stellungnahmen" exists
+ * because the homepage's ranking („Wo am meisten mitgeredet wurde") had
+ * nowhere to send anyone — its five rows are a window onto an order this
+ * page could not produce, so the link would have pointed at the pool
+ * instead of at the list. It is the same comparator the ranking uses
+ * (`rankByStatements`), so the first five rows here ARE those five rows.
+ *
+ * The slot for „zuletzt dazugekommen" (TODO, §12.22) is this select.
+ */
+type SortKey = 'frist' | 'stellungnahmen'
+const sortOptions: { value: SortKey; label: string }[] = [
+  { value: 'frist', label: 'Nach Frist' },
+  { value: 'stellungnahmen', label: 'Meiste Stellungnahmen' },
+]
+
+function parseSort(v: unknown): SortKey {
+  return firstQueryValue(v) === 'stellungnahmen' ? 'stellungnahmen' : 'frist'
+}
+
 function parseStatus(v: unknown): DraftStatus {
   const s = firstQueryValue(v)
   return s === 'open' || s === 'closed' ? s : 'all'
@@ -87,6 +112,10 @@ const gp = ref(firstQueryValue(route.query.gp) ?? '')
 const ministry = ref(firstQueryValue(route.query.ministry) ?? '')
 const q = ref(firstQueryValue(route.query.q) ?? '')
 const qDebounced = ref(q.value)
+/* Client-side, unlike the filters above: both endpoints already ship the
+ * whole filtered set, so reordering it costs no request — and the merge of
+ * the two halves happens here anyway (`rows`). */
+const sort = ref<SortKey>(parseSort(route.query.sort))
 
 const { webcalUrl } = useFeedUrls()
 
@@ -120,8 +149,35 @@ const { data, error, refresh, status } = await useFetch<DraftsResponse>('/api/dr
  * report "0 ohne Gegenstand" when the truth is "we could not look".
  */
 const { data: risData, error: risError } = await useFetch<RisConsultationsResponse>(
-  '/api/weitere-entwuerfe',
+  '/api/ris-drafts',
   { query, timeout: 8000 },
+)
+
+/**
+ * The other open door — and it is NOT a row of this list.
+ *
+ * Someone who lands here under „In Begutachtung" is asking where they can
+ * still say something, and this page used to answer only half of that: a
+ * Regierungsvorlage takes Stellungnahmen in the Nationalrat the same way,
+ * but that window was visible on the homepage and on the detail page of a
+ * draft that happens to have a Vorlage — never to anyone arriving from the
+ * RSS link or a shared URL.
+ *
+ * So it is shown, and shown as its own section under the list rather than
+ * as rows in it. A Vorlage is not in Begutachtung — that is the whole point
+ * of calling it a second round — and three things follow from putting it in
+ * the result set: the filter label would stop being true of its own rows,
+ * the order would have nothing to sort them by (the Vorlage publishes no
+ * Frist, the form closes with the vote), and the Zählzeile would pool a
+ * third kind into a count the page has gone out of its way never to pool.
+ *
+ * Client-side and lazy, like the homepage's copy: nothing above depends on
+ * the answer, an empty result is the normal state, and a section that can
+ * be absent must not hold the first paint.
+ */
+const { data: secondRound } = await useFetch<DashboardSecondRound>(
+  '/api/dashboard/zweite-runde',
+  { lazy: true, server: false },
 )
 
 const selectedGp = computed({
@@ -151,13 +207,14 @@ const ministries = computed(() => {
 })
 
 // Keep the URL in sync with the filters (defaults stay out of the URL).
-watch([query, art], () => {
+watch([query, art, sort], () => {
   const urlQuery: Record<string, string> = {}
   if (statusFilter.value !== 'all') urlQuery.status = statusFilter.value
   if (art.value) urlQuery.art = art.value
   if (gp.value) urlQuery.gp = gp.value
   if (ministry.value) urlQuery.ministry = ministry.value
   if (qDebounced.value) urlQuery.q = qDebounced.value
+  if (sort.value !== 'frist') urlQuery.sort = sort.value
   router.replace({ query: urlQuery })
 })
 
@@ -179,6 +236,28 @@ function orderOf(row: Row): OrderedDraft {
   return row.kind === 'me' ? draftOrderKey(row.draft) : row.item
 }
 
+/**
+ * Most Stellungnahmen first — and the half that cannot be ranked stays a
+ * block, it does not get interleaved at zero.
+ *
+ * A record without a Gegenstand carries no Stellungnahmen count and never
+ * will (nobody publishes who filed one, §12.16). Sorting it in at 0 would
+ * read as "nobody cared" about two thirds of the corpus, which is the one
+ * misreading this page is built to prevent — so those rows follow all the
+ * ranked ones, in the list's own Frist order, and the line above the list
+ * says so.
+ *
+ * The ME comparison is `rankByStatements`' one, tie-break included, because
+ * the homepage's five rows must be the first five here.
+ */
+function compareByStatements(a: Row, b: Row): number {
+  if (a.kind !== b.kind) return a.kind === 'me' ? -1 : 1
+  if (a.kind === 'me' && b.kind === 'me') {
+    return b.draft.statementCount - a.draft.statementCount || b.draft.inr - a.draft.inr
+  }
+  return compareDrafts(orderOf(a), orderOf(b))
+}
+
 const rows = computed<Row[]>(() => {
   const out: Row[] = []
   if (art.value !== 'verordnung') {
@@ -187,7 +266,9 @@ const rows = computed<Row[]>(() => {
   if (art.value !== 'ministerialentwurf') {
     for (const c of risData.value?.items ?? []) out.push({ kind: 'ris', key: `ris-${c.id}`, item: c })
   }
-  return out.sort((a, b) => compareDrafts(orderOf(a), orderOf(b)))
+  return out.sort((a, b) =>
+    sort.value === 'stellungnahmen' ? compareByStatements(a, b) : compareDrafts(orderOf(a), orderOf(b)),
+  )
 })
 
 /**
@@ -216,6 +297,77 @@ const countLabel = computed(() => {
     )
   }
   return parts.join(' · ')
+})
+
+/**
+ * Which of the open Vorlagen the section below the list shows — every
+ * control above it that CAN reach them, and silence where one cannot.
+ *
+ *  - **Status.** „In Begutachtung" only. That is the filter whose question
+ *    this section answers — wo kann ich jetzt noch etwas sagen. Under
+ *    „Alle" it was shown too for a moment, on superset logic (a narrower
+ *    filter must not show MORE); that argument loses against the page: there
+ *    the section sits under 336 rows, where it reaches nobody and only
+ *    dilutes the one reading it belongs to.
+ *  - **Art.** A Regierungsvorlage comes out of a Gesetzesentwurf, so it has
+ *    no place beside the Verordnungsentwürfe.
+ *  - **Periode.** The endpoint answers for the current GP and now says
+ *    which one that is; narrowed to an earlier period the section goes.
+ *  - **Suche** filters the rows, by the same plain substring rule the list
+ *    above uses (`/api/drafts`) — the same field must not behave two ways
+ *    on one page.
+ *  - **Sortierung** applies here too — see below; a control that skips a
+ *    list under it puts two orders on one page.
+ *  - **Ressort** it cannot honour: `OpenVorlage` carries no ministry.
+ *    Deriving one from the draft pointer would cover most rows and silently
+ *    drop the quarter of Vorlagen that never were in Begutachtung, so the
+ *    section steps aside instead of pretending to be filtered.
+ */
+const secondRoundItems = computed<OpenVorlage[]>(() => {
+  const list = secondRound.value
+  if (!list) return []
+  if (statusFilter.value !== 'open' || art.value === 'verordnung' || ministry.value) return []
+  if (selectedGp.value && selectedGp.value !== list.gp) return []
+  const needle = qDebounced.value.toLowerCase()
+  const matched = needle
+    ? list.items.filter((v) => `${v.title} ${v.citation}`.toLowerCase().includes(needle))
+    : list.items
+  /* Die Sortierung oben formt auch diesen Abschnitt. Ein Bedienelement, das
+   * eine Liste unter sich auslässt, setzt zwei Ordnungen auf eine Seite —
+   * und hier gibt es die Zahl, nach der sortiert wird. Was upstream nicht
+   * gezählt werden konnte (`null`), steht hinten: kein Rang für „nicht
+   * gezählt". Stabil, also fällt der Rest auf die Reihenfolge des
+   * Endpunkts zurück (Einlangen, neueste zuerst). */
+  if (sort.value !== 'stellungnahmen') return matched
+  return [...matched].sort((a, b) => (b.statementCount ?? -1) - (a.statementCount ?? -1))
+})
+
+/* Paged like every other list here, and on the same component — with a
+ * handful of rows (6 of 117 Vorlagen on 15.09.2026) ListMore renders
+ * nothing at all, which is why the cap can stand without costing anyone a
+ * press today. */
+const SECOND_ROUND_STEP = 10
+const secondRoundShown = ref(SECOND_ROUND_STEP)
+const visibleSecondRound = computed(() => secondRoundItems.value.slice(0, secondRoundShown.value))
+// A new filter is a new set: staying expanded would show row 11 of a set
+// whose row 11 the reader never asked to see.
+watch(secondRoundItems, () => {
+  secondRoundShown.value = SECOND_ROUND_STEP
+})
+
+/* Der Anker `#zweite-runde` von der Startseite zeigt auf einen Abschnitt,
+ * den es beim ersten Paint noch nicht gibt: dieser Teil lädt clientseitig
+ * und lazy. Der Browser springt genau einmal, findet nichts und bleibt
+ * oben. Also wird einmal nachgesprungen, sobald die Zeilen stehen — einmal,
+ * nicht bei jeder Änderung, sonst reißt es jemanden aus der Liste, der
+ * inzwischen selbst weitergescrollt hat. */
+const jumpedToSecondRound = ref(false)
+watch(visibleSecondRound, async (items) => {
+  if (!import.meta.client || jumpedToSecondRound.value) return
+  if (!items.length || route.hash !== '#zweite-runde') return
+  jumpedToSecondRound.value = true
+  await nextTick()
+  document.getElementById('zweite-runde')?.scrollIntoView({ block: 'start' })
 })
 
 /* Selects are TokenSelect (native <select> in token styling with the
@@ -304,6 +456,18 @@ const countLabel = computed(() => {
           </TokenSelect>
         </div>
 
+        <!-- Die Sortierung steht bei den Filtern, weil sie dasselbe tut:
+             sie formt die Liste darunter. Ganz rechts vor der Suche, weil
+             sie als einziges Bedienelement hier nichts wegnimmt. -->
+        <div class="min-w-0">
+          <label for="filter-sort" class="sr-only">Sortierung</label>
+          <TokenSelect id="filter-sort" v-model="sort">
+            <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </TokenSelect>
+        </div>
+
         <!-- The corpus size in the placeholder is the trust signal
              (kleineAnfragen pattern) — and it tracks the active filters,
              which is what q actually searches within. -->
@@ -346,6 +510,17 @@ const countLabel = computed(() => {
       </p>
 
       <h2 class="sr-only">Ergebnisse</h2>
+      <!-- Was die Sortierung mit der Hälfte macht, die sie nicht sortieren
+           kann — über der Liste, nicht darunter: eine Einschränkung an dem,
+           was die Reihenfolge behauptet, muss gelesen sein, bevor die Zeilen
+           gelesen sind. -->
+      <p
+        v-if="sort === 'stellungnahmen' && art !== 'ministerialentwurf'"
+        class="mt-3 max-w-prose text-sm text-ink-muted"
+      >
+        Entwürfe ohne Gegenstand im Parlament führen keine Stellungnahmen –
+        sie stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
+      </p>
       <!-- Two densities, CSS-switched (SSR-safe, no JS): generous cards on
            mobile, a dense divider-list on md+ where scanning 100+ items
            is the job. Each kind keeps its own card and row — the shared
@@ -373,6 +548,53 @@ const countLabel = computed(() => {
           description="Andere Filter oder einen anderen Suchbegriff versuchen."
         />
       </div>
+
+      <!-- Unter der Liste, nicht darin: gleiche Frage („wo kann ich jetzt
+           noch etwas sagen?"), anderer Verfahrensstand. Die eigene
+           Überschrift ist der Grund, warum diese Zeilen nicht oben stehen –
+           und die eigene Zahl hält sie aus der Zählzeile heraus, die
+           bewusst nie summiert. -->
+      <section
+        v-if="visibleSecondRound.length"
+        id="zweite-runde"
+        class="page-section scroll-mt-6"
+        aria-labelledby="second-round-heading"
+      >
+        <h2 id="second-round-heading" class="section-heading">
+          Zweite Runde: Stellungnahme im Nationalrat möglich
+        </h2>
+        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+          Diese Entwürfe stehen nicht in der Liste oben: Ihre Begutachtung ist
+          vorbei, sie liegen als Regierungsvorlage im Nationalrat – und auch
+          dort kann Stellung genommen werden, denn der Ausschuss kann den Text
+          noch ändern. Eine Frist wird dafür nicht veröffentlicht: Sie endet
+          mit der Abstimmung.
+        </p>
+        <p class="mt-4 text-sm text-ink-muted">
+          {{ countLabelDe(secondRoundItems.length, 'Regierungsvorlage', 'Regierungsvorlagen') }}
+          mit offener Stellungnahme
+        </p>
+        <!-- Zwei Dichten wie oben, am selben Breakpoint: unter der
+             Zeilenliste dürfen nicht plötzlich Karten stehen. -->
+        <ul class="mt-3 space-y-3 md:hidden">
+          <li v-for="v in visibleSecondRound" :key="v.citation">
+            <SecondRoundCard :vorlage="v" />
+          </li>
+        </ul>
+        <div class="mt-3 hidden overflow-hidden rounded-xl border border-hairline bg-surface md:block">
+          <ul class="divide-y divide-hairline">
+            <li v-for="v in visibleSecondRound" :key="`row-${v.citation}`">
+              <SecondRoundRow :vorlage="v" />
+            </li>
+          </ul>
+        </div>
+        <ListMore
+          :visible="visibleSecondRound.length"
+          :total="secondRoundItems.length"
+          :step="SECOND_ROUND_STEP"
+          @more="secondRoundShown += SECOND_ROUND_STEP"
+        />
+      </section>
     </template>
   </div>
 </template>

@@ -17,7 +17,7 @@ defineProps<{ consultation: RisConsultation }>()
 
 <template>
   <NuxtLink
-    :to="`/weitere-entwuerfe/${consultation.id}`"
+    :to="`/entwuerfe/${consultation.id}`"
     class="group flex min-h-11 items-center gap-4 px-4 py-3 transition-colors hover:bg-page"
   >
     <div class="min-w-0 flex-1">

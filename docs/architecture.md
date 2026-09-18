@@ -75,6 +75,8 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
 | `GET /api/drafts/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
 | `GET /api/drafts/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → **scoped to the laws both texts carry** → aligned → word diff; cached 24 h. `lawsOnlyInRv` / `lawsOnlyInMe` name the laws left out, with their unit counts — a Regierungsvorlage that merges several drafts would otherwise report hundreds of §§ as new (§6d). `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
+| `GET /api/ris-drafts?gp&status&ministry&art&q` | `RisConsultationsResponse` | The RIS Begut records Parliament has no Gegenstand for — mostly Verordnungsentwürfe (§12.16). Same query vocabulary as `/api/drafts` plus `art`; sorted by the same `compareDrafts`, because `/entwuerfe` merges both lists (§12.19) |
+| `GET /api/ris-drafts/:id` | `RisConsultationDetail` | One such record by its RIS document id (`BEGUT_…`, validated against `RIS_ID_RE` — the same pattern the page route and the per-item `.ics` test). Renders at `/entwuerfe/:id`, the same namespace as a draft (§12.19) |
 | `GET /api/ris-map/:gp` (or `aktuell`) | `RisMapResponse` | RIS Begut record per ME of the GP with status/tier/score, RIS URL and document URLs, Beginn/Ende offsets (a non-zero Ende offset is a Fristabweichung). Cached 30 min on top of the 20-h corpus cache; the nightly prewarm timer calls `aktuell`. `docs/ris-join.md` §3a |
 | `GET /feed.xml` | RSS 2.0 | Current GP, newest arrival first, max 50 items; deterministic output (no `Date.now()`, absolute dates in descriptions — never countdowns), ETag/304; builders in `server/utils/feeds.ts` (pure, tested) |
 | `GET /kalender.ics` | iCalendar (RFC 5545) | All deadlines of the current GP as all-day transparent events; UID domain FROZEN (`@begutachtungs-monitor.at`, survives renames); DTSTAMP follows the deadline so extensions propagate through import paths; ETag/304 |
@@ -212,8 +214,8 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 
 ## 7. Pages
 
-- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (plain text: the anchor into the accountability section went on 18.09.2026 — a promise is not navigation, and the reorder removed the distance it was saving), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline, capped at 6 with a link to the rest (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty, 3 rows then `ListMore`), **"Wo am meisten mitgeredet wurde"** (the GP's top 5 by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here), lastSync note, and under it the scope line: the accountability sections count over the CURRENT Gesetzgebungsperiode only, named in each subline, with the pointer to the earlier ones on `/entwuerfe`. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
-- `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, GP select, ministry select (from the response), search field (debounced); filter state in the URL query; result counter; EmptyState.
+- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (plain text: the anchor into the accountability section went on 18.09.2026 — a promise is not navigation, and the reorder removed the distance it was saving), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty), **"Wo am meisten mitgeredet wurde"** (the GP's top by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here) — **all four cut to `HOME_LIST_LENGTH` = 5 and each with exactly one link, top right, to the filter that shows the same list uncut (§12.24: `ListHeader`, no `ListMore` on this page)**, lastSync note, and under it the scope line: the accountability sections count over the CURRENT Gesetzgebungsperiode only, named in each subline, with the pointer to the earlier ones on `/entwuerfe`. Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
+- `/entwuerfe` **List**: segmented control Offen/Abgeschlossen/Alle, Art select, GP select, ministry select (from the response), **sort select (Frist | Meiste Stellungnahmen — §12.24, client-side, the target of the homepage ranking's link)**, search field (debounced); filter state in the URL query; result counter; EmptyState. Under the list, when the status filter is „In Begutachtung": the **„Zweite Runde"** section (`#zweite-runde`, the anchor the homepage links to).
 - `/entwuerfe/[gp]/[inr]` **Detail**: header (title, citation, MinistryBadge, DeadlineBadge, arrival/deadline), short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, **"Was wurde daraus?"** (TraceTimeline + enactment callout RV/BGBl + text-evolution links), source footnote. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV under the StageBar, a successor inside the no-RV card.
 - `/ueber` **About**: mission, how it works, data source/license, GDPR stance (why no names of private persons), lineage (OffenesParlament.at), prototype status.
 - `app/error.vue`: 404/500 in German, link to the home page.
@@ -3057,9 +3059,14 @@ sie nicht zählen.
   Muster zu weiten ändert die Eingabe der Beilagen-Engine, deren Grundlinie
   je Entwurf festgenagelt und wöchentlich überwacht ist — also ein eigener
   Schritt mit eigener Messung, kein Nebeneffekt dieser Arbeit.
-- **Der Name der Route** (`/weitere-entwuerfe`) ist eine Arbeitsentscheidung:
-  `/verordnungen` wäre für drei Zeilen gelogen. Eine spätere Umbenennung
-  kostet eine Weiterleitung; die Feed-UIDs hängen bewusst nicht an der Route.
+- **Der Name der Route** war eine Arbeitsentscheidung und ist seit dem
+  18.09.2026 erledigt — nicht durch einen besseren Namen, sondern durch
+  keinen: die Seiten liegen unter `/entwuerfe/:id`, ein eigenes Präfix haben
+  sie nicht mehr (§12.19). `/verordnungen` wäre für drei Zeilen gelogen
+  gewesen, `/weitere-entwuerfe` hat zwei Drittel des Korpus in jedem
+  weitergegebenen Link „weitere" genannt. Gekostet hat die Umbenennung, was
+  vorhergesagt war: eine Weiterleitung. Die Feed-UIDs hängen bewusst nicht
+  an der Route und blieben unberührt.
 
 
 ### 12.17 Nebeneinander im Textvergleich — dieselben Daten, zweimal projiziert
@@ -3336,9 +3343,39 @@ benannt:
 
 **Gebaut ist jetzt:** `/entwuerfe` hält beide Arten, ein Filter
 `?art=ministerialentwurf|verordnung` trennt sie, Voreinstellung ist **alle**.
-`/weitere-entwuerfe` ist ein 301 auf `?art=verordnung` — **nur der exakte
-Pfad**, die Detailseiten `/weitere-entwuerfe/:id` und das `.ics` darunter
-bleiben, weil das eigene Objekte mit eigener Seitenanatomie sind (§12.16).
+
+**Und seit dem 18.09.2026 auch ein Link-Raum.** Die Detailseiten behielten
+zunächst ihr eigenes Präfix, mit dem Argument aus §12.16: eigene Objekte,
+eigene Seitenanatomie. Das Argument stimmt weiter — nur trägt es keinen
+Pfad. Ein Präfix ist nichts, was man liest, sondern etwas, was man
+weitergibt: jeder geteilte Link, jede Zeile im Feed, jeder Treffer bei Google
+sagte „weitere Entwürfe" über zwei Drittel des Korpus, und wer eine URL
+raten wollte, musste vorher wissen, in welcher Hälfte der Daten sein Entwurf
+liegt. Die Seiten unterscheiden sich dort, wo der Unterschied sichtbar
+gehört, nämlich in der Seite.
+
+Also: **ein Namensraum, zwei Seitenformen.** `/entwuerfe/:gp/:inr` ist der
+Ministerialentwurf, `/entwuerfe/:id` der Satz ohne Gegenstand; die Form der
+Kennung entscheidet, nicht der Pfad. Alles unter `/weitere-entwuerfe` ist
+301 — der nackte Pfad auf `?art=verordnung`, alles darunter auf denselben
+Suffix unter `/entwuerfe` (Detailseiten und ihr `.ics`).
+
+**Der Preis, und er ist echt:** `/entwuerfe/:id` beansprucht jedes einzelne
+Segment unter `/entwuerfe`. Ohne Prüfung würde `/entwuerfe/xyz` nicht mehr
+404en, sondern die RIS-Seite mit einem Fehlzustand rendern. Deshalb prüft die
+Route gegen `RIS_ID_RE` (`shared/utils/risConsultations.ts`) — dasselbe
+Muster, das der `.ics`-Handler und der API-Handler testen, an einer Stelle,
+weil drei Kopien dieser Regel drei Chancen wären, einen gültigen Link zu
+404en.
+
+**Die Endpunkte heißen `/api/ris-drafts`** (vorher `/api/weitere-entwuerfe`),
+benannt nach ihrer Quelle wie `/api/ris-map`. Zwei Endpunkte bleiben es: die
+Daten sind wirklich zwei Hälften, und das ist keine Layout-Entscheidung —
+ein gemeinsames Schema hieße, leere Felder zu erfinden. Nur der *Name* durfte
+nicht bleiben, denn „weiter als was" war das ganze Problem des Wortes, in der
+URL-Leiste wie im Netzwerk-Tab. Umbenannt am 18.09.2026, ohne Weiterleitung:
+die Endpunkte sind intern, es gibt keine fremden Konsumenten, und ein 301 auf
+einen internen Fetch wäre eine Zusage an niemanden.
 
 **Was die Teilung richtig gesehen hat, bleibt erhalten:**
 
@@ -3460,6 +3497,8 @@ den Verlaufsabschnitt, für den es die Seite gibt, an einem gewöhnlichen
 Wochentag hinter das dritte Bildschirmfenster. Gemessen nach dem Umbau:
 `#open-heading` bei 416 px statt 698, drei Karten über dem Falz statt
 keiner, `#outcomes-heading` bei 2.221 px statt 2.805 (1280×800).
+**Seit 18.09.2026 sind es fünf** — dieselbe Messung, dasselbe Argument, nur
+eine Länge für alle vier Listen der Seite statt vier (§12.24).
 
 **Was bewusst NICHT gebaut wurde:** keine Quote „X % ohne Begutachtung"
 und kein „X Entwürfe nach der Begutachtung geändert" an der Spitze. Die
@@ -3591,8 +3630,9 @@ Hälfte der Belege hinter einen Klick legen.
 Die Startseite beantwortete die zweithäufigste Frage einer
 wiederkehrenden Leserin nicht: *was ist seit meinem letzten Besuch
 dazugekommen?* Die Liste steht nach Frist, nicht nach Einlangen, und sie
-ist bei 6 Zeilen gedeckelt — ein Entwurf, der heute mit sechswöchiger
-Frist einlangt, sortiert hinter alles, was diese Woche endet.
+ist gedeckelt (damals 6 Zeilen, seit 18.09.2026 fünf — §12.24) — ein
+Entwurf, der heute mit sechswöchiger Frist einlangt, sortiert hinter
+alles, was diese Woche endet.
 
 **Keine zweite Liste.** Ihre Zeilen wären dieselben, die die offene Liste
 schon zeigt; „Neu eingelangt" als eigener Abschnitt zeigte dieselbe
@@ -3704,6 +3744,191 @@ Regierungsvorlage, 616 seit elf Monaten. Die Bilanz verbessert sich
 sogar — Schubladisierung dort, wo sie nach dem Latenzfenster etwas
 bedeutet, Erfolge dort, wo sie frisch sind.
 
+
+### 12.24 Vier Listen, eine Grammatik
+
+Die Startseite trug am 18.09.2026 vier Listen mit **vier Längen, drei Arten
+weiterzukommen und zwei Abschnitten ohne jeden Ausgang**:
+
+| Abschnitt | Zeilen | Deckel steht in | Weg zum Rest |
+| --- | --- | --- | --- |
+| Jetzt in Begutachtung | 6 | Seite (`OPEN_ROW_CAP`) | Link oben rechts **und** Textlink unter der Liste — dieselbe URL |
+| Zweite Runde | 3 | Seite (`SECOND_ROUND_STEP`) | `ListMore`, +3 auf der Seite |
+| Wo am meisten mitgeredet wurde | 5 | Endpunkt (`RANKED_BY_STATEMENTS`) | keiner |
+| Zuletzt Gesetz geworden | 4 | Endpunkt (`DISPLAY_COUNT`) | Link oben rechts, auf einen breiteren Filter |
+
+Jede der vier Zahlen hatte ihr eigenes, gutes Argument — 6 war gegen die
+Bildschirmhöhe gemessen (§12.20), 3 hielt einen Abschnitt ohne Frist klein,
+5 ist die Länge, unter der eine Rangliste eine Anekdote wird, 4 war die
+Anzahl, die der Kundmachungs-Endpunkt gerade lieferte. Zusammen ergeben sie
+keines: vier Fenster auf vier Korpora, in vier Tiefen geschnitten, lesen
+sich als vier Arten von Abschnitt. Die Leserin lernt dann eine Länge pro
+Abschnitt statt einer Länge pro Seite — und die Frage „sehe ich hier alles?"
+muss sie viermal neu stellen.
+
+**Eine Länge: `HOME_LIST_LENGTH` = 5** (`shared/utils/draftOrder.ts`),
+gelesen von beiden Deckeln in der Seite *und* von beiden Endpunkten. Fünf,
+weil die Rangliste nicht kürzer darf und der Deckel der offenen Liste nicht
+länger: §12.20 hat gemessen, was den Verlaufsabschnitt hinter das dritte
+Bildschirmfenster schiebt. Die Kundmachungen gewinnen dabei eine Zeile, die
+offene Liste verliert eine.
+
+**Kein `ListMore` auf der Startseite.** Die Arbeitsteilung ist jetzt
+explizit und steht in beiden Komponenten: `ListMore` gehört dorthin, wo
+jemand eine Liste **abarbeitet** und der Rest die Sache derselben Seite ist
+(`/entwuerfe`, das Stellungnahmen-Panel). Ein Abschnitt auf der Startseite
+ist ein Fenster auf einen Korpus, der woanders wohnt. Der Knopf vergrößerte
+die Startseite für den einen Menschen, der ihn drückt, und ließ dieselben
+Zeilen für alle anderen unerreichbar — niemand teilt „Startseite,
+zweimal aufgeklappt".
+
+**Ein Link pro Abschnitt, oben rechts, aus einer Komponente**
+(`ListHeader`, Gegenstück zu `ListMore`). Die offene Liste hatte zwei — oben
+„Alle Entwürfe →", unter der Liste „Alle 13 offenen Entwürfe ansehen →" —,
+zwei Abschnitte hatten keinen. Zwei Links auf dieselbe URL sind nicht der
+doppelte Ausgang, sondern jemand, der prüft, ob sie sich unterscheiden.
+
+**Die Zahl steht im Link, aber nur, wenn sie etwas sagt.** „Alle 7 offenen
+Entwürfe →" über fünf Karten nennt genau das, was der Deckel kostet und was
+der Abschnitt selbst nicht zeigen kann. „Alle 5 offenen Entwürfe →" über
+fünf Karten zählt, was das Auge schon gezählt hat — das ist die Zahl, die
+§12.20 abgeschafft hat, nur an einem neuen Ort. Also: Zahl, solange Zeilen
+verborgen sind; sonst nennt der Link nur sein Ziel.
+
+**Das Ziel ist der Filter, der dieselbe Liste erzeugt — notfalls wird er
+gebaut.** Für „Wo am meisten mitgeredet wurde" gab es keinen: `/entwuerfe`
+konnte nicht nach Stellungnahmen sortieren, ein Link dorthin hätte auf den
+*Pool* gezeigt, aus dem die Rangliste gezogen ist, nicht auf ihre
+Fortsetzung. Deshalb hat die Liste jetzt eine Sortierung
+(`?sort=stellungnahmen`, clientseitig — beide Endpunkte liefern die
+gefilterte Menge ohnehin ganz), mit demselben Vergleich wie
+`rankByStatements`, Gleichstand-Regel inklusive. Gemessen am 18.09.2026:
+`/entwuerfe?art=ministerialentwurf&sort=stellungnahmen` beginnt mit
+126/ME · 88/ME · 44/ME · 32/ME · 132/ME — genau den fünf Zeilen der
+Startseite, in derselben Reihenfolge, serverseitig gerendert.
+
+Zwei Folgen davon, die dazugehören:
+
+- **Die Hälfte ohne Gegenstand wird nicht bei 0 eingereiht.** Sie führt
+  keine Stellungnahmen und wird nie welche führen (§12.16); „0" läse sich
+  als „niemanden interessiert" über zwei Dritteln des Korpus. Diese Zeilen
+  stehen hinter den gereihten, weiter nach Frist — und eine Zeile über der
+  Liste sagt es, bevor die Reihenfolge gelesen ist, nicht darunter.
+- **Die Sortierung greift auch auf den Abschnitt „Zweite Runde"** derselben
+  Seite. Ein Bedienelement, das eine Liste unter sich auslässt, setzt zwei
+  Ordnungen auf eine Seite. Was upstream nicht gezählt werden konnte
+  (`statementCount: null`), steht hinten: kein Rang für „nicht gezählt".
+
+**Der eine Link ohne Zahl** ist „Zuletzt Gesetz geworden" → `?status=closed`.
+„Abgeschlossen" ist breiter als „Gesetz geworden", also wäre jede Zahl
+daneben die Zahl einer anderen Menge. Ein echter Filter „im
+Bundesgesetzblatt" braucht ein Ergebnis pro Zeile — 336
+Gegenstand-Abrufe —, das ist ein Arbeitspaket und kein Link.
+
+**Der Anker, der ins Leere zeigte.** „Zweite Runde" ist auf `/entwuerfe`
+ein Abschnitt, kein Zeilenfilter — eine Regierungsvorlage steht nicht in
+Begutachtung —, das Ziel ist deshalb
+`/entwuerfe?status=open#zweite-runde`. Der Abschnitt lädt dort clientseitig
+und lazy: der Browser springt genau einmal, findet nichts und bleibt oben.
+Ein einmaliger Nachsprung, sobald die Zeilen stehen, macht den Link wahr
+(verifiziert über CDP am 18.09.2026: `scrollY` 1172, Abschnittskante 24 px
+unter der Fensteroberkante).
+
+**Nicht gebaut:** keine Zählzeile unter einer Liste, die sagt „5 von 7
+angezeigt" — das ist `ListMore`s Sprache für eine Liste, die hier wächst,
+und sie wächst hier nicht. Und keine unterschiedlichen Längen „je nach
+Wichtigkeit des Abschnitts": die Reihenfolge der Abschnitte sagt bereits,
+was zuerst zu lesen ist (§12.21); die Länge dazu zu benutzen, hieße
+dieselbe Rangfolge zweimal zu behaupten.
+
+
+### 12.25 Die zweite Runde steht unter der Liste, nicht in ihr — und der Stationsfilter, der sie einmal ablösen wird
+
+Auf `/entwuerfe` fehlte die Hälfte der Antwort auf die Frage, für die
+jemand den Filter „In Begutachtung" drückt: *wo kann ich jetzt noch etwas
+sagen?* Zu einer Regierungsvorlage kann im Nationalrat genauso Stellung
+genommen werden, aber dieses Fenster war nur auf der Startseite und auf der
+Detailseite eines Entwurfs sichtbar, der zufällig eine Vorlage hat — nicht
+für jemanden, der über den RSS-Link oder eine geteilte URL hier landet.
+
+**Naheliegend war, die Vorlagen als Zeilen unter die Erste-Runde-Zeilen zu
+hängen. Dagegen sprechen drei Dinge, und alle drei sind Eigenschaften der
+Seite, nicht Geschmack:**
+
+1. **Das Filterlabel wäre über die eigenen Zeilen unwahr.** Eine
+   Regierungsvorlage ist *nicht* in Begutachtung — das ist der ganze Grund,
+   warum sie „zweite Runde" heißt.
+2. **Die Ordnung hätte nichts zu ordnen.** Die offene Liste sortiert nach
+   nächster Frist, also nach Dringlichkeit. Die Vorlage veröffentlicht
+   keine Frist; das Formular schließt mit der Abstimmung. Die Zeilen fielen
+   in den „offen ohne Frist"-Rest am Ende — unten, aber ohne sichtbaren
+   Grund.
+3. **Die Bedienelemente darüber erreichen sie nicht.** `OpenVorlage` trägt
+   kein Ressort, und der Endpunkt antwortet nur für die laufende GP. Ein
+   Ressort-Select, der einen Teil der Liste unter sich auslässt, ist genau
+   der Fehler, den die Regel „was ein Control ändert, steht bei ihm oder
+   darunter" benennt. Dazu käme die Zählzeile, die nach §12.19 bewusst nie
+   summiert und eine dritte Art einrechnen müsste.
+
+**Gebaut ist deshalb ein eigener Abschnitt unter der Liste**, mit eigener
+Überschrift, eigenem Erklärsatz und eigener Zahl. Die Überschrift ist nicht
+Dekoration, sondern das, was die Zeilen erklärt: wer die rechte Spalte
+hinunterliest und statt „Noch 28 Tage" plötzlich „im Nationalrat seit
+05.08.2026" findet, schließt sonst auf kaputte Fristdaten, nicht auf einen
+anderen Verfahrensstand. Dieselbe Position, die die Zeilen-Variante gehabt
+hätte — nur benannt.
+
+**Zwei Dichten, wie die Liste darüber** (`SecondRoundRow` neben
+`SecondRoundCard`): ab `md` schaltet die Seite auf Zeilen in einem Blatt um,
+und sechs freistehende Karten unter einem Blatt lesen sich als andere Seite.
+Die Zeile übernimmt die Positionen von `DraftRow` — Typwort und Zitat führen
+die Metazeile, die Stellungnahmen stehen, wo `DraftRow` sie hat —, und die
+feste rechte Spalte trägt das Datum statt der Frist.
+
+**Nur bei „In Begutachtung".** Kurz stand der Abschnitt auch unter „Alle",
+mit dem Superset-Argument: ein engerer Filter darf nicht *mehr* zeigen. Das
+Argument verliert gegen die Seite — unter „Alle" sind es 336 Zeilen, der
+Abschnitt landet darunter, wo ihn niemand erreicht, und verdünnt die eine
+Lesart, zu der er gehört. Die Regel ist damit in einem Satz sagbar: der
+Abschnitt erscheint dort, wo jemand gefragt hat, was offen ist.
+
+**Der Nachfolger, bewusst zurückgestellt: ein Stationsfilter.** Statt
+Status *offen/abgeschlossen* fragt die Liste dann, **wo** ein Entwurf steht —
+mit dem Vokabular, das die Detailseite schon hat (`shared/utils/stations.ts`:
+`entwurf · begutachtung · rv · parlament · bgbl`). Das ist die
+Rechenschaftsschicht als Filter: „alles, was es ins BGBl geschafft hat" und
+„alles, was seit der Begutachtung liegt" sind die zwei Fragen, für die das
+Projekt existiert, und die Liste ist der Ort, an dem man sie stellt. Beide
+Richtungen fallen dabei von selbst gleich prominent aus — derselbe Filter,
+keine zwei Tonlagen.
+
+**„Zweite Runde" wäre darin keine Station, sondern eine zweite Achse.** Sie
+ist eine Eigenschaft der Station Regierungsvorlage (Formular offen). Als
+gleichrangiger Chip neben „Regierungsvorlage" bekäme, wer diese Station
+wählt, auch alle längst beschlossenen Vorlagen. Ehrlich ist: Stationen als
+Mehrfachauswahl (*wo steht es*) **plus ein getrennter Schalter „nur wo
+Stellungnahme möglich"** (*was kann ich tun*) — laufende Frist ODER offenes
+Vorlagen-Formular. In diesem Schalter löst sich der Abschnitt oben dann auf.
+
+**Was ihn zurückstellt, ist nicht der Filter, sondern seine Datenlage.**
+`DraftSummary` trägt keine Station; eine Station kostet ein bis zwei
+Gegenstand-Abrufe pro Entwurf (`getDraftOutcome`) — für die 134
+Ministerialentwürfe der GP XXVIII rund 250, für die 353 der XXVII rund 700.
+Das ist eine GP-weite Stationskarte mit nächtlichem Prewarm, und damit
+genau die Regel, die `shared/utils/outcomes.ts` über sich selbst schreibt:
+*keine Seite darf von 350 Upstream-Abrufen abhängen* — deshalb sind die Base
+Rates dort handkopierte Konstanten aus einem Skript. Dieselbe Karte liefert
+danach die Base Rates live: ein Paket, zwei Auszahlungen (Arbeitspaket 6).
+
+Zwei Folgekosten, beide größer als der Filter selbst:
+
+- **Die Zeile.** Rechts steht der Frist-Countdown; der bedeutet nur etwas,
+  solange die Frist läuft. Eine stationsgefilterte Liste braucht eine
+  stationsabhängige rechte Spalte (Frist / RV seit / BGBl-Nummer).
+- **Zwei Drittel des Korpus haben keine Station.** Die Einträge ohne
+  Gegenstand enden bei der Begutachtung (§12.16). „Bundesgesetzblatt" leert
+  die Liste stillschweigend um zwei Drittel — das muss auf dem Schirm
+  stehen, so wie es die Zählzeile heute tut.
 
 ## 13. Open questions
 

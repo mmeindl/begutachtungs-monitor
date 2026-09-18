@@ -57,3 +57,19 @@ export const RIS_KIND_HINT: Record<RisConsultationKind, string> = {
 export function sortConsultations(a: RisConsultation, b: RisConsultation): number {
   return compareDrafts(a, b)
 }
+
+/**
+ * The identity of a record without a Gegenstand — the RIS document ID, the
+ * only stable handle these have, since there is no Geschäftszahl.
+ *
+ * Two shapes occur in the corpus: `BEGUT_COO_2026_100_2_1836568` and the
+ * GUID form `BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B`.
+ *
+ * It lives here, next to the vocabulary, because since 18.09.2026 it is
+ * what TELLS THE TWO KINDS OF PAGE APART: `/entwuerfe/:id` and
+ * `/entwuerfe/:gp/:inr` share one namespace, so the `BEGUT_` prefix decides
+ * which page a URL is — in the route's `validate`, in the `.ics` route and
+ * in the API handler. Three copies of that rule would be three chances for
+ * a valid link to 404.
+ */
+export const RIS_ID_RE = /^BEGUT_[A-Za-z0-9_]{1,120}$/

@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import type { DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
+import { RIS_ID_RE } from '#shared/utils/risConsultations'
 
 /**
  * One Begutachtung without a Gegenstand at Parliament
  * (docs/architecture.md §12.16).
+ *
+ * ONE LINK SHAPE FOR EVERY ENTWURF since 18.09.2026: this page lives at
+ * `/entwuerfe/:id`, next to the Ministerialentwurf's `/entwuerfe/:gp/:inr`,
+ * and the id shape decides which of the two renders. A reader never has to
+ * know which half of the corpus a draft is in to guess its URL, and a link
+ * we hand out never carries the word „weitere" about two thirds of the
+ * data. The difference is real and stays visible — in the page, not in the
+ * path (docs/architecture.md §12.19).
  *
  * WHAT THIS PAGE DELIBERATELY DOES NOT HAVE: the StageBar, the Stellungnahmen
  * panel, the submitter counts, the ME→RV comparison. Not one of them is
@@ -21,11 +30,18 @@ import type { DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#
  * parliamentary Kurzinformation ("Worum geht es?") to fall back on, so the
  * Erläuterungen are the only orientation the procedure offers.
  */
+definePageMeta({
+  // The only thing separating this route from a typo under `/entwuerfe`:
+  // anything that is not a RIS document id 404s here instead of rendering
+  // an error state for a draft that never existed.
+  validate: (route) => RIS_ID_RE.test(String(route.params.id ?? '')),
+})
+
 const route = useRoute()
 const id = computed(() => String(route.params.id ?? ''))
 
 const { data, error, refresh, status } = await useFetch<RisConsultationDetail>(
-  () => `/api/weitere-entwuerfe/${id.value}`,
+  () => `/api/ris-drafts/${id.value}`,
 )
 
 useSeoMeta({
@@ -226,7 +242,7 @@ const documents = computed(() => {
           </UButton>
           <UButton
             v-if="data.deadline"
-            :to="`/weitere-entwuerfe/${data.id}/frist.ics`"
+            :to="`/entwuerfe/${data.id}/frist.ics`"
             external
             color="neutral"
             variant="outline"

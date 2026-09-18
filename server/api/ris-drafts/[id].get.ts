@@ -1,18 +1,14 @@
 /**
- * GET /api/weitere-entwuerfe/:id → RisConsultationDetail.
+ * GET /api/ris-drafts/:id → RisConsultationDetail.
  *
  * `id` is the RIS document ID (`BEGUT_…`), which is the only stable identity
  * these records have — there is no Geschäftszahl, because there is no
  * parliamentary Gegenstand.
  */
 import type { RisConsultationDetail } from '#shared/types'
-
-/**
- * Two shapes occur in the corpus: `BEGUT_COO_2026_100_2_1836568` and the
- * GUID form `BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B`. Validated before
- * the lookup so a malformed id is a 400 and never reaches upstream.
- */
-const RIS_ID_RE = /^BEGUT_[A-Za-z0-9_]{1,120}$/
+/* Validated before the lookup so a malformed id is a 400 and never reaches
+ * upstream — the same pattern the page route and the `.ics` route test. */
+import { RIS_ID_RE } from '#shared/utils/risConsultations'
 
 export default defineEventHandler(async (event): Promise<RisConsultationDetail> => {
   const id = getRouterParam(event, 'id') ?? ''

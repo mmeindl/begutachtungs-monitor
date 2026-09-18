@@ -69,5 +69,5 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
     .filter((v): v is OpenVorlage => v !== null)
     .sort((a, b) => b.date.localeCompare(a.date) || b.citation.localeCompare(a.citation))
 
-  return { items }
+  return { gp, items }
 })
