@@ -32,13 +32,6 @@
  */
 import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
-/* Das Abo-Schema, nicht `/kalender.ics`. Ein einfacher https-Link lässt den
-   Browser die Datei herunterladen, und importiert wird damit eine
-   Momentaufnahme, die sich nie wieder aktualisiert — genau der Fehler, für
-   den `useFeedUrls` geschrieben wurde. Die Seite bleibt datenfrei: Das sind
-   Adressen aus der Runtime-Config, kein Abruf. */
-const { webcalUrl } = useFeedUrls()
-
 useSeoMeta({
   title: "So funktioniert's",
   description:
@@ -226,13 +219,18 @@ const toc = [
           href="/feed.xml"
           class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
         >RSS-Feed</a>
-        und der
-        <a
-          :href="webcalUrl"
+        und ein
+        <!-- Verweist auf /ueber, statt hier ein webcal:// anzubieten. Ein
+             webcal-Link tut ohne registrierten Handler sichtbar nichts, und
+             die funktionierende Fassung des Angebots steht ohnehin schon an
+             einer Stelle: Apple/Outlook, Google und die Adresse zum
+             Eintragen von Hand, mit dem Hinweis abonnieren-statt-
+             importieren. Ein Erklärtext nennt den Weg, die Mechanik steht
+             dort, wo die Knöpfe sind. -->
+        <NuxtLink
+          to="/ueber#about-subscribe"
           class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Fristen-Kalender</a>. Wichtig beim Kalender: abonnieren, nicht
-        importieren – nur ein Abo trägt neue und verlängerte Fristen von
-        selbst nach.
+        >Kalender-Abo aller Fristen</NuxtLink>.
       </p>
     </section>
 

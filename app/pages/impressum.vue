@@ -103,16 +103,16 @@ const linkClasses =
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Begutachtungs-Monitor macht die Begutachtungsphase der
           österreichischen Gesetzgebung sichtbar und verfolgt nach, was aus
-          den eingebrachten Stellungnahmen wird – in beide Richtungen.
-          Übernommene Anregungen werden so deutlich gezeigt wie übergangene.
+          den eingebrachten Stellungnahmen wird. Übernommene Anregungen
+          werden so deutlich gezeigt wie übergangene.
         </p>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor ist parteipolitisch unabhängig und keiner Regierung,
           Partei, Interessenvertretung, Kirche oder Behörde verbunden. Er
           bewertet Gesetzesvorhaben nicht inhaltlich und empfiehlt keine
           Positionen. Kennzahlen zu einzelnen Ministerien zeigt er dort, wo
-          sie belegbar sind – aber stets in beide Richtungen und nie als
-          Rangliste. Was er zeigt, sind nachprüfbare Vorgänge: Fristen,
+          sie belegbar sind – aber stets für übernommene wie für übergangene
+          Anregungen und nie als Rangliste. Was er zeigt, sind nachprüfbare Vorgänge: Fristen,
           Zahlen, Dokumente und die Unterschiede zwischen ihnen, jeweils mit
           Link auf die amtliche Quelle.
         </p>

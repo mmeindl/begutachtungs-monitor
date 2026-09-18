@@ -3580,7 +3580,8 @@ Regierungsvorlage" — das ist ME→RV-Latenz, nicht Schubladisierung, und
 der Erklärsatz darüber sagt das auch. Aber der Abschnitt, der den Block
 eröffnet, bringt die Lektion bei, und vier Fehlanzeigen als Eröffnung
 sind genau die Zynismus-Maschine, vor der `CLAUDE.md` (Mechanismus 3)
-warnt. Die Rangliste eröffnet in beide Richtungen und mit Einsatz; die
+warnt. Die Rangliste eröffnet mit Erfolgen wie Fehlanzeigen und mit
+Einsatz; die
 Verlaufsliste liest sich danach als lebende Kante. Der Anker im zweiten
 Satz der Dachzeile zeigt entsprechend auf den ersten der beiden
 Abschnitte.
@@ -3620,8 +3621,9 @@ gezeigten.
 
 **Nicht gebaut:** keine fünfte Liste. „Kommende Begutachtungen" hat keine
 Quelle (offene Forschungsfrage, `CLAUDE.md`); eine reine Erfolgsliste
-(„Zuletzt Gesetz geworden") wäre ein Punktestand in die andere Richtung,
-und beide Richtungen stehen schon in zwei Abschnitten nebeneinander;
+(„Zuletzt Gesetz geworden") wäre ein Punktestand mit umgekehrtem
+Vorzeichen, und Erfolge wie Fehlanzeigen stehen schon in zwei Abschnitten
+nebeneinander;
 eine Umschaltung zwischen „nach Beteiligung" und „zuletzt" würde die
 Hälfte der Belege hinter einen Klick legen.
 
