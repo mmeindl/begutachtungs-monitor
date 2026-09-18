@@ -97,8 +97,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Daten &amp; Lizenz
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Monitor bezieht Daten aus zwei amtlichen Quellen. Entwurfstexte
-          und Textgegenüberstellungen stammen aus dem
+          Entwurfstexte und Textgegenüberstellungen stammen aus dem
           Rechtsinformationssystem des Bundes, die Stationen nach der
           Begutachtung von der Parlamentsdirektion; beide stehen unter
           <ExternalLink
@@ -161,10 +160,9 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor lädt zur Laufzeit keine Ressourcen von Drittanbietern:
           keine externen Schriften, keine Icon- oder Skript-CDNs, keine
-          Analytik. Die Daten kommen ausschließlich aus zwei österreichischen
-          Amtsquellen, der Parlamentsdirektion und dem Rechtsinformationssystem
-          des Bundes. Betrieb und Hosting sind auf europäische, EU-eigene
-          Infrastruktur ausgelegt.
+          Analytik. Betrieb und Hosting sind auf europäische, EU-eigene
+          Infrastruktur ausgelegt; die beiden Amtsquellen oben sind
+          österreichische.
         </p>
       </section>
 

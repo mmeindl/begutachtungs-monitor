@@ -168,7 +168,7 @@ function toggleStation(value: DraftStation): void {
     : [...stations.value, value]
 }
 
-const { webcalUrl } = useFeedUrls()
+const { webcalUrl, googleCalUrl } = useFeedUrls()
 
 let qTimer: ReturnType<typeof setTimeout> | undefined
 watch(q, (value) => {
@@ -631,6 +631,11 @@ const countLabel = computed(() => {
           :href="webcalUrl"
           class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
         >Fristen-Kalender abonnieren</a>
+        (Apple/Outlook) ·
+        <ExternalLink
+          :href="googleCalUrl"
+          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >Google Kalender</ExternalLink>
         ·
         <a
           href="/feed.xml"

@@ -23,6 +23,7 @@ import {
   isLicensedPair,
   lawStationIndex,
   lawStationPairHint,
+  EDITORIAL_BADGE_GLOSS,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
 
@@ -503,8 +504,7 @@ const droppedNote = computed(() =>
              Zeilen mit ihrer Zahl an („12 Paragrafen unverändert"). Einem
              Leser zu erzählen, was er sieht, kostet eine Zeile und sagt
              nichts. -->
-        „Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder
-        Satzzeichen geändert, kein einziges Wort.
+        {{ EDITORIAL_BADGE_GLOSS }}
       </p>
 
       <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">

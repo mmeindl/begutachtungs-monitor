@@ -16,6 +16,7 @@
  * difference that is not there.
  */
 import type { AnnexWithheldCause, LawDiffSegment, TextComparisonResponse, TextComparisonRow } from '#shared/types'
+import { EDITORIAL_BADGE_GLOSS } from '#shared/utils/lawStations'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
@@ -366,9 +367,19 @@ const checkNote = computed<string>(() => {
     const withheld = v && v.withheldParagraphs > 0 ? `; ${withheldClause(v.withheldParagraphs, v.withheldByCause)}` : ''
     return `${head}${withheld}.`
   }
+  /* NUR das Ergebnis, seit 18.09.2026 — die Methode nicht mehr.
+   *
+   * Der Satz „Geprüft wird beides: die geltende Fassung gegen das RIS
+   * Bundesrecht …" stand hier Wort für Wort gleich auf jeder Entwurfsseite,
+   * über dem, worauf die Leserin gekommen ist, und ausführlicher ist er
+   * ohnehin auf /so-funktionierts#gegenueberstellung. Der Link „Wie wir
+   * prüfen" steht seit jeher am Ende dieses Absatzes und führt genau
+   * dorthin; er war die ganze Zeit die bessere Hälfte des Satzes.
+   *
+   * Der Stichtag bleibt: Er ist keine Methode, sondern eine Angabe über
+   * DIESE Prüfung — gegen welchen Stand des Gesetzes gemessen wurde. */
   const asOf = v.asOf ? ` (Stand ${formatDateDe(v.asOf)}, dem Beginn der Begutachtungsfrist)` : ''
-  const method = `Geprüft wird beides: die geltende Fassung gegen das RIS Bundesrecht${asOf}, die vorgeschlagene gegen denselben Text und gegen die Novellierungsanordnungen, die der Entwurf für den jeweiligen Paragraphen trifft.`
-  const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen halten beidem stand`]
+  const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen halten dem geltenden Recht im RIS stand${asOf}`]
   if (v.withheldParagraphs > 0) parts.push(withheldClause(v.withheldParagraphs, v.withheldByCause))
   if (v.uncheckedParagraphs > 0) {
     parts.push(`${v.uncheckedParagraphs} ${v.uncheckedParagraphs === 1 ? 'Paragraph mit Änderungen ließ' : 'Paragraphen mit Änderungen ließen'} sich nicht prüfen`)
@@ -376,7 +387,7 @@ const checkNote = computed<string>(() => {
   if (v.rowsWithoutParagraph > 0) {
     parts.push(`dazu ${v.rowsWithoutParagraph} ${v.rowsWithoutParagraph === 1 ? 'gezeigte Änderung ohne Paragraphenangabe' : 'gezeigte Änderungen ohne Paragraphenangabe'}, ebenfalls ungeprüft`)
   }
-  return `${method} ${parts.join('; ')}.`
+  return `${parts.join('; ')}.`
 })
 
 /** "bei einem", "bei 3" — the subject of each clause stays singular either way. */
@@ -524,8 +535,7 @@ const doubtfulNote = computed<string | null>(() => {
     <template v-else>
       <p class="text-sm text-ink-secondary">
         Das Ministerium legt dem Entwurf eine Textgegenüberstellung bei. Der Text
-        stammt von dort, die Markierung von uns. „Redaktionell“ heißt: nur
-        Verweise, Zahlen, Daten oder Satzzeichen.
+        stammt von dort, die Markierung von uns. {{ EDITORIAL_BADGE_GLOSS }}
       </p>
 
       <!-- On the PDF path more than the marking is ours: RIS publishes this

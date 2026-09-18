@@ -30,6 +30,7 @@
  * („die beiden Fragen in der Leiste"). The rail says its own state in words
  * instead.
  */
+import { EDITORIAL_BADGE_GLOSS } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
 useSeoMeta({
@@ -465,8 +466,7 @@ const toc = [
       <p class="mt-4 leading-relaxed text-ink-secondary">
         Von uns stammt die <strong class="font-medium text-ink">Markierung</strong>:
         Wir vergleichen die beiden Spalten Wort für Wort und heben hervor, was
-        wegfällt und was dazukommt. „Redaktionell“ heißt dabei, dass sich nur
-        Verweise, Zahlen, Daten oder Satzzeichen geändert haben.
+        wegfällt und was dazukommt. {{ EDITORIAL_BADGE_GLOSS }}
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">

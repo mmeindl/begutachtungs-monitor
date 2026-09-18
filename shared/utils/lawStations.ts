@@ -57,6 +57,21 @@ export const LAW_STATION_LABEL: Record<LawStationId, string> = {
 export const UPSTREAM_AUSSCHUSS_TITLE = 'Geändert im Ausschuss'
 export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
 
+/**
+ * Was das Abzeichen „redaktionell" behauptet — und es behauptet in beiden
+ * Vergleichen dasselbe.
+ *
+ * Es stand in drei Fassungen an drei Stellen, zwei davon auf derselben
+ * Entwurfsseite, zwei Bildschirme auseinander: „nur Verweise, Zahlen, Daten
+ * oder Satzzeichen", „Es haben sich nur Verweise, Zahlen, Daten oder
+ * Satzzeichen geändert, kein einziges Wort", „dass sich nur Verweise,
+ * Zahlen, Daten oder Satzzeichen geändert haben". Das ist die Definition
+ * eines Etiketts, das wir selbst vergeben; sie muss überall dieselbe sein,
+ * sonst ist sie keine Definition.
+ */
+export const EDITORIAL_BADGE_GLOSS =
+  '„Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder Satzzeichen geändert, kein einziges Wort.'
+
 const UPSTREAM_STATION_TITLES: Readonly<Record<string, LawStationId>> = {
   // `mapTextEvolution` renames upstream's "Gesetzestext" to the station
   // before this lookup sees it.

@@ -2,6 +2,7 @@
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '#shared/utils/stations'
 import {
+  RV_DEFINITION,
   SECOND_ROUND_CLAUSE,
   SECOND_ROUND_WINDOW,
   lastParliamentStation,
@@ -407,7 +408,7 @@ const linkClasses =
           :to="`/entwuerfe?gp=${data.gp}`"
           class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
         >
-          ← Alle Entwürfe (GP {{ data.gp }})
+          ← Alle Entwürfe der {{ data.gp }}. Gesetzgebungsperiode
         </NuxtLink>
       </div>
       <header>
@@ -496,6 +497,14 @@ const linkClasses =
         <p
           class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary"
         >
+          <!-- Das Ressort ausgeschrieben, wie es die Verordnungsseite
+               schon tut. Oben steht nur das Kürzel im Abzeichen, und das
+               löst für Sehende auf Touch-Geräten nichts auf: Der volle Name
+               liegt dort in `title` und `sr-only`, also hinter einem Hover,
+               den es auf dem Telefon nicht gibt. Hier hat er Platz, weil es
+               eine Prosazeile ist. -->
+          <span>{{ data.ministryName }}</span>
+          <span aria-hidden="true">·</span>
           <template v-if="data.invitedBy">
             <span>Übermittelt von {{ data.invitedBy }}</span>
             <span aria-hidden="true">·</span>
@@ -706,10 +715,11 @@ const linkClasses =
           Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
           Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
         </p>
-        <p v-else class="mt-3 max-w-prose text-sm text-ink-secondary">
-          Was sich zwischen Entwurf und Regierungsvorlage geändert hat, zeigt
-          <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>.
-        </p>
+        <!-- KEIN dritter Verweis auf #textvergleich (18.09.2026). Liegt
+             eine Vorlage vor, zeigt die Leiste unmittelbar über dieser
+             Karte schon „Was sich nach der Begutachtung geändert hat", und
+             der Abschnitt zur Regierungsvorlage verlinkt denselben Anker
+             noch einmal. Drei Wege zur selben Stelle sind kein Angebot. -->
       </div>
 
       <!-- From here the page follows the STATIONS of the bar, in the bar's
@@ -931,9 +941,7 @@ const linkClasses =
               {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
               ein.
             </template>
-            Die Regierungsvorlage ist die Fassung, die die Regierung nach
-            der Begutachtung dem Nationalrat vorgelegt hat. Ob und wie der
-            Entwurf geändert wurde, zeigt
+            {{ RV_DEFINITION }} Ob und wie der Entwurf geändert wurde, zeigt
             <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>
             weiter unten.
           </p>
@@ -944,11 +952,15 @@ const linkClasses =
           class="mt-4 rounded-xl border border-hairline bg-surface p-5"
         >
           <p v-if="noRvVerdict" class="font-medium">{{ noRvVerdict }}</p>
+          <!-- Die Definition steht HIER, nicht nur im Zweig mit Vorlage:
+               Wer nicht weiß, was eine Regierungsvorlage ist, kann auch
+               nicht einordnen, dass keine kam — und das ist der häufigere
+               Fall. -->
           <p
             class="text-sm text-ink-secondary"
             :class="noRvVerdict ? 'mt-1.5' : ''"
           >
-            {{ noRvBody }}
+            {{ RV_DEFINITION }} {{ noRvBody }}
           </p>
           <p v-if="noRvBaseRate" class="mt-1.5 text-sm text-ink-secondary">
             {{ noRvBaseRate }}

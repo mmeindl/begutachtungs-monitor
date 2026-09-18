@@ -352,6 +352,11 @@ const gpStart = computed(() => {
                 :href="webcalUrl"
                 class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
               >Fristen-Kalender abonnieren</a>
+              (Apple/Outlook) oder
+              <ExternalLink
+                :href="googleCalUrl"
+                class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+              >zu Google Kalender hinzufügen</ExternalLink>
               – die nächste Begutachtung landet automatisch im Kalender.
             </p>
           </EmptyState>
