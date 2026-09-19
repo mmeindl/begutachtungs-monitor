@@ -486,11 +486,13 @@ pure modules plus a harness, none of it wired to a page yet:
 |---|---|
 | `server/utils/novao.ts` | Novellierungsanordnung → typisierte Operation |
 | `server/utils/lawStructure.ts` | RIS-BrKons-Paragraph → adressierbarer Baum (§ → Abs → Z → lit) |
+| `server/utils/lawTitles.ts` | Promulgationsklausel → Stammnorm; `articleBlocks` schneidet ein Paket in seine Gesetze |
 | `server/utils/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
 | `server/utils/risKons.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
 | `scripts/novao-corpus.ts`, `novao-forms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
 | `server/utils/applyReport.ts` | bewertet einen Lauf gegen die echte Fassung |
-| `scripts/kons-harness.ts` | Prüfstand: BGBl-Anweisungen anwenden, Ergebnis vergleichen |
+| `scripts/kons-harness.ts` | Prüfstand: BGBl-Anweisungen anwenden, Ergebnis gegen die echte Fassung vergleichen; `--sammel` je Artikel |
+| `scripts/me-harness.ts` | Prüfstand für den Produktionspfad: Entwurfs-Anweisungen anwenden, gegen die Gegenüberstellung desselben Entwurfs halten |
 
 **Die Grammatik ist klein, der Schwanz sitzt in der Adresse.** Über 6.576
 Anweisungen aus 300 Entwürfen tragen sechs Verben 98,6 %: *lautet* 28 %,
@@ -777,6 +779,401 @@ außer Kraft tritt (ORF-Beitrags-Gesetz § 5); ein Sammel-Titelfilter für
 Sammelnovellen. Und der größte Hebel für die Deckung des Orakels: die
 Gegenüberstellung der Regierungsvorlage aus dem Parlament lesen, wo der
 Entwurf keine hat.
+
+*Zwei Sätze davon sind seit der fünften Messung überholt und stehen nur
+noch, damit die Reihenfolge der Befunde lesbar bleibt:* der Sammel-Filter
+ist gebaut (`--sammel`), und der „größte Hebel" ist auf dem Produktionspfad
+keiner — die Regierungsvorlage existiert zur Begutachtungszeit noch nicht.
+Beides unten.
+
+**Fünfte Messung, 18.09.2026: die Population, auf der das Produkt liefe.**
+Der vorige Absatz endet mit dem Befund, der alle Quoten davor relativiert —
+gemessen war BGBl→BrKons an Einzelnovellen, gezeigt würde ein
+Ministerialentwurf, und 59 % der Entwürfe mit Beilage sind Sammelnovellen.
+Beides ist jetzt gemessen, und beides verschiebt etwas.
+
+*Sammelnovellen: der Prüfstand hat sie nie abgelehnt, weil sie schwer sind,
+sondern weil er sie als **ein** Gesetz las.* Eine Sammelnovelle ist keine
+Novelle, sondern n voneinander unabhängige, die sich ein Bundesgesetzblatt
+teilen: jeder Artikel nennt sein Gesetz in seiner eigenen
+Promulgationsklausel, nummeriert seine Anweisungen ab 1 und adressiert einen
+§-Raum, den der nächste Artikel wiederverwendet. `resolveLaw` hat deshalb
+„Sammelnovelle: n Stammnormen" gemeldet und das ganze BGBl fallen lassen.
+Der Schnitt am gedruckten Artikel-Kopf (`lawTitles.articleBlocks`, dieselbe
+Grenze, an der `segmentUnits` seinen Zustand zurücksetzt und `draftArticles`
+seine Einträge bildet) macht daraus n bewertete Gesetze. Auf dem alten
+Einzelnovellen-Korpus ist der Lauf danach **zeichengleich** mit dem davor —
+die Umstellung misst nichts anders, sie misst mehr.
+
+Derselbe Korpus, einmal ohne und einmal mit den Paketen — die kontrollierte
+Gegenüberstellung, weil beide Läufe dieselben 25 Bundesgesetzblätter lesen:
+
+| 25 BGBl, jüngste zuerst | alter Filter | `--sammel` |
+|---|---|---|
+| Gesetze | 25 | 117 (110 auswertbar) |
+| geprüfte Paragraphen | 264 | 698 |
+| identisch | 66,7 % | 66,2 % |
+| **eigene Abweichung** | **1,1 %** | **2,9 %** |
+| kein geltender Text (ohne Verweigerung) | 2,7 % | **5,8 %** |
+
+Und der größere Lauf, der ab hier die Referenz ist — 60 Bundesgesetzblätter,
+31 davon Sammelnovellen, **208 Gesetze und 1.694 Paragraphen** statt der 133
+Einzelnovellen und 1.059 Paragraphen der vierten Messung:
+
+| | 4. Messung (nur Einzelnovellen) | 5. Messung (`--sammel`) |
+|---|---|---|
+| BGBl / Gesetze / §§ | 133 / 133 / 1.059 | 60 / 208 / 1.694 |
+| identisch | 64,3 % | 61,6 % |
+| unvollständig | 5,0 % | 5,1 % |
+| halb angewendet | 9,3 % | **11,2 %** |
+| eigene Abweichung | 2,8 % | 2,8 % |
+| **kein geltender Text, ohne Verweigerung** | **6,7 %** | **7,7 %** |
+
+Das ist die Antwort auf die Frage, wozu diese Messung zuerst kam: der
+gemessene Korpus war **geschmeichelt**. Pro Paragraph ist eine Sammelnovelle
+rund doppelt so gefährlich (2,7 → 5,8 % im kontrollierten Paar), und sie
+bringt 4,7-mal so viele Gesetze pro BGBl mit. Jede Fehlerklasse, die an
+Einzelnovellen priorisiert worden wäre, wäre an der falschen Verteilung
+priorisiert worden. **7,7 %, nicht 6,7 %, ist die Zahl für den
+Förderantrag** — und die erfundenen Wörter bleiben bei 2,8 %, der Zuwachs
+sitzt ganz im halb Angewendeten.
+
+*Der Rest des Joins, mit Namen.* 8 der 208 Gesetze bleiben unauflösbar, und
+sie sind keine Zufallsauswahl: ABGB, ZPO, Notariatsordnung, Rechtsanwalts-
+ordnung — die alten Kodifikationen, deren Stammnorm **kein**
+Bundesgesetzblatt ist (JGS Nr. 946/1811, RGBl. Nr. 113/1895). `stammnormOf`
+liefert dort null, und der Kurztitel-Rückfall scheitert, weil das RIS sie
+unter ihrer Abkürzung führt („ZPO") und der Artikel „Änderung der
+Zivilprozessordnung" heißt. Eine benannte, kleine, schließbare Lücke — und
+sie trifft ausgerechnet die meistzitierten Gesetze des Landes.
+
+*Der Ministerialentwurf: `scripts/me-harness.ts`.* Der zweite Prüfstand
+wendet die Anweisungen eines **Entwurfs** auf den Bestand an, wie er am
+ersten Tag der Begutachtung galt, und hält das Ergebnis gegen die
+Textgegenüberstellung **desselben** Entwurfs. Er nennt bewusst **keine
+Trefferquote**: zur Entwurfszeit existiert das Gesetz, das herauskommt, noch
+nicht. Was das Orakel bestätigt, ist bestätigt; was es nicht bestätigt, ist
+unbekannt, und eine Zahl, die beides mischte, wäre die Deckung des
+Prüfstands, als Genauigkeit gedruckt.
+
+| 40 Entwürfe, 29.05.–17.09.2026, 53 geänderte Gesetze | |
+|---|---|
+| grammatikalisch gelesen | 86,7 % (BGBl-Pfad: 84,7–90,0 %) |
+| angewendet | 70,2 % (BGBl-Pfad: 75,0–76,7 %) |
+| Paragraphen mit Text | 413 |
+| ohne Verweigerung und plausibel | 272 (65,9 %) |
+| **plausibel und vom Anhang bestätigt** | **107 (25,9 %)** |
+
+Zwei Dinge daran sind neu. Erstens: **Entwurfsanweisungen lesen sich nicht
+schlechter als beschlossene.** Der Unterschied liegt im Rauschen einzelner
+Entwürfe, nicht in der Sprache — die Sorge, der Produktionspfad sei ein
+anderer Dialekt, ist damit erledigt. Zweitens: **25,9 % statt der 4,7 %, die
+oben stehen** (21 von 443). Der Grund steht schon in der dritten Messung und
+war nur nie gemessen: dort lief das Orakel des *Entwurfs* gegen die
+Anweisungen des *Bundesgesetzblatts*, und wo die Regierungsvorlage den
+Entwurf geändert hatte, widersprach es zu Recht. Auf dem Produktionspfad
+gehört der Anhang zu genau den Anweisungen, die angewendet werden, und
+dieser Fall entfällt — wie vorhergesagt, jetzt belegt.
+
+*Und der Befund, der die Reihenfolge der nächsten Schritte ändert.* Die
+Deckung des Gates ist **exakt** die Deckung des Anhangs:
+
+| 26 Entwürfe mit Paragraphen | Entwürfe | §§ | davon anzeigbar |
+|---|---|---|---|
+| mit lesbarer Gegenüberstellung | 15 | 260 | **107 (41 %)** |
+| ohne | 11 | 153 | **0, per Konstruktion** |
+
+13 der 15 Entwürfe mit Anhang würden mindestens einen konsolidierten
+Paragraphen zeigen, im Median 12 % ihrer Paragraphen. Ohne Anhang zeigt
+keiner einen — nicht weil die Engine dort schlechter wäre, sondern weil es
+keine zweite Meinung gibt, und die Verweigerung allein korreliert
+nachgewiesenermaßen nicht mit Richtigkeit.
+
+**Damit ist der oben genannte größte Hebel für die Orakeldeckung auf dem
+Produktionspfad keiner.** „Die Gegenüberstellung der Regierungsvorlage aus
+dem Parlament lesen, wo der Entwurf keine hat" hilft dem *rückblickenden*
+Prüfstand; auf einer laufenden Begutachtungsseite gibt es die
+Regierungsvorlage noch nicht — sie kommt Monate später, wenn überhaupt. Für
+die Anzeige bleiben genau zwei Wege: die Anhangsdeckung selbst erhöhen (die
+PDF- und Scan-Anhänge lesbar machen — 5 Scans und 8 fehlende auf 29
+ändernde Entwürfe in dieser Stichprobe) oder ein zweites, vom Anhang
+unabhängiges Verifikationssignal finden. Das ist eine andere Aufgabe als die
+notierte, und sie gehört vor die Fehlerklassen.
+
+**Sechste Messung, 18.09.2026: die Anhangsquelle — dasselbe Dokument, zwei
+Veröffentlicher.** Aus der fünften Messung folgte, dass die Deckung des
+Anhangs die Obergrenze der Anzeige ist. Das Ressort schreibt die
+Textgegenüberstellung aber nur einmal; veröffentlicht wird sie zweimal, im
+RIS als XML und beim Parlament am Ministerialentwurf als HTML. Über alle 135
+GP-XXVIII-Entwürfe:
+
+| Parlament × RIS | n |
+|---|---|
+| HTML × XML lesbar | 61 |
+| **nur PDF × Scan** | **41** |
+| keine × keine | 12 |
+| **HTML × RIS hat keinen** | **8** |
+| Rest (Join-Fehlschlag, einseitig) | 13 |
+
+*Zwei Schlüsse.* Erstens: **41 von 42 Scans sind auch beim Parlament nur
+PDF** — der Scan ist die Einbringung des Ressorts, kein Konvertierungsverlust
+im RIS. Damit ist eine Frage ans RIS erledigt, bevor sie gestellt wurde.
+Zweitens: die Parlamentskopie ist die vollständigere, und sie trägt einen
+stabilen Dokumenttitel („Textgegenüberstellung") statt der über fünfzehn
+Freitext-Schreibweisen des RIS („TGÜ", „SAG_TGÜ",
+„42. KFG-Nov.TGÜ.11.05.2026").
+
+*Dazwischen lag ein Fehler derselben Bauart wie schon zweimal zuvor.* Die
+Parlamentskopie ist die Word-Legistikvorlage und schreibt das
+Gliederungssymbol als `<span class=991GldSymbol>&sect;&nbsp;1.</span>`, das
+RIS als `<gldsym>`. `lawText.ts` kennt beide seit jeher, `textComparison.ts`
+kannte nur die RIS-Form. Ergebnis: der Anhang parste, die Tabellen stimmten,
+die Änderungen wurden gefunden — und **jede** Zeile kam ohne Bezeichnung
+zurück, worauf `rowsByParagraph` sie alle verwarf und das Orakel zu jedem
+Paragraphen schwieg. Ein leeres Ergebnis, das wie eine Aussage aussieht;
+dieselbe Form wie `<schlussteil>` gegen `<schluss typ="…">` (§12.13).
+
+*Was der Quellenwechsel wirklich bringt, Ende zu Ende gemessen* — 40
+Entwürfe mit eindeutigem Join (27.03.–03.08.2026), 147 Gesetze, 863
+Paragraphen, einmal je Quelle:
+
+| | RIS | Parlament, RIS als Rückfall |
+|---|---|---|
+| Entwürfe mit lesbarem Anhang | 24 | **27** |
+| ohne Anhang | 4 | **1** |
+| Scans (auf beiden Seiten dieselben) | 7 | 7 |
+| **anzeigbare Paragraphen** | **174 (20,2 %)** | **184 (21,3 %)** |
+
+Paragraphweise: **12 nur mit der Parlamentskopie bestätigt, 2 nur mit der
+RIS-Kopie.** Der Gewinn ist real, aber deutlich kleiner als die
+Deckungszahlen nahelegen — die Entwürfe, die das Parlament hinzufügt, sind
+die kleinen. Wer aus „+8 Prozentpunkte Anhangsdeckung" auf „+8 Prozentpunkte
+anzeigbare Paragraphen" schließt, rechnet die Verteilung weg.
+
+*Die zwei Verluste sind kein Parse-Fehler, sondern eine Eigenschaft des
+Orakels.* Beide Kopien finden dieselben 32 Paragraphen; die
+Parlamentsfassung schneidet nur feiner (302 Zeilen gegen 268 beim AWG 2002,
+131/ME). Die dritte Enthaltensprüfung — „jedes Wort, das die Engine
+eingefügt hat, fügt auch der Anhang ein" — läuft je Zeile und ist damit von
+der Zeilengranularität abhängig. Zwei Fassungen desselben Dokuments können
+deshalb verschieden urteilen, ohne dass eine falsch parst. Das ist eine
+Grenze des Orakels, die vor jeder Ausweitung seiner Deckung zu kennen ist.
+
+**Siebente Messung, 18.09.2026: die Fehlerklassen neu gewogen — und die
+größte war keine Lücke, sondern eine falsch gelesene Ebene.** Die
+Gewichtung, nach der die Restarbeit bisher sortiert war, stammte aus dem
+Einzelnovellen-Korpus. Auf der wirklichen Population (60 BGBl, 208 Gesetze,
+3.110 Anweisungen) sieht sie anders aus:
+
+| Klasse | Anweisungen |
+|---|---|
+| verbundene Anweisungen / Operanden-Paarbildung | 158 |
+| keine auflösbare Adresse | 91 |
+| kein bekanntes Verb | 51 |
+| *Anwendung:* Untereinheit nicht im Ausgangstext | **107** |
+| *Anwendung:* Label unbekannt — davon artikelgegliedert **32**, echte Lücken 37 | 70 |
+| *Anwendung:* Kaskade (eine frühere Anweisung hat das Ziel entfernt) | 46 |
+| *Anwendung:* RIS-Dokument nicht als Paragraph lesbar | 27 |
+
+Artikelgegliederte Gesetze stehen bei 32 — praktisch unverändert gegenüber
+der Schätzung von ~31, aber nicht mehr die größte Klasse, sondern die achte:
+die Population ist um sie herum gewachsen.
+
+*Die 107 sind zur Hälfte ein einziger Adressfehler.* Sie konzentrieren sich
+auf die Vergabegesetze (42 von 107), und der Grund steht in der Anweisung:
+
+> „In den §§ 48 Abs. 13 **und 217 Abs. 13** wird die Wortfolge … ersetzt"
+
+Nur der *erste* Paragraph trägt sein §-Zeichen; die übrigen stehen als nackte
+Zahl. `parseAddressList` sieht deshalb nur eine Adresse und fällt auf
+`parseAddress` zurück, und dort wird die 217 zum Geschwister der tiefsten
+Komponente: gelesen wird **„§ 48 Abs. 217"**. Existiert dieser Absatz nicht,
+verweigert die Anwendung mit einer unsinnigen Begründung — das sind die 107.
+
+**Existiert er, ändert die Engine geltendes Recht, das die Anweisung nie
+genannt hat.** Über 60 Bundesgesetzblätter tragen 40 Anweisungen diese Form.
+36 verweigerten, **4 wurden angewendet** — auf je einen der genannten
+Paragraphen:
+
+| Anweisung nennt | Engine berührt | RIS-Urteil |
+|---|---|---|
+| §§ 138, 301 | § 138 | halb angewendet |
+| §§ 184, 329, 359, 380 | §§ 184, 380 | halb angewendet |
+| §§ 46, 47, 213, 214 | § 46 | unvollständig |
+| §§ 30, 32, 33, 57 | § 30 | halb angewendet |
+
+Das ist genau die Klasse, gegen die dieses Modul gebaut ist: kein erfundenes
+Wort, Erfolg gemeldet, und drei Paragraphen tragen weiter den alten Text,
+während die Seite sie als geändert zeigte. Für jede Prüfung der Engine gegen
+die eigene Lesart unsichtbar.
+
+*Zwei Signale trennen die Fälle, und beide sind gemessen.* Erstens: folgt der
+aufgezählten Zahl eine **eigene Komponente** („und 217 **Abs.** 13"), ist sie
+ein Paragraph und kein Geschwister. Zweitens, für die Form ohne nackte Zahl
+(„§§ 30 Abs. 3 **zweiter Satz**, 32 Abs. 4 zweiter Satz"): steht das
+**Pluralzeichen** in der Adresse — Zitate sind durch `maskQuotes` längst
+ausgeblendet, sonst zählte jedes „die Wortfolge ‚§§ 41, 42'" mit — und zeigt
+die gelesene Adresse trotzdem auf eine Unterebene, dann ist der erste
+Paragraph der erste von mehreren. Über den Korpus: 16 solche Adressen bleiben
+auf Paragraphenebene und sind echte, funktionierende Mehrfachadressen, 11
+stehen auf einer Unterebene und meinen ausnahmslos mehrere Paragraphen. **Kein
+Fehltreffer.**
+
+Eine Adresse über mehrere Paragraphen kann das Modell nicht tragen — eine
+Operation hat ein `target` —, also wird sie verweigert und nicht geraten,
+dieselbe Entscheidung wie bei den artikelgegliederten Gesetzen.
+
+*Erst verweigert, dann aufgelöst — und das Modell konnte es schon.* Die
+Verweigerung war als sichere Hälfte gedacht, mit der Auflösung („mehrere
+Ziele anwenden") als größerer nächster Stufe, die ein `targets` im
+Operationsmodell brauche. **Das stimmte nicht.** `parseOne` bildet für
+Phrasenoperationen längst `targets.map(…)` auf mehrere Ops ab, und
+`instructionsFromUnits` legt für jedes Op eine eigene Instruction an. Gefehlt
+hat allein die Zerlegung: `parseAddressList` trennt an Kommas und „und", und
+in der Plural-Kurzschreibweise trägt nur der erste Paragraph sein Zeichen, so
+dass nie zwei Teile mit § dastanden. `splitPluralParagraphs` setzt es zurück,
+mit demselben Unterscheidungsmerkmal — eine Zahl mit eigener Komponente ist
+ein Paragraph.
+
+| 60 BGBl, 208 Gesetze, 1.694 §§ | vorher | nur Verweigerung | mit Auflösung |
+|---|---|---|---|
+| grammatikalisch gelesen | 2.796 (89,9 %) | 2.751 (88,5 %) | **2.859 (90,1 %)** |
+| angewendet | 2.266 (72,9 %) | 2.261 | **2.342 (73,8 %)** |
+| identisch mit dem RIS | 1.043 (61,6 %) | 1.043 | **1.081 (63,8 %)** |
+| unverändert gelassen | 319 (18,8 %) | — | **288 (17,0 %)** |
+| halb angewendet | 190 (11,2 %) | 190 | **180 (10,6 %)** |
+| **eigene Abweichung** | **48 (2,8 %)** | 48 | **48 (2,8 %)** |
+| kein geltender Text, ohne Verweigerung | 96 (7,7 %) | 95 | **91 (7,3 %)** |
+
+Die entscheidende Zeile ist die vorletzte. Die Engine wendet 76 Anweisungen
+mehr an und trifft 38 Paragraphen mehr exakt — **und erfindet kein einziges
+Wort dazu**. Auch am Gate bleibt `abweichend` auf allen drei Stufen
+unverändert (55 / 24 / 15), während `identisch` auf allen dreien steigt
+(1.043 → 1.081, 1.022 → 1.060, 888 → 918). Mehr Deckung ohne mehr Risiko ist
+selten; hier geht es, weil die Anweisung die weiteren Paragraphen ausdrücklich
+nennt und nichts geraten wird.
+
+*Ein Nebenbefund, der die Bauart bestätigt.* `annexDraft.ts` trug für
+denselben Fehler eine eigene Notbremse: eine Zeile mit Pluralzeichen, die auf
+weniger als zwei Bezeichnungen auflöst, wurde ganz verworfen (§12.13, vier
+Einheiten im Bundesvergabegesetz). Sie greift jetzt von selbst nicht mehr,
+weil beide Paragraphen herauskommen — und bleibt als Netz für die Formen
+stehen, die die Zerlegung nicht auflösen kann. Zwei Module hatten denselben
+Defekt von zwei Seiten gesehen; behoben wurde er an der Quelle.
+
+**Achte Messung, 18.09.2026: „kein bekanntes Verb" war zu 80 % kein
+Verbproblem.** Die Klasse zählte 51 Anweisungen. Aufgeschlüsselt zerfällt sie
+in drei, und keine davon ist ein unbekanntes Verb:
+
+| | |
+|---|---|
+| ausgeschriebene Umbenennung („erhält **Abs. 4** die Absatzbezeichnung") | 35 |
+| fehlendes Operandennomen (Prozentsatz, Altersangabe) | 11 |
+| Überschrift vorangestellt, Rest | 5 |
+
+*Das Nomen.* „In § 4 Z 2 wird der **Prozentsatz** ‚65%' durch den Prozentsatz
+‚50%' ersetzt" ist eine gewöhnliche Phrasenersetzung und scheiterte allein
+daran, dass `PHRASE_OBJECT` das Wort nicht führte — dieselbe Lücke wie
+seinerzeit bei `Zitierung`. Das Vokabular wächst gegen gemessene Zeilen und
+nie auf Verdacht; ein Nomen, das nie vorkommt, verlängert nur die
+Alternation.
+
+*Die Umbenennung.* Zwischen Verb und Nomen darf ein Subjekt stehen: „In
+§ 213 erhält **Abs. 4** die Absatzbezeichnung ‚(5)'". Die Adresse steht dabei
+schon richtig — `parseAddress` liest das „Abs. 4" aus dem Schwanz hinter dem
+§ —, es fehlte nur das Muster. **Eine Form bleibt ausdrücklich verweigert:**
+„In § 10 erhält der bisherige *Inhalt* die Absatzbezeichnung ‚(1)'" benennt
+nichts um, sondern zieht eine Ebene ein — der ganze Paragraphentext wird zu
+Abs. 1. Andere Operation, andere Gefahr; sie als Umbenennung des Paragraphen
+laufen zu lassen wäre genau die Sorte Näherung, die dieses Modul nicht macht.
+
+**Was die drei Eingriffe dieses Tages zusammen ergeben** — Mehrfachadresse
+aufgelöst, Operandennomen ergänzt, Umbenennung mit Subjekt gelesen, gemessen
+über dieselben 60 Bundesgesetzblätter und 1.694 Paragraphen:
+
+| | Beginn 18.09. | Ende 18.09. |
+|---|---|---|
+| grammatikalisch gelesen | 2.796 (89,9 %) | **2.885 (90,7 %)** |
+| angewendet | 2.266 (72,9 %) | **2.388 (75,0 %)** |
+| identisch mit dem RIS | 1.043 (61,6 %) | **1.087 (64,2 %)** |
+| unverändert gelassen | 319 (18,8 %) | **278 (16,4 %)** |
+| **eigene Abweichung** | **48 (2,8 %)** | **47 (2,8 %)** |
+| kein geltender Text, ohne Verweigerung | 96 (7,7 %) | **91 (7,2 %)** |
+| Gate „plausibel": identisch / abweichend | 888 / 15 | **924 / 15** |
+
+Die letzte Zeile ist die, auf die es ankommt: **36 Paragraphen mehr, die das
+Gate anzeigen dürfte, bei unverändert 15 Abweichungen.** Keiner der drei
+Eingriffe hat die Engine mutiger gemacht — sie liest mehr von dem, was
+dasteht, und rät an keiner Stelle mehr als vorher.
+
+**Neunte Messung, 18.09.2026: die Zählung, nachdem drei Klassen behoben
+sind.** Zwei der vier Zahlen, nach denen die Restarbeit sortiert war, waren
+durch die Eingriffe desselben Tages veraltet. Der Prüfstand zählt die
+Ursachen jetzt selbst (`--refusals=<datei>` schreibt jede nicht ausgeführte
+Anweisung mit **vollem** Text und Grund; der Verbose-Log schnitt bei 100
+Zeichen ab, was zum Wiedererkennen reicht und zum Nachparsen nicht).
+
+*Dabei ein Prüfstandsfehler derselben Sorte wie schon zweimal.*
+`missingCauses` wurde nur im `if (verbose)`-Zweig gefüllt — jeder
+`--quiet`-Lauf druckte also eine **leere** Ursachentabelle, und die las sich
+wie ein Befund („keine Ursachen") statt wie ein Artefakt des Schalters.
+
+| Grammatik — nicht gelesen (297 von 3.182) | n |
+|---|---|
+| keine auflösbare Adresse | 91 |
+| Operanden-Paarbildung, alle Varianten | 118 |
+| Teil nicht gelesen | 27 |
+| kein bekanntes Verb | 27 *(vorher 51)* |
+| Bezeichnungs-Zuordnung unklar | 15 |
+| Tabelle im neuen Text | 5 |
+
+| Anwendung — gelesen, nicht ausgeführt (497) | n |
+|---|---|
+| nicht im geltenden Text (Adresse) | 175 + 27 |
+| **Textstelle nicht gefunden / nicht eindeutig** | **146** |
+| „(neu)" ohne vorangehende Umbenennung | 33 |
+| eingefügte/angefügte Einheit nicht bestimmbar | 29 |
+| Anker nicht im geltenden Text | 11 |
+
+Und die RIS-Diagnose der 213 Adressfehlschläge: 71× „RIS kennt das Label
+nicht" (davon 32 artikelgegliedert), 69× „Untereinheit nicht im
+Ausgangstext" *(vorher 107 — die Mehrfachadresse war der Unterschied)*, 43×
+Kaskade, 28× RIS-Dokument nicht als Paragraph lesbar.
+
+**Die zweitgrößte Anwendungsklasse hat noch nie jemand angesehen:** 146
+Fehlschläge beim *Finden* der zitierten Textstelle, nicht beim Adressieren.
+Ein erster Schnitt durch die 68 „nicht gefunden" — nur die Zeilen, die sich
+eindeutig einem Paragraphen zuordnen lassen, weil eine Zeile nach der
+Mehrfachadress-Auflösung mehrere berühren kann:
+
+| | n |
+|---|---|
+| Phrase steht nicht im § — echte Abwesenheit | 17 |
+| Phrase steht im §, die Operation findet sie nicht — Zuschnitt | 15 |
+| nicht entscheidbar (Zeile berührt mehrere §§) | 36 |
+
+Also **keine einzelne Ursache**, sondern mindestens zwei etwa gleich große,
+und die Hälfte der Fälle ist mit diesem Join gar nicht zu entscheiden.
+Normalisierung erklärt sie nicht: Bindestrich und Whitespace machen zusammen
+5 der 68 aus. Wer hier weiterarbeitet, braucht den Text der *adressierten
+Untereinheit* (aus `beforeTree`), nicht den des Paragraphen — und sollte
+nicht nach einer Lösung suchen, sondern nach zwei. Die Vermutung „das ist
+die Bindestrich-Schreibweise" (§12.12, „Was bleibt") ist damit gemessen und
+zu klein.
+
+*Ein Vorbehalt zur Lockerung.* 78 der 146 sind „Textstelle 2× / 3× gefunden,
+nicht eindeutig" — die Phrase kommt **mehrfach** vor. Jede Lockerung des
+Vergleichs, die die 68 „nicht gefunden" verkleinern würde, vergrößert diese
+78. Die beiden Hälften ziehen gegeneinander, und ein Eingriff, der nur die
+eine misst, verschlechtert die andere still.
+
+*Methodischer Vorbehalt, der in jede Folgemessung gehört.* Die
+Paragraphenquoten werden von wenigen großen Entwürfen getragen: das
+Strafvollzugsgesetz stellt allein 42 der 108 Orakel-Widersprüche und 77 der
+413 Paragraphen. Gepoolte Prozentsätze über einen Korpus dieser Größe sagen
+mehr über die Stichprobe als über die Engine; die Zahl je Entwurf (Median
+12 %, Anteil der Entwürfe mit mindestens einem anzeigbaren § 50 %) ist die
+robustere und zugleich die, nach der ein Produkt fragt.
 
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
