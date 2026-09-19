@@ -3,11 +3,20 @@
  * Verification harness for the amendment engine (docs/architecture.md §12.12).
  *
  * Usage:  npx vite-node scripts/kons-harness.ts BGBLA_2022_I_187 [Kurztitel]
- *         npx vite-node scripts/kons-harness.ts --discover=12
+ *         npx vite-node scripts/kons-harness.ts --discover=12 [--sammel]
  *
  * `--discover=N` takes the N most recent Bundesgesetze that amend exactly one
  * law ("Bundesgesetz, mit dem das X geändert wird") and runs all of them, so
  * the numbers are a corpus result rather than an anecdote.
+ *
+ * `--sammel` drops the "exactly one" and takes every amending Bundesgesetz,
+ * including the packages. A Sammelnovelle is scored **per Artikel**: each one
+ * names its own law in its own Promulgationsklausel, numbers its instructions
+ * from 1 and addresses a § space the next Artikel re-uses, so it is n
+ * independent amendments that share a Bundesgesetzblatt, and one Verdict per
+ * law is the only reading that means anything. Without it the harness
+ * measured a minority of what the site would run on — 59 % of the GP-XXVIII
+ * drafts with an annex are packages (2026-09-18).
  *
  * The idea, and the reason a consolidated law text is publishable at all:
  * for an amendment already promulgated, RIS holds **both** the law before it
@@ -35,7 +44,7 @@
 import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/lawApply'
 import { plainText, type LawNode } from '../server/utils/lawStructure'
 import { parseRisXml, segmentUnits, type TextBlock } from '../server/utils/lawText'
-import { draftArticles, promulgationByArticle } from '../server/utils/lawTitles'
+import { articleBlocks, draftArticles, lawNameScore, promulgationByArticle, sameBgbl, type DraftArticle } from '../server/utils/lawTitles'
 import type { NovaoAddress } from '../server/utils/novao'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../server/utils/applyReport'
@@ -47,6 +56,8 @@ import { appendFileSync, writeFileSync } from 'node:fs'
 
 interface Verdict {
   bgbl: string
+  /** "Artikel 3" of a Sammelnovelle, null where the BGBl amends one law */
+  article: string | null
   law: string
   instructions: number
   read: number
@@ -89,6 +100,17 @@ const dumpFile = process.argv.find((a) => a.startsWith('--dump='))?.slice('--dum
  * out; so do drafts without a readable annex.
  */
 const withOracle = process.argv.includes('--oracle')
+/**
+ * `--refusals=<file>` writes one JSON line per instruction the engine did not
+ * carry out, with the **full** line and the reason.
+ *
+ * The verbose log truncates at 100 characters, which is enough to recognise a
+ * case and not enough to re-parse it; classifying a class then meant running
+ * the corpus again. The dump only carries refusals whose § matches a checked
+ * paragraph, which is by construction the ones with a readable address.
+ */
+const refusalFile = process.argv.find((a) => a.startsWith('--refusals='))?.slice('--refusals='.length) ?? null
+if (refusalFile) writeFileSync(refusalFile, '')
 if (dumpFile) writeFileSync(dumpFile, '')
 if (process.argv.includes('--cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
@@ -105,18 +127,43 @@ function asArray<T>(x: T | T[] | null | undefined): T[] {
 }
 
 /**
- * The Bundesgesetze that amend exactly one law — the cases a harness can score.
+ * The Bundesgesetze that amend standing law, with or without a title that
+ * says which.
  *
- * The captured name is only a *hint* for the title fallback in `resolveLaw`;
- * the law's identity comes from its Promulgationsklausel. The optional
- * "das X erlassen und" skips a Stammgesetz enacted in the same BGBl
- * ("… mit dem das ESG-Rating-Verordnung-Vollzugsgesetz erlassen und das
- * Finanzmarktaufsichtsbehördengesetz geändert wird", BGBl. I Nr. 28/2026):
- * one law is amended, which is what the harness needs, and the old capture
- * swallowed both names into one unusable title (2026-09-09).
+ * `--sammel` widens `SINGLE_LAW_TITLE` to `AMENDING_TITLE`, and the two
+ * differ in what they can promise. The narrow one reads the law's *name* out
+ * of the title, which is only possible while there is one: "… mit dem das X,
+ * das Y und das Z geändert werden" names three, "(Budgetbegleitgesetz 2026)"
+ * names none, and "… geändert und ein Y erlassen wird" names one of each.
+ * The broad one therefore keeps nothing but the test that something is
+ * amended, and leaves the identity of every law to the Promulgationsklausel
+ * of its Artikel — where it has lived since the Stammnorm join replaced the
+ * title join (2026-09-09).
+ *
+ * Why this matters more than a bigger corpus: what the harness measured
+ * until now is not the population the site serves. 64 of the 109 GP-XXVIII
+ * drafts with an annex are Sammelnovellen (59 %), and the narrow filter
+ * excluded every one of them. Over the 2.000 newest BgblAuth documents the
+ * narrow filter takes 107 of the 356 Bundesgesetze; the broad one takes 320
+ * (measured 2026-09-18).
  */
-async function discoverSingleLawAmendments(count: number): Promise<{ id: string; law: string }[]> {
-  const out: { id: string; law: string }[] = []
+/**
+ * The captured name is only a *hint* for the title fallback in `resolveLaw`;
+ * the law's identity comes from its Promulgationsklausel. "das", "die" and
+ * "der": the first version of this filter took only neuter laws and so
+ * skipped every -ordnung (Gewerbeordnung, Exekutionsordnung,
+ * Strafprozeßordnung …), a quarter of the corpus. The optional "das X
+ * erlassen und" skips a Stammgesetz enacted in the same BGBl ("… mit dem das
+ * ESG-Rating-Verordnung-Vollzugsgesetz erlassen und das Finanzmarkt-
+ * aufsichtsbehördengesetz geändert wird", BGBl. I Nr. 28/2026): one law is
+ * amended, which is what the harness needs, and the old capture swallowed
+ * both names into one unusable title (2026-09-09).
+ */
+const SINGLE_LAW_TITLE = /^Bundesgesetz, mit dem (?:(?:das|die|der) \S[^,]*? erlassen und )?(?:das|die|der) ([^,]+?) geändert wird$/
+const AMENDING_TITLE = /^Bundesgesetz\b[\s\S]*\bgeändert\b/
+
+async function discoverAmendments(count: number, sammel: boolean): Promise<{ id: string; law?: string }[]> {
+  const out: { id: string; law?: string }[] = []
   for (let page = 1; page <= 40 && out.length < count; page++) {
     const body = await risJson({
       Applikation: 'BgblAuth',
@@ -128,11 +175,10 @@ async function discoverSingleLawAmendments(count: number): Promise<{ id: string;
     for (const ref of asArray<any>(body?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)) {
       const id = ref?.Data?.Metadaten?.Technisch?.ID
       const titel = String(ref?.Data?.Metadaten?.Bundesrecht?.Titel ?? '').replace(/<br\/>[\s\S]*/, '').trim()
-      // "das", "die" and "der": the first version of this filter took only
-      // neuter laws and so skipped every -ordnung (Gewerbeordnung,
-      // Exekutionsordnung, Strafprozeßordnung …), a quarter of the corpus.
-      const m = /^Bundesgesetz, mit dem (?:(?:das|die|der) \S[^,]*? erlassen und )?(?:das|die|der) ([^,]+?) geändert wird$/.exec(titel)
-      if (id && m && out.length < count) out.push({ id, law: m[1]! })
+      if (!id || out.length >= count) continue
+      const single = SINGLE_LAW_TITLE.exec(titel)
+      if (single) out.push({ id, law: single[1]! })
+      else if (sammel && AMENDING_TITLE.test(titel)) out.push({ id })
     }
   }
   return out
@@ -194,12 +240,19 @@ async function resolveLaw(blocks: readonly TextBlock[], bgblNumber: string, kund
   const add = (gesetzesnummer: string | null, kurztitel: string, via: string): void => {
     if (gesetzesnummer && !candidates.some((c) => c.gesetzesnummer === gesetzesnummer)) candidates.push({ gesetzesnummer, kurztitel, via })
   }
+  const clauseName = lawNameFromClause(blocks)
   if (stammnormen[0]) {
-    const law = await resolveLawByBgbl(stammnormen[0], kundmachung)
+    // The Artikel's own name is what separates the laws one BGBl created in
+    // the same breath — 532/1993 promulgated the Bankwesengesetz *and* the
+    // Bausparkassengesetz, and the Stammnorm pair cannot tell them apart.
+    // Passing the name is free for a single-law Novelle (there is nothing to
+    // disambiguate) and is the difference between a scored Artikel and a
+    // dropped one in a package, where 90 of 342 laws failed on exactly this
+    // ambiguity (`risKons.resolveLawByBgbl`, 2026-09-09).
+    const law = await resolveLawByBgbl(stammnormen[0], kundmachung, titleHint ?? clauseName)
     tried.push(`Stammnorm ${stammnormen[0].organ} ${stammnormen[0].nummer}`)
     add(law?.gesetzesnummer ?? null, law?.kurztitel ?? '', 'Stammnorm')
   }
-  const clauseName = lawNameFromClause(blocks)
   for (const [name, via] of [[titleHint, 'Titel'], [clauseName, 'Promulgationsklausel']] as const) {
     if (!name) continue
     tried.push(`Kurztitel "${name}"`)
@@ -238,7 +291,22 @@ function paraId(label: string): string | null {
   return /(\d+[a-z]*(?:\.\d+)?)/.exec(label)?.[1] ?? null
 }
 
+/**
+ * A reason without its case detail, so the census groups.
+ *
+ * Cut at the colon that introduces the detail — not at any bracket: three
+ * reasons *open* with a quoted marker („(neu)" ohne vorangehende Umbenennung),
+ * and cutting there left 33 instructions filed under a bare quotation mark
+ * (18.09.2026).
+ */
+function causeOf(reason: string): string {
+  return reason.replace(/:\s[\s\S]*$/, '').trim()
+}
+
 const missingCauses = new Map<string, number>()
+/** Grammar refusals and application failures by reason — the census the next hour of work is prioritised from. */
+const refusalCauses = new Map<string, number>()
+const applyCauses = new Map<string, number>()
 
 /**
  * What RIS knows about a target the engine could not find. The count alone
@@ -286,6 +354,15 @@ interface Oracle {
   me: string
   /** The Ministerialentwurf's instruction lines per § — to tell a genuine ME→BGBl change from an oracle error */
   meLines: Map<string, Set<string>>
+  /**
+   * Which law of the annex to ask about (`rowsByParagraph`'s key), or
+   * `undefined` for a draft that amends one law and marks no boundaries.
+   *
+   * Never guessed: 15,1 % of § designations in a multi-law annex recur in
+   * another law of the same package, so a missing key has to end the oracle
+   * for that Artikel rather than pick the first § 5 it finds (`tguOracle.ts`).
+   */
+  lawKey: string | null | undefined
 }
 
 /** Instruction lines by the § they address, normalised for comparison. */
@@ -319,8 +396,19 @@ const tally = (map: Map<string, number>, key: string): void => {
   map.set(key, (map.get(key) ?? 0) + 1)
 }
 
-/** The Ministerialentwurf's Textgegenüberstellung for this Novelle, or the reason there is none. */
-async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachung: string): Promise<Oracle | { note: string }> {
+/**
+ * The Ministerialentwurf's Textgegenüberstellung for this Novelle, or the
+ * reason there is none.
+ *
+ * `article` is the Artikel of the *Bundesgesetzblatt* whose law is being
+ * scored, and is null wherever the BGBl amends one law. In a package the
+ * draft's Artikel are the same laws in the same order — but not under the
+ * same numbers or names, because the Nationalrat splits, merges and drops
+ * Artikel between draft and enactment. The join is therefore the Stammnorm
+ * of the two Promulgationsklauseln, the same equality the law lookup runs
+ * on; the Artikel heading only breaks a tie.
+ */
+async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachung: string, article: DraftArticle | null): Promise<Oracle | { note: string }> {
   // 1. BGBl → Regierungsvorlage, from the law's own amendment history.
   const list = await risJson({ Applikation: 'BrKons', Gesetzesnummer: gesetzesnummer, DokumenteProSeite: 'OneHundred', Seitennummer: '1' })
   const aenderungen = new Set<string>()
@@ -357,22 +445,65 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
   if (!xmlUrl) return { note: 'Textgegenüberstellung nur als PDF' }
   const xml = await getText(xmlUrl)
   if (isScanned(xml)) return { note: 'Textgegenüberstellung ist ein Scan' }
-  // The harness verifies one law at a time (`resolveLaw` refuses a package),
-  // so the annex's own Artikel list is what the draft says it is.
+  // The annex's own Artikel list is what the draft says it is — the rows are
+  // keyed by it, and `draftArticles` is the one reading of it.
   const mainRef = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
   const mainUrl = asArray<any>(mainRef?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
   const draftBlocks = mainUrl ? parseRisXml(await getText(mainUrl)) : []
   const rows = parseTextComparison(xml, draftArticles(draftBlocks)).rows
   if (rows.length === 0) return { note: 'Textgegenüberstellung nicht lesbar' }
-  const meLines = linesByParagraph(draftBlocks)
-  return { rows: rowsByParagraph(rows), me: String(me.zitation ?? `${me.inr}/ME`), meLines }
+  const meId = String(me.zitation ?? `${me.inr}/ME`)
+  if (!article) return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(draftBlocks), lawKey: undefined }
+  const parts = articleBlocks(draftBlocks).filter((p) => p.article.amends)
+  const match = matchArticle(parts.map((p) => p.article), article)
+  if (!match) return { note: `Artikel des Entwurfs zu ${article.title ?? article.number ?? '?'} nicht gefunden` }
+  const part = parts.find((p) => p.article === match)!
+  return { rows: rowsByParagraph(rows), me: meId, meLines: linesByParagraph(part.blocks), lawKey: match.key }
 }
 
-async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
+/**
+ * The draft's Artikel that amends the same law as this BGBl Artikel.
+ *
+ * The Stammnorm decides: it is the citation both Promulgationsklauseln print
+ * for the same law, and it survives everything the parliamentary stage does
+ * to Artikel numbers and headings. Where it is missing on either side — the
+ * UGB's Stammnorm is "dRGBl. S. 219/1897" and yields no BgblCitation — the
+ * headings decide, but only when one fits clearly better than every other;
+ * a tie ends the oracle for this Artikel, because the alternative is holding
+ * the engine's § 5 against another law's § 5.
+ */
+function matchArticle(candidates: readonly DraftArticle[], article: DraftArticle): DraftArticle | null {
+  if (article.bgbl) {
+    const byBgbl = candidates.filter((c) => c.bgbl && sameBgbl(c.bgbl, article.bgbl!))
+    if (byBgbl.length === 1) return byBgbl[0]!
+    if (byBgbl.length > 1) return null
+  }
+  if (!article.title) return null
+  let best: { article: DraftArticle; score: number } | null = null
+  let runnerUp = 0
+  for (const c of candidates) {
+    const score = c.title ? lawNameScore(article.title, c.title) : 0
+    if (!best || score > best.score) {
+      runnerUp = best?.score ?? 0
+      best = { article: c, score }
+    } else if (score > runnerUp) runnerUp = score
+  }
+  return best && best.score >= 0.6 && best.score > runnerUp ? best.article : null
+}
+
+/**
+ * Every law one Bundesgesetzblatt amends, scored separately.
+ *
+ * The title hint is passed on only where the BGBl amends a single law; in a
+ * package it names none of them (or, worse, the package: "Berufsrechts-
+ * Änderungsgesetz 2026"), and the Artikel's own heading is the better name
+ * anyway.
+ */
+async function verify(bgblId: string, titleHint?: string): Promise<Verdict[]> {
   const meta = await risJson({ Applikation: 'BgblAuth', Suchworte: bgblId, DokumenteProSeite: 'Ten' })
   const ref = asArray<any>(meta?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference).find((r) => r?.Data?.Metadaten?.Technisch?.ID === bgblId)
-  const blank = (note: string): Verdict => ({ bgbl: bgblId, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, note })
-  if (!ref) return blank('BGBl nicht gefunden')
+  const blank = (note: string): Verdict => ({ bgbl: bgblId, article: null, law: titleHint ?? '?', instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, note })
+  if (!ref) return [blank('BGBl nicht gefunden')]
 
   const bundesrecht = ref.Data.Metadaten.Bundesrecht
   const bgblNumber: string = bundesrecht.BgblAuth?.Bgblnummer
@@ -380,21 +511,49 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   const xmlUrl: string | undefined = asArray<any>(ref.Data.Dokumentliste.ContentReference)
     .flatMap((c) => asArray<any>(c.Urls.ContentUrl))
     .find((u) => u.DataType === 'Xml')?.Url
-  if (!xmlUrl) return blank('kein XML')
+  if (!xmlUrl) return [blank('kein XML')]
 
   const blocks = parseRisXml(await getText(xmlUrl))
+  const parts = articleBlocks(blocks).filter((p) => p.article.amends)
+  if (parts.length === 0) return [{ ...blank('keine Promulgationsklausel — kein geändertes Gesetz'), bgbl: bgblNumber || bgblId }]
+  const hint = parts.length === 1 ? titleHint : undefined
+  const out: Verdict[] = []
+  for (const { blocks: part, article } of parts) {
+    out.push(await verifyLaw(part, article, { bgblId, bgblNumber, kundmachung, titleHint: hint, fallback: String(bundesrecht.Kurztitel ?? ''), package: parts.length > 1 }))
+  }
+  return out
+}
+
+interface BgblContext {
+  bgblId: string
+  bgblNumber: string
+  kundmachung: string
+  titleHint: string | undefined
+  fallback: string
+  /** Several laws in this BGBl — the oracle then has to pick the right Artikel of the annex */
+  package: boolean
+}
+
+async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ctx: BgblContext): Promise<Verdict> {
+  const { bgblNumber, kundmachung, titleHint } = ctx
+  // Only a real package labels its rows: a single-law Novelle that happens to
+  // print "Artikel 1" is not one, and labelling it would make the summary
+  // count it as one.
+  const articleLabel = ctx.package ? article.number : null
+  const blank = (note: string): Verdict => ({ bgbl: bgblNumber || ctx.bgblId, article: articleLabel, law: article.title ?? titleHint ?? ctx.fallback, instructions: 0, read: 0, applied: 0, checked: 0, identical: 0, untouched: 0, incomplete: 0, halfApplied: 0, divergent: 0, unverifiable: 0, cleanTotal: 0, cleanIdentical: 0, cleanDivergent: 0, cleanNotLaw: 0, note })
+
   const units = segmentUnits(blocks)
   const { instructions, refused } = instructionsFromUnits(units.filter((u) => u.blocks.some((b) => b.kind === 'novao')))
   const total = instructions.length + refused.length
   if (total === 0) return blank('keine Novellierungsanordnungen')
 
-  const resolved = await resolveLaw(blocks, bgblNumber, kundmachung, titleHint)
-  if ('note' in resolved) return { ...blank(resolved.note), bgbl: bgblNumber, law: titleHint ?? String(bundesrecht.Kurztitel ?? ''), instructions: total, read: instructions.length }
+  const resolved = await resolveLaw(blocks, bgblNumber, kundmachung, titleHint ?? article.title ?? undefined)
+  if ('note' in resolved) return { ...blank(resolved.note), instructions: total, read: instructions.length }
   const { versions, pairs } = resolved
-  const kurztitel = resolved.kurztitel || titleHint || String(bundesrecht.Kurztitel ?? '')
+  const kurztitel = resolved.kurztitel || titleHint || article.title || ctx.fallback
   let oracle: Oracle | null = null
   if (withOracle) {
-    const loaded = await loadOracle(resolved.gesetzesnummer, bgblNumber, kundmachung).catch((err) => ({ note: `Orakel nicht ladbar: ${String(err).slice(0, 80)}` }))
+    const loaded = await loadOracle(resolved.gesetzesnummer, bgblNumber, kundmachung, ctx.package ? article : null).catch((err) => ({ note: `Orakel nicht ladbar: ${String(err).slice(0, 80)}` }))
     if ('note' in loaded) tally(oracleNotes, loaded.note)
     else {
       oracle = loaded
@@ -452,17 +611,33 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
   const applied = results.filter((r) => r.applied).length
 
   if (verbose) {
-    console.log(`\n${bgblNumber} vom ${kundmachung} — ${kurztitel} (Join: ${resolved.via})`)
+    console.log(`\n${bgblNumber} vom ${kundmachung}${articleLabel ? ` ${articleLabel}` : ''} — ${kurztitel} (Join: ${resolved.via})`)
     console.log(`  ${total} Anweisungen, ${instructions.length} gelesen, ${applied} angewendet; ${law.paragraphs.length}/${versions.size} Paragraphen geladen`)
-    for (const r of refused) console.log(`    ✗ [Grammatik] ${r.reason} — ${r.line.slice(0, 100)}`)
-    for (const [i, r] of results.entries()) {
-      if (r.applied) continue
-      console.log(`    ✗ [Anwendung] ${r.reason} — ${r.line.slice(0, 100)}`)
-      if (!/nicht im geltenden Text/i.test(r.reason ?? '')) continue
+  }
+  // The census runs whatever the verbosity: `missingTargetNote` fills
+  // `missingCauses`, and while it sat inside the `if (verbose)` block every
+  // `--quiet` run printed an empty cause table — a summary that looked like a
+  // finding ("no causes") and was an artefact of the flag (18.09.2026).
+  for (const r of refused) {
+    tally(refusalCauses, causeOf(r.reason))
+    if (refusalFile) appendFileSync(refusalFile, `${JSON.stringify({ bgbl: bgblNumber, article: articleLabel, law: kurztitel, stage: 'Grammatik', reason: r.reason, line: r.line })}\n`)
+    if (verbose) console.log(`    ✗ [Grammatik] ${r.reason} — ${r.line.slice(0, 100)}`)
+  }
+  for (const [i, r] of results.entries()) {
+    if (r.applied) continue
+    const reason = r.reason ?? 'nicht angewendet'
+    tally(applyCauses, causeOf(reason))
+    if (verbose) console.log(`    ✗ [Anwendung] ${reason} — ${instructions[i]!.line.slice(0, 100)}`)
+    let note: string | null = null
+    if (/nicht im geltenden Text/i.test(reason)) {
       const op = instructions[i]!.op
       const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
-      if (address) console.log(`        ↳ RIS: ${missingTargetNote(address, resolved, law, unparsed, kundmachung)}`)
+      if (address) {
+        note = missingTargetNote(address, resolved, law, unparsed, kundmachung)
+        if (verbose) console.log(`        ↳ RIS: ${note}`)
+      }
     }
+    if (refusalFile) appendFileSync(refusalFile, `${JSON.stringify({ bgbl: bgblNumber, article: articleLabel, law: kurztitel, stage: 'Anwendung', reason, line: instructions[i]!.line, risNote: note })}\n`)
   }
 
   let checked = 0
@@ -534,7 +709,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     if (id && refusedIds.has(id)) flags.add('verweigert')
     const dangerous = verdict === 'abweichend' && comparable
     const outcome = dangerous ? 'abweichend' : verdict
-    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id)) : null
+    const oracleReport = oracle && id ? oracleVerdict(id, beforeText, got, paragraphRows(oracle.rows, id, oracle.lawKey)) : null
     const oracleKey: OracleVerdict | 'kein Orakel' = oracleReport?.verdict ?? 'kein Orakel'
     tally(oracleTally, `${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
     if (oracle && id && bgblLines) {
@@ -557,7 +732,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     if (verbose && oracleReport && oracleReport.verdict !== 'stumm' && oracleReport.verdict !== 'bestätigt') {
       console.log(`        ↳ Orakel ${oracleReport.verdict} [RIS: ${verdict}]: ${oracleReport.note ?? ''}`)
       if (process.argv.includes('--oracle-debug') && verdict === 'identisch') {
-        const rows = oracle!.rows.get(id!) ?? []
+        const rows = paragraphRows(oracle!.rows, id!, oracle!.lawKey)
         for (const row of rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')) {
           const p = stripMarkers(row.proposed).replace(/\s+/g, '')
           const g = stripMarkers(got).replace(/\s+/g, '')
@@ -618,7 +793,7 @@ async function verify(bgblId: string, titleHint?: string): Promise<Verdict> {
     }
   }
 
-  return { bgbl: bgblNumber, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, halfApplied, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, cleanNotLaw, note: null }
+  return { bgbl: bgblNumber, article: articleLabel, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, halfApplied, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, cleanNotLaw, note: null }
 }
 
 /** The first place two texts part company, with context on both sides. */
@@ -630,20 +805,21 @@ function firstDifference(a: string, b: string): string {
 
 // --- CLI ----------------------------------------------------------------------
 const discover = process.argv.find((a) => a.startsWith('--discover='))
+const withSammel = process.argv.includes('--sammel')
 const ids = process.argv.slice(2).filter((a) => /^BGBLA_/.test(a))
 const cases: { id: string; law?: string }[] = discover
-  ? await discoverSingleLawAmendments(Number(discover.split('=')[1] ?? 10))
+  ? await discoverAmendments(Number(discover.split('=')[1] ?? 10), withSammel)
   : ids.map((id) => ({ id, law: process.argv[process.argv.indexOf(id) + 1]?.startsWith('-') ? undefined : process.argv[process.argv.indexOf(id) + 1] }))
 
 if (cases.length === 0) {
-  console.error('Usage: npx vite-node scripts/kons-harness.ts <BGBl-ID> [Kurztitel] | --discover=N')
+  console.error('Usage: npx vite-node scripts/kons-harness.ts <BGBl-ID> [Kurztitel] | --discover=N [--sammel]')
   process.exit(1)
 }
 
 const verdicts: Verdict[] = []
 for (const c of cases) {
   try {
-    verdicts.push(await verify(c.id, c.law))
+    verdicts.push(...(await verify(c.id, c.law)))
   } catch (err) {
     console.log(`\n${c.id}: ${String(err)}`)
   }
@@ -652,7 +828,15 @@ for (const c of cases) {
 const scored = verdicts.filter((v) => v.note === null)
 const sum = (pick: (v: Verdict) => number) => scored.reduce((n, v) => n + pick(v), 0)
 console.log(`\n${'='.repeat(78)}`)
-console.log(`Prüfstand über ${scored.length} Novellen${verdicts.length > scored.length ? ` (${verdicts.length - scored.length} nicht auswertbar)` : ''}`)
+// A Sammelnovelle is n amendments in one Bundesgesetzblatt, and the two
+// counts answer different questions: the BGBl count says how much of the
+// published corpus was reached, the law count is the sample the percentages
+// below are computed over.
+const bgblCount = new Set(verdicts.map((v) => v.bgbl)).size
+const perBgbl = new Map<string, number>()
+for (const v of verdicts) perBgbl.set(v.bgbl, (perBgbl.get(v.bgbl) ?? 0) + 1)
+const packages = [...perBgbl.values()].filter((n) => n > 1).length
+console.log(`Prüfstand über ${scored.length} Gesetze aus ${bgblCount} Bundesgesetzblättern${packages > 0 ? `, davon ${packages} Sammelnovellen` : ''}${verdicts.length > scored.length ? ` (${verdicts.length - scored.length} nicht auswertbar)` : ''}`)
 const pct = (n: number, of: number) => (of === 0 ? '—' : `${((n / of) * 100).toFixed(1)} %`)
 console.log(`  Anweisungen           : ${sum((v) => v.instructions)}`)
 console.log(`  grammatikalisch gelesen: ${sum((v) => v.read)} (${pct(sum((v) => v.read), sum((v) => v.instructions))})`)
@@ -700,8 +884,25 @@ console.log(`    kein geltender Text  : ${sum((v) => v.cleanNotLaw)} (${pct(sum(
     for (const [note, n] of [...oracleNotes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${note}`)
   }
 }
+for (const [title, map] of [['Grammatik — nicht gelesen', refusalCauses], ['Anwendung — gelesen, nicht ausgeführt', applyCauses]] as const) {
+  const total = [...map.values()].reduce((a, b) => a + b, 0)
+  if (total === 0) continue
+  console.log(`\n  ${title} (${total}):`)
+  for (const [cause, n] of [...map].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${cause}`)
+}
 if (missingCauses.size > 0) {
   console.log(`  „nicht im geltenden Text" (${[...missingCauses.values()].reduce((a, b) => a + b, 0)}), laut RIS:`)
   for (const [cause, n] of [...missingCauses].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${cause}`)
 }
-for (const v of verdicts.filter((x) => x.note)) console.log(`  ? ${v.bgbl}: ${v.note}`)
+for (const v of verdicts.filter((x) => x.note)) console.log(`  ? ${v.bgbl}${v.article ? ` ${v.article}` : ''} (${v.law}): ${v.note}`)
+{
+  // Why a law dropped out, counted — the list above is one line per law and
+  // unreadable at corpus size, and the shape of the failures is what decides
+  // whether the next hour goes into the join or into the engine.
+  const notes = new Map<string, number>()
+  for (const v of verdicts) if (v.note) notes.set(v.note.replace(/[:(].*$/, '').trim(), (notes.get(v.note.replace(/[:(].*$/, '').trim()) ?? 0) + 1)
+  if (notes.size > 0) {
+    console.log(`\n  Nicht auswertbar (${verdicts.length - scored.length} von ${verdicts.length} Gesetzen):`)
+    for (const [note, n] of [...notes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(3)}× ${note}`)
+  }
+}

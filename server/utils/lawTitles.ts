@@ -258,6 +258,46 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
 }
 
 /**
+ * A draft's Artikel with the blocks each one owns.
+ *
+ * `draftArticles` answers "which laws, in what order"; this adds "and which
+ * text belongs to each", which is what any caller that wants to *work* on one
+ * law of a package needs. A Sammelnovelle is not one amendment: each Artikel
+ * names its own law in its own Promulgationsklausel, numbers its instructions
+ * from 1, and addresses a § space the next Artikel re-uses — so § 5 of
+ * Artikel 3 and § 5 of Artikel 7 are different provisions of different laws,
+ * and anything that reads the whole document at once conflates them.
+ *
+ * The split is the printed Artikel line, the same boundary `segmentUnits`
+ * resets its state on. Each partition is then read by `draftArticles` itself,
+ * so there is one rule for what an Artikel is and where its name comes from,
+ * not two; only `index` is restored across the partitions, because a per-part
+ * reading starts counting at zero and the annex joins on printed order.
+ *
+ * Text before the first Artikel line is its own entry — the package's own
+ * title block. It carries no Promulgationsklausel, so a caller filtering on
+ * `amends` drops it without a special case.
+ */
+export function articleBlocks(blocks: readonly TextBlock[]): { article: DraftArticle; blocks: TextBlock[] }[] {
+  const parts: TextBlock[][] = []
+  let current: TextBlock[] = []
+  for (const b of blocks) {
+    if (b.kind === 'article' && current.length > 0) {
+      parts.push(current)
+      current = []
+    }
+    current.push(b)
+  }
+  if (current.length > 0) parts.push(current)
+  const out: { article: DraftArticle; blocks: TextBlock[] }[] = []
+  for (const part of parts) {
+    const article = draftArticles(part).at(-1)
+    if (article) out.push({ article: { ...article, index: out.length }, blocks: part })
+  }
+  return out
+}
+
+/**
  * Artikel title → the Stammnorm of the law it amends.
  *
  * Keyed exactly as `segmentUnits` keys its units (`articleTitle ??

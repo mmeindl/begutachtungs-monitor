@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph, draftArticles, lawNameScore, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
+import { addressedParagraph, articleBlocks, draftArticles, lawNameScore, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
 import { parseRisXml } from '../server/utils/lawText'
 import { unitKey } from '../shared/utils/diffKey'
 
@@ -297,5 +297,56 @@ describe('lawNameScore', () => {
     expect(lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994')).toBeGreaterThan(
       lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994 – Anhang (Binnenmarkt)'),
     )
+  })
+})
+
+describe('articleBlocks', () => {
+  const xml = doc(
+    '<ueberschrift typ="titel">Bundesgesetz, mit dem das Glücksspielgesetz und das Tabakgesetz geändert werden</ueberschrift>' +
+      article('Artikel 1', 'Änderung des Glücksspielgesetzes', 'Das Glücksspielgesetz, BGBl. Nr. 620/1989, wird wie folgt geändert:', ['§ 5 lautet:', '§ 6 entfällt.']) +
+      article('Artikel 2', 'Änderung des Tabakgesetzes', 'Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:', ['§ 5 Abs. 1 lautet:']),
+  )
+
+  it('gives every Artikel the text it owns, and keeps the printed order', () => {
+    const parts = articleBlocks(parseRisXml(xml)).filter((p) => p.article.amends)
+    // Index 0 is the package's own title block, exactly as `draftArticles`
+    // counts it — the annex joins on this numbering, so it must not shift.
+    expect(parts.map((p) => [p.article.index, p.article.number, p.article.title])).toEqual([
+      [1, 'Artikel 1', 'Änderung des Glücksspielgesetzes'],
+      [2, 'Artikel 2', 'Änderung des Tabakgesetzes'],
+    ])
+    // § 5 occurs in both laws — which is the whole reason the split exists.
+    expect(parts.map((p) => p.blocks.filter((b) => b.kind === 'novao').map((b) => b.text))).toEqual([
+      ['1. § 5 lautet:', '2. § 6 entfällt.'],
+      ['1. § 5 Abs. 1 lautet:'],
+    ])
+  })
+
+  it('names the same laws as draftArticles, from the same rule', () => {
+    const blocks = parseRisXml(xml)
+    expect(articleBlocks(blocks).map((p) => p.article)).toEqual(draftArticles(blocks))
+  })
+
+  it('keeps the package title as its own entry, amending nothing', () => {
+    const parts = articleBlocks(parseRisXml(xml))
+    expect(parts).toHaveLength(3)
+    expect(parts[0]!.article.amends).toBe(false)
+    expect(parts[0]!.article.number).toBeNull()
+    // It owns the title block and nothing else: no instruction may reach a
+    // caller through the entry that names no law.
+    expect(parts[0]!.blocks.some((b) => b.kind === 'novao')).toBe(false)
+  })
+
+  it('treats a Novelle without Artikel as one entry over the whole document', () => {
+    const single = doc(
+      '<ueberschrift typ="titel">Bundesgesetz, mit dem das Tabakgesetz geändert wird</ueberschrift>' +
+        '<absatz typ="promkleinlsatz">Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:</absatz>' +
+        '<absatz typ="novao1">1. § 5 lautet:</absatz>',
+    )
+    const parts = articleBlocks(parseRisXml(single))
+    expect(parts).toHaveLength(1)
+    expect(parts[0]!.article.number).toBeNull()
+    expect(parts[0]!.article.amends).toBe(true)
+    expect(parts[0]!.blocks).toEqual(parseRisXml(single))
   })
 })
