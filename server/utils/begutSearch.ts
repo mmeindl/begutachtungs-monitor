@@ -1,0 +1,204 @@
+/**
+ * Wo ein Stichwort in einem Entwurfsdokument steht — die Fundstelle zur
+ * Volltextsuche (docs/architecture.md §12.31).
+ *
+ * PURE MODULE — relative imports only, so vitest runs it directly.
+ *
+ * WARUM ES DIESES MODUL ÜBERHAUPT GIBT. Die Suche selbst macht das RIS: sein
+ * `Suchworte` durchsucht den Volltext aller Dokumente eines Datensatzes und
+ * ist damit eine Fähigkeit, die wir nicht nachbauen müssen. Was es NICHT
+ * zurückgibt, ist die Fundstelle — die Antwort ist der gewöhnliche
+ * Metadatensatz, ohne Trefferstelle, ohne Textausschnitt. Gemessen am
+ * 18.09.2026 über 79 Treffer aus fünf Stichworten: bei „Fahrrad" steht das
+ * Wort nur in 7 von 20 Treffern im Entwurfstext und in 16 von 20 in den
+ * Erläuterungen. Eine Trefferliste ohne Fundstelle behauptet deshalb für
+ * jeden dritten Treffer etwas anderes, als der Leser annimmt — „das Gesetz
+ * handelt davon", wo das Ressort es nur in seiner Begründung streift.
+ *
+ * Die Fundstelle ist also nicht Zierde, sondern das, was einen Treffer von
+ * einer Vermutung unterscheidet. Sie wird hier aus denselben Blöcken
+ * gelesen, die auch die Gegenüberstellung liest (`lawText.parseRisXml`) —
+ * derselbe Parser, dieselbe Textform, also dieselbe Auskunft wie auf der
+ * Entwurfsseite.
+ *
+ * WORTGRENZEN, weil das RIS sie hat. „Klimaschut" findet nichts, und
+ * `Klimaschutz*` findet 491 statt 453 Sätzen — das RIS sucht ganze Wörter
+ * und kennt den Stern als Trunkierung. Diese Suche spiegelt beides, sonst
+ * fände sie im Dokument nicht, was das RIS im selben Dokument gefunden hat.
+ *
+ * `loose` ist der Notnagel dafür, und er ist ein PARAMETER, kein zweiter
+ * Durchgang in dieser Funktion. Der Unterschied ist nicht kosmetisch: Ein
+ * Satz hat mehrere Dokumente, und sie werden in einer Rangfolge gelesen
+ * (`begutSearchService.DOCUMENT_ORDER`). Suchte jedes Dokument erst streng
+ * und dann als Teilstring, gewänne ein Entwurfstext mit „Klimaschutzgesetz"
+ * gegen die Erläuterungen, in denen „Klimaschutz" wirklich steht — die
+ * Fundstelle wäre falsch, und zwar zugunsten des stärksten Dokuments. Der
+ * Aufrufer geht deshalb ZWEIMAL über alle Dokumente: erst streng, dann
+ * großzügig. Lieber eine Fundstelle zu großzügig als die Auskunft „das Wort
+ * steht in einem Dokument, wir wissen nicht wo", die wir nachweislich
+ * widerlegen könnten — aber nie im falschen Dokument.
+ */
+import type { TextBlock } from './lawText'
+import { normalizeText } from './lawText'
+
+/** Ein Suchwort, wie der Leser es eingegeben hat. */
+export interface SearchTerm {
+  /** Kleingeschrieben, ohne Stern und ohne Anführungszeichen. */
+  text: string
+  /** Mit Stern eingegeben: „Klimaschutz*" trifft auch „Klimaschutzgesetz". */
+  prefix: boolean
+}
+
+/**
+ * Mehr Wörter helfen niemandem und kosten Regexe: Das RIS verknüpft sie mit
+ * UND, ab dem vierten ist die Treffermenge ohnehin leer.
+ */
+const MAX_TERMS = 6
+/** Kürzer als zwei Zeichen ist kein Stichwort, sondern ein Tippfehler. */
+const MIN_TERM_LEN = 2
+/** Zeichen links und rechts der Fundstelle. Zwei Zeilen auf dem Telefon. */
+const SNIPPET_RADIUS = 90
+
+/**
+ * Die Eingabe in Suchwörter.
+ *
+ * Anführungszeichen fallen weg, statt eine Phrasensuche zu versprechen: das
+ * RIS kennt keine — `"Klimaschutz"` liefert exakt dieselben 453 Sätze wie
+ * `Klimaschutz` —, und ein Werkzeug, das Anführungszeichen entgegennimmt und
+ * ignoriert, lügt leiser als eines, das sie ablehnt.
+ */
+export function parseSearchQuery(raw: string): SearchTerm[] {
+  const out: SearchTerm[] = []
+  for (const word of normalizeText(raw).split(/\s+/)) {
+    const bare = word.replace(/["'„“”‚‘’»«›‹]/g, '')
+    const prefix = bare.endsWith('*')
+    const text = (prefix ? bare.slice(0, -1) : bare).toLowerCase()
+    if (text.length < MIN_TERM_LEN) continue
+    if (out.some((t) => t.text === text)) continue
+    out.push({ text, prefix })
+    if (out.length === MAX_TERMS) break
+  }
+  return out
+}
+
+/** Die Suchwörter wieder als das, was ans RIS geht. */
+export function searchQueryString(terms: readonly SearchTerm[]): string {
+  return terms.map((t) => (t.prefix ? `${t.text}*` : t.text)).join(' ')
+}
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Ein Suchwort als Regex — ganzes Wort, außer der Stern sagt etwas anderes.
+ *
+ * Die Grenzen sind Lookarounds auf Buchstaben und Ziffern, nicht `\b`: `\b`
+ * kennt Umlaute nicht als Wortzeichen, und „für" würde mitten im Wort
+ * treffen.
+ */
+function termRe(term: SearchTerm, loose: boolean): RegExp {
+  const body = escapeRe(term.text)
+  if (loose) return new RegExp(body, 'iu')
+  const tail = term.prefix ? '[\\p{L}\\p{N}]*' : ''
+  return new RegExp(`(?<![\\p{L}\\p{N}])${body}${tail}(?![\\p{L}\\p{N}])`, 'iu')
+}
+
+/** Trifft das Suchwort in diesem Text, und wo? Null, wenn nicht. */
+function findTerm(text: string, term: SearchTerm, loose: boolean): { at: number; len: number } | null {
+  const m = termRe(term, loose).exec(text)
+  return m ? { at: m.index, len: m[0].length } : null
+}
+
+/** Der Textausschnitt um eine Fundstelle, in drei Teilen. */
+export interface SearchSnippet {
+  /** Was links davon steht, vorn mit „…", wenn abgeschnitten. */
+  before: string
+  /** Das gefundene Wort, in der Schreibweise des Dokuments. */
+  match: string
+  /** Was rechts davon steht, hinten mit „…", wenn abgeschnitten. */
+  after: string
+}
+
+/**
+ * Der Ausschnitt um eine Fundstelle, an Wortgrenzen geschnitten.
+ *
+ * Drei Teile statt eines markierten Strings, damit die Seite die Marke
+ * selbst setzt: ein `<mark>` aus dem Server wäre HTML aus Nutzereingabe,
+ * und die einzige sichere Fassung davon ist die, die es nicht gibt.
+ */
+export function buildSnippet(text: string, at: number, len: number, radius = SNIPPET_RADIUS): SearchSnippet {
+  const from = Math.max(0, at - radius)
+  const to = Math.min(text.length, at + len + radius)
+  let before = text.slice(from, at)
+  let after = text.slice(at + len, to)
+  // An der Wortgrenze schneiden, aber nur, wenn überhaupt gekürzt wurde —
+  // sonst frisst der Schnitt das erste Wort eines Absatzes.
+  if (from > 0) {
+    const cut = before.indexOf(' ')
+    before = `…${cut >= 0 ? before.slice(cut) : before}`
+  }
+  if (to < text.length) {
+    const cut = after.lastIndexOf(' ')
+    after = `${cut >= 0 ? after.slice(0, cut) : after}…`
+  }
+  return { before, match: text.slice(at, at + len), after }
+}
+
+/** Wo in einem Dokument das Stichwort steht. */
+export interface SearchLocation {
+  /**
+   * Die Bezeichnung der Stelle, wie das Dokument sie führt: „§ 5." im
+   * Entwurfstext, „Zu § 5:" in den Erläuterungen. Null, wo das Dokument bis
+   * dorthin keine trägt.
+   */
+  designation: string | null
+  snippet: SearchSnippet
+}
+
+/** Blöcke, die keine Fundstelle sein dürfen. */
+function skipBlock(b: TextBlock): boolean {
+  // Ein Inhaltsverzeichnis wiederholt die Überschriften des Dokuments. Ein
+  // Treffer dort ist immer die Dublette eines Treffers weiter unten — und
+  // die schlechtere von beiden, weil sie keinen Satz zeigt.
+  return b.kind === 'toc'
+}
+
+/** Trägt dieser Block eine Bezeichnung, die als Fundstelle taugt? */
+function designationOf(b: TextBlock): string | null {
+  if (b.gld) return b.gld
+  if (b.kind === 'para_head' || b.kind === 'section' || b.kind === 'article') return b.text || null
+  return null
+}
+
+/**
+ * Die erste Stelle, an der das Dokument die Suchwörter zeigt.
+ *
+ * Bevorzugt einen Block, der ALLE Wörter trägt — das RIS verknüpft sie mit
+ * UND, also ist der Absatz, in dem sie zusammen stehen, der gemeinte. Gibt
+ * es keinen, zählt der erste Block mit irgendeinem von ihnen: Die Wörter
+ * können über das Dokument verteilt sein, und dann ist ein Satz mit einem
+ * davon immer noch die Antwort auf „kommt mein Thema vor?".
+ */
+export function locateInBlocks(
+  blocks: readonly TextBlock[],
+  terms: readonly SearchTerm[],
+  loose = false,
+): SearchLocation | null {
+  if (!terms.length) return null
+  let designation: string | null = null
+  let fallback: SearchLocation | null = null
+  for (const b of blocks) {
+    const own = designationOf(b)
+    if (own) designation = own
+    if (skipBlock(b) || !b.text) continue
+    const found = terms.map((t) => findTerm(b.text, t, loose)).filter((h) => h !== null)
+    if (!found.length) continue
+    const first = found.reduce((a, h) => (h.at < a.at ? h : a))
+    const here: SearchLocation = { designation, snippet: buildSnippet(b.text, first.at, first.len) }
+    if (found.length === terms.length) return here
+    fallback ??= here
+  }
+  return fallback
+}
+

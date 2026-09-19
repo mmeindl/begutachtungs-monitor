@@ -35,6 +35,8 @@ function risConsultation(overrides: Partial<RisConsultation> = {}): RisConsultat
   return {
     id: 'BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B',
     kind: 'verordnung',
+    // Der Ausgang ist der Normalfall-Default: nicht ermittelt.
+    outcome: null,
     title: 'Änderung der Druckgeräteaufstellungsverordnung – DGAV',
     longTitle: null,
     ministryCode: 'BMWET',
@@ -152,7 +154,11 @@ describe('buildSitemap', () => {
 
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
-    expect(xml.match(/<loc>/g)).toHaveLength(6)
+    expect(xml.match(/<loc>/g)).toHaveLength(7)
+    // Die leere Suchseite gehört hinein, ihre Trefferseiten nicht: die
+    // tragen `noindex` (§12.31).
+    expect(xml).toContain(`<loc>${SITE}/suche</loc>`)
+    expect(xml).not.toContain('/suche?')
     // Nothing under `/weitere-entwuerfe` belongs in a sitemap: the list is
     // a filter on /entwuerfe since 17.09.2026 and the detail pages moved
     // into the same namespace on 18.09.2026, so every old path is a 301 —
