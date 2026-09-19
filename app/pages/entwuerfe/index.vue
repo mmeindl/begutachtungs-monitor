@@ -10,6 +10,7 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
+import { viewOfDraft, viewOfRis, viewOfVorlage } from '#shared/utils/entryView'
 import { romanToInt } from '#shared/utils/gp'
 import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
@@ -167,6 +168,43 @@ function toggleStation(value: DraftStation): void {
     ? stations.value.filter((s) => s !== value)
     : [...stations.value, value]
 }
+
+/**
+ * Die Eingrenzung faltet sich auf dem Telefon zusammen — und nur dort.
+ *
+ * Gemessen am 18.09.2026: die Leiste war bei 390 px **432 px hoch**, die
+ * erste Zeile der Liste begann bei y = 880, das erste Bildschirmfenster
+ * eines 390 × 844-Geräts zeigte also **keine einzige Zeile**. Auf 896 px
+ * sind es 156 px und sechs Zeilen; dort ist nichts zu retten, dort war nur
+ * der Umbruch zufällig. Der Umbau ist deshalb einer fürs Telefon.
+ *
+ * Sichtbar bleiben die Frage, mit der jemand ankommt („was kann ich tun"),
+ * und die Suche. Die Stationschips wandern mit den drei Selects hinter den
+ * Schalter: sie kosten 96 der 432 px und sind das, wonach beim Scrollen am
+ * seltensten gegriffen wird. Das ist der Preis dieser Entscheidung und er
+ * ist echt — die Stationen sind das Vokabular, das Liste und Zeitleiste
+ * teilen (§12.26), und wer die Liste zum ersten Mal sieht, lernt es hier
+ * nicht mehr nebenbei.
+ *
+ * Zwei Sicherungen: aufgeklappt, sobald einer dieser Filter in der URL
+ * steht — ein geteilter Link darf nie einen aktiven Filter verstecken —,
+ * und die Zahl am Schalter steht nur im zugeklappten Zustand, weil sie sonst
+ * über den Bedienelementen stünde, die sie zählt.
+ *
+ * Warum eine Checkbox und kein <details>, gegen das Hausmuster (vier
+ * Vorkommen, kein einziger geskripteter Toggle): ein zugeklapptes <details>
+ * lässt sich per CSS nicht ab einem Breakpoint öffnen. Geprüft am
+ * 18.09.2026 in Chrome 152 — `details:not([open]) > .body { display:block }`
+ * unter `@media (min-width:768px)` blendet den Inhalt NICHT ein (die
+ * Messung über `getBoundingClientRect` meldet dabei irreführend eine Höhe;
+ * der Screenshot zeigt nichts). Ohne das müsste dieselbe Leiste zweimal im
+ * Markup stehen, mit kollidierenden `for`/`id`-Paaren. Checkbox plus `peer`
+ * bleibt CSS-only, SSR-fest und ohne JS bedienbar.
+ */
+const moreFilters = computed(
+  () => Number(stations.value.length > 0) + Number(art.value !== '') + Number(gp.value !== '') + Number(ministry.value !== ''),
+)
+const filtersOpen = ref(moreFilters.value > 0)
 
 const { webcalUrl, googleCalUrl } = useFeedUrls()
 
@@ -355,7 +393,7 @@ const vorlageRows = computed<Row[]>(() => {
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   const needle = qDebounced.value.toLowerCase()
   return list.items
-    .filter((v) => !v.draft)
+    .filter((v) => v.consultation.kind !== 'draft')
     .filter((v) => !needle || `${v.title} ${v.citation}`.toLowerCase().includes(needle))
     .map((v) => ({ kind: 'vorlage' as const, key: `rv-${v.citation}`, vorlage: v }))
 })
@@ -373,6 +411,26 @@ const rows = computed<Row[]>(() => {
     sort.value === 'stellungnahmen' ? compareByStatements(a, b) : compareDrafts(orderOf(a), orderOf(b)),
   )
 })
+
+/**
+ * Die geordneten Zeilen, durch die eine Anatomie geschickt (§12.28).
+ *
+ * Die Trennung ist Absicht und sie ist die Lehre aus den sechs
+ * Komponenten, die das hier ersetzt: `rows` entscheidet, WAS in welcher
+ * Reihenfolge dasteht — mit drei Zeilenarten, die ihre eigenen Typen
+ * behalten (§12.19) —, und der Adapter entscheidet, WIE jede Art auf die
+ * vier Zonen fällt. Vorher lag beides in je zwei Komponenten pro Art, und
+ * deshalb konnte dieselbe Zahl in einer Liste an sechs Stellen stehen.
+ */
+const entries = computed(() =>
+  rows.value.map((row) =>
+    row.kind === 'me'
+      ? viewOfDraft(row.draft)
+      : row.kind === 'ris'
+        ? viewOfRis(row.item)
+        : viewOfVorlage(row.vorlage),
+  ),
+)
 
 /**
  * Each kind counted on its own, never summed.
@@ -409,8 +467,25 @@ const secondRoundRowCount = computed(
 /* Eine Station NACH der Begutachtung schließt die Verordnungsentwürfe aus:
  * ohne Gegenstand im Parlament gibt es keine Regierungsvorlage. Unter
  * „Begutachtung" ist die Kombination dagegen sinnvoll — dort stehen sie. */
+/**
+ * Nur Stationen gewählt, die ein Satz OHNE Gegenstand im Parlament nicht
+ * erreichen kann — und das sind seit 19.09.2026 nur noch zwei.
+ *
+ * „Alles außer Begutachtung" war die Regel, solange die Verordnungshälfte
+ * nach der Frist nirgends mehr auftauchte. Sie wird aber kundgemacht, in
+ * Teil II des Bundesgesetzblatts (§12.32), und unter „Bundesgesetzblatt"
+ * stehen jetzt 159 Zeilen der laufenden Periode. Der Hinweis „Diese Auswahl
+ * passt nicht zu Verordnungsentwürfen" stand eine Version lang ÜBER genau
+ * diesen Zeilen.
+ *
+ * `rv` und `parlament` bleiben unerreichbar, und das ist kein Datenmangel,
+ * sondern das Verfahren.
+ */
 const laterStationsOnly = computed(
-  () => stations.value.length > 0 && !stations.value.includes('begutachtung'),
+  () =>
+    stations.value.length > 0 &&
+    !stations.value.includes('begutachtung') &&
+    !stations.value.includes('bgbl'),
 )
 const stationConflict = computed(() => laterStationsOnly.value && art.value === 'verordnung')
 
@@ -440,10 +515,17 @@ const countLabel = computed(() => {
    * — wer sie in eine der beiden Zahlen schlüge, behauptete über sie, was für
    * die andere Hälfte gilt. Steht vor dem Stationsfilter-Ausstieg, weil diese
    * Zeilen unter „Regierungsvorlage" sehr wohl mitkommen. */
+  /* Der Zusatz „ohne Begutachtung" nur, wenn er für JEDE gezählte Zeile
+   * belegt ist. Er ist die Summenform derselben Aussage, die in der Zeile
+   * steht, und darf deshalb auch nicht weiter reichen: sobald eine Vorlage
+   * dabei ist, deren Vorgeschichte nur unbelegt ist (`unknown`), zählt die
+   * Zahl die Zeilen und behauptet nichts über sie. */
   if (vorlageRows.value.length) {
-    parts.push(
-      `${countLabelDe(vorlageRows.value.length, 'Regierungsvorlage', 'Regierungsvorlagen')} ohne Begutachtung`,
+    const count = countLabelDe(vorlageRows.value.length, 'Regierungsvorlage', 'Regierungsvorlagen')
+    const allChecked = vorlageRows.value.every(
+      (row) => row.kind === 'vorlage' && row.vorlage.consultation.kind === 'none',
     )
+    parts.push(allChecked ? `${count} ohne Begutachtung` : count)
   }
   /* Unter einem Stationsfilter zählt die Verordnungs-Hälfte nicht mit — weder
    * als „0" noch als „gerade nicht abrufbar". Beides wäre eine Antwort auf
@@ -480,6 +562,21 @@ const countLabel = computed(() => {
         Alle Begutachtungen einer Gesetzgebungsperiode – in Begutachtung und
         abgeschlossen, Gesetzes- wie Verordnungsentwürfe.
       </p>
+      <!-- DER WEG ZUR SUCHE steht hier, weil die Navigation bei vier
+           Einträgen gedeckelt ist und diese Seite die ist, auf der jemand
+           nach einem Entwurf sucht. Die Suche beantwortet aber eine andere
+           Frage als die Liste darunter — sie kennt nur die laufenden
+           Verfahren und durchsucht deren Dokumente —, und der Satz sagt
+           beides, statt „Suche" als vierte Filterachse erscheinen zu
+           lassen (§12.31). -->
+      <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+        <NuxtLink
+          to="/suche"
+          class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+        >Im Volltext der laufenden Begutachtungen suchen</NuxtLink>
+        – für ein Thema, das im Titel eines Sammelgesetzes nicht vorkommt.
+        Das Feld weiter unten bleibt bei Titel, Ressort und Debattenname.
+      </p>
     </header>
 
     <div v-if="status === 'pending' && !data" class="mt-10">
@@ -494,7 +591,7 @@ const countLabel = computed(() => {
            die Herkunft der Daten, bevor irgendeine Zeile der Liste zu sehen
            war —, und er erklärte, was die Zeilen inzwischen selbst sagen:
            jede trägt ihr Typwort und, wo es keine Stellungnahmen gibt,
-           warum („Stellungnahme direkt ans Ministerium", `risFilingNote`).
+           warum („nicht gezählt", §12.28).
            Das Verfahren dahinter steht auf /so-funktionierts.
 
            Seine Zahlen mussten ohnehin weg. „201 Entwürfe ohne Gegenstand
@@ -516,103 +613,230 @@ const countLabel = computed(() => {
       <!-- Weg, wo die Periode die Frage nicht beantworten kann (§12.27):
            ein Chip, der nichts filtern kann, ist kein Bedienelement, sondern
            ein Versprechen. Der Satz über den Zeilen sagt, warum. -->
-      <div v-if="!chainUnlinkedPeriod" class="mt-6 flex flex-wrap items-center gap-2">
-        <span class="mr-1 text-sm text-ink-secondary">Wo steht es:</span>
-        <UButton
-          v-for="opt in stationOptions"
-          :key="opt.value"
-          size="sm"
-          :color="stations.includes(opt.value) ? 'primary' : 'neutral'"
-          :variant="stations.includes(opt.value) ? 'subtle' : 'outline'"
-          :aria-pressed="stations.includes(opt.value)"
-          class="rounded-full"
-          @click="toggleStation(opt.value)"
+      <!-- Zwei Zonen, und die Grenze ist eine Regel, keine Optik: alles, was
+           die MENGE festlegt, steht über der Zählzeile; was nur bestimmt, WIE
+           sie gelesen wird — die Sortierung —, steht bei der Liste. Die Regel
+           dahinter ist die schärfere Fassung von „nichts über dem
+           Bedienelement ändern": jede Zahl auf der Seite beschreibt die
+           Menge, die die Bedienelemente ÜBER ihr definieren. Deshalb bleibt
+           die Suche das letzte Element dieser Zone — ihr Platzhalter nennt
+           die Korpusgröße, und eine Zahl, die von Reglern unter ihr abhinge,
+           wäre falsch, sobald jemand sie benutzt. -->
+      <div class="group mt-6">
+        <!-- `sr-only`, nicht `hidden`: die Checkbox muss ein Element bleiben,
+             das `:checked` treffen kann — `peer-checked` am Panel und
+             `group-has-[:checked]` an der Zahl hängen daran. Ab md entscheidet
+             ohnehin `md:block` am Panel, und der Schalter verschwindet dort
+             mit seinem Label. -->
+        <input
+          id="filter-more"
+          v-model="filtersOpen"
+          type="checkbox"
+          class="peer sr-only md:hidden"
+          aria-controls="filter-more-panel"
         >
-          {{ opt.label }}
-        </UButton>
-        <UButton
-          v-if="stations.length"
-          size="sm"
-          color="neutral"
-          variant="ghost"
-          class="rounded-full"
-          @click="stations = []"
+        <label
+          for="filter-more"
+          class="tap-target inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-hairline bg-surface px-3 text-sm text-ink hover:border-baseline md:hidden"
         >
-          Alle Stationen
-        </UButton>
+          <UIcon
+            name="i-lucide-sliders-horizontal"
+            class="size-4 text-ink-muted"
+            aria-hidden="true"
+          />
+          Weitere Filter
+          <!-- Nur zugeklappt: aufgeklappt sagen die Chips und die Selects
+               selbst, was an ist, und die Zahl stünde dann über den
+               Bedienelementen, die sie zählt.
+               `group-has-*` statt `peer-checked`, weil die Zahl im Label
+               steckt und damit kein Geschwister der Checkbox ist — `peer-*`
+               erreicht nur Geschwister, `group-*` erreicht Nachfahren
+               (dasselbe Muster wie `group-open` an den <details>-Blöcken der
+               Seite).
+               Und `[input:checked]` statt des kurzen `group-has-checked`:
+               `:checked` trifft auch die ausgewählte `<option>` — und drei
+               <select> im Panel haben immer eine. Mit `:has(:checked)` galt
+               die Gruppe deshalb IMMER als aufgeklappt und die Zahl war nie
+               zu sehen; am 18.09.2026 so gemessen, bevor sie je jemand
+               bemerkt hätte. -->
+          <span
+            v-if="moreFilters"
+            class="rounded-full bg-accent-deep px-2 py-0.5 text-xs font-medium text-white group-has-[input:checked]:hidden"
+          >{{ moreFilters }}</span>
+        </label>
+
+        <div id="filter-more-panel" class="mt-3 hidden space-y-3 peer-checked:block md:mt-0 md:block">
+          <!-- Die Stationsleiste steht zuerst: „wo steht es" ist die gröbere
+               Frage, „was kann ich tun" schneidet quer hinein (§12.26).
+               Mehrfachauswahl, weil zwei Stationen nebeneinander eine
+               sinnvolle Frage sind („Vorlage oder schon Gesetz?") und weil
+               nichts auswählen bereits „alle" heißt — ein Chip „Alle" wäre
+               ein vierter Zustand für etwas, das der leere Zustand schon
+               sagt.
+               Weg, wo die Periode die Frage nicht beantworten kann (§12.27):
+               ein Chip, der nichts filtern kann, ist kein Bedienelement,
+               sondern ein Versprechen. Der Satz über den Zeilen sagt, warum. -->
+          <!-- Kein sichtbares „Wo steht es:" mehr vor den Chips (18.09.2026).
+               Die vier Wörter sind die Stationen selbst — wer „Begutachtung ·
+               Regierungsvorlage · Parlament · Bundesgesetzblatt" nebeneinander
+               sieht, liest die Achse aus ihren Werten. Der Name bleibt als
+               `aria-label` an der Gruppe: für ein Vorleseprogramm sind die
+               Chips sonst vier Knöpfe ohne Zusammenhang. -->
+          <div
+            v-if="!chainUnlinkedPeriod"
+            role="group"
+            aria-label="Wo steht es"
+            class="flex flex-wrap items-center gap-2"
+          >
+            <UButton
+              v-for="opt in stationOptions"
+              :key="opt.value"
+              size="sm"
+              :color="stations.includes(opt.value) ? 'primary' : 'neutral'"
+              :variant="stations.includes(opt.value) ? 'subtle' : 'outline'"
+              :aria-pressed="stations.includes(opt.value)"
+              class="rounded-full"
+              @click="toggleStation(opt.value)"
+            >
+              {{ opt.label }}
+            </UButton>
+            <UButton
+              v-if="stations.length"
+              size="sm"
+              color="neutral"
+              variant="ghost"
+              class="rounded-full"
+              @click="stations = []"
+            >
+              Alle Stationen
+            </UButton>
+          </div>
+
+          <!-- Feste Spuren statt `flex-wrap`, und `block` an jedem Select.
+               Ein natives <select> misst sich an seiner LÄNGSTEN Option: „Alle
+               Arten" stand 267 px breit da, weil „Verordnungsentwürfe und
+               andere" darunter in der Liste steht, „Nach Frist" 202 px wegen
+               „Meiste Stellungnahmen". Zusammen beanspruchten die vier
+               Selects 837 von 896 px, und wo die Leiste umbrach, entschied
+               der Zufall des Fensters statt der Entwurf. Jetzt entscheidet
+               das Raster: 272 + 112 + 256 px plus 24 px Lücken = 664 von
+               896. -->
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,17rem)_minmax(0,7rem)_minmax(0,16rem)]">
+            <div class="min-w-0">
+              <label for="filter-art" class="sr-only">Art des Entwurfs</label>
+              <TokenSelect id="filter-art" v-model="art" block>
+                <option v-for="opt in artOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </TokenSelect>
+            </div>
+
+            <div class="min-w-0">
+              <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
+              <TokenSelect id="filter-gp" v-model="selectedGp" block>
+                <option v-for="g in availableGps" :key="g" :value="g">
+                  GP {{ g }}
+                </option>
+              </TokenSelect>
+            </div>
+
+            <div class="min-w-0">
+              <label for="filter-ministry" class="sr-only">Ministerium</label>
+              <TokenSelect id="filter-ministry" v-model="ministry" block>
+                <option value="">Alle Ministerien</option>
+                <option v-for="m in ministries" :key="m.code" :value="m.code">
+                  {{ m.name || m.code }}
+                </option>
+              </TokenSelect>
+            </div>
+          </div>
+        </div>
+
+        <!-- Die zweite Achse, und sie bleibt auf dem Telefon sichtbar: „wo
+             kann ich jetzt etwas sagen" ist die Frage, mit der jemand
+             ankommt (§12.26). Ihre drei Optionen erklären sich selbst; der
+             Achsenname steht nur noch als `aria-label` da.
+             Sie teilt sich die Zeile mit der Suche, und das ist kein Rückfall
+             in die alte Leiste: die Suche steht rechts von ihr, also in der
+             Lesereihenfolge NACH ihr, und ihr Platzhalter darf weiter die
+             Menge zählen, die die Regler darüber und links von ihr übrig
+             gelassen haben. Unter md brechen beide untereinander — das
+             Segment misst 338 px, die Zeile 358.
+             `mt-5` gegen die `space-y-3` INNERHALB des Panels: hier verläuft
+             eine Gruppengrenze — Eingrenzung oben, die zweite Achse und die
+             Suche unten —, und mit denselben 12 px wie zwischen Chips und
+             Selects klebte das Segment am Schalter „Weitere Filter". -->
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+          <UFieldGroup role="group" aria-label="Was kann ich tun" class="shrink-0">
+            <UButton
+              v-for="opt in statusOptions"
+              :key="opt.value"
+              :color="statusFilter === opt.value ? 'primary' : 'neutral'"
+              :variant="statusFilter === opt.value ? 'subtle' : 'outline'"
+              :aria-pressed="statusFilter === opt.value"
+              @click="statusFilter = opt.value"
+            >
+              {{ opt.label }}
+            </UButton>
+          </UFieldGroup>
+
+          <!-- Zuletzt in dieser Zone, und das ist die Regel, nicht der
+               Geschmack: der Platzhalter nennt die Korpusgröße (Vertrauens-
+               signal nach kleineAnfragen) und zählt damit, was die Regler
+               DARÜBER übrig gelassen haben. Über sie gestellt, stünde dort
+               eine Zahl, die von Bedienelementen unter ihr abhängt.
+               Sie bekommt jetzt den ganzen Rest der Zeile statt eines
+               Streifens: das Feld SCHRUMPFTE bisher, je breiter das Fenster
+               wurde — 720 px bei 768, 366 px bei 896 —, weil es sich dort
+               eine Zeile mit Ressort und Sortierung teilte. Beide stehen
+               nicht mehr hier.
+               `min-w-80` und nicht `min-w-48`: mit 192 px Mindestbreite passt
+               das Feld schon bei 640 px neben das 338 px breite Segment und
+               stand dort dann 242 px schmal da — schmaler als bei 430 px, wo
+               es die ganze Zeile hat. Das ist dieselbe Krankheit wie vorher,
+               nur an einer neuen Stelle. Mit 320 px umbricht es stattdessen,
+               bis wirklich Platz ist (ab ~700 px), und wird von da an nur
+               noch breiter. -->
+          <UInput
+            v-model="q"
+            type="search"
+            icon="i-lucide-search"
+            :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
+            aria-label="Entwürfe durchsuchen"
+            class="min-w-80 flex-1"
+            :ui="{ base: 'min-h-11' }"
+          />
+        </div>
       </div>
 
-      <div class="mt-3 flex flex-wrap items-center gap-3">
-        <UFieldGroup role="group" aria-label="Status" class="shrink-0">
-          <UButton
-            v-for="opt in statusOptions"
-            :key="opt.value"
-            :color="statusFilter === opt.value ? 'primary' : 'neutral'"
-            :variant="statusFilter === opt.value ? 'subtle' : 'outline'"
-            :aria-pressed="statusFilter === opt.value"
-            @click="statusFilter = opt.value"
-          >
-            {{ opt.label }}
-          </UButton>
-        </UFieldGroup>
-
-        <div class="min-w-0">
-          <label for="filter-art" class="sr-only">Art des Entwurfs</label>
-          <TokenSelect id="filter-art" v-model="art">
-            <option v-for="opt in artOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </TokenSelect>
-        </div>
-
-        <div class="min-w-0">
-          <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
-          <TokenSelect id="filter-gp" v-model="selectedGp">
-            <option v-for="g in availableGps" :key="g" :value="g">
-              GP {{ g }}
-            </option>
-          </TokenSelect>
-        </div>
-
-        <div class="min-w-0 max-w-64">
-          <label for="filter-ministry" class="sr-only">Ministerium</label>
-          <TokenSelect id="filter-ministry" v-model="ministry">
-            <option value="">Alle Ministerien</option>
-            <option v-for="m in ministries" :key="m.code" :value="m.code">
-              {{ m.name || m.code }}
-            </option>
-          </TokenSelect>
-        </div>
-
-        <!-- Die Sortierung steht bei den Filtern, weil sie dasselbe tut:
-             sie formt die Liste darunter. Ganz rechts vor der Suche, weil
-             sie als einziges Bedienelement hier nichts wegnimmt. -->
-        <div class="min-w-0">
-          <label for="filter-sort" class="sr-only">Sortierung</label>
+      <!-- Die Zählzeile und die Sortierung auf einer Höhe, und das ist die
+           Grenze zwischen den beiden Zonen: darüber steht, was die Menge
+           FESTLEGT, hier steht, wie sie GELESEN wird.
+           Die Sortierung stand bis 18.09.2026 zwischen Ressort und Suche,
+           mit derselben Token-Optik wie die drei Filter daneben — nichts
+           unterschied dort das Bedienelement, das etwas wegnimmt, von dem,
+           das nur umreiht. Sie gehört zur Liste: „Bedienelemente, die
+           ändern, WIE das Ergebnis gelesen wird, gehören zu der Liste, die
+           sie filtern" (§12.26 / die Regel aus dem Stationswähler). Sie
+           nimmt nichts weg, also ändert sie die Zählzeile daneben auch
+           nicht — der Satz über die Verordnungsentwürfe, den sie auslöst,
+           steht unter ihr.
+           `aria-live` bleibt allein an der Zahl: läge der Wähler in der
+           Region, läse ein Screenreader bei jeder Sortierung die Zahl neu
+           vor, die sich gar nicht geändert hat. -->
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p class="text-sm text-ink-muted" aria-live="polite">
+          {{ countLabel }}
+        </p>
+        <div class="flex min-w-0 items-center gap-2">
+          <label for="filter-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
           <TokenSelect id="filter-sort" v-model="sort">
             <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
               {{ opt.label }}
             </option>
           </TokenSelect>
         </div>
-
-        <!-- The corpus size in the placeholder is the trust signal
-             (kleineAnfragen pattern) — and it tracks the active filters,
-             which is what q actually searches within. -->
-        <UInput
-          v-model="q"
-          type="search"
-          icon="i-lucide-search"
-          :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
-          aria-label="Entwürfe durchsuchen"
-          class="min-w-48 flex-1"
-          :ui="{ base: 'min-h-11' }"
-        />
       </div>
-
-      <p class="mt-6 text-sm text-ink-muted" aria-live="polite">
-        {{ countLabel }}
-      </p>
 
       <!-- Abonnieren steht hier, nicht mehr im Footer, und bewusst AUSSERHALB
            der Live-Region darüber: sonst liest ein Screenreader die Einladung
@@ -717,34 +941,41 @@ const countLabel = computed(() => {
         Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
         stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
       </p>
-      <!-- Two densities, CSS-switched (SSR-safe, no JS): generous cards on
-           mobile, a dense divider-list on md+ where scanning 100+ items
-           is the job. Each kind keeps its own card and row — the shared
-           thing is the order, not the shape. -->
-      <ul v-if="rows.length" class="mt-3 space-y-3 md:hidden">
-        <li v-for="row in rows" :key="row.key">
-          <DraftCard v-if="row.kind === 'me'" :draft="row.draft" />
-          <SecondRoundCard v-else-if="row.kind === 'vorlage'" :vorlage="row.vorlage" />
-          <RisConsultationCard v-else :consultation="row.item" />
-        </li>
-      </ul>
-      <div
-        v-if="rows.length"
-        class="mt-3 hidden overflow-hidden rounded-xl border border-hairline bg-surface md:block"
-      >
-        <ul class="divide-y divide-hairline">
-          <li v-for="row in rows" :key="`row-${row.key}`">
-            <DraftRow v-if="row.kind === 'me'" :draft="row.draft" />
-            <SecondRoundRow v-else-if="row.kind === 'vorlage'" :vorlage="row.vorlage" />
-            <RisConsultationRow v-else :consultation="row.item" />
-          </li>
-        </ul>
-      </div>
-      <div v-if="!rows.length && !stationConflict" class="mt-3">
+      <!-- Zwei Dichten und der Spaltenkopf stecken seit 18.09.2026 in
+           `EntryList` — dieselbe Liste rendert jetzt auch die Startseite,
+           und der Kopf muss mit den Zellen in `EntryItem` auf das Pixel
+           fluchten (§12.28). -->
+      <EntryList v-if="entries.length" :entries="entries" class="mt-3" />
+      <div v-if="!entries.length && !stationConflict" class="mt-3">
+        <!-- DIE LEERE SUCHE IST DIE STELLE, AN DER DIESES FELD IN DIE IRRE
+             FÜHRT. Es durchsucht Titel, Zitat, Ressort und Debattenname
+             (`/api/drafts`, §12.26) — kein Wort aus einem Dokument. Ein
+             Titel sagt aber nicht, was ein Sammelgesetz alles ändert: Wer
+             hier ein Thema eingibt und nichts bekommt, schließt „kommt
+             nicht vor", und genau dieser Fehlschluss ist der Grund, warum
+             es `/suche` gibt (§12.31). Der Begriff wird mitgenommen, damit
+             die Erholung ein Klick ist und kein zweites Tippen.
+
+             Die Beschreibung nennt die vier Felder, statt „Titel" zu
+             sagen: „Klimaschutz" liefert hier neun Zeilen, alle über den
+             RESSORTNAMEN (BMK), keine über ein Dokument — wer glaubt,
+             gesucht werde im Titel, hält das für einen Titeltreffer. -->
         <EmptyState
           title="Keine Entwürfe gefunden"
-          description="Andere Filter oder einen anderen Suchbegriff versuchen."
-        />
+          :description="
+            qDebounced
+              ? 'Dieses Feld durchsucht Titel, Zitat, Ressort und Debattennamen.'
+              : 'Andere Filter oder einen anderen Suchbegriff versuchen.'
+          "
+        >
+          <p v-if="qDebounced" class="text-sm text-ink-secondary">
+            <NuxtLink
+              :to="{ path: '/suche', query: { q: qDebounced } }"
+              class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+            >„{{ qDebounced }}“ im Volltext der laufenden Begutachtungen suchen</NuxtLink>
+            – dort werden Entwurfstext und Erläuterungen gelesen.
+          </p>
+        </EmptyState>
       </div>
 
     </template>

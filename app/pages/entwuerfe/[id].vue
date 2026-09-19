@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
+import { regulationStatusDe } from '#shared/utils/stations'
 
 /**
  * One Begutachtung without a Gegenstand at Parliament
@@ -98,14 +99,17 @@ const documents = computed(() => {
     </div>
     <template v-else-if="data">
       <div class="mb-4">
-        <!-- Back into the one list, filtered to this kind of row: since
-             17.09.2026 there is no separate list to return to
-             (docs/architecture.md §12.19). -->
+        <!-- Back into the one list, unfiltered: since 17.09.2026 there is
+             no separate list to return to (docs/architecture.md §12.19),
+             und der Rücklink heißt auf jeder Detailseite gleich. Bis
+             18.09.2026 filterte er auf `art=verordnung` — die Eingrenzung
+             gehört in die Filterleiste der Liste, nicht in den Weg
+             dorthin. -->
         <NuxtLink
-          to="/entwuerfe?art=verordnung"
+          to="/entwuerfe"
           class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
         >
-          ← Alle Verordnungsentwürfe
+          ← Alle Entwürfe
         </NuxtLink>
       </div>
 
@@ -177,15 +181,19 @@ const documents = computed(() => {
                dieselbe Karte, dieselbe Stelle, dieselben Gewichte.
 
                „Station 2 von 3" NUR während der Frist. Danach hat der
-               Entwurf die Begutachtung verlassen, und wohin er gegangen
-               ist, sieht von außen niemand — eine Zahl stünde dann für
-               etwas, das wir nicht wissen. Die Drei ist die des Verordnungs-
-               wegs auf /so-funktionierts (Entwurf · Begutachtung ·
-               Bundesgesetzblatt II); dass der Monitor die dritte Station
-               noch nicht verfolgt, sagt der Absatz darunter. -->
+               Entwurf die Begutachtung verlassen, und die dritte Station
+               benennt sich selbst: Seit 19.09.2026 sagt die Überschrift
+               „Kundgemacht", sobald der Abgleich mit dem Bundesgesetzblatt
+               eine Fundstelle hat (§12.32). Eine laufende Zählung daneben
+               wäre die dritte Angabe derselben Sache.
+
+               Die Drei ist die des Verordnungswegs auf /so-funktionierts
+               (Entwurf · Begutachtung · Bundesgesetzblatt II). Der Satz
+               darunter, der Station 3 als „verfolgt der Monitor bisher
+               nicht" auswies, ist weg — sie wird verfolgt. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 class="font-medium text-ink">
-              {{ data.active ? 'In Begutachtung' : 'Begutachtung beendet' }}
+              {{ regulationStatusDe(data.active, data.outcome?.state === 'kundgemacht') }}
             </h2>
             <p class="flex flex-wrap items-baseline gap-x-2 text-sm">
               <span v-if="data.active" class="text-ink-secondary">Station 2 von 3</span>
@@ -217,14 +225,12 @@ const documents = computed(() => {
                jetzt zwei verschiedene Orte — die fehlende Beteiligungsliste
                sagt der Handlungskasten unten dort, wo sie jemandem abgeht;
                dass die Nachverfolgung hier endet, steht hier. -->
-          <p
-            v-if="data.kind === 'verordnung'"
-            class="mt-3 max-w-prose text-sm text-ink-secondary"
-          >
-            Was danach kommt – Erlassung durch das Ministerium und
-            Kundmachung im Bundesgesetzblatt Teil II – verfolgt der Monitor
-            bisher nicht.
-          </p>
+          <!-- SEIT 19.09.2026 STEHT HIER DIE ANTWORT STATT DES
+               EINGESTÄNDNISSES. Der Satz davor lautete „… verfolgt der
+               Monitor bisher nicht" — ehrlich, und die Stelle, an der zwei
+               Drittel des Korpus ohne Rechenschaftsschicht endeten
+               (§12.32). -->
+          <BgblOutcomeBlock v-if="data.kind === 'verordnung'" :ris-id="data.id" :outcome="data.outcome" />
           <!-- Nach Fristende gibt es keinen Handlungskasten mehr, der sagen
                könnte, wohin eine Stellungnahme ging. Dann sagt es die Karte,
                einmal, im Perfekt — die Frage lautet jetzt nicht „wohin",
@@ -292,6 +298,17 @@ const documents = computed(() => {
           Ministerium selbst; der Datensatz im RIS nennt die einbringende Stelle.
         </p>
       </div>
+
+      <!-- Vor der Dokumentliste, und hier wiegt das mehr als auf der
+           Entwurfsseite: Diesem Verfahren fehlt die Kurzbeschreibung des
+           Parlaments, weil es nie ins Parlament kommt. Die Erläuterungen
+           sind damit die einzige Auskunft über den Zweck, die das Verfahren
+           überhaupt veröffentlicht — und 72,1 % der Verordnungssätze tragen
+           sie (`pnpm audit:verordnungen`). -->
+      <section id="erlaeuterungen" class="page-section scroll-mt-6" aria-labelledby="erlaeuterungen-heading">
+        <h2 id="erlaeuterungen-heading" class="section-heading">Was das Ressort begründet</h2>
+        <ExplanationsSection :ris-id="data.id" />
+      </section>
 
       <section class="page-section" aria-labelledby="dokumente">
         <h2 id="dokumente" class="section-heading">Dokumente</h2>

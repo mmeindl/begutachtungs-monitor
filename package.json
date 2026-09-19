@@ -16,6 +16,9 @@
     "audit:classifier": "vite-node scripts/classifier-audit.ts --",
     "audit:verordnungen": "vite-node scripts/verordnungen-corpus.ts --",
     "audit:stationen": "vite-node scripts/stations-corpus.ts --",
+    "audit:erlaeuterungen": "vite-node scripts/erlaeuterungen-corpus.ts --",
+    "audit:bgbl2": "vite-node scripts/bgbl2-corpus.ts --",
+    "audit:bgbl-station": "vite-node scripts/bgbl-station-corpus.ts --",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {

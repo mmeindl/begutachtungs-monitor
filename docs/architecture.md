@@ -203,10 +203,13 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 | `VolumeBar` | `label: string; value: number; max: number; href?: string` | Single-color horizontal quantity bar: track `accent-wash`, fill `accent`, 8 px tall, 4 px rounded on the right/square on the left, value at the end in ink (never in the data color), `tabular-nums` in the value column |
 | `MinistryBadge` | `code: string; name: string` | Ministry chip (code visible, full name as `title`/sr-only) |
 | `NewBadge` | – | „Neu" on a Begutachtung that began inside the last 7 days (`isNewArrival`); rendered by the call site's `v-if`, merges into the phrase that follows it on the cards (§12.22) |
-| `DraftCard` | `draft: DraftSummary` | Linked row card: title (2-line clamp), ministry, DeadlineBadge, statement count, arrival date |
+| `EntryItem` | `entry: EntryView; density?: 'card'\|'row'` | **Every list entry on the site, in one anatomy** (§12.28): Titel · Kennung · Stellungnahmen · Stand, in fixed zones. `card` under `md`, `row` in the dense sheet above it. Knows nothing about the kinds — what each kind puts in each zone is decided in `shared/utils/entryView.ts` |
+| `EntryList` | `entries: EntryView[]; ordered?: boolean; lead?: string` | **Every list of them** (§12.28): Karten unter `md`, ab `md` ein Blatt mit Spaltenkopf und Trennlinien, rein per CSS umgeschaltet. Stellt beide Dichten von `EntryItem`, damit keine Seite das selbst tut. `ordered` → `ol`, nur wo die Reihenfolge die Aussage ist; `lead` benennt die erste Spalte, wenn die Zeilen keine Entwürfe sind |
+| `EntryState` | `state: EntryState; align?: 'left'\|'right'` | Zone 4: the state over what pins it down. One component for countdown, offenes Vorlagen-Fenster and every reached station — only a row someone can still act on is loud (`text-base` semibold + tone dot, critical wash at ≤3 days); everything closed is calm `text-sm` ink without pill or dot |
 | `TraceTimeline` | `steps: TraceStep[]` | Vertical process timeline: date, text, link chips |
 | `DocumentList` | `documents: DraftDocument[]; source?: string` | Document rows: title + hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons and chips act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
-| `LawDiffSection` | `gp: string; inr: number` | "Was sich nach der Begutachtung geändert hat": lazy client fetch of `/diff`; filter chips (UFieldGroup), search (UInput), one folded group per Gesetz with count pills, rows with geändert / redaktionell / neu / entfallen / unverändert and an expandable word-level diff; both sources linked, without a licence label — the Regierungsvorlage is a licensed dataset, the Ministerialentwurf belongs to the excluded Begutachtungsverfahren, so one line cannot cover both (§13.1); a note above the list names laws only one of the two documents carries. Anchor `#textvergleich`, linked from the outcome card |
+| `LawDiffSection` | `gp: string; inr: number` | "Was sich nach der Begutachtung geändert hat": lazy client fetch of `/diff`; filter chips (UFieldGroup), search (UInput), one folded group per Gesetz with count pills, rows with geändert / redaktionell / neu / entfallen / unverändert and an expandable word-level diff; both sources linked, without a licence label — the Regierungsvorlage is a licensed dataset, the Ministerialentwurf belongs to the excluded Begutachtungsverfahren, so one line cannot cover both (§13.1); a note above the list names laws only one of the two documents carries; provenance sits in `SectionCredits` at the foot, not as a paragraph above the comparison; `Z 1, Z 2 …` is named in the per-draft intro sentence and `redaktionell` is defined once on /so-funktionierts, which the intro links to („Wie wir vergleichen“). Anchor `#textvergleich`, linked from the Regierungsvorlage section |
+| `SectionCredits` | default slot | Source line at the foot of a comparison section: foreign documents, licence, and — rendered by the component itself, so both sections say it identically — „Markierung: Begutachtungs-Monitor“ |
 | `StatementsPanel` | `gp: string; inr: number; summary: StatementsSummary` | Summary tiles (total/orgs/private/non-public), top organisations; full list lazy via the statements route, paginated client-side (`ListMore`, steps of 10), organisation search above 20 rows, persons as "Privatperson" |
 | `ListMore` | `visible: number; total: number; step: number; allAbove?: number` | Foot of a client-paginated list: "10 von 42 angezeigt" as the live region, the step button, and "Alle N anzeigen" above `allAbove` remaining |
 | `EmptyState` | `title: string; description?: string` | Empty state |
@@ -250,6 +253,20 @@ abbreviations (citation formats like "133/ME") are only partially
 achievable; a formal audit with real Austrian users is pending (§12).
 
 Look: generous whitespace, cards = `bg-surface` + hairline border + `rounded-xl`, at most `shadow-sm`, visible `focus-visible` rings, numbers formatted de-AT, date format `24.08.2026`.
+
+**What a sheet may hold (18.09.2026):** rows (statement lists, document
+lists) or one object with a job of its own (the station rail, the deadline
+CTA) — never prose. Body text stands free under its section heading. The
+case that settled it: the Regierungsvorlage's two outcome cards, a leftover
+from when that station was a sub-heading inside the Begutachtung and the
+card's edge was the only thing separating it. Once a station has its own
+`page-section` heading, a border around its lead paragraph fences in a
+second time what the heading already separates — the argument `page-section`
+itself makes against a per-section background. Both branches are prose now,
+like "Im Parlament" and "Im Bundesgesetzblatt"; with the box went the
+repeated statement count, which the section directly above carries in full
+and which was in the past tense against a Frist that can still be running
+(7 of 91 in GP XXVIII have both windows open at once).
 
 Viz rules (from the dataviz skill, binding for everything future): text never carries the data color; one series → no legend; status colors never as "series 4"; **every future multi-color categorical palette must pass `validate_palette.js`**, never by eye.
 
@@ -3758,6 +3775,13 @@ kursiert, ist kein Datensatz und wird keiner.
 
 ### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
 
+> **Teilweise revidiert durch §12.28 (18.09.2026).** Der Satz weiter unten,
+> „jede Art behält ihre eigene Karte und Zeile — geteilt ist die Ordnung,
+> nicht die Form", gilt nur noch für die **Typen**: drei Typen, drei
+> Adapter, nie eine gepoolte Summe. Die *Form* ist seither eine einzige
+> (`EntryItem`), weil sechs Komponenten für dieselben Fakten sechs Plätze
+> ergaben — gemessen 168 px Drift der Stellungnahmen-Zahl über 14 Zeilen.
+
 §12.16 hat die Begutachtungen ohne Gegenstand auf eine **eigene** Seite
 gelegt, mit einem Argument, das ich weiter für richtig halte: Zusammenlegen
 ändert, was „Alle Entwürfe", die GP-Summen und die Stellungnahmen-Summen
@@ -4584,6 +4608,868 @@ Liegenbleiben trennen, und eine Warnung auf jeder zweiten Zeile wäre selbst
 wieder eine Aussage. Diese Periodengruppe bleibt damit die schwächste Stelle
 der Nachverfolgung; für Arbeitspaket 6 ist sie der Grund, die Basisraten bei
 GP XXII zu beginnen.
+
+### 12.28 Eine Zeile, vier Zonen
+
+Bis zum 18.09.2026 trugen die beiden Listen **sechs Komponenten für drei
+Zeilenarten** — `DraftCard`/`DraftRow`, `RisConsultationCard`/`Row`,
+`SecondRoundCard`/`Row` —, und jede ordnete dieselbe Handvoll Fakten anders
+an. Der Befund, der sie beendet hat, ist messbar. Auf
+`/entwuerfe?status=open`, 14 Zeilen in einem Bildschirm, aus dem DOM
+gelesen:
+
+| Zeile | „… Stellungnahmen" beginnt bei |
+| --- | --- |
+| 132/ME „Social-Media-Verbot" | x = 556 |
+| Abwasseremissionsverordnung | x = 474 |
+| 135/ME (Neu) | x = 446 |
+| Ökosoziale Kriterien-VO (Neu) | x = 513 |
+| 117/ME | x = 392 |
+| 589 d.B. | x = 550 |
+| 96/ME | x = 389 |
+
+**168 px Drift.** Die Ursache ist nicht Gestaltung, sondern Bau: die Zahl
+war das *letzte Token einer Fließtextzeile variabler Länge*, also eine
+Funktion aus Titellänge, Vorhandensein eines Debattennamens und der Frage,
+ob „Neu" gefeuert hat. Eine Zahl, die keine Spalte bilden kann, kann nicht
+verglichen werden — und Vergleichen ist das Einzige, wofür eine Zahl da ist.
+
+Drei weitere Befunde aus demselben Bild: die rechte Spalte trug unter EINEM
+Filter **fünf typografische Behandlungen** (fetter Countdown mit Wash,
+fetter Countdown ohne, gelbe Pille mit Datum, zweizeiliges Graudatum,
+einzeiliges Graudatum); **zwei Wortlaute für einen Fakt** („Endete am
+14.09.2026" auf Verordnungszeilen, „Frist endete 04.09.2026" 200 px darunter
+auf Entwurfszeilen); und die dichten ME-Zeilen trugen **gar kein
+Startdatum**, die RIS-Zeilen schon. Dazu waren die gelben Stationspillen die
+lautesten Objekte der Seite — lauter als ein Drei-Tage-Countdown zwei Zeilen
+darüber.
+
+#### Was die Klasse auflöst: drei Dinge, die vorher eines waren
+
+- **Position** folgt der Identität des Fakts. Eine Zahl steht in der
+  Zahlenspalte, in jedem Abschnitt, immer.
+- **Lautstärke** folgt dem, was die Leserin tun kann. Nur ein offenes
+  Fenster ist laut. Nicht die Sortierung, nicht der Abschnitt.
+- **Reihenfolge** folgt der Sortierung, und sonst nichts.
+
+Der verworfene Gegenentwurf war „die laute Zone folgt der Sortierung" (nach
+Frist → Countdown laut, `?sort=stellungnahmen` → Zahl laut). Er scheitert an
+zwei Dingen. Die Zeile **reist**: Startseite, `/entwuerfe`, Screenshot in
+einer Mail — eine Zeile, die unter anderer Überschrift etwas anderes
+bedeutet, kann niemand lernen. Und er war schon gebaut, als
+`emphasis="volume"`: die Zahl in den rechten Slot zu heben **verdrängte dort
+den Ausgang**. „846 Stellungnahmen → Bisher keine Regierungsvorlage" IST
+aber die Nachverfolgung; §12.21 sagt es selbst — was diesen Abschnitt
+aufhörte, eine Rangliste zu sein, waren die Chips. Eine gereihte Liste zeigt
+ihren Schlüssel durch die Reihenfolge; die Zahl braucht Ausrichtung, keine
+Vergrößerung.
+
+#### Die Anatomie
+
+Dicht (`md+`): `[Titel + Kennung, flex] [Stellungnahmen, 7–8 rem, rechts]
+[Stand, 11–14 rem, rechts]`. Karte: dieselbe Reihenfolge, ab `sm` als rechte
+Spalte neben dem Titelblock, darunter als eine Zeile — Zahl links, Stand
+rechts.
+
+| Zone | Ministerialentwurf | Verordnungsentwurf u. a. | Regierungsvorlage ohne Begutachtung |
+| --- | --- | --- | --- |
+| 1 Titel | Titel | Titel | Titel |
+| 2 Kennung | `Ministerialentwurf 132/ME · BMWKMS · „Social-Media-Verbot"` | `Verordnungsentwurf · BMLUK` | `Regierungsvorlage 594 d.B. · ohne Begutachtung` |
+| 3 Stellungnahmen | die Zahl, `0` inbegriffen | „nicht gezählt" — nie eine Ziffer | die Zahl; „nicht abrufbar", wenn der Abruf scheiterte |
+| 4 Stand | Countdown → Station | Countdown → „Begutachtung abgeschlossen" | „Stellungnahme möglich" |
+
+**Der Stand steht vor der Zahl.** Auf der Karte oben rechts, die
+Stellungnahmen darunter; in der dichten Zeile als äußerste rechte Spalte,
+die Zahl davor. Umgekehrt stand es im ersten Anlauf, und die Rangfolge
+stimmte nicht: zuoberst liest sich als „das Wichtigste", und das Wichtigste
+an einer Zeile ist, ob ich noch etwas tun kann — nicht, wie viele andere
+schon etwas getan haben. Auch im Abschnitt, der nach der Zahl reiht: dort
+trägt die REIHENFOLGE die Reihung.
+
+**Zone 4 trägt immer zwei Zeilen: der Zustand, darunter das, was ihn
+festmacht** — beide im selben Kasten, weil „Kundgemacht" und „BGBl. I Nr.
+69/2026" eine Aussage und ihr Beleg sind.
+
+| Lage | Zeile 1 | Zeile 2 |
+| --- | --- | --- |
+| Frist läuft | `Noch 3 Tage` | `bis Mo., 21.09.2026` |
+| Fenster offen ohne Frist | `Stellungnahme möglich` | `zur Vorlage seit 08.07.2026` |
+| Begutachtung vorbei, nichts dahinter | `Begutachtung abgeschlossen` | `Frist endete 14.09.2026` |
+| Keine Regierungsvorlage | `Bisher keine Regierungsvorlage` | `Frist endete 04.09.2025` |
+| Regierungsvorlage liegt vor | `Regierungsvorlage liegt vor` | `594 d.B.` |
+| Im Parlament behandelt | `Im Parlament behandelt` | `594 d.B.` |
+| Kundgemacht | `Kundgemacht` | `BGBl. I Nr. 69/2026` |
+
+Vier Regeln stecken darin. **Ein Wortlaut je Fakt** — `Frist endete …`
+überall, „Endete am …" ist weg. **Der Wochentag steht nur auf einem
+künftigen Datum**: man plant um eine Frist herum, ein vergangenes Datum
+schlägt man nach. **Auf einer erreichten Station belegt die Fundstelle, nicht
+das Fristende** — zwei Fakten in einem Slot waren die alte Vermischung; bei
+„bisher keine Regierungsvorlage" gibt es keine Fundstelle, und dort IST die
+verstrichene Zeit die Aussage. Und **„Zweite Runde" verlässt die Zeile**: das
+handlungsfähige Wort ist `Stellungnahme möglich`, und „zweite" wäre auf einer
+Vorlage ohne Begutachtung schlicht falsch. Als Überschrift und Filter, wo es
+eine MENGE benennt, bleibt es.
+
+#### Abwesenheit, die sich nicht als Defekt liest
+
+Der schwierigere Teil, und der Grund, warum die Zuordnung in
+`shared/utils/entryView.ts` liegt und nicht in einer Komponente: sie ist
+testbar (`tests/entryView.test.ts`).
+
+- **Zone 3 auf einer RIS-Zeile sagt „nicht gezählt"**, nie eine Ziffer —
+  weder „0" (hieße „niemanden interessiert" über zwei Dritteln des Korpus)
+  noch „–" (bei der Statistik Austria das Zeichen für *exakt null*).
+
+  Das ist die dritte Fassung dieses Textes, und die beiden verworfenen
+  ergeben die Regel dahinter. **„nicht veröffentlicht"** las sich neben
+  einer laufenden Frist als „noch nicht" — als würde nachgereicht, was nie
+  erscheinen wird. **„Stellungnahmen ans Ministerium"** sagte, WOHIN eine
+  Stellungnahme geht: wahr, aber die Antwort auf eine Frage, die diese
+  Spalte nicht stellt — und darum zugleich zu lang und zu unscharf. Die
+  Spalte heißt „Stellungnahmen" und fragt „wie viele"; die wahre Antwort
+  darauf ist, dass es die Zahl nicht gibt, weil sie niemand führt.
+
+  **Eine Zelle beantwortet die Frage ihrer Spalte** — das ist die
+  übertragbare Regel. Der Einreichweg geht dabei nicht verloren: die
+  Detailseite sagt ihn in beiden Zuständen ganz („Eine Stellungnahme geht
+  hier direkt an das Ministerium …"), und die Feeds tragen ihn über
+  `risFilingNote` weiter, wo eine ganze Zeile Platz hat und kein Spaltenkopf
+  eine andere Frage stellt. Und „nicht gezählt" enthält **keine Ziffer**:
+  das Auge, das die Zahlenspalte abfährt, überspringt die Zeile — richtig
+  so, sie nimmt am Vergleich nicht teil.
+- **Zone 4 auf einer RIS-Zeile endet mit der Begutachtung.** Das ist ihre
+  wahre Endstation, keine fehlende. Über den Korpus steht sie auf ~200
+  Zeilen gleich — für sich genommen Deko —, aber sie steht zwischen
+  Entwürfen, die etwas anderes sagen, und die leere Zelle wäre die einzige
+  Variante, die als Defekt gelesen würde.
+- **Kein Ressort auf einer Vorlage**, also kein Token. Als eigene dichte
+  Spalte hinterließ es dort ein sichtbares Loch; ein fehlendes Token in
+  einer Zeile sieht man gar nicht. Deshalb ist das Ressort jetzt Klartext in
+  Zone 2 statt eines Badges in einer eigenen Spalte.
+- **„ohne Begutachtung" nur, wo es geprüft ist.** Die Notiz hing bis
+  18.09.2026 allein an einem fehlenden `preconst`-Zeiger — und der fehlt auf
+  GP XXVIII bei 32 von 117 Regierungsvorlagen, ohne damit etwas über das
+  Verfahren zu sagen (`api-exploration.md` §101). Der Zeiger entscheidet
+  weiterhin über das *Ziel* der Zeile (eigene Seite oder Parlament), über die
+  *Aussage* entscheidet jetzt eine Gegenprobe gegen Liste 81:
+  Titelähnlichkeit gegen jeden Entwurf, der vor dem Einlangen begann
+  (`server/utils/precedingDraft.ts`, kalibriert an den 85 belegten
+  ME→RV-Paaren derselben Periode). Findet sie nichts, steht die Notiz und ist
+  zweifach belegt; findet sie einen plausiblen Entwurf, verlinkt die Zeile
+  genauso hinaus und sagt nichts dazu. Die Prüfung ist absichtlich in die
+  vorsichtige Richtung unscharf: eine zurückgehaltene Notiz kostet eine
+  Information, eine falsche behauptet öffentlich etwas über ein
+  Regierungsvorhaben (`begutachtung-uebersprungen.md` §6).
+- **Ohne gelesene Kette** sagt die Zeile `Begutachtung abgeschlossen`, nicht
+  „bisher keine Regierungsvorlage" — der schwächste Stand, den die Belege
+  tragen (§12.27 auf Zeilenebene).
+
+#### Der Kasten steht immer — nur die Füllung wechselt
+
+Der erste Anlauf setzte nur den kritischen Zustand in einen Kasten und alles
+Übrige als freien Text. Damit **variierte die Form**, und eine Spalte, deren
+Form je Zeile wechselt, liest sich nicht als Spalte: derselbe Fehler, den
+dieser Abschnitt eine Ebene höher auflöst, eine Ebene tiefer wiederholt.
+Seit 18.09.2026 steht der Kasten auf jeder Zeile, über **beiden** Zeilen des
+Stands, und variiert wird nur der Grund:
+
+| Ton | Grund | gilt für |
+| --- | --- | --- |
+| kritisch | `status-critical/15` | Frist ≤ 3 Tage |
+| ernst | `status-serious/15` | Frist ≤ 7 Tage |
+| neutral | `accent-50` | offenes Fenster ohne Eile |
+| abgeschlossen | `ink-muted/15` | **jeder** erreichte Stand |
+
+Drei Entscheidungen stecken darin.
+
+**`accent-50`, nicht `accent-wash`.** Die offene Liste ist typischerweise 13
+Zeilen lang, davon eine kritisch. Mit dem kräftigen `accent-wash` (#cde2fb)
+stünden zwölf satte blaue Kästen neben einem blassen roten — die Farbe, die
+am seltensten vorkommt, muss die auffälligste sein, sonst ist die Spalte
+Dekoration.
+
+**Ein Grau für alles Abgeschlossene**, „Kundgemacht" wie „Bisher keine
+Regierungsvorlage". Das ist die Anti-Punktestand-Regel, die `OutcomeChip`
+schon durchgesetzt hat: den Erfolg hervorzuheben oder das Schweigen zu
+dämpfen wäre beides ein Urteil (Framing-Regel). **Gelb (`mark-wash`) bleibt
+draußen** — in Listen hat der Textmarker genau eine Aufgabe, „Neu"; als
+Grund jeder abgeschlossenen Zeile bedeutete er nichts mehr, und auf
+`?station=bgbl` wären das 84 gelbe Kästen.
+
+**Der Punkt ist weg.** Er war der zweite Tonträger neben dem Grund und im
+eingefassten Kasten nur noch Rauschen. „Noch 3 Tage" sagt die Dringlichkeit
+in Worten, also reitet die Bedeutung weiterhin nicht auf Farbe allein
+(1.4.1).
+
+**Beide Zeilen in `text-ink`.** Auf einem Wash bleibt nur ink AAA —
+`ink-secondary` landet bei 6,0:1, `ink-muted` bei 5,6:1. Die Hierarchie
+zwischen den Zeilen trägt deshalb die GRÖSSE, was die Regel des
+Designsystems ohnehin ist.
+
+**Der Kasten misst sich an seinem eigenen Inhalt**, nie an seinem Container.
+Das war zweimal derselbe Fehler: auf der Karte `w-full` im `items-end`-Stapel
+— da erbte er die Breite der Stellungnahmen-Zeile UNTER ihm —, in der
+dichten Zeile die feste Spaltenbreite, wodurch aus dem Stand ein grauer
+Balken wurde. Die Spalte ist fest, der Kasten sitzt rechts darin.
+
+#### Ausrichtung und Schriftgrad: je Dichte eine Regel
+
+**Unter `sm` ist alles linksbündig.** Dort steht der Aside nicht neben dem
+Titel, sondern unter ihm, und rechtsbündiger Text unter linksbündigem Text
+hat keine Kante, an der er sich ausrichten könnte — er hängt nur am rechten
+Rand. Ab `sm` sitzt er in seiner eigenen Spalte und richtet sich nach rechts
+aus, in der dichten Zeile immer. `EntryState` hat dafür **kein `align`-Prop**:
+`text-align` erbt, und ein Prop müsste jeden dieser drei Fälle noch einmal
+benennen, wo das Erben sie schon kennt. Das `ps-2.5`/`pe-2.5` an der Zahl
+entspricht dem `px-2.5` des Kastens — so fluchtet die Textkante der Zahl mit
+der Textkante IM Kasten darüber, auf der Seite, an der beide ausgerichtet
+sind.
+
+**Ein Schriftgrad je Zone.** „nicht gezählt" stand zuerst eine Stufe unter
+der Zahl, die es vertritt (`text-xs` gegen `text-sm`). Das ist dieselbe
+Varianz, gegen die dieser Abschnitt geschrieben ist, nur innerhalb einer
+Zelle: die Zelle steht an derselben Stelle für dieselbe Frage und gehört
+darum in denselben Grad. Dass dort keine Zahl steht, sagen die Farbe
+(`ink-secondary` gegen ink) und das fehlende Ziffernbild — zwei Träger
+reichen, ein dritter kostet die Ruhe der Spalte.
+
+#### Nicht gebaut: der Kasten um die Stellungnahmen
+
+Naheliegend, und trotzdem falsch: die Zahl in denselben farbigen Kasten zu
+setzen wie den Stand. Drei Gründe.
+
+**Der Kasten bedeutet etwas.** Seine Farbe ist die Dringlichkeit des
+Verfahrens. Eine Zahl hat keine Dringlichkeit — „166 Stellungnahmen" auf
+rotem Grund behauptete, die Zahl sei kritisch, und auf grauem, sie sei
+erledigt. Die Farbe gehört zu einer Aussage, die die Zahl nicht macht.
+
+**Zwei Kästen sind kein Kasten.** Der Grund, warum die Statusspalte über
+hundert Zeilen funktioniert, ist ihre Seltenheit: EIN eingefasstes Objekt je
+Zeile. Bekäme jede Zeile zwei, wäre die Seite ein Raster aus Chips, und
+hervorgehoben wäre nichts mehr — genau der Zustand, aus dem die gelben
+Stationspillen geholt wurden.
+
+**Eine Zahl wird durch Ausrichtung verglichen, nicht durch Einfassung.** Die
+Spalte lebt davon, dass 846, 166 und 0 dieselbe rechte Kante haben. Ein
+Kasten legte um jede Zahl eine eigene, unterschiedlich breite Kante — die
+Ränder konkurrierten mit der Ziffernflucht, die der einzige Zweck der Spalte
+ist. Zahlen bekommen `tabular-nums` und eine Kante; Zustände bekommen einen
+Grund. Das ist die Arbeitsteilung.
+
+#### Hierarchie: genau zwei Dinge dürfen laut sein
+
+Der **Titel** (laut durch Größe, nie durch Farbe) und **der Kasten in Zone
+4** — laut aber durch seinen GRUND, nicht durch seinen Schriftgrad. Zone 4
+Zeile 1 steht in jedem Zustand in `text-sm` medium, auch der laufende
+Countdown, der zuerst eine Stufe größer gesetzt war: sobald die Farbe die
+Dringlichkeit trägt, ist die Größe ein zweiter Träger derselben Aussage, und
+die Spalte wippt dann zeilenweise zwischen zwei Graden — die Silhouette, für
+die der Kasten da ist, ist damit wieder hin. Alles Übrige: Zahl `text-sm`
+semibold ink, Zeile 2 `text-xs`, Kennung `text-sm` secondary mit nur dem
+Debattennamen in ink.
+
+Über hundert Zeilen findet das Auge damit zuerst den roten Kasten, dann die
+blauen, dann liest es Titel; eine abgeschlossene Liste ist eine ruhige,
+gleichförmige Statusspalte. Die Nachverfolgung verliert dadurch nichts: ihr
+Träger sind die WORTE dieser Spalte und die zwei Abschnitte, die es für sie
+gibt — nie die Farbe.
+
+#### Zwei Folgen, die dazugehören
+
+- **`DraftChain` trägt jetzt `rvDate`.** Eine Zeile in zweiter Runde hat
+  keine Frist, an der sie sich datieren könnte, und das einzige Datum, das
+  sie hat, ist das Einlangen der Vorlage. Es kostet keinen Abruf: die
+  Vorlagenliste, die `stationMap.ts` ohnehin für den Hausstatus zieht, trägt
+  es in derselben Zeile.
+- **Jede Liste hat ab `md` einen Spaltenkopf** — `Entwurf ·
+  Stellungnahmen · Stand`. Eine Tabelle benennt ihre Spalten einmal; erst
+  dadurch dürfen die Zellen darunter ihre Einheitswörter ablegen (die Karte
+  unter `md` hat keinen Kopf und trägt „165 Stellungnahmen" weiterhin ganz).
+
+  **Revidiert am 18.09.2026.** Hier stand: „nur dort — über fünf
+  Startseiten-Karten wäre ein Spaltenkopf mehr Gerüst als Inhalt." Das
+  Argument zählte die Zeilen und übersah, was der Kopf tut: er ist die
+  Bedingung dafür, dass die Zellen ihr Einheitswort ablegen, und ohne ihn
+  fluchten die Ziffern nicht — die Startseite behielt also die Kartenform
+  mit dem Stand ÜBER der Zahl, während dieselben Zeilen auf `/entwuerfe`
+  die Zahl links vom Stand trugen. Zwei Anordnungen für eine Anatomie,
+  einen Klick auseinander. Dazu kommt, was die Startseite von `/entwuerfe`
+  unterscheidet: dort sind es **vier Listen untereinander**, und die
+  Reihung nach Stellungnahmen ist nur zu lesen, wenn 846 und 12 über eine
+  Abschnittsgrenze hinweg an derselben Kante stehen. Ein Kopf je Abschnitt
+  kostet 29 px.
+
+- **Der Titel steht ganz da — kein `truncate`, kein `line-clamp`, in keiner
+  Dichte.** Die dichte Zeile kürzte auf eine Zeile, die Karte klammerte auf
+  zwei; beides ist am 18.09.2026 gefallen.
+
+  Gemessen über alle 336 Titel: Median 50 Zeichen, p90 117, Maximum 497.
+  Eine gekürzte Zeile zeigte damit **31 %** der Titel vollständig, zwei
+  Zeilen 75 %. Entscheidend ist aber nicht der Anteil, sondern WO gekürzt
+  wird: Amtstitel sind vorne Formel und hinten Sache („Verordnung, mit der
+  die GAP-Strategieplan-Anwendungsverordnung …", „Bundesgesetz über die
+  Bundesstaatsanwaltschaft; Bundesgesetz zur Ein…"). Eine Kürzung von
+  hinten nimmt genau das Unterscheidende weg, und „welcher Entwurf ist
+  das" ist die Frage, für die jemand eine Liste überfliegt. Eine ruhige
+  Liste, in der man den Gegenstand nicht erkennt, hat nichts gewonnen.
+
+  **Der Preis ist gemessen und angenommen:** 85 der 336 Titel brauchen drei
+  Zeilen oder mehr, einer davon vierzehn — eine Weinbau-Verordnung mit 497
+  Zeichen. Solche Zeilen sind hoch und brechen den Takt der Liste. Die
+  Entscheidung dagegen ist, dass die Zeilenhöhe dann ehrlich über den Titel
+  ist, den das Amt vergeben hat; die Kürzung war es nicht. Damit ist das
+  hier zugleich die Messlatte für das Arbeitspaket **„sprechende Namen"**:
+  es hat die TITEL zu kürzen, nicht ihre Anzeige.
+
+  **Gebaut als `EntryList`**, nicht als kopiertes Markup: der Kopf stand
+  sonst an fünf Stellen und müsste mit den Zellen in `EntryItem` auf das
+  Pixel fluchten. Die zwei Spaltenbreiten sind deshalb `@utility
+  entry-col-count` / `entry-col-state` in `main.css` — eine Verabredung
+  zwischen zwei Dateien, die niemand prüft, ist keine; ein Kopf, der um
+  8 px neben seiner Spalte steht, behauptet eine Ausrichtung, die es nicht
+  gibt. Der Kopf der ersten Spalte ist benennbar (`lead`), weil der
+  Abschnitt „Zweite Runde" Regierungsvorlagen listet und kein Gerüst dem
+  Inhalt widersprechen darf.
+
+#### Was das an §12.19 revidiert — und was nicht
+
+§12.19 sagt: „jede Art behält ihre eigene Karte und Zeile — geteilt ist die
+Ordnung, nicht die Form." Die zweite Hälfte davon ist hiermit aufgehoben,
+die Begründung dahinter nicht. Sie war gegen das **Erfinden leerer Felder**
+geschrieben: `RisConsultation` darf keine nullbaren `citation`-,
+`statementCount`- und `chain`-Felder bekommen, damit eine Form auf alles
+passt — genau daraus entsteht „0 Stellungnahmen" über zwei Dritteln des
+Korpus. Das gilt weiter und ist im Code so gebaut: drei Typen, drei Adapter,
+**keine gepoolte Summe**. Geteilt ist die *Anatomie*, und jede Abwesenheit
+darin ist benannt, je Art, an einer Stelle.
+
+#### Nicht gebaut
+
+Keine Farbe je Ausgang (grün Gesetz, rot keine RV) — Framing-Regel: Erfolg
+und Liegenbleiben in einer Tinte, Farbe bekommt nur Dringlichkeit. Kein
+gemeinsames Wort für zwei verschiedene offene Fenster: `Noch 12 Tage` und
+`Stellungnahme möglich` müssen verschieden heißen, ein hartes Datum und ein
+undatiertes Fenster sind verschiedene Fakten, und „Offen" verstecke genau
+das, was sie unterscheidet. Kein Countdown UND eine Station auf derselben
+Zeile — ein Zustand zur Zeit. Keine berechnete Spalte „X Monate ohne
+Vorlage": `noRvVerdictDe` ist ein Satz der Detailseite mit seiner
+Latenzklammer, auf einer Liste würde daraus der Punktestand, den die
+Framing-Regel verbietet.
+
+**Offen geblieben:** die Zeilenhöhe schwankt jetzt mit der Titellänge, und
+bei den längsten Verordnungstiteln stark — siehe oben, bewusst. Ebenso: auf
+der Karte stehen Zahl und Einheitswort in einer Zeile, rechtsbündig — die Ziffern fluchten dort also nicht untereinander,
+nur ihre rechte Kante tut es. Auf dem Telefon, wo die Karte seit 18.09.2026
+die einzige Fassung ist, ist das der bessere Tausch gegen zwei zusätzliche
+Zeilen pro Karte; der Vergleichsfall ist die dichte Zeile, und dort ist die
+Spalte echt. Ebenso bewusst in Kauf genommen: bei genau 768 px bricht
+`Stellungnahme möglich` auf zwei Zeilen um. Die Spalte darf das, seit die
+Pille weg ist — und die Alternative wäre gewesen, dem Titel weitere 40 px zu
+nehmen, der bei 768 px ohnehin schon bei ~38 Zeichen abschneidet.
+
+### 12.29 Die Erläuterungen auf der Seite: der erste Schritt der Relevanzprüfung
+
+Die Seite hatte für das größte Dokument des Verfahrens einen PDF-Link. Wer
+einen neuen Entwurf prüft, fängt aber genau dort an — erst den **Allgemeinen
+Teil der Erläuterungen** überfliegen (was soll das Gesetz?), dann den
+Gesetzestext oder die Textgegenüberstellung, und erst bei einem Treffer den
+Besonderen Teil zum einzelnen Paragraphen. Schritt 2 lieferte die Seite seit
+§12.13, Schritt 1 nicht.
+
+**Warum die Kurzbeschreibung des Parlaments das nicht abdeckt.** Sie steht
+unter „Worum geht es?" und bleibt dort: Sie ist die Zehn-Sekunden-Auskunft.
+Sie ist aber für den parlamentarischen Betrieb geschrieben, nicht die
+Begründung des Ressorts — und einem **Verordnungsentwurf fehlt sie ganz**,
+weil er nie ins Parlament kommt. Auf der RIS-Hälfte des Korpus, zwei Dritteln
+aller Verfahren, sind die Erläuterungen damit die einzige Auskunft über den
+Zweck, die das Verfahren überhaupt veröffentlicht.
+
+**Kein Sprachmodell, ein Parser.** Was auf der Seite steht, sind die Absätze
+des Ressorts in seiner Reihenfolge. Das RIS führt die Erläuterungen als
+eigenes Dokument des Begut-Satzes, und sein XML ist typisiert statt bloß
+formatiert: `<ueberschrift typ="erlz">` trägt die Teil-Überschriften,
+`<ueberschrift typ="erll">` die Passagen — im Besonderen Teil in der Form
+„Zu Z 4 (§ 54c Abs. 1a und 1b):". Gelesen wird über `parseRisXml`, denselben
+Leser, den Entwurfstext und ME→RV-Vergleich benutzen
+(`server/utils/explanations.ts`, rein; `explanationsService.ts` ist die
+Nitro-Hälfte, `tests/explanations.test.ts` hält die Formen fest).
+
+**Gemessen vor dem Bauen** (`pnpm audit:erlaeuterungen`, 465 Dokumente mit
+Fristbeginn ab 2024, gelesen durch den Produktionsparser):
+
+| | |
+|---|---:|
+| Sätze im Fenster mit Erläuterungen-Dokument | 97,7 % |
+| davon als XML (nicht nur PDF) | 100 % |
+| davon ohne jeden Text (Scan im XML) | 4,1 % |
+| lesbare Dokumente mit Allgemeinem Teil | **98,4 %** |
+| davon vom Ressort selbst so benannt | 90,1 % |
+| davon von uns erschlossen | 8,3 % |
+| Länge des Allgemeinen Teils | Median 2.309, p90 7.727, max 40.335 Zeichen |
+| Dokumente mit erkennbarem Besonderen Teil | 91,0 % |
+| dessen Passagen, die einen § nennen | 76,3 % |
+
+Die letzte Zeile ist die Vorarbeit für die zweite Hälfte des Pakets — die
+Passagen am Paragraphen der Gegenüberstellung. Sie ist **hier nicht gebaut**:
+Der Schlüssel ist gezählt, verbunden ist nichts.
+
+**Vier Fallen, jede davon aus der Messung oder von der Seite, keine aus dem
+Kopf:**
+
+1. **Ein Dokument namens „Erläuterungen" sind nicht immer Erläuterungen.**
+   Manche Ressorts legen Vorblatt und wirkungsorientierte Folgenabschätzung
+   in dieselbe Datei; ihre Teile heißen dann „Ziel(e)", „Inhalt",
+   „Maßnahmen", „Problemanalyse". Ein Formblatt unter der Zusage „die
+   Begründung des Ministeriums" wäre die falsche Antwort in der Form der
+   richtigen. Ein WFA-Teil wird deshalb erkannt und vertritt den Allgemeinen
+   Teil nie (im Fenster: 2 Dokumente).
+2. **Überschriften sind numeriert und gesperrt gesetzt** — „I. Allgemeiner
+   Teil", „A. Allgemeiner Teil", „E r l ä u t e r u n g e n" (5 Dokumente).
+   RIS normalisiert Leerraum auf ein Zeichen, die Wortgrenzen sind also weg,
+   bevor wir lesen: Teil-Überschriften werden ohne jeden Leerraum verglichen.
+3. **Ein Scan ist kein leeres Dokument.** Wo das Ressort Bilder geliefert
+   hat, steht im XML nur `<absatz typ="abbobj">` mit dem GIF-Pfad — und ein
+   Pfad ist Text. Der erste „Absatz" des Budgetbegleitgesetzes 2027-2028 kam
+   als „/Dokumente/Begut/…0001.gif" heraus. Abbildungen zählen jetzt als
+   verworfen statt als Prosa, womit der Scan als Scan sichtbar wird (dieselbe
+   Unterscheidung wie `isScanned` bei der Beilage).
+4. **Die Gliederung steht manchmal eine Ebene tiefer.** Die
+   Studienbeitragsverordnung schreibt „Allgemeiner Teil:" und „Besonderer
+   Teil:" als `erll`. Als Passagen gelesen galt das Dokument als
+   ungegliedert, **und** sein Allgemeiner Teil endete auf einer leeren
+   Überschrift „Besonderer Teil:" — an der Seite gesehen, nicht in der
+   Messung. Nur diese zwei Namen werden eine Ebene hochgezogen; jede andere
+   `erll`-Überschrift bliebe sonst ein Teil für sich.
+
+**Zwei Regeln, die etwas erschließen — und beide sagen es.** Wo kein Teil
+„Allgemeiner Teil" heißt, gilt die Prosa vor dem Besonderen Teil als solcher
+(`generalInferred`), aber nur, wenn das Dokument keinen WFA-Teil trägt und
+seine führenden Teile gar keine Überschriften haben: Ein Ressort, das seine
+Teile benennt und keinen davon „allgemein" nennt, hat etwas gesagt. Und wo
+ein Dokument ohne Trenner aus der Begründung in „Zu § 1:" läuft — das
+Erneuerbaren-Ausbau-Beschleunigungsgesetz sind so 106.262 Zeichen unter einer
+Überschrift —, wird an der ersten adressierten Passage getrennt; das ist die
+Konvention der Legistischen Richtlinien selbst. Die Seite schreibt in beiden
+Fällen dazu, dass die Abgrenzung von uns stammt.
+
+**Was die Seite zeigt, und wo sie faltet.** Ein Zeichenbudget (1.400), nicht
+eine Absatzzahl, und geprüft **bevor** ein Absatz dazukommt: Sonst rutscht
+genau der lange Absatz noch ganz hinein, den zu falten der Zweck ist (132/ME
+schreibt 3.000 Zeichen am Stück). Der erste Absatz steht immer — ein
+Aufklapper als erstes Element wäre die Seite, die ihre eigene Antwort
+versteckt —, und kein Absatz wird mitten im Satz abgeschnitten: Es ist der
+Text des Ressorts. Der Rest liegt in einem nativen `<details>`, wie die
+Kurzbeschreibung und die Kontextzeilen des Vergleichs.
+
+**Client-seitig geladen**, wie `geltendesrecht` und die Vergleiche: ein
+RIS-Abruf pro Entwurf gehört nicht in den SSR-Pfad jeder Detailseite. Der
+Preis ist, dass der Text nicht im ausgelieferten HTML steht — für einen
+Abschnitt, der CC BY ist und die Substanz der Seite trägt, ist das der eine
+Punkt, der später anders entschieden werden kann; es ist eine Zeile.
+
+**Die Caches sind getrennt** (§5): das Dokument, wie RIS es geschickt hat,
+persistent und 30 Tage (ein Begut-Dokument wird nicht revidiert, ein
+korrigierter Entwurf bekommt einen neuen Satz); die Lesung davon `derived`
+und einen Tag, weil `explanations.ts` genau die Sorte Parser ist, deren
+Änderung sonst einen Tag lang unsichtbar bliebe. Und ein Fehler ist keine
+Antwort: „keine Erläuterungen", „nur ein Scan" und „kein Allgemeiner Teil
+ausgewiesen" sind Zustände, die RIS wirklich hat; ein Timeout fliegt und wird
+nicht zwischengespeichert.
+
+
+### 12.30 Die Begründung am Paragraphen: der Join, den die Ressorts selbst schon geschrieben haben
+
+Die zweite Hälfte des Erläuterungen-Pakets (§12.29): Der Besondere Teil erklärt
+Bestimmung für Bestimmung, die Textgegenüberstellung zeigt Bestimmung für
+Bestimmung, was sich ändert — und bis 18.09.2026 standen die beiden in
+verschiedenen Dokumenten. Jetzt trägt jeder § der Gegenüberstellung einen
+Aufklapper „Warum? Die Begründung des Ressorts".
+
+**Warum das kein zweites Ausrichtungsproblem ist.** Der Besondere Teil
+überschreibt seine Passagen mit der Adresse, die das Werkzeug ohnehin
+berechnet: „Zu Z 4 (§ 54c Abs. 1a und 1b):" nennt Novellierungsanordnung und
+Paragraphen, „Zu Art. 2 (Änderung des KommAustria-Gesetzes)" das Gesetz des
+Pakets. Die Beilage führt ihre Zeilen unter denselben zwei Schlüsseln
+(`ComparisonRow.law`, `ComparisonRow.para`). Der Join ist ein Nachschlagen,
+keine Ähnlichkeitssuche — `server/utils/explanationsJoin.ts`, und der
+Schlüssel selbst steht in `shared/utils/explanations.ts`, weil ihn beide
+Seiten bilden müssen.
+
+**Gemessen** (`pnpm audit:erlaeuterungen -- --join`, Fenster ab 2024: 277
+Entwürfe mit allen drei Dokumenten als XML, davon 130 mit §§ in der Beilage
+und Passagen im Besonderen Teil):
+
+| | |
+|---|---:|
+| §§ in den Beilagen | 2.029 |
+| davon mit Begründung am Paragraphen | **77,8 %** |
+| Deckung je Entwurf | p10 43 %, Median 89 %, p90 100 % |
+| Passagen ohne § in der Beilage | 16,3 % |
+| Passagen verworfen (Gesetz nicht bestimmbar) | 20 |
+| Entwürfe ganz ohne Treffer | 9 (6,9 %) |
+
+**Die 16,3 % ohne Ziel sind kein Fehler, sondern der Zuschnitt der Beilage.**
+Sie druckt, was sich ändert; die Erläuterungen erklären auch, was neu
+erlassen wird und wo nichts gegenübergestellt werden kann — ein Stammgesetz
+im selben Paket hat keine geltende Fassung neben sich.
+
+**Drei Anläufe, und jeder wurde von der Messung korrigiert.** Das ist der
+eigentliche Ertrag dieses Eintrags, weil jeder der drei Fehler eine Zahl
+erzeugt hätte, die plausibel aussieht:
+
+1. **30,1 %.** Der Eintrag trug `law: null`, „weil ein Entwurf mit einem
+   einzigen Gesetz keinen Schlüssel führt". Die Beilage führt ihn sehr wohl,
+   sobald der Entwurf einen benannten Artikel hat — auch bei genau einem. Bei
+   der Honigverordnung Novelle 2025 passten alle neun §§ und trafen sich
+   trotzdem nie.
+2. **48,6 %.** Die Artikelüberschrift des Besonderen Teils steht bei vielen
+   Ressorts nicht als `erlz`, sondern als Passage: „Zu Art. 1 (Änderung der
+   Notariatsordnung)" (Berufsrechts-Änderungsgesetz 2024, 31 Passagen ohne
+   Gesetz) oder als bloßes „Artikel 1" mit dem Gesetzesnamen in der Zeile
+   darunter (EU-Batterienverordnung Begleitgesetz, 56 Passagen ohne Gesetz).
+   Beide Formen sind jetzt Artikelmarken, und die Passage darf ihr Gesetz
+   auch in der eigenen Überschrift nennen („Zu Art. 2 Z 1 (§ 7)").
+3. **66,9 % → 77,8 %.** Dazwischen fiel auf, dass „Zu Z 3 bis 6 (§§ 23 bis 25
+   NO)" nur § 23 erreichte: Nur der erste Paragraph eines Bereichs trägt das
+   Zeichen. Bereiche aus glatten Zahlen werden jetzt aufgezählt; „§§ 140a bis
+   140i" nicht, weil dafür die Buchstaben dazwischen erfunden werden müssten.
+
+**Wo nichts angehängt wird, und zwar absichtlich.** Markiert die Beilage ihre
+Gesetzesgrenzen nicht (6 Entwürfe im Fenster), tragen ihre Zeilen kein Gesetz,
+die Passagen aber eines — dann findet der Schlüssel nichts, und das ist die
+richtige Antwort: § 14 der einen Verordnung ist eine andere Bestimmung als
+§ 14 der anderen, und die falsche Begründung am Paragraphen wäre schlimmer als
+keine. Dieselbe Verweigerung spricht `ComparisonRow.law` über sich selbst
+schon aus (§12.13). Ebenso verworfen wird eine Passage, deren Gesetz in einem
+Mehrgesetzespaket unbestimmt bleibt — nach den drei Korrekturen sind das noch
+20 von 1.906.
+
+**Auf der Seite** steht der Aufklapper zugeklappt direkt unter der §-Zeile,
+nicht unter den Absätzen: Die Frage an dieser Stelle ist „was ändert sich" —
+das beantworten die Zeilen —, „warum" ist die Anschlussfrage. Bei einem § mit
+zwölf Zeilen stünde sie am Fuß außer Sichtweite ihrer Überschrift. Der Text
+des Ressorts wird ungekürzt gezeigt; diese Passagen sind kurz, eine zweite
+Faltung wäre eine Tür hinter einer Tür.
+
+**Der Abruf kostet nichts extra:** Es ist derselbe Endpunkt
+(`/erlaeuterungen`), den der Abschnitt „Was das Ressort begründet" weiter oben
+schon holt — `useFetch` schlüsselt nach URL. Und er darf scheitern, ohne den
+Vergleich zu berühren: Die Gegenüberstellung ist die Auskunft, die Begründung
+die Beigabe.
+
+**Nur auf der Entwurfsseite.** Die RIS-Seite einer Begutachtung ohne
+Gegenstand rendert die Gegenüberstellung nicht, sie verlinkt sie; dort gibt es
+also keinen Paragraphen, an den sich etwas hängen ließe. Der Allgemeine Teil
+steht dort trotzdem (§12.29).
+
+### 12.31 Die Vehikel-Frage: Volltextsuche über die laufenden Begutachtungen
+
+Ein Sammelgesetz heißt „Budgetbegleitgesetz" und ändert vierzig Gesetze. Wer
+ein Anliegen verfolgt, erkennt den Entwurf, der es berührt, deshalb nicht am
+Titel — die Frage ist nicht „wo finde ich einen Entwurf", sondern „steht in
+einem der Entwürfe, die JETZT offen sind, etwas über mein Thema". `/suche`
+beantwortet die zweite. Sie ist der billige Vorbau der Vehikel-Frage aus
+Steinhammers Ablauf (§12.29) und die einzige Hälfte davon, die ohne
+Themen-Taxonomie auskommt.
+
+**Die Suche baut keinen Index — das RIS hat schon einen.** `Suchworte` am
+Begut-Endpunkt durchsucht den Volltext ALLER Dokumente eines Satzes. Gemessen
+am 18.09.2026: „Wolf" liefert 13 Sätze, bei keinem einzigen steht das Wort in
+den Metadaten; „Überwachung" 1.025, „Klimaschutz" 453. Mit
+`InBegutachtungAm=heute` ist das genau diese Seite, in einem Aufruf und in
+~165 ms. Ein eigener Index wäre eine Kopie fremder Dokumente samt
+Aktualisierung — Betrieb, an dem der Vorgänger gestorben ist, für eine
+Fähigkeit, die es schon gibt.
+
+**Die Semantik ist gemessen, nicht angenommen** (alle Zahlen 18.09.2026):
+
+| Frage | Befund |
+|---|---|
+| Leerzeichen zwischen Wörtern | UND (`Klimaschutz Datenschutz` → 217 gegen 453 und 929) |
+| `AND` / `OR` | keine Operatoren, sie gelten als weitere Suchwörter |
+| Anführungszeichen | keine Phrasensuche — `"Klimaschutz"` ergibt dieselben 453 |
+| Wortformen | keine Stammformen: „Biene" 1, „Bienen" 35; „Klimaschut" 0 |
+| Trunkierung | `*` wirkt: `Klimaschutz*` 491 gegen 453 |
+| Groß-/Kleinschreibung | egal; Umlaute müssen getippt werden („Ueberwachung" 1) |
+| Antwortzeit | 0,2–2,1 s, unabhängig von der Seitengröße |
+
+Das Werkzeug spiegelt diese Regeln, statt eigene zu erfinden: Die Fundstelle
+sucht ganze Wörter und kennt den Stern, sonst fände sie im Dokument nicht,
+was das RIS im selben Dokument gefunden hat.
+
+**Was das RIS NICHT zurückgibt, ist die Fundstelle** — die Antwort ist der
+gewöhnliche Metadatensatz. Und ohne sie behauptet eine Trefferliste das
+Falsche: Bei „Fahrrad" steht das Wort in 7 von 20 Treffern im Entwurfstext
+und in 16 von 20 in den Erläuterungen. „Das Gesetz handelt davon" und „das
+Ressort erwähnt es in seiner Begründung" sind zwei verschiedene Auskünfte,
+und die Rangfolge der Dokumente (Entwurfstext → Erläuterungen →
+Textgegenüberstellung → Begleitschreiben) entscheidet, welche die Zeile gibt.
+Gelesen wird mit `lawText.parseRisXml`, also demselben Parser wie die
+Gegenüberstellung — samt `gld`, weshalb die Zeile „im Entwurfstext, § 6."
+sagen kann und nicht nur „im Entwurfstext".
+
+**Zwei Durchgänge über alle Dokumente, nicht zwei Regeln je Dokument.** Der
+zweite Durchgang sucht als Teilstring. Liefe er innerhalb eines Dokuments
+gleich nach dem strengen, gewänne ein Entwurfstext mit „Klimaschutzgesetz"
+gegen die Erläuterungen, in denen „Klimaschutz" wirklich steht — die
+Rangfolge der Dokumente schlüge die Genauigkeit der Regel. So gewinnt erst
+die Regel, dann die Rangfolge.
+
+**Die Annahme, die die Messung widerlegt hat.** 72,2 % der Treffer (79 aus
+fünf Stichworten) lassen sich in Entwurfstext oder Erläuterungen benennen.
+Für den Rest lautete der erste Entwurf der Zeile „steht in einer Anlage oder
+einem gescannten PDF" — und das war geraten. Beim Industriestrompreisgesetz
+steht „Klimaschutz" in KEINEM seiner Dokumente; die Erläuterungen schreiben
+„Leitlinien für staatliche Klima-, Umweltschutz- und Energiebeihilfen", das
+RIS trifft über die Wortbestandteile. Die Zeile sagt jetzt, was geprüft wurde
+(„wörtlich nicht im Entwurfstext und nicht in den Erläuterungen"), und solche
+Treffer stehen unten: ein belegter Treffer ist der stärkere.
+
+**Der Treffer führt auf unsere Seite, nicht auf die des RIS.** Die Antwort
+ist eine Dokumentnummer; welche Seite sie meint, weiß der Korpus samt Join
+(§12.16). Gehört der Satz zu einem Ministerialentwurf, ist die Zeile ein
+Ministerialentwurf — mit Frist, Stellungnahmen, Stationen und dem Debattennamen
+—, sonst der RIS-Satz. Beide in der Anatomie aus §12.28, mit dem Beleg als
+Slot darunter.
+
+**Warum nur die laufenden.** Es sind 7 bis 25 gleichzeitig (7 am 18.09.2026,
+22 am 15.06., 16 am 15.03.), und das ist die Menge, über die die Frage
+gestellt wird. Über den ganzen Korpus zu suchen ist eine andere Frage („kam
+das schon einmal vor?"): Die Treffer verteilen sich dann über ein Dutzend
+Gesetzgebungsperioden, und der Join oben kennt jeweils nur eine. Die leere
+Antwort nennt deshalb die Korpusgröße — „‚Klimaschutz' kommt in den 7
+laufenden Begutachtungen nicht vor" ist eine Auskunft, „keine Treffer" ist
+keine — und verweist fürs Archiv ans RIS.
+
+**Blinde Stelle, gemessen:** In GP XXVIII führt Liste 81 135 Ministerialentwürfe,
+134 RIS-Sätze tragen einen Gegenstand. Wer im RIS nicht steht, ist für diese
+Suche unsichtbar — das ist ein Entwurf, kein struktureller Ausfall.
+
+**Nicht gecacht, mit Absicht.** Der Cache-Schlüssel wäre die Eingabe des
+Lesers, also unbegrenzt viele Schlüssel in einem Speicher, den die Produktion
+im RAM hält (§5). Gecacht wird nur das Teure darunter: die Dokumente, im
+dauerhaften Layer. Und ein Ausfall des RIS ist ein 502 mit einem Satz, keine
+leere Trefferliste — „zu ‚Klimaschutz' gibt es nichts" wäre hier die
+teuerste Lüge des Produkts (§12.13).
+
+### 12.32 Verordnung → BGBl II: die Rechenschaftskette der anderen zwei Drittel
+
+Zwei Drittel des Korpus sind Verordnungsentwürfe, und für sie endete der
+Monitor bis 19.09.2026 mit der Frist. Auf der Seite stand das auch so: „Was
+danach kommt – Erlassung durch das Ministerium und Kundmachung im
+Bundesgesetzblatt Teil II – verfolgt der Monitor bisher nicht." Der Weg gibt
+es nämlich, er läuft nur nicht durchs Parlament: Begutachtung → Erlassung
+durch das Ressort → **Kundmachung im BGBl II**.
+
+**Die Quelle trägt dieselbe Vokabel wie Begut.** `Applikation=BgblAuth` führt
+Teil II mit `Bgblnummer` („BGBl. II Nr. 50/2026"), `Ausgabedatum`, `Typ` und
+— entscheidend — einem `Einbringer` in derselben Schreibweise wie
+`EinbringendeStelle` bei Begut („BMASGPK (Bundesministerium für …)"). Der
+Ressortvergleich ist damit derselbe wie im RIS↔ME-Join, samt seiner
+Abstammungsgruppen für den Regierungswechsel.
+
+**Was die API NICHT kann** (geprüft 18.09.2026): `Teil`, `Jahrgang`, `Typ`,
+`Einbringer` und `Kundmachungsnummer` werden ignoriert — jeder dieser Filter
+liefert alle 18.925 Sätze. Es wirken `Bgblnummer` (exakt, ein Treffer) und
+`VonKundmachungsdatum`/`BisKundmachungsdatum`. Der Korpus wird deshalb nach
+**Jahrgang** geschnitten: ein stabiler Cache-Schlüssel, während ein gleitendes
+Fenster jeden Tag einen neuen erzeugte. Teil II umfasst 421 (2024), 344
+(2025) und 281 (2026 bis September) Kundmachungen.
+
+**Der Join ist gemessen, in zwei Anläufen.** `pnpm audit:bgbl2` über 291
+Verordnungsentwürfe mit Fristende ab 2024:
+
+| | erster Anlauf | nach der Korrektur |
+|---|---:|---:|
+| Treffer gesamt | 79,4 % | **84,2 %** |
+| Frist über ein Jahr her | 83,8 % | **92,3 %** |
+| an der Marge verworfen | 21 | 7 |
+
+**Was der erste Anlauf falsch machte, stand in seinem eigenen Kommentar.**
+Die Sortierung der Kandidaten sagte „bei Gleichstand das frühere Datum: Wird
+derselbe Text zweimal geändert, ist die erste Kundmachung nach der Frist die
+aus dieser Begutachtung" — und das Urteil darüber verwarf genau diese Fälle
+als mehrdeutig. Viele Verordnungen werden jährlich geändert, die Kundmachungen
+heißen Jahr für Jahr gleich („Änderung der Studienbeitragsverordnung" gibt es
+2024, 2025 und 2026), und die Marge sah zwei gleich gute Titel und sagte
+nichts. Aufgefallen ist es erst an der Liste der ältesten Nicht-Treffer: Dort
+standen Kandidaten mit Punktzahl **1,000**. Seither entscheidet bei
+Titelgleichstand die Zeit — die erste Kundmachung nach dem Fristende —, außer
+die beiden liegen weniger als 60 Tage auseinander; dann sagt auch die
+Reihenfolge nichts.
+
+**Die Schwelle ist an ihren Beinahe-Treffern geprüft, nicht an ihren
+Treffern.** Im Band 0,45–0,72 stehen fast ausschließlich echte Nicht-Paare:
+„Schülerbeihilfen-Valorisierungsverordnung 2026" gegen
+„Studienbeihilfen-Valorisierungsverordnung 2026", „12. Novelle der FSG-GV"
+gegen „23. Novelle zur FSG-DV", und ein „Frauenförderungsplan BMWET", der
+gegen vier verschiedene Entwürfe desselben Ressorts 0,600 erreicht. Tiefer zu
+gehen hieße, falsche Kundmachungen zu behaupten — der teuerste Fehler dieses
+Abschnitts. 83,3 % der akzeptierten Treffer sind wörtliche Titelgleichheit.
+
+**Die Zeitkurve ist der eigentliche Fund, denn sie verbietet einen Satz.**
+Nach Alter des Fristendes finden eine Kundmachung: **0 %** (bis 30 Tage),
+31,6 % (31–90), 71,4 % (91–180), 92,2 % (181–365), 92,3 % (über ein Jahr).
+Zwischen Fristende und Kundmachung liegen im Median 57 Tage, p90 196, max 538;
+zwei Verordnungen wurden vor dem Fristende kundgemacht. „Bisher nicht
+kundgemacht" in Woche sechs wäre damit keine Aussage über das Ressort,
+sondern über die Uhr — und würde doch als die erste gelesen. Deshalb hat
+`BgblOutcome` fünf Zustände und nicht zwei, und `ausstehend` trennt bis 180
+Tage das Junge vom Liegengebliebenen.
+
+**Und auch danach spricht die Zeile über uns, nicht über das Ressort.** Bei
+92 % Deckung ist etwa jede zwölfte alte Verordnung ohne Fund entweder nie
+erlassen worden — das ist die Auskunft, um die es geht — oder von uns
+übersehen. Von hier sehen beide gleich aus, also sagt die Zeile, wonach
+gesucht wurde, und stellt den Weg zum Nachsehen daneben (Framing-Regel: nie
+ein Vorwurf, immer ein Verfahrensstand).
+
+**Aufgewärmt wird es, weil ein kalter Lauf nicht nur langsam wäre.** Drei
+Jahrgänge sind kalt rund 21 Anfragen ans RIS. Wer sie nicht hat, findet keine
+Kundmachung — und schriebe „nicht kundgemacht" unter eine Verordnung, die
+längst gilt. Der vierte `ExecStart` des Prewarm-Timers holt sie nächtlich und
+nach jedem Deploy (`deploy/systemd/`), wie die RIS↔ME-Karte.
+
+**Wo die Auskunft am 19.09.2026 überall angekommen ist** — der Ausgang war
+zuerst nur ein Absatz auf der Entwurfsseite, und drei Stellen daneben
+behaupteten weiter das Gegenteil:
+
+- **Die Überschrift der Karte** sagte „Begutachtung beendet" über einem Text,
+  der „Kundgemacht als BGBl. II Nr. 410/2024" las. Die Karte des
+  Ministerialentwurfs nennt oben den Ausgang („Gesetz geworden"), diese nannte
+  den Stand der Begutachtung — dieselbe Karte, zwei Logiken. Jetzt
+  `regulationStatusDe`, und der Ausgang kommt **serverseitig** mit der
+  Detailantwort: Eine Überschrift, die nach dem Laden ihre Aussage wechselt,
+  wäre schlechter als eine, die wartet. Mit Budget (2,5 s) und Rückfall auf
+  den client-seitigen Abruf, damit ein kalter Cache die Auskunft verzögert
+  und nicht verschluckt.
+- **Die Liste** schrieb auf jede abgeschlossene Zeile „Begutachtung
+  abgeschlossen" — auf 159 von 198 Zeilen der laufenden Periode falsch. Zone 4
+  zeigt jetzt „Kundgemacht / BGBl. II Nr. 225/2026", dieselbe Anatomie wie die
+  Ministerialentwürfe daneben (§12.28). Berechnet wird das in EINEM Durchgang
+  je Periode (`getBgblOutcomesForGp`), nicht je Zeile.
+- **Der Stationsfilter** ließ `?station=bgbl` für diese Hälfte leer, mit der
+  Begründung, sie könne die späteren Stationen nicht erreichen. Für `rv` und
+  `parlament` stimmt das; für das Bundesgesetzblatt stimmte es nie, es hat nur
+  niemand nachgesehen. Der Filter zeigt dort jetzt 159 Zeilen, und der
+  Hinweis „Verordnungsentwürfe haben keine Station" erscheint nur noch, wo er
+  wahr ist.
+
+**Nur der BELEGTE Ausgang wandert nach oben.** Weder die Überschrift noch die
+Spalte sagen je „bisher nicht kundgemacht". Der Ministerialentwurf darf
+„Bisher keine Regierungsvorlage" behaupten, weil die Liste des Parlaments
+vollständig ist; hier hängt der Negativbefund an einem gebauten Schlüssel mit
+84,2 % Trefferquote, also wäre jede zwölfte solche Zeile falsch — und zwar in
+der Richtung, die wie ein Vorwurf klingt. Der Negativbefund steht weiterhin
+auf der Detailseite, in einem ganzen Satz, samt Weg zum Nachsehen.
+
+**Dasselbe Prinzip beim Budget:** Als Spaltenwert darf der Ausgang fehlen (die
+Zeile ist dann unvollständig, nicht falsch), als FILTER nicht — dort wird
+gewartet, weil eine leere Liste „keine kundgemachten Verordnungen" behaupten
+würde, was niemand geprüft hat (§12.13).
+
+**Und die Grundrate steht jetzt auf der Seite, die das Verfahren erklärt.**
+Die Station „Bundesgesetzblatt II" auf `/so-funktionierts` sagte unter „Im
+Monitor" noch „Bisher nichts"; sie nennt jetzt die Kundmachung und die
+Messung dazu — 84,2 % gefunden, 92,3 % bei Fristen von vor über einem Jahr,
+Median 57 Tage. Das ist die Verordnungs-Version von Mechanismus 2, und sie
+steht dort, wo die Methode ohnehin erklärt wird, nicht über jedem Ergebnis.
+
+### 12.33 Die BGBl-Station — gebaut, und die fünf falschen Unterschiede, die sie aufgedeckt hat
+
+Die Stationsleiste des §-Vergleichs endet bei der Plenarfassung (§12.18). Die
+letzte Fassung ist aber die kundgemachte. `pnpm audit:bgbl-station` misst, ob
+sich diese Station bauen lässt — und die Messung hat mehr gefunden, als sie
+sollte.
+
+**Eine Korrektur vorweg.** Notiert war „derselbe Join, dieselbe Voraussetzung"
+wie bei den Verordnungen (§12.32). Das stimmt nicht: Für einen
+Ministerialentwurf liefert das Parlament die Fundstelle **strukturiert** —
+`content.status.bgbllinks[]` mit `Dokumentnummer=BGBLA_2026_I_69`, in der
+Detailantwort als `enactment.bgblRisUrl`. Ein Nachschlagen, keine
+Ähnlichkeitssuche.
+
+**Eine zweite Korrektur.** Notiert war auch, die Sammelgesetze seien eine
+offene Produktfrage. Sie sind entschieden, seit `diffLawPackage` existiert:
+Der Vergleich wird auf die Gesetze beschränkt, die BEIDE Seiten führen, der
+Rest wird als gewachsenes oder geschrumpftes Paket benannt. Über die
+gemessenen Paare trat der Fall gar nicht auf (`lawsOnlyInTo` = 0 durchgehend),
+weil auf beiden Seiten derselbe Akt steht.
+
+**Die Voraussetzungen sind erfüllt:** 22/22 Kundmachungen liegen als XML vor,
+22/22 gliedert `parseLawUnitsFromRis` in Einheiten, und die Ausrichtung ist
+exakt — `inserted` = 0 und `removed` = 0 über alle Paare.
+
+**Was die Messung wirklich gefunden hat, war ein Defekt im Vergleich selbst.**
+Zwischen der letzten parlamentarischen Fassung und der Kundmachung darf sich
+nichts Inhaltliches ändern; gemeldet wurden aber bis zu 136 von 626 Einheiten
+als geändert, keine davon als redaktionell. Fünf Klassen, alle behoben:
+
+| Klasse | Beispiel | Ursache |
+|---|---|---|
+| Fundstellen-Platzhalter | `BGBl. I Nr. xxx/2025` → `50/2025` | `isPlaceholder` kannte den Schrägstrich nicht, also galt der Token als `word` — und ein `word` beendet `isEditorialChange` sofort |
+| dasselbe mit Satzzeichen | `xxx/2025."` | `bare` räumt Anführungszeichen weg, den Punkt davor nicht |
+| Weicher Trennstrich | `OTC­Derivaten` ↔ `OTC-Derivaten` | Parlaments-HTML setzt U+00AD, `normalizeText` löscht ihn, das RIS hat einen harten Strich |
+| Füllpunkte | `monatlich...........` ↔ `monatlich` | Betragstabellen des Parlaments, im RIS ohne Punktreihe |
+| Entität | `&deg;C` ↔ `°C` | `deg` fehlte in `NAMED_ENTITIES` |
+
+**Wirkung, gemessen über 14 Entwürfe und rund 2.700 verglichene Einheiten:**
+
+| | vorher | nachher |
+|---|---:|---:|
+| 9/ME (RV → Kundmachung), inhaltlich geändert | 11 | **0** |
+| 10/ME | 7 | **0** |
+| 12/ME (Budgetbegleitgesetz, 626 Einheiten) | 136 | **0** |
+| 3/ME, 7/ME, 8/ME, 11/ME, 13/ME | 4/3/8/1/2 | **0** |
+| Rest (Bindung an ein Satzzeichen, eine Akte) | | 23 (0,9 %) |
+
+**Zehn von vierzehn Entwürfen zeigen damit null inhaltliche Änderung bei der
+Kundmachung** — was die Wahrheit ist und vorher nicht zu sehen war.
+
+**Zwei davon liegen in der Vergleichsform, nicht in der Anzeige.**
+`compareKey` ignoriert jetzt Bindestriche und Füllpunkte; `normalizeText`
+bleibt unverändert, der Leser sieht also weiter genau das, was im Dokument
+steht. Der Preis ist benannt: Zwei Texte, die sich NUR in der Bindung
+unterscheiden, gelten als gleich. In legistischem Deutsch ist das Typografie.
+
+**Das zahlt auf die bestehenden Vergleiche ein**, nicht nur auf die geplante
+Station: Der Pfad „Entwurf als RIS-XML gegen Parlaments-HTML" ist seit je der
+Rückfall für die rund ein Fünftel der Entwürfe, die das Parlament nur als PDF
+führt (§12.18) — dort haben dieselben fünf Klassen bisher still mitgezählt.
+
+**Gebaut am 19.09.2026.** `LawStationId` trägt `bgbl`, die Beschriftung und
+die Reihenfolge stehen in `shared/utils/lawStations.ts`, und der RIS-XML-Pfad
+in `lawDiffService.ts` ist verallgemeinert: Er hing an der `me`-Seite, weil
+nur der Entwurf als XML kommen konnte — jetzt trägt jede Station ihr Format
+selbst (`ResolvedLawStation.xml`), und beide Seiten werden mit dem Parser
+gelesen, der zu ihrer Quelle gehört. Der Weg zur Kundmachung ist ein
+Nachschlagen: Regierungsvorlage → `status.bgbllinks` → `Bgblnummer` →
+`getBgblDocument`. Scheitert etwas davon, fehlt die Station, und die anderen
+vier funktionieren weiter.
+
+**`plenum→bgbl` wird nicht angeboten**, und das ist die einzige Ausnahme von
+der Reihenfolgeregel. Zwischen Beschluss und Kundmachung handelt kein Akteur;
+das Paar wäre systematisch leer und verspräche eine Antwort, die es nicht
+geben kann. Die Regel steht in `isLawStationPair`, also an EINER Stelle — der
+Server lehnt ab, womit die Seite gar nicht erst wirbt, und die Ablehnung
+nennt ihren eigenen Grund („Zwischen Plenarfassung und Kundmachung ändert
+sich der Text nicht mehr") statt der falschen Reihenfolge-Begründung.
+
+**Live geprüft an 9/ME** (Alternative Investmentfonds Manager-Gesetz): `rv→bgbl`
+zeigt 58 Einheiten, 51 unverändert, 7 geändert — **alle sieben redaktionell**.
+Die Seite sagt damit zum ersten Mal „die Regierungsvorlage wurde unverändert
+Gesetz", und das ist genau die Auskunft, die den rund 29 % der Entwürfe ohne
+veröffentlichte Fassung nach der Vorlage bisher fehlte. `me→bgbl` zeigt
+dagegen die ganze Geschichte: 61 Einheiten, 25 geändert, 12 neu, 3 entfallen.
+
+**Eine Lehre über Beschriftungen.** Die erste Fassung hieß „Kundgemachte
+Fassung" und stand als „wird mit dem der Kundgemachte Fassung verglichen" auf
+der Seite: Die Sätze setzen die Beschriftung in den Genitiv, die vier alten
+Namen sind feminin auf -ung und ändern sich dabei nicht, ein Adjektiv schon.
+Dass der Ministerialentwurf im selben Satz bereits eine Sonderbehandlung
+brauchte, war die Warnung. Der Name ist jetzt „Fassung im Bundesgesetzblatt"
+und überlebt jede Beugung.
 
 ## 13. Open questions
 

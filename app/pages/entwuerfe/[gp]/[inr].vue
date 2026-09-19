@@ -8,7 +8,6 @@ import {
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
-  stationPositionDe,
   stations,
 } from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
@@ -117,10 +116,6 @@ const stationContext = computed<StationContext>(() => ({
   amendedLawCount: amendedLaws.value?.laws.length,
   rvStatementTotal: rvStatements.value?.total,
 }))
-
-const stationPosition = computed(() =>
-  data.value ? stationPositionDe(stations(data.value, stationContext.value)) : null,
-)
 
 /* What parliament did, for the sentence in "Im Parlament". Same function as
  * the bar's fact line, so the heading and the row cannot disagree. */
@@ -272,78 +267,6 @@ const seoTitle = computed(() => {
   return truncate(d.shortTitle ?? d.title, 60)
 })
 
-const { siteUrl } = useRuntimeConfig().public
-
-// Ready-made citation for the clipboard — the journalist's copy-paste
-// lede: citation, name, deadline state, canonical URL.
-const citationText = computed(() => {
-  const d = data.value
-  if (!d) return ''
-  const frist = d.deadline
-    ? d.active
-      ? ` – Begutachtungsfrist bis ${formatDateDe(d.deadline)}`
-      : ` – Begutachtung endete am ${formatDateDe(d.deadline)}`
-    : ''
-  return `${d.citation} (${d.gp}. GP): ${d.shortTitle ?? d.title}${frist}. ${siteUrl}/entwuerfe/${d.gp}/${d.inr}`
-})
-
-/* The async clipboard API is denied in embedded webviews and non-HTTPS
- * origins — fall back to the legacy execCommand path, and when both are
- * blocked SAY so and reveal the text itself (a silent catch here cost a
- * real user their copy: nothing happened, nothing explained). */
-type CopyState = 'idle' | 'copied' | 'blocked'
-const copyState = ref<CopyState>('idle')
-let copiedTimer: ReturnType<typeof setTimeout> | undefined
-
-function writeClipboardFallback(text: string): boolean {
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.setAttribute('readonly', '')
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    const ok = document.execCommand('copy')
-    ta.remove()
-    return ok
-  } catch {
-    return false
-  }
-}
-
-async function copyCitation() {
-  if (!citationText.value) return
-  let ok = false
-  try {
-    await navigator.clipboard.writeText(citationText.value)
-    ok = true
-  } catch {
-    ok = writeClipboardFallback(citationText.value)
-  }
-  copyState.value = ok ? 'copied' : 'blocked'
-  clearTimeout(copiedTimer)
-  // The blocked state stays: it carries the manual-copy recourse.
-  if (ok) {
-    copiedTimer = setTimeout(() => {
-      copyState.value = 'idle'
-    }, 2000)
-  }
-}
-onUnmounted(() => clearTimeout(copiedTimer))
-
-const COPY_LABEL: Record<CopyState, string> = {
-  idle: 'Zitierlink kopieren',
-  copied: 'Kopiert',
-  blocked: 'Kopieren blockiert',
-}
-const COPY_ANNOUNCE: Record<CopyState, string> = {
-  idle: '',
-  copied: 'Zitierlink in die Zwischenablage kopiert',
-  blocked:
-    'Der Browser hat den Zugriff auf die Zwischenablage blockiert. Der Zitierlink wird zum manuellen Kopieren angezeigt.',
-}
-
 const seoDescription = computed(() => {
   const d = data.value
   if (!d) return 'Details zu einem Ministerialentwurf im Begutachtungsverfahren.'
@@ -402,19 +325,24 @@ const linkClasses =
     </div>
     <article v-else-if="data">
       <!-- Shared-link landers (the declared primary case) need a way into
-           the corpus that preserves the item's GP — the nav loses it. -->
+           the corpus. Ein Ziel, ein Wort, auf jeder Detailseite gleich: die
+           ungefilterte Liste. Ein Rücklink, der je nach Datensatz woanders
+           hinführt (bis 18.09.2026: auf die GP des Entwurfs gefiltert),
+           behauptet eine Herkunft, die der Lander nie hatte — und die
+           Filterleiste der Liste ist ohnehin der Ort, an dem eingegrenzt
+           wird. -->
       <div class="mb-4">
         <NuxtLink
-          :to="`/entwuerfe?gp=${data.gp}`"
+          to="/entwuerfe"
           class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
         >
-          ← Alle Entwürfe der {{ data.gp }}. Gesetzgebungsperiode
+          ← Alle Entwürfe
         </NuxtLink>
       </div>
       <header>
         <div class="flex flex-wrap items-center gap-2">
           <!-- Das Typwort führt, genau wie auf der Karte — und deren
-               Begründung (`DraftCard.vue`) galt hier immer schon: „132/ME"
+               Begründung (`EntryItem.vue`) galt hier immer schon: „132/ME"
                erklärt sich nur dem, der das System kennt, das Wort erklärt
                es. Bis 18.09.2026 folgte die Karte dem Argument und die
                Detailseite nicht, obwohl sie die Seite ist, die ein
@@ -443,28 +371,7 @@ const linkClasses =
             :deadline="data.deadline"
             :active="data.active"
           />
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="sm"
-            icon="i-lucide-link"
-            class="ml-auto"
-            @click="copyCitation"
-          >
-            {{ COPY_LABEL[copyState] }}
-          </UButton>
-          <span aria-live="polite" class="sr-only">{{
-            COPY_ANNOUNCE[copyState]
-          }}</span>
         </div>
-        <!-- Manual recourse when the clipboard is blocked: the citation
-             itself, one tap/click to select. -->
-        <p
-          v-if="copyState === 'blocked'"
-          class="mt-2 select-all rounded-md border border-hairline bg-surface p-2.5 text-sm text-ink-secondary"
-        >
-          {{ citationText }}
-        </p>
         <!-- German compounds: "Elektrizitätswirtschaftsgesetz" at text-2xl is
              wider than a 320px viewport's content box, so the title hyphenates
              (lang="de-AT" is set) and breaks as a last resort rather than
@@ -542,27 +449,26 @@ const linkClasses =
                genau den Block, der die Frage der Seite beantwortet: von der
                h1 direkt auf „Worum geht es?".
 
-               „Station n von 5" steht daneben, nicht in der Überschrift:
-               „Bisher keine Regierungsvorlage" ist der häufigste Zustand
-               und mit dem Zusatz auf dem Telefon dreizeilig. Und der Link
-               trägt jetzt Link-Gewicht — text-xs text-ink-muted war die
-               einzige Orientierungshilfe der Seite, gesetzt, um übersehen
-               zu werden. -->
+               Auf der Zeile steht die Antwort und der Weg hinaus, sonst
+               nichts. „Station n von 5" stand hier einen Tag lang daneben
+               und ist am 18.09.2026 wieder weg: Die Zahl hat die Liste
+               gezählt, auf die man gerade schaut. Ihre beiden Aufgaben
+               tragen andere — welche Station gemeint ist, sagt diese
+               Überschrift in Worten, und dass es fünf sind, sagen die fünf
+               Zeilen. Unter der Leiste kostete sie eine Zeile Kartenhöhe
+               für nichts. Der Link trägt Link-Gewicht: text-xs
+               text-ink-muted war die einzige Orientierungshilfe der Seite,
+               gesetzt, um übersehen zu werden. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 class="font-medium text-ink">
               {{ procedureStatusDe(data) }}
             </h2>
-            <p class="flex flex-wrap items-baseline gap-x-2 text-sm">
-              <span v-if="stationPosition" class="text-ink-secondary">
-                {{ stationPosition }}
-              </span>
-              <NuxtLink
-                to="/so-funktionierts"
-                class="tap-target rounded font-medium text-accent-deep hover:underline"
-              >
-                Wie funktioniert das Verfahren? →
-              </NuxtLink>
-            </p>
+            <NuxtLink
+              to="/so-funktionierts"
+              class="tap-target rounded text-sm font-medium text-accent-deep hover:underline"
+            >
+              Wie funktioniert das Verfahren? →
+            </NuxtLink>
           </div>
           <SpineRail
             class="mt-4"
@@ -736,6 +642,21 @@ const linkClasses =
       <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
         <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
 
+        <!-- ZUERST die Begründung, dann das geltende Recht, dann die
+             Dokumente, dann die Gegenüberstellung: die Reihenfolge, in der
+             ein Leser einen neuen Entwurf prüft — erst „was soll das
+             Gesetz?", dann der Text. Sie stand bis 18.09.2026 nur als
+             PDF-Link in der Dokumentliste weiter unten.
+
+             Nicht unter „Worum geht es?": Das ist die Kurzbeschreibung des
+             Parlaments, geschrieben für den parlamentarischen Betrieb. Die
+             Erläuterungen sind die Begründung des Ressorts selbst, und sie
+             gehören zum Entwurf, nicht zum Verfahren. -->
+        <div id="erlaeuterungen" class="mt-4 scroll-mt-6">
+          <h3 class="text-base font-semibold text-ink">Was das Ressort begründet</h3>
+          <ExplanationsSection :gp="data.gp" :inr="data.inr" />
+        </div>
+
         <!-- Keeps `id="recht"`: that anchor is in circulation, and what it
              named is still here, one level down. The one text version we
              hold no document for — what we can offer is the consolidated
@@ -744,7 +665,7 @@ const linkClasses =
         <div
           v-if="amendedLaws && (amendedLaws.laws.length || amendedLaws.createsNewLaw)"
           id="recht"
-          class="mt-4 scroll-mt-6"
+          class="mt-8 scroll-mt-6"
         >
           <h3 class="text-base font-semibold text-ink">Geltendes Recht</h3>
           <p v-if="amendedLaws.createsNewLaw" class="mt-1 max-w-prose text-sm text-ink-secondary">
@@ -898,7 +819,7 @@ const linkClasses =
            as an appendix to the stage before it. The bar's "bisher keine"
            row links here, where the base rate explains what waiting means.
            Present in both outcomes — that is the framing rule: the win and
-           the non-win get the same section, the same card, the same
+           the non-win get the same section, the same form, the same
            weight. -->
       <section
         v-if="showOutcome"
@@ -907,23 +828,45 @@ const linkClasses =
         aria-labelledby="rv-heading"
       >
         <h2 id="rv-heading" class="section-heading">Die Regierungsvorlage</h2>
-        <!-- Keeps `id="ergebnis"` on whichever card renders — only one ever
-             does, so the anchor in circulation stays unique. The marker wash
-             this card used to wear now means one thing only, in the bar:
-             where the procedure stands. An outcome is not a state. -->
-        <div
-          v-if="data.enactment"
-          id="ergebnis"
-          class="mt-4 rounded-xl border border-hairline bg-surface p-5"
-        >
-          <p class="font-medium">
-            <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses">
-              Regierungsvorlage {{ data.enactment.rvCitation }}
-            </ExternalLink>
+        <!-- KEIN Kasten mehr (18.09.2026). Das weiße Blatt mit Kante trägt
+             auf dieser Seite Zeilen (Stellungnahmenlisten, Dokumente) oder
+             ein Seitenobjekt mit eigener Aufgabe (die Leiste, die
+             Frist-Karte) — Prosa trägt es nie: „Im Parlament", „Im
+             Bundesgesetzblatt" und „Worum geht es?" setzen ihren Text frei
+             unter die Überschrift. Der Kasten hier stammt aus der Zeit, als
+             die Regierungsvorlage eine Zwischenüberschrift IN der
+             Begutachtung war und seine Kante das Einzige war, was den
+             Abschnitt abgegrenzt hat. Seit er eine eigene h2 mit Balken hat,
+             fasst er ein zweites Mal ein, was die Überschrift schon trennt —
+             und genau dagegen argumentiert `page-section` in `main.css`.
+
+             `id="ergebnis"` bleibt auf dem Zweig, der jeweils rendert: Der
+             Anker ist in Umlauf, und es steht immer nur einer der beiden auf
+             der Seite. -->
+        <div v-if="data.enactment" id="ergebnis" class="mt-4">
+          <!-- Der Befund als Satz, nicht als freistehender Link: Ohne Kasten
+               hätte „Regierungsvorlage 443 d.B." prädikatlos unter einer
+               Überschrift gehangen, die dasselbe Wort schon sagt. Dieselbe
+               Form wie „Kundgemacht als …" einen Abschnitt tiefer.
+
+               Die Stellungnahmenzahl, die hier bis 18.09.2026 vorwegstand
+               („Bis zum Fristende am … gingen … ein"), ist weg: Der
+               Abschnitt unmittelbar darüber IST diese Zahl, samt Liste — und
+               der Satz war in der Vergangenheitsform ohnehin falsch, sobald
+               die Vorlage vor Fristende einlangt (7 von 91 in GP XXVIII, wo
+               beide Fenster gleichzeitig offen stehen). Im Kasten fiel die
+               Wiederholung nicht auf, in Prosa steht sie nackt da. -->
+          <p class="max-w-prose text-sm text-ink">
+            Der Entwurf wurde als
+            <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses"
+              >Regierungsvorlage {{ data.enactment.rvCitation }}</ExternalLink
+            >
+            eingebracht.
           </p>
-          <!-- ME→RV is 1:n: without this the second Regierungsvorlage of a
-               split draft is invisible (4 of 132 in the XXVIII corpus). -->
-          <p v-if="data.enactment.furtherRv.length" class="mt-1.5 text-sm">
+          <!-- ME→RV ist 1:n: ohne diesen Satz ist die zweite
+               Regierungsvorlage eines geteilten Entwurfs unsichtbar (4 von
+               132 im XXVIII-Korpus). -->
+          <p v-if="data.enactment.furtherRv.length" class="mt-2 max-w-prose text-sm text-ink">
             Aus dem Entwurf ging außerdem
             <template v-for="(rv, i) in data.enactment.furtherRv" :key="rv.url"
               ><span v-if="i > 0">, </span
@@ -931,44 +874,40 @@ const linkClasses =
             >
             hervor.
           </p>
-          <!-- Mechanism 3, manual edition: invite the comparison the diff
-               layer will one day automate. Temporal narrative, not causal.
-               The card states the outcome; the comparison itself lives
-               below and is linked, not duplicated. -->
-          <p class="mt-4 text-sm leading-relaxed text-ink">
-            <template v-if="data.deadline && data.statements.total > 0">
-              Bis zum Fristende am {{ formatDateDe(data.deadline) }} gingen
-              {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
-              ein.
-            </template>
+          <!-- Mechanismus 3, Handarbeit: die Einladung zu dem Vergleich, den
+               die Diff-Schicht einmal von selbst zieht. Zeitlich erzählt,
+               nicht kausal. Der Vergleich selbst steht weiter unten und wird
+               verlinkt, nicht wiederholt. -->
+          <p class="mt-2 max-w-prose text-sm text-ink-secondary">
             {{ RV_DEFINITION }} Ob und wie der Entwurf geändert wurde, zeigt
             <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>
             weiter unten.
           </p>
         </div>
-        <div
-          v-if="!data.enactment && !data.active"
-          id="ergebnis"
-          class="mt-4 rounded-xl border border-hairline bg-surface p-5"
-        >
-          <p v-if="noRvVerdict" class="font-medium">{{ noRvVerdict }}</p>
+        <div v-if="!data.enactment && !data.active" id="ergebnis" class="mt-4">
+          <!-- Der zitierfähige Befundsatz führt, in `font-medium`: Die
+               Rangfolge im Abschnitt trägt jetzt Größe und Gewicht, nicht
+               mehr eine Kante. -->
+          <p v-if="noRvVerdict" class="max-w-prose text-sm font-medium text-ink">
+            {{ noRvVerdict }}
+          </p>
           <!-- Die Definition steht HIER, nicht nur im Zweig mit Vorlage:
                Wer nicht weiß, was eine Regierungsvorlage ist, kann auch
                nicht einordnen, dass keine kam — und das ist der häufigere
                Fall. -->
           <p
-            class="text-sm text-ink-secondary"
-            :class="noRvVerdict ? 'mt-1.5' : ''"
+            class="max-w-prose text-sm text-ink-secondary"
+            :class="noRvVerdict ? 'mt-2' : ''"
           >
             {{ RV_DEFINITION }} {{ noRvBody }}
           </p>
-          <p v-if="noRvBaseRate" class="mt-1.5 text-sm text-ink-secondary">
+          <p v-if="noRvBaseRate" class="mt-2 max-w-prose text-sm text-ink-secondary">
             {{ noRvBaseRate }}
           </p>
           <!-- The win side of the same mechanism: the draft that finds a
                lapsed one also finds the one that took its place. Ink, not
-               secondary — it is the one actionable line in the card. -->
-          <p v-if="data.successor" class="mt-3 text-sm text-ink">
+               secondary — it is the one actionable line in the section. -->
+          <p v-if="data.successor" class="mt-3 max-w-prose text-sm text-ink">
             Ein gleichlautender späterer Entwurf liegt vor:
             <NuxtLink
               :to="`/entwuerfe/${data.successor.gp}/${data.successor.inr}`"

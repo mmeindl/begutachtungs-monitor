@@ -30,7 +30,7 @@
  * („die beiden Fragen in der Leiste"). The rail says its own state in words
  * instead.
  */
-import { EDITORIAL_BADGE_GLOSS } from '#shared/utils/lawStations'
+import { EDITORIAL_BADGE_SENTENCE } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
 useSeoMeta({
@@ -138,7 +138,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
         name: 'Bundesgesetzblatt II',
         text: 'Das Ministerium erlässt die überarbeitete Verordnung und macht sie im Bundesgesetzblatt Teil II kund – erst damit gilt sie. Eine Regierungsvorlage und einen Beschluss des Nationalrats gibt es hier nicht; zwischen Fristende und Kundmachung ist von außen nichts zu sehen.',
         monitor:
-          'Bisher nichts. Die Seite eines Verordnungsentwurfs endet mit dem Ende der Frist: Ob und wann die Verordnung kundgemacht wurde, steht dort nicht. Öffentlich ist sie trotzdem – im RIS, unter Bundesgesetzblatt Teil II.',
+          'Die Kundmachung selbst: „Kundgemacht als BGBl. II Nr. 410/2024, 44 Tage nach Ende der Begutachtungsfrist“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 291 Verordnungsentwürfe seit 2024 gemessen findet der Abgleich 84,2 % der Kundmachungen, bei Fristen von vor mehr als einem Jahr 92,3 %. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen mehr als ein halbes Jahr.',
         link: {
           to: 'https://www.ris.bka.gv.at/Bgbl-Auth/',
           label: 'Bundesgesetzblatt II im RIS',
@@ -466,7 +466,10 @@ const toc = [
       <p class="mt-4 leading-relaxed text-ink-secondary">
         Von uns stammt die <strong class="font-medium text-ink">Markierung</strong>:
         Wir vergleichen die beiden Spalten Wort für Wort und heben hervor, was
-        wegfällt und was dazukommt. {{ EDITORIAL_BADGE_GLOSS }}
+        wegfällt und was dazukommt. Dieselbe Markierung und dieselben Abzeichen
+        trägt der Vergleich nach der Begutachtung, Entwurf gegen
+        Regierungsvorlage – auch er verlinkt hierher.
+        {{ EDITORIAL_BADGE_SENTENCE }}
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
