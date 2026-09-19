@@ -41,6 +41,7 @@
  */
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftChain'
+import type { VorlageRow } from './mappers'
 
 /** Six hours: a station moves on the scale of days, and this way at most
  *  four cold builds a day can land on a visitor — the nightly prewarm
@@ -81,11 +82,12 @@ async function mapWithConcurrency<T, R>(
 async function chainOf(
   gp: string,
   inr: number,
-  houseStatus: (gp: string, inr: number) => Promise<string | null>,
+  houseRow: (gp: string, inr: number) => Promise<VorlageRow | null>,
 ): Promise<DraftChain> {
   const nothing: DraftChain = {
     station: 'begutachtung',
     rvCitation: null,
+    rvDate: null,
     bgblNumber: null,
     filingOpen: false,
   }
@@ -106,8 +108,12 @@ async function chainOf(
       // weakest claim the evidence supports.
     }
 
-    const station = stationFor(bgblNumber, await houseStatus(rv.gp, rv.inr))
-    return { station, rvCitation: rv.label, bgblNumber, filingOpen }
+    /* One row, two facts: what the house did with the Vorlage, and when it
+     * arrived there. Both come from the same list-101 row, so asking for
+     * the row rather than the status alone costs nothing. */
+    const row = await houseRow(rv.gp, rv.inr)
+    const station = stationFor(bgblNumber, row?.status ?? null)
+    return { station, rvCitation: rv.label, rvDate: row?.date || null, bgblNumber, filingOpen }
   } catch {
     return nothing
   }
@@ -123,25 +129,25 @@ export const getStationMapForGp = defineCachedFunction(
   async (gp: string): Promise<Record<number, DraftChain>> => {
     const { items } = await getDraftsForGp(gp)
 
-    /* The Vorlagen list of a period, for the one fact the Vorlage's own
+    /* The Vorlagen list of a period, for the two facts the Vorlage's own
      * detail JSON does not carry in a form we read: whether the house is
-     * done with it. One call per period, cached — and a period is fetched
-     * only if a Vorlage actually points into it, which for the carry-over
-     * case (§13.4) is at most one extra list. */
-    const houseLists = new Map<string, Promise<Map<number, string>>>()
-    const houseStatus = async (rvGp: string, rvInr: number): Promise<string | null> => {
+     * done with it, and when it arrived there. One call per period, cached
+     * — and a period is fetched only if a Vorlage actually points into it,
+     * which for the carry-over case (§13.4) is at most one extra list. */
+    const houseLists = new Map<string, Promise<Map<number, VorlageRow>>>()
+    const houseRow = async (rvGp: string, rvInr: number): Promise<VorlageRow | null> => {
       let list = houseLists.get(rvGp)
       if (!list) {
         list = getVorlagenForGp(rvGp)
-          .then((rows) => new Map(rows.map((r) => [r.inr, r.status])))
-          .catch(() => new Map<number, string>())
+          .then((rows) => new Map(rows.map((r) => [r.inr, r])))
+          .catch(() => new Map<number, VorlageRow>())
         houseLists.set(rvGp, list)
       }
       return (await list).get(rvInr) ?? null
     }
 
     const chains = await mapWithConcurrency(items, CONCURRENCY, (item) =>
-      chainOf(item.gp, item.inr, houseStatus),
+      chainOf(item.gp, item.inr, houseRow),
     )
 
     // Duplicate rows exist upstream (dual-ministry drafts, `outcomes.ts`);

@@ -543,6 +543,23 @@ this dataset would make it trivially easy to build.
   to stand alone, or it says only what is certain ("kein Ministerialentwurf zu
   dieser Vorlage") and leaves the inference to the reader. The second is
   cheaper, true today, and the better sentence anyway.
+
+  **Stand 18.09.2026: the per-procedure check exists, and the label is bound
+  to it.** The "Zweite Runde" rows on `/` and `/entwuerfe` carried "ohne
+  Begutachtung" off a missing `preconst` pointer alone — the inference this
+  section warns against, shipped. It now runs the same cross-check this
+  memo's §2 ran offline: list 81 of the period, title similarity, only drafts
+  that began before the Vorlage was filed (`server/utils/precedingDraft.ts`).
+  Calibrated against the 85 pointer-confirmed ME→RV pairs of GP XXVIII, a
+  Jaccard threshold of 0.50 recovers 72 of 81 measurable pairs and fires on 3
+  of the 32 pointerless Vorlagen — all three the generic ASVG/Dienstrecht
+  family §2 already identified as false matches. Those three lose the label
+  although they earned it; that direction is the point. **The residual gap is
+  the other nine:** where a title genuinely changes between draft and
+  Vorlage, the check would not find the predecessor, so roughly one in ten
+  such histories stays invisible to it — which is why the wording stays
+  procedural and per-row, and why no aggregate is derived from it in the
+  product.
 - **An open question, not a claim:** whether Austria has any legal duty to
   hold a Begutachtung, and what the status of the six-week Frist actually is.
   The memo's argument is strongest if the answer is "none, and a

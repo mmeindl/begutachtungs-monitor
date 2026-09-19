@@ -12,7 +12,9 @@
  *
  * Cost. ONE list-101 call for the whole period, narrowed by its `Status`
  * column to the handful still before the Nationalrat (6 of 117 on
- * 2026-09-15), then one detail JSON and one sizing call per candidate. The
+ * 2026-09-15), then one detail JSON and one sizing call per candidate, plus
+ * list 81 once — but only when a row names no Ministerialentwurf and the
+ * section would otherwise claim there was none. The
  * `Status` column agreed with the authoritative flag on 117 of 117 GP-XXVIII
  * Vorlagen — and is still used only to NARROW: `statementsstate` is read per
  * item and decides what is shown. Verify, then display; a proxy that was
@@ -27,12 +29,17 @@ import type { DashboardSecondRound, OpenVorlage } from '#shared/types'
 /** Upstream's "still before the Nationalrat" (`mapVorlageRow`). */
 const STATUS_IN_HOUSE = '2'
 
+/** Eine Zeile, bevor die Gegenprobe über den fehlenden Zeiger entschieden hat. */
+type PendingVorlage = Omit<OpenVorlage, 'consultation'> & {
+  consultation: OpenVorlage['consultation'] | { kind: 'unresolved' }
+}
+
 export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
   const gp = await getCurrentGp()
   const candidates = (await getVorlagenForGp(gp)).filter((v) => v.status === STATUS_IN_HOUSE)
 
   const resolved = await Promise.all(
-    candidates.map(async (v): Promise<OpenVorlage | null> => {
+    candidates.map(async (v): Promise<PendingVorlage | null> => {
       try {
         const detail = await getGegenstand(gp, 'I', v.inr)
         // The claim on screen is this flag, not the list column above.
@@ -40,7 +47,9 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
 
         // The Begutachtung it came from, if there was one. `preconst` is not
         // a universal field, so a missing pointer means "we have no page for
-        // it", never "no Begutachtung happened" — the row then links out.
+        // it", never "no Begutachtung happened" — the row then links out, and
+        // whether it may also SAY „ohne Begutachtung" is decided below,
+        // against list 81 rather than against a missing field.
         const pre = detail.content?.preconst ?? []
         const me = pre.find((p) => p?.ityp === 'ME' && p.gp_code && p.inr != null) ?? null
 
@@ -55,7 +64,9 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
           date: v.date,
           parliamentUrl: v.parliamentUrl,
           statementCount,
-          draft: me ? { gp: String(me.gp_code), inr: Number(me.inr) } : null,
+          consultation: me
+            ? { kind: 'draft' as const, gp: String(me.gp_code), inr: Number(me.inr) }
+            : { kind: 'unresolved' as const },
         }
       } catch {
         // Per-item tolerance, as in the outcomes section: one failing
@@ -65,8 +76,27 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
     }),
   )
 
-  const items = resolved
-    .filter((v): v is OpenVorlage => v !== null)
+  const rows = resolved.filter((v): v is PendingVorlage => v !== null)
+
+  /**
+   * Die Gegenprobe für jede Zeile ohne Zeiger: erst hier, weil sie Liste 81
+   * braucht — EIN Abruf für alle offenen Zeilen zusammen, und keiner, solange
+   * jede Vorlage ihren Entwurf selbst nennt (der Normalfall: 85 von 117 auf
+   * GP XXVIII). Die Liste ist ohnehin für jede Seite des Monitors im Cache.
+   *
+   * Scheitert sie, bleibt die Zeile `unknown` und sagt nichts: ein Ausfall
+   * der Prüfung darf nicht in eine Behauptung umschlagen, die sie belegen
+   * sollte.
+   */
+  const unresolved = rows.filter((v) => v.consultation.kind === 'unresolved')
+  const drafts = unresolved.length ? await getDraftsForGp(gp).then((d) => d.items).catch(() => null) : []
+
+  const items: OpenVorlage[] = rows
+    .map((v): OpenVorlage => {
+      if (v.consultation.kind !== 'unresolved') return v as OpenVorlage
+      const checked = drafts !== null && findPrecedingDraft(v, drafts) === null
+      return { ...v, consultation: checked ? { kind: 'none' } : { kind: 'unknown' } }
+    })
     .sort((a, b) => b.date.localeCompare(a.date) || b.citation.localeCompare(a.citation))
 
   return { gp, items }

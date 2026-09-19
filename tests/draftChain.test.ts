@@ -38,6 +38,7 @@ describe('furtherChain', () => {
   const chain = (station: DraftChain['station'], rvCitation = '1 d.B.'): DraftChain => ({
     station,
     rvCitation,
+    rvDate: null,
     bgblNumber: station === 'bgbl' ? 'Bundesgesetzblatt I Nr. 1/2026' : null,
     filingOpen: false,
   })
@@ -77,6 +78,7 @@ describe('chainCoverageOf', () => {
   const at = (station: DraftChain['station']): DraftChain => ({
     station,
     rvCitation: station === 'begutachtung' ? null : '1 d.B.',
+    rvDate: null,
     bgblNumber: null,
     filingOpen: false,
   })

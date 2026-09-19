@@ -25,6 +25,22 @@ describe('parseAddress', () => {
     expect(a).toMatchObject({ para: '§ 12', abs: '3', z: null })
   })
 
+  it('marks "samt Überschrift" as a second place, not as a heading-only address', () => {
+    const a = parseAddress('In § 22 samt Überschrift')!
+    expect(a).toMatchObject({ para: '§ 22', heading: false, alsoHeading: true })
+    // "Die Überschrift zu § 5" stays heading-*only*: one place, not two.
+    expect(parseAddress('In der Überschrift zu § 5')).toMatchObject({ heading: true, alsoHeading: false })
+  })
+
+  it('gives a "samt Überschrift" target its own heading operation', () => {
+    const parsed = parseInstruction('In § 22 samt Überschrift, § 23 Abs. 1 und § 25 Abs. 4 wird jeweils das Wort "Generalprokuratur" durch das Wort "Bundesstaatsanwaltschaft" ersetzt.')
+    expect(parsed.reason).toBeNull()
+    const headings = parsed.ops.filter((o) => 'target' in o && o.target.heading)
+    expect(headings).toHaveLength(1)
+    expect(headings[0]).toMatchObject({ target: { para: '§ 22', level: 'para', abs: null } })
+    expect(parsed.ops).toHaveLength(4)
+  })
+
   it('expands "und" lists and integer ranges', () => {
     expect(parseAddress('§ 5 Abs. 2 und 3')!.siblings).toEqual(['3'])
     expect(parseAddress('§ 5 Z 4 bis 7')!.siblings).toEqual(['5', '6', '7'])

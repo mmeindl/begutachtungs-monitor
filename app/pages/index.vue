@@ -9,6 +9,7 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { HOME_LIST_LENGTH, compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
+import { viewOfDraft, viewOfOutcome, viewOfRis, viewOfVorlage } from '#shared/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
 import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
@@ -18,7 +19,7 @@ import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
    the one sentence that travels with every shared link and is the first
    thing a newcomer reads. */
 const pageDescription =
-  'Laufende Begutachtungen österreichischer Gesetzes- und Verordnungsentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt oder bisher nichts.'
+  'Laufende Begutachtungen österreichischer Gesetzes- und Verordnungsentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt.'
 
 useSeoMeta({
   title: 'Aktuell',
@@ -115,8 +116,8 @@ const { webcalUrl, googleCalUrl } = useFeedUrls()
  * view.
  */
 type OpenRow =
-  | { kind: 'me'; key: string; draft: DraftSummary }
-  | { kind: 'ris'; key: string; item: RisConsultation }
+  | { kind: 'me'; draft: DraftSummary }
+  | { kind: 'ris'; item: RisConsultation }
 
 /**
  * Five rows, then out to the filter — `HOME_LIST_LENGTH`, the same length
@@ -131,12 +132,8 @@ type OpenRow =
  */
 const openRows = computed<OpenRow[]>(() => {
   const out: OpenRow[] = []
-  for (const d of data.value?.open ?? []) {
-    out.push({ kind: 'me', key: `me-${d.gp}-${d.inr}`, draft: d })
-  }
-  for (const c of risOnly.value?.items ?? []) {
-    out.push({ kind: 'ris', key: `ris-${c.id}`, item: c })
-  }
+  for (const d of data.value?.open ?? []) out.push({ kind: 'me', draft: d })
+  for (const c of risOnly.value?.items ?? []) out.push({ kind: 'ris', item: c })
   return out.sort((a, b) =>
     compareDrafts(
       a.kind === 'me' ? draftOrderKey(a.draft) : a.item,
@@ -145,14 +142,21 @@ const openRows = computed<OpenRow[]>(() => {
   )
 })
 
-const visibleOpenRows = computed(() => openRows.value.slice(0, HOME_LIST_LENGTH))
+/* Auf die Anatomie abgebildet wird HIER, nicht in der Vorlage: `EntryList`
+ * bekommt fertige `EntryView`s, und jeder Abschnitt der Seite sagt in einer
+ * Zeile, welcher Adapter für seine Art zuständig ist. */
+const visibleOpenRows = computed(() =>
+  openRows.value
+    .slice(0, HOME_LIST_LENGTH)
+    .map((row) => (row.kind === 'me' ? viewOfDraft(row.draft) : viewOfRis(row.item))),
+)
 
 /**
  * NO count line on this page, unlike `/entwuerfe`.
  *
  * There it states a corpus nobody can see (336 rows behind filters); here
- * the list is six cards and every one of them says on its own row which
- * kind it is, so "4 Ministerialentwürfe · 4 Verordnungsentwürfe und andere"
+ * the list is a handful of rows and every one of them says in its own
+ * Kennung which kind it is, so "4 Ministerialentwürfe · 4 Verordnungsentwürfe und andere"
  * only restates what is visible — and a figure inside a line of prose is
  * the hardest place to find one when you are scanning for exactly that.
  *
@@ -176,10 +180,9 @@ const rankedRows = computed(() => {
   const byKey = new Map(
     (outcomes.value?.rankedOutcomes ?? []).map((o) => [`${o.gp}-${o.inr}`, o]),
   )
-  return (data.value?.topByStatements ?? []).map((draft) => ({
-    draft,
-    outcome: byKey.get(`${draft.gp}-${draft.inr}`) ?? null,
-  }))
+  return (data.value?.topByStatements ?? []).map((draft) =>
+    viewOfDraft(draft, byKey.get(`${draft.gp}-${draft.inr}`) ?? null),
+  )
 })
 
 /**
@@ -195,8 +198,15 @@ const rankedRows = computed(() => {
  * every other section's.
  */
 const visibleSecondRound = computed(
-  () => secondRound.value?.items.slice(0, HOME_LIST_LENGTH) ?? [],
+  () => secondRound.value?.items.slice(0, HOME_LIST_LENGTH).map(viewOfVorlage) ?? [],
 )
+
+/* Ungekappt: der Endpunkt liefert bereits `HOME_LIST_LENGTH` Zeilen — die
+ * Kappung sitzt dort, wo die Vorlagen aus Liste 101 gelesen werden, nicht
+ * hier. `?? []` unterscheidet nicht zwischen „nichts kundgemacht" und
+ * „nicht abrufbar"; das tun die zwei Sätze in der Vorlage, die weiterhin
+ * `enacted` selbst befragen. */
+const enactedEntries = computed(() => enacted.value?.items.map(viewOfOutcome) ?? [])
 
 /**
  * The Gesetzgebungsperiode everything below the open list is counted over,
@@ -240,8 +250,7 @@ const gpStart = computed(() => {
       <p class="mt-3 text-ink-secondary">
         Alle laufenden Begutachtungen österreichischer Gesetzes- und
         Verordnungsentwürfe: Fristen und Stellungnahmen auf einen Blick. Und
-        für jeden Entwurf danach: Regierungsvorlage, Bundesgesetzblatt –
-        oder bisher nichts.
+        für jeden Entwurf danach: Regierungsvorlage, Bundesgesetzblatt.
       </p>
 
       <!-- The account-free alert tier, IN the header since 18.09.2026, not
@@ -294,10 +303,10 @@ const gpStart = computed(() => {
            ich noch mitreden?" (docs/architecture.md §12.20). Which official
            register happens to carry a record is plumbing, and plumbing does
            not belong in the page skeleton — it belongs on the row, which is
-           why both card kinds now lead their meta line with the type word.
+           why both row kinds now lead their meta line with the type word.
 
            The split cost the page its deadline order: on 17.09.2026 the
-           first card was a Frist ending on the 21st while a Verordnung ended
+           first row was a Frist ending on the 21st while a Verordnung ended
            that same day, below a second heading. Urgency is the one thing
            two lists cannot preserve. -->
       <section class="page-section" aria-labelledby="open-heading">
@@ -333,12 +342,7 @@ const gpStart = computed(() => {
           >im RIS nachsehen</ExternalLink>.
         </p>
 
-        <ul v-if="visibleOpenRows.length" class="mt-4 space-y-3">
-          <li v-for="row in visibleOpenRows" :key="row.key">
-            <DraftCard v-if="row.kind === 'me'" :draft="row.draft" />
-            <RisConsultationCard v-else :consultation="row.item" />
-          </li>
-        </ul>
+        <EntryList v-if="visibleOpenRows.length" :entries="visibleOpenRows" class="mt-4" />
         <div v-else-if="risOnly" class="mt-4">
           <!-- The no-open moment is exactly the moment to subscribe. Said
                only when BOTH halves are known to be empty — with the RIS
@@ -371,7 +375,7 @@ const gpStart = computed(() => {
              „nicht im Parlament" with „Gegenstand", a word the site
              defines nowhere — a gloss that needs a gloss. The rows now
              state the fact the absence is made of („Stellungnahme direkt
-             ans Ministerium", `risFilingNote`), so there is nothing left
+             nicht gezählt"), so there is nothing left
              to explain here; the procedure behind it belongs on
              /so-funktionierts, not under the front door's list. -->
 
@@ -406,11 +410,10 @@ const gpStart = computed(() => {
           Auch zu einer Regierungsvorlage kann Stellung genommen werden – dort
           kann der Ausschuss den Text noch ändern. {{ SECOND_ROUND_WINDOW }}
         </p>
-        <ul class="mt-4 space-y-3">
-          <li v-for="v in visibleSecondRound" :key="v.citation">
-            <SecondRoundCard :vorlage="v" />
-          </li>
-        </ul>
+        <!-- Der Spaltenkopf heißt hier NICHT „Entwurf": diese Zeilen sind
+             Regierungsvorlagen, und der Kopf ist die einzige Stelle, an der
+             die Liste selbst sagt, was in ihr steht. -->
+        <EntryList :entries="visibleSecondRound" lead="Regierungsvorlage" class="mt-4" />
       </section>
 
       <!-- The accountability layer opens HERE, not with the recency list
@@ -458,33 +461,21 @@ const gpStart = computed(() => {
           > (seit {{ gpStart }})</template> – offene und abgeschlossene – und
           daneben, was aus ihnen geworden ist.
         </p>
-        <!-- Same card anatomy as every other section, and the ranked figure
-             in the same right-hand slot: right-aligned behind one suffix,
-             the counts read as a column. Under it the outcome, so the aside
-             reads in the order the procedure ran — wie viele, bis wann, was
-             daraus wurde. An ordered list, because here the order carries
-             meaning. -->
-        <ol class="mt-4 space-y-3">
-          <li v-for="row in rankedRows" :key="`${row.draft.gp}-${row.draft.inr}`">
-            <DraftCard :draft="row.draft" emphasis="volume">
-              <template v-if="row.outcome" #aside>
-                <div class="shrink-0 sm:text-right">
-                  <StatementCountBlock
-                    :count="row.draft.statementCount"
-                    :deadline="row.draft.deadline"
-                    :active="row.draft.active"
-                    :show-deadline="false"
-                  />
-                  <!-- Chip directly under the figure it answers, and the
-                       Frist under the chip — the aside of the section below
-                       with one line added on top, not a second arrangement
-                       of the same three facts. -->
-                  <OutcomeChip :outcome="row.outcome" class="mt-1.5" />
-                </div>
-              </template>
-            </DraftCard>
-          </li>
-        </ol>
+        <!-- Dieselbe Anatomie wie überall, und hier ist das der Punkt: die
+             Zahl, nach der gereiht wird, steht in DERSELBEN Spalte wie in
+             jedem anderen Abschnitt, und daneben, nicht an ihrer Stelle,
+             der Ausgang (§12.28).
+
+             Bis 18.09.2026 hob dieser Abschnitt die Zahl in den rechten
+             Slot — und verdrängte damit den Ausgang aus ihm. „846
+             Stellungnahmen → Bisher keine Regierungsvorlage" IST aber die
+             Nachverfolgung; das Paar ist die Aussage, nicht die Zahl allein
+             (§12.21 sagt es selbst: was diesen Abschnitt aufhörte, eine
+             Rangliste zu sein, waren die Chips). Eine gereihte Liste zeigt
+             ihren Schlüssel durch die REIHENFOLGE — die Zahl braucht
+             Ausrichtung, keine Vergrößerung. Eine geordnete Liste, weil
+             hier die Reihenfolge Bedeutung trägt. -->
+        <EntryList :entries="rankedRows" ordered class="mt-4" />
       </section>
 
       <!-- The end of the chain, and the page's last word on purpose
@@ -526,15 +517,9 @@ const gpStart = computed(() => {
           Nationalrat beschließt in Blöcken: zwischen zwei Plenarwochen ändert
           sich hier nichts.
         </p>
-        <ul v-if="enacted?.items.length" class="mt-4 space-y-3">
-          <!-- Same card and the same chip as the section above: the object
-               is the Begutachtung, and what became of it goes in the aside. -->
-          <li v-for="o in enacted.items" :key="`${o.gp}-${o.inr}`">
-            <DraftCard :draft="o">
-              <template #aside><OutcomeChip :outcome="o" /></template>
-            </DraftCard>
-          </li>
-        </ul>
+        <!-- Same row and the same chip as the section above: the object
+             is the Begutachtung, and what became of it goes in the aside. -->
+        <EntryList v-if="enactedEntries.length" :entries="enactedEntries" class="mt-4" />
         <!-- Two different silences, said differently: nothing promulgated
              yet is a fact about the period, an unreachable endpoint is a
              fact about us. -->

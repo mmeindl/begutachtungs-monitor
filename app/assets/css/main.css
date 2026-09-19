@@ -231,6 +231,28 @@
 }
 
 /*
+ * Die zwei festen Spalten der dichten Zeile — Breite, Flucht und
+ * Schrumpfverbot, an EINER Stelle (§12.28).
+ *
+ * Sie stehen hier, weil sie an zwei Orten gelten müssen und exakt
+ * übereinstimmen: in `EntryItem` sind es die Zellen, in `EntryList` der
+ * Spaltenkopf darüber. Als Literale kopiert waren sie eine Verabredung
+ * zwischen zwei Dateien, die niemand prüft — und ein Kopf, der um 8 px
+ * neben seiner Spalte steht, ist schlimmer als gar keiner: er behauptet
+ * eine Ausrichtung, die es nicht gibt.
+ *
+ * `lg:` verbreitert beide, weil dort der Titel den Platz übrig hat; die
+ * Reihenfolge (Zahl links, Stand rechts) macht die Zeile selbst.
+ */
+@utility entry-col-count {
+  @apply w-28 shrink-0 text-right lg:w-32;
+}
+
+@utility entry-col-state {
+  @apply w-44 shrink-0 text-right lg:w-56;
+}
+
+/*
  * 44px target size for inline links WITHOUT layout shift: the padding
  * creates the hit area, the negative margins cancel it out in the layout.
  * Named once here instead of copied per link.

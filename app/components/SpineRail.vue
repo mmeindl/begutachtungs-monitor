@@ -99,7 +99,7 @@ const props = defineProps<{
    of eleven, and the brand colour stopped carrying information; five names
    in ink with a grey underline replaced that with five grey underlines.
    Neither is what a table of contents should look like sitting under a
-   headline. DraftCard settled the same question the same way ("the card
+   headline. EntryItem settled the same question the same way ("the card
    around it is already the link").
 
    Mechanically it is the stretched-link pattern: the anchor stays around

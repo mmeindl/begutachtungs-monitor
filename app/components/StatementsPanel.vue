@@ -178,12 +178,6 @@ function statementCountLabel(n: number): string {
   return countLabelDe(n, 'Stellungnahme', 'Stellungnahmen')
 }
 
-/* Ob das Wort „Zustimmung" auf dieser Seite überhaupt vorkommt. Ein Glossar
-   für einen Begriff, den niemand vor sich hat, ist selbst nur Text. */
-const hasEndorsements = computed(() =>
-  props.summary.organisationList.some((o) => o.endorsements > 0),
-)
-
 const miniStats = computed(() => [
   { label: 'Gesamt', value: props.summary.total },
   { label: 'Organisationen', value: props.summary.organisations },
@@ -432,39 +426,7 @@ const mixSegments = computed(() => {
       </div>
     </dl>
 
-    <!-- Zwei Wörter des Parlaments, die die Seite bis 18.09.2026 nirgends
-         erklärte: „Nicht öffentlich" steht als Kachel direkt darüber,
-         „Zustimmung" auf jeder zweiten Zeile und als Sortierung. Umbenennen
-         geht nicht — es sind die amtlichen Begriffe, und wer von hier auf
-         parlament.gv.at weiterklickt, muss sie dort wiederfinden. Also
-         einmal glossiert, an der Stelle, an der sie zuerst auftauchen
-         (Muster: `DOC_HINTS` in DocumentList).
-
-         Was hier NICHT steht: warum eine Stellungnahme nicht öffentlich
-         ist. Die Quelle sagt es nicht — Liste 142 trägt an dieser Stelle
-         nur den Platzhaltertext —, und „auf Wunsch der Einbringenden" wäre
-         geraten. -->
-    <dl
-      v-if="summary.nonPublic > 0 || hasEndorsements"
-      class="mt-3 max-w-prose space-y-1 text-xs text-ink-muted"
-    >
-      <div v-if="summary.nonPublic > 0">
-        <dt class="inline font-medium text-ink">Nicht öffentlich:</dt>
-        <dd class="inline">
-          Das Parlament führt diese Stellungnahmen mit, veröffentlicht aber
-          weder Text noch Einbringer.
-        </dd>
-      </div>
-      <div v-if="hasEndorsements">
-        <dt class="inline font-medium text-ink">Zustimmung:</dt>
-        <dd class="inline">
-          Wer eine fremde Stellungnahme auf parlament.gv.at unterstützt, ohne
-          selbst eine abzugeben.
-        </dd>
-      </div>
-    </dl>
-
-    <!-- Mix bar (decorative; the <dl> above is the legend) -->
+    <!-- Mix bar (decorative; the tiles above carry the numbers) -->
     <div
       v-if="mixSegments.length"
       class="mt-3 flex h-2 w-full overflow-hidden rounded-[2px] border border-hairline"

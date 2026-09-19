@@ -7,7 +7,23 @@
  * caller labels the control (aria-label or a <label for>).
  */
 const model = defineModel<string>({ required: true })
-defineProps<{ id?: string; ariaLabel?: string }>()
+/**
+ * `block` gives the width away to the caller.
+ *
+ * A native <select> takes its intrinsic width from its WIDEST option, not
+ * from the selected one, and German option labels are compounds: „Alle
+ * Arten" rendered 267 px wide because „Verordnungsentwürfe und andere"
+ * stands below it in the list, „Nach Frist" 202 px because of „Meiste
+ * Stellungnahmen". On /entwuerfe the four selects together claimed 837 px of
+ * a 896 px row that way, and the toolbar wrapped into four ragged rows whose
+ * breaks were an accident of the viewport.
+ *
+ * With `block` the control fills its wrapper instead, so a grid track
+ * decides the width and the row breaks where the layout says. Shrink-to-fit
+ * stays the default: a lone select in a section (LawDiffSection) should
+ * still be as wide as its content.
+ */
+defineProps<{ id?: string; ariaLabel?: string; block?: boolean }>()
 </script>
 
 <template>
@@ -16,7 +32,7 @@ defineProps<{ id?: string; ariaLabel?: string }>()
        characters), and its automatic minimum size would otherwise defeat the
        caller's max-width and push the page into horizontal scroll on mobile.
        Callers that are flex items need min-w-0 for the same reason. -->
-  <span class="relative inline-flex min-w-0 max-w-full">
+  <span class="relative min-w-0 max-w-full" :class="block ? 'flex w-full' : 'inline-flex'">
     <select
       :id="id"
       v-model="model"

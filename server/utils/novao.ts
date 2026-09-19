@@ -52,6 +52,13 @@ export interface NovaoAddress {
   level: UnitLevel
   /** True when the instruction addresses the *heading* rather than the text */
   heading: boolean
+  /**
+   * True when the address names the heading *in addition to* the text: "In
+   * § 22 samt Überschrift … wird die Wortfolge X durch Y ersetzt". Two loci,
+   * one instruction — `heading` would drop the text, its absence drops the
+   * heading (StPO § 22, Bundesstaatsanwaltschaft-Entwurf, 2026-09-19).
+   */
+  alsoHeading: boolean
   raw: string
 }
 
@@ -131,6 +138,18 @@ const DOCUMENT_RE = /\b(?:im|Im) gesamten (?:Gesetzes|Verordnungs|Bundesgesetzes
  * instructions in the first measurement (2026-09-08).
  */
 const HEADING_TARGET_RE = /Überschrift(?:en)?\s+(?:zu|des|der|von|zum|im|dieses)\b|erhäl?t folgende Überschrift|Anlagenbezeichnung/i
+
+/**
+ * "samt Überschrift" *inside an address* — the heading comes along, the text
+ * stays addressed. For a Neufassung that is the `withHeading` flag on the
+ * operation; for a phrase operation it is a second place to act on, which
+ * this module expresses as a second op against the heading slot.
+ *
+ * Population: 2 of 6.576 harvested instructions (300 Entwürfe, 2026-09-19) —
+ * tiny, and both were half-applied before this existed: the body renamed,
+ * the heading left standing. One of the two passed the Anhang gate that way.
+ */
+const ALSO_HEADING_RE = /samt\s+(?:der\s+|den\s+)?Überschrift(?:en)?/i
 
 /** Quoted spans are operands, never addresses — "…den Ausdruck 'Abs. 1 Z 1 bis 5'…". */
 function maskQuotes(t: string): string {
@@ -234,6 +253,7 @@ function siblingsAfter(rest: string, first: string): string[] | null {
 export function parseAddress(text: string, inherited?: NovaoAddress | null): NovaoAddress | null {
   const t = maskQuotes(normalizeText(text))
   const heading = HEADING_TARGET_RE.test(t)
+  const alsoHeading = !heading && ALSO_HEADING_RE.test(t)
 
   // A law organised in Artikel addresses a § that exists only inside one of
   // them: "Art. II § 1 Abs. 5 lautet". Neither this address model nor the
@@ -248,7 +268,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   if (artikel && paragraphAt > artikel.index) return null
 
   if (DOCUMENT_RE.test(t)) {
-    return { para: null, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'document', heading: false, raw: t }
+    return { para: null, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'document', heading: false, alsoHeading: false, raw: t }
   }
 
   const pm = PARA_RE.exec(t)
@@ -256,10 +276,10 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     const sm = ABSCHNITT_RE.exec(t)
     if (sm) {
       const nr = sm[1] ?? sm[2] ?? ''
-      return { para: `Abschnitt ${nr}`, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'abschnitt', heading, raw: t }
+      return { para: `Abschnitt ${nr}`, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'abschnitt', heading, alsoHeading, raw: t }
     }
     if (TITEL_RE.test(t)) {
-      return { para: null, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'titel', heading: true, raw: t }
+      return { para: null, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'titel', heading: true, alsoHeading: false, raw: t }
     }
     if (!inherited?.para) return null
   }
@@ -321,7 +341,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   // deshalb erst, wenn wirklich zwei Zahlen mit eigener Komponente dastehen.
   if (level !== 'para' && /§§/.test(t) && [...t.matchAll(/\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))/gi)].length > 1) return null
 
-  return { para, abs, z, lit, satz, satzCount, siblings, level, heading, raw: t }
+  return { para, abs, z, lit, satz, satzCount, siblings, level, heading, alsoHeading, raw: t }
 }
 
 /**
@@ -366,6 +386,18 @@ function splitPluralParagraphs(t: string): string[] | null {
   // A trailing part that already carries its own § ("… sowie in § 380 Abs. 1")
   // is left as it stands; only the bare ones get the symbol back.
   return parts.map((p) => p.trim()).filter(Boolean).map((p) => (PARA_RE.test(p) ? p : `§ ${p}`))
+}
+
+/**
+ * Die Überschrift des Paragraphen, den eine Adresse nennt, als eigene Adresse.
+ *
+ * Auf den Paragraphen hochgezogen, weil eine Überschrift dem § gehört und
+ * nicht dem Absatz, den die Adresse zufällig nennt: „§ 15a Abs. 1 und 2 samt
+ * Überschrift" meint die Überschrift von § 15a. Die Geschwister fallen weg —
+ * sie zählen auf der Ebene, die hier gerade verlassen wird.
+ */
+function headingTwin(a: NovaoAddress): NovaoAddress {
+  return { ...a, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'para', heading: true, alsoHeading: false }
 }
 
 export function parseAddressList(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
@@ -623,6 +655,12 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   }
 
   if (PHRASE_RE.test(head)) {
+    // "In § 22 samt Überschrift, § 23 Abs. 1a … wird das Wort X durch Y
+    // ersetzt": the heading is a second place, not a second reading of the
+    // same one. It becomes its own op, so the phrase must be found in each
+    // place exactly once — and a heading that does not carry the phrase
+    // refuses the instruction instead of quietly renaming only the body.
+    const places = targets.flatMap((t) => (t.alsoHeading ? [t, headingTwin(t)] : [t]))
     // "wird in der jeweils grammatikalisch richtigen Form die Wortfolge X
     // durch Y ersetzt": the drafters say outright that the replacement is to
     // be declined per context — "der Bundesministerin" becomes "des
@@ -641,7 +679,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
         if (quotes.length % 2 !== 0 || pairs !== quotes.length / 2) return fail(`${quotes.length} Operanden, Paarbildung unklar`)
         const everywhere = everyOccurrence(head, targets)
         const many: NovaoOp[] = []
-        for (const t of targets) for (let i = 0; i + 1 < quotes.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: quotes[i]!, to: quotes[i + 1]!, everywhere })
+        for (const t of places) for (let i = 0; i + 1 < quotes.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: quotes[i]!, to: quotes[i + 1]!, everywhere })
         return { ops: many, reason: null, line }
       }
       // Both German forms name the old text first — "wird A durch B ersetzt"
@@ -654,7 +692,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const from = reversed ? quotes[1]! : quotes[0]!
       const to = reversed ? quotes[0]! : quotes[1]!
       const everywhere = everyOccurrence(head, targets)
-      return { ops: targets.map((t) => ({ kind: 'replacePhrase' as const, target: t, from, to, everywhere })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from, to, everywhere })), reason: null, line }
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
@@ -671,11 +709,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // (Luftfahrtgesetz §§ 9, 131, 2026-09-09).
       const punctFirst = /\b(?:ein|der|das)\s+(Beistrich|Strichpunkt|Punkt|Doppelpunkt)\s+(?:gesetzt\s+und\s+danach|(?:und|sowie)\s+die)\b/i.exec(head)
       const text = punctFirst ? `${PUNCT_WORD[punctFirst[1]!.toLowerCase()]} ${quotes[1]!}` : quotes[1]!
-      return { ops: targets.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text })), reason: null, line }
     }
     if (/\bentfäll[te]\b|\bentfallen\b|\bgestrichen\b|\baufgehoben\b|\bentfernt\b/i.test(head)) {
       if (!quotes[0]) return fail('Streichung ohne Text')
-      return { ops: targets.map((t) => ({ kind: 'deletePhrase' as const, target: t, text: quotes[0]! })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'deletePhrase' as const, target: t, text: quotes[0]! })), reason: null, line }
     }
     if (/\blaute[nt]\b/i.test(head)) return fail('Wortfolge lautet — Teiltext-Ersetzung, nicht abgesichert')
     return fail('Wortfolge genannt, aber kein bekanntes Verb')

@@ -412,6 +412,34 @@ describe('phrase operations address headings and single sentences', () => {
     expect(results[0]!.reason).toBeNull()
     expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Der Halter haftet. Der Betreiber meldet. Der Halter zahlt.')
   })
+
+  // "In § 22 samt Überschrift … wird das Wort X durch Y ersetzt" renamed the
+  // body and left the heading standing — and the § passed the Anhang gate
+  // that way (StPO § 22, Bundesstaatsanwaltschaft-Entwurf, 2026-09-19).
+  it('renames the heading as well when the address names it alongside the text', () => {
+    const l: StandingLaw = { paragraphs: [para('22', 'Generalprokuratur', ['Die Generalprokuratur wirkt an allen Strafverfahren mit.'])] }
+    const { law: out, results } = run(l, instr('In § 22 samt Überschrift wird jeweils das Wort "Generalprokuratur" durch das Wort "Bundesstaatsanwaltschaft" ersetzt.'))
+    expect(results.every((r) => r.reason === null)).toBe(true)
+    expect(out.paragraphs[0]!.heading).toBe('Bundesstaatsanwaltschaft')
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Bundesstaatsanwaltschaft wirkt an allen Strafverfahren mit.')
+  })
+
+  it('refuses when the named heading does not carry the phrase, instead of renaming half of it', () => {
+    const l: StandingLaw = { paragraphs: [para('22', 'Anklagebehörde', ['Die Generalprokuratur wirkt mit.'])] }
+    const { results } = run(l, instr('In § 22 samt Überschrift wird das Wort "Generalprokuratur" durch das Wort "Bundesstaatsanwaltschaft" ersetzt.'))
+    expect(results.some((r) => r.reason !== null)).toBe(true)
+  })
+
+  // The heading belongs to the §, not to the Absatz the address happens to
+  // name: "§ 15a Abs. 1 und 2 samt Überschrift" (Apothekengesetz, 2026-09-19).
+  it('lifts the heading twin to the paragraph when the address names an Absatz', () => {
+    const l: StandingLaw = { paragraphs: [para('15a', 'Verweise auf das Apothekengesetz', ['Das Apothekengesetz gilt.', 'Unberührt bleibt das Apothekengesetz.'])] }
+    const { law: out, results } = run(l, instr('In § 15a Abs. 1 samt Überschrift wird das Wort "Apothekengesetz" durch das Wort "ApG" ersetzt.'))
+    expect(results.every((r) => r.reason === null)).toBe(true)
+    expect(out.paragraphs[0]!.heading).toBe('Verweise auf das ApG')
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Das ApG gilt.')
+    expect(out.paragraphs[0]!.children[1]!.text).toBe('Unberührt bleibt das Apothekengesetz.')
+  })
 })
 
 describe('sentence splitting (2026-09-09)', () => {

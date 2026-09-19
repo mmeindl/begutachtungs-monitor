@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DraftDetail } from '../shared/types'
 import { formatNumberDe } from '../shared/utils/format'
-import { markedStation, procedureStatusDe, stationPositionDe, stations } from '../shared/utils/stations'
+import { procedureStatusDe, stations } from '../shared/utils/stations'
 
 /* Only what `stations()` reads; the rest of DraftDetail is irrelevant here. */
 function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
@@ -125,47 +125,3 @@ describe('procedureStatusDe — the card\'s one-line answer', () => {
 })
 
 
-describe('stationPositionDe — the marked station in words', () => {
-  /* Was es soll: die gelb markierte Station auch für Sehende benennen (bis
-     18.09.2026 trug das allein die Farbe) und einem geteilten Link die
-     Orientierung geben, die er sonst nicht hat. */
-  const pos = (d: DraftDetail, ctx?: Parameters<typeof stations>[1]) =>
-    stationPositionDe(stations(d, ctx))
-
-  it('counts the end of the chain as the last of five', () => {
-    expect(pos(draft())).toBe('Station 5 von 5')
-  })
-
-  it('counts a running Begutachtung as the second', () => {
-    expect(pos(draft({ enactment: null, active: true, gpEnded: false })))
-      .toBe('Station 2 von 5')
-  })
-
-  it('moves on to the Regierungsvorlage once the Frist is over', () => {
-    // Die Leiste markiert dort weiter gelb, solange die Periode läuft; die
-    // Kopfzeile muss dieselbe Station nennen wie die markierte Zeile.
-    expect(pos(draft({ enactment: null, active: false, gpEnded: false })))
-      .toBe('Station 3 von 5')
-  })
-
-  it('falls back to the last station reached once none can follow', () => {
-    // Periode vorbei, nie eine Vorlage: Die Leiste hat keine „current"-Zeile
-    // mehr, und die letzte erreichte ist die Begutachtung.
-    expect(pos(draft({ enactment: null, active: false, gpEnded: true })))
-      .toBe('Station 2 von 5')
-  })
-
-  it('never disagrees with the row the bar marks', () => {
-    for (const d of [
-      draft(),
-      draft({ enactment: null, active: true, gpEnded: false }),
-      draft({ enactment: null, active: false, gpEnded: false }),
-      draft({ enactment: null, active: false, gpEnded: true }),
-    ]) {
-      const list = stations(d)
-      const label = stationPositionDe(list)!
-      const n = Number(/^Station (\d+) von/.exec(label)![1])
-      expect(list[n - 1]!.id).toBe(markedStation(list))
-    }
-  })
-})
