@@ -93,3 +93,34 @@ describe('the closing clause of an enumeration, under both RIS spellings', () =>
     expect(texts).toEqual(['abs:(1) Der Betreiber hat', 'ziff:1. jede Änderung', 'abs:oder', 'ziff:2. jede Störung', 'abs:der Behörde anzuzeigen.'])
   })
 })
+
+describe('compareKey', () => {
+  it('ignores hyphenation, because the two sources set it differently', () => {
+    // Parliament's HTML carries a soft hyphen where the Bundesgesetzblatt has
+    // a hard one; `normalizeText` strips soft hyphens, so the sides read
+    // „OTCDerivaten" against „OTC-Derivaten". 9/ME reported 11 of 58 units
+    // changed that way, all false (§12.33).
+    expect(compareKey('OTC­Derivaten')).toBe(compareKey('OTC-Derivaten'))
+    expect(compareKey('EWR-ISIN')).toBe(compareKey('EWRISIN'))
+    // Der Preis, benannt: Wer sich NUR in der Bindung unterscheidet, gilt als
+    // gleich. In legistischem Deutsch ist das Typografie, kein Recht.
+    expect(compareKey('Arbeits-zeit')).toBe(compareKey('Arbeitszeit'))
+  })
+
+  it('still separates texts that differ in a word', () => {
+    expect(compareKey('OTC-Derivaten')).not.toBe(compareKey('OTC-Kontrakten'))
+  })
+})
+
+describe('compareKey and the leader dots', () => {
+  it('ignores a row of leader dots, which only one source sets', () => {
+    // Parliament's HTML fills amount tables with dot leaders, RIS does not.
+    // Twelve of 398 units in 15/ME read as "changed" over nothing else.
+    expect(compareKey('monatlich.........................')).toBe(compareKey('monatlich'))
+    expect(compareKey('Betrag ... 100')).toBe(compareKey('Betrag 100'))
+  })
+
+  it('leaves ordinary sentence punctuation alone', () => {
+    expect(compareKey('Der Satz endet.')).not.toBe(compareKey('Der Satz endet'))
+  })
+})

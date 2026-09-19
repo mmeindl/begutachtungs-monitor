@@ -312,12 +312,26 @@ function bare(raw: string): string {
 }
 
 /**
- * A value the draft left open for the Regierungsvorlage to fill in: "(xx)", "XX",
- * "20xx". Two x's or an x next to digits — a lone "X" is either a roman numeral or
- * a genuine blank ("X Wochen"), where naming the number is a decision, not typesetting.
+ * A value the draft left open for a later stage to fill in: "(xx)", "XX",
+ * "20xx" — and "xxx/2025", the form a Fundstelle takes. Two x's or an x next
+ * to digits; a lone "X" is either a roman numeral or a genuine blank ("X
+ * Wochen"), where naming the number is a decision, not typesetting.
+ *
+ * DER SCHRÄGSTRICH KAM AM 19.09.2026 DAZU, und er fehlte an der teuersten
+ * Stelle. Jedes Gesetz zitiert sich in seiner Inkrafttretens-Bestimmung
+ * selbst — „in der Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025" —, und
+ * die Nummer steht erst mit der Kundmachung fest. Ohne den Schrägstrich fiel
+ * „xxx/2025" durch jede Klasse bis auf `word`, und ein `word` beendet
+ * `isEditorialChange` sofort: Der Vergleich Plenarfassung → Kundmachung
+ * meldete daraufhin 136 von 626 Einheiten als inhaltlich geändert
+ * (Budgetbegleitgesetz 2025), wo nur die eigene Fundstelle eingesetzt wurde.
  */
-function isPlaceholder(t: string): boolean {
-  if (!/^[x\d]+$/i.test(t)) return false
+function isPlaceholder(raw: string): boolean {
+  // Satzzeichen am Ende gehören dem Satz, nicht der Zahl: „xxx/2025." steht
+  // am Ende einer Inkrafttretens-Bestimmung, und `bare` räumt zwar
+  // Anführungszeichen weg, den Punkt davor aber nicht.
+  const t = raw.replace(/[.,;:]+$/, '')
+  if (!/^[x\d]+(?:\/[x\d]+)?$/i.test(t)) return false
   const xs = (t.match(/x/gi) ?? []).length
   return xs >= 2 || (xs === 1 && /\d/.test(t))
 }

@@ -93,6 +93,13 @@ const NAMED_ENTITIES: Record<string, string> = {
   mdash: '—',
   sect: '§',
   euro: '€',
+  // Grad, Promille und das Ordnungszeichen: Die Gesetzestexte des Parlaments
+  // führen sie als Entität, das RIS als Zeichen. Ohne diese drei Zeilen las
+  // der Vergleich „&deg;C" gegen „°C" und meldete bei 4/ME drei Einheiten
+  // des Nachhaltigkeitsberichtsgesetzes als inhaltlich geändert (§12.33).
+  deg: '°',
+  permil: '‰',
+  ordm: 'º',
   hellip: '…',
   bdquo: '„',
   ldquo: '“',

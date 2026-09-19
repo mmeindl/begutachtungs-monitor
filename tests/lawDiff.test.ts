@@ -236,6 +236,25 @@ describe('editorial vs substantive', () => {
     // A lone X is a genuine blank, not a placeholder: naming the number is a decision.
     expect(isEditorialChange(seg('innerhalb von X Wochen', 'innerhalb von 6 Wochen'))).toBe(false)
   })
+  it('the Fundstelle a law fills in at promulgation is editorial', () => {
+    // Every law cites itself in its Inkrafttretens-Bestimmung, and the number
+    // exists only once it is promulgated. Without the slash form these fell
+    // through to `word`, which ends the check at once: the comparison
+    // Plenarfassung → Kundmachung then reported 136 of 626 units as
+    // substantive (Budgetbegleitgesetz 2025), where nothing but the citation
+    // had been filled in (§12.33).
+    expect(
+      isEditorialChange(seg('in der Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025 tritt', 'in der Fassung des Bundesgesetzes BGBl. I Nr. 50/2025 tritt')),
+    ).toBe(true)
+    expect(isEditorialChange(seg('BGBl. I Nr. xx/2025,', 'BGBl. I Nr. 44/2025,'))).toBe(true)
+    expect(isEditorialChange(seg('BGBl. I Nr. xxx/xxxx', 'BGBl. I Nr. 60/2025'))).toBe(true)
+    // Und eine Fundstelle, die durch eine ANDERE ersetzt wird, bleibt
+    // ebenfalls redaktionell — nicht weil das harmlos wäre, sondern weil die
+    // veröffentlichte Definition das so sagt („nur Verweise, Zahlen, Daten
+    // oder Satzzeichen", /so-funktionierts). Dieselbe Regel wie beim
+    // verschobenen Querverweis weiter oben.
+    expect(isEditorialChange(seg('BGBl. I Nr. 12/2024 gilt', 'BGBl. I Nr. 50/2025 gilt'))).toBe(true)
+  })
   it('articles and the case of a Novellierungsanweisung are editorial, logical connectives are not', () => {
     expect(isEditorialChange(seg('In § 28 wird folgender Abs. 69 angefügt', 'Dem § 28 wird folgender Abs. 69 angefügt'))).toBe(true)
     expect(isEditorialChange(seg('Nach Anlage 2 wird Anlage 3 eingefügt', 'Nach der Anlage 2 wird Anlage 3 eingefügt'))).toBe(true)

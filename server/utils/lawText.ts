@@ -78,9 +78,42 @@ export function stripQuotes(t: string): string {
   return normalizeText(t).replace(/^["'\u00ab\u00bb\u2039\u203a\s]+|["'\u00ab\u00bb\u2039\u203a\s]+$/g, '')
 }
 
-/** Whitespace-insensitive comparison form (PDF and HTML render spaces differently). */
+/**
+ * Comparison form: insensitive to whitespace AND to hyphens.
+ *
+ * Whitespace, because PDF and HTML render spaces differently. Hyphens for the
+ * same kind of reason, measured on 19.09.2026 when the Bundesgesetzblatt was
+ * first compared against Parliament's HTML: the Parliament document carries
+ * a SOFT hyphen (U+00AD) where the law has a hard one, `normalizeText` strips
+ * soft hyphens to nothing, and the two sides then read „OTCDerivaten" against
+ * „OTC-Derivaten". 9/ME reported 11 of 58 units changed that way and 10/ME 7
+ * of 78 — every one of them false, and every one of them a verdict on
+ * parliament that nobody had earned.
+ *
+ * The cost is stated plainly: two texts that differ ONLY in hyphenation now
+ * compare equal. In legistic German that is typography, not law — and the
+ * alternative, keeping a difference we know to be an artefact of the source
+ * format, is the worse trade. The same judgement `normalizeText` already
+ * makes for the non-breaking space and the three dash characters.
+ *
+ * Füllpunkte zählen aus demselben Grund nicht mit. Parlaments-HTML setzt in
+ * Betragstabellen Punktreihen („monatlich........................"), das RIS
+ * nicht — ohne diese Zeile stehen bei 15/ME zwölf von 398 Einheiten als
+ * „geändert" da, weil eine Punktreihe unterschiedlich lang ist. Drei Punkte
+ * oder mehr sind in einem Gesetzestext Layout, kein Satzzeichen.
+ *
+ * This is NOT the annex pipeline's line-break hyphen (`docs/api-exploration.md`);
+ * that one decides whether to JOIN two tokens, this one only decides equality.
+ *
+ * NUR die Vergleichsform, nie die angezeigte: `normalizeText` bleibt
+ * unverändert, also sieht der Leser weiter genau das, was im Dokument steht.
+ * Was hier wegfällt, entscheidet, ob zwei Texte GLEICH heißen — nicht, wie
+ * sie aussehen.
+ */
 export function compareKey(t: string): string {
-  return normalizeText(t).replace(/\s+/g, '')
+  return normalizeText(t)
+    .replace(/\.{3,}/g, ' ')
+    .replace(/[\s-]+/g, '')
 }
 
 /**
