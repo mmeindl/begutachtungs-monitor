@@ -117,8 +117,33 @@ describe('stammnormOf', () => {
   // The UGB's Stammnorm is "dRGBl. S. 219/1897". Taking the first BGBl in the
   // whole clause returned the last amendment and resolved to another law.
   it('refuses when the law was not promulgated in a BGBl at all', () => {
+    // Das UGB ist dRGBl. S. 219/1897. Bis 19.09.2026 gab es dafür keine
+    // Lesart und die Antwort war null — richtig, solange die Alternative war,
+    // die *erste BGBl-Zahl* der Klausel zu nehmen, also die letzte Novelle,
+    // und damit auf ein fremdes Gesetz aufzulösen. Jetzt wird die Stammnorm
+    // gelesen, und die Gefahr von damals ist die eigentliche Zusicherung
+    // hier: es ist 219/1897 und gerade nicht 6/2026.
     expect(stammnormOf('Das Unternehmensgesetzbuch - UGB, dRGBl. S. 219/1897, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 6/2026, wird wie folgt geändert:'))
-      .toBeNull()
+      .toEqual({ organ: 'dRGBl. S.', nummer: '219/1897' })
+  })
+
+  it('liest die älteren Kundmachungsorgane, in denen Österreichs meistzitierte Gesetze stehen', () => {
+    // ABGB, ZPO und Notariatsordnung sind älter als das Bundesgesetzblatt.
+    // Das RIS führt sie im selben Feldpaar wie jedes BGBl, also trägt die
+    // bestehende Verknüpfung sie — sie kannte die Organe nur nicht.
+    expect(stammnormOf('Das allgemeine bürgerliche Gesetzbuch, JGS Nr. 946/1811, wird wie folgt geändert:'))
+      .toEqual({ organ: 'JGS Nr.', nummer: '946/1811' })
+    expect(stammnormOf('Die Zivilprozessordnung, RGBl. Nr. 113/1895, wird wie folgt geändert:'))
+      .toEqual({ organ: 'RGBl. Nr.', nummer: '113/1895' })
+  })
+
+  it('hält die Teile auseinander, auch über Organe hinweg', () => {
+    // Die Normalisierung darf nur Schreibweise einebnen, nie den Teil:
+    // 84/2001 ist sowohl das AMD-G (BGBl. I) als auch ein Amtssitzgesetz
+    // (BGBl. III).
+    expect(sameBgbl({ organ: 'dRGBl. S.', nummer: '219/1897' }, { organ: 'dRGBl. S', nummer: '219/1897' })).toBe(true)
+    expect(sameBgbl({ organ: 'BGBl. I Nr.', nummer: '84/2001' }, { organ: 'BGBl. III Nr.', nummer: '84/2001' })).toBe(false)
+    expect(sameBgbl({ organ: 'JGS Nr.', nummer: '946/1811' }, { organ: 'RGBl. Nr.', nummer: '946/1811' })).toBe(false)
   })
 })
 
@@ -131,9 +156,10 @@ describe('draftArticles', () => {
     const articles = draftArticles(parseRisXml(xml))
     expect(articles.map((a) => [a.index, a.numeral, a.title, a.amends, a.bgbl?.nummer ?? null])).toEqual([
       [0, '1', 'Änderung des Aktiengesetzes', true, '98/1965'],
-      // A Stammnorm that is no BGBl leaves nothing to resolve — and the
-      // Artikel still amends a law, which `amends` says and `bgbl` cannot.
-      [1, '2', 'Änderung des GmbH-Gesetzes', true, null],
+      // Das GmbH-Gesetz ist RGBl. Nr. 58/1906. Hier stand bis 19.09.2026
+      // `null` mit der Begründung, eine Stammnorm ohne BGBl lasse nichts
+      // auflösen; das RIS führt sie im selben Feldpaar und löst sehr wohl auf.
+      [1, '2', 'Änderung des GmbH-Gesetzes', true, '58/1906'],
     ])
   })
 
