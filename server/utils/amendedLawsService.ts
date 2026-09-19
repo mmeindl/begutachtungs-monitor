@@ -117,7 +117,13 @@ export const getAmendedLaws = defineCachedFunction(
         const [i, w] = job
         const cited = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}` : null
         const resolved = w.bgbl && asOf
-          ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, '').catch(() => null)
+          // `w.title` is the Artikel heading this entry came from — the same
+          // disambiguator `annexGuardService` passes, and the string used as
+          // the display fallback one line below. Withheld from the lookup it
+          // turned every law of an ambiguous Bundesgesetzblatt into a row
+          // without a RIS link and with the draft's own wording instead of
+          // the law's name.
+          ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '').catch(() => null)
           : null
         results[i] = {
           title: resolved?.kurztitel || w.title || cited || 'Unbenanntes Gesetz',

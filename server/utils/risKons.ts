@@ -311,8 +311,12 @@ export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: 
  * are often near-namesakes ("Umsatzsteuergesetz 1994" and "Umsatzsteuergesetz
  * 1994 – Anhang (Binnenmarkt)"), and a tie has to end in a refusal rather
  * than in whichever RIS happened to return first.
+ *
+ * Exported for its own tests: every caller that resolves one law of a package
+ * depends on this rule, and until 19.09.2026 two of them passed the empty
+ * string and never reached it.
  */
-function pickByName<T extends { kurztitel: string }>(byLaw: Map<string, T>, name: string): [string, T] | null {
+export function pickByName<T extends { kurztitel: string }>(byLaw: Map<string, T>, name: string): [string, T] | null {
   let best: { entry: [string, T]; score: number } | null = null
   let runnerUp = 0
   for (const candidate of byLaw) {

@@ -129,7 +129,18 @@ export const getParagraphTitles = defineCachedFunction(
     for (const [article, byPara] of wanted) {
       const bgbl = clauses.get(article)
       if (!bgbl) continue
-      const law = await resolveKonsLaw(bgbl.organ, bgbl.nummer, asOf, '')
+      // The Artikel's own heading, as the disambiguator it was built to be.
+      // One Bundesgesetzblatt regularly creates several laws — 532/1993 the
+      // Bankwesengesetz *and* the Bausparkassengesetz — and the Stammnorm
+      // pair cannot tell them apart, so `resolveLawByBgbl` refuses and every
+      // § of that law goes out without a name. The heading that separates
+      // them ("Änderung des Bankwesengesetzes") is the key of this very loop
+      // and was passed as the empty string; `lawNameScore` strips
+      // "Änderung"/"des" as stopwords, so the raw heading is the right input
+      // and an Artikel that carries only a number scores 0 and still refuses
+      // (measured: 90 of 342 laws in this period's packages failed on exactly
+      // this ambiguity, §12.12).
+      const law = await resolveKonsLaw(bgbl.organ, bgbl.nummer, asOf, article ?? '')
       if (!law) continue
       const jobs = [...byPara].filter(([para]) => law.paragraphs[para] !== undefined)
       const queue = [...jobs]
