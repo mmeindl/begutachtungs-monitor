@@ -1167,6 +1167,49 @@ Vergleichs, die die 68 „nicht gefunden" verkleinern würde, vergrößert diese
 78. Die beiden Hälften ziehen gegeneinander, und ein Eingriff, der nur die
 eine misst, verschlechtert die andere still.
 
+**Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
+Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
+- welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides
+wirkt auf die sprechenden Namen (§12.11) genauso wie auf den konsolidierten
+Text.
+
+*Der Name lag daneben.* `resolveLawByBgbl` nimmt einen Namen entgegen, weil
+ein Bundesgesetzblatt regelmäßig mehrere Gesetze schafft und das
+Stammnorm-Paar sie nicht trennt; ohne ihn verweigert es. `paraTitleService`
+und `amendedLawsService` übergaben die leere Zeichenkette - beide mit der
+Artikel-Überschrift im Zugriff, die eine als Schlüssel der eigenen
+Schleife, die andere eine Zeile weiter unten als Anzeigename.
+`annexGuardService` reicht sie seit jeher durch; es waren zwei von drei
+Aufrufern. Über 40 Entwürfe mit 116 ändernden Artikeln lösen **12 nur
+mit der Überschrift** auf und keiner nur ohne - darunter UStG 1994,
+Börsegesetz 2018, Umgründungssteuergesetz. Kein zusätzlicher Abruf: der
+Name ist Teil des Cache-Schlüssels.
+
+*Das Vokabular übersah die alten Kodifikationen.* ABGB (JGS Nr. 946/1811),
+ZPO und Notariatsordnung (RGBl.), UGB (dRGBl. S. 219/1897) - `parseBgbl`
+kannte nur BGBl., also war ihre Stammnorm null und der Artikel löste auf
+nichts auf. Das RIS führt sie im **selben Feldpaar**, es fehlte also keine
+zweite Verknüpfung, nur ein größeres Alphabet. Zwei Fallstricke: die
+älteren Organe nummerieren mit Seite (S.) statt Nummer, und ihre
+Schreibweise ist nicht kanonisch - JGS Nr. ohne Punkt nach der Abkürzung,
+dRGBl. S mit. Das Organ wird deshalb übernommen, wie die Quelle es
+schreibt, und `sameBgbl` vergleicht normalisiert, ohne den Teil einzuebnen
+(84/2001 ist BGBl. I *und* BGBl. III).
+
+| 60 BGBl | vorher | nachher |
+|---|---|---|
+| nicht auflösbare Gesetze | 8 | **2** |
+| bewertete Gesetze / Paragraphen | 200 / 1.694 | **206 / 1.751** |
+| identisch mit dem RIS | 1.087 (64,2 %) | **1.131 (64,6 %)** |
+| eigene Abweichung | 47 (2,8 %) | 49 (**2,8 %**) |
+| kein geltender Text, ohne Verweigerung | 91 (7,2 %) | 95 (**7,3 %**) |
+
+Die sechs neu sichtbaren Gesetze sind ABGB (2x), ZPO, Notariatsordnung (2x)
+und Rechtsanwaltsordnung. Ihre Paragraphen verhalten sich wie der Rest - die
+Quoten bleiben, die Basis wächst. Übrig bleiben zwei: das ABBAG-Gesetz
+(Stammnorm korrekt zitiert, im BrKons unter dieser Nummer nicht eindeutig)
+und ein Artikel, der eine *Novelle* ändert statt eines Stammgesetzes.
+
 *Methodischer Vorbehalt, der in jede Folgemessung gehört.* Die
 Paragraphenquoten werden von wenigen großen Entwürfen getragen: das
 Strafvollzugsgesetz stellt allein 42 der 108 Orakel-Widersprüche und 77 der
