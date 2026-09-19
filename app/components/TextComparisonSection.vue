@@ -15,7 +15,7 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
-import type { AnnexWithheldCause, ExplanationsResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
+import type { AnnexWithheldCause, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanations'
 
 const props = defineProps<{ gp: string; inr: number }>()
@@ -29,16 +29,14 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/draf
  * Die Begründung des Ressorts zu den einzelnen Paragraphen
  * (docs/architecture.md §12.30).
  *
- * Derselbe Endpunkt, den `ExplanationsSection` weiter oben auf der Seite
- * ohnehin abruft — `useFetch` schlüsselt nach URL, der zweite Aufruf kostet
- * also keine zweite Anfrage. Und er darf fehlschlagen, ohne dass es diesen
- * Abschnitt kümmert: Die Gegenüberstellung ist die Auskunft, die Begründung
- * ist die Beigabe.
+ * Dasselbe Dokument, das `ExplanationsSection` weiter oben auf der Seite
+ * ohnehin liest — ein gemeinsamer Schlüssel in `useExplanations`, also eine
+ * Anfrage für beide Abschnitte, und zwar ausgesprochen statt als Nebenwirkung
+ * gleicher URLs. Und sie darf fehlschlagen, ohne dass es diesen Abschnitt
+ * kümmert: Die Gegenüberstellung ist die Auskunft, die Begründung ist die
+ * Beigabe.
  */
-const { data: explanations } = await useFetch<ExplanationsResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/erlaeuterungen`,
-  { lazy: true, server: false },
-)
+const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr }))
 
 /** Die Passagen, nachschlagbar unter (Gesetz, Paragraph). */
 const explanationsByKey = computed(() => {
@@ -855,8 +853,12 @@ const doubtfulNote = computed<string | null>(() => {
            „Markierung" steht neben „Quelle", weil genau das die Frage ist,
            die ein rot-grün markierter Ministeriumstext aufwirft: Wer hat
            markiert? Zwei Angaben in einer Zeile, nicht drei Sätze darüber. -->
+      <!-- Die Lizenz kommt vom Server, weil dort die Quelle gewählt wird:
+           Liest die Sektion die Kopie des Parlaments statt der des RIS, wäre
+           ein festverdrahtetes „CC BY 4.0" eine Behauptung über ein Dokument,
+           für das sie niemand geprüft hat (`textComparisonService.credit`). -->
       <SectionCredits>
-        <span>Quelle (CC BY 4.0, RIS):</span>
+        <span>{{ data.credit }}</span>
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
       </SectionCredits>
     </template>

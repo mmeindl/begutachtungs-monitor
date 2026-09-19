@@ -19,11 +19,11 @@
  * Monitor entscheidet, ist, wo gefaltet wird — und wo die Gliederung von uns
  * erschlossen ist, sagt der Abschnitt es (`labelled`).
  *
- * CLIENT-SEITIG wie die Vergleichsabschnitte: ein RIS-Abruf pro Entwurf
- * gehört nicht in den SSR-Pfad jeder Detailseite (dieselbe Begründung wie
- * bei `geltendesrecht` auf der Entwurfsseite).
+ * SERVERSEITIG MIT FRIST, anders als die Vergleichsabschnitte: Dieser Text
+ * ist die Substanz der Seite und CC BY, also gehört er ins ausgelieferte
+ * HTML — aber nur, solange das RIS in 800 ms antwortet. Warum die Frist und
+ * warum nicht länger, steht in `useExplanations`.
  */
-import type { ExplanationsResponse } from '#shared/types'
 
 /**
  * Zwei Wege zum selben Dokument, weil die beiden Entwurfsarten es auf
@@ -32,11 +32,7 @@ import type { ExplanationsResponse } from '#shared/types'
  */
 const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
 
-const endpoint = computed(() =>
-  props.risId ? `/api/ris-drafts/${props.risId}/erlaeuterungen` : `/api/drafts/${props.gp}/${props.inr}/erlaeuterungen`,
-)
-
-const { data, status } = await useFetch<ExplanationsResponse>(endpoint, { lazy: true, server: false })
+const { data, status } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
 
 /** Ein Absatz oder eine Zwischenüberschrift des Ressorts, in Druckreihenfolge. */
 interface Item {
@@ -106,12 +102,25 @@ const sourceLabel = computed(() => {
 })
 
 /**
+ * „Wird geladen" umfasst einen dritten Zustand: Der Server hat die Frist
+ * gerissen und `null` geliefert, der Client holt gerade nach
+ * (`useExplanations`). Das ist kein Fehler und darf keiner werden — sonst
+ * stünde in genau dem HTML, das ein Crawler zu sehen bekommt, „nicht
+ * verfügbar" über einem Abschnitt, der eine Sekunde später da ist.
+ */
+const loading = computed(() => status.value !== 'error' && !data.value)
+
+/* Die Haus-Linkform (derselbe String wie `linkClasses` der Detailseite). */
+const LINK =
+  'rounded text-accent-deep underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
+
+/**
  * Die Ansage für Screenreader, wenn der Abschnitt nachgeladen ist — dieselbe
  * Mechanik wie im Vergleich: Die Region ist beim Einhängen leer und wird erst
  * gefüllt, sonst liest mancher Screenreader sie sofort vor.
  */
 const loadAnnouncement = computed(() => {
-  if (status.value === 'pending' || status.value === 'idle') return ''
+  if (loading.value) return ''
   if (status.value === 'error' || !data.value) return 'Die Erläuterungen sind gerade nicht verfügbar.'
   if (!data.value.available) return data.value.unavailableReason ?? ''
   return 'Erläuterungen geladen.'
@@ -122,7 +131,7 @@ const loadAnnouncement = computed(() => {
   <div class="mt-4">
     <p aria-live="polite" class="sr-only">{{ loadAnnouncement }}</p>
 
-    <p v-if="status === 'pending' || status === 'idle'" class="text-sm text-ink-muted">
+    <p v-if="loading" class="text-sm text-ink-muted">
       Die Erläuterungen werden geladen …
     </p>
 
@@ -191,13 +200,42 @@ const loadAnnouncement = computed(() => {
       <!-- Was hier bewusst NICHT steht, steht im Dokument: Tabellen und
            Abbildungen (wir drucken keine Bilddateipfade als Sätze) und der
            Besondere Teil, der zu den einzelnen Paragraphen gehört und nicht
-           in eine Relevanzprüfung. Beides wird benannt, nicht verschwiegen. -->
+           in eine Relevanzprüfung. Beides wird benannt, nicht verschwiegen.
+
+           Seit die Passagen des Besonderen Teils unten an den §§ der
+           Gegenüberstellung hängen (§12.30), ist „steht im Dokument selbst"
+           nur noch die halbe Auskunft — und dort, wo sie danebensteht, wäre
+           sie die teurere Hälfte: Sie schickt den Leser in ein PDF, während
+           die Stelle zwei Bildschirme tiefer auf derselben Seite liegt. Ob
+           sie das tut, sagt der Server (`paragraphsAtAnnex`), nicht der
+           Abschnitt unten: Ein Satz, der nach dem Laden der
+           Gegenüberstellung seine Aussage wechselt, wäre schlechter als
+           einer, der von Anfang an stimmt.
+
+           DER ZEIGER NIMMT NICHTS WEG, er kommt dazu — „und vollständig im
+           Dokument selbst" bleibt in beiden Fassungen stehen. Das ist die
+           Antwort auf den einen von 110 Entwürfen, bei dem es die Beilage
+           gibt und sie sich nicht auslesen ließ (gemessen 19.09.2026,
+           §12.30; mit gelesener Parlamentskopie wären es vier): Der
+           Zeiger führt dann auf einen Abschnitt, der selbst sagt, woran es
+           lag — und der Satz hat dem Leser das Dokument nicht weggenommen,
+           um ihn dorthin zu schicken. Die zweite Hälfte trägt außerdem eine
+           eigene Auskunft: Am Paragraphen steht, was sich einem Paragraphen
+           zuordnen ließ; 16,3 % der Passagen finden keinen (§12.30). -->
       <p v-if="data.dropped || data.hasSpecial" class="mt-4 max-w-prose text-sm text-ink-muted">
         <template v-if="data.dropped">
           Tabellen und Abbildungen des Dokuments stehen hier nicht.
         </template>
         <template v-if="data.hasSpecial">
-          Die Erläuterungen zu den einzelnen Paragraphen stehen im Dokument selbst.
+          <template v-if="data.paragraphsAtAnnex">
+            Die Erläuterungen zu den einzelnen Paragraphen stehen unten bei der
+            <a href="#gegenueberstellung" :class="LINK">Gegenüberstellung</a>, an
+            dem Paragraphen, um den es jeweils geht — und vollständig im
+            Dokument selbst.
+          </template>
+          <template v-else>
+            Die Erläuterungen zu den einzelnen Paragraphen stehen im Dokument selbst.
+          </template>
         </template>
       </p>
 

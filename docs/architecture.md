@@ -5360,11 +5360,43 @@ versteckt —, und kein Absatz wird mitten im Satz abgeschnitten: Es ist der
 Text des Ressorts. Der Rest liegt in einem nativen `<details>`, wie die
 Kurzbeschreibung und die Kontextzeilen des Vergleichs.
 
-**Client-seitig geladen**, wie `geltendesrecht` und die Vergleiche: ein
-RIS-Abruf pro Entwurf gehört nicht in den SSR-Pfad jeder Detailseite. Der
-Preis ist, dass der Text nicht im ausgelieferten HTML steht — für einen
-Abschnitt, der CC BY ist und die Substanz der Seite trägt, ist das der eine
-Punkt, der später anders entschieden werden kann; es ist eine Zeile.
+**Serverseitig, aber mit Frist — entschieden 19.09.2026.** Zuerst wurde der
+Abschnitt client-seitig geladen, wie `geltendesrecht` und die Vergleiche, mit
+dem Argument, ein RIS-Abruf pro Entwurf gehöre nicht in den SSR-Pfad jeder
+Detailseite. Das Argument stimmt, es trägt nur nicht so weit: Der Preis war,
+dass der Text nicht im ausgelieferten HTML steht — bei einem Abschnitt, der
+CC BY ist und die Substanz der Seite trägt, ist das die Substanz, die kein
+Crawler und kein Leser ohne JavaScript sieht.
+
+Beides geht, weil die Gegenseite schnell ist und die Frist kurz sein darf.
+Gemessen am 19.09.2026 über zehn Entwürfe der GP XXVIII: kalt — das Dokument
+noch nicht im Cache, also RIS-Abruf plus Parser — **40 bis 178 ms**, warm
+Millisekunden; die Detailseite selbst rendert kalt rund 800 ms. Die Frist
+steht deshalb bei **800 ms** (`useExplanations`), dem Vier- bis Fünffachen des
+langsamsten gemessenen Kaltfalls. Nachgemessen an vier Entwürfen kostet der
+Abschnitt im kalten Seitenaufbau 0 bis 200 ms, im warmen nichts.
+
+**Was die Frist abwendet, ist kein Ausreißer, sondern eine Bauart:** `getText`
+(`risKons.ts`) wartet 20 s und versucht es dreimal, also könnte eine kranke
+Gegenstelle eine Seitenauslieferung knapp eine Minute lang aufhalten. Der
+Abbruch gilt dem **Rendern**, nicht dem Abruf — `Promise.race` lässt die
+angefangene Anfrage weiterlaufen, sie füllt den Cache, und der Nachschlag des
+Clients trifft ihn warm an. Ein `timeout` von `useAsyncData` hätte abgebrochen:
+dieselbe Arbeit zweimal, und ein Fehlerzustand, der „das RIS ist weg" nicht
+mehr von „wir haben nicht gewartet" unterscheidet. `null` heißt daher genau
+eine Sache, und der Abschnitt zeigt dafür seinen **Lade-**, nicht seinen
+Fehlerzustand: Im HTML, das ein Crawler zu sehen bekommt, darf über einem
+Abschnitt, der eine Sekunde später da ist, nicht „nicht verfügbar" stehen.
+
+**Zwei Fallen von Nuxt, beide gemessen statt vermutet** (19.09.2026, mit
+`--dump-dom` und einer Sonde im Endpunkt): Ein `refresh` **während** der
+Hydration wird aus der Nutzlast der Seite beantwortet — also mit genau dem
+`null`, das er ersetzen soll; der Abschnitt blieb bis zum nächsten Seitenaufruf
+auf „wird geladen" stehen. Er hängt jetzt an `onNuxtReady`. Und ein
+gemeinsamer Schlüssel allein macht aus zwei Lesern noch keinen Abruf: Nuxts
+Voreinstellung `dedupe: 'cancel'` ließ den zweiten Abschnitt den Abruf des
+ersten abbrechen und einen eigenen starten — zwei Aufrufe je Seitenaufbau,
+schon vor dieser Änderung. Mit `dedupe: 'defer'` ist es einer.
 
 **Die Caches sind getrennt** (§5): das Dokument, wie RIS es geschickt hat,
 persistent und 30 Tage (ein Begut-Dokument wird nicht revidiert, ein
@@ -5460,6 +5492,55 @@ die Beigabe.
 Gegenstand rendert die Gegenüberstellung nicht, sie verlinkt sie; dort gibt es
 also keinen Paragraphen, an den sich etwas hängen ließe. Der Allgemeine Teil
 steht dort trotzdem (§12.29).
+
+**Und ein Satz weiter oben wusste nichts davon — nachgezogen 19.09.2026.** Der
+Abschnitt des Allgemeinen Teils benennt, was er nicht druckt: „Die
+Erläuterungen zu den einzelnen Paragraphen stehen im Dokument selbst." Seit
+diesem Join ist das dort, wo es eine Gegenüberstellung gibt, die schlechtere
+Hälfte der Wahrheit — der Satz schickt den Leser in ein PDF, während die
+Stelle zwei Bildschirme tiefer auf derselben Seite liegt. Er hat jetzt zwei
+Fassungen, und **welche gilt, sagt der Server** (`paragraphsAtAnnex`): Ein
+Satz, der nach dem Laden der Gegenüberstellung seine Aussage wechselt, wäre
+schlechter als einer, der von Anfang an stimmt.
+
+**Die erste Fassung der Bedingung war nachgebaut, und sie hielt einen Tag.**
+Sie fragte, was die Join-Zeile ohnehin weiß — Join `matched`, RIS führt ein
+Beilagendokument —, weil das nichts kostet. Am selben Tag bekam
+`textComparisonService` den Rückfall auf die Kopie des Parlaments, und damit
+zeigte die Seite Gegenüberstellungen, von denen die nachgebaute Bedingung
+nichts wusste. Gemessen über die GP XXVIII: **3 Entwürfe** werden aus der
+Parlamentskopie gelesen, bei ihnen zeigte der Satz ins PDF, während die
+Passagen zwei Bildschirme tiefer standen. Die Lehre ist billiger zu haben als
+noch einmal: **Eine Bedingung, die eine andere spiegelt, altert genau so.**
+
+Gefragt wird jetzt `hasAnnexDocument` — dieselbe Funktion, die auch der
+Vergleich benutzt, um seine beiden Kopien zu finden. Sie beantwortet die
+**billige Hälfte** der Frage („gibt es die Beilage, hier oder beim
+Parlament?"). Die teure Hälfte — „und lässt sie sich lesen?" — bleibt
+ungefragt, und das ist eine Messung, keine Bequemlichkeit: Der
+Gegenüberstellungs-Endpunkt braucht kalt im **Median 3,9 s, im Maximum 33 s**
+(40 Entwürfe, 19.09.2026), weil bei zwei von fünf ein PDF geparst und jeder §
+gegen das RIS geprüft wird. In einem SSR-Pfad mit 800-ms-Frist wäre das der
+sichere Fristbruch — der Preis für die genaue Antwort wäre der Text im HTML.
+
+**Der Rest ist gemessen und ausgehalten**, und er wurde zweimal gemessen,
+weil der Parlaments-Rückfall dazwischen abgeschaltet wurde (§12.12). Über
+alle 110 Entwürfe der GP XXVIII mit Besonderem Teil und zugeordneten
+Passagen:
+
+| | Bedingung falsch |
+|---|---|
+| mit gelesener Parlamentskopie | 4 (3,6 %) — 20, 83, 119, 135/ME |
+| ohne sie (heutiger Stand) | **1 (0,9 %)** — 119/ME |
+
+Zu eng ist sie in beiden Zuständen nirgends. Die drei, die wegfallen, sind
+die, deren Beilage nur beim Parlament liegt: Auf sie zeigt der Satz nicht
+mehr, weil dort auch nichts mehr steht. Übrig bleibt 119/ME — das RIS führt
+eine Beilage, auslesen ließ sie sich nicht. Die Asymmetrie ist gewollt — ein
+Zeiger auf einen Abschnitt, der selbst sagt, woran es lag, kostet einen
+Blick; ein Zeiger ins PDF, während die Stelle auf derselben Seite steht,
+kostet den Weg zurück — und der Satz federt sie ab, indem er **nichts
+wegnimmt**: „und vollständig im Dokument selbst" steht in beiden Fassungen.
 
 ### 12.31 Die Vehikel-Frage: Volltextsuche über die laufenden Begutachtungen
 

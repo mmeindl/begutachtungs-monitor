@@ -35,6 +35,7 @@ import { DERIVED_CACHE } from './cacheBase'
 import { getText } from './risKons'
 import { getRisMapForGp } from './ris'
 import { getRisConsultation } from './risOnly'
+import { hasAnnexDocument } from './textComparisonService'
 
 const TTL_S = 60 * 60 * 24
 /**
@@ -93,6 +94,7 @@ function empty(reason: string, document: TraceLink | null = null): ExplanationsR
     dropped: 0,
     hasSpecial: false,
     paragraphs: [],
+    paragraphsAtAnnex: false,
   }
 }
 
@@ -108,6 +110,7 @@ function view(
   labelled: boolean,
   doc: ExplanationsDocument,
   paragraphs: ExplanationsResponse['paragraphs'],
+  annex: boolean,
 ): ExplanationsResponse {
   return {
     available: true,
@@ -121,6 +124,9 @@ function view(
     dropped: part.dropped,
     hasSpecial: doc.special !== null,
     paragraphs,
+    // Die zweite Bedingung — der Join hat Passagen gebunden — steckt schon in
+    // `annex`: Ohne sie wird gar nicht erst gefragt (siehe `read`).
+    paragraphsAtAnnex: annex,
   }
 }
 
@@ -149,7 +155,16 @@ async function articlesOf(xmlUrl: string | null): Promise<ReturnType<typeof draf
  * als Scan vor" is a fact about the ministry's file, „hebt keinen Allgemeinen
  * Teil hervor" is a fact about its structure, and neither is an error of ours.
  */
-async function read(formats: Formats | null, draftXml: string | null): Promise<ExplanationsResponse> {
+async function read(
+  formats: Formats | null,
+  draftXml: string | null,
+  /**
+   * Gefragt wird erst, wenn es etwas zu zeigen gibt: Ohne Passagen am
+   * Paragraphen hängt an der Antwort nichts, und die Frage kostet bei den
+   * Entwürfen ohne RIS-Beilage einen Abruf beim Parlament.
+   */
+  annexOf: () => Promise<boolean>,
+): Promise<ExplanationsResponse> {
   if (!formats?.xml) {
     return empty(
       formats
@@ -169,7 +184,8 @@ async function read(formats: Formats | null, draftXml: string | null): Promise<E
     )
   }
   const articles = parsed.special ? await articlesOf(draftXml) : []
-  return view(parsed.general, formats, !parsed.generalInferred, parsed, explanationsByParagraph(parsed, articles))
+  const paragraphs = explanationsByParagraph(parsed, articles)
+  return view(parsed.general, formats, !parsed.generalInferred, parsed, paragraphs, paragraphs.length > 0 && (await annexOf()))
 }
 
 /** For a Ministerialentwurf: through the RIS↔ME join, like the Textgegenüberstellung. */
@@ -183,7 +199,24 @@ export const getExplanations = defineCachedFunction(
           : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Erläuterungen aus.',
       )
     }
-    return read(row.explanations, row.risDocument?.xml ?? null)
+    // Ob die Passagen unten an einem Paragraphen stehen, beantwortet der
+    // Abschnitt, der sie zeigt — `hasAnnexDocument` statt einer hier
+    // nachgebauten Bedingung. Die nachgebaute gab es einen Tag lang, und sie
+    // war schon am nächsten falsch: Seit die Kopie des Parlaments als Rückfall
+    // gelesen wird, erscheint die Gegenüberstellung auch ohne RIS-Dokument
+    // (gemessen 19.09.2026: 23/ME der GP XXVIII). Eine Bedingung, die eine
+    // andere spiegelt, altert genau so.
+    //
+    // Was NICHT gefragt wird, weil es zu teuer ist: ob sich die Beilage auch
+    // lesen lässt. Das weiß erst der Parser, und der Endpunkt braucht kalt im
+    // Median 3,9 s (max. 33 s) — in einem SSR-Pfad mit 800-ms-Frist wäre das
+    // der sichere Fristbruch, und der Preis dafür wäre der Text im HTML.
+    // Die Asymmetrie ist ausgehalten, nicht übersehen: Ein Zeiger auf einen
+    // Abschnitt, der selbst sagt, warum er nichts zeigt, kostet einen Blick;
+    // ein Zeiger ins PDF, während die Stelle auf derselben Seite steht,
+    // kostet den Weg zurück.
+    return read(row.explanations, row.risDocument?.xml ?? null, async () =>
+      row.status === 'matched' && (await hasAnnexDocument(gp, inr, row.textComparison)))
   },
   { name: 'erlaeuterungen-me', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
 )
@@ -193,7 +226,9 @@ export const getRisExplanations = defineCachedFunction(
   async (id: string): Promise<ExplanationsResponse> => {
     const detail = await getRisConsultation(id)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
-    return read(detail.explanations, detail.mainDocument.xml)
+    // Nie am Paragraphen: Die Seite einer Begutachtung ohne Gegenstand
+    // rendert die Gegenüberstellung nicht, sie verlinkt sie (§12.30).
+    return read(detail.explanations, detail.mainDocument.xml, async () => false)
   },
   { name: 'erlaeuterungen-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: TTL_S, swr: false },
 )

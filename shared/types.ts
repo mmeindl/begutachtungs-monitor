@@ -1135,6 +1135,22 @@ export interface ExplanationsResponse {
    * risk standing under the wrong law's § (`explanationsJoin.ts`).
    */
   paragraphs: ParagraphExplanationView[]
+  /**
+   * Whether those passages really stand at a § on this page.
+   *
+   * The general part names what it does not print, and since §12.30 that
+   * sentence has two true versions: „steht im Dokument selbst", and „steht
+   * unten an den Paragraphen". Which one is true is not a property of the
+   * Erläuterungen — it is a property of the page, so it is decided where the
+   * annex is known (the same join row, no second call) rather than guessed
+   * from `paragraphs.length`.
+   *
+   * False where the ressort published no Textgegenüberstellung (23 of 132
+   * GP-XXVIII drafts) and on the RIS-only page, which links the annex instead
+   * of rendering it: a pointer to a section that is not there is worse than
+   * the sentence it replaced.
+   */
+  paragraphsAtAnnex: boolean
 }
 
 /** One passage of the Besonderer Teil, addressed to one § of one law. */
