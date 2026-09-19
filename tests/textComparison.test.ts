@@ -819,3 +819,58 @@ describe('an elision line that names its own §', () => {
     expect(rows.map((r) => r.para)).toEqual(['§ 10.', '§ 10.'])
   })
 })
+
+/**
+ * The same ressort annex as Parliament publishes it: the Word legistic
+ * template, unquoted class attributes and HTML entities.
+ */
+function parliamentAnnex(rows: string[]): string {
+  return `<html><body>
+    <p class=41UeberschrG1>Textgegenüberstellung</p>
+    <table>
+      <tr><td><p class=tgue>Geltende Fassung</p></td><td><p class=tgue>Vorgeschlagene Fassung</p></td></tr>
+      ${rows.join('')}
+    </table></body></html>`
+}
+
+describe('parseTextComparison — die Parlamentskopie desselben Anhangs', () => {
+  it('liest das Gliederungssymbol auch als 991GldSymbol-Span', () => {
+    const rows = parse(
+      parliamentAnnex([
+        pair(
+          '<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;5.</span> (1) Alter Text.</p>',
+          `<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;5.</span> (1) ${marked('Neuer')} Text.</p>`,
+        ),
+      ]),
+    )
+    const [row] = rows.filter((r) => r.kind === 'pair')
+    // Without this the row parsed, the change was found, and `gld` was null —
+    // so `rowsByParagraph` filed it under no paragraph and the oracle went
+    // silent on the whole annex.
+    expect(row!.gld).toBe('§ 5.')
+    expect(row!.para).toBe('§ 5.')
+    expect(row!.change).toBe('changed')
+    expect(row!.current).toBe('(1) Alter Text.')
+    expect(row!.proposed).toBe('(1) Neuer Text.')
+  })
+
+  it('trennt die Bezeichnung vom Text, auch ohne Leerzeichen im Markup', () => {
+    const rows = parse(
+      parliamentAnnex([
+        pair(
+          '<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;7.</span><i>(1) Alter Text.</i></p>',
+          '<p class=51Abs><span class=991GldSymbol>&sect;&nbsp;7.</span><i>(1) Neuer Text.</i></p>',
+        ),
+      ]),
+    )
+    const [row] = rows.filter((r) => r.kind === 'pair')
+    expect(row!.gld).toBe('§ 7.')
+    expect(row!.current).toBe('(1) Alter Text.')
+  })
+
+  it('lässt eine Zeile ohne Gliederungssymbol weiterhin ohne Bezeichnung', () => {
+    const rows = parse(parliamentAnnex([pair('<p class=51Abs>(2) Fortsetzung.</p>', '<p class=51Abs>(2) Fortsetzung.</p>')]))
+    const [row] = rows.filter((r) => r.kind === 'pair')
+    expect(row!.gld).toBeNull()
+  })
+})

@@ -106,8 +106,23 @@ const STRIP = [
  * "geändert 1." where 1. is a Ziffer inside a running Absatz — it reads like
  * a paragraph and is none. A row that opens with a Ziffer carries no
  * designation of its own, and saying nothing is right.
+ *
+ * **Dasselbe Gliederungssymbol, zwei Schreibweisen.** RIS types it
+ * `<gldsym>`; the Parliament copy of the *same* ressort annex is the Word
+ * legistic template and types it `<span class=991GldSymbol>&sect;&nbsp;1.</span>`
+ * — unquoted attribute, entities and all. `lawText.ts` has known the second
+ * form since it learned to read Parliament HTML; this module never did, so
+ * every row of a Parliament annex came back without a designation, and
+ * `rowsByParagraph` — which files rows under `paraIdOfGld(row.gld)` — threw
+ * all of them away. The annex parsed, the tables were right, the changes were
+ * found, and the oracle was silent on every § (measured 18.09.2026).
+ *
+ * The same shape of bug as `<schlussteil>` against `<schluss typ="…">`
+ * (§12.13): two names for one thing, one of them unknown to one of the two
+ * modules that need it, and a result that looks like an empty answer rather
+ * than a missing branch.
  */
-const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/
+const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/
 const COLSPAN_RE = /colspan="(\d+)"/i
 const MARK_RE = /background\s*:\s*yellow/i
 
@@ -267,7 +282,10 @@ function cellText(html: string): string {
           .replace(/<nbsp\s*\/>/g, ' ')
           .replace(/<gdash\s*\/>/g, '-')
           .replace(/<br\s*\/?>/gi, ' ')
-          .replace(/<\/(?:gldsym|symbol)>/g, '$& '),
+          // A designation and the text behind it are separate words even
+          // where the markup leaves no whitespace between them.
+          .replace(/<\/(?:gldsym|symbol)>/g, '$& ')
+          .replace(/(<span\s+class=["']?991GldSymbol["']?[^>]*>[\s\S]*?<\/span>)/gi, '$1 '),
       ),
     ),
   )
@@ -373,7 +391,7 @@ function headingOnly(html: string): boolean {
   return cellText(html.replace(HEADING_RE, ' ')) === ''
 }
 
-const GLD_ALL_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/g
+const GLD_ALL_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/g
 
 /**
  * Take the row's own designation out of the column's text — and only that one.
@@ -396,7 +414,10 @@ const GLD_ALL_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>/g
  * text, and the word diff shows it as what it is — a change to the number.
  */
 function stripGld(html: string, own: string | null): string {
-  return html.replace(GLD_ALL_RE, (all, inner: string) => (own !== null && cellText(inner) === own ? ' ' : all))
+  return html.replace(GLD_ALL_RE, (all, ris: string | undefined, word: string | undefined) => {
+    const inner = ris ?? word ?? ''
+    return own !== null && cellText(inner) === own ? ' ' : all
+  })
 }
 
 /**
@@ -955,7 +976,10 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     const currentHtml = lift ? stripParaHeading(raw.currentHtml) : raw.currentHtml
     const proposedHtml = lift ? stripParaHeading(raw.proposedHtml) : raw.proposedHtml
     const gldMatch = GLD_RE.exec(currentHtml) ?? GLD_RE.exec(proposedHtml)
-    const gld = gldMatch ? cellText(gldMatch[1]!) : null
+    // Group 1 is RIS's `<gldsym>`, group 2 the Word template's span; exactly
+    // one of them is set. Reading group 1 alone gave `undefined` for every
+    // Parliament annex — the branch fired and its capture was dropped.
+    const gld = gldMatch ? cellText(gldMatch[1] ?? gldMatch[2] ?? '') : null
     if (gld) openPara = gld
     // The two-sided headings held above this row were waiting for exactly this:
     // the row opens a §, so they are its heading and stop being rows of their
