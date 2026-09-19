@@ -165,7 +165,21 @@ const linkClasses =
              dieselben. Eine gemeinsame Zeile „Metadaten CC BY 4.0" hat das
              eingeebnet und für die Daten des Begutachtungsverfahrens etwas
              behauptet, was das Parlament auf seiner eigenen Lizenzseite
-             ausschließt. -->
+             ausschließt.
+
+             Und „ausschließlich Metadaten" stimmte auch nicht (korrigiert
+             19.09.2026): Unter „Worum geht es?" steht die Kurzinformation des
+             Parlaments, und das ist Prosa. Der naheliegende Ausweg — sie sei
+             ohnehin nur der Text des Ressorts, den das RIS unter CC BY führt —
+             hält der Messung nicht stand: Über 337 Entwürfe der GP XXVII
+             tragen 53 % gar keine Prosa, sondern nur die Listen aus dem
+             Vorblatt, und wo es Prosa gibt, stehen im Median 60 % ihrer
+             Acht-Wort-Fenster wörtlich in den Dokumenten des Ressorts, bei
+             einem Drittel weniger als die Hälfte (`pnpm audit:kurzinfo`,
+             docs/architecture.md §13.1). Die Kurzinformation ist also
+             redaktionelle Arbeit des Parlaments auf dem Material des
+             Ressorts — und gehört benannt, statt unter „Metadaten"
+             mitzulaufen. -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
           Nutzungsbedingungen unterscheiden sich je nach Datensatz.
@@ -204,10 +218,16 @@ const linkClasses =
               Ministerialentwürfe, Stellungnahmen und Zustimmungen – für diese
               Daten weist das Parlament keine Open-Data-Lizenz aus und nimmt
               sie von der Weiterverwendung als Open Data ausdrücklich aus. Der
-              Monitor zeigt daraus ausschließlich Metadaten: Fristen,
-              Geschäftszahlen, Anzahl der Einreichungen und die Namen
-              einreichender Organisationen. Volltexte von Stellungnahmen
-              übernimmt er nicht, sondern verlinkt sie auf
+              Monitor zeigt daraus Metadaten – Fristen, Geschäftszahlen,
+              Anzahl der Einreichungen und die Namen einreichender
+              Organisationen – und die Kurzinformation, die das Parlament zu
+              einem Entwurf veröffentlicht (Ziele, Inhalt, Hauptgesichtspunkte;
+              auf der Entwurfsseite unter „Worum geht es?“). Sie ist der
+              einzige zusammenhängende Text aus diesem Datensatz, den der
+              Monitor wiedergibt; ob der Ausschluss sie erfasst, ist offen –
+              wir haben die Parlamentsdirektion um Klärung gebeten, wie weit
+              er reicht. Volltexte
+              von Stellungnahmen übernimmt er nicht, sondern verlinkt sie auf
               <ExternalLink href="https://www.parlament.gv.at" :class="linkClasses"
                 >parlament.gv.at</ExternalLink
               >. Namen von Privatpersonen veröffentlicht er nicht.

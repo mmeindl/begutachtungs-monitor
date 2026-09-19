@@ -108,12 +108,13 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Für das Begutachtungsverfahren selbst – Ministerialentwürfe,
           Stellungnahmen und Zustimmungen – weist das Parlament keine
-          Open-Data-Lizenz aus. Der Monitor zeigt daraus ausschließlich
-          Metadaten: Fristen, Geschäftszahlen, Anzahl der Einreichungen und
-          die Namen einreichender Organisationen. Volltexte übernimmt er
-          nicht, sondern verlinkt sie auf parlament.gv.at; Namen von
-          Privatpersonen veröffentlicht er nicht. Welche Lizenz für welchen
-          Datensatz gilt, steht
+          Open-Data-Lizenz aus. Der Monitor zeigt daraus Metadaten – Fristen,
+          Geschäftszahlen, Anzahl der Einreichungen und die Namen
+          einreichender Organisationen – und die Kurzinformation des
+          Parlaments zum Entwurf („Worum geht es?“). Volltexte von
+          Stellungnahmen übernimmt er nicht, sondern verlinkt sie auf
+          parlament.gv.at; Namen von Privatpersonen veröffentlicht er nicht.
+          Welche Lizenz für welchen Datensatz gilt, steht
           <NuxtLink to="/impressum#imp-license" :class="linkClasses"
             >im Impressum</NuxtLink
           >.
