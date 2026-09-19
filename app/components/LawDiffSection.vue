@@ -21,9 +21,7 @@ import {
   isLawStationId,
   isLawStationPair,
   isLicensedPair,
-  lawStationIndex,
   lawStationPairHint,
-  EDITORIAL_BADGE_GLOSS,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
 
@@ -86,7 +84,11 @@ const comparisons = computed(() => {
   const out: { value: string; from: LawStationId; to: LawStationId; label: string }[] = []
   for (const from of stations) {
     for (const to of stations) {
-      if (lawStationIndex(from.id) >= lawStationIndex(to.id)) continue
+      // `isLawStationPair` statt eines Indexvergleichs: Die Regel kennt seit
+      // der BGBl-Station eine Ausnahme (plenum→bgbl steht kein Akteur
+      // dahinter, §12.33), und sie darf nur an EINER Stelle stehen — der
+      // Server prüft mit derselben Funktion, was hier angeboten wird.
+      if (!isLawStationPair(from.id, to.id)) continue
       const pdfOnly = [from, to].filter((s) => !s.comparable).map((s) => s.label)
       out.push({
         value: `${from.id}>${to.id}`,
@@ -486,16 +488,26 @@ const droppedNote = computed(() =>
     <template v-else>
       <!-- What the selected pair answers, where the selection happened. -->
       <p v-if="!isDefaultPair" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
+      <!-- Was „Z 1" ist und was „redaktionell" heißt, stand bis 18.09.2026
+           hier oben. Beides sind Vokabeln, keine Befunde über diesen Entwurf:
+           Sie gehören in die Legende am Fuß des Abschnitts, wo sie
+           nachgeschlagen wird, wenn das Wort auftaucht — und nicht zwei
+           Bildschirme früher. Was hier bleibt, sagt etwas über diesen Text:
+           dass er ein bestehendes Gesetz ändert, und welche zwei Fassungen
+           verglichen werden. -->
       <p class="mt-1 text-sm text-ink-secondary">
+        <!-- „Z 1" steht in der Klammer, nicht in einer Legende: Es ist die
+             Einheit, in der DIESER Vergleich zählt, also ein Satz über diesen
+             Entwurf. Ein eigener Glossareintrag dafür war eine Fußnote zu
+             einem Wort, das ohnehin im selben Satz vorkommen muss. -->
         <template v-if="isNovelle">
-          Dieser Text ändert ein bestehendes Gesetz. Verglichen werden
-          deshalb die nummerierten Änderungsanordnungen (Z 1, Z 2 …), jede
-          sagt, was an welcher Stelle des geltenden Gesetzes geändert wird.
+          Dieser Text ändert ein bestehendes Gesetz — verglichen wird deshalb
+          Änderungsanordnung für Änderungsanordnung (Z 1, Z 2 …),
+          {{ fromLabel }} gegen {{ toLabel }}.
         </template>
         <template v-else-if="hasZiffern">
-          Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}. Wo ein
-          bestehendes Gesetz geändert wird, sind die Einheiten die
-          nummerierten Änderungsanordnungen (Z 1, Z 2 …).
+          Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}; wo ein
+          bestehendes Gesetz geändert wird, Anordnung für Anordnung (Z 1, Z 2 …).
         </template>
         <template v-else>Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}.</template>
         {{ lawStationPairHint(pair.from, pair.to) }}
@@ -503,8 +515,13 @@ const droppedNote = computed(() =>
              weggefallen: Die Liste zeigt die eingeklappten Läufe als eigene
              Zeilen mit ihrer Zahl an („12 Paragrafen unverändert"). Einem
              Leser zu erzählen, was er sieht, kostet eine Zeile und sagt
-             nichts. -->
-        {{ EDITORIAL_BADGE_GLOSS }}
+             nichts.
+
+             Der Weg zur Erklärung, seit 18.09.2026: Dieser Abschnitt trug die
+             Abzeichen wie die Textgegenüberstellung, hatte aber als einziger
+             keinen Link auf die Seite, die sie erklärt. Wer „redaktionell"
+             nicht kennt, stand hier vor dem Wort und vor keinem Ausweg. -->
+        <NuxtLink to="/so-funktionierts#gegenueberstellung" class="rounded text-accent-deep underline underline-offset-2 hover:no-underline">Wie wir vergleichen</NuxtLink>
       </p>
 
       <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
@@ -696,15 +713,18 @@ const droppedNote = computed(() =>
            Vergleicht der Leser zwei parlamentarische Fassungen, sind beide
            Seiten lizenziert und die Angabe gehört dazu — dieselbe
            quellenweise Aufteilung wie im Impressum. -->
-      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <span>{{ data.fromSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
+      <SectionCredits>
+        <!-- BEIDE Seiten entscheiden die Zeile, nicht mehr nur die linke:
+             die kundgemachte Fassung kommt aus dem RIS, und bei `rv→bgbl`
+             stünde sonst „Quellen (Parlament)" über einem RIS-Dokument. -->
+        <span>{{ data.fromSource === 'ris' || data.toSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
         <ExternalLink v-if="data.fromDocument" :href="data.fromDocument.url" class="text-accent-deep hover:underline">{{ data.fromDocument.label }}</ExternalLink>
         <ExternalLink v-if="data.toDocument" :href="data.toDocument.url" class="text-accent-deep hover:underline">{{ data.toDocument.label }}</ExternalLink>
         <span v-if="isLicensedPair(pair.from, pair.to)">CC BY 4.0</span>
         <!-- The § names come from a third source; a page that shows text has
              to say where it is from, even when the text is one word long. -->
         <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
-      </div>
+      </SectionCredits>
     </template>
   </div>
 </template>

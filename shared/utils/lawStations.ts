@@ -27,7 +27,7 @@ import type { LawStationId } from '../types'
  * calls one side removed and the other inserted and a flipped pair would
  * report every amendment backwards.
  */
-export const LAW_STATION_ORDER: readonly LawStationId[] = ['me', 'rv', 'ausschuss', 'plenum']
+export const LAW_STATION_ORDER: readonly LawStationId[] = ['me', 'rv', 'ausschuss', 'plenum', 'bgbl']
 
 /**
  * The label names the VERSION, not the event: "Ausschussfassung", not
@@ -40,6 +40,16 @@ export const LAW_STATION_LABEL: Record<LawStationId, string> = {
   rv: 'Regierungsvorlage',
   ausschuss: 'Ausschussfassung',
   plenum: 'Plenarfassung',
+  // Die Fassung, nicht das Ereignis — dieselbe Regel wie oben: „Kundmachung"
+  // wäre der Vorgang, „Bundesgesetzblatt" das Blatt; verglichen wird der Text.
+  //
+  // UND ES MUSS SICH BEUGEN LASSEN. Die Sätze der Seite setzen die
+  // Beschriftung in den Genitiv („der Gesetzestext der …", „wird mit dem der
+  // … verglichen"). Die vier alten Namen sind feminin auf -ung und ändern
+  // sich dabei nicht; „Kundgemachte Fassung" tat es und stand als „mit dem
+  // der Kundgemachte Fassung" auf der Seite. Dass der Ministerialentwurf im
+  // selben Satz schon eine Ausnahme braucht, war die Warnung.
+  bgbl: 'Fassung im Bundesgesetzblatt',
 }
 
 /**
@@ -68,8 +78,14 @@ export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
  * Zahlen, Daten oder Satzzeichen geändert haben". Das ist die Definition
  * eines Etiketts, das wir selbst vergeben; sie muss überall dieselbe sein,
  * sonst ist sie keine Definition.
+ *
+ * Seit 18.09.2026 steht sie nur noch an EINER Stelle: auf /so-funktionierts.
+ * Auf der Entwurfsseite stand sie zuletzt als Legende am Fuß beider
+ * Vergleiche — auch das war ein Satz, der auf jeder der rund tausend Seiten
+ * gleich lautet, für ein Wort, das im Deutschen ungefähr das sagt, was es
+ * hier heißt. Beide Vergleiche verlinken jetzt dorthin.
  */
-export const EDITORIAL_BADGE_GLOSS =
+export const EDITORIAL_BADGE_SENTENCE =
   '„Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder Satzzeichen geändert, kein einziges Wort.'
 
 const UPSTREAM_STATION_TITLES: Readonly<Record<string, LawStationId>> = {
@@ -120,7 +136,24 @@ export function lawStationIndex(id: LawStationId): number {
   return LAW_STATION_ORDER.indexOf(id)
 }
 
+/**
+ * Ist dieses Paar eine Frage, die jemand beantwortet hat?
+ *
+ * Die Reihenfolge allein reicht seit der BGBl-Station nicht mehr. Zwischen
+ * der Plenarfassung und der Kundmachung handelt **kein Akteur**: Was der
+ * Nationalrat beschlossen hat, wird kundgemacht, nicht noch einmal geändert.
+ * Gemessen (`pnpm audit:bgbl-station`, §12.33) bleibt dort nach Abzug der
+ * eingesetzten Fundstelle nichts übrig — bei zehn von vierzehn Entwürfen
+ * exakt null inhaltliche Änderungen.
+ *
+ * Ein Paar, das systematisch leer ist, gehört nicht in einen Wähler: Es
+ * verspricht eine Antwort, die es nicht geben kann, und wer es wählt, lernt
+ * über das Verfahren nichts, sondern zweifelt am Werkzeug. Die Aussage „am
+ * Text hat sich nach dem Plenum nichts mehr geändert" macht stattdessen das
+ * Paar `rv→bgbl` mit, ohne einen eigenen Menüpunkt zu kosten.
+ */
 export function isLawStationPair(from: LawStationId, to: LawStationId): boolean {
+  if (from === 'plenum' && to === 'bgbl') return false
   return lawStationIndex(from) < lawStationIndex(to)
 }
 
@@ -143,6 +176,14 @@ export function defaultFromFor(to: LawStationId): LawStationId | null {
   return to === 'rv' ? 'me' : 'rv'
 }
 
+/**
+ * Die Frage, die ein Paar mit der Kundmachung beantwortet.
+ *
+ * Für `bgbl` gilt dieselbe Regel wie für die anderen — zeitlich, nie kausal
+ * (Framing-Regel, CLAUDE.md). „Was vom Entwurf im Gesetz steht" wäre schon
+ * eine Wertung; „was sich bis zum Gesetz geändert hat" ist die Beobachtung.
+ */
+
 /** The default pair of the page: the comparison this product is about. */
 export const DEFAULT_LAW_STATION_PAIR: { from: LawStationId; to: LawStationId } = { from: 'me', to: 'rv' }
 
@@ -163,6 +204,9 @@ const PAIR_QUESTIONS: Readonly<Record<string, string>> = {
   'rv>ausschuss': 'Was der Ausschuss an der Regierungsvorlage geändert hat',
   'rv>plenum': 'Was das Parlament an der Regierungsvorlage geändert hat',
   'ausschuss>plenum': 'Was im Plenum noch geändert wurde',
+  'me>bgbl': 'Was sich vom Entwurf bis zum kundgemachten Gesetz geändert hat',
+  'rv>bgbl': 'Was sich von der Regierungsvorlage bis zum Gesetz geändert hat',
+  'ausschuss>bgbl': 'Was sich nach dem Ausschuss bis zum Gesetz geändert hat',
 }
 
 export function lawStationPairQuestion(from: LawStationId, to: LawStationId): string {

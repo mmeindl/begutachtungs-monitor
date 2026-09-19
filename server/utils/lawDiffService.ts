@@ -25,7 +25,7 @@ import type { DraftDocument, LawDiffResponse, LawStationId, LawStationOption, Tr
 import { LAW_STATION_LABEL, LAW_STATION_ORDER, meTextTitleRank } from '#shared/utils/lawStations'
 import { diffLawPackage, summarizeDiff } from './lawDiff'
 import { parseLawUnits, parseLawUnitsFromRis } from './lawText'
-import { mapDocuments, mapTextEvolution, type RawDocumentGroup } from './mappers'
+import { extractBgblLink, findLastRvLink, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup } from './mappers'
 import { getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
 
@@ -88,6 +88,16 @@ export interface ResolvedLawStation {
   id: LawStationId
   /** The HTML export `parseLawUnits` needs; null when upstream offers only a PDF. */
   html: string | null
+  /**
+   * Legistisches RIS-XML, gelesen von `parseLawUnitsFromRis`.
+   *
+   * Zwei Stationen kommen so daher, und aus verschiedenen Gründen: der
+   * Entwurf, wenn das Parlament ihn nur als PDF führt (der alte Rückfall),
+   * und die Kundmachung, die es beim Parlament überhaupt nicht gibt
+   * (§12.33). Deshalb steht das Feld an der Station und nicht mehr als
+   * Sondervariable neben `me`.
+   */
+  xml: string | null
   /** What to link when there is no HTML, so the reader still reaches the text. */
   fallbackUrl: string | null
 }
@@ -120,6 +130,7 @@ export function findLawStations(content: {
     out.set('me', {
       id: 'me',
       html: best.formats.find((f) => f.type === 'html')?.url ?? null,
+      xml: null,
       fallbackUrl: best.formats.find((f) => f.type === 'pdf')?.url ?? null,
     })
   }
@@ -129,7 +140,7 @@ export function findLawStations(content: {
   const meUrls = new Set(documents.flatMap((d) => d.formats.map((f) => f.url)))
   for (const v of mapTextEvolution(content.statements?.documents, meUrls)) {
     if (!v.stationId) continue
-    const station = out.get(v.stationId) ?? { id: v.stationId, html: null, fallbackUrl: null }
+    const station = out.get(v.stationId) ?? { id: v.stationId, html: null, xml: null, fallbackUrl: null }
     if (v.url.endsWith('.html')) station.html ??= v.url
     else station.fallbackUrl ??= v.url
     out.set(v.stationId, station)
@@ -147,6 +158,7 @@ const MISSING_STATION_REASON: Record<LawStationId, string> = {
   rv: 'Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.',
   ausschuss: 'Der Ausschuss hat keine geänderte Fassung des Gesetzestexts veröffentlicht.',
   plenum: 'Im Plenum wurde keine geänderte Fassung des Gesetzestexts veröffentlicht.',
+  bgbl: 'Dieser Entwurf ist bisher nicht als Gesetz kundgemacht worden.',
 }
 
 export const getLawDiff = defineCachedFunction(
@@ -161,23 +173,48 @@ export const getLawDiff = defineCachedFunction(
     // parliamentary stations are published as HTML without exception in the
     // three measured periods.
     const meStation = found.get('me')
-    let risXml: string | null = null
     let risLink: TraceLink | null = null
     let risRowExists = false
     if (meStation && !meStation.html) {
       const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
       risRowExists = Boolean(row?.risId)
-      risXml = row?.risDocument?.xml ?? null
-      if (risXml) risLink = { label: 'Ministerialentwurf, Gesetzestext (RIS)', url: row?.risUrl ?? risXml }
+      meStation.xml = row?.risDocument?.xml ?? null
+      if (meStation.xml) risLink = { label: 'Ministerialentwurf, Gesetzestext (RIS)', url: row?.risUrl ?? meStation.xml }
     }
 
-    const comparable = (id: LawStationId) =>
-      Boolean(found.get(id)?.html) || (id === 'me' && Boolean(risXml))
+    /**
+     * Die kundgemachte Fassung — die einzige Station, die nicht beim
+     * Parlament liegt (§12.33).
+     *
+     * Der Weg dorthin ist ein Nachschlagen und keine Suche: Die
+     * Regierungsvorlage trägt die Fundstelle strukturiert
+     * (`status.bgbllinks`), und das RIS liefert zu dieser Zitierung genau
+     * einen Satz. Scheitert irgendetwas davon, fehlt die Station einfach —
+     * der Vergleich der anderen vier darf daran nicht hängen.
+     */
+    let bgblLink: TraceLink | null = null
+    try {
+      const rvLink = findLastRvLink(parseStages(content.stages))
+      if (rvLink) {
+        const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
+        const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
+        const doc = nummer ? await getBgblDocument(nummer) : null
+        if (doc?.xml) {
+          found.set('bgbl', { id: 'bgbl', html: null, xml: doc.xml, fallbackUrl: doc.html ?? doc.page })
+          bgblLink = { label: `${nummer} (RIS)`, url: doc.page }
+        }
+      }
+    } catch {
+      // Ohne Kundmachung bleibt es bei den parlamentarischen Stationen.
+    }
+
+    const comparable = (id: LawStationId) => Boolean(found.get(id)?.html) || Boolean(found.get(id)?.xml)
 
     const documentOf = (id: LawStationId): TraceLink | null => {
       const station = found.get(id)
       if (!station) return null
       if (id === 'me' && !station.html && risLink) return risLink
+      if (id === 'bgbl' && bgblLink) return bgblLink
       const url = station.html ?? station.fallbackUrl
       return url ? { label: `${LAW_STATION_LABEL[id]}, Gesetzestext`, url } : null
     }
@@ -202,6 +239,7 @@ export const getLawDiff = defineCachedFunction(
       fromDocument: documentOf(from),
       toDocument: documentOf(to),
       fromSource: null,
+      toSource: null,
       stations,
       stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
       lawsOnlyInTo: [],
@@ -226,19 +264,26 @@ export const getLawDiff = defineCachedFunction(
       return answer(`Der Gesetzestext der ${LAW_STATION_LABEL[to]} liegt nur als PDF vor.`)
     }
 
+    // Jede Seite bringt ihr eigenes Format mit, seit die Kundmachung dabei
+    // ist: Parlaments-HTML wird von `parseLawUnits` gelesen, RIS-XML von
+    // `parseLawUnitsFromRis`. Bis 19.09.2026 stand das XML fest auf der
+    // linken Seite, weil nur der Entwurf so kommen konnte.
     const fromHtml = found.get(from)!.html
+    const toHtml = found.get(to)!.html
     const fromSource: LawDiffResponse['fromSource'] = fromHtml ? 'parlament' : 'ris'
+    const toSource: LawDiffResponse['fromSource'] = toHtml ? 'parlament' : 'ris'
     const [fromDoc, toDoc] = await Promise.all([
-      fetchLawHtml(fromHtml ?? risXml!),
-      fetchLawHtml(found.get(to)!.html!),
+      fetchLawHtml(fromHtml ?? found.get(from)!.xml!),
+      fetchLawHtml(toHtml ?? found.get(to)!.xml!),
     ])
     const fromUnits = fromHtml ? parseLawUnits(fromDoc) : parseLawUnitsFromRis(fromDoc)
+    const toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)
 
-    const { units, lawsOnlyInTo, lawsOnlyInFrom } = diffLawPackage(fromUnits, parseLawUnits(toDoc))
+    const { units, lawsOnlyInTo, lawsOnlyInFrom } = diffLawPackage(fromUnits, toUnits)
     if (units.length === 0) {
-      return answer('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', { fromSource })
+      return answer('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', { fromSource, toSource })
     }
-    return answer(null, { fromSource, stats: summarizeDiff(units), lawsOnlyInTo, lawsOnlyInFrom, units })
+    return answer(null, { fromSource, toSource, stats: summarizeDiff(units), lawsOnlyInTo, lawsOnlyInFrom, units })
   },
   {
     name: 'law-diff',

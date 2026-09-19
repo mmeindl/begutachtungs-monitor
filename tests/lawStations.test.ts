@@ -28,7 +28,7 @@ const ALL = LAW_STATION_ORDER
 describe('vocabulary', () => {
   it('names every station and orders them by the procedure', () => {
     for (const id of ALL) expect(LAW_STATION_LABEL[id]).toBeTruthy()
-    expect([...ALL]).toEqual(['me', 'rv', 'ausschuss', 'plenum'])
+    expect([...ALL]).toEqual(['me', 'rv', 'ausschuss', 'plenum', 'bgbl'])
   })
 
   it('labels the version, not the event upstream names', () => {
@@ -42,10 +42,27 @@ describe('vocabulary', () => {
   })
 
   it('accepts only its own ids', () => {
+    // ZWEI VOKABULARE, zwei geteilte Namen — und das ist seit 19.09.2026 so
+    // gewollt. `shared/utils/stations.ts` führt die VERFAHRENSstationen
+    // (begutachtung|rv|parlament|bgbl, der Filter `?station=`), dieses Modul
+    // die TEXTfassungen (`?von=`/`?bis=`). `rv` stand schon immer in beiden;
+    // `bgbl` steht jetzt auch in beiden, weil es beides gibt: die erreichte
+    // Station und den kundgemachten Text. Was NICHT übergreift, bleibt hier
+    // die Grenze — „begutachtung" und „parlament" sind keine Textfassungen.
     for (const id of ALL) expect(isLawStationId(id)).toBe(true)
-    for (const other of ['bgbl', 'begutachtung', 'ME', '', null, 3]) {
+    for (const other of ['begutachtung', 'parlament', 'ME', '', null, 3]) {
       expect(isLawStationId(other)).toBe(false)
     }
+  })
+
+  it('refuses the one pair that no actor stands behind', () => {
+    // Zwischen Plenarfassung und Kundmachung ändert niemand mehr etwas; das
+    // Paar wäre systematisch leer (§12.33).
+    expect(isLawStationPair('plenum', 'bgbl')).toBe(false)
+    expect(isLawStationPair('me', 'bgbl')).toBe(true)
+    expect(isLawStationPair('rv', 'bgbl')).toBe(true)
+    expect(isLawStationPair('ausschuss', 'bgbl')).toBe(true)
+    expect(isLawStationPair('bgbl', 'me')).toBe(false)
   })
 })
 
@@ -130,7 +147,7 @@ describe('lawStationPairQuestion', () => {
     ['ausschuss', 'plenum'],
   ]
 
-  it('keeps the wording the outcome card links to', () => {
+  it('keeps the wording the Regierungsvorlage section links to', () => {
     expect(lawStationPairQuestion('me', 'rv')).toBe('Was sich nach der Begutachtung geändert hat')
   })
 

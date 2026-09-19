@@ -64,7 +64,26 @@ export function readLawStationPair(event: H3Event): { from: LawStationId; to: La
   // A flipped pair is not harmless input: the word diff calls one side
   // removed and the other inserted, so it would report every amendment
   // backwards instead of failing.
-  if (!from || !isLawStationPair(from, to)) {
+  //
+  // Seit der BGBl-Station gibt es einen zweiten Grund, ein Paar abzulehnen,
+  // und er braucht einen eigenen Satz: `plenum→bgbl` liegt richtig herum und
+  // ist trotzdem keine Frage — zwischen Beschluss und Kundmachung ändert kein
+  // Akteur den Text (§12.33). Die alte Begründung wäre dort schlicht falsch,
+  // und eine Fehlermeldung, die einen falschen Grund nennt, schickt den
+  // Leser die falsche Richtung suchen.
+  if (!from) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Die Station für „von“ muss im Verfahren vor der für „bis“ liegen',
+    })
+  }
+  if (from === 'plenum' && to === 'bgbl') {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Zwischen Plenarfassung und Kundmachung ändert sich der Text nicht mehr',
+    })
+  }
+  if (!isLawStationPair(from, to)) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Die Station für „von“ muss im Verfahren vor der für „bis“ liegen',
