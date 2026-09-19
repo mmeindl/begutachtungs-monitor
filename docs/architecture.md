@@ -3215,6 +3215,81 @@ Befund über eine Verbesserung, und nach dem dritten Mal liest niemand mehr hin
 — das ist die Art, wie ein Alarm stirbt, und sie ist häufiger als der Ausfall,
 gegen den er gebaut wurde.
 
+**Die zweite Kopie wird jetzt gelesen — und ihre Reihenfolge ist eine
+Lizenzentscheidung, keine technische (19.09.2026).** Das Ressort schreibt die
+Textgegenüberstellung einmal, veröffentlicht wird sie zweimal: im RIS als XML
+und beim Parlament am Entwurf als Word-HTML. Bis heute las der ausgelieferte
+Pfad nur das RIS und verlinkte die Parlamentskopie bloß.
+
+*Warum RIS zuerst und das Parlament als Rückfall, obwohl gemessen die
+Parlamentskopie die vollständigere ist* (§12.12, sechste Messung: 27 statt 24
+von 40 Entwürfen, paragraphweise 12 Gewinne gegen 2 Verluste). Weil die beiden
+Kopien sich nicht im Inhalt unterscheiden, sondern in der Lizenz: Das RIS
+veröffentlicht die Beilage als CC BY 4.0 (Bundeskanzleramt), das Parlament
+schließt die Begutachtungsverfahren ausdrücklich von der Weiterverwendung als
+Open Data aus (§13.1, Frage E3 ist offen). Wo beide dasselbe Dokument führen,
+ist die geklärte Quelle die richtige. Wo das RIS keine führt, steht die Wahl
+zwischen „aus der offenen Frage lesen" und „dem Leser eine Gegenüberstellung
+vorenthalten, die es gibt" — und dann liest die Seite, sagt aber dazu, woher,
+und behauptet **keine** CC-BY-Lizenz: Die Quellenzeile trägt ihre Lizenz seit
+heute mit sich (`credit`), statt sie im Abschnitt festzuverdrahten.
+
+*Ende zu Ende gemessen, 20 Entwürfe der XXVIII. GP am laufenden Server, je
+einmal vor und nach der Umstellung:*
+
+| | vorher | nachher |
+|---|---|---|
+| Entwürfe mit lesbarer Gegenüberstellung | 12 | **15** |
+| Zeilen insgesamt | 1.483 | **1.666** |
+| anzeigbare Paragraphen der Lesefassung (§12.12a) | 91 | **103** |
+| Entwürfe, deren bisherige Quelle sich ändert | — | **0** |
+
+Die letzte Zeile ist die wichtigste: Weil das RIS zuerst gelesen wird, ist der
+Eingriff für jeden Entwurf, der schon eine Gegenüberstellung hatte, ein
+No-op — Zeile für Zeile dieselbe Ausgabe. Die drei neuen sind genau die, zu
+denen das RIS nichts führt. Damit entfallen auch die 2 gemessenen Verluste der
+Parlament-zuerst-Variante, die aus deren feinerem Zeilenschnitt stammten.
+Beispiel 105/ME: 158 Zeilen, 23 Paragraphen geprüft, 22 vom geltenden Recht
+bestätigt — das Tor arbeitet auf der Parlamentskopie wie auf der RIS-Kopie.
+
+*Eine Quelle, zwei Abschnitte.* Die Wahl liegt in **einer** Funktion
+(`annexSourceFor`), die sich die Gegenüberstellung und die konsolidierte
+Lesefassung teilen. Läsen die beiden verschiedene Kopien, könnte ein Paragraph
+durch ein Tor gehen, dessen Beleg auf der Seite gar nicht steht.
+
+*Was der Satz „keine Textgegenüberstellung" weiterhin nicht sagen darf.* Liegt
+sie beim Parlament nur als PDF (41 von 42 Scans sind auf beiden Seiten
+dieselben), sagt die Seite das ausdrücklich und verlinkt sie, statt ihre
+Existenz zu verneinen — die Lehre vom 10.09.2026 gilt unverändert, sie hat
+jetzt nur einen Fall weniger zu tragen.
+
+**Und am selben Tag wieder abgeschaltet — die Abwägung oben ging eine Station
+zu weit (19.09.2026).** Sie war richtig gestellt („aus der offenen Frage
+lesen" gegen „eine Gegenüberstellung vorenthalten, die es gibt") und hat die
+Lizenz*angabe* sauber gelöst; was sie überging, ist, dass die Frage nicht nur
+die Angabe betrifft, sondern die Handlung. Das Parlament nimmt die Daten des
+Begutachtungsverfahrens von der Weiterverwendung aus; den Volltext einer
+Beilage von parlament.gv.at auszulesen und abzudrucken, ist keine Metadate,
+und „metadaten-only" ist für diese Stufe eine gesetzte Linie, keine
+Vorsichtsmaßnahme. Für genau die betroffenen Entwürfe trägt auch das Argument
+nicht, das sonst trüge — dass dasselbe Dokument im RIS unter CC BY steht —,
+denn sie sind die, zu denen das RIS keines führt.
+
+Gebaut bleibt alles: `READ_PARLIAMENT_COPY` steht auf `false`, `annexSourceFor`
+gibt dann die Antwort des RIS-Pfades zurück. Der Preis ist gemessen und klein —
+3 Entwürfe der GP XXVIII verlieren ihre Gegenüberstellung wieder (Obergrenze
+8, bis 13) —, das Dokument bleibt verlinkt, und der Satz daneben sagt den
+wahren Grund: **nicht** „ließ sich nicht auslesen" (das wäre eine Aussage über
+ein Dokument, das wir gar nicht angefasst haben), sondern dass wir es
+verlinken, solange die Weiterverwendung ungeklärt ist. Der Schalter zieht drei
+Stellen mit sich, und sie stehen im Kommentar an ihm; die Fallunterscheidung
+nach der Antwort der Parlamentsdirektion steht bei E3.
+
+Die allgemeinere Lehre, weil sie sich wiederholen wird: **Eine Lizenzfrage ist
+selten eine Frage der Beschriftung.** Ein `credit`-Feld pro Quelle ist die
+richtige Mechanik und beantwortet trotzdem nur, *was man sagt* — nicht, *was
+man tut*.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the

@@ -913,6 +913,17 @@ export interface TextComparisonResponse {
    */
   source: TraceLink | null
   /**
+   * Die Vorbemerkung der Quellenzeile, samt Lizenz — „Quelle (CC BY 4.0,
+   * RIS):" oder, wo die Kopie des Parlaments gelesen wurde, ohne
+   * Lizenzangabe.
+   *
+   * Serverseitig, weil hier die Quelle gewählt wird: Der Abschnitt hatte den
+   * CC-BY-Satz festverdrahtet, und sobald dieselbe Sektion ein Dokument des
+   * Parlaments liest, ist das eine Lizenzbehauptung, die niemand geprüft hat
+   * (§13.1, Frage E3 offen).
+   */
+  credit: string
+  /**
    * The annex as a PDF, for a reader to open where we could not read it: the
    * RIS scan, or Parliament's copy for the drafts whose RIS record carries no
    * annex at all (11 of 130 matched GP-XXVIII drafts, measured 2026-09-10).
