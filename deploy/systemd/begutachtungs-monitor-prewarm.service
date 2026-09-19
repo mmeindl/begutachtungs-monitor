@@ -17,6 +17,17 @@
 # reads the map under a 2.5 s budget and simply answers without stations when
 # it is cold, so a map nobody warms is a filter nobody sees. --max-time 900
 # rather than 600 because the timer may fire on a period twice that size.
+#
+# Vierter Aufruf seit 19.09.2026: die Jahrgänge des Bundesgesetzblatts Teil
+# II, aus denen die Verordnungsseiten ihre Kundmachung lesen (§12.32). Drei
+# Jahrgänge sind kalt rund 21 Anfragen ans RIS — und anders als bei den
+# anderen Abschnitten wäre das Ergebnis eines kalten Laufs nicht nur langsam,
+# sondern eine Aussage: Wer die Jahrgänge nicht hat, findet keine Kundmachung
+# und schriebe „nicht kundgemacht" unter eine Verordnung, die längst gilt.
+#
+# Er steht VOR dem Listenaufruf, seit die Liste den Ausgang je Zeile zeigt
+# (§12.32): Sie wartet nur 3 s darauf und rendert sonst ohne die Spalte —
+# was richtig ist, aber vermeidbar, wenn die Jahrgänge schon liegen.
 [Unit]
 Description=Begutachtungs-Monitor: warm the RIS↔ME map of the current GP
 After=begutachtungs-monitor.service
@@ -25,5 +36,6 @@ Requires=begutachtungs-monitor.service
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/api/bgbl/teil2
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell

@@ -78,6 +78,11 @@ function toConsultation(r: RisBegutFlat, day: string): RisConsultation {
     deadline: r.ende,
     // A record whose Frist has no end cannot be claimed to be running.
     active: isOpenOn(r, day),
+    // Der Ausgang wird hier nicht ermittelt: Dieses Modul liest den Korpus,
+    // den die Seite ohnehin hält, der Abgleich kostet Jahrgänge des
+    // Bundesgesetzblatts. Wer ihn braucht, mischt ihn mit einem Zeitbudget
+    // dazu (`bgblService.getBgblOutcomesForGp`, §12.32).
+    outcome: null,
     risUrl: risDocumentUrl(r.id),
   }
 }

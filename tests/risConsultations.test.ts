@@ -18,6 +18,8 @@ function c(overrides: Partial<RisConsultation> = {}): RisConsultation {
   return {
     id: 'BEGUT_A',
     kind: 'verordnung',
+    // Der Ausgang ist der Normalfall-Default: nicht ermittelt.
+    outcome: null,
     title: 'Änderung der Druckgeräteaufstellungsverordnung',
     longTitle: null,
     ministryCode: 'BMWET',

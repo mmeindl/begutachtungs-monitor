@@ -13,12 +13,16 @@
  * Never `/api/weitere-…`: „weiter als was" was the word's whole problem.
  */
 import type {
+  BgblOutcome,
   DraftStation,
   DraftStatus,
   RisConsultationKind,
   RisConsultationsResponse,
 } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
+
+/** Was die Liste auf den Ausgang wartet, solange er nur eine Spalte füllt. */
+const OUTCOMES_BUDGET_MS = 3_000
 
 const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
 const KIND_VALUES: RisConsultationKind[] = ['verordnung', 'gesetz', 'unbestimmt']
@@ -86,14 +90,38 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * Startseite („Alle 7 offenen Entwürfe") führte auf eine Liste mit 4.
    *
    * Also: unter `begutachtung` gehören sie dazu, weil sie dort stehen. Aus
-   * den SPÄTEREN Stationen sind sie draußen, weil sie sie nicht erreichen
+   * `rv` und `parlament` sind sie draußen, weil sie die nicht erreichen
    * können — das ist keine Auswahl, das ist das Verfahren. Wer nur die eine
    * Sorte will, hat den Art-Filter daneben, und die Zählzeile nennt beide
-   * Hälften einzeln. */
+   * Hälften einzeln.
+   *
+   * SEIT 19.09.2026 GILT DAS FÜR `bgbl` NICHT MEHR. Der Satz „sie können
+   * die späteren Stationen nicht erreichen" stimmte, solange niemand das
+   * Bundesgesetzblatt las: Eine Verordnung geht nicht durchs Parlament, wird
+   * aber sehr wohl kundgemacht — in Teil II (§12.32). Wer nach der Station
+   * „Bundesgesetzblatt" filtert, meint beide Hälften, und die Hälfte, die
+   * dort still gefehlt hat, ist die größere. */
   const wantsBegutachtung = !stations.length || stations.includes('begutachtung')
+  const wantsBgbl = stations.includes('bgbl')
+
+  /**
+   * Der Ausgang je Satz — mit Budget, aber nur, solange er Beiwerk ist.
+   *
+   * Als Spaltenwert darf er fehlen: Die Zeile sagt dann „Begutachtung
+   * abgeschlossen" statt „Kundgemacht", das ist unvollständig und nicht
+   * falsch. Als FILTER darf er nicht fehlen — ein leeres Budget ergäbe eine
+   * leere Liste, und „keine kundgemachten Verordnungen" wäre eine Antwort,
+   * die wir nicht geprüft haben (§12.13). Dort wird gewartet.
+   */
+  const outcomes = wantsBgbl
+    ? await getBgblOutcomesForGp(gp).catch(() => ({}) as Record<string, BgblOutcome>)
+    : await Promise.race([
+        getBgblOutcomesForGp(gp).catch(() => ({}) as Record<string, BgblOutcome>),
+        new Promise<Record<string, BgblOutcome>>((resolve) => setTimeout(() => resolve({}), OUTCOMES_BUDGET_MS)),
+      ])
 
   const filtered = items.filter((item) => {
-    if (!wantsBegutachtung) return false
+    if (!wantsBegutachtung && !(wantsBgbl && outcomes[item.id]?.state === 'kundgemacht')) return false
     if (status === 'open' && !item.active) return false
     if (status === 'closed' && item.active) return false
     if (art && item.kind !== art) return false
@@ -113,7 +141,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   if (!availableGps.includes(gp)) availableGps.push(gp)
 
   return {
-    items: filtered,
+    items: filtered.map((item) => ({ ...item, outcome: outcomes[item.id] ?? null })),
     total: filtered.length,
     gpTotal: items.length,
     gp,

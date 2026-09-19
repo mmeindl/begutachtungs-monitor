@@ -159,6 +159,31 @@ export function procedureStatusDe(d: DraftDetail): string {
 }
 
 /**
+ * Dieselbe Zeile für einen Verordnungsentwurf — und eine Asymmetrie, die
+ * Absicht ist (§12.32).
+ *
+ * Die Karte des Ministerialentwurfs nennt oben den AUSGANG („Gesetz
+ * geworden"), die der Verordnung nannte bis 19.09.2026 den Stand der
+ * Begutachtung („Begutachtung beendet"), auch wenn zwei Zeilen darunter
+ * „Kundgemacht als BGBl. II Nr. 410/2024" stand. Dieselbe Karte, zwei
+ * Logiken.
+ *
+ * NACH OBEN GEHT NUR DER BELEGTE AUSGANG. „Bisher nicht kundgemacht" wäre
+ * die naheliegende Gegenrichtung und wird hier NICHT gesagt: Der
+ * Ministerialentwurf darf „Bisher keine Regierungsvorlage" behaupten, weil
+ * die Liste des Parlaments vollständig ist; die Kundmachung einer Verordnung
+ * finden wir über einen gebauten Schlüssel, und der trifft gemessen 84,2 %
+ * (bei alten Fristen 92,3 %). Jede zwölfte Überschrift wäre also falsch —
+ * und zwar in der Richtung, die wie ein Vorwurf klingt. Die Zeile im
+ * Kartentext sagt den Negativbefund weiterhin, aber als das, was er ist:
+ * eine Auskunft über unseren Fund.
+ */
+export function regulationStatusDe(active: boolean, promulgated: boolean): string {
+  if (promulgated) return 'Kundgemacht'
+  return active ? 'In Begutachtung' : 'Begutachtung beendet'
+}
+
+/**
  * Das zweite Fenster: dass zur Regierungsvorlage weiter Stellung genommen
  * werden kann, und bis wann.
  *
@@ -421,27 +446,19 @@ export function markedStation(list: Station[]): StationId | null {
   return done[done.length - 1]?.id ?? null
 }
 
-/**
- * „Station 2 von 5" — where the marked station sits, in words.
+/* There was a `stationPositionDe` here that rendered „Station 2 von 5" on
+ * the detail page, on the claim that the mark otherwise rode on colour
+ * alone. Removed 18.09.2026, because none of that claim survived contact
+ * with the three things that carry it already:
  *
- * Two jobs, and the second is the reason it is not decoration:
+ *  - `reached` states form a PREFIX of the list, so the marked station is
+ *    always the last row the bar sets in `font-medium text-ink`. That
+ *    boundary is weight, not colour.
+ *  - `procedureStatusDe` heads the same card and names the station in
+ *    words — that is the sentence that takes the mark off colour.
+ *  - The bar is an <ol> with `aria-current="step"`, so assistive tech
+ *    announces the position per row without being told.
  *
- *  - **It takes the marking off colour.** The current station is drawn with
- *    a wash and a filled dot, and announced to screen readers through
- *    `aria-current="step"`. Sighted readers had neither — meaning on colour
- *    alone, against the AAA claim on /ueber, and the one row that matters
- *    most was the row that relied on it.
- *  - **It is the orientation a shared link does not otherwise give.** The
- *    detail page is this tool's front door in practice. „Station 2 von 5"
- *    is the shortest sentence that says the procedure has a shape, how far
- *    along this text is, and that there is more to come.
- *
- * Derived from the same list the bar draws, so the two cannot disagree —
- * which is the whole reason it lives here and not in the page.
- */
-export function stationPositionDe(list: Station[]): string | null {
-  const id = markedStation(list)
-  if (!id) return null
-  const i = list.findIndex((s) => s.id === id)
-  return i < 0 ? null : `Station ${i + 1} von ${list.length}`
-}
+ * What was left was a number counting the list the reader is looking at,
+ * for a line of card height. If it ever comes back, it belongs ON the
+ * marked row, not above or below the list. */
