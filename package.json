@@ -11,6 +11,7 @@
     "typecheck:tools": "tsc --noEmit -p tsconfig.tools.json",
     "test": "vitest run",
     "harness:kons": "vite-node scripts/kons-harness.ts --",
+    "harness:me": "vite-node scripts/me-harness.ts --",
     "harness:annex": "vite-node scripts/annex-pdf-verify.ts --",
     "audit:classifier": "vite-node scripts/classifier-audit.ts --",
     "audit:verordnungen": "vite-node scripts/verordnungen-corpus.ts --",
