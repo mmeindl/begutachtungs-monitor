@@ -37,7 +37,7 @@ import { konsLawUrl } from './amendedLawsService'
 import { diffTokens } from './lawDiff'
 import { fetchLawHtml } from './lawDiffService'
 import { applyNovelle, instructionsFromUnits, type Instruction, type StandingLaw } from './lawApply'
-import { parseKonsParagraph, plainText, type LawNode } from './lawStructure'
+import { bodyText, parseKonsParagraph, plainText, renderNode, type LawNode } from './lawStructure'
 import { parseRisXml, segmentUnits } from './lawText'
 import { articleBlocks, type DraftArticle } from './lawTitles'
 import { getRisMapForGp } from './ris'
@@ -232,12 +232,19 @@ export const getConsolidatedText = defineCachedFunction(
         const guard = guardParagraph(id, standing, beforeNode, node, touching)
         const before = beforeNode ? plainText(beforeNode) : null
         const got = plainText(node)
-        // Überschrift und Text getrennt: `plainText` eines § beginnt mit der
-        // Überschrift, und im Fließtext klebte sie am ersten Satz. Der
-        // Rumpf ist derselbe Knoten ohne sie — `plainText` liest bei einem
-        // Paragraphen nur `heading` und die Kinder, nie `text`.
-        const bodyBefore = beforeNode ? plainText({ ...beforeNode, heading: '' }) : null
-        const bodyAfter = plainText({ ...node, heading: '' })
+        // ANZEIGEFORM für das, was auf der Seite steht — mit „(1)", „3." und
+        // „b)" (`bodyText`). Die beiden Zeilen darüber bleiben die
+        // Vergleichsform: Das Orakel hält unser Ergebnis gegen die Beilage,
+        // und die setzt ihre Marker anders. Beide Formen aus demselben Baum,
+        // aber nie dieselbe Funktion — bis 19.09.2026 lief die Anzeige über
+        // die Vergleichsform, und ein § ohne Absatznummern las sich, als
+        // fehle die Hälfte (§12.12a).
+        //
+        // Überschrift und Rumpf getrennt, weil die Überschrift auf der Seite
+        // ihren eigenen Wortdiff hat; im Fließtext klebte sie sonst am ersten
+        // Satz.
+        const bodyBefore = beforeNode ? bodyText(beforeNode) : null
+        const bodyAfter = bodyText(node)
         // Ein Paket ohne Gesetzesgrenzen in der Beilage darf nicht nach einem
         // einzelnen Artikel gefragt werden: 15,1 % der §-Bezeichnungen
         // wiederholen sich in einem anderen Gesetz desselben Pakets.
@@ -271,11 +278,18 @@ export const getConsolidatedText = defineCachedFunction(
           id,
           label: node.marker?.replace(/\.$/, '') || `§ ${id}`,
           heading: node.heading || null,
-          before: before ?? '',
-          after: got,
+          // Die gedruckte Form, wie der Kommentar am Feld sie verspricht —
+          // nicht die Vergleichsform der beiden Zeilen weiter oben.
+          before: beforeNode ? renderNode(beforeNode) : '',
+          after: renderNode(node),
           segments,
           headingSegments,
           risUrl: konsLawUrl(law.gesetzesnummer, asOf),
+          // Derselbe Wert, mit dem oben `paragraphRows` den Anhang befragt
+          // hat — nicht `law.kurztitel`, sondern die Gesetzeszeile der
+          // Beilage. Die Seite hängt den § damit unter genau die
+          // §-Gruppe, gegen die er geprüft wurde (§12.12a).
+          annexLaw: isPackage ? article.key : null,
         })
       }
     }

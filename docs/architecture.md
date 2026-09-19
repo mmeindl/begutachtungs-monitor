@@ -1329,18 +1329,100 @@ Eingriff, der genau das anfasst, was er anfassen soll, sieht so aus.
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/konsGate.ts` (das Tor, rein und getestet),
-`konsService.ts` (Nitro-Glue), `/api/drafts/:gp/:inr/konsolidiert`,
-`app/components/ConsolidatedTextSection.vue`, unter der Gegenüberstellung als
-„Wie das Gesetz danach lauten würde".
+`konsService.ts` (Nitro-Glue), `/api/drafts/:gp/:inr/konsolidiert` — und am
+selben Abend **von einem eigenen Abschnitt zu einer dritten Schicht am
+Paragraphen umgebaut**.
 
-**Warum die Sektion unter der Gegenüberstellung steht und nicht an ihrer
-Stelle.** Die Beilage des Ressorts beantwortet die größere Frage („was ändert
-sich?") für mehr Paragraphen, als dieses Tor je wird — sie ist die Quelle der
-Bestätigung, ohne die hier nichts steht. Der Zugewinn ist schmaler und
-trotzdem echt: Die Beilage druckt den Absatz, den sie ändert, diese Sektion
-den **ganzen Paragraphen**, und zwar aus dem authentischen RIS-Text statt aus
-der Abschrift des Ressorts. „Diese Wortfolge wird ersetzt" gegen „so liest
-sich die Bestimmung dann".
+**Der eigene Abschnitt war eine Dopplung, und das ließ sich nachrechnen.** Er
+stand als „Wie das Gesetz danach lauten würde" unter der Gegenüberstellung,
+mit der Begründung, die Beilage beantworte die größere Frage für mehr
+Paragraphen. Das stimmt, verfehlt aber den Einwand, den ein Leser sofort hat:
+*Ist das nicht dasselbe?* Gemessen an 126/ME stehen **32 von 32** Paragraphen
+der Lesefassung auch in der Gegenüberstellung — und das ist kein Zufall,
+sondern Konstruktion: Das Tor zeigt nur, was die Beilage bestätigt, die
+Lesefassung ist also **immer** eine Teilmenge. Zwei Blöcke mit derselben
+Gesetzessprache untereinander, und der Unterschied war eine Erklärung im
+Kleingedruckten.
+
+**Der Unterschied ist trotzdem echt — und die Zahl dazu trägt jetzt die
+Anzeige.** Die Beilage druckt den geänderten Absatz und kürzt den Rest des
+Paragraphen zu „(2) bis (5) …": bei **26 der 32** Paragraphen von 126/ME, in
+Zeichen **18.068 gegen 48.611**. Bei 132/ME 2 von 3 und 3.476 gegen 11.247.
+Die Lesefassung zeigt also nicht dieselbe Stelle noch einmal, sondern die
+Teile, die die Beilage weggelassen hat — aus dem authentischen RIS-Text statt
+aus der Abschrift des Ressorts. „Diese Wortfolge wird ersetzt" gegen „so
+liest sich die Bestimmung dann".
+
+**Daraus folgt der Ort: am Paragraphen, nicht darunter.** Der § trägt jetzt
+drei zugeklappte Schichten in einer Reihenfolge, die der Frage folgt, die ein
+Leser stellt — *was ändert sich* (die Zeilen), *warum* (§12.30), *wie lautet
+er dann*. Die dritte ist die seltenste (Median 12 % der Paragraphen eines
+Entwurfs), deshalb steht sie unten und nicht oben.
+
+**Der Nenner musste mitwandern**, sonst wäre die Bilanz verloren gegangen:
+Über der Liste steht jetzt ein Satz, der beides tut — er sagt an, dass es die
+Schicht überhaupt gibt (sonst findet sie nur, wer zufällig klickt), und nennt
+die Deckung: „Bei 32 von 61 geänderten Paragrafen steht unten auch, wie die
+Bestimmung danach ganz lautet … Wo das fehlt, ist der Paragraf nicht
+unverändert, sondern ungeprüft."
+
+**Der Schlüssel ist der des Tors, nicht ein zweiter.** `ConsolidatedParagraph`
+trägt seit dem Umbau `annexLaw` — die Gesetzeszeile der Beilage („Änderung des
+Richter- und Staatsanwaltschaftsdienstgesetzes"), nicht den Kurztitel
+(„Richter- und Staatsanwaltschaftsdienstgesetz"), und `null`, wo das Tor den
+Anhang ohne Gesetz befragt hat. Die Seite schlägt damit unter genau dem
+Schlüssel nach, unter dem der § geprüft wurde; ein zweiter Schlüssel wäre eine
+zweite Gelegenheit, dass beide auseinanderlaufen (dieselbe Regel wie §12.30).
+
+**Eine Eigenschaft, die bleibt und richtig ist:** Zeigt eine Gesetzesgruppe
+nur die ersten 30 Änderungen, fehlen die Paragraphen dahinter — und mit ihnen
+ihre Lesefassung. An 126/ME sind das 4 von 32, sichtbar nach „Alle anzeigen".
+Die Schicht folgt dem Paragraphen, zu dem sie gehört; sie hat keine eigene
+Liste mehr, in der sie ihn überholen könnte.
+
+**Zwei Befunde vom Umbau selbst, beide auf der Seite gesehen und dann
+gemessen.**
+
+*Der ganze Paragraph war ganz und sah nicht so aus.* Angezeigt wurde die
+**Vergleichsform** des Textes — `plainText`, die „(1)", „3." und „b)" weglässt,
+weil die Beilage ihre Marker anders setzt und ein Vergleich sonst an
+Typografie scheitert (`tguOracle.stripMarkers` tut auf der anderen Seite
+dasselbe). Für ein Urteil ist das richtig, für einen Gesetzestext ist es
+fatal: § 54c des AVMD-G stand als ein Block Prosa ohne eine einzige
+Absatznummer, und wer ihn neben der Beilage las — die „(1) …", „(1a) …"
+druckt —, musste schließen, dass Teile fehlen. Sie fehlten nie: Der Text
+trägt 4.066 Zeichen gegen 3.496 der geltenden Fassung, das Ende ist der
+letzte Absatz. Seit 19.09.2026 gibt es deshalb **zwei Formen aus demselben
+Baum**: `plainText` für das Orakel, `bodyText` für die Anzeige. Dieselbe
+Trennung wie überall sonst im Haus, nur war sie hier nie gezogen worden —
+§ 54c zeigt jetzt (1), (1a), (1b), (2) bis (5), § 69 achtzehn Absätze.
+
+*„x Stellen unverändert" bleibt, auch wo die Lesefassung steht.* Die
+Kontextzeile faltet die unveränderten Zeilen EINES Paragraphen, und die stehen
+auch in der Lesefassung darunter — an 126/ME an 24 der 46 §§ mit Kontextzeile.
+Sie kurz wegzulassen war naheliegend und falsch (probiert und zurückgenommen
+am 19.09.2026): Es sind zwei Auskünfte, nicht eine. Die Kontextzeile zeigt,
+**was das Ressort unverändert abgedruckt hat**, in der Spaltenlogik der
+Beilage; die Lesefassung zeigt **unseren Text aus dem RIS**. Wer die Beilage
+liest, liest die erste Frage; wer wissen will, wie die Bestimmung danach
+lautet, klappt die zweite auf.
+
+*Die Reihenfolge am § folgt der Frage, nicht der Datenherkunft.* Der
+Aufklapper steht **unter** den geänderten Zeilen, nicht über ihnen: Die Zeilen
+sind die Auskunft, wegen der jemand den § aufschlägt, der ganze Paragraph ist
+die Anschlussfrage. Die Begründung (§12.30) bleibt oben, weil sie zur
+Änderung gehört und nicht zum Ergebnis. Am § steht damit: Zeilen → Begründung
+darüber, Lesefassung darunter.
+
+*Und ein Absatz je Absatz.* `bodyText` trennt die Absätze mit einem
+Zeilenumbruch, der Wortdiff normalisiert Weißraum — in den Segmenten war er
+weg (0 von 3 gemessen). Ein § mit achtzehn Absätzen stand deshalb als eine
+Wand, „(1) … (2) … (3) …" im Fließtext: die Marker zurück, die Gliederung
+noch nicht. Getrennt wird jetzt an der Marke selbst, ohne die Segmentgrenzen
+zu verletzen — ein eingefügter Absatz bleibt grün, auch wenn er einen eigenen
+Block bekommt. Die Marke ist `(1)`, `(2a)`; „(EU) 2018/1808" trifft sie nicht
+(Buchstaben), „Abs. 1" auch nicht (keine Klammern), und beide stehen im selben
+Text daneben.
 
 **Das Tor ist das Modul, nicht die Funktion.** Drei Signale, und keines
 reicht allein: keine Verweigerung, plausibel (`applyGuard`), vom Anhang

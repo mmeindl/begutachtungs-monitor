@@ -328,6 +328,27 @@ export function renderNode(node: LawNode): string {
   return [own, ...node.children.map(renderNode)].join('\n')
 }
 
+/**
+ * ANZEIGEFORM des Rumpfes eines § — mit Gliederungsmarkern, ohne die
+ * §-Bezeichnung und ohne Überschrift (docs/architecture.md §12.12a).
+ *
+ * Getrennt von `plainText`, und der Unterschied ist kein Geschmack: Diese
+ * Datei kennt zwei Formen desselben Textes. Die Vergleichsform lässt „(1)",
+ * „3." und „b)" weg, weil die Beilage sie anders setzt und ein Vergleich
+ * sonst an Typografie scheitert (`tguOracle.stripMarkers` tut dasselbe auf
+ * der anderen Seite). Die Anzeigeform braucht sie, weil ein Gesetzestext
+ * ohne Absatznummern nicht zitierbar ist und zwei Absätze sonst als ein
+ * Satz hintereinander stehen — am 19.09.2026 auf der Seite gesehen, wo „so
+ * lautet der Paragraf dann" aussah, als fehle die Hälfte.
+ *
+ * Ohne §-Marker und ohne Überschrift, weil beide auf der Seite schon einen
+ * eigenen Platz haben: die Bezeichnung als Zeile darüber, die Überschrift
+ * als eigener Wortdiff (`headingSegments`).
+ */
+export function bodyText(node: LawNode): string {
+  return node.children.map(renderNode).join('\n')
+}
+
 /** Comparison form: text only, no markers, no whitespace differences. */
 export function plainText(node: LawNode): string {
   const own = node.level === 'para' ? [node.heading ?? ''] : [node.text]

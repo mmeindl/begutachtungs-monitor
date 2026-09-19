@@ -749,15 +749,6 @@ const linkClasses =
           <TextComparisonSection :gp="data.gp" :inr="data.inr" />
         </div>
 
-        <!-- Und einen Schritt weiter: nicht was sich ändert, sondern wie die
-             Bestimmung danach lautet. Unter der Gegenüberstellung, weil sie
-             von ihr abhängt — bestätigt sie ein Ergebnis nicht, steht hier
-             nichts (§12.12). Dieselbe Bedingung wie oben: Ein Stammgesetz hat
-             keine Fassung „davor", also wird die Frage nicht gestellt. -->
-        <div v-if="!amendedLaws?.createsNewLaw" id="lesefassung" class="mt-8 scroll-mt-6">
-          <h3 class="text-base font-semibold text-ink">Wie das Gesetz danach lauten würde</h3>
-          <ConsolidatedTextSection :gp="data.gp" :inr="data.inr" />
-        </div>
       </section>
 
       <!-- The Begutachtung: the Stellungnahmen ARE this station's content,

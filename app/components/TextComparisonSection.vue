@@ -15,7 +15,7 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
-import type { AnnexWithheldCause, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
+import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanations'
 
 const props = defineProps<{ gp: string; inr: number }>()
@@ -37,6 +37,97 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/draf
  * Beigabe.
  */
 const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr }))
+
+/**
+ * Die konsolidierte Lesefassung — dritte Schicht an demselben Paragraphen
+ * (docs/architecture.md §12.12a).
+ *
+ * WARUM HIER UND NICHT IN EINEM EIGENEN ABSCHNITT. Sie stand bis 19.09.2026
+ * unter der Gegenüberstellung als „Wie das Gesetz danach lauten würde", und
+ * das war eine Dopplung mit Ansage: Gezeigt wird ein Paragraph nur, wenn die
+ * Beilage ihn bestätigt — die Lesefassung ist also **immer** eine Teilmenge
+ * dieses Abschnitts. Gemessen an 126/ME: 32 von 32 Paragraphen stehen in
+ * beiden, zwei Blöcke mit derselben Gesetzessprache untereinander.
+ *
+ * Der Unterschied ist trotzdem echt, und er ist ein anderer als „dasselbe
+ * nochmal": Die Beilage druckt den Absatz, den sie ändert, und kürzt den Rest
+ * des Paragraphen zu „(2) bis (5) …" ab — bei 26 der 32 Paragraphen von
+ * 126/ME, in Zeichen 18.068 gegen 48.611. Die Frage „wie lautet die
+ * Bestimmung dann" entsteht also genau hier, am §, und wird hier beantwortet,
+ * statt zwei Bildschirme tiefer noch einmal.
+ */
+const { data: consolidated } = await useFetch<ConsolidatedTextResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/konsolidiert`,
+  { lazy: true, server: false },
+)
+
+/**
+ * Nachgeschlagen unter demselben Schlüssel, den das Tor benutzt hat.
+ *
+ * Zwei Einträge je Paragraph, und der zweite ist kein Komfort: Bei einer
+ * Einzelnovelle hat das Tor den Anhang OHNE Gesetz befragt (`annexLaw: null`),
+ * die Zeile der Beilage trägt aber trotzdem eines. Ein Nachschlagen nur über
+ * (Gesetz, Nummer) fände dort nichts.
+ */
+const consolidatedByKey = computed(() => {
+  const out = new Map<string, ConsolidatedParagraph>()
+  for (const p of consolidated.value?.paragraphs ?? []) {
+    out.set(explanationKey(p.annexLaw, p.id.toLowerCase()), p)
+    if (p.annexLaw === null) out.set(`*#${p.id.toLowerCase()}`, p)
+  }
+  return out
+})
+
+function consolidatedFor(law: string | null, para: string | null): ConsolidatedParagraph | null {
+  const id = explanationParaId(para)
+  if (!id) return null
+  return consolidatedByKey.value.get(explanationKey(law, id)) ?? consolidatedByKey.value.get(`*#${id}`) ?? null
+}
+
+/** Wie viele §§ die Lesefassung trägt — für den Satz über der Liste. */
+const consolidatedShown = computed(() => consolidated.value?.paragraphs.length ?? 0)
+
+/**
+ * Die Lesefassung absatzweise, nicht als eine Wand.
+ *
+ * `bodyText` trennt die Absätze mit einem Zeilenumbruch, aber der Wortdiff
+ * normalisiert Weißraum — in den Segmenten ist er weg (gemessen 19.09.2026:
+ * 0 von 3 Segmenten trugen noch einen). Ein § mit achtzehn Absätzen stand
+ * deshalb als ein Block, „(1) … (2) … (3) …" mitten im Fließtext: Die Marker
+ * waren wieder da, die Gliederung nicht.
+ *
+ * Getrennt wird deshalb hier, an der Marke selbst, und zwar OHNE die
+ * Segmentgrenzen zu verletzen: Ein Segment ist ein Lauf gleicher Art
+ * (`equal | inserted | removed`), und ein Absatzwechsel mitten darin
+ * schneidet nur den Text, nie die Art. Ein eingefügter Absatz bleibt dadurch
+ * grün, auch wenn er einen eigenen Block bekommt.
+ *
+ * Die Marke ist `(1)`, `(2a)` — Ziffern in Klammern am Wortanfang. „(EU)
+ * 2018/1808" trifft sie nicht (Buchstaben), „Abs. 1" auch nicht (keine
+ * Klammern); das sind die beiden Formen, die im selben Text daneben stehen.
+ */
+const ABS_MARK = /(?=\(\d+[a-z]?\)\s)/
+
+function absaetze(segments: LawDiffSegment[]): LawDiffSegment[][] {
+  const out: LawDiffSegment[][] = []
+  let current: LawDiffSegment[] = []
+  for (const seg of segments) {
+    const pieces = seg.text.split(ABS_MARK)
+    for (const [i, text] of pieces.entries()) {
+      if (!text) continue
+      // Ein neuer Block beginnt bei jeder Marke außer der allerersten des
+      // Paragraphen — sonst stünde ein leerer Block davor.
+      const startsAbsatz = i > 0 || /^\(\d+[a-z]?\)\s/.test(text)
+      if (startsAbsatz && current.length) {
+        out.push(current)
+        current = []
+      }
+      current.push({ ...seg, text })
+    }
+  }
+  if (current.length) out.push(current)
+  return out.length ? out : [segments]
+}
 
 /** Die Passagen, nachschlagbar unter (Gesetz, Paragraph). */
 const explanationsByKey = computed(() => {
@@ -272,6 +363,8 @@ interface Para {
   blocks: Block[]
   /** Was das Ressort zu genau diesem § erläutert; leer, wenn nichts zu finden war. */
   explanations: ParagraphExplanationView[]
+  /** Der ganze § in der Fassung nach dem Entwurf; null, wo das Tor ihn nicht freigibt. */
+  consolidated: ConsolidatedParagraph | null
 }
 
 function parasOf(g: Group): { paras: Para[]; hidden: number } {
@@ -281,7 +374,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
   // line that says only how many there were.
   const folding = !query.value.trim()
   const paras: Para[] = []
-  let current: Para & { key: string } = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [] }
+  let current: Para & { key: string } = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [], consolidated: null }
   let context: TextComparisonRow[] = []
   let shown = 0
   let hidden = 0
@@ -289,6 +382,14 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
   // Every withheld row of a § carries the same cause — the verdict is per §.
   let withheldCause: AnnexWithheldCause | null = null
   const flush = () => {
+    // Die Kontextzeile steht auch an §§ mit Lesefassung, und das ist eine
+    // Entscheidung, keine Auslassung (19.09.2026, Manu): Sie faltet die
+    // unveränderten Zeilen DER BEILAGE, in derselben Spaltenlogik wie die
+    // geänderten darüber — die Lesefassung darunter ist unser Text aus dem
+    // RIS. Für einen Leser, der die Beilage liest, ist „was hat das Ressort
+    // hier unverändert abgedruckt" eine andere Auskunft als „so lautet der
+    // Paragraf dann". Kurz probiert, sie an diesen §§ wegzulassen, und wieder
+    // eingesetzt.
     if (context.length) current.blocks.push({ kind: 'context', rows: context })
     context = []
     if (withheld > 0) current.blocks.push({ kind: 'withheld', count: withheld, cause: withheldCause })
@@ -299,7 +400,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
     const key = row.para ?? ''
     if (current.key !== key) {
       flush()
-      current = { key, gld: row.para, heading: null, blocks: [], explanations: explanationsFor(row.law, row.para) }
+      current = { key, gld: row.para, heading: null, blocks: [], explanations: explanationsFor(row.law, row.para), consolidated: consolidatedFor(row.law, row.para) }
       paras.push(current)
     }
     // The heading belongs to the paragraph, not to the Absatz that carries it.
@@ -625,6 +726,28 @@ const doubtfulNote = computed<string | null>(() => {
           </p>
           <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
         </div>
+
+        <!-- Die Bilanz der Lesefassung, und sie steht hier statt unter einer
+             eigenen Liste (§12.12a). Zwei Aufgaben in einem Satz: Er sagt an,
+             dass an manchen §§ ein dritter Aufklapper hängt — sonst findet
+             ihn nur, wer zufällig klickt —, und er nennt den Nenner. Ohne den
+             läse sich eine Handvoll aufklappbarer Paragraphen wie „bei den
+             anderen bleibt alles beim Alten", und das ist die eine Aussage,
+             die hier nie stehen darf (§12.27).
+
+             Nur wenn es etwas anzusagen gibt: Zeigt das Tor keinen einzigen
+             Paragraphen — der häufigere Fall —, schweigt dieser Satz, statt
+             über eine Sektion zu berichten, die es auf dieser Seite nicht
+             gibt. Was das Tor zurückhält und warum, steht dann weiterhin auf
+             /so-funktionierts, nicht als vierter Absatz über dem Vergleich. -->
+        <p v-if="consolidatedShown > 0" class="max-w-prose text-sm text-ink-secondary">
+          Bei {{ consolidatedShown }} von {{ consolidated?.touched ?? consolidatedShown }}
+          {{ (consolidated?.touched ?? consolidatedShown) === 1 ? 'geänderten Paragraf' : 'geänderten Paragrafen' }}
+          steht unten auch, wie die Bestimmung danach ganz lautet — der geltende
+          Text mit den Anweisungen dieses Entwurfs, soweit die Gegenüberstellung
+          des Ressorts dasselbe Ergebnis trägt. Wo das fehlt, ist der Paragraf
+          nicht unverändert, sondern ungeprüft.
+        </p>
       </div>
 
       <!-- Same toolbar as the § comparison, same order, so the two sections
@@ -819,6 +942,56 @@ const doubtfulNote = computed<string | null>(() => {
                 </div>
               </div>
               </div>
+
+              <!-- Die dritte Schicht an demselben Paragraphen: nicht was sich
+                   ändert und nicht warum, sondern wie er danach lautet
+                   (docs/architecture.md §12.12a).
+
+                   UNTER den geänderten Stellen, nicht über ihnen (Manu,
+                   19.09.2026): Die Zeilen sind die Auskunft, wegen der jemand
+                   den § aufschlägt; der ganze Paragraf ist die Anschlussfrage
+                   und gehört dahin, wo sie entsteht — ans Ende. Über den
+                   Zeilen stünde eine Tür vor der Antwort. Die Begründung
+                   bleibt oben: Sie gehört zur Änderung, nicht zum Ergebnis. -->
+              <details v-if="p.consolidated" class="group mt-3">
+                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
+                  <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  So lautet der Paragraf dann — ganz
+                </summary>
+                <div class="mt-1 pl-6">
+                  <!-- Der Vorbehalt steht bei dem Text, für den er gilt, und
+                       nicht einmal oben für 26 Aufklapper: Was hier steht, ist
+                       keine amtliche Fassung, sondern der geltende Text des
+                       RIS mit den Anweisungen dieses Entwurfs darauf. -->
+                  <p class="max-w-prose text-xs text-ink-muted">
+                    Nicht amtliche Lesefassung: der geltende Text aus dem RIS mit den
+                    Anweisungen dieses Entwurfs, geprüft gegen die Gegenüberstellung
+                    des Ressorts.
+                  </p>
+                  <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
+                    <template v-for="(sg, si) in p.consolidated.headingSegments" :key="si">
+                      <del v-if="sg.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 font-normal text-ink line-through decoration-status-critical/70">{{ sg.text }}</del>
+                      <ins v-else-if="sg.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ sg.text }}</ins>
+                      <span v-else>{{ sg.text }}</span>
+                      {{ ' ' }}
+                    </template>
+                  </p>
+                  <!-- Ein Absatz je Absatz: So ist das Gesetz gegliedert, und
+                       achtzehn davon in einem Block sind keine Gliederung. -->
+                  <p
+                    v-for="(abs, ai) in absaetze(p.consolidated.segments)"
+                    :key="ai"
+                    class="mt-2 hyphens-auto text-sm leading-relaxed text-ink"
+                  >
+                    <template v-for="(sg, si) in abs" :key="si">
+                      <del v-if="sg.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ sg.text }}</del>
+                      <ins v-else-if="sg.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ sg.text }}</ins>
+                      <span v-else>{{ sg.text }}</span>
+                      {{ ' ' }}
+                    </template>
+                  </p>
+                </div>
+              </details>
             </section>
 
             <button
@@ -860,6 +1033,15 @@ const doubtfulNote = computed<string | null>(() => {
       <SectionCredits>
         <span>{{ data.credit }}</span>
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
+        <!-- Die zweite Quelle nur, wenn die Lesefassung wirklich irgendwo
+             aufklappbar ist: Die Aufklapper zeigen den geltenden Text des
+             RIS, und der hat eine eigene Lizenz und eine eigene Fundstelle.
+             Sie hier zu nennen ist dieselbe Regel wie beim Abschnitt vorher,
+             nur dass sie jetzt zu einer Schicht IN diesem Abschnitt gehört. -->
+        <template v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl">
+          <span>Geltender Text (CC BY 4.0, RIS):</span>
+          <ExternalLink :href="consolidated.paragraphs[0]!.risUrl!" class="text-accent-deep hover:underline">Konsolidierte Fassung im RIS</ExternalLink>
+        </template>
       </SectionCredits>
     </template>
   </div>

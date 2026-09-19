@@ -794,6 +794,22 @@ export interface ConsolidatedParagraph {
   headingSegments: LawDiffSegment[] | null
   /** Die geltende Fassung im RIS, zum Stichtag: die Quelle der linken Seite. */
   risUrl: string | null
+  /**
+   * Das Gesetz, unter dem der Anhang diesen § führt — der Schlüssel, mit dem
+   * die Gegenüberstellung ihn wiederfindet (§12.12a).
+   *
+   * NICHT dasselbe wie `law`: Dort steht der Kurztitel des Gesetzes („Richter-
+   * und Staatsanwaltschaftsdienstgesetz"), hier die Zeile der Beilage
+   * („Änderung des Richter- und Staatsanwaltschaftsdienstgesetzes"). Der
+   * Unterschied ist nicht kosmetisch — nachgeschlagen wird mit diesem String.
+   *
+   * `null` heißt „ohne Gesetz gesucht": Bei einer Einzelnovelle fragt das Tor
+   * den Anhang nur nach der Bezeichnung, weil es nichts zu verwechseln gibt.
+   * Die Seite muss dann genauso nachschlagen, sonst findet sie nichts —
+   * dieselbe Regel wie in `tguOracle.paragraphRows`, von dem dieses Feld
+   * stammt.
+   */
+  annexLaw: string | null
 }
 
 /**
