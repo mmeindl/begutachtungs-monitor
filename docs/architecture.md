@@ -1481,6 +1481,59 @@ die geänderte Überschrift zur auffälligsten Änderung macht, die sie ist. Und
 ein `uppercase` auf der Bezeichnung machte aus „§ 212b" ein „§ 212B" —
 streng genommen ein anderer Paragraph.
 
+**Was die Deckung begrenzt — gemessen am 19.09.2026, und die naheliegende
+Abkürzung gibt es nicht.** Über 15 Entwürfe der GP XXVIII zeigt das Tor **45
+von 452 geänderten Paragraphen (10,0 %)**. Die Gründe, gezählt:
+
+| Grund | n | von wem |
+|---|---|---|
+| Eine Anweisung ließ sich nicht sicher anwenden | 121 | uns |
+| Mehr Paragraphen, als wir für eine Seite laden | 121 | uns |
+| Die Beilage sagt zu diesem § nichts Prüfbares | 82 | dem Dokument |
+| Keine lesbare Beilage | 39 | dem Dokument |
+| Die Beilage widerspricht unserem Ergebnis | 22 | beiden |
+| Plausibilitätsprüfung nicht bestanden | 22 | uns |
+
+Das las sich nach einem billigen Gewinn: 264 der 407 zurückgehaltenen §§
+gehen auf unsere eigenen Grenzen. **Beide Versuche, ihn zu heben, haben
+nichts gebracht, und das ist der eigentliche Befund.**
+
+*Erstens: die §§ überspringen, zu denen die Beilage schweigt.* Ihr Ausgang
+steht fest, bevor ein Dokument geholt ist — also sie gar nicht erst holen und
+das Budget für die anderen ausgeben. Das Ergebnis war **weniger** Deckung (45
+→ 41): `applyNovelle` wendet die Anweisungen auf den *gesamten* geladenen
+Bestand an, und eine Anweisung, deren Anker-§ fehlt, scheitert. An 100/ME
+stieg „nicht sicher anwendbar" dadurch von 8 auf 11. Geblieben ist nur die
+Reihenfolge: Wenn das Budget beißt, holt es die vom Anhang gedeckten §§
+zuerst. Am Bestand ändert das nichts, solange es reicht.
+
+*Zweitens: die Kappen heben.* „Mehr Paragraphen, als wir für eine Seite
+laden" kommt nicht von `MAX_PARAGRAPHS` (80), sondern von `MAX_LAWS` (12) —
+alle §§ ab dem dreizehnten Gesetz eines Sammelgesetzes. Mit `MAX_LAWS = 40`
+verschwindet der Grund vollständig (30/ME: 66 → 0) und die Anzeige gewinnt
+**keinen einzigen Paragraphen**: Die 66 verteilen sich auf „die Beilage
+schweigt" (+26) und „nicht sicher anwendbar" (+31). Gekostet hätte es die
+doppelte Antwortzeit (17,7 s → 33,1 s bei 30/ME). Also bleibt die Kappe bei
+12 — sie verdeckt nichts Zeigbares, und ihr Satz sagt, was sie ist.
+
+**Woran es wirklich liegt, ist die Anweisungsgrammatik**, und die ist
+Fleißarbeit, kein Schalter. Über alle 140 Entwürfe der GP XXVIII liest die
+Engine **5.714 von 6.362 Novellierungsanordnungen (89,8 %)**. Die 648
+abgewiesenen, nach Häufigkeit: keine auflösbare Adresse (174), kein bekanntes
+Verb (73), vier Operanden mit unklarer Paarbildung (52), Einfügung ohne Anker
+und Text (44), Ersetzung ohne zwei Operanden (44).
+
+*Ein Fall darin ist scharf umrissen und wartet:* **45 Abweisungen adressieren
+„Artikel &lt;römisch&gt; § n"** — ein Gesetz, das selbst in Artikel gegliedert
+ist. Reproduzierbar an `parseAddressList`: `§ 3 Abs. 2` wird gelesen,
+`Artikel II § 3 Abs. 2` nicht. **26 davon in einem einzigen Entwurf** (40/ME,
+IG-L-Novelle), der deshalb bei 0 von 26 Anweisungen steht. Was fehlt, ist
+nicht der Ausdruck, sondern die Sicherheitsfrage davor: Führt RIS die §§ eines
+solchen Gesetzes je Artikel — gibt es also ein zweites § 3 —, dann ist die
+Bezeichnung ohne den Artikel mehrdeutig, und eine Anweisung träfe den
+falschen Paragraphen. Erst messen, wie RIS diese Gesetze etikettiert, dann
+bauen.
+
 ### 12.12b Der Besondere Teil als zweites Verifikationssignal — gemessen, und er trägt nicht
 
 Die teuerste offene Frage des Pakets ist, ob es neben der

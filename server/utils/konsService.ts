@@ -191,9 +191,25 @@ export const getConsolidatedText = defineCachedFunction(
         continue
       }
 
-      const wanted = new Set([...addressed].map((id) => labelKey(`§ ${id}`)))
+      // Wenn das Budget beißt, soll es bei den Paragraphen beißen, die
+      // ohnehin nichts zeigen könnten.
+      //
+      // Das Tor zeigt nichts ohne zweite Meinung: Schweigt die Beilage zu
+      // einem §, steht sein Ausgang fest, bevor ein Dokument geholt ist. Die
+      // holen wir deshalb zuletzt — **aber wir holen sie**. Sie ganz
+      // wegzulassen war der erste Versuch (19.09.2026) und ging nach hinten
+      // los: `applyNovelle` wendet die Anweisungen auf den GESAMTEN geladenen
+      // Bestand an, und eine Anweisung, deren Anker-§ fehlt, scheitert. An
+      // 100/ME stieg „Anweisung ließ sich nicht sicher anwenden" damit von 8
+      // auf 11 und die Anzeige verlor zwei Paragraphen. Die Reihenfolge
+      // ändert nichts am Bestand, solange das Budget reicht; erst wenn es
+      // nicht reicht, entscheidet sie, was fehlt.
+      const covered = (id: string): boolean =>
+        paragraphRows(byParagraph, id, isPackage ? article.key : undefined).length > 0
+      const wanted = new Map([...addressed].map((id) => [labelKey(`§ ${id}`), covered(id)]))
       const refs = Object.entries(law.paragraphs)
         .filter(([label]) => wanted.has(labelKey(label)))
+        .sort(([a], [b]) => Number(wanted.get(labelKey(b))) - Number(wanted.get(labelKey(a))))
         .map(([, ref]) => ref)
       const { trees, skipped } = await standingParagraphs(refs, budget)
       const standing: StandingLaw = { paragraphs: trees }
