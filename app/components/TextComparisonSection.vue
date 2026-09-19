@@ -15,8 +15,8 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
-import type { AnnexWithheldCause, LawDiffSegment, TextComparisonResponse, TextComparisonRow } from '#shared/types'
-import { EDITORIAL_BADGE_GLOSS } from '#shared/utils/lawStations'
+import type { AnnexWithheldCause, ExplanationsResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
+import { explanationKey, explanationParaId } from '#shared/utils/explanations'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
@@ -24,6 +24,48 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/draf
   lazy: true,
   server: false,
 })
+
+/**
+ * Die Begründung des Ressorts zu den einzelnen Paragraphen
+ * (docs/architecture.md §12.30).
+ *
+ * Derselbe Endpunkt, den `ExplanationsSection` weiter oben auf der Seite
+ * ohnehin abruft — `useFetch` schlüsselt nach URL, der zweite Aufruf kostet
+ * also keine zweite Anfrage. Und er darf fehlschlagen, ohne dass es diesen
+ * Abschnitt kümmert: Die Gegenüberstellung ist die Auskunft, die Begründung
+ * ist die Beigabe.
+ */
+const { data: explanations } = await useFetch<ExplanationsResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/erlaeuterungen`,
+  { lazy: true, server: false },
+)
+
+/** Die Passagen, nachschlagbar unter (Gesetz, Paragraph). */
+const explanationsByKey = computed(() => {
+  const out = new Map<string, ParagraphExplanationView[]>()
+  for (const e of explanations.value?.paragraphs ?? []) {
+    const key = explanationKey(e.law, e.para)
+    const list = out.get(key)
+    if (list) list.push(e)
+    else out.set(key, [e])
+  }
+  return out
+})
+
+/**
+ * Die Passagen zu EINEM § der Beilage.
+ *
+ * Nachgeschlagen, nicht gesucht: Beide Seiten bilden denselben Schlüssel aus
+ * Gesetz und normalisierter Bezeichnung (`#shared/utils/explanations`). Wo die
+ * Beilage ihre Gesetze nicht auseinanderhält, trägt ihre Zeile kein Gesetz,
+ * der Eintrag aber eines — dann findet der Schlüssel nichts, und das ist die
+ * richtige Antwort: § 5 des zweiten Gesetzes ist eine andere Bestimmung als
+ * § 5 des ersten.
+ */
+function explanationsFor(law: string | null, para: string | null): ParagraphExplanationView[] {
+  const id = explanationParaId(para)
+  return id ? explanationsByKey.value.get(explanationKey(law, id)) ?? [] : []
+}
 
 /**
  * Same two controls as LawDiffSection, and they are worth more here.
@@ -230,6 +272,8 @@ interface Para {
   /** The annex's own heading for the paragraph */
   heading: string | null
   blocks: Block[]
+  /** Was das Ressort zu genau diesem § erläutert; leer, wenn nichts zu finden war. */
+  explanations: ParagraphExplanationView[]
 }
 
 function parasOf(g: Group): { paras: Para[]; hidden: number } {
@@ -239,7 +283,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
   // line that says only how many there were.
   const folding = !query.value.trim()
   const paras: Para[] = []
-  let current: Para & { key: string } = { key: '\u0000', gld: null, heading: null, blocks: [] }
+  let current: Para & { key: string } = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [] }
   let context: TextComparisonRow[] = []
   let shown = 0
   let hidden = 0
@@ -257,7 +301,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
     const key = row.para ?? ''
     if (current.key !== key) {
       flush()
-      current = { key, gld: row.para, heading: null, blocks: [] }
+      current = { key, gld: row.para, heading: null, blocks: [], explanations: explanationsFor(row.law, row.para) }
       paras.push(current)
     }
     // The heading belongs to the paragraph, not to the Absatz that carries it.
@@ -504,7 +548,7 @@ const doubtfulNote = computed<string | null>(() => {
 </script>
 
 <template>
-  <div class="mt-4">
+  <div class="mt-1">
     <!-- Sagt das Ende des Ladens an, das sonst lautlos passiert. Bleibt im
          DOM und leer, statt erst beim Fertigwerden zu erscheinen: eine
          Live-Region, die es beim Eintreten der Änderung noch nicht gibt,
@@ -533,40 +577,57 @@ const doubtfulNote = computed<string | null>(() => {
     </template>
 
     <template v-else>
-      <p class="text-sm text-ink-secondary">
-        Das Ministerium legt dem Entwurf eine Textgegenüberstellung bei. Der Text
-        stammt von dort, die Markierung von uns. {{ EDITORIAL_BADGE_GLOSS }}
-      </p>
+      <!-- Woher der Text stammt und dass die Markierung von uns ist, stand
+           hier bis 18.09.2026 als Absatz über dem, weswegen jemand gekommen
+           ist — wortgleich auf jeder Entwurfsseite und ausführlicher auf
+           /so-funktionierts#gegenueberstellung. Es ist eine Bildunterschrift,
+           kein Satz: Sie steht jetzt in `SectionCredits` am Fuß des
+           Abschnitts, neben der Quelle, die sie betrifft. Die Herkunft selbst
+           fällt damit nicht weg — sie darf nie hinter einem Link liegen.
 
-      <!-- On the PDF path more than the marking is ours: RIS publishes this
-           annex only as images, so the rows were inferred from the page
-           layout. That is a weaker claim than the ressort's own table and
-           has to be made in the open, not left to the source link. -->
-      <p v-if="data.readFrom === 'pdf'" class="mt-2 text-sm text-ink-secondary">
-        Diese Gegenüberstellung liegt im RIS nur als Bild vor. Der Text ist aus
-        dem PDF des Ministeriums gelesen, die Zuordnung der Zeilen zueinander haben
-        wir aus dem Seitenlayout erschlossen — sie kann daneben liegen.
-        <!-- And where the layout could not be vouched for at all, the page
-             says which part of the annex is missing rather than showing a
-             comparison with a silent hole in it. -->
-        <template v-if="droppedPagesNote"> {{ droppedPagesNote }}</template>
-      </p>
+           Was oben bleibt, ist der Vorbehalt: Auf dem PDF-Pfad ist mehr als
+           die Markierung unsere — RIS veröffentlicht die Beilage nur als
+           Bild, die Zuordnung der Zeilen ist erschlossen. Das ist keine
+           Herkunftsangabe, sondern die Aussage, dass das Folgende falsch sein
+           kann; sie gehört vor den Vergleich, nicht darunter. Dass der Text
+           aus dem PDF gelesen ist, sagt jetzt die Quellenangabe selbst
+           (`textComparisonService`: „aus dem PDF gelesen"). -->
+      <!-- Die drei Vorbemerkungen als eine Gruppe: `space-y-3` setzt den
+           Abstand ZWISCHEN den vorhandenen Absätzen und gibt dem ersten
+           keinen — gleich, welcher das gerade ist. Vorher trug jeder seinen
+           eigenen bedingten Oberrand, und wer der erste ist, hängt von
+           `readFrom` und `boundaryNote` ab. -->
+      <div class="space-y-3">
+        <p v-if="data.readFrom === 'pdf'" class="text-sm text-ink-secondary">
+          Welche Zeile links zu welcher Zeile rechts gehört, haben wir aus dem
+          Seitenlayout des PDF erschlossen — die Zuordnung kann daneben liegen.
+          <!-- And where the layout could not be vouched for at all, the page
+               says which part of the annex is missing rather than showing a
+               comparison with a silent hole in it. -->
+          <template v-if="droppedPagesNote"> {{ droppedPagesNote }}</template>
+        </p>
 
-      <!-- Several laws in one draft, and the annex does not say where one
-           ends. Shown undivided, and said so: dividing it wrongly would put
-           one law's § 5 under another law's name. -->
-      <p v-if="data.boundaryNote" class="mt-3 text-sm text-ink-secondary">{{ data.boundaryNote }}</p>
+        <!-- Several laws in one draft, and the annex does not say where one
+             ends. Shown undivided, and said so: dividing it wrongly would put
+             one law's § 5 under another law's name. -->
+        <p v-if="data.boundaryNote" class="text-sm text-ink-secondary">{{ data.boundaryNote }}</p>
 
-      <!-- What the RIS check made of the annex. Stated rather than implied:
-           the reader is looking at the ministry's own text, and how much of
-           it we could hold against the standing law is part of reading it.
-           Always present — a comparison nothing could be checked in says so
-           rather than falling silent, which reads as a clean bill. -->
-      <p class="mt-3 text-sm text-ink-secondary">
-        {{ checkNote }}
-        <NuxtLink to="/so-funktionierts#gegenueberstellung" class="rounded text-accent-deep underline underline-offset-2 hover:no-underline">Wie wir prüfen</NuxtLink>
-      </p>
-      <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
+        <!-- What the RIS check made of the annex. Stated rather than implied:
+             the reader is looking at the ministry's own text, and how much of
+             it we could hold against the standing law is part of reading it.
+             Always present — a comparison nothing could be checked in says so
+             rather than falling silent, which reads as a clean bill.
+
+             Befund und Zweifel bleiben zusammen: `doubtfulNote` erläutert den
+             Satz darüber und steht deshalb enger an ihm als an allem sonst. -->
+        <div>
+          <p class="text-sm text-ink-secondary">
+            {{ checkNote }}
+            <NuxtLink to="/so-funktionierts#gegenueberstellung" class="rounded text-accent-deep underline underline-offset-2 hover:no-underline">Wie wir prüfen</NuxtLink>
+          </p>
+          <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
+        </div>
+      </div>
 
       <!-- Same toolbar as the § comparison, same order, so the two sections
            are operated alike. No filter select: the annex prints every § it
@@ -641,6 +702,54 @@ const doubtfulNote = computed<string | null>(() => {
                 <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}</span>
                 <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
               </p>
+
+              <!-- Warum diese Änderung — die Passage des Besonderen Teils zu
+                   genau diesem Paragraphen (docs/architecture.md §12.30).
+
+                   ZUGEKLAPPT und direkt unter der §-Zeile: Die Frage des
+                   Lesers an dieser Stelle ist „was ändert sich", und die
+                   beantworten die Zeilen darunter; „warum" ist die
+                   Anschlussfrage, und sie kommt nicht bei jedem §. Ein
+                   Aufklapper kostet eine Zeile und steht dort, wo die Frage
+                   entsteht — unter den Absätzen stünde er bei einem § mit
+                   zwölf Zeilen außer Sichtweite seiner Überschrift.
+
+                   Der Text ist der des Ressorts, unverändert und ungekürzt:
+                   Diese Passagen sind kurz (der Besondere Teil verteilt sich
+                   auf viele), eine zweite Faltung im Aufklapper wäre eine
+                   Tür hinter einer Tür. -->
+              <details v-if="p.explanations.length" class="group mb-2">
+                <!-- In Tinte, nicht in Akzentfarbe (Manu, 18.09.2026). Blau ist
+                     im Haus die Farbe des Links, und dieser Aufklapper führt
+                     nirgendwohin. Entscheidend ist aber die Häufigkeit: Er
+                     steht an JEDEM Paragraphen, bei 26 §§ also 26-mal — genau
+                     der Fall, den SpineRail schon einmal hatte („fünf
+                     Stationsnamen in accent-deep machten aus der Karte sieben
+                     blaue Zeilen von elf, und die Markenfarbe trug keine
+                     Information mehr"). Die Rangordnung bleibt trotzdem
+                     lesbar: `font-medium text-ink` gegen das `text-ink-muted`
+                     der unveränderten Stellen zwei Zeilen weiter unten. Das
+                     Chevron trägt die Bedienbarkeit, wie bei jedem anderen
+                     Aufklapper dieser Seite. -->
+                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
+                  <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  Warum? Die Begründung des Ressorts
+                </summary>
+                <!-- Eingerückt, ohne Linie (Manu, 18.09.2026). Eine Linie
+                     links bedeutet in diesem Abschnitt etwas: Sie ist die
+                     farbige Rinne, die eine Zeile als „geändert" oder „neu"
+                     ausweist. Eine graue Rinne an der Begründung borgt sich
+                     diese Vokabel für etwas, das keine Änderung ist. Die
+                     Einrückung allein trägt die Zuordnung — genauso hält es
+                     der Aufklapper der unveränderten Stellen zwei Zeilen
+                     weiter unten. -->
+                <div class="mt-1 pl-6">
+                  <div v-for="(e, ei) in p.explanations" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
+                    <p class="text-xs text-ink-muted">{{ e.heading }}</p>
+                    <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
+                  </div>
+                </div>
+              </details>
 
               <div v-for="(b, bi) in p.blocks" :key="bi" :class="bi > 0 ? 'mt-3' : ''">
               <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
@@ -741,11 +850,15 @@ const doubtfulNote = computed<string | null>(() => {
 
       <!-- Provenance under the text it belongs to, the way a source note
            sits under a table rather than over it (Manu, 17.09.2026): it is
-           looked up while or after reading, never before. -->
-      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+           looked up while or after reading, never before.
+
+           „Markierung" steht neben „Quelle", weil genau das die Frage ist,
+           die ein rot-grün markierter Ministeriumstext aufwirft: Wer hat
+           markiert? Zwei Angaben in einer Zeile, nicht drei Sätze darüber. -->
+      <SectionCredits>
         <span>Quelle (CC BY 4.0, RIS):</span>
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
-      </div>
+      </SectionCredits>
     </template>
   </div>
 </template>

@@ -1,0 +1,199 @@
+/**
+ * The Allgemeiner Teil of the Erläuterungen for one Begutachtung
+ * (docs/architecture.md §12.29).
+ *
+ * Nuxt-aware glue around the pure module `explanations.ts`. Two entry points,
+ * because the two kinds of draft reach their RIS document by different roads:
+ * a Ministerialentwurf through the RIS↔ME join (Parliament publishes the
+ * document only as a PDF, so the readable copy is reachable no other way), a
+ * Verordnungsentwurf straight from its own record, which is a RIS record to
+ * begin with.
+ *
+ * WHY IT IS ITS OWN ENDPOINT. The document is fetched from RIS and parsed per
+ * draft; putting it in `/api/drafts/:gp/:inr` would add an upstream call to
+ * every detail render, including the visits that never scroll this far. The
+ * page asks for it after first paint, like the Textgegenüberstellung.
+ *
+ * **A failure is not an answer** (the §12.13 rule, applied again). The
+ * `available: false` states below are the ones RIS really has — no document,
+ * a scan, a document without a general part. A timeout or a 500 throws and is
+ * not cached, so a bad minute upstream cannot be served as "dieser Entwurf hat
+ * keine Erläuterungen" for a day.
+ *
+ * **Two cache layers, split by provenance** (`cacheBase.ts`): the document as
+ * RIS sent it is persistent — it is expensive and our code did not make it —
+ * while the reading of it is derived, because `explanations.ts` is exactly the
+ * kind of parser that keeps changing and must not leave a day-old parse on
+ * screen after an edit.
+ */
+import type { ExplanationsResponse, TraceLink } from '#shared/types'
+import { hasReadableText, parseExplanations, type ExplanationsDocument, type ExplanationsPart } from './explanations'
+import { explanationsByParagraph } from './explanationsJoin'
+import { parseRisXml } from './lawText'
+import { draftArticles } from './lawTitles'
+import { DERIVED_CACHE } from './cacheBase'
+import { getText } from './risKons'
+import { getRisMapForGp } from './ris'
+import { getRisConsultation } from './risOnly'
+
+const TTL_S = 60 * 60 * 24
+/**
+ * A Begut document is written once and never revised — a corrected draft gets
+ * a new record — so the document itself can be kept far longer than the
+ * reading of it.
+ */
+const DOCUMENT_TTL_S = 60 * 60 * 24 * 30
+
+/** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. */
+const fetchExplanationsXml = defineCachedFunction((url: string): Promise<string> => getText(url), {
+  name: 'erlaeuterungen-xml',
+  getKey: (url: string) => url,
+  maxAge: DOCUMENT_TTL_S,
+  swr: false,
+})
+
+/**
+ * The draft text as RIS sent it — the Artikel of the package are read from it.
+ *
+ * Its own cache entry rather than a second copy of the annex service's: both
+ * want the same document, and one entry per URL is what the persistent layer
+ * is for.
+ */
+const fetchDraftXml = defineCachedFunction((url: string): Promise<string> => getText(url), {
+  name: 'entwurfstext-xml',
+  getKey: (url: string) => url,
+  maxAge: DOCUMENT_TTL_S,
+  swr: false,
+})
+
+/** RIS document URLs as the corpus mapper carries them. */
+interface Formats {
+  html: string | null
+  xml: string | null
+  pdf: string | null
+}
+
+/**
+ * Without „(RIS)": both places that print this link name the source already —
+ * the source line as „Quelle (CC BY 4.0, RIS)", the refusal in its own
+ * sentence — and the label repeated it.
+ */
+const RIS_SOURCE = 'Erläuterungen des Ressorts'
+
+function empty(reason: string, document: TraceLink | null = null): ExplanationsResponse {
+  return {
+    available: false,
+    unavailableReason: reason,
+    source: null,
+    document,
+    heading: null,
+    labelled: false,
+    passages: [],
+    chars: 0,
+    dropped: 0,
+    hasSpecial: false,
+    paragraphs: [],
+  }
+}
+
+/** The document to open when we cannot print it: HTML where RIS has it, else the PDF. */
+function documentLink(formats: Formats): TraceLink | null {
+  const url = formats.html ?? formats.pdf
+  return url ? { label: RIS_SOURCE, url } : null
+}
+
+function view(
+  part: ExplanationsPart,
+  formats: Formats,
+  labelled: boolean,
+  doc: ExplanationsDocument,
+  paragraphs: ExplanationsResponse['paragraphs'],
+): ExplanationsResponse {
+  return {
+    available: true,
+    unavailableReason: null,
+    source: { label: RIS_SOURCE, url: formats.xml! },
+    document: documentLink(formats),
+    heading: part.heading,
+    labelled,
+    passages: part.passages.map((p) => ({ heading: p.heading, text: p.text })),
+    chars: part.chars,
+    dropped: part.dropped,
+    hasSpecial: doc.special !== null,
+    paragraphs,
+  }
+}
+
+/**
+ * Die Artikel des Entwurfs, für den Schlüssel des Joins.
+ *
+ * Aus dem Entwurfstext, weil der Gesetzesschlüssel der Beilage von dort kommt
+ * (`draftArticles` → `segmentUnits` → `ComparisonRow.law`). Scheitert der
+ * Abruf, gibt es eben keine Zuordnung: Die Erläuterungen selbst stehen dann
+ * trotzdem auf der Seite, nur ohne die Passagen am Paragraphen. Ein fehlender
+ * Entwurfstext darf nicht den ganzen Abschnitt kosten.
+ */
+async function articlesOf(xmlUrl: string | null): Promise<ReturnType<typeof draftArticles>> {
+  if (!xmlUrl) return []
+  try {
+    return draftArticles(parseRisXml(await fetchDraftXml(xmlUrl)))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Fetch and read one Erläuterungen document.
+ *
+ * The three refusals are worded for a reader rather than for a log: „liegt nur
+ * als Scan vor" is a fact about the ministry's file, „hebt keinen Allgemeinen
+ * Teil hervor" is a fact about its structure, and neither is an error of ours.
+ */
+async function read(formats: Formats | null, draftXml: string | null): Promise<ExplanationsResponse> {
+  if (!formats?.xml) {
+    return empty(
+      formats
+        ? 'Die Erläuterungen liegen im RIS nur als Bilddatei vor; auslesen lassen sie sich daraus nicht.'
+        : 'Zu diesem Entwurf sind im RIS keine Erläuterungen veröffentlicht.',
+      formats ? documentLink(formats) : null,
+    )
+  }
+  const parsed = parseExplanations(await fetchExplanationsXml(formats.xml))
+  if (!hasReadableText(parsed)) {
+    return empty('Die Erläuterungen liegen als Scan vor — im RIS-Dokument stehen Bilder statt Text.', documentLink(formats))
+  }
+  if (!parsed.general) {
+    return empty(
+      'Die Erläuterungen dieses Entwurfs heben keinen Allgemeinen Teil hervor. Was das Ressort schreibt, steht im Dokument selbst.',
+      documentLink(formats),
+    )
+  }
+  const articles = parsed.special ? await articlesOf(draftXml) : []
+  return view(parsed.general, formats, !parsed.generalInferred, parsed, explanationsByParagraph(parsed, articles))
+}
+
+/** For a Ministerialentwurf: through the RIS↔ME join, like the Textgegenüberstellung. */
+export const getExplanations = defineCachedFunction(
+  async (gp: string, inr: number): Promise<ExplanationsResponse> => {
+    const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
+    if (!row?.risId) {
+      return empty(
+        row?.status === 'ambiguous'
+          ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Erläuterungen aus dem falschen zu zeigen wäre schlechter als keine.'
+          : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Erläuterungen aus.',
+      )
+    }
+    return read(row.explanations, row.risDocument?.xml ?? null)
+  },
+  { name: 'erlaeuterungen-me', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+)
+
+/** For a Begutachtung without a parliamentary Gegenstand: straight from its own record. */
+export const getRisExplanations = defineCachedFunction(
+  async (id: string): Promise<ExplanationsResponse> => {
+    const detail = await getRisConsultation(id)
+    if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
+    return read(detail.explanations, detail.mainDocument.xml)
+  },
+  { name: 'erlaeuterungen-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: TTL_S, swr: false },
+)

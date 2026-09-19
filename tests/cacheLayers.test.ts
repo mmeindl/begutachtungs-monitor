@@ -24,6 +24,16 @@ const FETCHED: Record<string, string> = {
   'law-html': 'a published Gesetzestext document, byte for byte',
   gegenstand: 'the upstream detail JSON, passed through unmapped',
   'kons-para-xml': 'a RIS paragraph document; its heading is parsed fresh on every call',
+  'erlaeuterungen-xml': "the ressort's Erläuterungen as RIS sent them; the parse above is derived",
+  'entwurfstext-xml': "the draft's own text as RIS sent it; its Artikel are parsed fresh on every call",
+  'begut-dokument-xml':
+    'any document of a Begut record as RIS sent it — the full-text search reads whichever one holds the ' +
+    'word (§12.31). Deliberately its own entry and not the two above: those belong to the Erläuterungen ' +
+    'section and are keyed by the same URLs, so a search may hold a second copy of a document. One cache ' +
+    'name per consumer is the cheaper mistake — sharing one would tie the search to that section\'s TTL.',
+  'bgbl-nummer-suche': 'the RIS answer for one Bgblnummer, as it arrived — the §-comparison looks the Kundmachung up by the citation Parliament gives it (§12.33)',
+  'bgbl-jahrgang-seite': 'one page of a CLOSED Bundesgesetzblatt year, as it arrived; that year is finished, so it keeps for a month',
+  'bgbl-jahrgang-seite-laufend': 'the same page of the RUNNING year, which still grows — its own name because one cached function carries one maxAge (§12.32)',
   'ris-begut-page': 'one page of the RIS result set, as it arrived — cached in dev only',
   'annex-pdf': "the ressort's annex PDF, byte for byte as base64 — cached in dev only",
   'drafts-list': 'list 81 of one GP, exactly as the API answered',

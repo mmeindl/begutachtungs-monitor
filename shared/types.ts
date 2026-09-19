@@ -60,6 +60,17 @@ export interface DraftChain {
   station: DraftStation
   /** e.g. "594 d.B."; null while the draft is still at its Begutachtung. */
   rvCitation: string | null
+  /**
+   * Einlangen der Vorlage im Nationalrat, ISO; null when the draft has no
+   * Vorlage or list 101 carries no sortable date for it.
+   *
+   * Read off the Vorlagen list the station map already fetches for the
+   * house status, so it costs no upstream request. It exists because a row
+   * whose window is the zweite Runde has no Frist to date itself by — the
+   * form closes with the vote — and the one date it does have is this one
+   * (docs/architecture.md §12.28).
+   */
+  rvDate: string | null
   /** e.g. "Bundesgesetzblatt I Nr. 81/2026"; null until promulgated. */
   bgblNumber: string | null
   /** Stellungnahmen can still be filed on the Vorlage — the zweite Runde. */
@@ -439,12 +450,31 @@ export interface OpenVorlage {
   /** Stellungnahmen filed on the Vorlage so far; null when the count failed. */
   statementCount: number | null
   /**
-   * The Begutachtung this Vorlage came out of, when there was one — the
-   * monitor's own page for it. Null means the draft never was in
-   * Begutachtung: a quarter of Vorlagen (`docs/begutachtung-uebersprungen.md`),
-   * shown with an external link and said out loud rather than hidden.
+   * Die Begutachtung, aus der diese Vorlage kam — in drei Zuständen, weil
+   * zwei zu wenig sind.
+   *
+   * Bis 18.09.2026 stand hier `draft: … | null`, und `null` musste zwei
+   * Dinge zugleich heißen: „wir haben keine Seite dafür" und „es gab keine
+   * Begutachtung". Gezeigt wurde das zweite („ohne Begutachtung"), belegt war
+   * nur das erste — `preconst` ist kein universelles Feld, und auf GP XXVIII
+   * fehlt es bei 32 von 117 Vorlagen ganz (`server/utils/precedingDraft.ts`).
+   *
+   *  - `draft` — die Vorlage nennt ihren Ministerialentwurf selbst. Der
+   *    einzige Zustand, in dem eine Zeile auf unsere eigene Seite zeigt.
+   *  - `none` — kein Zeiger, UND die Gegenprobe gegen Liste 81 findet keinen
+   *    Entwurf, der ihr vorausgegangen sein könnte. Erst hier steht „ohne
+   *    Begutachtung" in der Zeile.
+   *  - `unknown` — kein Zeiger, aber ein plausibler Entwurf. Die Zeile sagt
+   *    dann nichts: eine Titelähnlichkeit trägt keine Aussage über ein
+   *    Regierungsvorhaben, in keine der beiden Richtungen.
+   *
+   * `none` und `unknown` verlinken beide nach außen; die Unterscheidung
+   * betrifft nur, was behauptet wird (`docs/begutachtung-uebersprungen.md`).
    */
-  draft: { gp: string, inr: number } | null
+  consultation:
+    | { kind: 'draft', gp: string, inr: number }
+    | { kind: 'none' }
+    | { kind: 'unknown' }
 }
 
 export interface DashboardSecondRound {
@@ -485,6 +515,13 @@ export interface RisMapRow {
    * `xml` null when RIS offers only a scan (docs/api-exploration.md §2c).
    */
   textComparison: { html: string | null; xml: string | null; pdf: string | null } | null
+  /**
+   * The Erläuterungen as their own RIS document — the Allgemeiner Teil a
+   * reader triages the draft by. Carried here for the same reason as the
+   * annex above: Parliament publishes the document only as a PDF, RIS as
+   * typed XML, so the readable copy is reachable only through this join.
+   */
+  explanations: { html: string | null; xml: string | null; pdf: string | null } | null
   score: number | null
   /**
    * RIS's own start of the Begutachtungsfrist (ISO date) — the day the annex
@@ -572,6 +609,19 @@ export interface RisConsultation {
   active: boolean
   /** The record's human-readable page on ris.bka.gv.at. */
   risUrl: string
+  /**
+   * Der Ausgang: kundgemacht, und wo (§12.32).
+   *
+   * Auf der BASIS und nicht erst auf dem Detailsatz, weil die Liste ihn
+   * genauso braucht — die Spalte „Stand" sagte auf jeder abgeschlossenen
+   * Zeile „Begutachtung abgeschlossen", auch wo die Verordnung längst galt.
+   *
+   * Null heißt „nicht ermittelt", NICHT „nicht kundgemacht": Beide Wege
+   * dorthin haben ein Zeitbudget, und was darin nicht fertig wurde, darf
+   * keine Aussage über das Ressort werden. Der Negativbefund heißt
+   * `state: 'keine'` und steht im Objekt.
+   */
+  outcome: BgblOutcome | null
 }
 
 /**
@@ -643,7 +693,12 @@ export interface RisConsultationsResponse {
  * `shared/utils/stations.ts`: Begutachtung and Bundesgesetzblatt publish no
  * Gesetzestext of their own, and these four do.
  */
-export type LawStationId = 'me' | 'rv' | 'ausschuss' | 'plenum'
+/**
+ * `bgbl` ist seit 19.09.2026 dabei und ist anders als die vier davor: Seine
+ * Fassung steht nicht beim Parlament, sondern im RIS, und zwischen ihr und
+ * der Plenarfassung handelt KEIN Akteur mehr (§12.33).
+ */
+export type LawStationId = 'me' | 'rv' | 'ausschuss' | 'plenum' | 'bgbl'
 
 export type LawUnitChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
 
@@ -693,6 +748,65 @@ export interface ParagraphTitlesResponse {
   /** ISO date of the law version the titles were read from (the draft's Einlangen) */
   asOf: string | null
   titles: Record<string, string>
+}
+
+/**
+ * Warum ein Paragraph der eigenen konsolidierten Lesefassung nicht angezeigt
+ * wird (`server/utils/konsGate.ts`, docs/architecture.md §12.12).
+ *
+ * Die Sätze dazu stehen im Gate, nicht hier: Sie sind eine Entscheidung mit
+ * Tests, keine Typdefinition.
+ */
+export type ConsolidatedWithheldCause =
+  | 'verweigert'
+  | 'unplausibel'
+  | 'kein-anhang'
+  | 'anhang-schweigt'
+  | 'anhang-widerspricht'
+
+/** Ein Paragraph, wie er nach den Anweisungen des Entwurfs lauten würde. */
+export interface ConsolidatedParagraph {
+  /** Das Gesetz des Pakets, dessen § das ist; null bei einer Einzelnovelle. */
+  law: string | null
+  /** „Artikel 5" — nur bei einem Paket gesetzt. */
+  article: string | null
+  /** Die Nummer, „22" — dieselbe Schreibweise wie in der Gegenüberstellung. */
+  id: string
+  /** „§ 22" */
+  label: string
+  /** Die Überschrift des § NACH dem Entwurf; sie kann selbst geändert sein. */
+  heading: string | null
+  /** Der geltende Text zum Stichtag, wie das RIS ihn führt. */
+  before: string
+  /** Derselbe §, nachdem die Anweisungen dieses Entwurfs angewendet wurden. */
+  after: string
+  /** Wortdiff zwischen beiden — dieselbe rot/grün-Sprache wie sonst auf der Seite. */
+  segments: LawDiffSegment[]
+  /** Die geltende Fassung im RIS, zum Stichtag: die Quelle der linken Seite. */
+  risUrl: string | null
+}
+
+/**
+ * Die eigene konsolidierte Lesefassung eines Entwurfs — „so läse sich das
+ * Gesetz danach" (docs/architecture.md §12.12).
+ *
+ * `touched` ist die Bezugsgröße, ohne die `paragraphs` eine Lüge wäre: Ein
+ * Entwurf ändert zwei Dutzend Paragraphen, gezeigt werden im Median 12 % von
+ * ihnen, und Abwesenheit darf auf dieser Seite nie wie „unverändert"
+ * aussehen (§12.27).
+ */
+export interface ConsolidatedTextResponse {
+  gp: string
+  inr: number
+  available: boolean
+  unavailableReason: string | null
+  /** Stichtag der geltenden Fassung: der erste Tag der Begutachtungsfrist. */
+  asOf: string | null
+  paragraphs: ConsolidatedParagraph[]
+  /** Wie viele §§ der Entwurf überhaupt ändert — der Nenner der Anzeige. */
+  touched: number
+  /** Warum die übrigen fehlen, gezählt und benannt. */
+  withheld: { cause: ConsolidatedWithheldCause; label: string; count: number }[]
 }
 
 /**
@@ -938,6 +1052,81 @@ export interface TextComparisonResponse {
   rows: TextComparisonRow[]
 }
 
+// ---------------------------------------------------------------------------
+// Erläuterungen (docs/architecture.md §12.29)
+// ---------------------------------------------------------------------------
+
+/** One passage of the Erläuterungen: a heading and the prose under it. */
+export interface ExplanationsPassageView {
+  /** As the ministry printed it — „Hauptgesichtspunkte des Entwurfs:". */
+  heading: string | null
+  text: string[]
+}
+
+/**
+ * The Allgemeiner Teil of the Erläuterungen — the ministry's own answer to
+ * "what is this law supposed to do", which is where a reader's relevance check
+ * begins.
+ *
+ * Unavailability is a normal answer here too, and it has three distinct
+ * causes worth telling apart: the draft has no Erläuterungen document at all,
+ * the document is a scan, or it is readable but never marks a general part.
+ * In each case the document itself is still linked — the section exists to
+ * open a document, not to replace it.
+ */
+export interface ExplanationsResponse {
+  available: boolean
+  /** Why nothing is shown, as a sentence the page prints. Null when available. */
+  unavailableReason: string | null
+  /** The document these paragraphs were read from (RIS), for the source line. */
+  source: TraceLink | null
+  /** The same document to read in full — HTML where RIS offers it, else PDF. */
+  document: TraceLink | null
+  /** The part heading as printed; null where the ministry headed nothing. */
+  heading: string | null
+  /**
+   * Whether a part of the document actually said „Allgemeiner Teil".
+   *
+   * False means the prose was taken as the general part because the document
+   * carried no part headings (16,4 % of the 2024+ window). The page says so
+   * rather than claiming a structure the ministry did not write.
+   */
+  labelled: boolean
+  passages: ExplanationsPassageView[]
+  /** Prose characters — the page decides from this whether to fold. */
+  chars: number
+  /** Figures and table cells not printed here; > 0 means "read the document". */
+  dropped: number
+  /**
+   * Whether the document also carries a Besonderer Teil — the per-§ half.
+   * The page uses it to say where the rest is.
+   */
+  hasSpecial: boolean
+  /**
+   * The Besonderer Teil resolved onto (law, §) — the ministry's reasoning for
+   * one provision, to stand beside that provision in the Textgegenüberstellung
+   * (docs/architecture.md §12.30).
+   *
+   * `law` is `ComparisonRow.law` and `para` the normalised designation, so the
+   * page looks entries up rather than matching text. A passage naming several
+   * §§ appears once per §. Empty where the document has no Besonderer Teil, and
+   * where the annex could not be told apart law by law — there a passage would
+   * risk standing under the wrong law's § (`explanationsJoin.ts`).
+   */
+  paragraphs: ParagraphExplanationView[]
+}
+
+/** One passage of the Besonderer Teil, addressed to one § of one law. */
+export interface ParagraphExplanationView {
+  /** Matches `ComparisonRow.law`; null where the rows carry none either. */
+  law: string | null
+  /** Normalised designation, „§ 54c". */
+  para: string
+  /** The passage heading as the ministry printed it, „Zu Z 4 (§ 54c Abs. 1a):". */
+  heading: string
+  text: string[]
+}
+
 /** One § (or one Novellierungsanordnung) of the law text, in both versions. */
 export interface LawDiffUnit {
   /** Artikel title of a package, law title otherwise, null when unknown */
@@ -1016,6 +1205,12 @@ export interface LawDiffResponse {
   toDocument: TraceLink | null
   /** Where the earlier text was read: Parliament HTML, or the RIS XML when Parliament has only a PDF (older periods, draft side only) */
   fromSource: 'parlament' | 'ris' | null
+  /**
+   * Dasselbe für die spätere Seite. Seit es die BGBl-Station gibt, kann auch
+   * RECHTS ein RIS-Dokument stehen — die Kundmachung liegt beim Parlament
+   * überhaupt nicht (§12.33), und die Quellenzeile muss das sagen dürfen.
+   */
+  toSource: 'parlament' | 'ris' | null
   /** Every station this draft published a text for, in procedural order. */
   stations: LawStationOption[]
   /** `editorial` counts the subset of `changed` that is only citations, numbers, dates, punctuation */
@@ -1027,3 +1222,95 @@ export interface LawDiffResponse {
   units: LawDiffUnit[]
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Volltextsuche über die laufenden Begutachtungen (§12.31)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Der Textausschnitt um eine Fundstelle, in drei Teilen.
+ *
+ * Drei Teile und kein fertiges Markup: Der Server liefert Text, die Seite
+ * setzt die Marke. Ein `<mark>` aus dem Server wäre HTML aus einer
+ * Nutzereingabe, und davon gibt es keine sichere Fassung.
+ */
+export interface BegutSearchSnippet {
+  before: string
+  match: string
+  after: string
+}
+
+/**
+ * Ein Treffer, als das, was er ist: ein Entwurf — mit Gegenstand im
+ * Parlament oder ohne. Kein gemeinsamer Zeilentyp mit leeren Feldern; die
+ * beiden Arten unterscheiden sich in dem, was es über sie GIBT (§12.28).
+ */
+export type BegutSearchEntry =
+  | { kind: 'draft'; draft: DraftSummary }
+  | { kind: 'ris'; consultation: RisConsultation }
+
+export interface BegutSearchHit {
+  entry: BegutSearchEntry
+  /**
+   * Das Dokument, in dem das Wort steht: „im Entwurfstext", „in den
+   * Erläuterungen", … Null, wenn wir es in keinem lesbaren Dokument des
+   * Satzes gefunden haben — das RIS durchsucht auch Anlagen und PDFs, die
+   * wir nicht auswerten (gemessen: 72,2 % der Treffer sind benennbar).
+   */
+  place: string | null
+  /** Die Stelle im Dokument, wie es sie führt: „§ 5.", „Zu § 5:". */
+  designation: string | null
+  snippet: BegutSearchSnippet | null
+}
+
+export interface BegutSearchResponse {
+  /** Die Suche, wie sie ans RIS ging — normalisiert, mit Stern. */
+  query: string
+  /** Die einzelnen Wörter, für die Hervorhebung auf der Seite. */
+  terms: string[]
+  /** Wie viele Begutachtungen heute offen sind, also durchsucht wurden. */
+  corpusSize: number
+  /** Treffer laut RIS, auch die, die wir nicht auflösen konnten. */
+  total: number
+  /** Von den Treffern: wie viele eine benannte Fundstelle haben. */
+  located: number
+  hits: BegutSearchHit[]
+}
+
+/* ------------------------------------------------------------------ *
+ * Verordnungsentwurf → Kundmachung im BGBl II (§12.32)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Was aus einem Verordnungsentwurf geworden ist — und die beiden Zustände,
+ * die man NICHT zusammenwerfen darf.
+ *
+ * `ausstehend` gegen `keine` ist der ganze Punkt dieses Typs. Zwischen
+ * Fristende und Kundmachung liegen im Median 57 Tage (p90 197), und von den
+ * Entwürfen, deren Frist weniger als 30 Tage zurückliegt, hat gemessen KEIN
+ * einziger schon eine Kundmachung. „Bisher nicht kundgemacht" wäre dort eine
+ * Aussage über die Uhr, gelesen würde sie aber als eine über das Ressort.
+ */
+export type BgblOutcomeState =
+  /** Kundmachung gefunden. */
+  | 'kundgemacht'
+  /** Frist läuft noch — die Frage stellt sich nicht. */
+  | 'begutachtung'
+  /** Frist vorbei, aber noch innerhalb der üblichen Dauer. */
+  | 'ausstehend'
+  /** Lange vorbei und nichts gefunden. Eine Auskunft über unseren Fund, keine über das Ressort. */
+  | 'keine'
+  /** Kein Fristende, kein Satz — wir können die Frage nicht stellen. */
+  | 'unbekannt'
+
+export interface BgblOutcome {
+  state: BgblOutcomeState
+  /** „BGBl. II Nr. 50/2026" */
+  nummer: string | null
+  /** ISO-Ausgabedatum. */
+  datum: string | null
+  /** Die ELI-Adresse der Kundmachung im RIS. */
+  url: string | null
+  /** Tage zwischen Fristende und Kundmachung — die Verordnungshälfte von „wie schnell". */
+  days: number | null
+}

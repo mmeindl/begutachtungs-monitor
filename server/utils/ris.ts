@@ -163,6 +163,7 @@ function toMapRow(
     risUrl: row.risId ? risDocumentUrl(row.risId) : null,
     risDocument: rec?.mainDocument ?? null,
     textComparison: rec?.textComparison ?? null,
+    explanations: rec?.explanations ?? null,
     score: c?.score ?? null,
     risBeginn: rec?.beginn ?? null,
     beginnOffsetDays: c?.dateOffset ?? null,
