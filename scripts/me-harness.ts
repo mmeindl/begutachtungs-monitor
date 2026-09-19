@@ -49,12 +49,17 @@ import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
 import { isScanned, parseTextComparison } from '../server/utils/textComparison'
 import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../server/utils/tguOracle'
 import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../server/utils/risJoin'
+import { parseExplanations } from '../server/utils/explanations'
+import { explanationsByParagraph } from '../server/utils/explanationsJoin'
+import { explanationKey, explanationParaId } from '../shared/utils/explanations'
 import { installFetchCache } from './harness-cache'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
 const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
 const TGU_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
+/** Dieselbe lose Schreibweise wie in `risRecord.ts`. */
+const ERL_NAME = /erl(ä|ae|a)uterung/i
 
 /**
  * `--annex=parlament` reads the ressort's Textgegenüberstellung from
@@ -73,6 +78,23 @@ const TGU_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
  * is still reproducible by leaving it off.
  */
 const annexSource = (process.argv.find((a) => a.startsWith('--annex='))?.slice('--annex='.length) ?? 'ris') as 'ris' | 'parlament'
+/**
+ * `--erl` hängt an jeden ausgegebenen Paragraphen die Passage des Besonderen
+ * Teils der Erläuterungen, die ihn erklärt.
+ *
+ * Die Frage dahinter ist die teuerste offene des Pakets: Gibt es ein zweites,
+ * von der Textgegenüberstellung unabhängiges Signal? Die Deckung des Tors ist
+ * heute die Deckung des Anhangs (41 % der §§ mit Anhang, 0 % ohne), und die
+ * Hälfte der Entwürfe hat keinen. Der Besondere Teil ist der nächstliegende
+ * Kandidat: Er adressiert seine Passagen mit derselben Adresse
+ * („Zu Z 4 (§ 54c Abs. 1a und 1b):"), die das Werkzeug ohnehin berechnet
+ * (§12.30, Deckung 77,8 %), und er stammt vom Ressort, nicht von uns.
+ *
+ * Gemessen wird hier NICHTS entschieden: Das Skript legt die Passagen neben
+ * das Urteil des Anhangs, damit sich auswerten lässt, ob sie dieselbe Aussage
+ * tragen. Erst wenn das gemessen ist, gehört eine Regel in `server/utils`.
+ */
+const withExplanations = process.argv.includes('--erl')
 const verbose = !process.argv.includes('--quiet')
 const dumpFile = process.argv.find((a) => a.startsWith('--dump='))?.slice('--dump='.length) ?? null
 if (dumpFile) writeFileSync(dumpFile, '')
@@ -99,6 +121,8 @@ interface Draft {
   annexXml: string | null
   /** An annex that exists but only as a PDF or a scan, which is not the same as none */
   annexNote: string | null
+  /** Die Erläuterungen als eigenes RIS-Dokument (`--erl`) */
+  erlXml: string | null
 }
 
 function draftOf(ref: any): Draft | null {
@@ -116,6 +140,7 @@ function draftOf(ref: any): Draft | null {
     mainXml: xmlOf(contents.find((c) => c?.ContentType === 'MainDocument')),
     annexXml: annex ? xmlOf(annex) : null,
     annexNote: !annex ? 'ohne Textgegenüberstellung' : xmlOf(annex) ? null : 'Textgegenüberstellung nur als PDF',
+    erlXml: xmlOf(contents.find((c) => ERL_NAME.test(String(c?.Name ?? '').trim()))),
   }
 }
 
@@ -265,9 +290,23 @@ async function verifyDraft(draft: Draft): Promise<LawResult[]> {
     tally(annexNotes, note)
   }
 
+  // Die Passagen des Besonderen Teils, unter demselben Schlüssel wie die
+  // Zeilen der Beilage (`explanationKey`): Gesetz des Pakets plus §-Nummer.
+  let passages: Map<string, string[]> | null = null
+  if (withExplanations && draft.erlXml) {
+    const xml = await getText(draft.erlXml).catch(() => null)
+    if (xml) {
+      passages = new Map()
+      for (const p of explanationsByParagraph(parseExplanations(xml), draftArticles(blocks))) {
+        const key = explanationKey(p.law, p.para)
+        passages.set(key, [...(passages.get(key) ?? []), ...p.text])
+      }
+    }
+  }
+
   const out: LawResult[] = []
   for (const { blocks: part, article } of parts) {
-    out.push(await verifyLaw(draft, part, article, parts.length > 1, rows))
+    out.push(await verifyLaw(draft, part, article, parts.length > 1, rows, passages))
   }
   return out
 }
@@ -278,6 +317,7 @@ async function verifyLaw(
   article: DraftArticle,
   isPackage: boolean,
   rows: ReturnType<typeof rowsByParagraph> | null,
+  passages: Map<string, string[]> | null,
 ): Promise<LawResult> {
   const result: LawResult = {
     draft: draft.titel,
@@ -395,9 +435,16 @@ async function verifyLaw(
       console.log(`    ↳ § ${id}: Orakel ${report.verdict}${plausible ? '' : ' (ohnehin unplausibel)'} — ${report.note ?? ''}`)
     }
     if (dumpFile) {
+      // Der Besondere Teil führt seinen Paragraphen unter dem Gesetz des
+      // Pakets; ein Entwurf mit genau einem benannten Artikel führt ihn
+      // ebenfalls dort, und nur ein Entwurf ganz ohne Artikel unter null.
+      const erlId = explanationParaId(`§ ${id}`)
+      const erl = passages && erlId
+        ? passages.get(explanationKey(article.key ?? null, erlId)) ?? passages.get(explanationKey(null, erlId)) ?? []
+        : []
       appendFileSync(
         dumpFile,
-        `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], oracle: verdict, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node) })}\n`,
+        `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], oracle: verdict, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl })}\n`,
       )
     }
   }

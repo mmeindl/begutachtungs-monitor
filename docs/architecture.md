@@ -1286,6 +1286,178 @@ mehr über die Stichprobe als über die Engine; die Zahl je Entwurf (Median
 12 %, Anteil der Entwürfe mit mindestens einem anzeigbaren § 50 %) ist die
 robustere und zugleich die, nach der ein Produkt fragt.
 
+**„samt Überschrift" in einer Phrasenanweisung, 19.09.2026 — eine Klasse mit
+zwei Fällen, und einer davon stand kurz vor der Anzeige.** „In § 22 samt
+Überschrift, § 23 Abs. 1a und 2 … wird jeweils das Wort ‚Generalprokuratur'
+durch das Wort ‚Bundesstaatsanwaltschaft' ersetzt": Die Engine benannte den
+Rumpf um und ließ die Überschrift stehen. Der Paragraph war damit weder das
+geltende Recht noch der Entwurf, sondern eine dritte Fassung, die es nie gab
+— **und er kam ohne Verweigerung, plausibel und vom Anhang bestätigt durch
+alle drei Tore.** Gefunden wurde er nicht von einer Messung, sondern beim
+Nachlesen eines einzelnen Ergebnisses.
+
+Der Grund war eine Ebene, keine Lücke: `withHeading` gab es längst, aber nur
+für die Neufassung und den Entfall einer Einheit — die Überschrift ist in
+`lawStructure` ein eigener Slot, und eine Phrasenoperation adressierte immer
+den Text. Behoben nicht mit einem dritten Anwendungsmodus, sondern mit einer
+**zweiten Operation**: Trägt eine Adresse „samt Überschrift", entsteht neben
+ihr ein Zwilling auf den Überschriften-Slot, auf den Paragraphen hochgezogen
+(„§ 15a Abs. 1 und 2 samt Überschrift" meint die Überschrift von § 15a).
+Beide müssen ihre Wortfolge genau einmal finden, sonst verweigert die
+Anweisung — die Regel, die überall sonst im Modul gilt, gilt damit auch hier.
+
+*Die Population zuerst gemessen, dann repariert.* Über 6.576 geerntete
+Anweisungen aus 300 Entwürfen (`.cache/novao/novao.jsonl`) tragen 387 ein
+„samt Überschrift", aber nur **2** davon sind Phrasenoperationen; die
+übrigen sind Neufassungen (159), Einfügungen (173) und Entfälle (45), die
+den Zusatz längst lesen. Zwei von 6.576 ist keine Fehlerklasse, die eine
+Quote bewegt — und genau deshalb steht sie hier: Sie bewegt die *Anzeige*.
+
+*Der Beleg, dass der Eingriff nichts anderes anfasst.* Beide Prüfstände vor
+und nach der Änderung, dieselben Korpora, dieselben Caches:
+
+| | vorher | nachher |
+|---|---|---|
+| BGBl-Pfad: gelesen / angewendet | 2.976 / 2.469 | **unverändert** |
+| BGBl-Pfad: identisch / eigene Abweichung | 1.131 / 49 | **unverändert** |
+| Entwurfspfad: Plausibilität × Orakel (alle 10 Klassen) | — | **unverändert** |
+| Entwurfspfad: Paragraphen mit geändertem Ergebnis | — | **1 von 413** |
+
+Der eine geänderte Paragraph ist StPO § 22, und er ist jetzt richtig. Ein
+Eingriff, der genau das anfasst, was er anfassen soll, sieht so aus.
+
+### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
+
+Gebaut 19.09.2026: `server/utils/konsGate.ts` (das Tor, rein und getestet),
+`konsService.ts` (Nitro-Glue), `/api/drafts/:gp/:inr/konsolidiert`,
+`app/components/ConsolidatedTextSection.vue`, unter der Gegenüberstellung als
+„Wie das Gesetz danach lauten würde".
+
+**Warum die Sektion unter der Gegenüberstellung steht und nicht an ihrer
+Stelle.** Die Beilage des Ressorts beantwortet die größere Frage („was ändert
+sich?") für mehr Paragraphen, als dieses Tor je wird — sie ist die Quelle der
+Bestätigung, ohne die hier nichts steht. Der Zugewinn ist schmaler und
+trotzdem echt: Die Beilage druckt den Absatz, den sie ändert, diese Sektion
+den **ganzen Paragraphen**, und zwar aus dem authentischen RIS-Text statt aus
+der Abschrift des Ressorts. „Diese Wortfolge wird ersetzt" gegen „so liest
+sich die Bestimmung dann".
+
+**Das Tor ist das Modul, nicht die Funktion.** Drei Signale, und keines
+reicht allein: keine Verweigerung, plausibel (`applyGuard`), vom Anhang
+bestätigt (`tguOracle`). Es liegt in `server/utils` mit Tests, weil Befund 0
+dieser Sektion sich sonst wiederholt — die urteilende Hälfte eines
+Prüfstands, die in `scripts/` liegt, wird von keinem Typecheck erfasst.
+
+**Was die Seite an einem echten Entwurf zeigt** (126/ME, Einführung einer
+Bundesstaatsanwaltschaft, am laufenden Server gemessen): 32 von 61
+Paragraphen, der Rest benannt statt verschwiegen — 18× eine Anweisung nicht
+sicher anwendbar, 5× Anhang widerspricht, 4× unplausibel, 2× Anhang schweigt.
+Über vier geprüfte Entwürfe: einer zeigt 32/61, einer 16/32, einer 0/28 („für
+keinen Paragraphen bestätigt"), einer gar nichts, weil er ein Stammgesetz ist.
+Warm 10 ms, kalt rund 12 s — deshalb clientseitig nachgeladen wie die
+Vergleichsabschnitte, mit Tagescache.
+
+**Die Bilanz unter der Liste ist kein Kleingedrucktes, sondern die Hälfte der
+Aussage.** „Gezeigt sind 32 von 61 Paragraphen, die dieser Entwurf ändert.
+Was hier fehlt, ist deshalb nicht unverändert — es ist ungeprüft." Ohne
+diesen Satz liest sich eine Liste mit 12 % Deckung (der Median) wie „der Rest
+bleibt, wie er ist", und das ist die eine Aussage, die diese Seite nie machen
+darf (§12.27).
+
+*Drei Nachbesserungen am selben Tag, alle drei an der Ehrlichkeit der
+Anzeige und keine davon an ihrem Aussehen.*
+
+1. **Ein gefangener Fehler wurde als Urteil zwischengespeichert** — genau der
+   Fehler, gegen den `annexGuardService.ts` seinen eigenen Kommentar
+   geschrieben hat. `resolveKonsLaw` und der §-Abruf standen hier mit
+   `.catch(() => null)`, also machte ein RIS-Schluckauf aus einem Ausfall
+   einen Befund über den Entwurf („18 × Eine Anweisung ließ sich nicht sicher
+   anwenden") und legte ihn für einen Tag in den Cache. Jetzt steht der Abruf
+   außerhalb des try und der Parse darin: Ein RIS, das nicht antwortet, wirft
+   und die Sektion meldet sich unverfügbar; ein Dokument, das wir bekommen und
+   nicht lesen können, ist null — eine stabile Eigenschaft dieses Dokuments.
+2. **Die eigene Obergrenze gab sich als Verweigerung der Engine aus.** Was
+   `MAX_PARAGRAPHS`/`MAX_LAWS` nicht mehr lädt, zählte als „Anweisung ließ
+   sich nicht sicher anwenden". Auf einer großen Sammelnovelle (74/ME, 242
+   geänderte Paragraphen) waren das **130 von 242** zurückgehaltenen
+   Paragraphen — mehr als die Hälfte der Bilanz war eine falsche Aussage über
+   die Engine. Eigener Grund, eigener Satz. Und die Artikel jenseits von
+   `MAX_LAWS` fehlten bis dahin ganz im *Nenner*: Ein Entwurf mit fünfzehn
+   Gesetzen behauptete, weniger Paragraphen zu ändern, als er ändert.
+3. **Der Nenner ist jetzt getestet.** „Gezeigt sind 32 von 61" ist eine
+   Aussage und keine Zwischenrechnung, also liegt sie rein und mit Tests in
+   `konsGate.addressedParagraphs` — samt der Regel, die man beim Aufräumen
+   zuerst kaputtmacht: **Eine Verweigerung nimmt den Paragraphen nicht aus dem
+   Nenner.** Sonst stünde „12 von 12" über einer Liste, die den halben Entwurf
+   verschweigt.
+
+*Zwei Fehler, die erst der Screenshot zeigte, beide in der Typografie und
+beide inhaltlich.* `plainText` eines Paragraphen beginnt mit seiner
+Überschrift, also klebte sie am ersten Satz („Aufbau der Staatsanwaltschaften
+Am Sitz jedes …"); Überschrift und Rumpf werden jetzt getrennt gediffed, was
+die geänderte Überschrift zur auffälligsten Änderung macht, die sie ist. Und
+ein `uppercase` auf der Bezeichnung machte aus „§ 212b" ein „§ 212B" —
+streng genommen ein anderer Paragraph.
+
+### 12.12b Der Besondere Teil als zweites Verifikationssignal — gemessen, und er trägt nicht
+
+Die teuerste offene Frage des Pakets ist, ob es neben der
+Textgegenüberstellung ein zweites, unabhängiges Signal gibt: Ohne eines
+bleibt die Hälfte der Entwürfe dauerhaft bei null Paragraphen, per
+Konstruktion und nicht wegen der Engine. Der nächstliegende Kandidat ist der
+**Besondere Teil der Erläuterungen** — er adressiert seine Passagen mit
+derselben Adresse, die das Werkzeug ohnehin berechnet (§12.30), und er kommt
+vom Ressort, nicht von uns. Gemessen am 19.09.2026 über denselben
+40-Entwürfe-Korpus (`pnpm harness:me -- --discover=40 --erl --dump=…`), 413
+erzeugte Paragraphen.
+
+**Die Deckung ist gut — und das ist die Hälfte, die nichts kostet.** 293 von
+413 Paragraphen (71 %) tragen eine Passage des Besonderen Teils. Wo der
+Anhang nichts sagt (197 Paragraphen), sind es immer noch 108 (55 %), und
+unter den dort plausiblen und unverweigerten 133 sind es 73. Wäre die Passage
+ein Urteil, verdoppelte sie die Anzeige.
+
+**Der Inhalt trägt nicht.** Nur 73 der 293 Passagen (25 %) zitieren
+überhaupt Text, und von 180 Zitaten stehen **128 (71 %) weder im geltenden
+noch im vorgeschlagenen Paragraphen** — sie zitieren Richtlinientitel,
+Legaldefinitionen, andere Gesetze. Eine Regel „jedes Zitat der Begründung
+muss in unserem Ergebnis vorkommen" widerspräche also fast überall, und zwar
+zu Unrecht.
+
+**Und das wortweise Signal trennt nicht.** Geprüft wurde die schwächere,
+bessere Variante: Wie viele der Wörter, die die Engine *eingefügt* hat,
+kommen in der Begründung vor? Als Wahrheit dient das Urteil des Anhangs.
+
+| Regel „zeigen, wenn Deckung ≥ t" | bestätigt | widersprochen | Präzision |
+|---|---|---|---|
+| t = 0 (Basisrate) | 93 | 58 | 0,62 |
+| t = 0,5 | 67 | 38 | 0,64 |
+| t = 0,75 | 48 | 23 | 0,68 |
+| t = 1,0 (jedes eingefügte Wort) | 32 | 14 | **0,70** |
+
+Von 0,62 auf 0,70, und dafür zwei Drittel der Paragraphen verworfen. Das ist
+kein Tor, das ist Rauschen mit einer Schwelle. Zum Vergleich: Der Anhang
+selbst liefert unter den von ihm bestätigten Paragraphen im BGBl-Korpus
+**null** Abweichungen.
+
+*Zwei Vorbehalte, die zum Ergebnis gehören.* Erstens ist „widersprochen" des
+Anhangs nicht dasselbe wie „die Engine irrt" — gemessen sind darunter auch
+Tippfehler der Beilage und Granularitätsartefakte. Das Etikett rauscht, aber
+es rauscht in beide Richtungen und rettet 0,62 → 0,70 nicht. Zweitens wäre
+die strenge Fassung dieser Messung der BGBl-Prüfstand mit seiner echten
+Wahrheit statt des Anhangs; das ist eine eigene Messung und lohnt erst, wenn
+ein Kandidat überhaupt Trennschärfe zeigt.
+
+**Was daraus folgt, auch für den Antrag.** Der Forschungs-Task „zweites
+Verifikationssignal" bleibt offen, aber er ist um seinen billigsten Kandidaten
+ärmer, und das ist ein Ergebnis und kein Verlust: Ein halber Tag Messung
+erspart es, 100–150 Stunden gegen eine Annahme zu budgetieren, die sich in
+einer Tabelle widerlegen lässt. Was der Besondere Teil dagegen sehr wohl
+kann, ist **Kontext statt Urteil** — er steht seit 18.09.2026 am Paragraphen
+der Gegenüberstellung, und seine 55 % Deckung dort, wo der Anhang schweigt,
+sind das, was ein Leser bekommt, wenn wir ihm keinen Gesetzestext zeigen
+dürfen.
+
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der

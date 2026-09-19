@@ -759,6 +759,7 @@ export interface ParagraphTitlesResponse {
  */
 export type ConsolidatedWithheldCause =
   | 'verweigert'
+  | 'nicht-geladen'
   | 'unplausibel'
   | 'kein-anhang'
   | 'anhang-schweigt'
@@ -776,12 +777,21 @@ export interface ConsolidatedParagraph {
   label: string
   /** Die Überschrift des § NACH dem Entwurf; sie kann selbst geändert sein. */
   heading: string | null
-  /** Der geltende Text zum Stichtag, wie das RIS ihn führt. */
+  /** Der geltende Text zum Stichtag samt Überschrift, wie das RIS ihn führt. */
   before: string
   /** Derselbe §, nachdem die Anweisungen dieses Entwurfs angewendet wurden. */
   after: string
-  /** Wortdiff zwischen beiden — dieselbe rot/grün-Sprache wie sonst auf der Seite. */
+  /**
+   * Wortdiff des **Textes ohne Überschrift** — dieselbe rot/grün-Sprache wie
+   * sonst auf der Seite. Getrennt von `headingSegments`, weil eine
+   * Überschrift auf der Seite eine Überschrift ist: In einem Fließtext
+   * hängt sie sonst am ersten Satz („Aufbau der Staatsanwaltschaften Am Sitz
+   * jedes …"), und eine geänderte Überschrift ist genau die Änderung, die
+   * ein Leser zuerst sehen soll.
+   */
   segments: LawDiffSegment[]
+  /** Wortdiff der Überschrift; null, wenn der § keine trägt. */
+  headingSegments: LawDiffSegment[] | null
   /** Die geltende Fassung im RIS, zum Stichtag: die Quelle der linken Seite. */
   risUrl: string | null
 }
