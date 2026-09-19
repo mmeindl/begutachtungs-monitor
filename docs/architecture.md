@@ -1523,16 +1523,32 @@ abgewiesenen, nach Häufigkeit: keine auflösbare Adresse (174), kein bekanntes
 Verb (73), vier Operanden mit unklarer Paarbildung (52), Einfügung ohne Anker
 und Text (44), Ersetzung ohne zwei Operanden (44).
 
-*Ein Fall darin ist scharf umrissen und wartet:* **45 Abweisungen adressieren
-„Artikel &lt;römisch&gt; § n"** — ein Gesetz, das selbst in Artikel gegliedert
-ist. Reproduzierbar an `parseAddressList`: `§ 3 Abs. 2` wird gelesen,
-`Artikel II § 3 Abs. 2` nicht. **26 davon in einem einzigen Entwurf** (40/ME,
-IG-L-Novelle), der deshalb bei 0 von 26 Anweisungen steht. Was fehlt, ist
-nicht der Ausdruck, sondern die Sicherheitsfrage davor: Führt RIS die §§ eines
-solchen Gesetzes je Artikel — gibt es also ein zweites § 3 —, dann ist die
-Bezeichnung ohne den Artikel mehrdeutig, und eine Anweisung träfe den
-falschen Paragraphen. Erst messen, wie RIS diese Gesetze etikettiert, dann
-bauen.
+*Ein Fall darin ist scharf umrissen:* **45 Abweisungen adressieren „Artikel
+&lt;römisch&gt; § n"** — ein Gesetz, das selbst in Artikel gegliedert ist.
+Reproduzierbar an `parseAddressList`: `§ 3 Abs. 2` wird gelesen, `Artikel II
+§ 3 Abs. 2` nicht. **26 davon in einem einzigen Entwurf** (40/ME), der deshalb
+bei 0 von 26 Anweisungen steht.
+
+**Die Sicherheitsfrage davor ist beantwortet, und sie macht aus dem
+Einzeiler ein kleines Vorhaben** (gemessen 19.09.2026): RIS führt die §§
+solcher Gesetze **mit dem Artikel im Etikett** — das
+Lebensmittelbewirtschaftungsgesetz 1997 hat „Art. 2 § 1", „Art. 2 § 2",
+„Art. 2 § 3" …, keine doppelten Bezeichnungen. Zwei Folgen:
+
+1. Den Artikel einfach wegzulassen wäre nicht nur unsicher, es funktionierte
+   gar nicht: Gesucht würde „§ 3", und unter diesem Etikett führt RIS in
+   diesem Gesetz nichts.
+2. Die Schreibweise unterscheidet sich obendrein — der Entwurf schreibt
+   römisch („Artikel II"), RIS arabisch („Art. 2").
+
+Zu bauen ist also nicht ein Ausdruck, sondern eine **artikelqualifizierte
+Paragraphenidentität**: in der Adresse (`novao.ts`), im Etikett, mit dem
+`konsService` das §-Dokument sucht (römisch → arabisch), und im Schlüssel, mit
+dem Tor und Orakel den § in der Beilage wiederfinden — die Beilage schreibt
+„§ 3." ohne Artikel, also braucht auch sie den Kontext. Ein halber Tag mit
+Tests, kein Abend, und damit ein Posten des Arbeitspakets, kein Nebenbei.
+Der Ertrag ist gemessen: ein Entwurf von 0 auf bis zu 26 Anweisungen, dazu
+19 verstreute.
 
 ### 12.12b Der Besondere Teil als zweites Verifikationssignal — gemessen, und er trägt nicht
 
