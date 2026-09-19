@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressKey, expandRange, parseAddress, parseInstruction, splitCompound, splitPayloadScope, type NovaoOp } from '../server/utils/novao'
+import { addressKey, expandRange, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoOp } from '../server/utils/novao'
 
 /** The single operation of an instruction, or a failure that names the reason. */
 function op(line: string): NovaoOp {
@@ -233,5 +233,100 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
 
   it('reads the third comma form', () => {
     expect(op('In § 5 Abs. 1 wird nach der Wortfolge "S. 1" ein Beistrich sowie die Wortfolge "in der jeweils geltenden Fassung" angefügt.')).toMatchObject({ kind: 'insertPhrase', text: ', in der jeweils geltenden Fassung' })
+  })
+})
+
+describe('Adressen über mehrere Paragraphen', () => {
+  // "In den §§ 48 Abs. 13 und 217 Abs. 13": nur der erste Paragraph trägt sein
+  // §-Zeichen, die übrigen stehen als nackte Zahl. Gelesen wurde daraus
+  // "§ 48 Abs. 217" — und wo dieser Absatz zufällig existiert, ändert die
+  // Engine geltendes Recht, das die Anweisung nie genannt hat (18.09.2026).
+  it('verweigert, wenn die aufgezählte Zahl eine eigene Komponente trägt', () => {
+    expect(parseAddress('In den §§ 48 Abs. 13 und 217 Abs. 13')).toBeNull()
+    expect(parseAddress('In den §§ 19 Abs. 1, 48 Abs. 13, 192 Abs. 1')).toBeNull()
+    expect(parseAddress('In den §§ 30 Abs. 3 zweiter Satz, 32 Abs. 4 zweiter Satz')).toBeNull()
+    expect(parseAddress('In den §§ 2 Z 3 und 17 Z 4')).toBeNull()
+  })
+
+  it('liest eine echte Aufzählung derselben Ebene weiterhin', () => {
+    const a = parseAddress('In § 5 Abs. 1 und 2')
+    expect(a?.para).toBe('§ 5')
+    expect(a?.abs).toBe('1')
+    expect(a?.siblings).toEqual(['2'])
+    const z = parseAddress('In § 5 Abs. 1 Z 3, 4 und 7')
+    expect(z?.z).toBe('3')
+    expect(z?.siblings).toEqual(['4', '7'])
+  })
+
+  it('lässt zwei vollständig bezeichnete Paragraphen unberührt — die trägt parseAddressList', () => {
+    const list = parseAddressList('In § 28 Abs. 3 und § 99 Abs. 1')
+    expect(list?.map((a) => a.para)).toEqual(['§ 28', '§ 99'])
+    expect(list?.every((a) => a.siblings.length === 0)).toBe(true)
+  })
+})
+
+describe('parseAddressList — die Plural-Kurzschreibweise', () => {
+  const keys = (t: string) => parseAddressList(t)?.map(addressKey)
+
+  it('zerlegt „§§ X Abs. n und Y Abs. m" in zwei Paragraphen', () => {
+    expect(keys('In den §§ 48 Abs. 13 und 217 Abs. 13')).toEqual(['§ 48 Abs. 13', '§ 217 Abs. 13'])
+    expect(keys('In den §§ 19 Abs. 1, 48 Abs. 13, 192 Abs. 1')).toEqual(['§ 19 Abs. 1', '§ 48 Abs. 13', '§ 192 Abs. 1'])
+  })
+
+  it('unterscheidet ein weiteres Geschwister von einem weiteren Paragraphen', () => {
+    // Die 7 ist ein Absatz von § 20, die 193 ein eigener Paragraph — der
+    // Unterschied steht hinter der Zahl, nicht in der Konjunktion.
+    const list = parseAddressList('In den §§ 20 Abs. 6 und 7 sowie 193 Abs. 6 und 7')
+    expect(list?.map((a) => a.para)).toEqual(['§ 20', '§ 193'])
+    expect(list?.[0]!.siblings).toEqual(['7'])
+    expect(list?.[1]!.siblings).toEqual(['7'])
+  })
+
+  it('lässt einen Paragraphen, der sein Zeichen selbst trägt, unverändert', () => {
+    expect(keys('In den §§ 184 Abs. 4 sowie in § 380 Abs. 1 Z 3')).toEqual(['§ 184 Abs. 4', '§ 380 Abs. 1 Z 3'])
+  })
+
+  it('zerlegt die Satz-Form, die keine nackte Zahl hinterlässt', () => {
+    expect(keys('In den §§ 30 Abs. 3 zweiter Satz, 32 Abs. 4 zweiter Satz')).toEqual([
+      '§ 30 Abs. 3 zweiter Satz',
+      '§ 32 Abs. 4 zweiter Satz',
+    ])
+  })
+
+  it('rührt eine echte Aufzählung auf Paragraphenebene nicht an', () => {
+    const list = parseAddressList('In den §§ 23 und 24')
+    expect(list).toHaveLength(1)
+    expect(list?.[0]!.para).toBe('§ 23')
+    expect(list?.[0]!.siblings).toEqual(['24'])
+  })
+})
+
+describe('Operandenvokabular und ausgeschriebene Umbenennungen', () => {
+  it('liest den Prozentsatz als Operanden', () => {
+    const { ops } = parseInstruction('In § 4 Z 2 wird der Prozentsatz "65%" durch den Prozentsatz "50%" ersetzt.')
+    expect(ops).toHaveLength(1)
+    expect(ops[0]).toMatchObject({ kind: 'replacePhrase', from: '65%', to: '50%' })
+  })
+
+  it('liest eine Umbenennung mit ausgeschriebenem Subjekt', () => {
+    // "In § 213 erhält Abs. 4 die Absatzbezeichnung": dieselbe Umbenennung wie
+    // ohne Subjekt, und die Adresse steht schon richtig — § 213 Abs. 4.
+    const { ops } = parseInstruction('In § 213 erhält Abs. 4 die Absatzbezeichnung "(5)".')
+    expect(ops).toHaveLength(1)
+    expect(ops[0]).toMatchObject({ kind: 'renumber', to: '(5)' })
+    expect((ops[0] as { target: { para: string; abs: string } }).target).toMatchObject({ para: '§ 213', abs: '4' })
+  })
+
+  it('liest auch „der bisherige Abs. n"', () => {
+    const { ops } = parseInstruction('In § 7 erhält der bisherige Abs. 8 die Absatzbezeichnung "(9)".')
+    expect((ops[0] as { target: { abs: string } }).target).toMatchObject({ abs: '8' })
+  })
+
+  it('verweigert weiterhin „der bisherige Inhalt" — das ist keine Umbenennung', () => {
+    // Der ganze Paragraphentext wird zu Abs. 1: eine eingezogene Ebene, nicht
+    // eine neue Nummer. Andere Operation, andere Gefahr.
+    const { ops, reason } = parseInstruction('In § 10 erhält der bisherige Inhalt die Absatzbezeichnung "(1)".')
+    expect(ops.filter((o) => o.kind === 'renumber')).toHaveLength(0)
+    expect(reason ?? 'nicht gelesen').toBeTruthy()
   })
 })

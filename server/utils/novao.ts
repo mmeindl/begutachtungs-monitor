@@ -174,14 +174,48 @@ export function expandRange(from: string, to: string): string[] | null {
 }
 
 /**
+ * A component marker directly behind an enumerated number — the signal that
+ * the number is a *paragraph* of its own and not a sibling of the component
+ * in front of it.
+ */
+const OWN_COMPONENT_RE = /^\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))/i
+
+/**
  * Trailing enumerations on the deepest component: "Abs. 2 und 3",
  * "Z 4 bis 7", "Abs. 1, 2 und 5". Returns null when the enumeration is real
  * but cannot be expanded — the caller must then refuse the instruction
  * rather than silently act on the first target only.
+ *
+ * **Und null auch, wenn die Zahl gar kein Geschwister ist.** In „In den §§ 48
+ * Abs. 13 und 217 Abs. 13 wird die Wortfolge … ersetzt" trägt nur der *erste*
+ * Paragraph sein §-Zeichen; die übrigen stehen als nackte Zahlen. Deshalb
+ * sieht `parseAddressList` nur eine Adresse und fällt auf `parseAddress`
+ * zurück, und dort landete die 217 als Geschwister der tiefsten Komponente:
+ * gelesen wurde „§ 48 Abs. 217". Das Signal, das die beiden Fälle trennt,
+ * steht direkt hinter der Zahl — folgt ihr eine *eigene* Komponente, ist sie
+ * ein Paragraph.
+ *
+ * Gemessen über 60 Bundesgesetzblätter (18.09.2026): 40 Anweisungen in dieser
+ * Form. 36 davon verweigerten ohnehin, aber mit einer unsinnigen Begründung
+ * („Untereinheit nicht im Ausgangstext: § 48 Abs. 217") und stellten damit
+ * einen großen Teil der größten Anwendungsfehlerklasse — allein die
+ * Vergabe-Gesetze 42 von 107. **Die anderen 4 wurden angewendet**, auf genau
+ * einen der genannten Paragraphen, und meldeten Erfolg: „In den §§ 30 Abs. 3
+ * zweiter Satz, 32 Abs. 4 …, 33 Abs. 6 … und 57 Abs. 2" änderte § 30 und ließ
+ * drei Paragraphen unberührt. Das RIS nennt alle vier `halbangewendet` oder
+ * `unvollständig` — kein erfundenes Wort, trotzdem kein geltender Text, und
+ * für jede Prüfung der Engine gegen die eigene Lesart unsichtbar.
+ *
+ * Eine Adresse über mehrere Paragraphen kann dieses Modell nicht tragen (eine
+ * Operation hat ein `target`), also wird sie verweigert und nicht geraten —
+ * dieselbe Entscheidung wie bei den artikelgegliederten Gesetzen. Die
+ * Verweigerung ist der halbe Vollzug allemal vorzuziehen („Verweigern schlägt
+ * Deckung", §12.12).
  */
 function siblingsAfter(rest: string, first: string): string[] | null {
   const m = /^\s*((?:,\s*\d+[a-z]*\s*)*)(und|bis|sowie|,)\s*(\d+[a-z]*)\b/i.exec(rest)
   if (!m) return []
+  if (OWN_COMPONENT_RE.test(rest.slice(m[0].length))) return null
   const listed = [...m[1]!.matchAll(/(\d+[a-z]*)/g)].map((x) => x[1]!)
   const last = m[3]!
   if (/^bis$/i.test(m[2]!)) {
@@ -265,6 +299,28 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     siblings = found
   }
 
+  // Der Plural, als letztes Signal. „In den §§ 46 Abs. 3 zweiter Satz,
+  // 47 Abs. 6 zweiter Satz, 213 … und 214 …" nennt vier Paragraphen, und
+  // hinter „Abs. 3" steht keine nackte Zahl, an der `siblingsAfter` es merken
+  // könnte, sondern „zweiter Satz". Übrig bleibt das Pluralzeichen selbst:
+  // steht es in der *Adresse* — Zitate sind durch `maskQuotes` längst
+  // ausgeblendet, sonst zählte jedes „die Wortfolge '§§ 41, 42'" mit — und
+  // zeigt die gelesene Adresse trotzdem auf eine Unterebene, dann ist der
+  // erste Paragraph nur der erste von mehreren.
+  //
+  // Über 60 Bundesgesetzblätter (18.09.2026): 16 solche Adressen bleiben auf
+  // Paragraphenebene und sind echte, funktionierende Mehrfachadressen; 11
+  // stehen auf einer Unterebene und meinen ausnahmslos mehrere Paragraphen.
+  // Drei davon wurden angewendet — auf je einen der genannten. Kein einziger
+  // Fehltreffer in der Stichprobe.
+  //
+  // „Mehrere" wird gezählt, nicht vermutet: das Pluralzeichen bleibt auch
+  // dann stehen, wenn `parseAddressList` die Aufzählung schon zerlegt hat und
+  // dieses Stück nur noch einen Paragraphen trägt („In den §§ 184 Abs. 4
+  // sowie in § 380 Abs. 1 Z 3" → „In den §§ 184 Abs. 4"). Verweigert wird
+  // deshalb erst, wenn wirklich zwei Zahlen mit eigener Komponente dastehen.
+  if (level !== 'para' && /§§/.test(t) && [...t.matchAll(/\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))/gi)].length > 1) return null
+
   return { para, abs, z, lit, satz, satzCount, siblings, level, heading, raw: t }
 }
 
@@ -277,19 +333,60 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
  *
  * Returns one address per named place, or null if any part fails to parse.
  */
+/**
+ * „In den §§ 48 Abs. 13 und 217 Abs. 13" → `["§ 48 Abs. 13", "§ 217 Abs. 13"]`.
+ *
+ * Die legistische Kurzschreibweise setzt das §-Zeichen einmal in den Plural
+ * und lässt es bei allen weiteren Paragraphen weg. Die Trennung zwischen
+ * „weiterer Paragraph" und „weiteres Geschwister derselben Komponente" ist
+ * dieselbe wie in `siblingsAfter`: **eine Zahl, der eine eigene Komponente
+ * folgt, ist ein Paragraph.** „§§ 20 Abs. 6 und 7 sowie 193 Abs. 6 und 7"
+ * zerfällt damit richtig — die 7 bleibt ein Absatz von § 20, die 193 wird
+ * ein eigener Paragraph.
+ *
+ * Gibt null zurück, wenn sich nichts zerlegen lässt; der Aufrufer fällt dann
+ * auf die Einzeladresse zurück, und die verweigert ihrerseits, sobald ein
+ * Pluralzeichen über einer Unterebene stehen bleibt.
+ */
+function splitPluralParagraphs(t: string): string[] | null {
+  const plural = /§§\s*/.exec(t)
+  if (!plural) return null
+  const tail = t.slice(plural.index + plural[0].length)
+  const sep = /(?:\s*,\s*|\s+(?:und|sowie)\s+)(?=\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era)))/gi
+  const cuts: { at: number; len: number }[] = []
+  for (const m of tail.matchAll(sep)) cuts.push({ at: m.index!, len: m[0].length })
+  if (cuts.length === 0) return null
+  const parts: string[] = []
+  let last = 0
+  for (const c of cuts) {
+    parts.push(tail.slice(last, c.at))
+    last = c.at + c.len
+  }
+  parts.push(tail.slice(last))
+  // A trailing part that already carries its own § ("… sowie in § 380 Abs. 1")
+  // is left as it stands; only the bare ones get the symbol back.
+  return parts.map((p) => p.trim()).filter(Boolean).map((p) => (PARA_RE.test(p) ? p : `§ ${p}`))
+}
+
 export function parseAddressList(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
   const t = maskQuotes(normalizeText(text))
   const parts = t.split(/\s*,\s*|\s+(?:und|sowie)\s+/i).filter((p) => p.trim())
   const withPara = parts.filter((p) => PARA_RE.test(p))
-  if (withPara.length < 2) {
+  // Either every paragraph carries its own symbol, or the plural shorthand
+  // spells the first one and leaves the rest bare. Both can occur in one
+  // instruction, so each explicit segment is offered to the splitter again.
+  const segments = withPara.length >= 2 ? withPara : splitPluralParagraphs(t)
+  if (!segments) {
     const single = parseAddress(text, inherited)
     return single ? [single] : null
   }
   const out: NovaoAddress[] = []
-  for (const part of withPara) {
-    const a = parseAddress(part, inherited)
-    if (!a) return null
-    out.push(a)
+  for (const segment of segments) {
+    for (const one of splitPluralParagraphs(segment) ?? [segment]) {
+      const a = parseAddress(one, inherited)
+      if (!a) return null
+      out.push(a)
+    }
   }
   return out
 }
@@ -369,9 +466,17 @@ function instructionHead(t: string): string {
  * "Zeichen- und Wortfolge" only in the second (2026-09-09). Order matters —
  * the alternation is tried left to right, so a compound has to precede the
  * word it starts with, or "Zeichen- und Wortfolge" matches as bare "Zeichen".
+ *
+ * Prozentsatz und Altersangabe kamen aus der dritten Durchsicht der
+ * Verweigerungen (18.09.2026): „In § 4 Z 2 wird der Prozentsatz ‚65%' durch
+ * den Prozentsatz ‚50%' ersetzt" ist eine gewöhnliche Phrasenersetzung und
+ * scheiterte allein am Nomen — 11 Anweisungen im Korpus, alle in derselben
+ * Form. Das Vokabular wächst nur gegen gemessene Zeilen, nie auf Verdacht:
+ * ein Nomen, das nie vorkommt, macht die Alternation länger und die nächste
+ * Messung nicht besser.
  */
 const PHRASE_OBJECT =
-  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Ausdruck|Zitierung|Zitat|Klammerausdruck|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Eintrag)'
+  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Ausdruck|Zitierung|Zitat|Klammerausdruck|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Eintrag)'
 const PHRASE_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'i')
 const AFTER_ANCHOR_RE = new RegExp(`\\bnach (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
 const BEFORE_ANCHOR_RE = new RegExp(`\\bvor (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
@@ -479,7 +584,20 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // "erhält die Absatzbezeichnung", "erhalten die Paragraphenbezeichnungen",
   // "erhält die Bezeichnung": the noun varies in spelling (Paragrafen/
   // Paragraphen) and number, so only its tail is matched.
-  if (/erh(?:äl|al)t(?:en)?\s+die\s+\w*bezeichnung(?:en)?\b/i.test(head)) {
+  //
+  // Zwischen Verb und Nomen darf ein Subjekt stehen — „In § 213 erhält
+  // **Abs. 4** die Absatzbezeichnung ‚(5)'", „In § 7 erhält **der bisherige
+  // Abs. 8** die Absatzbezeichnung ‚(9)'". Das ist dieselbe Umbenennung, nur
+  // mit ausgeschriebenem Subjekt, und die Adresse steht ohnehin schon richtig:
+  // `parseAddress` liest das „Abs. 4" aus dem Schwanz hinter dem §. 70 solcher
+  // Zeilen im Korpus (18.09.2026).
+  //
+  // **Nur wo das Subjekt eine Untereinheit ist.** „In § 10 erhält der
+  // bisherige *Inhalt* die Absatzbezeichnung ‚(1)'" benennt nichts um,
+  // sondern zieht eine Ebene ein — der ganze Paragraphentext wird zu Abs. 1.
+  // Das ist eine andere Operation mit einer anderen Gefahr, und sie bleibt
+  // verweigert, statt als Umbenennung des Paragraphen zu laufen.
+  if (/erh(?:äl|al)t(?:en)?\s+(?:[^"]{0,60}?\s+)?die\s+\w*bezeichnung(?:en)?\b/i.test(head) && (/erh(?:äl|al)t(?:en)?\s+die\s+\w*bezeichnung/i.test(head) || target.level !== 'para')) {
     const to = quotes[0]
     if (!to) return fail('Umbenennung ohne neue Bezeichnung')
     if (targets.length > 1) return fail(`${targets.length} Ziele für eine Umbenennung`)

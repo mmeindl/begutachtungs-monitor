@@ -165,12 +165,22 @@ describe('addressedUnits on a refused instruction', () => {
     expect(paras(line)).toEqual([])
   })
 
-  it('refuses a plural "§§" that resolved to a single designation', () => {
+  it('liest beide Paragraphen der Plural-Kurzschreibweise', () => {
     // "In den §§ 156 Abs. 2 und 317 Abs. 2 …": the second half carries no §
-    // sign, so only § 156 comes out — and filing the unit there would take its
-    // words out of the general bag § 317 lives on. Four such units in the
-    // Bundesvergabegesetz alone.
+    // sign. This used to yield § 156 alone, and filing the unit there would
+    // have taken its words out of the general bag § 317 lives on — so the
+    // guard below refused the line outright (four such units in the
+    // Bundesvergabegesetz). Since `parseAddressList` resolves the shorthand
+    // (18.09.2026) both §§ come out and the unit is filed under both, which
+    // is the answer the guard was standing in for.
     const line = 'In den §§ 156 Abs. 2 und 317 Abs. 2 wird nach der Wortfolge "durchgeführt wird" jeweils die Wortfolge ", eine Rahmenvereinbarung abgeschlossen wird" und nach der Wortfolge "erteilt werden soll" die Wortfolge "bzw." eingefügt.'
+    expect(refusedAddresses(line)).toEqual(['§ 156', '§ 317'])
+  })
+
+  it('verweigert einen Plural, den die Zerlegung nicht auflösen kann', () => {
+    // The guard stays: where the shorthand cannot be split, one designation
+    // out of a plural line is still the wrong answer, not half of one.
+    const line = 'In den §§ 156 und wird die Wortfolge "a" durch die Wortfolge "b" ersetzt.'
     expect(refusedAddresses(line)).toBeNull()
   })
 
