@@ -464,6 +464,57 @@ The cheap half needs neither: a curated alias per procedure
 (`shared/utils/aliases.ts`) — "Bundestrojaner" appears in no official title,
 so the tool was unfindable under the name the public uses.
 
+**Gemessen und zweimal repariert, 19.09.2026 — die Deckung war nie gezählt
+worden.** §12.11 kannte nur die 9 % der zitierten Überschriften; wie viel der
+*Nachschlag* auf dem ausgelieferten Pfad wirklich benennt, stand nirgends.
+Über 10 Entwürfe der XXVIII. GP und 565 geänderte Einheiten: **47 %**
+(Median je Entwurf 49 %) — und zwei Entwürfe bei exakt **0 %**, was nach
+einem Schalter aussieht und keiner war, sondern zwei verschiedene Ursachen.
+
+*Erste Ursache: Die Vorlage zählte als Inhalt.* Ein Entwurf ohne Artikelzeile
+trägt seinen Titel als ganzen Satz — „Bundesgesetz, mit dem das
+Lebensmittelsicherheits- und Verbraucherschutzgesetz **geändert wird**". Die
+Stoppwortliste von `lawNameScore` kannte „Änderung", aber nicht die Verbform,
+also zählten „geändert" und „wird" als Namensbestandteile: 2 von 4 gemeinsamen
+Wörtern, Score 0,50, und `pickByName` verlangt 0,60. Das ist kein Randfall,
+sondern genau der Fall, für den der Name da ist — BGBl. I Nr. 13/2006 schafft
+**zwei** Gesetze (LMSVG und Kontroll- und Digitalisierungs-Durchführungsgesetz),
+und ohne Entscheidung verweigert der Resolver. Mit den Verben auf der Liste
+steht es 1,00 gegen 0,00. **70/ME: 0 → 14 von 20 Namen.**
+
+*Zweite Ursache: eine Klausel, die nicht wie eine aussah.* „Das
+Eltern-Kind-Pass-Gesetz, BGBl. I Nr. 82/2023, wird **in seinem Artikel 1** wie
+folgt geändert" — zwischen Verb und Formel steht eine Einschränkung, und
+`AMENDS_RE` verlangte sie nebeneinander. Betroffen sind ausgerechnet die
+artikelgegliederten Gesetze. Der Ausfall war dreifach und still: Der Artikel
+fehlte unter **„Geltendes Recht"** (60/ME zeigte zwei Gesetze, der Entwurf
+ändert drei), seine §§ bekamen keinen Namen, und die konsolidierte Lesefassung
+zählte sie nicht einmal in ihren *Nenner*. Der Ausdruck lässt jetzt eine
+begrenzte Lücke ohne Satzzeichen zu — ein Querverweis im Text eines neuen
+Gesetzes bleibt draußen (die Verwechslung von 101/ME), und ein Test hält beide
+Seiten fest.
+
+| 10 Entwürfe, 565 geänderte Einheiten | vorher | nachher |
+|---|---|---|
+| benannte Einheiten | 267 (47 %) | **281 (50 %)** |
+| Median je Entwurf | 49 % | **70 %** |
+| Entwürfe bei 0 % | 2 | **1** |
+
+*Was die verbleibende Hälfte ist, ist damit zum ersten Mal gezählt* (Spur je
+Einheit über dieselben Entwürfe): **keine Klausel für den Artikel** (79/ME: 16
+von 25 — eine dritte, noch nicht untersuchte Ursache), **kein lesbarer § in
+der Anweisung** (74/ME: 89 — Anlagen und Formen, die `addressedParagraph`
+nicht liest), **§ nicht im aufgelösten Gesetz** (60/ME: alle 44 — das
+artikelgegliederte Gesetz, dessen §§ das RIS unter dem Sammel-BGBl führt; die
+Verweigerung ist hier richtig) und **§ ohne Überschrift im RIS** (einzelne).
+Keine dieser Klassen ist ein Sprachmodell-Problem; drei davon sind
+Nachschlagefehler und eine ist eine korrekte Verweigerung.
+
+*Und eine Einordnung, die aus dem neuen Kriterium folgt:* Dieses Paket trägt
+keine der vier Kostenarten (`TODO.md`) — kein Betrieb, kein Partner, keine
+Rechnung, kein offener Ausgang. Es ist gewöhnliche Arbeit und steht seit
+19.09.2026 nicht mehr unter den Antragspaketen.
+
 ### 12.12 Consolidated law text — engine built, not yet published
 
 Today a Novelle compares *amendment instructions*: "In § 9 Abs. 1 wird nach

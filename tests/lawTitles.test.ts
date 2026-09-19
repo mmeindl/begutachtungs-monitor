@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph, articleBlocks, draftArticles, lawNameScore, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
+import { addressedParagraph, articleBlocks, draftArticles, isAmendmentClause, lawNameScore, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
 import { parseRisXml } from '../server/utils/lawText'
 import { unitKey } from '../shared/utils/diffKey'
 
@@ -47,6 +47,29 @@ describe('promulgationByArticle', () => {
     expect(map.get('Änderung des KommAustria-Gesetzes')).toEqual({ organ: 'BGBl. I Nr.', nummer: '32/2001' })
   })
 
+  // „wird in seinem Artikel 1 wie folgt geändert" — die Einschränkung steht
+  // zwischen Verb und Formel, und zwar bei den artikelgegliederten Gesetzen.
+  // Ohne sie fiel der ganze Artikel aus „Geltendes Recht", aus den
+  // §-Namen und aus dem Nenner der Lesefassung (60/ME, 19.09.2026).
+  it('reads a clause whose verb and formula are separated', () => {
+    const blocks = parseRisXml(
+      doc(
+        article('Artikel 1', 'Änderung des Eltern-Kind-Pass-Gesetzes', 'Das Eltern-Kind-Pass-Gesetz, BGBl. I Nr. 82/2023, wird in seinem Artikel 1 wie folgt geändert:', ['1. In § 2 Abs. 2 wird das Wort "A" durch das Wort "B" ersetzt.']),
+      ),
+    )
+    expect(promulgationByArticle(blocks).get('Änderung des Eltern-Kind-Pass-Gesetzes')).toEqual({ organ: 'BGBl. I Nr.', nummer: '82/2023' })
+  })
+
+  // Die Gegenprobe, die den Ausdruck eng hält. Die Lücke zwischen Verb und
+  // Formel darf keine Satzgrenze überspringen: Sonst wird aus einem neuen
+  // Gesetz, das ein anderes zitiert, eine Novelle davon (101/ME).
+  it('keeps the clause test inside one sentence', () => {
+    expect(isAmendmentClause('Das Eltern-Kind-Pass-Gesetz, BGBl. I Nr. 82/2023, wird in seinem Artikel 1 wie folgt geändert:')).toBe(true)
+    expect(isAmendmentClause('Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:')).toBe(true)
+    expect(isAmendmentClause('Das Tabakgesetz, BGBl. Nr. 431/1995, ist sinngemäß anzuwenden.')).toBe(false)
+    expect(isAmendmentClause('Das Gesetz wird kundgemacht. Die Anlage lautet wie folgt geändert')).toBe(false)
+  })
+
   it('ignores citations that appear after the first instruction', () => {
     // A cross-reference inside an amendment is not a promulgation clause.
     const blocks = parseRisXml(
@@ -63,6 +86,23 @@ describe('promulgationByArticle', () => {
   it('yields nothing for a Stammgesetz — it creates law rather than changing it', () => {
     const blocks = parseRisXml(doc('<ueberschrift typ="titel">Bundesgesetz über etwas Neues</ueberschrift><absatz typ="abs"><gldsym>§ 1.</gldsym> Dieses Gesetz gilt.</absatz>'))
     expect(promulgationByArticle(blocks).size).toBe(0)
+  })
+})
+
+describe('lawNameScore — die Vorlage zählt nicht als Inhalt', () => {
+  // Ein Entwurf ohne Artikelzeile trägt seinen Titel als Satz. Die Verben
+  // „geändert wird" ließen die Übereinstimmung auf 0,50 fallen, und
+  // `pickByName` verlangt 0,60 — das LMSVG war damit gegen das zweite Gesetz
+  // desselben BGBl nicht mehr bestimmbar (70/ME, 20 Einheiten ohne Namen).
+  it('matches a sentence-form draft title against the RIS Kurztitel', () => {
+    const sentence = 'Bundesgesetz, mit dem das Lebensmittelsicherheits- und Verbraucherschutzgesetz geändert wird'
+    expect(lawNameScore(sentence, 'Lebensmittelsicherheits- und Verbraucherschutzgesetz')).toBe(1)
+    expect(lawNameScore(sentence, 'Kontroll- und Digitalisierungs-Durchführungsgesetz')).toBe(0)
+  })
+
+  it('still separates two namesakes of one Bundesgesetzblatt', () => {
+    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bausparkassengesetz')).toBe(0)
+    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bankwesengesetz')).toBe(1)
   })
 })
 

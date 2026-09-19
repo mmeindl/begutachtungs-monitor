@@ -110,10 +110,23 @@ export function sameBgbl(a: BgblCitation, b: BgblCitation): boolean {
 /**
  * Words that appear in almost every Artikel title and so carry no evidence.
  * "Änderung des …" is the template, not the name.
+ *
+ * **Die Vollform der Vorlage stand bis 19.09.2026 nicht darin.** Ein Entwurf
+ * ohne Artikelzeile trägt seinen Titel als ganzen Satz — „Bundesgesetz, mit
+ * dem das Lebensmittelsicherheits- und Verbraucherschutzgesetz **geändert
+ * wird**" —, und die beiden Verben zählten als Inhalt. Gegen den Kurztitel
+ * des RIS ergab das 2 von 4 gemeinsamen Wörtern, also 0,50, und `pickByName`
+ * verlangt 0,60: Das LMSVG war damit gegen das zweite Gesetz desselben
+ * Bundesgesetzblatts (BGBl. I Nr. 13/2006 schafft auch das Kontroll- und
+ * Digitalisierungs-Durchführungsgesetz) nicht mehr bestimmbar — 20 von 20
+ * Einheiten in 70/ME ohne Namen, und dasselbe Gesetz fehlte unter
+ * „Geltendes Recht". Mit den Verben auf dieser Liste sind es 1,00 gegen 0,00.
  */
 const TITLE_STOPWORDS = new Set([
   'änderung', 'änderungen', 'aufhebung', 'bundesgesetz', 'bundesgesetzes', 'gesetz', 'gesetzes',
   'über', 'sowie', 'mit', 'dem', 'des', 'der', 'die', 'das', 'den', 'und', 'von', 'zum', 'zur',
+  // Die Vorlage in ihrer Satzform: „…, mit dem das X geändert wird".
+  'geändert', 'wird', 'werden', 'erlassen', 'aufgehoben',
 ])
 
 /**
@@ -132,7 +145,9 @@ function titleTokens(title: string): Set<string> {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .split(' ')
     .filter((w) => w.length > 3 && !TITLE_STOPWORDS.has(w))
-  return new Set(words.map(stem))
+  // Auch nach dem Stemmen: „geänderten" wird zu „geändert" und ist dann
+  // dasselbe Füllwort, das die Liste oben schon kennt.
+  return new Set(words.map(stem).filter((w) => !TITLE_STOPWORDS.has(w)))
 }
 
 /**
@@ -157,7 +172,20 @@ export function lawNameScore(a: string, b: string): number {
  * A Stammgesetz has none — it creates law rather than changing it, so there
  * is nothing to look up and nothing to name.
  */
-const AMENDS_RE = /\bwird wie folgt geändert|\bwerden wie folgt geändert|\bwird geändert\b/i
+/**
+ * „wird **in seinem Artikel 1** wie folgt geändert" — zwischen dem Verb und
+ * der Formel steht regelmäßig eine Einschränkung, und zwar bei genau den
+ * Gesetzen, die selbst artikelgegliedert sind (Eltern-Kind-Pass-Gesetz,
+ * 60/ME). Ohne die Lücke im Ausdruck fiel ihr Artikel aus *drei* Anzeigen
+ * zugleich: Er fehlte unter „Geltendes Recht", seine §§ bekamen keinen Namen,
+ * und die Lesefassung zählte sie nicht einmal in ihren Nenner (19.09.2026).
+ *
+ * Begrenzt und ohne Satzzeichen: Die Klausel ist ein Satz, und der Abstand
+ * hält den Ausdruck von einem Querverweis fern, der in einem *neuen* Gesetz
+ * steht („… wird in § 5 geregelt. Das Gesetz X wird wie folgt geändert" wäre
+ * zwei Sätze) — die Verwechslung, die 101/ME einmal zu einer Novelle machte.
+ */
+const AMENDS_RE = /\b(?:wird|werden)\b[^.;:]{0,80}?\bwie folgt geändert|\bwird geändert\b|\bwerden geändert\b/i
 
 /**
  * Exported so a caller that has to find the clause for itself uses the same
