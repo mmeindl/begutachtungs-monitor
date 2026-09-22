@@ -130,6 +130,7 @@ export function decodeEntities(s: string): string {
     .replace(/&([a-z]+);/gi, (match, name: string) => NAMED_ENTITIES[name] ?? match)
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Make site-relative parliament links absolute; leave absolute ones untouched. */
 export function absolutizeUrl(url: string): string {
   const trimmed = url.trim()
@@ -248,6 +249,7 @@ export function mapDraftRow(row: unknown[]): DraftSummary {
 // every submitter into "Privatperson".
 // ---------------------------------------------------------------------------
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Display normalization for organisation names, whitespace/separators ONLY:
  * upstream free text carries space runs and inconsistent separator spacing

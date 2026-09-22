@@ -30,6 +30,7 @@ export interface RvBaseRate {
   p90Days: number
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Newest GP first. */
 export const RV_BASE_RATES: readonly RvBaseRate[] = [
   { gp: 'XXVII', drafts: 353, withRv: 296, rvInLaterGp: 4, withinLatencyWindow: 0.895, medianDays: 40, p90Days: 189 },

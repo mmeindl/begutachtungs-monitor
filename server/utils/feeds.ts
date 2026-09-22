@@ -130,6 +130,7 @@ function risEntry(siteUrl: string, item: RisConsultation): FeedEntry {
   }
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * FNV-1a 64-bit, as two 32-bit halves.
  *
@@ -195,6 +196,7 @@ const XML_ILLEGAL_RE =
   // eslint-disable-next-line no-control-regex -- the control characters are the subject here: they are what XML forbids
   /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function escapeXml(s: string): string {
   return s
     .replace(XML_ILLEGAL_RE, '')
@@ -334,6 +336,7 @@ export function buildSitemap(
 // iCalendar (RFC 5545)
 // ---------------------------------------------------------------------------
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** TEXT escaping per RFC 5545 §3.3.11 — backslash first, then , ; newline.
  * TEXT values only; URI values (URL property) are emitted raw. */
 export function escapeIcsText(s: string): string {

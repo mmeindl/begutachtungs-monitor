@@ -57,6 +57,7 @@ function changedTokens(a: string, b: string, type: LawDiffSegment['type']): stri
     .filter(Boolean)
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** The tokens the engine changed that RIS did not — the diagnostic for a divergence. */
 export function extraTokens(before: string, got: string, expected: string): { inserted: string[]; removed: string[]; comparable: boolean } {
   const out = { inserted: [] as string[], removed: [] as string[], comparable: true }

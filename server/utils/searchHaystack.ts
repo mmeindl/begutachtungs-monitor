@@ -94,6 +94,7 @@ export interface MinistryToken {
   clauseOnly: boolean
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Der Ressortname als Streichtoken: was hinter dem „für" steht, sonst der
  * Name selbst.

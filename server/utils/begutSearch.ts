@@ -123,6 +123,7 @@ interface SearchSnippet {
   after: string
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Der Ausschnitt um eine Fundstelle, an Wortgrenzen geschnitten.
  *

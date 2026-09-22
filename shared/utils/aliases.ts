@@ -18,6 +18,7 @@
  * only knows the debate term finds the procedure.
  */
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Keyed `${gp}/${inr}`. */
 export const CONSULTATION_ALIASES: Record<string, readonly string[]> = {
   // Verified 2026-09-08 against the project's own research notes; the term is

@@ -251,6 +251,7 @@ export function parseParliamentHtml(html: string): TextBlock[] {
 // Segmentation
 // ---------------------------------------------------------------------------
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** "§ 5." → "§5"; "Artikel 3." → "Art.3" */
 export function normalizeGld(g: string): string {
   return normalizeText(g).replace(/\s+/g, '').replace(/^Artikel/, 'Art.').replace(/\.$/, '')

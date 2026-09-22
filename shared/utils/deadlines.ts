@@ -10,6 +10,7 @@ const DEADLINE_CRITICAL_DAYS = 3
 /** Deadline ends in ≤ N days → serious (orange badge tone, dashboard count). */
 export const DEADLINE_SERIOUS_DAYS = 7
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Begonnen vor ≤ N Tagen → „Neu" auf der Zeile.
  *

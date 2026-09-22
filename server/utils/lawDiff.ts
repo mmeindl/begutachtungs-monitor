@@ -148,6 +148,7 @@ function distinctArticles(units: readonly LawUnit[]): ArticleRef[] {
   return out
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Earlier article → later article, so that differently titled articles about
  * the same law compare with each other. Returns the canonical (later) article
@@ -218,6 +219,7 @@ export interface Alignment {
   onlyTo: LawUnit[]
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]): Alignment {
   const articleMap = pairArticles(fromUnits, to)
   const fromCanonical = canonical(fromUnits, articleMap, true)
@@ -424,6 +426,7 @@ function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null,
   }
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Units of both texts → one list in reading order of the LATER version, with
  * removed units placed where they stood in the earlier one.

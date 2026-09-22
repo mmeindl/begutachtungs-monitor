@@ -22,6 +22,7 @@ export const RIS_KIND_LABEL: Record<RisConsultationKind, string> = {
   unbestimmt: 'Entwurf',
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Plural, for counts and headings. */
 export const RIS_KIND_PLURAL: Record<RisConsultationKind, string> = {
   verordnung: 'Verordnungsentwürfe',

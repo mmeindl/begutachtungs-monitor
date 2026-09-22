@@ -52,6 +52,7 @@ export interface BgblJoinDraft {
   ende: string | null
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Das Fenster zwischen Fristende und Ausgabedatum, in Tagen.
  *

@@ -21,6 +21,7 @@ import { LAW_STATION_LABEL } from './lawStations'
 /** How many law names a sentence lists before it counts the rest. */
 const MAX_NAMES = 3
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** "A", "A und B", "A, B, C und ein weiteres", "A, B, C und 132 weitere" */
 export function formatLawList(entries: readonly LawPackageEntry[], max = MAX_NAMES): string {
   const names = entries.map((e) => e.article)

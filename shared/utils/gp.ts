@@ -51,6 +51,7 @@ export function romanToInt(roman: string): number | null {
   return intToRoman(total) === roman ? total : null
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * First day of each Gesetzgebungsperiode — the konstituierende Sitzung of
  * the Nationalrat. Art. 27 B-VG: a GP lasts until the day the new

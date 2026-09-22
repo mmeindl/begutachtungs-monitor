@@ -111,6 +111,7 @@ const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
 const ANNOTATION_RE = /\(Anm\.?\s*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
 const BOILERPLATE_RE = /Beachte für folgende Bestimmung/gi
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Below this many comparable words a § says nothing either way: a row that is
  * a heading plus "(1) bis (3) …" shows nothing of the provision on purpose,
@@ -204,6 +205,7 @@ export interface Coverage {
   prose: boolean
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * How much of `column` the `standing` text accounts for.
  *
@@ -401,6 +403,7 @@ function seqContains(hay: readonly string[], needle: readonly string[]): boolean
   return false
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * The stretches of text the page shows as **new** in one §.
  *
@@ -435,6 +438,7 @@ export function draftTextOf(blocks: readonly TextBlock[]): string {
 
 const withoutHyphens = (w: string): string => w.replace(/-/g, '')
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Every comparable word of the draft's Gesetzestext, hyphen-insensitive.
  *
@@ -601,6 +605,7 @@ export function draftBags(blocks: readonly TextBlock[]): DraftBags {
   return { byLaw, general, whole: draftWordBag(draftTextOf(blocks)), units: units.length, addressed, rightlyWithoutParagraph, reasons }
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * The reference rule 2 holds one law's §§ against, as a lookup per §.
  *
@@ -886,6 +891,7 @@ export interface LawCheck {
   failed: string[]
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * The verdict on one law of a package, from the coverage of its §§.
  *
@@ -977,6 +983,7 @@ export interface AnnexCheckOptions {
   concurrency?: number
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Why §§ went unchecked, in words fit to show a reader.
  *

@@ -22,6 +22,7 @@
 import type { DraftSummary, RelatedDraft } from '../../shared/types'
 import { splitParliamentTitle, titleTokens } from './risJoin'
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Sorted unique title tokens joined by a space; '' when nothing survives normalisation ("Bundesgesetz, Änderung"). */
 export function titleKey(title: string | null | undefined): string {
   return [...new Set(titleTokens(splitParliamentTitle(title ?? '').core))].sort().join(' ')

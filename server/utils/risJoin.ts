@@ -126,6 +126,7 @@ export interface JoinRow {
 
 export const RULE_VERSION = 2
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** v2: Ende outweighs Beginn — it is the sharper signal (336/337 on GP XXVII). */
 export const JOIN_WEIGHTS = { date: 0.2, end: 0.3, ministry: 0.15, title: 0.35 }
 const CLASS_PENALTY: Record<RisClass, number> = { gesetz: 0, other: 0.05, verordnung: 0.15 }
@@ -416,6 +417,7 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((tb - ta) / DAY_MS)
 }
 
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function dateScore(offset: number): number {
   if (offset === 0 || offset === -1) return 1
   if (offset >= -3 && offset <= 1) return 0.8
