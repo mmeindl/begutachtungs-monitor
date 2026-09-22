@@ -17,10 +17,22 @@
  */
 import { parseKonsParagraph, type LawNode } from './lawStructure'
 import { sameBgbl, lawNameScore, type BgblCitation } from './lawTitles'
+import { RIS_API_BASE, upstreamJson, upstreamText, type UpstreamPolicy } from './upstream/fetch'
 
-const RIS_KONS_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 const TIMEOUT_MS = 20_000
+/**
+ * Three attempts, 600 ms more between each — a consolidated law is hundreds
+ * of documents, and a single transient failure used to drop a whole Novelle
+ * out of a harness run, which silently changed the sample the percentages
+ * were computed over. `retryOnHttpError` keeps what the two hand-written
+ * loops here did: they retried every non-OK status, not just 5xx.
+ */
+const KONS_POLICY: UpstreamPolicy = {
+  timeoutMs: TIMEOUT_MS,
+  retries: 2,
+  backoffMs: (attempt) => 600 * attempt,
+  retryOnHttpError: true,
+}
 /**
  * More hits than this means the filter was ignored (the whole corpus is
  * ~441.000 documents). It used to be 3.000, "more than any single law has" —
@@ -73,44 +85,18 @@ function asArray<T>(x: T | T[] | null | undefined): T[] {
   return x === null || x === undefined ? [] : Array.isArray(x) ? x : [x]
 }
 
-async function getJson(url: string): Promise<any> {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return await res.json()
-    } catch (err) {
-      lastError = err
-      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)))
-    }
-  }
-  throw new Error(`RIS BrKons nicht abrufbar: ${String(lastError)}`)
+function getJson(url: string): Promise<any> {
+  return upstreamJson<any>(url, { ...KONS_POLICY, accept: 'application/json' })
 }
 
-/**
- * Retried like `getJson`: a consolidated law is hundreds of documents, and a
- * single transient failure used to drop a whole Novelle out of a harness run
- * — which silently changed the sample the percentages were computed over.
- */
-export async function getText(url: string): Promise<string> {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(TIMEOUT_MS) })
-      if (!res.ok) throw new Error(`HTTP ${res.status} für ${url}`)
-      return await res.text()
-    } catch (err) {
-      lastError = err
-      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)))
-    }
-  }
-  throw new Error(`RIS-Dokument nicht abrufbar (${url}): ${String(lastError)}`)
+/** One RIS document, retried like `getJson` and for the same reason. */
+export function getText(url: string): Promise<string> {
+  return upstreamText(url, KONS_POLICY)
 }
 
 function query(params: Record<string, string>): string {
   const q = new URLSearchParams({ Applikation: 'BrKons', ...params })
-  return `${RIS_KONS_BASE}?${q.toString()}`
+  return `${RIS_API_BASE}?${q.toString()}`
 }
 
 function refOf(ref: any): KonsParagraphRef | null {

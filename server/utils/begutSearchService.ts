@@ -60,12 +60,24 @@ import { DERIVED_CACHE } from './cacheBase'
 import { parseRisXml, type TextBlock } from './lawText'
 import { ministryTokens, type MinistryToken } from './searchHaystack'
 import { getDraftsForGp, getCurrentGp, reconcileActive } from './parliament'
-import { getRisBegutCorpus, getRisMapForGp, RIS_API_BASE } from './ris'
+import { getRisBegutCorpus, getRisMapForGp } from './ris'
 import { getRisConsultation } from './risOnly'
 import { asArray, isOpenOn } from './risRecord'
+import {
+  RIS_API_BASE,
+  RisEnvelopeError,
+  risJson,
+  upstreamBytes,
+  upstreamText,
+  type UpstreamPolicy,
+} from './upstream/fetch'
 
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 const SEARCH_TIMEOUT_MS = 20_000
+/**
+ * Ohne Wiederholungsversuch — wie vor dem gemeinsamen Client, und aus dem
+ * Grund, der unter `searchRisIds` steht: An dieser Anfrage wartet jemand.
+ */
+const SEARCH_POLICY: UpstreamPolicy = { timeoutMs: SEARCH_TIMEOUT_MS, retries: 0 }
 /**
  * Ein Dokument des Ressorts wird einmal veröffentlicht und nie überarbeitet
  * — ein korrigierter Entwurf bekommt einen neuen Satz. Dieselbe Frist wie in
@@ -169,13 +181,8 @@ function documentsOf(detail: Pick<RisConsultationDetail, DocumentKey | 'otherDoc
  */
 const fetchBegutPdf = defineCachedFunction(
   async (url: string): Promise<string> => {
-    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
-    if (!res.ok) throw new Error(`HTTP ${res.status} für ${url}`)
-    const declared = Number(res.headers.get('content-length') ?? 0)
-    if (declared > PDF_MAX_BYTES) throw new Error(`PDF zu groß: ${url}`)
-    const buf = await res.arrayBuffer()
-    if (buf.byteLength > PDF_MAX_BYTES) throw new Error(`PDF zu groß: ${url}`)
-    return Buffer.from(buf).toString('base64')
+    const { bytes } = await upstreamBytes(url, { ...SEARCH_POLICY, maxBytes: PDF_MAX_BYTES })
+    return Buffer.from(bytes).toString('base64')
   },
   {
     name: 'begut-dokument-pdf',
@@ -215,9 +222,7 @@ const begutPdfText = defineCachedFunction(
 /** Ein Begut-Dokument als XML, wie das RIS es sendet — gelesen wird es frisch. */
 const fetchBegutDocument = defineCachedFunction(
   async (url: string): Promise<string> => {
-    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
-    if (!res.ok) throw new Error(`HTTP ${res.status} für ${url}`)
-    return res.text()
+    return upstreamText(url, SEARCH_POLICY)
   },
   { name: 'begut-dokument-xml', getKey: (url: string) => url, maxAge: DOCUMENT_TTL_S, swr: false },
 )
@@ -239,21 +244,15 @@ async function searchRisIds(terms: readonly SearchTerm[], day: string): Promise<
     DokumenteProSeite: 'OneHundred',
     Seitennummer: '1',
   })
-  let body: unknown
-  try {
-    const res = await fetch(`${RIS_API_BASE}?${params}`, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
-    })
-    if (!res.ok) throw new Error(`RIS ${res.status}`)
-    body = await res.json()
-  } catch (cause) {
-    throw createError({ statusCode: 502, statusMessage: 'Die Suche im RIS ist gerade nicht erreichbar', cause })
-  }
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const result = (body as any)?.OgdSearchResult
-  if (!result || result.Error) {
-    throw createError({ statusCode: 502, statusMessage: 'Die Suche im RIS hat einen Fehler gemeldet' })
+  let result: any
+  try {
+    result = await risJson<any>(`${RIS_API_BASE}?${params}`, { ...SEARCH_POLICY, accept: 'application/json' })
+  } catch (cause) {
+    if (cause instanceof RisEnvelopeError) {
+      throw createError({ statusCode: 502, statusMessage: 'Die Suche im RIS hat einen Fehler gemeldet' })
+    }
+    throw createError({ statusCode: 502, statusMessage: 'Die Suche im RIS ist gerade nicht erreichbar', cause })
   }
   const refs = asArray<any>(result.OgdDocumentResults?.OgdDocumentReference)
   return refs.map((r) => String(r?.Data?.Metadaten?.Technisch?.ID ?? '')).filter(Boolean)

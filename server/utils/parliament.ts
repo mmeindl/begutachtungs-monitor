@@ -67,6 +67,7 @@ import {
 } from './lastgood'
 import { withinBudget } from './budget'
 import { findRelatedDrafts } from './related'
+import { upstreamJson, UpstreamHttpError, type UpstreamPolicy } from './upstream/fetch'
 
 /**
  * TTL of all upstream caches. `swr: false` is NOT redundant: Nitro defaults
@@ -80,7 +81,6 @@ import { findRelatedDrafts } from './related'
  */
 const UPSTREAM_TTL_S = 60 * 30
 
-const USER_AGENT = 'begutachtungs-monitor/0.1 (ziviltech-prototyp)'
 /**
  * Timeout per attempt. Deliberately tight: the risk is not the fast 502 but
  * the hanging upstream — timeout × (1 + MAX_RETRIES) is how long an SSR
@@ -91,6 +91,12 @@ const USER_AGENT = 'begutachtungs-monitor/0.1 (ziviltech-prototyp)'
 const TIMEOUT_MS = 8_000
 const MAX_RETRIES = 2
 const RETRY_BACKOFF_MS = 300
+const PARLIAMENT_POLICY: UpstreamPolicy = {
+  timeoutMs: TIMEOUT_MS,
+  retries: MAX_RETRIES,
+  backoffMs: () => RETRY_BACKOFF_MS,
+  accept: 'application/json',
+}
 const FALLBACK_GP = 'XXVIII'
 /** Oldest GP with Ministerialentwürfe in the Parliament API (XIV, 1979). */
 const OLDEST_GP_WITH_ME = 14
@@ -124,65 +130,34 @@ interface GegenstandResponse {
   } | null
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 /**
- * GET/POST with 8-s timeout and 2 retries on 5xx/network errors
- * (300 ms backoff). 4xx is not retried.
+ * GET/POST with the policy above: 8-s timeout, 2 retries on 5xx and network
+ * errors, 300 ms backoff, 4xx not retried. The statuses are translated here
+ * and nowhere else — `upstream/fetch.ts` stays free of Nitro globals, so it
+ * cannot know that a 404 from this API is a 404 for the reader.
  */
-async function upstreamJson<T>(
+async function parliamentJson<T>(
   url: string,
   init: { method?: 'GET' | 'POST'; body?: unknown } = {},
 ): Promise<T> {
-  let lastError: unknown
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (attempt > 0) await sleep(RETRY_BACKOFF_MS)
-
-    let res: Response
-    try {
-      res = await fetch(url, {
-        method: init.method ?? 'GET',
-        headers: {
-          'User-Agent': USER_AGENT,
-          Accept: 'application/json',
-          ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        },
-        body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      })
-    } catch (err) {
-      // Network error / timeout → retry
-      lastError = err
-      continue
-    }
-
-    if (res.status >= 500) {
-      lastError = new Error(`Upstream ${res.status} für ${url}`)
-      continue
-    }
-    if (res.status === 404) {
-      throw createError({ statusCode: 404, statusMessage: 'Gegenstand nicht gefunden' })
-    }
-    if (!res.ok) {
+  try {
+    return await upstreamJson<T>(url, { ...PARLIAMENT_POLICY, ...init })
+  } catch (err) {
+    if (err instanceof UpstreamHttpError) {
+      if (err.status === 404) {
+        throw createError({ statusCode: 404, statusMessage: 'Gegenstand nicht gefunden' })
+      }
       throw createError({
         statusCode: 502,
-        statusMessage: `Parlament-API antwortete mit Status ${res.status}`,
+        statusMessage: `Parlament-API antwortete mit Status ${err.status}`,
       })
     }
-    try {
-      return (await res.json()) as T
-    } catch (err) {
-      lastError = err
-      continue
-    }
+    throw createError({
+      statusCode: 502,
+      statusMessage: 'Parlament-API nicht erreichbar',
+      cause: err,
+    })
   }
-  throw createError({
-    statusCode: 502,
-    statusMessage: 'Parlament-API nicht erreichbar',
-    cause: lastError,
-  })
 }
 
 /**
@@ -206,13 +181,13 @@ function fetchFilterList(
     ...query,
   })
   const url = `${PARLIAMENT_BASE}/Filter/api/filter/data/${listId}?${params.toString()}`
-  return upstreamJson<FilterListResponse>(url, { method: 'POST', body })
+  return parliamentJson<FilterListResponse>(url, { method: 'POST', body })
 }
 
 /** GET /gegenstand/{gp}/{ityp}/{inr}?json=True */
 export function fetchGegenstand(gp: string, ityp: string, inr: number): Promise<GegenstandResponse> {
   const url = `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}?json=True`
-  return upstreamJson<GegenstandResponse>(url)
+  return parliamentJson<GegenstandResponse>(url)
 }
 
 /**
@@ -278,7 +253,7 @@ function findGpCode(node: unknown): string | null {
 /** The ME list's page configuration, as served. Leaf cache. */
 const meListConfig = defineCachedFunction(
   (): Promise<unknown> =>
-    upstreamJson<unknown>(`${PARLIAMENT_BASE}/recherchieren/gegenstaende/ministerialentwuerfe?json=True`),
+    parliamentJson<unknown>(`${PARLIAMENT_BASE}/recherchieren/gegenstaende/ministerialentwuerfe?json=True`),
   { name: 'parliament-me-config', getKey: () => 'config', maxAge: 60 * 60 * 24, swr: false },
 )
 

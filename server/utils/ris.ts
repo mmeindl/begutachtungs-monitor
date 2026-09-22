@@ -22,8 +22,8 @@ import {
 // vitest can run the shipped mapper); both are auto-imported server-side, so
 // nothing is re-exported here.
 import { asArray, flattenRisRecord, risDocumentUrl, type RisBegutFlat } from './risRecord'
+import { RIS_API_BASE, risJson, sleep, type UpstreamPolicy } from './upstream/fetch'
 
-export const RIS_API_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const RIS_PAGE_SIZE = 100
 const RIS_MAX_PAGES = 80
 const RIS_TIMEOUT_MS = 20_000
@@ -34,16 +34,22 @@ const RIS_PAGE_PAUSE_MS = 300
 // would let the timer find a still-valid cache and refresh nothing.
 const RIS_CORPUS_TTL_S = 60 * 60 * 20
 const RIS_MAP_TTL_S = 60 * 30
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
+const RIS_POLICY: UpstreamPolicy = {
+  timeoutMs: RIS_TIMEOUT_MS,
+  retries: RIS_MAX_RETRIES,
+  backoffMs: (attempt) => RIS_RETRY_BACKOFF_MS * attempt,
+  accept: 'application/json',
+  // Every non-OK status is retried here, not only 5xx — the behaviour this
+  // client had before the shared one, kept because the corpus fetch runs
+  // unattended in the prewarm and a page lost to a transient 4xx would
+  // silently shorten it.
+  retryOnHttpError: true,
+}
 
 interface RisBegutCorpus {
   fetchedAt: string
   hits: number
   records: RisBegutFlat[]
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // Loosely typed: the OGD JSON is generated from XML and not contractual.
@@ -57,35 +63,15 @@ async function fetchRisPage(page: number): Promise<{ hits: number; docs: any[] }
     'Sortierung.SortedByColumn': 'EndeBegutachtungsfrist',
     'Sortierung.SortDirection': 'Ascending',
   })
-  const url = `${RIS_API_BASE}?${params}`
-  let lastError: unknown
-  for (let attempt = 0; attempt <= RIS_MAX_RETRIES; attempt++) {
-    if (attempt > 0) await sleep(RIS_RETRY_BACKOFF_MS * attempt)
-    let body: any
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-        signal: AbortSignal.timeout(RIS_TIMEOUT_MS),
-      })
-      if (!res.ok) {
-        lastError = new Error(`RIS ${res.status} für Seite ${page}`)
-        continue
-      }
-      body = await res.json()
-    } catch (err) {
-      lastError = err
-      continue
-    }
-    const result = body?.OgdSearchResult
-    if (!result || result.Error) {
-      lastError = new Error(`RIS-Fehler auf Seite ${page}: ${JSON.stringify(result?.Error ?? body).slice(0, 200)}`)
-      continue
-    }
-    const docs = asArray<any>(result.OgdDocumentResults?.OgdDocumentReference)
-    const hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
-    return { hits, docs }
+  let result: any
+  try {
+    result = await risJson<any>(`${RIS_API_BASE}?${params}`, RIS_POLICY)
+  } catch (cause) {
+    throw createError({ statusCode: 502, statusMessage: 'RIS-API nicht erreichbar', cause })
   }
-  throw createError({ statusCode: 502, statusMessage: 'RIS-API nicht erreichbar', cause: lastError })
+  const docs = asArray<any>(result.OgdDocumentResults?.OgdDocumentReference)
+  const hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
+  return { hits, docs }
 }
 /**
  * One page of the result set, as RIS sent it. The politeness pause sits

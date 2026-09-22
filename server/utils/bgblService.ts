@@ -21,11 +21,16 @@ import { joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin
 import { DERIVED_CACHE } from './cacheBase'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
+import { RIS_API_BASE, risJson, type UpstreamPolicy } from './upstream/fetch'
 import { bgblShort } from '#shared/utils/format'
 
-const RIS_API_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 const TIMEOUT_MS = 20_000
+/**
+ * Ohne Wiederholungsversuch, wie vor dem gemeinsamen Client: Beide Abfragen
+ * hängen unter einer gecachten Funktion, und ein Fehler wird geworfen, nie
+ * gecacht (`cacheBase.ts`).
+ */
+const BGBL_POLICY: UpstreamPolicy = { timeoutMs: TIMEOUT_MS, retries: 0, accept: 'application/json' }
 const PAGE_SIZE = 100
 const MAX_PAGES = 20
 /** Ein abgeschlossener Jahrgang ändert sich nicht mehr. */
@@ -56,16 +61,10 @@ async function loadBgblPage(key: string): Promise<any> {
     VonKundmachungsdatum: `${year}-01-01`,
     BisKundmachungsdatum: `${year}-12-31`,
   })
-  const res = await fetch(`${RIS_API_BASE}?${params}`, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  })
-  if (!res.ok) throw new Error(`RIS ${res.status} für BGBl ${key}`)
-  const result = ((await res.json()) as any)?.OgdSearchResult
   // Ein Fehler im 200er-Umschlag ist ein Fehler, keine leere Seite — sonst
   // wird aus einer schlechten Minute des RIS ein „nicht kundgemacht".
-  if (!result || result.Error) throw new Error(`RIS-Fehler für BGBl ${key}`)
-  return result
+  // `risJson` prüft den Umschlag für alle drei RIS-Clients.
+  return risJson<any>(`${RIS_API_BASE}?${params}`, BGBL_POLICY)
 }
 
 /**
@@ -189,14 +188,7 @@ const fetchBgblByNumber = defineCachedFunction(
       // erwartet seine eigene Kurzform.
       Bgblnummer: bgblShort(nummer),
     })
-    const res = await fetch(`${RIS_API_BASE}?${params}`, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    })
-    if (!res.ok) throw new Error(`RIS ${res.status} für ${nummer}`)
-    const result = ((await res.json()) as any)?.OgdSearchResult
-    if (!result || result.Error) throw new Error(`RIS-Fehler für ${nummer}`)
-    return result
+    return risJson<any>(`${RIS_API_BASE}?${params}`, BGBL_POLICY)
   },
   { name: 'bgbl-nummer-suche', getKey: (nummer: string) => nummer, maxAge: CLOSED_YEAR_TTL_S, swr: false },
 )

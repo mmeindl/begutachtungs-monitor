@@ -37,7 +37,7 @@ Rules for upstream calls (rationales in `docs/api-exploration.md`):
 - `showAll=true` **without** `pagesize` (an explicit `pagesize` wins otherwise), plus `sortrnr=11&ascDesc=DESC` on list 81.
 - Sanity check after every list call: all rows `row[0] === gp`, otherwise throw (the API silently ignores unknown filter keys!).
 - Retry: 2 retries on 5xx/network errors, 300 ms backoff, **8 s timeout per attempt**. Sporadic 502s observed (the retry absorbs those). The timeout is chosen tight because timeout × 3 is how long an SSR render blocks before the error page: 8 s → ~25 s worst case instead of over 60 s. Measured p90 is ~0.1 s.
-- `User-Agent: begutachtungs-monitor/0.1 (ziviltech-prototyp)` — identify politely.
+- `User-Agent: begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)` — identify politely. One identity for every upstream call, set in `server/utils/upstream/fetch.ts` (the single HTTP client: timeout, retry, byte cap, RIS error envelope); `scripts/` append `; scripts/<name>`.
 - Current GP: from the page configuration `GET /recherchieren/gegenstaende/ministerialentwuerfe?json=True` (field `…definition.params.GP_CODE[0]`, cached 24 h), fallback constant `'XXVIII'`. Never hardcode without a fallback path.
 
 ## 3. GDPR enforcement (hard, server-side)

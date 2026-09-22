@@ -28,46 +28,45 @@ import { parseLawUnits, parseLawUnitsFromRis } from './lawText'
 import { extractBgblLink, findLastRvLink, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup } from './mappers'
 import { getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
+import {
+  upstreamBytes,
+  UpstreamHttpError,
+  UpstreamTooLargeError,
+  type UpstreamPolicy,
+} from './upstream/fetch'
 
 const HTML_TTL_S = 60 * 60 * 24
 const DIFF_TTL_S = 60 * 60 * 24
 const HTML_TIMEOUT_MS = 20_000
 const HTML_MAX_BYTES = 8 * 1024 * 1024
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
+/** Three attempts without a pause between them, as this client always had. */
+const HTML_POLICY: UpstreamPolicy = {
+  timeoutMs: HTML_TIMEOUT_MS,
+  retries: 2,
+  maxBytes: HTML_MAX_BYTES,
+}
 
 /** One published Gesetzestext HTML, by URL. Leaf cache. */
 export const fetchLawHtml = defineCachedFunction(
   async (url: string): Promise<string> => {
-    let lastError: unknown
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(HTML_TIMEOUT_MS) })
-        if (res.status >= 500) {
-          lastError = new Error(`Upstream ${res.status} für ${url}`)
-          continue
-        }
-        if (!res.ok) throw createError({ statusCode: 502, statusMessage: `Dokument nicht abrufbar (Status ${res.status})` })
-        const length = Number(res.headers.get('content-length') ?? 0)
-        if (length > HTML_MAX_BYTES) throw createError({ statusCode: 502, statusMessage: 'Dokument zu groß für den Vergleich' })
-        // Parliament serves Word HTML as windows-1252 or utf-8; the header says which.
-        const type = res.headers.get('content-type') ?? ''
-        const charset = /charset=([\w-]+)/i.exec(type)?.[1]
-        const buf = await res.arrayBuffer()
-        if (buf.byteLength > HTML_MAX_BYTES) throw createError({ statusCode: 502, statusMessage: 'Dokument zu groß für den Vergleich' })
-        return decodeHtml(buf, charset)
-      } catch (err) {
-        if (isH3Error(err)) throw err
-        lastError = err
+    let body: Awaited<ReturnType<typeof upstreamBytes>>
+    try {
+      body = await upstreamBytes(url, HTML_POLICY)
+    } catch (err) {
+      if (err instanceof UpstreamTooLargeError) {
+        throw createError({ statusCode: 502, statusMessage: 'Dokument zu groß für den Vergleich' })
       }
+      if (err instanceof UpstreamHttpError) {
+        throw createError({ statusCode: 502, statusMessage: `Dokument nicht abrufbar (Status ${err.status})` })
+      }
+      throw createError({ statusCode: 502, statusMessage: 'Dokument nicht abrufbar', cause: err })
     }
-    throw createError({ statusCode: 502, statusMessage: 'Dokument nicht abrufbar', cause: lastError })
+    // Parliament serves Word HTML as windows-1252 or utf-8; the header says which.
+    const charset = /charset=([\w-]+)/i.exec(body.contentType ?? '')?.[1]
+    return decodeHtml(body.bytes, charset)
   },
   { name: 'law-html', getKey: (url: string) => url, maxAge: HTML_TTL_S, swr: false },
 )
-
-function isH3Error(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && 'statusCode' in err
-}
 
 /** Honour the header charset, else the <meta charset>, else utf-8. */
 function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string {

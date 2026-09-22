@@ -30,6 +30,7 @@ import { parseAnnexPdf, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
 import { DERIVED_CACHE } from './cacheBase'
 import type { DraftArticle } from './lawTitles'
+import { upstreamBytes, UpstreamHttpError, UpstreamTooLargeError, type UpstreamPolicy } from './upstream/fetch'
 
 /** A NOR-published annex never changes, so the bytes keep for a long time. */
 const PDF_TTL_S = 60 * 60 * 24 * 30
@@ -43,6 +44,8 @@ const PDF_TIMEOUT_MS = 25_000
  * must not take the process with it.
  */
 const PDF_MAX_BYTES = 16 * 1024 * 1024
+/** No retry: this client never had one, and the bytes are fetched once per URL. */
+const PDF_POLICY: UpstreamPolicy = { timeoutMs: PDF_TIMEOUT_MS, retries: 0, maxBytes: PDF_MAX_BYTES }
 
 /**
  * The annex PDF as base64.
@@ -53,16 +56,18 @@ const PDF_MAX_BYTES = 16 * 1024 * 1024
  */
 const fetchAnnexPdf = defineCachedFunction(
   async (url: string): Promise<string> => {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)' },
-      signal: AbortSignal.timeout(PDF_TIMEOUT_MS),
-    })
-    if (!res.ok) throw createError({ statusCode: 502, statusMessage: `Beilage nicht abrufbar (Status ${res.status})` })
-    const declared = Number(res.headers.get('content-length') ?? 0)
-    if (declared > PDF_MAX_BYTES) throw createError({ statusCode: 502, statusMessage: 'Beilage zu groß zum Auslesen' })
-    const buf = await res.arrayBuffer()
-    if (buf.byteLength > PDF_MAX_BYTES) throw createError({ statusCode: 502, statusMessage: 'Beilage zu groß zum Auslesen' })
-    return Buffer.from(buf).toString('base64')
+    try {
+      const { bytes } = await upstreamBytes(url, PDF_POLICY)
+      return Buffer.from(bytes).toString('base64')
+    } catch (err) {
+      if (err instanceof UpstreamTooLargeError) {
+        throw createError({ statusCode: 502, statusMessage: 'Beilage zu groß zum Auslesen' })
+      }
+      if (err instanceof UpstreamHttpError) {
+        throw createError({ statusCode: 502, statusMessage: `Beilage nicht abrufbar (Status ${err.status})` })
+      }
+      throw createError({ statusCode: 502, statusMessage: 'Beilage nicht abrufbar', cause: err })
+    }
   },
   {
     name: 'annex-pdf',
