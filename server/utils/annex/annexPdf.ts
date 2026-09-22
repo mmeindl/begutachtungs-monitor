@@ -979,9 +979,12 @@ export interface AnnexParse {
    * everything a column prints before its first § marker, and the entries of
    * a reprinted Inhaltsverzeichnis that no provision of the annex answers.
    *
-   * Optional and not yet read anywhere: a caller that wants to disclose "so
-   * many blocks of the annex are not shown" can, and until one does the
-   * number is at least in the harness output rather than nowhere.
+   * Optional and read by no shipping caller: one that wants to disclose "so
+   * many blocks of the annex are not shown" can. Until one does, the number
+   * is pinned by the two golden parses (`annexGolden.test.ts`,
+   * `annexPdf.test.ts`), so a change in what the parse leaves out still
+   * fails loudly instead of passing unnoticed. The debug printer that used
+   * to be its other reader was removed on 22.09.2026.
    */
   unplaced?: number
   /**
