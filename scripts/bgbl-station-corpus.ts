@@ -27,7 +27,7 @@
  */
 import { extractBgblLink, mapTextEvolution } from '../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
-import { diffLawPackage, summarizeDiff } from '../server/utils/lawDiff'
+import { diffLawPackage, summarizeDiff } from '../server/utils/diff/lawDiff'
 import { installFetchCache } from './harness-cache'
 
 const args = process.argv.slice(2)

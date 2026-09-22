@@ -18,7 +18,8 @@
  */
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
-import { fetchLawHtml, findLawStations } from '../lawDiffService'
+import { findLawStations } from '../diff/stationDocuments'
+import { fetchDocument } from '../upstream/fetchDocument'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 import { parseRisXml } from '../lawtext/risXml'
@@ -57,10 +58,10 @@ async function blocksOfDraft(gp: string, inr: number, source: DraftTextSource): 
   if (source === 'parliament-first') {
     const detail = await getGegenstand(gp, 'ME', inr)
     const me = findLawStations(detail.content ?? {}).get('me')
-    if (me?.html) return parseParliamentHtml(await fetchLawHtml(me.html))
+    if (me?.html) return parseParliamentHtml(await fetchDocument(me.html))
   }
   const xml = await risXmlUrl(gp, inr)
-  return xml ? parseRisXml(await fetchLawHtml(xml)) : []
+  return xml ? parseRisXml(await fetchDocument(xml)) : []
 }
 
 /** The parse, shared by every section of one draft page that needs the Artikel. */
@@ -83,6 +84,6 @@ export const getDraftArticles = defineCachedFunction(
  * is no (GP, Nummer) to key on — a Begutachtung that RIS carries alone.
  */
 export async function draftArticlesOfXml(xmlUrl: string): Promise<DraftText> {
-  const blocks = parseRisXml(await fetchLawHtml(xmlUrl))
+  const blocks = parseRisXml(await fetchDocument(xmlUrl))
   return { blocks, articles: draftArticles(blocks) }
 }

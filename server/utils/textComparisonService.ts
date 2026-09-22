@@ -55,7 +55,7 @@ import type { TextComparisonResponse, TraceLink } from '#shared/types'
 import { checkAnnexRows, notRunReason } from './annex/gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { annexFromPdf } from './annexPdfService'
-import { fetchLawHtml } from './lawDiffService'
+import { fetchDocument } from './upstream/fetchDocument'
 import type { DraftArticle } from './lawtext/draftArticles'
 import { getDraftArticles } from './lawtext/draftArticlesService'
 import { mapDocuments } from './parliament/detailJson'
@@ -159,7 +159,7 @@ export interface AnnexSource {
  */
 async function readRis(annex: RisDocumentUrls | null, articles: readonly DraftArticle[]): Promise<AnnexSource | string> {
   if (!annex) return 'Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.'
-  const xml = annex.xml ? await fetchLawHtml(annex.xml) : null
+  const xml = annex.xml ? await fetchDocument(annex.xml) : null
   const rasterised = xml === null || isScanned(xml)
   if (!rasterised) {
     const parsed = parseTextComparison(xml!, articles)
@@ -231,7 +231,7 @@ const READ_PARLIAMENT_COPY = false
 async function readParliament(gp: string, inr: number, articles: readonly DraftArticle[]): Promise<AnnexSource | null> {
   const parl = await parliamentAnnex(gp, inr)
   if (!parl.html) return null
-  const parsed = parseTextComparison(await fetchLawHtml(parl.html.url), articles)
+  const parsed = parseTextComparison(await fetchDocument(parl.html.url), articles)
   if (parsed.rows.length === 0) return null
   return { parsed, source: parl.html, credit: PARLIAMENT_CREDIT, readFrom: 'table', droppedPages: 0 }
 }

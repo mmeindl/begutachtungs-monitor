@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
+import { alignUnits, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff } from '../server/utils/diff/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis } from '../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'

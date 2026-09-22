@@ -102,7 +102,7 @@ Server internals (`server/utils/`):
 - `ris/risJoin.ts` — **pure**: the ME↔RIS join (ruleVersion 2), regression-tested against `data/ris-me-map-gp27.json` and the GP XXVIII fixtures.
 - `ris/titleSimilarity.ts` / `ris/ministryCodes.ts` — **pure**: the toolkit the join was calibrated on (title normalisation, tokens, components, `daysBetween`; the `"CODE (long name)"` reader and the lineage groups), borrowed by `parliament/related.ts`, `parliament/precedingDraft.ts`, `ris/bgblJoin.ts`, `ris/risOnly.ts` and the full-text search instead of being re-derived per caller.
 - `parliament/related.ts` — **pure**: same-title drafts (predecessor/successor) by exact equality of the normalised title tokens, evaluated on the 57 GP XXVII drafts without RV (§12.10). `parliament/draftDetail.ts` looks in this, the previous and — once the GP is over — the next GP, and keeps a predecessor only when it produced no RV.
-- `lawtext/` / `lawDiff.ts` — **pure**: Parliament Word-template HTML → § units (or Novellierungsanordnungen); article pairing by law name (the "Artikel n" marker is read from the heading text, not its class — the two documents disagree on the level), package scoping via `diffLawPackage`, unit alignment by heading, LCS word diff, editorial-vs-substantive rule. `lawDiffService.ts` fetches and caches around them.
+- `lawtext/` / `diff/` — **pure**: Parliament Word-template HTML → § units (or Novellierungsanordnungen); article pairing by law name (the "Artikel n" marker is read from the heading text, not its class — the two documents disagree on the level), package scoping via `diffLawPackage`, unit alignment by heading, LCS word diff, editorial-vs-substantive rule. `lawDiffService.ts` fetches and caches around them.
 - `parliament/lastgood.ts` — on-disk store for the last-good statements aggregation of one ME (one JSON record per ME, write-then-rename, versioned; read back only when the live list-142 fetch fails). State directory: `BM_STATE_DIR` → systemd `STATE_DIRECTORY` (`/var/lib/begutachtungs-monitor`) → `./.data`. Deliberately outside the app dir — `deploy.sh` rsyncs `.output/` with `--delete`.
 
 **Cache rules (August 2026, forced by a real failure):**
@@ -571,7 +571,7 @@ shares its prerequisite with the consolidated-text package (§12.12), and the
 lookup half is far smaller than an amendment engine — no Novellierung has to
 be applied, only a heading resolved.
 
-**Built 2026-09-09** (`server/utils/lawtext/draftArticles.ts`, `paraTitleService.ts`,
+**Built 2026-09-09** (`server/utils/lawtext/draftArticles.ts`, `diff/paraTitleService.ts`,
 `/api/drafts/:gp/:inr/paragraphtitel`). Named changes went from 11,2 %
 to **32,6 %** of changed units, measured over 12 Novellen and 457 units.
 8/ME now reads "Erweiterte Gefahrenerforschung und Schutz vor

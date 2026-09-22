@@ -22,11 +22,11 @@
  *   3. remaining units of the same article by text similarity ≥ 0.6
  * Everything left is inserted (later side only) or removed (earlier side only).
  */
-import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../shared/types'
-import type { LawUnit } from './lawtext/lawUnits'
-import { compareKey } from './lawtext/normalize'
-import { articleNameTokens, jaccardSimilarity } from './lawtext/lawNames'
-import { diffTokens, isEditorialChange, tokenSimilarity, type TokenDiff } from './diff/wordDiff'
+import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../../shared/types'
+import type { LawUnit } from '../lawtext/lawUnits'
+import { compareKey } from '../lawtext/normalize'
+import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
+import { diffTokens, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
 
 // ---------------------------------------------------------------------------
 // Article pairing

@@ -24,20 +24,22 @@
  * ambiguous. Anything unresolved is simply absent from the map.
  */
 import type { LawStationId, ParagraphTitlesResponse } from '#shared/types'
-import { fetchLawHtml, findLawStations, getLawDiff } from './lawDiffService'
-import type { TextBlock } from './lawtext/lawUnits'
-import { parseParliamentHtml } from './lawtext/parliamentHtml'
-import { parseRisXml } from './lawtext/risXml'
-import { promulgationByArticle } from './lawtext/draftArticles'
-import { addressedParagraphOf } from './lawtext/instructionAddress'
+import { getLawDiff } from './lawDiffService'
+import { findLawStations } from './stationDocuments'
+import { fetchDocument } from '../upstream/fetchDocument'
+import type { TextBlock } from '../lawtext/lawUnits'
+import { parseParliamentHtml } from '../lawtext/parliamentHtml'
+import { parseRisXml } from '../lawtext/risXml'
+import { promulgationByArticle } from '../lawtext/draftArticles'
+import { addressedParagraphOf } from '../lawtext/instructionAddress'
 import { unitKey } from '#shared/utils/diffKey'
-import { parseKonsParagraph } from './lawtext/konsTree'
-import { getDraftsForGp, getGegenstand } from './parliament/drafts'
-import { getRisMapForGp } from './ris/begutCorpus'
-import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
-import type { KonsParagraphRef } from './ris/konsLaw'
-import { mapWithConcurrency } from './pool'
-import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
+import { parseKonsParagraph } from '../lawtext/konsTree'
+import { getDraftsForGp, getGegenstand } from '../parliament/drafts'
+import { getRisMapForGp } from '../ris/begutCorpus'
+import { fetchParagraphXml, resolveKonsLaw } from '../konsCache'
+import type { KonsParagraphRef } from '../ris/konsLaw'
+import { mapWithConcurrency } from '../pool'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 /** Ceiling on lookups per draft, so one monster Sammelgesetz cannot hang a request. */
 const MAX_HEADINGS = 120
@@ -72,7 +74,7 @@ async function clauseBlocks(
   for (const id of [from, to]) {
     const html = stations.get(id)?.html
     if (html) {
-      out.push(parseParliamentHtml(await fetchLawHtml(html)))
+      out.push(parseParliamentHtml(await fetchDocument(html)))
       continue
     }
     // Only the draft has a second source; the parliamentary stations are
@@ -80,7 +82,7 @@ async function clauseBlocks(
     if (id !== 'me') continue
     const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
     const xml = row?.risDocument?.xml
-    if (xml) out.push(parseRisXml(await fetchLawHtml(xml)))
+    if (xml) out.push(parseRisXml(await fetchDocument(xml)))
   }
   return out
 }

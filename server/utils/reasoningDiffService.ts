@@ -29,7 +29,8 @@
  */
 import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
 import { parseExplanationsHtml, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
-import { fetchLawHtml, getLawDiff } from './lawDiffService'
+import { getLawDiff } from './diff/lawDiffService'
+import { fetchDocument } from './upstream/fetchDocument'
 import { findLastRvLink, mapDocuments, parseStages } from './parliament/detailJson'
 import { getGegenstand } from './parliament/drafts'
 import { compareReasoning } from './reasoningDiff'
@@ -95,7 +96,7 @@ const compareMeToRv = defineCachedFunction(
       )
     }
 
-    const [meHtml, rvHtml] = await Promise.all([fetchLawHtml(meDoc.url), fetchLawHtml(rvDoc.url)])
+    const [meHtml, rvHtml] = await Promise.all([fetchDocument(meDoc.url), fetchDocument(rvDoc.url)])
     const before = passageTexts(passagesByParagraph(parseExplanationsHtml(meHtml)))
     const after = passageTexts(passagesByParagraph(parseExplanationsHtml(rvHtml)))
     const sources = [meDoc, rvDoc]

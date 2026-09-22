@@ -21,150 +21,17 @@
  * the RIS fallback below is keyed on the document being absent rather than on
  * the GP.
  */
-import type { DraftDocument, LawDiffResponse, LawStationId, LawStationOption, TraceLink } from '#shared/types'
-import { LAW_STATION_LABEL, LAW_STATION_ORDER, meTextTitleRank } from '#shared/utils/lawStations'
+
+import type { LawDiffResponse, LawStationId, LawStationOption, TraceLink } from '#shared/types'
+import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
 import { diffLawPackage, summarizeDiff } from './lawDiff'
-import { parseLawUnits, parseLawUnitsFromRis } from './lawtext/lawUnits'
-import { extractBgblLink, findLastRvLink, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup } from './parliament/detailJson'
-import { getGegenstand } from './parliament/drafts'
-import { getRisMapForGp } from './ris/begutCorpus'
-import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
-import {
-  upstreamBytes,
-  UpstreamHttpError,
-  UpstreamTooLargeError,
-  type UpstreamPolicy,
-} from './upstream/fetch'
-
-/**
- * Its own name, because neither shared one describes it: the value is a
- * published document, but kept for a day and not for a month. Whether it
- * could take `PUBLISHED_DOCUMENT_TTL_S` is a question nobody has measured,
- * and this refactor does not answer it.
- */
-const HTML_TTL_S = 60 * 60 * 24
-const HTML_TIMEOUT_MS = 20_000
-const HTML_MAX_BYTES = 8 * 1024 * 1024
-/** Three attempts without a pause between them, as this client always had. */
-const HTML_POLICY: UpstreamPolicy = {
-  timeoutMs: HTML_TIMEOUT_MS,
-  retries: 2,
-  maxBytes: HTML_MAX_BYTES,
-}
-
-/** One published Gesetzestext HTML, by URL. Leaf cache. */
-export const fetchLawHtml = defineCachedFunction(
-  async (url: string): Promise<string> => {
-    let body: Awaited<ReturnType<typeof upstreamBytes>>
-    try {
-      body = await upstreamBytes(url, HTML_POLICY)
-    } catch (err) {
-      if (err instanceof UpstreamTooLargeError) {
-        throw createError({ statusCode: 502, statusMessage: 'Dokument zu groß für den Vergleich' })
-      }
-      if (err instanceof UpstreamHttpError) {
-        throw createError({ statusCode: 502, statusMessage: `Dokument nicht abrufbar (Status ${err.status})` })
-      }
-      throw createError({ statusCode: 502, statusMessage: 'Dokument nicht abrufbar', cause: err })
-    }
-    // Parliament serves Word HTML as windows-1252 or utf-8; the header says which.
-    const charset = /charset=([\w-]+)/i.exec(body.contentType ?? '')?.[1]
-    return decodeHtml(body.bytes, charset)
-  },
-  { name: 'law-html', getKey: (url: string) => url, maxAge: HTML_TTL_S, swr: false },
-)
-
-/** Honour the header charset, else the <meta charset>, else utf-8. */
-function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string {
-  let charset = headerCharset
-  if (!charset) {
-    const head = new TextDecoder('latin1').decode(buf.slice(0, 2048))
-    charset = /charset=["']?([\w-]+)/i.exec(head)?.[1]
-  }
-  try {
-    return new TextDecoder(charset ?? 'utf-8').decode(buf)
-  } catch {
-    return new TextDecoder('utf-8').decode(buf)
-  }
-}
-
-/** One station's published law text, as the comparison can use it. */
-interface ResolvedLawStation {
-  id: LawStationId
-  /** The HTML export `parseLawUnits` needs; null when upstream offers only a PDF. */
-  html: string | null
-  /**
-   * Legistisches RIS-XML, gelesen von `parseLawUnitsFromRis`.
-   *
-   * Zwei Stationen kommen so daher, und aus verschiedenen Gründen: der
-   * Entwurf, wenn das Parlament ihn nur als PDF führt (der alte Rückfall),
-   * und die Kundmachung, die es beim Parlament überhaupt nicht gibt
-   * (§12.33). Deshalb steht das Feld an der Station und nicht mehr als
-   * Sondervariable neben `me`.
-   */
-  xml: string | null
-  /** What to link when there is no HTML, so the reader still reaches the text. */
-  fallbackUrl: string | null
-}
-
-/**
- * Every station this Gegenstand publishes a law text for.
- *
- * The draft's own text comes from its document list, the later ones from
- * `mapTextEvolution` — the same call the detail page makes, so the selector
- * can never offer a station the page does not list. Both sides go through
- * the measured title whitelist in `shared/utils/lawStations.ts` rather than
- * matching words, because upstream types these titles by hand: three
- * GP-XXVI drafts publish "Gesetzestext, Vorblatt und Erläuterungen" as one
- * file, and a prefix match would feed the Erläuterungen to a § parser.
- */
-export function findLawStations(content: {
-  documents?: RawDocumentGroup[] | null
-  statements?: { documents?: RawDocumentGroup[] | null } | null
-}): Map<LawStationId, ResolvedLawStation> {
-  const out = new Map<LawStationId, ResolvedLawStation>()
-  const documents = mapDocuments(content.documents)
-
-  let best: { rank: number; formats: DraftDocument['formats'] } | null = null
-  for (const doc of documents) {
-    const rank = meTextTitleRank(doc.title)
-    if (rank < 0) continue
-    if (!best || rank < best.rank) best = { rank, formats: doc.formats }
-  }
-  if (best) {
-    out.set('me', {
-      id: 'me',
-      html: best.formats.find((f) => f.type === 'html')?.url ?? null,
-      xml: null,
-      fallbackUrl: best.formats.find((f) => f.type === 'pdf')?.url ?? null,
-    })
-  }
-
-  // The draft's own document URLs are what upstream repeats while no
-  // Regierungsvorlage exists; excluded, so only real later versions survive.
-  const meUrls = new Set(documents.flatMap((d) => d.formats.map((f) => f.url)))
-  for (const v of mapTextEvolution(content.statements?.documents, meUrls)) {
-    if (!v.stationId) continue
-    const station = out.get(v.stationId) ?? { id: v.stationId, html: null, xml: null, fallbackUrl: null }
-    if (v.url.endsWith('.html')) station.html ??= v.url
-    else station.fallbackUrl ??= v.url
-    out.set(v.stationId, station)
-  }
-  return out
-}
-
-/**
- * Why a station carries nothing to compare — absent and PDF-only are two
- * different answers, and a reader who is told "only a PDF" knows there is a
- * text to open.
- */
-const MISSING_STATION_REASON: Record<LawStationId, string> = {
-  me: 'Zu diesem Entwurf ist kein Gesetzestext als eigenes Dokument veröffentlicht.',
-  rv: 'Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.',
-  ausschuss: 'Der Ausschuss hat keine geänderte Fassung des Gesetzestexts veröffentlicht.',
-  plenum: 'Im Plenum wurde keine geänderte Fassung des Gesetzestexts veröffentlicht.',
-  bgbl: 'Dieser Entwurf ist bisher nicht als Gesetz kundgemacht worden.',
-}
+import { findLawStations, MISSING_STATION_REASON } from './stationDocuments'
+import { parseLawUnits, parseLawUnitsFromRis } from '../lawtext/lawUnits'
+import { extractBgblLink, findLastRvLink, parseStages } from '../parliament/detailJson'
+import { getGegenstand } from '../parliament/drafts'
+import { getRisMapForGp } from '../ris/begutCorpus'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
+import { fetchDocument } from '../upstream/fetchDocument'
 
 export const getLawDiff = defineCachedFunction(
   async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<LawDiffResponse> => {
@@ -278,8 +145,8 @@ export const getLawDiff = defineCachedFunction(
     const fromSource: LawDiffResponse['fromSource'] = fromHtml ? 'parlament' : 'ris'
     const toSource: LawDiffResponse['fromSource'] = toHtml ? 'parlament' : 'ris'
     const [fromDoc, toDoc] = await Promise.all([
-      fetchLawHtml(fromHtml ?? found.get(from)!.xml!),
-      fetchLawHtml(toHtml ?? found.get(to)!.xml!),
+      fetchDocument(fromHtml ?? found.get(from)!.xml!),
+      fetchDocument(toHtml ?? found.get(to)!.xml!),
     ])
     const fromUnits = fromHtml ? parseLawUnits(fromDoc) : parseLawUnitsFromRis(fromDoc)
     const toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)

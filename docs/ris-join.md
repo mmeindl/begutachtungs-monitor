@@ -191,13 +191,13 @@ sequence fallback, never by § number alone.
   one § with its Absätze and Ziffern, or one Novellierungsanordnung (Z n)
   with the quoted § inside. The Gliederungssymbol is kept out of the unit
   text so a renumbered § compares equal.
-- `server/utils/lawDiff.ts`: alignment in three passes — article + § heading
+- `server/utils/diff/lawDiff.ts`: alignment in three passes — article + § heading
   (unique on both sides), then article + id where at least one side has no
   heading and the texts are ≥ 0.5 similar, then remaining units of the same
   article by similarity ≥ 0.6. LCS word diff with a 2.5 M-cell cap (long
   units get a similarity but no segments). Output in RV reading order,
   removed §§ placed where they stood in the draft.
-- `server/utils/lawDiffService.ts` + `GET /api/drafts/:gp/:inr/diff`:
+- `server/utils/diff/lawDiffService.ts` + `GET /api/drafts/:gp/:inr/diff`:
   finds the two Gesetzestext HTMLs on the ME detail (RV via
   `statements.documents`), fetches with a leaf cache per URL, diffs, caches
   24 h. `available: false` with a German reason when no RV exists yet or a
