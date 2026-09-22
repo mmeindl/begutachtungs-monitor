@@ -277,8 +277,9 @@ a pure module with relative imports, which is why the modules are cut that way
 in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
 app/server/`shared`, and `pnpm typecheck:tools` covers `scripts/` and `tests/`
 (`tsconfig.tools.json`) — the half that `nuxt typecheck` does not see and that
-the log below blames twice for shipped bugs. All three run in CI on every push
-(`.github/workflows/ci.yml`).
+the log below blames twice for shipped bugs. `pnpm lint` (`@nuxt/eslint`,
+flat config in `eslint.config.mjs`) is the fourth command. All four run in CI
+on every push (`.github/workflows/ci.yml`).
 
 - **Upstream → our types:** `mappers` (entity decoding, row mapping, deadline
   parsing, stage HTML), `privacy` (classifier: orgs, persons with

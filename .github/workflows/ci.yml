@@ -4,12 +4,15 @@
 # nothing ran the 500-odd tests, so a red suite could reach `main` and only be
 # noticed on the next local run. This is the cheap half of that gap.
 #
-# Three commands, and the third one exists because of a hole the docs blame
+# Four commands, and the third one exists because of a hole the docs blame
 # twice for shipped bugs (`docs/architecture.md` §12.12, §12.13): `nuxt
 # typecheck` sees the app, the server and `shared/`, but neither `scripts/`
 # nor `tests/`. `tsconfig.tools.json` covers those, and both projects need
 # `.nuxt/tsconfig*.json`, which `nuxt prepare` writes — `pnpm install` runs it
 # as `postinstall`, so the install step is also the generate step.
+#
+# The fourth is `pnpm lint`. It fails on errors only; warnings are what the
+# linter is allowed to say without stopping anyone (`eslint.config.mjs`).
 #
 # Node 22 is what the server runs (`deploy/infrastructure.md`); pnpm 10 is
 # what the lockfile (v9.0 format) was written with. Neither is pinned in
@@ -56,3 +59,6 @@ jobs:
 
       - name: Typecheck (scripts, tests)
         run: pnpm typecheck:tools
+
+      - name: Lint
+        run: pnpm lint
