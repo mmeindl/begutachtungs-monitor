@@ -28,8 +28,8 @@
  */
 import { createHash } from 'node:crypto'
 import { classifyRisRecord, type RisClass } from '../server/utils/ris/risJoin'
-import { parseExplanations, type ExplanationsDocument } from '../server/utils/explanations'
-import { explanationsByParagraph } from '../server/utils/explanationsJoin'
+import { parseExplanations, type ExplanationsDocument } from '../server/utils/explanations/risExplanations'
+import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
 import { explanationKey, explanationParaId } from '../shared/utils/explanationKey'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { draftArticles } from '../server/utils/lawtext/draftArticles'

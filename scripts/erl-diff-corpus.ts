@@ -33,7 +33,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
-import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanationsHtml'
+import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanations/explanationsHtml'
 import { diffTokens } from '../server/utils/diff/wordDiff'
 
 const BASE = 'https://www.parlament.gv.at'

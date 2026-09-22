@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanationsHtml'
+import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanations/explanationsHtml'
 
 /** Ein Erläuterungen-Dokument, wie das Parlament es aus Word ausgibt. */
 function doc(...paragraphs: string[]): string {

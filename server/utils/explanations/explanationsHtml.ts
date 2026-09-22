@@ -23,13 +23,13 @@
  * (§ 54c Abs. 1a und 1b):" muss auf beiden Seiten denselben Paragraphen
  * bedeuten, sonst hängt die Begründung am falschen §.
  */
-import { addressOf, isAddressHeading } from './explanations'
-import { normalizeText } from './lawtext/normalize'
-import { parseParliamentHtml } from './lawtext/parliamentHtml'
+import { addressOf, isAddressHeading } from './risExplanations'
+import { normalizeText } from '../lawtext/normalize'
+import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 // One reading of a designation for both sides of the lookup. Its `\b` changes
 // nothing for what `addressOf` builds: 0 of 4.215 designations differ over the
 // offline corpus (22.09.2026).
-import { explanationParaId } from '../../shared/utils/explanationKey'
+import { explanationParaId } from '../../../shared/utils/explanationKey'
 
 /** Eine Passage des Besonderen Teils, an ihrer Adresse. */
 export interface HtmlPassage {

@@ -20,12 +20,12 @@
  * falsche Begründung am Paragraphen wäre schlimmer als keine. Dieselbe Regel,
  * die `ComparisonRow.law` bereits befolgt.
  */
-import type { DraftArticle } from './lawtext/draftArticles'
-import type { ExplanationsDocument } from './explanations'
-import { articleNameTokens, jaccardSimilarity } from './lawtext/lawNames'
+import type { DraftArticle } from '../lawtext/draftArticles'
+import type { ExplanationsDocument } from './risExplanations'
+import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
 // Relative, nicht über `#shared`: Dieses Modul ist rein, damit vitest und die
 // Messskripte es direkt ausführen — wie `lawDiff.ts` es hält.
-import { explanationParaId } from '../../shared/utils/explanationKey'
+import { explanationParaId } from '../../../shared/utils/explanationKey'
 
 /** Eine Erläuterungspassage, adressiert an einen Paragraphen eines Gesetzes. */
 export interface ParagraphExplanation {

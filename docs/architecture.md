@@ -454,7 +454,7 @@ Endpunkt und Anzeige. Die Anzeige gehört an den § im Vergleich, und diese
 Komponenten sind gerade in Arbeit; ein zweiter Bearbeiter darin wäre ein
 Konflikt und kein Fortschritt.
 
-**Gebaut am 22.09.2026, nach der Messung:** `server/utils/reasoningDiffService.ts`,
+**Gebaut am 22.09.2026, nach der Messung:** `server/utils/explanations/reasoningDiffService.ts`,
 `/api/drafts/:gp/:inr/begruendung?von=me&bis=rv` und der Aufklapper an der
 Änderung in `LawDiffSection.vue`.
 
@@ -5619,7 +5619,7 @@ formatiert: `<ueberschrift typ="erlz">` trägt die Teil-Überschriften,
 `<ueberschrift typ="erll">` die Passagen — im Besonderen Teil in der Form
 „Zu Z 4 (§ 54c Abs. 1a und 1b):". Gelesen wird über `parseRisXml`, denselben
 Leser, den Entwurfstext und ME→RV-Vergleich benutzen
-(`server/utils/explanations.ts`, rein; `explanationsService.ts` ist die
+(`server/utils/explanations/risExplanations.ts`, rein; `explanationsService.ts` ist die
 Nitro-Hälfte, `tests/explanations.test.ts` hält die Formen fest).
 
 **Gemessen vor dem Bauen** (`pnpm audit:erlaeuterungen`, 465 Dokumente mit
@@ -5751,7 +5751,7 @@ berechnet: „Zu Z 4 (§ 54c Abs. 1a und 1b):" nennt Novellierungsanordnung und
 Paragraphen, „Zu Art. 2 (Änderung des KommAustria-Gesetzes)" das Gesetz des
 Pakets. Die Beilage führt ihre Zeilen unter denselben zwei Schlüsseln
 (`ComparisonRow.law`, `ComparisonRow.para`). Der Join ist ein Nachschlagen,
-keine Ähnlichkeitssuche — `server/utils/explanationsJoin.ts`, und der
+keine Ähnlichkeitssuche — `server/utils/explanations/explanationsJoin.ts`, und der
 Schlüssel selbst steht in `shared/utils/explanationKey.ts`, weil ihn beide
 Seiten bilden müssen.
 

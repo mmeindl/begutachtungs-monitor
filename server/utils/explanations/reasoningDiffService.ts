@@ -29,12 +29,12 @@
  */
 import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
 import { parseExplanationsHtml, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
-import { getLawDiff } from './diff/lawDiffService'
-import { fetchDocument } from './upstream/fetchDocument'
-import { findLastRvLink, mapDocuments, parseStages } from './parliament/detailJson'
-import { getGegenstand } from './parliament/drafts'
+import { getLawDiff } from '../diff/lawDiffService'
+import { fetchDocument } from '../upstream/fetchDocument'
+import { findLastRvLink, mapDocuments, parseStages } from '../parliament/detailJson'
+import { getGegenstand } from '../parliament/drafts'
 import { compareReasoning } from './reasoningDiff'
-import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 /** Das Erläuterungen-Dokument eines Gegenstands, als HTML — oder nichts. */
 async function explanationsDocument(gp: string, ityp: string, inr: number): Promise<TraceLink | null> {

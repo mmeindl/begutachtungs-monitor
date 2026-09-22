@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { hasReadableText, parseExplanations } from '../server/utils/explanations'
-import { explanationsByParagraph } from '../server/utils/explanationsJoin'
+import { hasReadableText, parseExplanations } from '../server/utils/explanations/risExplanations'
+import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
 
 /**
  * The shapes below are the ones the corpus actually delivers

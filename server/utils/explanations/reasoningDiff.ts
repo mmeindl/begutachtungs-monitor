@@ -25,15 +25,15 @@
  * adressieren, zeigt diese Schicht deshalb nichts — dieselbe Regel wie bei den
  * §-Namen: ein falscher Bezug ist schlechter als keiner.
  */
-import type { LawDiffUnit, ReasoningDiffEntry } from '../../shared/types'
-import { unitKey } from '../../shared/utils/diffKey'
-import { diffTokens } from './diff/wordDiff'
-import { addressedParagraphOf } from './lawtext/instructionAddress'
+import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
+import { unitKey } from '../../../shared/utils/diffKey'
+import { diffTokens } from '../diff/wordDiff'
+import { addressedParagraphOf } from '../lawtext/instructionAddress'
 // The key of `passagesByParagraph`, and the same reading the page looks up
 // with. Its `\b` changes nothing for the designations `parseAddress` builds:
 // 0 of 4.215 differ over the offline corpus (22.09.2026). It bites only on a
 // raw Gliederungssymbol such as § 365m1, which never reaches here.
-import { explanationParaId } from '../../shared/utils/explanationKey'
+import { explanationParaId } from '../../../shared/utils/explanationKey'
 
 /** Unterhalb davon sind es Satzzeichen und Leerraum, keine Überarbeitung. */
 const CHANGED_AT = 0.02

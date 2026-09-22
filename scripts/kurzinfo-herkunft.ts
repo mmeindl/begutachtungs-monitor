@@ -34,7 +34,7 @@
  * Nur lesend; nichts wird geschrieben.
  */
 import { readFileSync } from 'node:fs'
-import { hasReadableText, parseExplanations } from '../server/utils/explanations'
+import { hasReadableText, parseExplanations } from '../server/utils/explanations/risExplanations'
 import { decodeEntities } from '../server/utils/parliament/htmlText'
 import { normalizeText, stripMarkup } from '../server/utils/lawtext/normalize'
 import { fetchRisBegutCorpus } from './risCorpus'

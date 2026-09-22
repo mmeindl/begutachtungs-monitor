@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
-import { compareReasoning } from '../server/utils/reasoningDiff'
+import { compareReasoning } from '../server/utils/explanations/reasoningDiff'
 
 /** Eine Novellierungsanordnung, wie der Vergleich sie ausgibt. */
 function unit(article: string, id: string, line: string, change: LawDiffUnit['change'] = 'changed'): LawDiffUnit {

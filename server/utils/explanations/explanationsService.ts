@@ -27,16 +27,16 @@
  * screen after an edit.
  */
 import type { ExplanationsResponse, TraceLink } from '#shared/types'
-import { hasReadableText, parseExplanations, type ExplanationsDocument, type ExplanationsPart } from './explanations'
+import { hasReadableText, parseExplanations, type ExplanationsDocument, type ExplanationsPart } from './risExplanations'
 import { explanationsByParagraph } from './explanationsJoin'
-import type { DraftArticle } from './lawtext/draftArticles'
-import { draftArticlesOfXml, getDraftArticles, type DraftText } from './lawtext/draftArticlesService'
-import { DERIVED_CACHE } from './cache/base'
-import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
-import { getText } from './ris/konsLaw'
-import { getRisMapForGp } from './ris/begutCorpus'
-import { getRisConsultation } from './ris/risOnly'
-import { hasAnnexDocument } from './annex/annexSource'
+import type { DraftArticle } from '../lawtext/draftArticles'
+import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
+import { DERIVED_CACHE } from '../cache/base'
+import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import { getText } from '../ris/konsLaw'
+import { getRisMapForGp } from '../ris/begutCorpus'
+import { getRisConsultation } from '../ris/risOnly'
+import { hasAnnexDocument } from '../annex/annexSource'
 
 /** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. */
 const fetchExplanationsXml = defineCachedFunction((url: string): Promise<string> => getText(url), {

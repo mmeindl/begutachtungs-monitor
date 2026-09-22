@@ -53,8 +53,8 @@
  *     result is marked `generalInferred`, because a section that the ministry
  *     did not head „Allgemeiner Teil" must not be labelled as if it had.
  */
-import { normalizeText } from './lawtext/normalize'
-import { parseRisXml } from './lawtext/risXml'
+import { normalizeText } from '../lawtext/normalize'
+import { parseRisXml } from '../lawtext/risXml'
 
 /**
  * Which part of the Erläuterungen a section is.
