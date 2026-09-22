@@ -83,19 +83,19 @@ describe('stations — how long the Frist ran', () => {
     expect(beg(draft({ arrivedAt: '2026-08-11', deadline: '2026-09-22', active: true })))
       .toEqual(['6 Wochen Frist, bis 22.09.2026', '143 Stellungnahmen'])
     expect(beg(draft({ arrivedAt: '2026-06-10', deadline: '2026-06-24' })))
-      .toEqual(['143 Stellungnahmen', '2 Wochen Frist, endete 24.06.2026'])
+      .toEqual(['143 Stellungnahmen', '2 Wochen Frist, endete am 24.06.2026'])
   })
 
   it('stays in days for spans that are not whole weeks', () => {
     expect(beg(draft({ arrivedAt: '2026-06-10', deadline: '2026-06-20' })))
-      .toEqual(['143 Stellungnahmen', '10 Tage Frist, endete 20.06.2026'])
+      .toEqual(['143 Stellungnahmen', '10 Tage Frist, endete am 20.06.2026'])
   })
 
   /* The duration is derived; the date is upstream's. Where the subtraction
      cannot be made the row keeps exactly what it always said. */
   it('drops the duration rather than guessing it', () => {
     expect(beg(draft({ arrivedAt: null as unknown as string, deadline: '2026-06-24' })))
-      .toEqual(['143 Stellungnahmen', 'Frist endete 24.06.2026'])
+      .toEqual(['143 Stellungnahmen', 'Frist endete am 24.06.2026'])
     expect(beg(draft({ deadline: null })))
       .toEqual(['143 Stellungnahmen', 'keine Frist angegeben'])
   })

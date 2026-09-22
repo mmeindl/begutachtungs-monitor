@@ -41,7 +41,7 @@
  * this fetches nothing.
  */
 import type { DraftDetail, LawStationId } from '../../shared/types'
-import { bgblShort, formatDateDe, formatNumberDe, spanInDays } from '../../shared/utils/format'
+import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '../../shared/utils/format'
 import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '../../shared/utils/lawStations'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
@@ -297,15 +297,20 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         ? `ändert ${ctx.amendedLawCount} Gesetze`
         : null
 
-  /** Duration first, then the date — "6 Wochen Frist, endete 24.06.2026".
-   *  Without a Frist the sentence is the absence itself. */
+  /** Duration first, then the date — "6 Wochen Frist, endete am 24.06.2026".
+   *  Without a Frist the sentence is the absence itself.
+   *
+   *  One wording for an ended Frist, site-wide (`fristEndedDe`): without a
+   *  duration this line IS that sentence. With one, the duration already
+   *  carries the word „Frist", so the line takes the builder's wording
+   *  („endete am …") instead of the builder — one wording, two sentence
+   *  shapes, rather than the „endete 24.06.2026" this said before. */
   const dur = fristDurationDe(d)
-  const fristDate = d.deadline
-    ? `${d.active ? 'bis' : 'endete'} ${formatDateDe(d.deadline)}`
-    : null
-  const fristLine = fristDate
-    ? dur ? `${dur}, ${fristDate}` : `Frist ${fristDate}`
-    : 'keine Frist angegeben'
+  const fristLine = !d.deadline
+    ? 'keine Frist angegeben'
+    : d.active
+      ? dur ? `${dur}, bis ${formatDateDe(d.deadline)}` : `Frist bis ${formatDateDe(d.deadline)}`
+      : dur ? `${dur}, endete am ${formatDateDe(d.deadline)}` : fristEndedDe(d.deadline)
 
   /** The RV's date with its distance to the Fristende as an apposition —
    *  one fact, not two, so the row does not grow a third middot. */
