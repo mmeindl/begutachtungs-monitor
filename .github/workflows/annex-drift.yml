@@ -2,8 +2,11 @@
 # (docs/architecture.md §12.13).
 #
 # Was hier NICHT geprüft wird: ob wir die Engine kaputt gemacht haben. Das
-# fangen `ci.yml` mit 600+ Tests und `tests/annexGolden.test.ts`, das zwei
-# echte Beilagen mit ihren Zahlen einfriert. Geprüft wird die andere Richtung:
+# fangen `ci.yml` mit 1.000+ Tests, `tests/annexGolden.test.ts`, das zwei
+# echte Beilagen mit ihren Zahlen einfriert, und seit 22.09.2026
+# `tests/annexGateGolden.test.ts`, das fünf echte Läufe des Tors mit ihren
+# Urteilen einfriert — zwei davon scheitern gemessen an der Engine-Arbeit vom
+# 19.09., die hier zwölf Befunde wert war. Geprüft wird die andere Richtung:
 # ein Ressort setzt seine Beilage anders als bisher, und die Seite zeigt
 # lautlos eine Gegenüberstellung, die niemand als falsch erkennt. Das ist die
 # Betriebslast, an der der Vorgänger gestorben ist, also läuft der Alarm auf
