@@ -91,13 +91,14 @@ const documents = computed(() => {
 
 <template>
   <div class="mx-auto w-full max-w-3xl">
-    <div v-if="status === 'pending' && !data">
-      <LoadingState label="Entwurf wird geladen …" />
-    </div>
-    <div v-else-if="error">
-      <ErrorState @retry="refresh()" />
-    </div>
-    <template v-else-if="data">
+    <FetchGate
+      v-slot="{ data }"
+      :status="status"
+      :error="error"
+      :data="data"
+      loading-label="Entwurf wird geladen …"
+      @retry="refresh()"
+    >
       <div class="mb-4">
         <!-- Back into the one list, unfiltered: since 17.09.2026 there is
              no separate list to return to (docs/architecture.md §12.19),
@@ -324,6 +325,6 @@ const documents = computed(() => {
              item's identity, not mid-page as an action it is not. -->
       </section>
 
-    </template>
+    </FetchGate>
   </div>
 </template>

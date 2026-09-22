@@ -89,6 +89,17 @@ export default withNuxt(
     },
   },
   {
+    // `FetchGate` hands its data back through the slot, under the name the
+    // page already binds — and the shadow is exactly the point: only the
+    // slot's `data` is narrowed to "there is data", and 131 places on the two
+    // detail pages read `data.…` under that narrowing. A second name would
+    // make the template claim two things where there is one object. The four
+    // pages are the only shadowing in the tree.
+    name: 'begut/fetch-gate-slot',
+    files: ['app/pages/**/*.vue'],
+    rules: { 'vue/no-template-shadow': ['warn', { allow: ['data'] }] },
+  },
+  {
     name: 'begut/deferred-findings',
     // Two findings this phase may not act on, because acting on them means
     // editing logic and this phase moves nothing but whitespace. Both are

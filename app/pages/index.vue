@@ -292,13 +292,15 @@ const gpStart = computed(() => {
       </p>
     </header>
 
-    <div v-if="status === 'pending' && !data" class="mt-10">
-      <LoadingState label="Daten werden geladen …" />
-    </div>
-    <div v-else-if="error" class="mt-10">
-      <ErrorState @retry="refresh()" />
-    </div>
-    <template v-else-if="data">
+    <FetchGate
+      v-slot="{ data }"
+      :status="status"
+      :error="error"
+      :data="data"
+      loading-label="Daten werden geladen …"
+      state-class="mt-10"
+      @retry="refresh()"
+    >
       <!-- ONE list, because the question is one: "was läuft gerade, wo kann
            ich noch mitreden?" (docs/architecture.md §12.20). Which official
            register happens to carry a record is plumbing, and plumbing does
@@ -531,6 +533,6 @@ const gpStart = computed(() => {
           Die Kundmachungen sind derzeit nicht abrufbar.
         </p>
       </section>
-    </template>
+    </FetchGate>
   </div>
 </template>

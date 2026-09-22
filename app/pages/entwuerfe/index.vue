@@ -769,13 +769,15 @@ const countLabel = computed(() => {
            für eine Trennung, die es nicht mehr geben muss. -->
     </header>
 
-    <div v-if="status === 'pending' && !data" class="mt-10">
-      <LoadingState label="Entwürfe werden geladen …" />
-    </div>
-    <div v-else-if="error" class="mt-10">
-      <ErrorState @retry="refresh()" />
-    </div>
-    <template v-else-if="data">
+    <FetchGate
+      v-slot="{ data }"
+      :status="status"
+      :error="error"
+      :data="data"
+      loading-label="Entwürfe werden geladen …"
+      state-class="mt-10"
+      @retry="refresh()"
+    >
       <!-- KEIN Erklärkasten mehr, seit 18.09.2026. Er stand zwischen der
            Überschrift und den Filtern — auf 390 px acht Zeilen Prosa über
            die Herkunft der Daten, bevor irgendeine Zeile der Liste zu sehen
@@ -1247,6 +1249,6 @@ const countLabel = computed(() => {
         </template>
       </section>
 
-    </template>
+    </FetchGate>
   </div>
 </template>
