@@ -15,19 +15,26 @@
  *
  * **The bytes are cached in dev only**, the way the RIS result pages are
  * (`ris.ts`, `cacheBase.ts`). In dev the cache is the point: re-deriving a
- * comparison after a worker reload must not re-fetch a two-megabyte PDF. In
- * production the derived comparison above it holds for a day, so the PDF is
- * fetched at most once per draft per day — while keeping all 44 resident
- * would cost tens of megabytes on a one-gigabyte VPS for hits that would
- * hardly happen. The same arithmetic that took the raw RIS pages out of
- * production memory (133 MB against 90 MB, measured 2026-09-09).
+ * comparison after a worker reload must not re-fetch a two-megabyte PDF.
+ * Keeping all 44 resident in production would cost tens of megabytes on a
+ * one-gigabyte VPS for hits that would hardly happen — the same arithmetic
+ * that took the raw RIS pages out of production memory (133 MB against
+ * 90 MB, measured 2026-09-09).
+ *
+ * **What is kept in production is the PARSE**, one layer up and derived: rows
+ * are kilobytes where the document is megabytes, and without it the draft
+ * page paid for the PDF twice, because two sections read the same annex
+ * (`konsService.ts`, `textComparisonService.ts`).
  */
 import { parseAnnexPdf, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
+import { DERIVED_CACHE } from './cacheBase'
 import type { DraftArticle } from './lawTitles'
 
 /** A NOR-published annex never changes, so the bytes keep for a long time. */
 const PDF_TTL_S = 60 * 60 * 24 * 30
+/** The parse above them, like every other derived answer of a draft page. */
+const PARSE_TTL_S = 60 * 60 * 24
 const PDF_TIMEOUT_MS = 25_000
 /**
  * The largest annex in GP XXVIII is 2,6 MB. The cap is well above that and
@@ -67,25 +74,58 @@ const fetchAnnexPdf = defineCachedFunction(
 )
 
 /**
+ * The Artikel that decide the parse, as a key.
+ *
+ * `parseAnnexPdf` resolves the annex's law boundaries against the draft's own
+ * Artikel list, and `resolveBoundaries` reads exactly these three fields
+ * (`annexBoundaries.ts`). The object identity it also uses never leaves one
+ * call, so it is no part of the answer. The same PDF held against a different
+ * draft is a different answer, which is why this is in the key and not just
+ * the URL.
+ */
+function articlesKey(articles: readonly DraftArticle[]): string {
+  return articles.map((a) => `${a.numeral ?? ''}~${a.amends ? 'a' : ''}~${a.title ?? ''}`).join('/')
+}
+
+/**
  * The comparison a rasterised annex still carries, or null when the PDF
  * cannot be read at all.
  *
  * Returns the same shape as `parseTextComparison`, so the caller treats the
  * two sources alike and the RIS check applies to both unchanged — which is
  * the whole reason the geometry was made to emit `ComparisonRow`.
+ *
+ * **The PARSE is cached, because the bytes are not.** The byte cache above is
+ * bypassed in production on purpose, so the two sections that read an annex —
+ * the Textgegenüberstellung and the consolidated reading (`konsService.ts`) —
+ * each fetched the PDF and ran pdf.js over it, on a draft page that shows
+ * both. Derived, because every line of the answer is ours: pdf.js reads the
+ * pages, our geometry makes rows of them (`cacheBase.ts`). The value is plain
+ * JSON — rows, counts and two strings — so it survives Nitro's serialisation;
+ * `null` is a cacheable answer and does so too.
+ *
+ * A failure still is not an answer: the fetch is not caught, so a PDF RIS
+ * would not hand over leaves this function and nothing is stored — a
+ * swallowed timeout used to become "ließ sich auch aus dem PDF nicht
+ * auslesen" as a fact about the draft (same rule as `textComparisonService`,
+ * 2026-09-10). A document we did receive and pdf.js cannot open is a property
+ * of that document, so that case stays null and is kept.
  */
-export async function annexFromPdf(url: string, articles: readonly DraftArticle[]): Promise<AnnexParse | null> {
-  // The fetch is not caught: a PDF RIS would not hand over is not a property
-  // of the annex, and the caller caches whatever this returns for a day — a
-  // swallowed timeout used to become "ließ sich auch aus dem PDF nicht
-  // auslesen" as a fact about the draft (same rule as `textComparisonService`,
-  // 2026-09-10). A document we did receive and pdf.js cannot open is such a
-  // property, so that case stays null.
-  const base64 = await fetchAnnexPdf(url)
-  const pages = await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null)
-  // pdf.js reads a damaged file as an *empty* document rather than failing,
-  // so "no pages" and "no text on any page" both have to count as unreadable
-  // — a scored run against nothing looks like a result (`harness-cache.ts`).
-  if (pages === null || pages.every((page) => page.items.length === 0)) return null
-  return parseAnnexPdf(pages, articles)
-}
+export const annexFromPdf = defineCachedFunction(
+  async (url: string, articles: readonly DraftArticle[]): Promise<AnnexParse | null> => {
+    const base64 = await fetchAnnexPdf(url)
+    const pages = await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null)
+    // pdf.js reads a damaged file as an *empty* document rather than failing,
+    // so "no pages" and "no text on any page" both have to count as unreadable
+    // — a scored run against nothing looks like a result (`harness-cache.ts`).
+    if (pages === null || pages.every((page) => page.items.length === 0)) return null
+    return parseAnnexPdf(pages, articles)
+  },
+  {
+    name: 'annex-pdf-parse',
+    base: DERIVED_CACHE,
+    getKey: (url: string, articles: readonly DraftArticle[]) => `${url}|${articlesKey(articles)}`,
+    maxAge: PARSE_TTL_S,
+    swr: false,
+  },
+)

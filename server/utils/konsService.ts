@@ -131,8 +131,16 @@ export const getConsolidatedText = defineCachedFunction(
     // zweites Mal gelesen, weil die Antwort der Gegenüberstellung die
     // geprüften Zeilen mit **geleertem Text** trägt — richtig für die
     // Anzeige, tödlich für ein Orakel, das aus leerem Text „sagt nichts
-    // dazu" schlösse. Beide Wege gehen durch `fetchLawHtml`, sind also
-    // derselbe Cache-Treffer.
+    // dazu" schlösse.
+    //
+    // WAS DAS ZWEITE LESEN KOSTET, zwei Wege, zwei Antworten: Der XML-Weg
+    // geht durch `fetchLawHtml` und ist derselbe Cache-Treffer. Der PDF-Weg
+    // war es NICHT — dessen Byte-Cache ist in der Produktion bewusst
+    // abgeschaltet (`annexPdfService.ts`), also holten und parsten
+    // `/konsolidiert` und `/gegenueberstellung` dieselbe Beilage je einmal.
+    // Seit 22.09.2026 liegt der PARSE in einem abgeleiteten Cache
+    // (`annex-pdf-parse`), womit auch dieser Weg einmal je Entwurf und Tag
+    // bezahlt wird.
     const articles = parts.map((p) => p.article)
     const annex = await annexSourceFor(gp, inr, row.textComparison ?? null, articles)
     const byParagraph = typeof annex === 'string' ? null : rowsByParagraph(annex.parsed.rows)
