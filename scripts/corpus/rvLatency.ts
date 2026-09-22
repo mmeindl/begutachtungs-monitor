@@ -5,11 +5,11 @@
  * behind the "bisher keine Regierungsvorlage" wording on the detail page
  * (app/utils/deadlines.ts, docs/architecture.md §12.10).
  *
- * Usage:   npx vite-node scripts/rv-latency.ts XXVII [cacheDir]
+ * Usage:   npx vite-node scripts/corpus/rvLatency.ts XXVII [cacheDir]
  *
  * One list-81 call plus one detail call per Ministerialentwurf (≈350 for GP
  * XXVII), four at a time, raw JSON cached in `cacheDir` (default
- * `.cache/rv-latency/`) so a rerun is free. `scripts/stations-corpus.ts`
+ * `.cache/rv-latency/`) so a rerun is free. `scripts/corpus/stationen.ts`
  * reads the same directory. Output: a summary on stdout and
  * `<cacheDir>/<GP>-lags.json` with one row per draft.
  *
@@ -20,16 +20,16 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { PARLIAMENT as BASE, getJson } from './lib/http'
-import { cachedJson } from './lib/diskCache'
-import { pool } from './lib/async'
+import { PARLIAMENT as BASE, getJson } from '../lib/http'
+import { cachedJson } from '../lib/diskCache'
+import { pool } from '../lib/async'
 
-const SCRIPT = 'rv-latency'
+const SCRIPT = 'corpus/rvLatency'
 const CONCURRENCY = 4
 
 const gp = process.argv[2]
 if (!gp || !/^[IVXLC]+$/.test(gp)) {
-  console.error('Usage: npx vite-node scripts/rv-latency.ts <GP, e.g. XXVII> [cacheDir]')
+  console.error('Usage: npx vite-node scripts/corpus/rvLatency.ts <GP, e.g. XXVII> [cacheDir]')
   process.exit(1)
 }
 const cacheDir = process.argv[3] ?? join('.cache', 'rv-latency')

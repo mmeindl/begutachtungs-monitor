@@ -124,7 +124,7 @@ describe('rightColumnCheck — „bereits geltend"', () => {
     // above, and it is right. What it costs is the other half of the
     // 11.09.2026 measurement (`isDisplayedChange`): a mirrored row the annex
     // files under the wrong § is not merely unchecked, it is an excuse the
-    // right column may draw on. Fault U of `scripts/annex-fault-injection.ts`
+    // right column may draw on. Fault U of `scripts/harness/faultInjection.ts`
     // puts a number on it — 1 previously firing rule silenced in 881 §§ of the
     // PDF path — and this test says where that number comes from.
     const alibi = [...lostSentenceRows(), row({ gld: null, para: '§ 1.', change: 'unchanged', current: LOST, proposed: LOST })]

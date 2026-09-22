@@ -2,7 +2,7 @@
 /**
  * Audit of the § names shown beside a change (docs/architecture.md §12.11).
  *
- * Usage:  npx vite-node scripts/para-title-audit.ts [GP] [maxDrafts]
+ * Usage:  npx vite-node scripts/audit/paraTitle.ts [GP] [maxDrafts]
  *         (needs a dev server on :3000 for the API routes)
  *
  * Coverage is not correctness. A count of names on screen says nothing about
@@ -25,11 +25,11 @@
  * carries the law's current name after a rename ("Waldfondsgesetz" →
  * "Waldresilienzfondsgesetz").
  */
-import { getText, resolveLawByBgbl } from '../server/utils/ris/konsLaw'
-import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
-import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { promulgationByArticle } from '../server/utils/lawtext/draftArticles'
+import { getText, resolveLawByBgbl } from '../../server/utils/ris/konsLaw'
+import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
+import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { promulgationByArticle } from '../../server/utils/lawtext/draftArticles'
 
 const GP = process.argv[2] ?? 'XXVIII'
 const MAX_DRAFTS = Number(process.argv[3] ?? 40)

@@ -16,31 +16,31 @@
  *     the join key for hanging passages beside the Textgegenüberstellung,
  *     which is the second half of the package and not built here.
  *
- *     pnpm audit:erlaeuterungen                    # drafts since 2024-01-01
- *     pnpm audit:erlaeuterungen -- --since 2020-01-01
- *     pnpm audit:erlaeuterungen -- --all           # the whole corpus (~3.200 documents)
- *     pnpm audit:erlaeuterungen -- --sample 120    # a deterministic subset of the window
- *     pnpm audit:erlaeuterungen -- --show BEGUT_…  # print one document's parse
- *     pnpm audit:erlaeuterungen -- --join          # step 2: passages against the annex's §§
+ *     pnpm corpus:erlaeuterungen                    # drafts since 2024-01-01
+ *     pnpm corpus:erlaeuterungen -- --since 2020-01-01
+ *     pnpm corpus:erlaeuterungen -- --all           # the whole corpus (~3.200 documents)
+ *     pnpm corpus:erlaeuterungen -- --sample 120    # a deterministic subset of the window
+ *     pnpm corpus:erlaeuterungen -- --show BEGUT_…  # print one document's parse
+ *     pnpm corpus:erlaeuterungen -- --join          # step 2: passages against the annex's §§
  *
  * Runs through `parseExplanations`, the shipped parser: the numbers are what
  * the page would show. Reads only; nothing is written.
  */
 import { createHash } from 'node:crypto'
-import { classifyRisRecord, type RisClass } from '../server/utils/ris/risJoin'
-import { parseExplanations, type ExplanationsDocument } from '../server/utils/explanations/risExplanations'
-import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
-import { explanationKey, explanationParaId } from '../shared/utils/explanationKey'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { draftArticles } from '../server/utils/lawtext/draftArticles'
-import { parseTextComparison } from '../server/utils/annex/comparisonRows'
-import { isScanned } from '../server/utils/annex/tableCells'
-import { hasDocument, type RisBegutFlat } from '../server/utils/ris/risRecord'
-import { fetchRisBegutCorpus } from './lib/corpus'
-import { argFlag, argPair } from './lib/args'
-import { getText, type HttpOptions } from './lib/http'
-import { pool } from './lib/async'
-import { quantile } from './lib/fmt'
+import { classifyRisRecord, type RisClass } from '../../server/utils/ris/risJoin'
+import { parseExplanations, type ExplanationsDocument } from '../../server/utils/explanations/risExplanations'
+import { explanationsByParagraph } from '../../server/utils/explanations/explanationsJoin'
+import { explanationKey, explanationParaId } from '../../shared/utils/explanationKey'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { draftArticles } from '../../server/utils/lawtext/draftArticles'
+import { parseTextComparison } from '../../server/utils/annex/comparisonRows'
+import { isScanned } from '../../server/utils/annex/tableCells'
+import { hasDocument, type RisBegutFlat } from '../../server/utils/ris/risRecord'
+import { fetchRisBegutCorpus } from '../lib/corpus'
+import { argFlag, argPair } from '../lib/args'
+import { getText, type HttpOptions } from '../lib/http'
+import { pool } from '../lib/async'
+import { quantile } from '../lib/fmt'
 
 const since = argPair('since') ?? '2024-01-01'
 const all = argFlag('all')
@@ -55,7 +55,7 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) {
 }
 
 /** Three attempts on any failure — a RIS document is the whole measurement, not one row of it. */
-const FETCH: HttpOptions = { script: 'erlaeuterungen-corpus', attempts: 3, backoffMs: (retry) => 500 * retry, retryOnHttpError: true }
+const FETCH: HttpOptions = { script: 'corpus/erlaeuterungen', attempts: 3, backoffMs: (retry) => 500 * retry, retryOnHttpError: true }
 const fetchText = (url: string): Promise<string> => getText(url, FETCH)
 
 /** Deterministic subset: the same `--sample 120` twice reads the same documents. */
@@ -248,7 +248,7 @@ async function measureJoin(records: RisBegutFlat[]): Promise<void> {
   }
 }
 
-const corpus = await fetchRisBegutCorpus('erlaeuterungen-corpus')
+const corpus = await fetchRisBegutCorpus('corpus/erlaeuterungen')
 const inWindow = corpus.records.filter((r) => all || (r.beginn ?? '') >= since)
 const withXml = inWindow.filter((r) => r.explanations?.xml)
 let targets = show ? corpus.records.filter((r) => r.id === show) : withXml

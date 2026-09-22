@@ -2,7 +2,7 @@
  * What the corpus says about "bisher keine Regierungsvorlage" — the base
  * rates behind the wording on the detail page (docs/architecture.md §12.10).
  *
- * Measured with `scripts/rv-latency.ts` from the Parliament API: every
+ * Measured with `scripts/corpus/rvLatency.ts` from the Parliament API: every
  * Ministerialentwurf of a closed Gesetzgebungsperiode, Fristende → first
  * Regierungsvorlage linked in its stage record. Hand-copied constants, not a
  * live query — the numbers move only when a GP closes, and no page may

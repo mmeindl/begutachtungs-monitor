@@ -69,7 +69,7 @@ describe('passagesByParagraph', () => {
    * Die Aufzählung, seit 22.09.2026 gelesen: „Zu §§ 12 und 13" erklärt beide
    * Paragraphen in einem Atemzug, und vorher bekam nur der erste die
    * Passage. Geteilter Code mit dem RIS-Pfad, deshalb dort gemessen
-   * (`pnpm audit:erlaeuterungen -- --join`, §12.30).
+   * (`pnpm corpus:erlaeuterungen -- --join`, §12.30).
    */
   it('reads an enumeration as well as a range', () => {
     const byPara = passagesByParagraph(parseExplanationsHtml(doc('Besonderer Teil', 'Zu §§ 12 und 13:', 'Gemeinsame Begründung.')))

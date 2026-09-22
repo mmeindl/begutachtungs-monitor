@@ -4,7 +4,7 @@
  * JSONL file, so the instruction grammar can be measured against real text
  * instead of guessed (docs/architecture.md §12.12: the cost is verification).
  *
- * Usage:  npx vite-node scripts/novao-corpus.ts [sampleSize] [cacheDir]
+ * Usage:  npx vite-node scripts/corpus/novao.ts [sampleSize] [cacheDir]
  *
  * One list call per 100 records, then one main-document XML per sampled
  * draft, four at a time, everything cached on disk so a rerun is free.
@@ -12,12 +12,12 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { RIS_API as RIS, getText } from './lib/http'
-import { asArray } from './lib/ris'
-import { cachedJson, cachedText } from './lib/diskCache'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { RIS_API as RIS, getText } from '../lib/http'
+import { asArray } from '../lib/ris'
+import { cachedJson, cachedText } from '../lib/diskCache'
 
-const SCRIPT = 'novao-corpus'
+const SCRIPT = 'corpus/novao'
 const CONCURRENCY = 4
 
 const sampleSize = Number(process.argv[2] ?? 300)

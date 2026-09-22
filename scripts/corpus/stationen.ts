@@ -22,8 +22,8 @@
  * (docs/api-exploration.md §1) — so the run prints every title it saw, and
  * anything unknown is listed rather than silently mapped.
  *
- *     pnpm audit:stationen                     # GP XXVII + XXVIII
- *     pnpm audit:stationen -- --gp XXVI,XXV    # older periods
+ *     pnpm corpus:stationen                     # GP XXVII + XXVIII
+ *     pnpm corpus:stationen -- --gp XXVI,XXV    # older periods
  *
  * Reads the `.cache/rv-latency/<GP>/ME-<inr>.json` details when they are
  * there (identical payload, same endpoint), else fetches into
@@ -32,11 +32,11 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { mapDocuments, mapTextEvolution, RV_STATION, type RawDocumentGroup } from '../server/utils/parliament/detailJson'
-import { argPair } from './lib/args'
-import { PARLIAMENT as BASE, getJson } from './lib/http'
+import { mapDocuments, mapTextEvolution, RV_STATION, type RawDocumentGroup } from '../../server/utils/parliament/detailJson'
+import { argPair } from '../lib/args'
+import { PARLIAMENT as BASE, getJson } from '../lib/http'
 
-const SCRIPT = 'stations-corpus'
+const SCRIPT = 'corpus/stationen'
 const CONCURRENCY = 4
 
 const gps = (argPair('gp') ?? 'XXVII,XXVIII').split(',').map((g) => g.trim().toUpperCase()).filter(Boolean)

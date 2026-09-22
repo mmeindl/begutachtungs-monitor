@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Source for public/og.png (the site-wide share image).
-     Render: rsvg-convert -w 1200 -h 630 -o public/og.png scripts/og-image.svg
+     Render: rsvg-convert -w 1200 -h 630 -o public/og.png assets/og-image.svg
      Identity: Tinte, Papier, Textmarker — same tokens as app/assets/css/main.css. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <!-- Papier -->

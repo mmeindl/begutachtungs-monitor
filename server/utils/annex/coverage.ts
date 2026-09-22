@@ -17,7 +17,7 @@ import { comparableTokens } from './annexText'
  *
  * Measured, because every § under the floor is one the gate waves through
  * unexamined. Over the 1.040 §§ of the live corpus with any comparable words
- * (`annex-pdf-verify.ts --xml --calibrate`, 2026-09-09):
+ * (`harness/annexPdf.ts --xml --calibrate`, 2026-09-09):
  *
  * | Wörter | §§  | ≥ 95 % |
  * |--------|-----|--------|
@@ -148,10 +148,10 @@ export function coverageOf(column: string, standing: string): Coverage {
  * 11.09.2026). The decision itself stands — one true positive against six
  * confirmations is still not a rule — but the residue is now small enough to
  * re-read. Until then the blind spot is stated rather than closed: fault **U** of
- * `scripts/annex-fault-injection.ts` injects exactly this row and the gate
+ * `scripts/harness/faultInjection.ts` injects exactly this row and the gate
  * catches **0 of 238** on the table path and **0 of 883** on the PDF path
  * (every alarm under the fault was already firing without it), and
- * `annex-pdf-verify.ts` prints the population on every run.
+ * `harness/annexPdf.ts` prints the population on every run.
  *
  * One thing the injection did *not* settle in advance, and it is the sharper
  * half: a mirrored row is not merely unchecked, it is an **alibi**. Both

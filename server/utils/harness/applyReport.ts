@@ -4,7 +4,7 @@
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
- * This lived inside `scripts/kons-harness.ts` for one afternoon and produced
+ * This lived inside `scripts/harness/kons.ts` for one afternoon and produced
  * a wrong answer the whole time: it filtered diff segments for the types
  * `insert` and `delete`, while `LawDiffSegment` uses `inserted` and
  * `removed`. Both sets came out empty, every divergence looked harmless, and

@@ -174,7 +174,7 @@ export interface LawPackageEntry {
  * published only as a PDF can be named and linked, never diffed. Measured
  * over GP XXVI–XXVIII it never happens for the parliamentary stations and
  * regularly for the draft itself in the older periods
- * (`scripts/stations-corpus.ts`).
+ * (`scripts/corpus/stationen.ts`).
  */
 export interface LawStationOption {
   id: LawStationId

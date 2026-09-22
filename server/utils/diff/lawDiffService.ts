@@ -14,7 +14,7 @@
  *
  * On the PDF kind, one correction to what this file used to claim: "GP XXVII
  * and earlier are PDF-only" is too broad. Measured over three periods
- * (scripts/stations-corpus.ts, 17.09.2026) 276 of 353 GP-XXVII drafts do
+ * (scripts/corpus/stationen.ts, 17.09.2026) 276 of 353 GP-XXVII drafts do
  * publish their Gesetzestext as HTML, and every single one of the 296
  * Regierungsvorlagen, 80 Ausschuss- and 59 Plenarfassungen does. PDF-only is
  * a property of the individual document, never of the period — which is why
@@ -40,7 +40,7 @@ export const getLawDiff = defineCachedFunction(
     const found = findLawStations(content)
 
     // The draft's fallback: Parliament serves a PDF for about a fifth of the
-    // GP-XXVII drafts (77 of 353, scripts/stations-corpus.ts), and the RIS
+    // GP-XXVII drafts (77 of 353, scripts/corpus/stationen.ts), and the RIS
     // holds the same text as legistic XML. Only ever the draft side — the
     // parliamentary stations are published as HTML without exception in the
     // three measured periods.

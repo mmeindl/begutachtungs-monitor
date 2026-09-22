@@ -31,7 +31,7 @@ import { expandLaw, resolveKey, standingKey, type RecordedLaw } from '../scripts
  * green on a verdict nothing checked — the failure this file exists to
  * prevent. So the replay refuses, and the fixture is re-recorded on purpose:
  *
- *     npx vite-node scripts/gate-golden-record.ts -- --only=<Titelteil> --out=tests/fixtures/gate-<name>.json
+ *     npx vite-node scripts/ci/gateGoldenRecord.ts -- --only=<Titelteil> --out=tests/fixtures/gate-<name>.json
  *
  * Re-record in the SAME commit that changes the engine, and read the diff of
  * the verdict map: that diff is the change, in the only terms the reader of
@@ -134,7 +134,7 @@ describe.each(FIXTURES)('$name', ({ name, withholds }) => {
 
   /**
    * The four assurances the harness checks over the corpus
-   * (`annex-pdf-verify.ts`), here on documents that never need the network.
+   * (`harness/annexPdf.ts`), here on documents that never need the network.
    * They are what stands between a reader and a comparison labelled "geprüft"
    * that nothing checked.
    */

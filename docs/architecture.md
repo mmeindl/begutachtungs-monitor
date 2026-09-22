@@ -49,8 +49,8 @@ payload:
 - `server/utils/parliament/privacy.ts`: `classifySubmitter(raw, upstreamFlag?) → { kind: 'organisation'|'person'|'nonpublic', name: string|null }`.
 - Rules: placeholder `Nicht-öffentliche Stellungnahme` → `nonpublic`. Org indicators (GmbH, AG, Verein, Verband, Kammer, Ministerium, Bundes-, Universität, Institut, Stadt/Gemeinde/Land, Gewerkschaft, Gesellschaft, Stiftung, Österreich, …) → `organisation` with name. Person patterns ("Lastname, Firstname", academic titles, `(postal code town)` suffix) → `person`, name **null**.
 - **Safe default: when in doubt, `person`** — an organisation misclassified as a person appears as "Privatperson" (a cosmetic bug); a person misclassified as an org would publish a name (a legal risk).
-- **The naming segment decides (2026-09-15).** "Lastname, Firstname; Universität Salzburg" is a person with an affiliation, not an organisation — but the affiliation's keyword used to win, and the row was published whole: 239 rows in GP XXVII, 2 in GP XXVIII (`scripts/classifier-audit.ts`). `leadsWithPersonName` in `parliament/privacy.ts` now checks the segment before the first semicolon (or the first two comma parts, or the left of a single comma when the right carries the org signal) before any organisation rule runs, legal forms included. Price: a brand-style organisation filing as "Name Name; Abteilung" stays hidden like any other name the heuristic cannot place; the corpus comparison found four such in GP XXVII and each got a pattern or an allowlist entry.
-- **A second oracle: list 142's own `TYP` flag (2026-09-16).** Column 19 carries `I` (institution) or `P` (person) on 100 % of rows — measured over 106,626 across GP XXVIII/ME, GP XXVII/ME and the RV Stellungnahmen; it agrees with the name heuristic on 96.8 / 99.7 / 94.2 %. It records **how the submitter registered**, not what the name denotes, which is why it sees the one class a name rule structurally cannot: a person standing *behind* an org-shaped naming segment ("Windland Energieerzeugungs GmbH; <Vorname Nachname>", "i.A. <Nachname>, <Verband>"). `leadsWithPersonName` inspects the segment before the first semicolon and looks straight past those. **It may only ever veto, never authorise:** `P` suppresses a name the string alone would publish; `I` changes nothing by itself, because publishing on an undocumented upstream column would hand it the hard invariant — one silent flip and the site republishes names. The `I` disagreements are printed by `scripts/classifier-audit.ts` as list 3, a review queue; `ORG_ALLOWLIST` is what publishes one, by hand, and therefore outranks the flag. Orthogonal to `nonpublic` (902 non-public rows are `P`, 13 are `I`), so the placeholder string stays the only truth there. Column 19 is asserted in `parliament/listHeaders.ts` by its `feld_name` (`TYP`; its `label` is literally `"?"`), so a move fails loudly. Adoption cost across all three corpora: **0 names newly published**, 5 + 24 + 0 rows no longer published — of the 29, roughly sixteen named a real person. `docs/api-exploration.md` §4 carries the numbers.
+- **The naming segment decides (2026-09-15).** "Lastname, Firstname; Universität Salzburg" is a person with an affiliation, not an organisation — but the affiliation's keyword used to win, and the row was published whole: 239 rows in GP XXVII, 2 in GP XXVIII (`scripts/audit/classifier.ts`). `leadsWithPersonName` in `parliament/privacy.ts` now checks the segment before the first semicolon (or the first two comma parts, or the left of a single comma when the right carries the org signal) before any organisation rule runs, legal forms included. Price: a brand-style organisation filing as "Name Name; Abteilung" stays hidden like any other name the heuristic cannot place; the corpus comparison found four such in GP XXVII and each got a pattern or an allowlist entry.
+- **A second oracle: list 142's own `TYP` flag (2026-09-16).** Column 19 carries `I` (institution) or `P` (person) on 100 % of rows — measured over 106,626 across GP XXVIII/ME, GP XXVII/ME and the RV Stellungnahmen; it agrees with the name heuristic on 96.8 / 99.7 / 94.2 %. It records **how the submitter registered**, not what the name denotes, which is why it sees the one class a name rule structurally cannot: a person standing *behind* an org-shaped naming segment ("Windland Energieerzeugungs GmbH; <Vorname Nachname>", "i.A. <Nachname>, <Verband>"). `leadsWithPersonName` inspects the segment before the first semicolon and looks straight past those. **It may only ever veto, never authorise:** `P` suppresses a name the string alone would publish; `I` changes nothing by itself, because publishing on an undocumented upstream column would hand it the hard invariant — one silent flip and the site republishes names. The `I` disagreements are printed by `scripts/audit/classifier.ts` as list 3, a review queue; `ORG_ALLOWLIST` is what publishes one, by hand, and therefore outranks the flag. Orthogonal to `nonpublic` (902 non-public rows are `P`, 13 are `I`), so the placeholder string stays the only truth there. Column 19 is asserted in `parliament/listHeaders.ts` by its `feld_name` (`TYP`; its `label` is literally `"?"`), so a move fails loudly. Adoption cost across all three corpora: **0 names newly published**, 5 + 24 + 0 rows no longer published — of the 29, roughly sixteen named a real person. `docs/api-exploration.md` §4 carries the numbers.
 - **The allowlist carries an optional display name (2026-09-16).** Parliament stores the submitter in two fields shaped "Nachname, Vorname"; an organisation that fills them in comes back inverted ("Pressefreiheit, Institut für", "GmbH, Verkehrsverbund Ost-Region (VOR); …") and was printed that way for as long as the row was public. `ORG_ALLOWLIST` is a `Map`: the value is the name to print, `null` keeps the upstream string. A display name is a **de-inversion read off the same string**, never an invention and never a person's name. The 13 organisations whose staff registered privately — the flag's false vetoes — were added this way; each matched exactly one upstream string in GP XXVIII/XXVII and nothing else.
 - **Validation is a corpus comparison, not a unit test.** A change to `classifySubmitter` is run old-against-new over every list-142 row of a GP; every string that becomes public is read by hand (they must all be organisations), every string that becomes hidden is printed with its naming segment masked (they should all be persons). The 2026-09-15 change, final round: GP XXVIII 482 rows newly public (126 distinct strings), all institutions; 1 newly hidden, a lawyer filing with the firm. Six rounds were needed — each added pattern was tried against the corpus and three of them (`schule`, `österreichisch`, `hochschüler`) first let a person through in GP XXVII (a dotted degree that broke the title stripper, an all-lowercase name, two representatives filing jointly with a slash) before the guard learned those shapes.
 - SNME detail pages (incl. full texts) are **not fetched at all** in v1. Links point to parlament.gv.at (linking ≠ republishing).
@@ -324,19 +324,19 @@ Four invariants hold over every parse, whichever document and whichever path:
 no elided row carries a change, no row shown as a change lacks a designation, a
 word diff exists exactly where two sides differ and both carry text, and no row
 claims a change it cannot show. Four more hold over the gate and are checked
-against the whole corpus by `scripts/annex-pdf-verify.ts` (`runGate`), all of
+against the whole corpus by `scripts/harness/annexPdf.ts` (`runGate`), all of
 them on nil: no row delivered as `verified` without a confirmed verdict, no §
 missing from the verdict map, no withheld row still carrying text, and no
 withheld § without a recorded cause — otherwise the split the page prints
 would not sum to the total beside it.
 
 The corpus can only ever report what the ressorts happen to have got wrong, so
-`scripts/annex-fault-injection.ts` measures the gate from the other side: it
+`scripts/harness/faultInjection.ts` measures the gate from the other side: it
 breaks §§ the gate has just confirmed — a sentence dropped from the left
 column, another §'s standing text or its proposed text appended to the right
 one — and prints what each rule catches, beside the false alarms the same
 rules produce on the untouched corpus. Those false alarms are the two
-right-column withholdings of `annex-pdf-verify.ts` over the same population,
+right-column withholdings of `harness/annexPdf.ts` over the same population,
 so the two harnesses cross-check each other, and the reach `annex/verdict.ts`
 states is the number this one prints. It exists because that number was
 measured once in a scratch file, and a claim whose instrument is gone is a
@@ -392,15 +392,15 @@ after a clean install.
 6. **Dark mode** (tokens are prepared), **i18n**, **a11y audit** beyond the basics, **OG images**, sitemap/robots.
 7. **Monitoring/uptime alerting** — ~~the predecessor died in operation; set up before a public launch.~~ **Done (2026-09-08), deliberately minimal:** `.github/workflows/uptime.yml` probes `/` from GitHub's runners twice an hour (HTTP 200 + keyword) and keeps exactly one `downtime` issue open while the site fails, @mentioning the owner — the issue is the alert and the state, so an outage is one mail, not one per run. Off-box by construction (a monitor on the VPS would go blind with it), no third-party account, no server component. Not built, on purpose: a health endpoint (stale upstream is already labelled on the pages), a dead man's switch for the prewarm timer (a failed prewarm costs the first visitor two seconds, not an outage), a status page. Trap: GitHub disables schedules after 60 commit-free days and mails about it — `deploy/infrastructure.md`. **Data canary since 2026-09-15:** the same run then loads `/entwuerfe/XXVIII/8` and requires the Österreichischer Rechtsanwaltskammertag among its Stellungnahmen. The name is in the SSR HTML only if list 142 was read, its columns sit where `mapStatementRow` expects them and the classifier recognised the row — the one failure the start-page probe cannot see is the silent one, where every submitter degrades to "Privatperson" and the site looks healthy. An upstream outage does not trip it: the page serves its last-good aggregation, name included, and labels the staleness itself.
 8. **Nightly prewarm/sync cron** instead of cache-on-demand, once traffic is real. First instance exists (Sept 2026): a systemd timer warms the RIS↔ME map (`deploy/systemd/`, installed by `deploy.sh`), because that fetch is too slow to land on a visitor.
-9. **Classifier review loop** — ~~a manual org allowlist~~ ~~a review loop that surfaces candidates~~ **Done (2026-09-15):** `scripts/classifier-audit.ts` (`pnpm audit:classifier -- --gp XXVIII`, `--ityp I` for the Regierungsvorlagen, `--inr` for one item) runs the classifier over a GP's list-142 rows and prints the two error classes: institutions filed as "person" (in full — candidates for a pattern or `ORG_ALLOWLIST`, each to be verified before it is added) and organisations whose naming segment is shaped like a person (masked — those are leaks). What the first run found, and what became of it: 334+ hidden rows led by the ministries' short form "BM f. …" (221), courts, the Datenschutzbehörde, the FMA, the Anwaltschaften, brand-style NGOs → patterns, checked against the comma-form persons of the corpus (zero hits each); ÖGB/ÖAMTC/SPÖ/ARBÖ hidden by JavaScript's ASCII-only `\b` before "Ö" → lookarounds; and the leak class (§3) → `leadsWithPersonName`. Occasion: a reader reported one hidden organisation (Presseclub Concordia); the audit showed it was a class. Re-run when a GP closes or a reader reports the next one. The classifier still runs inside the derived `statements-me` cache (memory-only, §5 cache rule 5), so a change shows on the next request and nothing has to be deleted by hand.
-10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/parliament/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/rv-latency.ts`, hand-copied into `app/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
+9. **Classifier review loop** — ~~a manual org allowlist~~ ~~a review loop that surfaces candidates~~ **Done (2026-09-15):** `scripts/audit/classifier.ts` (`pnpm audit:classifier -- --gp XXVIII`, `--ityp I` for the Regierungsvorlagen, `--inr` for one item) runs the classifier over a GP's list-142 rows and prints the two error classes: institutions filed as "person" (in full — candidates for a pattern or `ORG_ALLOWLIST`, each to be verified before it is added) and organisations whose naming segment is shaped like a person (masked — those are leaks). What the first run found, and what became of it: 334+ hidden rows led by the ministries' short form "BM f. …" (221), courts, the Datenschutzbehörde, the FMA, the Anwaltschaften, brand-style NGOs → patterns, checked against the comma-form persons of the corpus (zero hits each); ÖGB/ÖAMTC/SPÖ/ARBÖ hidden by JavaScript's ASCII-only `\b` before "Ö" → lookarounds; and the leak class (§3) → `leadsWithPersonName`. Occasion: a reader reported one hidden organisation (Presseclub Concordia); the audit showed it was a class. Re-run when a GP closes or a reader reports the next one. The classifier still runs inside the derived `statements-me` cache (memory-only, §5 cache rule 5), so a change shows on the next request and nothing has to be deleted by hand.
+10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/parliament/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/corpus/rvLatency.ts`, hand-copied into `app/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
 
 ### 12.10b Ändert sich die Begründung? — gemessen, 22.09.2026
 
 Das letzte offene Stück des Diff-Layers war eine Frage, keine Aufgabe: Der
 Vergleich zeigt, wie sich der **Gesetzestext** zwischen Entwurf und
 Regierungsvorlage ändert. Ändert sich auch die **Begründung** des Ressorts —
-und lohnt dafür ein eigener Vergleich? Gemessen mit `pnpm audit:erl-diff --
+und lohnt dafür ein eigener Vergleich? Gemessen mit `pnpm corpus:erl-diff --
 XXVIII`, alle 137 Entwürfe der Periode.
 
 **Beide Seiten vom Parlament, mit demselben Parser.** Die Erläuterungen des
@@ -490,7 +490,7 @@ die drei Korrekturen am Ende dieses Abschnitts.)
 („§§ 12 und 13"): Dort bekam nur der erste Paragraph die Passage, obwohl das
 Ressort beide in einem Atemzug erklärt. Der Ausdruck ist geteilter Code mit
 dem RIS-Pfad, also entschied dessen eigene Messung
-(`pnpm audit:erlaeuterungen -- --join`, vorher und nachher über dieselben 130
+(`pnpm corpus:erlaeuterungen -- --join`, vorher und nachher über dieselben 130
 Entwürfe):
 
 | Der Join | vorher | nachher |
@@ -734,10 +734,10 @@ pure modules plus a harness, none of it wired to a page yet:
 | `server/utils/lawtext/draftArticles.ts` | Promulgationsklausel → Stammnorm; `articleBlocks` schneidet ein Paket in seine Gesetze |
 | `server/utils/kons/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
 | `server/utils/ris/konsLaw.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
-| `scripts/novao-corpus.ts`, `novao-forms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
+| `scripts/corpus/novao.ts`, `corpus/novaoForms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
 | `server/utils/harness/applyReport.ts` | bewertet einen Lauf gegen die echte Fassung |
-| `scripts/kons-harness.ts` | Prüfstand: BGBl-Anweisungen anwenden, Ergebnis gegen die echte Fassung vergleichen; `--sammel` je Artikel |
-| `scripts/me-harness.ts` | Prüfstand für den Produktionspfad: Entwurfs-Anweisungen anwenden, gegen die Gegenüberstellung desselben Entwurfs halten |
+| `scripts/harness/kons.ts` | Prüfstand: BGBl-Anweisungen anwenden, Ergebnis gegen die echte Fassung vergleichen; `--sammel` je Artikel |
+| `scripts/harness/me.ts` | Prüfstand für den Produktionspfad: Entwurfs-Anweisungen anwenden, gegen die Gegenüberstellung desselben Entwurfs halten |
 
 **Die Grammatik ist klein, der Schwanz sitzt in der Adresse.** Über 6.576
 Anweisungen aus 300 Entwürfen tragen sechs Verben 98,6 %: *lautet* 28 %,
@@ -931,7 +931,7 @@ Novelle liegt bei einigen Prozent, nicht bei null.
 *Der Detektor, gemessen gegen die alten Fehler.* `server/utils/kons/applyGuard.ts`
 prüft ein Ergebnis zur Entwurfszeit auf Plausibilität — Umfang (weicht die
 Textlänge um mehr als 4 Zeichen von dem ab, was die Operanden wiegen?),
-Fugen, Marker im Text, unerklärte Wörter. `scripts/guard-eval.ts` spielt
+Fugen, Marker im Text, unerklärte Wörter. `scripts/harness/guardEval.ts` spielt
 einen Prüfstand-Dump durch das echte Modul; gemessen wurde bewusst am Dump
 der Engine *vor* den Korrekturen (54 Fehler in 438 §§), weil das der beste
 Ersatz für den nächsten unbekannten Fehler ist:
@@ -1092,7 +1092,7 @@ unter ihrer Abkürzung führt („ZPO") und der Artikel „Änderung der
 Zivilprozessordnung" heißt. Eine benannte, kleine, schließbare Lücke — und
 sie trifft ausgerechnet die meistzitierten Gesetze des Landes.
 
-*Der Ministerialentwurf: `scripts/me-harness.ts`.* Der zweite Prüfstand
+*Der Ministerialentwurf: `scripts/harness/me.ts`.* Der zweite Prüfstand
 wendet die Anweisungen eines **Entwurfs** auf den Bestand an, wie er am
 ersten Tag der Begutachtung galt, und hält das Ergebnis gegen die
 Textgegenüberstellung **desselben** Entwurfs. Er nennt bewusst **keine
@@ -1823,7 +1823,7 @@ Markierung wird mitgelesen, aber nicht verlassen.
 
 **Der ausgelieferte Pfad war nie gemessen (2026-09-09).** Geprüft wurde die
 Beilage nur auf dem *nicht* ausgelieferten PDF-Weg, und der Grund war die
-Architektur: die Urteilslogik lag in `scripts/annex-pdf-verify.ts`, also dort,
+Architektur: die Urteilslogik lag in `scripts/harness/annexPdf.ts`, also dort,
 wo sie weder getestet noch angewendet werden kann — dieselbe Lektion wie bei
 `applyReport.ts`, zum zweiten Mal. Sie liegt jetzt in
 `server/utils/annex/` (rein, testbar), der Prüfstand bekommt `--xml`,
@@ -1971,7 +1971,7 @@ Die Urteilslogik liegt jetzt vollständig in `annex/`: `verifyAnnex`
 gibt eine Urteilstabelle je Paragraph zurück statt zweier Listen, und
 `checkAnnexRows` setzt sie auf die Zeilen. Beide sind rein und getestet, der
 Service macht nur noch I/O. Der Prüfstand ruft dieselben zwei Funktionen auf
-(`annex-pdf-verify.ts`, `runGate`) und prüft drei Zusicherungen über den
+(`harness/annexPdf.ts`, `runGate`) und prüft drei Zusicherungen über den
 Korpus, die alle auf null stehen müssen und stehen: keine als geprüft
 ausgelieferte Zeile ohne bestätigtes Urteil, kein Paragraph ohne Eintrag in
 der Urteilstabelle, keine einbehaltene Zeile mit Text.
@@ -2258,7 +2258,7 @@ Drei Zutaten halten das ehrlich, und jede ist gemessen:
   woher sie kommt, steht am Ende dieses Abschnitts („Zwei Bestimmungen unter
   einer Nummer", 11.09.2026).
 
-Was das kostet und bringt, beide Pfade, mit `scripts/annex-fault-injection.ts`
+Was das kostet und bringt, beide Pfade, mit `scripts/harness/faultInjection.ts`
 in einem Lauf gemessen (die Schwellen 10 / 8 / 0,9 bleiben unverändert):
 
 Die dritte Spalte ist die Adressierung von 11.09.2026 (93,6 % bzw. 93,4 %),
@@ -2668,13 +2668,13 @@ für folgende Bestimmung" 2-mal, „Langtitel", „Gesamte Rechtsvorschrift für
 vorher als Zeile in der Beilage und stehen in keinem Sack der Prüfung.
 
 Bis dahin wird der blinde Fleck **benannt statt geschlossen**, und zwar mit
-Zahlen, die jeder Lauf neu erzeugt. `annex-fault-injection.ts` hat dafür einen
+Zahlen, die jeder Lauf neu erzeugt. `harness/faultInjection.ts` hat dafür einen
 vierten Fehler **U**: eine zusätzliche Zeile mit dem geltenden Text eines
 *anderen* Paragraphen, in beiden Spalten gleich. Das Tor fängt **0 von 238**
 auf dem Tabellenpfad und **0 von 883** auf dem PDF-Pfad — jede Meldung unter
 der Injektion feuerte schon ohne sie —, und das ist keine Überraschung,
 sondern Bauart: die linke Prüfung liest nur gezeigte Änderungen, beide
-Regeln der rechten Spalte nur Eingefügtes. `annex-pdf-verify.ts` druckt
+Regeln der rechten Spalte nur Eingefügtes. `harness/annexPdf.ts` druckt
 seitdem die Grundmenge („Unveränderte Zeilen, nie gegen das RIS gehalten").
 
 Was der Lauf **nicht** vorher wusste, ist die schärfere Hälfte: eine
@@ -2736,7 +2736,7 @@ Tabellenpfad identisch; auf dem PDF-Pfad wächst nur die Grundmenge um die sechs
 Paragraphen, die jetzt eine Injektionsstelle tragen (936/899/898 →
 942/905/904), bei gleichen Quoten (L 62,0 %, R-alt 66,2 %, R-neu 77,0 %) und
 Fehlalarmen 19 und 22 statt 19 und 21. Alle vier Zusicherungen 0,
-`droppedPages` 0, der Prüfstand der Änderungsmaschine (`kons-harness.ts`,
+`droppedPages` 0, der Prüfstand der Änderungsmaschine (`harness/kons.ts`,
 `--discover=8`) Zeile für Zeile unverändert.
 
 **Was gemessen und nicht getan wurde.** `<schlussteil>` trägt dieselbe
@@ -3274,7 +3274,7 @@ ist unsere Schuld.**
   und eine gezeigte Änderung verschwinden zu lassen ist derselbe Fehler wie
   bei der Auslassungssyntax. **Gemessen und beantwortet am 11.09.2026, unten.**
 
-*Gemessen* (`annex-pdf-verify.ts --xml`, GP XXVIII): Tabellenpfad
+*Gemessen* (`harness/annexPdf.ts --xml`, GP XXVIII): Tabellenpfad
 **986/60/801 → 998/62/791** Paragraphen, nach Ursache 50/6/4 → 52/6/4,
 ≥ 99 % gedeckt 961 → 973, Zeilen ohne Paragraphenangabe 273 → 266 (als
 Änderung gezeigt 79 → 77), alle vier Zusicherungen 0. Der **PDF-Pfad ist
@@ -3560,7 +3560,7 @@ der GP XXVIII, und sie standen unter der *vorigen* Anlage: die
 Bäderhygieneverordnung zeigte ihre neue Anlage 11 unter Anlage 10, die
 Medizinproduktebetreiberverordnung ihren aufgehobenen Anhang 5 unter Anhang 2.
 
-*Gemessen* (`annex-pdf-verify.ts --xml`, GP XXVIII): Tabellenpfad
+*Gemessen* (`harness/annexPdf.ts --xml`, GP XXVIII): Tabellenpfad
 **998/62/791 → 1.007/52/799** Paragraphen, nach Ursache 52/6/4 → 43/5/4,
 ≥ 99 % gedeckt 973 → 988, p10 der Deckung 99 % → 100 %, Zeilen ohne
 Paragraphenangabe 266 → 251 (als Änderung gezeigt 77 → 75), alle vier
@@ -3617,7 +3617,7 @@ misst jetzt wöchentlich beide Pfade und macht aus einem Befund ein Issue —
 dieselbe Mechanik wie `uptime.yml` (ein Issue, beim nächsten sauberen Lauf
 geschlossen), auf GitHubs Runnern und nicht als Dienst auf dem VPS.
 
-**Klasse A ist das, was ohne Grundlinie feststeht** (`scripts/annex-report.ts`,
+**Klasse A ist das, was ohne Grundlinie feststeht** (`scripts/lib/annexReport.ts`,
 rein und getestet — die Urteilslogik lag in diesem Kapitel schon zweimal im
 CLI-Skript, wo kein Test sie erreicht): die vier Zusicherungen des Tors, die
 Summe der drei Einbehaltungsgründe gegen `withheldParas`, nicht gelesene
@@ -3710,7 +3710,7 @@ Verschiebung aufsaugen, für deren Entdeckung sie da ist.
 
 Die Regel dazu, ohne Ausnahme: **die Grundlinie wird im selben Commit
 nachgezogen wie die Änderung, die sie bewegt**
-(`annex-drift.ts --grundlinie-schreiben=…`). Sonst ist der nächste Lauf ein
+(`ci/annexDrift.ts --grundlinie-schreiben=…`). Sonst ist der nächste Lauf ein
 Befund über eine Verbesserung, und nach dem dritten Mal liest niemand mehr hin
 — das ist die Art, wie ein Alarm stirbt, und sie ist häufiger als der Ausfall,
 gegen den er gebaut wurde.
@@ -3827,7 +3827,7 @@ read from the payload the BGBl link already comes from — `enactment.filingOpen
 gated on the GP still running), and both when both are. Both is not a
 corner case: in GP XXVIII 7 of 91 Regierungsvorlagen arrived before the
 draft's Frist had ended, median lead 14 days (GP XXVII: 1 of 296,
-`scripts/rv-latency.ts`). Then the parliamentary window is arguably the one
+`scripts/corpus/rvLatency.ts`). Then the parliamentary window is arguably the one
 that still matters — the government has fixed its text, only the Ausschuss
 can change it — so neither door hides the other; the card states the
 overlap as a sequence of facts ("liegt bereits im Nationalrat, obwohl die
@@ -3947,7 +3947,7 @@ zwei Drittel des Korpus fehlten.
 
 #### Was gemessen wurde, bevor gebaut wurde
 
-`pnpm audit:verordnungen` läuft über den ganzen Begut-Korpus durch den
+`pnpm corpus:verordnungen` läuft über den ganzen Begut-Korpus durch den
 **ausgelieferten** Mapper (`flattenRisRecord`), nicht durch eine zweite
 Implementierung davon. Stand 17.09.2026, 4.574 Sätze:
 
@@ -4276,7 +4276,7 @@ oder im Plenum, nachdem alle aufgehört haben hinzusehen. Die Seite sagte den
 Befund selbst schon, in einem Kommentar: 52 der 91 GP-XXVIII-Entwürfe, die
 eine Vorlage erreichten, wurden danach **noch einmal** geändert.
 
-**Gemessen vor dem Bau** (`scripts/stations-corpus.ts`, `pnpm audit:stationen`,
+**Gemessen vor dem Bau** (`scripts/corpus/stationen.ts`, `pnpm corpus:stationen`,
 17.09.2026, GP XXVI–XXVIII, 651 Ministerialentwürfe), weil die Notiz zwei
 Risiken vermutete und beide an der falschen Stelle lagen:
 
@@ -5106,7 +5106,7 @@ die Entwurfsseite findet beide.
 
 **Gegenprobe, zweimal unabhängig bestanden.** Die Karte findet für GP XXVII
 296 von 353 Entwürfen eine Regierungsvorlage und für GP XXVI 114 von 163 —
-exakt die Zahlen, die `scripts/rv-latency.ts` am 08.09.2026 von Hand in
+exakt die Zahlen, die `scripts/corpus/rvLatency.ts` am 08.09.2026 von Hand in
 `app/utils/outcomes.ts` gemessen hat, live auf einem anderen Weg
 reproduziert.
 
@@ -5622,7 +5622,7 @@ Leser, den Entwurfstext und ME→RV-Vergleich benutzen
 (`server/utils/explanations/risExplanations.ts`, rein; `explanationsService.ts` ist die
 Nitro-Hälfte, `tests/explanations.test.ts` hält die Formen fest).
 
-**Gemessen vor dem Bauen** (`pnpm audit:erlaeuterungen`, 465 Dokumente mit
+**Gemessen vor dem Bauen** (`pnpm corpus:erlaeuterungen`, 465 Dokumente mit
 Fristbeginn ab 2024, gelesen durch den Produktionsparser):
 
 | | |
@@ -5755,7 +5755,7 @@ keine Ähnlichkeitssuche — `server/utils/explanations/explanationsJoin.ts`, un
 Schlüssel selbst steht in `shared/utils/explanationKey.ts`, weil ihn beide
 Seiten bilden müssen.
 
-**Gemessen** (`pnpm audit:erlaeuterungen -- --join`, Fenster ab 2024: 277
+**Gemessen** (`pnpm corpus:erlaeuterungen -- --join`, Fenster ab 2024: 277
 Entwürfe mit allen drei Dokumenten als XML, davon 130 mit §§ in der Beilage
 und Passagen im Besonderen Teil):
 
@@ -6169,7 +6169,7 @@ liefert alle 18.925 Sätze. Es wirken `Bgblnummer` (exakt, ein Treffer) und
 Fenster jeden Tag einen neuen erzeugte. Teil II umfasst 421 (2024), 344
 (2025) und 281 (2026 bis September) Kundmachungen.
 
-**Der Join ist gemessen, in zwei Anläufen.** `pnpm audit:bgbl2` über 291
+**Der Join ist gemessen, in zwei Anläufen.** `pnpm corpus:bgbl2` über 291
 Verordnungsentwürfe mit Fristende ab 2024:
 
 | | erster Anlauf | nach der Korrektur |
@@ -6271,7 +6271,7 @@ steht dort, wo die Methode ohnehin erklärt wird, nicht über jedem Ergebnis.
 ### 12.33 Die BGBl-Station — gebaut, und die fünf falschen Unterschiede, die sie aufgedeckt hat
 
 Die Stationsleiste des §-Vergleichs endet bei der Plenarfassung (§12.18). Die
-letzte Fassung ist aber die kundgemachte. `pnpm audit:bgbl-station` misst, ob
+letzte Fassung ist aber die kundgemachte. `pnpm corpus:bgbl-station` misst, ob
 sich diese Station bauen lässt — und die Messung hat mehr gefunden, als sie
 sollte.
 
@@ -6365,7 +6365,7 @@ und überlebt jede Beugung.
 
 ## 13. Open questions
 
-1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. Tracked as E3 in `outreach/verfahrensfragen.md`. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm audit:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **E3 has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum.
+1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. Tracked as E3 in `outreach/verfahrensfragen.md`. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **E3 has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum.
 2. ~~Join key RIS↔Parliament at corpus level~~ **Resolved (Sept 2026):** GP XXVII corpus test, 337/350 matched, 0 ambiguous, 12 without any RIS record, no one-sided extensions — `docs/ris-join.md`.
 3. Is list-81 `Frist` updated on deadline extensions? (Affects future alerts and history.)
 4. Multiple RVs (ME→RV 1:n): is "latest RV" enough or does the UI need all strands? **Corpus evidence 2026-09-08:** it happens — 27/ME (IFG-Anpassung BMF) has two, 134 d.B. and 129 d.B., both dated 18.06.2025, and its diff against the one we pick reports 25 laws as absent that are plausibly in the other. Until this is decided, the comparison says "in dieser Regierungsvorlage" and adds that a draft can end up in more than one — it must never read as "the law was dropped".

@@ -30,7 +30,7 @@ export function scriptUserAgent(script: string): string {
 }
 
 export interface HttpOptions {
-  /** Names the caller in the User-Agent; `me-harness`, not `scripts/me-harness`. */
+  /** Names the caller in the User-Agent; `harness/me`, not `scripts/harness/me.ts`. */
   script: string
   /** Attempts in total, the first included. `1` means no retry. */
   attempts?: number
@@ -120,7 +120,7 @@ export function getJson<T = unknown>(url: string, opts: HttpOptions): Promise<T>
  * reaches into a different corner of it.
  *
  * `__url` in the parameters replaces the RIS endpoint with that URL, which is
- * how `kons-harness.ts` reads a Parliament detail page through the same
+ * how `harness/kons.ts` reads a Parliament detail page through the same
  * helper (and therefore through the same offline cache).
  */
 export function risJson<T = unknown>(params: Record<string, string>, opts: HttpOptions): Promise<T> {

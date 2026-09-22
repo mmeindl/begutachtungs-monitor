@@ -33,10 +33,10 @@
  * standing BEHIND an org-shaped naming segment, which list 2 looks straight
  * past. Nothing here writes anywhere.
  */
-import { classifySubmitter, readUpstreamFlag } from '../server/utils/parliament/privacy'
-import { stripHtmlToText } from '../server/utils/parliament/htmlText'
-import { argPair } from './lib/args'
-import { PARLIAMENT, getJson } from './lib/http'
+import { classifySubmitter, readUpstreamFlag } from '../../server/utils/parliament/privacy'
+import { stripHtmlToText } from '../../server/utils/parliament/htmlText'
+import { argPair } from '../lib/args'
+import { PARLIAMENT, getJson } from '../lib/http'
 
 const gp = argPair('gp') ?? 'XXVIII'
 const ityp = argPair('ityp') ?? 'ME'
@@ -47,7 +47,7 @@ if (inr) body.BEZUG_INR = [Number(inr)]
 
 const data = await getJson<{ count?: number; rows?: unknown[][] }>(
   `${PARLIAMENT}/Filter/api/filter/data/142?js=eval&showAll=true`,
-  { script: 'classifier-audit', method: 'POST', body },
+  { script: 'audit/classifier', method: 'POST', body },
 )
 const rows = data.rows ?? []
 

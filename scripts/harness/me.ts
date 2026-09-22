@@ -4,10 +4,10 @@
  * Novellierungsanordnungen of a Ministerialentwurf (docs/architecture.md
  * §12.12).
  *
- * Usage:  npx vite-node scripts/me-harness.ts --discover=40 [--cache] [--quiet]
- *         npx vite-node scripts/me-harness.ts BEGUT_COO_2026_… [--oracle-debug]
+ * Usage:  npx vite-node scripts/harness/me.ts --discover=40 [--cache] [--quiet]
+ *         npx vite-node scripts/harness/me.ts BEGUT_COO_2026_… [--oracle-debug]
  *
- * **Why a second harness.** `kons-harness.ts` measures BGBl → BrKons: the
+ * **Why a second harness.** `harness/kons.ts` measures BGBl → BrKons: the
  * enacted instructions of a promulgated Novelle, applied to the version RIS
  * says they were applied to, scored against the version RIS says came out.
  * That is the only path with a ground truth, and it is not the path the
@@ -26,7 +26,7 @@
  *      show no consolidated text whatever the engine can do.
  *   2. *Do draft instructions read like enacted ones?* They are written in
  *      the same legistic XML, but nothing has ever measured that — the
- *      grammar corpus (`novao-corpus.ts`) harvested draft instructions and
+ *      grammar corpus (`corpus/novao.ts`) harvested draft instructions and
  *      only ever counted them, never applied one.
  *   3. *What would a gate actually publish?* Refusal and plausibility are
  *      knowable at draft time; the RIS truth is not. The only second opinion
@@ -40,29 +40,29 @@
  * number that blurred the two would be the harness reporting its own
  * coverage as accuracy.
  */
-import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../server/utils/kons/lawApply'
-import { plainText, type LawNode } from '../server/utils/lawtext/konsTree'
-import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { articleBlocks, draftArticles, type DraftArticle } from '../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../server/utils/ris/konsLaw'
-import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../server/utils/harness/risKonsHistory'
-import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
-import { parseTextComparison } from '../server/utils/annex/comparisonRows'
-import { isScanned } from '../server/utils/annex/tableCells'
-import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../server/utils/kons/tguOracle'
-import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../server/utils/ris/risJoin'
-import { parseExplanations } from '../server/utils/explanations/risExplanations'
-import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
-import { explanationKey, explanationParaId } from '../shared/utils/explanationKey'
-import { installFetchCache } from './lib/harnessCache'
-import { argAssigned, argFlag } from './lib/args'
-import { PARLIAMENT, getJson, risJson as risQuery } from './lib/http'
-import { ANNEX_NAME_RE, asArray } from './lib/ris'
-import { anlageLabelKey, bareParaId } from '../server/utils/text/designation'
+import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
+import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { articleBlocks, draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
+import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
+import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
+import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
+import { parseTextComparison } from '../../server/utils/annex/comparisonRows'
+import { isScanned } from '../../server/utils/annex/tableCells'
+import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../../server/utils/ris/risJoin'
+import { parseExplanations } from '../../server/utils/explanations/risExplanations'
+import { explanationsByParagraph } from '../../server/utils/explanations/explanationsJoin'
+import { explanationKey, explanationParaId } from '../../shared/utils/explanationKey'
+import { installFetchCache } from '../lib/harnessCache'
+import { argAssigned, argFlag } from '../lib/args'
+import { PARLIAMENT, getJson, risJson as risQuery } from '../lib/http'
+import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
-const SCRIPT = 'me-harness'
+const SCRIPT = 'harness/me'
 /** Dieselbe lose Schreibweise wie in `ris/risRecord.ts`. */
 const ERL_NAME = /erl(ä|ae|a)uterung/i
 
@@ -175,7 +175,7 @@ let meByRisId: Map<string, { gp: string; inr: number }> | null = null
 function parliamentMeFor(risId: string): { gp: string; inr: number } | null {
   if (!meByRisId) {
     meByRisId = new Map()
-    const fixture = <T>(f: string): T => JSON.parse(readFileSync(new URL(`../tests/fixtures/${f}`, import.meta.url), 'utf8')) as T
+    const fixture = <T>(f: string): T => JSON.parse(readFileSync(new URL(`../../tests/fixtures/${f}`, import.meta.url), 'utf8')) as T
     for (const gp of ['gp27', 'gp28']) {
       const ris = fixture<RisBegutRecord[]>(`ris-begut-${gp}.json`)
       const mes = dedupeMeRows(fixture<MeListRow[]>(`me-${gp}.json`))
@@ -488,7 +488,7 @@ const drafts: Draft[] = discoverArg
   : (await Promise.all(ids.map(fetchDraft))).filter((d): d is Draft => d !== null)
 
 if (drafts.length === 0) {
-  console.error('Usage: npx vite-node scripts/me-harness.ts --discover=N [--cache] | <BEGUT-ID> …')
+  console.error('Usage: npx vite-node scripts/harness/me.ts --discover=N [--cache] | <BEGUT-ID> …')
   process.exit(1)
 }
 

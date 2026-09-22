@@ -163,7 +163,7 @@ export interface WordBag {
  * Rule 2's reference used to be the whole draft, which is blind to the fault
  * it meets most often: a sentence dragged out of a *neighbouring*
  * Novellierungsanordnung is in the draft, only in the wrong §. Measured by
- * fault injection over GP XXVIII (`scripts/annex-fault-injection.ts`), the
+ * fault injection over GP XXVIII (`scripts/harness/faultInjection.ts`), the
  * whole-draft bag caught 11,8 % of such faults on the PDF path and 32,1 % on
  * the table path — the weakest number the gate had. Per § it is 77,0 % and
  * 82,7 % (populations of 2026-09-11 evening: 904 and 237 sites).
@@ -459,7 +459,7 @@ export interface RightColumnCheck {
  * Those are the numbers for the whole-draft reference. With the reference per
  * § (`draftBags`, 2026-09-10) rule 2 roughly triples on its own fault and
  * more than doubles on the other two, measured per path with
- * `scripts/annex-fault-injection.ts`. The last column is the same reference
+ * `scripts/harness/faultInjection.ts`. The last column is the same reference
  * with the addressing of 2026-09-11 — 93,6 % of the draft's instructions name
  * a § instead of 87,1 % (`novao.refusedAddresses`) — which is a narrower
  * reference at unchanged thresholds, and cost exactly one more alarm on an

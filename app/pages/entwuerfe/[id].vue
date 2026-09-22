@@ -272,7 +272,7 @@ const documents = computed(() => {
            Parlaments, weil es nie ins Parlament kommt. Die Erläuterungen
            sind damit die einzige Auskunft über den Zweck, die das Verfahren
            überhaupt veröffentlicht — und 72,1 % der Verordnungssätze tragen
-           sie (`pnpm audit:verordnungen`). -->
+           sie (`pnpm corpus:verordnungen`). -->
       <section id="erlaeuterungen" class="page-section scroll-mt-6" aria-labelledby="erlaeuterungen-heading">
         <h2 id="erlaeuterungen-heading" class="section-heading">Was das Ressort begründet</h2>
         <ExplanationsSection :ris-id="data.id" />

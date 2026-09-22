@@ -9,7 +9,7 @@
  * text. This module does the reading half; lawApply.ts does the applying.
  *
  * Measured over 6.576 instructions from 300 drafts of the RIS Begut corpus
- * (2026-09-08, `scripts/novao-corpus.ts`): six verbs carry 98,6 % of them —
+ * (2026-09-08, `scripts/corpus/novao.ts`): six verbs carry 98,6 % of them —
  * lautet 28 %, ersetzt 26 %, angefügt 19 %, eingefügt 17 %, entfällt 13 %,
  * Bezeichnung 1,4 %. The long tail is in the *address*, not the verb.
  *

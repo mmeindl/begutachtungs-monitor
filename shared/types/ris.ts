@@ -75,7 +75,7 @@ export interface RisMapResponse {
  * type field. It was built as a score penalty inside the RIS↔ME join, where
  * a wrong guess was outvoted by dates and titles; putting it on screen makes
  * it a factual claim, so it was checked against the join as an oracle
- * (`pnpm audit:verordnungen`): of 472 records that the join tied to a real
+ * (`pnpm corpus:verordnungen`): of 472 records that the join tied to a real
  * Ministerialentwurf — which Parliament's list 81 only ever carries for
  * Gesetzesentwürfe — not one is classified `verordnung`.
  *

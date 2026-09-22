@@ -12,7 +12,7 @@
  * bug, the opposite direction would publish a name.
  *
  * The cosmetic bug is not rare and not evenly spread. Measured on every
- * GP-XXVIII Stellungnahme on 2026-09-15 (`scripts/classifier-audit.ts`): at
+ * GP-XXVIII Stellungnahme on 2026-09-15 (`scripts/audit/classifier.ts`): at
  * least 334 of the 2,996 rows filed as "person" were institutions — 221 of
  * them federal ministries in their own short form ("BM f. Finanzen"), then
  * courts, the Datenschutzbehörde, the FMA, the Umweltanwaltschaften and a
@@ -50,7 +50,7 @@ const NONPUBLIC_RE = /nicht-?\s*öffentliche?\s+stellungnahme/i
  * case-insensitively against the full normalized name. Because an entry here
  * publishes the name, this list may contain organisations only, never
  * persons — add entries solely after verifying the exact spelling in the
- * Parliament data (list 142 `names[].name`). `scripts/classifier-audit.ts`
+ * Parliament data (list 142 `names[].name`). `scripts/audit/classifier.ts`
  * prints the candidates as lists 1 and 3.
  *
  * The value is the name to PRINT; `null` prints the upstream string as it
@@ -391,7 +391,7 @@ function classifyByName(s: string): SubmitterClassification {
  *
  * The flag may only ever VETO publication, never authorise it. Both
  * directions of disagreement were measured on 2026-09-16
- * (`scripts/classifier-audit.ts`), and they are not symmetric:
+ * (`scripts/audit/classifier.ts`), and they are not symmetric:
  *
  *  - Flag `P`, name reads as an organisation (29 rows across the corpora).
  *    Hand-checked, roughly sixteen of them name a real person the site
@@ -406,7 +406,7 @@ function classifyByName(s: string): SubmitterClassification {
  *    Amnesty International, Naturhistorisches Museum Wien). Publishing on
  *    the flag alone would put the hard invariant in the hands of an
  *    undocumented upstream column: one silent flip and the site republishes
- *    names. → nothing changes here; `scripts/classifier-audit.ts` lists them
+ *    names. → nothing changes here; `scripts/audit/classifier.ts` lists them
  *    and `ORG_ALLOWLIST` is where a verified one is published, by hand.
  *
  * The allowlist therefore outranks the flag: it is a human statement that

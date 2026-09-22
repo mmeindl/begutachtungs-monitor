@@ -119,7 +119,7 @@ export const annexFromPdf = defineCachedFunction(
     const pages = await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null)
     // pdf.js reads a damaged file as an *empty* document rather than failing,
     // so "no pages" and "no text on any page" both have to count as unreadable
-    // — a scored run against nothing looks like a result (`harness-cache.ts`).
+    // — a scored run against nothing looks like a result (`lib/harnessCache.ts`).
     if (pages === null || pages.every((page) => page.items.length === 0)) return null
     return parseAnnexPdf(pages, articles)
   },

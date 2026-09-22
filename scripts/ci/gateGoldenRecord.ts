@@ -19,41 +19,41 @@
  * Textgegenüberstellung. Parliament's copy of the same annex is deliberately
  * not used here: it is the one excluded from open data (CLAUDE.md, §12.11).
  *
- * Usage:  npx vite-node scripts/gate-golden-record.ts -- --only=Organtransplantations --out=tests/fixtures/gate-organtransplantation.json
+ * Usage:  npx vite-node scripts/ci/gateGoldenRecord.ts -- --only=Organtransplantations --out=tests/fixtures/gate-organtransplantation.json
  */
 import { writeFileSync } from 'node:fs'
-import { notRunReason } from '../server/utils/annex/gateRows'
+import { notRunReason } from '../../server/utils/annex/gateRows'
 import {
   verifyAnnex,
   type AnnexDraft,
   type AnnexSources,
-} from '../server/utils/annex/verdict'
-import { parseAnnexPdf } from '../server/utils/annex/annexPdf'
-import { pagesOf } from '../server/utils/annex/annexPdfPages'
-import { plainText } from '../server/utils/lawtext/konsTree'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { draftArticles } from '../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../server/utils/ris/konsLaw'
-import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
-import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
-import { isScanned } from '../server/utils/annex/tableCells'
-import { compactLaw, resolveKey, standingKey, type RecordedLaw } from './lib/gateGoldenKeys'
-import { installFetchCache } from './lib/harnessCache'
-import { argAssigned } from './lib/args'
-import { risJson as risQuery, scriptUserAgent } from './lib/http'
-import { ANNEX_NAME_RE, asArray } from './lib/ris'
+} from '../../server/utils/annex/verdict'
+import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
+import { pagesOf } from '../../server/utils/annex/annexPdfPages'
+import { plainText } from '../../server/utils/lawtext/konsTree'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { draftArticles } from '../../server/utils/lawtext/draftArticles'
+import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
+import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
+import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
+import { isScanned } from '../../server/utils/annex/tableCells'
+import { compactLaw, resolveKey, standingKey, type RecordedLaw } from '../lib/gateGoldenKeys'
+import { installFetchCache } from '../lib/harnessCache'
+import { argAssigned } from '../lib/args'
+import { risJson as risQuery, scriptUserAgent } from '../lib/http'
+import { ANNEX_NAME_RE, asArray } from '../lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const SCRIPT = 'gate-golden-record'
+const SCRIPT = 'ci/gateGoldenRecord'
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })
 
 const only = argAssigned('only')
 const out = argAssigned('out')
 const gp = argAssigned('gp') ?? 'XXVIII'
 if (!only || !out) {
-  console.error('Usage: gate-golden-record.ts --only=<Titelteil> --out=<fixture.json> [--gp=XXVIII]')
+  console.error('Usage: pnpm ci:gate-record -- --only=<Titelteil> --out=<fixture.json> [--gp=XXVIII]')
   process.exit(2)
 }
 

@@ -63,7 +63,7 @@ export interface BgblJoinDraft {
  * Vorgängerfassung derselben Verordnung einzufangen.
  *
  * Die Obergrenze ist großzügig, weil sie nichts kostet: Der Titel entscheidet,
- * das Datum grenzt nur ein. Gemessen (`pnpm audit:bgbl2`) liegt der Median
+ * das Datum grenzt nur ein. Gemessen (`pnpm corpus:bgbl2`) liegt der Median
  * weit darunter; was die 540 Tage verhindern, ist der Treffer auf die
  * NÄCHSTE Novelle desselben Textes zwei Jahre später.
  */

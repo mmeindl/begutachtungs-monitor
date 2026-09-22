@@ -13,8 +13,8 @@
  * "one main document, no Erläuterungen, no Gegenüberstellung" from a single
  * record read by eye. Run before trusting any number here again:
  *
- *     pnpm audit:verordnungen                # whole corpus
- *     pnpm audit:verordnungen -- --on 2026-09-17   # what was open that day
+ *     pnpm corpus:verordnungen                # whole corpus
+ *     pnpm corpus:verordnungen -- --on 2026-09-17   # what was open that day
  *
  * Reads only: one pass over the cached corpus fetch, nothing written.
  */
@@ -26,11 +26,11 @@ import {
   type MeListRow,
   type RisBegutRecord,
   type RisClass,
-} from '../server/utils/ris/risJoin'
-import { ministryCodeOf } from '../server/utils/ris/ministryCodes'
-import { hasDocument, isOpenOn, type RisBegutFlat } from '../server/utils/ris/risRecord'
-import { argPair } from './lib/args'
-import { fetchRisBegutCorpus } from './lib/corpus'
+} from '../../server/utils/ris/risJoin'
+import { ministryCodeOf } from '../../server/utils/ris/ministryCodes'
+import { hasDocument, isOpenOn, type RisBegutFlat } from '../../server/utils/ris/risRecord'
+import { argPair } from '../lib/args'
+import { fetchRisBegutCorpus } from '../lib/corpus'
 
 const onDate = argPair('on')
 if (onDate && !/^\d{4}-\d{2}-\d{2}$/.test(onDate)) {
@@ -42,7 +42,7 @@ if (onDate && !/^\d{4}-\d{2}-\d{2}$/.test(onDate)) {
 // reads oldest deadline first. The shared pass is the one the other corpus
 // scripts use, mapper and retry included; this script carried its own copy of
 // the paging until 22.09.2026 and had no retry at all.
-const corpus = await fetchRisBegutCorpus('verordnungen-corpus', 'Ascending')
+const corpus = await fetchRisBegutCorpus('corpus/verordnungen', 'Ascending')
 const records = corpus.records.map((r) => ({ r, cls: classifyRisRecord(r) }))
 
 console.log(`RIS Begut corpus: ${corpus.records.length} records (upstream hits: ${corpus.hits})`)
@@ -158,7 +158,7 @@ if (onDate) {
 // Runs against the committed fixtures, so it is offline and reproducible.
 
 const fixture = <T>(f: string): T =>
-  JSON.parse(readFileSync(new URL(`../tests/fixtures/${f}`, import.meta.url), 'utf8')) as T
+  JSON.parse(readFileSync(new URL(`../../tests/fixtures/${f}`, import.meta.url), 'utf8')) as T
 
 console.log('\n\n# The classifier as a label — join as oracle (fixtures, offline)')
 for (const gp of ['gp27', 'gp28']) {

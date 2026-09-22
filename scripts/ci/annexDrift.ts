@@ -2,7 +2,7 @@
 /**
  * Der Drift-Alarm für die Beilage (§12.13).
  *
- * Liest die Berichte, die `annex-pdf-verify.ts --json=` schreibt, wendet
+ * Liest die Berichte, die `harness/annexPdf.ts --json=` schreibt, wendet
  * Klasse A und (mit `--grundlinie=`) Klasse B aus `lib/annexReport.ts` an und
  * endet mit Exit-Code 1, sobald ein Befund dasteht. Der Workflow
  * `.github/workflows/annex-drift.yml` macht daraus ein Issue.
@@ -17,20 +17,20 @@
  * Issue, eine Mail, kein Dienst auf dem VPS.
  *
  * Usage:
- *   annex-drift.ts bericht.json [weitere.json …]            — nur Klasse A
- *   annex-drift.ts --grundlinie=g.json bericht.json …        — A und B
- *   annex-drift.ts --grundlinie-schreiben=g.json bericht.json … — neu ziehen
+ *   pnpm ci:annex-drift -- bericht.json [weitere.json …]            — nur Klasse A
+ *   pnpm ci:annex-drift -- --grundlinie=g.json bericht.json …        — A und B
+ *   pnpm ci:annex-drift -- --grundlinie-schreiben=g.json bericht.json … — neu ziehen
  */
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
-import { classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from './lib/annexReport'
-import { argAssigned } from './lib/args'
+import { classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from '../lib/annexReport'
+import { argAssigned } from '../lib/args'
 
 const paths = process.argv.slice(2).filter((a) => !a.startsWith('--') && a.endsWith('.json'))
 const baselinePath = argAssigned('grundlinie')
 const writePath = argAssigned('grundlinie-schreiben')
 
 if (paths.length === 0) {
-  console.error('Kein Bericht angegeben. Usage: annex-drift.ts [--grundlinie=g.json] bericht.json [weitere.json …]')
+  console.error('Kein Bericht angegeben. Usage: pnpm ci:annex-drift -- [--grundlinie=g.json] bericht.json [weitere.json …]')
   process.exit(2)
 }
 

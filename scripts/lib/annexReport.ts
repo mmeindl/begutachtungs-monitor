@@ -1,7 +1,7 @@
 /**
  * Was der Prüfstand misst, als Datensatz — und das Urteil darüber (§12.13).
  *
- * `annex-pdf-verify.ts` schreibt den Bericht (`--json=`), `annex-drift.ts`
+ * `harness/annexPdf.ts` schreibt den Bericht (`--json=`), `ci/annexDrift.ts`
  * liest ihn und schlägt Alarm. Die Urteilslogik steht **hier** und nicht im
  * Prüfstand: sie lag dort schon zweimal, nämlich dort, wo sie weder getestet
  * noch angewendet werden kann (§12.13 für die Beilage, §12.12 für den
@@ -90,7 +90,7 @@ export interface Finding {
    * `form` — ein Dokument hat eine Gestalt, die der Parser nicht belegen
    * konnte; das ist die Meldung, für die dieser Alarm gebaut ist.
    * `messung` — der Lauf hat nichts oder fast nichts gemessen, das Ergebnis
-   * ist also gar keines (`harness-cache.ts`: ein Lauf gegen nichts sieht aus
+   * ist also gar keines (`lib/harnessCache.ts`: ein Lauf gegen nichts sieht aus
    * wie ein Befund).
    * `grundlinie` — Klasse B: ein Entwurf, den wir schon einmal gemessen
    * haben, misst sich heute anders.
@@ -270,7 +270,7 @@ export function toBaseline(reports: readonly AnnexReport[]): AnnexBaseline {
 export function classBFindings(report: AnnexReport, baseline: AnnexBaseline): Finding[] {
   const known = baseline.paths[report.path]
   if (!known || Object.keys(known).length === 0) {
-    return [{ kind: 'grundlinie', draft: null, text: `Die Grundlinie kennt den ${report.path === 'xml' ? 'Tabellenpfad' : 'PDF-Pfad'} nicht. Ohne sie prüft Klasse B hier nichts — neu ziehen mit \`annex-drift.ts --grundlinie-schreiben=…\`.` }]
+    return [{ kind: 'grundlinie', draft: null, text: `Die Grundlinie kennt den ${report.path === 'xml' ? 'Tabellenpfad' : 'PDF-Pfad'} nicht. Ohne sie prüft Klasse B hier nichts — neu ziehen mit \`ci/annexDrift.ts --grundlinie-schreiben=…\`.` }]
   }
 
   const out: Finding[] = []
@@ -337,7 +337,7 @@ export function maintenanceFindings(baseline: AnnexBaseline | null, now: Date = 
       `Die Grundlinie ist ${days} Tage alt (gezogen am ${baseline.at.slice(0, 10)}, Schwelle ${MAX_BASELINE_AGE_DAYS} Tage, ${n('xml')} + ${n('pdf')} Entwürfe). ` +
       'Seither sind Entwürfe in das Fenster der 400 jüngsten gekommen, die Klasse B nicht kennt — für die gilt nur Klasse A. ' +
       'Nachziehen aus den Berichten dieses Laufs (Artefakt `annex-reports`): ' +
-      '`npx vite-node scripts/annex-drift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`, ' +
+      '`npx vite-node scripts/ci/annexDrift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`, ' +
       'dann committen. Nichts ist kaputt; ungenutzt wird der Alarm nur blinder.',
   }]
 }

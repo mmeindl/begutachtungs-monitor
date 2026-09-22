@@ -4,11 +4,11 @@
  * danach als selbständiger Antrag ins Haus kamen — über den GESETZESTEXT,
  * nicht über den Titel.
  *
- * Usage:   npx vite-node scripts/me-antrag-join.ts XXVIII [cacheDir]
- *          (setzt voraus, dass begutachtung-skipped.ts für dieselbe GP
+ * Usage:   npx vite-node scripts/corpus/meAntragJoin.ts XXVIII [cacheDir]
+ *          (setzt voraus, dass corpus/begutachtungSkipped.ts für dieselbe GP
  *           gelaufen ist — dessen `<GP>-skipped.json` ist der Input.)
  *
- * Ergebnis: `<cacheDir>/<GP>-me-antrag.json`. `begutachtung-skipped.ts`
+ * Ergebnis: `<cacheDir>/<GP>-me-antrag.json`. `corpus/begutachtungSkipped.ts`
  * liest die Datei, wenn sie da ist, und ersetzt damit seinen eigenen
  * Titelabgleich.
  *
@@ -52,12 +52,12 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { PARLIAMENT as BASE, getJson, getText } from './lib/http'
-import { cachedJson, cachedText } from './lib/diskCache'
-import { pool } from './lib/async'
-import type { MeAntragHit, SkippedReport, SkippedRow } from './lib/skippedReport'
+import { PARLIAMENT as BASE, getJson, getText } from '../lib/http'
+import { cachedJson, cachedText } from '../lib/diskCache'
+import { pool } from '../lib/async'
+import type { MeAntragHit, SkippedReport, SkippedRow } from '../lib/skippedReport'
 
-const SCRIPT = 'me-antrag-join'
+const SCRIPT = 'corpus/meAntragJoin'
 const CONCURRENCY = 4
 const SHINGLE = 5
 /* Keine Skizze mehr (1 = alles behalten). Die Mod-Skizze war für den
@@ -75,7 +75,7 @@ const MIN_SKETCH = 60
 
 const gp = process.argv[2] ?? ''
 if (!gp || !/^[IVXLC]+$/.test(gp)) {
-  console.error('Usage: npx vite-node scripts/me-antrag-join.ts <GP, e.g. XXVIII> [cacheDir]')
+  console.error('Usage: npx vite-node scripts/corpus/meAntragJoin.ts <GP, e.g. XXVIII> [cacheDir]')
   process.exit(1)
 }
 const cacheDir = process.argv[3] ?? join('.cache', 'begutachtung-skipped')
@@ -165,7 +165,7 @@ function containment(a: Sketch | null | undefined, b: Sketch | null | undefined)
 const skippedFile = join(cacheDir, `${gp}-skipped.json`)
 let skippedData: SkippedReport
 try { skippedData = JSON.parse(await readFile(skippedFile, 'utf8')) as SkippedReport } catch {
-  console.error(`Fehlt: ${skippedFile}\nZuerst laufen lassen: npx vite-node scripts/begutachtung-skipped.ts ${gp}`)
+  console.error(`Fehlt: ${skippedFile}\nZuerst laufen lassen: npx vite-node scripts/corpus/begutachtungSkipped.ts ${gp}`)
   process.exit(1)
 }
 const antraege = skippedData.rows.filter((r) => !r.consulted && !r.exemptReason && r.ityp === 'A')
@@ -177,7 +177,7 @@ const meList = await cachedJson<ListRows>(join(cacheDir, gp, 'list81.json'), () 
 
 console.error(`GP ${gp}: ${antraege.length} übersprungene Initiativanträge, ${(meList.rows ?? []).length} Ministerialentwürfe.`)
 
-/** Detail-JSON eines Gegenstands; teilt den Cache mit begutachtung-skipped.ts. */
+/** Detail-JSON eines Gegenstands; teilt den Cache mit corpus/begutachtungSkipped.ts. */
 interface Detail {
   content?: {
     title?: string
@@ -423,4 +423,4 @@ await writeFile(outFile, JSON.stringify({
   hits,
 }, null, 1))
 console.log(`\nErgebnis: ${outFile}`)
-console.log(`Wird von begutachtung-skipped.ts gelesen, sobald die Datei da ist.`)
+console.log(`Wird von corpus/begutachtungSkipped.ts gelesen, sobald die Datei da ist.`)

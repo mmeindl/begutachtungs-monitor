@@ -1,6 +1,6 @@
 /**
  * The format a recorded gate run is written and replayed in
- * (`gate-golden-record.ts`, `tests/annexGateGolden.test.ts`).
+ * (`ci/gateGoldenRecord.ts`, `tests/annexGateGolden.test.ts`).
  *
  * Shared rather than written twice: recorder and replay have to agree on what
  * identifies a question and how an answer is stored, and two copies of that

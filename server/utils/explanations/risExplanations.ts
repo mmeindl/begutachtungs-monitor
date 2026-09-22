@@ -23,7 +23,7 @@
  * the Textgegenüberstellung.
  *
  * FOUR TRAPS, every one of them found by measuring the corpus rather than by
- * reading one document (`pnpm audit:erlaeuterungen`):
+ * reading one document (`pnpm corpus:erlaeuterungen`):
  *
  *  1. **A document named "Erläuterungen" is not always Erläuterungen.** Some
  *     ressorts put the Vorblatt and the wirkungsorientierte Folgenabschätzung

@@ -76,7 +76,7 @@ const NO_INSTRUCTION = 'keine Novellierungsanordnung'
  * `articles` is deliberately not a parameter. The law key is `LawUnit.article`
  * and nothing here needs the Artikel list to compute it; whether that key
  * meets the annex's `row.law` is a question about the *lookup*, and the
- * harness counts it there (`annex-pdf-verify.ts`), where a §§ count can be
+ * harness counts it there (`harness/annexPdf.ts`), where a §§ count can be
  * printed. A parameter a function does not read is a false claim about what
  * it depends on.
  */

@@ -12,7 +12,7 @@ import { formatDateDe } from '#shared/utils/format'
  * zwei Drittel des Korpus keine Rechenschaftsschicht hatten.
  *
  * DREI ZUSTÄNDE, UND ZWEI DAVON SIND NICHT DASSELBE. Gemessen (`pnpm
- * audit:bgbl2`, 291 Entwürfe): Zwischen Fristende und Kundmachung liegen im
+ * corpus:bgbl2`, 291 Entwürfe): Zwischen Fristende und Kundmachung liegen im
  * Median 57 Tage, p90 196. Von den Entwürfen, deren Frist weniger als 30 Tage
  * zurückliegt, hat KEIN einziger schon eine Kundmachung; nach 181–365 Tagen
  * sind es 92,2 %. „Bisher keine Kundmachung" in Woche sechs wäre deshalb

@@ -1,9 +1,9 @@
 #!/usr/bin/env vite-node
 /**
  * Scores the draft-time guard (`server/utils/applyGuard.ts`) against a
- * harness dump (`kons-harness.ts --dump=<file>`).
+ * harness dump (`harness/kons.ts --dump=<file>`).
  *
- * Usage:  npx vite-node scripts/guard-eval.ts <dump.jsonl> [<dump2.jsonl> …]
+ * Usage:  npx vite-node scripts/harness/guardEval.ts <dump.jsonl> [<dump2.jsonl> …]
  *
  * The question is precision and recall on the dangerous class: of the
  * paragraphs the guard lets through, how many diverge from RIS, and how
@@ -16,10 +16,10 @@
  * replica of it.
  */
 import { readFileSync } from 'node:fs'
-import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
-import type { ApplyResult, Instruction, StandingLaw } from '../server/utils/kons/lawApply'
-import type { LawNode } from '../server/utils/lawtext/konsTree'
-import { pct } from './lib/fmt'
+import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
+import type { ApplyResult, Instruction, StandingLaw } from '../../server/utils/kons/lawApply'
+import type { LawNode } from '../../server/utils/lawtext/konsTree'
+import { pct } from '../lib/fmt'
 
 interface Record_ {
   bgbl: string
@@ -35,7 +35,7 @@ interface Record_ {
 
 const files = process.argv.slice(2).filter((a) => !a.startsWith('-'))
 if (files.length === 0) {
-  console.error('Usage: npx vite-node scripts/guard-eval.ts <dump.jsonl> …')
+  console.error('Usage: npx vite-node scripts/harness/guardEval.ts <dump.jsonl> …')
   process.exit(1)
 }
 

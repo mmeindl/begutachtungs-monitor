@@ -40,7 +40,7 @@
  * share of the column's *comparable* words appear in the RIS paragraph at
  * all — containment of a deliberate subset, never equality.
  *
- * The verdict logic lived in `scripts/annex-pdf-verify.ts` and could
+ * The verdict logic lived in `scripts/harness/annexPdf.ts` and could
  * therefore neither be tested nor applied to the path that ships. Three of
  * the discounts below were once the ruler blaming the parse for its own
  * gaps, which is the third time in this project that the measuring

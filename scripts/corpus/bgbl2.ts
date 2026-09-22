@@ -17,26 +17,26 @@
  *  3. WIE LANGE dauert es (Fristende → Ausgabedatum) — die Verordnungshälfte
  *     von „wie schnell wird aus einem Entwurf Recht".
  *
- *     pnpm audit:bgbl2                      # Fristende ab 2024-01-01
- *     pnpm audit:bgbl2 -- --since 2023-01-01
- *     pnpm audit:bgbl2 -- --misses 25       # unbestätigte Entwürfe ansehen
- *     pnpm audit:bgbl2 -- --show <BEGUT-ID> # die Kandidaten eines Entwurfs
- *     pnpm audit:bgbl2 -- --near            # die Beinahe-Treffer je Schwelle
+ *     pnpm corpus:bgbl2                      # Fristende ab 2024-01-01
+ *     pnpm corpus:bgbl2 -- --since 2023-01-01
+ *     pnpm corpus:bgbl2 -- --misses 25       # unbestätigte Entwürfe ansehen
+ *     pnpm corpus:bgbl2 -- --show <BEGUT-ID> # die Kandidaten eines Entwurfs
+ *     pnpm corpus:bgbl2 -- --near            # die Beinahe-Treffer je Schwelle
  *
  * Läuft durch `joinDraftToBgbl`, die ausgelieferte Regel: Was hier gezählt
  * wird, ist das, was die Seite sagen würde. Liest nur; schreibt nichts.
  */
-import { classifyRisRecord } from '../server/utils/ris/risJoin'
+import { classifyRisRecord } from '../../server/utils/ris/risJoin'
 import {
   BGBL_ACCEPT,
   BGBL_MARGIN,
   bgblCandidates,
   joinDraftToBgbl,
   type BgblJoinDraft,
-} from '../server/utils/ris/bgblJoin'
-import { fetchBgblRecords, fetchRisBegutCorpus } from './lib/corpus'
-import { argFlag as has, argPair as flag } from './lib/args'
-import { quantile } from './lib/fmt'
+} from '../../server/utils/ris/bgblJoin'
+import { fetchBgblRecords, fetchRisBegutCorpus } from '../lib/corpus'
+import { argFlag as has, argPair as flag } from '../lib/args'
+import { quantile } from '../lib/fmt'
 
 const since = flag('since') ?? '2024-01-01'
 const today = new Date().toISOString().slice(0, 10)
@@ -49,12 +49,12 @@ function daysSince(iso: string): number {
   return Math.round((Date.parse(today) - Date.parse(iso)) / 86_400_000)
 }
 
-const corpus = await fetchRisBegutCorpus('bgbl2-corpus')
+const corpus = await fetchRisBegutCorpus('corpus/bgbl2')
 // Das Kundmachungsfenster beginnt vor dem Entwurfsfenster, weil eine
 // Kundmachung der Frist vorauslaufen darf (BGBL_WINDOW_DAYS), und endet
 // heute: Was danach kommt, weiß niemand.
 const from = new Date(Date.parse(since) - 40 * 86_400_000).toISOString().slice(0, 10)
-const bgbl = await fetchBgblRecords('bgbl2-corpus', from, today)
+const bgbl = await fetchBgblRecords('corpus/bgbl2', from, today)
 const teil2 = bgbl.filter((r) => r.teil === 'Teil2')
 
 interface Row {

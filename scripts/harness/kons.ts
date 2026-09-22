@@ -2,8 +2,8 @@
 /**
  * Verification harness for the amendment engine (docs/architecture.md §12.12).
  *
- * Usage:  npx vite-node scripts/kons-harness.ts BGBLA_2022_I_187 [Kurztitel]
- *         npx vite-node scripts/kons-harness.ts --discover=12 [--sammel]
+ * Usage:  npx vite-node scripts/harness/kons.ts BGBLA_2022_I_187 [Kurztitel]
+ *         npx vite-node scripts/harness/kons.ts --discover=12 [--sammel]
  *
  * `--discover=N` takes the N most recent Bundesgesetze that amend exactly one
  * law ("Bundesgesetz, mit dem das X geändert wird") and runs all of them, so
@@ -41,26 +41,26 @@
  * put 9,3 % of the corpus on the harmless side of the report
  * (`applyReport.ts`, `halbangewendet`).
  */
-import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/kons/lawApply'
-import { plainText, type LawNode } from '../server/utils/lawtext/konsTree'
-import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { sameBgbl } from '../server/utils/lawtext/bgblCitation'
-import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../server/utils/lawtext/draftArticles'
-import { lawNameScore } from '../server/utils/lawtext/lawNames'
-import type { NovaoAddress } from '../server/utils/kons/novao'
-import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../server/utils/ris/konsLaw'
-import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../server/utils/harness/risKonsHistory'
-import { extraTokens, isSubsetOfRis, verdictForTrees } from '../server/utils/harness/applyReport'
-import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
-import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
-import { isScanned } from '../server/utils/annex/tableCells'
-import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../server/utils/kons/tguOracle'
-import { installFetchCache } from './lib/harnessCache'
-import { argAssigned, argFlag } from './lib/args'
-import { PARLIAMENT, risJson as risQuery } from './lib/http'
-import { ANNEX_NAME_RE, asArray } from './lib/ris'
-import { anlageLabelKey, bareParaId } from '../server/utils/text/designation'
+import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
+import { segmentUnits, type TextBlock } from '../../server/utils/lawtext/lawUnits'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { sameBgbl } from '../../server/utils/lawtext/bgblCitation'
+import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
+import { lawNameScore } from '../../server/utils/lawtext/lawNames'
+import type { NovaoAddress } from '../../server/utils/kons/novao'
+import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
+import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../../server/utils/harness/risKonsHistory'
+import { extraTokens, isSubsetOfRis, verdictForTrees } from '../../server/utils/harness/applyReport'
+import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
+import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
+import { isScanned } from '../../server/utils/annex/tableCells'
+import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { installFetchCache } from '../lib/harnessCache'
+import { argAssigned, argFlag } from '../lib/args'
+import { PARLIAMENT, risJson as risQuery } from '../lib/http'
+import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
 interface Verdict {
@@ -122,7 +122,7 @@ if (dumpFile) writeFileSync(dumpFile, '')
 if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: 'kons-harness' })
+const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: 'harness/kons' })
 
 /**
  * The Bundesgesetze that amend standing law, with or without a title that
@@ -799,7 +799,7 @@ const cases: { id: string; law?: string }[] = discover
   : ids.map((id) => ({ id, law: process.argv[process.argv.indexOf(id) + 1]?.startsWith('-') ? undefined : process.argv[process.argv.indexOf(id) + 1] }))
 
 if (cases.length === 0) {
-  console.error('Usage: npx vite-node scripts/kons-harness.ts <BGBl-ID> [Kurztitel] | --discover=N [--sammel]')
+  console.error('Usage: npx vite-node scripts/harness/kons.ts <BGBl-ID> [Kurztitel] | --discover=N [--sammel]')
   process.exit(1)
 }
 

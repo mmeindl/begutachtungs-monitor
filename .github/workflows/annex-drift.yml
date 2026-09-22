@@ -12,7 +12,7 @@
 # Betriebslast, an der der Vorgänger gestorben ist, also läuft der Alarm auf
 # GitHubs Runnern und nicht als Dienst auf dem 1-GB-VPS.
 #
-# **Klasse A** (`scripts/annex-report.ts`) sind die Befunde, die ohne
+# **Klasse A** (`scripts/lib/annexReport.ts`) sind die Befunde, die ohne
 # Grundlinie feststehen: die vier Zusicherungen des Tors, die Summe der
 # Einbehaltungsgründe, nicht gelesene Seiten, und ob der Lauf überhaupt etwas
 # gemessen hat. Kennzahlen, die mit der Zusammensetzung des Korpus wandern,
@@ -33,7 +33,7 @@
 # bei Klasse A kann er das nicht — da gibt es keine Grundlinie. Bei Klasse B
 # schon, und dann gilt die Regel ohne Ausnahme: die Grundlinie wird im SELBEN
 # Commit nachgezogen wie die Änderung —
-# `npx vite-node scripts/annex-drift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`
+# `npx vite-node scripts/ci/annexDrift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`
 # — sonst wird der Alarm zu dem Rauschen, das man nach dem dritten Mal
 # wegklickt.
 #
@@ -101,7 +101,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Der Prüfstand hat einen eigenen Plattencache (`harness-cache.ts`), der
+      # Der Prüfstand hat einen eigenen Plattencache (`lib/harnessCache.ts`), der
       # jeden RIS-Abruf ablegt. Ihn über die Wochen mitzunehmen ist nicht nur
       # schneller, sondern höflicher: eine NOR-veröffentlichte Beilage ändert
       # sich nie, also wird jede Woche nur das geholt, was neu dazugekommen
@@ -126,10 +126,10 @@ jobs:
           restore-keys: harness-cache-
 
       - name: Tabellenpfad messen
-        run: npx vite-node scripts/annex-pdf-verify.ts -- --gp=XXVIII --xml --limit=$LIMIT --json=annex-xml.json
+        run: npx vite-node scripts/harness/annexPdf.ts -- --gp=XXVIII --xml --limit=$LIMIT --json=annex-xml.json
 
       - name: PDF-Pfad messen
-        run: npx vite-node scripts/annex-pdf-verify.ts -- --gp=XXVIII --limit=$LIMIT --json=annex-pdf.json
+        run: npx vite-node scripts/harness/annexPdf.ts -- --gp=XXVIII --limit=$LIMIT --json=annex-pdf.json
 
       # Gesichert wird direkt nach den Messungen und mit `always()`: was geholt
       # wurde, ist dann geholt — auch wenn der Alarm gleich einen Befund
@@ -161,7 +161,7 @@ jobs:
         # `skript | tee` den Exit-Code von tee — also immer 0. Der Alarm hätte
         # nie ausgelöst.
         shell: bash
-        run: npx vite-node scripts/annex-drift.ts -- --grundlinie=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json | tee drift.md
+        run: npx vite-node scripts/ci/annexDrift.ts -- --grundlinie=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json | tee drift.md
 
       - name: Issue öffnen oder schließen
         # `always()`, weil der Schritt davor bei einem Befund mit 1 endet —
@@ -198,7 +198,7 @@ jobs:
                 cat drift.md
                 echo
                 echo "---"
-                echo "Was die Klassen bedeuten, steht in \`scripts/annex-report.ts\`; die Engine selbst in \`docs/architecture.md\` §12.13."
+                echo "Was die Klassen bedeuten, steht in \`scripts/lib/annexReport.ts\`; die Engine selbst in \`docs/architecture.md\` §12.13."
                 echo "Nachmessen lässt sich das lokal offline: \`pnpm harness:annex --xml\` und ohne \`--xml\` (braucht \`.harness-cache\`)."
               } > body.md
               gh issue create --repo "$GITHUB_REPOSITORY" --label "$LABEL" \

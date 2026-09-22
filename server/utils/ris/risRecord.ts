@@ -3,7 +3,7 @@
  * (docs/api-exploration.md §2).
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports, so vitest and
- * the corpus audit in `scripts/verordnungen-corpus.ts` can execute it
+ * the corpus audit in `scripts/corpus/verordnungen.ts` can execute it
  * directly. It used to live inside `begutCorpus.ts`, which pulls in the Nitro cache
  * and `#shared/*`; a measurement script could then only re-implement the
  * flattening, and a re-implemented mapper measures itself, not the product.

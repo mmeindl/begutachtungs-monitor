@@ -18,25 +18,25 @@
  *     Ergebnis, sondern einen Ausrichtungsfehler. Ein Vergleich, der überall
  *     „geändert" sagt, sieht aus wie ein Befund und ist ein Defekt.
  *
- *     pnpm audit:bgbl-station                 # GP XXVIII
- *     pnpm audit:bgbl-station -- --gp XXVII
- *     pnpm audit:bgbl-station -- --sample 20  # weniger Entwürfe
- *     pnpm audit:bgbl-station -- --cache      # RIS-Verkehr von der Platte
+ *     pnpm corpus:bgbl-station                 # GP XXVIII
+ *     pnpm corpus:bgbl-station -- --gp XXVII
+ *     pnpm corpus:bgbl-station -- --sample 20  # weniger Entwürfe
+ *     pnpm corpus:bgbl-station -- --cache      # RIS-Verkehr von der Platte
  *
  * Läuft durch dieselben Parser wie die Seite. Liest nur; schreibt nichts.
  */
-import { extractBgblLink, mapTextEvolution } from '../server/utils/parliament/detailJson'
-import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
-import { diffLawPackage, summarizeDiff } from '../server/utils/diff/lawDiff'
-import { installFetchCache } from './lib/harnessCache'
-import { argFlag, argPair } from './lib/args'
-import { PARLIAMENT, RIS_API, getJson as fetchJson, getText as fetchText, type HttpOptions } from './lib/http'
+import { extractBgblLink, mapTextEvolution } from '../../server/utils/parliament/detailJson'
+import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
+import { diffLawPackage, summarizeDiff } from '../../server/utils/diff/lawDiff'
+import { installFetchCache } from '../lib/harnessCache'
+import { argFlag, argPair } from '../lib/args'
+import { PARLIAMENT, RIS_API, getJson as fetchJson, getText as fetchText, type HttpOptions } from '../lib/http'
 
 if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 const gp = argPair('gp') ?? 'XXVIII'
 const sample = Number(argPair('sample')) || 0
-const SCRIPT = 'bgbl-station-corpus'
+const SCRIPT = 'corpus/bgblStation'
 /** Drei Versuche auf alles, 45 s je Versuch: ein Lauf liest hunderte Dokumente. */
 const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 45_000, retryOnHttpError: true }
 const getJson = (url: string): Promise<unknown> =>

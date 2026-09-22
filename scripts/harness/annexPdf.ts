@@ -21,36 +21,36 @@
  * same package, so a misplaced boundary scores the parser against unrelated
  * text and would flatter or damn it at random.
  *
- * Usage:  npx vite-node scripts/annex-pdf-verify.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
+ * Usage:  npx vite-node scripts/harness/annexPdf.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
  */
-import { annexParagraphKey, designationKey } from '../server/utils/annex/annexText'
-import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows, isDisplayedChange } from '../server/utils/annex/coverage'
-import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
-import { draftBags } from '../server/utils/annex/rightColumn'
+import { annexParagraphKey, designationKey } from '../../server/utils/annex/annexText'
+import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows, isDisplayedChange } from '../../server/utils/annex/coverage'
+import { checkAnnexRows, notRunReason } from '../../server/utils/annex/gateRows'
+import { draftBags } from '../../server/utils/annex/rightColumn'
 import {
   verifyAnnex,
   type AnnexDraft,
   type AnnexSources,
   type ParagraphVerdict,
-} from '../server/utils/annex/verdict'
-import { parseAnnexPdf } from '../server/utils/annex/annexPdf'
-import { pagesOf } from '../server/utils/annex/annexPdfPages'
-import { plainText } from '../server/utils/lawtext/konsTree'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { draftArticles, type DraftArticle } from '../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsLawAtDate } from '../server/utils/ris/konsLaw'
-import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
-import { parseTextComparison, type ComparisonParse, type ComparisonRow } from '../server/utils/annex/comparisonRows'
-import { isScanned } from '../server/utils/annex/tableCells'
-import { installFetchCache } from './lib/harnessCache'
-import type { AnnexReport } from './lib/annexReport'
-import { argAssigned, argFlag } from './lib/args'
-import { risJson as risQuery, scriptUserAgent } from './lib/http'
-import { ANNEX_NAME_RE, asArray } from './lib/ris'
+} from '../../server/utils/annex/verdict'
+import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
+import { pagesOf } from '../../server/utils/annex/annexPdfPages'
+import { plainText } from '../../server/utils/lawtext/konsTree'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
+import { getText, resolveLawByBgbl, type KonsLawAtDate } from '../../server/utils/ris/konsLaw'
+import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
+import { parseTextComparison, type ComparisonParse, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
+import { isScanned } from '../../server/utils/annex/tableCells'
+import { installFetchCache } from '../lib/harnessCache'
+import type { AnnexReport } from '../lib/annexReport'
+import { argAssigned, argFlag } from '../lib/args'
+import { risJson as risQuery, scriptUserAgent } from '../lib/http'
+import { ANNEX_NAME_RE, asArray } from '../lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
-const SCRIPT = 'annex-pdf-verify'
+const SCRIPT = 'harness/annexPdf'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })

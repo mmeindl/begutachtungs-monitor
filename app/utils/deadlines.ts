@@ -101,7 +101,7 @@ export function fristDivergence(
  * Deadline ended ≤ N days ago → the no-RV note adds pipeline-latency context
  * ("häufig mehrere Monate"), so a fresh "Bisher keine Regierungsvorlage"
  * reads as "not yet", never as shelved. Written by hand in August 2026 and
- * confirmed by measurement on 2026-09-08 (`scripts/rv-latency.ts`): the
+ * confirmed by measurement on 2026-09-08 (`scripts/corpus/rvLatency.ts`): the
  * p90 of Fristende → first Regierungsvorlage is 189 days in GP XXVII and
  * 148 in GP XXVI, so nine in ten arrive inside this window — which is what
  * `app/utils/outcomes.ts` now says under the sentence.

@@ -4,7 +4,7 @@
  * Bundesgesetzblatt WITHOUT ever having been in Begutachtung — the base rate
  * behind "a quarter of the bills were never publicly consulted".
  *
- * Usage:   npx vite-node scripts/begutachtung-skipped.ts XXVIII [cacheDir]
+ * Usage:   npx vite-node scripts/corpus/begutachtungSkipped.ts XXVIII [cacheDir]
  *
  * Two list-101 calls plus one list-81 call, then one detail call per
  * Regierungsvorlage and per Gesetzesantrag (~280 for GP XXVIII), four at a
@@ -58,16 +58,16 @@
  * Hence EXEMPT below: explicit, per item, with a reason — and the script
  * prints every non-exempt skipper in full so the list is maintained by
  * READING the corpus, not by guessing a rule. Same review loop as
- * `scripts/classifier-audit.ts`.
+ * `scripts/audit/classifier.ts`.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { PARLIAMENT as BASE, getJson } from './lib/http'
-import { cachedJson } from './lib/diskCache'
-import { pool } from './lib/async'
-import type { MeAntragReport, SkippedRow } from './lib/skippedReport'
+import { PARLIAMENT as BASE, getJson } from '../lib/http'
+import { cachedJson } from '../lib/diskCache'
+import { pool } from '../lib/async'
+import type { MeAntragReport, SkippedRow } from '../lib/skippedReport'
 
-const SCRIPT = 'begutachtung-skipped'
+const SCRIPT = 'corpus/begutachtungSkipped'
 const CONCURRENCY = 4
 
 /**
@@ -196,7 +196,7 @@ const COALITIONS: Record<string, Era[]> = {
 
 const gp = process.argv[2] ?? ''
 if (!gp || !/^[IVXLC]+$/.test(gp)) {
-  console.error('Usage: npx vite-node scripts/begutachtung-skipped.ts <GP, e.g. XXVIII> [cacheDir]')
+  console.error('Usage: npx vite-node scripts/corpus/begutachtungSkipped.ts <GP, e.g. XXVIII> [cacheDir]')
   process.exit(1)
 }
 const cacheDir = process.argv[3] ?? join('.cache', 'begutachtung-skipped')
@@ -533,7 +533,7 @@ const korrNiedrig = skipped.length - vgAbgelaufen.length
 const korrStark = skipped.length - vgStark.length
 
 /* Der Titelabgleich ist die schwache Fassung dieser Prüfung. Die starke
- * vergleicht die Gesetzestexte und steht in `scripts/me-antrag-join.ts`;
+ * vergleicht die Gesetzestexte und steht in `scripts/corpus/meAntragJoin.ts`;
  * wenn sie gelaufen ist, liegt ihr Ergebnis hier und hat Vorrang. Getrennte
  * Skripte, weil der Textabgleich pro Gegenstand ein Dokument lädt und damit
  * eine ganz andere Laufzeit hat als der Rest. */
@@ -641,7 +641,7 @@ say(`     Achtung: von dieser Zahl geht die Vorgeschichte-Korrektur (§3c) noch 
 say(`\n--- Vorgeschichte: vorher als Ministerialentwurf in Begutachtung? ---`)
 if (textJoin) {
   const offen = bestaetigt.filter((h) => h.fristOffen).length
-  say(`  TEXTABGLEICH (maßgeblich, scripts/me-antrag-join.ts, Stand ${textJoin.measuredAt}):`)
+  say(`  TEXTABGLEICH (maßgeblich, scripts/corpus/meAntragJoin.ts, Stand ${textJoin.measuredAt}):`)
   say(`    ${bestaetigt.length} der ${skippedAntrag.length} Initiativanträge setzen nachweislich einen begutachteten`)
   say(`    Ministerialentwurf fort — Textdeckung ab ${(textJoin.method.threshold * 100).toFixed(0)} %, kalibriert an`)
   say(`    ${textJoin.calibration.truePairs} wahren Paaren (${(100 * textJoin.calibration.trueP05).toFixed(0)} % im 5 %-Quantil) gegen ${textJoin.calibration.noisePairs} falsche (max ${(100 * textJoin.calibration.noiseMax).toFixed(1)} %).`)
@@ -665,7 +665,7 @@ if (textJoin) {
   say(`  er zeigt, wie viel ein Titel NICHT trägt: ${vorgeschichte.length} Kandidaten gegenüber ${bestaetigt.length} belegten.`)
 } else {
   say(`  (Kein Textabgleich vorhanden. Für die belastbare Zahl:`)
-  say(`   npx vite-node scripts/me-antrag-join.ts ${gp} — der Titelabgleich unten überschätzt deutlich.)`)
+  say(`   npx vite-node scripts/corpus/meAntragJoin.ts ${gp} — der Titelabgleich unten überschätzt deutlich.)`)
 }
 say(`  Kalibrierung des Titelmaßes an ${calib.length} echten Entwurf→Regierungsvorlage-Paaren:`)
 say(`    Median ${(calib[Math.floor(calib.length / 2)] ?? 0).toFixed(2)}, ` +
@@ -737,7 +737,7 @@ await writeFile(rowsFile, JSON.stringify({
     regierungsvorhabenOhneBegutachtung: skippedRv.length + koaAntraege.length,
     // §3c: Kandidaten mit Begutachtungs-Vorgeschichte und die Spanne, die
     // sie aufmachen. Berichtet, nicht angewendet.
-    // Maßgeblich, sobald me-antrag-join.ts gelaufen ist.
+    // Maßgeblich, sobald corpus/meAntragJoin.ts gelaufen ist.
     vorgeschichteBelegt: textJoin ? bestaetigt.length : null,
     skippedKorrigiertBelegt: textJoin ? korrBestaetigt : null,
     // Die Titel-Vorfassung; bleibt als Kontrast stehen.

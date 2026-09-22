@@ -51,7 +51,7 @@ const items = computed<Item[]>(() =>
  * Wo gefaltet wird.
  *
  * Der Allgemeine Teil ist im Median 2.359 Zeichen lang, im p90 aber 7.727 und
- * im längsten Fall 40.335 (`pnpm audit:erlaeuterungen`, Fenster ab 2024) —
+ * im längsten Fall 40.335 (`pnpm corpus:erlaeuterungen`, Fenster ab 2024) —
  * eine Verteilung, bei der „alles anzeigen" die Seite für die Hälfte der
  * Entwürfe unbrauchbar macht und „immer falten" für die andere Hälfte eine
  * Klickstrecke vor zwei Absätze legt.

@@ -45,7 +45,7 @@ const JOIN_TTL_S = 60 * 60 * 6
 /**
  * Ab wann das Schweigen des Bundesgesetzblatts etwas bedeutet.
  *
- * Gemessen (`pnpm audit:bgbl2`): Zwischen Fristende und Kundmachung liegen im
+ * Gemessen (`pnpm corpus:bgbl2`): Zwischen Fristende und Kundmachung liegen im
  * Median 57 Tage, p90 197. Nach Alter des Fristendes finden 0 % der Entwürfe
  * aus den letzten 30 Tagen eine Kundmachung, 31,6 % nach 31–90 Tagen, 71,4 %
  * nach 91–180 und 92,3 % nach 181–365. „Bisher keine Kundmachung" vor diesem

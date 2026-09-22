@@ -9,7 +9,7 @@
  * after everyone stopped reading.
  *
  * Measured over GP XXVI–XXVIII (651 Ministerialentwürfe, scripts/
- * stations-corpus.ts, 17.09.2026): three stations follow the draft, their
+ * corpus/stationen.ts, 17.09.2026): three stations follow the draft, their
  * upstream wording is stable across all three periods, and every one of
  * them is published as HTML — 154 Ausschussfassungen and 122
  * Plenarfassungen, without a single PDF-only case. The availability worry
@@ -142,7 +142,7 @@ function lawStationIndex(id: LawStationId): number {
  * Die Reihenfolge allein reicht seit der BGBl-Station nicht mehr. Zwischen
  * der Plenarfassung und der Kundmachung handelt **kein Akteur**: Was der
  * Nationalrat beschlossen hat, wird kundgemacht, nicht noch einmal geändert.
- * Gemessen (`pnpm audit:bgbl-station`, §12.33) bleibt dort nach Abzug der
+ * Gemessen (`pnpm corpus:bgbl-station`, §12.33) bleibt dort nach Abzug der
  * eingesetzten Fundstelle nichts übrig — bei zehn von vierzehn Entwürfen
  * exakt null inhaltliche Änderungen.
  *

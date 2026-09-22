@@ -116,7 +116,7 @@ describe('joinDraftToBgbl', () => {
     // tie on the title is the NORMAL case, not an ambiguous one — and the
     // first promulgation after this consultation's deadline is the one it
     // produced. Refusing here cost 21 drafts on the corpus, some scoring
-    // 1.000 (`pnpm audit:bgbl2`).
+    // 1.000 (`pnpm corpus:bgbl2`).
     const a = record({ id: 'A', nummer: 'BGBl. II Nr. 50/2026', datum: '2026-03-16' })
     const b = record({ id: 'B', nummer: 'BGBl. II Nr. 180/2026', datum: '2026-07-01' })
     expect(joinDraftToBgbl(draft(), [a, b])?.record.id).toBe('A')

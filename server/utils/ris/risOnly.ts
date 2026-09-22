@@ -18,7 +18,7 @@
  * rule would have made every one of its mistakes a missing or invented row.
  *
  * As a label it was checked against the join as an oracle
- * (`pnpm audit:verordnungen`): of the 472 records the join tied to a real
+ * (`pnpm corpus:verordnungen`): of the 472 records the join tied to a real
  * Ministerialentwurf across GP XXVII and XXVIII, not one is classified
  * `verordnung`. So the label errs, if at all, toward calling a Verordnung a
  * law — never toward denying a law its Parliament page.

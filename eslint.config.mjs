@@ -105,7 +105,7 @@ export default withNuxt(
     // editing logic and this phase moves nothing but whitespace. Both are
     // dead stores; `refactor-plan.md` §3 removes them with the rest of the
     // dead code.
-    files: ['server/utils/kons/lawApply.ts', 'scripts/bgbl-station-corpus.ts'],
+    files: ['server/utils/kons/lawApply.ts', 'scripts/corpus/bgblStation.ts'],
     rules: { 'no-useless-assignment': 'warn' },
   },
   {

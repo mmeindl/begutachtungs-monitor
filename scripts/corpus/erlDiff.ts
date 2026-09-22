@@ -4,7 +4,7 @@
  * Regierungsvorlage? — die Messung, die das letzte offene Stück des
  * Diff-Layers gattert (`TODO.md`, docs/architecture.md §12.10).
  *
- * Usage:  npx vite-node scripts/erl-diff-corpus.ts XXVIII [anzahl] [cacheDir]
+ * Usage:  npx vite-node scripts/corpus/erlDiff.ts XXVIII [anzahl] [cacheDir]
  *
  * WARUM ERST MESSEN. Ein zweiter Vergleichsabschnitt kostet eine Seite, einen
  * Endpunkt und eine Erklärung; er lohnt nur, wenn die beiden Dokumente
@@ -19,7 +19,7 @@
  * Lehre aus der sechsten Messung in §12.12. Also dieselbe Quelle, derselbe
  * Parser (`parseParliamentHtml`), und was übrig bleibt, ist Inhalt.
  *
- * Der Join Entwurf → Regierungsvorlage ist der von `scripts/rv-latency.ts`:
+ * Der Join Entwurf → Regierungsvorlage ist der von `scripts/corpus/rvLatency.ts`:
  * die Verfahrensschritte des Entwurfs nennen die Vorlage im Link.
  *
  * **NUR 1:1-PAARE ZÄHLEN.** Mehrere Entwürfe können in derselben Vorlage
@@ -32,13 +32,13 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
-import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanations/explanationsHtml'
-import { diffTokens } from '../server/utils/diff/wordDiff'
-import { PARLIAMENT as BASE, getJson, getText } from './lib/http'
-import { cachedJson, cachedText } from './lib/diskCache'
+import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
+import { parseExplanationsHtml, passagesByParagraph } from '../../server/utils/explanations/explanationsHtml'
+import { diffTokens } from '../../server/utils/diff/wordDiff'
+import { PARLIAMENT as BASE, getJson, getText } from '../lib/http'
+import { cachedJson, cachedText } from '../lib/diskCache'
 
-const SCRIPT = 'erl-diff-corpus'
+const SCRIPT = 'corpus/erlDiff'
 const CONCURRENCY = 4
 
 const gp = process.argv.find((a) => /^[IVXLC]+$/.test(a)) ?? 'XXVIII'

@@ -9,7 +9,7 @@ import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFin
  * Korpus ist heute jede davon erfüllt (gemessen 16.09.2026, beide Pfade),
  * ein Test gegen echte Daten wäre also ein Test, der nie etwas beweist.
  * Dasselbe Argument wie bei der Fehlerinjektion in
- * `scripts/annex-fault-injection.ts`: das Tor zeigt seine Schärfe nur an
+ * `scripts/harness/faultInjection.ts`: das Tor zeigt seine Schärfe nur an
  * Fehlern, die man hineinlegt.
  */
 

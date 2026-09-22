@@ -18,7 +18,7 @@ import {
  * The station vocabulary of the § comparison (docs/architecture.md §12.18).
  *
  * Measured over GP XXVI–XXVIII (651 Ministerialentwürfe,
- * scripts/stations-corpus.ts). What earns tests here is the whitelist: the
+ * scripts/corpus/stationen.ts). What earns tests here is the whitelist: the
  * titles are upstream free text, and two of the documents that share the
  * station list are not versions of the law text at all.
  */

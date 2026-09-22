@@ -4,7 +4,7 @@ import { explanationsByParagraph } from '../server/utils/explanations/explanatio
 
 /**
  * The shapes below are the ones the corpus actually delivers
- * (`pnpm audit:erlaeuterungen`, 465 documents of the 2024+ window): the typed
+ * (`pnpm corpus:erlaeuterungen`, 465 documents of the 2024+ window): the typed
  * RIS Erläuterungen XML, the letter-spaced heading, the document that never
  * says „Besonderer Teil", the scan, and the WFA form-sheet in an Erläuterungen
  * costume.

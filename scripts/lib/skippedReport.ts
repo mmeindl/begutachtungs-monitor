@@ -1,8 +1,8 @@
 /**
  * The two files the base-rate measurement passes between its halves.
  *
- * `begutachtung-skipped.ts` writes `<GP>-skipped.json` and reads
- * `<GP>-me-antrag.json`; `me-antrag-join.ts` does the reverse. They are
+ * `corpus/begutachtungSkipped.ts` writes `<GP>-skipped.json` and reads
+ * `<GP>-me-antrag.json`; `corpus/meAntragJoin.ts` does the reverse. They are
  * separate scripts because the text join loads one document per Gegenstand
  * and has a completely different runtime — but they have to agree on the
  * shape, and two copies of that agreement drift on the day one of them

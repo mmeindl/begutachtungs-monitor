@@ -24,9 +24,9 @@
  * `flattenRisRecord` heute nicht mitführt. Was hier „ungedeckt" heißt, heißt
  * also nicht „vom Parlament geschrieben" — es heißt „hier nicht geprüft".
  *
- *     pnpm audit:kurzinfo                 # GP XXVII, alle gejointen Entwürfe
- *     pnpm audit:kurzinfo -- --sample 60  # die ersten 60 (nach Nummer)
- *     pnpm audit:kurzinfo -- --show 1     # einen Entwurf im Detail zeigen
+ *     pnpm corpus:kurzinfo                 # GP XXVII, alle gejointen Entwürfe
+ *     pnpm corpus:kurzinfo -- --sample 60  # die ersten 60 (nach Nummer)
+ *     pnpm corpus:kurzinfo -- --show 1     # einen Entwurf im Detail zeigen
  *
  * GP XXVII, weil dort die Zuordnung Entwurf ↔ RIS-Datensatz als Datei
  * vorliegt (`data/ris-me-map-gp27.json`, 350 Zeilen, 337 gejoint) — das
@@ -34,14 +34,14 @@
  * Nur lesend; nichts wird geschrieben.
  */
 import { readFileSync } from 'node:fs'
-import { hasReadableText, parseExplanations } from '../server/utils/explanations/risExplanations'
-import { decodeEntities } from '../server/utils/parliament/htmlText'
-import { normalizeText, stripMarkup } from '../server/utils/lawtext/normalize'
-import { fetchRisBegutCorpus } from './lib/corpus'
-import { argPair } from './lib/args'
-import { PARLIAMENT, getText, type HttpOptions } from './lib/http'
-import { pool } from './lib/async'
-import { pct, quantileOfSorted } from './lib/fmt'
+import { hasReadableText, parseExplanations } from '../../server/utils/explanations/risExplanations'
+import { decodeEntities } from '../../server/utils/parliament/htmlText'
+import { normalizeText, stripMarkup } from '../../server/utils/lawtext/normalize'
+import { fetchRisBegutCorpus } from '../lib/corpus'
+import { argPair } from '../lib/args'
+import { PARLIAMENT, getText, type HttpOptions } from '../lib/http'
+import { pool } from '../lib/async'
+import { pct, quantileOfSorted } from '../lib/fmt'
 
 const GP = 'XXVII'
 const sample = Number(argPair('sample') ?? 0)
@@ -56,7 +56,7 @@ const CONCURRENCY = 4
 const SHINGLE = 8
 
 /** Three attempts on any failure — a missing document would silently shrink the sample. */
-const FETCH: HttpOptions = { script: 'kurzinfo-herkunft', attempts: 3, backoffMs: (retry) => 500 * retry, retryOnHttpError: true }
+const FETCH: HttpOptions = { script: 'corpus/kurzinfo', attempts: 3, backoffMs: (retry) => 500 * retry, retryOnHttpError: true }
 const fetchText = (url: string): Promise<string> => getText(url, FETCH)
 
 /** Vergleichsform: ohne Markup, ohne Entities, kleingeschrieben, ein Leerzeichen. */
@@ -105,7 +105,7 @@ async function main(): Promise<void> {
   console.error(`${GP}: ${joined.length} Entwürfe mit RIS-Datensatz`)
 
   console.error('RIS-Korpus …')
-  const corpus = await fetchRisBegutCorpus('kurzinfo-herkunft')
+  const corpus = await fetchRisBegutCorpus('corpus/kurzinfo')
   const byId = new Map(corpus.records.map((r) => [r.id, r]))
 
   const rows: Row[] = await pool(joined, CONCURRENCY, async (item): Promise<Row> => {

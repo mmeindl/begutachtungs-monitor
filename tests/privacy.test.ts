@@ -45,7 +45,7 @@ describe('classifySubmitter', () => {
     })
 
     /* The classes the corpus audit of 2026-09-15 found filed as "Privatperson"
-     * (scripts/classifier-audit.ts): 334+ rows in GP XXVIII, led by the
+     * (scripts/audit/classifier.ts): 334+ rows in GP XXVIII, led by the
      * ministries' short form. Every string here is a real list-142 spelling. */
     it.each([
       'BM f. Finanzen',

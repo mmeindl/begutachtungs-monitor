@@ -50,7 +50,7 @@ const ARTICLE_NUMERAL_RE = /^(?:zu\s+)?art(?:ikel)?\.?\s*([0-9]+[a-z]?|[ivxlc]+)
  * Ab wann zwei Gesetzesnamen als derselbe gelten, wenn die Passage keine
  * Artikelnummer nennt.
  *
- * Gemessen (`pnpm audit:erlaeuterungen -- --join`): Die Nummer trägt die
+ * Gemessen (`pnpm corpus:erlaeuterungen -- --join`): Die Nummer trägt die
  * große Mehrheit der Fälle; der Namensvergleich ist der Rest, und bei 0,5
  * bleibt er auf der sicheren Seite — „Änderung des Aktiengesetzes" gegen
  * „Aktiengesetz" ist nach Entfernen der Formelwörter eine Deckung von 1,0,
@@ -103,7 +103,7 @@ export function explanationsByParagraph(
    * einer ist. Die erste Fassung hat hier null gesetzt und damit bei einem
    * Entwurf, dessen §§ perfekt passten, **keinen einzigen Treffer** erzeugt
    * (Honigverordnung Novelle 2025, 9 von 9 daneben). Gemessen statt vermutet:
-   * `pnpm audit:erlaeuterungen -- --join`.
+   * `pnpm corpus:erlaeuterungen -- --join`.
    */
   const keyed = articles.filter((a) => a.key !== null)
   const only = keyed.length === 1 ? keyed[0]!.key : null

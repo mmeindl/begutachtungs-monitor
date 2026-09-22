@@ -3,7 +3,7 @@
  * What the annex gate catches when the annex is deliberately broken
  * (docs/architecture.md §12.13).
  *
- * `annex-pdf-verify.ts` measures the gate against the corpus as it is, so it
+ * `harness/annexPdf.ts` measures the gate against the corpus as it is, so it
  * can only ever report what the ressorts happen to have got wrong. That is
  * half a measurement: a gate is also defined by the faults it lets through,
  * and the corpus contains no labelled ones. So faults are injected into §§
@@ -64,7 +64,7 @@
  * harness would otherwise reward exactly that. Every § that only the narrow
  * reference refuses is printed with the words it is missing, because a count
  * cannot be inspected. The counts are the two right-column causes of
- * `annex-pdf-verify.ts` over the same population, so the two harnesses
+ * `harness/annexPdf.ts` over the same population, so the two harnesses
  * cross-check each other.
  *
  * **What it said on 2026-09-11** (GP XXVIII, both paths run separately, with
@@ -137,17 +137,17 @@
  *
  * Nothing is re-implemented here: the left check is `coverageOfParagraph` and
  * the right column is `rightColumnCheck`, the very functions the request path
- * calls, for the same reason `annex-pdf-verify.ts` calls `verifyAnnex` — a
+ * calls, for the same reason `harness/annexPdf.ts` calls `verifyAnnex` — a
  * rule measured through a copy of itself measures the copy. What this run does
  * *not* replicate is `MAX_PARAGRAPHS`: it measures the rules over the whole
  * annex, so its false-alarm count is three higher than the gate's on the PDF
  * path (18 against 15), and the three sit in the tail of Sammelnovellen that
  * no request reaches. With the ceiling emulated the two numbers are equal.
  *
- * Usage:  npx vite-node scripts/annex-fault-injection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
+ * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
  */
-import { annexParagraphKey, comparableTokens, designationKey } from '../server/utils/annex/annexText'
-import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../server/utils/annex/coverage'
+import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
+import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../../server/utils/annex/coverage'
 import {
   MIN_STANDING_STRETCH,
   draftBags,
@@ -155,26 +155,26 @@ import {
   rightColumnCheck,
   type StandingText,
   type WordBag,
-} from '../server/utils/annex/rightColumn'
-import { parseAnnexPdf } from '../server/utils/annex/annexPdf'
-import { pagesOf } from '../server/utils/annex/annexPdfPages'
-import { diffTokens } from '../server/utils/diff/wordDiff'
-import { plainText } from '../server/utils/lawtext/konsTree'
-import { normalizeText } from '../server/utils/lawtext/normalize'
-import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { draftArticles, type DraftArticle } from '../server/utils/lawtext/draftArticles'
-import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../server/utils/ris/konsLaw'
-import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
-import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
-import { isScanned } from '../server/utils/annex/tableCells'
-import { installFetchCache } from './lib/harnessCache'
-import { argAssigned, argFlag } from './lib/args'
-import { risJson as risQuery, scriptUserAgent } from './lib/http'
-import { ANNEX_NAME_RE, asArray } from './lib/ris'
+} from '../../server/utils/annex/rightColumn'
+import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
+import { pagesOf } from '../../server/utils/annex/annexPdfPages'
+import { diffTokens } from '../../server/utils/diff/wordDiff'
+import { plainText } from '../../server/utils/lawtext/konsTree'
+import { normalizeText } from '../../server/utils/lawtext/normalize'
+import { parseRisXml } from '../../server/utils/lawtext/risXml'
+import { draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
+import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
+import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
+import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
+import { isScanned } from '../../server/utils/annex/tableCells'
+import { installFetchCache } from '../lib/harnessCache'
+import { argAssigned, argFlag } from '../lib/args'
+import { risJson as risQuery, scriptUserAgent } from '../lib/http'
+import { ANNEX_NAME_RE, asArray } from '../lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
-const SCRIPT = 'annex-fault-injection'
+const SCRIPT = 'harness/faultInjection'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })
@@ -332,7 +332,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
   const pdfUrl = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
   const annexXmlText = annexXml ? await getText(annexXml) : null
   const readable = annexXmlText !== null && !isScanned(annexXmlText)
-  // One path per run, the same switch `annex-pdf-verify.ts` uses: the two
+  // One path per run, the same switch `harness/annexPdf.ts` uses: the two
   // parsers fail differently, so an aggregate over both would hide which one
   // the gate is protecting the reader from.
   if (xmlMode !== readable) return null
@@ -428,7 +428,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
   // two right-column causes to: every § whose left column did not *fail*
   // (`verifyAnnex` records 'standing' first, so a § that failed the left check
   // never reaches the right-column causes). The counts are therefore the two
-  // "einbehalten" lines of `annex-pdf-verify.ts`, up to `MAX_PARAGRAPHS` —
+  // "einbehalten" lines of `harness/annexPdf.ts`, up to `MAX_PARAGRAPHS` —
   // see the note under the table.
   /**
    * The §-wise reference for one § of the annex — `draftReference`'s own
@@ -593,7 +593,7 @@ console.log(`\n${'='.repeat(86)}`)
 console.log(xmlMode ? 'Fehlerinjektion in die lesbaren XML-Beilagen (der Tabellenpfad)' : 'Fehlerinjektion in die gerasterten Beilagen (PDF-Textebene)')
 console.log(`  auswertbare Entwürfe : ${drafts}`)
 console.log(`\n  Ohne Injektion — Fehlalarme über die Paragraphen, die die linke Prüfung nicht verfehlen`)
-console.log(`  (dieselbe Grundmenge wie die beiden Einbehalt-Zeilen in annex-pdf-verify.ts, ${corpus.held} Paragraphen;`)
+console.log(`  (dieselbe Grundmenge wie die beiden Einbehalt-Zeilen in harness/annexPdf.ts, ${corpus.held} Paragraphen;`)
 console.log(`   dieser Lauf kennt keine MAX_PARAGRAPHS-Decke, zählt also auch den Schwanz der Sammelnovellen mit)`)
 console.log(`    „bereits geltend"                      : ${String(corpus.rule1).padStart(4)} (${pct(corpus.rule1, corpus.held)})`)
 console.log(`    „nicht im Entwurf", ganzer Entwurf     : ${String(corpus.rule2Wide).padStart(4)} (${pct(corpus.rule2Wide, corpus.held)})`)

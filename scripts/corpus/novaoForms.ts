@@ -1,9 +1,9 @@
 #!/usr/bin/env vite-node
 /**
  * Coverage report for the Novellierungsanordnung grammar (server/utils/novao.ts)
- * over the corpus harvested by `scripts/novao-corpus.ts`.
+ * over the corpus harvested by `scripts/corpus/novao.ts`.
  *
- * Usage:  npx vite-node scripts/novao-forms.ts [cacheDir] [--samples N]
+ * Usage:  npx vite-node scripts/corpus/novaoForms.ts [cacheDir] [--samples N]
  *
  * Prints the share of instructions that become a typed operation, the mix of
  * operations, and — the part that matters — a sample of what is refused,
@@ -12,8 +12,8 @@
  */
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { parseInstruction } from '../server/utils/kons/novao'
-import { argAssigned } from './lib/args'
+import { parseInstruction } from '../../server/utils/kons/novao'
+import { argAssigned } from '../lib/args'
 
 const cacheDir = process.argv[2]?.startsWith('--') ? join('.cache', 'novao') : (process.argv[2] ?? join('.cache', 'novao'))
 const samples = Number(argAssigned('samples') ?? 6)

@@ -176,7 +176,7 @@ useSeoMeta({
              tragen 53 % gar keine Prosa, sondern nur die Listen aus dem
              Vorblatt, und wo es Prosa gibt, stehen im Median 60 % ihrer
              Acht-Wort-Fenster wörtlich in den Dokumenten des Ressorts, bei
-             einem Drittel weniger als die Hälfte (`pnpm audit:kurzinfo`,
+             einem Drittel weniger als die Hälfte (`pnpm corpus:kurzinfo`,
              docs/architecture.md §13.1). Die Kurzinformation ist also
              redaktionelle Arbeit des Parlaments auf dem Material des
              Ressorts — und gehört benannt, statt unter „Metadaten"
