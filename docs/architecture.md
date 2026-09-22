@@ -6121,7 +6121,7 @@ ganzen Eingabestring als EINEN Teilstring: „klima gesetz" fand nichts,
 während der Volltextblock darunter dieselben Wörter mit UND verknüpfte und
 zwei Entwürfe zeigte. Auf zwei Seiten war das unauffällig, unter einem Feld
 sind es zwei Regeln für dieselbe Taste. Beide Hälften verknüpfen jetzt mit
-UND (`shared/utils/searchQuery.ts`). Was INNERHALB eines Wortes gilt, bleibt
+UND (`shared/utils/textMatch.ts`). Was INNERHALB eines Wortes gilt, bleibt
 verschieden und muss es: Die Liste sucht Teilstrings („klimages" findet das
 Klimagesetz), das RIS ganze Wörter mit Stern — der Unterschied zwischen
 einem Titel aus acht Wörtern und einem Dokument aus achtzig Seiten.

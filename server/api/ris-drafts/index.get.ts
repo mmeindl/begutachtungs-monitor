@@ -21,7 +21,7 @@ import type {
 } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
-import { matchesQuery } from '#shared/utils/searchQuery'
+import { matchesQuery } from '#shared/utils/textMatch'
 
 /** Was die Liste auf den Ausgang wartet, solange er nur eine Spalte füllt. */
 const OUTCOMES_BUDGET_MS = 3_000
@@ -157,7 +157,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
       // gibt es den eigenen Filter.
       // Mehrere Wörter mit UND, dieselbe Regel wie in `/api/drafts`.
       const haystack = `${item.title} ${stripMinistryMentions(item.longTitle ?? '', ministryTokenList)} ${item.ministryCode}`
-      if (!matchesQuery(haystack, q)) return false
+      if (!matchesQuery(haystack, q, { fold: false })) return false
     }
     return true
   })

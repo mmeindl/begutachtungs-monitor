@@ -193,7 +193,7 @@ const query = ref('')
  * unsearched section states it.
  *
  * NOT `matchesQuery`: that name is taken by the auto-imported
- * `shared/utils/searchQuery.ts`, which takes a haystack string and splits the
+ * `shared/utils/textMatch.ts`, which takes a haystack string and splits the
  * query into AND-linked tokens. A local definition shadowed it, so deleting
  * this one would have silently bound the call below to a function with
  * different semantics.

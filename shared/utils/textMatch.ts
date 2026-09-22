@@ -1,4 +1,28 @@
 /**
+ * Was ein Suchfeld mit einem Leerzeichen macht (docs/architecture.md §12.31).
+ *
+ * BIS 22.09.2026 GAR NICHTS: Die Liste suchte den ganzen Eingabestring als
+ * EINEN Teilstring, „klima gesetz" fand also nichts, während der Volltext
+ * daneben dieselben Wörter mit UND verknüpfte und zwei Entwürfe lieferte.
+ * Solange die zwei Suchen auf zwei Seiten standen, fiel das nicht auf; unter
+ * einem Feld stehen damit zwei Regeln für dieselbe Taste.
+ *
+ * UND, nicht ODER — weil das RIS es so macht und weil es die nützlichere
+ * Regel ist: Wer zwei Wörter tippt, grenzt ein. Was innerhalb eines Wortes
+ * gilt, bleibt unterschiedlich und muss es bleiben: Die Liste sucht
+ * Teilstrings („klimages" findet das Klimagesetz), das RIS ganze Wörter mit
+ * Stern. Das ist keine Inkonsistenz, sondern der Unterschied zwischen einem
+ * Titel von acht Wörtern und einem Dokument von achtzig Seiten.
+ *
+ * Reines Modul in `shared`, weil beide Endpunkte UND die Zeilen, die die
+ * Seite clientseitig filtert (`vorlageRows`), dieselbe Regel brauchen.
+ */
+
+// One AND-token rule with two normalisers, because two lists ask the same
+// question of different text: the Stellungnahmen lists fold umlauts and
+// punctuation (`fold: true`), the draft lists only lowercase (`fold: false`).
+
+/**
  * Name search for the Stellungnahmen lists (auto-imported by Nuxt from
  * shared/utils).
  *
@@ -58,16 +82,28 @@ export function foldForSearch(s: string): string {
   )
 }
 
+/** Die Eingabe in Wörter. Leer, wenn nichts Suchbares übrig bleibt. */
+export function queryTokens(q: string): string[] {
+  return q
+    .toLowerCase()
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+}
+
 /**
  * Every token of the query somewhere in the haystack, in any order — so
  * "wiener recht" finds "Amt der Wiener Landesregierung; Magistratsdirektion
  * - Recht", which a single substring never would.
  *
  * An empty query matches everything: no filter is not the same as no result.
+ *
+ * `fold` picks the normaliser: folded for the Stellungnahmen lists, lowercase
+ * for the draft lists, both sides of the comparison through the same one.
  */
-export function matchesSearch(haystack: string, query: string): boolean {
-  const q = foldForSearch(query)
-  if (!q) return true
-  const hay = foldForSearch(haystack)
-  return q.split(' ').every((token) => hay.includes(token))
+export function matchesQuery(haystack: string, q: string, { fold }: { fold: boolean }): boolean {
+  const tokens = fold ? foldForSearch(q).split(' ').filter(Boolean) : queryTokens(q)
+  if (!tokens.length) return true
+  const hay = fold ? foldForSearch(haystack) : haystack.toLowerCase()
+  return tokens.every((t) => hay.includes(t))
 }

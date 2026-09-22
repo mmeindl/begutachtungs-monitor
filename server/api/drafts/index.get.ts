@@ -7,7 +7,7 @@
  */
 import type { DraftChain, DraftStation, DraftsResponse, DraftStatus } from '#shared/types'
 import { aliasHaystack } from '#shared/utils/aliases'
-import { matchesQuery } from '#shared/utils/searchQuery'
+import { matchesQuery } from '#shared/utils/textMatch'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftChain'
 import { GP_RE, gpHasEnded } from '#shared/utils/gp'
 
@@ -143,9 +143,9 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
       // MEHRERE WÖRTER WERDEN MIT UND VERKNÜPFT, seit 22.09.2026: „klima
       // gesetz" suchte vorher diese elf Zeichen am Stück und fand nichts,
       // während der Volltextblock unter demselben Feld zwei Entwürfe zeigte
-      // (`shared/utils/searchQuery.ts`).
+      // (`shared/utils/textMatch.ts`).
       const haystack = `${item.title} ${item.citation} ${item.ministryCode} ${aliasHaystack(item.gp, item.inr)}`
-      if (!matchesQuery(haystack, q)) return false
+      if (!matchesQuery(haystack, q, { fold: false })) return false
     }
     return true
   })

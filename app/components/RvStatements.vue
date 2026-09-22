@@ -53,7 +53,9 @@ const orgList = computed<OrgEntry[]>(() => summary.value?.organisationList ?? []
 const matchedOrgs = computed(() =>
   searchActive.value
     ? orgList.value.filter((org) =>
-        matchesSearch([org.name, ...org.statements.map((s) => s.citation)].join(' '), query.value),
+        matchesQuery([org.name, ...org.statements.map((s) => s.citation)].join(' '), query.value, {
+          fold: true,
+        }),
       )
     : orgList.value,
 )

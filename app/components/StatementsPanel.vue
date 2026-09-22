@@ -267,7 +267,7 @@ function orgHaystack(entry: (typeof orgRows)['value'][number]): string {
 
 const matchedOrgRows = computed(() =>
   searchActive.value
-    ? orgRows.value.filter((entry) => matchesSearch(orgHaystack(entry), orgQuery.value))
+    ? orgRows.value.filter((entry) => matchesQuery(orgHaystack(entry), orgQuery.value, { fold: true }))
     : orgRows.value,
 )
 

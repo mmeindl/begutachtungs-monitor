@@ -14,7 +14,7 @@ import type {
 import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfRis, viewOfVorlage } from '~/utils/entryView'
 import { romanToInt } from '#shared/utils/gp'
-import { matchesQuery } from '#shared/utils/searchQuery'
+import { matchesQuery } from '#shared/utils/textMatch'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 
 /**
@@ -396,7 +396,7 @@ const vorlageRows = computed<Row[]>(() => {
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   return list.items
     .filter((v) => v.consultation.kind !== 'draft')
-    .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value))
+    .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value, { fold: false }))
     .map((v) => ({ kind: 'vorlage' as const, key: `rv-${v.citation}`, vorlage: v }))
 })
 
