@@ -1,6 +1,28 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-15',
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', '@nuxt/eslint'],
+  // One tool for lint and formatting, no Prettier (docs/refactor-plan.md §2).
+  // The stylistic options are not a taste decision — each one was measured
+  // against the existing code so the linter enforces what is already there:
+  // 2-space indent, single quotes, no semicolons, trailing commas in
+  // multiline literals, `} else {` on one line, parens around a single arrow
+  // parameter, and quoted object keys kept consistent per literal (the
+  // `WITHHOLD_LABEL` kind of table mixes keys that need quotes with keys
+  // that do not).
+  eslint: {
+    config: {
+      stylistic: {
+        indent: 2,
+        quotes: 'single',
+        semi: false,
+        commaDangle: 'always-multiline',
+        braceStyle: '1tbs',
+        arrowParens: true,
+        quoteProps: 'consistent-as-needed',
+        blockSpacing: true,
+      },
+    },
+  },
   runtimeConfig: {
     // Absolute base for links in RSS/ICS feeds; override via NUXT_PUBLIC_SITE_URL.
     public: { siteUrl: 'https://begutachtungs-monitor.at' },
