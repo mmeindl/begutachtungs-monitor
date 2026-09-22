@@ -6,7 +6,8 @@
  * An Austrian Novelle is a list of instructions ("In § 9 Abs. 1 wird nach
  * der Wortfolge X die Wortfolge Y eingefügt"). To show the law that comes
  * out of them, each instruction has to become an operation on the standing
- * text. This module does the reading half; lawApply.ts does the applying.
+ * text. This module does the reading half; `kons/lawApply.ts` does the
+ * applying.
  *
  * Measured over 6.576 instructions from 300 drafts of the RIS Begut corpus
  * (2026-09-08, `scripts/corpus/novao.ts`): six verbs carry 98,6 % of them —
@@ -205,31 +206,29 @@ const OWN_COMPONENT_RE = /^\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))
  * but cannot be expanded — the caller must then refuse the instruction
  * rather than silently act on the first target only.
  *
- * **Und null auch, wenn die Zahl gar kein Geschwister ist.** In „In den §§ 48
- * Abs. 13 und 217 Abs. 13 wird die Wortfolge … ersetzt" trägt nur der *erste*
- * Paragraph sein §-Zeichen; die übrigen stehen als nackte Zahlen. Deshalb
- * sieht `parseAddressList` nur eine Adresse und fällt auf `parseAddress`
- * zurück, und dort landete die 217 als Geschwister der tiefsten Komponente:
- * gelesen wurde „§ 48 Abs. 217". Das Signal, das die beiden Fälle trennt,
- * steht direkt hinter der Zahl — folgt ihr eine *eigene* Komponente, ist sie
- * ein Paragraph.
+ * **And null too where the number is no sibling at all.** In „In den §§ 48
+ * Abs. 13 und 217 Abs. 13 wird die Wortfolge … ersetzt" only the *first*
+ * Paragraph carries its § sign; the rest stand as bare numbers. So
+ * `parseAddressList` sees one address and falls back to `parseAddress`, where
+ * the 217 landed as a sibling of the deepest component: read as „§ 48
+ * Abs. 217". The signal that separates the two cases stands directly behind
+ * the number — where a component of its own follows it, it is a Paragraph.
  *
- * Gemessen über 60 Bundesgesetzblätter (18.09.2026): 40 Anweisungen in dieser
- * Form. 36 davon verweigerten ohnehin, aber mit einer unsinnigen Begründung
- * („Untereinheit nicht im Ausgangstext: § 48 Abs. 217") und stellten damit
- * einen großen Teil der größten Anwendungsfehlerklasse — allein die
- * Vergabe-Gesetze 42 von 107. **Die anderen 4 wurden angewendet**, auf genau
- * einen der genannten Paragraphen, und meldeten Erfolg: „In den §§ 30 Abs. 3
- * zweiter Satz, 32 Abs. 4 …, 33 Abs. 6 … und 57 Abs. 2" änderte § 30 und ließ
- * drei Paragraphen unberührt. Das RIS nennt alle vier `halbangewendet` oder
- * `unvollständig` — kein erfundenes Wort, trotzdem kein geltender Text, und
- * für jede Prüfung der Engine gegen die eigene Lesart unsichtbar.
+ * Measured over 60 Bundesgesetzblätter (18.09.2026): 40 instructions of this
+ * shape. 36 of them refused anyway, but with a nonsensical reason
+ * („Untereinheit nicht im Ausgangstext: § 48 Abs. 217"), and made up a large
+ * part of the biggest class of application errors — the Vergabe-Gesetze alone
+ * 42 of 107. **The other 4 were applied**, to exactly one of the Paragraphen
+ * named, and reported success: „In den §§ 30 Abs. 3 zweiter Satz, 32 Abs. 4
+ * …, 33 Abs. 6 … und 57 Abs. 2" changed § 30 and left three Paragraphen
+ * untouched. RIS calls all four `halbangewendet` or `unvollständig` — no
+ * invented word, no standing text either, and invisible to every check of the
+ * engine against its own reading.
  *
- * Eine Adresse über mehrere Paragraphen kann dieses Modell nicht tragen (eine
- * Operation hat ein `target`), also wird sie verweigert und nicht geraten —
- * dieselbe Entscheidung wie bei den artikelgegliederten Gesetzen. Die
- * Verweigerung ist der halbe Vollzug allemal vorzuziehen („Verweigern schlägt
- * Deckung", §12.12).
+ * An address over several Paragraphen is not representable in this model (an
+ * operation has one `target`), so it is refused rather than guessed — the
+ * same decision as for the article-structured laws. A refusal always beats
+ * half an application („Verweigern schlägt Deckung", §12.12).
  */
 function siblingsAfter(rest: string, first: string): string[] | null {
   const m = /^\s*((?:,\s*\d+[a-z]*\s*)*)(und|bis|sowie|,)\s*(\d+[a-z]*)\b/i.exec(rest)
@@ -319,26 +318,26 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     siblings = found
   }
 
-  // Der Plural, als letztes Signal. „In den §§ 46 Abs. 3 zweiter Satz,
-  // 47 Abs. 6 zweiter Satz, 213 … und 214 …" nennt vier Paragraphen, und
-  // hinter „Abs. 3" steht keine nackte Zahl, an der `siblingsAfter` es merken
-  // könnte, sondern „zweiter Satz". Übrig bleibt das Pluralzeichen selbst:
-  // steht es in der *Adresse* — Zitate sind durch `maskQuotes` längst
-  // ausgeblendet, sonst zählte jedes „die Wortfolge '§§ 41, 42'" mit — und
-  // zeigt die gelesene Adresse trotzdem auf eine Unterebene, dann ist der
-  // erste Paragraph nur der erste von mehreren.
+  // The plural sign, as the last signal. „In den §§ 46 Abs. 3 zweiter Satz,
+  // 47 Abs. 6 zweiter Satz, 213 … und 214 …" names four Paragraphen, and
+  // behind „Abs. 3" there is no bare number for `siblingsAfter` to notice it
+  // by, but „zweiter Satz". What is left is the plural sign itself: where it
+  // stands in the *address* — quotations are long since masked by
+  // `maskQuotes`, or every „die Wortfolge '§§ 41, 42'" would count — and the
+  // address as read still points at a sub-level, the first Paragraph is only
+  // the first of several.
   //
-  // Über 60 Bundesgesetzblätter (18.09.2026): 16 solche Adressen bleiben auf
-  // Paragraphenebene und sind echte, funktionierende Mehrfachadressen; 11
-  // stehen auf einer Unterebene und meinen ausnahmslos mehrere Paragraphen.
-  // Drei davon wurden angewendet — auf je einen der genannten. Kein einziger
-  // Fehltreffer in der Stichprobe.
+  // Over 60 Bundesgesetzblätter (18.09.2026): 16 such addresses stay at
+  // Paragraph level and are real, working multi-addresses; 11 stand on a
+  // sub-level and mean several Paragraphen without exception. Three of those
+  // were applied — to one of the named each. Not a single false hit in the
+  // sample.
   //
-  // „Mehrere" wird gezählt, nicht vermutet: das Pluralzeichen bleibt auch
-  // dann stehen, wenn `parseAddressList` die Aufzählung schon zerlegt hat und
-  // dieses Stück nur noch einen Paragraphen trägt („In den §§ 184 Abs. 4
-  // sowie in § 380 Abs. 1 Z 3" → „In den §§ 184 Abs. 4"). Verweigert wird
-  // deshalb erst, wenn wirklich zwei Zahlen mit eigener Komponente dastehen.
+  // „Several" is counted, not suspected: the plural sign stays even where
+  // `parseAddressList` has already split the enumeration and this piece
+  // carries one Paragraph only („In den §§ 184 Abs. 4 sowie in § 380 Abs. 1
+  // Z 3" → „In den §§ 184 Abs. 4"). So it refuses only once two numbers with
+  // a component of their own really stand there.
   if (level !== 'para' && /§§/.test(t) && [...t.matchAll(/\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))/gi)].length > 1) return null
 
   return { para, abs, z, lit, satz, satzCount, siblings, level, heading, alsoHeading, raw: t }
@@ -347,17 +346,16 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
 /**
  * „In den §§ 48 Abs. 13 und 217 Abs. 13" → `["§ 48 Abs. 13", "§ 217 Abs. 13"]`.
  *
- * Die legistische Kurzschreibweise setzt das §-Zeichen einmal in den Plural
- * und lässt es bei allen weiteren Paragraphen weg. Die Trennung zwischen
- * „weiterer Paragraph" und „weiteres Geschwister derselben Komponente" ist
- * dieselbe wie in `siblingsAfter`: **eine Zahl, der eine eigene Komponente
- * folgt, ist ein Paragraph.** „§§ 20 Abs. 6 und 7 sowie 193 Abs. 6 und 7"
- * zerfällt damit richtig — die 7 bleibt ein Absatz von § 20, die 193 wird
- * ein eigener Paragraph.
+ * The legistic shorthand puts the § sign into the plural once and leaves it
+ * off every further Paragraph. The line between "another Paragraph" and
+ * "another sibling of the same component" is the one `siblingsAfter` draws:
+ * **a number followed by a component of its own is a Paragraph.** „§§ 20
+ * Abs. 6 und 7 sowie 193 Abs. 6 und 7" therefore splits correctly — the 7
+ * stays an Absatz of § 20, the 193 becomes a Paragraph of its own.
  *
- * Gibt null zurück, wenn sich nichts zerlegen lässt; der Aufrufer fällt dann
- * auf die Einzeladresse zurück, und die verweigert ihrerseits, sobald ein
- * Pluralzeichen über einer Unterebene stehen bleibt.
+ * Returns null where nothing can be split; the caller then falls back to the
+ * single address, which refuses in its turn as soon as a plural sign is left
+ * standing over a sub-level.
  */
 function splitPluralParagraphs(t: string): string[] | null {
   const plural = /§§\s*/.exec(t)
@@ -380,12 +378,13 @@ function splitPluralParagraphs(t: string): string[] | null {
 }
 
 /**
- * Die Überschrift des Paragraphen, den eine Adresse nennt, als eigene Adresse.
+ * The Überschrift of the Paragraph an address names, as an address of its
+ * own.
  *
- * Auf den Paragraphen hochgezogen, weil eine Überschrift dem § gehört und
- * nicht dem Absatz, den die Adresse zufällig nennt: „§ 15a Abs. 1 und 2 samt
- * Überschrift" meint die Überschrift von § 15a. Die Geschwister fallen weg —
- * sie zählen auf der Ebene, die hier gerade verlassen wird.
+ * Lifted to the Paragraph, because a heading belongs to the § and not to the
+ * Absatz the address happens to name: „§ 15a Abs. 1 und 2 samt Überschrift"
+ * means the Überschrift of § 15a. The siblings fall away — they count on the
+ * level being left behind here.
  */
 function headingTwin(a: NovaoAddress): NovaoAddress {
   return { ...a, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'para', heading: true, alsoHeading: false }
@@ -474,9 +473,9 @@ export type NovaoOp =
  * hangs behind. Null only for `toc`, the one kind that addresses nothing —
  * the table of contents is derived from the law text and never applied.
  *
- * Named for the op, not for the address: `explanations.addressOf` already
- * holds `addressOf` in the auto-import namespace, and it answers a different
- * question (which §§ a heading of the Erläuterungen names).
+ * Named for the op, not for the address: `explanations/risExplanations.ts`
+ * already holds `addressOf` in the auto-import namespace, and it answers a
+ * different question (which §§ a heading of the Erläuterungen names).
  */
 export function opAddress(op: Exclude<NovaoOp, { kind: 'toc' }>): NovaoAddress
 export function opAddress(op: NovaoOp): NovaoAddress | null
@@ -514,13 +513,13 @@ function instructionHead(t: string): string {
  * the alternation is tried left to right, so a compound has to precede the
  * word it starts with, or "Zeichen- und Wortfolge" matches as bare "Zeichen".
  *
- * Prozentsatz und Altersangabe kamen aus der dritten Durchsicht der
- * Verweigerungen (18.09.2026): „In § 4 Z 2 wird der Prozentsatz ‚65%' durch
- * den Prozentsatz ‚50%' ersetzt" ist eine gewöhnliche Phrasenersetzung und
- * scheiterte allein am Nomen — 11 Anweisungen im Korpus, alle in derselben
- * Form. Das Vokabular wächst nur gegen gemessene Zeilen, nie auf Verdacht:
- * ein Nomen, das nie vorkommt, macht die Alternation länger und die nächste
- * Messung nicht besser.
+ * Prozentsatz and Altersangabe came out of the third reading of the refusals
+ * (18.09.2026): „In § 4 Z 2 wird der Prozentsatz ‚65%' durch den Prozentsatz
+ * ‚50%' ersetzt" is an ordinary phrase replacement and failed on the noun
+ * alone — 11 instructions in the corpus, all of the same shape. The
+ * vocabulary grows against measured lines only, never on suspicion: a noun
+ * that never occurs makes the alternation longer and the next measurement no
+ * better.
  */
 const PHRASE_OBJECT =
   '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Ausdruck|Zitierung|Zitat|Klammerausdruck|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Eintrag)'
@@ -632,18 +631,18 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // "erhält die Bezeichnung": the noun varies in spelling (Paragrafen/
   // Paragraphen) and number, so only its tail is matched.
   //
-  // Zwischen Verb und Nomen darf ein Subjekt stehen — „In § 213 erhält
-  // **Abs. 4** die Absatzbezeichnung ‚(5)'", „In § 7 erhält **der bisherige
-  // Abs. 8** die Absatzbezeichnung ‚(9)'". Das ist dieselbe Umbenennung, nur
-  // mit ausgeschriebenem Subjekt, und die Adresse steht ohnehin schon richtig:
-  // `parseAddress` liest das „Abs. 4" aus dem Schwanz hinter dem §. 70 solcher
-  // Zeilen im Korpus (18.09.2026).
+  // A subject may stand between verb and noun — „In § 213 erhält **Abs. 4**
+  // die Absatzbezeichnung ‚(5)'", „In § 7 erhält **der bisherige Abs. 8** die
+  // Absatzbezeichnung ‚(9)'". That is the same renumbering with the subject
+  // spelled out, and the address is already right: `parseAddress` reads the
+  // „Abs. 4" out of the tail behind the §. 70 such lines in the corpus
+  // (18.09.2026).
   //
-  // **Nur wo das Subjekt eine Untereinheit ist.** „In § 10 erhält der
-  // bisherige *Inhalt* die Absatzbezeichnung ‚(1)'" benennt nichts um,
-  // sondern zieht eine Ebene ein — der ganze Paragraphentext wird zu Abs. 1.
-  // Das ist eine andere Operation mit einer anderen Gefahr, und sie bleibt
-  // verweigert, statt als Umbenennung des Paragraphen zu laufen.
+  // **Only where the subject is a sub-unit.** „In § 10 erhält der bisherige
+  // *Inhalt* die Absatzbezeichnung ‚(1)'" renames nothing; it pulls in a
+  // level — the whole Paragraph text becomes Abs. 1. That is a different
+  // operation with a different danger, and it stays refused rather than
+  // running as a renumbering of the Paragraph.
   if (/erh(?:äl|al)t(?:en)?\s+(?:[^"]{0,60}?\s+)?die\s+\w*bezeichnung(?:en)?\b/i.test(head) && (/erh(?:äl|al)t(?:en)?\s+die\s+\w*bezeichnung/i.test(head) || target.level !== 'para')) {
     const to = quotes[0]
     if (!to) return fail('Umbenennung ohne neue Bezeichnung')
@@ -827,10 +826,11 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
  * Every top-level unit one instruction may print text for, in the
  * designations the draft itself writes ("§ 5a", "Anlage 2").
  *
- * `lawTitles.addressedParagraph` answers a neighbouring question and answers
- * it deliberately narrowly: which single § of the *standing* law may lend
- * this change its heading. So it refuses an insertion — the new § has no
- * standing heading — and it refuses two §§, because two have no one name.
+ * `addressedParagraph` in `lawtext/instructionAddress.ts` answers a
+ * neighbouring question, and answers it deliberately narrowly: which single §
+ * of the *standing* law may lend this change its heading. So it refuses an
+ * insertion — the new § has no standing heading — and it refuses two §§,
+ * because two have no one name.
  *
  * Here the question is the opposite one, and every refusal there is a hit
  * here: which §§ can this instruction legitimately carry text for. The §§ it
@@ -849,7 +849,7 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
  * only honour that if it knows which instructions it lost.
  */
 export interface AddressedUnits {
-  /** Designations as written, for `annexCheck.designationKey` to key. */
+  /** Designations as written, for `designationKey` (`annex/annexText.ts`) to key. */
   paras: string[]
   /**
    * Designations this instruction declares to be *one* provision: the old and
@@ -887,7 +887,7 @@ function numeralOf(designation: string): string | null {
  * it away because it could not type the operation: "4 Operanden, Paarbildung
  * unklar" (40), "3 Operanden" (40), "Ersetzung ohne zwei Operanden" (34),
  * "kein bekanntes Verb" (90) and a long tail of the same shape. Those refusals
- * are right for `lawApply.ts`, which has to *perform* the instruction; they are
+ * are right for `kons/lawApply.ts`, which has to *perform* the instruction; they are
  * beside the point for the question this file's collector asks, which is only
  * which §§ an instruction may print text for.
  *
@@ -920,9 +920,9 @@ function numeralOf(designation: string): string | null {
  *   unit — whose text covers both — under half its §§.
  *
  * Payload and head are cut exactly as `parseOne` cuts them, so the §§ a
- * payload *creates* are not mistaken for the ones it addresses; `annexDraft.ts`
- * picks those up from the quoted Gliederungssymbole, where they are not a
- * guess.
+ * payload *creates* are not mistaken for the ones it addresses;
+ * `annex/annexDraft.ts` picks those up from the quoted Gliederungssymbole,
+ * where they are not a guess.
  */
 const INSTRUCTION_VERB_RE =
   /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\beingereiht\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b|\bentfernt\b|\bvorangestellt\b|\bhinzugefügt\b|\bangeschlossen\b|\bergänzt\b|\bgesetzt\b|\beinzufügen\b|\bgeändert\b|bezeichnung(?:en)?\b|an (?:die )?Stelle\b|\berhäl?t folgende\b|\berhalten folgende\b/i

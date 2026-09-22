@@ -22,7 +22,7 @@
  *   | + unexplained diff tokens           | 30/39  | 31/218 (14 %)              |
  *
  * None of these is verification. They are the cheap half; the independent
- * check is the ressort's own Textgegenüberstellung (`tguOracle.ts`), where a
+ * check is the ressort's own Textgegenüberstellung (`kons/tguOracle.ts`), where a
  * draft carries one. Together they decide what a gate may show as text.
  */
 import { diffTokens } from '../diff/wordDiff'

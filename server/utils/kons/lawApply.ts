@@ -3,8 +3,8 @@
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
- * `novao.ts` reads an instruction, `lawStructure.ts` holds the law it acts
- * on, and this module performs the act. It never improvises:
+ * `kons/novao.ts` reads an instruction, `lawtext/konsTree.ts` holds the law
+ * it acts on, and this module performs the act. It never improvises:
  *
  * 1. **A phrase operation must match exactly once** in its addressed scope.
  *    Zero matches means the address or the quoted text is wrong; several
@@ -196,7 +196,7 @@ export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
       // enumeration and belongs *behind* it ("… insbesondere a) … e) … der
       // Schulbehörde unverzüglich anzuzeigen"). Folding it into the Absatz's
       // own text put that closing sentence in front of the list and left the
-      // §  looking amended-but-wrong. `lawStructure.ts` builds the standing
+      // §  looking amended-but-wrong. `lawtext/konsTree.ts` builds the standing
       // law the same way, so the two sides now render in the same order.
       if (abs.children.length) abs.children.push(makeNode('schluss', 'schluss', '', line))
       else abs.text = `${abs.text} ${line}`.trim()
