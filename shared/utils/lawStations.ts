@@ -2,19 +2,12 @@
  * The stations a law text passes through, as the § comparison can select
  * them (docs/architecture.md §12.18).
  *
- * The comparison shipped wired to one pair, Ministerialentwurf against
- * Regierungsvorlage. The later texts were on the page as documents the whole
- * time and never compared — and that is where a Begutachtungsergebnis
- * quietly disappears: the amendment moved in committee or in the plenary,
- * after everyone stopped reading.
- *
- * Measured over GP XXVI–XXVIII (651 Ministerialentwürfe, scripts/
- * corpus/stationen.ts, 17.09.2026): three stations follow the draft, their
- * upstream wording is stable across all three periods, and every one of
- * them is published as HTML — 154 Ausschussfassungen and 122
- * Plenarfassungen, without a single PDF-only case. The availability worry
- * this feature was noted with turned out to sit on the OTHER side: the
- * draft's own text is what is missing as HTML in the older periods.
+ * More than the one shipped pair, because a Begutachtungsergebnis disappears
+ * exactly where nobody compares any more: in committee or in the plenary.
+ * Measured before the build over GP XXVI–XXVIII (651 Ministerialentwürfe,
+ * `pnpm corpus:stationen`, 17.09.2026): not one of the 154 Ausschuss- and 122
+ * Plenarfassungen is PDF-only — the missing HTML is the draft's own text in
+ * the older periods, the other side entirely.
  *
  * Pure module: no Nuxt auto-imports, so both the server resolver and the
  * component read one vocabulary.
@@ -40,15 +33,15 @@ export const LAW_STATION_LABEL: Record<LawStationId, string> = {
   rv: 'Regierungsvorlage',
   ausschuss: 'Ausschussfassung',
   plenum: 'Plenarfassung',
-  // Die Fassung, nicht das Ereignis — dieselbe Regel wie oben: „Kundmachung"
-  // wäre der Vorgang, „Bundesgesetzblatt" das Blatt; verglichen wird der Text.
+  // The version, not the event — the rule above: „Kundmachung" would be the
+  // act, „Bundesgesetzblatt" the gazette; what is compared is the text.
   //
-  // UND ES MUSS SICH BEUGEN LASSEN. Die Sätze der Seite setzen die
-  // Beschriftung in den Genitiv („der Gesetzestext der …", „wird mit dem der
-  // … verglichen"). Die vier alten Namen sind feminin auf -ung und ändern
-  // sich dabei nicht; „Kundgemachte Fassung" tat es und stand als „mit dem
-  // der Kundgemachte Fassung" auf der Seite. Dass der Ministerialentwurf im
-  // selben Satz schon eine Ausnahme braucht, war die Warnung.
+  // AND IT HAS TO DECLINE. The page's sentences put the label in the genitive
+  // („der Gesetzestext der …", „wird mit dem der … verglichen"). The four
+  // older names are feminine in -ung and do not change there; „Kundgemachte
+  // Fassung" did, and stood on the page as „mit dem der Kundgemachte
+  // Fassung". That the Ministerialentwurf already needs an exception in the
+  // same sentence was the warning.
   bgbl: 'Fassung im Bundesgesetzblatt',
 }
 
@@ -61,29 +54,24 @@ export const LAW_STATION_LABEL: Record<LawStationId, string> = {
  * professions, 3 drafts) and "Vertragstext" (a Staatsvertrag, 2 drafts).
  * Matching by keyword would offer those as a text to compare, and the §
  * parser would dutifully produce paragraphs out of an annex. Same reasoning
- * as for the shortinfo headings in `server/utils/parliament/detailJson.ts`: read the tag,
- * never the wording.
+ * as for the shortinfo headings in `server/utils/parliament/detailJson.ts`:
+ * read the tag, never the wording.
  */
 export const UPSTREAM_AUSSCHUSS_TITLE = 'Geändert im Ausschuss'
 export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
 
 /**
- * Was das Abzeichen „redaktionell" behauptet — und es behauptet in beiden
- * Vergleichen dasselbe.
+ * What the „redaktionell" badge claims — and it claims the same thing in both
+ * comparisons.
  *
- * Es stand in drei Fassungen an drei Stellen, zwei davon auf derselben
- * Entwurfsseite, zwei Bildschirme auseinander: „nur Verweise, Zahlen, Daten
- * oder Satzzeichen", „Es haben sich nur Verweise, Zahlen, Daten oder
- * Satzzeichen geändert, kein einziges Wort", „dass sich nur Verweise,
- * Zahlen, Daten oder Satzzeichen geändert haben". Das ist die Definition
- * eines Etiketts, das wir selbst vergeben; sie muss überall dieselbe sein,
- * sonst ist sie keine Definition.
+ * It stood in three wordings in three places, two of them two screens apart
+ * on the same draft page. This is the definition of a label we award
+ * ourselves; it has to be identical everywhere or it is not a definition.
  *
- * Seit 18.09.2026 steht sie nur noch an EINER Stelle: auf /so-funktionierts.
- * Auf der Entwurfsseite stand sie zuletzt als Legende am Fuß beider
- * Vergleiche — auch das war ein Satz, der auf jeder der rund tausend Seiten
- * gleich lautet, für ein Wort, das im Deutschen ungefähr das sagt, was es
- * hier heißt. Beide Vergleiche verlinken jetzt dorthin.
+ * Since 18.09.2026 the sentence stands in ONE place, /so-funktionierts, and
+ * both comparisons link there: a legend repeated on each of roughly a
+ * thousand pages, for a word that says in German about what it means here,
+ * is not worth the page it costs.
  */
 export const EDITORIAL_BADGE_SENTENCE =
   '„Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder Satzzeichen geändert, kein einziges Wort.'
@@ -97,7 +85,7 @@ const UPSTREAM_STATION_TITLES: Readonly<Record<string, LawStationId>> = {
 }
 
 /**
- * The draft's own Gesetzestext, by the exact titles the ressorts use for it.
+ * The draft's own Gesetzestext, by the exact titles the Ressorts use for it.
  *
  * Ordered: the first one present wins. The list is short because it is
  * measured, and it is exact for a reason that cost a measurement to see —
@@ -107,7 +95,7 @@ const UPSTREAM_STATION_TITLES: Readonly<Record<string, LawStationId>> = {
  * explanatory prose against law text. Those drafts have no isolated
  * Gesetzestext, and the honest answer is that there is nothing to compare.
  *
- * "(korrigierte Version)" beats "(ursprüngliche Version)": when a ressort
+ * "(korrigierte Version)" beats "(ursprüngliche Version)": when a Ressort
  * corrects a draft mid-Begutachtung, the corrected text is the draft as it
  * stood at the end of the Frist (XXVII, 315/ME — the only case in three
  * periods, and it carries both).
@@ -137,20 +125,15 @@ function lawStationIndex(id: LawStationId): number {
 }
 
 /**
- * Ist dieses Paar eine Frage, die jemand beantwortet hat?
+ * Is this pair a question somebody answered?
  *
- * Die Reihenfolge allein reicht seit der BGBl-Station nicht mehr. Zwischen
- * der Plenarfassung und der Kundmachung handelt **kein Akteur**: Was der
- * Nationalrat beschlossen hat, wird kundgemacht, nicht noch einmal geändert.
- * Gemessen (`pnpm corpus:bgbl-station`, §12.33) bleibt dort nach Abzug der
- * eingesetzten Fundstelle nichts übrig — bei zehn von vierzehn Entwürfen
- * exakt null inhaltliche Änderungen.
- *
- * Ein Paar, das systematisch leer ist, gehört nicht in einen Wähler: Es
- * verspricht eine Antwort, die es nicht geben kann, und wer es wählt, lernt
- * über das Verfahren nichts, sondern zweifelt am Werkzeug. Die Aussage „am
- * Text hat sich nach dem Plenum nichts mehr geändert" macht stattdessen das
- * Paar `rv→bgbl` mit, ohne einen eigenen Menüpunkt zu kosten.
+ * `plenum→bgbl` is the one exception to the order rule: between the Beschluss
+ * and the Kundmachung NO actor negotiates, so the pair is systematically
+ * empty — measured (`pnpm corpus:bgbl-station`) exactly zero substantive
+ * changes for ten of fourteen drafts, once the inserted Fundstelle is
+ * discounted. A pair that promises an answer it cannot give teaches nothing
+ * about the procedure; `rv→bgbl` carries the same statement without costing
+ * a menu entry (docs/architecture.md §12.33).
  */
 export function isLawStationPair(from: LawStationId, to: LawStationId): boolean {
   if (from === 'plenum' && to === 'bgbl') return false
