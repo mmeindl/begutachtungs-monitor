@@ -20,7 +20,7 @@ export interface RisMapRow {
   /** RIS main document (draft text) in the formats RIS offers */
   risDocument: { html: string | null; xml: string | null; pdf: string | null } | null
   /**
-   * The ressort's Textgegenüberstellung — current law against proposed law,
+   * The Ressort's Textgegenüberstellung — current law against proposed law,
    * written by the ministry itself. Null when the draft carries none;
    * `xml` null when RIS offers only a scan (docs/api-exploration.md §2c).
    */
@@ -37,7 +37,7 @@ export interface RisMapRow {
    * RIS's own start of the Begutachtungsfrist (ISO date) — the day the annex
    * was written, and therefore the version of the standing law its left
    * column claims to quote. The reference date for checking that claim
-   * (`annexCheck.ts`): taking it from anywhere else moved one draft's score
+   * (`server/utils/annex/verdict.ts`): taking it from elsewhere moved a score
    * from 66,7 % to 88,9 %, which made the measurement an argument about the
    * date rather than about the parse.
    */
@@ -118,16 +118,16 @@ export interface RisConsultation {
   /** The record's human-readable page on ris.bka.gv.at. */
   risUrl: string
   /**
-   * Der Ausgang: kundgemacht, und wo (§12.32).
+   * The outcome: kundgemacht, and where (docs/architecture.md §12.32).
    *
-   * Auf der BASIS und nicht erst auf dem Detailsatz, weil die Liste ihn
-   * genauso braucht — die Spalte „Stand" sagte auf jeder abgeschlossenen
-   * Zeile „Begutachtung abgeschlossen", auch wo die Verordnung längst galt.
+   * On the BASE record and not only on the detail one, because the list needs
+   * it just as much — the „Stand" column said „Begutachtung abgeschlossen" on
+   * every finished row, even where the Verordnung had long been in force.
    *
-   * Null heißt „nicht ermittelt", NICHT „nicht kundgemacht": Beide Wege
-   * dorthin haben ein Zeitbudget, und was darin nicht fertig wurde, darf
-   * keine Aussage über das Ressort werden. Der Negativbefund heißt
-   * `state: 'keine'` und steht im Objekt.
+   * Null means „not determined", NOT „not kundgemacht": both routes there run
+   * under a time budget, and what does not finish inside it must never turn
+   * into a statement about the Ressort. The negative finding is
+   * `state: 'keine'` and stands inside the object.
    */
   outcome: BgblOutcome | null
 }
@@ -151,16 +151,16 @@ export interface RisConsultationDetail extends RisConsultation {
    */
   coverLetter: RisDocumentFormats | null
   /**
-   * Alles Übrige, was der Satz an Text führt: WFA, Vorblatt, Digicheck,
-   * Anhänge — und gelegentlich eine Gegenüberstellung oder Erläuterungen
-   * unter einem Namen, den unsere Regeln nicht kennen („SAG_TGÜ", „EB").
-   * Gemessen am 22.09.2026: 16 von 41 Textdokumenten der laufenden Sätze.
-   * Nur die Volltextsuche liest sie (§12.31).
+   * Everything else the record carries as text: WFA, Vorblatt, Digicheck,
+   * Anhänge — and now and then a Textgegenüberstellung or Erläuterungen under
+   * a name our rules do not know („SAG_TGÜ", „EB"). Measured 22.09.2026: 16
+   * of 41 text documents of the running records. Only the full-text search
+   * reads them (docs/architecture.md §12.31).
    */
   otherDocuments: RisNamedDocument[]
 }
 
-/** Ein Dokument, das nur seinen eigenen Namen als Auskunft mitbringt. */
+/** A document that brings nothing but its own name as information. */
 export interface RisNamedDocument {
   name: string
   formats: RisDocumentFormats

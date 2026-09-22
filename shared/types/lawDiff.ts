@@ -12,9 +12,9 @@ import type { LawDiffSegment, TraceLink } from './common'
  * `app/utils/spine.ts`: Begutachtung and Bundesgesetzblatt publish no
  * Gesetzestext of their own, and these four do.
  *
- * `bgbl` ist seit 19.09.2026 dabei und ist anders als die vier davor: Seine
- * Fassung steht nicht beim Parlament, sondern im RIS, und zwischen ihr und
- * der Plenarfassung handelt KEIN Akteur mehr (§12.33).
+ * `bgbl` joined on 19.09.2026 and differs from the four before it: its
+ * version is not at Parliament but in RIS, and between it and the Plenum
+ * version NO actor negotiates any more (docs/architecture.md §12.33).
  */
 export type LawStationId = 'me' | 'rv' | 'ausschuss' | 'plenum' | 'bgbl'
 
@@ -46,40 +46,41 @@ export interface AmendedLawsResponse {
 }
 
 /**
- * Ob sich die Begründung des Ressorts zu EINEM Paragraphen zwischen Entwurf
- * und Regierungsvorlage geändert hat (docs/architecture.md §12.10b).
+ * Whether the Ressort's reasoning for ONE Paragraph changed between the
+ * Ministerialentwurf and the Regierungsvorlage (docs/architecture.md
+ * §12.10b).
  */
 export interface ReasoningDiffEntry {
-  /** „§ 54c" — der Paragraph, dessen Begründung hier verglichen wird. */
+  /** „§ 54c" — the Paragraph whose reasoning is compared here. */
   paragraph: string
-  /** Wortdiff der beiden Passagen; null, wenn zu lang zum Rechnen. */
+  /** Word diff of the two passages; null when too long to compute. */
   segments: LawDiffSegment[] | null
   /**
-   * Beide Fassungen im Ganzen — nur, wenn `segments` fehlt, weil der
-   * Wortvergleich an seiner Schranke abgebrochen hat. Dann zeigt die Anzeige
-   * sie nebeneinander, statt eine leere Lade aufzuklappen.
+   * Both versions in full — only when `segments` is missing because the word
+   * comparison hit its ceiling. The section then shows them side by side
+   * instead of opening an empty drawer.
    */
   fromText: string | null
   toText: string | null
-  /** Anteil geänderter Wörter, 0 bis 1 — die Zahl hinter `changed`. */
+  /** Share of changed words, 0 to 1 — the number behind `changed`. */
   drift: number
-  /** Ab 2 % abweichender Wörter: unterhalb davon sind es Satzzeichen. */
+  /** From 2 % diverging words up: below that it is punctuation. */
   changed: boolean
 }
 
 /**
- * Die Begründungen des Ressorts, Paragraph für Paragraph, zwischen Entwurf
- * und Regierungsvorlage (docs/architecture.md §12.10b).
+ * The Ressort's reasoning, Paragraph by Paragraph, between the
+ * Ministerialentwurf and the Regierungsvorlage (docs/architecture.md
+ * §12.10b).
  *
- * Gemessen über die XXVIII. GP: 1.515 §§ stehen auf beiden Seiten, bei 728
- * davon (48 %) hat sich die Begründung geändert — die Anzeige hat also
- * etwas zu zeigen, und zwar oft.
+ * Measured over GP XXVIII: 1.515 §§ stand on both sides, and for 728 of them
+ * (48 %) the reasoning changed — the section has something to show, often.
  *
- * ZWEI EBENEN, WEIL ES ZWEI SIND: Gerechnet wird je Paragraph
- * (`paragraphs`), gezeigt wird an der Novellierungsanordnung — mehrere
- * Anordnungen ändern denselben Paragraphen. `units` schlägt von `unitKey` auf
- * den Paragraphen um, wie bei `paragraphtitel` also derselbe Schlüssel wie im
- * Vergleich und kein zweites Ausrichtungsproblem.
+ * TWO LEVELS, BECAUSE THERE ARE TWO: computed per Paragraph (`paragraphs`),
+ * shown at the Novellierungsanordnung — several instructions amend the same
+ * Paragraph. `units` maps from `unitKey` to the Paragraph, so as with
+ * `paragraphtitel` it is the comparison's own key and not a second alignment
+ * problem.
  */
 export interface ReasoningDiffResponse {
   gp: string
@@ -90,13 +91,13 @@ export interface ReasoningDiffResponse {
    */
   available: boolean
   unavailableReason: string | null
-  /** Die beiden gelesenen Dokumente, für die Quellenzeile. */
+  /** The two documents that were read, for the credit line. */
   sources: TraceLink[]
-  /** `unitKey` → „§ 11": welche Änderung auf welchen Paragraphen zeigt. */
+  /** `unitKey` → „§ 11": which change points at which Paragraph. */
   units: Record<string, string>
-  /** „§ 11" → der Vergleich, einmal je Paragraph. */
+  /** „§ 11" → the comparison, once per Paragraph. */
   paragraphs: Record<string, ReasoningDiffEntry>
-  /** Wie viele §§ verglichen werden konnten und wie viele sich geändert haben. */
+  /** How many §§ could be compared, and how many of them changed. */
   stats: { compared: number; changed: number }
 }
 
@@ -115,11 +116,11 @@ export interface ParagraphTitlesResponse {
   asOf: string | null
   titles: Record<string, string>
   /**
-   * `unitKey` → „§ 6": der Paragraph, den die Anweisung adressiert. Steht
-   * neben dem Namen, weil „Z 2" die Nummer der Novellierungsanordnung ist und
-   * nicht die des Paragraphen — ohne ihn schwebt der Name über einer
-   * Bezeichnung, die den § gar nicht nennt. Unabhängig von `titles`: der §
-   * steht in der Anweisung, der Name kommt aus dem RIS und kann fehlen.
+   * `unitKey` → „§ 6": the Paragraph the instruction addresses. Kept beside
+   * the name, because „Z 2" is the Novellierungsanordnung's number and not
+   * the Paragraph's — without it the name floats above a designation that
+   * never names the §. Independent of `titles`: the § stands in the
+   * instruction, the name comes from RIS and can be missing.
    */
   paragraphs: Record<string, string>
 }
@@ -201,9 +202,10 @@ export interface LawDiffResponse {
   /** Where the earlier text was read: Parliament HTML, or the RIS XML when Parliament has only a PDF (older periods, draft side only) */
   fromSource: 'parlament' | 'ris' | null
   /**
-   * Dasselbe für die spätere Seite. Seit es die BGBl-Station gibt, kann auch
-   * RECHTS ein RIS-Dokument stehen — die Kundmachung liegt beim Parlament
-   * überhaupt nicht (§12.33), und die Quellenzeile muss das sagen dürfen.
+   * The same for the later side. Since the BGBl station exists a RIS document
+   * can stand on the RIGHT too — the Kundmachung is not at Parliament at all
+   * (docs/architecture.md §12.33), and the credit line has to be able to say
+   * so.
    */
   toSource: 'parlament' | 'ris' | null
   /** Every station this draft published a text for, in procedural order. */

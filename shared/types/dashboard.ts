@@ -2,7 +2,7 @@ import type { DraftSummary } from './drafts'
 
 export interface DashboardPayload {
   gp: string
-  /** Active consultations, sorted by deadline ascending (soonest first) */
+  /** Drafts whose Frist is still running, soonest deadline first */
   open: DraftSummary[]
   stats: {
     consultationsTotalGp: number
@@ -11,10 +11,10 @@ export interface DashboardPayload {
   topByStatements: DraftSummary[]
 }
 
-/** One recently closed consultation with its resolved chain state.
- *  Extends the summary so the SAME card component renders both the open
- *  list and the outcome section — one anatomy, one hover, no sibling
- *  component drift. */
+/** One recently closed draft with its resolved chain state.
+ *  Extends the summary so the SAME row component (`EntryItem`) renders both
+ *  the open list and the outcome section — one anatomy, one hover, no
+ *  sibling component drift. */
 export interface ClosedOutcome extends DraftSummary {
   /** e.g. "474 d.B." — null while no Regierungsvorlage exists */
   rvCitation: string | null
@@ -42,7 +42,7 @@ export interface DashboardOutcomes {
  * Payload of /api/dashboard/enacted — "Zuletzt Gesetz geworden".
  *
  * The rows are Ministerialentwürfe again, not Vorlagen: the monitor's object
- * is the Begutachtung, and the card that renders them is the one every other
+ * is the Begutachtung, and the row that renders them is the one every other
  * section uses. `bgblNumber` is non-null throughout by construction — a row
  * without a Kundmachung is not in this list.
  */
@@ -66,26 +66,26 @@ export interface OpenVorlage {
   /** Stellungnahmen filed on the Vorlage so far; null when the count failed. */
   statementCount: number | null
   /**
-   * Die Begutachtung, aus der diese Vorlage kam — in drei Zuständen, weil
-   * zwei zu wenig sind.
+   * The Begutachtung this Vorlage came out of — three states, because two are
+   * not enough (`docs/begutachtung-uebersprungen.md`).
    *
-   * Bis 18.09.2026 stand hier `draft: … | null`, und `null` musste zwei
-   * Dinge zugleich heißen: „wir haben keine Seite dafür" und „es gab keine
-   * Begutachtung". Gezeigt wurde das zweite („ohne Begutachtung"), belegt war
-   * nur das erste — `preconst` ist kein universelles Feld, und auf GP XXVIII
-   * fehlt es bei 32 von 117 Vorlagen ganz (`server/utils/parliament/precedingDraft.ts`).
+   * Until 18.09.2026 this was `draft: … | null`, and `null` had to mean two
+   * things at once: „we have no page for it" and „there was no Begutachtung".
+   * The second was shown, only the first was evidenced — `preconst` is not a
+   * universal field, and on GP XXVIII it is missing entirely for 32 of 117
+   * Vorlagen (`server/utils/parliament/precedingDraft.ts`).
    *
-   *  - `draft` — die Vorlage nennt ihren Ministerialentwurf selbst. Der
-   *    einzige Zustand, in dem eine Zeile auf unsere eigene Seite zeigt.
-   *  - `none` — kein Zeiger, UND die Gegenprobe gegen Liste 81 findet keinen
-   *    Entwurf, der ihr vorausgegangen sein könnte. Erst hier steht „ohne
-   *    Begutachtung" in der Zeile.
-   *  - `unknown` — kein Zeiger, aber ein plausibler Entwurf. Die Zeile sagt
-   *    dann nichts: eine Titelähnlichkeit trägt keine Aussage über ein
-   *    Regierungsvorhaben, in keine der beiden Richtungen.
+   *  - `draft` — the Vorlage names its own Ministerialentwurf. The only state
+   *    in which a row points at a page of ours.
+   *  - `none` — no pointer, AND the cross-check against list 81 finds no
+   *    draft that could have preceded it. Only here does the row say „ohne
+   *    Begutachtung".
+   *  - `unknown` — no pointer, but a plausible draft. The row then says
+   *    nothing: a title similarity carries no claim about a Regierungsvorhaben
+   *    in either direction.
    *
-   * `none` und `unknown` verlinken beide nach außen; die Unterscheidung
-   * betrifft nur, was behauptet wird (`docs/begutachtung-uebersprungen.md`).
+   * `none` and `unknown` both link outwards; the distinction is only about
+   * what is claimed.
    */
   consultation:
     | { kind: 'draft'; gp: string; inr: number }

@@ -57,8 +57,8 @@ export interface DraftChain {
   /** e.g. "594 d.B."; null while the draft is still at its Begutachtung. */
   rvCitation: string | null
   /**
-   * Einlangen der Vorlage im Nationalrat, ISO; null when the draft has no
-   * Vorlage or list 101 carries no sortable date for it.
+   * The Vorlage's Einlangen in the Nationalrat, ISO; null when the draft has
+   * no Vorlage or list 101 carries no sortable date for it.
    *
    * Read off the Vorlagen list the station map already fetches for the
    * house status, so it costs no upstream request. It exists because a row

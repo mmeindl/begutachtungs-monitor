@@ -2,11 +2,11 @@ import type { LawDiffSegment, TraceLink } from './common'
 import type { LawUnitChange } from './lawDiff'
 
 /**
- * Warum ein Paragraph der eigenen konsolidierten Lesefassung nicht angezeigt
- * wird (`server/utils/konsGate.ts`, docs/architecture.md §12.12).
+ * Why a Paragraph of our own konsolidierte Lesefassung is not shown
+ * (`server/utils/kons/konsGate.ts`, docs/architecture.md §12.12).
  *
- * Die Sätze dazu stehen im Gate, nicht hier: Sie sind eine Entscheidung mit
- * Tests, keine Typdefinition.
+ * The sentences belong in the gate, not here: they are a decision with
+ * tests, not a type definition.
  */
 export type ConsolidatedWithheldCause =
   | 'verweigert'
@@ -16,91 +16,84 @@ export type ConsolidatedWithheldCause =
   | 'anhang-schweigt'
   | 'anhang-widerspricht'
 
-/** Ein Paragraph, wie er nach den Anweisungen des Entwurfs lauten würde. */
+/** A Paragraph as it would read after the draft's Novellierungsanordnungen. */
 export interface ConsolidatedParagraph {
-  /** Die Nummer, „22" — dieselbe Schreibweise wie in der Gegenüberstellung. */
+  /** The number, „22" — the same spelling as in the Textgegenüberstellung. */
   id: string
   /**
-   * Wortdiff des **Textes ohne Überschrift** — dieselbe rot/grün-Sprache wie
-   * sonst auf der Seite. Getrennt von `headingSegments`, weil eine
-   * Überschrift auf der Seite eine Überschrift ist: In einem Fließtext
-   * hängt sie sonst am ersten Satz („Aufbau der Staatsanwaltschaften Am Sitz
-   * jedes …"), und eine geänderte Überschrift ist genau die Änderung, die
-   * ein Leser zuerst sehen soll.
+   * Word diff of the **text without the heading** — the same red/green
+   * language as everywhere else on the page. Kept apart from
+   * `headingSegments`, because a heading on the page is a heading: inside
+   * running text it otherwise hangs off the first sentence („Aufbau der
+   * Staatsanwaltschaften Am Sitz jedes …"), and a changed heading is exactly
+   * the change a reader should see first.
    */
   segments: LawDiffSegment[]
-  /** Wortdiff der Überschrift; null, wenn der § keine trägt. */
+  /** Word diff of the heading; null when the § carries none. */
   headingSegments: LawDiffSegment[] | null
-  /** Die geltende Fassung im RIS, zum Stichtag: die Quelle der linken Seite. */
+  /** The version in force in RIS, as of the cut-off date: the left side's source. */
   risUrl: string | null
   /**
-   * Das Gesetz, unter dem der Anhang diesen § führt — der Schlüssel, mit dem
-   * die Gegenüberstellung ihn wiederfindet (§12.12a).
+   * The law the annex files this § under — the key the Textgegenüberstellung
+   * is looked up with, and deliberately the gate's key rather than a second
+   * one (docs/architecture.md §12.12a).
    *
-   * NICHT dasselbe wie `law`: Dort steht der Kurztitel des Gesetzes („Richter-
-   * und Staatsanwaltschaftsdienstgesetz"), hier die Zeile der Beilage
-   * („Änderung des Richter- und Staatsanwaltschaftsdienstgesetzes"). Der
-   * Unterschied ist nicht kosmetisch — nachgeschlagen wird mit diesem String.
+   * NOT the same as `law`: that carries the Kurztitel („Richter- und
+   * Staatsanwaltschaftsdienstgesetz"), this one the annex's line („Änderung
+   * des Richter- und Staatsanwaltschaftsdienstgesetzes"). The lookup runs on
+   * this string, so the difference is not cosmetic.
    *
-   * `null` heißt „ohne Gesetz gesucht": Bei einer Einzelnovelle fragt das Tor
-   * den Anhang nur nach der Bezeichnung, weil es nichts zu verwechseln gibt.
-   * Die Seite muss dann genauso nachschlagen, sonst findet sie nichts —
-   * dieselbe Regel wie in `tguOracle.paragraphRows`, von dem dieses Feld
-   * stammt.
+   * `null` means „looked up without a law": for a single-law Novelle the gate
+   * asks the annex by designation only, because there is nothing to confuse.
+   * The page has to look up the same way or it finds nothing — the rule of
+   * `paragraphRows` in `server/utils/kons/tguOracle.ts`, where this field
+   * comes from.
    */
   annexLaw: string | null
 }
 
 /**
- * Die eigene konsolidierte Lesefassung eines Entwurfs — „so läse sich das
- * Gesetz danach" (docs/architecture.md §12.12).
+ * A draft's own konsolidierte Lesefassung — „so läse sich das Gesetz danach"
+ * (docs/architecture.md §12.12).
  *
- * `touched` ist die Bezugsgröße, ohne die `paragraphs` eine Lüge wäre: Ein
- * Entwurf ändert zwei Dutzend Paragraphen, gezeigt werden im Median 12 % von
- * ihnen, und Abwesenheit darf auf dieser Seite nie wie „unverändert"
- * aussehen (§12.27).
+ * `touched` is the denominator without which `paragraphs` would be a lie: a
+ * draft amends two dozen Paragraphen, a median 12 % of them are shown, and
+ * absence must never look like „unverändert" on this page (§12.27).
  */
 export interface ConsolidatedTextResponse {
   gp: string
   inr: number
   paragraphs: ConsolidatedParagraph[]
-  /** Wie viele §§ der Entwurf überhaupt ändert — der Nenner der Anzeige. */
+  /** How many §§ the draft amends at all — the denominator on display. */
   touched: number
 }
 
 /**
- * Why a § of the Textgegenüberstellung is not shown (`annexCheck.ts`).
+ * Why a § of the Textgegenüberstellung is not shown
+ * (`server/utils/annex/verdict.ts`, docs/architecture.md §12.13).
  *
- * Three different findings, and the page keeps them apart because they mean
- * different things to a reader — and because two of them can just as well be
- * *our* reading of a PDF as the ministry's document.
+ * Three findings the page keeps apart: they mean different things to a
+ * reader, and two of them can just as well be *our* reading of a PDF as the
+ * ministry's document — so none of them is phrased as the ministry's error.
  *
  * - `standing` — the annex's **left** column is not accounted for by the
- *   standing § in RIS Bundesrecht. The row is mis-paired, or the annex quotes
- *   a superseded version of the law. Does not mean the ministry got the law
- *   wrong: on the PDF path our own row pairing is at least as likely.
- * - `alreadyStanding` — the **right** column shows as new a run of at least
- *   six comparable words that stands verbatim in the § and is absent from the
- *   left column. Either the left column lost that text (ours to answer for on
- *   the PDF path, the annex's on the table path) or the annex was written
- *   against an older version. Does *not* mean the ministry re-enacted
- *   existing law: a sentence merely moved within the § is present on the left
- *   and never counted here.
- * - `notInDraft` — the right column carries at least eight words that occur
+ *   standing § in RIS Bundesrecht.
+ * - `alreadyStanding` — the **right** column shows as new a contiguous run of
+ *   at least six comparable words that stands verbatim in the § and is absent
+ *   from the left column. The left column is exempt on purpose: a sentence
+ *   merely moved within the § stands there and must not report.
+ * - `notInDraft` — the right column carries at least eight words found
  *   neither in the left column nor in the Novellierungsanordnungen the draft
- *   addresses to *this* §, and less than 90 % of what it shows as new can be
- *   found there. Text has been misfiled into the column, or the draft orders
- *   this change somewhere else than the annex shows it. Not a claim that the
- *   words are absent from the draft as a whole: since 2026-09-10 the
- *   reference is per § (`annexCheck.draftBags`), because the whole draft is
- *   blind to text dragged out of a neighbouring §. Where the Gesetzestext
- *   could not be read at all, the check is disarmed rather than failed, and
- *   text of a § the annex prints no block of its own for is never counted —
- *   that text is inherited by the block it stands in, not missing.
+ *   addresses to *this* §, and under 90 % of what it shows as new is found
+ *   there. The reference is per § since 2026-09-10 (`draftBags` in
+ *   `server/utils/annex/verdict.ts`): the whole draft is blind to text
+ *   dragged out of a neighbouring §. Where the Gesetzestext could not be read
+ *   at all the check is disarmed rather than failed, and text of a § the
+ *   annex prints no block of its own for is inherited, not missing.
  */
 export type AnnexWithheldCause = 'standing' | 'alreadyStanding' | 'notInDraft'
 
-/** One row of the ressort's Textgegenüberstellung (docs/api-exploration.md §2c). */
+/** One row of the Ressort's Textgegenüberstellung (docs/api-exploration.md §2c). */
 export interface TextComparisonRow {
   kind: 'article' | 'pair'
   /**
@@ -108,7 +101,8 @@ export interface TextComparisonRow {
    * one law, and null when the annex does not mark its boundaries: § 5 of the
    * second law of a package is a different provision from § 5 of the first,
    * and 15,1 % of designations in the multi-law annexes recur in another law
-   * of the same package — so an unattributed row is the honest answer.
+   * of the same package — so an unattributed row is the honest answer
+   * (docs/architecture.md §12.13).
    */
   law: string | null
   heading: string | null
@@ -125,7 +119,7 @@ export interface TextComparisonRow {
   editorial: boolean
   /**
    * How the row's "Geltende Fassung" fared against the standing law in RIS
-   * (`annexCheck.ts`).
+   * (`server/utils/annex/verdict.ts`, docs/architecture.md §12.13).
    *
    * - `verified` — the row's § carried enough prose to judge, the standing §
    *   accounts for its left column, and neither right-column rule fired; the
@@ -170,14 +164,13 @@ export interface TextComparisonResponse {
    */
   source: TraceLink | null
   /**
-   * Die Vorbemerkung der Quellenzeile, samt Lizenz — „Quelle (CC BY 4.0,
-   * RIS):" oder, wo die Kopie des Parlaments gelesen wurde, ohne
-   * Lizenzangabe.
+   * The credit line's opening, licence included — „Quelle (CC BY 4.0, RIS):"
+   * or, where Parliament's copy was read, without a licence claim.
    *
-   * Serverseitig, weil hier die Quelle gewählt wird: Der Abschnitt hatte den
-   * CC-BY-Satz festverdrahtet, und sobald dieselbe Sektion ein Dokument des
-   * Parlaments liest, ist das eine Lizenzbehauptung, die niemand geprüft hat
-   * (§13.1, Frage E3 offen).
+   * Server-side, because the source is chosen here: the section used to have
+   * the CC-BY sentence hard-wired, and the moment the same section reads a
+   * Parliament document that is a licence claim nobody has checked
+   * (docs/architecture.md §13.1, question E3 open).
    */
   credit: string
   /**
@@ -201,13 +194,14 @@ export interface TextComparisonResponse {
   readFrom: 'table' | 'pdf' | null
   /**
    * Pages of the annex PDF whose geometry the parse could not vouch for and
-   * therefore did not read (`annexPdf.ts`, `isProven`): a page set to another
-   * width than the rest of the document, one carrying a skewed text run, one
-   * whose runs disagree about which way the page is turned. Everything below
-   * this point reads a column out of a coordinate, and a page set differently
-   * is not read differently but *wrongly*, in words that are all real — so it
-   * is refused, and the reader is told that something is missing rather than
-   * left with a comparison that quietly has a hole in it.
+   * therefore did not read (`isProven` in `server/utils/annex/annexPdf.ts`):
+   * a page set to another width than the rest of the document, one carrying a
+   * skewed text run, one whose runs disagree about which way the page is
+   * turned. Everything below this point reads a column out of a coordinate,
+   * and a page set differently is not read differently but *wrongly*, in
+   * words that are all real — so it is refused, and the reader is told that
+   * something is missing rather than left with a comparison that quietly has
+   * a hole in it.
    *
    * **0 on the table path and whenever nothing was dropped**, never
    * `undefined`: the page prints the sentence on `> 0`, and an optional field
@@ -235,62 +229,51 @@ export interface TextComparisonResponse {
   verification: {
     /**
      * At least one § was actually compared against a standing text from RIS.
-     *
-     * The field exists because the page could not previously tell "nothing
-     * failed" from "nothing was looked at" — both showed `judged: 0`, and
-     * the rows went out labelled as verified regardless. False here means
-     * the comparison is entirely unvouched-for.
+     * Exists because the page could not tell "nothing failed" from "nothing
+     * was looked at" — both showed `judged: 0` and the rows went out
+     * labelled as verified. False means the comparison is unvouched-for.
      */
     ran: boolean
     /**
      * Why no § could be judged, as a German sentence fragment fit to print
      * after "Nichts konnte geprüft werden: …" — for example "im RIS fehlt
-     * der Beginn der Begutachtungsfrist" or "der Entwurf schafft neues Recht
-     * oder ist eine Verordnung — es gibt keinen geltenden Text im RIS
-     * Bundesrecht". Null exactly when `judged > 0`.
+     * der Beginn der Begutachtungsfrist". Null exactly when `judged > 0`.
      *
      * A RIS outage never appears here: the request fails instead of
      * answering, so no cache can hold a definitive-sounding sentence about a
-     * network hiccup (`textComparisonService.ts`).
+     * network hiccup (`server/utils/annex/textComparisonService.ts`).
      */
     notRunReason: string | null
     /**
      * The date the standing law was read at — RIS's own start of the
-     * Begutachtungsfrist, the day the ministry wrote the annex, ISO or null.
-     *
-     * Named on the page, because "checked against the law in force" is
-     * ambiguous without it: a comparison written in March and read today has
-     * been held against the March text, and that is the right one to hold it
-     * against.
+     * Begutachtungsfrist, the day the Ressort wrote the annex, ISO or null.
+     * Named on the page: a comparison written in March has been held against
+     * the March text, and that is the right text to hold it against.
      */
     asOf: string | null
     /**
-     * §§ with enough prose to judge, and how many came through every check
-     * — the standing text accounts for the left column and neither
-     * right-column rule fired.
-     *
+     * §§ with enough prose to judge, and how many came through every check.
      * `judged` counts §§ whose *left* column carried enough words to score,
-     * so a § withheld by a right-column rule without any judgeable left text
-     * is in `withheldParagraphs` and not in `judged`. The two numbers answer
-     * different questions and are not meant to subtract.
+     * so a § withheld by a right-column rule without judgeable left text is
+     * in `withheldParagraphs` and not here. The two are not meant to
+     * subtract.
      */
     judged: number
     verified: number
     /** §§ whose text was withheld, whichever of the three checks refused them */
     withheldParagraphs: number
     /**
-     * The same number split by cause; it sums to `withheldParagraphs`,
-     * because a withheld § carries exactly the first cause that fired. The
-     * page names the causes separately: "the current version is not in RIS
-     * like that", "it shows text as new that already applies" and "it carries
-     * text the draft's own Gesetzestext does not have" are three different
-     * things to a reader, and only the first is about the left column.
+     * The same number split by cause; sums to `withheldParagraphs`, because a
+     * withheld § carries exactly the first cause that fired. The page names
+     * the three separately — only the first is about the left column.
      */
     withheldByCause: Record<AnnexWithheldCause, number>
     /**
      * Laws where so many §§ failed that the annex probably quotes another
-     * version of the law. Named for the reader; the §§ that verified are
-     * still shown, because they verified against the standing text.
+     * version of the law. A sentence for the reader, not a withholding: the
+     * §§ that verified are still shown, because they verified against the
+     * standing text. A first version refused the whole law and withheld 59 §§
+     * that had passed individually (docs/architecture.md §12.13).
      */
     doubtfulLaws: string[]
     /**
@@ -298,22 +281,20 @@ export interface TextComparisonResponse {
      * what the reader sees that is unvouched-for.
      *
      * Not every § without a verdict: one whose rows are all unchanged is
-     * folded away behind a count and needs no check, and one the draft
-     * *inserts* has no standing text to check against, which is the point of
-     * it rather than a gap. Counting those made the sentence "… ließen sich
-     * nicht prüfen" read as an alarm about the ministry's annex.
+     * folded away behind a count, and one the draft *inserts* has no standing
+     * text to check against. Counting those made "… ließen sich nicht prüfen"
+     * read as an alarm about the Ressort's annex.
      */
     uncheckedParagraphs: number
     /**
      * Rows shown as a change that carry no § designation at all, so no §
      * verdict can address them — counted apart from `uncheckedParagraphs`,
-     * which counts §§. They are shown as `unchecked`.
+     * which counts §§. Shown as `unchecked`.
      *
-     * A property of the table path. Measured 2026-09-10: it emits 285 rows
-     * without a designation, 83 of them shown as a change. On the PDF path a
-     * row *is* a provision, cut at the § marker, and the front matter that
-     * carries no marker is dropped by the parser instead of being shown as
-     * new law — so every row it emits carries a designation and this is 0.
+     * A property of the table path. Measured 2026-09-10: 285 rows without a
+     * designation, 83 of them shown as a change; on the PDF path a row *is* a
+     * provision, cut at the § marker, so this is 0 (docs/architecture.md
+     * §12.13).
      */
     rowsWithoutParagraph: number
   } | null

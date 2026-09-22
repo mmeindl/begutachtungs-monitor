@@ -2,15 +2,16 @@ import type { DraftSummary } from './drafts'
 import type { RisConsultation } from './ris'
 
 /* ------------------------------------------------------------------ *
- * Volltextsuche über die laufenden Begutachtungen (§12.31)
+ * Full-text search over the running Begutachtungen
+ * (docs/architecture.md §12.31)
  * ------------------------------------------------------------------ */
 
 /**
- * Der Textausschnitt um eine Fundstelle, in drei Teilen.
+ * The snippet around a hit, in three parts.
  *
- * Drei Teile und kein fertiges Markup: Der Server liefert Text, die Seite
- * setzt die Marke. Ein `<mark>` aus dem Server wäre HTML aus einer
- * Nutzereingabe, und davon gibt es keine sichere Fassung.
+ * Three parts and no finished markup: the server delivers text, the page sets
+ * the mark. A `<mark>` from the server would be HTML built from user input,
+ * and there is no safe version of that.
  */
 export interface BegutSearchSnippet {
   before: string
@@ -19,9 +20,9 @@ export interface BegutSearchSnippet {
 }
 
 /**
- * Ein Treffer, als das, was er ist: ein Entwurf — mit Gegenstand im
- * Parlament oder ohne. Kein gemeinsamer Zeilentyp mit leeren Feldern; die
- * beiden Arten unterscheiden sich in dem, was es über sie GIBT (§12.28).
+ * A hit as what it is: a draft — with a Gegenstand at Parliament or without.
+ * No shared row type with empty fields; the two kinds differ in what EXISTS
+ * about them (docs/architecture.md §12.28).
  */
 export type BegutSearchEntry =
   | { kind: 'draft'; draft: DraftSummary }
@@ -30,35 +31,35 @@ export type BegutSearchEntry =
 export interface BegutSearchHit {
   entry: BegutSearchEntry
   /**
-   * Das Dokument, in dem das Wort steht: „im Entwurfstext", „in den
-   * Erläuterungen", … Null, wenn wir es in keinem lesbaren Dokument des
-   * Satzes gefunden haben — das RIS durchsucht auch Anlagen und PDFs, die
-   * wir nicht auswerten (gemessen: 72,2 % der Treffer sind benennbar).
+   * The document the word stands in: „im Entwurfstext", „in den
+   * Erläuterungen", … Null when we found it in no readable document of the
+   * record — RIS also searches Anhänge and PDFs that we do not parse
+   * (measured: 72,2 % of hits can be named).
    */
   place: string | null
-  /** Die Stelle im Dokument, wie es sie führt: „§ 5.", „Zu § 5:". */
+  /** The place in the document, as the document names it: „§ 5.", „Zu § 5:". */
   designation: string | null
   snippet: BegutSearchSnippet | null
   /**
-   * Das Wort steht AUSSCHLIESSLICH in einer Ressortnennung — im Verteiler
-   * des Begleitschreibens, in einer Unterschriftszeile.
+   * The word stands EXCLUSIVELY in a mention of a Ressort — in the
+   * Begleitschreiben's Verteiler, in a signature line.
    *
-   * Jedes Begleitschreiben listet alle Ministerien als Empfänger, also
-   * trifft jedes Portfolio-Wort jeden Entwurf: „klima" liefert eine
-   * Druckgeräteaufstellungsverordnung. Gemessen am 21.09.2026 sind 3 von 7
-   * Treffern zu „klima" von dieser Art. Die Zeile bleibt trotzdem stehen —
-   * das RIS hat den Satz geliefert, und bei der UVP-G-Novelle, die den
-   * Ressortnamen in dutzenden §§ austauscht, IST er der Gegenstand.
+   * Every Begleitschreiben lists all ministries as recipients, so every
+   * portfolio word hits every draft: „klima" returns a
+   * Druckgeräteaufstellungsverordnung. Measured 21.09.2026, 3 of 7 hits for
+   * „klima" are of this kind. The row stays anyway — RIS delivered the
+   * record, and for the UVP-G-Novelle, which swaps the Ressort's name in
+   * dozens of §§, the name IS the subject.
    */
   ministryOnly: boolean
 }
 
 export interface BegutSearchResponse {
-  /** Die Suche, wie sie ans RIS ging — normalisiert, mit Stern. */
+  /** The query as it went to RIS — normalised, with the asterisk. */
   query: string
-  /** Wie viele Begutachtungen heute offen sind, also durchsucht wurden. */
+  /** How many Begutachtungen are open today, i.e. were searched. */
   corpusSize: number
-  /** Treffer laut RIS, auch die, die wir nicht auflösen konnten. */
+  /** Hits according to RIS, including the ones we could not resolve. */
   total: number
   hits: BegutSearchHit[]
 }
