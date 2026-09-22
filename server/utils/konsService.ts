@@ -36,11 +36,11 @@ import { anlageLabelKey, bareParaId } from './text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from './amendedLawsService'
 import { diffTokens } from './diff/wordDiff'
-import { fetchLawHtml } from './lawDiffService'
 import { applyNovelle, instructionsFromUnits, type Instruction, type StandingLaw } from './lawApply'
 import { bodyText, parseKonsParagraph, plainText, type LawNode } from './lawStructure'
-import { parseRisXml, segmentUnits } from './lawText'
+import { segmentUnits } from './lawText'
 import { articleBlocks } from './lawTitles'
+import { getDraftArticles } from './lawtext/draftArticlesService'
 import { opAddress } from './novao'
 import { getRisMapForGp } from './ris/begutCorpus'
 import { mapWithConcurrency } from './pool'
@@ -107,7 +107,7 @@ export const getConsolidatedText = defineCachedFunction(
     const xmlUrl = row.risDocument?.xml
     if (!xmlUrl) return empty()
 
-    const blocks = parseRisXml(await fetchLawHtml(xmlUrl))
+    const { blocks } = await getDraftArticles(gp, inr, 'ris-xml')
     const parts = articleBlocks(blocks).filter((p) => p.article.amends)
     // A draft that creates a law instead of amending one has no version „davor".
     if (parts.length === 0) return empty()
@@ -120,7 +120,8 @@ export const getConsolidatedText = defineCachedFunction(
     // dazu" schlösse.
     //
     // WAS DAS ZWEITE LESEN KOSTET, zwei Wege, zwei Antworten: Der XML-Weg
-    // geht durch `fetchLawHtml` und ist derselbe Cache-Treffer. Der PDF-Weg
+    // geht durch `getDraftArticles` und ist derselbe Cache-Treffer — seit
+    // 22.09.2026 auch für den PARSE, nicht nur für die Bytes. Der PDF-Weg
     // war es NICHT — dessen Byte-Cache ist in der Produktion bewusst
     // abgeschaltet (`annexPdfService.ts`), also holten und parsten
     // `/konsolidiert` und `/gegenueberstellung` dieselbe Beilage je einmal.

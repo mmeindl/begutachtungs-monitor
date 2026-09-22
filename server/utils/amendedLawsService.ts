@@ -20,11 +20,10 @@
  * shortened list would misstate what the draft touches.
  */
 import type { AmendedLaw, AmendedLawsResponse } from '#shared/types'
-import { fetchLawHtml, findLawStations } from './lawDiffService'
-import { parseParliamentHtml, parseRisXml, type TextBlock } from './lawText'
-import { draftArticles, isAmendmentClause, stammnormOf, type BgblCitation } from './lawTitles'
-import { getDraftsForGp, getGegenstand } from './parliament/drafts'
-import { getRisMapForGp } from './ris/begutCorpus'
+import type { TextBlock } from './lawText'
+import { isAmendmentClause, stammnormOf, type BgblCitation } from './lawTitles'
+import { getDraftArticles } from './lawtext/draftArticlesService'
+import { getDraftsForGp } from './parliament/drafts'
 import { resolveKonsLaw } from './konsCache'
 import { mapWithConcurrency } from './pool'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
@@ -62,21 +61,6 @@ export function konsLawUrl(gesetzesnummer: string, date: string | null): string 
   return date ? `${base}&FassungVom=${date}` : base
 }
 
-/** The draft's own text — never the Regierungsvorlage's: the question is
- *  what the DRAFT proposed to change.
- *
- *  Nothing here catches: a draft that publishes no readable text answers with
- *  an empty list through the structure (no `me.html`, no RIS row, no XML),
- *  and both parsers are total. Everything else is an upstream failure and has
- *  to leave the cached function above. */
-async function draftBlocks(gp: string, inr: number, detail: Awaited<ReturnType<typeof getGegenstand>>): Promise<TextBlock[]> {
-  const me = findLawStations(detail.content ?? {}).get('me')
-  if (me?.html) return parseParliamentHtml(await fetchLawHtml(me.html))
-  const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
-  const xml = row?.risDocument?.xml
-  return xml ? parseRisXml(await fetchLawHtml(xml)) : []
-}
-
 /**
  * **A failure is not an answer** — the rule `konsCache.ts` states for
  * `resolveKonsLaw` and `annexGuardService.ts` for the annex, and this
@@ -94,14 +78,17 @@ async function draftBlocks(gp: string, inr: number, detail: Awaited<ReturnType<t
  */
 export const getAmendedLaws = defineCachedFunction(
   async (gp: string, inr: number): Promise<AmendedLawsResponse> => {
-    const detail = await getGegenstand(gp, 'ME', inr)
     // A draft missing from its own GP's list is an answer (`asOf` stays
     // null); a list that cannot be read is not.
     const listed = (await getDraftsForGp(gp)).items.find((i) => i.inr === inr) ?? null
     const asOf = listed?.arrivedAt || null
 
-    const blocks = await draftBlocks(gp, inr, detail)
-    const articles = draftArticles(blocks)
+    // The draft's own text — never the Regierungsvorlage's: the question is
+    // what the DRAFT proposed to change. Its own source reading, and its own
+    // cache entry under it: this section prefers the Parliament copy of the
+    // Ministerialentwurf, the three sections of the draft page read the RIS
+    // XML (`lawtext/draftArticlesService.ts`).
+    const { blocks, articles } = await getDraftArticles(gp, inr, 'parliament-first')
     let wanted = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl }))
 
     // A single-law Novelle prints no "Artikel" line, and its

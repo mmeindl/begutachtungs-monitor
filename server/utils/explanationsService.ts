@@ -29,8 +29,8 @@
 import type { ExplanationsResponse, TraceLink } from '#shared/types'
 import { hasReadableText, parseExplanations, type ExplanationsDocument, type ExplanationsPart } from './explanations'
 import { explanationsByParagraph } from './explanationsJoin'
-import { parseRisXml } from './lawText'
-import { draftArticles } from './lawTitles'
+import type { DraftArticle } from './lawTitles'
+import { draftArticlesOfXml, getDraftArticles, type DraftText } from './lawtext/draftArticlesService'
 import { DERIVED_CACHE } from './cache/base'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import { getText } from './risKons'
@@ -41,20 +41,6 @@ import { hasAnnexDocument } from './textComparisonService'
 /** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. */
 const fetchExplanationsXml = defineCachedFunction((url: string): Promise<string> => getText(url), {
   name: 'erlaeuterungen-xml',
-  getKey: (url: string) => url,
-  maxAge: PUBLISHED_DOCUMENT_TTL_S,
-  swr: false,
-})
-
-/**
- * The draft text as RIS sent it — the Artikel of the package are read from it.
- *
- * Its own cache entry rather than a second copy of the annex service's: both
- * want the same document, and one entry per URL is what the persistent layer
- * is for.
- */
-const fetchDraftXml = defineCachedFunction((url: string): Promise<string> => getText(url), {
-  name: 'entwurfstext-xml',
   getKey: (url: string) => url,
   maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
@@ -132,10 +118,9 @@ function view(
  * trotzdem auf der Seite, nur ohne die Passagen am Paragraphen. Ein fehlender
  * Entwurfstext darf nicht den ganzen Abschnitt kosten.
  */
-async function articlesOf(xmlUrl: string | null): Promise<ReturnType<typeof draftArticles>> {
-  if (!xmlUrl) return []
+async function articlesOf(read: () => Promise<DraftText>): Promise<DraftArticle[]> {
   try {
-    return draftArticles(parseRisXml(await fetchDraftXml(xmlUrl)))
+    return (await read()).articles
   } catch {
     return []
   }
@@ -150,7 +135,8 @@ async function articlesOf(xmlUrl: string | null): Promise<ReturnType<typeof draf
  */
 async function read(
   formats: Formats | null,
-  draftXml: string | null,
+  /** The draft's Artikel, asked for only where there is a Besonderer Teil to join. */
+  draftText: () => Promise<DraftText>,
   /**
    * Gefragt wird erst, wenn es etwas zu zeigen gibt: Ohne Passagen am
    * Paragraphen hängt an der Antwort nichts, und die Frage kostet bei den
@@ -176,7 +162,7 @@ async function read(
       documentLink(formats),
     )
   }
-  const articles = parsed.special ? await articlesOf(draftXml) : []
+  const articles = parsed.special ? await articlesOf(draftText) : []
   const paragraphs = explanationsByParagraph(parsed, articles)
   return view(parsed.general, formats, !parsed.generalInferred, parsed, paragraphs, paragraphs.length > 0 && (await annexOf()))
 }
@@ -208,7 +194,7 @@ export const getExplanations = defineCachedFunction(
     // Abschnitt, der selbst sagt, warum er nichts zeigt, kostet einen Blick;
     // ein Zeiger ins PDF, während die Stelle auf derselben Seite steht,
     // kostet den Weg zurück.
-    return read(row.explanations, row.risDocument?.xml ?? null, async () =>
+    return read(row.explanations, () => getDraftArticles(gp, inr, 'ris-xml'), async () =>
       row.status === 'matched' && (await hasAnnexDocument(gp, inr, row.textComparison)))
   },
   { name: 'erlaeuterungen-me', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
@@ -221,7 +207,10 @@ export const getRisExplanations = defineCachedFunction(
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
     // Nie am Paragraphen: Die Seite einer Begutachtung ohne Gegenstand
     // rendert die Gegenüberstellung nicht, sie verlinkt sie (§12.30).
-    return read(detail.explanations, detail.mainDocument.xml, async () => false)
+    // Ohne Gegenstand gibt es kein (GP, Nummer), auf das der geteilte Cache
+    // schlüsseln könnte; gelesen wird dasselbe Dokument.
+    const xml = detail.mainDocument.xml
+    return read(detail.explanations, () => (xml ? draftArticlesOfXml(xml) : Promise.resolve({ blocks: [], articles: [] })), async () => false)
   },
   { name: 'erlaeuterungen-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

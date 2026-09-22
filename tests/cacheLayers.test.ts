@@ -15,7 +15,16 @@ import { describe, expect, it } from 'vitest'
  * that decision is the whole point.
  *
  * Every entry is an upstream payload, one per distinct call, holding
- * nothing our code made. There is no residual and no exception left: the one
+ * nothing our code made. `entwurfstext-xml` was dropped on 22.09.2026: it
+ * held the draft's own text under a second name, for URLs `law-html` already
+ * carried, and the parse above it — the draft's Artikel, read three times per
+ * cold detail page — now sits in the derived `draft-articles`
+ * (`lawtext/draftArticlesService.ts`), keyed by draft AND source, because the
+ * Geltendes-Recht section reads the Parliament copy where the other three read
+ * the RIS XML. Derived names belong in no list here; that is the point of the
+ * split.
+ *
+ * There is no residual and no exception left: the one
  * response that may not be persisted at all — list 142, whose rows name
  * private persons — has no cached fetch under it, only a derived cache above
  * (`parliament/statements.ts`).
@@ -25,7 +34,6 @@ const FETCHED: Record<string, string> = {
   gegenstand: 'the upstream detail JSON, passed through unmapped',
   'kons-para-xml': 'a RIS paragraph document; its heading is parsed fresh on every call',
   'erlaeuterungen-xml': "the ressort's Erläuterungen as RIS sent them; the parse above is derived",
-  'entwurfstext-xml': "the draft's own text as RIS sent it; its Artikel are parsed fresh on every call",
   'begut-dokument-xml':
     'any document of a Begut record as RIS sent it — the full-text search reads whichever one holds the ' +
     'word (§12.31). Deliberately its own entry and not the two above: those belong to the Erläuterungen ' +

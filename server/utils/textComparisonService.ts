@@ -56,8 +56,8 @@ import { checkAnnexRows, notRunReason } from './annexCheck'
 import { getAnnexVerification } from './annexGuardService'
 import { annexFromPdf } from './annexPdfService'
 import { fetchLawHtml } from './lawDiffService'
-import { parseRisXml } from './lawText'
-import { draftArticles, type DraftArticle } from './lawTitles'
+import type { DraftArticle } from './lawTitles'
+import { getDraftArticles } from './lawtext/draftArticlesService'
 import { mapDocuments } from './parliament/detailJson'
 import { getGegenstand } from './parliament/drafts'
 import { getRisMapForGp } from './ris/begutCorpus'
@@ -345,9 +345,7 @@ export const getTextComparison = defineCachedFunction(
     // reference: what the annex shows as *new* has to occur in the draft's
     // own Gesetzestext (`annexCheck.rightColumnCheck`). Fetched before the
     // source is chosen, because every parse path below needs it.
-    const draft = row.risDocument?.xml ? await fetchLawHtml(row.risDocument.xml) : null
-    const draftBlocks = draft ? parseRisXml(draft) : []
-    const articles = draftArticles(draftBlocks)
+    const { blocks: draftBlocks, articles } = await getDraftArticles(gp, inr, 'ris-xml')
 
     const chosen = await annexSourceFor(gp, inr, annex, articles)
     if (typeof chosen === 'string') {
