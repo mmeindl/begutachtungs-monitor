@@ -1,23 +1,22 @@
 <script setup lang="ts">
 /**
- * Datenschutzerklärung — Art 13 und 14 DSGVO.
+ * Datenschutzerklärung — Art 13 and 14 GDPR.
  *
- * Bewusst kein Generator-Text: fast jede Standardklausel (Cookies,
- * Analytik, Newsletter, Social-Media-Plugins, Server-Logs mit 7-tägiger
- * Aufbewahrung) beschreibt etwas, das dieses Projekt nicht tut. Eine
- * Erklärung, die Verarbeitungen behauptet, die es nicht gibt, ist genauso
- * falsch wie eine, die welche verschweigt.
+ * Deliberately no generated text: almost every standard clause (cookies,
+ * analytics, newsletter, social-media plugins, server logs kept for 7 days)
+ * describes something this project does not do. A statement claiming
+ * processing that does not happen is as wrong as one that conceals some.
  *
- * Belege für die Aussagen hier, damit sie beim nächsten Infrastruktur-
- * wechsel mitgeändert werden:
- *   - keine Access-Logs: der Caddyfile in deploy/bootstrap.sh hat keine
- *     `log`-Direktive, Caddy schreibt ohne sie kein Zugriffsprotokoll;
- *   - keine Drittanbieter zur Laufzeit: Schriften liegen in public/fonts,
- *     kein CDN, keine Analytik, keine Cookies;
- *   - Auftragsverarbeiter und Standorte: deploy/infrastructure.md;
- *   - Privatpersonen ohne Namen: server/utils/parliament/privacy.ts.
- * Art 14 (Daten aus dem Parlament) ist der Teil, den Standardtexte gar
- * nicht kennen — er ist hier der eigentliche Inhalt.
+ * Evidence for the claims here, so it can be changed along at the next
+ * infrastructure change:
+ *   - no access logs: the Caddyfile in deploy/bootstrap.sh has no `log`
+ *     directive, and without one Caddy writes no access log;
+ *   - no third parties at runtime: the fonts live in public/fonts, no CDN,
+ *     no analytics, no cookies;
+ *   - processors and locations: deploy/infrastructure.md;
+ *   - private individuals without names: server/utils/parliament/privacy.ts.
+ * Art 14 (data from Parliament) is the part standard texts do not know at
+ * all — here it is the actual content.
  */
 useSeoMeta({
   title: 'Datenschutz',

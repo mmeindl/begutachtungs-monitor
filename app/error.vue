@@ -22,7 +22,7 @@ function goHome() {
 }
 
 function retry() {
-  // force: umgeht die 10s-Sperre gegen Reload-Schleifen – hier klickt ein Mensch
+  // force: bypasses the 10s guard against reload loops — a human clicks here
   reloadNuxtApp({ force: true })
 }
 </script>
@@ -41,7 +41,7 @@ function retry() {
         {{ description }}
       </p>
       <div class="mt-6 flex flex-wrap justify-center gap-2">
-        <!-- Kein Reload bei 404: die Seite fehlt, sie lädt nicht bloß nicht -->
+        <!-- No reload on a 404: the page is missing, not merely failing to load -->
         <UButton v-if="!is404" color="primary" @click="retry">Erneut versuchen</UButton>
         <UButton :color="is404 ? 'primary' : 'neutral'" :variant="is404 ? 'solid' : 'outline'" @click="goHome">
           Zur Startseite

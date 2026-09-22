@@ -33,10 +33,10 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           zeigt Verfahren mit weiterem Verlauf genauso wie Verfahren ohne.
           Nachverfolgung, nicht Bewertung.
         </p>
-        <!-- Als Frage formuliert, nicht als Vorhaben: eine Frage, die das
-             Werkzeug stellt, veraltet nicht, ein Fahrplan schon. Genau daran
-             ist der Abschnitt „Woran gearbeitet wird" gescheitert — er stand
-             keinen Tag, ohne dass ein Punkt davon schon überholt war. -->
+        <!-- Phrased as a question, not as a plan: a question the tool asks
+             does not age, a roadmap does. That is exactly what the section
+             „Woran gearbeitet wird" failed on — it never stood a single day
+             without one of its items already being out of date. -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Über viele Verfahren hinweg wird daraus eine Frage, die bisher
           niemand beantworten kann: Wie oft ändern sich Entwürfe nach der
@@ -186,11 +186,11 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         </p>
       </section>
 
-      <!-- Konkrete Grenzen statt eines pauschalen Etiketts: das entwertete
-           die Metadaten, die die amtliche Schnittstelle unverändert
-           spiegeln, und warnte nicht vor dem Textvergleich, wo ein Fehler
-           entstehen kann. Beim Ausbau mitziehen — diese Liste IST der
-           Statusbericht. -->
+      <!-- Concrete limits rather than a blanket label: the label devalued the
+           metadata, which mirror the official interface unaltered, and warned
+           nobody about the text comparison, where an error can actually arise.
+           Keep it current as the site grows — this list IS the status
+           report. -->
       <section aria-labelledby="about-status">
         <h2 id="about-status" class="section-heading">Status</h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">

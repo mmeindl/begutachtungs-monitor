@@ -1,31 +1,30 @@
 <script setup lang="ts">
 /**
- * Offenlegung nach § 25 MedienG.
+ * Offenlegung under § 25 MedienG.
  *
- * Warum überhaupt: Eine Website ist ein periodisches elektronisches Medium
- * (§ 1 Abs 1 Z 5a lit c MedienG). Die Offenlegungspflicht hängt nicht an
- * Gewerblichkeit — das ECG mit seinem "in der Regel gegen Entgelt" greift
- * hier (noch) nicht, das MedienG schon.
+ * Why at all: a website is a periodisches elektronisches Medium (§ 1 Abs 1
+ * Z 5a lit c MedienG). The disclosure duty does not depend on commercial
+ * operation — the ECG with its "in der Regel gegen Entgelt" does not (yet)
+ * apply here, the MedienG does.
  *
- * Warum die volle Offenlegung: Die "kleine Website"-Erleichterung des
- * § 25 Abs 5 gilt nur für Seiten ohne Inhalt, der geeignet ist, die
- * öffentliche Meinungsbildung zu beeinflussen. Genau das ist der Zweck
- * dieses Projekts — die Erleichterung zu beanspruchen hieße, gegen die
- * eigene Sache zu argumentieren. Also inklusive Beteiligungsverhältnissen
- * (§ 25 Abs 2) und grundlegender Richtung (§ 25 Abs 4).
+ * Why the full disclosure: the "kleine Website" relief of § 25 Abs 5 applies
+ * only to sites without content capable of influencing public opinion. That
+ * is exactly this project's purpose — claiming the relief would mean arguing
+ * against our own case. So including Beteiligungsverhältnisse (§ 25 Abs 2)
+ * and grundlegende Richtung (§ 25 Abs 4).
  *
- * Warum Wohnort und keine Anschrift: § 25 Abs 2 verlangt den Wohnort, nicht
- * die Zustelladresse. Eine vollständige Anschrift wird erst nötig, wenn
- *   (a) das ECG greift — Förderung, Spenden, Werbung; § 5 ECG will die
- *       geografische Anschrift —, oder
- *   (b) E-Mail-Benachrichtigungen kommen: ein Verteiler ist ein
- *       wiederkehrendes elektronisches Medium (§ 1 Abs 1 Z 5a lit d) und
- *       löst § 24 Abs 3 MedienG aus (Name UND Anschrift).
- * Beides ist absehbar, aber noch nicht eingetreten.
+ * Why the Wohnort and no postal address: § 25 Abs 2 asks for the Wohnort, not
+ * the delivery address. A full address first becomes necessary when
+ *   (a) the ECG applies — funding, donations, advertising; § 5 ECG wants the
+ *       geographic address —, or
+ *   (b) e-mail notifications arrive: a mailing list is a wiederkehrendes
+ *       elektronisches Medium (§ 1 Abs 1 Z 5a lit d) and triggers § 24 Abs 3
+ *       MedienG (name AND address).
+ * Both are foreseeable, neither has happened.
  *
- * § 25 Abs 1 verlangt "ständig leicht und unmittelbar auffindbar": daher der
- * Footer-Link auf jeder Seite. Nicht in die Hauptnavigation — die ist bei
- * vier Einträgen gedeckelt, und dort sucht diese Seite auch niemand.
+ * § 25 Abs 1 asks for "ständig leicht und unmittelbar auffindbar": hence the
+ * footer link on every page. Not in the main navigation — that is capped at
+ * four entries, and nobody looks for this page there.
  */
 useSeoMeta({
   title: 'Impressum & Offenlegung',
@@ -161,26 +160,24 @@ useSeoMeta({
         <h2 id="imp-license" class="section-heading">
           Urheberrecht &amp; Lizenzen
         </h2>
-        <!-- Je Datensatz, nicht pauschal: der Monitor bezieht aus zwei
-             amtlichen Quellen, und ihre Nutzungsbedingungen sind nicht
-             dieselben. Eine gemeinsame Zeile „Metadaten CC BY 4.0" hat das
-             eingeebnet und für die Daten des Begutachtungsverfahrens etwas
-             behauptet, was das Parlament auf seiner eigenen Lizenzseite
-             ausschließt.
+        <!-- Per dataset, not across the board: the monitor draws on two
+             official sources whose terms of use are not the same. A shared
+             line „Metadaten CC BY 4.0" levelled that and claimed for the
+             Begutachtungsverfahren's data what Parliament excludes on its own
+             licence page.
 
-             Und „ausschließlich Metadaten" stimmte auch nicht (korrigiert
-             19.09.2026): Unter „Worum geht es?" steht die Kurzinformation des
-             Parlaments, und das ist Prosa. Der naheliegende Ausweg — sie sei
-             ohnehin nur der Text des Ressorts, den das RIS unter CC BY führt —
-             hält der Messung nicht stand: Über 337 Entwürfe der GP XXVII
-             tragen 53 % gar keine Prosa, sondern nur die Listen aus dem
-             Vorblatt, und wo es Prosa gibt, stehen im Median 60 % ihrer
-             Acht-Wort-Fenster wörtlich in den Dokumenten des Ressorts, bei
-             einem Drittel weniger als die Hälfte (`pnpm corpus:kurzinfo`,
-             docs/architecture.md §13.1). Die Kurzinformation ist also
-             redaktionelle Arbeit des Parlaments auf dem Material des
-             Ressorts — und gehört benannt, statt unter „Metadaten"
-             mitzulaufen. -->
+             And „ausschließlich Metadaten" was not true either (corrected
+             19.09.2026): under „Worum geht es?" stands Parliament's
+             Kurzinformation, and that is prose. The obvious escape — that it
+             is only the Ressort's text, which RIS publishes under CC BY —
+             does not survive measurement: over 337 drafts of GP XXVII, 53 %
+             carry no prose at all but only the lists from the Vorblatt, and
+             where there is prose a median 60 % of its eight-word windows
+             occur verbatim in the Ressort's documents, for a third of them
+             less than half (`pnpm corpus:kurzinfo`, docs/architecture.md
+             §13.1). The Kurzinformation is therefore Parliament's editorial
+             work on the Ressort's material — and belongs named rather than
+             carried along under „Metadaten". -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
           Nutzungsbedingungen unterscheiden sich je nach Datensatz.

@@ -95,10 +95,9 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
       {
         id: 'parlament',
         name: 'Parlament',
-        /* Das zweite Fenster steht hier, und das ist seit 18.09.2026 seine
-           einzige feste Adresse: Es wurde auf Listen- und Detailseiten
-           fünfmal erklärt und auf der Seite, die das Verfahren erklärt,
-           überhaupt nicht. */
+        /* The second window stands here, and since 18.09.2026 this is its
+           only fixed address: it was explained five times on list and detail
+           pages and not at all on the page that explains the procedure. */
         text: `Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Vorlage selbst sind noch Stellungnahmen möglich. ${SECOND_ROUND_WINDOW}`,
         monitor:
           'Ob der Nationalrat den Text unverändert beschlossen oder im Ausschuss und im Plenum geändert hat – mit den Fassungen, die dabei entstanden sind, und den Stellungnahmen, die zur Vorlage noch eingegangen sind.',
@@ -106,9 +105,9 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
       {
         id: 'bundesgesetzblatt',
         name: 'Bundesgesetzblatt',
-        /* „wird das Gesetz verbindlich" war ungenau: Die Kundmachung ist die
-           Veröffentlichung, das Inkrafttreten kann später liegen und steht
-           im Gesetz selbst. */
+        /* „wird das Gesetz verbindlich" was imprecise: the Kundmachung is the
+           publication, while the Inkrafttreten can come later and is named in
+           the law itself. */
         text: 'Mit der Kundmachung im Bundesgesetzblatt Teil I ist das Gesetz erlassen. In Kraft tritt es zu dem Zeitpunkt, den es selbst nennt – das kann derselbe Tag sein oder Monate später.',
         monitor: 'Die Nummer der Kundmachung, verlinkt ins Rechtsinformationssystem.',
       },
@@ -118,22 +117,22 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
     id: 'weg-verordnung',
     name: 'Weg einer Verordnung',
     count: 'eine weitere Station',
-    /* „Mehr als die Hälfte" statt „zwei Drittel": Der Jahresanteil liegt seit
-       2016 zwischen 54 % und 75 % (docs/architecture.md §12.16). Auf einer
-       statischen Seite muss die Zahl auch in fünf Jahren noch stimmen. Der
-       Satz bleibt trotzdem stehen — ohne ihn liest sich der kürzere Weg als
-       Ausnahme, und er ist der häufigere Fall. */
+    /* „Mehr als die Hälfte" rather than „zwei Drittel": the yearly share has
+       been between 54 % and 75 % since 2016 (docs/architecture.md §12.16). On
+       a static page the figure has to be right in five years too. The sentence
+       stays regardless — without it the shorter path reads as the exception,
+       and it is the more common case. */
     lede: 'Das ist der häufigere Weg: Mehr als die Hälfte aller Begutachtungen betrifft Verordnungen. Eine Verordnung regelt, was ein Gesetz dem Ministerium überlässt – Gebühren, Fristen, Grenzwerte, Formulare – und braucht keinen Beschluss des Nationalrats.',
     steps: [
       {
-        /* EINE Station, nicht zwei. „Erlassung durch das Ressort" wäre eine
-           Zeile ohne Beobachtbares, und `stations.ts` hat genau dafür schon
-           eine Regel: „Ausarbeitung im Ressort happens before anything is
-           published … a row for it would be an empty promise." Zwischen
-           Fristende und Kundmachung ist von außen nichts zu sehen, und zwei
-           Zeilen „Im Monitor: nichts" hintereinander wären eine Wand aus
-           Abwesenheit. Kommt die Verordnungs-Leiste (TODO), hat sie damit
-           drei Zeilen, von denen jede etwas anzeigen kann. */
+        /* ONE station, not two. „Erlassung durch das Ressort" would be a row
+           with nothing observable behind it, and `app/utils/spine.ts` already
+           carries the rule for exactly that: „Ausarbeitung im Ressort happens
+           before anything is published … a row for it would be an empty
+           promise." Between Fristende and Kundmachung nothing is visible from
+           outside, and two rows saying „Im Monitor: nichts" in a row would be
+           a wall of absence. When the Verordnung bar arrives (TODO) it thus
+           has three rows, each of which can show something. */
         id: 'bundesgesetzblatt-ii',
         name: 'Bundesgesetzblatt II',
         text: 'Das Ministerium erlässt die überarbeitete Verordnung und macht sie im Bundesgesetzblatt Teil II kund – erst damit gilt sie. Eine Regierungsvorlage und einen Beschluss des Nationalrats gibt es hier nicht; zwischen Fristende und Kundmachung ist von außen nichts zu sehen.',
@@ -149,10 +148,9 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
   },
 ]
 
-/* Eine Überschrift je Abschnitt, in der Reihenfolge der Seite. Von Hand
-   gepflegt und nicht aus dem DOM gelesen: Die Seite ist statisch, und eine
-   Liste, die sich selbst erzeugt, wäre JavaScript für etwas, das sich
-   zweimal im Jahr ändert. */
+/* One heading per section, in the page's order. Maintained by hand rather
+   than read from the DOM: the page is static, and a list that generates
+   itself would be JavaScript for something that changes twice a year. */
 const toc = [
   { to: '#betrifft-mich', label: 'Betrifft mich das?' },
   { to: '#wirkung', label: 'Was eine Stellungnahme bewirkt' },
@@ -221,13 +219,12 @@ const toc = [
           class="link-inline font-medium"
         >RSS-Feed</a>
         und ein
-        <!-- Verweist auf /ueber, statt hier ein webcal:// anzubieten. Ein
-             webcal-Link tut ohne registrierten Handler sichtbar nichts, und
-             die funktionierende Fassung des Angebots steht ohnehin schon an
-             einer Stelle: Apple/Outlook, Google und die Adresse zum
-             Eintragen von Hand, mit dem Hinweis abonnieren-statt-
-             importieren. Ein Erklärtext nennt den Weg, die Mechanik steht
-             dort, wo die Knöpfe sind. -->
+        <!-- Points at /ueber instead of offering a webcal:// here. A webcal
+             link visibly does nothing without a registered handler, and the
+             working version of the offer already stands in one place:
+             Apple/Outlook, Google and the address to enter by hand, with the
+             subscribe-rather-than-import note. An explanatory text names the
+             way, the mechanics stand where the buttons are. -->
         <NuxtLink
           to="/ueber#about-subscribe"
           class="link-inline font-medium"
@@ -235,16 +232,16 @@ const toc = [
       </p>
     </section>
 
-    <!-- Mechanismus 3 aus CLAUDE.md, und der Grund, warum diese Seite
-         überhaupt Prosa ist: Ein Werkzeug, das nur zählt, was folgenlos
-         blieb, beweist, dass Beteiligung sinnlos ist. Der Satz „Ministerien
-         überarbeiten Entwürfe regelmäßig" stand bisher einmal auf der Seite,
-         klein und grau unter einem Handlungskasten.
+    <!-- Mechanism 3 from CLAUDE.md, and the reason this page is prose at all:
+         a tool that only counts what stayed without consequence proves that
+         taking part is pointless. The sentence „Ministerien überarbeiten
+         Entwürfe regelmäßig" used to stand once on the site, small and grey
+         under an action card.
 
-         KEINE Zahl im Fließtext. Eine Quote, die hier steht, altert
-         unbemerkt — auf einer Seite, deren ganzer Anspruch Überprüfbarkeit
-         ist. Der Beleg ist die Liste, die sich selbst nachrechnet; die
-         Grundraten über hunderte Verfahren sind ein eigenes Arbeitspaket. -->
+         NO figure in the running text. A rate that stands here ages unnoticed
+         — on a page whose whole claim is checkability. The evidence is the
+         list, which recomputes itself; the base rates over hundreds of
+         Verfahren are a work package of their own. -->
     <section id="wirkung" class="mt-12 scroll-mt-6">
       <h2 class="text-lg font-semibold text-ink">Was eine Stellungnahme bewirkt</h2>
 
@@ -289,10 +286,10 @@ const toc = [
         Parlament, eine Verordnung erlässt das Ministerium selbst.
       </p>
 
-      <!-- Zahlen und Text tragen die Abfolge; Verbindungslinie und Kacheln
-           sind dekorativ (Bedeutung nie allein über Farbe oder Form). Die
-           Linie läuft auch unter der zweiten Station weiter — sie endet
-           nicht, sie gabelt sich. -->
+      <!-- Numbers and text carry the sequence; the connecting line and the
+           tiles are decorative (meaning never rides on colour or shape alone).
+           The line runs on below the second station too — it does not end, it
+           forks. -->
       <ol class="mt-8">
         <li
           v-for="(step, i) in sharedSteps"
@@ -328,10 +325,10 @@ const toc = [
         </li>
       </ol>
 
-      <!-- Die Gabelung trägt kein Kachelsymbol: Sie ist keine Station,
-           sondern die Stelle, an der es zwei gibt. Gezeichnet wird sie von
-           Überschrift und Text, nicht von einer verzweigenden Linie — die
-           müsste ohnehin `aria-hidden` sein und überlebt 320 px nicht. -->
+      <!-- The fork carries no tile: it is not a station but the place where
+           there are two. It is drawn by heading and text, not by a branching
+           line — that would have to be `aria-hidden` anyway and does not
+           survive 320 px. -->
       <div id="wege" class="scroll-mt-6 pl-14">
         <h3 class="text-lg font-semibold text-ink">
           Nach der Begutachtung trennen sich die Wege
@@ -344,10 +341,10 @@ const toc = [
         </p>
       </div>
 
-      <!-- p-4 unter sm, weil sich die Einzüge hier addieren: Seitenrand (16)
-           + Kartenpolster + Kachelspalte. Mit p-5 und pl-14 blieben auf
-           320 px rund 192 px Textspalte, und „Rechtsinformationssystem" ist
-           breiter als das. -->
+      <!-- p-4 below sm, because the indents add up here: page margin (16) +
+           card padding + tile column. With p-5 and pl-14 about 192 px of text
+           column were left at 320 px, and „Rechtsinformationssystem" is wider
+           than that. -->
       <section
         v-for="path in paths"
         :id="path.id"
@@ -379,9 +376,9 @@ const toc = [
               {{ i + 3 }}
             </span>
             <h4 class="pt-1 text-lg font-semibold text-ink">
-              <!-- „von M" nur hier, nicht bei den geteilten Stationen: Die
-                   sind Schritt 1 und 2 von beiden Wegen zugleich, und eine
-                   Gesamtzahl wäre dort schlicht falsch. -->
+              <!-- „von M" only here, not on the shared stations: those are
+                   steps 1 and 2 of both paths at once, and a total would
+                   simply be wrong there. -->
               <span class="sr-only">
                 Schritt {{ i + 3 }} von {{ path.steps.length + 2 }}:
               </span>{{ step.name }}
@@ -411,14 +408,13 @@ const toc = [
       </section>
     </section>
 
-    <!-- Die Folge der Gabelung für das, was der Leser auf den Zeilen sieht.
-         Eigener Abschnitt und nicht Teil der Gabelung, weil es eine andere
-         Frage beantwortet: Die Gabelung erklärt das Verfahren, dieser
-         Abschnitt die Quellen — warum neben manchen Zeilen keine Zahl
-         steht. Hier stehen auch die Lücken der amtlichen Listen, denn hier
-         hat sie jemand gesucht; auf einer Entwurfsseite wären sie eine
-         Auskunft über uns an einen Leser, der nach einem Entwurf gefragt
-         hat. -->
+    <!-- The fork's consequence for what the reader sees on the rows. Its own
+         section and not part of the fork, because it answers a different
+         question: the fork explains the procedure, this section the sources —
+         why some rows carry no number. The gaps in the official lists stand
+         here too, because here somebody came looking for them; on a draft page
+         they would be information about us given to a reader who asked about a
+         draft. -->
     <section id="ohne-stellungnahmen" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
       <h2 class="text-lg font-semibold text-ink">
         Warum manche Entwürfe keine Stellungnahmen zeigen
@@ -533,9 +529,9 @@ const toc = [
       </p>
     </section>
 
-    <!-- „Nachverfolgung, nicht Bewertung" steht seit 18.09.2026 nur noch
-         auf /ueber, wo es hingehört: eine Aussage über das Projekt, nicht
-         über das Verfahren. Hier stand sie wortgleich ein zweites Mal. -->
+    <!-- „Nachverfolgung, nicht Bewertung" has stood only on /ueber since
+         18.09.2026, where it belongs: a statement about the project, not about
+         the procedure. It stood here word for word a second time. -->
     <p class="mt-12 leading-relaxed text-ink-secondary">
       <NuxtLink
         to="/ueber"

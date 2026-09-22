@@ -142,9 +142,9 @@ const openRows = computed<OpenRow[]>(() => {
   )
 })
 
-/* Auf die Anatomie abgebildet wird HIER, nicht in der Vorlage: `EntryList`
- * bekommt fertige `EntryView`s, und jeder Abschnitt der Seite sagt in einer
- * Zeile, welcher Adapter für seine Art zuständig ist. */
+/* The mapping onto the anatomy happens HERE, not in the template:
+ * `EntryList` receives finished `EntryView`s, and every section of the page
+ * says in one line which adapter is responsible for its kind. */
 const visibleOpenRows = computed(() =>
   openRows.value
     .slice(0, HOME_LIST_LENGTH)
@@ -201,11 +201,10 @@ const visibleSecondRound = computed(
   () => secondRound.value?.items.slice(0, HOME_LIST_LENGTH).map(viewOfVorlage) ?? [],
 )
 
-/* Ungekappt: der Endpunkt liefert bereits `HOME_LIST_LENGTH` Zeilen — die
- * Kappung sitzt dort, wo die Vorlagen aus Liste 101 gelesen werden, nicht
- * hier. `?? []` unterscheidet nicht zwischen „nichts kundgemacht" und
- * „nicht abrufbar"; das tun die zwei Sätze in der Vorlage, die weiterhin
- * `enacted` selbst befragen. */
+/* Uncapped: the endpoint already delivers `HOME_LIST_LENGTH` rows — the cap
+ * sits where the Vorlagen are read from list 101, not here. `?? []` does not
+ * tell „nichts kundgemacht" from „nicht abrufbar"; that is done by the two
+ * sentences in the template, which still ask `enacted` themselves. */
 const enactedEntries = computed(() => enacted.value?.items.map(viewOfOutcome) ?? [])
 
 /**
@@ -398,9 +397,9 @@ const gpStart = computed(() => {
           Auch zu einer Regierungsvorlage kann Stellung genommen werden – dort
           kann der Ausschuss den Text noch ändern. {{ SECOND_ROUND_WINDOW }}
         </p>
-        <!-- Der Spaltenkopf heißt hier NICHT „Entwurf": diese Zeilen sind
-             Regierungsvorlagen, und der Kopf ist die einzige Stelle, an der
-             die Liste selbst sagt, was in ihr steht. -->
+        <!-- The column header is NOT called „Entwurf" here: these rows are
+             Regierungsvorlagen, and the header is the one place where the list
+             says for itself what stands in it. -->
         <EntryList :entries="visibleSecondRound" lead="Regierungsvorlage" class="mt-4" />
       </section>
 
@@ -449,20 +448,19 @@ const gpStart = computed(() => {
           > (seit {{ gpStart }})</template> – offene und abgeschlossene – und
           daneben, was aus ihnen geworden ist.
         </p>
-        <!-- Dieselbe Anatomie wie überall, und hier ist das der Punkt: die
-             Zahl, nach der gereiht wird, steht in DERSELBEN Spalte wie in
-             jedem anderen Abschnitt, und daneben, nicht an ihrer Stelle,
-             der Ausgang (§12.28).
+        <!-- The same anatomy as everywhere, and here that is the point: the
+             number that is ranked by stands in THE SAME column as in every
+             other section, and the outcome beside it rather than in its place
+             (docs/architecture.md §12.28).
 
-             Bis 18.09.2026 hob dieser Abschnitt die Zahl in den rechten
-             Slot — und verdrängte damit den Ausgang aus ihm. „846
-             Stellungnahmen → Bisher keine Regierungsvorlage" IST aber die
-             Nachverfolgung; das Paar ist die Aussage, nicht die Zahl allein
-             (§12.21 sagt es selbst: was diesen Abschnitt aufhörte, eine
-             Rangliste zu sein, waren die Chips). Eine gereihte Liste zeigt
-             ihren Schlüssel durch die REIHENFOLGE — die Zahl braucht
-             Ausrichtung, keine Vergrößerung. Eine geordnete Liste, weil
-             hier die Reihenfolge Bedeutung trägt. -->
+             Until 18.09.2026 this section promoted the number into the
+             right-hand slot and thereby EVICTED the outcome. But „846
+             Stellungnahmen → Bisher keine Regierungsvorlage" IS the tracking;
+             the pair is the statement, not the number alone (§12.21 says it
+             itself: what stopped this section being a leaderboard were the
+             chips). A ranked list shows its key by ORDER — the number needs
+             alignment, not enlargement. An ordered list, because the order
+             carries meaning here. -->
         <EntryList :entries="rankedRows" ordered class="mt-4" />
       </section>
 
@@ -475,13 +473,13 @@ const gpStart = computed(() => {
            shelving half has not left the page; it sits above, on the rows
            where the wait has become evidence. -->
       <section class="page-section" aria-labelledby="enacted-heading">
-        <!-- Dieser Link zeigte auf „?status=closed", weil es den Filter
-             „im Bundesgesetzblatt" nicht gab: der hätte eine Station pro
-             Zeile gebraucht, und das war ein Arbeitspaket, kein Link
-             (§12.24). Seit 18.09.2026 gibt es die Stationskarte (§12.26),
-             also zeigt der Link auf genau die Menge, die die Überschrift
-             nennt. Weiterhin ohne Zahl: der Abschnitt zeigt die neuesten
-             Kundmachungen, die Zahl daneben wäre die aller. -->
+        <!-- This link pointed at „?status=closed" because the filter „im
+             Bundesgesetzblatt" did not exist: it would have needed a station
+             per row, which was a work package rather than a link (§12.24).
+             The station map exists since 18.09.2026 (§12.26), so the link now
+             points at exactly the set the heading names. Still without a
+             number: the section shows the newest Kundmachungen, and a number
+             beside it would be the number of all of them. -->
         <ListHeader
           id="enacted-heading"
           to="/entwuerfe?station=bgbl"

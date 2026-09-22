@@ -231,18 +231,17 @@
 }
 
 /*
- * Die zwei festen Spalten der dichten Zeile — Breite, Flucht und
- * Schrumpfverbot, an EINER Stelle (§12.28).
+ * The dense row's two fixed columns — width, alignment and the no-shrink
+ * rule, in ONE place (docs/architecture.md §12.28).
  *
- * Sie stehen hier, weil sie an zwei Orten gelten müssen und exakt
- * übereinstimmen: in `EntryItem` sind es die Zellen, in `EntryList` der
- * Spaltenkopf darüber. Als Literale kopiert waren sie eine Verabredung
- * zwischen zwei Dateien, die niemand prüft — und ein Kopf, der um 8 px
- * neben seiner Spalte steht, ist schlimmer als gar keiner: er behauptet
- * eine Ausrichtung, die es nicht gibt.
+ * They stand here because they have to hold in two places and match exactly:
+ * the cells in `EntryItem`, the column header above them in `EntryList`.
+ * Copied as literals they were an agreement between two files that nobody
+ * checks — and a header 8 px beside its column is worse than none: it claims
+ * an alignment that does not exist.
  *
- * `lg:` verbreitert beide, weil dort der Titel den Platz übrig hat; die
- * Reihenfolge (Zahl links, Stand rechts) macht die Zeile selbst.
+ * `lg:` widens both, because the title has the room to spare there; the order
+ * (number left, Stand right) is made by the row itself.
  */
 @utility entry-col-count {
   @apply w-28 shrink-0 text-right lg:w-32;
