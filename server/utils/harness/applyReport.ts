@@ -8,8 +8,11 @@
  * a wrong answer the whole time: it filtered diff segments for the types
  * `insert` and `delete`, while `LawDiffSegment` uses `inserted` and
  * `removed`. Both sets came out empty, every divergence looked harmless, and
- * the harness reported 0,9 % dangerous instead of 23,9 %. `scripts/` is
- * outside the typecheck, so nothing caught it.
+ * the harness reported 0,9 % dangerous instead of the 23,9 % of the first
+ * measurement of 08.09.2026. That figure is history, not the engine's: it
+ * measures 2,8 % own deviations and 7,3 % residual risk today
+ * (docs/architecture.md §12.12). `scripts/` is outside the typecheck, so
+ * nothing caught it.
  *
  * Harness-only: nothing on the request path imports this; the harnesses and
  * their tests do.

@@ -8,9 +8,9 @@
  * paragraphs as unexplained (2026-09-09); the annex side has the same
  * property the other way round, where „36," and „36" are the same word.
  *
- * `applyReport.words` looks similar and is NOT this: it lowercases and
- * normalises hyphens, because it holds two different sources against each
- * other rather than two readings of one.
+ * `words` in `harness/applyReport.ts` looks similar and is NOT this: it
+ * lowercases and normalises hyphens, because it holds two different sources
+ * against each other rather than two readings of one.
  */
 
 /**

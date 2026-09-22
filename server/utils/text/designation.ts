@@ -5,10 +5,11 @@
  *
  * Only the readings that were written twice live here. Three further
  * designation readers exist and stay where they are, because they answer a
- * different question: `annexCheck.designationKey` (keeps the KIND, so an
- * Anlage 1 never matches a § 1), `tguOracle.paraIdOfGld` (anchored at the
- * start of the Gliederungssymbol) and `annexPdf.idOfMarker` (carries the kind
- * into the id it builds). They differ on purpose.
+ * different question: `designationKey` in `annex/annexText.ts` (keeps the
+ * KIND, so an Anlage 1 never matches a § 1), `paraIdOfGld` in
+ * `kons/tguOracle.ts` (anchored at the start of the Gliederungssymbol) and
+ * `idOfMarker` in `annex/annexPdf.ts` (carries the kind into the id it
+ * builds). They differ on purpose.
  */
 
 /**
