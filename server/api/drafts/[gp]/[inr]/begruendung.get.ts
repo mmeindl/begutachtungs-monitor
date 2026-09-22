@@ -1,11 +1,12 @@
 /**
  * GET /api/drafts/:gp/:inr/begruendung?von=me&bis=rv → ReasoningDiffResponse:
- * ob sich die Begründung des Ressorts zu jedem geänderten Paragraphen
- * zwischen Entwurf und Regierungsvorlage geändert hat (§12.10b).
+ * whether the ressort's Begründung for each changed Paragraph changed
+ * between Entwurf and Regierungsvorlage (docs/architecture.md §12.10b).
  *
- * Eigener Endpunkt wie `paragraphtitel`, aus demselben Grund: zwei weitere
- * Dokumente vom Parlament dürfen den Vergleich weder aufhalten noch mit sich
- * reißen. Die Seite mischt die Einträge über `unitKey` dazu, wenn sie da sind.
+ * Its own endpoint like `paragraphtitel`, and for the same reason: two more
+ * documents from Parliament may neither hold the comparison up nor take it
+ * down with them. The page mixes the entries in over `unitKey` once they
+ * arrive.
  */
 import type { ReasoningDiffResponse } from '#shared/types'
 import { readLawStationPair, validateGpInrParams } from '../../../../utils/http/params'

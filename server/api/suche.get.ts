@@ -1,14 +1,14 @@
 /**
- * GET /api/suche?q=… → BegutSearchResponse: welche der laufenden
- * Begutachtungen dieses Stichwort in ihren Dokumenten führen
+ * GET /api/suche?q=… → BegutSearchResponse: which of the running
+ * Begutachtungen carry this keyword in their documents
  * (docs/architecture.md §12.31).
  *
- * Ohne `q` ist die Antwort die leere Suche mit `corpusSize` — die Seite kann
- * damit sagen, worüber gesucht wird, bevor jemand etwas eingibt.
+ * Without `q` the answer is the empty search with `corpusSize` — the page
+ * can say what is being searched before anyone has typed anything.
  *
- * Die Länge ist begrenzt, weil jede Anfrage eine Anfrage ans RIS auslöst und
- * der Parameter ungefiltert dorthin geht. Zu kurz ist kein Stichwort, zu
- * lang ist keine Suche.
+ * The length is capped, because every request triggers a request to RIS and
+ * the parameter goes there unfiltered. Too short is not a keyword, too long
+ * is not a search.
  */
 import type { BegutSearchResponse } from '#shared/types'
 
