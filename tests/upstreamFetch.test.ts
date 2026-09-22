@@ -57,6 +57,23 @@ describe('fetchUpstream', () => {
     expect(headers['Content-Type']).toBeUndefined()
   })
 
+  /**
+   * The one option a script sets. `scripts/lib/http.ts` appends the script's
+   * name (`…; scripts/corpus/stationen)`) so an upstream operator can tell
+   * which measurement made the traffic — and the scripts needed a second
+   * retry loop of their own until the policy could carry it (23.09.2026).
+   * Omitting it has to keep sending the server's own identity, or every
+   * request path would start lying about who it is.
+   */
+  it('lets a caller name itself, and sends the one identity when none does', async () => {
+    const mine = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/corpus/stationen)'
+    const { calls } = stubFetch(jsonResponse({ ok: true }), jsonResponse({ ok: true }))
+    await upstreamJson('https://example.test/x', { ...NOW, userAgent: mine })
+    await upstreamJson('https://example.test/x', NOW)
+    expect((calls[0]!.headers as Record<string, string>)['User-Agent']).toBe(mine)
+    expect((calls[1]!.headers as Record<string, string>)['User-Agent']).toBe(USER_AGENT)
+  })
+
   it('encodes a body as JSON and says so', async () => {
     const { calls } = stubFetch(jsonResponse({ ok: true }))
     await upstreamJson('https://example.test/x', { ...NOW, method: 'POST', body: { GP_CODE: ['XXVIII'] } })

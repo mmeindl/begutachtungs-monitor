@@ -34,7 +34,6 @@ function fetchPage(url: string, script: string, what: string): Promise<unknown> 
     backoffMs: (retry) => RETRY_BACKOFF_MS * retry,
     timeoutMs: TIMEOUT_MS,
     retryOnHttpError: true,
-    onFailure: (err) => process.stderr.write(`\n  ${what}: Versuch gescheitert (${String(err).slice(0, 60)})\n`),
     onExhausted: (_url, last) => new Error(`RIS nicht erreichbar bei ${what}: ${String(last)}`),
   })
 }

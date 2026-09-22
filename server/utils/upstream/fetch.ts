@@ -43,6 +43,17 @@ export interface UpstreamPolicy {
   retryOnHttpError?: boolean
   /** Refuse a body larger than this, by the declared and by the real length. */
   maxBytes?: number
+  /**
+   * Who is calling, for the upstream's log. Defaults to `USER_AGENT`, which
+   * is what every request path sends.
+   *
+   * The one caller that sets it is `scripts/lib/http.ts`: a measurement
+   * appends its own name (`; scripts/corpus/stationen`) so an operator
+   * looking at the traffic can tell which script made it and what to ask
+   * about. Without the option the scripts needed a second retry loop of
+   * their own, which is what this replaces (23.09.2026).
+   */
+  userAgent?: string
 }
 
 /** Base of the errors this module throws, so a caller can match on one class. */
@@ -95,7 +106,7 @@ function requestInit(policy: UpstreamPolicy): RequestInit {
   return {
     method: policy.method ?? 'GET',
     headers: {
-      'User-Agent': USER_AGENT,
+      'User-Agent': policy.userAgent ?? USER_AGENT,
       ...(policy.accept ? { Accept: policy.accept } : {}),
       ...(policy.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
