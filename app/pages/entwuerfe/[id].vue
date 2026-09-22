@@ -99,59 +99,26 @@ const documents = computed(() => {
       loading-label="Entwurf wird geladen …"
       @retry="refresh()"
     >
-      <div class="mb-4">
-        <!-- Back into the one list, unfiltered: since 17.09.2026 there is
-             no separate list to return to (docs/architecture.md §12.19),
-             und der Rücklink heißt auf jeder Detailseite gleich. Bis
-             18.09.2026 filterte er auf `art=verordnung` — die Eingrenzung
-             gehört in die Filterleiste der Liste, nicht in den Weg
-             dorthin. -->
-        <NuxtLink
-          to="/entwuerfe"
-          class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
-        >
-          ← Alle Entwürfe
-        </NuxtLink>
-      </div>
+      <DraftBackLink />
 
-      <!-- Same header anatomy as the Ministerialentwurf page: one meta row
-           above the title carrying identity, ressort and urgency, then the
-           title, then the provenance line. The first slot holds the type
-           word where a draft holds its Geschäftszahl — these records have
-           none, and the type is what identifies them to a reader. -->
-      <header>
-        <div class="flex flex-wrap items-center gap-2">
+      <!-- Same header anatomy as the Ministerialentwurf page. The identity
+           slot holds the type word where a draft holds its Geschäftszahl —
+           these records have none, and the type is what identifies them to a
+           reader. -->
+      <DraftHeader
+        :ministry-code="data.ministryCode"
+        :ministry-name="data.ministryName"
+        :ministry-to="`/entwuerfe?art=verordnung&ministry=${data.ministryCode}`"
+        :ministry-label="`Alle Verordnungsentwürfe des Ministeriums ${data.ministryName} anzeigen`"
+        :deadline="data.deadline"
+        :active="data.active"
+        :title="data.title"
+      >
+        <template #identity>
           <span class="text-sm font-medium text-ink-muted">
             {{ RIS_KIND_LABEL[data.kind] }}
           </span>
-          <!-- Linked like the draft page's badge: every Ressort gets a
-               de-facto page for free, here the filtered list. -->
-          <NuxtLink
-            v-if="data.ministryCode"
-            :to="`/entwuerfe?art=verordnung&ministry=${data.ministryCode}`"
-            :aria-label="`Alle Verordnungsentwürfe des Ministeriums ${data.ministryName} anzeigen`"
-            class="tap-target rounded"
-          >
-            <MinistryBadge
-              :code="data.ministryCode"
-              :name="data.ministryName"
-              class="transition-colors hover:border-baseline hover:underline"
-            />
-          </NuxtLink>
-          <!-- Only while it runs, exactly as on the draft page: closed, the
-               badge degrades to "Frist endete am …", which the card below says
-               better. -->
-          <DeadlineBadge
-            v-if="data.active"
-            :deadline="data.deadline"
-            :active="data.active"
-          />
-        </div>
-        <h1
-          class="mt-3 text-2xl font-semibold text-ink hyphens-auto break-words sm:text-3xl"
-        >
-          {{ data.title }}
-        </h1>
+        </template>
         <!-- The long title only when it says more than the heading already
              does; on a Verordnung it is where the subject matter lives. -->
         <p v-if="data.longTitle" class="mt-1 max-w-prose text-sm text-ink-secondary">
@@ -165,7 +132,7 @@ const documents = computed(() => {
             class="tap-target rounded underline underline-offset-2 hover:no-underline"
           >Im RIS ansehen</ExternalLink>
         </p>
-      </header>
+      </DraftHeader>
 
       <!-- The map, in the slot the draft page gives its five-station spine.
            NOT a spine of its own, and that is a decision with a reason:

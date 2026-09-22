@@ -325,23 +325,17 @@ const linkClasses =
       @retry="refresh()"
     >
       <article>
-        <!-- Shared-link landers (the declared primary case) need a way into
-             the corpus. Ein Ziel, ein Wort, auf jeder Detailseite gleich: die
-             ungefilterte Liste. Ein Rücklink, der je nach Datensatz woanders
-             hinführt (bis 18.09.2026: auf die GP des Entwurfs gefiltert),
-             behauptet eine Herkunft, die der Lander nie hatte — und die
-             Filterleiste der Liste ist ohnehin der Ort, an dem eingegrenzt
-             wird. -->
-        <div class="mb-4">
-          <NuxtLink
-            to="/entwuerfe"
-            class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
-          >
-            ← Alle Entwürfe
-          </NuxtLink>
-        </div>
-        <header>
-          <div class="flex flex-wrap items-center gap-2">
+        <DraftBackLink />
+        <DraftHeader
+          :ministry-code="data.ministryCode"
+          :ministry-name="data.ministryName"
+          :ministry-to="`/entwuerfe?ministry=${data.ministryCode}&gp=${data.gp}`"
+          :ministry-label="`Alle Entwürfe des Ministeriums ${data.ministryName} anzeigen`"
+          :deadline="data.deadline"
+          :active="data.active"
+          :title="data.shortTitle ?? data.title"
+        >
+          <template #identity>
             <!-- Das Typwort führt, genau wie auf der Karte — und deren
                  Begründung (`EntryItem.vue`) galt hier immer schon: „132/ME"
                  erklärt sich nur dem, der das System kennt, das Wort erklärt
@@ -351,37 +345,7 @@ const linkClasses =
             <span class="text-sm font-medium text-ink-muted">
               <span class="text-ink">Ministerialentwurf</span> {{ data.citation }}
             </span>
-            <!-- Every Ressort gets a de-facto page for free: the filtered
-                 list URL. Only here — cards are themselves links. -->
-            <NuxtLink
-              :to="`/entwuerfe?ministry=${data.ministryCode}&gp=${data.gp}`"
-              :aria-label="`Alle Entwürfe des Ministeriums ${data.ministryName} anzeigen`"
-              class="tap-target rounded"
-            >
-              <MinistryBadge
-                :code="data.ministryCode"
-                :name="data.ministryName"
-                class="transition-colors hover:border-baseline hover:underline"
-              />
-            </NuxtLink>
-            <!-- Only while it runs: the badge exists to carry urgency (tone +
-                 "Noch 3 Tage"). Closed, it degrades to "Frist endete am …" — which
-                 the bar states 100px below, better. -->
-            <DeadlineBadge
-              v-if="data.active"
-              :deadline="data.deadline"
-              :active="data.active"
-            />
-          </div>
-          <!-- German compounds: "Elektrizitätswirtschaftsgesetz" at text-2xl is
-               wider than a 320px viewport's content box, so the title hyphenates
-               (lang="de-AT" is set) and breaks as a last resort rather than
-               scrolling the page sideways. -->
-          <h1
-            class="mt-3 text-2xl font-semibold text-ink hyphens-auto break-words sm:text-3xl"
-          >
-            {{ data.shortTitle ?? data.title }}
-          </h1>
+          </template>
           <!-- The official Sammeltitel stays on the page (and in og:title)
                so citations remain exact — it just no longer IS the h1. -->
           <p v-if="data.shortTitle" class="mt-1 text-sm text-ink-secondary">
@@ -426,7 +390,7 @@ const linkClasses =
               :class="[linkClasses, 'tap-target']"
             >Auf parlament.gv.at ansehen</ExternalLink>
           </p>
-        </header>
+        </DraftHeader>
 
         <!-- The map. Five stations, read vertically, so it needs no more
              width than a paragraph and lives in the prose column like
