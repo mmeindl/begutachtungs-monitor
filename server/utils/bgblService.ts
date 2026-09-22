@@ -113,33 +113,59 @@ function mapRecord(doc: any): BgblRecord | null {
 }
 
 /** Teil II eines Jahrgangs — abgeleitet, weil `mapRecord` unser Code ist. */
-export const getBgblTeil2Year = defineCachedFunction(
-  async (year: number): Promise<BgblRecord[]> => {
-    const out: BgblRecord[] = []
-    const seen = new Set<string>()
-    for (let page = 1; page <= MAX_PAGES; page++) {
-      const result = await fetchBgblPage(`${year}:${page}`)
-      const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
-      const hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
-      for (const doc of docs) {
-        const rec = mapRecord(doc)
-        if (rec && rec.teil === 'Teil2' && !seen.has(rec.id)) {
-          seen.add(rec.id)
-          out.push(rec)
-        }
+async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
+  const out: BgblRecord[] = []
+  const seen = new Set<string>()
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const result = await fetchBgblPage(`${year}:${page}`)
+    const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
+    const hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
+    for (const doc of docs) {
+      const rec = mapRecord(doc)
+      if (rec && rec.teil === 'Teil2' && !seen.has(rec.id)) {
+        seen.add(rec.id)
+        out.push(rec)
       }
-      if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
     }
-    return out
-  },
-  {
-    name: 'bgbl-teil2-jahrgang',
-    base: DERIVED_CACHE,
-    getKey: (year: number) => String(year),
-    maxAge: CURRENT_YEAR_TTL_S,
-    swr: false,
-  },
-)
+    if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
+  }
+  return out
+}
+
+/**
+ * Zwei Haltbarkeiten, zwei Funktionen — dieselbe Teilung wie bei den Seiten
+ * darunter, und aus demselben Grund.
+ *
+ * Bis 22.09.2026 lief dieser abgeleitete Jahrgang für JEDES Jahr auf der
+ * Frist des laufenden: Ein abgeschlossener Jahrgang wurde viermal am Tag neu
+ * aus seinen bis zu zwanzig Seiten zusammengesetzt, obwohl sich an ihm nichts
+ * mehr ändern kann. Die Seiten darunter wussten es längst besser — nur die
+ * Ableitung darüber nicht.
+ *
+ * Ein Monat auf einem abgeleiteten Wert ist hier kein Widerspruch zu
+ * `cacheBase.ts`: Die abgeleitete Schicht liegt im Speicher, stirbt also mit
+ * dem Worker — und ein `mapRecord`, das sich ändert, ist eine Codeänderung
+ * und damit genau dieser Neustart.
+ */
+const getClosedTeil2Year = defineCachedFunction(loadTeil2Year, {
+  name: 'bgbl-teil2-jahrgang',
+  base: DERIVED_CACHE,
+  getKey: (year: number) => String(year),
+  maxAge: CLOSED_YEAR_TTL_S,
+  swr: false,
+})
+
+const getCurrentTeil2Year = defineCachedFunction(loadTeil2Year, {
+  name: 'bgbl-teil2-jahrgang-laufend',
+  base: DERIVED_CACHE,
+  getKey: (year: number) => String(year),
+  maxAge: CURRENT_YEAR_TTL_S,
+  swr: false,
+})
+
+export function getBgblTeil2Year(year: number): Promise<BgblRecord[]> {
+  return year >= new Date().getFullYear() ? getCurrentTeil2Year(year) : getClosedTeil2Year(year)
+}
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
