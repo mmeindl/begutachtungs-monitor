@@ -182,7 +182,14 @@ const view = ref<'inline' | 'split'>('inline')
 const query = ref('')
 
 /**
- * Both columns, the designation and the law are searchable.
+ * Both columns, the designation and the law are searchable — as one
+ * lowercased haystack per row, built once per response instead of once per
+ * keystroke.
+ *
+ * The six fields are joined by a newline so a term cannot match across two of
+ * them, and a single-line search box can never carry one: same answers as the
+ * per-field comparison this replaced, without lowercasing the whole annex
+ * again on every character typed.
  *
  * A withheld row can never match: the server empties its text before the
  * response leaves, so there is nothing to search. That is also why a search
@@ -190,17 +197,18 @@ const query = ref('')
  * right behaviour for a view the reader has explicitly narrowed — the
  * unsearched section states it.
  *
- * NOT `matchesQuery`: that name is taken by the auto-imported
+ * NOT `matchesQuery`: that name belongs to the auto-imported
  * `shared/utils/textMatch.ts`, which takes a haystack string and splits the
- * query into AND-linked tokens. A local definition shadowed it, so deleting
- * this one would have silently bound the call below to a function with
- * different semantics.
+ * query into AND-linked tokens. A local definition once shadowed it, so a
+ * call here would silently have bound to different semantics.
  */
-function rowMatches(row: TextComparisonRow, q: string): boolean {
-  return [row.current, row.proposed, row.para, row.gld, row.heading, row.law].some(
-    (t) => t?.toLowerCase().includes(q),
-  )
-}
+const haystacks = computed(() => {
+  const out = new Map<TextComparisonRow, string>()
+  for (const row of data.value?.rows ?? []) {
+    out.set(row, [row.current, row.proposed, row.para, row.gld, row.heading, row.law].filter(Boolean).join('\n').toLowerCase())
+  }
+  return out
+})
 
 /** „entfällt" for a row that falls away — the one word this section does not
  *  share with the § comparison (`diffBadges.ts`). */
@@ -253,7 +261,7 @@ const groups = computed<Group[]>(() => {
       continue
     }
     if (row.elided) continue
-    if (q && !rowMatches(row, q)) continue
+    if (q && !haystacks.value.get(row)!.includes(q)) continue
     if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
     current.rows.push(row)
     // A withheld row keeps its `change` but lost its text, so counting it
@@ -268,7 +276,9 @@ const groups = computed<Group[]>(() => {
 const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
 
 type Block =
-  | { kind: 'row'; row: TextComparisonRow }
+  /** The two columns come along computed: the template asked for each of them
+   *  twice per row, on every render, and a render happens per keystroke. */
+  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[] }
   | { kind: 'context'; rows: TextComparisonRow[] }
   /**
    * Changes the RIS check would not vouch for. The server sends these rows
@@ -361,7 +371,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
       continue
     }
     flush()
-    current.blocks.push({ kind: 'row', row })
+    current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed) })
     shown++
   }
   flush()
@@ -826,13 +836,13 @@ const doubtfulNote = computed<string | null>(() => {
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
                         <p class="hyphens-auto text-ink">
-                          <DiffText :segments="splitSegments(b.row.segments, b.row.current, b.row.proposed).from" side="from" />
+                          <DiffText :segments="b.from" side="from" />
                         </p>
                       </div>
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
                         <p class="hyphens-auto text-ink">
-                          <DiffText :segments="splitSegments(b.row.segments, b.row.current, b.row.proposed).to" side="to" />
+                          <DiffText :segments="b.to" side="to" />
                         </p>
                       </div>
                     </div>

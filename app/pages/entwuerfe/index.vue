@@ -601,6 +601,9 @@ const listedKeys = computed(() => new Set(entries.value.map((e) => e.key)))
 /** Ein Schlüssel, ein Beleg — für beide Listen dieselbe Karte. */
 const hitByKey = computed(() => new Map(fullTextViews.value.map((v) => [v.view.key, v.hit])))
 const fullTextExtra = computed(() => fullTextViews.value.filter((v) => !listedKeys.value.has(v.view.key)))
+/** Die Zeilen der zweiten Liste — als Computed, nicht als `.map()` im Prop:
+ *  Ein Array, das die Vorlage baut, ist bei jedem Rendern ein neues. */
+const fullTextExtraEntries = computed(() => fullTextExtra.value.map((v) => v.view))
 const fullTextInList = computed(() => fullTextViews.value.length - fullTextExtra.value.length)
 /**
  * WAS DIE FILTER WEGGENOMMEN HABEN, und warum das eine eigene Zahl ist.
@@ -1205,7 +1208,7 @@ const countLabel = computed(() => {
           geantwortet. Die Liste oben ist davon nicht betroffen.
         </p>
         <template v-else-if="fullText">
-          <EntryList v-if="fullTextExtra.length" :entries="fullTextExtra.map((v) => v.view)" class="mt-3">
+          <EntryList v-if="fullTextExtra.length" :entries="fullTextExtraEntries" class="mt-3">
             <template #evidence="{ entry }">
               <SearchEvidence :hit="hitByKey.get(entry.key)" />
             </template>

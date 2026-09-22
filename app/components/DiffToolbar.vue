@@ -31,6 +31,33 @@ const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
   { value: 'inline', label: 'Fließtext' },
   { value: 'split', label: 'Nebeneinander' },
 ]
+
+/**
+ * The box types immediately, the section below follows 250 ms later.
+ *
+ * Without it every keystroke refiltered up to 413 units over six fields each
+ * and rebuilt the blocks of every group, open or closed — the one control on
+ * this page that can make a long draft feel slow. `/entwuerfe` debounces its
+ * own field at 300 ms, but that one starts a request; nothing leaves the
+ * browser here, so the wait is shorter.
+ *
+ * The input is bound to its own ref rather than to the model, because a
+ * delayed field is the one thing a reader notices immediately.
+ */
+const typed = ref(query.value)
+let timer: ReturnType<typeof setTimeout> | undefined
+watch(typed, (value) => {
+  clearTimeout(timer)
+  timer = setTimeout(() => {
+    query.value = value
+  }, 250)
+})
+// A query set from outside wins over what is in the box; setting it from the
+// timer above lands here too and changes nothing.
+watch(query, (value) => {
+  if (value !== typed.value) typed.value = value
+})
+onUnmounted(() => clearTimeout(timer))
 </script>
 
 <template>
@@ -53,7 +80,7 @@ const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
       </UButton>
     </UFieldGroup>
     <UInput
-      v-model="query"
+      v-model="typed"
       type="search"
       icon="i-lucide-search"
       placeholder="Im Text suchen …"

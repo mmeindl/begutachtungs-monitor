@@ -11,7 +11,7 @@
  * which change how the same thing is read. Default stays
  * Ministerialentwurf → Regierungsvorlage, the question this product is about.
  */
-import type { LawDiffResponse, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
+import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { unitKey } from '#shared/utils/diffKey'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
@@ -255,15 +255,27 @@ function key(u: LawDiffUnit): string {
  * after the first unit it folds.
  */
 function blockKey(b: Block): string {
-  return b.kind === 'unit' ? `unit|${unitKey(b.unit)}` : `context|${unitKey(b.units[0]!)}`
+  return b.kind === 'unit' ? `unit|${unitKey(b.unit)}` : `context|${unitKey(b.units[0]!.unit)}`
 }
+
+/**
+ * One lowercased haystack per unit, built once per response instead of once
+ * per keystroke: the six searchable fields of up to 413 units (58/ME) were
+ * lowercased again on every character typed.
+ *
+ * Joined by a newline so a term cannot match across two fields — and a
+ * single-line search box can never carry one, so nothing else changes.
+ */
+const haystacks = computed(() =>
+  (data.value?.units ?? []).map((u) =>
+    [u.id, u.fromId, u.heading, u.article, u.fromText, u.toText].filter(Boolean).join('\n').toLowerCase(),
+  ),
+)
 
 const visibleUnits = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return data.value?.units ?? []
-  return (data.value?.units ?? []).filter((u) =>
-    [u.id, u.fromId, u.heading, u.article, u.fromText, u.toText].some((t) => t?.toLowerCase().includes(q)),
-  )
+  return (data.value?.units ?? []).filter((_, i) => haystacks.value[i]!.includes(q))
 })
 
 /**
@@ -309,8 +321,27 @@ const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
  * Blocks in reading order: every change as flowing text, runs of untouched
  * units folded into one line of context — the way a diff reads on GitHub.
  * Nothing has to be opened to be read.
+ *
+ * What a block carries, it carries computed. The template used to ask for
+ * the same four things two to five times per row — the name, the heading,
+ * the two columns of the split view and the changed Begründung — on every
+ * render, and a render happens on every keystroke of the search field.
  */
-type Block = { kind: 'unit'; unit: LawDiffUnit } | { kind: 'context'; units: LawDiffUnit[] }
+interface UnitView {
+  unit: LawDiffUnit
+  /** `unitLabel` — "§ 6 Erweiterte Gefahrenerforschung", null where no name is known */
+  label: string | null
+  /** `extraHeading` — the heading, only where it says something the block does not */
+  extra: string | null
+}
+
+type Block =
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; reasoning: ReasoningDiffEntry | null } & UnitView)
+  | { kind: 'context'; units: UnitView[] }
+
+function viewOf(u: LawDiffUnit): UnitView {
+  return { unit: u, label: unitLabel(u), extra: extraHeading(u) }
+}
 
 function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Block[]; hidden: number } {
   // Searching IS the reader asking for specific units — then nothing gets
@@ -318,7 +349,7 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
   const folding = !query.value.trim()
   const limit = limitFor(article)
   const blocks: Block[] = []
-  let context: LawDiffUnit[] = []
+  let context: UnitView[] = []
   let shown = 0
   let hidden = 0
   const flush = () => {
@@ -327,7 +358,7 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
   }
   for (const u of units) {
     if (folding && badgeOf(u) === 'unchanged') {
-      context.push(u)
+      context.push(viewOf(u))
       continue
     }
     if (shown >= limit) {
@@ -335,7 +366,12 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
       continue
     }
     flush()
-    blocks.push({ kind: 'unit', unit: u })
+    blocks.push({
+      kind: 'unit',
+      ...viewOf(u),
+      ...splitSegments(u.segments, u.fromText, u.toText),
+      reasoning: reasoningOf(u),
+    })
     shown++
   }
   flush()
@@ -535,11 +571,11 @@ const droppedNote = computed(() =>
                     {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
                   </summary>
                   <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
-                    <p v-for="u in b.units" :key="key(u)" class="hyphens-auto">
-                      <span class="font-medium text-ink">{{ displayId(u.id) }}</span>
-                      <span v-if="unitLabel(u)" class="font-medium text-ink"> {{ unitLabel(u) }}</span>
-                      <span v-else-if="extraHeading(u)"> {{ extraHeading(u) }}</span>
-                      <span> — {{ u.toText }}</span>
+                    <p v-for="u in b.units" :key="key(u.unit)" class="hyphens-auto">
+                      <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
+                      <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
+                      <span v-else-if="u.extra"> {{ u.extra }}</span>
+                      <span> — {{ u.unit.toText }}</span>
                     </p>
                   </div>
                 </details>
@@ -556,8 +592,8 @@ const droppedNote = computed(() =>
                       {{ displayId(b.unit.id) }}
                       <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
                     </span>
-                    <span v-if="unitLabel(b.unit)" class="min-w-0 text-ink-secondary">{{ unitLabel(b.unit) }}</span>
-                    <span v-else-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
+                    <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
+                    <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
                   </p>
                   <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
                     <p class="mb-1 text-sm">
@@ -584,13 +620,13 @@ const droppedNote = computed(() =>
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
                         <p class="hyphens-auto text-ink">
-                          <DiffText :segments="splitSegments(b.unit.segments, b.unit.fromText, b.unit.toText).from" side="from" />
+                          <DiffText :segments="b.from" side="from" />
                         </p>
                       </div>
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
                         <p class="hyphens-auto text-ink">
-                          <DiffText :segments="splitSegments(b.unit.segments, b.unit.fromText, b.unit.toText).to" side="to" />
+                          <DiffText :segments="b.to" side="to" />
                         </p>
                       </div>
                     </div>
@@ -604,13 +640,13 @@ const droppedNote = computed(() =>
                          Sie ist die Antwort auf eine zweite Frage, nicht auf
                          die erste. Natives <details>, damit die Seitensuche
                          des Browsers sie aufklappt statt daran vorbeizulaufen. -->
-                    <details v-if="reasoningOf(b.unit)" class="group mt-2">
+                    <details v-if="b.reasoning" class="group mt-2">
                       <summary class="-mx-1 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
                         <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                         Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert
                       </summary>
-                      <p v-if="reasoningOf(b.unit)!.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
-                        <DiffText :segments="reasoningOf(b.unit)!.segments ?? []" />
+                      <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
+                        <DiffText :segments="b.reasoning.segments ?? []" />
                       </p>
                       <!-- Ohne Wortvergleich: beide Fassungen im Ganzen,
                            nebeneinander wie oben im Vergleich, damit eine
@@ -623,11 +659,11 @@ const droppedNote = computed(() =>
                         <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
                           <div>
                             <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
-                            <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.fromText }}</p>
+                            <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
                           </div>
                           <div>
                             <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
-                            <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.toText }}</p>
+                            <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
                           </div>
                         </div>
                       </div>
