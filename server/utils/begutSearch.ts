@@ -107,9 +107,9 @@ function termRe(term: SearchTerm, loose: boolean): RegExp {
   return new RegExp(`(?<![\\p{L}\\p{N}])${body}${tail}(?![\\p{L}\\p{N}])`, 'iu')
 }
 
-/** Trifft das Suchwort in diesem Text, und wo? Null, wenn nicht. */
-function findTerm(text: string, term: SearchTerm, loose: boolean): { at: number; len: number } | null {
-  const m = termRe(term, loose).exec(text)
+/** Trifft das Muster in diesem Text, und wo? Null, wenn nicht. */
+function findTerm(text: string, re: RegExp): { at: number; len: number } | null {
+  const m = re.exec(text)
   return m ? { at: m.index, len: m[0].length } : null
 }
 
@@ -192,13 +192,17 @@ export function locateInBlocks(
   loose = false,
 ): SearchLocation | null {
   if (!terms.length) return null
+  // Einmal je Suchwort, nicht einmal je Suchwort und Block: Ein Dokument
+  // hat bis zu 413 Blöcke, und die Muster hängen nur an `terms` und
+  // `loose`. Ohne `g` tragen sie kein `lastIndex`, sind also wiederverwendbar.
+  const patterns = terms.map((t) => termRe(t, loose))
   let designation: string | null = null
   let fallback: SearchLocation | null = null
   for (const b of blocks) {
     const own = designationOf(b)
     if (own) designation = own
     if (skipBlock(b) || !b.text) continue
-    const found = terms.map((t) => findTerm(b.text, t, loose)).filter((h) => h !== null)
+    const found = patterns.map((re) => findTerm(b.text, re)).filter((h) => h !== null)
     if (!found.length) continue
     const first = found.reduce((a, h) => (h.at < a.at ? h : a))
     const here: SearchLocation = { designation, snippet: buildSnippet(b.text, first.at, first.len) }

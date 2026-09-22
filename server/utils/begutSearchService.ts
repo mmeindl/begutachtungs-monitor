@@ -265,24 +265,49 @@ async function runningCount(day: string): Promise<number> {
 /** Was eine Suche an PDF-Abrufen noch übrig hat. */
 interface PdfBudget { left: number }
 
+/**
+ * Die gelesenen Dokumente EINER Suche, je Format und URL.
+ *
+ * `locate` geht bis zu viermal über denselben Satz und `scan` zweimal über
+ * dieselben Dokumente — dasselbe XML wurde so bis zu achtmal je Anfrage
+ * geparst. Die Karte entsteht in `searchRunningBegut` und stirbt mit ihr:
+ * Ein Parse wird nie über die Anfrage hinaus gecacht (`cache/base.ts`,
+ * `konsCache.ts`), weil er sich mit dem Parser ändert und das Dokument
+ * nicht.
+ */
+type BlockMemo = Map<string, TextBlock[] | null>
+
 /** Ein Dokument als Blöcke, im gefragten Format. Null, wenn es das nicht gibt. */
 async function blocksOf(
   doc: RisDocumentFormats | null,
   format: 'xml' | 'pdf',
   budget: PdfBudget,
+  memo: BlockMemo,
 ): Promise<TextBlock[] | null> {
   const url = doc?.[format]
   if (!url) return null
-  try {
-    if (format === 'xml') return parseRisXml(await fetchBegutDocument(url))
+  if (format === 'pdf') {
+    // Der Deckel zählt weiter jeden ANLAUF und nicht jedes Dokument: Er ist
+    // die Reißleine dieser Suche, und die Memoisierung soll die Zeit
+    // verkürzen, nicht das Budget vergrößern.
     if (budget.left <= 0) return null
     budget.left--
-    return blocksFromPlainText(await begutPdfText(url))
+  }
+  const key = `${format}:${url}`
+  const known = memo.get(key)
+  if (known !== undefined) return known
+  let blocks: TextBlock[] | null
+  try {
+    blocks = format === 'xml'
+      ? parseRisXml(await fetchBegutDocument(url))
+      : blocksFromPlainText(await begutPdfText(url))
   } catch {
     // Ein Dokument, das sich nicht laden lässt, macht den Treffer nicht
     // falsch — das RIS hat das Wort gefunden. Weiter zum nächsten.
-    return null
+    blocks = null
   }
+  memo.set(key, blocks)
+  return blocks
 }
 
 /**
@@ -305,10 +330,11 @@ async function scan(
   format: 'xml' | 'pdf',
   tokens: readonly MinistryToken[] | null,
   budget: PdfBudget,
+  memo: BlockMemo,
 ): Promise<Pick<BegutSearchHit, 'place' | 'designation' | 'snippet'> | null> {
   for (const loose of [false, true]) {
     for (const { label, formats } of documents) {
-      const raw = await blocksOf(formats, format, budget)
+      const raw = await blocksOf(formats, format, budget, memo)
       if (!raw) continue
       const blocks = tokens ? withoutMinistryMentions(raw, tokens) : raw
       const hit = locateInBlocks(blocks, terms, loose)
@@ -340,14 +366,15 @@ async function locate(
   terms: readonly SearchTerm[],
   tokens: readonly MinistryToken[],
   budget: PdfBudget,
+  memo: BlockMemo,
 ): Promise<Pick<BegutSearchHit, 'place' | 'designation' | 'snippet' | 'ministryOnly'>> {
   const documents = documentsOf(detail)
   for (const format of ['xml', 'pdf'] as const) {
-    const found = await scan(documents, terms, format, tokens, budget)
+    const found = await scan(documents, terms, format, tokens, budget, memo)
     if (found) return { ...found, ministryOnly: false }
   }
   for (const format of ['xml', 'pdf'] as const) {
-    const found = await scan(documents, terms, format, null, budget)
+    const found = await scan(documents, terms, format, null, budget, memo)
     if (found) return { ...found, ministryOnly: true }
   }
   return { place: null, designation: null, snippet: null, ministryOnly: false }
@@ -399,6 +426,8 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
     ministryVocabulary(),
   ])
   const budget: PdfBudget = { left: PDF_BUDGET }
+  // Lebt genau so lange wie diese Suche (siehe `BlockMemo`).
+  const memo: BlockMemo = new Map()
 
   // Der Join der laufenden Periode: jeder heute offene Satz ist in ihr
   // begonnen worden, also reicht genau eine Karte. Fällt sie aus, bleibt die
@@ -422,7 +451,7 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
     // sein. Jetzt sind es die ersten LOCATE_CAP in Eingabereihenfolge.
     const evidence =
       index < LOCATE_CAP
-        ? await locate(detail, terms, tokens, budget)
+        ? await locate(detail, terms, tokens, budget, memo)
         : { place: null, designation: null, snippet: null, ministryOnly: false }
     const inr = inrOf.get(id)
     const draft = inr !== undefined ? drafts?.items.find((d) => d.inr === inr) : undefined

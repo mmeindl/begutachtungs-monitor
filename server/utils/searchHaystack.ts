@@ -132,6 +132,35 @@ export function ministryTokens(names: Iterable<string>): MinistryToken[] {
 }
 
 /**
+ * Das fertige Streichmuster eines Tokens, einmal gebaut.
+ *
+ * `stripMinistryMentions` läuft je Zeile einer gefilterten Liste und je
+ * Block eines durchsuchten Dokuments; bei fünfzehn Ressorts der Periode
+ * waren das fünfzehn neue `RegExp` pro Aufruf für fünfzehn unveränderliche
+ * Muster. Der Schlüssel ist der Token samt seiner Reichweite, das Muster
+ * hängt an nichts anderem — es kann also nicht veralten, und mehr als die
+ * Ressortnamen des Korpus kommen nie hinein.
+ *
+ * `null` für ein Portfolio ohne Wörter: dann wird nichts gestrichen.
+ */
+const STRIKE_PATTERNS = new Map<string, RegExp | null>()
+
+function strikePattern(token: MinistryToken): RegExp | null {
+  const key = `${token.clauseOnly ? 'klausel' : 'name'}:${token.text}`
+  const known = STRIKE_PATTERNS.get(key)
+  if (known !== undefined) return known
+  let pattern: RegExp | null = null
+  if (token.clauseOnly) {
+    const portfolio = portfolioPattern(token.text)
+    if (portfolio) pattern = new RegExp(`${MINISTER_CLAUSE}${portfolio}`, 'gi')
+  } else {
+    pattern = new RegExp(escapeRegExp(token.text), 'gi')
+  }
+  STRIKE_PATTERNS.set(key, pattern)
+  return pattern
+}
+
+/**
  * Die Ressortnennungen aus einem Titel — für die Suche, nicht für die
  * Anzeige. Das Ergebnis muss nicht lesbar sein, nur frei von dem, was jede
  * Verordnung eines Hauses gleich schreibt.
@@ -143,13 +172,11 @@ export function ministryTokens(names: Iterable<string>): MinistryToken[] {
 export function stripMinistryMentions(text: string, tokens: readonly MinistryToken[]): string {
   if (!text) return ''
   let out = text
-  for (const { text: token, clauseOnly } of tokens) {
-    if (clauseOnly) {
-      const pattern = portfolioPattern(token)
-      if (pattern) out = out.replace(new RegExp(`${MINISTER_CLAUSE}${pattern}`, 'gi'), ' ')
-    } else {
-      out = out.replace(new RegExp(escapeRegExp(token), 'gi'), ' ')
-    }
+  for (const token of tokens) {
+    // Ein globales Muster setzt `lastIndex` bei jedem `replace` selbst
+    // zurück, also ist die Wiederverwendung zustandsfrei.
+    const pattern = strikePattern(token)
+    if (pattern) out = out.replace(pattern, ' ')
   }
   return out
 }
