@@ -93,8 +93,8 @@ const verbose = !argFlag('quiet')
  * `--dump=<file>` writes one JSON line per checked paragraph: verdict, the
  * three texts, the trees before and after, and every instruction that
  * addressed the paragraph with its operands. The detector work
- * (`server/utils/applyGuard.ts`) needs to be evaluated against exactly this
- * record set, and a dump makes that a one-second offline loop instead of a
+ * (`server/utils/kons/applyGuard.ts`) needs to be evaluated against exactly
+ * this record set, and a dump makes that a one-second offline loop instead of a
  * reason to keep adding flags to this script (2026-09-09).
  */
 const dumpFile = argAssigned('dump') ?? null
@@ -210,8 +210,9 @@ interface ResolvedLaw {
 /**
  * Which law the Novelle amends — confirmed by the law itself.
  *
- * The join runs on the Promulgationsklausel's Stammnorm (`lawTitles.ts`),
- * because titles do not match: the BgblAuth Kurztitel is "Änderung des
+ * The join runs on the Promulgationsklausel's Stammnorm
+ * (`lawtext/draftArticles.ts`, `promulgationByArticle`), because titles do not
+ * match: the BgblAuth Kurztitel is "Änderung des
  * Luftfahrtgesetzes", and the name lifted from the Titel fails whenever RIS
  * drops a year ("Bundesgesetz gegen den unlauteren Wettbewerb 1984") or the
  * Titel carries a long form. 6 of 25 Novellen dropped out of a run on the

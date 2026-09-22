@@ -1,20 +1,19 @@
 #!/usr/bin/env vite-node
 /**
- * Der Drift-Alarm für die Beilage (§12.13).
+ * The drift alarm for the annex (§12.13).
  *
- * Liest die Berichte, die `harness/annexPdf.ts --json=` schreibt, wendet
- * Klasse A und (mit `--grundlinie=`) Klasse B aus `lib/annexReport.ts` an und
- * endet mit Exit-Code 1, sobald ein Befund dasteht. Der Workflow
- * `.github/workflows/annex-drift.yml` macht daraus ein Issue.
+ * Reads the reports `harness/annexPdf.ts --json=` writes, applies class A and
+ * (with `--grundlinie=`) class B from `lib/annexReport.ts`, and exits with
+ * code 1 as soon as one finding stands. The workflow
+ * `.github/workflows/annex-drift.yml` turns that into an issue.
  *
- * **Warum es diesen Alarm gibt.** Die Engine bricht nicht daran, dass wir sie
- * ändern — das fangen die Tests und der Golden-Test mit zwei eingefrorenen
- * echten Beilagen. Sie bricht daran, dass ein Ressort seine Beilage anders
- * setzt als bisher, und zwar lautlos: die Seite zeigt dann eine
- * Gegenüberstellung, die niemand als falsch erkennt, weil niemand hinsieht.
- * Genau das ist die Betriebslast, an der der Vorgänger gestorben ist, also
- * muss der Alarm selbst betriebsfrei sein: ein Cron auf GitHubs Runnern, ein
- * Issue, eine Mail, kein Dienst auf dem VPS.
+ * **Why this alarm exists.** The engine does not break because we change it —
+ * the tests and the golden test with two frozen real annexes catch that. It
+ * breaks because a ressort typesets its annex differently than before, and
+ * does so silently: the page then shows a Gegenüberstellung nobody recognises
+ * as wrong, because nobody is looking. That is exactly the operational load
+ * the predecessor died of, so the alarm itself has to be free of operations:
+ * a cron on GitHub's runners, an issue, a mail, no service on the VPS.
  *
  * Usage:
  *   pnpm ci:annex-drift -- bericht.json [weitere.json …]            — nur Klasse A
@@ -38,11 +37,11 @@ function read<T>(path: string): T {
   try {
     return JSON.parse(readFileSync(path, 'utf8')) as T
   } catch (err) {
-    // Ein Bericht, den der Prüfstand nicht geschrieben hat, ist kein
-    // „ohne Befund". Der Lauf ist dann gescheitert, und das ist ein eigener
-    // Zustand — der Workflow soll ihn laut scheitern lassen, nicht als
-    // Entwarnung verbuchen (`lib/harnessCache.ts`: eine Messung gegen nichts
-    // sieht aus wie ein Ergebnis).
+    // A report the harness did not write is not an „ohne Befund". The run
+    // failed then, and that is a state of its own — the workflow should let
+    // it fail loudly rather than book it as an all-clear
+    // (`lib/harnessCache.ts`: a measurement against nothing looks like a
+    // result).
     console.error(`FEHLER: ${path} ließ sich nicht lesen — ${String(err).slice(0, 160)}`)
     process.exit(2)
   }
@@ -50,10 +49,10 @@ function read<T>(path: string): T {
 
 const reports = paths.map((p) => read<AnnexReport>(p))
 
-// Die Grundlinie neu ziehen ist eine eigene Handlung und kein Alarm: sie
-// schreibt und urteilt nicht. Sie gehört in denselben Commit wie die
-// Änderung, die sie nötig macht — sonst ist der nächste Lauf ein Befund über
-// eine Verbesserung, und nach dem dritten Mal liest niemand mehr hin.
+// Drawing the baseline anew is an act of its own and not an alarm: it writes
+// and does not judge. It belongs in the same commit as the change that makes
+// it necessary — otherwise the next run is a finding about an improvement,
+// and after the third time nobody reads it any more.
 if (writePath) {
   const baseline = toBaseline(reports)
   writeFileSync(writePath, `${JSON.stringify(baseline, null, 2)}\n`)
@@ -79,10 +78,9 @@ for (const report of reports) {
   lines.push('')
 }
 
-// Einmal je Lauf, nicht je Bericht: die Grundlinie ist eine Datei für beide
-// Pfade. Zählt in `total` mit, also öffnet eine überalterte Grundlinie ein
-// Issue und schickt eine Mail — eine Erinnerung, die vom Erinnern abhängt,
-// ist keine.
+// Once per run, not per report: the baseline is one file for both paths. It
+// counts towards `total`, so an over-aged baseline opens an issue and sends a
+// mail — a reminder that depends on remembering is none.
 const upkeep = maintenanceFindings(baseline)
 if (upkeep.length > 0) {
   total += upkeep.length

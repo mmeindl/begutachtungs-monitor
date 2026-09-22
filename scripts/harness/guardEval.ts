@@ -1,6 +1,6 @@
 #!/usr/bin/env vite-node
 /**
- * Scores the draft-time guard (`server/utils/applyGuard.ts`) against a
+ * Scores the draft-time guard (`server/utils/kons/applyGuard.ts`) against a
  * harness dump (`harness/kons.ts --dump=<file>`).
  *
  * Usage:  npx vite-node scripts/harness/guardEval.ts <dump.jsonl> [<dump2.jsonl> …]

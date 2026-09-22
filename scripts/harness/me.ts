@@ -84,20 +84,20 @@ const ERL_NAME = /erl(ä|ae|a)uterung/i
  */
 const annexSource = (argAssigned('annex') ?? 'ris') as 'ris' | 'parlament'
 /**
- * `--erl` hängt an jeden ausgegebenen Paragraphen die Passage des Besonderen
- * Teils der Erläuterungen, die ihn erklärt.
+ * `--erl` appends to every printed Paragraph the passage of the Besonderer
+ * Teil of the Erläuterungen that explains it.
  *
- * Die Frage dahinter ist die teuerste offene des Pakets: Gibt es ein zweites,
- * von der Textgegenüberstellung unabhängiges Signal? Die Deckung des Tors ist
- * heute die Deckung des Anhangs (41 % der §§ mit Anhang, 0 % ohne), und die
- * Hälfte der Entwürfe hat keinen. Der Besondere Teil ist der nächstliegende
- * Kandidat: Er adressiert seine Passagen mit derselben Adresse
- * („Zu Z 4 (§ 54c Abs. 1a und 1b):"), die das Werkzeug ohnehin berechnet
- * (§12.30, Deckung 77,8 %), und er stammt vom Ressort, nicht von uns.
+ * The question behind it is the most expensive one open in this package: is
+ * there a second signal, independent of the Textgegenüberstellung? The gate's
+ * coverage is the annex's coverage today (41 % of the §§ with an annex, 0 %
+ * without), and half the drafts have none. The Besonderer Teil is the nearest
+ * candidate: it addresses its passages by the same address („Zu Z 4 (§ 54c
+ * Abs. 1a und 1b):") the tool computes anyway (§12.30, coverage 77,8 %), and
+ * it comes from the ressort rather than from us.
  *
- * Gemessen wird hier NICHTS entschieden: Das Skript legt die Passagen neben
- * das Urteil des Anhangs, damit sich auswerten lässt, ob sie dieselbe Aussage
- * tragen. Erst wenn das gemessen ist, gehört eine Regel in `server/utils`.
+ * NOTHING is decided here: the script lays the passages beside the annex's
+ * verdict so it can be evaluated whether they carry the same statement. Only
+ * once that is measured does a rule belong in `server/utils`.
  */
 const withExplanations = argFlag('erl')
 const verbose = !argFlag('quiet')
@@ -117,7 +117,7 @@ interface Draft {
   annexXml: string | null
   /** An annex that exists but only as a PDF or a scan, which is not the same as none */
   annexNote: string | null
-  /** Die Erläuterungen als eigenes RIS-Dokument (`--erl`) */
+  /** The Erläuterungen as a RIS document of their own (`--erl`) */
   erlXml: string | null
 }
 
@@ -282,8 +282,8 @@ async function verifyDraft(draft: Draft): Promise<LawResult[]> {
     tally(annexNotes, note)
   }
 
-  // Die Passagen des Besonderen Teils, unter demselben Schlüssel wie die
-  // Zeilen der Beilage (`explanationKey`): Gesetz des Pakets plus §-Nummer.
+  // The passages of the Besonderer Teil, under the same key as the annex's
+  // rows (`explanationKey`): the package's law plus the § number.
   let passages: Map<string, string[]> | null = null
   if (withExplanations && draft.erlXml) {
     const xml = await getText(draft.erlXml).catch(() => null)
@@ -427,9 +427,9 @@ async function verifyLaw(
       console.log(`    ↳ § ${id}: Orakel ${report.verdict}${plausible ? '' : ' (ohnehin unplausibel)'} — ${report.note ?? ''}`)
     }
     if (dumpFile) {
-      // Der Besondere Teil führt seinen Paragraphen unter dem Gesetz des
-      // Pakets; ein Entwurf mit genau einem benannten Artikel führt ihn
-      // ebenfalls dort, und nur ein Entwurf ganz ohne Artikel unter null.
+      // The Besonderer Teil files its Paragraph under the package's law; a
+      // draft with exactly one named Artikel files it there too, and only a
+      // draft with no Artikel at all files it under null.
       const erlId = explanationParaId(`§ ${id}`)
       const erl = passages && erlId
         ? passages.get(explanationKey(article.key ?? null, erlId)) ?? passages.get(explanationKey(null, erlId)) ?? []

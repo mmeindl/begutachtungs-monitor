@@ -11,8 +11,9 @@
  *
  * **Why this had to exist as a script.** Every threshold of the two
  * right-column rules — `MIN_STANDING_STRETCH`, `MIN_NEW_WORDS`,
- * `MIN_MISSING_WORDS`, `DRAFT_THRESHOLD` — and the sentence in `annexCheck.ts`
- * that states the gate's reach come from an injection run that lived in a
+ * `MIN_MISSING_WORDS`, `DRAFT_THRESHOLD` — and the sentence in
+ * `annex/rightColumn.ts` that states the gate's reach come from an injection
+ * run that lived in a
  * scratch file. A claim whose instrument is gone is a claim nobody can
  * re-check, and the reach is exactly the number that gets read as "the gate is
  * complete" if it is left unstated. This is the instrument, kept.
@@ -53,7 +54,8 @@
  *
  * **Both references in one run.** Rule 2 is measured twice per §: against the
  * whole draft's Gesetzestext, as it was until 2026-09-10, and against the
- * Novellierungsanordnungen addressed to that § (`annexCheck.draftReference`).
+ * Novellierungsanordnungen addressed to that § (`annex/rightColumn.ts`,
+ * `draftReference`).
  * One run rather than two, because a comparison across two runs of a script
  * whose corpus can change is not a comparison.
  *
@@ -94,41 +96,17 @@
  * fault, found unstaged in the corpus), the eighteenth the one the shared
  * markup rule handed from the left check to rule 2 (MPBV § 11, below).
  *
- * **Moved on 2026-09-11** by the law-name window (`lawTitles.draftArticles`
- * and `lawText.segmentUnits`, §12.13: a heading after the Artikel's first
- * Novellierungsanordnung is quoted payload, not a name). The **table path is
- * unchanged in every injection cell**, and its corpus alarms drop from 5 and
- * 7 to 5 and 4 — the three were UH-Statistik-VO §§ 18, 35 and 37, which this
- * run had been printing under their wrong law key. On the **PDF path the
- * population grew**, because 22 §§ more are confirmed and so injectable at
- * all: L 920 → 936, R-alt 883 → 899, R-neu 882 → 898 (measured on top of the
- * two-column gutter of the same day), with L together unchanged at 62,1 %,
- * R-alt 67,0 → 66,4 % and R-neu 77,0 → 77,2 %. Its rule-1
- * alarms go from 18 to 19, and the one more is § 44 of the Seen- und
- * Fluss-Verkehrsordnung — a § the gate did not judge before at all. The closing
- * clause read under both RIS spellings (`lawStructure`, same evening) added six
- * §§ more — 942/905/904 — and one rule-2 alarm on the PDF path
- * (Geräuschemissionsverordnung Anlage 6, which the left check had masked until
- * then): 19 and 21 → 19 and 22.
+ * **The table is the state of 2026-09-11.** Five engine changes of that day
+ * moved the population rather than the rates: the PDF path went 918/881/880 →
+ * 942/905/904 and the table path 244/236/235 → 246/238/237, because §§ that
+ * used to fail the left check now reach the injection site at all. Which
+ * change moved which cell, and every corpus alarm it added or removed by
+ * name, is in docs/architecture.md §12.13 — kept there rather than here,
+ * because the doc records it per change and a second copy would have to be
+ * pulled up twice.
  *
- * **Moved on 2026-09-11, table path only** (`lawText.stripMarkup`): the
- * population grew, because §§ whose words the ressort's markup used to cut in
- * half now pass the left check and reach the injection at all — L 244 → 245,
- * R-alt 236 → 237, R-neu 235 → 236. The rates are the same within a
- * percentage point (L together 69,8 %, R-alt 77,2 %, R-neu 82,2 %), and rule
- * 2's corpus alarms go from 3 to 4: MPBV § 11, which was withheld before too,
- * only by the left check and for a reason of our own making. The PDF path is
- * unchanged in every cell. The second designation per row (2026-09-11,
- * `textComparison.stripGld`) moved the table-path population once more, to
- * 246/238/237, with L 171, R-alt 183 and R-neu 195; the one-sided heading
- * rows (`heldHeadings`, same day) then took R-neu to 196 and rule 1's
- * table-path alarms from 6 to 5 — the table above shows that state. On the
- * PDF path the gutter read from the two-column lines (`annexPdf.gutterBand`,
- * same day) added the two §§ that now carry enough text for a site —
- * 918/881/880 → 920/883/882 — at unchanged rates.
- *
- * The reach stated in `annexCheck.ts` — 1.019 of 1.092, rule 1 464, rule 2
- * 181, together 567 — was measured over both paths at once and with a
+ * The reach stated in `annex/rightColumn.ts` — 1.019 of 1.092, rule 1 464,
+ * rule 2 181, together 567 — was measured over both paths at once and with a
  * narrower injection site (the § was skipped when its *first* changed row was
  * too short, even where a later one qualified). This script takes the first
  * row that satisfies the conditions, which is why its population is 1.161

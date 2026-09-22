@@ -73,12 +73,11 @@ const gateSources: AnnexSources = {
 
 interface DraftResult {
   /**
-   * Der RIS-Dokumentschlüssel. `cite` taugt als Schlüssel nicht: die meisten
-   * Datensätze im Fenster sind Verordnungen ohne
-   * Begutachtungsverfahrennummer und fallen auf den bei 34 Zeichen
-   * abgeschnittenen Kurztitel zurück — „Verordnung des Bundesministers für"
-   * steht am 16.09.2026 neunmal im Tabellenpfad. Die Grundlinie von Klasse B
-   * braucht eine Identität, die hält.
+   * The RIS document key. `cite` is no good as a key: most records in the
+   * window are Verordnungen without a Begutachtungsverfahrennummer and fall
+   * back on the Kurztitel cut at 34 characters — „Verordnung des
+   * Bundesministers für" stands nine times in the table path on 16.09.2026.
+   * Class B's baseline needs an identity that holds.
    */
   id: string
   cite: string
@@ -109,8 +108,8 @@ interface DraftResult {
    * The rows the left check never sees: `unchanged`, non-elided, with text.
    *
    * Printed because the decision to leave them out is a decision
-   * (`annexCheck.isDisplayedChange`), and a decision nobody measures becomes an
-   * assumption. The page shows their left text — folded behind „N Stellen
+   * (`annex/coverage.ts`, `isDisplayedChange`), and a decision nobody measures
+   * becomes an assumption. The page shows their left text — folded behind „N Stellen
    * unverändert", but shown — so „never held against RIS" is a statement about
    * text the reader reads.
    *
@@ -135,7 +134,7 @@ interface DraftResult {
   /**
    * How far rule 2's reference reaches: instructions read, instructions that
    * addressed at least one §, and the annex's §§ split by whether the draft's
-   * instructions name them (`annexCheck.draftBags`).
+   * instructions name them (`annex/rightColumn.ts`, `draftBags`).
    *
    * Poor addressing does not fail a § — the words of an unreadable
    * instruction go to every § of its law — so it shows up nowhere in the
@@ -296,7 +295,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
     if (!entry) continue
     const tree = await fetchParagraphTree(entry[1])
     // A § that contains a table is deliberately not represented as a tree
-    // (`lawStructure.ts`): its cells would read as Absätze in document order.
+    // (`lawtext/konsTree.ts`): its cells would read as Absätze in document order.
     // That is the right answer for the engine and it makes the row
     // incomparable here — counted, so the denominator stays honest, rather
     // than dropped silently.
@@ -453,6 +452,9 @@ const dumpWorst = argFlag('dump-worst')
 const xmlMode = argFlag('xml')
 const calibrate = argFlag('calibrate')
 
+// RIS **ignores** `Begut.Gesetzgebungsperiode` — it answers with the whole
+// Begut corpus, newest first, so `--gp` narrows the label and not the window
+// (measured 23.09.2026, `lib/annexReport.ts`). `--limit` is what bounds a run.
 const docs: any[] = []
 for (let page = 1; page <= 4 && docs.length < limit; page++) {
   const body = await risJson({
@@ -578,14 +580,14 @@ if (calibrate) {
   }
 }
 
-// --- Bericht für den Drift-Alarm ----------------------------------------------
-// `--json=<pfad>` schreibt dieselbe Messung als Datensatz, zusätzlich zum
-// Bericht oben. Zusätzlich, nicht statt: der Prosabericht ist das, was im
-// CI-Log steht, wenn der Alarm anschlägt und jemand wissen will, warum.
+// --- Report for the drift alarm -----------------------------------------------
+// `--json=<path>` writes the same measurement as a record, in addition to the
+// report above. In addition, not instead: the prose report is what stands in
+// the CI log when the alarm fires and somebody wants to know why.
 //
-// Die Urteile stehen nicht hier, sondern in `lib/annexReport.ts` — dieselbe
-// Lehre, die §12.13 schon zweimal zieht: Logik in einem CLI-Skript ist Logik,
-// die kein Test erreicht. Hier wird nur umgefüllt.
+// The verdicts are not here but in `lib/annexReport.ts` — the same lesson
+// §12.13 already draws twice: logic in a CLI script is logic no test reaches.
+// All that happens here is the pouring over.
 const jsonPath = argAssigned('json') ?? null
 if (jsonPath) {
   const { writeFileSync } = await import('node:fs')
@@ -595,10 +597,9 @@ if (jsonPath) {
     path: xmlMode ? 'xml' : 'pdf',
     limit,
     records: docs.length,
-    // `results`, nicht `gated` oder `scored`: ein Entwurf, dessen Beilage
-    // verweigert wurde, hat trotzdem Seiten verlieren können, und seine
-    // Zusicherungen gelten genauso. Die Filter des Prosaberichts sind für
-    // Prozentzahlen da, nicht für Zusicherungen.
+    // `results`, not `gated` or `scored`: a draft whose annex was refused can
+    // have lost pages all the same, and its assurances hold just as much. The
+    // prose report's filters are there for percentages, not for assurances.
     drafts: results.map((r) => ({
       id: r.id,
       cite: r.cite,
