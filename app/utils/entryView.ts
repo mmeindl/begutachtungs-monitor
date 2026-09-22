@@ -47,7 +47,7 @@ import type {
   OpenVorlage,
   RisConsultation,
 } from '../../shared/types'
-import { aliasesFor } from '../../shared/utils/aliases'
+import { aliasesFor } from '../../shared/utils/draftAliases'
 import { type DeadlineTone, deadlineTone, isNewArrival } from './deadlines'
 import { formatDateDe, formatDateWeekdayDe, fristLabel } from '../../shared/utils/format'
 import { RIS_KIND_LABEL } from '../../shared/utils/risConsultations'

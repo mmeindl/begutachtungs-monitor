@@ -9,7 +9,7 @@ import {
   parliamentOutcome,
   procedureStatusDe,
 } from '~/utils/spine'
-import { aliasesFor } from '#shared/utils/aliases'
+import { aliasesFor } from '#shared/utils/draftAliases'
 // Explicit: `draftStations.ts` is a pure module and stays out of the
 // auto-imports, so that server map and vitest run the same functions.
 import { mayClaimOutcome } from '#shared/utils/draftStations'
@@ -238,7 +238,7 @@ const noRvBaseRate = computed(() =>
   lapsed.value || chainUnlinked.value ? null : rvBaseRateSentenceDe(data.value?.gp),
 )
 
-/** Debate names for this procedure, if any (`shared/utils/aliases.ts`). */
+/** Debate names for this procedure, if any (`shared/utils/draftAliases.ts`). */
 const aliases = computed(() => (data.value ? aliasesFor(data.value.gp, data.value.inr) : []))
 
 /* A related draft is named by citation and GP; the GP only where it
@@ -388,7 +388,7 @@ const linkClasses =
         <!-- The debate's name for the thing, where it has one — findable by
              search, and stated as what it is. The heading stays the official
              title: the framing rule forbids adopting a campaign term as the
-             tool's own naming (`shared/utils/aliases.ts`). -->
+             tool's own naming (`shared/utils/draftAliases.ts`). -->
         <p v-if="aliases.length" class="mt-1 text-sm text-ink-secondary">
           In der öffentlichen Debatte:
           <span class="text-ink">{{ aliases.map((a) => `„${a}“`).join(' · ') }}</span>

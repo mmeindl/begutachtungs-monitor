@@ -51,7 +51,7 @@ import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } fro
 import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../server/utils/risJoin'
 import { parseExplanations } from '../server/utils/explanations'
 import { explanationsByParagraph } from '../server/utils/explanationsJoin'
-import { explanationKey, explanationParaId } from '../shared/utils/explanations'
+import { explanationKey, explanationParaId } from '../shared/utils/explanationKey'
 import { installFetchCache } from './harness-cache'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 

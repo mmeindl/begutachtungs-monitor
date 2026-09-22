@@ -25,7 +25,7 @@ import type { ExplanationsDocument } from './explanations'
 import { lawNameTokens } from './lawDiff'
 // Relative, nicht über `#shared`: Dieses Modul ist rein, damit vitest und die
 // Messskripte es direkt ausführen — wie `lawDiff.ts` es hält.
-import { explanationParaId } from '../../shared/utils/explanations'
+import { explanationParaId } from '../../shared/utils/explanationKey'
 
 /** Eine Erläuterungspassage, adressiert an einen Paragraphen eines Gesetzes. */
 export interface ParagraphExplanation {

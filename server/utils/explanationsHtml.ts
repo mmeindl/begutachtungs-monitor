@@ -95,7 +95,7 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
   return { general, special }
 }
 
-/** Die Passagen unter „§ 54c" → ihrer Nummer, wie `shared/utils/explanations` sie bildet. */
+/** Die Passagen unter „§ 54c" → ihrer Nummer, wie `shared/utils/explanationKey` sie bildet. */
 export function passagesByParagraph(doc: HtmlExplanations): Map<string, HtmlPassage[]> {
   const out = new Map<string, HtmlPassage[]>()
   for (const passage of doc.special) {

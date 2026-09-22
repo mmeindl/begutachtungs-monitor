@@ -20,7 +20,7 @@
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Keyed `${gp}/${inr}`. */
-export const CONSULTATION_ALIASES: Record<string, readonly string[]> = {
+export const DRAFT_ALIASES: Record<string, readonly string[]> = {
   // Verified 2026-09-08 against the project's own research notes; the term is
   // the one the 2025 debate and the submitting organisations used.
   'XXVIII/8': ['Bundestrojaner', 'Staatstrojaner'],
@@ -31,7 +31,7 @@ export const CONSULTATION_ALIASES: Record<string, readonly string[]> = {
 }
 
 export function aliasesFor(gp: string, inr: number): readonly string[] {
-  return CONSULTATION_ALIASES[`${gp}/${inr}`] ?? []
+  return DRAFT_ALIASES[`${gp}/${inr}`] ?? []
 }
 
 /** Lowercased alias text for the server-side `q` filter; empty when there is none. */

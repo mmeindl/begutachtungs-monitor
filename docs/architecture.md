@@ -618,7 +618,7 @@ it is ever built, three conditions hold, and the cost is why:
    (§13.1). Do not blur that line.
 
 The cheap half needs neither: a curated alias per procedure
-(`shared/utils/aliases.ts`) — "Bundestrojaner" appears in no official title,
+(`shared/utils/draftAliases.ts`) — "Bundestrojaner" appears in no official title,
 so the tool was unfindable under the name the public uses.
 
 **Gemessen und zweimal repariert, 19.09.2026 — die Deckung war nie gezählt
@@ -5744,7 +5744,7 @@ Paragraphen, „Zu Art. 2 (Änderung des KommAustria-Gesetzes)" das Gesetz des
 Pakets. Die Beilage führt ihre Zeilen unter denselben zwei Schlüsseln
 (`ComparisonRow.law`, `ComparisonRow.para`). Der Join ist ein Nachschlagen,
 keine Ähnlichkeitssuche — `server/utils/explanationsJoin.ts`, und der
-Schlüssel selbst steht in `shared/utils/explanations.ts`, weil ihn beide
+Schlüssel selbst steht in `shared/utils/explanationKey.ts`, weil ihn beide
 Seiten bilden müssen.
 
 **Gemessen** (`pnpm audit:erlaeuterungen -- --join`, Fenster ab 2024: 277

@@ -6,7 +6,7 @@
  * (docs/architecture.md §5, §12.26, §12.31).
  */
 import type { DraftChain, DraftStation, DraftsResponse, DraftStatus } from '#shared/types'
-import { aliasHaystack } from '#shared/utils/aliases'
+import { aliasHaystack } from '#shared/utils/draftAliases'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { chainCoverageOf, DRAFT_STATION_ORDER, mayClaimOutcome } from '#shared/utils/draftStations'
 import { GP_RE, gpHasEnded } from '#shared/utils/gp'
@@ -128,7 +128,7 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
     if (ministry && item.ministryCode.toUpperCase() !== ministry) return false
     if (q) {
       // Aliases are part of the haystack, not of the title: someone who only
-      // knows "Bundestrojaner" has to find 8/ME (`shared/utils/aliases.ts`).
+      // knows "Bundestrojaner" has to find 8/ME (`shared/utils/draftAliases.ts`).
       //
       // DER RESSORTNAME IST SEIT 21.09.2026 NICHT MEHR DABEI (§12.31), und
       // die Regel dahinter ist: **gesucht wird, was die Zeile zeigt.** Der

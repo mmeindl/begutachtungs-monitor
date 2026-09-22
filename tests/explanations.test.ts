@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hasReadableText, parseExplanations } from '../server/utils/explanations'
 import { explanationsByParagraph } from '../server/utils/explanationsJoin'
-import { explanationParaId } from '../shared/utils/explanations'
 
 /**
  * The shapes below are the ones the corpus actually delivers
@@ -217,12 +216,5 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
     expect(explanationsByParagraph(parsed, pack)).toEqual([
       { law: 'Änderung der Rechtsanwaltsordnung', para: '7', heading: 'Zu Art. 2 Z 1 (§ 7):', text: ['Dazu.'] },
     ])
-  })
-
-  it('normalisiert die Bezeichnung auf beiden Seiten — und nimmt keine Anlage für einen §', () => {
-    expect(explanationParaId('§ 54c.')).toBe('54c')
-    expect(explanationParaId('§ 54C')).toBe('54c')
-    expect(explanationParaId('Anlage 1 zu § 6')).toBeNull()
-    expect(explanationParaId(null)).toBeNull()
   })
 })

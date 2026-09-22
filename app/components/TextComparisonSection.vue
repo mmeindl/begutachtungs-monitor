@@ -16,7 +16,7 @@
  * difference that is not there.
  */
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
-import { explanationKey, explanationParaId } from '#shared/utils/explanations'
+import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
@@ -145,7 +145,7 @@ const explanationsByKey = computed(() => {
  * Die Passagen zu EINEM § der Beilage.
  *
  * Nachgeschlagen, nicht gesucht: Beide Seiten bilden denselben Schlüssel aus
- * Gesetz und normalisierter Bezeichnung (`#shared/utils/explanations`). Wo die
+ * Gesetz und normalisierter Bezeichnung (`#shared/utils/explanationKey`). Wo die
  * Beilage ihre Gesetze nicht auseinanderhält, trägt ihre Zeile kein Gesetz,
  * der Eintrag aber eines — dann findet der Schlüssel nichts, und das ist die
  * richtige Antwort: § 5 des zweiten Gesetzes ist eine andere Bestimmung als
