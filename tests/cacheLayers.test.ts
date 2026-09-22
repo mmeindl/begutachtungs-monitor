@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * Every cached function has to say which layer it belongs to
- * (`server/utils/cacheBase.ts`). The persistent layer may hold only
+ * (`server/utils/cache/base.ts`). The persistent layer may hold only
  * documents we fetched; anything we computed belongs in `derived`, or a
  * parser change stays invisible on localhost for a day — which is how this
  * rule came to exist.
@@ -110,7 +110,7 @@ describe('cache layers', () => {
       '`base: DERIVED_CACHE` to its options — right after `name` — or, if it ' +
       'really caches an upstream document verbatim, list it in FETCHED with ' +
       'the reason. A function that fetches *and* parses has to be split first ' +
-      '(see server/utils/cacheBase.ts).',
+      '(see server/utils/cache/base.ts).',
     ).toEqual([])
   })
 

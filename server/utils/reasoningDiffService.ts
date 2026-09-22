@@ -33,8 +33,7 @@ import { fetchLawHtml, getLawDiff } from './lawDiffService'
 import { findLastRvLink, mapDocuments, parseStages } from './mappers'
 import { getGegenstand } from './parliament'
 import { compareReasoning } from './reasoningDiff'
-
-const TTL_S = 60 * 60 * 24
+import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
 /** Das Erläuterungen-Dokument eines Gegenstands, als HTML — oder nichts. */
 async function explanationsDocument(gp: string, ityp: string, inr: number): Promise<TraceLink | null> {
@@ -110,7 +109,7 @@ export const getReasoningDiff = defineCachedFunction(
     name: 'reasoning-diff',
     base: DERIVED_CACHE,
     getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
-    maxAge: TTL_S,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },
 )

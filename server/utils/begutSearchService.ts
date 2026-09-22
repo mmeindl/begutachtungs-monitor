@@ -37,7 +37,7 @@
  *
  * NICHT GECACHT, mit Absicht. Der Schlüssel wäre die Eingabe des Lesers,
  * also unbegrenzt viele Schlüssel in einem Speicher, den die Produktion im
- * RAM hält (`cacheBase.ts`). Das RIS antwortet in Sekundenbruchteilen, und
+ * RAM hält (`cache/base.ts`). Das RIS antwortet in Sekundenbruchteilen, und
  * die Dokumente darunter liegen ohnehin im dauerhaften Layer — gecacht wird
  * das Teure, nicht das Beliebige.
  */
@@ -56,7 +56,8 @@ import {
   withoutMinistryMentions,
   type SearchTerm,
 } from './begutSearch'
-import { DERIVED_CACHE } from './cacheBase'
+import { DERIVED_CACHE } from './cache/base'
+import { PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import { parseRisXml, type TextBlock } from './lawText'
 import { ministryTokens, type MinistryToken } from './searchHaystack'
 import { getDraftsForGp, getCurrentGp, reconcileActive } from './parliament'
@@ -79,12 +80,6 @@ const SEARCH_TIMEOUT_MS = 20_000
  * Grund, der unter `searchRisIds` steht: An dieser Anfrage wartet jemand.
  */
 const SEARCH_POLICY: UpstreamPolicy = { timeoutMs: SEARCH_TIMEOUT_MS, retries: 0 }
-/**
- * Ein Dokument des Ressorts wird einmal veröffentlicht und nie überarbeitet
- * — ein korrigierter Entwurf bekommt einen neuen Satz. Dieselbe Frist wie in
- * `explanationsService.ts`, aus demselben Grund.
- */
-const DOCUMENT_TTL_S = 60 * 60 * 24 * 30
 /**
  * So viele Sätze bekommen eine Fundstelle — die ersten dieser Zahl in der
  * Reihenfolge, in der das RIS sie nennt. Über die laufenden Begutachtungen
@@ -189,7 +184,7 @@ const fetchBegutPdf = defineCachedFunction(
   {
     name: 'begut-dokument-pdf',
     getKey: (url: string) => url,
-    maxAge: DOCUMENT_TTL_S,
+    maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
     shouldBypassCache: () => !import.meta.dev,
   },
@@ -197,7 +192,7 @@ const fetchBegutPdf = defineCachedFunction(
 
 /**
  * Derselbe PDF als reiner Text — abgeleitet, also in der anderen Schicht
- * (`cacheBase.ts`).
+ * (`cache/base.ts`).
  *
  * Getrennt vom Abruf, weil eine Funktion, die holt UND auswertet, in keine
  * der beiden Schichten gehört: Jede Invalidierung, die den Parser trifft,
@@ -216,7 +211,7 @@ const begutPdfText = defineCachedFunction(
     name: 'begut-dokument-pdf-text',
     base: DERIVED_CACHE,
     getKey: (url: string) => url,
-    maxAge: DOCUMENT_TTL_S,
+    maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
   },
 )
@@ -226,7 +221,7 @@ const fetchBegutDocument = defineCachedFunction(
   async (url: string): Promise<string> => {
     return upstreamText(url, SEARCH_POLICY)
   },
-  { name: 'begut-dokument-xml', getKey: (url: string) => url, maxAge: DOCUMENT_TTL_S, swr: false },
+  { name: 'begut-dokument-xml', getKey: (url: string) => url, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /**

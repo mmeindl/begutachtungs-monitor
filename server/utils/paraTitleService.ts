@@ -34,8 +34,8 @@ import { getRisMapForGp } from './ris'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import type { KonsParagraphRef } from './risKons'
 import { mapWithConcurrency } from './pool'
+import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
-const TTL_S = 60 * 60 * 24
 /** Ceiling on lookups per draft, so one monster Sammelgesetz cannot hang a request. */
 const MAX_HEADINGS = 120
 const CONCURRENCY = 4
@@ -166,7 +166,7 @@ export const getParagraphTitles = defineCachedFunction(
     // different § there, and a § name carried over from another pair would
     // be exactly the wrong name this module refuses to produce.
     getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
-    maxAge: TTL_S,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },
 )

@@ -8,14 +8,14 @@
  * 2 retries on 5xx/network errors.
  *
  * CACHE ARCHITECTURE (three rules, all learned the hard way — see
- * UPSTREAM_TTL_S and lastgood.ts):
+ * `cache/ttl.ts` and lastgood.ts):
  * 1. Caching happens ONLY at the leaves, i.e. at the upstream calls
  *    themselves. Derived aggregates (getDraftDetail) stay uncached.
  * 2. No SWR — `swr: false` must be set explicitly.
  * 3. Stale data is never served as fresh, but it IS served as stale: the
  *    last-good statements aggregation is persisted (lastgood.ts) and
  *    labelled with `staleAsOf` when the live list-142 fetch fails.
- * 4. Two layers by provenance (§5 rule 5, `cacheBase.ts`). Rule 1 says where
+ * 4. Two layers by provenance (§5 rule 5, `cache/base.ts`). Rule 1 says where
  *    to cache; this says in which layer. The upstream answers are cached as
  *    they arrived; everything this module derives from them — the row
  *    mappings, `findGpCode`, the classified statements — takes
@@ -68,18 +68,7 @@ import {
 import { withinBudget } from './budget'
 import { findRelatedDrafts } from './related'
 import { upstreamJson, UpstreamHttpError, type UpstreamPolicy } from './upstream/fetch'
-
-/**
- * TTL of all upstream caches. `swr: false` is NOT redundant: Nitro defaults
- * to `swr: true` (nitropack .../internal/cache.mjs, defaultCacheOptions).
- * With SWR an expired entry keeps serving the OLD value and only revalidates
- * in the background — and the storage entry is written without a TTL
- * (`setOpts` exists only for `maxAge && !swr`). In dev mode the cache lives
- * on disk (.nuxt/cache) and survives restarts: the first request after a
- * pause used to get days-old data this way. Price of `swr: false`: one
- * upstream round trip per TTL window lands on a single request's latency.
- */
-const UPSTREAM_TTL_S = 60 * 30
+import { UPSTREAM_LIST_TTL_S } from './cache/ttl'
 
 /**
  * Timeout per attempt. Deliberately tight: the risk is not the fast 502 but
@@ -261,7 +250,7 @@ const meListConfig = defineCachedFunction(
  * Current GP from that configuration (…definition.params.GP_CODE[0]),
  * fallback 'XXVIII'. Derived: `findGpCode` is our search through a foreign
  * document, so it belongs in the layer that dies with the code
- * (`cacheBase.ts`). The configuration underneath it is the cached half.
+ * (`cache/base.ts`). The configuration underneath it is the cached half.
  */
 export const getCurrentGp = defineCachedFunction(
   async (): Promise<string> => {
@@ -297,7 +286,7 @@ const consultationRows = defineCachedFunction(
     assertListHeader(81, res)
     return res
   },
-  { name: 'drafts-list', getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+  { name: 'drafts-list', getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
 )
 
 /** The same list, mapped to our types. Derived — `mapDraftRow` is ours. */
@@ -309,7 +298,7 @@ export const getDraftsForGp = defineCachedFunction(
       items: (res.rows ?? []).map(mapDraftRow),
     }
   },
-  { name: 'drafts-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+  { name: 'drafts-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
 )
 
 /**
@@ -334,7 +323,7 @@ export const getVorlagenForGp = defineCachedFunction(
     assertListHeader(101, res)
     return rows.map(mapVorlageRow)
   },
-  { name: 'vorlagen-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_TTL_S, swr: false },
+  { name: 'vorlagen-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: UPSTREAM_LIST_TTL_S, swr: false },
 )
 
 /**
@@ -374,7 +363,7 @@ export async function requireDraft(gp: string, inr: number): Promise<DraftSummar
 /**
  * List 142 of one ME, GDPR-filtered and mapped, date descending. Derived —
  * and the one upstream call with **no cached fetch underneath it**, for two
- * independent reasons (`cacheBase.ts`).
+ * independent reasons (`cache/base.ts`).
  *
  * The raw rows name private persons. `mapStatementRow` drops those names
  * before anything is stored, so what may be kept is the classified result,
@@ -429,7 +418,7 @@ const getStatementsForMe = defineCachedFunction(
     name: 'statements-me',
     base: DERIVED_CACHE,
     getKey: (gp: string, inr: number) => `${gp}-${inr}`,
-    maxAge: UPSTREAM_TTL_S,
+    maxAge: UPSTREAM_LIST_TTL_S,
     swr: false,
   },
 )
@@ -497,7 +486,7 @@ export const getStatementsForRv = defineCachedFunction(
     name: 'statements-rv',
     base: DERIVED_CACHE,
     getKey: (gp: string, inr: number) => `${gp}-${inr}`,
-    maxAge: UPSTREAM_TTL_S,
+    maxAge: UPSTREAM_LIST_TTL_S,
     swr: false,
   },
 )
@@ -512,7 +501,7 @@ export const getGegenstand = defineCachedFunction(
   {
     name: 'gegenstand',
     getKey: (gp: string, ityp: string, inr: number) => `${gp}-${ityp}-${inr}`,
-    maxAge: UPSTREAM_TTL_S,
+    maxAge: UPSTREAM_LIST_TTL_S,
     swr: false,
   },
 )

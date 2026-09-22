@@ -80,7 +80,7 @@ async function fetchRisPage(page: number): Promise<{ hits: number; docs: any[] }
  * sleeping. Bypassing the cache keeps the pause, because it is part of `fn`.
  *
  * **Cached in dev only.** The pages exist so that re-deriving the corpus
- * after a worker reload costs no network (`cacheBase.ts`), and that is a dev
+ * after a worker reload costs no network (`cache/base.ts`), and that is a dev
  * concern by construction. In production they would earn nothing: page and
  * corpus share the 20 h TTL and expire together, so a rebuild re-fetches
  * either way — and until then the raw pages hold the whole corpus a second
@@ -109,7 +109,7 @@ const risPage = defineCachedFunction(
  * Derived, not fetched: `flattenRisRecord` decides among other things
  * whether a draft has a Textgegenüberstellung, and a field it stopped
  * writing would read as "there is none" — a wrong answer, not a stale one.
- * The pages underneath are the cached half (`cacheBase.ts`).
+ * The pages underneath are the cached half (`cache/base.ts`).
  */
 export const getRisBegutCorpus = defineCachedFunction(
   async (): Promise<RisBegutCorpus> => {

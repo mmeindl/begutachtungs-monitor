@@ -44,9 +44,9 @@ import { getRisMapForGp } from './ris'
 import { mapWithConcurrency } from './pool'
 import type { KonsParagraphRef } from './risKons'
 import { annexSourceFor } from './textComparisonService'
+import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 import { oracleVerdict, paragraphRows, rowsByParagraph } from './tguOracle'
 
-const TTL_S = 60 * 60 * 24
 /** Ein Sammelgesetz nennt Dutzende; die Anzeige braucht nicht alle, die Seite braucht eine Antwort. */
 const MAX_LAWS = 12
 /** Obergrenze der §-Dokumente je Entwurf — dieselbe Sorge wie `paraTitleService.MAX_HEADINGS`. */
@@ -281,5 +281,5 @@ export const getConsolidatedText = defineCachedFunction(
       touched,
     }
   },
-  { name: 'kons-text', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+  { name: 'kons-text', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

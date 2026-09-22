@@ -11,13 +11,13 @@
  * The picking itself is `pickStatementDocument` in `mappers.ts`, pure and
  * tested; this file is the cached lookup around it.
  *
- * Cache discipline (`cacheBase.ts`): the detail JSON names the person, with
+ * Cache discipline (`cache/base.ts`): the detail JSON names the person, with
  * postcode and town, and is therefore fetched uncached, like list 142. What
  * is kept is the resolved target — a URL, nothing personal — in the derived
  * layer, for a week: a filed Stellungnahme does not change.
  */
 import type { StatementDocument } from '#shared/types'
-import { DERIVED_CACHE } from './cacheBase'
+import { DERIVED_CACHE } from './cache/base'
 import {
   pickStatementDocument,
   statementPageUrl,

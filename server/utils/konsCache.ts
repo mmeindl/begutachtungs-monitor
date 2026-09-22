@@ -9,7 +9,7 @@
  * law at the same date, and two cached functions over one upstream document
  * means two copies in memory and two chances to key them differently.
  *
- * Both layers are the ones `cacheBase.ts` prescribes:
+ * Both layers are the ones `cache/base.ts` prescribes:
  *
  *  - the § document is a **fetched** payload — a NOR version never changes,
  *    so it is kept for a month, and its *parse* is deliberately not cached:
@@ -20,15 +20,12 @@
  *    and not RIS's answer.
  */
 import { getText, resolveLawByBgbl } from './risKons'
-
-const TTL_S = 60 * 60 * 24
-/** A NOR version document never changes, so it can be kept for a long time. */
-const DOCUMENT_TTL_S = 60 * 60 * 24 * 30
+import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 
 /** One § document as RIS sent it, keyed by its NOR — parsed fresh by callers. */
 export const fetchParagraphXml = defineCachedFunction(
   (nor: string, xmlUrl: string): Promise<string> => getText(xmlUrl),
-  { name: 'kons-para-xml', getKey: (nor: string) => nor, maxAge: DOCUMENT_TTL_S, swr: false },
+  { name: 'kons-para-xml', getKey: (nor: string) => nor, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /**
@@ -54,7 +51,7 @@ export const resolveKonsLaw = defineCachedFunction(
     name: 'kons-law-by-bgbl',
     base: DERIVED_CACHE,
     getKey: (organ: string, nummer: string, date: string, title: string) => `${organ}|${nummer}|${date}|${title}`,
-    maxAge: TTL_S,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },
 )

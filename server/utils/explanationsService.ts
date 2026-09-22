@@ -20,7 +20,7 @@
  * not cached, so a bad minute upstream cannot be served as "dieser Entwurf hat
  * keine Erläuterungen" for a day.
  *
- * **Two cache layers, split by provenance** (`cacheBase.ts`): the document as
+ * **Two cache layers, split by provenance** (`cache/base.ts`): the document as
  * RIS sent it is persistent — it is expensive and our code did not make it —
  * while the reading of it is derived, because `explanations.ts` is exactly the
  * kind of parser that keeps changing and must not leave a day-old parse on
@@ -31,25 +31,18 @@ import { hasReadableText, parseExplanations, type ExplanationsDocument, type Exp
 import { explanationsByParagraph } from './explanationsJoin'
 import { parseRisXml } from './lawText'
 import { draftArticles } from './lawTitles'
-import { DERIVED_CACHE } from './cacheBase'
+import { DERIVED_CACHE } from './cache/base'
+import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import { getText } from './risKons'
 import { getRisMapForGp } from './ris'
 import { getRisConsultation } from './risOnly'
 import { hasAnnexDocument } from './textComparisonService'
 
-const TTL_S = 60 * 60 * 24
-/**
- * A Begut document is written once and never revised — a corrected draft gets
- * a new record — so the document itself can be kept far longer than the
- * reading of it.
- */
-const DOCUMENT_TTL_S = 60 * 60 * 24 * 30
-
 /** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. */
 const fetchExplanationsXml = defineCachedFunction((url: string): Promise<string> => getText(url), {
   name: 'erlaeuterungen-xml',
   getKey: (url: string) => url,
-  maxAge: DOCUMENT_TTL_S,
+  maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
 })
 
@@ -63,7 +56,7 @@ const fetchExplanationsXml = defineCachedFunction((url: string): Promise<string>
 const fetchDraftXml = defineCachedFunction((url: string): Promise<string> => getText(url), {
   name: 'entwurfstext-xml',
   getKey: (url: string) => url,
-  maxAge: DOCUMENT_TTL_S,
+  maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
 })
 
@@ -218,7 +211,7 @@ export const getExplanations = defineCachedFunction(
     return read(row.explanations, row.risDocument?.xml ?? null, async () =>
       row.status === 'matched' && (await hasAnnexDocument(gp, inr, row.textComparison)))
   },
-  { name: 'erlaeuterungen-me', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+  { name: 'erlaeuterungen-me', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
 
 /** For a Begutachtung without a parliamentary Gegenstand: straight from its own record. */
@@ -230,5 +223,5 @@ export const getRisExplanations = defineCachedFunction(
     // rendert die Gegenüberstellung nicht, sie verlinkt sie (§12.30).
     return read(detail.explanations, detail.mainDocument.xml, async () => false)
   },
-  { name: 'erlaeuterungen-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: TTL_S, swr: false },
+  { name: 'erlaeuterungen-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

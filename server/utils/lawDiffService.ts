@@ -28,6 +28,7 @@ import { parseLawUnits, parseLawUnitsFromRis } from './lawText'
 import { extractBgblLink, findLastRvLink, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup } from './mappers'
 import { getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
+import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 import {
   upstreamBytes,
   UpstreamHttpError,
@@ -35,8 +36,13 @@ import {
   type UpstreamPolicy,
 } from './upstream/fetch'
 
+/**
+ * Its own name, because neither shared one describes it: the value is a
+ * published document, but kept for a day and not for a month. Whether it
+ * could take `PUBLISHED_DOCUMENT_TTL_S` is a question nobody has measured,
+ * and this refactor does not answer it.
+ */
 const HTML_TTL_S = 60 * 60 * 24
-const DIFF_TTL_S = 60 * 60 * 24
 const HTML_TIMEOUT_MS = 20_000
 const HTML_MAX_BYTES = 8 * 1024 * 1024
 /** Three attempts without a pause between them, as this client always had. */
@@ -288,7 +294,7 @@ export const getLawDiff = defineCachedFunction(
     name: 'law-diff',
     base: DERIVED_CACHE,
     getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
-    maxAge: DIFF_TTL_S,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },
 )

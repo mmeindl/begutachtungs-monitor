@@ -12,13 +12,14 @@
  * ganzen Fensters. Ein Jahrgang ist ein stabiler Schlüssel: Vergangene Jahre
  * ändern sich nie mehr, das laufende wächst.
  *
- * ZWEI LAYER, wie überall (`cacheBase.ts`): die Seite, wie das RIS sie
+ * ZWEI LAYER, wie überall (`cache/base.ts`): die Seite, wie das RIS sie
  * geschickt hat, dauerhaft; die Zuordnung darüber abgeleitet, weil
  * `bgblJoin.ts` genau die Art Regel ist, die sich noch ändert.
  */
 import type { BgblOutcome, BgblOutcomeState, RisConsultation } from '#shared/types'
 import { joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
-import { DERIVED_CACHE } from './cacheBase'
+import { DERIVED_CACHE } from './cache/base'
+import { PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
 import { RIS_API_BASE, risJson, type UpstreamPolicy } from './upstream/fetch'
@@ -28,14 +29,16 @@ const TIMEOUT_MS = 20_000
 /**
  * Ohne Wiederholungsversuch, wie vor dem gemeinsamen Client: Beide Abfragen
  * hängen unter einer gecachten Funktion, und ein Fehler wird geworfen, nie
- * gecacht (`cacheBase.ts`).
+ * gecacht (`cache/base.ts`).
  */
 const BGBL_POLICY: UpstreamPolicy = { timeoutMs: TIMEOUT_MS, retries: 0, accept: 'application/json' }
 const PAGE_SIZE = 100
 const MAX_PAGES = 20
-/** Ein abgeschlossener Jahrgang ändert sich nicht mehr. */
-const CLOSED_YEAR_TTL_S = 60 * 60 * 24 * 30
-/** Der laufende schon — ein paar Mal pro Woche kommt ein Stück dazu. */
+/**
+ * Der laufende Jahrgang wächst — ein paar Mal pro Woche kommt ein Stück
+ * dazu. Der abgeschlossene nicht, der bekommt deshalb die Frist eines
+ * veröffentlichten Dokuments (`cache/ttl.ts`).
+ */
 const CURRENT_YEAR_TTL_S = 60 * 60 * 6
 const JOIN_TTL_S = 60 * 60 * 6
 
@@ -80,7 +83,7 @@ async function loadBgblPage(key: string): Promise<any> {
 const fetchClosedYearPage = defineCachedFunction(loadBgblPage, {
   name: 'bgbl-jahrgang-seite',
   getKey: (key: string) => key,
-  maxAge: CLOSED_YEAR_TTL_S,
+  maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
 })
 
@@ -143,7 +146,7 @@ async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
  * Ableitung darüber nicht.
  *
  * Ein Monat auf einem abgeleiteten Wert ist hier kein Widerspruch zu
- * `cacheBase.ts`: Die abgeleitete Schicht liegt im Speicher, stirbt also mit
+ * `cache/base.ts`: Die abgeleitete Schicht liegt im Speicher, stirbt also mit
  * dem Worker — und ein `mapRecord`, das sich ändert, ist eine Codeänderung
  * und damit genau dieser Neustart.
  */
@@ -151,7 +154,7 @@ const getClosedTeil2Year = defineCachedFunction(loadTeil2Year, {
   name: 'bgbl-teil2-jahrgang',
   base: DERIVED_CACHE,
   getKey: (year: number) => String(year),
-  maxAge: CLOSED_YEAR_TTL_S,
+  maxAge: PUBLISHED_DOCUMENT_TTL_S,
   swr: false,
 })
 
@@ -190,7 +193,7 @@ const fetchBgblByNumber = defineCachedFunction(
     })
     return risJson<any>(`${RIS_API_BASE}?${params}`, BGBL_POLICY)
   },
-  { name: 'bgbl-nummer-suche', getKey: (nummer: string) => nummer, maxAge: CLOSED_YEAR_TTL_S, swr: false },
+  { name: 'bgbl-nummer-suche', getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /** Das Hauptdokument einer Kundmachung, in den Formaten, die der Vergleich braucht. */
@@ -226,7 +229,7 @@ export const getBgblDocument = defineCachedFunction(
       page: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${id}`,
     }
   },
-  { name: 'bgbl-dokument', base: DERIVED_CACHE, getKey: (nummer: string) => nummer, maxAge: CLOSED_YEAR_TTL_S, swr: false },
+  { name: 'bgbl-dokument', base: DERIVED_CACHE, getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
 /** Die Jahrgänge, in denen die Kundmachung zu einer Frist liegen kann. */

@@ -14,7 +14,7 @@
  * 132 to 109 of 132.
  *
  * **The bytes are cached in dev only**, the way the RIS result pages are
- * (`ris.ts`, `cacheBase.ts`). In dev the cache is the point: re-deriving a
+ * (`ris.ts`, `cache/base.ts`). In dev the cache is the point: re-deriving a
  * comparison after a worker reload must not re-fetch a two-megabyte PDF.
  * Keeping all 44 resident in production would cost tens of megabytes on a
  * one-gigabyte VPS for hits that would hardly happen — the same arithmetic
@@ -28,14 +28,11 @@
  */
 import { parseAnnexPdf, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
-import { DERIVED_CACHE } from './cacheBase'
+import { DERIVED_CACHE } from './cache/base'
+import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import type { DraftArticle } from './lawTitles'
 import { upstreamBytes, UpstreamHttpError, UpstreamTooLargeError, type UpstreamPolicy } from './upstream/fetch'
 
-/** A NOR-published annex never changes, so the bytes keep for a long time. */
-const PDF_TTL_S = 60 * 60 * 24 * 30
-/** The parse above them, like every other derived answer of a draft page. */
-const PARSE_TTL_S = 60 * 60 * 24
 const PDF_TIMEOUT_MS = 25_000
 /**
  * The largest annex in GP XXVIII is 2,6 MB. The cap is well above that and
@@ -72,7 +69,7 @@ const fetchAnnexPdf = defineCachedFunction(
   {
     name: 'annex-pdf',
     getKey: (url: string) => url,
-    maxAge: PDF_TTL_S,
+    maxAge: PUBLISHED_DOCUMENT_TTL_S,
     swr: false,
     shouldBypassCache: () => !import.meta.dev,
   },
@@ -105,7 +102,7 @@ function articlesKey(articles: readonly DraftArticle[]): string {
  * the Textgegenüberstellung and the consolidated reading (`konsService.ts`) —
  * each fetched the PDF and ran pdf.js over it, on a draft page that shows
  * both. Derived, because every line of the answer is ours: pdf.js reads the
- * pages, our geometry makes rows of them (`cacheBase.ts`). The value is plain
+ * pages, our geometry makes rows of them (`cache/base.ts`). The value is plain
  * JSON — rows, counts and two strings — so it survives Nitro's serialisation;
  * `null` is a cacheable answer and does so too.
  *
@@ -130,7 +127,7 @@ export const annexFromPdf = defineCachedFunction(
     name: 'annex-pdf-parse',
     base: DERIVED_CACHE,
     getKey: (url: string, articles: readonly DraftArticle[]) => `${url}|${articlesKey(articles)}`,
-    maxAge: PARSE_TTL_S,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },
 )

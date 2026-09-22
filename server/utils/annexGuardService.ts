@@ -2,7 +2,7 @@
  * The annex's RIS check in the request path (docs/architecture.md §12.13).
  *
  * Nitro glue around `annexCheck.verifyAnnex`, which holds all of the logic
- * and none of the caching. The two layers are the ones `cacheBase.ts`
+ * and none of the caching. The two layers are the ones `cache/base.ts`
  * prescribes: the § documents and the law resolution are shared with the §
  * names (`konsCache.ts`), and the verdict over them is derived, so it lives
  * for a day and dies with a parser change.
@@ -27,8 +27,7 @@ import { parseKonsParagraph, plainText } from './lawStructure'
 import type { TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import type { ComparisonRow } from './textComparison'
-
-const TTL_S = 60 * 60 * 24
+import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
 const sources: AnnexSources = {
   resolveLaw: (organ, nummer, date, title) => resolveKonsLaw(organ, nummer, date, title),
@@ -71,7 +70,7 @@ const sources: AnnexSources = {
  * and the verdict map is keyed by the annex's own § designations — if a
  * parser change moved those, a stale map matches no row and every row comes
  * out `unchecked`, which is the safe direction. The derived cache dies with
- * the worker anyway (`cacheBase.ts`).
+ * the worker anyway (`cache/base.ts`).
  */
 export const getAnnexVerification = defineCachedFunction(
   async (
@@ -82,5 +81,5 @@ export const getAnnexVerification = defineCachedFunction(
     articles: readonly DraftArticle[],
     draftBlocks: readonly TextBlock[],
   ): Promise<AnnexVerification> => verifyAnnex(rows, { articles, asOf, blocks: draftBlocks }, sources),
-  { name: 'annex-verification', base: DERIVED_CACHE, getKey: (gp: string, inr: number, asOf: string) => `${gp}-${inr}-${asOf}`, maxAge: TTL_S, swr: false },
+  { name: 'annex-verification', base: DERIVED_CACHE, getKey: (gp: string, inr: number, asOf: string) => `${gp}-${inr}-${asOf}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

@@ -27,8 +27,8 @@ import { getDraftsForGp, getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
 import { resolveKonsLaw } from './konsCache'
 import { mapWithConcurrency } from './pool'
+import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
-const TTL_S = 60 * 60 * 24
 /** A Sammelgesetz can name dozens; one slow RIS lookup must not hang a page. */
 const MAX_LAWS = 40
 const CONCURRENCY = 6
@@ -152,5 +152,5 @@ export const getAmendedLaws = defineCachedFunction(
 
     return { gp, inr, asOf, createsNewLaw: articles.length > 0 && laws.length === 0, laws }
   },
-  { name: 'amended-laws', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+  { name: 'amended-laws', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

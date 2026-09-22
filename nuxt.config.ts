@@ -28,7 +28,7 @@ export default defineNuxtConfig({
     public: { siteUrl: 'https://begutachtungs-monitor.at' },
   },
   css: ['~/assets/css/main.css'],
-  // Cached-function storage, split by provenance (server/utils/cacheBase.ts):
+  // Cached-function storage, split by provenance (server/utils/cache/base.ts):
   // the default `cache` mount keeps documents we fetched and stays on disk,
   // `derived` keeps what we computed and is memory, so a parser change shows
   // on the next request instead of in 24 hours. Production mounts neither —

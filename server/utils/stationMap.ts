@@ -37,7 +37,7 @@
  *
  * Derived layer: `mapVorlageRow`, `parseStages` and the folding below are
  * ours, so an edit to any of them must not survive in dev
- * (`server/utils/cacheBase.ts`).
+ * (`server/utils/cache/base.ts`).
  */
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftStations'

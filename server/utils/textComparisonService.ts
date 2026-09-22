@@ -63,8 +63,7 @@ import { getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
 import type { RisDocumentUrls } from './risRecord'
 import { isScanned, parseTextComparison, type ComparisonParse } from './textComparison'
-
-const TTL_S = 60 * 60 * 24
+import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
 /**
  * The same loose match `ris.ts` uses on the RIS side: ressorts write
@@ -430,5 +429,5 @@ export const getTextComparison = defineCachedFunction(
       rows: checked.rows,
     }
   },
-  { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
+  { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

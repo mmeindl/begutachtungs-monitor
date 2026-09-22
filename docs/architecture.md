@@ -153,7 +153,7 @@ Server internals (`server/utils/`):
    declares which half it is. **Documents we fetched** stay in the default
    `cache` mount, on disk in dev, because a restart must not re-fetch 46
    pages of RIS. **Anything we computed** takes `base: DERIVED_CACHE`
-   (`server/utils/cacheBase.ts`), mounted `memory` in dev
+   (`server/utils/cache/base.ts`), mounted `memory` in dev
    (`nuxt.config.ts`), so it dies with the Nitro worker — which is to say
    with every edit to a server file. Production is untouched either way:
    the `node-server` preset mounts no storage, both layers are memory
@@ -5947,7 +5947,7 @@ das ihn weggeworfen hat. `locate` geht deshalb jetzt:
 1. **XML, ohne die Ressortnennungen.** Der Normalfall.
 2. **PDF, ohne die Ressortnennungen.** Nur wo Stufe 1 nichts fand; gedeckelt
    auf 16 Dokumente je Suche, Bytes und ausgelesener Text in getrennten
-   Cache-Schichten (`cacheBase.ts`).
+   Cache-Schichten (`cache/base.ts`).
 3. **Noch einmal, MIT den Ressortnennungen.** Findet erst dieser Durchgang
    etwas, steht das Wort ausschließlich in einem Ministeriumsnamen. Die Zeile
    sagt das dann — „Nur im Ressortnamen, im Begleitschreiben:" samt dem
