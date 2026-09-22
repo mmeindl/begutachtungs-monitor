@@ -2,20 +2,11 @@
  * The cached leaves of the Parliament API: the ME list (81), the Vorlagen
  * list (101) and the detail JSON of one Gegenstand.
  *
- * CACHE ARCHITECTURE (three rules, all learned the hard way — see
- * `cache/ttl.ts` and lastgood.ts):
- * 1. Caching happens ONLY at the leaves, i.e. at the upstream calls
- *    themselves. Derived aggregates (getDraftDetail) stay uncached.
- * 2. No SWR — `swr: false` must be set explicitly.
- * 3. Stale data is never served as fresh, but it IS served as stale: the
- *    last-good statements aggregation is persisted (lastgood.ts) and
- *    labelled with `staleAsOf` when the live list-142 fetch fails.
- * 4. Two layers by provenance (§5 rule 5, `cache/base.ts`). Rule 1 says where
- *    to cache; this says in which layer. The upstream answers are cached as
- *    they arrived; everything this module derives from them — the row
- *    mappings, `findGpCode`, the classified statements — takes
- *    `base: DERIVED_CACHE` and never reaches the disk. List 142 has no
- *    cached fetch at all: its rows name private persons.
+ * The five cache rules these leaves follow — cache leaves only, `swr: false`
+ * explicitly, one fact one source, stale served as stale, two layers by
+ * provenance — are in `docs/architecture.md` §5, each with the failure that
+ * forced it. `cache/base.ts` says which layer a value belongs in,
+ * `cache/ttl.ts` for how long, `lastgood.ts` holds what rule 4 falls back to.
  */
 import type { DraftSummary } from '#shared/types'
 import { GP_RE, intToRoman, romanToInt } from '#shared/utils/gp'

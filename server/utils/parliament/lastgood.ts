@@ -12,7 +12,8 @@
  *
  * NOT a history layer: exactly one record per ME, overwritten by the next
  * successful fetch. Snapshots over time (deadline extensions, statement
- * growth) are NLnet work package 3 and need a real store, not this.
+ * growth) are a later, grant-funded work package (persistence/history) and
+ * need a real store, not this.
  *
  * GDPR: what lands here is exactly what the API hands the client —
  * `mapStatementRow` has already dropped the names of private persons

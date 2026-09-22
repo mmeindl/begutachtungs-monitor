@@ -28,14 +28,14 @@ export interface DraftListFilter {
 }
 
 /**
- * „Offen" heißt: hier kann jemand etwas sagen.
+ * „Offen" means: someone can say something here.
  *
- * Bis zum 18.09.2026 war das allein die laufende Begutachtungsfrist. Zu
- * einer Regierungsvorlage kann im Nationalrat aber genauso Stellung genommen
- * werden (`statementsstate`), und das ist dieselbe Frage des Lesers — nur
- * eine Station weiter. Beides unter einem Schalter ist der einzige Ort, an
- * dem die zwei Fenster nicht zwei Seiten brauchen; die Station daneben sagt,
- * welches der beiden es ist.
+ * Until 18.09.2026 that was the running Begutachtungsfrist alone. But a
+ * Regierungsvorlage can be commented on in the Nationalrat just as well
+ * (`statementsstate`), and for the reader that is the same question — one
+ * station further on. Both under one switch is the only arrangement in which
+ * the two windows do not need two pages; the station next to it says which
+ * of the two this is.
  */
 export function canParticipate(item: Pick<DraftSummary, 'active' | 'chain'>): boolean {
   return item.active || item.chain?.filingOpen === true
@@ -51,8 +51,8 @@ export function filterDraftList<T extends DraftSummary>(
   return items.filter((item) => {
     if (status === 'open' && !canParticipate(item)) return false
     if (status === 'closed' && canParticipate(item)) return false
-    // Ohne Karte kein Stationsfilter — die Antwort sagt es, statt hier
-    // stillschweigend alles wegzufiltern, was wir nicht nachsehen konnten.
+    // No station map, no station filter — the response says so, rather than
+    // silently filtering away everything we could not look up.
     if (stationFilter && stationsUsable && !stationFilter.has(item.chain?.station ?? 'begutachtung')) {
       return false
     }
@@ -61,23 +61,24 @@ export function filterDraftList<T extends DraftSummary>(
       // Aliases are part of the haystack, not of the title: someone who only
       // knows "Bundestrojaner" has to find 8/ME (`shared/utils/draftAliases.ts`).
       //
-      // DER RESSORTNAME IST SEIT 21.09.2026 NICHT MEHR DABEI (§12.31), und
-      // die Regel dahinter ist: **gesucht wird, was die Zeile zeigt.** Der
-      // Name trägt das ganze Portfolio („… Klima- und Umweltschutz …"),
-      // steht aber nirgends auf der Seite — er traf unsichtbar und zog
-      // unter „klima" 36 Zeilen, von denen 2 das Wort im Titel führten. Das
-      // Kürzel bleibt, denn das steht in der Zeile, und für das Ressort
-      // gibt es den eigenen Filter. Der Titel bleibt aus demselben Grund
-      // unangetastet: Nennt er ein Ressort, sieht der Leser es.
+      // THE RESSORT NAME IS NO LONGER IN IT, since 21.09.2026
+      // (docs/architecture.md §12.31), and the rule behind that is: **what
+      // is searched is what the row shows.** The name carries the whole
+      // portfolio („… Klima- und Umweltschutz …") but appears nowhere on
+      // the page — it matched invisibly and pulled 36 rows for „klima", 2
+      // of which carried the word in the title. The code stays, because that
+      // does stand in the row, and the Ressort has a filter of its own. The
+      // title is untouched for the same reason: if it names a Ressort, the
+      // reader sees it.
       //
-      // MEHRERE WÖRTER WERDEN MIT UND VERKNÜPFT, seit 22.09.2026: „klima
-      // gesetz" suchte vorher diese elf Zeichen am Stück und fand nichts,
-      // während der Volltextblock unter demselben Feld zwei Entwürfe zeigte
-      // (`shared/utils/textMatch.ts`).
+      // SEVERAL WORDS ARE JOINED BY AND, since 22.09.2026: „klima gesetz"
+      // used to search for those eleven characters in one piece and found
+      // nothing, while the full-text block under the same field showed two
+      // drafts (`shared/utils/textMatch.ts`).
       //
-      // UND GEFALTET GELESEN, seit demselben Tag: „oekostrom" findet die
-      // Ökostromförderung, wie es die Stellungnahmenliste immer schon tat.
-      // Gefaltet ODER roh — gefaltet allein hätte Wortinneres gekostet.
+      // AND READ FOLDED, since the same day: „oekostrom" finds the
+      // Ökostromförderung, as the Stellungnahmen list always did. Folded OR
+      // raw — folded alone would have cost matches inside a word.
       const haystack = `${item.title} ${item.citation} ${item.ministryCode} ${aliasHaystack(item.gp, item.inr)}`
       if (!matchesQuery(haystack, q)) return false
     }

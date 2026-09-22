@@ -1,68 +1,67 @@
 /**
- * Gab es vor dieser Regierungsvorlage eine Begutachtung? — die zweite
- * Meinung zu `preconst`, ohne die „ohne Begutachtung" eine ungeprüfte
- * Behauptung wäre.
+ * Was there a Begutachtung before this Regierungsvorlage? — the second
+ * opinion on `preconst`, without which „ohne Begutachtung" would be an
+ * unchecked claim.
  *
- * WARUM ES DAS GIBT. Die Vorlage nennt ihren Ministerialentwurf in
- * `content.preconst[]` — strukturiert, eindeutig, und damit die einzige
- * Grundlage, auf der eine Zeile auf unsere eigene Entwurfsseite zeigt.
- * `preconst` ist aber kein universelles Feld (`api-exploration.md` §101):
- * gemessen am 18.09.2026 tragen auf GP XXVIII **32 von 117
- * Regierungsvorlagen gar kein `preconst`** — nicht eine hat die Liste ohne
- * ME-Eintrag, sie fehlt schlicht. Ein fehlender Zeiger heißt deshalb
- * zunächst nur „wir haben keine Seite dafür", nie „es gab keine
- * Begutachtung" — und genau das Zweite stand bis heute in der Zeile.
+ * WHY IT EXISTS. The Vorlage names its Ministerialentwurf in
+ * `content.preconst[]` — structured, unambiguous, and therefore the only
+ * basis on which a row may point at a draft page of our own. But `preconst`
+ * is not a universal field (`api-exploration.md` §101): measured on
+ * 18.09.2026, **32 of 117 Regierungsvorlagen in GP XXVIII carry no
+ * `preconst` at all** — not one of them has the list without an ME entry,
+ * it is simply missing. A missing pointer therefore means only „wir haben
+ * keine Seite dafür", never „es gab keine Begutachtung" — and the second
+ * is exactly what the row used to say.
  *
- * WAS GEPRÜFT WIRD. Dieselbe Gegenprobe, die
- * `begutachtung-uebersprungen.md` §2 einmal offline gemacht hat: Liste 81
- * derselben GP, Titelvergleich, und nur Entwürfe, die vor dem Einlangen der
- * Vorlage begonnen haben. Findet sie einen plausiblen Entwurf, sagt die
- * Zeile nichts; findet sie keinen, ist „ohne Begutachtung" zweifach belegt.
+ * WHAT IS CHECKED. The same cross-check `begutachtung-uebersprungen.md`
+ * §2 once ran offline: list 81 of the same GP, title comparison, and only
+ * drafts that began before the Vorlage arrived. If it finds a plausible
+ * draft, the row says nothing; if it finds none, „ohne Begutachtung" has
+ * two independent sources.
  *
- * KALIBRIERUNG (GP XXVIII, 18.09.2026, `titleComponents().jac` gegen die 85
- * echten ME→RV-Paare, die `preconst` benennt):
+ * CALIBRATION (GP XXVIII, 18.09.2026, `titleComponents().jac` against the 85
+ * real ME→RV pairs `preconst` names):
  *
- * | Schwelle | erkennt echte Paare | schlägt bei den 32 ohne Zeiger an |
- * |---------:|--------------------:|----------------------------------:|
- * |     0,40 |               72/81 |                                 3 |
- * |     0,50 |               72/81 |                                 3 |
- * |     0,60 |               69/81 |                                 1 |
- * |     0,70 |               63/81 |                                 0 |
+ * | Threshold | real pairs found | fires on the 32 without a pointer |
+ * |----------:|-----------------:|----------------------------------:|
+ * |      0,40 |            72/81 |                                 3 |
+ * |      0,50 |            72/81 |                                 3 |
+ * |      0,60 |            69/81 |                                 1 |
+ * |      0,70 |            63/81 |                                 0 |
  *
- * 0,50 ist der Knick: darunter wird die Prüfung nicht empfindlicher, darüber
- * verliert sie echte Paare. Die drei Treffer bei den 32 sind die generische
- * ASVG-Familie, die §2 schon als Fehltreffer ausgewiesen hat (293, 299 d.B.
- * gegen 38/ME, 405 d.B. gegen 23/ME) — sie verlieren damit die Notiz, obwohl
- * sie sie verdient hätten. **Die Richtung ist Absicht:** eine
- * zurückgehaltene Notiz nimmt einer Zeile eine Information, eine falsche
- * Notiz behauptet öffentlich etwas über ein Regierungsvorhaben. Das erste
- * ist zu ertragen, das zweite nicht.
+ * 0,50 is the knee: below it the check does not get more sensitive, above it
+ * it loses real pairs. The three hits among the 32 are the generic ASVG
+ * family that §2 already reported as false matches (293, 299 d.B. against
+ * 38/ME, 405 d.B. against 23/ME) — they lose the note although they would
+ * have deserved it. **The direction is deliberate:** a withheld note takes a
+ * piece of information off a row, a wrong note makes a public claim about a
+ * government's plan. The first is bearable, the second is not.
  *
- * WAS SIE NICHT KANN. Neun der 81 echten Paare bleiben unter 0,50, weil der
- * Titel sich zwischen Entwurf und Vorlage wirklich ändert (Sammelnovellen,
- * Umbenennungen). Für Zeilen MIT Zeiger ist das folgenlos — die werden nie
- * geprüft. Für eine Zeile ohne Zeiger heißt es: rund jede zehnte
- * Vorgeschichte, die es gäbe, fände diese Prüfung nicht. Und sie sieht nur
- * die eigene GP; ein Entwurf aus der Vorperiode fällt durch.
+ * WHAT IT CANNOT DO. Nine of the 81 real pairs stay below 0,50 because the
+ * title really does change between Entwurf and Vorlage (Sammelnovellen,
+ * renamings). For rows WITH a pointer that costs nothing — those are never
+ * checked. For a row without one it means: roughly one in ten prior
+ * histories that do exist would not be found by this check. And it sees its
+ * own GP only; a draft from the previous period falls through.
  *
- * Reines Modul — nur relative Importe, damit vitest es direkt ausführt.
+ * PURE MODULE — only relative imports, so vitest can execute it directly.
  */
 import type { DraftSummary } from '../../../shared/types'
 import { titleComponents } from '../ris/titleSimilarity'
 
-/** Siehe Kalibrierungstabelle oben. */
+/** See the calibration table above. */
 const PRECEDING_DRAFT_MIN_JACCARD = 0.5
 
 /**
- * Der plausibelste Ministerialentwurf vor dieser Vorlage, oder null.
+ * The most plausible Ministerialentwurf before this Vorlage, or null.
  *
- * Jaccard, nicht die Containment-Zahl aus dem RIS-Join: dort ist `cont`
- * tragend, weil RIS jedes geänderte Gesetz aufzählt und der kürzere Titel im
- * längeren aufgeht. Hier stehen auf beiden Seiten Parlamentstitel derselben
- * Schreibkonvention, und `cont` wird dann zur Falle — „Allgemeines
- * Sozialversicherungsgesetz, Änderung" geht in jeder ASVG-Sammelnovelle
- * restlos auf und erreicht 1,00 gegen einen Entwurf, mit dem die Vorlage
- * nichts zu tun hat.
+ * Jaccard, not the containment number from the RIS join: there `cont` is
+ * load-bearing, because RIS enumerates every amended law and the shorter
+ * title is contained in the longer one. Here both sides are Parliament
+ * titles of the same writing convention, and `cont` turns into a trap —
+ * „Allgemeines Sozialversicherungsgesetz, Änderung" is contained in every
+ * ASVG-Sammelnovelle without a remainder and reaches 1,00 against a draft
+ * the Vorlage has nothing to do with.
  */
 export function findPrecedingDraft(
   vorlage: { title: string; date: string | null },
@@ -72,9 +71,9 @@ export function findPrecedingDraft(
   let best: { draft: DraftSummary; jac: number } | null = null
   for (const draft of drafts) {
     const startedAt = (draft.arrivedAt ?? '').slice(0, 10)
-    // Ein Entwurf, der nach dem Einlangen der Vorlage begann, kann ihre
-    // Vorgeschichte nicht sein. Fehlt ein Datum, wird nicht ausgeschlossen —
-    // die Titelschwelle trägt die Entscheidung dann allein.
+    // A draft that began after the Vorlage arrived cannot be its prior
+    // history. With a date missing nothing is excluded — the title threshold
+    // then carries the decision alone.
     if (filedAt && startedAt && startedAt > filedAt) continue
     const { jac } = titleComponents(draft.title, vorlage.title)
     if (jac < PRECEDING_DRAFT_MIN_JACCARD) continue
