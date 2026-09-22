@@ -5,7 +5,7 @@
  * turned into positioned text runs by the caller; this module never opens a
  * file, which is what makes the geometry testable without a fixture binary.
  *
- * **Why this exists.** `api-exploration.md` recorded that ~40 % of annexes are
+ * **Why this exists.** `docs/api-exploration.md` recorded that ~40 % of annexes are
  * "nur Scans" and unreadable. That was measured on the RIS *XML* rendering,
  * which rasterises them into `<binary datatype="gif">`. The **PDF** of the very
  * same annex is Word output with a full text layer: across all 44 rasterised
@@ -110,7 +110,7 @@ function baselines(page: AnnexPage): AnnexItem[][] {
   // have joined the first — so a bucket one tolerance wide holds at most one
   // group, and a y's own bucket plus its two neighbours hold every candidate.
   // The scan was quadratic in a page's lines and ran two to four times per
-  // page (`refactor-plan.md` §6.8).
+  // page (`docs/refactor-plan.md` §6.8).
   const nearby = new Map<number, number[]>()
   for (const item of page.items) {
     if (!item.text.trim()) continue
@@ -981,8 +981,8 @@ export interface AnnexParse {
    *
    * Optional and read by no shipping caller: one that wants to disclose "so
    * many blocks of the annex are not shown" can. Until one does, the number
-   * is pinned by the two golden parses (`annexGolden.test.ts`,
-   * `annexPdf.test.ts`), so a change in what the parse leaves out still
+   * is pinned by the two golden parses (`tests/annexGolden.test.ts`,
+   * `tests/annexPdf.test.ts`), so a change in what the parse leaves out still
    * fails loudly instead of passing unnoticed. The debug printer that used
    * to be its other reader was removed on 22.09.2026.
    */

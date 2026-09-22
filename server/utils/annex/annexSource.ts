@@ -2,26 +2,27 @@
  * Which of the two published copies of the ressort's Textgegenüberstellung
  * the site reads — the one decision two sections depend on.
  *
- * **"Not in RIS" is not "does not exist" (2026-09-10, gelesen seit
- * 2026-09-19).** Parliament publishes the annex too, on the ME's own document
- * list, and for 11 of the 130 matched GP-XXVIII drafts it is there while the
- * RIS record has none — 8 of them with an HTML version. Saying "keine
- * Textgegenüberstellung" about a draft that has one, on a page whose whole
- * claim is that it traces documents, is the worst kind of wrong answer here.
- * Seit `textComparison.ts` auch das Gliederungssymbol der Word-Vorlage kennt
- * (`991GldSymbol`, §12.12 sechste Messung), wird die Parlamentskopie nicht nur
- * verlinkt, sondern **gelesen** — als Rückfall, nicht als erste Wahl.
+ * **"Not in RIS" is not "does not exist" (2026-09-10).** Parliament publishes
+ * the annex too, on the ME's own document list, and for 11 of the 130 matched
+ * GP-XXVIII drafts it is there while the RIS record has none — 8 of them with
+ * an HTML version. Saying „keine Textgegenüberstellung" about a draft that
+ * has one, on a page whose whole claim is that it traces documents, is the
+ * worst kind of wrong answer here. So the Parliament copy is always
+ * **linked**. Whether its content is also **read** is `READ_PARLIAMENT_COPY`
+ * below, and that switch is off since 19.09.2026: the reading path exists and
+ * works — `annex/comparisonRows.ts` knows the Word template's
+ * Gliederungssymbol (`991GldSymbol`, §12.12 sixth measurement) — it is simply
+ * not taken.
  *
- * **Die Reihenfolge der beiden Quellen ist eine Lizenzentscheidung, keine
- * technische.** Gemessen ist die Parlamentskopie die vollständigere und die
- * feiner geschnittene. Aber das RIS veröffentlicht die Beilage als CC BY
- * (Bundeskanzleramt), während das Parlament die Begutachtungsverfahren
- * ausdrücklich von der Weiterverwendung als Open Data ausschließt (§13.1,
- * offene Frage E3). Wo beide dasselbe Dokument führen, liest die Seite die
- * geklärte Quelle; wo das RIS keine führt, liest sie die andere und sagt es,
- * statt eine Gegenüberstellung zu verschweigen, die es gibt. Die
- * Quellenangabe trägt deshalb ihre Lizenz mit sich (`credit`) und ist nicht
- * mehr im Abschnitt festverdrahtet.
+ * **The order of the two sources is a licence decision, not a technical
+ * one.** Measured, the Parliament copy is the more complete and the more
+ * finely cut. But RIS publishes the annex as CC BY (Bundeskanzleramt), while
+ * Parliament explicitly excludes the Begutachtungsverfahren from reuse as
+ * open data (§13.1, open question E3). Where both hold the same document the
+ * site reads the settled source; where RIS holds none, it says so instead of
+ * keeping quiet about a Gegenüberstellung that exists. The credit line
+ * therefore travels with the source (`credit`) and is no longer hard-wired
+ * into the section.
  */
 import type { TraceLink } from '#shared/types'
 import type { DraftArticle } from '../lawtext/draftArticles'
@@ -44,12 +45,12 @@ import { isScanned } from './tableCells'
 const ANNEX_NAME_RE = /gegen.?über|^TG(Ü|G|UE)$/i
 
 /**
- * Die Quellenzeile am Fuß des Abschnitts, je nach gelesener Kopie.
+ * The credit line at the foot of the section, one per copy that can be read.
  *
- * Zwei verschiedene Sätze, weil zwei verschiedene Behauptungen: Das RIS
- * lizenziert die Beilage als CC BY 4.0, das Parlament tut das nicht. Eine
- * pauschale CC-BY-Angabe über einem Dokument des Parlaments wäre genau der
- * Fehler, den `CLAUDE.md` seit 16.09.2026 ausdrücklich verbietet.
+ * Two different sentences, because they are two different claims: RIS
+ * licenses the annex as CC BY 4.0, Parliament does not. A blanket CC-BY note
+ * over a Parliament document is exactly the mistake that has been ruled out
+ * since 16.09.2026.
  */
 export const RIS_CREDIT = 'Quelle (CC BY 4.0, RIS):'
 export const PARLIAMENT_CREDIT = 'Quelle (Dokument des Ressorts, veröffentlicht vom Parlament):'
@@ -76,39 +77,38 @@ export async function parliamentAnnex(gp: string, inr: number): Promise<{ pdf: T
 }
 
 /**
- * Führt dieser Entwurf überhaupt eine Gegenüberstellung — in einer der beiden
- * Kopien?
+ * Does this draft carry a Gegenüberstellung at all — in either of the two
+ * copies?
  *
- * Die **billige Hälfte** der Frage, und sie ist ausdrücklich nicht die ganze:
- * Ob sich das Dokument auch *lesen* lässt, weiß erst `annexSourceFor`, und
- * das kostet den Parser — gemessen am 19.09.2026 über 40 Entwürfe der GP
- * XXVIII liegt der Endpunkt kalt im Median bei 3,9 s und im Maximum bei 33 s,
- * weil bei zwei von fünf Entwürfen ein PDF geparst und jeder § gegen das RIS
- * geprüft wird. Wer nur wissen will, ob es die Beilage gibt, darf das nicht
- * bezahlen.
+ * The **cheap half** of the question, and expressly not the whole one:
+ * whether the document can also be *read* is what `annexSourceFor` knows, and
+ * that costs the parser. Measured on 19.09.2026 over 40 GP-XXVIII drafts, the
+ * endpoint runs cold at a median of 3,9 s and a maximum of 33 s, because for
+ * two drafts in five a PDF is parsed and every § is checked against RIS.
+ * Someone who only wants to know whether the annex exists must not pay that.
  *
- * Teuer ist hier nichts: Der RIS-Teil steht in der Join-Zeile, die der Aufrufer
- * ohnehin hat, und `getGegenstand` hat die Detailseite für denselben Entwurf
- * schon geholt.
+ * Nothing here is expensive: the RIS half stands in the join row the caller
+ * holds anyway, and `getGegenstand` has already fetched the detail page for
+ * the same draft.
  *
- * Gedacht für Abschnitte, die auf die Gegenüberstellung **zeigen** wollen
- * (§12.30) — nicht als Tor davor. Ein Zeiger auf einen Abschnitt, der gleich
- * selbst sagt, warum er nichts zeigen kann, ist ein billiger Irrtum; ein
- * Zeiger ins PDF, während die Stelle zwei Bildschirme tiefer steht, ist der
- * teure.
+ * Meant for sections that want to **point** at the Gegenüberstellung
+ * (docs/architecture.md §12.30), not as a gate in front of it. A pointer to a
+ * section that then says itself why it can show nothing is a cheap mistake; a
+ * pointer into the PDF while the passage sits two screens further down is the
+ * expensive one.
  */
 export async function hasAnnexDocument(gp: string, inr: number, annex: RisDocumentUrls | null): Promise<boolean> {
   if (annex?.xml ?? annex?.pdf) return true
-  // Die Kopie des Parlaments zählt nur, solange sie auch gelesen wird
-  // (`READ_PARLIAMENT_COPY`). Sonst zeigte der Satz oben auf Paragraphen, die
-  // dieser Abschnitt gar nicht rendert — derselbe Fehler wie vorher, nur
-  // andersherum.
+  // The Parliament copy counts only as long as it is also read
+  // (`READ_PARLIAMENT_COPY`). Otherwise the sentence above would point at §§
+  // this section does not render at all — the same mistake as before, the
+  // other way round.
   if (!READ_PARLIAMENT_COPY) return false
   const parl = await parliamentAnnex(gp, inr)
   return Boolean(parl.html ?? parl.pdf)
 }
 
-/** Was gelesen wurde, woher — und unter welcher Lizenz das gesagt werden darf. */
+/** What was read, from where — and under which licence that may be said. */
 export interface AnnexSource {
   parsed: ComparisonParse
   source: TraceLink
@@ -118,11 +118,11 @@ export interface AnnexSource {
 }
 
 /**
- * Das RIS: die Kopie, deren Lizenz geklärt ist.
+ * RIS: the copy whose licence is settled.
  *
- * Gibt einen Satz zurück, wo es scheitert — „nur als Scan", „ließ sich nicht
- * auslesen" —, weil diese Sätze etwas über *dieses Dokument* sagen. Gedruckt
- * werden sie nur, wenn auch das Parlament nichts hat.
+ * Returns a sentence where it fails — „nur als Scan", „ließ sich nicht
+ * auslesen" — because those sentences say something about *this document*.
+ * They are printed only if Parliament has nothing either.
  */
 async function readRis(annex: RisDocumentUrls | null, articles: readonly DraftArticle[]): Promise<AnnexSource | string> {
   if (!annex) return 'Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.'
@@ -158,42 +158,41 @@ async function readRis(annex: RisDocumentUrls | null, articles: readonly DraftAr
 }
 
 /**
- * DER SCHALTER: Wird die Kopie des Parlaments auch **gelesen**?
+ * THE SWITCH: is the Parliament copy also **read**?
  *
- * Steht seit 19.09.2026 auf `false`, und der Grund ist kein technischer —
- * der Rückfall funktioniert, gemessen sind 3 Entwürfe der GP XXVIII, die
- * dadurch eine Gegenüberstellung bekämen (Obergrenze 8, bis 13:
- * `outreach/verfahrensfragen.md` E4a).
+ * `false` since 19.09.2026, and the reason is not a technical one — the
+ * fallback works; measured, 3 GP-XXVIII drafts would gain a Gegenüberstellung
+ * through it (upper bound 8, up to 13: `outreach/verfahrensfragen.md` E4a).
  *
- * Er ist aus: Das Parlament nimmt die Daten des Begutachtungsverfahrens
- * ausdrücklich von der Weiterverwendung aus (§13.1, offene Frage E3), und
- * `CLAUDE.md` zieht daraus die harte Linie „Stufe 1 bleibt metadaten-only".
- * Den Text einer Beilage aus einem Dokument von parlament.gv.at auszulesen
- * und anzuzeigen, ist keine Metadate. Für genau diese Entwürfe trägt auch
- * das übliche Argument nicht — „dasselbe Dokument steht im RIS unter CC BY" —,
- * denn sie sind ja gerade die, zu denen das RIS keines führt.
+ * It is off because Parliament expressly excludes the data of the
+ * Begutachtungsverfahren from reuse (§13.1, open question E3), and the hard
+ * line drawn from that is „Stufe 1 bleibt metadaten-only". Reading the text
+ * of an annex out of a parlament.gv.at document and displaying it is not a
+ * metadatum. For exactly these drafts the usual argument does not hold
+ * either — „the same document is in RIS under CC BY" — because they are
+ * precisely the ones RIS carries no copy of.
  *
- * **Verlinkt wird das Dokument weiter**, in jedem Zweig unten. Nicht gezeigt
- * wird sein Inhalt.
+ * **The document stays linked**, in every branch below. What is not shown is
+ * its content.
  *
- * WIEDER EINSCHALTEN, sobald E3 beantwortet ist (Brief an die
- * Parlamentsdirektion: `outreach/emails/info@parlament.gv.at.md`). Dann sind
- * es drei Handgriffe, und alle drei gehören zusammen:
- *  1. diese Konstante auf `true`,
- *  2. die Lizenzzeilen auf `/impressum` und `/ueber` — sie sagen heute
- *     „ausschließlich Metadaten", und das wäre dann nicht mehr wahr,
- *  3. den Satz in `chosen === 'string'` unten, der erklärt, warum hier
- *     nichts steht: „lesen wir nicht aus" wird wieder zu „ließ sich nicht
- *     auslesen".
- * Danach `pnpm test`, und die Deckungszahl in §12.12 neu messen.
+ * TURN IT BACK ON as soon as E3 is answered (letter to the
+ * Parlamentsdirektion: `outreach/emails/ogd@parlament.gv.at.md`). It is then
+ * three moves, and all three belong together:
+ *  1. this constant to `true`,
+ *  2. the licence lines on `/impressum` and `/ueber` — they say
+ *     „ausschließlich Metadaten" today, and that would no longer be true,
+ *  3. the sentence under `typeof chosen === 'string'` in
+ *     `annex/textComparisonService.ts` that explains why nothing stands here:
+ *     „lesen wir nicht aus" becomes „ließ sich nicht auslesen" again.
+ * Then `pnpm test`, and re-measure the coverage figure in §12.12.
  */
 export const READ_PARLIAMENT_COPY = false
 
 /**
- * Das Parlament: dasselbe Dokument, zweitveröffentlicht — der Rückfall.
+ * Parliament: the same document, published a second time — the fallback.
  *
- * Der Scan-Fall gewinnt hier nichts: 41 von 42 Scans sind auch beim Parlament
- * nur PDF (§12.12, sechste Messung).
+ * The scan case gains nothing here: 41 of 42 scans are PDF-only at Parliament
+ * as well (§12.12, sixth measurement).
  */
 async function readParliament(gp: string, inr: number, articles: readonly DraftArticle[]): Promise<AnnexSource | null> {
   const parl = await parliamentAnnex(gp, inr)
@@ -204,16 +203,16 @@ async function readParliament(gp: string, inr: number, articles: readonly DraftA
 }
 
 /**
- * Welche der beiden Kopien der Beilage gelesen wird — die EINE Entscheidung,
- * und sie steht hier, weil zwei Abschnitte sie brauchen.
+ * Which of the two copies of the annex is read — the ONE decision, and it
+ * lives here because two sections need it.
  *
- * Die Gegenüberstellung zeigt die Zeilen; die konsolidierte Lesefassung
- * (`konsService.ts`) lässt sich von denselben Zeilen bestätigen. Läsen die
- * beiden verschiedene Dokumente, könnte ein Paragraph durch ein Tor gehen,
- * dessen Beleg auf der Seite gar nicht steht.
+ * The Gegenüberstellung shows the rows; the konsolidierte Lesefassung
+ * (`kons/konsService.ts`) has itself confirmed by those same rows. If the two
+ * read different documents, a § could pass a gate whose evidence is nowhere
+ * on the page.
  *
- * RIS zuerst, Parlament als Rückfall: nicht nach Qualität, sondern nach
- * Lizenz (siehe Kopf). Gemessen ist die Parlamentskopie die vollständigere.
+ * RIS first, Parliament as the fallback: by licence, not by quality (see the
+ * file header). Measured, the Parliament copy is the more complete one.
  */
 export async function annexSourceFor(
   gp: string,

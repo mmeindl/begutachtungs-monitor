@@ -1,10 +1,10 @@
 /**
  * The annex's RIS check in the request path (docs/architecture.md §12.13).
  *
- * Nitro glue around `annexCheck.verifyAnnex`, which holds all of the logic
+ * Nitro glue around `verifyAnnex` (`annex/verdict.ts`), which holds all of the logic
  * and none of the caching. The two layers are the ones `cache/base.ts`
  * prescribes: the § documents and the law resolution are shared with the §
- * names (`konsCache.ts`), and the verdict over them is derived, so it lives
+ * names (`kons/konsCache.ts`), and the verdict over them is derived, so it lives
  * for a day and dies with a parser change.
  *
  * The reference date is RIS's own `BeginnBegutachtungsfrist` — the day the
@@ -15,10 +15,10 @@
  *
  * Since 2026-09-10 the check has a second reference, and it comes from the
  * caller too: the draft's own Gesetzestext, against which the *right* column
- * is held (`annexCheck.rightColumnCheck`). Both references are read from the
+ * is held (`annex/rightColumn.ts`). Both references are read from the
  * two documents the cache key already names, so the key does not change. The
  * Gesetzestext travels as *blocks* rather than as one string, because the
- * check reads it per Novellierungsanordnung (`annexCheck.draftBags`) — which
+ * check reads it per Novellierungsanordnung (`draftBags`) — which
  * of them a § may draw on is the rule's decision, not the caller's.
  */
 import { verifyAnnex, type AnnexSources, type AnnexVerification } from './verdict'
@@ -38,7 +38,7 @@ const sources: AnnexSources = {
     // into an unavailable section rather than into a cached "ungeprüft"; a
     // document we *did* receive and cannot make sense of is the opposite —
     // a stable property of that document, and null is the right answer for
-    // it (`lawStructure.ts` already returns null for a § held as a table).
+    // it (`lawtext/konsTree.ts` already returns null for a § held as a table).
     const xml = await fetchParagraphXml(ref.nor, ref.xmlUrl)
     try {
       const tree = parseKonsParagraph(xml)

@@ -9,10 +9,10 @@
  * be allowed to have written it.
  *
  * One function for both readers, and that is the point rather than the
- * saving: `annexCheck` reads the whole draft with it, `annexDraft` one unit,
- * and only because they read identically is every per-§ bag a *subset* of the
- * whole-draft bag — which is what makes the narrower reference strictly
- * stronger and never differently wrong (`annexDraft.ts`).
+ * saving: `annex/rightColumn.ts` reads the whole draft with it,
+ * `annex/annexDraft.ts` one unit, and only because they read identically is
+ * every per-§ bag a *subset* of the whole-draft bag — which is what makes the
+ * narrower reference strictly stronger and never differently wrong.
  */
 import type { TextBlock } from '../lawtext/lawUnits'
 

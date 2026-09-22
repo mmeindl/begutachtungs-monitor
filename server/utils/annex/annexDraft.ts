@@ -4,7 +4,7 @@
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
- * Rule 2 of the annex gate („nicht im Entwurf", `annexCheck.ts`) holds the
+ * Rule 2 of the annex gate („nicht im Entwurf", `annex/rightColumn.ts`) holds the
  * words a § shows as new against the draft's own Gesetzestext. That reference
  * was the *whole* draft, and a whole-draft reference cannot see the fault it
  * is most likely to meet: text dragged out of a **neighbouring**
@@ -13,7 +13,7 @@
  *
  * This module answers the addressing question that narrows the reference —
  * which §§ does one instruction touch — and answers nothing else. It knows
- * nothing about words, bags or thresholds: `annexCheck.ts` owns the comparison
+ * nothing about words, bags or thresholds: `annex/rightColumn.ts` owns the comparison
  * rules and turns these units into bags, so the two concerns stay in one
  * direction and neither module imports the other's back.
  *
@@ -34,18 +34,18 @@ export interface DraftUnit {
    * The law of the package the unit belongs to — `LawUnit.article`, which is
    * `articleTitle ?? articleNumber` and therefore the same string
    * `DraftArticle.key` carries and the annex's rows are attributed with
-   * (`annexBoundaries.ts`). Null for a draft without Artikel.
+   * (`annex/annexBoundaries.ts`). Null for a draft without Artikel.
    */
   law: string | null
   /** `Z4`, `§5` — the unit's own id, for reports. */
   id: string
   /** The §§ it may print text for, as the draft writes them ("§ 5a", "Anlage 2"). */
   paras: string[]
-  /** Designations of *one* provision under two numbers (`novao.AddressedUnits`). */
+  /** Designations of *one* provision under two numbers (`AddressedUnits` in `kons/novao.ts`). */
   aliases: [string, string][]
   /** Why `paras` is empty — null whenever it is not. */
   reason: string | null
-  /** The unit's text, Gliederungssymbole included, as `annex/draftText.draftTextOf` counts them. */
+  /** The unit's text, Gliederungssymbole included, as `draftTextOf` counts them. */
   text: string
 }
 
@@ -62,7 +62,7 @@ const NO_INSTRUCTION = 'keine Novellierungsanordnung'
  *   `parseInstruction` returns, the §§ an insertion *creates*, the ranges
  *   `expandRange` expanded, both designations of a renumbering, and — where no
  *   operation could be typed at all — the address the refused line still names
- *   (`novao.addressedUnits`, `novao.refusedAddresses`);
+ *   (`addressedUnits` and `refusedAddresses` in `kons/novao.ts`);
  * - **the sub-instructions inside the same unit** — "a) In Abs. 3 lautet der
  *   erste Satz:" under "2. § 2 wird wie folgt geändert:". They inherit the
  *   container's address, so they normally confirm its § rather than adding
@@ -76,7 +76,7 @@ const NO_INSTRUCTION = 'keine Novellierungsanordnung'
  * `articles` is deliberately not a parameter. The law key is `LawUnit.article`
  * and nothing here needs the Artikel list to compute it; whether that key
  * meets the annex's `row.law` is a question about the *lookup*, and the
- * harness counts it there (`harness/annexPdf.ts`), where a §§ count can be
+ * harness counts it there (`pnpm harness:annex`), where a §§ count can be
  * printed. A parameter a function does not read is a false claim about what
  * it depends on.
  */

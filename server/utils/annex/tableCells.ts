@@ -24,7 +24,8 @@ export const HEADER_PROPOSED_RE = /^vorgeschlagene[rn]?\s+(?:fassung|text)\b/i
 /**
  * A cell's own words.
  *
- * The block/inline distinction lives in `lawText.stripMarkup`, shared with the
+ * The block/inline distinction lives in `stripMarkup` (`lawtext/normalize.ts`),
+ * shared with the
  * two texts this one is scored against, and it is what keeps a marked word in
  * one piece: the ressorts mark the changed *characters* in yellow, so
  * `Schlepplifte<i><span style="background:yellow">n</span></i>,` used to come
@@ -95,7 +96,7 @@ export function headingOnly(html: string): boolean {
   return cellText(html.replace(HEADING_RE, ' ')) === ''
 }
 
-/** The same two spellings as `comparisonRows.GLD_RE`, which carries their story. */
+/** The same two spellings as `GLD_RE` in `annex/comparisonRows.ts`, which carries their story. */
 const GLD_ALL_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/g
 
 /**

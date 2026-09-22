@@ -2,10 +2,12 @@
  * The ressort's Textgegenüberstellung for one consultation
  * (docs/api-exploration.md §2c, docs/architecture.md §12.12, §12.13).
  *
- * Nuxt-aware glue around the pure modules `textComparison.ts` and
- * `annexCheck.ts`. The rows are read from RIS, which is the only source that
- * carries the annex as a table, so this goes through the RIS↔ME map rather
- * than the Parliament document list the rest of the detail page uses.
+ * Nuxt-aware glue around the pure modules of `annex/` — the row parsers
+ * (`comparisonRows.ts`, `annexPdf.ts`), the gate (`verdict.ts`) and its
+ * application to the rows (`gateRows.ts`). The rows are read from RIS, which
+ * is the only source that carries the annex as a table, so this goes through
+ * the RIS↔ME map rather than the Parliament document list the rest of the
+ * detail page uses.
  *
  * Unavailability is a normal answer, not an error: about four in ten drafts
  * carry no annex. Each case gets its own sentence, because "no comparison"
@@ -16,7 +18,7 @@
  * **Two sources, one shape.** Where the RIS XML is a real table it is read
  * from there; where RIS rasterised the annex into images, the same document's
  * PDF still carries a full text layer and is read by geometry instead
- * (`annexPdfService.ts`). Both parsers emit `ComparisonRow`, so everything
+ * (`annex/annexPdfService.ts`). Both parsers emit `ComparisonRow`, so everything
  * after this point — the RIS check, the stats, the section — is identical.
  * The page says which document it read, because "the ministry's table" and
  * "the ministry's PDF, read by us" are not the same claim.
@@ -79,11 +81,12 @@ export const getTextComparison = defineCachedFunction(
         // One sentence for both states below: with no RIS record and with
         // several possible ones, the outcome for the reader is the same —
         // the annex exists, and we cannot say which RIS document is its twin.
-        // Nicht mehr „wir lesen das Parlamentsdokument nicht" — das tun wir
-        // seit 19.09.2026. Der Grund ist jetzt der wahre: Ohne den
-        // RIS-Datensatz fehlt der geltende Text, gegen den die linke Spalte
-        // geprüft wird, und eine ungeprüfte Gegenüberstellung zeigt diese
-        // Seite nicht (§12.13, das Tor).
+        // The sentence names the gate rather than the licence, and that reason
+        // holds whichever way `READ_PARLIAMENT_COPY` stands: without the RIS
+        // record there is no standing text to hold the left column against,
+        // and an unchecked Gegenüberstellung is not shown (§12.13). With the
+        // switch off the copy would not be read in any case — the branch
+        // further down is the one that says so.
         'Die Textgegenüberstellung liegt beim Parlament vor. Ohne den zugehörigen RIS-Datensatz fehlt uns der geltende Gesetzestext, gegen den wir ihre linke Spalte prüfen — ungeprüft zeigen wir sie nicht.',
         row?.status === 'ambiguous'
           ? 'Mehrere RIS-Datensätze kommen für diesen Entwurf infrage. Die Gegenüberstellung aus dem falschen zu zeigen wäre schlechter als keine.'
@@ -119,33 +122,33 @@ export const getTextComparison = defineCachedFunction(
     // The annex's Artikel headings mean nothing on their own — an internal
     // Roman division and a real law boundary are typeset alike. The draft's
     // own Artikel list decides, so it is fetched even though the annex is
-    // what is being shown (`annexBoundaries.ts`). Both parsers need it, and
+    // what is being shown (`annex/annexBoundaries.ts`). Both parsers need it, and
     // so does the RIS check: without it every § is unattributable.
     //
     // Parsed once for two uses. The same blocks are also the check's second
     // reference: what the annex shows as *new* has to occur in the draft's
-    // own Gesetzestext (`annexCheck.rightColumnCheck`). Fetched before the
-    // source is chosen, because every parse path below needs it.
+    // own Gesetzestext (`rightColumnCheck` in `annex/rightColumn.ts`).
+    // Fetched before the source is chosen, because every parse path below
+    // needs it.
     const { blocks: draftBlocks, articles } = await getDraftArticles(gp, inr, 'ris-xml')
 
     const chosen = await annexSourceFor(gp, inr, annex, articles)
     if (typeof chosen === 'string') {
       const parl = await parliamentAnnex(gp, inr)
       const atParliament = parl.pdf ?? parl.html
-      // „Keine Textgegenüberstellung" über einem Entwurf, der eine hat, ist
-      // der schlimmste Satz, den diese Seite drucken kann (Kopf, 10.09.2026).
-      // Er darf also nur stehen, wenn auch das Parlament keine führt. Liegt
-      // sie dort nur als PDF, sagt die Seite genau das: Es gibt sie, gelesen
-      // haben wir sie nicht — aus dem PDF des Parlaments lesen wir nicht, und
-      // 41 von 42 Scans sind auf beiden Seiten dieselben (§12.12).
+      // „Keine Textgegenüberstellung" over a draft that has one is the worst
+      // sentence this page can print (`annex/annexSource.ts`, 10.09.2026). So
+      // it may stand only where Parliament carries none either. Where it is
+      // there as a PDF only, the page says exactly that: it exists, we did
+      // not read it — Parliament's PDF is not read, and 41 of 42 scans are
+      // the same on both sides (§12.12).
       if (!annex && atParliament) {
         return empty(
           parl.html
-            // HTML da, und trotzdem nichts gelesen — der Satz muss sagen,
-            // WARUM, und die beiden Gründe sind verschieden: Bei
-            // ausgeschaltetem Schalter haben wir es nicht versucht, und „ließ
-            // sich nicht auslesen" wäre dann eine Aussage über das Dokument,
-            // die wir gar nicht geprüft haben.
+            // HTML there and still nothing read — the sentence has to say
+            // WHY, and the two reasons differ: with the switch off we never
+            // tried, and „ließ sich nicht auslesen" would then be a claim
+            // about the document that we never tested.
             ? (READ_PARLIAMENT_COPY
                 ? 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht — auslesen ließ sie sich nicht.'
                 : 'Die Textgegenüberstellung liegt beim Parlament vor, im RIS aber nicht. Aus dem Dokument des Parlaments lesen wir sie nicht aus: Das Parlament nimmt die Daten des Begutachtungsverfahrens von der Weiterverwendung aus, und solange das ungeklärt ist, verlinken wir sie, statt sie abzudrucken.')
@@ -154,16 +157,16 @@ export const getTextComparison = defineCachedFunction(
           atParliament,
         )
       }
-      // Sonst der Satz des RIS-Pfades: Er sagt, woran es lag. Das Dokument
-      // bleibt verlinkt, auch wo wir es nicht lesen konnten.
+      // Otherwise the RIS path's own sentence: it says what it failed on.
+      // The document stays linked even where we could not read it.
       return empty(chosen, null, pdf ?? atParliament)
     }
 
     const { parsed, source, credit, readFrom, droppedPages } = chosen
     const { rows, refusal } = parsed
-    // Wurde die Kopie des Parlaments gelesen, führt das RIS zu diesem Entwurf
-    // in der Regel gar kein Dokument — dann ist das PDF des Parlaments das
-    // einzige, das ein Leser aufschlagen kann.
+    // Where the Parliament copy was the one read, RIS usually carries no
+    // document for this draft at all — and then Parliament's PDF is the only
+    // one a reader can open.
     const pdfLink = pdf ?? (credit === PARLIAMENT_CREDIT ? (await parliamentAnnex(gp, inr)).pdf : null)
 
     // Both columns are checked before the rows are sent. The left one claims

@@ -18,7 +18,7 @@
  * into `<binary datatype="gif">` — 114 of the 240 GP-XXVIII annexes — the
  * same document's PDF still carries a full text layer, and `annexPdf.ts`
  * reads it from the page geometry. `isScanned` tells the two apart and the
- * caller picks the path (`textComparisonService.ts`); this one returns an
+ * caller picks the path (`annex/textComparisonService.ts`); this one returns an
  * empty list for a rasterised document, which must be read as "not
  * available", never as "nothing changed". Both parsers emit `ComparisonRow`,
  * so everything downstream is the same for both (api-exploration §2c).
@@ -108,20 +108,15 @@ const STRIP = [
  * a paragraph and is none. A row that opens with a Ziffer carries no
  * designation of its own, and saying nothing is right.
  *
- * **Dasselbe Gliederungssymbol, zwei Schreibweisen.** RIS types it
- * `<gldsym>`; the Parliament copy of the *same* ressort annex is the Word
- * legistic template and types it `<span class=991GldSymbol>&sect;&nbsp;1.</span>`
- * — unquoted attribute, entities and all. `lawText.ts` has known the second
- * form since it learned to read Parliament HTML; this module never did, so
- * every row of a Parliament annex came back without a designation, and
- * `rowsByParagraph` — which files rows under `paraIdOfGld(row.gld)` — threw
- * all of them away. The annex parsed, the tables were right, the changes were
- * found, and the oracle was silent on every § (measured 18.09.2026).
- *
- * The same shape of bug as `<schlussteil>` against `<schluss typ="…">`
- * (§12.13): two names for one thing, one of them unknown to one of the two
- * modules that need it, and a result that looks like an empty answer rather
- * than a missing branch.
+ * **One Gliederungssymbol, two spellings.** RIS types it `<gldsym>`; the
+ * Parliament copy of the *same* ressort annex is the Word legistic template
+ * and types it `<span class=991GldSymbol>&sect;&nbsp;1.</span>` — unquoted
+ * attribute, entities and all. `lawtext/parliamentHtml.ts` has known the
+ * second form since it learned to read Parliament HTML; this module did not,
+ * so every row of a Parliament annex came back without a designation and the
+ * oracle was silent on every § (18.09.2026, docs/architecture.md §12.12).
+ * Same shape of bug as `<schlussteil>` against `<schluss typ="…">`: two names
+ * for one thing, one of them unknown to one of the two modules that need it.
  */
 const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/
 
@@ -307,31 +302,20 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
   /**
    * Two-sided heading rows waiting to learn whether a § opens below them.
    *
-   * `lift` reads the § 's **own** heading and nothing else — RIS types that one
-   * `typ="para"` — so every heading a level up stayed an ordinary pair row: a
-   * Teil, an Abschnitt, an Unterabschnitt, the lettered divisions of a
-   * Verordnung, the law's own title, and the heading of the *following* §.
-   * Printed identically in both columns they come out `unchanged`, and they
-   * were filed under the § **above** them. The Strafvollzugsgesetz § 154 is the
-   * model case: it carried „Fünfter Abschnitt — Strafvollzug durch
-   * elektronisch überwachten Hausarrest", which heads the Abschnitt that begins
-   * with the *next* §.
+   * `lift` reads the §'s **own** heading and nothing else — RIS types that one
+   * `typ="para"` — so every heading a level up stayed an ordinary pair row and,
+   * printed identically in both columns, was filed under the § **above** it.
    *
    * Measured over the 126 readable GP-XXVIII annexes (2026-09-11): **507 such
-   * rows**, by RIS's own type 226 `g2`, 124 `g1`, 46 `anlage`, 46 `titel`, 30
-   * `erll`, 24 `g1min`, 4 `tgue`, 3 `erlz`, 2 `art`, 1 `para` — every one of
-   * them marked `<ueberschrift>`, none of them recognised from its wording
-   * (`headingOnly`, the same discriminator d6c47ea used for the one-sided
-   * half). **331 are followed by a row that opens a §**, and that § is theirs;
-   * the other 176 open nothing below them.
-   *
-   * Those 331 stop being rows and become the `heading` of the § below, exactly
-   * as `lift` does one level down. The other 176 stay the row they are, under
-   * the § above — where the corpus says nothing, the answer is the one that
-   * shipped. Filing them under the § below *without* making them its heading
-   * was measured and rejected: it leaves them text that claims to be the
-   * provision, and RIS's own § documents mostly carry no group headings to
-   * hold that text against (docs/architecture.md §12.13).
+   * rows**, every one marked `<ueberschrift>` and none recognisable from its
+   * wording, of which **331 are followed by a row that opens a §**. Those 331
+   * stop being rows and become the `heading` of the § below, exactly as `lift`
+   * does one level down; the other 176 open nothing below them and stay the
+   * row they are, because where the corpus says nothing the answer is the one
+   * that shipped. **Rejected variant:** filing them under the § below without
+   * making them its heading leaves them text that claims to be the provision,
+   * and RIS's own § documents mostly carry no group headings to hold that text
+   * against (docs/architecture.md §12.13).
    *
    * **Only where both columns print it.** A heading printed on one side is the
    * change itself and stays a row (`heldHeadings`); a heading that *differs*

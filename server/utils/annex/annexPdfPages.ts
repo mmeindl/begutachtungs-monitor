@@ -77,7 +77,7 @@ const SKEW_TOLERANCE = Math.PI / 180
  *
  * **The frame is PDF user space: origin bottom-left, y upward.** Viewport
  * space runs y downward; `annexPdf.ts` sorts baselines with `b.y - a.y` and
- * every fixture in `annexPdf.test.ts` places text with y upward, so the flip
+ * every fixture in `tests/annexPdf.test.ts` places text with y upward, so the flip
  * is undone here and the convention is stated once, in `AnnexItem`.
  *
  * Only quarter turns are handled: the angle is rounded to the nearest 90°,

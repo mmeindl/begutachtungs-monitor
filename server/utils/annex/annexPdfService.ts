@@ -2,7 +2,7 @@
  * The rasterised annex, read from its PDF (docs/api-exploration.md §2c).
  *
  * Nitro glue over `annexPdfPages.ts` (pdf.js) and `annexPdf.ts` (geometry).
- * It exists because of one measurement: `api-exploration.md` recorded that
+ * It exists because of one measurement: `docs/api-exploration.md` recorded that
  * about 40 % of annexes are "nur Scans" and unreadable, and that was a
  * property of the RIS *XML* rendering, which rasterises them into
  * `<binary datatype="gif">`. The **PDF of the same annex** is Word output
@@ -24,7 +24,7 @@
  * **What is kept in production is the PARSE**, one layer up and derived: rows
  * are kilobytes where the document is megabytes, and without it the draft
  * page paid for the PDF twice, because two sections read the same annex
- * (`konsService.ts`, `textComparisonService.ts`).
+ * (`kons/konsService.ts`, `annex/textComparisonService.ts`).
  */
 import { parseAnnexPdf, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
@@ -80,7 +80,7 @@ const fetchAnnexPdf = defineCachedFunction(
  *
  * `parseAnnexPdf` resolves the annex's law boundaries against the draft's own
  * Artikel list, and `resolveBoundaries` reads exactly these three fields
- * (`annexBoundaries.ts`). The object identity it also uses never leaves one
+ * (`annex/annexBoundaries.ts`). The object identity it also uses never leaves one
  * call, so it is no part of the answer. The same PDF held against a different
  * draft is a different answer, which is why this is in the key and not just
  * the URL.
@@ -99,17 +99,19 @@ function articlesKey(articles: readonly DraftArticle[]): string {
  *
  * **The PARSE is cached, because the bytes are not.** The byte cache above is
  * bypassed in production on purpose, so the two sections that read an annex —
- * the Textgegenüberstellung and the consolidated reading (`konsService.ts`) —
- * each fetched the PDF and ran pdf.js over it, on a draft page that shows
- * both. Derived, because every line of the answer is ours: pdf.js reads the
- * pages, our geometry makes rows of them (`cache/base.ts`). The value is plain
- * JSON — rows, counts and two strings — so it survives Nitro's serialisation;
- * `null` is a cacheable answer and does so too.
+ * the Textgegenüberstellung and the consolidated reading
+ * (`kons/konsService.ts`) — each fetched the PDF and ran pdf.js over it, on a
+ * draft page that shows both. Derived, because every line of the answer is
+ * ours: pdf.js reads the pages, our geometry makes rows of them
+ * (`cache/base.ts`). The value is plain JSON — rows, counts and two strings
+ * — so it survives Nitro's serialisation; `null` is a cacheable answer and
+ * does so too.
  *
  * A failure still is not an answer: the fetch is not caught, so a PDF RIS
  * would not hand over leaves this function and nothing is stored — a
  * swallowed timeout used to become "ließ sich auch aus dem PDF nicht
- * auslesen" as a fact about the draft (same rule as `textComparisonService`,
+ * auslesen" as a fact about the draft (same rule as
+ * `annex/textComparisonService.ts`,
  * 2026-09-10). A document we did receive and pdf.js cannot open is a property
  * of that document, so that case stays null and is kept.
  */
@@ -119,7 +121,8 @@ export const annexFromPdf = defineCachedFunction(
     const pages = await pagesOf(new Uint8Array(Buffer.from(base64, 'base64'))).catch(() => null)
     // pdf.js reads a damaged file as an *empty* document rather than failing,
     // so "no pages" and "no text on any page" both have to count as unreadable
-    // — a scored run against nothing looks like a result (`lib/harnessCache.ts`).
+    // — a scored run against nothing looks like a result
+    // (`scripts/lib/harnessCache.ts`).
     if (pages === null || pages.every((page) => page.items.length === 0)) return null
     return parseAnnexPdf(pages, articles)
   },

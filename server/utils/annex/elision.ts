@@ -3,7 +3,7 @@
  * dots, per the BKA Rundschreiben of 27.03.2002.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly. Read by
- * `annex/comparisonRows.ts` and by the PDF path in `annexPdf.ts`.
+ * `annex/comparisonRows.ts` and by the PDF path in `annex/annexPdf.ts`.
  */
 
 /** Any of the annex's three-dots marks, anywhere in the text. */
@@ -12,7 +12,7 @@ const ELISION_MARK_RE = /\.\.\.|…/
 /**
  * The row's own words, with the annex's elision syntax taken out.
  *
- * Mirrors `ELISION_RE` in `annexCheck.ts`, which discounts the same syntax
+ * Mirrors `ELISION_RE` in `annex/annexText.ts`, which discounts the same syntax
  * before scoring a row against the standing law. Deliberately duplicated
  * rather than imported: that module is about coverage against RIS, this one
  * about what a row *is*, and welding the two together would mean every future
