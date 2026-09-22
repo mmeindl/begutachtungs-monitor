@@ -395,7 +395,7 @@ the page since 2026-09-09; no draft is refused as "nur ein Scan" any more,
 and of the 23 that stay unavailable 21 carry no annex at all.
 
 **Both paths need the RIS check before anything is shown**
-(`annexCheck.ts`, `architecture.md` §12.13). Neither is a parse that can be
+(`annex/verdict.ts`, `architecture.md` §12.13). Neither is a parse that can be
 trusted on sight: the left column claims to be the standing law, and holding
 that claim against RIS Bundesrecht is the only self-check either path has.
 Measured over the readable XML annexes on 2026-09-09, 86,9 % of paragraphs
@@ -483,7 +483,7 @@ Dinge, die der Prüfstand auf dem Weg dorthin gelernt hat:
 
 Gemessen über die **240 Beilagen der GP XXVIII** (400 RIS-Begut-Datensätze,
 Gesetze und Verordnungen; 126 lesbare XML-Tabellen, 114 über die PDF-Geometrie).
-Der RIS-Abgleich (`annexCheck.ts`) prüft nur Zeilen, die eine
+Der RIS-Abgleich (`annex/`) prüft nur Zeilen, die eine
 Paragraphenbezeichnung tragen **und** als „geändert"/„entfällt" angezeigt
 werden — alles andere muss der Parser allein richtig haben. Genau dort lagen
 die fünf Befunde.

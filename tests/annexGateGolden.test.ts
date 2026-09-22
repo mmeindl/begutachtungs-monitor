@@ -1,14 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import {
-  annexParagraphKey,
-  checkAnnexRows,
-  notRunReason,
-  verifyAnnex,
-  type AnnexSources,
-  type ParagraphVerdict,
-} from '../server/utils/annexCheck'
+import { annexParagraphKey } from '../server/utils/annex/annexText'
+import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
+import { verifyAnnex, type AnnexSources, type ParagraphVerdict } from '../server/utils/annex/verdict'
 import { parseAnnexPdf, type AnnexPage } from '../server/utils/annexPdf'
 import { parseRisXml } from '../server/utils/lawText'
 import { draftArticles } from '../server/utils/lawTitles'

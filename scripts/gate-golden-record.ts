@@ -22,12 +22,12 @@
  * Usage:  npx vite-node scripts/gate-golden-record.ts -- --only=Organtransplantations --out=tests/fixtures/gate-organtransplantation.json
  */
 import { writeFileSync } from 'node:fs'
+import { notRunReason } from '../server/utils/annex/gateRows'
 import {
-  notRunReason,
   verifyAnnex,
   type AnnexDraft,
   type AnnexSources,
-} from '../server/utils/annexCheck'
+} from '../server/utils/annex/verdict'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
 import { pagesOf } from '../server/utils/annexPdfPages'
 import { plainText } from '../server/utils/lawStructure'

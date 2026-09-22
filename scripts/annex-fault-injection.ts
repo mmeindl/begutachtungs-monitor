@@ -146,19 +146,16 @@
  *
  * Usage:  npx vite-node scripts/annex-fault-injection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
  */
+import { annexParagraphKey, comparableTokens, designationKey } from '../server/utils/annex/annexText'
+import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../server/utils/annex/coverage'
 import {
   MIN_STANDING_STRETCH,
-  PARAGRAPH_THRESHOLD,
-  annexParagraphKey,
-  comparableTokens,
-  coverageOfParagraph,
-  designationKey,
   draftBags,
   draftReference,
   rightColumnCheck,
   type StandingText,
   type WordBag,
-} from '../server/utils/annexCheck'
+} from '../server/utils/annex/rightColumn'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
 import { pagesOf } from '../server/utils/annexPdfPages'
 import { diffTokens } from '../server/utils/diff/wordDiff'

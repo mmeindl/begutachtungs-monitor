@@ -21,7 +21,7 @@
  * check reads it per Novellierungsanordnung (`annexCheck.draftBags`) — which
  * of them a § may draw on is the rule's decision, not the caller's.
  */
-import { verifyAnnex, type AnnexSources, type AnnexVerification } from './annexCheck'
+import { verifyAnnex, type AnnexSources, type AnnexVerification } from './annex/verdict'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { parseKonsParagraph, plainText } from './lawStructure'
 import type { TextBlock } from './lawText'

@@ -23,21 +23,16 @@
  *
  * Usage:  npx vite-node scripts/annex-pdf-verify.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
  */
+import { annexParagraphKey, designationKey } from '../server/utils/annex/annexText'
+import { MIN_PROSE_TOKENS, coverageOf, displayedChangeRows, isDisplayedChange } from '../server/utils/annex/coverage'
+import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
+import { draftBags } from '../server/utils/annex/rightColumn'
 import {
-  MIN_PROSE_TOKENS,
-  annexParagraphKey,
-  checkAnnexRows,
-  coverageOf,
-  designationKey,
-  displayedChangeRows,
-  draftBags,
-  isDisplayedChange,
-  notRunReason,
   verifyAnnex,
   type AnnexDraft,
   type AnnexSources,
   type ParagraphVerdict,
-} from '../server/utils/annexCheck'
+} from '../server/utils/annex/verdict'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
 import { pagesOf } from '../server/utils/annexPdfPages'
 import { plainText } from '../server/utils/lawStructure'

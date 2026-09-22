@@ -307,7 +307,8 @@ on every push (`.github/workflows/ci.yml`).
   `applyGuard`, `applyReport`, `tguOracle`.
 - **Textgegenüberstellung (§12.13):** `textComparison` (the XML table),
   `annexPdf` (page geometry), `annexBoundaries` (which heading opens a law),
-  `annexCheck` (the gate), `annexGolden`.
+  `annexText`/`coverage`/`rightColumn`/`verdict`/`gateRows` (the gate),
+  `annexGolden`.
 
 `annexGolden` is the only one that is not synthetic, and deliberately: two real
 RIS documents are checked in verbatim (CC-BY 4.0) because synthetic fixtures
@@ -335,7 +336,7 @@ column, another §'s standing text or its proposed text appended to the right
 one — and prints what each rule catches, beside the false alarms the same
 rules produce on the untouched corpus. Those false alarms are the two
 right-column withholdings of `annex-pdf-verify.ts` over the same population,
-so the two harnesses cross-check each other, and the reach `annexCheck.ts`
+so the two harnesses cross-check each other, and the reach `annex/verdict.ts`
 states is the number this one prints. It exists because that number was
 measured once in a scratch file, and a claim whose instrument is gone is a
 claim nobody can re-check (§12.13).
@@ -1788,7 +1789,7 @@ dürfen.
 
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
 Engine: `server/utils/textComparison.ts` (Parser der XML-Tabelle),
-`annexPdf.ts` (Seitengeometrie), `annexCheck.ts` (das Tor),
+`annexPdf.ts` (Seitengeometrie), `annex/` (das Tor),
 `annexDraft.ts` (welche Paragraphen eine Novellierungsanordnung adressiert —
 der Bezug von Regel 2), `textComparisonService.ts` (Nitro-Glue),
 `/api/drafts/:gp/:inr/gegenueberstellung`,
@@ -1824,7 +1825,7 @@ Beilage nur auf dem *nicht* ausgelieferten PDF-Weg, und der Grund war die
 Architektur: die Urteilslogik lag in `scripts/annex-pdf-verify.ts`, also dort,
 wo sie weder getestet noch angewendet werden kann — dieselbe Lektion wie bei
 `applyReport.ts`, zum zweiten Mal. Sie liegt jetzt in
-`server/utils/annexCheck.ts` (rein, testbar), der Prüfstand bekommt `--xml`,
+`server/utils/annex/` (rein, testbar), der Prüfstand bekommt `--xml`,
 und beide Pfade messen mit demselben Maßstab: die linke Spalte behauptet, das
 geltende Recht zu sein, und das RIS hält diesen Text unabhängig.
 
@@ -1965,7 +1966,7 @@ Ehrlich gezählt verschiebt das auf dem Tabellenpfad 180 Paragraphen von
 „bestätigt" nach „ungeprüft" (584 → 764); 967 bleiben, die wirklich geprüft
 und bestätigt sind.
 
-Die Urteilslogik liegt jetzt vollständig in `annexCheck.ts`: `verifyAnnex`
+Die Urteilslogik liegt jetzt vollständig in `annex/`: `verifyAnnex`
 gibt eine Urteilstabelle je Paragraph zurück statt zweier Listen, und
 `checkAnnexRows` setzt sie auf die Zeilen. Beide sind rein und getestet, der
 Service macht nur noch I/O. Der Prüfstand ruft dieselben zwei Funktionen auf
@@ -2171,7 +2172,7 @@ adressieren. `annexDraft.ts` liest die Adressierung — jedes `target`/`anchor`
 der Operationen, die neu *geschaffenen* Paragraphen einer Einfügung, die
 Bereiche („§§ 7 bis 14"), beide Bezeichnungen einer Umbenennung, die
 Gliederungssymbole eines „lautet:"-Textes und die Buchstaben-Unteranordnungen
-innerhalb derselben Einheit —, `annexCheck.draftBags` baut daraus die Säcke.
+innerhalb derselben Einheit —, `annex/rightColumn.draftBags` baut daraus die Säcke.
 Drei Zutaten halten das ehrlich, und jede ist gemessen:
 
 - **Der allgemeine Sack.** Eine Anordnung, deren Adresse niemand lesen kann,
@@ -2500,7 +2501,7 @@ Hauptbefund der Regel, sondern ihr Restrisiko.
 
 **Was die linke Prüfung liest — und was nicht (11.09.2026).** In den linken
 Sack kommen nur die Zeilen, die die Seite als **Änderung** zeigt
-(`annexCheck.isDisplayedChange`): `changed` und `removed`, ohne Auslassungen.
+(`annex/coverage.isDisplayedChange`): `changed` und `removed`, ohne Auslassungen.
 Eine `inserted`-Zeile hat keine linke Spalte, das ist ihr Zweck. Eine
 `unchanged`-Zeile aber **hat** eine, und ihr Text steht auf der Seite —
 eingeklappt hinter „N Stellen unverändert", dann gedruckt. Eine falsch
@@ -2772,7 +2773,7 @@ ME→RV-Vergleich für GP XXVII und früher und die Änderungsmaschine lesen: di
 **Mitgefunden: eine Fußnote, die nur auf einer Seite verschwand.** RIS druckt
 eigene redaktionelle Anmerkungen in den konsolidierten Text („(Anm.: Abs. 2
 aufgehoben durch …)"); `lawStructure.ts` entfernt sie auf der RIS-Seite, und
-`annexCheck.ts` tat es mit demselben Muster auf der Spaltenseite. Über den
+`annex/annexText.ts` tat es mit demselben Muster auf der Spaltenseite. Über den
 Korpus überlebten es trotzdem 110 Vorkommen von „Anm", und die Ursache war
 eine einzige Form: **„(Anm. : aufgehoben durch …)"**, mit Leerzeichen vor dem
 Doppelpunkt — so setzt die Textebene des PDF die Zeichenläufe zusammen. Die

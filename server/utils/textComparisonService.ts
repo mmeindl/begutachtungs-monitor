@@ -52,7 +52,7 @@
  * and the section says it is unavailable right now.
  */
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { checkAnnexRows, notRunReason } from './annexCheck'
+import { checkAnnexRows, notRunReason } from './annex/gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { annexFromPdf } from './annexPdfService'
 import { fetchLawHtml } from './lawDiffService'
