@@ -46,10 +46,30 @@ const FETCHED: Record<string, string> = {
 
 const UTILS = join(import.meta.dirname, '..', 'server', 'utils')
 
+/**
+ * Every `.ts` file under server/utils, at any depth. Recursive on purpose:
+ * the folder moves of the refactor (`docs/refactor-plan.md` §0) put cached
+ * functions into subfolders, and a flat read would walk past them without a
+ * word — cache rule 5 would stop being enforced and nothing would say so.
+ */
+function utilsFiles(): string[] {
+  return readdirSync(UTILS, { encoding: 'utf8', recursive: true }).filter((f) => f.endsWith('.ts'))
+}
+
+/** The same walk written by hand — the second opinion for the test below. */
+function walkTs(dir: string, prefix = ''): string[] {
+  const out: string[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) out.push(...walkTs(join(dir, entry.name), join(prefix, entry.name)))
+    else if (entry.name.endsWith('.ts')) out.push(join(prefix, entry.name))
+  }
+  return out
+}
+
 /** Every cached function in server/utils, with the layer it declares. */
 function cachedFunctions(): { name: string; file: string; derived: boolean }[] {
   const out: { name: string; file: string; derived: boolean }[] = []
-  for (const file of readdirSync(UTILS).filter((f) => f.endsWith('.ts'))) {
+  for (const file of utilsFiles()) {
     const src = readFileSync(join(UTILS, file), 'utf8')
     if (!src.includes('defineCachedFunction(')) continue
     // One options object holds exactly one `name:`, so the next `name:` ends
@@ -66,6 +86,15 @@ function cachedFunctions(): { name: string; file: string; derived: boolean }[] {
 
 describe('cache layers', () => {
   const found = cachedFunctions()
+
+  it('reads every file under server/utils, subfolders included', () => {
+    // A guard on the guard: the scan and an independent recursive walk have
+    // to see the same files. Once a cached function moves into a subfolder,
+    // a scan that silently went flat again fails here instead of quietly
+    // approving whatever lives down there.
+    expect(utilsFiles().sort()).toEqual(walkTs(UTILS).sort())
+    expect(utilsFiles().length).toBeGreaterThan(40)
+  })
 
   it('finds the cached functions at all', () => {
     // A guard on the guard: a refactor that renames the helper must not
