@@ -25,7 +25,6 @@ import type { LawDiffUnit } from '../../shared/types'
 import type { TextBlock } from './lawText'
 import { normalizeText } from './lawText'
 import { opAddress, parseInstruction } from './novao'
-import { jaccardSimilarity } from './lawtext/lawNames'
 
 /** A promulgation citation, split the way RIS stores it. */
 export interface BgblCitation {
@@ -107,61 +106,6 @@ function organKey(organ: string): string {
 
 export function sameBgbl(a: BgblCitation, b: BgblCitation): boolean {
   return organKey(a.organ) === organKey(b.organ) && a.nummer === b.nummer
-}
-
-/**
- * Words that appear in almost every Artikel title and so carry no evidence.
- * "Änderung des …" is the template, not the name.
- *
- * **Die Vollform der Vorlage stand bis 19.09.2026 nicht darin.** Ein Entwurf
- * ohne Artikelzeile trägt seinen Titel als ganzen Satz — „Bundesgesetz, mit
- * dem das Lebensmittelsicherheits- und Verbraucherschutzgesetz **geändert
- * wird**" —, und die beiden Verben zählten als Inhalt. Gegen den Kurztitel
- * des RIS ergab das 2 von 4 gemeinsamen Wörtern, also 0,50, und `pickByName`
- * verlangt 0,60: Das LMSVG war damit gegen das zweite Gesetz desselben
- * Bundesgesetzblatts (BGBl. I Nr. 13/2006 schafft auch das Kontroll- und
- * Digitalisierungs-Durchführungsgesetz) nicht mehr bestimmbar — 20 von 20
- * Einheiten in 70/ME ohne Namen, und dasselbe Gesetz fehlte unter
- * „Geltendes Recht". Mit den Verben auf dieser Liste sind es 1,00 gegen 0,00.
- */
-const TITLE_STOPWORDS = new Set([
-  'änderung', 'änderungen', 'aufhebung', 'bundesgesetz', 'bundesgesetzes', 'gesetz', 'gesetzes',
-  'über', 'sowie', 'mit', 'dem', 'des', 'der', 'die', 'das', 'den', 'und', 'von', 'zum', 'zur',
-  // Die Vorlage in ihrer Satzform: „…, mit dem das X geändert wird".
-  'geändert', 'wird', 'werden', 'erlassen', 'aufgehoben',
-])
-
-/**
- * A German title word reduced far enough that a genitive matches a nominative:
- * the draft writes "Änderung des Staatsanwaltschaftsgesetzes", the annex may
- * write "Staatsanwaltschaftsgesetz". Years survive intact and are the best
- * discriminator a title has ("Strafprozeßordnung 1975").
- */
-function stem(word: string): string {
-  return word.replace(/ß/g, 'ss').replace(/(?<=.{5})(?:es|en|s|n)$/, '')
-}
-
-function titleTokens(title: string): Set<string> {
-  const words = normalizeText(title)
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .split(' ')
-    .filter((w) => w.length > 3 && !TITLE_STOPWORDS.has(w))
-  // Auch nach dem Stemmen: „geänderten" wird zu „geändert" und ist dann
-  // dasselbe Füllwort, das die Liste oben schon kennt.
-  return new Set(words.map(stem).filter((w) => !TITLE_STOPWORDS.has(w)))
-}
-
-/**
- * How much two law names have in common, 0 to 1 (Jaccard over content words).
- *
- * Used wherever two namings of the same law have to be recognised as one: the
- * annex's Artikel heading against the draft's, and an amending Artikel against
- * the Kurztitel RIS carries. Deliberately blunt — a law's name is a compound
- * noun and a year, so word overlap decides and word order does not.
- */
-export function lawNameScore(a: string, b: string): number {
-  return jaccardSimilarity(titleTokens(a), titleTokens(b))
 }
 
 /**

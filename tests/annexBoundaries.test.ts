@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { candidateOf, resolveBoundaries } from '../server/utils/annexBoundaries'
-import { lawNameScore, type DraftArticle } from '../server/utils/lawTitles'
+import type { DraftArticle } from '../server/utils/lawTitles'
+import { lawNameScore } from '../server/utils/lawtext/lawNames'
 
 function draft(...articles: { n?: string; title?: string | null; amends?: boolean }[]): DraftArticle[] {
   return articles.map((a, index) => ({

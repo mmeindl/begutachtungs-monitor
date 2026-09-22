@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, diffLawPackage, diffLawUnits, diffTokens, isEditorialChange, lawNameTokens, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
+import { alignUnits, diffLawPackage, diffLawUnits, diffTokens, isEditorialChange, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, parseParliamentHtml, parseRisXml } from '../server/utils/lawText'
 import { readFileSync } from 'node:fs'
 
@@ -275,11 +275,6 @@ describe('editorial vs substantive', () => {
 })
 
 describe('article pairing across differing titles', () => {
-  it('names the same law from draft and bill titles', () => {
-    expect(lawNameTokens('Änderung des Umsatzsteuergesetzes 1994')).toEqual(new Set(['umsatzsteuergesetz', '1994']))
-    expect(lawNameTokens('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird')).toEqual(new Set(['umsatzsteuergesetz', '1994']))
-  })
-
   const novelle = (title: string, ziffern: string[]) =>
     `<html><body><p class=41UeberschrG1>Artikel&nbsp;1</p><p class=43UeberschrG2>${title}</p>` +
     ziffern.map((z) => `<p class=21NovAo1>${z}</p>`).join('') +

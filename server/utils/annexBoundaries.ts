@@ -33,7 +33,8 @@
  * mis-attributed one is not.
  */
 import { normalizeText } from './lawText'
-import { lawNameScore, type DraftArticle } from './lawTitles'
+import type { DraftArticle } from './lawTitles'
+import { lawNameScore } from './lawtext/lawNames'
 import { pickClearWinner } from './text/clearWinner'
 
 /**

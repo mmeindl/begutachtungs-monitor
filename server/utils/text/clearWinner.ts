@@ -11,7 +11,7 @@
  * The threshold is the caller's: it stays at the call site, under its own
  * name, because it was measured there.
  */
-import { lawNameScore } from '../lawTitles'
+import { lawNameScore } from '../lawtext/lawNames'
 
 /**
  * The one candidate whose name matches `name` best — null if the best is

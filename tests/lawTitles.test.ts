@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph, articleBlocks, draftArticles, isAmendmentClause, lawNameScore, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
+import { addressedParagraph, articleBlocks, draftArticles, isAmendmentClause, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
 import { parseRisXml } from '../server/utils/lawText'
 import { unitKey } from '../shared/utils/diffKey'
 
@@ -86,23 +86,6 @@ describe('promulgationByArticle', () => {
   it('yields nothing for a Stammgesetz — it creates law rather than changing it', () => {
     const blocks = parseRisXml(doc('<ueberschrift typ="titel">Bundesgesetz über etwas Neues</ueberschrift><absatz typ="abs"><gldsym>§ 1.</gldsym> Dieses Gesetz gilt.</absatz>'))
     expect(promulgationByArticle(blocks).size).toBe(0)
-  })
-})
-
-describe('lawNameScore — die Vorlage zählt nicht als Inhalt', () => {
-  // Ein Entwurf ohne Artikelzeile trägt seinen Titel als Satz. Die Verben
-  // „geändert wird" ließen die Übereinstimmung auf 0,50 fallen, und
-  // `pickByName` verlangt 0,60 — das LMSVG war damit gegen das zweite Gesetz
-  // desselben BGBl nicht mehr bestimmbar (70/ME, 20 Einheiten ohne Namen).
-  it('matches a sentence-form draft title against the RIS Kurztitel', () => {
-    const sentence = 'Bundesgesetz, mit dem das Lebensmittelsicherheits- und Verbraucherschutzgesetz geändert wird'
-    expect(lawNameScore(sentence, 'Lebensmittelsicherheits- und Verbraucherschutzgesetz')).toBe(1)
-    expect(lawNameScore(sentence, 'Kontroll- und Digitalisierungs-Durchführungsgesetz')).toBe(0)
-  })
-
-  it('still separates two namesakes of one Bundesgesetzblatt', () => {
-    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bausparkassengesetz')).toBe(0)
-    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bankwesengesetz')).toBe(1)
   })
 })
 
@@ -350,19 +333,6 @@ describe('draftArticles', () => {
     ])
     // …and the two laws stay apart in the promulgation map, which keys on it.
     expect([...promulgationByArticle(parseRisXml(xml)).keys()]).toEqual(['Artikel 1', 'Artikel 2'])
-  })
-})
-
-describe('lawNameScore', () => {
-  // One BGBl regularly creates several laws: 532/1993 the Bankwesengesetz and
-  // the Bausparkassengesetz, 663/1994 the Umsatzsteuergesetz and its Anhang.
-  // The amending Artikel's own title is what separates them.
-  it('separates the laws one BGBl created', () => {
-    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bankwesengesetz')).toBe(1)
-    expect(lawNameScore('Änderung des Bankwesengesetzes', 'Bausparkassengesetz')).toBe(0)
-    expect(lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994')).toBeGreaterThan(
-      lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994 – Anhang (Binnenmarkt)'),
-    )
   })
 })
 

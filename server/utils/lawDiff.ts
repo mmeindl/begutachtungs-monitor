@@ -24,7 +24,7 @@
  */
 import type { LawDiffSegment, LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../shared/types'
 import { compareKey, normalizeText, type LawUnit } from './lawText'
-import { jaccardSimilarity } from './lawtext/lawNames'
+import { articleNameTokens, jaccardSimilarity } from './lawtext/lawNames'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000
@@ -104,27 +104,6 @@ function bagSimilarity(a: string[], b: string[]): number {
 // Article pairing
 // ---------------------------------------------------------------------------
 
-// A Set, not a \b regex: JavaScript word boundaries are ASCII-only, "änderung" would survive.
-const ARTICLE_BOILERPLATE = new Set(
-  'bundesgesetz bundesverfassungsgesetz mit dem der das die des und sowie geändert geaendert wird werden änderung aenderung novelle artikel erlassen aufgehoben ein eine eines über ueber'.split(
-    ' ',
-  ),
-)
-
-/** Token set naming the law an article is about, stemmed, boilerplate removed. */
-export function lawNameTokens(title: string | null): Set<string> {
-  const t = normalizeText(title ?? '')
-    .toLowerCase()
-    .replace(/ß/g, 'ss')
-    .replace(/[„“"'(),;:.\-–]/g, ' ')
-  const out = new Set<string>()
-  for (const raw of t.split(/\s+/)) {
-    if (!raw || ARTICLE_BOILERPLATE.has(raw) || (raw.length < 3 && !/^\d+$/.test(raw))) continue
-    out.add(raw.replace(/(gesetz|buch|ordnung|statut|vertrag)es$/, '$1').replace(/(gesetz|buch)s$/, '$1'))
-  }
-  return out
-}
-
 interface ArticleRef {
   article: string | null
   number: string | null
@@ -159,8 +138,8 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
   }
   const scored: { m: ArticleRef; r: ArticleRef; s: number }[] = []
   for (const m of fromArts) {
-    const mt = lawNameTokens(m.article)
-    for (const r of toArts) scored.push({ m, r, s: jaccardSimilarity(mt, lawNameTokens(r.article)) })
+    const mt = articleNameTokens(m.article)
+    for (const r of toArts) scored.push({ m, r, s: jaccardSimilarity(mt, articleNameTokens(r.article)) })
   }
   scored.sort((x, y) => y.s - x.s)
   for (const { m, r, s } of scored) {

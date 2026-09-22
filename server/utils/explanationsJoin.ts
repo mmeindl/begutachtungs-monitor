@@ -22,8 +22,7 @@
  */
 import type { DraftArticle } from './lawTitles'
 import type { ExplanationsDocument } from './explanations'
-import { lawNameTokens } from './lawDiff'
-import { jaccardSimilarity } from './lawtext/lawNames'
+import { articleNameTokens, jaccardSimilarity } from './lawtext/lawNames'
 // Relative, nicht über `#shared`: Dieses Modul ist rein, damit vitest und die
 // Messskripte es direkt ausführen — wie `lawDiff.ts` es hält.
 import { explanationParaId } from '../../shared/utils/explanationKey'
@@ -75,11 +74,11 @@ function articleKeyOf(heading: string | null, articles: readonly DraftArticle[])
     const hit = articles.find((a) => a.numeral?.toLowerCase() === numeral)
     if (hit?.key) return hit.key
   }
-  const tokens = lawNameTokens(heading)
+  const tokens = articleNameTokens(heading)
   let best: { key: string; score: number } | null = null
   for (const article of articles) {
     if (!article.key) continue
-    const score = jaccardSimilarity(tokens, lawNameTokens(article.title ?? article.key))
+    const score = jaccardSimilarity(tokens, articleNameTokens(article.title ?? article.key))
     if (score >= NAME_MIN_JACCARD && (!best || score > best.score)) best = { key: article.key, score }
   }
   return best?.key ?? null
