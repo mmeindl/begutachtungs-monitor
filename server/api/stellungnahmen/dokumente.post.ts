@@ -21,8 +21,8 @@
  * and town — none of it is cached and none of it leaves this handler. What
  * is returned is a URL and a kind, nothing personal.
  */
+import type { StatementDocument } from '#shared/types'
 import { parseStatementRef } from '#shared/utils/statementRef'
-import type { StatementDocument } from '../../utils/mappers'
 import { getStatementDocument } from '../../utils/statementDocument'
 
 /** One viewport's worth of rows, with room to spare — not a whole list. */

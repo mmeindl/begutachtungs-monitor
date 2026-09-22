@@ -336,7 +336,7 @@ export function viewOfRis(c: RisConsultation): EntryView {
  * Liste 81 keinen vorausgehenden Entwurf fand. Auf `unknown` — kein Zeiger,
  * aber ein plausibler Entwurf — verlinkt die Zeile genauso nach außen und
  * sagt dazu nichts. Bis 18.09.2026 waren beides dieselbe Zeile, und der
- * fehlende Zeiger allein trug den Satz (`shared/types.ts`, `OpenVorlage`).
+ * fehlende Zeiger allein trug den Satz (`shared/types/dashboard.ts`, `OpenVorlage`).
  */
 export function viewOfVorlage(v: OpenVorlage): EntryView {
   const c = v.consultation

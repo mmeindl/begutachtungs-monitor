@@ -16,11 +16,11 @@
  * is kept is the resolved target — a URL, nothing personal — in the derived
  * layer, for a week: a filed Stellungnahme does not change.
  */
+import type { StatementDocument } from '#shared/types'
 import { DERIVED_CACHE } from './cacheBase'
 import {
   pickStatementDocument,
   statementPageUrl,
-  type StatementDocument,
   type StatementItemType,
 } from './mappers'
 import { fetchGegenstand } from './parliament'

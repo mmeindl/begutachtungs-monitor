@@ -64,7 +64,7 @@ amendments after Begutachtung are **wins** and are shown just as prominently
 as standstill. No blame counters, no "ignored" rhetoric, no red accusation
 badges. Tone: factual, precise, no exclamation marks.
 
-## 5. API contract (types: `shared/types.ts` — single source)
+## 5. API contract (types: `shared/types/` — single source)
 
 | Route | Response | Source |
 |---|---|---|

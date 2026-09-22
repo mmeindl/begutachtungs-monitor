@@ -7,7 +7,7 @@
  * Jahrgang des Bundesgesetzblatts, und die Seite soll rendern, bevor der da
  * ist — dieselbe Aufteilung wie bei den Erläuterungen und den Vergleichen.
  *
- * Die Zustände, die zurückkommen, sind in `shared/types.ts` benannt. Der
+ * Die Zustände, die zurückkommen, sind in `shared/types/bgbl.ts` benannt. Der
  * wichtigste ist `ausstehend`: Eine Frist, die vor sechs Wochen endete, ist
  * keine Auskunft über das Ressort, sondern über die Uhr.
  */

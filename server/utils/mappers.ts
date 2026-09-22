@@ -312,8 +312,6 @@ export function mapVorlageRow(row: unknown[]): VorlageRow {
 /** The item types a Stellungnahme comes as — also the path segment of its page. */
 export type StatementItemType = 'SNME' | 'SN'
 
-export type { StatementDocument }
-
 export function statementPageUrl(gp: string, ityp: StatementItemType, inr: number): string {
   return `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}`
 }
