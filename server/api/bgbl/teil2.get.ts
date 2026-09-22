@@ -1,17 +1,17 @@
 /**
- * GET /api/bgbl/teil2 → wie viele Kundmachungen des Bundesgesetzblatts
- * Teil II je Jahrgang vorliegen (docs/architecture.md §12.32).
+ * GET /api/bgbl/teil2 → how many Kundmachungen of Bundesgesetzblatt Teil II
+ * exist per year (docs/architecture.md §12.32).
  *
- * DAS IST DER AUFWÄRMER, und deshalb gibt es ihn. Der Abgleich einer
- * Verordnungsseite liest bis zu drei Jahrgänge, das sind kalt rund 21
- * Anfragen ans RIS — die dürfen nicht auf einem Besucher landen
- * (`deploy/systemd/begutachtungs-monitor-prewarm.service`, dieselbe
- * Überlegung wie bei der RIS↔ME-Karte). Aufgerufen wird er nächtlich und nach
- * jedem Deploy, weil der Nitro-Cache in Produktion im Speicher liegt.
+ * THIS IS THE PREWARM, and that is why it exists. Matching one Verordnung
+ * page reads up to three years, which is around 21 requests to RIS when
+ * cold — and those must not land on a visitor
+ * (`deploy/systemd/begutachtungs-monitor-prewarm.service`, the same
+ * reasoning as for the RIS↔ME map). It is called nightly and after every
+ * deploy, because the Nitro cache lives in memory in production.
  *
- * Die Zahlen sind dabei kein Beiwerk: Ein Jahrgang, der plötzlich leer ist,
- * ist genau das stille Versagen, das ein „nicht kundgemacht" auf jeder
- * Verordnungsseite erzeugen würde.
+ * The numbers are not a garnish: a year that is suddenly empty is exactly
+ * the silent failure that would produce a „nicht kundgemacht" on every
+ * Verordnung page.
  */
 
 // Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.

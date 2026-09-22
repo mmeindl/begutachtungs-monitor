@@ -7,14 +7,14 @@
  * ones are resolved, so this costs at most five Gegenstand fetches plus
  * their RV leg, all through the 30-min leaf caches.
  *
- * WHAT IT NO LONGER DOES (18.09.2026, §12.23): resolve a pool of the most
- * recently CLOSED consultations for a "Zuletzt abgeschlossen" section. Those
- * chips were predictable from the date beside them — median ME→RV latency is
- * 40 days and the pool's rows were two weeks old, so the section said
- * "bisher keine Regierungsvorlage" four times over and called it an outcome.
- * The end of the chain is now read where it actually stands, on the Vorlage:
- * `/api/dashboard/enacted`. With the pool went its extension probe, which
- * existed only to keep one progressed row on screen.
+ * WHAT IT NO LONGER DOES (18.09.2026): resolve a pool of the most recently
+ * CLOSED consultations for a "Zuletzt abgeschlossen" section — median ME→RV
+ * latency is 40 days and the pool's rows were two weeks old, so it said
+ * "bisher keine Regierungsvorlage" four times over and called it an outcome
+ * (docs/architecture.md §12.23). The end of the chain is now read where it
+ * actually stands, on the Vorlage: `/api/dashboard/enacted`. With the pool
+ * went its extension probe, which existed only to keep one progressed row on
+ * screen.
  */
 import type { ClosedOutcome, DraftSummary, DashboardOutcomes } from '#shared/types'
 import { rankByStatements } from '#shared/utils/draftOrder'

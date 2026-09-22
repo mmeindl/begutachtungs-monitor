@@ -29,7 +29,7 @@ import type { DashboardSecondRound, OpenVorlage } from '#shared/types'
 /** Upstream's "still before the Nationalrat" (`mapVorlageRow`). */
 const STATUS_IN_HOUSE = '2'
 
-/** Eine Zeile, bevor die Gegenprobe über den fehlenden Zeiger entschieden hat. */
+/** One row, before the cross-check has decided about the missing pointer. */
 type PendingVorlage = Omit<OpenVorlage, 'consultation'> & {
   consultation: OpenVorlage['consultation'] | { kind: 'unresolved' }
 }
@@ -79,14 +79,14 @@ export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
   const rows = resolved.filter((v): v is PendingVorlage => v !== null)
 
   /**
-   * Die Gegenprobe für jede Zeile ohne Zeiger: erst hier, weil sie Liste 81
-   * braucht — EIN Abruf für alle offenen Zeilen zusammen, und keiner, solange
-   * jede Vorlage ihren Entwurf selbst nennt (der Normalfall: 85 von 117 auf
-   * GP XXVIII). Die Liste ist ohnehin für jede Seite des Monitors im Cache.
+   * The cross-check for every row without a pointer: only here, because it
+   * needs list 81 — ONE fetch for all open rows together, and none at all as
+   * long as every Vorlage names its own draft (the normal case: 85 of 117 in
+   * GP XXVIII). The list is in the cache for every page of the monitor
+   * anyway.
    *
-   * Scheitert sie, bleibt die Zeile `unknown` und sagt nichts: ein Ausfall
-   * der Prüfung darf nicht in eine Behauptung umschlagen, die sie belegen
-   * sollte.
+   * If it fails, the row stays `unknown` and says nothing: a failure of the
+   * check must not turn into the claim it was meant to support.
    */
   const unresolved = rows.filter((v) => v.consultation.kind === 'unresolved')
   const drafts = unresolved.length ? await getDraftsForGp(gp).then((d) => d.items).catch(() => null) : []
