@@ -26,7 +26,7 @@
  * draft carries one. Together they decide what a gate may show as text.
  */
 import { diffTokens } from './lawDiff'
-import { plainText, type LawNode } from './lawStructure'
+import { lawTextNodes, plainText, type LawNode } from './lawStructure'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
 import { addressedSentence, resolveTarget } from './lawApply'
 import { punctuationTokens } from './text/punctuationTokens'
@@ -60,10 +60,6 @@ export const SIZE_TOLERANCE = 4
 
 /** "(2)", "3.", "b)" — and "f.", the Litera style with a full stop (Medizinproduktegesetz, 2026-09-09). */
 const MARKER_START = /^(?:\(\d+[a-z]*\)|\d+[a-z]*\.|[a-z][.)])(?=\s|$)/
-
-function textNodes(n: LawNode): LawNode[] {
-  return [n, ...n.children.flatMap(textNodes)]
-}
 
 function multisetMinus(a: readonly string[], b: readonly string[]): string[] {
   const counts = new Map<string, number>()
@@ -198,7 +194,7 @@ export function guardParagraph(
   if (seam(afterText) > seam(beforeText)) flags.add('fuge')
 
   // Leak: a marker left inside a node's text — the payload parser missed a level.
-  const leaks = (n: LawNode): number => textNodes(n).filter((x) => MARKER_START.test(x.text)).length
+  const leaks = (n: LawNode): number => lawTextNodes(n).filter((x) => MARKER_START.test(x.text)).length
   if (leaks(after) > (beforeTree ? leaks(beforeTree) : 0)) flags.add('marker')
 
   // Unexplained: words the engine changed that no operand names.

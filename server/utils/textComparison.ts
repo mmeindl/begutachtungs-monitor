@@ -436,8 +436,26 @@ interface Element {
   close: number
 }
 
+/**
+ * One `RegExp` per tag instead of one per call. `outermost` runs three or more
+ * times per row of an annex, and the tags it is ever asked for are `tr`, `td`
+ * and `table`. `lastIndex` is reset before every use, because a shared global
+ * regex carries it from one call into the next.
+ */
+const TAG_RE = new Map<string, RegExp>()
+
+function tagRe(tag: string): RegExp {
+  let re = TAG_RE.get(tag)
+  if (!re) {
+    re = new RegExp(`<(/?)${tag}\\b([^>]*)>`, 'gi')
+    TAG_RE.set(tag, re)
+  }
+  re.lastIndex = 0
+  return re
+}
+
 function outermost(html: string, tag: string): Element[] {
-  const re = new RegExp(`<(/?)${tag}\\b([^>]*)>`, 'gi')
+  const re = tagRe(tag)
   const out: Element[] = []
   let depth = 0
   let start = -1

@@ -24,7 +24,8 @@
  * caller can only honour that promise if it is told which instructions were
  * lost, and the harness can only report the coverage if it is countable.
  */
-import { segmentUnits, type LawUnit, type TextBlock } from './lawText'
+import { segmentUnits, type TextBlock } from './lawText'
+import { draftTextOf } from './annex/draftText'
 import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from './novao'
 
 /** One Novellierungsanordnung (or one § of a Stammgesetz), and what it addresses. */
@@ -44,27 +45,12 @@ export interface DraftUnit {
   aliases: [string, string][]
   /** Why `paras` is empty — null whenever it is not. */
   reason: string | null
-  /** The unit's text, Gliederungssymbole included, as `annexCheck.draftTextOf` counts them. */
+  /** The unit's text, Gliederungssymbole included, as `annex/draftText.draftTextOf` counts them. */
   text: string
 }
 
 /** `Z4` addresses nothing readable: the reason of its own instruction line, else this. */
 const NO_INSTRUCTION = 'keine Novellierungsanordnung'
-
-/**
- * The unit's text with its Gliederungssymbole, exactly as `draftTextOf` reads
- * the whole draft.
- *
- * `LawUnit.text` drops them — it is the ME→RV comparison's text, where a
- * renumbered § has to compare equal. Here the marker is text: the annex
- * prints "§ 5a." in the column it shows as new, so the draft has to be
- * allowed to have written it. Keeping the two readings identical also keeps
- * every per-§ bag a *subset* of the whole-draft bag, which is what makes the
- * narrower reference strictly stronger and never differently wrong.
- */
-function textOf(unit: LawUnit): string {
-  return unit.blocks.map((b) => `${b.gld ?? ''} ${b.text}`).join(' ')
-}
 
 /**
  * A draft's instructions, each with the §§ it addresses.
@@ -120,7 +106,7 @@ export function draftUnits(blocks: readonly TextBlock[]): DraftUnit[] {
       paras: [...paras],
       aliases,
       reason: paras.size > 0 ? null : (reason ?? (instructions.length === 0 ? NO_INSTRUCTION : NO_PARAGRAPH_ADDRESSED)),
-      text: textOf(unit),
+      text: draftTextOf(unit.blocks),
     }
   })
 }

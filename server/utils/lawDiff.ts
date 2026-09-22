@@ -24,6 +24,7 @@
  */
 import type { LawDiffSegment, LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../shared/types'
 import { compareKey, normalizeText, type LawUnit } from './lawText'
+import { jaccardSimilarity } from './lawtext/lawNames'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000
@@ -124,13 +125,6 @@ export function lawNameTokens(title: string | null): Set<string> {
   return out
 }
 
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (!a.size || !b.size) return 0
-  let inter = 0
-  for (const x of a) if (b.has(x)) inter++
-  return inter / (a.size + b.size - inter)
-}
-
 interface ArticleRef {
   article: string | null
   number: string | null
@@ -166,7 +160,7 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
   const scored: { m: ArticleRef; r: ArticleRef; s: number }[] = []
   for (const m of fromArts) {
     const mt = lawNameTokens(m.article)
-    for (const r of toArts) scored.push({ m, r, s: jaccard(mt, lawNameTokens(r.article)) })
+    for (const r of toArts) scored.push({ m, r, s: jaccardSimilarity(mt, lawNameTokens(r.article)) })
   }
   scored.sort((x, y) => y.s - x.s)
   for (const { m, r, s } of scored) {

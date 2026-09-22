@@ -355,6 +355,11 @@ export function plainText(node: LawNode): string {
   return [...own, ...node.children.map(plainText)].join(' ').replace(/\s+/g, ' ').trim()
 }
 
+/** Every text-carrying node in the subtree, in printed order — the node itself first. */
+export function lawTextNodes(node: LawNode): LawNode[] {
+  return [node, ...node.children.flatMap(lawTextNodes)]
+}
+
 /** Direct child at `level` with `id`, or null. */
 export function childById(node: LawNode, level: NodeLevel, id: string): LawNode | null {
   return node.children.find((c) => c.level === level && c.id === id) ?? null

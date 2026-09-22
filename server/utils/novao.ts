@@ -469,6 +469,21 @@ export type NovaoOp =
   /** "Im Inhaltsverzeichnis …" — derivable from the text, never applied */
   | { kind: 'toc' }
 
+/**
+ * The unit an operation addresses: its `target`, or the `anchor` an insertion
+ * hangs behind. Null only for `toc`, the one kind that addresses nothing —
+ * the table of contents is derived from the law text and never applied.
+ *
+ * Named for the op, not for the address: `explanations.addressOf` already
+ * holds `addressOf` in the auto-import namespace, and it answers a different
+ * question (which §§ a heading of the Erläuterungen names).
+ */
+export function opAddress(op: Exclude<NovaoOp, { kind: 'toc' }>): NovaoAddress
+export function opAddress(op: NovaoOp): NovaoAddress | null
+export function opAddress(op: NovaoOp): NovaoAddress | null {
+  return 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+}
+
 export interface ParsedInstruction {
   /** The operations this line asks for; a line may carry two (…ersetzt sowie … angefügt) */
   ops: NovaoOp[]
@@ -953,7 +968,7 @@ export function addressedUnits(line: string, inherited?: NovaoAddress | null): A
     // The table of contents is derived from the law text, never text of its
     // own; an instruction that only touches it addresses no § (`NovaoOp`).
     if (op.kind === 'toc') continue
-    const address = 'target' in op ? op.target : op.anchor
+    const address = opAddress(op)
     if (address.para) {
       paras.add(address.para)
       // A trailing enumeration attaches to the address's *deepest* component,

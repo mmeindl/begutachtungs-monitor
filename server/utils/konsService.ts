@@ -41,6 +41,7 @@ import { applyNovelle, instructionsFromUnits, type Instruction, type StandingLaw
 import { bodyText, parseKonsParagraph, plainText, type LawNode } from './lawStructure'
 import { parseRisXml, segmentUnits } from './lawText'
 import { articleBlocks } from './lawTitles'
+import { opAddress } from './novao'
 import { getRisMapForGp } from './ris/begutCorpus'
 import { mapWithConcurrency } from './pool'
 import type { KonsParagraphRef } from './risKons'
@@ -210,7 +211,7 @@ export const getConsolidatedText = defineCachedFunction(
         const touching: { instruction: Instruction; result: (typeof results)[number] }[] = instructions
           .map((instruction, i) => ({ instruction, result: results[i]! }))
           .filter(({ instruction: { op, payload } }) => {
-            const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+            const address = opAddress(op)
             if (address?.level === 'document') return true
             if (address?.para && bareParaId(address.para) === id) return true
             if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)

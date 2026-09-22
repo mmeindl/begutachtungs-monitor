@@ -24,7 +24,8 @@
 import type { LawDiffUnit } from '../../shared/types'
 import type { TextBlock } from './lawText'
 import { normalizeText } from './lawText'
-import { parseInstruction } from './novao'
+import { opAddress, parseInstruction } from './novao'
+import { jaccardSimilarity } from './lawtext/lawNames'
 
 /** A promulgation citation, split the way RIS stores it. */
 export interface BgblCitation {
@@ -160,12 +161,7 @@ function titleTokens(title: string): Set<string> {
  * noun and a year, so word overlap decides and word order does not.
  */
 export function lawNameScore(a: string, b: string): number {
-  const x = titleTokens(a)
-  const y = titleTokens(b)
-  if (x.size === 0 || y.size === 0) return 0
-  let shared = 0
-  for (const w of x) if (y.has(w)) shared++
-  return shared / (x.size + y.size - shared)
+  return jaccardSimilarity(titleTokens(a), titleTokens(b))
 }
 
 /**
@@ -404,7 +400,7 @@ export function addressedParagraph(line: string): string | null {
   for (const op of ops) {
     if (op.kind === 'toc' || op.kind === 'container') continue
     if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return null
-    const address = 'target' in op ? op.target : op.anchor
+    const address = opAddress(op)
     if (address.para) paras.add(address.para)
   }
   // Several paragraphs in one instruction have no single name.

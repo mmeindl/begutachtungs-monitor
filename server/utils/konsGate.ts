@@ -39,6 +39,7 @@
  */
 
 import type { Instruction } from './lawApply'
+import { opAddress } from './novao'
 import type { ConsolidatedWithheldCause } from '../../shared/types'
 import { bareParaId } from './text/designation'
 
@@ -124,7 +125,7 @@ export function addressedParagraphs(
 ): string[] {
   const out = new Set<string>()
   for (const { op, payload } of instructions) {
-    const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+    const address = opAddress(op)
     if (address?.para) {
       const id = bareParaId(address.para)
       if (id) out.add(id)

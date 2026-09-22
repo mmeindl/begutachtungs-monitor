@@ -17,9 +17,9 @@
  * one refused operation must be shown as instructions, not as text — the
  * caller enforces that, `unresolved` reports it.
  */
-import { childById, makeNode, plainText, type LawNode, type NodeLevel } from './lawStructure'
+import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from './lawStructure'
 import { normalizeText, type LawUnit } from './lawText'
-import { expandRange, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
+import { expandRange, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId } from './text/designation'
 
 export interface StandingLaw {
@@ -377,11 +377,6 @@ export function resolveTarget(law: StandingLaw, a: NovaoAddress, overrideDeepest
 // Text operations
 // ---------------------------------------------------------------------------
 
-/** Every text-carrying node in the subtree, in printed order. */
-function textNodes(node: LawNode): LawNode[] {
-  return [node, ...node.children.flatMap(textNodes)]
-}
-
 function countOccurrences(haystack: string, needle: string): number {
   if (!needle) return 0
   let n = 0
@@ -539,7 +534,7 @@ function phraseSlots(law: StandingLaw, a: NovaoAddress): Slot[] | null {
       slots.push(only)
       continue
     }
-    slots.push(...textNodes(node).map(textSlot))
+    slots.push(...lawTextNodes(node).map(textSlot))
   }
   return slots
 }
@@ -1008,7 +1003,7 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
   for (let i = 0; i < instructions.length; i++) {
     const instruction = instructions[i]!
     const { op, line } = instruction
-    const target = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+    const target = opAddress(op)
     const para = target?.para ?? null
     let reason: string | null
     try {

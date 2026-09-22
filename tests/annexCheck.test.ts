@@ -25,7 +25,6 @@ import {
   displayedChangeRows,
   draftBags,
   draftReference,
-  draftTextOf,
   draftWordBag,
   insertedStretches,
   lawCheck,
@@ -353,15 +352,6 @@ describe('rightColumnCheck — „nicht im Entwurf"', () => {
     const check = rightColumnCheck(foreignRows(), STANDING, NO_DRAFT)
     expect(check.notInDraft).toBe(false)
     expect(check.missingWords).toBe(check.newWords)
-  })
-})
-
-describe('draftTextOf', () => {
-  it('keeps the Gliederungssymbol, because a § marker is text on this side', () => {
-    expect(draftTextOf([
-      { kind: 'abs', cls: 'absatz/abs', text: 'Die Behörde entscheidet.', gld: '§ 5.' },
-      { kind: 'abs', cls: 'absatz/abs', text: 'Der Bescheid ergeht schriftlich.', gld: null },
-    ])).toBe('§ 5. Die Behörde entscheidet.  Der Bescheid ergeht schriftlich.')
   })
 })
 

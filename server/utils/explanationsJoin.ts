@@ -23,6 +23,7 @@
 import type { DraftArticle } from './lawTitles'
 import type { ExplanationsDocument } from './explanations'
 import { lawNameTokens } from './lawDiff'
+import { jaccardSimilarity } from './lawtext/lawNames'
 // Relative, nicht über `#shared`: Dieses Modul ist rein, damit vitest und die
 // Messskripte es direkt ausführen — wie `lawDiff.ts` es hält.
 import { explanationParaId } from '../../shared/utils/explanationKey'
@@ -58,13 +59,6 @@ const ARTICLE_NUMERAL_RE = /^(?:zu\s+)?art(?:ikel)?\.?\s*([0-9]+[a-z]?|[ivxlc]+)
  */
 const NAME_MIN_JACCARD = 0.5
 
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (!a.size || !b.size) return 0
-  let common = 0
-  for (const t of a) if (b.has(t)) common++
-  return common / (a.size + b.size - common)
-}
-
 /**
  * Welches Gesetz des Pakets eine Passage erklärt.
  *
@@ -85,7 +79,7 @@ function articleKeyOf(heading: string | null, articles: readonly DraftArticle[])
   let best: { key: string; score: number } | null = null
   for (const article of articles) {
     if (!article.key) continue
-    const score = jaccard(tokens, lawNameTokens(article.title ?? article.key))
+    const score = jaccardSimilarity(tokens, lawNameTokens(article.title ?? article.key))
     if (score >= NAME_MIN_JACCARD && (!best || score > best.score)) best = { key: article.key, score }
   }
   return best?.key ?? null

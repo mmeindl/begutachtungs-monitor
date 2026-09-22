@@ -57,6 +57,10 @@
  * turned every one of those states into a vouched-for comparison.
  */
 import { draftUnits } from './annexDraft'
+// The whole draft is rule 2's *fallback* rather than its reference since
+// 2026-09-10: what a § may draw on where the draft's instructions could not be
+// segmented at all (`draftReference`). Everything else reads them one by one.
+import { draftTextOf } from './annex/draftText'
 import { normalizeText, type TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import { NO_PARAGRAPH_ADDRESSED } from './novao'
@@ -422,19 +426,6 @@ export function insertedStretches(rows: readonly ComparisonRow[]): string[] {
     }
   }
   return out
-}
-
-/**
- * The draft's own Gesetzestext as one string — `gld` included, since a § marker
- * is text here.
- *
- * Since 2026-09-10 this is rule 2's *fallback* rather than its reference: the
- * whole draft is what a § may draw on where the draft's instructions could not
- * be segmented at all (`draftReference`). Everything else reads them one by
- * one.
- */
-export function draftTextOf(blocks: readonly TextBlock[]): string {
-  return blocks.map((b) => `${b.gld ?? ''} ${b.text}`).join(' ')
 }
 
 const withoutHyphens = (w: string): string => w.replace(/-/g, '')

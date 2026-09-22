@@ -29,6 +29,11 @@ import type { LawDiffUnit, ReasoningDiffEntry } from '../../shared/types'
 import { unitKey } from '../../shared/utils/diffKey'
 import { diffTokens } from './lawDiff'
 import { addressedParagraphOf } from './lawTitles'
+// The key of `passagesByParagraph`, and the same reading the page looks up
+// with. Its `\b` changes nothing for the designations `parseAddress` builds:
+// 0 of 4.215 differ over the offline corpus (22.09.2026). It bites only on a
+// raw Gliederungssymbol such as § 365m1, which never reaches here.
+import { explanationParaId } from '../../shared/utils/explanationKey'
 
 /** Unterhalb davon sind es Satzzeichen und Leerraum, keine Überarbeitung. */
 const CHANGED_AT = 0.02
@@ -43,11 +48,6 @@ export interface ReasoningComparison {
   /** „§ 11" → der Vergleich seiner Begründung, einmal je Paragraph. */
   paragraphs: Record<string, ReasoningDiffEntry>
   stats: { compared: number; changed: number }
-}
-
-/** „§ 54c" → „54c", der Schlüssel von `passagesByParagraph`. */
-function passageId(para: string): string | null {
-  return /^\s*§+\s*(\d+[a-z]*)/i.exec(para)?.[1]?.toLowerCase() ?? null
 }
 
 /**
@@ -87,7 +87,7 @@ export function compareReasoning(
 
   for (const unit of units) {
     const para = addressedParagraphOf(unit)
-    const id = para ? passageId(para) : null
+    const id = explanationParaId(para)
     if (!para || !id || ambiguous.has(para) || skipped.has(para)) continue
 
     if (!out.paragraphs[para]) {
