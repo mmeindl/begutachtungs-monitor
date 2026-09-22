@@ -19,8 +19,8 @@
  * ("Allgemeiner Teil", "Besonderer Teil", and inside the latter the per-Artikel
  * headings), `<ueberschrift typ="erll">` the passage headings — which in the
  * Besonderer Teil read „Zu Z 4 (§ 54c Abs. 1a und 1b):", i.e. the same
- * Novellierungsanordnung-plus-§ address `annexDraft.ts` already computes for
- * the Textgegenüberstellung.
+ * Novellierungsanordnung-plus-§ address `annex/annexDraft.ts` already
+ * computes for the Textgegenüberstellung.
  *
  * FOUR TRAPS, every one of them found by measuring the corpus rather than by
  * reading one document (`pnpm corpus:erlaeuterungen`):
@@ -196,13 +196,13 @@ const ITEM_RE = /\bZ\s*(\d+[a-z]?)/g
  */
 const PARA_RANGE_RE = /§§\s*(\d+)\s*(?:bis|–|-)\s*(\d+)/gi
 /**
- * „§§ 12 und 13", „§§ 4, 5 und 6" — eine Aufzählung, bei der nur der erste
- * Paragraph das Zeichen trägt.
+ * „§§ 12 und 13", „§§ 4, 5 und 6" — an enumeration in which only the first
+ * Paragraph carries the sign.
  *
- * Dieselbe Lücke wie beim Bereich darüber und aus demselben Grund gefüllt:
- * Das Ressort erklärt beide Paragraphen in einem Atemzug, und ohne den
- * Ausdruck bekommt nur der erste die Begründung. Anders als beim Bereich
- * wird hier nichts erfunden — jede Nummer steht im Text.
+ * The same gap as for the range above, and filled for the same reason: the
+ * ressort explains both Paragraphen in one breath, and without the expression
+ * only the first one gets the Begründung. Unlike the range, nothing is
+ * invented here — every number stands in the text.
  */
 const PARA_LIST_RE = /§§\s*(\d+[a-z]?(?:\s*,\s*\d+[a-z]?)*)\s*(?:und|sowie)\s*(\d+[a-z]?)\b/gi
 /** A range longer than this is a citation habit, not an address — 45 of 45 measured ranges are far below. */
@@ -213,10 +213,10 @@ function uniq(values: string[]): string[] {
 }
 
 /**
- * Exportiert seit 22.09.2026: Die Erläuterungen der Regierungsvorlage gibt es
- * nur als Word-HTML des Parlaments, nicht als typisiertes RIS-XML, und ein
- * zweiter Ausdruck für dieselbe Adresse wäre eine zweite Gelegenheit, eine
- * Passage an den falschen Paragraphen zu hängen (`explanationsHtml.ts`).
+ * Exported since 22.09.2026: the Regierungsvorlage's Erläuterungen exist only
+ * as Parliament's Word HTML, not as typed RIS XML, and a second expression
+ * for the same address would be a second chance to hang a passage on the
+ * wrong Paragraph (`explanations/explanationsHtml.ts`).
  */
 export function addressOf(heading: string): { paragraphs: string[]; items: string[] } {
   const paragraphs = [...heading.matchAll(PARA_RE)].map((m) => `§ ${m[1]!.toLowerCase()}`)
@@ -389,7 +389,7 @@ export function parseExplanations(xml: string): ExplanationsDocument {
  */
 const ADDRESS_HEADING_RE = /^zu\s+(?:§|z\s*\d|art\b|artikel\b|abs\b|anlage\b)/i
 
-/** Ob eine Überschrift eine Passage des Besonderen Teils eröffnet — geteilt mit `explanationsHtml.ts`. */
+/** Whether a heading opens a passage of the Besonderer Teil — shared with `explanations/explanationsHtml.ts`. */
 export function isAddressHeading(heading: string): boolean {
   return ADDRESS_HEADING_RE.test(normalizeText(heading).trim())
 }

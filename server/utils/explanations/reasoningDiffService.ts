@@ -1,31 +1,31 @@
 /**
- * „Hat sich die Begründung geändert?" — die Erläuterungen des Ressorts vom
- * Entwurf zur Regierungsvorlage, Paragraph für Paragraph
+ * „Hat sich die Begründung geändert?" — the ressort's Erläuterungen from the
+ * draft to the Regierungsvorlage, Paragraph by Paragraph
  * (docs/architecture.md §12.10b).
  *
- * Nuxt-Glue um `explanationsHtml.ts`. Gemessen, bevor es das hier gab: über
- * 64 auswertbare Paare der XXVIII. GP stehen 1.515 Paragraphen auf beiden
- * Seiten, und bei **728 davon (48 %)** ist die Begründung eine andere. Der
- * Vergleich zeigt bisher, wie sich der Gesetzestext ändert; das hier ist die
- * zweite Hälfte derselben Frage — was das Ressort dazu sagt, und ob es das
- * nach der Begutachtung anders sagt als davor.
+ * Nuxt glue around `explanations/explanationsHtml.ts`. Measured before this
+ * existed: over 64 evaluable pairs of GP XXVIII, 1.515 Paragraphen stand on
+ * both sides, and for **728 of them (48 %)** the Begründung is a different
+ * one. The comparison so far shows how the law text changes; this is the
+ * second half of the same question — what the ressort says about it, and
+ * whether it says that differently after the Begutachtung than before.
  *
- * BEIDE SEITEN VOM PARLAMENT, mit demselben Parser. Die Erläuterungen des
- * Entwurfs lägen auch im RIS als typisiertes XML, die der Regierungsvorlage
- * nicht. Ein Vergleich XML gegen Word-HTML misst zuerst die Konverter
- * (§12.12, sechste Messung), also liest `parseParliamentHtml` beide.
+ * BOTH SIDES FROM PARLIAMENT, with the same parser. The draft's Erläuterungen
+ * would also be in RIS as typed XML, the Regierungsvorlage's would not. A
+ * comparison of XML against Word HTML measures the converters first (§12.12,
+ * sixth measurement), so `parseParliamentHtml` reads both.
  *
- * NACH `unitKey` GESCHLÜSSELT wie die §-Namen (`paraTitleService.ts`), aus
- * demselben Grund: Die Einheiten des Vergleichs tragen die Nummerierung der
- * Regierungsvorlage, und ein zweiter, selbst gebauter Schlüssel wäre die
- * zweite Gelegenheit, eine Begründung an die falsche Änderung zu hängen.
+ * KEYED BY `unitKey` like the § names (`diff/paraTitleService.ts`), for the
+ * same reason: the comparison's units carry the Regierungsvorlage's
+ * numbering, and a second, home-made key would be the second chance to hang a
+ * Begründung on the wrong change.
  *
- * Die Regel selbst — ein Vergleich je Paragraph, mehrdeutige Nummern bleiben
- * weg — steht in `reasoningDiff.ts` und wird dort getestet.
+ * The rule itself — one comparison per Paragraph, ambiguous numbers stay out
+ * — lives in `explanations/reasoningDiff.ts` and is tested there.
  *
- * NUR ENTWURF → REGIERUNGSVORLAGE. Die späteren Stationen haben eigene
- * Berichte, keine fortgeschriebenen Erläuterungen; für sie gibt dieser
- * Dienst nichts zurück, statt etwas Ähnliches zu vergleichen.
+ * DRAFT → REGIERUNGSVORLAGE ONLY. The later stations have reports of their
+ * own, not continued Erläuterungen; for those this service returns nothing
+ * rather than comparing something similar.
  */
 import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
 import { parseExplanationsHtml, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
@@ -36,7 +36,7 @@ import { getGegenstand } from '../parliament/drafts'
 import { compareReasoning } from './reasoningDiff'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
-/** Das Erläuterungen-Dokument eines Gegenstands, als HTML — oder nichts. */
+/** One Gegenstand's Erläuterungen document, as HTML — or nothing. */
 async function explanationsDocument(gp: string, ityp: string, inr: number): Promise<TraceLink | null> {
   const detail = await getGegenstand(gp, ityp, inr)
   const group = mapDocuments(detail.content?.documents).find((d) => /^Erläuterungen$/i.test(d.title.trim()))
@@ -44,12 +44,12 @@ async function explanationsDocument(gp: string, ityp: string, inr: number): Prom
   return url ? { label: `Erläuterungen (${ityp === 'ME' ? 'Entwurf' : 'Regierungsvorlage'})`, url } : null
 }
 
-/** Die Passagen eines Dokuments als Text je Paragraphennummer. */
+/** A document's passages as text per Paragraph number. */
 function passageTexts(byParagraph: Map<string, HtmlPassage[]>): Map<string, string> {
   return new Map([...byParagraph].map(([id, passages]) => [id, passages.flatMap((p) => p.text).join(' ')]))
 }
 
-/** Die Antwort ohne Vergleich, mit dem Satz, der sagt warum — oder ohne. */
+/** The answer without a comparison, with the sentence that says why — or without one. */
 function empty(gp: string, inr: number, reason: string | null, sources: TraceLink[] = []): ReasoningDiffResponse {
   return {
     gp,
@@ -64,11 +64,11 @@ function empty(gp: string, inr: number, reason: string | null, sources: TraceLin
 }
 
 /**
- * Nur Entwurf → Regierungsvorlage, und die Prüfung steht VOR der gecachten
- * Funktion: Jede andere Strecke bekommt dieselbe leere Antwort, und ein Cache
- * dahinter legte für jede von ihnen einen Eintrag an, der nie etwas anderes
- * enthalten kann. Kein Satz für den Leser — die Seite fragt für diese
- * Strecken gar nicht erst (siehe Kopf).
+ * Draft → Regierungsvorlage only, and the test stands BEFORE the cached
+ * function: every other pairing gets the same empty answer, and a cache
+ * behind it would create an entry for each of them that can never hold
+ * anything else. No sentence for the reader — the page does not ask for those
+ * pairings at all (see the file header).
  */
 export function getReasoningDiff(gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ReasoningDiffResponse> {
   if (from !== 'me' || to !== 'rv') return Promise.resolve(empty(gp, inr, null))

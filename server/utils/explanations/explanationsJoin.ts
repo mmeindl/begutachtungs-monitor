@@ -1,71 +1,70 @@
 /**
- * Die Passagen des Besonderen Teils an ihrem Paragraphen
- * (docs/architecture.md §12.30) — die zweite Hälfte des Erläuterungen-Pakets.
+ * The passages of the Besonderer Teil at their Paragraph
+ * (docs/architecture.md §12.30) — the second half of the Erläuterungen
+ * package.
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
- * WARUM DAS GEHT, OHNE EIN ZWEITES AUSRICHTUNGSPROBLEM ZU ÖFFNEN. Der
- * Besondere Teil überschreibt seine Passagen mit genau der Adresse, die das
- * Werkzeug ohnehin berechnet: „Zu Z 4 (§ 54c Abs. 1a und 1b):" nennt die
- * Novellierungsanordnung und den Paragraphen, „Zu Art. 2 (Änderung des
- * KommAustria-Gesetzes)" das Gesetz des Pakets. Die Gegenüberstellung führt
- * ihre Zeilen unter denselben zwei Schlüsseln (`ComparisonRow.law`,
- * `ComparisonRow.para`). Der Join ist deshalb ein Nachschlagen, keine
- * Ähnlichkeitssuche über Text.
+ * WHY THIS OPENS NO SECOND ALIGNMENT PROBLEM. The Besonderer Teil heads its
+ * passages with exactly the address the tooling computes anyway: „Zu Z 4
+ * (§ 54c Abs. 1a und 1b):" names the Novellierungsanordnung and the
+ * Paragraph, „Zu Art. 2 (Änderung des KommAustria-Gesetzes)" the law of the
+ * package. The Gegenüberstellung carries its rows under the same two keys
+ * (`ComparisonRow.law`, `ComparisonRow.para`). So the join is a lookup and
+ * not a similarity search over text.
  *
- * WAS NICHT PASSIERT: Es wird nichts erfunden und nichts weggelassen. Eine
- * Passage, deren Gesetz sich nicht sicher bestimmen lässt, wird in einem
- * Paket mit mehreren Gesetzen **verworfen** statt irgendwo angehängt — § 5
- * des zweiten Gesetzes ist eine andere Bestimmung als § 5 des ersten, und die
- * falsche Begründung am Paragraphen wäre schlimmer als keine. Dieselbe Regel,
- * die `ComparisonRow.law` bereits befolgt.
+ * WHAT DOES NOT HAPPEN: nothing is invented and nothing left out. A passage
+ * whose law cannot be determined safely is **discarded** in a package of
+ * several laws rather than hung somewhere — § 5 of the second law is a
+ * different provision from § 5 of the first, and the wrong Begründung at a
+ * Paragraph would be worse than none. The same rule `ComparisonRow.law`
+ * already follows.
  */
 import type { DraftArticle } from '../lawtext/draftArticles'
 import type { ExplanationsDocument } from './risExplanations'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
-// Relative, nicht über `#shared`: Dieses Modul ist rein, damit vitest und die
-// Messskripte es direkt ausführen — wie `lawDiff.ts` es hält.
+// Relative rather than through `#shared`: this module is pure so vitest and
+// the measuring scripts run it directly — as `diff/lawDiff.ts` does.
 import { explanationParaId } from '../../../shared/utils/explanationKey'
 
-/** Eine Erläuterungspassage, adressiert an einen Paragraphen eines Gesetzes. */
+/** One Erläuterungen passage, addressed to one Paragraph of one law. */
 export interface ParagraphExplanation {
   /**
-   * Der Gesetzesschlüssel des Pakets, identisch mit `ComparisonRow.law`;
-   * null bei einem Entwurf, der nur ein Gesetz ändert — dort führen auch die
-   * Zeilen kein Gesetz.
+   * The package's law key, identical to `ComparisonRow.law`; null for a draft
+   * that amends one law only — there the rows carry no law either.
    */
   law: string | null
-  /** Die Nummer des Paragraphen, „54c" — wie `explanationParaId` sie bildet. */
+  /** The Paragraph's number, „54c" — as `explanationParaId` builds it. */
   para: string
-  /** Die Überschrift, wie das Ressort sie gedruckt hat. */
+  /** The heading, as the ressort printed it. */
   heading: string
-  /** Die Absätze der Passage, in Druckreihenfolge. */
+  /** The passage's paragraphs, in printed order. */
   text: string[]
 }
 
-/** „Zu Art. 2 (…)", „Zu Artikel 2 – …" — die Nummer des Artikels, wenn eine dasteht. */
+/** „Zu Art. 2 (…)", „Zu Artikel 2 – …" — the Artikel's number, where one stands there. */
 const ARTICLE_NUMERAL_RE = /^(?:zu\s+)?art(?:ikel)?\.?\s*([0-9]+[a-z]?|[ivxlc]+)\b/i
 
 /**
- * Ab wann zwei Gesetzesnamen als derselbe gelten, wenn die Passage keine
- * Artikelnummer nennt.
+ * From where on two law names count as the same, where the passage names no
+ * Artikel number.
  *
- * Gemessen (`pnpm corpus:erlaeuterungen -- --join`): Die Nummer trägt die
- * große Mehrheit der Fälle; der Namensvergleich ist der Rest, und bei 0,5
- * bleibt er auf der sicheren Seite — „Änderung des Aktiengesetzes" gegen
- * „Aktiengesetz" ist nach Entfernen der Formelwörter eine Deckung von 1,0,
- * zwei verschiedene Gesetze eines Pakets liegen weit darunter.
+ * Measured (`pnpm corpus:erlaeuterungen -- --join`): the number carries the
+ * large majority of cases; the name comparison is the rest, and at 0,5 it
+ * stays on the safe side — „Änderung des Aktiengesetzes" against
+ * „Aktiengesetz" is a coverage of 1,0 once the template words are removed,
+ * and two different laws of one package lie far below it.
  */
 const NAME_MIN_JACCARD = 0.5
 
 /**
- * Welches Gesetz des Pakets eine Passage erklärt.
+ * Which law of the package a passage explains.
  *
- * Zuerst über die Artikelnummer, weil sie eine Angabe des Ressorts ist und
- * kein Urteil von uns; dann über den Gesetzesnamen, für die Ressorts, die
- * „Änderung des Aktiengesetzes" ohne Nummer darüberschreiben. Bleibt beides
- * ohne Ergebnis, ist die Antwort null — und der Aufrufer verwirft die Passage,
- * statt sie zu raten.
+ * By the Artikel number first, because that is the ressort's own statement
+ * and no judgement of ours; then by the law's name, for the ressorts that
+ * head it „Änderung des Aktiengesetzes" without a number. Where both come to
+ * nothing the answer is null — and the caller discards the passage instead of
+ * guessing it.
  */
 function articleKeyOf(heading: string | null, articles: readonly DraftArticle[]): string | null {
   if (!heading) return null
@@ -85,11 +84,11 @@ function articleKeyOf(heading: string | null, articles: readonly DraftArticle[])
 }
 
 /**
- * Die Passagen des Besonderen Teils, aufgelöst auf (Gesetz, Paragraph).
+ * The passages of the Besonderer Teil, resolved to (law, Paragraph).
  *
- * Eine Passage, die mehrere Paragraphen nennt („Zu §§ 12 und 13"), erscheint
- * bei jedem von ihnen: Sie IST die Begründung für beide, und der Leser, der
- * bei § 13 steht, hat kein Interesse daran, dass sie unter § 12 gedruckt war.
+ * A passage naming several Paragraphen („Zu §§ 12 und 13") appears at each of
+ * them: it IS the Begründung for both, and the reader standing at § 13 has no
+ * interest in its having been printed under § 12.
  */
 export function explanationsByParagraph(
   doc: ExplanationsDocument,
@@ -97,25 +96,24 @@ export function explanationsByParagraph(
 ): ParagraphExplanation[] {
   const out: ParagraphExplanation[] = []
   /**
-   * Der Schlüssel MUSS der der Zeilen sein, und der ist nicht „null, wenn es
-   * nur ein Gesetz gibt": Die Beilage führt ihre Zeilen unter dem Schlüssel des
-   * Artikels, sobald der Entwurf einen benannten trägt — auch wenn es genau
-   * einer ist. Die erste Fassung hat hier null gesetzt und damit bei einem
-   * Entwurf, dessen §§ perfekt passten, **keinen einzigen Treffer** erzeugt
-   * (Honigverordnung Novelle 2025, 9 von 9 daneben). Gemessen statt vermutet:
-   * `pnpm corpus:erlaeuterungen -- --join`.
+   * The key MUST be the rows' key, and that is not "null where there is only
+   * one law": the Beilage carries its rows under the Artikel's key as soon as
+   * the draft has a named one — even where it is exactly one. The first
+   * version set null here and so produced **not a single hit** on a draft
+   * whose §§ matched perfectly (Honigverordnung Novelle 2025, 9 of 9 wide).
+   * Measured rather than assumed: `pnpm corpus:erlaeuterungen -- --join`.
    */
   const keyed = articles.filter((a) => a.key !== null)
   const only = keyed.length === 1 ? keyed[0]!.key : null
   for (const passage of doc.special?.passages ?? []) {
     if (!passage.heading || !passage.text.length || !passage.paragraphs.length) continue
-    // Die Überschrift der Passage zuerst: „Zu Art. 2 Z 1 (§ 7)" nennt ihr
-    // Gesetz selbst, und das ist die genauere Angabe als die Artikelüberschrift,
-    // unter der sie steht.
+    // The passage's own heading first: „Zu Art. 2 Z 1 (§ 7)" names its law
+    // itself, and that is the more precise statement than the Artikel heading
+    // it stands under.
     const law =
       keyed.length <= 1 ? only : articleKeyOf(passage.heading, articles) ?? articleKeyOf(passage.article, articles)
-    // Ein Paket mit mehreren Gesetzen und eine Passage ohne bestimmbares
-    // Gesetz: verwerfen. Siehe Kopf.
+    // A package of several laws and a passage whose law cannot be
+    // determined: discard. See the file header.
     if (keyed.length > 1 && law === null) continue
     for (const para of passage.paragraphs) {
       const id = explanationParaId(para)

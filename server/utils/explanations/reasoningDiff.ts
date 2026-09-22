@@ -1,29 +1,27 @@
 /**
- * „Hat sich die Begründung geändert?" — der Vergleich der Erläuterungen,
- * Paragraph für Paragraph (docs/architecture.md §12.10b).
+ * „Hat sich die Begründung geändert?" — the comparison of the Erläuterungen,
+ * Paragraph by Paragraph (docs/architecture.md §12.10b).
  *
- * PURE MODULE — relative imports only, damit vitest es direkt ausführt.
- * Die Nuxt-Seite steht in `reasoningDiffService.ts`.
+ * PURE MODULE — relative imports only, so vitest runs it directly. The Nuxt
+ * half is `explanations/reasoningDiffService.ts`.
  *
- * AM PARAGRAPHEN GERECHNET, AN DER ANORDNUNG GEZEIGT. Die Erläuterungen sind
- * nach Paragraphen gegliedert, die Gegenüberstellung nach
- * Novellierungsanordnungen — und mehrere Ziffern ändern regelmäßig denselben
- * Paragraphen (8/ME: 33 Anordnungen auf 17 Paragraphen, § 11 allein sechsmal).
- * Wer je Anordnung zählt, zählt dieselbe Begründung mehrfach und nennt das
- * Ergebnis dann „Paragraphen". Also: ein Vergleich je Paragraph in
- * `paragraphs`, und `units` sagt, welche Anordnung auf welchen zeigt — der
- * Schlüssel bleibt `unitKey`, wie bei den §-Namen (`paraTitleService.ts`),
- * damit kein zweiter Schlüssel entsteht, an dem Prüfung und Anzeige
- * auseinanderlaufen können.
+ * COMPUTED AT THE PARAGRAPH, SHOWN AT THE INSTRUCTION. The Erläuterungen are
+ * organised by Paragraph, the Gegenüberstellung by Novellierungsanordnung —
+ * and several Ziffern routinely amend the same Paragraph (8/ME: 33
+ * instructions over 17 Paragraphen, § 11 six times on its own). Counting per
+ * instruction counts the same Begründung several times and then calls the
+ * result „Paragraphen". So: one comparison per Paragraph in `paragraphs`, and
+ * `units` says which instruction points at which — the key stays `unitKey`, as
+ * for the § names (`diff/paraTitleService.ts`), so no second key arises at
+ * which check and display could drift apart.
  *
- * MEHRDEUTIGE NUMMERN BLEIBEN WEG. Eine Passage des Besonderen Teils trägt die
- * Nummer des Paragraphen, nicht sein Gesetz. In einem Sammelgesetz ändern zwei
- * Artikel aber je einen § 15 (8/ME: Staatsschutz- und Nachrichtendienst-Gesetz
- * und Bundesverwaltungsgerichtsgesetz), und beide Passagen liegen unter
- * derselben Nummer. Angezeigt würde dann die Begründung des einen Gesetzes
- * unter dem Paragraphen des anderen. Wo zwei Artikel dieselbe Nummer
- * adressieren, zeigt diese Schicht deshalb nichts — dieselbe Regel wie bei den
- * §-Namen: ein falscher Bezug ist schlechter als keiner.
+ * AMBIGUOUS NUMBERS STAY OUT. A passage of the Besonderer Teil carries the
+ * Paragraph's number, not its law. In a Sammelgesetz two Artikel each amend a
+ * § 15 (8/ME: Staatsschutz- und Nachrichtendienst-Gesetz and
+ * Bundesverwaltungsgerichtsgesetz), and both passages sit under the same
+ * number — one law's Begründung would be shown under the other's Paragraph.
+ * So where two Artikel address the same number this layer shows nothing, the
+ * same rule as for the § names: a wrong reference is worse than none.
  */
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
 import { unitKey } from '../../../shared/utils/diffKey'
@@ -35,26 +33,26 @@ import { addressedParagraphOf } from '../lawtext/instructionAddress'
 // raw Gliederungssymbol such as § 365m1, which never reaches here.
 import { explanationParaId } from '../../../shared/utils/explanationKey'
 
-/** Unterhalb davon sind es Satzzeichen und Leerraum, keine Überarbeitung. */
+/** Below this it is punctuation and whitespace, not a revision. */
 const CHANGED_AT = 0.02
-/** Ein Entwurf begründet selten mehr; die Schranke hält einen Ausreißer von der Seite fern. */
-// Nicht exportiert: Die Auto-Imports von Nitro teilen einen Namensraum, und
-// `MAX_PARAGRAPHS` gibt es in `annexCheck.ts` schon.
+/** A draft rarely gives reasons for more; the ceiling keeps an outlier off the page. */
+// Not exported: Nitro's auto-imports share one namespace, and
+// `MAX_PARAGRAPHS` already exists in `annex/verdict.ts`.
 const MAX_PARAGRAPHS = 120
 
 export interface ReasoningComparison {
-  /** `unitKey` → „§ 11": welche Änderung auf welchen Paragraphen zeigt. */
+  /** `unitKey` → „§ 11": which change points at which Paragraph. */
   units: Record<string, string>
-  /** „§ 11" → der Vergleich seiner Begründung, einmal je Paragraph. */
+  /** „§ 11" → the comparison of its Begründung, once per Paragraph. */
   paragraphs: Record<string, ReasoningDiffEntry>
   stats: { compared: number; changed: number }
 }
 
 /**
- * Die Paragraphennummern, die in mehr als einem Artikel des Entwurfs
- * vorkommen — siehe Kopf. Gerechnet über alle Einheiten, auch die
- * unveränderten: Ob eine Nummer zweimal vergeben ist, hängt nicht daran, was
- * sich zwischen den beiden Fassungen geändert hat.
+ * The Paragraph numbers occurring in more than one Artikel of the draft — see
+ * the file header. Computed over all units, the unchanged ones included:
+ * whether a number is given out twice does not depend on what changed between
+ * the two versions.
  */
 function ambiguousParagraphs(units: readonly LawDiffUnit[]): Set<string> {
   const articles = new Map<string, Set<string>>()
@@ -69,12 +67,12 @@ function ambiguousParagraphs(units: readonly LawDiffUnit[]): Set<string> {
 }
 
 /**
- * Der Vergleich, aus den Einheiten der Gegenüberstellung und den Passagen
- * beider Fassungen (Paragraphennummer → Text).
+ * The comparison, out of the Gegenüberstellung's units and the passages of
+ * both versions (Paragraph number → text).
  *
- * Verglichen wird nur, wo BEIDE Seiten eine Begründung führen. Fehlt eine, ist
- * das keine geänderte Begründung, sondern eine Lücke im Dokument — und die als
- * „geändert" zu zeigen wäre falsch.
+ * Compared only where BOTH sides carry a Begründung. A missing one is no
+ * changed Begründung but a gap in the document, and showing that as
+ * „geändert" would be wrong.
  */
 export function compareReasoning(
   units: readonly LawDiffUnit[],
@@ -106,10 +104,11 @@ export function compareReasoning(
         drift,
         changed,
         segments: changed ? segments : null,
-        // Beide Fassungen im Ganzen, aber nur wo der Wortvergleich an seiner
-        // Schranke abgebrochen hat: sonst stünde die aufgeklappte Begründung
-        // leer da, weil `segments` fehlt (gesehen an § 11 und § 15 von 8/ME).
-        // Dieselbe Form wie oben im Vergleich, wo dasselbe passieren kann.
+        // Both versions whole, but only where the word comparison stopped at
+        // its ceiling: the unfolded Begründung would otherwise stand there
+        // empty because `segments` is missing (seen at § 11 and § 15 of
+        // 8/ME). The same shape as in the comparison above, where the same
+        // can happen.
         fromText: changed && !segments ? a : null,
         toText: changed && !segments ? b : null,
       }

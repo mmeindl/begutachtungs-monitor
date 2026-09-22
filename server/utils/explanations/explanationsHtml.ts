@@ -1,27 +1,26 @@
 /**
- * Die Erläuterungen, wie das **Parlament** sie veröffentlicht — Word-HTML
- * statt typisiertem RIS-XML (docs/architecture.md §12.10).
+ * The Erläuterungen as **Parliament** publishes them — Word HTML instead of
+ * typed RIS XML (docs/architecture.md §12.10).
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
- * WOZU EIN ZWEITER LESER. `explanations.ts` liest das RIS-XML des Entwurfs,
- * und für den Entwurf ist das die bessere Quelle: typisiert, benannte Teile,
- * keine Rateschritte. Die Erläuterungen der **Regierungsvorlage** gibt es
- * dort aber nicht — das RIS führt keine parlamentarischen Dokumente. Wer
- * fragen will, ob das Ressort seine Begründung zwischen Entwurf und Vorlage
- * geändert hat, braucht beide Seiten, und die einzige Quelle, die beide
- * Seiten führt, ist das Parlament.
+ * WHY A SECOND READER. `explanations/risExplanations.ts` reads the draft's
+ * RIS XML, and for the draft that is the better source: typed, named parts,
+ * no guessing. But the Erläuterungen of the **Regierungsvorlage** do not
+ * exist there — RIS carries no parliamentary documents. Anyone asking whether
+ * the ressort changed its Begründung between draft and bill needs both sides,
+ * and the only source carrying both is Parliament.
  *
- * **Deshalb liest dieser Parser BEIDE Seiten, auch den Entwurf.** Ein
- * Vergleich XML gegen Word-HTML misst zuerst die beiden Konverter und erst
- * danach den Inhalt — dieselbe Lehre wie bei der Textgegenüberstellung
- * (§12.12, sechste Messung). Gleiche Quelle, gleicher Parser, und was übrig
- * bleibt, ist die Änderung.
+ * **So this parser reads BOTH sides, the draft included.** A comparison of
+ * XML against Word HTML measures the two converters first and the content
+ * only afterwards — the same lesson as with the Textgegenüberstellung
+ * (§12.12, sixth measurement). Same source, same parser, and what is left is
+ * the change.
  *
- * **Die Adresse einer Passage kommt aus `explanations.ts`** (`addressOf`,
- * `isAddressHeading`) und wird hier nicht zum zweiten Mal erfunden: „Zu Z 4
- * (§ 54c Abs. 1a und 1b):" muss auf beiden Seiten denselben Paragraphen
- * bedeuten, sonst hängt die Begründung am falschen §.
+ * **A passage's address comes from `explanations/risExplanations.ts`**
+ * (`addressOf`, `isAddressHeading`) and is not invented a second time here:
+ * „Zu Z 4 (§ 54c Abs. 1a und 1b):" has to mean the same Paragraph on both
+ * sides, or the Begründung hangs on the wrong §.
  */
 import { addressOf, isAddressHeading } from './risExplanations'
 import { normalizeText } from '../lawtext/normalize'
@@ -31,27 +30,27 @@ import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 // offline corpus (22.09.2026).
 import { explanationParaId } from '../../../shared/utils/explanationKey'
 
-/** Eine Passage des Besonderen Teils, an ihrer Adresse. */
+/** One passage of the Besonderer Teil, at its address. */
 export interface HtmlPassage {
-  /** Die Überschrift, wie das Ressort sie gedruckt hat. */
+  /** The heading, as the ressort printed it. */
   heading: string
-  /** „§ 54c" — die Paragraphen, die die Überschrift nennt. */
+  /** „§ 54c" — the Paragraphen the heading names. */
   paragraphs: string[]
-  /** Die Absätze der Passage, in Druckreihenfolge. */
+  /** The passage's paragraphs, in printed order. */
   text: string[]
 }
 
 export interface HtmlExplanations {
-  /** Der Allgemeine Teil, Absatz für Absatz. */
+  /** The Allgemeiner Teil, paragraph by paragraph. */
   general: string[]
-  /** Die Passagen des Besonderen Teils. */
+  /** The passages of the Besonderer Teil. */
   special: HtmlPassage[]
 }
 
 /**
- * „B e s o n d e r e r  T e i l" — gesperrt gesetzte Überschriften sind in
- * diesen Dokumenten die Regel, und zwischen den Buchstaben steht Typografie,
- * kein Text (§12.29). Verglichen wird deshalb ohne Leerzeichen.
+ * „B e s o n d e r e r  T e i l" — letter-spaced headings are the rule in
+ * these documents, and between the letters stands typography, not text
+ * (§12.29). So the comparison drops the spaces.
  */
 function partKind(text: string): 'general' | 'special' | null {
   const flat = normalizeText(text).replace(/\s+/g, '').toLowerCase().replace(/[:.]+$/, '')
@@ -61,12 +60,12 @@ function partKind(text: string): 'general' | 'special' | null {
 }
 
 /**
- * Ein Erläuterungen-Dokument des Parlaments, geteilt in Allgemeinen Teil und
- * die Passagen des Besonderen Teils.
+ * One Parliament Erläuterungen document, split into the Allgemeiner Teil and
+ * the passages of the Besonderer Teil.
  *
- * Ohne eigene Überschrift „Besonderer Teil" beginnt der besondere Teil bei
- * der ersten Adressüberschrift — ein Fünftel der Dokumente macht es so
- * (`explanations.ts`, derselbe Befund am XML).
+ * Without a heading „Besonderer Teil" of its own, the special part begins at
+ * the first address heading — one fifth of the documents do it that way
+ * (`explanations/risExplanations.ts`, the same finding on the XML).
  */
 export function parseExplanationsHtml(html: string): HtmlExplanations {
   const general: string[] = []
@@ -94,13 +93,13 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
 
     if (inSpecial && current) current.text.push(text)
     else if (!inSpecial) general.push(text)
-    // Ein Absatz im besonderen Teil, der unter keiner Adresse steht, gehört
-    // keinem Paragraphen — er wird nicht dem zuletzt gesehenen zugeschlagen.
+    // A paragraph of the special part standing under no address belongs to
+    // no §, and is not added to the last one seen.
   }
   return { general, special }
 }
 
-/** Die Passagen unter „§ 54c" → ihrer Nummer, wie `shared/utils/explanationKey` sie bildet. */
+/** The passages under „§ 54c" → its number, as `shared/utils/explanationKey.ts` builds it. */
 export function passagesByParagraph(doc: HtmlExplanations): Map<string, HtmlPassage[]> {
   const out = new Map<string, HtmlPassage[]>()
   for (const passage of doc.special) {

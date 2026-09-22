@@ -2,8 +2,9 @@
  * The Allgemeiner Teil of the Erläuterungen for one Begutachtung
  * (docs/architecture.md §12.29).
  *
- * Nuxt-aware glue around the pure module `explanations.ts`. Two entry points,
- * because the two kinds of draft reach their RIS document by different roads:
+ * Nuxt-aware glue around the pure module `explanations/risExplanations.ts`.
+ * Two entry points, because the two kinds of draft reach their RIS document
+ * by different roads:
  * a Ministerialentwurf through the RIS↔ME join (Parliament publishes the
  * document only as a PDF, so the readable copy is reachable no other way), a
  * Verordnungsentwurf straight from its own record, which is a RIS record to
@@ -22,7 +23,7 @@
  *
  * **Two cache layers, split by provenance** (`cache/base.ts`): the document as
  * RIS sent it is persistent — it is expensive and our code did not make it —
- * while the reading of it is derived, because `explanations.ts` is exactly the
+ * while the reading of it is derived, because that parser is exactly the
  * kind of parser that keeps changing and must not leave a day-old parse on
  * screen after an edit.
  */
@@ -103,20 +104,20 @@ function view(
     dropped: part.dropped,
     hasSpecial: doc.special !== null,
     paragraphs,
-    // Die zweite Bedingung — der Join hat Passagen gebunden — steckt schon in
-    // `annex`: Ohne sie wird gar nicht erst gefragt (siehe `read`).
+    // The second condition — the join bound passages at all — already sits
+    // inside `annex`: without it the question is never asked (see `read`).
     paragraphsAtAnnex: annex,
   }
 }
 
 /**
- * Die Artikel des Entwurfs, für den Schlüssel des Joins.
+ * The draft's Artikel, for the join's key.
  *
- * Aus dem Entwurfstext, weil der Gesetzesschlüssel der Beilage von dort kommt
- * (`draftArticles` → `segmentUnits` → `ComparisonRow.law`). Scheitert der
- * Abruf, gibt es eben keine Zuordnung: Die Erläuterungen selbst stehen dann
- * trotzdem auf der Seite, nur ohne die Passagen am Paragraphen. Ein fehlender
- * Entwurfstext darf nicht den ganzen Abschnitt kosten.
+ * Out of the draft's own text, because the Beilage's law key comes from there
+ * (`draftArticles` → `segmentUnits` → `ComparisonRow.law`). Where the fetch
+ * fails there simply is no attribution: the Erläuterungen themselves still
+ * stand on the page, only without the passages at the Paragraph. A missing
+ * draft text must not cost the whole section.
  */
 async function articlesOf(read: () => Promise<DraftText>): Promise<DraftArticle[]> {
   try {
@@ -138,9 +139,9 @@ async function read(
   /** The draft's Artikel, asked for only where there is a Besonderer Teil to join. */
   draftText: () => Promise<DraftText>,
   /**
-   * Gefragt wird erst, wenn es etwas zu zeigen gibt: Ohne Passagen am
-   * Paragraphen hängt an der Antwort nichts, und die Frage kostet bei den
-   * Entwürfen ohne RIS-Beilage einen Abruf beim Parlament.
+   * Asked only once there is something to show: without passages at a
+   * Paragraph nothing hangs on the answer, and for the drafts without a RIS
+   * Beilage the question costs a call to Parliament.
    */
   annexOf: () => Promise<boolean>,
 ): Promise<ExplanationsResponse> {
@@ -178,22 +179,22 @@ export const getExplanations = defineCachedFunction(
           : 'Der Entwurf ließ sich keinem RIS-Dokument zuordnen; nur dort lesen wir die Erläuterungen aus.',
       )
     }
-    // Ob die Passagen unten an einem Paragraphen stehen, beantwortet der
-    // Abschnitt, der sie zeigt — `hasAnnexDocument` statt einer hier
-    // nachgebauten Bedingung. Die nachgebaute gab es einen Tag lang, und sie
-    // war schon am nächsten falsch: Seit die Kopie des Parlaments als Rückfall
-    // gelesen wird, erscheint die Gegenüberstellung auch ohne RIS-Dokument
-    // (gemessen 19.09.2026: 23/ME der GP XXVIII). Eine Bedingung, die eine
-    // andere spiegelt, altert genau so.
+    // Whether the passages below stand at a Paragraph is answered by the
+    // section that shows them — `hasAnnexDocument` rather than a condition
+    // rebuilt here. The rebuilt one existed for a day and was wrong by the
+    // next: whether the Gegenüberstellung appears without a RIS document
+    // hangs on `READ_PARLIAMENT_COPY` (`annex/annexSource.ts`), which was on
+    // for one day and is off since 19.09.2026 (measured that day: 23/ME of
+    // GP XXVIII). A condition that mirrors another ages exactly that way.
     //
-    // Was NICHT gefragt wird, weil es zu teuer ist: ob sich die Beilage auch
-    // lesen lässt. Das weiß erst der Parser, und der Endpunkt braucht kalt im
-    // Median 3,9 s (max. 33 s) — in einem SSR-Pfad mit 800-ms-Frist wäre das
-    // der sichere Fristbruch, und der Preis dafür wäre der Text im HTML.
-    // Die Asymmetrie ist ausgehalten, nicht übersehen: Ein Zeiger auf einen
-    // Abschnitt, der selbst sagt, warum er nichts zeigt, kostet einen Blick;
-    // ein Zeiger ins PDF, während die Stelle auf derselben Seite steht,
-    // kostet den Weg zurück.
+    // What is NOT asked, because it is too expensive: whether the Beilage can
+    // also be *read*. Only the parser knows that, and the endpoint runs cold
+    // at a median of 3,9 s (max. 33 s) — in an SSR path with an 800 ms
+    // deadline that is the certain miss, and the price would be the text in
+    // the HTML. The asymmetry is borne, not overlooked: a pointer to a
+    // section that says itself why it shows nothing costs one glance; a
+    // pointer into the PDF while the passage sits on the same page costs the
+    // way back.
     return read(row.explanations, () => getDraftArticles(gp, inr, 'ris-xml'), async () =>
       row.status === 'matched' && (await hasAnnexDocument(gp, inr, row.textComparison)))
   },
@@ -205,10 +206,10 @@ export const getRisExplanations = defineCachedFunction(
   async (id: string): Promise<ExplanationsResponse> => {
     const detail = await getRisConsultation(id)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
-    // Nie am Paragraphen: Die Seite einer Begutachtung ohne Gegenstand
-    // rendert die Gegenüberstellung nicht, sie verlinkt sie (§12.30).
-    // Ohne Gegenstand gibt es kein (GP, Nummer), auf das der geteilte Cache
-    // schlüsseln könnte; gelesen wird dasselbe Dokument.
+    // Never at a Paragraph: the page of a Begutachtung without a Gegenstand
+    // does not render the Gegenüberstellung, it links it (§12.30). Without a
+    // Gegenstand there is no (GP, Nummer) for the shared cache to key on; the
+    // document read is the same one.
     const xml = detail.mainDocument.xml
     return read(detail.explanations, () => (xml ? draftArticlesOfXml(xml) : Promise.resolve({ blocks: [], articles: [] })), async () => false)
   },
