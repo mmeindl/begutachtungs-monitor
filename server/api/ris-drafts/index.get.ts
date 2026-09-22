@@ -119,12 +119,9 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * leere Liste, und „keine kundgemachten Verordnungen" wäre eine Antwort,
    * die wir nicht geprüft haben (§12.13). Dort wird gewartet.
    */
-  const outcomes = wantsBgbl
+  const outcomes: Record<string, BgblOutcome> = wantsBgbl
     ? await getBgblOutcomesForGp(gp).catch(() => ({}) as Record<string, BgblOutcome>)
-    : await Promise.race([
-        getBgblOutcomesForGp(gp).catch(() => ({}) as Record<string, BgblOutcome>),
-        new Promise<Record<string, BgblOutcome>>((resolve) => setTimeout(() => resolve({}), OUTCOMES_BUDGET_MS)),
-      ])
+    : (await withinBudget(getBgblOutcomesForGp(gp), OUTCOMES_BUDGET_MS)) ?? {}
 
   const filtered = items.filter((item) => {
     if (!wantsBegutachtung && !(wantsBgbl && outcomes[item.id]?.state === 'kundgemacht')) return false

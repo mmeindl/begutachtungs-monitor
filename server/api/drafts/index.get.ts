@@ -90,11 +90,7 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * Budget ab, antwortet die Seite ohne sie — der Bau läuft im Hintergrund
    * weiter und füllt den Cache, die nächste Anfrage hat ihn. Dieselbe Bauart
    * wie `RIS_JOIN_BUDGET_MS` in `parliament.ts`. */
-  const pending = getStationMapForGp(gp).catch(() => null)
-  const chains = await Promise.race([
-    pending,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), STATION_MAP_BUDGET_MS)),
-  ])
+  const chains = await withinBudget(getStationMapForGp(gp), STATION_MAP_BUDGET_MS)
   /* EINE GELESENE KARTE IST NICHT DASSELBE WIE EINE AUSSAGEFÄHIGE PERIODE
    * (§12.27). In den alten Perioden endet der Verfahrensdatensatz JEDES
    * Entwurfs bei der Begutachtung — nicht weil nichts daraus wurde, sondern

@@ -32,9 +32,6 @@ export default defineEventHandler(async (event): Promise<RisConsultationDetail> 
   // einmal nicht, rendert die Seite lieber ohne Ausgang und der Abschnitt
   // holt ihn client-seitig nach. Dieselbe Abwägung wie beim Stationsbudget
   // der Liste.
-  const outcome = await Promise.race([
-    getBgblOutcome(id).catch(() => null),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), OUTCOME_BUDGET_MS)),
-  ])
+  const outcome = await withinBudget(getBgblOutcome(id), OUTCOME_BUDGET_MS)
   return { ...detail, outcome }
 })
