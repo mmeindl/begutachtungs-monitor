@@ -1,57 +1,64 @@
 /**
- * Was der Prüfstand misst, als Datensatz — und das Urteil darüber (§12.13).
+ * What the harness measures, as a record — and the verdict over it (§12.13).
  *
- * `harness/annexPdf.ts` schreibt den Bericht (`--json=`), `ci/annexDrift.ts`
- * liest ihn und schlägt Alarm. Die Urteilslogik steht **hier** und nicht im
- * Prüfstand: sie lag dort schon zweimal, nämlich dort, wo sie weder getestet
- * noch angewendet werden kann (§12.13 für die Beilage, §12.12 für den
- * Apply-Report). Rein und importierbar heißt: `tests/annexReport.test.ts`
- * kann jede Regel gegen einen erfundenen Bericht halten, ohne das RIS.
+ * `harness/annexPdf.ts` writes the report (`--json=`), `ci/annexDrift.ts`
+ * reads it and raises the alarm. The verdict logic lives **here** and not in
+ * the harness: it has already sat there twice, which is where it can neither
+ * be tested nor applied (§12.13 for the annex, §12.12 for the apply report).
+ * Pure and importable means `tests/annexReport.test.ts` can hold every rule
+ * against an invented report, without RIS.
  *
- * **Klasse A** ist alles, was ohne Grundlinie auskommt — Nullen, die eine
- * Null bleiben müssen, egal welche Entwürfe gerade im Korpus stehen. Das ist
- * die ganze Idee: der Prüfstand läuft über die **400 jüngsten**
- * Begut-Datensätze (`Begut.Gesetzgebungsperiode` ignoriert das RIS still,
- * siehe Prüfstandskopf), also über ein wanderndes Fenster. Jede Kennzahl, die
- * mit der Zusammensetzung des Fensters wandert, taugt nicht für einen
- * wöchentlichen Vergleich — sie meldete jede Woche eine Änderung und wäre
- * nach einem Monat Rauschen, das niemand mehr liest.
+ * **Class A** is everything that needs no baseline — zeros that have to stay
+ * zero no matter which drafts happen to be in the corpus. That is the whole
+ * idea: the harness runs over the **400 most recent** Begut records, so over
+ * a moving window. Any figure that moves with the window's composition is no
+ * good for a weekly comparison — it would report a change every week and be
+ * noise nobody reads within a month.
  *
- * **Nicht in Klasse A**, gemessen am 16.09.2026 über GP XXVIII:
+ * The window is 400 and not "GP XXVIII" because RIS **silently ignores**
+ * `Begut.Gesetzgebungsperiode`: the harness passes it (`harness/annexPdf.ts`,
+ * the RIS query under `--- CLI ---`) and gets the whole Begut corpus back,
+ * sorted newest first. Measured on 23.09.2026 against the cached answer of a
+ * run filtered by `--gp=XXVIII`: 4.570 hits in total, and 69 of the 400
+ * records carry a `BeginnBegutachtungsfrist` before 24.10.2024, the day GP
+ * XXVIII began — the earliest is 29.04.2024. Same class of trap as the one
+ * `ris/konsLaw.ts` records for `Abkuerzung`.
  *
- * | Kennzahl                        | XML | PDF |
- * |---------------------------------|-----|-----|
- * | `changeRowsNoPara`              |  75 |   0 |
- * | `noLaw` (außerhalb jedes Artikels) |  12 |   0 |
+ * **Not in class A**, measured on 16.09.2026 over GP XXVIII:
  *
- * Beide sind auf einem Pfad null und auf dem anderen nicht, und der
- * Golden-Test friert die Null nur für seine zwei Beilagen ein
- * (`annexGolden.test.ts`), nicht für den Korpus. Als Klasse-A-Regel hätten
- * sie beim ersten Lauf angeschlagen und das Alarmsignal entwertet. Sie
- * gehören in Klasse B (Vergleich je Entwurf gegen eine eingecheckte
- * Grundlinie) und stehen deshalb im Bericht, obwohl heute niemand sie prüft.
+ * | Figure                             | XML | PDF |
+ * |------------------------------------|-----|-----|
+ * | `changeRowsNoPara`                 |  75 |   0 |
+ * | `noLaw` (outside every Artikel)    |  12 |   0 |
+ *
+ * Both are zero on one path and not on the other, and the golden test freezes
+ * the zero only for its two annexes (`annexGolden.test.ts`), not for the
+ * corpus. As a class-A rule they would have fired on the first run and
+ * devalued the alarm. They belong in class B (per draft against a checked-in
+ * baseline) and are therefore in the report, although nobody checks them
+ * today.
  */
 
-/** Was ein Entwurf im Prüfstand ergeben hat, ohne die Kalibrierungsdaten. */
+/** What a draft came to in the harness, without the calibration data. */
 export interface AnnexDraftReport {
   /**
-   * Der RIS-Dokumentschlüssel — die Identität, an der die Grundlinie von
-   * Klasse B hängt. Nicht `cite`: das ist für Menschen und kollidiert
-   * (siehe `DraftResult.id` im Prüfstand).
+   * The RIS document key — the identity class B's baseline hangs on. Not
+   * `cite`: that one is for humans and collides (see `DraftResult.id` in the
+   * harness).
    */
   id: string
-  /** Begutachtungsverfahrennummer, oder ersatzweise Kurztitel/ID */
+  /** Begutachtungsverfahrennummer, or failing that the Kurztitel/ID */
   cite: string
   source: 'xml' | 'pdf'
-  /** Warum der Entwurf gar nicht bewertet wurde (Beilage verweigert o. ä.) */
+  /** Why the draft was not scored at all (annex refused, and the like) */
   note: string | null
   checked: number
   clean: number
   substantial: number
   substantialClean: number
-  /** Zeilen außerhalb jeder Artikelgrenze — Klasse B, siehe Kopf */
+  /** Rows outside every Artikel boundary — class B, see the header */
   noLaw: number
-  /** Seiten, deren Geometrie der Parser nicht belegen konnte */
+  /** Pages whose geometry the parser could not establish */
   droppedPages: number
   ran: boolean
   notRunReason: string | null
@@ -62,9 +69,9 @@ export interface AnnexDraftReport {
   withheldNotInDraft: number
   uncheckedParas: number
   rowsNoPara: number
-  /** …davon als Änderung gezeigt — Klasse B, siehe Kopf */
+  /** …of those, shown as a change — class B, see the header */
   changeRowsNoPara: number
-  /** Die vier Zusicherungen des Tors. Jede muss null sein. */
+  /** The gate's four assurances. Each one has to be zero. */
   verdictless: number
   wronglyVerified: number
   withheldWithText: number
@@ -72,59 +79,57 @@ export interface AnnexDraftReport {
 }
 
 export interface AnnexReport {
-  /** Wann gemessen wurde — die Grundlinie von Klasse B braucht später die Herkunft */
+  /** When it was measured — class B's baseline needs the provenance later */
   at: string
   gp: string
-  /** `--xml` misst den Tabellenpfad, sonst die gerasterten Beilagen */
+  /** `--xml` measures the table path, otherwise the rasterised annexes */
   path: 'xml' | 'pdf'
   limit: number
-  /** Datensätze, die das RIS überhaupt geliefert hat */
+  /** Records RIS delivered at all */
   records: number
   drafts: AnnexDraftReport[]
 }
 
 export interface Finding {
   /**
-   * `zusicherung` — das Tor hat eine eigene Zusage gebrochen; das ist ein
-   * Fehler von uns und hat mit dem Korpus nichts zu tun.
-   * `form` — ein Dokument hat eine Gestalt, die der Parser nicht belegen
-   * konnte; das ist die Meldung, für die dieser Alarm gebaut ist.
-   * `messung` — der Lauf hat nichts oder fast nichts gemessen, das Ergebnis
-   * ist also gar keines (`lib/harnessCache.ts`: ein Lauf gegen nichts sieht aus
-   * wie ein Befund).
-   * `grundlinie` — Klasse B: ein Entwurf, den wir schon einmal gemessen
-   * haben, misst sich heute anders.
-   * `wartung` — nichts ist kaputt, aber etwas will von Hand nachgezogen
-   * werden. Steht hier, weil eine Erinnerung, die vom Erinnern abhängt,
-   * keine ist.
+   * `zusicherung` — the gate broke one of its own promises; that is a fault
+   * of ours and has nothing to do with the corpus.
+   * `form` — a document has a shape the parser could not establish; that is
+   * the report this alarm was built for.
+   * `messung` — the run measured nothing or next to nothing, so the result
+   * is not one at all (`lib/harnessCache.ts`: a run against nothing looks
+   * like a finding).
+   * `grundlinie` — class B: a draft we have measured before measures
+   * differently today.
+   * `wartung` — nothing is broken, but something wants pulling up by hand.
+   * It stands here because a reminder that depends on remembering is none.
    */
   kind: 'zusicherung' | 'form' | 'messung' | 'grundlinie' | 'wartung'
-  /** Der Entwurf, oder null für eine Aussage über den ganzen Lauf */
+  /** The draft, or null for a statement about the whole run */
   draft: string | null
   text: string
 }
 
 /**
- * Wie viele Entwürfe mit Beilage ein Lauf mindestens finden muss.
+ * How many drafts with an annex a run has to find at the very least.
  *
- * Am 16.09.2026 fand der Prüfstand 126 Entwürfe mit lesbarer XML-Beilage und
- * 114 mit gerasterter. Das Fenster sind die jüngsten Datensätze und
- * Begut-Datensätze kommen dazu, statt zu verschwinden — die Zahl wächst also
- * eher, als dass sie fällt. Die Schwelle liegt bewusst weit darunter: sie
- * fängt den Totalausfall (das RIS antwortet nicht, oder der Name der Beilage
- * ändert sich und `annex` trifft nichts mehr), nicht die normale Bewegung.
- * Eine enge Schwelle hier wäre genau der wöchentliche Fehlalarm, den dieser
- * Alarm vermeiden soll.
+ * On 16.09.2026 the harness found 126 drafts with a readable XML annex and
+ * 114 with a rasterised one. The window is the most recent records, and
+ * Begut records are added rather than removed — so the number rises rather
+ * than falls. The threshold sits far below that on purpose: it catches the
+ * total failure (RIS does not answer, or the annex is renamed and `annex`
+ * matches nothing any more), not the ordinary movement. A tight threshold
+ * here would be exactly the weekly false alarm this alarm is meant to avoid.
  */
 export const MIN_DRAFTS_WITH_ANNEX = 60
 
 /**
- * Klasse A: alle Befunde, die ohne Grundlinie feststehen.
+ * Class A: every finding that stands without a baseline.
  *
- * Reihenfolge ist Absicht — erst ob überhaupt gemessen wurde, dann die
- * Zusicherungen, dann die Gestalt. Ein Lauf, der nichts gefunden hat, darf
- * nicht auch noch „0 Zusicherungen verletzt" melden, denn null von nichts
- * ist keine Entwarnung.
+ * The order is deliberate — first whether anything was measured at all, then
+ * the assurances, then the shape. A run that found nothing must not also
+ * report „0 Zusicherungen verletzt", because zero out of nothing is no
+ * all-clear.
  */
 export function classAFindings(report: AnnexReport): Finding[] {
   const out: Finding[] = []
@@ -139,33 +144,33 @@ export function classAFindings(report: AnnexReport): Finding[] {
       'messung',
       `Nur ${report.drafts.length} Entwürfe mit Beilage gefunden (Schwelle ${MIN_DRAFTS_WITH_ANNEX}, am 16.09.2026 waren es 126 auf dem Tabellen- und 114 auf dem PDF-Pfad). Entweder antwortet das RIS unvollständig, oder die Beilage heißt nicht mehr so, wie der Prüfstand sie sucht.`,
     )
-    // Weiter, nicht zurück: die Entwürfe, die da sind, werden trotzdem
-    // geprüft — ein halber Korpus kann sehr wohl einen echten Bruch zeigen.
+    // Carry on, do not return: the drafts that are there get checked all the
+    // same — half a corpus can very well show a real break.
   }
 
   for (const d of report.drafts) {
     const at = (text: string, kind: Finding['kind'] = 'zusicherung') => out.push({ kind, draft: d.cite, text })
 
-    // Die vier Zusicherungen. Der Prüfstand druckt sie seit dem 10.09.2026
-    // als „müssen 0 sein"; hier bekommen sie einen Exit-Code.
+    // The four assurances. The harness has printed them as „müssen 0 sein"
+    // since 10.09.2026; here they get an exit code.
     if (d.verdictless > 0) at(`${d.verdictless} Paragraphen ohne Urteil — das Tor hat eine Zeile ausgeliefert, über die es nichts gesagt hat.`)
     if (d.wronglyVerified > 0) at(`${d.wronglyVerified} Paragraphen als geprüft ausgeliefert, obwohl das Urteil das nicht trägt.`)
     if (d.withheldWithText > 0) at(`${d.withheldWithText} einbehaltene Paragraphen tragen noch ihren Text — Einbehalten heißt im Server leeren, nicht im Client verstecken.`)
     if (d.withheldWithoutCause > 0) at(`${d.withheldWithoutCause} Paragraphen einbehalten, ohne einen Grund zu nennen.`)
 
-    // Die Aufteilung der Einbehaltungen muss aufgehen. `GateResult` behauptet
-    // das im Kommentar („und es hat zu summieren"), geprüft hat es nie
-    // jemand: eine vierte Ursache, die niemand in die Summe aufnimmt, fiele
-    // sonst lautlos aus der Seitenkopie heraus.
+    // The split of the withheld paragraphs has to add up. The verification
+    // result claims as much in its comment (`annex/verdict.ts`,
+    // `withheldCauses`), but nobody ever checked it: a fourth cause that
+    // nobody adds to the sum would otherwise drop out of the page silently.
     const causes = d.withheldStanding + d.withheldAlreadyStanding + d.withheldNotInDraft
     if (causes !== d.withheldParas) {
       at(`${d.withheldParas} Paragraphen einbehalten, aber die Gründe summieren auf ${causes} (geltende Fassung ${d.withheldStanding}, Geltendes als neu ${d.withheldAlreadyStanding}, nicht angeordnet ${d.withheldNotInDraft}).`)
     }
 
-    // Die eine Kennzahl über die Gestalt des Dokuments, die heute auf beiden
-    // Pfaden null ist. Sie ist der eigentliche Zweck dieses Alarms: eine
-    // Seite, die anders gesetzt ist als die übrigen, wird nicht gelesen, und
-    // was auf ihr steht, fehlt auf der Seite — sichtbar nur hier.
+    // The one figure about the document's shape that is zero on both paths
+    // today. It is what this alarm is actually for: a page typeset unlike
+    // the rest is not read, and what stands on it is missing from the page —
+    // visible only here.
     if (d.droppedPages > 0) {
       at(`${d.droppedPages} Seite${d.droppedPages === 1 ? '' : 'n'} der Beilage ${d.droppedPages === 1 ? 'wurde' : 'wurden'} nicht gelesen, weil die Seitengeometrie sich nicht belegen ließ. Am 16.09.2026 war das über GP XXVIII auf beiden Pfaden null — hier steht also eine Gestalt, die der Korpus bis dahin nicht hatte.`, 'form')
     }
@@ -173,7 +178,7 @@ export function classAFindings(report: AnnexReport): Finding[] {
   return out
 }
 
-/** Der Befund als Text für das GitHub-Issue, kurz genug für einen Titel. */
+/** The finding as text for the GitHub issue, short enough for a title. */
 export function summarize(findings: readonly Finding[]): string {
   if (findings.length === 0) return 'ohne Befund'
   const by = (k: Finding['kind']) => findings.filter((f) => f.kind === k).length
@@ -187,22 +192,20 @@ export function summarize(findings: readonly Finding[]): string {
 }
 
 /**
- * Klasse B: die Kennzahlen, die für eine einmal veröffentlichte Beilage
- * feststehen — und ihre deutschen Namen für die Meldung.
+ * Class B: the figures that stand fixed for an annex once published — and
+ * their German names for the report.
  *
- * Warum Gleichheit und kein Band: eine NOR-veröffentlichte Beilage ändert
- * sich nie (`annexPdfService.ts` baut den 30-Tage-Cache genau darauf), und
- * das Tor hält jeden Paragraphen gegen das RIS **zum
- * `BeginnBegutachtungsfrist`** — gegen ein festes Datum also, nicht gegen
- * heute. Derselbe Entwurf muss sich morgen genauso messen wie heute. Wo er
- * das nicht tut, ist etwas passiert, und ein Toleranzband würde nur
- * verstecken, was.
+ * Why equality and not a band: an annex published as a NOR never changes
+ * (`annex/annexPdfService.ts` builds `PUBLISHED_DOCUMENT_TTL_S`, 30 days, on
+ * exactly that), and the gate holds every Paragraph against RIS **as of the
+ * `BeginnBegutachtungsfrist`** — against a fixed date, that is, not against
+ * today. The same draft has to measure the same tomorrow as today. Where it
+ * does not, something happened, and a tolerance band would only hide what.
  *
- * Was ein Befund NICHT sagt, ist die Ursache. Zwei kommen in Frage: wir haben
- * die Engine geändert, ohne die Grundlinie nachzuziehen, oder das RIS hat
- * einen Datensatz nachträglich angefasst (eine Konsolidierung kann
- * rückwirkend korrigiert werden). Das auseinanderzuhalten ist Lesearbeit am
- * Befund, keine Regel.
+ * What a finding does NOT say is the cause. Two are possible: we changed the
+ * engine without pulling the baseline up, or RIS touched a record after the
+ * fact (a consolidation can be corrected retroactively). Telling those apart
+ * is reading work on the finding, not a rule.
  */
 const BASELINE_FIELDS = {
   note: 'Vermerk',
@@ -226,18 +229,18 @@ const BASELINE_FIELDS = {
 
 type BaselineField = keyof typeof BASELINE_FIELDS
 
-/** Ein Entwurf in der Grundlinie: die verglichenen Felder, plus `cite` zum Lesen. */
+/** A draft in the baseline: the compared fields, plus `cite` to read by. */
 export type BaselineEntry = Pick<AnnexDraftReport, BaselineField> & { cite: string }
 
 export interface AnnexBaseline {
-  /** Wann die Grundlinie gezogen wurde — die Herkunft eines Befunds */
+  /** When the baseline was drawn — the provenance of a finding */
   at: string
   gp: string
-  /** Je Pfad, je RIS-Dokumentschlüssel. Die beiden Pfade sind disjunkt. */
+  /** Per path, per RIS document key. The two paths are disjoint. */
   paths: Record<'xml' | 'pdf', Record<string, BaselineEntry>>
 }
 
-/** Die Grundlinie aus Berichten ziehen — dasselbe Format, das Klasse B liest. */
+/** Draw the baseline from reports — the same format class B reads. */
 export function toBaseline(reports: readonly AnnexReport[]): AnnexBaseline {
   const paths: AnnexBaseline['paths'] = { xml: {}, pdf: {} }
   for (const report of reports) {
@@ -253,19 +256,19 @@ export function toBaseline(reports: readonly AnnexReport[]): AnnexBaseline {
 }
 
 /**
- * Klasse B: jeder Entwurf, den die Grundlinie kennt und der sich heute anders
- * misst.
+ * Class B: every draft the baseline knows and that measures differently
+ * today.
  *
- * **Nur Entwürfe, die in beiden stehen.** Ein Entwurf, den die Grundlinie
- * nicht kennt, ist neu — für ihn gilt Klasse A und sonst nichts. Und einer,
- * der in der Grundlinie steht und im Bericht fehlt, ist aus dem Fenster der
- * 400 jüngsten Datensätze gerutscht; das ist der Normalfall und keine
- * Meldung. Beides zu melden hieße, jede Woche die Bewegung des Fensters zu
- * melden, und genau daran stirbt ein Alarm.
+ * **Only drafts that stand in both.** A draft the baseline does not know is
+ * new — class A applies to it and nothing else. And one that stands in the
+ * baseline and is missing from the report has slipped out of the window of
+ * the 400 most recent records; that is the normal case and not a report.
+ * Reporting either would mean reporting the window's movement every week,
+ * and that is exactly what kills an alarm.
  *
- * **Ein Befund je Entwurf, nicht je Feld.** Ein verschobener Parse bewegt ein
- * Dutzend Zähler auf einmal; als ein Dutzend Meldungen wäre der eine Entwurf
- * nicht mehr als einer zu erkennen.
+ * **One finding per draft, not per field.** A shifted parse moves a dozen
+ * counters at once; as a dozen reports the one draft would no longer be
+ * recognisable as one.
  */
 export function classBFindings(report: AnnexReport, baseline: AnnexBaseline): Finding[] {
   const known = baseline.paths[report.path]
@@ -295,31 +298,31 @@ export function classBFindings(report: AnnexReport, baseline: AnnexBaseline): Fi
 }
 
 /**
- * Wie alt die Grundlinie werden darf, bevor der Alarm sie selbst anmahnt.
+ * How old the baseline may get before the alarm reminds us of it itself.
  *
- * Die Grundlinie altert ohne Zutun: das Fenster der 400 jüngsten Datensätze
- * wandert, neue Entwürfe kommen dazu, und für jeden, den die Grundlinie nicht
- * kennt, gilt nur Klasse A. Die Deckung von Klasse B sinkt also von selbst,
- * und zwar lautlos — der Alarm bliebe grün, während er immer weniger prüft.
+ * The baseline ages on its own: the window of the 400 most recent records
+ * moves, new drafts arrive, and for each one the baseline does not know only
+ * class A applies. Class B's coverage therefore falls by itself, and it does
+ * so silently — the alarm would stay green while checking less and less.
  *
- * 60 Tage, aus zwei Gründen: in dieser Zeit rotieren nach der bisherigen
- * Frequenz einige Dutzend Datensätze durch das Fenster, und es ist dieselbe
- * Frist, nach der GitHub geplante Workflows in einem stillen Repository
- * abschaltet (`uptime.yml`) — zwei Wartungsfristen mit einer Zahl sind
- * leichter zu behalten als zwei.
+ * 60 days, for two reasons: at the frequency seen so far a few dozen records
+ * rotate through the window in that time, and it is the same deadline after
+ * which GitHub switches off scheduled workflows in a quiet repository
+ * (`uptime.yml`) — two maintenance deadlines with one number are easier to
+ * remember than two.
  *
- * Nachgezogen wird von Hand, nicht vom Workflow: eine Grundlinie, die sich
- * selbst fortschreibt, könnte genau die Verschiebung aufsaugen, für deren
- * Entdeckung sie da ist (§12.13).
+ * It is pulled up by hand, not by the workflow: a baseline that writes
+ * itself forward could absorb exactly the shift it exists to discover
+ * (§12.13).
  */
 export const MAX_BASELINE_AGE_DAYS = 60
 
 /**
- * Was von Hand nachzuziehen ist — heute genau eine Sache.
+ * What has to be pulled up by hand — today exactly one thing.
  *
- * Wird einmal je Lauf aufgerufen und nicht je Bericht: die Grundlinie ist
- * eine Datei für beide Pfade, und zweimal dieselbe Mahnung ist Rauschen.
- * `now` ist ein Parameter, damit der Test nicht warten muss.
+ * Called once per run and not per report: the baseline is one file for both
+ * paths, and the same reminder twice is noise. `now` is a parameter so the
+ * test does not have to wait.
  */
 export function maintenanceFindings(baseline: AnnexBaseline | null, now: Date = new Date()): Finding[] {
   if (!baseline) return []

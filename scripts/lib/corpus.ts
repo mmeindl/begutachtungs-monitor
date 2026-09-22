@@ -14,19 +14,19 @@ import { sleep } from './async'
 const PAGE_SIZE = 100
 const MAX_PAGES = 80
 /**
- * Wiederholungen und Pause, wie `server/utils/ris/begutCorpus.ts` sie hat.
+ * Retries and pause, the way `server/utils/ris/begutCorpus.ts` has them.
  *
- * Ein Lauf holt bis zu 68 Seiten. Ohne Wiederholung kostet ein einzelnes
- * ETIMEDOUT den ganzen Lauf — am 19.09.2026 zweimal passiert, jedes Mal nach
- * Minuten und ohne eine einzige Zahl. Eine Messung, die an einer langsamen
- * Minute des RIS stirbt, ist keine.
+ * A run fetches up to 68 pages. Without a retry a single ETIMEDOUT costs the
+ * whole run — it happened twice on 19.09.2026, each time after minutes and
+ * without a single number. A measurement that dies on a slow minute of RIS
+ * is none.
  */
 const MAX_RETRIES = 3
 const RETRY_BACKOFF_MS = 1_500
 const PAGE_PAUSE_MS = 400
 const TIMEOUT_MS = 45_000
 
-/** Eine Seite holen, mit Geduld. Wirft erst, wenn alle Versuche scheitern. */
+/** Fetch one page, patiently. Throws only once every attempt has failed. */
 function fetchPage(url: string, script: string, what: string): Promise<unknown> {
   return getJson(url, {
     script,
@@ -86,13 +86,14 @@ export async function fetchRisBegutCorpus(script: string, direction: 'Ascending'
 }
 
 /**
- * Das Bundesgesetzblatt eines Zeitfensters, für die Messung des Joins
- * Entwurf → Kundmachung (`server/utils/ris/bgblJoin.ts`).
+ * The Bundesgesetzblatt of a time window, for measuring the join draft →
+ * Kundmachung (`server/utils/ris/bgblJoin.ts`).
  *
- * `Applikation=BgblAuth` kennt weder einen Teil- noch einen Jahrgangsfilter —
- * `Teil=Teil2`, `Jahrgang=2025` und `Typ=Verordnung` liefern alle 18.925
- * Sätze, also werden sie ignoriert (geprüft 18.09.2026). Was wirkt, sind
- * `VonKundmachungsdatum`/`BisKundmachungsdatum`; Teil II wird hier gefiltert.
+ * `Applikation=BgblAuth` knows neither a Teil nor a Jahrgang filter —
+ * `Teil=Teil2`, `Jahrgang=2025` and `Typ=Verordnung` all return the full
+ * 18.925 records, so they are ignored (checked 18.09.2026). What does work
+ * are `VonKundmachungsdatum`/`BisKundmachungsdatum`; Teil II is filtered
+ * here.
  */
 export async function fetchBgblRecords(script: string, from: string, to: string): Promise<BgblRecord[]> {
   const seen = new Set<string>()

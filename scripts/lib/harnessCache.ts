@@ -4,7 +4,8 @@
  * The harness fetches a few hundred RIS documents per run. Iterating on the
  * engine against a live API means minutes per measurement, which is the
  * difference between testing a hypothesis and guessing at one. Nothing here
- * ships: the production path in `risKons.ts` keeps its own Nitro cache.
+ * ships: the production path (`server/utils/kons/konsCache.ts`) keeps its own
+ * Nitro cache.
  */
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
