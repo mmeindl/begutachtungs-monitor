@@ -700,6 +700,51 @@ export async function getDraftOutcome(
 }
 
 /**
+ * The Regierungsvorlage's half of the outcome: its Kundmachung and whether
+ * the Nationalrat still takes Stellungnahmen on it.
+ *
+ * Enrichment, never a dependency — a failing RV fetch leaves null fields
+ * and no error, because the stations the stage list already names stand
+ * without it. `rvTextUrl` is filled by the caller, once the text versions
+ * are mapped.
+ */
+async function enactmentOf(
+  rvLinks: readonly RvLink[],
+  gp: string,
+  currentGp: string,
+): Promise<EnactmentInfo | null> {
+  const rvLink = rvLinks.at(-1)
+  if (!rvLink) return null
+  const enactment: EnactmentInfo = {
+    rvCitation: rvLink.label,
+    rvUrl: rvLink.url,
+    rvTextUrl: null,
+    rvDate: rvLink.date,
+    // Everything before the latest one — the 1:n split, which used to be
+    // visible only in the raw stage list.
+    furtherRv: rvLinks.slice(0, -1).map((rv) => ({ label: rv.label, url: rv.url })),
+    bgblNumber: null,
+    bgblRisUrl: null,
+    filingOpen: false,
+  }
+  try {
+    const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
+    const bgbl = extractBgblLink(rv.content?.status?.bgbllinks)
+    if (bgbl) {
+      enactment.bgblNumber = bgbl.number
+      enactment.bgblRisUrl = bgbl.url
+    }
+    // The second window for input, from the same payload as the BGBl
+    // link — no request of its own. Only while the GP runs: a Vorlage
+    // that lapsed with its GP takes nothing, whatever a stale flag says.
+    enactment.filingOpen = isFilingOpen(rv.content) && !gpHasEnded(gp, currentGp)
+  } catch {
+    // RV enrichment is optional: bgblNumber/bgblRisUrl stay null, filingOpen false.
+  }
+  return enactment
+}
+
+/**
  * Detail assembly (docs/architecture.md §5):
  * list-81 row (404 if absent) + detail JSON + statements summary +
  * RV enrichment (latest RV; BGBl via Abfrage=BgblAuth; RV errors → nulls).
@@ -742,42 +787,16 @@ export async function getDraftDetail(
 
   const trace = parseStages(content.stages)
 
-  let enactment: EnactmentInfo | null = null
   const rvLinks = findRvLinks(trace)
-  const rvLink = rvLinks.at(-1) ?? null
-  if (rvLink) {
-    enactment = {
-      rvCitation: rvLink.label,
-      rvUrl: rvLink.url,
-      // Filled below, once the text versions are mapped.
-      rvTextUrl: null,
-      rvDate: rvLink.date,
-      // Everything before the latest one — the 1:n split, which used to be
-      // visible only in the raw stage list.
-      furtherRv: rvLinks.slice(0, -1).map((rv) => ({ label: rv.label, url: rv.url })),
-      bgblNumber: null,
-      bgblRisUrl: null,
-      filingOpen: false,
-    }
-    try {
-      const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
-      const bgbl = extractBgblLink(rv.content?.status?.bgbllinks)
-      if (bgbl) {
-        enactment.bgblNumber = bgbl.number
-        enactment.bgblRisUrl = bgbl.url
-      }
-      // The second window for input, from the same payload as the BGBl
-      // link — no request of its own. Only while the GP runs: a Vorlage
-      // that lapsed with its GP takes nothing, whatever a stale flag says.
-      enactment.filingOpen = isFilingOpen(rv.content) && !gpHasEnded(gp, currentGp)
-    } catch {
-      // RV enrichment is optional: bgblNumber/bgblRisUrl stay null, filingOpen false.
-    }
-  }
-
-  // Same-title drafts before and after this one — after the outcome is
-  // known, because a successor is only offered while no RV exists.
-  const related = await findRelated(summary, currentGp, enactment !== null)
+  // ONE ROUND TRIP, NOT TWO. `findRelated` needs a single fact about the
+  // outcome — whether a Regierungsvorlage exists — and the stage list says
+  // that before the Vorlage's own detail JSON is fetched. Awaiting the RV
+  // leg first and `findRelated` after it made every detail page pay two
+  // sequential upstream hops for one answer each.
+  const [enactment, related] = await Promise.all([
+    enactmentOf(rvLinks, gp, currentGp),
+    findRelated(summary, currentGp, rvLinks.length > 0),
+  ])
 
   // The list-81 counter (row[13]) is dropped here: the detail response
   // carries exactly ONE statements number — from list 142, the same source
