@@ -147,7 +147,7 @@ export function fristLabel(deadline: string | null | undefined, active: boolean)
  * different questions, and a "how long did this take" that silently used
  * the clock would change its answer overnight.
  *
- * Not `daysBetween`: `server/utils/risJoin.ts` exports that name for the
+ * Not `daysBetween`: `server/utils/ris/titleSimilarity.ts` exports that name for the
  * same arithmetic on non-null dates, and Nuxt auto-imports both trees —
  * the duplicate name resolved to the server one and silently shadowed this
  * everywhere it was called unqualified. Worth consolidating once the join

@@ -37,7 +37,8 @@ import type {
 } from '#shared/types'
 import { gpWindow } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
-import { classifyRisRecord, ministryCodeOf, type RisClass } from './risJoin'
+import { classifyRisRecord, type RisClass } from './risJoin'
+import { ministryCodeOf, ministryNameOf } from './ris/ministryCodes'
 import { getRisBegutCorpus, getRisMapForGp } from './ris'
 import { hasDocument, risDocumentUrl, withRisActiveOn, type RisBegutFlat } from './risRecord'
 
@@ -47,15 +48,6 @@ const KIND: Record<RisClass, RisConsultationKind> = {
   verordnung: 'verordnung',
   gesetz: 'gesetz',
   other: 'unbestimmt',
-}
-
-/**
- * "BMLUK (Bundesministerium für …)" → the long name alone.
- * Falls back to the whole string, never to an empty label.
- */
-function ministryNameOf(stelle: string | null): string {
-  const m = /^[A-ZÄÖÜ]{2,8}\s*\((.+)\)\s*$/.exec(stelle ?? '')
-  return m ? m[1]! : (stelle ?? '')
 }
 
 function toConsultation(r: RisBegutFlat): RisConsultation {

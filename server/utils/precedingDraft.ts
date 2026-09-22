@@ -48,7 +48,7 @@
  * Reines Modul — nur relative Importe, damit vitest es direkt ausführt.
  */
 import type { DraftSummary } from '../../shared/types'
-import { titleComponents } from './risJoin'
+import { titleComponents } from './ris/titleSimilarity'
 
 /** Siehe Kalibrierungstabelle oben. */
 const PRECEDING_DRAFT_MIN_JACCARD = 0.5

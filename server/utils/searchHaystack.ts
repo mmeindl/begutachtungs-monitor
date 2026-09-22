@@ -34,6 +34,7 @@
  * benutzen, sonst driften die zwei Hälften der Liste auseinander, und die
  * Regel selbst gehört unter Test.
  */
+import { ministryNameOf } from './ris/ministryCodes'
 
 /** Ein Ressortname ohne „für" ist ein Eigenname; kürzer als das ist kein Name. */
 const MIN_TOKEN_LEN = 4
@@ -105,10 +106,9 @@ export interface MinistryToken {
  */
 export function ministryToken(name: string): MinistryToken | null {
   // „BMLUK (Bundesministerium für …)" ist die Schreibweise des RIS-Satzes,
-  // „Bundesministerium für …" die der gemappten Zeile. Beide kommen hier an.
-  const raw = (name ?? '').trim()
-  const bare = /^[A-ZÄÖÜ]{2,8}\s*\((.+)\)\s*$/.exec(raw)
-  const trimmed = bare ? bare[1]!.trim() : raw
+  // „Bundesministerium für …" die der gemappten Zeile. Beide kommen hier an —
+  // dieselbe Klammer liest `ministryNameOf`.
+  const trimmed = ministryNameOf((name ?? '').trim()).trim()
   const m = /\bfür\s+(.+)$/s.exec(trimmed)
   const text = (m ? m[1]! : trimmed).trim().replace(/\s+/g, ' ')
   if (text.length < MIN_TOKEN_LEN) return null

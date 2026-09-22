@@ -25,7 +25,8 @@
  * die Mehrdeutigkeitsmarge, und deshalb hat `BgblOutcome` einen dritten
  * Zustand: `unknown`, für alles, was das Fenster noch nicht entscheiden kann.
  */
-import { daysBetween, ministryCodeOf, ministryScore, normalizeTitleText, titleComponents } from './risJoin'
+import { ministryCodeOf, ministryScore } from './ris/ministryCodes'
+import { daysBetween, normalizeTitleText, titleComponents } from './ris/titleSimilarity'
 
 /** Ein Satz des Bundesgesetzblatts, so viel davon, wie der Join braucht. */
 export interface BgblRecord {

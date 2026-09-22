@@ -23,11 +23,11 @@ import {
   classifyRisRecord,
   dedupeMeRows,
   joinRisToMe,
-  ministryCodeOf,
   type MeListRow,
   type RisBegutRecord,
   type RisClass,
 } from '../server/utils/risJoin'
+import { ministryCodeOf } from '../server/utils/ris/ministryCodes'
 import { flattenRisRecord, hasDocument, isOpenOn, type RisBegutFlat } from '../server/utils/risRecord'
 
 function arg(name: string): string | null {

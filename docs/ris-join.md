@@ -122,7 +122,10 @@ Geschäftszahl tie-breaker, which needs PDF text.
 ## 4a. What is implemented (2026-09-07)
 
 - `server/utils/risJoin.ts`: the rule above as a pure module, plus the
-  adapter from mapped list-81 rows (`toMeListRows`).
+  adapter from mapped list-81 rows (`toMeListRows`). Its title toolkit
+  (normalisation, tokens, components, `daysBetween`) is
+  `server/utils/ris/titleSimilarity.ts`, the ministry half
+  `server/utils/ris/ministryCodes.ts` — four other modules read only those.
 - `server/utils/ris.ts`: RIS client. Full Begut corpus fetch (paged,
   retries, HTTP-200 error envelope handled), flattened records with the
   main-document HTML/XML/PDF URLs, cached 24 h; `getRisMapForGp(gp)` joins

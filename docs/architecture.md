@@ -100,6 +100,7 @@ Server internals (`server/utils/`):
 - `budget.ts` — `withinBudget(promise, ms)`: waits at most `ms`, then answers `null` WITHOUT aborting the call, so the dropped fetch still fills its cache for the next reader. Used for the RIS join on the detail page (2 s): after a restart the RIS corpus is ~46 requests cold, and on 2026-09-07 the first detail-page hit after a deploy took 61 s in production while the prewarm unit was still running. Only for enrichment whose absence the page already handles — never for a fact the page asserts.
 - `ris.ts` — RIS OGD client: full Begut corpus (paged, retries, HTTP-200 error envelope), flattened records with main-document URLs; `getRisMapForGp` joins the cached list 81 against it.
 - `risJoin.ts` — **pure**: the ME↔RIS join (ruleVersion 2), regression-tested against `data/ris-me-map-gp27.json` and the GP XXVIII fixtures.
+- `ris/titleSimilarity.ts` / `ris/ministryCodes.ts` — **pure**: the toolkit the join was calibrated on (title normalisation, tokens, components, `daysBetween`; the `"CODE (long name)"` reader and the lineage groups), borrowed by `related.ts`, `precedingDraft.ts`, `bgblJoin.ts`, `risOnly.ts` and the full-text search instead of being re-derived per caller.
 - `related.ts` — **pure**: same-title drafts (predecessor/successor) by exact equality of the normalised title tokens, evaluated on the 57 GP XXVII drafts without RV (§12.10). `parliament/draftDetail.ts` looks in this, the previous and — once the GP is over — the next GP, and keeps a predecessor only when it produced no RV.
 - `lawText.ts` / `lawDiff.ts` — **pure**: Parliament Word-template HTML → § units (or Novellierungsanordnungen); article pairing by law name (the "Artikel n" marker is read from the heading text, not its class — the two documents disagree on the level), package scoping via `diffLawPackage`, unit alignment by heading, LCS word diff, editorial-vs-substantive rule. `lawDiffService.ts` fetches and caches around them.
 - `lastgood.ts` — on-disk store for the last-good statements aggregation of one ME (one JSON record per ME, write-then-rename, versioned; read back only when the live list-142 fetch fails). State directory: `BM_STATE_DIR` → systemd `STATE_DIRECTORY` (`/var/lib/begutachtungs-monitor`) → `./.data`. Deliberately outside the app dir — `deploy.sh` rsyncs `.output/` with `--delete`.
@@ -300,8 +301,8 @@ on every push (`.github/workflows/ci.yml`).
   (round-trip, version/corruption/empty-record rejection, path validation, I/O
   failure degrades instead of throwing — point `BM_STATE_DIR` at a temp dir),
   `cacheLayers` (every cached function declares its layer, §5).
-- **RIS join and the ME→RV diff:** `risJoin` (title normalisation, tiers),
-  `lawDiff`, `lawTitles`, `lawPackage`.
+- **RIS join and the ME→RV diff:** `risJoin` (tiers), `titleSimilarity` and
+  `ministryCodes` (its toolkit), `lawDiff`, `lawTitles`, `lawPackage`.
 - **Amendment engine (§12.12):** `novao` (instruction parsing), `lawApply`,
   `applyGuard`, `applyReport`, `tguOracle`.
 - **Textgegenüberstellung (§12.13):** `textComparison` (the XML table),
