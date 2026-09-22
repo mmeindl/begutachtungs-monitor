@@ -50,7 +50,6 @@ export const fetchDocument = defineCachedFunction(
   { name: 'law-html', getKey: (url: string) => url, maxAge: HTML_TTL_S, swr: false },
 )
 
-/** Honour the header charset, else the <meta charset>, else utf-8. */
 function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string {
   let charset = headerCharset
   if (!charset) {

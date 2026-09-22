@@ -18,16 +18,16 @@
 # it is cold, so a map nobody warms is a filter nobody sees. --max-time 900
 # rather than 600 because the timer may fire on a period twice that size.
 #
-# Vierter Aufruf seit 19.09.2026: die Jahrgänge des Bundesgesetzblatts Teil
-# II, aus denen die Verordnungsseiten ihre Kundmachung lesen (§12.32). Drei
-# Jahrgänge sind kalt rund 21 Anfragen ans RIS — und anders als bei den
-# anderen Abschnitten wäre das Ergebnis eines kalten Laufs nicht nur langsam,
-# sondern eine Aussage: Wer die Jahrgänge nicht hat, findet keine Kundmachung
-# und schriebe „nicht kundgemacht" unter eine Verordnung, die längst gilt.
+# Fourth call since 2026-09-19: the Bundesgesetzblatt Teil II volumes the
+# Verordnung pages read their Kundmachung from (§12.32). Three volumes are
+# about 21 requests to RIS when cold — and unlike the other sections, the
+# result of a cold run would not merely be slow but a statement: whoever does
+# not have the volumes finds no Kundmachung and would write „nicht
+# kundgemacht" under a Verordnung that has been in force for a long time.
 #
-# Er steht VOR dem Listenaufruf, seit die Liste den Ausgang je Zeile zeigt
-# (§12.32): Sie wartet nur 3 s darauf und rendert sonst ohne die Spalte —
-# was richtig ist, aber vermeidbar, wenn die Jahrgänge schon liegen.
+# It stands BEFORE the list call, ever since the list shows the outcome per
+# row (§12.32): the list waits only 3 s for it and otherwise renders without
+# the column — which is right, but avoidable when the volumes are already in.
 [Unit]
 Description=Begutachtungs-Monitor: warm the RIS↔ME map of the current GP
 After=begutachtungs-monitor.service
