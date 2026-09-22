@@ -20,6 +20,7 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
+import { sortConsultations } from '#shared/utils/risConsultations'
 import { matchesQuery } from '#shared/utils/searchQuery'
 
 /** Was die Liste auf den Ausgang wartet, solange er nur eine Spalte füllt. */
@@ -65,7 +66,14 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
 
   const currentGp = await getCurrentGp()
   const gp = gpParam ?? currentGp
-  const { items, withGegenstand, undecided } = await getRisOnlyForGp(gp)
+  const cached = await getRisOnlyForGp(gp)
+  const { withGegenstand, undecided } = cached
+  /* `active` and the order that follows from it are decided HERE, per
+   * request: the cached set is day-independent on purpose, so that the
+   * status filter never answers with the calendar day of whoever filled the
+   * cache (`risOnly.ts`, `risRecord.withRisActiveOn`). Same rule and same
+   * place as `reconcileActive` for list 81. */
+  const items = withRisActiveOn(cached.items).sort(sortConsultations)
 
   // Filter vocabulary of the whole GP, independent of the active filters —
   // same rule as /api/drafts, so a narrowed list never narrows its own menu.

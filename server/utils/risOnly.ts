@@ -39,7 +39,7 @@ import { gpWindow } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { classifyRisRecord, ministryCodeOf, type RisClass } from './risJoin'
 import { getRisBegutCorpus, getRisMapForGp } from './ris'
-import { hasDocument, isOpenOn, risDocumentUrl, type RisBegutFlat } from './risRecord'
+import { hasDocument, risDocumentUrl, withRisActiveOn, type RisBegutFlat } from './risRecord'
 
 const RIS_ONLY_TTL_S = 60 * 30
 
@@ -47,11 +47,6 @@ const KIND: Record<RisClass, RisConsultationKind> = {
   verordnung: 'verordnung',
   gesetz: 'gesetz',
   other: 'unbestimmt',
-}
-
-/** Today in Vienna, ISO — the same basis `reconcileActive` uses for list 81. */
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
 }
 
 /**
@@ -63,7 +58,7 @@ function ministryNameOf(stelle: string | null): string {
   return m ? m[1]! : (stelle ?? '')
 }
 
-function toConsultation(r: RisBegutFlat, day: string): RisConsultation {
+function toConsultation(r: RisBegutFlat): RisConsultation {
   const title = r.kurztitel ?? r.titel ?? '(ohne Titel)'
   return {
     id: r.id,
@@ -76,8 +71,11 @@ function toConsultation(r: RisBegutFlat, day: string): RisConsultation {
     ministryName: ministryNameOf(r.stelle),
     startedAt: r.beginn,
     deadline: r.ende,
-    // A record whose Frist has no end cannot be claimed to be running.
-    active: isOpenOn(r, day),
+    // PLACEHOLDER, not an answer: whether a Frist runs depends on the
+    // calendar day, and this object is cached for half an hour. Every reader
+    // decides it for itself with `withRisActiveOn` at request time
+    // (`risRecord.ts`); a record whose Frist has no end is never running.
+    active: false,
     // Der Ausgang wird hier nicht ermittelt: Dieses Modul liest den Korpus,
     // den die Seite ohnehin hält, der Abgleich kostet Jahrgänge des
     // Bundesgesetzblatts. Wer ihn braucht, mischt ihn mit einem Zeitbudget
@@ -107,6 +105,11 @@ export interface RisOnlyResult {
  * and the GP's join map are the same cached leaves the detail pages read
  * (`ris.ts`). Cached again here because the set derivation runs over a few
  * thousand records and the answer is identical for every visitor.
+ *
+ * The records it returns are DAY-INDEPENDENT, which is what makes that last
+ * sentence true: `active` is left at `false` here and applied by the caller
+ * with `withRisActiveOn`, so no reader inherits the calendar day of whoever
+ * filled the cache.
  */
 export const getRisOnlyForGp = defineCachedFunction(
   async (gp: string): Promise<RisOnlyResult> => {
@@ -131,11 +134,14 @@ export const getRisOnlyForGp = defineCachedFunction(
     // `tests/risJoin.test.ts`) — a real number to watch, not a silent risk.
     const undecided = map.counts.ambiguous
 
-    const day = today()
+    // A day-independent baseline order — `sortConsultations` reads `active`,
+    // so with the flag undecided this is "latest Frist end first". The list
+    // endpoint re-sorts once it has applied the day; the feeds and the
+    // sitemap order themselves anyway.
     const inGp = corpus.records.filter((r) => inWindow(r, w))
     const items = inGp
       .filter((r) => !claimed.has(r.id))
-      .map((r) => toConsultation(r, day))
+      .map((r) => toConsultation(r))
       .sort(sortConsultations)
 
     return { items, withGegenstand: inGp.length - items.length, undecided }
@@ -154,8 +160,11 @@ export async function getRisConsultation(id: string): Promise<RisConsultationDet
   const corpus = await getRisBegutCorpus()
   const r = corpus.records.find((x) => x.id === id)
   if (!r) return null
+  // Uncached, but the day is still decided here and not in `toConsultation`,
+  // so there is exactly one rule for `active` in this file.
+  const [item] = withRisActiveOn([toConsultation(r)])
   return {
-    ...toConsultation(r, today()),
+    ...item!,
     mainDocument: r.mainDocument,
     explanations: hasDocument(r.explanations) ? r.explanations : null,
     textComparison: hasDocument(r.textComparison) ? r.textComparison : null,

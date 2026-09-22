@@ -30,7 +30,11 @@ export default defineEventHandler(async (event) => {
   const [{ items }, risOnly] = await Promise.all([getDraftsForGp(gp), getRisOnlyForGp(gp)])
   const all = items.map(reconcileActive)
   const scoped = code ? all.filter((item) => item.ministryCode === code) : all
-  const risScoped = code ? risOnly.items.filter((item) => item.ministryCode === code) : risOnly.items
+  // `active` per request (`risRecord.withRisActiveOn`), the same rule
+  // `reconcileActive` applies to the Parliament half one line above: the
+  // feed prints it as the filing note.
+  const risItems = withRisActiveOn(risOnly.items)
+  const risScoped = code ? risItems.filter((item) => item.ministryCode === code) : risItems
   const body = buildRssFeed(
     siteUrl,
     scoped,

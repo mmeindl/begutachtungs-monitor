@@ -8,6 +8,7 @@
  * and `#shared/*`; a measurement script could then only re-implement the
  * flattening, and a re-implemented mapper measures itself, not the product.
  */
+import type { RisConsultation } from '../../shared/types'
 import type { RisBegutRecord } from './risJoin'
 
 /** The formats RIS offers for one document of a Begut record. */
@@ -173,4 +174,29 @@ export function hasDocument(d: RisDocumentUrls | null): boolean {
  */
 export function isOpenOn(r: Pick<RisBegutFlat, 'beginn' | 'ende'>, isoDay: string): boolean {
   return Boolean(r.beginn && r.ende && r.beginn <= isoDay && r.ende >= isoDay)
+}
+
+/** Today in Vienna, ISO — the same basis `reconcileActive` uses for list 81. */
+function today(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/**
+ * Decides `active` for a list of RIS records on `day`.
+ *
+ * Runs at request time, never inside a cached function — the flag is a
+ * statement about the calendar day, and a cached one keeps yesterday's
+ * answer until its TTL runs out. That is the same rule `reconcileActive`
+ * states for the Parliament half in `parliament.ts`, and the reason the
+ * records `getRisOnlyForGp` caches carry a meaningless `active: false`:
+ * every reader has to decide the day for itself.
+ *
+ * `day` defaults to today, which is what every caller wants; the parameter
+ * exists so the rule can be tested without a clock.
+ */
+export function withRisActiveOn(items: RisConsultation[], day: string = today()): RisConsultation[] {
+  return items.map((item) => {
+    const active = isOpenOn({ beginn: item.startedAt, ende: item.deadline }, day)
+    return active === item.active ? item : { ...item, active }
+  })
 }

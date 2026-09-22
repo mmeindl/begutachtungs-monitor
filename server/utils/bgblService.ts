@@ -20,6 +20,7 @@ import type { BgblOutcome, BgblOutcomeState, RisConsultation } from '#shared/typ
 import { joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
 import { DERIVED_CACHE } from './cacheBase'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
+import { withRisActiveOn } from './risRecord'
 
 const RIS_API_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
@@ -286,7 +287,10 @@ export const getBgblOutcome = defineCachedFunction(
  */
 export const getBgblOutcomesForGp = defineCachedFunction(
   async (gp: string): Promise<Record<string, BgblOutcome>> => {
-    const { items } = await getRisOnlyForGp(gp)
+    // `active` gehört nicht in den Satz, den `getRisOnlyForGp` cacht —
+    // `stateOf` liest es, also wird der Tag hier entschieden
+    // (`risRecord.withRisActiveOn`).
+    const items = withRisActiveOn((await getRisOnlyForGp(gp)).items)
     // Nur Verordnungen: Ein Gesetzesentwurf ohne Gegenstand wird in Teil I
     // kundgemacht, und den durchsucht dieser Join nicht.
     const relevant = items.filter((i) => i.kind === 'verordnung' && i.deadline)

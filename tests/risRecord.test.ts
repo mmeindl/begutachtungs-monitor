@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { asArray, flattenRisRecord, hasDocument, isOpenOn, risDocumentUrl } from '../server/utils/risRecord'
+import type { RisConsultation } from '../shared/types'
+import {
+  asArray,
+  flattenRisRecord,
+  hasDocument,
+  isOpenOn,
+  risDocumentUrl,
+  withRisActiveOn,
+} from '../server/utils/risRecord'
 
 /**
  * The RIS Begut record mapper (docs/api-exploration.md §2).
@@ -220,5 +228,58 @@ describe('risDocumentUrl', () => {
     expect(risDocumentUrl('BEGUT_COO_2026_100_2_1836568')).toBe(
       'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=BEGUT_COO_2026_100_2_1836568',
     )
+  })
+})
+
+describe('withRisActiveOn', () => {
+  /**
+   * The day rule that `getRisOnlyForGp` used to decide inside its own cache
+   * (`server/utils/risOnly.ts`). It lives here because the cached module
+   * cannot be imported without Nitro, and because the predicate it applies
+   * is `isOpenOn` above.
+   */
+  function c(overrides: Partial<RisConsultation> = {}): RisConsultation {
+    return {
+      id: 'BEGUT_A',
+      kind: 'verordnung',
+      title: 'Änderung der Druckgeräteaufstellungsverordnung',
+      longTitle: null,
+      ministryCode: 'BMWET',
+      ministryName: 'Bundesministerium für Wirtschaft, Energie und Tourismus',
+      startedAt: '2026-09-08',
+      deadline: '2026-10-19',
+      active: false,
+      risUrl: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=BEGUT_A',
+      outcome: null,
+      ...overrides,
+    }
+  }
+
+  it('decides the flag on the given day, both boundaries included', () => {
+    const items = [c()]
+    expect(withRisActiveOn(items, '2026-09-08')[0]!.active).toBe(true)
+    expect(withRisActiveOn(items, '2026-10-19')[0]!.active).toBe(true)
+    expect(withRisActiveOn(items, '2026-10-20')[0]!.active).toBe(false)
+  })
+
+  it('overrides whatever the cached record carried — the cache holds no answer', () => {
+    // The whole point of the split: a record cached before midnight must not
+    // hand its `active` to a request made after it.
+    expect(withRisActiveOn([c({ active: true })], '2026-10-20')[0]!.active).toBe(false)
+    expect(withRisActiveOn([c({ active: false })], '2026-10-01')[0]!.active).toBe(true)
+  })
+
+  it('leaves a record without a Frist inactive', () => {
+    expect(withRisActiveOn([c({ deadline: null })], '2026-10-01')[0]!.active).toBe(false)
+    expect(withRisActiveOn([c({ startedAt: null })], '2026-10-01')[0]!.active).toBe(false)
+  })
+
+  it('touches nothing else and keeps the input untouched', () => {
+    const items = [c({ id: 'BEGUT_A' }), c({ id: 'BEGUT_B', active: true })]
+    const out = withRisActiveOn(items, '2026-10-20')
+    expect(out.map((x) => x.id)).toEqual(['BEGUT_A', 'BEGUT_B'])
+    expect(items[1]!.active).toBe(true)
+    // Unchanged records keep their identity, the way `reconcileActive` does.
+    expect(out[0]).toBe(items[0])
   })
 })

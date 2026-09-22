@@ -9,7 +9,10 @@ export default defineEventHandler(async (event) => {
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const gp = await getCurrentGp()
   const [{ items }, risOnly] = await Promise.all([getDraftsForGp(gp), getRisOnlyForGp(gp)])
-  const body = buildSitemap(siteUrl, items, risOnly.items)
+  // `active` per request, like everywhere (`risRecord.withRisActiveOn`) —
+  // the sitemap does not print it, but no caller may inherit the day the
+  // cache was filled on.
+  const body = buildSitemap(siteUrl, items, withRisActiveOn(risOnly.items))
 
   const etag = bodyEtag(body)
   setHeader(event, 'ETag', etag)
