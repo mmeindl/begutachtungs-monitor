@@ -11,6 +11,10 @@
   // config is the one that carries `#shared/*` and the Nitro auto-import
   // types. Run with `pnpm typecheck:tools`; CI runs both.
   "extends": "./.nuxt/tsconfig.server.json",
+  // A dead local in this half was invisible twice over: `nuxt typecheck`
+  // never looked here, and until 2026-09-22 no linter did either. The flag
+  // makes the next one fail the build instead of ageing in place.
+  "compilerOptions": { "noUnusedLocals": true },
   "include": ["scripts/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", ".nuxt", ".output"]
 }
