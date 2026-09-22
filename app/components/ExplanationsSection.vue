@@ -110,9 +110,9 @@ const sourceLabel = computed(() => {
  */
 const loading = computed(() => status.value !== 'error' && !data.value)
 
-/* Die Haus-Linkform (derselbe String wie `linkClasses` der Detailseite). */
+/* Die Haus-Linkform (`link-inline` in `main.css`) plus den Fokusring. */
 const LINK =
-  'rounded text-accent-deep underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
+  'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
 
 /**
  * Die Ansage für Screenreader, wenn der Abschnitt nachgeladen ist — dieselbe

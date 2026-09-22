@@ -89,7 +89,7 @@ const props = defineProps<{
    THE QUESTION (`LINK`) is the house style: accent-deep, underlined at
    rest, because a question sharing the page with plain text is not marked
    as clickable by colour alone (WCAG 1.4.1, the same reasoning as
-   `linkClasses` on the detail page). It is the accountability layer, it is
+   `link-inline` in `main.css`). It is the accountability layer, it is
    the click this card exists for, and it is the only blue in it.
 
    THE STATION NAME (`STATION`) carries no link styling at all. The whole
@@ -120,7 +120,7 @@ const STATION = [
   'focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-accent-deep',
   '[@media(hover:none)]:underline [@media(hover:none)]:decoration-baseline',
 ].join(' ')
-const LINK = `rounded text-accent-deep underline underline-offset-2 hover:no-underline ${FOCUS}`
+const LINK = `link-inline ${FOCUS}`
 
 const list = computed(() => stations(props.data, {
   createsNewLaw: props.createsNewLaw,

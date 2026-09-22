@@ -311,7 +311,7 @@ useSeoMeta({
 })
 
 const linkClasses =
-  'rounded text-accent-deep underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
+  'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
 </script>
 
 <template>
@@ -381,7 +381,7 @@ const linkClasses =
               <span>Übermittelt von {{ data.invitedBy }}</span>
               <span aria-hidden="true">·</span>
             </template>
-            <!-- linkClasses, i.e. underlined at rest: sharing a line with
+            <!-- `linkClasses`, i.e. underlined at rest: sharing a line with
                  body text of the same size, colour alone would not mark it
                  (WCAG 1.4.1) — the standalone styling it wore mid-page no
                  longer applies. tap-target restores the 44px it had there. -->

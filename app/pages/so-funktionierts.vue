@@ -214,11 +214,11 @@ const toc = [
         Rechtzeitig erfahren lässt sich das auf drei Wegen, alle ohne Konto:
         <NuxtLink
           to="/entwuerfe?status=open"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          class="link-inline font-medium"
         >die Liste der offenen Begutachtungen</NuxtLink>, der
         <a
           href="/feed.xml"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          class="link-inline font-medium"
         >RSS-Feed</a>
         und ein
         <!-- Verweist auf /ueber, statt hier ein webcal:// anzubieten. Ein
@@ -230,7 +230,7 @@ const toc = [
              dort, wo die Knöpfe sind. -->
         <NuxtLink
           to="/ueber#about-subscribe"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          class="link-inline font-medium"
         >Kalender-Abo aller Fristen</NuxtLink>.
       </p>
     </section>
@@ -275,7 +275,7 @@ const toc = [
         Die Liste lässt sich
         <NuxtLink
           to="/entwuerfe?art=ministerialentwurf&sort=stellungnahmen"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          class="link-inline font-medium"
         >nach den meisten Stellungnahmen reihen</NuxtLink> – jede Zeile mit
         dem, was aus dem Entwurf geworden ist.
       </p>
@@ -539,7 +539,7 @@ const toc = [
     <p class="mt-12 leading-relaxed text-ink-secondary">
       <NuxtLink
         to="/ueber"
-        class="rounded text-accent-deep underline underline-offset-2 hover:no-underline"
+        class="link-inline"
       >Mehr über das Projekt</NuxtLink>
       – wer es macht, woher die Daten kommen und was es noch nicht kann.
     </p>

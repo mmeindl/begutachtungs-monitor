@@ -533,7 +533,7 @@ const droppedNote = computed(() =>
              Abzeichen wie die Textgegenüberstellung, hatte aber als einziger
              keinen Link auf die Seite, die sie erklärt. Wer „redaktionell"
              nicht kennt, stand hier vor dem Wort und vor keinem Ausweg. -->
-        <NuxtLink to="/so-funktionierts#gegenueberstellung" class="rounded text-accent-deep underline underline-offset-2 hover:no-underline">Wie wir vergleichen</NuxtLink>
+        <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir vergleichen</NuxtLink>
       </p>
 
       <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">

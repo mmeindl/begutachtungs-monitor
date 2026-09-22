@@ -32,9 +32,6 @@ useSeoMeta({
   description:
     'Offenlegung nach § 25 Mediengesetz: Medieninhaber, Unternehmensgegenstand, Beteiligungsverhältnisse und grundlegende Richtung des Begutachtungs-Monitors.',
 })
-
-const linkClasses =
-  'rounded text-accent-deep underline underline-offset-2 hover:no-underline'
 </script>
 
 <template>
@@ -60,7 +57,7 @@ const linkClasses =
           E-Mail:
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >kontakt@begutachtungs-monitor.at</a>
         </address>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -137,17 +134,17 @@ const linkClasses =
           Originalquelle auf
           <ExternalLink
             href="https://www.parlament.gv.at"
-            :class="linkClasses"
+            class="link-inline"
           >parlament.gv.at</ExternalLink>, auf die jede Angabe verlinkt ist. Hinweise auf Fehler sind
           willkommen – per
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >E-Mail</a>
           oder als
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor/issues"
-            :class="linkClasses"
+            class="link-inline"
           >GitHub-Issue</ExternalLink>.
         </p>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -155,7 +152,7 @@ const linkClasses =
           wiedergegeben; warum, steht
           <NuxtLink
             to="/ueber#about-privacy"
-            :class="linkClasses"
+            class="link-inline"
           >auf der Über-Seite</NuxtLink>.
         </p>
       </section>
@@ -198,7 +195,7 @@ const linkClasses =
               Bundesrecht –
               <ExternalLink
                 href="https://creativecommons.org/licenses/by/4.0/deed.de"
-                :class="linkClasses"
+                class="link-inline"
               >CC BY 4.0</ExternalLink>.
             </dd>
           </div>
@@ -210,7 +207,7 @@ const linkClasses =
               Regierungsvorlagen und Verhandlungsgegenstände –
               <ExternalLink
                 href="https://creativecommons.org/licenses/by/4.0/deed.de"
-                :class="linkClasses"
+                class="link-inline"
               >CC BY 4.0</ExternalLink>.
             </dd>
           </div>
@@ -234,7 +231,7 @@ const linkClasses =
               von Stellungnahmen übernimmt er nicht, sondern verlinkt sie auf
               <ExternalLink
                 href="https://www.parlament.gv.at"
-                :class="linkClasses"
+                class="link-inline"
               >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
             </dd>
           </div>
@@ -243,7 +240,7 @@ const linkClasses =
           Der Quellcode des Monitors ist unter der
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor"
-            :class="linkClasses"
+            class="link-inline"
           >AGPL-3.0 veröffentlicht</ExternalLink>. Texte dieser Website dürfen unter Nennung der Quelle
           weiterverwendet werden.
         </p>
@@ -258,7 +255,7 @@ const linkClasses =
           welche nicht – steht in der
           <NuxtLink
             to="/datenschutz"
-            :class="linkClasses"
+            class="link-inline"
           >Datenschutzerklärung</NuxtLink>.
         </p>
       </section>

@@ -102,9 +102,9 @@ function links(org: OrgEntry) {
   }))
 }
 
-/* The house link style (same string as the detail page's `linkClasses`). */
+/* The house inline link (`link-inline` in `main.css`) plus the focus ring. */
 const LINK =
-  'rounded text-accent-deep underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
+  'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
 </script>
 
 <template>

@@ -24,9 +24,6 @@ useSeoMeta({
   description:
     'Welche Daten der Begutachtungs-Monitor verarbeitet: keine Cookies, kein Tracking, keine Zugriffsprotokolle – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
 })
-
-const linkClasses =
-  'rounded text-accent-deep underline underline-offset-2 hover:no-underline'
 </script>
 
 <template>
@@ -51,14 +48,14 @@ const linkClasses =
           E-Mail:
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >kontakt@begutachtungs-monitor.at</a>
         </address>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Ein Datenschutzbeauftragter ist nicht bestellt; die Voraussetzungen
           des Art 37 DSGVO liegen nicht vor. Die vollständigen Angaben zum
           Medieninhaber stehen im
-          <NuxtLink to="/impressum" :class="linkClasses">Impressum</NuxtLink>.
+          <NuxtLink to="/impressum" class="link-inline">Impressum</NuxtLink>.
         </p>
       </section>
 
@@ -205,7 +202,7 @@ const linkClasses =
             der Parlamentsdirektion, abrufbar unter
             <ExternalLink
               href="https://www.parlament.gv.at/recherchieren/open-data/"
-              :class="linkClasses"
+              class="link-inline"
             >parlament.gv.at/recherchieren/open-data</ExternalLink>.
           </li>
         </ul>
@@ -214,7 +211,7 @@ const linkClasses =
           bekommt das ohne Diskussion korrigiert – eine kurze
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >E-Mail</a>
           genügt. Auf parlament.gv.at bleibt der Eintrag davon unberührt;
           dafür ist die Parlamentsdirektion zuständig.
@@ -233,7 +230,7 @@ const linkClasses =
           formlose Nachricht an
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >kontakt@begutachtungs-monitor.at</a>
           reicht.
         </p>
@@ -241,9 +238,9 @@ const linkClasses =
           Unabhängig davon besteht ein Beschwerderecht bei der
           <ExternalLink
             href="https://www.dsb.gv.at"
-            :class="linkClasses"
+            class="link-inline"
           >österreichischen Datenschutzbehörde</ExternalLink>, Barichgasse 40–42, 1030 Wien,
-          <a href="mailto:dsb@dsb.gv.at" :class="linkClasses">dsb@dsb.gv.at</a>.
+          <a href="mailto:dsb@dsb.gv.at" class="link-inline">dsb@dsb.gv.at</a>.
         </p>
       </section>
 

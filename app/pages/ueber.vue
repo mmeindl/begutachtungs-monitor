@@ -5,9 +5,6 @@ useSeoMeta({
     'Worum es beim Begutachtungs-Monitor geht, wie er funktioniert, woher die Daten stammen und warum Privatpersonen nicht namentlich genannt werden.',
 })
 
-const linkClasses =
-  'rounded text-accent-deep underline underline-offset-2 hover:no-underline'
-
 const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
 </script>
 
@@ -55,12 +52,12 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Alle Daten stammen aus den amtlichen Schnittstellen des
           <ExternalLink
             href="https://www.parlament.gv.at/recherchieren/open-data/"
-            :class="linkClasses"
+            class="link-inline"
           >österreichischen Parlaments</ExternalLink>
           und des
           <ExternalLink
             href="https://www.ris.bka.gv.at"
-            :class="linkClasses"
+            class="link-inline"
           >Rechtsinformationssystems des Bundes</ExternalLink>. Der Monitor
           ruft sie bei Bedarf ab und hält sie rund 30 Minuten im
           Zwischenspeicher; eine eigene Datenbank gibt es nicht. Es gibt keine
@@ -74,14 +71,14 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Neue Begutachtungsverfahren gibt es als
-          <a href="/feed.xml" :class="linkClasses">RSS-Feed</a> für jeden
+          <a href="/feed.xml" class="link-inline">RSS-Feed</a> für jeden
           Feed-Reader. Alle Begutachtungsfristen lassen sich als Kalender
           abonnieren:
-          <a :href="webcalUrl" :class="linkClasses">Fristen-Kalender abonnieren</a>
+          <a :href="webcalUrl" class="link-inline">Fristen-Kalender abonnieren</a>
           (Apple Kalender, Outlook),
           <ExternalLink
             :href="googleCalUrl"
-            :class="linkClasses"
+            class="link-inline"
           >zu Google Kalender hinzufügen</ExternalLink>
           – oder die Adresse
           <span class="select-all font-medium text-ink">{{ icsDisplayUrl }}</span>
@@ -103,7 +100,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Begutachtung von der Parlamentsdirektion; beide stehen unter
           <ExternalLink
             href="https://creativecommons.org/licenses/by/4.0/deed.de"
-            :class="linkClasses"
+            class="link-inline"
           >CC BY 4.0</ExternalLink>.
         </p>
         <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -118,7 +115,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Welche Lizenz für welchen Datensatz gilt, steht
           <NuxtLink
             to="/impressum#imp-license"
-            :class="linkClasses"
+            class="link-inline"
           >im Impressum</NuxtLink>.
         </p>
       </section>
@@ -152,7 +149,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           stößt, hilft dem Projekt mit einem Hinweis an
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >kontakt@begutachtungs-monitor.at</a>.
         </p>
       </section>
@@ -177,7 +174,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         <p class="mt-3 leading-relaxed text-ink-secondary">
           <ExternalLink
             href="https://github.com/Forum-Informationsfreiheit/OffenesParlament"
-            :class="linkClasses"
+            class="link-inline"
           >OffenesParlament.at</ExternalLink>, ein Projekt des Forum Informationsfreiheit, hat
           Ministerialentwürfe in Begutachtung schon vor rund zehn Jahren
           beobachtbar gemacht, inklusive E-Mail-Benachrichtigungen. Es blieb in
@@ -237,11 +234,11 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Fragen, Hinweise und Feedback:
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >kontakt@begutachtungs-monitor.at</a>. Fehler und Vorschläge gerne auch als
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor/issues"
-            :class="linkClasses"
+            class="link-inline"
           >GitHub-Issue</ExternalLink>.
         </p>
       </section>

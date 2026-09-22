@@ -317,6 +317,24 @@
  * only links WITHIN text need the rest-underline (WCAG 1.4.1).
  */
 
+/*
+ * That inline link, named once — the precedent is `tap-target` above.
+ *
+ * The five classes were a local `const` in seven files and written out
+ * another twenty times in templates, and the copies had already begun to
+ * drift: some carry `font-medium`, some a focus ring, two carry no `rounded`
+ * at all. Those differences stay at the call site, beside this name; what is
+ * shared is the signature the comment above describes.
+ *
+ * `rounded` is part of it although the link has no ground of its own: the
+ * focus ring and the selection box follow the radius, and a square ring on a
+ * link inside a rounded page is the kind of detail nobody names and everybody
+ * sees.
+ */
+@utility link-inline {
+  @apply rounded text-accent-deep underline underline-offset-2 hover:no-underline;
+}
+
 /* In-page anchor jumps glide — but only for users without reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
   html {

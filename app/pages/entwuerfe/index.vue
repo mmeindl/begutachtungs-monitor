@@ -786,7 +786,7 @@ const countLabel = computed(() => {
           Regierungsvorlage. „Alle Arten" oder
           <button
             type="button"
-            class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+            class="tap-target link-inline font-medium"
             @click="stations = []"
           >alle Stationen</button>
           zeigen wieder Zeilen.
@@ -929,7 +929,7 @@ const countLabel = computed(() => {
             schließen sie aus.
             <button
               type="button"
-              class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+              class="tap-target link-inline font-medium"
               @click="art = ''; ministry = ''"
             >Alle Arten und Ressorts</button>
             zeigen sie.

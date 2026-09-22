@@ -25,23 +25,23 @@ const { webcalUrl, googleCalUrl } = useFeedUrls()
   <template v-if="ministry">
     <a
       :href="`/feed.xml?ressort=${ministry}`"
-      class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+      class="tap-target link-inline font-medium"
     >RSS-Feed für dieses Ministerium</a>
     ·
   </template>
   <a
     :href="webcalUrl"
-    class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+    class="tap-target link-inline font-medium"
   >Fristen-Kalender abonnieren</a>
   (Apple/Outlook) ·
   <ExternalLink
     :href="googleCalUrl"
-    class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+    class="tap-target link-inline font-medium"
   >Google Kalender</ExternalLink>
   ·
   <a
     href="/feed.xml"
-    class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+    class="tap-target link-inline font-medium"
   >RSS</a>
   – ohne Konto, ohne Tracking.
 </template>

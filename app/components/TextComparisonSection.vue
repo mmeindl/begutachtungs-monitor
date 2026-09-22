@@ -464,7 +464,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
         <div>
           <p class="text-sm text-ink-secondary">
             {{ checkNote }}
-            <NuxtLink to="/so-funktionierts#gegenueberstellung" class="rounded text-accent-deep underline underline-offset-2 hover:no-underline">Wie wir prüfen</NuxtLink>
+            <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir prüfen</NuxtLink>
           </p>
           <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
         </div>
