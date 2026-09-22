@@ -26,6 +26,7 @@ import { draftArticles, isAmendmentClause, stammnormOf, type BgblCitation } from
 import { getDraftsForGp, getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
 import { resolveKonsLaw } from './konsCache'
+import { mapWithConcurrency } from './pool'
 
 const TTL_S = 60 * 60 * 24
 /** A Sammelgesetz can name dozens; one slow RIS lookup must not hang a page. */
@@ -125,36 +126,28 @@ export const getAmendedLaws = defineCachedFunction(
 
     // One RIS round trip per law, in parallel: a Sammelgesetz names dozens
     // (116/ME hits the ceiling at 40) and sequentially that was 36 s cold.
-    const queue = [...jobs.entries()]
-    const results = new Array<AmendedLaw | null>(jobs.length).fill(null)
-    const worker = async (): Promise<void> => {
-      for (;;) {
-        const job = queue.shift()
-        if (!job) return
-        const [i, w] = job
-        const cited = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}` : null
-        const resolved = w.bgbl && asOf
-          // `w.title` is the Artikel heading this entry came from — the same
-          // disambiguator `annexGuardService` passes, and the string used as
-          // the display fallback one line below. Withheld from the lookup it
-          // turned every law of an ambiguous Bundesgesetzblatt into a row
-          // without a RIS link and with the draft's own wording instead of
-          // the law's name.
-          //
-          // Uncaught: `resolveKonsLaw` already answers null where RIS knows
-          // no such law or cannot tell two apart, and throws only when RIS
-          // is unreachable — the distinction its own doc comment draws
-          // (`konsCache.ts`). Catching it here undid that one layer up.
-          ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '')
-          : null
-        results[i] = {
-          title: resolved?.kurztitel || w.title || cited || 'Unbenanntes Gesetz',
-          bgbl: cited,
-          risUrl: resolved ? konsLawUrl(resolved.gesetzesnummer, asOf) : null,
-        }
+    const results = await mapWithConcurrency(jobs, CONCURRENCY, async (w) => {
+      const cited = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}` : null
+      const resolved = w.bgbl && asOf
+        // `w.title` is the Artikel heading this entry came from — the same
+        // disambiguator `annexGuardService` passes, and the string used as
+        // the display fallback one line below. Withheld from the lookup it
+        // turned every law of an ambiguous Bundesgesetzblatt into a row
+        // without a RIS link and with the draft's own wording instead of
+        // the law's name.
+        //
+        // Uncaught: `resolveKonsLaw` already answers null where RIS knows
+        // no such law or cannot tell two apart, and throws only when RIS
+        // is unreachable — the distinction its own doc comment draws
+        // (`konsCache.ts`). Catching it here undid that one layer up.
+        ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '')
+        : null
+      return {
+        title: resolved?.kurztitel || w.title || cited || 'Unbenanntes Gesetz',
+        bgbl: cited,
+        risUrl: resolved ? konsLawUrl(resolved.gesetzesnummer, asOf) : null,
       }
-    }
-    await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+    })
     for (const r of results) if (r) laws.push(r)
 
     return { gp, inr, asOf, createsNewLaw: articles.length > 0 && laws.length === 0, laws }

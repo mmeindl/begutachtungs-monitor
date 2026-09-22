@@ -60,6 +60,7 @@ import { draftUnits } from './annexDraft'
 import { normalizeText, type TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import { NO_PARAGRAPH_ADDRESSED } from './novao'
+import { mapWithConcurrency } from './pool'
 import type { KonsLawAtDate, KonsParagraphRef } from './risKons'
 import { summarizeComparison, type ComparisonRow, type ComparisonStats } from './textComparison'
 import type { AnnexWithheldCause, TextComparisonRow } from '../../shared/types'
@@ -1322,50 +1323,38 @@ export async function verifyAnnex(
 
   const coverage = new Map<string | null, Map<string, Coverage>>()
   const rightColumn = new Map<string, RightColumnCheck>()
-  const queue = [...groups.values()]
   let looked = 0
-  let failure: unknown = null
-  const worker = async (): Promise<void> => {
-    while (failure === null) {
-      const group = queue.shift()
-      if (!group) return
-      if (looked >= maxParagraphs) {
-        reasons.add(REASON_CEILING)
-        return
-      }
-      looked++
-      try {
-        const index = await lawOf(group.law)
-        if (!index) continue
-        const key = designationKey(group.para)
-        if (key === null) {
-          reasons.add(REASON_UNREADABLE_DESIGNATION)
-          continue
-        }
-        const ref = index.paragraphs.get(key)
-        if (!ref) {
-          reasons.add(REASON_NO_SUCH_PARAGRAPH)
-          continue
-        }
-        const standing = await sources.standingText(ref)
-        if (standing === null) {
-          reasons.add(REASON_NOT_REPRESENTABLE)
-          continue
-        }
-        const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
-        byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
-        coverage.set(group.law, byPara)
-        rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, draftWords(group.law, group.para)))
-      } catch (err) {
-        // Stop the other workers too: a RIS that just failed four times over
-        // is not worth another 150 requests, and the answer is thrown away.
-        failure ??= err
-        return
-      }
+  // `failFast`: stop the other workers too — a RIS that just failed four
+  // times over is not worth another 150 requests, and the answer is thrown
+  // away. The only call site of the pool that asks for it.
+  await mapWithConcurrency([...groups.values()], concurrency, async (group) => {
+    if (looked >= maxParagraphs) {
+      reasons.add(REASON_CEILING)
+      return
     }
-  }
-  await Promise.all(Array.from({ length: concurrency }, worker))
-  if (failure !== null) throw failure
+    looked++
+    const index = await lawOf(group.law)
+    if (!index) return
+    const key = designationKey(group.para)
+    if (key === null) {
+      reasons.add(REASON_UNREADABLE_DESIGNATION)
+      return
+    }
+    const ref = index.paragraphs.get(key)
+    if (!ref) {
+      reasons.add(REASON_NO_SUCH_PARAGRAPH)
+      return
+    }
+    const standing = await sources.standingText(ref)
+    if (standing === null) {
+      reasons.add(REASON_NOT_REPRESENTABLE)
+      return
+    }
+    const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
+    byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
+    coverage.set(group.law, byPara)
+    rightColumn.set(annexParagraphKey(group.law, group.para), rightColumnCheck(group.rows, standing, draftWords(group.law, group.para)))
+  }, { failFast: true })
 
   const doubtfulLaws: LawCheck[] = []
   let compared = 0

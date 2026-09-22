@@ -33,6 +33,7 @@ import { getDraftsForGp, getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import type { KonsParagraphRef } from './risKons'
+import { mapWithConcurrency } from './pool'
 
 const TTL_S = 60 * 60 * 24
 /** Ceiling on lookups per draft, so one monster Sammelgesetz cannot hang a request. */
@@ -145,19 +146,16 @@ export const getParagraphTitles = defineCachedFunction(
       const law = await resolveKonsLaw(bgbl.organ, bgbl.nummer, asOf, article ?? '')
       if (!law) continue
       const jobs = [...byPara].filter(([para]) => law.paragraphs[para] !== undefined)
-      const queue = [...jobs]
-      const worker = async () => {
-        for (;;) {
-          const job = queue.shift()
-          if (!job || fetched >= MAX_HEADINGS) return
-          fetched++
-          const [para, keys] = job
-          const heading = await fetchHeading(law.paragraphs[para]!).catch(() => null)
-          if (!heading) continue
-          for (const key of keys) titles[key] = heading
-        }
-      }
-      await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+      await mapWithConcurrency(jobs, CONCURRENCY, async ([para, keys]) => {
+        // The ceiling stops the fetching, not the loop: what is left over
+        // is skipped item by item, which is what the workers did when they
+        // returned early.
+        if (fetched >= MAX_HEADINGS) return
+        fetched++
+        const heading = await fetchHeading(law.paragraphs[para]!).catch(() => null)
+        if (!heading) return
+        for (const key of keys) titles[key] = heading
+      })
     }
     return { asOf, titles, paragraphs }
   },

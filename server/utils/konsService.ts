@@ -41,6 +41,7 @@ import { bodyText, parseKonsParagraph, plainText, type LawNode } from './lawStru
 import { parseRisXml, segmentUnits } from './lawText'
 import { articleBlocks } from './lawTitles'
 import { getRisMapForGp } from './ris'
+import { mapWithConcurrency } from './pool'
 import type { KonsParagraphRef } from './risKons'
 import { annexSourceFor } from './textComparisonService'
 import { oracleVerdict, paragraphRows, rowsByParagraph } from './tguOracle'
@@ -76,22 +77,19 @@ async function standingParagraphs(
   const queue = refs.slice(0, Math.max(0, budget.left))
   const skipped = new Set(refs.slice(queue.length).map((r) => r.id))
   budget.left -= queue.length
+  // `trees` wird im Rückruf gefüllt, nicht aus dem Ergebnis gebaut: Die
+  // Reihenfolge ist die der Fertigstellung, und das war sie immer.
   const trees: LawNode[] = []
-  const worker = async (): Promise<void> => {
-    for (;;) {
-      const ref = queue.shift()
-      if (!ref) return
-      if (!ref.xmlUrl) continue
-      const xml = await fetchParagraphXml(ref.nor, ref.xmlUrl)
-      try {
-        const tree = parseKonsParagraph(xml)
-        if (tree) trees.push(tree)
-      } catch {
-        // Ein Dokument, das kein Paragraph ist — im BGBl-Korpus 27 von 3.110.
-      }
+  await mapWithConcurrency(queue, CONCURRENCY, async (ref) => {
+    if (!ref.xmlUrl) return
+    const xml = await fetchParagraphXml(ref.nor, ref.xmlUrl)
+    try {
+      const tree = parseKonsParagraph(xml)
+      if (tree) trees.push(tree)
+    } catch {
+      // Ein Dokument, das kein Paragraph ist — im BGBl-Korpus 27 von 3.110.
     }
-  }
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+  })
   return { trees, skipped }
 }
 

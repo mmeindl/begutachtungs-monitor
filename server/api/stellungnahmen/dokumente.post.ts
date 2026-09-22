@@ -23,6 +23,7 @@
  */
 import type { StatementDocument } from '#shared/types'
 import { parseStatementRef } from '#shared/utils/statementRef'
+import { mapWithConcurrency } from '../../utils/pool'
 import { getStatementDocument } from '../../utils/statementDocument'
 
 /** One viewport's worth of rows, with room to spare — not a whole list. */
@@ -50,21 +51,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const documents: Record<string, StatementDocument> = {}
-  const queue = [...jobs]
-  const worker = async () => {
-    for (;;) {
-      const job = queue.shift()
-      if (!job) return
-      const [ref, parts] = job
-      if (!parts) continue
-      // A failed lookup is left out, not guessed: the row then shows no tag
-      // and keeps its link to the parliament page, which is where the
-      // reader would have landed anyway.
-      const doc = await getStatementDocument(parts.gp, parts.ityp, parts.inr).catch(() => null)
-      if (doc) documents[ref] = doc
-    }
-  }
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+  await mapWithConcurrency([...jobs], CONCURRENCY, async ([ref, parts]) => {
+    if (!parts) return
+    // A failed lookup is left out, not guessed: the row then shows no tag
+    // and keeps its link to the parliament page, which is where the
+    // reader would have landed anyway.
+    const doc = await getStatementDocument(parts.gp, parts.ityp, parts.inr).catch(() => null)
+    if (doc) documents[ref] = doc
+  })
 
   // A filed Stellungnahme does not change; the answer is a URL, so a shared
   // cache may keep it.

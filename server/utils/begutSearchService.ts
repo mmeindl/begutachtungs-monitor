@@ -61,6 +61,7 @@ import { parseRisXml, type TextBlock } from './lawText'
 import { ministryTokens, type MinistryToken } from './searchHaystack'
 import { getDraftsForGp, getCurrentGp, reconcileActive } from './parliament'
 import { getRisBegutCorpus, getRisMapForGp } from './ris'
+import { mapWithConcurrency } from './pool'
 import { getRisConsultation } from './risOnly'
 import { asArray, isOpenOn } from './risRecord'
 import {
@@ -85,10 +86,11 @@ const SEARCH_POLICY: UpstreamPolicy = { timeoutMs: SEARCH_TIMEOUT_MS, retries: 0
  */
 const DOCUMENT_TTL_S = 60 * 60 * 24 * 30
 /**
- * So viele Treffer bekommen eine Fundstelle. Über die laufenden
- * Begutachtungen ist das nie bindend — es waren 7 offene Sätze am
- * 18.09.2026, 22 am 15.06. —, aber ein Stichwort wie „Verordnung" darf auch
- * dann nicht 25 Dokumentsätze nachladen.
+ * So viele Sätze bekommen eine Fundstelle — die ersten dieser Zahl in der
+ * Reihenfolge, in der das RIS sie nennt. Über die laufenden Begutachtungen
+ * ist das nie bindend — es waren 7 offene Sätze am 18.09.2026, 22 am
+ * 15.06. —, aber ein Stichwort wie „Verordnung" darf auch dann nicht 25
+ * Dokumentsätze nachladen.
  */
 const LOCATE_CAP = 12
 /** Gleichzeitige Dokumentabrufe. Höflich gegenüber dem RIS, schnell genug. */
@@ -413,35 +415,31 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
   const inrOf = new Map<string, number>()
   for (const row of map?.rows ?? []) if (row.risId) inrOf.set(row.risId, row.inr)
 
-  const hits: BegutSearchHit[] = []
-  for (let i = 0; i < ids.length; i += LOCATE_CONCURRENCY) {
-    const batch = ids.slice(i, i + LOCATE_CONCURRENCY)
-    const resolved = await Promise.all(
-      batch.map(async (id) => {
-        const detail = await getRisConsultation(id)
-        // Ein Satz, den unser Korpus noch nicht kennt (er ist bis zu 20 h
-        // alt): lieber auslassen als eine Zeile ohne Ziel zeigen.
-        if (!detail) return null
-        const evidence =
-          hits.length + batch.length <= LOCATE_CAP
-            ? await locate(detail, terms, tokens, budget)
-            : { place: null, designation: null, snippet: null, ministryOnly: false }
-        const inr = inrOf.get(id)
-        const draft = inr !== undefined ? drafts?.items.find((d) => d.inr === inr) : undefined
-        const hit: BegutSearchHit = {
-          entry: draft
-            ? { kind: 'draft', draft: reconcileActive(draft) }
-            : { kind: 'ris', consultation: toConsultationView(detail) },
-          ...evidence,
-        }
-        return hit
-      }),
-    )
-    for (const hit of resolved) {
-      if (!hit) continue
-      hits.push(hit)
+  const resolved = await mapWithConcurrency(ids, LOCATE_CONCURRENCY, async (id, index) => {
+    const detail = await getRisConsultation(id)
+    // Ein Satz, den unser Korpus noch nicht kennt (er ist bis zu 20 h
+    // alt): lieber auslassen als eine Zeile ohne Ziel zeigen.
+    if (!detail) return null
+    // Der Deckel hängt am Platz in der Trefferliste, nicht mehr an der
+    // Stapelgrenze: Vorher entschied `hits.length + batch.length`, also die
+    // Frage, wie viele Sätze ein Stapel zufällig ausließ, wer eine
+    // Fundstelle bekam — bei vier je Stapel konnten das acht statt zwölf
+    // sein. Jetzt sind es die ersten LOCATE_CAP in Eingabereihenfolge.
+    const evidence =
+      index < LOCATE_CAP
+        ? await locate(detail, terms, tokens, budget)
+        : { place: null, designation: null, snippet: null, ministryOnly: false }
+    const inr = inrOf.get(id)
+    const draft = inr !== undefined ? drafts?.items.find((d) => d.inr === inr) : undefined
+    const hit: BegutSearchHit = {
+      entry: draft
+        ? { kind: 'draft', draft: reconcileActive(draft) }
+        : { kind: 'ris', consultation: toConsultationView(detail) },
+      ...evidence,
     }
-  }
+    return hit
+  })
+  const hits: BegutSearchHit[] = resolved.filter((h) => h !== null)
 
   /*
    * Drei Klassen, und die Reihenfolge ist ein Werturteil über die AUSKUNFT,

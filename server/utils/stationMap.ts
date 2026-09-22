@@ -42,6 +42,7 @@
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftStations'
 import type { VorlageRow } from './mappers'
+import { mapWithConcurrency } from './pool'
 
 /** Six hours: a station moves on the scale of days, and this way at most
  *  four cold builds a day can land on a visitor — the nightly prewarm
@@ -53,23 +54,6 @@ const STATION_MAP_TTL_S = 60 * 60 * 6
  *  without opening 353 sockets on a service that documents no rate limit
  *  (§13.6). */
 const CONCURRENCY = 12
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const out = new Array<R>(items.length)
-  let next = 0
-  const worker = async (): Promise<void> => {
-    while (next < items.length) {
-      const i = next++
-      out[i] = await fn(items[i]!)
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-  return out
-}
 
 /**
  * The chain of one draft, read from its own stage record.
