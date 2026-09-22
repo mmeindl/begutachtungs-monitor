@@ -5,14 +5,10 @@
  * timer calls that so no GP is hardcoded on the server.
  */
 import type { RisMapResponse } from '#shared/types'
-import { GP_RE } from '#shared/utils/gp'
+import { readGpParam } from '../../utils/http/params'
 
 // Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async (event): Promise<RisMapResponse> => {
-  const param = (getRouterParam(event, 'gp') ?? '').toUpperCase()
-  const gp = param === 'AKTUELL' ? await getCurrentGp() : param
-  if (!GP_RE.test(gp)) {
-    throw createError({ statusCode: 400, statusMessage: 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)' })
-  }
+  const gp = readGpParam(event) ?? (await getCurrentGp())
   return getRisMapForGp(gp)
 })

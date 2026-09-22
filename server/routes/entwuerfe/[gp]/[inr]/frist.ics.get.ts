@@ -27,12 +27,5 @@ export default defineEventHandler(async (event) => {
 
   const body = buildIcsCalendar(siteUrl, [item])
 
-  const etag = bodyEtag(body)
-  setHeader(event, 'ETag', etag)
-  if (getHeader(event, 'if-none-match') === etag) {
-    setResponseStatus(event, 304)
-    return ''
-  }
-  setHeader(event, 'Content-Type', 'text/calendar; charset=utf-8')
-  return body
+  return respondWithEtag(event, body, 'text/calendar; charset=utf-8')
 })

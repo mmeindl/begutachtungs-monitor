@@ -15,12 +15,5 @@ export default defineEventHandler(async (event) => {
   // `reconcileActive` for list 81, `withRisActiveOn` for the RIS records.
   const body = buildIcsCalendar(siteUrl, items.map(reconcileActive), withRisActiveOn(risOnly.items))
 
-  const etag = bodyEtag(body)
-  setHeader(event, 'ETag', etag)
-  if (getHeader(event, 'if-none-match') === etag) {
-    setResponseStatus(event, 304)
-    return ''
-  }
-  setHeader(event, 'Content-Type', 'text/calendar; charset=utf-8')
-  return body
+  return respondWithEtag(event, body, 'text/calendar; charset=utf-8')
 })

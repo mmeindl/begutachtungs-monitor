@@ -9,7 +9,7 @@
  * this route error, and then with the upstream reason.
  */
 import type { StatementsResponse } from '#shared/types'
-import { validateGpInrParams } from '../../../../utils/params'
+import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<StatementsResponse> => {
   const { gp, inr } = validateGpInrParams(event)

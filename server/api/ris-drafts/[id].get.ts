@@ -6,18 +6,16 @@
  * parliamentary Gegenstand.
  */
 import type { RisConsultationDetail } from '#shared/types'
-/* Validated before the lookup so a malformed id is a 400 and never reaches
- * upstream — the same pattern the page route and the `.ics` route test. */
-import { RIS_ID_RE } from '#shared/utils/risConsultations'
+/* Validated before the lookup so a malformed id never reaches upstream;
+ * that it is a 400 here and a 404 on the page route is the rule stated in
+ * `server/utils/http/params.ts`. */
+import { readRisId } from '../../utils/http/params'
 
 /** Was die Seite auf den Ausgang warten darf, bevor sie ohne ihn rendert. */
 const OUTCOME_BUDGET_MS = 2_500
 
 export default defineEventHandler(async (event): Promise<RisConsultationDetail> => {
-  const id = getRouterParam(event, 'id') ?? ''
-  if (!RIS_ID_RE.test(id)) {
-    throw createError({ statusCode: 400, statusMessage: 'Ungültige RIS-Dokumentnummer' })
-  }
+  const id = readRisId(event)
   const detail = await getRisConsultation(id)
   if (!detail) {
     throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })

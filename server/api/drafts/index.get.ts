@@ -5,26 +5,18 @@
  * ministry CODE and aliases server-side — never the ministry name
  * (docs/architecture.md §5, §12.26, §12.31).
  */
-import type { DraftChain, DraftStation, DraftsResponse, DraftStatus } from '#shared/types'
+import type { DraftChain, DraftStation, DraftsResponse } from '#shared/types'
 import { aliasHaystack } from '#shared/utils/draftAliases'
 import { matchesQuery } from '#shared/utils/textMatch'
-import { chainCoverageOf, DRAFT_STATION_ORDER, mayClaimOutcome } from '#shared/utils/draftStations'
-import { GP_RE, gpHasEnded } from '#shared/utils/gp'
-
-const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
+import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
+import { gpHasEnded } from '#shared/utils/gp'
+import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
 
 /** Wie lange die Liste auf die Stationskarte wartet, bevor sie ohne sie
  *  antwortet. 2,5 s: warm kostet die Karte 8 ms, kalt 35 s — dazwischen
  *  liegt nichts, was ein Wert dazwischen retten würde, also ist das hier
  *  eine Notbremse und keine Geduldsprobe. */
 const STATION_MAP_BUDGET_MS = 2_500
-
-function isStatus(s: string): s is DraftStatus {
-  return (STATUS_VALUES as readonly string[]).includes(s)
-}
-function isStation(s: string): s is DraftStation {
-  return (DRAFT_STATION_ORDER as readonly string[]).includes(s)
-}
 
 /**
  * „Offen" heißt jetzt: hier kann jemand etwas sagen.
@@ -41,36 +33,8 @@ function canParticipate(item: { active: boolean; chain?: DraftChain }): boolean 
 }
 
 export default defineEventHandler(async (event): Promise<DraftsResponse> => {
-  const query = getQuery(event)
-
-  const gpParam = firstQueryValue(query.gp)?.toUpperCase()
-  if (gpParam !== undefined && !GP_RE.test(gpParam)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)',
-    })
-  }
-
-  const statusParam = firstQueryValue(query.status) ?? 'all'
-  if (!isStatus(statusParam)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Ungültiger Status (open, closed oder all erwartet)',
-    })
-  }
-  const status = statusParam
-
-  /* Leerer Wert = kein Filter, unbekannte Werte fliegen raus statt die
-   * Anfrage zu kippen: die Stationsnamen stehen in geteilten Links, und ein
-   * Tippfehler darin soll eine Liste zeigen, keinen Fehler. */
-  const stations = (firstQueryValue(query.station) ?? '')
-    .split(',')
-    .map((v) => v.trim().toLowerCase())
-    .filter(isStation)
+  const { gp: gpParam, status, stations, ministry, q } = readListQuery(event)
   const stationFilter = stations.length ? new Set<DraftStation>(stations) : null
-
-  const ministry = firstQueryValue(query.ministry)?.toUpperCase()
-  const q = firstQueryValue(query.q)?.toLowerCase()
 
   const currentGp = await getCurrentGp()
   const gp = gpParam ?? currentGp
@@ -106,16 +70,7 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
   const speakable = chains && mayClaimOutcome(coverage)
   const items = speakable ? rows.map((item) => ({ ...item, chain: chains[item.inr] })) : rows
 
-  // Filter vocabulary of the GP: all ministries, independent of the active filter.
-  const ministryMap = new Map<string, string>()
-  for (const item of items) {
-    if (item.ministryCode && !ministryMap.has(item.ministryCode)) {
-      ministryMap.set(item.ministryCode, item.ministryName)
-    }
-  }
-  const ministries = [...ministryMap.entries()]
-    .map(([code, name]) => ({ code, name }))
-    .sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
+  const ministries = ministryFilterOptions(items)
 
   const filtered = items.filter((item) => {
     if (status === 'open' && !canParticipate(item)) return false

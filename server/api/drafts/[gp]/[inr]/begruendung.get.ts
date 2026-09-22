@@ -8,7 +8,7 @@
  * reißen. Die Seite mischt die Einträge über `unitKey` dazu, wenn sie da sind.
  */
 import type { ReasoningDiffResponse } from '#shared/types'
-import { readLawStationPair, validateGpInrParams } from '../../../../utils/params'
+import { readLawStationPair, validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<ReasoningDiffResponse> => {
   const { gp, inr } = validateGpInrParams(event)

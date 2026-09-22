@@ -10,7 +10,7 @@
  * stage list, so a Vorlage in a later Gesetzgebungsperiode resolves too.
  */
 import type { RvStatementsResponse } from '#shared/types'
-import { validateGpInrParams } from '../../../../utils/params'
+import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<RvStatementsResponse> => {
   const { gp, inr } = validateGpInrParams(event)

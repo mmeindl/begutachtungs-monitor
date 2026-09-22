@@ -14,12 +14,5 @@ export default defineEventHandler(async (event) => {
   // cache was filled on.
   const body = buildSitemap(siteUrl, items, withRisActiveOn(risOnly.items))
 
-  const etag = bodyEtag(body)
-  setHeader(event, 'ETag', etag)
-  if (getHeader(event, 'if-none-match') === etag) {
-    setResponseStatus(event, 304)
-    return ''
-  }
-  setHeader(event, 'Content-Type', 'application/xml; charset=utf-8')
-  return body
+  return respondWithEtag(event, body, 'application/xml; charset=utf-8')
 })

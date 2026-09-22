@@ -11,7 +11,7 @@
  * answer about the same two texts.
  */
 import type { LawDiffResponse } from '#shared/types'
-import { readLawStationPair, validateGpInrParams } from '../../../../utils/params'
+import { readLawStationPair, validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<LawDiffResponse> => {
   const { gp, inr } = validateGpInrParams(event)

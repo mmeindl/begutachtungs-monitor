@@ -10,7 +10,7 @@
  * the one thing this lookup refuses to produce.
  */
 import type { ParagraphTitlesResponse } from '#shared/types'
-import { readLawStationPair, validateGpInrParams } from '../../../../utils/params'
+import { readLawStationPair, validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<ParagraphTitlesResponse> => {
   const { gp, inr } = validateGpInrParams(event)

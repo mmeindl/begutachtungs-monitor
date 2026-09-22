@@ -4,7 +4,7 @@
  * text in RIS as it stood when the draft was filed.
  */
 import type { AmendedLawsResponse } from '#shared/types'
-import { validateGpInrParams } from '../../../../utils/params'
+import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<AmendedLawsResponse> => {
   const { gp, inr } = validateGpInrParams(event)

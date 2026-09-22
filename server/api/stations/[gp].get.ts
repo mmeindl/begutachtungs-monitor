@@ -20,18 +20,11 @@
  * so the prewarm unit needs no knowledge of which one that is.
  */
 import type { DraftStation } from '#shared/types'
-import { GP_RE } from '#shared/utils/gp'
+import { readGpParam } from '../../utils/http/params'
 
 // Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async (event) => {
-  const param = getRouterParam(event, 'gp') ?? 'aktuell'
-  const gp = param.toLowerCase() === 'aktuell' ? await getCurrentGp() : param.toUpperCase()
-  if (!GP_RE.test(gp)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)',
-    })
-  }
+  const gp = readGpParam(event, { defaultsToCurrent: true }) ?? (await getCurrentGp())
 
   const chains = await getStationMapForGp(gp)
   const counts: Record<DraftStation, number> = { begutachtung: 0, rv: 0, parlament: 0, bgbl: 0 }

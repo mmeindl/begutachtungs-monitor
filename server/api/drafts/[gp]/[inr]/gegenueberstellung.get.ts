@@ -6,7 +6,7 @@
  * otherwise.
  */
 import type { TextComparisonResponse } from '#shared/types'
-import { validateGpInrParams } from '../../../../utils/params'
+import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<TextComparisonResponse> => {
   const { gp, inr } = validateGpInrParams(event)

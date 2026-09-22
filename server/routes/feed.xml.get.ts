@@ -42,12 +42,5 @@ export default defineEventHandler(async (event) => {
     risScoped,
   )
 
-  const etag = bodyEtag(body)
-  setHeader(event, 'ETag', etag)
-  if (getHeader(event, 'if-none-match') === etag) {
-    setResponseStatus(event, 304)
-    return ''
-  }
-  setHeader(event, 'Content-Type', 'application/rss+xml; charset=utf-8')
-  return body
+  return respondWithEtag(event, body, 'application/rss+xml; charset=utf-8')
 })

@@ -12,12 +12,9 @@
  * keine Auskunft über das Ressort, sondern über die Uhr.
  */
 import type { BgblOutcome } from '#shared/types'
-import { RIS_ID_RE } from '#shared/utils/risConsultations'
+import { readRisId } from '../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<BgblOutcome> => {
-  const id = getRouterParam(event, 'id') ?? ''
-  if (!RIS_ID_RE.test(id)) {
-    throw createError({ statusCode: 400, statusMessage: 'Ungültige RIS-Dokumentnummer' })
-  }
+  const id = readRisId(event)
   return getBgblOutcome(id)
 })

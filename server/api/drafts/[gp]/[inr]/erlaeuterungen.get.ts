@@ -6,7 +6,7 @@
  * no general part.
  */
 import type { ExplanationsResponse } from '#shared/types'
-import { validateGpInrParams } from '../../../../utils/params'
+import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<ExplanationsResponse> => {
   const { gp, inr } = validateGpInrParams(event)

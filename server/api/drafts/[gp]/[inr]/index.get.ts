@@ -4,7 +4,7 @@
  * (lookup via the GP's list-81 row, docs/architecture.md §5).
  */
 import type { DraftDetail } from '#shared/types'
-import { validateGpInrParams } from '../../../../utils/params'
+import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<DraftDetail> => {
   const { gp, inr } = validateGpInrParams(event)

@@ -14,55 +14,26 @@
  */
 import type {
   BgblOutcome,
-  DraftStation,
-  DraftStatus,
   RisConsultationKind,
   RisConsultationsResponse,
 } from '#shared/types'
-import { GP_RE } from '#shared/utils/gp'
-import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { matchesQuery } from '#shared/utils/textMatch'
+import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
 
 /** Was die Liste auf den Ausgang wartet, solange er nur eine Spalte füllt. */
 const OUTCOMES_BUDGET_MS = 3_000
 
-const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
 const KIND_VALUES: RisConsultationKind[] = ['verordnung', 'gesetz', 'unbestimmt']
 
 export default defineEventHandler(async (event): Promise<RisConsultationsResponse> => {
-  const query = getQuery(event)
+  const { gp: gpParam, status, stations, ministry, q } = readListQuery(event)
 
-  const stations = (firstQueryValue(query.station) ?? '')
-    .split(',')
-    .map((v) => v.trim().toLowerCase())
-    .filter((v): v is DraftStation => (DRAFT_STATION_ORDER as readonly string[]).includes(v))
-
-  const gpParam = firstQueryValue(query.gp)?.toUpperCase()
-  if (gpParam !== undefined && !GP_RE.test(gpParam)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)',
-    })
-  }
-
-  const statusParam = firstQueryValue(query.status) ?? 'all'
-  if (!(STATUS_VALUES as readonly string[]).includes(statusParam)) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Ungültiger Status (open, closed oder all erwartet)',
-    })
-  }
-  const status = statusParam as DraftStatus
-
-  const artParam = firstQueryValue(query.art)
+  const artParam = firstQueryValue(getQuery(event).art)
   if (artParam !== undefined && !(KIND_VALUES as readonly string[]).includes(artParam)) {
     throw createError({ statusCode: 400, statusMessage: 'Ungültige Art' })
   }
   const art = artParam as RisConsultationKind | undefined
-
-  const ministry = firstQueryValue(query.ministry)?.toUpperCase()
-  const q = firstQueryValue(query.q)?.toLowerCase()
 
   const currentGp = await getCurrentGp()
   const gp = gpParam ?? currentGp
@@ -75,22 +46,12 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * place as `reconcileActive` for list 81. */
   const items = withRisActiveOn(cached.items).sort(sortConsultations)
 
-  // Filter vocabulary of the whole GP, independent of the active filters —
-  // same rule as /api/drafts, so a narrowed list never narrows its own menu.
-  const ministryMap = new Map<string, string>()
-  for (const item of items) {
-    if (item.ministryCode && !ministryMap.has(item.ministryCode)) {
-      ministryMap.set(item.ministryCode, item.ministryName)
-    }
-  }
-  const ministries = [...ministryMap.entries()]
-    .map(([code, name]) => ({ code, name }))
-    .sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
+  const ministries = ministryFilterOptions(items)
   /* Dasselbe Vokabular noch einmal, als Streichliste für die Suche: Ein
    * Langtitel nennt auch das zweite Haus („im Einvernehmen mit dem
    * Bundesminister für Finanzen"), deshalb alle Ressorts der Periode und
    * nicht nur das eigene (`searchHaystack.ts`). */
-  const ministryTokenList = ministryTokens(ministryMap.values())
+  const ministryTokenList = ministryTokens(ministries.map((m) => m.name))
 
   /* Diese Hälfte steht bei der Begutachtung und kommt nie weiter: kein
    * Gegenstand im Parlament, also nie eine Regierungsvorlage (§12.16).

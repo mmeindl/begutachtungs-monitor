@@ -7,12 +7,9 @@
  * statement of purpose the procedure publishes at all.
  */
 import type { ExplanationsResponse } from '#shared/types'
-import { RIS_ID_RE } from '#shared/utils/risConsultations'
+import { readRisId } from '../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<ExplanationsResponse> => {
-  const id = getRouterParam(event, 'id') ?? ''
-  if (!RIS_ID_RE.test(id)) {
-    throw createError({ statusCode: 400, statusMessage: 'Ungültige RIS-Dokumentnummer' })
-  }
+  const id = readRisId(event)
   return getRisExplanations(id)
 })

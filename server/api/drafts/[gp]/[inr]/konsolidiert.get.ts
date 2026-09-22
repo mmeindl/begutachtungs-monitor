@@ -10,7 +10,7 @@
  * noch die Gegenüberstellung über dieser Sektion aufhalten.
  */
 import type { ConsolidatedTextResponse } from '#shared/types'
-import { validateGpInrParams } from '../../../../utils/params'
+import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<ConsolidatedTextResponse> => {
   const { gp, inr } = validateGpInrParams(event)
