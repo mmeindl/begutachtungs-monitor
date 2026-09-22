@@ -1,20 +1,20 @@
 /**
- * Die Kundmachung eines Verordnungsentwurfs im BGBl II
+ * The Kundmachung of a Verordnungsentwurf in BGBl II
  * (docs/architecture.md §12.32).
  *
- * Nuxt-aware glue um das reine Modul `bgblJoin.ts`.
+ * Nuxt-aware glue around the pure module `bgblJoin.ts`.
  *
- * NACH JAHRGANG GESCHNITTEN, nicht nach „von heute zurück". `BgblAuth` kennt
- * keinen Teil- und keinen Jahrgangsfilter — `Teil=Teil2` und `Jahrgang=2025`
- * liefern alle 18.925 Sätze (geprüft 18.09.2026) —, es wirken nur
- * `VonKundmachungsdatum`/`BisKundmachungsdatum`. Ein gleitendes Fenster wäre
- * damit jeden Tag ein neuer Cache-Schlüssel und jeden Tag ein neuer Abruf des
- * ganzen Fensters. Ein Jahrgang ist ein stabiler Schlüssel: Vergangene Jahre
- * ändern sich nie mehr, das laufende wächst.
+ * CUT BY YEAR, not by „from today backwards". `BgblAuth` has neither a Teil
+ * nor a Jahrgang filter — `Teil=Teil2` and `Jahrgang=2025` return all 18,925
+ * records (checked 18.09.2026) —, only
+ * `VonKundmachungsdatum`/`BisKundmachungsdatum` take effect. A sliding
+ * window would therefore be a new cache key every day and a new fetch of the
+ * whole window every day. A year is a stable key: past years never change
+ * again, the running one grows.
  *
- * ZWEI LAYER, wie überall (`cache/base.ts`): die Seite, wie das RIS sie
- * geschickt hat, dauerhaft; die Zuordnung darüber abgeleitet, weil
- * `bgblJoin.ts` genau die Art Regel ist, die sich noch ändert.
+ * TWO LAYERS, as everywhere (`cache/base.ts`): the page as RIS sent it,
+ * persistent; the mapping above it derived, because `bgblJoin.ts` is exactly
+ * the kind of rule that still changes.
  */
 import type { BgblOutcome, BgblOutcomeState, RisConsultation } from '#shared/types'
 import { joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
@@ -27,29 +27,29 @@ import { bgblShort } from '#shared/utils/format'
 
 const TIMEOUT_MS = 20_000
 /**
- * Ohne Wiederholungsversuch, wie vor dem gemeinsamen Client: Beide Abfragen
- * hängen unter einer gecachten Funktion, und ein Fehler wird geworfen, nie
- * gecacht (`cache/base.ts`).
+ * No retry, as before the shared client: both queries hang under a cached
+ * function, and an error is thrown, never cached (`cache/base.ts`).
  */
 const BGBL_POLICY: UpstreamPolicy = { timeoutMs: TIMEOUT_MS, retries: 0, accept: 'application/json' }
 const PAGE_SIZE = 100
 const MAX_PAGES = 20
 /**
- * Der laufende Jahrgang wächst — ein paar Mal pro Woche kommt ein Stück
- * dazu. Der abgeschlossene nicht, der bekommt deshalb die Frist eines
- * veröffentlichten Dokuments (`cache/ttl.ts`).
+ * The running year grows — a few times a week another piece arrives. The
+ * closed one does not, so it gets the lifetime of a published document
+ * (`cache/ttl.ts`).
  */
 const CURRENT_YEAR_TTL_S = 60 * 60 * 6
 const JOIN_TTL_S = 60 * 60 * 6
 
 /**
- * Ab wann das Schweigen des Bundesgesetzblatts etwas bedeutet.
+ * From when on the Bundesgesetzblatt's silence means something.
  *
- * Gemessen (`pnpm corpus:bgbl2`): Zwischen Fristende und Kundmachung liegen im
- * Median 57 Tage, p90 197. Nach Alter des Fristendes finden 0 % der Entwürfe
- * aus den letzten 30 Tagen eine Kundmachung, 31,6 % nach 31–90 Tagen, 71,4 %
- * nach 91–180 und 92,3 % nach 181–365. „Bisher keine Kundmachung" vor diesem
- * Punkt wäre also keine Aussage über das Ressort, sondern über die Uhr.
+ * Measured (`pnpm corpus:bgbl2`): between the end of the Frist and the
+ * Kundmachung lie a median of 57 days, p90 197. By age of the Frist's end,
+ * 0 % of the drafts from the last 30 days find a Kundmachung, 31,6 % after
+ * 31–90 days, 71,4 % after 91–180 and 92,3 % after 181–365. „Bisher keine
+ * Kundmachung" before that point would therefore be a statement about the
+ * clock, not about the Ressort.
  */
 const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
 
@@ -64,21 +64,21 @@ async function loadBgblPage(key: string): Promise<any> {
     VonKundmachungsdatum: `${year}-01-01`,
     BisKundmachungsdatum: `${year}-12-31`,
   })
-  // Ein Fehler im 200er-Umschlag ist ein Fehler, keine leere Seite — sonst
-  // wird aus einer schlechten Minute des RIS ein „nicht kundgemacht".
-  // `risJson` prüft den Umschlag für alle drei RIS-Clients.
+  // An error inside the 200 envelope is an error, not an empty page —
+  // otherwise a bad minute of the RIS turns into a „nicht kundgemacht".
+  // `risJson` checks the envelope for all three RIS clients.
   return risJson<any>(`${RIS_API_BASE}?${params}`, BGBL_POLICY)
 }
 
 /**
- * Dieselbe Seite, zwei Haltbarkeiten — und deshalb zwei Funktionen.
+ * The same page, two lifetimes — and therefore two functions.
  *
- * Ein abgeschlossener Jahrgang ist fertig: Er darf einen Monat stehen. Der
- * laufende wächst ein paar Mal pro Woche, und eine Kundmachung, die einen
- * Monat lang nicht erscheint, ist genau der Fehler, den dieses Modul
- * vermeiden soll. `defineCachedFunction` nimmt eine feste `maxAge`, also
- * entscheidet der Aufrufer, welche der beiden er fragt — das ist ehrlicher
- * als ein Prädikat, das so tut, als könnte es die Frist beugen.
+ * A closed year is finished: it may stand for a month. The running one grows
+ * a few times a week, and a Kundmachung that does not show up for a month is
+ * exactly the error this module is meant to avoid. `defineCachedFunction`
+ * takes one fixed `maxAge`, so the caller decides which of the two it asks
+ * — which is more honest than a predicate pretending it could bend the
+ * lifetime.
  */
 const fetchClosedYearPage = defineCachedFunction(loadBgblPage, {
   name: 'bgbl-jahrgang-seite',
@@ -115,7 +115,7 @@ function mapRecord(doc: any): BgblRecord | null {
   }
 }
 
-/** Teil II eines Jahrgangs — abgeleitet, weil `mapRecord` unser Code ist. */
+/** Teil II of one year — derived, because `mapRecord` is our code. */
 async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
   const out: BgblRecord[] = []
   const seen = new Set<string>()
@@ -136,19 +136,18 @@ async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
 }
 
 /**
- * Zwei Haltbarkeiten, zwei Funktionen — dieselbe Teilung wie bei den Seiten
- * darunter, und aus demselben Grund.
+ * Two lifetimes, two functions — the same split as for the pages underneath,
+ * and for the same reason.
  *
- * Bis 22.09.2026 lief dieser abgeleitete Jahrgang für JEDES Jahr auf der
- * Frist des laufenden: Ein abgeschlossener Jahrgang wurde viermal am Tag neu
- * aus seinen bis zu zwanzig Seiten zusammengesetzt, obwohl sich an ihm nichts
- * mehr ändern kann. Die Seiten darunter wussten es längst besser — nur die
- * Ableitung darüber nicht.
+ * Until 22.09.2026 this derived year ran on the running year's lifetime for
+ * EVERY year: a closed year was reassembled from its up to twenty pages four
+ * times a day, although nothing about it can change any more. The pages
+ * underneath had long known better — only the derivation above them did not.
  *
- * Ein Monat auf einem abgeleiteten Wert ist hier kein Widerspruch zu
- * `cache/base.ts`: Die abgeleitete Schicht liegt im Speicher, stirbt also mit
- * dem Worker — und ein `mapRecord`, das sich ändert, ist eine Codeänderung
- * und damit genau dieser Neustart.
+ * A month on a derived value is no contradiction to `cache/base.ts` here:
+ * the derived layer lives in memory and dies with the worker — and a
+ * `mapRecord` that changes is a code change, which is to say exactly that
+ * restart.
  */
 const getClosedTeil2Year = defineCachedFunction(loadTeil2Year, {
   name: 'bgbl-teil2-jahrgang',
@@ -173,13 +172,13 @@ export function getBgblTeil2Year(year: number): Promise<BgblRecord[]> {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
- * Die Suche nach EINER Kundmachung, über ihre Zitierung.
+ * The search for ONE Kundmachung, by its citation.
  *
- * `Bgblnummer` ist der eine exakte Filter, den `BgblAuth` hat — „BGBl. I Nr.
- * 69/2026" liefert genau einen Satz (geprüft 18.09.2026). Für die
- * BGBl-Station des §-Vergleichs ist das der ganze Weg: Das Parlament nennt
- * die Fundstelle strukturiert, wir schlagen das Dokument dazu nach. Kein
- * Join, keine Ähnlichkeit (§12.33).
+ * `Bgblnummer` is the one exact filter `BgblAuth` has — „BGBl. I Nr.
+ * 69/2026" returns exactly one record (checked 18.09.2026). For the BGBl
+ * station of the § comparison that is the whole path: Parliament names the
+ * citation in structured form, we look the document up. No join, no
+ * similarity (§12.33).
  */
 const fetchBgblByNumber = defineCachedFunction(
   async (nummer: string): Promise<any> => {
@@ -187,8 +186,8 @@ const fetchBgblByNumber = defineCachedFunction(
       Applikation: 'BgblAuth',
       DokumenteProSeite: 'Ten',
       Seitennummer: '1',
-      // Das Parlament schreibt „Bundesgesetzblatt I Nr. 69/2026", das RIS
-      // erwartet seine eigene Kurzform.
+      // Parliament writes „Bundesgesetzblatt I Nr. 69/2026", RIS expects its
+      // own short form.
       Bgblnummer: bgblShort(nummer),
     })
     return risJson<any>(`${RIS_API_BASE}?${params}`, BGBL_POLICY)
@@ -196,20 +195,20 @@ const fetchBgblByNumber = defineCachedFunction(
   { name: 'bgbl-nummer-suche', getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
-/** Das Hauptdokument einer Kundmachung, in den Formaten, die der Vergleich braucht. */
+/** A Kundmachung's main document, in the formats the comparison needs. */
 interface BgblDocument {
   id: string
-  /** Das legistische XML — dieselbe Form wie bei Begut, also ohne neuen Parser lesbar. */
+  /** The legistic XML — the same shape as in Begut, so readable without a new parser. */
   xml: string | null
-  /** Die menschenlesbare Fassung, für den Quellenverweis. */
+  /** The human-readable version, for the source credit. */
   html: string | null
-  /** Die Seite des Dokuments im RIS. */
+  /** The document's page in RIS. */
   page: string
 }
 
 /**
- * Die Kundmachung zu einer Zitierung — abgeleitet, weil das Abtragen der
- * Dokumentliste unser Code ist und sich ändern kann.
+ * The Kundmachung for a citation — derived, because walking the document
+ * list is our code and can change.
  */
 export const getBgblDocument = defineCachedFunction(
   async (nummer: string): Promise<BgblDocument | null> => {
@@ -232,12 +231,12 @@ export const getBgblDocument = defineCachedFunction(
   { name: 'bgbl-dokument', base: DERIVED_CACHE, getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
 
-/** Die Jahrgänge, in denen die Kundmachung zu einer Frist liegen kann. */
+/** The years a Frist's Kundmachung can fall into. */
 function yearsFor(ende: string): number[] {
   const y = Number(ende.slice(0, 4))
   const now = new Date().getFullYear()
-  // Das Fenster reicht 540 Tage nach vorn, also höchstens in das übernächste
-  // Jahr — und nie über das laufende hinaus, denn dort steht nichts.
+  // The window reaches 540 days forward, so at most into the year after
+  // next — and never past the running one, where nothing stands yet.
   return [y, y + 1, y + 2].filter((v) => v <= now)
 }
 
@@ -249,17 +248,15 @@ function stateOf(ende: string | null, active: boolean, found: boolean): BgblOutc
 }
 
 /**
- * Was aus einem Verordnungsentwurf geworden ist.
+ * What became of a Verordnungsentwurf.
  *
- * **Ein Fehlschlag ist keine Antwort** (§12.13), und hier hat diese Regel
- * einen Namen: `ausstehend`. Ein Entwurf, dessen Frist vor sechs Wochen
- * endete, ist nicht „nicht kundgemacht" — er ist jung. Die beiden
- * auseinanderzuhalten ist der ganze Unterschied zwischen einer
- * Rechenschaftsaussage und einer Unterstellung.
+ * **A failure is not an answer** (§12.13), and here that rule has a name:
+ * `ausstehend`. A draft whose Frist ended six weeks ago is not „nicht
+ * kundgemacht" — it is young. Telling the two apart is the whole difference
+ * between an accountability statement and an insinuation.
  */
 const UNKNOWN: BgblOutcome = { state: 'unbekannt', nummer: null, datum: null, url: null, days: null }
 
-/** Ein Satz, wie der Join ihn liest. */
 function draftOf(c: Pick<RisConsultation, 'title' | 'longTitle' | 'ministryCode' | 'ministryName' | 'deadline'>): BgblJoinDraft {
   return {
     kurztitel: c.title,
@@ -269,7 +266,7 @@ function draftOf(c: Pick<RisConsultation, 'title' | 'longTitle' | 'ministryCode'
   }
 }
 
-/** Der Treffer als Auskunft — eine Stelle, damit Liste und Detailseite dasselbe sagen. */
+/** The match as an answer — one place, so list and detail page say the same. */
 function outcomeOf(
   c: Pick<RisConsultation, 'deadline' | 'active'>,
   hit: ReturnType<typeof joinDraftToBgbl>,
@@ -294,27 +291,26 @@ export const getBgblOutcome = defineCachedFunction(
 )
 
 /**
- * Der Ausgang für eine ganze Gesetzgebungsperiode, in EINEM Durchgang.
+ * The outcome for a whole Gesetzgebungsperiode, in ONE pass.
  *
- * Die Liste zeigt zwei Drittel des Korpus, und bis 19.09.2026 stand in der
- * Spalte „Stand" auf jeder dieser Zeilen „Begutachtung abgeschlossen" —
- * auch dort, wo die Verordnung längst galt. Das ist die Rechenschaftsschicht
- * genau an der Stelle, an der sie jemand überfliegt.
+ * The list shows two thirds of the corpus, and until 19.09.2026 the column
+ * „Stand" read „Begutachtung abgeschlossen" on every one of those rows —
+ * including where the Verordnung had long been in force. That is the
+ * accountability layer failing exactly where someone skims it.
  *
- * Warum nicht `getBgblOutcome` je Zeile: Jeder Aufruf zöge den Korpus und
- * die Jahrgänge erneut durch den Cache, zweihundertmal. Hier werden die
- * Jahrgänge EINMAL geladen und alle Entwürfe dagegen gejoint; die
- * Titelvergleiche selbst sind billig, weil `titleTokens` seinen eigenen
- * Cache hat.
+ * Why not `getBgblOutcome` per row: every call would pull the corpus and the
+ * years through the cache again, two hundred times over. Here the years are
+ * loaded ONCE and every draft is joined against them; the title comparisons
+ * themselves are cheap, because `titleTokens` has a cache of its own.
  */
 export const getBgblOutcomesForGp = defineCachedFunction(
   async (gp: string): Promise<Record<string, BgblOutcome>> => {
-    // `active` gehört nicht in den Satz, den `getRisOnlyForGp` cacht —
-    // `stateOf` liest es, also wird der Tag hier entschieden
+    // `active` does not belong in the record `getRisOnlyForGp` caches —
+    // `stateOf` reads it, so the day is decided here
     // (`risRecord.withRisActiveOn`).
     const items = withRisActiveOn((await getRisOnlyForGp(gp)).items)
-    // Nur Verordnungen: Ein Gesetzesentwurf ohne Gegenstand wird in Teil I
-    // kundgemacht, und den durchsucht dieser Join nicht.
+    // Verordnungen only: a Gesetzesentwurf without a Gegenstand is
+    // promulgated in Teil I, and this join does not search that.
     const relevant = items.filter((i) => i.kind === 'verordnung' && i.deadline)
     const years = [...new Set(relevant.flatMap((i) => yearsFor(i.deadline!)))]
     const byYear = new Map(
@@ -330,7 +326,7 @@ export const getBgblOutcomesForGp = defineCachedFunction(
   { name: 'bgbl-outcomes-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: JOIN_TTL_S, swr: false },
 )
 
-/** „BGBl. II Nr. 50/2026" → „50". Für die ELI-Adresse, die RIS selbst führt. */
+/** „BGBl. II Nr. 50/2026" → „50". For the ELI address RIS itself keeps. */
 function numberOf(nummer: string): string {
   return /Nr\.\s*(\d+)/.exec(nummer)?.[1] ?? ''
 }

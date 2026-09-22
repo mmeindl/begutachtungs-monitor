@@ -1,34 +1,34 @@
 /**
- * Vom Verordnungsentwurf zur Kundmachung im BGBl II
+ * From a Verordnungsentwurf to its Kundmachung in BGBl II
  * (docs/architecture.md §12.32).
  *
- * PURE MODULE — relative imports only, so vitest and die Messskripte es
- * direkt ausführen.
+ * PURE MODULE — relative imports only, so vitest and the measurement
+ * scripts can execute it directly.
  *
- * DAS PROBLEM. Zwei Drittel des Korpus sind Verordnungsentwürfe, und für sie
- * endet der Monitor heute mit der Frist: kein Gegenstand im Parlament, keine
- * Regierungsvorlage, keine Station danach. Der Weg gibt es trotzdem —
- * Begutachtung → Erlassung durch das Ressort → Kundmachung im **BGBl II** —,
- * er läuft nur nicht durchs Parlament. Was fehlt, ist der Schlüssel: Der
- * Begut-Satz und der BGBl-Satz teilen keinen, also muss er gebaut werden.
+ * THE PROBLEM. Two thirds of the corpus are Verordnungsentwürfe, and for
+ * them the monitor ends at the Frist today: no Gegenstand at Parliament, no
+ * Regierungsvorlage, no station after it. The path exists all the same —
+ * Begutachtung → Erlassung by the ressort → Kundmachung in **BGBl II** — it
+ * just does not run through Parliament. What is missing is the key: the
+ * Begut record and the BGBl record share none, so one has to be built.
  *
- * DIESELBE MECHANIK WIE RIS↔ME, mit Absicht. `risJoin.ts` hat für genau diese
- * Aufgabe schon Titelähnlichkeit, Ressort-Abstammung und Datumsfenster
- * gemessen und kalibriert; dieses Modul leiht sich die Bauteile, statt eine
- * zweite Ähnlichkeitslehre aufzumachen. Was hier anders ist, steht unten:
- * das Rauschwort und die Richtung des Datums.
+ * THE SAME MECHANICS AS RIS↔ME, deliberately. `risJoin.ts` has already
+ * measured and calibrated title similarity, Ressort lineage and a date
+ * window for exactly this task; this module borrows the parts instead of
+ * opening a second school of similarity. What differs here stands below:
+ * the noise word and the direction of the date.
  *
- * WAS DER JOIN NICHT DARF. „Nicht kundgemacht" ist die Aussage, die weh tut
- * — sie liest sich als „das Ressort hat die Verordnung fallen gelassen". Ein
- * verpasster Treffer sagt also nicht „wir wissen es nicht", sondern etwas
- * Falsches über ein Ressort. Deshalb ist die Schwelle hoch, deshalb gibt es
- * die Mehrdeutigkeitsmarge, und deshalb hat `BgblOutcome` einen dritten
- * Zustand: `unknown`, für alles, was das Fenster noch nicht entscheiden kann.
+ * WHAT THE JOIN MAY NOT DO. „Nicht kundgemacht" is the statement that hurts
+ * — it reads as „das Ressort hat die Verordnung fallen gelassen". A missed
+ * match therefore does not say „wir wissen es nicht", it says something
+ * false about a Ressort. Hence the high threshold, hence the ambiguity
+ * margin, and hence `BgblOutcome`'s third state: `unknown`, for everything
+ * the window cannot decide yet.
  */
 import { ministryCodeOf, ministryScore } from './ministryCodes'
 import { daysBetween, normalizeTitleText, titleComponents } from './titleSimilarity'
 
-/** Ein Satz des Bundesgesetzblatts, so viel davon, wie der Join braucht. */
+/** One Bundesgesetzblatt record, as much of it as the join needs. */
 export interface BgblRecord {
   /** `BGBLA_2026_II_50` */
   id: string
@@ -36,92 +36,85 @@ export interface BgblRecord {
   teil: string
   /** „BGBl. II Nr. 50/2026" */
   nummer: string
-  /** ISO-Ausgabedatum. */
+  /** ISO date of issue. */
   datum: string
   kurztitel: string | null
   titel: string | null
-  /** „BMASGPK (Bundesministerium für …)", dieselbe Schreibweise wie bei Begut. */
+  /** „BMASGPK (Bundesministerium für …)" — the same spelling as in Begut. */
   stelle: string | null
 }
 
-/** Die Seite des Entwurfs, die der Join liest. */
+/** The draft's side of the join, as far as it is read. */
 export interface BgblJoinDraft {
   kurztitel: string | null
   titel: string | null
   stelle: string | null
-  /** Ende der Begutachtungsfrist, ISO. Ohne sie ist kein Fenster zu ziehen. */
+  /** End of the Begutachtungsfrist, ISO. Without it no window can be drawn. */
   ende: string | null
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
- * Das Fenster zwischen Fristende und Ausgabedatum, in Tagen.
+ * The window between the end of the Frist and the date of issue, in days.
  *
- * Die Untergrenze ist negativ und nicht null: Eine Kundmachung KANN vor dem
- * formellen Fristende liegen, wenn die Verordnung eilt und das Ressort die
- * Begutachtung parallel laufen lässt. −30 lässt diesen Fall zu, ohne die
- * Vorgängerfassung derselben Verordnung einzufangen.
+ * The lower bound is negative and not zero: a Kundmachung CAN fall before
+ * the formal end of the Frist, when the Verordnung is urgent and the ressort
+ * lets the Begutachtung run in parallel. −30 admits that case without
+ * catching the preceding version of the same Verordnung.
  *
- * Die Obergrenze ist großzügig, weil sie nichts kostet: Der Titel entscheidet,
- * das Datum grenzt nur ein. Gemessen (`pnpm corpus:bgbl2`) liegt der Median
- * weit darunter; was die 540 Tage verhindern, ist der Treffer auf die
- * NÄCHSTE Novelle desselben Textes zwei Jahre später.
+ * The upper bound is generous because it costs nothing: the title decides,
+ * the date only narrows. Measured (`pnpm corpus:bgbl2`), the median lies far
+ * below it; what the 540 days prevent is the match on the NEXT Novelle of
+ * the same text two years later.
  */
 export const BGBL_WINDOW_DAYS: readonly [number, number] = [-30, 540]
 
 /**
- * Ab welcher Titelähnlichkeit ein Treffer gilt, und wie weit er vor dem
- * zweiten liegen muss. Beide Werte sind gemessen, nicht gesetzt — die
- * Kalibrierung steht in `docs/architecture.md` §12.32.
+ * The title similarity at which a match counts, and how far ahead of the
+ * second it has to lie. Both values are measured, not set — the calibration
+ * is in `docs/architecture.md` §12.32.
  */
 export const BGBL_ACCEPT = 0.72
 export const BGBL_MARGIN = 0.08
 /**
- * Wie weit die zweitbeste Kundmachung zeitlich weg sein muss, damit ein
- * Gleichstand der Titel trotzdem entschieden werden kann.
+ * How far the second-best Kundmachung has to lie away in time before a tie
+ * on the titles can be decided after all.
  *
- * DAS IST DER FALL, DEN DIE ERSTE FASSUNG FALSCH VERWORFEN HAT. Viele
- * Verordnungen werden jährlich geändert, und die Kundmachungen heißen dann
- * Jahr für Jahr gleich: „Änderung der Studienbeitragsverordnung" gibt es
- * 2024, 2025 und 2026. Die Marge sah zwei Kandidaten mit derselben Punktzahl
- * und sagte „keine Antwort" — obwohl die Antwort feststand: Die erste
- * Kundmachung NACH dem Fristende ist die aus dieser Begutachtung, die
- * anderen gehören zu anderen. Gemessen kostete das 21 Entwürfe, darunter
- * welche mit Punktzahl 1,000.
- *
- * 60 Tage, weil darunter die Reihenfolge nichts mehr aussagt: Zwei
- * Kundmachungen derselben Verordnung innerhalb von zwei Monaten können beide
- * aus derselben Begutachtung stammen (Berichtigung, zweiter Teil), und dann
- * ist die Wahl wieder ein Münzwurf.
+ * On a tie the time decides, in favour of the first Kundmachung AFTER the
+ * end of the Frist — unless the two lie less than 60 days apart, because
+ * below that the order says nothing either (a Berichtigung or a second part
+ * can come out of the same Begutachtung). The first version refused exactly
+ * these cases as ambiguous, which cost 21 drafts, among them candidates
+ * scoring 1,000 (docs/architecture.md §12.32).
  */
 const BGBL_TIE_DAYS = 60
 
 /**
- * Das formelhafte Vorwort einer Verordnung, das über den Titel nichts sagt.
+ * A Verordnung's formulaic preamble, which says nothing about the title.
  *
  * „Verordnung des Bundesministers für Finanzen, mit der die
- * Sachbezugswerteverordnung geändert wird" trägt vier Wörter Inhalt und ein
- * Dutzend Formel. Das Ressort steckt schon im eigenen Feld — bliebe es im
- * Titel, verglichen wir es zweimal und ließen „Finanzen" gegen „Finanzen"
- * einen Treffer stützen, den der Titel nicht hergibt.
+ * Sachbezugswerteverordnung geändert wird" carries four words of content and
+ * a dozen of formula. The Ressort already sits in its own field — left in
+ * the title we would compare it twice and let „Finanzen" against „Finanzen"
+ * support a match the title does not give.
  */
 const PREAMBLE_RE =
   /^verordnung\s+(?:des|der)\s+bundesminister(?:s|in)?[^,]*,\s*/i
 /**
- * „Verordnung" selbst ist in Teil II das, was „Bundesgesetz" in Teil I ist:
- * auf beiden Seiten jedes Satzes, also Rauschen. `risJoin.STOP` wirft
- * „bundesgesetz" aus demselben Grund weg, kann „verordnung" aber nicht
- * wegwerfen — dort unterscheidet es die Arten.
+ * „Verordnung" itself is to Teil II what „Bundesgesetz" is to Teil I: on
+ * both sides of every record, hence noise. `risJoin.STOP` throws
+ * „bundesgesetz" away for the same reason, but cannot throw „verordnung"
+ * away — there it tells the kinds apart.
  */
 const NOISE_RE = /\b(?:verordnungen|verordnung|kundmachung|novelle)\b/gi
 
-/** Titel ohne Formel und ohne Rauschwort — das, was verglichen wird. */
+/** The title without formula and without the noise word — what is compared. */
 export function bgblTitleCore(title: string | null | undefined): string {
   const t = (title ?? '').replace(PREAMBLE_RE, ' ').replace(NOISE_RE, ' ')
   return normalizeTitleText(t)
 }
 
-/** Jeder Titel des Entwurfs gegen jeden Titel der Kundmachung, der beste zählt. */
+/** Every draft title against every Kundmachung title; the best one counts. */
 export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number {
   let best = 0
   for (const a of [draft.kurztitel, draft.titel]) {
@@ -131,9 +124,10 @@ export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number
       const right = bgblTitleCore(b)
       if (!right) continue
       const c = titleComponents(left, right)
-      // `cont` trägt, weil die Kundmachung den Entwurfstitel oft VERKÜRZT
-      // („Änderung der Honigverordnung" gegen den vollen Verordnungstitel);
-      // `jac` hält dagegen, wo Enthaltensein allein zu billig wäre.
+      // `cont` is load-bearing, because the Kundmachung often SHORTENS the
+      // draft's title („Änderung der Honigverordnung" against the full
+      // Verordnung title); `jac` holds against it where containment alone
+      // would be too cheap.
       const s = Math.max(c.jac, c.cont * 0.9, c.lcp * 0.85)
       if (s > best) best = s
     }
@@ -141,26 +135,26 @@ export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number
   return Math.round(best * 1000) / 1000
 }
 
-/** Ein bewerteter Kandidat. */
+/** One scored candidate. */
 interface BgblCandidate {
   record: BgblRecord
   score: number
-  /** Tage zwischen Fristende und Ausgabedatum. */
+  /** Days between the end of the Frist and the date of issue. */
   days: number
-  /** 1 gleiches Ressort, 0.5 Rechtsnachfolger, 0 fremd. */
+  /** 1 the same Ressort, 0.5 a legal successor, 0 a foreign one. */
   ministry: number
 }
 
-/** Das Ergebnis: ein Treffer, mit dem Abstand zum zweitbesten. */
+/** The result: one match, with its distance to the second best. */
 interface BgblMatch extends BgblCandidate {
   margin: number
 }
 
 /**
- * Die Kandidaten eines Entwurfs, bewertet und absteigend sortiert.
+ * A draft's candidates, scored and sorted descending.
  *
- * Getrennt vom Urteil, damit die Messung sehen kann, was knapp verfehlt hat
- * — eine Schwelle, die man nur an ihren Treffern prüft, prüft man nicht.
+ * Kept apart from the verdict so the measurement can see what just missed —
+ * a threshold checked only against its hits is not checked at all.
  */
 export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblCandidate[] {
   if (!draft.ende) return []
@@ -175,21 +169,20 @@ export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecor
     if (score <= 0) continue
     out.push({ record, score, days, ministry })
   }
-  // Nach Punktzahl, bei Gleichstand das frühere Datum: Wird derselbe Text
-  // zweimal geändert, ist die erste Kundmachung nach der Frist die aus
-  // dieser Begutachtung.
+  // By score, and on a tie the earlier date: if the same text is amended
+  // twice, the first Kundmachung after the Frist is the one from this
+  // Begutachtung.
   return out.sort((a, b) => b.score - a.score || a.days - b.days)
 }
 
 /**
- * Die Kundmachung zu einem Entwurf — oder null.
+ * The Kundmachung belonging to a draft — or null.
  *
- * Das fremde Ressort ist ein hartes Aus, kein Abzug. Ein Titel kann sich
- * zufällig gleichen („Ratenzahlungs-Verordnung" des E-Control-Vorstands
- * gegen eine Ressortverordnung); dass zwei verschiedene Stellen dieselbe
- * Verordnung erlassen, kann dagegen nicht sein. Die Abstammungsgruppen aus
- * `risJoin` fangen dabei den Regierungswechsel ab, der zwischen Frist und
- * Kundmachung liegen kann.
+ * A foreign Ressort is a hard no, not a deduction. Two titles can resemble
+ * each other by accident („Ratenzahlungs-Verordnung" of the E-Control board
+ * against a ressort's Verordnung); that two different bodies issue the same
+ * Verordnung cannot be. The lineage groups from `risJoin` absorb the change
+ * of government that can fall between Frist and Kundmachung.
  */
 export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblMatch | null {
   const ranked = bgblCandidates(draft, records).filter((c) => c.ministry > 0)
@@ -197,10 +190,10 @@ export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblReco
   if (!best || best.score < BGBL_ACCEPT) return null
   const second = ranked[1]
   const margin = best.score - (second?.score ?? 0)
-  // Gleichstand im Titel: Dann entscheidet die Zeit, und zwar zugunsten der
-  // ERSTEN Kundmachung nach dem Fristende — `bgblCandidates` sortiert dafür
-  // schon. Liegen beide nah beieinander, sagt auch die Zeit nichts, und dann
-  // sind zwei Antworten keine.
+  // A tie on the titles: then the time decides, in favour of the FIRST
+  // Kundmachung after the end of the Frist — `bgblCandidates` already sorts
+  // for that. If the two lie close together, the time says nothing either,
+  // and then two answers are none.
   if (second && margin < BGBL_MARGIN && second.days - best.days < BGBL_TIE_DAYS) return null
   return { ...best, margin: Math.round(margin * 1000) / 1000 }
 }
