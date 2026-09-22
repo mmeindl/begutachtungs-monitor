@@ -34,7 +34,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseParliamentHtml } from '../server/utils/lawText'
 import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanationsHtml'
-import { diffTokens } from '../server/utils/lawDiff'
+import { diffTokens } from '../server/utils/diff/wordDiff'
 
 const BASE = 'https://www.parlament.gv.at'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/erl-diff-corpus)' }

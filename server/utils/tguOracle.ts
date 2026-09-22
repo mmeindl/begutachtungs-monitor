@@ -26,7 +26,7 @@
  * A § the annex does not mention, or mentions only in elided rows, gets no
  * verdict: the oracle is silent, not positive.
  */
-import { diffTokens } from './lawDiff'
+import { diffTokens } from './diff/wordDiff'
 import { normalizeText } from './lawText'
 import type { ComparisonRow } from './textComparison'
 import { punctuationTokens } from './text/punctuationTokens'

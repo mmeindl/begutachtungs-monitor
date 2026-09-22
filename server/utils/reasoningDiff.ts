@@ -27,7 +27,7 @@
  */
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../shared/types'
 import { unitKey } from '../../shared/utils/diffKey'
-import { diffTokens } from './lawDiff'
+import { diffTokens } from './diff/wordDiff'
 import { addressedParagraphOf } from './lawTitles'
 // The key of `passagesByParagraph`, and the same reading the page looks up
 // with. Its `\b` changes nothing for the designations `parseAddress` builds:

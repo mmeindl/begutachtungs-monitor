@@ -161,7 +161,7 @@ import {
 } from '../server/utils/annexCheck'
 import { parseAnnexPdf } from '../server/utils/annexPdf'
 import { pagesOf } from '../server/utils/annexPdfPages'
-import { diffTokens } from '../server/utils/lawDiff'
+import { diffTokens } from '../server/utils/diff/wordDiff'
 import { plainText } from '../server/utils/lawStructure'
 import { normalizeText, parseRisXml } from '../server/utils/lawText'
 import { draftArticles, type DraftArticle } from '../server/utils/lawTitles'

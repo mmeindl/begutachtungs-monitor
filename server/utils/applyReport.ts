@@ -15,7 +15,7 @@
  * a verdict is exactly as load-bearing as the code it judges, and belongs
  * where tests and the compiler can reach it. Only the I/O stays in a script.
  */
-import { diffTokens } from './lawDiff'
+import { diffTokens } from './diff/wordDiff'
 import { plainText, type LawNode } from './lawStructure'
 import type { LawDiffSegment } from '../../shared/types'
 

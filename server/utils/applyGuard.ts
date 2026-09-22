@@ -25,7 +25,7 @@
  * check is the ressort's own Textgegenüberstellung (`tguOracle.ts`), where a
  * draft carries one. Together they decide what a gate may show as text.
  */
-import { diffTokens } from './lawDiff'
+import { diffTokens } from './diff/wordDiff'
 import { lawTextNodes, plainText, type LawNode } from './lawStructure'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
 import { addressedSentence, resolveTarget } from './lawApply'

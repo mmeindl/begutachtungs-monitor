@@ -20,7 +20,7 @@
  * boundary the layout guarantees.
  */
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
-import { diffTokens, isEditorialChange } from './lawDiff'
+import { diffTokens, isEditorialChange } from './diff/wordDiff'
 import { normalizeText } from './lawText'
 import type { DraftArticle } from './lawTitles'
 import { classify, HEADER_CURRENT_RE, HEADER_PROPOSED_RE, isElidedPair, type ComparisonRow } from './textComparison'
