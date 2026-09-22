@@ -56,7 +56,11 @@ import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
 import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../server/utils/kons/tguOracle'
-import { installFetchCache } from './harness-cache'
+import { installFetchCache } from './lib/harnessCache'
+import { argAssigned, argFlag } from './lib/args'
+import { PARLIAMENT, risJson as risQuery } from './lib/http'
+import { ANNEX_NAME_RE, asArray } from './lib/ris'
+import { anlageLabelKey, bareParaId } from '../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
 interface Verdict {
@@ -84,9 +88,7 @@ interface Verdict {
 
 type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef; afters: KonsParagraphRef[] }
 
-const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
-const verbose = !process.argv.includes('--quiet')
+const verbose = !argFlag('quiet')
 /**
  * `--dump=<file>` writes one JSON line per checked paragraph: verdict, the
  * three texts, the trees before and after, and every instruction that
@@ -95,7 +97,7 @@ const verbose = !process.argv.includes('--quiet')
  * record set, and a dump makes that a one-second offline loop instead of a
  * reason to keep adding flags to this script (2026-09-09).
  */
-const dumpFile = process.argv.find((a) => a.startsWith('--dump='))?.slice('--dump='.length) ?? null
+const dumpFile = argAssigned('dump') ?? null
 /**
  * `--oracle` compares every checked paragraph with the Textgegenüberstellung
  * of the Ministerialentwurf the Novelle came from (`tguOracle.ts`). The chain
@@ -104,7 +106,7 @@ const dumpFile = process.argv.find((a) => a.startsWith('--dump='))?.slice('--dum
  * Initiativanträge and Ausschussanträge have no Ministerialentwurf and drop
  * out; so do drafts without a readable annex.
  */
-const withOracle = process.argv.includes('--oracle')
+const withOracle = argFlag('oracle')
 /**
  * `--refusals=<file>` writes one JSON line per instruction the engine did not
  * carry out, with the **full** line and the reason.
@@ -114,22 +116,13 @@ const withOracle = process.argv.includes('--oracle')
  * the corpus again. The dump only carries refusals whose § matches a checked
  * paragraph, which is by construction the ones with a readable address.
  */
-const refusalFile = process.argv.find((a) => a.startsWith('--refusals='))?.slice('--refusals='.length) ?? null
+const refusalFile = argAssigned('refusals') ?? null
 if (refusalFile) writeFileSync(refusalFile, '')
 if (dumpFile) writeFileSync(dumpFile, '')
-if (process.argv.includes('--cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
+if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-async function risJson(params: Record<string, string>): Promise<any> {
-  const url = params.__url ?? `${RIS}?${new URLSearchParams(params)}`
-  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(30_000) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return await res.json()
-}
-
-function asArray<T>(x: T | T[] | null | undefined): T[] {
-  return x === null || x === undefined ? [] : Array.isArray(x) ? x : [x]
-}
+const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: 'kons-harness' })
 
 /**
  * The Bundesgesetze that amend standing law, with or without a title that
@@ -286,15 +279,14 @@ async function resolveLaw(blocks: readonly TextBlock[], bgblNumber: string, kund
  * "Art. 2 § 7" — a law organised in Artikel — stays unmatched on purpose:
  * which Artikel a bare "§ 7" means is a question for the engine, and a
  * harness that guessed would hide that the engine cannot ask it yet.
+ *
+ * The shipped reader, not a copy of it — `text/designation.ts` is where both
+ * the engine and this harness read a designation.
  */
-function labelKey(label: string): string {
-  return label.replace(/\s+/g, ' ').trim().replace(/^(?:Anlage|Anhang)\b/, 'Anl.')
-}
+const labelKey = anlageLabelKey
 
 /** "§ 5" → "5", the id `parseKonsParagraph` gives a paragraph — mirrors the engine's own lookup. */
-function paraId(label: string): string | null {
-  return /(\d+[a-z]*(?:\.\d+)?)/.exec(label)?.[1] ?? null
-}
+const paraId = bareParaId
 
 /**
  * A reason without its case detail, so the census groups.
@@ -350,9 +342,6 @@ function missingTargetNote(address: NovaoAddress, resolved: ResolvedLaw, before:
   const before_ = resolved.pairs.get(label)?.before ?? null
   return `${count('Untereinheit nicht im Ausgangstext')}: ${label} ${address.lit ? 'lit.' : address.z ? 'Z' : 'Abs.'} ${missing.join(', ')} (RIS-Fassung ${before_?.inkrafttreten ?? `vor ${kundmachung}`})`
 }
-
-const PARLIAMENT = 'https://www.parlament.gv.at'
-const TGU_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
 
 interface Oracle {
   rows: Map<string, ComparisonRow[]>
@@ -444,7 +433,7 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
   if (candidates.length === 0) return { note: `kein RIS-Begut-Datensatz zu ${me.zitation ?? me.inr}` }
   const record = candidates[0]!.ref
   // 4. The annex.
-  const annex = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => TGU_NAME.test(String(c?.Name ?? '').trim()))
+  const annex = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '').trim()))
   const xmlUrl = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
   if (!annex) return { note: 'Entwurf ohne Textgegenüberstellung' }
   if (!xmlUrl) return { note: 'Textgegenüberstellung nur als PDF' }
@@ -736,7 +725,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     tally(gateTally, `${plausible ? 'plausibel' : 'unplausibel'}|${oracleKey}|${outcome}|${flags.has('verweigert') ? 'verweigert' : 'ohne Verweigerung'}`)
     if (verbose && oracleReport && oracleReport.verdict !== 'stumm' && oracleReport.verdict !== 'bestätigt') {
       console.log(`        ↳ Orakel ${oracleReport.verdict} [RIS: ${verdict}]: ${oracleReport.note ?? ''}`)
-      if (process.argv.includes('--oracle-debug') && verdict === 'identisch') {
+      if (argFlag('oracle-debug') && verdict === 'identisch') {
         const rows = paragraphRows(oracle!.rows, id!, oracle!.lawKey)
         for (const row of rows.filter((r) => r.kind === 'pair' && !r.elided && r.change !== 'unchanged')) {
           const p = stripMarkers(row.proposed).replace(/\s+/g, '')
@@ -802,8 +791,8 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
 }
 
 // --- CLI ----------------------------------------------------------------------
-const discover = process.argv.find((a) => a.startsWith('--discover='))
-const withSammel = process.argv.includes('--sammel')
+const discover = argAssigned('discover')
+const withSammel = argFlag('sammel')
 const ids = process.argv.slice(2).filter((a) => /^BGBLA_/.test(a))
 const cases: { id: string; law?: string }[] = discover
   ? await discoverAmendments(Number(discover.split('=')[1] ?? 10), withSammel)

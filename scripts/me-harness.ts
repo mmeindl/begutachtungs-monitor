@@ -55,12 +55,14 @@ import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '
 import { parseExplanations } from '../server/utils/explanations/risExplanations'
 import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
 import { explanationKey, explanationParaId } from '../shared/utils/explanationKey'
-import { installFetchCache } from './harness-cache'
+import { installFetchCache } from './lib/harnessCache'
+import { argAssigned, argFlag } from './lib/args'
+import { PARLIAMENT, getJson, risJson as risQuery } from './lib/http'
+import { ANNEX_NAME_RE, asArray } from './lib/ris'
+import { anlageLabelKey, bareParaId } from '../server/utils/text/designation'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
-const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
-const TGU_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
+const SCRIPT = 'me-harness'
 /** Dieselbe lose Schreibweise wie in `ris/risRecord.ts`. */
 const ERL_NAME = /erl(ä|ae|a)uterung/i
 
@@ -80,7 +82,7 @@ const ERL_NAME = /erl(ä|ae|a)uterung/i
  * The default stays `ris`, so every number measured before this flag existed
  * is still reproducible by leaving it off.
  */
-const annexSource = (process.argv.find((a) => a.startsWith('--annex='))?.slice('--annex='.length) ?? 'ris') as 'ris' | 'parlament'
+const annexSource = (argAssigned('annex') ?? 'ris') as 'ris' | 'parlament'
 /**
  * `--erl` hängt an jeden ausgegebenen Paragraphen die Passage des Besonderen
  * Teils der Erläuterungen, die ihn erklärt.
@@ -97,23 +99,14 @@ const annexSource = (process.argv.find((a) => a.startsWith('--annex='))?.slice('
  * das Urteil des Anhangs, damit sich auswerten lässt, ob sie dieselbe Aussage
  * tragen. Erst wenn das gemessen ist, gehört eine Regel in `server/utils`.
  */
-const withExplanations = process.argv.includes('--erl')
-const verbose = !process.argv.includes('--quiet')
-const dumpFile = process.argv.find((a) => a.startsWith('--dump='))?.slice('--dump='.length) ?? null
+const withExplanations = argFlag('erl')
+const verbose = !argFlag('quiet')
+const dumpFile = argAssigned('dump') ?? null
 if (dumpFile) writeFileSync(dumpFile, '')
-if (process.argv.includes('--cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
+if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-async function risJson(params: Record<string, string>): Promise<any> {
-  const url = `${RIS}?${new URLSearchParams(params)}`
-  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(30_000) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return await res.json()
-}
-
-function asArray<T>(x: T | T[] | null | undefined): T[] {
-  return x === null || x === undefined ? [] : Array.isArray(x) ? x : [x]
-}
+const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })
 
 interface Draft {
   id: string
@@ -135,7 +128,7 @@ function draftOf(ref: any): Draft | null {
   if (!id || !beginn) return null
   const contents = asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)
   const xmlOf = (c: any): string | null => asArray<any>(c?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
-  const annex = contents.find((c) => TGU_NAME.test(String(c?.Name ?? '').trim()))
+  const annex = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '').trim()))
   return {
     id,
     titel: String(meta?.Bundesrecht?.Kurztitel ?? meta?.Bundesrecht?.Titel ?? '').replace(/<br\/>[\s\S]*/, '').trim(),
@@ -201,22 +194,18 @@ function parliamentMeFor(risId: string): { gp: string; inr: number } | null {
 async function parliamentAnnexHtml(risId: string): Promise<string | null> {
   const me = parliamentMeFor(risId)
   if (!me) return null
-  const detail: any = await (await fetch(`https://www.parlament.gv.at/gegenstand/${me.gp}/ME/${me.inr}?json=True`, { headers: UA, signal: AbortSignal.timeout(30_000) })).json()
-  const group = asArray<any>(detail?.content?.documents).find((d) => TGU_NAME.test(String(d?.title ?? '').trim()))
+  const detail = await getJson<any>(`${PARLIAMENT}/gegenstand/${me.gp}/ME/${me.inr}?json=True`, { script: SCRIPT })
+  const group = asArray<any>(detail?.content?.documents).find((d) => ANNEX_NAME_RE.test(String(d?.title ?? '').trim()))
   const link = asArray<any>(group?.documents).find((d) => d?.type === 'HTML')?.link
   if (!link) return null
-  return await getText(link.startsWith('http') ? link : `https://www.parlament.gv.at${link}`)
+  return await getText(link.startsWith('http') ? link : `${PARLIAMENT}${link}`)
 }
 
-/** "§ 5" → "5", the id `parseKonsParagraph` gives a paragraph. */
-function paraId(label: string): string | null {
-  return /(\d+[a-z]*(?:\.\d+)?)/.exec(label)?.[1] ?? null
-}
+/** "§ 5" → "5", the id `parseKonsParagraph` gives a paragraph. The shipped reader. */
+const paraId = bareParaId
 
 /** RIS prints an Anlage as "Anl. 2"; an instruction says "Anlage 2" (or "Anhang 2"). */
-function labelKey(label: string): string {
-  return label.replace(/\s+/g, ' ').trim().replace(/^(?:Anlage|Anhang)\b/, 'Anl.')
-}
+const labelKey = anlageLabelKey
 
 interface LawResult {
   draft: string
@@ -487,7 +476,7 @@ async function resolveLaw(article: DraftArticle, date: string): Promise<{ gesetz
 }
 
 // --- CLI ----------------------------------------------------------------------
-const discoverArg = process.argv.find((a) => a.startsWith('--discover='))
+const discoverArg = argAssigned('discover')
 // Split each argv entry before matching: run through `npx vite-node … -- a b c`
 // the trailing arguments arrive as *one* space-joined string, so a plain
 // filter found the ids when there was one and none when there were forty

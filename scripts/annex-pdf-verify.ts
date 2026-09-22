@@ -42,22 +42,18 @@ import { getText, resolveLawByBgbl, type KonsLawAtDate } from '../server/utils/r
 import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonParse, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { installFetchCache } from './harness-cache'
-import type { AnnexReport } from './annex-report'
+import { installFetchCache } from './lib/harnessCache'
+import type { AnnexReport } from './lib/annexReport'
+import { argAssigned, argFlag } from './lib/args'
+import { risJson as risQuery, scriptUserAgent } from './lib/http'
+import { ANNEX_NAME_RE, asArray } from './lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
-const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
+const SCRIPT = 'annex-pdf-verify'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const asArray = <T>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
-
-async function risJson(params: Record<string, string>): Promise<any> {
-  const res = await fetch(`${RIS}?${new URLSearchParams(params)}`, { headers: UA, signal: AbortSignal.timeout(30_000) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return await res.json()
-}
+const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })
 
 /**
  * The standing law for the gate, uncached — the same two lookups the request
@@ -196,7 +192,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
   const main = contents.find((c) => c?.ContentType === 'MainDocument')
-  const annex = contents.find((c) => /gegen.?über|^TG(Ü|G|UE)$/i.test(String(c?.Name ?? '')))
+  const annex = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
   if (!annex) return null
   const annexXml = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
   const pdfUrl = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
@@ -228,7 +224,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // which parser ran is known here anyway.
   const fromPdf = readable
     ? null
-    : parseAnnexPdf(await pagesOf(new Uint8Array(await (await fetch(pdfUrl!, { headers: { 'User-Agent': UA['User-Agent'] } })).arrayBuffer())), articles)
+    : parseAnnexPdf(await pagesOf(new Uint8Array(await (await fetch(pdfUrl!, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })).arrayBuffer())), articles)
   const parsed: ComparisonParse = fromPdf ?? parseTextComparison(annexXmlText!, articles)
   const droppedPages = fromPdf?.droppedPages ?? 0
   if (parsed.refusal) return { ...blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length), droppedPages }
@@ -450,12 +446,12 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promi
 }
 
 // --- CLI ----------------------------------------------------------------------
-const gp = process.argv.find((a) => a.startsWith('--gp='))?.slice('--gp='.length) ?? 'XXVIII'
-const limit = Number(process.argv.find((a) => a.startsWith('--limit='))?.slice('--limit='.length) ?? 400)
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice('--only='.length) ?? null
-const dumpWorst = process.argv.includes('--dump-worst')
-const xmlMode = process.argv.includes('--xml')
-const calibrate = process.argv.includes('--calibrate')
+const gp = argAssigned('gp') ?? 'XXVIII'
+const limit = Number(argAssigned('limit') ?? 400)
+const only = argAssigned('only') ?? null
+const dumpWorst = argFlag('dump-worst')
+const xmlMode = argFlag('xml')
+const calibrate = argFlag('calibrate')
 
 const docs: any[] = []
 for (let page = 1; page <= 4 && docs.length < limit; page++) {
@@ -587,10 +583,10 @@ if (calibrate) {
 // Bericht oben. Zusätzlich, nicht statt: der Prosabericht ist das, was im
 // CI-Log steht, wenn der Alarm anschlägt und jemand wissen will, warum.
 //
-// Die Urteile stehen nicht hier, sondern in `annex-report.ts` — dieselbe
+// Die Urteile stehen nicht hier, sondern in `lib/annexReport.ts` — dieselbe
 // Lehre, die §12.13 schon zweimal zieht: Logik in einem CLI-Skript ist Logik,
 // die kein Test erreicht. Hier wird nur umgefüllt.
-const jsonPath = process.argv.find((a) => a.startsWith('--json='))?.slice('--json='.length) ?? null
+const jsonPath = argAssigned('json') ?? null
 if (jsonPath) {
   const { writeFileSync } = await import('node:fs')
   const report: AnnexReport = {

@@ -28,68 +28,21 @@ import {
   type RisClass,
 } from '../server/utils/ris/risJoin'
 import { ministryCodeOf } from '../server/utils/ris/ministryCodes'
-import { flattenRisRecord, hasDocument, isOpenOn, type RisBegutFlat } from '../server/utils/ris/risRecord'
+import { hasDocument, isOpenOn, type RisBegutFlat } from '../server/utils/ris/risRecord'
+import { argPair } from './lib/args'
+import { fetchRisBegutCorpus } from './lib/corpus'
 
-function arg(name: string): string | null {
-  const i = process.argv.indexOf(`--${name}`)
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : null
-}
-
-const onDate = arg('on')
+const onDate = argPair('on')
 if (onDate && !/^\d{4}-\d{2}-\d{2}$/.test(onDate)) {
   console.error('--on expects an ISO date, e.g. 2026-09-17')
   process.exit(1)
 }
 
-/**
- * The corpus, page by page, through the production mapper.
- *
- * `ris/begutCorpus.ts` itself is not importable here — it carries the Nitro cache and
- * `#shared/*` aliases — so the paging is repeated, but `flattenRisRecord`
- * is the shipped one: the numbers below are what the site sees, not what a
- * second implementation of the mapper would see.
- */
-const PAGE_SIZE = 100
-const MAX_PAGES = 80
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/verordnungen-corpus)'
-
-async function fetchCorpus(): Promise<{ hits: number; records: RisBegutFlat[] }> {
-  const seen = new Set<string>()
-  const records: RisBegutFlat[] = []
-  let hits = 0
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const params = new URLSearchParams({
-      Applikation: 'Begut',
-      DokumenteProSeite: 'OneHundred',
-      Seitennummer: String(page),
-      'Sortierung.SortedByColumn': 'EndeBegutachtungsfrist',
-      'Sortierung.SortDirection': 'Ascending',
-    })
-    const res = await fetch(`https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?${params}`, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    })
-    if (!res.ok) throw new Error(`RIS ${res.status} on page ${page}`)
-    const result = (await res.json())?.OgdSearchResult
-    if (!result || result.Error) throw new Error(`RIS error on page ${page}`)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
-    hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
-    for (const doc of docs) {
-      const flat = flattenRisRecord(doc)
-      if (flat && !seen.has(flat.id)) {
-        seen.add(flat.id)
-        records.push(flat)
-      }
-    }
-    process.stderr.write(`\rpage ${page} · ${records.length}/${hits} records`)
-    if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
-    await new Promise((r) => setTimeout(r, 300))
-  }
-  process.stderr.write('\n')
-  return { hits, records }
-}
-
-const corpus = await fetchCorpus()
+// Ascending by EndeBegutachtungsfrist, so the "open on this day" list below
+// reads oldest deadline first. The shared pass is the one the other corpus
+// scripts use, mapper and retry included; this script carried its own copy of
+// the paging until 22.09.2026 and had no retry at all.
+const corpus = await fetchRisBegutCorpus('verordnungen-corpus', 'Ascending')
 const records = corpus.records.map((r) => ({ r, cls: classifyRisRecord(r) }))
 
 console.log(`RIS Begut corpus: ${corpus.records.length} records (upstream hits: ${corpus.hits})`)

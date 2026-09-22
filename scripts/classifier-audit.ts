@@ -35,26 +35,20 @@
  */
 import { classifySubmitter, readUpstreamFlag } from '../server/utils/parliament/privacy'
 import { stripHtmlToText } from '../server/utils/parliament/htmlText'
+import { argPair } from './lib/args'
+import { PARLIAMENT, getJson } from './lib/http'
 
-function arg(name: string, fallback: string): string {
-  const i = process.argv.indexOf(`--${name}`)
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : fallback
-}
-
-const gp = arg('gp', 'XXVIII')
-const ityp = arg('ityp', 'ME')
-const inr = arg('inr', '')
+const gp = argPair('gp') ?? 'XXVIII'
+const ityp = argPair('ityp') ?? 'ME'
+const inr = argPair('inr') ?? ''
 
 const body: Record<string, unknown> = { BEZUG_GP_CODE: [gp], BEZUG_ITYP: [ityp] }
 if (inr) body.BEZUG_INR = [Number(inr)]
 
-const res = await fetch('https://www.parlament.gv.at/Filter/api/filter/data/142?js=eval&showAll=true', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json', 'User-Agent': 'begutachtungs-monitor/audit' },
-  body: JSON.stringify(body),
-})
-if (!res.ok) throw new Error(`list 142 answered ${res.status}`)
-const data = (await res.json()) as { count?: number; rows?: unknown[][] }
+const data = await getJson<{ count?: number; rows?: unknown[][] }>(
+  `${PARLIAMENT}/Filter/api/filter/data/142?js=eval&showAll=true`,
+  { script: 'classifier-audit', method: 'POST', body },
+)
 const rows = data.rows ?? []
 
 /** The bracketed citation the row appends to the name: "(237/SN-126/ME)", "(277139/SN)". */

@@ -167,23 +167,17 @@ import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } 
 import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { installFetchCache } from './harness-cache'
+import { installFetchCache } from './lib/harnessCache'
+import { argAssigned, argFlag } from './lib/args'
+import { risJson as risQuery, scriptUserAgent } from './lib/http'
+import { ANNEX_NAME_RE, asArray } from './lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
-const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
+const SCRIPT = 'annex-fault-injection'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const asArray = <T>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
-
-async function risJson(params: Record<string, string>): Promise<any> {
-  const res = await fetch(`${RIS}?${new URLSearchParams(params)}`, { headers: UA, signal: AbortSignal.timeout(30_000) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return await res.json()
-}
-
-const ANNEX_NAME_RE = /gegen.?über|^TG(Ü|G|UE)$/i
+const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })
 
 /**
  * Sentence boundaries in Austrian legal prose, which is mostly abbreviations.
@@ -366,7 +360,7 @@ async function inject(doc: any): Promise<DraftResult | null> {
 
   const parsed = readable
     ? parseTextComparison(annexXmlText, articles)
-    : parseAnnexPdf(await pagesOf(new Uint8Array(await (await fetch(pdfUrl!, { headers: { 'User-Agent': UA['User-Agent'] } })).arrayBuffer())), articles)
+    : parseAnnexPdf(await pagesOf(new Uint8Array(await (await fetch(pdfUrl!, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })).arrayBuffer())), articles)
   if (parsed.refusal || parsed.rows.length === 0) return null
 
   const byKey = new Map<string | null, DraftArticle>(articles.map((a) => [a.key, a]))
@@ -550,10 +544,10 @@ async function inject(doc: any): Promise<DraftResult | null> {
 }
 
 // --- CLI ----------------------------------------------------------------------
-const gp = process.argv.find((a) => a.startsWith('--gp='))?.slice('--gp='.length) ?? 'XXVIII'
-const limit = Number(process.argv.find((a) => a.startsWith('--limit='))?.slice('--limit='.length) ?? 400)
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice('--only='.length) ?? null
-const xmlMode = process.argv.includes('--xml')
+const gp = argAssigned('gp') ?? 'XXVIII'
+const limit = Number(argAssigned('limit') ?? 400)
+const only = argAssigned('only') ?? null
+const xmlMode = argFlag('xml')
 
 /** The corpus without any fault — the number that has to stay small. */
 const corpus = { held: 0, rule1: 0, rule2Wide: 0, rule2Para: 0, eitherWide: 0, eitherPara: 0, newAlarms: [] as string[], lostAlarms: [] as string[] }

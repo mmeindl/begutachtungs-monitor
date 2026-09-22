@@ -33,20 +33,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { mapDocuments, mapTextEvolution, RV_STATION, type RawDocumentGroup } from '../server/utils/parliament/detailJson'
+import { argPair } from './lib/args'
+import { PARLIAMENT as BASE, getJson } from './lib/http'
 
-const BASE = 'https://www.parlament.gv.at'
-const HEADERS = {
-  'User-Agent': 'begutachtungs-monitor/0.1 (ziviltech-prototyp; scripts/stations-corpus)',
-  Accept: 'application/json',
-}
+const SCRIPT = 'stations-corpus'
 const CONCURRENCY = 4
 
-function arg(name: string): string | null {
-  const i = process.argv.indexOf(`--${name}`)
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : null
-}
-
-const gps = (arg('gp') ?? 'XXVII,XXVIII').split(',').map((g) => g.trim().toUpperCase()).filter(Boolean)
+const gps = (argPair('gp') ?? 'XXVII,XXVIII').split(',').map((g) => g.trim().toUpperCase()).filter(Boolean)
 for (const gp of gps) {
   if (!/^[IVXLC]+$/.test(gp)) {
     console.error(`--gp expects roman numerals, got ${gp}`)
@@ -54,21 +47,16 @@ for (const gp of gps) {
   }
 }
 
-async function fetchJson(url: string, init?: RequestInit): Promise<any> {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { ...init, headers: HEADERS, signal: AbortSignal.timeout(20_000) })
-      if (res.status >= 500) throw new Error(`HTTP ${res.status}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status} (not retried)`)
-      return await res.json()
-    } catch (err) {
-      lastError = err
-      if (String(err).includes('not retried')) throw err
-      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
-    }
-  }
-  throw lastError
+/** Three attempts on a 5xx or a dropped connection; a 4xx is the answer and is not retried. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fetchJson(url: string, body?: unknown): Promise<any> {
+  return getJson(url, {
+    script: SCRIPT,
+    attempts: 3,
+    backoffMs: (retry) => 500 * retry,
+    timeoutMs: 20_000,
+    ...(body === undefined ? {} : { method: 'POST' as const, body }),
+  })
 }
 
 /** The rv-latency cache first: same endpoint, same payload, 482 details already on disk. */
@@ -96,7 +84,7 @@ async function measure(gp: string): Promise<Row[]> {
   mkdirSync(join('.cache', 'stations', gp), { recursive: true })
   const list = await fetchJson(
     `${BASE}/Filter/api/filter/data/81?js=eval&showAll=true&sortrnr=11&ascDesc=DESC`,
-    { method: 'POST', body: JSON.stringify({ GP_CODE: [gp] }) },
+    { GP_CODE: [gp] },
   )
   const inrs = (list.rows ?? [])
     .filter((r: unknown[]) => Array.isArray(r) && r[0] === gp)

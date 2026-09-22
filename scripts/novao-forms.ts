@@ -13,9 +13,10 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseInstruction } from '../server/utils/kons/novao'
+import { argAssigned } from './lib/args'
 
 const cacheDir = process.argv[2]?.startsWith('--') ? join('.cache', 'novao') : (process.argv[2] ?? join('.cache', 'novao'))
-const samples = Number(process.argv.find((a) => a.startsWith('--samples='))?.split('=')[1] ?? 6)
+const samples = Number(argAssigned('samples') ?? 6)
 
 const rows = (await readFile(join(cacheDir, 'novao.jsonl'), 'utf8'))
   .split('\n')

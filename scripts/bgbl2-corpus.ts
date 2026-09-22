@@ -34,25 +34,16 @@ import {
   joinDraftToBgbl,
   type BgblJoinDraft,
 } from '../server/utils/ris/bgblJoin'
-import { fetchBgblRecords, fetchRisBegutCorpus } from './risCorpus'
-
-const args = process.argv.slice(2)
-function flag(name: string): string | null {
-  const i = args.indexOf(`--${name}`)
-  return i >= 0 ? (args[i + 1] ?? '') : null
-}
-const has = (name: string) => args.includes(`--${name}`)
+import { fetchBgblRecords, fetchRisBegutCorpus } from './lib/corpus'
+import { argFlag as has, argPair as flag } from './lib/args'
+import { quantile } from './lib/fmt'
 
 const since = flag('since') ?? '2024-01-01'
 const today = new Date().toISOString().slice(0, 10)
 
+/** En dash where there is nothing to divide by — `lib/fmt.ts` prints an em dash. */
 function pct(n: number, of: number): string {
   return of ? `${((n / of) * 100).toFixed(1)} %` : '–'
-}
-function quantile(xs: readonly number[], q: number): number {
-  if (!xs.length) return 0
-  const s = [...xs].sort((a, b) => a - b)
-  return s[Math.min(s.length - 1, Math.floor(q * s.length))]!
 }
 function daysSince(iso: string): number {
   return Math.round((Date.parse(today) - Date.parse(iso)) / 86_400_000)

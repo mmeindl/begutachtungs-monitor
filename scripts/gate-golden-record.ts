@@ -37,27 +37,21 @@ import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } 
 import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { compactLaw, resolveKey, standingKey, type RecordedLaw } from './gate-golden-keys'
-import { installFetchCache } from './harness-cache'
+import { compactLaw, resolveKey, standingKey, type RecordedLaw } from './lib/gateGoldenKeys'
+import { installFetchCache } from './lib/harnessCache'
+import { argAssigned } from './lib/args'
+import { risJson as risQuery, scriptUserAgent } from './lib/http'
+import { ANNEX_NAME_RE, asArray } from './lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
-const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const asArray = <T>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
-const arg = (name: string): string | null => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null
+const SCRIPT = 'gate-golden-record'
+const risJson = (params: Record<string, string>): Promise<any> => risQuery(params, { script: SCRIPT })
 
-async function risJson(params: Record<string, string>): Promise<any> {
-  const res = await fetch(`${RIS}?${new URLSearchParams(params)}`, { headers: UA, signal: AbortSignal.timeout(30_000) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return await res.json()
-}
-
-const only = arg('only')
-const out = arg('out')
-const gp = arg('gp') ?? 'XXVIII'
+const only = argAssigned('only')
+const out = argAssigned('out')
+const gp = argAssigned('gp') ?? 'XXVIII'
 if (!only || !out) {
   console.error('Usage: gate-golden-record.ts --only=<Titelteil> --out=<fixture.json> [--gp=XXVIII]')
   process.exit(2)
@@ -90,7 +84,7 @@ if (!asOf) {
 
 const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
 const mainRef = contents.find((c) => c?.ContentType === 'MainDocument')
-const annexRef = contents.find((c) => /gegen.?über|^TG(Ü|G|UE)$/i.test(String(c?.Name ?? '')))
+const annexRef = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
 const urlOf = (ref: any, type: 'Xml' | 'Pdf'): string | null => asArray<any>(ref?.Urls?.ContentUrl).find((u) => u?.DataType === type)?.Url ?? null
 
 const draftUrl = urlOf(mainRef, 'Xml')
@@ -116,7 +110,7 @@ if (readable) {
   rows = parse.rows
 } else {
   if (!annexPdfUrl) { console.error('Beilage ohne lesbares XML und ohne PDF.'); process.exit(1) }
-  const bytes = new Uint8Array(await (await fetch(annexPdfUrl, { headers: UA })).arrayBuffer())
+  const bytes = new Uint8Array(await (await fetch(annexPdfUrl, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })).arrayBuffer())
   // Rounded and without blank runs, exactly as `annex-uwg-pages.json` is kept:
   // `linesFromPage` and `columnBoundary` skip empty runs and the parse is
   // identical either way, but the dump is a third of the size.

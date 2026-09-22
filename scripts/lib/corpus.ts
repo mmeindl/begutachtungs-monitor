@@ -5,12 +5,11 @@
  * and `#shared/*` aliases — but `flattenRisRecord` is, and it is the shipped
  * mapper: what a script counts is then what the site sees, not what a second
  * implementation of the mapper would see.
- *
- * `verordnungen-corpus.ts` predates this module and carries its own copy of
- * the paging; both talk to the same endpoint with the same parameters.
  */
-import { flattenRisRecord, type RisBegutFlat } from '../server/utils/ris/risRecord'
-import type { BgblRecord } from '../server/utils/ris/bgblJoin'
+import { flattenRisRecord, type RisBegutFlat } from '../../server/utils/ris/risRecord'
+import type { BgblRecord } from '../../server/utils/ris/bgblJoin'
+import { RIS_API, getJson } from './http'
+import { sleep } from './async'
 
 const PAGE_SIZE = 100
 const MAX_PAGES = 80
@@ -28,23 +27,16 @@ const PAGE_PAUSE_MS = 400
 const TIMEOUT_MS = 45_000
 
 /** Eine Seite holen, mit Geduld. Wirft erst, wenn alle Versuche scheitern. */
-async function fetchJson(url: string, headers: Record<string, string>, what: string): Promise<unknown> {
-  let last: unknown
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS * attempt))
-    try {
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) })
-      if (!res.ok) {
-        last = new Error(`RIS ${res.status}`)
-        continue
-      }
-      return await res.json()
-    } catch (err) {
-      last = err
-      process.stderr.write(`\n  ${what}: Versuch ${attempt + 1} gescheitert (${String(last).slice(0, 60)})\n`)
-    }
-  }
-  throw new Error(`RIS nicht erreichbar bei ${what}: ${String(last)}`)
+function fetchPage(url: string, script: string, what: string): Promise<unknown> {
+  return getJson(url, {
+    script,
+    attempts: MAX_RETRIES + 1,
+    backoffMs: (retry) => RETRY_BACKOFF_MS * retry,
+    timeoutMs: TIMEOUT_MS,
+    retryOnHttpError: true,
+    onFailure: (err) => process.stderr.write(`\n  ${what}: Versuch gescheitert (${String(err).slice(0, 60)})\n`),
+    onExhausted: (_url, last) => new Error(`RIS nicht erreichbar bei ${what}: ${String(last)}`),
+  })
 }
 
 export interface RisCorpus {
@@ -53,12 +45,15 @@ export interface RisCorpus {
   records: RisBegutFlat[]
 }
 
-/** The whole Begut corpus, oldest deadline last. `script` names the caller in the User-Agent. */
-export async function fetchRisBegutCorpus(script: string): Promise<RisCorpus> {
-  const headers = {
-    'User-Agent': `begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/${script})`,
-    Accept: 'application/json',
-  }
+/**
+ * The whole Begut corpus. `script` names the caller in the User-Agent.
+ *
+ * `direction` is the sort on EndeBegutachtungsfrist, and it is a parameter
+ * rather than a constant because the reports read off it: the Verordnungen
+ * corpus lists what was open on a given day oldest deadline first, everything
+ * else wants the newest first.
+ */
+export async function fetchRisBegutCorpus(script: string, direction: 'Ascending' | 'Descending' = 'Descending'): Promise<RisCorpus> {
   const seen = new Set<string>()
   const records: RisBegutFlat[] = []
   let hits = 0
@@ -68,11 +63,10 @@ export async function fetchRisBegutCorpus(script: string): Promise<RisCorpus> {
       DokumenteProSeite: 'OneHundred',
       Seitennummer: String(page),
       'Sortierung.SortedByColumn': 'EndeBegutachtungsfrist',
-      'Sortierung.SortDirection': 'Descending',
+      'Sortierung.SortDirection': direction,
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (await fetchJson(`https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?${params}`, headers, `Begut-Seite ${page}`) as any)
-      ?.OgdSearchResult
+    const result = (await fetchPage(`${RIS_API}?${params}`, script, `Begut-Seite ${page}`) as any)?.OgdSearchResult
     if (!result || result.Error) throw new Error(`RIS error on page ${page}`)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
@@ -86,7 +80,7 @@ export async function fetchRisBegutCorpus(script: string): Promise<RisCorpus> {
     }
     process.stderr.write(`\rcorpus: page ${page} · ${records.length}/${hits} records`)
     if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
-    await new Promise((r) => setTimeout(r, PAGE_PAUSE_MS))
+    await sleep(PAGE_PAUSE_MS)
   }
   process.stderr.write('\n')
   return { hits, records }
@@ -102,10 +96,6 @@ export async function fetchRisBegutCorpus(script: string): Promise<RisCorpus> {
  * `VonKundmachungsdatum`/`BisKundmachungsdatum`; Teil II wird hier gefiltert.
  */
 export async function fetchBgblRecords(script: string, from: string, to: string): Promise<BgblRecord[]> {
-  const headers = {
-    'User-Agent': `begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/${script})`,
-    Accept: 'application/json',
-  }
   const seen = new Set<string>()
   const out: BgblRecord[] = []
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -117,8 +107,7 @@ export async function fetchBgblRecords(script: string, from: string, to: string)
       BisKundmachungsdatum: to,
     })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = (await fetchJson(`https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?${params}`, headers, `BGBl-Seite ${page}`) as any)
-      ?.OgdSearchResult
+    const result = (await fetchPage(`${RIS_API}?${params}`, script, `BGBl-Seite ${page}`) as any)?.OgdSearchResult
     if (!result || result.Error) throw new Error(`RIS error on BGBl page ${page}`)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
@@ -141,7 +130,7 @@ export async function fetchBgblRecords(script: string, from: string, to: string)
     }
     process.stderr.write(`\rbgbl: page ${page} · ${out.length}/${hits} records`)
     if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break
-    await new Promise((r) => setTimeout(r, PAGE_PAUSE_MS))
+    await sleep(PAGE_PAUSE_MS)
   }
   process.stderr.write('\n')
   return out

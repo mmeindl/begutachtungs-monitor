@@ -37,16 +37,15 @@ import { readFileSync } from 'node:fs'
 import { hasReadableText, parseExplanations } from '../server/utils/explanations/risExplanations'
 import { decodeEntities } from '../server/utils/parliament/htmlText'
 import { normalizeText, stripMarkup } from '../server/utils/lawtext/normalize'
-import { fetchRisBegutCorpus } from './risCorpus'
-
-function arg(name: string): string | null {
-  const i = process.argv.indexOf(`--${name}`)
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : null
-}
+import { fetchRisBegutCorpus } from './lib/corpus'
+import { argPair } from './lib/args'
+import { PARLIAMENT, getText, type HttpOptions } from './lib/http'
+import { pool } from './lib/async'
+import { pct, quantileOfSorted } from './lib/fmt'
 
 const GP = 'XXVII'
-const sample = Number(arg('sample') ?? 0)
-const show = arg('show')
+const sample = Number(argPair('sample') ?? 0)
+const show = argPair('show')
 const CONCURRENCY = 4
 /**
  * Acht Wörter. Kürzer trifft Floskeln der Legistik („in der Fassung des
@@ -56,22 +55,9 @@ const CONCURRENCY = 4
  */
 const SHINGLE = 8
 
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/kurzinfo-herkunft)'
-
-async function fetchText(url: string, init?: RequestInit): Promise<string> {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { ...init, headers: { 'User-Agent': USER_AGENT, ...init?.headers }, signal: AbortSignal.timeout(30_000) })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return await res.text()
-    } catch (err) {
-      lastError = err
-      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
-    }
-  }
-  throw lastError
-}
+/** Three attempts on any failure — a missing document would silently shrink the sample. */
+const FETCH: HttpOptions = { script: 'kurzinfo-herkunft', attempts: 3, backoffMs: (retry) => 500 * retry, retryOnHttpError: true }
+const fetchText = (url: string): Promise<string> => getText(url, FETCH)
 
 /** Vergleichsform: ohne Markup, ohne Entities, kleingeschrieben, ein Leerzeichen. */
 function words(html: string): string[] {
@@ -111,14 +97,6 @@ interface Row {
   note: string | null
 }
 
-const pct = (n: number, of: number) => (of === 0 ? '—' : `${((n / of) * 100).toFixed(1)} %`)
-
-function quantile(sorted: number[], q: number): number {
-  if (!sorted.length) return 0
-  const i = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * q)))
-  return sorted[i]!
-}
-
 async function main(): Promise<void> {
   const map = JSON.parse(readFileSync('data/ris-me-map-gp27.json', 'utf8')) as { rows: MapRow[] }
   let joined = map.rows.filter((r) => r.status === 'matched' && r.risId)
@@ -130,67 +108,57 @@ async function main(): Promise<void> {
   const corpus = await fetchRisBegutCorpus('kurzinfo-herkunft')
   const byId = new Map(corpus.records.map((r) => [r.id, r]))
 
-  const rows: Row[] = []
-  const queue = [...joined]
-  let done = 0
-  const worker = async (): Promise<void> => {
-    for (;;) {
-      const item = queue.shift()
-      if (!item) return
-      const row: Row = { inr: item.inr, cite: item.cite, title: '', fingerprint: '', chars1: 0, chars2: 0, windows: 0, hits: 0, note: null }
-      try {
-        const record = byId.get(item.risId!)
-        const xmlUrl = record?.explanations?.xml ?? null
-        const detail = JSON.parse(await fetchText(`https://www.parlament.gv.at/gegenstand/${GP}/ME/${item.inr}?json=True`)) as
-          { content?: { title?: string | null; shortinfo?: { teil1?: string | null; teil2?: string | null } | null } }
-        const si = detail.content?.shortinfo
-        const teil1 = si?.teil1 ?? ''
-        const teil2 = si?.teil2 ?? ''
-        row.title = (detail.content?.title ?? '').slice(0, 60)
-        row.chars1 = stripMarkup(teil1).length
-        row.chars2 = stripMarkup(teil2).length
-        row.fingerprint = words(`${teil1} ${teil2}`).join(' ')
-        if (!si || (!teil1 && !teil2)) { row.note = 'keine Kurzinformation'; rows.push(row); continue }
-        if (!teil2) { row.note = 'keine Prosa (nur Ziele/Inhalt)'; rows.push(row); continue }
-        if (!xmlUrl) { row.note = 'keine Erläuterungen als XML'; rows.push(row); continue }
+  const rows: Row[] = await pool(joined, CONCURRENCY, async (item): Promise<Row> => {
+    const row: Row = { inr: item.inr, cite: item.cite, title: '', fingerprint: '', chars1: 0, chars2: 0, windows: 0, hits: 0, note: null }
+    try {
+      const record = byId.get(item.risId!)
+      const xmlUrl = record?.explanations?.xml ?? null
+      const detail = JSON.parse(await fetchText(`${PARLIAMENT}/gegenstand/${GP}/ME/${item.inr}?json=True`)) as
+        { content?: { title?: string | null; shortinfo?: { teil1?: string | null; teil2?: string | null } | null } }
+      const si = detail.content?.shortinfo
+      const teil1 = si?.teil1 ?? ''
+      const teil2 = si?.teil2 ?? ''
+      row.title = (detail.content?.title ?? '').slice(0, 60)
+      row.chars1 = stripMarkup(teil1).length
+      row.chars2 = stripMarkup(teil2).length
+      row.fingerprint = words(`${teil1} ${teil2}`).join(' ')
+      if (!si || (!teil1 && !teil2)) { row.note = 'keine Kurzinformation'; return row }
+      if (!teil2) { row.note = 'keine Prosa (nur Ziele/Inhalt)'; return row }
+      if (!xmlUrl) { row.note = 'keine Erläuterungen als XML'; return row }
 
-        // Der Heuhaufen ist das ROHE Dokument, nicht die Lesung davon: Die
-        // Frage ist die Herkunft eines Textes, nicht was unser Parser davon
-        // auswählt. `parseExplanations` lässt Tabellen und Abbildungen weg
-        // und trennt Allgemeinen von Besonderem Teil — beides richtig für die
-        // Seite und falsch für diese Messung. Dazu der Entwurfstext selbst:
-        // Die Kurzinformation zitiert stellenweise aus ihm.
-        const xml = await fetchText(xmlUrl)
-        const main = record?.mainDocument?.xml ? await fetchText(record.mainDocument.xml).catch(() => '') : ''
-        const ministry = `${stripMarkup(xml)} ${stripMarkup(main)}`
-        // Ein Scan trägt keinen Text. Ohne diese Schranke misst das Skript
-        // „0 % gedeckt" und meint „nichts zu vergleichen" — ein Artefakt, das
-        // wie ein Befund aussieht.
-        const readable = parseExplanations(xml)
-        const ministryWords = words(ministry)
-        if (ministryWords.length < 200 || !hasReadableText(readable)) {
-          row.note = 'Erläuterungen ohne Textebene (Scan)'
-          rows.push(row)
-          continue
-        }
-        const haystack = ministryWords.join(' ')
-        const { windows, hits } = coverage(words(teil2), haystack)
-        row.windows = windows
-        row.hits = hits
-        if (windows === 0) row.note = 'Prosa zu kurz für ein Fenster'
-        if (show) {
-          console.log(`\n${row.cite} — Deckung ${pct(hits, windows)} (${hits}/${windows} Fenster)`)
-          console.log(`\nKurzinformation teil2:\n${normalizeText(decodeEntities(stripMarkup(teil2))).slice(0, 600)}`)
-          console.log(`\nDokumente des Ressorts (Ausschnitt):\n${normalizeText(ministry).slice(0, 600)}`)
-        }
-      } catch (err) {
-        row.note = `Fehler: ${String(err).slice(0, 60)}`
+      // Der Heuhaufen ist das ROHE Dokument, nicht die Lesung davon: Die
+      // Frage ist die Herkunft eines Textes, nicht was unser Parser davon
+      // auswählt. `parseExplanations` lässt Tabellen und Abbildungen weg
+      // und trennt Allgemeinen von Besonderem Teil — beides richtig für die
+      // Seite und falsch für diese Messung. Dazu der Entwurfstext selbst:
+      // Die Kurzinformation zitiert stellenweise aus ihm.
+      const xml = await fetchText(xmlUrl)
+      const main = record?.mainDocument?.xml ? await fetchText(record.mainDocument.xml).catch(() => '') : ''
+      const ministry = `${stripMarkup(xml)} ${stripMarkup(main)}`
+      // Ein Scan trägt keinen Text. Ohne diese Schranke misst das Skript
+      // „0 % gedeckt" und meint „nichts zu vergleichen" — ein Artefakt, das
+      // wie ein Befund aussieht.
+      const readable = parseExplanations(xml)
+      const ministryWords = words(ministry)
+      if (ministryWords.length < 200 || !hasReadableText(readable)) {
+        row.note = 'Erläuterungen ohne Textebene (Scan)'
+        return row
       }
-      rows.push(row)
-      process.stderr.write(`\rEntwürfe: ${++done}/${joined.length}`)
+      const haystack = ministryWords.join(' ')
+      const { windows, hits } = coverage(words(teil2), haystack)
+      row.windows = windows
+      row.hits = hits
+      if (windows === 0) row.note = 'Prosa zu kurz für ein Fenster'
+      if (show) {
+        console.log(`\n${row.cite} — Deckung ${pct(hits, windows)} (${hits}/${windows} Fenster)`)
+        console.log(`\nKurzinformation teil2:\n${normalizeText(decodeEntities(stripMarkup(teil2))).slice(0, 600)}`)
+        console.log(`\nDokumente des Ressorts (Ausschnitt):\n${normalizeText(ministry).slice(0, 600)}`)
+      }
+    } catch (err) {
+      row.note = `Fehler: ${String(err).slice(0, 60)}`
     }
-  }
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+    return row
+  }, (n, total) => process.stderr.write(`\rEntwürfe: ${n}/${total}`))
   process.stderr.write('\n')
   if (show) return
 
@@ -228,7 +196,7 @@ async function main(): Promise<void> {
   console.log(`\n## Herkunft (ohne die Duplikate oben)`)
   console.log(`Messbar (Prosa + Erläuterungen-XML): ${measured.length}`)
   console.log(`Deckung der Prosa durch den Text des Ressorts, ${SHINGLE}-Wort-Fenster, wörtlich:`)
-  console.log(`  Median ${(quantile(covers, 0.5) * 100).toFixed(1)} %   p10 ${(quantile(covers, 0.1) * 100).toFixed(1)} %   p90 ${(quantile(covers, 0.9) * 100).toFixed(1)} %`)
+  console.log(`  Median ${(quantileOfSorted(covers, 0.5) * 100).toFixed(1)} %   p10 ${(quantileOfSorted(covers, 0.1) * 100).toFixed(1)} %   p90 ${(quantileOfSorted(covers, 0.9) * 100).toFixed(1)} %`)
   console.log(`  ≥ 90 % gedeckt: ${high} (${pct(high, measured.length)})`)
   console.log(`  < 50 % gedeckt: ${low} (${pct(low, measured.length)})`)
   console.log(`\nGewicht der beiden Teile über alle Entwürfe (Zeichen ohne Markup):`)

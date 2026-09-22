@@ -28,51 +28,32 @@
 import { extractBgblLink, mapTextEvolution } from '../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
 import { diffLawPackage, summarizeDiff } from '../server/utils/diff/lawDiff'
-import { installFetchCache } from './harness-cache'
+import { installFetchCache } from './lib/harnessCache'
+import { argFlag, argPair } from './lib/args'
+import { PARLIAMENT, RIS_API, getJson as fetchJson, getText as fetchText, type HttpOptions } from './lib/http'
 
-const args = process.argv.slice(2)
-if (args.includes('--cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
-function flag(name: string): string | null {
-  const i = args.indexOf(`--${name}`)
-  return i >= 0 ? (args[i + 1] ?? '') : null
-}
+if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
-const gp = flag('gp') ?? 'XXVIII'
-const sample = Number(flag('sample')) || 0
-const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/bgbl-station-corpus)' }
-
-async function getJson(url: string): Promise<unknown> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { headers: { ...UA, Accept: 'application/json' }, signal: AbortSignal.timeout(45_000) })
-      if (res.ok) return await res.json()
-    } catch {
-      /* nächster Versuch */
-    }
-    await new Promise((r) => setTimeout(r, 1_200 * (attempt + 1)))
-  }
-  throw new Error(`nicht erreichbar: ${url}`)
-}
-
-async function getText(url: string): Promise<string> {
-  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(45_000) })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.text()
-}
+const gp = argPair('gp') ?? 'XXVIII'
+const sample = Number(argPair('sample')) || 0
+const SCRIPT = 'bgbl-station-corpus'
+/** Drei Versuche auf alles, 45 s je Versuch: ein Lauf liest hunderte Dokumente. */
+const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 45_000, retryOnHttpError: true }
+const getJson = (url: string): Promise<unknown> =>
+  fetchJson(url, { ...PATIENT, onExhausted: (u) => new Error(`nicht erreichbar: ${u}`) })
+const getText = (url: string): Promise<string> => fetchText(url, { script: SCRIPT, timeoutMs: 45_000 })
 
 /** Liste 81 einer Periode: die Nummern der Ministerialentwürfe. */
 async function draftNumbers(): Promise<number[]> {
-  const res = await fetch(
-    `https://www.parlament.gv.at/Filter/api/filter/data/81?js=eval&showAll=true&export=true`,
-    {
-      method: 'POST',
-      headers: { ...UA, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ GP_CODE: [gp] }),
-      signal: AbortSignal.timeout(60_000),
-    },
-  )
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: any[] = (await res.json())?.rows ?? []
+  const body = await fetchJson<any>(`${PARLIAMENT}/Filter/api/filter/data/81?js=eval&showAll=true&export=true`, {
+    script: SCRIPT,
+    method: 'POST',
+    body: { GP_CODE: [gp] },
+    timeoutMs: 60_000,
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: any[] = body?.rows ?? []
   return [...new Set(rows.map((r) => Number(r[2])))].sort((a, b) => a - b)
 }
 
@@ -85,7 +66,7 @@ async function bgblXmlUrl(nummer: string): Promise<string | null> {
     Bgblnummer: nummer.replace(/^Bundesgesetzblatt\b/, 'BGBl.'),
   })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r: any = await getJson(`https://data.bka.gv.at/ris/api/v2.6/Bundesrecht?${p}`)
+  const r: any = await getJson(`${RIS_API}?${p}`)
   let ref = r?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference
   if (!ref) return null
   ref = Array.isArray(ref) ? ref[0] : ref
@@ -151,7 +132,7 @@ for (const inr of numbers) {
   if (sample && checked >= sample) break
   let content: unknown
   try {
-    content = await getJson(`https://www.parlament.gv.at/gegenstand/${gp}/ME/${inr}?json=True`)
+    content = await getJson(`${PARLIAMENT}/gegenstand/${gp}/ME/${inr}?json=True`)
   } catch {
     continue
   }
@@ -176,7 +157,7 @@ for (const inr of numbers) {
   let rvContent: any = null
   if (rvLink) {
     try {
-      const rv = await getJson(`https://www.parlament.gv.at${rvLink}?json=True`)
+      const rv = await getJson(`${PARLIAMENT}${rvLink}?json=True`)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rvContent = (rv as any)?.content ?? null
       bgbl = extractBgblLink(rvContent?.status?.bgbllinks)?.number ?? null

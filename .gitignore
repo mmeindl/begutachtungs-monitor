@@ -16,6 +16,7 @@ CLAUDE.md
 TODO.md
 outreach/
 
-# scripts/rv-latency.mjs default cache
+# Corpus caches of the measurement scripts (`.cache/<script>/`, six of them)
 .cache/
+# The harnesses' opt-in RIS cache (`scripts/lib/harnessCache.ts`, `--cache`)
 .harness-cache/

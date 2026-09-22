@@ -36,18 +36,17 @@ import { draftArticles } from '../server/utils/lawtext/draftArticles'
 import { parseTextComparison } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
 import { hasDocument, type RisBegutFlat } from '../server/utils/ris/risRecord'
-import { fetchRisBegutCorpus } from './risCorpus'
+import { fetchRisBegutCorpus } from './lib/corpus'
+import { argFlag, argPair } from './lib/args'
+import { getText, type HttpOptions } from './lib/http'
+import { pool } from './lib/async'
+import { quantile } from './lib/fmt'
 
-function arg(name: string): string | null {
-  const i = process.argv.indexOf(`--${name}`)
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1]! : null
-}
-
-const since = arg('since') ?? '2024-01-01'
-const all = process.argv.includes('--all')
-const sample = Number(arg('sample') ?? 0)
-const show = arg('show')
-const join = process.argv.includes('--join')
+const since = argPair('since') ?? '2024-01-01'
+const all = argFlag('all')
+const sample = Number(argPair('sample') ?? 0)
+const show = argPair('show')
+const join = argFlag('join')
 const CONCURRENCY = 4
 
 if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) {
@@ -55,22 +54,9 @@ if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) {
   process.exit(1)
 }
 
-const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/erlaeuterungen-corpus)'
-
-async function fetchText(url: string): Promise<string> {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(30_000) })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return await res.text()
-    } catch (err) {
-      lastError = err
-      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
-    }
-  }
-  throw lastError
-}
+/** Three attempts on any failure — a RIS document is the whole measurement, not one row of it. */
+const FETCH: HttpOptions = { script: 'erlaeuterungen-corpus', attempts: 3, backoffMs: (retry) => 500 * retry, retryOnHttpError: true }
+const fetchText = (url: string): Promise<string> => getText(url, FETCH)
 
 /** Deterministic subset: the same `--sample 120` twice reads the same documents. */
 function stableOrder(records: RisBegutFlat[]): RisBegutFlat[] {
@@ -79,17 +65,9 @@ function stableOrder(records: RisBegutFlat[]): RisBegutFlat[] {
   )
 }
 
-async function pool<T, R>(items: T[], n: number, run: (item: T, i: number) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length)
-  let next = 0
-  await Promise.all(
-    Array.from({ length: Math.min(n, items.length) }, async () => {
-      for (let i = next++; i < items.length; i = next++) {
-        out[i] = await run(items[i]!, i)
-        process.stderr.write(`\rdocuments: ${Math.min(next, items.length)}/${items.length}`)
-      }
-    }),
-  )
+/** The shared pool, with this script's progress line. */
+async function documents<T, R>(items: T[], n: number, run: (item: T, i: number) => Promise<R>): Promise<R[]> {
+  const out = await pool(items, n, run, (done, total) => process.stderr.write(`\rdocuments: ${done}/${total}`))
   process.stderr.write('\n')
   return out
 }
@@ -173,7 +151,7 @@ async function measureJoin(records: RisBegutFlat[]): Promise<void> {
     return
   }
 
-  const rows = await pool(usable, CONCURRENCY, async (record): Promise<JoinRow> => {
+  const rows = await documents(usable, CONCURRENCY, async (record): Promise<JoinRow> => {
     const cite = (record.kurztitel ?? record.titel ?? '').slice(0, 60)
     try {
       const [mainXml, annexXml, erlXml] = await Promise.all([
@@ -290,7 +268,7 @@ if (join) {
   process.exit(0)
 }
 
-const rows: Row[] = await pool(targets, CONCURRENCY, async (record) => {
+const rows: Row[] = await documents(targets, CONCURRENCY, async (record) => {
   const cls = classifyRisRecord(record)
   try {
     const xml = await fetchText(record.explanations!.xml!)
@@ -332,9 +310,8 @@ function pct(n: number, of: number): string {
 
 function quantiles(values: number[]): string {
   if (!values.length) return '—'
-  const s = [...values].sort((a, b) => a - b)
-  const at = (q: number) => s[Math.min(s.length - 1, Math.floor(q * s.length))]!
-  return `Median ${at(0.5)} · p90 ${at(0.9)} · max ${s[s.length - 1]}`
+  const max = [...values].sort((a, b) => a - b)[values.length - 1]
+  return `Median ${quantile(values, 0.5)} · p90 ${quantile(values, 0.9)} · max ${max}`
 }
 
 console.log(`\n## Gelesen (n = ${rows.length})`)

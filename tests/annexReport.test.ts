@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/annex-report'
+import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
 
 /**
  * Der Alarm selbst, gegen erfundene Berichte.

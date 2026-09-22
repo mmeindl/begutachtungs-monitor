@@ -8,7 +8,7 @@ import { parseAnnexPdf, type AnnexPage } from '../server/utils/annex/annexPdf'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { draftArticles } from '../server/utils/lawtext/draftArticles'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
-import { expandLaw, resolveKey, standingKey, type RecordedLaw } from '../scripts/gate-golden-keys'
+import { expandLaw, resolveKey, standingKey, type RecordedLaw } from '../scripts/lib/gateGoldenKeys'
 
 /**
  * Five real gate runs, frozen — verdicts, not parses.

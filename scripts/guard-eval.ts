@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs'
 import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
 import type { ApplyResult, Instruction, StandingLaw } from '../server/utils/kons/lawApply'
 import type { LawNode } from '../server/utils/lawtext/konsTree'
+import { pct } from './lib/fmt'
 
 interface Record_ {
   bgbl: string
@@ -37,8 +38,6 @@ if (files.length === 0) {
   console.error('Usage: npx vite-node scripts/guard-eval.ts <dump.jsonl> …')
   process.exit(1)
 }
-
-const pct = (n: number, of: number) => (of === 0 ? '—' : `${((n / of) * 100).toFixed(1)} %`)
 
 for (const file of files) {
   const records: Record_[] = readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))

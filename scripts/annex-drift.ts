@@ -3,7 +3,7 @@
  * Der Drift-Alarm für die Beilage (§12.13).
  *
  * Liest die Berichte, die `annex-pdf-verify.ts --json=` schreibt, wendet
- * Klasse A und (mit `--grundlinie=`) Klasse B aus `annex-report.ts` an und
+ * Klasse A und (mit `--grundlinie=`) Klasse B aus `lib/annexReport.ts` an und
  * endet mit Exit-Code 1, sobald ein Befund dasteht. Der Workflow
  * `.github/workflows/annex-drift.yml` macht daraus ein Issue.
  *
@@ -22,12 +22,12 @@
  *   annex-drift.ts --grundlinie-schreiben=g.json bericht.json … — neu ziehen
  */
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
-import { classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from './annex-report'
+import { classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexBaseline, type AnnexReport, type Finding } from './lib/annexReport'
+import { argAssigned } from './lib/args'
 
-const arg = (name: string): string | null => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null
 const paths = process.argv.slice(2).filter((a) => !a.startsWith('--') && a.endsWith('.json'))
-const baselinePath = arg('grundlinie')
-const writePath = arg('grundlinie-schreiben')
+const baselinePath = argAssigned('grundlinie')
+const writePath = argAssigned('grundlinie-schreiben')
 
 if (paths.length === 0) {
   console.error('Kein Bericht angegeben. Usage: annex-drift.ts [--grundlinie=g.json] bericht.json [weitere.json …]')
@@ -41,7 +41,7 @@ function read<T>(path: string): T {
     // Ein Bericht, den der Prüfstand nicht geschrieben hat, ist kein
     // „ohne Befund". Der Lauf ist dann gescheitert, und das ist ein eigener
     // Zustand — der Workflow soll ihn laut scheitern lassen, nicht als
-    // Entwarnung verbuchen (`harness-cache.ts`: eine Messung gegen nichts
+    // Entwarnung verbuchen (`lib/harnessCache.ts`: eine Messung gegen nichts
     // sieht aus wie ein Ergebnis).
     console.error(`FEHLER: ${path} ließ sich nicht lesen — ${String(err).slice(0, 160)}`)
     process.exit(2)

@@ -35,9 +35,9 @@ import { join } from 'node:path'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanations/explanationsHtml'
 import { diffTokens } from '../server/utils/diff/wordDiff'
+import { PARLIAMENT as BASE, getJson, getText } from './lib/http'
 
-const BASE = 'https://www.parlament.gv.at'
-const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at; scripts/erl-diff-corpus)' }
+const SCRIPT = 'erl-diff-corpus'
 const CONCURRENCY = 4
 
 const gp = process.argv.find((a) => /^[IVXLC]+$/.test(a)) ?? 'XXVIII'
@@ -55,21 +55,21 @@ async function cached<T>(file: string, load: () => Promise<T>, parse: (s: string
   }
 }
 
-async function getJson(url: string, init?: RequestInit): Promise<any> {
-  const res = await fetch(url, { ...init, headers: { ...UA, Accept: 'application/json', 'Content-Type': 'application/json' } })
-  if (!res.ok) throw new Error(`HTTP ${res.status} für ${url}`)
-  return await res.json()
+/** One attempt, like the rest of this script: everything it reads is cached on disk. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fetchJson(url: string, body?: unknown): Promise<any> {
+  return getJson(url, { script: SCRIPT, ...(body === undefined ? {} : { method: 'POST' as const, body }) })
 }
 
 /** Das Erläuterungen-Dokument eines Gegenstands, als HTML. */
 async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string | null> {
-  const detail = await cached(join(cacheDir, gp, `${kind}-${inr}.json`), () => getJson(`${BASE}/gegenstand/${gp}/${kind}/${inr}?json=True`))
+  const detail = await cached(join(cacheDir, gp, `${kind}-${inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/${kind}/${inr}?json=True`))
   const group = (detail?.content?.documents ?? []).find((g: any) => /^Erläuterungen$/i.test(String(g?.title ?? '').trim()))
   const link = (group?.documents ?? []).find((f: any) => /html/i.test(String(f?.type ?? '')))?.link
   if (!link) return null
   return cached(
     join(cacheDir, gp, `${kind}-${inr}-erl.html`),
-    async () => await (await fetch(`${BASE}${link}`, { headers: UA })).text(),
+    async () => await getText(`${BASE}${link}`, { script: SCRIPT }),
     (s) => s,
   )
 }
@@ -79,7 +79,7 @@ async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string |
  *
  * Ein Eingabewert, den die Messung nicht als kaputt erkennen kann, ist
  * schlimmer als ein fehlender: Die Zahl, die er erzeugt, sieht aus wie ein
- * Befund (`scripts/harness-cache.ts`, dieselbe Lehre). Gemessen über vier
+ * Befund (`scripts/lib/harnessCache.ts`, dieselbe Lehre). Gemessen über vier
  * Dokumente beider Seiten liegt die Deckung bei 94–96 % — Word-HTML ist zu
  * neun Zehnteln Formatierung. Fällt sie irgendwo darunter, ist nicht die
  * Begründung kürzer, sondern unser Parser blind, und das Paar gehört nicht
@@ -142,7 +142,7 @@ function drift(a: string, b: string): { value: number | null; exact: boolean } {
 
 // --- Liste 81 und der Join auf die Regierungsvorlage ------------------------
 const list = await cached(join(cacheDir, `${gp}-list81.json`), () =>
-  getJson(`${BASE}/Filter/api/filter/data/81?js=eval&showAll=true&sortrnr=11&ascDesc=DESC`, { method: 'POST', body: JSON.stringify({ GP_CODE: [gp] }) }),
+  fetchJson(`${BASE}/Filter/api/filter/data/81?js=eval&showAll=true&sortrnr=11&ascDesc=DESC`, { GP_CODE: [gp] }),
 )
 const drafts = (list.rows ?? []).filter((r: any) => Array.isArray(r) && r[0] === gp).map((r: any) => ({ inr: Number(r[2]), cite: String(r[5] ?? '') }))
 console.log(`${gp}: ${drafts.length} Ministerialentwürfe`)
@@ -157,7 +157,7 @@ async function worker(): Promise<void> {
     const d = queue.shift()
     if (!d || scored >= limit) return
     try {
-      const detail = await cached(join(cacheDir, gp, `ME-${d.inr}.json`), () => getJson(`${BASE}/gegenstand/${gp}/ME/${d.inr}?json=True`))
+      const detail = await cached(join(cacheDir, gp, `ME-${d.inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/ME/${d.inr}?json=True`))
       const stages = detail?.content?.stages ?? []
       const rv = stages.flatMap((st: any) => [...String(st?.text ?? '').matchAll(/\/gegenstand\/[IVXLC]+\/I\/(\d+)/g)].map((m) => Number(m[1])))[0] ?? null
       if (!rv) { rows.push({ ...d, rv: null, note: 'keine Regierungsvorlage' }); continue }

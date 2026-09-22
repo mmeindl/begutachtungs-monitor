@@ -13,9 +13,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
+import { RIS_API as RIS, getText } from './lib/http'
+import { asArray } from './lib/ris'
 
-const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
-const HEADERS = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
+const SCRIPT = 'novao-corpus'
 const CONCURRENCY = 4
 
 const sampleSize = Number(process.argv[2] ?? 300)
@@ -32,23 +33,8 @@ async function cached<T>(file: string, load: () => Promise<T>, parse: (s: string
   }
 }
 
-async function get(url: string, accept = 'application/json'): Promise<string> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { headers: { ...HEADERS, Accept: accept }, signal: AbortSignal.timeout(20_000) })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return await res.text()
-    } catch (err) {
-      if (attempt === 2) throw err
-      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)))
-    }
-  }
-  throw new Error('unreachable')
-}
-
-/** XML-to-JSON trap: one element → bare object, several → array. */
-function asArray<T>(x: T | T[] | null | undefined): T[] {
-  return x === null || x === undefined ? [] : Array.isArray(x) ? x : [x]
+function get(url: string, accept = 'application/json'): Promise<string> {
+  return getText(url, { script: SCRIPT, accept, attempts: 3, backoffMs: (retry) => 600 * retry, timeoutMs: 20_000, retryOnHttpError: true })
 }
 
 interface Draft {
