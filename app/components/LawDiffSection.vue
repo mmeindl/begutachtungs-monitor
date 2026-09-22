@@ -13,6 +13,7 @@
  */
 import type { LawDiffResponse, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { unitKey } from '#shared/utils/diffKey'
+import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { droppedLawsNote, mergedLawsNote } from '~/utils/lawPackage'
 import {
@@ -212,58 +213,11 @@ function unitName(u: LawDiffUnit): string | null {
 /** Whether any name on screen was looked up, which decides the source note. */
 const namedCount = computed(() => Object.keys(paraTitles.value?.titles ?? {}).length)
 
-type Badge = LawDiffUnit['change'] | 'editorial'
+/** „entfallen" for a whole § that is gone — the one word the two sections
+ *  do not share (`diffBadges.ts`). */
+const BADGE_LABEL = badgeLabels('entfallen')
 
-/**
- * One pill style for rows and group summaries alike.
- *
- * Red for what goes, green for what arrives — the diff convention everyone
- * has read on GitHub (Manu, 08.09.2026; the note in main.css follows). Text
- * on a wash is always `text-ink`: ink-secondary drops below 7:1 there, the
- * same reason DeadlineBadge carries full ink.
- *
- * Meaning never rides on colour alone: the pill says the state in words and
- * the gutter repeats it beside the block. The strikethrough is reserved for
- * the word-level diff, where deleted and inserted words share one sentence
- * and the line says which to skip — on a whole removed § it would only make
- * the passage this tool exists to show harder to read, and GitHub does not
- * strike removed lines either.
- */
-const BADGE_CLASS: Record<Badge, string> = {
-  changed: 'bg-accent-50 text-accent-deep',
-  editorial: 'bg-page text-ink-muted',
-  unchanged: 'bg-page text-ink-muted',
-  inserted: 'bg-status-good/15 text-ink',
-  removed: 'bg-status-critical/10 text-ink',
-}
-const BADGE_LABEL: Record<Badge, string> = {
-  changed: 'geändert',
-  editorial: 'redaktionell',
-  unchanged: 'unverändert',
-  inserted: 'neu',
-  removed: 'entfallen',
-}
-/**
- * Strongest event first: whole paragraphs appearing or disappearing, then
- * edits deep before shallow, the unchanged baseline last — the order every
- * diff view has trained readers on. The pills on the law headers follow it.
- */
-const BADGE_ORDER: Badge[] = ['inserted', 'removed', 'changed', 'editorial', 'unchanged']
-/**
- * The gutter repeats the pill's colour, so state reads at a glance down the
- * page: red gone, green new, blue edited, grey formalities. `mark` stays out
- * of it — it is the brand's "what became of the input" ground, and a fifth
- * colour in one row helps nobody.
- */
-const GUTTER_CLASS: Record<Badge, string> = {
-  changed: 'border-accent-deep/50',
-  inserted: 'border-status-good',
-  removed: 'border-status-critical',
-  editorial: 'border-hairline',
-  unchanged: 'border-hairline',
-}
-
-function badgeOf(u: LawDiffUnit): Badge {
+function badgeOf(u: LawDiffUnit): DiffBadge {
   return isMinor(u) ? 'editorial' : u.change
 }
 
@@ -322,7 +276,7 @@ interface ArticleGroup {
   article: string
   units: LawDiffUnit[]
   /** `changed` excludes editorial units, so the pills add up to the group's total like the rows do */
-  counts: Record<LawDiffUnit['change'] | 'editorial', number>
+  counts: Record<DiffBadge, number>
 }
 
 const groups = computed<ArticleGroup[]>(() => {
@@ -342,31 +296,14 @@ const groups = computed<ArticleGroup[]>(() => {
   return out
 })
 /**
- * Always closed, one law included: the header row is the survey (law name
- * plus the count pills), and a single law is no guarantee of a short page —
- * 58/ME is one law with 413 units. Nothing opens unasked.
- *
- * What changed on 08.09.2026 is what ONE click buys: the whole law as
- * flowing text with the changes marked, instead of a row per amendment
- * instruction that had to be opened one by one — user feedback, and the
- * argument behind it: without attribution of a change to an actor (which
- * Austria does not have), splitting the instructions apart buys nothing.
- * A search opens every group, because then the reader has named what they
- * are looking for.
+ * What ONE click buys, since 08.09.2026: the whole law as flowing text with
+ * the changes marked, instead of a row per amendment instruction that had to
+ * be opened one by one — user feedback, and the argument behind it: without
+ * attribution of a change to an actor (which Austria does not have),
+ * splitting the instructions apart buys nothing. The rest of the folding —
+ * closed until asked, a search opens everything — is in `useFoldedGroups`.
  */
-const openGroups = ref<Set<string>>(new Set())
-function toggleGroup(article: string) {
-  const next = new Set(openGroups.value)
-  if (next.has(article)) next.delete(article)
-  else next.add(article)
-  openGroups.value = next
-}
-function groupOpen(g: ArticleGroup): boolean {
-  return openGroups.value.has(g.article) || query.value.trim().length > 0
-}
-function groupBadges(g: ArticleGroup): { badge: Badge; count: number }[] {
-  return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
-}
+const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
 
 /**
  * Blocks in reading order: every change as flowing text, runs of untouched
@@ -375,19 +312,11 @@ function groupBadges(g: ArticleGroup): { badge: Badge; count: number }[] {
  */
 type Block = { kind: 'unit'; unit: LawDiffUnit } | { kind: 'context'; units: LawDiffUnit[] }
 
-/** Changes rendered before the "show the rest" line. 74/ME has 366 of them. */
-const SHOWN_CHANGES = 30
-
-const fullyShown = ref<Set<string>>(new Set())
-function showAll(article: string) {
-  fullyShown.value = new Set(fullyShown.value).add(article)
-}
-
 function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Block[]; hidden: number } {
   // Searching IS the reader asking for specific units — then nothing gets
   // folded away behind a context line.
   const folding = !query.value.trim()
-  const limit = fullyShown.value.has(article) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
+  const limit = limitFor(article)
   const blocks: Block[] = []
   let context: LawDiffUnit[] = []
   let shown = 0
@@ -416,28 +345,13 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
 const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocksOf(g.units, g.article) })))
 
 /**
- * Inline or side by side — GitHub's "unified / split", and the same reason.
- *
- * Inline is right for most changes and stays the default: a few swapped
- * words read fastest in one sentence with the old struck out and the new
- * beside it. It is WRONG for a paragraph that was completely rewritten —
- * there inline first strikes out the whole old text and then prints the
- * whole new one, and the reader has to hold two versions in their head to
- * see that they are alternatives rather than a sequence. That is the case a
- * domain user named as the one thing a dedicated comparison tool does
- * better than this page.
- *
- * NO new endpoint and no second computation: `segments` already carries
- * `equal | removed | inserted` per run, so the left column is everything
- * that is not `inserted` and the right everything that is not `removed` —
- * the same data projected twice.
+ * Inline or side by side — the reasoning is at `DiffToolbar`, which offers
+ * the choice. NO new endpoint and no second computation: `segments` already
+ * carries `equal | removed | inserted` per run, so the left column is
+ * everything that is not `inserted` and the right everything that is not
+ * `removed` — the same data projected twice.
  */
 const view = ref<'inline' | 'split'>('inline')
-
-const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
-  { value: 'inline', label: 'Fließtext' },
-  { value: 'split', label: 'Nebeneinander' },
-]
 
 /** What one unit is called, so a context line can count them. */
 function unitNoun(n: number): string {
@@ -598,66 +512,22 @@ const droppedNote = computed(() =>
       <template v-if="data.units.length">
         <!-- How to read the result, and a search: both scope the list below
              them and nothing above. -->
-        <div class="mt-4 flex flex-wrap items-center gap-3">
-          <!-- Inline / nebeneinander. A two-button group, not a select: it
-               is a binary view switch the reader flips back and forth, and it
-               has to be readable as the current state at a glance. -->
-          <UFieldGroup role="group" aria-label="Darstellung des Vergleichs" class="shrink-0">
-            <UButton
-              v-for="v in VIEW_OPTIONS"
-              :key="v.value"
-              :color="view === v.value ? 'primary' : 'neutral'"
-              :variant="view === v.value ? 'subtle' : 'outline'"
-              :aria-pressed="view === v.value"
-              size="sm"
-              class="min-h-11"
-              @click="view = v.value"
-            >
-              {{ v.label }}
-            </UButton>
-          </UFieldGroup>
-          <UInput
-            v-model="query"
-            type="search"
-            icon="i-lucide-search"
-            placeholder="Im Text suchen …"
-            aria-label="Im Text suchen"
-            class="ml-auto min-w-56 flex-1 sm:flex-none"
-            :ui="{ base: 'min-h-11' }"
-          />
-        </div>
+        <DiffToolbar
+          v-model:view="view"
+          v-model:query="query"
+          view-label="Darstellung des Vergleichs"
+          search-label="Im Text suchen"
+        />
 
         <div class="mt-3 border-y border-hairline">
           <section v-for="g in renderedGroups" :key="g.article" class="border-b border-hairline last:border-b-0">
-            <button
-              type="button"
-              class="flex w-full min-h-11 flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
-              :aria-expanded="groupOpen(g)"
-              @click="toggleGroup(g.article)"
-            >
-              <span class="flex w-full items-start gap-3">
-                <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Gesetzestext' }}</span>
-                <UIcon
-                  name="i-lucide-chevron-down"
-                  class="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform"
-                  :class="{ 'rotate-180': groupOpen(g) }"
-                  aria-hidden="true"
-                />
-                <!-- Kein sr-only „aufklappen/zuklappen" — `aria-expanded`
-                     sagt den Zustand schon, siehe TextComparisonSection. -->
-              </span>
-              <span class="flex flex-wrap gap-1.5">
-                <span
-                  v-for="b in groupBadges(g)"
-                  :key="b.badge"
-                  class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums"
-                  :class="BADGE_CLASS[b.badge]"
-                >
-                  {{ b.count }} {{ BADGE_LABEL[b.badge] }}
-                </span>
-              </span>
-            </button>
-            <div v-if="groupOpen(g)" class="border-t border-hairline">
+            <DiffGroupHeader
+              :title="g.article"
+              :badges="badgeCounts(g.counts, BADGE_LABEL)"
+              :open="groupOpen(g.article)"
+              @toggle="toggleGroup(g.article)"
+            />
+            <div v-if="groupOpen(g.article)" class="border-t border-hairline">
               <template v-for="b in g.blocks" :key="blockKey(b)">
                 <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
                   <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">

@@ -17,6 +17,7 @@
  */
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
+import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 
 const props = defineProps<{ gp: string; inr: number }>()
@@ -158,18 +159,18 @@ function explanationsFor(law: string | null, para: string | null): ParagraphExpl
 }
 
 /**
- * Same two controls as LawDiffSection, and they are worth more here.
+ * `DiffToolbar`'s two controls, and they are worth more here than in the §
+ * comparison.
  *
  * **Nebeneinander is not a preference, it is the source's own shape.** The
  * annex IS a two-column table — "Geltende Fassung" beside "Vorgeschlagene
  * Fassung" — and this section deliberately reads it harmonised, as one
  * sentence with the change marked in place, because that is the better read
  * for a handful of swapped words. Where a ressort recasts a whole paragraph,
- * the harmonised reading strikes the entire old text and then prints the
- * entire new one, and the toggle gives back the presentation the ressort
- * chose. Nothing is recomputed: `segments` carries `equal | removed |
- * inserted` per run, so the left column is everything but `inserted` and the
- * right everything but `removed`.
+ * the toggle gives back the presentation the ressort chose. Nothing is
+ * recomputed: `segments` carries `equal | removed | inserted` per run, so the
+ * left column is everything but `inserted` and the right everything but
+ * `removed`.
  *
  * **The search matters more here too.** The comparison is complete by
  * construction — every § the annex prints is here, unchanged ones included —
@@ -177,10 +178,6 @@ function explanationsFor(law: string | null, para: string | null): ParagraphExpl
  * way through. The diff section at least lets its pills lead the way.
  */
 const view = ref<'inline' | 'split'>('inline')
-const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
-  { value: 'inline', label: 'Fließtext' },
-  { value: 'split', label: 'Nebeneinander' },
-]
 
 const query = ref('')
 
@@ -205,33 +202,11 @@ function rowMatches(row: TextComparisonRow, q: string): boolean {
   )
 }
 
-type Badge = TextComparisonRow['change'] | 'editorial'
+/** „entfällt" for a row that falls away — the one word this section does not
+ *  share with the § comparison (`diffBadges.ts`). */
+const BADGE_LABEL = badgeLabels('entfällt')
 
-/** Badges, gutters and order are LawDiffSection's — see the reasoning there. */
-const BADGE_CLASS: Record<Badge, string> = {
-  changed: 'bg-accent-50 text-accent-deep',
-  editorial: 'bg-page text-ink-muted',
-  unchanged: 'bg-page text-ink-muted',
-  inserted: 'bg-status-good/15 text-ink',
-  removed: 'bg-status-critical/10 text-ink',
-}
-const BADGE_LABEL: Record<Badge, string> = {
-  changed: 'geändert',
-  editorial: 'redaktionell',
-  unchanged: 'unverändert',
-  inserted: 'neu',
-  removed: 'entfällt',
-}
-const GUTTER_CLASS: Record<Badge, string> = {
-  changed: 'border-accent-deep/50',
-  editorial: 'border-hairline',
-  unchanged: 'border-hairline',
-  inserted: 'border-status-good',
-  removed: 'border-status-critical',
-}
-const BADGE_ORDER: Badge[] = ['inserted', 'removed', 'changed', 'editorial', 'unchanged']
-
-function badgeOf(row: TextComparisonRow): Badge {
+function badgeOf(row: TextComparisonRow): DiffBadge {
   return row.editorial ? 'editorial' : row.change
 }
 
@@ -240,7 +215,7 @@ interface Group {
   key: string
   article: string
   rows: TextComparisonRow[]
-  counts: Record<Badge, number>
+  counts: Record<DiffBadge, number>
 }
 
 /**
@@ -290,22 +265,7 @@ const groups = computed<Group[]>(() => {
   return out.filter((g) => g.rows.length > 0)
 })
 
-const openGroups = ref<Set<string>>(new Set())
-function toggleGroup(key: string) {
-  const next = new Set(openGroups.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  openGroups.value = next
-}
-function groupOpen(g: Group): boolean {
-  // A search IS the reader naming what they are after — the same rule as in
-  // LawDiffSection, where a query opens every group rather than making the
-  // reader hunt for which one holds the hits.
-  return openGroups.value.has(g.key) || query.value.trim().length > 0
-}
-function groupBadges(g: Group): { badge: Badge; count: number }[] {
-  return BADGE_ORDER.filter((b) => g.counts[b] > 0).map((b) => ({ badge: b, count: g.counts[b] }))
-}
+const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
 
 type Block =
   | { kind: 'row'; row: TextComparisonRow }
@@ -317,14 +277,6 @@ type Block =
    * drops a § is a different kind of wrong answer from one that says it did.
    */
   | { kind: 'withheld'; count: number; cause: AnnexWithheldCause | null }
-
-/** Changes rendered before the "show the rest" line — LawDiffSection's cap. */
-const SHOWN_CHANGES = 30
-
-const fullyShown = ref<Set<string>>(new Set())
-function showAll(key: string) {
-  fullyShown.value = new Set(fullyShown.value).add(key)
-}
 
 /**
  * One block per **paragraph**, its Absätze beneath it.
@@ -358,7 +310,7 @@ interface Para {
 }
 
 function parasOf(g: Group): { paras: Para[]; hidden: number } {
-  const limit = fullyShown.value.has(g.key) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
+  const limit = limitFor(g.key)
   // Searching means the reader asked for these very rows, so an unchanged
   // hit gets its own block instead of disappearing into a folded context
   // line that says only how many there were.
@@ -744,65 +696,24 @@ const doubtfulNote = computed<string | null>(() => {
            are operated alike. No filter select: the annex prints every § it
            touches and the group pills already say how the changes divide —
            isolating one class was the control this page never needed. -->
-      <div v-if="hasRows" class="mt-4 flex flex-wrap items-center gap-3">
-        <UFieldGroup role="group" aria-label="Darstellung der Gegenüberstellung" class="shrink-0">
-          <UButton
-            v-for="v in VIEW_OPTIONS"
-            :key="v.value"
-            :color="view === v.value ? 'primary' : 'neutral'"
-            :variant="view === v.value ? 'subtle' : 'outline'"
-            :aria-pressed="view === v.value"
-            size="sm"
-            class="min-h-11"
-            @click="view = v.value"
-          >
-            {{ v.label }}
-          </UButton>
-        </UFieldGroup>
-        <UInput
-          v-model="query"
-          type="search"
-          icon="i-lucide-search"
-          placeholder="Im Text suchen …"
-          aria-label="In der Gegenüberstellung suchen"
-          class="ml-auto min-w-56 flex-1 sm:flex-none"
-          :ui="{ base: 'min-h-11' }"
-        />
-      </div>
+      <DiffToolbar
+        v-if="hasRows"
+        v-model:view="view"
+        v-model:query="query"
+        view-label="Darstellung der Gegenüberstellung"
+        search-label="In der Gegenüberstellung suchen"
+      />
 
       <div class="mt-3 border-y border-hairline">
         <section v-for="g in renderedGroups" :key="g.key" class="border-b border-hairline last:border-b-0">
-          <button
-            type="button"
-            class="flex w-full min-h-11 flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
-            :aria-expanded="groupOpen(g)"
-            @click="toggleGroup(g.key)"
-          >
-            <span class="flex w-full items-start gap-3">
-              <span class="min-w-0 flex-1 text-sm font-semibold text-ink">{{ g.article || 'Gesetzestext' }}</span>
-              <UIcon
-                name="i-lucide-chevron-down"
-                class="mt-0.5 size-4 shrink-0 text-ink-muted transition-transform"
-                :class="{ 'rotate-180': groupOpen(g) }"
-                aria-hidden="true"
-              />
-              <!-- KEIN sr-only „aufklappen/zuklappen": `aria-expanded` am
-                   Button sagt den Zustand bereits, und der Screenreader las
-                   ihn zweimal („… zuklappen, Schaltfläche, erweitert"). -->
-            </span>
-            <span class="flex flex-wrap gap-1.5">
-              <span
-                v-for="b in groupBadges(g)"
-                :key="b.badge"
-                class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums"
-                :class="BADGE_CLASS[b.badge]"
-              >
-                {{ b.count }} {{ BADGE_LABEL[b.badge] }}
-              </span>
-            </span>
-          </button>
+          <DiffGroupHeader
+            :title="g.article"
+            :badges="badgeCounts(g.counts, BADGE_LABEL)"
+            :open="groupOpen(g.key)"
+            @toggle="toggleGroup(g.key)"
+          />
 
-          <div v-if="groupOpen(g)" class="border-t border-hairline">
+          <div v-if="groupOpen(g.key)" class="border-t border-hairline">
             <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-3 py-3 last:border-b-0">
               <!-- The paragraph as law prints it: designation and title on one
                    line, once, above its Absätze — and no rule between the two,
