@@ -20,14 +20,14 @@
  * shortened list would misstate what the draft touches.
  */
 import type { AmendedLaw, AmendedLawsResponse } from '#shared/types'
-import type { TextBlock } from './lawtext/lawUnits'
-import { stammnormOf, type BgblCitation } from './lawtext/bgblCitation'
-import { isAmendmentClause } from './lawtext/draftArticles'
-import { getDraftArticles } from './lawtext/draftArticlesService'
-import { getDraftsForGp } from './parliament/drafts'
-import { resolveKonsLaw } from './kons/konsCache'
-import { mapWithConcurrency } from './pool'
-import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
+import type { TextBlock } from './lawUnits'
+import { stammnormOf, type BgblCitation } from './bgblCitation'
+import { isAmendmentClause } from './draftArticles'
+import { getDraftArticles } from './draftArticlesService'
+import { getDraftsForGp } from '../parliament/drafts'
+import { resolveKonsLaw } from '../kons/konsCache'
+import { mapWithConcurrency } from '../pool'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 /** A Sammelgesetz can name dozens; one slow RIS lookup must not hang a page. */
 const MAX_LAWS = 40
