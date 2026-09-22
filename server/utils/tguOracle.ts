@@ -113,8 +113,37 @@ export function paragraphKey(id: string, law: string | null): string {
  */
 export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: string, law?: string | null): ComparisonRow[] {
   if (law !== undefined) return byParagraph.get(paragraphKey(id, law)) ?? []
-  const hits = [...byParagraph].filter(([k]) => k.endsWith(`#${id}`))
-  return hits.length === 1 ? hits[0]![1] : []
+  const hits = rowsById(byParagraph).get(id) ?? []
+  return hits.length === 1 ? hits[0]! : []
+}
+
+/**
+ * The same map read by § alone — built once per map instead of materialised
+ * and filtered per §. On a single-law draft this ran for every § of the
+ * annex, over every key of the map (`refactor-plan.md` §6.8).
+ *
+ * Keyed on the map object, so the index dies with it. The map is built once
+ * per request by `rowsByParagraph` and not written to afterwards; an index
+ * over a map that is still being filled would be a different function.
+ */
+const ROWS_BY_ID = new WeakMap<ReadonlyMap<string, ComparisonRow[]>, Map<string, ComparisonRow[][]>>()
+
+function rowsById(byParagraph: ReadonlyMap<string, ComparisonRow[]>): Map<string, ComparisonRow[][]> {
+  const known = ROWS_BY_ID.get(byParagraph)
+  if (known) return known
+  const index = new Map<string, ComparisonRow[][]>()
+  for (const [key, rows] of byParagraph) {
+    // The same cut `endsWith('#' + id)` made: everything after the last
+    // separator is the §, and a key without one answers to no §.
+    const cut = key.lastIndexOf('#')
+    if (cut < 0) continue
+    const id = key.slice(cut + 1)
+    const list = index.get(id) ?? []
+    list.push(rows)
+    index.set(id, list)
+  }
+  ROWS_BY_ID.set(byParagraph, index)
+  return index
 }
 
 function isHeadingRow(row: ComparisonRow): boolean {

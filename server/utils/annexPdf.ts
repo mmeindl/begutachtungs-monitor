@@ -97,18 +97,40 @@ const BASELINE_TOLERANCE = 2.5
  * Order is preserved: a group's position is that of its first run, and within
  * a group the runs stand as the page listed them.
  */
+const BASELINES = new WeakMap<AnnexPage, AnnexItem[][]>()
+
 function baselines(page: AnnexPage): AnnexItem[][] {
+  const known = BASELINES.get(page)
+  if (known) return known
   const groups: { y: number; items: AnnexItem[] }[] = []
+  // Which groups sit near a given y, without scanning all of them: two groups
+  // are always MORE than one tolerance apart — closer and the second would
+  // have joined the first — so a bucket one tolerance wide holds at most one
+  // group, and a y's own bucket plus its two neighbours hold every candidate.
+  // The scan was quadratic in a page's lines and ran two to four times per
+  // page (`refactor-plan.md` §6.8).
+  const nearby = new Map<number, number[]>()
   for (const item of page.items) {
     if (!item.text.trim()) continue
-    let group = groups.find((g) => Math.abs(g.y - item.y) <= BASELINE_TOLERANCE)
-    if (!group) {
-      group = { y: item.y, items: [] }
-      groups.push(group)
+    let found = -1
+    for (const offset of [-BASELINE_TOLERANCE, 0, BASELINE_TOLERANCE]) {
+      for (const i of nearby.get(Math.floor((item.y + offset) / BASELINE_TOLERANCE)) ?? []) {
+        // The FIRST group in creation order that fits — what `groups.find`
+        // chose, and two groups CAN both fit one item.
+        if (Math.abs(groups[i]!.y - item.y) <= BASELINE_TOLERANCE && (found < 0 || i < found)) found = i
+      }
     }
-    group.items.push(item)
+    if (found >= 0) {
+      groups[found]!.items.push(item)
+      continue
+    }
+    const bucket = Math.floor(item.y / BASELINE_TOLERANCE)
+    nearby.set(bucket, [...(nearby.get(bucket) ?? []), groups.length])
+    groups.push({ y: item.y, items: [item] })
   }
-  return groups.map((g) => g.items)
+  const out = groups.map((g) => g.items)
+  BASELINES.set(page, out)
+  return out
 }
 
 /**
