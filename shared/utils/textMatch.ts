@@ -66,7 +66,7 @@ const UMLAUT_FOLD: Record<string, string> = { ä: 'a', ö: 'o', ü: 'u', ß: 'ss
  * their transliterations folded, diacritics stripped, every punctuation run
  * one space.
  *
- * Deliberately NOT `orgMatchKey` (server/utils/mappers.ts), which folds for
+ * Deliberately NOT `orgMatchKey` (server/utils/parliament/organisations.ts), which folds for
  * near-duplicate DETECTION — that one is tuned to decide whether two names
  * are the same office, and its own comment warns it is never a display
  * name. Two jobs, two functions, each free to drift.

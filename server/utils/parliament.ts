@@ -35,31 +35,29 @@ import { chainCoverageOf } from '#shared/utils/draftStations'
 import { GP_RE, gpEndedOn, gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
 import {
-  deriveShortTitle,
   extractBgblLink,
   findHandoff,
   findLastRvLink,
   findRvLinks,
-  groupOrganisationStatements,
   isFilingOpen,
-  mapDraftRow,
   mapDocuments,
   mapInvitedBy,
-  mapStatementRow,
   mapTextEvolution,
-  mapVorlageRow,
   RV_STATION,
   parseShortinfo,
   parseStages,
-  PARLIAMENT_BASE,
   type RawBgblLink,
   type RawDocumentGroup,
   type RawName,
   type RawShortinfo,
   type RawStage,
   type RvLink,
-  type VorlageRow,
-} from './mappers'
+} from './parliament/detailJson'
+import { PARLIAMENT_BASE } from './parliament/htmlText'
+import { deriveShortTitle, mapDraftRow } from './parliament/list81'
+import { mapVorlageRow, type VorlageRow } from './parliament/list101'
+import { mapStatementRow } from './parliament/list142'
+import { groupOrganisationStatements } from './parliament/organisations'
 import { checkListHeader } from './listHeaders'
 import {
   loadLastGoodStatements,

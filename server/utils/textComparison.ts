@@ -27,7 +27,7 @@ import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } fro
 import { diffTokens, isEditorialChange } from './lawDiff'
 import { normalizeText, stripMarkup } from './lawText'
 import type { DraftArticle } from './lawTitles'
-import { decodeEntities } from './mappers'
+import { decodeEntities } from './parliament/htmlText'
 import type { LawDiffSegment } from '../../shared/types'
 
 /** How one row of the comparison differs. */

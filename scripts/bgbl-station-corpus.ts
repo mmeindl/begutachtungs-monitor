@@ -25,7 +25,7 @@
  *
  * Läuft durch dieselben Parser wie die Seite. Liest nur; schreibt nichts.
  */
-import { extractBgblLink, mapTextEvolution } from '../server/utils/mappers'
+import { extractBgblLink, mapTextEvolution } from '../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawText'
 import { diffLawPackage, summarizeDiff } from '../server/utils/lawDiff'
 import { installFetchCache } from './harness-cache'

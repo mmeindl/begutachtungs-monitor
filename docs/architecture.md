@@ -180,7 +180,7 @@ Server internals (`server/utils/`):
    result may be kept (§3), and a cached raw response would hand the
    empty-list retry of rule 4 the very answer it is retrying. Nothing has to
    be deleted by hand any more.
-- `mappers.ts` — rows→types. **List 81, 0-based:** 0 gp, 2 inr, 4 title, 5 citation, 6 ministry code, 7 path, 8 deadline (display), 10 arrival (ISO "Datesort"), 11 active `'J'`, 13 statement count, 14 fristsort (`yyyymmdd` → ISO; empty → null), 16 full ministry name. **List 142, 0-based:** 2 snmeInr, 4 date, 6 submitter (HTML `<a>`), 12 endorsements, 15 citation. Stage texts: strip HTML, extract + absolutize links.
+- `parliament/list81.ts`, `parliament/list101.ts`, `parliament/list142.ts`, `parliament/detailJson.ts` (with `htmlText.ts`, `dates.ts`, `rowCells.ts`, `organisations.ts` underneath) — rows→types. **List 81, 0-based:** 0 gp, 2 inr, 4 title, 5 citation, 6 ministry code, 7 path, 8 deadline (display), 10 arrival (ISO "Datesort"), 11 active `'J'`, 13 statement count, 14 fristsort (`yyyymmdd` → ISO; empty → null), 16 full ministry name. **List 142, 0-based:** 2 snmeInr, 4 date, 6 submitter (HTML `<a>`), 12 endorsements, 15 citation. Stage texts: strip HTML, extract + absolutize links.
 - RV enrichment: last `/gegenstand/{gp}/I/{nr}` link from the stages (ME→RV is 1:n → we take the latest RV); RV JSON: `content.status.bgbllinks[]`, entry with `Abfrage=BgblAuth` (never blindly `[0]`).
 - Documents: `content.documents[]`; text evolution: `content.statements.documents[]` (misleading key, intentional upstream!).
 
@@ -288,8 +288,9 @@ the log below blames twice for shipped bugs. `pnpm lint` (`@nuxt/eslint`,
 flat config in `eslint.config.mjs`) is the fourth command. All four run in CI
 on every push (`.github/workflows/ci.yml`).
 
-- **Upstream → our types:** `mappers` (entity decoding, row mapping, deadline
-  parsing, stage HTML), `privacy` (classifier: orgs, persons with
+- **Upstream → our types:** `htmlText` (entity decoding, stage HTML), `dates`
+  (deadline parsing), `list81`/`list101`/`list142`/`detailJson` (row and JSON
+  mapping), `organisations` (the grouping algorithm), `privacy` (classifier: orgs, persons with
   titles/postal-code suffix, placeholder, edge cases → safe default), `gp`
   (Roman numerals), `related`, `aliases`, `budget`, `deadlines`, `outcomes`
   (the base rates quoted in the UI), `feeds` (RSS/ICS escaping), `lastgood`
@@ -3903,8 +3904,8 @@ Wahrheit „den Namen veröffentlichen wir nicht" ist (DSGVO). Gesucht wird
 über Name und Geschäftszahl, tokenweise und in beliebiger Reihenfolge, damit
 „wiener recht" das „Amt der Wiener Landesregierung; Magistratsdirektion -
 Recht" findet. Die Faltung ist bewusst **nicht** `orgMatchKey`
-(`mappers.ts`): die entscheidet über Dubletten und darf unabhängig davon
-driften.
+(`parliament/organisations.ts`): die entscheidet über Dubletten und darf
+unabhängig davon driften.
 
 Seitengröße 10 statt 25 — die Liste sitzt auf einer Seite mit fünf weiteren
 Abschnitten —, und ab 30 verbleibenden Zeilen steht „Alle N anzeigen"
@@ -4301,7 +4302,7 @@ reglementierte Berufe, 3 Entwürfe) und „Vertragstext" (ein Staatsvertrag, 2).
 Als Station angeboten, hätte der §-Parser aus einer Beilage Paragraphen
 gemacht. Also eine **gemessene Whitelist** exakter Titel
 (`shared/utils/lawStations.ts`), kein Stichwort-Match — dieselbe Regel, die
-`mappers.ts` für die Shortinfo-Überschriften längst befolgt: das Tag lesen,
+`parliament/detailJson.ts` für die Shortinfo-Überschriften längst befolgt: das Tag lesen,
 nie die Wortwahl. Die Dokumente behalten ihre Zeile in der Dokumentliste,
 sie sind bloß nie eine Seite des Vergleichs (`TextVersion.stationId` ist
 `null`).

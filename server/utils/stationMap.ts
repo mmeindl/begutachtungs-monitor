@@ -41,7 +41,7 @@
  */
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftStations'
-import type { VorlageRow } from './mappers'
+import type { VorlageRow } from './parliament/list101'
 import { mapWithConcurrency } from './pool'
 
 /** Six hours: a station moves on the scale of days, and this way at most

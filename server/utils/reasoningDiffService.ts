@@ -30,7 +30,7 @@
 import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
 import { parseExplanationsHtml, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
 import { fetchLawHtml, getLawDiff } from './lawDiffService'
-import { findLastRvLink, mapDocuments, parseStages } from './mappers'
+import { findLastRvLink, mapDocuments, parseStages } from './parliament/detailJson'
 import { getGegenstand } from './parliament'
 import { compareReasoning } from './reasoningDiff'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'

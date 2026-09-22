@@ -32,7 +32,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { mapDocuments, mapTextEvolution, RV_STATION, type RawDocumentGroup } from '../server/utils/mappers'
+import { mapDocuments, mapTextEvolution, RV_STATION, type RawDocumentGroup } from '../server/utils/parliament/detailJson'
 
 const BASE = 'https://www.parlament.gv.at'
 const HEADERS = {

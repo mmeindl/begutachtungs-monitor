@@ -61,7 +61,7 @@ export const LAW_STATION_LABEL: Record<LawStationId, string> = {
  * professions, 3 drafts) and "Vertragstext" (a Staatsvertrag, 2 drafts).
  * Matching by keyword would offer those as a text to compare, and the §
  * parser would dutifully produce paragraphs out of an annex. Same reasoning
- * as for the shortinfo headings in `server/utils/mappers.ts`: read the tag,
+ * as for the shortinfo headings in `server/utils/parliament/detailJson.ts`: read the tag,
  * never the wording.
  */
 export const UPSTREAM_AUSSCHUSS_TITLE = 'Geändert im Ausschuss'

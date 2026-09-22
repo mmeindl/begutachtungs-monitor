@@ -9,7 +9,7 @@
  * what makes a §-level comparison possible without RIS. Verified on the
  * 43/ME → 449 d.B. chain (EABG) and two more, 2026-09-06.
  */
-import { decodeEntities } from './mappers'
+import { decodeEntities } from './parliament/htmlText'
 
 export type BlockKind =
   | 'para_head' // 45UeberschrPara — the § heading line ("Anwendungsbereich")

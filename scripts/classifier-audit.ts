@@ -34,7 +34,7 @@
  * past. Nothing here writes anywhere.
  */
 import { classifySubmitter, readUpstreamFlag } from '../server/utils/privacy'
-import { stripHtmlToText } from '../server/utils/mappers'
+import { stripHtmlToText } from '../server/utils/parliament/htmlText'
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`)
