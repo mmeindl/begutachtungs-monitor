@@ -77,12 +77,12 @@ export function readLawStationPair(event: H3Event): { from: LawStationId; to: La
   // removed and the other inserted, so it would report every amendment
   // backwards instead of failing.
   //
-  // Seit der BGBl-Station gibt es einen zweiten Grund, ein Paar abzulehnen,
-  // und er braucht einen eigenen Satz: `plenum→bgbl` liegt richtig herum und
-  // ist trotzdem keine Frage — zwischen Beschluss und Kundmachung ändert kein
-  // Akteur den Text (§12.33). Die alte Begründung wäre dort schlicht falsch,
-  // und eine Fehlermeldung, die einen falschen Grund nennt, schickt den
-  // Leser die falsche Richtung suchen.
+  // Since the BGBl station there is a second reason to refuse a pair, and it
+  // needs a sentence of its own: `plenum→bgbl` runs the right way round and
+  // is still not a question — between the Beschluss and the Kundmachung no
+  // actor changes the text (docs/architecture.md §12.33). The older reason
+  // would simply be wrong there, and an error message that names the wrong
+  // reason sends the reader searching in the wrong direction.
   if (!from) {
     throw createError({
       statusCode: 400,
@@ -167,9 +167,9 @@ export function readListQuery(event: H3Event): ListQuery {
     })
   }
 
-  /* Leerer Wert = kein Filter, unbekannte Werte fliegen raus statt die
-   * Anfrage zu kippen: die Stationsnamen stehen in geteilten Links, und ein
-   * Tippfehler darin soll eine Liste zeigen, keinen Fehler. */
+  /* Empty value = no filter; unknown values are dropped instead of failing
+   * the request: the station names travel in shared links, and a typo in one
+   * should show a list, not an error. */
   const stations = (firstQueryValue(query.station) ?? '')
     .split(',')
     .map((v) => v.trim().toLowerCase())

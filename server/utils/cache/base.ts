@@ -32,7 +32,7 @@
  * A function that fetches *and* parses belongs to neither layer and cannot
  * be made correct while it stays one function — any invalidation that
  * catches the parse throws away the fetch with it. Split those in two, a
- * cached fetch under a fresh parse, as `paraTitleService.ts` and `ris/begutCorpus.ts`
+ * cached fetch under a fresh parse, as `diff/paraTitleService.ts` and `ris/begutCorpus.ts`
  * do; do not pick which half to get wrong. `tests/cacheLayers.test.ts`
  * holds every cached function to that choice.
  *
