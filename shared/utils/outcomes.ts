@@ -30,8 +30,6 @@ export interface RvBaseRate {
   p90Days: number
 }
 
-export const RV_BASE_RATES_MEASURED_ON = '2026-09-08'
-
 /** Newest GP first. */
 export const RV_BASE_RATES: readonly RvBaseRate[] = [
   { gp: 'XXVII', drafts: 353, withRv: 296, rvInLaterGp: 4, withinLatencyWindow: 0.895, medianDays: 40, p90Days: 189 },

@@ -2,11 +2,9 @@
 withDefaults(
   defineProps<{
     title?: string
-    description?: string
   }>(),
   {
     title: 'Daten konnten nicht geladen werden',
-    description: undefined,
   },
 )
 
@@ -16,7 +14,7 @@ defineEmits<{
 </script>
 
 <template>
-  <EmptyState role="alert" :title="title" :description="description">
+  <EmptyState role="alert" :title="title">
     <UButton color="primary" @click="$emit('retry')">Erneut versuchen</UButton>
   </EmptyState>
 </template>

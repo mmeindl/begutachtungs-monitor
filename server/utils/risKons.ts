@@ -330,12 +330,6 @@ export function pickByName<T extends { kurztitel: string }>(byLaw: Map<string, T
   return best.entry
 }
 
-/** The § heading ("Sofortlotterien"), or null when the document has none. */
-export async function fetchParagraphHeading(ref: KonsParagraphRef): Promise<string | null> {
-  const tree = await fetchParagraphTree(ref)
-  return tree?.heading ?? null
-}
-
 /** The paragraph document as a tree. */
 export async function fetchParagraphTree(ref: KonsParagraphRef): Promise<LawNode | null> {
   if (!ref.xmlUrl) return null

@@ -818,7 +818,3 @@ export function bgblOrderKey(number: string | null | undefined): number | null {
   }
   return Number(m[2]) * 100_000 + Number(m[1])
 }
-
-// ---------------------------------------------------------------------------
-// Roman numerals (GP codes) — for availableGps
-// ---------------------------------------------------------------------------
