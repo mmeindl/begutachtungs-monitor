@@ -31,7 +31,8 @@
  */
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
-import { addressedParagraphs, gateParagraph, paraId } from './konsGate'
+import { addressedParagraphs, gateParagraph } from './konsGate'
+import { anlageLabelKey, bareParaId } from './text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from './amendedLawsService'
 import { diffTokens } from './lawDiff'
@@ -52,11 +53,6 @@ const MAX_LAWS = 12
 /** Obergrenze der §-Dokumente je Entwurf — dieselbe Sorge wie `paraTitleService.MAX_HEADINGS`. */
 const MAX_PARAGRAPHS = 80
 const CONCURRENCY = 4
-
-/** RIS druckt eine Anlage als „Anl. 2", eine Anweisung sagt „Anlage 2". */
-function labelKey(label: string): string {
-  return label.replace(/\s+/g, ' ').trim().replace(/^(?:Anlage|Anhang)\b/, 'Anl.')
-}
 
 /**
  * Die §-Dokumente, die dieser Artikel adressiert — und die, für die das
@@ -187,10 +183,10 @@ export const getConsolidatedText = defineCachedFunction(
       // nicht reicht, entscheidet sie, was fehlt.
       const covered = (id: string): boolean =>
         paragraphRows(byParagraph, id, isPackage ? article.key : undefined).length > 0
-      const wanted = new Map([...addressed].map((id) => [labelKey(`§ ${id}`), covered(id)]))
+      const wanted = new Map([...addressed].map((id) => [anlageLabelKey(`§ ${id}`), covered(id)]))
       const refs = Object.entries(law.paragraphs)
-        .filter(([label]) => wanted.has(labelKey(label)))
-        .sort(([a], [b]) => Number(wanted.get(labelKey(b))) - Number(wanted.get(labelKey(a))))
+        .filter(([label]) => wanted.has(anlageLabelKey(label)))
+        .sort(([a], [b]) => Number(wanted.get(anlageLabelKey(b))) - Number(wanted.get(anlageLabelKey(a))))
         .map(([, ref]) => ref)
       const { trees, skipped } = await standingParagraphs(refs, budget)
       const standing: StandingLaw = { paragraphs: trees }
@@ -216,7 +212,7 @@ export const getConsolidatedText = defineCachedFunction(
           .filter(({ instruction: { op, payload } }) => {
             const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
             if (address?.level === 'document') return true
-            if (address?.para && paraId(address.para) === id) return true
+            if (address?.para && bareParaId(address.para) === id) return true
             if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
             return false
           })

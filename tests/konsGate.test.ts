@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraphs, byParagraphOrder, gateParagraph, paraId } from '../server/utils/konsGate'
+import { addressedParagraphs, byParagraphOrder, gateParagraph } from '../server/utils/konsGate'
 import { parsePayload, type Instruction } from '../server/utils/lawApply'
 import { parseInstruction } from '../server/utils/novao'
 
@@ -59,9 +59,7 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
     expect(addressedParagraphs(instructions, [])).toContain('5a')
   })
 
-  it('reads a designation and orders lettered §§ after their number', () => {
-    expect(paraId('§ 285b.')).toBe('285b')
-    expect(paraId('Anl. 2')).toBe('2')
+  it('orders lettered §§ after their number', () => {
     expect([...['28a', '28', '9'].sort(byParagraphOrder)]).toEqual(['9', '28', '28a'])
   })
 

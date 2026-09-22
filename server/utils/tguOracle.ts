@@ -49,7 +49,13 @@ export interface OracleReport {
   note: string | null
 }
 
-/** "§ 5." → "5", "§ 12a." → "12a"; null for anything else. */
+/**
+ * "§ 5." → "5", "§ 12a." → "12a"; null for anything else.
+ *
+ * The annex's own Gliederungssymbol, anchored at the start of it — not
+ * `text/designation.bareParaId`, which reads the first number anywhere in a
+ * label: a row opening with anything but a § must not answer here.
+ */
 export function paraIdOfGld(gld: string | null): string | null {
   const m = /^§+\s*(\d+[a-z]*)\b/.exec(normalizeText(gld ?? ''))
   return m ? m[1]! : null

@@ -20,6 +20,7 @@
 import { childById, makeNode, plainText, type LawNode, type NodeLevel } from './lawStructure'
 import { normalizeText, type LawUnit } from './lawText'
 import { expandRange, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
+import { bareParaId } from './text/designation'
 
 export interface StandingLaw {
   /** Paragraphs in printed order; insert and append change this list */
@@ -321,15 +322,8 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
 // Lookup
 // ---------------------------------------------------------------------------
 
-/** "§ 5" → the id "5"; "Art. 3" → "3"; "Anlage 2" → "2". */
-function idOf(label: string | null): string | null {
-  if (!label) return null
-  const m = /(\d+[a-z]*(?:\.\d+)?)/.exec(label)
-  return m ? m[1]! : null
-}
-
 function findParagraph(law: StandingLaw, a: NovaoAddress): LawNode | null {
-  const id = idOf(a.para)
+  const id = bareParaId(a.para)
   return id === null ? null : (law.paragraphs.find((p) => p.id === id) ?? null)
 }
 
@@ -624,7 +618,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'replace': {
-      const ids = [op.target.level === 'para' ? (idOf(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
+      const ids = [op.target.level === 'para' ? (bareParaId(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
       if (op.target.level === 'para') {
         const paras = ids.map((id) => law.paragraphs.find((p) => p.id === id) ?? null)
         if (paras.some((p) => p === null)) return `§ nicht im geltenden Text: ${op.target.para}`
@@ -883,14 +877,14 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     }
     // `to === ''` is the Wegfall of a designation: the unit keeps its text
     // and loses its number ("entfällt die Absatzbezeichnung „(1)“").
-    const first = op.to === '' ? '' : (idOf(op.to) ?? op.to.replace(/[^\w]/g, ''))
+    const first = op.to === '' ? '' : (bareParaId(op.to) ?? op.to.replace(/[^\w]/g, ''))
     if (!first && op.to !== '') return 'Neue Bezeichnung nicht lesbar'
     if (first === '' && (op.toLast || nodes.length !== 1)) return 'Wegfall einer Bezeichnung nur für eine Einheit'
     // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“": the
     // new run must be exactly as long as the old one, or nothing moves.
     let newIds = [first]
     if (op.toLast) {
-      const range = expandRange(first, idOf(op.toLast) ?? '')
+      const range = expandRange(first, bareParaId(op.toLast) ?? '')
       if (!range) return `Zielbezeichnungen ${op.to} bis ${op.toLast} nicht aufzählbar`
       newIds = [first, ...range]
     }
@@ -939,7 +933,7 @@ function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[]
 }
 
 function deepestId(a: NovaoAddress): string {
-  return a.lit ?? a.z ?? a.abs ?? idOf(a.para) ?? ''
+  return a.lit ?? a.z ?? a.abs ?? bareParaId(a.para) ?? ''
 }
 
 /** All nodes an address scopes over — several when the address lists siblings. */

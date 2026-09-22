@@ -40,6 +40,7 @@
 
 import type { Instruction } from './lawApply'
 import type { ConsolidatedWithheldCause } from '../../shared/types'
+import { bareParaId } from './text/designation'
 
 /**
  * Warum ein erzeugter Paragraph nicht angezeigt wird.
@@ -95,13 +96,6 @@ export function gateParagraph({ refused, plausible, oracle }: GateInput): { show
 // ---------------------------------------------------------------------------
 
 /**
- * Die Nummer aus einer Paragraphenbezeichnung: „§ 285b." → „285b".
- */
-export function paraId(label: string): string | null {
-  return /(\d+[a-z]*(?:\.\d+)?)/.exec(label)?.[1] ?? null
-}
-
-/**
  * §-Reihenfolge, wie das Gesetz sie druckt: § 22 vor § 197, § 285b vor
  * § 285c. Eine Zeichenkettensortierung stellt „§ 197" vor „§ 22" — auf einer
  * Seite, die Gesetzestext zeigt, liest sich das wie ein Defekt.
@@ -132,7 +126,7 @@ export function addressedParagraphs(
   for (const { op, payload } of instructions) {
     const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
     if (address?.para) {
-      const id = paraId(address.para)
+      const id = bareParaId(address.para)
       if (id) out.add(id)
     }
     if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
