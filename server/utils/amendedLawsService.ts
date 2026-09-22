@@ -62,27 +62,44 @@ export function konsLawUrl(gesetzesnummer: string, date: string | null): string 
 }
 
 /** The draft's own text — never the Regierungsvorlage's: the question is
- *  what the DRAFT proposed to change. */
+ *  what the DRAFT proposed to change.
+ *
+ *  Nothing here catches: a draft that publishes no readable text answers with
+ *  an empty list through the structure (no `me.html`, no RIS row, no XML),
+ *  and both parsers are total. Everything else is an upstream failure and has
+ *  to leave the cached function above. */
 async function draftBlocks(gp: string, inr: number, detail: Awaited<ReturnType<typeof getGegenstand>>): Promise<TextBlock[]> {
   const me = findLawStations(detail.content ?? {}).get('me')
   if (me?.html) return parseParliamentHtml(await fetchLawHtml(me.html))
-  const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
+  const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
   const xml = row?.risDocument?.xml
   return xml ? parseRisXml(await fetchLawHtml(xml)) : []
 }
 
+/**
+ * **A failure is not an answer** — the rule `konsCache.ts` states for
+ * `resolveKonsLaw` and `annexGuardService.ts` for the annex, and this
+ * function is the third place it applies.
+ *
+ * It is cached for a day, so every upstream call in it used to be able to
+ * pin a wrong fact for that long: a blip in list 81 dropped `asOf` and with
+ * it every RIS link, a blip in the RIS map or the Gesetzestext produced an
+ * empty block list, and the page then read „dieser Entwurf ändert kein
+ * Gesetz" — the one claim this section must never invent. Nothing is caught
+ * here any more: a genuine absence is already an answer (no document, no
+ * row, no matching law), an outage propagates, nothing is stored, and the
+ * next request tries again. The section arrives client-side and lazily, so
+ * the page simply renders without it (`entwuerfe/[gp]/[inr].vue`).
+ */
 export const getAmendedLaws = defineCachedFunction(
   async (gp: string, inr: number): Promise<AmendedLawsResponse> => {
     const detail = await getGegenstand(gp, 'ME', inr)
-    const listed = (await getDraftsForGp(gp).catch(() => null))?.items.find((i) => i.inr === inr) ?? null
+    // A draft missing from its own GP's list is an answer (`asOf` stays
+    // null); a list that cannot be read is not.
+    const listed = (await getDraftsForGp(gp)).items.find((i) => i.inr === inr) ?? null
     const asOf = listed?.arrivedAt || null
 
-    let blocks: TextBlock[] = []
-    try {
-      blocks = await draftBlocks(gp, inr, detail)
-    } catch {
-      blocks = []
-    }
+    const blocks = await draftBlocks(gp, inr, detail)
     const articles = draftArticles(blocks)
     let wanted = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl }))
 
@@ -123,7 +140,12 @@ export const getAmendedLaws = defineCachedFunction(
           // turned every law of an ambiguous Bundesgesetzblatt into a row
           // without a RIS link and with the draft's own wording instead of
           // the law's name.
-          ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '').catch(() => null)
+          //
+          // Uncaught: `resolveKonsLaw` already answers null where RIS knows
+          // no such law or cannot tell two apart, and throws only when RIS
+          // is unreachable — the distinction its own doc comment draws
+          // (`konsCache.ts`). Catching it here undid that one layer up.
+          ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '')
           : null
         results[i] = {
           title: resolved?.kurztitel || w.title || cited || 'Unbenanntes Gesetz',
