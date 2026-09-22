@@ -24,9 +24,9 @@
  * caller can only honour that promise if it is told which instructions were
  * lost, and the harness can only report the coverage if it is countable.
  */
-import { segmentUnits, type TextBlock } from './lawtext/lawUnits'
-import { draftTextOf } from './annex/draftText'
-import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from './novao'
+import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
+import { draftTextOf } from './draftText'
+import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from '../novao'
 
 /** One Novellierungsanordnung (or one § of a Stammgesetz), and what it addresses. */
 export interface DraftUnit {

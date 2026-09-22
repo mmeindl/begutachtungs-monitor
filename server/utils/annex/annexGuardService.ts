@@ -21,13 +21,13 @@
  * check reads it per Novellierungsanordnung (`annexCheck.draftBags`) — which
  * of them a § may draw on is the rule's decision, not the caller's.
  */
-import { verifyAnnex, type AnnexSources, type AnnexVerification } from './annex/verdict'
-import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
-import { parseKonsParagraph, plainText } from './lawtext/konsTree'
-import type { TextBlock } from './lawtext/lawUnits'
-import type { DraftArticle } from './lawtext/draftArticles'
-import type { ComparisonRow } from './annex/comparisonRows'
-import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
+import { verifyAnnex, type AnnexSources, type AnnexVerification } from './verdict'
+import { fetchParagraphXml, resolveKonsLaw } from '../konsCache'
+import { parseKonsParagraph, plainText } from '../lawtext/konsTree'
+import type { TextBlock } from '../lawtext/lawUnits'
+import type { DraftArticle } from '../lawtext/draftArticles'
+import type { ComparisonRow } from './comparisonRows'
+import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 const sources: AnnexSources = {
   resolveLaw: (organ, nummer, date, title) => resolveKonsLaw(organ, nummer, date, title),

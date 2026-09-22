@@ -4,8 +4,8 @@
  * Usage: npx vite-node scripts/annex-pdf-check.ts <file.pdf|url> [maxRows]
  */
 import { readFileSync } from 'node:fs'
-import { parseAnnexPdf } from '../server/utils/annexPdf'
-import { pagesOf } from '../server/utils/annexPdfPages'
+import { parseAnnexPdf } from '../server/utils/annex/annexPdf'
+import { pagesOf } from '../server/utils/annex/annexPdfPages'
 
 const src = process.argv[2]!
 const max = Number(process.argv[3] ?? 25)

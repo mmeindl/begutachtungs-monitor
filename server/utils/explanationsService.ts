@@ -36,7 +36,7 @@ import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import { getText } from './ris/konsLaw'
 import { getRisMapForGp } from './ris/begutCorpus'
 import { getRisConsultation } from './ris/risOnly'
-import { hasAnnexDocument } from './textComparisonService'
+import { hasAnnexDocument } from './annex/annexSource'
 
 /** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. */
 const fetchExplanationsXml = defineCachedFunction((url: string): Promise<string> => getText(url), {

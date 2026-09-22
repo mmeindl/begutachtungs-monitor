@@ -5,7 +5,7 @@
  * PURE MODULE — relative imports only, so vitest runs it directly. Second and
  * third of the three checks `annex/verdict.ts` runs over a §.
  */
-import { draftUnits } from '../annexDraft'
+import { draftUnits } from './annexDraft'
 // The whole draft is rule 2's *fallback* rather than its reference since
 // 2026-09-10: what a § may draw on where the draft's instructions could not be
 // segmented at all (`draftReference`). Everything else reads them one by one.

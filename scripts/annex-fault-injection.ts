@@ -156,8 +156,8 @@ import {
   type StandingText,
   type WordBag,
 } from '../server/utils/annex/rightColumn'
-import { parseAnnexPdf } from '../server/utils/annexPdf'
-import { pagesOf } from '../server/utils/annexPdfPages'
+import { parseAnnexPdf } from '../server/utils/annex/annexPdf'
+import { pagesOf } from '../server/utils/annex/annexPdfPages'
 import { diffTokens } from '../server/utils/diff/wordDiff'
 import { plainText } from '../server/utils/lawtext/konsTree'
 import { normalizeText } from '../server/utils/lawtext/normalize'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidateOf, resolveBoundaries } from '../server/utils/annexBoundaries'
+import { candidateOf, resolveBoundaries } from '../server/utils/annex/annexBoundaries'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { lawNameScore } from '../server/utils/lawtext/lawNames'
 

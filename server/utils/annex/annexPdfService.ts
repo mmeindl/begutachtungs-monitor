@@ -28,10 +28,10 @@
  */
 import { parseAnnexPdf, type AnnexParse } from './annexPdf'
 import { pagesOf } from './annexPdfPages'
-import { DERIVED_CACHE } from './cache/base'
-import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
-import type { DraftArticle } from './lawtext/draftArticles'
-import { upstreamBytes, UpstreamHttpError, UpstreamTooLargeError, type UpstreamPolicy } from './upstream/fetch'
+import { DERIVED_CACHE } from '../cache/base'
+import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import type { DraftArticle } from '../lawtext/draftArticles'
+import { upstreamBytes, UpstreamHttpError, UpstreamTooLargeError, type UpstreamPolicy } from '../upstream/fetch'
 
 const PDF_TIMEOUT_MS = 25_000
 /**

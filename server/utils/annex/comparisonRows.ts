@@ -24,7 +24,7 @@
  * so everything downstream is the same for both (api-exploration §2c).
  */
 
-import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from '../annexBoundaries'
+import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
 import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import type { LawDiffSegment } from '../../../shared/types'

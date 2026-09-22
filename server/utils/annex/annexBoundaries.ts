@@ -32,10 +32,10 @@
  * refuses. An unattributed comparison is a usable answer; a confidently
  * mis-attributed one is not.
  */
-import { normalizeText } from './lawtext/normalize'
-import type { DraftArticle } from './lawtext/draftArticles'
-import { lawNameScore } from './lawtext/lawNames'
-import { pickClearWinner } from './text/clearWinner'
+import { normalizeText } from '../lawtext/normalize'
+import type { DraftArticle } from '../lawtext/draftArticles'
+import { lawNameScore } from '../lawtext/lawNames'
+import { pickClearWinner } from '../text/clearWinner'
 
 /**
  * A law boundary inside a package: "Artikel 3", "Artikel 3 (Änderung des …)",

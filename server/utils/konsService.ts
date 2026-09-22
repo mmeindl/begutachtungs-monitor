@@ -45,7 +45,7 @@ import { opAddress } from './novao'
 import { getRisMapForGp } from './ris/begutCorpus'
 import { mapWithConcurrency } from './pool'
 import type { KonsParagraphRef } from './ris/konsLaw'
-import { annexSourceFor } from './textComparisonService'
+import { annexSourceFor } from './annex/annexSource'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 import { oracleVerdict, paragraphRows, rowsByParagraph } from './tguOracle'
 

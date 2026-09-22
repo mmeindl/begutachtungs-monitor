@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annexPdf'
-import { uprightRuns, type RawRun } from '../server/utils/annexPdfPages'
+import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
+import { uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import type { TextComparisonResponse } from '../shared/types'
 

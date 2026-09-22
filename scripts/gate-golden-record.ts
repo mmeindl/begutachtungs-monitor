@@ -28,8 +28,8 @@ import {
   type AnnexDraft,
   type AnnexSources,
 } from '../server/utils/annex/verdict'
-import { parseAnnexPdf } from '../server/utils/annexPdf'
-import { pagesOf } from '../server/utils/annexPdfPages'
+import { parseAnnexPdf } from '../server/utils/annex/annexPdf'
+import { pagesOf } from '../server/utils/annex/annexPdfPages'
 import { plainText } from '../server/utils/lawtext/konsTree'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { draftArticles } from '../server/utils/lawtext/draftArticles'

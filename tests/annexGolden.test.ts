@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { parseAnnexPdf, type AnnexPage } from '../server/utils/annexPdf'
+import { parseAnnexPdf, type AnnexPage } from '../server/utils/annex/annexPdf'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 
