@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { TextBlock } from '../server/utils/lawText'
-import { buildSnippet, locateInBlocks, parseSearchQuery, searchQueryString } from '../server/utils/begutSearch'
+import {
+  blocksFromPlainText,
+  buildSnippet,
+  locateInBlocks,
+  parseSearchQuery,
+  searchQueryString,
+  withoutMinistryMentions,
+} from '../server/utils/begutSearch'
+import { ministryTokens } from '../server/utils/searchHaystack'
 
 function block(text: string, over: Partial<TextBlock> = {}): TextBlock {
   return { kind: 'abs', cls: '51Abs', text, gld: null, ...over }
@@ -142,5 +150,63 @@ describe('locateInBlocks', () => {
     const blocks = [block('Die Klimaschutz-Maßnahmen wirken.')]
     expect(locateInBlocks(blocks, parseSearchQuery('maßnahme'))).toBeNull()
     expect(locateInBlocks(blocks, parseSearchQuery('maßnahme'), true)?.snippet.match.toLowerCase()).toBe('maßnahme')
+  })
+})
+
+describe('blocksFromPlainText', () => {
+  it('bündelt Zeilen zu Absätzen, statt jede einzeln zu nehmen', () => {
+    // Ein PDF kennt nur Zeilenumbrüche. Einzelne Zeilen als Blöcke fänden
+    // die Wörter einer UND-Suche nie zusammen.
+    const blocks = blocksFromPlainText('Erste Zeile\nzweite Zeile\ndritte Zeile')
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]!.text).toBe('Erste Zeile zweite Zeile dritte Zeile')
+  })
+
+  it('trennt an Leerzeilen und wirft leere Blöcke weg', () => {
+    expect(blocksFromPlainText('Eins\n\n   \nZwei').map((b) => b.text)).toEqual(['Eins', 'Zwei'])
+  })
+
+  it('macht einen neuen Block auf, bevor einer zu lang wird', () => {
+    const blocks = blocksFromPlainText('aaaa\nbbbb\ncccc', 8)
+    expect(blocks.map((b) => b.text)).toEqual(['aaaa bbbb', 'cccc'])
+  })
+
+  it('trägt kein Gliederungssymbol ein, das es im PDF nicht gibt', () => {
+    expect(blocksFromPlainText('§ 5. Irgendwas')[0]).toMatchObject({ gld: null, kind: 'other' })
+  })
+})
+
+describe('withoutMinistryMentions', () => {
+  const tokens = ministryTokens([
+    'BMLUK (Bundesministerium für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft)',
+  ])
+
+  it('nimmt dem Verteiler des Begleitschreibens seine Treffer', () => {
+    // Der gemessene Fall: „klima" lieferte eine Druckgeräteverordnung, weil
+    // das Begleitschreiben alle Ministerien als Empfänger listet.
+    const verteiler = block(
+      '13. Bundesministerium für Landesverteidigung 14. Bundesministerium für Land- und Forstwirtschaft, '
+      + 'Klima- und Umweltschutz, Regionen und Wasserwirtschaft 15. Bundesministerium für Inneres',
+    )
+    expect(locateInBlocks([verteiler], parseSearchQuery('klima'))).not.toBeNull()
+    expect(locateInBlocks(withoutMinistryMentions([verteiler], tokens), parseSearchQuery('klima'))).toBeNull()
+  })
+
+  it('führt zur Sachstelle, wo es beide gibt', () => {
+    // Im Klimagesetz stand als Beleg die Ministerienaufzählung in § 5,
+    // obwohl das Dokument das Wort 164-mal führt.
+    const blocks = [
+      block('1. des Bundesministeriums für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft,'),
+      block('sowie je einem hochrangigen, für Klima zuständigen Verwaltungsorgan eines jeden Bundeslandes.'),
+    ]
+    const found = locateInBlocks(withoutMinistryMentions(blocks, tokens), parseSearchQuery('klima'))
+    expect(found?.snippet.after).toContain('zuständigen Verwaltungsorgan')
+  })
+
+  it('lässt die Ressortnennung ohne Ministeranrede stehen', () => {
+    // Die UVP-G-Novelle ersetzt genau diese Wortfolge in dutzenden §§ —
+    // dort IST der Name der Gegenstand.
+    const novelle = block('wird die Wortfolge "für Klimaschutz, Umwelt, Energie" durch eine andere ersetzt')
+    expect(locateInBlocks(withoutMinistryMentions([novelle], tokens), parseSearchQuery('klimaschutz'))).not.toBeNull()
   })
 })

@@ -43,6 +43,26 @@ export interface RisBegutFlat extends RisBegutRecord {
    * the ONLY answer to "where do I send it?", because there is no form.
    */
   coverLetter: RisDocumentUrls | null
+  /**
+   * ALLES ÜBRIGE, was der Satz an Text führt — und der Grund dafür ist
+   * gemessen (22.09.2026, docs/architecture.md §12.31).
+   *
+   * Über die 8 damals laufenden Sätze führen die Datensätze **41
+   * Textdokumente**, die vier Felder darüber greifen **25**. Was die
+   * Volltextsuche deshalb nicht lesen konnte: jede WFA (8×), jeder
+   * Digicheck (3×), jedes Vorblatt (2×), ein Anhang — und zwei, die keine
+   * fremde Dokumentart sind, sondern unsere Namensregeln: `SAG_TGÜ` (die
+   * Gegenüberstellung einer Sammelnovelle mit Gesetzespräfix) und `Entwurf
+   * EB Klimagesetz` (die Erläuterungen, vom Ressort als „EB" abgekürzt).
+   *
+   * Die Liste ist deshalb NICHT der Versuch, die vier Felder zu ersetzen:
+   * Die behalten ihre Regeln, ihre Rangfolge und ihre Etiketten, und die
+   * Anlagen-Maschine samt gepinnter Baseline bleibt unberührt. Sie ist der
+   * Rest, den die Suche lesen darf, damit ein Treffer im WFA nicht als
+   * „nicht gefunden" endet — mit dem Namen des Ressorts als Fundstelle,
+   * weil wir ihn nicht besser deuten können als es.
+   */
+  otherDocuments: { name: string; urls: RisDocumentUrls }[]
 }
 
 /** XML-to-JSON trap: one element → bare object, several → array. */
@@ -105,7 +125,11 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     return { html: of('Html'), xml: of('Xml'), pdf: of('Pdf') }
   }
   const named = (re: RegExp) => references.find((c) => re.test(String(c?.Name ?? '').trim()))
-  const main = formatsOf(references.find((c) => c?.ContentType === 'MainDocument'))
+  const main = references.find((c) => c?.ContentType === 'MainDocument')
+  const tgu = named(TEXT_COMPARISON_NAME)
+  const erl = named(EXPLANATIONS_NAME)
+  const letter = references.find((c) => c?.ContentType === 'Letter')
+  const classified = new Set([main, tgu, erl, letter].filter(Boolean))
   return {
     id,
     kurztitel: str(b?.Kurztitel),
@@ -115,12 +139,19 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     beginn: isoDate(bg?.BeginnBegutachtungsfrist),
     ende: isoDate(bg?.EndeBegutachtungsfrist),
     geaendert: isoDate(meta?.Allgemein?.Geaendert),
-    mainDocument: main ?? { html: null, xml: null, pdf: null },
-    textComparison: formatsOf(named(TEXT_COMPARISON_NAME)),
-    explanations: formatsOf(named(EXPLANATIONS_NAME)),
+    mainDocument: formatsOf(main) ?? { html: null, xml: null, pdf: null },
+    textComparison: formatsOf(tgu),
+    explanations: formatsOf(erl),
     // By ContentType, not by name: "Begleitschreiben Begutachtungsentwurf"
     // is the usual wording, but the type is what RIS actually commits to.
-    coverLetter: formatsOf(references.find((c) => c?.ContentType === 'Letter')),
+    coverLetter: formatsOf(letter),
+    // Ohne lesbares Format ist ein Verweis kein Dokument: Die eingebetteten
+    // GIFs eines Satzes (Formeln, Logos, gerasterte Tabellen) fallen hier
+    // von selbst heraus, weil `formatsOf` für sie nur Nullen liefert.
+    otherDocuments: references
+      .filter((c) => c && !classified.has(c))
+      .map((c) => ({ name: String(c?.Name ?? '').trim(), urls: formatsOf(c) }))
+      .filter((d): d is { name: string; urls: RisDocumentUrls } => d.name.length > 0 && hasDocument(d.urls)),
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

@@ -31,6 +31,14 @@ export default defineNuxtConfig({
     // suffix.
     '/weitere-entwuerfe': { redirect: { to: '/entwuerfe?art=verordnung', statusCode: 301 } },
     '/weitere-entwuerfe/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
+    // `/suche` war vom 19. bis 22.09.2026 eine eigene Seite. Seit das Feld
+    // auf `/entwuerfe` beide Antworten gibt (§12.31), wäre sie eine zweite
+    // Adresse für dieselbe Frage — genau das, was dort abgeschafft wurde.
+    // Der 301 bleibt trotzdem: Die Seite stand in der sitemap, und ein Link
+    // ist das einzige, was dieses Projekt nicht neu ausstellen kann. `?q=`
+    // reist mit, weil Nitro die Query an das Ziel anhängt — wer einen
+    // geteilten Link öffnet, sieht Treffer und kein leeres Feld.
+    '/suche': { redirect: { to: '/entwuerfe', statusCode: 301 } },
   },
   ui: {
     // Light-only prototype: Nuxt UI's color-mode integration would flip its

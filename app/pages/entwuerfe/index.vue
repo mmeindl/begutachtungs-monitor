@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type {
+  BegutSearchHit,
+  BegutSearchResponse,
   DashboardSecondRound,
   DraftStation,
   DraftStatus,
@@ -12,6 +14,7 @@ import type {
 import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfRis, viewOfVorlage } from '#shared/utils/entryView'
 import { romanToInt } from '#shared/utils/gp'
+import { matchesQuery } from '#shared/utils/searchQuery'
 import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
 
 /**
@@ -384,17 +387,16 @@ function compareByStatements(a: Row, b: Row): number {
  * Station: sie stehen bei der Regierungsvorlage. Art: sie sind keine
  * Verordnungsentwürfe. Ressort: `OpenVorlage` trägt keines, also tritt die
  * Zeile zurück, sobald danach gefiltert wird — dieselbe Regel wie zuvor im
- * Abschnitt. Suche: dieselbe Substring-Regel wie oben.
+ * Abschnitt. Suche: dieselbe Wortregel wie oben (`matchesQuery`).
  */
 const vorlageRows = computed<Row[]>(() => {
   const list = secondRound.value
   if (!list || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
   if (stations.value.length && !stations.value.includes('rv')) return []
   if (selectedGp.value && selectedGp.value !== list.gp) return []
-  const needle = qDebounced.value.toLowerCase()
   return list.items
     .filter((v) => v.consultation.kind !== 'draft')
-    .filter((v) => !needle || `${v.title} ${v.citation}`.toLowerCase().includes(needle))
+    .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value))
     .map((v) => ({ kind: 'vorlage' as const, key: `rv-${v.citation}`, vorlage: v }))
 })
 
@@ -431,6 +433,202 @@ const entries = computed(() =>
         : viewOfVorlage(row.vorlage),
   ),
 )
+
+/* ------------------------------------------------------------------ *
+ * Die zweite Hälfte der Suche: der Volltext (§12.31)
+ * ------------------------------------------------------------------ */
+
+/**
+ * EIN FELD, ZWEI ANTWORTEN — seit 21.09.2026, und die zweite verhindert den
+ * Fehlschluss, den das Feld allein erzeugt.
+ *
+ * Das Feld durchsucht Titel, Zitat, Debattennamen und das Ressortkürzel
+ * (den Ressort-NAMEN seit 21.09.2026 nicht mehr — er trug das ganze
+ * Portfolio und traf unsichtbar, siehe `searchHaystack.ts`). Ein Titel
+ * sagt aber nicht, was ein Sammelgesetz alles ändert: Wer „Klimaschutz"
+ * eingibt und zwei Zeilen bekommt, schließt „mehr ist es nicht" — und sieht
+ * nicht, dass ein dritter, offener Entwurf das Wort in seinem § 6 führt.
+ * Ein falsches Negativ, das der Leser nicht bemerken kann.
+ *
+ * Bis dahin hing dafür ein Link auf `/suche` an dieser Seite, und das war
+ * dieselbe Sache zweimal an zwei Orten — genau das Argument, mit dem am
+ * 17.09. die zwei Listen eine wurden (§12.19). Erst ging der Link, am
+ * 22.09. die Seite: Eine zweite Adresse für dieselbe Frage ist das, was
+ * hier abgeschafft wurde, also durfte sie auch nicht unverlinkt
+ * weiterlaufen. `/suche` 301t seither hierher.
+ *
+ * WAS NICHT VERSCHMILZT, ist die Regel und die Menge:
+ *
+ *  - **Andere Regel.** Die Liste sucht als Teilstring über Metadaten, das
+ *    RIS ganze Wörter mit UND und `*` über die Dokumente. „Klimaschutz"
+ *    trifft den TITEL „Klimaschutzgesetz" und denselben Wortstamm im TEXT
+ *    nur mit Stern. Dieselbe Eingabe, zwei Regeln — also zwei benannte
+ *    Antworten, nie eine gepoolte Liste.
+ *  - **Andere Menge.** Die Liste führt eine ganze Gesetzgebungsperiode,
+ *    offen wie abgeschlossen; der Volltext kennt nur, was HEUTE offen ist
+ *    (7 bis 25 Sätze). Deshalb steht er unter der Liste und heißt
+ *    „außerdem", nicht „auch".
+ *  - **Anderer Preis.** Der Listenfilter kostet nichts und antwortet
+ *    sofort; der Volltext kostet einen RIS-Aufruf (0,2–2,1 s) plus die
+ *    Dokumente für die Fundstelle. Also eigene, längere Verzögerung, eine
+ *    Mindestlänge, clientseitig und lazy — er hält die Liste nie auf.
+ */
+const FULLTEXT_MIN_LEN = 3
+const FULLTEXT_DEBOUNCE_MS = 700
+
+/** Die laufende Periode ist die neueste, die die Filter kennen. */
+const currentGp = computed(() => availableGps.value[0] ?? '')
+
+/**
+ * Kann der Volltext unter diesen Filtern überhaupt etwas sagen?
+ *
+ * Er kennt nur die laufenden Begutachtungen. Unter „Abgeschlossen", in
+ * einer alten Periode und unter einer Station NACH der Begutachtung gibt es
+ * nichts, wonach er suchen könnte — und ein Block laufender Verfahren würde
+ * dort dem Filter widersprechen, den der Leser gesetzt hat. Statt dessen
+ * sagt eine Zeile über der Liste, dass hier nur die Titel durchsucht sind.
+ *
+ * Art und Ressort stehen NICHT in dieser Bedingung: Sie schließen keine
+ * Suche aus, sie schneiden die Treffer (`fullTextHits`).
+ */
+const fullTextApplies = computed(() => {
+  if (statusFilter.value === 'closed') return false
+  if (gp.value && currentGp.value && gp.value !== currentGp.value) return false
+  if (stations.value.length && !stations.value.includes('begutachtung')) return false
+  return true
+})
+
+/**
+ * Der Begriff, der ans RIS geht — mit eigener Verzögerung.
+ *
+ * 700 ms statt der 300 der Liste, und erst ab drei Zeichen: Jeder Wert hier
+ * ist ein Aufruf ans RIS samt bis zu zwölf nachgeladenen Dokumentsätzen.
+ * Die Liste filtert unterdessen weiter bei jedem Tastendruck.
+ */
+const fullTextTerm = ref('')
+let fullTextTimer: ReturnType<typeof setTimeout> | undefined
+
+function scheduleFullText(delay = FULLTEXT_DEBOUNCE_MS): void {
+  clearTimeout(fullTextTimer)
+  const term = q.value.trim()
+  if (!fullTextApplies.value || term.length < FULLTEXT_MIN_LEN) {
+    fullTextTerm.value = ''
+    return
+  }
+  if (term === fullTextTerm.value) return
+  fullTextTimer = setTimeout(() => {
+    fullTextTerm.value = term
+  }, delay)
+}
+
+watch([q, fullTextApplies], () => scheduleFullText())
+/* Ein geteilter Link bringt den Begriff in der URL mit — der hat keine
+ * Tipppause, auf die man warten müsste. */
+onMounted(() => scheduleFullText(0))
+onUnmounted(() => clearTimeout(fullTextTimer))
+
+/**
+ * Clientseitig, lazy und von Hand ausgelöst.
+ *
+ * `watch: false` plus `execute()`: sonst liefe bei jedem geleerten Feld eine
+ * leere Suche ans RIS. `execute()` bricht die laufende Anfrage ab, wer also
+ * weitertippt, wartet nie auf die vorige Antwort.
+ */
+const {
+  data: fullText,
+  status: fullTextStatus,
+  error: fullTextError,
+  execute: runFullText,
+  clear: clearFullText,
+} = await useFetch<BegutSearchResponse>('/api/suche', {
+  query: { q: fullTextTerm },
+  server: false,
+  lazy: true,
+  immediate: false,
+  watch: false,
+})
+
+watch(fullTextTerm, (term) => {
+  if (term) runFullText()
+  else clearFullText()
+})
+
+/** Ob unter der Liste überhaupt eine Volltext-Antwort steht. */
+const fullTextActive = computed(
+  () => fullTextApplies.value && qDebounced.value.length >= FULLTEXT_MIN_LEN,
+)
+/**
+ * Zwischen der Listen-Verzögerung und der eigenen liegen 400 ms, in denen
+ * die Antwort von vorhin noch dasteht. Sie gehört zu einem anderen Wort,
+ * also ist sie hier „wird gesucht", nicht „gefunden".
+ */
+const fullTextPending = computed(
+  () =>
+    fullTextActive.value
+    && (fullTextTerm.value !== qDebounced.value || fullTextStatus.value === 'pending'),
+)
+
+/** Die Treffer, die die aktiven Filter überstehen — Art und Ressort. */
+const fullTextHits = computed<BegutSearchHit[]>(() =>
+  (fullText.value?.hits ?? []).filter((hit) => {
+    if (art.value === 'verordnung' && hit.entry.kind === 'draft') return false
+    if (art.value === 'ministerialentwurf' && hit.entry.kind === 'ris') return false
+    if (ministry.value) {
+      const code
+        = hit.entry.kind === 'draft' ? hit.entry.draft.ministryCode : hit.entry.consultation.ministryCode
+      if ((code ?? '').toUpperCase() !== ministry.value.toUpperCase()) return false
+    }
+    return true
+  }),
+)
+
+const fullTextViews = computed(() =>
+  fullTextHits.value.map((hit) => ({
+    hit,
+    view: hit.entry.kind === 'draft' ? viewOfDraft(hit.entry.draft) : viewOfRis(hit.entry.consultation),
+  })),
+)
+
+/**
+ * Ein Entwurf, zweimal getroffen, steht EINMAL da.
+ *
+ * Wer den Titeltreffer und den Volltexttreffer als zwei Zeilen zeigt, hat
+ * aus einer Auskunft einen Dublettenverdacht gemacht. Also: Was die Liste
+ * schon führt, bekommt den Beleg an seiner Zeile — dort ist er der Zugewinn
+ * („das Wort steht in § 6") —, und nur der Rest wird zur eigenen Liste
+ * darunter. Der Schlüssel kommt aus demselben Adapter wie die Zeile
+ * (`entryView`), damit die beiden Hälften nie auseinanderlaufen.
+ */
+const listedKeys = computed(() => new Set(entries.value.map((e) => e.key)))
+/** Ein Schlüssel, ein Beleg — für beide Listen dieselbe Karte. */
+const hitByKey = computed(() => new Map(fullTextViews.value.map((v) => [v.view.key, v.hit])))
+const fullTextExtra = computed(() => fullTextViews.value.filter((v) => !listedKeys.value.has(v.view.key)))
+const fullTextInList = computed(() => fullTextViews.value.length - fullTextExtra.value.length)
+/**
+ * WAS DIE FILTER WEGGENOMMEN HABEN, und warum das eine eigene Zahl ist.
+ *
+ * Gemessen beim Fahren der Seite am 21.09.2026: Unter „Verordnungsentwürfe"
+ * sagte dieser Block „‚Klimaschutz' kommt in den Dokumenten der 9 laufenden
+ * Begutachtungen nicht vor" — und das Wort kam in dreien vor, der Art-Filter
+ * hatte sie entfernt. Eine Aussage über den Korpus, wo der Leser nur seinen
+ * eigenen Filter gesehen hat: genau die Sorte Satz, die dieses Produkt nie
+ * erfinden darf (§12.13). Also wird beides getrennt gezählt und getrennt
+ * gesagt — samt dem Weg zurück.
+ */
+const fullTextFilteredOut = computed(
+  () => (fullText.value?.hits.length ?? 0) - fullTextHits.value.length,
+)
+
+/**
+ * Wie viele Begutachtungen durchsucht wurden, im Genitiv. „Kommt in DIE 7
+ * Begutachtungen nicht vor" stand einmal da, bis die gerenderte Seite es
+ * zeigte: Ein Werkzeug, das über Gesetzestexte spricht, darf seinen eigenen
+ * Satz nicht falsch beugen.
+ */
+const fullTextCorpus = computed(() => {
+  const n = fullText.value?.corpusSize ?? 0
+  return n === 1 ? 'der einen laufenden Begutachtung' : `der ${n} laufenden Begutachtungen`
+})
 
 /**
  * Each kind counted on its own, never summed.
@@ -562,21 +760,12 @@ const countLabel = computed(() => {
         Alle Begutachtungen einer Gesetzgebungsperiode – in Begutachtung und
         abgeschlossen, Gesetzes- wie Verordnungsentwürfe.
       </p>
-      <!-- DER WEG ZUR SUCHE steht hier, weil die Navigation bei vier
-           Einträgen gedeckelt ist und diese Seite die ist, auf der jemand
-           nach einem Entwurf sucht. Die Suche beantwortet aber eine andere
-           Frage als die Liste darunter — sie kennt nur die laufenden
-           Verfahren und durchsucht deren Dokumente —, und der Satz sagt
-           beides, statt „Suche" als vierte Filterachse erscheinen zu
-           lassen (§12.31). -->
-      <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-        <NuxtLink
-          to="/suche"
-          class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Im Volltext der laufenden Begutachtungen suchen</NuxtLink>
-        – für ein Thema, das im Titel eines Sammelgesetzes nicht vorkommt.
-        Das Feld weiter unten bleibt bei Titel, Ressort und Debattenname.
-      </p>
+      <!-- HIER STAND BIS 21.09.2026 DER WEG ZUR SUCHE — ein Link auf
+           `/suche` samt zwei Sätzen darüber, was dort anders ist als im
+           Feld weiter unten. Er ist weg, weil das Feld weiter unten seither
+           beides tut (§12.31): Ein Hinweis, der erklärt, welche der zwei
+           Suchen dieser Seite man gerade benutzt, ist die Bedienungsanleitung
+           für eine Trennung, die es nicht mehr geben muss. -->
     </header>
 
     <div v-if="status === 'pending' && !data" class="mt-10">
@@ -941,42 +1130,121 @@ const countLabel = computed(() => {
         Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
         stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
       </p>
+      <!-- DIE GRENZE DER SUCHE, an der Stelle, an der sie jemanden betrifft:
+           Unter diesen Filtern ist NUR nach Titel gesucht, weil der Volltext
+           nichts kennt, was nicht gerade läuft. Über der Liste, wie jede
+           andere Aussage darüber, was sie gerade nicht tut. -->
+      <p
+        v-if="qDebounced.length >= FULLTEXT_MIN_LEN && !fullTextApplies"
+        class="mt-3 max-w-prose text-sm text-ink-muted"
+      >
+        Gesucht ist hier nur in Titel, Zitat, Debattennamen und Ressortkürzel. In
+        den Dokumenten selbst wird nur gesucht, solange eine Begutachtung
+        <span class="font-medium text-ink">läuft</span> – unter diesen Filtern
+        also nicht.
+      </p>
       <!-- Zwei Dichten und der Spaltenkopf stecken seit 18.09.2026 in
            `EntryList` — dieselbe Liste rendert jetzt auch die Startseite,
            und der Kopf muss mit den Zellen in `EntryItem` auf das Pixel
            fluchten (§12.28). -->
-      <EntryList v-if="entries.length" :entries="entries" class="mt-3" />
-      <div v-if="!entries.length && !stationConflict" class="mt-3">
-        <!-- DIE LEERE SUCHE IST DIE STELLE, AN DER DIESES FELD IN DIE IRRE
-             FÜHRT. Es durchsucht Titel, Zitat, Ressort und Debattenname
-             (`/api/drafts`, §12.26) — kein Wort aus einem Dokument. Ein
-             Titel sagt aber nicht, was ein Sammelgesetz alles ändert: Wer
-             hier ein Thema eingibt und nichts bekommt, schließt „kommt
-             nicht vor", und genau dieser Fehlschluss ist der Grund, warum
-             es `/suche` gibt (§12.31). Der Begriff wird mitgenommen, damit
-             die Erholung ein Klick ist und kein zweites Tippen.
-
-             Die Beschreibung nennt die vier Felder, statt „Titel" zu
-             sagen: „Klimaschutz" liefert hier neun Zeilen, alle über den
+      <EntryList v-if="entries.length" :entries="entries" class="mt-3">
+        <!-- Nur die Zeilen, die AUCH im Volltext getroffen wurden, tragen
+             einen Beleg: der Zugewinn an einer Zeile, die ohnehin dasteht
+             („das Wort steht in § 6"), statt einer zweiten Zeile für
+             denselben Entwurf. -->
+        <template #evidence="{ entry }">
+          <SearchEvidence :hit="hitByKey.get(entry.key)" />
+        </template>
+      </EntryList>
+      <template v-else-if="!stationConflict">
+        <!-- LEERE LISTE, ABER NICHT LEERE SEITE: Solange der Volltext unten
+             noch antwortet, wäre die große Karte „Keine Entwürfe gefunden"
+             eine Behauptung über eine Antwort, die es noch gar nicht gibt.
+             Dann sagt eine Zeile, was die Titelsuche ergeben hat, und der
+             Block darunter sagt den Rest. -->
+        <p v-if="fullTextActive" class="mt-3 max-w-prose text-ink-secondary">
+          Kein Titel, kein Zitat, kein Debattenname und kein Ressortkürzel
+          trägt „{{ qDebounced }}“.
+        </p>
+        <!-- Die Beschreibung nennt die vier Felder, statt „Titel" zu sagen:
+             „Klimaschutz" liefert hier neun Zeilen, alle über den
              RESSORTNAMEN (BMK), keine über ein Dokument — wer glaubt,
              gesucht werde im Titel, hält das für einen Titeltreffer. -->
-        <EmptyState
-          title="Keine Entwürfe gefunden"
-          :description="
-            qDebounced
-              ? 'Dieses Feld durchsucht Titel, Zitat, Ressort und Debattennamen.'
-              : 'Andere Filter oder einen anderen Suchbegriff versuchen.'
-          "
-        >
-          <p v-if="qDebounced" class="text-sm text-ink-secondary">
-            <NuxtLink
-              :to="{ path: '/suche', query: { q: qDebounced } }"
-              class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-            >„{{ qDebounced }}“ im Volltext der laufenden Begutachtungen suchen</NuxtLink>
-            – dort werden Entwurfstext und Erläuterungen gelesen.
+        <div v-else class="mt-3">
+          <EmptyState
+            title="Keine Entwürfe gefunden"
+            :description="
+              qDebounced
+                ? 'Dieses Feld durchsucht Titel, Zitat, Debattennamen und Ressortkürzel. Nach dem Ressort filtert die Auswahl daneben.'
+                : 'Andere Filter oder einen anderen Suchbegriff versuchen.'
+            "
+          />
+        </div>
+      </template>
+
+      <!-- DIE ZWEITE ANTWORT DESSELBEN FELDES (§12.31). Eigener Abschnitt
+           mit eigener Überschrift, nie in die Liste gemischt: Sie sucht in
+           einer ganzen Gesetzgebungsperiode nach Titeln, dieser Block in den
+           Dokumenten dessen, was heute offen ist. -->
+      <section v-if="fullTextActive" class="mt-8">
+        <h2 class="text-lg font-semibold text-ink">
+          Außerdem im Volltext der laufenden Begutachtungen
+        </h2>
+        <!-- Der Stern steht hier und nicht am Feld: Er gilt für DIESE
+             Hälfte — das RIS sucht ganze Wörter, die Liste oben sucht als
+             Teilstring. Ein Bedienhinweis gehört zu dem, was er ändert. -->
+        <p class="mt-1 max-w-prose text-sm text-ink-muted">
+          Alle Dokumente eines Entwurfs – Text, Erläuterungen,
+          Gegenüberstellung, Anhänge. Gesucht werden ganze Wörter,
+          <code>Klima*</code> findet auch zusammengesetzte.
+        </p>
+
+        <LoadingState v-if="fullTextPending" label="Im Volltext wird gesucht …" />
+        <!-- EIN FEHLER IST KEINE ANTWORT (§12.13): „kommt nicht vor" wäre
+             hier die teuerste Lüge des Produkts. -->
+        <p v-else-if="fullTextError" class="mt-3 max-w-prose text-sm text-ink-secondary">
+          Im Volltext konnte gerade nicht gesucht werden – das RIS hat nicht
+          geantwortet. Die Liste oben ist davon nicht betroffen.
+        </p>
+        <template v-else-if="fullText">
+          <EntryList v-if="fullTextExtra.length" :entries="fullTextExtra.map((v) => v.view)" class="mt-3">
+            <template #evidence="{ entry }">
+              <SearchEvidence :hit="hitByKey.get(entry.key)" />
+            </template>
+          </EntryList>
+          <p v-else-if="fullTextInList" class="mt-3 max-w-prose text-sm text-ink-secondary">
+            Alle Volltext-Treffer stehen schon in der Liste oben – jeder mit
+            seiner Fundstelle.
           </p>
-        </EmptyState>
-      </div>
+          <!-- ZWEI DINGE AUF EINMAL: Die leere Antwort nennt die
+               Korpusgröße — „nichts gefunden" heißt etwas anderes bei 9
+               offenen Verfahren als bei 700 —, und „kommt nicht vor" ist
+               eine Aussage über den Korpus, steht also nur da, wenn das RIS
+               wirklich nichts hatte. Was die Filter weggenommen haben, sagt
+               die Zeile darunter. -->
+          <p
+            v-else-if="!fullTextFilteredOut"
+            class="mt-3 max-w-prose text-sm text-ink-secondary"
+          >
+            „{{ qDebounced }}“ kommt in den Dokumenten {{ fullTextCorpus }}
+            nicht vor. Das Archiv bis 2004 durchsucht das
+            <ExternalLink href="https://www.ris.bka.gv.at/Begut/">RIS selbst</ExternalLink>.
+          </p>
+          <p v-if="fullTextFilteredOut" class="mt-3 max-w-prose text-sm text-ink-secondary">
+            <span class="font-medium text-ink">Ausgeblendet:</span>
+            {{ countLabelDe(fullTextFilteredOut, 'laufende Begutachtung', 'laufende Begutachtungen') }},
+            die „{{ qDebounced }}“ im Volltext
+            {{ fullTextFilteredOut === 1 ? 'führt' : 'führen' }} – Art oder Ressort
+            schließen sie aus.
+            <button
+              type="button"
+              class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+              @click="art = ''; ministry = ''"
+            >Alle Arten und Ressorts</button>
+            zeigen sie.
+          </p>
+        </template>
+      </section>
 
     </template>
   </div>

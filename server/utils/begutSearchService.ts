@@ -46,9 +46,19 @@ import type {
   BegutSearchResponse,
   RisConsultation,
   RisConsultationDetail,
+  RisDocumentFormats,
 } from '#shared/types'
-import { parseSearchQuery, locateInBlocks, searchQueryString, type SearchTerm } from './begutSearch'
-import { parseRisXml } from './lawText'
+import {
+  blocksFromPlainText,
+  locateInBlocks,
+  parseSearchQuery,
+  searchQueryString,
+  withoutMinistryMentions,
+  type SearchTerm,
+} from './begutSearch'
+import { DERIVED_CACHE } from './cacheBase'
+import { parseRisXml, type TextBlock } from './lawText'
+import { ministryTokens, type MinistryToken } from './searchHaystack'
 import { getDraftsForGp, getCurrentGp, reconcileActive } from './parliament'
 import { getRisBegutCorpus, getRisMapForGp, RIS_API_BASE } from './ris'
 import { getRisConsultation } from './risOnly'
@@ -71,6 +81,26 @@ const DOCUMENT_TTL_S = 60 * 60 * 24 * 30
 const LOCATE_CAP = 12
 /** Gleichzeitige Dokumentabrufe. Höflich gegenüber dem RIS, schnell genug. */
 const LOCATE_CONCURRENCY = 4
+/**
+ * So viele PDFs darf EINE Suche nachladen.
+ *
+ * Das PDF ist der zweite Anlauf, nicht der erste (siehe `locate`): Es wird
+ * nur geholt, wo das XML nichts hergibt. Das ist selten genug, um es zu
+ * tun, und teuer genug, um es zu deckeln — pdf.js hält ein Dokument samt
+ * dekodierten Strömen im Speicher, und an einer Suche wartet jemand.
+ *
+ * 16 WAREN ZU WENIG, gemessen am 22.09.2026: Seit die Suche ALLE Dokumente
+ * eines Satzes liest (`documentsOf`), fiel die Benennungsquote über zwölf
+ * Stichwörter auf 91,4 % — nicht weil etwas fehlte, sondern weil das Budget
+ * mitten in der Trefferliste ausging. Ohne Deckel sind es 100 % bei
+ * unveränderten 0,2–2,1 s, also ist die Zahl hier kein Zeitbudget, sondern
+ * eine Reißleine gegen den pathologischen Satz: 48 deckt zwölf Treffer mit
+ * je vier PDFs, und die zwölf gemessenen Suchen brauchten nie mehr als
+ * rund zwanzig.
+ */
+const PDF_BUDGET = 48
+/** Wie bei den Beilagen: ein Dokument, das größer ist, lesen wir nicht. */
+const PDF_MAX_BYTES = 16 * 1024 * 1024
 
 /**
  * Die Dokumente eines Satzes in der Reihenfolge, in der sie als Fundstelle
@@ -85,12 +115,102 @@ const LOCATE_CONCURRENCY = 4
 /** Die Dokumentfelder eines Satzes — genau die, die `RisConsultationDetail` führt. */
 type DocumentKey = 'mainDocument' | 'explanations' | 'textComparison' | 'coverLetter'
 
+/** Ein Dokument, wie diese Suche es sieht: ein Etikett und ein paar URLs. */
+interface SearchDocument {
+  label: string
+  formats: RisDocumentFormats | null
+}
+
 const DOCUMENT_ORDER: readonly { key: DocumentKey; label: string }[] = [
   { key: 'mainDocument', label: 'im Entwurfstext' },
   { key: 'explanations', label: 'in den Erläuterungen' },
   { key: 'textComparison', label: 'in der Textgegenüberstellung' },
   { key: 'coverLetter', label: 'im Begleitschreiben' },
 ]
+
+/**
+ * Alle Dokumente eines Satzes, in der Rangfolge der Aussage.
+ *
+ * DIE VIER BENANNTEN ZUERST, weil ihr Etikett etwas bedeutet: „im
+ * Entwurfstext" heißt, dass dort steht, was gelten soll; „in den
+ * Erläuterungen" heißt, dass das Ressort das Thema erwähnt. Danach der
+ * Rest, den der Satz führt — und zwar seit 22.09.2026 überhaupt erst.
+ *
+ * WAS VORHER FEHLTE, ist gemessen: Die 8 laufenden Sätze führen 41
+ * Textdokumente, die vier Felder greifen 25. Ein Treffer, der nur im WFA
+ * oder im Digicheck steht, endete deshalb bei „wir konnten nichts
+ * benennen" — geprüft an allen drei unbenannten „datenschutz"-Treffern,
+ * die genau dort standen.
+ *
+ * DER NAME DES RESSORTS IST DAS ETIKETT („in „WFA UVP-G-Novelle 2026""),
+ * weil wir ihn nicht besser deuten können als das Ressort ihn gewählt hat.
+ * Das ist zugleich die billige Hälfte einer anderen Lücke: `SAG_TGÜ` und
+ * `Entwurf EB Klimagesetz` sind eine Gegenüberstellung und Erläuterungen,
+ * die unsere Namensregeln nicht erkennen (`risRecord.ts`). Die Suche liest
+ * sie jetzt — als „weiteres Dokument", ohne die Regeln anzufassen, an denen
+ * die Anlagen-Maschine und der Erläuterungen-Abschnitt hängen.
+ */
+function documentsOf(detail: Pick<RisConsultationDetail, DocumentKey | 'otherDocuments'>): SearchDocument[] {
+  return [
+    ...DOCUMENT_ORDER.map(({ key, label }) => ({ label, formats: detail[key] })),
+    ...detail.otherDocuments.map((d) => ({ label: `in „${d.name}“`, formats: d.formats })),
+  ]
+}
+
+/**
+ * Die Bytes eines Begut-PDFs, base64 — wie die Beilage nebenan
+ * (`annexPdfService.ts`), und aus denselben Gründen: Ein gecachter Wert wird
+ * als JSON serialisiert, und ein `Uint8Array` überlebt das als Objekt mit den
+ * Schlüsseln „0", „1", „2".
+ *
+ * NUR IM DEV persistent. Ein PDF ist die teure und die große Hälfte; in der
+ * Produktion liegt der Cache im RAM, und dort gehört der ausgelesene TEXT hin
+ * (die Funktion darunter), nicht das Dokument, aus dem er stammt.
+ */
+const fetchBegutPdf = defineCachedFunction(
+  async (url: string): Promise<string> => {
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
+    if (!res.ok) throw new Error(`HTTP ${res.status} für ${url}`)
+    const declared = Number(res.headers.get('content-length') ?? 0)
+    if (declared > PDF_MAX_BYTES) throw new Error(`PDF zu groß: ${url}`)
+    const buf = await res.arrayBuffer()
+    if (buf.byteLength > PDF_MAX_BYTES) throw new Error(`PDF zu groß: ${url}`)
+    return Buffer.from(buf).toString('base64')
+  },
+  {
+    name: 'begut-dokument-pdf',
+    getKey: (url: string) => url,
+    maxAge: DOCUMENT_TTL_S,
+    swr: false,
+    shouldBypassCache: () => !import.meta.dev,
+  },
+)
+
+/**
+ * Derselbe PDF als reiner Text — abgeleitet, also in der anderen Schicht
+ * (`cacheBase.ts`).
+ *
+ * Getrennt vom Abruf, weil eine Funktion, die holt UND auswertet, in keine
+ * der beiden Schichten gehört: Jede Invalidierung, die den Parser trifft,
+ * würde das Dokument mitwerfen. Und gecacht wird das Ergebnis, weil `locate`
+ * bis zu viermal über dasselbe Dokument geht — pdf.js soll dabei einmal
+ * arbeiten, nicht viermal.
+ */
+const begutPdfText = defineCachedFunction(
+  async (url: string): Promise<string> => {
+    const bytes = new Uint8Array(Buffer.from(await fetchBegutPdf(url), 'base64'))
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    const { text } = await extractText(await getDocumentProxy(bytes), { mergePages: true })
+    return typeof text === 'string' ? text : (text as string[]).join('\n')
+  },
+  {
+    name: 'begut-dokument-pdf-text',
+    base: DERIVED_CACHE,
+    getKey: (url: string) => url,
+    maxAge: DOCUMENT_TTL_S,
+    swr: false,
+  },
+)
 
 /** Ein Begut-Dokument als XML, wie das RIS es sendet — gelesen wird es frisch. */
 const fetchBegutDocument = defineCachedFunction(
@@ -146,41 +266,101 @@ async function runningCount(day: string): Promise<number> {
   return corpus.records.filter((r) => isOpenOn(r, day)).length
 }
 
+/** Was eine Suche an PDF-Abrufen noch übrig hat. */
+interface PdfBudget { left: number }
+
+/** Ein Dokument als Blöcke, im gefragten Format. Null, wenn es das nicht gibt. */
+async function blocksOf(
+  doc: RisDocumentFormats | null,
+  format: 'xml' | 'pdf',
+  budget: PdfBudget,
+): Promise<TextBlock[] | null> {
+  const url = doc?.[format]
+  if (!url) return null
+  try {
+    if (format === 'xml') return parseRisXml(await fetchBegutDocument(url))
+    if (budget.left <= 0) return null
+    budget.left--
+    return blocksFromPlainText(await begutPdfText(url))
+  } catch {
+    // Ein Dokument, das sich nicht laden lässt, macht den Treffer nicht
+    // falsch — das RIS hat das Wort gefunden. Weiter zum nächsten.
+    return null
+  }
+}
+
 /**
- * Die Fundstelle in einem Satz: das erste Dokument der Rangfolge, das die
- * Wörter zeigt.
+ * Ein Durchgang über alle Dokumente eines Satzes, in einem Format.
  *
- * ZWEI DURCHGÄNGE ÜBER ALLE DOKUMENTE, nicht zwei Regeln je Dokument. Der
- * zweite ist die Teilstringsuche, und liefe sie innerhalb eines Dokuments
+ * ZWEIMAL ÜBER ALLE DOKUMENTE, nicht zwei Regeln je Dokument. Der zweite
+ * Durchgang ist die Teilstringsuche, und liefe sie innerhalb eines Dokuments
  * gleich nach der strengen, dann gewänne ein Entwurfstext, in dem nur
  * „Klimaschutzgesetz" steht, gegen die Erläuterungen, in denen „Klimaschutz"
  * wirklich steht — die Rangfolge der Dokumente würde die Genauigkeit der
  * Regel schlagen. So gewinnt erst die Regel, dann die Rangfolge.
  *
- * Die Dokumente werden dabei höchstens einmal geladen: der zweite Durchgang
- * liest, was der erste in den Cache gelegt hat.
+ * `tokens` null heißt: mit den Ressortnennungen suchen. Das ist der letzte
+ * Durchgang und er beantwortet eine andere Frage — nicht „wovon handelt der
+ * Entwurf", sondern „warum hat das RIS ihn überhaupt geliefert".
  */
-async function locate(
-  documents: Pick<RisConsultationDetail, DocumentKey>,
+async function scan(
+  documents: readonly SearchDocument[],
   terms: readonly SearchTerm[],
-): Promise<Pick<BegutSearchHit, 'place' | 'designation' | 'snippet'>> {
+  format: 'xml' | 'pdf',
+  tokens: readonly MinistryToken[] | null,
+  budget: PdfBudget,
+): Promise<Pick<BegutSearchHit, 'place' | 'designation' | 'snippet'> | null> {
   for (const loose of [false, true]) {
-    for (const { key, label } of DOCUMENT_ORDER) {
-      const url = documents[key]?.xml
-      if (!url) continue
-      let blocks
-      try {
-        blocks = parseRisXml(await fetchBegutDocument(url))
-      } catch {
-        // Ein Dokument, das sich nicht laden lässt, macht den Treffer nicht
-        // falsch — das RIS hat das Wort gefunden. Weiter zum nächsten.
-        continue
-      }
+    for (const { label, formats } of documents) {
+      const raw = await blocksOf(formats, format, budget)
+      if (!raw) continue
+      const blocks = tokens ? withoutMinistryMentions(raw, tokens) : raw
       const hit = locateInBlocks(blocks, terms, loose)
       if (hit) return { place: label, designation: hit.designation, snippet: hit.snippet }
     }
   }
-  return { place: null, designation: null, snippet: null }
+  return null
+}
+
+/**
+ * Die Fundstelle in einem Satz — in drei Stufen, und die dritte ist die
+ * interessanteste.
+ *
+ *  1. **XML ohne Ressortnennungen.** Der Normalfall, und billig.
+ *  2. **PDF ohne Ressortnennungen.** Weil das XML lügt, wo es kürzt: Das
+ *     Begleitschreiben des DGAV-Entwurfs hat im XML 943 Zeichen und im PDF
+ *     12.223 — der Verteiler, auf den das RIS getroffen hatte, stand nur
+ *     dort. Vorher endete so ein Treffer bei „wir konnten nichts benennen".
+ *  3. **Noch einmal, MIT den Ressortnennungen.** Findet dieser Durchgang
+ *     etwas, das die ersten beiden nicht fanden, dann steht das Wort
+ *     ausschließlich in einem Ministeriumsnamen — im Verteiler, in der
+ *     Unterschriftszeile. Das ist kein Sachtreffer, und die Zeile sagt es
+ *     (`ministryOnly`), statt ihn zu verschweigen: Das RIS hat den Satz
+ *     geliefert, das Urteil gehört dem Leser. Gemessen am 21.09.2026: 3 von
+ *     7 Treffern zu „klima" sind von dieser Art.
+ */
+async function locate(
+  detail: Pick<RisConsultationDetail, DocumentKey | 'otherDocuments'>,
+  terms: readonly SearchTerm[],
+  tokens: readonly MinistryToken[],
+  budget: PdfBudget,
+): Promise<Pick<BegutSearchHit, 'place' | 'designation' | 'snippet' | 'ministryOnly'>> {
+  const documents = documentsOf(detail)
+  for (const format of ['xml', 'pdf'] as const) {
+    const found = await scan(documents, terms, format, tokens, budget)
+    if (found) return { ...found, ministryOnly: false }
+  }
+  for (const format of ['xml', 'pdf'] as const) {
+    const found = await scan(documents, terms, format, null, budget)
+    if (found) return { ...found, ministryOnly: true }
+  }
+  return { place: null, designation: null, snippet: null, ministryOnly: false }
+}
+
+/** Das Ressortvokabular des Korpus — historische Namen eingeschlossen. */
+async function ministryVocabulary(): Promise<MinistryToken[]> {
+  const corpus = await getRisBegutCorpus()
+  return ministryTokens(corpus.records.map((r) => r.stelle ?? ''))
 }
 
 /** Die Felder, die eine Zeile braucht — der Detailsatz trägt mehr, als über die Leitung muss. */
@@ -216,7 +396,13 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
     return { query: raw.trim(), terms: [], corpusSize: await runningCount(day), total: 0, hits: [], located: 0 }
   }
 
-  const [ids, corpusSize, gp] = await Promise.all([searchRisIds(terms, day), runningCount(day), getCurrentGp()])
+  const [ids, corpusSize, gp, tokens] = await Promise.all([
+    searchRisIds(terms, day),
+    runningCount(day),
+    getCurrentGp(),
+    ministryVocabulary(),
+  ])
+  const budget: PdfBudget = { left: PDF_BUDGET }
 
   // Der Join der laufenden Periode: jeder heute offene Satz ist in ihr
   // begonnen worden, also reicht genau eine Karte. Fällt sie aus, bleibt die
@@ -240,8 +426,8 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
         if (!detail) return null
         const evidence =
           hits.length + batch.length <= LOCATE_CAP
-            ? await locate(detail, terms)
-            : { place: null, designation: null, snippet: null }
+            ? await locate(detail, terms, tokens, budget)
+            : { place: null, designation: null, snippet: null, ministryOnly: false }
         const inr = inrOf.get(id)
         const draft = inr !== undefined ? drafts?.items.find((d) => d.inr === inr) : undefined
         const hit: BegutSearchHit = {
@@ -260,10 +446,26 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
     }
   }
 
-  // Belegte Treffer zuerst, die Reihenfolge des RIS innerhalb der beiden
-  // Hälften erhalten: Wo wir den Satz zeigen können, ist der Treffer geprüft;
-  // wo nicht, kann er auch eine Wortbestandteil-Fundstelle des RIS sein.
-  const ranked = [...hits.filter((h) => h.place), ...hits.filter((h) => !h.place)]
+  /*
+   * Drei Klassen, und die Reihenfolge ist ein Werturteil über die AUSKUNFT,
+   * nicht über den Entwurf:
+   *
+   *  1. **Belegt.** Wir zeigen den Satz, in dem das Wort steht.
+   *  2. **Unbelegt.** Wir haben es in keinem lesbaren Dokument gefunden —
+   *     offen, ob es in einer Anlage steht oder ob das RIS über
+   *     Wortbestandteile getroffen hat. Offen ist mehr wert als
+   *     ausgeschlossen, deshalb vor der dritten Klasse.
+   *  3. **Nur in der Ressortnennung.** Der einzige Fund steht im Verteiler
+   *     oder in einer Unterschriftszeile. Geprüft und entkräftet — also
+   *     zuletzt, aber sichtbar: Wegwerfen hieße, dem Leser das Urteil
+   *     abzunehmen, und bei der UVP-G-Novelle wäre es das falsche gewesen
+   *     (dort IST der Ressortname der Gegenstand).
+   */
+  const ranked = [
+    ...hits.filter((h) => h.place && !h.ministryOnly),
+    ...hits.filter((h) => !h.place),
+    ...hits.filter((h) => h.place && h.ministryOnly),
+  ]
   return {
     // Die Eingabe des Lesers zurück, nicht unsere normalisierte Fassung:
     // „3 von 7 führen ‚strom'" las sich wie ein Tippfehler des Werkzeugs.

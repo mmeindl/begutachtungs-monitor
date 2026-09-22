@@ -311,10 +311,6 @@ export function buildSitemap(
     // `/weitere-entwuerfe` 301s into it and a sitemap must not advertise a
     // redirect.
     `${siteUrl}/entwuerfe`,
-    // Die leere Suchseite, nicht ihre Trefferseiten: die tragen `noindex`,
-    // weil sie beliebig viele Adressen mit täglich wechselndem Inhalt sind
-    // (§12.31).
-    `${siteUrl}/suche`,
     `${siteUrl}/so-funktionierts`,
     `${siteUrl}/ueber`,
     `${siteUrl}/impressum`,

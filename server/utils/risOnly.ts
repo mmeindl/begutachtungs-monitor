@@ -160,5 +160,10 @@ export async function getRisConsultation(id: string): Promise<RisConsultationDet
     explanations: hasDocument(r.explanations) ? r.explanations : null,
     textComparison: hasDocument(r.textComparison) ? r.textComparison : null,
     coverLetter: hasDocument(r.coverLetter) ? r.coverLetter : null,
+    // Der Rest, den der Satz führt — WFA, Vorblatt, Digicheck, Anhänge.
+    // Gelesen wird er nur von der Volltextsuche (§12.31); die
+    // Entwurfsseite zeigt weiter die vier benannten, weil sie über die
+    // etwas sagen kann.
+    otherDocuments: r.otherDocuments.map((d) => ({ name: d.name, formats: d.urls })),
   }
 }

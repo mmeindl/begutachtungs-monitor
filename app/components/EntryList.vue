@@ -21,6 +21,12 @@ import type { EntryView } from '#shared/utils/entryView'
  * eine Abschnittsgrenze hinweg im Blindflug. Ein Kopf je Abschnitt kostet
  * 29 px und macht aus vier Listen eine Anatomie.
  *
+ * DER SLOT `evidence` ist die eine Ausnahme von „eine Zeile sagt über den
+ * Entwurf, was es über ihn gibt": Er trägt den Grund, warum die Zeile
+ * DASTEHT — die Fundstelle eines Volltext-Treffers (§12.31). Er wird an
+ * beide Dichten durchgereicht und pro Eintrag ausgewertet, weil in einer
+ * gemischten Liste nur ein Teil der Zeilen einen Beleg hat.
+ *
  * Der Titel steht in beiden Dichten ganz da und bricht um, so oft er muss —
  * die dichte Zeile kürzte bis zum selben Tag auf eine Zeile. Die Zeilenhöhe
  * schwankt dadurch; die Messung und die Abwägung stehen in `EntryItem`,
@@ -51,7 +57,11 @@ defineProps<{
          es für sie sagen könnte. -->
     <component :is="ordered ? 'ol' : 'ul'" class="space-y-3 md:hidden">
       <li v-for="entry in entries" :key="entry.key">
-        <EntryItem :entry="entry" density="card" />
+        <EntryItem :entry="entry" density="card">
+          <template v-if="$slots.evidence" #evidence>
+            <slot name="evidence" :entry="entry" />
+          </template>
+        </EntryItem>
       </li>
     </component>
 
@@ -72,7 +82,11 @@ defineProps<{
       </div>
       <component :is="ordered ? 'ol' : 'ul'" class="divide-y divide-hairline">
         <li v-for="entry in entries" :key="entry.key">
-          <EntryItem :entry="entry" density="row" />
+          <EntryItem :entry="entry" density="row">
+            <template v-if="$slots.evidence" #evidence>
+              <slot name="evidence" :entry="entry" />
+            </template>
+          </EntryItem>
         </li>
       </component>
     </div>

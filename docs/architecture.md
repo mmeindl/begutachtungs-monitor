@@ -5746,7 +5746,8 @@ gegen die Erläuterungen, in denen „Klimaschutz" wirklich steht — die
 Rangfolge der Dokumente schlüge die Genauigkeit der Regel. So gewinnt erst
 die Regel, dann die Rangfolge.
 
-**Die Annahme, die die Messung widerlegt hat.** 72,2 % der Treffer (79 aus
+**Die Annahme, die die Messung widerlegt hat** (Stand 18.09.2026; was seither
+dazukam, steht zwei Absätze weiter). 72,2 % der Treffer (79 aus
 fünf Stichworten) lassen sich in Entwurfstext oder Erläuterungen benennen.
 Für den Rest lautete der erste Entwurf der Zeile „steht in einer Anlage oder
 einem gescannten PDF" — und das war geraten. Beim Industriestrompreisgesetz
@@ -5755,6 +5756,50 @@ steht „Klimaschutz" in KEINEM seiner Dokumente; die Erläuterungen schreiben
 RIS trifft über die Wortbestandteile. Die Zeile sagt jetzt, was geprüft wurde
 („wörtlich nicht im Entwurfstext und nicht in den Erläuterungen"), und solche
 Treffer stehen unten: ein belegter Treffer ist der stärkere.
+
+**Drei Stufen statt einer, seit 21.09.2026 — und die dritte erklärt die
+Treffer, die keine sind.** Ein Leser fragte, warum „klima" eine *Änderung der
+Druckgeräteaufstellungsverordnung* liefert. Die Antwort stand im
+Begleitschreiben, im **Verteiler**: „… 14. Bundesministerium für Land- und
+Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft 15.
+…". Jedes Begleitschreiben listet alle Ministerien als Empfänger, jedes
+Dokument trägt die Unterschriftszeile seines Hauses — also trifft jedes
+Portfolio-Wort jeden Entwurf. Dieselbe Falle wie bei den Metadaten, eine
+Ebene tiefer und diesmal im Index des RIS, an den wir nicht herankommen.
+
+Benennen konnten wir sie zunächst nicht, und zwar aus einem Grund, den dieses
+Projekt schon einmal gelernt hat: **Das XML des Begleitschreibens hat 943
+Zeichen, das PDF desselben Dokuments 12.223.** Der Verteiler steht nur dort.
+Wie bei den Beilagen (§12.9) war der Text nie weg — gelesen wurde das Format,
+das ihn weggeworfen hat. `locate` geht deshalb jetzt:
+
+1. **XML, ohne die Ressortnennungen.** Der Normalfall.
+2. **PDF, ohne die Ressortnennungen.** Nur wo Stufe 1 nichts fand; gedeckelt
+   auf 16 Dokumente je Suche, Bytes und ausgelesener Text in getrennten
+   Cache-Schichten (`cacheBase.ts`).
+3. **Noch einmal, MIT den Ressortnennungen.** Findet erst dieser Durchgang
+   etwas, steht das Wort ausschließlich in einem Ministeriumsnamen. Die Zeile
+   sagt das dann — „Nur im Ressortnamen, im Begleitschreiben:" samt dem
+   Ausschnitt, in dem der Verteiler zu sehen ist — und sortiert ans Ende.
+
+**Gelöscht wird so ein Treffer nicht**, und das ist die eigentliche
+Entscheidung: Das RIS hat den Satz geliefert, das Urteil gehört dem Leser.
+Bei der UVP-G-Novelle wäre Wegwerfen auch schlicht falsch — sie ersetzt in
+dutzenden §§ die Wortfolge „für Klimaschutz, Umwelt, Energie …" durch die
+neue, dort IST der Ressortname der Gegenstand. Deshalb fällt in Stufe 1 und 2
+auch nur die Nennung MIT Ministeranrede („des Bundesministers für …"), nie
+das Portfolio für sich.
+
+**Was das Streichen nebenbei verbessert hat:** die Fundstelle selbst. Das
+Klimagesetz führt das Wort 164-mal, als Beleg stand vorher die
+Ministerienaufzählung in § 5; jetzt steht dort „… je einem hochrangigen, für
+**Klima** zuständigen Verwaltungsorgan eines jeden Bundeslandes".
+
+**Gemessen am 21.09.2026 über zwölf Stichwörter, 65 Treffer:** **93,8 %
+benannt** (61) gegen 72,2 % vor dem PDF-Rückfall, und **6,2 %** (4) sind
+reine Ressortnennungen. Antwortzeit 0,3–0,9 s warm, 2,2 s kalt mit
+PDF-Abrufen. Ein Treffer, den der Verteiler erklärt, ist damit nicht mehr
+stumm, sondern beschriftet.
 
 **Der Treffer führt auf unsere Seite, nicht auf die des RIS.** Die Antwort
 ist eine Dokumentnummer; welche Seite sie meint, weiß der Korpus samt Join
@@ -5771,6 +5816,145 @@ Gesetzgebungsperioden, und der Join oben kennt jeweils nur eine. Die leere
 Antwort nennt deshalb die Korpusgröße — „‚Klimaschutz' kommt in den 7
 laufenden Begutachtungen nicht vor" ist eine Auskunft, „keine Treffer" ist
 keine — und verweist fürs Archiv ans RIS.
+
+**Ein Feld, zwei Antworten — seit 21.09.2026.** Das Suchfeld auf
+`/entwuerfe` durchsucht Titel, Zitat, Debattennamen und Ressortkürzel; der
+Volltext lag daneben, auf einer eigenen Seite, erreichbar über einen Link im
+Kopf der Liste. Das war dieselbe Frage an zwei Orten — das Argument, mit dem am 17.09.
+die zwei Entwurfslisten eine wurden (§12.19) —, und der Preis war ein
+falsches Negativ, das der Leser nicht bemerken kann: Wer „Klimaschutz"
+eintippt, bekommt neun Zeilen über den Ressortnamen BMK und sieht nicht, dass
+drei laufende Entwürfe das Wort in ihrem Text führen, zwei davon im
+Entwurfstext selbst. Seither antwortet dasselbe Feld unter der Liste ein
+zweites Mal, und der Link ist weg.
+
+**Verschmolzen ist der Einstieg, nicht die Suche.** Drei Unterschiede
+bleiben, und sie sind der Grund, warum die zweite Antwort ein eigener,
+benannter Abschnitt ist und nie eine gepoolte Liste:
+
+| | Liste | Volltext |
+|---|---|---|
+| Regel | Teilstring über Metadaten | ganze Wörter, UND, `*` |
+| Menge | eine ganze Gesetzgebungsperiode, offen wie abgeschlossen | was heute offen ist |
+| Preis | nichts, synchron | ein RIS-Aufruf (0,2–2,1 s) plus die Dokumente der Fundstelle |
+
+Daraus folgt der Rest der Mechanik: eigene, längere Verzögerung (700 ms statt
+300) und eine Mindestlänge von drei Zeichen, weil jeder Wert ein Aufruf ist;
+clientseitig und lazy, damit die Liste nie darauf wartet; ein Ausfall wird
+gesagt, nicht verschwiegen (§12.13). **Ein Entwurf, zweimal getroffen, steht
+einmal da:** Was die Liste schon führt, bekommt den Beleg an seiner Zeile
+(`EntryList`-Slot `evidence`), nur der Rest wird zur eigenen Liste darunter —
+der Schlüssel dafür kommt aus demselben Adapter wie die Zeile (§12.28), damit
+die Hälften nicht auseinanderlaufen.
+
+**Der Block erscheint nur, wo er etwas sagen kann.** Unter „Abgeschlossen",
+in einer alten Periode und unter einer Station nach der Begutachtung gibt es
+nichts Laufendes zu durchsuchen; dort steht statt seiner eine Zeile ÜBER der
+Liste, die sagt, dass hier nur die Titel durchsucht sind — dieselbe Regel wie
+für jede andere Aussage darüber, was die Liste gerade nicht tut. Art und
+Ressort dagegen schließen keine Suche aus, sie schneiden die Treffer.
+
+**Und ein Satz, den erst das Fahren der Seite widerlegt hat.** Unter
+„Verordnungsentwürfe" meldete der Block „‚Klimaschutz' kommt in den
+Dokumenten der 9 laufenden Begutachtungen nicht vor" — das Wort kam in dreien
+vor, der Art-Filter hatte sie entfernt. Eine Aussage über den Korpus, wo der
+Leser nur seinen eigenen Filter gesehen hatte. Gezählt wird seither getrennt:
+„kommt nicht vor" steht nur, wenn das RIS wirklich nichts hatte, und was die
+Filter weggenommen haben, sagt eine eigene Zeile samt Weg zurück.
+
+**Und was dieselbe Suche dabei über sich selbst preisgegeben hat: der
+Ressortname gehört nicht in ein Freitextfeld.** Die zusammengelegte Suche
+machte sichtbar, was vorher als „viele Treffer" durchging — „klima" führte 36
+Zeilen, und in genau 2 davon stand das Wort in dem Text, den die Zeile zeigt.
+Zwei unsichtbare Felder trafen: der **Ressortname** (BMLUK ist
+„Bundesministerium für Land- und Forstwirtschaft, Klima- und Umweltschutz,
+Regionen und Wasserwirtschaft") und der **amtliche Langtitel**, der bei jeder
+Verordnung mit „Verordnung des Bundesministers für <dasselbe Portfolio>, mit
+der …" beginnt. Ein Portfolio-Wort zog damit den gesamten Output eines
+Hauses.
+
+**Die Regel, die daraus folgt, ist eine Regel über Sichtbarkeit: gesucht
+wird, was die Zeile zeigt.** Der Ressortname steht nirgends auf der Seite —
+er fliegt aus dem Heuhaufen; das **Kürzel** steht in der Zeile und bleibt
+(„BMJ" findet weiter 25 Zeilen des Hauses, und für das Ressort als Menge gibt
+es die eigene Filterachse). Der **Kurztitel** bleibt unangetastet, auch wenn
+er dieselbe Klausel trägt („Verordnung der Bundesministerin für
+Landesverteidigung über den Krankentransport") — der Leser sieht das Wort,
+also muss er danach suchen können. Aus dem **Langtitel**, den niemand sieht,
+fällt die Ministerklausel (`server/utils/searchHaystack.ts`); der Rest des
+Langtitels bleibt, weil bei einer Verordnung der Gegenstand dort und sonst
+nirgends steht. Gemessen am 21.09.2026 über dieselben 338 Zeilen der GP
+XXVIII:
+
+| Suchwort | vorher | jetzt |
+|---|---:|---:|
+| klima | 36 | 2 |
+| umwelt | 36 | 3 |
+| gesundheit | 59 | 16 |
+| wasser | 32 | 10 |
+| justiz | 27 | 3 |
+| sport | 12 | 2 |
+
+**Gestrichen wird eng, und zweimal nachgeschärft.** Nur die Klausel „des
+Bundesministers für <Portfolio>" fällt, nie das Portfolio für sich: „Finanzen",
+„Justiz" und „Inneres" sind auch gewöhnliche Sachwörter, eine Verordnung ÜBER
+die Finanzen von etwas muss auffindbar bleiben — „wasser" behält deshalb 10
+von 32 Zeilen. Und der Abgleich läuft **wortweise statt auf den exakten
+Namen**, weil zwei echte Titel die starre Fassung verfehlt hatten: einer
+schreibt „Klima und Umweltschutz" ohne Bindestrich, einer nennt nur die halbe
+Ressortbezeichnung. Das Muster bleibt an den echten Wörtern des Ressorts
+verankert, rät also keine Grammatik. Die Streichliste ist das
+Ressortvokabular der ganzen Periode, nicht das Ressort der Zeile — damit
+fällt auch das zweite Haus („im Einvernehmen mit dem Bundesminister für
+Finanzen").
+
+**`/suche` ist am 22.09.2026 verschwunden.** Einen Tag lang stand sie noch
+unverlinkt da, mit dem Argument, sie rendere serverseitig und funktioniere
+ohne JavaScript. Das stimmt und wiegt trotzdem nicht auf, was sie ist: eine
+zweite Adresse für dieselbe Frage — genau das, was das Zusammenlegen
+abgeschafft hat. Eine Seite, die niemand verlinkt, aber jeder Index kennt,
+ist die schlechteste Variante von beidem. Der Pfad **301t auf `/entwuerfe`**,
+die Query reist mit (`?q=` landet auf `/entwuerfe?q=`), und aus der
+`sitemap.xml` ist er raus: Ein Link ist das einzige, was dieses Projekt nicht
+neu ausstellen kann — eine Weiterleitung anzupreisen ist trotzdem falsch.
+
+**Alle Dokumente eines Satzes, nicht vier — und die Zahl dazu ist der
+Grund.** Die Suche kannte vier Felder: Entwurfstext, Erläuterungen,
+Textgegenüberstellung, Begleitschreiben. Gemessen am 22.09.2026 über die
+8 laufenden Sätze führen deren Datensätze aber **41 Textdokumente**, und die
+vier Felder greifen **25**. Nicht gelesen wurde damit jede WFA (8×), jeder
+Digicheck (3×), jedes Vorblatt (2×), ein Anhang — geprüft an allen drei
+unbenannten „datenschutz"-Treffern, die genau dort standen und seither ihre
+Fundstelle zeigen („in „Digi-Ready-Check": … Anforderungen an den
+**Datenschutz** und/oder die Datensicherheit?").
+
+Zwei der 16 übersehenen Dokumente sind dabei keine fremde Dokumentart,
+sondern **unsere eigenen Namensregeln**: `SAG_TGÜ` ist die
+Gegenüberstellung einer Sammelnovelle mit Gesetzespräfix, `Entwurf EB
+Klimagesetz` sind die Erläuterungen, vom Ressort als „EB" abgekürzt. Die
+Suche liest beide jetzt — als „weiteres Dokument", mit dem Namen des
+Ressorts als Etikett. Die Regeln selbst bleiben unangetastet: An ihnen hängen
+die Anlagen-Maschine mit ihrer gepinnten Baseline und der
+Erläuterungen-Abschnitt der Entwurfsseite, und **dass das Klimagesetz dort
+keine Erläuterungen zeigt, ist ein eigener Befund mit eigener Messung**
+(§12.11), nicht ein Nebeneffekt der Suche.
+
+**Das Budget war danach die Grenze, nicht die Zeit.** Mit 16 PDFs je Suche
+fiel die Benennungsquote auf 91,4 % — das Budget ging mitten in der
+Trefferliste aus. Ohne Deckel sind es **100 % (58 von 58 über zwölf
+Stichwörter)** bei unveränderten Antwortzeiten; 3,5 s nur für die allererste
+Suche nach einem Kaltstart, danach 0,2–2,1 s. Der Deckel steht deshalb auf
+48 und ist eine Reißleine gegen den pathologischen Satz, kein Zeitbudget.
+
+**Ein Feld, eine Regel für Leerzeichen** (22.09.2026). Die Liste suchte den
+ganzen Eingabestring als EINEN Teilstring: „klima gesetz" fand nichts,
+während der Volltextblock darunter dieselben Wörter mit UND verknüpfte und
+zwei Entwürfe zeigte. Auf zwei Seiten war das unauffällig, unter einem Feld
+sind es zwei Regeln für dieselbe Taste. Beide Hälften verknüpfen jetzt mit
+UND (`shared/utils/searchQuery.ts`). Was INNERHALB eines Wortes gilt, bleibt
+verschieden und muss es: Die Liste sucht Teilstrings („klimages" findet das
+Klimagesetz), das RIS ganze Wörter mit Stern — der Unterschied zwischen
+einem Titel aus acht Wörtern und einem Dokument aus achtzig Seiten.
 
 **Blinde Stelle, gemessen:** In GP XXVIII führt Liste 81 135 Ministerialentwürfe,
 134 RIS-Sätze tragen einen Gegenstand. Wer im RIS nicht steht, ist für diese

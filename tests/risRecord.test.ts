@@ -129,6 +129,50 @@ describe('flattenRisRecord', () => {
     expect(flat.textComparison).toBeNull()
   })
 
+  it('sammelt alles Übrige, was der Satz an Text führt', () => {
+    // Gemessen am 22.09.2026: 41 Textdokumente über die laufenden Sätze, die
+    // vier benannten Felder greifen 25. Die Volltextsuche liest den Rest
+    // (§12.31), und ein Satz kann mehrere davon haben.
+    const flat = flattenRisRecord(
+      record([
+        urls('MainDocument', 'Xml', 'https://ogd.ris.bka.gv.at/m.xml'),
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/e.xml'), Name: 'Erläuterungen' },
+        { ...urls('Material', 'Pdf', 'https://ogd.ris.bka.gv.at/wfa.pdf'), Name: 'WFA' },
+        { ...urls('Material', 'Pdf', 'https://ogd.ris.bka.gv.at/dc.pdf'), Name: 'Digi-Ready-Check' },
+      ]),
+    )!
+    // Was ein eigenes Feld hat, steht NICHT noch einmal in der Liste.
+    expect(flat.otherDocuments.map((d) => d.name)).toEqual(['WFA', 'Digi-Ready-Check'])
+    expect(flat.otherDocuments[0]!.urls.pdf).toBe('https://ogd.ris.bka.gv.at/wfa.pdf')
+  })
+
+  it('nimmt die Gegenüberstellung und die Erläuterungen mit, die unsere Namensregeln verfehlen', () => {
+    // Die billige Hälfte der bekannten Lücke: „SAG_TGÜ" und „EB" bleiben für
+    // die Anlagen-Maschine unsichtbar (ihre Baseline ist gepinnt), die Suche
+    // liest sie aber als weiteres Dokument.
+    const flat = flattenRisRecord(
+      record([
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: 'SAG_TGÜ' },
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/eb.xml'), Name: 'Entwurf EB Klimagesetz' },
+      ]),
+    )!
+    expect(flat.textComparison).toBeNull()
+    expect(flat.explanations).toBeNull()
+    expect(flat.otherDocuments.map((d) => d.name)).toEqual(['SAG_TGÜ', 'Entwurf EB Klimagesetz'])
+  })
+
+  it('zählt ein eingebettetes Bild nicht als Dokument', () => {
+    // Ein Satz führt Formeln und Logos als GIF; ohne lesbares Format ist ein
+    // Verweis kein Dokument.
+    const flat = flattenRisRecord(
+      record([
+        urls('MainDocument', 'Xml', 'https://ogd.ris.bka.gv.at/m.xml'),
+        { ...urls('EmbeddedAttachment', 'Gif', 'https://ogd.ris.bka.gv.at/logo.gif'), Name: 'Temp0001.gif' },
+      ]),
+    )!
+    expect(flat.otherDocuments).toEqual([])
+  })
+
   it('tolerates a single reference arriving as a bare object', () => {
     const doc = record([])
     // @ts-expect-error — reproducing the upstream shape on purpose

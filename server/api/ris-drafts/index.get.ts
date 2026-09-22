@@ -20,6 +20,7 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
+import { matchesQuery } from '#shared/utils/searchQuery'
 
 /** Was die Liste auf den Ausgang wartet, solange er nur eine Spalte füllt. */
 const OUTCOMES_BUDGET_MS = 3_000
@@ -77,6 +78,11 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   const ministries = [...ministryMap.entries()]
     .map(([code, name]) => ({ code, name }))
     .sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
+  /* Dasselbe Vokabular noch einmal, als Streichliste für die Suche: Ein
+   * Langtitel nennt auch das zweite Haus („im Einvernehmen mit dem
+   * Bundesminister für Finanzen"), deshalb alle Ressorts der Periode und
+   * nicht nur das eigene (`searchHaystack.ts`). */
+  const ministryTokenList = ministryTokens(ministryMap.values())
 
   /* Diese Hälfte steht bei der Begutachtung und kommt nie weiter: kein
    * Gegenstand im Parlament, also nie eine Regierungsvorlage (§12.16).
@@ -130,9 +136,23 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
       // No aliases here: the alias file is keyed by gp/inr and these records
       // have neither. The long title is in the haystack instead — on a
       // Verordnung it is where the subject matter actually appears.
-      const haystack =
-        `${item.title} ${item.longTitle ?? ''} ${item.ministryName} ${item.ministryCode}`.toLowerCase()
-      if (!haystack.includes(q)) return false
+      //
+      // OHNE DIE RESSORTNENNUNG, seit 21.09.2026 (§12.31). Die Regel dahinter
+      // ist **gesucht wird, was die Zeile zeigt**: Der Langtitel einer
+      // Verordnung beginnt mit „Verordnung des Bundesministers für <ganzes
+      // Portfolio>", der Ressortname enthält dasselbe noch einmal, und
+      // beides steht nirgends auf der Seite. „klima" traf so 36 Zeilen, 2
+      // davon führten das Wort im Kurztitel.
+      //
+      // Der KURZTITEL wird deshalb NICHT gestrichen, auch wenn er dieselbe
+      // Klausel trägt („Verordnung der Bundesministerin für
+      // Landesverteidigung über den Krankentransport") — er steht in der
+      // Zeile, der Leser sieht das Wort, also muss er danach suchen können.
+      // Das Kürzel bleibt aus demselben Grund; für das Ressort als solches
+      // gibt es den eigenen Filter.
+      // Mehrere Wörter mit UND, dieselbe Regel wie in `/api/drafts`.
+      const haystack = `${item.title} ${stripMinistryMentions(item.longTitle ?? '', ministryTokenList)} ${item.ministryCode}`
+      if (!matchesQuery(haystack, q)) return false
     }
     return true
   })

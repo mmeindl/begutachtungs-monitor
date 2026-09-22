@@ -19,7 +19,9 @@
  * einer Vermutung unterscheidet. Sie wird hier aus denselben Blöcken
  * gelesen, die auch die Gegenüberstellung liest (`lawText.parseRisXml`) —
  * derselbe Parser, dieselbe Textform, also dieselbe Auskunft wie auf der
- * Entwurfsseite.
+ * Entwurfsseite —, und seit 21.09.2026 notfalls aus dem PDF desselben
+ * Dokuments (`blocksFromPlainText`), weil das XML kürzt, wo das PDF alles
+ * hat.
  *
  * WORTGRENZEN, weil das RIS sie hat. „Klimaschut" findet nichts, und
  * `Klimaschutz*` findet 491 statt 453 Sätzen — das RIS sucht ganze Wörter
@@ -40,6 +42,7 @@
  */
 import type { TextBlock } from './lawText'
 import { normalizeText } from './lawText'
+import { stripMinistryMentions, type MinistryToken } from './searchHaystack'
 
 /** Ein Suchwort, wie der Leser es eingegeben hat. */
 export interface SearchTerm {
@@ -202,3 +205,79 @@ export function locateInBlocks(
   return fallback
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Zwei Textquellen, ein Blockformat
+ * ------------------------------------------------------------------ */
+
+/** So lang darf ein Block aus PDF-Text werden, bevor der nächste anfängt. */
+const PDF_BLOCK_MAX = 400
+
+/**
+ * PDF-Text als Blöcke — die zweite Quelle für dieselbe Fundstelle
+ * (docs/architecture.md §12.31).
+ *
+ * WARUM ES SIE GIBT: Das XML eines Begleitschreibens ist ein Stummel. Beim
+ * DGAV-Entwurf hat es 943 Zeichen, das PDF desselben Dokuments 12.223 — und
+ * nur dort steht der Verteiler, auf den das RIS getroffen hat. Dieselbe
+ * Lehre wie bei den Beilagen: Der Text war nie weg, gelesen wurde das
+ * Format, das ihn weggeworfen hat.
+ *
+ * ZEILEN WERDEN GEBÜNDELT, weil ein PDF keine Absätze kennt, sondern
+ * Zeilenumbrüche. Einzelne Zeilen als Blöcke hätten zwei Fehler: Eine
+ * UND-Suche fände ihre Wörter nie zusammen in einem Block, und der
+ * Ausschnitt bräche mitten im Satz ab. Gebündelt wird nach Zeichenzahl und
+ * nicht nach Semantik — eine Grammatik des Schriftsatzes gibt es hier nicht,
+ * und der Ausschnitt schneidet ohnehin ±90 Zeichen um die Fundstelle.
+ *
+ * `kind: 'other'`, `gld: null`: Ein PDF trägt keine Gliederungssymbole, die
+ * wir sicher zuordnen könnten. Die Zeile sagt dann „im Begleitschreiben"
+ * ohne Paragraf — weniger, als das XML hergibt, aber nichts Erfundenes.
+ */
+export function blocksFromPlainText(text: string, maxLen = PDF_BLOCK_MAX): TextBlock[] {
+  const blocks: TextBlock[] = []
+  let current = ''
+  const flush = (): void => {
+    const t = current.trim()
+    if (t) blocks.push({ kind: 'other', cls: 'pdf', text: t, gld: null })
+    current = ''
+  }
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed) {
+      flush()
+      continue
+    }
+    if (current.length + trimmed.length > maxLen) flush()
+    current = current ? `${current} ${trimmed}` : trimmed
+  }
+  flush()
+  return blocks
+}
+
+/**
+ * Dieselben Blöcke ohne die Ressortnennungen.
+ *
+ * DER VERTEILER IST KEIN SACHTREFFER. Jedes Begleitschreiben listet alle
+ * Ministerien als Empfänger, jedes Dokument trägt die Unterschriftszeile
+ * seines Hauses — „klima" steht damit in Dokumenten, die von Druckgeräten
+ * handeln. Gemessen am 21.09.2026: Von den 7 RIS-Treffern zu „klima" sind 3
+ * reine Ressortnennungen.
+ *
+ * Gestrichen wird VOR der Suche, nicht danach, damit die Fundstelle auf die
+ * SACHSTELLE zeigt, wo es beide gibt: Im Klimagesetz stand als Beleg die
+ * Aufzählung der Ministerien in § 5, obwohl das Dokument das Wort 164-mal
+ * führt.
+ *
+ * Was hier NICHT fällt, ist die Ressortnennung ohne Ministeranrede — und das
+ * ist Absicht: Die UVP-G-Novelle ersetzt in dutzenden §§ die Wortfolge „für
+ * Klimaschutz, Umwelt, Energie …" durch die neue. Dort IST der Name der
+ * Gegenstand (`searchHaystack.ts`).
+ */
+export function withoutMinistryMentions(
+  blocks: readonly TextBlock[],
+  tokens: readonly MinistryToken[],
+): TextBlock[] {
+  if (!tokens.length) return [...blocks]
+  return blocks.map((b) => ({ ...b, text: stripMinistryMentions(b.text, tokens) }))
+}

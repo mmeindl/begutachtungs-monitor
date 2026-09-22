@@ -642,6 +642,20 @@ export interface RisConsultationDetail extends RisConsultation {
    * parliamentary form, because there is no Gegenstand.
    */
   coverLetter: RisDocumentFormats | null
+  /**
+   * Alles Übrige, was der Satz an Text führt: WFA, Vorblatt, Digicheck,
+   * Anhänge — und gelegentlich eine Gegenüberstellung oder Erläuterungen
+   * unter einem Namen, den unsere Regeln nicht kennen („SAG_TGÜ", „EB").
+   * Gemessen am 22.09.2026: 16 von 41 Textdokumenten der laufenden Sätze.
+   * Nur die Volltextsuche liest sie (§12.31).
+   */
+  otherDocuments: RisNamedDocument[]
+}
+
+/** Ein Dokument, das nur seinen eigenen Namen als Auskunft mitbringt. */
+export interface RisNamedDocument {
+  name: string
+  formats: RisDocumentFormats
 }
 
 export interface RisDocumentFormats {
@@ -1314,6 +1328,18 @@ export interface BegutSearchHit {
   /** Die Stelle im Dokument, wie es sie führt: „§ 5.", „Zu § 5:". */
   designation: string | null
   snippet: BegutSearchSnippet | null
+  /**
+   * Das Wort steht AUSSCHLIESSLICH in einer Ressortnennung — im Verteiler
+   * des Begleitschreibens, in einer Unterschriftszeile.
+   *
+   * Jedes Begleitschreiben listet alle Ministerien als Empfänger, also
+   * trifft jedes Portfolio-Wort jeden Entwurf: „klima" liefert eine
+   * Druckgeräteaufstellungsverordnung. Gemessen am 21.09.2026 sind 3 von 7
+   * Treffern zu „klima" von dieser Art. Die Zeile bleibt trotzdem stehen —
+   * das RIS hat den Satz geliefert, und bei der UVP-G-Novelle, die den
+   * Ressortnamen in dutzenden §§ austauscht, IST er der Gegenstand.
+   */
+  ministryOnly: boolean
 }
 
 export interface BegutSearchResponse {

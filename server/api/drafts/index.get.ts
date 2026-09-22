@@ -2,10 +2,12 @@
  * GET /api/drafts?gp&status&station&ministry&q → DraftsResponse.
  * status: open|closed|all (default all); station: a comma list of
  * begutachtung|rv|parlament|bgbl (default all); q searches title, citation,
- * and ministry server-side (docs/architecture.md §5, §12.26).
+ * ministry CODE and aliases server-side — never the ministry name
+ * (docs/architecture.md §5, §12.26, §12.31).
  */
 import type { DraftChain, DraftStation, DraftsResponse, DraftStatus } from '#shared/types'
 import { aliasHaystack } from '#shared/utils/aliases'
+import { matchesQuery } from '#shared/utils/searchQuery'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftChain'
 import { GP_RE, gpHasEnded } from '#shared/utils/gp'
 
@@ -132,9 +134,22 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
     if (q) {
       // Aliases are part of the haystack, not of the title: someone who only
       // knows "Bundestrojaner" has to find 8/ME (`shared/utils/aliases.ts`).
-      const haystack =
-        `${item.title} ${item.citation} ${item.ministryName} ${item.ministryCode} ${aliasHaystack(item.gp, item.inr)}`.toLowerCase()
-      if (!haystack.includes(q)) return false
+      //
+      // DER RESSORTNAME IST SEIT 21.09.2026 NICHT MEHR DABEI (§12.31), und
+      // die Regel dahinter ist: **gesucht wird, was die Zeile zeigt.** Der
+      // Name trägt das ganze Portfolio („… Klima- und Umweltschutz …"),
+      // steht aber nirgends auf der Seite — er traf unsichtbar und zog
+      // unter „klima" 36 Zeilen, von denen 2 das Wort im Titel führten. Das
+      // Kürzel bleibt, denn das steht in der Zeile, und für das Ressort
+      // gibt es den eigenen Filter. Der Titel bleibt aus demselben Grund
+      // unangetastet: Nennt er ein Ressort, sieht der Leser es.
+      //
+      // MEHRERE WÖRTER WERDEN MIT UND VERKNÜPFT, seit 22.09.2026: „klima
+      // gesetz" suchte vorher diese elf Zeichen am Stück und fand nichts,
+      // während der Volltextblock unter demselben Feld zwei Entwürfe zeigte
+      // (`shared/utils/searchQuery.ts`).
+      const haystack = `${item.title} ${item.citation} ${item.ministryCode} ${aliasHaystack(item.gp, item.inr)}`
+      if (!matchesQuery(haystack, q)) return false
     }
     return true
   })
