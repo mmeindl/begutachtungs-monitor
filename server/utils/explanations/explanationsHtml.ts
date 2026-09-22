@@ -1,6 +1,6 @@
 /**
  * The Erläuterungen as **Parliament** publishes them — Word HTML instead of
- * typed RIS XML (docs/architecture.md §12.10).
+ * typed RIS XML (docs/architecture.md §12.10b).
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *

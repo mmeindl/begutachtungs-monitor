@@ -34,14 +34,14 @@ export function addressedParagraph(line: string): string | null {
 }
 
 /**
- * Dasselbe für eine Einheit des Vergleichs: Welchen Paragraphen ändert diese
- * Novellierungsanordnung?
+ * The same for one unit of the comparison: which Paragraph does this
+ * Novellierungsanordnung amend?
  *
- * Gelesen wird der ungekürzte Anweisungstext, nicht `heading` — das ist die
- * auf rund 100 Zeichen geschnittene Anzeigezeile, und mit dem Schnitt fällt
- * regelmäßig die schließende Klammer weg, sodass der Parser die Anweisung
- * verwirft statt sie zu verstehen. Eine Stelle für alle Aufrufer: die §-Namen
- * und der Begründungsvergleich müssen denselben Paragraphen meinen.
+ * The unshortened instruction text is read, not `heading` — that is the
+ * display line cut at about 100 characters, and the cut regularly drops the
+ * closing bracket, so the parser discards the instruction instead of
+ * understanding it. One place for every caller: the § names and the
+ * Begründungsvergleich have to mean the same Paragraph.
  */
 export function addressedParagraphOf(unit: LawDiffUnit): string | null {
   const line = unit.toText ?? unit.fromText ?? unit.heading

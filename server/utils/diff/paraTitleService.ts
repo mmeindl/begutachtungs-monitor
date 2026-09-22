@@ -45,7 +45,7 @@ import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 const MAX_HEADINGS = 120
 const CONCURRENCY = 4
 
-/** The § heading ("Sofortlotterien"), parsed on every call — see `konsCache.ts`. */
+/** The § heading ("Sofortlotterien"), parsed on every call — see `kons/konsCache.ts`. */
 async function fetchHeading(ref: KonsParagraphRef): Promise<string | null> {
   if (!ref.xmlUrl) return null
   return parseKonsParagraph(await fetchParagraphXml(ref.nor, ref.xmlUrl))?.heading ?? null

@@ -75,7 +75,7 @@ export function konsLawUrl(gesetzesnummer: string, date: string | null): string 
  * here any more: a genuine absence is already an answer (no document, no
  * row, no matching law), an outage propagates, nothing is stored, and the
  * next request tries again. The section arrives client-side and lazily, so
- * the page simply renders without it (`entwuerfe/[gp]/[inr].vue`).
+ * the page simply renders without it (`app/pages/entwuerfe/[gp]/[inr].vue`).
  */
 export const getAmendedLaws = defineCachedFunction(
   async (gp: string, inr: number): Promise<AmendedLawsResponse> => {
