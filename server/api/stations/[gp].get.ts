@@ -22,6 +22,7 @@
 import type { DraftStation } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
 
+// Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async (event) => {
   const param = getRouterParam(event, 'gp') ?? 'aktuell'
   const gp = param.toLowerCase() === 'aktuell' ? await getCurrentGp() : param.toUpperCase()

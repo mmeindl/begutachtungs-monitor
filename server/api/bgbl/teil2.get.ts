@@ -13,6 +13,8 @@
  * ist genau das stille Versagen, das ein „nicht kundgemacht" auf jeder
  * Verordnungsseite erzeugen würde.
  */
+
+// Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async () => {
   const now = new Date().getFullYear()
   const years = [now - 2, now - 1, now]

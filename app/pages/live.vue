@@ -5,6 +5,10 @@
  * video room exists this is a holding page with the event facts; once
  * MEETING_URL is set, the same address becomes a 302 into the room — so
  * the event page never needs to be touched again.
+ *
+ * Reachable by URL only, on purpose: nothing in the site links here and the
+ * sitemap (`server/utils/feeds.ts`) does not list it — the page belongs to
+ * one event on one evening, not to the product.
  */
 const MEETING_URL = '' // Videokonferenz-URL eintragen + deployen → /live leitet weiter
 
