@@ -34,6 +34,7 @@
  */
 import { normalizeText } from './lawText'
 import { lawNameScore, type DraftArticle } from './lawTitles'
+import { pickClearWinner } from './text/clearWinner'
 
 /**
  * A law boundary inside a package: "Artikel 3", "Artikel 3 (Änderung des …)",
@@ -89,19 +90,8 @@ const TITLE_MATCH = 0.6
 const TITLE_AGREE = 0.34
 
 function bestByTitle(title: string, articles: readonly DraftArticle[], amendingOnly = false): DraftArticle | null {
-  let best: { article: DraftArticle; score: number } | null = null
-  let runnerUp = 0
-  for (const article of articles) {
-    if (!article.title) continue
-    if (amendingOnly && !article.amends) continue
-    const score = lawNameScore(title, article.title)
-    if (!best || score > best.score) {
-      runnerUp = best?.score ?? 0
-      best = { article, score }
-    } else if (score > runnerUp) runnerUp = score
-  }
-  if (!best || best.score < TITLE_MATCH || best.score <= runnerUp) return null
-  return best.article
+  const named = articles.filter((a) => a.title && (!amendingOnly || a.amends))
+  return pickClearWinner(named, title, (a) => a.title!, TITLE_MATCH)
 }
 
 const isRoman = (numeral: string): boolean => /^[IVXL]+$/.test(numeral)

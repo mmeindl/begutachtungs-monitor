@@ -16,7 +16,8 @@
  *   it stood on any given day.
  */
 import { parseKonsParagraph, type LawNode } from './lawStructure'
-import { sameBgbl, lawNameScore, type BgblCitation } from './lawTitles'
+import { sameBgbl, type BgblCitation } from './lawTitles'
+import { pickClearWinner } from './text/clearWinner'
 import { RIS_API_BASE, upstreamJson, upstreamText, type UpstreamPolicy } from './upstream/fetch'
 
 const TIMEOUT_MS = 20_000
@@ -290,6 +291,9 @@ export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: 
   return { gesetzesnummer, kurztitel: entry.kurztitel, paragraphs: entry.paragraphs }
 }
 
+/** A name is evidence only when it fits one law of the BGBl clearly better than any other. */
+const NAME_MATCH = 0.6
+
 /**
  * Of several laws born from the same BGBl, the one the caller named — or none.
  *
@@ -303,17 +307,7 @@ export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: 
  * string and never reached it.
  */
 export function pickByName<T extends { kurztitel: string }>(byLaw: Map<string, T>, name: string): [string, T] | null {
-  let best: { entry: [string, T]; score: number } | null = null
-  let runnerUp = 0
-  for (const candidate of byLaw) {
-    const score = lawNameScore(name, candidate[1].kurztitel)
-    if (!best || score > best.score) {
-      runnerUp = best?.score ?? 0
-      best = { entry: candidate, score }
-    } else if (score > runnerUp) runnerUp = score
-  }
-  if (!best || best.score < 0.6 || best.score <= runnerUp) return null
-  return best.entry
+  return pickClearWinner(byLaw, name, ([, entry]) => entry.kurztitel, NAME_MATCH)
 }
 
 /** The paragraph document as a tree. */
