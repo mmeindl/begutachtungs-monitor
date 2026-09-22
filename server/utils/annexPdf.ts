@@ -853,10 +853,6 @@ function rowOf(law: string | null, gld: string | null, current: string, proposed
     current,
     proposed,
     change,
-    // The ressort's yellow marking lives in the content stream's fill colours,
-    // not in the text layer. The XML path already treats the marking as
-    // recorded rather than relied on (§2c); the word diff decides.
-    marked: false,
     elided,
     segments,
     editorial: isEditorialChange(segments),
@@ -1133,7 +1129,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   for (const section of sections) {
     const law = section.article?.key ?? null
     if (section.opened && section.article) {
-      rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+      rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false })
     }
     const left = unitsOfColumn(section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), context: contextFor.get(l) })))
     const right = unitsOfColumn(section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), context: contextFor.get(l) })))

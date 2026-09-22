@@ -101,7 +101,7 @@ export const getParagraphTitles = defineCachedFunction(
       if (para) paragraphs[unitKey(unit)] = para
     }
 
-    const empty: ParagraphTitlesResponse = { gp, inr, asOf, titles: {}, paragraphs }
+    const empty: ParagraphTitlesResponse = { asOf, titles: {}, paragraphs }
     if (!asOf || !diff?.available) return empty
 
     // Clauses come from whichever of the two documents exist; the later
@@ -159,7 +159,7 @@ export const getParagraphTitles = defineCachedFunction(
       }
       await Promise.all(Array.from({ length: CONCURRENCY }, worker))
     }
-    return { gp, inr, asOf, titles, paragraphs }
+    return { asOf, titles, paragraphs }
   },
   {
     name: 'para-titles',

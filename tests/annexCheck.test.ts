@@ -53,7 +53,6 @@ const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
   current: '',
   proposed: '',
   change: 'changed',
-  marked: false,
   elided: false,
   segments: null,
   editorial: false,

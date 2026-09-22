@@ -63,8 +63,6 @@ export interface ComparisonRow {
   current: string
   proposed: string
   change: ComparisonChange
-  /** The ressort's own yellow marking on the proposed side */
-  marked: boolean
   /**
    * "2. bis 26b. …" — unchanged text the annex deliberately leaves out, per
    * the Rundschreiben. Not a gap in the parse, and not something to diff.
@@ -124,7 +122,6 @@ const STRIP = [
  */
 const GLD_RE = /<gldsym\b[^>]*>([\s\S]*?)<\/gldsym>|<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/
 const COLSPAN_RE = /colspan="(\d+)"/i
-const MARK_RE = /background\s*:\s*yellow/i
 
 /**
  * The mandated column headings, in the wordings the corpus actually prints.
@@ -923,7 +920,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
         releaseHeadings()
         law = article.key
         openPara = null
-        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', marked: false, elided: false, segments: null, editorial: false })
+        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false })
         pendingHeading = []
         continue
       }
@@ -1015,7 +1012,7 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
     // The ressort's yellow marking is reliable where present but incomplete:
     // of 8.430 row pairs, 1.395 differ in text without being marked, while
     // only 3 are marked without differing (measured 2026-09-08). So the word
-    // diff decides what is shown, and the marking is recorded, not relied on.
+    // diff decides what is shown, and the marking is not read at all.
     const segments = change === 'changed' && !elided ? diffTokens(current, proposed).segments : null
     const row: ComparisonRow = {
       kind: 'pair',
@@ -1026,7 +1023,6 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
       current,
       proposed,
       change,
-      marked: MARK_RE.test(proposedHtml) || MARK_RE.test(currentHtml),
       elided,
       segments,
       editorial: isEditorialChange(segments),

@@ -830,7 +830,6 @@ export async function getDraftDetail(
     description: parseShortinfo(content.shortinfo),
     invitedBy: mapInvitedBy(content.names),
     documents,
-    trace,
     handoff: findHandoff(trace),
     // Later stations only: the RV's own text is enactment.rvTextUrl, where
     // the comparison offers it — listing it here too put the same link

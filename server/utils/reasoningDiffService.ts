@@ -51,12 +51,11 @@ function passageTexts(byParagraph: Map<string, HtmlPassage[]>): Map<string, stri
 
 export const getReasoningDiff = defineCachedFunction(
   async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ReasoningDiffResponse> => {
-    const empty = (reason: string | null, rvCitation: string | null = null, sources: TraceLink[] = []): ReasoningDiffResponse => ({
+    const empty = (reason: string | null, sources: TraceLink[] = []): ReasoningDiffResponse => ({
       gp,
       inr,
       available: false,
       unavailableReason: reason,
-      rvCitation,
       sources,
       units: {},
       paragraphs: {},
@@ -80,7 +79,6 @@ export const getReasoningDiff = defineCachedFunction(
         meDoc
           ? 'Die Regierungsvorlage veröffentlicht ihre Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.'
           : 'Der Entwurf veröffentlicht seine Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.',
-        rv.label,
         [meDoc, rvDoc].filter((d): d is TraceLink => d !== null),
       )
     }
@@ -90,11 +88,11 @@ export const getReasoningDiff = defineCachedFunction(
     const after = passageTexts(passagesByParagraph(parseExplanationsHtml(rvHtml)))
     const sources = [meDoc, rvDoc]
     if (before.size === 0 && after.size === 0) {
-      return empty('Die Erläuterungen dieses Entwurfs sind nicht nach Paragraphen gegliedert; ein Vergleich am Paragraphen ginge daneben.', rv.label, sources)
+      return empty('Die Erläuterungen dieses Entwurfs sind nicht nach Paragraphen gegliedert; ein Vergleich am Paragraphen ginge daneben.', sources)
     }
 
     const diff = await getLawDiff(gp, inr, from, to)
-    if (!diff.available) return empty(null, rv.label, sources)
+    if (!diff.available) return empty(null, sources)
 
     const { units, paragraphs, stats } = compareReasoning(diff.units, before, after)
     return {
@@ -102,7 +100,6 @@ export const getReasoningDiff = defineCachedFunction(
       inr,
       available: stats.compared > 0,
       unavailableReason: stats.compared > 0 ? null : 'Zu den geänderten Bestimmungen führen beide Dokumente keine gemeinsame Begründung.',
-      rvCitation: rv.label,
       sources,
       units,
       paragraphs,

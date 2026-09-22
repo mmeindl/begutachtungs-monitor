@@ -129,7 +129,7 @@ Geschäftszahl tie-breaker, which needs PDF text.
   the cached list 81 against it, cached 30 min.
 - `GET /api/ris-map/{gp}` returns the map (`RisMapResponse` in
   `shared/types.ts`) with a RIS page URL and document URLs per matched ME
-  and the Beginn/Ende offsets, so a Fristabweichung is visible per row.
+  and the Ende offset, so a Fristabweichung is visible per row.
   Diagnostic endpoint for now; not yet exercised against the live API from
   the app itself (the fetch parameters and envelope were verified with
   curl and the corpus-test scripts).

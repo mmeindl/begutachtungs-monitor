@@ -393,7 +393,7 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
   const terms = parseSearchQuery(raw)
   const day = new Date().toISOString().slice(0, 10)
   if (!terms.length) {
-    return { query: raw.trim(), terms: [], corpusSize: await runningCount(day), total: 0, hits: [], located: 0 }
+    return { query: raw.trim(), corpusSize: await runningCount(day), total: 0, hits: [] }
   }
 
   const [ids, corpusSize, gp, tokens] = await Promise.all([
@@ -415,7 +415,6 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
   for (const row of map?.rows ?? []) if (row.risId) inrOf.set(row.risId, row.inr)
 
   const hits: BegutSearchHit[] = []
-  let located = 0
   for (let i = 0; i < ids.length; i += LOCATE_CONCURRENCY) {
     const batch = ids.slice(i, i + LOCATE_CONCURRENCY)
     const resolved = await Promise.all(
@@ -442,7 +441,6 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
     for (const hit of resolved) {
       if (!hit) continue
       hits.push(hit)
-      if (hit.place) located++
     }
   }
 
@@ -469,12 +467,9 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
   return {
     // Die Eingabe des Lesers zurück, nicht unsere normalisierte Fassung:
     // „3 von 7 führen ‚strom'" las sich wie ein Tippfehler des Werkzeugs.
-    // Was wirklich ans RIS ging, steht daneben in `terms`.
     query: raw.trim(),
-    terms: terms.map((t) => t.text),
     corpusSize,
     total: ids.length,
     hits: ranked,
-    located,
   }
 }

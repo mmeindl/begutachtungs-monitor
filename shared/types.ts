@@ -260,10 +260,6 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
   /** Minister who submitted the draft ("Übermittelt von"), null if absent */
   invitedBy: string | null
   documents: DraftDocument[]
-  /** The complete upstream stage record. Kept as raw material (accountability
-      layer, history snapshots); the UI renders it condensed into the SpineRail
-      and `handoff` rather than as a second timeline. */
-  trace: TraceStep[]
   handoff: Handoff | null
   /** Versions AFTER the Regierungsvorlage (committee, plenary), one document
       per station with its formats — rendered like the Entwurfsdokumente. The
@@ -386,9 +382,6 @@ export interface DashboardPayload {
   /** Active consultations, sorted by deadline ascending (soonest first) */
   open: DraftSummary[]
   stats: {
-    openCount: number
-    closingWithin7Days: number
-    statementsTotalGp: number
     consultationsTotalGp: number
   }
   /** Top 5 of the GP by statement count, descending */
@@ -532,8 +525,6 @@ export interface RisMapRow {
    * date rather than about the parse.
    */
   risBeginn: string | null
-  /** RIS Beginn − Parliament Einlangen, days */
-  beginnOffsetDays: number | null
   /** RIS Ende − Parliament Frist, days; a non-zero value is a Fristabweichung */
   endeOffsetDays: number | null
   /**
@@ -795,10 +786,12 @@ export interface ReasoningDiffEntry {
 export interface ReasoningDiffResponse {
   gp: string
   inr: number
+  /**
+   * Same contract shape as `LawDiffResponse`, deliberately: the section is the
+   * second half of that one, and the page prints the sibling's reason.
+   */
   available: boolean
   unavailableReason: string | null
-  /** „518 d.B." — die Vorlage, gegen die verglichen wurde. */
-  rvCitation: string | null
   /** Die beiden gelesenen Dokumente, für die Quellenzeile. */
   sources: TraceLink[]
   /** `unitKey` → „§ 11": welche Änderung auf welchen Paragraphen zeigt. */
@@ -810,8 +803,6 @@ export interface ReasoningDiffResponse {
 }
 
 export interface ParagraphTitlesResponse {
-  gp: string
-  inr: number
   /** ISO date of the law version the titles were read from (the draft's Einlangen) */
   asOf: string | null
   titles: Record<string, string>
@@ -945,8 +936,6 @@ export interface TextComparisonRow {
   current: string
   proposed: string
   change: LawUnitChange
-  /** The ressort's own yellow marking — recorded, but the word diff decides */
-  marked: boolean
   /** "2. bis 26b. …": unchanged text the annex leaves out on purpose */
   elided: boolean
   segments: LawDiffSegment[] | null
@@ -1262,8 +1251,6 @@ export interface LawDiffUnit {
    * other states and when the word diff was too long to compute.
    */
   editorial: boolean
-  /** 0..1 token similarity for changed units, null otherwise */
-  similarity: number | null
   /** The text at the earlier station of the compared pair (`LawDiffResponse.from`) */
   fromText: string | null
   /** The text at the later station (`LawDiffResponse.to`) */
@@ -1389,14 +1376,10 @@ export interface BegutSearchHit {
 export interface BegutSearchResponse {
   /** Die Suche, wie sie ans RIS ging — normalisiert, mit Stern. */
   query: string
-  /** Die einzelnen Wörter, für die Hervorhebung auf der Seite. */
-  terms: string[]
   /** Wie viele Begutachtungen heute offen sind, also durchsucht wurden. */
   corpusSize: number
   /** Treffer laut RIS, auch die, die wir nicht auflösen konnten. */
   total: number
-  /** Von den Treffern: wie viele eine benannte Fundstelle haben. */
-  located: number
   hits: BegutSearchHit[]
 }
 

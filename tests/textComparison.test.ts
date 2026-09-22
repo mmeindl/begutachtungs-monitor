@@ -39,7 +39,7 @@ describe('parseTextComparison', () => {
   it('drops the repeated column headings and reads a paired row', () => {
     const rows = parse(annex([pair('<absatz typ="abs"><gldsym>§ 5.</gldsym> (1) Alter Text.</absatz>', `<absatz typ="abs"><gldsym>§ 5.</gldsym> (1) ${marked('Neuer')} Text.</absatz>`)]))
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ kind: 'pair', gld: '§ 5.', change: 'changed', marked: true })
+    expect(rows[0]).toMatchObject({ kind: 'pair', gld: '§ 5.', change: 'changed' })
     // The designation lives in `gld`, not in the compared text — printed in
     // both it appeared twice on the page.
     expect(rows[0]!.gld).toBe('§ 5.')

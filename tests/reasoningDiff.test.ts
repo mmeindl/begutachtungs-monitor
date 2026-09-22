@@ -12,7 +12,6 @@ function unit(article: string, id: string, line: string, change: LawDiffUnit['ch
     quotedHeading: null,
     change,
     editorial: false,
-    similarity: null,
     fromText: line,
     toText: line,
     segments: null,
