@@ -1,33 +1,31 @@
 /**
- * „So läse sich das Gesetz nach dem Entwurf" — die eigene konsolidierte
- * Lesefassung eines Ministerialentwurfs (docs/architecture.md §12.12).
+ * „So läse sich das Gesetz nach dem Entwurf" — our own konsolidierte
+ * Lesefassung of a Ministerialentwurf (docs/architecture.md §12.12, §12.12a).
  *
- * Nuxt-Glue um die reinen Module: `novao.ts` liest die
- * Novellierungsanordnungen, `risKons.ts`/`konsCache.ts` holen den geltenden
- * Text, `lawApply.ts` wendet an, `applyGuard.ts` und `tguOracle.ts` urteilen,
- * `konsGate.ts` entscheidet. Gerechnet wird hier nichts; dieses Modul holt
- * die Dokumente und hält die Reihenfolge ein.
+ * Nuxt glue around the pure modules: `kons/novao.ts` reads the
+ * Novellierungsanordnungen, `ris/konsLaw.ts` and `kons/konsCache.ts` fetch the
+ * standing text, `kons/lawApply.ts` applies, `kons/applyGuard.ts` and
+ * `kons/tguOracle.ts` judge, `kons/konsGate.ts` decides. Nothing is computed
+ * here; this module fetches the documents and keeps the order.
  *
- * WAS DIESE SEKTION GEGENÜBER DER GEGENÜBERSTELLUNG HINZUFÜGT, und warum sie
- * trotzdem unter ihr steht. Die Beilage des Ressorts zeigt, was sich ändert —
- * aber in Ausschnitten: Sie druckt den Absatz, den sie ändert, und lässt den
- * Rest des Paragraphen weg. Diese Sektion zeigt den **ganzen Paragraphen**,
- * wie er danach lautete, aus dem authentischen Text des RIS und nicht aus der
- * Abschrift des Ressorts. Das ist ein Zugewinn für den Leser, aber ein
- * kleiner — die eigentliche Frage („was ändert sich?") beantwortet die
- * Beilage, und sie beantwortet sie für mehr Paragraphen als dieses Tor je
- * wird. Deshalb steht sie oben und diese hier darunter.
+ * WHAT THIS SECTION ADDS OVER THE GEGENÜBERSTELLUNG, and why it nevertheless
+ * stands below it. The ressort's Beilage shows what changes — but in excerpts:
+ * it prints the Absatz it amends and leaves the rest of the § out. This
+ * section shows the **whole §** as it would then read, from the authentic RIS
+ * text rather than from the ressort's transcript. That is a gain for the
+ * reader, but a small one — the real question („was ändert sich?") is answered
+ * by the Beilage, and it answers it for more §§ than this gate ever will. So
+ * the Beilage stands above and this below it.
  *
- * DER STICHTAG IST DER ERSTE TAG DER BEGUTACHTUNGSFRIST, nicht heute und
- * nicht das Einlangen: Es ist der Tag, an dem das Ressort seine Beilage
- * geschrieben hat, und nur gegen diese Fassung darf das Orakel urteilen
- * (`annexGuardService.ts` hält denselben Tag).
+ * THE REFERENCE DATE IS THE FIRST DAY OF THE BEGUTACHTUNGSFRIST, neither
+ * today nor the Einlangen: it is the day the ressort wrote its Beilage, and
+ * the oracle may judge against that version only
+ * (`annex/annexGuardService.ts` keeps the same day).
  *
- * DIE BEILAGE WIRD HIER EIN ZWEITES MAL GELESEN, absichtlich, aber durch
- * dieselbe Quellenwahl wie der Abschnitt darüber (`annexSourceFor`): RIS
- * zuerst, Parlament als Rückfall. Die Antwort von `getTextComparison` selbst
- * ist als Orakel unbrauchbar — sie trägt die Zeilen, deren Prüfung
- * fehlgeschlagen ist, mit **geleertem Text**.
+ * THE BEILAGE IS READ A SECOND TIME HERE, deliberately, but through the same
+ * source choice as the section above (`annexSourceFor`): RIS first, Parliament
+ * as the fallback. The answer of `getTextComparison` itself is useless as an
+ * oracle — it carries the rows whose check failed with their **text emptied**.
  */
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
@@ -49,30 +47,17 @@ import { annexSourceFor } from '../annex/annexSource'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { oracleVerdict, paragraphRows, rowsByParagraph } from './tguOracle'
 
-/** Ein Sammelgesetz nennt Dutzende; die Anzeige braucht nicht alle, die Seite braucht eine Antwort. */
+/** A Sammelgesetz names dozens; the display needs not all of them, the page needs an answer. */
 const MAX_LAWS = 12
-/** Obergrenze der §-Dokumente je Entwurf — dieselbe Sorge wie `paraTitleService.MAX_HEADINGS`. */
+/** Ceiling on § documents per draft — the same worry as `MAX_HEADINGS` in `diff/paraTitleService.ts`. */
 const MAX_PARAGRAPHS = 80
 const CONCURRENCY = 4
 
 /**
- * Die §-Dokumente, die dieser Artikel adressiert — und die, für die das
- * Budget nicht mehr reichte.
- *
- * **Der Abruf steht außerhalb des try, der Parse darin**, genau wie in
- * `annexGuardService.ts` und aus demselben Grund: Ein RIS, das nicht
- * antwortet, ist keine Aussage über diesen Paragraphen — der Fehler muss
- * heraus, damit nichts zwischengespeichert wird. Ein Dokument, das wir
- * *bekommen* und nicht lesen können, ist das Gegenteil: eine stabile
- * Eigenschaft dieses Dokuments (RIS führt manche Paragraphen als Tabelle),
- * und null ist dafür die richtige Antwort.
- */
-/**
- * Wie viel vom Budget dieser Artikel bekommt — rein gerechnet und in
- * Eingabereihenfolge aufgerufen, damit die Zuteilung dieselbe bleibt, auch
- * wenn die Artikel nebeneinander geholt werden. Welche §§ die Grenze abschneidet,
- * ist eine Aussage auf der Seite und darf nicht davon abhängen, wer zuerst
- * fertig wird.
+ * How much of the budget this Artikel gets — computed purely and called in
+ * input order, so the allotment stays the same even where the Artikel are
+ * fetched side by side. Which §§ the limit cuts off is a statement on the
+ * page and must not depend on who finishes first.
  */
 function allotBudget(refs: readonly KonsParagraphRef[], budget: { left: number }): { queue: KonsParagraphRef[]; skipped: Set<string> } {
   const queue = refs.slice(0, Math.max(0, budget.left))
@@ -80,9 +65,19 @@ function allotBudget(refs: readonly KonsParagraphRef[], budget: { left: number }
   return { queue, skipped: new Set(refs.slice(queue.length).map((r) => r.id)) }
 }
 
+/**
+ * The § documents this Artikel addresses, as trees.
+ *
+ * **The fetch stands outside the try, the parse inside it**, exactly as in
+ * `annex/annexGuardService.ts` and for the same reason: a RIS that does not
+ * answer is no statement about this §, so the error has to leave and nothing
+ * may be cached. A document we *do* get and cannot read is the opposite: a
+ * stable property of that document (RIS carries some §§ as a table), and null
+ * is the right answer for it.
+ */
 async function standingParagraphs(queue: readonly KonsParagraphRef[]): Promise<LawNode[]> {
-  // `trees` wird im Rückruf gefüllt, nicht aus dem Ergebnis gebaut: Die
-  // Reihenfolge ist die der Fertigstellung, und das war sie immer.
+  // `trees` is filled in the callback rather than built from the result: the
+  // order is the order of completion, and it always was.
   const trees: LawNode[] = []
   await mapWithConcurrency(queue, CONCURRENCY, async (ref) => {
     if (!ref.xmlUrl) return
@@ -91,7 +86,7 @@ async function standingParagraphs(queue: readonly KonsParagraphRef[]): Promise<L
       const tree = parseKonsParagraph(xml)
       if (tree) trees.push(tree)
     } catch {
-      // Ein Dokument, das kein Paragraph ist — im BGBl-Korpus 27 von 3.110.
+      // A document that is no § — 27 of 3.110 in the BGBl corpus.
     }
   })
   return trees
@@ -102,9 +97,9 @@ export const getConsolidatedText = defineCachedFunction(
     const empty = (): ConsolidatedTextResponse => ({ gp, inr, paragraphs: [], touched: 0 })
 
     const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
-    // Dieselbe Regel wie bei der Gegenüberstellung: Ein schwacher Join ist
-    // Fristen und Ressort ohne Titel, und der geltende Text eines *anderen*
-    // Entwurfs liest sich genauso glaubwürdig wie der richtige.
+    // The same rule as for the Gegenüberstellung: a weak join is dates and
+    // ministry without the title, and the standing text of *another* draft
+    // reads exactly as credibly as the right one.
     if (!row?.risId || row.status !== 'matched') return empty()
     // Without the first day of the consultation period we do not know which
     // version of the law the draft was written against.
@@ -119,22 +114,20 @@ export const getConsolidatedText = defineCachedFunction(
     // A draft that creates a law instead of amending one has no version „davor".
     if (parts.length === 0) return empty()
 
-    // Dieselbe Quelle wie der Abschnitt darüber, aus derselben Funktion:
-    // RIS zuerst, Parlament als Rückfall (`textComparisonService.ts`). Ein
-    // zweites Mal gelesen, weil die Antwort der Gegenüberstellung die
-    // geprüften Zeilen mit **geleertem Text** trägt — richtig für die
-    // Anzeige, tödlich für ein Orakel, das aus leerem Text „sagt nichts
-    // dazu" schlösse.
+    // The same source as the section above, out of the same function: RIS
+    // first, Parliament as the fallback (`annex/textComparisonService.ts`).
+    // Read a second time, because the Gegenüberstellung's answer carries the
+    // checked rows with their **text emptied** — right for the display, fatal
+    // for an oracle that would read empty text as „sagt nichts dazu".
     //
-    // WAS DAS ZWEITE LESEN KOSTET, zwei Wege, zwei Antworten: Der XML-Weg
-    // geht durch `getDraftArticles` und ist derselbe Cache-Treffer — seit
-    // 22.09.2026 auch für den PARSE, nicht nur für die Bytes. Der PDF-Weg
-    // war es NICHT — dessen Byte-Cache ist in der Produktion bewusst
-    // abgeschaltet (`annexPdfService.ts`), also holten und parsten
-    // `/konsolidiert` und `/gegenueberstellung` dieselbe Beilage je einmal.
-    // Seit 22.09.2026 liegt der PARSE in einem abgeleiteten Cache
-    // (`annex-pdf-parse`), womit auch dieser Weg einmal je Entwurf und Tag
-    // bezahlt wird.
+    // WHAT THE SECOND READ COSTS, two paths and two answers: the XML path
+    // goes through `getDraftArticles` and is the same cache hit — since
+    // 22.09.2026 for the PARSE too, not only for the bytes. The PDF path was
+    // NOT — its byte cache is deliberately off in production
+    // (`annex/annexPdfService.ts`), so `/konsolidiert` and
+    // `/gegenueberstellung` each fetched and parsed the same Beilage once.
+    // Since 22.09.2026 the PARSE lives in a derived cache
+    // (`annex-pdf-parse`), so this path too is paid once per draft per day.
     const articles = parts.map((p) => p.article)
     const annex = await annexSourceFor(gp, inr, row.textComparison ?? null, articles)
     const byParagraph = typeof annex === 'string' ? null : rowsByParagraph(annex.parsed.rows)
@@ -143,60 +136,58 @@ export const getConsolidatedText = defineCachedFunction(
     let touched = 0
     const budget = { left: MAX_PARAGRAPHS }
 
-    // ALLE Artikel werden gezählt, auch die jenseits von `MAX_LAWS`: Der
-    // Nenner auf der Seite ist „wie viele Paragraphen ändert dieser Entwurf",
-    // nicht „wie viele haben wir angesehen". Bearbeitet werden die ersten
-    // zwölf.
+    // ALL Artikel are counted, those beyond `MAX_LAWS` included: the
+    // denominator on the page is „wie viele Paragraphen ändert dieser
+    // Entwurf", not "how many did we look at". The first twelve are worked.
     //
-    // DREI SCHRITTE, und ihre Reihenfolge ist der Grund für den Zuschnitt:
-    // erst rein lesen, was jeder Artikel adressiert, dann das Budget in
-    // EINGABEREIHENFOLGE zuteilen, und erst zuletzt nebeneinander holen.
-    // Welche §§ die Grenze abschneidet, ist eine Aussage auf der Seite; sie
-    // darf nicht davon abhängen, welcher Artikel zuerst fertig wird.
+    // THREE STEPS, and their order is the reason for the cut: first read
+    // purely what each Artikel addresses, then allot the budget in INPUT
+    // ORDER, and only last fetch side by side. Which §§ the limit cuts off is
+    // a statement on the page; it must not depend on which Artikel finishes
+    // first.
     const perArticle = parts.map(({ blocks: part, article }, index) => {
       const units = segmentUnits(part).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
       const { instructions, refused } = instructionsFromUnits(units)
       if (instructions.length + refused.length === 0) return null
-      // Der Nenner, gezählt bevor irgendetwas scheitern kann — rein und
-      // getestet in `konsGate.ts`, weil eine Zahl, die auf der Seite steht,
-      // eine Aussage ist und keine Zwischenrechnung.
+      // The denominator, counted before anything can fail — pure and tested
+      // in `kons/konsGate.ts`, because a number that stands on the page is a
+      // statement and not an intermediate result.
       return { index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused.map((r) => r.line)) }
     })
     for (const w of perArticle) if (w) touched += w.addressed.length
 
-    // Ohne Anhang bestätigt nichts irgendetwas, und dann ist jeder
-    // RIS-Abruf für die Katz: Die Hälfte der Entwürfe hat keinen, und für
-    // die holte diese Funktion Dutzende §-Dokumente, um anschließend nichts
-    // zu zeigen. Die Zahl der geänderten Paragraphen steht trotzdem da —
-    // sie kostet keinen Abruf, sie steht im Entwurfstext.
+    // Without an annex nothing confirms anything, and then every RIS call is
+    // wasted: half the drafts have none, and for those this function fetched
+    // dozens of § documents only to show nothing afterwards. The number of
+    // changed §§ still stands there — it costs no call, it is in the draft's
+    // own text.
     if (!byParagraph) return { gp, inr, paragraphs: [], touched }
 
     const workable = perArticle.flatMap((w) => (w && w.index < MAX_LAWS ? [w] : []))
 
     const resolved = await mapWithConcurrency(workable, CONCURRENCY, async (w) => {
       const { article } = w
-      // KEIN `.catch` hier. `resolveKonsLaw` gibt null zurück, wenn das RIS
-      // das Gesetz nicht kennt oder zwei nicht auseinanderhält — eine
-      // Antwort, die einen Tag lang gilt —, und es *wirft*, wenn das RIS
-      // nicht erreichbar ist. Ein in null gefangener Fehler wäre ein
-      // Ausfall, der als Urteil über den Entwurf zwischengespeichert wird;
-      // genau das hat `annexGuardService.ts` schon einmal gekostet.
+      // NO `.catch` here. `resolveKonsLaw` returns null where RIS does not
+      // know the law or cannot tell two apart — an answer that holds for a
+      // day — and it *throws* where RIS is unreachable. An error caught into
+      // null would be an outage cached as a verdict about the draft; that is
+      // exactly what `annex/annexGuardService.ts` cost once already.
       const law = article.bgbl ? await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '') : null
       if (!law) return null
 
-      // Wenn das Budget beißt, soll es bei den Paragraphen beißen, die
-      // ohnehin nichts zeigen könnten.
+      // Where the budget bites, it should bite the §§ that could show
+      // nothing anyway.
       //
-      // Das Tor zeigt nichts ohne zweite Meinung: Schweigt die Beilage zu
-      // einem §, steht sein Ausgang fest, bevor ein Dokument geholt ist. Die
-      // holen wir deshalb zuletzt — **aber wir holen sie**. Sie ganz
-      // wegzulassen war der erste Versuch (19.09.2026) und ging nach hinten
-      // los: `applyNovelle` wendet die Anweisungen auf den GESAMTEN geladenen
-      // Bestand an, und eine Anweisung, deren Anker-§ fehlt, scheitert. An
-      // 100/ME stieg „Anweisung ließ sich nicht sicher anwenden" damit von 8
-      // auf 11 und die Anzeige verlor zwei Paragraphen. Die Reihenfolge
-      // ändert nichts am Bestand, solange das Budget reicht; erst wenn es
-      // nicht reicht, entscheidet sie, was fehlt.
+      // The gate shows nothing without a second opinion: where the Beilage is
+      // silent about a §, its outcome is settled before any document is
+      // fetched. So those are fetched last — **but they are fetched**.
+      // Leaving them out entirely was the first attempt (19.09.2026) and
+      // backfired: `applyNovelle` applies the instructions to the WHOLE
+      // loaded stock, and an instruction whose anchor § is missing fails. On
+      // 100/ME „Anweisung ließ sich nicht sicher anwenden" rose from 8 to 11
+      // that way and the display lost two §§. The order changes nothing about
+      // the stock as long as the budget suffices; only when it does not does
+      // the order decide what is missing.
       const covered = (id: string): boolean =>
         paragraphRows(byParagraph, id, isPackage ? article.key : undefined).length > 0
       const wanted = new Map([...w.addressed].map((id) => [anlageLabelKey(`§ ${id}`), covered(id)]))
@@ -207,7 +198,7 @@ export const getConsolidatedText = defineCachedFunction(
       return { ...w, law, refs }
     })
 
-    // Die Zuteilung, rein und der Reihe nach — vor dem Holen, nicht darin.
+    // The allotment, pure and in order — before the fetching, not inside it.
     const jobs = resolved.flatMap((r) => (r ? [{ ...r, ...allotBudget(r.refs, budget) }] : []))
 
     const shownPerArticle = await mapWithConcurrency(jobs, CONCURRENCY, async (job) => {
@@ -221,10 +212,10 @@ export const getConsolidatedText = defineCachedFunction(
         if (id) refusedIds.add(id)
       }
 
-      // Einmal gelesen statt einmal je Paragraph: die Bezeichnung, die jede
-      // Anweisung adressiert, und die §§, die ihre Nutzlast einfügt. Die
-      // Bedingung darunter ist unverändert — nur gerechnet wird sie jetzt
-      // 80-mal seltener (80 §§ × 500 Anweisungen, §6.8).
+      // Read once instead of once per §: the designation every instruction
+      // addresses, and the §§ its payload inserts. The condition below is
+      // unchanged — it is only computed 80 times less often (80 §§ × 500
+      // instructions, `docs/refactor-plan.md` §6.8).
       const analysed = instructions.map((instruction, i) => {
         const { op, payload } = instruction
         const address = opAddress(op)
@@ -251,8 +242,8 @@ export const getConsolidatedText = defineCachedFunction(
         // of the engine.
         if (skipped.has(id)) continue
         const node = afterById.get(id)
-        // Kein Text erzeugt: Der § stand nicht im geltenden Bestand, oder
-        // keine Anweisung an ihm ließ sich ausführen.
+        // No text produced: the § was not in the standing stock, or no
+        // instruction on it could be carried out.
         if (!node) continue
         const beforeNode = beforeById.get(id) ?? null
         const touching = analysed
@@ -261,22 +252,22 @@ export const getConsolidatedText = defineCachedFunction(
         const guard = guardParagraph(id, standing, beforeNode, node, touching)
         const before = beforeNode ? plainText(beforeNode) : null
         const got = plainText(node)
-        // ANZEIGEFORM für das, was auf der Seite steht — mit „(1)", „3." und
-        // „b)" (`bodyText`). Die beiden Zeilen darüber bleiben die
-        // Vergleichsform: Das Orakel hält unser Ergebnis gegen die Beilage,
-        // und die setzt ihre Marker anders. Beide Formen aus demselben Baum,
-        // aber nie dieselbe Funktion — bis 19.09.2026 lief die Anzeige über
-        // die Vergleichsform, und ein § ohne Absatznummern las sich, als
-        // fehle die Hälfte (§12.12a).
+        // DISPLAY FORM for what stands on the page — with „(1)", „3." and
+        // „b)" (`bodyText`). The two lines above stay the comparison form:
+        // the oracle holds our result against the Beilage, and the Beilage
+        // sets its markers differently. Both forms out of the same tree, but
+        // never the same function — until 19.09.2026 the display ran through
+        // the comparison form, and a § without Absatz numbers read as if half
+        // of it were missing (§12.12a).
         //
-        // Überschrift und Rumpf getrennt, weil die Überschrift auf der Seite
-        // ihren eigenen Wortdiff hat; im Fließtext klebte sie sonst am ersten
-        // Satz.
+        // Heading and body kept apart, because the heading has a word diff of
+        // its own on the page; in running text it stuck to the first
+        // sentence otherwise.
         const bodyBefore = beforeNode ? bodyText(beforeNode) : null
         const bodyAfter = bodyText(node)
-        // Ein Paket ohne Gesetzesgrenzen in der Beilage darf nicht nach einem
-        // einzelnen Artikel gefragt werden: 15,1 % der §-Bezeichnungen
-        // wiederholen sich in einem anderen Gesetz desselben Pakets.
+        // A package whose Beilage carries no law boundaries must not be
+        // asked about a single Artikel: 15,1 % of the § designations recur in
+        // another law of the same package.
         const report = oracleVerdict(id, before, got, paragraphRows(byParagraph, id, isPackage ? article.key : undefined))
         const gate = gateParagraph({
           refused: refusedIds.has(id),
@@ -284,10 +275,10 @@ export const getConsolidatedText = defineCachedFunction(
           oracle: report.verdict,
         })
         if (!gate.show) continue
-        // `diffTokens` gibt null zurück, wenn der Vergleich zu lang zum
-        // Rechnen ist. Erreichbar ist das hier kaum — der Guard setzt in
-        // demselben Fall „unprüfbar" und das Tor hat oben schon zugemacht —,
-        // aber ein Paragraph ohne Markierung wäre eine Behauptung ohne Beleg.
+        // `diffTokens` returns null where the comparison is too long to
+        // compute. Barely reachable here — the guard sets „unprüfbar" in the
+        // same case and the gate has closed above already — but a § without
+        // markings would be a claim without evidence.
         const segments: LawDiffSegment[] | null = bodyBefore === null ? [{ type: 'inserted', text: bodyAfter }] : diffTokens(bodyBefore, bodyAfter).segments
         if (!segments) continue
         const headingBefore = beforeNode?.heading ?? ''
@@ -300,10 +291,9 @@ export const getConsolidatedText = defineCachedFunction(
           segments,
           headingSegments,
           risUrl: konsLawUrl(law.gesetzesnummer, asOf),
-          // Derselbe Wert, mit dem oben `paragraphRows` den Anhang befragt
-          // hat — nicht `law.kurztitel`, sondern die Gesetzeszeile der
-          // Beilage. Die Seite hängt den § damit unter genau die
-          // §-Gruppe, gegen die er geprüft wurde (§12.12a).
+          // The same value `paragraphRows` asked the annex with above — not
+          // `law.kurztitel` but the Beilage's own law line. The page hangs
+          // the § under exactly the § group it was checked against (§12.12a).
           annexLaw: isPackage ? article.key : null,
         })
       }

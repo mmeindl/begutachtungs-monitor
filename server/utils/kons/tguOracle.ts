@@ -120,7 +120,7 @@ export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>,
 /**
  * The same map read by § alone — built once per map instead of materialised
  * and filtered per §. On a single-law draft this ran for every § of the
- * annex, over every key of the map (`refactor-plan.md` §6.8).
+ * annex, over every key of the map (`docs/refactor-plan.md` §6.8).
  *
  * Keyed on the map object, so the index dies with it. The map is built once
  * per request by `rowsByParagraph` and not written to afterwards; an index

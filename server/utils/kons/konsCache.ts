@@ -2,10 +2,10 @@
  * The two cached RIS Bundesrecht lookups, shared by everything that needs
  * the standing law (docs/architecture.md §5, cache rule 5).
  *
- * `risKons.ts` is deliberately free of Nitro globals so the harnesses can
+ * `ris/konsLaw.ts` is deliberately free of Nitro globals so the harnesses can
  * run it directly, which leaves the caching to be done somewhere else. It
- * was being done twice: the § names (`paraTitleService.ts`) and the annex
- * check (`annexGuardService.ts`) both want the same § document of the same
+ * was being done twice: the § names (`diff/paraTitleService.ts`) and the annex
+ * check (`annex/annexGuardService.ts`) both want the same § document of the same
  * law at the same date, and two cached functions over one upstream document
  * means two copies in memory and two chances to key them differently.
  *
@@ -13,7 +13,7 @@
  *
  *  - the § document is a **fetched** payload — a NOR version never changes,
  *    so it is kept for a month, and its *parse* is deliberately not cached:
- *    the structure rules live in `lawStructure.ts` and keep changing, so a
+ *    the structure rules live in `lawtext/konsTree.ts` and keep changing, so a
  *    cached tree would hide the next change to them for a month.
  *  - the law resolution is **derived** — `resolveLawByBgbl` walks pages of
  *    RIS results and decides which law a BGBl means, which is our reasoning

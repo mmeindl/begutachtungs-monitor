@@ -1,41 +1,36 @@
 /**
- * Was von der eigenen konsolidierten Lesefassung angezeigt werden darf
- * (docs/architecture.md §12.12).
+ * What of our own konsolidierte Lesefassung may be shown
+ * (docs/architecture.md §12.12, §12.12a).
  *
- * PURE MODULE — relative imports only, damit vitest es direkt ausführt.
+ * PURE MODULE — relative imports only, so vitest runs it directly.
  *
- * Hier steht eine einzige Entscheidung, und sie steht hier, weil sie eine
- * Entscheidung *ist*: Ein Paragraph, den die Engine erzeugt hat, geht nur
- * dann auf die Seite, wenn drei unabhängige Dinge zusammenkommen. Die
- * Lektion, aus der dieses Modul entstanden ist, ist Befund 0 derselben
- * Sektion — die urteilende Hälfte eines Prüfstands lag in `scripts/`, wurde
- * deshalb von keinem Typecheck und keinem Test erfasst, und meldete ein
- * Vierteljahr zu gute Zahlen.
+ * One decision lives here, and it lives here because it *is* a decision: a §
+ * the engine produced goes on the page only where three independent things
+ * come together.
  *
- * DIE DREI SIGNALE, und warum keines allein reicht:
+ * THE THREE SIGNALS, and why none of them is enough on its own:
  *
- *  1. **Keine Verweigerung.** Sagt verlässlich, dass die Engine *nichts*
- *     getan hat — und nichts darüber, ob das Getane richtig ist. Gemessen:
- *     von 261 geprüften Paragraphen wichen die 190 ohne Verweigerung mit
- *     exakt der Gesamtquote ab (12,6 %, 09.09.2026). Ein Tor, das „alles
- *     Unverweigerte" zeigt, veröffentlicht stille Fehler.
- *  2. **Plausibel** (`applyGuard.ts`). Umfang, Fugen, Marker, unerklärte
- *     Wörter — ein Filter am Rand, keine Verifikation. Er sieht per
- *     Konstruktion nicht, was falsch gelesen und dann konsequent angewendet
- *     wurde.
- *  3. **Vom Anhang bestätigt** (`tguOracle.ts`). Das einzige unabhängige
- *     Signal: die Textgegenüberstellung des Ressorts, am ersten Tag der
- *     Begutachtung geschrieben, ohne Kenntnis unserer Engine. Von 140
- *     plausiblen Paragraphen, zu denen der Anhang etwas sagt, widerspricht
- *     er 34 (24 %, Produktionspfad, 40 Entwürfe, 19.09.2026) — das ist der
- *     gemessene Preis dafür, ohne ihn zu veröffentlichen.
+ *  1. **No refusal.** Says reliably that the engine did *nothing* — and
+ *     nothing about whether what it did is right. Measured: of 261 checked
+ *     §§ the 190 without a refusal diverged at exactly the overall rate
+ *     (12,6 %, 09.09.2026). A gate that shows „alles Unverweigerte" publishes
+ *     silent errors.
+ *  2. **Plausible** (`kons/applyGuard.ts`). Size, seams, markers, unexplained
+ *     words — a filter at the edge, not a verification. By construction it
+ *     cannot see what was read wrongly and then applied consistently.
+ *  3. **Confirmed by the annex** (`kons/tguOracle.ts`). The one independent
+ *     signal: the ressort's own Textgegenüberstellung, written on the first
+ *     day of the Begutachtung and without knowledge of our engine. Of 140
+ *     plausible §§ the annex says something about, it contradicts 34 (24 %,
+ *     production path, 40 drafts, 19.09.2026) — the measured price of
+ *     publishing without it.
  *
- * Daraus folgt die unbequeme Eigenschaft dieses Tors, die auf die Seite
- * gehört und nicht in eine Fußnote: **Wo das Ressort keine lesbare
- * Gegenüberstellung veröffentlicht, zeigt diese Sektion nichts** — nicht,
- * weil die Engine dort schlechter wäre, sondern weil niemand widerspricht.
- * Die Deckung des Tors ist die Deckung des Anhangs (41 % der Paragraphen mit
- * Anhang, 0 % ohne, per Konstruktion).
+ * From which follows the uncomfortable property of this gate, and it belongs
+ * on the page rather than in a footnote: **where the ressort publishes no
+ * readable Gegenüberstellung, this section shows nothing** — not because the
+ * engine is worse there, but because nobody contradicts it. The gate's
+ * coverage is the annex's coverage (41 % of the §§ with an annex, 0 % without,
+ * by construction).
  */
 
 import type { Instruction } from './lawApply'
@@ -44,41 +39,42 @@ import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { bareParaId } from '../text/designation'
 
 /**
- * Warum ein erzeugter Paragraph nicht angezeigt wird.
+ * Why a produced § is not shown.
  *
- * - `verweigert` — mindestens eine Anweisung an diesem § ließ sich nicht
- *   sicher ausführen.
- * - `nicht-geladen` — unsere eigene Obergrenze, nicht das Urteil der Engine:
- *   Ein Sammelgesetz nennt mehr Gesetze und Paragraphen, als eine Seite laden
- *   darf. Ein eigener Grund, weil die Bilanz unter der Liste sonst unsere
- *   Grenze als Verweigerung der Engine ausgäbe — und das ist dieselbe
- *   Verwechslung, gegen die dieses ganze Modul geschrieben ist.
- * - `unplausibel` — das Ergebnis hat die Plausibilitätssignale nicht bestanden.
- * - `kein-anhang` — der Entwurf trägt keine lesbare Textgegenüberstellung.
- * - `anhang-schweigt` — es gibt eine, aber zu diesem § sagt sie nichts Prüfbares.
- * - `anhang-widerspricht` — sie widerspricht dem Ergebnis der Engine.
+ * - `verweigert` — at least one instruction on this § could not be carried
+ *   out safely.
+ * - `nicht-geladen` — our own ceiling, not the engine's verdict: a
+ *   Sammelgesetz names more laws and §§ than one page may load. A cause of
+ *   its own, because the balance under the list would otherwise report our
+ *   limit as a refusal by the engine — the very confusion this whole module
+ *   is written against.
+ * - `unplausibel` — the result did not pass the plausibility signals.
+ * - `kein-anhang` — the draft carries no readable Textgegenüberstellung.
+ * - `anhang-schweigt` — there is one, but it says nothing checkable about
+ *   this §.
+ * - `anhang-widerspricht` — it contradicts the engine's result.
  */
 export type WithholdCause = ConsolidatedWithheldCause
 
-/** Das Urteil des Anhangs, wie `tguOracle.oracleVerdict` es fällt, plus „es gibt keinen". */
+/** The annex's verdict as `oracleVerdict` (`kons/tguOracle.ts`) passes it, plus "there is none". */
 export type GateOracle = 'bestätigt' | 'widersprochen' | 'stumm' | 'fremd' | 'kein Anhang'
 
 export interface GateInput {
-  /** Eine Anweisung an diesem § wurde verweigert (`lawApply`/`instructionsFromUnits`). */
+  /** An instruction on this § was refused (`instructionsFromUnits` in `kons/lawApply.ts`). */
   refused: boolean
-  /** `applyGuard.guardParagraph().plausible` */
+  /** `guardParagraph().plausible` (`kons/applyGuard.ts`) */
   plausible: boolean
   oracle: GateOracle
 }
 
 /**
- * Zeigen oder nicht — und wenn nicht, warum.
+ * Show it or not — and if not, why.
  *
- * Die Reihenfolge der Gründe ist die Reihenfolge der Verantwortung: zuerst,
- * was die Engine selbst zugibt (Verweigerung), dann, was unsere Signale
- * finden, erst danach das fremde Dokument. Ein Paragraph, den die Engine
- * verweigert hat UND dem der Anhang widerspricht, wird als verweigert
- * gezählt — sonst sähe die Statistik aus, als läge es am Ressort.
+ * The order of the causes is the order of responsibility: first what the
+ * engine admits itself (a refusal), then what our own signals find, and only
+ * then the outside document. A § the engine refused AND the annex contradicts
+ * counts as refused — otherwise the statistics would look as if it were the
+ * ressort's fault.
  */
 export function gateParagraph({ refused, plausible, oracle }: GateInput): { show: boolean; cause: WithholdCause | null } {
   if (refused) return { show: false, cause: 'verweigert' }
@@ -86,20 +82,20 @@ export function gateParagraph({ refused, plausible, oracle }: GateInput): { show
   if (oracle === 'bestätigt') return { show: true, cause: null }
   if (oracle === 'kein Anhang') return { show: false, cause: 'kein-anhang' }
   if (oracle === 'widersprochen') return { show: false, cause: 'anhang-widerspricht' }
-  // „stumm" (der Anhang führt den § nicht) und „fremd" (seine geltende
-  // Fassung steht so nicht im RIS-Text) sind für den Leser dasselbe: es gibt
-  // hier keine zweite Meinung. Unterschieden werden sie im Prüfstand.
+  // „stumm" (the annex does not carry the §) and „fremd" (its geltende
+  // Fassung is not in the RIS text that way) are the same thing to a reader:
+  // there is no second opinion here. The harness keeps them apart.
   return { show: false, cause: 'anhang-schweigt' }
 }
 
 // ---------------------------------------------------------------------------
-// Die Bezugsgröße der Anzeige
+// The denominator of the display
 // ---------------------------------------------------------------------------
 
 /**
- * §-Reihenfolge, wie das Gesetz sie druckt: § 22 vor § 197, § 285b vor
- * § 285c. Eine Zeichenkettensortierung stellt „§ 197" vor „§ 22" — auf einer
- * Seite, die Gesetzestext zeigt, liest sich das wie ein Defekt.
+ * § order as the law prints it: § 22 before § 197, § 285b before § 285c. A
+ * string sort puts „§ 197" before „§ 22" — on a page that shows law text that
+ * reads like a defect.
  */
 export function byParagraphOrder(a: string, b: string): number {
   const num = (id: string): number => Number.parseInt(id, 10) || 0
@@ -107,17 +103,17 @@ export function byParagraphOrder(a: string, b: string): number {
 }
 
 /**
- * Welche Paragraphen ein Artikel des Entwurfs anfasst — der **Nenner** der
- * Anzeige („gezeigt sind 32 von 61").
+ * Which §§ one Artikel of the draft touches — the **denominator** of the
+ * display („gezeigt sind 32 von 61").
  *
- * Gezählt wird, bevor irgendetwas scheitern kann: aus den gelesenen
- * Anweisungen UND aus den verweigerten Zeilen. Eine Verweigerung ist gerade
- * kein Grund, den Paragraphen aus dem Nenner zu nehmen — sonst schrumpfte die
- * Bezugsgröße genau um das, was wir nicht können, und „12 von 12" stünde über
- * einer Liste, die die Hälfte des Entwurfs verschweigt.
+ * Counted before anything can fail: from the instructions that were read AND
+ * from the lines that were refused. A refusal is precisely no reason to take
+ * a § out of the denominator — the reference would then shrink by exactly
+ * what we cannot do, and „12 von 12" would stand over a list that keeps half
+ * the draft quiet.
  *
- * Eine Anweisung, die einen § *einfügt*, zählt mit: Er ist nach dem Entwurf
- * Teil des Gesetzes, auch wenn es ihn im geltenden Bestand nicht gibt.
+ * An instruction that *inserts* a § counts: under the draft it is part of the
+ * law, even where the standing text does not have it.
  */
 export function addressedParagraphs(
   instructions: readonly Instruction[],
