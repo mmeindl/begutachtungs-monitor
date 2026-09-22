@@ -14,14 +14,15 @@
  * **Where the numbers they feed are decided — four thresholds, each staying
  * at its call site, because each was measured there:**
  *
- * - 0,5 in `lawDiff.pairArticles` (article pairing, ME against RV)
- * - 0,5 as `explanationsJoin.NAME_MIN_JACCARD` (which law a passage explains)
- * - 0,6 as `annexBoundaries.TITLE_MATCH` (a title is evidence only when it
- *   fits one Artikel clearly better than any other)
- * - `annexBoundaries.TITLE_AGREE` (below it a title actively contradicts the
+ * - 0,5 in `pairArticles` (`diff/lawDiff.ts`, article pairing ME against RV)
+ * - 0,5 as `NAME_MIN_JACCARD` (`explanations/explanationsJoin.ts`, which law
+ *   a passage explains)
+ * - 0,6 as `TITLE_MATCH` (`annex/annexBoundaries.ts`, a title is evidence
+ *   only when it fits one Artikel clearly better than any other)
+ * - `TITLE_AGREE` in the same file (below it a title actively contradicts the
  *   number)
  *
- * A fifth, `risKons.NAME_MATCH`, reads `lawNameScore` through
+ * A fifth, `NAME_MATCH` in `ris/konsLaw.ts`, reads `lawNameScore` through
  * `text/clearWinner.ts`.
  */
 import { normalizeText } from '../lawtext/normalize'
@@ -76,21 +77,22 @@ export function articleNameTokens(title: string | null): Set<string> {
  * Words that appear in almost every Artikel title and so carry no evidence.
  * "Änderung des …" is the template, not the name.
  *
- * **Die Vollform der Vorlage stand bis 19.09.2026 nicht darin.** Ein Entwurf
- * ohne Artikelzeile trägt seinen Titel als ganzen Satz — „Bundesgesetz, mit
- * dem das Lebensmittelsicherheits- und Verbraucherschutzgesetz **geändert
- * wird**" —, und die beiden Verben zählten als Inhalt. Gegen den Kurztitel
- * des RIS ergab das 2 von 4 gemeinsamen Wörtern, also 0,50, und `pickByName`
- * verlangt 0,60: Das LMSVG war damit gegen das zweite Gesetz desselben
- * Bundesgesetzblatts (BGBl. I Nr. 13/2006 schafft auch das Kontroll- und
- * Digitalisierungs-Durchführungsgesetz) nicht mehr bestimmbar — 20 von 20
- * Einheiten in 70/ME ohne Namen, und dasselbe Gesetz fehlte unter
- * „Geltendes Recht". Mit den Verben auf dieser Liste sind es 1,00 gegen 0,00.
+ * **The template's full form was missing from the list until 19.09.2026.** A
+ * draft without an Artikel line carries its title as a whole sentence —
+ * „Bundesgesetz, mit dem das Lebensmittelsicherheits- und
+ * Verbraucherschutzgesetz **geändert wird**" — and the two verbs counted as
+ * content. Against the RIS Kurztitel that gave 2 of 4 shared words, so 0,50,
+ * and `pickClearWinner` is called with 0,60 there: the LMSVG was no longer
+ * decidable against the second law of the same Bundesgesetzblatt (BGBl. I
+ * Nr. 13/2006 also creates the Kontroll- und Digitalisierungs-
+ * Durchführungsgesetz) — 20 of 20 units in 70/ME without a name, and the same
+ * law missing under „Geltendes Recht". With the verbs on this list it is 1,00
+ * against 0,00.
  */
 const TITLE_STOPWORDS = new Set([
   'änderung', 'änderungen', 'aufhebung', 'bundesgesetz', 'bundesgesetzes', 'gesetz', 'gesetzes',
   'über', 'sowie', 'mit', 'dem', 'des', 'der', 'die', 'das', 'den', 'und', 'von', 'zum', 'zur',
-  // Die Vorlage in ihrer Satzform: „…, mit dem das X geändert wird".
+  // The template in its sentence form: „…, mit dem das X geändert wird".
   'geändert', 'wird', 'werden', 'erlassen', 'aufgehoben',
 ])
 
@@ -114,8 +116,8 @@ function titleNameTokens(title: string): Set<string> {
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .split(' ')
     .filter((w) => w.length > 3 && !TITLE_STOPWORDS.has(w))
-  // Auch nach dem Stemmen: „geänderten" wird zu „geändert" und ist dann
-  // dasselbe Füllwort, das die Liste oben schon kennt.
+  // After stemming too: „geänderten" becomes „geändert" and is then the same
+  // filler the list above already knows.
   return new Set(words.map(titleStem).filter((w) => !TITLE_STOPWORDS.has(w)))
 }
 

@@ -7,7 +7,8 @@
  * with a validity interval on each version (docs/api-exploration.md §2a).
  * This module turns one such document into the tree a Novellierungsanordnung
  * addresses: § → Absatz → Ziffer/Litera, plus the Schlussteil that trails a
- * list. `lawApply.ts` operates on that tree; nothing here changes anything.
+ * list. `kons/lawApply.ts` operates on that tree; nothing here changes
+ * anything.
  */
 import { normalizeText, stripMarkup } from './normalize'
 import { decodeEntities } from '../parliament/htmlText'
@@ -49,9 +50,10 @@ export function makeNode(level: NodeLevel, id: string, marker: string, text: str
 // ---------------------------------------------------------------------------
 
 /**
- * Deliberately not `risXml`'s list, which is the one home for the element
- * vocabulary of a *draft*: this reads a single § of the standing law, where
- * `inhaltsvz` is the law's own table of contents and no part of any §.
+ * Deliberately not the list in `lawtext/risXml.ts`, which is the one home for
+ * the element vocabulary of a *draft*: this reads a single § of the standing
+ * law, where `inhaltsvz` is the law's own table of contents and no part of
+ * any §.
  */
 const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/g, /<layoutdaten[\s\S]*?<\/layoutdaten>/g]
 /**
@@ -62,18 +64,14 @@ const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/
  * produced it**, not of the law: converter 4.1 writes `<schlussteil>`, the 3.x
  * line writes `<schluss typ="…">`, and 4.0 straddles the change. Measured over
  * the 16.073 § documents of the offline corpus on 2026-09-11: 2.824 carry
- * `<schlussteil>`, 402 carry `<schluss>`, and **not one carries both**. So
+ * `<schlussteil>`, 402 carry `<schluss>`, and **not one carries both** — so
  * reading only the newer name ended those 402 §§ with their enumeration and
- * dropped everything behind it — 880 blocks, 23.578 comparable words of
- * standing law. StGB § 321c lost „ist mit Freiheitsstrafe von einem bis zu
- * zehn Jahren zu bestrafen." and BMSVG § 28 „Verordnungen der FMA nach diesem
- * Absatz bedürfen der Zustimmung des Bundesministers für Finanzen.", both of
- * which the ressort's annex quotes (docs/architecture.md §12.13).
- *
- * Read against an independent flat reading of the same documents — every block
- * in document order, no tree — the tree now reproduces that order for 15.290
- * of the 15.510 representable § documents, against 14.906 before, and **not a
- * single document is short of text any more** (386 were).
+ * dropped 880 blocks, 23.578 comparable words of standing law, silently. The
+ * §§ this cost, and the document-order measurement behind it (15.290 of
+ * 15.510 representable documents in order, against 14.906, none short of
+ * text any more), are in docs/architecture.md §12.13.
+ * `lawtext/risXml.ts` reads both names for the same reason, on the other
+ * kind of document.
  */
 const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
@@ -100,7 +98,7 @@ const ANNOTATION_RE = /\(Anm\.:[^()]*(?:\([^()]*\)[^()]*)*\)/g
  * A block's text. `stripMarkup` carries the block/inline distinction, and it
  * is shared with the annex on purpose: this is the text the annex's left
  * column is scored against, so a rule applied to one side alone would be the
- * asymmetry, not the fix (`lawText.stripMarkup`, 2026-09-11).
+ * asymmetry, not the fix (`lawtext/normalize.ts`, 2026-09-11).
  *
  * `ANNOTATION_RE` runs before it, unchanged: RIS sets its editorial note in
  * italics, and the pattern has always seen the note's own text. What the
@@ -123,7 +121,6 @@ function text(inner: string): string {
   )
 }
 
-/** The last child of `node` at `level`, or null. */
 function lastChild(node: LawNode, level: NodeLevel): LawNode | null {
   for (let i = node.children.length - 1; i >= 0; i--) if (node.children[i]!.level === level) return node.children[i]!
   return null
@@ -142,19 +139,20 @@ function lastChild(node: LawNode, level: NodeLevel): LawNode | null {
  * enumeration can *continue* after the clause — „oder" closes Ziffer 1 of
  * Börsegesetz § 131 Abs. 1 and Ziffer 2 follows it — and filing every clause
  * on the Absatz instead costs 33 documents their document order. And
- * `lawApply.textSlot` resolves „Im Schlussteil des § 169 Abs. 1" to the
- * Absatz's *last* `schluss` child: measured over the corpus, filing them all
- * on the Absatz puts a Ziffer's or Litera's clause in that slot in **89 §§**
- * (Börsegesetz § 131, BWG §§ 20, 22, 35, 78, KStG § 26c, B-VG Art. 50 …).
- * Reading the level takes that to zero, and it never *empties* a slot: over
- * the 16.073 documents the Absatz's clause changes in 317 of them and in every
- * one of those it was empty before.
+ * `textSlot` in `kons/lawApply.ts` resolves „Im Schlussteil des § 169 Abs. 1"
+ * to the Absatz's *last* `schluss` child: measured over the corpus, filing
+ * them all on the Absatz puts a Ziffer's or Litera's clause in that slot in
+ * **89 §§**. Reading the level takes that to zero, and it never *empties* a
+ * slot: over the 16.073 documents the Absatz's clause changes in 317 of them
+ * and in every one of those it was empty before (docs/architecture.md
+ * §12.13).
  *
- * **`<schlussteil>` carries the same information in `ebene`** — 0 and 0.5 for
+ * **Measured and deliberately not done.** `<schlussteil>` carries the same
+ * information in `ebene` — 0 and 0.5 for
  * the Absatz (4.792 blocks), 1 for the Ziffer (2.640), 2 and deeper for the
  * Litera (587) — and using it takes the documents whose `plainText` is still
- * out of document order from 220 to 121. It is deliberately *not* used yet:
- * it would also empty the Absatz-level Schlussteil slot in 2.352 documents,
+ * out of document order from 220 to 121. It is *not* used, because it would
+ * also empty the Absatz-level Schlussteil slot in 2.352 documents,
  * and whether the 406 `ebene="1"` clauses that *end* their list close the
  * Ziffer or the Absatz is exactly the question `ebene` cannot answer on its
  * own. That needs the amendment engine's harness over a corpus, not this
@@ -327,21 +325,22 @@ export function renderNode(node: LawNode): string {
 }
 
 /**
- * ANZEIGEFORM des Rumpfes eines § — mit Gliederungsmarkern, ohne die
- * §-Bezeichnung und ohne Überschrift (docs/architecture.md §12.12a).
+ * DISPLAY FORM of a §'s body — with the Gliederungsmarker, without the §
+ * designation and without the Überschrift (docs/architecture.md §12.12a).
  *
- * Getrennt von `plainText`, und der Unterschied ist kein Geschmack: Diese
- * Datei kennt zwei Formen desselben Textes. Die Vergleichsform lässt „(1)",
- * „3." und „b)" weg, weil die Beilage sie anders setzt und ein Vergleich
- * sonst an Typografie scheitert (`tguOracle.stripMarkers` tut dasselbe auf
- * der anderen Seite). Die Anzeigeform braucht sie, weil ein Gesetzestext
- * ohne Absatznummern nicht zitierbar ist und zwei Absätze sonst als ein
- * Satz hintereinander stehen — am 19.09.2026 auf der Seite gesehen, wo „so
- * lautet der Paragraph dann" aussah, als fehle die Hälfte.
+ * Kept apart from `plainText`, and the difference is not taste: this file
+ * knows two forms of the same text. The comparison form leaves „(1)", „3."
+ * and „b)" out, because the Beilage sets them differently and a comparison
+ * would otherwise fail on typography (`stripMarkers` in `kons/tguOracle.ts`
+ * does the same on the other side). The display form needs them, because a
+ * law text without Absatz numbers cannot be cited and two Absätze would
+ * otherwise stand there as one running sentence — seen on the page on
+ * 19.09.2026, where „so lautet der Paragraph dann" looked as if half of it
+ * were missing.
  *
- * Ohne §-Marker und ohne Überschrift, weil beide auf der Seite schon einen
- * eigenen Platz haben: die Bezeichnung als Zeile darüber, die Überschrift
- * als eigener Wortdiff (`headingSegments`).
+ * Without the § marker and without the Überschrift, because both already have
+ * a place of their own on the page: the designation as the line above it, the
+ * heading as its own word diff (`headingSegments` in `kons/konsService.ts`).
  */
 export function bodyText(node: LawNode): string {
   return node.children.map(renderNode).join('\n')
@@ -358,7 +357,6 @@ export function lawTextNodes(node: LawNode): LawNode[] {
   return [node, ...node.children.flatMap(lawTextNodes)]
 }
 
-/** Direct child at `level` with `id`, or null. */
 export function childById(node: LawNode, level: NodeLevel, id: string): LawNode | null {
   return node.children.find((c) => c.level === level && c.id === id) ?? null
 }

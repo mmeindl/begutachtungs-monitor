@@ -224,31 +224,20 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         lastNovao = 0
         continue
       case 'section':
-        // The same window as `draftArticles`; the two copies are one rule.
-        // The first heading after "Artikel n" is the article's law title —
-        // and a law is named before its first instruction, only there. Later
-        // a heading of the same RIS type is *quoted payload*: an instruction
-        // that rewrites an Anlage or a Kapitel prints the heading it
-        // installs, and RIS tags it `ueberschrift typ="anlage"`, `"g2"` or
-        // `"titel"` like any law title. Read as a name it renames the law
-        // half way through, and the units before and after the payload then
-        // sit under two law keys — the UH-Statistik- und Bildungs-
-        // dokumentationsverordnung split into "Artikel 1" (§§ 16, 18, 35, 37)
-        // and the quoted "Anlage 1 zu § 6 …" (its six Anlagen), the
-        // Wasserstraßen-Verkehrsordnung into 26 §§ and 57.
-        // `lawTitles.draftArticles` carries the same rule, because the
-        // annex's rows are keyed from there and the two keys have to be one
-        // string.
+        // **A law is named before its first instruction, and only there.**
+        // Later a heading of the same RIS type is quoted payload, and read as
+        // a name it renames the law half way through the draft. Measured over
+        // 400 GP-XXVIII drafts on 2026-09-11; the numbers and the cases are in
+        // docs/architecture.md §12.13.
         //
-        // The position separates the classes without a remainder (400
-        // GP-XXVIII drafts, 2026-09-11): of 651 accepted Abschnitt headings
-        // 649 stand before the Artikel's first Novellierungsanordnung, of 405
-        // title blocks 390 — and every one of the 17 late ones opens with a
-        // quotation mark, which is the second signal agreeing with the first.
+        // `draftArticles` in `lawtext/draftArticles.ts` carries the same
+        // window, because the annex's rows are keyed from there and the two
+        // keys have to be one string. The two copies are one rule and neither
+        // may move without the other.
         if (articleNumber && articleTitle === null && !novelleMode) articleTitle = b.text
         continue
       case 'title':
-        // Same window: 15 of those 17 are the title a Verordnung prints
+        // Same window: the late title blocks are what a Verordnung prints
         // inside the instruction that re-issues a law in full.
         if (articleNumber === null && !novelleMode) articleTitle = b.text
         continue
@@ -354,12 +343,10 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   return units
 }
 
-/** Convenience: HTML → units. */
 export function parseLawUnits(html: string): LawUnit[] {
   return segmentUnits(parseParliamentHtml(html))
 }
 
-/** Convenience: RIS XML → units. */
 export function parseLawUnitsFromRis(xml: string): LawUnit[] {
   return segmentUnits(parseRisXml(xml))
 }

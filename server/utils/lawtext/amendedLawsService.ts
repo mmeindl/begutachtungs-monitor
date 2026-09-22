@@ -16,8 +16,8 @@
  *
  * A law the Promulgationsklausel names but RIS cannot resolve is kept and
  * marked, never dropped: the UGB's Stammnorm is "dRGBl. S. 219/1897", which
- * is no BGBl and yields no Gesetzesnummer (`lawTitles.ts`), and a silently
- * shortened list would misstate what the draft touches.
+ * is no BGBl and yields no Gesetzesnummer (`lawtext/bgblCitation.ts`), and a
+ * silently shortened list would misstate what the draft touches.
  */
 import type { AmendedLaw, AmendedLawsResponse } from '#shared/types'
 import type { TextBlock } from './lawUnits'
@@ -63,8 +63,8 @@ export function konsLawUrl(gesetzesnummer: string, date: string | null): string 
 }
 
 /**
- * **A failure is not an answer** — the rule `konsCache.ts` states for
- * `resolveKonsLaw` and `annexGuardService.ts` for the annex, and this
+ * **A failure is not an answer** — the rule `kons/konsCache.ts` states for
+ * `resolveKonsLaw` and `annex/annexGuardService.ts` for the annex, and this
  * function is the third place it applies.
  *
  * It is cached for a day, so every upstream call in it used to be able to
@@ -118,16 +118,16 @@ export const getAmendedLaws = defineCachedFunction(
       const cited = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}` : null
       const resolved = w.bgbl && asOf
         // `w.title` is the Artikel heading this entry came from — the same
-        // disambiguator `annexGuardService` passes, and the string used as
-        // the display fallback one line below. Withheld from the lookup it
-        // turned every law of an ambiguous Bundesgesetzblatt into a row
-        // without a RIS link and with the draft's own wording instead of
-        // the law's name.
+        // disambiguator `annex/annexGuardService.ts` passes, and the string
+        // used as the display fallback one line below. Withheld from the
+        // lookup it turned every law of an ambiguous Bundesgesetzblatt into
+        // a row without a RIS link and with the draft's own wording instead
+        // of the law's name.
         //
         // Uncaught: `resolveKonsLaw` already answers null where RIS knows
         // no such law or cannot tell two apart, and throws only when RIS
         // is unreachable — the distinction its own doc comment draws
-        // (`konsCache.ts`). Catching it here undid that one layer up.
+        // (`kons/konsCache.ts`). Catching it here undid that one layer up.
         ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '')
         : null
       return {

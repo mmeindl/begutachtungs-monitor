@@ -51,19 +51,19 @@ export function stripQuotes(t: string): string {
  * format, is the worse trade. The same judgement `normalizeText` already
  * makes for the non-breaking space and the three dash characters.
  *
- * Füllpunkte zählen aus demselben Grund nicht mit. Parlaments-HTML setzt in
- * Betragstabellen Punktreihen („monatlich........................"), das RIS
- * nicht — ohne diese Zeile stehen bei 15/ME zwölf von 398 Einheiten als
- * „geändert" da, weil eine Punktreihe unterschiedlich lang ist. Drei Punkte
- * oder mehr sind in einem Gesetzestext Layout, kein Satzzeichen.
+ * Leader dots drop out for the same reason. Parliament's HTML sets runs of
+ * dots in amount tables („monatlich........................"), RIS does not —
+ * without this line 15/ME reads twelve of 398 units as „geändert" because one
+ * run of dots is a different length. Three dots or more are layout in a law
+ * text, not punctuation.
  *
  * This is NOT the annex pipeline's line-break hyphen (`docs/api-exploration.md`);
  * that one decides whether to JOIN two tokens, this one only decides equality.
  *
- * NUR die Vergleichsform, nie die angezeigte: `normalizeText` bleibt
- * unverändert, also sieht der Leser weiter genau das, was im Dokument steht.
- * Was hier wegfällt, entscheidet, ob zwei Texte GLEICH heißen — nicht, wie
- * sie aussehen.
+ * ONLY the comparison form, never the displayed one: `normalizeText` stays
+ * as it is, so the reader still sees exactly what the document says. What
+ * falls away here decides whether two texts count as EQUAL — not how they
+ * look.
  */
 export function compareKey(t: string): string {
   return normalizeText(t)
@@ -92,48 +92,40 @@ const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>/gi
  *
  * Shared by all three sides on purpose, because the annex is scored against
  * the other two and a rule applied to one of them alone rebuilds exactly the
- * asymmetry `annexCheck.ANNOTATION_RE` exists to close: a word RIS wraps in
+ * asymmetry the editorial-note patterns exist to close: a word RIS wraps in
  * markup would then split on the RIS side only, and the annex column would
- * carry two tokens the standing § never offers. The three sides are the annex
- * cells (`textComparison.cellText`), the standing § from RIS Bundesrecht
- * (`lawStructure`) and the draft's own Gesetzestext plus the Parliament HTML
- * of the ME→RV comparison (`stripTags` below).
+ * carry two tokens the standing § never offers. Those patterns are
+ * `ANNOTATION_RE` in `lawtext/konsTree.ts` and the deliberately wider one of
+ * the same name in `annex/annexText.ts`. The three sides are the annex cells
+ * (`cellText` in `annex/tableCells.ts`), the standing § from RIS Bundesrecht
+ * (`lawtext/konsTree.ts`) and the draft's own Gesetzestext plus the
+ * Parliament HTML of the ME→RV comparison (`stripTags` below).
  *
  * **Measured over GP XXVIII, 2026-09-11** — 126 readable XML annexes, the
- * 3.858 standing §§ the gate looks up, and 240 drafts' Gesetzestext.
- * Occurrences of the tag, and how many of them sit *inside* a word:
+ * 3.858 standing §§ the gate looks up, 240 drafts' Gesetzestext. Splitting
+ * words is overwhelmingly a property of the *annex*, where the ressort marks
+ * the changed characters: `i` sits inside a word 3.101 times of 37.522 there
+ * against 11 of 4.664 in the standing law, `span` 3.155 times against 0. The
+ * rule costs the other two sides 12 of 202.966 standing blocks and 6 of
+ * 48.355 draft blocks; making it shared is the point, because those 18 are
+ * exactly the cases that would otherwise become the asymmetry. The full
+ * table and the six §§ that changed their verdict are in
+ * docs/architecture.md §12.13.
  *
- * | | Beilage | geltendes Recht | Gesetzestext |
- * |---|---:|---:|---:|
- * | `i`    | 3.101 von 37.522 | 11 von 4.664 |  14 von 2.272 |
- * | `b`    |   616 von  3.246 | 25 von 4.618 | 175 von 3.178 |
- * | `span` | 3.155 von 38.672 |  0 von     0 |   0 von   116 |
+ * **Two failure modes were looked for and do not exist in the corpus:**
+ * zero-width markup fusing two words (`Wort<span></span>zwei`, 0 runs on any
+ * of the three sides) and `<a>` around a citation (0 occurrences, RIS does
+ * not use the tag).
  *
- * Splitting words is overwhelmingly a property of the *annex*, where the
- * ressort marks the changed characters (`Schlepplifte<i><span
- * style="background:yellow">n</span></i>,`), and the rule costs the other two
- * sides almost nothing — 12 of 202.966 standing blocks and 6 of 48.355 draft
- * blocks change a comparable token at all. Making it shared is nevertheless
- * the point: those 12 and 6 are exactly the cases that would otherwise become
- * the asymmetry, and eight of the twelve are RIS's own "(Anm.: …)" torn apart
- * by its italics (`lawStructure`); the other four are a compound whose hyphen
- * sat on the markup boundary ("Sollwert" → "-Sollwert").
- *
- * **Three failure modes were looked for; two do not exist in the corpus.**
- * Zero-width fuses two words where the markup carried the only separator —
- * `Wort<span></span>zwei`: **0** such runs on any of the three sides. `<a>`
- * around a citation: **0** occurrences, RIS does not use the tag. The third
- * is real, and it is why `<sup>`/`<sub>`/`<super>` stay out: they sit
- * directly on a word 152 times in the annexes, 785 times in the standing law
- * and 338 times in the drafts, and the two meanings **cannot be told apart by
- * shape** — `CO<sub>2</sub>` belongs to the token, `Meerkatzen<super>1)</super>`
- * is a footnote mark that does not, and both are "letter, then digits".
- * Welding them moved **no verdict** on either path, so there is nothing to
- * weigh against the risk; it only lifted the reported ≥ 99 % coverage from
- * 961 to 962 §§ on the table path and from 1.617 to 1.622 on the PDF path.
- * That gain is worth its own step, because it comes from a *different*
- * asymmetry: the PDF text layer carries no markup at all, so `KW<sub>el</sub>`
- * is one word there and two here.
+ * **`<sup>`/`<sub>`/`<super>` stay out, and that is a measurement, not an
+ * oversight:** they sit directly on a word 152 times in the annexes, 785
+ * times in the standing law and 338 times in the drafts, and the two meanings
+ * **cannot be told apart by shape** — `CO<sub>2</sub>` belongs to the token,
+ * `Meerkatzen<super>1)</super>` is a footnote mark that does not, and both
+ * are "letter, then digits". Welding them moved **no verdict** on either
+ * path, so there is nothing to weigh against the risk. The gain it does carry
+ * belongs to a *different* asymmetry and to its own step: the PDF text layer
+ * has no markup at all, so `KW<sub>el</sub>` is one word there and two here.
  */
 export function stripMarkup(html: string): string {
   return html.replace(INLINE_MARKUP_RE, '').replace(/<[^>]*>/g, ' ')

@@ -29,19 +29,20 @@ import type { TextBlock } from './lawUnits'
  * A Promulgationsklausel announces that an existing law is being amended.
  * A Stammgesetz has none — it creates law rather than changing it, so there
  * is nothing to look up and nothing to name.
- */
-/**
- * „wird **in seinem Artikel 1** wie folgt geändert" — zwischen dem Verb und
- * der Formel steht regelmäßig eine Einschränkung, und zwar bei genau den
- * Gesetzen, die selbst artikelgegliedert sind (Eltern-Kind-Pass-Gesetz,
- * 60/ME). Ohne die Lücke im Ausdruck fiel ihr Artikel aus *drei* Anzeigen
- * zugleich: Er fehlte unter „Geltendes Recht", seine §§ bekamen keinen Namen,
- * und die Lesefassung zählte sie nicht einmal in ihren Nenner (19.09.2026).
  *
- * Begrenzt und ohne Satzzeichen: Die Klausel ist ein Satz, und der Abstand
- * hält den Ausdruck von einem Querverweis fern, der in einem *neuen* Gesetz
- * steht („… wird in § 5 geregelt. Das Gesetz X wird wie folgt geändert" wäre
- * zwei Sätze) — die Verwechslung, die 101/ME einmal zu einer Novelle machte.
+ * „wird **in seinem Artikel 1** wie folgt geändert" — a restriction regularly
+ * stands between the verb and the formula, and it does so for exactly those
+ * laws that are themselves divided into Artikel (Eltern-Kind-Pass-Gesetz,
+ * 60/ME). Without the gap in the expression their Artikel fell out of *three*
+ * displays at once: it was missing under „Geltendes Recht", its §§ got no
+ * name, and the Lesefassung did not even count them in its denominator
+ * (19.09.2026).
+ *
+ * Bounded and without punctuation: the clause is one sentence, and the
+ * distance keeps the expression away from a cross-reference standing inside a
+ * *new* law („… wird in § 5 geregelt. Das Gesetz X wird wie folgt geändert"
+ * would be two sentences) — the confusion that once turned 101/ME into a
+ * Novelle.
  */
 const AMENDS_RE = /\b(?:wird|werden)\b[^.;:]{0,80}?\bwie folgt geändert|\bwird geändert\b|\bwerden geändert\b/i
 
@@ -116,24 +117,19 @@ export interface DraftArticle {
  * prints the heading it installs, and RIS tags that quoted heading exactly as
  * it tags a law title — `ueberschrift typ="anlage"`, `"g2"`, `"titel"`. Read
  * as a name, it renamed the law half way through the draft, and the annex's
- * rows then carried a key that the instructions above it do not (the three
- * false alarms of the UH-Statistik- und Bildungsdokumentationsverordnung,
- * 2026-09-11).
+ * rows then carried a key that the instructions above it do not (2026-09-11).
  *
  * The position separates the two classes without a remainder. Measured over
  * the 400 GP-XXVIII drafts, 2026-09-11: of the **651 Abschnitt headings** this
  * rule accepted as an Artikel's name, **649 stand before the Artikel's first
- * Novellierungsanordnung and 2 after it**; of the **405 title blocks**,
- * **390 before and 15 after**. All **17** late ones are quoted payload — every
- * one of them opens with a quotation mark, which is the second, independent
- * signal that they are text rather than structure. The 2 are the Anlage
- * heading of the UH-Statistik-Verordnung ("Anlage 1 zu § 6 Anhang zum Diplom
- * …") and the Kapitel heading of the Wasserstraßen-Verkehrsordnung
- * ("Schallzeichen, Sprechfunk, …"); the 15 are Verordnungen that re-issue a
- * law in full and print its title inside the instruction.
+ * Novellierungsanordnung**, of the **405 title blocks 390** — and all 17 late
+ * ones open with a quotation mark, the second, independent signal that they
+ * are text rather than structure. Which drafts those are:
+ * docs/architecture.md §12.13.
  *
- * The same window is applied a second time in `lawUnits.segmentUnits`; the two
- * copies are one rule and neither may move without the other.
+ * The same window is applied a second time in `segmentUnits`
+ * (`lawtext/lawUnits.ts`); the two copies are one rule and neither may move
+ * without the other.
  */
 export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   const out: DraftArticle[] = []

@@ -38,20 +38,18 @@ const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
  * anzuzeigen*". Leaving it out of this list dropped that closing sentence
  * from every RIS-XML document silently: from the payload of an amendment
  * instruction, and from both sides of the ME→RV comparison for GP XXVII and
- * earlier. `lawStructure.ts` had it from the start; this parser did not, and
- * the mismatch surfaced only when the two were compared against RIS
+ * earlier. `lawtext/konsTree.ts` had it from the start; this parser did not,
+ * and the mismatch surfaced only when the two were compared against RIS
  * (Privatschulgesetz § 4, 2026-09-09).
  *
- * **RIS writes that clause under two names**, and which one a document
- * carries depends on the converter that produced it, not on the law: the 4.1
- * line writes `<schlussteil>`, the 3.x line `<schluss typ="…">`, 4.0
- * straddles. `lawStructure.ts` learned the older name on 2026-09-11 (402 of
- * 16.073 § documents in the offline corpus carry only it); this parser reads
- * the Begut main documents, where — unlike the § documents — both spellings
- * occur *inside one document*. Without the older name the payload of an
- * amendment instruction lost its closing clause, so the draft bags of the
- * annex check („nicht im Entwurf") lacked words the annex rightly shows as
- * new, and the ME→RV units lacked the same words on both sides.
+ * **Both spellings**, because RIS names the clause `<schlussteil>` or
+ * `<schluss typ="…">` depending on the converter that produced the document,
+ * and unlike the § documents a Begut main document carries **both inside one
+ * file**. Without the older name the payload of an amendment instruction lost
+ * its closing clause, so the draft bags of the annex check („nicht im
+ * Entwurf") lacked words the annex rightly shows as new, and the ME→RV units
+ * lacked the same words on both sides. The corpus measurement is in
+ * `lawtext/konsTree.ts` (docs/architecture.md §12.13).
  */
 const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
@@ -68,7 +66,7 @@ export function parseRisXml(xml: string): TextBlock[] {
   // designation, which on the Erläuterungen is a passage the section shows:
   // measured over the offline cache on 22.09.2026, 180 of 314 readable
   // Erläuterungen documents carried it. The two sibling parsers strip all
-  // three (`lawStructure.ts`, `textComparison.ts`); this one did not.
+  // three (`lawtext/konsTree.ts`, `annex/comparisonRows.ts`); this one did not.
   const body = xml
     .replace(/<kzinhalt[\s\S]*?<\/kzinhalt>/g, '')
     .replace(/<fzinhalt[\s\S]*?<\/fzinhalt>/g, '')

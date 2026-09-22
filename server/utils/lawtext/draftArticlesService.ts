@@ -52,7 +52,7 @@ async function risXmlUrl(gp: string, inr: number): Promise<string | null> {
  * an empty list through the structure (no document, no row, no XML), and both
  * parsers are total. Everything else is an upstream failure and has to leave
  * the cached function — a blip must not be stored as „this draft amends no
- * law" for a day (`amendedLawsService.ts`, `konsCache.ts`).
+ * law" for a day (`lawtext/amendedLawsService.ts`, `kons/konsCache.ts`).
  */
 async function blocksOfDraft(gp: string, inr: number, source: DraftTextSource): Promise<TextBlock[]> {
   if (source === 'parliament-first') {
