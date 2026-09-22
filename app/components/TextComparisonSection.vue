@@ -362,6 +362,13 @@ function showAll(key: string) {
  * designation and title stand once, on one line, the way law is printed.
  */
 interface Para {
+  /**
+   * The § this block belongs to — `row.para`, '' for the rows before the
+   * first designation. Doubles as the `v-for` key, and is unique within a
+   * group because `para` is INHERITED by every row that opens no designation
+   * of its own: a § therefore arrives as one contiguous run, never twice.
+   */
+  key: string
   /** "§ 40." — null for rows that precede the first designation */
   gld: string | null
   /** The annex's own heading for the paragraph */
@@ -380,7 +387,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
   // line that says only how many there were.
   const folding = !query.value.trim()
   const paras: Para[] = []
-  let current: Para & { key: string } = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [], consolidated: null }
+  let current: Para = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [], consolidated: null }
   let context: TextComparisonRow[] = []
   let shown = 0
   let hidden = 0
@@ -819,7 +826,7 @@ const doubtfulNote = computed<string | null>(() => {
           </button>
 
           <div v-if="groupOpen(g)" class="border-t border-hairline">
-            <section v-for="(p, pi) in g.paras" :key="pi" class="border-b border-hairline px-3 py-3 last:border-b-0">
+            <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-3 py-3 last:border-b-0">
               <!-- The paragraph as law prints it: designation and title on one
                    line, once, above its Absätze — and no rule between the two,
                    because the line belongs to what follows it rather than
@@ -878,7 +885,16 @@ const doubtfulNote = computed<string | null>(() => {
                 </div>
               </details>
 
-              <div v-for="(b, bi) in p.blocks" :key="bi" :class="bi > 0 ? 'mt-3' : ''">
+              <!-- Keyed by KIND and position, not by position alone. The blocks
+                   are rebuilt on every keystroke of the search field, and the
+                   three kinds render different elements — a folded `<details>`
+                   of unchanged rows, a changed row, a withheld notice. The
+                   open state of a `<details>` lives in the DOM, so an index
+                   key hands it to whatever takes that slot next. The rows of
+                   an annex carry no id of their own, so the position stays in
+                   the key; it is scoped to one §, because the `<section>`
+                   above is keyed by the § itself. -->
+              <div v-for="(b, bi) in p.blocks" :key="`${b.kind}-${bi}`" :class="bi > 0 ? 'mt-3' : ''">
               <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
                 {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
                 {{ withheldText(b.cause) }}<template v-if="withheldBlame(b.cause)"> {{ withheldBlame(b.cause) }}</template>
@@ -890,7 +906,7 @@ const doubtfulNote = computed<string | null>(() => {
                   {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
                 </summary>
                 <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
-                  <p v-for="(r, ri) in b.rows" :key="ri" class="hyphens-auto">{{ r.current }}</p>
+                  <p v-for="(r, ri) in b.rows" :key="`${r.gld ?? r.para ?? ''}-${ri}`" class="hyphens-auto">{{ r.current }}</p>
                 </div>
               </details>
 

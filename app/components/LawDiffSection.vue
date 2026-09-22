@@ -285,6 +285,23 @@ function key(u: LawDiffUnit): string {
   return unitKey(u)
 }
 
+/**
+ * The identity of a rendered block, for `v-for`.
+ *
+ * Not the index: the block list is rebuilt on every keystroke of the search
+ * field, and a block that was a folded `<details>` of unchanged units can
+ * land in the slot a changed unit held. The open state of a `<details>` is
+ * DOM state, not vnode state, so Vue carries it to whatever it reuses the
+ * element for — and the reader finds someone else's § open.
+ *
+ * The kind is part of the key for the same reason: it is what tells the two
+ * shapes apart, and `unitKey` alone cannot, because a context block is named
+ * after the first unit it folds.
+ */
+function blockKey(b: Block): string {
+  return b.kind === 'unit' ? `unit|${unitKey(b.unit)}` : `context|${unitKey(b.units[0]!)}`
+}
+
 const visibleUnits = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return data.value?.units ?? []
@@ -664,7 +681,7 @@ const droppedNote = computed(() =>
               </span>
             </button>
             <div v-if="groupOpen(g)" class="border-t border-hairline">
-              <template v-for="(b, bi) in g.blocks" :key="bi">
+              <template v-for="b in g.blocks" :key="blockKey(b)">
                 <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
                   <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
                     <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
