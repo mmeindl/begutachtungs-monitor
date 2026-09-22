@@ -57,6 +57,7 @@ import {
   type RawName,
   type RawShortinfo,
   type RawStage,
+  type RvLink,
   type VorlageRow,
 } from './mappers'
 import { checkListHeader } from './listHeaders'
@@ -430,6 +431,16 @@ const getStatementsForMe = defineCachedFunction(
  * else measured in GP XXVII/XXVIII stays far below.
  */
 export const RV_STATEMENTS_CAP = 5_000
+
+/**
+ * The Regierungsvorlage a draft became — from the draft's own stage list,
+ * the way the outcome finds it, so a Vorlage in a later
+ * Gesetzgebungsperiode resolves too. `null` while the draft has none.
+ */
+export async function findRvForDraft(gp: string, inr: number): Promise<RvLink | null> {
+  const detail = await getGegenstand(gp, 'ME', inr)
+  return findLastRvLink(parseStages(detail.content?.stages))
+}
 
 export interface RvStatements {
   /** Upstream's total, known above the cap too. */

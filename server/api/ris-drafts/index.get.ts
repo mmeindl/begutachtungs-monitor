@@ -18,8 +18,8 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { sortConsultations } from '#shared/utils/risConsultations'
-import { matchesQuery } from '#shared/utils/textMatch'
 import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
+import { filterRisConsultations, risStationWants } from '../../utils/ris/risList'
 
 /** Was die Liste auf den Ausgang wartet, solange er nur eine Spalte füllt. */
 const OUTCOMES_BUDGET_MS = 3_000
@@ -27,7 +27,7 @@ const OUTCOMES_BUDGET_MS = 3_000
 const KIND_VALUES: RisConsultationKind[] = ['verordnung', 'gesetz', 'unbestimmt']
 
 export default defineEventHandler(async (event): Promise<RisConsultationsResponse> => {
-  const { gp: gpParam, status, stations, ministry, q } = readListQuery(event)
+  const query = readListQuery(event)
 
   const artParam = firstQueryValue(getQuery(event).art)
   if (artParam !== undefined && !(KIND_VALUES as readonly string[]).includes(artParam)) {
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   const art = artParam as RisConsultationKind | undefined
 
   const currentGp = await getCurrentGp()
-  const gp = gpParam ?? currentGp
+  const gp = query.gp ?? currentGp
   const cached = await getRisOnlyForGp(gp)
   const { withGegenstand, undecided } = cached
   /* `active` and the order that follows from it are decided HERE, per
@@ -52,32 +52,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * Bundesminister für Finanzen"), deshalb alle Ressorts der Periode und
    * nicht nur das eigene (`searchHaystack.ts`). */
   const ministryTokenList = ministryTokens(ministries.map((m) => m.name))
-
-  /* Diese Hälfte steht bei der Begutachtung und kommt nie weiter: kein
-   * Gegenstand im Parlament, also nie eine Regierungsvorlage (§12.16).
-   *
-   * Sie war einen Nachmittag lang aus der Stationsachse GANZ draußen, weil
-   * der Chip „Begutachtung" sonst 245 Zeilen zeigt, davon 198
-   * Verordnungsentwürfe. Das war die falsche Abhilfe gegen eine richtige
-   * Beobachtung: die Zahl ist der Korpus, kein Fehler — und der Preis war
-   * hoch. „Begutachtung + Stellungnahme möglich" zeigte 4 statt 7 Zeilen,
-   * drei laufende Verordnungs-Begutachtungen verschwanden, und der Link der
-   * Startseite („Alle 7 offenen Entwürfe") führte auf eine Liste mit 4.
-   *
-   * Also: unter `begutachtung` gehören sie dazu, weil sie dort stehen. Aus
-   * `rv` und `parlament` sind sie draußen, weil sie die nicht erreichen
-   * können — das ist keine Auswahl, das ist das Verfahren. Wer nur die eine
-   * Sorte will, hat den Art-Filter daneben, und die Zählzeile nennt beide
-   * Hälften einzeln.
-   *
-   * SEIT 19.09.2026 GILT DAS FÜR `bgbl` NICHT MEHR. Der Satz „sie können
-   * die späteren Stationen nicht erreichen" stimmte, solange niemand das
-   * Bundesgesetzblatt las: Eine Verordnung geht nicht durchs Parlament, wird
-   * aber sehr wohl kundgemacht — in Teil II (§12.32). Wer nach der Station
-   * „Bundesgesetzblatt" filtert, meint beide Hälften, und die Hälfte, die
-   * dort still gefehlt hat, ist die größere. */
-  const wantsBegutachtung = !stations.length || stations.includes('begutachtung')
-  const wantsBgbl = stations.includes('bgbl')
+  const wants = risStationWants(query.stations)
 
   /**
    * Der Ausgang je Satz — mit Budget, aber nur, solange er Beiwerk ist.
@@ -88,40 +63,11 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * leere Liste, und „keine kundgemachten Verordnungen" wäre eine Antwort,
    * die wir nicht geprüft haben (§12.13). Dort wird gewartet.
    */
-  const outcomes: Record<string, BgblOutcome> = wantsBgbl
+  const outcomes: Record<string, BgblOutcome> = wants.bgbl
     ? await getBgblOutcomesForGp(gp).catch(() => ({}) as Record<string, BgblOutcome>)
     : (await withinBudget(getBgblOutcomesForGp(gp), OUTCOMES_BUDGET_MS)) ?? {}
 
-  const filtered = items.filter((item) => {
-    if (!wantsBegutachtung && !(wantsBgbl && outcomes[item.id]?.state === 'kundgemacht')) return false
-    if (status === 'open' && !item.active) return false
-    if (status === 'closed' && item.active) return false
-    if (art && item.kind !== art) return false
-    if (ministry && item.ministryCode.toUpperCase() !== ministry) return false
-    if (q) {
-      // No aliases here: the alias file is keyed by gp/inr and these records
-      // have neither. The long title is in the haystack instead — on a
-      // Verordnung it is where the subject matter actually appears.
-      //
-      // OHNE DIE RESSORTNENNUNG, seit 21.09.2026 (§12.31). Die Regel dahinter
-      // ist **gesucht wird, was die Zeile zeigt**: Der Langtitel einer
-      // Verordnung beginnt mit „Verordnung des Bundesministers für <ganzes
-      // Portfolio>", der Ressortname enthält dasselbe noch einmal, und
-      // beides steht nirgends auf der Seite. „klima" traf so 36 Zeilen, 2
-      // davon führten das Wort im Kurztitel.
-      //
-      // Der KURZTITEL wird deshalb NICHT gestrichen, auch wenn er dieselbe
-      // Klausel trägt („Verordnung der Bundesministerin für
-      // Landesverteidigung über den Krankentransport") — er steht in der
-      // Zeile, der Leser sieht das Wort, also muss er danach suchen können.
-      // Das Kürzel bleibt aus demselben Grund; für das Ressort als solches
-      // gibt es den eigenen Filter.
-      // Mehrere Wörter mit UND, dieselbe Regel wie in `/api/drafts`.
-      const haystack = `${item.title} ${stripMinistryMentions(item.longTitle ?? '', ministryTokenList)} ${item.ministryCode}`
-      if (!matchesQuery(haystack, q)) return false
-    }
-    return true
-  })
+  const filtered = filterRisConsultations(items, { ...query, art, wants, ministryTokens: ministryTokenList, outcomes })
 
   const availableGps = listAvailableGps(currentGp)
   if (!availableGps.includes(gp)) availableGps.push(gp)

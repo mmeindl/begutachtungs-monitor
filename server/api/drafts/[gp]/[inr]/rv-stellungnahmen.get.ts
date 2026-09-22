@@ -14,8 +14,7 @@ import { validateGpInrParams } from '../../../../utils/http/params'
 
 export default defineEventHandler(async (event): Promise<RvStatementsResponse> => {
   const { gp, inr } = validateGpInrParams(event)
-  const detail = await getGegenstand(gp, 'ME', inr)
-  const rv = findLastRvLink(parseStages(detail.content?.stages))
+  const rv = await findRvForDraft(gp, inr)
   if (!rv) {
     throw createError({ statusCode: 404, statusMessage: 'Der Entwurf hat keine Regierungsvorlage' })
   }

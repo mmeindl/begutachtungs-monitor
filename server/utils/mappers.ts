@@ -577,7 +577,7 @@ export function parseStages(stages: RawStage[] | null | undefined): TraceStep[] 
   })
 }
 
-interface RvLink {
+export interface RvLink {
   gp: string
   inr: number
   label: string
