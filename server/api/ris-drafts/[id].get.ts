@@ -11,7 +11,7 @@ import type { RisConsultationDetail } from '#shared/types'
  * `server/utils/http/params.ts`. */
 import { readRisId } from '../../utils/http/params'
 
-/** Was die Seite auf den Ausgang warten darf, bevor sie ohne ihn rendert. */
+/** How long the page may wait for the outcome before rendering without it. */
 const OUTCOME_BUDGET_MS = 2_500
 
 export default defineEventHandler(async (event): Promise<RisConsultationDetail> => {
@@ -20,16 +20,14 @@ export default defineEventHandler(async (event): Promise<RisConsultationDetail> 
   if (!detail) {
     throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
   }
-  // Der Ausgang gehört in DIESE Antwort, weil die Überschrift der Karte ihn
-  // braucht (§12.32) — eine Überschrift, die nach dem Laden ihre Aussage
-  // wechselt („Begutachtung beendet" → „Kundgemacht"), ist schlechter als
-  // eine, die wartet.
+  // The outcome belongs in THIS response, because the card's heading needs
+  // it (§12.32) — a heading that changes what it says after loading
+  // („Begutachtung beendet" → „Kundgemacht") is worse than one that waits.
   //
-  // Mit Budget, weil der Abgleich kalt drei Jahrgänge des
-  // Bundesgesetzblatts holt: Der Prewarm hält sie warm, und wenn doch
-  // einmal nicht, rendert die Seite lieber ohne Ausgang und der Abschnitt
-  // holt ihn client-seitig nach. Dieselbe Abwägung wie beim Stationsbudget
-  // der Liste.
+  // With a budget, because cold the match fetches three years of the
+  // Bundesgesetzblatt: the prewarm keeps them warm, and where it did not,
+  // the page would rather render without the outcome and let the section
+  // fetch it client-side. The same trade-off as the list's station budget.
   const outcome = await withinBudget(getBgblOutcome(id), OUTCOME_BUDGET_MS)
   return { ...detail, outcome }
 })

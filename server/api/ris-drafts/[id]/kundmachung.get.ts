@@ -1,15 +1,15 @@
 /**
- * GET /api/ris-drafts/:id/kundmachung → BgblOutcome: ob aus diesem
- * Verordnungsentwurf eine Kundmachung im BGBl II geworden ist
+ * GET /api/ris-drafts/:id/kundmachung → BgblOutcome: whether this
+ * Verordnungsentwurf became a Kundmachung in BGBl II
  * (docs/architecture.md §12.32).
  *
- * Eigener Endpunkt und nicht Teil der Detailantwort: Die Auskunft kostet den
- * Jahrgang des Bundesgesetzblatts, und die Seite soll rendern, bevor der da
- * ist — dieselbe Aufteilung wie bei den Erläuterungen und den Vergleichen.
+ * Its own endpoint and not part of the detail response: the answer costs a
+ * whole year of the Bundesgesetzblatt, and the page should render before it
+ * arrives — the same split as for the Erläuterungen and the comparisons.
  *
- * Die Zustände, die zurückkommen, sind in `shared/types/bgbl.ts` benannt. Der
- * wichtigste ist `ausstehend`: Eine Frist, die vor sechs Wochen endete, ist
- * keine Auskunft über das Ressort, sondern über die Uhr.
+ * The states that come back are named in `shared/types/bgbl.ts`. The most
+ * important one is `ausstehend`: a Frist that ended six weeks ago is not an
+ * answer about the Ressort but about the clock.
  */
 import type { BgblOutcome } from '#shared/types'
 import { readRisId } from '../../../utils/http/params'

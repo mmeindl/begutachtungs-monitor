@@ -21,7 +21,7 @@ import { sortConsultations } from '#shared/utils/risConsultations'
 import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
 import { filterRisConsultations, risStationWants } from '../../utils/ris/risList'
 
-/** Was die Liste auf den Ausgang wartet, solange er nur eine Spalte füllt. */
+/** How long the list waits for the outcome while it only fills a column. */
 const OUTCOMES_BUDGET_MS = 3_000
 
 const KIND_VALUES: RisConsultationKind[] = ['verordnung', 'gesetz', 'unbestimmt']
@@ -47,21 +47,21 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   const items = withRisActiveOn(cached.items).sort(sortConsultations)
 
   const ministries = ministryFilterOptions(items)
-  /* Dasselbe Vokabular noch einmal, als Streichliste für die Suche: Ein
-   * Langtitel nennt auch das zweite Haus („im Einvernehmen mit dem
-   * Bundesminister für Finanzen"), deshalb alle Ressorts der Periode und
-   * nicht nur das eigene (`search/searchHaystack.ts`). */
+  /* The same vocabulary once more, as a strike list for the search: a
+   * Langtitel also names the second house („im Einvernehmen mit dem
+   * Bundesminister für Finanzen"), hence every Ressort of the period and not
+   * only its own (`search/searchHaystack.ts`). */
   const ministryTokenList = ministryTokens(ministries.map((m) => m.name))
   const wants = risStationWants(query.stations)
 
   /**
-   * Der Ausgang je Satz — mit Budget, aber nur, solange er Beiwerk ist.
+   * The outcome per record — with a budget, but only while it is a garnish.
    *
-   * Als Spaltenwert darf er fehlen: Die Zeile sagt dann „Begutachtung
-   * abgeschlossen" statt „Kundgemacht", das ist unvollständig und nicht
-   * falsch. Als FILTER darf er nicht fehlen — ein leeres Budget ergäbe eine
-   * leere Liste, und „keine kundgemachten Verordnungen" wäre eine Antwort,
-   * die wir nicht geprüft haben (§12.13). Dort wird gewartet.
+   * As a column value it may be missing: the row then says „Begutachtung
+   * abgeschlossen" instead of „Kundgemacht", which is incomplete and not
+   * wrong. As a FILTER it may not be missing — an exhausted budget would
+   * produce an empty list, and „keine kundgemachten Verordnungen" would be
+   * an answer we never checked (§12.13). There it waits.
    */
   const outcomes: Record<string, BgblOutcome> = wants.bgbl
     ? await getBgblOutcomesForGp(gp).catch(() => ({}) as Record<string, BgblOutcome>)
