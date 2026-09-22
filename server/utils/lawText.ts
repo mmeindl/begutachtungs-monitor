@@ -59,6 +59,7 @@ export interface LawUnit {
 /** Typographic normalisation; keeps words, drops layout noise. */
 export function normalizeText(t: string): string {
   return t
+    // eslint-disable-next-line no-irregular-whitespace -- the NBSP in the class is what this line replaces
     .replace(/ /g, ' ')
     .replace(/[‑–‒]/g, '-')
     .replace(/­/g, '')

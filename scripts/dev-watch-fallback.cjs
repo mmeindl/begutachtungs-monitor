@@ -20,7 +20,6 @@ let warned = false
 function warnOnce(path) {
   if (warned) return
   warned = true
-  // eslint-disable-next-line no-console
   console.warn(
     `\n[dev-watch-fallback] fs.watch for ${path} unavailable (EMFILE: the machine's FSEvents capacity is exhausted).\n` +
     '[dev-watch-fallback] File watching for this path is disabled — after changes to nuxt.config, restart manually.\n' +
@@ -59,7 +58,6 @@ fs.watch = function patchedWatch(path, ...args) {
       }
       return
     }
-    // eslint-disable-next-line no-console
     console.error('[dev-watch-fallback] watcher error:', err)
   })
   return watcher

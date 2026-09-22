@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classify, isScanned, parseTextComparison, summarizeComparison } from '../server/utils/textComparison'
+import { isScanned, parseTextComparison, summarizeComparison } from '../server/utils/textComparison'
 import type { DraftArticle } from '../server/utils/lawTitles'
 
 /**

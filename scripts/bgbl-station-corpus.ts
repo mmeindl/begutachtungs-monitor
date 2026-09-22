@@ -167,7 +167,6 @@ for (const inr of numbers) {
   // deckungsgleich. Das sah aus wie ein Befund über die Ausrichtung und war
   // ein Fehler der Messung. Die Produktion löst die Vorlage über
   // `stationMap.ts` sauber auf; hier reicht der Typfilter.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rvLink = (c?.stages ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .flatMap((s: any) => String(s?.text ?? '').match(/\/gegenstand\/[^"']+/g) ?? [])

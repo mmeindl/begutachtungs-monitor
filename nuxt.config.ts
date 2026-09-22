@@ -6,9 +6,9 @@ export default defineNuxtConfig({
   // against the existing code so the linter enforces what is already there:
   // 2-space indent, single quotes, no semicolons, trailing commas in
   // multiline literals, `} else {` on one line, parens around a single arrow
-  // parameter, and quoted object keys kept consistent per literal (the
-  // `WITHHOLD_LABEL` kind of table mixes keys that need quotes with keys
-  // that do not).
+  // parameter, and a key quoted only where the key needs it. The rules that
+  // this factory has no option for are in `eslint.config.mjs`, with the
+  // count in the tree that argues for each of them.
   eslint: {
     config: {
       stylistic: {
@@ -18,7 +18,7 @@ export default defineNuxtConfig({
         commaDangle: 'always-multiline',
         braceStyle: '1tbs',
         arrowParens: true,
-        quoteProps: 'consistent-as-needed',
+        quoteProps: 'as-needed',
         blockSpacing: true,
       },
     },

@@ -29,6 +29,13 @@ export default withNuxt(
     ],
   },
   {
+    name: 'begut/linter-options',
+    // A suppression that suppresses nothing is worse than none: it reads as
+    // „a rule fires here" long after the rule stopped firing. 28 such
+    // comments stood in ten files while no linter existed.
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+  {
     name: 'begut/house-style',
     rules: {
       // Interfaces and type literals: one member per line and no delimiter,
@@ -51,10 +58,6 @@ export default withNuxt(
       // Double quotes stay where they spare an escape — `.replace(…, "'")`
       // is the readable form (10 places).
       '@stylistic/quotes': ['error', 'single', { allowTemplateLiterals: 'always', avoidEscape: true }],
-      // Quote a key only where the key needs it: the RIS and Parliament query
-      // objects mix `Applikation` with `'Fassung.FassungVom'` in one literal.
-      // 54 places read that way against 8 label tables that quote every key.
-      '@stylistic/quote-props': ['error', 'as-needed'],
       // The one-line guard clause `if (!bgbl) { noClause++; continue }` is
       // house style in the engines and the scripts — 39 places, up to six
       // statements in one harness line. No `max` fits without rewriting them.
@@ -73,10 +76,35 @@ export default withNuxt(
       // (`nuxt.config.ts`), so the file name is the component name and a
       // one-word `Badge.vue` is a legitimate name here. Flags nothing today.
       'vue/multi-word-component-names': 'off',
-      // ~30 `any` in app/server/shared, all at an upstream JSON boundary.
-      // Typing them is its own piece of work (refactor-plan §3), so the rule
-      // reports and does not block.
+      // 106 `any` in the tree — 29 in `server/`, 77 in `scripts/`, none in
+      // `app/` or `shared/` — and every one of them sits at an untyped
+      // upstream JSON boundary. Typing them is its own piece of work, so the
+      // rule reports and does not block.
       '@typescript-eslint/no-explicit-any': 'warn',
+      // The rule's fix reorders the whole file, and it pulls `watchers`
+      // away from `vite.server.watch` — two keys that are one decision and
+      // share one comment. One place flagged, and the fix costs more than
+      // the order is worth.
+      'nuxt/nuxt-config-keys-order': 'off',
     },
+  },
+  {
+    name: 'begut/deferred-findings',
+    // Two findings this phase may not act on, because acting on them means
+    // editing logic and this phase moves nothing but whitespace. Both are
+    // dead stores; `refactor-plan.md` §3 removes them with the rest of the
+    // dead code.
+    files: ['server/utils/lawApply.ts', 'scripts/bgbl-station-corpus.ts'],
+    rules: { 'no-useless-assignment': 'warn' },
+  },
+  {
+    // Three copies of one word tokenizer strip brackets from a token's edges
+    // and escape `[` inside the character class for symmetry with the `]`
+    // that has to be escaped. Unescaping it matches the same characters, but
+    // a regex in the apply engine is not something a formatting phase edits
+    // (`refactor-plan.md` §9); phase 4 merges the three into one.
+    name: 'begut/tokenizer-brackets',
+    files: ['server/utils/applyGuard.ts', 'server/utils/applyReport.ts', 'server/utils/tguOracle.ts'],
+    rules: { 'no-useless-escape': 'off' },
   },
 )

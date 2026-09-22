@@ -521,7 +521,7 @@ const korrStark = skipped.length - vgStark.length
  * Skripte, weil der Textabgleich pro Gegenstand ein Dokument lädt und damit
  * eine ganz andere Laufzeit hat als der Rest. */
 let textJoin = null
-try { textJoin = JSON.parse(await readFile(join(cacheDir, `${gp}-me-antrag.json`), 'utf8')) } catch {}
+try { textJoin = JSON.parse(await readFile(join(cacheDir, `${gp}-me-antrag.json`), 'utf8')) } catch { /* the join file is optional */ }
 // `strong` trägt die Korrektur, `schwach` nur die Spanne — die Grenze ist im
 // Join-Skript an einer Lücke in den Daten abgelesen, nicht gewählt.
 const bestaetigt = (textJoin?.hits ?? []).filter((h) => h.strong)

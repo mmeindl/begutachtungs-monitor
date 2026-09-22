@@ -29,7 +29,7 @@ describe('parseExplanations — the parts', () => {
     head('erll', 'Zu Z 1 (§ 12 Abs. 3):') +
     text('Die Bestimmung entfällt.') +
     head('erll', 'Zu Z 2 (§ 12b):') +
-      text('Neu eingefügt.'),
+    text('Neu eingefügt.'),
   )
 
   it('splits the document at the part headings the ministry typed', () => {

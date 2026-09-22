@@ -11,7 +11,7 @@
  * also what make the routes' ETag/304 handling effective.
  */
 import type { DraftSummary, RisConsultation } from '../../shared/types'
-import { countLabelDe, formatDateDe } from '../../shared/utils/format'
+import { formatDateDe } from '../../shared/utils/format'
 import { RIS_KIND_LABEL, risFilingNote } from '../../shared/utils/risConsultations'
 
 /** Draft page URL inside the monitor. */
@@ -191,8 +191,8 @@ const RSS_MAX_ITEMS = 50
  * surrogates). One such character anywhere makes the whole document not
  * well-formed — strict parsers reject the entire feed, not just one item.
  */
-// eslint-disable-next-line no-control-regex
 const XML_ILLEGAL_RE =
+  // eslint-disable-next-line no-control-regex -- the control characters are the subject here: they are what XML forbids
   /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
 
 export function escapeXml(s: string): string {

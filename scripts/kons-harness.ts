@@ -796,13 +796,6 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   return { bgbl: bgblNumber, article: articleLabel, law: kurztitel, instructions: total, read: instructions.length, applied, checked, identical, untouched, incomplete, halfApplied, divergent: divergences.length, unverifiable, cleanTotal, cleanIdentical, cleanDivergent, cleanNotLaw, note: null }
 }
 
-/** The first place two texts part company, with context on both sides. */
-function firstDifference(a: string, b: string): string {
-  let i = 0
-  while (i < a.length && i < b.length && a[i] === b[i]) i++
-  return `…${a.slice(Math.max(0, i - 30), i + 70)}…`
-}
-
 // --- CLI ----------------------------------------------------------------------
 const discover = process.argv.find((a) => a.startsWith('--discover='))
 const withSammel = process.argv.includes('--sammel')

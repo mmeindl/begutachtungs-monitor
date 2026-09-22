@@ -33,7 +33,6 @@ import {
   bgblCandidates,
   joinDraftToBgbl,
   type BgblJoinDraft,
-  type BgblRecord,
 } from '../server/utils/bgblJoin'
 import { fetchBgblRecords, fetchRisBegutCorpus } from './risCorpus'
 

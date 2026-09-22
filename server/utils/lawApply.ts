@@ -321,10 +321,6 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
 // Lookup
 // ---------------------------------------------------------------------------
 
-function paraKey(a: NovaoAddress): string | null {
-  return a.para
-}
-
 /** "§ 5" → the id "5"; "Art. 3" → "3"; "Anlage 2" → "2". */
 function idOf(label: string | null): string | null {
   if (!label) return null
@@ -985,7 +981,7 @@ function parentOf(law: StandingLaw, node: LawNode): LawNode | null {
 export function joinPhrase(left: string, text: string, right: string): string {
   const l = left.replace(/\s+$/, '')
   const r = right.replace(/^\s+/, '')
-  let t = text.trim().replace(/^([,;])(?=[^\s\d])/, '$1 ')
+  const t = text.trim().replace(/^([,;])(?=[^\s\d])/, '$1 ')
   if (!t) return `${l} ${r}`.replace(/\s+([,.;:])(?=\s|$)/g, '$1').trim()
   const sepLeft = !l || /^[,.;:]/.test(t) || /[(„"]$/.test(l) ? '' : ' '
   const sepRight = !r || /^[,.;:)]/.test(r) || /[(„"]$/.test(t) ? '' : ' '

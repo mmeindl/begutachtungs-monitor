@@ -69,7 +69,6 @@ async function fetchCorpus(): Promise<{ hits: number; records: RisBegutFlat[] }>
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     })
     if (!res.ok) throw new Error(`RIS ${res.status} on page ${page}`)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = (await res.json())?.OgdSearchResult
     if (!result || result.Error) throw new Error(`RIS error on page ${page}`)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

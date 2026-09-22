@@ -8,7 +8,6 @@ import {
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
-  stations,
 } from '#shared/utils/stations'
 import { aliasesFor } from '#shared/utils/aliases'
 // Explicit: `draftChain.ts` is a pure module and stays out of the
