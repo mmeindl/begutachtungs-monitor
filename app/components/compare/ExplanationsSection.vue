@@ -1,40 +1,38 @@
 <script setup lang="ts">
 /**
- * „Was das Ressort begründet" — der Allgemeine Teil der Erläuterungen
+ * „Was das Ressort begründet" — the Erläuterungen's Allgemeiner Teil
  * (docs/architecture.md §12.29).
  *
- * WARUM DIESER ABSCHNITT EXISTIERT. Die Relevanzprüfung eines Lesers beginnt
- * hier: erst den Allgemeinen Teil überfliegen — was soll das Gesetz? —, dann
- * den Gesetzestext oder die Gegenüberstellung. Die Seite hatte dafür bisher
- * einen PDF-Link mit der Unterzeile „Die Begründung des Ministeriums" und
- * darüber die Kurzbeschreibung des Parlaments. Die beiden sind kein Ersatz
- * füreinander: Die Kurzbeschreibung ist für den parlamentarischen Betrieb
- * geschrieben, die Erläuterungen sind die Begründung des Ressorts selbst —
- * und einem Verordnungsentwurf fehlt die Kurzbeschreibung ganz, weil er nie
- * ins Parlament kommt.
+ * WHY THIS SECTION EXISTS: a reader's relevance check starts here — skim the
+ * Allgemeiner Teil (what is the law for?), then the Gesetzestext or the
+ * Textgegenüberstellung. The page carried a PDF link and Parliament's
+ * Kurzbeschreibung for that, and the two are no substitute for one another:
+ * the Kurzbeschreibung is written for the parliamentary process, the
+ * Erläuterungen are the Ressort's own reasoning — and a Verordnungsentwurf
+ * has no Kurzbeschreibung at all, because it never reaches Parliament.
  *
- * WAS ER NICHT IST. Keine Zusammenfassung, keine Auswahl, kein Sprachmodell:
- * Was hier steht, sind die Absätze des Ressorts in seiner Reihenfolge, aus
- * dem typisierten RIS-XML gelesen (`explanations.ts`). Das Einzige, was der
- * Monitor entscheidet, ist, wo gefaltet wird — und wo die Gliederung von uns
- * erschlossen ist, sagt der Abschnitt es (`labelled`).
+ * WHAT IT IS NOT: no summary, no selection, no language model. What stands
+ * here are the Ressort's paragraphs in the Ressort's order, read from the
+ * typed RIS XML (`server/utils/explanations/risExplanations.ts`). The only
+ * thing the monitor decides is where to fold — and where the structure was
+ * inferred by us, the section says so (`labelled`).
  *
- * SERVERSEITIG MIT FRIST, anders als die Vergleichsabschnitte: Dieser Text
- * ist die Substanz der Seite und CC BY, also gehört er ins ausgelieferte
- * HTML — aber nur, solange das RIS in 800 ms antwortet. Warum die Frist und
- * warum nicht länger, steht in `useExplanations`.
+ * SERVER-SIDE WITH A DEADLINE, unlike the comparison sections: this text is
+ * the page's substance and CC BY, so it belongs in the delivered HTML — but
+ * only while RIS answers within 800 ms. Why the deadline and why not longer
+ * stands in `useExplanations`.
  */
 
 /**
- * Zwei Wege zum selben Dokument, weil die beiden Entwurfsarten es auf
- * verschiedenen Wegen erreichen: der Ministerialentwurf über den RIS↔ME-Join,
- * die Begutachtung ohne Gegenstand direkt über ihre RIS-ID.
+ * Two routes to the same document, because the two kinds of draft reach it
+ * differently: the Ministerialentwurf through the RIS↔ME join, a Begutachtung
+ * without a Gegenstand straight through its RIS id.
  */
 const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
 
 const { data, status } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
 
-/** Ein Absatz oder eine Zwischenüberschrift des Ressorts, in Druckreihenfolge. */
+/** One paragraph or subheading of the Ressort, in printing order. */
 interface Item {
   kind: 'heading' | 'text'
   text: string
@@ -48,24 +46,23 @@ const items = computed<Item[]>(() =>
 )
 
 /**
- * Wo gefaltet wird.
+ * Where the fold goes.
  *
- * Der Allgemeine Teil ist im Median 2.359 Zeichen lang, im p90 aber 7.727 und
- * im längsten Fall 40.335 (`pnpm corpus:erlaeuterungen`, Fenster ab 2024) —
- * eine Verteilung, bei der „alles anzeigen" die Seite für die Hälfte der
- * Entwürfe unbrauchbar macht und „immer falten" für die andere Hälfte eine
- * Klickstrecke vor zwei Absätze legt.
+ * The Allgemeiner Teil is a median 2.359 characters long, p90 7.727 and at
+ * most 40.335 (`pnpm corpus:erlaeuterungen`, window from 2024) — a
+ * distribution in which „show everything" makes the page unusable for half
+ * the drafts and „always fold" puts a click in front of two paragraphs for
+ * the other half.
  *
- * Deshalb ein Zeichenbudget statt einer Absatzzahl: Ein einziger langer
- * Absatz wird genauso begrenzt wie zwanzig kurze. Und das Budget wird
- * geprüft, BEVOR ein Absatz dazukommt, nicht danach — sonst rutscht genau
- * der lange Absatz noch ganz hinein, den zu falten der Zweck der Übung war
- * (132/ME: 3.000 Zeichen am Stück, an der Seite nachgesehen).
+ * Hence a character budget rather than a paragraph count: one long paragraph
+ * is capped like twenty short ones. And the budget is checked BEFORE a
+ * paragraph is added, not after — otherwise exactly the long paragraph the
+ * exercise was about slips in whole (132/ME: 3.000 characters in one run,
+ * checked on the page).
  *
- * Der erste Absatz steht immer, egal wie lang er ist: Ein Aufklapper als
- * erstes Element wäre die Seite, die ihre eigene Antwort versteckt. Ein
- * Absatz wird nie mitten im Satz abgeschnitten — es ist der Text des
- * Ressorts, nicht unserer.
+ * The first paragraph always stands, however long it is: a disclosure as the
+ * first element would be the page hiding its own answer. A paragraph is never
+ * cut mid-sentence — it is the Ressort's text, not ours.
  */
 const BUDGET = 1400
 
@@ -79,8 +76,8 @@ const visibleCount = computed(() => {
     if (item.kind === 'text') paragraphs += 1
     shown = i + 1
   }
-  // Keine hängende Überschrift am Schnitt: Sie gehört zu dem, was unter ihr
-  // steht, also wandert sie mit in den Aufklapper.
+  // No dangling heading at the cut: it belongs to what stands below it, so
+  // it moves into the disclosure with it.
   if (shown < items.value.length && items.value[shown - 1]?.kind === 'heading') shown -= 1
   return shown
 })
@@ -90,10 +87,10 @@ const folded = computed(() => items.value.slice(visibleCount.value))
 const foldedParagraphs = computed(() => folded.value.filter((i) => i.kind === 'text').length)
 
 /**
- * „Erläuterungen des Ressorts, Allgemeiner Teil" — der Teil, aus dem gelesen
- * wurde, steht im Link, nicht in einem zweiten Satz. Der Doppelpunkt fällt
- * weg: Ressorts schreiben ihre Überschrift als „Allgemeiner Teil:", und in
- * einer Aufzählung ist das ein Satzzeichen zu viel.
+ * „Erläuterungen des Ressorts, Allgemeiner Teil" — the part that was read
+ * from stands in the link, not in a second sentence. The colon is dropped:
+ * Ressorts write their heading as „Allgemeiner Teil:", and in a list that is
+ * one punctuation mark too many.
  */
 const sourceLabel = computed(() => {
   const label = data.value?.document?.label ?? ''
@@ -102,22 +99,22 @@ const sourceLabel = computed(() => {
 })
 
 /**
- * „Wird geladen" umfasst einen dritten Zustand: Der Server hat die Frist
- * gerissen und `null` geliefert, der Client holt gerade nach
- * (`useExplanations`). Das ist kein Fehler und darf keiner werden — sonst
- * stünde in genau dem HTML, das ein Crawler zu sehen bekommt, „nicht
- * verfügbar" über einem Abschnitt, der eine Sekunde später da ist.
+ * „Wird geladen" covers a third state: the server missed its deadline and
+ * delivered `null`, and the client is fetching it now (`useExplanations`).
+ * That is no error and must not become one — otherwise the very HTML a
+ * crawler sees would say „nicht verfügbar" above a section that is there a
+ * second later.
  */
 const loading = computed(() => status.value !== 'error' && !data.value)
 
-/* Die Haus-Linkform (`link-inline` in `main.css`) plus den Fokusring. */
+/* The house link form (`link-inline` in `main.css`) plus the focus ring. */
 const LINK =
   'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
 
 /**
- * Die Ansage für Screenreader, wenn der Abschnitt nachgeladen ist — dieselbe
- * Mechanik wie im Vergleich: Die Region ist beim Einhängen leer und wird erst
- * gefüllt, sonst liest mancher Screenreader sie sofort vor.
+ * The screen-reader announcement once the section has been fetched — the same
+ * mechanics as in the comparison: the region is empty when mounted and filled
+ * afterwards, or some screen readers read it out at once.
  */
 const loadAnnouncement = computed(() => {
   if (loading.value) return ''
@@ -141,17 +138,17 @@ const loadAnnouncement = computed(() => {
 
     <template v-else-if="!data.available">
       <p class="text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
-      <!-- Was wir nicht lesen können, kann ein Mensch lesen: Das Dokument
-           wird auch dann verlinkt, wenn hier nichts steht. -->
+      <!-- What we cannot read, a human can: the document is linked even
+           when nothing stands here. -->
       <p v-if="data.document" class="mt-3 text-xs text-ink-muted">
         <ExternalLink :href="data.document.url" class="text-accent-deep hover:underline">{{ data.document.label }}</ExternalLink>
       </p>
     </template>
 
     <template v-else>
-      <!-- Der Vorbehalt steht ÜBER dem Text, die Quelle darunter: Das eine
-           sagt, wie das Folgende zu lesen ist, das andere ist eine
-           Bildunterschrift (dieselbe Regel wie im Vergleichsabschnitt). -->
+      <!-- The caveat stands ABOVE the text, the source below it: one says how
+           what follows is to be read, the other is a caption (the same rule
+           as in the comparison section). -->
       <p v-if="!data.labelled" class="max-w-prose text-sm text-ink-muted">
         Das Ressort gliedert diese Erläuterungen nicht selbst.<template v-if="data.hasSpecial">
           Wo die Erläuterungen zu den einzelnen Paragraphen beginnen, haben wir
@@ -169,10 +166,9 @@ const loadAnnouncement = computed(() => {
         </template>
       </div>
 
-      <!-- Natives <details> wie bei der Kurzbeschreibung und den
-           Kontextzeilen des Vergleichs: ohne Hydration bedienbar, per
-           Tastatur erreichbar, und die Seitensuche des Browsers klappt es
-           auf, statt daran vorbeizulaufen. -->
+      <!-- A native <details> as for the Kurzbeschreibung and the comparison's
+           context lines: usable without hydration, reachable by keyboard, and
+           the browser's find-in-page opens it instead of running past it. -->
       <details v-if="folded.length" class="group mt-4 border-t border-hairline">
         <summary
           class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-sm font-medium text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
@@ -197,31 +193,31 @@ const loadAnnouncement = computed(() => {
         </div>
       </details>
 
-      <!-- Was hier bewusst NICHT steht, steht im Dokument: Tabellen und
-           Abbildungen (wir drucken keine Bilddateipfade als Sätze) und der
-           Besondere Teil, der zu den einzelnen Paragraphen gehört und nicht
-           in eine Relevanzprüfung. Beides wird benannt, nicht verschwiegen.
+      <!-- What deliberately does NOT stand here stands in the document:
+           tables and figures (we do not print image file paths as sentences)
+           and the Besonderer Teil, which belongs to the individual
+           Paragraphen and not in a relevance check. Both are named, not
+           passed over in silence.
 
-           Seit die Passagen des Besonderen Teils unten an den §§ der
-           Gegenüberstellung hängen (§12.30), ist „steht im Dokument selbst"
-           nur noch die halbe Auskunft — und dort, wo sie danebensteht, wäre
-           sie die teurere Hälfte: Sie schickt den Leser in ein PDF, während
-           die Stelle zwei Bildschirme tiefer auf derselben Seite liegt. Ob
-           sie das tut, sagt der Server (`paragraphsAtAnnex`), nicht der
-           Abschnitt unten: Ein Satz, der nach dem Laden der
-           Gegenüberstellung seine Aussage wechselt, wäre schlechter als
-           einer, der von Anfang an stimmt.
+           Since the Besonderer Teil's passages hang at the §§ of the
+           Textgegenüberstellung (docs/architecture.md §12.30), „steht im
+           Dokument selbst" is only half the information — and where the other
+           half applies, it is the more expensive one: it sends the reader
+           into a PDF while the place is two screens down on the same page.
+           Whether it applies is decided by the server (`paragraphsAtAnnex`),
+           not by the section below: a sentence that changes its claim once
+           the comparison has loaded would be worse than one that is right
+           from the start.
 
-           DER ZEIGER NIMMT NICHTS WEG, er kommt dazu — „und vollständig im
-           Dokument selbst" bleibt in beiden Fassungen stehen. Das ist die
-           Antwort auf den einen von 110 Entwürfen, bei dem es die Beilage
-           gibt und sie sich nicht auslesen ließ (gemessen 19.09.2026,
-           §12.30; mit gelesener Parlamentskopie wären es vier): Der
-           Zeiger führt dann auf einen Abschnitt, der selbst sagt, woran es
-           lag — und der Satz hat dem Leser das Dokument nicht weggenommen,
-           um ihn dorthin zu schicken. Die zweite Hälfte trägt außerdem eine
-           eigene Auskunft: Am Paragraphen steht, was sich einem Paragraphen
-           zuordnen ließ; 16,3 % der Passagen finden keinen (§12.30). -->
+           THE POINTER TAKES NOTHING AWAY, it adds — „und vollständig im
+           Dokument selbst" stands in both versions. That is the answer to the
+           one draft in 110 where the annex exists and could not be read
+           (measured 19.09.2026, §12.30; four with Parliament's copy read):
+           the pointer then leads to a section that says itself what went
+           wrong, and the sentence did not take the document away to send the
+           reader there. The second half also carries information of its own:
+           at the Paragraph stands what could be attributed to one, and 16,3 %
+           of the passages find none (§12.30). -->
       <p v-if="data.dropped || data.hasSpecial" class="mt-4 max-w-prose text-sm text-ink-muted">
         <template v-if="data.dropped">
           Tabellen und Abbildungen des Dokuments stehen hier nicht.

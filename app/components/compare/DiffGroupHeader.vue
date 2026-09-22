@@ -35,8 +35,8 @@ defineEmits<{
         :class="{ 'rotate-180': open }"
         aria-hidden="true"
       />
-      <!-- KEIN sr-only „aufklappen/zuklappen": `aria-expanded` am Button sagt
-           den Zustand bereits, und der Screenreader las ihn zweimal („…
+      <!-- NO sr-only „aufklappen/zuklappen": `aria-expanded` on the button
+           already states the state, and the screen reader read it twice („…
            zuklappen, Schaltfläche, erweitert"). -->
     </span>
     <span class="flex flex-wrap gap-1.5">

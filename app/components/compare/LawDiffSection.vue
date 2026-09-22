@@ -68,14 +68,14 @@ const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(
 )
 
 /**
- * Und ob das Ressort seine **Begründung** zu dieser Bestimmung geändert hat
+ * And whether the Ressort changed its **reasoning** for this provision
  * (docs/architecture.md §12.10b).
  *
- * Gemessen über die XXVIII. GP: Bei 48 % der Paragraphen, die auf beiden
- * Seiten eine Begründung tragen, ist sie eine andere geworden — es lohnt
- * also, danach zu fragen. Eigener Abruf aus demselben Grund wie die Namen:
- * Zwei weitere Dokumente vom Parlament dürfen den Vergleich weder aufhalten
- * noch mit sich reißen.
+ * Measured over GP XXVIII: for 48 % of the Paragraphen carrying a reasoning
+ * on both sides it became a different one — so the question is worth asking.
+ * A fetch of its own for the same reason as the names: two more documents
+ * from Parliament must neither hold the comparison up nor take it down with
+ * them.
  */
 const { data: reasoning } = await useFetch<ReasoningDiffResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${pair.value.from}&bis=${pair.value.to}`,
@@ -83,11 +83,11 @@ const { data: reasoning } = await useFetch<ReasoningDiffResponse>(
 )
 
 /**
- * Die geänderte Begründung zu einer Einheit, oder nichts.
+ * The changed reasoning for one unit, or nothing.
  *
- * Zwei Schritte, weil es zwei Ebenen sind: Gerechnet wird je Paragraph,
- * gezeigt an der Anordnung — und mehrere Anordnungen zeigen auf denselben
- * Paragraphen (8/ME: sechs auf § 11).
+ * Two steps, because there are two levels: computed per Paragraph, shown at
+ * the Novellierungsanordnung — and several instructions point at the same
+ * Paragraph (8/ME: six at § 11).
  */
 function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
   const para = reasoning.value?.units?.[unitKey(u)]
@@ -96,13 +96,13 @@ function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
 }
 
 /**
- * Der Satz über dem Vergleich, der die Aufklapper darunter erklärt.
+ * The sentence above the comparison that explains the disclosures below it.
  *
- * Er steht hier und nicht an jeder Zeile: „unverändert" an 33 Zeilen zu
- * drucken wäre Lärm, die Quote einmal zu nennen ist die Auskunft. Und er
- * nennt beide Zahlen — wie oft die Begründung mitging und wie oft nicht —,
- * weil eine unveränderte Begründung zu einem geänderten Text eine eigene
- * Aussage ist.
+ * Here rather than on every row: printing „unverändert" on 33 rows would be
+ * noise, naming the rate once is the information. And it names both numbers —
+ * how often the reasoning moved with the text and how often it did not —
+ * because an unchanged reasoning for a changed text is a statement of its
+ * own.
  */
 const reasoningNote = computed<string | null>(() => {
   const stats = reasoning.value?.stats
@@ -131,10 +131,11 @@ const comparisons = computed(() => {
   const out: { value: string; from: LawStationId; to: LawStationId; label: string }[] = []
   for (const from of stations) {
     for (const to of stations) {
-      // `isLawStationPair` statt eines Indexvergleichs: Die Regel kennt seit
-      // der BGBl-Station eine Ausnahme (plenum→bgbl steht kein Akteur
-      // dahinter, §12.33), und sie darf nur an EINER Stelle stehen — der
-      // Server prüft mit derselben Funktion, was hier angeboten wird.
+      // `isLawStationPair` rather than an index comparison: since the BGBl
+      // station the rule has an exception (no actor stands behind
+      // plenum→bgbl, docs/architecture.md §12.33), and it may live in ONE
+      // place only — the server checks what is offered here with the same
+      // function.
       if (!isLawStationPair(from.id, to.id)) continue
       const pdfOnly = [from, to].filter((s) => !s.comparable).map((s) => s.label)
       out.push({
@@ -431,21 +432,21 @@ function displayId(id: string): string {
 }
 
 /**
- * Der Paragraph, den eine Änderung ändert — dem Namen vorangestellt.
+ * The Paragraph a change amends — placed in front of the name.
  *
- * „Z 2" ist die Nummer der Novellierungsanordnung, nicht die des Paragraphen;
- * ohne den § schwebt ein Name wie „Erweiterte Gefahrenerforschung" über einer
- * Bezeichnung, die ihn nirgends nennt, und drei Anordnungen zum selben
- * Paragraphen sehen aus wie dreimal dasselbe. Weg bleibt er, wo die Einheit
- * selbst der Paragraph ist (Gegenüberstellung, neues Gesetz) — dann stünde er
- * zweimal in einer Zeile.
+ * „Z 2" is the Novellierungsanordnung's number, not the Paragraph's; without
+ * the § a name like „Erweiterte Gefahrenerforschung" floats above a
+ * designation that never names it, and three instructions for one Paragraph
+ * look like the same thing three times. It stays away where the unit IS the
+ * Paragraph (Textgegenüberstellung, a new law) — it would then stand twice in
+ * one line.
  */
 function unitParagraph(u: LawDiffUnit): string | null {
   const para = paraTitles.value?.paragraphs?.[unitKey(u)] ?? null
   return para && para !== displayId(u.id) ? para : null
 }
 
-/** Paragraph und Name als eine Zeile: „§ 6 Erweiterte Gefahrenerforschung". */
+/** Paragraph and name as one line: „§ 6 Erweiterte Gefahrenerforschung". */
 function unitLabel(u: LawDiffUnit): string | null {
   const name = unitName(u)
   if (!name) return null
@@ -500,18 +501,17 @@ const droppedNote = computed(() =>
     <template v-else>
       <!-- What the selected pair answers, where the selection happened. -->
       <p v-if="!isDefaultPair" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
-      <!-- Was „Z 1" ist und was „redaktionell" heißt, stand bis 18.09.2026
-           hier oben. Beides sind Vokabeln, keine Befunde über diesen Entwurf:
-           Sie gehören in die Legende am Fuß des Abschnitts, wo sie
-           nachgeschlagen wird, wenn das Wort auftaucht — und nicht zwei
-           Bildschirme früher. Was hier bleibt, sagt etwas über diesen Text:
-           dass er ein bestehendes Gesetz ändert, und welche zwei Fassungen
-           verglichen werden. -->
+      <!-- What „Z 1" is and what „redaktionell" means stood up here until
+           18.09.2026. Both are vocabulary, not findings about this draft:
+           they belong in the legend at the foot of the section, where they
+           are looked up when the word turns up — not two screens earlier.
+           What stays here says something about this text: that it amends an
+           existing law, and which two versions are compared. -->
       <p class="mt-1 text-sm text-ink-secondary">
-        <!-- „Z 1" steht in der Klammer, nicht in einer Legende: Es ist die
-             Einheit, in der DIESER Vergleich zählt, also ein Satz über diesen
-             Entwurf. Ein eigener Glossareintrag dafür war eine Fußnote zu
-             einem Wort, das ohnehin im selben Satz vorkommen muss. -->
+        <!-- „Z 1" stands in the parenthesis, not in a legend: it is the unit
+             THIS comparison counts in, so a sentence about this draft. A
+             glossary entry of its own was a footnote to a word that has to
+             appear in the same sentence anyway. -->
         <template v-if="isNovelle">
           Dieser Text ändert ein bestehendes Gesetz — verglichen wird deshalb
           Änderungsanordnung für Änderungsanordnung (Z 1, Z 2 …),
@@ -523,16 +523,16 @@ const droppedNote = computed(() =>
         </template>
         <template v-else>Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}.</template>
         {{ lawStationPairHint(pair.from, pair.to) }}
-        <!-- „Unveränderte Stellen sind eingeklappt." ist am 18.09.2026
-             weggefallen: Die Liste zeigt die eingeklappten Läufe als eigene
-             Zeilen mit ihrer Zahl an („12 Paragraphen unverändert"). Einem
-             Leser zu erzählen, was er sieht, kostet eine Zeile und sagt
-             nichts.
+        <!-- „Unveränderte Stellen sind eingeklappt." went on 18.09.2026: the
+             list shows the folded runs as rows of their own with their count
+             („12 Paragraphen unverändert"). Telling a reader what he can see
+             costs a line and says nothing.
 
-             Der Weg zur Erklärung, seit 18.09.2026: Dieser Abschnitt trug die
-             Abzeichen wie die Textgegenüberstellung, hatte aber als einziger
-             keinen Link auf die Seite, die sie erklärt. Wer „redaktionell"
-             nicht kennt, stand hier vor dem Wort und vor keinem Ausweg. -->
+             The way to the explanation, since 18.09.2026: this section
+             carried the same badges as the Textgegenüberstellung but was the
+             only one without a link to the page that explains them. Whoever
+             does not know „redaktionell" stood here in front of the word with
+             no way out. -->
         <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir vergleichen</NuxtLink>
       </p>
 
@@ -541,8 +541,9 @@ const droppedNote = computed(() =>
         <p v-if="droppedNote" :class="mergedNote ? 'mt-1.5' : ''">{{ droppedNote }}</p>
       </div>
 
-      <!-- Die Begründung, einmal als Quote über der Liste statt als „unverändert"
-           an jeder Zeile (§12.10b). Kommt nach, wenn der Abruf da ist. -->
+      <!-- The reasoning, once as a rate above the list instead of
+           „unverändert" on every row (docs/architecture.md §12.10b). Arrives
+           when its fetch does. -->
       <p v-if="reasoningNote" class="mt-3 max-w-prose text-sm text-ink-secondary">{{ reasoningNote }}</p>
 
       <template v-if="data.units.length">
@@ -634,12 +635,13 @@ const droppedNote = computed(() =>
                     <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
                     <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
 
-                    <!-- Was das Ressort dazu sagt — und ob es das nach der
-                         Begutachtung anders sagt als davor. Zugeklappt, wie
-                         die Begründung an der Gegenüberstellung (§12.30):
-                         Sie ist die Antwort auf eine zweite Frage, nicht auf
-                         die erste. Natives <details>, damit die Seitensuche
-                         des Browsers sie aufklappt statt daran vorbeizulaufen. -->
+                    <!-- What the Ressort says about it — and whether it says
+                         so differently after the Begutachtung than before.
+                         Closed, like the reasoning at the
+                         Textgegenüberstellung (docs/architecture.md §12.30):
+                         it answers a second question, not the first. A native
+                         <details>, so the browser's find-in-page opens it
+                         instead of running past it. -->
                     <details v-if="b.reasoning" class="group mt-2">
                       <summary class="-mx-1 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
                         <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -648,12 +650,12 @@ const droppedNote = computed(() =>
                       <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
                         <DiffText :segments="b.reasoning.segments ?? []" />
                       </p>
-                      <!-- Ohne Wortvergleich: beide Fassungen im Ganzen,
-                           nebeneinander wie oben im Vergleich, damit eine
-                           technische Schranke nicht wie eine andere Art von
-                           Änderung aussieht. Die Lade bleibt nie leer — dass
-                           die Begründung eine andere ist, ist der Befund, und
-                           die Schranke ist unsere, nicht die des Ressorts. -->
+                      <!-- Without a word diff: both versions in full, side by
+                           side as in the comparison above, so a technical
+                           ceiling does not look like a different kind of
+                           change. The drawer is never empty — that the
+                           reasoning is a different one is the finding, and the
+                           ceiling is ours, not the Ressort's. -->
                       <div v-else class="pb-2 pl-6">
                         <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
                         <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
@@ -684,10 +686,10 @@ const droppedNote = computed(() =>
             </div>
           </section>
         </div>
-        <!-- Bleibt als Live-Region im DOM und wird leer, statt zu
-             verschwinden: Eine Region, die erst mit ihrem Text entsteht,
-             wird nicht angesagt — wer suchte und nichts fand, bekäme sonst
-             Stille zurück. -->
+        <!-- Stays in the DOM as a live region and goes empty rather than
+             disappearing: a region that comes into being with its text is not
+             announced — whoever searched and found nothing would otherwise
+             get silence back. -->
         <p
           role="status"
           :class="visibleUnits.length ? 'sr-only' : 'mt-2 text-sm text-ink-secondary'"
@@ -695,22 +697,21 @@ const droppedNote = computed(() =>
       </template>
 
       <!-- Provenance under the text it belongs to, the way a source note
-           sits under a table rather than over it (Manu, 17.09.2026). It is
-           looked up while or after reading, never before — and it is one
-           more block that used to rewrite itself above the select.
-           Die Lizenz hängt am Paar, nicht an der Seite: steht der
-           Ministerialentwurf auf einer Seite, wäre eine gemeinsame Zeile
-           „CC BY 4.0" für diese Hälfte falsch — die Vorlage ist ein
-           lizenzierter Datensatz, der Entwurf gehört zum
-           Begutachtungsverfahren, das das Parlament von der
-           Open-Data-Nutzung ausnimmt (CLAUDE.md, Legal constraints).
-           Vergleicht der Leser zwei parlamentarische Fassungen, sind beide
-           Seiten lizenziert und die Angabe gehört dazu — dieselbe
-           quellenweise Aufteilung wie im Impressum. -->
+           sits under a table rather than over it (17.09.2026). It is looked
+           up while or after reading, never before — and it is one more block
+           that used to rewrite itself above the select.
+
+           The licence hangs on the pair, not on the page: with the
+           Ministerialentwurf on one side a shared „CC BY 4.0" would be wrong
+           for that half — the Vorlage is a licensed dataset, the draft belongs
+           to the Begutachtungsverfahren, which Parliament excludes from
+           open-data use (CLAUDE.md, Legal constraints). Comparing two
+           parliamentary versions, both sides are licensed and the statement
+           belongs there — the same per-source split as in the Impressum. -->
       <SectionCredits>
-        <!-- BEIDE Seiten entscheiden die Zeile, nicht mehr nur die linke:
-             die kundgemachte Fassung kommt aus dem RIS, und bei `rv→bgbl`
-             stünde sonst „Quellen (Parlament)" über einem RIS-Dokument. -->
+        <!-- BOTH sides decide the line now, not only the left one: the
+             kundgemachte Fassung comes from RIS, and `rv→bgbl` would
+             otherwise carry „Quellen (Parlament)" over a RIS document. -->
         <span>{{ data.fromSource === 'ris' || data.toSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
         <ExternalLink v-if="data.fromDocument" :href="data.fromDocument.url" class="text-accent-deep hover:underline">{{ data.fromDocument.label }}</ExternalLink>
         <ExternalLink v-if="data.toDocument" :href="data.toDocument.url" class="text-accent-deep hover:underline">{{ data.toDocument.label }}</ExternalLink>
@@ -718,8 +719,8 @@ const droppedNote = computed(() =>
         <!-- The § names come from a third source; a page that shows text has
              to say where it is from, even when the text is one word long. -->
         <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
-        <!-- Die Begründungen sind zwei weitere Dokumente, und wer Text zeigt,
-             sagt woher — auch wenn er zugeklappt ist. -->
+        <!-- The Erläuterungen are two more documents, and whoever shows text
+             says where it is from — even when it is folded away. -->
         <template v-if="reasoning?.stats?.compared">
           <ExternalLink
             v-for="src in reasoning.sources"

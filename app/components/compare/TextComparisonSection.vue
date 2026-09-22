@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * "Was ändert der Entwurf?" — the ressort's own Textgegenüberstellung
+ * "Was ändert der Entwurf?" — the Ressort's own Textgegenüberstellung
  * (docs/api-exploration.md §2c).
  *
  * Different question from LawDiffSection, and available much earlier. That
@@ -36,35 +36,29 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/draf
 })
 
 /**
- * Die Begründung des Ressorts zu den einzelnen Paragraphen
+ * The Ressort's reasoning for the individual Paragraphen
  * (docs/architecture.md §12.30).
  *
- * Dasselbe Dokument, das `ExplanationsSection` weiter oben auf der Seite
- * ohnehin liest — ein gemeinsamer Schlüssel in `useExplanations`, also eine
- * Anfrage für beide Abschnitte, und zwar ausgesprochen statt als Nebenwirkung
- * gleicher URLs. Und sie darf fehlschlagen, ohne dass es diesen Abschnitt
- * kümmert: Die Gegenüberstellung ist die Auskunft, die Begründung ist die
- * Beigabe.
+ * The same document `ExplanationsSection` reads further up the page anyway —
+ * one shared key in `useExplanations`, so one request for both sections,
+ * stated rather than a side effect of equal URLs. And it may fail without
+ * this section caring: the Textgegenüberstellung is the information, the
+ * reasoning is the addition.
  */
 const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr }))
 
 /**
- * Die konsolidierte Lesefassung — dritte Schicht an demselben Paragraphen
+ * The konsolidierte Lesefassung — a third layer on the same Paragraph
  * (docs/architecture.md §12.12a).
  *
- * WARUM HIER UND NICHT IN EINEM EIGENEN ABSCHNITT. Sie stand bis 19.09.2026
- * unter der Gegenüberstellung als „Wie das Gesetz danach lauten würde", und
- * das war eine Dopplung mit Ansage: Gezeigt wird ein Paragraph nur, wenn die
- * Beilage ihn bestätigt — die Lesefassung ist also **immer** eine Teilmenge
- * dieses Abschnitts. Gemessen an 126/ME: 32 von 32 Paragraphen stehen in
- * beiden, zwei Blöcke mit derselben Gesetzessprache untereinander.
- *
- * Der Unterschied ist trotzdem echt, und er ist ein anderer als „dasselbe
- * nochmal": Die Beilage druckt den Absatz, den sie ändert, und kürzt den Rest
- * des Paragraphen zu „(2) bis (5) …" ab — bei 26 der 32 Paragraphen von
- * 126/ME, in Zeichen 18.068 gegen 48.611. Die Frage „wie lautet die
- * Bestimmung dann" entsteht also genau hier, am §, und wird hier beantwortet,
- * statt zwei Bildschirme tiefer noch einmal.
+ * WHY HERE AND NOT IN A SECTION OF ITS OWN: a Paragraph is shown only where
+ * the annex confirms it, so the Lesefassung is **always** a subset of this
+ * section — 32 of 32 Paragraphen of 126/ME stand in both. The difference is
+ * real all the same: the annex prints the Absatz it amends and abbreviates
+ * the rest of the Paragraph to „(2) bis (5) …", for 26 of those 32 and in
+ * characters 18.068 against 48.611. So the question „wie lautet die
+ * Bestimmung dann" arises right here, at the §, and is answered here instead
+ * of two screens further down.
  */
 const { data: consolidated } = await useFetch<ConsolidatedTextResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/konsolidiert`,
@@ -72,12 +66,12 @@ const { data: consolidated } = await useFetch<ConsolidatedTextResponse>(
 )
 
 /**
- * Nachgeschlagen unter demselben Schlüssel, den das Tor benutzt hat.
+ * Looked up under the same key the gate used.
  *
- * Zwei Einträge je Paragraph, und der zweite ist kein Komfort: Bei einer
- * Einzelnovelle hat das Tor den Anhang OHNE Gesetz befragt (`annexLaw: null`),
- * die Zeile der Beilage trägt aber trotzdem eines. Ein Nachschlagen nur über
- * (Gesetz, Nummer) fände dort nichts.
+ * Two entries per Paragraph, and the second is no convenience: for a
+ * single-law Novelle the gate asked the annex WITHOUT a law
+ * (`annexLaw: null`), while the annex's row carries one anyway. A lookup by
+ * (law, number) alone would find nothing there.
  */
 const consolidatedByKey = computed(() => {
   const out = new Map<string, ConsolidatedParagraph>()
@@ -94,10 +88,10 @@ function consolidatedFor(law: string | null, para: string | null): ConsolidatedP
   return consolidatedByKey.value.get(explanationKey(law, id)) ?? consolidatedByKey.value.get(`*#${id}`) ?? null
 }
 
-/** Wie viele §§ die Lesefassung trägt — für den Satz über der Liste. */
+/** How many §§ the Lesefassung carries — for the sentence above the list. */
 const consolidatedShown = computed(() => consolidated.value?.paragraphs.length ?? 0)
 
-/** Die Passagen, nachschlagbar unter (Gesetz, Paragraph). */
+/** The passages, lookupable by (law, Paragraph). */
 const explanationsByKey = computed(() => {
   const out = new Map<string, ParagraphExplanationView[]>()
   for (const e of explanations.value?.paragraphs ?? []) {
@@ -110,14 +104,13 @@ const explanationsByKey = computed(() => {
 })
 
 /**
- * Die Passagen zu EINEM § der Beilage.
+ * The passages for ONE § of the annex.
  *
- * Nachgeschlagen, nicht gesucht: Beide Seiten bilden denselben Schlüssel aus
- * Gesetz und normalisierter Bezeichnung (`#shared/utils/explanationKey`). Wo die
- * Beilage ihre Gesetze nicht auseinanderhält, trägt ihre Zeile kein Gesetz,
- * der Eintrag aber eines — dann findet der Schlüssel nichts, und das ist die
- * richtige Antwort: § 5 des zweiten Gesetzes ist eine andere Bestimmung als
- * § 5 des ersten.
+ * Looked up, not searched: both sides build the same key from law and
+ * normalised designation (`#shared/utils/explanationKey`). Where the annex
+ * does not keep its laws apart its row carries no law while the entry does —
+ * then the key finds nothing, and that is the right answer: § 5 of the second
+ * law is a different provision from § 5 of the first.
  */
 function explanationsFor(law: string | null, para: string | null): ParagraphExplanationView[] {
   const id = explanationParaId(para)
@@ -279,9 +272,9 @@ interface Para {
   /** The annex's own heading for the paragraph */
   heading: string | null
   blocks: Block[]
-  /** Was das Ressort zu genau diesem § erläutert; leer, wenn nichts zu finden war. */
+  /** What the Ressort explains about this very §; empty when nothing was found. */
   explanations: ParagraphExplanationView[]
-  /** Der ganze § in der Fassung nach dem Entwurf; null, wo das Tor ihn nicht freigibt. */
+  /** The whole § as it would read after the draft; null where the gate withholds it. */
   consolidated: ConsolidatedParagraph | null
 }
 
@@ -300,14 +293,13 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
   // Every withheld row of a § carries the same cause — the verdict is per §.
   let withheldCause: AnnexWithheldCause | null = null
   const flush = () => {
-    // Die Kontextzeile steht auch an §§ mit Lesefassung, und das ist eine
-    // Entscheidung, keine Auslassung (19.09.2026, Manu): Sie faltet die
-    // unveränderten Zeilen DER BEILAGE, in derselben Spaltenlogik wie die
-    // geänderten darüber — die Lesefassung darunter ist unser Text aus dem
-    // RIS. Für einen Leser, der die Beilage liest, ist „was hat das Ressort
-    // hier unverändert abgedruckt" eine andere Auskunft als „so lautet der
-    // Paragraph dann". Kurz probiert, sie an diesen §§ wegzulassen, und wieder
-    // eingesetzt.
+    // The context line also stands on §§ that carry a Lesefassung, and that
+    // is a decision rather than an oversight (19.09.2026): it folds the
+    // unchanged rows OF THE ANNEX, in the same column logic as the changed
+    // ones above — the Lesefassung below is our text from RIS. For a reader
+    // reading the annex, „was hat das Ressort hier unverändert abgedruckt" is
+    // different information from „so lautet der Paragraph dann". Dropping it
+    // on those §§ was tried briefly and undone.
     if (context.length) current.blocks.push({ kind: 'context', rows: context })
     context = []
     if (withheld > 0) current.blocks.push({ kind: 'withheld', count: withheld, cause: withheldCause })
@@ -352,16 +344,16 @@ const hasRows = computed(() => (data.value?.rows ?? []).some((r) => r.kind !== '
 const matchCount = computed(() => groups.value.reduce((n, g) => n + g.rows.length, 0))
 
 /**
- * Was der Screenreader hört, wenn der Abruf fertig ist.
+ * What a screen reader hears once the fetch is done.
  *
- * Bis 18.09.2026 gar nichts: „Die Textgegenüberstellung wird geladen …"
- * stand da, wurde clientseitig ersetzt, und niemand sagte Bescheid. Wer die
- * Seite linear liest, wartet auf eine Ansage, die nie kommt, und der
- * Abschnitt, der danach der längste der Seite ist, erscheint stumm.
+ * Until 18.09.2026 nothing at all: „Die Textgegenüberstellung wird geladen …"
+ * stood there, was replaced client-side, and nobody announced it. Whoever
+ * reads the page linearly waits for an announcement that never comes, and the
+ * longest section of the page appears mutely.
  *
- * Leer, solange geladen wird — der sichtbare Absatz sagt das schon, und
- * eine Region, die beim Einhängen bereits Text trägt, wird von manchen
- * Screenreadern sofort vorgelesen.
+ * Empty while loading — the visible paragraph says that already, and a region
+ * that already carries text when it is mounted is read out immediately by
+ * some screen readers.
  */
 const loadAnnouncement = computed(() => {
   if (status.value === 'pending' || status.value === 'idle') return ''
@@ -372,11 +364,11 @@ const loadAnnouncement = computed(() => {
   return `Gegenüberstellung geladen, ${countLabelDe(matchCount.value, 'Zeile', 'Zeilen')}.`
 })
 
-/* Die deutschen Sätze über die Prüfung — was gefunden wurde, was
- * zurückgehalten ist und warum, welche Seiten fehlen, welches Gesetz
- * auffällt — stehen in `app/utils/annexNotes.ts`, wo sie gegen ein kleines
- * Antwortobjekt geprüft werden. Sie sind Funktionen der Antwort und sonst
- * von nichts. */
+/* The German sentences about the check — what was found, what is withheld
+ * and why, which pages are missing, which law stands out — live in
+ * `app/utils/annexNotes.ts`, where they can be tested against a small
+ * response object. They are functions of the response and of nothing
+ * else. */
 const checkNote = computed(() => annexCheckNote(data.value?.verification ?? null))
 const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
 const doubtfulNote = computed(() =>
@@ -390,10 +382,10 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
 
 <template>
   <div class="mt-1">
-    <!-- Sagt das Ende des Ladens an, das sonst lautlos passiert. Bleibt im
-         DOM und leer, statt erst beim Fertigwerden zu erscheinen: eine
-         Live-Region, die es beim Eintreten der Änderung noch nicht gibt,
-         wird nicht vorgelesen. -->
+    <!-- Announces the end of loading, which otherwise happens silently.
+         Stays in the DOM and empty rather than appearing only when done: a
+         live region that does not yet exist when the change occurs is not
+         read out. -->
     <p class="sr-only" role="status">{{ loadAnnouncement }}</p>
 
     <p v-if="status === 'pending' || status === 'idle'" class="text-sm text-ink-secondary">
@@ -418,26 +410,25 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
     </template>
 
     <template v-else>
-      <!-- Woher der Text stammt und dass die Markierung von uns ist, stand
-           hier bis 18.09.2026 als Absatz über dem, weswegen jemand gekommen
-           ist — wortgleich auf jeder Entwurfsseite und ausführlicher auf
-           /so-funktionierts#gegenueberstellung. Es ist eine Bildunterschrift,
-           kein Satz: Sie steht jetzt in `SectionCredits` am Fuß des
-           Abschnitts, neben der Quelle, die sie betrifft. Die Herkunft selbst
-           fällt damit nicht weg — sie darf nie hinter einem Link liegen.
+      <!-- Where the text comes from and that the marking is ours stood here
+           as a paragraph above what people came for until 18.09.2026 — word
+           for word on every draft page. It is a caption, not a sentence: it
+           now sits in `SectionCredits` at the foot of the section, beside the
+           source it concerns. The provenance itself is not dropped — it must
+           never sit behind a link.
 
-           Was oben bleibt, ist der Vorbehalt: Auf dem PDF-Pfad ist mehr als
-           die Markierung unsere — RIS veröffentlicht die Beilage nur als
-           Bild, die Zuordnung der Zeilen ist erschlossen. Das ist keine
-           Herkunftsangabe, sondern die Aussage, dass das Folgende falsch sein
-           kann; sie gehört vor den Vergleich, nicht darunter. Dass der Text
-           aus dem PDF gelesen ist, sagt jetzt die Quellenangabe selbst
+           What stays on top is the caveat: on the PDF path more than the
+           marking is ours — RIS publishes the annex only as an image, the
+           row pairing is inferred. That is not a provenance note but the
+           statement that what follows may be wrong; it belongs before the
+           comparison, not under it. That the text was read from the PDF is
+           now said by the credit line itself
            (`textComparisonService`: „aus dem PDF gelesen"). -->
-      <!-- Die drei Vorbemerkungen als eine Gruppe: `space-y-3` setzt den
-           Abstand ZWISCHEN den vorhandenen Absätzen und gibt dem ersten
-           keinen — gleich, welcher das gerade ist. Vorher trug jeder seinen
-           eigenen bedingten Oberrand, und wer der erste ist, hängt von
-           `readFrom` und `boundaryNote` ab. -->
+      <!-- The three preliminary notes as one group: `space-y-3` sets the space
+           BETWEEN the paragraphs that exist and gives the first none —
+           whichever one that happens to be. Each used to carry its own
+           conditional top margin, and which is first depends on `readFrom`
+           and `boundaryNote`. -->
       <div class="space-y-3">
         <p v-if="data.readFrom === 'pdf'" class="text-sm text-ink-secondary">
           Welche Zeile links zu welcher Zeile rechts gehört, haben wir aus dem
@@ -459,8 +450,9 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
              Always present — a comparison nothing could be checked in says so
              rather than falling silent, which reads as a clean bill.
 
-             Befund und Zweifel bleiben zusammen: `doubtfulNote` erläutert den
-             Satz darüber und steht deshalb enger an ihm als an allem sonst. -->
+             Finding and doubt stay together: `doubtfulNote` elaborates the
+             sentence above it and therefore sits closer to that than to
+             anything else. -->
         <div>
           <p class="text-sm text-ink-secondary">
             {{ checkNote }}
@@ -469,19 +461,18 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
         </div>
 
-        <!-- Die Bilanz der Lesefassung, und sie steht hier statt unter einer
-             eigenen Liste (§12.12a). Zwei Aufgaben in einem Satz: Er sagt an,
-             dass an manchen §§ ein dritter Aufklapper hängt — sonst findet
-             ihn nur, wer zufällig klickt —, und er nennt den Nenner. Ohne den
-             läse sich eine Handvoll aufklappbarer Paragraphen wie „bei den
-             anderen bleibt alles beim Alten", und das ist die eine Aussage,
-             die hier nie stehen darf (§12.27).
+        <!-- The Lesefassung's balance, here rather than under a list of its
+             own (docs/architecture.md §12.12a). Two jobs in one sentence: it
+             announces that some §§ carry a third disclosure — otherwise only
+             whoever clicks by chance finds it — and it names the denominator.
+             Without that, a handful of expandable Paragraphen would read as
+             „bei den anderen bleibt alles beim Alten", the one statement that
+             may never stand here (§12.27).
 
-             Nur wenn es etwas anzusagen gibt: Zeigt das Tor keinen einzigen
-             Paragraphen — der häufigere Fall —, schweigt dieser Satz, statt
-             über eine Sektion zu berichten, die es auf dieser Seite nicht
-             gibt. Was das Tor zurückhält und warum, steht dann weiterhin auf
-             /so-funktionierts, nicht als vierter Absatz über dem Vergleich. -->
+             Only when there is something to announce: where the gate shows no
+             Paragraph at all — the more common case — this sentence stays
+             silent instead of reporting on a section that does not exist on
+             this page. -->
         <p v-if="consolidatedShown > 0" class="max-w-prose text-sm text-ink-secondary">
           Bei {{ consolidatedShown }} von {{ consolidated?.touched ?? consolidatedShown }}
           {{ (consolidated?.touched ?? consolidatedShown) === 1 ? 'geänderten Paragraph' : 'geänderten Paragraphen' }}
@@ -525,46 +516,43 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                 <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
               </p>
 
-              <!-- Warum diese Änderung — die Passage des Besonderen Teils zu
-                   genau diesem Paragraphen (docs/architecture.md §12.30).
+              <!-- Why this change — the Besonderer Teil's passage on this very
+                   Paragraph (docs/architecture.md §12.30).
 
-                   ZUGEKLAPPT und direkt unter der §-Zeile: Die Frage des
-                   Lesers an dieser Stelle ist „was ändert sich", und die
-                   beantworten die Zeilen darunter; „warum" ist die
-                   Anschlussfrage, und sie kommt nicht bei jedem §. Ein
-                   Aufklapper kostet eine Zeile und steht dort, wo die Frage
-                   entsteht — unter den Absätzen stünde er bei einem § mit
-                   zwölf Zeilen außer Sichtweite seiner Überschrift.
+                   CLOSED and directly under the § line: the reader's question
+                   here is „was ändert sich", answered by the rows below;
+                   „warum" is the follow-up and does not arise for every §. A
+                   disclosure costs one line and stands where the question
+                   arises — below the Absätze it would be out of sight of its
+                   own heading on a § with twelve rows.
 
-                   Der Text ist der des Ressorts, unverändert und ungekürzt:
-                   Diese Passagen sind kurz (der Besondere Teil verteilt sich
-                   auf viele), eine zweite Faltung im Aufklapper wäre eine
-                   Tür hinter einer Tür. -->
+                   The text is the Ressort's, unaltered and uncut: these
+                   passages are short (the Besonderer Teil spreads over many),
+                   and a second fold inside the disclosure would be a door
+                   behind a door. -->
               <details v-if="p.explanations.length" class="group mb-2">
-                <!-- In Tinte, nicht in Akzentfarbe (Manu, 18.09.2026). Blau ist
-                     im Haus die Farbe des Links, und dieser Aufklapper führt
-                     nirgendwohin. Entscheidend ist aber die Häufigkeit: Er
-                     steht an JEDEM Paragraphen, bei 26 §§ also 26-mal — genau
-                     der Fall, den SpineRail schon einmal hatte („fünf
-                     Stationsnamen in accent-deep machten aus der Karte sieben
-                     blaue Zeilen von elf, und die Markenfarbe trug keine
-                     Information mehr"). Die Rangordnung bleibt trotzdem
-                     lesbar: `font-medium text-ink` gegen das `text-ink-muted`
-                     der unveränderten Stellen zwei Zeilen weiter unten. Das
-                     Chevron trägt die Bedienbarkeit, wie bei jedem anderen
-                     Aufklapper dieser Seite. -->
+                <!-- In ink, not in the accent colour (18.09.2026). Blue is the
+                     house colour of a link, and this disclosure leads
+                     nowhere. What decides it is the frequency: it stands on
+                     EVERY Paragraph, so 26 times on 26 §§ — exactly the case
+                     `SpineRail` already had, where five station names in
+                     accent-deep turned the card into seven blue rows out of
+                     eleven and the brand colour carried no information any
+                     more. The rank stays readable regardless:
+                     `font-medium text-ink` against the `text-ink-muted` of the
+                     unchanged rows two lines below. The chevron carries the
+                     affordance, as on every other disclosure of this page. -->
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                   Warum? Die Begründung des Ressorts
                 </summary>
-                <!-- Eingerückt, ohne Linie (Manu, 18.09.2026). Eine Linie
-                     links bedeutet in diesem Abschnitt etwas: Sie ist die
-                     farbige Rinne, die eine Zeile als „geändert" oder „neu"
-                     ausweist. Eine graue Rinne an der Begründung borgt sich
-                     diese Vokabel für etwas, das keine Änderung ist. Die
-                     Einrückung allein trägt die Zuordnung — genauso hält es
-                     der Aufklapper der unveränderten Stellen zwei Zeilen
-                     weiter unten. -->
+                <!-- Indented, without a rule (18.09.2026). A rule on the left
+                     means something in this section: it is the coloured gutter
+                     marking a row as „geändert" or „neu". A grey gutter on the
+                     reasoning would borrow that vocabulary for something that
+                     is no change at all. The indent alone carries the
+                     attribution — the same as the disclosure of unchanged
+                     rows two lines below. -->
                 <div class="mt-1 pl-6">
                   <div v-for="(e, ei) in p.explanations" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
                     <p class="text-xs text-ink-muted">{{ e.heading }}</p>
@@ -640,26 +628,26 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                 </div>
               </div>
 
-              <!-- Die dritte Schicht an demselben Paragraphen: nicht was sich
-                   ändert und nicht warum, sondern wie er danach lautet
-                   (docs/architecture.md §12.12a).
+              <!-- The third layer on the same Paragraph: not what changes and
+                   not why, but how it reads afterwards (docs/architecture.md
+                   §12.12a).
 
-                   UNTER den geänderten Stellen, nicht über ihnen (Manu,
-                   19.09.2026): Die Zeilen sind die Auskunft, wegen der jemand
-                   den § aufschlägt; der ganze Paragraph ist die Anschlussfrage
-                   und gehört dahin, wo sie entsteht — ans Ende. Über den
-                   Zeilen stünde eine Tür vor der Antwort. Die Begründung
-                   bleibt oben: Sie gehört zur Änderung, nicht zum Ergebnis. -->
+                   BELOW the changed rows, not above them (19.09.2026): the
+                   rows are the information somebody opens the § for; the whole
+                   Paragraph is the follow-up question and belongs where that
+                   arises — at the end. Above the rows it would be a door in
+                   front of the answer. The reasoning stays on top: it belongs
+                   to the change, not to the result. -->
               <details v-if="p.consolidated" class="group mt-3">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                   So lautet der Paragraph dann — ganz
                 </summary>
                 <div class="mt-1 pl-6">
-                  <!-- Der Vorbehalt steht bei dem Text, für den er gilt, und
-                       nicht einmal oben für 26 Aufklapper: Was hier steht, ist
-                       keine amtliche Fassung, sondern der geltende Text des
-                       RIS mit den Anweisungen dieses Entwurfs darauf. -->
+                  <!-- The caveat stands with the text it applies to, not once
+                       at the top for 26 disclosures: what stands here is no
+                       official version but the text in force from RIS with
+                       this draft's instructions applied. -->
                   <p class="max-w-prose text-xs text-ink-muted">
                     Nicht amtliche Lesefassung: der geltende Text aus dem RIS mit den
                     Anweisungen dieses Entwurfs, geprüft gegen die Gegenüberstellung
@@ -668,8 +656,9 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                   <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
                     <DiffText :segments="p.consolidated.headingSegments" removed-normal-weight />
                   </p>
-                  <!-- Ein Absatz je Absatz: So ist das Gesetz gegliedert, und
-                       achtzehn davon in einem Block sind keine Gliederung. -->
+                  <!-- One paragraph per Absatz: that is how the law is
+                       structured, and eighteen of them in one block are no
+                       structure at all. -->
                   <p
                     v-for="(abs, ai) in absaetze(p.consolidated.segments)"
                     :key="ai"
@@ -696,10 +685,10 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
       <!-- A search box with no answer is worse than none: the section would
            just end, and an empty comparison reads as a claim about the
            draft. Same wording as the § comparison. -->
-      <!-- Bleibt als Live-Region im DOM und wird leer, statt zu
-             verschwinden: Eine Region, die erst mit ihrem Text entsteht,
-             wird nicht angesagt — wer suchte und nichts fand, bekäme sonst
-             Stille zurück. -->
+      <!-- Stays in the DOM as a live region and goes empty rather than
+             disappearing: a region that comes into being with its text is not
+             announced — whoever searched and found nothing would otherwise
+             get silence back. -->
       <p
         v-if="hasRows"
         role="status"
@@ -707,24 +696,24 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
       >{{ matchCount ? '' : 'Nichts gefunden.' }}</p>
 
       <!-- Provenance under the text it belongs to, the way a source note
-           sits under a table rather than over it (Manu, 17.09.2026): it is
-           looked up while or after reading, never before.
+           sits under a table rather than over it (17.09.2026): it is looked up
+           while or after reading, never before. „Markierung" stands beside
+           „Quelle", because that is exactly the question a red/green marked
+           ministry text raises: who did the marking? Two statements in one
+           line, not three sentences above.
 
-           „Markierung" steht neben „Quelle", weil genau das die Frage ist,
-           die ein rot-grün markierter Ministeriumstext aufwirft: Wer hat
-           markiert? Zwei Angaben in einer Zeile, nicht drei Sätze darüber. -->
-      <!-- Die Lizenz kommt vom Server, weil dort die Quelle gewählt wird:
-           Liest die Sektion die Kopie des Parlaments statt der des RIS, wäre
-           ein festverdrahtetes „CC BY 4.0" eine Behauptung über ein Dokument,
-           für das sie niemand geprüft hat (`textComparisonService.credit`). -->
+           The licence comes from the server, because the source is chosen
+           there: if the section reads Parliament's copy instead of the RIS
+           one, a hard-wired „CC BY 4.0" would be a claim about a document
+           nobody checked it for (`textComparisonService.credit`). -->
       <SectionCredits>
         <span>{{ data.credit }}</span>
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
-        <!-- Die zweite Quelle nur, wenn die Lesefassung wirklich irgendwo
-             aufklappbar ist: Die Aufklapper zeigen den geltenden Text des
-             RIS, und der hat eine eigene Lizenz und eine eigene Fundstelle.
-             Sie hier zu nennen ist dieselbe Regel wie beim Abschnitt vorher,
-             nur dass sie jetzt zu einer Schicht IN diesem Abschnitt gehört. -->
+        <!-- The second source only where the Lesefassung really is expandable
+             somewhere: the disclosures show the text in force from RIS, which
+             has a licence and a Fundstelle of its own. Naming it here is the
+             same rule as in the section before, only that it now belongs to a
+             layer INSIDE this section. -->
         <template v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl">
           <span>Geltender Text (CC BY 4.0, RIS):</span>
           <ExternalLink :href="consolidated.paragraphs[0]!.risUrl!" class="text-accent-deep hover:underline">Konsolidierte Fassung im RIS</ExternalLink>
