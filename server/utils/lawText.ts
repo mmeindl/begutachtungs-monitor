@@ -602,7 +602,17 @@ function risText(inner: string): string {
 
 /** RIS Begut main-document XML → flat block list, same kinds as the Parliament HTML parser. */
 export function parseRisXml(xml: string): TextBlock[] {
-  const body = xml.replace(/<kzinhalt[\s\S]*?<\/kzinhalt>/g, '').replace(/<layoutdaten[\s\S]*?<\/layoutdaten>/g, '')
+  // `fzinhalt` is the page FOOTER RIS prints under every page
+  // ("www.ris.bka.gv.at   Seite 2 von 2"), the counterpart to the `kzinhalt`
+  // header. Without it the footer came through as an ordinary Absatz with no
+  // designation, which on the Erläuterungen is a passage the section shows:
+  // measured over the offline cache on 22.09.2026, 180 of 314 readable
+  // Erläuterungen documents carried it. The two sibling parsers strip all
+  // three (`lawStructure.ts`, `textComparison.ts`); this one did not.
+  const body = xml
+    .replace(/<kzinhalt[\s\S]*?<\/kzinhalt>/g, '')
+    .replace(/<fzinhalt[\s\S]*?<\/fzinhalt>/g, '')
+    .replace(/<layoutdaten[\s\S]*?<\/layoutdaten>/g, '')
   // Blocks inside a table keep their kind (the ME→RV comparison reads cell
   // text like any other) but carry a `table:` prefix in `cls`, so the
   // amendment engine can refuse a payload that is a table.

@@ -94,6 +94,32 @@ describe('the closing clause of an enumeration, under both RIS spellings', () =>
   })
 })
 
+describe('parseRisXml strips what RIS prints around the text, not in it', () => {
+  /**
+   * The page furniture: `kzinhalt` is the header, `fzinhalt` the footer, and
+   * both are RIS's own, not the document's. The footer came through as an
+   * ordinary Absatz until 22.09.2026 — measured over the offline cache, 180
+   * of 314 readable Erläuterungen documents carried it into a passage the
+   * section shows. The two sibling parsers (`lawStructure.ts`,
+   * `textComparison.ts`) stripped all of it from the start.
+   */
+  const xml = `<risdok><nutzdaten><abschnitt>
+      <kzinhalt><absatz typ="kzinhalt">Erläuterungen</absatz></kzinhalt>
+      <absatz typ="abs">Zu Z 4 (§ 54c): Die Frist wird verlängert.</absatz>
+      <fzinhalt><absatz typ="fz">www.ris.bka.gv.at Seite 2 von 2</absatz></fzinhalt>
+      </abschnitt></nutzdaten></risdok>`
+
+  it('leaves no block carrying the RIS page footer', () => {
+    const blocks = parseRisXml(xml)
+    expect(blocks.some((b) => b.text.includes('www.ris.bka.gv.at'))).toBe(false)
+    expect(blocks.some((b) => b.text.includes('Seite 2 von 2'))).toBe(false)
+  })
+
+  it('keeps the document text itself', () => {
+    expect(parseRisXml(xml).map((b) => b.text)).toEqual(['Zu Z 4 (§ 54c): Die Frist wird verlängert.'])
+  })
+})
+
 describe('compareKey', () => {
   it('ignores hyphenation, because the two sources set it differently', () => {
     // Parliament's HTML carries a soft hyphen where the Bundesgesetzblatt has
