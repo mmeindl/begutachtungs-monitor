@@ -259,7 +259,6 @@ export const getConsolidatedText = defineCachedFunction(
           : null
         shown.push({
           id,
-          heading: node.heading || null,
           segments,
           headingSegments,
           risUrl: konsLawUrl(law.gesetzesnummer, asOf),

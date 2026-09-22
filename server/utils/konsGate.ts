@@ -58,20 +58,6 @@ import type { ConsolidatedWithheldCause } from '../../shared/types'
  */
 export type WithholdCause = ConsolidatedWithheldCause
 
-/**
- * Die Sätze, die auf der Seite stehen. Kein „Fehler", kein „ungeprüft":
- * Jeder benennt, WER hier nicht mitspielt — wir, oder das Dokument des
- * Ressorts. Der Leser kann das unterscheiden, und es ist nicht dasselbe.
- */
-export const WITHHOLD_LABEL: Record<WithholdCause, string> = {
-  verweigert: 'Eine Anweisung ließ sich nicht sicher anwenden',
-  'nicht-geladen': 'Der Entwurf ändert mehr Paragraphen, als wir für eine Seite laden',
-  unplausibel: 'Das Ergebnis hat unsere Plausibilitätsprüfung nicht bestanden',
-  'kein-anhang': 'Keine lesbare Textgegenüberstellung, an der wir das Ergebnis prüfen könnten',
-  'anhang-schweigt': 'Die Textgegenüberstellung sagt zu diesem Paragraphen nichts Prüfbares',
-  'anhang-widerspricht': 'Die Textgegenüberstellung des Ressorts widerspricht unserem Ergebnis',
-}
-
 /** Das Urteil des Anhangs, wie `tguOracle.oracleVerdict` es fällt, plus „es gibt keinen". */
 export type GateOracle = 'bestätigt' | 'widersprochen' | 'stumm' | 'fremd' | 'kein Anhang'
 
@@ -102,15 +88,6 @@ export function gateParagraph({ refused, plausible, oracle }: GateInput): { show
   // Fassung steht so nicht im RIS-Text) sind für den Leser dasselbe: es gibt
   // hier keine zweite Meinung. Unterschieden werden sie im Prüfstand.
   return { show: false, cause: 'anhang-schweigt' }
-}
-
-/** Die Gründe als gezählte Liste, häufigster zuerst — die Reihenfolge der Anzeige. */
-export function withheldSummary(causes: readonly WithholdCause[]): { cause: WithholdCause; label: string; count: number }[] {
-  const tally = new Map<WithholdCause, number>()
-  for (const c of causes) tally.set(c, (tally.get(c) ?? 0) + 1)
-  return [...tally]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([cause, count]) => ({ cause, label: WITHHOLD_LABEL[cause], count }))
 }
 
 // ---------------------------------------------------------------------------

@@ -20,8 +20,6 @@ export type ConsolidatedWithheldCause =
 export interface ConsolidatedParagraph {
   /** Die Nummer, „22" — dieselbe Schreibweise wie in der Gegenüberstellung. */
   id: string
-  /** Die Überschrift des § NACH dem Entwurf; sie kann selbst geändert sein. */
-  heading: string | null
   /**
    * Wortdiff des **Textes ohne Überschrift** — dieselbe rot/grün-Sprache wie
    * sonst auf der Seite. Getrennt von `headingSegments`, weil eine

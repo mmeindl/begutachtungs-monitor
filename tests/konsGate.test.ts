@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraphs, byParagraphOrder, gateParagraph, paraId, withheldSummary, WITHHOLD_LABEL } from '../server/utils/konsGate'
+import { addressedParagraphs, byParagraphOrder, gateParagraph, paraId } from '../server/utils/konsGate'
 import { parsePayload, type Instruction } from '../server/utils/lawApply'
 import { parseInstruction } from '../server/utils/novao'
 
@@ -36,18 +36,6 @@ describe('gateParagraph', () => {
   })
 })
 
-describe('withheldSummary', () => {
-  it('counts the causes, most frequent first, and carries the sentence', () => {
-    const summary = withheldSummary(['kein-anhang', 'verweigert', 'kein-anhang', 'unplausibel'])
-    expect(summary.map((s) => [s.cause, s.count])).toEqual([['kein-anhang', 2], ['unplausibel', 1], ['verweigert', 1]])
-    expect(summary[0]!.label).toBe(WITHHOLD_LABEL['kein-anhang'])
-  })
-
-  it('is empty when nothing was withheld', () => {
-    expect(withheldSummary([])).toEqual([])
-  })
-})
-
 describe('addressedParagraphs — der Nenner der Anzeige', () => {
   it('counts every § an instruction names, in the order the law prints them', () => {
     const instructions = [
@@ -79,12 +67,5 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
 
   it('is empty when a unit carries no instruction at all', () => {
     expect(addressedParagraphs([], [])).toEqual([])
-  })
-})
-
-describe('die eigene Obergrenze ist kein Urteil der Engine', () => {
-  it('has its own cause and its own sentence', () => {
-    expect(WITHHOLD_LABEL['nicht-geladen']).not.toBe(WITHHOLD_LABEL['verweigert'])
-    expect(withheldSummary(['nicht-geladen', 'verweigert'])).toHaveLength(2)
   })
 })
