@@ -2,7 +2,7 @@
  * The § comparison of one consultation, between two stations of its law text
  * (docs/ris-join.md §6, docs/architecture.md §12.18).
  *
- * Nuxt-aware glue around the pure modules lawText.ts and lawDiff.ts: resolves
+ * Nuxt-aware glue around the pure modules in `lawtext/` and `diff/lawDiff.ts`:
  * each station to the document Parliament publishes for it, fetches the two
  * the caller asked for (leaf cache per URL, 24 h — published documents do not
  * change), diffs them, caches the result per pair.
@@ -12,14 +12,12 @@
  * Regierungsvorlage, no Ausschussfassung), its text is published only as a
  * PDF, or the text would not divide into paragraphs.
  *
- * On the PDF kind, one correction to what this file used to claim: "GP XXVII
- * and earlier are PDF-only" is too broad. Measured over three periods
- * (scripts/corpus/stationen.ts, 17.09.2026) 276 of 353 GP-XXVII drafts do
- * publish their Gesetzestext as HTML, and every single one of the 296
- * Regierungsvorlagen, 80 Ausschuss- and 59 Plenarfassungen does. PDF-only is
- * a property of the individual document, never of the period — which is why
- * the RIS fallback below is keyed on the document being absent rather than on
- * the GP.
+ * PDF-only is a property of the individual document, never of a period, which
+ * is why the RIS fallback below is keyed on the document being absent rather
+ * than on the GP. Measured over three periods (scripts/corpus/stationen.ts,
+ * 17.09.2026): 276 of 353 GP-XXVII drafts do publish their Gesetzestext as
+ * HTML, and every single one of the 296 Regierungsvorlagen, 80 Ausschuss- and
+ * 59 Plenarfassungen does.
  */
 
 import type { LawDiffResponse, LawStationId, LawStationOption, TraceLink } from '#shared/types'
@@ -55,14 +53,13 @@ export const getLawDiff = defineCachedFunction(
     }
 
     /**
-     * Die kundgemachte Fassung — die einzige Station, die nicht beim
-     * Parlament liegt (§12.33).
+     * The kundgemachte Fassung — the one station that does not live at
+     * Parliament (docs/architecture.md §12.33).
      *
-     * Der Weg dorthin ist ein Nachschlagen und keine Suche: Die
-     * Regierungsvorlage trägt die Fundstelle strukturiert
-     * (`status.bgbllinks`), und das RIS liefert zu dieser Zitierung genau
-     * einen Satz. Scheitert irgendetwas davon, fehlt die Station einfach —
-     * der Vergleich der anderen vier darf daran nicht hängen.
+     * The way there is a lookup, not a search: the Regierungsvorlage carries
+     * the Fundstelle as structured data (`status.bgbllinks`), and RIS returns
+     * exactly one record for that citation. If any of it fails the station is
+     * simply absent — the comparison of the other four must not hang on it.
      */
     let bgblLink: TraceLink | null = null
     try {
@@ -77,7 +74,7 @@ export const getLawDiff = defineCachedFunction(
         }
       }
     } catch {
-      // Ohne Kundmachung bleibt es bei den parlamentarischen Stationen.
+      // Without a Kundmachung the parliamentary stations are all there is.
     }
 
     const comparable = (id: LawStationId) => Boolean(found.get(id)?.html) || Boolean(found.get(id)?.xml)
@@ -136,10 +133,10 @@ export const getLawDiff = defineCachedFunction(
       return answer(`Der Gesetzestext der ${LAW_STATION_LABEL[to]} liegt nur als PDF vor.`)
     }
 
-    // Jede Seite bringt ihr eigenes Format mit, seit die Kundmachung dabei
-    // ist: Parlaments-HTML wird von `parseLawUnits` gelesen, RIS-XML von
-    // `parseLawUnitsFromRis`. Bis 19.09.2026 stand das XML fest auf der
-    // linken Seite, weil nur der Entwurf so kommen konnte.
+    // Each side brings its own format now that the Kundmachung is among the
+    // stations: Parliament HTML is read by `parseLawUnits`, RIS XML by
+    // `parseLawUnitsFromRis`. Until 19.09.2026 the XML sat fixed on the left
+    // side, because the draft was the only station that could arrive that way.
     const fromHtml = found.get(from)!.html
     const toHtml = found.get(to)!.html
     const fromSource: LawDiffResponse['fromSource'] = fromHtml ? 'parlament' : 'ris'

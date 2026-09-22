@@ -10,7 +10,7 @@
  *
  * Nothing here decides differently than it did there: the class order of
  * `classifyToken`, the placeholder slash, `MAX_DP_CELLS` and every word list
- * are measured decisions (`refactor-plan.md` §9).
+ * are measured decisions (`docs/refactor-plan.md` §9).
  */
 import type { LawDiffSegment } from '../../../shared/types'
 import { normalizeText } from '../lawtext/normalize'
@@ -91,7 +91,7 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
  * then the bound, which is below the threshold by construction — no caller
  * may read it as a score, and none does: both compare it against exactly this
  * threshold. Measured cause: step 3 ran a full LCS per remaining pair, 240×240
- * units = 2,0 s (`refactor-plan.md` §6.3).
+ * units = 2,0 s (`docs/refactor-plan.md` §6.3).
  */
 export function tokenSimilarity(aText: string, bText: string, minimum = 0): number {
   const a = tokens(aText)
@@ -175,19 +175,19 @@ function bare(raw: string): string {
  * to digits; a lone "X" is either a roman numeral or a genuine blank ("X
  * Wochen"), where naming the number is a decision, not typesetting.
  *
- * DER SCHRÄGSTRICH KAM AM 19.09.2026 DAZU, und er fehlte an der teuersten
- * Stelle. Jedes Gesetz zitiert sich in seiner Inkrafttretens-Bestimmung
- * selbst — „in der Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025" —, und
- * die Nummer steht erst mit der Kundmachung fest. Ohne den Schrägstrich fiel
- * „xxx/2025" durch jede Klasse bis auf `word`, und ein `word` beendet
- * `isEditorialChange` sofort: Der Vergleich Plenarfassung → Kundmachung
- * meldete daraufhin 136 von 626 Einheiten als inhaltlich geändert
- * (Budgetbegleitgesetz 2025), wo nur die eigene Fundstelle eingesetzt wurde.
+ * THE SLASH WAS ADDED ON 19.09.2026, and it was missing at the most
+ * expensive place. Every law cites itself in its Inkrafttretensbestimmung —
+ * „in der Fassung des Bundesgesetzes BGBl. I Nr. xxx/2025" — and the number
+ * is fixed only with the Kundmachung. Without the slash „xxx/2025" fell
+ * through every class but `word`, and one `word` ends `isEditorialChange` at
+ * once: the comparison Plenarfassung → Kundmachung then reported 136 of 626
+ * units as substantively changed (Budgetbegleitgesetz 2025), where nothing
+ * had happened but the law filling in its own Fundstelle.
  */
 function isPlaceholder(raw: string): boolean {
-  // Satzzeichen am Ende gehören dem Satz, nicht der Zahl: „xxx/2025." steht
-  // am Ende einer Inkrafttretens-Bestimmung, und `bare` räumt zwar
-  // Anführungszeichen weg, den Punkt davor aber nicht.
+  // Trailing punctuation belongs to the sentence, not to the number:
+  // „xxx/2025." stands at the end of an Inkrafttretensbestimmung, and `bare`
+  // clears the quotation marks but not the period in front of them.
   const t = raw.replace(/[.,;:]+$/, '')
   if (!/^[x\d]+(?:\/[x\d]+)?$/i.test(t)) return false
   const xs = (t.match(/x/gi) ?? []).length

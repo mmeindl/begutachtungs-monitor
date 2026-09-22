@@ -15,13 +15,13 @@ interface ResolvedLawStation {
   /** The HTML export `parseLawUnits` needs; null when upstream offers only a PDF. */
   html: string | null
   /**
-   * Legistisches RIS-XML, gelesen von `parseLawUnitsFromRis`.
+   * Legistic RIS XML, read by `parseLawUnitsFromRis`.
    *
-   * Zwei Stationen kommen so daher, und aus verschiedenen Gründen: der
-   * Entwurf, wenn das Parlament ihn nur als PDF führt (der alte Rückfall),
-   * und die Kundmachung, die es beim Parlament überhaupt nicht gibt
-   * (§12.33). Deshalb steht das Feld an der Station und nicht mehr als
-   * Sondervariable neben `me`.
+   * Two stations arrive this way, for different reasons: the draft, where
+   * Parliament carries it only as a PDF (the older fallback), and the
+   * Kundmachung, which does not exist at Parliament at all
+   * (docs/architecture.md §12.33). That is why the field sits on the station
+   * rather than as a special variable beside `me`.
    */
   xml: string | null
   /** What to link when there is no HTML, so the reader still reaches the text. */

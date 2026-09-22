@@ -97,10 +97,10 @@ export const getParagraphTitles = defineCachedFunction(
     const asOf = listed?.arrivedAt || null
 
     const diff = await getLawDiff(gp, inr, from, to).catch(() => null)
-    // Der adressierte Paragraph steht in der Anweisung selbst und hängt an
-    // keiner Auflösung. Er geht deshalb auch dann raus, wenn das RIS den Namen
-    // schuldig bleibt — die Anzeige stellt ihn dem Namen voran, weil „Z 2" die
-    // Nummer der Anordnung ist und nicht die des Paragraphen.
+    // The addressed Paragraph stands in the instruction itself and hangs on
+    // no resolution. It therefore goes out even where RIS owes the name — the
+    // display puts it in front of the name, because „Z 2" is the number of
+    // the Novellierungsanordnung and not that of the Paragraph.
     const paragraphs: Record<string, string> = {}
     for (const unit of diff?.units ?? []) {
       const para = addressedParagraphOf(unit)
