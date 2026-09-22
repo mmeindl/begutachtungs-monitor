@@ -28,7 +28,7 @@ import { fetchLawHtml, findLawStations, getLawDiff } from './lawDiffService'
 import { parseParliamentHtml, parseRisXml, type TextBlock } from './lawText'
 import { promulgationByArticle } from './lawTitles'
 import { unitKey } from '#shared/utils/diffKey'
-import { addressedParagraph } from './lawTitles'
+import { addressedParagraphOf } from './lawTitles'
 import { parseKonsParagraph } from './lawStructure'
 import { getDraftsForGp, getGegenstand } from './parliament'
 import { getRisMapForGp } from './ris'
@@ -90,8 +90,20 @@ export const getParagraphTitles = defineCachedFunction(
     // Gegenstand, and the list is cached anyway.
     const listed = (await getDraftsForGp(gp).catch(() => null))?.items.find((i) => i.inr === inr) ?? null
     const asOf = listed?.arrivedAt || null
-    const empty: ParagraphTitlesResponse = { gp, inr, asOf, titles: {} }
-    if (!asOf) return empty
+
+    const diff = await getLawDiff(gp, inr, from, to).catch(() => null)
+    // Der adressierte Paragraph steht in der Anweisung selbst und hängt an
+    // keiner Auflösung. Er geht deshalb auch dann raus, wenn das RIS den Namen
+    // schuldig bleibt — die Anzeige stellt ihn dem Namen voran, weil „Z 2" die
+    // Nummer der Anordnung ist und nicht die des Paragraphen.
+    const paragraphs: Record<string, string> = {}
+    for (const unit of diff?.units ?? []) {
+      const para = addressedParagraphOf(unit)
+      if (para) paragraphs[unitKey(unit)] = para
+    }
+
+    const empty: ParagraphTitlesResponse = { gp, inr, asOf, titles: {}, paragraphs }
+    if (!asOf || !diff?.available) return empty
 
     // Clauses come from whichever of the two documents exist; the later
     // station wins where both name an Artikel, because the diff's articles
@@ -102,20 +114,11 @@ export const getParagraphTitles = defineCachedFunction(
     }
     if (clauses.size === 0) return empty
 
-    const diff = await getLawDiff(gp, inr, from, to).catch(() => null)
-    if (!diff?.available) return empty
-
     // Which § each change addresses, grouped by the law its Artikel amends.
     const wanted = new Map<string | null, Map<string, string[]>>()
     for (const unit of diff.units) {
       if (!clauses.has(unit.article)) continue
-      // `heading` is the instruction line cut to about 100 characters for
-      // display, which silently loses the longer instructions — and a closing
-      // quotation mark with them, so the parse fails rather than degrades.
-      // The unit's own text is the untruncated original.
-      const line = unit.toText ?? unit.fromText ?? unit.heading
-      if (!line) continue
-      const para = addressedParagraph(line)
+      const para = paragraphs[unitKey(unit)]
       if (!para) continue
       const byPara = wanted.get(unit.article) ?? new Map<string, string[]>()
       const keys = byPara.get(para) ?? []
@@ -157,7 +160,7 @@ export const getParagraphTitles = defineCachedFunction(
       }
       await Promise.all(Array.from({ length: CONCURRENCY }, worker))
     }
-    return { gp, inr, asOf, titles }
+    return { gp, inr, asOf, titles, paragraphs }
   },
   {
     name: 'para-titles',

@@ -11,7 +11,7 @@
  * which change how the same thing is read. Default stays
  * Ministerialentwurf → Regierungsvorlage, the question this product is about.
  */
-import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse } from '#shared/types'
+import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { unitKey } from '#shared/utils/diffKey'
 import { droppedLawsNote, mergedLawsNote } from '#shared/utils/lawPackage'
 import {
@@ -64,6 +64,51 @@ const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel?von=${pair.value.from}&bis=${pair.value.to}`,
   { lazy: true, server: false },
 )
+
+/**
+ * Und ob das Ressort seine **Begründung** zu dieser Bestimmung geändert hat
+ * (docs/architecture.md §12.10b).
+ *
+ * Gemessen über die XXVIII. GP: Bei 48 % der Paragraphen, die auf beiden
+ * Seiten eine Begründung tragen, ist sie eine andere geworden — es lohnt
+ * also, danach zu fragen. Eigener Abruf aus demselben Grund wie die Namen:
+ * Zwei weitere Dokumente vom Parlament dürfen den Vergleich weder aufhalten
+ * noch mit sich reißen.
+ */
+const { data: reasoning } = await useFetch<ReasoningDiffResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${pair.value.from}&bis=${pair.value.to}`,
+  { lazy: true, server: false },
+)
+
+/**
+ * Die geänderte Begründung zu einer Einheit, oder nichts.
+ *
+ * Zwei Schritte, weil es zwei Ebenen sind: Gerechnet wird je Paragraph,
+ * gezeigt an der Anordnung — und mehrere Anordnungen zeigen auf denselben
+ * Paragraphen (8/ME: sechs auf § 11).
+ */
+function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
+  const para = reasoning.value?.units?.[unitKey(u)]
+  const entry = para ? reasoning.value?.paragraphs?.[para] : null
+  return entry?.changed ? entry : null
+}
+
+/**
+ * Der Satz über dem Vergleich, der die Aufklapper darunter erklärt.
+ *
+ * Er steht hier und nicht an jeder Zeile: „unverändert" an 33 Zeilen zu
+ * drucken wäre Lärm, die Quote einmal zu nennen ist die Auskunft. Und er
+ * nennt beide Zahlen — wie oft die Begründung mitging und wie oft nicht —,
+ * weil eine unveränderte Begründung zu einem geänderten Text eine eigene
+ * Aussage ist.
+ */
+const reasoningNote = computed<string | null>(() => {
+  const stats = reasoning.value?.stats
+  if (!stats?.compared) return null
+  const { compared, changed } = stats
+  if (changed === 0) return `Zu allen ${compared} Paragraphen, für die beide Fassungen eine Begründung führen, ist sie unverändert geblieben.`
+  return `Zu ${changed} von ${compared} Paragraphen, für die beide Fassungen eine Begründung führen, hat das Ressort sie geändert — aufklappbar an der Änderung.`
+})
 
 /**
  * Every comparison this draft can show, as ordered pairs of the stations it
@@ -441,6 +486,29 @@ function displayId(id: string): string {
 }
 
 /**
+ * Der Paragraph, den eine Änderung ändert — dem Namen vorangestellt.
+ *
+ * „Z 2" ist die Nummer der Novellierungsanordnung, nicht die des Paragraphen;
+ * ohne den § schwebt ein Name wie „Erweiterte Gefahrenerforschung" über einer
+ * Bezeichnung, die ihn nirgends nennt, und drei Anordnungen zum selben
+ * Paragraphen sehen aus wie dreimal dasselbe. Weg bleibt er, wo die Einheit
+ * selbst der Paragraph ist (Gegenüberstellung, neues Gesetz) — dann stünde er
+ * zweimal in einer Zeile.
+ */
+function unitParagraph(u: LawDiffUnit): string | null {
+  const para = paraTitles.value?.paragraphs?.[unitKey(u)] ?? null
+  return para && para !== displayId(u.id) ? para : null
+}
+
+/** Paragraph und Name als eine Zeile: „§ 6 Erweiterte Gefahrenerforschung". */
+function unitLabel(u: LawDiffUnit): string | null {
+  const name = unitName(u)
+  if (!name) return null
+  const para = unitParagraph(u)
+  return para ? `${para} ${name}` : name
+}
+
+/**
  * Laws only one document carries are reported as laws, never as their
  * paragraphs: a Regierungsvorlage that merges several drafts would otherwise
  * report hundreds of paragraphs as "neu" and read as a verdict on this draft.
@@ -529,6 +597,10 @@ const droppedNote = computed(() =>
         <p v-if="droppedNote" :class="mergedNote ? 'mt-1.5' : ''">{{ droppedNote }}</p>
       </div>
 
+      <!-- Die Begründung, einmal als Quote über der Liste statt als „unverändert"
+           an jeder Zeile (§12.10b). Kommt nach, wenn der Abruf da ist. -->
+      <p v-if="reasoningNote" class="mt-3 max-w-prose text-sm text-ink-secondary">{{ reasoningNote }}</p>
+
       <template v-if="data.units.length">
         <!-- How to read the result, and a search: both scope the list below
              them and nothing above. -->
@@ -601,7 +673,7 @@ const droppedNote = computed(() =>
                   <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
                     <p v-for="u in b.units" :key="key(u)" class="hyphens-auto">
                       <span class="font-medium text-ink">{{ displayId(u.id) }}</span>
-                      <span v-if="unitName(u)" class="font-medium text-ink"> {{ unitName(u) }}</span>
+                      <span v-if="unitLabel(u)" class="font-medium text-ink"> {{ unitLabel(u) }}</span>
                       <span v-else-if="extraHeading(u)"> {{ extraHeading(u) }}</span>
                       <span> — {{ u.toText }}</span>
                     </p>
@@ -620,7 +692,7 @@ const droppedNote = computed(() =>
                       {{ displayId(b.unit.id) }}
                       <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
                     </span>
-                    <span v-if="unitName(b.unit)" class="min-w-0 text-ink-secondary">{{ unitName(b.unit) }}</span>
+                    <span v-if="unitLabel(b.unit)" class="min-w-0 text-ink-secondary">{{ unitLabel(b.unit) }}</span>
                     <span v-else-if="extraHeading(b.unit)" class="min-w-0 text-ink-secondary">{{ extraHeading(b.unit) }}</span>
                   </p>
                   <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
@@ -674,6 +746,46 @@ const droppedNote = computed(() =>
                     <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.toText }}</p>
                     <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
                     <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
+
+                    <!-- Was das Ressort dazu sagt — und ob es das nach der
+                         Begutachtung anders sagt als davor. Zugeklappt, wie
+                         die Begründung an der Gegenüberstellung (§12.30):
+                         Sie ist die Antwort auf eine zweite Frage, nicht auf
+                         die erste. Natives <details>, damit die Seitensuche
+                         des Browsers sie aufklappt statt daran vorbeizulaufen. -->
+                    <details v-if="reasoningOf(b.unit)" class="group mt-2">
+                      <summary class="-mx-1 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
+                        <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                        Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert
+                      </summary>
+                      <p v-if="reasoningOf(b.unit)!.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
+                        <template v-for="(s, i) in reasoningOf(b.unit)!.segments ?? []" :key="i">
+                          <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
+                          <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
+                          <span v-else>{{ s.text }}</span>
+                          {{ ' ' }}
+                        </template>
+                      </p>
+                      <!-- Ohne Wortvergleich: beide Fassungen im Ganzen,
+                           nebeneinander wie oben im Vergleich, damit eine
+                           technische Schranke nicht wie eine andere Art von
+                           Änderung aussieht. Die Lade bleibt nie leer — dass
+                           die Begründung eine andere ist, ist der Befund, und
+                           die Schranke ist unsere, nicht die des Ressorts. -->
+                      <div v-else class="pb-2 pl-6">
+                        <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
+                        <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                          <div>
+                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                            <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.fromText }}</p>
+                          </div>
+                          <div>
+                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                            <p class="hyphens-auto text-ink">{{ reasoningOf(b.unit)!.toText }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 </div>
               </template>
@@ -724,6 +836,16 @@ const droppedNote = computed(() =>
         <!-- The § names come from a third source; a page that shows text has
              to say where it is from, even when the text is one word long. -->
         <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
+        <!-- Die Begründungen sind zwei weitere Dokumente, und wer Text zeigt,
+             sagt woher — auch wenn er zugeklappt ist. -->
+        <template v-if="reasoning?.stats?.compared">
+          <ExternalLink
+            v-for="src in reasoning.sources"
+            :key="src.url"
+            :href="src.url"
+            class="text-accent-deep hover:underline"
+          >{{ src.label }}</ExternalLink>
+        </template>
       </SectionCredits>
     </template>
   </div>

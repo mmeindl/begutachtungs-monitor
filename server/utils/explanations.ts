@@ -53,7 +53,7 @@
  *     result is marked `generalInferred`, because a section that the ministry
  *     did not head „Allgemeiner Teil" must not be labelled as if it had.
  */
-import { parseRisXml } from './lawText'
+import { normalizeText, parseRisXml } from './lawText'
 
 /**
  * Which part of the Erläuterungen a section is.
@@ -194,6 +194,16 @@ const ITEM_RE = /\bZ\s*(\d+[a-z]?)/g
  * what this module does not do.
  */
 const PARA_RANGE_RE = /§§\s*(\d+)\s*(?:bis|–|-)\s*(\d+)/gi
+/**
+ * „§§ 12 und 13", „§§ 4, 5 und 6" — eine Aufzählung, bei der nur der erste
+ * Paragraph das Zeichen trägt.
+ *
+ * Dieselbe Lücke wie beim Bereich darüber und aus demselben Grund gefüllt:
+ * Das Ressort erklärt beide Paragraphen in einem Atemzug, und ohne den
+ * Ausdruck bekommt nur der erste die Begründung. Anders als beim Bereich
+ * wird hier nichts erfunden — jede Nummer steht im Text.
+ */
+const PARA_LIST_RE = /§§\s*(\d+[a-z]?(?:\s*,\s*\d+[a-z]?)*)\s*(?:und|sowie)\s*(\d+[a-z]?)\b/gi
 /** A range longer than this is a citation habit, not an address — 45 of 45 measured ranges are far below. */
 const MAX_RANGE = 50
 
@@ -201,13 +211,23 @@ function uniq(values: string[]): string[] {
   return [...new Set(values)]
 }
 
-function addressOf(heading: string): { paragraphs: string[]; items: string[] } {
+/**
+ * Exportiert seit 22.09.2026: Die Erläuterungen der Regierungsvorlage gibt es
+ * nur als Word-HTML des Parlaments, nicht als typisiertes RIS-XML, und ein
+ * zweiter Ausdruck für dieselbe Adresse wäre eine zweite Gelegenheit, eine
+ * Passage an den falschen Paragraphen zu hängen (`explanationsHtml.ts`).
+ */
+export function addressOf(heading: string): { paragraphs: string[]; items: string[] } {
   const paragraphs = [...heading.matchAll(PARA_RE)].map((m) => `§ ${m[1]!.toLowerCase()}`)
   for (const m of heading.matchAll(PARA_RANGE_RE)) {
     const from = Number(m[1])
     const to = Number(m[2])
     if (to <= from || to - from > MAX_RANGE) continue
     for (let n = from; n <= to; n++) paragraphs.push(`§ ${n}`)
+  }
+  for (const m of heading.matchAll(PARA_LIST_RE)) {
+    for (const part of m[1]!.split(',')) paragraphs.push(`§ ${part.trim().toLowerCase()}`)
+    paragraphs.push(`§ ${m[2]!.toLowerCase()}`)
   }
   return {
     paragraphs: uniq(paragraphs),
@@ -367,6 +387,11 @@ export function parseExplanations(xml: string): ExplanationsDocument {
  * other prose heading that happens to cite a § stays in the general part.
  */
 const ADDRESS_HEADING_RE = /^zu\s+(?:§|z\s*\d|art\b|artikel\b|abs\b|anlage\b)/i
+
+/** Ob eine Überschrift eine Passage des Besonderen Teils eröffnet — geteilt mit `explanationsHtml.ts`. */
+export function isAddressHeading(heading: string): boolean {
+  return ADDRESS_HEADING_RE.test(normalizeText(heading).trim())
+}
 
 /**
  * The boundary inside a document that never typed „Besonderer Teil".

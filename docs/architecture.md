@@ -380,6 +380,155 @@ after a clean install.
 9. **Classifier review loop** — ~~a manual org allowlist~~ ~~a review loop that surfaces candidates~~ **Done (2026-09-15):** `scripts/classifier-audit.ts` (`pnpm audit:classifier -- --gp XXVIII`, `--ityp I` for the Regierungsvorlagen, `--inr` for one item) runs the classifier over a GP's list-142 rows and prints the two error classes: institutions filed as "person" (in full — candidates for a pattern or `ORG_ALLOWLIST`, each to be verified before it is added) and organisations whose naming segment is shaped like a person (masked — those are leaks). What the first run found, and what became of it: 334+ hidden rows led by the ministries' short form "BM f. …" (221), courts, the Datenschutzbehörde, the FMA, the Anwaltschaften, brand-style NGOs → patterns, checked against the comma-form persons of the corpus (zero hits each); ÖGB/ÖAMTC/SPÖ/ARBÖ hidden by JavaScript's ASCII-only `\b` before "Ö" → lookarounds; and the leak class (§3) → `leadsWithPersonName`. Occasion: a reader reported one hidden organisation (Presseclub Concordia); the audit showed it was a class. Re-run when a GP closes or a reader reports the next one. The classifier still runs inside the derived `statements-me` cache (memory-only, §5 cache rule 5), so a change shows on the next request and nothing has to be deleted by hand.
 10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/rv-latency.mjs`, hand-copied into `shared/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
 
+### 12.10b Ändert sich die Begründung? — gemessen, 22.09.2026
+
+Das letzte offene Stück des Diff-Layers war eine Frage, keine Aufgabe: Der
+Vergleich zeigt, wie sich der **Gesetzestext** zwischen Entwurf und
+Regierungsvorlage ändert. Ändert sich auch die **Begründung** des Ressorts —
+und lohnt dafür ein eigener Vergleich? Gemessen mit `pnpm audit:erl-diff --
+XXVIII`, alle 137 Entwürfe der Periode.
+
+**Beide Seiten vom Parlament, mit demselben Parser.** Die Erläuterungen des
+Entwurfs lägen auch im RIS als typisiertes XML, die der Regierungsvorlage
+nicht — das RIS führt keine parlamentarischen Dokumente. XML gegen Word-HTML
+zu halten misst zuerst die beiden Konverter (die Lehre der sechsten Messung
+in §12.12), also liest `parseParliamentHtml` beide Seiten.
+
+| GP XXVIII, 137 Entwürfe | |
+|---|---|
+| ohne Regierungsvorlage | 46 |
+| eine Seite ohne Erläuterungen-HTML | 13 |
+| in einer **Sammelvorlage** (nicht vergleichbar) | 14 |
+| **ausgewertete 1:1-Paare** | **64** |
+
+**Die Antwort ist ja, und sie ist deutlich.** Median-Abweichung 8,9 % der
+Wörter; 16 Paare praktisch unverändert (< 2 %), 40 merklich geändert
+(2–20 %), 8 stark (≥ 20 %). Drei Viertel der Vorlagen tragen also eine
+Begründung, die nicht mehr die des Entwurfs ist.
+
+**Und sie sagt, wo der Vergleich hingehört:** in den **Besonderen Teil**
+(Median 10,5 %), nicht in den Allgemeinen (3,9 %). Das ist die Ebene, auf der
+die Seite die Begründung ohnehin schon führt — am Paragraphen (§12.30).
+Paragraphweise über dieselben 64 Paare: 1.653 §§ im Entwurf, 1.851 in der
+Vorlage, **1.515 auf beiden Seiten** (92 % der Entwurfs-§§), und bei **728
+davon (48 %) hat sich die Begründung geändert**. Der Join trägt: 63 der 64
+Paare haben gemeinsame Paragraphen.
+
+*Zwei Fallen, beide in der ersten Fassung der Messung und beide korrigiert,
+bevor eine Zahl hier stand.* Erstens verwarf die Auswertung 32 von 43 Paaren:
+`diffTokens` liefert oberhalb von 2,5 Mio. Zellen keine Segmente mehr,
+sondern nur noch eine Ähnlichkeit — und die verworfenen waren die **langen**
+Dokumente, also genau die interessanten. Die Quote steht jetzt auf
+`similarity`, die es auf beiden Wegen gibt. Zweitens standen ganz oben acht
+Entwürfe mit 80–98 % „Abweichung", die alle auf **dieselbe** Vorlage zeigten
+(I/129, ein Sammelvorhaben mit 47.199 Wörtern): Gemessen war das Vehikel,
+nicht die Begründung. Sammelvorlagen werden seither getrennt ausgewiesen.
+
+*Und eine Prüfung der Eingabe, weil ein unerkannt kaputter Eingabewert
+schlimmer ist als ein fehlender:* Der Parser liest 94–96 % der Wörter eines
+Dokuments (Word-HTML ist zu neun Zehnteln Formatierung); unter 80 % fliegt
+ein Paar aus der Wertung, statt als „stark geändert" zu zählen. In dieser
+Periode fiel keines darunter.
+
+**Was daraus gebaut ist und was nicht.** Gebaut: `explanationsHtml.ts`, der
+die Erläuterungen des Parlaments in Allgemeinen Teil und adressierte Passagen
+zerlegt — mit der Adresslogik aus `explanations.ts` (`addressOf`,
+`isAddressHeading`, seit heute exportiert), damit „Zu Z 4 (§ 54c Abs. 1a und
+1b)" auf beiden Seiten denselben Paragraphen bedeutet. Nicht gebaut: Dienst,
+Endpunkt und Anzeige. Die Anzeige gehört an den § im Vergleich, und diese
+Komponenten sind gerade in Arbeit; ein zweiter Bearbeiter darin wäre ein
+Konflikt und kein Fortschritt.
+
+**Gebaut am 22.09.2026, nach der Messung:** `server/utils/reasoningDiffService.ts`,
+`/api/drafts/:gp/:inr/begruendung?von=me&bis=rv` und der Aufklapper an der
+Änderung in `LawDiffSection.vue`.
+
+*Wo die Auskunft steht, und warum nicht überall.* An jeder Änderung, deren
+Begründung sich geändert hat, steht ein zugeklapptes „Die Begründung des
+Ressorts zu diesem Paragraphen hat sich geändert" mit dem Wortdiff darin —
+dieselbe Form wie die Begründung an der Gegenüberstellung (§12.30), weil es
+dieselbe Art Frage ist: die zweite, nicht die erste. Was **nicht** an jeder
+Zeile steht, ist „unverändert": Das an 33 Zeilen zu drucken wäre Lärm. Die
+Quote steht einmal über der Liste („Zu 10 von 16 Paragraphen, für die beide
+Fassungen eine Begründung führen, hat das Ressort sie geändert"), und sie
+nennt beide Seiten, weil eine *unveränderte* Begründung zu einem geänderten
+Text eine eigene Aussage ist.
+
+*Drei Regeln, die der Dienst einhält.* Nur `me→rv`: Die späteren Stationen
+haben Ausschussberichte, keine fortgeschriebenen Erläuterungen, und etwas
+Ähnliches zu vergleichen wäre schlechter als nichts. Nur wo **beide** Seiten
+eine Begründung zum Paragraphen führen — fehlt eine, ist das eine Lücke im
+Dokument und keine Änderung der Begründung. Und geschlüsselt nach `unitKey`
+wie die §-Namen, weil die Einheiten die Nummerierung der Regierungsvorlage
+tragen und ein selbstgebauter zweiter Schlüssel die Begründung an die falsche
+Änderung hängte.
+
+*Am laufenden Server geprüft:* 8/ME 10 von 16 Paragraphen mit geänderter
+Begründung, 70/ME 8 von 13, 63/ME 1 von 2. Die beiden gelesenen Dokumente
+stehen in der Quellenzeile des Abschnitts — wer Text zeigt, sagt woher, auch
+wenn der Text zugeklappt ist. (Die erste Fassung nannte hier 27 von 33, 16
+von 21 und 1 von 2 — sie zählte Anordnungen und schrieb „Paragraphen"; siehe
+die drei Korrekturen am Ende dieses Abschnitts.)
+
+*Und die Aufzählung, die dabei auffiel — gemessen statt nebenbei geändert.*
+`addressOf` las den Bereich („§§ 12 bis 14"), aber nicht die Aufzählung
+(„§§ 12 und 13"): Dort bekam nur der erste Paragraph die Passage, obwohl das
+Ressort beide in einem Atemzug erklärt. Der Ausdruck ist geteilter Code mit
+dem RIS-Pfad, also entschied dessen eigene Messung
+(`pnpm audit:erlaeuterungen -- --join`, vorher und nachher über dieselben 130
+Entwürfe):
+
+| Der Join | vorher | nachher |
+|---|---|---|
+| §§ mit Begründung am Paragraphen | 1.578 (77,8 %) | **1.597 (78,7 %)** |
+| Einträge aus den Erläuterungen | 1.886 | 1.907 |
+| Deckung je Entwurf, Median | 89 % | **90 %** |
+| davon ohne § in der Beilage (Verlust) | 308 | 310 |
+
+Klein, echt und ohne Gegenrichtung: Die zwei zusätzlichen „ohne Ziel" sind
+Adressen, die die Beilage nicht führt — ungenutzt, nicht falsch. Erfunden
+wird nichts, jede Nummer steht im Text (anders als beim Bereich, wo
+„§§ 140a bis 140i" die Buchstaben dazwischen erfinden müsste und deshalb
+weiterhin nur reine Zahlen expandiert werden).
+
+*Drei Fehler, alle am selben Tag am Bildschirm aufgefallen und behoben — der
+erste eine falsche Zahl in genau dem Satz, der die Auskunft trägt.*
+
+**Gerechnet wird am Paragraphen, gezeigt an der Anordnung.** Die Erläuterungen
+sind nach Paragraphen gegliedert, die Gegenüberstellung nach
+Novellierungsanordnungen, und mehrere Anordnungen ändern regelmäßig denselben
+Paragraphen: 8/ME führt 33 Anordnungen auf 17 Paragraphen, sechs davon allein
+auf § 11. Die erste Fassung rechnete je Anordnung und nannte das Ergebnis dann
+„Paragraphen" — „zu 27 von 33" statt richtig 10 von 16 — und legte denselben
+Vergleich mehrfach in die Antwort, einmal je Anordnung. Seit 22.09. rechnet
+`reasoningDiff.ts` je Paragraph, `units` schlägt von `unitKey` dorthin um, und
+die Antwort für 8/ME fiel dabei von 112 auf 86 kB, obwohl sie jetzt mehr
+trägt.
+
+**Eine Nummer ohne Gesetz ist mehrdeutig, also bleibt sie weg.** Eine Passage
+des Besonderen Teils trägt „§ 15", nicht das Gesetz dazu. In einem
+Sammelgesetz ändern zwei Artikel je einen § 15 — bei 8/ME das Staatsschutz-
+und Nachrichtendienst-Gesetz und das Bundesverwaltungsgerichtsgesetz —, und
+`passagesByParagraph` legt beide unter dieselbe Nummer. Angezeigt worden wäre
+die Begründung des einen Gesetzes unter dem Paragraphen des anderen. Wo zwei
+Artikel dieselbe Nummer adressieren, zeigt die Schicht deshalb nichts:
+dieselbe Regel wie bei den §-Namen, ein falscher Bezug ist schlechter als
+keiner. Kostet bei 8/ME einen von 17 Paragraphen. Die bessere Lösung wäre der
+Artikel aus der Adresszeile selbst („Zu Art. 5 (Änderung des …) Z 1 (§ 15)");
+sie steht als Messung in `TODO.md`, nicht als Vermutung hier.
+
+**Und der Aufklapper war leer, wo die Passage zu lang war.** `diffTokens` gibt
+oberhalb von 2,5 Mio. Zellen keine Segmente zurück, sondern nur die
+Ähnlichkeit — dieselbe Schranke, die schon die Messung oben in die Irre
+geführt hatte. Der Dienst reichte das `null` durch, `changed` blieb zu Recht
+wahr, und die Anzeige klappte eine leere Lade auf: 9 von 27 Aufklappern bei
+8/ME, alle an § 11 und § 15. Jetzt legt der Dienst in genau diesem Fall beide
+Fassungen im Ganzen bei, und die Anzeige stellt sie nebeneinander — dieselbe
+Form wie im Vergleich darüber, damit eine technische Schranke nicht wie eine
+andere Art von Änderung aussieht. Weggelassen wird nichts: Dass die Begründung
+eine andere ist, ist der Befund, und die Schranke ist unsere, nicht die des
+Ressorts.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and
@@ -514,6 +663,19 @@ Nachschlagefehler und eine ist eine korrekte Verweigerung.
 keine der vier Kostenarten (`TODO.md`) — kein Betrieb, kein Partner, keine
 Rechnung, kein offener Ausgang. Es ist gewöhnliche Arbeit und steht seit
 19.09.2026 nicht mehr unter den Antragspaketen.
+
+*Der Paragraph vor dem Namen, seit 22.09.2026.* „Z 2" ist die Nummer der
+Novellierungsanordnung, nicht die des Paragraphen. Ein Name wie „Erweiterte
+Gefahrenerforschung und Schutz vor verfassungsgefährdenden Angriffen" schwebte
+damit über einer Bezeichnung, die den § nirgends nennt — er stand nur im
+Anweisungstext darunter —, und drei Anordnungen zu demselben Paragraphen sahen
+aus wie dreimal dieselbe Zeile. Der adressierte Paragraph wird für die Suche
+nach dem Namen ohnehin gebildet (`addressedParagraphOf`, jetzt eine Stelle für
+alle Aufrufer); er geht seither als eigene Karte neben den Namen hinaus, auch
+wo das RIS den Namen schuldig bleibt, denn „§ 6" allein ist schon eine
+Auskunft. Angezeigt wird „§ 6 Erweiterte Gefahrenerforschung …" — und weg
+bleibt der Vorsatz, wo die Einheit selbst der Paragraph ist
+(Gegenüberstellung, neues Gesetz), sonst stünde er zweimal in einer Zeile.
 
 ### 12.12 Consolidated law text — engine built, not yet published
 

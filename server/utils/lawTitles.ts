@@ -21,6 +21,7 @@
  * returns the AMD-G (BGBl. I) *and* an Amtssitz law (BGBl. III). Verified
  * 2026-09-09.
  */
+import type { LawDiffUnit } from '../../shared/types'
 import type { TextBlock } from './lawText'
 import { normalizeText } from './lawText'
 import { parseInstruction } from './novao'
@@ -408,5 +409,20 @@ export function addressedParagraph(line: string): string | null {
   }
   // Several paragraphs in one instruction have no single name.
   return paras.size === 1 ? [...paras][0]! : null
+}
+
+/**
+ * Dasselbe für eine Einheit des Vergleichs: Welchen Paragraphen ändert diese
+ * Novellierungsanordnung?
+ *
+ * Gelesen wird der ungekürzte Anweisungstext, nicht `heading` — das ist die
+ * auf rund 100 Zeichen geschnittene Anzeigezeile, und mit dem Schnitt fällt
+ * regelmäßig die schließende Klammer weg, sodass der Parser die Anweisung
+ * verwirft statt sie zu verstehen. Eine Stelle für alle Aufrufer: die §-Namen
+ * und der Begründungsvergleich müssen denselben Paragraphen meinen.
+ */
+export function addressedParagraphOf(unit: LawDiffUnit): string | null {
+  const line = unit.toText ?? unit.fromText ?? unit.heading
+  return line ? addressedParagraph(line) : null
 }
 

@@ -756,12 +756,73 @@ export interface AmendedLawsResponse {
   laws: AmendedLaw[]
 }
 
+/**
+ * Ob sich die Begründung des Ressorts zu EINEM Paragraphen zwischen Entwurf
+ * und Regierungsvorlage geändert hat (docs/architecture.md §12.10b).
+ */
+export interface ReasoningDiffEntry {
+  /** „§ 54c" — der Paragraph, dessen Begründung hier verglichen wird. */
+  paragraph: string
+  /** Wortdiff der beiden Passagen; null, wenn zu lang zum Rechnen. */
+  segments: LawDiffSegment[] | null
+  /**
+   * Beide Fassungen im Ganzen — nur, wenn `segments` fehlt, weil der
+   * Wortvergleich an seiner Schranke abgebrochen hat. Dann zeigt die Anzeige
+   * sie nebeneinander, statt eine leere Lade aufzuklappen.
+   */
+  fromText: string | null
+  toText: string | null
+  /** Anteil geänderter Wörter, 0 bis 1 — die Zahl hinter `changed`. */
+  drift: number
+  /** Ab 2 % abweichender Wörter: unterhalb davon sind es Satzzeichen. */
+  changed: boolean
+}
+
+/**
+ * Die Begründungen des Ressorts, Paragraph für Paragraph, zwischen Entwurf
+ * und Regierungsvorlage (docs/architecture.md §12.10b).
+ *
+ * Gemessen über die XXVIII. GP: 1.515 §§ stehen auf beiden Seiten, bei 728
+ * davon (48 %) hat sich die Begründung geändert — die Anzeige hat also
+ * etwas zu zeigen, und zwar oft.
+ *
+ * ZWEI EBENEN, WEIL ES ZWEI SIND: Gerechnet wird je Paragraph
+ * (`paragraphs`), gezeigt wird an der Novellierungsanordnung — mehrere
+ * Anordnungen ändern denselben Paragraphen. `units` schlägt von `unitKey` auf
+ * den Paragraphen um, wie bei `paragraphtitel` also derselbe Schlüssel wie im
+ * Vergleich und kein zweites Ausrichtungsproblem.
+ */
+export interface ReasoningDiffResponse {
+  gp: string
+  inr: number
+  available: boolean
+  unavailableReason: string | null
+  /** „518 d.B." — die Vorlage, gegen die verglichen wurde. */
+  rvCitation: string | null
+  /** Die beiden gelesenen Dokumente, für die Quellenzeile. */
+  sources: TraceLink[]
+  /** `unitKey` → „§ 11": welche Änderung auf welchen Paragraphen zeigt. */
+  units: Record<string, string>
+  /** „§ 11" → der Vergleich, einmal je Paragraph. */
+  paragraphs: Record<string, ReasoningDiffEntry>
+  /** Wie viele §§ verglichen werden konnten und wie viele sich geändert haben. */
+  stats: { compared: number; changed: number }
+}
+
 export interface ParagraphTitlesResponse {
   gp: string
   inr: number
   /** ISO date of the law version the titles were read from (the draft's Einlangen) */
   asOf: string | null
   titles: Record<string, string>
+  /**
+   * `unitKey` → „§ 6": der Paragraph, den die Anweisung adressiert. Steht
+   * neben dem Namen, weil „Z 2" die Nummer der Novellierungsanordnung ist und
+   * nicht die des Paragraphen — ohne ihn schwebt der Name über einer
+   * Bezeichnung, die den § gar nicht nennt. Unabhängig von `titles`: der §
+   * steht in der Anweisung, der Name kommt aus dem RIS und kann fehlen.
+   */
+  paragraphs: Record<string, string>
 }
 
 /**
