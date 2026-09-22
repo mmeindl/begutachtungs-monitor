@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraphs, byParagraphOrder, gateParagraph } from '../server/utils/konsGate'
-import { parsePayload, type Instruction } from '../server/utils/lawApply'
-import { parseInstruction } from '../server/utils/novao'
+import { addressedParagraphs, byParagraphOrder, gateParagraph } from '../server/utils/kons/konsGate'
+import { parsePayload, type Instruction } from '../server/utils/kons/lawApply'
+import { parseInstruction } from '../server/utils/kons/novao'
 
 /** Eine Anweisung, wie der Prüfstand sie dem Modul gibt. */
 function instr(line: string, payloadLines: string[] = []): Instruction[] {

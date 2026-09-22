@@ -40,17 +40,17 @@
  * number that blurred the two would be the harness reporting its own
  * coverage as accuracy.
  */
-import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../server/utils/lawApply'
+import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../server/utils/kons/lawApply'
 import { plainText, type LawNode } from '../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { articleBlocks, draftArticles, type DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../server/utils/ris/konsLaw'
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../server/utils/harness/risKonsHistory'
-import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
+import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
 import { parseTextComparison } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../server/utils/tguOracle'
+import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../server/utils/kons/tguOracle'
 import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../server/utils/ris/risJoin'
 import { parseExplanations } from '../server/utils/explanations'
 import { explanationsByParagraph } from '../server/utils/explanationsJoin'

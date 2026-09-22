@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/tguOracle'
+import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { guardParagraph, SIZE_TOLERANCE } from '../server/utils/applyGuard'
-import { applyNovelle, parsePayload, type Instruction, type StandingLaw } from '../server/utils/lawApply'
+import { guardParagraph, SIZE_TOLERANCE } from '../server/utils/kons/applyGuard'
+import { applyNovelle, parsePayload, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
 import { makeNode, type LawNode } from '../server/utils/lawtext/konsTree'
-import { parseInstruction } from '../server/utils/novao'
+import { parseInstruction } from '../server/utils/kons/novao'
 
 function para(id: string, heading: string, absaetze: string[]): LawNode {
   const node = makeNode('para', id, `§ ${id}.`, '', heading)

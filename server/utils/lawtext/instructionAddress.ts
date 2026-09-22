@@ -4,7 +4,7 @@
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
-import { opAddress, parseInstruction } from '../novao'
+import { opAddress, parseInstruction } from '../kons/novao'
 import type { LawDiffUnit } from '../../../shared/types'
 
 /**

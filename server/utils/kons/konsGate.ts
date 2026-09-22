@@ -40,8 +40,8 @@
 
 import type { Instruction } from './lawApply'
 import { opAddress } from './novao'
-import type { ConsolidatedWithheldCause } from '../../shared/types'
-import { bareParaId } from './text/designation'
+import type { ConsolidatedWithheldCause } from '../../../shared/types'
+import { bareParaId } from '../text/designation'
 
 /**
  * Warum ein erzeugter Paragraph nicht angezeigt wird.

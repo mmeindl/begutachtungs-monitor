@@ -16,8 +16,8 @@
  * replica of it.
  */
 import { readFileSync } from 'node:fs'
-import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
-import type { ApplyResult, Instruction, StandingLaw } from '../server/utils/lawApply'
+import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
+import type { ApplyResult, Instruction, StandingLaw } from '../server/utils/kons/lawApply'
 import type { LawNode } from '../server/utils/lawtext/konsTree'
 
 interface Record_ {

@@ -26,7 +26,7 @@
  */
 import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
 import { draftTextOf } from './draftText'
-import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from '../novao'
+import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from '../kons/novao'
 
 /** One Novellierungsanordnung (or one § of a Stammgesetz), and what it addresses. */
 export interface DraftUnit {

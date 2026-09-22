@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressKey, expandRange, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoOp } from '../server/utils/novao'
+import { addressKey, expandRange, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoOp } from '../server/utils/kons/novao'
 
 /** The single operation of an instruction, or a failure that names the reason. */
 function op(line: string): NovaoOp {

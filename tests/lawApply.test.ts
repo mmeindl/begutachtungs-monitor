@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/lawApply'
+import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
 import { makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawtext/konsTree'
-import { parseInstruction, type NovaoAddress } from '../server/utils/novao'
+import { parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
 
 /** A § with numbered Absätze, the shape RIS BrKons delivers. */
 function para(id: string, heading: string, absaetze: (string | { text: string; ziffern: string[] })[]): LawNode {

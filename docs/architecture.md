@@ -729,10 +729,10 @@ pure modules plus a harness, none of it wired to a page yet:
 
 | Modul | Aufgabe |
 |---|---|
-| `server/utils/novao.ts` | Novellierungsanordnung → typisierte Operation |
+| `server/utils/kons/novao.ts` | Novellierungsanordnung → typisierte Operation |
 | `server/utils/lawtext/konsTree.ts` | RIS-BrKons-Paragraph → adressierbarer Baum (§ → Abs → Z → lit) |
 | `server/utils/lawtext/draftArticles.ts` | Promulgationsklausel → Stammnorm; `articleBlocks` schneidet ein Paket in seine Gesetze |
-| `server/utils/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
+| `server/utils/kons/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
 | `server/utils/ris/konsLaw.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
 | `scripts/novao-corpus.ts`, `novao-forms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
 | `server/utils/harness/applyReport.ts` | bewertet einen Lauf gegen die echte Fassung |
@@ -928,7 +928,7 @@ Auf 54 Novellen stand nach den Korrekturen eine Null, die auf 79 weiteren,
 und so zu lesen; der ehrliche Erwartungswert für die nächste unbekannte
 Novelle liegt bei einigen Prozent, nicht bei null.
 
-*Der Detektor, gemessen gegen die alten Fehler.* `server/utils/applyGuard.ts`
+*Der Detektor, gemessen gegen die alten Fehler.* `server/utils/kons/applyGuard.ts`
 prüft ein Ergebnis zur Entwurfszeit auf Plausibilität — Umfang (weicht die
 Textlänge um mehr als 4 Zeichen von dem ab, was die Operanden wiegen?),
 Fugen, Marker im Text, unerklärte Wörter. `scripts/guard-eval.ts` spielt
@@ -951,7 +951,7 @@ mit verklebter Überschrift. Eine Prüfung des Ergebnisses gegen die eigene
 Lesart kann das per Konstruktion nicht sehen. Der Detektor ist ein Filter am
 Rand, keine Verifikation; das ist das Negativergebnis dieses Tages.
 
-*Die zweite Quelle: das Orakel.* `server/utils/tguOracle.ts` hält das
+*Die zweite Quelle: das Orakel.* `server/utils/kons/tguOracle.ts` hält das
 Ergebnis gegen die Textgegenüberstellung des Ministerialentwurfs (§12.13) —
 vom Ressort geschrieben, am ersten Tag der Begutachtung, unabhängig von der
 Engine. Drei Enthaltenseins-Prüfungen pro § statt Textgleichheit, weil der
@@ -1505,7 +1505,7 @@ Eingriff, der genau das anfasst, was er anfassen soll, sieht so aus.
 
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
-Gebaut 19.09.2026: `server/utils/konsGate.ts` (das Tor, rein und getestet),
+Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
 `konsService.ts` (Nitro-Glue), `/api/drafts/:gp/:inr/konsolidiert` — und am
 selben Abend **von einem eigenen Abschnitt zu einer dritten Schicht am
 Paragraphen umgebaut**.

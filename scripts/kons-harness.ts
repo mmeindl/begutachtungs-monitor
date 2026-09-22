@@ -41,21 +41,21 @@
  * put 9,3 % of the corpus on the harmless side of the report
  * (`applyReport.ts`, `halbangewendet`).
  */
-import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/lawApply'
+import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/kons/lawApply'
 import { plainText, type LawNode } from '../server/utils/lawtext/konsTree'
 import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { sameBgbl } from '../server/utils/lawtext/bgblCitation'
 import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { lawNameScore } from '../server/utils/lawtext/lawNames'
-import type { NovaoAddress } from '../server/utils/novao'
+import type { NovaoAddress } from '../server/utils/kons/novao'
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../server/utils/ris/konsLaw'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../server/utils/harness/risKonsHistory'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../server/utils/harness/applyReport'
-import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
+import { guardParagraph, type GuardFlag } from '../server/utils/kons/applyGuard'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../server/utils/tguOracle'
+import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../server/utils/kons/tguOracle'
 import { installFetchCache } from './harness-cache'
 import { appendFileSync, writeFileSync } from 'node:fs'
 

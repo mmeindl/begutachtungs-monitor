@@ -26,10 +26,10 @@
  * A § the annex does not mention, or mentions only in elided rows, gets no
  * verdict: the oracle is silent, not positive.
  */
-import { diffTokens } from './diff/wordDiff'
-import { normalizeText } from './lawtext/normalize'
-import type { ComparisonRow } from './annex/comparisonRows'
-import { punctuationTokens } from './text/punctuationTokens'
+import { diffTokens } from '../diff/wordDiff'
+import { normalizeText } from '../lawtext/normalize'
+import type { ComparisonRow } from '../annex/comparisonRows'
+import { punctuationTokens } from '../text/punctuationTokens'
 
 export type OracleVerdict =
   /** All three containments hold */

@@ -18,7 +18,7 @@
  * not exist — worse than showing the instruction. Everything not understood
  * comes back as `null` with a reason, and stays an instruction on screen.
  */
-import { normalizeText, stripQuotes } from './lawtext/normalize'
+import { normalizeText, stripQuotes } from '../lawtext/normalize'
 
 // ---------------------------------------------------------------------------
 // Addresses

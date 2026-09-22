@@ -12,7 +12,7 @@ import { draftUnits } from './annexDraft'
 import { draftTextOf } from './draftText'
 import type { TextBlock } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
-import { NO_PARAGRAPH_ADDRESSED } from '../novao'
+import { NO_PARAGRAPH_ADDRESSED } from '../kons/novao'
 import type { ComparisonRow } from './comparisonRows'
 import { comparableTokens, designationKey } from './annexText'
 

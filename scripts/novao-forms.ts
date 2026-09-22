@@ -12,7 +12,7 @@
  */
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { parseInstruction } from '../server/utils/novao'
+import { parseInstruction } from '../server/utils/kons/novao'
 
 const cacheDir = process.argv[2]?.startsWith('--') ? join('.cache', 'novao') : (process.argv[2] ?? join('.cache', 'novao'))
 const samples = Number(process.argv.find((a) => a.startsWith('--samples='))?.split('=')[1] ?? 6)

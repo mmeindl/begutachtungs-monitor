@@ -25,7 +25,7 @@ import { stammnormOf, type BgblCitation } from './lawtext/bgblCitation'
 import { isAmendmentClause } from './lawtext/draftArticles'
 import { getDraftArticles } from './lawtext/draftArticlesService'
 import { getDraftsForGp } from './parliament/drafts'
-import { resolveKonsLaw } from './konsCache'
+import { resolveKonsLaw } from './kons/konsCache'
 import { mapWithConcurrency } from './pool'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 

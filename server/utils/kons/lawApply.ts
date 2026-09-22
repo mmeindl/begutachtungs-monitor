@@ -17,11 +17,11 @@
  * one refused operation must be shown as instructions, not as text — the
  * caller enforces that, `unresolved` reports it.
  */
-import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from './lawtext/konsTree'
-import type { LawUnit } from './lawtext/lawUnits'
-import { normalizeText } from './lawtext/normalize'
+import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from '../lawtext/konsTree'
+import type { LawUnit } from '../lawtext/lawUnits'
+import { normalizeText } from '../lawtext/normalize'
 import { expandRange, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
-import { bareParaId } from './text/designation'
+import { bareParaId } from '../text/designation'
 
 export interface StandingLaw {
   /** Paragraphs in printed order; insert and append change this list */

@@ -19,8 +19,8 @@
  *    RIS results and decides which law a BGBl means, which is our reasoning
  *    and not RIS's answer.
  */
-import { getText, resolveLawByBgbl } from './ris/konsLaw'
-import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
+import { getText, resolveLawByBgbl } from '../ris/konsLaw'
+import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 
 /** One § document as RIS sent it, keyed by its NOR — parsed fresh by callers. */
 export const fetchParagraphXml = defineCachedFunction(
