@@ -56,15 +56,15 @@ import {
   withoutMinistryMentions,
   type SearchTerm,
 } from './begutSearch'
-import { DERIVED_CACHE } from './cache/base'
-import { PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
-import { parseRisXml, type TextBlock } from './lawText'
+import { DERIVED_CACHE } from '../cache/base'
+import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
+import { parseRisXml, type TextBlock } from '../lawText'
 import { ministryTokens, type MinistryToken } from './searchHaystack'
-import { getDraftsForGp, getCurrentGp, reconcileActive } from './parliament/drafts'
-import { getRisBegutCorpus, getRisMapForGp } from './ris/begutCorpus'
-import { mapWithConcurrency } from './pool'
-import { getRisConsultation } from './ris/risOnly'
-import { asArray, isOpenOn } from './ris/risRecord'
+import { getDraftsForGp, getCurrentGp, reconcileActive } from '../parliament/drafts'
+import { getRisBegutCorpus, getRisMapForGp } from '../ris/begutCorpus'
+import { mapWithConcurrency } from '../pool'
+import { getRisConsultation } from '../ris/risOnly'
+import { asArray, isOpenOn } from '../ris/risRecord'
 import {
   RIS_API_BASE,
   RisEnvelopeError,
@@ -72,7 +72,7 @@ import {
   upstreamBytes,
   upstreamText,
   type UpstreamPolicy,
-} from './upstream/fetch'
+} from '../upstream/fetch'
 
 const SEARCH_TIMEOUT_MS = 20_000
 /**

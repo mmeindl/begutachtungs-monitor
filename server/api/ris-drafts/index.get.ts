@@ -50,7 +50,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   /* Dasselbe Vokabular noch einmal, als Streichliste für die Suche: Ein
    * Langtitel nennt auch das zweite Haus („im Einvernehmen mit dem
    * Bundesminister für Finanzen"), deshalb alle Ressorts der Periode und
-   * nicht nur das eigene (`searchHaystack.ts`). */
+   * nicht nur das eigene (`search/searchHaystack.ts`). */
   const ministryTokenList = ministryTokens(ministries.map((m) => m.name))
   const wants = risStationWants(query.stations)
 

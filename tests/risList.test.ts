@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { filterRisConsultations, risStationWants } from '../server/utils/ris/risList'
-import { ministryTokens } from '../server/utils/searchHaystack'
+import { ministryTokens } from '../server/utils/search/searchHaystack'
 import type { BgblOutcome, RisConsultation } from '../shared/types'
 
 /**

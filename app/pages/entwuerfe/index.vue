@@ -442,7 +442,7 @@ const entries = computed(() =>
  *
  * Das Feld durchsucht Titel, Zitat, Debattennamen und das Ressortkürzel
  * (den Ressort-NAMEN seit 21.09.2026 nicht mehr — er trug das ganze
- * Portfolio und traf unsichtbar, siehe `searchHaystack.ts`). Ein Titel
+ * Portfolio und traf unsichtbar, siehe `server/utils/search/searchHaystack.ts`). Ein Titel
  * sagt aber nicht, was ein Sammelgesetz alles ändert: Wer „Klimaschutz"
  * eingibt und zwei Zeilen bekommt, schließt „mehr ist es nicht" — und sieht
  * nicht, dass ein dritter, offener Entwurf das Wort in seinem § 6 führt.

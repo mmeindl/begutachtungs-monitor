@@ -40,8 +40,8 @@
  * steht in einem Dokument, wir wissen nicht wo", die wir nachweislich
  * widerlegen könnten — aber nie im falschen Dokument.
  */
-import type { TextBlock } from './lawText'
-import { normalizeText } from './lawText'
+import type { TextBlock } from '../lawText'
+import { normalizeText } from '../lawText'
 import { stripMinistryMentions, type MinistryToken } from './searchHaystack'
 
 /** Ein Suchwort, wie der Leser es eingegeben hat. */

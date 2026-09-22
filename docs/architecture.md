@@ -6057,7 +6057,7 @@ es die eigene Filterachse). Der **Kurztitel** bleibt unangetastet, auch wenn
 er dieselbe Klausel trägt („Verordnung der Bundesministerin für
 Landesverteidigung über den Krankentransport") — der Leser sieht das Wort,
 also muss er danach suchen können. Aus dem **Langtitel**, den niemand sieht,
-fällt die Ministerklausel (`server/utils/searchHaystack.ts`); der Rest des
+fällt die Ministerklausel (`server/utils/search/searchHaystack.ts`); der Rest des
 Langtitels bleibt, weil bei einer Verordnung der Gegenstand dort und sonst
 nirgends steht. Gemessen am 21.09.2026 über dieselben 338 Zeilen der GP
 XXVIII:

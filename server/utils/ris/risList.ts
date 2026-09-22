@@ -16,7 +16,7 @@ import type {
   RisConsultationKind,
 } from '../../../shared/types'
 import { matchesQuery } from '../../../shared/utils/textMatch'
-import { stripMinistryMentions, type MinistryToken } from '../searchHaystack'
+import { stripMinistryMentions, type MinistryToken } from '../search/searchHaystack'
 
 /**
  * Welche Hälfte der Stationsachse diese Anfrage meint.

@@ -34,7 +34,7 @@
  * benutzen, sonst driften die zwei Hälften der Liste auseinander, und die
  * Regel selbst gehört unter Test.
  */
-import { ministryNameOf } from './ris/ministryCodes'
+import { ministryNameOf } from '../ris/ministryCodes'
 
 /** Ein Ressortname ohne „für" ist ein Eigenname; kürzer als das ist kein Name. */
 const MIN_TOKEN_LEN = 4

@@ -7,8 +7,8 @@ import {
   parseSearchQuery,
   searchQueryString,
   withoutMinistryMentions,
-} from '../server/utils/begutSearch'
-import { ministryTokens } from '../server/utils/searchHaystack'
+} from '../server/utils/search/begutSearch'
+import { ministryTokens } from '../server/utils/search/searchHaystack'
 
 function block(text: string, over: Partial<TextBlock> = {}): TextBlock {
   return { kind: 'abs', cls: '51Abs', text, gld: null, ...over }

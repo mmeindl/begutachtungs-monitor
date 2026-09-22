@@ -12,7 +12,7 @@
  * Ministerklausel, nie für sich.
  */
 import { describe, expect, it } from 'vitest'
-import { ministryToken, ministryTokens, stripMinistryMentions } from '../server/utils/searchHaystack'
+import { ministryToken, ministryTokens, stripMinistryMentions } from '../server/utils/search/searchHaystack'
 
 const BMLUK = 'Bundesministerium für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft'
 const BMF = 'Bundesministerium für Finanzen'
