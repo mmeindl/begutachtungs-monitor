@@ -472,7 +472,7 @@ export interface OpenVorlage {
    * betrifft nur, was behauptet wird (`docs/begutachtung-uebersprungen.md`).
    */
   consultation:
-    | { kind: 'draft', gp: string, inr: number }
+    | { kind: 'draft'; gp: string; inr: number }
     | { kind: 'none' }
     | { kind: 'unknown' }
 }
@@ -1349,7 +1349,6 @@ export interface LawDiffResponse {
   lawsOnlyInFrom: LawPackageEntry[]
   units: LawDiffUnit[]
 }
-
 
 /* ------------------------------------------------------------------ *
  * Volltextsuche über die laufenden Begutachtungen (§12.31)

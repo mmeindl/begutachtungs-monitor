@@ -83,7 +83,7 @@ function words(html: string): string[] {
 }
 
 /** Anteil der Wortfenster aus `needle`, die wörtlich in `haystack` stehen. */
-function coverage(needle: string[], haystack: string): { windows: number, hits: number } {
+function coverage(needle: string[], haystack: string): { windows: number; hits: number } {
   if (needle.length < SHINGLE) return { windows: 0, hits: 0 }
   let hits = 0
   let windows = 0
@@ -94,7 +94,7 @@ function coverage(needle: string[], haystack: string): { windows: number, hits: 
   return { windows, hits }
 }
 
-interface MapRow { inr: number, cite: string, status: string, risId: string | null }
+interface MapRow { inr: number; cite: string; status: string; risId: string | null }
 
 interface Row {
   inr: number
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
         const record = byId.get(item.risId!)
         const xmlUrl = record?.explanations?.xml ?? null
         const detail = JSON.parse(await fetchText(`https://www.parlament.gv.at/gegenstand/${GP}/ME/${item.inr}?json=True`)) as
-          { content?: { title?: string | null, shortinfo?: { teil1?: string | null, teil2?: string | null } | null } }
+          { content?: { title?: string | null; shortinfo?: { teil1?: string | null; teil2?: string | null } | null } }
         const si = detail.content?.shortinfo
         const teil1 = si?.teil1 ?? ''
         const teil2 = si?.teil2 ?? ''

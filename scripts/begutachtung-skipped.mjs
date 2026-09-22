@@ -408,11 +408,15 @@ function classifyClubs(item) {
   const { clubs: koa, label } = coalitionAt(item.einlangen ?? item.date)
   const fromKoa = item.clubs.filter((c) => koa.includes(c))
   const fromOpp = item.clubs.filter((c) => !koa.includes(c))
-  const kind = item.clubs.length === 0 ? 'ohne Klubangabe'
-    : allClubs.size > 0 && item.clubs.length === allClubs.size ? 'alle Klubs'
-    : fromOpp.length === 0 ? 'nur Regierungsklubs'
-    : fromKoa.length === 0 ? 'nur Opposition'
-    : 'übergreifend'
+  const kind = item.clubs.length === 0
+    ? 'ohne Klubangabe'
+    : allClubs.size > 0 && item.clubs.length === allClubs.size
+      ? 'alle Klubs'
+      : fromOpp.length === 0
+        ? 'nur Regierungsklubs'
+        : fromKoa.length === 0
+          ? 'nur Opposition'
+          : 'übergreifend'
   return { ...item, kind, era: label }
 }
 const antragKinds = skippedAntrag.map(classifyClubs)
@@ -613,7 +617,7 @@ const kombis = new Map()
 for (const l of antragKinds) { const k = l.clubs.join('+') || '—'; kombis.set(k, (kombis.get(k) ?? 0) + 1) }
 say(`  häufigste Klub-Kombinationen: ${[...kombis].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, n]) => `${k} ${n}×`).join(', ')}`)
 say(`\n  ⇒ Regierungs- oder Koalitionsvorhaben ohne Begutachtung: ${skippedRv.length} + ${koaAntraege.length} = ` +
-    `${skippedRv.length + koaAntraege.length} von ${base} (${pct(skippedRv.length + koaAntraege.length)} %).`)
+  `${skippedRv.length + koaAntraege.length} von ${base} (${pct(skippedRv.length + koaAntraege.length)} %).`)
 say(`     Die übrigen ${skipped.length - skippedRv.length - koaAntraege.length} sind übergreifende, All-Klub- oder Oppositionsanträge.`)
 say(`     Achtung: von dieser Zahl geht die Vorgeschichte-Korrektur (§3c) noch ab — siehe unten.`)
 
@@ -626,7 +630,7 @@ if (textJoin) {
   say(`    ${textJoin.calibration.truePairs} wahren Paaren (${(100 * textJoin.calibration.trueP05).toFixed(0)} % im 5 %-Quantil) gegen ${textJoin.calibration.noisePairs} falsche (max ${(100 * textJoin.calibration.noiseMax).toFixed(1)} %).`)
   for (const h of bestaetigt) {
     say(`      ${h.einlangen}  ${String(h.citation).padEnd(9)} ${String(h.meInr + '/ME').padEnd(8)} ${(h.score * 100).toFixed(0)} % ` +
-        `${h.fristOffen ? '⚠ eingebracht, während die Frist lief  ' : ''}${h.title.slice(0, 58)}`)
+      `${h.fristOffen ? '⚠ eingebracht, während die Frist lief  ' : ''}${h.title.slice(0, 58)}`)
   }
   say(`\n  ⇒ Ohne Begutachtung, korrigiert: ${korrBestaetigt} von ${base} (${pct(korrBestaetigt)} %), roh ${skipped.length} (${pct(skipped.length)} %).`)
   if (schwach.length) {
@@ -648,14 +652,14 @@ if (textJoin) {
 }
 say(`  Kalibrierung des Titelmaßes an ${calib.length} echten Entwurf→Regierungsvorlage-Paaren:`)
 say(`    Median ${(calib[Math.floor(calib.length / 2)] ?? 0).toFixed(2)}, ` +
-    `unter der Schwelle 0.50 lägen ${calibMiss} davon — so viele echte Paare übersieht das Maß.`)
+  `unter der Schwelle 0.50 lägen ${calibMiss} davon — so viele echte Paare übersieht das Maß.`)
 say(`  Kandidaten unter den ${skippedAntrag.length} Initiativanträgen: ${vorgeschichte.length}` +
-    ` (${vorgeschichte.filter((v) => v.strong).length} stark: Titel identisch und der Entwurf wurde nie Regierungsvorlage)`)
+  ` (${vorgeschichte.filter((v) => v.strong).length} stark: Titel identisch und der Entwurf wurde nie Regierungsvorlage)`)
 for (const v of vorgeschichte) {
   say(`   ${v.einlangen}  ${String(v.citation).padEnd(9)} ${v.title}`)
   say(`       ← ${v.meInr}/ME ab ${v.meStart}, Frist bis ${v.meFrist ?? '—'}  [Titel ${v.score.toFixed(2)}${v.strong ? ', stark' : ''}]` +
-      `${v.meBecameRv ? '  [Entwurf wurde selbst Regierungsvorlage → schwacher Kandidat]' : ''}` +
-      `${v.fristOffen ? '  ⚠ Antrag eingebracht, WÄHREND die Frist noch lief' : ''}`)
+    `${v.meBecameRv ? '  [Entwurf wurde selbst Regierungsvorlage → schwacher Kandidat]' : ''}` +
+    `${v.fristOffen ? '  ⚠ Antrag eingebracht, WÄHREND die Frist noch lief' : ''}`)
 }
 if (vorgeschichte.length) {
   say(`\n  Frist abgelaufen, dann Antrag: ${vgAbgelaufen.length} — begutachtet, aber nicht als Regierungsvorlage weitergeführt.`)
@@ -675,8 +679,8 @@ if (vorgeschichte.length) {
     ? bestaetigt.filter((h) => koaCitations.has(String(h.citation))).length
     : vorgeschichte.filter((v) => v.kind === 'nur Regierungsklubs').length
   say(`\n  ⇒ Regierungs-/Koalitionsvorhaben ohne Begutachtung: ${regBasis - abzug} von ${base} ` +
-      `(${pct(regBasis - abzug)} %) nach Abzug der ${abzug} belegten Vorgeschichte-Fälle, ` +
-      `unkorrigiert ${regBasis} (${pct(regBasis)} %).`)
+    `(${pct(regBasis - abzug)} %) nach Abzug der ${abzug} belegten Vorgeschichte-Fälle, ` +
+    `unkorrigiert ${regBasis} (${pct(regBasis)} %).`)
 }
 
 say(`\n--- Stellungnahmen im Parlament (§ 23b GOG-NR, seit 01.08.2021) ---`)

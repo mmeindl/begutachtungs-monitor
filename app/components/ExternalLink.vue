@@ -45,7 +45,6 @@ defineProps<{
     :target="newWindow ? '_blank' : undefined"
     :rel="newWindow ? 'noopener' : undefined"
   >
-    <slot /><span aria-hidden="true"> ↗</span
-    ><span v-if="newWindow" class="sr-only"> (neues Fenster)</span>
+    <slot /><span aria-hidden="true"> ↗</span><span v-if="newWindow" class="sr-only"> (neues Fenster)</span>
   </a>
 </template>

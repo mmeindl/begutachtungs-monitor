@@ -179,7 +179,7 @@ let meByRisId: Map<string, { gp: string; inr: number }> | null = null
 function parliamentMeFor(risId: string): { gp: string; inr: number } | null {
   if (!meByRisId) {
     meByRisId = new Map()
-    const fixture = <T,>(f: string): T => JSON.parse(readFileSync(new URL(`../tests/fixtures/${f}`, import.meta.url), 'utf8')) as T
+    const fixture = <T>(f: string): T => JSON.parse(readFileSync(new URL(`../tests/fixtures/${f}`, import.meta.url), 'utf8')) as T
     for (const gp of ['gp27', 'gp28']) {
       const ris = fixture<RisBegutRecord[]>(`ris-begut-${gp}.json`)
       const mes = dedupeMeRows(fixture<MeListRow[]>(`me-${gp}.json`))

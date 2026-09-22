@@ -119,8 +119,7 @@ const LINK =
       eingebracht werden. Zu dieser Vorlage wurde <template v-if="filingOpen">bisher</template> keine eingebracht<template
         v-if="filingOpen"
       >; möglich ist es, {{ SECOND_ROUND_CLAUSE }}:
-        <ExternalLink :href="data.rvUrl" new-window :class="LINK">Stellungnahme abgeben</ExternalLink></template
-      >.
+        <ExternalLink :href="data.rvUrl" new-window :class="LINK">Stellungnahme abgeben</ExternalLink></template>.
     </p>
 
     <template v-else>
@@ -128,8 +127,7 @@ const LINK =
         Zur Regierungsvorlage {{ data.rvCitation }} selbst gingen im Nationalrat
         {{ countLabelDe(data.total, 'Stellungnahme', 'Stellungnahmen') }} ein<template
           v-if="partition"
-        >: {{ partition }}</template
-        >.
+        >: {{ partition }}</template>.
         <template v-if="!summary">
           Bei mehr als {{ formatNumberDe(data.cap) }} entfällt die Aufschlüsselung
           nach Einbringern.
@@ -202,8 +200,7 @@ const LINK =
           Alle Stellungnahmen zur Vorlage auf parlament.gv.at
         </ExternalLink><template v-if="filingOpen">
           – dort kann weiter Stellung genommen werden,
-          {{ SECOND_ROUND_CLAUSE }}.</template
-        >
+          {{ SECOND_ROUND_CLAUSE }}.</template>
       </p>
     </template>
   </div>

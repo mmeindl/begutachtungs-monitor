@@ -537,7 +537,6 @@ const mergedNote = computed(() =>
 const droppedNote = computed(() =>
   droppedLawsNote(data.value?.lawsOnlyInFrom ?? [], pair.value.from, pair.value.to),
 )
-
 </script>
 
 <template>

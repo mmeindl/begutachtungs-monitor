@@ -68,7 +68,7 @@ export interface Station {
   facts: string[]
   /** The comparison this station produced, as the question it answers; null
    *  where none exists or none can be shown. */
-  comparison: { id: ComparisonId, question: string } | null
+  comparison: { id: ComparisonId; question: string } | null
 }
 
 /**

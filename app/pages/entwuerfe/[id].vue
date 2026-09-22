@@ -50,8 +50,8 @@ useSeoMeta({
   description: () =>
     data.value
       ? `${RIS_KIND_LABEL[data.value.kind]} des ${data.value.ministryName} in Begutachtung${
-          data.value.deadline ? ` bis ${formatDateDe(data.value.deadline)}` : ''
-        }.`
+        data.value.deadline ? ` bis ${formatDateDe(data.value.deadline)}` : ''
+      }.`
       : undefined,
 })
 

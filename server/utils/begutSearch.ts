@@ -205,7 +205,6 @@ export function locateInBlocks(
   return fallback
 }
 
-
 /* ------------------------------------------------------------------ *
  * Zwei Textquellen, ein Blockformat
  * ------------------------------------------------------------------ */

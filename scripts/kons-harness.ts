@@ -667,7 +667,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     const got = plainText(node)
     const beforeNode = law.paragraphs.find((p) => p.id === (id === undefined ? id : (originOf.get(id) ?? id)))
     const beforeText = beforeNode ? plainText(beforeNode) : null
-    const rank = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, halbangewendet: 3, abweichend: 4 }
+    const rank = { identisch: 0, unvollständig: 1, unverändert: 2, halbangewendet: 3, abweichend: 4 }
     const best = truths
       .map((t) => ({ ...t, verdict: verdictForTrees(beforeNode ?? null, node, t.tree) }))
       .sort((a, b) => rank[a.verdict] - rank[b.verdict])[0]!
@@ -770,7 +770,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
         `${JSON.stringify({ bgbl: bgblNumber, law: kurztitel, label, id, verdict, refused: id !== undefined && refusedIds.has(id), before: beforeText, got, expected, beforeTree: beforeNode ?? null, afterTree: node, touching, refusedLines, afterVersion: matched.inkrafttreten, history, comparable, staged })}\n`,
       )
     }
-    const mark = { identisch: '✓', 'unverändert': '·', 'unvollständig': '~', halbangewendet: '!', abweichend: '✗' }[verdict]
+    const mark = { identisch: '✓', unverändert: '·', unvollständig: '~', halbangewendet: '!', abweichend: '✗' }[verdict]
     if (verdict === 'identisch') identical++
     else if (verdict === 'unverändert') untouched++
     else if (verdict === 'unvollständig') incomplete++

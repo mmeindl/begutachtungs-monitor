@@ -364,7 +364,7 @@ describe('a Regierungsvorlage that merges several drafts', () => {
           l.ziffern.map((z) => `<p class=21NovAo1>${z}</p>`).join(''),
       )
       .join('') +
-    '</body></html>'
+      '</body></html>'
 
   const draft = pkg([{ title: '&Auml;nderung des Auskunftspflichtgesetzes', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;alt&ldquo;', '2. &sect;&nbsp;2 lautet: &bdquo;gleich&ldquo;'] }])
   const bill = pkg([

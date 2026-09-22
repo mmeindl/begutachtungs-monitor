@@ -166,7 +166,7 @@ for (const gp of gps) {
     const n = count(title)
     console.log(
       `  ${title.padEnd(24)} ${String(n).padStart(4)}  ${pct(n, ok.length).padStart(7)}` +
-        `   davon HTML ${String(count(title, 'html')).padStart(4)}  nur PDF ${String(n - count(title, 'html')).padStart(3)}`,
+      `   davon HTML ${String(count(title, 'html')).padStart(4)}  nur PDF ${String(n - count(title, 'html')).padStart(3)}`,
     )
   }
 

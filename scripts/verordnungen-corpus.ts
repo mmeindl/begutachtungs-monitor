@@ -159,7 +159,7 @@ for (const [y, s] of [...years].sort((a, b) => b[0].localeCompare(a[0])).slice(0
   const total = s.gesetz + s.verordnung + s.other
   console.log(
     `  ${y.padEnd(8)}${String(s.gesetz).padStart(5)}${String(s.verordnung).padStart(9)}${String(s.other).padStart(9)}` +
-      `        ${((s.verordnung / total) * 100).toFixed(0)} %`,
+    `        ${((s.verordnung / total) * 100).toFixed(0)} %`,
   )
 }
 
@@ -176,13 +176,13 @@ if (onDate) {
     ].filter(Boolean)
     console.log(
       `  ${cls.padEnd(11)} bis ${r.ende}  ${ministryCodeOf(r.stelle).padEnd(8)} ` +
-        `${(r.kurztitel ?? r.titel ?? '').slice(0, 58).padEnd(58)} [${docs.join(' ')}]`,
+      `${(r.kurztitel ?? r.titel ?? '').slice(0, 58).padEnd(58)} [${docs.join(' ')}]`,
     )
   }
   const vo = open.filter(({ cls }) => cls === 'verordnung').length
   console.log(
     `  → Parliament's list 81 can carry at most ${open.length - vo} of these; ` +
-      `${vo} are Verordnungen and appear nowhere on parlament.gv.at.`,
+    `${vo} are Verordnungen and appear nowhere on parlament.gv.at.`,
   )
 }
 

@@ -146,8 +146,7 @@ export function stripMinistryMentions(text: string, tokens: readonly MinistryTok
     if (clauseOnly) {
       const pattern = portfolioPattern(token)
       if (pattern) out = out.replace(new RegExp(`${MINISTER_CLAUSE}${pattern}`, 'gi'), ' ')
-    }
-    else {
+    } else {
       out = out.replace(new RegExp(escapeRegExp(token), 'gi'), ' ')
     }
   }

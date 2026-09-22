@@ -49,9 +49,10 @@ const linkClasses =
           Manuel Meindl<br>
           Wohnort: Linz, Österreich<br>
           E-Mail:
-          <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
-            >kontakt@begutachtungs-monitor.at</a
-          >
+          <a
+            href="mailto:kontakt@begutachtungs-monitor.at"
+            :class="linkClasses"
+          >kontakt@begutachtungs-monitor.at</a>
         </address>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Ein Datenschutzbeauftragter ist nicht bestellt; die Voraussetzungen
@@ -211,9 +212,10 @@ const linkClasses =
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Wer trotzdem findet, dass ein Name hier nicht stehen sollte,
           bekommt das ohne Diskussion korrigiert – eine kurze
-          <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
-            >E-Mail</a
-          >
+          <a
+            href="mailto:kontakt@begutachtungs-monitor.at"
+            :class="linkClasses"
+          >E-Mail</a>
           genügt. Auf parlament.gv.at bleibt der Eintrag davon unberührt;
           dafür ist die Parlamentsdirektion zuständig.
         </p>
@@ -229,15 +231,18 @@ const linkClasses =
           Datenübertragbarkeit (Art 20) und Widerspruch gegen Verarbeitungen
           auf Grundlage berechtigter Interessen (Art 21 DSGVO). Eine
           formlose Nachricht an
-          <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
-            >kontakt@begutachtungs-monitor.at</a
-          >
+          <a
+            href="mailto:kontakt@begutachtungs-monitor.at"
+            :class="linkClasses"
+          >kontakt@begutachtungs-monitor.at</a>
           reicht.
         </p>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Unabhängig davon besteht ein Beschwerderecht bei der
-          <ExternalLink href="https://www.dsb.gv.at" :class="linkClasses"
-            >österreichischen Datenschutzbehörde</ExternalLink>, Barichgasse 40–42, 1030 Wien,
+          <ExternalLink
+            href="https://www.dsb.gv.at"
+            :class="linkClasses"
+          >österreichischen Datenschutzbehörde</ExternalLink>, Barichgasse 40–42, 1030 Wien,
           <a href="mailto:dsb@dsb.gv.at" :class="linkClasses">dsb@dsb.gv.at</a>.
         </p>
       </section>

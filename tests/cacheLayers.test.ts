@@ -32,9 +32,9 @@ const FETCHED: Record<string, string> = {
     'section and are keyed by the same URLs, so a search may hold a second copy of a document. One cache ' +
     'name per consumer is the cheaper mistake — sharing one would tie the search to that section\'s TTL.',
   'begut-dokument-pdf':
-    'the same document as a PDF, byte for byte as base64 — the search falls back to it because the XML of a '
-    + 'Begleitschreiben is a stub (943 characters against 12.223, §12.31). Cached in dev only; what production '
-    + 'keeps is the extracted text one layer up, which is derived and small.',
+    'the same document as a PDF, byte for byte as base64 — the search falls back to it because the XML of a ' +
+    'Begleitschreiben is a stub (943 characters against 12.223, §12.31). Cached in dev only; what production ' +
+    'keeps is the extracted text one layer up, which is derived and small.',
   'bgbl-nummer-suche': 'the RIS answer for one Bgblnummer, as it arrived — the §-comparison looks the Kundmachung up by the citation Parliament gives it (§12.33)',
   'bgbl-jahrgang-seite': 'one page of a CLOSED Bundesgesetzblatt year, as it arrived; that year is finished, so it keeps for a month',
   'bgbl-jahrgang-seite-laufend': 'the same page of the RUNNING year, which still grows — its own name because one cached function carries one maxAge (§12.32)',
@@ -78,10 +78,10 @@ describe('cache layers', () => {
     expect(
       wrong.map((f) => `${f.name} (${f.file})`),
       'A cached function is persistent but not a fetched document. Either add ' +
-        '`base: DERIVED_CACHE` to its options — right after `name` — or, if it ' +
-        'really caches an upstream document verbatim, list it in FETCHED with ' +
-        'the reason. A function that fetches *and* parses has to be split first ' +
-        '(see server/utils/cacheBase.ts).',
+      '`base: DERIVED_CACHE` to its options — right after `name` — or, if it ' +
+      'really caches an upstream document verbatim, list it in FETCHED with ' +
+      'the reason. A function that fetches *and* parses has to be split first ' +
+      '(see server/utils/cacheBase.ts).',
     ).toEqual([])
   })
 

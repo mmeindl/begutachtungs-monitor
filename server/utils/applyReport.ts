@@ -165,7 +165,7 @@ export function verdictForTrees(before: LawNode | null, got: LawNode, expected: 
   const e = byKey(expected)
   const b = before ? byKey(before) : new Map<string, LawNode>()
   if ([...g.keys()].some((k) => !e.has(k))) return 'abweichend'
-  const rank: Record<ApplyVerdict, number> = { identisch: 0, 'unvollständig': 1, 'unverändert': 2, halbangewendet: 3, abweichend: 4 }
+  const rank: Record<ApplyVerdict, number> = { identisch: 0, unvollständig: 1, unverändert: 2, halbangewendet: 3, abweichend: 4 }
   let worst: ApplyVerdict = 'identisch'
   for (const [k, child] of e) {
     const mine = g.get(k)

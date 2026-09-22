@@ -123,5 +123,3 @@ describe('procedureStatusDe — the card\'s one-line answer', () => {
       .toBe('Ohne Regierungsvorlage – Gesetzgebungsperiode beendet')
   })
 })
-
-

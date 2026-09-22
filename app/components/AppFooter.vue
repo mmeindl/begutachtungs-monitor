@@ -49,31 +49,26 @@
           (<ExternalLink
             href="https://www.parlament.gv.at"
             class="underline underline-offset-2 hover:no-underline"
-            >parlament.gv.at</ExternalLink
-          >) und Rechtsinformationssystem des Bundes
+          >parlament.gv.at</ExternalLink>) und Rechtsinformationssystem des Bundes
           (<ExternalLink
             href="https://www.ris.bka.gv.at"
             class="underline underline-offset-2 hover:no-underline"
-            >ris.bka.gv.at</ExternalLink
-          >).
+          >ris.bka.gv.at</ExternalLink>).
           <NuxtLink
             to="/impressum#imp-license"
             class="underline underline-offset-2 hover:no-underline"
-            >Lizenzen im Impressum</NuxtLink
-          >. Kein amtliches Angebot.
+          >Lizenzen im Impressum</NuxtLink>. Kein amtliches Angebot.
         </p>
         <p>
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor"
             class="underline underline-offset-2 hover:no-underline"
-            >Quellcode auf GitHub</ExternalLink
-          >
+          >Quellcode auf GitHub</ExternalLink>
           · Kontakt:
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
             class="underline underline-offset-2 hover:no-underline"
-            >kontakt@begutachtungs-monitor.at</a
-          >
+          >kontakt@begutachtungs-monitor.at</a>
         </p>
         <nav aria-label="Rechtliches">
           <ul class="flex flex-wrap items-center gap-x-4">

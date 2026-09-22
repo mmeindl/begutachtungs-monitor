@@ -41,8 +41,7 @@ defineProps<{
     {{ ' ' }}
     <span class="hyphens-auto">
       {{ hit.snippet.before
-      }}<mark class="bg-mark text-ink">{{ hit.snippet.match }}</mark
-      >{{ hit.snippet.after }}
+      }}<mark class="bg-mark text-ink">{{ hit.snippet.match }}</mark>{{ hit.snippet.after }}
     </span>
   </p>
   <!-- KEINE STELLE HEISST NICHT KEIN TREFFER — aber der Satz dazu muss

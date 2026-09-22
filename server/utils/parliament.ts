@@ -120,7 +120,7 @@ export interface GegenstandResponse {
      * Begutachtung happened; cross-check against list 81
      * (`docs/begutachtung-uebersprungen.md` §2).
      */
-    preconst?: { gp_code?: string | null, ityp?: string | null, inr?: number | string | null }[] | null
+    preconst?: { gp_code?: string | null; ityp?: string | null; inr?: number | string | null }[] | null
   } | null
 }
 

@@ -54,7 +54,7 @@ const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const asArray = <T,>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
+const asArray = <T>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
 
 async function risJson(params: Record<string, string>): Promise<any> {
   const res = await fetch(`${RIS}?${new URLSearchParams(params)}`, { headers: UA, signal: AbortSignal.timeout(30_000) })
@@ -77,7 +77,6 @@ const gateSources: AnnexSources = {
     return { text: [...tree.context, plainText(tree)].join(' '), heading: [...tree.context, tree.heading ?? ''].join(' ') }
   },
 }
-
 
 interface DraftResult {
   /**

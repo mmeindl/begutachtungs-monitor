@@ -264,9 +264,9 @@ for (const r of rows) {
   const c = r.compared
   console.log(
     `   ${String(r.inr).padStart(4)}/ME ${r.bgbl.padEnd(30)} ${String(r.units).padStart(4)} Einh.` +
-      (c
-        ? ` · ${c.label.slice(0, 18).padEnd(18)} ${c.unchanged}/${c.total} gleich · geändert ${c.changed} (davon redaktionell ${c.editorial}) · neu ${c.inserted} · weg ${c.removed} · Gesetze nur rechts ${c.onlyInTo}/nur links ${c.onlyInFrom}`
-        : ' · nichts zu vergleichen'),
+    (c
+      ? ` · ${c.label.slice(0, 18).padEnd(18)} ${c.unchanged}/${c.total} gleich · geändert ${c.changed} (davon redaktionell ${c.editorial}) · neu ${c.inserted} · weg ${c.removed} · Gesetze nur rechts ${c.onlyInTo}/nur links ${c.onlyInFrom}`
+      : ' · nichts zu vergleichen'),
   )
 }
 

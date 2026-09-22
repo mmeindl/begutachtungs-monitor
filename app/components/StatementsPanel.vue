@@ -408,7 +408,6 @@ const mixSegments = computed(() => {
     .filter((s) => s.count > 0)
     .map((s) => ({ ...s, pct: (s.count / t) * 100 }))
 })
-
 </script>
 
 <template>

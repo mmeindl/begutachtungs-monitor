@@ -27,7 +27,6 @@ defineProps<{
   org: StatementsSummary['organisationList'][number]
 }>()
 
-
 function endorsementLabel(n: number): string {
   return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
 }

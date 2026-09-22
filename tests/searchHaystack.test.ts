@@ -54,9 +54,9 @@ describe('stripMinistryMentions', () => {
   const tokens = ministryTokens([BMLUK, BMF, 'Bundeskanzleramt'])
 
   it('streicht die Ministerklausel aus dem Langtitel einer Verordnung', () => {
-    const titel
-      = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und Umweltschutz, '
-        + 'Regionen und Wasserwirtschaft, mit der die GAP-Strategieplan-Anwendungsverordnung geändert wird'
+    const titel =
+      'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und Umweltschutz, ' +
+      'Regionen und Wasserwirtschaft, mit der die GAP-Strategieplan-Anwendungsverordnung geändert wird'
     const out = stripMinistryMentions(titel, tokens).toLowerCase()
     expect(out).not.toContain('klima')
     // Der Gegenstand bleibt — er ist der Grund, warum der Langtitel überhaupt
@@ -65,8 +65,8 @@ describe('stripMinistryMentions', () => {
   })
 
   it('streicht auch das zweite Haus', () => {
-    const titel = 'Verordnung des Bundesministers für Finanzen im Einvernehmen mit dem Bundesminister für '
-      + 'Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft über die Abgaben'
+    const titel = 'Verordnung des Bundesministers für Finanzen im Einvernehmen mit dem Bundesminister für ' +
+      'Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft über die Abgaben'
     const out = stripMinistryMentions(titel, tokens).toLowerCase()
     expect(out).not.toContain('klima')
     expect(out).not.toContain('finanzen')
@@ -82,10 +82,10 @@ describe('stripMinistryMentions', () => {
   it('hält die Schreibweisen aus, die im Bestand wirklich vorkommen', () => {
     // Beide am 21.09.2026 gemessen, beide hatten die starre Fassung verfehlt:
     // der fehlende Bindestrich und der halbe Name.
-    const ohneBindestrich = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima und '
-      + 'Umweltschutz, Regionen und Wasserwirtschaft, mit der die Rebsortenverordnung geändert wird'
-    const halberName = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und '
-      + 'Umweltschutz, mit der die Nachhaltige forstwirtschaftliche Biomasse-Verordnung geändert wird'
+    const ohneBindestrich = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima und ' +
+      'Umweltschutz, Regionen und Wasserwirtschaft, mit der die Rebsortenverordnung geändert wird'
+    const halberName = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und ' +
+      'Umweltschutz, mit der die Nachhaltige forstwirtschaftliche Biomasse-Verordnung geändert wird'
     expect(stripMinistryMentions(ohneBindestrich, tokens).toLowerCase()).not.toContain('klima')
     expect(stripMinistryMentions(ohneBindestrich, tokens).toLowerCase()).toContain('rebsortenverordnung')
     expect(stripMinistryMentions(halberName, tokens).toLowerCase()).not.toContain('klima')

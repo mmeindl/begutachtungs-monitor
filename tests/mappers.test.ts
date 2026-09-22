@@ -600,7 +600,6 @@ describe('helpers', () => {
   })
 })
 
-
 describe('groupOrganisationStatements', () => {
   /* The real case that produced this function: 132/ME, where the same office
    * filed twice and the panel rendered its name in two identical-looking

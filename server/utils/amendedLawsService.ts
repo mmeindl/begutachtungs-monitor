@@ -38,7 +38,7 @@ const CONCURRENCY = 6
  * a BGBl cited inside a § (a cross-reference) cannot be mistaken for it, and
  * `stammnormOf` returns null for an instruction line, which names no BGBl.
  */
-function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null, bgbl: BgblCitation } | null {
+function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null; bgbl: BgblCitation } | null {
   let title: string | null = null
   for (const b of blocks) {
     if (b.kind === 'section' || b.kind === 'title') {

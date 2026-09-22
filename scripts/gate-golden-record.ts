@@ -44,7 +44,7 @@ const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const asArray = <T,>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
+const asArray = <T>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
 const arg = (name: string): string | null => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null
 
 async function risJson(params: Record<string, string>): Promise<any> {

@@ -334,10 +334,10 @@ export function maintenanceFindings(baseline: AnnexBaseline | null, now: Date = 
     kind: 'wartung',
     draft: null,
     text:
-      `Die Grundlinie ist ${days} Tage alt (gezogen am ${baseline.at.slice(0, 10)}, Schwelle ${MAX_BASELINE_AGE_DAYS} Tage, ${n('xml')} + ${n('pdf')} Entwürfe). `
-      + 'Seither sind Entwürfe in das Fenster der 400 jüngsten gekommen, die Klasse B nicht kennt — für die gilt nur Klasse A. '
-      + 'Nachziehen aus den Berichten dieses Laufs (Artefakt `annex-reports`): '
-      + '`npx vite-node scripts/annex-drift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`, '
-      + 'dann committen. Nichts ist kaputt; ungenutzt wird der Alarm nur blinder.',
+      `Die Grundlinie ist ${days} Tage alt (gezogen am ${baseline.at.slice(0, 10)}, Schwelle ${MAX_BASELINE_AGE_DAYS} Tage, ${n('xml')} + ${n('pdf')} Entwürfe). ` +
+      'Seither sind Entwürfe in das Fenster der 400 jüngsten gekommen, die Klasse B nicht kennt — für die gilt nur Klasse A. ' +
+      'Nachziehen aus den Berichten dieses Laufs (Artefakt `annex-reports`): ' +
+      '`npx vite-node scripts/annex-drift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`, ' +
+      'dann committen. Nichts ist kaputt; ungenutzt wird der Alarm nur blinder.',
   }]
 }

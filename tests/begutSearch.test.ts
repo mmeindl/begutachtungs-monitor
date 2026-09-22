@@ -185,8 +185,8 @@ describe('withoutMinistryMentions', () => {
     // Der gemessene Fall: „klima" lieferte eine Druckgeräteverordnung, weil
     // das Begleitschreiben alle Ministerien als Empfänger listet.
     const verteiler = block(
-      '13. Bundesministerium für Landesverteidigung 14. Bundesministerium für Land- und Forstwirtschaft, '
-      + 'Klima- und Umweltschutz, Regionen und Wasserwirtschaft 15. Bundesministerium für Inneres',
+      '13. Bundesministerium für Landesverteidigung 14. Bundesministerium für Land- und Forstwirtschaft, ' +
+      'Klima- und Umweltschutz, Regionen und Wasserwirtschaft 15. Bundesministerium für Inneres',
     )
     expect(locateInBlocks([verteiler], parseSearchQuery('klima'))).not.toBeNull()
     expect(locateInBlocks(withoutMinistryMentions([verteiler], tokens), parseSearchQuery('klima'))).toBeNull()

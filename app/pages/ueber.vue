@@ -79,9 +79,10 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           abonnieren:
           <a :href="webcalUrl" :class="linkClasses">Fristen-Kalender abonnieren</a>
           (Apple Kalender, Outlook),
-          <ExternalLink :href="googleCalUrl" :class="linkClasses"
-            >zu Google Kalender hinzufügen</ExternalLink
-          >
+          <ExternalLink
+            :href="googleCalUrl"
+            :class="linkClasses"
+          >zu Google Kalender hinzufügen</ExternalLink>
           – oder die Adresse
           <span class="select-all font-medium text-ink">{{ icsDisplayUrl }}</span>
           manuell als Kalender-Abo eintragen. Wichtig: abonnieren, nicht
@@ -115,9 +116,10 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Stellungnahmen übernimmt er nicht, sondern verlinkt sie auf
           parlament.gv.at; Namen von Privatpersonen veröffentlicht er nicht.
           Welche Lizenz für welchen Datensatz gilt, steht
-          <NuxtLink to="/impressum#imp-license" :class="linkClasses"
-            >im Impressum</NuxtLink
-          >.
+          <NuxtLink
+            to="/impressum#imp-license"
+            :class="linkClasses"
+          >im Impressum</NuxtLink>.
         </p>
       </section>
 
@@ -148,9 +150,10 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Farbe allein, und die Seite ist vollständig per Tastatur nutzbar.
           Reduzierte Bewegung wird respektiert. Wer dennoch auf eine Barriere
           stößt, hilft dem Projekt mit einem Hinweis an
-          <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
-            >kontakt@begutachtungs-monitor.at</a
-          >.
+          <a
+            href="mailto:kontakt@begutachtungs-monitor.at"
+            :class="linkClasses"
+          >kontakt@begutachtungs-monitor.at</a>.
         </p>
       </section>
 
@@ -235,8 +238,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
             :class="linkClasses"
-          >kontakt@begutachtungs-monitor.at</a
-          >. Fehler und Vorschläge gerne auch als
+          >kontakt@begutachtungs-monitor.at</a>. Fehler und Vorschläge gerne auch als
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor/issues"
             :class="linkClasses"

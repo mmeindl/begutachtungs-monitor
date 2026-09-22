@@ -425,4 +425,3 @@ export function addressedParagraphOf(unit: LawDiffUnit): string | null {
   const line = unit.toText ?? unit.fromText ?? unit.heading
   return line ? addressedParagraph(line) : null
 }
-

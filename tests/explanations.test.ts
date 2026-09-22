@@ -19,16 +19,16 @@ const text = (t: string): string => `<absatz typ="erltext" halign="j">${t}</absa
 describe('parseExplanations — the parts', () => {
   const standard = doc(
     head('erlz', 'Erläuterungen') +
-      head('erlz', 'Allgemeiner Teil') +
-      head('erll', 'Hauptgesichtspunkte des Entwurfs:') +
-      text('Die Richtlinie soll umgesetzt werden.') +
-      head('erll', 'Kompetenzgrundlage:') +
-      text('Art. 10 Abs. 1 Z 6 B-VG.') +
-      head('erlz', 'Besonderer Teil') +
-      head('erlz', 'Zu Art. 1 (Änderung des Aktiengesetzes)') +
-      head('erll', 'Zu Z 1 (§ 12 Abs. 3):') +
-      text('Die Bestimmung entfällt.') +
-      head('erll', 'Zu Z 2 (§ 12b):') +
+    head('erlz', 'Allgemeiner Teil') +
+    head('erll', 'Hauptgesichtspunkte des Entwurfs:') +
+    text('Die Richtlinie soll umgesetzt werden.') +
+    head('erll', 'Kompetenzgrundlage:') +
+    text('Art. 10 Abs. 1 Z 6 B-VG.') +
+    head('erlz', 'Besonderer Teil') +
+    head('erlz', 'Zu Art. 1 (Änderung des Aktiengesetzes)') +
+    head('erll', 'Zu Z 1 (§ 12 Abs. 3):') +
+    text('Die Bestimmung entfällt.') +
+    head('erll', 'Zu Z 2 (§ 12b):') +
       text('Neu eingefügt.'),
   )
 
@@ -95,12 +95,12 @@ describe('parseExplanations — the documents that break the tidy rule', () => {
     const parsed = parseExplanations(
       doc(
         head('erlz', 'Allgemeiner Teil') +
-          head('erll', 'Hintergrund:') +
-          text('Warum das Gesetz kommt.') +
-          head('erll', 'Zu § 1:') +
-          text('Begriffsbestimmungen.') +
-          head('erll', 'Zu § 2:') +
-          text('Anwendungsbereich.'),
+        head('erll', 'Hintergrund:') +
+        text('Warum das Gesetz kommt.') +
+        head('erll', 'Zu § 1:') +
+        text('Begriffsbestimmungen.') +
+        head('erll', 'Zu § 2:') +
+        text('Anwendungsbereich.'),
       ),
     )
     expect(parsed.general?.passages.map((p) => p.heading)).toEqual(['Hintergrund:'])
@@ -118,7 +118,7 @@ describe('parseExplanations — the documents that break the tidy rule', () => {
     // The whole Budgetbegleitgesetz 2027-2028 arrives like this.
     const scan = doc(
       '<absatz typ="abbobj"><binary datatype="gif"><src>/Dokumente/Begut/BEGUT_04AE/Temp77ec.0001.gif</src></binary></absatz>' +
-        '<absatz typ="abbobj"><binary datatype="gif"><src>/Dokumente/Begut/BEGUT_04AE/Temp77ec.0002.gif</src></binary></absatz>',
+      '<absatz typ="abbobj"><binary datatype="gif"><src>/Dokumente/Begut/BEGUT_04AE/Temp77ec.0002.gif</src></binary></absatz>',
     )
     const parsed = parseExplanations(scan)
     expect(hasReadableText(parsed)).toBe(false)
@@ -143,10 +143,10 @@ describe('parseExplanations — the part heading one level down', () => {
     const parsed = parseExplanations(
       doc(
         head('erll', 'Allgemeiner Teil:') +
-          text('Ukrainische Studierende sollen weiter befreit bleiben.') +
-          head('erll', 'Besonderer Teil:') +
-          head('erll', 'Zu § 1:') +
-          text('Dazu.'),
+        text('Ukrainische Studierende sollen weiter befreit bleiben.') +
+        head('erll', 'Besonderer Teil:') +
+        head('erll', 'Zu § 1:') +
+        text('Dazu.'),
       ),
     )
     expect(parsed.general?.heading).toBe('Allgemeiner Teil:')
@@ -186,11 +186,11 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
     // Notariatsordnung)" steht als `erll`, nicht als `erlz`.
     const parsed = besonderer(
       head('erll', 'Zu Art. 1 (Änderung der Notariatsordnung)') +
-        head('erll', 'Zu Z 1 (§ 7 Abs. 1 Z 3 NO)') +
-        text('Dazu.') +
-        head('erll', 'Zu Art. 2 (Änderung der Rechtsanwaltsordnung)') +
-        head('erll', 'Zu Z 1 (§ 7)') +
-        text('Und dazu.'),
+      head('erll', 'Zu Z 1 (§ 7 Abs. 1 Z 3 NO)') +
+      text('Dazu.') +
+      head('erll', 'Zu Art. 2 (Änderung der Rechtsanwaltsordnung)') +
+      head('erll', 'Zu Z 1 (§ 7)') +
+      text('Und dazu.'),
     )
     const pack = articles({ numeral: '1', key: 'Änderung der Notariatsordnung' }, { numeral: '2', key: 'Änderung der Rechtsanwaltsordnung' })
     expect(explanationsByParagraph(parsed, pack)).toEqual([

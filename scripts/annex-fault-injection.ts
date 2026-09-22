@@ -175,7 +175,7 @@ const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const asArray = <T,>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
+const asArray = <T>(x: T | T[] | null | undefined): T[] => (x === null || x === undefined ? [] : Array.isArray(x) ? x : [x])
 
 async function risJson(params: Record<string, string>): Promise<any> {
   const res = await fetch(`${RIS}?${new URLSearchParams(params)}`, { headers: UA, signal: AbortSignal.timeout(30_000) })
@@ -505,12 +505,12 @@ async function inject(doc: any): Promise<DraftResult | null> {
     const site = para.rows.find((row) => {
       if (row.kind !== 'pair' || row.change !== 'changed' || row.elided || !row.segments) return false
       const sentences = sentencesOf(row.current)
-      return sentences.length >= MIN_SITE_SENTENCES
-        && toks(row.current).length >= MIN_SITE_TOKENS
+      return sentences.length >= MIN_SITE_SENTENCES &&
+        toks(row.current).length >= MIN_SITE_TOKENS &&
         // A second sentence below the rule's own floor is a fault the rule is
         // not built to see, and counting it as a miss would measure the
         // injector. Six words is `MIN_STANDING_STRETCH`.
-        && toks(sentences[1]!).length >= MIN_STANDING_STRETCH
+        toks(sentences[1]!).length >= MIN_STANDING_STRETCH
     })
     if (!site) continue
     injected++

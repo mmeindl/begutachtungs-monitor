@@ -895,74 +895,74 @@ const doubtfulNote = computed<string | null>(() => {
                    the key; it is scoped to one §, because the `<section>`
                    above is keyed by the § itself. -->
               <div v-for="(b, bi) in p.blocks" :key="`${b.kind}-${bi}`" :class="bi > 0 ? 'mt-3' : ''">
-              <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
-                {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
-                {{ withheldText(b.cause) }}<template v-if="withheldBlame(b.cause)"> {{ withheldBlame(b.cause) }}</template>
-                Die Beilage des Ministeriums sagt, was sich ändert.
-              </p>
-              <details v-else-if="b.kind === 'context'" class="group">
-                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
-                  <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
-                </summary>
-                <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
-                  <p v-for="(r, ri) in b.rows" :key="`${r.gld ?? r.para ?? ''}-${ri}`" class="hyphens-auto">{{ r.current }}</p>
-                </div>
-              </details>
+                <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
+                  {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
+                  {{ withheldText(b.cause) }}<template v-if="withheldBlame(b.cause)"> {{ withheldBlame(b.cause) }}</template>
+                  Die Beilage des Ministeriums sagt, was sich ändert.
+                </p>
+                <details v-else-if="b.kind === 'context'" class="group">
+                  <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
+                    <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                    {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
+                  </summary>
+                  <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
+                    <p v-for="(r, ri) in b.rows" :key="`${r.gld ?? r.para ?? ''}-${ri}`" class="hyphens-auto">{{ r.current }}</p>
+                  </div>
+                </details>
 
-              <div v-else>
-                <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
-                  <p class="mb-1 text-sm">
-                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
-                      {{ BADGE_LABEL[badgeOf(b.row)] }}
-                    </span>
-                  </p>
+                <div v-else>
+                  <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
+                    <p class="mb-1 text-sm">
+                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
+                        {{ BADGE_LABEL[badgeOf(b.row)] }}
+                      </span>
+                    </p>
 
-                  <!-- An unchanged row only reaches a block of its own while
+                    <!-- An unchanged row only reaches a block of its own while
                        a search is running; both columns hold the same text,
                        so it reads as the one sentence it is. -->
-                  <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
-                  <p v-else-if="b.row.segments && view === 'inline'" class="hyphens-auto text-sm leading-relaxed text-ink">
-                    <template v-for="(s, si) in b.row.segments" :key="si">
-                      <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
-                      <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
-                      <span v-else>{{ s.text }}</span>
-                      {{ ' ' }}
-                    </template>
-                  </p>
-                  <!-- A row with only one side has one text; a column to hold
+                    <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
+                    <p v-else-if="b.row.segments && view === 'inline'" class="hyphens-auto text-sm leading-relaxed text-ink">
+                      <template v-for="(s, si) in b.row.segments" :key="si">
+                        <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
+                        <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
+                        <span v-else>{{ s.text }}</span>
+                        {{ ' ' }}
+                      </template>
+                    </p>
+                    <!-- A row with only one side has one text; a column to hold
                        nothing beside it would be a column about our layout,
                        not about the law. Same rule as in the § comparison. -->
-                  <p v-else-if="b.row.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.proposed }}</p>
-                  <p v-else-if="b.row.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.current }}</p>
-                  <!-- The ressort's own two columns, under the ressort's own
+                    <p v-else-if="b.row.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.proposed }}</p>
+                    <p v-else-if="b.row.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.current }}</p>
+                    <!-- The ressort's own two columns, under the ressort's own
                        headings. ONE shape for two cases: the reader asked for
                        them, or the word diff was too long to compute and
                        `splitRows` marks each side whole. -->
-                  <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
-                      <p class="hyphens-auto text-ink">
-                        <template v-for="(s, si) in splitRows(b.row).current" :key="si">
-                          <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
-                          <span v-else>{{ s.text }}</span>
-                          {{ ' ' }}
-                        </template>
-                      </p>
-                    </div>
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
-                      <p class="hyphens-auto text-ink">
-                        <template v-for="(s, si) in splitRows(b.row).proposed" :key="si">
-                          <ins v-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
-                          <span v-else>{{ s.text }}</span>
-                          {{ ' ' }}
-                        </template>
-                      </p>
+                    <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                      <div>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
+                        <p class="hyphens-auto text-ink">
+                          <template v-for="(s, si) in splitRows(b.row).current" :key="si">
+                            <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
+                            <span v-else>{{ s.text }}</span>
+                            {{ ' ' }}
+                          </template>
+                        </p>
+                      </div>
+                      <div>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
+                        <p class="hyphens-auto text-ink">
+                          <template v-for="(s, si) in splitRows(b.row).proposed" :key="si">
+                            <ins v-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
+                            <span v-else>{{ s.text }}</span>
+                            {{ ' ' }}
+                          </template>
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
               </div>
 
               <!-- Die dritte Schicht an demselben Paragraphen: nicht was sich

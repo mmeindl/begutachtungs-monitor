@@ -64,9 +64,9 @@ export type WithholdCause = ConsolidatedWithheldCause
  * Ressorts. Der Leser kann das unterscheiden, und es ist nicht dasselbe.
  */
 export const WITHHOLD_LABEL: Record<WithholdCause, string> = {
-  'verweigert': 'Eine Anweisung ließ sich nicht sicher anwenden',
+  verweigert: 'Eine Anweisung ließ sich nicht sicher anwenden',
   'nicht-geladen': 'Der Entwurf ändert mehr Paragraphen, als wir für eine Seite laden',
-  'unplausibel': 'Das Ergebnis hat unsere Plausibilitätsprüfung nicht bestanden',
+  unplausibel: 'Das Ergebnis hat unsere Plausibilitätsprüfung nicht bestanden',
   'kein-anhang': 'Keine lesbare Textgegenüberstellung, an der wir das Ergebnis prüfen könnten',
   'anhang-schweigt': 'Die Textgegenüberstellung sagt zu diesem Paragraphen nichts Prüfbares',
   'anhang-widerspricht': 'Die Textgegenüberstellung des Ressorts widerspricht unserem Ergebnis',
@@ -112,7 +112,6 @@ export function withheldSummary(causes: readonly WithholdCause[]): { cause: With
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([cause, count]) => ({ cause, label: WITHHOLD_LABEL[cause], count }))
 }
-
 
 // ---------------------------------------------------------------------------
 // Die Bezugsgröße der Anzeige

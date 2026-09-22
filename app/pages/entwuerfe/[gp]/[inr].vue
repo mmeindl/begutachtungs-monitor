@@ -423,8 +423,7 @@ const linkClasses =
           <ExternalLink
             :href="data.parliamentUrl"
             :class="[linkClasses, 'tap-target']"
-            >Auf parlament.gv.at ansehen</ExternalLink
-          >
+          >Auf parlament.gv.at ansehen</ExternalLink>
         </p>
       </header>
 
@@ -479,18 +478,17 @@ const linkClasses =
             :rv-statement-total="stationContext.rvStatementTotal"
             :amended-law-count="stationContext.amendedLawCount"
           />
-        <!-- The "second attempt" fact, in both lifecycle states: a same-title
+          <!-- The "second attempt" fact, in both lifecycle states: a same-title
              draft ran before and produced no Regierungsvorlage. Same title
              is all that is claimed (the sentence says "gleichlautend"); the
              link lets the reader judge whether it is the same text. -->
-        <p v-if="data.predecessor" class="mt-4 max-w-prose text-sm text-ink-secondary">
-          Ein gleichlautender Entwurf war bereits in Begutachtung:
-          <NuxtLink
-            :to="`/entwuerfe/${data.predecessor.gp}/${data.predecessor.inr}`"
-            :class="linkClasses"
-            >{{ data.predecessor.citation }}</NuxtLink
-          >{{ relatedGpSuffix(data.predecessor.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
-        </p>
+          <p v-if="data.predecessor" class="mt-4 max-w-prose text-sm text-ink-secondary">
+            Ein gleichlautender Entwurf war bereits in Begutachtung:
+            <NuxtLink
+              :to="`/entwuerfe/${data.predecessor.gp}/${data.predecessor.inr}`"
+              :class="linkClasses"
+            >{{ data.predecessor.citation }}</NuxtLink>{{ relatedGpSuffix(data.predecessor.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
+          </p>
         </div>
       </div>
 
@@ -530,8 +528,7 @@ const linkClasses =
              eine der beiden rendert je. -->
         <h2 v-if="windows.begutachtung" class="font-semibold text-ink">
           {{ fristLabel(data.deadline, true) }}<template v-if="data.deadline">
-            – die Frist endet am {{ formatDateDe(data.deadline) }}</template
-          >
+            – die Frist endet am {{ formatDateDe(data.deadline) }}</template>
         </h2>
         <!-- The second window alone: the Begutachtung is over, parliament
              still listens. No date, because upstream publishes none — the
@@ -544,8 +541,7 @@ const linkClasses =
         <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 max-w-prose text-sm text-ink-secondary">
           {{ SECOND_ROUND_WINDOW }}<template v-if="data.deadline">
             Die Begutachtungsfrist endete am
-            {{ formatDateDe(data.deadline) }}.</template
-          >
+            {{ formatDateDe(data.deadline) }}.</template>
         </p>
         <!-- Directly under the date it qualifies, above the CTA: whoever is
              about to submit reads it before acting, and the sentence ends by
@@ -558,14 +554,13 @@ const linkClasses =
             :href="divergence.url"
             class="tap-target rounded font-medium text-accent-deep hover:underline"
           >
-            {{ formatDateDe(divergence.date) }}</ExternalLink
-          ><span v-else class="font-medium text-ink">{{
+            {{ formatDateDe(divergence.date) }}</ExternalLink><span v-else class="font-medium text-ink">{{
             formatDateDe(divergence.date)
           }}</span>
           – {{ countLabelDe(divergence.days, 'Tag', 'Tage') }}
           {{ divergence.later ? 'später' : 'früher' }}. Eingebracht wird beim
           Parlament<template v-if="data.deadline">, maßgeblich ist daher der
-          {{ formatDateDe(data.deadline) }}</template>.
+            {{ formatDateDe(data.deadline) }}</template>.
         </p>
         <!-- Both windows open: stated as a sequence of facts, not as a
              verdict on the ministry (framing rule). The reader gets both
@@ -723,9 +718,10 @@ const linkClasses =
             <p class="mt-1 max-w-prose text-sm text-ink-secondary">
               Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
               und Textgegenüberstellung im
-              <ExternalLink :href="data.risDraft.risUrl" :class="linkClasses"
-                >RIS-Eintrag</ExternalLink
-              >.
+              <ExternalLink
+                :href="data.risDraft.risUrl"
+                :class="linkClasses"
+              >RIS-Eintrag</ExternalLink>.
             </p>
             <div v-if="risDocuments.length" class="mt-3">
               <DocumentList :documents="risDocuments" source="ris.bka.gv.at" />
@@ -766,9 +762,10 @@ const linkClasses =
             {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
             laut Übersicht – die Liste ist auf parlament.gv.at derzeit nicht
             abrufbar, daher können Details hier nicht angezeigt werden.
-            <ExternalLink :href="data.parliamentUrl" :class="linkClasses"
-              >Auf parlament.gv.at ansehen</ExternalLink
-            >
+            <ExternalLink
+              :href="data.parliamentUrl"
+              :class="linkClasses"
+            >Auf parlament.gv.at ansehen</ExternalLink>
           </p>
           <template v-else-if="data.statements.total > 0">
             <StatementsPanel :gp="gp" :inr="inr" :summary="data.statements" />
@@ -778,8 +775,8 @@ const linkClasses =
                  contradiction. -->
             <p
               v-if="
-                data.statements.overviewTotal != null &&
-                data.statements.overviewTotal !== data.statements.total
+                data.statements.overviewTotal != null
+                  && data.statements.overviewTotal !== data.statements.total
               "
               class="mt-3 text-xs text-ink-muted"
             >
@@ -859,9 +856,10 @@ const linkClasses =
                Wiederholung nicht auf, in Prosa steht sie nackt da. -->
           <p class="max-w-prose text-sm text-ink">
             Der Entwurf wurde als
-            <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses"
-              >Regierungsvorlage {{ data.enactment.rvCitation }}</ExternalLink
-            >
+            <ExternalLink
+              :href="data.enactment.rvUrl"
+              :class="linkClasses"
+            >Regierungsvorlage {{ data.enactment.rvCitation }}</ExternalLink>
             eingebracht.
           </p>
           <!-- ME→RV ist 1:n: ohne diesen Satz ist die zweite
@@ -869,10 +867,10 @@ const linkClasses =
                132 im XXVIII-Korpus). -->
           <p v-if="data.enactment.furtherRv.length" class="mt-2 max-w-prose text-sm text-ink">
             Aus dem Entwurf ging außerdem
-            <template v-for="(rv, i) in data.enactment.furtherRv" :key="rv.url"
-              ><span v-if="i > 0">, </span
-              ><ExternalLink :href="rv.url" :class="linkClasses">{{ rv.label }}</ExternalLink></template
-            >
+            <template
+              v-for="(rv, i) in data.enactment.furtherRv"
+              :key="rv.url"
+            ><span v-if="i > 0">, </span><ExternalLink :href="rv.url" :class="linkClasses">{{ rv.label }}</ExternalLink></template>
             hervor.
           </p>
           <!-- Mechanismus 3, Handarbeit: die Einladung zu dem Vergleich, den
@@ -913,8 +911,7 @@ const linkClasses =
             <NuxtLink
               :to="`/entwuerfe/${data.successor.gp}/${data.successor.inr}`"
               :class="linkClasses"
-              >{{ data.successor.citation }}</NuxtLink
-            >{{ relatedGpSuffix(data.successor.gp) }}, eingelangt am
+            >{{ data.successor.citation }}</NuxtLink>{{ relatedGpSuffix(data.successor.gp) }}, eingelangt am
             {{ formatDateDe(data.successor.arrivedAt) }}.
           </p>
         </div>
@@ -982,9 +979,10 @@ const linkClasses =
              Regierungsvorlage; its page upstream is where the readings,
              dates and votes live. -->
         <p class="mt-3 text-sm text-ink-secondary">
-          <ExternalLink :href="data.enactment.rvUrl" :class="linkClasses"
-            >Verlauf auf parlament.gv.at</ExternalLink
-          >
+          <ExternalLink
+            :href="data.enactment.rvUrl"
+            :class="linkClasses"
+          >Verlauf auf parlament.gv.at</ExternalLink>
         </p>
       </section>
 
@@ -1006,17 +1004,17 @@ const linkClasses =
             v-if="data.enactment.bgblRisUrl"
             :href="data.enactment.bgblRisUrl"
             :class="linkClasses"
-            >{{ data.enactment.bgblNumber }}</ExternalLink
-          ><span v-else>{{ data.enactment.bgblNumber }}</span>.
+          >{{ data.enactment.bgblNumber }}</ExternalLink><span v-else>{{ data.enactment.bgblNumber }}</span>.
         </p>
       </section>
 
       <p class="mt-10 border-t border-hairline pt-4 max-w-prose text-sm text-ink-secondary">
         Wird dieses Verfahren öffentlich unter einem anderen Namen diskutiert?
         Hinweise an
-        <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
-          >kontakt@begutachtungs-monitor.at</a
-        > — die Suche findet den Entwurf dann auch darunter.
+        <a
+          href="mailto:kontakt@begutachtungs-monitor.at"
+          :class="linkClasses"
+        >kontakt@begutachtungs-monitor.at</a> — die Suche findet den Entwurf dann auch darunter.
       </p>
     </article>
   </div>

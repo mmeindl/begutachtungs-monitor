@@ -50,7 +50,7 @@ const SSR_DEADLINE_MS = 800
  * bei einer Navigation von Entwurf zu Entwurf wechselt sie unter der
  * Komponente. Der Schlüssel folgt ihr.
  */
-export function useExplanations(source: () => { gp?: string, inr?: number, risId?: string }) {
+export function useExplanations(source: () => { gp?: string; inr?: number; risId?: string }) {
   const endpoint = computed(() => {
     const { gp, inr, risId } = source()
     return risId ? `/api/ris-drafts/${risId}/erlaeuterungen` : `/api/drafts/${gp}/${inr}/erlaeuterungen`

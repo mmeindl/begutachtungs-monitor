@@ -129,8 +129,7 @@ const externalHost = computed(() => {
         class="font-medium text-ink group-hover:underline"
         :title="entry.titleFull ?? entry.title"
       >
-        {{ entry.title }}<span v-if="!entry.to" aria-hidden="true"> ↗</span
-        ><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }})</span>
+        {{ entry.title }}<span v-if="!entry.to" aria-hidden="true"> ↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }})</span>
       </component>
 
       <!-- ZONE 2 — Kennung: was für ein Ding, welches, von wem. Fixed
@@ -185,7 +184,7 @@ const externalHost = computed(() => {
 
     <!-- DER STAND ZUERST, DIE ZAHL DARUNTER — auf der Karte oben rechts,
          die Stellungnahmen unten rechts.
-         
+
          Umgekehrt stand es bis 18.09.2026, und die Rangfolge stimmte nicht:
          zuoberst las sich als „das Wichtigste", und das Wichtigste an einer
          Zeile ist, ob ich noch etwas tun kann — nicht, wie viele andere

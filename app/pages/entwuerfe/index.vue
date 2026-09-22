@@ -564,8 +564,8 @@ const fullTextActive = computed(
  */
 const fullTextPending = computed(
   () =>
-    fullTextActive.value
-    && (fullTextTerm.value !== qDebounced.value || fullTextStatus.value === 'pending'),
+    fullTextActive.value &&
+    (fullTextTerm.value !== qDebounced.value || fullTextStatus.value === 'pending'),
 )
 
 /** Die Treffer, die die aktiven Filter überstehen — Art und Ressort. */
@@ -574,8 +574,8 @@ const fullTextHits = computed<BegutSearchHit[]>(() =>
     if (art.value === 'verordnung' && hit.entry.kind === 'draft') return false
     if (art.value === 'ministerialentwurf' && hit.entry.kind === 'ris') return false
     if (ministry.value) {
-      const code
-        = hit.entry.kind === 'draft' ? hit.entry.draft.ministryCode : hit.entry.consultation.ministryCode
+      const code =
+        hit.entry.kind === 'draft' ? hit.entry.draft.ministryCode : hit.entry.consultation.ministryCode
       if ((code ?? '').toUpperCase() !== ministry.value.toUpperCase()) return false
     }
     return true

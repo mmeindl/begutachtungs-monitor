@@ -39,7 +39,7 @@ describe('promulgationByArticle', () => {
     const blocks = parseRisXml(
       doc(
         article('Artikel 1', 'Änderung des Glücksspielgesetzes', 'Das Glücksspielgesetz, BGBl. Nr. 620/1989, zuletzt geändert durch BGBl. I Nr. 20/2026, wird wie folgt geändert:', ['§ 5 lautet:']) +
-          article('Artikel 2', 'Änderung des KommAustria-Gesetzes', 'Das KommAustria-Gesetz, BGBl. I Nr. 32/2001, wird wie folgt geändert:', ['§ 13 lautet:']),
+        article('Artikel 2', 'Änderung des KommAustria-Gesetzes', 'Das KommAustria-Gesetz, BGBl. I Nr. 32/2001, wird wie folgt geändert:', ['§ 13 lautet:']),
       ),
     )
     const map = promulgationByArticle(blocks)
@@ -75,9 +75,9 @@ describe('promulgationByArticle', () => {
     const blocks = parseRisXml(
       doc(
         `<ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">Änderung des X-Gesetzes</ueberschrift>` +
-          `<absatz typ="promkleinlsatz">Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt geändert:</absatz>` +
-          `<absatz typ="novao1">1. § 5 lautet:</absatz>` +
-          `<absatz typ="abs">Verweis auf BGBl. I Nr. 99/2099, wird wie folgt geändert</absatz>`,
+        `<absatz typ="promkleinlsatz">Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt geändert:</absatz>` +
+        `<absatz typ="novao1">1. § 5 lautet:</absatz>` +
+        `<absatz typ="abs">Verweis auf BGBl. I Nr. 99/2099, wird wie folgt geändert</absatz>`,
       ),
     )
     expect(promulgationByArticle(blocks).get('Änderung des X-Gesetzes')).toEqual({ organ: 'BGBl. I Nr.', nummer: '1/2000' })
@@ -369,8 +369,8 @@ describe('lawNameScore', () => {
 describe('articleBlocks', () => {
   const xml = doc(
     '<ueberschrift typ="titel">Bundesgesetz, mit dem das Glücksspielgesetz und das Tabakgesetz geändert werden</ueberschrift>' +
-      article('Artikel 1', 'Änderung des Glücksspielgesetzes', 'Das Glücksspielgesetz, BGBl. Nr. 620/1989, wird wie folgt geändert:', ['§ 5 lautet:', '§ 6 entfällt.']) +
-      article('Artikel 2', 'Änderung des Tabakgesetzes', 'Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:', ['§ 5 Abs. 1 lautet:']),
+    article('Artikel 1', 'Änderung des Glücksspielgesetzes', 'Das Glücksspielgesetz, BGBl. Nr. 620/1989, wird wie folgt geändert:', ['§ 5 lautet:', '§ 6 entfällt.']) +
+    article('Artikel 2', 'Änderung des Tabakgesetzes', 'Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:', ['§ 5 Abs. 1 lautet:']),
   )
 
   it('gives every Artikel the text it owns, and keeps the printed order', () => {
@@ -406,8 +406,8 @@ describe('articleBlocks', () => {
   it('treats a Novelle without Artikel as one entry over the whole document', () => {
     const single = doc(
       '<ueberschrift typ="titel">Bundesgesetz, mit dem das Tabakgesetz geändert wird</ueberschrift>' +
-        '<absatz typ="promkleinlsatz">Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:</absatz>' +
-        '<absatz typ="novao1">1. § 5 lautet:</absatz>',
+      '<absatz typ="promkleinlsatz">Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:</absatz>' +
+      '<absatz typ="novao1">1. § 5 lautet:</absatz>',
     )
     const parts = articleBlocks(parseRisXml(single))
     expect(parts).toHaveLength(1)

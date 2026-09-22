@@ -959,8 +959,6 @@ function scopeOf(law: StandingLaw, a: NovaoAddress): LawNode[] | null {
   return nodes
 }
 
-
-
 function parentOf(law: StandingLaw, node: LawNode): LawNode | null {
   for (const para of law.paragraphs) {
     const stack: LawNode[] = [para]

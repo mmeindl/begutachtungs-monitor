@@ -154,8 +154,8 @@ const loadAnnouncement = computed(() => {
            Bildunterschrift (dieselbe Regel wie im Vergleichsabschnitt). -->
       <p v-if="!data.labelled" class="max-w-prose text-sm text-ink-muted">
         Das Ressort gliedert diese Erläuterungen nicht selbst.<template v-if="data.hasSpecial">
-        Wo die Erläuterungen zu den einzelnen Paragraphen beginnen, haben wir
-        abgegrenzt.</template>
+          Wo die Erläuterungen zu den einzelnen Paragraphen beginnen, haben wir
+          abgegrenzt.</template>
       </p>
 
       <div :class="data.labelled ? '' : 'mt-3'">
@@ -245,8 +245,7 @@ const loadAnnouncement = computed(() => {
           v-if="data.document"
           :href="data.document.url"
           class="text-accent-deep hover:underline"
-          >{{ sourceLabel }}</ExternalLink
-        >
+        >{{ sourceLabel }}</ExternalLink>
       </p>
     </template>
   </div>

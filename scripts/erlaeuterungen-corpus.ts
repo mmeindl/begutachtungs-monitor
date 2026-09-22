@@ -279,7 +279,7 @@ console.log(`# Erläuterungen im RIS-Begut-Korpus`)
 console.log(`Korpus ${corpus.records.length} Sätze · Fenster ${all ? 'alle' : `Beginn ab ${since}`}: ${inWindow.length} Sätze`)
 console.log(
   `  Erläuterungen-Dokument vorhanden   ${String(inWindow.filter((r) => hasDocument(r.explanations)).length).padStart(5)}` +
-    `  ${((inWindow.filter((r) => hasDocument(r.explanations)).length / inWindow.length) * 100).toFixed(1)} %`,
+  `  ${((inWindow.filter((r) => hasDocument(r.explanations)).length / inWindow.length) * 100).toFixed(1)} %`,
 )
 console.log(`  davon als XML lesbar angeboten     ${String(withXml.length).padStart(5)}  ${((withXml.length / inWindow.length) * 100).toFixed(1)} %`)
 console.log(`  gelesen in diesem Lauf            ${String(targets.length).padStart(5)}`)
@@ -382,8 +382,8 @@ for (const r of longest) {
   const g = r.doc!.general!
   console.log(
     `  ${String(g.chars).padStart(7)} Zeichen  ${String(g.passages.length).padStart(3)} Passagen  ` +
-      `${r.doc!.generalInferred ? 'erschlossen' : 'benannt    '}  ${r.doc!.special ? 'mit BT ' : 'ohne BT'}  ` +
-      `${r.record.id}\n      ${(r.record.kurztitel ?? r.record.titel ?? '').slice(0, 80)}`,
+    `${r.doc!.generalInferred ? 'erschlossen' : 'benannt    '}  ${r.doc!.special ? 'mit BT ' : 'ohne BT'}  ` +
+    `${r.record.id}\n      ${(r.record.kurztitel ?? r.record.titel ?? '').slice(0, 80)}`,
   )
 }
 

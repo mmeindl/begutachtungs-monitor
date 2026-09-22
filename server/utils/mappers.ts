@@ -822,4 +822,3 @@ export function bgblOrderKey(number: string | null | undefined): number | null {
 // ---------------------------------------------------------------------------
 // Roman numerals (GP codes) — for availableGps
 // ---------------------------------------------------------------------------
-

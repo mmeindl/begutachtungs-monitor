@@ -58,9 +58,10 @@ const linkClasses =
           Manuel Meindl<br>
           Wohnort: Linz, Österreich<br>
           E-Mail:
-          <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
-            >kontakt@begutachtungs-monitor.at</a
-          >
+          <a
+            href="mailto:kontakt@begutachtungs-monitor.at"
+            :class="linkClasses"
+          >kontakt@begutachtungs-monitor.at</a>
         </address>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Begutachtungs-Monitor ist ein privates, nichtkommerzielles
@@ -134,13 +135,15 @@ const linkClasses =
           Textvergleich zwischen Entwurf und Regierungsvorlage. Fehler in
           dieser Aufbereitung sind möglich; maßgeblich ist immer die
           Originalquelle auf
-          <ExternalLink href="https://www.parlament.gv.at" :class="linkClasses"
-            >parlament.gv.at</ExternalLink
-          >, auf die jede Angabe verlinkt ist. Hinweise auf Fehler sind
+          <ExternalLink
+            href="https://www.parlament.gv.at"
+            :class="linkClasses"
+          >parlament.gv.at</ExternalLink>, auf die jede Angabe verlinkt ist. Hinweise auf Fehler sind
           willkommen – per
-          <a href="mailto:kontakt@begutachtungs-monitor.at" :class="linkClasses"
-            >E-Mail</a
-          >
+          <a
+            href="mailto:kontakt@begutachtungs-monitor.at"
+            :class="linkClasses"
+          >E-Mail</a>
           oder als
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor/issues"
@@ -150,9 +153,10 @@ const linkClasses =
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Stellungnahmen von Privatpersonen werden nicht namentlich
           wiedergegeben; warum, steht
-          <NuxtLink to="/ueber#about-privacy" :class="linkClasses"
-            >auf der Über-Seite</NuxtLink
-          >.
+          <NuxtLink
+            to="/ueber#about-privacy"
+            :class="linkClasses"
+          >auf der Über-Seite</NuxtLink>.
         </p>
       </section>
 
@@ -228,9 +232,10 @@ const linkClasses =
               wir haben die Parlamentsdirektion um Klärung gebeten, wie weit
               er reicht. Volltexte
               von Stellungnahmen übernimmt er nicht, sondern verlinkt sie auf
-              <ExternalLink href="https://www.parlament.gv.at" :class="linkClasses"
-                >parlament.gv.at</ExternalLink
-              >. Namen von Privatpersonen veröffentlicht er nicht.
+              <ExternalLink
+                href="https://www.parlament.gv.at"
+                :class="linkClasses"
+              >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
             </dd>
           </div>
         </dl>
@@ -251,9 +256,10 @@ const linkClasses =
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Welche Daten beim Besuch dieser Website verarbeitet werden – und
           welche nicht – steht in der
-          <NuxtLink to="/datenschutz" :class="linkClasses"
-            >Datenschutzerklärung</NuxtLink
-          >.
+          <NuxtLink
+            to="/datenschutz"
+            :class="linkClasses"
+          >Datenschutzerklärung</NuxtLink>.
         </p>
       </section>
     </div>
