@@ -25,7 +25,8 @@
  * carries the law's current name after a rename ("Waldfondsgesetz" →
  * "Waldresilienzfondsgesetz").
  */
-import { getText, resolveLawByBgbl, fetchParagraphTree } from '../server/utils/risKons'
+import { getText, resolveLawByBgbl } from '../server/utils/ris/konsLaw'
+import { fetchParagraphTree } from '../server/utils/harness/risKonsHistory'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { promulgationByArticle } from '../server/utils/lawtext/draftArticles'

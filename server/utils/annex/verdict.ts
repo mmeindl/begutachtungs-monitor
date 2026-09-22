@@ -59,7 +59,7 @@
 import type { TextBlock } from '../lawtext/lawUnits'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { mapWithConcurrency } from '../pool'
-import type { KonsLawAtDate, KonsParagraphRef } from '../risKons'
+import type { KonsLawAtDate, KonsParagraphRef } from '../ris/konsLaw'
 import type { ComparisonRow } from './comparisonRows'
 import type { AnnexWithheldCause } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'

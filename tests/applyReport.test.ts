@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extraTokens, isOmissionOf, isSubsetOfRis, verdictFor, verdictForTrees } from '../server/utils/applyReport'
+import { extraTokens, isOmissionOf, isSubsetOfRis, verdictFor, verdictForTrees } from '../server/utils/harness/applyReport'
 import type { LawNode } from '../server/utils/lawtext/konsTree'
 
 const before = 'Zuständig ist die Behörde am Sitz der Partei.'

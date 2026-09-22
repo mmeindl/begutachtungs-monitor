@@ -11,13 +11,16 @@
  * the harness reported 0,9 % dangerous instead of 23,9 %. `scripts/` is
  * outside the typecheck, so nothing caught it.
  *
+ * Harness-only: nothing on the request path imports this; the harnesses and
+ * their tests do.
+ *
  * The lesson is structural, not clerical: the part of a harness that renders
  * a verdict is exactly as load-bearing as the code it judges, and belongs
  * where tests and the compiler can reach it. Only the I/O stays in a script.
  */
-import { diffTokens } from './diff/wordDiff'
-import { plainText, type LawNode } from './lawtext/konsTree'
-import type { LawDiffSegment } from '../../shared/types'
+import { diffTokens } from '../diff/wordDiff'
+import { plainText, type LawNode } from '../lawtext/konsTree'
+import type { LawDiffSegment } from '../../../shared/types'
 
 /** How an engine result relates to the version RIS actually holds. */
 export type ApplyVerdict =

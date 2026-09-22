@@ -22,7 +22,7 @@ import {
 } from '../server/utils/annex/verdict'
 import type { TextBlock } from '../server/utils/lawtext/lawUnits'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
-import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/risKons'
+import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/ris/konsLaw'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({

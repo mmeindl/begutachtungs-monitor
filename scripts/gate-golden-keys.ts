@@ -6,7 +6,7 @@
  * identifies a question and how an answer is stored, and two copies of that
  * rule drift on the day one of them learns a new field.
  */
-import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/risKons'
+import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/ris/konsLaw'
 
 /**
  * A § is keyed by its Normdokumentnummer and printed label, never by the whole

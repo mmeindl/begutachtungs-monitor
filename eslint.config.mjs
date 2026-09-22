@@ -105,7 +105,7 @@ export default withNuxt(
     // the escape, proven to match the same characters; a regex in the report
     // engine is not something this phase edits (`refactor-plan.md` §9).
     name: 'begut/tokenizer-brackets',
-    files: ['server/utils/applyReport.ts'],
+    files: ['server/utils/harness/applyReport.ts'],
     rules: { 'no-useless-escape': 'off' },
   },
 )

@@ -35,7 +35,7 @@ import { parseKonsParagraph } from './lawtext/konsTree'
 import { getDraftsForGp, getGegenstand } from './parliament/drafts'
 import { getRisMapForGp } from './ris/begutCorpus'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
-import type { KonsParagraphRef } from './risKons'
+import type { KonsParagraphRef } from './ris/konsLaw'
 import { mapWithConcurrency } from './pool'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pickByName } from '../server/utils/risKons'
+import { pickByName } from '../server/utils/ris/konsLaw'
 
 /**
  * Which law of a Bundesgesetzblatt a caller meant.

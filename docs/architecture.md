@@ -733,9 +733,9 @@ pure modules plus a harness, none of it wired to a page yet:
 | `server/utils/lawtext/konsTree.ts` | RIS-BrKons-Paragraph → adressierbarer Baum (§ → Abs → Z → lit) |
 | `server/utils/lawtext/draftArticles.ts` | Promulgationsklausel → Stammnorm; `articleBlocks` schneidet ein Paket in seine Gesetze |
 | `server/utils/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
-| `server/utils/risKons.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
+| `server/utils/ris/konsLaw.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
 | `scripts/novao-corpus.ts`, `novao-forms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
-| `server/utils/applyReport.ts` | bewertet einen Lauf gegen die echte Fassung |
+| `server/utils/harness/applyReport.ts` | bewertet einen Lauf gegen die echte Fassung |
 | `scripts/kons-harness.ts` | Prüfstand: BGBl-Anweisungen anwenden, Ergebnis gegen die echte Fassung vergleichen; `--sammel` je Artikel |
 | `scripts/me-harness.ts` | Prüfstand für den Produktionspfad: Entwurfs-Anweisungen anwenden, gegen die Gegenüberstellung desselben Entwurfs halten |
 
@@ -779,7 +779,7 @@ zählt als Abweichung und nie als bestanden.
    jede Abweichung sah harmlos aus. Der Code lag in `scripts/`, und `scripts/`
    ist von `nuxt typecheck` nicht erfasst, also fiel der unmögliche Vergleich
    niemandem auf. Die Bewertungslogik liegt seit der Korrektur in
-   `server/utils/applyReport.ts` mit Tests: der Teil eines Prüfstands, der ein
+   `server/utils/harness/applyReport.ts` mit Tests: der Teil eines Prüfstands, der ein
    Urteil fällt, trägt genauso viel wie der geprüfte Code.
 
 1. *Verweigern schlägt Deckung.* Eine Zwischenversion las 88,4 % der
@@ -5706,7 +5706,7 @@ langsamsten gemessenen Kaltfalls. Nachgemessen an vier Entwürfen kostet der
 Abschnitt im kalten Seitenaufbau 0 bis 200 ms, im warmen nichts.
 
 **Was die Frist abwendet, ist kein Ausreißer, sondern eine Bauart:** `getText`
-(`risKons.ts`) wartet 20 s und versucht es dreimal, also könnte eine kranke
+(`ris/konsLaw.ts`) wartet 20 s und versucht es dreimal, also könnte eine kranke
 Gegenstelle eine Seitenauslieferung knapp eine Minute lang aufhalten. Der
 Abbruch gilt dem **Rendern**, nicht dem Abruf — `Promise.race` lässt die
 angefangene Anfrage weiterlaufen, sie füllt den Cache, und der Nachschlag des
