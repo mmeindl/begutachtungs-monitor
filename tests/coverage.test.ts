@@ -1,21 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { coverageOf, coverageOfParagraph, displayedChangeRows } from '../server/utils/annex/coverage'
-import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
-
-const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
-  kind: 'pair',
-  law: null,
-  heading: null,
-  gld: null,
-  para: '§ 5.',
-  current: '',
-  proposed: '',
-  change: 'changed',
-  elided: false,
-  segments: null,
-  editorial: false,
-  ...over,
-})
+import { comparisonRow as row } from './helpers/builders'
 
 describe('coverageOf', () => {
   it('is containment of a deliberate subset, never equality', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DraftSummary, RisConsultation } from '../shared/types'
+import { draftSummary as draft, risConsultation } from './helpers/builders'
 import {
   bodyEtag,
   buildIcsCalendar,
@@ -13,41 +13,7 @@ import {
 
 const SITE = 'https://begutachtungs-monitor.at'
 
-function draft(overrides: Partial<DraftSummary> = {}): DraftSummary {
-  return {
-    gp: 'XXVIII',
-    inr: 88,
-    citation: '88/ME',
-    title: 'Umsatzsteuergesetz, Änderung',
-    ministryCode: 'BMF',
-    ministryName: 'Bundesministerium für Finanzen',
-    arrivedAt: '2026-03-11',
-    deadline: '2026-04-08',
-    active: false,
-    statementCount: 707,
-    parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/ME/88',
-    ...overrides,
-  }
-}
-
-/** A Begutachtung without a parliamentary Gegenstand (docs/architecture.md §12.16). */
-function risConsultation(overrides: Partial<RisConsultation> = {}): RisConsultation {
-  return {
-    id: 'BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B',
-    kind: 'verordnung',
-    // Der Ausgang ist der Normalfall-Default: nicht ermittelt.
-    outcome: null,
-    title: 'Änderung der Druckgeräteaufstellungsverordnung – DGAV',
-    longTitle: null,
-    ministryCode: 'BMWET',
-    ministryName: 'Bundesministerium für Wirtschaft, Energie und Tourismus',
-    startedAt: '2026-09-08',
-    deadline: '2026-10-19',
-    active: true,
-    risUrl: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B',
-    ...overrides,
-  }
-}
+/** 88/ME and the DGAV-Verordnung — the specimens the shared builders default to. */
 
 describe('escapeXml', () => {
   it('escapes all five XML special characters', () => {

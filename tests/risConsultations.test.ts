@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RisConsultation } from '../shared/types'
 import { gpWindow } from '../shared/utils/gp'
+import { risConsultation } from './helpers/builders'
 import {
   RIS_KIND_HINT,
   RIS_KIND_LABEL,
@@ -14,23 +15,13 @@ import {
  * Gegenstand (docs/architecture.md §12.16).
  */
 
-function c(overrides: Partial<RisConsultation> = {}): RisConsultation {
-  return {
-    id: 'BEGUT_A',
-    kind: 'verordnung',
-    // Der Ausgang ist der Normalfall-Default: nicht ermittelt.
-    outcome: null,
-    title: 'Änderung der Druckgeräteaufstellungsverordnung',
-    longTitle: null,
-    ministryCode: 'BMWET',
-    ministryName: 'Bundesministerium für Wirtschaft, Energie und Tourismus',
-    startedAt: '2026-09-08',
-    deadline: '2026-10-19',
-    active: true,
-    risUrl: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=BEGUT_A',
-    ...overrides,
-  }
-}
+/** Short ids, because every test below sorts by them and reads the order back. */
+const c = (overrides: Partial<RisConsultation> = {}): RisConsultation => risConsultation({
+  id: 'BEGUT_A',
+  title: 'Änderung der Druckgeräteaufstellungsverordnung',
+  risUrl: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Begut&Dokumentnummer=BEGUT_A',
+  ...overrides,
+})
 
 const ids = (list: RisConsultation[]) => [...list].sort(sortConsultations).map((x) => x.id)
 

@@ -2,66 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { DRAFT_THRESHOLD, MIN_MISSING_WORDS, MIN_NEW_WORDS, MIN_STANDING_STRETCH, draftBags, draftReference, draftWordBag, insertedStretches, rightColumnCheck, type StandingText, type WordBag } from '../server/utils/annex/rightColumn'
 import type { TextBlock } from '../server/utils/lawtext/lawUnits'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
-
-const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
-  kind: 'pair',
-  law: null,
-  heading: null,
-  gld: null,
-  para: '§ 5.',
-  current: '',
-  proposed: '',
-  change: 'changed',
-  elided: false,
-  segments: null,
-  editorial: false,
-  ...over,
-})
-
-/** Prose long enough to be judged — the same fixture `verdict.test.ts` drafts against. */
-const PROSE = 'Die Behörde entscheidet über den Antrag binnen sechs Wochen nach seiner Einbringung.'
+import { KEPT, LOST, PROSE, STANDING_BODY, comparisonRow as row, foreignRows, lostSentenceRows } from './helpers/builders'
 
 // ---------------------------------------------------------------------------
 // The right column: „bereits geltend" and „nicht im Entwurf"
 // ---------------------------------------------------------------------------
 
-/** A § of three sentences, as RIS holds it. */
-const STANDING_BODY = 'Die Behörde entscheidet über den Antrag. Der Bescheid ergeht schriftlich und ist zu begründen. Eine Beschwerde hat keine aufschiebende Wirkung.'
 const STANDING: StandingText = { text: STANDING_BODY, heading: '' }
-/** The middle sentence — what a parse loses on the left and the diff then paints green. */
-const LOST = 'Der Bescheid ergeht schriftlich und ist zu begründen.'
-const KEPT = 'Die Behörde entscheidet über den Antrag. Eine Beschwerde hat keine aufschiebende Wirkung.'
-
-/** The § after the left column lost `LOST`: the word diff calls it an addition. */
-function lostSentenceRows(current = KEPT): ComparisonRow[] {
-  return [row({
-    gld: '§ 1.',
-    para: '§ 1.',
-    current,
-    proposed: STANDING_BODY,
-    segments: [
-      { type: 'equal', text: 'Die Behörde entscheidet über den Antrag.' },
-      { type: 'inserted', text: LOST },
-      { type: 'equal', text: 'Eine Beschwerde hat keine aufschiebende Wirkung.' },
-    ],
-  })]
-}
-
-/** Twelve words of law belonging to no part of this draft — a contaminated right column. */
-const FOREIGN = 'Rechtsgeschäfte über Grundstücke bedürfen zwingend behördlicher Zustimmung wenn Nutzungsrechte begründet werden sollen.'
-
-function foreignRows(): ComparisonRow[] {
-  return [row({
-    gld: '§ 2.',
-    para: '§ 2.',
-    current: 'Die Behörde entscheidet über den Antrag.',
-    proposed: `Die Behörde entscheidet über den Antrag. ${FOREIGN}`,
-    segments: [
-      { type: 'equal', text: 'Die Behörde entscheidet über den Antrag.' },
-      { type: 'inserted', text: FOREIGN },
-    ],
-  })]
-}
 
 /** The draft's words as rule 2 receives them, for the tests that pass a text. */
 const bag = (text: string): WordBag => {

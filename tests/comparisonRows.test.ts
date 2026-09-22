@@ -2,23 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseTextComparison, summarizeComparison } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
-
-/**
- * The draft the annex belongs to. A law boundary the annex prints has to be
- * one of the draft's own Artikel, so a fixture expecting a boundary has to say
- * which draft it is an annex to.
- */
-function draft(...articles: { n?: string; title?: string | null }[]): DraftArticle[] {
-  return articles.map((a, index) => ({
-    index,
-    number: a.n ? `Artikel ${a.n}` : null,
-    numeral: a.n ?? null,
-    title: a.title ?? null,
-    key: a.title ?? (a.n ? `Artikel ${a.n}` : null),
-    amends: true,
-    bgbl: null,
-  }))
-}
+import { draftArticles as draft } from './helpers/builders'
 
 const ONE_LAW = draft({ title: 'Änderung des Aktiengesetzes' })
 const parse = (xml: string, articles: DraftArticle[] = ONE_LAW) => parseTextComparison(xml, articles).rows

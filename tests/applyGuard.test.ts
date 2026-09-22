@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { guardParagraph, SIZE_TOLERANCE } from '../server/utils/kons/applyGuard'
 import { applyNovelle, parsePayload, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
-import { makeNode, type LawNode } from '../server/utils/lawtext/konsTree'
+import type { LawNode } from '../server/utils/lawtext/konsTree'
+import { paraNode as para } from './helpers/builders'
 import { parseInstruction } from '../server/utils/kons/novao'
-
-function para(id: string, heading: string, absaetze: string[]): LawNode {
-  const node = makeNode('para', id, `§ ${id}.`, '', heading)
-  absaetze.forEach((a, i) => node.children.push(makeNode('abs', String(i + 1), `(${i + 1})`, a)))
-  return node
-}
 
 function law(): StandingLaw {
   return { paragraphs: [para('6', 'Zuständigkeit', ['Zuständig ist die Behörde am Sitz der Partei. Sie entscheidet binnen sechs Wochen.'])] }

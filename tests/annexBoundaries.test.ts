@@ -1,19 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { candidateOf, resolveBoundaries } from '../server/utils/annex/annexBoundaries'
-import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
+import { draftArticles as draft } from './helpers/builders'
 import { lawNameScore } from '../server/utils/lawtext/lawNames'
-
-function draft(...articles: { n?: string; title?: string | null; amends?: boolean }[]): DraftArticle[] {
-  return articles.map((a, index) => ({
-    index,
-    number: a.n ? `Artikel ${a.n}` : null,
-    numeral: a.n ?? null,
-    title: a.title ?? null,
-    key: a.title ?? (a.n ? `Artikel ${a.n}` : null),
-    amends: a.amends ?? true,
-    bgbl: null,
-  }))
-}
 
 const cands = (...lines: string[]) => lines.map((l) => candidateOf(l)).filter((c) => c !== null)
 

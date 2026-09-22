@@ -22,41 +22,35 @@ import {
   viewOfRis,
   viewOfVorlage,
 } from '../app/utils/entryView'
+import { draftSummary, risConsultation } from './helpers/builders'
 
 /** Ein Fristende weit in der Vergangenheit, damit `active` nie hineinredet. */
 const PAST = '2025-08-31'
 
-function draft(overrides: Partial<DraftSummary> = {}): DraftSummary {
-  return {
-    gp: 'XXVIII',
-    inr: 126,
-    citation: '126/ME',
-    title: 'Bundesgesetz über die Bundesstaatsanwaltschaft',
-    ministryCode: 'BMJ',
-    ministryName: 'Bundesministerium für Justiz',
-    arrivedAt: '2025-06-30',
-    deadline: PAST,
-    active: false,
-    statementCount: 846,
-    parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/ME/126',
-    ...overrides,
-  }
-}
+/** 126/ME Bundesstaatsanwaltschaft — 846 Stellungnahmen, die Zeile mit der Zahl. */
+const draft = (overrides: Partial<DraftSummary> = {}): DraftSummary => draftSummary({
+  inr: 126,
+  citation: '126/ME',
+  title: 'Bundesgesetz über die Bundesstaatsanwaltschaft',
+  ministryCode: 'BMJ',
+  ministryName: 'Bundesministerium für Justiz',
+  arrivedAt: '2025-06-30',
+  deadline: PAST,
+  statementCount: 846,
+  parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/ME/126',
+  ...overrides,
+})
 
-function ris(overrides: Partial<RisConsultation> = {}): RisConsultation {
-  return {
-    id: 'BEGUT_COO_2026_100_2_1836568',
-    title: 'Abwasseremissionsverordnung Tierkörperverwertung',
-    longTitle: null,
-    kind: 'verordnung',
-    ministryCode: 'BMLUK',
-    ministryName: 'Bundesministerium für Land- und Forstwirtschaft',
-    startedAt: '2026-08-27',
-    deadline: '2026-10-08',
-    active: true,
-    ...overrides,
-  } as RisConsultation
-}
+/** Ein Verordnungsentwurf, der Fall ohne parlamentarischen Gegenstand. */
+const ris = (overrides: Partial<RisConsultation> = {}): RisConsultation => risConsultation({
+  id: 'BEGUT_COO_2026_100_2_1836568',
+  title: 'Abwasseremissionsverordnung Tierkörperverwertung',
+  ministryCode: 'BMLUK',
+  ministryName: 'Bundesministerium für Land- und Forstwirtschaft',
+  startedAt: '2026-08-27',
+  deadline: '2026-10-08',
+  ...overrides,
+})
 
 function vorlage(overrides: Partial<OpenVorlage> = {}): OpenVorlage {
   return {

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseAnnexPdf, type AnnexPage } from '../server/utils/annex/annexPdf'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
+import { draftArticle } from './helpers/builders'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 /**
@@ -44,15 +45,9 @@ import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/c
  */
 const fixture = (name: string): string => readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), 'utf8')
 
-const article = (index: number, numeral: string | null, title: string, amends: boolean): DraftArticle => ({
-  index,
-  number: numeral ? `Artikel ${numeral}` : null,
-  numeral,
-  title,
-  key: title,
-  amends,
-  bgbl: null,
-})
+/** Positional, because the two drafts below are read off a real document in order. */
+const article = (index: number, numeral: string | null, title: string, amends: boolean): DraftArticle =>
+  draftArticle({ index, number: numeral ? `Artikel ${numeral}` : null, numeral, title, key: title, amends, bgbl: null })
 
 /** `draftArticles` of the draft each annex belongs to, as the service passes it in. */
 const VKRG_DRAFT: DraftArticle[] = [

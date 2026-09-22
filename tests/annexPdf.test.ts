@@ -2,24 +2,8 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
 import { uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
+import { draftArticles as draft } from './helpers/builders'
 import type { TextComparisonResponse } from '../shared/types'
-
-/**
- * The draft the annex belongs to. Every law boundary in an annex has to be one
- * of the draft's own Artikel, so a fixture that expects a boundary has to say
- * which draft it is an annex to.
- */
-function draft(...articles: { n?: string; title?: string | null; amends?: boolean }[]): DraftArticle[] {
-  return articles.map((a, index) => ({
-    index,
-    number: a.n ? `Artikel ${a.n}` : null,
-    numeral: a.n ?? null,
-    title: a.title ?? null,
-    key: a.title ?? (a.n ? `Artikel ${a.n}` : null),
-    amends: a.amends ?? true,
-    bgbl: null,
-  }))
-}
 
 /** One law, no Artikel structure — the shape of two drafts in three. */
 const ONE_LAW = draft({ title: 'Änderung des Sicherheitspolizeigesetzes' })

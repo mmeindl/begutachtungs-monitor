@@ -21,24 +21,9 @@ import {
   type AnnexSources,
 } from '../server/utils/annex/verdict'
 import type { TextBlock } from '../server/utils/lawtext/lawUnits'
-import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/ris/konsLaw'
-import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
-
-const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
-  kind: 'pair',
-  law: null,
-  heading: null,
-  gld: null,
-  para: '§ 5.',
-  current: '',
-  proposed: '',
-  change: 'changed',
-  elided: false,
-  segments: null,
-  editorial: false,
-  ...over,
-})
+import { parseTextComparison } from '../server/utils/annex/comparisonRows'
+import { FOREIGN, LOST, PROSE, STANDING_BODY, comparisonRow as row, draftArticle as article, foreignRows, lostSentenceRows } from './helpers/builders'
 
 describe('lawCheck', () => {
   const cov = (ratio: number, prose = true): Coverage => ({ ratio, missing: [], comparable: prose ? 40 : 3, prose })
@@ -92,55 +77,6 @@ describe('lawCheck', () => {
 // verifyAnnex, against fakes — `AnnexSources` exists for exactly this
 // ---------------------------------------------------------------------------
 
-/** A § of three sentences, as RIS holds it. */
-const STANDING_BODY = 'Die Behörde entscheidet über den Antrag. Der Bescheid ergeht schriftlich und ist zu begründen. Eine Beschwerde hat keine aufschiebende Wirkung.'
-
-/** The middle sentence — what a parse loses on the left and the diff then paints green. */
-const LOST = 'Der Bescheid ergeht schriftlich und ist zu begründen.'
-const KEPT = 'Die Behörde entscheidet über den Antrag. Eine Beschwerde hat keine aufschiebende Wirkung.'
-
-/** The § after the left column lost `LOST`: the word diff calls it an addition. */
-function lostSentenceRows(current = KEPT): ComparisonRow[] {
-  return [row({
-    gld: '§ 1.',
-    para: '§ 1.',
-    current,
-    proposed: STANDING_BODY,
-    segments: [
-      { type: 'equal', text: 'Die Behörde entscheidet über den Antrag.' },
-      { type: 'inserted', text: LOST },
-      { type: 'equal', text: 'Eine Beschwerde hat keine aufschiebende Wirkung.' },
-    ],
-  })]
-}
-
-/** Twelve words of law belonging to no part of this draft — a contaminated right column. */
-const FOREIGN = 'Rechtsgeschäfte über Grundstücke bedürfen zwingend behördlicher Zustimmung wenn Nutzungsrechte begründet werden sollen.'
-
-function foreignRows(): ComparisonRow[] {
-  return [row({
-    gld: '§ 2.',
-    para: '§ 2.',
-    current: 'Die Behörde entscheidet über den Antrag.',
-    proposed: `Die Behörde entscheidet über den Antrag. ${FOREIGN}`,
-    segments: [
-      { type: 'equal', text: 'Die Behörde entscheidet über den Antrag.' },
-      { type: 'inserted', text: FOREIGN },
-    ],
-  })]
-}
-
-const article = (over: Partial<DraftArticle> = {}): DraftArticle => ({
-  index: 0,
-  number: 'Artikel 1',
-  numeral: '1',
-  title: 'X-Gesetz',
-  key: 'X-Gesetz',
-  amends: true,
-  bgbl: { organ: 'BGBl. I', nummer: '1/2020' },
-  ...over,
-})
-
 /**
  * label → standing text, or null for a § RIS holds as a table.
  *
@@ -179,8 +115,7 @@ function fakeSources(laws: Record<string, FakeLaw>, over: Partial<AnnexSources> 
   }
 }
 
-/** Prose long enough to be judged, and its verbatim twin for the RIS side. */
-const PROSE = 'Die Behörde entscheidet über den Antrag binnen sechs Wochen nach seiner Einbringung.'
+/** The verbatim twin of the judged `PROSE`, for the RIS side. */
 const OTHER_PROSE = 'Der Bund trägt die Kosten des Datenrechenzentrums nach Anhörung der Landesregierung.'
 
 /** One Novellierungsanordnung, in the shape `parseRisXml` hands it over. */

@@ -13,23 +13,21 @@
 import { describe, expect, it } from 'vitest'
 import type { DraftSummary } from '../shared/types'
 import { findPrecedingDraft } from '../server/utils/parliament/precedingDraft'
+import { draftSummary } from './helpers/builders'
 
-function draft(overrides: Partial<DraftSummary> = {}): DraftSummary {
-  return {
-    gp: 'XXVIII',
-    inr: 73,
-    citation: '73/ME',
-    title: 'Gewerbeordnung, Änderung',
-    ministryCode: 'BMWET',
-    ministryName: 'Bundesministerium für Wirtschaft, Energie und Tourismus',
-    arrivedAt: '2025-12-29',
-    deadline: '2026-02-20',
-    active: false,
-    statementCount: 35,
-    parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/ME/73',
-    ...overrides,
-  }
-}
+/** 73/ME Gewerbeordnung — the draft every assertion below is about. */
+const draft = (overrides: Partial<DraftSummary> = {}): DraftSummary => draftSummary({
+  inr: 73,
+  citation: '73/ME',
+  title: 'Gewerbeordnung, Änderung',
+  ministryCode: 'BMWET',
+  ministryName: 'Bundesministerium für Wirtschaft, Energie und Tourismus',
+  arrivedAt: '2025-12-29',
+  deadline: '2026-02-20',
+  statementCount: 35,
+  parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/ME/73',
+  ...overrides,
+})
 
 const GEWERBEORDNUNG = { title: 'Gewerbeordnung, Änderung', date: '2026-07-01' }
 

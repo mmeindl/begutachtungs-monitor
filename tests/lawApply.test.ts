@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/kons/lawApply'
-import { makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawtext/konsTree'
+import { makeNode, parseKonsParagraph, plainText, renderNode } from '../server/utils/lawtext/konsTree'
+import { paraNode as para } from './helpers/builders'
 import { parseInstruction, type NovaoAddress } from '../server/utils/kons/novao'
-
-/** A § with numbered Absätze, the shape RIS BrKons delivers. */
-function para(id: string, heading: string, absaetze: (string | { text: string; ziffern: string[] })[]): LawNode {
-  const node = makeNode('para', id, `§ ${id}.`, '', heading)
-  absaetze.forEach((a, i) => {
-    const abs = makeNode('abs', String(i + 1), `(${i + 1})`, typeof a === 'string' ? a : a.text)
-    if (typeof a !== 'string') a.ziffern.forEach((z, j) => abs.children.push(makeNode('z', String(j + 1), `${j + 1}.`, z)))
-    node.children.push(abs)
-  })
-  return node
-}
 
 function law(): StandingLaw {
   return {
