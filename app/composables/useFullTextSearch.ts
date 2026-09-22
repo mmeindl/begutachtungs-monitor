@@ -1,39 +1,32 @@
 /**
- * Die zweite Hälfte der Suche auf `/entwuerfe`: der Volltext (§12.31).
+ * The second half of the search on `/entwuerfe`: the full text
+ * (docs/architecture.md §12.31).
  *
- * EIN FELD, ZWEI ANTWORTEN — seit 21.09.2026, und die zweite verhindert den
- * Fehlschluss, den das Feld allein erzeugt.
+ * ONE FIELD, TWO ANSWERS — since 21.09.2026, and the second one prevents the
+ * false inference the field alone produces. The field searches title,
+ * citation, debate name and the Ressort's short code (the Ressort NAME no
+ * longer, since 21.09.2026: it carried the whole portfolio and matched
+ * invisibly — `server/utils/search/searchHaystack.ts`). A title does not say
+ * what a Sammelgesetz all amends: type „Klimaschutz", get two rows, conclude
+ * „that is all there is" — and never see the third, open draft that carries
+ * the word in its § 6. A false negative the reader cannot notice.
  *
- * Das Feld durchsucht Titel, Zitat, Debattennamen und das Ressortkürzel
- * (den Ressort-NAMEN seit 21.09.2026 nicht mehr — er trug das ganze
- * Portfolio und traf unsichtbar, siehe `server/utils/search/searchHaystack.ts`).
- * Ein Titel sagt aber nicht, was ein Sammelgesetz alles ändert: Wer
- * „Klimaschutz" eingibt und zwei Zeilen bekommt, schließt „mehr ist es
- * nicht" — und sieht nicht, dass ein dritter, offener Entwurf das Wort in
- * seinem § 6 führt. Ein falsches Negativ, das der Leser nicht bemerken kann.
+ * WHAT DOES NOT MERGE is the rule and the set:
  *
- * Bis dahin hing dafür ein Link auf `/suche` an dieser Seite, und das war
- * dieselbe Sache zweimal an zwei Orten — genau das Argument, mit dem am
- * 17.09. die zwei Listen eine wurden (§12.19). Erst ging der Link, am
- * 22.09. die Seite: Eine zweite Adresse für dieselbe Frage ist das, was
- * dort abgeschafft wurde, also durfte sie auch nicht unverlinkt
- * weiterlaufen. `/suche` 301t seither auf die Liste.
+ *  - **A different rule.** The list searches substrings over metadata, RIS
+ *    whole words with AND and `*` over the documents. Same input, two rules —
+ *    so two named answers, never one pooled list.
+ *  - **A different set.** The list carries a whole Gesetzgebungsperiode, open
+ *    and closed; the full text knows only what is open TODAY (7 to 25
+ *    records). Hence below the list, and „außerdem" rather than „auch".
+ *  - **A different price.** The list filter costs nothing and answers at
+ *    once; the full text costs one RIS call (0,2–2,1 s) plus the documents
+ *    for the Fundstelle. So its own, longer debounce, a minimum length,
+ *    client-side and lazy — it never holds the list up.
  *
- * WAS NICHT VERSCHMILZT, ist die Regel und die Menge:
- *
- *  - **Andere Regel.** Die Liste sucht als Teilstring über Metadaten, das
- *    RIS ganze Wörter mit UND und `*` über die Dokumente. „Klimaschutz"
- *    trifft den TITEL „Klimaschutzgesetz" und denselben Wortstamm im TEXT
- *    nur mit Stern. Dieselbe Eingabe, zwei Regeln — also zwei benannte
- *    Antworten, nie eine gepoolte Liste.
- *  - **Andere Menge.** Die Liste führt eine ganze Gesetzgebungsperiode,
- *    offen wie abgeschlossen; der Volltext kennt nur, was HEUTE offen ist
- *    (7 bis 25 Sätze). Deshalb steht er unter der Liste und heißt
- *    „außerdem", nicht „auch".
- *  - **Anderer Preis.** Der Listenfilter kostet nichts und antwortet
- *    sofort; der Volltext kostet einen RIS-Aufruf (0,2–2,1 s) plus die
- *    Dokumente für die Fundstelle. Also eigene, längere Verzögerung, eine
- *    Mindestlänge, clientseitig und lazy — er hält die Liste nie auf.
+ * `/suche` was the second address for this question until 22.09.2026 and now
+ * 301s onto the list — the argument that made two lists one on 17.09.2026
+ * (§12.19).
  */
 import type { Ref } from 'vue'
 import type { BegutSearchHit, BegutSearchResponse } from '#shared/types'
@@ -53,20 +46,20 @@ export async function useFullTextSearch(
 ) {
   const { statusFilter, art, gp, ministry, q, qDebounced, stations } = filters
 
-  /** Die laufende Periode ist die neueste, die die Filter kennen. */
+  /** The running period is the newest one the filters know. */
   const currentGp = computed(() => availableGps.value[0] ?? '')
 
   /**
-   * Kann der Volltext unter diesen Filtern überhaupt etwas sagen?
+   * Can the full text say anything at all under these filters?
    *
-   * Er kennt nur die laufenden Begutachtungen. Unter „Abgeschlossen", in
-   * einer alten Periode und unter einer Station NACH der Begutachtung gibt es
-   * nichts, wonach er suchen könnte — und ein Block laufender Verfahren würde
-   * dort dem Filter widersprechen, den der Leser gesetzt hat. Statt dessen
-   * sagt eine Zeile über der Liste, dass hier nur die Titel durchsucht sind.
+   * It knows only the running Begutachtungen. Under „Abgeschlossen", in an
+   * older period and under a station AFTER the Begutachtung there is nothing
+   * for it to search — and a block of running Verfahren there would
+   * contradict the filter the reader set. Instead a line above the list says
+   * that only the titles were searched here.
    *
-   * Art und Ressort stehen NICHT in dieser Bedingung: Sie schließen keine
-   * Suche aus, sie schneiden die Treffer (`fullTextHits`).
+   * Art and Ressort are NOT part of this condition: they exclude no search,
+   * they cut the hits (`fullTextHits`).
    */
   const fullTextApplies = computed(() => {
     if (statusFilter.value === 'closed') return false
@@ -76,11 +69,11 @@ export async function useFullTextSearch(
   })
 
   /**
-   * Der Begriff, der ans RIS geht — mit eigener Verzögerung.
+   * The term that goes to RIS — with a debounce of its own.
    *
-   * 700 ms statt der 300 der Liste, und erst ab drei Zeichen: Jeder Wert hier
-   * ist ein Aufruf ans RIS samt bis zu zwölf nachgeladenen Dokumentsätzen.
-   * Die Liste filtert unterdessen weiter bei jedem Tastendruck.
+   * 700 ms instead of the list's 300, and only from three characters up:
+   * every value here is a call to RIS plus up to twelve document sets fetched
+   * after it. The list meanwhile keeps filtering on every keystroke.
    */
   const fullTextTerm = ref('')
   let fullTextTimer: ReturnType<typeof setTimeout> | undefined
@@ -99,17 +92,17 @@ export async function useFullTextSearch(
   }
 
   watch([q, fullTextApplies], () => scheduleFullText())
-  /* Ein geteilter Link bringt den Begriff in der URL mit — der hat keine
-   * Tipppause, auf die man warten müsste. */
+  /* A shared link brings the term along in the URL — there is no typing
+   * pause to wait for there. */
   onMounted(() => scheduleFullText(0))
   onUnmounted(() => clearTimeout(fullTextTimer))
 
   /**
-   * Clientseitig, lazy und von Hand ausgelöst.
+   * Client-side, lazy and triggered by hand.
    *
-   * `watch: false` plus `execute()`: sonst liefe bei jedem geleerten Feld eine
-   * leere Suche ans RIS. `execute()` bricht die laufende Anfrage ab, wer also
-   * weitertippt, wartet nie auf die vorige Antwort.
+   * `watch: false` plus `execute()`: otherwise every cleared field would send
+   * an empty search to RIS. `execute()` aborts the running request, so
+   * whoever keeps typing never waits for the previous answer.
    */
   const {
     data: fullText,
@@ -130,14 +123,14 @@ export async function useFullTextSearch(
     else clearFullText()
   })
 
-  /** Ob unter der Liste überhaupt eine Volltext-Antwort steht. */
+  /** Whether a full-text answer stands below the list at all. */
   const fullTextActive = computed(
     () => fullTextApplies.value && qDebounced.value.length >= FULLTEXT_MIN_LEN,
   )
   /**
-   * Zwischen der Listen-Verzögerung und der eigenen liegen 400 ms, in denen
-   * die Antwort von vorhin noch dasteht. Sie gehört zu einem anderen Wort,
-   * also ist sie hier „wird gesucht", nicht „gefunden".
+   * 400 ms lie between the list's debounce and this one, and in them the
+   * previous answer still stands. It belongs to a different word, so here it
+   * is „wird gesucht", not „gefunden".
    */
   const fullTextPending = computed(
     () =>
@@ -145,7 +138,7 @@ export async function useFullTextSearch(
       (fullTextTerm.value !== qDebounced.value || fullTextStatus.value === 'pending'),
   )
 
-  /** Die Treffer, die die aktiven Filter überstehen — Art und Ressort. */
+  /** The hits that survive the active filters — Art and Ressort. */
   const fullTextHits = computed<BegutSearchHit[]>(() =>
     (fullText.value?.hits ?? []).filter((hit) => {
       if (art.value === 'verordnung' && hit.entry.kind === 'draft') return false
@@ -167,43 +160,43 @@ export async function useFullTextSearch(
   )
 
   /**
-   * Ein Entwurf, zweimal getroffen, steht EINMAL da.
+   * A draft hit twice stands ONCE.
    *
-   * Wer den Titeltreffer und den Volltexttreffer als zwei Zeilen zeigt, hat
-   * aus einer Auskunft einen Dublettenverdacht gemacht. Also: Was die Liste
-   * schon führt, bekommt den Beleg an seiner Zeile — dort ist er der Zugewinn
-   * („das Wort steht in § 6") —, und nur der Rest wird zur eigenen Liste
-   * darunter. Der Schlüssel kommt aus demselben Adapter wie die Zeile
-   * (`entryView`), damit die beiden Hälften nie auseinanderlaufen.
+   * Showing the title hit and the full-text hit as two rows turns information
+   * into a suspicion of duplicates. So: what the list already carries gets the
+   * evidence on its own row — that is where it adds something („das Wort steht
+   * in § 6") — and only the rest becomes a list of its own below. The key
+   * comes from the same adapter as the row (`entryView`), so the two halves
+   * cannot drift apart.
    */
   const listedKeys = computed(() => new Set(entries.value.map((e) => e.key)))
-  /** Ein Schlüssel, ein Beleg — für beide Listen dieselbe Karte. */
+  /** One key, one piece of evidence — the same map for both lists. */
   const hitByKey = computed(() => new Map(fullTextViews.value.map((v) => [v.view.key, v.hit])))
   const fullTextExtra = computed(() => fullTextViews.value.filter((v) => !listedKeys.value.has(v.view.key)))
-  /** Die Zeilen der zweiten Liste — als Computed, nicht als `.map()` im Prop:
-   *  Ein Array, das die Vorlage baut, ist bei jedem Rendern ein neues. */
+  /** The second list's rows — as a computed, not a `.map()` in the prop: an
+   *  array the template builds is a new one on every render. */
   const fullTextExtraEntries = computed(() => fullTextExtra.value.map((v) => v.view))
   const fullTextInList = computed(() => fullTextViews.value.length - fullTextExtra.value.length)
   /**
-   * WAS DIE FILTER WEGGENOMMEN HABEN, und warum das eine eigene Zahl ist.
+   * WHAT THE FILTERS TOOK AWAY, and why that is a number of its own.
    *
-   * Gemessen beim Fahren der Seite am 21.09.2026: Unter „Verordnungsentwürfe"
-   * sagte dieser Block „‚Klimaschutz' kommt in den Dokumenten der 9 laufenden
-   * Begutachtungen nicht vor" — und das Wort kam in dreien vor, der Art-Filter
-   * hatte sie entfernt. Eine Aussage über den Korpus, wo der Leser nur seinen
-   * eigenen Filter gesehen hat: genau die Sorte Satz, die dieses Produkt nie
-   * erfinden darf (§12.13). Also wird beides getrennt gezählt und getrennt
-   * gesagt — samt dem Weg zurück.
+   * Seen while driving the page on 21.09.2026: under „Verordnungsentwürfe"
+   * this block said „‚Klimaschutz' kommt in den Dokumenten der 9 laufenden
+   * Begutachtungen nicht vor" — and the word occurred in three of them, which
+   * the Art filter had removed. A statement about the corpus where the reader
+   * had only seen his own filter: exactly the kind of sentence this product
+   * must never invent (docs/architecture.md §12.13). So both are counted
+   * separately and said separately, with the way back.
    */
   const fullTextFilteredOut = computed(
     () => (fullText.value?.hits.length ?? 0) - fullTextHits.value.length,
   )
 
   /**
-   * Wie viele Begutachtungen durchsucht wurden, im Genitiv. „Kommt in DIE 7
-   * Begutachtungen nicht vor" stand einmal da, bis die gerenderte Seite es
-   * zeigte: Ein Werkzeug, das über Gesetzestexte spricht, darf seinen eigenen
-   * Satz nicht falsch beugen.
+   * How many Begutachtungen were searched, in the genitive. „Kommt in DIE 7
+   * Begutachtungen nicht vor" stood here once, until the rendered page showed
+   * it: a tool that talks about Gesetzestexte must not decline its own
+   * sentence wrongly.
    */
   const fullTextCorpus = computed(() => {
     const n = fullText.value?.corpusSize ?? 0

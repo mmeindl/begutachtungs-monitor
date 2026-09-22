@@ -49,9 +49,9 @@ export function useDraftFilters(): DraftFilters {
   const sort = ref<SortKey>(initial.sort)
   const stations = ref<DraftStation[]>(initial.stations)
 
-  /* Ein Chip an/aus. Leere Auswahl heißt „alle Stationen" und steht nicht in
-   * der URL — ein Filter, der nichts ausschließt, gehört nicht in einen Link,
-   * den jemand weitergibt. */
+  /* One chip on/off. An empty selection means „alle Stationen" and does not
+   * go into the URL — a filter that excludes nothing does not belong in a
+   * link somebody passes on. */
   function toggleStation(value: DraftStation): void {
     stations.value = stations.value.includes(value)
       ? stations.value.filter((s) => s !== value)
