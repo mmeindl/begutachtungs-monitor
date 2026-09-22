@@ -14,25 +14,22 @@
  * says. Where it does not, the page is diffing displayed text against a
  * provision it does not belong to — and the reader has no way to tell.
  *
- * **The right column has two references of its own (2026-09-10).** It is not
- * unverifiable, as this file said for two days: what it shows as *new* must
- * not already stand in the law, and it must occur in the Novellierungs-
- * anordnungen the draft addresses to *that* § — its Gesetzestext stands in
- * the same RIS document as the annex (`draftBags`, since 2026-09-10: the
- * reference was the whole draft for a day, which is blind to text dragged out
- * of a neighbouring §). Both are checked here
- * (`rightColumnCheck`), and the reason they had to be is measured: dropping
- * the second sentence of a verified §'s left column passed the one-sided
- * gate in **1.019 of 1.092 injected cases (93,3 %)**, and the word diff then
- * painted the lost sentence green — the page claiming the draft adds text the
- * law already contains.
+ * **The right column has two references of its own (2026-09-10):** what it
+ * shows as *new* must not already stand in the law, and it must occur in the
+ * Novellierungsanordnungen the draft addresses to *that* § — its Gesetzestext
+ * stands in the same RIS document as the annex (`draftBags`; the reference
+ * was the whole draft for a day, which is blind to text dragged out of a
+ * neighbouring §). Both are checked in `rightColumnCheck`, and the reason
+ * they had to be is measured: dropping the second sentence of a verified §'s
+ * left column passed the one-sided gate in **1.019 of 1.092 injected cases
+ * (93,3 %)**, and the word diff then painted the lost sentence green — the
+ * page claiming the draft adds text the law already contains.
  *
  * Measured 2026-09-09 over the annexes the page shows today (101 evaluable
  * drafts, 964 §§ with real prose): 86,9 % cover the standing § to 99 % or
- * better, and 45 §§ (4,7 %) fall below 80 % — those are mis-paired or quote
- * a superseded version, and every one of them is on the page right now as a
- * word diff. A few fail in clusters, a whole law at a time (the IVS-Gesetz
- * annex, 51/ME, scores 9 of 16); most fail one or two §§ per draft.
+ * better, and 45 §§ (4,7 %) fall below 80 %. A few fail in clusters, a whole
+ * law at a time (the IVS-Gesetz annex, 51/ME, scores 9 of 16); most fail one
+ * or two §§ per draft (docs/architecture.md §12.13).
  *
  * **Why this is not a text comparison.** The annex abbreviates unchanged
  * stretches by the Rundschreiben ("(2) bis (4) …"), prints markers RIS keeps
@@ -40,11 +37,8 @@
  * share of the column's *comparable* words appear in the RIS paragraph at
  * all — containment of a deliberate subset, never equality.
  *
- * The verdict logic lived in `scripts/harness/annexPdf.ts` and could
- * therefore neither be tested nor applied to the path that ships. Three of
- * the discounts below were once the ruler blaming the parse for its own
- * gaps, which is the third time in this project that the measuring
- * instrument was worse than the thing measured.
+ * The whole gate is pure and lives here rather than in a harness script, so
+ * what is measured is the decision that ships.
  *
  * **Three verdicts per §, and a fourth state for the whole annex.** A § is
  * `verified` only where it carried enough prose to judge *and* the standing
@@ -156,9 +150,9 @@ export interface AnnexSources {
    * The standing text of one §, group headings included — the Abschnitt and
    * Hauptstück lines above a § are outside `plainText` but the annex prints
    * them, so they have to be offered or they count as missing words. Null
-   * for a § RIS holds as a table: `lawStructure.ts` does not represent those
-   * as a tree, and a § that cannot be represented is left unjudged rather
-   * than scored against nothing.
+   * for a § RIS holds as a table: `lawtext/konsTree.ts` does not represent
+   * those as a tree, and a § that cannot be represented is left unjudged
+   * rather than scored against nothing.
    */
   standingText: (ref: KonsParagraphRef) => Promise<StandingText | null>
 }
@@ -306,29 +300,20 @@ function indexOf(law: KonsLawAtDate): LawIndex {
   const paragraphs = new Map<string, KonsParagraphRef>()
   for (const [label, ref] of Object.entries(law.paragraphs)) {
     const key = designationKey(label)
-    // First wins. RIS returns one version per label at a given date, and the
-    // key is nearly injective — but "no law's index collides", as this note
-    // claimed until 2026-09-11, is **false**, and a first-wins rule is
-    // precisely where that costs something. Re-measured over all 195.875
-    // label occurrences the offline corpus holds (4.251 distinct): not one
-    // fails to parse, 15 keys are claimed by more than one label, and 13 of
-    // those claims collide *inside a single RIS answer*, which is the
-    // population this map is built from.
+    // First wins, and the key is only nearly injective: re-measured over
+    // every label occurrence of the offline corpus on 2026-09-11, 15 keys
+    // are claimed by more than one label and 13 of those collide *inside a
+    // single RIS answer*, which is the population this map is built from.
     //
-    // They are one shape, and it is the one the numeral half of
-    // `DESIGNATION_PART_RE` half-covers: a schedule cut into lettered parts.
-    // "Anl. 1/59" is read whole because the suffix is digits, while
-    // "Anl. 1/e", "Anl. 2/m1" and "Anl. 1/01.1" lose theirs and land on
-    // "Anl. 1", "Anl. 2" and "Anl. 1/01" beside the whole schedule. Three
-    // laws carry it (Gesetzesnummer 10008944, 10008568, 20009369) and **no
-    // GP-XXVIII draft amends any of them**, so nothing in the measured corpus
-    // is scored against a fraction of its schedule today. Widening the
-    // numeral is its own step with its own measurement: it moves every
-    // designation on the annex and draft side too, not just the labels here.
-    //
-    // The pair the old note named does hold: "Anl. 5a"/"Anl. 5A" and
-    // "Anl. 5b"/"Anl. 5B" sit in *different* laws (20009048 and 20003820) and
-    // collide in no index. Both spellings are in the GP-XXVIII corpus.
+    // They are one shape, the one the numeral half of `DESIGNATION_PART_RE`
+    // half-covers: a schedule cut into lettered parts. "Anl. 1/59" is read
+    // whole because the suffix is digits, while "Anl. 1/e", "Anl. 2/m1" and
+    // "Anl. 1/01.1" lose theirs. Three laws carry it and **no GP-XXVIII draft
+    // amends any of them**, so nothing in the measured corpus is scored
+    // against a fraction of its schedule today. Widening the numeral is its
+    // own step with its own measurement: it moves every designation on the
+    // annex and draft side too, not just the labels here
+    // (docs/architecture.md §12.13).
     if (key !== null && !paragraphs.has(key)) paragraphs.set(key, ref)
   }
   return { law, paragraphs }

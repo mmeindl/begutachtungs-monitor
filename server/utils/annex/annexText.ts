@@ -16,7 +16,7 @@
  *   marker, not as its text, so the column's designation can never be found
  *   and "217" would count as a missing word.
  * - **RIS's editorial notes.** "(Anm.: Abs. 2 aufgehoben durch …)" is not
- *   law; `lawStructure.ts` strips it from the RIS side and the annex copies
+ *   law; `lawtext/konsTree.ts` strips it from the RIS side and the annex copies
  *   it verbatim, so it has to go from the column side as well or the
  *   asymmetry is scored against the parse.
  * - **RIS web-view boilerplate.** A few annexes paste "Beachte für folgende
@@ -34,7 +34,7 @@ const DESIGNATION_RE = /(?:^|\s)§+\s*\d+[a-z]*\.(?=\s|$)/g
  * "(Anm.: Abs. 2 aufgehoben durch …)" — and the spellings the PDF text layer
  * makes of it.
  *
- * `lawStructure.ts` strips this shape from the RIS side, so an annex copy the
+ * `lawtext/konsTree.ts` strips this shape from the RIS side, so an annex copy the
  * pattern misses is an asymmetry scored against the parse: the column carries
  * words the standing text was never offered. Measured over the GP-XXVIII
  * corpus on 2026-09-10, 110 occurrences of "Anm" survived both sides of the
@@ -72,7 +72,7 @@ export function comparableTokens(text: string): string[] {
  * § designations in the multi-law annexes recur in another law of the same
  * package, so the law has to be part of the identity.
  *
- * Named apart from `tguOracle.paragraphKey`, which builds the same shape from
+ * Named apart from `paragraphKey` in `kons/tguOracle.ts`, which builds the
  * the *normalised* id ("5") while this one keeps the annex's own designation
  * ("§ 5."). Two functions of the same name and the same shape whose arguments
  * are in the opposite order is the kind of thing auto-import resolves
@@ -97,13 +97,12 @@ const BARE_NUMERAL_RE = /^\s*(\d+(?:\.\d+)?[a-z]*\d*)\s*\.?\s*$/i
  * from.
  *
  * The two classes separate on this one word without a remainder (GP XXVIII,
- * 2026-09-11). Of the 1.546 designation strings the key reads as composite,
- * **1.534 are RIS's "Art. 3 § 5"** — an article-structured law, where the
- * Artikel really is part of the §'s identity — and every one of them joins its
- * parts with a plain space. The other **12 are the annex's schedule headings**,
- * and every one of them joins with " zu ". Over all 195.875 RIS label
- * occurrences in the offline corpus, **not one label contains "zu" at all**,
- * so the lookup side of the key cannot move.
+ * 2026-09-11): of the 1.546 designation strings the key reads as composite,
+ * 1.534 are RIS's "Art. 3 § 5" joined by a plain space and the other 12 are
+ * the annex's schedule headings, every one of them joined by " zu ". Over
+ * every RIS label occurrence of the offline corpus **not one contains "zu" at
+ * all**, so the lookup side of the key cannot move (docs/architecture.md
+ * §12.13).
  */
 const CITATION_JOINER_RE = /\bzu\b/i
 
@@ -111,35 +110,30 @@ const CITATION_JOINER_RE = /\bzu\b/i
  * A designation as a comparable key — the annex's "§ 5." and RIS's "§ 5" name
  * the same provision, "§ 5a" names another one.
  *
- * Exact equality, and that is the point. The shipped rule built
- * ``^§+\s*${id}(?![.\d])`` from the annex's id and took the first RIS label it
- * matched; for id "5" that pattern matches **"§ 5a"**, so whichever of the two
- * RIS happened to return first decided, and § 5 could be scored against § 5a's
- * text — withheld for a divergence it never had, or vouched for against the
- * wrong provision. It is no corner case either: of 195.000 RIS labels in the
- * cached corpus, 34.000 carry a letter suffix (measured 2026-09-10).
+ * **Exact equality, and that is the point.** A prefix rule built from the
+ * annex's id — the shipped one was ``^§+\s*${id}(?![.\d])``, first RIS label
+ * wins — matches "§ 5a" for id "5", so § 5 could be scored against § 5a's
+ * text. No corner case: 34.000 of the cached corpus's RIS labels carry a
+ * letter suffix (2026-09-10).
  *
- * Composite labels are the same mistake one level up, and they fall out of an
+ * **Composite labels are the same mistake one level up** and fall out of an
  * exact comparison on their own. RIS files an article-structured law as
- * **"Art. 3 § 5"** (5.474 labels), and "§ 5" must not find it: in such a law
- * the Artikel is part of a §'s identity, which is why the amendment engine
- * refuses those addresses too (`lawApply.ts`). An Anlage cut into parts is
- * "Anl. 1/59" (118 labels), which is not "Anl. 1" — matching it would have
- * scored a whole schedule against one fifty-ninth of it.
+ * "Art. 3 § 5", and "§ 5" must not find it: there the Artikel is part of the
+ * §'s identity, which is why the amendment engine refuses those addresses too
+ * (`kons/lawApply.ts`). An Anlage cut into parts is "Anl. 1/59", which is not
+ * "Anl. 1" — matching it would score a whole schedule against one
+ * fifty-ninth of it.
  *
- * Measured against every RIS label in the cached corpus (195.875 occurrences,
- * 4.251 distinct, 2026-09-11): none is unreadable here, so the exactness
- * costs no coverage.
- *
- * **A composite the RIS never holds is the same mistake mirrored** (fixed
+ * **A composite RIS never holds is that mistake mirrored** (fixed
  * 2026-09-11). The key reads the leading designation and ignores the rest,
- * which is right for "§ 5 3. Abschnitt" and for "Anlage 1 Mindestgliederung
- * Bilanz" — but where a schedule's title *cites* §§, the citation was read as
- * part of the name: "Anlage 3 zu § 10 und § 11" became `Anl 3 § 10 § 11`, a
- * label no law carries, so the § was looked up, not found, and left
- * `unchecked` for a reason of our own making. 12 §§ of GP XXVIII, across four
- * drafts, and the lookup they want exists in every case — RIS holds "Anl. 3".
- * `CITATION_JOINER_RE` is where the cut is and why it is safe.
+ * which is right for "§ 5 3. Abschnitt" — but where a schedule's title
+ * *cites* §§, "Anlage 3 zu § 10 und § 11" became `Anl 3 § 10 § 11`, a label
+ * no law carries, so the § was left `unchecked` for a reason of our own
+ * making. `CITATION_JOINER_RE` is where the cut is and why it is safe.
+ *
+ * Measured against every RIS label of the cached corpus (2026-09-11): none is
+ * unreadable here, so the exactness costs no coverage. The counts and the
+ * affected drafts are in docs/architecture.md §12.13.
  *
  * Null for a text carrying no designation at all.
  */

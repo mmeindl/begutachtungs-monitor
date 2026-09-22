@@ -38,29 +38,19 @@ export const MIN_STANDING_STRETCH = 6
  * found in the draft's own Gesetzestext is 100 % at the median and 98 % at
  * p10 — the reference is that tight. Exactly **6 §§** have ≥ 8 missing words
  * *and* a ratio below 0,9, and each one is a genuine right-column
- * contamination: GSpG § 56 (89 %, 23 of 213 missing, "daß" twice — pre-1996
- * spelling, which can only be old standing text misfiled into the right
- * column), the Geräte- und Maschinenlärm-VO § 2 (68 %, 30 of 94), the
- * Bäderhygiene-VO § 36 (80 %, 16 of 80), AVG § 44g (56 %, 39 of 89), the
- * Energie-Control-Gesetz §§ 3 (83 %) and 42 (78 %, a Firmenbuchnummer).
+ * contamination; the six are read one by one in docs/architecture.md §12.13.
  *
  * The absolute floor of 8 is what separates those from the next candidates
  * below 0,9, which are all false positives with two or three missing words:
- * a ministry's name ("Mobilität Infrastruktur", FSG §§ 4b and 16a), a
- * spelling ("Massnahmen", Finanzkonglomerategesetz § 14). A ratio alone
- * cannot tell 2 of 12 from 39 of 89.
+ * a ministry's name, a spelling. A ratio alone cannot tell 2 of 12 from 39
+ * of 89.
  *
  * All three were **kept** when the reference narrowed to one § (`draftBags`,
- * 2026-09-10). They were calibrated on how tightly the annex's new words
+ * 2026-09-10): they were calibrated on how tightly the annex's new words
  * follow the draft's wording, and narrowing the reference does not loosen
- * that: it removes words the § was never entitled to draw on. Re-measured
- * with the narrow reference, the rule fires on **20 §§ of the PDF path and 3
- * of the table path** (against 7 and 0), and all sixteen new ones were read
- * one by one before this shipped — none of them is a sound annex
- * (docs/architecture.md §12.13). A *ceiling* on the missing share was the one
- * variant tried and rejected there: it would have cost the table path its
- * whole gain (R-neu 184 → 64 catches, below the 76 the whole-draft bag
- * already had).
+ * that. **Rejected variant:** a *ceiling* on the missing share would have
+ * cost the table path its whole gain (R-neu 184 → 64 catches, below the 76
+ * the whole-draft bag already had).
  */
 export const MIN_NEW_WORDS = 10
 export const MIN_MISSING_WORDS = 8
@@ -164,19 +154,20 @@ export interface WordBag {
  * it meets most often: a sentence dragged out of a *neighbouring*
  * Novellierungsanordnung is in the draft, only in the wrong §. Measured by
  * fault injection over GP XXVIII (`scripts/harness/faultInjection.ts`), the
- * whole-draft bag caught 11,8 % of such faults on the PDF path and 32,1 % on
- * the table path — the weakest number the gate had. Per § it is 77,0 % and
- * 82,7 % (populations of 2026-09-11 evening: 904 and 237 sites).
+ * whole-draft bag was the weakest number the gate had and the per-§ reference
+ * is by far its strongest; the catch rates per path are the table in
+ * docs/architecture.md §12.13, and they are not repeated here, because two
+ * copies of one measurement drift apart.
  *
  * `general` is what keeps the narrowing honest. An instruction whose address
  * could not be read contributes its words to every § of its law, so a parse
  * failure of ours can only *weaken* the rule and never fail a §. Every per-§
- * bag is a subset of `whole` — `annexDraft.ts` reads a unit's blocks with the
- * same Gliederungssymbole `draftTextOf` reads the whole draft with — so no
- * catch the wide reference had can be lost; the whole risk of the change is
- * false alarms, and that is the number the harness watches. Building it costs
- * a median 1,4 ms per draft and 60 ms for the largest of GP XXVIII, once per
- * draft per day behind `annexGuardService.ts`.
+ * bag is a subset of `whole` — `annex/annexDraft.ts` reads a unit's blocks
+ * with the same Gliederungssymbole `draftTextOf` reads the whole draft with —
+ * so no catch the wide reference had can be lost; the whole risk of the
+ * change is false alarms, and that is the number the harness watches.
+ * Building it costs a median 1,4 ms per draft and 60 ms for the largest of
+ * GP XXVIII, once per draft per day behind `annex/annexGuardService.ts`.
  */
 export interface DraftBags {
   /** Law key → § key (`designationKey`) → the words its own instructions carry. */
@@ -454,61 +445,28 @@ export interface RightColumnCheck {
  * 1.092 (42,5 %)**, rule 2 catches 181 of the same faults (a sentence the
  * parser loses is unchanged law, so the draft's instructions usually do not
  * quote it either), together **567, 51,9 %** — against 73 (6,7 %) for the
- * left check alone.
- *
- * Those are the numbers for the whole-draft reference. With the reference per
- * § (`draftBags`, 2026-09-10) rule 2 roughly triples on its own fault and
- * more than doubles on the other two, measured per path with
- * `scripts/harness/faultInjection.ts`. The last column is the same reference
- * with the addressing of 2026-09-11 — 93,6 % of the draft's instructions name
- * a § instead of 87,1 % (`novao.refusedAddresses`) — which is a narrower
- * reference at unchanged thresholds, and cost exactly one more alarm on an
- * intact annex, itself a true finding (docs/architecture.md §12.13). The table-path rows
- * count 246/238/237 sites since `lawText.stripMarkup` and the second
- * designation per row (`textComparison.stripGld`) let more §§ reach the
- * injection at all, the PDF rows 942/905/904 since the gutter is read from the
- * two-column lines (`annexPdf.gutterBand`), a law is named only before its
- * first instruction (`lawTitles.draftArticles`) and the closing clause is read
- * under both RIS spellings (`lawStructure`):
- *
- * | Fehler | ganzer Entwurf | je §, 87 % | je §, 93 % |
- * |---|---:|---:|---:|
- * | R-neu, PDF-Pfad     | 107 (11,8 %) | 665 (75,6 %) | 696 (77,0 %) |
- * | R-neu, Tabellenpfad |  76 (32,1 %) | 184 (78,3 %) | 196 (82,7 %) |
- * | R-alt, PDF-Pfad     | 222 (24,5 %) | 584 (66,3 %) | 596 (65,9 %) |
- * | R-alt, Tabellenpfad |  98 (41,2 %) | 178 (75,4 %) | 183 (76,9 %) |
- * | L, PDF-Pfad         | 146 (15,5 %) | 332 (36,2 %) | 350 (37,2 %) |
- * | L, Tabellenpfad     |  49 (19,9 %) |  90 (36,9 %) |  95 (38,6 %) |
- *
- * Of rule 1's 628 misses, **464 are not misses**: the draft
- * changes that sentence too, so its proposed wording really is new and no
- * honest rule may fire. 130 are annex wordings that are not verbatim in RIS
- * at all, 29 are stretch boundaries (below), 5 sentences still stood on the
- * left. On the subset where the rule can apply, it catches 464 of 628, 74 %.
+ * left check alone. Of rule 1's 628 misses, 464 are no misses at all (the
+ * draft changes that sentence too) and 29 are stretch boundaries; on the
+ * subset where the rule can apply it catches 464 of 628, 74 %. Those are the
+ * whole-draft numbers; the per-path table for the per-§ reference is
+ * docs/architecture.md §12.13 and is deliberately not copied here.
  *
  * **Variants measured and rejected — so nobody re-invents them:**
  *
- * - **Longest common run** of an inserted stretch inside the standing § (the
- *   obvious relaxation of rule 1) catches 87 % of the injected losses but
- *   fires on 191 §§ of the corpus at k = 6, 116 at k = 8, 60 at k = 10.
- *   Legal drafting repeats formulae: "begeht eine Verwaltungsübertretung und
- *   ist von der FMA mit Geldstrafe bis zu … zu bestrafen" recurs 29 tokens
- *   long inside BWG § 98, "tritt mit dem auf die Kundmachung folgenden Tag
- *   in Kraft" in every Inkrafttreten-§. A rule that fires on legal boilerplate
- *   withholds sound law. Those 29 boundary misses are what it would buy, and
- *   191 false positives is not the price for 29.
+ * - **Longest common run** of an inserted stretch inside the standing §: 87 %
+ *   of the injected losses, but 191 false positives at k = 6 (116 at k = 8,
+ *   60 at k = 10) — legal drafting repeats whole formulae, and a rule that
+ *   fires on boilerplate withholds sound law. It would buy the 29 boundary
+ *   misses; 191 is not that price.
  * - **Whole sentences of the right column** that stand in the § and are
- *   absent left (abbreviation-aware splitter, ≥ 8 tokens) catch *fewer*
+ *   absent left (abbreviation-aware splitter, ≥ 8 tokens): catches *fewer*
  *   injected faults than the whole-stretch rule (423 against 540 of 1.074)
- *   and add false positives from legitimately repeated sentences
- *   ("Gesetzliche Verpflichtungen zur Verschwiegenheit bleiben unberührt.").
- * - **A ceiling on the missing share** — the obvious way to keep the per-§
- *   reference from firing where a § block spans two provisions, since those
- *   §§ are mostly unexplained while a *contaminated* § keeps its own new text
- *   as well. Measured and rejected: at 50 % it would cost the table path its
- *   whole gain (R-neu 184 → 64 catches, below the 76 the whole-draft bag had),
- *   because a § with little new text of its own is exactly the case where an
- *   injected sentence dominates the share.
+ *   and adds false positives from legitimately repeated sentences.
+ * - **A ceiling on the missing share**, the obvious guard against a § block
+ *   spanning two provisions: at 50 % it costs the table path its whole gain
+ *   (R-neu 184 → 64 catches, below the 76 of the whole-draft bag), because a
+ *   § with little new text of its own is exactly where an injected sentence
+ *   dominates the share.
  *
  * The **per-§ reference** itself is no longer among them: it shipped on
  * 2026-09-10 (`draftBags`), together with the two things that keep it honest

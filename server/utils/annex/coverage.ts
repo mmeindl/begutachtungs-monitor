@@ -17,7 +17,7 @@ import { comparableTokens } from './annexText'
  *
  * Measured, because every § under the floor is one the gate waves through
  * unexamined. Over the 1.040 §§ of the live corpus with any comparable words
- * (`harness/annexPdf.ts --xml --calibrate`, 2026-09-09):
+ * (`pnpm harness:annex -- --xml --calibrate`, 2026-09-09):
  *
  * | Wörter | §§  | ≥ 95 % |
  * |--------|-----|--------|
@@ -86,80 +86,45 @@ export function coverageOf(column: string, standing: string): Coverage {
  * does not exist in the standing law, which is the point of it. An `elided`
  * row is the annex saying it left text out.
  *
- * **`unchanged` rows are the third exclusion, and it is a decision rather than
- * a triviality** (measured 2026-09-11, docs/architecture.md §12.13). A row
- * printing the same text in both columns shows no change, but its left text
- * *is* on the page — folded behind „N Stellen unverändert", then printed —
- * and nothing here ever holds it against RIS. A mirrored row filed under the
- * wrong § is therefore invisible, which is what this note used to wave away
- * with "folded away behind a count".
+ * **`unchanged` rows are the third exclusion, and it is a decision rather
+ * than a triviality** (measured 2026-09-11, docs/architecture.md §12.13). A
+ * row printing the same text in both columns shows no change, but its left
+ * text *is* on the page — folded behind „N Stellen unverändert", then printed
+ * — and nothing here ever holds it against RIS, so a mirrored row filed under
+ * the wrong § is invisible.
  *
- * So the alternative was measured through these same functions over GP XXVIII,
- * scoring each §'s unchanged rows as a bag of their own (which cannot dilute
- * the changed rows, unlike one combined bag — that variant *frees* three §§ the
- * gate withholds today):
+ * **Rejected, after measuring it through these same functions over
+ * GP XXVIII:** scoring each §'s unchanged rows as a bag of their own would
+ * newly withhold 33 §§ of the PDF path and 10 of the table path, of which 6
+ * are confirmed today; 91 of the 93 cases first read one by one were the
+ * annex being right (structural headings standing *above* the § they head,
+ * the annex's own notation, one orthography) and 2 were gaps in our own RIS
+ * reading, closed the same evening (`lawtext/konsTree.ts` reads both
+ * spellings of the closing clause). The variant of one *combined* bag is
+ * rejected twice over: it dilutes the changed rows and frees three §§ the
+ * gate withholds today.
  *
- * | | unveränderte Zeilen | §§ mit Prosa | unter der Schwelle | neu einbehalten | davon heute bestätigt |
- * |---|---:|---:|---:|---:|---:|
- * | Tabellenpfad | 1.738 in 474 §§ | 330 | 11 |  — |  4 |
- * | PDF-Pfad     |   287 in 287 §§ | 129 | 33 | 33 |  0 |
+ * **One case in the whole corpus is the real finding** — GTelG § 23, whose
+ * unchanged rows print an Absatz the standing § does not have. One true
+ * positive against 54 confirmed §§ that would lose their whole word diff is
+ * not a rule this gate may ship.
  *
- * The table-path row is the state after `textComparison.heldTwoSided`
- * (11.09.2026): a two-sided heading row now becomes the *heading* of the § that
- * opens below it instead of a row of the § above, which took the class from 59
- * to 10. **When this was first measured it was 59 and 34, all 93 read one by
- * one, and 91 were the annex being right.** On the table path, 52 of 59 were
- * the law's own structural headings — Teil, Abschnitt,
- * Unterabschnitt, the lettered divisions of a Verordnung, the heading of the
- * *following* § — which stand *above* the § they head and were therefore filed
- * under the § before them (57 of the 59 failed on a row that carries no
- * designation of its own); 3 are the annex's own notation („Anlage 1
- * (wird hier nicht abgebildet)", „[entfällt durch ein früher in Kraft tretendes
- * Vorhaben]"); 1 is orthography (Konfitürenverordnung § 5, „In-Kraft-Treten"
- * against „Inkrafttreten"); and **2 were gaps in our own RIS reading**, closed the same evening
- * (`lawStructure` reads both RIS spellings of the closing clause) — StGB
- * § 321c and BMSVG § 28, where `lawStructure.plainText` ends an Absatz with its
- * enumeration and drops the clause after it („ist mit Freiheitsstrafe von einem
- * bis zu zehn Jahren zu bestrafen."), so the annex is quoting law the ruler
- * does not offer. That is the third time this project would have scored its own
- * gap as the ministry's. On the PDF path 33 of 34 were Inhaltsverzeichnis lines (the 34th the same
- * closing-clause gap, closed)
- * and Hauptstück headings, and every one of them sits in a § that shows **no
- * change at all**, so the rule would buy nothing a reader can see.
+ * **Also measured and rejected:** a floor of comparable words separates
+ * nothing (headings run 0–95 %, the real cases 44–95 %, and at a floor of 20
+ * nothing at all is caught below 90 %), and *filing* a mirrored heading row
+ * under the § it heads buys 63 → 62, because RIS's own § documents mostly
+ * carry no group headings either. What did work is lifting such a row out of
+ * the rows entirely, into the §'s heading (`annex/comparisonRows.ts`,
+ * `heldTwoSided`, 11.09.2026).
  *
- * **One case in the whole corpus is the real finding**: GTelG § 23, whose
- * unchanged rows print an Abs. 2 („über *Portale*", two Ziffern) that the
- * standing § does not have („über *Anwendungen*", no Ziffern) — a version
- * difference the page shows today as unchanged law. One true positive against
- * 54 confirmed §§ that would lose their whole word diff is not a rule this gate
- * may ship: rule 1's 5 table-path alarms are all true, rule 2's floors were set
- * precisely to keep 6 real contaminations apart from two-word false alarms.
- *
- * **What was expected to change the decision** was the heading filing, not a
- * threshold: no floor separates the classes (headings run 0–95 %, the real
- * cases 44–95 %), and at any floor of 20 comparable words nothing at all is
- * caught below 90 %. That half was right and the other half was not.
- * *Filing* a mirrored heading row under the § it heads buys almost nothing —
- * 63 → 62, because RIS's own § documents mostly carry no group headings either
- * (99 of the 111 rows still uncovered land on a § with an empty `context`).
- * What works is `lift` one level up: the row stops being a row and becomes the
- * § 's heading, which took the table path to **13 below the threshold, 10
- * newly withheld, 6 of them confirmed today** (docs/architecture.md §12.13,
- * 11.09.2026). The decision itself stands — one true positive against six
- * confirmations is still not a rule — but the residue is now small enough to
- * re-read. Until then the blind spot is stated rather than closed: fault **U** of
- * `scripts/harness/faultInjection.ts` injects exactly this row and the gate
- * catches **0 of 238** on the table path and **0 of 883** on the PDF path
- * (every alarm under the fault was already firing without it), and
- * `harness/annexPdf.ts` prints the population on every run.
- *
- * One thing the injection did *not* settle in advance, and it is the sharper
- * half: a mirrored row is not merely unchecked, it is an **alibi**. Both
- * right-column rules exempt whatever stands in the left column
- * (`rightColumnCheck`), every pair row counts towards that, and fault U
- * silences a previously firing rule in 1 of 883 §§ of the PDF path. Rare, but
- * it is the direction in which this exclusion can cost rather than merely
- * miss.
+ * Until the residue is re-read the blind spot is stated rather than closed:
+ * fault **U** of `scripts/harness/faultInjection.ts` injects exactly this row
+ * and the gate catches **0 of 238** on the table path and **0 of 883** on the
+ * PDF path, and `pnpm harness:annex` prints the population on every run. The
+ * sharper half the injection did not settle in advance: a mirrored row is not
+ * merely unchecked, it is an **alibi** — both right-column rules exempt
+ * whatever stands in the left column (`rightColumnCheck`), and fault U
+ * silences a previously firing rule in 1 of 883 §§ of the PDF path.
  */
 export function isDisplayedChange(row: ComparisonRow): boolean {
   return row.kind === 'pair' && !row.elided && row.current.length > 0 && (row.change === 'changed' || row.change === 'removed')

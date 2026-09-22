@@ -57,7 +57,8 @@ export interface CheckedComparison {
    * without a designation, 83 of them shown as a change. On the PDF path a
    * row *is* a provision — it is cut at the § marker — so a unit without one
    * is the annex's front matter, and since 2026-09-10 the parser drops it
-   * instead of emitting it as new law (`annexPdf.ts`, `AnnexParse.unplaced`).
+   * instead of emitting it as new law (`annex/annexPdf.ts`, the `unplaced`
+   * count on `AnnexParse`).
    * Every row that path emits carries a designation by construction, so this
    * is 0 there.
    */
