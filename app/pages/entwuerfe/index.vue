@@ -12,10 +12,10 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
-import { viewOfDraft, viewOfRis, viewOfVorlage } from '#shared/utils/entryView'
+import { viewOfDraft, viewOfRis, viewOfVorlage } from '~/utils/entryView'
 import { romanToInt } from '#shared/utils/gp'
 import { matchesQuery } from '#shared/utils/searchQuery'
-import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
+import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 
 /**
  * Every Begutachtung of a period, in ONE list — Ministerialentwürfe and the

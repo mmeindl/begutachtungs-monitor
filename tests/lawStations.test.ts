@@ -43,7 +43,7 @@ describe('vocabulary', () => {
 
   it('accepts only its own ids', () => {
     // ZWEI VOKABULARE, zwei geteilte Namen — und das ist seit 19.09.2026 so
-    // gewollt. `shared/utils/stations.ts` führt die VERFAHRENSstationen
+    // gewollt. `app/utils/spine.ts` führt die VERFAHRENSstationen
     // (begutachtung|rv|parlament|bgbl, der Filter `?station=`), dieses Modul
     // die TEXTfassungen (`?von=`/`?bis=`). `rv` stand schon immer in beiden;
     // `bgbl` steht jetzt auch in beiden, weil es beides gibt: die erreichte

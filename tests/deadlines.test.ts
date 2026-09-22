@@ -6,7 +6,7 @@ import {
   NEW_ARRIVAL_DAYS,
   noRvVerdictDe,
   RV_LATENCY_CONTEXT_DAYS,
-} from '../shared/utils/deadlines'
+} from '../app/utils/deadlines'
 
 /**
  * ISO date exactly N days before today — anchored on the LOCAL calendar

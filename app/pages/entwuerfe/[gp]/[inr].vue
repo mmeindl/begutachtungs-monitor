@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
-import type { ComparisonId, StationContext, StationId } from '#shared/utils/stations'
+import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
 import {
   RV_DEFINITION,
   SECOND_ROUND_CLAUSE,
@@ -8,7 +8,7 @@ import {
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
-} from '#shared/utils/stations'
+} from '~/utils/spine'
 import { aliasesFor } from '#shared/utils/aliases'
 // Explicit: `draftChain.ts` is a pure module and stays out of the
 // auto-imports, so that server map and vitest run the same functions.
@@ -161,7 +161,7 @@ const showOutcome = computed(() => {
   return Boolean(d.enactment) || !d.active
 })
 
-/* Decision and sign convention live in shared/utils/deadlines.ts, next to
+/* Decision and sign convention live in app/utils/deadlines.ts, next to
  * the other deadline rules and covered by tests — a flipped sign here would
  * tell a submitter the wrong date. */
 const divergence = computed(() =>
@@ -232,7 +232,7 @@ const noRvBody = computed(() => {
 
 /* The base rate under the waiting sentence, while the GP still runs: how
  * many drafts of the last closed GP got their Regierungsvorlage and how
- * fast (shared/utils/outcomes.ts). Numbers, so the reader can weigh the
+ * fast (app/utils/outcomes.ts). Numbers, so the reader can weigh the
  * silence without the page weighing it for them. */
 const noRvBaseRate = computed(() =>
   lapsed.value || chainUnlinked.value ? null : rvBaseRateSentenceDe(data.value?.gp),
@@ -945,7 +945,7 @@ const linkClasses =
       >
         <h2 id="parlament-heading" class="section-heading">Im Parlament</h2>
         <!-- One sentence per outcome, from the same function the bar's fact
-             line uses (`shared/utils/stations.ts`), so the two can never
+             line uses (`app/utils/spine.ts`), so the two can never
              disagree. "lapsed" says what happened and not why: we observe
              the end of the GP, never the reason for it. -->
         <p class="mt-1 max-w-prose text-sm text-ink-secondary">

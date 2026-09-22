@@ -21,7 +21,7 @@ import {
   viewOfOutcome,
   viewOfRis,
   viewOfVorlage,
-} from '../shared/utils/entryView'
+} from '../app/utils/entryView'
 
 /** Ein Fristende weit in der Vergangenheit, damit `active` nie hineinredet. */
 const PAST = '2025-08-31'

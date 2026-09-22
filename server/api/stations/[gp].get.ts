@@ -12,7 +12,7 @@
  * The counts it returns are the second job and not decoration: they are the
  * base rate of a running period ("wie viele Entwürfe sind bisher Gesetz
  * geworden") measured live rather than hand-copied, which is what
- * `shared/utils/outcomes.ts` still does from a script. Whether that becomes
+ * `app/utils/outcomes.ts` still does from a script. Whether that becomes
  * a claim on a page is a separate decision — this endpoint only makes the
  * number available and says nothing about a draft that has not moved.
  *

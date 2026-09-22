@@ -14,7 +14,7 @@
  * the Begutachtung — the whole subject — a connector between two boxes.
  * What the version model was genuinely good at survives where it belongs:
  * a comparison still hangs on the station that PRODUCED it, phrased as the
- * question it answers (`shared/utils/stations.ts`).
+ * question it answers (`app/utils/spine.ts`).
  *
  * ONE mark, and it is the brand's: the yellow dot is the station the text
  * is on — the current one, or the last one reached when the procedure is
@@ -53,8 +53,8 @@
  * in the HTML.
  */
 import type { DraftDetail } from '#shared/types'
-import type { ComparisonId, StationId } from '#shared/utils/stations'
-import { markedStation, stations } from '#shared/utils/stations'
+import type { ComparisonId, StationId } from '~/utils/spine'
+import { markedStation, stations } from '~/utils/spine'
 
 const props = defineProps<{
   data: DraftDetail

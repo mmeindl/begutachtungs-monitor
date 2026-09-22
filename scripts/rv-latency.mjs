@@ -3,7 +3,7 @@
  * Measures the Begutachtungsende → Regierungsvorlage latency of one
  * Gesetzgebungsperiode, straight from the Parliament API — the base rate
  * behind the "bisher keine Regierungsvorlage" wording on the detail page
- * (shared/utils/deadlines.ts, docs/architecture.md §12.10).
+ * (app/utils/deadlines.ts, docs/architecture.md §12.10).
  *
  * Usage:   node scripts/rv-latency.mjs XXVII [cacheDir]
  *

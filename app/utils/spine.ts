@@ -40,9 +40,9 @@
  * DraftDetail — the statement count included, so a bar built from
  * this fetches nothing.
  */
-import type { DraftDetail, LawStationId } from '../types'
-import { formatDateDe, formatNumberDe, spanInDays } from './format'
-import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from './lawStations'
+import type { DraftDetail, LawStationId } from '../../shared/types'
+import { formatDateDe, formatNumberDe, spanInDays } from '../../shared/utils/format'
+import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '../../shared/utils/lawStations'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 

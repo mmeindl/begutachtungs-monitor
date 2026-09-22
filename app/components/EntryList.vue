@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EntryView } from '#shared/utils/entryView'
+import type { EntryView } from '~/utils/entryView'
 
 /**
  * Eine Liste von Einträgen, zwei Dichten, ein Spaltenkopf — jede Liste der

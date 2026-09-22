@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
-import { regulationStatusDe } from '#shared/utils/stations'
+import { regulationStatusDe } from '~/utils/spine'
 
 /**
  * One Begutachtung without a Gegenstand at Parliament

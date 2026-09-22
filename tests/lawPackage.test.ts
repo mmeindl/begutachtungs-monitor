@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { droppedLawsNote, formatLawList, mergedLawsNote } from '../shared/utils/lawPackage'
+import { droppedLawsNote, formatLawList, mergedLawsNote } from '../app/utils/lawPackage'
 
 const laws = (...names: string[]) => names.map((article, i) => ({ article, units: i + 1 }))
 

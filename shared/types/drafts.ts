@@ -35,7 +35,7 @@ export interface DraftSummary {
 
 /**
  * Where a draft stands now — the detail page's stations
- * (`shared/utils/stations.ts`) minus `entwurf`, which is a document, not a
+ * (`app/utils/spine.ts`) minus `entwurf`, which is a document, not a
  * place the procedure can be at. One vocabulary for the spine and the list
  * filter (docs/architecture.md §12.26).
  */
@@ -189,7 +189,7 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
    * Ministerialentwurf stays with the GP it was filed in; measured on GP
    * XXVII, 4 of the 61 drafts still without a Regierungsvorlage at the
    * GP's end got one in the next GP, so "bisher keine" turns into a
-   * boundary statement here, not into "never" (shared/utils/outcomes.ts).
+   * boundary statement here, not into "never" (app/utils/outcomes.ts).
    */
   gpEnded: boolean
   /** Its last day (the day before the next Nationalrat convened, Art. 27

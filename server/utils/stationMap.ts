@@ -3,7 +3,7 @@
  * station map behind the station filter on `/entwuerfe`
  * (docs/architecture.md §12.26).
  *
- * The four stations are the detail page's own (`shared/utils/stations.ts`,
+ * The four stations are the detail page's own (`app/utils/spine.ts`,
  * minus `entwurf`, which is not a place a draft can stand): Begutachtung,
  * Regierungsvorlage, Parlament, Bundesgesetzblatt. One vocabulary for the
  * list and the spine — a reader who learns the stations on one page reads
@@ -22,7 +22,7 @@
  *
  * WHAT IT IS WORTH, measured 18.09.2026: over GP XXVII the map finds a
  * Regierungsvorlage for **296 of 353** drafts — the same 296/353 that
- * `scripts/rv-latency.mjs` measured by hand into `shared/utils/outcomes.ts`,
+ * `scripts/rv-latency.mjs` measured by hand into `app/utils/outcomes.ts`,
  * reproduced live on a different path. And it is not merely as good as the
  * `preconst` route: 592 d.B. carries TWO Ministerialentwürfe (96/ME and
  * 103/ME), of which the Vorlage names one — the draft-side walk finds both.
@@ -32,7 +32,7 @@
  * drafts → 650 requests, 35.6 s wall at 12 in flight when nothing is cached,
  * 8 ms warm. 35 s is a number that may never land on a visitor, which is the
  * whole reason for the cache below and the prewarm call beside it —
- * `shared/utils/outcomes.ts` states the rule this obeys: no page may depend
+ * `app/utils/outcomes.ts` states the rule this obeys: no page may depend
  * on 350 upstream fetches *while someone waits*.
  *
  * Derived layer: `mapVorlageRow`, `parseStages` and the folding below are

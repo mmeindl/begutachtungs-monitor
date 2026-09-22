@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * „Neu" on a Begutachtung that began inside the last week
- * (`isNewArrival`, `shared/utils/deadlines.ts`).
+ * (`isNewArrival`, `app/utils/deadlines.ts`).
  *
  * WHY A MARKER AND NOT A LIST (§12.21): the question "was ist seit meinem
  * letzten Besuch dazugekommen" is a real one, but its rows are the same

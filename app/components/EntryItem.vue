@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { NuxtLink } from '#components'
-import type { EntryView } from '#shared/utils/entryView'
+import type { EntryView } from '~/utils/entryView'
 
 /**
  * Eine Zeile, vier Zonen — every list entry on the site, in one anatomy
@@ -26,7 +26,7 @@ import type { EntryView } from '#shared/utils/entryView'
  * digits line up down the list — which is the only thing that makes 846 and
  * 12 comparable at a glance.
  *
- * WHAT DECIDES CONTENT lives in `shared/utils/entryView.ts`, not here. This
+ * WHAT DECIDES CONTENT lives in `app/utils/entryView.ts`, not here. This
  * file knows nothing about Ministerialentwürfe, RIS records or
  * Regierungsvorlagen; it renders four zones. Every "this kind cannot have
  * that fact" decision is made once, in the adapter, where it can be tested.

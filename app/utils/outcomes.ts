@@ -14,7 +14,7 @@
  * it does not say the draft failed.
  */
 import { RV_LATENCY_CONTEXT_DAYS } from './deadlines'
-import { formatDateDe } from './format'
+import { formatDateDe } from '../../shared/utils/format'
 
 export interface RvBaseRate {
   gp: string

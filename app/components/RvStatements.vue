@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RvStatementsResponse, StatementsSummary } from '#shared/types'
-import { SECOND_ROUND_CLAUSE } from '#shared/utils/stations'
+import { SECOND_ROUND_CLAUSE } from '~/utils/spine'
 
 /**
  * The Stellungnahmen filed on the Regierungsvorlage itself.

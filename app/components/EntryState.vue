@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { DeadlineTone } from '#shared/utils/deadlines'
-import type { EntryState } from '#shared/utils/entryView'
+import type { DeadlineTone } from '~/utils/deadlines'
+import type { EntryState } from '~/utils/entryView'
 
 /**
  * Zone 4 — „wo steht es", als EIN Kasten mit zwei Zeilen: der Zustand, und

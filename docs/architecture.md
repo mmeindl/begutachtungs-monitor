@@ -84,6 +84,13 @@ badges. Tone: factual, precise, no exclamation marks.
 
 Param validation: `gp` = Roman numerals (`/^[IVXLC]+$/`), `inr` = positive integer; otherwise 400. Unknown item → 404.
 
+Where a module belongs (decided 22.09.2026): `shared/` holds what BOTH
+runtimes import — the contract in `shared/types/` and the pure helpers the
+server and the app call alike. View models and German copy only the app
+reads live in `app/utils/` (`spine.ts`, `entryView.ts`, `deadlines.ts`,
+`outcomes.ts`, `lawPackage.ts`), which Nuxt auto-imports the same way; they
+carry no Vue, so Vitest keeps reaching them through relative imports.
+
 Server internals (`server/utils/`):
 
 - `parliament.ts` — upstream client (`fetchFilterList`, `fetchGegenstand`, `getCurrentGp`, cached `getDraftsForGp`, `getStatementsForMe`, `getGegenstand`; **uncached** assembly `getDraftDetail`).
@@ -203,7 +210,7 @@ Theming: `app.config.ts` maps `primary` to our own `accent` scale and
 | `VolumeBar` | `label: string; value: number; max: number; href?: string` | Single-color horizontal quantity bar: track `accent-wash`, fill `accent`, 8 px tall, 4 px rounded on the right/square on the left, value at the end in ink (never in the data color), `tabular-nums` in the value column |
 | `MinistryBadge` | `code: string; name: string` | Ministry chip (code visible, full name as `title`/sr-only) |
 | `NewBadge` | – | „Neu" on a Begutachtung that began inside the last 7 days (`isNewArrival`); rendered by the call site's `v-if`, merges into the phrase that follows it on the cards (§12.22) |
-| `EntryItem` | `entry: EntryView; density?: 'card'\|'row'` | **Every list entry on the site, in one anatomy** (§12.28): Titel · Kennung · Stellungnahmen · Stand, in fixed zones. `card` under `md`, `row` in the dense sheet above it. Knows nothing about the kinds — what each kind puts in each zone is decided in `shared/utils/entryView.ts` |
+| `EntryItem` | `entry: EntryView; density?: 'card'\|'row'` | **Every list entry on the site, in one anatomy** (§12.28): Titel · Kennung · Stellungnahmen · Stand, in fixed zones. `card` under `md`, `row` in the dense sheet above it. Knows nothing about the kinds — what each kind puts in each zone is decided in `app/utils/entryView.ts` |
 | `EntryList` | `entries: EntryView[]; ordered?: boolean; lead?: string` | **Every list of them** (§12.28): Karten unter `md`, ab `md` ein Blatt mit Spaltenkopf und Trennlinien, rein per CSS umgeschaltet. Stellt beide Dichten von `EntryItem`, damit keine Seite das selbst tut. `ordered` → `ol`, nur wo die Reihenfolge die Aussage ist; `lead` benennt die erste Spalte, wenn die Zeilen keine Entwürfe sind |
 | `EntryState` | `state: EntryState; align?: 'left'\|'right'` | Zone 4: the state over what pins it down. One component for countdown, offenes Vorlagen-Fenster and every reached station — only a row someone can still act on is loud (`text-base` semibold + tone dot, critical wash at ≤3 days); everything closed is calm `text-sm` ink without pill or dot |
 | `TraceTimeline` | `steps: TraceStep[]` | Vertical process timeline: date, text, link chips |
@@ -379,7 +386,7 @@ after a clean install.
 7. **Monitoring/uptime alerting** — ~~the predecessor died in operation; set up before a public launch.~~ **Done (2026-09-08), deliberately minimal:** `.github/workflows/uptime.yml` probes `/` from GitHub's runners twice an hour (HTTP 200 + keyword) and keeps exactly one `downtime` issue open while the site fails, @mentioning the owner — the issue is the alert and the state, so an outage is one mail, not one per run. Off-box by construction (a monitor on the VPS would go blind with it), no third-party account, no server component. Not built, on purpose: a health endpoint (stale upstream is already labelled on the pages), a dead man's switch for the prewarm timer (a failed prewarm costs the first visitor two seconds, not an outage), a status page. Trap: GitHub disables schedules after 60 commit-free days and mails about it — `deploy/infrastructure.md`. **Data canary since 2026-09-15:** the same run then loads `/entwuerfe/XXVIII/8` and requires the Österreichischer Rechtsanwaltskammertag among its Stellungnahmen. The name is in the SSR HTML only if list 142 was read, its columns sit where `mapStatementRow` expects them and the classifier recognised the row — the one failure the start-page probe cannot see is the silent one, where every submitter degrades to "Privatperson" and the site looks healthy. An upstream outage does not trip it: the page serves its last-good aggregation, name included, and labels the staleness itself.
 8. **Nightly prewarm/sync cron** instead of cache-on-demand, once traffic is real. First instance exists (Sept 2026): a systemd timer warms the RIS↔ME map (`deploy/systemd/`, installed by `deploy.sh`), because that fetch is too slow to land on a visitor.
 9. **Classifier review loop** — ~~a manual org allowlist~~ ~~a review loop that surfaces candidates~~ **Done (2026-09-15):** `scripts/classifier-audit.ts` (`pnpm audit:classifier -- --gp XXVIII`, `--ityp I` for the Regierungsvorlagen, `--inr` for one item) runs the classifier over a GP's list-142 rows and prints the two error classes: institutions filed as "person" (in full — candidates for a pattern or `ORG_ALLOWLIST`, each to be verified before it is added) and organisations whose naming segment is shaped like a person (masked — those are leaks). What the first run found, and what became of it: 334+ hidden rows led by the ministries' short form "BM f. …" (221), courts, the Datenschutzbehörde, the FMA, the Anwaltschaften, brand-style NGOs → patterns, checked against the comma-form persons of the corpus (zero hits each); ÖGB/ÖAMTC/SPÖ/ARBÖ hidden by JavaScript's ASCII-only `\b` before "Ö" → lookarounds; and the leak class (§3) → `leadsWithPersonName`. Occasion: a reader reported one hidden organisation (Presseclub Concordia); the audit showed it was a class. Re-run when a GP closes or a reader reports the next one. The classifier still runs inside the derived `statements-me` cache (memory-only, §5 cache rule 5), so a change shows on the next request and nothing has to be deleted by hand.
-10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/rv-latency.mjs`, hand-copied into `shared/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
+10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/rv-latency.mjs`, hand-copied into `app/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
 
 ### 12.10b Ändert sich die Begründung? — gemessen, 22.09.2026
 
@@ -4981,7 +4988,7 @@ Abschnitt erscheint dort, wo jemand gefragt hat, was offen ist.
 
 **Der Nachfolger, bewusst zurückgestellt: ein Stationsfilter.** Statt
 Status *offen/abgeschlossen* fragt die Liste dann, **wo** ein Entwurf steht —
-mit dem Vokabular, das die Detailseite schon hat (`shared/utils/stations.ts`:
+mit dem Vokabular, das die Detailseite schon hat (`app/utils/spine.ts`:
 `entwurf · begutachtung · rv · parlament · bgbl`). Das ist die
 Rechenschaftsschicht als Filter: „alles, was es ins BGBl geschafft hat" und
 „alles, was seit der Begutachtung liegt" sind die zwei Fragen, für die das
@@ -5002,7 +5009,7 @@ Vorlagen-Formular. In diesem Schalter löst sich der Abschnitt oben dann auf.
 Gegenstand-Abrufe pro Entwurf (`getDraftOutcome`) — für die 134
 Ministerialentwürfe der GP XXVIII rund 250, für die 353 der XXVII rund 700.
 Das ist eine GP-weite Stationskarte mit nächtlichem Prewarm, und damit
-genau die Regel, die `shared/utils/outcomes.ts` über sich selbst schreibt:
+genau die Regel, die `app/utils/outcomes.ts` über sich selbst schreibt:
 *keine Seite darf von 350 Upstream-Abrufen abhängen* — deshalb sind die Base
 Rates dort handkopierte Konstanten aus einem Skript. Dieselbe Karte liefert
 danach die Base Rates live: ein Paket, zwei Auszahlungen (Arbeitspaket 6).
@@ -5031,7 +5038,7 @@ Datenlage ist billiger ausgefallen als die Schätzung.
 | Wo steht es | Chips, Mehrfachauswahl | Begutachtung · Regierungsvorlage · Parlament · Bundesgesetzblatt | `?station=rv,bgbl` |
 | Was kann ich tun | das bisherige Segment | Alle · Stellungnahme möglich · Abgeschlossen | `?status=open` |
 
-Die Stationen sind die der Detailseite (`shared/utils/stations.ts`) minus
+Die Stationen sind die der Detailseite (`app/utils/spine.ts`) minus
 `entwurf` — ein Dokument, kein Ort, an dem ein Verfahren stehen kann. Ein
 Vokabular für Zeitleiste und Liste: wer die Stationen auf einer Seite lernt,
 liest die andere.
@@ -5093,7 +5100,7 @@ die Entwurfsseite findet beide.
 **Gegenprobe, zweimal unabhängig bestanden.** Die Karte findet für GP XXVII
 296 von 353 Entwürfen eine Regierungsvorlage und für GP XXVI 114 von 163 —
 exakt die Zahlen, die `scripts/rv-latency.mjs` am 08.09.2026 von Hand in
-`shared/utils/outcomes.ts` gemessen hat, live auf einem anderen Weg
+`app/utils/outcomes.ts` gemessen hat, live auf einem anderen Weg
 reproduziert.
 
 **Kosten, gemessen am 18.09.2026:** GP XXVIII = 135 Entwürfe → 135 Entwurfs-
@@ -5113,7 +5120,7 @@ alle drei stehen im Code:
    Prewarm-Unit. Ein Filter, dessen Karte niemand wärmt, ist ein Filter, den
    niemand sieht.
 
-`shared/utils/outcomes.ts` formuliert die Regel, der das folgt: keine Seite
+`app/utils/outcomes.ts` formuliert die Regel, der das folgt: keine Seite
 darf von 350 Upstream-Abrufen abhängen, *während jemand wartet*.
 
 **Die Hälfte ohne Gegenstand steht bei der Begutachtung — und kommt nie
@@ -5326,7 +5333,7 @@ eine MENGE benennt, bleibt es.
 #### Abwesenheit, die sich nicht als Defekt liest
 
 Der schwierigere Teil, und der Grund, warum die Zuordnung in
-`shared/utils/entryView.ts` liegt und nicht in einer Komponente: sie ist
+`app/utils/entryView.ts` liegt und nicht in einer Komponente: sie ist
 testbar (`tests/entryView.test.ts`).
 
 - **Zone 3 auf einer RIS-Zeile sagt „nicht gezählt"**, nie eine Ziffer —

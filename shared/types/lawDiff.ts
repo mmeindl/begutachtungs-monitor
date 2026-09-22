@@ -9,7 +9,7 @@ import type { LawDiffSegment, TraceLink } from './common'
  * comparison (`shared/utils/lawStations.ts`, docs/architecture.md §12.18).
  *
  * Not the same list as the five reader-facing stations in
- * `shared/utils/stations.ts`: Begutachtung and Bundesgesetzblatt publish no
+ * `app/utils/spine.ts`: Begutachtung and Bundesgesetzblatt publish no
  * Gesetzestext of their own, and these four do.
  *
  * `bgbl` ist seit 19.09.2026 dabei und ist anders als die vier davor: Seine

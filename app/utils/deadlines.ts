@@ -2,13 +2,13 @@
  * Urgency thresholds for Begutachtung deadlines — one definition for the
  * badge tones (DeadlineBadge), the dashboard stat tile, and its label.
  */
-import { daysUntil } from './format'
+import { daysUntil } from '../../shared/utils/format'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
 const DEADLINE_CRITICAL_DAYS = 3
 
 /** Deadline ends in ≤ N days → serious (orange badge tone, dashboard count). */
-export const DEADLINE_SERIOUS_DAYS = 7
+const DEADLINE_SERIOUS_DAYS = 7
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
@@ -104,7 +104,7 @@ export function fristDivergence(
  * confirmed by measurement on 2026-09-08 (`scripts/rv-latency.mjs`): the
  * p90 of Fristende → first Regierungsvorlage is 189 days in GP XXVII and
  * 148 in GP XXVI, so nine in ten arrive inside this window — which is what
- * `shared/utils/outcomes.ts` now says under the sentence.
+ * `app/utils/outcomes.ts` now says under the sentence.
  */
 export const RV_LATENCY_CONTEXT_DAYS = 180
 

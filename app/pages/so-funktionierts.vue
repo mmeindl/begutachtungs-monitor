@@ -31,7 +31,7 @@
  * instead.
  */
 import { EDITORIAL_BADGE_SENTENCE } from '#shared/utils/lawStations'
-import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
+import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 
 useSeoMeta({
   title: "So funktioniert's",
@@ -48,7 +48,7 @@ interface Step {
   link?: { to: string; label: string; external?: boolean }
 }
 
-/* Station names and their order are the rail's (`shared/utils/stations.ts`).
+/* Station names and their order are the rail's (`app/utils/spine.ts`).
    Kept static rather than imported, because this page explains the terms and
    the rail only uses them — but a rename there is a rename here. */
 const sharedSteps: Step[] = [

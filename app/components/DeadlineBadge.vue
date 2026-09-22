@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DeadlineTone } from '#shared/utils/deadlines'
+import type { DeadlineTone } from '~/utils/deadlines'
 
 const props = defineProps<{
   deadline: string | null

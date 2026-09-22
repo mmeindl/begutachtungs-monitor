@@ -9,9 +9,9 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { HOME_LIST_LENGTH, compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
-import { viewOfDraft, viewOfOutcome, viewOfRis, viewOfVorlage } from '#shared/utils/entryView'
+import { viewOfDraft, viewOfOutcome, viewOfRis, viewOfVorlage } from '~/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
-import { SECOND_ROUND_WINDOW } from '#shared/utils/stations'
+import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
    „Gesetzesentwürfe" from before the RIS half shipped, and then went on

@@ -182,7 +182,7 @@ export const DEFAULT_LAW_STATION_PAIR: { from: LawStationId; to: LawStationId } 
 /**
  * The heading over the comparison, phrased as the question the pair answers
  * rather than as the name of a procedure — the wording rule the station bar
- * already follows (`shared/utils/stations.ts`).
+ * already follows (`app/utils/spine.ts`).
  *
  * Temporal, never causal (framing rule, CLAUDE.md): a text changed after the
  * Begutachtung is not a text changed BY it, and the comparison cannot know

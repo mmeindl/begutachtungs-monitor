@@ -5,8 +5,8 @@ import {
   RV_BASE_RATES,
   rvBaseRateFor,
   rvBaseRateSentenceDe,
-} from '../shared/utils/outcomes'
-import { RV_LATENCY_CONTEXT_DAYS } from '../shared/utils/deadlines'
+} from '../app/utils/outcomes'
+import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
 
 describe('RV base rates (scripts/rv-latency.mjs, 2026-09-08)', () => {
   it('rows are internally consistent', () => {

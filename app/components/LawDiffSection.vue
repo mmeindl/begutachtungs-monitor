@@ -13,7 +13,7 @@
  */
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { unitKey } from '#shared/utils/diffKey'
-import { droppedLawsNote, mergedLawsNote } from '#shared/utils/lawPackage'
+import { droppedLawsNote, mergedLawsNote } from '~/utils/lawPackage'
 import {
   DEFAULT_LAW_STATION_PAIR,
   LAW_STATION_LABEL,
@@ -530,7 +530,7 @@ function unitLabel(u: LawDiffUnit): string | null {
  * Laws only one document carries are reported as laws, never as their
  * paragraphs: a Regierungsvorlage that merges several drafts would otherwise
  * report hundreds of paragraphs as "neu" and read as a verdict on this draft.
- * The sentences live in shared/utils/lawPackage.ts, where they are tested.
+ * The sentences live in app/utils/lawPackage.ts, where they are tested.
  */
 const mergedNote = computed(() =>
   mergedLawsNote(data.value?.lawsOnlyInTo ?? [], pair.value.from, pair.value.to),

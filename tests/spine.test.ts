@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DraftDetail } from '../shared/types'
 import { formatNumberDe } from '../shared/utils/format'
-import { procedureStatusDe, stations } from '../shared/utils/stations'
+import { procedureStatusDe, stations } from '../app/utils/spine'
 
 /* Only what `stations()` reads; the rest of DraftDetail is irrelevant here. */
 function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
