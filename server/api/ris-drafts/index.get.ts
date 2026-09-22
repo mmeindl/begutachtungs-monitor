@@ -157,7 +157,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
       // gibt es den eigenen Filter.
       // Mehrere Wörter mit UND, dieselbe Regel wie in `/api/drafts`.
       const haystack = `${item.title} ${stripMinistryMentions(item.longTitle ?? '', ministryTokenList)} ${item.ministryCode}`
-      if (!matchesQuery(haystack, q, { fold: false })) return false
+      if (!matchesQuery(haystack, q)) return false
     }
     return true
   })

@@ -143,8 +143,12 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
       // gesetz" suchte vorher diese elf Zeichen am Stück und fand nichts,
       // während der Volltextblock unter demselben Feld zwei Entwürfe zeigte
       // (`shared/utils/textMatch.ts`).
+      //
+      // UND GEFALTET GELESEN, seit demselben Tag: „oekostrom" findet die
+      // Ökostromförderung, wie es die Stellungnahmenliste immer schon tat.
+      // Gefaltet ODER roh — gefaltet allein hätte Wortinneres gekostet.
       const haystack = `${item.title} ${item.citation} ${item.ministryCode} ${aliasHaystack(item.gp, item.inr)}`
-      if (!matchesQuery(haystack, q, { fold: false })) return false
+      if (!matchesQuery(haystack, q)) return false
     }
     return true
   })

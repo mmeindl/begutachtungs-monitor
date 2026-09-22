@@ -394,7 +394,7 @@ const vorlageRows = computed<Row[]>(() => {
   if (selectedGp.value && selectedGp.value !== list.gp) return []
   return list.items
     .filter((v) => v.consultation.kind !== 'draft')
-    .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value, { fold: false }))
+    .filter((v) => matchesQuery(`${v.title} ${v.citation}`, qDebounced.value))
     .map((v) => ({ kind: 'vorlage' as const, key: `rv-${v.citation}`, vorlage: v }))
 })
 

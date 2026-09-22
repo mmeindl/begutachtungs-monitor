@@ -18,9 +18,11 @@
  * Seite clientseitig filtert (`vorlageRows`), dieselbe Regel brauchen.
  */
 
-// One AND-token rule with two normalisers, because two lists ask the same
-// question of different text: the Stellungnahmen lists fold umlauts and
-// punctuation (`fold: true`), the draft lists only lowercase (`fold: false`).
+// One rule for both lists since 22.09.2026: the tokens of a query are
+// AND-linked and each one a substring, read in two normalisations — raw
+// (lowercase) and folded (umlauts, transliterations, punctuation) — of which
+// the query need clear only one. Why either and not just the folded one is
+// the measurement under `matchesQuery`.
 
 /**
  * Name search for the Stellungnahmen lists (auto-imported by Nuxt from
@@ -48,8 +50,15 @@
  * "Muller", "Mueller" or "Müller" is looking for the same office, and which
  * transliteration the ministry's own clerk chose is not something they can
  * be expected to guess. Folding "ue" → "u" also hits genuine digraphs
- * ("Quelle" → "qulle"), which is harmless: both sides of the comparison go
- * through the same function, so the pair still matches. */
+ * ("Quelle" → "qulle"). This said that was harmless because both sides go
+ * through the same function — which holds only where the two align. The
+ * replacement is greedy and left to right, so a query that STARTS on the "e"
+ * the haystack's own fold swallowed is gone from the folded haystack:
+ * "ergesetz" does not occur in the folded "Paketsteuergesetz", nor "ell" in
+ * the folded "Audiovisuelle". Measured 22.09.2026 over the 472 GP-XXVIII
+ * haystacks (504.210 generated queries): 375 such cases, every one of them a
+ * mid-word fragment, none among whole words, word prefixes or word pairs.
+ * `matchesQuery` reads the pair unfolded as well, which is what closes it. */
 const UMLAUT_FOLD: Record<string, string> = { ä: 'a', ö: 'o', ü: 'u', ß: 'ss' }
 
 /**
@@ -98,12 +107,20 @@ export function queryTokens(q: string): string[] {
  *
  * An empty query matches everything: no filter is not the same as no result.
  *
- * `fold` picks the normaliser: folded for the Stellungnahmen lists, lowercase
- * for the draft lists, both sides of the comparison through the same one.
+ * TWO READINGS, AND EITHER MAY MATCH. Raw first, because it is the cheaper
+ * one and carries most hits; folded second, so "oesterreichischer" finds
+ * "Österreichischer" and a pasted "21/SN-8/ME" compares across the
+ * punctuation. Folded ALONE was measured before it shipped (22.09.2026, the
+ * run above): it takes 375 of 504.210 queries away from a reader, the
+ * disjunction takes 0 — so the reading that can only ever add is the one
+ * both lists use.
  */
-export function matchesQuery(haystack: string, q: string, { fold }: { fold: boolean }): boolean {
-  const tokens = fold ? foldForSearch(q).split(' ').filter(Boolean) : queryTokens(q)
-  if (!tokens.length) return true
-  const hay = fold ? foldForSearch(haystack) : haystack.toLowerCase()
-  return tokens.every((t) => hay.includes(t))
+export function matchesQuery(haystack: string, q: string): boolean {
+  const folded = foldForSearch(q).split(' ').filter(Boolean)
+  // Nothing searchable typed — punctuation only, or nothing at all.
+  if (!folded.length) return true
+  const lower = haystack.toLowerCase()
+  if (queryTokens(q).every((t) => lower.includes(t))) return true
+  const hay = foldForSearch(haystack)
+  return folded.every((t) => hay.includes(t))
 }
