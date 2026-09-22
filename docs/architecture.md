@@ -1794,7 +1794,7 @@ Engine: `server/utils/annex/comparisonRows.ts` (Parser der XML-Tabelle),
 `annexDraft.ts` (welche Paragraphen eine Novellierungsanordnung adressiert —
 der Bezug von Regel 2), `textComparisonService.ts` (Nitro-Glue),
 `/api/drafts/:gp/:inr/gegenueberstellung`,
-`app/components/TextComparisonSection.vue`. In GP XXVIII zeigt die Seite die
+`app/components/compare/TextComparisonSection.vue`. In GP XXVIII zeigt die Seite die
 Gegenüberstellung für **109 von 132 Entwürfen** — 65 aus der XML-Tabelle,
 44 aus der Textebene des PDF, seit beide Quellen angeschlossen sind
 (2026-09-09, weiter unten). Die 65 sind die Zahl, mit der das hier begann.

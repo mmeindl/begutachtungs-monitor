@@ -202,7 +202,7 @@ sequence fallback, never by § number alone.
   `statements.documents`), fetches with a leaf cache per URL, diffs, caches
   24 h. `available: false` with a German reason when no RV exists yet or a
   text is PDF-only.
-- `app/components/LawDiffSection.vue` on the draft page, once an RV
+- `app/components/compare/LawDiffSection.vue` on the draft page, once an RV
   exists: "Was sich nach der Begutachtung geändert hat". The summary sentence
   stands alone; the list opens on request (32/ME has 330 units). Inside:
   filter chips alle / geändert / neu / entfallen / unverändert with counts, a
