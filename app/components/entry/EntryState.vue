@@ -3,76 +3,46 @@ import type { DeadlineTone } from '~/utils/deadlines'
 import type { EntryState } from '~/utils/entryView'
 
 /**
- * Zone 4 — „wo steht es", als EIN Kasten mit zwei Zeilen: der Zustand, und
- * darunter, was ihn festmacht (docs/architecture.md §12.28).
+ * Zone 4 — „wo steht es", as ONE box of two lines: the state, and beneath it
+ * what pins it down (docs/architecture.md §12.28).
  *
  * ONE COMPONENT FOR EVERY STATE. It replaces `DeadlineBlock`, `StationBlock`
- * and `OutcomeChip`, all three of which claimed in their doc comments to
- * share "the same two-line anatomy" and did not: two rendered line 1 at
- * `text-base font-semibold`, two rendered it as a `text-xs` pill on
- * `bg-mark-wash`.
+ * and `OutcomeChip`, all three of which claimed to share "the same two-line
+ * anatomy" and did not.
  *
- * DER KASTEN STEHT IMMER, und das ist die Korrektur vom 18.09.2026 gegen
- * den ersten Anlauf dieser Komponente. Der hatte nur den kritischen Zustand
- * eingefasst und alles andere als freien Text gesetzt — also **variierte die
- * FORM**, und eine Spalte, deren Form je Zeile wechselt, liest sich nicht
- * als Spalte. Das ist genau der Fehler, den §12.28 eine Ebene höher
- * auflöst, hier eine Ebene tiefer wiederholt. Jetzt variiert nur die
- * FÜLLUNG; die Silhouette ist über alle 336 Zeilen dieselbe.
+ * THE BOX ALWAYS STANDS (correction of 18.09.2026): only the FILLING varies,
+ * never the form — the silhouette is the same over all 336 rows, and it
+ * encloses BOTH lines, because „Kundgemacht" and „BGBl. I Nr. 69/2026" are
+ * one statement and its Fundstelle.
  *
- * Der Kasten fasst BEIDE Zeilen ein. „Kundgemacht" und „BGBl. I Nr. 69/2026"
- * sind eine Aussage und ihre Fundstelle — sie zu trennen hieße, den Beleg
- * neben den Satz zu stellen statt unter ihn.
+ * THE FILLING: urgency gets colour (red ≤3 days, orange ≤7, pale blue for an
+ * open window without haste), everything closed gets the same grey —
+ * highlighting success or muting silence would both be a verdict (framing
+ * rule, CLAUDE.md). Rejected: `mark-wash` (yellow), which has exactly one job
+ * in lists („Neu") and would be 84 yellow boxes on
+ * `/entwuerfe?station=bgbl`; a larger size for the running countdown, a
+ * second carrier of what the colour already says; the dot, a third one.
+ * „Noch 3 Tage" says the urgency in words, so meaning never rides on colour
+ * alone (WCAG 1.4.1).
  *
- * DIE FÜLLUNG, und warum Grau und nicht Gelb:
- *  - **Dringlichkeit bekommt Farbe** — Rot ≤3 Tage, Orange ≤7, blasses Blau
- *    für ein offenes Fenster ohne Eile.
- *  - **Alles Abgeschlossene bekommt dasselbe Grau**, „Kundgemacht" wie
- *    „Bisher keine Regierungsvorlage". Das ist die Anti-Punktestand-Regel,
- *    die `OutcomeChip` schon durchgesetzt hat: den Erfolg hervorzuheben oder
- *    das Schweigen zu dämpfen wäre beides ein Urteil (Framing-Regel,
- *    CLAUDE.md).
- *  - **`mark-wash` (Gelb) bleibt draußen.** In Listen hat der Textmarker
- *    genau eine Aufgabe, „Neu"; als Grund jeder abgeschlossenen Zeile
- *    bedeutete er nichts mehr — und auf `/entwuerfe?station=bgbl` wären das
- *    84 gelbe Kästen, also wieder die Lautstärke, die den
- *    Drei-Tage-Countdown überschrien hat.
+ * BOTH LINES IN `text-ink`, not `ink-secondary`: on a wash only ink stays AAA
+ * — secondary lands at 6,0:1, muted at 5,6:1 (tokens in `main.css`). The
+ * hierarchy between the lines is carried by SIZE instead.
  *
- * EINE GRÖSSE FÜR JEDEN ZUSTAND, `text-sm` medium — auch für den
- * laufenden Countdown, der zuerst eine Stufe größer gesetzt war. Sobald der
- * Grund die Dringlichkeit trägt, ist die Größe ein ZWEITER Träger derselben
- * Aussage, und zwei Träger für eine Aussage kosten genau das, was sie
- * bringen sollen: die Spalte wippt zeilenweise zwischen zwei Schriftgraden,
- * und die Silhouette, für die der Kasten da ist, ist wieder hin. Die
- * Rangfolge im Blick der Leserin macht jetzt die Farbe — selten und rot vor
- * häufig und blau vor abgeschlossen und grau.
- *
- * KEIN PUNKT MEHR, aus demselben Grund: dritter Tonträger, im eingefassten
- * Kasten nur noch Rauschen. „Noch 3 Tage" sagt die Dringlichkeit ohnehin in
- * Worten, also reitet die Bedeutung weiterhin nicht auf Farbe allein
- * (WCAG 1.4.1).
- *
- * `actionable` bleibt im Modell, obwohl diese Komponente es nicht mehr
- * setzt: es ist die semantische Tatsache („hier geht noch etwas"), und es
- * fällt nicht mit `tone` zusammen — eine Frist, die upstream noch als aktiv
- * geführt wird, aber abgelaufen ist, kommt als `inactive` UND handlungsfähig
- * an (`deadlineTone`s Stale-Data-Schutz).
- *
- * BEIDE ZEILEN IN `text-ink`, nicht `ink-secondary`: auf einem Wash bleibt
- * nur ink AAA — secondary landet bei 6,0:1, muted bei 5,6:1 (Tokens in
- * `main.css`). Die Hierarchie zwischen den Zeilen trägt deshalb die GRÖSSE,
- * was die Regel des Designsystems ohnehin ist („hierarchy comes from size
- * and weight").
+ * `actionable` stays in the model although this component no longer reads it:
+ * it is the semantic fact („hier geht noch etwas") and does not coincide with
+ * `tone` — a Frist still carried as active upstream but expired arrives as
+ * `inactive` AND actionable (`deadlineTone`'s stale-data guard).
  */
 defineProps<{ state: EntryState }>()
 
 /**
- * `accent-50` für den ruhigen offenen Zustand, nicht `accent-wash`.
+ * `accent-50` for the calm open state, not `accent-wash`.
  *
- * Die offene Liste ist typischerweise 13 Zeilen lang, davon eine kritisch.
- * Mit `accent-wash` (#cde2fb) stünden zwölf kräftige blaue Kästen neben
- * einem blassen roten — die Farbe, die am seltensten vorkommt, muss die
- * auffälligste sein, sonst ist die Spalte eine Dekoration.
+ * The open list is typically 13 rows long, one of them critical. With
+ * `accent-wash` (#cde2fb) twelve strong blue boxes would stand beside one
+ * pale red — the rarest colour has to be the most conspicuous, or the column
+ * is decoration.
  */
 const groundClass: Record<DeadlineTone, string> = {
   critical: 'bg-status-critical/15',
@@ -83,17 +53,17 @@ const groundClass: Record<DeadlineTone, string> = {
 </script>
 
 <template>
-  <!-- KEINE eigene Ausrichtung: `text-align` erbt vom Aufrufer. Unter `sm`
-       steht die Karte linksbündig, darüber rechts, und die dichte Zeile
-       immer rechts — ein `align`-Prop müsste jeden dieser Fälle noch einmal
-       benennen, wo das Erben ihn schon kennt. -->
+  <!-- NO alignment of its own: `text-align` is inherited from the caller.
+       Below `sm` the card is left-aligned, above it right, and the dense row
+       always right — an `align` prop would have to name each of those cases
+       again where inheritance already knows it. -->
   <div class="rounded-lg px-2.5 py-1.5" :class="groundClass[state.tone]">
-    <!-- Umbrechen ist erlaubt, seit die Pille weg ist: „Bisher keine
-         Regierungsvorlage" und „Stellungnahme möglich" laufen in der
-         md-Spalte auf zwei Zeilen und bleiben ganz. Die Kurzformen, die sie
-         früher brauchten („Bisher keine Vorlage", „Im Parlament"), waren
-         `whitespace-nowrap` geschuldet — und „Vorlage" allein ist
-         mehrdeutig in einer Liste, die auch Regierungsvorlagen führt. -->
+    <!-- Wrapping is allowed since the pill went: „Bisher keine
+         Regierungsvorlage" and „Stellungnahme möglich" run onto two lines in
+         the md column and stay whole. The short forms they used to need
+         („Bisher keine Vorlage", „Im Parlament") were owed to
+         `whitespace-nowrap` — and „Vorlage" alone is ambiguous in a list that
+         also carries Regierungsvorlagen. -->
     <p class="text-sm font-medium leading-tight tabular-nums text-ink">
       {{ state.label }}
     </p>

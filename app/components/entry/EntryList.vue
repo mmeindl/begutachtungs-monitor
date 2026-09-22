@@ -2,49 +2,44 @@
 import type { EntryView } from '~/utils/entryView'
 
 /**
- * Eine Liste von Einträgen, zwei Dichten, ein Spaltenkopf — jede Liste der
- * Seite (docs/architecture.md §12.28).
+ * A list of entries, two densities, one column header — every list on the
+ * site (docs/architecture.md §12.28).
  *
- * `EntryItem` regelt, was IN einer Zeile steht; diese Komponente regelt, was
- * eine Liste von Zeilen ist: Karten unter `md`, ab `md` ein Blatt mit
- * Spaltenkopf und Trennlinien. Rein per CSS umgeschaltet, ohne JS und ohne
- * Client-Hook — beide Fassungen stehen im SSR-HTML, wie vorher.
+ * `EntryItem` settles what stands IN a row; this component settles what a
+ * list of rows is: cards below `md`, from `md` up a sheet with a column
+ * header and rules. Switched purely by CSS, without JS and without a client
+ * hook — both versions stand in the SSR HTML.
  *
- * SEIT 18.09.2026 GILT DAS AUCH FÜR DIE STARTSEITE. Vorher stand der
- * Spaltenkopf nur auf `/entwuerfe`, mit dem Argument: über fünf Karten sei
- * er mehr Gerüst als Inhalt. Das Argument zählte die Zeilen und übersah, was
- * der Kopf tut — er ist die Bedingung dafür, dass die Zellen ihre
- * Einheitswörter ablegen dürfen, und erst ohne sie fluchten die Ziffern. Die
- * Startseite ist außerdem die Seite, auf der VIER Listen untereinander
- * stehen: was dort in derselben Spalte steht, muss über die Abschnitte
- * hinweg an derselben Kante stehen, sonst vergleicht man 846 gegen 12 über
- * eine Abschnittsgrenze hinweg im Blindflug. Ein Kopf je Abschnitt kostet
- * 29 px und macht aus vier Listen eine Anatomie.
+ * SINCE 18.09.2026 THAT INCLUDES THE HOMEPAGE. The header used to stand on
+ * `/entwuerfe` only, on the argument that over five cards it is more scaffold
+ * than content. That counted rows and missed what the header does: it is the
+ * condition under which the cells may drop their unit words, and only then do
+ * the digits line up. The homepage also carries FOUR lists under one another,
+ * and what stands in the same column has to stand on the same edge across
+ * the sections. One header per section costs 29 px and makes four lists one
+ * anatomy.
  *
- * DER SLOT `evidence` ist die eine Ausnahme von „eine Zeile sagt über den
- * Entwurf, was es über ihn gibt": Er trägt den Grund, warum die Zeile
- * DASTEHT — die Fundstelle eines Volltext-Treffers (§12.31). Er wird an
- * beide Dichten durchgereicht und pro Eintrag ausgewertet, weil in einer
- * gemischten Liste nur ein Teil der Zeilen einen Beleg hat.
+ * The `evidence` slot is the one exception to „a row says about the draft
+ * what there is about it": it carries the reason the row IS THERE — a
+ * full-text hit's Fundstelle (§12.31). Passed through to both densities and
+ * evaluated per entry, because in a mixed list only some rows have one.
  *
- * Der Titel steht in beiden Dichten ganz da und bricht um, so oft er muss —
- * die dichte Zeile kürzte bis zum selben Tag auf eine Zeile. Die Zeilenhöhe
- * schwankt dadurch; die Messung und die Abwägung stehen in `EntryItem`,
- * Zone 1.
+ * The title stands whole in both densities and wraps as often as it must; the
+ * measurement and the trade-off are in `EntryItem`, zone 1.
  */
 defineProps<{
   entries: EntryView[]
   /**
-   * `ol` statt `ul`: nur dort, wo die REIHENFOLGE selbst die Aussage ist
-   * (die Reihung nach Stellungnahmen). Eine Fristenliste ist sortiert, nicht
-   * gereiht — das ist ein Anzeigezustand, keine Bedeutung.
+   * `ol` instead of `ul`: only where the ORDER is itself the statement (the
+   * ranking by Stellungnahmen). A deadline list is sorted, not ranked — that
+   * is a display state, not a meaning.
    */
   ordered?: boolean
   /**
-   * Die Überschrift der ersten Spalte. „Entwurf" überall außer dort, wo die
-   * Zeilen keine sind: der Abschnitt „Zweite Runde" listet
-   * Regierungsvorlagen, und ein Kopf, der sie „Entwurf" nennt, wäre die eine
-   * Stelle, an der das Gerüst dem Inhalt widerspricht.
+   * The first column's heading. „Entwurf" everywhere except where the rows
+   * are not drafts: the „Zweite Runde" section lists Regierungsvorlagen, and
+   * a header calling them „Entwurf" would be the one place where the scaffold
+   * contradicts the content.
    */
   lead?: string
 }>()
@@ -52,9 +47,9 @@ defineProps<{
 
 <template>
   <div>
-    <!-- Karten bis `md`: genug Breite pro Zeile, zwei Titelzeilen, und jede
-         Zelle trägt ihr Einheitswort selbst — es gibt hier keinen Kopf, der
-         es für sie sagen könnte. -->
+    <!-- Cards up to `md`: enough width per row, two title lines, and every
+         cell carries its own unit word — there is no header here that could
+         say it for them. -->
     <component :is="ordered ? 'ol' : 'ul'" class="space-y-3 md:hidden">
       <li v-for="entry in entries" :key="entry.key">
         <EntryItem :entry="entry" density="card">
@@ -65,10 +60,9 @@ defineProps<{
       </li>
     </component>
 
-    <!-- Ab `md` ein Blatt: eine Tabelle benennt ihre Spalten einmal.
-         `aria-hidden`, weil die Zeilen darunter Links sind und keine
-         Tabellenzellen — der Kopf ist eine Sehhilfe, die Vorlesereihenfolge
-         steht in der Zeile selbst. -->
+    <!-- From `md` a sheet: a table names its columns once. `aria-hidden`,
+         because the rows below are links and not table cells — the header is
+         a visual aid, the reading order stands in the row itself. -->
     <div
       class="hidden overflow-hidden rounded-xl border border-hairline bg-surface md:block"
     >

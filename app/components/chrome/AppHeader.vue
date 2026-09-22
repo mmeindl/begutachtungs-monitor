@@ -23,7 +23,7 @@ function isActive(to: string): boolean {
     <div
       class="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2 sm:px-6"
     >
-      <!-- min-h-11 = 44px AAA target size (WCAG 2.5.5) -->
+      <!-- AAA target size (WCAG 2.5.5) -->
       <NuxtLink
         to="/"
         class="inline-flex min-h-11 items-center gap-2 rounded-sm font-semibold text-ink"

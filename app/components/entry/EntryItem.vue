@@ -12,19 +12,17 @@ import type { EntryView } from '~/utils/entryView'
  *
  * Dense (`md+`): zone 1 and 2 stacked in the flexible left block, 3 and 4 as
  * fixed right-hand columns — `entry-col-count`/`entry-col-state` in
- * `main.css`, dieselben Klassen, die `EntryList` dem Spaltenkopf gibt. Card:
+ * `main.css`, the same classes `EntryList` gives the column header. Card:
  * the same order, with 3 and 4 on one bottom line — Stellungnahmen flush
  * left, Stand flush right — so the card reads in the same left-to-right
  * order as the row it becomes at `md`.
  *
- * WHAT IT REPLACES: `DraftCard`/`DraftRow`, `RisConsultationCard`/`Row` and
+ * WHAT IT REPLACED: `DraftCard`/`DraftRow`, `RisConsultationCard`/`Row` and
  * `SecondRoundCard`/`Row` — six components arranging the same facts six
- * ways. The defect that ended them is measurable: on
- * `/entwuerfe?status=open`, 14 rows in one screenful, the Stellungnahmen
- * token began at x=388 on one row and x=556 on another, because it was the
- * last token of a variable-length prose line. Now it is a column, and the
- * digits line up down the list — which is the only thing that makes 846 and
- * 12 comparable at a glance.
+ * ways, with the Stellungnahmen token drifting 168 px between two rows of
+ * one screenful (x=388 against x=556). Now it is a column, and the digits
+ * line up down the list — the only thing that makes 846 and 12 comparable at
+ * a glance.
  *
  * WHAT DECIDES CONTENT lives in `app/utils/entryView.ts`, not here. This
  * file knows nothing about Ministerialentwürfe, RIS records or
@@ -41,8 +39,8 @@ import type { EntryView } from '~/utils/entryView'
  */
 const props = defineProps<{
   entry: EntryView
-  /** `card` unter `md`, `row` im dichten Blatt ab `md` — beide Fassungen
-   *  stellt `EntryList`, nie eine Seite selbst. */
+  /** `card` below `md`, `row` in the dense sheet from `md` up — `EntryList`
+   *  sets both, never a page itself. */
   density?: 'card' | 'row'
 }>()
 
@@ -57,27 +55,26 @@ const props = defineProps<{
 const linkComponent = computed(() => (props.entry.to ? NuxtLink : 'a'))
 
 /**
- * KEIN `target="_blank"` — dieselbe Entscheidung wie in `ExternalLink`, und
- * aus demselben Grund: eine Zeile, die auf parlament.gv.at zeigt, ist ein
- * VERWEIS. Man sieht dort nach und kommt zurück, dafür ist der Zurück-Knopf
- * da, und wer einen Tab will, hat Cmd- oder Mittelklick — seine
- * Entscheidung statt unserer. Neue Fenster behalten nur Dokumente und
- * Handlungen, und die sagen es an (WCAG 2.2 3.2.5).
+ * NO `target="_blank"` — the same decision as in `ExternalLink`, for the same
+ * reason: a row pointing at parlament.gv.at is a REFERENCE. One looks there
+ * and comes back, which is what the back button is for, and whoever wants a
+ * tab has Cmd- or middle-click — their decision rather than ours. New windows
+ * are kept for documents and actions, and those announce it (WCAG 2.2 3.2.5).
  *
- * Diese Zeile war die eine Stelle, die der Umbau am 18.09.2026 nicht
- * erreichte: sie baut ihr `<a>` selbst, weil die ganze Zeile der Link ist.
+ * This row was the one place the rebuild of 18.09.2026 did not reach: it
+ * builds its own `<a>`, because the whole row is the link.
  */
 const linkProps = computed(() =>
   props.entry.to ? { to: props.entry.to } : { href: props.entry.href ?? undefined },
 )
 
 /**
- * Wohin die Zeile führt, für alle, die den ↗ nicht sehen — der ist
- * `aria-hidden`, und ohne ihn unterscheidet nichts diese Zeile von den
- * anderen dreizehn. `ExternalLink` braucht das nicht: dort steht das Ziel
- * im sichtbaren Text („Auf parlament.gv.at ansehen"), hier ist der Text der
- * Titel des Gegenstands. Aus dem Host, nicht als Konstante — diese
- * Komponente weiß nicht, welche Art von Eintrag sie rendert.
+ * Where the row leads, for everyone who cannot see the ↗ — that one is
+ * `aria-hidden`, and without it nothing tells this row from the other
+ * thirteen. `ExternalLink` needs none of this: there the target stands in the
+ * visible text („Auf parlament.gv.at ansehen"), here the text is the
+ * Gegenstand's title. Taken from the host, not a constant — this component
+ * does not know what kind of entry it renders.
  */
 const externalHost = computed(() => {
   if (props.entry.to || !props.entry.href) return null
@@ -132,7 +129,7 @@ const externalHost = computed(() => {
         {{ entry.title }}<span v-if="!entry.to" aria-hidden="true"> ↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }})</span>
       </component>
 
-      <!-- ZONE 2 — Kennung: was für ein Ding, welches, von wem. Fixed
+      <!-- ZONE 2 — Kennung: what kind of thing, which one, from whom. Fixed
            token order, the optional ones last, and NO dates — so the line's
            length can no longer move anything, which is what let the count
            drift 168 px in the first place.
@@ -170,35 +167,31 @@ const externalHost = computed(() => {
         <NewBadge v-if="entry.isNew" class="ms-0.5" />
       </p>
 
-      <!-- DER BELEG, und nur dort, wo die Zeile einen hat: die Trefferstelle
-           der Volltextsuche (§12.31). Leer gelassen rendert der Slot nichts,
-           also ändert er an keiner der bestehenden Listen etwas.
+      <!-- THE EVIDENCE, and only where the row has one: the full-text
+           search's Fundstelle (docs/architecture.md §12.31). Left empty the
+           slot renders nothing, so it changes none of the existing lists.
 
-           Er sitzt IN Zone 1/2 und nicht in einer fünften Zone, weil er kein
-           eigener Fakt über den Entwurf ist, sondern die Begründung dafür,
-           dass diese Zeile überhaupt dasteht — sie gehört zur Kennung, nicht
-           neben den Stand. Und er sitzt innerhalb des Links: wer den Beleg
-           anklickt, will zum Entwurf. -->
+           It sits IN zone 1/2 and not in a fifth zone, because it is not a
+           fact about the draft but the reason this row is here at all — it
+           belongs to the Kennung, not beside the Stand. And it sits inside
+           the link: whoever clicks the evidence wants the draft. -->
       <slot name="evidence" />
     </div>
 
-    <!-- DER STAND ZUERST, DIE ZAHL DARUNTER — auf der Karte oben rechts,
-         die Stellungnahmen unten rechts.
+    <!-- THE STAND FIRST, THE NUMBER BELOW IT — top right on the card, the
+         Stellungnahmen bottom right. Reversed until 18.09.2026, and the rank
+         was wrong: the most important thing about a row is whether I can
+         still do something, not how many others already did. The number is
+         the second question in every section, including the one that ranks by
+         it — there the ORDER carries the ranking (docs/architecture.md
+         §12.28).
 
-         Umgekehrt stand es bis 18.09.2026, und die Rangfolge stimmte nicht:
-         zuoberst las sich als „das Wichtigste", und das Wichtigste an einer
-         Zeile ist, ob ich noch etwas tun kann — nicht, wie viele andere
-         schon etwas getan haben. Die Zahl ist die zweite Frage, in jedem
-         Abschnitt, auch in dem, der nach ihr reiht: dort trägt die
-         REIHENFOLGE die Reihung (§12.28).
-
-         Eine Anordnung für jede Kartenbreite, ohne `sm:`-Zweig — was oben
-         steht, soll nicht davon abhängen, wie breit das Fenster ist. In der
-         dichten Zeile gilt dieselbe Rangfolge auf der anderen Achse: der
-         Stand ist die äußerste rechte Spalte, also der Ankerpunkt, an dem
-         das Auge die Liste hinunterfährt, und die Zahl steht davor.
-         `contents`, damit beide direkte Flex-Kinder der Zeile werden und
-         mit dem Spaltenkopf fluchten. -->
+         One arrangement for every card width, with no `sm:` branch — what
+         stands on top must not depend on how wide the window is. The dense
+         row keeps the same rank on the other axis: the Stand is the outermost
+         right column and therefore the anchor the eye runs down, the number
+         stands before it. `contents`, so both become direct flex children of
+         the row and line up with the column header. -->
     <div
       :class="
         density === 'row'
@@ -206,22 +199,18 @@ const externalHost = computed(() => {
           : 'mt-auto flex flex-col items-start gap-1.5 text-left sm:mt-0 sm:shrink-0 sm:items-end sm:text-right'
       "
     >
-      <!-- ZONE 4 — Stand. -->
-      <!-- Im DOM steht der Stand vor der Zahl — so liest ihn auch ein
-           Screenreader zuerst, und das ist die richtige Reihenfolge. In der
-           dichten Zeile kehrt `order` das SICHTBAR um: der Stand bleibt die
-           äußerste rechte Spalte, weil dort die Kante des Containers die
-           Werte untereinander ausrichtet und der Spaltenkopf ihn dort
-           ankündigt. Auf der Karte gibt es keine solche Kante, dort steht
-           er oben. -->
-      <!-- Die SPALTE ist fest, der KASTEN darin nicht: er misst sich an
-           seinem eigenen Inhalt und sitzt rechts in der Spalte. Beides
-           gleichzusetzen war zweimal derselbe Fehler — auf der Karte wurde
-           der Kasten so breit wie die Stellungnahmen-Zeile UNTER ihm, in
-           der dichten Zeile so breit wie die 14-rem-Spalte, und aus einem
-           Zustand wurde ein grauer Balken. Ein Kasten, dessen Breite von
-           etwas anderem als seinem Text bestimmt wird, sagt etwas über
-           dieses andere. -->
+      <!-- ZONE 4 — Stand. In the DOM it stands before the number, so a
+           screen reader reads it first; `order` reverses that VISIBLY in the
+           dense row, where the Stand stays the outermost right column because
+           the container's edge aligns the values there and the column header
+           announces it. The card has no such edge, so it stands on top.
+
+           The COLUMN is fixed, the BOX inside it is not: it measures itself
+           against its own content and sits right inside the column. Equating
+           the two was the same mistake twice — the box grew as wide as the
+           Stellungnahmen line below it on the card, as wide as the 14 rem
+           column in the dense row, and a state became a grey bar
+           (docs/architecture.md §12.28). -->
       <div :class="density === 'row' ? 'entry-col-state order-2 flex justify-end' : ''">
         <EntryState :state="entry.state" />
       </div>
@@ -243,13 +232,11 @@ const externalHost = computed(() => {
             : 'min-w-0 ps-2.5 sm:pe-2.5 sm:ps-0'
         "
       >
-        <!-- Das Einheitswort steht auf der Karte und NICHT in der dichten
-             Zeile: dort steht es im Spaltenkopf, einmal für die ganze
-             Liste.
-             Beides zugleich war der erste Anlauf und las sich als Stotterer
-             — „Stellungnahmen" vierzehnmal untereinander unter einer
-             Spalte, die schon so heißt. Die Karte hat keinen Kopf, also
-             trägt sie das Wort selbst. -->
+        <!-- The unit word stands on the card and NOT in the dense row:
+             there it stands in the column header, once for the whole list.
+             Both at once was the first attempt and read as a stutter —
+             „Stellungnahmen" fourteen times under a column already called
+             that. The card has no header, so it carries the word itself. -->
         <p
           v-if="entry.participation.kind === 'count'"
           class="text-sm font-semibold leading-tight tabular-nums text-ink"
@@ -265,27 +252,24 @@ const externalHost = computed(() => {
              „niemanden interessiert" over two thirds of the corpus, and a
              dash is Statistik Austria's symbol for exactly zero.
 
-             DIE ZELLE BEANTWORTET DIE FRAGE IHRER SPALTE, und das ist die
-             dritte Fassung dieses Textes. „nicht veröffentlicht" las sich
-             neben einer laufenden Frist als „noch nicht". „Stellungnahmen
-             ans Ministerium" sagte, WOHIN eine Stellungnahme geht — eine
-             Antwort auf eine Frage, die diese Spalte nicht stellt, und
-             deshalb lang und unscharf zugleich. Die Spalte heißt
-             „Stellungnahmen" und fragt „wie viele"; die wahre Antwort
-             darauf ist, dass es die Zahl nicht gibt.
+             THE CELL ANSWERS ITS COLUMN'S QUESTION, and this is the third
+             wording of it. „nicht veröffentlicht" read as „noch nicht" beside
+             a running Frist; „Stellungnahmen ans Ministerium" said WHERE a
+             Stellungnahme goes, an answer to a question this column does not
+             ask. The column is called „Stellungnahmen" and asks „wie viele";
+             the true answer is that the number does not exist.
 
-             Der Einreichweg geht dadurch nicht verloren: die Detailseite
-             sagt ihn in beiden Zuständen ganz („Eine Stellungnahme geht
-             hier direkt an das Ministerium …"), und die Feeds tragen ihn
-             über `risFilingNote` weiter, wo eine ganze Zeile Platz hat und
-             kein Spaltenkopf die Frage stellt.
+             The filing route is not lost: the detail page states it in full
+             in both states („Eine Stellungnahme geht hier direkt an das
+             Ministerium …"), and the feeds carry it on through
+             `risFilingNote`, where a whole line has room and no column header
+             asks the question.
 
-             `text-sm` wie die Zahl, nicht eine Stufe kleiner: die Zelle
-             steht an derselben Stelle für dieselbe Frage, und ein zweiter
-             Schriftgrad in EINER Spalte ist genau die Varianz, gegen die
-             §12.28 geschrieben ist. Dass hier keine Zahl steht, sagt schon
-             die Farbe (`ink-secondary` gegen ink) und das fehlende
-             Ziffernbild. -->
+             `text-sm` like the number, not a step smaller: the cell stands in
+             the same place for the same question, and a second type size in
+             ONE column is exactly the variance §12.28 is written against.
+             That no number stands here is already said by the colour
+             (`ink-secondary` against ink) and by the missing digits. -->
         <p
           v-else-if="entry.participation.kind === 'unpublished'"
           class="text-sm leading-tight text-ink-secondary"

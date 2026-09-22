@@ -2,33 +2,33 @@
 import type { BegutSearchHit } from '#shared/types'
 
 /**
- * Der Beleg unter einem Volltext-Treffer — die Fundstelle plus der Satz,
- * in dem das Wort steht (docs/architecture.md §12.31).
+ * The evidence under a full-text hit — the Fundstelle plus the sentence the
+ * word stands in (docs/architecture.md §12.31).
  *
- * Eigene Komponente, weil der Beleg der Grund ist, warum eine Zeile
- * dasteht: Er gehört zur Zeile, nicht zur Seite, und er steht in einer
- * gemischten Liste neben Zeilen, die keinen haben.
+ * Its own component, because the evidence is the reason a row is there: it
+ * belongs to the row, not to the page, and in a mixed list it stands beside
+ * rows that have none.
  *
- * KEIN RAHMEN, KEINE LINIE: Er steht schon in der Zeile des Treffers, und
- * ein Rahmen im Rahmen macht aus einem Zitat ein zweites Bauteil.
+ * NO FRAME, NO RULE: it already stands inside the hit's row, and a frame
+ * inside a frame turns a quotation into a second component.
  */
 defineProps<{
   /**
-   * Fehlt er, steht hier nichts. Die gemischte Liste auf `/entwuerfe` führt
-   * Zeilen mit und ohne Volltext-Treffer, und die Entscheidung „hat diese
-   * Zeile einen Beleg" gehört in die Komponente, die den Beleg kennt — nicht
-   * in ein `v-if` an jeder Aufrufstelle.
+   * Missing, nothing stands here. The mixed list on `/entwuerfe` carries rows
+   * with and without a full-text hit, and the decision „does this row have
+   * evidence" belongs in the component that knows the evidence — not in a
+   * `v-if` at every call site.
    */
   hit?: Pick<BegutSearchHit, 'place' | 'designation' | 'snippet' | 'ministryOnly'> | null
 }>()
 </script>
 
 <template>
-  <!-- ZWEI FUNDSTELLEN, ZWEI GEWICHTE. Der Sachtreffer steht in
-       `ink-secondary`, die bloße Ressortnennung eine Stufe leiser in
-       `ink-muted`: Sie ist eine geprüfte Auskunft, aber eine entkräftende —
-       sie sagt, warum das RIS den Satz geliefert hat, nicht wovon er
-       handelt. -->
+  <!-- TWO KINDS OF HIT, TWO WEIGHTS. The substantive one stands in
+       `ink-secondary`, the mere mention of a Ressort one step quieter in
+       `ink-muted`: it is checked information, but information that weakens
+       the hit — it says why RIS delivered the record, not what it is
+       about. -->
   <p
     v-if="hit?.snippet"
     class="mt-1 text-sm leading-relaxed"
@@ -44,14 +44,14 @@ defineProps<{
       }}<mark class="bg-mark text-ink">{{ hit.snippet.match }}</mark>{{ hit.snippet.after }}
     </span>
   </p>
-  <!-- KEINE STELLE HEISST NICHT KEIN TREFFER — aber der Satz dazu muss
-       stimmen. Die erste Fassung sagte „steht in einer Anlage oder einem
-       PDF", und das war geraten: Beim Industriestrompreisgesetz steht
-       „Klimaschutz" in KEINEM Dokument, die Erläuterungen schreiben
-       „Klima-, Umweltschutz- und Energiebeihilfen", und das RIS trifft über
-       die Wortbestandteile. Also sagt die Zeile, was geprüft wurde, und
-       überlässt den Schluss dem Leser. Seit 21.09.2026 wird dafür auch das
-       PDF gelesen, nicht nur das XML — der Fall ist seither seltener. -->
+  <!-- NO PLACE DOES NOT MEAN NO HIT — but the sentence about it has to be
+       right. The first version said „steht in einer Anlage oder einem PDF",
+       and that was guessed: for the Industriestrompreisgesetz „Klimaschutz"
+       stands in NO document, the Erläuterungen write „Klima-, Umweltschutz-
+       und Energiebeihilfen", and RIS matches on word components. So the line
+       says what was checked and leaves the inference to the reader. Since
+       21.09.2026 the PDF is read too, not only the XML — the case has been
+       rarer since. -->
   <p v-else-if="hit" class="mt-1 text-sm text-ink-muted">
     Wörtlich steht das Wort in keinem der Dokumente, die hier gelesen werden.
     Das RIS findet auch Wortbestandteile und durchsucht Anlagen.

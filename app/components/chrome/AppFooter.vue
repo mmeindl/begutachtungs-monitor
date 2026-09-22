@@ -1,42 +1,35 @@
 <script setup lang="ts">
 /**
- * Kolophon, keine Marketingfläche.
+ * A colophon, not a marketing surface. The subscription box that used to sit
+ * here was the fifth copy of one invitation, and it carried `mark-wash` — the
+ * tone `main.css` reserves for „what became of the input". The invitation now
+ * stands on the list, where the need arises.
  *
- * Das Abo-Angebot stand hier als Kasten auf jeder Seite und war die fünfte
- * Kopie derselben Einladung: Startseite unter dem Hero, Startseite im
- * Leerzustand, Ressort-Feed in der Liste, Abonnieren-Abschnitt auf /ueber.
- * "Subscribe at need" ist auf den Seiten passiert — der Kasten war das, was
- * davor übrig blieb. Dazu trug er mark-wash, den Ton, der laut main.css
- * "was aus dem Input wurde" bedeutet; unter einer Datenschutzerklärung war
- * er ohnehin fehl am Platz. Die Einladung steht jetzt auf der Liste, wo der
- * Bedarf entsteht.
- *
- * Was bleibt, bleibt aus einem Grund pro Zeile:
- *   - Quellen + Verweis auf die Lizenzangaben — Lizenzauflage, keine
- *     Höflichkeit. Genannt werden BEIDE Quellen: ein Teil der Daten kommt
- *     aus dem RIS des Bundes (Bundeskanzleramt), nicht von der
- *     Parlamentsdirektion, und CC BY verlangt die Nennung des Lizenzgebers.
- *     Die Lizenz selbst steht hier NICHT mehr: sie ist je Datensatz
- *     verschieden (Impressum, §„Urheberrecht & Lizenzen"), und eine Zeile,
- *     die für alle Daten CC BY behauptete, behauptete es auch für die des
- *     Begutachtungsverfahrens — die das Parlament ausdrücklich von der
- *     Weiterverwendung als Open Data ausnimmt. CC BY 4.0 § 3 a (2) lässt
- *     die Erfüllung der Namensnennung ausdrücklich per Link auf eine Seite
- *     zu, die die Angaben trägt; genau das ist dieser Verweis;
- *   - "Kein amtliches Angebot" — die tragende Zeile auf einer .at-Adresse
- *     über Ministerien;
- *   - Quellcode — AGPL § 13 verlangt, Nutzern bei Netzwerkinteraktion den
- *     Quelltext anzubieten: dieser Link ist die Umsetzung, kein Extra;
- *   - Kontakt — die Adressaten des Projekts sollen dafür nicht erst ins
- *     Impressum gehen müssen;
- *   - Impressum/Datenschutz — § 25 Abs 1 MedienG, "ständig leicht und
+ * What remains, one reason per line:
+ *   - Sources plus a link to the licence statements — a licence condition,
+ *     not a courtesy. BOTH sources are named: part of the data comes from the
+ *     federal RIS (Bundeskanzleramt), not from the Parlamentsdirektion, and
+ *     CC BY requires the licensor to be named. The licence itself is NOT
+ *     stated here: it differs per dataset (Impressum, §„Urheberrecht &
+ *     Lizenzen"), and a line claiming CC BY for all data would claim it for
+ *     the Begutachtungsverfahren's too — which Parliament expressly excludes
+ *     from reuse as open data. CC BY 4.0 § 3 a (2) expressly allows the
+ *     attribution to be satisfied by a link to a page carrying it, which is
+ *     exactly what this reference is;
+ *   - „Kein amtliches Angebot" — the load-bearing line on a .at address about
+ *     ministries;
+ *   - source code — AGPL § 13 requires offering users the source on network
+ *     interaction: this link is the implementation, not an extra;
+ *   - contact — the project's addressees should not have to go to the
+ *     Impressum first;
+ *   - Impressum/Datenschutz — § 25 Abs 1 MedienG, „ständig leicht und
  *     unmittelbar auffindbar".
  *
- * Nicht mehr hier: das Wort „Prototyp". Es entwertete die Metadaten, die
- * eine unveränderte Spiegelung der amtlichen Schnittstelle sind, und warnte
- * zugleich nicht vor dem Textvergleich, wo ein Fehler tatsächlich entstehen
- * kann. Der Vorbehalt steht jetzt konkret im Impressum, die echten Grenzen
- * im Status-Abschnitt auf /ueber.
+ * No longer here: the word „Prototyp". It devalued the metadata, which are an
+ * unaltered mirror of the official interface, while not warning about the
+ * text comparison, where an error can actually arise. The caveat now stands
+ * concretely in the Impressum, the real limits in the status section on
+ * /ueber.
  */
 </script>
 
