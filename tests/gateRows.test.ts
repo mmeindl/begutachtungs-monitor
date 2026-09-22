@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { annexParagraphKey } from '../server/utils/annex/annexText'
 import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
 import { REASON_NO_ARTICLES, REASON_TOO_SHORT, REASON_UNRESOLVED, type AnnexVerification } from '../server/utils/annex/verdict'
-import type { ComparisonRow } from '../server/utils/textComparison'
+import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
   kind: 'pair',

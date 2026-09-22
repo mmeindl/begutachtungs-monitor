@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DRAFT_THRESHOLD, MIN_MISSING_WORDS, MIN_NEW_WORDS, MIN_STANDING_STRETCH, draftBags, draftReference, draftWordBag, insertedStretches, rightColumnCheck, type StandingText, type WordBag } from '../server/utils/annex/rightColumn'
 import type { TextBlock } from '../server/utils/lawText'
-import type { ComparisonRow } from '../server/utils/textComparison'
+import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
   kind: 'pair',

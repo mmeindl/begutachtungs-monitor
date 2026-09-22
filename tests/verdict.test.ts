@@ -23,7 +23,7 @@ import {
 import type { TextBlock } from '../server/utils/lawText'
 import type { DraftArticle } from '../server/utils/lawTitles'
 import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/risKons'
-import { parseTextComparison, type ComparisonRow } from '../server/utils/textComparison'
+import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
   kind: 'pair',

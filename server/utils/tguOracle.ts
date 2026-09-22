@@ -28,7 +28,7 @@
  */
 import { diffTokens } from './diff/wordDiff'
 import { normalizeText } from './lawText'
-import type { ComparisonRow } from './textComparison'
+import type { ComparisonRow } from './annex/comparisonRows'
 import { punctuationTokens } from './text/punctuationTokens'
 
 export type OracleVerdict =

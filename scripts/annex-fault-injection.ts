@@ -163,7 +163,8 @@ import { plainText } from '../server/utils/lawStructure'
 import { normalizeText, parseRisXml } from '../server/utils/lawText'
 import { draftArticles, type DraftArticle } from '../server/utils/lawTitles'
 import { fetchParagraphTree, getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../server/utils/risKons'
-import { isScanned, parseTextComparison, type ComparisonRow } from '../server/utils/textComparison'
+import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
+import { isScanned } from '../server/utils/annex/tableCells'
 import { installFetchCache } from './harness-cache'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')

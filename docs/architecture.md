@@ -305,7 +305,7 @@ on every push (`.github/workflows/ci.yml`).
   `ministryCodes` (its toolkit), `lawDiff`, `lawTitles`, `lawPackage`.
 - **Amendment engine (§12.12):** `novao` (instruction parsing), `lawApply`,
   `applyGuard`, `applyReport`, `tguOracle`.
-- **Textgegenüberstellung (§12.13):** `textComparison` (the XML table),
+- **Textgegenüberstellung (§12.13):** `comparisonRows` (the XML table),
   `annexPdf` (page geometry), `annexBoundaries` (which heading opens a law),
   `annexText`/`coverage`/`rightColumn`/`verdict`/`gateRows` (the gate),
   `annexGolden`.
@@ -1170,7 +1170,7 @@ Freitext-Schreibweisen des RIS („TGÜ", „SAG_TGÜ",
 *Dazwischen lag ein Fehler derselben Bauart wie schon zweimal zuvor.* Die
 Parlamentskopie ist die Word-Legistikvorlage und schreibt das
 Gliederungssymbol als `<span class=991GldSymbol>&sect;&nbsp;1.</span>`, das
-RIS als `<gldsym>`. `lawText.ts` kennt beide seit jeher, `textComparison.ts`
+RIS als `<gldsym>`. `lawText.ts` kennt beide seit jeher, `annex/comparisonRows.ts`
 kannte nur die RIS-Form. Ergebnis: der Anhang parste, die Tabellen stimmten,
 die Änderungen wurden gefunden — und **jede** Zeile kam ohne Bezeichnung
 zurück, worauf `rowsByParagraph` sie alle verwarf und das Orakel zu jedem
@@ -1788,7 +1788,7 @@ dürfen.
 ### 12.13 „Was ändert der Entwurf?" — die amtliche Gegenüberstellung auf der Seite
 
 Geliefert 2026-09-08, und zwar aus dem amtlichen Anhang, nicht aus der
-Engine: `server/utils/textComparison.ts` (Parser der XML-Tabelle),
+Engine: `server/utils/annex/comparisonRows.ts` (Parser der XML-Tabelle),
 `annexPdf.ts` (Seitengeometrie), `annex/` (das Tor),
 `annexDraft.ts` (welche Paragraphen eine Novellierungsanordnung adressiert —
 der Bezug von Regel 2), `textComparisonService.ts` (Nitro-Glue),

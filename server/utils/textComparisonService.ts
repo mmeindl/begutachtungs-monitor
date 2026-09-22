@@ -62,7 +62,8 @@ import { mapDocuments } from './parliament/detailJson'
 import { getGegenstand } from './parliament/drafts'
 import { getRisMapForGp } from './ris/begutCorpus'
 import type { RisDocumentUrls } from './ris/risRecord'
-import { isScanned, parseTextComparison, type ComparisonParse } from './textComparison'
+import { parseTextComparison, type ComparisonParse } from './annex/comparisonRows'
+import { isScanned } from './annex/tableCells'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { coverageOf, coverageOfParagraph, displayedChangeRows } from '../server/utils/annex/coverage'
-import type { ComparisonRow } from '../server/utils/textComparison'
+import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 const row = (over: Partial<ComparisonRow> = {}): ComparisonRow => ({
   kind: 'pair',

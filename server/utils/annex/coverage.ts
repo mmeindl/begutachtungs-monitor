@@ -6,7 +6,7 @@
  * the three checks `annex/verdict.ts` runs over a §.
  */
 import { normalizeText } from '../lawText'
-import type { ComparisonRow } from '../textComparison'
+import type { ComparisonRow } from './comparisonRows'
 import { comparableTokens } from './annexText'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---

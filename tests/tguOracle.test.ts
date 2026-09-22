@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/tguOracle'
-import type { ComparisonRow } from '../server/utils/textComparison'
+import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {
   const change = !current && proposed ? 'inserted' : current && !proposed ? 'removed' : current === proposed ? 'unchanged' : 'changed'

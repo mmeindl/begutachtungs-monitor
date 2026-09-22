@@ -23,7 +23,9 @@ import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } fro
 import { diffTokens, isEditorialChange } from './diff/wordDiff'
 import { normalizeText } from './lawText'
 import type { DraftArticle } from './lawTitles'
-import { classify, HEADER_CURRENT_RE, HEADER_PROPOSED_RE, isElidedPair, type ComparisonRow } from './textComparison'
+import { classify, type ComparisonRow } from './annex/comparisonRows'
+import { isElidedPair } from './annex/elision'
+import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './annex/tableCells'
 
 /**
  * One positioned text run, in PDF user space: origin bottom-left, y upward,

@@ -7,7 +7,7 @@ import { verifyAnnex, type AnnexSources, type ParagraphVerdict } from '../server
 import { parseAnnexPdf, type AnnexPage } from '../server/utils/annexPdf'
 import { parseRisXml } from '../server/utils/lawText'
 import { draftArticles } from '../server/utils/lawTitles'
-import { parseTextComparison, type ComparisonRow } from '../server/utils/textComparison'
+import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { expandLaw, resolveKey, standingKey, type RecordedLaw } from '../scripts/gate-golden-keys'
 
 /**

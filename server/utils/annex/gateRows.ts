@@ -5,7 +5,7 @@
  * PURE MODULE — relative imports only, so vitest runs it directly. Runs after
  * `annex/verdict.ts` has produced the verdict map.
  */
-import { summarizeComparison, type ComparisonRow, type ComparisonStats } from '../textComparison'
+import { summarizeComparison, type ComparisonRow, type ComparisonStats } from './comparisonRows'
 import type { AnnexWithheldCause, TextComparisonRow } from '../../../shared/types'
 import { annexParagraphKey } from './annexText'
 import { isDisplayedChange } from './coverage'

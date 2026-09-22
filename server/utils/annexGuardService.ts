@@ -26,7 +26,7 @@ import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { parseKonsParagraph, plainText } from './lawStructure'
 import type { TextBlock } from './lawText'
 import type { DraftArticle } from './lawTitles'
-import type { ComparisonRow } from './textComparison'
+import type { ComparisonRow } from './annex/comparisonRows'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
 const sources: AnnexSources = {
