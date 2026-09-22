@@ -4,14 +4,18 @@
  * Bundesgesetzblatt WITHOUT ever having been in Begutachtung — the base rate
  * behind "a quarter of the bills were never publicly consulted".
  *
- * Usage:   node scripts/begutachtung-skipped.mjs XXVIII [cacheDir]
+ * Usage:   npx vite-node scripts/begutachtung-skipped.ts XXVIII [cacheDir]
  *
- * Plain Node >= 18, no dependencies. Two list-101 calls plus one list-81
- * call, then one detail call per Regierungsvorlage and per Gesetzesantrag
- * (~280 for GP XXVIII), four at a time, raw JSON cached in `cacheDir`
- * (default `.cache/begutachtung-skipped/`) so a rerun is free. Output: a
- * summary on stdout and `<cacheDir>/<GP>-skipped.json` with one row per
- * enacted law.
+ * Two list-101 calls plus one list-81 call, then one detail call per
+ * Regierungsvorlage and per Gesetzesantrag (~280 for GP XXVIII), four at a
+ * time, raw JSON cached in `cacheDir` (default
+ * `.cache/begutachtung-skipped/`) so a rerun is free. Output: a summary on
+ * stdout and `<cacheDir>/<GP>-skipped.json` with one row per enacted law.
+ *
+ * Was plain Node with no dependencies until 22.09.2026, which bought nothing
+ * and cost a typecheck: `tsconfig.tools.json` covers every `.ts` under
+ * `scripts/`, so 1.330 lines of `.mjs` were the one half of the repo that
+ * nothing looked at.
  *
  * ---------------------------------------------------------------------------
  * WHY THE DENOMINATOR IS "ENACTED LAWS", NOT "REGIERUNGSVORLAGEN"
@@ -58,12 +62,12 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { PARLIAMENT as BASE, getJson } from './lib/http'
+import { cachedJson } from './lib/diskCache'
+import { pool } from './lib/async'
+import type { MeAntragReport, SkippedRow } from './lib/skippedReport'
 
-const BASE = 'https://www.parlament.gv.at'
-const HEADERS = {
-  'User-Agent': 'begutachtungs-monitor/0.1 (ziviltech-prototyp; scripts/begutachtung-skipped)',
-  Accept: 'application/json',
-}
+const SCRIPT = 'begutachtung-skipped'
 const CONCURRENCY = 4
 
 /**
@@ -101,7 +105,7 @@ const CONCURRENCY = 4
  * they are ruled, the finding survives — which is the point of listing them
  * openly rather than tuning the number.
  */
-const EXEMPT = {
+const EXEMPT: Record<string, string> = {
   'XXVIII/I/66': 'Bundesfinanzrahmengesetz 2025–2028 — Budgetverfahren (Art 51 B-VG)',
   'XXVIII/I/67': 'Bundesfinanzgesetz 2025 — Budgetverfahren (Art 51 B-VG)',
   'XXVIII/I/68': 'Bundesfinanzgesetz 2026 — Budgetverfahren (Art 51 B-VG)',
@@ -173,7 +177,13 @@ const EXEMPT = {
  * diesem Fenster also nicht dasselbe wie danach; der Bericht trennt deshalb
  * nach Ära statt nur zu summieren.
  */
-const COALITIONS = {
+interface Era {
+  from: string
+  clubs: string[]
+  label: string
+}
+
+const COALITIONS: Record<string, Era[]> = {
   XXVIII: [
     { from: '2024-10-24', clubs: ['V', 'G'], label: 'ÖVP-Grüne (geschäftsführend, ohne Mehrheit)' },
     { from: '2025-03-03', clubs: ['V', 'S', 'N'], label: 'ÖVP-SPÖ-NEOS' },
@@ -184,63 +194,39 @@ const COALITIONS = {
   ],
 }
 
-const gp = process.argv[2]
+const gp = process.argv[2] ?? ''
 if (!gp || !/^[IVXLC]+$/.test(gp)) {
-  console.error('Usage: node scripts/begutachtung-skipped.mjs <GP, e.g. XXVIII> [cacheDir]')
+  console.error('Usage: npx vite-node scripts/begutachtung-skipped.ts <GP, e.g. XXVIII> [cacheDir]')
   process.exit(1)
 }
 const cacheDir = process.argv[3] ?? join('.cache', 'begutachtung-skipped')
 await mkdir(join(cacheDir, gp), { recursive: true })
 
-async function cachedJson(file, load) {
-  try {
-    return JSON.parse(await readFile(file, 'utf8'))
-  } catch {
-    const data = await load()
-    await writeFile(file, JSON.stringify(data))
-    return data
-  }
-}
-
-async function fetchJson(url, init) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { ...init, headers: HEADERS, signal: AbortSignal.timeout(15_000) })
-      if (res.status >= 500) throw new Error(`HTTP ${res.status}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status} (not retried)`)
-      return await res.json()
-    } catch (err) {
-      if (attempt === 2 || String(err).includes('not retried')) throw err
-      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
-    }
-  }
-}
-
-function filterList(listId, body, { showAll = true } = {}) {
-  return fetchJson(`${BASE}/Filter/api/filter/data/${listId}?js=eval${showAll ? '&showAll=true' : ''}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+/** Drei Versuche auf 5xx und Verbindungsabbruch; ein 4xx ist die Antwort und wird nicht wiederholt. */
+function fetchJson<T>(url: string, body?: unknown): Promise<T> {
+  return getJson<T>(url, {
+    script: SCRIPT,
+    attempts: 3,
+    backoffMs: (retry) => 500 * retry,
+    timeoutMs: 15_000,
+    ...(body === undefined ? {} : { method: 'POST' as const, body }),
   })
 }
 
-/** Run `task` over `items` with a fixed number of workers, in order-free fashion. */
-async function pool(items, task) {
-  const out = []
-  let i = 0
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      while (i < items.length) out.push(await task(items[i++]))
-    }),
-  )
-  return out
+interface ListAnswer {
+  count?: number
+  rows?: unknown[][]
+}
+
+function filterList(listId: number, body: unknown, { showAll = true } = {}): Promise<ListAnswer> {
+  return fetchJson<ListAnswer>(`${BASE}/Filter/api/filter/data/${listId}?js=eval${showAll ? '&showAll=true' : ''}`, body)
 }
 
 /** Welche Klubs waren am Tag `date` in der Regierung? */
-function coalitionAt(date) {
+function coalitionAt(date: string | null): Era | { clubs: string[]; label: string } {
   const d = String(date ?? '').slice(0, 10)
   const eras = COALITIONS[gp] ?? []
-  let hit = null
+  let hit: Era | null = null
   for (const era of eras) if (d >= era.from) hit = era
   return hit ?? { clubs: [], label: 'Regierung unbekannt (GP nicht in COALITIONS)' }
 }
@@ -250,14 +236,14 @@ function coalitionAt(date) {
  * Novelle"). Die Kalibrierung steht im Bericht — echte ME→RV-Paare werden
  * mit demselben Maß gemessen, damit man sieht, was es taugt. */
 const STOPWORDS = new Set(['und', 'der', 'die', 'das', 'des', 'aenderung', 'bundesgesetz', 'mit', 'dem', 'ueber', 'zur', 'von', 'sowie', 'gesetz'])
-const titleTokens = (s) =>
+const titleTokens = (s: string | null | undefined): Set<string> =>
   new Set(
     String(s ?? '').toLowerCase()
       .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
       .replace(/[^a-z0-9]+/g, ' ').trim()
       .split(' ').filter((t) => t.length > 3 && !STOPWORDS.has(t)),
   )
-function titleSimilarity(a, b) {
+function titleSimilarity(a: string | null | undefined, b: string | null | undefined): number {
   const A = titleTokens(a), B = titleTokens(b)
   if (!A.size || !B.size) return 0
   let shared = 0
@@ -266,7 +252,7 @@ function titleSimilarity(a, b) {
 }
 
 /** "Bundesgesetzblatt I Nr. 73/2025" -> "I 73/2025"; anything else -> null. */
-function bgblKey(title) {
+function bgblKey(title: unknown): string | null {
   const m = /Nr\.\s*(\d+)\s*\/\s*(\d{4})/.exec(String(title ?? ''))
   if (!m) return null
   const teil = /\bI+\b/.exec(String(title ?? ''))?.[0] ?? 'I'
@@ -279,13 +265,13 @@ function bgblKey(title) {
 
 console.error(`Lade Liste 101 (Regierungsvorlagen und Anträge) für GP ${gp} …`)
 
-const rvList = await cachedJson(join(cacheDir, gp, 'list101-rv.json'), () =>
+const rvList = await cachedJson<ListAnswer>(join(cacheDir, gp, 'list101-rv.json'), () =>
   filterList(101, { GP_CODE: [gp], ITYP: ['I'], VHG: ['RV'] }),
 )
-const antragList = await cachedJson(join(cacheDir, gp, 'list101-a.json'), () =>
+const antragList = await cachedJson<ListAnswer>(join(cacheDir, gp, 'list101-a.json'), () =>
   filterList(101, { GP_CODE: [gp], ITYP: ['A'] }),
 )
-const meList = await cachedJson(join(cacheDir, gp, 'list81.json'), () =>
+const meList = await cachedJson<ListAnswer>(join(cacheDir, gp, 'list81.json'), () =>
   filterList(81, { GP_CODE: [gp] }),
 )
 
@@ -293,15 +279,23 @@ const meList = await cachedJson(join(cacheDir, gp, 'list81.json'), () =>
 // verify a Regierungsvorlage's `preconst` pointer rather than trust it.
 const consultedInr = new Set((meList.rows ?? []).map((r) => Number(r[2])))
 
-const rvItems = (rvList.rows ?? []).map((r) => ({
-  ityp: 'I', inr: String(r[2]), citation: r[7], title: r[6], date: r[4],
+interface Item {
+  ityp: string
+  inr: string
+  citation: string
+  title: string
+  date: string
+}
+
+const rvItems: Item[] = (rvList.rows ?? []).map((r) => ({
+  ityp: 'I', inr: String(r[2]), citation: r[7] as string, title: r[6] as string, date: r[4] as string,
 }))
 // ART=A is the selbständiger Antrag on a Bundesgesetz. A(E) is an
 // Entschließungsantrag (a request to the government, never a law) and AMIN a
 // Ministeranklage — neither can reach the Bundesgesetzblatt.
-const antragItems = (antragList.rows ?? [])
+const antragItems: Item[] = (antragList.rows ?? [])
   .filter((r) => r[5] === 'A')
-  .map((r) => ({ ityp: 'A', inr: String(r[2]), citation: r[7], title: r[6], date: r[4] }))
+  .map((r) => ({ ityp: 'A', inr: String(r[2]), citation: r[7] as string, title: r[6] as string, date: r[4] as string }))
 
 console.error(
   `  ${rvItems.length} Regierungsvorlagen, ${antragItems.length} Gesetzesanträge, ` +
@@ -314,8 +308,21 @@ console.error(
 
 console.error(`Lade ${rvItems.length + antragItems.length} Detail-JSONs (${CONCURRENCY} parallel) …`)
 
-const resolved = await pool([...rvItems, ...antragItems], async (item) => {
-  const detail = await cachedJson(
+interface ItemDetail {
+  content?: {
+    title?: string
+    einlangen?: string
+    status?: { bgbllinks?: { title?: string }[] }
+    preconst?: { ityp?: string; gp_code?: string; inr?: string | number }[]
+    names?: { funktext?: string; frak_code?: string }[]
+    stages?: { text?: string }[]
+  }
+}
+
+type Resolved = Item & Omit<SkippedRow, 'bgbl' | keyof Item> & { bgbl: string[] }
+
+const resolved: Resolved[] = await pool([...rvItems, ...antragItems], CONCURRENCY, async (item) => {
+  const detail = await cachedJson<ItemDetail>(
     join(cacheDir, gp, `${item.ityp}-${item.inr}.json`),
     () => fetchJson(`${BASE}/gegenstand/${gp}/${item.ityp}/${item.inr}?json=True`),
   )
@@ -324,7 +331,7 @@ const resolved = await pool([...rvItems, ...antragItems], async (item) => {
   // Enacted? The BGBl link on the item's own status block. Absent on
   // everything that was rejected, withdrawn or is still in the house.
   const links = Array.isArray(content.status?.bgbllinks) ? content.status.bgbllinks : []
-  const bgbl = links.map((l) => bgblKey(l?.title)).filter(Boolean)
+  const bgbl = links.map((l) => bgblKey(l?.title)).filter((b): b is string => b !== null)
 
   // Consulted? Only a Regierungsvorlage can be: `preconst[]` names the
   // Ministerialentwurf. The pointer is verified against list 81 — it is not
@@ -341,7 +348,7 @@ const resolved = await pool([...rvItems, ...antragItems], async (item) => {
   const clubs = [...new Set(
     (Array.isArray(content.names) ? content.names : [])
       .filter((n) => /Eingebracht/i.test(String(n?.funktext ?? '')))
-      .map((n) => n?.frak_code).filter(Boolean),
+      .map((n) => n?.frak_code).filter((c): c is string => Boolean(c)),
   )].sort()
 
   return {
@@ -366,8 +373,8 @@ const resolved = await pool([...rvItems, ...antragItems], async (item) => {
  * Counting Gegenstände would then double-count the law, so the BGBl number is
  * the key — and where two routes claim one number, the consulted route wins
  * and the collision is reported rather than silently resolved. */
-const laws = new Map()
-const collisions = []
+const laws = new Map<string, Resolved>()
+const collisions: { bgbl: string; a: string; b: string }[] = []
 for (const item of resolved.filter((r) => r.enacted)) {
   for (const key of item.bgbl) {
     const prev = laws.get(key)
@@ -382,7 +389,7 @@ for (const item of resolved.filter((r) => r.enacted)) {
 
 // `item.bgbl` is the item's own list of BGBl numbers; the key is the one this
 // row is about, so it is spread LAST and wins.
-const all = [...laws.entries()].map(([bgbl, item]) => ({ ...item, bgbl }))
+const all: SkippedRow[] = [...laws.entries()].map(([bgbl, item]) => ({ ...item, bgbl }))
 const consulted = all.filter((l) => l.consulted)
 const exempt = all.filter((l) => !l.consulted && l.exemptReason)
 const skipped = all.filter((l) => !l.consulted && !l.exemptReason)
@@ -390,7 +397,7 @@ const skippedRv = skipped.filter((l) => l.ityp === 'I')
 const skippedAntrag = skipped.filter((l) => l.ityp === 'A')
 
 const base = consulted.length + skipped.length
-const pct = (n) => (base ? ((n / base) * 100).toFixed(1) : '0.0')
+const pct = (n: number) => (base ? ((n / base) * 100).toFixed(1) : '0.0')
 
 // ---------------------------------------------------------------------------
 // 3b. Wer bringt die Initiativanträge ein?
@@ -404,7 +411,7 @@ const pct = (n) => (base ? ((n / base) * 100).toFixed(1) : '0.0')
 // Wie viele Klubs hat dieses Haus? Aus dem Korpus statt hart kodiert.
 const allClubs = new Set(resolved.flatMap((r) => r.clubs))
 
-function classifyClubs(item) {
+function classifyClubs(item: SkippedRow): SkippedRow & { kind: string; era: string } {
   const { clubs: koa, label } = coalitionAt(item.einlangen ?? item.date)
   const fromKoa = item.clubs.filter((c) => koa.includes(c))
   const fromOpp = item.clubs.filter((c) => !koa.includes(c))
@@ -450,14 +457,14 @@ console.error(`Lade ${meRows.length} Ministerialentwurf-Details (Vorgeschichte-P
 // Titel kommt aus dem Detail-JSON, nicht aus der Liste: Liste 81 führt auf
 // Spalte 4 den Betreff und auf Spalte 6 das RESSORT — eine Verwechslung, die
 // lautlos Unsinn vergleicht (einmal passiert, 16.09.2026).
-const meDetails = await pool(meRows, async (me) => {
-  const detail = await cachedJson(
+const meDetails = await pool(meRows, CONCURRENCY, async (me) => {
+  const detail = await cachedJson<ItemDetail>(
     join(cacheDir, gp, `ME-${me.inr}.json`),
     () => fetchJson(`${BASE}/gegenstand/${gp}/ME/${me.inr}?json=True`),
   )
   const c = detail?.content ?? {}
   const stages = Array.isArray(c.stages) ? c.stages : []
-  let frist = null
+  let frist: string | null = null
   for (const s of stages) {
     const m = /Ende der Begutachtungsfrist\s+(\d{2})\.(\d{2})\.(\d{4})/.exec(String(s.text ?? ''))
     if (m) frist = `${m[3]}-${m[2]}-${m[1]}`
@@ -469,7 +476,7 @@ const meDetails = await pool(meRows, async (me) => {
     frist,
     // Wurde der Entwurf selbst zur Regierungsvorlage? Dann ist ein
     // gleichnamiger Antrag eher ein zweites Vorhaben zur selben Materie.
-    rv: stages.flatMap((s) => [...String(s.text ?? '').matchAll(/\/gegenstand\/[IVXLC]+\/I\/(\d+)/g)].map((m) => m[1]))[0] ?? null,
+    rv: stages.flatMap((s) => [...String(s.text ?? '').matchAll(/\/gegenstand\/[IVXLC]+\/I\/(\d+)/g)].map((m) => m[1]!))[0] ?? null,
   }
 })
 
@@ -479,11 +486,21 @@ const meDetails = await pool(meRows, async (me) => {
 const rvTitle = new Map(rvItems.map((r) => [r.inr, r.title]))
 const calib = meDetails
   .filter((m) => m.rv && rvTitle.has(m.rv))
-  .map((m) => titleSimilarity(m.title, rvTitle.get(m.rv)))
+  .map((m) => titleSimilarity(m.title, rvTitle.get(m.rv!)))
   .sort((a, b) => a - b)
 const calibMiss = calib.filter((s) => s < 0.5).length
 
-const vorgeschichte = []
+type Vorgeschichte = (typeof antragKinds)[number] & {
+  meInr: string
+  meTitle: string
+  meStart: string | null
+  meFrist: string | null
+  meBecameRv: boolean
+  score: number
+  strong: boolean
+  fristOffen: boolean
+}
+const vorgeschichte: Vorgeschichte[] = []
 for (const a of antragKinds) {
   const when = a.einlangen ?? a.date
   const best = meDetails
@@ -516,12 +533,12 @@ const korrNiedrig = skipped.length - vgAbgelaufen.length
 const korrStark = skipped.length - vgStark.length
 
 /* Der Titelabgleich ist die schwache Fassung dieser Prüfung. Die starke
- * vergleicht die Gesetzestexte und steht in `scripts/me-antrag-join.mjs`;
+ * vergleicht die Gesetzestexte und steht in `scripts/me-antrag-join.ts`;
  * wenn sie gelaufen ist, liegt ihr Ergebnis hier und hat Vorrang. Getrennte
  * Skripte, weil der Textabgleich pro Gegenstand ein Dokument lädt und damit
  * eine ganz andere Laufzeit hat als der Rest. */
-let textJoin = null
-try { textJoin = JSON.parse(await readFile(join(cacheDir, `${gp}-me-antrag.json`), 'utf8')) } catch { /* the join file is optional */ }
+let textJoin: MeAntragReport | null = null
+try { textJoin = JSON.parse(await readFile(join(cacheDir, `${gp}-me-antrag.json`), 'utf8')) as MeAntragReport } catch { /* the join file is optional */ }
 // `strong` trägt die Korrektur, `schwach` nur die Spanne — die Grenze ist im
 // Join-Skript an einer Lücke in den Daten abgelesen, nicht gewählt.
 const bestaetigt = (textJoin?.hits ?? []).filter((h) => h.strong)
@@ -562,13 +579,13 @@ const korrMitSchwachen = skipped.length - bestaetigt.length - schwach.length
  * Deckelung, und kostet eine kleine Anfrage pro Gesetz. Die Zahl kann so
  * nicht mehr von einem Limit abhängen, das niemand im Ergebnis sieht. */
 const stnFile = join(cacheDir, gp, 'list142-counts.json')
-let stnCounts
+let stnCounts: Record<string, number>
 try {
-  stnCounts = JSON.parse(await readFile(stnFile, 'utf8'))
+  stnCounts = JSON.parse(await readFile(stnFile, 'utf8')) as Record<string, number>
 } catch {
   console.error(`Zähle Stellungnahmen (§ 23b) für ${skipped.length} Gesetze, eine Anfrage je Gesetz …`)
   stnCounts = {}
-  await pool(skipped, async (l) => {
+  await pool(skipped, CONCURRENCY, async (l) => {
     const res = await filterList(
       142,
       { BEZUG_GP_CODE: [gp], BEZUG_ITYP: [l.ityp], BEZUG_INR: [Number(l.inr)] },
@@ -588,7 +605,7 @@ const stnSumme = mitStn.reduce((s, l) => s + l.stn, 0)
 // 4. Report — the skipped list in full, because that is what gets reviewed
 // ---------------------------------------------------------------------------
 
-const out = []
+const out: string[] = []
 const say = (s = '') => { out.push(s); console.log(s) }
 
 say(`\n=== Begutachtung übersprungen — GP ${gp} ===\n`)
@@ -624,7 +641,7 @@ say(`     Achtung: von dieser Zahl geht die Vorgeschichte-Korrektur (§3c) noch 
 say(`\n--- Vorgeschichte: vorher als Ministerialentwurf in Begutachtung? ---`)
 if (textJoin) {
   const offen = bestaetigt.filter((h) => h.fristOffen).length
-  say(`  TEXTABGLEICH (maßgeblich, scripts/me-antrag-join.mjs, Stand ${textJoin.measuredAt}):`)
+  say(`  TEXTABGLEICH (maßgeblich, scripts/me-antrag-join.ts, Stand ${textJoin.measuredAt}):`)
   say(`    ${bestaetigt.length} der ${skippedAntrag.length} Initiativanträge setzen nachweislich einen begutachteten`)
   say(`    Ministerialentwurf fort — Textdeckung ab ${(textJoin.method.threshold * 100).toFixed(0)} %, kalibriert an`)
   say(`    ${textJoin.calibration.truePairs} wahren Paaren (${(100 * textJoin.calibration.trueP05).toFixed(0)} % im 5 %-Quantil) gegen ${textJoin.calibration.noisePairs} falsche (max ${(100 * textJoin.calibration.noiseMax).toFixed(1)} %).`)
@@ -648,7 +665,7 @@ if (textJoin) {
   say(`  er zeigt, wie viel ein Titel NICHT trägt: ${vorgeschichte.length} Kandidaten gegenüber ${bestaetigt.length} belegten.`)
 } else {
   say(`  (Kein Textabgleich vorhanden. Für die belastbare Zahl:`)
-  say(`   node scripts/me-antrag-join.mjs ${gp} — der Titelabgleich unten überschätzt deutlich.)`)
+  say(`   npx vite-node scripts/me-antrag-join.ts ${gp} — der Titelabgleich unten überschätzt deutlich.)`)
 }
 say(`  Kalibrierung des Titelmaßes an ${calib.length} echten Entwurf→Regierungsvorlage-Paaren:`)
 say(`    Median ${(calib[Math.floor(calib.length / 2)] ?? 0).toFixed(2)}, ` +
@@ -720,7 +737,7 @@ await writeFile(rowsFile, JSON.stringify({
     regierungsvorhabenOhneBegutachtung: skippedRv.length + koaAntraege.length,
     // §3c: Kandidaten mit Begutachtungs-Vorgeschichte und die Spanne, die
     // sie aufmachen. Berichtet, nicht angewendet.
-    // Maßgeblich, sobald me-antrag-join.mjs gelaufen ist.
+    // Maßgeblich, sobald me-antrag-join.ts gelaufen ist.
     vorgeschichteBelegt: textJoin ? bestaetigt.length : null,
     skippedKorrigiertBelegt: textJoin ? korrBestaetigt : null,
     // Die Titel-Vorfassung; bleibt als Kontrast stehen.

@@ -8,7 +8,7 @@ import {
 } from '../app/utils/outcomes'
 import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
 
-describe('RV base rates (scripts/rv-latency.mjs, 2026-09-08)', () => {
+describe('RV base rates (scripts/rv-latency.ts, 2026-09-08)', () => {
   it('rows are internally consistent', () => {
     for (const r of RV_BASE_RATES) {
       expect(r.withRv).toBeLessThanOrEqual(r.drafts)

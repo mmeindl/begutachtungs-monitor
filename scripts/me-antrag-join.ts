@@ -1,14 +1,14 @@
-#!/usr/bin/env node
+#!/usr/bin/env vite-node
 /**
  * Findet die Gesetze, die als Ministerialentwurf in Begutachtung waren und
  * danach als selbständiger Antrag ins Haus kamen — über den GESETZESTEXT,
  * nicht über den Titel.
  *
- * Usage:   node scripts/me-antrag-join.mjs XXVIII [cacheDir]
- *          (setzt voraus, dass begutachtung-skipped.mjs für dieselbe GP
+ * Usage:   npx vite-node scripts/me-antrag-join.ts XXVIII [cacheDir]
+ *          (setzt voraus, dass begutachtung-skipped.ts für dieselbe GP
  *           gelaufen ist — dessen `<GP>-skipped.json` ist der Input.)
  *
- * Ergebnis: `<cacheDir>/<GP>-me-antrag.json`. `begutachtung-skipped.mjs`
+ * Ergebnis: `<cacheDir>/<GP>-me-antrag.json`. `begutachtung-skipped.ts`
  * liest die Datei, wenn sie da ist, und ersetzt damit seinen eigenen
  * Titelabgleich.
  *
@@ -52,9 +52,12 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { PARLIAMENT as BASE, getJson, getText } from './lib/http'
+import { cachedJson, cachedText } from './lib/diskCache'
+import { pool } from './lib/async'
+import type { MeAntragHit, SkippedReport, SkippedRow } from './lib/skippedReport'
 
-const BASE = 'https://www.parlament.gv.at'
-const HEADERS = { 'User-Agent': 'begutachtungs-monitor/0.1 (ziviltech-prototyp; scripts/me-antrag-join)' }
+const SCRIPT = 'me-antrag-join'
 const CONCURRENCY = 4
 const SHINGLE = 5
 /* Keine Skizze mehr (1 = alles behalten). Die Mod-Skizze war für den
@@ -70,39 +73,20 @@ const SKETCH_MOD = 1
  * irgendeinem Gesetzestext immer „enthalten". */
 const MIN_SKETCH = 60
 
-const gp = process.argv[2]
+const gp = process.argv[2] ?? ''
 if (!gp || !/^[IVXLC]+$/.test(gp)) {
-  console.error('Usage: node scripts/me-antrag-join.mjs <GP, e.g. XXVIII> [cacheDir]')
+  console.error('Usage: npx vite-node scripts/me-antrag-join.ts <GP, e.g. XXVIII> [cacheDir]')
   process.exit(1)
 }
 const cacheDir = process.argv[3] ?? join('.cache', 'begutachtung-skipped')
 await mkdir(join(cacheDir, gp, 'text'), { recursive: true })
 
-async function cachedJson(file, load) {
-  try { return JSON.parse(await readFile(file, 'utf8')) } catch {
-    const data = await load(); await writeFile(file, JSON.stringify(data)); return data
-  }
+/** Drei Versuche auf 5xx und Verbindungsabbruch; ein 4xx ist die Antwort und wird nicht wiederholt. */
+const RETRY = { script: SCRIPT, attempts: 3, backoffMs: (retry: number) => 500 * retry, timeoutMs: 20_000 } as const
+function fetchJson<T>(url: string, body?: unknown): Promise<T> {
+  return getJson<T>(url, { ...RETRY, ...(body === undefined ? {} : { method: 'POST' as const, body }) })
 }
-async function fetchAny(url, init, asText = false) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, { ...init, headers: { ...HEADERS, ...(init?.headers ?? {}) }, signal: AbortSignal.timeout(20_000) })
-      if (res.status >= 500) throw new Error(`HTTP ${res.status}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status} (not retried)`)
-      return asText ? await res.text() : await res.json()
-    } catch (err) {
-      if (attempt === 2 || String(err).includes('not retried')) throw err
-      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)))
-    }
-  }
-}
-async function pool(items, task) {
-  const out = []; let i = 0
-  await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
-    while (i < items.length) { const n = i++; out[n] = await task(items[n]) }
-  }))
-  return out
-}
+const fetchText = (url: string): Promise<string> => getText(url, RETRY)
 
 // ---------------------------------------------------------------------------
 // Text → Skizze
@@ -112,7 +96,7 @@ async function pool(items, task) {
  * Datumsangaben sind das Unterscheidende zwischen zwei Novellen zum selben
  * Gesetz. HTML-Entities werden entfernt, nicht dekodiert — beide Seiten
  * kommen aus derselben Quelle und sind gleich kodiert. */
-function plainText(html) {
+function plainText(html: string): string {
   return String(html)
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
@@ -124,15 +108,17 @@ function plainText(html) {
 }
 
 /** FNV-1a, 32 bit. Kein Kryptobedarf, nur Streuung. */
-function hash32(s) {
+function hash32(s: string): number {
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
   return h >>> 0
 }
 
-function sketch(text) {
+type Sketch = Set<number>
+
+function sketch(text: string): Sketch {
   const words = text.split(' ')
-  const out = new Set()
+  const out = new Set<number>()
   for (let i = 0; i + SHINGLE <= words.length; i++) {
     const h = hash32(words.slice(i, i + SHINGLE).join(' '))
     if (h % SKETCH_MOD === 0) out.add(h)
@@ -140,14 +126,14 @@ function sketch(text) {
   return out
 }
 
-function shared(a, b) {
+function shared(a: Sketch, b: Sketch): number {
   const [small, big] = a.size <= b.size ? [a, b] : [b, a]
   let n = 0
   for (const x of small) if (big.has(x)) n++
   return n
 }
 
-function jaccard(a, b) {
+function jaccard(a: Sketch | null | undefined, b: Sketch | null | undefined): number {
   if (!a?.size || !b?.size) return 0
   return shared(a, b) / (a.size + b.size - shared(a, b))
 }
@@ -167,7 +153,7 @@ function jaccard(a, b) {
  *
  * Containment ist nicht symmetrisch harmlos: ein sehr kurzer Text ist schnell
  * „enthalten". Dagegen MIN_SKETCH. */
-function containment(a, b) {
+function containment(a: Sketch | null | undefined, b: Sketch | null | undefined): number {
   if (!a?.size || !b?.size) return 0
   return shared(a, b) / Math.min(a.size, b.size)
 }
@@ -177,49 +163,53 @@ function containment(a, b) {
 // ---------------------------------------------------------------------------
 
 const skippedFile = join(cacheDir, `${gp}-skipped.json`)
-let skippedData
-try { skippedData = JSON.parse(await readFile(skippedFile, 'utf8')) } catch {
-  console.error(`Fehlt: ${skippedFile}\nZuerst laufen lassen: node scripts/begutachtung-skipped.mjs ${gp}`)
+let skippedData: SkippedReport
+try { skippedData = JSON.parse(await readFile(skippedFile, 'utf8')) as SkippedReport } catch {
+  console.error(`Fehlt: ${skippedFile}\nZuerst laufen lassen: npx vite-node scripts/begutachtung-skipped.ts ${gp}`)
   process.exit(1)
 }
 const antraege = skippedData.rows.filter((r) => !r.consulted && !r.exemptReason && r.ityp === 'A')
 
-const meList = await cachedJson(join(cacheDir, gp, 'list81.json'), () =>
-  fetchAny(`${BASE}/Filter/api/filter/data/81?js=eval&showAll=true`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ GP_CODE: [gp] }),
-  }))
+interface ListRows { rows?: unknown[][] }
+
+const meList = await cachedJson<ListRows>(join(cacheDir, gp, 'list81.json'), () =>
+  fetchJson(`${BASE}/Filter/api/filter/data/81?js=eval&showAll=true`, { GP_CODE: [gp] }))
 
 console.error(`GP ${gp}: ${antraege.length} übersprungene Initiativanträge, ${(meList.rows ?? []).length} Ministerialentwürfe.`)
 
-/** Detail-JSON eines Gegenstands; teilt den Cache mit begutachtung-skipped.mjs. */
-const detailOf = (ityp, inr) => cachedJson(
+/** Detail-JSON eines Gegenstands; teilt den Cache mit begutachtung-skipped.ts. */
+interface Detail {
+  content?: {
+    title?: string
+    einlangen?: string
+    stages?: { text?: string }[]
+    documents?: { title?: string; documents?: { type?: string; link?: string }[] }[]
+  }
+}
+const detailOf = (ityp: string, inr: string): Promise<Detail> => cachedJson<Detail>(
   join(cacheDir, gp, `${ityp}-${inr}.json`),
-  () => fetchAny(`${BASE}/gegenstand/${gp}/${ityp}/${inr}?json=True`, { headers: { Accept: 'application/json' } }),
+  () => fetchJson(`${BASE}/gegenstand/${gp}/${ityp}/${inr}?json=True`),
 )
 
 /** Die HTML-Fassung des Gesetzestexts. Beide Seiten führen eine Gruppe, die
  *  so heißt ("Gesetzestext", beim Antrag "Gesetzestext (Arbeitsdokument
  *  ParlDion)"). Erläuterungen und Textgegenüberstellung bleiben draußen:
  *  sie sind auf den beiden Seiten verschieden lang und verwässern nur. */
-function gesetzestextLink(detail) {
+function gesetzestextLink(detail: Detail): string | null {
   const groups = detail?.content?.documents ?? []
   const preferred = groups.find((g) => /^Gesetzestext/i.test(String(g?.title ?? '')))
   const group = preferred ?? groups.find((g) => /Initiativantrag|Entwurf|Vorlage/i.test(String(g?.title ?? '')))
   return (group?.documents ?? []).find((d) => d?.type === 'HTML')?.link ?? null
 }
 
-async function textOf(ityp, inr) {
-  const file = join(cacheDir, gp, 'text', `${ityp}-${inr}.txt`)
-  try { return await readFile(file, 'utf8') } catch {
+function textOf(ityp: string, inr: string): Promise<string> {
+  return cachedText(join(cacheDir, gp, 'text', `${ityp}-${inr}.txt`), async () => {
     const link = gesetzestextLink(await detailOf(ityp, inr))
-    const text = link ? plainText(await fetchAny(BASE + link, {}, true)) : ''
-    await writeFile(file, text)
-    return text
-  }
+    return link ? plainText(await fetchText(BASE + link)) : ''
+  })
 }
 
-async function sketchOf(ityp, inr) {
+async function sketchOf(ityp: string, inr: string): Promise<Sketch | null> {
   const text = await textOf(ityp, inr)
   return text.length > 200 ? sketch(text) : null
 }
@@ -231,29 +221,36 @@ async function sketchOf(ityp, inr) {
 /* Wahre Paare: ein Ministerialentwurf und die Regierungsvorlage, auf die sein
  * eigener Nachfolger-Zeiger verweist. Das ist dieselbe Textbeziehung wie die
  * gesuchte (begutachteter Entwurf → eingebrachte Fassung), nur mit Beleg. */
+interface MeRow {
+  inr: string
+  title: string
+  start: string | null
+  frist: string | null
+  rv: string | null
+}
 const meInrs = (meList.rows ?? []).map((r) => String(r[2]))
 console.error(`Lese ${meInrs.length} Ministerialentwurf-Details …`)
-const mes = await pool(meInrs, async (inr) => {
+const mes: MeRow[] = await pool(meInrs, CONCURRENCY, async (inr) => {
   const c = (await detailOf('ME', inr))?.content ?? {}
   const stages = Array.isArray(c.stages) ? c.stages : []
-  let frist = null
+  let frist: string | null = null
   for (const s of stages) {
     const m = /Ende der Begutachtungsfrist\s+(\d{2})\.(\d{2})\.(\d{4})/.exec(String(s.text ?? ''))
     if (m) frist = `${m[3]}-${m[2]}-${m[1]}`
   }
-  const rv = stages.flatMap((s) => [...String(s.text ?? '').matchAll(/\/gegenstand\/[IVXLC]+\/I\/(\d+)/g)].map((m) => m[1]))[0] ?? null
+  const rv = stages.flatMap((s) => [...String(s.text ?? '').matchAll(/\/gegenstand\/[IVXLC]+\/I\/(\d+)/g)].map((m) => m[1]!))[0] ?? null
   return { inr, title: c.title ?? '', start: String(c.einlangen ?? '').slice(0, 10) || null, frist, rv }
 })
 
-const pairs = mes.filter((m) => m.rv)
+const pairs = mes.filter((m): m is MeRow & { rv: string } => Boolean(m.rv))
 console.error(`Lade Gesetzestexte: ${mes.length} Entwürfe, ${antraege.length} Anträge, ${pairs.length} Regierungsvorlagen …`)
 
-const meSketch = new Map()
-await pool(mes, async (m) => meSketch.set(m.inr, await sketchOf('ME', m.inr)))
-const aSketch = new Map()
-await pool(antraege, async (a) => aSketch.set(a.inr, await sketchOf('A', a.inr)))
-const rvSketch = new Map()
-await pool(pairs, async (m) => rvSketch.set(m.rv, await sketchOf('I', m.rv)))
+const meSketch = new Map<string, Sketch | null>()
+await pool(mes, CONCURRENCY, async (m) => meSketch.set(m.inr, await sketchOf('ME', m.inr)))
+const aSketch = new Map<string, Sketch | null>()
+await pool(antraege, CONCURRENCY, async (a) => aSketch.set(a.inr, await sketchOf('A', a.inr)))
+const rvSketch = new Map<string, Sketch | null>()
+await pool(pairs, CONCURRENCY, async (m) => rvSketch.set(m.rv, await sketchOf('I', m.rv)))
 
 /* Formelsprache raus. Gesetzestexte teilen Bausteine — „tritt mit dem der
  * Kundmachung folgenden Tag in Kraft", „in der Fassung des Bundesgesetzes
@@ -264,17 +261,17 @@ await pool(pairs, async (m) => rvSketch.set(m.rv, await sketchOf('I', m.rv)))
  * in mehr als DF_MAX der Dokumente vorkommt — der übliche IDF-Schnitt, hier
  * als harte Grenze statt als Gewicht, weil danach noch eine Schwelle folgt. */
 const DF_MAX = 0.02
-const allSketches = [...meSketch.values(), ...aSketch.values(), ...rvSketch.values()].filter(Boolean)
-const df = new Map()
+const allSketches = [...meSketch.values(), ...aSketch.values(), ...rvSketch.values()].filter((s): s is Sketch => Boolean(s))
+const df = new Map<number, number>()
 for (const s of allSketches) for (const h of s) df.set(h, (df.get(h) ?? 0) + 1)
 const dfLimit = Math.max(2, Math.ceil(allSketches.length * DF_MAX))
 let dropped = 0
-for (const s of allSketches) for (const h of [...s]) if (df.get(h) > dfLimit) { s.delete(h); dropped++ }
+for (const s of allSketches) for (const h of [...s]) if ((df.get(h) ?? 0) > dfLimit) { s.delete(h); dropped++ }
 console.error(`Formelfilter: ${df.size} verschiedene Schindeln, ` +
   `${[...df.values()].filter((n) => n > dfLimit).length} kommen in mehr als ${dfLimit} Dokumenten vor und fliegen raus ` +
   `(${dropped} Vorkommen).`)
 
-const truth = []
+const truth: number[] = []
 for (const m of pairs) {
   const s = containment(meSketch.get(m.inr), rvSketch.get(m.rv))
   if (s > 0) truth.push(s)
@@ -285,7 +282,7 @@ for (const m of pairs) {
  * herausgeschnitten und gegen den zugehörigen Entwurf gehalten: dasselbe
  * Größenverhältnis wie „kurzer Antrag hebt ein Stück aus großem Entwurf".
  * Wenn das Maß hier durchfällt, taugt es für den eigentlichen Zweck nicht. */
-const truthAsym = []
+const truthAsym: number[] = []
 for (const m of pairs) {
   const text = await textOf('I', m.rv)
   const words = text.split(' ')
@@ -293,32 +290,32 @@ for (const m of pairs) {
   const cut = Math.max(200, Math.floor(words.length * 0.1))
   const start = Math.floor(words.length * 0.3)
   const piece = sketch(words.slice(start, start + cut).join(' '))
-  for (const h of [...piece]) if (df.get(h) > dfLimit) piece.delete(h)
+  for (const h of [...piece]) if ((df.get(h) ?? 0) > dfLimit) piece.delete(h)
   if (piece.size < MIN_SKETCH) continue
   truthAsym.push(containment(meSketch.get(m.inr), piece))
 }
 
 /* Falsche Paare: derselbe Entwurf gegen die Regierungsvorlage eines anderen.
  * Deterministisch versetzt statt zufällig, damit der Lauf wiederholbar ist. */
-const noise = []
+const noise: number[] = []
 for (let i = 0; i < pairs.length; i++) {
-  const other = pairs[(i + 7) % pairs.length]
-  if (other.rv === pairs[i].rv) continue
-  const s = containment(meSketch.get(pairs[i].inr), rvSketch.get(other.rv))
+  const other = pairs[(i + 7) % pairs.length]!
+  if (other.rv === pairs[i]!.rv) continue
+  const s = containment(meSketch.get(pairs[i]!.inr), rvSketch.get(other.rv))
   noise.push(s)
 }
 truth.sort((a, b) => a - b); noise.sort((a, b) => a - b); truthAsym.sort((a, b) => a - b)
-const q = (arr, p) => (arr.length ? arr[Math.min(arr.length - 1, Math.floor(arr.length * p))] : NaN)
+const q = (arr: readonly number[], p: number): number => (arr.length ? arr[Math.min(arr.length - 1, Math.floor(arr.length * p))]! : NaN)
 
 const trueLow = q(truth, 0.05)
 const noiseHigh = q(noise, 0.95)
 console.log(`\n=== Kalibrierung (GP ${gp}) — Maß: Containment des kleineren Texts ===`)
 console.log(`Wahre Paare (Entwurf → eigene Regierungsvorlage): ${truth.length}`)
-console.log(`  5 % ${trueLow?.toFixed(3)}  Median ${q(truth, 0.5)?.toFixed(3)}  95 % ${q(truth, 0.95)?.toFixed(3)}`)
+console.log(`  5 % ${trueLow.toFixed(3)}  Median ${q(truth, 0.5).toFixed(3)}  95 % ${q(truth, 0.95).toFixed(3)}`)
 console.log(`Wahre Paare, künstlich asymmetrisch (Zehntel der Vorlage): ${truthAsym.length}`)
-console.log(`  5 % ${q(truthAsym, 0.05)?.toFixed(3)}  Median ${q(truthAsym, 0.5)?.toFixed(3)}  95 % ${q(truthAsym, 0.95)?.toFixed(3)}`)
+console.log(`  5 % ${q(truthAsym, 0.05).toFixed(3)}  Median ${q(truthAsym, 0.5).toFixed(3)}  95 % ${q(truthAsym, 0.95).toFixed(3)}`)
 console.log(`Falsche Paare (versetzt): ${noise.length}`)
-console.log(`  Median ${q(noise, 0.5)?.toFixed(4)}  95 % ${noiseHigh?.toFixed(4)}  max ${noise.at(-1)?.toFixed(4)}`)
+console.log(`  Median ${q(noise, 0.5).toFixed(4)}  95 % ${noiseHigh.toFixed(4)}  max ${noise.at(-1)?.toFixed(4)}`)
 
 /* Die Schwelle wird auf TREFFSICHERHEIT gestellt, nicht auf Vollständigkeit.
  * Ein falscher Treffer behauptet von einem namentlich genannten Gesetz, es
@@ -359,8 +356,8 @@ const STRONG = 0.6
 // 3. Der eigentliche Abgleich
 // ---------------------------------------------------------------------------
 
-const hits = []
-const zuKurz = []
+const hits: MeAntragHit[] = []
+const zuKurz: (SkippedRow & { sketchSize: number })[] = []
 for (const a of antraege) {
   const as = aSketch.get(a.inr)
   const when = String(a.einlangen ?? a.date).slice(0, 10)
@@ -371,7 +368,7 @@ for (const a of antraege) {
     .filter((x) => x.score >= threshold)
     .sort((x, y) => y.score - x.score)
   if (!candidates.length) continue
-  const best = candidates[0]
+  const best = candidates[0]!
   hits.push({
     citation: a.citation, inr: a.inr, title: a.title, bgbl: a.bgbl,
     einlangen: when, kind: a.kind ?? null,
@@ -413,7 +410,7 @@ await writeFile(outFile, JSON.stringify({
   calibration: {
     measure: 'containment',
     truePairs: truth.length, trueP05: Number(trueLow.toFixed(4)), trueMedian: Number(q(truth, 0.5).toFixed(4)),
-    asymPairs: truthAsym.length, asymP05: Number((q(truthAsym, 0.05) ?? 0).toFixed(4)), asymRecall: Number(recallAsym.toFixed(3)),
+    asymPairs: truthAsym.length, asymP05: Number((q(truthAsym, 0.05) || 0).toFixed(4)), asymRecall: Number(recallAsym.toFixed(3)),
     noisePairs: noise.length, noiseP95: Number(noiseHigh.toFixed(4)), noiseMax: Number((noise.at(-1) ?? 0).toFixed(4)),
     recall: Number(recall.toFixed(3)), falsePositives: falsePos,
   },
@@ -426,4 +423,4 @@ await writeFile(outFile, JSON.stringify({
   hits,
 }, null, 1))
 console.log(`\nErgebnis: ${outFile}`)
-console.log(`Wird von begutachtung-skipped.mjs gelesen, sobald die Datei da ist.`)
+console.log(`Wird von begutachtung-skipped.ts gelesen, sobald die Datei da ist.`)

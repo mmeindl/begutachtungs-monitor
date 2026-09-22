@@ -8,9 +8,9 @@ entirely *outside* it?
 Reproduce with, in this order:
 
 ```
-node scripts/begutachtung-skipped.mjs XXVIII   # the corpus and the base rate
-node scripts/me-antrag-join.mjs    XXVIII      # the §4a correction (slow: one document per item)
-node scripts/begutachtung-skipped.mjs XXVIII   # again — now it reads the correction
+npx vite-node scripts/begutachtung-skipped.ts XXVIII   # the corpus and the base rate
+npx vite-node scripts/me-antrag-join.ts    XXVIII      # the §4a correction (slow: one document per item)
+npx vite-node scripts/begutachtung-skipped.ts XXVIII   # again — now it reads the correction
 ```
 
 **Finding:** in GP XXVIII, **80 of 166 enacted laws (48.2 %) never went
@@ -136,7 +136,7 @@ filter API — no RIS, no scraping.
    than per period on purpose: the period-wide query is capped and mixes up two
    different `GP_CODE` dimensions, both silently (§4c).
 7. Per Gegenstand and per Ministerialentwurf, the `Gesetzestext` document as
-   HTML — the corpus for the text join in `scripts/me-antrag-join.mjs`. This
+   HTML — the corpus for the text join in `scripts/me-antrag-join.ts`. This
    is the only step that costs a document fetch per item, which is why it is
    a separate script with its own cache.
 
@@ -292,7 +292,7 @@ corpus the same titles over-matched wildly: 170 candidates in GP XXVII against
 37 real ones. A key that is both too blind and too greedy is not a key.
 
 **What works is the text.** Both sides publish a document called
-`Gesetzestext`. `scripts/me-antrag-join.mjs` compares 5-word shingles of it.
+`Gesetzestext`. `scripts/me-antrag-join.ts` compares 5-word shingles of it.
 
 Three details earn their keep, and the second one is a mistake worth keeping
 on the record:

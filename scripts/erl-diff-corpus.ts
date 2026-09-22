@@ -19,7 +19,7 @@
  * Lehre aus der sechsten Messung in §12.12. Also dieselbe Quelle, derselbe
  * Parser (`parseParliamentHtml`), und was übrig bleibt, ist Inhalt.
  *
- * Der Join Entwurf → Regierungsvorlage ist der von `scripts/rv-latency.mjs`:
+ * Der Join Entwurf → Regierungsvorlage ist der von `scripts/rv-latency.ts`:
  * die Verfahrensschritte des Entwurfs nennen die Vorlage im Link.
  *
  * **NUR 1:1-PAARE ZÄHLEN.** Mehrere Entwürfe können in derselben Vorlage
@@ -30,12 +30,13 @@
  * ausgewiesen und nicht in den Median gerechnet; ein Vergleich, der sie
  * einbezöge, wäre die erste Fassung dieser Messung gewesen.
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanations/explanationsHtml'
 import { diffTokens } from '../server/utils/diff/wordDiff'
 import { PARLIAMENT as BASE, getJson, getText } from './lib/http'
+import { cachedJson, cachedText } from './lib/diskCache'
 
 const SCRIPT = 'erl-diff-corpus'
 const CONCURRENCY = 4
@@ -45,16 +46,6 @@ const limit = Number(process.argv.find((a) => /^\d+$/.test(a)) ?? 40)
 const cacheDir = process.argv.find((a) => a.startsWith('.cache')) ?? join('.cache', 'erl-diff')
 await mkdir(join(cacheDir, gp), { recursive: true })
 
-async function cached<T>(file: string, load: () => Promise<T>, parse: (s: string) => T = JSON.parse): Promise<T> {
-  try {
-    return parse(await readFile(file, 'utf8'))
-  } catch {
-    const data = await load()
-    await writeFile(file, typeof data === 'string' ? data : JSON.stringify(data))
-    return data
-  }
-}
-
 /** One attempt, like the rest of this script: everything it reads is cached on disk. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fetchJson(url: string, body?: unknown): Promise<any> {
@@ -63,15 +54,11 @@ function fetchJson(url: string, body?: unknown): Promise<any> {
 
 /** Das Erläuterungen-Dokument eines Gegenstands, als HTML. */
 async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string | null> {
-  const detail = await cached(join(cacheDir, gp, `${kind}-${inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/${kind}/${inr}?json=True`))
+  const detail = await cachedJson(join(cacheDir, gp, `${kind}-${inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/${kind}/${inr}?json=True`))
   const group = (detail?.content?.documents ?? []).find((g: any) => /^Erläuterungen$/i.test(String(g?.title ?? '').trim()))
   const link = (group?.documents ?? []).find((f: any) => /html/i.test(String(f?.type ?? '')))?.link
   if (!link) return null
-  return cached(
-    join(cacheDir, gp, `${kind}-${inr}-erl.html`),
-    async () => await getText(`${BASE}${link}`, { script: SCRIPT }),
-    (s) => s,
-  )
+  return cachedText(join(cacheDir, gp, `${kind}-${inr}-erl.html`), () => getText(`${BASE}${link}`, { script: SCRIPT }))
 }
 
 /**
@@ -141,7 +128,7 @@ function drift(a: string, b: string): { value: number | null; exact: boolean } {
 }
 
 // --- Liste 81 und der Join auf die Regierungsvorlage ------------------------
-const list = await cached(join(cacheDir, `${gp}-list81.json`), () =>
+const list = await cachedJson(join(cacheDir, `${gp}-list81.json`), () =>
   fetchJson(`${BASE}/Filter/api/filter/data/81?js=eval&showAll=true&sortrnr=11&ascDesc=DESC`, { GP_CODE: [gp] }),
 )
 const drafts = (list.rows ?? []).filter((r: any) => Array.isArray(r) && r[0] === gp).map((r: any) => ({ inr: Number(r[2]), cite: String(r[5] ?? '') }))
@@ -157,7 +144,7 @@ async function worker(): Promise<void> {
     const d = queue.shift()
     if (!d || scored >= limit) return
     try {
-      const detail = await cached(join(cacheDir, gp, `ME-${d.inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/ME/${d.inr}?json=True`))
+      const detail = await cachedJson(join(cacheDir, gp, `ME-${d.inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/ME/${d.inr}?json=True`))
       const stages = detail?.content?.stages ?? []
       const rv = stages.flatMap((st: any) => [...String(st?.text ?? '').matchAll(/\/gegenstand\/[IVXLC]+\/I\/(\d+)/g)].map((m) => Number(m[1])))[0] ?? null
       if (!rv) { rows.push({ ...d, rv: null, note: 'keine Regierungsvorlage' }); continue }

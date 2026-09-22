@@ -10,11 +10,12 @@
  * draft, four at a time, everything cached on disk so a rerun is free.
  * Output: `<cacheDir>/novao.jsonl`, one instruction per line.
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { RIS_API as RIS, getText } from './lib/http'
 import { asArray } from './lib/ris'
+import { cachedJson, cachedText } from './lib/diskCache'
 
 const SCRIPT = 'novao-corpus'
 const CONCURRENCY = 4
@@ -22,16 +23,6 @@ const CONCURRENCY = 4
 const sampleSize = Number(process.argv[2] ?? 300)
 const cacheDir = process.argv[3] ?? join('.cache', 'novao')
 await mkdir(join(cacheDir, 'xml'), { recursive: true })
-
-async function cached<T>(file: string, load: () => Promise<T>, parse: (s: string) => T = JSON.parse): Promise<T> {
-  try {
-    return parse(await readFile(file, 'utf8'))
-  } catch {
-    const data = await load()
-    await writeFile(file, typeof data === 'string' ? data : JSON.stringify(data))
-    return data
-  }
-}
 
 function get(url: string, accept = 'application/json'): Promise<string> {
   return getText(url, { script: SCRIPT, accept, attempts: 3, backoffMs: (retry) => 600 * retry, timeoutMs: 20_000, retryOnHttpError: true })
@@ -46,7 +37,7 @@ interface Draft {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 async function listPage(page: number): Promise<{ hits: number; drafts: Draft[] }> {
   const url = `${RIS}?Applikation=Begut&DokumenteProSeite=OneHundred&Seitennummer=${page}`
-  const body = await cached(join(cacheDir, `list-${page}.json`), () => get(url).then(JSON.parse))
+  const body = await cachedJson<unknown>(join(cacheDir, `list-${page}.json`), () => get(url).then(JSON.parse))
   const results = (body as any)?.OgdSearchResult?.OgdDocumentResults
   const hits = Number(results?.Hits?.['#text'] ?? 0)
   const drafts: Draft[] = []
@@ -78,7 +69,7 @@ async function worker(queue: Draft[]) {
     const d = queue.pop()
     if (!d) return
     try {
-      const xml = await cached(join(cacheDir, 'xml', `${d.id}.xml`), () => get(d.xml, 'application/xml'), (s) => s)
+      const xml = await cachedText(join(cacheDir, 'xml', `${d.id}.xml`), () => get(d.xml, 'application/xml'))
       for (const b of parseRisXml(xml)) {
         if (b.kind !== 'novao') continue
         lines.push(JSON.stringify({ id: d.id, kurztitel: d.kurztitel, cls: b.cls, text: b.text }))

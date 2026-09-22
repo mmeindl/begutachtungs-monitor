@@ -22,7 +22,7 @@
  *
  * WHAT IT IS WORTH, measured 18.09.2026: over GP XXVII the map finds a
  * Regierungsvorlage for **296 of 353** drafts — the same 296/353 that
- * `scripts/rv-latency.mjs` measured by hand into `app/utils/outcomes.ts`,
+ * `scripts/rv-latency.ts` measured by hand into `app/utils/outcomes.ts`,
  * reproduced live on a different path. And it is not merely as good as the
  * `preconst` route: 592 d.B. carries TWO Ministerialentwürfe (96/ME and
  * 103/ME), of which the Vorlage names one — the draft-side walk finds both.
