@@ -21,6 +21,7 @@ import { joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin
 import { DERIVED_CACHE } from './cacheBase'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
+import { bgblShort } from '#shared/utils/format'
 
 const RIS_API_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
@@ -186,7 +187,7 @@ const fetchBgblByNumber = defineCachedFunction(
       Seitennummer: '1',
       // Das Parlament schreibt „Bundesgesetzblatt I Nr. 69/2026", das RIS
       // erwartet seine eigene Kurzform.
-      Bgblnummer: nummer.replace(/^Bundesgesetzblatt\b/, 'BGBl.'),
+      Bgblnummer: bgblShort(nummer),
     })
     const res = await fetch(`${RIS_API_BASE}?${params}`, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },

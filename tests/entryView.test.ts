@@ -137,7 +137,7 @@ describe('Zone 4 — Stand', () => {
     expect(viewOfOutcome({ ...draft(), rvCitation: null, bgblNumber: null } as ClosedOutcome).state)
       .toMatchObject({
         label: 'Bisher keine Regierungsvorlage',
-        detail: 'Frist endete 31.08.2025',
+        detail: 'Frist endete am 31.08.2025',
       })
   })
 
@@ -146,7 +146,7 @@ describe('Zone 4 — Stand', () => {
   it('claims no missing Vorlage when the chain was never read', () => {
     expect(viewOfDraft(draft()).state).toMatchObject({
       label: 'Begutachtung abgeschlossen',
-      detail: 'Frist endete 31.08.2025',
+      detail: 'Frist endete am 31.08.2025',
       actionable: false,
     })
   })
@@ -178,7 +178,7 @@ describe('Zone 4 — Stand', () => {
   it('ends a record without a Gegenstand at its own Begutachtung', () => {
     expect(viewOfRis(ris({ active: false, deadline: '2026-09-14' })).state).toMatchObject({
       label: 'Begutachtung abgeschlossen',
-      detail: 'Frist endete 14.09.2026',
+      detail: 'Frist endete am 14.09.2026',
       actionable: false,
     })
   })

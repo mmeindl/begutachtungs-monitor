@@ -49,7 +49,7 @@ import type {
 } from '../../shared/types'
 import { aliasesFor } from '../../shared/utils/draftAliases'
 import { type DeadlineTone, deadlineTone, isNewArrival } from './deadlines'
-import { formatDateDe, formatDateWeekdayDe, fristLabel } from '../../shared/utils/format'
+import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel } from '../../shared/utils/format'
 import { RIS_KIND_LABEL } from '../../shared/utils/risConsultations'
 
 /**
@@ -154,7 +154,7 @@ function openVorlageState(date: string | null): EntryState {
 function endedState(deadline: string | null, label: string): EntryState {
   return {
     label,
-    detail: deadline ? `Frist endete ${formatDateDe(deadline)}` : null,
+    detail: deadline ? fristEndedDe(deadline) : null,
     tone: 'inactive',
     actionable: false,
   }
@@ -185,7 +185,7 @@ function outcomeState(
   if (o.bgblNumber) {
     return {
       label: 'Kundgemacht',
-      detail: o.bgblNumber.replace(/^Bundesgesetzblatt\b/, 'BGBl.'),
+      detail: bgblShort(o.bgblNumber),
       tone: 'inactive',
       actionable: false,
     }

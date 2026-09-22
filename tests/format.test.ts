@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatNumberDe, moreLabelDe, shownLabelDe } from '../shared/utils/format'
+import { bgblShort, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe } from '../shared/utils/format'
 
 describe('shownLabelDe', () => {
   it('states position only — the remainder is not spelled out', () => {
@@ -35,5 +35,25 @@ describe('moreLabelDe', () => {
 
   it('stays German at one', () => {
     expect(moreLabelDe(1, 10)).toBe('Eine weitere anzeigen')
+  })
+})
+
+describe('fristLabel', () => {
+  it('says the one wording for a Frist that has ended', () => {
+    /* Same sentence as the row detail under „Begutachtung abgeschlossen"
+       (`fristEndedDe`), which used to read „Frist endete 24.08.2026" while
+       the chip read „Endete am 24.08.2026" — one fact, two spellings. */
+    expect(fristLabel('2026-08-24', false)).toBe('Frist endete am 24.08.2026')
+  })
+
+  it('keeps the dateless sibling', () => {
+    expect(fristLabel(null, false)).toBe('Frist abgelaufen')
+  })
+})
+
+describe('bgblShort', () => {
+  it('shortens the long spelling and leaves the short one alone', () => {
+    expect(bgblShort('Bundesgesetzblatt I Nr. 69/2026')).toBe('BGBl. I Nr. 69/2026')
+    expect(bgblShort('BGBl. II Nr. 50/2026')).toBe('BGBl. II Nr. 50/2026')
   })
 })

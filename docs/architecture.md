@@ -5313,14 +5313,15 @@ festmacht** — beide im selben Kasten, weil „Kundgemacht" und „BGBl. I Nr.
 | --- | --- | --- |
 | Frist läuft | `Noch 3 Tage` | `bis Mo., 21.09.2026` |
 | Fenster offen ohne Frist | `Stellungnahme möglich` | `zur Vorlage seit 08.07.2026` |
-| Begutachtung vorbei, nichts dahinter | `Begutachtung abgeschlossen` | `Frist endete 14.09.2026` |
-| Keine Regierungsvorlage | `Bisher keine Regierungsvorlage` | `Frist endete 04.09.2025` |
+| Begutachtung vorbei, nichts dahinter | `Begutachtung abgeschlossen` | `Frist endete am 14.09.2026` |
+| Keine Regierungsvorlage | `Bisher keine Regierungsvorlage` | `Frist endete am 04.09.2025` |
 | Regierungsvorlage liegt vor | `Regierungsvorlage liegt vor` | `594 d.B.` |
 | Im Parlament behandelt | `Im Parlament behandelt` | `594 d.B.` |
 | Kundgemacht | `Kundgemacht` | `BGBl. I Nr. 69/2026` |
 
-Vier Regeln stecken darin. **Ein Wortlaut je Fakt** — `Frist endete …`
-überall, „Endete am …" ist weg. **Der Wochentag steht nur auf einem
+Vier Regeln stecken darin. **Ein Wortlaut je Fakt** — `Frist endete am …`
+überall (seit 22.09.2026 auch in der Fristpille, `fristEndedDe`), „Endete am
+…" ist weg. **Der Wochentag steht nur auf einem
 künftigen Datum**: man plant um eine Frist herum, ein vergangenes Datum
 schlägt man nach. **Auf einer erreichten Station belegt die Fundstelle, nicht
 das Fristende** — zwei Fakten in einem Slot waren die alte Vermischung; bei

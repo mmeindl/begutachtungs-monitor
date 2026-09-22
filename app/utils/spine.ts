@@ -41,7 +41,7 @@
  * this fetches nothing.
  */
 import type { DraftDetail, LawStationId } from '../../shared/types'
-import { formatDateDe, formatNumberDe, spanInDays } from '../../shared/utils/format'
+import { bgblShort, formatDateDe, formatNumberDe, spanInDays } from '../../shared/utils/format'
 import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '../../shared/utils/lawStations'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
@@ -425,7 +425,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // "ausstehend" while the chain can still continue; nothing at all once
       // it cannot, because the station before it already says why.
       facts: e?.bgblNumber
-        ? [e.bgblNumber.replace(/^Bundesgesetzblatt\b/, 'BGBl.')]
+        ? [bgblShort(e.bgblNumber)]
         : d.gpEnded
           ? []
           : ['ausstehend'],

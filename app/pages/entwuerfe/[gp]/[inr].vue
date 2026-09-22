@@ -363,7 +363,7 @@ const linkClasses =
             />
           </NuxtLink>
           <!-- Only while it runs: the badge exists to carry urgency (tone +
-               "Noch 3 Tage"). Closed, it degrades to "Endete am …" — which
+               "Noch 3 Tage"). Closed, it degrades to "Frist endete am …" — which
                the bar states 100px below, better. -->
           <DeadlineBadge
             v-if="data.active"

@@ -138,7 +138,7 @@ const documents = computed(() => {
             />
           </NuxtLink>
           <!-- Only while it runs, exactly as on the draft page: closed, the
-               badge degrades to "Endete am …", which the card below says
+               badge degrades to "Frist endete am …", which the card below says
                better. -->
           <DeadlineBadge
             v-if="data.active"

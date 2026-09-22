@@ -105,11 +105,32 @@ export function daysUntil(iso: string | null | undefined): number | null {
   return Math.round((target - today) / 86_400_000)
 }
 
+/**
+ * "Bundesgesetzblatt I Nr. 69/2026" → "BGBl. I Nr. 69/2026".
+ *
+ * Parliament writes the word out, everything that shows or looks up the
+ * citation wants the short form: the spine's Kundmachung fact, the row detail
+ * of a promulgated draft, and the RIS lookup, which only finds the document
+ * under its own Kurzform.
+ */
+export function bgblShort(citation: string): string {
+  return citation.replace(/^Bundesgesetzblatt\b/, 'BGBl.')
+}
+
+/**
+ * One wording for a Frist that has ended (decided 22.09.2026): the chip said
+ * „Endete am …" and the row detail „Frist endete …" — one fact, two spellings.
+ * The dateless sibling stays „Frist abgelaufen".
+ */
+export function fristEndedDe(deadline: string): string {
+  return `Frist endete am ${formatDateDe(deadline)}`
+}
+
 /** German remaining-time label for a deadline. */
 export function fristLabel(deadline: string | null | undefined, active: boolean): string {
   const days = daysUntil(deadline)
   if (!active) {
-    return deadline ? `Endete am ${formatDateDe(deadline)}` : 'Frist abgelaufen'
+    return deadline ? fristEndedDe(deadline) : 'Frist abgelaufen'
   }
   if (days === null) return 'Frist läuft'
   if (days < 0) return 'Frist abgelaufen'
