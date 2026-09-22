@@ -11,6 +11,7 @@ import type {
   RisConsultation,
   RisConsultationsResponse,
 } from '#shared/types'
+import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfRis, viewOfVorlage } from '~/utils/entryView'
 import { romanToInt } from '#shared/utils/gp'
@@ -75,20 +76,17 @@ const statusOptions: { value: DraftStatus; label: string }[] = [
   { value: 'closed', label: 'Abgeschlossen' },
 ]
 
-const stationOptions: { value: DraftStation; label: string }[] = [
-  { value: 'begutachtung', label: 'Begutachtung' },
-  { value: 'rv', label: 'Regierungsvorlage' },
-  { value: 'parlament', label: 'Parlament' },
-  { value: 'bgbl', label: 'Bundesgesetzblatt' },
-]
-const STATION_VALUES = stationOptions.map((o) => o.value)
+const stationOptions: { value: DraftStation; label: string }[] = DRAFT_STATION_ORDER.map((value) => ({
+  value,
+  label: DRAFT_STATION_LABEL[value],
+}))
 
 function parseStations(v: unknown): DraftStation[] {
   const raw = firstQueryValue(v) ?? ''
   return raw
     .split(',')
     .map((s) => s.trim().toLowerCase())
-    .filter((s): s is DraftStation => (STATION_VALUES as string[]).includes(s))
+    .filter((s): s is DraftStation => (DRAFT_STATION_ORDER as readonly string[]).includes(s))
 }
 
 /**

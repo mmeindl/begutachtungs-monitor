@@ -20,6 +20,7 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
+import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { matchesQuery } from '#shared/utils/textMatch'
 
@@ -28,7 +29,6 @@ const OUTCOMES_BUDGET_MS = 3_000
 
 const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
 const KIND_VALUES: RisConsultationKind[] = ['verordnung', 'gesetz', 'unbestimmt']
-const STATION_VALUES: DraftStation[] = ['begutachtung', 'rv', 'parlament', 'bgbl']
 
 export default defineEventHandler(async (event): Promise<RisConsultationsResponse> => {
   const query = getQuery(event)
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   const stations = (firstQueryValue(query.station) ?? '')
     .split(',')
     .map((v) => v.trim().toLowerCase())
-    .filter((v): v is DraftStation => (STATION_VALUES as readonly string[]).includes(v))
+    .filter((v): v is DraftStation => (DRAFT_STATION_ORDER as readonly string[]).includes(v))
 
   const gpParam = firstQueryValue(query.gp)?.toUpperCase()
   if (gpParam !== undefined && !GP_RE.test(gpParam)) {

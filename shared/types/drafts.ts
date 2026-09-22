@@ -44,7 +44,7 @@ export type DraftStation = 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 /**
  * Whether a Gesetzgebungsperiode's ME→RV links are in the archive at all,
  * and therefore whether absence of a Vorlage carries any meaning there
- * (`shared/utils/draftChain.ts`, docs/architecture.md §12.27). `unknown`
+ * (`shared/utils/draftStations.ts`, docs/architecture.md §12.27). `unknown`
  * is treated as `unlinked` at every point where a claim would be made.
  */
 export type ChainCoverage = 'linked' | 'unlinked' | 'unknown'

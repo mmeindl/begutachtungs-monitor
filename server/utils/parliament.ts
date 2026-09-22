@@ -31,7 +31,7 @@ import type {
   StatementMeta,
   StatementsSummary,
 } from '#shared/types'
-import { chainCoverageOf } from '#shared/utils/draftChain'
+import { chainCoverageOf } from '#shared/utils/draftStations'
 import { GP_RE, gpEndedOn, gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
 import {

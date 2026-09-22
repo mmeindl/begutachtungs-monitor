@@ -15,6 +15,28 @@ import type { ChainCoverage, DraftChain, DraftStation } from '../types'
  *  verified 117/117 on GP XXVIII). */
 export const STATUS_FINISHED = '5'
 
+/**
+ * The four stations in procedural order — the one runtime list of them.
+ *
+ * It was spelled out three times: in both list endpoints, which validate the
+ * `station` parameter against it, and in the page's filter, which builds the
+ * chips from it. Three copies of a vocabulary that a fifth station would have
+ * to be added to in three places.
+ */
+export const DRAFT_STATION_ORDER: readonly DraftStation[] = ['begutachtung', 'rv', 'parlament', 'bgbl']
+
+/**
+ * What the filter chips say. The label names the STATION, not the document
+ * that stands there — „Bundesgesetzblatt" is where the draft got to, and the
+ * text published there is the `LAW_STATION_LABEL` of the comparison.
+ */
+export const DRAFT_STATION_LABEL: Record<DraftStation, string> = {
+  begutachtung: 'Begutachtung',
+  rv: 'Regierungsvorlage',
+  parlament: 'Parlament',
+  bgbl: 'Bundesgesetzblatt',
+}
+
 /** Furthest wins when a draft produced more than one Vorlage (ME→RV is
  *  1:n, §13.4): the chain reached the Bundesgesetzblatt even if only one
  *  strand did. */

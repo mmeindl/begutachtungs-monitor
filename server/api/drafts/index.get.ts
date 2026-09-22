@@ -8,11 +8,10 @@
 import type { DraftChain, DraftStation, DraftsResponse, DraftStatus } from '#shared/types'
 import { aliasHaystack } from '#shared/utils/aliases'
 import { matchesQuery } from '#shared/utils/textMatch'
-import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftChain'
+import { chainCoverageOf, DRAFT_STATION_ORDER, mayClaimOutcome } from '#shared/utils/draftStations'
 import { GP_RE, gpHasEnded } from '#shared/utils/gp'
 
 const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
-const STATION_VALUES: DraftStation[] = ['begutachtung', 'rv', 'parlament', 'bgbl']
 
 /** Wie lange die Liste auf die Stationskarte wartet, bevor sie ohne sie
  *  antwortet. 2,5 s: warm kostet die Karte 8 ms, kalt 35 s — dazwischen
@@ -24,7 +23,7 @@ function isStatus(s: string): s is DraftStatus {
   return (STATUS_VALUES as readonly string[]).includes(s)
 }
 function isStation(s: string): s is DraftStation {
-  return (STATION_VALUES as readonly string[]).includes(s)
+  return (DRAFT_STATION_ORDER as readonly string[]).includes(s)
 }
 
 /**

@@ -10,9 +10,9 @@ import {
   procedureStatusDe,
 } from '~/utils/spine'
 import { aliasesFor } from '#shared/utils/aliases'
-// Explicit: `draftChain.ts` is a pure module and stays out of the
+// Explicit: `draftStations.ts` is a pure module and stays out of the
 // auto-imports, so that server map and vitest run the same functions.
-import { mayClaimOutcome } from '#shared/utils/draftChain'
+import { mayClaimOutcome } from '#shared/utils/draftStations'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 
 definePageMeta({

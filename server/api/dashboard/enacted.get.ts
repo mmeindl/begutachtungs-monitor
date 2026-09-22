@@ -22,9 +22,7 @@
  */
 import type { ClosedOutcome, DashboardEnacted, DraftSummary } from '#shared/types'
 import { HOME_LIST_LENGTH } from '#shared/utils/draftOrder'
-
-/** Upstream's "done in the house" (`mapVorlageRow`, verified 117/117). */
-const STATUS_FINISHED = '5'
+import { STATUS_FINISHED } from '#shared/utils/draftStations'
 
 /**
  * How many finished Vorlagen are opened before the order is applied.

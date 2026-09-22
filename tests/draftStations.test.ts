@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DraftChain } from '../shared/types'
-import { chainCoverageOf, furtherChain, mayClaimOutcome, stationFor } from '../shared/utils/draftChain'
+import { chainCoverageOf, furtherChain, mayClaimOutcome, stationFor } from '../shared/utils/draftStations'
 
 /**
  * The three inferences behind the station filter (docs/architecture.md

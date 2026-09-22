@@ -5191,7 +5191,7 @@ ununterscheidbar. Erst die **Periode** trennt sie: verknüpft sie *irgendeinen*
 ihrer Entwürfe mit einer Vorlage, dann trägt Abwesenheit wieder Information;
 verknüpft sie keinen einzigen, ist Abwesenheit das Archiv.
 
-**Die Regel** (`chainCoverageOf`, `shared/utils/draftChain.ts`) ist deshalb
+**Die Regel** (`chainCoverageOf`, `shared/utils/draftStations.ts`) ist deshalb
 abgeleitet und **kein hinterlegtes Jahr**: eine *beendete* Periode, in der
 kein Entwurf über die Begutachtung hinauskommt, gilt als `unlinked`. Sie
 korrigiert sich selbst, wenn das Parlament nachträglich verknüpft, und sie
