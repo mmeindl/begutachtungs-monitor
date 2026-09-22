@@ -33,7 +33,7 @@
  * standing BEHIND an org-shaped naming segment, which list 2 looks straight
  * past. Nothing here writes anywhere.
  */
-import { classifySubmitter, readUpstreamFlag } from '../server/utils/privacy'
+import { classifySubmitter, readUpstreamFlag } from '../server/utils/parliament/privacy'
 import { stripHtmlToText } from '../server/utils/parliament/htmlText'
 
 function arg(name: string, fallback: string): string {

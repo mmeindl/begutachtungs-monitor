@@ -8,8 +8,8 @@
  * and the lookup happens for the one document a reader actually opens. One
  * click less than the upstream page for uploaded PDFs, which is what a
  * journalist working through fifty organisations' submissions asked for.
- * The picking itself is `pickStatementDocument` in `parliament/list142.ts`,
- * pure and tested; this file is the cached lookup around it.
+ * The picking itself is `pickStatementDocument` in `list142.ts`, pure and
+ * tested; this file is the cached lookup around it.
  *
  * Cache discipline (`cache/base.ts`): the detail JSON names the person, with
  * postcode and town, and is therefore fetched uncached, like list 142. What
@@ -17,13 +17,13 @@
  * layer, for a week: a filed Stellungnahme does not change.
  */
 import type { StatementDocument } from '#shared/types'
-import { DERIVED_CACHE } from './cache/base'
+import { DERIVED_CACHE } from '../cache/base'
 import {
   pickStatementDocument,
   statementPageUrl,
   type StatementItemType,
-} from './parliament/list142'
-import { fetchGegenstand } from './upstream/parliament'
+} from './list142'
+import { fetchGegenstand } from '../upstream/parliament'
 
 export const getStatementDocument = defineCachedFunction(
   async (gp: string, ityp: StatementItemType, inr: number): Promise<StatementDocument> => {

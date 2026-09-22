@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifySubmitter, readUpstreamFlag } from '../server/utils/privacy'
+import { classifySubmitter, readUpstreamFlag } from '../server/utils/parliament/privacy'
 
 describe('classifySubmitter', () => {
   describe('organisations — the name is preserved', () => {

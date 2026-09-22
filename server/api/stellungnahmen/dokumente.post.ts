@@ -24,7 +24,7 @@
 import type { StatementDocument } from '#shared/types'
 import { parseStatementRef } from '#shared/utils/statementRef'
 import { mapWithConcurrency } from '../../utils/pool'
-import { getStatementDocument } from '../../utils/statementDocument'
+import { getStatementDocument } from '../../utils/parliament/statementDocument'
 
 /** One viewport's worth of rows, with room to spare — not a whole list. */
 const BATCH_MAX = 32

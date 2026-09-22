@@ -12,7 +12,7 @@ import {
   loadLastGoodStatements,
   saveLastGoodStatements,
   type LastGoodStatements,
-} from '../lastgood'
+} from './lastgood'
 import { assertListHeader, assertRowsMatchGp, fetchFilterList } from '../upstream/parliament'
 import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
 

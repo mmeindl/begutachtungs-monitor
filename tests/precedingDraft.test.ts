@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { DraftSummary } from '../shared/types'
-import { findPrecedingDraft } from '../server/utils/precedingDraft'
+import { findPrecedingDraft } from '../server/utils/parliament/precedingDraft'
 
 function draft(overrides: Partial<DraftSummary> = {}): DraftSummary {
   return {

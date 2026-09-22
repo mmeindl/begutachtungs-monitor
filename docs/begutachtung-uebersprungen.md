@@ -549,7 +549,7 @@ this dataset would make it trivially easy to build.
   Begutachtung" off a missing `preconst` pointer alone — the inference this
   section warns against, shipped. It now runs the same cross-check this
   memo's §2 ran offline: list 81 of the period, title similarity, only drafts
-  that began before the Vorlage was filed (`server/utils/precedingDraft.ts`).
+  that began before the Vorlage was filed (`server/utils/parliament/precedingDraft.ts`).
   Calibrated against the 85 pointer-confirmed ME→RV pairs of GP XXVIII, a
   Jaccard threshold of 0.50 recovers 72 of 81 measurable pairs and fires on 3
   of the 32 pointerless Vorlagen — all three the generic ASVG/Dienstrecht

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { DraftSummary } from '../shared/types'
-import { findRelatedDrafts, titleKey } from '../server/utils/related'
+import { findRelatedDrafts, titleKey } from '../server/utils/parliament/related'
 
 /** The RIS-join fixtures: every list-81 row of GP XXVII (353) and XXVIII (132, as of 2026-09-06). */
 interface FixtureRow {

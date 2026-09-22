@@ -4,7 +4,7 @@ import { chainCoverageOf, furtherChain, mayClaimOutcome, stationFor } from '../s
 
 /**
  * The three inferences behind the station filter (docs/architecture.md
- * §12.26, §12.27). Everything else in `stationMap.ts` is fetching and
+ * §12.26, §12.27). Everything else in `parliament/stationMap.ts` is fetching and
  * folding; these decide what the list CLAIMS about a draft, which is the
  * part that must not drift.
  *

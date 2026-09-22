@@ -41,8 +41,8 @@
  */
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftStations'
-import type { VorlageRow } from './parliament/list101'
-import { mapWithConcurrency } from './pool'
+import type { VorlageRow } from './list101'
+import { mapWithConcurrency } from '../pool'
 
 /** Six hours: a station moves on the scale of days, and this way at most
  *  four cold builds a day can land on a visitor — the nightly prewarm

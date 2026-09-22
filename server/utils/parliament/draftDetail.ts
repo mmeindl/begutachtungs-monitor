@@ -34,8 +34,8 @@ import {
 } from './drafts'
 import { deriveShortTitle } from './list81'
 import { buildStatementsSummary, getStatementsWithFallback } from './statements'
-import { withinBudget } from '../budget'
-import { findRelatedDrafts } from '../related'
+import { findRelatedDrafts } from './related'
+import { withinBudget } from '../http/budget'
 
 /**
  * How long a page waits for the RIS join before rendering without it.

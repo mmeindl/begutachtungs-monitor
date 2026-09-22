@@ -15,7 +15,7 @@
  *   - keine Drittanbieter zur Laufzeit: Schriften liegen in public/fonts,
  *     kein CDN, keine Analytik, keine Cookies;
  *   - Auftragsverarbeiter und Standorte: deploy/infrastructure.md;
- *   - Privatpersonen ohne Namen: server/utils/privacy.ts.
+ *   - Privatpersonen ohne Namen: server/utils/parliament/privacy.ts.
  * Art 14 (Daten aus dem Parlament) ist der Teil, den Standardtexte gar
  * nicht kennen — er ist hier der eigentliche Inhalt.
  */

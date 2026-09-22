@@ -13,7 +13,7 @@ import { parseGermanDate, parseIsoDate } from './dates'
 import type { RawDocumentGroup } from './detailJson'
 import { absolutizeUrl, PARLIAMENT_BASE, stripHtmlToText } from './htmlText'
 import { normalizeOrgName } from './organisations'
-import { classifySubmitter, readUpstreamFlag } from '../privacy'
+import { classifySubmitter, readUpstreamFlag } from './privacy'
 import { asNumber, asString } from './rowCells'
 
 // ---------------------------------------------------------------------------

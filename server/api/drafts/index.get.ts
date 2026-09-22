@@ -25,7 +25,7 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
   const rows = (await getDraftsForGp(gp)).items.map(reconcileActive)
 
   /* Die Stationskarte ist ANREICHERUNG, nie eine Vorbedingung: sie kostet
-   * beim kalten Bau hunderte Upstream-Abrufe (`stationMap.ts`), und eine
+   * beim kalten Bau hunderte Upstream-Abrufe (`parliament/stationMap.ts`), und eine
    * Liste, die daran scheitert, wäre schlechter als eine ohne Stationen.
    * Fällt sie aus, sagt die Antwort das — `stationsAvailable: false` —, statt
    * jede Zeile stumm als „Begutachtung" auszuweisen oder einen aktiven

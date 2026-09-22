@@ -19,8 +19,8 @@
  * Because "Tierschutzgesetz, Änderung" recurs every few years, the result
  * is a same-title draft, not "the same text"; the copy says exactly that.
  */
-import type { DraftSummary, RelatedDraft } from '../../shared/types'
-import { splitParliamentTitle, titleTokens } from './ris/titleSimilarity'
+import type { DraftSummary, RelatedDraft } from '../../../shared/types'
+import { splitParliamentTitle, titleTokens } from '../ris/titleSimilarity'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Sorted unique title tokens joined by a space; '' when nothing survives normalisation ("Bundesgesetz, Änderung"). */

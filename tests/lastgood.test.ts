@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StatementMeta } from '../shared/types'
-import { loadLastGoodStatements, saveLastGoodStatements } from '../server/utils/lastgood'
+import { loadLastGoodStatements, saveLastGoodStatements } from '../server/utils/parliament/lastgood'
 
 function statement(overrides: Partial<StatementMeta> = {}): StatementMeta {
   return {

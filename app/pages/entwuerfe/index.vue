@@ -642,7 +642,7 @@ const visibleTotal = computed(
   () => (art.value === 'verordnung' ? 0 : meTotal.value) + (art.value === 'ministerialentwurf' ? 0 : risTotal.value),
 )
 /* Die Stationskarte kostet beim kalten Bau hunderte Abrufe und kann
- * ausfallen (`server/utils/stationMap.ts`). Dann steht hier, dass nicht
+ * ausfallen (`server/utils/parliament/stationMap.ts`). Dann steht hier, dass nicht
  * gefiltert wurde — eine Liste, die unter einem aktiven Filter ungefiltert
  * dasteht, ist die eine Variante, die niemand bemerkt. */
 /* Stationen und „Verordnungsentwürfe" schließen einander aus: die einen

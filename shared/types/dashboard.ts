@@ -73,7 +73,7 @@ export interface OpenVorlage {
    * Dinge zugleich heißen: „wir haben keine Seite dafür" und „es gab keine
    * Begutachtung". Gezeigt wurde das zweite („ohne Begutachtung"), belegt war
    * nur das erste — `preconst` ist kein universelles Feld, und auf GP XXVIII
-   * fehlt es bei 32 von 117 Vorlagen ganz (`server/utils/precedingDraft.ts`).
+   * fehlt es bei 32 von 117 Vorlagen ganz (`server/utils/parliament/precedingDraft.ts`).
    *
    *  - `draft` — die Vorlage nennt ihren Ministerialentwurf selbst. Der
    *    einzige Zustand, in dem eine Zeile auf unsere eigene Seite zeigt.

@@ -1,7 +1,8 @@
 /**
  * Title normalisation and similarity — the toolkit the RIS↔ME join was
- * calibrated on, borrowed since by `related.ts`, `precedingDraft.ts` and
- * `bgblJoin.ts` rather than re-derived per caller.
+ * calibrated on, borrowed since by `parliament/related.ts`,
+ * `parliament/precedingDraft.ts` and `bgblJoin.ts` rather than re-derived
+ * per caller.
  *
  * PURE MODULE — no Nuxt auto-imports, no I/O, so vitest can execute it
  * directly. Every threshold that reads these numbers is measured

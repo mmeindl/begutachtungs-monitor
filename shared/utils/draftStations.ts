@@ -4,7 +4,7 @@
  * for the same draft survives, and whether the period may be spoken about
  * at all (§12.27).
  *
- * Pure module: no Nuxt auto-imports, so the server map (`stationMap.ts`) and
+ * Pure module: no Nuxt auto-imports, so the server map (`parliament/stationMap.ts`) and
  * vitest run the same functions. Everything else in that file is fetching
  * and folding; this is the part that decides what the list CLAIMS about a
  * draft, and a claim belongs where it can be tested.

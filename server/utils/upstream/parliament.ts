@@ -7,7 +7,7 @@
  * list call (the API silently ignores unknown filter keys),
  * 2 retries on 5xx/network errors.
  */
-import { checkListHeader } from '../listHeaders'
+import { checkListHeader } from '../parliament/listHeaders'
 import { PARLIAMENT_BASE } from '../parliament/htmlText'
 import type {
   RawBgblLink,
@@ -149,7 +149,7 @@ export function assertRowsMatchGp(rows: unknown[][], gp: string, listId: number)
 
 /**
  * The header names the columns the mappers read by position
- * (`listHeaders.ts`). Checked wherever rows are trusted, i.e. next to the GP
+ * (`parliament/listHeaders.ts`). Checked wherever rows are trusted, i.e. next to the GP
  * check and, like it, before anything is cached — a reordered column would
  * otherwise degrade silently into "every submitter is a Privatperson".
  * Only when there are rows: an empty list has no columns to misread.

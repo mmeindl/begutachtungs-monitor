@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { withinBudget } from '../server/utils/budget'
+import { withinBudget } from '../server/utils/http/budget'
 
 const later = <T>(value: T, ms: number): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms))

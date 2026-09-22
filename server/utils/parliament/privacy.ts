@@ -29,7 +29,7 @@
  * `leadsWithPersonName` closes that: the segment that names the submitter
  * decides, and it is checked before any organisation signal.
  */
-import type { SubmitterKind } from '../../shared/types'
+import type { SubmitterKind } from '../../../shared/types'
 
 interface SubmitterClassification {
   kind: SubmitterKind

@@ -139,7 +139,7 @@ Geschäftszahl tie-breaker, which needs PDF text.
 - Draft detail: `risDraft` on `DraftDetail`, rendered as the
   "Entwurf im RIS" block with the RIS entry, HTML/PDF text, a Fristabweichung
   note, and "im RIS nicht veröffentlicht" as a shown state.
-- Detail pages wait at most 2 s for the join (`withinBudget`, `server/utils/budget.ts`)
+- Detail pages wait at most 2 s for the join (`withinBudget`, `server/utils/http/budget.ts`)
   and otherwise render without the RIS block — the prewarm starts with
   `--no-block` after a restart, so a visitor can arrive before it finishes
   (measured 61 s on the first detail-page hit after the 2026-09-07 deploy).
