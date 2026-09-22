@@ -67,14 +67,15 @@ export default withNuxt(
       'vue/max-attributes-per-line': ['warn', { singleline: { max: 99 }, multiline: { max: 1 } }],
       // Both rules insert line breaks *inside* an element, and Vue's
       // `whitespace: 'condense'` turns such a break into a real space in the
-      // rendered text — visible inside a link or a badge. This phase changes
-      // no rendering, and the templates say the opposite anyway: 196 and 99
-      // places keep the content on the tag's line.
+      // rendered text — visible inside a link or a badge. The refactor
+      // changed no rendering, and the templates say the opposite anyway: 196
+      // and 99 places keep the content on the tag's line.
       'vue/singleline-html-element-content-newline': 'off',
       'vue/multiline-html-element-content-newline': 'off',
       // Components register by bare file name under `pathPrefix: false`
       // (`nuxt.config.ts`), so the file name is the component name and a
-      // one-word `Badge.vue` is a legitimate name here. Flags nothing today.
+      // one-word name like `DiffText.vue` is legitimate here. Flags nothing
+      // today.
       'vue/multi-word-component-names': 'off',
       // 106 `any` in the tree — 29 in `server/`, 77 in `scripts/`, none in
       // `app/` or `shared/` — and every one of them sits at an untyped

@@ -97,30 +97,24 @@ const externalHost = computed(() => {
     "
   >
     <div class="flex min-w-0 flex-1 flex-col gap-1">
-      <!-- ZONE 1 — Titel, GANZ, in beiden Dichten. Kein `truncate`, kein
-           `line-clamp` (§12.28).
+      <!-- ZONE 1 — the title, WHOLE, in both densities. No `truncate`, no
+           `line-clamp` (docs/architecture.md §12.28).
 
-           Gemessen am 18.09.2026 über alle 336 Titel: Median 50 Zeichen,
-           p90 117, Maximum 497. Eine gekürzte Zeile zeigte damit nur 31 %
-           der Titel vollständig, und Amtstitel schneiden von hinten weg
-           genau das ab, was sie unterscheidet — „Bundesgesetz über die
-           Bundesstaatsanwaltschaft; Bundesgesetz zur Ein…" ist kein Name,
-           sondern ein Rätsel. Eine Liste, in der man den Gegenstand nicht
-           erkennt, hat ihre Aufgabe nicht erfüllt, egal wie ruhig sie
-           aussieht.
+           Measured 18.09.2026 over all 336 titles: median 50 characters, p90
+           117, maximum 497. A truncated line therefore showed only 31 % of
+           the titles in full, and official titles cut from the end lose
+           exactly what tells them apart.
 
-           WAS DAS KOSTET, offen: 85 der 336 Titel brauchen drei Zeilen
-           oder mehr, einer davon vierzehn — eine Weinbau-Verordnung mit
-           497 Zeichen. Diese Zeilen sind hoch, und die Liste verliert
-           dort ihren gleichmäßigen Takt. Bewusst in Kauf genommen: die
-           Höhe ist ehrlich über den Titel, den das Amt vergeben hat, und
-           die Kürzung war es nicht.
+           WHAT IT COSTS, stated openly: 85 of the 336 titles need three lines
+           or more, one of them fourteen — a Weinbau-Verordnung of 497
+           characters. Those rows are tall and the list loses its even rhythm
+           there. Accepted deliberately: the height is honest about the title
+           the authority gave, and the truncation was not.
 
-           Das ist damit die Messlatte für das Arbeitspaket „sprechende
-           Namen" (TODO): es muss die Titel kürzer machen, nicht die
-           Anzeige. `title=` trägt weiterhin den vollen Titel — bei
-           RIS-Sätzen ist das der längere `longTitle`, der auch hier nicht
-           steht. -->
+           This is therefore the bar for the „sprechende Namen" work package
+           (TODO): it has to make the titles shorter, not the display.
+           `title=` still carries the full title — for RIS records that is the
+           longer `longTitle`, which does not stand here either. -->
       <component
         :is="density === 'row' ? 'p' : 'h3'"
         class="font-medium text-ink group-hover:underline"

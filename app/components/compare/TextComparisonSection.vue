@@ -241,9 +241,10 @@ type Block =
   | { kind: 'context'; rows: TextComparisonRow[] }
   /**
    * Changes the RIS check would not vouch for. The server sends these rows
-   * without their text (`annexCheck.ts`), so there is nothing to render but
-   * the fact — and that fact is worth a line: a comparison that silently
-   * drops a § is a different kind of wrong answer from one that says it did.
+   * without their text (`server/utils/annex/gateRows.ts`), so there is
+   * nothing to render but the fact — and that fact is worth a line: a
+   * comparison that silently drops a § is a different kind of wrong answer
+   * from one that says it did.
    */
   | { kind: 'withheld'; count: number; cause: AnnexWithheldCause | null }
 
