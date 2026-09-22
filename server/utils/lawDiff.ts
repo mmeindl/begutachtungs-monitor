@@ -25,7 +25,7 @@
 import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../shared/types'
 import { compareKey, type LawUnit } from './lawText'
 import { articleNameTokens, jaccardSimilarity } from './lawtext/lawNames'
-import { diffTokens, isEditorialChange, type TokenDiff } from './diff/wordDiff'
+import { diffTokens, isEditorialChange, tokenSimilarity, type TokenDiff } from './diff/wordDiff'
 
 // ---------------------------------------------------------------------------
 // Article pairing
@@ -154,7 +154,7 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
     if (u.heading && partner.heading) continue // both headed, headings differ → not the same §
     // Unheaded units (Novellierungsanordnungen) renumber too: the same Z
     // number must also look alike, else step 3 decides by similarity.
-    if (diffTokens(u.text, partner.text).similarity < 0.5) continue
+    if (tokenSimilarity(u.text, partner.text, 0.5) < 0.5) continue
     pair(u, partner)
   }
 
@@ -165,7 +165,7 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
   for (const a of restFrom) {
     for (const b of restTo) {
       if ((a.article ?? '') !== (b.article ?? '')) continue
-      const s = diffTokens(a.text, b.text).similarity
+      const s = tokenSimilarity(a.text, b.text, 0.6)
       if (s >= 0.6) candidates.push({ from: a, to: b, s })
     }
   }
@@ -221,9 +221,13 @@ export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): 
   const insertedSet = new Set(onlyTo)
   const out: LawDiffUnit[] = []
   let fromCursor = 0
+  // The position of every earlier unit, looked up once instead of scanned per
+  // paired unit. First occurrence wins, exactly as `indexOf` decided.
+  const fromIndex = new Map<LawUnit, number>()
+  for (const [i, u] of from.entries()) if (!fromIndex.has(u)) fromIndex.set(u, i)
 
   const flushRemovedBefore = (fromUnit: LawUnit | null) => {
-    const stop = fromUnit ? from.indexOf(fromUnit) : from.length
+    const stop = fromUnit ? (fromIndex.get(fromUnit) ?? -1) : from.length
     while (fromCursor < stop) {
       const u = from[fromCursor++]!
       if (removedSet.has(u)) out.push(toUnit('removed', u, null, null))

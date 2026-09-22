@@ -75,6 +75,55 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
   return { similarity: (2 * lcs) / (n + m), segments }
 }
 
+/**
+ * The similarity alone, without building the segment list — the answer two
+ * of the three alignment steps want.
+ *
+ * Identical to `diffTokens(a, b).similarity` in every case, including the
+ * `MAX_DP_CELLS` fallback; it computes the LCS over a rolling row instead of
+ * the full matrix, because nothing is backtracked.
+ *
+ * `minimum` is a caller's threshold, and it is exact rather than an
+ * approximation: `bagSimilarity` is `2·|multiset ∩|/(n+m)` and an LCS can
+ * never be longer than that intersection, so the bag is an UPPER BOUND on the
+ * similarity. A pair below the caller's threshold in the bag cannot reach it
+ * in the LCS either, and the quadratic step is skipped. What comes back is
+ * then the bound, which is below the threshold by construction — no caller
+ * may read it as a score, and none does: both compare it against exactly this
+ * threshold. Measured cause: step 3 ran a full LCS per remaining pair, 240×240
+ * units = 2,0 s (`refactor-plan.md` §6.3).
+ */
+export function tokenSimilarity(aText: string, bText: string, minimum = 0): number {
+  const a = tokens(aText)
+  const b = tokens(bText)
+  const n = a.length
+  const m = b.length
+  if (n === 0 && m === 0) return 1
+  if (minimum > 0) {
+    const bound = bagSimilarity(a, b)
+    if (bound < minimum) return bound
+  }
+  if (n * m > MAX_DP_CELLS) return bagSimilarity(a, b)
+  return (2 * lcsLength(a, b)) / (n + m)
+}
+
+/** LCS length over a rolling row — the same recurrence `diffTokens` fills a matrix with. */
+function lcsLength(a: readonly string[], b: readonly string[]): number {
+  const m = b.length
+  let next = new Uint16Array(m + 1)
+  let row = new Uint16Array(m + 1)
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      row[j] = a[i] === b[j] ? next[j + 1]! + 1 : Math.max(next[j]!, row[j + 1]!)
+    }
+    const spent = next
+    next = row
+    row = spent
+    row.fill(0)
+  }
+  return next[0]!
+}
+
 export function bagSimilarity(a: string[], b: string[]): number {
   const count = new Map<string, number>()
   for (const t of a) count.set(t, (count.get(t) ?? 0) + 1)
