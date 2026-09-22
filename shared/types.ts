@@ -842,20 +842,10 @@ export type ConsolidatedWithheldCause =
 
 /** Ein Paragraph, wie er nach den Anweisungen des Entwurfs lauten würde. */
 export interface ConsolidatedParagraph {
-  /** Das Gesetz des Pakets, dessen § das ist; null bei einer Einzelnovelle. */
-  law: string | null
-  /** „Artikel 5" — nur bei einem Paket gesetzt. */
-  article: string | null
   /** Die Nummer, „22" — dieselbe Schreibweise wie in der Gegenüberstellung. */
   id: string
-  /** „§ 22" */
-  label: string
   /** Die Überschrift des § NACH dem Entwurf; sie kann selbst geändert sein. */
   heading: string | null
-  /** Der geltende Text zum Stichtag samt Überschrift, wie das RIS ihn führt. */
-  before: string
-  /** Derselbe §, nachdem die Anweisungen dieses Entwurfs angewendet wurden. */
-  after: string
   /**
    * Wortdiff des **Textes ohne Überschrift** — dieselbe rot/grün-Sprache wie
    * sonst auf der Seite. Getrennt von `headingSegments`, weil eine
@@ -899,15 +889,9 @@ export interface ConsolidatedParagraph {
 export interface ConsolidatedTextResponse {
   gp: string
   inr: number
-  available: boolean
-  unavailableReason: string | null
-  /** Stichtag der geltenden Fassung: der erste Tag der Begutachtungsfrist. */
-  asOf: string | null
   paragraphs: ConsolidatedParagraph[]
   /** Wie viele §§ der Entwurf überhaupt ändert — der Nenner der Anzeige. */
   touched: number
-  /** Warum die übrigen fehlen, gezählt und benannt. */
-  withheld: { cause: ConsolidatedWithheldCause; label: string; count: number }[]
 }
 
 /**

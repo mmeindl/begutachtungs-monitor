@@ -31,13 +31,13 @@
  */
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
-import { addressedParagraphs, gateParagraph, paraId, withheldSummary, type WithholdCause } from './konsGate'
+import { addressedParagraphs, gateParagraph, paraId } from './konsGate'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from './amendedLawsService'
 import { diffTokens } from './lawDiff'
 import { fetchLawHtml } from './lawDiffService'
 import { applyNovelle, instructionsFromUnits, type Instruction, type StandingLaw } from './lawApply'
-import { bodyText, parseKonsParagraph, plainText, renderNode, type LawNode } from './lawStructure'
+import { bodyText, parseKonsParagraph, plainText, type LawNode } from './lawStructure'
 import { parseRisXml, segmentUnits } from './lawText'
 import { articleBlocks } from './lawTitles'
 import { getRisMapForGp } from './ris'
@@ -97,34 +97,25 @@ async function standingParagraphs(
 
 export const getConsolidatedText = defineCachedFunction(
   async (gp: string, inr: number): Promise<ConsolidatedTextResponse> => {
-    const empty = (reason: string | null, asOf: string | null = null): ConsolidatedTextResponse => ({
-      gp,
-      inr,
-      available: false,
-      unavailableReason: reason,
-      asOf,
-      paragraphs: [],
-      touched: 0,
-      withheld: [],
-    })
+    const empty = (): ConsolidatedTextResponse => ({ gp, inr, paragraphs: [], touched: 0 })
 
     const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
     // Dieselbe Regel wie bei der Gegenüberstellung: Ein schwacher Join ist
     // Fristen und Ressort ohne Titel, und der geltende Text eines *anderen*
     // Entwurfs liest sich genauso glaubwürdig wie der richtige.
-    if (!row?.risId || row.status !== 'matched') {
-      return empty('Der Entwurf ließ sich keinem RIS-Datensatz sicher zuordnen — von dort kommt der geltende Gesetzestext.')
-    }
+    if (!row?.risId || row.status !== 'matched') return empty()
+    // Without the first day of the consultation period we do not know which
+    // version of the law the draft was written against.
     const asOf = row.risBeginn ?? null
-    if (!asOf) return empty('Ohne den Beginn der Begutachtungsfrist wissen wir nicht, welche Fassung des Gesetzes der Entwurf vor sich hatte.')
+    if (!asOf) return empty()
+    // The instructions are read from the XML only.
     const xmlUrl = row.risDocument?.xml
-    if (!xmlUrl) return empty('Der Entwurfstext liegt im RIS nicht als XML vor; die Anweisungen lesen wir nur von dort.', asOf)
+    if (!xmlUrl) return empty()
 
     const blocks = parseRisXml(await fetchLawHtml(xmlUrl))
     const parts = articleBlocks(blocks).filter((p) => p.article.amends)
-    if (parts.length === 0) {
-      return empty('Dieser Entwurf ändert kein geltendes Gesetz, sondern schafft eines — dann gibt es keine Fassung „davor".', asOf)
-    }
+    // A draft that creates a law instead of amending one has no version „davor".
+    if (parts.length === 0) return empty()
 
     // Dieselbe Quelle wie der Abschnitt darüber, aus derselben Funktion:
     // RIS zuerst, Parlament als Rückfall (`textComparisonService.ts`). Ein
@@ -147,14 +138,13 @@ export const getConsolidatedText = defineCachedFunction(
     const isPackage = parts.length > 1
 
     const shown: ConsolidatedParagraph[] = []
-    const causes: WithholdCause[] = []
     let touched = 0
     const budget = { left: MAX_PARAGRAPHS }
 
     // ALLE Artikel werden gezählt, auch die jenseits von `MAX_LAWS`: Der
     // Nenner auf der Seite ist „wie viele Paragraphen ändert dieser Entwurf",
     // nicht „wie viele haben wir angesehen". Bearbeitet werden die ersten
-    // zwölf; die übrigen tragen ihren eigenen Grund.
+    // zwölf.
     for (const [index, { blocks: part, article }] of parts.entries()) {
       const units = segmentUnits(part).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
       const { instructions, refused } = instructionsFromUnits(units)
@@ -165,24 +155,15 @@ export const getConsolidatedText = defineCachedFunction(
       // eine Aussage ist und keine Zwischenrechnung.
       const addressed = addressedParagraphs(instructions, refused.map((r) => r.line))
       touched += addressed.length
-      const withhold = (cause: WithholdCause): void => {
-        for (let i = 0; i < addressed.length; i++) causes.push(cause)
-      }
 
-      if (index >= MAX_LAWS) {
-        withhold('nicht-geladen')
-        continue
-      }
+      if (index >= MAX_LAWS) continue
 
       // Ohne Anhang bestätigt nichts irgendetwas, und dann ist jeder
       // RIS-Abruf für die Katz: Die Hälfte der Entwürfe hat keinen, und für
       // die holte diese Funktion Dutzende §-Dokumente, um anschließend nichts
       // zu zeigen. Die Zahl der geänderten Paragraphen steht trotzdem da —
       // sie kostet keinen Abruf, sie steht im Entwurfstext.
-      if (!byParagraph) {
-        withhold('kein-anhang')
-        continue
-      }
+      if (!byParagraph) continue
 
       // KEIN `.catch` hier. `resolveKonsLaw` gibt null zurück, wenn das RIS
       // das Gesetz nicht kennt oder zwei nicht auseinanderhält — eine
@@ -191,13 +172,7 @@ export const getConsolidatedText = defineCachedFunction(
       // Ausfall, der als Urteil über den Entwurf zwischengespeichert wird;
       // genau das hat `annexGuardService.ts` schon einmal gekostet.
       const law = article.bgbl ? await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '') : null
-      if (!law) {
-        // Kein eigener Grund in der Liste: „Wir kennen das Gesetz nicht" ist
-        // für den Leser dasselbe Ergebnis wie eine Verweigerung, und eine
-        // weitere Zeile in der Aufzählung erklärt weniger als sie kostet.
-        withhold('verweigert')
-        continue
-      }
+      if (!law) continue
 
       // Wenn das Budget beißt, soll es bei den Paragraphen beißen, die
       // ohnehin nichts zeigen könnten.
@@ -230,19 +205,13 @@ export const getConsolidatedText = defineCachedFunction(
       }
 
       for (const id of addressed) {
-        // Unsere Obergrenze zuerst, und als eigener Grund: Dass wir ein
-        // Dokument gar nicht geholt haben, ist keine Verweigerung der Engine.
-        if (skipped.has(id)) {
-          causes.push('nicht-geladen')
-          continue
-        }
+        // Our own ceiling first: a document we never fetched is not a refusal
+        // of the engine.
+        if (skipped.has(id)) continue
         const node = after.paragraphs.find((p) => p.id === id)
         // Kein Text erzeugt: Der § stand nicht im geltenden Bestand, oder
         // keine Anweisung an ihm ließ sich ausführen.
-        if (!node) {
-          causes.push('verweigert')
-          continue
-        }
+        if (!node) continue
         const beforeNode = standing.paragraphs.find((p) => p.id === id) ?? null
         const touching: { instruction: Instruction; result: (typeof results)[number] }[] = instructions
           .map((instruction, i) => ({ instruction, result: results[i]! }))
@@ -278,34 +247,21 @@ export const getConsolidatedText = defineCachedFunction(
           plausible: guard.plausible,
           oracle: report?.verdict ?? 'kein Anhang',
         })
-        if (!gate.show) {
-          causes.push(gate.cause!)
-          continue
-        }
+        if (!gate.show) continue
         // `diffTokens` gibt null zurück, wenn der Vergleich zu lang zum
         // Rechnen ist. Erreichbar ist das hier kaum — der Guard setzt in
         // demselben Fall „unprüfbar" und das Tor hat oben schon zugemacht —,
         // aber ein Paragraph ohne Markierung wäre eine Behauptung ohne Beleg.
         const segments: LawDiffSegment[] | null = bodyBefore === null ? [{ type: 'inserted', text: bodyAfter }] : diffTokens(bodyBefore, bodyAfter).segments
-        if (!segments) {
-          causes.push('unplausibel')
-          continue
-        }
+        if (!segments) continue
         const headingBefore = beforeNode?.heading ?? ''
         const headingAfter = node.heading ?? ''
         const headingSegments: LawDiffSegment[] | null = headingAfter || headingBefore
           ? (headingBefore ? diffTokens(headingBefore, headingAfter).segments : [{ type: 'inserted', text: headingAfter }])
           : null
         shown.push({
-          law: isPackage ? law.kurztitel || article.title : null,
-          article: isPackage ? article.number : null,
           id,
-          label: node.marker?.replace(/\.$/, '') || `§ ${id}`,
           heading: node.heading || null,
-          // Die gedruckte Form, wie der Kommentar am Feld sie verspricht —
-          // nicht die Vergleichsform der beiden Zeilen weiter oben.
-          before: beforeNode ? renderNode(beforeNode) : '',
-          after: renderNode(node),
           segments,
           headingSegments,
           risUrl: konsLawUrl(law.gesetzesnummer, asOf),
@@ -321,18 +277,10 @@ export const getConsolidatedText = defineCachedFunction(
     return {
       gp,
       inr,
-      available: shown.length > 0,
-      // Kein Fehler, sondern der Normalfall: In der Hälfte der Entwürfe
-      // bestätigt die Beilage keinen einzigen Paragraphen (§12.12).
-      unavailableReason: shown.length > 0
-        ? null
-        : byParagraph
-          ? 'Für keinen Paragraphen dieses Entwurfs stimmt unser Ergebnis nachweislich mit der Textgegenüberstellung des Ressorts überein. Ohne diese zweite Meinung zeigen wir keinen Gesetzestext.'
-          : 'Dieser Entwurf trägt keine maschinenlesbare Textgegenüberstellung. Sie ist das einzige unabhängige Dokument, an dem wir unsere Lesefassung prüfen könnten — ohne sie zeigen wir keine.',
-      asOf,
+      // An empty list is not an error but the normal case: in half of the
+      // drafts the annex confirms not a single paragraph (§12.12).
       paragraphs: shown,
       touched,
-      withheld: withheldSummary(causes),
     }
   },
   { name: 'kons-text', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: TTL_S, swr: false },
