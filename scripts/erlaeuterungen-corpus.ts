@@ -27,14 +27,14 @@
  * the page would show. Reads only; nothing is written.
  */
 import { createHash } from 'node:crypto'
-import { classifyRisRecord, type RisClass } from '../server/utils/risJoin'
+import { classifyRisRecord, type RisClass } from '../server/utils/ris/risJoin'
 import { parseExplanations, type ExplanationsDocument } from '../server/utils/explanations'
 import { explanationsByParagraph } from '../server/utils/explanationsJoin'
 import { explanationKey, explanationParaId } from '../shared/utils/explanationKey'
 import { parseRisXml } from '../server/utils/lawText'
 import { draftArticles } from '../server/utils/lawTitles'
 import { isScanned, parseTextComparison } from '../server/utils/textComparison'
-import { hasDocument, type RisBegutFlat } from '../server/utils/risRecord'
+import { hasDocument, type RisBegutFlat } from '../server/utils/ris/risRecord'
 import { fetchRisBegutCorpus } from './risCorpus'
 
 function arg(name: string): string | null {

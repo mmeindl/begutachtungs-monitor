@@ -10,7 +10,7 @@
  */
 import type { RisMapResponse, RisMapRow } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
-import { getDraftsForGp } from './parliament/drafts'
+import { getDraftsForGp } from '../parliament/drafts'
 import {
   dedupeMeRows,
   joinRisToMe,
@@ -22,7 +22,7 @@ import {
 // vitest can run the shipped mapper); both are auto-imported server-side, so
 // nothing is re-exported here.
 import { asArray, flattenRisRecord, risDocumentUrl, type RisBegutFlat } from './risRecord'
-import { RIS_API_BASE, risJson, sleep, type UpstreamPolicy } from './upstream/fetch'
+import { RIS_API_BASE, risJson, sleep, type UpstreamPolicy } from '../upstream/fetch'
 
 const RIS_PAGE_SIZE = 100
 const RIS_MAX_PAGES = 80

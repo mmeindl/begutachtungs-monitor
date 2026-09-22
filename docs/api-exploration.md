@@ -648,7 +648,7 @@ PDF-Beilagen der GP XXVIII; Zahlen und Varianten in `architecture.md` §12.13):
 Beilage tragen zwei davon — „Textgegenüberstellung (Verordnung)" +
 „Textgegenüberstellung (Anlagen)" (Methodenverordnung Wasser) und
 „Textgegenüberstellung (Artikel1)" + „Textgegenüberstellung (Artikel 2)"
-(Weinrecht-Sammelverordnung 2026). `ris.ts` nimmt das erste; die zweite Hälfte
+(Weinrecht-Sammelverordnung 2026). `ris/begutCorpus.ts` nimmt das erste; die zweite Hälfte
 der Gegenüberstellung wird nicht gezeigt und auch nicht erwähnt. Nicht
 behoben.
 
@@ -758,7 +758,7 @@ work e-mail address. Link the document, do not parse it
 - **BGBl → Parliament: fully structured (reverse direction!).** RIS BgblAuth records carry `Gesetzgebungsperiode`, `Regierungsvorlage` (d.B. number), `AusschussberichtNationalrat`, `DatumNationalrat/Bundesrat` — the last leg is an ID join in both directions. ⚠️ BgblAuth search: `Teil=1` is ignored, `hit[0]` is not part-I-first — always select via the ID prefix `BGBLA_{Jahr}_I_` or the Bgblnummer string.
 - **ME → RV (forward): semi-structured.** Only as an href in `stages[].text` — a one-line regex, or more elegantly via the inverted `preconst` edges. Additionally, the evolved text versions (RV/committee/plenary) sit on the ME page under `.content.statements.documents[]`.
 - **RIS Begut ↔ Parliament ME: a constructed join is required** (no shared key). Tested composite key, matched 2/2 cleanly:
-  `BeginnBegutachtungsfrist == ME arrival` (exact in both cases) **+** title prefix match after stripping "Ministerialentwurf betreffend " (Parliament sometimes appends package short names that RIS omits) **+** ministry substring (`"Bundeskanzleramt"` ⊂ `"BKA (Bundeskanzleramt)"`). Title search alone never suffices (2–3 loose hits per search term). **Corpus-tested 2026-09-06 on all 350 MEs of GP XXVII: 337 unique matches, 0 ambiguous, 12 unmatched (all without any RIS record), 25/25 samples verified.** Two corrections from the corpus: `EndeBegutachtungsfrist == Frist` is the *strongest* signal (336/337, no one-sided extension in the whole GP), and Beginn is only exact in 72 % because Parliament's Einlangen lags RIS by 1–14 days. Full rule, numbers and failure modes: `docs/ris-join.md`; code `server/utils/risJoin.ts`; artefact `data/ris-me-map-gp27.json`.
+  `BeginnBegutachtungsfrist == ME arrival` (exact in both cases) **+** title prefix match after stripping "Ministerialentwurf betreffend " (Parliament sometimes appends package short names that RIS omits) **+** ministry substring (`"Bundeskanzleramt"` ⊂ `"BKA (Bundeskanzleramt)"`). Title search alone never suffices (2–3 loose hits per search term). **Corpus-tested 2026-09-06 on all 350 MEs of GP XXVII: 337 unique matches, 0 ambiguous, 12 unmatched (all without any RIS record), 25/25 samples verified.** Two corrections from the corpus: `EndeBegutachtungsfrist == Frist` is the *strongest* signal (336/337, no one-sided extension in the whole GP), and Beginn is only exact in 72 % because Parliament's Einlangen lags RIS by 1–14 days. Full rule, numbers and failure modes: `docs/ris-join.md`; code `server/utils/ris/risJoin.ts`; artefact `data/ris-me-map-gp27.json`.
 
 ### How far back the chain actually reaches (measured 18.09.2026)
 

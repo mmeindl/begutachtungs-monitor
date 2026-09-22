@@ -40,7 +40,7 @@ import { applyNovelle, instructionsFromUnits, type Instruction, type StandingLaw
 import { bodyText, parseKonsParagraph, plainText, type LawNode } from './lawStructure'
 import { parseRisXml, segmentUnits } from './lawText'
 import { articleBlocks } from './lawTitles'
-import { getRisMapForGp } from './ris'
+import { getRisMapForGp } from './ris/begutCorpus'
 import { mapWithConcurrency } from './pool'
 import type { KonsParagraphRef } from './risKons'
 import { annexSourceFor } from './textComparisonService'

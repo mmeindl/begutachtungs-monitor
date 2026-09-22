@@ -60,13 +60,13 @@ import { parseRisXml } from './lawText'
 import { draftArticles, type DraftArticle } from './lawTitles'
 import { mapDocuments } from './parliament/detailJson'
 import { getGegenstand } from './parliament/drafts'
-import { getRisMapForGp } from './ris'
-import type { RisDocumentUrls } from './risRecord'
+import { getRisMapForGp } from './ris/begutCorpus'
+import type { RisDocumentUrls } from './ris/risRecord'
 import { isScanned, parseTextComparison, type ComparisonParse } from './textComparison'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 
 /**
- * The same loose match `ris.ts` uses on the RIS side: ressorts write
+ * The same loose match `ris/begutCorpus.ts` uses on the RIS side: ressorts write
  * "Textgegenüberstellung", "TGÜ", "TGG" and a misspelt
  * "Textgegenbüberstellung" (docs/api-exploration.md §2c). Over GP XXVIII
  * every one of the 121 Parliament document groups it matches is titled
@@ -312,7 +312,7 @@ export const getTextComparison = defineCachedFunction(
     const annex = row.textComparison
 
     // A weak join is dates and ministry only — the title played no part
-    // (`risJoin.ts`, tier C). It is rare (1 of 132 drafts in GP XXVIII, 1 of
+    // (`ris/risJoin.ts`, tier C). It is rare (1 of 132 drafts in GP XXVIII, 1 of
     // 350 in GP XXVII), and it is the one error the RIS check cannot catch:
     // another draft's annex quotes the standing law just as faithfully as
     // this one's would, so every § of it verifies and the page presents a

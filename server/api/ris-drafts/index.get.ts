@@ -42,7 +42,7 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   /* `active` and the order that follows from it are decided HERE, per
    * request: the cached set is day-independent on purpose, so that the
    * status filter never answers with the calendar day of whoever filled the
-   * cache (`risOnly.ts`, `risRecord.withRisActiveOn`). Same rule and same
+   * cache (`ris/risOnly.ts`, `risRecord.withRisActiveOn`). Same rule and same
    * place as `reconcileActive` for list 81. */
   const items = withRisActiveOn(cached.items).sort(sortConsultations)
 

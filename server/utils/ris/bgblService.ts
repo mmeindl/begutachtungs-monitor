@@ -18,11 +18,11 @@
  */
 import type { BgblOutcome, BgblOutcomeState, RisConsultation } from '#shared/types'
 import { joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
-import { DERIVED_CACHE } from './cache/base'
-import { PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
+import { DERIVED_CACHE } from '../cache/base'
+import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
-import { RIS_API_BASE, risJson, type UpstreamPolicy } from './upstream/fetch'
+import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
 import { bgblShort } from '#shared/utils/format'
 
 const TIMEOUT_MS = 20_000

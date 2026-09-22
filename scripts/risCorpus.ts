@@ -1,7 +1,7 @@
 /**
  * One pass over the RIS Begut corpus, for measurement scripts.
  *
- * `server/utils/ris.ts` is not importable here — it carries the Nitro cache
+ * `server/utils/ris/begutCorpus.ts` is not importable here — it carries the Nitro cache
  * and `#shared/*` aliases — but `flattenRisRecord` is, and it is the shipped
  * mapper: what a script counts is then what the site sees, not what a second
  * implementation of the mapper would see.
@@ -9,13 +9,13 @@
  * `verordnungen-corpus.ts` predates this module and carries its own copy of
  * the paging; both talk to the same endpoint with the same parameters.
  */
-import { flattenRisRecord, type RisBegutFlat } from '../server/utils/risRecord'
-import type { BgblRecord } from '../server/utils/bgblJoin'
+import { flattenRisRecord, type RisBegutFlat } from '../server/utils/ris/risRecord'
+import type { BgblRecord } from '../server/utils/ris/bgblJoin'
 
 const PAGE_SIZE = 100
 const MAX_PAGES = 80
 /**
- * Wiederholungen und Pause, wie `server/utils/ris.ts` sie hat.
+ * Wiederholungen und Pause, wie `server/utils/ris/begutCorpus.ts` sie hat.
  *
  * Ein Lauf holt bis zu 68 Seiten. Ohne Wiederholung kostet ein einzelnes
  * ETIMEDOUT den ganzen Lauf — am 19.09.2026 zweimal passiert, jedes Mal nach
@@ -94,7 +94,7 @@ export async function fetchRisBegutCorpus(script: string): Promise<RisCorpus> {
 
 /**
  * Das Bundesgesetzblatt eines Zeitfensters, für die Messung des Joins
- * Entwurf → Kundmachung (`server/utils/bgblJoin.ts`).
+ * Entwurf → Kundmachung (`server/utils/ris/bgblJoin.ts`).
  *
  * `Applikation=BgblAuth` kennt weder einen Teil- noch einen Jahrgangsfilter —
  * `Teil=Teil2`, `Jahrgang=2025` und `Typ=Verordnung` liefern alle 18.925

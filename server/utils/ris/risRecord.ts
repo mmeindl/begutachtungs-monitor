@@ -4,11 +4,11 @@
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports, so vitest and
  * the corpus audit in `scripts/verordnungen-corpus.ts` can execute it
- * directly. It used to live inside `ris.ts`, which pulls in the Nitro cache
+ * directly. It used to live inside `begutCorpus.ts`, which pulls in the Nitro cache
  * and `#shared/*`; a measurement script could then only re-implement the
  * flattening, and a re-implemented mapper measures itself, not the product.
  */
-import type { RisConsultation } from '../../shared/types'
+import type { RisConsultation } from '../../../shared/types'
 import type { RisBegutRecord } from './risJoin'
 
 /** The formats RIS offers for one document of a Begut record. */

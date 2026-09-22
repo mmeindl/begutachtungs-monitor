@@ -7,7 +7,7 @@ import {
   isOpenOn,
   risDocumentUrl,
   withRisActiveOn,
-} from '../server/utils/risRecord'
+} from '../server/utils/ris/risRecord'
 
 /**
  * The RIS Begut record mapper (docs/api-exploration.md §2).
@@ -234,7 +234,7 @@ describe('risDocumentUrl', () => {
 describe('withRisActiveOn', () => {
   /**
    * The day rule that `getRisOnlyForGp` used to decide inside its own cache
-   * (`server/utils/risOnly.ts`). It lives here because the cached module
+   * (`server/utils/ris/risOnly.ts`). It lives here because the cached module
    * cannot be imported without Nitro, and because the predicate it applies
    * is `isOpenOn` above.
    */

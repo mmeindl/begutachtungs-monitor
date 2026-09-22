@@ -14,7 +14,7 @@
  * 132 to 109 of 132.
  *
  * **The bytes are cached in dev only**, the way the RIS result pages are
- * (`ris.ts`, `cache/base.ts`). In dev the cache is the point: re-deriving a
+ * (`ris/begutCorpus.ts`, `cache/base.ts`). In dev the cache is the point: re-deriving a
  * comparison after a worker reload must not re-fetch a two-megabyte PDF.
  * Keeping all 44 resident in production would cost tens of megabytes on a
  * one-gigabyte VPS for hits that would hardly happen — the same arithmetic

@@ -12,7 +12,7 @@
  *     Aufruf, in ~165 ms.
  *  2. **Wir lösen den Treffer auf.** Die Antwort des RIS ist eine
  *     Dokumentnummer. Welche Seite dieses Monitors sie meint, weiß der
- *     Korpus samt Join (`ris.ts`): gehört der Satz zu einem
+ *     Korpus samt Join (`ris/begutCorpus.ts`): gehört der Satz zu einem
  *     Ministerialentwurf, führt der Treffer auf dessen Seite mit Frist,
  *     Stellungnahmen und Stationen — sonst auf die Seite des RIS-Satzes.
  *  3. **Wir zeigen die Fundstelle** (`begutSearch.ts`), weil das RIS keine
@@ -61,10 +61,10 @@ import { PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import { parseRisXml, type TextBlock } from './lawText'
 import { ministryTokens, type MinistryToken } from './searchHaystack'
 import { getDraftsForGp, getCurrentGp, reconcileActive } from './parliament/drafts'
-import { getRisBegutCorpus, getRisMapForGp } from './ris'
+import { getRisBegutCorpus, getRisMapForGp } from './ris/begutCorpus'
 import { mapWithConcurrency } from './pool'
-import { getRisConsultation } from './risOnly'
-import { asArray, isOpenOn } from './risRecord'
+import { getRisConsultation } from './ris/risOnly'
+import { asArray, isOpenOn } from './ris/risRecord'
 import {
   RIS_API_BASE,
   RisEnvelopeError,
@@ -155,7 +155,7 @@ const DOCUMENT_ORDER: readonly { key: DocumentKey; label: string }[] = [
  * weil wir ihn nicht besser deuten können als das Ressort ihn gewählt hat.
  * Das ist zugleich die billige Hälfte einer anderen Lücke: `SAG_TGÜ` und
  * `Entwurf EB Klimagesetz` sind eine Gegenüberstellung und Erläuterungen,
- * die unsere Namensregeln nicht erkennen (`risRecord.ts`). Die Suche liest
+ * die unsere Namensregeln nicht erkennen (`ris/risRecord.ts`). Die Suche liest
  * sie jetzt — als „weiteres Dokument", ohne die Regeln anzufassen, an denen
  * die Anlagen-Maschine und der Erläuterungen-Abschnitt hängen.
  */

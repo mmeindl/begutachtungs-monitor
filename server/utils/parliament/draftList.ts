@@ -6,7 +6,7 @@
  * are product decisions, and a handler is the wrong place to keep them
  * where nothing can read them back.
  */
-// Pure module, relative imports only (`risRecord.ts`): what a query shows is
+// Pure module, relative imports only (`ris/risRecord.ts`): what a query shows is
 // a rule vitest has to be able to execute without Nuxt's aliases.
 import type { DraftStation, DraftStatus, DraftSummary } from '../../../shared/types'
 import { aliasHaystack } from '../../../shared/utils/draftAliases'

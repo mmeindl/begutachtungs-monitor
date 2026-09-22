@@ -10,7 +10,7 @@ import {
   RULE_VERSION,
   type MeListRow,
   type RisBegutRecord,
-} from '../server/utils/risJoin'
+} from '../server/utils/ris/risJoin'
 
 const read = <T>(p: string): T => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8')) as T
 

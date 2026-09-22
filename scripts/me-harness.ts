@@ -48,7 +48,7 @@ import { fetchLawAsOf, fetchParagraphTree, getText, resolveGesetzesnummer, resol
 import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
 import { isScanned, parseTextComparison } from '../server/utils/textComparison'
 import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../server/utils/tguOracle'
-import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../server/utils/risJoin'
+import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../server/utils/ris/risJoin'
 import { parseExplanations } from '../server/utils/explanations'
 import { explanationsByParagraph } from '../server/utils/explanationsJoin'
 import { explanationKey, explanationParaId } from '../shared/utils/explanationKey'
@@ -58,7 +58,7 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const UA = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }
 const TGU_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
-/** Dieselbe lose Schreibweise wie in `risRecord.ts`. */
+/** Dieselbe lose Schreibweise wie in `ris/risRecord.ts`. */
 const ERL_NAME = /erl(ä|ae|a)uterung/i
 
 /**
@@ -169,7 +169,7 @@ async function fetchDraft(id: string): Promise<Draft | null> {
  * RIS Begut id → the Ministerialentwurf Parliament files it under.
  *
  * Built from the committed GP-XXVIII fixtures through the production join
- * (`risJoin.ts`, 99 % precision on the GP-XXVII corpus test, `docs/ris-join.md`),
+ * (`ris/risJoin.ts`, 99 % precision on the GP-XXVII corpus test, `docs/ris-join.md`),
  * so this costs no requests and is reproducible offline. The fixtures were
  * taken on 07.09.2026: drafts published after that have no entry and fall
  * back to the RIS annex, which is the safe direction — a missing join reads

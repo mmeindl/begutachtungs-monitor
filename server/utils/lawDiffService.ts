@@ -27,7 +27,7 @@ import { diffLawPackage, summarizeDiff } from './lawDiff'
 import { parseLawUnits, parseLawUnitsFromRis } from './lawText'
 import { extractBgblLink, findLastRvLink, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup } from './parliament/detailJson'
 import { getGegenstand } from './parliament/drafts'
-import { getRisMapForGp } from './ris'
+import { getRisMapForGp } from './ris/begutCorpus'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 import {
   upstreamBytes,

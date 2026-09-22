@@ -4,7 +4,7 @@
 `api-exploration.md` §3 holds at corpus level. This document records the
 corpus test (GP XXVII, all 350 Ministerialentwürfe), the rule that came out
 of it, its failure modes, and what it means for the diff layer. Code:
-`server/utils/risJoin.ts` (pure, tested); artefact:
+`server/utils/ris/risJoin.ts` (pure, tested); artefact:
 `data/ris-me-map-gp27.json`; regression test: `tests/risJoin.test.ts`.
 
 ## 1. Why the join matters
@@ -121,12 +121,12 @@ Geschäftszahl tie-breaker, which needs PDF text.
 
 ## 4a. What is implemented (2026-09-07)
 
-- `server/utils/risJoin.ts`: the rule above as a pure module, plus the
+- `server/utils/ris/risJoin.ts`: the rule above as a pure module, plus the
   adapter from mapped list-81 rows (`toMeListRows`). Its title toolkit
   (normalisation, tokens, components, `daysBetween`) is
   `server/utils/ris/titleSimilarity.ts`, the ministry half
   `server/utils/ris/ministryCodes.ts` — four other modules read only those.
-- `server/utils/ris.ts`: RIS client. Full Begut corpus fetch (paged,
+- `server/utils/ris/begutCorpus.ts`: RIS client. Full Begut corpus fetch (paged,
   retries, HTTP-200 error envelope handled), flattened records with the
   main-document HTML/XML/PDF URLs, cached 24 h; `getRisMapForGp(gp)` joins
   the cached list 81 against it, cached 30 min.

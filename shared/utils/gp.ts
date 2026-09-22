@@ -98,7 +98,7 @@ export function gpEndedOn(gp: string): string | null {
  * Needed because the RIS Begut records carry no GP at all — they precede
  * the parliamentary stage entirely, so "which period is this Verordnung
  * from?" can only be answered by its Begutachtungsbeginn falling inside
- * this range (`server/utils/risOnly.ts`).
+ * this range (`server/utils/ris/risOnly.ts`).
  */
 export function gpWindow(gp: string): { from: string; to: string | null } | null {
   const from = GP_STARTS[gp]

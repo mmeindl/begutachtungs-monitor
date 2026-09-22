@@ -26,14 +26,14 @@
  * Läuft durch `joinDraftToBgbl`, die ausgelieferte Regel: Was hier gezählt
  * wird, ist das, was die Seite sagen würde. Liest nur; schreibt nichts.
  */
-import { classifyRisRecord } from '../server/utils/risJoin'
+import { classifyRisRecord } from '../server/utils/ris/risJoin'
 import {
   BGBL_ACCEPT,
   BGBL_MARGIN,
   bgblCandidates,
   joinDraftToBgbl,
   type BgblJoinDraft,
-} from '../server/utils/bgblJoin'
+} from '../server/utils/ris/bgblJoin'
 import { fetchBgblRecords, fetchRisBegutCorpus } from './risCorpus'
 
 const args = process.argv.slice(2)

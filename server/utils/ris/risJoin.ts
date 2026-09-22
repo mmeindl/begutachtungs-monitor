@@ -11,15 +11,15 @@
  * regenerate data/ris-me-map-gp27.json.
  */
 
-import type { DraftSummary } from '../../shared/types'
-import { ministryCodeOf, ministryScore } from './ris/ministryCodes'
+import type { DraftSummary } from '../../../shared/types'
+import { ministryCodeOf, ministryScore } from './ministryCodes'
 import {
   daysBetween,
   normalizeTitleText,
   round3,
   splitParliamentTitle,
   titleComponents,
-} from './ris/titleSimilarity'
+} from './titleSimilarity'
 
 // ---------------------------------------------------------------------------
 // Inputs

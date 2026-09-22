@@ -7,7 +7,7 @@ import {
   joinDraftToBgbl,
   type BgblJoinDraft,
   type BgblRecord,
-} from '../server/utils/bgblJoin'
+} from '../server/utils/ris/bgblJoin'
 
 function record(over: Partial<BgblRecord> = {}): BgblRecord {
   return {

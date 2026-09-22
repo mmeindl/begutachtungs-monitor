@@ -5,7 +5,7 @@
  * Deliberately free of Nitro globals (no `defineCachedFunction`), so the
  * verification harness in `scripts/` can run it under vite-node. Caching is
  * the caller's job; when this reaches a request path it gets the same leaf
- * cache as `ris.ts`.
+ * cache as `ris/begutCorpus.ts`.
  *
  * Two gotchas, both learned the hard way (2026-09-08):
  * - Unsupported parameters are **ignored, not rejected**: `Abkuerzung=GSpG`

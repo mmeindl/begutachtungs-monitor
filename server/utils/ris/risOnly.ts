@@ -38,8 +38,8 @@ import type {
 import { gpWindow } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { classifyRisRecord, type RisClass } from './risJoin'
-import { ministryCodeOf, ministryNameOf } from './ris/ministryCodes'
-import { getRisBegutCorpus, getRisMapForGp } from './ris'
+import { ministryCodeOf, ministryNameOf } from './ministryCodes'
+import { getRisBegutCorpus, getRisMapForGp } from './begutCorpus'
 import { hasDocument, risDocumentUrl, withRisActiveOn, type RisBegutFlat } from './risRecord'
 
 const RIS_ONLY_TTL_S = 60 * 30
@@ -95,7 +95,7 @@ interface RisOnlyResult {
  *
  * Costs nothing upstream that the site does not already pay: both the corpus
  * and the GP's join map are the same cached leaves the detail pages read
- * (`ris.ts`). Cached again here because the set derivation runs over a few
+ * (`begutCorpus.ts`). Cached again here because the set derivation runs over a few
  * thousand records and the answer is identical for every visitor.
  *
  * The records it returns are DAY-INDEPENDENT, which is what makes that last

@@ -34,8 +34,8 @@ import { draftArticles } from './lawTitles'
 import { DERIVED_CACHE } from './cache/base'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'
 import { getText } from './risKons'
-import { getRisMapForGp } from './ris'
-import { getRisConsultation } from './risOnly'
+import { getRisMapForGp } from './ris/begutCorpus'
+import { getRisConsultation } from './ris/risOnly'
 import { hasAnnexDocument } from './textComparisonService'
 
 /** One Erläuterungen document as RIS sent it, keyed by URL — parsed fresh above. */

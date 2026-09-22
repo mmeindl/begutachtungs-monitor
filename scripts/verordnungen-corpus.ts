@@ -26,9 +26,9 @@ import {
   type MeListRow,
   type RisBegutRecord,
   type RisClass,
-} from '../server/utils/risJoin'
+} from '../server/utils/ris/risJoin'
 import { ministryCodeOf } from '../server/utils/ris/ministryCodes'
-import { flattenRisRecord, hasDocument, isOpenOn, type RisBegutFlat } from '../server/utils/risRecord'
+import { flattenRisRecord, hasDocument, isOpenOn, type RisBegutFlat } from '../server/utils/ris/risRecord'
 
 function arg(name: string): string | null {
   const i = process.argv.indexOf(`--${name}`)
@@ -44,7 +44,7 @@ if (onDate && !/^\d{4}-\d{2}-\d{2}$/.test(onDate)) {
 /**
  * The corpus, page by page, through the production mapper.
  *
- * `ris.ts` itself is not importable here — it carries the Nitro cache and
+ * `ris/begutCorpus.ts` itself is not importable here — it carries the Nitro cache and
  * `#shared/*` aliases — so the paging is repeated, but `flattenRisRecord`
  * is the shipped one: the numbers below are what the site sees, not what a
  * second implementation of the mapper would see.
