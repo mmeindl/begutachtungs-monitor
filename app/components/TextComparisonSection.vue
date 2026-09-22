@@ -17,6 +17,7 @@
  */
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
+import { splitSegments } from '~/utils/diffSides'
 
 const props = defineProps<{ gp: string; inr: number }>()
 
@@ -316,30 +317,6 @@ type Block =
    * drops a § is a different kind of wrong answer from one that says it did.
    */
   | { kind: 'withheld'; count: number; cause: AnnexWithheldCause | null }
-
-function sideSegments(row: TextComparisonRow, side: 'current' | 'proposed'): LawDiffSegment[] {
-  const drop = side === 'current' ? 'inserted' : 'removed'
-  return (row.segments ?? []).filter((seg) => seg.type !== drop)
-}
-
-/**
- * The row as two columns.
- *
- * `segments` is null when the word diff hit its cell ceiling, which is the
- * case the `sm:grid-cols-2` block already served before this toggle existed.
- * It now falls into the SAME presentation rather than a private one, so a
- * technical limit stops looking like a different kind of change — the same
- * clean-up the § comparison got.
- */
-function splitRows(row: TextComparisonRow): { current: LawDiffSegment[]; proposed: LawDiffSegment[] } {
-  if (row.segments) {
-    return { current: sideSegments(row, 'current'), proposed: sideSegments(row, 'proposed') }
-  }
-  return {
-    current: row.current ? [{ type: 'removed', text: row.current }] : [],
-    proposed: row.proposed ? [{ type: 'inserted', text: row.proposed }] : [],
-  }
-}
 
 /** Changes rendered before the "show the rest" line — LawDiffSection's cap. */
 const SHOWN_CHANGES = 30
@@ -923,12 +900,7 @@ const doubtfulNote = computed<string | null>(() => {
                        so it reads as the one sentence it is. -->
                     <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
                     <p v-else-if="b.row.segments && view === 'inline'" class="hyphens-auto text-sm leading-relaxed text-ink">
-                      <template v-for="(s, si) in b.row.segments" :key="si">
-                        <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
-                        <ins v-else-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
-                        <span v-else>{{ s.text }}</span>
-                        {{ ' ' }}
-                      </template>
+                      <DiffText :segments="b.row.segments" />
                     </p>
                     <!-- A row with only one side has one text; a column to hold
                        nothing beside it would be a column about our layout,
@@ -938,26 +910,18 @@ const doubtfulNote = computed<string | null>(() => {
                     <!-- The ressort's own two columns, under the ressort's own
                        headings. ONE shape for two cases: the reader asked for
                        them, or the word diff was too long to compute and
-                       `splitRows` marks each side whole. -->
+                       `splitSegments` marks each side whole. -->
                     <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
                         <p class="hyphens-auto text-ink">
-                          <template v-for="(s, si) in splitRows(b.row).current" :key="si">
-                            <del v-if="s.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ s.text }}</del>
-                            <span v-else>{{ s.text }}</span>
-                            {{ ' ' }}
-                          </template>
+                          <DiffText :segments="splitSegments(b.row.segments, b.row.current, b.row.proposed).from" side="from" />
                         </p>
                       </div>
                       <div>
                         <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
                         <p class="hyphens-auto text-ink">
-                          <template v-for="(s, si) in splitRows(b.row).proposed" :key="si">
-                            <ins v-if="s.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ s.text }}</ins>
-                            <span v-else>{{ s.text }}</span>
-                            {{ ' ' }}
-                          </template>
+                          <DiffText :segments="splitSegments(b.row.segments, b.row.current, b.row.proposed).to" side="to" />
                         </p>
                       </div>
                     </div>
@@ -991,12 +955,7 @@ const doubtfulNote = computed<string | null>(() => {
                     des Ressorts.
                   </p>
                   <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
-                    <template v-for="(sg, si) in p.consolidated.headingSegments" :key="si">
-                      <del v-if="sg.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 font-normal text-ink line-through decoration-status-critical/70">{{ sg.text }}</del>
-                      <ins v-else-if="sg.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ sg.text }}</ins>
-                      <span v-else>{{ sg.text }}</span>
-                      {{ ' ' }}
-                    </template>
+                    <DiffText :segments="p.consolidated.headingSegments" removed-normal-weight />
                   </p>
                   <!-- Ein Absatz je Absatz: So ist das Gesetz gegliedert, und
                        achtzehn davon in einem Block sind keine Gliederung. -->
@@ -1005,12 +964,7 @@ const doubtfulNote = computed<string | null>(() => {
                     :key="ai"
                     class="mt-2 hyphens-auto text-sm leading-relaxed text-ink"
                   >
-                    <template v-for="(sg, si) in abs" :key="si">
-                      <del v-if="sg.type === 'removed'" class="rounded bg-status-critical/10 px-0.5 text-ink line-through decoration-status-critical/70">{{ sg.text }}</del>
-                      <ins v-else-if="sg.type === 'inserted'" class="rounded bg-status-good/15 px-0.5 text-ink no-underline">{{ sg.text }}</ins>
-                      <span v-else>{{ sg.text }}</span>
-                      {{ ' ' }}
-                    </template>
+                    <DiffText :segments="abs" />
                   </p>
                 </div>
               </details>
