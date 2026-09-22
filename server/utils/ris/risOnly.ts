@@ -68,10 +68,10 @@ function toConsultation(r: RisBegutFlat): RisConsultation {
     // decides it for itself with `withRisActiveOn` at request time
     // (`risRecord.ts`); a record whose Frist has no end is never running.
     active: false,
-    // Der Ausgang wird hier nicht ermittelt: Dieses Modul liest den Korpus,
-    // den die Seite ohnehin hält, der Abgleich kostet Jahrgänge des
-    // Bundesgesetzblatts. Wer ihn braucht, mischt ihn mit einem Zeitbudget
-    // dazu (`bgblService.getBgblOutcomesForGp`, §12.32).
+    // The outcome is not determined here: this module reads the corpus the
+    // page holds anyway, while the match costs whole years of the
+    // Bundesgesetzblatt. Whoever needs it mixes it in under a time budget
+    // (`bgblService.getBgblOutcomesForGp`, §12.32).
     outcome: null,
     risUrl: risDocumentUrl(r.id),
   }
@@ -161,10 +161,10 @@ export async function getRisConsultation(id: string): Promise<RisConsultationDet
     explanations: hasDocument(r.explanations) ? r.explanations : null,
     textComparison: hasDocument(r.textComparison) ? r.textComparison : null,
     coverLetter: hasDocument(r.coverLetter) ? r.coverLetter : null,
-    // Der Rest, den der Satz führt — WFA, Vorblatt, Digicheck, Anhänge.
-    // Gelesen wird er nur von der Volltextsuche (§12.31); die
-    // Entwurfsseite zeigt weiter die vier benannten, weil sie über die
-    // etwas sagen kann.
+    // Everything else the record carries — WFA, Vorblatt, Digicheck,
+    // Anhänge. Only the full-text search reads it (§12.31); the draft page
+    // still shows the four named documents, because those are the ones it
+    // can say something about.
     otherDocuments: r.otherDocuments.map((d) => ({ name: d.name, formats: d.urls })),
   }
 }
