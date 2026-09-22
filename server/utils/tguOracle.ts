@@ -29,6 +29,7 @@
 import { diffTokens } from './lawDiff'
 import { normalizeText } from './lawText'
 import type { ComparisonRow } from './textComparison'
+import { punctuationTokens } from './text/punctuationTokens'
 
 export type OracleVerdict =
   /** All three containments hold */
@@ -146,10 +147,7 @@ function key(t: string): string {
 
 /** Words without punctuation — "36," and "36" are the same word. */
 function words(t: string): string[] {
-  return stripMarkers(t)
-    .split(/\s+/)
-    .map((w) => w.replace(/^[„"'(\[]+|["'),.;:\]]+$/g, ''))
-    .filter(Boolean)
+  return punctuationTokens(stripMarkers(t))
 }
 
 /**

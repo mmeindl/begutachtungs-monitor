@@ -29,6 +29,7 @@ import { diffTokens } from './lawDiff'
 import { plainText, type LawNode } from './lawStructure'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
 import { addressedSentence, resolveTarget } from './lawApply'
+import { punctuationTokens } from './text/punctuationTokens'
 
 export type GuardFlag =
   /** An instruction on this § was refused — the engine's own signal */
@@ -60,18 +61,6 @@ export const SIZE_TOLERANCE = 4
 /** "(2)", "3.", "b)" — and "f.", the Litera style with a full stop (Medizinproduktegesetz, 2026-09-09). */
 const MARKER_START = /^(?:\(\d+[a-z]*\)|\d+[a-z]*\.|[a-z][.)])(?=\s|$)/
 
-/**
- * Words without their punctuation: a phrase inserted before a comma turns
- * "Wort" into "Wort," in the diff, which is not a changed word. Comparing
- * raw tokens flagged 41 of 267 correct paragraphs as unexplained (2026-09-09).
- */
-function tokens(t: string): string[] {
-  return t
-    .split(/\s+/)
-    .map((w) => w.replace(/^[„"'(\[]+|["'),.;:\]]+$/g, ''))
-    .filter(Boolean)
-}
-
 function textNodes(n: LawNode): LawNode[] {
   return [n, ...n.children.flatMap(textNodes)]
 }
@@ -100,11 +89,11 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
   const removed: string[] = []
   let delta = 0
   const gain = (t: string): void => {
-    inserted.push(...tokens(t))
+    inserted.push(...punctuationTokens(t))
     delta += t.length + 1
   }
   const loss = (t: string): void => {
-    removed.push(...tokens(t))
+    removed.push(...punctuationTokens(t))
     delta -= t.length + 1
   }
   const unitText = (op: Instruction['op'], targetId: string): string | null => {
@@ -218,8 +207,8 @@ export function guardParagraph(
   if (segments === null) {
     flags.add('unprüfbar')
   } else {
-    const ins = segments.filter((s) => s.type === 'inserted').flatMap((s) => tokens(s.text))
-    const rem = segments.filter((s) => s.type === 'removed').flatMap((s) => tokens(s.text))
+    const ins = segments.filter((s) => s.type === 'inserted').flatMap((s) => punctuationTokens(s.text))
+    const rem = segments.filter((s) => s.type === 'removed').flatMap((s) => punctuationTokens(s.text))
     unexplained = { inserted: multisetMinus(ins, said.inserted), removed: multisetMinus(rem, said.removed) }
     if (unexplained.inserted.length || unexplained.removed.length) flags.add('unerklärt')
   }

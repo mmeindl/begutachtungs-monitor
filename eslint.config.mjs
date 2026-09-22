@@ -98,13 +98,14 @@ export default withNuxt(
     rules: { 'no-useless-assignment': 'warn' },
   },
   {
-    // Three copies of one word tokenizer strip brackets from a token's edges
-    // and escape `[` inside the character class for symmetry with the `]`
-    // that has to be escaped. Unescaping it matches the same characters, but
-    // a regex in the apply engine is not something a formatting phase edits
-    // (`refactor-plan.md` §9); phase 4 merges the three into one.
+    // One copy of that tokenizer is left: `applyReport.words`, which is a
+    // different tokenizer (it lowercases and normalises hyphens) and stays.
+    // It escapes `[` inside the character class for symmetry with the `]`
+    // that has to be escaped — the merged `text/punctuationTokens.ts` drops
+    // the escape, proven to match the same characters; a regex in the report
+    // engine is not something this phase edits (`refactor-plan.md` §9).
     name: 'begut/tokenizer-brackets',
-    files: ['server/utils/applyGuard.ts', 'server/utils/applyReport.ts', 'server/utils/tguOracle.ts'],
+    files: ['server/utils/applyReport.ts'],
     rules: { 'no-useless-escape': 'off' },
   },
 )
