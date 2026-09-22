@@ -145,20 +145,20 @@ const documents = computed(() => {
            tracked version. -->
       <div class="mt-6">
         <div class="rounded-xl border border-hairline bg-surface p-5">
-          <!-- Überschrift und Link wie auf der Ministerialentwurfsseite:
-               dieselbe Karte, dieselbe Stelle, dieselben Gewichte.
+          <!-- Heading and link as on the Ministerialentwurf page: the same
+               card, the same place, the same weights.
 
-               „Station 2 von 3" NUR während der Frist. Danach hat der
-               Entwurf die Begutachtung verlassen, und die dritte Station
-               benennt sich selbst: Seit 19.09.2026 sagt die Überschrift
-               „Kundgemacht", sobald der Abgleich mit dem Bundesgesetzblatt
-               eine Fundstelle hat (§12.32). Eine laufende Zählung daneben
-               wäre die dritte Angabe derselben Sache.
+               „Station 2 von 3" ONLY while the Frist runs. After that the
+               draft has left the Begutachtung and the third station names
+               itself: since 19.09.2026 the heading says „Kundgemacht" as soon
+               as the match against the Bundesgesetzblatt has a Fundstelle
+               (docs/architecture.md §12.32). A running count beside it would
+               be the third statement of one thing.
 
-               Die Drei ist die des Verordnungswegs auf /so-funktionierts
-               (Entwurf · Begutachtung · Bundesgesetzblatt II). Der Satz
-               darunter, der Station 3 als „verfolgt der Monitor bisher
-               nicht" auswies, ist weg — sie wird verfolgt. -->
+               The three is the Verordnung path's on /so-funktionierts
+               (Entwurf · Begutachtung · Bundesgesetzblatt II). The sentence
+               below it that marked station 3 as „verfolgt der Monitor bisher
+               nicht" is gone — it is followed. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 class="font-medium text-ink">
               {{ regulationStatusDe(data.active, data.outcome?.state === 'kundgemacht') }}
@@ -182,27 +182,28 @@ const documents = computed(() => {
             </template>
           </p>
           <!-- ONE sentence about what the monitor cannot follow, not two.
-               Bis 18.09.2026 stand hier „Keine Stellungnahmen-Liste und
-               keine Einbringer: ohne Gegenstand im Parlament veröffentlicht
-               niemand …" — dieselbe Aussage, die der Absatz darüber und die
-               Karte darunter schon machen, und sie erklärte eine Abwesenheit
-               im Vergleich zu einer Seite, die der Leser nie gesehen hat.
+               Until 18.09.2026 this said „Keine Stellungnahmen-Liste und keine
+               Einbringer: ohne Gegenstand im Parlament veröffentlicht niemand
+               …" — the same statement the paragraph above and the card below
+               already make, and it explained an absence by comparison with a
+               page the reader has never seen.
 
-               Was bleibt, ist die eine Hälfte, die sonst nirgends steht: der
-               weitere Weg. Die Unterscheidung, auf die es ankommt, tragen
-               jetzt zwei verschiedene Orte — die fehlende Beteiligungsliste
-               sagt der Handlungskasten unten dort, wo sie jemandem abgeht;
-               dass die Nachverfolgung hier endet, steht hier. -->
-          <!-- SEIT 19.09.2026 STEHT HIER DIE ANTWORT STATT DES
-               EINGESTÄNDNISSES. Der Satz davor lautete „… verfolgt der
-               Monitor bisher nicht" — ehrlich, und die Stelle, an der zwei
-               Drittel des Korpus ohne Rechenschaftsschicht endeten
-               (§12.32). -->
+               What stays is the half that stands nowhere else: the way
+               onwards. The distinction that matters is carried by two
+               different places now — the missing participation list is stated
+               by the action card below, where somebody misses it; that the
+               tracking ends here is stated here.
+
+               SINCE 19.09.2026 THE ANSWER STANDS HERE INSTEAD OF THE
+               ADMISSION. The sentence before read „… verfolgt der Monitor
+               bisher nicht" — honest, and the place where two thirds of the
+               corpus ended without an accountability layer
+               (docs/architecture.md §12.32). -->
           <BgblOutcomeBlock v-if="data.kind === 'verordnung'" :ris-id="data.id" :outcome="data.outcome" />
-          <!-- Nach Fristende gibt es keinen Handlungskasten mehr, der sagen
-               könnte, wohin eine Stellungnahme ging. Dann sagt es die Karte,
-               einmal, im Perfekt — die Frage lautet jetzt nicht „wohin",
-               sondern „warum steht hier keine Zahl". -->
+          <!-- After the Fristende there is no action card left that could say
+               where a Stellungnahme went. The card then says it, once, in the
+               perfect — the question is no longer „wohin" but „warum steht
+               hier keine Zahl". -->
           <p v-if="!data.active" class="mt-3 max-w-prose text-sm text-ink-secondary">
             Stellungnahmen gingen direkt an das Ministerium; wer Stellung
             genommen hat, wird nicht veröffentlicht.
@@ -218,14 +219,15 @@ const documents = computed(() => {
         v-if="data.active"
         class="mt-6 rounded-xl border border-hairline bg-surface p-5"
       >
-        <!-- Überschrift, nicht Absatz: die eine Handlung, die die Seite
-             anbietet, gehört in die Gliederung. -->
+        <!-- A heading, not a paragraph: the one action the page offers
+             belongs in the outline. -->
         <h2 class="font-medium text-ink">
           {{ fristLabel(data.deadline, data.active) }}<template v-if="data.deadline"> – die Frist endet am {{ formatDateDe(data.deadline) }}</template>
         </h2>
-        <!-- „Ministerium" statt „Ressort", hier und in `risFilingNote`:
-             ein Wort je Sache. Die Seite führte beide nebeneinander, und
-             „Ressort" ist das Wort der Verwaltung, nicht das des Lesers. -->
+        <!-- „Ministerium" rather than „Ressort", here and in
+             `risFilingNote`: one word per thing. The page carried both side by
+             side, and „Ressort" is the administration's word, not the
+             reader's. -->
         <p class="mt-2 max-w-prose text-sm text-ink-secondary">
           Eine Stellungnahme geht hier direkt an das Ministerium – es gibt
           kein Formular des Parlaments. An welche Adresse, steht im
@@ -267,12 +269,12 @@ const documents = computed(() => {
         </p>
       </div>
 
-      <!-- Vor der Dokumentliste, und hier wiegt das mehr als auf der
-           Entwurfsseite: Diesem Verfahren fehlt die Kurzbeschreibung des
-           Parlaments, weil es nie ins Parlament kommt. Die Erläuterungen
-           sind damit die einzige Auskunft über den Zweck, die das Verfahren
-           überhaupt veröffentlicht — und 72,1 % der Verordnungssätze tragen
-           sie (`pnpm corpus:verordnungen`). -->
+      <!-- Before the document list, and it weighs more here than on the
+           draft page: this Verfahren has no Kurzbeschreibung from Parliament,
+           because it never reaches Parliament. The Erläuterungen are therefore
+           the only information about its purpose the Verfahren publishes at
+           all — and 72,1 % of the Verordnung records carry them
+           (`pnpm corpus:verordnungen`). -->
       <section id="erlaeuterungen" class="page-section scroll-mt-6" aria-labelledby="erlaeuterungen-heading">
         <h2 id="erlaeuterungen-heading" class="section-heading">Was das Ressort begründet</h2>
         <ExplanationsSection :ris-id="data.id" />

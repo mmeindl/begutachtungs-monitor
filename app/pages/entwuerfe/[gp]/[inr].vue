@@ -105,11 +105,11 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
   }
 })
 
-/* Die drei Kontextwerte der Stationenleiste, EINMAL benannt: Die Kopfzeile
- * zählt „Station n von 5" aus derselben Liste, die die Leiste zeichnet, und
- * zwei Aufrufe mit von Hand kopiertem Kontext wären zwei Zählungen, die
- * auseinanderlaufen können. Die Leiste bekommt ihre Props unten aus diesem
- * Objekt. */
+/* The station bar's three context values, named ONCE. They come from two
+ * lazily loaded endpoints, so the template names that dependency in one
+ * place; the bar reads its props from this object below. (The „Station n von
+ * 5" header that counted the same list was removed on 18.09.2026, so the bar
+ * is the only reader left.) */
 const stationContext = computed<StationContext>(() => ({
   createsNewLaw: amendedLaws.value?.createsNewLaw,
   amendedLawCount: amendedLaws.value?.laws.length,
@@ -336,12 +336,12 @@ const linkClasses =
           :title="data.shortTitle ?? data.title"
         >
           <template #identity>
-            <!-- Das Typwort führt, genau wie auf der Karte — und deren
-                 Begründung (`EntryItem.vue`) galt hier immer schon: „132/ME"
-                 erklärt sich nur dem, der das System kennt, das Wort erklärt
-                 es. Bis 18.09.2026 folgte die Karte dem Argument und die
-                 Detailseite nicht, obwohl sie die Seite ist, die ein
-                 geteilter Link öffnet. -->
+            <!-- The type word leads, exactly as on the row — and the row's
+                 reasoning (`EntryItem.vue`) always held here too: „132/ME"
+                 explains itself only to whoever knows the system, the word
+                 explains it. Until 18.09.2026 the row followed the argument
+                 and the detail page did not, although it is the page a shared
+                 link opens. -->
             <span class="text-sm font-medium text-ink-muted">
               <span class="text-ink">Ministerialentwurf</span> {{ data.citation }}
             </span>
@@ -369,12 +369,12 @@ const linkClasses =
           <p
             class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary"
           >
-            <!-- Das Ressort ausgeschrieben, wie es die Verordnungsseite
-                 schon tut. Oben steht nur das Kürzel im Abzeichen, und das
-                 löst für Sehende auf Touch-Geräten nichts auf: Der volle Name
-                 liegt dort in `title` und `sr-only`, also hinter einem Hover,
-                 den es auf dem Telefon nicht gibt. Hier hat er Platz, weil es
-                 eine Prosazeile ist. -->
+            <!-- The Ressort written out, as the Verordnung page already does.
+                 Above there is only the code in the badge, and for sighted
+                 users on touch devices that resolves nothing: the full name
+                 sits there in `title` and `sr-only`, i.e. behind a hover the
+                 phone does not have. Here it has room, because this is a
+                 prose line. -->
             <span>{{ data.ministryName }}</span>
             <span aria-hidden="true">·</span>
             <template v-if="data.invitedBy">
@@ -408,21 +408,19 @@ const linkClasses =
                  where the whole procedure can be answered in two words. The
                  label survives where it is still doing work: as the list's
                  accessible name in SpineRail. -->
-            <!-- Eine ÜBERSCHRIFT, seit 18.09.2026. Sie war ein <p>, und damit
-                 übersprang die Überschriftennavigation eines Screenreaders
-                 genau den Block, der die Frage der Seite beantwortet: von der
-                 h1 direkt auf „Worum geht es?".
+            <!-- A HEADING, since 18.09.2026. It was a <p>, so a screen
+                 reader's heading navigation skipped exactly the block that
+                 answers the page's question: straight from the h1 to „Worum
+                 geht es?".
 
-                 Auf der Zeile steht die Antwort und der Weg hinaus, sonst
-                 nichts. „Station n von 5" stand hier einen Tag lang daneben
-                 und ist am 18.09.2026 wieder weg: Die Zahl hat die Liste
-                 gezählt, auf die man gerade schaut. Ihre beiden Aufgaben
-                 tragen andere — welche Station gemeint ist, sagt diese
-                 Überschrift in Worten, und dass es fünf sind, sagen die fünf
-                 Zeilen. Unter der Leiste kostete sie eine Zeile Kartenhöhe
-                 für nichts. Der Link trägt Link-Gewicht: text-xs
-                 text-ink-muted war die einzige Orientierungshilfe der Seite,
-                 gesetzt, um übersehen zu werden. -->
+                 The line carries the answer and the way out, nothing else.
+                 „Station n von 5" stood beside it for one day and went again
+                 on 18.09.2026: the number counted the list one is looking at.
+                 Its two jobs are carried by others — which station is meant is
+                 said by this heading in words, and that there are five is said
+                 by the five rows. The link carries link weight: text-xs
+                 text-ink-muted was the page's only orientation aid, set to be
+                 overlooked. -->
             <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <h2 class="font-medium text-ink">
                 {{ procedureStatusDe(data) }}
@@ -487,10 +485,9 @@ const linkClasses =
           v-if="windows.begutachtung || windows.vorlage"
           class="mt-6 rounded-xl border border-hairline bg-surface p-5"
         >
-          <!-- Überschriften, nicht Absätze (18.09.2026): Das ist die einzige
-               Handlung, die die Seite anbietet, und sie stand für die
-               Überschriftennavigation überhaupt nicht in der Gliederung. Nur
-               eine der beiden rendert je. -->
+          <!-- Headings, not paragraphs (18.09.2026): this is the only action
+               the page offers, and for heading navigation it did not appear in
+               the outline at all. Only one of the two ever renders. -->
           <h2 v-if="windows.begutachtung" class="font-semibold text-ink">
             {{ fristLabel(data.deadline, true) }}<template v-if="data.deadline">
               – die Frist endet am {{ formatDateDe(data.deadline) }}</template>
@@ -581,11 +578,11 @@ const linkClasses =
             Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
             Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
           </p>
-          <!-- KEIN dritter Verweis auf #textvergleich (18.09.2026). Liegt
-               eine Vorlage vor, zeigt die Leiste unmittelbar über dieser
-               Karte schon „Was sich nach der Begutachtung geändert hat", und
-               der Abschnitt zur Regierungsvorlage verlinkt denselben Anker
-               noch einmal. Drei Wege zur selben Stelle sind kein Angebot. -->
+          <!-- NO third pointer to #textvergleich (18.09.2026). Where a
+               Vorlage exists, the bar directly above this card already shows
+               „Was sich nach der Begutachtung geändert hat", and the
+               Regierungsvorlage section links the same anchor once more. Three
+               ways to one place are not an offer. -->
         </div>
 
         <!-- From here the page follows the STATIONS of the bar, in the bar's
@@ -602,16 +599,16 @@ const linkClasses =
         <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
           <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
 
-          <!-- ZUERST die Begründung, dann das geltende Recht, dann die
-               Dokumente, dann die Gegenüberstellung: die Reihenfolge, in der
-               ein Leser einen neuen Entwurf prüft — erst „was soll das
-               Gesetz?", dann der Text. Sie stand bis 18.09.2026 nur als
-               PDF-Link in der Dokumentliste weiter unten.
+          <!-- FIRST the reasoning, then the law in force, then the documents,
+               then the Textgegenüberstellung: the order in which a reader
+               checks a new draft — „was soll das Gesetz?" before the text.
+               Until 18.09.2026 it was only a PDF link in the document list
+               further down.
 
-               Nicht unter „Worum geht es?": Das ist die Kurzbeschreibung des
-               Parlaments, geschrieben für den parlamentarischen Betrieb. Die
-               Erläuterungen sind die Begründung des Ressorts selbst, und sie
-               gehören zum Entwurf, nicht zum Verfahren. -->
+               Not under „Worum geht es?": that is Parliament's
+               Kurzbeschreibung, written for the parliamentary process. The
+               Erläuterungen are the Ressort's own reasoning, and they belong
+               to the draft, not to the procedure. -->
           <div id="erlaeuterungen" class="mt-4 scroll-mt-6">
             <h3 class="text-base font-semibold text-ink">Was das Ressort begründet</h3>
             <ExplanationsSection :gp="data.gp" :inr="data.inr" />
@@ -646,11 +643,10 @@ const linkClasses =
                        consolidated RIS entry to point at (the UGB's is
                        "dRGBl. S. 219/1897"). Saying so beats dropping it.
 
-                       „– im RIS nicht auffindbar" ist am 18.09.2026
-                       weggefallen: Die Frage des Lesers ist, warum hier keine
-                       BGBl-Nummer steht, und die Antwort ist die erste
-                       Hälfte — eine Tatsache über das Gesetz. Dass unsere
-                       Suche nichts gefunden hat, ist eine über uns. -->
+                       „– im RIS nicht auffindbar" went on 18.09.2026: the
+                       reader's question is why no BGBl number stands here, and
+                       the answer is the first half — a fact about the law.
+                       That our search found nothing is a fact about us. -->
                   <p class="mt-0.5 text-xs text-ink-muted">
                     {{ law.bgbl ?? 'Stammfassung ist kein Bundesgesetzblatt' }}
                   </p>
@@ -791,34 +787,33 @@ const linkClasses =
           aria-labelledby="rv-heading"
         >
           <h2 id="rv-heading" class="section-heading">Die Regierungsvorlage</h2>
-          <!-- KEIN Kasten mehr (18.09.2026). Das weiße Blatt mit Kante trägt
-               auf dieser Seite Zeilen (Stellungnahmenlisten, Dokumente) oder
-               ein Seitenobjekt mit eigener Aufgabe (die Leiste, die
-               Frist-Karte) — Prosa trägt es nie: „Im Parlament", „Im
-               Bundesgesetzblatt" und „Worum geht es?" setzen ihren Text frei
-               unter die Überschrift. Der Kasten hier stammt aus der Zeit, als
-               die Regierungsvorlage eine Zwischenüberschrift IN der
-               Begutachtung war und seine Kante das Einzige war, was den
-               Abschnitt abgegrenzt hat. Seit er eine eigene h2 mit Balken hat,
-               fasst er ein zweites Mal ein, was die Überschrift schon trennt —
-               und genau dagegen argumentiert `page-section` in `main.css`.
+          <!-- NO box any more (18.09.2026). On this page the white sheet with
+               a border carries rows (Stellungnahmen lists, documents) or a
+               page object with a job of its own (the bar, the Frist card) —
+               never prose: „Im Parlament", „Im Bundesgesetzblatt" and „Worum
+               geht es?" set their text freely under the heading. The box here
+               dates from when the Regierungsvorlage was a subheading INSIDE
+               the Begutachtung and its border was the only thing separating
+               the section. Since it has an h2 with a rule of its own, the box
+               encloses a second time what the heading already separates — the
+               very thing `page-section` in `main.css` argues against.
 
-               `id="ergebnis"` bleibt auf dem Zweig, der jeweils rendert: Der
-               Anker ist in Umlauf, und es steht immer nur einer der beiden auf
-               der Seite. -->
+               `id="ergebnis"` stays on whichever branch renders: the anchor is
+               in circulation, and only one of the two is ever on the page. -->
           <div v-if="data.enactment" id="ergebnis" class="mt-4">
-            <!-- Der Befund als Satz, nicht als freistehender Link: Ohne Kasten
-                 hätte „Regierungsvorlage 443 d.B." prädikatlos unter einer
-                 Überschrift gehangen, die dasselbe Wort schon sagt. Dieselbe
-                 Form wie „Kundgemacht als …" einen Abschnitt tiefer.
+            <!-- The finding as a sentence, not as a free-standing link:
+                 without the box „Regierungsvorlage 443 d.B." would have hung
+                 predicateless under a heading that says the same word. The
+                 same form as „Kundgemacht als …" one section below.
 
-                 Die Stellungnahmenzahl, die hier bis 18.09.2026 vorwegstand
-                 („Bis zum Fristende am … gingen … ein"), ist weg: Der
-                 Abschnitt unmittelbar darüber IST diese Zahl, samt Liste — und
-                 der Satz war in der Vergangenheitsform ohnehin falsch, sobald
-                 die Vorlage vor Fristende einlangt (7 von 91 in GP XXVIII, wo
-                 beide Fenster gleichzeitig offen stehen). Im Kasten fiel die
-                 Wiederholung nicht auf, in Prosa steht sie nackt da. -->
+                 The Stellungnahmen count that led here until 18.09.2026 („Bis
+                 zum Fristende am … gingen … ein") is gone: the section
+                 directly above IS that number, list included — and the
+                 sentence was wrong in the past tense anyway as soon as the
+                 Vorlage arrives before the Fristende (7 of 91 in GP XXVIII,
+                 where both windows stand open at once). Inside the box the
+                 repetition went unnoticed, in prose it stands there
+                 naked. -->
             <p class="max-w-prose text-sm text-ink">
               Der Entwurf wurde als
               <ExternalLink
@@ -827,9 +822,9 @@ const linkClasses =
               >Regierungsvorlage {{ data.enactment.rvCitation }}</ExternalLink>
               eingebracht.
             </p>
-            <!-- ME→RV ist 1:n: ohne diesen Satz ist die zweite
-                 Regierungsvorlage eines geteilten Entwurfs unsichtbar (4 von
-                 132 im XXVIII-Korpus). -->
+            <!-- ME→RV is 1:n: without this sentence the second
+                 Regierungsvorlage of a split draft is invisible (4 of 132 in
+                 the GP-XXVIII corpus). -->
             <p v-if="data.enactment.furtherRv.length" class="mt-2 max-w-prose text-sm text-ink">
               Aus dem Entwurf ging außerdem
               <template
@@ -838,10 +833,10 @@ const linkClasses =
               ><span v-if="i > 0">, </span><ExternalLink :href="rv.url" :class="linkClasses">{{ rv.label }}</ExternalLink></template>
               hervor.
             </p>
-            <!-- Mechanismus 3, Handarbeit: die Einladung zu dem Vergleich, den
-                 die Diff-Schicht einmal von selbst zieht. Zeitlich erzählt,
-                 nicht kausal. Der Vergleich selbst steht weiter unten und wird
-                 verlinkt, nicht wiederholt. -->
+            <!-- Mechanism 3, by hand: the invitation to the comparison the
+                 diff layer will one day draw by itself. Told temporally, never
+                 causally. The comparison itself stands further down and is
+                 linked, not repeated. -->
             <p class="mt-2 max-w-prose text-sm text-ink-secondary">
               {{ RV_DEFINITION }} Ob und wie der Entwurf geändert wurde, zeigt
               <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>
@@ -849,16 +844,16 @@ const linkClasses =
             </p>
           </div>
           <div v-if="!data.enactment && !data.active" id="ergebnis" class="mt-4">
-            <!-- Der zitierfähige Befundsatz führt, in `font-medium`: Die
-                 Rangfolge im Abschnitt trägt jetzt Größe und Gewicht, nicht
-                 mehr eine Kante. -->
+            <!-- The quotable verdict sentence leads, in `font-medium`: the
+                 rank inside the section is carried by size and weight now, no
+                 longer by a border. -->
             <p v-if="noRvVerdict" class="max-w-prose text-sm font-medium text-ink">
               {{ noRvVerdict }}
             </p>
-            <!-- Die Definition steht HIER, nicht nur im Zweig mit Vorlage:
-                 Wer nicht weiß, was eine Regierungsvorlage ist, kann auch
-                 nicht einordnen, dass keine kam — und das ist der häufigere
-                 Fall. -->
+            <!-- The definition stands HERE, not only in the branch with a
+                 Vorlage: whoever does not know what a Regierungsvorlage is
+                 cannot place the fact that none came — and that is the more
+                 common case. -->
             <p
               class="max-w-prose text-sm text-ink-secondary"
               :class="noRvVerdict ? 'mt-2' : ''"

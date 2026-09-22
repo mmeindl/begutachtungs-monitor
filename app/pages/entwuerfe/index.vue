@@ -19,26 +19,13 @@ import { SECOND_ROUND_WINDOW } from '~/utils/spine'
  * Begutachtungen Parliament has no Gegenstand for (docs/architecture.md
  * §12.19).
  *
- * This was two pages until 17.09.2026, and the split had a real argument
- * behind it: merging would change what "Alle Entwürfe", the GP totals and
- * the Stellungnahmen sums count, and two thirds of the rows lack exactly the
- * participation data those numbers are built from. That objection was to
- * POOLING THE NUMBERS, not to sharing a page — and applied to the page it
- * cost more than it bought:
+ * Two pages until 17.09.2026. The objection to merging was to POOLING THE
+ * NUMBERS, not to sharing a page, and as an argument about the page it lost:
+ * the second list had no way in (the navigation is capped at four items),
+ * it forced a name that says nothing („Weitere Entwürfe" — further than
+ * what?), and it answered one question in two places.
  *
- *  - the second list had **no way in**. The navigation is capped at four
- *    items by design and its labels are already too wide at 320px, so a
- *    fifth entry was never available; the page hung off one homepage
- *    section.
- *  - it forced a **name that says nothing**. "Weitere Entwürfe" is
- *    relational — further than what? — and it reads as "less important"
- *    about two thirds of the corpus.
- *  - and it answered the reader's question in two places. Someone asking
- *    "what is open right now?" had to visit two pages and add up, which is
- *    the very coverage gap that produced this half of the data in the first
- *    place.
- *
- * So: one list, one filter, two row shapes — and never a single pooled
+ * So: one list, one filter, three row shapes — and never a single pooled
  * total. The count line states each kind separately, because a headline
  * "336 Entwürfe" would imply the Stellungnahmen figures cover all of them.
  */
@@ -49,19 +36,18 @@ useSeoMeta({
 })
 
 /**
- * Zwei Achsen, nicht eine (§12.26).
+ * Two axes, not one (docs/architecture.md §12.26).
  *
- * **Wo steht es** ist die Station: Begutachtung, Regierungsvorlage,
- * Parlament, Bundesgesetzblatt — dasselbe Vokabular wie die Zeitleiste der
- * Detailseite. **Was kann ich tun** ist der Status daneben, und der läuft
- * quer über die Stationen: „Stellungnahme möglich" heißt laufende Frist
- * ODER offenes Formular zur Regierungsvorlage.
+ * **Where it stands** is the station: Begutachtung, Regierungsvorlage,
+ * Parlament, Bundesgesetzblatt — the same vocabulary as the detail page's
+ * spine. **What I can do** is the status beside it, and it cuts across the
+ * stations: „Stellungnahme möglich" means a running Frist OR an open form on
+ * the Regierungsvorlage.
  *
- * Warum „Zweite Runde" kein eigener Chip neben „Regierungsvorlage" ist: sie
- * wäre keine Station, sondern eine Eigenschaft von einer — wer den Chip
- * wählte, bekäme sonst auch alle längst beschlossenen Vorlagen dazu. Als
- * Schnitt aus beiden Achsen ist sie exakt benennbar und bleibt teilbar:
- * `?status=open&station=rv`.
+ * Rejected: „Zweite Runde" as a chip of its own beside „Regierungsvorlage" —
+ * it is not a station but a property of one, and choosing it would bring
+ * along every long-decided Vorlage. As the intersection of both axes it is
+ * exactly nameable and stays shareable: `?status=open&station=rv`.
  */
 const statusOptions: { value: DraftStatus; label: string }[] = [
   { value: 'all', label: 'Alle' },
@@ -118,53 +104,49 @@ const sortOptions: { value: SortKey; label: string }[] = [
   { value: 'stellungnahmen', label: 'Meiste Stellungnahmen' },
 ]
 
-/* Filterzustand, URL-Anbindung und die Anfrage der beiden Endpunkte:
- * `useDraftFilters`, mit der reinen Hälfte in `app/utils/draftFilters.ts`. */
+/* Filter state, URL binding and the query for both endpoints:
+ * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
 const filters = useDraftFilters()
 const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, toggleStation, query } = filters
 
 /**
- * Die Eingrenzung faltet sich auf dem Telefon zusammen — und nur dort.
+ * The filter bar folds away on the phone — and only there.
  *
- * Gemessen am 18.09.2026: die Leiste war bei 390 px **432 px hoch**, die
- * erste Zeile der Liste begann bei y = 880, das erste Bildschirmfenster
- * eines 390 × 844-Geräts zeigte also **keine einzige Zeile**. Auf 896 px
- * sind es 156 px und sechs Zeilen; dort ist nichts zu retten, dort war nur
- * der Umbruch zufällig. Der Umbau ist deshalb einer fürs Telefon.
+ * Measured 18.09.2026: at 390 px the bar was **432 px tall**, the list's
+ * first row began at y = 880, so the first viewport of a 390 × 844 device
+ * showed **not one row**. At 896 px it is 156 px and six rows. The rebuild
+ * is therefore one for the phone.
  *
- * Sichtbar bleiben die Frage, mit der jemand ankommt („was kann ich tun"),
- * und die Suche. Die Stationschips wandern mit den drei Selects hinter den
- * Schalter: sie kosten 96 der 432 px und sind das, wonach beim Scrollen am
- * seltensten gegriffen wird. Das ist der Preis dieser Entscheidung und er
- * ist echt — die Stationen sind das Vokabular, das Liste und Zeitleiste
- * teilen (§12.26), und wer die Liste zum ersten Mal sieht, lernt es hier
- * nicht mehr nebenbei.
+ * What stays visible is the question people arrive with („was kann ich tun")
+ * and the search. The station chips move behind the switch with the three
+ * selects: they cost 96 of the 432 px and are reached for least often. That
+ * price is real — the stations are the vocabulary the list and the spine
+ * share (§12.26), and a first-time reader no longer picks it up in passing.
  *
- * Zwei Sicherungen: aufgeklappt, sobald einer dieser Filter in der URL
- * steht — ein geteilter Link darf nie einen aktiven Filter verstecken —,
- * und die Zahl am Schalter steht nur im zugeklappten Zustand, weil sie sonst
- * über den Bedienelementen stünde, die sie zählt.
+ * Two safeguards: opened as soon as one of these filters stands in the URL —
+ * a shared link must never hide an active filter — and the count on the
+ * switch appears only in the closed state, because it would otherwise stand
+ * above the controls it counts.
  *
- * Warum eine Checkbox und kein <details>, gegen das Hausmuster (vier
- * Vorkommen, kein einziger geskripteter Toggle): ein zugeklapptes <details>
- * lässt sich per CSS nicht ab einem Breakpoint öffnen. Geprüft am
- * 18.09.2026 in Chrome 152 — `details:not([open]) > .body { display:block }`
- * unter `@media (min-width:768px)` blendet den Inhalt NICHT ein (die
- * Messung über `getBoundingClientRect` meldet dabei irreführend eine Höhe;
- * der Screenshot zeigt nichts). Ohne das müsste dieselbe Leiste zweimal im
- * Markup stehen, mit kollidierenden `for`/`id`-Paaren. Checkbox plus `peer`
- * bleibt CSS-only, SSR-fest und ohne JS bedienbar.
+ * Rejected: a `<details>`, against the house pattern (four occurrences, not
+ * one scripted toggle), because a closed `<details>` cannot be opened by CSS
+ * from a breakpoint up. Checked 18.09.2026 in Chrome 152 —
+ * `details:not([open]) > .body { display:block }` under
+ * `@media (min-width:768px)` does NOT reveal the content (a
+ * `getBoundingClientRect` measurement misleadingly reports a height; the
+ * screenshot shows nothing). Without that the same bar would have to stand
+ * twice in the markup, with colliding `for`/`id` pairs. A checkbox plus
+ * `peer` stays CSS-only, SSR-safe and usable without JS.
  */
 const moreFilters = computed(
   () => Number(stations.value.length > 0) + Number(art.value !== '') + Number(gp.value !== '') + Number(ministry.value !== ''),
 )
 const filtersOpen = ref(moreFilters.value > 0)
 
-/* Die drei Abrufe werden hier gestartet und unten abgewartet, damit sie sich
- * überlappen statt Schlange zu stehen. Nacheinander abgewartet legte die
- * Laufzeit des RIS-Korpus auf die der Ministerialentwürfe, obwohl keiner der
- * beiden etwas vom anderen braucht — dasselbe Muster wie auf der Startseite,
- * mit demselben Grund. */
+/* The three fetches are started here and awaited below, so they overlap
+ * instead of queueing. Awaited one after the other, the RIS corpus's runtime
+ * was added to that of the Ministerialentwürfe although neither needs
+ * anything from the other — the homepage's pattern, for the same reason. */
 const draftsFetch = useFetch<DraftsResponse>('/api/drafts', { query })
 
 /**
@@ -184,27 +166,26 @@ const risFetch = useFetch<RisConsultationsResponse>(
 )
 
 /**
- * Das zweite offene Fenster — und seit 18.09.2026 sind es Zeilen, kein
- * Abschnitt (§12.26).
+ * The second open window — and since 18.09.2026 these are rows, not a section
+ * (docs/architecture.md §12.26).
  *
- * Wer unter „Stellungnahme möglich" hier landet, fragt, wo er jetzt etwas
- * sagen kann. Zu einer Regierungsvorlage geht das im Nationalrat genauso.
- * Der Entwurf dahinter ist dafür längst eine Zeile — Station
- * „Regierungsvorlage", Chip „Zweite Runde". Was dieser Abruf noch beiträgt,
- * sind die Vorlagen, hinter denen KEIN Entwurf steht (rund ein Viertel,
- * `docs/begutachtung-uebersprungen.md`): sie haben keine Zeile, die sie
- * tragen könnte, und werden deshalb selbst eine (`vorlageRows`).
+ * Whoever lands here under „Stellungnahme möglich" is asking where they can
+ * say something now, and a Regierungsvorlage in the Nationalrat is such a
+ * place. The draft behind it is already a row — station „Regierungsvorlage",
+ * chip „Zweite Runde". What this fetch adds are the Vorlagen with NO draft
+ * behind them (about a quarter,
+ * `docs/begutachtung-uebersprungen.md`): they have no row that could carry
+ * them, so they become one themselves (`vorlageRows`).
  *
- * Zwei Anläufe standen vorher hier, beide als eigener Abschnitt unter der
- * Liste, und beide sind an derselben Sache gescheitert: die Startseite zeigt
- * sechs offene Vorlagen, der Abschnitt zeigte danach eine — „sechs dort,
- * eine hier" liest sich als Defekt, ganz gleich, wie die Überschrift lautet.
- * Eine Liste, die beantwortet „wo kann ich etwas sagen", darf die Antwort
- * nicht auf zwei Orte verteilen.
+ * Two earlier attempts put them in a section under the list, and both failed
+ * on the same thing: the homepage shows six open Vorlagen, the section then
+ * showed one — „six there, one here" reads as a defect whatever the heading
+ * says. A list answering „wo kann ich etwas sagen" must not split the answer
+ * across two places.
  *
- * Clientseitig und lazy: nichts über diesem Abruf hängt von ihm ab, ein
- * leeres Ergebnis ist der Normalfall, und was fehlen kann, darf den ersten
- * Paint nicht halten.
+ * Client-side and lazy: nothing above this fetch depends on it, an empty
+ * result is the normal case, and what may be missing must not hold the first
+ * paint.
  */
 const secondRoundFetch = useFetch<DashboardSecondRound>(
   '/api/dashboard/zweite-runde',
@@ -242,36 +223,23 @@ const ministries = computed(() => {
 })
 
 /**
- * Die dritte Zeilenart, seit 18.09.2026: eine Regierungsvorlage, zu der es
- * nie eine Begutachtung gab.
+ * The third row kind, since 18.09.2026: a Regierungsvorlage that never had a
+ * Begutachtung. It stood in a section under the list until then, and the
+ * homepage's six open Vorlagen against the section's one read as a defect
+ * whatever the heading said.
  *
- * Sie stand bis dahin in einem eigenen Abschnitt unter der Liste, und das
- * war der Fehler, den Manu zweimal gemeldet hat: die Startseite zeigt sechs
- * offene Vorlagen, die Liste zeigte fünf davon als Zeile und eine im
- * Abschnitt darunter. „Sechs dort, eine hier" liest sich als Defekt, egal
- * wie der Abschnitt heißt — und die Überschrift war schon zweimal die
- * falsche Antwort auf die Frage.
+ * So it belongs in the same list. That does not soften §12.19 („two row
+ * shapes, never a pooled total"), it applies the same rule a third time: its
+ * own row shape, its own count term, a shared order. The row shape and both
+ * orders are in `shared/utils/draftOrder.ts`, next to the comparator they
+ * call.
  *
- * Also gehört sie in dieselbe Liste. Das ist keine Aufweichung von §12.19
- * („zwei Zeilenformen, nie eine gepoolte Summe"), sondern dieselbe Regel ein
- * drittes Mal: eigene Zeilenform, eigener Zählterm, gemeinsame Ordnung.
- * Fachlich ist sie hier richtig, weil diese Liste unter „Stellungnahme
- * möglich" beantwortet, wo jemand etwas sagen kann — und das kann er hier.
- *
- * Die Zeilenform selbst und ihre beiden Ordnungen stehen in
- * `shared/utils/draftOrder.ts`, neben dem Vergleicher, den sie rufen.
- */
-
-/**
- * Die Vorlagen ohne Begutachtung als Zeilen — unter denselben Bedienelementen
- * wie alles andere, soweit sie greifen.
- *
- * Status: nur wo „Stellungnahme möglich" gefragt ist oder gar nicht gefiltert
- * wird; unter „Abgeschlossen" hat ein offenes Fenster nichts verloren.
- * Station: sie stehen bei der Regierungsvorlage. Art: sie sind keine
- * Verordnungsentwürfe. Ressort: `OpenVorlage` trägt keines, also tritt die
- * Zeile zurück, sobald danach gefiltert wird — dieselbe Regel wie zuvor im
- * Abschnitt. Suche: dieselbe Wortregel wie oben (`matchesQuery`).
+ * Under the same controls as everything else, as far as they reach. Status:
+ * only where „Stellungnahme möglich" is asked or nothing is filtered — an
+ * open window has no business under „Abgeschlossen". Station: they stand at
+ * the Regierungsvorlage. Art: they are no Verordnungsentwürfe. Ressort:
+ * `OpenVorlage` carries none, so the row steps back as soon as one is
+ * filtered for. Search: the same word rule as above (`matchesQuery`).
  */
 const vorlageRows = computed<DraftListRow[]>(() => {
   const list = secondRound.value
@@ -299,14 +267,13 @@ const rows = computed<DraftListRow[]>(() => {
 })
 
 /**
- * Die geordneten Zeilen, durch die eine Anatomie geschickt (§12.28).
+ * The ordered rows, put through one anatomy (docs/architecture.md §12.28).
  *
- * Die Trennung ist Absicht und sie ist die Lehre aus den sechs
- * Komponenten, die das hier ersetzt: `rows` entscheidet, WAS in welcher
- * Reihenfolge dasteht — mit drei Zeilenarten, die ihre eigenen Typen
- * behalten (§12.19) —, und der Adapter entscheidet, WIE jede Art auf die
- * vier Zonen fällt. Vorher lag beides in je zwei Komponenten pro Art, und
- * deshalb konnte dieselbe Zahl in einer Liste an sechs Stellen stehen.
+ * The split is deliberate and it is the lesson of the six components this
+ * replaced: `rows` decides WHAT stands in which order — with three row kinds
+ * that keep their own types (§12.19) — and the adapter decides HOW each kind
+ * falls onto the four zones. Both used to live in two components per kind,
+ * which is why the same number could stand in six places in one list.
  */
 const entries = computed(() =>
   rows.value.map((row) =>
@@ -319,11 +286,11 @@ const entries = computed(() =>
 )
 
 /* ------------------------------------------------------------------ *
- * Die zweite Hälfte der Suche: der Volltext (§12.31)
+ * The search's second half: the full text (docs/architecture.md §12.31)
  *
- * Eigene Verzögerung, eigener Abruf, eigene Zählungen — alles in
- * `useFullTextSearch`, weil es eine zweite, anders geschnittene Antwort auf
- * dasselbe Feld ist und nicht ein Filter mehr.
+ * Its own debounce, its own fetch, its own counts — all in
+ * `useFullTextSearch`, because it is a second, differently cut answer to the
+ * same field and not one more filter.
  * ------------------------------------------------------------------ */
 const {
   FULLTEXT_MIN_LEN,
@@ -353,41 +320,41 @@ const risTotal = computed(() => risData.value?.total ?? 0)
 const visibleTotal = computed(
   () => (art.value === 'verordnung' ? 0 : meTotal.value) + (art.value === 'ministerialentwurf' ? 0 : risTotal.value),
 )
-/* Die Stationskarte kostet beim kalten Bau hunderte Abrufe und kann
- * ausfallen (`server/utils/parliament/stationMap.ts`). Dann steht hier, dass nicht
- * gefiltert wurde — eine Liste, die unter einem aktiven Filter ungefiltert
- * dasteht, ist die eine Variante, die niemand bemerkt. */
-/* Stationen und „Verordnungsentwürfe" schließen einander aus: die einen
- * haben keinen Gegenstand im Parlament, die anderen sind die Frage danach.
- * Statt „Keine Entwürfe gefunden" — was nach einem zu engen Suchbegriff
- * klingt — sagt die Seite in diesem Fall, dass die Kombination selbst leer
- * ist, und bietet den Weg hinaus an. */
-/* Wie viele Zeilen der Liste gerade die zweite Runde sind — die Entwürfe mit
- * offenem Vorlagen-Formular plus die Vorlagen ohne Begutachtung. Gezählt, um
- * es über der Liste sagen zu können: wer von der Startseite kommt, hat dort
- * „Zweite Runde" als Abschnitt gesehen und sucht ihn hier. Er ist nicht weg,
- * er ist einsortiert. */
+/* The station map costs hundreds of fetches on a cold build and can fail
+ * (`server/utils/parliament/stationMap.ts`). The page then says that nothing
+ * was filtered — a list standing unfiltered under an active filter is the
+ * one variant nobody notices. */
+/* Stations and „Verordnungsentwürfe" exclude one another: the one half has no
+ * Gegenstand at Parliament, the other half is the question about it. Instead
+ * of „Keine Entwürfe gefunden" — which sounds like too narrow a search term —
+ * the page says in that case that the combination itself is empty, and offers
+ * the way out. */
+/* How many rows of the list are currently the second round — the drafts with
+ * an open Vorlagen form plus the Vorlagen without a Begutachtung. Counted so
+ * it can be said above the list: whoever comes from the homepage saw „Zweite
+ * Runde" there as a section and looks for it here. It is not gone, it is
+ * sorted in. */
 const secondRoundRowCount = computed(
   () =>
     (data.value?.items ?? []).filter((d) => d.chain?.filingOpen).length + vorlageRows.value.length,
 )
 
-/* Eine Station NACH der Begutachtung schließt die Verordnungsentwürfe aus:
- * ohne Gegenstand im Parlament gibt es keine Regierungsvorlage. Unter
- * „Begutachtung" ist die Kombination dagegen sinnvoll — dort stehen sie. */
+/* A station AFTER the Begutachtung excludes the Verordnungsentwürfe: without
+ * a Gegenstand at Parliament there is no Regierungsvorlage. Under
+ * „Begutachtung" the combination makes sense — that is where they stand. */
 /**
- * Nur Stationen gewählt, die ein Satz OHNE Gegenstand im Parlament nicht
- * erreichen kann — und das sind seit 19.09.2026 nur noch zwei.
+ * Only stations selected that a record WITHOUT a Gegenstand at Parliament
+ * cannot reach — and since 19.09.2026 there are only two of them.
  *
- * „Alles außer Begutachtung" war die Regel, solange die Verordnungshälfte
- * nach der Frist nirgends mehr auftauchte. Sie wird aber kundgemacht, in
- * Teil II des Bundesgesetzblatts (§12.32), und unter „Bundesgesetzblatt"
- * stehen jetzt 159 Zeilen der laufenden Periode. Der Hinweis „Diese Auswahl
- * passt nicht zu Verordnungsentwürfen" stand eine Version lang ÜBER genau
- * diesen Zeilen.
+ * „Everything but Begutachtung" was the rule while the Verordnung half
+ * appeared nowhere after the Frist. But it is kundgemacht, in part II of the
+ * Bundesgesetzblatt (docs/architecture.md §12.32), and „Bundesgesetzblatt"
+ * now carries 159 rows of the running period. The note „Diese Auswahl passt
+ * nicht zu Verordnungsentwürfen" stood above exactly those rows for one
+ * version.
  *
- * `rv` und `parlament` bleiben unerreichbar, und das ist kein Datenmangel,
- * sondern das Verfahren.
+ * `rv` and `parlament` stay unreachable, and that is not a gap in the data
+ * but the procedure.
  */
 const laterStationsOnly = computed(
   () =>
@@ -397,12 +364,12 @@ const laterStationsOnly = computed(
 )
 const stationConflict = computed(() => laterStationsOnly.value && art.value === 'verordnung')
 
-/* Zwei Gründe, warum an den Zeilen keine Station steht, und sie sagen
- * Grundverschiedenes: die Karte war gerade nicht abrufbar (vorübergehend,
- * liegt an uns) – oder die Periode verknüpft ihre Entwürfe gar nicht erst
- * mit Vorlagen (dauerhaft, liegt am Archiv, §12.27). Nur der zweite Fall
- * braucht die Erklärung auch ohne aktiven Stationsfilter, weil dort sonst
- * eine ganze Spalte wortlos verschwindet. */
+/* Two reasons why the rows carry no station, and they say fundamentally
+ * different things: the map was not reachable just now (temporary, our
+ * fault) — or the period does not link its drafts to Vorlagen at all
+ * (permanent, the archive's, §12.27). Only the second case needs the
+ * explanation without an active station filter too, because a whole column
+ * would otherwise vanish wordlessly. */
 const chainUnlinkedPeriod = computed(() => data.value?.chainCoverage === 'unlinked')
 
 const stationsUnavailable = computed(
@@ -418,16 +385,16 @@ const countLabel = computed(() => {
   if (art.value !== 'verordnung') {
     parts.push(countLabelDe(meTotal.value, 'Ministerialentwurf', 'Ministerialentwürfe'))
   }
-  /* Dritter Term, nie addiert (§12.19): eine Regierungsvorlage ohne
-   * Begutachtung ist weder ein Ministerialentwurf noch ein Verordnungsentwurf
-   * — wer sie in eine der beiden Zahlen schlüge, behauptete über sie, was für
-   * die andere Hälfte gilt. Steht vor dem Stationsfilter-Ausstieg, weil diese
-   * Zeilen unter „Regierungsvorlage" sehr wohl mitkommen. */
-  /* Der Zusatz „ohne Begutachtung" nur, wenn er für JEDE gezählte Zeile
-   * belegt ist. Er ist die Summenform derselben Aussage, die in der Zeile
-   * steht, und darf deshalb auch nicht weiter reichen: sobald eine Vorlage
-   * dabei ist, deren Vorgeschichte nur unbelegt ist (`unknown`), zählt die
-   * Zahl die Zeilen und behauptet nichts über sie. */
+  /* A third term, never added up (§12.19): a Regierungsvorlage without a
+   * Begutachtung is neither a Ministerialentwurf nor a Verordnungsentwurf —
+   * folding it into either number would claim about it what holds for the
+   * other half. Before the station-filter exit, because these rows do come
+   * along under „Regierungsvorlage". */
+  /* The addition „ohne Begutachtung" only where it is evidenced for EVERY
+   * counted row. It is the aggregate form of the statement that stands in the
+   * row, so it must not reach further either: as soon as one Vorlage is in
+   * whose history is merely unevidenced (`unknown`), the number counts rows
+   * and claims nothing about them. */
   if (vorlageRows.value.length) {
     const count = countLabelDe(vorlageRows.value.length, 'Regierungsvorlage', 'Regierungsvorlagen')
     const allChecked = vorlageRows.value.every(
@@ -435,17 +402,15 @@ const countLabel = computed(() => {
     )
     parts.push(allChecked ? `${count} ohne Begutachtung` : count)
   }
-  /* Unter einem Stationsfilter zählt die Verordnungs-Hälfte nicht mit — weder
-   * als „0" noch als „gerade nicht abrufbar". Beides wäre eine Antwort auf
-   * eine Frage, die gar nicht gestellt wurde: sie ist nicht leer und auch
-   * nicht kaputt, sie gehört zu dieser Achse nicht dazu. Der Satz über der
-   * Liste sagt, warum. */
+  /* Under a station filter the Verordnung half does not count — neither as
+   * „0" nor as „gerade nicht abrufbar". Both would answer a question nobody
+   * asked: it is neither empty nor broken, it does not belong to this axis.
+   * The sentence above the list says why. */
   if (laterStationsOnly.value) return parts.join(' · ')
-  /* Dasselbe Substantiv wie im Art-Filter, und zwar damit die beiden
-   * Zahlen auf der Seite nicht zweierlei zählen können. „ohne Gegenstand im
-   * Parlament" war die Kategorie der Parlamentsseite, nicht die dieser
-   * Liste — und sie stand neben einem Kasten, der eine Join-Statistik
-   * unter demselben Wort führte. */
+  /* The same noun as in the Art filter, so the two numbers on the page
+   * cannot count two different things. „ohne Gegenstand im Parlament" was
+   * Parliament's category, not this list's — and it stood beside a box
+   * carrying a join statistic under the same word. */
   if (art.value !== 'ministerialentwurf') {
     parts.push(
       risError.value
@@ -470,12 +435,12 @@ const countLabel = computed(() => {
         Alle Begutachtungen einer Gesetzgebungsperiode – in Begutachtung und
         abgeschlossen, Gesetzes- wie Verordnungsentwürfe.
       </p>
-      <!-- HIER STAND BIS 21.09.2026 DER WEG ZUR SUCHE — ein Link auf
-           `/suche` samt zwei Sätzen darüber, was dort anders ist als im
-           Feld weiter unten. Er ist weg, weil das Feld weiter unten seither
-           beides tut (§12.31): Ein Hinweis, der erklärt, welche der zwei
-           Suchen dieser Seite man gerade benutzt, ist die Bedienungsanleitung
-           für eine Trennung, die es nicht mehr geben muss. -->
+      <!-- THE WAY TO THE SEARCH STOOD HERE UNTIL 21.09.2026 — a link to
+           `/suche` plus two sentences on what is different there from the
+           field below. It is gone because the field below does both since
+           then (docs/architecture.md §12.31): a note explaining which of a
+           page's two searches you are currently using is the manual for a
+           separation that no longer has to exist. -->
     </header>
 
     <FetchGate
@@ -487,48 +452,37 @@ const countLabel = computed(() => {
       state-class="mt-10"
       @retry="refresh()"
     >
-      <!-- KEIN Erklärkasten mehr, seit 18.09.2026. Er stand zwischen der
-           Überschrift und den Filtern — auf 390 px acht Zeilen Prosa über
-           die Herkunft der Daten, bevor irgendeine Zeile der Liste zu sehen
-           war —, und er erklärte, was die Zeilen inzwischen selbst sagen:
-           jede trägt ihr Typwort und, wo es keine Stellungnahmen gibt,
-           warum („nicht gezählt", §12.28).
-           Das Verfahren dahinter steht auf /so-funktionierts.
+      <!-- NO EXPLANATORY BOX any more, since 18.09.2026. It stood between the
+           heading and the filters — at 390 px eight lines of prose about the
+           data's provenance before any row of the list was visible — and it
+           explained what the rows now say themselves: each carries its type
+           word and, where there are no Stellungnahmen, why („nicht gezählt",
+           §12.28). The procedure behind it stands on /so-funktionierts.
 
-           Seine Zahlen mussten ohnehin weg. „201 Entwürfe ohne Gegenstand
-           gegen 134 mit einem" las sich als Korpuszahl, war aber eine
-           Join-Statistik: `withGegenstand` zählt RIS-Sätze, denen ein
-           Ministerialentwurf zugeordnet werden konnte, die Zeile 40 px
-           darunter zählt Ministerialentwürfe der Liste 81 — am 18.09.2026
-           134 gegen 135. Beide Zahlen stimmen, die Differenz ist der
-           dokumentierte Fall eines ME ohne RIS-Satz (`docs/ris-join.md`
-           §2). Richtig hinschreiben ließe sich das nur mit einem Nebensatz,
-           den niemand liest. -->
+           Its numbers had to go regardless. „201 Entwürfe ohne Gegenstand
+           gegen 134 mit einem" read as a corpus figure but was a join
+           statistic: `withGegenstand` counts RIS records a Ministerialentwurf
+           could be matched to, while the line 40 px below counts
+           Ministerialentwürfe of list 81 — on 18.09.2026 134 against 135.
+           Both are right, and the difference is the documented case of an ME
+           without a RIS record (`docs/ris-join.md` §2). Writing that down
+           correctly would take a subordinate clause nobody reads. -->
 
-      <!-- Die Stationsleiste steht ÜBER der Statusleiste und damit zuerst:
-           „wo steht es" ist die gröbere Frage, „was kann ich tun" schneidet
-           quer hinein. Mehrfachauswahl, weil zwei Stationen nebeneinander
-           eine sinnvolle Frage sind („Vorlage oder schon Gesetz?") und weil
-           nichts auswählen bereits „alle" heißt — ein Chip „Alle" wäre ein
-           vierter Zustand für etwas, das der leere Zustand schon sagt. -->
-      <!-- Weg, wo die Periode die Frage nicht beantworten kann (§12.27):
-           ein Chip, der nichts filtern kann, ist kein Bedienelement, sondern
-           ein Versprechen. Der Satz über den Zeilen sagt, warum. -->
-      <!-- Zwei Zonen, und die Grenze ist eine Regel, keine Optik: alles, was
-           die MENGE festlegt, steht über der Zählzeile; was nur bestimmt, WIE
-           sie gelesen wird — die Sortierung —, steht bei der Liste. Die Regel
-           dahinter ist die schärfere Fassung von „nichts über dem
-           Bedienelement ändern": jede Zahl auf der Seite beschreibt die
-           Menge, die die Bedienelemente ÜBER ihr definieren. Deshalb bleibt
-           die Suche das letzte Element dieser Zone — ihr Platzhalter nennt
-           die Korpusgröße, und eine Zahl, die von Reglern unter ihr abhinge,
-           wäre falsch, sobald jemand sie benutzt. -->
+      <!-- Two zones, and the boundary is a rule rather than a look:
+           everything that fixes the SET stands above the count line; what
+           only decides HOW it is read — the sort order — stands with the
+           list. Behind it is the sharper form of „nothing above a control
+           changes": every number on the page describes the set that the
+           controls ABOVE it define. That is why the search stays the last
+           element of this zone — its placeholder names the corpus size, and a
+           number depending on controls below it would be wrong the moment
+           somebody used them. -->
       <div class="group mt-6">
-        <!-- `sr-only`, nicht `hidden`: die Checkbox muss ein Element bleiben,
-             das `:checked` treffen kann — `peer-checked` am Panel und
-             `group-has-[:checked]` an der Zahl hängen daran. Ab md entscheidet
-             ohnehin `md:block` am Panel, und der Schalter verschwindet dort
-             mit seinem Label. -->
+        <!-- `sr-only`, not `hidden`: the checkbox has to stay an element
+             `:checked` can match — `peer-checked` on the panel and
+             `group-has-[:checked]` on the count depend on it. From md up
+             `md:block` on the panel decides anyway, and the switch disappears
+             there with its label. -->
         <input
           id="filter-more"
           v-model="filtersOpen"
@@ -546,20 +500,21 @@ const countLabel = computed(() => {
             aria-hidden="true"
           />
           Weitere Filter
-          <!-- Nur zugeklappt: aufgeklappt sagen die Chips und die Selects
-               selbst, was an ist, und die Zahl stünde dann über den
-               Bedienelementen, die sie zählt.
-               `group-has-*` statt `peer-checked`, weil die Zahl im Label
-               steckt und damit kein Geschwister der Checkbox ist — `peer-*`
-               erreicht nur Geschwister, `group-*` erreicht Nachfahren
-               (dasselbe Muster wie `group-open` an den <details>-Blöcken der
-               Seite).
-               Und `[input:checked]` statt des kurzen `group-has-checked`:
-               `:checked` trifft auch die ausgewählte `<option>` — und drei
-               <select> im Panel haben immer eine. Mit `:has(:checked)` galt
-               die Gruppe deshalb IMMER als aufgeklappt und die Zahl war nie
-               zu sehen; am 18.09.2026 so gemessen, bevor sie je jemand
-               bemerkt hätte. -->
+          <!-- Closed only: when open, the chips and the selects say for
+               themselves what is on, and the count would then stand above the
+               controls it counts.
+
+               `group-has-*` rather than `peer-checked`, because the count sits
+               inside the label and is therefore no sibling of the checkbox —
+               `peer-*` reaches siblings, `group-*` reaches descendants (the
+               pattern of `group-open` on this page's <details> blocks).
+
+               And `[input:checked]` rather than the shorter
+               `group-has-checked`: `:checked` also matches the selected
+               `<option>`, and three <select> in the panel always have one.
+               With `:has(:checked)` the group therefore counted as open
+               ALWAYS and the number was never visible; measured that way on
+               18.09.2026, before anyone would have noticed. -->
           <span
             v-if="moreFilters"
             class="rounded-full bg-accent-deep px-2 py-0.5 text-xs font-medium text-white group-has-[input:checked]:hidden"
@@ -567,22 +522,22 @@ const countLabel = computed(() => {
         </label>
 
         <div id="filter-more-panel" class="mt-3 hidden space-y-3 peer-checked:block md:mt-0 md:block">
-          <!-- Die Stationsleiste steht zuerst: „wo steht es" ist die gröbere
-               Frage, „was kann ich tun" schneidet quer hinein (§12.26).
-               Mehrfachauswahl, weil zwei Stationen nebeneinander eine
-               sinnvolle Frage sind („Vorlage oder schon Gesetz?") und weil
-               nichts auswählen bereits „alle" heißt — ein Chip „Alle" wäre
-               ein vierter Zustand für etwas, das der leere Zustand schon
-               sagt.
-               Weg, wo die Periode die Frage nicht beantworten kann (§12.27):
-               ein Chip, der nichts filtern kann, ist kein Bedienelement,
-               sondern ein Versprechen. Der Satz über den Zeilen sagt, warum. -->
-          <!-- Kein sichtbares „Wo steht es:" mehr vor den Chips (18.09.2026).
-               Die vier Wörter sind die Stationen selbst — wer „Begutachtung ·
-               Regierungsvorlage · Parlament · Bundesgesetzblatt" nebeneinander
-               sieht, liest die Achse aus ihren Werten. Der Name bleibt als
-               `aria-label` an der Gruppe: für ein Vorleseprogramm sind die
-               Chips sonst vier Knöpfe ohne Zusammenhang. -->
+          <!-- The station bar comes first: „wo steht es" is the coarser
+               question, „was kann ich tun" cuts across it (docs/architecture.md
+               §12.26). Multi-select, because two stations side by side are a
+               sensible question („Vorlage oder schon Gesetz?") and because
+               selecting nothing already means „alle" — an „Alle" chip would be
+               a fourth state for what the empty state says already. Gone where
+               the period cannot answer the question (§12.27): a chip that can
+               filter nothing is not a control but a promise, and the sentence
+               above the rows says why.
+
+               No visible „Wo steht es:" in front of the chips (18.09.2026).
+               The four words are the stations themselves — whoever sees
+               „Begutachtung · Regierungsvorlage · Parlament ·
+               Bundesgesetzblatt" side by side reads the axis off its values.
+               The name stays as the group's `aria-label`: to a screen reader
+               the chips would otherwise be four unrelated buttons. -->
           <div
             v-if="!chainUnlinkedPeriod"
             role="group"
@@ -613,15 +568,14 @@ const countLabel = computed(() => {
             </UButton>
           </div>
 
-          <!-- Feste Spuren statt `flex-wrap`, und `block` an jedem Select.
-               Ein natives <select> misst sich an seiner LÄNGSTEN Option: „Alle
-               Arten" stand 267 px breit da, weil „Verordnungsentwürfe und
-               andere" darunter in der Liste steht, „Nach Frist" 202 px wegen
-               „Meiste Stellungnahmen". Zusammen beanspruchten die vier
-               Selects 837 von 896 px, und wo die Leiste umbrach, entschied
-               der Zufall des Fensters statt der Entwurf. Jetzt entscheidet
-               das Raster: 272 + 112 + 256 px plus 24 px Lücken = 664 von
-               896. -->
+          <!-- Fixed tracks instead of `flex-wrap`, and `block` on every
+               select. A native <select> sizes itself by its LONGEST option:
+               „Alle Arten" stood 267 px wide because „Verordnungsentwürfe und
+               andere" is in its list, „Nach Frist" 202 px because of „Meiste
+               Stellungnahmen". Together the four selects claimed 837 of
+               896 px, and where the bar wrapped was decided by the window
+               rather than by the design. Now the grid decides:
+               272 + 112 + 256 px plus 24 px gaps = 664 of 896. -->
           <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,17rem)_minmax(0,7rem)_minmax(0,16rem)]">
             <div class="min-w-0">
               <label for="filter-art" class="sr-only">Art des Entwurfs</label>
@@ -653,20 +607,21 @@ const countLabel = computed(() => {
           </div>
         </div>
 
-        <!-- Die zweite Achse, und sie bleibt auf dem Telefon sichtbar: „wo
-             kann ich jetzt etwas sagen" ist die Frage, mit der jemand
-             ankommt (§12.26). Ihre drei Optionen erklären sich selbst; der
-             Achsenname steht nur noch als `aria-label` da.
-             Sie teilt sich die Zeile mit der Suche, und das ist kein Rückfall
-             in die alte Leiste: die Suche steht rechts von ihr, also in der
-             Lesereihenfolge NACH ihr, und ihr Platzhalter darf weiter die
-             Menge zählen, die die Regler darüber und links von ihr übrig
-             gelassen haben. Unter md brechen beide untereinander — das
-             Segment misst 338 px, die Zeile 358.
-             `mt-5` gegen die `space-y-3` INNERHALB des Panels: hier verläuft
-             eine Gruppengrenze — Eingrenzung oben, die zweite Achse und die
-             Suche unten —, und mit denselben 12 px wie zwischen Chips und
-             Selects klebte das Segment am Schalter „Weitere Filter". -->
+        <!-- The second axis, and it stays visible on the phone: „wo kann ich
+             jetzt etwas sagen" is the question people arrive with
+             (docs/architecture.md §12.26). Its three options explain
+             themselves; the axis name is only an `aria-label` now.
+
+             It shares the line with the search, and that is no relapse into
+             the old bar: the search stands to its right, i.e. AFTER it in
+             reading order, so its placeholder may still count the set the
+             controls above and left of it have left over. Below md both wrap
+             onto separate lines — the segment measures 338 px, the line 358.
+
+             `mt-5` against the `space-y-3` INSIDE the panel: a group boundary
+             runs here — narrowing above, the second axis and the search below
+             — and with the same 12 px as between chips and selects the
+             segment stuck to the „Weitere Filter" switch. -->
         <div class="mt-5 flex flex-wrap items-center gap-3">
           <UFieldGroup role="group" aria-label="Was kann ich tun" class="shrink-0">
             <UButton
@@ -681,23 +636,23 @@ const countLabel = computed(() => {
             </UButton>
           </UFieldGroup>
 
-          <!-- Zuletzt in dieser Zone, und das ist die Regel, nicht der
-               Geschmack: der Platzhalter nennt die Korpusgröße (Vertrauens-
-               signal nach kleineAnfragen) und zählt damit, was die Regler
-               DARÜBER übrig gelassen haben. Über sie gestellt, stünde dort
-               eine Zahl, die von Bedienelementen unter ihr abhängt.
-               Sie bekommt jetzt den ganzen Rest der Zeile statt eines
-               Streifens: das Feld SCHRUMPFTE bisher, je breiter das Fenster
-               wurde — 720 px bei 768, 366 px bei 896 —, weil es sich dort
-               eine Zeile mit Ressort und Sortierung teilte. Beide stehen
-               nicht mehr hier.
-               `min-w-80` und nicht `min-w-48`: mit 192 px Mindestbreite passt
-               das Feld schon bei 640 px neben das 338 px breite Segment und
-               stand dort dann 242 px schmal da — schmaler als bei 430 px, wo
-               es die ganze Zeile hat. Das ist dieselbe Krankheit wie vorher,
-               nur an einer neuen Stelle. Mit 320 px umbricht es stattdessen,
-               bis wirklich Platz ist (ab ~700 px), und wird von da an nur
-               noch breiter. -->
+          <!-- Last in this zone, and that is the rule rather than taste: the
+               placeholder names the corpus size (a trust signal, after
+               kleineAnfragen) and therefore counts what the controls ABOVE it
+               left over. Placed above them it would carry a number depending
+               on controls below it.
+
+               It now gets the whole rest of the line instead of a strip: the
+               field used to SHRINK the wider the window became — 720 px at
+               768, 366 px at 896 — because it shared a line with Ressort and
+               sort order there. Neither stands here any more.
+
+               `min-w-80` and not `min-w-48`: at a 192 px minimum the field
+               already fits beside the 338 px segment at 640 px and stood
+               there 242 px narrow — narrower than at 430 px, where it has the
+               whole line. That is the same disease as before in a new place.
+               At 320 px it wraps instead until there really is room (from
+               ~700 px) and only grows from there. -->
           <UInput
             v-model="q"
             type="search"
@@ -710,21 +665,22 @@ const countLabel = computed(() => {
         </div>
       </div>
 
-      <!-- Die Zählzeile und die Sortierung auf einer Höhe, und das ist die
-           Grenze zwischen den beiden Zonen: darüber steht, was die Menge
-           FESTLEGT, hier steht, wie sie GELESEN wird.
-           Die Sortierung stand bis 18.09.2026 zwischen Ressort und Suche,
-           mit derselben Token-Optik wie die drei Filter daneben — nichts
-           unterschied dort das Bedienelement, das etwas wegnimmt, von dem,
-           das nur umreiht. Sie gehört zur Liste: „Bedienelemente, die
-           ändern, WIE das Ergebnis gelesen wird, gehören zu der Liste, die
-           sie filtern" (§12.26 / die Regel aus dem Stationswähler). Sie
-           nimmt nichts weg, also ändert sie die Zählzeile daneben auch
-           nicht — der Satz über die Verordnungsentwürfe, den sie auslöst,
-           steht unter ihr.
-           `aria-live` bleibt allein an der Zahl: läge der Wähler in der
-           Region, läse ein Screenreader bei jeder Sortierung die Zahl neu
-           vor, die sich gar nicht geändert hat. -->
+      <!-- The count line and the sort control on one level, and that is the
+           boundary between the two zones: above stands what FIXES the set,
+           here stands how it is READ.
+
+           The sort control stood between Ressort and search until 18.09.2026,
+           in the same token styling as the three filters beside it — nothing
+           told the control that takes something away from the one that only
+           reorders. It belongs to the list: controls that change HOW the
+           result is read belong to the list they order
+           (docs/architecture.md §12.26). It takes nothing away, so it does
+           not change the count line beside it either — the sentence about the
+           Verordnungsentwürfe that it triggers stands below it.
+
+           `aria-live` stays on the number alone: with the select inside the
+           region a screen reader would re-read a number on every sort that
+           has not changed at all. -->
       <div class="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <p class="text-sm text-ink-muted" aria-live="polite">
           {{ countLabel }}
@@ -739,27 +695,27 @@ const countLabel = computed(() => {
         </div>
       </div>
 
-      <!-- Abonnieren steht hier, nicht mehr im Footer, und bewusst AUSSERHALB
-           der Live-Region darüber: sonst liest ein Screenreader die Einladung
-           bei jedem Tastendruck in der Suche mit vor. Zwei Angebote, nach
-           dem, was die Filterleiste gerade sagt — der Ressort-Filter ist der
-           Moment, in dem jemand entscheidet „dieses Ressort verfolge ich“. -->
+      <!-- Subscribing stands here rather than in the footer, and deliberately
+           OUTSIDE the live region above: otherwise a screen reader reads the
+           invitation out on every keystroke in the search. Two offers,
+           following what the filter bar currently says — the Ressort filter is
+           the moment somebody decides „dieses Ressort verfolge ich“. -->
       <p class="mt-1 text-sm text-ink-muted">
         <SubscribeLinks :ministry="ministry" />
       </p>
 
       <h2 class="sr-only">Ergebnisse</h2>
-      <!-- Wie die Sortier-Einschränkung darunter: eine Aussage darüber, was
-           die Liste gerade NICHT tut, steht über den Zeilen — hinterher
-           gelesen ist sie wertlos. -->
+      <!-- Like the sort caveat below it: a statement about what the list is
+           NOT doing stands above the rows — read afterwards it is
+           worthless. -->
       <p v-if="stationsUnavailable" class="mt-3 max-w-prose text-sm text-ink-muted">
         Wo die Entwürfe stehen, lässt sich gerade nicht abrufen – die Liste
         ist deshalb <span class="font-medium text-ink">nicht</span> nach
         Station gefiltert.
       </p>
-      <!-- Die Lücke wird benannt, statt sie als Befund auszugeben: ohne
-           diesen Satz läse eine Liste ohne Stationen sich, als wäre aus
-           keinem dieser Entwürfe je etwas geworden (§12.27). -->
+      <!-- The gap is named rather than passed off as a finding: without this
+           sentence a list without stations would read as if nothing had ever
+           become of any of these drafts (docs/architecture.md §12.27). -->
       <p v-if="chainUnlinkedPeriod" class="mt-3 max-w-prose text-sm text-ink-muted">
         Was aus diesen Entwürfen wurde, ist für diese Gesetzgebungsperiode
         nicht erfasst – der Bezug zwischen Ministerialentwurf und
@@ -769,12 +725,12 @@ const countLabel = computed(() => {
           Nach Station ist hier deshalb auch
           <span class="font-medium text-ink">nicht</span> gefiltert.</template>
       </p>
-      <!-- Die Einschränkung gilt nur für die Stationen NACH der Begutachtung:
-           dorthin kommt nichts ohne Gegenstand im Parlament. Unter
-           „Begutachtung" stehen die Verordnungsentwürfe sehr wohl mit — sie
-           dort wegzulassen kostete die Startseiten-Parität (4 statt 7 unter
-           „Begutachtung + Stellungnahme möglich") und ließ drei laufende
-           Verordnungs-Begutachtungen verschwinden. -->
+      <!-- The caveat holds only for the stations AFTER the Begutachtung:
+           nothing without a Gegenstand at Parliament gets there. Under
+           „Begutachtung" the Verordnungsentwürfe do come along — leaving them
+           out there cost the parity with the homepage (4 instead of 7 under
+           „Begutachtung + Stellungnahme möglich") and made three running
+           Verordnung-Begutachtungen disappear. -->
       <p
         v-else-if="laterStationsOnly && art !== 'ministerialentwurf'"
         class="mt-3 max-w-prose text-sm text-ink-muted"
@@ -796,11 +752,11 @@ const countLabel = computed(() => {
           gibt es keine Regierungsvorlage – ihr Weg endet mit der Begutachtung.
         </template>
       </p>
-      <!-- Die Antwort auf „wo ist die zweite Runde?" — die Frage, mit der
-           jemand von der Startseite kommt, wo sie ein eigener Abschnitt ist.
-           Hier ist sie einsortiert, nach Dringlichkeit wie alles andere, und
-           jede dieser Zeilen trägt ihren Chip. Nur unter „Stellungnahme
-           möglich", weil die Aussage nur dort über die ganze Liste gilt. -->
+      <!-- The answer to „wo ist die zweite Runde?" — the question people
+           bring from the homepage, where it is a section of its own. Here it
+           is sorted in, by urgency like everything else, and each of these
+           rows carries its chip. Only under „Stellungnahme möglich", because
+           only there does the statement hold for the whole list. -->
       <p
         v-if="statusFilter === 'open' && secondRoundRowCount"
         class="mt-3 max-w-prose text-sm text-ink-muted"
@@ -810,10 +766,9 @@ const countLabel = computed(() => {
         Die Begutachtung ist vorbei, im Nationalrat kann zur Regierungsvorlage
         weiter Stellung genommen werden. {{ SECOND_ROUND_WINDOW }}
       </p>
-      <!-- Was die Sortierung mit der Hälfte macht, die sie nicht sortieren
-           kann — über der Liste, nicht darunter: eine Einschränkung an dem,
-           was die Reihenfolge behauptet, muss gelesen sein, bevor die Zeilen
-           gelesen sind. -->
+      <!-- What the sort order does with the half it cannot sort — above the
+           list, not below it: a caveat on what the order claims has to be read
+           before the rows are. -->
       <p
         v-if="sort === 'stellungnahmen' && art !== 'ministerialentwurf'"
         class="mt-3 max-w-prose text-sm text-ink-muted"
@@ -821,10 +776,10 @@ const countLabel = computed(() => {
         Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
         stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
       </p>
-      <!-- DIE GRENZE DER SUCHE, an der Stelle, an der sie jemanden betrifft:
-           Unter diesen Filtern ist NUR nach Titel gesucht, weil der Volltext
-           nichts kennt, was nicht gerade läuft. Über der Liste, wie jede
-           andere Aussage darüber, was sie gerade nicht tut. -->
+      <!-- THE SEARCH'S LIMIT, at the place where it affects somebody: under
+           these filters ONLY the title was searched, because the full text
+           knows nothing that is not currently running. Above the list, like
+           every other statement about what it is not doing. -->
       <p
         v-if="qDebounced.length >= FULLTEXT_MIN_LEN && !fullTextApplies"
         class="mt-3 max-w-prose text-sm text-ink-muted"
@@ -834,33 +789,32 @@ const countLabel = computed(() => {
         <span class="font-medium text-ink">läuft</span> – unter diesen Filtern
         also nicht.
       </p>
-      <!-- Zwei Dichten und der Spaltenkopf stecken seit 18.09.2026 in
-           `EntryList` — dieselbe Liste rendert jetzt auch die Startseite,
-           und der Kopf muss mit den Zellen in `EntryItem` auf das Pixel
-           fluchten (§12.28). -->
+      <!-- Both densities and the column header live in `EntryList` since
+           18.09.2026 — the same list renders the homepage now, and the header
+           has to align with the cells in `EntryItem` to the pixel
+           (docs/architecture.md §12.28). -->
       <EntryList v-if="entries.length" :entries="entries" class="mt-3">
-        <!-- Nur die Zeilen, die AUCH im Volltext getroffen wurden, tragen
-             einen Beleg: der Zugewinn an einer Zeile, die ohnehin dasteht
-             („das Wort steht in § 6"), statt einer zweiten Zeile für
-             denselben Entwurf. -->
+        <!-- Only the rows hit by the full text TOO carry evidence: the gain
+             on a row that is there anyway („das Wort steht in § 6") instead of
+             a second row for the same draft. -->
         <template #evidence="{ entry }">
           <SearchEvidence :hit="hitByKey.get(entry.key)" />
         </template>
       </EntryList>
       <template v-else-if="!stationConflict">
-        <!-- LEERE LISTE, ABER NICHT LEERE SEITE: Solange der Volltext unten
-             noch antwortet, wäre die große Karte „Keine Entwürfe gefunden"
-             eine Behauptung über eine Antwort, die es noch gar nicht gibt.
-             Dann sagt eine Zeile, was die Titelsuche ergeben hat, und der
-             Block darunter sagt den Rest. -->
+        <!-- EMPTY LIST, BUT NOT AN EMPTY PAGE: while the full text below is
+             still answering, the large „Keine Entwürfe gefunden" card would be
+             a claim about an answer that does not exist yet. One line then
+             says what the title search returned, and the block below says the
+             rest. -->
         <p v-if="fullTextActive" class="mt-3 max-w-prose text-ink-secondary">
           Kein Titel, kein Zitat, kein Debattenname und kein Ressortkürzel
           trägt „{{ qDebounced }}“.
         </p>
-        <!-- Die Beschreibung nennt die vier Felder, statt „Titel" zu sagen:
-             „Klimaschutz" liefert hier neun Zeilen, alle über den
-             RESSORTNAMEN (BMK), keine über ein Dokument — wer glaubt,
-             gesucht werde im Titel, hält das für einen Titeltreffer. -->
+        <!-- The description names the four fields instead of saying „Titel":
+             „Klimaschutz" returns nine rows here, all of them through the
+             RESSORT NAME (BMK) and none through a document — whoever believes
+             the title is searched takes that for a title hit. -->
         <div v-else class="mt-3">
           <EmptyState
             title="Keine Entwürfe gefunden"
@@ -873,17 +827,17 @@ const countLabel = computed(() => {
         </div>
       </template>
 
-      <!-- DIE ZWEITE ANTWORT DESSELBEN FELDES (§12.31). Eigener Abschnitt
-           mit eigener Überschrift, nie in die Liste gemischt: Sie sucht in
-           einer ganzen Gesetzgebungsperiode nach Titeln, dieser Block in den
-           Dokumenten dessen, was heute offen ist. -->
+      <!-- THE SAME FIELD'S SECOND ANSWER (docs/architecture.md §12.31). Its
+           own section with its own heading, never mixed into the list: the
+           list searches a whole Gesetzgebungsperiode by title, this block the
+           documents of what is open today. -->
       <section v-if="fullTextActive" class="mt-8">
         <h2 class="text-lg font-semibold text-ink">
           Außerdem im Volltext der laufenden Begutachtungen
         </h2>
-        <!-- Der Stern steht hier und nicht am Feld: Er gilt für DIESE
-             Hälfte — das RIS sucht ganze Wörter, die Liste oben sucht als
-             Teilstring. Ein Bedienhinweis gehört zu dem, was er ändert. -->
+        <!-- The asterisk is explained here and not at the field: it applies
+             to THIS half — RIS searches whole words, the list above searches
+             substrings. A usage note belongs with what it changes. -->
         <p class="mt-1 max-w-prose text-sm text-ink-muted">
           Alle Dokumente eines Entwurfs – Text, Erläuterungen,
           Gegenüberstellung, Anhänge. Gesucht werden ganze Wörter,
@@ -891,8 +845,8 @@ const countLabel = computed(() => {
         </p>
 
         <LoadingState v-if="fullTextPending" label="Im Volltext wird gesucht …" />
-        <!-- EIN FEHLER IST KEINE ANTWORT (§12.13): „kommt nicht vor" wäre
-             hier die teuerste Lüge des Produkts. -->
+        <!-- AN ERROR IS NOT AN ANSWER (docs/architecture.md §12.13): „kommt
+             nicht vor" would be this product's most expensive lie. -->
         <p v-else-if="fullTextError" class="mt-3 max-w-prose text-sm text-ink-secondary">
           Im Volltext konnte gerade nicht gesucht werden – das RIS hat nicht
           geantwortet. Die Liste oben ist davon nicht betroffen.
@@ -907,12 +861,12 @@ const countLabel = computed(() => {
             Alle Volltext-Treffer stehen schon in der Liste oben – jeder mit
             seiner Fundstelle.
           </p>
-          <!-- ZWEI DINGE AUF EINMAL: Die leere Antwort nennt die
-               Korpusgröße — „nichts gefunden" heißt etwas anderes bei 9
-               offenen Verfahren als bei 700 —, und „kommt nicht vor" ist
-               eine Aussage über den Korpus, steht also nur da, wenn das RIS
-               wirklich nichts hatte. Was die Filter weggenommen haben, sagt
-               die Zeile darunter. -->
+          <!-- TWO THINGS AT ONCE: the empty answer names the corpus size —
+               „nichts gefunden" means something different over 9 running
+               Verfahren than over 700 — and „kommt nicht vor" is a statement
+               about the corpus, so it stands only where RIS really had
+               nothing. What the filters took away is said by the line
+               below. -->
           <p
             v-else-if="!fullTextFilteredOut"
             class="mt-3 max-w-prose text-sm text-ink-secondary"
