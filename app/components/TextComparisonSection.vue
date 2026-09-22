@@ -191,8 +191,14 @@ const query = ref('')
  * hides the "n Änderungen hier nicht gezeigt" notice of a §, which is the
  * right behaviour for a view the reader has explicitly narrowed — the
  * unsearched section states it.
+ *
+ * NOT `matchesQuery`: that name is taken by the auto-imported
+ * `shared/utils/searchQuery.ts`, which takes a haystack string and splits the
+ * query into AND-linked tokens. A local definition shadowed it, so deleting
+ * this one would have silently bound the call below to a function with
+ * different semantics.
  */
-function matchesQuery(row: TextComparisonRow, q: string): boolean {
+function rowMatches(row: TextComparisonRow, q: string): boolean {
   return [row.current, row.proposed, row.para, row.gld, row.heading, row.law].some(
     (t) => t?.toLowerCase().includes(q),
   )
@@ -271,7 +277,7 @@ const groups = computed<Group[]>(() => {
       continue
     }
     if (row.elided) continue
-    if (q && !matchesQuery(row, q)) continue
+    if (q && !rowMatches(row, q)) continue
     if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
     current.rows.push(row)
     // A withheld row keeps its `change` but lost its text, so counting it
