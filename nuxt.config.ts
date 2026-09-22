@@ -53,20 +53,23 @@ export default defineNuxtConfig({
     // suffix.
     '/weitere-entwuerfe': { redirect: { to: '/entwuerfe?art=verordnung', statusCode: 301 } },
     '/weitere-entwuerfe/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
-    // `/suche` war vom 19. bis 22.09.2026 eine eigene Seite. Seit das Feld
-    // auf `/entwuerfe` beide Antworten gibt (§12.31), wäre sie eine zweite
-    // Adresse für dieselbe Frage — genau das, was dort abgeschafft wurde.
-    // Der 301 bleibt trotzdem: Die Seite stand in der sitemap, und ein Link
-    // ist das einzige, was dieses Projekt nicht neu ausstellen kann. `?q=`
-    // reist mit, weil Nitro die Query an das Ziel anhängt — wer einen
-    // geteilten Link öffnet, sieht Treffer und kein leeres Feld.
+    // `/suche` was its own page from 19. to 22.09.2026. Now that the field
+    // on `/entwuerfe` gives both answers (docs/architecture.md §12.31) it
+    // would be a second address for the same question — the very thing
+    // abolished there. The 301 stays anyway: the page stood in the sitemap,
+    // and a link is the one thing this project cannot re-issue. `?q=` travels
+    // along, because Nitro appends the query to the target — whoever opens a
+    // shared link sees hits and not an empty field.
     '/suche': { redirect: { to: '/entwuerfe', statusCode: 301 } },
   },
   ui: {
     // Light-only prototype: Nuxt UI's color-mode integration would flip its
     // tokens dark on OS preference while our custom tokens stay light.
     colorMode: false,
-    // System sans only (architecture.md §8) — no font module, no web fonts.
+    // Disables the @nuxt/fonts module, not web fonts: the one face, Source
+    // Serif 4 SemiBold for headings, has been self-hosted from public/fonts
+    // since 2026-08-27 (app/assets/css/main.css). Body text stays system
+    // sans, and nothing is fetched from a third party at runtime.
     fonts: false,
   },
   // EU sovereignty: icons come exclusively from the locally installed
@@ -78,8 +81,9 @@ export default defineNuxtConfig({
   // ignored), so the cost is negligible.
   vite: { server: { watch: { usePolling: true, interval: 300 } } },
   watchers: { chokidar: { usePolling: true, interval: 300 } },
-  // Components register by plain file name (<StatTile>, not <UiStatTile>) —
-  // keep file names globally unique across component subfolders.
+  // Components register by plain file name (<SectionCredits>, not
+  // <UiSectionCredits>) — keep file names globally unique across the
+  // component subfolders.
   components: [{ path: '~/components', pathPrefix: false }],
   app: {
     head: {
