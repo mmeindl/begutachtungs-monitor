@@ -36,7 +36,7 @@ import { anlageLabelKey, bareParaId } from './text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from './amendedLawsService'
 import { diffTokens } from './diff/wordDiff'
-import { applyNovelle, instructionsFromUnits, type Instruction, type StandingLaw } from './lawApply'
+import { applyNovelle, instructionsFromUnits, type StandingLaw } from './lawApply'
 import { bodyText, parseKonsParagraph, plainText, type LawNode } from './lawStructure'
 import { segmentUnits } from './lawText'
 import { articleBlocks } from './lawTitles'
@@ -67,13 +67,20 @@ const CONCURRENCY = 4
  * Eigenschaft dieses Dokuments (RIS führt manche Paragraphen als Tabelle),
  * und null ist dafür die richtige Antwort.
  */
-async function standingParagraphs(
-  refs: readonly KonsParagraphRef[],
-  budget: { left: number },
-): Promise<{ trees: LawNode[]; skipped: Set<string> }> {
+/**
+ * Wie viel vom Budget dieser Artikel bekommt — rein gerechnet und in
+ * Eingabereihenfolge aufgerufen, damit die Zuteilung dieselbe bleibt, auch
+ * wenn die Artikel nebeneinander geholt werden. Welche §§ die Grenze abschneidet,
+ * ist eine Aussage auf der Seite und darf nicht davon abhängen, wer zuerst
+ * fertig wird.
+ */
+function allotBudget(refs: readonly KonsParagraphRef[], budget: { left: number }): { queue: KonsParagraphRef[]; skipped: Set<string> } {
   const queue = refs.slice(0, Math.max(0, budget.left))
-  const skipped = new Set(refs.slice(queue.length).map((r) => r.id))
   budget.left -= queue.length
+  return { queue, skipped: new Set(refs.slice(queue.length).map((r) => r.id)) }
+}
+
+async function standingParagraphs(queue: readonly KonsParagraphRef[]): Promise<LawNode[]> {
   // `trees` wird im Rückruf gefüllt, nicht aus dem Ergebnis gebaut: Die
   // Reihenfolge ist die der Fertigstellung, und das war sie immer.
   const trees: LawNode[] = []
@@ -87,7 +94,7 @@ async function standingParagraphs(
       // Ein Dokument, das kein Paragraph ist — im BGBl-Korpus 27 von 3.110.
     }
   })
-  return { trees, skipped }
+  return trees
 }
 
 export const getConsolidatedText = defineCachedFunction(
@@ -133,7 +140,6 @@ export const getConsolidatedText = defineCachedFunction(
     const byParagraph = typeof annex === 'string' ? null : rowsByParagraph(annex.parsed.rows)
     const isPackage = parts.length > 1
 
-    const shown: ConsolidatedParagraph[] = []
     let touched = 0
     const budget = { left: MAX_PARAGRAPHS }
 
@@ -141,26 +147,34 @@ export const getConsolidatedText = defineCachedFunction(
     // Nenner auf der Seite ist „wie viele Paragraphen ändert dieser Entwurf",
     // nicht „wie viele haben wir angesehen". Bearbeitet werden die ersten
     // zwölf.
-    for (const [index, { blocks: part, article }] of parts.entries()) {
+    //
+    // DREI SCHRITTE, und ihre Reihenfolge ist der Grund für den Zuschnitt:
+    // erst rein lesen, was jeder Artikel adressiert, dann das Budget in
+    // EINGABEREIHENFOLGE zuteilen, und erst zuletzt nebeneinander holen.
+    // Welche §§ die Grenze abschneidet, ist eine Aussage auf der Seite; sie
+    // darf nicht davon abhängen, welcher Artikel zuerst fertig wird.
+    const perArticle = parts.map(({ blocks: part, article }, index) => {
       const units = segmentUnits(part).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
       const { instructions, refused } = instructionsFromUnits(units)
-      if (instructions.length + refused.length === 0) continue
-
+      if (instructions.length + refused.length === 0) return null
       // Der Nenner, gezählt bevor irgendetwas scheitern kann — rein und
       // getestet in `konsGate.ts`, weil eine Zahl, die auf der Seite steht,
       // eine Aussage ist und keine Zwischenrechnung.
-      const addressed = addressedParagraphs(instructions, refused.map((r) => r.line))
-      touched += addressed.length
+      return { index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused.map((r) => r.line)) }
+    })
+    for (const w of perArticle) if (w) touched += w.addressed.length
 
-      if (index >= MAX_LAWS) continue
+    // Ohne Anhang bestätigt nichts irgendetwas, und dann ist jeder
+    // RIS-Abruf für die Katz: Die Hälfte der Entwürfe hat keinen, und für
+    // die holte diese Funktion Dutzende §-Dokumente, um anschließend nichts
+    // zu zeigen. Die Zahl der geänderten Paragraphen steht trotzdem da —
+    // sie kostet keinen Abruf, sie steht im Entwurfstext.
+    if (!byParagraph) return { gp, inr, paragraphs: [], touched }
 
-      // Ohne Anhang bestätigt nichts irgendetwas, und dann ist jeder
-      // RIS-Abruf für die Katz: Die Hälfte der Entwürfe hat keinen, und für
-      // die holte diese Funktion Dutzende §-Dokumente, um anschließend nichts
-      // zu zeigen. Die Zahl der geänderten Paragraphen steht trotzdem da —
-      // sie kostet keinen Abruf, sie steht im Entwurfstext.
-      if (!byParagraph) continue
+    const workable = perArticle.flatMap((w) => (w && w.index < MAX_LAWS ? [w] : []))
 
+    const resolved = await mapWithConcurrency(workable, CONCURRENCY, async (w) => {
+      const { article } = w
       // KEIN `.catch` hier. `resolveKonsLaw` gibt null zurück, wenn das RIS
       // das Gesetz nicht kennt oder zwei nicht auseinanderhält — eine
       // Antwort, die einen Tag lang gilt —, und es *wirft*, wenn das RIS
@@ -168,7 +182,7 @@ export const getConsolidatedText = defineCachedFunction(
       // Ausfall, der als Urteil über den Entwurf zwischengespeichert wird;
       // genau das hat `annexGuardService.ts` schon einmal gekostet.
       const law = article.bgbl ? await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '') : null
-      if (!law) continue
+      if (!law) return null
 
       // Wenn das Budget beißt, soll es bei den Paragraphen beißen, die
       // ohnehin nichts zeigen könnten.
@@ -185,13 +199,20 @@ export const getConsolidatedText = defineCachedFunction(
       // nicht reicht, entscheidet sie, was fehlt.
       const covered = (id: string): boolean =>
         paragraphRows(byParagraph, id, isPackage ? article.key : undefined).length > 0
-      const wanted = new Map([...addressed].map((id) => [anlageLabelKey(`§ ${id}`), covered(id)]))
+      const wanted = new Map([...w.addressed].map((id) => [anlageLabelKey(`§ ${id}`), covered(id)]))
       const refs = Object.entries(law.paragraphs)
         .filter(([label]) => wanted.has(anlageLabelKey(label)))
         .sort(([a], [b]) => Number(wanted.get(anlageLabelKey(b))) - Number(wanted.get(anlageLabelKey(a))))
         .map(([, ref]) => ref)
-      const { trees, skipped } = await standingParagraphs(refs, budget)
-      const standing: StandingLaw = { paragraphs: trees }
+      return { ...w, law, refs }
+    })
+
+    // Die Zuteilung, rein und der Reihe nach — vor dem Holen, nicht darin.
+    const jobs = resolved.flatMap((r) => (r ? [{ ...r, ...allotBudget(r.refs, budget) }] : []))
+
+    const shownPerArticle = await mapWithConcurrency(jobs, CONCURRENCY, async (job) => {
+      const { article, instructions, refused, addressed, law, queue, skipped } = job
+      const standing: StandingLaw = { paragraphs: await standingParagraphs(queue) }
       const { law: after, results, unresolved } = applyNovelle(standing, instructions)
 
       const refusedIds = new Set([...unresolved].map((p) => /(\d+[a-z]*)/.exec(p)?.[1] ?? p))
@@ -200,24 +221,43 @@ export const getConsolidatedText = defineCachedFunction(
         if (id) refusedIds.add(id)
       }
 
+      // Einmal gelesen statt einmal je Paragraph: die Bezeichnung, die jede
+      // Anweisung adressiert, und die §§, die ihre Nutzlast einfügt. Die
+      // Bedingung darunter ist unverändert — nur gerechnet wird sie jetzt
+      // 80-mal seltener (80 §§ × 500 Anweisungen, §6.8).
+      const analysed = instructions.map((instruction, i) => {
+        const { op, payload } = instruction
+        const address = opAddress(op)
+        const insertsParagraphs = (op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para'
+        return {
+          touching: { instruction, result: results[i]! },
+          document: address?.level === 'document',
+          para: address?.para ? bareParaId(address.para) : null,
+          payloadIds: insertsParagraphs ? new Set(payload.map((pl) => pl.id).filter((id) => !!id)) : null,
+        }
+      })
+      const nodeById = (nodes: readonly LawNode[]): Map<string, LawNode> => {
+        const out = new Map<string, LawNode>()
+        // First occurrence wins, exactly as `find` decided.
+        for (const node of nodes) if (!out.has(node.id)) out.set(node.id, node)
+        return out
+      }
+      const afterById = nodeById(after.paragraphs)
+      const beforeById = nodeById(standing.paragraphs)
+
+      const found: ConsolidatedParagraph[] = []
       for (const id of addressed) {
         // Our own ceiling first: a document we never fetched is not a refusal
         // of the engine.
         if (skipped.has(id)) continue
-        const node = after.paragraphs.find((p) => p.id === id)
+        const node = afterById.get(id)
         // Kein Text erzeugt: Der § stand nicht im geltenden Bestand, oder
         // keine Anweisung an ihm ließ sich ausführen.
         if (!node) continue
-        const beforeNode = standing.paragraphs.find((p) => p.id === id) ?? null
-        const touching: { instruction: Instruction; result: (typeof results)[number] }[] = instructions
-          .map((instruction, i) => ({ instruction, result: results[i]! }))
-          .filter(({ instruction: { op, payload } }) => {
-            const address = opAddress(op)
-            if (address?.level === 'document') return true
-            if (address?.para && bareParaId(address.para) === id) return true
-            if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
-            return false
-          })
+        const beforeNode = beforeById.get(id) ?? null
+        const touching = analysed
+          .filter((a) => a.document || a.para === id || (a.payloadIds?.has(id) ?? false))
+          .map((a) => a.touching)
         const guard = guardParagraph(id, standing, beforeNode, node, touching)
         const before = beforeNode ? plainText(beforeNode) : null
         const got = plainText(node)
@@ -237,11 +277,11 @@ export const getConsolidatedText = defineCachedFunction(
         // Ein Paket ohne Gesetzesgrenzen in der Beilage darf nicht nach einem
         // einzelnen Artikel gefragt werden: 15,1 % der §-Bezeichnungen
         // wiederholen sich in einem anderen Gesetz desselben Pakets.
-        const report = byParagraph ? oracleVerdict(id, before, got, paragraphRows(byParagraph, id, isPackage ? article.key : undefined)) : null
+        const report = oracleVerdict(id, before, got, paragraphRows(byParagraph, id, isPackage ? article.key : undefined))
         const gate = gateParagraph({
           refused: refusedIds.has(id),
           plausible: guard.plausible,
-          oracle: report?.verdict ?? 'kein Anhang',
+          oracle: report.verdict,
         })
         if (!gate.show) continue
         // `diffTokens` gibt null zurück, wenn der Vergleich zu lang zum
@@ -255,7 +295,7 @@ export const getConsolidatedText = defineCachedFunction(
         const headingSegments: LawDiffSegment[] | null = headingAfter || headingBefore
           ? (headingBefore ? diffTokens(headingBefore, headingAfter).segments : [{ type: 'inserted', text: headingAfter }])
           : null
-        shown.push({
+        found.push({
           id,
           segments,
           headingSegments,
@@ -267,7 +307,9 @@ export const getConsolidatedText = defineCachedFunction(
           annexLaw: isPackage ? article.key : null,
         })
       }
-    }
+      return found
+    })
+    const shown = shownPerArticle.flat()
 
     return {
       gp,
