@@ -402,7 +402,7 @@ function splitRows(u: LawDiffUnit): { from: LawDiffSegment[]; to: LawDiffSegment
 /** What one unit is called, so a context line can count them. */
 function unitNoun(n: number): string {
   if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
-  return n === 1 ? 'Paragraf' : 'Paragrafen'
+  return n === 1 ? 'Paragraph' : 'Paragraphen'
 }
 
 /** Server-decided: every changed piece is a citation, number, date or punctuation. */
@@ -513,7 +513,7 @@ const droppedNote = computed(() =>
         {{ lawStationPairHint(pair.from, pair.to) }}
         <!-- „Unveränderte Stellen sind eingeklappt." ist am 18.09.2026
              weggefallen: Die Liste zeigt die eingeklappten Läufe als eigene
-             Zeilen mit ihrer Zahl an („12 Paragrafen unverändert"). Einem
+             Zeilen mit ihrer Zahl an („12 Paragraphen unverändert"). Einem
              Leser zu erzählen, was er sieht, kostet eine Zeile und sagt
              nichts.
 

@@ -765,7 +765,7 @@ describe('verifyAnnex', () => {
     // and does nothing else — is where it read false: a screenful of new
     // provisions is not "zu wenig Text".
     const rows = [
-      row({ gld: '§ 1.', para: '§ 1.', current: '', proposed: 'Ein ganz neuer Paragraf mit reichlich Text.', change: 'inserted' }),
+      row({ gld: '§ 1.', para: '§ 1.', current: '', proposed: 'Ein ganz neuer Paragraph mit reichlich Text.', change: 'inserted' }),
       row({ gld: '§ 2.', para: '§ 2.', current: '(1) bis (3) …', elided: false }),
     ]
     const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE, '§ 2': PROSE } }))

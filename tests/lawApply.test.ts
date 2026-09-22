@@ -82,7 +82,7 @@ describe('applyNovelle — unit operations', () => {
   it('appends an Absatz and inserts a § at the right place', () => {
     const appended = run(law(), instr('Dem § 5 wird folgender Abs. 3 angefügt:', ['(3) Ergänzender Absatz.'])).law
     expect(appended.paragraphs[0]!.children.map((c) => c.id)).toEqual(['1', '2', '3'])
-    const inserted = run(law(), instr('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 5a. (1) Neuer Paragraf.'])).law
+    const inserted = run(law(), instr('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 5a. (1) Neuer Paragraph.'])).law
     expect(inserted.paragraphs.map((p) => p.id)).toEqual(['5', '5a', '6'])
   })
 

@@ -388,7 +388,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
     // geänderten darüber — die Lesefassung darunter ist unser Text aus dem
     // RIS. Für einen Leser, der die Beilage liest, ist „was hat das Ressort
     // hier unverändert abgedruckt" eine andere Auskunft als „so lautet der
-    // Paragraf dann". Kurz probiert, sie an diesen §§ wegzulassen, und wieder
+    // Paragraph dann". Kurz probiert, sie an diesen §§ wegzulassen, und wieder
     // eingesetzt.
     if (context.length) current.blocks.push({ kind: 'context', rows: context })
     context = []
@@ -742,10 +742,10 @@ const doubtfulNote = computed<string | null>(() => {
              /so-funktionierts, nicht als vierter Absatz über dem Vergleich. -->
         <p v-if="consolidatedShown > 0" class="max-w-prose text-sm text-ink-secondary">
           Bei {{ consolidatedShown }} von {{ consolidated?.touched ?? consolidatedShown }}
-          {{ (consolidated?.touched ?? consolidatedShown) === 1 ? 'geänderten Paragraf' : 'geänderten Paragrafen' }}
+          {{ (consolidated?.touched ?? consolidatedShown) === 1 ? 'geänderten Paragraph' : 'geänderten Paragraphen' }}
           steht unten auch, wie die Bestimmung danach ganz lautet — der geltende
           Text mit den Anweisungen dieses Entwurfs, soweit die Gegenüberstellung
-          des Ressorts dasselbe Ergebnis trägt. Wo das fehlt, ist der Paragraf
+          des Ressorts dasselbe Ergebnis trägt. Wo das fehlt, ist der Paragraph
           nicht unverändert, sondern ungeprüft.
         </p>
       </div>
@@ -949,14 +949,14 @@ const doubtfulNote = computed<string | null>(() => {
 
                    UNTER den geänderten Stellen, nicht über ihnen (Manu,
                    19.09.2026): Die Zeilen sind die Auskunft, wegen der jemand
-                   den § aufschlägt; der ganze Paragraf ist die Anschlussfrage
+                   den § aufschlägt; der ganze Paragraph ist die Anschlussfrage
                    und gehört dahin, wo sie entsteht — ans Ende. Über den
                    Zeilen stünde eine Tür vor der Antwort. Die Begründung
                    bleibt oben: Sie gehört zur Änderung, nicht zum Ergebnis. -->
               <details v-if="p.consolidated" class="group mt-3">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  So lautet der Paragraf dann — ganz
+                  So lautet der Paragraph dann — ganz
                 </summary>
                 <div class="mt-1 pl-6">
                   <!-- Der Vorbehalt steht bei dem Text, für den er gilt, und

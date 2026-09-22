@@ -232,7 +232,7 @@ const PDF_BLOCK_MAX = 400
  *
  * `kind: 'other'`, `gld: null`: Ein PDF trägt keine Gliederungssymbole, die
  * wir sicher zuordnen könnten. Die Zeile sagt dann „im Begleitschreiben"
- * ohne Paragraf — weniger, als das XML hergibt, aber nichts Erfundenes.
+ * ohne Paragraph — weniger, als das XML hergibt, aber nichts Erfundenes.
  */
 export function blocksFromPlainText(text: string, maxLen = PDF_BLOCK_MAX): TextBlock[] {
   const blocks: TextBlock[] = []

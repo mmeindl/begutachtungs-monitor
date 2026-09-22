@@ -101,8 +101,8 @@ describe('oracleVerdict', () => {
   })
 
   it('confirms a § the draft creates against an insertion row', () => {
-    const rows = [pair('', '§ 6a. (1) Neuer Paragraf.', '§ 6a.')]
-    expect(oracleVerdict('6a', null, 'Neuer Paragraf.', rows)).toMatchObject({ verdict: 'bestätigt' })
-    expect(oracleVerdict('6a', null, 'Anderer Paragraf.', rows)).toMatchObject({ verdict: 'widersprochen' })
+    const rows = [pair('', '§ 6a. (1) Neuer Paragraph.', '§ 6a.')]
+    expect(oracleVerdict('6a', null, 'Neuer Paragraph.', rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('6a', null, 'Anderer Paragraph.', rows)).toMatchObject({ verdict: 'widersprochen' })
   })
 })

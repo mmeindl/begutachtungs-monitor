@@ -1362,8 +1362,8 @@ Entwurfs), deshalb steht sie unten und nicht oben.
 **Der Nenner musste mitwandern**, sonst wäre die Bilanz verloren gegangen:
 Über der Liste steht jetzt ein Satz, der beides tut — er sagt an, dass es die
 Schicht überhaupt gibt (sonst findet sie nur, wer zufällig klickt), und nennt
-die Deckung: „Bei 32 von 61 geänderten Paragrafen steht unten auch, wie die
-Bestimmung danach ganz lautet … Wo das fehlt, ist der Paragraf nicht
+die Deckung: „Bei 32 von 61 geänderten Paragraphen steht unten auch, wie die
+Bestimmung danach ganz lautet … Wo das fehlt, ist der Paragraph nicht
 unverändert, sondern ungeprüft."
 
 **Der Schlüssel ist der des Tors, nicht ein zweiter.** `ConsolidatedParagraph`
@@ -3983,7 +3983,7 @@ mit einem fremden Vergleichswerkzeug und nannte als dessen Vorteil eine
 **Side-by-side-Ansicht**. Zwei Dinge daran waren zu prüfen, und nur eines
 stimmte.
 
-**Der Kontext war schon da.** Die Notiz behauptete, die Zeile „12 Paragrafen
+**Der Kontext war schon da.** Die Notiz behauptete, die Zeile „12 Paragraphen
 unverändert" lasse sich nur global über Filter oder Suche öffnen. Sie ist
 seit dem 08.09.2026 ein `<details>` mit eigenem Aufklapper, eingebaut in
 demselben Commit wie die harmonisierte Ansicht. Der Lesefluss ist: ein Klick

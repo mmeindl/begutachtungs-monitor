@@ -67,7 +67,7 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
   })
 
   it('counts a § the draft inserts, which the standing law does not have', () => {
-    const instructions = instr('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 5a. (1) Neuer Paragraf.'])
+    const instructions = instr('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 5a. (1) Neuer Paragraph.'])
     expect(addressedParagraphs(instructions, [])).toContain('5a')
   })
 

@@ -339,7 +339,7 @@ export function renderNode(node: LawNode): string {
  * der anderen Seite). Die Anzeigeform braucht sie, weil ein Gesetzestext
  * ohne Absatznummern nicht zitierbar ist und zwei Absätze sonst als ein
  * Satz hintereinander stehen — am 19.09.2026 auf der Seite gesehen, wo „so
- * lautet der Paragraf dann" aussah, als fehle die Hälfte.
+ * lautet der Paragraph dann" aussah, als fehle die Hälfte.
  *
  * Ohne §-Marker und ohne Überschrift, weil beide auf der Seite schon einen
  * eigenen Platz haben: die Bezeichnung als Zeile darüber, die Überschrift
