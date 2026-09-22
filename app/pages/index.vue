@@ -274,21 +274,7 @@ const gpStart = computed(() => {
           aria-hidden="true"
         />
         Keine Frist verpassen:
-        <a
-          :href="webcalUrl"
-          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Fristen-Kalender abonnieren</a>
-        (Apple/Outlook) ·
-        <ExternalLink
-          :href="googleCalUrl"
-          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Google Kalender</ExternalLink>
-        ·
-        <a
-          href="/feed.xml"
-          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >RSS</a>
-        – ohne Konto, ohne Tracking.
+        <SubscribeLinks />
       </p>
     </header>
 

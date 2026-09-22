@@ -207,8 +207,6 @@ const moreFilters = computed(
 )
 const filtersOpen = ref(moreFilters.value > 0)
 
-const { webcalUrl, googleCalUrl } = useFeedUrls()
-
 let qTimer: ReturnType<typeof setTimeout> | undefined
 watch(q, (value) => {
   clearTimeout(qTimer)
@@ -1036,28 +1034,7 @@ const countLabel = computed(() => {
            dem, was die Filterleiste gerade sagt — der Ressort-Filter ist der
            Moment, in dem jemand entscheidet „dieses Ressort verfolge ich“. -->
       <p class="mt-1 text-sm text-ink-muted">
-        <template v-if="ministry">
-          <a
-            :href="`/feed.xml?ressort=${ministry}`"
-            class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-          >RSS-Feed für dieses Ministerium</a>
-          ·
-        </template>
-        <a
-          :href="webcalUrl"
-          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Fristen-Kalender abonnieren</a>
-        (Apple/Outlook) ·
-        <ExternalLink
-          :href="googleCalUrl"
-          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >Google Kalender</ExternalLink>
-        ·
-        <a
-          href="/feed.xml"
-          class="tap-target rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
-        >RSS</a>
-        – ohne Konto, ohne Tracking.
+        <SubscribeLinks :ministry="ministry" />
       </p>
 
       <h2 class="sr-only">Ergebnisse</h2>
