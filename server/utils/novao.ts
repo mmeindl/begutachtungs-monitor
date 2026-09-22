@@ -95,7 +95,7 @@ const COUNT_WORD: Record<string, number> = { beiden: 2, zwei: 2, drei: 3, vier: 
  * addressed; `{ satz: null }` means a sentence word is there but not
  * understood, and the caller must refuse.
  */
-export function parseSatz(tail: string): { satz: string | null; satzCount: number } | null {
+function parseSatz(tail: string): { satz: string | null; satzCount: number } | null {
   const part = PART_SATZ.exec(tail)
   if (part) return { satz: /^Einleitung/i.test(part[1]!) ? 'einleitung' : 'schluss', satzCount: 1 }
   const group = GROUP_SATZ.exec(tail)

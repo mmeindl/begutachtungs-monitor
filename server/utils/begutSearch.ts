@@ -114,7 +114,7 @@ function findTerm(text: string, term: SearchTerm, loose: boolean): { at: number;
 }
 
 /** Der Textausschnitt um eine Fundstelle, in drei Teilen. */
-export interface SearchSnippet {
+interface SearchSnippet {
   /** Was links davon steht, vorn mit „…", wenn abgeschnitten. */
   before: string
   /** Das gefundene Wort, in der Schreibweise des Dokuments. */
@@ -149,7 +149,7 @@ export function buildSnippet(text: string, at: number, len: number, radius = SNI
 }
 
 /** Wo in einem Dokument das Stichwort steht. */
-export interface SearchLocation {
+interface SearchLocation {
   /**
    * Die Bezeichnung der Stelle, wie das Dokument sie führt: „§ 5." im
    * Entwurfstext, „Zu § 5:" in den Erläuterungen. Null, wo das Dokument bis

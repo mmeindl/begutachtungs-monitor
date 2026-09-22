@@ -24,7 +24,7 @@
  * PURE MODULE — no Nuxt auto-imports, so the tests run it directly.
  */
 
-export interface ColumnExpectation {
+interface ColumnExpectation {
   /** 0-based position in the row. */
   index: number
   /** Value of `header[index].feld_name`, when the API names the field. */
@@ -34,7 +34,7 @@ export interface ColumnExpectation {
 }
 
 /** List 81 — Ministerialentwürfe (`mapDraftRow`). Observed 2026-09-15. */
-export const LIST_81_COLUMNS: ColumnExpectation[] = [
+const LIST_81_COLUMNS: ColumnExpectation[] = [
   { index: 0, feldName: 'GP_CODE' },
   { index: 2, feldName: 'INR' },
   { index: 3, label: 'Einlangen' },
@@ -50,7 +50,7 @@ export const LIST_81_COLUMNS: ColumnExpectation[] = [
 ]
 
 /** List 142 — Stellungnahmen (`mapStatementRow`). Observed 2026-09-15. */
-export const LIST_142_COLUMNS: ColumnExpectation[] = [
+const LIST_142_COLUMNS: ColumnExpectation[] = [
   { index: 0, feldName: 'GP_CODE' },
   { index: 1, feldName: 'ITYP' },
   { index: 2, feldName: 'INR' },
@@ -72,7 +72,7 @@ export const LIST_142_COLUMNS: ColumnExpectation[] = [
  * not `GP_CODE` (which is this list's *label* there). Asserting the
  * familiar spelling would fail on a healthy response.
  */
-export const LIST_101_COLUMNS: ColumnExpectation[] = [
+const LIST_101_COLUMNS: ColumnExpectation[] = [
   { index: 0, feldName: 'GP' },
   { index: 2, feldName: 'INR' },
   { index: 6, label: 'Betreff' },

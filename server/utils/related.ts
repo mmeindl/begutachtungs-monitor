@@ -27,7 +27,7 @@ export function titleKey(title: string | null | undefined): string {
   return [...new Set(titleTokens(splitParliamentTitle(title ?? '').core))].sort().join(' ')
 }
 
-export interface RelatedDrafts {
+interface RelatedDrafts {
   /** Nearest earlier same-title draft, by arrival */
   predecessor: RelatedDraft | null
   /** Nearest later same-title draft, by arrival */

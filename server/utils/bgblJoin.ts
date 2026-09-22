@@ -92,7 +92,7 @@ export const BGBL_MARGIN = 0.08
  * aus derselben Begutachtung stammen (Berichtigung, zweiter Teil), und dann
  * ist die Wahl wieder ein Münzwurf.
  */
-export const BGBL_TIE_DAYS = 60
+const BGBL_TIE_DAYS = 60
 
 /**
  * Das formelhafte Vorwort einer Verordnung, das über den Titel nichts sagt.
@@ -140,7 +140,7 @@ export function bgblTitleScore(draft: BgblJoinDraft, record: BgblRecord): number
 }
 
 /** Ein bewerteter Kandidat. */
-export interface BgblCandidate {
+interface BgblCandidate {
   record: BgblRecord
   score: number
   /** Tage zwischen Fristende und Ausgabedatum. */
@@ -150,7 +150,7 @@ export interface BgblCandidate {
 }
 
 /** Das Ergebnis: ein Treffer, mit dem Abstand zum zweitbesten. */
-export interface BgblMatch extends BgblCandidate {
+interface BgblMatch extends BgblCandidate {
   margin: number
 }
 

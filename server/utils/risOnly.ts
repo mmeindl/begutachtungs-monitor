@@ -92,7 +92,7 @@ function inWindow(r: RisBegutFlat, w: { from: string; to: string | null }): bool
   return r.beginn >= w.from && (w.to === null || r.beginn <= w.to)
 }
 
-export interface RisOnlyResult {
+interface RisOnlyResult {
   items: RisConsultation[]
   withGegenstand: number
   undecided: number

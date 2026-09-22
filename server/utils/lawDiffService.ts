@@ -84,7 +84,7 @@ function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string
 }
 
 /** One station's published law text, as the comparison can use it. */
-export interface ResolvedLawStation {
+interface ResolvedLawStation {
   id: LawStationId
   /** The HTML export `parseLawUnits` needs; null when upstream offers only a PDF. */
   html: string | null

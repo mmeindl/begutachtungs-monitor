@@ -51,7 +51,7 @@ import type { DraftSummary } from '../../shared/types'
 import { titleComponents } from './risJoin'
 
 /** Siehe Kalibrierungstabelle oben. */
-export const PRECEDING_DRAFT_MIN_JACCARD = 0.5
+const PRECEDING_DRAFT_MIN_JACCARD = 0.5
 
 /**
  * Der plausibelste Ministerialentwurf vor dieser Vorlage, oder null.

@@ -55,7 +55,7 @@ export interface MeListRow {
 }
 
 /** A list-81 row set deduped by INR. */
-export interface MeItem {
+interface MeItem {
   gp: string
   inr: number
   cite: string
@@ -71,10 +71,10 @@ export interface MeItem {
 // ---------------------------------------------------------------------------
 
 export type RisClass = 'gesetz' | 'verordnung' | 'other'
-export type JoinStatus = 'matched' | 'matched_weak' | 'ambiguous' | 'unmatched'
-export type JoinTier = 'A' | 'B' | 'C'
+type JoinStatus = 'matched' | 'matched_weak' | 'ambiguous' | 'unmatched'
+type JoinTier = 'A' | 'B' | 'C'
 
-export interface TitleScore {
+interface TitleScore {
   jac: number
   cont: number
   covMe: number
@@ -128,15 +128,15 @@ export const RULE_VERSION = 2
 
 /** v2: Ende outweighs Beginn — it is the sharper signal (336/337 on GP XXVII). */
 export const JOIN_WEIGHTS = { date: 0.2, end: 0.3, ministry: 0.15, title: 0.35 }
-export const CLASS_PENALTY: Record<RisClass, number> = { gesetz: 0, other: 0.05, verordnung: 0.15 }
-export const ACCEPT_THRESHOLD = 0.75
-export const AMBIGUITY_MARGIN = 0.1
+const CLASS_PENALTY: Record<RisClass, number> = { gesetz: 0, other: 0.05, verordnung: 0.15 }
+const ACCEPT_THRESHOLD = 0.75
+const AMBIGUITY_MARGIN = 0.1
 /**
  * Candidate window for RIS Beginn relative to Parliament arrival, days.
  * v2: a record whose Ende equals the Frist is a candidate regardless of the
  * Beginn offset (12/ME XXVIII: RIS published 18 days before Parliament).
  */
-export const BEGINN_WINDOW: readonly [number, number] = [-14, 7]
+const BEGINN_WINDOW: readonly [number, number] = [-14, 7]
 
 /** RIS spells some codes without umlauts. */
 const SPELLING: Record<string, string> = { BMKOES: 'BMKÖS' }
@@ -146,7 +146,7 @@ const SPELLING: Record<string, string> = { BMKOES: 'BMKÖS' }
  * drafts filed under BKA). Derived from co-occurrence on the corpus — must
  * be re-derived per GP, see docs/ris-join.md §4.
  */
-export const MINISTRY_LINEAGE: readonly (readonly string[])[] = [
+const MINISTRY_LINEAGE: readonly (readonly string[])[] = [
   ['BMA', 'BMAW', 'BMDW', 'BMAFJ', 'BMASGK'],
   ['BMSGPK', 'BMASGK', 'BMAFJ'],
   ['BMLRT', 'BML', 'BMNT', 'BMK'],
@@ -301,7 +301,7 @@ export function titleComponents(meCore: string, risText: string): TitleComponent
 }
 
 /** Abbreviations a RIS record announces: `Abkuerzung` plus "(ABK)" / "– ABK" in the titles. */
-export function risAbbreviations(r: RisBegutRecord): Set<string> {
+function risAbbreviations(r: RisBegutRecord): Set<string> {
   const out = new Set<string>()
   if (r.abk) out.add(r.abk.toLowerCase().trim().replace(/\s+/g, ' '))
   for (const f of [r.kurztitel, r.titel]) {
@@ -431,7 +431,7 @@ export function endScore(offset: number | null): number {
   return 0
 }
 
-export function titleScore(meCore: string, meAbks: ReadonlySet<string>, r: RisBegutRecord, description: string | null): TitleScore {
+function titleScore(meCore: string, meAbks: ReadonlySet<string>, r: RisBegutRecord, description: string | null): TitleScore {
   let best: TitleScore | null = null
   const normDesc = description ? normalizeTitleText(description) : null
   // v2: RIS `Abkuerzung` is a third title field — ministries put the whole

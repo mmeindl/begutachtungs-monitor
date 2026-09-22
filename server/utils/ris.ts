@@ -36,7 +36,7 @@ const RIS_CORPUS_TTL_S = 60 * 60 * 20
 const RIS_MAP_TTL_S = 60 * 30
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 
-export interface RisBegutCorpus {
+interface RisBegutCorpus {
   fetchedAt: string
   hits: number
   records: RisBegutFlat[]

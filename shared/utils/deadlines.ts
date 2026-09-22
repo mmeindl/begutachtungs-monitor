@@ -5,7 +5,7 @@
 import { daysUntil } from './format'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
-export const DEADLINE_CRITICAL_DAYS = 3
+const DEADLINE_CRITICAL_DAYS = 3
 
 /** Deadline ends in ≤ N days → serious (orange badge tone, dashboard count). */
 export const DEADLINE_SERIOUS_DAYS = 7
@@ -57,7 +57,7 @@ export function deadlineTone(
   return 'neutral'
 }
 
-export interface FristDivergence {
+interface FristDivergence {
   /** RIS's end of the Frist (ISO date) */
   date: string
   /** RIS entry of the draft, so the claim is checkable; null when unmatched */

@@ -44,9 +44,9 @@ import { lawNameScore, type DraftArticle } from './lawTitles'
  * article. Hence: the full word, no trailing period, and a title that does not
  * open with a genitive article.
  */
-export const LAW_BOUNDARY_RE = /^Artikel\s+(X?\d+[a-z]?|[IVXL]+)(?:\s+(?!der\b|des\b|Abs\.)(.+))?$/
+const LAW_BOUNDARY_RE = /^Artikel\s+(X?\d+[a-z]?|[IVXL]+)(?:\s+(?!der\b|des\b|Abs\.)(.+))?$/
 /** "Änderung des Aktiengesetzes" — the law's name, printed under its Artikel line. */
-export const LAW_TITLE_RE = /^(?:Änderung(?:en)?\s+(?:des|der)\b|Bundesgesetz,|Aufhebung\s+(?:des|der)\b)/i
+const LAW_TITLE_RE = /^(?:Änderung(?:en)?\s+(?:des|der)\b|Bundesgesetz,|Aufhebung\s+(?:des|der)\b)/i
 
 /** A heading in the annex that might open a new law. */
 export interface BoundaryCandidate {

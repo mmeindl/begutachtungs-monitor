@@ -31,7 +31,7 @@
  */
 import type { SubmitterKind } from '../../shared/types'
 
-export interface SubmitterClassification {
+interface SubmitterClassification {
   kind: SubmitterKind
   name: string | null
 }
@@ -341,7 +341,7 @@ function leadsWithPersonName(s: string): boolean {
  * 106,626 rows (GP XXVIII/ME, GP XXVII/ME, GP XXVIII RV; present on 100 %
  * of them), it agrees with the name heuristic on 96.8–99.7 %.
  */
-export type UpstreamSubmitterFlag = 'I' | 'P' | null
+type UpstreamSubmitterFlag = 'I' | 'P' | null
 
 /** Anything but the two documented values is "no answer", never a guess. */
 export function readUpstreamFlag(value: unknown): UpstreamSubmitterFlag {

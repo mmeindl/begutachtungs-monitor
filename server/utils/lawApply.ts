@@ -978,7 +978,7 @@ function parentOf(law: StandingLaw, node: LawNode): LawNode | null {
  * space RIS itself prints in the standing text ("gegenüberzustellen ,",
  * ORF-G § 10a) — so only the seams are edited. Digits stay: "27,5 vH".
  */
-export function joinPhrase(left: string, text: string, right: string): string {
+function joinPhrase(left: string, text: string, right: string): string {
   const l = left.replace(/\s+$/, '')
   const r = right.replace(/^\s+/, '')
   const t = text.trim().replace(/^([,;])(?=[^\s\d])/, '$1 ')
@@ -989,7 +989,7 @@ export function joinPhrase(left: string, text: string, right: string): string {
 }
 
 /** Deep copy, so a refused run leaves the standing law untouched. */
-export function cloneLaw(law: StandingLaw): StandingLaw {
+function cloneLaw(law: StandingLaw): StandingLaw {
   const clone = (n: LawNode): LawNode => ({ ...n, children: n.children.map(clone) })
   return { paragraphs: law.paragraphs.map(clone) }
 }

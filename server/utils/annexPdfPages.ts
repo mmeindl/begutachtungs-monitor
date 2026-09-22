@@ -23,7 +23,7 @@ import type { AnnexItem, AnnexPage } from './annexPdf'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /** pdf.js's affine matrix, [a, b, c, d, e, f] — x' = ax + cy + e, y' = bx + dy + f. */
-export type Matrix = readonly [number, number, number, number, number, number]
+type Matrix = readonly [number, number, number, number, number, number]
 
 function compose(m: Matrix, n: Matrix): Matrix {
   return [
@@ -44,7 +44,7 @@ export interface RawRun {
 }
 
 /** The page box pdf.js reports, with the transform that puts /Rotate into it. */
-export interface RawViewport {
+interface RawViewport {
   transform: readonly number[]
   width: number
   height: number

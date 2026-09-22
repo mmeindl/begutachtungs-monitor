@@ -179,7 +179,7 @@ export function parseGermanDate(value: string | null | undefined): string | null
 }
 
 /** ISO timestamp/date ("2026-08-03T00:00:00") → "2026-08-03", else null. */
-export function parseIsoDate(value: unknown): string | null {
+function parseIsoDate(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const m = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim())
   return m?.[1] ?? null
@@ -368,7 +368,7 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
   }
 }
 
-export type OrganisationEntry = StatementsSummary['organisationList'][number]
+type OrganisationEntry = StatementsSummary['organisationList'][number]
 
 const UMLAUT_FOLD: Record<string, string> = { ä: 'a', ö: 'o', ü: 'u', ß: 'ss' }
 
@@ -577,7 +577,7 @@ export function parseStages(stages: RawStage[] | null | undefined): TraceStep[] 
   })
 }
 
-export interface RvLink {
+interface RvLink {
   gp: string
   inr: number
   label: string

@@ -95,7 +95,7 @@ const FALLBACK_GP = 'XXVIII'
 /** Oldest GP with Ministerialentwürfe in the Parliament API (XIV, 1979). */
 const OLDEST_GP_WITH_ME = 14
 
-export interface FilterListResponse {
+interface FilterListResponse {
   pages?: number
   count?: number
   lastSync?: string | null
@@ -103,7 +103,7 @@ export interface FilterListResponse {
   rows?: unknown[][]
 }
 
-export interface GegenstandResponse {
+interface GegenstandResponse {
   content?: {
     stages?: RawStage[] | null
     documents?: RawDocumentGroup[] | null
@@ -194,7 +194,7 @@ async function upstreamJson<T>(
  * fetching it. The parameter's presence is what counts upstream, not its
  * value; `showAll=false` still returns everything (verified 2026-09-15).
  */
-export function fetchFilterList(
+function fetchFilterList(
   listId: number,
   body: Record<string, unknown>,
   query: Record<string, string> = {},
@@ -301,7 +301,7 @@ export const getCurrentGp = defineCachedFunction(
   { name: 'current-gp', base: DERIVED_CACHE, getKey: () => 'current', maxAge: 60 * 60 * 24, swr: false },
 )
 
-export interface GpDrafts {
+interface GpDrafts {
   gp: string
   items: DraftSummary[]
 }
@@ -418,7 +418,7 @@ export async function requireDraft(gp: string, inr: number): Promise<DraftSummar
  * glitch for 30 minutes, so: one retry, then throw — errors are never
  * cached, and callers degrade explicitly instead of lying with a zero.
  */
-export const getStatementsForMe = defineCachedFunction(
+const getStatementsForMe = defineCachedFunction(
   async (gp: string, inr: number): Promise<StatementMeta[]> => {
     const query = () =>
       fetchFilterList(142, {
@@ -593,7 +593,7 @@ async function recallStatements(
   return record
 }
 
-export interface StatementsResult {
+interface StatementsResult {
   items: StatementMeta[]
   /** Set only when `items` is a last-good fallback, never for live data. */
   staleAsOf: string | null

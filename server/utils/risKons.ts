@@ -18,7 +18,7 @@
 import { parseKonsParagraph, type LawNode } from './lawStructure'
 import { sameBgbl, lawNameScore, type BgblCitation } from './lawTitles'
 
-export const RIS_KONS_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
+const RIS_KONS_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 const TIMEOUT_MS = 20_000
 /**

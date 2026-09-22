@@ -132,7 +132,7 @@ export function isLawStationId(value: unknown): value is LawStationId {
 }
 
 /** Position in the procedure, for ordering and for rejecting a flipped pair. */
-export function lawStationIndex(id: LawStationId): number {
+function lawStationIndex(id: LawStationId): number {
   return LAW_STATION_ORDER.indexOf(id)
 }
 

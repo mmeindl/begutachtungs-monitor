@@ -42,7 +42,7 @@ const JOIN_TTL_S = 60 * 60 * 6
  * nach 91–180 und 92,3 % nach 181–365. „Bisher keine Kundmachung" vor diesem
  * Punkt wäre also keine Aussage über das Ressort, sondern über die Uhr.
  */
-export const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
+const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -201,7 +201,7 @@ const fetchBgblByNumber = defineCachedFunction(
 )
 
 /** Das Hauptdokument einer Kundmachung, in den Formaten, die der Vergleich braucht. */
-export interface BgblDocument {
+interface BgblDocument {
   id: string
   /** Das legistische XML — dieselbe Form wie bei Begut, also ohne neuen Parser lesbar. */
   xml: string | null
