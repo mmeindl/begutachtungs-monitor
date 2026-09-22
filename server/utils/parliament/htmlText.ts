@@ -30,10 +30,11 @@ const NAMED_ENTITIES: Record<string, string> = {
   mdash: '—',
   sect: '§',
   euro: '€',
-  // Grad, Promille und das Ordnungszeichen: Die Gesetzestexte des Parlaments
-  // führen sie als Entität, das RIS als Zeichen. Ohne diese drei Zeilen las
-  // der Vergleich „&deg;C" gegen „°C" und meldete bei 4/ME drei Einheiten
-  // des Nachhaltigkeitsberichtsgesetzes als inhaltlich geändert (§12.33).
+  // Degree, per mille and the ordinal sign: Parliament's Gesetzestexte
+  // carry them as an entity, RIS as the character. Without these three
+  // lines the comparison read „&deg;C" against „°C" and reported
+  // three units of the Nachhaltigkeitsberichtsgesetz on 4/ME as changed
+  // in substance (docs/architecture.md §12.33).
   deg: '°',
   permil: '‰',
   ordm: 'º',

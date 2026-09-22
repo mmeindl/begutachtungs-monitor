@@ -2,7 +2,7 @@
  * The column layout the mappers rely on, made explicit.
  *
  * The filter API answers with positional rows, and the mappers read fixed
- * indices (`mappers.ts`: list 81 `[13]` is the statement count, list 142 `[6]`
+ * indices (`list81.ts`: `[13]` is the statement count; `list142.ts`: `[6]`
  * the submitter). Nothing in a row says which column is which; the header
  * does. Until now the only check was that every row belongs to the requested
  * GP — a reorder or an inserted column upstream would have passed it and
