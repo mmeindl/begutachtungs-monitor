@@ -59,7 +59,7 @@ export default withNuxt(
       // is the readable form (10 places).
       '@stylistic/quotes': ['error', 'single', { allowTemplateLiterals: 'always', avoidEscape: true }],
       // The one-line guard clause `if (!bgbl) { noClause++; continue }` is
-      // house style in the engines and the scripts — 39 places, up to six
+      // house style in the engines and the scripts — 34 places, up to six
       // statements in one harness line. No `max` fits without rewriting them.
       '@stylistic/max-statements-per-line': 'off',
       // Short tags keep their attributes on one line; only a tag that already
