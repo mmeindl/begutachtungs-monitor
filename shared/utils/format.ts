@@ -52,6 +52,18 @@ export function countLabelDe(n: number, singular: string, plural: string): strin
 }
 
 /**
+ * "1 Zustimmung" / "12 Zustimmungen".
+ *
+ * „Zustimmung" is Parliament's own term (upstream field: approvals) — the
+ * vocabulary has to survive the click-through to parlament.gv.at. Here
+ * because three components printed the same line: the panel, the
+ * Regierungsvorlage's list and the organisation links.
+ */
+export function endorsementLabel(n: number): string {
+  return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
+}
+
+/**
  * "10 von 42 angezeigt" — where the reader stands in a paginated list.
  *
  * The remainder is deliberately NOT spelled out beside it. "10 von 42"

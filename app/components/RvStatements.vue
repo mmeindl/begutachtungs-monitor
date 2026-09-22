@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RvStatementsResponse, StatementsSummary } from '#shared/types'
+import { endorsementLabel } from '#shared/utils/format'
 import { SECOND_ROUND_CLAUSE } from '~/utils/spine'
 
 /**
@@ -99,10 +100,6 @@ function links(org: OrgEntry) {
     citation: s.citation,
     href: s.parliamentUrl,
   }))
-}
-
-function endorsementLabel(n: number): string {
-  return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
 }
 
 /* The house link style (same string as the detail page's `linkClasses`). */

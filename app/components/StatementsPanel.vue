@@ -2,8 +2,15 @@
 import type {
   StatementMeta,
   StatementsResponse,
-  StatementsSummary,
 } from '#shared/types'
+import { endorsementLabel } from '#shared/utils/format'
+import {
+  type StatementSort,
+  compareStatementRows,
+  orgRowsOf,
+  submitterLabel,
+  submitterName,
+} from '~/utils/statementRows'
 
 const props = defineProps<{
   gp: string
@@ -65,10 +72,9 @@ const filter = ref<StatementFilter>('organisations')
  * segments had before this control existed.
  *
  * ISO dates sort lexicographically, and a missing date ends up last, where it
- * belongs: it carries no position in a chronology.
+ * belongs: it carries no position in a chronology. The two keys themselves
+ * are in `app/utils/statementRows.ts`, with the rows they order.
  */
-type StatementSort = 'endorsements' | 'date'
-
 const sortOptions: { value: StatementSort; label: string }[] = [
   { value: 'endorsements', label: 'Meiste Zustimmungen' },
   { value: 'date', label: 'Neueste' },
@@ -119,22 +125,11 @@ watch(sort, () => {
   visibleCount.value = PAGE_SIZE
 })
 
-type SortableRow = { endorsements: number; date: string | null }
-
-/* Both keys are always applied; the control only decides which one leads. */
-function compareRows(a: SortableRow, b: SortableRow): number {
-  const byEndorsements = b.endorsements - a.endorsements
-  const byDate = (b.date ?? '').localeCompare(a.date ?? '')
-  return sort.value === 'endorsements'
-    ? byEndorsements || byDate
-    : byDate || byEndorsements
-}
-
 /* The item list is one row per Stellungnahme — no grouping. An organisation
  * that filed twice therefore appears twice under "Alle", which is what a raw
  * list should show; the grouped view is the Organisationen segment. */
 const items = computed<StatementMeta[]>(() => {
-  const all = [...(data.value?.items ?? [])].sort(compareRows)
+  const all = [...(data.value?.items ?? [])].sort((a, b) => compareStatementRows(a, b, sort.value))
   if (filter.value === 'persons') {
     return all.filter((s) => s.submitterKind === 'person')
   }
@@ -155,25 +150,6 @@ const listStaleAsOf = computed(() =>
   !props.summary.staleAsOf ? (data.value?.staleAsOf ?? null) : null,
 )
 
-/* GDPR defense in depth: persons and non-public submissions always render a
- * fixed label — never a name — regardless of what the API delivered. */
-function submitterLabel(s: StatementMeta): string {
-  if (s.submitterKind === 'organisation') return s.submitterName ?? 'Organisation'
-  if (s.submitterKind === 'nonpublic') return 'Nicht-öffentliche Stellungnahme'
-  return 'Privatperson'
-}
-
-/* Same guard for the link's accessible name: only an organisation is named. */
-function submitterName(s: StatementMeta): string | null {
-  return s.submitterKind === 'organisation' ? s.submitterName : null
-}
-
-/* "Zustimmung" is the Parliament's own term (upstream field: approvals) —
- * the vocabulary must survive the click-through to parlament.gv.at. */
-function endorsementLabel(n: number): string {
-  return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
-}
-
 function statementCountLabel(n: number): string {
   return countLabelDe(n, 'Stellungnahme', 'Stellungnahmen')
 }
@@ -185,79 +161,9 @@ const miniStats = computed(() => [
   { label: 'Nicht öffentlich', value: props.summary.nonPublic },
 ])
 
-type OrgEntry = StatementsSummary['organisationList'][number]
-
-/* Same comparator as the item lists, so the whole panel orders alike. A
- * grouped entry sorts by its LATEST submission, and prints that same date
- * when its statements span more than one day — so a row always sits where
- * its printed date says it does. The name breaks remaining ties, which is
- * most of them: without endorsements and on a shared date, a name you can
- * scan for is the only useful order.
- * (Spread first: this must never sort the prop.) */
-function orgSortDate(org: OrgEntry): string | null {
-  return org.statements.reduce<string | null>(
-    (latest, s) => ((s.date ?? '') > (latest ?? '') ? s.date : latest),
-    null,
-  )
-}
-
-const sortedOrgs = computed(() =>
-  [...props.summary.organisationList].sort(
-    (a, b) =>
-      compareRows(
-        { endorsements: a.endorsements, date: orgSortDate(a) },
-        { endorsements: b.endorsements, date: orgSortDate(b) },
-      ) || a.name.localeCompare(b.name, 'de'),
-  ),
-)
-
-/**
- * One organisation, several Stellungnahmen: the entry is grouped
- * server-side, so a row can stand for more than one submission — and then it
- * always opens into the sub-list.
- *
- * Because the number that matters is counted PER STELLUNGNAHME: a Zustimmung
- * means someone read that text and signed it. A row that folds three
- * documents into one line can only show their sum, which is an index number
- * — it explains where the row sits in "Meiste Zustimmungen" and describes
- * nothing anyone endorsed. So the parts get their own rows, and the sum
- * stays on the group row wearing the word "gesamt".
- */
-
-/* The day the organisation filed when that is one day, the latest otherwise
- * (the sub-list carries the exact ones then). "–" stays what it has to mean:
- * upstream ships no date for this submission. */
-function orgRowDate(org: OrgEntry): string | null {
-  const dates = org.statements.map((s) => s.date)
-  return new Set(dates).size === 1 ? (dates[0] ?? null) : orgSortDate(org)
-}
-
-const orgRows = computed(() =>
-  sortedOrgs.value.map((org) => {
-    const expanded = org.statements.length > 1
-    return {
-      /* The sub-rows obey the control the reader set, like every other row
-       * in the panel: under "Neueste" a group whose parent prints its LATEST
-       * date must not open with its oldest submission, and under "Meiste
-       * Zustimmungen" it would be the one list ignoring the key everything
-       * else is ranked by. The comparator applies both keys, so the sequence
-       * a multi-day group is there to show survives either way — reversed
-       * under "Neueste", which is the direction the reader asked for.
-       * (Copy, never a sort in place: `summary` is a prop.) */
-      org: { ...org, statements: [...org.statements].sort(compareRows) },
-      expanded,
-      row: {
-        date: orgRowDate(org),
-        label: org.name,
-        links: expanded
-          ? null
-          : org.statements.map((s) => ({ citation: s.citation, href: s.parliamentUrl })),
-        detail: expanded ? statementCountLabel(org.statements.length) : null,
-        submitter: org.name,
-      },
-    }
-  }),
-)
+/* Sortierung, Gruppierung und die Zeilen selbst: `app/utils/statementRows.ts`,
+ * wo sie geprüft werden. */
+const orgRows = computed(() => orgRowsOf(props.summary, sort.value))
 
 /* The name and every citation the row carries, so a reader who has the
  * citation and not the name ("21/SN-8/ME") lands on the same row. */
@@ -361,8 +267,9 @@ const setLine = computed(() => {
         'Organisationen',
       )}`
     }
+    /* `orgRows` ist die Abbildung derselben Liste, also dieselbe Länge. */
     const orgs = countLabelDe(
-      sortedOrgs.value.length,
+      orgRows.value.length,
       'Organisation',
       'Organisationen',
     )

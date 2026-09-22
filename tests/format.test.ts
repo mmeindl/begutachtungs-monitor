@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bgblShort, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe } from '../shared/utils/format'
+import { bgblShort, endorsementLabel, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe } from '../shared/utils/format'
 
 describe('shownLabelDe', () => {
   it('states position only — the remainder is not spelled out', () => {
@@ -55,5 +55,15 @@ describe('bgblShort', () => {
   it('shortens the long spelling and leaves the short one alone', () => {
     expect(bgblShort('Bundesgesetzblatt I Nr. 69/2026')).toBe('BGBl. I Nr. 69/2026')
     expect(bgblShort('BGBl. II Nr. 50/2026')).toBe('BGBl. II Nr. 50/2026')
+  })
+})
+
+describe('endorsementLabel', () => {
+  it('keeps the word Parliament itself uses, singular exactly at one', () => {
+    // Three components printed this line; the vocabulary has to survive the
+    // click-through to parlament.gv.at.
+    expect(endorsementLabel(1)).toBe('1 Zustimmung')
+    expect(endorsementLabel(0)).toBe('0 Zustimmungen')
+    expect(endorsementLabel(12)).toBe('12 Zustimmungen')
   })
 })

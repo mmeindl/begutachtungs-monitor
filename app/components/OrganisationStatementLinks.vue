@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { StatementsSummary } from '#shared/types'
+import { endorsementLabel } from '#shared/utils/format'
 
 /**
  * The statements of ONE organisation that filed more than once in the same
@@ -26,10 +27,6 @@ import type { StatementsSummary } from '#shared/types'
 defineProps<{
   org: StatementsSummary['organisationList'][number]
 }>()
-
-function endorsementLabel(n: number): string {
-  return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
-}
 </script>
 
 <template>
