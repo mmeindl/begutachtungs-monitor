@@ -1,5 +1,5 @@
 /**
- * GET /entwuerfe/:id/frist.ics — one Begutachtung ohne Gegenstand as
+ * GET /entwuerfe/:id/frist.ics — one Begutachtung without a Gegenstand as
  * a single-event iCalendar file ("Frist in den Kalender" on the detail page).
  *
  * The exact counterpart of `/entwuerfe/:gp/:inr/frist.ics`, and for the same
