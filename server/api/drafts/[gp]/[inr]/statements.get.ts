@@ -5,7 +5,7 @@
  *
  * On a failed list-142 fetch the persisted last-good aggregation is served
  * with `staleAsOf` — the same fallback the detail page's summary uses
- * (parliament.ts, getStatementsWithFallback). Only without any record does
+ * (parliament/statements.ts, getStatementsWithFallback). Only without any record does
  * this route error, and then with the upstream reason.
  */
 import type { StatementsResponse } from '#shared/types'

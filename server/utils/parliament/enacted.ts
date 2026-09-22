@@ -24,7 +24,7 @@ import type { ClosedOutcome, DraftSummary } from '#shared/types'
 import { HOME_LIST_LENGTH } from '#shared/utils/draftOrder'
 import { STATUS_FINISHED } from '#shared/utils/draftStations'
 import { bgblOrderKey, extractBgblLink } from './detailJson'
-import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp, reconcileActive } from '../parliament'
+import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp, reconcileActive } from './drafts'
 
 /**
  * How many finished Vorlagen are opened before the order is applied.

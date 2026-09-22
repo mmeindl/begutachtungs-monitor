@@ -118,7 +118,7 @@ async function measure(gp: string): Promise<Row[]> {
           writeFileSync(join('.cache', 'stations', gp, `ME-${inr}.json`), JSON.stringify(detail))
         }
         const content = (detail as any)?.content ?? {}
-        // Exactly what the detail endpoint does (server/utils/parliament.ts).
+        // Exactly what the detail endpoint does (server/utils/parliament/draftDetail.ts).
         const documents = mapDocuments(content.documents as RawDocumentGroup[] | null)
         const meUrls = new Set(documents.flatMap((d) => d.formats.map((f) => f.url)))
         const versions = mapTextEvolution(content.statements?.documents, meUrls)

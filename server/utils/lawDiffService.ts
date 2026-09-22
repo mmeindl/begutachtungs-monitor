@@ -26,7 +26,7 @@ import { LAW_STATION_LABEL, LAW_STATION_ORDER, meTextTitleRank } from '#shared/u
 import { diffLawPackage, summarizeDiff } from './lawDiff'
 import { parseLawUnits, parseLawUnitsFromRis } from './lawText'
 import { extractBgblLink, findLastRvLink, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup } from './parliament/detailJson'
-import { getGegenstand } from './parliament'
+import { getGegenstand } from './parliament/drafts'
 import { getRisMapForGp } from './ris'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 import {

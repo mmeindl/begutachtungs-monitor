@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest'
  * nothing our code made. There is no residual and no exception left: the one
  * response that may not be persisted at all — list 142, whose rows name
  * private persons — has no cached fetch under it, only a derived cache above
- * (`parliament.ts`).
+ * (`parliament/statements.ts`).
  */
 const FETCHED: Record<string, string> = {
   'law-html': 'a published Gesetzestext document, byte for byte',

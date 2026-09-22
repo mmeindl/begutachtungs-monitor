@@ -2,7 +2,7 @@
  * Upstream client for the RIS OGD API, Applikation=Begut
  * (docs/api-exploration.md §2, docs/ris-join.md §4).
  *
- * Same cache rules as parliament.ts: caching only at the leaves, swr:false,
+ * Same cache rules as parliament/drafts.ts: caching only at the leaves, swr:false,
  * errors thrown rather than cached. RIS reports errors inside an HTTP-200
  * envelope (`OgdSearchResult.Error`), so success is checked on the body.
  * The full Begut corpus is ~4,600 records = 46 pages of 100; it changes a
@@ -10,7 +10,7 @@
  */
 import type { RisMapResponse, RisMapRow } from '#shared/types'
 import { GP_RE } from '#shared/utils/gp'
-import { getDraftsForGp } from './parliament'
+import { getDraftsForGp } from './parliament/drafts'
 import {
   dedupeMeRows,
   joinRisToMe,

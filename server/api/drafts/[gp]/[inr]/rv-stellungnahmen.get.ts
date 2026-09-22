@@ -4,7 +4,7 @@
  * item type SN) — count, GDPR-filtered breakdown and the organisations,
  * exactly as the Begutachtung's own panel has them. 404 while the draft has
  * no Regierungsvorlage; above RV_STATEMENTS_CAP the count without the
- * breakdown (`parliament.ts`, getStatementsForRv).
+ * breakdown (`parliament/statements.ts`, getStatementsForRv).
  *
  * The Vorlage is found the way the outcome finds it: from the draft's own
  * stage list, so a Vorlage in a later Gesetzgebungsperiode resolves too.

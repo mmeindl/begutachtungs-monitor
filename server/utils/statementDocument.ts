@@ -23,7 +23,7 @@ import {
   statementPageUrl,
   type StatementItemType,
 } from './parliament/list142'
-import { fetchGegenstand } from './parliament'
+import { fetchGegenstand } from './upstream/parliament'
 
 export const getStatementDocument = defineCachedFunction(
   async (gp: string, ityp: StatementItemType, inr: number): Promise<StatementDocument> => {
