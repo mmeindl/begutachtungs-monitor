@@ -1,45 +1,34 @@
 /**
- * Volltextsuche über die laufenden Begutachtungen
+ * Full-text search over the running Begutachtungen
  * (docs/architecture.md §12.31).
  *
- * Nuxt-aware glue um das reine Modul `begutSearch.ts`. Drei Schritte, und
- * keiner davon baut einen Index:
+ * Nuxt-aware glue around the pure module `begutSearch.ts`. Three steps, and
+ * none of them builds an index: RIS searches (`Suchworte` and
+ * `InBegutachtungAm` in one call, ~165 ms; measured 18.09.2026, „Wolf"
+ * returns 13 records and not one of them carries the word in its metadata),
+ * the corpus and its join resolve the document number onto a page of this
+ * monitor (`ris/begutCorpus.ts`), and `begutSearch.ts` finds the place of the
+ * hit, which RIS does not return.
  *
- *  1. **Das RIS sucht.** `Suchworte` durchsucht den Volltext aller Dokumente
- *     eines Begut-Satzes — gemessen am 18.09.2026: „Wolf" liefert 13 Sätze,
- *     bei keinem einzigen steht das Wort in den Metadaten. Zusammen mit
- *     `InBegutachtungAm` ist das genau die Frage dieser Seite, in einem
- *     Aufruf, in ~165 ms.
- *  2. **Wir lösen den Treffer auf.** Die Antwort des RIS ist eine
- *     Dokumentnummer. Welche Seite dieses Monitors sie meint, weiß der
- *     Korpus samt Join (`ris/begutCorpus.ts`): gehört der Satz zu einem
- *     Ministerialentwurf, führt der Treffer auf dessen Seite mit Frist,
- *     Stellungnahmen und Stationen — sonst auf die Seite des RIS-Satzes.
- *  3. **Wir zeigen die Fundstelle** (`begutSearch.ts`), weil das RIS keine
- *     mitliefert und eine Trefferliste ohne sie das Falsche behauptet.
+ * RIS FINDS MORE THAN THE WORD, which refuted the first draft of this
+ * section: „Klimaschutz" returns the Industriestrompreisgesetz, whose
+ * documents never carry it — the Erläuterungen write „Leitlinien für
+ * staatliche Klima-, Umweltschutz- und Energiebeihilfen", and RIS matches on
+ * the parts. So a hit without a named place says what was checked instead of
+ * claiming „steht in einer Anlage oder einem PDF", and it ranks below a hit
+ * that carries its evidence.
  *
- * WAS DABEI GEMESSEN WURDE UND EINE ANNAHME WIDERLEGT HAT (18.09.2026): Das
- * RIS findet MEHR als das Wort. „Klimaschutz" liefert das
- * Industriestrompreisgesetz, in dessen Dokumenten das Wort nirgends steht —
- * die Erläuterungen schreiben „Leitlinien für staatliche Klima-,
- * Umweltschutz- und Energiebeihilfen", und das RIS trifft über die
- * Wortbestandteile. Die erste Fassung dieses Abschnitts hätte deshalb „steht
- * in einer Anlage oder einem PDF" gesagt, was schlicht falsch gewesen wäre.
- * Ein Treffer ohne benannte Stelle sagt jetzt, was geprüft wurde — und er
- * steht unten, weil ein belegter Treffer der stärkere ist.
+ * ONLY THE RUNNING ONES: the question is whether one of the drafts open NOW
+ * is a vehicle for the reader's concern. The whole corpus is a different
+ * question at a different resolution — the hits then spread over a dozen
+ * Gesetzgebungsperioden and the join above knows one at a time. Its own item
+ * in the TODO.
  *
- * WARUM NUR DIE LAUFENDEN. Es ist Steinhammers Frage, nicht eine kleinere
- * Fassung davon: Ist einer der Entwürfe, die JETZT offen sind, ein Vehikel
- * für ein Anliegen meiner Organisation? Über den ganzen Korpus zu suchen ist
- * eine andere Frage („kam das schon einmal vor?") mit anderer Auflösung —
- * die Treffer verteilen sich dann über ein Dutzend Gesetzgebungsperioden,
- * und der Join oben kennt jeweils nur eine. Steht als eigener Punkt im TODO.
- *
- * NICHT GECACHT, mit Absicht. Der Schlüssel wäre die Eingabe des Lesers,
- * also unbegrenzt viele Schlüssel in einem Speicher, den die Produktion im
- * RAM hält (`cache/base.ts`). Das RIS antwortet in Sekundenbruchteilen, und
- * die Dokumente darunter liegen ohnehin im dauerhaften Layer — gecacht wird
- * das Teure, nicht das Beliebige.
+ * NOT CACHED, deliberately: the key would be the reader's input, hence
+ * unboundedly many keys in a store production holds in RAM
+ * (`cache/base.ts`). RIS answers in fractions of a second and the documents
+ * underneath sit in the persistent layer anyway — what is cached is the
+ * expensive, not the arbitrary.
  */
 import type {
   BegutSearchHit,
@@ -77,55 +66,55 @@ import {
 
 const SEARCH_TIMEOUT_MS = 20_000
 /**
- * Ohne Wiederholungsversuch — wie vor dem gemeinsamen Client, und aus dem
- * Grund, der unter `searchRisIds` steht: An dieser Anfrage wartet jemand.
+ * No retry — as before the shared client, and for the reason stated at
+ * `searchRisIds`: someone is waiting on this request.
  */
 const SEARCH_POLICY: UpstreamPolicy = { timeoutMs: SEARCH_TIMEOUT_MS, retries: 0 }
 /**
- * So viele Sätze bekommen eine Fundstelle — die ersten dieser Zahl in der
- * Reihenfolge, in der das RIS sie nennt. Über die laufenden Begutachtungen
- * ist das nie bindend — es waren 7 offene Sätze am 18.09.2026, 22 am
- * 15.06. —, aber ein Stichwort wie „Verordnung" darf auch dann nicht 25
- * Dokumentsätze nachladen.
+ * This many records get a place of the hit — the first of that many in the
+ * order RIS names them. Over the running Begutachtungen it never binds (7
+ * open records on 18.09.2026, 22 on 15.06.), but even so a keyword like
+ * „Verordnung" must not pull 25 document records.
  */
 const LOCATE_CAP = 12
-/** Gleichzeitige Dokumentabrufe. Höflich gegenüber dem RIS, schnell genug. */
+/** Concurrent document fetches. Polite towards RIS, fast enough. */
 const LOCATE_CONCURRENCY = 4
 /**
- * So viele PDFs darf EINE Suche nachladen.
+ * How many PDFs ONE search may pull.
  *
- * Das PDF ist der zweite Anlauf, nicht der erste (siehe `locate`): Es wird
- * nur geholt, wo das XML nichts hergibt. Das ist selten genug, um es zu
- * tun, und teuer genug, um es zu deckeln — pdf.js hält ein Dokument samt
- * dekodierten Strömen im Speicher, und an einer Suche wartet jemand.
+ * The PDF is the second attempt, not the first (see `locate`): it is fetched
+ * only where the XML gives nothing. Rare enough to do it, expensive enough
+ * to cap it — pdf.js holds a document with its decoded streams in memory,
+ * and someone is waiting on a search.
  *
- * 16 WAREN ZU WENIG, gemessen am 22.09.2026: Seit die Suche ALLE Dokumente
- * eines Satzes liest (`documentsOf`), fiel die Benennungsquote über zwölf
- * Stichwörter auf 91,4 % — nicht weil etwas fehlte, sondern weil das Budget
- * mitten in der Trefferliste ausging. Ohne Deckel sind es 100 % bei
- * unveränderten 0,2–2,1 s, also ist die Zahl hier kein Zeitbudget, sondern
- * eine Reißleine gegen den pathologischen Satz: 48 deckt zwölf Treffer mit
- * je vier PDFs, und die zwölf gemessenen Suchen brauchten nie mehr als
- * rund zwanzig.
+ * 16 WAS TOO FEW, measured 22.09.2026: since the search reads ALL documents
+ * of a record (`documentsOf`), the naming rate over twelve keywords fell to
+ * 91,4 % — not because anything was missing, but because the budget ran out
+ * in the middle of the hit list. Uncapped it is 100 % at unchanged 0,2–2,1 s,
+ * so this number is a rip cord against the pathological record, not a time
+ * budget: 48 covers twelve hits with four PDFs each, and the twelve measured
+ * searches never needed more than about twenty.
  */
 const PDF_BUDGET = 48
-/** Wie bei den Beilagen: ein Dokument, das größer ist, lesen wir nicht. */
+/** As with the Beilagen: a document larger than this we do not read. */
 const PDF_MAX_BYTES = 16 * 1024 * 1024
 
 /**
- * Die Dokumente eines Satzes in der Reihenfolge, in der sie als Fundstelle
- * taugen — und das ist eine Rangfolge der Aussage, keine der Bequemlichkeit.
+ * The documents of a record in the order in which they can serve as the
+ * place of a hit — a ranking of what a finding means, not one of
+ * convenience.
  *
- * Steht das Wort im Entwurfstext, ist das die Antwort: dort steht, was
- * gelten soll. Steht es nur in den Erläuterungen, ist die Antwort eine
- * andere und gehört auch anders gelesen — das Ressort erwähnt das Thema,
- * der Gesetzestext sagt es nicht. Die Suche hört deshalb beim ersten Treffer
- * dieser Liste auf: sie nennt die stärkste Fundstelle, nicht alle.
+ * If the word stands in the Entwurfstext, that is the answer: what is meant
+ * to become law stands there. If it stands only in the Erläuterungen, the
+ * answer is a different one and has to be read differently — the ressort
+ * mentions the subject, the law text does not say it. The search therefore
+ * stops at the first hit in this list: it names the strongest place, not all
+ * of them.
  */
-/** Die Dokumentfelder eines Satzes — genau die, die `RisConsultationDetail` führt. */
+/** A record's document fields — exactly those `RisConsultationDetail` carries. */
 type DocumentKey = 'mainDocument' | 'explanations' | 'textComparison' | 'coverLetter'
 
-/** Ein Dokument, wie diese Suche es sieht: ein Etikett und ein paar URLs. */
+/** A document as this search sees it: a label and a few URLs. */
 interface SearchDocument {
   label: string
   formats: RisDocumentFormats | null
@@ -139,26 +128,26 @@ const DOCUMENT_ORDER: readonly { key: DocumentKey; label: string }[] = [
 ]
 
 /**
- * Alle Dokumente eines Satzes, in der Rangfolge der Aussage.
+ * All documents of a record, in that ranking.
  *
- * DIE VIER BENANNTEN ZUERST, weil ihr Etikett etwas bedeutet: „im
- * Entwurfstext" heißt, dass dort steht, was gelten soll; „in den
- * Erläuterungen" heißt, dass das Ressort das Thema erwähnt. Danach der
- * Rest, den der Satz führt — und zwar seit 22.09.2026 überhaupt erst.
+ * THE FOUR NAMED ONES FIRST, because their label means something: „im
+ * Entwurfstext" says that what is meant to become law stands there, „in den
+ * Erläuterungen" says the ressort mentions the subject. Then the rest the
+ * record carries — and only since 22.09.2026 at all.
  *
- * WAS VORHER FEHLTE, ist gemessen: Die 8 laufenden Sätze führen 41
- * Textdokumente, die vier Felder greifen 25. Ein Treffer, der nur im WFA
- * oder im Digicheck steht, endete deshalb bei „wir konnten nichts
- * benennen" — geprüft an allen drei unbenannten „datenschutz"-Treffern,
- * die genau dort standen.
+ * What was missing before is measured: the 8 running records carry 41 text
+ * documents, the four fields reach 25. A hit that stands only in a WFA or a
+ * Digicheck therefore ended as „wir konnten nichts benennen" — checked
+ * against all three unnamed „datenschutz" hits, which stood exactly there
+ * (docs/architecture.md §12.31).
  *
- * DER NAME DES RESSORTS IST DAS ETIKETT („in „WFA UVP-G-Novelle 2026""),
- * weil wir ihn nicht besser deuten können als das Ressort ihn gewählt hat.
- * Das ist zugleich die billige Hälfte einer anderen Lücke: `SAG_TGÜ` und
- * `Entwurf EB Klimagesetz` sind eine Gegenüberstellung und Erläuterungen,
- * die unsere Namensregeln nicht erkennen (`ris/risRecord.ts`). Die Suche liest
- * sie jetzt — als „weiteres Dokument", ohne die Regeln anzufassen, an denen
- * die Anlagen-Maschine und der Erläuterungen-Abschnitt hängen.
+ * THE RESSORT'S OWN NAME IS THE LABEL („in „WFA UVP-G-Novelle 2026""),
+ * because we cannot read it better than the ressort chose it. That is also
+ * the cheap half of another gap: `SAG_TGÜ` and `Entwurf EB Klimagesetz` are
+ * a Gegenüberstellung and Erläuterungen that our naming rules do not
+ * recognise (`ris/risRecord.ts`). The search reads them now — as a
+ * „weiteres Dokument", without touching the rules the annex engine and the
+ * Erläuterungen section hang on.
  */
 function documentsOf(detail: Pick<RisConsultationDetail, DocumentKey | 'otherDocuments'>): SearchDocument[] {
   return [
@@ -168,14 +157,14 @@ function documentsOf(detail: Pick<RisConsultationDetail, DocumentKey | 'otherDoc
 }
 
 /**
- * Die Bytes eines Begut-PDFs, base64 — wie die Beilage nebenan
- * (`annexPdfService.ts`), und aus denselben Gründen: Ein gecachter Wert wird
- * als JSON serialisiert, und ein `Uint8Array` überlebt das als Objekt mit den
- * Schlüsseln „0", „1", „2".
+ * The bytes of a Begut PDF, base64 — like the Beilage next door
+ * (`annex/annexPdfService.ts`), and for the same reasons: a cached value is
+ * serialised as JSON, and a `Uint8Array` survives that as an object with the
+ * keys „0", „1", „2".
  *
- * NUR IM DEV persistent. Ein PDF ist die teure und die große Hälfte; in der
- * Produktion liegt der Cache im RAM, und dort gehört der ausgelesene TEXT hin
- * (die Funktion darunter), nicht das Dokument, aus dem er stammt.
+ * PERSISTENT IN DEV ONLY. A PDF is the expensive and the large half; in
+ * production the cache lives in RAM, and what belongs there is the extracted
+ * TEXT (the function below), not the document it came from.
  */
 const fetchBegutPdf = defineCachedFunction(
   async (url: string): Promise<string> => {
@@ -192,14 +181,14 @@ const fetchBegutPdf = defineCachedFunction(
 )
 
 /**
- * Derselbe PDF als reiner Text — abgeleitet, also in der anderen Schicht
+ * The same PDF as plain text — derived, hence in the other layer
  * (`cache/base.ts`).
  *
- * Getrennt vom Abruf, weil eine Funktion, die holt UND auswertet, in keine
- * der beiden Schichten gehört: Jede Invalidierung, die den Parser trifft,
- * würde das Dokument mitwerfen. Und gecacht wird das Ergebnis, weil `locate`
- * bis zu viermal über dasselbe Dokument geht — pdf.js soll dabei einmal
- * arbeiten, nicht viermal.
+ * Kept apart from the fetch, because a function that fetches AND parses
+ * belongs to neither layer: any invalidation that catches the parser would
+ * throw the document away with it. And the result is cached because `locate`
+ * walks the same document up to four times — pdf.js should work once, not
+ * four times.
  */
 const begutPdfText = defineCachedFunction(
   async (url: string): Promise<string> => {
@@ -217,7 +206,7 @@ const begutPdfText = defineCachedFunction(
   },
 )
 
-/** Ein Begut-Dokument als XML, wie das RIS es sendet — gelesen wird es frisch. */
+/** A Begut document as XML, as RIS sends it — the parse stays fresh. */
 const fetchBegutDocument = defineCachedFunction(
   async (url: string): Promise<string> => {
     return upstreamText(url, SEARCH_POLICY)
@@ -226,13 +215,12 @@ const fetchBegutDocument = defineCachedFunction(
 )
 
 /**
- * Die Dokumentnummern, die das RIS zu diesen Wörtern hat — heute offen.
+ * The document numbers RIS has for these words — open today.
  *
- * Ungecacht (siehe Kopf) und ohne Wiederholungsversuche: Diese Anfrage
- * hängt an einer Seite, auf der jemand wartet. Fällt das RIS aus, ist das
- * ein 502 mit einem Satz, keine leere Trefferliste — **ein Fehler ist keine
- * Antwort** (§12.13), und „zu ‚Klimaschutz' gibt es nichts" wäre hier die
- * teuerste Lüge des Produkts.
+ * Uncached (see the header) and without retries: this request hangs off a
+ * page someone is waiting on. If RIS fails, that is a 502 with a sentence,
+ * not an empty hit list — **a failure is not an answer** (§12.13), and „zu
+ * ‚Klimaschutz' gibt es nichts" would be this product's costliest lie.
  */
 async function searchRisIds(terms: readonly SearchTerm[], day: string): Promise<string[]> {
   const params = new URLSearchParams({
@@ -257,28 +245,27 @@ async function searchRisIds(terms: readonly SearchTerm[], day: string): Promise<
   /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
-/** Wie viele Begutachtungen an diesem Tag offen sind — unsere eigene Zahl, aus dem Korpus. */
+/** How many Begutachtungen are open on that day — our own number, from the corpus. */
 async function runningCount(day: string): Promise<number> {
   const corpus = await getRisBegutCorpus()
   return corpus.records.filter((r) => isOpenOn(r, day)).length
 }
 
-/** Was eine Suche an PDF-Abrufen noch übrig hat. */
+/** What a search has left of its PDF fetches. */
 interface PdfBudget { left: number }
 
 /**
- * Die gelesenen Dokumente EINER Suche, je Format und URL.
+ * The documents ONE search has read, per format and URL.
  *
- * `locate` geht bis zu viermal über denselben Satz und `scan` zweimal über
- * dieselben Dokumente — dasselbe XML wurde so bis zu achtmal je Anfrage
- * geparst. Die Karte entsteht in `searchRunningBegut` und stirbt mit ihr:
- * Ein Parse wird nie über die Anfrage hinaus gecacht (`cache/base.ts`,
- * `konsCache.ts`), weil er sich mit dem Parser ändert und das Dokument
- * nicht.
+ * `locate` walks the same record up to four times and `scan` twice over the
+ * same documents — the same XML was parsed up to eight times per request.
+ * The map is created in `searchRunningBegut` and dies with it: a parse is
+ * never cached beyond the request (`cache/base.ts`, `kons/konsCache.ts`),
+ * because it changes with the parser and the document does not.
  */
 type BlockMemo = Map<string, TextBlock[] | null>
 
-/** Ein Dokument als Blöcke, im gefragten Format. Null, wenn es das nicht gibt. */
+/** A document as blocks, in the format asked for. Null where there is none. */
 async function blocksOf(
   doc: RisDocumentFormats | null,
   format: 'xml' | 'pdf',
@@ -288,9 +275,9 @@ async function blocksOf(
   const url = doc?.[format]
   if (!url) return null
   if (format === 'pdf') {
-    // Der Deckel zählt weiter jeden ANLAUF und nicht jedes Dokument: Er ist
-    // die Reißleine dieser Suche, und die Memoisierung soll die Zeit
-    // verkürzen, nicht das Budget vergrößern.
+    // The cap still counts every ATTEMPT and not every document: it is this
+    // search's rip cord, and memoisation is meant to shorten the time, not
+    // to enlarge the budget.
     if (budget.left <= 0) return null
     budget.left--
   }
@@ -303,8 +290,8 @@ async function blocksOf(
       ? parseRisXml(await fetchBegutDocument(url))
       : blocksFromPlainText(await begutPdfText(url))
   } catch {
-    // Ein Dokument, das sich nicht laden lässt, macht den Treffer nicht
-    // falsch — das RIS hat das Wort gefunden. Weiter zum nächsten.
+    // A document that will not load does not make the hit wrong — RIS found
+    // the word. On to the next one.
     blocks = null
   }
   memo.set(key, blocks)
@@ -312,18 +299,19 @@ async function blocksOf(
 }
 
 /**
- * Ein Durchgang über alle Dokumente eines Satzes, in einem Format.
+ * One pass over all documents of a record, in one format.
  *
- * ZWEIMAL ÜBER ALLE DOKUMENTE, nicht zwei Regeln je Dokument. Der zweite
- * Durchgang ist die Teilstringsuche, und liefe sie innerhalb eines Dokuments
- * gleich nach der strengen, dann gewänne ein Entwurfstext, in dem nur
- * „Klimaschutzgesetz" steht, gegen die Erläuterungen, in denen „Klimaschutz"
- * wirklich steht — die Rangfolge der Dokumente würde die Genauigkeit der
- * Regel schlagen. So gewinnt erst die Regel, dann die Rangfolge.
+ * TWICE OVER ALL DOCUMENTS, not two rules per document: the second pass is
+ * the substring search, and run inside one document right after the strict
+ * one, an Entwurfstext carrying only „Klimaschutzgesetz" would beat the
+ * Erläuterungen where „Klimaschutz" really stands — the ranking of the
+ * documents would beat the precision of the rule
+ * (docs/architecture.md §12.31). This way the rule wins first, the ranking
+ * second.
  *
- * `tokens` null heißt: mit den Ressortnennungen suchen. Das ist der letzte
- * Durchgang und er beantwortet eine andere Frage — nicht „wovon handelt der
- * Entwurf", sondern „warum hat das RIS ihn überhaupt geliefert".
+ * `tokens` null means: search WITH the Ressort mentions. That is the last
+ * pass and it answers a different question — not „wovon handelt der
+ * Entwurf" but „warum hat das RIS ihn überhaupt geliefert".
  */
 async function scan(
   documents: readonly SearchDocument[],
@@ -346,21 +334,21 @@ async function scan(
 }
 
 /**
- * Die Fundstelle in einem Satz — in drei Stufen, und die dritte ist die
- * interessanteste.
+ * The place of the hit in a record — in three stages, and the third is the
+ * interesting one.
  *
- *  1. **XML ohne Ressortnennungen.** Der Normalfall, und billig.
- *  2. **PDF ohne Ressortnennungen.** Weil das XML lügt, wo es kürzt: Das
- *     Begleitschreiben des DGAV-Entwurfs hat im XML 943 Zeichen und im PDF
- *     12.223 — der Verteiler, auf den das RIS getroffen hatte, stand nur
- *     dort. Vorher endete so ein Treffer bei „wir konnten nichts benennen".
- *  3. **Noch einmal, MIT den Ressortnennungen.** Findet dieser Durchgang
- *     etwas, das die ersten beiden nicht fanden, dann steht das Wort
- *     ausschließlich in einem Ministeriumsnamen — im Verteiler, in der
- *     Unterschriftszeile. Das ist kein Sachtreffer, und die Zeile sagt es
- *     (`ministryOnly`), statt ihn zu verschweigen: Das RIS hat den Satz
- *     geliefert, das Urteil gehört dem Leser. Gemessen am 21.09.2026: 3 von
- *     7 Treffern zu „klima" sind von dieser Art.
+ *  1. **XML without the Ressort mentions.** The normal case, and cheap.
+ *  2. **PDF without the Ressort mentions.** Because the XML lies where it
+ *     truncates: the Begleitschreiben of the DGAV draft has 943 characters
+ *     in the XML and 12.223 in the PDF — the Verteiler RIS had matched on
+ *     stood only there. Before, such a hit ended as „wir konnten nichts
+ *     benennen".
+ *  3. **Once more, WITH the Ressort mentions.** If this pass finds something
+ *     the first two did not, the word stands exclusively inside a ministry's
+ *     name — in the Verteiler, in a signature line. That is not a hit on the
+ *     subject, and the row says so (`ministryOnly`) instead of hiding it:
+ *     RIS delivered the record, the judgement belongs to the reader.
+ *     Measured 21.09.2026: 3 of 7 hits for „klima" are of this kind.
  */
 async function locate(
   detail: Pick<RisConsultationDetail, DocumentKey | 'otherDocuments'>,
@@ -381,13 +369,13 @@ async function locate(
   return { place: null, designation: null, snippet: null, ministryOnly: false }
 }
 
-/** Das Ressortvokabular des Korpus — historische Namen eingeschlossen. */
+/** The corpus's Ressort vocabulary — historical names included. */
 async function ministryVocabulary(): Promise<MinistryToken[]> {
   const corpus = await getRisBegutCorpus()
   return ministryTokens(corpus.records.map((r) => r.stelle ?? ''))
 }
 
-/** Die Felder, die eine Zeile braucht — der Detailsatz trägt mehr, als über die Leitung muss. */
+/** The fields a row needs — the detail record carries more than has to go over the wire. */
 function toConsultationView(d: RisConsultation): RisConsultation {
   return {
     id: d.id,
@@ -400,18 +388,18 @@ function toConsultationView(d: RisConsultation): RisConsultation {
     deadline: d.deadline,
     active: d.active,
     risUrl: d.risUrl,
-    // Die Suche sagt nichts über den Ausgang: Sie sucht in den LAUFENDEN
-    // Begutachtungen, und dort gibt es keinen.
+    // The search says nothing about the outcome: it searches the RUNNING
+    // Begutachtungen, and there is none there.
     outcome: null,
   }
 }
 
 /**
- * Was zu diesen Wörtern in den laufenden Begutachtungen steht.
+ * What the running Begutachtungen say about these words.
  *
- * Die leere Trefferliste ist hier ein Ergebnis, kein Defekt, und trägt
- * deshalb `corpusSize` mit sich: „in den 7 laufenden Begutachtungen kommt
- * das Wort nicht vor" ist eine Auskunft, „keine Treffer" ist keine.
+ * The empty hit list is a result here, not a defect, and therefore carries
+ * `corpusSize` with it: „in den 7 laufenden Begutachtungen kommt das Wort
+ * nicht vor" is an answer, „keine Treffer" is not.
  */
 export async function searchRunningBegut(raw: string): Promise<BegutSearchResponse> {
   const terms = parseSearchQuery(raw)
@@ -427,12 +415,12 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
     ministryVocabulary(),
   ])
   const budget: PdfBudget = { left: PDF_BUDGET }
-  // Lebt genau so lange wie diese Suche (siehe `BlockMemo`).
+  // Lives exactly as long as this search (see `BlockMemo`).
   const memo: BlockMemo = new Map()
 
-  // Der Join der laufenden Periode: jeder heute offene Satz ist in ihr
-  // begonnen worden, also reicht genau eine Karte. Fällt sie aus, bleibt die
-  // Suche brauchbar — die Treffer zeigen dann auf ihre RIS-Seite.
+  // The running period's join: every record open today was begun within it,
+  // so exactly one map suffices. If it fails, the search stays usable — the
+  // hits then point at their RIS page.
   const [map, drafts] = await Promise.all([
     getRisMapForGp(gp).catch(() => null),
     getDraftsForGp(gp).catch(() => null),
@@ -442,14 +430,14 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
 
   const resolved = await mapWithConcurrency(ids, LOCATE_CONCURRENCY, async (id, index) => {
     const detail = await getRisConsultation(id)
-    // Ein Satz, den unser Korpus noch nicht kennt (er ist bis zu 20 h
-    // alt): lieber auslassen als eine Zeile ohne Ziel zeigen.
+    // A record our corpus does not know yet (it is up to 20 h old): better
+    // left out than shown as a row without a destination.
     if (!detail) return null
-    // Der Deckel hängt am Platz in der Trefferliste, nicht mehr an der
-    // Stapelgrenze: Vorher entschied `hits.length + batch.length`, also die
-    // Frage, wie viele Sätze ein Stapel zufällig ausließ, wer eine
-    // Fundstelle bekam — bei vier je Stapel konnten das acht statt zwölf
-    // sein. Jetzt sind es die ersten LOCATE_CAP in Eingabereihenfolge.
+    // The cap hangs off the position in the hit list, no longer off the
+    // batch boundary: `hits.length + batch.length` used to decide it, so how
+    // many records a batch happened to skip decided who got a place — with
+    // four per batch that could be eight instead of twelve. Now it is the
+    // first LOCATE_CAP in input order.
     const evidence =
       index < LOCATE_CAP
         ? await locate(detail, terms, tokens, budget, memo)
@@ -467,19 +455,18 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
   const hits: BegutSearchHit[] = resolved.filter((h) => h !== null)
 
   /*
-   * Drei Klassen, und die Reihenfolge ist ein Werturteil über die AUSKUNFT,
-   * nicht über den Entwurf:
+   * Three classes, and the order is a judgement about the ANSWER, not about
+   * the draft:
    *
-   *  1. **Belegt.** Wir zeigen den Satz, in dem das Wort steht.
-   *  2. **Unbelegt.** Wir haben es in keinem lesbaren Dokument gefunden —
-   *     offen, ob es in einer Anlage steht oder ob das RIS über
-   *     Wortbestandteile getroffen hat. Offen ist mehr wert als
-   *     ausgeschlossen, deshalb vor der dritten Klasse.
-   *  3. **Nur in der Ressortnennung.** Der einzige Fund steht im Verteiler
-   *     oder in einer Unterschriftszeile. Geprüft und entkräftet — also
-   *     zuletzt, aber sichtbar: Wegwerfen hieße, dem Leser das Urteil
-   *     abzunehmen, und bei der UVP-G-Novelle wäre es das falsche gewesen
-   *     (dort IST der Ressortname der Gegenstand).
+   *  1. **With evidence.** We show the sentence the word stands in.
+   *  2. **Without evidence.** We found it in no readable document — open
+   *     whether it stands in an Anlage or whether RIS matched on word parts.
+   *     Open is worth more than ruled out, hence ahead of the third class.
+   *  3. **Only in a Ressort mention.** The single finding stands in the
+   *     Verteiler or in a signature line. Checked and disproved — so last,
+   *     but visible: throwing it away would take the judgement away from the
+   *     reader, and on the UVP-G-Novelle that would have been the wrong one
+   *     (there the Ressort name IS the subject matter).
    */
   const ranked = [
     ...hits.filter((h) => h.place && !h.ministryOnly),
@@ -487,8 +474,8 @@ export async function searchRunningBegut(raw: string): Promise<BegutSearchRespon
     ...hits.filter((h) => h.place && h.ministryOnly),
   ]
   return {
-    // Die Eingabe des Lesers zurück, nicht unsere normalisierte Fassung:
-    // „3 von 7 führen ‚strom'" las sich wie ein Tippfehler des Werkzeugs.
+    // The reader's input back, not our normalised version: „3 von 7 führen
+    // ‚strom'" read like a typo made by the tool.
     query: raw.trim(),
     corpusSize,
     total: ids.length,

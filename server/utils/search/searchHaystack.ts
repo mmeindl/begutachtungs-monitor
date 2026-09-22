@@ -1,47 +1,39 @@
 /**
- * Was das Suchfeld NICHT durchsuchen darf: die Ressortnennung
+ * What the search field may NOT search: the Ressort mention
  * (docs/architecture.md §12.31).
  *
- * DAS PROBLEM, gemessen am 21.09.2026 über GP XXVIII: „klima" führte 36
- * Zeilen, und in genau 2 davon stand das Wort im Kurztitel — also in dem
- * Text, den die Zeile zeigt. Die übrigen 34 trafen über zwei Felder, die der
- * Leser nicht sieht:
+ * THE DECISION: only the **Ministerklausel** — „des Bundesministers für
+ * <Portfolio>" — is struck, never the portfolio on its own. Measured
+ * 21.09.2026 over GP XXVIII: „klima" pulled 36 rows, and in exactly 2 of
+ * them the word stood in the Kurztitel, the text the row actually shows. The
+ * rest matched through two fields the reader never sees — the Ressort name
+ * (BMLUK is „Bundesministerium für Land- und Forstwirtschaft, Klima- und
+ * Umweltschutz, Regionen und Wasserwirtschaft") and the official Langtitel,
+ * which on every Verordnung begins with „Verordnung des Bundesministers für
+ * <the same portfolio>, mit der …". The whole table of measured words is in
+ * §12.31; the Ressort has its own filter axis beside the field, so the free
+ * text does not have to double it.
  *
- *  - den **Ressortnamen**: BMLUK ist „Bundesministerium für Land- und
- *    Forstwirtschaft, Klima- und Umweltschutz, Regionen und
- *    Wasserwirtschaft";
- *  - den **amtlichen Langtitel**, der bei jeder Verordnung mit „Verordnung
- *    des Bundesministers für <dasselbe Portfolio>, mit der …" beginnt.
+ * WHY THE RULE IS THIS NARROW: „Finanzen", „Justiz", „Inneres" are ordinary
+ * subject words as well, and a Verordnung ABOUT the finances of something
+ * has to stay findable under „Finanzen". What is built without „für"
+ * („Bundeskanzleramt") is a proper name and is struck as one. The Langtitel
+ * otherwise STAYS in the haystack: on a Verordnung the subject matter stands
+ * there and only there — the Kurztitel often names no more than the amended
+ * Verordnung.
  *
- * Ein Portfolio-Wort zog damit den gesamten Output eines Ressorts, ohne dass
- * irgendetwas in der Zeile den Grund dafür benannt hätte: „umwelt" 36 → 3,
- * „justiz" 27 → 4, „sport" 12 → 2 (Zeilen heute → Zeilen mit dem Wort im
- * Kurztitel). Nach dem Ressort gibt es die eigene Filterachse daneben; das
- * Freitextfeld muss sie nicht doppeln.
- *
- * DIE REGEL, und warum sie so eng ist: Gestrichen wird nur die
- * **Ministerklausel** — „des Bundesministers für <Portfolio>" —, nie das
- * Portfolio für sich. „Finanzen", „Justiz", „Inneres" sind auch ganz
- * gewöhnliche Sachwörter, und eine Verordnung ÜBER die Finanzen von etwas
- * muss unter „Finanzen" weiter zu finden sein. Was ohne „für" gebildet ist
- * („Bundeskanzleramt"), ist ein Eigenname und wird als solcher gestrichen.
- *
- * Der Langtitel BLEIBT ansonsten im Heuhaufen: Bei einer Verordnung steht
- * der Gegenstand dort und nur dort — der Kurztitel nennt oft bloß die
- * geänderte Verordnung.
- *
- * Reines Modul ohne Nuxt-Importe: Beide Endpunkte müssen dieselbe Regel
- * benutzen, sonst driften die zwei Hälften der Liste auseinander, und die
- * Regel selbst gehört unter Test.
+ * PURE MODULE without Nuxt imports: both endpoints have to use the same
+ * rule, or the two halves of the list drift apart, and the rule itself
+ * belongs under test.
  */
 import { ministryNameOf } from '../ris/ministryCodes'
 
-/** Ein Ressortname ohne „für" ist ein Eigenname; kürzer als das ist kein Name. */
+/** A Ressort name without „für" is a proper name; shorter than that is no name. */
 const MIN_TOKEN_LEN = 4
 
 /**
- * Die Anrede vor dem Portfolio, in den Schreibweisen, die in den Titeln
- * vorkommen: „des Bundesministers für", „der Bundesministerin für", „dem
+ * The form of address before the portfolio, in the spellings that occur in
+ * the titles: „des Bundesministers für", „der Bundesministerin für", „dem
  * Bundesminister für", „Bundesministerium für".
  */
 const MINISTER_CLAUSE = String.raw`(?:(?:des|der|dem|den|das|vom|beim)\s+)?Bundesminister(?:iums|ium|innen|in|s|n)?\s+für\s+`
@@ -50,24 +42,24 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** Was zwischen zwei Wörtern eines Portfolios stehen darf: „- ", ", ", " ". */
+/** What may stand between two words of a portfolio: „- ", ", ", " ". */
 const SEP = String.raw`[\s,-]+`
 
 /**
- * Ein Portfolio als Muster, das seine eigenen Schreibweisen aushält.
+ * A portfolio as a pattern that survives its own spellings.
  *
- * DIE STARRE FASSUNG HAT ZWEI ECHTE TITEL VERFEHLT (gemessen 21.09.2026):
+ * THE RIGID VERSION MISSED TWO REAL TITLES (measured 21.09.2026):
  *
- *  - „Land- und Forstwirtschaft, **Klima und** Umweltschutz, …" — das Amt
- *    schreibt sich „Klima- und Umweltschutz", der Titel lässt den Bindestrich
- *    weg. Ein Zeichen Unterschied, und die Klausel blieb stehen.
+ *  - „Land- und Forstwirtschaft, **Klima und** Umweltschutz, …" — the
+ *    ministry spells itself „Klima- und Umweltschutz", the title drops the
+ *    hyphen. One character of difference, and the clause stayed in.
  *  - „des Bundesministers für Land- und Forstwirtschaft, Klima- und
- *    Umweltschutz" — dasselbe Haus, aber nur der halbe Name.
+ *    Umweltschutz" — the same house, but only half the name.
  *
- * Also wird das Portfolio Wort für Wort gebaut: Die Trennzeichen dürfen
- * variieren, und der Schwanz darf fehlen (verschachtelte Optionalität). Das
- * bleibt an den ECHTEN Wörtern des Ressorts verankert — es rät keine Grammatik
- * und kann deshalb nicht mehr wegnehmen, als ein Ressortname hergibt.
+ * So the portfolio is built word by word: the separators may vary and the
+ * tail may be missing (nested optionality). It stays anchored to the REAL
+ * words of the Ressort — it guesses no grammar and therefore cannot take
+ * away more than a Ressort name gives.
  */
 function portfolioPattern(portfolio: string): string | null {
   const words = portfolio
@@ -82,32 +74,31 @@ function portfolioPattern(portfolio: string): string | null {
 }
 
 /**
- * Ein zu streichender Ressorttext — und die eine Eigenschaft, die darüber
- * entscheidet, wie weit gestrichen werden darf.
+ * A Ressort text to be struck — and the one property that decides how far
+ * the striking may go.
  */
 export interface MinistryToken {
   text: string
   /**
-   * `true` für ein Portfolio („Finanzen"): Es darf NUR in der Ministerklausel
-   * fallen, weil es für sich genommen ein gewöhnliches Sachwort ist.
-   * `false` für einen Eigennamen („Bundeskanzleramt"): der fällt überall.
+   * `true` for a portfolio („Finanzen"): it may fall ONLY inside the
+   * Ministerklausel, because on its own it is an ordinary subject word.
+   * `false` for a proper name („Bundeskanzleramt"): that one falls everywhere.
    */
   clauseOnly: boolean
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
- * Der Ressortname als Streichtoken: was hinter dem „für" steht, sonst der
- * Name selbst.
+ * The Ressort name as a strike token: whatever stands behind the „für",
+ * otherwise the name itself.
  *
- * Beide Schreibweisen führen dasselbe Portfolio — „Bundesministerium für X"
- * im Datensatz, „Bundesministers für X" im Titel —, deshalb reicht ein Token
- * für beide.
+ * Both spellings carry the same portfolio — „Bundesministerium für X" in the
+ * record, „Bundesministers für X" in the title — so one token covers both.
  */
 export function ministryToken(name: string): MinistryToken | null {
-  // „BMLUK (Bundesministerium für …)" ist die Schreibweise des RIS-Satzes,
-  // „Bundesministerium für …" die der gemappten Zeile. Beide kommen hier an —
-  // dieselbe Klammer liest `ministryNameOf`.
+  // „BMLUK (Bundesministerium für …)" is the RIS record's spelling,
+  // „Bundesministerium für …" the mapped row's. Both arrive here —
+  // `ministryNameOf` reads the same bracket.
   const trimmed = ministryNameOf((name ?? '').trim()).trim()
   const m = /\bfür\s+(.+)$/s.exec(trimmed)
   const text = (m ? m[1]! : trimmed).trim().replace(/\s+/g, ' ')
@@ -116,11 +107,11 @@ export function ministryToken(name: string): MinistryToken | null {
 }
 
 /**
- * Das Vokabular einer Gesetzgebungsperiode, längstes Token zuerst.
+ * One Gesetzgebungsperiode's vocabulary, longest token first.
  *
- * Die Reihenfolge ist kein Detail: Stünde „Finanzen" vor „Finanzen und
- * Wirtschaft", bliebe von der längeren Klausel ein Rest stehen, der beim
- * nächsten Durchgang nicht mehr als Klausel erkennbar ist.
+ * The order is not a detail: with „Finanzen" before „Finanzen und
+ * Wirtschaft", a remainder of the longer clause would stay behind, and on
+ * the next pass it is no longer recognisable as a clause.
  */
 export function ministryTokens(names: Iterable<string>): MinistryToken[] {
   const byText = new Map<string, MinistryToken>()
@@ -132,16 +123,16 @@ export function ministryTokens(names: Iterable<string>): MinistryToken[] {
 }
 
 /**
- * Das fertige Streichmuster eines Tokens, einmal gebaut.
+ * A token's finished strike pattern, built once.
  *
- * `stripMinistryMentions` läuft je Zeile einer gefilterten Liste und je
- * Block eines durchsuchten Dokuments; bei fünfzehn Ressorts der Periode
- * waren das fünfzehn neue `RegExp` pro Aufruf für fünfzehn unveränderliche
- * Muster. Der Schlüssel ist der Token samt seiner Reichweite, das Muster
- * hängt an nichts anderem — es kann also nicht veralten, und mehr als die
- * Ressortnamen des Korpus kommen nie hinein.
+ * `stripMinistryMentions` runs per row of a filtered list and per block of a
+ * searched document; with the period's fifteen Ressorts that was fifteen new
+ * `RegExp` per call for fifteen unchanging patterns. The key is the token
+ * together with its reach, and the pattern depends on nothing else — so it
+ * cannot go stale, and nothing beyond the corpus's Ressort names ever gets
+ * in.
  *
- * `null` für ein Portfolio ohne Wörter: dann wird nichts gestrichen.
+ * `null` for a portfolio without words: then nothing is struck.
  */
 const STRIKE_PATTERNS = new Map<string, RegExp | null>()
 
@@ -161,20 +152,20 @@ function strikePattern(token: MinistryToken): RegExp | null {
 }
 
 /**
- * Die Ressortnennungen aus einem Titel — für die Suche, nicht für die
- * Anzeige. Das Ergebnis muss nicht lesbar sein, nur frei von dem, was jede
- * Verordnung eines Hauses gleich schreibt.
+ * The Ressort mentions out of a title — for the search, not for display. The
+ * result need not be readable, only free of what every Verordnung of one
+ * house spells the same way.
  *
- * Mitgenommen wird auch das zweite Haus: „im Einvernehmen mit dem
- * Bundesminister für Finanzen" steht in vielen Verordnungen und träfe sonst
- * dieselbe Falle ein zweites Mal.
+ * The second house is taken along too: „im Einvernehmen mit dem
+ * Bundesminister für Finanzen" stands in many Verordnungen and would
+ * otherwise spring the same trap a second time.
  */
 export function stripMinistryMentions(text: string, tokens: readonly MinistryToken[]): string {
   if (!text) return ''
   let out = text
   for (const token of tokens) {
-    // Ein globales Muster setzt `lastIndex` bei jedem `replace` selbst
-    // zurück, also ist die Wiederverwendung zustandsfrei.
+    // A global pattern resets `lastIndex` on every `replace` by itself, so
+    // reusing it is stateless.
     const pattern = strikePattern(token)
     if (pattern) out = out.replace(pattern, ' ')
   }

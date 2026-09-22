@@ -1,74 +1,74 @@
 /**
- * Wo ein Stichwort in einem Entwurfsdokument steht — die Fundstelle zur
- * Volltextsuche (docs/architecture.md §12.31).
+ * Where a keyword stands inside a draft document — the place of the hit for
+ * the full-text search (docs/architecture.md §12.31).
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  *
- * WARUM ES DIESES MODUL ÜBERHAUPT GIBT. Die Suche selbst macht das RIS: sein
- * `Suchworte` durchsucht den Volltext aller Dokumente eines Datensatzes und
- * ist damit eine Fähigkeit, die wir nicht nachbauen müssen. Was es NICHT
- * zurückgibt, ist die Fundstelle — die Antwort ist der gewöhnliche
- * Metadatensatz, ohne Trefferstelle, ohne Textausschnitt. Gemessen am
- * 18.09.2026 über 79 Treffer aus fünf Stichworten: bei „Fahrrad" steht das
- * Wort nur in 7 von 20 Treffern im Entwurfstext und in 16 von 20 in den
- * Erläuterungen. Eine Trefferliste ohne Fundstelle behauptet deshalb für
- * jeden dritten Treffer etwas anderes, als der Leser annimmt — „das Gesetz
- * handelt davon", wo das Ressort es nur in seiner Begründung streift.
+ * WHY THIS MODULE EXISTS AT ALL. RIS does the search itself: its `Suchworte`
+ * searches the full text of every document of a record, a capability we do
+ * not have to rebuild. What it does NOT return is the place of the hit — the
+ * answer is the ordinary metadata record, without a location and without a
+ * snippet. Measured 18.09.2026 over 79 hits from five keywords: for
+ * „Fahrrad" the word stands in only 7 of 20 hits in the draft text and in 16
+ * of 20 in the Erläuterungen. A hit list without the place therefore claims
+ * something different from what the reader assumes for every third hit —
+ * "the law is about this", where the ressort only touches on it in its
+ * Begründung.
  *
- * Die Fundstelle ist also nicht Zierde, sondern das, was einen Treffer von
- * einer Vermutung unterscheidet. Sie wird hier aus denselben Blöcken
- * gelesen, die auch die Gegenüberstellung liest (`lawText.parseRisXml`) —
- * derselbe Parser, dieselbe Textform, also dieselbe Auskunft wie auf der
- * Entwurfsseite —, und seit 21.09.2026 notfalls aus dem PDF desselben
- * Dokuments (`blocksFromPlainText`), weil das XML kürzt, wo das PDF alles
- * hat.
+ * The place of the hit is therefore not decoration; it is what separates a
+ * hit from a guess. It is read here out of the same blocks the
+ * Gegenüberstellung reads (`lawtext/risXml.parseRisXml`) — the same parser,
+ * the same text form, hence the same answer as on the draft page — and since
+ * 21.09.2026, where necessary, out of the PDF of the same document
+ * (`blocksFromPlainText`), because the XML truncates where the PDF has
+ * everything.
  *
- * WORTGRENZEN, weil das RIS sie hat. „Klimaschut" findet nichts, und
- * `Klimaschutz*` findet 491 statt 453 Sätzen — das RIS sucht ganze Wörter
- * und kennt den Stern als Trunkierung. Diese Suche spiegelt beides, sonst
- * fände sie im Dokument nicht, was das RIS im selben Dokument gefunden hat.
+ * WORD BOUNDARIES, because RIS has them. „Klimaschut" finds nothing, and
+ * `Klimaschutz*` finds 491 records instead of 453 — RIS searches whole words
+ * and knows the star as truncation. This search mirrors both, or it would
+ * not find in the document what RIS found in that same document.
  *
- * `loose` ist der Notnagel dafür, und er ist ein PARAMETER, kein zweiter
- * Durchgang in dieser Funktion. Der Unterschied ist nicht kosmetisch: Ein
- * Satz hat mehrere Dokumente, und sie werden in einer Rangfolge gelesen
- * (`begutSearchService.DOCUMENT_ORDER`). Suchte jedes Dokument erst streng
- * und dann als Teilstring, gewänne ein Entwurfstext mit „Klimaschutzgesetz"
- * gegen die Erläuterungen, in denen „Klimaschutz" wirklich steht — die
- * Fundstelle wäre falsch, und zwar zugunsten des stärksten Dokuments. Der
- * Aufrufer geht deshalb ZWEIMAL über alle Dokumente: erst streng, dann
- * großzügig. Lieber eine Fundstelle zu großzügig als die Auskunft „das Wort
- * steht in einem Dokument, wir wissen nicht wo", die wir nachweislich
- * widerlegen könnten — aber nie im falschen Dokument.
+ * `loose` is the fallback for that, and it is a PARAMETER, not a second pass
+ * inside this function. The difference is not cosmetic: a record has several
+ * documents, and they are read in a ranking
+ * (`begutSearchService.DOCUMENT_ORDER`). If every document searched strictly
+ * first and then as a substring, a draft text carrying „Klimaschutzgesetz"
+ * would win against the Erläuterungen, where „Klimaschutz" really stands —
+ * the place would be wrong, and wrong in favour of the strongest document.
+ * The caller therefore walks all documents TWICE: strictly first, then
+ * generously. Better a place that is too generous than the answer "the word
+ * is in some document, we do not know where", which we could demonstrably
+ * disprove — but never the wrong document.
  */
 import type { TextBlock } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { stripMinistryMentions, type MinistryToken } from './searchHaystack'
 
-/** Ein Suchwort, wie der Leser es eingegeben hat. */
+/** One search term, as the reader typed it. */
 export interface SearchTerm {
-  /** Kleingeschrieben, ohne Stern und ohne Anführungszeichen. */
+  /** Lowercased, without the star and without quotation marks. */
   text: string
-  /** Mit Stern eingegeben: „Klimaschutz*" trifft auch „Klimaschutzgesetz". */
+  /** Typed with a star: „Klimaschutz*" also matches „Klimaschutzgesetz". */
   prefix: boolean
 }
 
 /**
- * Mehr Wörter helfen niemandem und kosten Regexe: Das RIS verknüpft sie mit
- * UND, ab dem vierten ist die Treffermenge ohnehin leer.
+ * More words help nobody and cost regexes: RIS joins them with AND, and from
+ * the fourth on the result set is empty anyway.
  */
 const MAX_TERMS = 6
-/** Kürzer als zwei Zeichen ist kein Stichwort, sondern ein Tippfehler. */
+/** Shorter than two characters is not a keyword but a typo. */
 const MIN_TERM_LEN = 2
-/** Zeichen links und rechts der Fundstelle. Zwei Zeilen auf dem Telefon. */
+/** Characters left and right of the hit. Two lines on a phone. */
 const SNIPPET_RADIUS = 90
 
 /**
- * Die Eingabe in Suchwörter.
+ * The input as search terms.
  *
- * Anführungszeichen fallen weg, statt eine Phrasensuche zu versprechen: das
- * RIS kennt keine — `"Klimaschutz"` liefert exakt dieselben 453 Sätze wie
- * `Klimaschutz` —, und ein Werkzeug, das Anführungszeichen entgegennimmt und
- * ignoriert, lügt leiser als eines, das sie ablehnt.
+ * Quotation marks are dropped instead of promising a phrase search: RIS has
+ * none — `"Klimaschutz"` returns exactly the same 453 records as
+ * `Klimaschutz` — and a tool that accepts quotation marks and ignores them
+ * lies more quietly than one that refuses them.
  */
 export function parseSearchQuery(raw: string): SearchTerm[] {
   const out: SearchTerm[] = []
@@ -84,7 +84,7 @@ export function parseSearchQuery(raw: string): SearchTerm[] {
   return out
 }
 
-/** Die Suchwörter wieder als das, was ans RIS geht. */
+/** The search terms back as what goes to RIS. */
 export function searchQueryString(terms: readonly SearchTerm[]): string {
   return terms.map((t) => (t.prefix ? `${t.text}*` : t.text)).join(' ')
 }
@@ -94,11 +94,11 @@ function escapeRe(s: string): string {
 }
 
 /**
- * Ein Suchwort als Regex — ganzes Wort, außer der Stern sagt etwas anderes.
+ * One search term as a regex — whole word, unless the star says otherwise.
  *
- * Die Grenzen sind Lookarounds auf Buchstaben und Ziffern, nicht `\b`: `\b`
- * kennt Umlaute nicht als Wortzeichen, und „für" würde mitten im Wort
- * treffen.
+ * The boundaries are lookarounds on letters and digits, not `\b`: `\b` does
+ * not know umlauts as word characters, and „für" would match in the middle
+ * of a word.
  */
 function termRe(term: SearchTerm, loose: boolean): RegExp {
   const body = escapeRe(term.text)
@@ -107,29 +107,29 @@ function termRe(term: SearchTerm, loose: boolean): RegExp {
   return new RegExp(`(?<![\\p{L}\\p{N}])${body}${tail}(?![\\p{L}\\p{N}])`, 'iu')
 }
 
-/** Trifft das Muster in diesem Text, und wo? Null, wenn nicht. */
+/** Does the pattern match in this text, and where? Null if it does not. */
 function findTerm(text: string, re: RegExp): { at: number; len: number } | null {
   const m = re.exec(text)
   return m ? { at: m.index, len: m[0].length } : null
 }
 
-/** Der Textausschnitt um eine Fundstelle, in drei Teilen. */
+/** The snippet around a hit, in three parts. */
 interface SearchSnippet {
-  /** Was links davon steht, vorn mit „…", wenn abgeschnitten. */
+  /** What stands to its left, led by „…" where it was cut. */
   before: string
-  /** Das gefundene Wort, in der Schreibweise des Dokuments. */
+  /** The word found, in the document's own spelling. */
   match: string
-  /** Was rechts davon steht, hinten mit „…", wenn abgeschnitten. */
+  /** What stands to its right, trailed by „…" where it was cut. */
   after: string
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
- * Der Ausschnitt um eine Fundstelle, an Wortgrenzen geschnitten.
+ * The snippet around a hit, cut at word boundaries.
  *
- * Drei Teile statt eines markierten Strings, damit die Seite die Marke
- * selbst setzt: ein `<mark>` aus dem Server wäre HTML aus Nutzereingabe,
- * und die einzige sichere Fassung davon ist die, die es nicht gibt.
+ * Three parts instead of one marked-up string, so the page sets the mark
+ * itself: a `<mark>` coming from the server would be HTML built from user
+ * input, and the only safe version of that is the one that does not exist.
  *
  * `radius` is a test seam: no caller varies it.
  */
@@ -138,8 +138,8 @@ export function buildSnippet(text: string, at: number, len: number, radius = SNI
   const to = Math.min(text.length, at + len + radius)
   let before = text.slice(from, at)
   let after = text.slice(at + len, to)
-  // An der Wortgrenze schneiden, aber nur, wenn überhaupt gekürzt wurde —
-  // sonst frisst der Schnitt das erste Wort eines Absatzes.
+  // Cut at the word boundary, but only where something was cut at all —
+  // otherwise the cut eats the first word of a paragraph.
   if (from > 0) {
     const cut = before.indexOf(' ')
     before = `…${cut >= 0 ? before.slice(cut) : before}`
@@ -151,26 +151,26 @@ export function buildSnippet(text: string, at: number, len: number, radius = SNI
   return { before, match: text.slice(at, at + len), after }
 }
 
-/** Wo in einem Dokument das Stichwort steht. */
+/** Where in a document the keyword stands. */
 interface SearchLocation {
   /**
-   * Die Bezeichnung der Stelle, wie das Dokument sie führt: „§ 5." im
-   * Entwurfstext, „Zu § 5:" in den Erläuterungen. Null, wo das Dokument bis
-   * dorthin keine trägt.
+   * The designation of the place as the document words it: „§ 5." in the
+   * draft text, „Zu § 5:" in the Erläuterungen. Null where the document
+   * carries none up to that point.
    */
   designation: string | null
   snippet: SearchSnippet
 }
 
-/** Blöcke, die keine Fundstelle sein dürfen. */
+/** Blocks that may not become the place of a hit. */
 function skipBlock(b: TextBlock): boolean {
-  // Ein Inhaltsverzeichnis wiederholt die Überschriften des Dokuments. Ein
-  // Treffer dort ist immer die Dublette eines Treffers weiter unten — und
-  // die schlechtere von beiden, weil sie keinen Satz zeigt.
+  // A table of contents repeats the document's own headings. A hit there is
+  // always the duplicate of a hit further down — and the worse of the two,
+  // because it shows no sentence.
   return b.kind === 'toc'
 }
 
-/** Trägt dieser Block eine Bezeichnung, die als Fundstelle taugt? */
+/** Does this block carry a designation fit to name the place of a hit? */
 function designationOf(b: TextBlock): string | null {
   if (b.gld) return b.gld
   if (b.kind === 'para_head' || b.kind === 'section' || b.kind === 'article') return b.text || null
@@ -178,13 +178,13 @@ function designationOf(b: TextBlock): string | null {
 }
 
 /**
- * Die erste Stelle, an der das Dokument die Suchwörter zeigt.
+ * The first place at which the document shows the search terms.
  *
- * Bevorzugt einen Block, der ALLE Wörter trägt — das RIS verknüpft sie mit
- * UND, also ist der Absatz, in dem sie zusammen stehen, der gemeinte. Gibt
- * es keinen, zählt der erste Block mit irgendeinem von ihnen: Die Wörter
- * können über das Dokument verteilt sein, und dann ist ein Satz mit einem
- * davon immer noch die Antwort auf „kommt mein Thema vor?".
+ * Prefers a block carrying ALL the words — RIS joins them with AND, so the
+ * paragraph in which they stand together is the one meant. Where there is
+ * none, the first block with any of them counts: the words can be spread
+ * across the document, and then a sentence with one of them is still the
+ * answer to „kommt mein Thema vor?".
  */
 export function locateInBlocks(
   blocks: readonly TextBlock[],
@@ -192,9 +192,9 @@ export function locateInBlocks(
   loose = false,
 ): SearchLocation | null {
   if (!terms.length) return null
-  // Einmal je Suchwort, nicht einmal je Suchwort und Block: Ein Dokument
-  // hat bis zu 413 Blöcke, und die Muster hängen nur an `terms` und
-  // `loose`. Ohne `g` tragen sie kein `lastIndex`, sind also wiederverwendbar.
+  // Once per search term, not once per search term and block: a document has
+  // up to 413 blocks, and the patterns depend on `terms` and `loose` alone.
+  // Without `g` they carry no `lastIndex`, so they are reusable.
   const patterns = terms.map((t) => termRe(t, loose))
   let designation: string | null = null
   let fallback: SearchLocation | null = null
@@ -213,32 +213,32 @@ export function locateInBlocks(
 }
 
 /* ------------------------------------------------------------------ *
- * Zwei Textquellen, ein Blockformat
+ * Two text sources, one block format
  * ------------------------------------------------------------------ */
 
-/** So lang darf ein Block aus PDF-Text werden, bevor der nächste anfängt. */
+/** How long a block of PDF text may grow before the next one starts. */
 const PDF_BLOCK_MAX = 400
 
 /**
- * PDF-Text als Blöcke — die zweite Quelle für dieselbe Fundstelle
+ * PDF text as blocks — the second source for the same place of a hit
  * (docs/architecture.md §12.31).
  *
- * WARUM ES SIE GIBT: Das XML eines Begleitschreibens ist ein Stummel. Beim
- * DGAV-Entwurf hat es 943 Zeichen, das PDF desselben Dokuments 12.223 — und
- * nur dort steht der Verteiler, auf den das RIS getroffen hat. Dieselbe
- * Lehre wie bei den Beilagen: Der Text war nie weg, gelesen wurde das
- * Format, das ihn weggeworfen hat.
+ * WHY IT EXISTS: the XML of a Begleitschreiben is a stub. On the DGAV draft
+ * it has 943 characters, the PDF of the same document 12.223 — and only
+ * there stands the Verteiler that RIS matched on. The same lesson as with
+ * the Beilagen: the text was never gone, what was read was the format that
+ * threw it away.
  *
- * ZEILEN WERDEN GEBÜNDELT, weil ein PDF keine Absätze kennt, sondern
- * Zeilenumbrüche. Einzelne Zeilen als Blöcke hätten zwei Fehler: Eine
- * UND-Suche fände ihre Wörter nie zusammen in einem Block, und der
- * Ausschnitt bräche mitten im Satz ab. Gebündelt wird nach Zeichenzahl und
- * nicht nach Semantik — eine Grammatik des Schriftsatzes gibt es hier nicht,
- * und der Ausschnitt schneidet ohnehin ±90 Zeichen um die Fundstelle.
+ * LINES ARE BUNDLED, because a PDF knows no paragraphs, only line breaks.
+ * Single lines as blocks would have two faults: an AND search would never
+ * find its words together in one block, and the snippet would break off
+ * mid-sentence. The bundling goes by character count and not by semantics —
+ * there is no grammar of typesetting here, and the snippet cuts ±90
+ * characters around the hit anyway.
  *
- * `kind: 'other'`, `gld: null`: Ein PDF trägt keine Gliederungssymbole, die
- * wir sicher zuordnen könnten. Die Zeile sagt dann „im Begleitschreiben"
- * ohne Paragraph — weniger, als das XML hergibt, aber nichts Erfundenes.
+ * `kind: 'other'`, `gld: null`: a PDF carries no Gliederungssymbole we could
+ * assign with confidence. The row then says „im Begleitschreiben" without a
+ * Paragraph — less than the XML gives, but nothing invented.
  *
  * `maxLen` is a test seam: no caller varies it.
  */
@@ -264,23 +264,23 @@ export function blocksFromPlainText(text: string, maxLen = PDF_BLOCK_MAX): TextB
 }
 
 /**
- * Dieselben Blöcke ohne die Ressortnennungen.
+ * The same blocks without the Ressort mentions.
  *
- * DER VERTEILER IST KEIN SACHTREFFER. Jedes Begleitschreiben listet alle
- * Ministerien als Empfänger, jedes Dokument trägt die Unterschriftszeile
- * seines Hauses — „klima" steht damit in Dokumenten, die von Druckgeräten
- * handeln. Gemessen am 21.09.2026: Von den 7 RIS-Treffern zu „klima" sind 3
- * reine Ressortnennungen.
+ * THE VERTEILER IS NOT A HIT ON THE SUBJECT. Every Begleitschreiben lists
+ * all ministries as recipients, every document carries its house's signature
+ * line — „klima" therefore stands in documents that are about printing
+ * devices. Measured 21.09.2026: of the 7 RIS hits for „klima", 3 are pure
+ * Ressort mentions.
  *
- * Gestrichen wird VOR der Suche, nicht danach, damit die Fundstelle auf die
- * SACHSTELLE zeigt, wo es beide gibt: Im Klimagesetz stand als Beleg die
- * Aufzählung der Ministerien in § 5, obwohl das Dokument das Wort 164-mal
- * führt.
+ * The striking happens BEFORE the search, not after, so that the place points
+ * at the SUBJECT where both exist: in the Klimagesetz the evidence shown was
+ * the enumeration of ministries in § 5, although the document carries the
+ * word 164 times.
  *
- * Was hier NICHT fällt, ist die Ressortnennung ohne Ministeranrede — und das
- * ist Absicht: Die UVP-G-Novelle ersetzt in dutzenden §§ die Wortfolge „für
- * Klimaschutz, Umwelt, Energie …" durch die neue. Dort IST der Name der
- * Gegenstand (`searchHaystack.ts`).
+ * What does NOT fall here is a Ressort mention without the minister's form of
+ * address — and that is deliberate: the UVP-G-Novelle replaces the phrase
+ * „für Klimaschutz, Umwelt, Energie …" with the new one in dozens of §§.
+ * There the name IS the subject matter (`searchHaystack.ts`).
  */
 export function withoutMinistryMentions(
   blocks: readonly TextBlock[],
