@@ -161,8 +161,8 @@ const miniStats = computed(() => [
   { label: 'Nicht öffentlich', value: props.summary.nonPublic },
 ])
 
-/* Sortierung, Gruppierung und die Zeilen selbst: `app/utils/statementRows.ts`,
- * wo sie geprüft werden. */
+/* Sorting, grouping and the rows themselves live in
+ * `app/utils/statementRows.ts`, where they are tested. */
 const orgRows = computed(() => orgRowsOf(props.summary, sort.value))
 
 /* The name and every citation the row carries, so a reader who has the
@@ -267,7 +267,7 @@ const setLine = computed(() => {
         'Organisationen',
       )}`
     }
-    /* `orgRows` ist die Abbildung derselben Liste, also dieselbe Länge. */
+    /* `orgRows` maps the same list, so it has the same length. */
     const orgs = countLabelDe(
       orgRows.value.length,
       'Organisation',
@@ -319,7 +319,6 @@ const mixSegments = computed(() => {
 
 <template>
   <div>
-    <!-- Mini stats -->
     <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
       <div v-for="stat in miniStats" :key="stat.label">
         <dt class="text-sm text-ink-secondary">{{ stat.label }}</dt>
@@ -332,7 +331,7 @@ const mixSegments = computed(() => {
       </div>
     </dl>
 
-    <!-- Mix bar (decorative; the tiles above carry the numbers) -->
+    <!-- Decorative; the figures above carry the numbers. -->
     <div
       v-if="mixSegments.length"
       class="mt-3 flex h-2 w-full overflow-hidden rounded-[2px] border border-hairline"

@@ -3,42 +3,32 @@ import type { BgblOutcome } from '#shared/types'
 import { formatDateDe } from '#shared/utils/format'
 
 /**
- * Was aus einem Verordnungsentwurf geworden ist
- * (docs/architecture.md §12.32).
+ * What became of a Verordnungsentwurf (docs/architecture.md §12.32).
  *
- * Bis 19.09.2026 stand hier ein Satz: „Was danach kommt – Erlassung durch das
- * Ministerium und Kundmachung im Bundesgesetzblatt Teil II – verfolgt der
- * Monitor bisher nicht." Er war ehrlich und er war das Eingeständnis, dass
- * zwei Drittel des Korpus keine Rechenschaftsschicht hatten.
+ * THREE STATES, AND TWO OF THEM ARE NOT THE SAME. Measured (`pnpm
+ * corpus:bgbl2`, 291 drafts): a median 57 days between Fristende and
+ * Kundmachung, p90 196. Of the drafts whose Frist ended less than 30 days ago
+ * NOT ONE has a Kundmachung yet; after 181–365 days it is 92,2 %. So up to
+ * 180 days the line says that it takes time, and only after that that nothing
+ * can be found.
  *
- * DREI ZUSTÄNDE, UND ZWEI DAVON SIND NICHT DASSELBE. Gemessen (`pnpm
- * corpus:bgbl2`, 291 Entwürfe): Zwischen Fristende und Kundmachung liegen im
- * Median 57 Tage, p90 196. Von den Entwürfen, deren Frist weniger als 30 Tage
- * zurückliegt, hat KEIN einziger schon eine Kundmachung; nach 181–365 Tagen
- * sind es 92,2 %. „Bisher keine Kundmachung" in Woche sechs wäre deshalb
- * keine Aussage über das Ressort, sondern über die Uhr — gelesen würde sie
- * aber als die erste. Also sagt die Zeile bis 180 Tage, dass es dauert, und
- * erst danach, dass nichts zu finden ist.
- *
- * UND AUCH DANN SAGT SIE ES ÜBER UNS, nicht über das Ressort. Der Abgleich
- * läuft über Titel, Ressort und Datum und findet 84,2 % — bei den Entwürfen,
- * deren Frist über ein Jahr her ist, 92,3 %. Der Rest sind teils Verordnungen,
- * die nie erlassen wurden (das ist die Auskunft, um die es geht), teils
- * unsere Fehlschläge. Beide sehen von hier gleich aus, also steht der Weg
- * zum Nachsehen daneben. Framing-Regel, CLAUDE.md: nie ein Vorwurf, immer ein
- * Verfahrensstand.
+ * AND EVEN THEN IT SAYS IT ABOUT US, not about the Ressort. The match runs
+ * over title, Ressort and date and finds 84,2 % — 92,3 % for drafts whose
+ * Frist is more than a year back. The rest are partly Verordnungen that were
+ * never enacted (the information this is about) and partly our own failures.
+ * Both look alike from here, so the way to check stands beside it. Framing
+ * rule, CLAUDE.md: never an accusation, always a state of the procedure.
  */
 const props = defineProps<{
   risId: string
   /**
-   * Der Ausgang aus der Seitenantwort, wenn er dort schon stand.
+   * The outcome out of the page's own response, where it already stood.
    *
-   * Der Normalfall seit 19.09.2026: Die Überschrift der Karte braucht ihn
-   * ohnehin, also kommt er serverseitig mit — und dann darf dieser
-   * Abschnitt keinen zweiten Abruf dafür starten. Null heißt „im Budget der
-   * Seite nicht bestimmt", nicht „nicht kundgemacht"; dann holt er ihn
-   * selbst nach, damit ein kalter Cache die Auskunft nur verzögert und
-   * nicht verschluckt.
+   * The normal case since 19.09.2026: the card's heading needs it anyway, so
+   * it comes along server-side — and then this section must not start a
+   * second fetch for it. Null means „not determined inside the page's
+   * budget", not „nicht kundgemacht"; it then fetches it itself, so a cold
+   * cache only delays the information instead of swallowing it.
    */
   outcome?: BgblOutcome | null
 }>()
@@ -64,9 +54,9 @@ const data = computed(() => props.outcome ?? fetched.value)
     <template v-if="data.days !== null"> – {{ data.days }} Tage nach Ende der Begutachtungsfrist</template>.
   </p>
 
-  <!-- Die Zeile für „es dauert noch". Sie nennt die Zahl, weil ohne sie die
-       Abwesenheit einer Kundmachung nach sechs Wochen wie ein Befund
-       aussieht und keiner ist. -->
+  <!-- The line for „it is still taking time". It names the figure, because
+       without it the absence of a Kundmachung after six weeks looks like a
+       finding and is none. -->
   <p v-else-if="data?.state === 'ausstehend'" class="mt-3 max-w-prose text-sm text-ink-secondary">
     Im Bundesgesetzblatt II steht dazu bisher keine Kundmachung. Zwischen
     Fristende und Kundmachung liegen üblicherweise rund zwei Monate.

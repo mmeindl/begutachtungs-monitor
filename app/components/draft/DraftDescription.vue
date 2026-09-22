@@ -69,12 +69,11 @@ const sections = computed<Section[]>(() => {
         v-if="section.collapsed"
         class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-base font-semibold text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
       >
-        <!-- Die Überschrift steht IM summary, seit 18.09.2026. Vorher trug
-             der aufgeklappte Abschnitt ein <h3> und der zugeklappte ein
-             <span>: Die Gliederung der Seite hing damit daran, was der
-             Leser gerade geöffnet hatte, und ein Screenreader-Sprung über
-             die Überschriften fand einen Abschnitt nur im offenen Zustand.
-             Überschrifteninhalt ist in <summary> erlaubt. -->
+        <!-- The heading stands IN the summary, since 18.09.2026. Before that
+             the open section carried an <h3> and the closed one a <span>: the
+             page's outline depended on what the reader happened to have open,
+             and a screen-reader jump through the headings found a section only
+             in its open state. Heading content is allowed in <summary>. -->
         <h3 class="text-base font-semibold text-ink">{{ section.heading }}</h3>
         <UIcon
           name="i-lucide-chevron-down"
