@@ -5,7 +5,7 @@
  * PURE MODULE — relative imports only, so vitest runs it directly. First of
  * the three checks `annex/verdict.ts` runs over a §.
  */
-import { normalizeText } from '../lawText'
+import { normalizeText } from '../lawtext/normalize'
 import type { ComparisonRow } from './comparisonRows'
 import { comparableTokens } from './annexText'
 

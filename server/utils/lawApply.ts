@@ -17,8 +17,9 @@
  * one refused operation must be shown as instructions, not as text — the
  * caller enforces that, `unresolved` reports it.
  */
-import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from './lawStructure'
-import { normalizeText, type LawUnit } from './lawText'
+import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from './lawtext/konsTree'
+import type { LawUnit } from './lawtext/lawUnits'
+import { normalizeText } from './lawtext/normalize'
 import { expandRange, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId } from './text/designation'
 

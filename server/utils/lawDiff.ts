@@ -23,7 +23,8 @@
  * Everything left is inserted (later side only) or removed (earlier side only).
  */
 import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../shared/types'
-import { compareKey, type LawUnit } from './lawText'
+import type { LawUnit } from './lawtext/lawUnits'
+import { compareKey } from './lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from './lawtext/lawNames'
 import { diffTokens, isEditorialChange, tokenSimilarity, type TokenDiff } from './diff/wordDiff'
 

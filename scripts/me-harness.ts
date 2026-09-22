@@ -41,9 +41,10 @@
  * coverage as accuracy.
  */
 import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../server/utils/lawApply'
-import { plainText, type LawNode } from '../server/utils/lawStructure'
-import { parseRisXml, segmentUnits, type TextBlock } from '../server/utils/lawText'
-import { articleBlocks, draftArticles, type DraftArticle } from '../server/utils/lawTitles'
+import { plainText, type LawNode } from '../server/utils/lawtext/konsTree'
+import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
+import { articleBlocks, draftArticles, type DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { fetchLawAsOf, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, type KonsParagraphRef } from '../server/utils/risKons'
 import { guardParagraph, type GuardFlag } from '../server/utils/applyGuard'
 import { parseTextComparison } from '../server/utils/annex/comparisonRows'

@@ -12,7 +12,7 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { parseRisXml } from '../server/utils/lawText'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
 
 const RIS = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 const HEADERS = { 'User-Agent': 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)', Accept: 'application/json' }

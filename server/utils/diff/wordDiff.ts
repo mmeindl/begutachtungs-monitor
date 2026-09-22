@@ -13,7 +13,7 @@
  * are measured decisions (`refactor-plan.md` §9).
  */
 import type { LawDiffSegment } from '../../../shared/types'
-import { normalizeText } from '../lawText'
+import { normalizeText } from '../lawtext/normalize'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000

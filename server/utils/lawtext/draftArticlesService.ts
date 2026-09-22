@@ -19,8 +19,10 @@
 import { DERIVED_CACHE } from '../cache/base'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { fetchLawHtml, findLawStations } from '../lawDiffService'
-import { parseParliamentHtml, parseRisXml, type TextBlock } from '../lawText'
-import { draftArticles, type DraftArticle } from '../lawTitles'
+import type { TextBlock } from '../lawtext/lawUnits'
+import { parseParliamentHtml } from '../lawtext/parliamentHtml'
+import { parseRisXml } from '../lawtext/risXml'
+import { draftArticles, type DraftArticle } from '../lawtext/draftArticles'
 import { getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
 

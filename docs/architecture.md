@@ -102,7 +102,7 @@ Server internals (`server/utils/`):
 - `ris/risJoin.ts` — **pure**: the ME↔RIS join (ruleVersion 2), regression-tested against `data/ris-me-map-gp27.json` and the GP XXVIII fixtures.
 - `ris/titleSimilarity.ts` / `ris/ministryCodes.ts` — **pure**: the toolkit the join was calibrated on (title normalisation, tokens, components, `daysBetween`; the `"CODE (long name)"` reader and the lineage groups), borrowed by `parliament/related.ts`, `parliament/precedingDraft.ts`, `ris/bgblJoin.ts`, `ris/risOnly.ts` and the full-text search instead of being re-derived per caller.
 - `parliament/related.ts` — **pure**: same-title drafts (predecessor/successor) by exact equality of the normalised title tokens, evaluated on the 57 GP XXVII drafts without RV (§12.10). `parliament/draftDetail.ts` looks in this, the previous and — once the GP is over — the next GP, and keeps a predecessor only when it produced no RV.
-- `lawText.ts` / `lawDiff.ts` — **pure**: Parliament Word-template HTML → § units (or Novellierungsanordnungen); article pairing by law name (the "Artikel n" marker is read from the heading text, not its class — the two documents disagree on the level), package scoping via `diffLawPackage`, unit alignment by heading, LCS word diff, editorial-vs-substantive rule. `lawDiffService.ts` fetches and caches around them.
+- `lawtext/` / `lawDiff.ts` — **pure**: Parliament Word-template HTML → § units (or Novellierungsanordnungen); article pairing by law name (the "Artikel n" marker is read from the heading text, not its class — the two documents disagree on the level), package scoping via `diffLawPackage`, unit alignment by heading, LCS word diff, editorial-vs-substantive rule. `lawDiffService.ts` fetches and caches around them.
 - `parliament/lastgood.ts` — on-disk store for the last-good statements aggregation of one ME (one JSON record per ME, write-then-rename, versioned; read back only when the live list-142 fetch fails). State directory: `BM_STATE_DIR` → systemd `STATE_DIRECTORY` (`/var/lib/begutachtungs-monitor`) → `./.data`. Deliberately outside the app dir — `deploy.sh` rsyncs `.output/` with `--delete`.
 
 **Cache rules (August 2026, forced by a real failure):**
@@ -302,7 +302,8 @@ on every push (`.github/workflows/ci.yml`).
   failure degrades instead of throwing — point `BM_STATE_DIR` at a temp dir),
   `cacheLayers` (every cached function declares its layer, §5).
 - **RIS join and the ME→RV diff:** `risJoin` (tiers), `titleSimilarity` and
-  `ministryCodes` (its toolkit), `lawDiff`, `lawTitles`, `lawPackage`.
+  `ministryCodes` (its toolkit), `lawDiff`, `bgblCitation`, `draftArticles`,
+  `lawPackage`.
 - **Amendment engine (§12.12):** `novao` (instruction parsing), `lawApply`,
   `applyGuard`, `applyReport`, `tguOracle`.
 - **Textgegenüberstellung (§12.13):** `comparisonRows` (the XML table),
@@ -384,7 +385,7 @@ after a clean install.
 ## 12. Deliberately deferred (with reasons)
 
 1. **RIS integration** (clean XML draft texts, ME↔RIS join): ~~blocked on the join-key test at corpus level~~ the join is resolved (`docs/ris-join.md`, pure implementation in `server/utils/ris/risJoin.ts`, artefact `data/ris-me-map-gp27.json`). Still deferred: the nightly RIS fetch and wiring the RIS link into `DraftDetail`. Needed for the diff layer on GP XXVII and earlier (PDF-only on the Parliament side); GP XXVIII can be diffed from Parliament HTML alone.
-2. **Diff layer ME→RV** (the actual accountability core): ~~needs RIS texts or parliament HTML parsing + a diff algorithm~~ **first version shipped 2026-09-08** from Parliament HTML (GP XXVIII on): `lawText.ts`, `lawDiff.ts`, `lawDiffService.ts`, `GET /api/drafts/:gp/:inr/diff`, `LawDiffSection.vue` — `docs/ris-join.md` §6b. RIS XML path for GP XXVII and earlier shipped 2026-09-08 (§6c). Erläuterungen passage dropped on evidence (§6c). Still deferred: a diff of the Erläuterungen themselves, older RIS XML variants.
+2. **Diff layer ME→RV** (the actual accountability core): ~~needs RIS texts or parliament HTML parsing + a diff algorithm~~ **first version shipped 2026-09-08** from Parliament HTML (GP XXVIII on): `lawtext/`, `lawDiff.ts`, `lawDiffService.ts`, `GET /api/drafts/:gp/:inr/diff`, `LawDiffSection.vue` — `docs/ris-join.md` §6b. RIS XML path for GP XXVII and earlier shipped 2026-09-08 (§6c). Erläuterungen passage dropped on evidence (§6c). Still deferred: a diff of the Erläuterungen themselves, older RIS XML variants.
 3. **Deadline alerts**: ~~e-mail/RSS~~ the stateless tier shipped Aug 2026 — own RSS feed (`/feed.xml`) and ICS deadline calendar (`/kalender.ics`), both without accounts or persistence (§5). Still deferred: **e-mail subscriptions** — they need everything the stateless design avoids (SQLite for subscribers + seen-set, nightly diff job, double opt-in + one-click unsubscribe, privacy page, EU-sovereign ESP with SPF/DKIM). Planned as a grant-funded work package, not prototype work: ops-heavy alerting is what killed the predecessor.
 4. **Persistence & history**: detecting deadline extensions, statement growth over time, base rates for mechanism 2 ("evidence base") — needs snapshots instead of a cache.
 5. **Broadlistening (stage 2)** — only once stage 1 has users.
@@ -570,7 +571,7 @@ shares its prerequisite with the consolidated-text package (§12.12), and the
 lookup half is far smaller than an amendment engine — no Novellierung has to
 be applied, only a heading resolved.
 
-**Built 2026-09-09** (`server/utils/lawTitles.ts`, `paraTitleService.ts`,
+**Built 2026-09-09** (`server/utils/lawtext/draftArticles.ts`, `paraTitleService.ts`,
 `/api/drafts/:gp/:inr/paragraphtitel`). Named changes went from 11,2 %
 to **32,6 %** of changed units, measured over 12 Novellen and 457 units.
 8/ME now reads "Erweiterte Gefahrenerforschung und Schutz vor
@@ -729,8 +730,8 @@ pure modules plus a harness, none of it wired to a page yet:
 | Modul | Aufgabe |
 |---|---|
 | `server/utils/novao.ts` | Novellierungsanordnung → typisierte Operation |
-| `server/utils/lawStructure.ts` | RIS-BrKons-Paragraph → adressierbarer Baum (§ → Abs → Z → lit) |
-| `server/utils/lawTitles.ts` | Promulgationsklausel → Stammnorm; `articleBlocks` schneidet ein Paket in seine Gesetze |
+| `server/utils/lawtext/konsTree.ts` | RIS-BrKons-Paragraph → adressierbarer Baum (§ → Abs → Z → lit) |
+| `server/utils/lawtext/draftArticles.ts` | Promulgationsklausel → Stammnorm; `articleBlocks` schneidet ein Paket in seine Gesetze |
 | `server/utils/lawApply.ts` | wendet die Operationen an, verweigert im Zweifel |
 | `server/utils/risKons.ts` | Client für den geltenden Bestand (`Applikation=BrKons`) |
 | `scripts/novao-corpus.ts`, `novao-forms.ts` | Anweisungskorpus ernten, Grammatikdeckung messen |
@@ -831,7 +832,7 @@ Quote nahelegte:
 - **`<schlussteil>` fehlte in `parseRisXml`.** Der Abschlussteil einer
   Aufzählung („… hat jede Veränderung, insbesondere a) … e) … *der Behörde
   anzuzeigen*") wurde aus jedem RIS-XML-Dokument stillschweigend entfernt.
-  `lawStructure.ts` kannte das Tag von Anfang an, `lawText.ts` nicht — der
+  `lawtext/konsTree.ts` kannte das Tag von Anfang an, `lawtext/risXml.ts` nicht — der
   Fehler blieb unsichtbar, weil **beide Seiten des ME→RV-Vergleichs** ihn
   symmetrisch trugen. Das betrifft nicht nur die Engine, sondern den
   ausgelieferten Diff für GP XXVII und früher. *Nachtrag 11.09.2026:* „von
@@ -1043,7 +1044,7 @@ teilen: jeder Artikel nennt sein Gesetz in seiner eigenen
 Promulgationsklausel, nummeriert seine Anweisungen ab 1 und adressiert einen
 §-Raum, den der nächste Artikel wiederverwendet. `resolveLaw` hat deshalb
 „Sammelnovelle: n Stammnormen" gemeldet und das ganze BGBl fallen lassen.
-Der Schnitt am gedruckten Artikel-Kopf (`lawTitles.articleBlocks`, dieselbe
+Der Schnitt am gedruckten Artikel-Kopf (`lawtext/draftArticles.articleBlocks`, dieselbe
 Grenze, an der `segmentUnits` seinen Zustand zurücksetzt und `draftArticles`
 seine Einträge bildet) macht daraus n bewertete Gesetze. Auf dem alten
 Einzelnovellen-Korpus ist der Lauf danach **zeichengleich** mit dem davor —
@@ -1170,7 +1171,7 @@ Freitext-Schreibweisen des RIS („TGÜ", „SAG_TGÜ",
 *Dazwischen lag ein Fehler derselben Bauart wie schon zweimal zuvor.* Die
 Parlamentskopie ist die Word-Legistikvorlage und schreibt das
 Gliederungssymbol als `<span class=991GldSymbol>&sect;&nbsp;1.</span>`, das
-RIS als `<gldsym>`. `lawText.ts` kennt beide seit jeher, `annex/comparisonRows.ts`
+RIS als `<gldsym>`. `lawtext/parliamentHtml.ts` kennt beide seit jeher, `annex/comparisonRows.ts`
 kannte nur die RIS-Form. Ergebnis: der Anhang parste, die Tabellen stimmten,
 die Änderungen wurden gefunden — und **jede** Zeile kam ohne Bezeichnung
 zurück, worauf `rowsByParagraph` sie alle verwarf und das Orakel zu jedem
@@ -1474,7 +1475,7 @@ Nachlesen eines einzelnen Ergebnisses.
 
 Der Grund war eine Ebene, keine Lücke: `withHeading` gab es längst, aber nur
 für die Neufassung und den Entfall einer Einheit — die Überschrift ist in
-`lawStructure` ein eigener Slot, und eine Phrasenoperation adressierte immer
+`lawtext/konsTree` ein eigener Slot, und eine Phrasenoperation adressierte immer
 den Text. Behoben nicht mit einem dritten Anwendungsmodus, sondern mit einer
 **zweiten Operation**: Trägt eine Adresse „samt Überschrift", entsteht neben
 ihr ein Zwilling auf den Überschriften-Slot, auf den Paragraphen hochgezogen
@@ -2322,7 +2323,7 @@ eigene Bezeichnungslesung:
   Schreibweisen („§ 27 ." für § 27), die nur die Anzeige trafen, 153 Zeilen
   zusammen. Die Bezeichnung wird jetzt ohne Auszeichnungsmarkup gelesen
   (zunächst über ein eigenes `designationText`, seit der geteilten Regel
-  unten über `lawText.stripMarkup`).
+  unten über `lawtext/normalize.stripMarkup`).
   Was es kostete, ist gemessen und war **nicht** die befürchtete falsche
   Bestätigung: sechs der sieben zeigen links höchstens ein vergleichbares
   Wort und bleiben ungeprüft; § 11 dagegen wurde mit 11 % Deckung gegen den
@@ -2337,13 +2338,13 @@ nur der teuerste Fall; die Ressorts markieren die geänderten Buchstaben
 *jedes* Wortes gelb — `Schlepplifte<i><span
 style="background:yellow">n</span></i>,` —, und ein Tag als Leerzeichen macht
 daraus zwei Wörter, die der geltende Paragraph nicht hat. Die
-Unterscheidung liegt jetzt an einer Stelle (`lawText.stripMarkup`): ein
+Unterscheidung liegt jetzt an einer Stelle (`lawtext/normalize.stripMarkup`): ein
 Blocktag ist eine Wortgrenze, ein Auszeichnungstag nicht. Sie **musste**
 geteilt werden — der Vergleich hat drei Seiten (Beilage, geltender Text aus
 dem RIS, Gesetzestext des Entwurfs), und eine Regel auf nur einer davon baut
 genau die Asymmetrie wieder auf, gegen die `ANNOTATION_RE` existiert. Der
-geltende Text las übrigens nie über `lawText`, sondern über eine zweite
-Kopie derselben Zeile in `lawStructure.ts`; das war der Grund, warum die
+geltende Text las übrigens nie über `lawtext/normalize`, sondern über eine zweite
+Kopie derselben Zeile in `lawtext/konsTree.ts`; das war der Grund, warum die
 Symmetrie vorher nicht zu sehen war.
 
 *Gemessen* über die GP XXVIII (126 lesbare Beilagen, die 3.858 vom Tor
@@ -2542,7 +2543,7 @@ abgebildet)" zweimal, „[entfällt durch ein früher in Kraft tretendes
 Vorhaben]"), **einmal Rechtschreibung** (Konfitürenverordnung § 5,
 „In-Kraft-Treten" gegen „Inkrafttreten") — und **zweimal eine Lücke in
 unserer eigenen RIS-Lesung**: bei StGB § 321c und BMSVG § 28 endete
-`lawStructure.plainText` den Absatz mit seiner Aufzählung und ließ den Satz
+`lawtext/konsTree.plainText` den Absatz mit seiner Aufzählung und ließ den Satz
 danach weg („ist mit Freiheitsstrafe von einem bis zu zehn Jahren zu
 bestrafen.", „Verordnungen der FMA nach diesem Absatz bedürfen der Zustimmung
 des Bundesministers für Finanzen."). Die Beilage zitierte dort Recht, das der
@@ -2697,7 +2698,7 @@ gilt, hängt am **Konverter, der das Dokument erzeugt hat**, nicht am Gesetz:
 Version 4.1 schreibt `<schlussteil>`, die 3er-Reihe `<schluss typ="…">`, 4.0
 liegt auf der Grenze. Über die 16.073 Paragraphendokumente des Offline-Korpus
 tragen 2.824 den neuen Namen, 402 den alten, und **kein einziges beide** —
-`lawStructure.ts` las nur den neuen und beendete damit jene 402 Paragraphen mit
+`lawtext/konsTree.ts` las nur den neuen und beendete damit jene 402 Paragraphen mit
 ihrer Aufzählung: 880 Blöcke, 23.578 vergleichbare Wörter geltenden Rechts,
 still verworfen. Gegen eine unabhängige flache Lesung derselben Dokumente
 (jeder Block in Dokumentreihenfolge, ohne Baum) gibt der Baum die Reihenfolge
@@ -2753,7 +2754,7 @@ Absatzes angehängt und deshalb **vor** der Liste ausgegeben. Für die linke
 Prüfung ist das folgenlos (ein Sacktest kennt keine Reihenfolge), für Regel 1
 kostet es Empfindlichkeit, weil sie zusammenhängende Wortfolgen sucht.
 
-**Dieselbe Lücke stand in `lawText.parseRisXml`** (geschlossen 12.09.2026), das die andere
+**Dieselbe Lücke stand in `lawtext/risXml.parseRisXml`** (geschlossen 12.09.2026), das die andere
 RIS-XML-Sorte liest (Gesetzestext des Entwurfs, ME→RV für GP XXVII und früher,
 Anweisungen der Änderungsmaschine): `RIS_BLOCK_RE` kennt `schlussteil`, nicht
 `schluss`. Im Offline-Korpus sind das 98 Dokumente mit 712 Blöcken und 12.100
@@ -2772,7 +2773,7 @@ ME→RV-Vergleich für GP XXVII und früher und die Änderungsmaschine lesen: di
 
 **Mitgefunden: eine Fußnote, die nur auf einer Seite verschwand.** RIS druckt
 eigene redaktionelle Anmerkungen in den konsolidierten Text („(Anm.: Abs. 2
-aufgehoben durch …)"); `lawStructure.ts` entfernt sie auf der RIS-Seite, und
+aufgehoben durch …)"); `lawtext/konsTree.ts` entfernt sie auf der RIS-Seite, und
 `annex/annexText.ts` tat es mit demselben Muster auf der Spaltenseite. Über den
 Korpus überlebten es trotzdem 110 Vorkommen von „Anm", und die Ursache war
 eine einzige Form: **„(Anm. : aufgehoben durch …)"**, mit Leerzeichen vor dem
@@ -3358,7 +3359,7 @@ festhält, nicht in einem Satz, den eine Leserin heute anders läse.
 seiner ersten Novellierungsanordnung benannt"). Die UH-Statistik- und
 Bildungsdokumentationsverordnung verliert §§ 18, 35 und
 37 an Regel 2 („nicht im Entwurf"), § 18 davon aus *bestätigt*. Der Grund ist
-nicht die Regel: `lawTitles.draftArticles` liest in diesem Entwurf eine
+nicht die Regel: `lawtext/draftArticles` liest in diesem Entwurf eine
 zitierte Anlagenüberschrift als **zweiten Artikel** („Anlage 1 zu § 6 Anhang
 zum Diplom …", mit Promulgationsklausel), und die Zeilen der Beilage landen
 alle in dieser zweiten Hälfte, während die Anordnungen zu §§ 16, 18, 35 und 37
@@ -3371,7 +3372,7 @@ Gesetzes vererbt. Mit dem richtigen Schlüssel greift `shown` — wie gebaut —
 und die Anleihe entfällt. Nachgemessen steht **jedes** der als fehlend
 gemeldeten Wörter im Entwurf, nur unter dem anderen Gesetzesschlüssel; die
 drei Meldungen sind also Fehlalarme einer bekannten Klasse mit benannter
-Ursache in `lawTitles.ts`, nicht in `designationKey`.
+Ursache in `lawtext/draftArticles.ts`, nicht in `designationKey`.
 
 Gemessen über die GP XXVIII: Tabellenpfad **1.007/52/799 → 1.008/55/795**
 Paragraphen, nach Ursache 43/5/4 → **43/5/7**, ≥ 99 % gedeckt 988 → **990**,
@@ -3397,8 +3398,8 @@ Sache, von denen einer stillschweigend der falsche ist. `shown` und `byLaw`
 müssen denselben Schlüssel benutzen, sonst sagt der Mechanismus nichts.
 
 **Ein Gesetz wird vor seiner ersten Novellierungsanordnung benannt — danach
-ist jede Überschrift Zitat** (11.09.2026, `lawTitles.draftArticles` und
-`lawText.segmentUnits`). Ordnet ein Entwurf eine Anlage, ein Kapitel oder
+ist jede Überschrift Zitat** (11.09.2026, `lawtext/draftArticles` und
+`lawtext/lawUnits.segmentUnits`). Ordnet ein Entwurf eine Anlage, ein Kapitel oder
 einen ganzen Gesetzestitel neu an, druckt er die Überschrift, die er einsetzt
 — und das RIS zeichnet diese **zitierte** Überschrift genauso aus wie einen
 Gesetzestitel: `ueberschrift typ="anlage"`, `"g2"`, `"titel"`. Als Name
@@ -5912,7 +5913,7 @@ und in 16 von 20 in den Erläuterungen. „Das Gesetz handelt davon" und „das
 Ressort erwähnt es in seiner Begründung" sind zwei verschiedene Auskünfte,
 und die Rangfolge der Dokumente (Entwurfstext → Erläuterungen →
 Textgegenüberstellung → Begleitschreiben) entscheidet, welche die Zeile gibt.
-Gelesen wird mit `lawText.parseRisXml`, also demselben Parser wie die
+Gelesen wird mit `lawtext/risXml.parseRisXml`, also demselben Parser wie die
 Gegenüberstellung — samt `gld`, weshalb die Zeile „im Entwurfstext, § 6."
 sagen kann und nicht nur „im Entwurfstext".
 

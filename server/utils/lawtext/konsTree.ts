@@ -9,8 +9,8 @@
  * addresses: § → Absatz → Ziffer/Litera, plus the Schlussteil that trails a
  * list. `lawApply.ts` operates on that tree; nothing here changes anything.
  */
-import { normalizeText, stripMarkup } from './lawText'
-import { decodeEntities } from './parliament/htmlText'
+import { normalizeText, stripMarkup } from './normalize'
+import { decodeEntities } from '../parliament/htmlText'
 
 export type NodeLevel = 'para' | 'abs' | 'z' | 'lit' | 'schluss'
 
@@ -48,6 +48,11 @@ export function makeNode(level: NodeLevel, id: string, marker: string, text: str
 // RIS BrKons XML → tree
 // ---------------------------------------------------------------------------
 
+/**
+ * Deliberately not `risXml`'s list, which is the one home for the element
+ * vocabulary of a *draft*: this reads a single § of the standing law, where
+ * `inhaltsvz` is the law's own table of contents and no part of any §.
+ */
 const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/g, /<layoutdaten[\s\S]*?<\/layoutdaten>/g]
 /**
  * The elements that carry law text — and `schluss` beside `schlussteil`,

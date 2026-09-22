@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph, articleBlocks, draftArticles, isAmendmentClause, parseBgbl, promulgationByArticle, sameBgbl, stammnormOf } from '../server/utils/lawTitles'
-import { parseRisXml } from '../server/utils/lawText'
-import { unitKey } from '../shared/utils/diffKey'
+import { articleBlocks, draftArticles, isAmendmentClause, promulgationByArticle } from '../server/utils/lawtext/draftArticles'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
 
 /** A package Artikel with its Promulgationsklausel, in RIS's element vocabulary. */
 function article(nr: string, title: string, clause: string, instructions: string[]): string {
@@ -12,27 +11,6 @@ function article(nr: string, title: string, clause: string, instructions: string
   )
 }
 const doc = (body: string) => `<risdok><nutzdaten><abschnitt>${body}</abschnitt></nutzdaten></risdok>`
-
-describe('parseBgbl', () => {
-  it('splits organ and number the way RIS stores them', () => {
-    expect(parseBgbl('…, BGBl. Nr. 620/1989, zuletzt geändert…')).toEqual({ organ: 'BGBl. Nr.', nummer: '620/1989' })
-    expect(parseBgbl('…, BGBl. I Nr. 84/2001, …')).toEqual({ organ: 'BGBl. I Nr.', nummer: '84/2001' })
-    expect(parseBgbl('…, BGBl. III Nr. 84/2001, …')).toEqual({ organ: 'BGBl. III Nr.', nummer: '84/2001' })
-    expect(parseBgbl('kein Zitat hier')).toBeNull()
-  })
-
-  it('takes the first citation — the Stammnorm, not the latest amendment', () => {
-    const clause = 'Das Strafgesetzbuch, BGBl. Nr. 60/1974, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 135/2023, wird wie folgt geändert:'
-    expect(parseBgbl(clause)).toEqual({ organ: 'BGBl. Nr.', nummer: '60/1974' })
-  })
-
-  it('distinguishes the Teil, because the number alone collides', () => {
-    // Kundmachungsorgannummer=84/2001 matches the AMD-G (BGBl. I) and an
-    // Amtssitz law (BGBl. III); only the pair identifies a law.
-    expect(sameBgbl({ organ: 'BGBl. I Nr.', nummer: '84/2001' }, { organ: 'BGBl. III Nr.', nummer: '84/2001' })).toBe(false)
-    expect(sameBgbl({ organ: 'BGBl. I Nr.', nummer: '84/2001' }, { organ: 'BGBl. I Nr.', nummer: '84/2001' })).toBe(true)
-  })
-})
 
 describe('promulgationByArticle', () => {
   it('maps each Artikel to the law it amends', () => {
@@ -86,87 +64,6 @@ describe('promulgationByArticle', () => {
   it('yields nothing for a Stammgesetz — it creates law rather than changing it', () => {
     const blocks = parseRisXml(doc('<ueberschrift typ="titel">Bundesgesetz über etwas Neues</ueberschrift><absatz typ="abs"><gldsym>§ 1.</gldsym> Dieses Gesetz gilt.</absatz>'))
     expect(promulgationByArticle(blocks).size).toBe(0)
-  })
-})
-
-describe('addressedParagraph', () => {
-  it('names the § an instruction edits', () => {
-    expect(addressedParagraph('§ 218 Abs. 1 lautet:')).toBe('§ 218')
-    expect(addressedParagraph('In § 9 Abs. 1 wird die Wortfolge "alt" durch die Wortfolge "neu" ersetzt.')).toBe('§ 9')
-    expect(addressedParagraph('Dem § 60 wird folgender Abs. 44 angefügt:')).toBe('§ 60')
-  })
-
-  it('refuses the anchor of a newly created §', () => {
-    // "Nach § 5 wird folgender § 5a eingefügt" addresses § 5, but the change
-    // is § 5a — § 5's heading would be a real name on the wrong paragraph.
-    expect(addressedParagraph('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:')).toBeNull()
-    // A sub-unit lands inside the named §, so its heading does fit.
-    expect(addressedParagraph('In § 5 wird nach Abs. 2 folgender Abs. 3 eingefügt:')).toBe('§ 5')
-  })
-
-  it('refuses when one instruction spans several paragraphs', () => {
-    expect(addressedParagraph('In § 17 Abs. 4, § 19 Abs. 1 und § 46 Abs. 2 wird jeweils die Wortfolge "a" durch die Wortfolge "b" ersetzt.')).toBeNull()
-  })
-
-  it('returns null for an instruction it cannot read', () => {
-    expect(addressedParagraph('Im Inhaltsverzeichnis wird nach dem Eintrag zu § 5 folgender Eintrag eingefügt:')).toBeNull()
-    expect(addressedParagraph('§ 5 wird wie folgt geändert:')).toBeNull()
-  })
-})
-
-describe('unitKey', () => {
-  it('separates a removed and an inserted unit that share a Ziffer number', () => {
-    // A Regierungsvorlage can drop the draft's Z 5 and introduce its own.
-    // Keyed on article|id alone the two collide and one § heading appears on
-    // the other change — which is exactly what happened on SNG 8/ME.
-    const removed = { article: 'Änderung des SNG', id: 'Z5', change: 'removed' as const }
-    const inserted = { article: 'Änderung des SNG', id: 'Z5', change: 'inserted' as const }
-    expect(unitKey(removed)).not.toBe(unitKey(inserted))
-  })
-
-  it('is stable and treats a missing article as empty', () => {
-    const unit = { article: null, id: '§5', change: 'changed' as const }
-    expect(unitKey(unit)).toBe('|§5|changed')
-    expect(unitKey(unit)).toBe(unitKey({ ...unit }))
-  })
-})
-
-describe('stammnormOf', () => {
-  it('reads the Stammnorm, not the most recent amendment', () => {
-    expect(stammnormOf('Das Bundesgesetz X, BGBl. I Nr. 100/2000, zuletzt geändert durch BGBl. I Nr. 50/2020, wird wie folgt geändert:'))
-      .toEqual({ organ: 'BGBl. I Nr.', nummer: '100/2000' })
-  })
-
-  // The UGB's Stammnorm is "dRGBl. S. 219/1897". Taking the first BGBl in the
-  // whole clause returned the last amendment and resolved to another law.
-  it('refuses when the law was not promulgated in a BGBl at all', () => {
-    // Das UGB ist dRGBl. S. 219/1897. Bis 19.09.2026 gab es dafür keine
-    // Lesart und die Antwort war null — richtig, solange die Alternative war,
-    // die *erste BGBl-Zahl* der Klausel zu nehmen, also die letzte Novelle,
-    // und damit auf ein fremdes Gesetz aufzulösen. Jetzt wird die Stammnorm
-    // gelesen, und die Gefahr von damals ist die eigentliche Zusicherung
-    // hier: es ist 219/1897 und gerade nicht 6/2026.
-    expect(stammnormOf('Das Unternehmensgesetzbuch - UGB, dRGBl. S. 219/1897, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 6/2026, wird wie folgt geändert:'))
-      .toEqual({ organ: 'dRGBl. S.', nummer: '219/1897' })
-  })
-
-  it('liest die älteren Kundmachungsorgane, in denen Österreichs meistzitierte Gesetze stehen', () => {
-    // ABGB, ZPO und Notariatsordnung sind älter als das Bundesgesetzblatt.
-    // Das RIS führt sie im selben Feldpaar wie jedes BGBl, also trägt die
-    // bestehende Verknüpfung sie — sie kannte die Organe nur nicht.
-    expect(stammnormOf('Das allgemeine bürgerliche Gesetzbuch, JGS Nr. 946/1811, wird wie folgt geändert:'))
-      .toEqual({ organ: 'JGS Nr.', nummer: '946/1811' })
-    expect(stammnormOf('Die Zivilprozessordnung, RGBl. Nr. 113/1895, wird wie folgt geändert:'))
-      .toEqual({ organ: 'RGBl. Nr.', nummer: '113/1895' })
-  })
-
-  it('hält die Teile auseinander, auch über Organe hinweg', () => {
-    // Die Normalisierung darf nur Schreibweise einebnen, nie den Teil:
-    // 84/2001 ist sowohl das AMD-G (BGBl. I) als auch ein Amtssitzgesetz
-    // (BGBl. III).
-    expect(sameBgbl({ organ: 'dRGBl. S.', nummer: '219/1897' }, { organ: 'dRGBl. S', nummer: '219/1897' })).toBe(true)
-    expect(sameBgbl({ organ: 'BGBl. I Nr.', nummer: '84/2001' }, { organ: 'BGBl. III Nr.', nummer: '84/2001' })).toBe(false)
-    expect(sameBgbl({ organ: 'JGS Nr.', nummer: '946/1811' }, { organ: 'RGBl. Nr.', nummer: '946/1811' })).toBe(false)
   })
 })
 

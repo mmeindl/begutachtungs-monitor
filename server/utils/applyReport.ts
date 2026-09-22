@@ -16,7 +16,7 @@
  * where tests and the compiler can reach it. Only the I/O stays in a script.
  */
 import { diffTokens } from './diff/wordDiff'
-import { plainText, type LawNode } from './lawStructure'
+import { plainText, type LawNode } from './lawtext/konsTree'
 import type { LawDiffSegment } from '../../shared/types'
 
 /** How an engine result relates to the version RIS actually holds. */

@@ -20,7 +20,7 @@
  * falsche Begründung am Paragraphen wäre schlimmer als keine. Dieselbe Regel,
  * die `ComparisonRow.law` bereits befolgt.
  */
-import type { DraftArticle } from './lawTitles'
+import type { DraftArticle } from './lawtext/draftArticles'
 import type { ExplanationsDocument } from './explanations'
 import { articleNameTokens, jaccardSimilarity } from './lawtext/lawNames'
 // Relative, nicht über `#shared`: Dieses Modul ist rein, damit vitest und die

@@ -27,7 +27,7 @@
  * verdict: the oracle is silent, not positive.
  */
 import { diffTokens } from './diff/wordDiff'
-import { normalizeText } from './lawText'
+import { normalizeText } from './lawtext/normalize'
 import type { ComparisonRow } from './annex/comparisonRows'
 import { punctuationTokens } from './text/punctuationTokens'
 

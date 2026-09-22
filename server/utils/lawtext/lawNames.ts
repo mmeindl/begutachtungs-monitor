@@ -24,7 +24,7 @@
  * A fifth, `risKons.NAME_MATCH`, reads `lawNameScore` through
  * `text/clearWinner.ts`.
  */
-import { normalizeText } from '../lawText'
+import { normalizeText } from '../lawtext/normalize'
 
 /**
  * Jaccard over two token sets: shared / (all distinct).

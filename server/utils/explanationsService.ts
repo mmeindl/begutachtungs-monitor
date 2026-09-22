@@ -29,7 +29,7 @@
 import type { ExplanationsResponse, TraceLink } from '#shared/types'
 import { hasReadableText, parseExplanations, type ExplanationsDocument, type ExplanationsPart } from './explanations'
 import { explanationsByParagraph } from './explanationsJoin'
-import type { DraftArticle } from './lawTitles'
+import type { DraftArticle } from './lawtext/draftArticles'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from './lawtext/draftArticlesService'
 import { DERIVED_CACHE } from './cache/base'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from './cache/ttl'

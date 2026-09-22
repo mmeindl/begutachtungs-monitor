@@ -187,7 +187,7 @@ sequence fallback, never by § number alone.
 
 ### 6b. Shipped (2026-09-08): the first §-level view
 
-- `server/utils/lawText.ts`: Word-template HTML → blocks → units. A unit is
+- `server/utils/lawtext/`: Word-template HTML → blocks → units. A unit is
   one § with its Absätze and Ziffern, or one Novellierungsanordnung (Z n)
   with the quoted § inside. The Gliederungssymbol is kept out of the unit
   text so a renumbered § compares equal.

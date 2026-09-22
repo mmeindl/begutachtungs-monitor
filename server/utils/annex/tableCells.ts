@@ -5,7 +5,7 @@
  * PURE MODULE — relative imports only, so vitest runs it directly. Read by
  * `annex/tableElements.ts` and `annex/comparisonRows.ts`.
  */
-import { normalizeText, stripMarkup } from '../lawText'
+import { normalizeText, stripMarkup } from '../lawtext/normalize'
 import { decodeEntities } from '../parliament/htmlText'
 
 /**

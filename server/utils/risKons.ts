@@ -15,8 +15,8 @@
  *   are what makes a verification harness possible: they address the law as
  *   it stood on any given day.
  */
-import { parseKonsParagraph, type LawNode } from './lawStructure'
-import { sameBgbl, type BgblCitation } from './lawTitles'
+import { parseKonsParagraph, type LawNode } from './lawtext/konsTree'
+import { sameBgbl, type BgblCitation } from './lawtext/bgblCitation'
 import { pickClearWinner } from './text/clearWinner'
 import { RIS_API_BASE, upstreamJson, upstreamText, type UpstreamPolicy } from './upstream/fetch'
 

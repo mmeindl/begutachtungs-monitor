@@ -24,7 +24,8 @@
  * bedeuten, sonst hängt die Begründung am falschen §.
  */
 import { addressOf, isAddressHeading } from './explanations'
-import { normalizeText, parseParliamentHtml } from './lawText'
+import { normalizeText } from './lawtext/normalize'
+import { parseParliamentHtml } from './lawtext/parliamentHtml'
 // One reading of a designation for both sides of the lookup. Its `\b` changes
 // nothing for what `addressOf` builds: 0 of 4.215 designations differ over the
 // offline corpus (22.09.2026).

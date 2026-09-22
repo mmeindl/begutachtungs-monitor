@@ -21,8 +21,8 @@
  */
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from './annexBoundaries'
 import { diffTokens, isEditorialChange } from './diff/wordDiff'
-import { normalizeText } from './lawText'
-import type { DraftArticle } from './lawTitles'
+import { normalizeText } from './lawtext/normalize'
+import type { DraftArticle } from './lawtext/draftArticles'
 import { classify, type ComparisonRow } from './annex/comparisonRows'
 import { isElidedPair } from './annex/elision'
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './annex/tableCells'

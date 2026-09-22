@@ -32,8 +32,8 @@
  * refuses. An unattributed comparison is a usable answer; a confidently
  * mis-attributed one is not.
  */
-import { normalizeText } from './lawText'
-import type { DraftArticle } from './lawTitles'
+import { normalizeText } from './lawtext/normalize'
+import type { DraftArticle } from './lawtext/draftArticles'
 import { lawNameScore } from './lawtext/lawNames'
 import { pickClearWinner } from './text/clearWinner'
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyNovelle, instructionsFromUnits, parsePayload, resolveTarget, splitSentences, stripPayloadQuotes, type Instruction, type StandingLaw } from '../server/utils/lawApply'
-import { makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawStructure'
+import { makeNode, parseKonsParagraph, plainText, renderNode, type LawNode } from '../server/utils/lawtext/konsTree'
 import { parseInstruction, type NovaoAddress } from '../server/utils/novao'
 
 /** A § with numbered Absätze, the shape RIS BrKons delivers. */

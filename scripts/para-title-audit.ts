@@ -26,8 +26,9 @@
  * "Waldresilienzfondsgesetz").
  */
 import { getText, resolveLawByBgbl, fetchParagraphTree } from '../server/utils/risKons'
-import { parseRisXml, parseParliamentHtml } from '../server/utils/lawText'
-import { promulgationByArticle } from '../server/utils/lawTitles'
+import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
+import { promulgationByArticle } from '../server/utils/lawtext/draftArticles'
 
 const GP = process.argv[2] ?? 'XXVIII'
 const MAX_DRAFTS = Number(process.argv[3] ?? 40)

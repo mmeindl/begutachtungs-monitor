@@ -20,8 +20,8 @@ import {
   type AnnexDraft,
   type AnnexSources,
 } from '../server/utils/annex/verdict'
-import type { TextBlock } from '../server/utils/lawText'
-import type { DraftArticle } from '../server/utils/lawTitles'
+import type { TextBlock } from '../server/utils/lawtext/lawUnits'
+import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import type { KonsLawAtDate, KonsParagraphRef } from '../server/utils/risKons'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 

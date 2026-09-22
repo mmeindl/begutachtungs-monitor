@@ -26,7 +26,7 @@
 
 import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } from '../annexBoundaries'
 import { diffTokens, isEditorialChange } from '../diff/wordDiff'
-import type { DraftArticle } from '../lawTitles'
+import type { DraftArticle } from '../lawtext/draftArticles'
 import type { LawDiffSegment } from '../../../shared/types'
 import { elisionOpens, isElidedPair } from './elision'
 import { cellText, headingOnly, paraHeading, stripGld, stripParaHeading, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
@@ -81,7 +81,8 @@ export interface ComparisonRow {
 }
 
 /**
- * Removed before anything is read.
+ * Removed before anything is read — deliberately not `lawtext/risXml`'s list,
+ * which reads a draft rather than an annex and keeps the table of contents.
  *
  * `<inhaltsvz>` is the law's **table of contents**, and RIS names it as such.
  * Annexes reprint it, and it is a two-column table of its own — "Paragraf" and

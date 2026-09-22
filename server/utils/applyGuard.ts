@@ -26,7 +26,7 @@
  * draft carries one. Together they decide what a gate may show as text.
  */
 import { diffTokens } from './diff/wordDiff'
-import { lawTextNodes, plainText, type LawNode } from './lawStructure'
+import { lawTextNodes, plainText, type LawNode } from './lawtext/konsTree'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
 import { addressedSentence, resolveTarget } from './lawApply'
 import { punctuationTokens } from './text/punctuationTokens'

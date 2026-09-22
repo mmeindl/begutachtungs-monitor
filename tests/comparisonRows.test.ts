@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseTextComparison, summarizeComparison } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import type { DraftArticle } from '../server/utils/lawTitles'
+import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 
 /**
  * The draft the annex belongs to. A law boundary the annex prints has to be

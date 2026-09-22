@@ -28,7 +28,7 @@
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../shared/types'
 import { unitKey } from '../../shared/utils/diffKey'
 import { diffTokens } from './diff/wordDiff'
-import { addressedParagraphOf } from './lawTitles'
+import { addressedParagraphOf } from './lawtext/instructionAddress'
 // The key of `passagesByParagraph`, and the same reading the page looks up
 // with. Its `\b` changes nothing for the designations `parseAddress` builds:
 // 0 of 4.215 differ over the offline corpus (22.09.2026). It bites only on a

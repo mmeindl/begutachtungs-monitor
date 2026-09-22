@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { alignUnits, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff } from '../server/utils/lawDiff'
-import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, parseParliamentHtml, parseRisXml } from '../server/utils/lawText'
+import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis } from '../server/utils/lawtext/lawUnits'
+import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { readFileSync } from 'node:fs'
 
 /** Minimal Word-filtered Parliament HTML in the legistic template classes. */

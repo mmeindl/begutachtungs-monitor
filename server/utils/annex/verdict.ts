@@ -56,8 +56,8 @@
  * this and labelled a row `verified` unless the check had named it, which
  * turned every one of those states into a vouched-for comparison.
  */
-import type { TextBlock } from '../lawText'
-import type { DraftArticle } from '../lawTitles'
+import type { TextBlock } from '../lawtext/lawUnits'
+import type { DraftArticle } from '../lawtext/draftArticles'
 import { mapWithConcurrency } from '../pool'
 import type { KonsLawAtDate, KonsParagraphRef } from '../risKons'
 import type { ComparisonRow } from './comparisonRows'

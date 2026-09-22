@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { guardParagraph, SIZE_TOLERANCE } from '../server/utils/applyGuard'
 import { applyNovelle, parsePayload, type Instruction, type StandingLaw } from '../server/utils/lawApply'
-import { makeNode, type LawNode } from '../server/utils/lawStructure'
+import { makeNode, type LawNode } from '../server/utils/lawtext/konsTree'
 import { parseInstruction } from '../server/utils/novao'
 
 function para(id: string, heading: string, absaetze: string[]): LawNode {

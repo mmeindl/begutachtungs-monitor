@@ -24,7 +24,7 @@
  * caller can only honour that promise if it is told which instructions were
  * lost, and the harness can only report the coverage if it is countable.
  */
-import { segmentUnits, type TextBlock } from './lawText'
+import { segmentUnits, type TextBlock } from './lawtext/lawUnits'
 import { draftTextOf } from './annex/draftText'
 import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from './novao'
 

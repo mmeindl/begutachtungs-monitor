@@ -36,7 +36,7 @@
 import { readFileSync } from 'node:fs'
 import { hasReadableText, parseExplanations } from '../server/utils/explanations'
 import { decodeEntities } from '../server/utils/parliament/htmlText'
-import { normalizeText, stripMarkup } from '../server/utils/lawText'
+import { normalizeText, stripMarkup } from '../server/utils/lawtext/normalize'
 import { fetchRisBegutCorpus } from './risCorpus'
 
 function arg(name: string): string | null {

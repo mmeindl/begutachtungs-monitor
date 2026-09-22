@@ -14,7 +14,7 @@
  * whole-draft bag — which is what makes the narrower reference strictly
  * stronger and never differently wrong (`annexDraft.ts`).
  */
-import type { TextBlock } from '../lawText'
+import type { TextBlock } from '../lawtext/lawUnits'
 
 /** The blocks as one string, `gld` included. */
 export function draftTextOf(blocks: readonly TextBlock[]): string {

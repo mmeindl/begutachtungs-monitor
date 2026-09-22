@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { draftUnits } from '../server/utils/annexDraft'
-import type { TextBlock } from '../server/utils/lawText'
+import type { TextBlock } from '../server/utils/lawtext/lawUnits'
 import { addressedUnits, parseInstruction, refusedAddresses } from '../server/utils/novao'
 
 const instruction = (text: string): TextBlock => ({ kind: 'novao', cls: 'absatz/novao1', text, gld: null })

@@ -23,9 +23,9 @@
  */
 import { verifyAnnex, type AnnexSources, type AnnexVerification } from './annex/verdict'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
-import { parseKonsParagraph, plainText } from './lawStructure'
-import type { TextBlock } from './lawText'
-import type { DraftArticle } from './lawTitles'
+import { parseKonsParagraph, plainText } from './lawtext/konsTree'
+import type { TextBlock } from './lawtext/lawUnits'
+import type { DraftArticle } from './lawtext/draftArticles'
 import type { ComparisonRow } from './annex/comparisonRows'
 import { DERIVED_ANALYSIS_TTL_S } from './cache/ttl'
 

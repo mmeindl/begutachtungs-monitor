@@ -10,7 +10,8 @@ import { draftUnits } from '../annexDraft'
 // 2026-09-10: what a § may draw on where the draft's instructions could not be
 // segmented at all (`draftReference`). Everything else reads them one by one.
 import { draftTextOf } from './draftText'
-import { normalizeText, type TextBlock } from '../lawText'
+import type { TextBlock } from '../lawtext/lawUnits'
+import { normalizeText } from '../lawtext/normalize'
 import { NO_PARAGRAPH_ADDRESSED } from '../novao'
 import type { ComparisonRow } from './comparisonRows'
 import { comparableTokens, designationKey } from './annexText'

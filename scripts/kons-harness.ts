@@ -42,9 +42,11 @@
  * (`applyReport.ts`, `halbangewendet`).
  */
 import { applyNovelle, instructionsFromUnits, resolveTarget, type StandingLaw } from '../server/utils/lawApply'
-import { plainText, type LawNode } from '../server/utils/lawStructure'
-import { parseRisXml, segmentUnits, type TextBlock } from '../server/utils/lawText'
-import { articleBlocks, draftArticles, promulgationByArticle, sameBgbl, type DraftArticle } from '../server/utils/lawTitles'
+import { plainText, type LawNode } from '../server/utils/lawtext/konsTree'
+import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
+import { sameBgbl } from '../server/utils/lawtext/bgblCitation'
+import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { lawNameScore } from '../server/utils/lawtext/lawNames'
 import type { NovaoAddress } from '../server/utils/novao'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, getText, resolveGesetzesnummer, resolveLawByBgbl, versionPairFor, type KonsParagraphRef } from '../server/utils/risKons'

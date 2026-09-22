@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { TextBlock } from '../server/utils/lawText'
+import type { TextBlock } from '../server/utils/lawtext/lawUnits'
 import {
   blocksFromPlainText,
   buildSnippet,

@@ -20,8 +20,9 @@
  * shortened list would misstate what the draft touches.
  */
 import type { AmendedLaw, AmendedLawsResponse } from '#shared/types'
-import type { TextBlock } from './lawText'
-import { isAmendmentClause, stammnormOf, type BgblCitation } from './lawTitles'
+import type { TextBlock } from './lawtext/lawUnits'
+import { stammnormOf, type BgblCitation } from './lawtext/bgblCitation'
+import { isAmendmentClause } from './lawtext/draftArticles'
 import { getDraftArticles } from './lawtext/draftArticlesService'
 import { getDraftsForGp } from './parliament/drafts'
 import { resolveKonsLaw } from './konsCache'

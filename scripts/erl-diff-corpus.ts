@@ -32,7 +32,7 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { parseParliamentHtml } from '../server/utils/lawText'
+import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseExplanationsHtml, passagesByParagraph } from '../server/utils/explanationsHtml'
 import { diffTokens } from '../server/utils/diff/wordDiff'
 
