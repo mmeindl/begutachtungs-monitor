@@ -36,9 +36,10 @@
  * procedure: "Was ändert der Entwurf?" belongs to the Entwurf, "Was sich
  * nach der Begutachtung geändert hat" to the Regierungsvorlage.
  *
- * Pure module: no Nuxt auto-imports, derived entirely from
- * DraftDetail — the statement count included, so a bar built from
- * this fetches nothing.
+ * Pure module: no Nuxt auto-imports. `DraftDetail` carries most of it, but
+ * not all — `StationContext` passes in what only a second endpoint knows
+ * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
+ * the values are handed in rather than guessed or fetched here.
  */
 import type { DraftDetail, LawStationId } from '../../shared/types'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '../../shared/utils/format'
@@ -159,24 +160,17 @@ export function procedureStatusDe(d: DraftDetail): string {
 }
 
 /**
- * Dieselbe Zeile für einen Verordnungsentwurf — und eine Asymmetrie, die
- * Absicht ist (§12.32).
+ * The same line for a Verordnungsentwurf — and an asymmetry that is
+ * deliberate (docs/architecture.md §12.32).
  *
- * Die Karte des Ministerialentwurfs nennt oben den AUSGANG („Gesetz
- * geworden"), die der Verordnung nannte bis 19.09.2026 den Stand der
- * Begutachtung („Begutachtung beendet"), auch wenn zwei Zeilen darunter
- * „Kundgemacht als BGBl. II Nr. 410/2024" stand. Dieselbe Karte, zwei
- * Logiken.
- *
- * NACH OBEN GEHT NUR DER BELEGTE AUSGANG. „Bisher nicht kundgemacht" wäre
- * die naheliegende Gegenrichtung und wird hier NICHT gesagt: Der
- * Ministerialentwurf darf „Bisher keine Regierungsvorlage" behaupten, weil
- * die Liste des Parlaments vollständig ist; die Kundmachung einer Verordnung
- * finden wir über einen gebauten Schlüssel, und der trifft gemessen 84,2 %
- * (bei alten Fristen 92,3 %). Jede zwölfte Überschrift wäre also falsch —
- * und zwar in der Richtung, die wie ein Vorwurf klingt. Die Zeile im
- * Kartentext sagt den Negativbefund weiterhin, aber als das, was er ist:
- * eine Auskunft über unseren Fund.
+ * ONLY AN EVIDENCED OUTCOME GOES TO THE TOP. „Bisher nicht kundgemacht"
+ * would be the obvious counter-direction and is NOT said here: the
+ * Ministerialentwurf may claim „Bisher keine Regierungsvorlage" because
+ * Parliament's list is complete, while a Verordnung's Kundmachung is found
+ * through a constructed key that hits 84,2 % (92,3 % for older Fristen).
+ * Every twelfth headline would be wrong, in the direction that sounds like an
+ * accusation. The row in the card text still states the negative finding, but
+ * as what it is: information about our search.
  */
 export function regulationStatusDe(active: boolean, promulgated: boolean): string {
   if (promulgated) return 'Kundgemacht'
@@ -184,40 +178,34 @@ export function regulationStatusDe(active: boolean, promulgated: boolean): strin
 }
 
 /**
- * Das zweite Fenster: dass zur Regierungsvorlage weiter Stellung genommen
- * werden kann, und bis wann.
+ * The second window: that a Stellungnahme on the Regierungsvorlage is still
+ * possible, and until when.
  *
- * Es wurde an sechs Stellen erklärt und in sechs Formulierungen — „ohne
- * veröffentlichte Frist, sie endet mit der Abstimmung", „keine
- * veröffentlichte Frist: Sie endet mit der Abstimmung", „Eine Frist gibt es
- * dafür nicht", „solange der Nationalrat den Text behandelt". Zwei
- * verschiedene Tatsachen waren darin vermischt: dass keine Frist
- * veröffentlicht wird, und wann das Fenster zugeht.
+ * It was explained in six places and in six wordings, which mixed two
+ * different facts: that no Frist is published, and when the window closes.
  *
- * Gewählt ist „solange der Nationalrat den Text behandelt" und nicht „endet
- * mit der Abstimmung": Es deckt auch den Ausschuss ab und verspricht nicht,
- * dass bis zur Sekunde der Abstimmung eingebracht werden kann.
+ * Chosen is „solange der Nationalrat den Text behandelt" and not „endet mit
+ * der Abstimmung": it covers the Ausschuss too and does not promise that
+ * filing is possible up to the second of the vote.
  *
- * Der Satz ist aus dem Nebensatz gebaut, damit beide nicht auseinander
- * laufen können. Den Nebensatz nimmt, wessen Satz schon läuft.
+ * The full sentence is built from the clause so the two cannot drift apart.
+ * Whoever already has a sentence running takes the clause.
  */
 export const SECOND_ROUND_CLAUSE = 'solange der Nationalrat den Text behandelt'
 export const SECOND_ROUND_WINDOW =
   `Eine veröffentlichte Frist gibt es dafür nicht – möglich, ${SECOND_ROUND_CLAUSE}.`
 
 /**
- * Was eine Regierungsvorlage ist — der Begriff, den eine Entwurfsseite am
- * häufigsten verwendet, ohne ihn zu erklären.
+ * What a Regierungsvorlage is — the term a draft page uses most often
+ * without explaining it.
  *
- * Erklärt wurde er bis 18.09.2026 genau in dem Zweig, in dem eine Vorlage
- * existiert. Der andere — „Bisher keine Regierungsvorlage", zwei Drittel
- * der Fälle — hatte keine Definition, obwohl dort mehr davon abhängt: Wer
- * nicht weiß, was eine Regierungsvorlage ist, kann auch nicht einordnen,
- * dass keine kam.
+ * Until 18.09.2026 it was explained in exactly the branch where a Vorlage
+ * exists. The other — „Bisher keine Regierungsvorlage", two thirds of the
+ * cases — had no definition, although more depends on it there: whoever does
+ * not know what a Regierungsvorlage is cannot place the fact that none came.
  *
- * Präsens, damit derselbe Satz in beiden Zweigen steht: Im einen ist er die
- * Definition zu einem Vorgang, der stattgefunden hat, im anderen zu einem,
- * der aussteht.
+ * Present tense, so the same sentence stands in both branches: in one it
+ * defines something that happened, in the other something still pending.
  */
 export const RV_DEFINITION =
   'Eine Regierungsvorlage ist die Fassung, die die Regierung nach der Begutachtung dem Nationalrat vorlegt.'

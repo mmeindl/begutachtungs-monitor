@@ -54,7 +54,8 @@ export function annexWithheldClause(total: number, by: Record<AnnexWithheldCause
  * **Both columns are held to something (2026-09-10).** The left one claims to
  * be the law in force and RIS holds that text independently; the right one
  * must not show as new what already stands in the §, and what it does show as
- * new has to occur in the draft's own Gesetzestext (`annexCheck.ts`). Saying
+ * new has to occur in the draft's own Gesetzestext
+ * (`server/utils/annex/verdict.ts`). Saying
  * so is not a disclaimer — it is the difference between a comparison the
  * reader can rely on and one they cannot, and the count of what was withheld
  * is the honest part of it.
@@ -63,8 +64,8 @@ export function annexWithheldClause(total: number, by: Record<AnnexWithheldCause
  * silent whenever no § could be judged — 21 drafts of GP XXVIII — and silence
  * on a page that otherwise reports its checks reads as "checked, nothing to
  * report". `notRunReason` is the server's own fragment for that case
- * (`REASON_*` in `annexCheck.ts`, lower-case, joined by "; "), written to
- * follow a colon.
+ * (`REASON_*` in `server/utils/annex/verdict.ts`, lower-case, joined by
+ * "; "), written to follow a colon.
  *
  * **Units, twice over.** `withheldParagraphs` and `uncheckedParagraphs` count
  * §§; the notice inside a block counts rows ("2 Änderungen hier nicht
@@ -96,17 +97,16 @@ export function annexCheckNote(v: Verification): string {
     const withheld = v && v.withheldParagraphs > 0 ? `; ${annexWithheldClause(v.withheldParagraphs, v.withheldByCause)}` : ''
     return `${head}${withheld}.`
   }
-  /* NUR das Ergebnis, seit 18.09.2026 — die Methode nicht mehr.
+  /* THE RESULT ONLY, since 18.09.2026 — no longer the method.
    *
-   * Der Satz „Geprüft wird beides: die geltende Fassung gegen das RIS
-   * Bundesrecht …" stand hier Wort für Wort gleich auf jeder Entwurfsseite,
-   * über dem, worauf die Leserin gekommen ist, und ausführlicher ist er
-   * ohnehin auf /so-funktionierts#gegenueberstellung. Der Link „Wie wir
-   * prüfen" steht seit jeher am Ende dieses Absatzes und führt genau
-   * dorthin; er war die ganze Zeit die bessere Hälfte des Satzes.
+   * The sentence „Geprüft wird beides: die geltende Fassung gegen das RIS
+   * Bundesrecht …" stood here word for word on every draft page, above the
+   * very thing the reader had come for, and it stands in more detail on
+   * /so-funktionierts#gegenueberstellung anyway. The link „Wie wir prüfen"
+   * has always closed this paragraph and leads exactly there.
    *
-   * Der Stichtag bleibt: Er ist keine Methode, sondern eine Angabe über
-   * DIESE Prüfung — gegen welchen Stand des Gesetzes gemessen wurde. */
+   * The Stichtag stays: it is not a method but a statement about THIS check
+   * — which version of the law was measured against. */
   const asOf = v.asOf ? ` (Stand ${formatDateDe(v.asOf)}, dem Beginn der Begutachtungsfrist)` : ''
   const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen halten dem geltenden Recht im RIS stand${asOf}`]
   if (v.withheldParagraphs > 0) parts.push(annexWithheldClause(v.withheldParagraphs, v.withheldByCause))

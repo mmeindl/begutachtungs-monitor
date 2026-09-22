@@ -2,13 +2,11 @@
  * Eine Zeile, vier Zonen — the one anatomy every list entry is rendered
  * from (docs/architecture.md §12.28).
  *
- * Until 18.09.2026 the lists carried six components for three kinds of row
- * (`DraftCard`/`DraftRow`, `RisConsultationCard`/`Row`,
- * `SecondRoundCard`/`Row`), each arranging the same handful of facts its own
- * way. Measured on `/entwuerfe?status=open`, 14 rows in one screenful: the
- * Stellungnahmen token began at x=388 on one row and x=556 on another — 168
- * px of drift, because it was the last token of a variable-length prose
- * line. A number that cannot form a column cannot be compared, and
+ * History: until 18.09.2026 the lists carried six components for three kinds
+ * of row (`DraftCard`/`DraftRow`, `RisConsultationCard`/`Row`,
+ * `SecondRoundCard`/`Row`), and on `/entwuerfe?status=open` the Stellungnahmen
+ * token drifted 168 px between two rows of one screenful (x=388 against
+ * x=556). A number that cannot form a column cannot be compared, and
  * comparing is the only thing a count is for.
  *
  * WHAT THIS MODULE IS: the place where each kind is mapped onto four fixed
@@ -23,12 +21,11 @@
  *    is loud. Not the sort, not the section.
  *  - **Order** follows the sort, and nothing else.
  *
- * The section that ranks by Stellungnahmen used to promote the count into
- * the right-hand slot, where it EVICTED the station chip — and „846
- * Stellungnahmen → bisher keine Regierungsvorlage" is the accountability
- * story, not a leaderboard entry (§12.21 says so itself: what stopped that
- * section being a scoreboard were the chips). A ranked list shows its key by
- * order; the count needs alignment, not size.
+ * Rejected with it: promoting the count into the right-hand slot in the
+ * ranked section, where it EVICTED the station chip — „846 Stellungnahmen →
+ * bisher keine Regierungsvorlage" is the accountability story and not a
+ * leaderboard entry (§12.21). A ranked list shows its key by order; the
+ * count needs alignment, not size.
  *
  * WHAT THIS DOES NOT DO — and §12.19 is still right about it: there is no
  * single row TYPE. `RisConsultation` does not grow nullable `citation`,
@@ -53,7 +50,7 @@ import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel 
 import { RIS_KIND_LABEL } from '../../shared/utils/risConsultations'
 
 /**
- * Zone 3 — was an diesem Verfahren beteiligt wurde.
+ * Zone 3 — what was filed in this Verfahren.
  *
  * Three states, and the third is the one the old rows got wrong. A record
  * without a Gegenstand at Parliament carries no Stellungnahmen count and
@@ -68,8 +65,8 @@ export type Participation =
   | { kind: 'unavailable' }
 
 /**
- * Zone 4 — wo das Verfahren steht, in zwei Zeilen: line 1 the state, line 2
- * what pins it down.
+ * Zone 4 — where the Verfahren stands, in two lines: line 1 the state,
+ * line 2 what pins it down.
  *
  * `tone` is the deadline tone system and applies to line 1 only while a
  * window is open; every closed state is `inactive` and renders as calm text
@@ -115,11 +112,11 @@ export interface EntryView {
  * ------------------------------------------------------------------ */
 
 /**
- * Der Weekday steht nur auf einem künftigen Datum.
+ * The weekday appears on a future date only.
  *
- * Man plant um eine Frist herum — dafür ist „bis Fr., 16.10.2026" da. Ein
- * vergangenes Datum wird nachgeschlagen, nicht eingeplant, und der Wochentag
- * daneben ist dann Ballast in einer Spalte, die hundert Zeilen lang ist.
+ * One plans around a Frist — that is what „bis Fr., 16.10.2026" is for. A
+ * past date is looked up, not planned around, and the weekday beside it is
+ * then ballast in a column a hundred rows long.
  */
 function openState(deadline: string | null, active: boolean): EntryState {
   return {
@@ -131,15 +128,15 @@ function openState(deadline: string | null, active: boolean): EntryState {
 }
 
 /**
- * Das offene Fenster ohne Frist: die Regierungsvorlage im Nationalrat.
+ * The open window without a Frist: the Regierungsvorlage in the Nationalrat.
  *
- * „Stellungnahme möglich", nicht „Zweite Runde". Beide sind wahr, aber nur
- * eines davon ist das, was jemand heute tun kann — und „zweite" wäre auf
- * einer Vorlage ohne Begutachtung schlicht falsch, weil es dort keine erste
- * Runde gab. „Zweite Runde" bleibt Vokabel der Überschrift und des Filters,
- * wo sie eine MENGE benennt, nicht den Zustand einer Zeile.
+ * „Stellungnahme möglich", not „Zweite Runde". Both are true, but only one
+ * of them is what somebody can do today — and „zweite" would be plainly
+ * wrong on a Vorlage without a Begutachtung, where there was no first round.
+ * „Zweite Runde" stays the vocabulary of the heading and the filter, where it
+ * names a SET rather than the state of one row.
  *
- * Tone `neutral`: ohne Frist gibt es nichts, was dringend werden könnte.
+ * Tone `neutral`: without a Frist there is nothing that could become urgent.
  */
 function openVorlageState(date: string | null): EntryState {
   return {
@@ -150,7 +147,7 @@ function openVorlageState(date: string | null): EntryState {
   }
 }
 
-/** Frist vorbei, und dahinter ist nichts bekannt oder nichts möglich. */
+/** Frist over, and behind it nothing is known or nothing is possible. */
 function endedState(deadline: string | null, label: string): EntryState {
   return {
     label,
@@ -161,22 +158,22 @@ function endedState(deadline: string | null, label: string): EntryState {
 }
 
 /**
- * Was aus einem Ministerialentwurf geworden ist — aus der Stationskarte
- * (`DraftChain`) oder aus dem Kettenende (`ClosedOutcome`), die dasselbe in
- * zwei Typen sagen.
+ * What became of a Ministerialentwurf — from the station card (`DraftChain`)
+ * or from the end of the chain (`ClosedOutcome`), which say the same thing in
+ * two types.
  *
- * Auf einer erreichten Station trägt Zeile 2 die Fundstelle, nicht das
- * Fristende: „594 d.B." und „BGBl. I Nr. 69/2026" sind das, womit sich die
- * Aussage nachschlagen lässt, und zwei Fakten in einem Slot wären wieder
- * die Vermischung, die dieses Modul auflöst. Auf „bisher keine
- * Regierungsvorlage" gibt es keine Fundstelle — dort steht das Fristende,
- * weil die verstrichene Zeit dort die Aussage IST.
+ * On a station that was reached, line 2 carries the Fundstelle and not the
+ * Fristende: „594 d.B." and „BGBl. I Nr. 69/2026" are what the statement can
+ * be looked up by, and two facts in one slot would be the conflation this
+ * module dissolves. On „bisher keine Regierungsvorlage" there is no
+ * Fundstelle — the Fristende stands there, because the time elapsed IS the
+ * statement.
  *
- * „Bisher" überlebt jede Kürzung: es ist das Wort, das „keine
- * Regierungsvorlage" einen Stand sein lässt und kein Urteil (Framing-Regel,
- * CLAUDE.md). Abgekürzt wird hier nichts mehr — die Spalte darf umbrechen,
- * seit die Pille weg ist, und die alten Kurzformen („Bisher keine Vorlage",
- * „Im Parlament") waren nur deren `whitespace-nowrap` geschuldet.
+ * „Bisher" survives every shortening: it is the word that makes „keine
+ * Regierungsvorlage" a state and not a verdict (framing rule, CLAUDE.md).
+ * Nothing is abbreviated here any more — the column may wrap since the pill
+ * went, and the old short forms („Bisher keine Vorlage", „Im Parlament") were
+ * owed to its `whitespace-nowrap` alone.
  */
 function outcomeState(
   o: { rvCitation: string | null; bgblNumber: string | null },
@@ -215,14 +212,13 @@ function chainState(chain: DraftChain, deadline: string | null): EntryState {
  * ------------------------------------------------------------------ */
 
 /**
- * Ministerialentwurf — mit oder ohne gelesene Station.
+ * Ministerialentwurf — with or without a station that was read.
  *
- * `outcome` ist der Weg der Startseite: dort kommen die Zeilen aus
- * `/api/dashboard` und ihr Ausgang aus einem zweiten, teureren Endpunkt, der
- * fehlen darf. Fehlt er auf einer abgeschlossenen Zeile, sagt die Spalte
- * „Begutachtung abgeschlossen" — der letzte Stand, den wir BELEGEN können —
- * und nicht „bisher keine Regierungsvorlage", was eine Behauptung wäre, die
- * wir nicht geprüft haben.
+ * `outcome` is the homepage's route: there the rows come from
+ * `/api/dashboard` and their outcome from a second, more expensive endpoint
+ * that is allowed to be missing. Missing on a closed row, the column says
+ * „Begutachtung abgeschlossen" — the last state we can EVIDENCE — and not
+ * „bisher keine Regierungsvorlage", which would be a claim we never checked.
  */
 export function viewOfDraft(
   draft: DraftSummary,
@@ -259,25 +255,25 @@ export function viewOfOutcome(outcome: ClosedOutcome): EntryView {
 }
 
 /**
- * Verordnungsentwurf und andere Sätze ohne Gegenstand im Parlament.
+ * Verordnungsentwurf and the other records without a Gegenstand at
+ * Parliament.
  *
- * Zwei Absenzen, beide dauerhaft und beide hier benannt statt leer gelassen:
+ * Two absences, both permanent and both named here instead of left empty:
  *
- *  - **Zone 3 sagt „ans Ministerium"**, nie eine Zahl. Bis 18.09.2026 stand
- *    „Stellungnahmen nicht veröffentlicht" in der Zeile, und das liest sich
- *    neben einer laufenden Frist als „noch nicht" — als würde nachgereicht,
- *    was nie erscheinen wird. „ans Ministerium" ist stattdessen habituell
- *    wahr, in beiden Zuständen gleich, sagt einer Einreicherin, wohin ihre
- *    Stellungnahme geht, und enthält KEINE Ziffer: das Auge, das die
- *    Zahlenspalte abfährt, überspringt die Zeile, was genau richtig ist —
- *    sie nimmt an dem Vergleich nicht teil.
- *  - **Zone 4 endet mit der Begutachtung.** Ohne Gegenstand im Parlament
- *    gibt es keine Regierungsvorlage, und „Begutachtung abgeschlossen" ist
- *    hier die WAHRE Endstation, keine fehlende. Über den Korpus steht sie
- *    auf ~200 Zeilen gleich, was für sich genommen Deko wäre; in der Liste
- *    stehen diese Zeilen aber zwischen Entwürfen, die etwas anderes sagen,
- *    und die leere Zelle wäre die einzige Variante, die als Defekt gelesen
- *    würde.
+ *  - **Zone 3 says „ans Ministerium"**, never a number. Until 18.09.2026 the
+ *    row said „Stellungnahmen nicht veröffentlicht", which reads beside a
+ *    running Frist as „noch nicht" — as if what will never appear were yet to
+ *    come. „ans Ministerium" is habitually true instead, the same in both
+ *    states, tells a submitter where her Stellungnahme goes, and contains NO
+ *    digit: the eye scanning the number column skips the row, which is
+ *    exactly right — it does not take part in that comparison.
+ *  - **Zone 4 ends with the Begutachtung.** Without a Gegenstand at
+ *    Parliament there is no Regierungsvorlage, and „Begutachtung
+ *    abgeschlossen" is the TRUE terminus here, not a missing one. It reads
+ *    the same on ~200 rows of the corpus, which on its own would be
+ *    decoration; but in the list those rows stand between drafts that say
+ *    something else, and the empty cell would be the one variant read as a
+ *    defect.
  */
 export function viewOfRis(c: RisConsultation): EntryView {
   return {
@@ -294,22 +290,21 @@ export function viewOfRis(c: RisConsultation): EntryView {
     isNew: isNewArrival(c.startedAt, c.active),
     participation: { kind: 'unpublished' },
     /**
-     * Zone 4 endet NICHT mehr zwangsläufig mit der Begutachtung.
+     * Zone 4 no longer necessarily ends with the Begutachtung.
      *
-     * Bis 19.09.2026 stand hier auf jeder abgeschlossenen Zeile
-     * „Begutachtung abgeschlossen" — mit der Begründung, ohne Gegenstand im
-     * Parlament sei das die wahre Endstation. Das stimmte, solange niemand
-     * das Bundesgesetzblatt las. Jetzt gibt es die Kundmachung (§12.32),
-     * und damit gilt für diese Zeilen dieselbe Regel wie für die
-     * Ministerialentwürfe nebenan: erreichte Station oben, Fundstelle
-     * darunter.
+     * Until 19.09.2026 every closed row said „Begutachtung abgeschlossen",
+     * on the reasoning that without a Gegenstand at Parliament that is the
+     * true terminus. True, as long as nobody read the Bundesgesetzblatt. The
+     * Kundmachung exists now (docs/architecture.md §12.32), so the same rule
+     * holds for these rows as for the Ministerialentwürfe beside them:
+     * station reached on top, Fundstelle beneath.
      *
-     * NUR der belegte Ausgang wandert hierher. `ausstehend` und `keine`
-     * bleiben „Begutachtung abgeschlossen": Eine Spalte, die über zwei
-     * Drittel des Korpus „bisher nicht kundgemacht" schreibt, wäre ein
-     * Vorwurf in Serie — und bei 84,2 % Trefferquote in jedem zwölften Fall
-     * ein falscher. Was wir NICHT gefunden haben, sagt die Detailseite in
-     * einem ganzen Satz, nicht die Spalte in zwei Wörtern.
+     * ONLY an evidenced outcome moves here. `ausstehend` and `keine` stay
+     * „Begutachtung abgeschlossen": a column writing „bisher nicht
+     * kundgemacht" over two thirds of the corpus would be an accusation in
+     * series — and at a 84,2 % hit rate a wrong one in every twelfth case.
+     * What we did NOT find is said by the detail page in a whole sentence,
+     * not by the column in two words.
      */
     state: c.active
       ? openState(c.deadline, true)
@@ -320,23 +315,22 @@ export function viewOfRis(c: RisConsultation): EntryView {
 }
 
 /**
- * Eine Regierungsvorlage, zu der es nie eine Begutachtung gab.
+ * A Regierungsvorlage that never had a Begutachtung.
  *
- * Kein Ressort in den Daten, keine Frist von Natur aus — das Fenster
- * schließt mit der Abstimmung. Die fehlende Frist ist deshalb kein Loch,
- * sondern ein anderer Zustand, und Zone 4 sagt ihn aus: „Stellungnahme
- * möglich" über dem Datum des Einlangens.
+ * No Ressort in the data, and no Frist by nature — the window closes with the
+ * vote. The missing Frist is therefore not a hole but a different state, and
+ * zone 4 states it: „Stellungnahme möglich" above the date of the Einlangen.
  *
- * Zwei Ziele, wie vorher: eine Vorlage aus einer Begutachtung zeigt auf die
- * eigene Seite, eine ohne hat hier keine und zeigt ans Parlament — als
- * Verfahrensfakt benannt, nie als Vorwurf (Framing-Regel).
+ * Two targets, as before: a Vorlage out of a Begutachtung points at our own
+ * page, one without has none here and points at Parliament — named as a fact
+ * of the procedure, never as an accusation (framing rule).
  *
- * Die Notiz hängt aber NICHT am Ziel, sondern am Belegten: „ohne
- * Begutachtung" steht nur auf `none`, also wenn auch die Gegenprobe gegen
- * Liste 81 keinen vorausgehenden Entwurf fand. Auf `unknown` — kein Zeiger,
- * aber ein plausibler Entwurf — verlinkt die Zeile genauso nach außen und
- * sagt dazu nichts. Bis 18.09.2026 waren beides dieselbe Zeile, und der
- * fehlende Zeiger allein trug den Satz (`shared/types/dashboard.ts`, `OpenVorlage`).
+ * The note hangs on the evidence, NOT on the target: „ohne Begutachtung"
+ * appears only on `none`, i.e. when the cross-check against list 81 also
+ * found no preceding draft. On `unknown` — no pointer, but a plausible draft
+ * — the row links outwards just the same and says nothing about it. Until
+ * 18.09.2026 both were one row and the missing pointer alone carried the
+ * sentence (`OpenVorlage` in `shared/types/dashboard.ts`).
  */
 export function viewOfVorlage(v: OpenVorlage): EntryView {
   const c = v.consultation

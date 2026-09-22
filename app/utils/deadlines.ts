@@ -1,24 +1,25 @@
 /**
  * Urgency thresholds for Begutachtung deadlines — one definition for the
- * badge tones (DeadlineBadge), the dashboard stat tile, and its label.
+ * badge tones (`DeadlineBadge`) and for the state line of a list row
+ * (`EntryState`).
  */
 import { daysUntil } from '../../shared/utils/format'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
 const DEADLINE_CRITICAL_DAYS = 3
 
-/** Deadline ends in ≤ N days → serious (orange badge tone, dashboard count). */
+/** Deadline ends in ≤ N days → serious (orange badge tone). */
 const DEADLINE_SERIOUS_DAYS = 7
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
- * Begonnen vor ≤ N Tagen → „Neu" auf der Zeile.
+ * Started ≤ N days ago → „Neu" on the row.
  *
- * Sieben Tage, für die Leserin, die einmal pro Woche nachsieht — dieselbe
- * Woche, die auch die Fristwarnung meint. Gemessen am 17.09.2026 über
- * 2025-01-01 → heute: im Median tragen 3 der offenen Zeilen die Marke (p90
- * 8, max 24). In einer Liste, die typischerweise 13 Zeilen lang ist, ist
- * das eine auffindbare Minderheit und keine Fahnenspalte.
+ * Seven days, for the reader who looks once a week — the same week the
+ * deadline warning means. Measured 17.09.2026 over 2025-01-01 → today: a
+ * median of 3 open rows carry the mark (p90 8, max 24). In a list that is
+ * typically 13 rows long that is a findable minority and not a column of
+ * flags.
  */
 export const NEW_ARRIVAL_DAYS = 7
 
@@ -40,10 +41,10 @@ export function isNewArrival(
 export type DeadlineTone = 'critical' | 'serious' | 'neutral' | 'inactive'
 
 /**
- * One tone decision for every deadline surface (DeadlineBadge pill,
- * DeadlineBlock on cards/rows). Defense in depth alongside server-side
- * reconcileActive: even with stale client data an expired deadline renders
- * muted, never as a red element.
+ * One tone decision for every deadline surface — the `DeadlineBadge` pill and
+ * the state line of a row (`EntryState`). Defense in depth alongside
+ * server-side `reconcileActive`: even with stale client data an expired
+ * deadline renders muted, never as a red element.
  */
 export function deadlineTone(
   deadline: string | null | undefined,
@@ -111,7 +112,7 @@ export const RV_LATENCY_CONTEXT_DAYS = 180
 const AVG_DAYS_PER_MONTH = 30.44
 
 /**
- * The quotable verdict sentence for a long-quiet consultation
+ * The quotable verdict sentence for a long-quiet draft
  * (TheyWorkForYou pattern): a fixed, controlled vocabulary with elapsed
  * time as the honesty bracket — the journalist's lede, pre-written so it
  * cannot be editorialized into "shelved". Null while the deadline is
