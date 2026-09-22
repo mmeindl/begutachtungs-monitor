@@ -176,14 +176,6 @@ export function defaultFromFor(to: LawStationId): LawStationId | null {
   return to === 'rv' ? 'me' : 'rv'
 }
 
-/**
- * Die Frage, die ein Paar mit der Kundmachung beantwortet.
- *
- * Für `bgbl` gilt dieselbe Regel wie für die anderen — zeitlich, nie kausal
- * (Framing-Regel, CLAUDE.md). „Was vom Entwurf im Gesetz steht" wäre schon
- * eine Wertung; „was sich bis zum Gesetz geändert hat" ist die Beobachtung.
- */
-
 /** The default pair of the page: the comparison this product is about. */
 export const DEFAULT_LAW_STATION_PAIR: { from: LawStationId; to: LawStationId } = { from: 'me', to: 'rv' }
 
@@ -195,7 +187,9 @@ export const DEFAULT_LAW_STATION_PAIR: { from: LawStationId; to: LawStationId } 
  * Temporal, never causal (framing rule, CLAUDE.md): a text changed after the
  * Begutachtung is not a text changed BY it, and the comparison cannot know
  * which it was. The ME→RV wording is unchanged because the outcome card
- * links to it by that name.
+ * links to it by that name. The `bgbl` pairs follow the same rule: „Was vom
+ * Entwurf im Gesetz steht" would already be a verdict, „was sich bis zum
+ * Gesetz geändert hat" is the observation.
  */
 const PAIR_QUESTIONS: Readonly<Record<string, string>> = {
   'me>rv': 'Was sich nach der Begutachtung geändert hat',

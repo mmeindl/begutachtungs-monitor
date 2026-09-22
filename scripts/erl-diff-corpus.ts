@@ -75,15 +75,6 @@ async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string |
 }
 
 /**
- * Der Text eines Erläuterungen-Dokuments, geteilt in Allgemeinen und
- * Besonderen Teil.
- *
- * Die Trennung entscheidet, wohin ein Vergleich gehörte: Ändert sich der
- * Allgemeine Teil, ist das eine Aussage über den Entwurf als Ganzes; ändert
- * sich nur der Besondere Teil, gehört sie an den Paragraphen, wo die Passagen
- * ohnehin schon stehen (§12.30).
- */
-/**
  * Wie viel vom rohen Text eines Dokuments der Parser überhaupt aufliest.
  *
  * Ein Eingabewert, den die Messung nicht als kaputt erkennen kann, ist
@@ -106,6 +97,15 @@ function captureRate(html: string, parsedWords: number): number {
   return raw === 0 ? 1 : parsedWords / raw
 }
 
+/**
+ * Der Text eines Erläuterungen-Dokuments, geteilt in Allgemeinen und
+ * Besonderen Teil.
+ *
+ * Die Trennung entscheidet, wohin ein Vergleich gehörte: Ändert sich der
+ * Allgemeine Teil, ist das eine Aussage über den Entwurf als Ganzes; ändert
+ * sich nur der Besondere Teil, gehört sie an den Paragraphen, wo die Passagen
+ * ohnehin schon stehen (§12.30).
+ */
 function parts(html: string): { general: string; special: string; words: number } {
   const blocks = parseParliamentHtml(html)
   let inSpecial = false

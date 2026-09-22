@@ -100,7 +100,7 @@ function articleKeyOf(heading: string | null, articles: readonly DraftArticle[])
  */
 export function explanationsByParagraph(
   doc: ExplanationsDocument,
-  articles: readonly DraftArticle[] = [],
+  articles: readonly DraftArticle[],
 ): ParagraphExplanation[] {
   const out: ParagraphExplanation[] = []
   /**

@@ -130,6 +130,8 @@ interface SearchSnippet {
  * Drei Teile statt eines markierten Strings, damit die Seite die Marke
  * selbst setzt: ein `<mark>` aus dem Server wäre HTML aus Nutzereingabe,
  * und die einzige sichere Fassung davon ist die, die es nicht gibt.
+ *
+ * `radius` is a test seam: no caller varies it.
  */
 export function buildSnippet(text: string, at: number, len: number, radius = SNIPPET_RADIUS): SearchSnippet {
   const from = Math.max(0, at - radius)
@@ -233,6 +235,8 @@ const PDF_BLOCK_MAX = 400
  * `kind: 'other'`, `gld: null`: Ein PDF trägt keine Gliederungssymbole, die
  * wir sicher zuordnen könnten. Die Zeile sagt dann „im Begleitschreiben"
  * ohne Paragraph — weniger, als das XML hergibt, aber nichts Erfundenes.
+ *
+ * `maxLen` is a test seam: no caller varies it.
  */
 export function blocksFromPlainText(text: string, maxLen = PDF_BLOCK_MAX): TextBlock[] {
   const blocks: TextBlock[] = []

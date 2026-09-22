@@ -345,15 +345,6 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
 }
 
 /**
- * An instruction may name several full addresses at once: "In § 17 Abs. 4,
- * § 19 Abs. 1, § 29 Abs. 3, § 31 Abs. 1 und § 46 Abs. 2 werden jeweils …".
- * Reading only the first one applied the change to a fifth of the law and
- * reported success — a silent wrong result, the one outcome this module
- * exists to prevent (found by the harness on BGBl. I Nr. 187/2022).
- *
- * Returns one address per named place, or null if any part fails to parse.
- */
-/**
  * „In den §§ 48 Abs. 13 und 217 Abs. 13" → `["§ 48 Abs. 13", "§ 217 Abs. 13"]`.
  *
  * Die legistische Kurzschreibweise setzt das §-Zeichen einmal in den Plural
@@ -400,6 +391,15 @@ function headingTwin(a: NovaoAddress): NovaoAddress {
   return { ...a, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'para', heading: true, alsoHeading: false }
 }
 
+/**
+ * An instruction may name several full addresses at once: "In § 17 Abs. 4,
+ * § 19 Abs. 1, § 29 Abs. 3, § 31 Abs. 1 und § 46 Abs. 2 werden jeweils …".
+ * Reading only the first one applied the change to a fifth of the law and
+ * reported success — a silent wrong result, the one outcome this module
+ * exists to prevent (found by the harness on BGBl. I Nr. 187/2022).
+ *
+ * Returns one address per named place, or null if any part fails to parse.
+ */
 export function parseAddressList(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
   const t = maskQuotes(normalizeText(text))
   const parts = t.split(/\s*,\s*|\s+(?:und|sowie)\s+/i).filter((p) => p.trim())

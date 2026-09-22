@@ -697,8 +697,7 @@ export interface RisConsultationsResponse {
  * Not the same list as the five reader-facing stations in
  * `shared/utils/stations.ts`: Begutachtung and Bundesgesetzblatt publish no
  * Gesetzestext of their own, and these four do.
- */
-/**
+ *
  * `bgbl` ist seit 19.09.2026 dabei und ist anders als die vier davor: Seine
  * Fassung steht nicht beim Parlament, sondern im RIS, und zwischen ihr und
  * der Plenarfassung handelt KEIN Akteur mehr (§12.33).
@@ -712,16 +711,6 @@ export interface LawDiffSegment {
   text: string
 }
 
-/**
- * GET /api/drafts/:gp/:inr/paragraphtitel — the heading of each § a
- * change amends, looked up in the standing law (docs/architecture.md §12.11).
- *
- * Keyed by `unitKey` (shared/utils/diffKey.ts) so it merges straight onto the
- * diff units — `article|id|change`, because a Regierungsvorlage can carry a
- * removed and an inserted unit with the same Ziffer number. A
- * missing key means no name could be resolved with certainty, which is the
- * normal case for a Stammgesetz and for any § the lookup could not verify.
- */
 /** One law in force that a draft would amend. */
 export interface AmendedLaw {
   /** The law's Kurztitel from RIS; the draft's own Artikel title where RIS
@@ -802,6 +791,16 @@ export interface ReasoningDiffResponse {
   stats: { compared: number; changed: number }
 }
 
+/**
+ * GET /api/drafts/:gp/:inr/paragraphtitel — the heading of each § a
+ * change amends, looked up in the standing law (docs/architecture.md §12.11).
+ *
+ * Keyed by `unitKey` (shared/utils/diffKey.ts) so it merges straight onto the
+ * diff units — `article|id|change`, because a Regierungsvorlage can carry a
+ * removed and an inserted unit with the same Ziffer number. A
+ * missing key means no name could be resolved with certainty, which is the
+ * normal case for a Stammgesetz and for any § the lookup could not verify.
+ */
 export interface ParagraphTitlesResponse {
   /** ISO date of the law version the titles were read from (the draft's Einlangen) */
   asOf: string | null

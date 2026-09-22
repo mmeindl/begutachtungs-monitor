@@ -213,8 +213,9 @@ const namedCount = computed(() => Object.keys(paraTitles.value?.titles ?? {}).le
 
 type Badge = LawDiffUnit['change'] | 'editorial'
 
-/** One pill style for rows and group summaries alike. */
 /**
+ * One pill style for rows and group summaries alike.
+ *
  * Red for what goes, green for what arrives — the diff convention everyone
  * has read on GitHub (Manu, 08.09.2026; the note in main.css follows). Text
  * on a wash is always `text-ink`: ink-secondary drops below 7:1 there, the

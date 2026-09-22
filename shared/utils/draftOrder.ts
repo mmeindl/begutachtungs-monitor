@@ -29,24 +29,6 @@ export interface OrderedDraft {
 }
 
 /**
- * Open first, then by nearest Frist; closed ones most recently ended first.
- *
- * The reasoning, in the order the comparisons run:
- *  - **Open before closed, whatever the dates say.** A running Frist is the
- *    only thing a reader can still act on, and this product exists for that
- *    moment.
- *  - **Nearest Frist first** among the open ones — urgency, not recency.
- *  - **An open record without a Frist sorts after the dated ones.** It
- *    carries no urgency to rank by; upstream leaves the field empty often
- *    enough that dropping it would hide the record entirely.
- *  - **Closed: most recently ended first**, because the interesting question
- *    about a finished Begutachtung is what happened to it, and that is
- *    freshest for the ones that just ended.
- *  - **Tie-break by title.** Four Verordnungen shared one Frist on
- *    2026-10-16; without this their order depended on the corpus fetch and
- *    moved between visits.
- */
-/**
  * A Ministerialentwurf's ordering key: `arrivedAt` is its `startedAt`.
  *
  * The one asymmetry between the two kinds — a RIS record already carries
@@ -111,6 +93,24 @@ export function rankByStatements<T extends { inr: number; statementCount: number
     .slice(0, count)
 }
 
+/**
+ * Open first, then by nearest Frist; closed ones most recently ended first.
+ *
+ * The reasoning, in the order the comparisons run:
+ *  - **Open before closed, whatever the dates say.** A running Frist is the
+ *    only thing a reader can still act on, and this product exists for that
+ *    moment.
+ *  - **Nearest Frist first** among the open ones — urgency, not recency.
+ *  - **An open record without a Frist sorts after the dated ones.** It
+ *    carries no urgency to rank by; upstream leaves the field empty often
+ *    enough that dropping it would hide the record entirely.
+ *  - **Closed: most recently ended first**, because the interesting question
+ *    about a finished Begutachtung is what happened to it, and that is
+ *    freshest for the ones that just ended.
+ *  - **Tie-break by title.** Four Verordnungen shared one Frist on
+ *    2026-10-16; without this their order depended on the corpus fetch and
+ *    moved between visits.
+ */
 export function compareDrafts(a: OrderedDraft, b: OrderedDraft): number {
   if (a.active !== b.active) return a.active ? -1 : 1
   if (a.active) {

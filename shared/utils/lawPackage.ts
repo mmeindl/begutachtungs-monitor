@@ -23,11 +23,11 @@ const MAX_NAMES = 3
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** "A", "A und B", "A, B, C und ein weiteres", "A, B, C und 132 weitere" */
-export function formatLawList(entries: readonly LawPackageEntry[], max = MAX_NAMES): string {
+export function formatLawList(entries: readonly LawPackageEntry[]): string {
   const names = entries.map((e) => e.article)
-  if (names.length > max) {
-    const rest = names.length - max
-    return `${names.slice(0, max).join(', ')} und ${rest === 1 ? 'ein weiteres' : `${rest} weitere`}`
+  if (names.length > MAX_NAMES) {
+    const rest = names.length - MAX_NAMES
+    return `${names.slice(0, MAX_NAMES).join(', ')} und ${rest === 1 ? 'ein weiteres' : `${rest} weitere`}`
   }
   if (names.length > 1) return `${names.slice(0, -1).join(', ')} und ${names.at(-1)}`
   return names[0] ?? ''

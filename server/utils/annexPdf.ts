@@ -532,6 +532,8 @@ function joinRuns(runs: { x: number; width: number; text: string }[]): string {
  * A run is assigned by its **midpoint**, not its left edge: a centred heading
  * starts left of the midline and crosses it, and assigning by left edge filed
  * "Textgegenüberstellung" as current law.
+ *
+ * `boundary` is a test seam: production always lets the page decide.
  */
 export function linesFromPage(page: AnnexPage, boundary?: number): AnnexLine[] {
   const mid = boundary ?? page.width / 2
@@ -981,7 +983,8 @@ export interface AnnexParse {
  * optional in substance: without it every heading that *looks* like a law
  * boundary would have to be believed, and the annex prints four different
  * things in that shape. Passing an empty list says "no draft to check
- * against", and the annex is then read as one undivided law.
+ * against", and the annex is then read as one undivided law — a case only
+ * the tests construct, which is why the parameter carries a default at all.
  */
 export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly DraftArticle[] = []): AnnexParse {
   const rows: ComparisonRow[] = []
