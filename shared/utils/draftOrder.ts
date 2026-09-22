@@ -12,6 +12,7 @@
  * Pure module: no Nuxt auto-imports, so the server list, the client merge
  * and vitest all run the same function.
  */
+import type { DraftSummary, OpenVorlage, RisConsultation } from '../types'
 
 /**
  * What ordering needs from a row, and nothing else.
@@ -123,4 +124,57 @@ export function compareDrafts(a: OrderedDraft, b: OrderedDraft): number {
   const aEnd = a.deadline ?? a.startedAt ?? ''
   const bEnd = b.deadline ?? b.startedAt ?? ''
   return bEnd.localeCompare(aEnd) || a.title.localeCompare(b.title, 'de-AT')
+}
+
+/**
+ * One row of the corpus list — three kinds, one order (docs/architecture.md
+ * §12.19).
+ *
+ * NOT a common row shape: a Ministerialentwurf has a Geschäftszahl and a
+ * Stellungnahmen count, a record without a Gegenstand has neither and never
+ * can. Flattening both into one shape would mean inventing empty fields, and
+ * an empty Stellungnahmen count reads as "nobody cared" where the truth is
+ * "nobody counts". So each kind keeps its own type, and only the ORDER is
+ * shared.
+ */
+export type DraftListRow =
+  | { kind: 'me'; key: string; draft: DraftSummary }
+  | { kind: 'ris'; key: string; item: RisConsultation }
+  | { kind: 'vorlage'; key: string; vorlage: OpenVorlage }
+
+/**
+ * What the list's order asks of a row, whichever kind it is.
+ *
+ * A Regierungsvorlage without a Begutachtung has no Frist that could be
+ * running — its form closes with the vote. So `active: false` with the
+ * Einlangen as the date: the row sorts below the running Fristen and among
+ * the second round, where it belongs, instead of claiming an urgency it
+ * cannot date.
+ */
+export function rowOrderKey(row: DraftListRow): OrderedDraft {
+  if (row.kind === 'me') return draftOrderKey(row.draft)
+  if (row.kind === 'ris') return row.item
+  return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
+}
+
+/**
+ * Most Stellungnahmen first — and the half that cannot be ranked stays a
+ * block, it does not get interleaved at zero.
+ *
+ * A record without a Gegenstand carries no Stellungnahmen count and never
+ * will (nobody publishes who filed one, §12.16). Sorting it in at 0 would
+ * read as "nobody cared" about two thirds of the corpus, which is the one
+ * misreading this list is built to prevent — so those rows follow all the
+ * ranked ones, in the list's own Frist order, and the line above the list
+ * says so.
+ *
+ * The ME comparison is `rankByStatements`' one, tie-break included, because
+ * the homepage's five rows must be the first five in the list.
+ */
+export function compareRowsByStatements(a: DraftListRow, b: DraftListRow): number {
+  if (a.kind !== b.kind) return a.kind === 'me' ? -1 : 1
+  if (a.kind === 'me' && b.kind === 'me') {
+    return b.draft.statementCount - a.draft.statementCount || b.draft.inr - a.draft.inr
+  }
+  return compareDrafts(rowOrderKey(a), rowOrderKey(b))
 }

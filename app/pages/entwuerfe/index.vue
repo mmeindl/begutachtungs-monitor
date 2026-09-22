@@ -1,19 +1,15 @@
 <script setup lang="ts">
 import type {
-  BegutSearchHit,
-  BegutSearchResponse,
   DashboardSecondRound,
   DraftStation,
   DraftStatus,
-  DraftSummary,
   DraftsResponse,
-  OpenVorlage,
-  RisConsultation,
   RisConsultationsResponse,
 } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
-import { compareDrafts, draftOrderKey, type OrderedDraft } from '#shared/utils/draftOrder'
+import { compareDrafts, compareRowsByStatements, type DraftListRow, rowOrderKey } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfRis, viewOfVorlage } from '~/utils/entryView'
+import type { ArtFilter, SortKey } from '~/utils/draftFilters'
 import { romanToInt } from '#shared/utils/gp'
 import { matchesQuery } from '#shared/utils/textMatch'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
@@ -52,9 +48,6 @@ useSeoMeta({
     'Alle Begutachtungen: Ministerialentwürfe mit Gegenstand im Parlament und Verordnungsentwürfe, die nur im RIS erscheinen – filterbar nach Art, Status, Gesetzgebungsperiode und Ministerium.',
 })
 
-const route = useRoute()
-const router = useRouter()
-
 /**
  * Zwei Achsen, nicht eine (§12.26).
  *
@@ -81,14 +74,6 @@ const stationOptions: { value: DraftStation; label: string }[] = DRAFT_STATION_O
   label: DRAFT_STATION_LABEL[value],
 }))
 
-function parseStations(v: unknown): DraftStation[] {
-  const raw = firstQueryValue(v) ?? ''
-  return raw
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter((s): s is DraftStation => (DRAFT_STATION_ORDER as readonly string[]).includes(s))
-}
-
 /**
  * The filter is by WHERE a draft stands in the procedure, not by the type
  * word on its title — that is the distinction the two halves actually differ
@@ -109,7 +94,6 @@ function parseStations(v: unknown): DraftStation[] {
  */
 const ART_VERORDNUNG_NOUN = 'Verordnungsentwürfe und andere'
 
-type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
 const artOptions: { value: ArtFilter; label: string }[] = [
   { value: '', label: 'Alle Arten' },
   { value: 'ministerialentwurf', label: 'Ministerialentwürfe' },
@@ -129,46 +113,15 @@ const artOptions: { value: ArtFilter; label: string }[] = [
  *
  * The slot for „zuletzt dazugekommen" (TODO, §12.22) is this select.
  */
-type SortKey = 'frist' | 'stellungnahmen'
 const sortOptions: { value: SortKey; label: string }[] = [
   { value: 'frist', label: 'Nach Frist' },
   { value: 'stellungnahmen', label: 'Meiste Stellungnahmen' },
 ]
 
-function parseSort(v: unknown): SortKey {
-  return firstQueryValue(v) === 'stellungnahmen' ? 'stellungnahmen' : 'frist'
-}
-
-function parseStatus(v: unknown): DraftStatus {
-  const s = firstQueryValue(v)
-  return s === 'open' || s === 'closed' ? s : 'all'
-}
-function parseArt(v: unknown): ArtFilter {
-  const s = firstQueryValue(v)
-  return s === 'ministerialentwurf' || s === 'verordnung' ? s : ''
-}
-
-// Filter state, initialized from the URL so links are shareable.
-const statusFilter = ref<DraftStatus>(parseStatus(route.query.status))
-const art = ref<ArtFilter>(parseArt(route.query.art))
-const gp = ref(firstQueryValue(route.query.gp) ?? '')
-const ministry = ref(firstQueryValue(route.query.ministry) ?? '')
-const q = ref(firstQueryValue(route.query.q) ?? '')
-const qDebounced = ref(q.value)
-/* Client-side, unlike the filters above: both endpoints already ship the
- * whole filtered set, so reordering it costs no request — and the merge of
- * the two halves happens here anyway (`rows`). */
-const sort = ref<SortKey>(parseSort(route.query.sort))
-const stations = ref<DraftStation[]>(parseStations(route.query.station))
-
-/* Ein Chip an/aus. Leere Auswahl heißt „alle Stationen" und steht nicht in
- * der URL — ein Filter, der nichts ausschließt, gehört nicht in einen Link,
- * den jemand weitergibt. */
-function toggleStation(value: DraftStation): void {
-  stations.value = stations.value.includes(value)
-    ? stations.value.filter((s) => s !== value)
-    : [...stations.value, value]
-}
+/* Filterzustand, URL-Anbindung und die Anfrage der beiden Endpunkte:
+ * `useDraftFilters`, mit der reinen Hälfte in `app/utils/draftFilters.ts`. */
+const filters = useDraftFilters()
+const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, toggleStation, query } = filters
 
 /**
  * Die Eingrenzung faltet sich auf dem Telefon zusammen — und nur dort.
@@ -207,24 +160,12 @@ const moreFilters = computed(
 )
 const filtersOpen = ref(moreFilters.value > 0)
 
-let qTimer: ReturnType<typeof setTimeout> | undefined
-watch(q, (value) => {
-  clearTimeout(qTimer)
-  qTimer = setTimeout(() => {
-    qDebounced.value = value.trim()
-  }, 300)
-})
-onUnmounted(() => clearTimeout(qTimer))
-
-const query = computed(() => ({
-  status: statusFilter.value,
-  station: stations.value.length ? stations.value.join(',') : undefined,
-  gp: gp.value || undefined,
-  ministry: ministry.value || undefined,
-  q: qDebounced.value || undefined,
-}))
-
-const { data, error, refresh, status } = await useFetch<DraftsResponse>('/api/drafts', { query })
+/* Die drei Abrufe werden hier gestartet und unten abgewartet, damit sie sich
+ * überlappen statt Schlange zu stehen. Nacheinander abgewartet legte die
+ * Laufzeit des RIS-Korpus auf die der Ministerialentwürfe, obwohl keiner der
+ * beiden etwas vom anderen braucht — dasselbe Muster wie auf der Startseite,
+ * mit demselben Grund. */
+const draftsFetch = useFetch<DraftsResponse>('/api/drafts', { query })
 
 /**
  * The other half, and it is the OPTIONAL one.
@@ -237,7 +178,7 @@ const { data, error, refresh, status } = await useFetch<DraftsResponse>('/api/dr
  * depends on. A failure is stated, not swallowed — the count line must not
  * report "0 ohne Gegenstand" when the truth is "we could not look".
  */
-const { data: risData, error: risError } = await useFetch<RisConsultationsResponse>(
+const risFetch = useFetch<RisConsultationsResponse>(
   '/api/ris-drafts',
   { query, timeout: 8000 },
 )
@@ -265,10 +206,14 @@ const { data: risData, error: risError } = await useFetch<RisConsultationsRespon
  * leeres Ergebnis ist der Normalfall, und was fehlen kann, darf den ersten
  * Paint nicht halten.
  */
-const { data: secondRound } = await useFetch<DashboardSecondRound>(
+const secondRoundFetch = useFetch<DashboardSecondRound>(
   '/api/dashboard/zweite-runde',
   { lazy: true, server: false },
 )
+
+const { data, error, refresh, status } = await draftsFetch
+const { data: risData, error: risError } = await risFetch
+const { data: secondRound } = await secondRoundFetch
 
 const selectedGp = computed({
   get: () => gp.value || data.value?.gp || risData.value?.gp || '',
@@ -296,34 +241,6 @@ const ministries = computed(() => {
   return [...byCode].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
 })
 
-// Keep the URL in sync with the filters (defaults stay out of the URL).
-watch([query, art, sort], () => {
-  const urlQuery: Record<string, string> = {}
-  if (statusFilter.value !== 'all') urlQuery.status = statusFilter.value
-  if (stations.value.length) urlQuery.station = stations.value.join(',')
-  if (art.value) urlQuery.art = art.value
-  if (gp.value) urlQuery.gp = gp.value
-  if (ministry.value) urlQuery.ministry = ministry.value
-  if (qDebounced.value) urlQuery.q = qDebounced.value
-  if (sort.value !== 'frist') urlQuery.sort = sort.value
-  router.replace({ query: urlQuery })
-})
-
-/**
- * One row type per kind, interleaved by the shared comparator.
- *
- * Not a common row shape: a Ministerialentwurf has a Geschäftszahl and a
- * Stellungnahmen count, a record without a Gegenstand has neither and cannot
- * ever have them. Flattening both into one shape would mean inventing empty
- * fields, and an empty Stellungnahmen count reads as "nobody cared" where
- * the truth is "nobody counts". So each kind keeps its own card and row, and
- * only the ORDER is shared (`shared/utils/draftOrder.ts`).
- */
-type Row =
-  | { kind: 'me'; key: string; draft: DraftSummary }
-  | { kind: 'ris'; key: string; item: RisConsultation }
-  | { kind: 'vorlage'; key: string; vorlage: OpenVorlage }
-
 /**
  * Die dritte Zeilenart, seit 18.09.2026: eine Regierungsvorlage, zu der es
  * nie eine Begutachtung gab.
@@ -340,39 +257,10 @@ type Row =
  * drittes Mal: eigene Zeilenform, eigener Zählterm, gemeinsame Ordnung.
  * Fachlich ist sie hier richtig, weil diese Liste unter „Stellungnahme
  * möglich" beantwortet, wo jemand etwas sagen kann — und das kann er hier.
- */
-function orderOf(row: Row): OrderedDraft {
-  if (row.kind === 'me') return draftOrderKey(row.draft)
-  if (row.kind === 'ris') return row.item
-  /* Keine Frist, die laufen könnte — das Formular schließt mit der
-   * Abstimmung. Also `active: false` mit dem Einlangen als Datum: die Zeile
-   * ordnet sich unter die laufenden Fristen und zwischen die zweite Runde,
-   * wo sie hingehört, statt eine Dringlichkeit zu behaupten, die sie nicht
-   * datieren kann. */
-  return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
-}
-
-/**
- * Most Stellungnahmen first — and the half that cannot be ranked stays a
- * block, it does not get interleaved at zero.
  *
- * A record without a Gegenstand carries no Stellungnahmen count and never
- * will (nobody publishes who filed one, §12.16). Sorting it in at 0 would
- * read as "nobody cared" about two thirds of the corpus, which is the one
- * misreading this page is built to prevent — so those rows follow all the
- * ranked ones, in the list's own Frist order, and the line above the list
- * says so.
- *
- * The ME comparison is `rankByStatements`' one, tie-break included, because
- * the homepage's five rows must be the first five here.
+ * Die Zeilenform selbst und ihre beiden Ordnungen stehen in
+ * `shared/utils/draftOrder.ts`, neben dem Vergleicher, den sie rufen.
  */
-function compareByStatements(a: Row, b: Row): number {
-  if (a.kind !== b.kind) return a.kind === 'me' ? -1 : 1
-  if (a.kind === 'me' && b.kind === 'me') {
-    return b.draft.statementCount - a.draft.statementCount || b.draft.inr - a.draft.inr
-  }
-  return compareDrafts(orderOf(a), orderOf(b))
-}
 
 /**
  * Die Vorlagen ohne Begutachtung als Zeilen — unter denselben Bedienelementen
@@ -385,7 +273,7 @@ function compareByStatements(a: Row, b: Row): number {
  * Zeile zurück, sobald danach gefiltert wird — dieselbe Regel wie zuvor im
  * Abschnitt. Suche: dieselbe Wortregel wie oben (`matchesQuery`).
  */
-const vorlageRows = computed<Row[]>(() => {
+const vorlageRows = computed<DraftListRow[]>(() => {
   const list = secondRound.value
   if (!list || statusFilter.value === 'closed' || art.value === 'verordnung' || ministry.value) return []
   if (stations.value.length && !stations.value.includes('rv')) return []
@@ -396,8 +284,8 @@ const vorlageRows = computed<Row[]>(() => {
     .map((v) => ({ kind: 'vorlage' as const, key: `rv-${v.citation}`, vorlage: v }))
 })
 
-const rows = computed<Row[]>(() => {
-  const out: Row[] = []
+const rows = computed<DraftListRow[]>(() => {
+  const out: DraftListRow[] = []
   if (art.value !== 'verordnung') {
     for (const d of data.value?.items ?? []) out.push({ kind: 'me', key: `me-${d.gp}-${d.inr}`, draft: d })
   }
@@ -406,7 +294,7 @@ const rows = computed<Row[]>(() => {
   }
   out.push(...vorlageRows.value)
   return out.sort((a, b) =>
-    sort.value === 'stellungnahmen' ? compareByStatements(a, b) : compareDrafts(orderOf(a), orderOf(b)),
+    sort.value === 'stellungnahmen' ? compareRowsByStatements(a, b) : compareDrafts(rowOrderKey(a), rowOrderKey(b)),
   )
 })
 
@@ -432,202 +320,25 @@ const entries = computed(() =>
 
 /* ------------------------------------------------------------------ *
  * Die zweite Hälfte der Suche: der Volltext (§12.31)
+ *
+ * Eigene Verzögerung, eigener Abruf, eigene Zählungen — alles in
+ * `useFullTextSearch`, weil es eine zweite, anders geschnittene Antwort auf
+ * dasselbe Feld ist und nicht ein Filter mehr.
  * ------------------------------------------------------------------ */
-
-/**
- * EIN FELD, ZWEI ANTWORTEN — seit 21.09.2026, und die zweite verhindert den
- * Fehlschluss, den das Feld allein erzeugt.
- *
- * Das Feld durchsucht Titel, Zitat, Debattennamen und das Ressortkürzel
- * (den Ressort-NAMEN seit 21.09.2026 nicht mehr — er trug das ganze
- * Portfolio und traf unsichtbar, siehe `server/utils/search/searchHaystack.ts`). Ein Titel
- * sagt aber nicht, was ein Sammelgesetz alles ändert: Wer „Klimaschutz"
- * eingibt und zwei Zeilen bekommt, schließt „mehr ist es nicht" — und sieht
- * nicht, dass ein dritter, offener Entwurf das Wort in seinem § 6 führt.
- * Ein falsches Negativ, das der Leser nicht bemerken kann.
- *
- * Bis dahin hing dafür ein Link auf `/suche` an dieser Seite, und das war
- * dieselbe Sache zweimal an zwei Orten — genau das Argument, mit dem am
- * 17.09. die zwei Listen eine wurden (§12.19). Erst ging der Link, am
- * 22.09. die Seite: Eine zweite Adresse für dieselbe Frage ist das, was
- * hier abgeschafft wurde, also durfte sie auch nicht unverlinkt
- * weiterlaufen. `/suche` 301t seither hierher.
- *
- * WAS NICHT VERSCHMILZT, ist die Regel und die Menge:
- *
- *  - **Andere Regel.** Die Liste sucht als Teilstring über Metadaten, das
- *    RIS ganze Wörter mit UND und `*` über die Dokumente. „Klimaschutz"
- *    trifft den TITEL „Klimaschutzgesetz" und denselben Wortstamm im TEXT
- *    nur mit Stern. Dieselbe Eingabe, zwei Regeln — also zwei benannte
- *    Antworten, nie eine gepoolte Liste.
- *  - **Andere Menge.** Die Liste führt eine ganze Gesetzgebungsperiode,
- *    offen wie abgeschlossen; der Volltext kennt nur, was HEUTE offen ist
- *    (7 bis 25 Sätze). Deshalb steht er unter der Liste und heißt
- *    „außerdem", nicht „auch".
- *  - **Anderer Preis.** Der Listenfilter kostet nichts und antwortet
- *    sofort; der Volltext kostet einen RIS-Aufruf (0,2–2,1 s) plus die
- *    Dokumente für die Fundstelle. Also eigene, längere Verzögerung, eine
- *    Mindestlänge, clientseitig und lazy — er hält die Liste nie auf.
- */
-const FULLTEXT_MIN_LEN = 3
-const FULLTEXT_DEBOUNCE_MS = 700
-
-/** Die laufende Periode ist die neueste, die die Filter kennen. */
-const currentGp = computed(() => availableGps.value[0] ?? '')
-
-/**
- * Kann der Volltext unter diesen Filtern überhaupt etwas sagen?
- *
- * Er kennt nur die laufenden Begutachtungen. Unter „Abgeschlossen", in
- * einer alten Periode und unter einer Station NACH der Begutachtung gibt es
- * nichts, wonach er suchen könnte — und ein Block laufender Verfahren würde
- * dort dem Filter widersprechen, den der Leser gesetzt hat. Statt dessen
- * sagt eine Zeile über der Liste, dass hier nur die Titel durchsucht sind.
- *
- * Art und Ressort stehen NICHT in dieser Bedingung: Sie schließen keine
- * Suche aus, sie schneiden die Treffer (`fullTextHits`).
- */
-const fullTextApplies = computed(() => {
-  if (statusFilter.value === 'closed') return false
-  if (gp.value && currentGp.value && gp.value !== currentGp.value) return false
-  if (stations.value.length && !stations.value.includes('begutachtung')) return false
-  return true
-})
-
-/**
- * Der Begriff, der ans RIS geht — mit eigener Verzögerung.
- *
- * 700 ms statt der 300 der Liste, und erst ab drei Zeichen: Jeder Wert hier
- * ist ein Aufruf ans RIS samt bis zu zwölf nachgeladenen Dokumentsätzen.
- * Die Liste filtert unterdessen weiter bei jedem Tastendruck.
- */
-const fullTextTerm = ref('')
-let fullTextTimer: ReturnType<typeof setTimeout> | undefined
-
-function scheduleFullText(delay = FULLTEXT_DEBOUNCE_MS): void {
-  clearTimeout(fullTextTimer)
-  const term = q.value.trim()
-  if (!fullTextApplies.value || term.length < FULLTEXT_MIN_LEN) {
-    fullTextTerm.value = ''
-    return
-  }
-  if (term === fullTextTerm.value) return
-  fullTextTimer = setTimeout(() => {
-    fullTextTerm.value = term
-  }, delay)
-}
-
-watch([q, fullTextApplies], () => scheduleFullText())
-/* Ein geteilter Link bringt den Begriff in der URL mit — der hat keine
- * Tipppause, auf die man warten müsste. */
-onMounted(() => scheduleFullText(0))
-onUnmounted(() => clearTimeout(fullTextTimer))
-
-/**
- * Clientseitig, lazy und von Hand ausgelöst.
- *
- * `watch: false` plus `execute()`: sonst liefe bei jedem geleerten Feld eine
- * leere Suche ans RIS. `execute()` bricht die laufende Anfrage ab, wer also
- * weitertippt, wartet nie auf die vorige Antwort.
- */
 const {
-  data: fullText,
-  status: fullTextStatus,
-  error: fullTextError,
-  execute: runFullText,
-  clear: clearFullText,
-} = await useFetch<BegutSearchResponse>('/api/suche', {
-  query: { q: fullTextTerm },
-  server: false,
-  lazy: true,
-  immediate: false,
-  watch: false,
-})
-
-watch(fullTextTerm, (term) => {
-  if (term) runFullText()
-  else clearFullText()
-})
-
-/** Ob unter der Liste überhaupt eine Volltext-Antwort steht. */
-const fullTextActive = computed(
-  () => fullTextApplies.value && qDebounced.value.length >= FULLTEXT_MIN_LEN,
-)
-/**
- * Zwischen der Listen-Verzögerung und der eigenen liegen 400 ms, in denen
- * die Antwort von vorhin noch dasteht. Sie gehört zu einem anderen Wort,
- * also ist sie hier „wird gesucht", nicht „gefunden".
- */
-const fullTextPending = computed(
-  () =>
-    fullTextActive.value &&
-    (fullTextTerm.value !== qDebounced.value || fullTextStatus.value === 'pending'),
-)
-
-/** Die Treffer, die die aktiven Filter überstehen — Art und Ressort. */
-const fullTextHits = computed<BegutSearchHit[]>(() =>
-  (fullText.value?.hits ?? []).filter((hit) => {
-    if (art.value === 'verordnung' && hit.entry.kind === 'draft') return false
-    if (art.value === 'ministerialentwurf' && hit.entry.kind === 'ris') return false
-    if (ministry.value) {
-      const code =
-        hit.entry.kind === 'draft' ? hit.entry.draft.ministryCode : hit.entry.consultation.ministryCode
-      if ((code ?? '').toUpperCase() !== ministry.value.toUpperCase()) return false
-    }
-    return true
-  }),
-)
-
-const fullTextViews = computed(() =>
-  fullTextHits.value.map((hit) => ({
-    hit,
-    view: hit.entry.kind === 'draft' ? viewOfDraft(hit.entry.draft) : viewOfRis(hit.entry.consultation),
-  })),
-)
-
-/**
- * Ein Entwurf, zweimal getroffen, steht EINMAL da.
- *
- * Wer den Titeltreffer und den Volltexttreffer als zwei Zeilen zeigt, hat
- * aus einer Auskunft einen Dublettenverdacht gemacht. Also: Was die Liste
- * schon führt, bekommt den Beleg an seiner Zeile — dort ist er der Zugewinn
- * („das Wort steht in § 6") —, und nur der Rest wird zur eigenen Liste
- * darunter. Der Schlüssel kommt aus demselben Adapter wie die Zeile
- * (`entryView`), damit die beiden Hälften nie auseinanderlaufen.
- */
-const listedKeys = computed(() => new Set(entries.value.map((e) => e.key)))
-/** Ein Schlüssel, ein Beleg — für beide Listen dieselbe Karte. */
-const hitByKey = computed(() => new Map(fullTextViews.value.map((v) => [v.view.key, v.hit])))
-const fullTextExtra = computed(() => fullTextViews.value.filter((v) => !listedKeys.value.has(v.view.key)))
-/** Die Zeilen der zweiten Liste — als Computed, nicht als `.map()` im Prop:
- *  Ein Array, das die Vorlage baut, ist bei jedem Rendern ein neues. */
-const fullTextExtraEntries = computed(() => fullTextExtra.value.map((v) => v.view))
-const fullTextInList = computed(() => fullTextViews.value.length - fullTextExtra.value.length)
-/**
- * WAS DIE FILTER WEGGENOMMEN HABEN, und warum das eine eigene Zahl ist.
- *
- * Gemessen beim Fahren der Seite am 21.09.2026: Unter „Verordnungsentwürfe"
- * sagte dieser Block „‚Klimaschutz' kommt in den Dokumenten der 9 laufenden
- * Begutachtungen nicht vor" — und das Wort kam in dreien vor, der Art-Filter
- * hatte sie entfernt. Eine Aussage über den Korpus, wo der Leser nur seinen
- * eigenen Filter gesehen hat: genau die Sorte Satz, die dieses Produkt nie
- * erfinden darf (§12.13). Also wird beides getrennt gezählt und getrennt
- * gesagt — samt dem Weg zurück.
- */
-const fullTextFilteredOut = computed(
-  () => (fullText.value?.hits.length ?? 0) - fullTextHits.value.length,
-)
-
-/**
- * Wie viele Begutachtungen durchsucht wurden, im Genitiv. „Kommt in DIE 7
- * Begutachtungen nicht vor" stand einmal da, bis die gerenderte Seite es
- * zeigte: Ein Werkzeug, das über Gesetzestexte spricht, darf seinen eigenen
- * Satz nicht falsch beugen.
- */
-const fullTextCorpus = computed(() => {
-  const n = fullText.value?.corpusSize ?? 0
-  return n === 1 ? 'der einen laufenden Begutachtung' : `der ${n} laufenden Begutachtungen`
-})
+  FULLTEXT_MIN_LEN,
+  fullText,
+  fullTextApplies,
+  fullTextActive,
+  fullTextPending,
+  fullTextError,
+  hitByKey,
+  fullTextExtra,
+  fullTextExtraEntries,
+  fullTextInList,
+  fullTextFilteredOut,
+  fullTextCorpus,
+} = await useFullTextSearch(filters, availableGps, entries)
 
 /**
  * Each kind counted on its own, never summed.
