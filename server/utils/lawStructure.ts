@@ -10,6 +10,7 @@
  * list. `lawApply.ts` operates on that tree; nothing here changes anything.
  */
 import { normalizeText, stripMarkup } from './lawText'
+import { decodeEntities } from './parliament/htmlText'
 
 export type NodeLevel = 'para' | 'abs' | 'z' | 'lit' | 'schluss'
 
@@ -106,22 +107,14 @@ const ANNOTATION_RE = /\(Anm\.:[^()]*(?:\([^()]*\)[^()]*)*\)/g
  */
 function text(inner: string): string {
   return normalizeText(
-    stripMarkup(
-      inner
-        .replace(ANNOTATION_RE, ' ')
-        .replace(/<gdash\s*\/>/g, '-')
-        .replace(/<nbsp\s*\/>/g, ' '),
-    )
-      .replace(/&auml;/g, 'ä')
-      .replace(/&ouml;/g, 'ö')
-      .replace(/&uuml;/g, 'ü')
-      .replace(/&Auml;/g, 'Ä')
-      .replace(/&Ouml;/g, 'Ö')
-      .replace(/&Uuml;/g, 'Ü')
-      .replace(/&szlig;/g, 'ß')
-      .replace(/&sect;/g, '§')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&'),
+    decodeEntities(
+      stripMarkup(
+        inner
+          .replace(ANNOTATION_RE, ' ')
+          .replace(/<gdash\s*\/>/g, '-')
+          .replace(/<nbsp\s*\/>/g, ' '),
+      ),
+    ),
   )
 }
 

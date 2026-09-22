@@ -48,26 +48,37 @@ function passageTexts(byParagraph: Map<string, HtmlPassage[]>): Map<string, stri
   return new Map([...byParagraph].map(([id, passages]) => [id, passages.flatMap((p) => p.text).join(' ')]))
 }
 
-export const getReasoningDiff = defineCachedFunction(
-  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ReasoningDiffResponse> => {
-    const empty = (reason: string | null, sources: TraceLink[] = []): ReasoningDiffResponse => ({
-      gp,
-      inr,
-      available: false,
-      unavailableReason: reason,
-      sources,
-      units: {},
-      paragraphs: {},
-      stats: { compared: 0, changed: 0 },
-    })
+/** Die Antwort ohne Vergleich, mit dem Satz, der sagt warum — oder ohne. */
+function empty(gp: string, inr: number, reason: string | null, sources: TraceLink[] = []): ReasoningDiffResponse {
+  return {
+    gp,
+    inr,
+    available: false,
+    unavailableReason: reason,
+    sources,
+    units: {},
+    paragraphs: {},
+    stats: { compared: 0, changed: 0 },
+  }
+}
 
-    // Kein Satz für den Leser: Diese Strecke hat keine Begründungen, und die
-    // Seite fragt für sie gar nicht erst (siehe Kopf).
-    if (from !== 'me' || to !== 'rv') return empty(null)
+/**
+ * Nur Entwurf → Regierungsvorlage, und die Prüfung steht VOR der gecachten
+ * Funktion: Jede andere Strecke bekommt dieselbe leere Antwort, und ein Cache
+ * dahinter legte für jede von ihnen einen Eintrag an, der nie etwas anderes
+ * enthalten kann. Kein Satz für den Leser — die Seite fragt für diese
+ * Strecken gar nicht erst (siehe Kopf).
+ */
+export function getReasoningDiff(gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ReasoningDiffResponse> {
+  if (from !== 'me' || to !== 'rv') return Promise.resolve(empty(gp, inr, null))
+  return compareMeToRv(gp, inr)
+}
 
+const compareMeToRv = defineCachedFunction(
+  async (gp: string, inr: number): Promise<ReasoningDiffResponse> => {
     const detail = await getGegenstand(gp, 'ME', inr)
     const rv = findLastRvLink(parseStages(detail.content?.stages))
-    if (!rv) return empty('Zu diesem Entwurf gibt es noch keine Regierungsvorlage.')
+    if (!rv) return empty(gp, inr, 'Zu diesem Entwurf gibt es noch keine Regierungsvorlage.')
 
     const [meDoc, rvDoc] = await Promise.all([
       explanationsDocument(gp, 'ME', inr),
@@ -75,6 +86,8 @@ export const getReasoningDiff = defineCachedFunction(
     ])
     if (!meDoc || !rvDoc) {
       return empty(
+        gp,
+        inr,
         meDoc
           ? 'Die Regierungsvorlage veröffentlicht ihre Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.'
           : 'Der Entwurf veröffentlicht seine Erläuterungen nicht als HTML; verglichen haben wir sie deshalb nicht.',
@@ -87,11 +100,11 @@ export const getReasoningDiff = defineCachedFunction(
     const after = passageTexts(passagesByParagraph(parseExplanationsHtml(rvHtml)))
     const sources = [meDoc, rvDoc]
     if (before.size === 0 && after.size === 0) {
-      return empty('Die Erläuterungen dieses Entwurfs sind nicht nach Paragraphen gegliedert; ein Vergleich am Paragraphen ginge daneben.', sources)
+      return empty(gp, inr, 'Die Erläuterungen dieses Entwurfs sind nicht nach Paragraphen gegliedert; ein Vergleich am Paragraphen ginge daneben.', sources)
     }
 
-    const diff = await getLawDiff(gp, inr, from, to)
-    if (!diff.available) return empty(null, sources)
+    const diff = await getLawDiff(gp, inr, 'me', 'rv')
+    if (!diff.available) return empty(gp, inr, null, sources)
 
     const { units, paragraphs, stats } = compareReasoning(diff.units, before, after)
     return {
@@ -108,7 +121,7 @@ export const getReasoningDiff = defineCachedFunction(
   {
     name: 'reasoning-diff',
     base: DERIVED_CACHE,
-    getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
+    getKey: (gp: string, inr: number) => `${gp}-${inr}`,
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },
