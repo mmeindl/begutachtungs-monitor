@@ -16,6 +16,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { ClosedOutcome, DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
+import { todayIso } from '../shared/utils/format'
 import {
   viewOfDraft,
   viewOfOutcome,
@@ -234,7 +235,10 @@ describe('Zone 2 — Kennung', () => {
   /* „Neu" is tied to a running procedure: on a closed one it would mark the
    * one thing nobody can change any more. */
   it('never marks a closed entry as new', () => {
-    const today = new Date().toISOString().slice(0, 10)
+    // The Vienna day, as `isNewArrival` measures it — the UTC day this used to
+    // take is tomorrow's date in Austria between 22:00 and 24:00 UTC, and the
+    // first expectation then failed for two hours a night.
+    const today = todayIso()
     expect(viewOfRis(ris({ startedAt: today, active: true })).isNew).toBe(true)
     expect(viewOfRis(ris({ startedAt: today, active: false })).isNew).toBe(false)
   })
