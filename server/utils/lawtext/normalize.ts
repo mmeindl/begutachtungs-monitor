@@ -33,6 +33,13 @@ export function stripQuotes(t: string): string {
   return normalizeText(t).replace(/^["'\u00ab\u00bb\u2039\u203a\s]+|["'\u00ab\u00bb\u2039\u203a\s]+$/g, '')
 }
 
+/** Runs of dots are layout in an amount table, not punctuation — see `compareKey`. */
+const LEADER_DOTS_RE = /\.{3,}/g
+/** A hyphen BETWEEN letters or digits: the one `compareKey` folds away, „E-Mail" → „EMail". */
+const INNER_HYPHEN_RE = /(?<=[\p{L}\p{N}])-+(?=[\p{L}\p{N}])/gu
+/** The space a source sets in front of the punctuation mark that closes a sentence or a list item. */
+const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])/g
+
 /**
  * Comparison form: insensitive to whitespace AND to hyphens.
  *
@@ -64,11 +71,47 @@ export function stripQuotes(t: string): string {
  * as it is, so the reader still sees exactly what the document says. What
  * falls away here decides whether two texts count as EQUAL — not how they
  * look.
+ *
+ * Its word-level twin is `compareTokens` below, and the two have to agree:
+ * this one answers „sind die Texte gleich?", that one „ist DIESES Wort
+ * geändert?" — and a difference only one of them sees is a false verdict.
  */
 export function compareKey(t: string): string {
   return normalizeText(t)
-    .replace(/\.{3,}/g, ' ')
+    .replace(LEADER_DOTS_RE, ' ')
     .replace(/[\s-]+/g, '')
+}
+
+/**
+ * The comparison form of a text at WORD level: everything `compareKey` folds
+ * away, minus the space that separates two words.
+ *
+ * **Measured 23.09.2026, rv→bgbl over GP XXVIII.** `compareKey` decides
+ * whether a unit counts as unchanged, the word diff decides which words
+ * inside a changed unit are marked — and the two used different rules, so
+ * once a unit was „geändert" for any other reason, every difference the
+ * equality form already forgives counted as a changed word and made the whole
+ * unit substantive. Three drafts stood in the measurement only for this:
+ * 51/ME („(1)"; ↔ „(1)" ;, „13 ,“ ↔ „13,“), 60/ME („4.", ↔ „4." ,) and 58/ME,
+ * where the Bundesgesetzblatt writes „Bundes-Vergabekontrollkommission",
+ * „BT-06", „E-GoVG" and „E-Mail-Adresse" and the Parliament document sets the
+ * same words without the hyphen.
+ *
+ * The space in front of `.,;:` is the same kind of artefact as the soft
+ * hyphen `compareKey` documents: a property of how a source sets its text,
+ * never of the norm. It is removed rather than tokenised away, because
+ * removing it welds the mark onto the word it closes — which is where every
+ * other source puts it.
+ *
+ * Like `compareKey`, this is never the DISPLAYED form: the segments the
+ * reader sees are built from these tokens, so a folded hyphen shows the
+ * document's own spelling of whichever side carried the word.
+ */
+export function compareTokens(t: string): string {
+  return normalizeText(t)
+    .replace(LEADER_DOTS_RE, ' ')
+    .replace(SPACE_BEFORE_PUNCT_RE, '$1')
+    .replace(INNER_HYPHEN_RE, '')
 }
 
 /**

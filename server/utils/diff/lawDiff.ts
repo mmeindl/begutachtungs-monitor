@@ -26,7 +26,8 @@ import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../../share
 import type { LawUnit } from '../lawtext/lawUnits'
 import { compareKey } from '../lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
-import { diffTokens, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
+import { bareParaId } from '../text/designation'
+import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
 
 // ---------------------------------------------------------------------------
 // Article pairing
@@ -120,6 +121,39 @@ export interface Alignment {
   onlyTo: LawUnit[]
 }
 
+/**
+ * A Novellierungsanordnung, by the id `lawUnits.ts` builds for one (`Z${n}`).
+ *
+ * Not by `heading === null`, which would select the opposite set: an
+ * instruction unit always carries a heading, because its heading IS its
+ * instruction line („§ 6 Abs. 1 Z 9 lautet"), while a § of a Stammgesetz is
+ * the thing that can come without one. Measured on 74/ME: 0 of 521 units on
+ * the draft side and 0 of 483 on the bill side have a null heading.
+ */
+function isInstruction(u: LawUnit): boolean {
+  return /^Z\d/.test(u.id)
+}
+
+/**
+ * Two instructions off the same template whose ONLY difference is the
+ * provision they address are not the same instruction.
+ *
+ * 74/ME is the shape: „§ 63 entfällt samt Überschrift." (ME Z127) and „§ 4a
+ * entfällt samt Überschrift." (RV Z50) share every word, so step 3 paired
+ * them at similarity 0,86 and the comparison then reported the two § numbers
+ * as a changed reference — a Regierungsvorlage that deleted a different
+ * paragraph, shown as an editorial touch-up of one that it deleted too.
+ *
+ * Refused for instructions only, and only in the two steps that decide
+ * WITHOUT the heading: step 1 pairs on the instruction line itself and is
+ * therefore already right. A refused pair costs one removed plus one
+ * inserted unit, which is what the documents say.
+ */
+function addressOnlyPair(a: LawUnit, b: LawUnit): boolean {
+  if (!isInstruction(a) || !isInstruction(b)) return false
+  return isAddressOnlyDifference(diffTokens(a.text, b.text).segments)
+}
+
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]): Alignment {
   const articleMap = pairArticles(fromUnits, to)
@@ -153,9 +187,10 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
     const partner = toById.get(idKey(u))
     if (!partner || pairedTo.has(partner)) continue
     if (u.heading && partner.heading) continue // both headed, headings differ → not the same §
-    // Unheaded units (Novellierungsanordnungen) renumber too: the same Z
-    // number must also look alike, else step 3 decides by similarity.
+    // Units the heading could not decide renumber too: the same id must also
+    // look alike, else step 3 decides by similarity.
     if (tokenSimilarity(u.text, partner.text, 0.5) < 0.5) continue
+    if (addressOnlyPair(u, partner)) continue
     pair(u, partner)
   }
 
@@ -173,6 +208,10 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
   candidates.sort((x, y) => y.s - x.s)
   for (const c of candidates) {
     if (pairedFrom.has(c.from) || pairedTo.has(c.to)) continue
+    // Checked here and not while scoring: the word diff is the expensive
+    // half, and only a candidate that is about to be taken needs it. A
+    // refused one leaves both units free for a later candidate.
+    if (addressOnlyPair(c.from, c.to)) continue
     pair(c.from, c.to)
   }
 
@@ -194,7 +233,33 @@ function quotedHeadingOf(u: LawUnit | null): string | null {
   return heads.length > 2 ? `${heads.slice(0, 2).join(' · ')} · …` : heads.join(' · ')
 }
 
-function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null, diff: TokenDiff | null): LawDiffUnit {
+/**
+ * Which § of the earlier version is which § of the later one, per article —
+ * the renumbering THIS comparison established, and the only kind
+ * `isEditorialChange` may credit a moved reference to.
+ *
+ * Paragraphs only. A Novellierungsanordnung renumbers too (74/ME moves 394 of
+ * 399 instructions), but no reference in a law text points at the instruction
+ * list, so putting „Z 5 → Z 6" in the map would explain a changed „Abs. 5"
+ * with a coincidence. Keyed by the LATER article, because that is the article
+ * a paired unit reports (`toUnit`).
+ */
+function renumberedParagraphs(pairs: readonly { from: LawUnit; to: LawUnit }[]): Map<string, ReadonlyMap<string, string>> {
+  const byArticle = new Map<string, Map<string, string>>()
+  for (const p of pairs) {
+    if (!p.from.id.startsWith('§') || !p.to.id.startsWith('§')) continue
+    const before = bareParaId(p.from.id)
+    const after = bareParaId(p.to.id)
+    if (!before || !after || before === after) continue
+    const key = p.to.article ?? ''
+    let map = byArticle.get(key)
+    if (!map) byArticle.set(key, (map = new Map()))
+    map.set(before, after)
+  }
+  return byArticle
+}
+
+function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null, diff: TokenDiff | null, renumbered?: ReadonlyMap<string, string>): LawDiffUnit {
   const ref = to ?? from!
   return {
     article: ref.article,
@@ -203,7 +268,7 @@ function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null,
     heading: to?.heading ?? from?.heading ?? null,
     quotedHeading: quotedHeadingOf(to) ?? quotedHeadingOf(from),
     change,
-    editorial: change === 'changed' && isEditorialChange(diff?.segments ?? null),
+    editorial: change === 'changed' && isEditorialChange(diff?.segments ?? null, { renumbered }),
     fromText: from?.text ?? null,
     toText: to?.text ?? null,
     segments: diff?.segments ?? null,
@@ -218,6 +283,7 @@ function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null,
 export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
   const { pairs, onlyFrom, onlyTo } = alignUnits(from, to)
   const toPartner = new Map(pairs.map((p) => [p.to, p.from]))
+  const renumbered = renumberedParagraphs(pairs)
   const removedSet = new Set(onlyFrom)
   const insertedSet = new Set(onlyTo)
   const out: LawDiffUnit[] = []
@@ -246,7 +312,7 @@ export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): 
     if (compareKey(m.text) === compareKey(r.text)) {
       out.push(toUnit('unchanged', m, r, null))
     } else {
-      out.push(toUnit('changed', m, r, diffTokens(m.text, r.text)))
+      out.push(toUnit('changed', m, r, diffTokens(m.text, r.text), renumbered.get(r.article ?? '')))
     }
   }
   flushRemovedBefore(null)

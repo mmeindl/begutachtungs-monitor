@@ -72,9 +72,19 @@ export const UPSTREAM_PLENUM_TITLE = 'Geändert im Plenum'
  * both comparisons link there: a legend repeated on each of roughly a
  * thousand pages, for a word that says in German about what it means here,
  * is not worth the page it costs.
+ *
+ * **The condition on the Verweise is new on 23.09.2026, and the sentence
+ * gained it because the badge could not keep the promise.** „Nur Verweise"
+ * covered any changed cross-reference, and over the 88 ME→RV pairs of GP
+ * XXVIII that hid four changes of the norm under „kein einziges Wort
+ * geändert" (`isEditorialChange`). A reference now counts as editorial only
+ * where the comparison itself renumbered the paragraph it points at — and
+ * because the Textgegenüberstellung aligns two columns of ONE paragraph, it
+ * establishes no renumbering at all, so there the condition is never met.
+ * The sentence holds for both comparisons, which is what it is for.
  */
 export const EDITORIAL_BADGE_SENTENCE =
-  '„Redaktionell“ heißt: Es haben sich nur Verweise, Zahlen, Daten oder Satzzeichen geändert, kein einziges Wort.'
+  '„Redaktionell“ heißt: Es haben sich nur Zahlen, Daten oder Satzzeichen geändert, kein einziges Wort – und Verweise nur dort, wo sie einer Umnummerierung in diesem Vergleich folgen.'
 
 const UPSTREAM_STATION_TITLES: Readonly<Record<string, LawStationId>> = {
   // `mapTextEvolution` renames upstream's "Gesetzestext" to the station
@@ -214,17 +224,50 @@ export function lawStationPairHint(from: LawStationId, to: LawStationId): string
   return 'Warum sich etwas geändert hat, sagt der Text nicht; der Ausschussbericht nennt die Abänderungsanträge, die dazu eingebracht wurden.'
 }
 
-/**
- * Whether both sides of the pair are licensed open data.
- *
- * Not a detail: the Ministerialentwurf belongs to the Begutachtungsverfahren,
- * which Parliament expressly excludes from open-data reuse, while the
- * Regierungsvorlage and the parliamentary versions are licensed datasets
- * (the open licence question over that data, docs/architecture.md §13.1). So a
- * comparison of two parliamentary
- * stations may name its licence, and one involving the draft may not — the
- * same per-source split the footer and the Impressum carry.
- */
-export function isLicensedPair(from: LawStationId, to: LawStationId): boolean {
-  return from !== 'me' && to !== 'me'
+/** Where one side of the comparison was read. */
+export interface LawDiffSourceSide {
+  station: LawStationId
+  source: 'parlament' | 'ris' | null
 }
+
+/**
+ * The source line under the § comparison — who published the two documents,
+ * and what may be claimed about each.
+ *
+ * **It said „CC BY 4.0" for two parliamentary versions until 23.09.2026, and
+ * that was wrong.** Read live that day, Parliament's dataset pages for
+ * Regierungsvorlagen, Ausschussberichte and Beschlüsse — one template — say
+ * the DOCUMENTS of those items are „freie Werke und somit ohne Lizenzierung
+ * frei nutzbar"; CC BY 4.0 covers the result lists, the API and the history
+ * pages, not the texts this comparison reads. So the correct note for a
+ * parliamentary document is § 7 UrhG, and a licence we do not hold is not
+ * improved by being generous with it.
+ *
+ * Three rules, one per side, and the line is their union:
+ *   - a RIS document is CC BY 4.0 — the RIS OGD grant, the one licence in
+ *     this product that is settled;
+ *   - a Parliament document of a parliamentary station (rv, ausschuss,
+ *     plenum) is a freies Werk;
+ *   - the Ministerialentwurf carries NO claim in either direction. Parliament
+ *     excludes the Begutachtungsverfahren from open-data reuse and the
+ *     documents question is exactly what is open (docs/architecture.md §13.1),
+ *     so the draft is credited by name and nothing more.
+ *
+ * Hence `me→rv` from Parliament names the Parliament note once, for the
+ * Vorlage's side, and says nothing about the draft — which is what one line
+ * over two documents can honestly do.
+ */
+export function lawDiffSourceCredit(from: LawDiffSourceSide, to: LawDiffSourceSide): string {
+  const sides = [from, to]
+  const notes: string[] = []
+  if (sides.some((s) => s.source === 'ris')) notes.push('RIS (CC BY 4.0)')
+  if (sides.some((s) => s.source === 'parlament')) {
+    const free = sides.some((s) => s.source === 'parlament' && PARLIAMENTARY_STATIONS.has(s.station))
+    notes.push(free ? 'Parlament (Dokumente: freie Werke, § 7 UrhG)' : 'Parlament')
+  }
+  if (notes.length === 0) return 'Quellen:'
+  return `Quellen: ${notes.join(' und ')}`
+}
+
+/** The stations whose documents Parliament itself calls freie Werke — the Ministerialentwurf is not one. */
+const PARLIAMENTARY_STATIONS: ReadonlySet<LawStationId> = new Set<LawStationId>(['rv', 'ausschuss', 'plenum'])

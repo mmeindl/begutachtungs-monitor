@@ -22,7 +22,7 @@ import {
   defaultFromFor,
   isLawStationId,
   isLawStationPair,
-  isLicensedPair,
+  lawDiffSourceCredit,
   lawStationPairHint,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
@@ -701,22 +701,16 @@ const droppedNote = computed(() =>
            up while or after reading, never before — and it is one more block
            that used to rewrite itself above the select.
 
-           The licence hangs on the pair, not on the page: with the
-           Ministerialentwurf on one side a shared „CC BY 4.0" would be wrong
-           for that half — the Vorlage is a licensed dataset, the draft belongs
-           to the Begutachtungsverfahren, which Parliament excludes from
-           open-data use — the open licence question over that data
-           (docs/architecture.md §13.1). Comparing two
-           parliamentary versions, both sides are licensed and the statement
-           belongs there — the same per-source split as in the Impressum. -->
+           What may be claimed hangs on each SIDE — its publisher and its
+           station — and `lawDiffSourceCredit` puts the two together: RIS is CC
+           BY 4.0, a parliamentary document is a freies Werk (§ 7 UrhG, read
+           live 23.09.2026), and the Ministerialentwurf carries no claim at
+           all, because the Begutachtungsverfahren is what the open licence
+           question is about (docs/architecture.md §13.1). -->
       <SectionCredits>
-        <!-- BOTH sides decide the line now, not only the left one: the
-             kundgemachte Fassung comes from RIS, and `rv→bgbl` would
-             otherwise carry „Quellen (Parlament)" over a RIS document. -->
-        <span>{{ data.fromSource === 'ris' || data.toSource === 'ris' ? 'Quellen (RIS und Parlament):' : 'Quellen (Parlament):' }}</span>
+        <span>{{ lawDiffSourceCredit({ station: pair.from, source: data.fromSource }, { station: pair.to, source: data.toSource }) }}</span>
         <ExternalLink v-if="data.fromDocument" :href="data.fromDocument.url" class="text-accent-deep hover:underline">{{ data.fromDocument.label }}</ExternalLink>
         <ExternalLink v-if="data.toDocument" :href="data.toDocument.url" class="text-accent-deep hover:underline">{{ data.toDocument.label }}</ExternalLink>
-        <span v-if="isLicensedPair(pair.from, pair.to)">CC BY 4.0</span>
         <!-- The § names come from a third source; a page that shows text has
              to say where it is from, even when the text is one word long. -->
         <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>

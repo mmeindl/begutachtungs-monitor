@@ -467,6 +467,9 @@ const toc = [
         trägt der Vergleich nach der Begutachtung, Entwurf gegen
         Regierungsvorlage – auch er verlinkt hierher.
         {{ EDITORIAL_BADGE_SENTENCE }}
+        Die Gegenüberstellung hält zwei Spalten desselben Paragraphen
+        nebeneinander und kann deshalb keine Umnummerierung feststellen; hier
+        zählt jeder geänderte Verweis als Änderung.
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">

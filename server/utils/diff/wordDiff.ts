@@ -13,7 +13,7 @@
  * are measured decisions (`docs/refactor-plan.md` §9).
  */
 import type { LawDiffSegment } from '../../../shared/types'
-import { normalizeText } from '../lawtext/normalize'
+import { compareTokens } from '../lawtext/normalize'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000
@@ -22,8 +22,19 @@ const MAX_DP_CELLS = 2_500_000
 // Token diff (LCS)
 // ---------------------------------------------------------------------------
 
+/**
+ * The compared words of a text — `compareTokens`, not `normalizeText`, since
+ * 23.09.2026.
+ *
+ * The two forms have to fold the same artefacts away, or a unit that is
+ * „geändert" for any other reason collects a changed WORD for every space in
+ * front of a full stop and every hyphen one side sets and the other does not
+ * (the measurement is at `compareTokens`). The reader still sees the
+ * document's own spelling: the segments carry these tokens, and the side that
+ * wrote „E-Mail-Adresse" is the side the word comes from.
+ */
 function tokens(t: string): string[] {
-  return normalizeText(t).split(' ').filter(Boolean)
+  return compareTokens(t).split(' ').filter(Boolean)
 }
 
 export interface TokenDiff {
@@ -231,11 +242,52 @@ function classifyToken(raw: string): TokenClass {
 }
 
 /**
+ * What this comparison knows about the change it is classifying, beyond the
+ * segments themselves.
+ *
+ * Exactly one thing so far: which § of the earlier version is which § of the
+ * later one, built by `diffLawUnits` from its own alignment. Optional, and
+ * absent means "nothing established" — every caller that cannot supply it
+ * gets the stricter answer, never a more generous one.
+ */
+export interface EditorialContext {
+  /** Bare § id of the earlier version → bare § id of the later one, for the ONE article of this unit. */
+  renumbered?: ReadonlyMap<string, string>
+}
+
+/**
  * True when every inserted or removed piece is citation, number, date or
  * punctuation. A piece made of connectives alone ("und" → "oder") is a real
  * change; a piece with any ordinary word is a real change.
+ *
+ * **A changed cross-reference is editorial only where this comparison itself
+ * explains it, since 23.09.2026.** Any citation-adjacent number change used
+ * to be editorial, on the reasoning that a reference which merely follows a
+ * renumbering says nothing new. The reasoning is right and the test was not:
+ * it never asked whether a renumbering had happened. Measured over the 88
+ * ME→RV pairs of GP XXVIII, 70 editorial units turned on nothing but a
+ * citation-adjacent number, and 38 of them are provably renumbering
+ * consequences — but four are changes of the norm that the badge hid under
+ * „kein einziges Wort geändert": § 48 → § 48a BAO (27/ME Z4), § 49c Abs. 4
+ * Z 1 → § 49b Abs. 1a Z 10 (30/ME Z12), a shrunk UGB range (4/ME Z3) and a
+ * Verfassungsbestimmung that gained „§ 169 Abs. 7" (32/ME § 1).
+ *
+ * So the number pairs have to be renumberings THIS diff established: the
+ * alignment paired a unit with `fromId` old and `id` new. Three consequences
+ * follow from that and each closes one of the four:
+ *   - a reference into another law can never be in the map (27/ME, 4/ME),
+ *   - a reference one side does not carry at all has no pair (32/ME),
+ *   - an Abs./Z/lit. address is not a unit of this comparison, so a diff of
+ *     Novellierungsanordnungen establishes nothing about it (30/ME).
+ *
+ * The residual class is named rather than hidden: the map is keyed by the
+ * bare number, so „Abs. 6" → „Abs. 4" in a draft that also renumbered § 6 to
+ * § 4 reads as explained although the two have nothing to do with each other.
+ * It needs a draft that renumbers §§ wholesale, and it errs toward the badge —
+ * the direction the four cases above showed to be the expensive one, so it is
+ * the next thing to tighten, not a reason to keep the old rule.
  */
-export function isEditorialChange(segments: readonly LawDiffSegment[] | null): boolean {
+export function isEditorialChange(segments: readonly LawDiffSegment[] | null, context?: EditorialContext): boolean {
   if (!segments) return false
   let sawChange = false
   for (let i = 0; i < segments.length; i++) {
@@ -250,15 +302,95 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null): b
     if (classes.every((c) => c === 'connective' || c === 'punct') && classes.includes('connective')) {
       if (!tokens.every((t) => FUNCTION_WORDS.has(bare(t)) || classifyToken(t) === 'punct')) return false
     }
-    // A bare number is a reference only next to a citation word ("Abs. 6" → "Abs. 4");
-    // "6 Wochen" → "4 Wochen" is a real change. A number that replaces a
-    // placeholder is formatting, and so is a date RESPELLED — but not a date
-    // moved (`sameCalendarDay`).
-    if (classes.includes('number') && !classes.includes('citation')) {
-      if (!sameCalendarDay(segments, i) && !citationAdjacent(segments, i) && !fillsPlaceholder(segments, i)) return false
+    if (classes.includes('number') || classes.includes('citation')) {
+      // A number that replaces a placeholder is formatting, and so is a date
+      // RESPELLED — but not a date moved (`sameCalendarDay`). Both answer
+      // before the reference rule, because neither is a reference.
+      if (sameCalendarDay(segments, i) || fillsPlaceholder(segments, i)) continue
+      // A bare number is a reference only next to a citation word ("Abs. 6" →
+      // "Abs. 4"); "6 Wochen" → "4 Wochen" is a real change. A piece that
+      // carries the citation word itself needs no neighbour to say so.
+      if (!classes.includes('citation') && !citationAdjacent(segments, i)) return false
+      // And a reference is editorial only where the renumbering is ours.
+      if (classes.includes('number') && !renumberingExplains(segments, i, context?.renumbered)) return false
     }
   }
   return sawChange
+}
+
+/**
+ * True when the pieces of this change are citation vocabulary, numbers and
+ * punctuation and nothing else — the ADDRESS of an instruction, not its
+ * content.
+ *
+ * The alignment asks it, not the badge: two Novellierungsanordnungen off the
+ * same legistic template read alike word for word („§ 63 entfällt samt
+ * Überschrift." against „§ 4a entfällt samt Überschrift.", 74/ME ME Z127 and
+ * RV Z50 at similarity 0,86), and the ONE thing that distinguishes them is
+ * the § they address. Pairing them compares an instruction about § 63 with an
+ * instruction about § 4a and then reports the result as a changed reference.
+ *
+ * Deliberately stricter than `isEditorialChange`: a connective in the change
+ * („§ 1 und § 2" → „§ 1") already makes it more than an address, and a pair
+ * that is not refused here is simply kept, so the strict answer is the safe
+ * one.
+ */
+export function isAddressOnlyDifference(segments: readonly LawDiffSegment[] | null): boolean {
+  if (!segments) return false
+  let sawNumber = false
+  let sawChange = false
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i]!
+    if (s.type === 'equal') continue
+    sawChange = true
+    const classes = s.text.split(/\s+/).filter(Boolean).map(classifyToken)
+    if (classes.some((c) => c !== 'citation' && c !== 'number' && c !== 'punct')) return false
+    if (!classes.includes('number')) continue
+    if (!classes.includes('citation') && !citationAdjacent(segments, i)) return false
+    sawNumber = true
+  }
+  return sawChange && sawNumber
+}
+
+/**
+ * The numbers a piece names, in printed order and stripped to the form a § id
+ * carries — „§ 285b." → „285b", so that it compares with `bareParaId`.
+ */
+function citationNumbers(text: string): string[] {
+  const out: string[] = []
+  for (const raw of text.split(/\s+/)) {
+    if (!raw || classifyToken(raw) !== 'number') continue
+    out.push(bare(raw).replace(/^\(+|[.,;:)]+$/g, ''))
+  }
+  return out
+}
+
+/**
+ * Is every number pair of this change a renumbering the comparison itself
+ * established?
+ *
+ * Positional, and it refuses rather than guesses: a side without numbers is a
+ * reference ADDED or DROPPED, and two sides naming a different COUNT of
+ * provisions have no pairing to check — in both cases the reference does more
+ * than follow a renumbering. No map at all (a caller outside `diffLawUnits`)
+ * answers no for the same reason.
+ *
+ * A number that did NOT change needs no renumbering to explain it, and that
+ * line is load-bearing: `bare` strips the punctuation off a token, so „(2);"
+ * → „(2)," arrives here as the number 2 against the number 2 — a semicolon
+ * turned into a comma, which is the plainest editorial change there is
+ * (61/ME Z6, 4/ME Z50 „f." → „f", 32/ME § 172).
+ */
+function renumberingExplains(segments: readonly LawDiffSegment[], i: number, renumbered: ReadonlyMap<string, string> | undefined): boolean {
+  const own = citationNumbers(segments[i]!.text)
+  const opposite: string[] = []
+  for (const s of [segments[i - 1], segments[i + 1]]) {
+    if (!s || s.type === 'equal' || s.type === segments[i]!.type) continue
+    opposite.push(...citationNumbers(s.text))
+  }
+  if (own.length !== opposite.length) return false
+  const [before, after] = segments[i]!.type === 'removed' ? [own, opposite] : [opposite, own]
+  return before.every((old, k) => old === after[k] || renumbered?.get(old) === after[k])
 }
 
 /**

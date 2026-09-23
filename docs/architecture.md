@@ -281,7 +281,7 @@ name has to stay globally unique.
 | Component | Props | Purpose |
 |---|---|---|
 | `TextComparisonSection` | `gp: string; inr: number` | „Was ändert der Entwurf?" — the ressort's own Textgegenüberstellung (`docs/api-exploration.md` §2c), available much earlier than the ME→RV diff and asking a different question |
-| `LawDiffSection` | `gp: string; inr: number` | „Was sich nach der Begutachtung geändert hat": the § comparison between two versions of the law text (`docs/ris-join.md` §6, §12.18). Lazy client fetch of `/diff`; one folded group per Gesetz with count pills, rows as geändert / redaktionell / neu / entfallen / unverändert and an expandable word diff. Both sources linked **without** a joint licence label — the Regierungsvorlage is a licensed dataset, the Ministerialentwurf belongs to the excluded Begutachtungsverfahren, so one line cannot cover both (§13.1). Anchor `#textvergleich` |
+| `LawDiffSection` | `gp: string; inr: number` | „Was sich nach der Begutachtung geändert hat": the § comparison between two versions of the law text (`docs/ris-join.md` §6, §12.18). Lazy client fetch of `/diff`; one folded group per Gesetz with count pills, rows as geändert / redaktionell / neu / entfallen / unverändert and an expandable word diff. Both sources linked, and the credit line is built per side rather than per pair (`lawDiffSourceCredit`, since 23.09.2026): RIS is CC BY 4.0, a parliamentary document a freies Werk (§ 7 UrhG), the Ministerialentwurf carries no claim (§13.1). Anchor `#textvergleich` |
 | `ExplanationsSection` | `gp?: string; inr?: number; risId?: string` | „Was das Ressort begründet" — the Erläuterungen's Allgemeiner Teil (§12.29), where a reader's relevance check starts |
 | `DiffGroupHeader` | `title: string; badges: DiffBadgeCount[]; open: boolean` + emit `toggle` | The header of one group in a comparison section: the law it collects, the summary pills, the chevron. Character-identical in both sections before this component existed |
 | `DiffToolbar` | `viewLabel: string; searchLabel: string` + models `view`, `query` | How to read a comparison, and a search over it — both scope the list below them and nothing above. Inline or side by side, GitHub's "unified / split" and for the same reason |
@@ -4565,11 +4565,13 @@ konkreten Stationen abhing; die gemessenen Beispiele in den Kommentaren
   den **Ausschussbericht**, wo die Abänderungsanträge festgehalten sind. Dass
   der Vergleich selbst keine Ursache zeigt, sagt jeder der Sätze weiter
   ausdrücklich.
-- **Die Lizenz.** Steht der Ministerialentwurf auf einer Seite, wäre „CC BY
-  4.0" für diese Hälfte falsch — das Begutachtungsverfahren ist von der
-  Open-Data-Nutzung ausgenommen. Vergleicht der Leser zwei parlamentarische
-  Fassungen, sind **beide** Seiten lizenzierte Datensätze, und dann steht die
-  Angabe auch da (`isLicensedPair`).
+- **Die Quellenangabe.** Sie hing am Paar und hängt seit 23.09.2026 an jeder
+  **Seite** einzeln (`lawDiffSourceCredit`): ein RIS-Dokument ist CC BY 4.0,
+  ein parlamentarisches Dokument ein freies Werk (§ 7 UrhG, so sagen es die
+  Datensatzseiten des Parlaments selbst), der Ministerialentwurf trägt gar
+  keine Lizenzbehauptung — er ist genau die offene Frage (§13.1). Die alte
+  Fassung schrieb „CC BY 4.0" über zwei parlamentarische Fassungen und nannte
+  damit eine Lizenz, die es für diese Dokumente nicht gibt.
 - **Die §-Titel.** `/paragraphtitel` nimmt dasselbe Paar und cacht danach.
   Eine zwischen zwei Stationen umnummerierte Ziffer adressiert dort einen
   **anderen** Paragraphen, und ein aus einem fremden Paar übernommener Name
@@ -6588,9 +6590,103 @@ Dass der Ministerialentwurf im selben Satz bereits eine Sonderbehandlung
 brauchte, war die Warnung. Der Name ist jetzt „Fassung im Bundesgesetzblatt"
 und überlebt jede Beugung.
 
+#### Drei weitere Klassen, gemessen am 23.09.2026 — und was das Abzeichen kostet
+
+Dieselbe Messstrecke, eine Ebene tiefer: 88 Paare Ministerialentwurf →
+Regierungsvorlage der GP XXVIII, dazu die 33 Entwürfe, bei denen die
+Rechenschaftskette „unverändert beschlossen" sagt.
+
+**1. „Redaktionell" deckte geänderte Verweise, die keine Umnummerierung
+waren.** `isEditorialChange` hielt jede zitatnahe Zahländerung für
+redaktionell. Von 164 redaktionellen Einheiten hingen 70 an nichts anderem
+als daran; 38 davon sind nachweislich Folgen einer Umnummerierung — **vier
+aber sind Änderungen der Norm**, die unter „kein einziges Wort geändert"
+standen: § 48 → § 48a BAO (27/ME Z 4), § 49c Abs. 4 Z 1 → § 49b Abs. 1a Z 10
+(30/ME Z 12), ein geschrumpfter UGB-Bereich (4/ME Z 3) und eine
+Verfassungsbestimmung, die „§ 169 Abs. 7" dazubekam (32/ME § 1). Die Regel
+lautet jetzt: Ein Verweis ist nur dort redaktionell, wo **dieser Vergleich
+selbst** den Paragraphen umnummeriert hat — die Ausrichtung also eine Einheit
+mit der alten und der neuen Nummer gepaart hat (`renumberedParagraphs` in
+`diff/lawDiff.ts`, nur §§, nie Novellierungsanordnungen). Daraus folgen die
+drei Schnitte, die jeden der vier Fälle schließen: ein Verweis in ein
+**anderes Gesetz** kann nie in der Karte stehen, eine **Abs.-/Z-Adresse** ist
+keine Einheit dieses Vergleichs, und ein Verweis, den eine Seite **gar nicht
+führt**, hat kein Gegenstück. Der Restfehler ist benannt statt versteckt: Die
+Karte kennt nur die nackte Zahl, also liest sich „Abs. 6" → „Abs. 4" in einem
+Entwurf, der auch § 6 zu § 4 gemacht hat, als erklärt.
+
+**2. Formgleiche Anordnungen mit verschiedener Adresse wurden gepaart.**
+„§ 63 entfällt samt Überschrift." (74/ME, ME Z 127) und „§ 4a entfällt samt
+Überschrift." (RV Z 50) teilen jedes Wort; Schritt 3 der Ausrichtung paarte
+sie bei Ähnlichkeit 0,86, und die Regel oben machte daraus einen geänderten
+Verweis. Zwei Anordnungen, deren **einziger** Unterschied die adressierte
+Bestimmung ist, sind nicht dieselbe Anordnung: Schritt 2 und 3 lehnen ein
+solches Paar jetzt ab (`isAddressOnlyDifference`), und es wird zu einer
+entfallenen plus einer neuen Einheit — was die Dokumente sagen. Nebenbei
+korrigiert: Die Notiz sprach von „Einheiten ohne Überschrift". Eine
+Novellierungsanordnung hat **immer** eine, ihre Anordnungszeile ist die
+Überschrift; ohne Überschrift ist der Paragraph eines Stammgesetzes (74/ME: 0
+von 521 bzw. 483 Einheiten mit `heading === null`). Die Ablehnung hängt daher
+an der Anordnung, nicht an der fehlenden Überschrift.
+
+**3. Der Worttokenizer faltete weniger weg als die Gleichheitsform.**
+`compareKey` entscheidet, ob eine Einheit unverändert ist, `tokens()`, welche
+Wörter darin markiert werden — und die beiden benutzten verschiedene Regeln.
+War eine Einheit aus irgendeinem anderen Grund „geändert", zählte danach jedes
+Leerzeichen vor einem Satzzeichen und jeder Bindestrich, den nur eine Seite
+setzt, als geändertes **Wort**. `tokens()` liest jetzt `compareTokens`, das
+dieselben Artefakte faltet wie `compareKey`, nur ohne das trennende
+Leerzeichen zu verlieren.
+
+| | vorher | nachher |
+|---|---:|---:|
+| Einheiten gesamt (88 Paare ME→RV) | 5.357 | 5.374 |
+| unverändert | 2.276 | 2.276 |
+| geändert | 1.841 | 1.824 |
+| davon **redaktionell** | 164 | **94** |
+| neu / entfallen | 888 / 352 | 905 / 369 |
+| redaktionell, einzige Änderung eine zitatnahe Zahl | 70 | **32** |
+
+Die 70 Einheiten der letzten Zeile teilen sich auf in 31, die redaktionell
+bleiben, 23, die auf substanziell kippen, und 16, deren Paar sich auflöst.
+Über **alle** Einheiten kippen 54, verlieren 18 ihr Paar, bleiben 92
+redaktionell und werden 2 es neu. Die 54 sind mehr, als die Vorabanalyse
+erwartet hatte, und der Grund ist benannt: Sie hatte nur Änderungen gezählt,
+die **ausschließlich** aus zitatnahen Zahlen bestehen. Die Regel greift aber
+auch dort, wo das geänderte Stück das Zitatwort selbst trägt („§ 49c Abs. 4
+Z 1" → „§ 49b Abs. 1a Z 10") oder wo neben dem Verweis ein Artikel steht („In
+§ 11g wird nach Abs. 3 …" → „Dem § 11g wird …", also ein **weggefallener**
+Verweis) — und ohne diese beiden Formen bliebe der erste der vier Fälle oben
+unentdeckt. Die aufgelösten Paare verteilen sich auf zwölf Entwürfe (20, 30,
+32, 34, 40, 49, 52, 58, 66, 67, 69, 74/ME); netto sind es 17, weil in 74/ME
+die freigewordene rechte Seite im selben Artikel ein anderes Gegenstück
+findet.
+
+**Auf der Strecke Regierungsvorlage → Bundesgesetzblatt zahlt Nummer 3 genau
+das ein, wofür sie gebaut ist, und Nummer 1 legt eine alte Asymmetrie frei.**
+Mit Nummer 3 allein fallen 51/ME, 58/ME und 60/ME auf **null** substanzielle
+Einheiten; übrig bleiben nur 26/27/ME (der 1:n-Fall, anderswo behandelt) und
+88/ME. Mit Nummer 1 dazu melden 58/ME (6), 60/ME (2), 76/ME (2) und 88/ME (1)
+wieder Einheiten — und alle elf sind **dieselbe Klasse**: Das
+Parlamentsdokument wiederholt die Überschrift einer Anlage bzw. eines Anhangs
+innerhalb des zitierten Textes („Anhang III", „Anlage 1"), das RIS-XML nicht.
+Das ist eine Parser-Asymmetrie, kein Unterschied der Dokumente; sie war vorher
+durch die Zitatregel verdeckt und ist jetzt sichtbar. Sie zu schließen ist die
+nächste Arbeit an dieser Strecke, nicht ein Grund, die Regel zurückzunehmen.
+
+**Und der Preis, offen genannt:** Die Textgegenüberstellung
+(`annex/comparisonRows.ts`) stellt zwei Spalten **desselben** Paragraphen
+nebeneinander und kann deshalb nie eine Umnummerierung feststellen. Dort ist
+seit diesem Tag **jeder** geänderte Verweis substanziell. Das ist die ehrliche
+Antwort — die Alternative wäre, für einen Verweis „kein einziges Wort
+geändert" zu behaupten, den wir nicht erklären können, also genau der Fehler,
+den die vier Fälle oben gezeigt haben. Der Satz auf /so-funktionierts trägt
+die Bedingung jetzt mit und sagt für die Gegenüberstellung ausdrücklich dazu,
+dass sie dort nie erfüllt ist.
+
 ## 13. Open questions
 
-1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents, while the Beteiligungen lists themselves are CC BY — which is the grant the Stellungnahmen zur Regierungsvorlage (§12.14) run under. So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused.
+1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents, while the Beteiligungen lists themselves are CC BY — which is the grant the Stellungnahmen zur Regierungsvorlage (§12.14) run under. So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
 2. ~~Join key RIS↔Parliament at corpus level~~ **Resolved (Sept 2026):** GP XXVII corpus test, 337/350 matched, 0 ambiguous, 12 without any RIS record, no one-sided extensions — `docs/ris-join.md`.
 3. Is list-81 `Frist` updated on deadline extensions? (Affects future alerts and history.)
 4. Multiple RVs (ME→RV 1:n): is "latest RV" enough or does the UI need all strands? **Corpus evidence 2026-09-08:** it happens — 27/ME (IFG-Anpassung BMF) has two, 134 d.B. and 129 d.B., both dated 18.06.2025, and its diff against the one we pick reports 25 laws as absent that are plausibly in the other. Until this is decided, the comparison says "in dieser Regierungsvorlage" and adds that a draft can end up in more than one — it must never read as "the law was dropped".

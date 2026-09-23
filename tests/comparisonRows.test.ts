@@ -124,13 +124,25 @@ describe('parseTextComparison', () => {
   it('separates an editorial change from a substantive one', () => {
     const rows = parse(
       annex([
-        pair('Gemäß § 4 Abs. 1 gilt Folgendes.', 'Gemäß § 4 Abs. 2 gilt Folgendes.'),
+        pair('in der Fassung vom 26.6.2024 gilt', 'in der Fassung vom 26.06.2024 gilt'),
         pair('Die Behörde kann den Antrag ablehnen.', 'Die Behörde muss den Antrag ablehnen.'),
       ]),
     )
     expect(rows[0]!.editorial).toBe(true)
     expect(rows[1]!.editorial).toBe(false)
     expect(summarizeComparison(rows)).toMatchObject({ total: 2, changed: 2, editorial: 1 })
+  })
+
+  it('a moved cross-reference is substantive HERE, because this comparison establishes no renumbering', () => {
+    // Since 23.09.2026 a reference is editorial only where the comparison
+    // itself paired the § it points at with a new number
+    // (`isEditorialChange`). The ME→RV comparison can say that; the
+    // Textgegenüberstellung aligns the two columns of ONE paragraph and never
+    // can — so „§ 4 Abs. 1" → „§ 4 Abs. 2" is reported as a change of the
+    // norm here, and the badge sentence on /so-funktionierts says so for both
+    // comparisons.
+    const rows = parse(annex([pair('Gemäß § 4 Abs. 1 gilt Folgendes.', 'Gemäß § 4 Abs. 2 gilt Folgendes.')]))
+    expect(rows[0]!.editorial).toBe(false)
   })
 
   it('does not call a row changed over a soft hyphen or a run of leader dots', () => {
