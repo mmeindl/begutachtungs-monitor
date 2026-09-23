@@ -22,6 +22,35 @@ describe('articleNameTokens', () => {
     expect(articleNameTokens('Änderung des Umsatzsteuergesetzes 1994')).toEqual(new Set(['umsatzsteuergesetz', '1994']))
     expect(articleNameTokens('Bundesgesetz, mit dem das Umsatzsteuergesetz 1994 geändert wird')).toEqual(new Set(['umsatzsteuergesetz', '1994']))
   })
+
+  // Only the head noun was stemmed, so one declined adjective dropped the
+  // pair to 1 of 3 — under the 0,5 `pairArticles` demands, and with the
+  // Artikel numbers swapped the law was then reported dropped and added
+  // (23.09.2026).
+  it('stems the adjective in front of the head noun, not only the noun', () => {
+    const genitive = articleNameTokens('Änderung des Allgemeinen Sozialversicherungsgesetzes')
+    const sentence = articleNameTokens('Bundesgesetz, mit dem das Allgemeine Sozialversicherungsgesetz geändert wird')
+    expect(genitive).toEqual(new Set(['allgemein', 'sozialversicherungsgesetz']))
+    expect(jaccardSimilarity(genitive, sentence)).toBeGreaterThanOrEqual(0.5)
+  })
+
+  it('leaves the head noun and the short words alone', () => {
+    // The head noun keeps its own rule, so "Gewerbeordnung" does not lose its
+    // "-ung", and the five-character guard keeps "zum" whole. An ordinary noun
+    // does get cut ("Anlage" → "anlag"); the stem is a comparison key, never a
+    // name the page shows, and both sides pass through it alike.
+    expect(articleNameTokens('Änderung der Gewerbeordnung')).toEqual(new Set(['gewerbeordnung']))
+    expect(articleNameTokens('Anlage 3 zum Strafgesetzbuch')).toEqual(new Set(['anlag', '3', 'zum', 'strafgesetzbuch']))
+  })
+
+  it('still tells two laws of one name family apart', () => {
+    // 60/ME: the draft amends the eEltern-Kind-Pass-Gesetz, the bill the
+    // Eltern-Kind-Pass-Gesetz — 0,6, and the only one-sided law in GP XXVIII
+    // that scores above the threshold at all.
+    expect(
+      jaccardSimilarity(articleNameTokens('Änderung des eEltern-Kind-Pass-Gesetzes'), articleNameTokens('Änderung des Eltern-Kind-Pass-Gesetzes')),
+    ).toBeCloseTo(0.6, 10)
+  })
 })
 
 describe('lawNameScore — die Vorlage zählt nicht als Inhalt', () => {

@@ -158,9 +158,26 @@ const CONNECTIVES = new Set('bis und oder sowie in im der des dem den die das ge
  * an insertion.
  */
 const FUNCTION_WORDS = new Set('der die das dem den des in im'.split(' '))
-// Numbers, letter-suffixed numbers, dates, BGBl numbers, roman numerals, and single letters (lit. a, lit. b).
-const NUMBER_RE = /^\(?\d+[a-z]?\.?\)?$|^\d{1,2}\.\d{1,2}\.\d{4}$|^\d+\/\d+$|^[ivxlc]+\.?$|^[a-z]\)?\.?$/i
+/**
+ * Numbers, letter-suffixed numbers, dates, BGBl numbers, roman numerals, and
+ * single letters (lit. a, lit. b).
+ *
+ * **The date and the Fundstelle keep an optional full stop**, measured in
+ * rv→bgbl on 23.09.2026. `bare` clears the quotation marks and a trailing
+ * comma but not a period, so the two forms a sentence ends on fell through
+ * to `word` — and one `word` ends `isEditorialChange` at once. „BGBl. I Nr.
+ * 31/2026." is the filled Fundstelle of 69/ME, printed seven times in one
+ * Inkrafttretensbestimmung; „30.10.2023." is the ABl. date of 77/ME and
+ * 79/ME. The placeholder side was already recognised (`isPlaceholder` strips
+ * the period), so only the FILLED side was missing, which is the side the
+ * Kundmachung writes.
+ */
+const NUMBER_RE = /^\(?\d+[a-z]?\.?\)?$|^\d{1,2}\.\d{1,2}\.\d{4}\.?$|^\d+\/\d+\.?$|^[ivxlc]+\.?$|^[a-z]\)?\.?$/i
 const PUNCT_RE = /^[\p{P}\p{S}]+$/u
+/** A German numeric date, "1.1.2027" or "26.06.2024" — day, month, year. */
+const DATE_RE = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/
+/** The sentence's closing punctuation, which belongs to the sentence and not to the number. */
+const TRAILING_PUNCT_RE = /[.,;:]+$/
 
 type TokenClass = 'number' | 'placeholder' | 'citation' | 'connective' | 'punct' | 'word'
 
@@ -171,9 +188,17 @@ function bare(raw: string): string {
 
 /**
  * A value the draft left open for a later stage to fill in: "(xx)", "XX",
- * "20xx" — and "xxx/2025", the form a Fundstelle takes. Two x's or an x next
- * to digits; a lone "X" is either a roman numeral or a genuine blank ("X
- * Wochen"), where naming the number is a decision, not typesetting.
+ * "20xx" — and "xxx/2025", the form a Fundstelle takes. Two blank letters or
+ * one next to digits; a lone "X" is either a roman numeral or a genuine blank
+ * ("X Wochen"), where naming the number is a decision, not typesetting.
+ *
+ * **"y" counts as a blank letter too, measured 23.09.2026.** The ressorts do
+ * not agree on the character: rv→bgbl over GP XXVIII writes „xxx/yyyy"
+ * (45/ME), „yyy/202Y" (63/ME) and „yyy/2026" (77/ME, 79/ME) beside the usual
+ * „xxx/2025". Read as a `word`, each of them made the whole
+ * Inkrafttretensbestimmung substantive, so the page reported a change to a
+ * law that had only filled in its own Fundstelle — the same failure the slash
+ * fixed on 19.09.2026, one character further on.
  *
  * THE SLASH WAS ADDED ON 19.09.2026, and it was missing at the most
  * expensive place. Every law cites itself in its Inkrafttretensbestimmung —
@@ -188,10 +213,10 @@ function isPlaceholder(raw: string): boolean {
   // Trailing punctuation belongs to the sentence, not to the number:
   // „xxx/2025." stands at the end of an Inkrafttretensbestimmung, and `bare`
   // clears the quotation marks but not the period in front of them.
-  const t = raw.replace(/[.,;:]+$/, '')
-  if (!/^[x\d]+(?:\/[x\d]+)?$/i.test(t)) return false
-  const xs = (t.match(/x/gi) ?? []).length
-  return xs >= 2 || (xs === 1 && /\d/.test(t))
+  const t = raw.replace(TRAILING_PUNCT_RE, '')
+  if (!/^[xy\d]+(?:\/[xy\d]+)?$/i.test(t)) return false
+  const blanks = (t.match(/[xy]/gi) ?? []).length
+  return blanks >= 2 || (blanks === 1 && /\d/.test(t))
 }
 
 function classifyToken(raw: string): TokenClass {
@@ -226,14 +251,64 @@ export function isEditorialChange(segments: readonly LawDiffSegment[] | null): b
       if (!tokens.every((t) => FUNCTION_WORDS.has(bare(t)) || classifyToken(t) === 'punct')) return false
     }
     // A bare number is a reference only next to a citation word ("Abs. 6" → "Abs. 4");
-    // "6 Wochen" → "4 Wochen" is a real change. Dates, and numbers that replace a
-    // placeholder, are always formatting.
+    // "6 Wochen" → "4 Wochen" is a real change. A number that replaces a
+    // placeholder is formatting, and so is a date RESPELLED — but not a date
+    // moved (`sameCalendarDay`).
     if (classes.includes('number') && !classes.includes('citation')) {
-      const isDate = tokens.some((t) => /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(t))
-      if (!isDate && !citationAdjacent(segments, i) && !fillsPlaceholder(segments, i)) return false
+      if (!sameCalendarDay(segments, i) && !citationAdjacent(segments, i) && !fillsPlaceholder(segments, i)) return false
     }
   }
   return sawChange
+}
+
+/**
+ * The calendar days a piece names, in printed order. The sentence's closing
+ * punctuation is stripped first, because „30.10.2023," is the same date as
+ * „30.10.2023" (77/ME, 79/ME).
+ */
+function calendarDays(text: string): string[] {
+  const days: string[] = []
+  for (const raw of text.split(/\s+/)) {
+    const m = DATE_RE.exec(bare(raw).replace(TRAILING_PUNCT_RE, ''))
+    if (m) days.push(`${Number(m[1])}.${Number(m[2])}.${Number(m[3])}`)
+  }
+  return days
+}
+
+/**
+ * Do the two sides of this change name the same days, written differently?
+ *
+ * **A numeric date used to be editorial by its shape alone, and that is a
+ * verdict nobody should have made.** „tritt mit 1.1.2027 in Kraft" →
+ * „1.7.2027" moves an Inkrafttreten by six months and was badged
+ * „redaktionell"; „31.12.2026." → „31.12.2036." escaped only because the
+ * trailing full stop kept the token out of the date test — an accident, not
+ * a rule.
+ *
+ * **Measured before the change** over the 88 ME→RV pairs of GP XXVIII
+ * (23.09.2026): exactly three editorial units turn on a numeric date, and
+ * they split two against one. 43/ME „26.6.2024" → „26.06.2024" and 61/ME
+ * „16.1.2023" → „16.01.2023" are zero padding and nothing else; 2/ME
+ * „20.4.2021" → „30.4.2021" corrects the date of an ABl. Fundstelle, which
+ * is a different document and a substantive change. So the rule is the
+ * calendar and not the spelling: parse both sides numerically and keep the
+ * badge only where every day is the same one.
+ *
+ * A date that fills a placeholder („1. Jänner 20xx" → „1. Jänner 2027") is
+ * untouched by this — `fillsPlaceholder` answers it one line up, and that is
+ * where the draft really did only leave a blank. It is the YEAR the drafts
+ * leave open; a fully dotted „xx.xx.xxxx" occurs 0 times in the same corpus,
+ * so `isPlaceholder` was not widened to it.
+ */
+function sameCalendarDay(segments: readonly LawDiffSegment[], i: number): boolean {
+  const own = calendarDays(segments[i]!.text)
+  if (own.length === 0) return false
+  const opposite: string[] = []
+  for (const s of [segments[i - 1], segments[i + 1]]) {
+    if (!s || s.type === 'equal' || s.type === segments[i]!.type) continue
+    opposite.push(...calendarDays(s.text))
+  }
+  return own.length === opposite.length && own.every((d, k) => d === opposite[k])
 }
 
 /** "(xx)" → "(69)": is the piece on the other side of this change the placeholder it replaces? */
@@ -244,13 +319,49 @@ function fillsPlaceholder(segments: readonly LawDiffSegment[], i: number): boole
   })
 }
 
-/** Does the equal text around a changed piece end or start with a citation word? Looks past a sibling change ("6" removed, "4" inserted). */
+/**
+ * Does the equal text around a changed piece end or start with a citation
+ * word? Looks past a sibling change ("6" removed, "4" inserted).
+ *
+ * **The word the number hangs on, not the last two words, since 23.09.2026.**
+ * It used to read the last TWO words before the change, and `CITATION_WORDS`
+ * carries five ordinary nouns — `satz`, `teil`, `fassung`, `anlage`, `nr`.
+ * One word of distance is all it takes for those to be a subject rather than
+ * a citation: „Der Satz beträgt 5 vH." → „7 vH." and „Der Teil beträgt 500
+ * Euro." → „700 Euro." came out „redaktionell", because „Satz"/„Teil" stood
+ * two words back. A rate and an amount are the substance of a provision, and
+ * calling that a shifted reference is the one mistake this badge may not
+ * make.
+ *
+ * The narrow rule — the single token before the change — is wrong in the
+ * other direction: a range names its first member first, so in „§§ 1 und 2" →
+ * „§§ 1 bis 3" the immediate neighbour is „1" and the citation word is behind
+ * it. So the numbers of the run are stepped over, and the first token that is
+ * not one of them has to be the citation word. That keeps „Abs. 6" → „Abs. 4"
+ * and „§§ 1 bis 3" editorial and drops the two nouns, because „beträgt" is an
+ * ordinary word and stops the walk at once.
+ *
+ * The controls stay where they were: „Der Beitragssatz beträgt 5 vH" and
+ * „Nach Abs. 3 sind 500 Euro zu zahlen" were substantive before and are
+ * substantive now.
+ */
 function citationAdjacent(segments: readonly LawDiffSegment[], i: number): boolean {
   let before = i - 1
   while (before >= 0 && segments[before]!.type !== 'equal') before--
   let after = i + 1
   while (after < segments.length && segments[after]!.type !== 'equal') after++
-  const lastBefore = before >= 0 ? segments[before]!.text.trim().split(/\s+/).slice(-2) : []
+  const anchor = before >= 0 ? numberRunAnchor(segments[before]!.text) : null
   const firstAfter = after < segments.length ? segments[after]!.text.trim().split(/\s+/).slice(0, 1) : []
-  return [...lastBefore, ...firstAfter].some((t) => classifyToken(t) === 'citation')
+  return [anchor, ...firstAfter].some((t) => t !== null && classifyToken(t) === 'citation')
+}
+
+/** The last token of an equal piece that is not itself part of the number run — "§§" in "nach den §§ 1". */
+function numberRunAnchor(text: string): string | null {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  for (let k = words.length - 1; k >= 0; k--) {
+    const cls = classifyToken(words[k]!)
+    if (cls === 'number' || cls === 'placeholder' || cls === 'punct') continue
+    return words[k]!
+  }
+  return null
 }

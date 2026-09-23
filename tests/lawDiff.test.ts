@@ -74,6 +74,28 @@ describe('parseLawUnits', () => {
     expect(units.map((u) => u.heading)).toEqual(['§ 3 lautet', 'In § 7 entfällt Abs. 2.'])
   })
 
+  it('joins a § heading the template sets as two lines', () => {
+    // The second block used to overwrite the first, so the § went out under
+    // „der Staatsanwaltschaften" — half a sentence, and the half without the
+    // subject.
+    const html = `<html><body><p class=11Titel>Bundesgesetz &uuml;ber X</p>
+      <p class=45UeberschrPara>Aufbau und Zust&auml;ndigkeit</p>
+      <p class=45UeberschrPara>der Staatsanwaltschaften</p>
+      <p class=51Abs><span class=991GldSymbol>&sect;&nbsp;4.</span> (1) Text.</p></body></html>`
+    expect(parseLawUnits(html)[0]!.heading).toBe('Aufbau und Zuständigkeit der Staatsanwaltschaften')
+  })
+
+  it('does not glue a heading onto the next § when a block stands between them', () => {
+    // Only consecutive blocks are one heading. An unconsumed heading belongs
+    // to a § that never opened, and joining it would name the wrong provision.
+    const html = `<html><body><p class=11Titel>Bundesgesetz &uuml;ber X</p>
+      <p class=45UeberschrPara>Erste &Uuml;berschrift</p>
+      <p class=32InhaltEintrag>&sect;&nbsp;3. Inhalt</p>
+      <p class=45UeberschrPara>Zweite &Uuml;berschrift</p>
+      <p class=51Abs><span class=991GldSymbol>&sect;&nbsp;4.</span> (1) Text.</p></body></html>`
+    expect(parseLawUnits(html)[0]!.heading).toBe('Zweite Überschrift')
+  })
+
   it('derives a Ziffer heading from the instruction line', () => {
     expect(novaoHeading('2. § 6 Abs. 1 Z 9 lautet: „9. Umsätze …“')).toBe('§ 6 Abs. 1 Z 9 lautet')
     expect(novaoHeading('14. Nach § 11 wird folgender § 11a samt Überschrift eingefügt:')).toBe('Nach § 11 wird folgender § 11a samt Überschrift eingefügt')

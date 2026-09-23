@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseTextComparison, summarizeComparison } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
+import { isElidedPair } from '../server/utils/annex/elision'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
 
@@ -130,6 +131,23 @@ describe('parseTextComparison', () => {
     expect(rows[0]!.editorial).toBe(true)
     expect(rows[1]!.editorial).toBe(false)
     expect(summarizeComparison(rows)).toMatchObject({ total: 2, changed: 2, editorial: 1 })
+  })
+
+  it('does not call a row changed over a soft hyphen or a run of leader dots', () => {
+    // `classify` compared the raw strings while `lawDiff.ts` has compared
+    // `compareKey` since §12.33: the Word template sets U+00AD where the other
+    // side has a hard hyphen, and amount tables carry a run of dots the other
+    // side does not print.
+    const rows = parse(
+      annex([
+        pair('Handel mit OTC­Derivaten', 'Handel mit OTC-Derivaten'),
+        pair('monatlich............ 100 Euro', 'monatlich 100 Euro'),
+        pair('monatlich............ 100 Euro', 'monatlich............ 120 Euro'),
+      ]),
+    )
+    expect(rows.map((r) => r.change)).toEqual(['unchanged', 'unchanged', 'changed'])
+    // The displayed text is untouched — only the verdict reads through `compareKey`.
+    expect(rows[1]!.current).toBe('monatlich............ 100 Euro')
   })
 
   it('tells a scanned annex from an empty one', () => {
@@ -802,6 +820,30 @@ describe('an elision line that names its own §', () => {
     // itself and says nothing about where a § starts.
     const rows = parse(annex([open, pair('§ 16 Abs. 1 bis 24 …', '§ 16 Abs. 1 bis 25 …')]))
     expect(rows.map((r) => r.para)).toEqual(['§ 10.', '§ 10.'])
+  })
+})
+
+describe('isElidedPair — a number is not elision syntax', () => {
+  it('still reads the Rundschreiben notation as elided', () => {
+    expect(isElidedPair('(1) bis (4) …', '(1) bis (4) …')).toBe(true)
+    expect(isElidedPair('§ 16 Abs. 1 bis 24 …', '§ 16 Abs. 1 bis 24 …')).toBe(true)
+    // The heading in front of an elision, printed identically in both columns.
+    expect(isElidedPair('Kennzeichnung § 7. (1) bis (6) …', 'Kennzeichnung § 7. (1) bis (6) …')).toBe(true)
+  })
+
+  it('refuses a row whose numbers changed, however much of it is syntax', () => {
+    // `withoutElision` deletes the designations along with the dots, so both
+    // cells reduced to nothing and the row was dropped by the UI although a
+    // rate and an amount had moved.
+    expect(isElidedPair('20 v.H. ... 2026', '50 v.H. ... 2026')).toBe(false)
+    expect(isElidedPair('............ 500', '............ 700')).toBe(false)
+    // The same test catches the one-sided elision the corpus really has
+    // („1. bis 59. …" against „1. bis 60. …", §12.12).
+    expect(isElidedPair('1. bis 59. …', '1. bis 60. …')).toBe(false)
+  })
+
+  it('keeps a row elided where only the dots differ', () => {
+    expect(isElidedPair('(1) bis (4) ...', '(1) bis (4) …')).toBe(true)
   })
 })
 

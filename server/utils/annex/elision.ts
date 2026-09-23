@@ -80,8 +80,30 @@ const ELISION_HEADING_MAX = 80
 export function isElidedPair(current: string, proposed: string): boolean {
   if (!ELISION_MARK_RE.test(current) || !ELISION_MARK_RE.test(proposed)) return false
   const rest = withoutElision(current)
-  if (rest === '' && withoutElision(proposed) === '') return true
+  if (rest === '' && withoutElision(proposed) === '') return digitRun(current) === digitRun(proposed)
   return current === proposed && rest.length <= ELISION_HEADING_MAX
+}
+
+/**
+ * Every digit of a row, in printed order — the one thing `withoutElision`
+ * throws away that a reader may not lose.
+ *
+ * The branch above asks whether both cells consist of nothing BUT elision
+ * syntax, and the syntax includes its own designations, so `withoutElision`
+ * deletes the numbers along with the dots. Two cells can therefore reduce to
+ * the same nothing while saying different things: "20 v.H. ... 2026" against
+ * "50 v.H. ... 2026" is a rate going from a fifth to a half, and
+ * "............ 500" against "............ 700" is an amount in a table — both
+ * would be dropped by the UI and skipped by the RIS check, which is the same
+ * silence the old „both cells end in dots" rule produced over 919 rows.
+ *
+ * The row stays elided only where the numbers agree; where they do not, it is
+ * a changed row and has to be visible. The 48 rows §12.12 records as
+ * elided-and-changed are differences in the elision itself ("1. bis 59. …"
+ * against "1. bis 60. …"), and they now say so instead of vanishing.
+ */
+function digitRun(text: string): string {
+  return (text.match(/\d+/g) ?? []).join('.')
 }
 
 /**

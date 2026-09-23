@@ -29,6 +29,7 @@ import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import type { LawDiffSegment } from '../../../shared/types'
 import { elisionOpens, isElidedPair } from './elision'
+import { compareKey } from '../lawtext/normalize'
 import { cellText, headingOnly, paraHeading, stripGld, stripParaHeading, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 import { COLSPAN_RE, columnSpans, columnsOf, coversTheWidth, itemsInOrder, liftTables, outermost, type ComparisonItem } from './tableElements'
 
@@ -517,10 +518,23 @@ export function parseTextComparison(xml: string, articles: readonly DraftArticle
   return { rows, refusal: resolution.refusal }
 }
 
+/**
+ * How the two cells of a row differ.
+ *
+ * **The equality test is `compareKey`, not `===`, since 23.09.2026** — the
+ * same form `lawDiff.ts` has used since the Bundesgesetzblatt was first
+ * compared against Parliament's HTML. A soft hyphen where the other side has
+ * a hard one, or a run of leader dots one character longer, was enough to
+ * report an annex row as „geändert": typography from the source format, and a
+ * verdict on the ressort that nobody had earned (`lawtext/normalize.ts`, §12.33).
+ *
+ * Only the verdict. The word diff keeps running on the displayed text, so the
+ * reader still sees exactly what the document prints.
+ */
 export function classify(current: string, proposed: string): ComparisonChange {
   if (!current && proposed) return 'inserted'
   if (current && !proposed) return 'removed'
-  return current === proposed ? 'unchanged' : 'changed'
+  return compareKey(current) === compareKey(proposed) ? 'unchanged' : 'changed'
 }
 
 export interface ComparisonStats {

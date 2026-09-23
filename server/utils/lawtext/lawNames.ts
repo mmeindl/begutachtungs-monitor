@@ -51,6 +51,40 @@ const ARTICLE_BOILERPLATE = new Set(
   ),
 )
 
+/** The head noun of a law's name, in the two cases an Artikel title puts it in. */
+const HEAD_NOUN_RE = /(?:gesetz|buch|ordnung|statut|vertrag)(?:es|s)?$/
+
+/**
+ * The declined ending of an adjective standing in front of that head noun.
+ *
+ * **Only the head noun was stemmed until 23.09.2026, and one inflected
+ * adjective was enough to lose the law.** „Änderung des Allgemeinen
+ * Sozialversicherungsgesetzes" against „Bundesgesetz, mit dem das Allgemeine
+ * Sozialversicherungsgesetz geändert wird" shares the noun and nothing else,
+ * which is 1 of 3 — below the 0,5 `pairArticles` demands. Where the
+ * Regierungsvorlage also moved the law to another Artikel number, the
+ * fallback by number does not catch it either, and `diffLawPackage` reports
+ * the same law as dropped on one side and added on the other.
+ *
+ * Five endings, because German declines the adjective and not the compound:
+ * „Allgemeine/-en/-em/-er/-es". The guard is the one `titleStem` uses, five
+ * characters of stem, so "eine" and "über" are left alone, and the head noun
+ * keeps its own rule one line up rather than losing "-e" from "Gesetze".
+ *
+ * It does cut an ordinary noun too — "Anlage" becomes "anlag" — and that is
+ * harmless where it lands: the stem is a comparison key, never a displayed
+ * name, and both sides of a pair pass through it alike. What it must not do
+ * is fold two different laws into one, and it does not: 60/ME's
+ * eEltern-Kind-Pass-Gesetz still scores 0,6 against the Eltern-Kind-Pass-Gesetz
+ * and stays the one law of GP XXVIII that `pairArticles` leaves one-sided.
+ */
+const ARTICLE_ADJECTIVE_RE = /(?<=.{5})(?:e|em|en|er|es)$/
+
+function stemArticleWord(word: string): string {
+  if (HEAD_NOUN_RE.test(word)) return word.replace(/(gesetz|buch|ordnung|statut|vertrag)es$/, '$1').replace(/(gesetz|buch)s$/, '$1')
+  return word.replace(ARTICLE_ADJECTIVE_RE, '')
+}
+
 /**
  * Token set naming the law an ARTICLE is about, stemmed, boilerplate removed.
  *
@@ -64,7 +98,7 @@ export function articleNameTokens(title: string | null): Set<string> {
   const out = new Set<string>()
   for (const raw of t.split(/\s+/)) {
     if (!raw || ARTICLE_BOILERPLATE.has(raw) || (raw.length < 3 && !/^\d+$/.test(raw))) continue
-    out.add(raw.replace(/(gesetz|buch|ordnung|statut|vertrag)es$/, '$1').replace(/(gesetz|buch)s$/, '$1'))
+    out.add(stemArticleWord(raw))
   }
   return out
 }

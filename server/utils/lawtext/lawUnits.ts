@@ -169,6 +169,8 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   let articleNumber: string | null = null
   let articleTitle: string | null = null
   let pendingHeading: string | null = null
+  /** Was the block just read a § heading too? Only then does the next one continue it. */
+  let headingRun = false
   let current: LawUnit | null = null
   let novelleMode = false
   // Quotation state of everything *before* the block being read, and the
@@ -210,6 +212,8 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
       afterPromulgation = PROMULGATION_RE.test(prev.text)
     }
     prev = b
+    const continuesHeading = headingRun
+    headingRun = false
     const inPayload = quoted || guillemets > 0
 
     switch (b.kind) {
@@ -260,7 +264,15 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
           }
           continue
         }
-        pendingHeading = b.text
+        // A heading that does not fit on one line is set as two blocks, and
+        // the second used to overwrite the first: „Aufbau und Zuständigkeit" /
+        // „der Staatsanwaltschaften" went out as „der Staatsanwaltschaften",
+        // which is not a heading but half a sentence. Joined only where the
+        // blocks stand next to each other — an unconsumed heading further up
+        // belongs to a § that never opened and must not glue itself onto the
+        // next one.
+        pendingHeading = continuesHeading && pendingHeading ? `${pendingHeading} ${b.text}` : b.text
+        headingRun = true
         continue
       default:
         break
