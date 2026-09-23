@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StatementMeta, StatementsSummary } from '../shared/types'
 import {
+  availableStatementFilters,
   compareStatementRows,
   orgRowDate,
   orgRowsOf,
@@ -174,5 +175,51 @@ describe('orgRowsOf', () => {
     orgRowsOf(input, 'date')
     expect(input.organisationList.map((o) => o.name)).toEqual(before)
     expect(input.organisationList[2]!.statements.map((s) => s.citation)).toEqual(beforeStatements)
+  })
+})
+
+/**
+ * Which segments the panel offers, and — as the first of them — the one it
+ * lands in. The case this exists for: a draft on which only private persons
+ * filed used to open on an empty Organisationen list.
+ */
+describe('availableStatementFilters', () => {
+  const counts = (organisations: number, privatePersons: number, nonPublic: number): StatementsSummary => ({
+    total: organisations + privatePersons + nonPublic,
+    organisations,
+    privatePersons,
+    nonPublic,
+    organisationList: [],
+  })
+
+  it('lands in Organisationen wherever organisations filed', () => {
+    expect(availableStatementFilters(counts(3, 40, 1))).toEqual([
+      'organisations',
+      'persons',
+      'nonpublic',
+      'all',
+    ])
+    expect(availableStatementFilters(counts(3, 0, 0))[0]).toBe('organisations')
+  })
+
+  it('lands in the first segment that has something in it', () => {
+    expect(availableStatementFilters(counts(0, 12, 2))).toEqual(['persons', 'nonpublic', 'all'])
+    expect(availableStatementFilters(counts(0, 0, 4))).toEqual(['nonpublic'])
+  })
+
+  it('offers no empty segment', () => {
+    expect(availableStatementFilters(counts(5, 0, 2))).toEqual([
+      'organisations',
+      'nonpublic',
+      'all',
+    ])
+  })
+
+  /* One kind and no organisations: „Alle" would be that list under a second
+   * name, and the panel then shows no filter at all. With organisations it
+   * still differs — ungrouped, one row per Stellungnahme. */
+  it('drops „Alle" only where it would duplicate the one segment left', () => {
+    expect(availableStatementFilters(counts(0, 12, 0))).toEqual(['persons'])
+    expect(availableStatementFilters(counts(7, 0, 0))).toEqual(['organisations', 'all'])
   })
 })

@@ -1,7 +1,8 @@
 /**
- * What `StatementsPanel` prints about the Stellungnahmen: the order of its
- * rows, the grouping of an organisation that filed more than once — and the
- * GDPR guard on what a row is allowed to say at all.
+ * What `StatementsPanel` prints about the Stellungnahmen: which segments it
+ * offers at all, the order of its rows, the grouping of an organisation that
+ * filed more than once — and the GDPR guard on what a row is allowed to say
+ * at all.
  *
  * Pure module with tests, and the guard is the reason. It used to sit in the
  * component, where nothing could reach it: a rule that decides whether a
@@ -11,6 +12,39 @@
  */
 import type { StatementMeta, StatementsSummary } from '#shared/types'
 import { countLabelDe } from '#shared/utils/format'
+
+/**
+ * The panel's segments, in the order it offers them — the order of the
+ * legend above the list, so a segment sits where the numbers said it would.
+ */
+export type StatementFilter = 'organisations' | 'persons' | 'nonpublic' | 'all'
+
+/**
+ * Which of them this Verfahren actually has — and, as the first of them, the
+ * one the panel lands in.
+ *
+ * A segment that can only answer „keine" is not a choice but a dead click,
+ * and as the LANDING state it is worse than that: where no organisation
+ * filed, the panel used to open on Organisationen and the section's first
+ * sentence was that there are none, above the one list the draft does have.
+ * Dropping the empty segments makes the first one a segment with something
+ * in it, without moving the ones that remain.
+ *
+ * „Alle" earns its place as long as it shows something no other segment
+ * does: a second kind of submitter, or — wherever organisations filed — the
+ * ungrouped list, one row per Stellungnahme, including the ones a capped
+ * `organisationList` dropped. Where exactly one kind filed and it is not the
+ * organisations, „Alle" IS that segment under a second name, so it is left
+ * out and the panel offers no filter at all.
+ */
+export function availableStatementFilters(summary: StatementsSummary): StatementFilter[] {
+  const kinds: StatementFilter[] = []
+  if (summary.organisations > 0) kinds.push('organisations')
+  if (summary.privatePersons > 0) kinds.push('persons')
+  if (summary.nonPublic > 0) kinds.push('nonpublic')
+  const allShowsMore = kinds.length !== 1 || kinds[0] === 'organisations'
+  return allShowsMore ? [...kinds, 'all'] : kinds
+}
 
 /**
  * Two orders, answering different questions — "who mobilized" and "what came

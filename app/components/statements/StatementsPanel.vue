@@ -5,7 +5,9 @@ import type {
 } from '#shared/types'
 import { endorsementLabel } from '#shared/utils/format'
 import {
+  type StatementFilter,
   type StatementSort,
+  availableStatementFilters,
   compareStatementRows,
   orgRowsOf,
   submitterLabel,
@@ -44,25 +46,50 @@ const SEARCH_MIN = 20
  * One list with a filter, not three stacked lists. The panel used to show a
  * ranked organisation block, a fold with the rest of the organisations, and a
  * second fold with the anonymous half — three row shapes and two disclosures
- * for what is one set of Stellungnahmen. The segments below are the same four
- * groups the legend above counts, so the filter needs no explaining, and the
- * old ranked/folded split collapses into a sort: the top of the organisation
- * list IS "die meisten Zustimmungen".
+ * for what is one set of Stellungnahmen. The segments below are the groups
+ * the legend above counts, so the filter needs no explaining, and the old
+ * ranked/folded split collapses into a sort: the top of the organisation list
+ * IS "die meisten Zustimmungen".
  */
-type StatementFilter = 'organisations' | 'persons' | 'nonpublic' | 'all'
+const filterLabels: Record<StatementFilter, string> = {
+  organisations: 'Organisationen',
+  persons: 'Privatpersonen',
+  nonpublic: 'Nicht öffentlich',
+  all: 'Alle',
+}
+
+/* Only the segments this Verfahren has, in the fixed order of the legend
+ * above — the rule, and why an empty one is not offered, is in
+ * `app/utils/statementRows.ts`, where it is tested. */
+const filterOptions = computed(() =>
+  availableStatementFilters(props.summary).map((value) => ({ value, label: filterLabels[value] })),
+)
 
 /* Default first, as on the archive page: the leftmost segment reads as "where
- * am I", so it must be the state the page lands in. That has to be
- * Organisationen — they come from the SSR summary, while everything else needs
- * the lazy list-142 fetch, and 700 rows have no business in every page view. */
-const filterOptions: { value: StatementFilter; label: string }[] = [
-  { value: 'organisations', label: 'Organisationen' },
-  { value: 'persons', label: 'Privatpersonen' },
-  { value: 'nonpublic', label: 'Nicht öffentlich' },
-  { value: 'all', label: 'Alle' },
-]
+ * am I", so it must be the state the page lands in — and since the empty ones
+ * are gone, it is a segment with something in it. Organisationen wherever they
+ * filed: they come from the SSR summary, while everything else needs the lazy
+ * list-142 fetch, and 700 rows have no business in every page view. */
+const filter = ref<StatementFilter>(filterOptions.value[0]?.value ?? 'organisations')
 
-const filter = ref<StatementFilter>('organisations')
+/* One component serves every draft and the router reuses it from one
+ * /entwuerfe/… to the next, so the segment carried over can be one this draft
+ * does not have — then it lands in its own first one, as on a fresh page. */
+watch(filterOptions, (options) => {
+  if (!options.some((o) => o.value === filter.value)) {
+    filter.value = options[0]?.value ?? 'organisations'
+  }
+})
+
+/* One option is no choice: where only private persons — or only non-public
+ * submissions — filed, the group would be that one list under two names. */
+const showFilterGroup = computed(() => filterOptions.value.length > 1)
+
+/* An order needs two things to order. On the total, not on the current
+ * segment: a control that comes and goes as the reader switches segments is
+ * worse than one that is simply absent on the drafts where nothing can be
+ * sorted, and below two Stellungnahmen no segment can hold two rows. */
+const showSort = computed(() => props.summary.total > 1)
 
 /**
  * Sort is its own axis, independent of the filter: the two orders answer
@@ -84,10 +111,16 @@ const sort = ref<StatementSort>('endorsements')
 const visibleCount = ref(PAGE_SIZE)
 
 /* Lazy: nothing is requested until a segment needs the item list
- * (immediate: false leaves status at 'idle' until execute()). */
+ * (immediate: false leaves status at 'idle' until execute()) — unless the
+ * panel LANDS in such a segment because no organisation filed. Then the list
+ * is not an extra, it is the section's only content, and it is fetched
+ * server-side so it stands in the SSR HTML the way the organisation rows do,
+ * for a reader without JavaScript too. It costs no upstream call: the route
+ * reads the same cached list-142 aggregation this page's summary was built
+ * from. */
 const { data, status, execute } = useFetch<StatementsResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/statements`,
-  { immediate: false },
+  { immediate: filter.value !== 'organisations' },
 )
 
 const needsList = computed(() => filter.value !== 'organisations')
@@ -345,16 +378,21 @@ const mixSegments = computed(() => {
       />
     </div>
 
-    <!-- Two axes, two groups: WHO filed (the legend's own four groups, so the
+    <!-- Two axes, two groups: WHO filed (the legend's own groups, so the
          counts stay up there and these labels carry none) and IN WHICH ORDER.
-         Keeping them apart is what let the count line stop naming the sort. -->
-    <div class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2">
+         Keeping them apart is what let the count line stop naming the sort.
+         Either group is absent where it would have nothing to switch
+         between, and the row with it. -->
+    <div
+      v-if="showFilterGroup || showSort"
+      class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"
+    >
       <!-- Four labels this long cannot fit a phone column — the text alone is
            ~330px against 288px at 320px wide — and left to overflow, the
            browser scales the whole page down to fit them. So this one group
            scrolls sideways instead; the sort group beside it fits and stays
            whole on its own line. -->
-      <div class="min-w-0 max-w-full overflow-x-auto">
+      <div v-if="showFilterGroup" class="min-w-0 max-w-full overflow-x-auto">
         <UFieldGroup role="group" aria-label="Stellungnahmen nach Einbringer:in filtern">
           <UButton
             v-for="opt in filterOptions"
@@ -370,7 +408,7 @@ const mixSegments = computed(() => {
         </UFieldGroup>
       </div>
 
-      <UFieldGroup role="group" aria-label="Stellungnahmen sortieren">
+      <UFieldGroup v-if="showSort" role="group" aria-label="Stellungnahmen sortieren">
         <UButton
           v-for="opt in sortOptions"
           :key="opt.value"
@@ -424,7 +462,10 @@ const mixSegments = computed(() => {
          box's width (row-cols in main.css), not on the window's — the panel
          never gets wider than the page's max-w-3xl column. -->
     <div
-      class="@container/list mt-3 overflow-hidden rounded-xl border border-hairline bg-surface"
+      :class="[
+        '@container/list overflow-hidden rounded-xl border border-hairline bg-surface',
+        showFilterGroup || showSort ? 'mt-3' : 'mt-6',
+      ]"
     >
       <!-- Organisations: from the SSR summary, so they are in the HTML a
            crawler and a find-in-page see — which is what lets an organisation
@@ -474,12 +515,10 @@ const mixSegments = computed(() => {
             description="Privatpersonen werden nicht namentlich gelistet – gesucht wird nur in den Organisationen und ihren Geschäftszahlen."
           />
         </div>
-        <div v-else class="p-5">
-          <EmptyState
-            title="Keine Organisationen"
-            description="Zu diesem Entwurf haben nur Privatpersonen eingereicht."
-          />
-        </div>
+        <!-- No third branch: this segment is offered only where an
+             organisation filed, so without a query the list has rows. The
+             draft on which none did lands in Privatpersonen instead of
+             opening on the one empty list it has (availableStatementFilters). -->
       </template>
 
       <!-- Everything else needs the item list, fetched on the first switch -->
