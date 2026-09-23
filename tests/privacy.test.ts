@@ -125,16 +125,49 @@ describe('classifySubmitter', () => {
       expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
     })
 
-    /* Surnames that contain an org keyword the audit added — the word
-     * boundaries in the patterns are what keeps them persons. Synthetic
-     * stand-ins: the corpus spellings are real people, the fragment and its
-     * position in the word are what the case exercises. */
-    it.each(['Testliga, Dora', 'Musterbank, Christine', 'MUSTERMANN, PETER', 'Muster, Ma8', 'Testöh, Anna', 'Neosmuster, Max'])(
-      '%s → person despite a keyword-like fragment',
-      (name) => {
-        expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
-      },
-    )
+    /* Surnames that carry an org keyword inside the word. What guards them
+     * is the word boundary in the pattern — but the BARE comma form never
+     * reaches the weak org patterns at all: `classifyByName` returns on
+     * PERSON_COMMA_FORM_RE first, and only the strong signals are asked
+     * before it. The shape that puts the boundary under load is the same
+     * name WITH an affiliation: there `leadsWithPersonName` asks
+     * `carriesOrgSignal` about the naming segment, and a keyword firing
+     * inside the surname hands the row to the affiliation's keyword, which
+     * publishes it whole — the 239-row error of GP XXVII.
+     *
+     * So each boundary is pinned by one affiliated case: drop the `\b`
+     * around "liga" or "bank", or the lookbehind or the lookahead on the
+     * acronym list, and exactly one of these fails. The acronym list is
+     * case-sensitive, so only an all-caps surname can reach ÖH or NEOS at
+     * all — that is why the two spellings are both here. A false org signal
+     * in the head defeats `leadsWithUnsignedSegment` as surely as it
+     * defeats `leadsWithPersonName`, so the second guard does not cover for
+     * a broken boundary here.
+     *
+     * The digit case is carried by `leadsWithUnsignedSegment` instead —
+     * `isPersonShaped` refuses any naming segment with a digit, so nothing
+     * that reads the name can help there. Synthetic stand-ins throughout:
+     * the corpus spellings are real people, the fragment and its position
+     * in the word are what is under test. */
+    it.each([
+      'Testliga, Dora',
+      'Musterbank, Christine',
+      'MUSTERMANN, PETER',
+      'Muster, Ma8',
+      'Testöh, Anna',
+      'Neosmuster, Max',
+      'Testliga, Dora; Universität Wien',
+      'Musterbank, Christine; Verein Musterstadt',
+      'MUSTERMANN, PETER; Universität Wien',
+      'Muster, Ma8; Universität Wien',
+      'Testöh, Anna; Universität Wien',
+      'Neosmuster, Max; Universität Wien',
+      'TESTÖH, ANNA; Universität Wien',
+      'NEOSMUSTER, MAX; Universität Wien',
+    ])('%s → person despite a keyword-like fragment', (name) => {
+      expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
+      expect(classifySubmitter(name, 'P')).toEqual({ kind: 'person', name: null })
+    })
 
     /* A person with an affiliation is a person. Before 2026-09-15 the
      * affiliation's keyword won and the whole string, name included, was
@@ -157,6 +190,64 @@ describe('classifySubmitter', () => {
       'Anna Huber und Max Mayer, Studienvertretung Physik',
     ])('%s → person (affiliation dropped with the name)', (name) => {
       expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
+    })
+
+    /* The same shape where the HEAD is unreadable as a name. An adversarial
+     * probe on 2026-09-23 composed these five and every one was published
+     * whole: the head defeats `isPersonShaped` — all caps reads as an
+     * acronym, a digit or a zero-width space breaks the comma form, "Dr.
+     * med. univ." leaves a residue no shape matches, and the PLZ suffix was
+     * only recognised at the end of the string — and the affiliation's
+     * keyword then decided. `leadsWithUnsignedSegment` answers all five
+     * without reading the name: the head carries no organisation word.
+     * At every flag, because `I` is the live case — column 19 is populated
+     * on 100 % of rows, so a leak at `I` is a leak in production. */
+    it.each([
+      'MUSTERMANN ANNA; Universität Wien',
+      'Mustermann, Anna2; Universität Wien',
+      'Mustermann,\u200BAnna; Universität Wien',
+      'Mustermann, Anna, Dr. med. univ.; Muster Klinik',
+      'Mustermann, Anna (1010 Wien); Universität Wien',
+    ])('%s → person, whatever the head looks like', (name) => {
+      for (const flag of [null, 'P', 'I'] as const) {
+        expect(classifySubmitter(name, flag), `flag ${flag}`).toEqual({ kind: 'person', name: null })
+      }
+    })
+
+    /* The price of that guard, measured over all 6.272 GP-XXVIII list-142
+     * rows on 2026-09-23: six organisations whose naming segment carried no
+     * org word at all. Four got a pattern, two an allowlist entry — the
+     * guard costs no visible row, and this is the test that says so. */
+    it.each([
+      ['Fa. Softec, www.softec.at; Softec Austria', 'Fa. Softec, www.softec.at; Softec Austria'],
+      [
+        'apfl-ÖLI-ug Aktive Pflichtschullehrer:innen Wien; Personalvertretung',
+        'apfl-ÖLI-ug Aktive Pflichtschullehrer:innen Wien; Personalvertretung',
+      ],
+      ['eBay; eBay Marketplaces GmbH', 'eBay'],
+      ['akzente Salzburg; Fachstelle Suchtprävention', 'akzente Salzburg'],
+      [
+        'Klima- und Energiefonds; Österreichische Koordinationsstelle für Energiegemeinschaften',
+        'Klima- und Energiefonds; Österreichische Koordinationsstelle für Energiegemeinschaften',
+      ],
+      ['AktionsGemeinschaft; Bundesorganisation', 'AktionsGemeinschaft; Bundesorganisation'],
+    ])('the affiliation guard still publishes: %s', (raw, shown) => {
+      expect(classifySubmitter(raw)).toEqual({ kind: 'organisation', name: shown })
+      expect(classifySubmitter(raw, 'I')).toEqual({ kind: 'organisation', name: shown })
+    })
+
+    it('reads a zero-width space as the nothing it is', () => {
+      // U+200B is not matched by `\s`, so the comma form saw "Mustermann,Anna"
+      // as one token until the normalisation dropped it.
+      expect(classifySubmitter('Mustermann,\u200BAnna')).toEqual({ kind: 'person', name: null })
+      expect(classifySubmitter('Muster\uFEFFmann, Anna')).toEqual({ kind: 'person', name: null })
+    })
+
+    it('reads the "(postal code town)" suffix before a semicolon too', () => {
+      expect(classifySubmitter('Huber, Franz (4880 St. Georgen im Attergau); Universität Wien')).toEqual({
+        kind: 'person',
+        name: null,
+      })
     })
 
     it('leaves organisations whose own name is comma-shaped alone', () => {

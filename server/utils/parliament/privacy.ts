@@ -84,6 +84,12 @@ const ORG_ALLOWLIST = new Map<string, string | null>([
   ['pressefreiheit, institut für', 'Institut für Pressefreiheit'],
   ['gmbh, verkehrsverbund ost-region (vor)', 'Verkehrsverbund Ost-Region (VOR) GmbH'],
   ['patentanwaltskammer, österr.', 'Österreichische Patentanwaltskammer'],
+
+  /* Verified 2026-09-23, list 142 GP XXVIII, one row each — brand-style
+   * names whose only org word sits in the segment AFTER the semicolon,
+   * where the affiliation guard in `classifyByName` no longer reads it. */
+  ['ebay', null],
+  ['akzente salzburg', null],
 ])
 
 /**
@@ -113,8 +119,14 @@ function allowlistedName(s: string): string | null {
   return listed ?? head
 }
 
-/** "(4880 St. Georgen im Attergau)" suffix — only ever appears on private persons. */
-const PLZ_SUFFIX_RE = /\s*\(\d{4,5}\s+[^)]+\)\s*$/
+/**
+ * "(4880 St. Georgen im Attergau)" suffix — only ever appears on private
+ * persons. It ends the naming segment, not necessarily the string: a
+ * semicolon may follow it ("… (1010 Wien); Universität Wien"), and anchoring
+ * on the string's end alone threw away the API's strongest person signal
+ * exactly where an affiliation came after it.
+ */
+const PLZ_SUFFIX_RE = /\s*\(\d{4,5}\s+[^)]+\)\s*(?=;|$)/
 
 /**
  * Legal forms — never occur in personal names and therefore beat every
@@ -228,6 +240,13 @@ const ORG_PATTERNS: RegExp[] = [
   /(?:interventions|beratungs|service|ombuds|koordinations|anlauf|geschäfts)stelle/i,
   new RegExp(`^(?:AK|BAK)\\s+(?:${LAENDER})\\b`),
   /^(?:ÖHGB|ÖVI|VCÖ)(?=[\s;,]|$)/,
+  // Added 2026-09-23 so the affiliation guard in `classifyByName` costs no
+  // visible row: these six naming segments carry no other org signal, and
+  // without one the guard would read them as a person before an institution.
+  /fonds\b/i, // "Fonds Soziales Wien", and "Klima- und Energiefonds" needs the compound
+  /gemeinschaft\b/i, // "AktionsGemeinschaft"; also the `arbeitsgemeinschaft` above
+  /^Fa\.\s/, // the Firma abbreviation, case-sensitive like `^BM f.` — "Fa. Softec, www.softec.at"
+  /:innen\b/i, // the gender colon never occurs in a name — "Pflichtschullehrer:innen"
 ]
 
 /**
@@ -345,6 +364,23 @@ function leadsWithPersonName(s: string): boolean {
 }
 
 /**
+ * "<no organisation word at all>; <institution>" — the affiliation shape
+ * read off the org signals alone, as the backstop for every head spelling
+ * `isPersonShaped` cannot parse. An organisation's own naming segment names
+ * the organisation, so it carries the signal itself ("Land Tirol,
+ * Abteilung …; Verfassungsdienst"); a brand-style one that does not is what
+ * `ORG_ALLOWLIST` is for.
+ */
+function leadsWithUnsignedSegment(s: string): boolean {
+  const semicolon = s.indexOf(';')
+  if (semicolon < 0) return false
+  const head = s.slice(0, semicolon).trim()
+  const tail = s.slice(semicolon + 1).trim()
+  if (!head || !tail) return false
+  return !carriesOrgSignal(head) && carriesOrgSignal(tail)
+}
+
+/**
  * What list 142 column 19 says about the submitter: `I` for an institution,
  * `P` for a person, null when the column is missing or holds anything else.
  *
@@ -375,6 +411,18 @@ function classifyByName(s: string): SubmitterClassification {
 
   // A person with an affiliation is a person, whatever the affiliation is.
   if (leadsWithPersonName(withoutPlz)) return PERSON
+
+  // The same shape, decided without reading a name. `leadsWithPersonName`
+  // has to RECOGNISE the head as a person, and an adversarial probe of
+  // 2026-09-23 showed how cheaply that fails: all caps ("MUSTERMANN ANNA"
+  // reads as an acronym), a digit anywhere, a zero-width space inside the
+  // comma form, a title the list does not know ("Dr. med. univ."). Each
+  // time the affiliation's keyword then published the whole row. What the
+  // head does NOT carry is an organisation word, and that is decidable
+  // without a name: a naming segment with no org signal, followed by one
+  // that has it, is the affiliation shape however the head is spelled.
+  // Allowlisted heads never reach this — `classifySubmitter` returns first.
+  if (leadsWithUnsignedSegment(withoutPlz)) return PERSON
 
   // Legal forms are unambiguous — no person is called "GmbH".
   if (matchesAny(LEGAL_FORM_PATTERNS, withoutPlz)) {
@@ -432,7 +480,10 @@ export function classifySubmitter(
   raw: string | null | undefined,
   upstreamFlag: UpstreamSubmitterFlag = null,
 ): SubmitterClassification {
-  const s = (raw ?? '').replace(/\s+/g, ' ').trim()
+  // Zero-width characters go before the whitespace collapse: `\s` does not
+  // match U+200B, so one of them inside "Nachname, Vorname" breaks the comma
+  // form while the string still reads as a name to anyone looking at it.
+  const s = (raw ?? '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim()
   if (!s) return PERSON
 
   // Orthogonal to the flag: non-public rows carry both values (902 `P` and
