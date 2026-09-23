@@ -23,7 +23,7 @@ because it is a test artefact in everything but its location:
 | `ris-begut-gp28.json` | The same for GP XXVIII: 340 records since 2024-09-15 | RIS OGD API, as above | CC BY 4.0 | 2026-09-07 |
 | `gate-avg.json`, `gate-informationssicherheit.json`, `gate-leitungspositionen.json`, `gate-obsorge.json`, `gate-organtransplantation.json` | One recorded gate run each (`scripts/ci/gateGoldenRecord.ts`): the draft XML, its Textgegenüberstellung as XML or as page geometry, every answer RIS gave for the standing law, and the verdict the gate reached per § | Draft and annex from RIS-Begut — `https://ogd.ris.bka.gv.at/Dokumente/Begut/{id}/…`, both named in each file's `urls`; the standing law from the RIS OGD API, `?Applikation=BrKons` | CC BY 4.0 | 2026-09-22 |
 | `annex-baseline.json` | The drift alarm's baseline for GP XXVIII: per draft the counts of the gate run (checked, clean, substantial, dropped pages) — figures, no document text | Derived by `scripts/ci/annexDrift.ts` from harness runs over the RIS-Begut documents above | CC BY 4.0, derived from those documents | 2026-09-16 |
-| `parl-rv-2238-xxvii.html` | The Gesetzestext of Regierungsvorlage 2238 d.B. XXVII. GP (Informationsfreiheitsgesetz) as Parliament's Word HTML, verbatim — the right side of the §-comparison test | Parlamentsdirektion — `https://www.parlament.gv.at/dokument/XXVII/I/2238/fname_*.html` | CC BY 4.0: Regierungsvorlagen are one of Parliament's licensed datasets | 2026-09-08 |
+| `parl-rv-2238-xxvii.html` | The Gesetzestext of Regierungsvorlage 2238 d.B. XXVII. GP (Informationsfreiheitsgesetz) as Parliament's Word HTML, verbatim — the right side of the §-comparison test | Parlamentsdirektion — `https://www.parlament.gv.at/dokument/XXVII/I/2238/fname_*.html` | A freies Werk (§ 7 UrhG) per Parliament's dataset page — „die Dokumente selbst … ohne Lizenzierung frei nutzbar“; the result lists and the API data around it are CC BY 4.0 | 2026-09-08 |
 | `me-gp27.json` | Every list-81 row of GP XXVII, 353 of them: Zitat, Titel, Ressortkürzel, Einlangen, Frist | Parlamentsdirektion, list 81 — `POST https://www.parlament.gv.at/Filter/api/filter/data/81?js=eval&showAll=true` | None — see below | 2026-09-07 |
 | `me-gp28.json` | The same for GP XXVIII: 132 rows as of 2026-09-07 | Parlamentsdirektion, list 81, as above | None — see below | 2026-09-07 |
 | `../../data/ris-me-map-gp27.json` | The RIS↔ME join map for GP XXVII, 350 rows with status, tier, RIS id, score and date offsets — the corpus ground truth of `tests/risJoin.test.ts`, regenerated with `REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts` | Derived from `me-gp27.json` and `ris-begut-gp27.json` | Parliament half: none — see below | 2026-09-07 |
@@ -38,11 +38,14 @@ the join rule's corpus test needs a fixed population to measure against: a rule
 whose ground truth moves is a rule nobody can re-check.
 
 Attribution, as CC BY 4.0 § 3(a) requires it: the licensor of every row marked
-CC BY 4.0 is the Republik Österreich — Bundeskanzleramt for the RIS documents
-(data.gv.at dataset „RIS Daten Version 2.6") and the Republik Österreich —
-Parlamentsdirektion for the Regierungsvorlage, and the licence is
-<https://creativecommons.org/licenses/by/4.0/>. None of these files names a
-private person: grepped on 2026-09-23 across all fifteen, no list-142 row and no
-`SN-` citation occurs in any of them, and the three hits for the word
+CC BY 4.0 is the Republik Österreich — Bundeskanzleramt (data.gv.at dataset
+„RIS Daten Version 2.6"), and the licence is
+<https://creativecommons.org/licenses/by/4.0/>. The Regierungsvorlage is the one
+row that carries no licence to attribute: Parliament calls the documents of such
+items freie Werke, free to use without licensing, and only the lists around them
+CC BY 4.0 — it is credited to the Parlamentsdirektion as its publisher, not
+under a licence. None of these files names a private person: grepped on
+2026-09-23 across all fifteen, no list-142 row and no `SN-` citation occurs in
+any of them, and the three hits for the word
 „Stellungnahme" are the legal term inside the Informationsfreiheitsgesetz and
 the Leitungspositionengesetz, not a submitter.

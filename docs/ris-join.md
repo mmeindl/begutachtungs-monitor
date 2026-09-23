@@ -159,11 +159,14 @@ Kurztitel, score, Beginn/Ende offsets, duplicates and reason. 350 rows.
 Regenerate from the current rule with
 `REGEN_RIS_MAP=1 pnpm vitest run tests/risJoin.test.ts` and read the diff
 before committing: every changed RIS id is a claim that needs a look.
-Test fixtures (CC-BY 4.0 metadata, no network needed):
-`tests/fixtures/ris-begut-gp27.json` (993 RIS records around the GP
-window) and `me-gp27.json` (353 list-81 rows); `ris-begut-gp28.json`
-(340 records since 2024-09-15) and `me-gp28.json` (132 rows as of
-2026-09-07).
+Test fixtures, no network needed: `tests/fixtures/ris-begut-gp27.json`
+(993 RIS records around the GP window) and `me-gp27.json` (353 list-81
+rows); `ris-begut-gp28.json` (340 records since 2024-09-15) and
+`me-gp28.json` (132 rows as of 2026-09-07). The two licences differ and
+are not one line: the RIS records are CC BY 4.0 (Bundeskanzleramt), while
+the list-81 rows — and the map derived from them — carry no open-data
+licence, because Parliament grants none for the Begutachtungsverfahren.
+Per file: `tests/fixtures/README.md`.
 
 ## 6. Consequence for the diff layer
 

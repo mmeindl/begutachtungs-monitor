@@ -188,7 +188,18 @@ useSeoMeta({
              in RIS under CC BY, so the copy names what it shows rather than
              claiming a licence for it; whether the exclusion reaches these
              documents at all is part of the open question
-             (docs/architecture.md §13.1). -->
+             (docs/architecture.md §13.1).
+
+             And the Beteiligungen became a block of their own the same day,
+             after the dataset pages were read line by line: Parliament
+             licenses the result lists of Beteiligungen as CC BY 4.0 and
+             excludes only those zu Ministerialentwürfen, so the
+             Stellungnahmen zur Regierungsvorlage and those zum Entwurf
+             cannot stand under one heading. The same reading narrowed the
+             exclusion sentence here — it names the Stellungnahmen, not the
+             Ministerialentwürfe — and moved the documents of the
+             parliamentary stations out of CC BY: Parliament calls them
+             freie Werke and licenses the lists around them. -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
           Nutzungsbedingungen unterscheiden sich je nach Datensatz.
@@ -213,12 +224,32 @@ useSeoMeta({
               Parlamentsdirektion, Stationen nach der Begutachtung
             </dt>
             <dd>
-              Regierungsvorlagen, Ausschuss- und Plenarfassungen und
-              Verhandlungsgegenstände –
+              Regierungsvorlagen, Ausschussberichte und Beschlüsse: die
+              Ergebnislisten der Filter und der API sowie die Geschichtsseiten
+              –
               <ExternalLink
                 href="https://creativecommons.org/licenses/by/4.0/deed.de"
                 class="link-inline"
-              >CC BY 4.0</ExternalLink>.
+              >CC BY 4.0</ExternalLink>. Die Dokumente selbst – Gesetzestexte,
+              Erläuterungen, Ausschuss- und Plenarfassungen – bezeichnet das
+              Parlament als freie Werke, „ohne Lizenzierung frei nutzbar“.
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-ink">
+              Parlamentsdirektion, Beteiligungen
+            </dt>
+            <dd>
+              Stellungnahmen zu Regierungsvorlagen und anderen
+              Verhandlungsgegenständen: die Ergebnislisten der Filter und der
+              API –
+              <ExternalLink
+                href="https://creativecommons.org/licenses/by/4.0/deed.de"
+                class="link-inline"
+              >CC BY 4.0</ExternalLink>. Der Monitor zeigt daraus Anzahl,
+              Datum und die Namen einreichender Organisationen; die
+              Stellungnahmen selbst verlinkt er. Ausdrücklich ausgenommen sind
+              die Beteiligungen zu Ministerialentwürfen – der nächste Punkt.
             </dd>
           </div>
           <div>
@@ -227,8 +258,9 @@ useSeoMeta({
             </dt>
             <dd>
               Ministerialentwürfe, Stellungnahmen und Zustimmungen – für diese
-              Daten weist das Parlament keine Open-Data-Lizenz aus und nimmt
-              sie von der Weiterverwendung als Open Data ausdrücklich aus. Der
+              Daten weist das Parlament keine Open-Data-Lizenz aus; die
+              Stellungnahmen zu Ministerialentwürfen nimmt es von der
+              Weiterverwendung als Open Data ausdrücklich aus. Der
               Monitor zeigt daraus Metadaten – Fristen, Geschäftszahlen,
               Anzahl der Einreichungen und die Namen einreichender
               Organisationen – und die Kurzinformation, die das Parlament zu

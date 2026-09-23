@@ -99,11 +99,13 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Bundesgesetzblatt und die Erläuterungen der Ressorts stammen aus dem
           Rechtsinformationssystem des Bundes, die Stationen nach der
           Begutachtung – Regierungsvorlage, Ausschuss- und Plenarfassung – von
-          der Parlamentsdirektion; beide stehen unter
+          der Parlamentsdirektion, deren Ergebnislisten unter
           <ExternalLink
             href="https://creativecommons.org/licenses/by/4.0/deed.de"
             class="link-inline"
-          >CC BY 4.0</ExternalLink>.
+          >CC BY 4.0</ExternalLink>
+          stehen und deren Dokumente das Parlament als freie Werke bezeichnet;
+          die RIS-Daten stehen unter CC BY 4.0.
           Den Gesetzestext und die Erläuterungen eines Ministerialentwurfs
           liest der Textvergleich in der Fassung, die das Parlament
           veröffentlicht; dieselben Dokumente führt das RIS unter CC BY 4.0.
