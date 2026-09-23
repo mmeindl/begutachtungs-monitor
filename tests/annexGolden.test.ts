@@ -248,10 +248,14 @@ describe('the PDF annex of the UWG-Novelle, whose pages are turned', () => {
  */
 const GATE_ANNEXES: { name: string; elidedChanges: number; undesignatedChanges: number }[] = [
   { name: 'gate-obsorge', elidedChanges: 0, undesignatedChanges: 0 },
-  // "(1) bis (54) …" against "(1) bis (55) …" — the UGB's § 906, whose new
-  // Abs. 55 the elision itself announces. And three front-matter rows of the
-  // law the package adds, which print no § at all.
-  { name: 'gate-leitungspositionen', elidedChanges: 1, undesignatedChanges: 3 },
+  // Three front-matter rows of the law the package adds, which print no § at
+  // all. The one elided-and-changed row this fixture had — "(1) bis (54) …"
+  // against "(1) bis (55) …", the UGB's § 906, whose new Abs. 55 the elision
+  // itself announces — stopped being elided on 23.09.2026, when `isElidedPair`
+  // began comparing the two cells' digit runs; it now stands as a change of
+  // § 906. So the first exception in `invariants` is stated but, as of that
+  // day, exercised by no fixture — which is what this zero freezes.
+  { name: 'gate-leitungspositionen', elidedChanges: 0, undesignatedChanges: 3 },
   { name: 'gate-organtransplantation', elidedChanges: 0, undesignatedChanges: 0 },
   { name: 'gate-avg', elidedChanges: 0, undesignatedChanges: 0 },
   // The Langtitel, a section heading and the heading of the first § — all

@@ -417,12 +417,16 @@ no elided row carries a change, no row shown as a change lacks a designation, a
 word diff exists exactly where two sides differ and both carry text, and no row
 claims a change it cannot show — with two exceptions, measured over the five
 gate fixtures on 23.09.2026 and since asserted there: an elided row may differ
-when the difference is the elision's own numbering ("(1) bis (54) …" against
-"(1) bis (55) …", one row), and a change may lack a designation while it stands
-in a law's front matter, above its first designated row (six rows). Neither is
-wrongly vouched for downstream — `elision.ts` calls two differing cells elided
-only when neither holds comparable text, and `gateRows.ts` counts a row without
-a designation as `unchecked` — so what was too wide was the claim, not the
+when the difference is the elision's own numbering, and a change may lack a
+designation while it stands in a law's front matter, above its first designated
+row (six rows). The first exception had one row when it was measured — "(1) bis
+(54) …" against "(1) bis (55) …", the UGB's § 906 — and has none since the same
+day, because `isElidedPair` now compares the two cells' digit runs and that row
+stands as a change of § 906; the test freezes the zero so the exception cannot
+grow back unnoticed. Neither exception is wrongly vouched for downstream —
+`elision.ts` calls two differing cells elided only when neither holds
+comparable text, and `gateRows.ts` counts a row without a designation as
+`unchecked` — so what was too wide was the claim, not the
 code. Four more hold over the gate and are checked
 against the whole corpus by `scripts/harness/annexPdf.ts` (`runGate`), all of
 them on nil: no row delivered as `verified` without a confirmed verdict, no §
