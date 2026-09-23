@@ -644,3 +644,67 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
     expect(parseKonsParagraph('<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 26.</gldsym> Text</absatz><table><tr><td><absatz typ="tabtext" ct="text">Zelle</absatz></td></tr></table></abschnitt></nutzdaten></risdok>')).toBeNull()
   })
 })
+
+describe('an appended unit goes to the end of the list, not past its closing clause (2026-09-23)', () => {
+  /** "(1) Anzuzeigen sind 1. … 2. … Die Anzeige hat schriftlich zu erfolgen." */
+  function withSchlussteil(): StandingLaw {
+    const abs = makeNode('abs', '1', '(1)', 'Anzuzeigen sind')
+    abs.children.push(makeNode('z', '1', '1.', 'der Beginn,'), makeNode('z', '2', '2.', 'das Ende.'), makeNode('schluss', 'schluss', '', 'Die Anzeige hat schriftlich zu erfolgen.'))
+    const p = makeNode('para', '7', '§ 7.', '', 'Anzeigepflicht')
+    p.children.push(abs)
+    return { paragraphs: [p] }
+  }
+
+  // `host.children.push(...)` put the new Ziffer behind the Schlussteil, and
+  // the closing clause then read as part of the enumeration. No word is
+  // invented and the size barely moves, so `guardParagraph` passes it — the
+  // kind of error only the order of the children shows.
+  it('inserts the new Ziffer in front of the Schlussteil', () => {
+    const { law: out, results } = run(withSchlussteil(), instr('Dem § 7 Abs. 1 wird folgende Z 3 angefügt:', ['3. die Unterbrechung.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.level}:${c.id}`)).toEqual(['z:1', 'z:2', 'z:3', 'schluss:schluss'])
+    expect(plainText(out.paragraphs[0]!)).toBe('Anzeigepflicht Anzuzeigen sind der Beginn, das Ende. die Unterbrechung. Die Anzeige hat schriftlich zu erfolgen.')
+  })
+
+  it('still appends at the end where the host has no closing clause', () => {
+    const { law: out } = run(law(), instr('Dem § 5 Abs. 2 wird folgende Z 3 angefügt:', ['3. Verfahren vor dem Verfassungsgerichtshof.']))
+    expect(out.paragraphs[0]!.children[1]!.children.map((c) => c.id)).toEqual(['1', '2', '3'])
+  })
+})
+
+describe('a word operand matches whole words only (2026-09-23)', () => {
+  // "das Wort 'Amt' durch das Wort 'Behörde'" over "Die Amtsstelle
+  // entscheidet." produced "Die Behördesstelle entscheidet." The guard caught
+  // it as `unerklärt` and withheld the § — with a reason about unexplained
+  // words, which says nothing about the real fault.
+  it('refuses a word that occurs only inside a longer one', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'Zuständigkeit', ['Die Amtsstelle entscheidet.'])] }
+    const { law: out, results } = run(l, instr('In § 5 Abs. 1 wird das Wort "Amt" durch das Wort "Behörde" ersetzt.'))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/^Textstelle nicht gefunden/)
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Amtsstelle entscheidet.')
+  })
+
+  it('replaces the standing word where it stands on its own', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'Zuständigkeit', ['Das Amt entscheidet, die Amtsstelle berät.'])] }
+    const { law: out, results } = run(l, instr('In § 5 Abs. 1 wird das Wort "Amt" durch das Wort "Behörde" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Das Behörde entscheidet, die Amtsstelle berät.')
+  })
+
+  // "jeweils" over the same text: only the standalone occurrences move.
+  it('leaves the inner occurrences alone when every occurrence is meant', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'Zuständigkeit', ['Das Amt entscheidet, die Amtsstelle berät, das Amt schließt ab.'])] }
+    const { law: out } = run(l, instr('In § 5 Abs. 1 wird jeweils das Wort "Amt" durch das Wort "Behörde" ersetzt.'))
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Das Behörde entscheidet, die Amtsstelle berät, das Behörde schließt ab.')
+  })
+
+  // A Wortfolge may begin or end mid-word by design, and demanding a boundary
+  // there would refuse instructions that are perfectly sound.
+  it('leaves a Wortfolge matching as a substring', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'Zuständigkeit', ['Die Amtsstelle entscheidet.'])] }
+    const { law: out, results } = run(l, instr('In § 5 Abs. 1 wird die Wortfolge "Amtsstelle" durch die Wortfolge "Behörde" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Behörde entscheidet.')
+  })
+})

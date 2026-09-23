@@ -87,6 +87,37 @@ const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|Schlusssatz|Schlussteil)\b
 /** Any sentence word at all — an address that carries one must resolve it or be refused. */
 const SATZ_WORD = /\bS[äa]tze?s?\b|\bHalbsatz|\bEinleitungssatz|\bEinleitungsteil|\bSchlusssatz|\bSchlussteil/i
 
+/**
+ * The units below the Litera — and the whole reason they are named here is
+ * that neither this address model nor `lawtext/konsTree.ts` has a level for
+ * them.
+ *
+ * `NovaoAddress` ends at `lit`, `LIT_RE` takes the *first* `lit` it finds, and
+ * nothing reads the word behind it; the tree has no sub-Litera either, so RIS
+ * files „aa)" as a `lit` **sibling** of „a)". An address that names one was
+ * therefore read as if the word were not there: „§ 5 Z 20 lit. a sublit. bb
+ * lautet:" rewrote lit. a, „§ 7 Abs. 1 Z 2 lit. h sublit. cc entfällt."
+ * deleted lit. h, and „In § 1 Abs. 1 Z 2 lautet der erste Teilstrich:"
+ * replaced the whole Ziffer. No refusal, and both gate signals passed.
+ *
+ * Over the 6.576 harvested instructions (300 Entwürfe, `.cache/novao`,
+ * 23.09.2026): 18 addresses name a `sublit`, 19 a `Teilstrich`, 8 a
+ * `Spiegelstrich`; 13 of them are whole-unit operations (lautet/entfällt) —
+ * thirteen §§ rewritten or deleted one level too high.
+ *
+ * Same mechanism as `SATZ_WORD`, and for the same reason: a component word
+ * the model cannot place widens the target if it is ignored, and widening a
+ * target is how standing law gets deleted while the engine reports success.
+ * The reason names the word, because the refusal list is read to decide what
+ * to build next.
+ */
+const SUBUNIT_WORD = /\b(sub-?lit(?:\.|era)?|Unterlit(?:\.|era)?|Teilstrich(?:e[ns]?|s|es)?|Spiegelstrich(?:e[ns]?|s|es)?)\b/i
+
+/** The sub-unit word an address names, as written — null where it names none. */
+export function unplaceableSubUnit(text: string): string | null {
+  return SUBUNIT_WORD.exec(maskQuotes(normalizeText(text)))?.[1] ?? null
+}
+
 const ORDINAL_INDEX: Record<string, number> = { erste: 0, zweite: 1, dritte: 2, vierte: 3, fünfte: 4, sechste: 5, siebente: 6, siebte: 6, achte: 7, neunte: 8, zehnte: 9 }
 const ORDINAL_BY_INDEX = ['erster', 'zweiter', 'dritter', 'vierter', 'fünfter', 'sechster', 'siebenter', 'achter', 'neunter', 'zehnter']
 const COUNT_WORD: Record<string, number> = { beiden: 2, zwei: 2, drei: 3, vier: 4, fünf: 5 }
@@ -251,6 +282,10 @@ function siblingsAfter(rest: string, first: string): string[] | null {
  */
 export function parseAddress(text: string, inherited?: NovaoAddress | null): NovaoAddress | null {
   const t = maskQuotes(normalizeText(text))
+  // A sub-unit this model has no level for widens the target to the unit above
+  // it if it is ignored — the same over-reach `parseSatz` refuses below, one
+  // level down (`SUBUNIT_WORD`).
+  if (SUBUNIT_WORD.test(t)) return null
   const heading = HEADING_TARGET_RE.test(t)
   const alsoHeading = !heading && ALSO_HEADING_RE.test(t)
 
@@ -453,11 +488,11 @@ export type NovaoOp =
   /** "§ 5 Abs. 3 entfällt." */
   | { kind: 'delete'; target: NovaoAddress; withHeading: boolean }
   /** "In § 5 Abs. 1 wird die Wortfolge X durch die Wortfolge Y ersetzt." */
-  | { kind: 'replacePhrase'; target: NovaoAddress; from: string; to: string; everywhere: boolean }
+  | { kind: 'replacePhrase'; target: NovaoAddress; from: string; to: string; everywhere: boolean; wordBound: boolean }
   /** "In § 5 Abs. 1 wird nach der Wortfolge X die Wortfolge Y eingefügt." */
-  | { kind: 'insertPhrase'; target: NovaoAddress; anchor: string; where: 'after' | 'before'; text: string }
+  | { kind: 'insertPhrase'; target: NovaoAddress; anchor: string; where: 'after' | 'before'; text: string; wordBound: boolean }
   /** "In § 5 Abs. 1 entfällt die Wortfolge X." */
-  | { kind: 'deletePhrase'; target: NovaoAddress; text: string }
+  | { kind: 'deletePhrase'; target: NovaoAddress; text: string; wordBound: boolean }
   /**
    * "Der bisherige § 10 erhält die Paragrafenbezeichnung „§ 11.“"; with
    * `toLast`, a run: "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“"
@@ -524,6 +559,33 @@ function instructionHead(t: string): string {
 const PHRASE_OBJECT =
   '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Ausdruck|Zitierung|Zitat|Klammerausdruck|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Eintrag)'
 const PHRASE_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'i')
+const PHRASE_OBJECT_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'gi')
+
+/**
+ * Is the operand in the `index`-th quotation announced as a **word** rather
+ * than as a stretch of text?
+ *
+ * „Wort" and „Worte" name a lexical unit, and the engine matched them like
+ * every other operand — as a substring. „…wird das Wort ‚Amt' durch das Wort
+ * ‚Behörde' ersetzt" on „Die Amtsstelle entscheidet." produced „Die
+ * Behördesstelle entscheidet."; `guardParagraph` caught it as `unerklärt` and
+ * withheld the § with a reason about unexplained words rather than about a
+ * match inside another word (23.09.2026). „Wortfolge", „Zeichenfolge" and the
+ * rest stay literal: a Wortfolge may begin or end mid-word, and requiring a
+ * boundary there would refuse correct instructions.
+ *
+ * Read from the noun that stands closest *in front of* the operand, because
+ * one instruction may announce its two operands differently („das Wort ‚X'
+ * durch die Wortfolge ‚Y'") and because the fronted form („Die Wortfolge B
+ * tritt an die Stelle von A") swaps which quotation is searched for.
+ */
+function wordOperand(line: string, index: number): boolean {
+  const quote = [...line.matchAll(QUOTED)][index]
+  if (!quote) return false
+  const nouns = [...line.slice(0, quote.index).matchAll(PHRASE_OBJECT_RE)]
+  const noun = nouns[nouns.length - 1]
+  return noun !== undefined && /^Worte?$/i.test(noun[0])
+}
 const AFTER_ANCHOR_RE = new RegExp(`\\bnach (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
 const BEFORE_ANCHOR_RE = new RegExp(`\\bvor (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
 
@@ -622,7 +684,13 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
 
   const { scope, payload } = splitPayloadScope(head)
   const targets = parseAddressList(scope || head, inherited)
-  if (!targets || targets.length === 0) return fail('keine auflösbare Adresse')
+  if (!targets || targets.length === 0) {
+    // Name the word rather than report a missing address: „sublit." and the
+    // two Strich forms are perfectly readable addresses that this model has no
+    // level for, and the refusal list is what decides what gets built next.
+    const sub = unplaceableSubUnit(scope || head)
+    return fail(sub ? `Untergliederung ohne eigene Ebene: ${sub}` : 'keine auflösbare Adresse')
+  }
   const target = targets[0]!
 
   if (/wird wie folgt geändert|werden wie folgt geändert|wird wie folgt geändert/i.test(head)) return ok({ kind: 'container', target })
@@ -665,6 +733,8 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       from: PUNCT_WORD[punct[1]!.toLowerCase()]!,
       to: PUNCT_WORD[punct[2]!.toLowerCase()]!,
       everywhere: false,
+      // A single punctuation character carries no word boundary to ask for.
+      wordBound: false,
     })
   }
 
@@ -693,7 +763,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
         if (quotes.length % 2 !== 0 || pairs !== quotes.length / 2) return fail(`${quotes.length} Operanden, Paarbildung unklar`)
         const everywhere = everyOccurrence(head, targets)
         const many: NovaoOp[] = []
-        for (const t of places) for (let i = 0; i + 1 < quotes.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: quotes[i]!, to: quotes[i + 1]!, everywhere })
+        for (const t of places) for (let i = 0; i + 1 < quotes.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: quotes[i]!, to: quotes[i + 1]!, everywhere, wordBound: wordOperand(line, i) })
         return { ops: many, reason: null, line }
       }
       // Both German forms name the old text first — "wird A durch B ersetzt"
@@ -706,7 +776,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const from = reversed ? quotes[1]! : quotes[0]!
       const to = reversed ? quotes[0]! : quotes[1]!
       const everywhere = everyOccurrence(head, targets)
-      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from, to, everywhere })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from, to, everywhere, wordBound: wordOperand(line, reversed ? 1 : 0) })), reason: null, line }
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
@@ -723,11 +793,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // (Luftfahrtgesetz §§ 9, 131, 2026-09-09).
       const punctFirst = /\b(?:ein|der|das)\s+(Beistrich|Strichpunkt|Punkt|Doppelpunkt)\s+(?:gesetzt\s+und\s+danach|(?:und|sowie)\s+die)\b/i.exec(head)
       const text = punctFirst ? `${PUNCT_WORD[punctFirst[1]!.toLowerCase()]} ${quotes[1]!}` : quotes[1]!
-      return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text, wordBound: wordOperand(line, 0) })), reason: null, line }
     }
     if (/\bentfäll[te]\b|\bentfallen\b|\bgestrichen\b|\baufgehoben\b|\bentfernt\b/i.test(head)) {
       if (!quotes[0]) return fail('Streichung ohne Text')
-      return { ops: places.map((t) => ({ kind: 'deletePhrase' as const, target: t, text: quotes[0]! })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'deletePhrase' as const, target: t, text: quotes[0]!, wordBound: wordOperand(line, 0) })), reason: null, line }
     }
     if (/\blaute[nt]\b/i.test(head)) return fail('Wortfolge lautet — Teiltext-Ersetzung, nicht abgesichert')
     return fail('Wortfolge genannt, aber kein bekanntes Verb')

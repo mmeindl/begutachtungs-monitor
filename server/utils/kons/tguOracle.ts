@@ -18,10 +18,12 @@
  *
  *   1. every changed row's *current* text is in the standing § — the annex
  *      talks about the same law version the engine started from;
- *   2. every changed row's *proposed* text is in the engine's result — the
- *      engine did what the ministry says the draft does;
- *   3. every word the engine inserted or removed is one the annex inserts
- *      or removes too — the engine did nothing the ministry does not show.
+ *   2. every changed row's *proposed* text is in the engine's result, and a
+ *      row that proposes nothing — the annex's way of writing a deletion —
+ *      is gone from it: the engine did what the ministry says the draft does;
+ *   3. every word the engine inserted is one the annex's proposed column
+ *      shows, and every word it removed one the geltende column shows — the
+ *      engine did nothing the ministry does not show.
  *
  * A § the annex does not mention, or mentions only in elided rows, gets no
  * verdict: the oracle is silent, not positive.
@@ -196,23 +198,50 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     }
   }
   for (const row of substantive) {
-    if (row.proposed && !gotKey.includes(key(row.proposed))) {
+    // A row with nothing in the proposed column is the annex saying this text
+    // goes away — and `row.proposed && …` skipped exactly that shape, so the
+    // one row that speaks about a deletion was the one row check 2 never
+    // read. What it has to say is the mirror image: the text must be *gone*
+    // from the result (23.09.2026).
+    if (!row.proposed) {
+      if (row.current && gotKey.includes(key(row.current))) {
+        return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Gestrichene Fassung steht noch im Ergebnis: "${row.current.slice(0, 60)}"` }
+      }
+      continue
+    }
+    if (!gotKey.includes(key(row.proposed))) {
       return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Vorgeschlagene Fassung nicht im Ergebnis: "${row.proposed.slice(0, 60)}"` }
     }
   }
   // Everything the engine inserted must be a word the annex's proposed
-  // column contains somewhere in this §. A bag test, not a diff against the
+  // column contains somewhere in this §, and everything it removed a word the
+  // annex's *geltende* column carries. A bag test, not a diff against the
   // annex text: the annex elides unchanged stretches, and an LCS diff
   // against that partial text called words the engine placed correctly
   // "invented" (2026-09-09). Weaker than a diff, but it cannot be fooled by
   // what the annex leaves out, and check 2 already pins every changed row.
+  //
+  // **Both directions, since 23.09.2026.** The doc comment above has promised
+  // "every word the engine inserted or removed" since the module was written,
+  // and only the insertions were ever counted. A deletion one level too high —
+  // "§ 5 Z 20 lit. a sublit. bb entfällt." applied to lit. a — invents no
+  // word at all, so it passed every check here and `gateParagraph` published
+  // it. The standing text the engine dropped beyond what the annex shows as
+  // dropped is the signal, and it needs no diff of the annex either.
   const { segments } = diffTokens(stripMarkers(before ?? ''), stripMarkers(got))
   if (segments === null) return { para: id, verdict: 'widersprochen', rows: rows.length, note: 'Wortdiff zu groß für den Abgleich' }
+  const pairs = rows.filter((r) => r.kind === 'pair')
   const inserted = segments.filter((s) => s.type === 'inserted').flatMap((s) => words(s.text))
-  const shown = new Set(rows.filter((r) => r.kind === 'pair').flatMap((r) => words(r.proposed)))
+  const shown = new Set(pairs.flatMap((r) => words(r.proposed)))
   const unshown = inserted.filter((w) => !shown.has(w))
   if (unshown.length > 0) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine fügte ein, was die Gegenüberstellung nicht zeigt: ${unshown.slice(0, 6).join(' ')}` }
+  }
+  const removed = segments.filter((s) => s.type === 'removed').flatMap((s) => words(s.text))
+  const dropped = new Set(pairs.flatMap((r) => words(r.current)))
+  const unshownRemoved = removed.filter((w) => !dropped.has(w))
+  if (unshownRemoved.length > 0) {
+    return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine entfernte, was die Gegenüberstellung nicht zeigt: ${unshownRemoved.slice(0, 6).join(' ')}` }
   }
   return { para: id, verdict: 'bestätigt', rows: rows.length, note: null }
 }

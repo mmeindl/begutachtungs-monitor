@@ -378,13 +378,48 @@ export function resolveTarget(law: StandingLaw, a: NovaoAddress, overrideDeepest
 // Text operations
 // ---------------------------------------------------------------------------
 
-function countOccurrences(haystack: string, needle: string): number {
+/**
+ * A letter or a digit, in the German alphabet — JavaScript's `\w` is ASCII,
+ * so „ö" in „Behörde" would count as a boundary and the guard would be no
+ * guard at all.
+ */
+const WORD_CHAR = /[\p{L}\p{N}]/u
+
+/**
+ * Does the match at `at` stand on its own, rather than inside a longer word?
+ *
+ * Only the ends that are letters are checked: an operand like „(1)" or „, "
+ * begins and ends in punctuation, and demanding a boundary there would refuse
+ * matches that are perfectly sound.
+ */
+function atWordBoundary(haystack: string, needle: string, at: number): boolean {
+  const before = at > 0 ? haystack[at - 1]! : ''
+  const after = haystack[at + needle.length] ?? ''
+  if (WORD_CHAR.test(needle[0]!) && before && WORD_CHAR.test(before)) return false
+  if (WORD_CHAR.test(needle[needle.length - 1]!) && after && WORD_CHAR.test(after)) return false
+  return true
+}
+
+/**
+ * The next occurrence of `needle` at or after `from` — the next *standalone*
+ * one when the instruction announced its operand as a „Wort" (`wordBound`,
+ * `kons/novao.ts`). Without that, „das Wort ‚Amt' durch das Wort ‚Behörde'"
+ * turned „Die Amtsstelle entscheidet." into „Die Behördesstelle entscheidet."
+ * (23.09.2026).
+ */
+function phraseIndex(haystack: string, needle: string, wordBound: boolean, from = 0): number {
+  let i = haystack.indexOf(needle, from)
+  while (i >= 0 && wordBound && !atWordBoundary(haystack, needle, i)) i = haystack.indexOf(needle, i + 1)
+  return i
+}
+
+function countOccurrences(haystack: string, needle: string, wordBound = false): number {
   if (!needle) return 0
   let n = 0
-  let i = haystack.indexOf(needle)
+  let i = phraseIndex(haystack, needle, wordBound)
   while (i >= 0) {
     n++
-    i = haystack.indexOf(needle, i + needle.length)
+    i = phraseIndex(haystack, needle, wordBound, i + needle.length)
   }
   return n
 }
@@ -545,12 +580,12 @@ function phraseSlots(law: StandingLaw, a: NovaoAddress): Slot[] | null {
  * across the whole addressed scope. Anything else — not found, found twice,
  * found in two units — is a refusal, not a choice.
  */
-function uniqueSlot(slots: readonly Slot[], needle: string): { slot: Slot } | { error: string } {
+function uniqueSlot(slots: readonly Slot[], needle: string, wordBound = false): { slot: Slot } | { error: string } {
   if (!needle) return { error: 'Textstelle ohne Inhalt' }
   let total = 0
   let hit: Slot | null = null
   for (const slot of slots) {
-    const n = countOccurrences(slot.read(), needle)
+    const n = countOccurrences(slot.read(), needle, wordBound)
     if (n > 0) {
       total += n
       hit ??= slot
@@ -757,7 +792,17 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (!level) return 'Angefügte Einheit nicht bestimmbar'
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) if (n.id && childById(host, level, n.id)) return `${n.marker} existiert bereits`
-      host.children.push(...nodes)
+      // The end of the enumeration, not the end of the node. Where the Absatz
+      // closes with a Schlussteil ("Die Anzeige hat schriftlich zu
+      // erfolgen."), a plain push put the new Ziffer *behind* that clause and
+      // the closing sentence read as part of the list — standing law in the
+      // wrong place, and `guardParagraph` passes it, because no word was
+      // invented and the size barely moves. The `satz` branch above has
+      // located the closing clause since it was written; this one pushed past
+      // it (23.09.2026).
+      let at = host.children.length
+      while (at > 0 && host.children[at - 1]!.level === 'schluss') at--
+      host.children.splice(at, 0, ...nodes)
       return null
     }
 
@@ -810,20 +855,30 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (op.everywhere) {
         let hits = 0
         for (const slot of slots) {
-          const parts = slot.read().split(op.from)
-          if (parts.length < 2) continue
-          hits += parts.length - 1
           // Seam by seam: "/" replaced by "bzw." inside "Bundesministerin/der"
           // needs the spaces a plain split-and-join does not add
-          // (Tierschutzgesetz, BGBl. I Nr. 124/2024, 2026-09-09).
-          slot.write(parts.slice(1).reduce((acc, rest) => joinPhrase(acc, op.to, rest), parts[0]!))
+          // (Tierschutzgesetz, BGBl. I Nr. 124/2024, 2026-09-09). Cut by
+          // `phraseIndex` rather than by `split`, so a word operand skips the
+          // occurrences that stand inside another word.
+          const text = slot.read()
+          let out = ''
+          let last = 0
+          let here = 0
+          for (let at = phraseIndex(text, op.from, op.wordBound); at >= 0; at = phraseIndex(text, op.from, op.wordBound, at + op.from.length)) {
+            out = here === 0 ? text.slice(0, at) : joinPhrase(out, op.to, text.slice(last, at))
+            last = at + op.from.length
+            here++
+          }
+          if (here === 0) continue
+          hits += here
+          slot.write(joinPhrase(out, op.to, text.slice(last)))
         }
         return hits === 0 ? `Textstelle nicht gefunden: "${op.from.slice(0, 60)}"` : null
       }
-      const found = uniqueSlot(slots, op.from)
+      const found = uniqueSlot(slots, op.from, op.wordBound)
       if ('error' in found) return found.error
       const current = found.slot.read()
-      const at = current.indexOf(op.from)
+      const at = phraseIndex(current, op.from, op.wordBound)
       found.slot.write(joinPhrase(current.slice(0, at), op.to, current.slice(at + op.from.length)))
       return null
     }
@@ -831,10 +886,10 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'insertPhrase': {
       const slots = phraseSlots(law, op.target)
       if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-      const found = uniqueSlot(slots, op.anchor)
+      const found = uniqueSlot(slots, op.anchor, op.wordBound)
       if ('error' in found) return found.error
       const current = found.slot.read()
-      const at = current.indexOf(op.anchor)
+      const at = phraseIndex(current, op.anchor, op.wordBound)
       found.slot.write(
         op.where === 'after'
           ? joinPhrase(current.slice(0, at + op.anchor.length), op.text, current.slice(at + op.anchor.length))
@@ -846,9 +901,11 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'deletePhrase': {
       const slots = phraseSlots(law, op.target)
       if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-      const found = uniqueSlot(slots, op.text)
+      const found = uniqueSlot(slots, op.text, op.wordBound)
       if ('error' in found) return found.error
-      found.slot.write(found.slot.read().replace(op.text, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
+      const current = found.slot.read()
+      const at = phraseIndex(current, op.text, op.wordBound)
+      found.slot.write(`${current.slice(0, at)}${current.slice(at + op.text.length)}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
       return null
     }
   }

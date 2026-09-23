@@ -106,3 +106,35 @@ describe('oracleVerdict', () => {
     expect(oracleVerdict('6a', null, 'Anderer Paragraph.', rows)).toMatchObject({ verdict: 'widersprochen' })
   })
 })
+
+describe('the oracle reads removals too (2026-09-23)', () => {
+  // The doc comment promised "every word the engine inserted or removed"
+  // since the module was written, and only the insertions were counted: the
+  // third containment was built from `inserted` segments alone, and the loop
+  // over the proposed column skipped a row whose proposed cell is empty —
+  // which is exactly what a removal row looks like. So a deletion one level
+  // too high ("lit. a sublit. bb entfällt." applied to lit. a) invented no
+  // word, contradicted nothing, and `gateParagraph` published it.
+  const before = 'a) die Anzeige, b) die Meldung. Beides ist schriftlich zu erstatten.'
+
+  it('contradicts a deletion that goes beyond what the annex removes', () => {
+    // The annex rewrites lit. b and says nothing about lit. a. The engine
+    // rewrote lit. b — so both the changed row and every inserted word check
+    // out — and dropped lit. a on the way.
+    const rows = [pair('§ 8. b) die Meldung.', '§ 8. b) die Mitteilung.', '§ 8.')]
+    const wide = oracleVerdict('8', before, 'b) die Mitteilung. Beides ist schriftlich zu erstatten.', rows)
+    expect(wide.verdict).toBe('widersprochen')
+    expect(wide.note).toMatch(/entfernte/)
+    // The same rewrite without the extra loss is confirmed.
+    expect(oracleVerdict('8', before, 'a) die Anzeige, b) die Mitteilung. Beides ist schriftlich zu erstatten.', rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('reads a row that proposes nothing as the deletion it is', () => {
+    // "b) die Meldung." against an empty proposed cell: the annex says this
+    // text goes. A result that still carries it is contradicted; the check
+    // never ran before, because the row was skipped.
+    const rows = [pair('§ 8. a) die Anzeige, b) die Meldung.', '§ 8. a) die Anzeige,', '§ 8.'), pair('Beides ist schriftlich zu erstatten.', '')]
+    expect(oracleVerdict('8', before, 'a) die Anzeige, Beides ist schriftlich zu erstatten.', rows)).toMatchObject({ verdict: 'widersprochen', note: expect.stringMatching(/Gestrichene Fassung/) })
+    expect(oracleVerdict('8', before, 'a) die Anzeige,', rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})

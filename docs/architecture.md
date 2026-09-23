@@ -415,7 +415,15 @@ and the date it was fetched.
 Four invariants hold over every parse, whichever document and whichever path:
 no elided row carries a change, no row shown as a change lacks a designation, a
 word diff exists exactly where two sides differ and both carry text, and no row
-claims a change it cannot show. Four more hold over the gate and are checked
+claims a change it cannot show — with two exceptions, measured over the five
+gate fixtures on 23.09.2026 and since asserted there: an elided row may differ
+when the difference is the elision's own numbering ("(1) bis (54) …" against
+"(1) bis (55) …", one row), and a change may lack a designation while it stands
+in a law's front matter, above its first designated row (six rows). Neither is
+wrongly vouched for downstream — `elision.ts` calls two differing cells elided
+only when neither holds comparable text, and `gateRows.ts` counts a row without
+a designation as `unchecked` — so what was too wide was the claim, not the
+code. Four more hold over the gate and are checked
 against the whole corpus by `scripts/harness/annexPdf.ts` (`runGate`), all of
 them on nil: no row delivered as `verified` without a confirmed verdict, no §
 missing from the verdict map, no withheld row still carrying text, and no
@@ -1595,6 +1603,99 @@ und nach der Änderung, dieselben Korpora, dieselben Caches:
 
 Der eine geänderte Paragraph ist StPO § 22, und er ist jetzt richtig. Ein
 Eingriff, der genau das anfasst, was er anfassen soll, sieht so aus.
+
+**Elfte Messung, 23.09.2026: der dokumentierte Befehl maß einen Tag lang ein
+Zehntel des Korpus — und vier Annahmen der Engine, denen nie jemand
+widersprochen hat.**
+
+*Zuerst das Messinstrument, weil ohne es keine der folgenden Zahlen etwas
+wert ist.* `--discover=N` war seit 5b61d95 (22.09.2026) wirkungslos:
+`argAssigned('discover')` liefert den nackten Wert, der Aufrufer rechnete aber
+weiter `Number(discover.split('=')[1] ?? 10)` — und `"60".split('=')[1]` ist
+`undefined`. Der in diesem Abschnitt dokumentierte Befehl
+(`pnpm harness:kons -- --discover=60 --sammel --cache`) maß deshalb **10
+Bundesgesetzblätter, 14 Gesetze, 205 Paragraphen** statt 60 / 206 / 1.751 —
+und druckte darüber einen vollständigen, in sich plausiblen Bericht. Genau
+das macht die Klasse gefährlich: ein geschrumpfter Korpus sieht aus wie ein
+Korpus. Derselbe Schnitzer stand im ME-Prüfstand (Vorgabe 20). Beide behoben,
+und beide Kopfzeilen tragen jetzt den *angeforderten* neben dem erreichten
+Korpus. Dazu ein zweiter Lesefehler: eine Liste expliziter BGBl-Kennungen kann
+als eine einzige, leerzeichengetrennte argv-Zeile ankommen —
+`scripts/harness/me.ts` teilt sie seit 18.09.2026, `kons.ts` tat es nicht;
+jetzt beide, und der Kurztitel wird aus der geteilten Liste gelesen statt per
+`indexOf` in der rohen argv.
+
+*Die zehnte Messung ist damit reproduziert*, offline aus `.harness-cache`,
+Zahl für Zahl: 60 Bundesgesetzblätter, 206 Gesetze, 1.751 geprüfte
+Paragraphen, 1.131 identisch (64,6 %), 49 eigene Abweichungen (2,8 %), 95 ohne
+geltenden Text und ohne Verweigerung (7,3 %).
+
+*Vier bestätigte Fehlannahmen, alle von derselben Sorte:* Die Engine tat
+etwas, niemand sagte ihr, dass es falsch war.
+
+1. **Eine Untergliederung, die das Modell nicht kennt, wurde überlesen.**
+   `NovaoAddress` endet bei der Litera, und `lawtext/konsTree` hat unter ihr
+   keine Ebene — das RIS führt „aa)" als *Geschwister* von „a)". „§ 5 Z 20
+   lit. a sublit. bb lautet:" schrieb also lit. a neu, „… sublit. bb entfällt."
+   löschte lit. a, „In § 1 Abs. 1 Z 2 lautet der erste Teilstrich:" ersetzte
+   die ganze Ziffer. Im Korpus (6.576 Anweisungen) 18 Adressen mit `sublit`, 19
+   mit `Teilstrich`, 8 mit `Spiegelstrich`, 13 davon Ganzeinheits-Operationen.
+   Jetzt verweigert, mit dem Wort im Grund („Untergliederung ohne eigene
+   Ebene") — dieselbe Mechanik, mit der `SATZ_WORD` ein unplatzierbares
+   Satzwort verweigert.
+2. **Eine angefügte Ziffer landete hinter dem Schlussteil.** `append` schob sie
+   ans Ende der Kinder statt ans Ende der Aufzählung, und der Schlusssatz
+   („Die Anzeige hat schriftlich zu erfolgen.") stand danach *in* der Liste.
+   Der Zweig für den angefügten Satz sucht die Schlussklausel seit jeher; der
+   für die Einheit tat es nicht.
+3. **„das Wort ‚Amt'" traf in „Amtsstelle".** Operanden wurden ausnahmslos als
+   Teilzeichenketten gesucht. „Wort"/„Worte" verlangen jetzt beidseitig eine
+   Wortgrenze, „Wortfolge" und „Zeichenfolge" bleiben wörtlich — welches
+   Substantiv gemeint ist, sieht nur `kons/novao.ts`, also trägt die Operation
+   die Entscheidung mit.
+4. **Das Orakel las nur die Einfügungen.** Siehe unten.
+
+| 60 BGBl, `--discover=60 --sammel` | vorher | nachher |
+|---|---|---|
+| grammatikalisch gelesen | 2.976 | **2.961** |
+| angewendet | 2.469 | **2.470** |
+| identisch mit dem RIS | 1.131 (64,6 %) | **1.133 (64,7 %)** |
+| eigene Abweichung | 49 (2,8 %) | **48 (2,7 %)** |
+| kein geltender Text, ohne Verweigerung | 95 (7,3 %) | **93 (7,1 %)** |
+
+15 Anweisungen fallen neu unter „Untergliederung ohne eigene Ebene"; die
+Anwendungsverweigerungen gehen um 16 zurück (507 → 491), weil dieselben Zeilen
+vorher erst beim Ausführen scheiterten — mit einem Grund, der die Ursache nicht
+nannte. Der Anteil von Nr. 1 daran, isoliert gemessen (derselbe Lauf, nur diese
+Verweigerung abgeschaltet): eigene Abweichung 50 → **48**, kein geltender Text
+94 → **93**, unverweigert geprüfte Paragraphen 1.311 → 1.310. Zwei Paragraphen
+verlassen die schärfste Klasse, einer die Restgefahr des Tors.
+
+*Das Orakel, und warum es die Löschung bestätigt hat.* Der Kopfkommentar von
+`kons/tguOracle.ts` verspricht seit dem ersten Tag „jedes Wort, das die Engine
+eingefügt **oder entfernt** hat" — geprüft wurde nur die Einfügung. Und die
+Schleife über die vorgeschlagene Spalte übersprang jede Zeile mit leerer
+Vorschlagszelle, also genau die Form, in der eine Gegenüberstellung eine
+Streichung schreibt. Eine Löschung eine Ebene zu hoch erfindet kein Wort,
+widerspricht keiner Zeile — und ging durch alle drei Tore. Jetzt symmetrisch:
+jedes entfernte Wort muss in der *geltenden* Spalte dieses Paragraphen
+vorkommen, und eine Zeile ohne Vorschlag verlangt, dass ihr Text im Ergebnis
+verschwunden ist.
+
+Der Preis steht in derselben Währung wie der Nutzen — Deckung:
+
+| 40 Entwürfe, `--discover=40` | vor der Symmetrie | danach |
+|---|---|---|
+| Paragraphen mit Text | 413 | 413 |
+| ohne Verweigerung und plausibel | 276 | 276 |
+| davon vom Anhang bestätigt (das Anzeigbare) | 107 (25,9 %) | **102 (24,7 %)** |
+| Orakel bestätigt / widersprochen | 111 / 108 | **106 / 113** |
+| Orakel stumm / fremd / kein Anhang | 27 / 14 / 153 | unverändert |
+
+Fünf Paragraphen wandern von „bestätigt" nach „widersprochen", keiner in die
+andere Richtung. 1,2 Prozentpunkte Deckung für eine Fehlerklasse, die genau
+die Art Fehler ist, gegen die das Tor existiert: ein Text, den es nie gab, mit
+allen drei Signalen grün. Verweigern schlägt Deckung, auch hier.
 
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 

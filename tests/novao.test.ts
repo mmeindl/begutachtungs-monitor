@@ -346,3 +346,59 @@ describe('Operandenvokabular und ausgeschriebene Umbenennungen', () => {
     expect(reason ?? 'nicht gelesen').toBeTruthy()
   })
 })
+
+describe('sub-units the address model has no level for (2026-09-23)', () => {
+  // `NovaoAddress` ends at `lit` and `lawtext/konsTree.ts` has no level below
+  // it either — RIS files "aa)" as a `lit` SIBLING of "a)". So an address that
+  // named a sublit was read as if the word were not there and the operation
+  // ran one level too high: a whole Litera rewritten or deleted, with no
+  // refusal and both gate signals green. 18 sublit, 19 Teilstrich and 8
+  // Spiegelstrich addresses in the 6.576-instruction corpus, 13 of them
+  // whole-unit operations.
+  it('refuses a Neufassung addressed at a sublit', () => {
+    const parsed = parseInstruction('§ 7 Abs. 1 Z 2 lit. h sublit. bb lautet:')
+    expect(parsed.ops).toEqual([])
+    expect(parsed.reason).toBe('Untergliederung ohne eigene Ebene: sublit')
+  })
+
+  it('refuses a deletion addressed at a sublit — the case that deleted the Litera', () => {
+    const parsed = parseInstruction('§ 5 Z 20 lit. a sublit. bb entfällt.')
+    expect(parsed.ops).toEqual([])
+    expect(parsed.reason).toMatch(/^Untergliederung ohne eigene Ebene: sublit/)
+  })
+
+  it('refuses a Teilstrich and a Spiegelstrich, which are no units of the tree at all', () => {
+    expect(parseInstruction('In § 1 Abs. 1 Z 2 lautet der erste Teilstrich:').reason).toBe('Untergliederung ohne eigene Ebene: Teilstrich')
+    expect(parseInstruction('In Anlage 2 Z 1 entfällt der vierte Spiegelstrich.').reason).toBe('Untergliederung ohne eigene Ebene: Spiegelstrich')
+    expect(parseAddress('In § 5 Abs. 2 Teilstrich 4')).toBeNull()
+  })
+
+  // The word has to stand in the address. A quoted operand that carries it is
+  // text, not a target, and an ordinary Litera address is untouched — this
+  // refusal may not cost the level it is meant to protect.
+  it('leaves lit. a alone, and reads the word only where it addresses', () => {
+    expect(parseAddress('§ 5 Z 20 lit. a')).toMatchObject({ para: '§ 5', z: '20', lit: 'a', level: 'lit' })
+    expect(op('§ 5 Z 20 lit. a lautet:')).toMatchObject({ kind: 'replace', target: { lit: 'a' } })
+    expect(op('In § 5 Abs. 1 wird die Wortfolge "der zweite Spiegelstrich" durch die Wortfolge "die zweite Litera" ersetzt.')).toMatchObject({ kind: 'replacePhrase', target: { para: '§ 5', abs: '1' } })
+  })
+})
+
+describe('a word operand is a word, not a substring (2026-09-23)', () => {
+  // "das Wort X" names a lexical unit, "die Wortfolge X" a stretch of text.
+  // The engine matched both as substrings, so "das Wort ‚Amt'" hit inside
+  // "Amtsstelle". `kons/lawApply.ts` is where that is decided, and only this
+  // module can see which noun the instruction used.
+  it('marks Wort and Worte, and leaves Wortfolge literal', () => {
+    expect(op('In § 5 Abs. 1 wird das Wort "Amt" durch das Wort "Behörde" ersetzt.')).toMatchObject({ kind: 'replacePhrase', from: 'Amt', to: 'Behörde', wordBound: true })
+    expect(op('In § 5 Abs. 1 wird die Wortfolge "Amt" durch die Wortfolge "Behörde" ersetzt.')).toMatchObject({ kind: 'replacePhrase', wordBound: false })
+    expect(op('In § 5 Abs. 1 entfallen die Worte "und der Partei".')).toMatchObject({ kind: 'deletePhrase', wordBound: true })
+  })
+
+  it('reads the noun in front of the operand it searches for, not the first one in the line', () => {
+    // What is searched for is the anchor, and the anchor is the "Wort"; the
+    // inserted text is a Wortfolge and says nothing about how to find it.
+    expect(op('In § 5 Abs. 1 wird nach dem Wort "Behörde" die Wortfolge "am Sitz der Partei" eingefügt.')).toMatchObject({ kind: 'insertPhrase', anchor: 'Behörde', wordBound: true })
+    // The other way round: what is searched for is the Wortfolge.
+    expect(op('In § 5 Abs. 1 wird die Wortfolge "die Behörde" durch das Wort "Bezirksverwaltungsbehörde" ersetzt.')).toMatchObject({ kind: 'replacePhrase', from: 'die Behörde', wordBound: false })
+  })
+})

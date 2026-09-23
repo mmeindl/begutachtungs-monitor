@@ -794,10 +794,34 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
 // --- CLI ----------------------------------------------------------------------
 const discover = argAssigned('discover')
 const withSammel = argFlag('sammel')
-const ids = process.argv.slice(2).filter((a) => /^BGBLA_/.test(a))
-const cases: { id: string; law?: string }[] = discover
-  ? await discoverAmendments(Number(discover.split('=')[1] ?? 10), withSammel)
-  : ids.map((id) => ({ id, law: process.argv[process.argv.indexOf(id) + 1]?.startsWith('-') ? undefined : process.argv[process.argv.indexOf(id) + 1] }))
+/**
+ * Split each argv entry before matching, and read the Kurztitel out of the
+ * split list rather than by `indexOf` into the raw argv: run through
+ * `pnpm harness:kons -- …` the trailing arguments can arrive as *one*
+ * space-joined entry, and a list of ids is then read as a single bogus one —
+ * the shape `scripts/harness/me.ts` fixed on 18.09.2026 and this file kept.
+ * The whole argv rather than `slice(2)`, for the same reason the flags are
+ * read that way: vite-node does not pass the script path.
+ */
+const argv = process.argv.flatMap((a) => a.split(/\s+/))
+const ids = argv.filter((a) => /^BGBLA_/.test(a))
+/**
+ * `argAssigned` already returns the bare value, so the old
+ * `Number(discover.split('=')[1] ?? 10)` read `"60".split('=')[1]` — undefined
+ * — and every `--discover=N` ran the default 10 from 5b61d95 (22.09.2026) to
+ * 23.09.2026. Silent, because a tenth of the corpus still prints a complete,
+ * plausible report: the documented command line measured 10 Bundesgesetz-
+ * blätter / 14 Gesetze / 205 Paragraphen where §12.12's tenth measurement
+ * reads 60 / 206 / 1.751. Hence the corpus size in the header line below —
+ * a run that shrinks must say so.
+ */
+const wanted = discover === null ? null : Number(discover)
+const cases: { id: string; law?: string }[] = wanted !== null
+  ? await discoverAmendments(wanted, withSammel)
+  : ids.map((id) => {
+      const next = argv[argv.indexOf(id) + 1]
+      return { id, law: next && !next.startsWith('-') ? next : undefined }
+    })
 
 if (cases.length === 0) {
   console.error('Usage: npx vite-node scripts/harness/kons.ts <BGBl-ID> [Kurztitel] | --discover=N [--sammel]')
@@ -824,7 +848,11 @@ const bgblCount = new Set(verdicts.map((v) => v.bgbl)).size
 const perBgbl = new Map<string, number>()
 for (const v of verdicts) perBgbl.set(v.bgbl, (perBgbl.get(v.bgbl) ?? 0) + 1)
 const packages = [...perBgbl.values()].filter((n) => n > 1).length
-console.log(`Prüfstand über ${scored.length} Gesetze aus ${bgblCount} Bundesgesetzblättern${packages > 0 ? `, davon ${packages} Sammelnovellen` : ''}${verdicts.length > scored.length ? ` (${verdicts.length - scored.length} nicht auswertbar)` : ''}`)
+// The corpus the run was *asked* for, beside the one it reached. A report over
+// a tenth of the intended corpus reads exactly like a report over all of it,
+// which is how the `--discover` bug above stayed invisible for a day.
+const corpus = wanted === null ? `${cases.length} explizit genannt` : `--discover=${wanted}${withSammel ? ' --sammel' : ''} → ${cases.length} geladen`
+console.log(`Prüfstand über ${scored.length} Gesetze aus ${bgblCount} Bundesgesetzblättern [Korpus: ${corpus}]${packages > 0 ? `, davon ${packages} Sammelnovellen` : ''}${verdicts.length > scored.length ? ` (${verdicts.length - scored.length} nicht auswertbar)` : ''}`)
 const pct = (n: number, of: number) => (of === 0 ? '—' : `${((n / of) * 100).toFixed(1)} %`)
 console.log(`  Anweisungen           : ${sum((v) => v.instructions)}`)
 console.log(`  grammatikalisch gelesen: ${sum((v) => v.read)} (${pct(sum((v) => v.read), sum((v) => v.instructions))})`)

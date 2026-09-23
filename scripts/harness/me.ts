@@ -483,8 +483,16 @@ const discoverArg = argAssigned('discover')
 // (18.09.2026). The whole argv rather than `slice(2)`, for the same reason
 // the flags above are read that way — vite-node does not pass the script path.
 const ids = process.argv.flatMap((a) => a.split(/\s+/)).filter((a) => /^BEGUT_[0-9A-F_]+$/i.test(a))
-const drafts: Draft[] = discoverArg
-  ? await discover(Number(discoverArg.split('=')[1] ?? 20))
+/**
+ * `argAssigned` already returns the bare value, so `Number(discoverArg.split('=')[1] ?? 20)`
+ * read `"40".split('=')[1]` — undefined — and every `--discover=N` ran the
+ * default 20 from 5b61d95 (22.09.2026) to 23.09.2026. The same slip as in
+ * `scripts/harness/kons.ts`, and as invisible: a shrunken corpus prints a
+ * complete report. Hence the requested size in the header line below.
+ */
+const wanted = discoverArg === null ? null : Number(discoverArg)
+const drafts: Draft[] = wanted !== null
+  ? await discover(wanted)
   : (await Promise.all(ids.map(fetchDraft))).filter((d): d is Draft => d !== null)
 
 if (drafts.length === 0) {
@@ -506,7 +514,9 @@ const sum = (pick: (r: LawResult) => number) => scored.reduce((n, r) => n + pick
 const pct = (n: number, of: number) => (of === 0 ? '—' : `${((n / of) * 100).toFixed(1)} %`)
 const dates = drafts.map((d) => d.beginn).sort()
 console.log(`\n${'='.repeat(78)}`)
-console.log(`ME-Prüfstand über ${drafts.length} Entwürfe (${dates[0]} bis ${dates[dates.length - 1]}), ${results.length} geänderte Gesetze, ${scored.length} davon auflösbar`)
+// What the run was asked for, beside what it reached — see `wanted` above.
+const corpus = wanted === null ? `${drafts.length} explizit genannt` : `--discover=${wanted} → ${drafts.length} geladen`
+console.log(`ME-Prüfstand über ${drafts.length} Entwürfe (${dates[0]} bis ${dates[dates.length - 1]}) [Korpus: ${corpus}], ${results.length} geänderte Gesetze, ${scored.length} davon auflösbar`)
 console.log(`  Anweisungen            : ${results.reduce((n, r) => n + r.instructions, 0)} (in den auflösbaren: ${sum((r) => r.instructions)})`)
 console.log(`  grammatikalisch gelesen: ${sum((r) => r.read)} (${pct(sum((r) => r.read), sum((r) => r.instructions))})`)
 console.log(`  angewendet             : ${sum((r) => r.applied)} (${pct(sum((r) => r.applied), sum((r) => r.instructions))})`)

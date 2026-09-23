@@ -2,9 +2,11 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parseAnnexPdf, type AnnexPage } from '../server/utils/annex/annexPdf'
-import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
+import { draftArticles, type DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticle } from './helpers/builders'
 import { parseTextComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
+import { isElidedPair } from '../server/utils/annex/elision'
+import { parseRisXml } from '../server/utils/lawtext/risXml'
 
 /**
  * Two real annexes, frozen.
@@ -60,15 +62,45 @@ const VKRG_DRAFT: DraftArticle[] = [
 ]
 const UWG_DRAFT: DraftArticle[] = [article(0, null, 'Bundesgesetz, mit dem das Bundesgesetz gegen den unlauteren Wettbewerb 1984 geändert wird', true)]
 
-/** What every parse has to satisfy, whichever document and whichever path. */
+/**
+ * The row's elision syntax with its numbers taken out — "(1) bis (54) …" and
+ * "(1) bis (55) …" are the same shape. The two spellings of the three dots
+ * are one too.
+ */
+const elisionShape = (t: string): string => t.replace(/…/g, '...').replace(/\d+/g, '#')
+
+/**
+ * What every parse has to satisfy, whichever document and whichever path —
+ * with two exceptions, both measured over the five frozen gate runs on
+ * 23.09.2026 rather than assumed.
+ *
+ * They are stated here as exceptions because the rule was stated too widely,
+ * not because anything is wrongly vouched for downstream: an elided row whose
+ * two cells differ only in the elision's own numbers carries no comparable
+ * text on either side (`elision.ts` names 48 such rows in GP XXVIII), and a
+ * change without a designation is counted as `unchecked` by `gateRows.ts`,
+ * never as verified.
+ */
 function invariants(rows: readonly ComparisonRow[]): void {
   const pairs = rows.filter((r) => r.kind === 'pair')
   // An elided row is dropped by the UI and skipped by the RIS check, so a
-  // change hidden in one leaves no trace anywhere.
-  expect(pairs.filter((r) => r.elided && r.change !== 'unchanged')).toEqual([])
+  // change hidden in one leaves no trace anywhere — unless the change IS the
+  // elision. `isElidedPair` calls two differing cells elided only when
+  // neither holds anything but the elision syntax, so the difference can be
+  // nothing else; the shape test says so without reading its internals.
+  for (const row of pairs.filter((r) => r.elided && r.change !== 'unchanged')) {
+    expect(isElidedPair(row.current, row.proposed), row.current.slice(0, 60)).toBe(true)
+    expect(elisionShape(row.current), row.current.slice(0, 60)).toBe(elisionShape(row.proposed))
+  }
   // "geändert" over a text beginning "(4) Weitergehende …" says nothing
-  // unless the row can say which § that is.
-  expect(pairs.filter((r) => r.change !== 'unchanged' && !r.elided && r.para === null)).toEqual([])
+  // unless the row can say which § that is — except in the front matter, the
+  // rows a law's annex prints before its first §: a Langtitel, a section
+  // heading, an Umsetzungshinweis. They designate no provision because they
+  // are none.
+  for (const row of pairs.filter((r) => r.change !== 'unchanged' && !r.elided && r.para === null)) {
+    const firstDesignated = rows.findIndex((x) => x.kind === 'pair' && x.law === row.law && x.para !== null)
+    expect(firstDesignated === -1 || rows.indexOf(row) < firstDesignated, row.proposed.slice(0, 60)).toBe(true)
+  }
   // A word diff exists exactly where two sides differ and both carry text.
   for (const row of pairs) {
     if (row.change === 'changed' && !row.elided) expect(row.segments, row.current.slice(0, 60)).not.toBeNull()
@@ -201,5 +233,52 @@ describe('the PDF annex of the UWG-Novelle, whose pages are turned', () => {
     expect(inserted.change).toBe('inserted')
     expect(inserted.current).toBe('')
     expect(inserted.proposed).toContain('Rechtsmissbräuchliche Abmahnung § 7a. (1) Wer eine rechtsmissbräuchliche Abmahnung vornimmt')
+  })
+})
+
+/**
+ * The same four invariants over the five annexes `annexGateGolden.test.ts`
+ * freezes — seven documents in all, both parsers, four of the five drafts a
+ * package.
+ *
+ * They were asserted over two documents and claimed for every parse, and the
+ * claim was too wide: two of the five break the first two rules, in the two
+ * shapes now written into `invariants` as exceptions. The counts are frozen
+ * beside the fixtures so the exceptions cannot quietly grow into the rule.
+ */
+const GATE_ANNEXES: { name: string; elidedChanges: number; undesignatedChanges: number }[] = [
+  { name: 'gate-obsorge', elidedChanges: 0, undesignatedChanges: 0 },
+  // "(1) bis (54) …" against "(1) bis (55) …" — the UGB's § 906, whose new
+  // Abs. 55 the elision itself announces. And three front-matter rows of the
+  // law the package adds, which print no § at all.
+  { name: 'gate-leitungspositionen', elidedChanges: 1, undesignatedChanges: 3 },
+  { name: 'gate-organtransplantation', elidedChanges: 0, undesignatedChanges: 0 },
+  { name: 'gate-avg', elidedChanges: 0, undesignatedChanges: 0 },
+  // The Langtitel, a section heading and the heading of the first § — all
+  // above the first row that carries a designation.
+  { name: 'gate-informationssicherheit', elidedChanges: 0, undesignatedChanges: 3 },
+]
+
+interface GateAnnex {
+  path: 'xml' | 'pdf'
+  draftXml: string
+  annexXml: string | null
+  annexPages: AnnexPage[] | null
+}
+
+describe.each(GATE_ANNEXES)('the annex of $name', ({ name, elidedChanges, undesignatedChanges }) => {
+  const f = JSON.parse(fixture(`${name}.json`)) as GateAnnex
+  const articles = draftArticles(parseRisXml(f.draftXml))
+  const rows = (f.path === 'xml' ? parseTextComparison(f.annexXml!, articles) : parseAnnexPdf(f.annexPages!, articles)).rows
+
+  it('satisfies the four parse invariants', () => {
+    expect(rows.length).toBeGreaterThan(0)
+    invariants(rows)
+  })
+
+  it('breaks the first two rules only as often as measured', () => {
+    const pairs = rows.filter((r) => r.kind === 'pair')
+    expect(pairs.filter((r) => r.elided && r.change !== 'unchanged')).toHaveLength(elidedChanges)
+    expect(pairs.filter((r) => r.change !== 'unchanged' && !r.elided && r.para === null)).toHaveLength(undesignatedChanges)
   })
 })
