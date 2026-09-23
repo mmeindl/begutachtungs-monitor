@@ -22,4 +22,6 @@ Worum es geht, ausführlich auf Deutsch: [begutachtungs-monitor.at/ueber](https:
 
 ---
 
+**Historie:** Die Git-Historie wurde am 23.09.2026 neu geschrieben, um Personennamen aus Testdaten und Kommentaren zu entfernen; Klone von davor müssen neu geklont werden.
+
 **Lizenz:** [AGPL-3.0-or-later](LICENSE) · Datenquellen: Republik Österreich – Parlamentsdirektion ([parlament.gv.at](https://www.parlament.gv.at)) und Rechtsinformationssystem des Bundes ([ris.bka.gv.at](https://www.ris.bka.gv.at)); welche Lizenz für welchen Datensatz gilt, steht auf [begutachtungs-monitor.at/impressum](https://begutachtungs-monitor.at/impressum#imp-license) · **Kontakt:** <kontakt@begutachtungs-monitor.at>

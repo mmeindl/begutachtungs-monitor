@@ -1613,7 +1613,7 @@ Zehntel des Korpus — und vier Annahmen der Engine, denen nie jemand
 widersprochen hat.**
 
 *Zuerst das Messinstrument, weil ohne es keine der folgenden Zahlen etwas
-wert ist.* `--discover=N` war seit 5b61d95 (22.09.2026) wirkungslos:
+wert ist.* `--discover=N` war seit 70fb8f3 (22.09.2026) wirkungslos:
 `argAssigned('discover')` liefert den nackten Wert, der Aufrufer rechnete aber
 weiter `Number(discover.split('=')[1] ?? 10)` — und `"60".split('=')[1]` ist
 `undefined`. Der in diesem Abschnitt dokumentierte Befehl
@@ -2846,7 +2846,7 @@ gefallen.
 
 *Gemessen und nicht gebaut, mit Zahlen, damit es niemand neu messen muss.*
 Dieselbe Regel für die **geänderte** beidspaltige Überschrift — Zeile bleibt
-Zeile, nur der Paragraph zieht um, also genau `heldHeadings` von d6c47ea eine
+Zeile, nur der Paragraph zieht um, also genau `heldHeadings` von 527297b eine
 Ebene höher — bewegt **28 Urteile: 19 von einbehalten auf bestätigt**, 2 von
 einbehalten auf ungeprüft, 2 von ungeprüft auf bestätigt (1.008/55/795 →
 1.024/39/795, einbehalten wegen der geltenden Fassung 43 → 27). **Fünf
@@ -2857,7 +2857,7 @@ Medizinproduktebetreiberverordnung § 1 fällt von 100 % auf 78 %, weil
 Errichten …" in ihre linke Spalte wandert — Text, den § 1 nie hatte; ebenso
 drei Preisindex-Verordnungen und die LF-VGÜ § 6. Solange die Titelzeile nicht
 als das gelesen wird, was sie ist, kostet diese Erweiterung eine Zusage, und
-d6c47ea hat für sich festgehalten, dass keine verlorenging. Eigener Schritt,
+527297b hat für sich festgehalten, dass keine verlorenging. Eigener Schritt,
 eigene Messung. Dieselbe Klasse zeigt sich auf der unveränderten Seite
 harmlos: 35 der 507 Zeilen sind Titelzeilen, die jetzt zur Überschrift des
 ersten Paragraphen ihres Gesetzes werden, und 15 davon sind Feldnamen der
@@ -4719,15 +4719,15 @@ gemischten Liste vor Augen entschieden, nicht vorher geraten.
 
 ### 12.20 Keine Kacheln: die Startseite zeigt Zeilen, keine Summen
 
-Die vier StatTiles standen seit dem ersten Release (`c277bcb`, 22.08.2026):
+Die vier StatTiles standen seit dem ersten Release (`bae33a8`, 22.08.2026):
 offene Begutachtungen · enden in ≤7 Tagen · Stellungnahmen in der GP ·
 Begutachtungen in der GP. Sie sind die KPI-Leiste eines Produkts, das
 damals „eine Liste laufender Begutachtungen" war. Seither ist der
 Nachverfolgungs-Teil dazugekommen, und an den Kacheln wurde seitdem nur
 noch **geflickt**, damit sie wahr bleiben: Kachel 4 bekam am 27.08. ein
-Label, das einen Link auf den Verlaufsabschnitt trägt (`b9f7a2f`), Kachel 1
+Label, das einen Link auf den Verlaufsabschnitt trägt (`9fdfe6b`), Kachel 1
 am 17.09. den engeren Nenner „Ministerialentwürfe", weil sie sonst eine
-falsche Vollständigkeit behauptet hätte (`93c2c11`).
+falsche Vollständigkeit behauptet hätte (`80b7c42`).
 
 **Der Befund, der die Entscheidung trägt:** in der gesammelten
 Korrespondenz mit möglichen Nutzerinnen und Nutzern — NGOs, Journalismus,
