@@ -52,11 +52,10 @@ describe('editorial vs substantive', () => {
     ).toBe(true)
     expect(isEditorialChange(seg('BGBl. I Nr. xx/2025,', 'BGBl. I Nr. 44/2025,'))).toBe(true)
     expect(isEditorialChange(seg('BGBl. I Nr. xxx/xxxx', 'BGBl. I Nr. 60/2025'))).toBe(true)
-    // Und eine Fundstelle, die durch eine ANDERE ersetzt wird, bleibt
-    // ebenfalls redaktionell — nicht weil das harmlos wäre, sondern weil die
-    // veröffentlichte Definition das so sagt („nur Verweise, Zahlen, Daten
-    // oder Satzzeichen", /so-funktionierts). Dieselbe Regel wie beim
-    // verschobenen Querverweis weiter oben.
+    // And a citation replaced by ANOTHER one stays editorial too — not
+    // because that is harmless but because the published definition says so
+    // („nur Verweise, Zahlen, Daten oder Satzzeichen", /so-funktionierts).
+    // The same rule as for the shifted cross-reference above.
     expect(isEditorialChange(seg('BGBl. I Nr. 12/2024 gilt', 'BGBl. I Nr. 50/2025 gilt'))).toBe(true)
   })
   it('articles and the case of a Novellierungsanweisung are editorial, logical connectives are not', () => {

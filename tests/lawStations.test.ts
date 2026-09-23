@@ -42,13 +42,13 @@ describe('vocabulary', () => {
   })
 
   it('accepts only its own ids', () => {
-    // ZWEI VOKABULARE, zwei geteilte Namen — und das ist seit 19.09.2026 so
-    // gewollt. `app/utils/spine.ts` führt die VERFAHRENSstationen
-    // (begutachtung|rv|parlament|bgbl, der Filter `?station=`), dieses Modul
-    // die TEXTfassungen (`?von=`/`?bis=`). `rv` stand schon immer in beiden;
-    // `bgbl` steht jetzt auch in beiden, weil es beides gibt: die erreichte
-    // Station und den kundgemachten Text. Was NICHT übergreift, bleibt hier
-    // die Grenze — „begutachtung" und „parlament" sind keine Textfassungen.
+    // TWO VOCABULARIES, two shared names — and that has been deliberate
+    // since 19.09.2026. `app/utils/spine.ts` carries the PROCEDURAL stations
+    // (begutachtung|rv|parlament|bgbl, the `?station=` filter), this module
+    // the TEXT versions (`?von=`/`?bis=`). `rv` always stood in both; `bgbl`
+    // now stands in both as well, because both exist: the station reached
+    // and the promulgated text. What does NOT overlap stays the boundary
+    // here — „begutachtung" and „parlament" are not text versions.
     for (const id of ALL) expect(isLawStationId(id)).toBe(true)
     for (const other of ['begutachtung', 'parlament', 'ME', '', null, 3]) {
       expect(isLawStationId(other)).toBe(false)
@@ -56,8 +56,8 @@ describe('vocabulary', () => {
   })
 
   it('refuses the one pair that no actor stands behind', () => {
-    // Zwischen Plenarfassung und Kundmachung ändert niemand mehr etwas; das
-    // Paar wäre systematisch leer (§12.33).
+    // Between the Plenum version and the Kundmachung nobody changes anything
+    // any more; the pair would be systematically empty (§12.33).
     expect(isLawStationPair('plenum', 'bgbl')).toBe(false)
     expect(isLawStationPair('me', 'bgbl')).toBe(true)
     expect(isLawStationPair('rv', 'bgbl')).toBe(true)

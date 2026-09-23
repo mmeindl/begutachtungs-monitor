@@ -253,10 +253,10 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
 })
 
 describe('Adressen über mehrere Paragraphen', () => {
-  // "In den §§ 48 Abs. 13 und 217 Abs. 13": nur der erste Paragraph trägt sein
-  // §-Zeichen, die übrigen stehen als nackte Zahl. Gelesen wurde daraus
-  // "§ 48 Abs. 217" — und wo dieser Absatz zufällig existiert, ändert die
-  // Engine geltendes Recht, das die Anweisung nie genannt hat (18.09.2026).
+  // "In den §§ 48 Abs. 13 und 217 Abs. 13": only the first Paragraph carries
+  // its § sign, the rest stand as a bare number. That used to be read as
+  // "§ 48 Abs. 217" — and where that Absatz happens to exist, the engine
+  // changes standing law the instruction never named (18.09.2026).
   it('verweigert, wenn die aufgezählte Zahl eine eigene Komponente trägt', () => {
     expect(parseAddress('In den §§ 48 Abs. 13 und 217 Abs. 13')).toBeNull()
     expect(parseAddress('In den §§ 19 Abs. 1, 48 Abs. 13, 192 Abs. 1')).toBeNull()
@@ -290,8 +290,8 @@ describe('parseAddressList — die Plural-Kurzschreibweise', () => {
   })
 
   it('unterscheidet ein weiteres Geschwister von einem weiteren Paragraphen', () => {
-    // Die 7 ist ein Absatz von § 20, die 193 ein eigener Paragraph — der
-    // Unterschied steht hinter der Zahl, nicht in der Konjunktion.
+    // The 7 is an Absatz of § 20, the 193 a Paragraph of its own — the
+    // difference stands after the number, not in the conjunction.
     const list = parseAddressList('In den §§ 20 Abs. 6 und 7 sowie 193 Abs. 6 und 7')
     expect(list?.map((a) => a.para)).toEqual(['§ 20', '§ 193'])
     expect(list?.[0]!.siblings).toEqual(['7'])
@@ -325,8 +325,8 @@ describe('Operandenvokabular und ausgeschriebene Umbenennungen', () => {
   })
 
   it('liest eine Umbenennung mit ausgeschriebenem Subjekt', () => {
-    // "In § 213 erhält Abs. 4 die Absatzbezeichnung": dieselbe Umbenennung wie
-    // ohne Subjekt, und die Adresse steht schon richtig — § 213 Abs. 4.
+    // "In § 213 erhält Abs. 4 die Absatzbezeichnung": the same renaming as
+    // without a subject, and the address is already right — § 213 Abs. 4.
     const { ops } = parseInstruction('In § 213 erhält Abs. 4 die Absatzbezeichnung "(5)".')
     expect(ops).toHaveLength(1)
     expect(ops[0]).toMatchObject({ kind: 'renumber', to: '(5)' })
@@ -339,8 +339,8 @@ describe('Operandenvokabular und ausgeschriebene Umbenennungen', () => {
   })
 
   it('verweigert weiterhin „der bisherige Inhalt" — das ist keine Umbenennung', () => {
-    // Der ganze Paragraphentext wird zu Abs. 1: eine eingezogene Ebene, nicht
-    // eine neue Nummer. Andere Operation, andere Gefahr.
+    // The whole Paragraph's text becomes Abs. 1: a level drawn in, not a new
+    // number. A different operation, a different danger.
     const { ops, reason } = parseInstruction('In § 10 erhält der bisherige Inhalt die Absatzbezeichnung "(1)".')
     expect(ops.filter((o) => o.kind === 'renumber')).toHaveLength(0)
     expect(reason ?? 'nicht gelesen').toBeTruthy()

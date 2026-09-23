@@ -1,15 +1,15 @@
 /**
- * Die Ressortnennung aus dem Suchfeld (§12.31) — und die zwei Fehler, die
- * diese Regel machen könnte.
+ * Taking the ressort mention out of the search field (§12.31) — and the two
+ * mistakes this rule could make.
  *
- * ZU WENIG: Der Langtitel jeder Verordnung beginnt mit dem ganzen Portfolio
- * ihres Hauses, der Ressortname enthält es noch einmal. Bleibt eines davon
- * stehen, zieht „klima" weiter den gesamten Output des BMLUK.
+ * TOO LITTLE: every Verordnung's long title begins with its house's whole
+ * portfolio, and the ressort name carries it once more. If one of the two is
+ * left standing, „klima" keeps pulling the BMLUK's entire output.
  *
- * ZU VIEL: „Finanzen", „Justiz", „Inneres" sind auch gewöhnliche Sachwörter.
- * Eine Verordnung ÜBER die Finanzen von etwas muss unter „Finanzen"
- * auffindbar bleiben — deshalb fällt ein Portfolio nur in der
- * Ministerklausel, nie für sich.
+ * TOO MUCH: „Finanzen", „Justiz", „Inneres" are ordinary subject words too.
+ * A Verordnung ABOUT the finances of something has to stay findable under
+ * „Finanzen" — which is why a portfolio falls only inside the ministerial
+ * clause, never on its own.
  */
 import { describe, expect, it } from 'vitest'
 import { ministryToken, ministryTokens, stripMinistryMentions } from '../server/utils/search/searchHaystack'
@@ -30,7 +30,7 @@ describe('ministryToken', () => {
   })
 
   it('macht aus einem leeren oder zu kurzen Namen kein Token', () => {
-    // Ein Token aus zwei Zeichen stünde in jedem zweiten Titel.
+    // A token of two characters would stand in every second title.
     expect(ministryToken('')).toBeNull()
     expect(ministryToken('  ')).toBeNull()
     expect(ministryToken('BMF')).toBeNull()
@@ -39,8 +39,8 @@ describe('ministryToken', () => {
 
 describe('ministryTokens', () => {
   it('stellt das längste Token voran', () => {
-    // Sonst bliebe von „Finanzen und Wirtschaft" nach dem Streichen von
-    // „Finanzen" ein Rest stehen, den keine Klausel mehr trägt.
+    // Otherwise a remnant of „Finanzen und Wirtschaft" would be left after
+    // „Finanzen" is struck, one no clause carries any more.
     const tokens = ministryTokens([BMF, 'Bundesministerium für Finanzen und Wirtschaft'])
     expect(tokens.map((t) => t.text)).toEqual(['Finanzen und Wirtschaft', 'Finanzen'])
   })
@@ -59,8 +59,8 @@ describe('stripMinistryMentions', () => {
       'Regionen und Wasserwirtschaft, mit der die GAP-Strategieplan-Anwendungsverordnung geändert wird'
     const out = stripMinistryMentions(titel, tokens).toLowerCase()
     expect(out).not.toContain('klima')
-    // Der Gegenstand bleibt — er ist der Grund, warum der Langtitel überhaupt
-    // durchsucht wird.
+    // The subject matter stays — it is the reason the long title is searched
+    // at all.
     expect(out).toContain('gap-strategieplan-anwendungsverordnung')
   })
 
@@ -80,8 +80,8 @@ describe('stripMinistryMentions', () => {
   })
 
   it('hält die Schreibweisen aus, die im Bestand wirklich vorkommen', () => {
-    // Beide am 21.09.2026 gemessen, beide hatten die starre Fassung verfehlt:
-    // der fehlende Bindestrich und der halbe Name.
+    // Both measured on 21.09.2026, both had missed the rigid version: the
+    // absent hyphen and the half name.
     const ohneBindestrich = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima und ' +
       'Umweltschutz, Regionen und Wasserwirtschaft, mit der die Rebsortenverordnung geändert wird'
     const halberName = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und ' +
@@ -93,7 +93,7 @@ describe('stripMinistryMentions', () => {
   })
 
   it('nimmt nicht mehr weg, als der Ressortname hergibt', () => {
-    // Die Wortkette endet mit dem Portfolio — was danach kommt, ist Gegenstand.
+    // The word chain ends with the portfolio — what follows is subject matter.
     const titel = 'Verordnung des Bundesministers für Finanzen und Sport über die Abgaben'
     const out = stripMinistryMentions(titel, tokens)
     expect(out).toContain('Abgaben')
@@ -101,7 +101,7 @@ describe('stripMinistryMentions', () => {
   })
 
   it('lässt das Portfolio als Sachwort stehen', () => {
-    // Der eine Fall, an dem eine zu gierige Regel scheitern würde.
+    // The one case a too greedy rule would fail on.
     const titel = 'Verordnung über die Finanzen der Sozialversicherungsträger'
     expect(stripMinistryMentions(titel, tokens)).toContain('Finanzen')
   })

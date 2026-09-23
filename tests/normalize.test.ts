@@ -74,8 +74,8 @@ describe('compareKey', () => {
     // changed that way, all false (§12.33).
     expect(compareKey('OTC­Derivaten')).toBe(compareKey('OTC-Derivaten'))
     expect(compareKey('EWR-ISIN')).toBe(compareKey('EWRISIN'))
-    // Der Preis, benannt: Wer sich NUR in der Bindung unterscheidet, gilt als
-    // gleich. In legistischem Deutsch ist das Typografie, kein Recht.
+    // The price, named: whatever differs ONLY in its hyphenation counts as
+    // the same. In legistic German that is typography, not law.
     expect(compareKey('Arbeits-zeit')).toBe(compareKey('Arbeitszeit'))
   })
 

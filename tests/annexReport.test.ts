@@ -2,18 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { MAX_BASELINE_AGE_DAYS, MIN_DRAFTS_WITH_ANNEX, classAFindings, classBFindings, maintenanceFindings, summarize, toBaseline, type AnnexDraftReport, type AnnexReport } from '../scripts/lib/annexReport'
 
 /**
- * Der Alarm selbst, gegen erfundene Berichte.
+ * The alarm itself, against invented reports.
  *
- * Erfunden ist hier richtig: Klasse A prüft Zusicherungen, und eine
- * Zusicherung lässt sich nur dadurch testen, dass man sie bricht — im echten
- * Korpus ist heute jede davon erfüllt (gemessen 16.09.2026, beide Pfade),
- * ein Test gegen echte Daten wäre also ein Test, der nie etwas beweist.
- * Dasselbe Argument wie bei der Fehlerinjektion in
- * `scripts/harness/faultInjection.ts`: das Tor zeigt seine Schärfe nur an
- * Fehlern, die man hineinlegt.
+ * Invented is right here: class A checks assurances, and an assurance can
+ * only be tested by breaking it — in the real corpus every one of them holds
+ * today (measured 16.09.2026, both paths), so a test against real data would
+ * be a test that never proves anything. The same argument as with the fault
+ * injection in `scripts/harness/faultInjection.ts`: a gate shows its edge
+ * only on faults somebody puts in.
  */
 
-/** Ein Entwurf, an dem nichts auszusetzen ist. */
+/** A draft there is nothing to complain about. */
 const sound = (over: Partial<AnnexDraftReport> = {}): AnnexDraftReport => ({
   id: 'BEGUT_0000',
   cite: '42/ME',
@@ -42,7 +41,7 @@ const sound = (over: Partial<AnnexDraftReport> = {}): AnnexDraftReport => ({
   ...over,
 })
 
-/** Ein Lauf, der die Schwelle sicher überschreitet. */
+/** A run that safely clears the threshold. */
 const report = (drafts: AnnexDraftReport[], over: Partial<AnnexReport> = {}): AnnexReport => ({
   at: '2026-09-16T09:00:00.000Z',
   gp: 'XXVIII',
@@ -59,10 +58,10 @@ describe('Klasse A schweigt, wo nichts ist', () => {
   })
 
   it('duldet die Kennzahlen, die heute nicht null sind', () => {
-    // `changeRowsNoPara` 75 und `noLaw` 12 stehen am 16.09.2026 auf dem
-    // Tabellenpfad — als Klasse-A-Regel hätten sie beim ersten Lauf
-    // angeschlagen. Sie gehören in Klasse B, und dieser Test hält fest,
-    // dass sie hier bewusst nichts auslösen.
+    // `changeRowsNoPara` 75 and `noLaw` 12 stand on the table path on
+    // 16.09.2026 — as a class-A rule they would have fired on the first run.
+    // They belong in class B, and this test records that they deliberately
+    // trigger nothing here.
     expect(classAFindings(report([sound({ changeRowsNoPara: 75, noLaw: 12 })]))).toEqual([])
   })
 })
@@ -84,8 +83,8 @@ describe('die vier Zusicherungen des Tors', () => {
   }
 
   it('verlangt, dass die Gründe der Einbehaltung aufgehen', () => {
-    // Eine vierte Ursache, die niemand in die Summe aufnimmt, fiele sonst
-    // lautlos aus der Kopie auf der Seite heraus.
+    // A fourth cause that nobody adds to the sum would otherwise drop out of
+    // the page's copy silently.
     const found = classAFindings(report([sound({ cite: 'Y/ME', withheldParas: 5, withheldStanding: 2, withheldAlreadyStanding: 1, withheldNotInDraft: 1 })]))
     expect(found).toHaveLength(1)
     expect(found[0]).toMatchObject({ kind: 'zusicherung', draft: 'Y/ME' })
@@ -112,8 +111,8 @@ describe('die Gestalt des Dokuments', () => {
 
 describe('ein Lauf, der nichts gemessen hat', () => {
   it('meldet einen leeren RIS-Antwortsatz und hört dann auf', () => {
-    // Nicht weiterprüfen: „0 Zusicherungen verletzt" über null Entwürfen ist
-    // keine Entwarnung, und zwei Befunde über dieselbe Ursache sind Rauschen.
+    // Do not check on: „0 Zusicherungen verletzt" over zero drafts is no
+    // all-clear, and two findings about one cause are noise.
     const found = classAFindings({ ...report([]), records: 0, drafts: [] })
     expect(found).toHaveLength(1)
     expect(found[0]).toMatchObject({ kind: 'messung', draft: null })
@@ -160,19 +159,19 @@ describe('Klasse B: der Entwurf, den wir schon einmal gemessen haben', () => {
   })
 
   it('fasst einen Entwurf zu einem Befund zusammen, nicht zu einem je Feld', () => {
-    // Ein verschobener Parse bewegt ein Dutzend Zähler auf einmal.
+    // A shifted parse moves a dozen counters at once.
     const now = report([sound({ id: 'BEGUT_A', cite: 'A/ME', checked: 1, clean: 1, substantial: 1, substantialClean: 1, verifiedParas: 1, uncheckedParas: 99 })])
     expect(classBFindings(now, baseline)).toHaveLength(1)
   })
 
   it('lässt einen neuen Entwurf in Ruhe', () => {
-    // Neu heißt: für ihn gilt Klasse A und sonst nichts.
+    // New means: class A applies to it and nothing else.
     const now = report([sound({ id: 'BEGUT_NEU', cite: 'N/ME', verifiedParas: 3, withheldParas: 0, withheldStanding: 0 })])
     expect(classBFindings(now, baseline)).toEqual([])
   })
 
   it('meldet nicht, dass ein Entwurf aus dem Fenster gerutscht ist', () => {
-    // Das ist der Normalfall des wandernden Fensters, keine Meldung.
+    // That is the normal case of the moving window, not a report.
     const now = { ...report([]), drafts: report([]).drafts.slice(0, 5) }
     expect(classBFindings(now, baseline).filter((f) => f.draft !== null)).toEqual([])
   })
@@ -211,12 +210,12 @@ describe('Wartung: die Grundlinie mahnt sich selbst an', () => {
     const text = on(90)[0]!.text
     expect(text).toContain('90 Tage alt')
     expect(text).toContain('--grundlinie-schreiben=tests/fixtures/annex-baseline.json')
-    // Keine Panik: nichts ist kaputt, nur ungenutzt.
+    // No panic: nothing is broken, only unused.
     expect(text).toContain('Nichts ist kaputt')
   })
 
   it('mahnt nur einmal, nicht je Pfad', () => {
-    // Die Grundlinie ist EINE Datei für beide Pfade.
+    // The baseline is ONE file for both paths.
     expect(on(90)).toHaveLength(1)
   })
 
@@ -227,7 +226,7 @@ describe('Wartung: die Grundlinie mahnt sich selbst an', () => {
   })
 
   it('verlangt ohne Grundlinie keine Wartung', () => {
-    // Ohne `--grundlinie` prüft Klasse B nichts; das sagt der Lauf separat.
+    // Without `--grundlinie` class B checks nothing; the run says so separately.
     expect(maintenanceFindings(null, day(0))).toEqual([])
   })
 

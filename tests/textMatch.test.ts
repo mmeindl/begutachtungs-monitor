@@ -1,9 +1,9 @@
 /**
- * Ein Feld, eine Regel für Leerzeichen (§12.31).
+ * One field, one rule for spaces (§12.31).
  *
- * Der Fall, der das ausgelöst hat: „klima gesetz" fand in der Liste nichts,
- * während der Volltextblock darunter zwei Entwürfe zeigte — dieselbe
- * Eingabe, zwei Regeln, ein Feld.
+ * The case that triggered it: „klima gesetz" found nothing in the list while
+ * the full-text block below it showed two drafts — the same input, two rules,
+ * one field.
  */
 import { describe, expect, it } from 'vitest'
 import { foldForSearch, matchesQuery, queryTokens } from '../shared/utils/textMatch'
@@ -94,8 +94,8 @@ describe('matchesQuery — die Entwurfsliste', () => {
   })
 
   it('sucht innerhalb eines Wortes weiter als Teilstring', () => {
-    // Die Liste durchsucht Titel, nicht Dokumente — dort ist der Teilstring
-    // die brauchbarere Regel als die Wortgrenze des RIS.
+    // The list searches titles, not documents — there the substring is the
+    // more usable rule than RIS's word boundary.
     expect(matchesQuery(haystack, 'klimages')).toBe(true)
   })
 
@@ -105,9 +105,9 @@ describe('matchesQuery — die Entwurfsliste', () => {
 })
 
 describe('matchesQuery — beide Lesarten, und eine genügt', () => {
-  /* Gemessen am 22.09.2026 über die 472 Heuhaufen der XXVIII. GP: Falten
-     allein nimmt 375 von 504.210 Anfragen einen Treffer weg, die Disjunktion
-     keine einzige. Je ein Fall aus beiden Lesarten steht hier. */
+  /* Measured on 22.09.2026 over the 472 haystacks of GP XXVIII: folding
+     alone takes a hit away from 375 of 504.210 queries, the disjunction from
+     none at all. One case from each of the two readings stands here. */
   const draft = 'Bundesgesetz über die Ökostromförderung, Änderung 133/ME BMLUK'
 
   it('findet den Umlaut auch ohne ihn — auch in der Entwurfsliste', () => {
@@ -117,8 +117,8 @@ describe('matchesQuery — beide Lesarten, und eine genügt', () => {
   })
 
   it('verliert kein Wortinneres an die Faltung', () => {
-    /* „ergesetz" steht im gefalteten „paketsteurgesetz" nicht mehr, weil die
-       Faltung das „e" aus „ue" schluckt; ungefaltet steht es da. */
+    /* „ergesetz" no longer stands in the folded „paketsteurgesetz", because
+       the folding swallows the „e" of „ue"; unfolded it is there. */
     expect(matchesQuery('Paketsteuergesetz; Finanzausgleichsgesetz, Änderung 104/ME BMF', 'ergesetz')).toBe(true)
     expect(matchesQuery('Audiovisuelle Mediendienste-Gesetz, Änderung 132/ME', 'ell')).toBe(true)
   })

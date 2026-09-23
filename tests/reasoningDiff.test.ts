@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
 import { compareReasoning } from '../server/utils/explanations/reasoningDiff'
 
-/** Eine Novellierungsanordnung, wie der Vergleich sie ausgibt. */
+/** A Novellierungsanordnung the way the comparison emits it. */
 function unit(article: string, id: string, line: string, change: LawDiffUnit['change'] = 'changed'): LawDiffUnit {
   return {
     article,
@@ -33,7 +33,7 @@ describe('compareReasoning', () => {
 
     const out = compareReasoning(units, before, after)
 
-    // Zwei Paragraphen, drei Anordnungen: die Statistik zählt Paragraphen.
+    // Two Paragraphen, three instructions: the statistic counts Paragraphen.
     expect(out.stats).toEqual({ compared: 2, changed: 1 })
     expect(Object.keys(out.paragraphs).sort()).toEqual(['§ 6', '§ 7'])
     expect(out.units).toEqual({ [`${SNG}|Z2|changed`]: '§ 6', [`${SNG}|Z3|changed`]: '§ 6', [`${SNG}|Z4|changed`]: '§ 7' })
@@ -74,8 +74,8 @@ describe('compareReasoning', () => {
   })
 
   it('legt beide Fassungen bei, wo der Wortvergleich zu lang zum Rechnen ist', () => {
-    // Über der Schranke von 2,5 Mio. Zellen (1.700 × 1.700): `diffTokens`
-    // liefert dann nur noch die Ähnlichkeit, keine Segmente.
+    // Above the limit of 2,5 million cells (1.700 × 1.700): `diffTokens`
+    // then returns only the similarity, no segments.
     const a = Array.from({ length: 1700 }, (_, i) => `wort${i}`).join(' ')
     const b = Array.from({ length: 1700 }, (_, i) => (i % 10 === 0 ? `neu${i}` : `wort${i}`)).join(' ')
     const units = [unit(SNG, 'Z2', 'In § 6 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.')]
@@ -85,7 +85,7 @@ describe('compareReasoning', () => {
 
     expect(entry.changed).toBe(true)
     expect(entry.segments).toBeNull()
-    // Sonst klappte die Anzeige eine leere Lade auf.
+    // Otherwise the display would open an empty drawer.
     expect(entry.fromText).toBe(a)
     expect(entry.toText).toBe(b)
   })
@@ -97,11 +97,11 @@ describe('compareReasoning', () => {
     expect(out.units).toEqual({})
   })
 
-  // Festgehalten, nicht gewollt: `addressedParagraph` liest „§§ 6 und 7" als
-  // EINE Adresse mit Geschwistern und gibt den ersten Paragraphen zurück,
-  // obwohl die Anweisung zwei ändert. Gezeigt wird dann die Begründung zu § 6
-  // — dieselbe Verengung trifft seit 08.09. auch die §-Namen. Gehört dort
-  // behoben und gemessen, nicht hier umgangen (TODO.md).
+  // Recorded, not wanted: `addressedParagraph` reads „§§ 6 und 7" as ONE
+  // address with siblings and returns the first Paragraph, although the
+  // instruction changes two. The reasoning shown is then the one for § 6 —
+  // the same narrowing has hit the § names since 08.09. It belongs fixed and
+  // measured there, not worked around here (TODO.md).
   it('nennt bei „§§ 6 und 7" heute nur den ersten Paragraphen', () => {
     const units = [unit(SNG, 'Z2', 'Die §§ 6 und 7 samt Überschriften entfallen.')]
     const out = compareReasoning(units, new Map([['6', 'a']]), new Map([['6', 'b sehr anders']]))

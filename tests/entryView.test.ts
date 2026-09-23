@@ -1,18 +1,18 @@
 /**
- * Die eine Anatomie (§12.28) — und zwar die Hälfte davon, die sich testen
- * lässt: WAS in welcher Zone steht, je Art.
+ * The one anatomy (§12.28) — and precisely the half of it that can be
+ * tested: WHAT stands in which zone, per kind.
  *
- * Diese Tests existieren, weil genau diese Entscheidungen vorher in sechs
- * Vue-Komponenten verteilt lagen und dort nur per Screenshot prüfbar waren.
- * Drei von ihnen sind Behauptungen über die Welt, keine Formatierung:
+ * These tests exist because exactly these decisions used to lie spread over
+ * six Vue components, where they were checkable only by screenshot. Three of
+ * them are claims about the world, not formatting:
  *
- *  - Eine Verordnungsentwurfs-Zeile führt NIE eine Zahl. „0" hieße
- *    „niemanden interessiert" über zwei Dritteln des Korpus, wo die Wahrheit
- *    „niemand zählt" ist (§12.16).
- *  - „Bisher keine Regierungsvorlage" darf nur stehen, wo wir nachgesehen
- *    haben. Ohne gelesene Kette sagt die Zeile den letzten belegten Stand.
- *  - Eine Station NACH der Begutachtung gibt es für einen Verordnungsentwurf
- *    nicht — seine Endstation ist die Begutachtung selbst.
+ *  - A Verordnungsentwurf row NEVER carries a number. „0" would mean „nobody
+ *    is interested" over two thirds of the corpus, where the truth is
+ *    „nobody counts" (§12.16).
+ *  - „Bisher keine Regierungsvorlage" may only stand where we looked. Without
+ *    a chain that was read, the row states the last documented status.
+ *  - A station AFTER the Begutachtung does not exist for a
+ *    Verordnungsentwurf — its terminus is the Begutachtung itself.
  */
 import { describe, expect, it } from 'vitest'
 import type { ClosedOutcome, DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
@@ -24,10 +24,10 @@ import {
 } from '../app/utils/entryView'
 import { draftSummary, risConsultation } from './helpers/builders'
 
-/** Ein Fristende weit in der Vergangenheit, damit `active` nie hineinredet. */
+/** A deadline far in the past, so `active` never has a say. */
 const PAST = '2025-08-31'
 
-/** 126/ME Bundesstaatsanwaltschaft — 846 Stellungnahmen, die Zeile mit der Zahl. */
+/** 126/ME Bundesstaatsanwaltschaft — 846 Stellungnahmen, the row with the number. */
 const draft = (overrides: Partial<DraftSummary> = {}): DraftSummary => draftSummary({
   inr: 126,
   citation: '126/ME',
@@ -41,7 +41,7 @@ const draft = (overrides: Partial<DraftSummary> = {}): DraftSummary => draftSumm
   ...overrides,
 })
 
-/** Ein Verordnungsentwurf, der Fall ohne parlamentarischen Gegenstand. */
+/** A Verordnungsentwurf, the case with no parliamentary Gegenstand. */
 const ris = (overrides: Partial<RisConsultation> = {}): RisConsultation => risConsultation({
   id: 'BEGUT_COO_2026_100_2_1836568',
   title: 'Abwasseremissionsverordnung Tierkörperverwertung',
@@ -73,16 +73,16 @@ describe('Zone 3 — Stellungnahmen', () => {
     })
   })
 
-  /* Der Kern: es gibt keinen Zustand, in dem diese Zeile eine Zahl trägt —
-   * offen wie abgeschlossen. Eine „0" hier wäre die Falschaussage, gegen
-   * die §12.16 geschrieben wurde. */
+  /* The core: there is no state in which this row carries a number — open
+   * or closed. A „0" here would be the false statement §12.16 was written
+   * against. */
   it('never gives a record without a Gegenstand a number, in either state', () => {
     expect(viewOfRis(ris({ active: true })).participation).toEqual({ kind: 'unpublished' })
     expect(viewOfRis(ris({ active: false })).participation).toEqual({ kind: 'unpublished' })
   })
 
-  /* „Nicht gezählt" und „wir konnten nicht nachsehen" sind zwei Aussagen,
-   * und nur eine davon ist dauerhaft. */
+  /* „Nicht gezählt" and „we could not look" are two statements, and only one
+   * of them is permanent. */
   it('separates a failed count from one that structurally cannot exist', () => {
     expect(viewOfVorlage(vorlage({ statementCount: null })).participation).toEqual({
       kind: 'unavailable',
@@ -102,8 +102,8 @@ describe('Zone 4 — Stand', () => {
     expect(state.detail).toMatch(/^bis \w+\., 16\.10\.2099$/)
   })
 
-  /* Ein erreichter Stand wird durch seine Fundstelle belegt, nicht durch
-   * das Fristende — zwei Fakten in einem Slot war die alte Vermischung. */
+  /* A status reached is evidenced by its citation, not by the deadline's end
+   * — two facts in one slot was the old conflation. */
   it('pins a reached station with its citation', () => {
     expect(viewOfOutcome({
       ...draft(),
@@ -125,8 +125,8 @@ describe('Zone 4 — Stand', () => {
     })
   })
 
-  /* Hier ist das Fristende die Aussage: die verstrichene Zeit IST der
-   * Befund, und „bisher" hält ihn als Stand statt als Urteil. */
+  /* Here the deadline's end is the statement: the time that has passed IS
+   * the finding, and „bisher" holds it as a status rather than a verdict. */
   it('dates the no-Vorlage state by the Frist that ended', () => {
     expect(viewOfOutcome({ ...draft(), rvCitation: null, bgblNumber: null } as ClosedOutcome).state)
       .toMatchObject({
@@ -135,8 +135,8 @@ describe('Zone 4 — Stand', () => {
       })
   })
 
-  /* Ohne gelesene Kette sagt die Zeile, was sie belegen kann — nicht, dass
-   * keine Vorlage existiert (§12.27). */
+  /* Without a chain that was read, the row says what it can evidence — not
+   * that no Vorlage exists (§12.27). */
   it('claims no missing Vorlage when the chain was never read', () => {
     expect(viewOfDraft(draft()).state).toMatchObject({
       label: 'Begutachtung abgeschlossen',
@@ -145,8 +145,8 @@ describe('Zone 4 — Stand', () => {
     })
   })
 
-  /* Das zweite offene Fenster, und zwar als das benannt, was jemand HEUTE
-   * tun kann. „Zweite Runde" bleibt Überschrift und Filter. */
+  /* The second open window, named as what somebody can do TODAY. „Zweite
+   * Runde" stays a heading and a filter. */
   it('calls the open Vorlage form what it is, dated by the RV', () => {
     const state = viewOfDraft(
       draft({
@@ -167,8 +167,8 @@ describe('Zone 4 — Stand', () => {
     })
   })
 
-  /* Ein Verordnungsentwurf hat keine Station nach der Begutachtung, und das
-   * ist kein fehlender Wert: sein Weg endet dort. */
+  /* A Verordnungsentwurf has no station after the Begutachtung, and that is
+   * not a missing value: its road ends there. */
   it('ends a record without a Gegenstand at its own Begutachtung', () => {
     expect(viewOfRis(ris({ active: false, deadline: '2026-09-14' })).state).toMatchObject({
       label: 'Begutachtung abgeschlossen',
@@ -177,8 +177,8 @@ describe('Zone 4 — Stand', () => {
     })
   })
 
-  /* Eine Vorlage ohne Begutachtung hat von Natur aus keine Frist — das
-   * Fenster schließt mit der Abstimmung, nicht an einem Datum. */
+  /* A Vorlage without a Begutachtung has no deadline by nature — its window
+   * closes with the vote, not on a date. */
   it('gives the Vorlage an open window without inventing a Frist', () => {
     expect(viewOfVorlage(vorlage()).state).toMatchObject({
       label: 'Stellungnahme möglich',
@@ -196,8 +196,8 @@ describe('Zone 2 — Kennung', () => {
     expect(viewOfVorlage(vorlage()).kindLabel).toBe('Regierungsvorlage')
   })
 
-  /* Kein Ressort in den Daten heißt: kein Token. Als eigene Spalte war das
-   * ein sichtbares Loch, das sich als Defekt las. */
+  /* No ressort in the data means: no token. As a column of its own that was
+   * a visible hole and read like a defect. */
   it('carries no ministry where the data has none', () => {
     expect(viewOfVorlage(vorlage()).ministry).toBeNull()
     expect(viewOfDraft(draft()).ministry).toEqual({
@@ -206,8 +206,8 @@ describe('Zone 2 — Kennung', () => {
     })
   })
 
-  /* Der Verfahrensfakt, nie als Vorwurf: die Vorlage ging nie in
-   * Begutachtung, also hat der Monitor keine Seite dafür. */
+  /* The procedural fact, never as an accusation: the Vorlage never went to
+   * Begutachtung, so the monitor has no page for it. */
   it('sends a Vorlage without a Begutachtung outside, and says so', () => {
     const v = viewOfVorlage(vorlage())
     expect(v.to).toBeNull()
@@ -221,9 +221,9 @@ describe('Zone 2 — Kennung', () => {
     expect(withDraft.note).toBeNull()
   })
 
-  /* Die dritte Möglichkeit, und der Grund für den ganzen Zustand: kein
-   * Zeiger im Gegenstand, aber ein Entwurf, der dazu passen könnte. Die
-   * Zeile führt dann genauso hinaus — behauptet aber nichts. */
+  /* The third possibility, and the reason for the whole state: no pointer in
+   * the Gegenstand, but a draft that might fit it. The row then leads out
+   * just the same — but claims nothing. */
   it('withholds the claim where the Vorgeschichte is only unverified', () => {
     const v = viewOfVorlage(vorlage({ consultation: { kind: 'unknown' } }))
     expect(v.to).toBeNull()
@@ -231,9 +231,8 @@ describe('Zone 2 — Kennung', () => {
     expect(v.note).toBeNull()
   })
 
-  /* „Neu" ist an ein laufendes Verfahren gebunden: auf einem
-   * abgeschlossenen markierte es das eine, woran niemand mehr etwas ändern
-   * kann. */
+  /* „Neu" is tied to a running procedure: on a closed one it would mark the
+   * one thing nobody can change any more. */
   it('never marks a closed entry as new', () => {
     const today = new Date().toISOString().slice(0, 10)
     expect(viewOfRis(ris({ startedAt: today, active: true })).isNew).toBe(true)

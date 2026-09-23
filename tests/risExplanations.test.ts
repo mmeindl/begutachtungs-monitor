@@ -170,9 +170,9 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
   const besonderer = (body: string) => parseExplanations(doc(head('erlz', 'Besonderer Teil') + body))
 
   it('trägt den Gesetzesschlüssel der Zeilen, auch wenn das Paket nur ein Gesetz hat', () => {
-    // Die Beilage führt ihre Zeilen unter dem Artikelschlüssel, sobald es
-    // einen gibt — „null, wenn nur ein Gesetz" war die erste Fassung, und sie
-    // traf bei der Honigverordnung 0 von 9.
+    // The annex carries its rows under the Artikel key as soon as there is
+    // one — „null, wenn nur ein Gesetz" was the first version, and on the
+    // Honigverordnung it hit 0 of 9.
     const parsed = besonderer(head('erll', 'Zu Z 1 (§ 3 Z 2):') + text('Dazu.'))
     const only = articles({ numeral: null, key: 'Honigverordnung, Änderung' })
     expect(explanationsByParagraph(parsed, only)).toEqual([
@@ -182,7 +182,7 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
 
   it('liest die Artikelüberschrift des Besonderen Teils, auch als Passage gesetzt', () => {
     // Berufsrechts-Änderungsgesetz 2024: „Zu Art. 1 (Änderung der
-    // Notariatsordnung)" steht als `erll`, nicht als `erlz`.
+    // Notariatsordnung)" stands as `erll`, not as `erlz`.
     const parsed = besonderer(
       head('erll', 'Zu Art. 1 (Änderung der Notariatsordnung)') +
       head('erll', 'Zu Z 1 (§ 7 Abs. 1 Z 3 NO)') +

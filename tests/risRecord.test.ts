@@ -138,9 +138,9 @@ describe('flattenRisRecord', () => {
   })
 
   it('sammelt alles Übrige, was der Satz an Text führt', () => {
-    // Gemessen am 22.09.2026: 41 Textdokumente über die laufenden Sätze, die
-    // vier benannten Felder greifen 25. Die Volltextsuche liest den Rest
-    // (§12.31), und ein Satz kann mehrere davon haben.
+    // Measured on 22.09.2026: 41 text documents over the running records,
+    // the four named fields catch 25. The full-text search reads the rest
+    // (§12.31), and one record can have several of them.
     const flat = flattenRisRecord(
       record([
         urls('MainDocument', 'Xml', 'https://ogd.ris.bka.gv.at/m.xml'),
@@ -149,15 +149,15 @@ describe('flattenRisRecord', () => {
         { ...urls('Material', 'Pdf', 'https://ogd.ris.bka.gv.at/dc.pdf'), Name: 'Digi-Ready-Check' },
       ]),
     )!
-    // Was ein eigenes Feld hat, steht NICHT noch einmal in der Liste.
+    // Whatever has a field of its own does NOT stand in the list again.
     expect(flat.otherDocuments.map((d) => d.name)).toEqual(['WFA', 'Digi-Ready-Check'])
     expect(flat.otherDocuments[0]!.urls.pdf).toBe('https://ogd.ris.bka.gv.at/wfa.pdf')
   })
 
   it('nimmt die Gegenüberstellung und die Erläuterungen mit, die unsere Namensregeln verfehlen', () => {
-    // Die billige Hälfte der bekannten Lücke: „SAG_TGÜ" und „EB" bleiben für
-    // die Anlagen-Maschine unsichtbar (ihre Baseline ist gepinnt), die Suche
-    // liest sie aber als weiteres Dokument.
+    // The cheap half of the known gap: „SAG_TGÜ" and „EB" stay invisible to
+    // the annex engine (its baseline is pinned), but the search reads them as
+    // a further document.
     const flat = flattenRisRecord(
       record([
         { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: 'SAG_TGÜ' },
@@ -170,8 +170,8 @@ describe('flattenRisRecord', () => {
   })
 
   it('zählt ein eingebettetes Bild nicht als Dokument', () => {
-    // Ein Satz führt Formeln und Logos als GIF; ohne lesbares Format ist ein
-    // Verweis kein Dokument.
+    // A record carries formulae and logos as GIFs; without a readable format
+    // a reference is not a document.
     const flat = flattenRisRecord(
       record([
         urls('MainDocument', 'Xml', 'https://ogd.ris.bka.gv.at/m.xml'),

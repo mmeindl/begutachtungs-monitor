@@ -3,7 +3,7 @@ import { addressedParagraphs, byParagraphOrder, gateParagraph } from '../server/
 import { parsePayload, type Instruction } from '../server/utils/kons/lawApply'
 import { parseInstruction } from '../server/utils/kons/novao'
 
-/** Eine Anweisung, wie der Prüfstand sie dem Modul gibt. */
+/** An instruction, the way the harness hands it to the module. */
 function instr(line: string, payloadLines: string[] = []): Instruction[] {
   const parsed = parseInstruction(line)
   return parsed.ops.map((op) => ({ op, payload: parsePayload(payloadLines), line }))
@@ -14,9 +14,9 @@ describe('gateParagraph', () => {
     expect(gateParagraph({ refused: false, plausible: true, oracle: 'bestätigt' })).toEqual({ show: true, cause: null })
   })
 
-  // Das gemessene Negativergebnis, um dessentwillen es dieses Modul gibt: Die
-  // Verweigerung erkennt, dass die Engine nichts getan hat, nicht, dass das
-  // Getane richtig ist (12,6 % Abweichung mit und ohne, 09.09.2026).
+  // The measured negative result this module exists for: the refusal
+  // detects that the engine did nothing, not that what it did is right
+  // (12,6 % deviation with and without, 09.09.2026).
   it('does not show an unverified paragraph, however clean the run was', () => {
     expect(gateParagraph({ refused: false, plausible: true, oracle: 'kein Anhang' })).toEqual({ show: false, cause: 'kein-anhang' })
     expect(gateParagraph({ refused: false, plausible: true, oracle: 'stumm' })).toEqual({ show: false, cause: 'anhang-schweigt' })
@@ -29,8 +29,8 @@ describe('gateParagraph', () => {
     expect(gateParagraph({ refused: false, plausible: false, oracle: 'bestätigt' })).toEqual({ show: false, cause: 'unplausibel' })
   })
 
-  // Die Reihenfolge der Gründe ist die Reihenfolge der Verantwortung: Was wir
-  // selbst nicht konnten, wird nicht dem Dokument des Ressorts angelastet.
+  // The order of causes is the order of responsibility: what we could not do
+  // ourselves is not charged to the ressort's document.
   it('blames our own refusal before the ressort document', () => {
     expect(gateParagraph({ refused: true, plausible: false, oracle: 'widersprochen' }).cause).toBe('verweigert')
   })
@@ -43,12 +43,12 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
       ...instr('§ 22 samt Überschrift lautet:', ['Neue Überschrift', '§ 22. (1) Neuer Text.']),
       ...instr('In § 197 Abs. 2 entfällt die Wortfolge "und".'),
     ]
-    // § 22 vor § 197 vor § 285b — nicht die Zeichenkettenreihenfolge.
+    // § 22 before § 197 before § 285b — not the string order.
     expect(addressedParagraphs(instructions, [])).toEqual(['22', '197', '285b'])
   })
 
-  // Eine Verweigerung darf den Paragraphen NICHT aus dem Nenner nehmen:
-  // sonst stünde „2 von 2" über einer Liste, die den halben Entwurf verschweigt.
+  // A refusal must NOT take the Paragraph out of the denominator: otherwise
+  // „2 von 2" would stand over a list that hides half the draft.
   it('keeps a refused instruction in the denominator', () => {
     const instructions = instr('In § 5 Abs. 1 wird das Wort "A" durch das Wort "B" ersetzt.')
     expect(addressedParagraphs(instructions, ['In den §§ 9 und 10 wird etwas Unlesbares getan.'])).toEqual(['5', '9'])

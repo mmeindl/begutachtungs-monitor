@@ -4,10 +4,10 @@ import { ministryTokens } from '../server/utils/search/searchHaystack'
 import type { BgblOutcome, RisConsultation } from '../shared/types'
 
 /**
- * Der Filter der zweiten Listenhälfte (`server/utils/ris/risList.ts`).
- * Zwei Regeln tragen hier eine Aussage über das Verfahren: wo ein Satz ohne
- * Gegenstand auf der Stationsachse steht, und dass der Ressortname nicht
- * durchsucht wird.
+ * The filter of the list's second half (`server/utils/ris/risList.ts`).
+ * Two rules carry a statement about the procedure here: where a record
+ * without a Gegenstand sits on the station axis, and that the ressort name is
+ * not searched.
  */
 
 function rec(overrides: Partial<RisConsultation> = {}): RisConsultation {

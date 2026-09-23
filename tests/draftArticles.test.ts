@@ -25,10 +25,11 @@ describe('promulgationByArticle', () => {
     expect(map.get('Änderung des KommAustria-Gesetzes')).toEqual({ organ: 'BGBl. I Nr.', nummer: '32/2001' })
   })
 
-  // „wird in seinem Artikel 1 wie folgt geändert" — die Einschränkung steht
-  // zwischen Verb und Formel, und zwar bei den artikelgegliederten Gesetzen.
-  // Ohne sie fiel der ganze Artikel aus „Geltendes Recht", aus den
-  // §-Namen und aus dem Nenner der Lesefassung (60/ME, 19.09.2026).
+  // „wird in seinem Artikel 1 wie folgt geändert" — the restriction stands
+  // between the verb and the formula, and it does so in the laws organised
+  // into Artikel. Without it the whole Artikel fell out of „Geltendes
+  // Recht", out of the § names and out of the reading version's denominator
+  // (60/ME, 19.09.2026).
   it('reads a clause whose verb and formula are separated', () => {
     const blocks = parseRisXml(
       doc(
@@ -38,9 +39,9 @@ describe('promulgationByArticle', () => {
     expect(promulgationByArticle(blocks).get('Änderung des Eltern-Kind-Pass-Gesetzes')).toEqual({ organ: 'BGBl. I Nr.', nummer: '82/2023' })
   })
 
-  // Die Gegenprobe, die den Ausdruck eng hält. Die Lücke zwischen Verb und
-  // Formel darf keine Satzgrenze überspringen: Sonst wird aus einem neuen
-  // Gesetz, das ein anderes zitiert, eine Novelle davon (101/ME).
+  // The counter-check that keeps the expression tight. The gap between verb
+  // and formula must not jump a sentence boundary: otherwise a new law that
+  // cites another one becomes a Novelle of it (101/ME).
   it('keeps the clause test inside one sentence', () => {
     expect(isAmendmentClause('Das Eltern-Kind-Pass-Gesetz, BGBl. I Nr. 82/2023, wird in seinem Artikel 1 wie folgt geändert:')).toBe(true)
     expect(isAmendmentClause('Das Tabakgesetz, BGBl. Nr. 431/1995, wird wie folgt geändert:')).toBe(true)
@@ -76,9 +77,9 @@ describe('draftArticles', () => {
     const articles = draftArticles(parseRisXml(xml))
     expect(articles.map((a) => [a.index, a.numeral, a.title, a.amends, a.bgbl?.nummer ?? null])).toEqual([
       [0, '1', 'Änderung des Aktiengesetzes', true, '98/1965'],
-      // Das GmbH-Gesetz ist RGBl. Nr. 58/1906. Hier stand bis 19.09.2026
-      // `null` mit der Begründung, eine Stammnorm ohne BGBl lasse nichts
-      // auflösen; das RIS führt sie im selben Feldpaar und löst sehr wohl auf.
+      // The GmbH-Gesetz is RGBl. Nr. 58/1906. Until 19.09.2026 `null` stood
+      // here, on the grounds that a Stammnorm without a BGBl resolves
+      // nothing; RIS carries it in the same field pair and resolves it fine.
       [1, '2', 'Änderung des GmbH-Gesetzes', true, '58/1906'],
     ])
   })

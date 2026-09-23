@@ -37,8 +37,8 @@ describe('parseRisXml strips what RIS prints around the text, not in it', () => 
    * both are RIS's own, not the document's. The footer came through as an
    * ordinary Absatz until 22.09.2026 — measured over the offline cache, 180
    * of 314 readable Erläuterungen documents carried it into a passage the
-   * section shows. The two sibling parsers (`lawStructure.ts`,
-   * `textComparison.ts`) stripped all of it from the start.
+   * section shows. The two sibling parsers (`lawtext/konsTree.ts`,
+   * `annex/comparisonRows.ts`) stripped all of it from the start.
    */
   const xml = `<risdok><nutzdaten><abschnitt>
       <kzinhalt><absatz typ="kzinhalt">Erläuterungen</absatz></kzinhalt>

@@ -25,10 +25,10 @@ describe('articleNameTokens', () => {
 })
 
 describe('lawNameScore — die Vorlage zählt nicht als Inhalt', () => {
-  // Ein Entwurf ohne Artikelzeile trägt seinen Titel als Satz. Die Verben
-  // „geändert wird" ließen die Übereinstimmung auf 0,50 fallen, und
-  // `pickByName` verlangt 0,60 — das LMSVG war damit gegen das zweite Gesetz
-  // desselben BGBl nicht mehr bestimmbar (70/ME, 20 Einheiten ohne Namen).
+  // A draft without an Artikel line carries its title as a sentence. The
+  // verbs „geändert wird" dropped the match to 0,50, and `pickByName` demands
+  // 0,60 — so the LMSVG was no longer determinable against the second law of
+  // the same BGBl (70/ME, 20 units without a name).
   it('matches a sentence-form draft title against the RIS Kurztitel', () => {
     const sentence = 'Bundesgesetz, mit dem das Lebensmittelsicherheits- und Verbraucherschutzgesetz geändert wird'
     expect(lawNameScore(sentence, 'Lebensmittelsicherheits- und Verbraucherschutzgesetz')).toBe(1)

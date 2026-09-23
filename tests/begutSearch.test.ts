@@ -155,8 +155,8 @@ describe('locateInBlocks', () => {
 
 describe('blocksFromPlainText', () => {
   it('bündelt Zeilen zu Absätzen, statt jede einzeln zu nehmen', () => {
-    // Ein PDF kennt nur Zeilenumbrüche. Einzelne Zeilen als Blöcke fänden
-    // die Wörter einer UND-Suche nie zusammen.
+    // A PDF knows only line breaks. Single lines as blocks would never find
+    // the words of an AND search together.
     const blocks = blocksFromPlainText('Erste Zeile\nzweite Zeile\ndritte Zeile')
     expect(blocks).toHaveLength(1)
     expect(blocks[0]!.text).toBe('Erste Zeile zweite Zeile dritte Zeile')
@@ -182,8 +182,8 @@ describe('withoutMinistryMentions', () => {
   ])
 
   it('nimmt dem Verteiler des Begleitschreibens seine Treffer', () => {
-    // Der gemessene Fall: „klima" lieferte eine Druckgeräteverordnung, weil
-    // das Begleitschreiben alle Ministerien als Empfänger listet.
+    // The measured case: „klima" returned a Druckgeräteverordnung, because
+    // the covering letter lists every ministry as a recipient.
     const verteiler = block(
       '13. Bundesministerium für Landesverteidigung 14. Bundesministerium für Land- und Forstwirtschaft, ' +
       'Klima- und Umweltschutz, Regionen und Wasserwirtschaft 15. Bundesministerium für Inneres',
@@ -193,8 +193,8 @@ describe('withoutMinistryMentions', () => {
   })
 
   it('führt zur Sachstelle, wo es beide gibt', () => {
-    // Im Klimagesetz stand als Beleg die Ministerienaufzählung in § 5,
-    // obwohl das Dokument das Wort 164-mal führt.
+    // In the Klimagesetz the evidence shown was the ministry enumeration in
+    // § 5, although the document carries the word 164 times.
     const blocks = [
       block('1. des Bundesministeriums für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft,'),
       block('sowie je einem hochrangigen, für Klima zuständigen Verwaltungsorgan eines jeden Bundeslandes.'),
@@ -204,8 +204,8 @@ describe('withoutMinistryMentions', () => {
   })
 
   it('lässt die Ressortnennung ohne Ministeranrede stehen', () => {
-    // Die UVP-G-Novelle ersetzt genau diese Wortfolge in dutzenden §§ —
-    // dort IST der Name der Gegenstand.
+    // The UVP-G Novelle replaces exactly this phrase in dozens of §§ —
+    // there the name IS the subject matter.
     const novelle = block('wird die Wortfolge "für Klimaschutz, Umwelt, Energie" durch eine andere ersetzt')
     expect(locateInBlocks(withoutMinistryMentions([novelle], tokens), parseSearchQuery('klimaschutz'))).not.toBeNull()
   })

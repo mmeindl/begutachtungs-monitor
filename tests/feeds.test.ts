@@ -121,9 +121,9 @@ describe('buildSitemap', () => {
   it('yields only the static pages for an empty list, well-formed', () => {
     const xml = buildSitemap(SITE, [])
     expect(xml.match(/<loc>/g)).toHaveLength(6)
-    // `/suche` gehört seit 22.09.2026 NICHT mehr hinein: Die Seite ist weg,
-    // das Feld auf `/entwuerfe` beantwortet beides (§12.31), und der Pfad
-    // 301t dorthin — eine sitemap darf keine Weiterleitung anpreisen.
+    // `/suche` does NOT belong in here any more since 22.09.2026: the page
+    // is gone, the field on `/entwuerfe` answers both (§12.31), and the path
+    // 301s there — a sitemap must not advertise a redirect.
     expect(xml).not.toContain(`${SITE}/suche`)
     // Nothing under `/weitere-entwuerfe` belongs in a sitemap: the list is
     // a filter on /entwuerfe since 17.09.2026 and the detail pages moved
