@@ -75,7 +75,7 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/stations/:gp` | counts per station | The station map of one period (`aktuell` = running GP), awaited in full — the prewarm call that pays the cold build (227 requests for GP XXVIII, 650 for XXVII). Its counts are the live base rate of a running period (§12.26) |
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
 | `GET /api/drafts/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
-| `GET /api/drafts/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → **scoped to the laws both texts carry** → aligned → word diff; cached 24 h. `lawsOnlyInRv` / `lawsOnlyInMe` name the laws left out, with their unit counts — a Regierungsvorlage that merges several drafts would otherwise report hundreds of §§ as new (§6d). `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
+| `GET /api/drafts/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → **scoped to the laws both texts carry** → aligned → word diff; cached 24 h. `lawsOnlyInTo` / `lawsOnlyInFrom` name the laws left out, with their unit counts — a Regierungsvorlage that merges several drafts would otherwise report hundreds of §§ as new (§6d). `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
 | `GET /api/ris-drafts?gp&status&ministry&art&q` | `RisConsultationsResponse` | The RIS Begut records Parliament has no Gegenstand for — mostly Verordnungsentwürfe (§12.16). Same query vocabulary as `/api/drafts` plus `art`; sorted by the same `compareDrafts`, because `/entwuerfe` merges both lists (§12.19) |
 | `GET /api/ris-drafts/:id` | `RisConsultationDetail` | One such record by its RIS document id (`BEGUT_…`, validated against `RIS_ID_RE` — the same pattern the page route and the per-item `.ics` test). Renders at `/entwuerfe/:id`, the same namespace as a draft (§12.19) |
 | `GET /api/ris-map/:gp` (or `aktuell`) | `RisMapResponse` | RIS Begut record per ME of the GP with status/tier/score, RIS URL and document URLs, the Ende offset (a non-zero value is a Fristabweichung). Cached 30 min on top of the 20-h corpus cache; the nightly prewarm timer calls `aktuell`. `docs/ris-join.md` §3a |
@@ -86,12 +86,21 @@ Param validation: `gp` = Roman numerals (`/^[IVXLC]+$/`), `inr` = positive integ
 
 Where a module belongs (decided 22.09.2026): `shared/` holds what BOTH
 runtimes import — the contract in `shared/types/` and the pure helpers the
-server and the app call alike. View models and German copy only the app
-reads live in `app/utils/` (`spine.ts`, `entryView.ts`, `deadlines.ts`,
-`outcomes.ts`, `lawPackage.ts`), which Nuxt auto-imports the same way; they
-carry no Vue, so Vitest keeps reaching them through relative imports.
+server and the app call alike — `shared/types/` plus `shared/utils/`
+(`draftAliases`, `draftOrder`, `draftStations`, `lawStations`, `format`,
+`gp`, `diffKey`, `explanationKey`, `queryParams`, `risConsultations`,
+`statementRef`, `textMatch`). View models and German copy only the app reads
+live in `app/utils/` (`spine`, `entryView`, `deadlines`, `outcomes`,
+`lawPackage`, `draftFilters`, `statementRows`, `absaetze`, `annexNotes`,
+`diffBadges`, `diffSides`), which Nuxt auto-imports the same way; they carry
+no Vue, so Vitest keeps reaching them through relative imports.
 
-Server internals (`server/utils/`):
+Server internals (`server/utils/`), in folders since the September 2026
+refactor — `upstream/`, `http/`, `cache/`, `parliament/`, `ris/`, `search/`
+for the plumbing, and `lawtext/`, `diff/`, `annex/`, `kons/`,
+`explanations/`, `text/`, `harness/` for the engines. Nitro auto-imports
+them recursively into ONE namespace, so a name has to be unique across all
+of them, whichever folder it sits in:
 
 - `upstream/parliament.ts` — upstream client (`fetchFilterList`, `fetchGegenstand`, the GP and header assertions, the 404/502 mapping).
 - `parliament/drafts.ts` — the cached leaves (`getCurrentGp`, `getDraftsForGp`, `getVorlagenForGp`, `getGegenstand`) and the cache architecture they follow.
@@ -342,9 +351,9 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-Vitest, 27 files, ~650 cases, no network and no Nitro: everything under test is
-a pure module with relative imports, which is why the modules are cut that way
-in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
+Vitest, 81 files, 1.213 cases, no network and no Nitro: everything under test
+is a pure module with relative imports, which is why the modules are cut that
+way in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
 app/server/`shared`, and `pnpm typecheck:tools` covers `scripts/` and `tests/`
 (`tsconfig.tools.json`) — the half that `nuxt typecheck` does not see and that
 the log below blames twice for shipped bugs. `pnpm lint` (`@nuxt/eslint`,
@@ -352,23 +361,43 @@ flat config in `eslint.config.mjs`) is the fourth command. All four run in CI
 on every push (`.github/workflows/ci.yml`).
 
 - **Upstream → our types:** `htmlText` (entity decoding, stage HTML), `dates`
-  (deadline parsing), `list81`/`list101`/`list142`/`detailJson` (row and JSON
-  mapping), `organisations` (the grouping algorithm), `privacy` (classifier: orgs, persons with
-  titles/postal-code suffix, placeholder, edge cases → safe default), `gp`
-  (Roman numerals), `related`, `aliases`, `budget`, `deadlines`, `outcomes`
-  (the base rates quoted in the UI), `feeds` (RSS/ICS escaping), `lastgood`
+  (deadline parsing), `list81`/`list101`/`list142`/`detailJson`/`listHeaders`
+  (row and JSON mapping, and finding a column by its header rather than its
+  index), `draftList` (the list's Parliament half), `risRecord`/`risList`/
+  `risConsultations` (its RIS half), `organisations` (the grouping algorithm),
+  `privacy` (classifier: orgs, persons with titles/postal-code suffix,
+  placeholder, edge cases → safe default), `gp` (Roman numerals), `related`,
+  `draftAliases`, `budget`, `deadlines`, `outcomes` (the base rates quoted in
+  the UI), `feeds` (RSS/ICS escaping), `upstreamFetch` (the one retry loop:
+  attempts, backoff, size limit, the errors it raises), `lastgood`
   (round-trip, version/corruption/empty-record rejection, path validation, I/O
   failure degrades instead of throwing — point `BM_STATE_DIR` at a temp dir),
   `cacheLayers` (every cached function declares its layer, §5).
-- **RIS join and the ME→RV diff:** `risJoin` (tiers), `titleSimilarity` and
-  `ministryCodes` (its toolkit), `lawDiff`, `bgblCitation`, `draftArticles`,
-  `lawPackage`.
-- **Amendment engine (§12.12):** `novao` (instruction parsing), `lawApply`,
-  `applyGuard`, `applyReport`, `tguOracle`.
+- **RIS join and the ME→RV diff:** `risJoin` (tiers), `titleSimilarity`,
+  `ministryCodes` and `clearWinner` (its toolkit), `bgblJoin` and
+  `bgblCitation` (draft → Kundmachung), `precedingDraft`, `lawDiff`,
+  `wordDiff` (the word-level diff and `isEditorialChange`), `lawNames`,
+  `draftArticles`, `lawStations`, `draftStations`, `lawPackage`.
+- **Amendment engine (§12.12):** `novao` (instruction parsing),
+  `instructionAddress`, `lawApply`, `applyGuard`, `applyReport`, `konsGate`,
+  `konsLaw`, `tguOracle`, `risXml`, `normalize`, `designation`,
+  `punctuationTokens`.
 - **Textgegenüberstellung (§12.13):** `comparisonRows` (the XML table),
   `annexPdf` (page geometry), `annexBoundaries` (which heading opens a law),
+  `annexDraft` and `draftText` (what the draft itself orders),
   `annexText`/`coverage`/`rightColumn`/`verdict`/`gateRows` (the gate),
-  `annexGolden`.
+  `annexGolden` and `annexGateGolden` (the two frozen real runs),
+  `annexReport` (the drift alarm's own rules, §12.13).
+- **Erläuterungen and the reasoning diff (§12.29, §12.30):**
+  `risExplanations` (the RIS XML), `explanationsHtml` (Parliament's Word
+  HTML), `explanationKey` (the key both sides build), `reasoningDiff`.
+- **Search (§12.31):** `begutSearch` (blocks, hits, the ministry distributor),
+  `searchHaystack` (the ressort mention), `textMatch` (one field, one rule for
+  spaces).
+- **What the page decides, as pure `app/utils` modules:** `entryView` (§12.28,
+  what each kind puts in which zone), `spine` (the five stations),
+  `draftFilters`, `draftOrder`, `statementRows`, `statementRef`, `absaetze`,
+  `annexNotes`, `diffBadges`, `diffSides`, `diffKey`, `format`.
 
 `annexGolden` is the only one that is not synthetic, and deliberately: two real
 RIS documents are checked in verbatim (CC-BY 4.0) because synthetic fixtures
@@ -396,8 +425,8 @@ column, another §'s standing text or its proposed text appended to the right
 one — and prints what each rule catches, beside the false alarms the same
 rules produce on the untouched corpus. Those false alarms are the two
 right-column withholdings of `harness/annexPdf.ts` over the same population,
-so the two harnesses cross-check each other, and the reach `annex/verdict.ts`
-states is the number this one prints. It exists because that number was
+so the two harnesses cross-check each other, and the reach
+`annex/rightColumn.ts` states is the number this one prints. It exists because that number was
 measured once in a scratch file, and a claim whose instrument is gone is a
 claim nobody can re-check (§12.13).
 
@@ -5679,7 +5708,7 @@ formatiert: `<ueberschrift typ="erlz">` trägt die Teil-Überschriften,
 „Zu Z 4 (§ 54c Abs. 1a und 1b):". Gelesen wird über `parseRisXml`, denselben
 Leser, den Entwurfstext und ME→RV-Vergleich benutzen
 (`server/utils/explanations/risExplanations.ts`, rein; `explanationsService.ts` ist die
-Nitro-Hälfte, `tests/explanations.test.ts` hält die Formen fest).
+Nitro-Hälfte, `tests/risExplanations.test.ts` hält die Formen fest).
 
 **Gemessen vor dem Bauen** (`pnpm corpus:erlaeuterungen`, 465 Dokumente mit
 Fristbeginn ab 2024, gelesen durch den Produktionsparser):
