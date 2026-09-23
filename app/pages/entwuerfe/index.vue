@@ -143,14 +143,46 @@ const moreFilters = computed(
 )
 const filtersOpen = ref(moreFilters.value > 0)
 
+/**
+ * WHICH HALVES THIS `art` ASKS FOR — the filter decides the REQUEST, not just
+ * the rows, since 23.09.2026 (docs/architecture.md §7).
+ *
+ * `art` is the one control here that does not narrow a list: it names one of
+ * the two halves this page merges. `/api/drafts` holds Ministerialentwürfe
+ * and nothing else, so under „Verordnungsentwürfe" there is nothing for it to
+ * answer; the RIS half is the whole other half. Both were fetched whatever
+ * the filter said until then and one of them was dropped in the browser: the
+ * server-rendered payload of a filtered list carried both halves in full,
+ * 218 KB, against the 152 KB („Verordnungsentwürfe") resp. 67 KB
+ * („Ministerialentwürfe") it carries now (measured 23.09.2026).
+ *
+ * NOT a query parameter of either endpoint. `/api/ris-drafts?art=` exists but
+ * means something else — the instrument kind, `verordnung|gesetz|unbestimmt`
+ * — and handing this filter's `verordnung` to it would drop the three records
+ * of the half that are no Verordnungen (198 of 201, measured 23.09.2026).
+ * Those are the „und andere" of the label and they belong on the page.
+ */
+const wantsMe = computed(() => art.value !== 'verordnung')
+const wantsRis = computed(() => art.value !== 'ministerialentwurf')
+
 /* The three fetches are started here and awaited below, so they overlap
  * instead of queueing. Awaited one after the other, the RIS corpus's runtime
  * was added to that of the Ministerialentwürfe although neither needs
  * anything from the other — the homepage's pattern, for the same reason. */
-const draftsFetch = useFetch<DraftsResponse>('/api/drafts', { query })
+/* `enabled` keeps the request from being made at all, on the server too, so
+ * a filtered list ships only the half it renders. Watched is the half's own
+ * wanted-ness and not `art`: switching between the halves then fetches the
+ * one that is newly wanted and leaves the other untouched. Switching back
+ * fetches again — the same as every other filter on this page, which are all
+ * URL-driven and keyed into `useFetch`. */
+const draftsFetch = useFetch<DraftsResponse>('/api/drafts', {
+  query,
+  enabled: wantsMe,
+  watch: [wantsMe],
+})
 
 /**
- * The other half, and it is the OPTIONAL one.
+ * The other half, and it is the OPTIONAL one — as long as both are asked for.
  *
  * Its rows come from the RIS Begut corpus — 46 paged requests with a pause
  * between them when the cache is cold, measured at 46 s right after a
@@ -159,10 +191,14 @@ const draftsFetch = useFetch<DraftsResponse>('/api/drafts', { query })
  * same rule as everywhere else here, enrichment is never a fact the page
  * depends on. A failure is stated, not swallowed — the count line must not
  * report "0 ohne Gegenstand" when the truth is "we could not look".
+ *
+ * Under „Verordnungsentwürfe" it stops being the optional half: nothing
+ * stands beside it there, so it carries the page and the gate follows it
+ * (`gateStatus`).
  */
 const risFetch = useFetch<RisConsultationsResponse>(
   '/api/ris-drafts',
-  { query, timeout: 8000 },
+  { query, timeout: 8000, enabled: wantsRis, watch: [wantsRis] },
 )
 
 /**
@@ -192,31 +228,61 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
   { lazy: true, server: false },
 )
 
-const { data, error, refresh, status } = await draftsFetch
-const { data: risData, error: risError } = await risFetch
+const { data: meFetched, error, refresh, status } = await draftsFetch
+const { data: risFetched, error: risError, status: risStatus, refresh: risRefresh } = await risFetch
 const { data: secondRound } = await secondRoundFetch
 
+/* What this `art` asks for, and nothing else. A `useFetch` handle keeps the
+ * answer it last gave when it is switched off, so without this cut the count
+ * line, the Ressort menu and „in zweiter Runde" would go on counting a half
+ * that is not on the page any more after a toggle. */
+const meData = computed(() => (wantsMe.value ? meFetched.value : null))
+const risData = computed(() => (wantsRis.value ? risFetched.value : null))
+
+/**
+ * The gate follows the half that carries the page.
+ *
+ * That is the Ministerialentwürfe wherever they are asked for; the RIS half
+ * beside them stays enrichment, and its absence is stated in the count line
+ * rather than by an error card. Under „Verordnungsentwürfe" nothing stands
+ * beside it: it is the page's own data then, and it decides loading, failure
+ * and retry the way the other half does otherwise.
+ */
+const gateStatus = computed(() => (wantsMe.value ? status.value : risStatus.value))
+const gateError = computed(() => (wantsMe.value ? error.value : risError.value))
+const gateData = computed(() => (wantsMe.value ? meData.value : risData.value))
+
+/* Retries whichever halves this `art` asks for — a switched-off handle
+ * refuses by itself (`enabled`). */
+function retry(): void {
+  void refresh()
+  void risRefresh()
+}
+
 const selectedGp = computed({
-  get: () => gp.value || data.value?.gp || risData.value?.gp || '',
+  get: () => gp.value || meData.value?.gp || risData.value?.gp || '',
   set: (value: string) => {
     gp.value = value
   },
 })
 
 /**
- * Both halves know the periods and the ressorts; the union is the menu.
+ * Both halves know the periods and the ressorts; the union is the menu — the
+ * union of the halves that are ASKED FOR. Under an Art filter the menu
+ * therefore names the Ressorts of the half on the page: a Ressort that could
+ * only empty the list is not a choice.
  *
  * Newest period first, by the NUMBER the Roman code stands for — comparing
  * the strings would put XXVIII before XXX, and the table reaches far enough
  * that this stops being hypothetical.
  */
 const availableGps = computed(() => {
-  const all = new Set([...(data.value?.availableGps ?? []), ...(risData.value?.availableGps ?? [])])
+  const all = new Set([...(meData.value?.availableGps ?? []), ...(risData.value?.availableGps ?? [])])
   return [...all].sort((a, b) => (romanToInt(b) ?? 0) - (romanToInt(a) ?? 0))
 })
 const ministries = computed(() => {
   const byCode = new Map<string, string>()
-  for (const m of [...(data.value?.ministries ?? []), ...(risData.value?.ministries ?? [])]) {
+  for (const m of [...(meData.value?.ministries ?? []), ...(risData.value?.ministries ?? [])]) {
     if (!byCode.has(m.code) || (!byCode.get(m.code) && m.name)) byCode.set(m.code, m.name)
   }
   return [...byCode].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
@@ -252,14 +318,12 @@ const vorlageRows = computed<DraftListRow[]>(() => {
     .map((v) => ({ kind: 'vorlage' as const, key: `rv-${v.citation}`, vorlage: v }))
 })
 
+/* No Art test of its own any more: a half that this `art` excludes was never
+ * fetched, and `meData`/`risData` are null for it. */
 const rows = computed<DraftListRow[]>(() => {
   const out: DraftListRow[] = []
-  if (art.value !== 'verordnung') {
-    for (const d of data.value?.items ?? []) out.push({ kind: 'me', key: `me-${d.gp}-${d.inr}`, draft: d })
-  }
-  if (art.value !== 'ministerialentwurf') {
-    for (const c of risData.value?.items ?? []) out.push({ kind: 'ris', key: `ris-${c.id}`, item: c })
-  }
+  for (const d of meData.value?.items ?? []) out.push({ kind: 'me', key: `me-${d.gp}-${d.inr}`, draft: d })
+  for (const c of risData.value?.items ?? []) out.push({ kind: 'ris', key: `ris-${c.id}`, item: c })
   out.push(...vorlageRows.value)
   return out.sort((a, b) =>
     sort.value === 'stellungnahmen' ? compareRowsByStatements(a, b) : compareDrafts(rowOrderKey(a), rowOrderKey(b)),
@@ -315,11 +379,11 @@ const {
  * because there it is a statement about the search scope rather than about
  * the corpus.
  */
-const meTotal = computed(() => data.value?.total ?? 0)
+const meTotal = computed(() => meData.value?.total ?? 0)
 const risTotal = computed(() => risData.value?.total ?? 0)
-const visibleTotal = computed(
-  () => (art.value === 'verordnung' ? 0 : meTotal.value) + (art.value === 'ministerialentwurf' ? 0 : risTotal.value),
-)
+/* Both are 0 for a half that was not fetched, so the sum is what stands in
+ * the list — the search placeholder may name it. */
+const visibleTotal = computed(() => meTotal.value + risTotal.value)
 /* The station map costs hundreds of fetches on a cold build and can fail
  * (`server/utils/parliament/stationMap.ts`). The page then says that nothing
  * was filtered — a list standing unfiltered under an active filter is the
@@ -334,9 +398,11 @@ const visibleTotal = computed(
  * it can be said above the list: whoever comes from the homepage saw „Zweite
  * Runde" there as a section and looks for it here. It is not gone, it is
  * sorted in. */
+/* Gone under „Verordnungsentwürfe", and that is right: without the
+ * Ministerialentwurf half no row of the list is in a second round. */
 const secondRoundRowCount = computed(
   () =>
-    (data.value?.items ?? []).filter((d) => d.chain?.filingOpen).length + vorlageRows.value.length,
+    (meData.value?.items ?? []).filter((d) => d.chain?.filingOpen).length + vorlageRows.value.length,
 )
 
 /* A station AFTER the Begutachtung excludes the Verordnungsentwürfe: without
@@ -370,19 +436,18 @@ const stationConflict = computed(() => laterStationsOnly.value && art.value === 
  * (permanent, the archive's, §12.27). Only the second case needs the
  * explanation without an active station filter too, because a whole column
  * would otherwise vanish wordlessly. */
-const chainUnlinkedPeriod = computed(() => data.value?.chainCoverage === 'unlinked')
+const chainUnlinkedPeriod = computed(() => meData.value?.chainCoverage === 'unlinked')
 
 const stationsUnavailable = computed(
   () =>
-    data.value !== null &&
-    data.value?.stationsAvailable === false &&
+    meData.value?.stationsAvailable === false &&
     !chainUnlinkedPeriod.value &&
     stations.value.length > 0,
 )
 
 const countLabel = computed(() => {
   const parts: string[] = []
-  if (art.value !== 'verordnung') {
+  if (wantsMe.value) {
     parts.push(countLabelDe(meTotal.value, 'Ministerialentwurf', 'Ministerialentwürfe'))
   }
   /* A third term, never added up (§12.19): a Regierungsvorlage without a
@@ -411,7 +476,10 @@ const countLabel = computed(() => {
    * cannot count two different things. „ohne Gegenstand im Parlament" was
    * Parliament's category, not this list's — and it stood beside a box
    * carrying a join statistic under the same word. */
-  if (art.value !== 'ministerialentwurf') {
+  /* `risError` only reaches this line while both halves are asked for. Where
+   * the RIS half carries the page alone, its failure is the page's failure
+   * and the gate says so. */
+  if (wantsRis.value) {
     parts.push(
       risError.value
         ? 'die Verordnungsentwürfe sind gerade nicht abrufbar'
@@ -443,14 +511,16 @@ const countLabel = computed(() => {
            separation that no longer has to exist. -->
     </header>
 
+    <!-- No `v-slot="{ data }"` here, unlike the detail pages: this list
+         reads both halves itself (`meData`, `risData`) and the gate only
+         decides whether there is an answer to render at all. -->
     <FetchGate
-      v-slot="{ data }"
-      :status="status"
-      :error="error"
-      :data="data"
+      :status="gateStatus"
+      :error="gateError"
+      :data="gateData"
       loading-label="Entwürfe werden geladen …"
       state-class="mt-10"
-      @retry="refresh()"
+      @retry="retry()"
     >
       <!-- NO EXPLANATORY BOX any more, since 18.09.2026. It stood between the
            heading and the filters — at 390 px eight lines of prose about the

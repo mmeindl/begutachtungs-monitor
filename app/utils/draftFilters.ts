@@ -22,13 +22,19 @@ import { firstQueryValue } from '../../shared/utils/queryParams'
  * the only one the data supports without a classifier. `verordnung` is
  * spelled the way a reader would type it, and `/weitere-entwuerfe` redirects
  * onto it.
+ *
+ * It is therefore the one filter that names a HALF rather than narrowing a
+ * list, which is why it is no part of `draftApiQuery`: the page decides by it
+ * which of the two endpoints is asked at all.
  */
 export type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
 
 export type SortKey = 'frist' | 'stellungnahmen'
 
 /** What the two list endpoints are asked for. `art` is not among them: it
- *  cuts the merged rows client-side, see the page. */
+ *  selects the half, so the page leaves the excluded endpoint unasked
+ *  instead of passing the value on. (`/api/ris-drafts` does take an `art`,
+ *  but it means the instrument kind — a different vocabulary.) */
 export interface DraftQueryFilters {
   status: DraftStatus
   stations: DraftStation[]

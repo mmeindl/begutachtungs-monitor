@@ -67,9 +67,11 @@ export function useDraftFilters(): DraftFilters {
   })
   onUnmounted(() => clearTimeout(qTimer))
 
-  /* Only the five the endpoints take: `art` and `sort` must not be in this
-   * computed, or changing either would hand `useFetch` a new object and
-   * refetch both lists for a cut that happens in the browser. */
+  /* Only the five the endpoints take. `sort` must not be in this computed,
+   * or reordering would hand `useFetch` a new object and refetch both lists
+   * for something the browser does. `art` stays out for a different reason:
+   * neither endpoint takes it in this vocabulary — it decides which of the
+   * two the page asks at all, and the page watches it for that. */
   const query = computed(() =>
     draftApiQuery({
       status: statusFilter.value,
