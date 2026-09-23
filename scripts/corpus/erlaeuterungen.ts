@@ -80,21 +80,21 @@ interface Row {
 }
 
 /**
- * SCHRITT 2: Landen die Passagen des Besonderen Teils an ihrem Paragraphen?
+ * STEP 2: do the passages of the Besonderer Teil land at their Paragraph?
  *
- * Gemessen wird der Join selbst, nicht seine Zutaten: je Entwurf werden das
- * Hauptdokument (für die Artikel), die Textgegenüberstellung und die
- * Erläuterungen gelesen — alle drei durch die Produktionsparser — und dann
- * gezählt, was zueinander findet. Die drei Zahlen, auf die es ankommt:
+ * What is measured is the join itself, not its ingredients: per draft the
+ * main document (for the Artikel), the Textgegenüberstellung and the
+ * Erläuterungen are read — all three through the production parsers — and
+ * then it is counted what finds what. The three numbers that matter:
  *
- *  - **Deckung:** Anteil der §§ der Beilage, die eine Begründung bekommen.
- *    Das ist, was der Leser sieht.
- *  - **Verlust:** Passagen, die keinen § der Beilage treffen. Sie sind nicht
- *    falsch, sie sind unsichtbar — und wenn es viele sind, ist der Schlüssel
- *    der falsche und nicht die Beilage unvollständig.
- *  - **Verworfen:** Passagen, deren Gesetz in einem Mehrgesetzespaket nicht
- *    bestimmbar war. Das ist die Regel aus `explanationsJoin.ts` bei der
- *    Arbeit, und ihre Kosten müssen sichtbar sein.
+ *  - **Deckung:** the share of the annex's §§ that get a reasoning. That is
+ *    what the reader sees.
+ *  - **Verlust:** passages that hit no § of the annex. They are not wrong,
+ *    they are invisible — and where there are many, the key is the wrong one
+ *    rather than the annex incomplete.
+ *  - **Verworfen:** passages whose law could not be determined inside a
+ *    multi-law package. That is the rule from `explanationsJoin.ts` at work,
+ *    and its cost has to be visible.
  */
 async function measureJoin(records: RisBegutFlat[]): Promise<void> {
   const usable = records.filter((r) => r.explanations?.xml && r.textComparison?.xml && r.mainDocument.xml)
@@ -104,21 +104,21 @@ async function measureJoin(records: RisBegutFlat[]): Promise<void> {
   interface JoinRow {
     id: string
     cite: string
-    /** §§ der Beilage (Gesetz + Paragraph), die überhaupt Zeilen tragen */
+    /** §§ of the annex (law + Paragraph) that carry any rows at all */
     paras: number
-    /** davon mit Begründung */
+    /** of those, the ones with a reasoning */
     matched: number
-    /** Passagen, die keinen § der Beilage treffen */
+    /** passages that hit no § of the annex */
     orphans: number
-    /** Passagen, in einem Mehrgesetzespaket ohne bestimmbares Gesetz verworfen */
+    /** passages discarded in a multi-law package with no determinable law */
     dropped: number
-    /** Passagen des Besonderen Teils insgesamt (mit Text und §-Adresse) */
+    /** passages of the Besonderer Teil in total (with text and a § address) */
     passages: number
     note: string | null
   }
 
-  // Ein Entwurf im Detail: die drei Schlüsselmengen nebeneinander. Ohne das
-  // sieht man nur, DASS nichts zueinander findet, nie warum.
+  // One draft in detail: the three key sets side by side. Without it one
+  // only sees THAT nothing matches, never why.
   if (show) {
     for (const record of usable) {
       const [mainXml, annexXml, erlXml] = await Promise.all([
@@ -164,19 +164,18 @@ async function measureJoin(records: RisBegutFlat[]): Promise<void> {
       const parse = parseTextComparison(annexXml, articles)
       if (!parse.rows.length) return { id: record.id, cite, paras: 0, matched: 0, orphans: 0, dropped: 0, passages: 0, note: parse.unreadable ?? 'Beilage ohne Zeilen' }
       /**
-       * Die Beilage hat ihre Gesetzesgrenzen nicht markiert, das Paket hat
-       * aber mehrere: Dann trägt § 14 der Beilage keine Auskunft darüber,
-       * welches Gesetz gemeint ist, und zwei Erläuterungspassagen können
-       * genau darauf zeigen. Hier wird **nicht** angehängt — dieselbe
-       * Verweigerung, die `ComparisonRow.law` für sich selbst schon
-       * ausspricht. Als Fehlschlag gezählt wäre das eine falsche Zahl über
-       * den Join; es ist eine Eigenschaft der Beilage.
+       * The annex did not mark its law boundaries, but the package has
+       * several: then § 14 of the annex carries no information about which
+       * law is meant, and two Erläuterungen passages can point at exactly
+       * that. Nothing is attached here — the same refusal `ComparisonRow.law`
+       * already pronounces for itself. Counted as a failure it would be a
+       * wrong number about the join; it is a property of the annex.
        */
       if (parse.refusal && articles.filter((a) => a.key !== null).length > 1) {
         return { id: record.id, cite, paras: 0, matched: 0, orphans: 0, dropped: 0, passages: 0, note: 'Beilage ohne Gesetzesgrenzen, Paket mit mehreren Gesetzen' }
       }
 
-      // Die §§ der Beilage, unter demselben Schlüssel wie die Einträge.
+      // The annex's §§, under the same key as the entries.
       const annexParas = new Set<string>()
       for (const row of parse.rows) {
         if (row.kind !== 'pair') continue
@@ -194,7 +193,7 @@ async function measureJoin(records: RisBegutFlat[]): Promise<void> {
         if (annexParas.has(key)) hit.add(key)
         else orphans++
       }
-      // Verworfen: Passagen, die Einträge hätten liefern müssen und keine lieferten.
+      // Discarded: passages that should have produced entries and did not.
       const expected = passages.reduce((n, p) => n + p.paragraphs.length, 0)
       return {
         id: record.id,
@@ -230,9 +229,8 @@ async function measureJoin(records: RisBegutFlat[]): Promise<void> {
   console.log(`  davon ohne § in der Beilage (Verlust) ${String(entries - matched).padStart(6)}  ${((1 - matched / entries) * 100).toFixed(1)} %`)
   console.log(`  verworfen (Gesetz nicht bestimmbar)   ${String(sum((r) => r.dropped)).padStart(6)}`)
 
-  // Die Verteilung je Entwurf: ein Mittelwert über Entwürfe verschiedener
-  // Größe verbirgt genau den Fall, der zählt — den Entwurf, bei dem nichts
-  // zueinander findet.
+  // The distribution per draft: a mean over drafts of different sizes hides
+  // exactly the case that counts — the draft where nothing matches at all.
   const share = ran.map((r) => r.matched / r.paras).sort((a, b) => a - b)
   const at = (q: number) => share[Math.min(share.length - 1, Math.floor(q * share.length))] ?? 0
   console.log(`  Deckung je Entwurf                    p10 ${(at(0.1) * 100).toFixed(0)} % · Median ${(at(0.5) * 100).toFixed(0)} % · p90 ${(at(0.9) * 100).toFixed(0)} %`)

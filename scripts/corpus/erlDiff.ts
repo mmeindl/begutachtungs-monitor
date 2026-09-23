@@ -1,34 +1,34 @@
 #!/usr/bin/env vite-node
 /**
- * Ändert sich die Begründung des Ressorts zwischen Entwurf und
- * Regierungsvorlage? — die Messung, die das letzte offene Stück des
- * Diff-Layers gattert (`TODO.md`, docs/architecture.md §12.10).
+ * Does the ressort's reasoning change between the draft and the
+ * Regierungsvorlage? — the measurement that gates the last open piece of the
+ * diff layer (`TODO.md`, docs/architecture.md §12.10).
  *
  * Usage:  npx vite-node scripts/corpus/erlDiff.ts XXVIII [anzahl] [cacheDir]
  *
- * WARUM ERST MESSEN. Ein zweiter Vergleichsabschnitt kostet eine Seite, einen
- * Endpunkt und eine Erklärung; er lohnt nur, wenn die beiden Dokumente
- * überhaupt auseinandergehen. Sind sie fast immer gleich, ist das Ergebnis
- * ein Satz in den Docs und kein Feature — dieselbe Reihenfolge wie beim
- * zweiten Verifikationssignal (§12.12b), wo ein halber Tag Messung ein
- * Paket erspart hat.
+ * WHY MEASURE FIRST. A second comparison section costs a page, an endpoint
+ * and an explanation; it only pays off where the two documents diverge at
+ * all. Where they are almost always the same, the result is a sentence in the
+ * docs and not a feature — the same order as with the second verification
+ * signal (§12.12b), where half a day of measuring saved a whole package.
  *
- * BEIDE SEITEN VOM PARLAMENT, absichtlich. Die Erläuterungen des Entwurfs
- * lägen auch im RIS als typisiertes XML, die der Regierungsvorlage nicht.
- * Ein Vergleich XML gegen Word-HTML misst zuerst die beiden Konverter — die
- * Lehre aus der sechsten Messung in §12.12. Also dieselbe Quelle, derselbe
- * Parser (`parseParliamentHtml`), und was übrig bleibt, ist Inhalt.
+ * BOTH SIDES FROM PARLIAMENT, on purpose. The draft's Erläuterungen would
+ * also be in RIS as typed XML; the Regierungsvorlage's would not. A
+ * comparison of XML against Word HTML measures the two converters first —
+ * the lesson of the sixth measurement in §12.12. So the same source, the same
+ * parser (`parseParliamentHtml`), and what is left over is content.
  *
- * Der Join Entwurf → Regierungsvorlage ist der von `scripts/corpus/rvLatency.ts`:
- * die Verfahrensschritte des Entwurfs nennen die Vorlage im Link.
+ * The join draft → Regierungsvorlage is the one from
+ * `scripts/corpus/rvLatency.ts`: the draft's stages name the Vorlage in the
+ * link.
  *
- * **NUR 1:1-PAARE ZÄHLEN.** Mehrere Entwürfe können in derselben Vorlage
- * landen — in der XXVIII. GP ziehen acht Entwürfe auf I/129, ein
- * Sammelvorhaben mit 47.199 Wörtern Erläuterungen. Ein Entwurf mit 600
- * Wörtern dagegen gehalten ergibt 97 % „Abweichung", und gemessen ist damit
- * das Vehikel, nicht die Begründung. Solche Paare werden getrennt
- * ausgewiesen und nicht in den Median gerechnet; ein Vergleich, der sie
- * einbezöge, wäre die erste Fassung dieser Messung gewesen.
+ * **ONLY 1:1 PAIRS COUNT.** Several drafts can end up in the same Vorlage —
+ * in GP XXVIII eight drafts pull to I/129, a package with 47.199 words of
+ * Erläuterungen. A draft of 600 words held against it yields 97 %
+ * „Abweichung", and what is then measured is the vehicle, not the reasoning.
+ * Such pairs are shown separately and are not counted into the median; a
+ * comparison that included them would have been the first version of this
+ * measurement.
  */
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -52,7 +52,7 @@ function fetchJson(url: string, body?: unknown): Promise<any> {
   return getJson(url, { script: SCRIPT, ...(body === undefined ? {} : { method: 'POST' as const, body }) })
 }
 
-/** Das Erläuterungen-Dokument eines Gegenstands, als HTML. */
+/** A Gegenstand's Erläuterungen document, as HTML. */
 async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string | null> {
   const detail = await cachedJson(join(cacheDir, gp, `${kind}-${inr}.json`), () => fetchJson(`${BASE}/gegenstand/${gp}/${kind}/${inr}?json=True`))
   const group = (detail?.content?.documents ?? []).find((g: any) => /^Erläuterungen$/i.test(String(g?.title ?? '').trim()))
@@ -62,15 +62,14 @@ async function explanationsHtml(kind: 'ME' | 'I', inr: number): Promise<string |
 }
 
 /**
- * Wie viel vom rohen Text eines Dokuments der Parser überhaupt aufliest.
+ * How much of a document's raw text the parser picks up at all.
  *
- * Ein Eingabewert, den die Messung nicht als kaputt erkennen kann, ist
- * schlimmer als ein fehlender: Die Zahl, die er erzeugt, sieht aus wie ein
- * Befund (`scripts/lib/harnessCache.ts`, dieselbe Lehre). Gemessen über vier
- * Dokumente beider Seiten liegt die Deckung bei 94–96 % — Word-HTML ist zu
- * neun Zehnteln Formatierung. Fällt sie irgendwo darunter, ist nicht die
- * Begründung kürzer, sondern unser Parser blind, und das Paar gehört nicht
- * in den Median.
+ * An input the measurement cannot detect as broken is worse than a missing
+ * one: the number it produces looks like a finding
+ * (`scripts/lib/harnessCache.ts`, the same lesson). Measured over four
+ * documents from both sides, the capture sits at 94–96 % — Word HTML is nine
+ * tenths formatting. Where it falls below that anywhere, the reasoning is not
+ * shorter, our parser is blind, and the pair does not belong in the median.
  */
 const MIN_CAPTURE = 0.8
 
@@ -85,13 +84,13 @@ function captureRate(html: string, parsedWords: number): number {
 }
 
 /**
- * Der Text eines Erläuterungen-Dokuments, geteilt in Allgemeinen und
- * Besonderen Teil.
+ * The text of an Erläuterungen document, split into the Allgemeiner and the
+ * Besonderer Teil.
  *
- * Die Trennung entscheidet, wohin ein Vergleich gehörte: Ändert sich der
- * Allgemeine Teil, ist das eine Aussage über den Entwurf als Ganzes; ändert
- * sich nur der Besondere Teil, gehört sie an den Paragraphen, wo die Passagen
- * ohnehin schon stehen (§12.30).
+ * The split decides where a comparison would belong: if the Allgemeiner Teil
+ * changes, that is a statement about the draft as a whole; if only the
+ * Besonderer Teil changes, it belongs at the Paragraph, where the passages
+ * already stand anyway (§12.30).
  */
 function parts(html: string): { general: string; special: string; words: number } {
   const blocks = parseParliamentHtml(html)
@@ -99,8 +98,8 @@ function parts(html: string): { general: string; special: string; words: number 
   const general: string[] = []
   const special: string[] = []
   for (const b of blocks) {
-    // „B e s o n d e r e r  T e i l" kommt gesperrt gesetzt vor; die Leerzeichen
-    // zwischen den Buchstaben sind Typografie, nicht Text (§12.29).
+    // „B e s o n d e r e r  T e i l" occurs letterspaced; the spaces between
+    // the letters are typography, not text (§12.29).
     const flat = b.text.replace(/\s+/g, '')
     if (/^Besonderer\s*Teil/i.test(b.text) || /^BesondererTeil/i.test(flat)) { inSpecial = true; continue }
     if (/^Allgemeiner\s*Teil/i.test(b.text) || /^AllgemeinerTeil/i.test(flat)) { inSpecial = false; continue }
@@ -111,15 +110,15 @@ function parts(html: string): { general: string; special: string; words: number 
 }
 
 /**
- * Anteil der Wörter, die sich unterscheiden — 0 heißt identisch.
+ * The share of words that differ — 0 means identical.
  *
- * `diffTokens` liefert **immer** eine Ähnlichkeit, aber nur unterhalb von
- * 2,5 Mio. Zellen auch Segmente; darüber fällt es auf einen Mengenvergleich
- * zurück. Erläuterungen sind lang genug, dass das der Normalfall ist: Die
- * erste Fassung dieser Messung las nur die Segmente und verwarf damit **32
- * von 43 Paaren** — und zwar die langen, also genau die interessanten. Die
- * Quote steht deshalb auf `similarity`, die es auf beiden Wegen gibt, und
- * der Prüfstand zählt, wie oft der gröbere gebraucht wurde.
+ * `diffTokens` **always** returns a similarity, but segments only below 2,5
+ * million cells; above that it falls back on a set comparison. Erläuterungen
+ * are long enough for that to be the normal case: the first version of this
+ * measurement read only the segments and so discarded **32 of 43 pairs** —
+ * the long ones, that is, which are exactly the interesting ones. The rate
+ * therefore rests on `similarity`, which exists on both routes, and the
+ * harness counts how often the coarser one was needed.
  */
 function drift(a: string, b: string): { value: number | null; exact: boolean } {
   if (!a.trim() && !b.trim()) return { value: null, exact: true }
@@ -127,7 +126,7 @@ function drift(a: string, b: string): { value: number | null; exact: boolean } {
   return { value: 1 - similarity, exact: segments !== null }
 }
 
-// --- Liste 81 und der Join auf die Regierungsvorlage ------------------------
+// --- List 81 and the join onto the Regierungsvorlage ------------------------
 const list = await cachedJson(join(cacheDir, `${gp}-list81.json`), () =>
   fetchJson(`${BASE}/Filter/api/filter/data/81?js=eval&showAll=true&sortrnr=11&ascDesc=DESC`, { GP_CODE: [gp] }),
 )
@@ -158,8 +157,8 @@ async function worker(): Promise<void> {
         continue
       }
       scored++
-      // Die Ebene, auf der ein Vergleich am Ende stünde: Paragraph für
-      // Paragraph, wie die Gegenüberstellung ihn schon führt (§12.30).
+      // The level a comparison would end up on: Paragraph by Paragraph, the
+      // way the Gegenüberstellung already carries it (§12.30).
       const meP = passagesByParagraph(parseExplanationsHtml(meHtml))
       const rvP = passagesByParagraph(parseExplanationsHtml(rvHtml))
       const both = [...meP.keys()].filter((id) => rvP.has(id))
@@ -192,8 +191,8 @@ async function worker(): Promise<void> {
 }
 await Promise.all(Array.from({ length: CONCURRENCY }, worker))
 
-// --- Auswertung --------------------------------------------------------------
-/** Wie viele Entwürfe zeigen auf dieselbe Vorlage? */
+// --- Evaluation --------------------------------------------------------------
+/** How many drafts point at the same Vorlage? */
 const perRv = new Map<number, number>()
 for (const r of rows) if (r.rv) perRv.set(r.rv, (perRv.get(r.rv) ?? 0) + 1)
 const scoredRows = rows.filter((r) => r.total !== undefined && r.total !== null)

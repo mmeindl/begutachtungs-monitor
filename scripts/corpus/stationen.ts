@@ -65,7 +65,7 @@ function cachedDetail(gp: string, inr: number): unknown | null {
     try {
       return JSON.parse(readFileSync(join(dir, `ME-${inr}.json`), 'utf8'))
     } catch {
-      /* next */
+      /* not cached under this directory — ask the next one */
     }
   }
   return null

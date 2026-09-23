@@ -1,54 +1,53 @@
 #!/usr/bin/env vite-node
 /**
- * Findet die Gesetze, die als Ministerialentwurf in Begutachtung waren und
- * danach als selbständiger Antrag ins Haus kamen — über den GESETZESTEXT,
- * nicht über den Titel.
+ * Finds the laws that were in Begutachtung as a Ministerialentwurf and then
+ * arrived in the House as a selbständiger Antrag — by the GESETZESTEXT, not
+ * by the title.
  *
  * Usage:   npx vite-node scripts/corpus/meAntragJoin.ts XXVIII [cacheDir]
- *          (setzt voraus, dass corpus/begutachtungSkipped.ts für dieselbe GP
- *           gelaufen ist — dessen `<GP>-skipped.json` ist der Input.)
+ *          (assumes corpus/begutachtungSkipped.ts has run for the same GP —
+ *           its `<GP>-skipped.json` is the input.)
  *
- * Ergebnis: `<cacheDir>/<GP>-me-antrag.json`. `corpus/begutachtungSkipped.ts`
- * liest die Datei, wenn sie da ist, und ersetzt damit seinen eigenen
- * Titelabgleich.
+ * Result: `<cacheDir>/<GP>-me-antrag.json`. `corpus/begutachtungSkipped.ts`
+ * reads the file when it is there and replaces its own title match with it.
  *
  * ---------------------------------------------------------------------------
- * WARUM ES DIESES SKRIPT GIBT
+ * WHY THIS SCRIPT EXISTS
  *
- * Ein Ressort kann einen Entwurf begutachten lassen und ihn danach von den
- * eigenen Abgeordneten als Initiativantrag einbringen statt als
- * Regierungsvorlage. Das Gesetz WAR dann in Begutachtung. Wer das nicht
- * herausrechnet, zählt zu viele Gesetze als „ohne Begutachtung" — der
- * Rechts-, Legislativ- und Wissenschaftliche Dienst des Parlaments hat den
- * Weg 2024 beschrieben (Fachdossier 31.10.2024: 19 der 93 Anträge einer
- * Tagung; `docs/begutachtung-uebersprungen.md` §4b).
+ * A ressort can put a draft through Begutachtung and then have its own MPs
+ * file it as an Initiativantrag instead of a Regierungsvorlage. The law WAS
+ * in Begutachtung then. Whoever does not take that out counts too many laws
+ * as „ohne Begutachtung" — Parliament's Rechts-, Legislativ- und
+ * Wissenschaftlicher Dienst described the route in 2024 (Fachdossier
+ * 31.10.2024: 19 of the 93 motions of one session;
+ * `docs/begutachtung-uebersprungen.md` §4b).
  *
- * In den Daten existiert dieser Weg nicht. Die `stages` eines
- * Ministerialentwurfs führen einen Nachfolger-Zeiger, aber gemessen auf GP
- * XXVIII zeigen alle 96 vorhandenen Zeiger auf eine Regierungsvorlage und
- * kein einziger auf einen Antrag. Auch der Antragstext selbst nennt seinen
- * Entwurf nicht (geprüft an vier bekannten Paaren, 16.09.2026).
+ * In the data this route does not exist. A Ministerialentwurf's `stages` do
+ * carry a successor pointer, but measured over GP XXVIII all 96 pointers
+ * present point at a Regierungsvorlage and not one at a motion. Nor does the
+ * motion's own text name its draft (checked against four known pairs,
+ * 16.09.2026).
  *
- * WARUM NICHT ÜBER DEN TITEL: gemessen an 91 Paaren, die nachweislich
- * zusammengehören, liegt ein Viertel unter jeder brauchbaren Schwelle —
- * „Einkommensteuergesetz, Änderung" ist als Schlüssel wertlos, und im großen
- * Korpus produziert derselbe Titel massenhaft falsche Paare.
+ * WHY NOT BY THE TITLE: measured over 91 pairs that demonstrably belong
+ * together, a quarter falls below any usable threshold — „Einkommensteuer-
+ * gesetz, Änderung" is worthless as a key, and over the large corpus the same
+ * title produces false pairs by the hundred.
  *
- * WAS STATTDESSEN: beide Seiten veröffentlichen ein Dokument „Gesetzestext".
- * Verglichen werden 5-Wort-Schindeln daraus, und zwar über CONTAINMENT — den
- * Anteil des kürzeren Textes, der im längeren steckt. Nicht über Jaccard: ein
- * Antrag hebt oft nur ein Stück aus einem großen Entwurf, und Jaccard
- * bestraft das Größenverhältnis so hart, dass ein vollständig enthaltener
- * Antrag unter jeder Schwelle landet (siehe den Kommentar bei `containment`).
+ * WHAT INSTEAD: both sides publish a document „Gesetzestext". 5-word shingles
+ * of it are compared, and by CONTAINMENT — the share of the shorter text that
+ * sits inside the longer one. Not by Jaccard: a motion often lifts only a
+ * piece out of a large draft, and Jaccard punishes the size ratio so hard
+ * that a fully contained motion lands below every threshold (see the comment
+ * at `containment`).
  *
- * Die Schwelle wird nicht geraten, sondern kalibriert: an Paaren mit belegter
- * Zuordnung (Entwurf → seine eigene Regierungsvorlage), an KÜNSTLICH
- * ASYMMETRISCHEN Paaren daraus, und gegen versetzte falsche Paare. Findet
- * sich keine trennende Schwelle, liefert das Skript kein Ergebnis.
+ * The threshold is not guessed but calibrated: against pairs with a
+ * documented link (draft → its own Regierungsvorlage), against ARTIFICIALLY
+ * ASYMMETRIC pairs built from those, and against shifted false pairs. Where
+ * no separating threshold is found, the script delivers no result.
  *
- * Berichtet wird in zwei Stufen: „belegt" (Containment ≥ 0,6) trägt die
- * Korrektur, „schwach" wird als Spanne genannt. Die Grenze ist an einer
- * Lücke in den Daten abgelesen, nicht gewählt.
+ * It reports in two steps: „belegt" (containment ≥ 0,6) carries the
+ * correction, „schwach" is named as a range. The boundary is read off a gap
+ * in the data, not chosen.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -60,17 +59,17 @@ import type { MeAntragHit, SkippedReport, SkippedRow } from '../lib/skippedRepor
 const SCRIPT = 'corpus/meAntragJoin'
 const CONCURRENCY = 4
 const SHINGLE = 5
-/* Keine Skizze mehr (1 = alles behalten). Die Mod-Skizze war für den
- * Speicher gedacht, aber Initiativanträge sind kurz — die Hälfte des Korpus
- * liegt unter 250 Wörtern, und aus 250 Wörtern bleibt bei 1/16 nichts
- * Beurteilbares übrig. Mit 1/4 waren 36 von 64 Anträgen „zu kurz für ein
- * Urteil", was die Messung zur Annahme gemacht hätte. Vollständige Schindeln
- * kosten für die größte GP wenige hundert MB und lösen das Problem ganz.
- * Der Mechanismus bleibt stehen, falls ein Korpus doch einmal zu groß wird. */
+/* No sketch any more (1 = keep everything). The mod sketch was meant to save
+ * memory, but Initiativanträge are short — half the corpus is under 250
+ * words, and at 1/16 nothing judgeable is left of 250 words. At 1/4, 36 of
+ * 64 motions were „zu kurz für ein Urteil", which would have turned the
+ * measurement into an assumption. Full shingles cost a few hundred MB for
+ * the largest GP and solve the problem entirely. The mechanism stays in
+ * place in case a corpus does grow too large one day. */
 const SKETCH_MOD = 1
-/* Unter dieser Zahl Schindeln (~64 Wörter) wird nicht geurteilt, sondern
- * berichtet, dass der Text zu kurz ist: ein Dutzend Schindeln ist in
- * irgendeinem Gesetzestext immer „enthalten". */
+/* Below this number of shingles (~64 words) nothing is judged; the report
+ * says the text is too short instead: a dozen shingles are always
+ * „enthalten" in some Gesetzestext or other. */
 const MIN_SKETCH = 60
 
 const gp = process.argv[2] ?? ''
@@ -81,7 +80,7 @@ if (!gp || !/^[IVXLC]+$/.test(gp)) {
 const cacheDir = process.argv[3] ?? join('.cache', 'begutachtung-skipped')
 await mkdir(join(cacheDir, gp, 'text'), { recursive: true })
 
-/** Drei Versuche auf 5xx und Verbindungsabbruch; ein 4xx ist die Antwort und wird nicht wiederholt. */
+/** Three attempts on 5xx and a dropped connection; a 4xx is the answer and is not retried. */
 const RETRY = { script: SCRIPT, attempts: 3, backoffMs: (retry: number) => 500 * retry, timeoutMs: 20_000 } as const
 function fetchJson<T>(url: string, body?: unknown): Promise<T> {
   return getJson<T>(url, { ...RETRY, ...(body === undefined ? {} : { method: 'POST' as const, body }) })
@@ -89,13 +88,13 @@ function fetchJson<T>(url: string, body?: unknown): Promise<T> {
 const fetchText = (url: string): Promise<string> => getText(url, RETRY)
 
 // ---------------------------------------------------------------------------
-// Text → Skizze
+// Text → sketch
 // ---------------------------------------------------------------------------
 
-/* Nur Wörter und Paragraphenzeichen. Zahlen bleiben drin: Beträge und
- * Datumsangaben sind das Unterscheidende zwischen zwei Novellen zum selben
- * Gesetz. HTML-Entities werden entfernt, nicht dekodiert — beide Seiten
- * kommen aus derselben Quelle und sind gleich kodiert. */
+/* Words and Paragraph signs only. Numbers stay in: amounts and dates are
+ * what tells two Novellen to the same law apart. HTML entities are removed,
+ * not decoded — both sides come from the same source and are encoded
+ * alike. */
 function plainText(html: string): string {
   return String(html)
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
@@ -107,7 +106,7 @@ function plainText(html: string): string {
     .trim()
 }
 
-/** FNV-1a, 32 bit. Kein Kryptobedarf, nur Streuung. */
+/** FNV-1a, 32 bit. No cryptographic need, just spread. */
 function hash32(s: string): number {
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
@@ -138,28 +137,28 @@ function jaccard(a: Sketch | null | undefined, b: Sketch | null | undefined): nu
   return shared(a, b) / (a.size + b.size - shared(a, b))
 }
 
-/* WARUM NICHT JACCARD — der Fehler vom 16.09.2026.
+/* WHY NOT JACCARD — the mistake of 16.09.2026.
  *
- * Ein Initiativantrag hebt oft ein Stück aus einem großen Entwurf heraus:
- * 72/A hat 570 Wörter, der zugehörige 6/ME 11.934. Selbst wenn der Antrag
- * vollständig im Entwurf steckt, kann Jaccard dann höchstens 570/11.934 ≈
- * 4,8 % erreichen — unter jeder sinnvollen Schwelle. Genau so ist 72/A trotz
- * identischem Titel durchgefallen; die Containment-Messung sagt 95 %.
+ * An Initiativantrag often lifts a piece out of a large draft: 72/A has 570
+ * words, the matching 6/ME has 11.934. Even where the motion sits fully
+ * inside the draft, Jaccard can then reach at most 570/11.934 ≈ 4,8 % —
+ * below any sensible threshold. That is exactly how 72/A failed despite an
+ * identical title; the containment measure says 95 %.
  *
- * Die Kalibrierung konnte das nicht sehen: wahre Paare waren Entwurf gegen
- * die EIGENE Regierungsvorlage, und die sind ungefähr gleich lang. Kalibriert
- * wurde also an einer Population, der die entscheidende Eigenschaft fehlt.
- * Deshalb unten zusätzlich künstlich asymmetrische Paare.
+ * The calibration could not see it: true pairs were a draft against its OWN
+ * Regierungsvorlage, and those are roughly the same length. So it was
+ * calibrated on a population that lacks the decisive property. Hence the
+ * artificially asymmetric pairs below as well.
  *
- * Containment ist nicht symmetrisch harmlos: ein sehr kurzer Text ist schnell
- * „enthalten". Dagegen MIN_SKETCH. */
+ * Containment is not symmetrically harmless: a very short text is quickly
+ * „enthalten". MIN_SKETCH answers that. */
 function containment(a: Sketch | null | undefined, b: Sketch | null | undefined): number {
   if (!a?.size || !b?.size) return 0
   return shared(a, b) / Math.min(a.size, b.size)
 }
 
 // ---------------------------------------------------------------------------
-// 1. Korpus
+// 1. Corpus
 // ---------------------------------------------------------------------------
 
 const skippedFile = join(cacheDir, `${gp}-skipped.json`)
@@ -177,7 +176,7 @@ const meList = await cachedJson<ListRows>(join(cacheDir, gp, 'list81.json'), () 
 
 console.error(`GP ${gp}: ${antraege.length} übersprungene Initiativanträge, ${(meList.rows ?? []).length} Ministerialentwürfe.`)
 
-/** Detail-JSON eines Gegenstands; teilt den Cache mit corpus/begutachtungSkipped.ts. */
+/** A Gegenstand's detail JSON; shares the cache with corpus/begutachtungSkipped.ts. */
 interface Detail {
   content?: {
     title?: string
@@ -191,10 +190,10 @@ const detailOf = (ityp: string, inr: string): Promise<Detail> => cachedJson<Deta
   () => fetchJson(`${BASE}/gegenstand/${gp}/${ityp}/${inr}?json=True`),
 )
 
-/** Die HTML-Fassung des Gesetzestexts. Beide Seiten führen eine Gruppe, die
- *  so heißt ("Gesetzestext", beim Antrag "Gesetzestext (Arbeitsdokument
- *  ParlDion)"). Erläuterungen und Textgegenüberstellung bleiben draußen:
- *  sie sind auf den beiden Seiten verschieden lang und verwässern nur. */
+/** The HTML version of the Gesetzestext. Both sides carry a group of that
+ *  name ("Gesetzestext", on the motion "Gesetzestext (Arbeitsdokument
+ *  ParlDion)"). Erläuterungen and Textgegenüberstellung stay out: they are of
+ *  different length on the two sides and only dilute. */
 function gesetzestextLink(detail: Detail): string | null {
   const groups = detail?.content?.documents ?? []
   const preferred = groups.find((g) => /^Gesetzestext/i.test(String(g?.title ?? '')))
@@ -215,12 +214,12 @@ async function sketchOf(ityp: string, inr: string): Promise<Sketch | null> {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Kalibrierung an Paaren mit bekannter Wahrheit
+// 2. Calibration against pairs whose truth is known
 // ---------------------------------------------------------------------------
 
-/* Wahre Paare: ein Ministerialentwurf und die Regierungsvorlage, auf die sein
- * eigener Nachfolger-Zeiger verweist. Das ist dieselbe Textbeziehung wie die
- * gesuchte (begutachteter Entwurf → eingebrachte Fassung), nur mit Beleg. */
+/* True pairs: a Ministerialentwurf and the Regierungsvorlage its own
+ * successor pointer names. That is the same textual relation as the one we
+ * are after (consulted draft → the version filed), only documented. */
 interface MeRow {
   inr: string
   title: string
@@ -252,14 +251,14 @@ await pool(antraege, CONCURRENCY, async (a) => aSketch.set(a.inr, await sketchOf
 const rvSketch = new Map<string, Sketch | null>()
 await pool(pairs, CONCURRENCY, async (m) => rvSketch.set(m.rv, await sketchOf('I', m.rv)))
 
-/* Formelsprache raus. Gesetzestexte teilen Bausteine — „tritt mit dem der
- * Kundmachung folgenden Tag in Kraft", „in der Fassung des Bundesgesetzes
- * BGBl. I Nr." — und bei fünf Wörtern Fensterbreite erzeugen die zwischen
- * je zwei beliebigen Texten eine kleine, aber verlässliche Überlappung. Der
- * erste Lauf (16.09.2026) hat daran vier verschiedene Anträge an denselben
- * Entwurf geheftet, alle bei 3 % Deckung. Also: jede Schindel verwerfen, die
- * in mehr als DF_MAX der Dokumente vorkommt — der übliche IDF-Schnitt, hier
- * als harte Grenze statt als Gewicht, weil danach noch eine Schwelle folgt. */
+/* Formulaic language out. Gesetzestexte share building blocks — „tritt mit
+ * dem der Kundmachung folgenden Tag in Kraft", „in der Fassung des
+ * Bundesgesetzes BGBl. I Nr." — and at a window five words wide those produce
+ * a small but reliable overlap between any two texts whatsoever. The first
+ * run (16.09.2026) pinned four different motions to the same draft on that
+ * basis, all at 3 % coverage. So: discard every shingle that occurs in more
+ * than DF_MAX of the documents — the usual IDF cut, here as a hard boundary
+ * instead of a weight, because a threshold follows after it. */
 const DF_MAX = 0.02
 const allSketches = [...meSketch.values(), ...aSketch.values(), ...rvSketch.values()].filter((s): s is Sketch => Boolean(s))
 const df = new Map<number, number>()
@@ -277,11 +276,11 @@ for (const m of pairs) {
   if (s > 0) truth.push(s)
 }
 
-/* KÜNSTLICH ASYMMETRISCHE WAHRE PAARE — die Population, die im ersten Anlauf
- * gefehlt hat. Aus jeder Regierungsvorlage wird ein zusammenhängendes Zehntel
- * herausgeschnitten und gegen den zugehörigen Entwurf gehalten: dasselbe
- * Größenverhältnis wie „kurzer Antrag hebt ein Stück aus großem Entwurf".
- * Wenn das Maß hier durchfällt, taugt es für den eigentlichen Zweck nicht. */
+/* ARTIFICIALLY ASYMMETRIC TRUE PAIRS — the population missing at the first
+ * attempt. A contiguous tenth is cut out of every Regierungsvorlage and held
+ * against the matching draft: the same size ratio as „kurzer Antrag hebt ein
+ * Stück aus großem Entwurf". Where the measure fails here, it is no good for
+ * the actual purpose. */
 const truthAsym: number[] = []
 for (const m of pairs) {
   const text = await textOf('I', m.rv)
@@ -295,8 +294,8 @@ for (const m of pairs) {
   truthAsym.push(containment(meSketch.get(m.inr), piece))
 }
 
-/* Falsche Paare: derselbe Entwurf gegen die Regierungsvorlage eines anderen.
- * Deterministisch versetzt statt zufällig, damit der Lauf wiederholbar ist. */
+/* False pairs: the same draft against another one's Regierungsvorlage.
+ * Shifted deterministically rather than at random, so the run repeats. */
 const noise: number[] = []
 for (let i = 0; i < pairs.length; i++) {
   const other = pairs[(i + 7) % pairs.length]!
@@ -317,17 +316,16 @@ console.log(`  5 % ${q(truthAsym, 0.05).toFixed(3)}  Median ${q(truthAsym, 0.5).
 console.log(`Falsche Paare (versetzt): ${noise.length}`)
 console.log(`  Median ${q(noise, 0.5).toFixed(4)}  95 % ${noiseHigh.toFixed(4)}  max ${noise.at(-1)?.toFixed(4)}`)
 
-/* Die Schwelle wird auf TREFFSICHERHEIT gestellt, nicht auf Vollständigkeit.
- * Ein falscher Treffer behauptet von einem namentlich genannten Gesetz, es
- * sei begutachtet worden; ein verpasster lässt die Zahl nur zu hoch. Also:
- * deutlich über das schlechteste falsche Paar, und nie unter einen absoluten
- * Boden — zwei Prozent Textdeckung sind kein Beleg für irgendetwas, auch
- * wenn der Korpus zufällig nichts Schlechteres hergibt.
+/* The threshold is set for PRECISION, not for completeness. A false hit
+ * claims of a law named by name that it went through Begutachtung; a missed
+ * one only leaves the number too high. So: well above the worst false pair,
+ * and never below an absolute floor — two per cent of text coverage is
+ * evidence for nothing, even where the corpus happens to offer nothing worse.
  *
- * Was das kostet, steht darunter: der Anteil der bekannten wahren Paare, den
- * die Schwelle durchlässt. Wahre Paare mit niedriger Deckung gibt es wirklich
- * — ein Entwurf kann zwischen Begutachtung und Einbringung neu geschrieben
- * werden —, und die findet dieses Verfahren prinzipiell nicht. */
+ * What that costs stands below it: the share of the known true pairs the
+ * threshold lets through. True pairs with low coverage really do exist — a
+ * draft can be rewritten between Begutachtung and filing — and this method
+ * does not find those, in principle. */
 const FLOOR = 0.25
 const threshold = Math.max(FLOOR, (noise.at(-1) ?? 0) * 3)
 const recall = truth.filter((s) => s >= threshold).length / Math.max(truth.length, 1)
@@ -337,23 +335,22 @@ console.log(`Schwelle: ${threshold.toFixed(3)} (Boden ${FLOOR}, 3× schlechteste
 console.log(`  fängt ${(recall * 100).toFixed(0)} % der wahren Paare, ${(recallAsym * 100).toFixed(0)} % der asymmetrischen,`)
 console.log(`  und ${falsePos} der ${noise.length} falschen.`)
 if (falsePos > 0) console.log(`  ACHTUNG: falsche Paare über der Schwelle — Ergebnis nur als Kandidatenliste lesen.`)
-/* Die asymmetrische Quote ist eine Untergrenze, kein Defekt: das
- * herausgeschnittene Zehntel kann Material enthalten, das erst NACH der
- * Begutachtung in die Vorlage kam — dann ist die Null die richtige Antwort.
- * Deshalb nur als Hinweis, nicht als Alarm. */
+/* The asymmetric rate is a lower bound, not a defect: the tenth cut out can
+ * contain material that reached the Vorlage only AFTER the Begutachtung — and
+ * then zero is the right answer. Hence a note, not an alarm. */
 console.log(`  (Die asymmetrische Quote ist eine Untergrenze: manche Ausschnitte enthalten Material,`)
 console.log(`   das erst nach der Begutachtung dazukam — dort ist das Nichtfinden korrekt.)`)
 
-/* ZWEI STUFEN, und die Grenze ist nicht gewählt, sondern abgelesen: die
- * Treffer liegen in GP XXVIII bei 29–35 % und dann wieder bei 77–100 %.
- * Dazwischen ist nichts. Was oben liegt, ist eine Fortsetzung; was unten
- * liegt, teilt Passagen mit dem Entwurf, ohne seine Fortsetzung zu sein —
- * typischerweise eine andere Novelle zum selben Gesetz. Nur die starke
- * Stufe geht in die Korrektur, die schwache wird als Spanne berichtet. */
+/* TWO STEPS, and the boundary is not chosen but read off: in GP XXVIII the
+ * hits sit at 29–35 % and then again at 77–100 %. In between there is
+ * nothing. What lies above is a continuation; what lies below shares passages
+ * with the draft without being its continuation — typically another Novelle
+ * to the same law. Only the strong step goes into the correction, the weak
+ * one is reported as a range. */
 const STRONG = 0.6
 
 // ---------------------------------------------------------------------------
-// 3. Der eigentliche Abgleich
+// 3. The match itself
 // ---------------------------------------------------------------------------
 
 const hits: MeAntragHit[] = []

@@ -1,29 +1,29 @@
 /**
- * Lässt sich der kundgemachte Text als Station lesen — und sagt der
- * Vergleich gegen ihn etwas Vernünftiges? Die Messung, die die BGBl-Station
- * gatet (`TODO.md`, docs/architecture.md §12.33).
+ * Can the promulgated text be read as a station — and does the comparison
+ * against it say anything sensible? The measurement that gates the BGBl
+ * station (`TODO.md`, docs/architecture.md §12.33).
  *
- * Die Stationsleiste des § -Vergleichs endet heute bei der Plenarfassung. Die
- * letzte Fassung ist aber die kundgemachte, und genau sie beantwortet die
- * Frage, um die es dem Produkt geht: Was ist vom Entwurf übrig geblieben, als
- * daraus Recht wurde. Vor dem Bau müssen drei Zahlen existieren:
+ * The station bar of the § comparison ends at the Plenum version today. The
+ * last version, though, is the promulgated one, and it is exactly the one
+ * that answers the question the product is about: what is left of the draft
+ * once it became law. Before building, three numbers have to exist:
  *
- *  1. WIE VIELE Entwürfe kommen überhaupt dorthin, und trägt das Parlament
- *     für sie eine BGBl-Fundstelle?
- *  2. IST DAS DOKUMENT LESBAR — XML, und gliedert es der ausgelieferte
- *     Parser (`parseLawUnitsFromRis`) in Einheiten?
- *  3. IST DER VERGLEICH PLAUSIBEL? Das ist die eigentliche Prüfung. Zwischen
- *     der letzten parlamentarischen Fassung und der Kundmachung darf sich
- *     fast nichts ändern — wer dort massenhaft Unterschiede misst, hat kein
- *     Ergebnis, sondern einen Ausrichtungsfehler. Ein Vergleich, der überall
- *     „geändert" sagt, sieht aus wie ein Befund und ist ein Defekt.
+ *  1. HOW MANY drafts get there at all, and does Parliament carry a BGBl
+ *     citation for them?
+ *  2. IS THE DOCUMENT READABLE — XML, and does the shipped parser
+ *     (`parseLawUnitsFromRis`) break it into units?
+ *  3. IS THE COMPARISON PLAUSIBLE? That is the real check. Between the last
+ *     parliamentary version and the Kundmachung almost nothing may change —
+ *     whoever measures differences by the hundred there has no result but an
+ *     alignment fault. A comparison that says „geändert" everywhere looks
+ *     like a finding and is a defect.
  *
  *     pnpm corpus:bgbl-station                 # GP XXVIII
  *     pnpm corpus:bgbl-station -- --gp XXVII
- *     pnpm corpus:bgbl-station -- --sample 20  # weniger Entwürfe
- *     pnpm corpus:bgbl-station -- --cache      # RIS-Verkehr von der Platte
+ *     pnpm corpus:bgbl-station -- --sample 20  # fewer drafts
+ *     pnpm corpus:bgbl-station -- --cache      # RIS traffic from disk
  *
- * Läuft durch dieselben Parser wie die Seite. Liest nur; schreibt nichts.
+ * Runs through the same parsers as the page. Read-only; nothing is written.
  */
 import { extractBgblLink, mapTextEvolution } from '../../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
@@ -37,13 +37,13 @@ if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-c
 const gp = argPair('gp') ?? 'XXVIII'
 const sample = Number(argPair('sample')) || 0
 const SCRIPT = 'corpus/bgblStation'
-/** Drei Versuche auf alles, 45 s je Versuch: ein Lauf liest hunderte Dokumente. */
+/** Three attempts on anything, 45 s each: one run reads hundreds of documents. */
 const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 45_000, retryOnHttpError: true }
 const getJson = (url: string): Promise<unknown> =>
   fetchJson(url, { ...PATIENT, onExhausted: (u) => new Error(`nicht erreichbar: ${u}`) })
 const getText = (url: string): Promise<string> => fetchText(url, { script: SCRIPT, timeoutMs: 45_000 })
 
-/** Liste 81 einer Periode: die Nummern der Ministerialentwürfe. */
+/** List 81 of one period: the numbers of the Ministerialentwürfe. */
 async function draftNumbers(): Promise<number[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const body = await fetchJson<any>(`${PARLIAMENT}/Filter/api/filter/data/81?js=eval&showAll=true&export=true`, {
@@ -57,7 +57,7 @@ async function draftNumbers(): Promise<number[]> {
   return [...new Set(rows.map((r) => Number(r[2])))].sort((a, b) => a - b)
 }
 
-/** Das XML-Hauptdokument einer Kundmachung, über ihre Dokumentnummer. */
+/** A Kundmachung's XML main document, by its document number. */
 async function bgblXmlUrl(nummer: string): Promise<string | null> {
   const p = new URLSearchParams({
     Applikation: 'BgblAuth',
@@ -84,13 +84,13 @@ async function bgblXmlUrl(nummer: string): Promise<string | null> {
 }
 
 /**
- * Die letzte parlamentarische Fassung eines Entwurfs, als HTML-Adresse.
+ * A draft's last parliamentary version, as an HTML address.
  *
- * Über `mapTextEvolution`, den ausgelieferten Mapper — die erste Fassung
- * dieses Skripts las die Gruppen selbst und aus dem FALSCHEN Gegenstand (der
- * Regierungsvorlage statt des Ministerialentwurfs) und fand deshalb nichts
- * zu vergleichen. Die Stationen hängen am Entwurf, `findLawStations` liest
- * sie genau dort.
+ * Through `mapTextEvolution`, the shipped mapper — the first version of this
+ * script read the groups itself and from the WRONG Gegenstand (the
+ * Regierungsvorlage instead of the Ministerialentwurf) and therefore found
+ * nothing to compare. The stations hang on the draft, and `findLawStations`
+ * reads them exactly there.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function lastParliamentaryText(content: any): { label: string; url: string } | null {
@@ -138,16 +138,16 @@ for (const inr of numbers) {
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c: any = (content as any)?.content ?? {}
-  // Die BGBl-Fundstelle hängt an der Regierungsvorlage, nicht am Entwurf.
+  // The BGBl citation hangs on the Regierungsvorlage, not on the draft.
   //
-  // NUR `/I/`-Gegenstände, und das ist eine Korrektur: Die erste Fassung nahm
-  // den ERSTEN `/gegenstand/`-Link aus `stages[]` und erwischte damit für
-  // mehrere Entwürfe die Vorlage eines fremden Sammelgesetzes — 19/ME
-  // („Standort-Entwicklungsgesetz") landete beim Budgetbegleitgesetz und
-  // verglich zwei verschiedene Gesetze gegeneinander: 0 von 653 Einheiten
-  // deckungsgleich. Das sah aus wie ein Befund über die Ausrichtung und war
-  // ein Fehler der Messung. Die Produktion löst die Vorlage über
-  // `parliament/stationMap.ts` sauber auf; hier reicht der Typfilter.
+  // `/I/` Gegenstände ONLY, and that is a correction: the first version took
+  // the FIRST `/gegenstand/` link out of `stages[]` and so caught, for
+  // several drafts, the Vorlage of an unrelated Sammelgesetz — 19/ME
+  // („Standort-Entwicklungsgesetz") ended up at the Budgetbegleitgesetz and
+  // compared two different laws against each other: 0 of 653 units alike.
+  // That looked like a finding about the alignment and was a fault of the
+  // measurement. Production resolves the Vorlage cleanly through
+  // `parliament/stationMap.ts`; the type filter is enough here.
   const rvLink = (c?.stages ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .flatMap((s: any) => String(s?.text ?? '').match(/\/gegenstand\/[^"']+/g) ?? [])
@@ -162,7 +162,7 @@ for (const inr of numbers) {
       rvContent = (rv as any)?.content ?? null
       bgbl = extractBgblLink(rvContent?.status?.bgbllinks)?.number ?? null
     } catch {
-      /* ohne RV keine Kundmachung */
+      /* no Regierungsvorlage, no Kundmachung */
     }
   }
   if (!bgbl) continue
@@ -182,7 +182,7 @@ for (const inr of numbers) {
     row.units = units.length
     if (!units.length) row.note = 'keine Einheiten'
 
-    // Die Gegenprobe: letzte parlamentarische Fassung gegen die Kundmachung.
+    // The counter-check: last parliamentary version against the Kundmachung.
     const last = lastParliamentaryText(c)
     if (last && units.length) {
       const html = await getText(last.url)

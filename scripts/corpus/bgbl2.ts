@@ -1,30 +1,30 @@
 /**
- * Wird aus dem Verordnungsentwurf eine Kundmachung — und können wir das
- * sagen, ohne zu raten? Die Messung, die den Join Entwurf → BGBl II gatet
- * (`TODO.md`, docs/architecture.md §12.32).
+ * Does a Verordnung draft become a Kundmachung — and can we say so without
+ * guessing? The measurement that gates the join draft → BGBl II (`TODO.md`,
+ * docs/architecture.md §12.32).
  *
- * Zwei Drittel des Korpus sind Verordnungsentwürfe, und für sie endet der
- * Monitor mit der Frist. Der Weg danach ist die Kundmachung im BGBl II; der
- * Schlüssel dorthin muss aus Titel, Ressort und Datum gebaut werden, wie beim
- * RIS↔ME-Join. Bevor eine Seite „kundgemacht" oder „bisher nicht kundgemacht"
- * behauptet, müssen drei Zahlen existieren:
+ * Two thirds of the corpus are Verordnung drafts, and for them the monitor
+ * ends with the deadline. The road after that is the Kundmachung in BGBl II;
+ * the key to it has to be built from title, ressort and date, as with the
+ * RIS↔ME join. Before a page claims „kundgemacht" or „bisher nicht
+ * kundgemacht", three numbers have to exist:
  *
- *  1. WIE VIELE Entwürfe finden eine Kundmachung — und wie verteilt sich das
- *     über die Zeit seit dem Fristende? Ein Entwurf von letzter Woche ist
- *     nicht „liegen geblieben", er ist jung.
- *  2. WIE SICHER ist ein Treffer: Punktzahl, Abstand zum zweiten, und was
- *     knapp unter der Schwelle liegt.
- *  3. WIE LANGE dauert es (Fristende → Ausgabedatum) — die Verordnungshälfte
- *     von „wie schnell wird aus einem Entwurf Recht".
+ *  1. HOW MANY drafts find a Kundmachung — and how does that spread over the
+ *     time since the deadline ended? A draft from last week has not been
+ *     „liegen geblieben", it is young.
+ *  2. HOW CERTAIN a hit is: score, distance to the runner-up, and what lies
+ *     just below the threshold.
+ *  3. HOW LONG it takes (end of deadline → Ausgabedatum) — the Verordnung
+ *     half of „how fast does a draft become law".
  *
- *     pnpm corpus:bgbl2                      # Fristende ab 2024-01-01
+ *     pnpm corpus:bgbl2                      # deadline end from 2024-01-01
  *     pnpm corpus:bgbl2 -- --since 2023-01-01
- *     pnpm corpus:bgbl2 -- --misses 25       # unbestätigte Entwürfe ansehen
- *     pnpm corpus:bgbl2 -- --show <BEGUT-ID> # die Kandidaten eines Entwurfs
- *     pnpm corpus:bgbl2 -- --near            # die Beinahe-Treffer je Schwelle
+ *     pnpm corpus:bgbl2 -- --misses 25       # look at unconfirmed drafts
+ *     pnpm corpus:bgbl2 -- --show <BEGUT-ID> # one draft's candidates
+ *     pnpm corpus:bgbl2 -- --near            # the near misses per threshold
  *
- * Läuft durch `joinDraftToBgbl`, die ausgelieferte Regel: Was hier gezählt
- * wird, ist das, was die Seite sagen würde. Liest nur; schreibt nichts.
+ * Runs through `joinDraftToBgbl`, the shipped rule: what is counted here is
+ * what the page would say. Read-only; nothing is written.
  */
 import { classifyRisRecord } from '../../server/utils/ris/risJoin'
 import {
@@ -50,9 +50,9 @@ function daysSince(iso: string): number {
 }
 
 const corpus = await fetchRisBegutCorpus('corpus/bgbl2')
-// Das Kundmachungsfenster beginnt vor dem Entwurfsfenster, weil eine
-// Kundmachung der Frist vorauslaufen darf (BGBL_WINDOW_DAYS), und endet
-// heute: Was danach kommt, weiß niemand.
+// The Kundmachung window starts before the draft window, because a
+// Kundmachung may precede the deadline (BGBL_WINDOW_DAYS), and ends today:
+// nobody knows what comes after that.
 const from = new Date(Date.parse(since) - 40 * 86_400_000).toISOString().slice(0, 10)
 const bgbl = await fetchBgblRecords('corpus/bgbl2', from, today)
 const teil2 = bgbl.filter((r) => r.teil === 'Teil2')
@@ -103,8 +103,8 @@ for (const row of drafts) {
 console.log('── 1. Wie viele finden ihre Kundmachung')
 console.log(`   Treffer: ${matched.length} von ${drafts.length} (${pct(matched.length, drafts.length)})\n`)
 
-// Nach Alter des Fristendes: Die Frage „wurde erlassen?" ist erst nach einer
-// Weile beantwortbar, und die Kurve zeigt, ab wann.
+// By the age of the deadline's end: the question „wurde erlassen?" is only
+// answerable after a while, and the curve shows from when.
 const buckets: [string, number, number][] = [
   ['bis 30 Tage her', 0, 30],
   ['31–90 Tage', 31, 90],
@@ -126,9 +126,8 @@ console.log(`   Punktzahl: Median ${quantile(scores, 0.5).toFixed(3)} · p10 ${q
 console.log(`   Abstand zum zweiten: Median ${quantile(margins, 0.5).toFixed(3)} · p10 ${quantile(margins, 0.1).toFixed(3)}`)
 console.log(`   Perfekte Titelgleichheit (1.000): ${scores.filter((s) => s >= 0.999).length} (${pct(scores.filter((s) => s >= 0.999).length, scores.length)})`)
 
-// Was die Schwelle und die Marge kosten: die Fälle, die nur an ihnen
-// scheitern. Eine Schwelle, die man nur an ihren Treffern prüft, prüft man
-// nicht.
+// What the threshold and the margin cost: the cases that fail on them alone.
+// A threshold checked only against its hits is not checked at all.
 let blockedByScore = 0
 let blockedByMargin = 0
 let blockedByMinistry = 0

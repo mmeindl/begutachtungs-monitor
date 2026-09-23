@@ -1,37 +1,37 @@
 /**
- * Woher stammt die Kurzinformation des Parlaments? — die Messung hinter einer
- * Lizenzfrage (`docs/architecture.md` §13.1, `outreach/verfahrensfragen.md` E3).
+ * Where does Parliament's Kurzinformation come from? — the measurement behind
+ * a licence question (`docs/architecture.md` §13.1,
+ * `outreach/verfahrensfragen.md` E3).
  *
- * WARUM DIESE FRAGE GESTELLT WIRD. Unter „Worum geht es?" druckt die
- * Entwurfsseite `content.shortinfo` des Parlaments — Ziele, Inhalt,
- * Hauptgesichtspunkte. Das ist Prosa, keine Metadate, und sie kommt aus dem
- * Datensatz, den das Parlament ausdrücklich von der Weiterverwendung als Open
- * Data ausnimmt. Damit ist sie der eine Block der Seite, für den die Zusage
- * „der Monitor zeigt daraus ausschließlich Metadaten" nicht trägt.
+ * WHY THE QUESTION IS ASKED. Under „Worum geht es?" the draft page prints
+ * Parliament's `content.shortinfo` — Ziele, Inhalt, Hauptgesichtspunkte. That
+ * is prose, not metadata, and it comes from the dataset Parliament expressly
+ * excludes from re-use as open data. It is therefore the one block of the
+ * page for which the promise „der Monitor zeigt daraus ausschließlich
+ * Metadaten" does not hold.
  *
- * Der Verdacht, der die Frage entschärfen würde: Die Kurzinformation ist gar
- * kein Text des Parlaments, sondern der des Ressorts — Vorblatt und
- * Erläuterungen, redaktionell gekürzt. Dieselben Dokumente veröffentlicht das
- * RIS unter CC BY 4.0. Stimmt der Verdacht, ist die Lösung nicht, den
- * Abschnitt zu löschen, sondern ihn aus der geklärten Quelle zu lesen.
+ * The suspicion that would defuse the question: the Kurzinformation is not a
+ * text of Parliament's at all but the ressort's — Vorblatt and Erläuterungen,
+ * editorially shortened. RIS publishes the same documents under CC BY 4.0. If
+ * the suspicion holds, the answer is not to delete the section but to read it
+ * from the settled source.
  *
- * WAS GEMESSEN WIRD. Je Entwurf wird `teil2` der Kurzinformation (die Prosa
- * unter „Hauptgesichtspunkte des Entwurfs") in Wortfenster zerlegt und
- * gezählt, wie viele davon **wörtlich** in den Erläuterungen des Ressorts
- * stehen, gelesen durch den Produktionsparser. `teil1` (Ziele/Inhalt) wird
- * getrennt ausgewiesen und NICHT gegen die Erläuterungen gehalten: Diese
- * Listen stammen aus dem Vorblatt, und das ist ein eigenes RIS-Dokument, das
- * `flattenRisRecord` heute nicht mitführt. Was hier „ungedeckt" heißt, heißt
- * also nicht „vom Parlament geschrieben" — es heißt „hier nicht geprüft".
+ * WHAT IS MEASURED. Per draft, `teil2` of the Kurzinformation (the prose under
+ * „Hauptgesichtspunkte des Entwurfs") is cut into word windows and it is
+ * counted how many of them stand **verbatim** in the ressort's Erläuterungen,
+ * read through the production parser. `teil1` (Ziele/Inhalt) is reported
+ * separately and NOT held against the Erläuterungen: those lists come from the
+ * Vorblatt, which is a RIS document of its own that `flattenRisRecord` does
+ * not carry today. So what is called „ungedeckt" here does not mean „vom
+ * Parlament geschrieben" — it means „hier nicht geprüft".
  *
- *     pnpm corpus:kurzinfo                 # GP XXVII, alle gejointen Entwürfe
- *     pnpm corpus:kurzinfo -- --sample 60  # die ersten 60 (nach Nummer)
- *     pnpm corpus:kurzinfo -- --show 1     # einen Entwurf im Detail zeigen
+ *     pnpm corpus:kurzinfo                 # GP XXVII, every joined draft
+ *     pnpm corpus:kurzinfo -- --sample 60  # the first 60 (by number)
+ *     pnpm corpus:kurzinfo -- --show 1     # show one draft in detail
  *
- * GP XXVII, weil dort die Zuordnung Entwurf ↔ RIS-Datensatz als Datei
- * vorliegt (`data/ris-me-map-gp27.json`, 350 Zeilen, 337 gejoint) — das
- * Skript braucht damit keinen zweiten Join neben dem ausgelieferten.
- * Nur lesend; nichts wird geschrieben.
+ * GP XXVII, because the mapping draft ↔ RIS record exists there as a file
+ * (`data/ris-me-map-gp27.json`, 350 rows, 337 joined) — so the script needs
+ * no second join beside the shipped one. Read-only; nothing is written.
  */
 import { readFileSync } from 'node:fs'
 import { hasReadableText, parseExplanations } from '../../server/utils/explanations/risExplanations'
@@ -48,10 +48,10 @@ const sample = Number(argPair('sample') ?? 0)
 const show = argPair('show')
 const CONCURRENCY = 4
 /**
- * Acht Wörter. Kürzer trifft Floskeln der Legistik („in der Fassung des
- * Bundesgesetzes"), die in jedem zweiten Dokument stehen und Deckung
- * vortäuschen; länger zerbricht an jeder redaktionellen Kürzung des
- * Parlaments und misst dann die Kürzung statt der Herkunft.
+ * Eight words. Shorter catches legistic formulae („in der Fassung des
+ * Bundesgesetzes") that stand in every second document and feign coverage;
+ * longer breaks on every editorial cut Parliament makes and then measures the
+ * cut instead of the provenance.
  */
 const SHINGLE = 8
 
@@ -59,7 +59,7 @@ const SHINGLE = 8
 const FETCH: HttpOptions = { script: 'corpus/kurzinfo', attempts: 3, backoffMs: (retry) => 500 * retry, retryOnHttpError: true }
 const fetchText = (url: string): Promise<string> => getText(url, FETCH)
 
-/** Vergleichsform: ohne Markup, ohne Entities, kleingeschrieben, ein Leerzeichen. */
+/** Comparison form: no markup, no entities, lowercased, single spaces. */
 function words(html: string): string[] {
   return normalizeText(decodeEntities(stripMarkup(html)))
     .toLowerCase()
@@ -68,7 +68,7 @@ function words(html: string): string[] {
     .filter(Boolean)
 }
 
-/** Anteil der Wortfenster aus `needle`, die wörtlich in `haystack` stehen. */
+/** The share of `needle`'s word windows that stand verbatim in `haystack`. */
 function coverage(needle: string[], haystack: string): { windows: number; hits: number } {
   if (needle.length < SHINGLE) return { windows: 0, hits: 0 }
   let hits = 0
@@ -85,11 +85,11 @@ interface MapRow { inr: number; cite: string; status: string; risId: string | nu
 interface Row {
   inr: number
   cite: string
-  /** Titel des Entwurfs beim Parlament — für die Duplikatgruppen unten. */
+  /** The draft's title at Parliament — for the duplicate groups below. */
   title: string
-  /** Fingerabdruck der Kurzinformation; gleiche Kurzinformation = gleicher Wert. */
+  /** Fingerprint of the Kurzinformation; same Kurzinformation = same value. */
   fingerprint: string
-  /** Zeichen der beiden Teile, roh — sagt, wie viel Gewicht teil2 überhaupt hat. */
+  /** Characters of the two parts, raw — says how much weight teil2 carries at all. */
   chars1: number
   chars2: number
   windows: number
@@ -126,18 +126,18 @@ async function main(): Promise<void> {
       if (!teil2) { row.note = 'keine Prosa (nur Ziele/Inhalt)'; return row }
       if (!xmlUrl) { row.note = 'keine Erläuterungen als XML'; return row }
 
-      // Der Heuhaufen ist das ROHE Dokument, nicht die Lesung davon: Die
-      // Frage ist die Herkunft eines Textes, nicht was unser Parser davon
-      // auswählt. `parseExplanations` lässt Tabellen und Abbildungen weg
-      // und trennt Allgemeinen von Besonderem Teil — beides richtig für die
-      // Seite und falsch für diese Messung. Dazu der Entwurfstext selbst:
-      // Die Kurzinformation zitiert stellenweise aus ihm.
+      // The haystack is the RAW document, not our reading of it: the
+      // question is where a text comes from, not what our parser picks out
+      // of it. `parseExplanations` leaves out tables and figures and splits
+      // the Allgemeiner from the Besonderer Teil — both right for the page
+      // and wrong for this measurement. Plus the draft text itself: the
+      // Kurzinformation quotes from it in places.
       const xml = await fetchText(xmlUrl)
       const main = record?.mainDocument?.xml ? await fetchText(record.mainDocument.xml).catch(() => '') : ''
       const ministry = `${stripMarkup(xml)} ${stripMarkup(main)}`
-      // Ein Scan trägt keinen Text. Ohne diese Schranke misst das Skript
-      // „0 % gedeckt" und meint „nichts zu vergleichen" — ein Artefakt, das
-      // wie ein Befund aussieht.
+      // A scan carries no text. Without this guard the script measures
+      // „0 % gedeckt" and means „nothing to compare" — an artefact that
+      // looks like a finding.
       const readable = parseExplanations(xml)
       const ministryWords = words(ministry)
       if (ministryWords.length < 200 || !hasReadableText(readable)) {
@@ -162,10 +162,10 @@ async function main(): Promise<void> {
   process.stderr.write('\n')
   if (show) return
 
-  // ZUERST die Duplikate, denn sie entscheiden, worüber die Deckung unten
-  // überhaupt etwas sagt: Trägt ein Entwurf die Kurzinformation eines anderen,
-  // misst ein Vergleich mit SEINEN Dokumenten die Verwechslung, nicht die
-  // Herkunft des Textes.
+  // THE DUPLICATES FIRST, because they decide what the coverage below says
+  // anything about at all: where a draft carries another one's
+  // Kurzinformation, a comparison against ITS documents measures the mix-up,
+  // not where the text comes from.
   const groups = new Map<string, Row[]>()
   for (const r of rows) {
     if (!r.fingerprint) continue
