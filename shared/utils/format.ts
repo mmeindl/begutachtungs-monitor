@@ -101,20 +101,68 @@ export function truncate(s: string, max: number): string {
 }
 
 /**
- * Whole days from today until the given ISO date (date-only math, UTC).
- * 0 = today, negative = past.
+ * One ISO date ("2026-09-21") as a timestamp, read as a plain calendar day.
+ *
+ * The day arithmetic here is date-only and runs in UTC — not because UTC is
+ * the right timezone, but because it is the one without offsets: both
+ * operands are already calendar days, so their difference is exact. NaN for
+ * anything that is not a date, which every caller checks.
  */
-export function daysUntil(iso: string | null | undefined): number | null {
-  if (!iso) return null
-  const target = Date.UTC(
+function utcDay(iso: string): number {
+  return Date.UTC(
     Number(iso.slice(0, 4)),
     Number(iso.slice(5, 7)) - 1,
     Number(iso.slice(8, 10)),
   )
+}
+
+/** Built once — constructing an Intl formatter is the expensive part. */
+const VIENNA_DAY_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Vienna',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+/**
+ * Today as an ISO date (yyyy-mm-dd) — the calendar day in Europe/Vienna, and
+ * the only definition of "today" this codebase has.
+ *
+ * The timezone is named because nothing in the process carries it: the VPS
+ * runs in UTC (`deploy/` sets none), the browser runs wherever the reader
+ * sits, and a Begutachtungsfrist „bis 21.09.2026" is an Austrian calendar
+ * date that runs to the end of that day in Vienna. Three places used to
+ * decide the day for themselves — `daysUntil` from the process's LOCAL day,
+ * `ris/risRecord.today()` and the Begut search from the UTC day — and
+ * between 00:00 and 02:00 Vienna time (22:00–24:00 UTC) they disagreed: the
+ * server, still on yesterday, rendered „Endet heute" and `reconcileActive`
+ * kept the draft open, while the client, two hours into the new day, got −1
+ * and said „Frist abgelaufen". A hydration mismatch and a wrong state, for
+ * two hours every night.
+ *
+ * The parts are read by name instead of trusting a locale to print
+ * yyyy-mm-dd; Node 22 and every browser ship the full ICU this needs.
+ */
+export function todayIso(now: Date = new Date()): string {
+  const parts = VIENNA_DAY_FORMAT.formatToParts(now)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? ''
+  return `${part('year')}-${part('month')}-${part('day')}`
+}
+
+/**
+ * Whole days from today until the given ISO date (date-only math, UTC).
+ * 0 = today, negative = past.
+ *
+ * "Today" is the Vienna calendar day (`todayIso`), never the one the process
+ * happens to live in — see there for what the local day used to cost. `now`
+ * is there so a test can pin the clock by passing it, without mocking Date.
+ */
+export function daysUntil(iso: string | null | undefined, now: Date = new Date()): number | null {
+  if (!iso) return null
+  const target = utcDay(iso)
   if (Number.isNaN(target)) return null
-  const now = new Date()
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
-  return Math.round((target - today) / 86_400_000)
+  return Math.round((target - utcDay(todayIso(now))) / 86_400_000)
 }
 
 /**
@@ -170,13 +218,8 @@ export function spanInDays(
   to: string | null | undefined,
 ): number | null {
   if (!from || !to) return null
-  const day = (iso: string) => Date.UTC(
-    Number(iso.slice(0, 4)),
-    Number(iso.slice(5, 7)) - 1,
-    Number(iso.slice(8, 10)),
-  )
-  const a = day(from)
-  const b = day(to)
+  const a = utcDay(from)
+  const b = utcDay(to)
   if (Number.isNaN(a) || Number.isNaN(b)) return null
   return Math.round((b - a) / 86_400_000)
 }

@@ -7,15 +7,17 @@ import {
   noRvVerdictDe,
   RV_LATENCY_CONTEXT_DAYS,
 } from '../app/utils/deadlines'
+import { todayIso } from '../shared/utils/format'
 
 /**
- * ISO date exactly N days before today — anchored on the LOCAL calendar
- * day, the same convention daysUntil uses, so boundary tests are exact
- * at any time of day.
+ * ISO date exactly N days before today — anchored on the VIENNA calendar
+ * day, which is the day `daysUntil` measures against. It used to be the
+ * process's local day, and the two part company for two hours every night
+ * on a UTC machine: `daysAgo(RV_LATENCY_CONTEXT_DAYS)` would then be 181
+ * days old instead of 180 and fall out of the window the test pins.
  */
 function daysAgo(n: number): string {
-  const now = new Date()
-  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  const d = new Date(`${todayIso()}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() - n)
   return d.toISOString().slice(0, 10)
 }

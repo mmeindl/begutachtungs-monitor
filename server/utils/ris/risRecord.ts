@@ -9,6 +9,7 @@
  * flattening, and a re-implemented mapper measures itself, not the product.
  */
 import type { RisConsultation } from '../../../shared/types'
+import { todayIso } from '../../../shared/utils/format'
 import type { RisBegutRecord } from './risJoin'
 
 /** The formats RIS offers for one document of a Begut record. */
@@ -176,11 +177,6 @@ export function isOpenOn(r: Pick<RisBegutFlat, 'beginn' | 'ende'>, isoDay: strin
   return Boolean(r.beginn && r.ende && r.beginn <= isoDay && r.ende >= isoDay)
 }
 
-/** The current day, ISO — the day `active` is decided against, as in `reconcileActive`. */
-function today(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
 /**
  * Decides `active` for a list of RIS records on `day`.
  *
@@ -192,9 +188,12 @@ function today(): string {
  * every reader has to decide the day for itself.
  *
  * `day` defaults to today, which is what every caller wants; the parameter
- * exists so the rule can be tested without a clock.
+ * exists so the rule can be tested without a clock. Today is the Vienna
+ * calendar day (`todayIso`), not the server's UTC one: this used to slice
+ * `new Date().toISOString()`, so between 00:00 and 02:00 Vienna time the
+ * server held a record open that the browser had already closed.
  */
-export function withRisActiveOn(items: RisConsultation[], day: string = today()): RisConsultation[] {
+export function withRisActiveOn(items: RisConsultation[], day: string = todayIso()): RisConsultation[] {
   return items.map((item) => {
     const active = isOpenOn({ beginn: item.startedAt, ende: item.deadline }, day)
     return active === item.active ? item : { ...item, active }

@@ -14,9 +14,13 @@
  * Verordnung page.
  */
 
+import { todayIso } from '#shared/utils/format'
+
 // Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async () => {
-  const now = new Date().getFullYear()
+  // Vienna's year (`todayIso`), so the nightly prewarm on New Year's night
+  // warms the Jahrgang the readers are in and not the one before it.
+  const now = Number(todayIso().slice(0, 4))
   const years = [now - 2, now - 1, now]
   const counts = await Promise.all(
     years.map(async (year) => ({ year, records: (await getBgblTeil2Year(year)).length })),

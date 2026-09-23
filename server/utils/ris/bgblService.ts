@@ -23,7 +23,7 @@ import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
 import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
-import { bgblShort } from '#shared/utils/format'
+import { bgblShort, daysUntil, todayIso } from '#shared/utils/format'
 
 const TIMEOUT_MS = 20_000
 /**
@@ -52,6 +52,17 @@ const JOIN_TTL_S = 60 * 60 * 6
  * clock, not about the Ressort.
  */
 const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
+
+/**
+ * The running Jahrgang — which year is still growing, and which one is
+ * closed for good. Vienna's year, like every other day decision here
+ * (`#shared/utils/format.todayIso`): on New Year's night the UTC year lags
+ * Austria's by an hour, and in that hour the fresh Jahrgang would be filed
+ * as closed — cached almost empty for the lifetime of a published document.
+ */
+function currentYear(): number {
+  return Number(todayIso().slice(0, 4))
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -96,7 +107,7 @@ const fetchCurrentYearPage = defineCachedFunction(loadBgblPage, {
 
 function fetchBgblPage(key: string): Promise<any> {
   const year = Number(key.split(':')[0])
-  return year >= new Date().getFullYear() ? fetchCurrentYearPage(key) : fetchClosedYearPage(key)
+  return year >= currentYear() ? fetchCurrentYearPage(key) : fetchClosedYearPage(key)
 }
 
 function mapRecord(doc: any): BgblRecord | null {
@@ -166,7 +177,7 @@ const getCurrentTeil2Year = defineCachedFunction(loadTeil2Year, {
 })
 
 export function getBgblTeil2Year(year: number): Promise<BgblRecord[]> {
-  return year >= new Date().getFullYear() ? getCurrentTeil2Year(year) : getClosedTeil2Year(year)
+  return year >= currentYear() ? getCurrentTeil2Year(year) : getClosedTeil2Year(year)
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -234,7 +245,7 @@ export const getBgblDocument = defineCachedFunction(
 /** The years a Frist's Kundmachung can fall into. */
 function yearsFor(ende: string): number[] {
   const y = Number(ende.slice(0, 4))
-  const now = new Date().getFullYear()
+  const now = currentYear()
   // The window reaches 540 days forward, so at most into the year after
   // next — and never past the running one, where nothing stands yet.
   return [y, y + 1, y + 2].filter((v) => v <= now)
@@ -243,7 +254,12 @@ function yearsFor(ende: string): number[] {
 function stateOf(ende: string | null, active: boolean, found: boolean): BgblOutcomeState {
   if (found) return 'kundgemacht'
   if (active || !ende) return 'begutachtung'
-  const days = Math.round((Date.now() - Date.parse(ende)) / 86_400_000)
+  // Whole calendar days since the Frist ended, counted like everywhere else
+  // (`daysUntil`). The rounded millisecond difference this used to take
+  // crossed the threshold in the middle of the afternoon, and a day early on
+  // the UTC server. A Frist that will not parse now reads as young rather
+  // than as „keine": a failure is not an answer (§12.13).
+  const days = -(daysUntil(ende) ?? 0)
   return days < BGBL_SILENCE_MEANS_SOMETHING_DAYS ? 'ausstehend' : 'keine'
 }
 

@@ -37,6 +37,7 @@ import type {
   RisConsultationDetail,
   RisDocumentFormats,
 } from '#shared/types'
+import { todayIso } from '#shared/utils/format'
 import {
   blocksFromPlainText,
   locateInBlocks,
@@ -403,7 +404,10 @@ function toConsultationView(d: RisConsultation): RisConsultation {
  */
 export async function searchRunningBegut(raw: string): Promise<BegutSearchResponse> {
   const terms = parseSearchQuery(raw)
-  const day = new Date().toISOString().slice(0, 10)
+  // „laufend" is the Vienna calendar day, the same one every other surface
+  // decides `active` on (`#shared/utils/format.todayIso`) — the UTC day this
+  // used to take would have searched yesterday's corpus until 02:00.
+  const day = todayIso()
   if (!terms.length) {
     return { query: raw.trim(), corpusSize: await runningCount(day), total: 0, hits: [] }
   }
