@@ -61,6 +61,31 @@ export const SIZE_TOLERANCE = 4
 /** "(2)", "3.", "b)" — and "f.", the Litera style with a full stop (Medizinproduktegesetz, 2026-09-09). */
 const MARKER_START = /^(?:\(\d+[a-z]*\)|\d+[a-z]*\.|[a-z][.)])(?=\s|$)/
 
+/**
+ * „z. B.", „u. a.", „d. h." — German prose, not a leaked Litera.
+ *
+ * The Litera style with a full stop costs what it buys: a legal sentence
+ * that begins with an abbreviation opens with one lowercase letter and one
+ * full stop too, and `MARKER_START` cannot tell „z. B. Fahrzeuge" from „f.
+ * Fahrzeuge". Constructed through `guardParagraph`, the whole § is then
+ * withheld as „unplausibel" — the safe direction, and paid for in coverage,
+ * which is the one currency the gate is short of.
+ *
+ * What separates the two is the SECOND token, not the first: an abbreviation
+ * opener followed by another abbreviation with its own full stop is the
+ * shape „x. y.", and no enumeration marker looks like that. A real Litera
+ * „b) …" carries a bracket and never reaches this test, and „f. Fahrzeuge"
+ * is followed by a word, so it still counts. Both lists are closed on
+ * purpose: opening them to any letter would hand the check back its
+ * blindness.
+ */
+const ABBREV_PAIR = /^[bdisuvz]\.\s+(?:B|a|o|h|d|S|zw)\.(?=\s|$)/
+
+/** A node's text opens with what looks like an Absatz/Ziffer/Litera marker. */
+function startsWithMarker(text: string): boolean {
+  return MARKER_START.test(text) && !ABBREV_PAIR.test(text)
+}
+
 function multisetMinus(a: readonly string[], b: readonly string[]): string[] {
   const counts = new Map<string, number>()
   for (const t of b) counts.set(t, (counts.get(t) ?? 0) + 1)
@@ -194,7 +219,7 @@ export function guardParagraph(
   if (seam(afterText) > seam(beforeText)) flags.add('fuge')
 
   // Leak: a marker left inside a node's text — the payload parser missed a level.
-  const leaks = (n: LawNode): number => lawTextNodes(n).filter((x) => MARKER_START.test(x.text)).length
+  const leaks = (n: LawNode): number => lawTextNodes(n).filter((x) => startsWithMarker(x.text)).length
   if (leaks(after) > (beforeTree ? leaks(beforeTree) : 0)) flags.add('marker')
 
   // Unexplained: words the engine changed that no operand names.

@@ -53,6 +53,40 @@ export interface BgblJoinDraft {
   ende: string | null
 }
 
+/**
+ * Is this Jahrgang still growing?
+ *
+ * `bgblService.ts` cuts the corpus by year and caches the two kinds of year
+ * differently: the running one for six hours, because it gains a piece a few
+ * times a week, the closed one for the lifetime of a published document,
+ * because it cannot change any more. Which of the two a year is decides the
+ * whole thing, and the obvious answer — „the year of today, and everything
+ * after it" — carries one day on which it is wrong.
+ *
+ * ON 1 JANUARY the Jahrgang that closed hours ago moves into the closed
+ * namespace, and its first fresh read there is pinned for 30 days. A
+ * Kundmachung dated in the last days of December that RIS indexes AFTER that
+ * read therefore stays invisible until February. That is not a cosmetic
+ * delay: by then the Frist of the draft behind it can be older than 180 days,
+ * and `stateOf` stops saying `ausstehend` and says `keine` — „bisher nicht
+ * kundgemacht" about a Verordnung that has been in force since New Year's
+ * Eve. §12.32 forbids exactly that sentence, and a wrong one is worse than a
+ * missing one, because it reads as a statement about the Ressort.
+ *
+ * So a Jahrgang stays running for a grace period: until the end of January
+ * the year before is still asked on the six-hour lifetime. The price is one
+ * more RIS read per six hours on one extra year, for one month a year — the
+ * same order as the running year costs all year round.
+ *
+ * `today` is passed in, not read here: the Vienna day is decided in one place
+ * (`#shared/utils/format.todayIso` — on New Year's night the UTC year lags
+ * Austria's by an hour), and a test can pin the clock without mocking Date.
+ */
+export function isRunningYear(year: number, today: string): boolean {
+  const thisYear = Number(today.slice(0, 4))
+  return year >= (today.slice(5, 7) === '01' ? thisYear - 1 : thisYear)
+}
+
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * The window between the end of the Frist and the date of issue, in days.

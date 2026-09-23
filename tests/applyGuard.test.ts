@@ -70,6 +70,22 @@ describe('guardParagraph', () => {
     expect(r.flags).toContain('marker')
   })
 
+  it('does not read a German abbreviation pair as a Litera marker', () => {
+    // „z. B." opens with a single letter and a full stop, which is exactly
+    // the Litera style the marker check was taught. A correct § was withheld
+    // as „unplausibel" for it — safe direction, but paid for in coverage.
+    const r = guard(law(), instr('Dem § 6 wird folgender Abs. 2 angefügt:', ['(2) z. B. Fahrzeuge sind erfasst.']))
+    expect(r.flags).not.toContain('marker')
+    expect(r.plausible).toBe(true)
+  })
+
+  it('still flags a Litera with a full stop that opens a real enumeration', () => {
+    const r = guard(law(), instr('Dem § 6 wird folgender Abs. 2 angefügt:', ['(2) Ergänzung.']), (after) => {
+      after.children[1]!.text = 'f. Fahrzeuge'
+    })
+    expect(r.flags).toContain('marker')
+  })
+
   it('accounts for a unit replacement by its payload and the unit it replaces', () => {
     const r = guard(law(), instr('§ 6 Abs. 1 lautet:', ['(1) Zuständig ist die Landesregierung.']))
     expect(r.flags).toEqual([])

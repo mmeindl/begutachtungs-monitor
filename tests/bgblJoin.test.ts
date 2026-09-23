@@ -4,6 +4,7 @@ import {
   bgblCandidates,
   bgblTitleCore,
   bgblTitleScore,
+  isRunningYear,
   joinDraftToBgbl,
   type BgblJoinDraft,
   type BgblRecord,
@@ -147,5 +148,29 @@ describe('joinDraftToBgbl', () => {
     // only against its hits is not checked.
     const foreign = record({ stelle: 'Vorstand der E-Control' })
     expect(bgblCandidates(draft(), [foreign])[0]?.ministry).toBe(0)
+  })
+})
+
+describe('isRunningYear', () => {
+  it('reads the day own year as running and the one before it as closed', () => {
+    expect(isRunningYear(2026, '2026-12-31')).toBe(true)
+    expect(isRunningYear(2025, '2026-12-31')).toBe(false)
+  })
+
+  it('keeps the old Jahrgang running through January', () => {
+    // The whole point of the grace period: on 01.01. the closed namespace
+    // would pin the year that ended hours ago for 30 days, and a Kundmachung
+    // of 30.12. that RIS indexes after that first read would surface in
+    // February — by when `stateOf` says „keine" about a Verordnung that has
+    // been in force all along (§12.32).
+    expect(isRunningYear(2026, '2027-01-15')).toBe(true)
+    expect(isRunningYear(2027, '2027-01-15')).toBe(true)
+    // Two years back is closed even in January: the grace is one year wide.
+    expect(isRunningYear(2025, '2027-01-15')).toBe(false)
+  })
+
+  it('lets the grace period end with January', () => {
+    expect(isRunningYear(2026, '2027-02-01')).toBe(false)
+    expect(isRunningYear(2027, '2027-02-01')).toBe(true)
   })
 })

@@ -17,7 +17,7 @@
  * the kind of rule that still changes.
  */
 import type { BgblOutcome, BgblOutcomeState, RisConsultation } from '#shared/types'
-import { joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
+import { isRunningYear, joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
 import { DERIVED_CACHE } from '../cache/base'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
@@ -54,14 +54,24 @@ const JOIN_TTL_S = 60 * 60 * 6
 const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
 
 /**
- * The running Jahrgang — which year is still growing, and which one is
- * closed for good. Vienna's year, like every other day decision here
+ * Today's Jahrgang — the newest year a Kundmachung can carry.
+ *
+ * Vienna's year, like every other day decision here
  * (`#shared/utils/format.todayIso`): on New Year's night the UTC year lags
- * Austria's by an hour, and in that hour the fresh Jahrgang would be filed
- * as closed — cached almost empty for the lifetime of a published document.
+ * Austria's by an hour, and in that hour the fresh Jahrgang would not exist
+ * yet for us.
+ *
+ * This is the CEILING only, for `yearsFor`. Which years are still asked on
+ * the running lifetime is a second and wider question, and it is answered
+ * where it is argued (`bgblJoin.isRunningYear`).
  */
 function currentYear(): number {
   return Number(todayIso().slice(0, 4))
+}
+
+/** The split both cache pairs below run on — see `bgblJoin.isRunningYear`. */
+function stillRunning(year: number): boolean {
+  return isRunningYear(year, todayIso())
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -107,7 +117,7 @@ const fetchCurrentYearPage = defineCachedFunction(loadBgblPage, {
 
 function fetchBgblPage(key: string): Promise<any> {
   const year = Number(key.split(':')[0])
-  return year >= currentYear() ? fetchCurrentYearPage(key) : fetchClosedYearPage(key)
+  return stillRunning(year) ? fetchCurrentYearPage(key) : fetchClosedYearPage(key)
 }
 
 function mapRecord(doc: any): BgblRecord | null {
@@ -177,7 +187,7 @@ const getCurrentTeil2Year = defineCachedFunction(loadTeil2Year, {
 })
 
 export function getBgblTeil2Year(year: number): Promise<BgblRecord[]> {
-  return year >= currentYear() ? getCurrentTeil2Year(year) : getClosedTeil2Year(year)
+  return stillRunning(year) ? getCurrentTeil2Year(year) : getClosedTeil2Year(year)
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -248,6 +258,13 @@ function yearsFor(ende: string): number[] {
   const now = currentYear()
   // The window reaches 540 days forward, so at most into the year after
   // next — and never past the running one, where nothing stands yet.
+  //
+  // The grace period of `isRunningYear` has no business here. This is the
+  // list of years ASKED, and January's extra year is already in it: on
+  // 15.01.2027 a Frist from 2026 yields [2026, 2027], and the grace only
+  // decides that the 2026 half of that pair is still read on the short
+  // lifetime. Stretching the ceiling instead would ask RIS for 2028, where
+  // by construction nothing can stand yet.
   return [y, y + 1, y + 2].filter((v) => v <= now)
 }
 
