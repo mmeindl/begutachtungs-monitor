@@ -20,3 +20,5 @@ outreach/
 .cache/
 # The harnesses' opt-in RIS cache (`scripts/lib/harnessCache.ts`, `--cache`)
 .harness-cache/
+# Working document of the September 2026 refactor — private, like the files above
+docs/refactor-plan.md
