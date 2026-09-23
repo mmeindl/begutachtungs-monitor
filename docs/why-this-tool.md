@@ -144,9 +144,13 @@ tracking.
    with grant funding.
 6. **Base rates across procedures** — the statistical layer described above.
 7. **Statement-corpus synthesis** (clustering/summarizing large statement
-   corpora) — stage 2, only with a research partner, because the full texts
-   are excluded from the open-data license and require the § 42h UrhG
-   text-and-data-mining exception.
+   corpora) — stage 2, only with a research partner. The reason is not the
+   open-data licence: Parliament does not hold the rights to the statements,
+   so no licence of theirs could cover them either way. It is the authors'
+   own copyright — a Stellungnahme belongs to the chamber, Land, NGO or
+   person who wrote it — that puts machine reading of the corpus under the
+   § 42h UrhG text-and-data-mining exception, and its research variant is
+   the one that cannot be signed away in terms of use.
 
 ## Non-goals
 
