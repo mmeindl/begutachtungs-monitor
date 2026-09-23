@@ -1,63 +1,50 @@
-# Wöchentlicher Drift-Alarm für die Textgegenüberstellung
-# (docs/architecture.md §12.13).
+# Weekly drift alarm for the Textgegenüberstellung (docs/architecture.md
+# §12.13).
 #
-# Was hier NICHT geprüft wird: ob wir die Engine kaputt gemacht haben. Das
-# fangen `ci.yml` mit 1.000+ Tests, `tests/annexGolden.test.ts`, das zwei
-# echte Beilagen mit ihren Zahlen einfriert, und seit 22.09.2026
-# `tests/annexGateGolden.test.ts`, das fünf echte Läufe des Tors mit ihren
-# Urteilen einfriert — zwei davon scheitern gemessen an der Engine-Arbeit vom
-# 19.09., die hier zwölf Befunde wert war. Geprüft wird die andere Richtung:
-# ein Ressort setzt seine Beilage anders als bisher, und die Seite zeigt
-# lautlos eine Gegenüberstellung, die niemand als falsch erkennt. Das ist die
-# Betriebslast, an der der Vorgänger gestorben ist, also läuft der Alarm auf
-# GitHubs Runnern und nicht als Dienst auf dem 1-GB-VPS.
+# What it does: once a week it measures both annex paths over the 400 most
+# recent Begut records, applies class A and class B from
+# `scripts/lib/annexReport.ts` — which is where both are defined and why —
+# and opens one GitHub issue when something stands, closing it again on the
+# first clean run.
 #
-# **Klasse A** (`scripts/lib/annexReport.ts`) sind die Befunde, die ohne
-# Grundlinie feststehen: die vier Zusicherungen des Tors, die Summe der
-# Einbehaltungsgründe, nicht gelesene Seiten, und ob der Lauf überhaupt etwas
-# gemessen hat. Kennzahlen, die mit der Zusammensetzung des Korpus wandern,
-# stehen bewusst NICHT darin — der Prüfstand läuft über die 400 jüngsten
-# Begut-Datensätze, also über ein wanderndes Fenster, und eine Regel darüber
-# meldete jede Woche eine Änderung.
+# What is NOT checked here: whether we broke the engine. `ci.yml` with 1.000+
+# tests catches that, as do `tests/annexGolden.test.ts`, which freezes two
+# real annexes with their numbers, and, since 22.09.2026,
+# `tests/annexGateGolden.test.ts`, which freezes five real gate runs with
+# their verdicts — two of those failed, measured, on the engine work of 19.09.
+# that was worth twelve findings here. What is checked is the other
+# direction: a ressort typesets its annex differently than before and the
+# page silently shows a Gegenüberstellung nobody recognises as wrong. That is
+# the operational load the predecessor died of, so the alarm runs on GitHub's
+# runners and not as a service on the 1 GB VPS.
 #
-# **Klasse B** vergleicht jeden Entwurf, den wir schon einmal gemessen haben,
-# gegen `tests/fixtures/annex-baseline.json`. Eine NOR-veröffentlichte Beilage
-# ändert sich nie und das Tor hält gegen das RIS zum Beginn der
-# Begutachtungsfrist — gegen ein festes Datum. Derselbe Entwurf muss sich also
-# morgen genauso messen wie heute, und deshalb ist die Regel Gleichheit und
-# kein Toleranzband. Neue Entwürfe zählen nicht mit (für sie gilt Klasse A),
-# und dass einer aus dem Fenster der 400 jüngsten rutscht, ist der Normalfall
-# und keine Meldung.
-#
-# **Wenn der Alarm anschlägt, weil du die Engine absichtlich verbessert hast:**
-# bei Klasse A kann er das nicht — da gibt es keine Grundlinie. Bei Klasse B
-# schon, und dann gilt die Regel ohne Ausnahme: die Grundlinie wird im SELBEN
-# Commit nachgezogen wie die Änderung —
+# **When the alarm fires because you improved the engine on purpose:** class A
+# cannot do that — there is no baseline there. Class B can, and then the rule
+# holds without exception: the baseline is pulled up in the SAME commit as the
+# change —
 # `npx vite-node scripts/ci/annexDrift.ts -- --grundlinie-schreiben=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json`
-# — sonst wird der Alarm zu dem Rauschen, das man nach dem dritten Mal
-# wegklickt.
+# — or the alarm becomes the noise one clicks away after the third time.
 #
-# **Was der Cache unten verdeckt, ehrlich benannt:** er liefert bereits
-# geholte Dokumente von der Platte, also bemerkt Klasse B im CI *keine*
-# nachträgliche Änderung an einem Dokument, das schon einmal geholt wurde.
-# Was sie im CI bemerkt, ist eine Verschiebung durch unseren eigenen Code und
-# alles an neuen Entwürfen. Für die andere Frage — hat das RIS rückwirkend
-# etwas angefasst — muss der Lauf ohne Cache erfolgen; das ist eine Handarbeit
-# und kein Wochenjob.
+# **What the cache below hides, named honestly:** it serves documents already
+# fetched from disk, so in CI class B notices *no* retroactive change to a
+# document that has been fetched once. What it does notice in CI is a shift
+# caused by our own code, and everything about new drafts. For the other
+# question — did RIS touch something retroactively — the run has to happen
+# without the cache; that is handwork and not a weekly job.
 #
-# **Die Grundlinie mahnt sich selbst an.** Ab 60 Tagen Alter meldet der Lauf
-# einen Befund der Klasse `wartung` — mit dem Befehl, der es behebt — und
-# öffnet dafür ein Issue wie für jeden anderen Befund. Das Nachziehen bleibt
-# Handarbeit, das Erinnern nicht.
+# **The baseline reminds us of itself.** From an age of 60 days the run
+# reports a finding of class `wartung` — with the command that fixes it — and
+# opens an issue for it like for any other finding. Pulling it up stays
+# handwork; remembering does not.
 #
-# Bekannte Falle, dieselbe wie bei `uptime.yml`: GitHub schaltet geplante
-# Workflows in Repositories ohne Commits nach 60 Tagen ab und schickt eine
-# Mail. Im Actions-Tab wieder einschalten oder irgendetwas committen.
+# Known trap, the same one as in `uptime.yml`: GitHub switches off scheduled
+# workflows in repositories without commits after 60 days and sends a mail.
+# Switch it on again in the Actions tab, or commit anything.
 name: Annex-Drift
 
 on:
   schedule:
-    # Montag früh, abseits der vollen Stunde: GitHubs Cron ist dort verstopft.
+    # Monday morning, off the full hour: GitHub's cron is congested there.
     - cron: '23 5 * * 1'
   workflow_dispatch:
     inputs:
@@ -81,11 +68,11 @@ env:
 jobs:
   drift:
     runs-on: ubuntu-latest
-    # Der ERSTE Lauf hat keinen Cache und holt beide Pfade nacheinander: rund
-    # 3.300 RIS-Abrufe für die Paragraphenprüfung plus 240 Beilagen, alles
-    # sequenziell — das sind gut und gern 35 Minuten. Danach liegt der Cache
-    # und es bleiben die neuen Entwürfe, also Minuten. Die Grenze ist für den
-    # kalten Fall bemessen, nicht für den Normalfall.
+    # The FIRST run has no cache and fetches both paths one after the other:
+    # some 3.300 RIS requests for the Paragraph check plus 240 annexes, all
+    # sequential — a good 35 minutes. After that the cache is there and only
+    # the new drafts are left, so minutes. The limit is sized for the cold
+    # case, not for the normal one.
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -101,23 +88,22 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Der Prüfstand hat einen eigenen Plattencache (`lib/harnessCache.ts`), der
-      # jeden RIS-Abruf ablegt. Ihn über die Wochen mitzunehmen ist nicht nur
-      # schneller, sondern höflicher: eine NOR-veröffentlichte Beilage ändert
-      # sich nie, also wird jede Woche nur das geholt, was neu dazugekommen
-      # ist — und das ist genau das, was dieser Alarm prüfen soll.
+      # The harness has a disk cache of its own (`lib/harnessCache.ts`) that
+      # stores every RIS request. Carrying it across the weeks is not only
+      # faster but more polite: an annex published as a NOR never changes, so
+      # each week only what is newly added is fetched — and that is exactly
+      # what this alarm is meant to check.
       #
-      # **Laden und Sichern sind getrennt, und das ist nicht Geschmack.**
-      # `actions/cache` sichert in seinem Post-Schritt nur, wenn der Job
-      # *erfolgreich* war — dieser Job scheitert aber absichtlich, sobald ein
-      # Befund dasteht. Mit dem kombinierten `actions/cache@v4` wurde der
-      # Cache also genau in den Wochen nicht gesichert, in denen etwas
-      # gefunden wurde, und ein stehender Befund hätte ihn nie warm werden
-      # lassen. Beim ersten Lauf am 16.09.2026 stand „Post RIS-Cache:
-      # skipped" im Protokoll.
+      # **Restore and save are separate, and that is not taste.**
+      # `actions/cache` saves in its post step only when the job *succeeded* —
+      # but this job fails on purpose as soon as a finding stands. With the
+      # combined `actions/cache@v4` the cache was therefore not saved in
+      # precisely the weeks something was found, and a standing finding would
+      # never have let it grow warm. On the first run of 16.09.2026 the log
+      # read „Post RIS-Cache: skipped".
       #
-      # Der Schlüssel rotiert je Lauf (ein bestehender Schlüssel würde gar
-      # nicht erst gesichert); `restore-keys` wärmt aus dem letzten Lauf.
+      # The key rotates per run (an existing key would not be saved at all);
+      # `restore-keys` warms from the last run.
       - name: RIS-Cache des Prüfstands laden
         uses: actions/cache/restore@v4
         with:
@@ -131,10 +117,10 @@ jobs:
       - name: PDF-Pfad messen
         run: npx vite-node scripts/harness/annexPdf.ts -- --gp=XXVIII --limit=$LIMIT --json=annex-pdf.json
 
-      # Gesichert wird direkt nach den Messungen und mit `always()`: was geholt
-      # wurde, ist dann geholt — auch wenn der Alarm gleich einen Befund
-      # meldet oder eine Messung abgebrochen ist. Ein halb gefüllter Cache ist
-      # besser als keiner, `restore-keys` nimmt ihn beim nächsten Mal mit.
+      # Saved straight after the measurements and with `always()`: what has
+      # been fetched is fetched — even when the alarm reports a finding right
+      # after, or a measurement broke off. A half-filled cache is better than
+      # none, and `restore-keys` picks it up next time.
       - name: RIS-Cache des Prüfstands sichern
         if: always()
         uses: actions/cache/save@v4
@@ -142,10 +128,9 @@ jobs:
           path: .harness-cache
           key: harness-cache-${{ github.run_id }}
 
-      # Die Berichte bleiben als Artefakt liegen, auch wenn nichts gefunden
-      # wurde: die Grundlinie für Klasse B wird aus genau diesen Dateien
-      # gezogen, und ein Befund lässt sich nur gegen den Bericht lesen, der
-      # ihn erzeugt hat.
+      # The reports stay behind as an artefact even when nothing was found:
+      # class B's baseline is drawn from exactly these files, and a finding
+      # can only be read against the report that produced it.
       - name: Berichte aufheben
         if: always()
         uses: actions/upload-artifact@v4
@@ -156,26 +141,26 @@ jobs:
 
       - name: Klasse A und B anwenden
         id: drift
-        # `shell: bash` ist hier nicht Kosmetik: der Standard-Shell eines
-        # run-Schritts ist `bash -e {0}` OHNE pipefail, und dann trägt
-        # `skript | tee` den Exit-Code von tee — also immer 0. Der Alarm hätte
-        # nie ausgelöst.
+        # `shell: bash` is not cosmetics here: the default shell of a run
+        # step is `bash -e {0}` WITHOUT pipefail, and then `script | tee`
+        # carries tee's exit code — always 0, that is. The alarm would never
+        # have fired.
         shell: bash
         run: npx vite-node scripts/ci/annexDrift.ts -- --grundlinie=tests/fixtures/annex-baseline.json annex-xml.json annex-pdf.json | tee drift.md
 
       - name: Issue öffnen oder schließen
-        # `always()`, weil der Schritt davor bei einem Befund mit 1 endet —
-        # genau dann ist hier etwas zu tun. Ein Lauf, der gar nicht messen
-        # konnte (Exit 2, RIS weg, Timeout), lässt den Job rot werden und
-        # GitHub schickt die Mail für einen fehlgeschlagenen Lauf: „konnte
-        # nicht prüfen" und „hat etwas gefunden" sind verschiedene Zustände,
-        # und bei einem Lauf pro Woche darf der erste auch laut sein.
+        # `always()`, because the step before ends with 1 on a finding — and
+        # that is exactly when there is something to do here. A run that could
+        # not measure at all (exit 2, RIS gone, timeout) lets the job go red
+        # and GitHub sends the mail for a failed run: „konnte nicht prüfen"
+        # and „hat etwas gefunden" are different states, and at one run a week
+        # the first one may be loud too.
         if: always() && steps.drift.outcome != 'cancelled'
         env:
           GH_TOKEN: ${{ github.token }}
-          # Exit 1 schreibt `count`, Exit 2 (Bericht unlesbar) nicht. An
-          # `outcome` allein sind die beiden nicht zu unterscheiden — ein
-          # gescheiterter Lauf bekäme sonst ein Issue mit leerem Titel.
+          # Exit 1 writes `count`, exit 2 (report unreadable) does not. By
+          # `outcome` alone the two cannot be told apart — a failed run would
+          # otherwise get an issue with an empty title.
           FOUND: ${{ steps.drift.outputs.count != '' }}
           CLEAN: ${{ steps.drift.outcome == 'success' }}
           SUMMARY: ${{ steps.drift.outputs.summary }}
@@ -212,9 +197,8 @@ jobs:
           elif [ "$CLEAN" = "true" ]; then
             echo "ohne Befund"
           else
-            # Nur hierher kommt der Lauf, der gar nicht messen konnte. Der
-            # Job ist rot, GitHub schickt die Mail dafür, und ein offener
-            # Befund bleibt offen — eine gescheiterte Messung ist keine
-            # Entwarnung.
+            # Only the run that could not measure at all reaches here. The
+            # job is red, GitHub sends the mail for it, and an open finding
+            # stays open — a failed measurement is no all-clear.
             echo "Lauf gescheitert, ohne Urteil — ein offener Befund bleibt offen"
           fi
