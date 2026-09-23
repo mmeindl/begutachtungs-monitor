@@ -25,6 +25,8 @@
  * margin, and hence `BgblOutcome`'s third state: `unknown`, for everything
  * the window cannot decide yet.
  */
+import type { BgblOutcomeState } from '../../../shared/types'
+import { daysUntil } from '../../../shared/utils/format'
 import { ministryCodeOf, ministryScore } from './ministryCodes'
 import { daysBetween, normalizeTitleText, titleComponents } from './titleSimilarity'
 
@@ -85,6 +87,49 @@ export interface BgblJoinDraft {
 export function isRunningYear(year: number, today: string): boolean {
   const thisYear = Number(today.slice(0, 4))
   return year >= (today.slice(5, 7) === '01' ? thisYear - 1 : thisYear)
+}
+
+/**
+ * From when on the Bundesgesetzblatt's silence means something.
+ *
+ * Measured (`pnpm corpus:bgbl2`): between the end of the Frist and the
+ * Kundmachung lie a median of 57 days, p90 197. By age of the Frist's end,
+ * 0 % of the drafts from the last 30 days find a Kundmachung, 31,6 % after
+ * 31–90 days, 71,4 % after 91–180 and 92,3 % after 181–365. „Bisher keine
+ * Kundmachung" before that point would therefore be a statement about the
+ * clock, not about the Ressort.
+ */
+export const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
+
+/**
+ * What became of a Verordnungsentwurf, as a state the page may print.
+ *
+ * **A failure is not an answer** (docs/architecture.md §12.13), and here
+ * that rule has a name: `ausstehend`. A draft whose Frist ended six weeks
+ * ago is not „nicht kundgemacht" — it is young. Telling the two apart is the
+ * whole difference between an accountability statement and an insinuation,
+ * which is why this moved out of `bgblService.ts` on 23.09.2026: it was the
+ * one rule of that file no test could execute.
+ *
+ * `now` is there so a test can pin the clock without mocking Date; the day
+ * itself is Vienna's, decided in `#shared/utils/format` like every other day
+ * decision here.
+ */
+export function bgblOutcomeState(
+  ende: string | null,
+  active: boolean,
+  found: boolean,
+  now: Date = new Date(),
+): BgblOutcomeState {
+  if (found) return 'kundgemacht'
+  if (active || !ende) return 'begutachtung'
+  // Whole calendar days since the Frist ended, counted like everywhere else
+  // (`daysUntil`). The rounded millisecond difference this used to take
+  // crossed the threshold in the middle of the afternoon, and a day early on
+  // the UTC server. A Frist that will not parse now reads as young rather
+  // than as „keine": a failure is not an answer (§12.13).
+  const days = -(daysUntil(ende, now) ?? 0)
+  return days < BGBL_SILENCE_MEANS_SOMETHING_DAYS ? 'ausstehend' : 'keine'
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---

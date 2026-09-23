@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BGBL_SILENCE_MEANS_SOMETHING_DAYS,
   BGBL_WINDOW_DAYS,
   bgblCandidates,
+  bgblOutcomeState,
   bgblTitleCore,
   bgblTitleScore,
   isRunningYear,
@@ -172,5 +174,68 @@ describe('isRunningYear', () => {
   it('lets the grace period end with January', () => {
     expect(isRunningYear(2026, '2027-02-01')).toBe(false)
     expect(isRunningYear(2027, '2027-02-01')).toBe(true)
+  })
+})
+
+/**
+ * The state the list column „Stand" prints for a Verordnungsentwurf — and
+ * the one rule in it that reads as an accusation if it fires too early.
+ *
+ * It lived in `bgblService.ts` until 23.09.2026, unexported and under three
+ * cached functions, so nothing could execute it. The 180 days are measured
+ * (`pnpm corpus:bgbl2`): 31,6 % of the drafts find a Kundmachung after
+ * 31–90 days, 71,4 % after 91–180. Before that, silence says something about
+ * the clock, not about the Ressort.
+ */
+describe('bgblOutcomeState', () => {
+  /** A fixed Vienna noon, so the boundary is the rule and not the hour. */
+  const on = (iso: string) => new Date(`${iso}T12:00:00+02:00`)
+
+  it('reports a found Kundmachung whatever the dates say', () => {
+    expect(bgblOutcomeState('2026-01-15', false, true, on('2026-09-23'))).toBe('kundgemacht')
+    // Even while the Frist still runs: an urgent Verordnung can be published
+    // before the formal end of its Begutachtung (`BGBL_WINDOW_DAYS`).
+    expect(bgblOutcomeState('2026-12-01', true, true, on('2026-09-23'))).toBe('kundgemacht')
+  })
+
+  it('says nothing about the outcome while the Frist runs', () => {
+    expect(bgblOutcomeState('2026-12-01', true, false, on('2026-09-23'))).toBe('begutachtung')
+  })
+
+  /* THE BOUNDARY. One day either side of it is the difference between „noch
+   * offen" and „bisher nicht kundgemacht" — a sentence about a Ressort. */
+  it('turns from ausstehend to keine on the 180th day, not before', () => {
+    // 2026-01-15 + 179 days = 2026-07-13, + 180 days = 2026-07-14.
+    expect(bgblOutcomeState('2026-01-15', false, false, on('2026-07-12'))).toBe('ausstehend')
+    expect(bgblOutcomeState('2026-01-15', false, false, on('2026-07-13'))).toBe('ausstehend')
+    expect(bgblOutcomeState('2026-01-15', false, false, on('2026-07-14'))).toBe('keine')
+    expect(bgblOutcomeState('2026-01-15', false, false, on('2026-07-15'))).toBe('keine')
+  })
+
+  it('reads the day whole, so the state does not change mid-afternoon', () => {
+    // The millisecond difference this rule used to take crossed the
+    // threshold in the middle of the day, and a day early on the UTC server.
+    for (const hour of ['00:05', '13:37', '23:55']) {
+      expect(
+        bgblOutcomeState('2026-01-15', false, false, new Date(`2026-07-13T${hour}:00+02:00`)),
+        hour,
+      ).toBe('ausstehend')
+    }
+  })
+
+  it('counts a Frist that ended today as young', () => {
+    expect(bgblOutcomeState('2026-09-23', false, false, on('2026-09-23'))).toBe('ausstehend')
+  })
+
+  /* A failure is not an answer (§12.13): a Frist we cannot read must not
+   * become „nicht kundgemacht" — it reads as young instead. */
+  it('treats an absent or unparseable Frist as no statement, never as keine', () => {
+    expect(bgblOutcomeState(null, false, false, on('2026-09-23'))).toBe('begutachtung')
+    expect(bgblOutcomeState('unbekannt', false, false, on('2026-09-23'))).toBe('ausstehend')
+    expect(bgblOutcomeState('', false, false, on('2026-09-23'))).toBe('begutachtung')
+  })
+
+  it('keeps the threshold where the corpus put it', () => {
+    expect(BGBL_SILENCE_MEANS_SOMETHING_DAYS).toBe(180)
   })
 })

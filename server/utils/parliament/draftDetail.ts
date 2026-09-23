@@ -4,28 +4,21 @@
  */
 import type {
   DraftDetail,
-  DraftDocument,
   DraftSummary,
   EnactmentInfo,
   RelatedDraft,
 } from '#shared/types'
-import { chainCoverageOf } from '#shared/utils/draftStations'
-import { gpEndedOn, gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
+import { gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import {
   amendedStationsOf,
   extractBgblLink,
-  findHandoff,
   findLastRvLink,
   findRvLinks,
   isFilingOpen,
-  mapDocuments,
-  mapInvitedBy,
-  mapTextEvolution,
-  RV_STATION,
-  parseShortinfo,
   parseStages,
   type RvLink,
 } from './detailJson'
+import { assembleDraftDetail } from './draftDetailAssembly'
 import {
   getCurrentGp,
   getDraftsForGp,
@@ -33,8 +26,7 @@ import {
   OLDEST_GP_WITH_ME,
   requireDraft,
 } from './drafts'
-import { deriveShortTitle } from './list81'
-import { buildStatementsSummary, getStatementsWithFallback } from './statements'
+import { getStatementsWithFallback } from './statements'
 import { findRelatedDrafts } from './related'
 import { stripHtmlToText } from './htmlText'
 import { withinBudget } from '../http/budget'
@@ -223,62 +215,20 @@ export async function getDraftDetail(
     findRelated(summary, currentGp, rvLinks.length > 0),
   ])
 
-  // The list-81 counter (row[13]) is dropped here: the detail response
-  // carries exactly ONE statements number — from list 142, the same source
-  // as the breakdown below it. Sole exception: when list 142 is down, the
-  // list-81 count is the only truth left and travels flagged as `degraded`.
-  const { statementCount: listCount, ...base } = summary
-
-  const documents = mapDocuments(content.documents)
-  // The draft's own document URLs are what upstream repeats while no RV
-  // exists — excluded, so only what really came after the ME survives.
-  const versions = mapTextEvolution(
-    content.statements?.documents,
-    new Set(documents.flatMap((doc) => doc.formats.map((f) => f.url))),
-  )
-  if (enactment) {
-    enactment.rvTextUrl =
-      versions.find((v) => v.station === RV_STATION && v.url.endsWith('.pdf'))?.url ??
-      versions.find((v) => v.station === RV_STATION)?.url ??
-      null
-  }
-
-  return {
-    ...base,
-    shortTitle: deriveShortTitle(summary.title),
-    description: parseShortinfo(content.shortinfo),
-    invitedBy: mapInvitedBy(content.names),
-    documents,
-    handoff: findHandoff(trace),
-    // Later stations only: the RV's own text is enactment.rvTextUrl, where
-    // the comparison offers it — listing it here too put the same link
-    // under two headings.
-    textEvolution: groupVersionsByStation(versions.filter((v) => v.station !== RV_STATION)),
-    risDraft: risMap?.rows.find((r) => r.inr === inr) ?? null,
-    gpEnded: gpHasEnded(gp, currentGp),
-    gpEndedOn: gpEndedOn(gp),
-    chainCoverage: chainCoverageOf(
-      stationMap ? Object.values(stationMap) : null,
-      gpHasEnded(gp, currentGp),
-    ),
-    predecessor: related.predecessor,
-    successor: related.successor,
-    statements: statementsResult
-      ? {
-          ...buildStatementsSummary(statementsResult.items),
-          overviewTotal: listCount,
-          staleAsOf: statementsResult.staleAsOf,
-        }
-      : {
-          total: listCount,
-          organisations: 0,
-          privatePersons: 0,
-          nonPublic: 0,
-          organisationList: [],
-          degraded: true,
-        },
+  // Everything is here; what the page says out of it is
+  // `draftDetailAssembly.ts`, where it can be executed without a network.
+  return assembleDraftDetail({
+    gp,
+    summary,
+    content,
+    trace,
+    currentGp,
+    statements: statementsResult,
+    risMap,
+    stationMap,
     enactment,
-  }
+    related,
+  })
 }
 
 /**
@@ -323,18 +273,4 @@ async function findRelated(
     }
   }
   return { predecessor: checkedPredecessor, successor: hasRv ? null : successor }
-}
-
-/** One DocumentList row per station ("Geändert im Plenum") with its PDF/HTML formats. */
-function groupVersionsByStation(versions: readonly { station: string; url: string }[]): DraftDocument[] {
-  const out: DraftDocument[] = []
-  for (const v of versions) {
-    let doc = out.find((d) => d.title === v.station)
-    if (!doc) {
-      doc = { title: v.station, formats: [] }
-      out.push(doc)
-    }
-    doc.formats.push({ type: v.url.toLowerCase().endsWith('.html') ? 'html' : 'pdf', url: v.url })
-  }
-  return out
 }

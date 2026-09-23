@@ -3,7 +3,7 @@ import { alignUnits, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff }
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis } from '../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 /** Minimal Word-filtered Parliament HTML in the legistic template classes. */
 function law(parts: { heading?: string; gld: string; abs: string[]; ziff?: string[] }[], opts: { article?: string; title?: string } = {}) {
@@ -470,4 +470,68 @@ describe('RIS XML draft against Parliament HTML bill (GP XXVII, Informationsfrei
     expect(paired).toBeGreaterThanOrEqual(Math.floor(me.length * 0.6))
     expect(s.unchanged).toBeGreaterThan(0)
   })
+
+  /**
+   * THE GOLDEN, and the three inequalities above are the reason for it.
+   *
+   * They say „more paired than unpaired" and „at least 60 % of the draft" —
+   * and a parser that halved the units would satisfy both, because it would
+   * halve both sides of every comparison. So would a diff that quietly
+   * stopped classifying: `changed` moving wholesale into `editorial` leaves
+   * `paired` untouched, and `editorial` appears in none of the three. That is
+   * exactly the class of change this pair of documents is here to catch — the
+   * only real ME→RV comparison in the suite, one 95-§ draft against the bill
+   * it became.
+   *
+   * The annex side got its golden on 22.09.2026 for the same reason
+   * (`annexGateGolden.test.ts`): the engine of one afternoon moved verdicts in
+   * twelve drafts while every test stayed green. This side had nothing.
+   *
+   * So the verdict per unit is frozen, not just the totals: which § changed,
+   * which one was renumbered on the way (`fromId`), and which change the
+   * comparison calls merely editorial — the badge that tells a reader „kein
+   * einziges Wort", and therefore the one line here that must never move
+   * unnoticed.
+   *
+   * RE-RECORD IN THE SAME COMMIT that changes the engine, and read the diff
+   * of the fixture — it is the change, in the terms the page uses:
+   *
+   *     REGEN_LAWDIFF_GOLDEN=1 pnpm vitest run tests/lawDiff.test.ts
+   */
+  it('reproduces the ME→RV verdict unit by unit', () => {
+    const units = diffLawUnits(me, rv)
+    const golden = {
+      summary: summarizeDiff(units),
+      units: units.map(unitLine),
+    }
+    if (process.env.REGEN_LAWDIFF_GOLDEN) {
+      writeLawDiffGolden(golden)
+      return
+    }
+    const expected = JSON.parse(readFileSync(new URL(GOLDEN_PATH, import.meta.url), 'utf8')) as typeof golden
+    // The totals first: a failure there names the shape of the drift before
+    // the row list names the place.
+    expect(golden.summary).toEqual(expected.summary)
+    expect(golden.units).toEqual(expected.units)
+  })
 })
+
+const GOLDEN_PATH = './fixtures/lawdiff-95me-2238.json'
+
+/** One unit, as much of it as a verdict is: where it stands, what moved, what it is called. */
+function unitLine(u: { article: string | null; id: string; fromId: string | null; change: string; editorial: boolean }): string {
+  return [u.article ?? '—', u.id, u.fromId ?? '—', u.change, u.editorial ? 'redaktionell' : '—'].join(' | ')
+}
+
+/** REGEN_LAWDIFF_GOLDEN=1 pnpm vitest run tests/lawDiff.test.ts — rewrites the fixture from the current engine. */
+function writeLawDiffGolden(golden: { summary: unknown; units: string[] }): void {
+  const out = {
+    note:
+      'Frozen ME→RV comparison: 95/ME XXVII (Informationsfreiheitsgesetz, RIS XML) against 2238 d.B. ' +
+      'XXVII (Parliament HTML). One line per unit: Artikel | id | fromId | change | editorial. ' +
+      'Regenerate with REGEN_LAWDIFF_GOLDEN=1 pnpm vitest run tests/lawDiff.test.ts, in the same ' +
+      'commit as the engine change, and read the diff.',
+    ...golden,
+  }
+  writeFileSync(new URL(GOLDEN_PATH, import.meta.url), JSON.stringify(out, null, 1) + '\n')
+}

@@ -16,14 +16,14 @@
  * persistent; the mapping above it derived, because `bgblJoin.ts` is exactly
  * the kind of rule that still changes.
  */
-import type { BgblOutcome, BgblOutcomeState, RisConsultation } from '#shared/types'
-import { isRunningYear, joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
+import type { BgblOutcome, RisConsultation } from '#shared/types'
+import { bgblOutcomeState, isRunningYear, joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
 import { DERIVED_CACHE } from '../cache/base'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
 import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
-import { bgblShort, daysUntil, todayIso } from '#shared/utils/format'
+import { bgblShort, todayIso } from '#shared/utils/format'
 
 const TIMEOUT_MS = 20_000
 /**
@@ -40,18 +40,6 @@ const MAX_PAGES = 20
  */
 const CURRENT_YEAR_TTL_S = 60 * 60 * 6
 const JOIN_TTL_S = 60 * 60 * 6
-
-/**
- * From when on the Bundesgesetzblatt's silence means something.
- *
- * Measured (`pnpm corpus:bgbl2`): between the end of the Frist and the
- * Kundmachung lie a median of 57 days, p90 197. By age of the Frist's end,
- * 0 % of the drafts from the last 30 days find a Kundmachung, 31,6 % after
- * 31–90 days, 71,4 % after 91–180 and 92,3 % after 181–365. „Bisher keine
- * Kundmachung" before that point would therefore be a statement about the
- * clock, not about the Ressort.
- */
-const BGBL_SILENCE_MEANS_SOMETHING_DAYS = 180
 
 /**
  * Today's Jahrgang — the newest year a Kundmachung can carry.
@@ -268,25 +256,15 @@ function yearsFor(ende: string): number[] {
   return [y, y + 1, y + 2].filter((v) => v <= now)
 }
 
-function stateOf(ende: string | null, active: boolean, found: boolean): BgblOutcomeState {
-  if (found) return 'kundgemacht'
-  if (active || !ende) return 'begutachtung'
-  // Whole calendar days since the Frist ended, counted like everywhere else
-  // (`daysUntil`). The rounded millisecond difference this used to take
-  // crossed the threshold in the middle of the afternoon, and a day early on
-  // the UTC server. A Frist that will not parse now reads as young rather
-  // than as „keine": a failure is not an answer (§12.13).
-  const days = -(daysUntil(ende) ?? 0)
-  return days < BGBL_SILENCE_MEANS_SOMETHING_DAYS ? 'ausstehend' : 'keine'
-}
-
 /**
- * What became of a Verordnungsentwurf.
- *
- * **A failure is not an answer** (§12.13), and here that rule has a name:
- * `ausstehend`. A draft whose Frist ended six weeks ago is not „nicht
- * kundgemacht" — it is young. Telling the two apart is the whole difference
- * between an accountability statement and an insinuation.
+ * What became of a Verordnungsentwurf — the fourth state, for what the
+ * window cannot decide at all. The other three are
+ * `bgblJoin.bgblOutcomeState`, where the 180-day rule sits since 23.09.2026
+ * so a test can execute it: **a failure is not an answer** (§12.13), and
+ * here that rule has a name, `ausstehend`. A draft whose Frist ended six
+ * weeks ago is not „nicht kundgemacht" — it is young, and telling the two
+ * apart is the whole difference between an accountability statement and an
+ * insinuation.
  */
 const UNKNOWN: BgblOutcome = { state: 'unbekannt', nummer: null, datum: null, url: null, days: null }
 
@@ -305,7 +283,7 @@ function outcomeOf(
   hit: ReturnType<typeof joinDraftToBgbl>,
 ): BgblOutcome {
   return {
-    state: stateOf(c.deadline, c.active, hit !== null),
+    state: bgblOutcomeState(c.deadline, c.active, hit !== null),
     nummer: hit?.record.nummer ?? null,
     datum: hit?.record.datum ?? null,
     url: hit ? `https://www.ris.bka.gv.at/eli/bgbl/II/${hit.record.datum.slice(0, 4)}/${numberOf(hit.record.nummer)}` : null,
@@ -339,7 +317,7 @@ export const getBgblOutcome = defineCachedFunction(
 export const getBgblOutcomesForGp = defineCachedFunction(
   async (gp: string): Promise<Record<string, BgblOutcome>> => {
     // `active` does not belong in the record `getRisOnlyForGp` caches —
-    // `stateOf` reads it, so the day is decided here
+    // `bgblOutcomeState` reads it, so the day is decided here
     // (`risRecord.withRisActiveOn`).
     const items = withRisActiveOn((await getRisOnlyForGp(gp)).items)
     // Verordnungen only: a Gesetzesentwurf without a Gegenstand is
