@@ -3,6 +3,7 @@ import {
   mapStatementRow,
   pickStatementDocument,
   statementPageUrl,
+  statementRowMatchesParent,
 } from '../server/utils/parliament/list142'
 
 // Real list-142 row (sample from 2026-08-15, 237/SN-126/ME); the submitter
@@ -96,6 +97,52 @@ describe('mapStatementRow', () => {
     const row = [...LIST142_PERSON_ROW]
     row[5] = null
     expect(mapStatementRow(row).date).toBe('2026-07-07')
+  })
+})
+
+/* The guard on a filtered list-142 response. It reads column 18, the parent's
+ * path, because that is what `BEZUG_*` filters on — column 0 is the
+ * Gesetzgebungsperiode of the Stellungnahme itself and says nothing about the
+ * filter. */
+describe('statementRowMatchesParent', () => {
+  it('accepts a row of the parent that was asked for', () => {
+    expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVIII', 'ME', 126)).toBe(true)
+  })
+
+  it('rejects a row of another parent', () => {
+    expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVIII', 'ME', 127)).toBe(false)
+    expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVII', 'ME', 126)).toBe(false)
+    expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVIII', 'I', 126)).toBe(false)
+  })
+
+  /* THE PRODUCTION 502 (verified live 23.09.2026): a Stellungnahme filed
+   * after the next period convened carries the NEW period in column 0 while
+   * belonging to a draft of the old one. XXVII 351/ME took 3 such rows and
+   * 352/ME 4, after GP XXVIII convened on 24.10.2024, and the old check —
+   * `row[0] === gp` — refused them, so the endpoint answered 502 and the
+   * detail page degraded with no last-good record it could ever have
+   * written. Synthetic row, column 6 is not a real submitter. */
+  it('accepts a statement filed after the next Gesetzgebungsperiode convened', () => {
+    const row = [
+      'XXVIII', 'SNME', 90001, null, '06.11.2024', '2024-11-06T12:00:00',
+      '<a href="/gegenstand/XXVIII/SNME/90001/">Muster GmbH (12/SN-351/ME)</a>',
+      'XXVII', '351', 'ME', '00000020241106', '20241106000000', 0,
+      'Art:\nStellungnahme zu Ministerialentwurf\n<br />\n',
+      null, '12/SN-351/ME', '351/ME', null, '/gegenstand/XXVII/ME/351', 'I', 34842786, 12, '1',
+    ]
+    expect(row[0]).toBe('XXVIII')
+    expect(statementRowMatchesParent(row, 'XXVII', 'ME', 351)).toBe(true)
+  })
+
+  it('tolerates a trailing slash and refuses a missing column', () => {
+    const withSlash = [...LIST142_PERSON_ROW]
+    withSlash[18] = '/gegenstand/XXVIII/ME/126/'
+    expect(statementRowMatchesParent(withSlash, 'XXVIII', 'ME', 126)).toBe(true)
+
+    const without = [...LIST142_PERSON_ROW]
+    without[18] = null
+    expect(statementRowMatchesParent(without, 'XXVIII', 'ME', 126)).toBe(false)
+    expect(statementRowMatchesParent([], 'XXVIII', 'ME', 126)).toBe(false)
   })
 })
 

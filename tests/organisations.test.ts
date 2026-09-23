@@ -111,6 +111,98 @@ describe('groupOrganisationStatements', () => {
     ])
   })
 
+  /* Both input orders, because the merge walks the variants in a sorted list
+   * and a guard that only holds one way round holds by accident. */
+  const groupsFor = (first: string, second: string): number => {
+    const one = groupOrganisationStatements([
+      org(first, 'a', '2026-01-01'),
+      org(second, 'b', '2026-01-01'),
+    ]).length
+    const other = groupOrganisationStatements([
+      org(second, 'b', '2026-01-01'),
+      org(first, 'a', '2026-01-01'),
+    ]).length
+    expect(one).toBe(other)
+    return one
+  }
+
+  /* An enumerator with anything behind it used to slip past the guard, which
+   * only looked at the last three characters of the key: every one of these
+   * pairs came back as a single body (found 23.09.2026). They are the shapes
+   * Austrian authorities number their units in — clinic, chamber, senate,
+   * section, department. */
+  it('never merges on an enumerator that is not the last word', () => {
+    expect(
+      groupsFor(
+        'Universitätsklinik für Innere Medizin I, Graz',
+        'Universitätsklinik für Innere Medizin II, Graz',
+      ),
+    ).toBe(2)
+    expect(
+      groupsFor(
+        'Landesgericht Innsbruck, Abteilung I, Zivilrecht',
+        'Landesgericht Innsbruck, Abteilung II, Zivilrecht',
+      ),
+    ).toBe(2)
+    expect(
+      groupsFor(
+        'Oberlandesgericht Wien, Senat I, Strafsachen',
+        'Oberlandesgericht Wien, Senat II, Strafsachen',
+      ),
+    ).toBe(2)
+    expect(
+      groupsFor(
+        'Bundesministerium für Finanzen, Sektion I, Präsidium',
+        'Bundesministerium für Finanzen, Sektion V, Präsidium',
+      ),
+    ).toBe(2)
+    expect(
+      groupsFor(
+        'Bezirksgericht Graz-Ost, Abteilung C, Familienrecht',
+        'Bezirksgericht Graz-Ost, Abteilung D, Familienrecht',
+      ),
+    ).toBe(2)
+  })
+
+  /* Two real municipalities, one deletion apart, in a name long enough that
+   * the key-length guard lets them through. The word that differs is what
+   * decides here, not the name around it. */
+  it('never merges a short word inside a long name', () => {
+    expect(
+      groupsFor(
+        'Stadtgemeinde Neunkirchen, Niederösterreich',
+        'Stadtgemeinde Neukirchen, Niederösterreich',
+      ),
+    ).toBe(2)
+  })
+
+  it('still merges the typo it was built for, in a long word', () => {
+    expect(
+      groupsFor(
+        'Universität Wien / Rechtswissenschaftliche Fakultät; Institut für Strafrecht',
+        'Universität Wien / Rechtswisssenschaftliche Fakultät; Institut für Strafrecht',
+      ),
+    ).toBe(1)
+  })
+
+  it('keeps a numbered unit distinct when the enumerator carries a sub-number', () => {
+    expect(
+      groupsFor(
+        'Amt der Kärntner Landesregierung; Abteilung II/2',
+        'Amt der Kärntner Landesregierung; Abteilung II/3',
+      ),
+    ).toBe(2)
+  })
+
+  it('keeps two institutes of one faculty apart', () => {
+    expect(
+      groupsFor(
+        'Universität Wien / Rechtswissenschaftliche Fakultät; Institut für Staatsrecht',
+        'Universität Wien / Rechtswissenschaftliche Fakultät; Institut für Strafrecht',
+      ),
+    ).toBe(2)
+  })
+
   it('never merges on a digit — numbered units are distinct bodies', () => {
     const entries = groupOrganisationStatements([
       org('Amt der Kärntner Landesregierung; Abteilung 1 – Verfassungsdienst', 'a', '2026-01-01'),

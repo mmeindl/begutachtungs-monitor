@@ -22,7 +22,8 @@ import { asNumber, asString } from './rowCells'
 // Regierungsvorlage) · 2 its INR · 4 date (display) · 5 dateSort (ISO) ·
 // 6 submitter (HTML <a> or placeholder text) · 12 endorsements ·
 // 15 citation ("476/SN-88/ME" on an ME, "277139/SN" on an RV) ·
-// 19 TYP — upstream's organisation ('I') / person ('P') flag
+// 18 Bezug_Link — the path of the parent item · 19 TYP — upstream's
+// organisation ('I') / person ('P') flag
 // Deviation from §5 noted: [5] DATUM_SORT is ISO and preferred;
 // [4] (dd.mm.yyyy) serves only as fallback.
 // The positions are asserted against the header at fetch time
@@ -35,6 +36,36 @@ export type StatementItemType = 'SNME' | 'SN'
 
 export function statementPageUrl(gp: string, ityp: StatementItemType, inr: number): string {
   return `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${inr}`
+}
+
+/** The item types list 142 can be filtered by here: a draft, or the Vorlage it became. */
+export type StatementParentType = 'ME' | 'I'
+
+/**
+ * Does this row really hang off the parent it was asked for?
+ *
+ * The sanity check on a filtered list has to read the column that was
+ * filtered, and on list 142 that is NOT column 0. Column 0 is the
+ * Gesetzgebungsperiode of the STELLUNGNAHME; the filter is `BEZUG_GP_CODE`,
+ * the period of the draft it belongs to. The two part at every change of
+ * period: XXVII 351/ME (Frist 05.11.2024) and 352/ME (Frist 11.11.2024) took
+ * 3 and 4 Stellungnahmen after GP XXVIII convened on 24.10.2024, and those
+ * 7 rows carry `XXVIII` in column 0 while belonging to a draft of XXVII.
+ *
+ * Column 18 is the parent's own path, and comparing against it asserts all
+ * three filter dimensions at once — period, item type and number.
+ */
+export function statementRowMatchesParent(
+  row: unknown[],
+  gp: string,
+  ityp: StatementParentType,
+  inr: number,
+): boolean {
+  if (!Array.isArray(row)) return false
+  // Upstream writes the path without a trailing slash today; one would carry
+  // no meaning, so it is tolerated rather than treated as a failed filter.
+  const link = asString(row[18]).trim().replace(/\/+$/, '')
+  return link === `/gegenstand/${gp}/${ityp}/${inr}`
 }
 
 /**

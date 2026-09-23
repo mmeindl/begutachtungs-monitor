@@ -112,6 +112,16 @@ describe('checkListHeader', () => {
     )
   })
 
+  /* Column 18 carries the parent's path, and the filter guard on list 142
+   * reads nothing else (`statementRowMatchesParent`) — so a move there would
+   * turn every row into "wrong parent" and every statements list into a 502. */
+  it('asserts the parent-link column of list 142', () => {
+    const renamed = HEADER_142.map((h, i) => (i === 18 ? { label: 'Bezug' } : h))
+    expect(checkListHeader(142, renamed)).toBe(
+      'Liste 142: Spalte 18 ist „Bezug“, erwartet „Bezug_Link“',
+    )
+  })
+
   it('names a renamed dimension by both of its names', () => {
     const renamed = HEADER_81.map((h, i) => (i === 11 ? { feld_name: 'OFFEN', label: 'Begutachtung aktiv?' } : h))
     expect(checkListHeader(81, renamed)).toBe(

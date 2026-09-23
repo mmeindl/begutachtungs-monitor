@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { canParticipate, filterDraftList, sortDraftList } from '../server/utils/parliament/draftList'
+import {
+  canParticipate,
+  dedupeDraftList,
+  filterDraftList,
+  sortDraftList,
+} from '../server/utils/parliament/draftList'
 import type { DraftSummary } from '../shared/types'
 
 /**
@@ -34,6 +39,29 @@ describe('canParticipate', () => {
     expect(canParticipate({ active: true })).toBe(true)
     expect(canParticipate({ active: false, chain: { station: 'rv', filingOpen: true } as DraftSummary['chain'] })).toBe(true)
     expect(canParticipate({ active: false })).toBe(false)
+  })
+})
+
+/* List 81 carries a jointly issued Entwurf once per Ressort: GP XXVII 302/ME
+ * (BMFFIM ∥ BMJ), 266/ME (BMF ∥ BMFFIM) and 114/ME (BMJ ∥ BMDW) stood in the
+ * archive twice and made `total` say 353 of 350 (found 23.09.2026). */
+describe('dedupeDraftList', () => {
+  it('keeps one row per Entwurf and the first ressort upstream named', () => {
+    const rows = dedupeDraftList([
+      draft({ inr: 302, citation: '302/ME', ministryCode: 'BMFFIM' }),
+      draft({ inr: 302, citation: '302/ME', ministryCode: 'BMJ' }),
+      draft({ inr: 266, citation: '266/ME', ministryCode: 'BMF' }),
+    ])
+    expect(titles(rows)).toEqual(['302/ME', '266/ME'])
+    expect(rows[0]!.ministryCode).toBe('BMFFIM')
+  })
+
+  it('separates the periods — the same number exists in every GP', () => {
+    const rows = dedupeDraftList([
+      draft({ gp: 'XXVIII', inr: 114 }),
+      draft({ gp: 'XXVII', inr: 114 }),
+    ])
+    expect(rows.map((r) => r.gp)).toEqual(['XXVIII', 'XXVII'])
   })
 })
 

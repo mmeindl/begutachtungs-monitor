@@ -52,45 +52,44 @@ function orgMatchKey(name: string): string {
 const NEAR_DUPLICATE_MIN_KEY_LENGTH = 25
 
 /**
- * Trailing characters exempt from the one-edit rule: a single letter that
- * differs at the very end is an enumeration ("… Abteilung I" / "… Abteilung
- * II", "Marktgemeinde Aschau" / "… Aschach"), not a typo.
+ * Below this, a one-character difference inside a WORD is a distinction too:
+ * Neunkirchen and Neukirchen are two Austrian municipalities one deletion
+ * apart, and the rest of the name ("Stadtgemeinde …, Niederösterreich")
+ * carries the key well past the length guard above. Measured on the pairs
+ * this function is calibrated against: the two municipality names are 11 and
+ * 10 characters, the typo it must keep merging
+ * ("Rechtswissenschaftliche" / "Rechtswisssenschaftliche") is 23 and 24 —
+ * the threshold sits between them. Widen it only against measured data; a
+ * refused merge shows one body as two, a wrong merge hides one body entirely.
  */
-const ENUMERATION_TAIL = 3
+const NEAR_DUPLICATE_MIN_TOKEN_LENGTH = 13
+
+/**
+ * How Austrian authorities number their units — Roman I–XX, a single letter,
+ * a number, or those combined with a slash ("II/2"). Lowercase, because
+ * `orgMatchKey` has already folded the case by the time this reads a token.
+ *
+ * `orgMatchKey` also turns the slash into a space, so the compound form does
+ * not survive into the key today; it is matched anyway rather than leaving a
+ * shape of an enumerator that this predicate would call a word.
+ */
+const ENUMERATOR_PART = /^(?:x{0,2}(?:ix|iv|v?i{0,3})|\p{L}|\p{N}+)$/u
+
+function isEnumerator(token: string): boolean {
+  const parts = token.split('/')
+  return parts.every((part) => part.length > 0 && ENUMERATOR_PART.test(part))
+}
 
 function isLetter(c: string | undefined): boolean {
   return c !== undefined && /\p{L}/u.test(c)
 }
 
 /**
- * One organisation, allowing for a single typed character.
- *
- * Equal keys merge unconditionally — that is punctuation and case only, no
- * judgment involved. Beyond that this accepts exactly ONE insertion,
- * deletion or substitution, under three guards, because upstream free text
- * really does carry typos (126/ME: "Rechtswissenschaftliche" and
- * "Rechtswisssenschaftliche" for the same institute, which the panel then
- * showed as two organisations):
- *
- *   1. both keys ≥ NEAR_DUPLICATE_MIN_KEY_LENGTH,
- *   2. the differing character is a LETTER on both sides — "Abteilung 1"
- *      and "Abteilung 2" are two departments, not one with a typo,
- *   3. the difference is not in the last ENUMERATION_TAIL characters,
- *      where the distinguishing suffix of a numbered unit lives.
- *
- * This trades a small risk of a wrong merge for the duplicate rows it
- * removes; the guards target the shapes Austrian authority names actually
- * take. A false merge shows two bodies as one, so widen it only against
- * measured data. `epicenter.works` vs `epicenter.works - Plattform
- * Grundrechtspolitik` — the pair this must never touch — is 30 edits apart.
+ * Exactly one inserted, deleted or substituted LETTER, and nothing else.
+ * Digits never qualify: "Abteilung 1" and "Abteilung 2" are two departments.
  */
-function isSameOrganisation(a: string, b: string): boolean {
-  if (a === b) return true
-  if (a.length < NEAR_DUPLICATE_MIN_KEY_LENGTH) return false
-  if (b.length < NEAR_DUPLICATE_MIN_KEY_LENGTH) return false
-  if (Math.abs(a.length - b.length) > 1) return false
-
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
+function isOneTypedLetterApart(short: string, long: string): boolean {
+  if (long.length - short.length > 1) return false
   const substitution = short.length === long.length
   let i = 0
   let j = 0
@@ -106,12 +105,74 @@ function isSameOrganisation(a: string, b: string): boolean {
     if (substitution) i++
     j++
   }
-  /* No mismatch inside the loop: the shorter key is a prefix of the longer
+  /* No mismatch inside the loop: the shorter string is a prefix of the longer
    * one, so the extra character is the last one. */
   if (edit < 0) edit = long.length - 1
 
-  if (edit >= long.length - ENUMERATION_TAIL) return false
   return isLetter(long[edit]) && (!substitution || isLetter(short[edit]))
+}
+
+/**
+ * One organisation, allowing for a single typed character.
+ *
+ * Equal keys merge unconditionally — that is punctuation and case only, no
+ * judgment involved. Beyond that this accepts exactly ONE insertion,
+ * deletion or substitution, because upstream free text really does carry
+ * typos (126/ME: "Rechtswissenschaftliche" and "Rechtswisssenschaftliche"
+ * for the same institute, which the panel then showed as two organisations).
+ *
+ * THE ENUMERATOR GUARD IS STRUCTURAL, NOT POSITIONAL (since 23.09.2026). It
+ * used to exempt the last three characters of the key, on the assumption
+ * that a numbered unit says its number at the end. It usually does not: put
+ * anything after the enumerator and the guard looks past it, so
+ * "Universitätsklinik für Innere Medizin I, Graz" and "… Medizin II, Graz"
+ * merged into one clinic, as did Abteilung I ∥ II with a subject behind it,
+ * Senat I ∥ II, Sektion I ∥ V and Abteilung C ∥ D. The keys are compared
+ * word by word instead now, and an enumerator anywhere in the name blocks
+ * the merge, wherever it stands.
+ *
+ * What is left of the one-edit rule, and the guards it runs under:
+ *
+ *   1. both keys ≥ NEAR_DUPLICATE_MIN_KEY_LENGTH, and the same number of
+ *      words: a moved word boundary is not one typed character,
+ *   2. exactly one word differs, and it is an enumerator on neither side,
+ *   3. that word is ≥ NEAR_DUPLICATE_MIN_TOKEN_LENGTH long — long enough to
+ *      absorb a slip, which Neunkirchen ∥ Neukirchen is not,
+ *   4. the differing character is a LETTER on both sides.
+ *
+ * This trades a small risk of a wrong merge for the duplicate rows it
+ * removes; the guards target the shapes Austrian authority names actually
+ * take. A false merge shows two bodies as one, so widen it only against
+ * measured data. `epicenter.works` vs `epicenter.works - Plattform
+ * Grundrechtspolitik` — the pair this must never touch — is 30 edits apart.
+ */
+function isSameOrganisation(a: string, b: string): boolean {
+  if (a === b) return true
+  if (a.length < NEAR_DUPLICATE_MIN_KEY_LENGTH) return false
+  if (b.length < NEAR_DUPLICATE_MIN_KEY_LENGTH) return false
+  if (Math.abs(a.length - b.length) > 1) return false
+
+  /* `orgMatchKey` leaves single spaces between words and nothing else, so
+   * splitting on the space is the word structure of the name. */
+  const aWords = a.split(' ')
+  const bWords = b.split(' ')
+  if (aWords.length !== bWords.length) return false
+
+  let differing = -1
+  for (let w = 0; w < aWords.length; w++) {
+    if (aWords[w] === bWords[w]) continue
+    if (differing >= 0) return false
+    differing = w
+  }
+  if (differing < 0) return false
+
+  const left = aWords[differing]!
+  const right = bWords[differing]!
+  if (isEnumerator(left) || isEnumerator(right)) return false
+
+  const [short, long] = left.length <= right.length ? [left, right] : [right, left]
+  if (long.length < NEAR_DUPLICATE_MIN_TOKEN_LENGTH) return false
+  return isOneTypedLetterApart(short, long)
 }
 
 /** Leading number of a citation ("452/SN-126/ME" → 452); 0 when absent. */

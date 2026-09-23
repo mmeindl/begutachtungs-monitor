@@ -9,7 +9,7 @@ import type { DraftsResponse } from '#shared/types'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { gpHasEnded } from '#shared/utils/gp'
 import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
-import { filterDraftList, sortDraftList } from '../../utils/parliament/draftList'
+import { dedupeDraftList, filterDraftList, sortDraftList } from '../../utils/parliament/draftList'
 
 /** How long the list waits for the station map before answering without it.
  *  2,5 s: warm the map costs 8 ms, cold 35 s — there is nothing in between
@@ -22,7 +22,12 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
 
   const currentGp = await getCurrentGp()
   const gp = query.gp ?? currentGp
-  const rows = (await getDraftsForGp(gp)).items.map(reconcileActive)
+  /* Folded before anything counts or filters: a draft two ressorts sent
+   * jointly stands in list 81 twice, and the list showed it twice and
+   * reported 353 of 350 entries for GP XXVII (`dedupeDraftList`). Every
+   * list answer this endpoint gives — the rows, `total`, the Ressort
+   * options — comes through here, so the fold belongs at this one point. */
+  const rows = dedupeDraftList((await getDraftsForGp(gp)).items.map(reconcileActive))
 
   /* The station map is ENRICHMENT, never a precondition: a cold build costs
    * hundreds of upstream fetches (`parliament/stationMap.ts`), and a list

@@ -3,11 +3,13 @@
  *
  * The Nitro server is a caching proxy in front of POST /Filter/api/filter/
  * data/{81,142} and GET /gegenstand/…. Rules: showAll=true WITHOUT pagesize,
- * sortrnr=11&ascDesc=DESC on list 81, sanity check row[0]===gp after every
- * list call (the API silently ignores unknown filter keys),
- * 2 retries on 5xx/network errors.
+ * sortrnr=11&ascDesc=DESC on list 81, sanity check every row against the
+ * dimension that was filtered after every list call (the API silently
+ * ignores unknown filter keys) — row[0]===gp on lists 81/101, the parent
+ * path on list 142 — 2 retries on 5xx/network errors.
  */
 import { checkListHeader } from '../parliament/listHeaders'
+import { statementRowMatchesParent, type StatementParentType } from '../parliament/list142'
 import { PARLIAMENT_BASE } from '../parliament/htmlText'
 import type {
   RawBgblLink,
@@ -142,6 +144,34 @@ export function assertRowsMatchGp(rows: unknown[][], gp: string, listId: number)
       throw createError({
         statusCode: 502,
         statusMessage: `Upstream-Filter hat nicht gegriffen (Liste ${listId}, GP ${gp})`,
+      })
+    }
+  }
+}
+
+/**
+ * The same guard for list 142, which cannot use the one above: it is
+ * dimensioned by its PARENT (`BEZUG_GP_CODE`/`BEZUG_ITYP`/`BEZUG_INR`),
+ * while column 0 holds the Gesetzgebungsperiode of the Stellungnahme itself.
+ * Checking column 0 against the requested GP therefore did not check the
+ * filter — it refused legitimate rows. Every Stellungnahme filed after a new
+ * period convened failed it: XXVII 351/ME and 352/ME collected 7 such rows
+ * in late 2024, and their statements endpoint answered 502 ever since, with
+ * no last-good record to fall back on because the first fetch already threw.
+ * `statementRowMatchesParent` compares the parent path instead, which is the
+ * dimension that was actually filtered.
+ */
+export function assertRowsMatchParent(
+  rows: unknown[][],
+  gp: string,
+  ityp: StatementParentType,
+  inr: number,
+): void {
+  for (const row of rows) {
+    if (!statementRowMatchesParent(row, gp, ityp, inr)) {
+      throw createError({
+        statusCode: 502,
+        statusMessage: `Upstream-Filter hat nicht gegriffen (Liste 142, ${gp}/${ityp}/${inr})`,
       })
     }
   }

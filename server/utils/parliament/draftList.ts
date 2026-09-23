@@ -28,6 +28,34 @@ export interface DraftListFilter {
 }
 
 /**
+ * One row per Entwurf, however many ressorts sent it.
+ *
+ * List 81 carries a draft with two responsible ministries TWICE, identical in
+ * everything but the Ressort column: GP XXVII 302/ME (BMFFIM ∥ BMJ), 266/ME
+ * (BMF ∥ BMFFIM) and 114/ME (BMJ ∥ BMDW) — three of 350 drafts, and GP XXVIII
+ * has none today. The archive list rendered each of them twice and counted
+ * 353, which reads as a bug in our own aggregation on the page whose job is
+ * to be counted on. The chain builders already fold the same way
+ * (`stationMap.ts`, `enacted.ts`, `related.ts`); this is the list's copy of
+ * that rule, and it sits here rather than in `getDraftsForGp` because the
+ * leaf holds the rows as upstream sent them and the corpus scripts count
+ * those.
+ *
+ * The first row in upstream's order wins, so the kept row names one of the
+ * two ressorts. Both are true — naming both is an open product decision, not
+ * something this fold may invent.
+ */
+export function dedupeDraftList<T extends DraftSummary>(items: readonly T[]): T[] {
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const key = `${item.gp}-${item.inr}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/**
  * „Offen" means: someone can say something here.
  *
  * Until 18.09.2026 that was the running Begutachtungsfrist alone. But a

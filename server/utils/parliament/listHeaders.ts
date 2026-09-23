@@ -59,6 +59,11 @@ const LIST_142_COLUMNS: ColumnExpectation[] = [
   { index: 6, label: 'Von' },
   { index: 12, label: 'Unterstützungen' },
   { index: 15, label: 'Nr' },
+  // The path of the PARENT item ("/gegenstand/XXVIII/ME/8"), which is the
+  // dimension `BEZUG_*` filters on and therefore the only column that can
+  // vouch for a filtered response (`statementRowMatchesParent`). No
+  // `feld_name`: it is not filterable itself, so the label is its identity.
+  { index: 18, label: 'Bezug_Link' },
   // Upstream's own organisation/person flag, which the classifier reads as a
   // veto on publishing a name. Its `label` is literally "?" — `feld_name`
   // is the only identity it has, and it is the one asserted here.

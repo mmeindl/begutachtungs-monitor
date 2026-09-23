@@ -13,7 +13,7 @@ import {
   saveLastGoodStatements,
   type LastGoodStatements,
 } from './lastgood'
-import { assertListHeader, assertRowsMatchGp, fetchFilterList } from '../upstream/parliament'
+import { assertListHeader, assertRowsMatchParent, fetchFilterList } from '../upstream/parliament'
 import { UPSTREAM_LIST_TTL_S } from '../cache/ttl'
 
 /**
@@ -63,7 +63,7 @@ const getStatementsForMe = defineCachedFunction(
         }
       }
     }
-    assertRowsMatchGp(rows, gp, 142)
+    assertRowsMatchParent(rows, gp, 'ME', inr)
     assertListHeader(142, res)
     const items = rows.map(mapStatementRow)
     items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
@@ -142,7 +142,7 @@ export const getStatementsForRv = defineCachedFunction(
         })
       }
     }
-    assertRowsMatchGp(rows, gp, 142)
+    assertRowsMatchParent(rows, gp, 'I', inr)
     assertListHeader(142, res)
     const items = rows.map(mapStatementRow)
     items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
