@@ -76,7 +76,9 @@ describe('classifySubmitter', () => {
       'ÖVI',
       'ÖHGB; Rechtsabteilung',
       'WEISSER RING',
-      'Vier Pfoten; Stiftung für Tierschutz',
+      // "Vier Pfoten; Stiftung für Tierschutz" belongs here by kind, but it
+      // is an allowlist HEAD match and prints "Vier Pfoten" alone — see
+      // "allowlist display names" below.
       'Die Österreichischen Rechtsanwälte; Österreichischer Rechtsanwaltskammertag',
       'Österreichische Kinderfreunde; Bundesorganisation',
       'Österreichischer Werberat; Gesellschaft zur Selbstkontrolle der Werbewirtschaft',
@@ -124,7 +126,9 @@ describe('classifySubmitter', () => {
     })
 
     /* Surnames that contain an org keyword the audit added — the word
-     * boundaries in the patterns are what keeps them persons. */
+     * boundaries in the patterns are what keeps them persons. Synthetic
+     * stand-ins: the corpus spellings are real people, the fragment and its
+     * position in the word are what the case exercises. */
     it.each(['Testliga, Dora', 'Musterbank, Christine', 'MUSTERMANN, PETER', 'Muster, Ma8', 'Testöh, Anna', 'Neosmuster, Max'])(
       '%s → person despite a keyword-like fragment',
       (name) => {
@@ -241,8 +245,9 @@ describe('classifySubmitter', () => {
   /**
    * List 142's own TYP flag (column 19). It records how the submitter
    * registered, so it sees a person standing behind an org-shaped name —
-   * and it may only ever suppress a name, never publish one. Real strings
-   * from the corpus comparison of 2026-09-16.
+   * and it may only ever suppress a name, never publish one. Real shapes
+   * from the corpus comparison of 2026-09-16 — the organisations stand as
+   * they are upstream, the persons behind them are synthetic.
    */
   describe('the upstream TYP flag', () => {
     it('reads only the two documented values, never guesses', () => {
@@ -320,10 +325,39 @@ describe('classifySubmitter', () => {
     it('prints the upstream string unchanged where no display name is given', () => {
       // The three entries that predate the mechanism must not have moved.
       expect(classifySubmitter('epicenter.works').name).toBe('epicenter.works')
-      expect(classifySubmitter('Vier Pfoten; Stiftung für Tierschutz').name).toBe(
-        'Vier Pfoten; Stiftung für Tierschutz',
-      )
       expect(classifySubmitter('WEISSER RING').name).toBe('WEISSER RING')
+      // A full-string match keeps printing the full string.
+      expect(classifySubmitter('Vier Pfoten').name).toBe('Vier Pfoten')
+    })
+
+    /* A head match prints the head alone. Until 2026-09-23 it printed the
+     * whole string, so an allowlisted organisation with a person after the
+     * semicolon — "Org; <Vorname Nachname>", a measured class — published
+     * that person, and the upstream P flag could not veto it because the
+     * allowlist outranks the flag. */
+    it('prints the head alone where the head is what is allowlisted', () => {
+      // Was 'Vier Pfoten; Stiftung für Tierschutz' — a department, harmless,
+      // but the same code path that printed the tail below.
+      expect(classifySubmitter('Vier Pfoten; Stiftung für Tierschutz').name).toBe('Vier Pfoten')
+      expect(classifySubmitter('Vier Pfoten; Huber, Anna')).toEqual({
+        kind: 'organisation',
+        name: 'Vier Pfoten',
+      })
+    })
+
+    it('a P flag cannot reach a head match — and no longer needs to', () => {
+      expect(classifySubmitter('Vier Pfoten; Anna Huber', 'P')).toEqual({
+        kind: 'organisation',
+        name: 'Vier Pfoten',
+      })
+      expect(classifySubmitter('WEISSER RING; Huber, Anna', 'P')).toEqual({
+        kind: 'organisation',
+        name: 'WEISSER RING',
+      })
+      expect(classifySubmitter('epicenter.works; Mag. Thomas Muster', 'P')).toEqual({
+        kind: 'organisation',
+        name: 'epicenter.works',
+      })
     })
 
     it('leaves a string that is not allowlisted alone', () => {

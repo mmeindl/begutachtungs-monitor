@@ -19,8 +19,8 @@
  * handful of brand-style NGOs. Every pattern added that day was held against
  * the comma-form person names of the same corpus and matched none of them.
  * Refused on the same evidence: a bare semicolon rule (persons file as
- * "Mustermann, Florian; Dr. med. dent."), all-caps ("MUSTERMANN, PETER") and digits
- * ("Muster, Ma8").
+ * "Mustermann, Florian; Dr. med. dent."), all-caps ("MUSTERMANN, PETER")
+ * and digits ("Muster, Ma8").
  *
  * The audit also found the opposite error, which is the one that matters:
  * "Lastname, Firstname; Universität Salzburg" — a person filing with an
@@ -53,9 +53,11 @@ const NONPUBLIC_RE = /nicht-?\s*öffentliche?\s+stellungnahme/i
  * Parliament data (list 142 `names[].name`). `scripts/audit/classifier.ts`
  * prints the candidates as lists 1 and 3.
  *
- * The value is the name to PRINT; `null` prints the upstream string as it
- * stands. It exists because Parliament's two name fields are "Nachname,
- * Vorname", and an organisation that fills them in gets stored inverted:
+ * The value is the name to PRINT; `null` prints the matched text as it
+ * stands — the whole string on a full match, and on a semicolon match the
+ * head alone, never the tail after it (`allowlistedName`). It exists
+ * because Parliament's two name fields are "Nachname, Vorname", and an
+ * organisation that fills them in gets stored inverted:
  * "Pressefreiheit, Institut für", "GmbH, Verkehrsverbund Ost-Region (VOR)".
  * Those rows were on the site in that shape for as long as they were public.
  * A display name is a de-inversion READ OFF the same string — never an
@@ -89,16 +91,26 @@ const ORG_ALLOWLIST = new Map<string, string | null>([
  * Tierschutz" is allowlisted by its first segment, the department after the
  * semicolon varies from filing to filing.
  *
+ * A head match therefore prints the HEAD only — the display name if the
+ * entry carries one, otherwise the head as it stands upstream, never the
+ * tail. What follows the semicolon is unverified, and "Org; <Vorname
+ * Nachname>" is a measured class of this data: printing the full string
+ * published the person standing behind the allowlisted organisation, and
+ * because the allowlist outranks the upstream `P` flag
+ * (`classifySubmitter`) nothing downstream could take that back.
+ *
  * Returns the name to print, or null when the string is not allowlisted —
  * so "not listed" and "listed, print as it stands" stay distinguishable.
  */
 function allowlistedName(s: string): string | null {
-  const lower = s.toLowerCase()
-  if (ORG_ALLOWLIST.has(lower)) return ORG_ALLOWLIST.get(lower) ?? s
-  const semicolon = lower.indexOf(';')
+  const full = ORG_ALLOWLIST.get(s.toLowerCase())
+  if (full !== undefined) return full ?? s
+  const semicolon = s.indexOf(';')
   if (semicolon < 0) return null
-  const head = lower.slice(0, semicolon).trim()
-  return ORG_ALLOWLIST.has(head) ? (ORG_ALLOWLIST.get(head) ?? s) : null
+  const head = s.slice(0, semicolon).trim()
+  const listed = ORG_ALLOWLIST.get(head.toLowerCase())
+  if (listed === undefined) return null
+  return listed ?? head
 }
 
 /** "(4880 St. Georgen im Attergau)" suffix — only ever appears on private persons. */
@@ -203,9 +215,9 @@ const ORG_PATTERNS: RegExp[] = [
   /[a-zäöüß]vereine?\b/i, // "Bund Österreichischer Frauenvereine", "Sportverein" — `\bverein\b` above needs the bare word
   /vertretung\b/i, // Studienvertretung, Bundesvertretung, Erwachsenenvertretung
   /presseclub|\bclub\b/i,
-  /\bnationalbank\b|\bbank\b/i, // "Musterbank, Christine" has no boundary before "bank"
+  /\bnationalbank\b|\bbank\b/i, // a surname ending in "-bank" has no boundary before the keyword
   /allianz\b/i,
-  /\bliga\b/i, // "Testliga, Dora" is a surname
+  /\bliga\b/i, // a surname can end in "-liga"
   /föderation/i,
   /kuratorium|fachstelle|\bsektion\b/i,
   /organisation\b/i,
@@ -413,6 +425,8 @@ function classifyByName(s: string): SubmitterClassification {
  * this name is an organisation, and it is the escape hatch for the roughly
  * eleven organisations per GP whose staff registered privately
  * ("Bundestheater Holding GmbH, BTH", "Patentanwaltskammer, Österr.").
+ * It can outrank it because `allowlistedName` prints the verified head
+ * alone — there is no tail left for the flag to veto.
  */
 export function classifySubmitter(
   raw: string | null | undefined,

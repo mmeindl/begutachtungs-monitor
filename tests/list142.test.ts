@@ -5,7 +5,8 @@ import {
   statementPageUrl,
 } from '../server/utils/parliament/list142'
 
-// Real list-142 row (sample from 2026-08-15, 237/SN-126/ME)
+// Real list-142 row (sample from 2026-08-15, 237/SN-126/ME); the submitter
+// is a private person, so the name here is synthetic and the shape is not.
 const LIST142_PERSON_ROW = [
   'XXVIII', 'SNME', 4983, null, '07.07.2026', '2026-07-07T12:00:00',
   '<a href="/gegenstand/XXVIII/SNME/4983/" target="_blank">Musteriadis, Ioannis (237/SN-126/ME)</a>',
@@ -48,7 +49,7 @@ describe('mapStatementRow', () => {
   /* The GDPR half of the row: column 19 is upstream's own organisation/person
    * flag and it can only ever suppress a name. A real case from the corpus
    * comparison of 2026-09-16 — the naming segment is a company, the person
-   * stands behind it, and only the flag sees them. */
+   * stands behind it (name synthetic here), and only the flag sees them. */
   it('lets the TYP flag suppress a name the string alone would publish', () => {
     const row = [...LIST142_PERSON_ROW]
     row[6] =
