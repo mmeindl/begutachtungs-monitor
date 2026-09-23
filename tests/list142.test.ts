@@ -100,10 +100,11 @@ describe('mapStatementRow', () => {
   })
 })
 
-/* The guard on a filtered list-142 response. It reads column 18, the parent's
- * path, because that is what `BEZUG_*` filters on — column 0 is the
- * Gesetzgebungsperiode of the Stellungnahme itself and says nothing about the
- * filter. */
+/* The guard on a filtered list-142 response. It reads the parent's path in
+ * column 18 AND the three dimensions the request actually filters by —
+ * columns 7/8/9, `BEZUG_GP_CODE`/`BEZUG_INR`/`BEZUG_ITYP`. Column 0 is the
+ * Gesetzgebungsperiode of the Stellungnahme itself and says nothing about
+ * the filter. */
 describe('statementRowMatchesParent', () => {
   it('accepts a row of the parent that was asked for', () => {
     expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVIII', 'ME', 126)).toBe(true)
@@ -113,6 +114,31 @@ describe('statementRowMatchesParent', () => {
     expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVIII', 'ME', 127)).toBe(false)
     expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVII', 'ME', 126)).toBe(false)
     expect(statementRowMatchesParent(LIST142_PERSON_ROW, 'XXVIII', 'I', 126)).toBe(false)
+  })
+
+  /* The filter keys themselves have to name the parent too — the path is one
+   * reading of the filter, these are the other. Populated on 100 % of the
+   * 6.828 saved rows of GP XXVIII (read 23.09.2026). */
+  it('reads the three BEZUG columns, not only the link', () => {
+    for (const [index, wrong] of [[7, 'XXVII'], [8, '127'], [9, 'I']] as const) {
+      const row = [...LIST142_PERSON_ROW]
+      row[index] = wrong
+      expect(statementRowMatchesParent(row, 'XXVIII', 'ME', 126)).toBe(false)
+    }
+    // The number arrives as a string today; a numeric column is the same fact.
+    const numeric = [...LIST142_PERSON_ROW]
+    numeric[8] = 126
+    expect(statementRowMatchesParent(numeric, 'XXVIII', 'ME', 126)).toBe(true)
+  })
+
+  /* A row whose link says one parent and whose dimensions say another is not
+   * a row this code can classify — and a guard that picked a winner would be
+   * choosing which of two upstream columns to believe. */
+  it('treats a disagreement between the two readings as a failed filter', () => {
+    const row = [...LIST142_PERSON_ROW]
+    row[18] = '/gegenstand/XXVIII/ME/127'
+    expect(statementRowMatchesParent(row, 'XXVIII', 'ME', 126)).toBe(false)
+    expect(statementRowMatchesParent(row, 'XXVIII', 'ME', 127)).toBe(false)
   })
 
   /* THE PRODUCTION 502 (verified live 23.09.2026): a Stellungnahme filed

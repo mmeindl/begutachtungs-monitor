@@ -191,13 +191,26 @@ export function readListQuery(event: H3Event): ListQuery {
  *
  * First name per code wins, like the Map it replaces: the code is the
  * identity, and a ministry renamed mid-period must not appear twice.
+ *
+ * A jointly issued draft contributes BOTH its ressorts (`coMinistries`):
+ * without that, picking BMJ in the menu would silently drop 302/ME, which
+ * the BMJ did send — the menu and the filter have to agree on what a Ressort
+ * owns. `coMinistries` is optional here because the RIS half has no such
+ * case: one record, one Stelle.
  */
 export function ministryFilterOptions(
-  items: readonly { ministryCode: string; ministryName: string }[],
+  items: readonly {
+    ministryCode: string
+    ministryName: string
+    coMinistries?: readonly { code: string; name: string }[]
+  }[],
 ): { code: string; name: string }[] {
   const byCode = new Map<string, string>()
   for (const item of items) {
     if (item.ministryCode && !byCode.has(item.ministryCode)) byCode.set(item.ministryCode, item.ministryName)
+    for (const co of item.coMinistries ?? []) {
+      if (co.code && !byCode.has(co.code)) byCode.set(co.code, co.name)
+    }
   }
   return [...byCode.entries()]
     .map(([code, name]) => ({ code, name }))

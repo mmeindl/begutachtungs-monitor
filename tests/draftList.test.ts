@@ -21,6 +21,7 @@ function draft(overrides: Partial<DraftSummary> = {}): DraftSummary {
     title: 'Bundesgesetz, mit dem das Ökostromgesetz geändert wird',
     ministryCode: 'BMF',
     ministryName: 'Bundesministerium für Finanzen',
+    coMinistries: [],
     arrivedAt: '2026-09-01',
     deadline: '2026-10-01',
     active: true,
@@ -46,14 +47,34 @@ describe('canParticipate', () => {
  * (BMFFIM ∥ BMJ), 266/ME (BMF ∥ BMFFIM) and 114/ME (BMJ ∥ BMDW) stood in the
  * archive twice and made `total` say 353 of 350 (found 23.09.2026). */
 describe('dedupeDraftList', () => {
-  it('keeps one row per Entwurf and the first ressort upstream named', () => {
+  it('keeps one row per Entwurf and names every ressort that sent it', () => {
     const rows = dedupeDraftList([
-      draft({ inr: 302, citation: '302/ME', ministryCode: 'BMFFIM' }),
-      draft({ inr: 302, citation: '302/ME', ministryCode: 'BMJ' }),
+      draft({ inr: 302, citation: '302/ME', ministryCode: 'BMFFIM', ministryName: 'Frauen, Wissenschaft und Forschung' }),
+      draft({ inr: 302, citation: '302/ME', ministryCode: 'BMJ', ministryName: 'Justiz' }),
       draft({ inr: 266, citation: '266/ME', ministryCode: 'BMF' }),
     ])
     expect(titles(rows)).toEqual(['302/ME', '266/ME'])
-    expect(rows[0]!.ministryCode).toBe('BMFFIM')
+    expect(rows[0]!.coMinistries).toEqual([{ code: 'BMJ', name: 'Justiz' }])
+    // A draft one Ressort sent carries an empty list, never a hole.
+    expect(rows[1]!.coMinistries).toEqual([])
+  })
+
+  /* The lead must not depend on the order upstream happened to answer in:
+   * `requireDraft` picks its own row out of the same list, and a detail page
+   * naming a different Ressort than the card that opened it is the defect
+   * this sort prevents. Code order, so it reads the same on every machine. */
+  it('leads with the same ressort whichever order the rows arrive in', () => {
+    const [first] = dedupeDraftList([
+      draft({ inr: 114, ministryCode: 'BMJ' }),
+      draft({ inr: 114, ministryCode: 'BMDW' }),
+    ])
+    const [flipped] = dedupeDraftList([
+      draft({ inr: 114, ministryCode: 'BMDW' }),
+      draft({ inr: 114, ministryCode: 'BMJ' }),
+    ])
+    expect(first!.ministryCode).toBe('BMDW')
+    expect(flipped!.ministryCode).toBe('BMDW')
+    expect(flipped!.coMinistries.map((m) => m.code)).toEqual(['BMJ'])
   })
 
   it('separates the periods — the same number exists in every GP', () => {
@@ -92,6 +113,19 @@ describe('filterDraftList', () => {
     expect(titles(filterDraftList(rows, { ...ALL, ministry: 'BMJ' }))).toEqual(['2/ME'])
     expect(titles(filterDraftList(rows, { ...ALL, q: 'finanzen' }))).toEqual([])
     expect(titles(filterDraftList(rows, { ...ALL, q: 'bmj' }))).toEqual(['2/ME'])
+  })
+
+  /* „Alle Entwürfe des Ministeriums BMJ" has to hold every draft the BMJ
+   * sent, including the one it sent jointly and does not lead. The search
+   * follows the same rule, because the row prints both codes. */
+  it('finds a jointly issued Entwurf under either of its ressorts', () => {
+    const joint = [
+      draft({ inr: 302, citation: '302/ME', ministryCode: 'BMFFIM', coMinistries: [{ code: 'BMJ', name: 'Justiz' }] }),
+      draft({ inr: 9, citation: '9/ME', ministryCode: 'BMF' }),
+    ]
+    expect(titles(filterDraftList(joint, { ...ALL, ministry: 'BMFFIM' }))).toEqual(['302/ME'])
+    expect(titles(filterDraftList(joint, { ...ALL, ministry: 'BMJ' }))).toEqual(['302/ME'])
+    expect(titles(filterDraftList(joint, { ...ALL, q: 'bmj' }))).toEqual(['302/ME'])
   })
 
   it('reads the query folded and with AND between the words', () => {

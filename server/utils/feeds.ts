@@ -87,6 +87,12 @@ interface FeedEntry {
 }
 
 function draftEntry(siteUrl: string, item: DraftSummary): FeedEntry {
+  // Every Ressort that sent it, in the fold's order: a jointly issued Entwurf
+  // stands in list 81 once per Ressort, and naming only the lead made the
+  // sender of 302/ME a function of upstream's row order
+  // (`parliament/draftList.ts`). The feed's own separator, because here the
+  // ministries are one field among several rather than a prose line.
+  const ministries = [item.ministryName, ...item.coMinistries.map((m) => m.name)].join(' · ')
   return {
     uid: feedUid(item),
     url: pageUrl(siteUrl, item),
@@ -94,13 +100,13 @@ function draftEntry(siteUrl: string, item: DraftSummary): FeedEntry {
     // No statement count: guid-keyed readers freeze first-seen text, and the
     // count is near zero at publication — frozen forever.
     meta: [
-      item.ministryName,
+      ministries,
       item.deadline ? `Frist bis ${formatDateDe(item.deadline)}` : 'Ohne Frist',
     ].join(' · '),
     publishedAt: item.arrivedAt,
     deadline: item.deadline,
     calendarSummary: `Frist: ${item.title} (${item.citation})`,
-    calendarDescription: item.ministryName,
+    calendarDescription: ministries,
     tieBreak: String(item.inr).padStart(9, '0'),
   }
 }

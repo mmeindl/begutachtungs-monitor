@@ -6,7 +6,7 @@
  * it.
  *
  * WHAT BELONGS HERE and what does not. A builder here carries the SHAPE — the
- * eleven fields of a `DraftSummary`, the ten of a `ComparisonRow` — and one
+ * twelve fields of a `DraftSummary`, the ten of a `ComparisonRow` — and one
  * specimen's worth of defaults so a test that cares about none of them can
  * write `draftSummary()`. The SAMPLE VALUES stay in the test that asserts on
  * them: `precedingDraft.test.ts` is about 73/ME Gewerbeordnung and says so in
@@ -154,6 +154,7 @@ export function draftSummary(over: Partial<DraftSummary> = {}): DraftSummary {
     title: 'Umsatzsteuergesetz, Änderung',
     ministryCode: 'BMF',
     ministryName: 'Bundesministerium für Finanzen',
+    coMinistries: [],
     arrivedAt: '2026-03-11',
     deadline: '2026-04-08',
     active: false,

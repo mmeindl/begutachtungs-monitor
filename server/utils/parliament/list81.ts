@@ -31,6 +31,11 @@ export function mapDraftRow(row: unknown[]): DraftSummary {
     title: stripHtmlToText(asString(row[4])),
     ministryCode: asString(row[6]),
     ministryName: asString(row[16]),
+    // One row names ONE Ressort — a jointly issued draft stands in the list
+    // once per Ressort. The second one is not in this row and cannot be
+    // read here; it is filled where the rows of a draft meet
+    // (`draftList.ts`, `foldJointDraft`).
+    coMinistries: [],
     arrivedAt: parseIsoDate(row[10]) ?? parseGermanDate(asString(row[3])) ?? '',
     deadline: parseFristsort(row[14] as number | string | null | undefined),
     active: row[11] === 'J',

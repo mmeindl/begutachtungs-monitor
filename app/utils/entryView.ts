@@ -97,7 +97,15 @@ export interface EntryView {
   /** Zone 2, token 1: „Ministerialentwurf 132/ME", „Verordnungsentwurf". */
   kindLabel: string
   citation: string | null
+  /** The Ressort the entry is filed under — the lead, where there are two. */
   ministry: { code: string; name: string } | null
+  /**
+   * The further ressorts of a jointly issued Entwurf, in the fold's order
+   * (`server/utils/parliament/draftList.ts`). Empty everywhere else, and
+   * always empty where `ministry` is null: a second Ressort without a first
+   * is not a state the data has.
+   */
+  coMinistries: { code: string; name: string }[]
   /** Zone 2, last token — the debate name, quoted, ink. */
   alias: string | null
   /** A procedural fact that belongs to the identity, e.g. „ohne Begutachtung". */
@@ -241,6 +249,7 @@ export function viewOfDraft(
     kindLabel: 'Ministerialentwurf',
     citation: draft.citation,
     ministry: { code: draft.ministryCode, name: draft.ministryName },
+    coMinistries: draft.coMinistries,
     alias: aliasesFor(draft.gp, draft.inr)[0] ?? null,
     note: null,
     isNew: isNewArrival(draft.arrivedAt, draft.active),
@@ -285,6 +294,8 @@ export function viewOfRis(c: RisConsultation): EntryView {
     kindLabel: RIS_KIND_LABEL[c.kind],
     citation: null,
     ministry: c.ministryCode ? { code: c.ministryCode, name: c.ministryName ?? c.ministryCode } : null,
+    // One record, one Stelle: RIS has no joint Begutachtung.
+    coMinistries: [],
     alias: null,
     note: null,
     isNew: isNewArrival(c.startedAt, c.active),
@@ -343,6 +354,7 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
     kindLabel: 'Regierungsvorlage',
     citation: v.citation,
     ministry: null,
+    coMinistries: [],
     alias: null,
     note: c.kind === 'none' ? 'ohne Begutachtung' : null,
     isNew: false,

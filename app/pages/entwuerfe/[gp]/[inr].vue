@@ -310,6 +310,22 @@ useSeoMeta({
   ogType: 'article',
 })
 
+/**
+ * The Ressort chips of the header: the lead and every co-ressort, each with
+ * its own link into that Ressort's list. Two of them only on a jointly
+ * issued Entwurf — three drafts of GP XXVII
+ * (`server/utils/parliament/draftList.ts`).
+ */
+const ministryBadges = computed(() => {
+  const d = data.value
+  if (!d) return []
+  return [{ code: d.ministryCode, name: d.ministryName }, ...d.coMinistries].map((m) => ({
+    ...m,
+    to: `/entwuerfe?ministry=${m.code}&gp=${d.gp}`,
+    label: `Alle Entwürfe des Ministeriums ${m.name} anzeigen`,
+  }))
+})
+
 const linkClasses =
   'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
 </script>
@@ -327,10 +343,7 @@ const linkClasses =
       <article>
         <DraftBackLink />
         <DraftHeader
-          :ministry-code="data.ministryCode"
-          :ministry-name="data.ministryName"
-          :ministry-to="`/entwuerfe?ministry=${data.ministryCode}&gp=${data.gp}`"
-          :ministry-label="`Alle Entwürfe des Ministeriums ${data.ministryName} anzeigen`"
+          :ministries="ministryBadges"
           :deadline="data.deadline"
           :active="data.active"
           :title="data.shortTitle ?? data.title"
@@ -375,7 +388,13 @@ const linkClasses =
                  sits there in `title` and `sr-only`, i.e. behind a hover the
                  phone does not have. Here it has room, because this is a
                  prose line. -->
-            <span>{{ data.ministryName }}</span>
+            <!-- „und", not the „·" of this line: the dot is this line's
+                 separator between facts (Ressort · Übermittelt von · Link),
+                 and two ressorts joined by it would read as two facts rather
+                 than as one joint submission. Three drafts of GP XXVII have
+                 two (`server/utils/parliament/draftList.ts`); a prose line
+                 has the room to say so. -->
+            <span>{{ [data.ministryName, ...data.coMinistries.map((m) => m.name)].join(' und ') }}</span>
             <span aria-hidden="true">·</span>
             <template v-if="data.invitedBy">
               <span>Übermittelt von {{ data.invitedBy }}</span>

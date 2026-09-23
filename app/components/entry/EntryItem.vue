@@ -149,6 +149,21 @@ const externalHost = computed(() => {
             <span aria-hidden="true">{{ entry.ministry.code }}</span>
             <span class="sr-only">{{ entry.ministry.name }}</span>
           </span>
+          <!-- A jointly issued Entwurf names every Ressort that sent it, and
+               each as its own token with its own full name behind it — NOT as
+               one merged „BMJ/BMFFIM" chip. Zone 2 has exactly one separator,
+               the „·", and a second joiner inside a token would be new
+               punctuation to learn for three rows in 350; two codes in a row
+               of Ressort codes read as what they are. The detail page is the
+               one that turns them into chips, because there each is a link
+               (`DraftHeader`). -->
+          <template v-for="co in entry.coMinistries" :key="co.code">
+            <span aria-hidden="true">·</span>
+            <span :title="co.name">
+              <span aria-hidden="true">{{ co.code }}</span>
+              <span class="sr-only">{{ co.name }}</span>
+            </span>
+          </template>
         </template>
         <template v-if="entry.note">
           <span aria-hidden="true">·</span>

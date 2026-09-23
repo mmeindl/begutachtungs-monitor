@@ -11,6 +11,7 @@
 import type { DraftSummary } from '#shared/types'
 import { GP_RE, intToRoman, romanToInt } from '#shared/utils/gp'
 import { daysUntil } from '#shared/utils/format'
+import { foldJointDraft } from './draftList'
 import { mapDraftRow } from './list81'
 import { mapVorlageRow, type VorlageRow } from './list101'
 import {
@@ -179,12 +180,21 @@ export function listAvailableGps(currentGp: string): string[] {
   return gps
 }
 
-/** List-81 row of one item; 404 if it does not exist in that GP. */
+/**
+ * List-81 row of one item; 404 if it does not exist in that GP.
+ *
+ * ROWS, plural, and through the same fold the list uses: a jointly issued
+ * draft stands in list 81 once per Ressort, and `.find` took whichever of
+ * them upstream happened to return first. The list folds
+ * (`dedupeDraftList`), so the card and the page it opens could name
+ * different ministries for the same 302/ME. One helper, one lead
+ * (`foldJointDraft`).
+ */
 export async function requireDraft(gp: string, inr: number): Promise<DraftSummary> {
   const { items } = await getDraftsForGp(gp)
-  const summary = items.find((item) => item.inr === inr)
-  if (!summary) {
+  const rows = items.filter((item) => item.inr === inr)
+  if (!rows.length) {
     throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
   }
-  return reconcileActive(summary)
+  return reconcileActive(foldJointDraft(rows))
 }

@@ -28,7 +28,7 @@ export interface DraftListFilter {
 }
 
 /**
- * One row per Entwurf, however many ressorts sent it.
+ * One row per Entwurf, however many ressorts sent it — and it names them all.
  *
  * List 81 carries a draft with two responsible ministries TWICE, identical in
  * everything but the Ressort column: GP XXVII 302/ME (BMFFIM ∥ BMJ), 266/ME
@@ -41,18 +41,45 @@ export interface DraftListFilter {
  * leaf holds the rows as upstream sent them and the corpus scripts count
  * those.
  *
- * The first row in upstream's order wins, so the kept row names one of the
- * two ressorts. Both are true — naming both is an open product decision, not
- * something this fold may invent.
+ * TWO THINGS THE FOLD OWES THE READER, both added on 23.09.2026:
+ *
+ *  - **The lead is ours, not upstream's.** Keeping the first row made the
+ *    Ressort on the card a function of the order Parliament happened to
+ *    return — and the detail page picked its own first row, so list and page
+ *    could name different ministries for the same draft. Sorted by code, the
+ *    same Ressort leads everywhere, today and after the next relaunch.
+ *  - **The other ressorts are not dropped.** They stand in `coMinistries`,
+ *    because „BMJ" alone on a draft the BMJ and the BMFFIM sent together is
+ *    an incomplete answer to „von wem", not a shorter one.
  */
+export function foldJointDraft<T extends DraftSummary>(rows: readonly T[]): T {
+  // Plain code-point order, not `localeCompare`: the lead must not depend on
+  // the ICU data of whichever machine renders the page. Ressort codes are
+  // upper-case ASCII, where the two orders agree anyway.
+  const sorted = [...rows].sort((a, b) =>
+    a.ministryCode < b.ministryCode ? -1 : a.ministryCode > b.ministryCode ? 1 : 0,
+  )
+  const lead = sorted[0]!
+  return {
+    ...lead,
+    coMinistries: sorted
+      .slice(1)
+      .map((row) => ({ code: row.ministryCode, name: row.ministryName })),
+  }
+}
+
 export function dedupeDraftList<T extends DraftSummary>(items: readonly T[]): T[] {
-  const seen = new Set<string>()
-  return items.filter((item) => {
+  // Insertion order of the FIRST row of each draft, so the fold changes which
+  // Ressort a row names and never where the row stands: the sort below is the
+  // one place the list's order is decided.
+  const groups = new Map<string, T[]>()
+  for (const item of items) {
     const key = `${item.gp}-${item.inr}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+    const group = groups.get(key)
+    if (group) group.push(item)
+    else groups.set(key, [item])
+  }
+  return [...groups.values()].map((group) => foldJointDraft(group))
 }
 
 /**
@@ -67,6 +94,11 @@ export function dedupeDraftList<T extends DraftSummary>(items: readonly T[]): T[
  */
 export function canParticipate(item: Pick<DraftSummary, 'active' | 'chain'>): boolean {
   return item.active || item.chain?.filingOpen === true
+}
+
+/** Every Ressort code of a draft, upper-cased — the lead first, then the fold's. */
+function ministryCodes(item: DraftSummary): string[] {
+  return [item.ministryCode, ...item.coMinistries.map((m) => m.code)].map((c) => c.toUpperCase())
 }
 
 export function filterDraftList<T extends DraftSummary>(
@@ -84,7 +116,10 @@ export function filterDraftList<T extends DraftSummary>(
     if (stationFilter && stationsUsable && !stationFilter.has(item.chain?.station ?? 'begutachtung')) {
       return false
     }
-    if (ministry && item.ministryCode.toUpperCase() !== ministry) return false
+    // Lead OR co-ressort: on a jointly issued draft both ministries sent it,
+    // so „Alle Entwürfe des Ministeriums BMJ" has to contain 302/ME whichever
+    // of the two the fold put first.
+    if (ministry && !ministryCodes(item).includes(ministry)) return false
     if (q) {
       // Aliases are part of the haystack, not of the title: someone who only
       // knows "Bundestrojaner" has to find 8/ME (`shared/utils/draftAliases.ts`).
@@ -107,7 +142,10 @@ export function filterDraftList<T extends DraftSummary>(
       // AND READ FOLDED, since the same day: „oekostrom" finds the
       // Ökostromförderung, as the Stellungnahmen list always did. Folded OR
       // raw — folded alone would have cost matches inside a word.
-      const haystack = `${item.title} ${item.citation} ${item.ministryCode} ${aliasHaystack(item.gp, item.inr)}`
+      //
+      // AND THE CO-RESSORT IS IN IT, since 23.09.2026, by the same rule: the
+      // row now prints „BMFFIM · BMJ", so „bmj" has to find that row.
+      const haystack = `${item.title} ${item.citation} ${ministryCodes(item).join(' ')} ${aliasHaystack(item.gp, item.inr)}`
       if (!matchesQuery(haystack, q)) return false
     }
     return true

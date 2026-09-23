@@ -76,6 +76,22 @@ describe('buildRssFeed', () => {
     expect(xml).toContain('Ohne Frist')
   })
 
+  /* A draft two ressorts sent jointly stands in list 81 once per Ressort, and
+   * the feed used to name whichever of them upstream returned first
+   * (`server/utils/parliament/draftList.ts`). Both, joined by the feed's own
+   * separator — a subscriber sees the description and nothing else. */
+  it('names every ressort of a jointly issued Entwurf', () => {
+    const xml = buildRssFeed(SITE, [
+      draft({
+        ministryName: 'Bundesministerium für Finanzen',
+        coMinistries: [{ code: 'BMJ', name: 'Bundesministerium für Justiz' }],
+      }),
+    ])
+    expect(xml).toContain(
+      '<description>Bundesministerium für Finanzen · Bundesministerium für Justiz · Frist bis 08.04.2026</description>',
+    )
+  })
+
   it('leaves the volatile statement count out of descriptions (frozen in readers)', () => {
     const xml = buildRssFeed(SITE, [draft({ statementCount: 707 })])
     expect(xml).not.toContain('707 Stellungnahmen')

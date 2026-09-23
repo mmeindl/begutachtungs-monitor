@@ -207,6 +207,26 @@ describe('Zone 2 — Kennung', () => {
     })
   })
 
+  /* A draft two ressorts sent jointly names both — one token each, so zone 2
+   * keeps its single separator and every code keeps its own full name. Three
+   * drafts of GP XXVII (`server/utils/parliament/draftList.ts`); on every
+   * other kind of row the list is empty, which renders as nothing at all. */
+  it('names every ressort of a jointly issued Entwurf, and none elsewhere', () => {
+    const joint = viewOfDraft(
+      draft({
+        ministryCode: 'BMFFIM',
+        ministryName: 'Bundesministerium für Finanzen',
+        coMinistries: [{ code: 'BMJ', name: 'Bundesministerium für Justiz' }],
+      }),
+    )
+    expect(joint.ministry).toEqual({ code: 'BMFFIM', name: 'Bundesministerium für Finanzen' })
+    expect(joint.coMinistries).toEqual([{ code: 'BMJ', name: 'Bundesministerium für Justiz' }])
+
+    expect(viewOfDraft(draft()).coMinistries).toEqual([])
+    expect(viewOfRis(ris()).coMinistries).toEqual([])
+    expect(viewOfVorlage(vorlage()).coMinistries).toEqual([])
+  })
+
   /* The procedural fact, never as an accusation: the Vorlage never went to
    * Begutachtung, so the monitor has no page for it. */
   it('sends a Vorlage without a Begutachtung outside, and says so', () => {

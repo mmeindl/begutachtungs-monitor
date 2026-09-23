@@ -13,9 +13,13 @@ const HEADER_142 = [
   { feld_name: 'DATUM', label: 'Datum' },
   { feld_name: 'DATUM_SORT', label: 'Datumsort' },
   { label: 'Von' },
-  { feld_name: 'GP_CODE', label: 'GP' },
-  { label: 'INR' },
-  { label: 'ITYP' },
+  // The three `BEZUG_*` dimensions, re-read on 23.09.2026 off two saved
+  // responses (6.828 rows). The fixture spelled them `GP_CODE` and bare
+  // labels while the check read none of them; it does now, and these are the
+  // names the API answers with.
+  { feld_name: 'BEZUG_GP_CODE', label: 'GP' },
+  { feld_name: 'BEZUG_INR', label: 'INR' },
+  { feld_name: 'BEZUG_ITYP', label: 'ITYP' },
   { label: 'SORT' },
   { label: 'Datumsort' },
   { label: 'Unterstützungen' },
@@ -113,12 +117,28 @@ describe('checkListHeader', () => {
   })
 
   /* Column 18 carries the parent's path, and the filter guard on list 142
-   * reads nothing else (`statementRowMatchesParent`) — so a move there would
-   * turn every row into "wrong parent" and every statements list into a 502. */
+   * reads it (`statementRowMatchesParent`) — so a move there would turn every
+   * row into "wrong parent" and every statements list into a 502. */
   it('asserts the parent-link column of list 142', () => {
     const renamed = HEADER_142.map((h, i) => (i === 18 ? { label: 'Bezug' } : h))
     expect(checkListHeader(142, renamed)).toBe(
       'Liste 142: Spalte 18 ist „Bezug“, erwartet „Bezug_Link“',
+    )
+  })
+
+  /* And so do the three filter dimensions the same guard reads beside it.
+   * Their labels are the bare "GP"/"INR"/"ITYP", which columns 0-2 carry as
+   * well — the `feld_name` is what tells the parent's period from the
+   * Stellungnahme's own. */
+  it('asserts the three BEZUG dimensions of list 142 by their feld_name', () => {
+    const renamed = HEADER_142.map((h, i) => (i === 8 ? { feld_name: 'BEZUG_NR', label: 'INR' } : h))
+    expect(checkListHeader(142, renamed)).toBe(
+      'Liste 142: Spalte 8 ist „INR (BEZUG_NR)“, erwartet feld_name „BEZUG_INR“',
+    )
+    // The trap the fixture guards: column 7 is NOT the `GP_CODE` of column 0.
+    const confused = HEADER_142.map((h, i) => (i === 7 ? { feld_name: 'GP_CODE', label: 'GP' } : h))
+    expect(checkListHeader(142, confused)).toBe(
+      'Liste 142: Spalte 7 ist „GP (GP_CODE)“, erwartet feld_name „BEZUG_GP_CODE“',
     )
   })
 

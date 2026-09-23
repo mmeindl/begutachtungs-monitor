@@ -57,12 +57,23 @@ const LIST_142_COLUMNS: ColumnExpectation[] = [
   { index: 4, feldName: 'DATUM' },
   { index: 5, feldName: 'DATUM_SORT' },
   { index: 6, label: 'Von' },
+  // The three filter keys themselves. `BEZUG_GP_CODE`, `BEZUG_INR` and
+  // `BEZUG_ITYP` are literally what the request POSTs, and the response
+  // carries each of them back per row — populated on 100 % of the 6.828 rows
+  // of GP XXVIII (6.272 ME + 556 I, read 23.09.2026), which is what lets
+  // `statementRowMatchesParent` require them. Identity is the `feld_name`,
+  // per this module's rule: their labels are the bare "GP"/"INR"/"ITYP",
+  // which columns 0-2 carry as well.
+  { index: 7, feldName: 'BEZUG_GP_CODE' },
+  { index: 8, feldName: 'BEZUG_INR' },
+  { index: 9, feldName: 'BEZUG_ITYP' },
   { index: 12, label: 'Unterstützungen' },
   { index: 15, label: 'Nr' },
-  // The path of the PARENT item ("/gegenstand/XXVIII/ME/8"), which is the
-  // dimension `BEZUG_*` filters on and therefore the only column that can
-  // vouch for a filtered response (`statementRowMatchesParent`). No
-  // `feld_name`: it is not filterable itself, so the label is its identity.
+  // The path of the PARENT item ("/gegenstand/XXVIII/ME/8") — the same three
+  // dimensions written as one string, and therefore the second, independent
+  // reading of the filter that `statementRowMatchesParent` holds against the
+  // columns above. No `feld_name`: it is not filterable itself, so the label
+  // is its identity.
   { index: 18, label: 'Bezug_Link' },
   // Upstream's own organisation/person flag, which the classifier reads as a
   // veto on publishing a name. Its `label` is literally "?" — `feld_name`

@@ -25,6 +25,7 @@ function toSummary(r: FixtureRow): DraftSummary {
     title: r.title,
     ministryCode: r.ministryCode,
     ministryName: '',
+    coMinistries: [],
     arrivedAt: r.arrival,
     deadline: r.frist,
     active: false,

@@ -15,6 +15,17 @@ export interface DraftSummary {
   ministryCode: string
   /** Full ministry name */
   ministryName: string
+  /**
+   * The OTHER ressorts that sent the same draft — empty for the normal case,
+   * which is all but three drafts of GP XXVII and every one of XXVIII.
+   *
+   * List 81 carries a jointly issued Entwurf once per Ressort, identical in
+   * everything but the Ressort column, and the row above is the lead of that
+   * group (`foldJointDraft`). Naming only the lead was true and incomplete:
+   * which of the two it was depended on the order Parliament happened to
+   * return. Both are facts of the draft, so both stand in the row.
+   */
+  coMinistries: { code: string; name: string }[]
   /** ISO date (Einlangen) */
   arrivedAt: string
   /** ISO date — end of Begutachtungsfrist; null when upstream has none */

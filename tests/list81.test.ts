@@ -17,6 +17,9 @@ describe('mapDraftRow', () => {
       title: 'IFI Beitragsgesetz 2026',
       ministryCode: 'BMF',
       ministryName: 'Bundesministerium für Finanzen',
+      // One row names one Ressort; the joint case is folded a layer up
+      // (`dedupeDraftList`), so the mapper always answers with an empty list.
+      coMinistries: [],
       arrivedAt: '2026-08-03',
       deadline: '2026-08-24',
       active: true,

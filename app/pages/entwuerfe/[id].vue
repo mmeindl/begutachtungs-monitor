@@ -105,11 +105,19 @@ const documents = computed(() => {
            slot holds the type word where a draft holds its Geschäftszahl —
            these records have none, and the type is what identifies them to a
            reader. -->
+      <!-- One Stelle per RIS record — the joint submission of two ressorts
+           exists only in list 81, so this list never holds more than one. -->
       <DraftHeader
-        :ministry-code="data.ministryCode"
-        :ministry-name="data.ministryName"
-        :ministry-to="`/entwuerfe?art=verordnung&ministry=${data.ministryCode}`"
-        :ministry-label="`Alle Verordnungsentwürfe des Ministeriums ${data.ministryName} anzeigen`"
+        :ministries="
+          data.ministryCode
+            ? [{
+              code: data.ministryCode,
+              name: data.ministryName ?? data.ministryCode,
+              to: `/entwuerfe?art=verordnung&ministry=${data.ministryCode}`,
+              label: `Alle Verordnungsentwürfe des Ministeriums ${data.ministryName} anzeigen`,
+            }]
+            : []
+        "
         :deadline="data.deadline"
         :active="data.active"
         :title="data.title"

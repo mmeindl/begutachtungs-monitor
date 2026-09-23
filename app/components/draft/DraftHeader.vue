@@ -16,13 +16,22 @@
  * to grow (refactor-plan.md §4.3).
  */
 defineProps<{
-  /** Ressort short code; '' where RIS names none. No Ministerialentwurf has one. */
-  ministryCode: string
-  ministryName: string
-  /** The filtered list the badge leads to — a different one per page. */
-  ministryTo: string
-  /** The badge's accessible name, which says which list that is. */
-  ministryLabel: string
+  /**
+   * The ressorts that sent this draft, lead first — empty where RIS names
+   * none. A LIST since 23.09.2026: three Ministerialentwürfe of GP XXVII
+   * were sent by two ministries jointly, and the header named whichever of
+   * them upstream had returned first. Each gets its own badge, because each
+   * badge is a link into that Ressort's own list — one chip naming both
+   * could only lead to one of the two.
+   */
+  ministries: {
+    code: string
+    name: string
+    /** The filtered list this badge leads to — a different one per page. */
+    to: string
+    /** The badge's accessible name, which says which list that is. */
+    label: string
+  }[]
   /** ISO date, or null where upstream has none. */
   deadline: string | null
   active: boolean
@@ -37,14 +46,15 @@ defineProps<{
       <!-- Every Ressort gets a de-facto page for free: the filtered list
            URL. Only here — cards are themselves links. -->
       <NuxtLink
-        v-if="ministryCode"
-        :to="ministryTo"
-        :aria-label="ministryLabel"
+        v-for="m in ministries"
+        :key="m.code"
+        :to="m.to"
+        :aria-label="m.label"
         class="tap-target rounded"
       >
         <MinistryBadge
-          :code="ministryCode"
-          :name="ministryName"
+          :code="m.code"
+          :name="m.name"
           class="transition-colors hover:border-baseline hover:underline"
         />
       </NuxtLink>

@@ -20,9 +20,12 @@ import { asNumber, asString } from './rowCells'
 // List 142 — Stellungnahmen (23 columns, 0-based)
 // 0 gp · 1 ityp of the Stellungnahme (SNME on a Ministerialentwurf, SN on a
 // Regierungsvorlage) · 2 its INR · 4 date (display) · 5 dateSort (ISO) ·
-// 6 submitter (HTML <a> or placeholder text) · 12 endorsements ·
+// 6 submitter (HTML <a> or placeholder text) ·
+// 7/8/9 BEZUG_GP_CODE / BEZUG_INR / BEZUG_ITYP — the parent's period, number
+// and item type, i.e. the three keys the request filters by ·
+// 12 endorsements ·
 // 15 citation ("476/SN-88/ME" on an ME, "277139/SN" on an RV) ·
-// 18 Bezug_Link — the path of the parent item · 19 TYP — upstream's
+// 18 Bezug_Link — the same parent as one path · 19 TYP — upstream's
 // organisation ('I') / person ('P') flag
 // Deviation from §5 noted: [5] DATUM_SORT is ISO and preferred;
 // [4] (dd.mm.yyyy) serves only as fallback.
@@ -52,8 +55,22 @@ export type StatementParentType = 'ME' | 'I'
  * 3 and 4 Stellungnahmen after GP XXVIII convened on 24.10.2024, and those
  * 7 rows carry `XXVIII` in column 0 while belonging to a draft of XXVII.
  *
+ * TWO READINGS OF THE SAME FILTER, and the row has to pass both.
+ *
  * Column 18 is the parent's own path, and comparing against it asserts all
- * three filter dimensions at once — period, item type and number.
+ * three filter dimensions at once — period, item type and number. But the
+ * response also carries the filter KEYS themselves: columns 7, 8 and 9 are
+ * `BEZUG_GP_CODE`, `BEZUG_INR` and `BEZUG_ITYP`, the literal names the
+ * request POSTs, and `listHeaders.ts` prefers a `feld_name` over a display
+ * label wherever the API gives one — a path in a link column is the weaker
+ * identity of the two. Both are populated on 100 % of the 6.828 saved rows
+ * of GP XXVIII and never disagree there (read 23.09.2026).
+ *
+ * So both are required, and a DISAGREEMENT between them is a failed filter
+ * too. That is the point of reading them twice: a response in which the link
+ * says one parent and the dimensions another is not a response this code can
+ * classify — and the guard above it answers 502 rather than aggregating
+ * rows whose provenance two of upstream's own columns dispute.
  */
 export function statementRowMatchesParent(
   row: unknown[],
@@ -65,7 +82,15 @@ export function statementRowMatchesParent(
   // Upstream writes the path without a trailing slash today; one would carry
   // no meaning, so it is tolerated rather than treated as a failed filter.
   const link = asString(row[18]).trim().replace(/\/+$/, '')
-  return link === `/gegenstand/${gp}/${ityp}/${inr}`
+  if (link !== `/gegenstand/${gp}/${ityp}/${inr}`) return false
+  // The INR arrives as a numeric string ("351", never "0351"); `asNumber`
+  // takes the number form too, so a column that turns numeric upstream does
+  // not read as a failed filter.
+  return (
+    asString(row[7]).trim() === gp &&
+    asString(row[9]).trim() === ityp &&
+    asNumber(row[8]) === inr
+  )
 }
 
 /**
