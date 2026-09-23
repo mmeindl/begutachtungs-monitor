@@ -5798,6 +5798,28 @@ Spalte echt. Ebenso bewusst in Kauf genommen: bei genau 768 px bricht
 Pille weg ist — und die Alternative wäre gewesen, dem Titel weitere 40 px zu
 nehmen, der bei 768 px ohnehin schon bei ~38 Zeichen abschneidet.
 
+**Zwei Ressorts in Zone 2 (23.09.2026).** Ein Entwurf, den zwei Ministerien
+gemeinsam aussenden, steht in Liste 81 zweimal — identisch bis auf die
+Ressortspalte (GP XXVII: 302/ME BMFFIM ∥ BMJ, 266/ME BMF ∥ BMFFIM, 114/ME
+BMJ ∥ BMDW; GP XXVIII heute keiner). Die Liste zeigte ihn zweimal, dann nach
+der ersten Faltung einmal mit dem Ressort, das das Parlament zufällig zuerst
+lieferte — und die Seite konnte ein anderes nennen als die Liste. Jetzt
+trägt `DraftSummary.coMinistries` die weiteren Ressorts, eine Faltung
+(`foldJointDraft`, `server/utils/parliament/draftList.ts`) sortiert die Zeilen
+eines Entwurfs nach dem Kürzel — Codepunkt-Vergleich, damit die Führung nicht
+von den ICU-Daten des Renderers abhängt — und Liste wie Seite nehmen dieselbe.
+In Zone 2 steht je Ressort ein Kürzel, verbunden mit dem Mittelpunkt, den die
+Zone ohnehin hat („Ministerialentwurf 302/ME · BMFFIM · BMJ"); ein zweites
+Trennzeichen in einem verschmolzenen Token wäre für drei Zeilen in 350 eine
+neue Regel zu lernen gewesen. Im Kopf der Entwurfsseite steht je Ressort ein
+Abzeichen mit eigenem Filterlink — ein Abzeichen ist ein Ziel, und eines für
+beide könnte nur auf eine der zwei gefilterten Listen zeigen —, in der
+Prosazeile verbindet „und", weil dort der Mittelpunkt schon Fakten trennt.
+Ressortfilter, Ressortmenü, Suche und Feeds kennen beide Kürzel. Die Führung
+ist deterministisch, nicht inhaltlich: bei 302/ME führt BMFFIM, obwohl das
+Justizministerium übermittelt hat. Soll das übermittelnde Ressort führen, ist
+das eine andere Regel aus einer anderen Quelle (`invitedBy`).
+
 ### 12.29 Die Erläuterungen auf der Seite: der erste Schritt der Relevanzprüfung
 
 Die Seite hatte für das größte Dokument des Verfahrens einen PDF-Link. Wer
