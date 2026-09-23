@@ -236,7 +236,7 @@ name has to stay globally unique.
 | `ErrorState` | `title?: string` + emit `retry` | Error state with "Erneut versuchen" |
 | `LoadingState` | `label?: string` | Loading state |
 | `FetchGate` | `status: AsyncDataRequestStatus; error: unknown; data: T\|null\|undefined; loadingLabel?: string; stateClass?: string` + emit `retry`, default slot | The three answers a page has while its data is on the way — loading, failed with a way back, or the page. Both list pages and both detail pages used to write the same three branches in the same order |
-| `ExternalLink` | `href: string; newWindow?: boolean` + default slot | A link that leaves the site, with the a11y contract in ONE place: the decorative ↗ (aria-hidden). No `target="_blank"` since 18.09.2026 |
+| `ExternalLink` | `href: string` + default slot | A link that leaves the site, with the a11y contract in ONE place: a new window, the decorative ↗ (aria-hidden) and the sr-only warning that owes for it. Always `target="_blank"` since 23.09.2026 — uniformly, against the repetition on statement rows that the 18.09.2026 rule was written to avoid |
 | `ListHeader` | `id: string; to: string; noun: string; total?: number; visible?: number` + default slot | The head of a list section: its heading and the one way out of it (§12.24) — the counterpart to `ListMore` |
 | `ListMore` | `visible: number; total: number; step: number; allAbove?: number` + emits `more`, `all` | The foot of a client-paginated list: "10 von 42 angezeigt" as the live region, the step button, and "Alle N anzeigen" above `allAbove` remaining |
 | `SectionCredits` | default slot | The credit line at the foot of a comparison section: other people's documents, the licence, and last — rendered by the component itself, so both sections say it identically — „Markierung: Begutachtungs-Monitor" |
@@ -325,6 +325,8 @@ from size and weight. `accent` (500) is reserved for bars/non-text.
 Further AAA measures: **44-px target sizes** (global for buttons/form fields
 via CSS, link chips via `min-h-11`, row links via the `-my/py` trick),
 link purpose clear from the link alone (aria-labels with context, WCAG 2.4.9),
+every link that leaves the site opens a new window and says so (WCAG 2.2 3.2.5,
+23.09.2026 — the announcement is what makes the uniform rule conformant),
 `leading-relaxed` in text blocks, `prefers-reduced-motion` respected,
 focus ring 2 px accent with offset. Known AAA limits (documented, not
 claimed): 3.1.5 reading level (law titles are officialese) and 3.1.4

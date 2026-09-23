@@ -1,50 +1,41 @@
 <script setup lang="ts">
 /**
  * A link that leaves the site, with the a11y contract fixed in ONE place:
- * the decorative ↗ arrow (aria-hidden). The label comes through the slot;
- * styling and aria-label via attribute fallthrough from the caller.
+ * a new window, the decorative ↗ arrow (aria-hidden) and the warning that
+ * owes for it. The label comes through the slot; styling and aria-label via
+ * attribute fallthrough from the caller.
  *
- * NO `target="_blank"` since 18.09.2026, and that is the point of this
- * component now. It opened every reference in a new window without telling
- * anyone who could not see the arrow — a change of context with no warning,
- * which is what WCAG 2.2 3.2.5 is about and what /ueber's AAA claim reads
- * as promising. Announcing it was the obvious repair and the wrong one: a
- * draft page renders roughly twenty-five of these, one of them on every
- * statement row, so a screen reader would end two dozen links in a row with
- * the same clause.
+ * ALWAYS `target="_blank"` since 23.09.2026, and uniformly: every link that
+ * leaves the site opens a tab of its own. Between 18. and 23.09.2026 the
+ * opposite held — references stayed in the tab and only documents and
+ * actions got a window — and the argument then was the repetition this
+ * one accepts: a draft page renders roughly twenty-five of these, one on
+ * every statement row, so the warning below is read two dozen times in a
+ * row. That cost is real and it is the price of the rule, not an oversight.
  *
- * The better answer is that these links do not need a new window. They are
- * references — „Im RIS ansehen", „Auf parlament.gv.at ansehen", the source
- * notes — followed and returned from, and the back button is the natural
- * way back; browsers restore the scroll position. Whoever wants a tab
- * still has cmd- or middle-click, which is their decision rather than ours.
+ * What does NOT change is the warning itself. A new window is a change of
+ * context, and one that arrives unannounced is what WCAG 2.2 3.2.5 is about
+ * and what /ueber's AAA claim reads as promising. The ↗ is `aria-hidden`, so
+ * it warns nobody who cannot see it; the sr-only clause is the whole of the
+ * announcement, it stays attached to `target` here, and a call site can take
+ * neither without the other. That pairing is what this component is for.
  *
- * Where a new window DOES earn its place it is set at the call site and
- * announced there, because there it fires once or twice rather than
- * twenty-five times: the Stellungnahme buttons (the draft has to stay open
- * beside the form) and the document links (a PDF replacing the page is not
- * a navigation anyone can reliably undo).
+ * The same rule, hand-built, in the places that cannot use this component:
+ * `EntryItem` (the whole row is the link), `DocumentList` and
+ * `StatementDocumentTag` (they announce it inside their `aria-label`), and
+ * the `UButton` call sites on the draft pages.
  */
 defineProps<{
   href: string
-  /**
-   * Opt in to a new window, WITH the warning that owes — the pair stays
-   * together here so a call site cannot take the one without the other.
-   *
-   * Only for links that are an action on the other side: filing a
-   * Stellungnahme, where the draft has to stay readable beside the form.
-   * A reference does not qualify, however official its destination.
-   */
-  newWindow?: boolean
 }>()
 </script>
 
 <template>
   <a
     :href="href"
-    :target="newWindow ? '_blank' : undefined"
-    :rel="newWindow ? 'noopener' : undefined"
+    target="_blank"
+    rel="noopener"
   >
-    <slot /><span aria-hidden="true"> ↗</span><span v-if="newWindow" class="sr-only"> (neues Fenster)</span>
+    <slot /><span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
   </a>
 </template>

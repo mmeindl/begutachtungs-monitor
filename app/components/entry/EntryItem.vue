@@ -55,17 +55,21 @@ const props = defineProps<{
 const linkComponent = computed(() => (props.entry.to ? NuxtLink : 'a'))
 
 /**
- * NO `target="_blank"` — the same decision as in `ExternalLink`, for the same
- * reason: a row pointing at parlament.gv.at is a REFERENCE. One looks there
- * and comes back, which is what the back button is for, and whoever wants a
- * tab has Cmd- or middle-click — their decision rather than ours. New windows
- * are kept for documents and actions, and those announce it (WCAG 2.2 3.2.5).
+ * `target="_blank"` on the external rows — the same rule as in
+ * `ExternalLink` since 23.09.2026: everything that leaves the site opens a
+ * tab of its own. This row cannot use that component, because the whole row
+ * is the link, so it repeats the rule by hand — and with it the warning the
+ * rule owes (WCAG 2.2 3.2.5), which rides along in the sr-only clause under
+ * the title, beside the host name.
  *
- * This row was the one place the rebuild of 18.09.2026 did not reach: it
- * builds its own `<a>`, because the whole row is the link.
+ * `rel="noopener"` only where there is a target: an internal `NuxtLink`
+ * takes neither attribute, which is why both hang off the same branch as
+ * `href`.
  */
 const linkProps = computed(() =>
-  props.entry.to ? { to: props.entry.to } : { href: props.entry.href ?? undefined },
+  props.entry.to
+    ? { to: props.entry.to }
+    : { href: props.entry.href ?? undefined, target: '_blank', rel: 'noopener' },
 )
 
 /**
@@ -120,7 +124,7 @@ const externalHost = computed(() => {
         class="font-medium text-ink group-hover:underline"
         :title="entry.titleFull ?? entry.title"
       >
-        {{ entry.title }}<span v-if="!entry.to" aria-hidden="true"> ↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }})</span>
+        {{ entry.title }}<span v-if="!entry.to" aria-hidden="true"> ↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
       </component>
 
       <!-- ZONE 2 — Kennung: what kind of thing, which one, from whom. Fixed

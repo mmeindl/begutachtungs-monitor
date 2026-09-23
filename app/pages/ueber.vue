@@ -153,7 +153,9 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Textfarben erreichen mindestens ein Kontrastverhältnis von 7:1,
           Bedienelemente sind mindestens 44 Pixel groß, Bedeutung hängt nie an
           Farbe allein, und die Seite ist vollständig per Tastatur nutzbar.
-          Reduzierte Bewegung wird respektiert. Wer dennoch auf eine Barriere
+          Reduzierte Bewegung wird respektiert. Links auf fremde Seiten öffnen
+          durchgehend ein neues Fenster und sagen es an.
+          Wer dennoch auf eine Barriere
           stößt, hilft dem Projekt mit einem Hinweis an
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
