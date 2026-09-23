@@ -15,8 +15,8 @@
  * Ministerialentwurf → Regierungsvorlage (docs/architecture.md §12.18) and
  * these sentences name the two sides out loud.
  */
-import type { LawPackageEntry, LawStationId } from '../../shared/types'
-import { LAW_STATION_LABEL } from '../../shared/utils/lawStations'
+import type { LawPackageEntry, LawStationId } from '#shared/types'
+import { LAW_STATION_LABEL } from '#shared/utils/lawStations'
 
 /** How many law names a sentence lists before it counts the rest. */
 const MAX_NAMES = 3

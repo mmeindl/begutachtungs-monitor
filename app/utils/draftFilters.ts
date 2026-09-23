@@ -12,9 +12,9 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
-import type { DraftStation, DraftStatus } from '../../shared/types'
-import { DRAFT_STATION_ORDER } from '../../shared/utils/draftStations'
-import { firstQueryValue } from '../../shared/utils/queryParams'
+import type { DraftStation, DraftStatus } from '#shared/types'
+import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
+import { firstQueryValue } from '#shared/utils/queryParams'
 
 /**
  * Filter by WHERE a draft stands in the procedure, not by the type word on

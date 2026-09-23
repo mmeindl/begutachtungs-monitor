@@ -13,8 +13,8 @@
  * verdict on the ministry — and where the finding may be OUR reading, it says
  * so first.
  */
-import type { AnnexWithheldCause, TextComparisonResponse } from '../../shared/types'
-import { formatDateDe } from '../../shared/utils/format'
+import type { AnnexWithheldCause, TextComparisonResponse } from '#shared/types'
+import { formatDateDe } from '#shared/utils/format'
 
 type Verification = TextComparisonResponse['verification']
 type ReadFrom = TextComparisonResponse['readFrom']

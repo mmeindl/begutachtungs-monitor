@@ -43,11 +43,11 @@ import type {
   DraftSummary,
   OpenVorlage,
   RisConsultation,
-} from '../../shared/types'
-import { aliasesFor } from '../../shared/utils/draftAliases'
+} from '#shared/types'
+import { aliasesFor } from '#shared/utils/draftAliases'
 import { type DeadlineTone, deadlineTone, isNewArrival } from './deadlines'
-import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel } from '../../shared/utils/format'
-import { RIS_KIND_LABEL } from '../../shared/utils/risConsultations'
+import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel } from '#shared/utils/format'
+import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 
 /**
  * Zone 3 — what was filed in this Verfahren.

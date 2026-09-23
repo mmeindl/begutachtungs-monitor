@@ -3,7 +3,7 @@
  * badge tones (`DeadlineBadge`) and for the state line of a list row
  * (`EntryState`).
  */
-import { daysUntil } from '../../shared/utils/format'
+import { daysUntil } from '#shared/utils/format'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
 const DEADLINE_CRITICAL_DAYS = 3

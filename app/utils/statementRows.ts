@@ -9,8 +9,8 @@
  * test, not only by a browser. The rule itself is unchanged and is not to be
  * simplified (CLAUDE.md, GDPR; refactor-plan.md §9).
  */
-import type { StatementMeta, StatementsSummary } from '../../shared/types'
-import { countLabelDe } from '../../shared/utils/format'
+import type { StatementMeta, StatementsSummary } from '#shared/types'
+import { countLabelDe } from '#shared/utils/format'
 
 /**
  * Two orders, answering different questions — "who mobilized" and "what came

@@ -11,7 +11,7 @@
  * `side` drops what a column does not show: `inserted` on the left, `removed`
  * on the right. Nothing is recomputed, the same data is read twice.
  */
-import type { LawDiffSegment } from '../../shared/types'
+import type { LawDiffSegment } from '#shared/types'
 
 export function splitSegments(
   segments: LawDiffSegment[] | null,

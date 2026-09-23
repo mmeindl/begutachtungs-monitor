@@ -7,7 +7,7 @@
  * tables are shared, the word is a parameter, and neither section has to give
  * up its own.
  */
-import type { LawUnitChange } from '../../shared/types'
+import type { LawUnitChange } from '#shared/types'
 
 /** What a pill can say: the four changes, plus the editorial class. */
 export type DiffBadge = LawUnitChange | 'editorial'

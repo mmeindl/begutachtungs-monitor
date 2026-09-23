@@ -17,7 +17,7 @@
  * „(EU) 2018/1808" does not match (letters), „Abs. 1" does not either (no
  * parentheses); those are the two forms standing beside it in the same text.
  */
-import type { LawDiffSegment } from '../../shared/types'
+import type { LawDiffSegment } from '#shared/types'
 
 const ABS_MARK = /(?=\(\d+[a-z]?\)\s)/
 

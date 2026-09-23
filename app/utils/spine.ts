@@ -41,9 +41,9 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { DraftDetail, LawStationId } from '../../shared/types'
-import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '../../shared/utils/format'
-import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '../../shared/utils/lawStations'
+import type { DraftDetail, LawStationId } from '#shared/types'
+import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
+import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
