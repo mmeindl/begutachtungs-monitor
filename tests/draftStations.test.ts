@@ -23,6 +23,17 @@ describe('stationFor', () => {
   it('reads the house status only while nothing is promulgated', () => {
     expect(stationFor(null, '5')).toBe('parlament')
     expect(stationFor(null, '2')).toBe('rv')
+    // '1' is „Einlangen im Nationalrat" — the Vorlage lies before the house
+    // and nobody has taken it up yet (7 GP-XXVIII Vorlagen on 23.09.2026).
+    expect(stationFor(null, '1')).toBe('rv')
+  })
+
+  it('counts a recommitted Vorlage as parliament acting, not as one lying there', () => {
+    /* '3' is „Zurückverwiesen an den … Ausschuss" (XXVII/2049 d.B.): the
+       house took a decision about the text and sent it back, which is a
+       station further than „liegt vor". */
+    expect(stationFor(null, '3')).toBe('parlament')
+    expect(stationFor('Bundesgesetzblatt I Nr. 81/2026', '3')).toBe('bgbl')
   })
 
   it('falls back to the weakest claim when the house status is unknown', () => {

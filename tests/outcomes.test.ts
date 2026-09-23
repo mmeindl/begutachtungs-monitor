@@ -7,6 +7,7 @@ import {
   rvBaseRateSentenceDe,
 } from '../app/utils/outcomes'
 import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
+import { GP_STARTS, gpEndedOn, romanToInt } from '../shared/utils/gp'
 
 describe('RV base rates (scripts/corpus/rvLatency.ts, 2026-09-08)', () => {
   it('rows are internally consistent', () => {
@@ -32,6 +33,27 @@ describe('RV base rates (scripts/corpus/rvLatency.ts, 2026-09-08)', () => {
     expect(rvBaseRateFor('XXVIII').gp).toBe('XXVII')
     expect(rvBaseRateFor('XXV').gp).toBe('XXVII')
     expect(rvBaseRateFor('XXVI').gp).toBe('XXVI')
+  })
+
+  /**
+   * The row that the running period borrows has to BE the newest ended one.
+   *
+   * `rvBaseRateFor` falls back to `RV_BASE_RATES[0]` for every unmeasured GP,
+   * and the running one is always unmeasured — so the day GP XXIX convenes
+   * and `GP_STARTS` gains its row, this pairing breaks silently: the outcome
+   * card would head „In der XXVII. Gesetzgebungsperiode …" on a XXVIII page
+   * whose own period has long closed, and nothing on the page would look
+   * wrong.
+   *
+   * WHEN THIS TEST GOES RED: run `pnpm corpus:rv-latenz` for the period that
+   * just ended and put its row at the head of `RV_BASE_RATES`. The test is
+   * the reminder, not the fix.
+   */
+  it('measures the newest period that has actually ended', () => {
+    const ended = Object.keys(GP_STARTS)
+      .filter((gp) => gpEndedOn(gp) !== null)
+      .sort((a, b) => (romanToInt(b) ?? 0) - (romanToInt(a) ?? 0))
+    expect(RV_BASE_RATES[0]!.gp).toBe(ended[0])
   })
 
   it('states the rate as numbers, without a verdict word', () => {

@@ -17,6 +17,18 @@ import type { ChainCoverage, DraftChain, DraftStation } from '../types'
 export const STATUS_FINISHED = '5'
 
 /**
+ * `Status` 3: „Zurückverwiesen an den … Ausschuss" (XXVII/2049 d.B., read
+ * live 23.09.2026).
+ *
+ * It belongs at the Parlament station, not at `rv`. The Vorlage is not
+ * merely lying before the Nationalrat — the house has taken a decision about
+ * it and sent it back, which is parliament acting on the text, and the value
+ * exists precisely to record that. Left at `rv` the row said „liegt vor"
+ * about a Vorlage that had already been through a reading.
+ */
+export const STATUS_RECOMMITTED = '3'
+
+/**
  * The four stations in procedural order — the one runtime list of them.
  *
  * It was spelled out three times: in both list endpoints, which validate the
@@ -46,7 +58,7 @@ const REACH: Record<DraftStation, number> = { begutachtung: 0, rv: 1, parlament:
 /**
  * A promulgated law is at the Bundesgesetzblatt whatever the list column
  * says; otherwise the house's own status decides between „liegt vor" and
- * „behandelt".
+ * „behandelt" — two of its values mean the house acted, `5` and `3`.
  *
  * An unknown status stays at `rv`, deliberately: that a Vorlage exists was
  * read from the draft's own stage record, while what parliament did with it
@@ -55,7 +67,9 @@ const REACH: Record<DraftStation, number> = { begutachtung: 0, rv: 1, parlament:
  */
 export function stationFor(bgblNumber: string | null, houseStatus: string | null): DraftStation {
   if (bgblNumber) return 'bgbl'
-  return houseStatus === STATUS_FINISHED ? 'parlament' : 'rv'
+  return houseStatus === STATUS_FINISHED || houseStatus === STATUS_RECOMMITTED
+    ? 'parlament'
+    : 'rv'
 }
 
 /** Which of two chains for the same draft survives the fold. */

@@ -52,7 +52,19 @@ export interface GegenstandResponse {
     names?: RawName[] | null
     shortinfo?: RawShortinfo | null
     statements?: { documents?: RawDocumentGroup[] | null } | null
-    status?: { bgbllinks?: RawBgblLink[] | null } | null
+    /**
+     * What the house did with the item. `number` is list 101's `Status`
+     * column as a number (1 = Einlangen im Nationalrat, 2 = in Behandlung,
+     * 3 = zurückverwiesen, 5 = erledigt), `description` the free-text
+     * record of it, with markup and the voting lines
+     * (`docs/api-exploration.md` §101). Upstream prose: read by the
+     * classifier in `app/utils/spine.ts`, never printed.
+     */
+    status?: {
+      number?: number | string | null
+      description?: string | null
+      bgbllinks?: RawBgblLink[] | null
+    } | null
     /** "1" while the item takes Stellungnahmen, "0" afterwards (`isFilingOpen`). */
     statementsstate?: string | number | null
     /**

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  amendedStationsOf,
   bgblOrderKey,
   extractBgblLink,
   isFilingOpen,
@@ -12,6 +13,7 @@ import {
   parseShortinfo,
   parseStages,
 } from '../server/utils/parliament/detailJson'
+import { bgblShort } from '../shared/utils/format'
 
 describe('findHandoff', () => {
   const step = (text: string, date: string | null = '2026-04-08') => ({
@@ -240,6 +242,93 @@ describe('extractBgblLink', () => {
     expect(extractBgblLink([BGBLLINKS[1]!])).toBeNull()
     expect(extractBgblLink([])).toBeNull()
     expect(extractBgblLink(null)).toBeNull()
+  })
+
+  /* 2446 d.B. (XXVII, out of 300/ME), read live 23.09.2026: the Teil is
+     missing from the title and stands in the link. One upstream typo took the
+     law out of „Zuletzt Gesetz geworden" (`bgblOrderKey` refuses a citation
+     without a Teil), printed „BGBl. Nr. 42/2024" and made the RIS lookup,
+     which searches by exactly that short form, come back empty. */
+  it('takes the Teil from the link when the title leaves it out', () => {
+    expect(
+      extractBgblLink([
+        {
+          title: 'Bundesgesetzblatt Nr. 42/2024',
+          link: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2024_I_42',
+        },
+      ])?.number,
+    ).toBe('Bundesgesetzblatt I Nr. 42/2024')
+  })
+
+  it('makes the repaired citation sortable and short-formable again', () => {
+    const repaired = extractBgblLink([
+      {
+        title: 'Bundesgesetzblatt Nr. 42/2024',
+        link: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2024_I_42',
+      },
+    ])!.number
+    expect(bgblOrderKey(repaired)).toBe(bgblOrderKey('Bundesgesetzblatt I Nr. 42/2024'))
+    expect(bgblShort(repaired!)).toBe('BGBl. I Nr. 42/2024')
+  })
+
+  it('leaves a correct title exactly as upstream wrote it', () => {
+    expect(extractBgblLink(BGBLLINKS)!.number).toBe('Bundesgesetzblatt I Nr. 37/2026')
+    // Teil II keeps its own series — the link decides that too.
+    expect(
+      extractBgblLink([
+        {
+          title: 'Bundesgesetzblatt II Nr. 250/2026',
+          link: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_II_250',
+        },
+      ])!.number,
+    ).toBe('Bundesgesetzblatt II Nr. 250/2026')
+  })
+
+  it('claims nothing about a link that carries no Dokumentnummer', () => {
+    /* Without the structured field there is nothing to check the title
+       against, so the title travels as it stands. */
+    expect(
+      extractBgblLink([
+        { title: 'Bundesgesetzblatt Nr. 620/1989', link: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBL_620_1989' },
+      ])!.number,
+    ).toBe('Bundesgesetzblatt Nr. 620/1989')
+    expect(
+      extractBgblLink([{ title: null, link: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth' }])!.number,
+    ).toBeNull()
+  })
+})
+
+/**
+ * Which stations a Regierungsvorlage published a changed text at — read from
+ * ITS list, because the draft's mirror of the same list belongs to one
+ * Vorlage among several (ME→RV is 1:n, §13.4).
+ */
+describe('amendedStationsOf', () => {
+  const group = (title: string) => ({
+    title,
+    documents: [{ link: `/dokument/XXVIII/I/129/${title}.html`, type: 'HTML' }],
+  })
+
+  /* 129 d.B. (XXVIII), the Vorlage whose Kundmachung 26/ME's page states. */
+  it('names both houses in procedural order, whatever order upstream lists them in', () => {
+    expect(amendedStationsOf([group('Gesetzestext'), group('Geändert im Ausschuss'), group('Geändert im Plenum')]))
+      .toEqual(['ausschuss', 'plenum'])
+    expect(amendedStationsOf([group('Geändert im Plenum'), group('Geändert im Ausschuss')]))
+      .toEqual(['ausschuss', 'plenum'])
+  })
+
+  /* An empty array is an answer — "this Vorlage published no changed text" —
+     and it is what lets the page say „Text unverändert beschlossen". */
+  it('answers with an empty list when the Vorlage published no changed text', () => {
+    expect(amendedStationsOf([group('Gesetzestext')])).toEqual([])
+    expect(amendedStationsOf([])).toEqual([])
+    expect(amendedStationsOf(null)).toEqual([])
+  })
+
+  it('never counts the Vorlage\'s own text, nor a document that is not law text', () => {
+    // The Vorlage's Gesetzestext is what the two stations are changes TO, and
+    // a Verhältnismäßigkeitsprüfung is no version of the law at all.
+    expect(amendedStationsOf([group('Gesetzestext'), group('Verhältnismäßigkeitsprüfung')])).toEqual([])
   })
 })
 

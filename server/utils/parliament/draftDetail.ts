@@ -12,6 +12,7 @@ import type {
 import { chainCoverageOf } from '#shared/utils/draftStations'
 import { gpEndedOn, gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import {
+  amendedStationsOf,
   extractBgblLink,
   findHandoff,
   findLastRvLink,
@@ -35,6 +36,7 @@ import {
 import { deriveShortTitle } from './list81'
 import { buildStatementsSummary, getStatementsWithFallback } from './statements'
 import { findRelatedDrafts } from './related'
+import { stripHtmlToText } from './htmlText'
 import { withinBudget } from '../http/budget'
 
 /**
@@ -95,8 +97,18 @@ export async function getDraftOutcome(
 }
 
 /**
- * The Regierungsvorlage's half of the outcome: its Kundmachung and whether
- * the Nationalrat still takes Stellungnahmen on it.
+ * The Regierungsvorlage's half of the outcome: its Kundmachung, what the
+ * house did with it, where it was changed, and whether the Nationalrat still
+ * takes Stellungnahmen on it.
+ *
+ * ALL OF IT FROM THE SAME VORLAGE. The BGBl number was always read from the
+ * last Vorlage in the stage list; what parliament did with the text was read
+ * from the draft's own mirror of a document list — which belongs to one
+ * Vorlage among several whenever a draft produced more than one (§13.4). On
+ * XXVIII/26/ME those are two different Vorlagen, and the page put one's
+ * silence under the other's Kundmachung: „Text unverändert beschlossen"
+ * about a text the Ausschuss and the Plenum had both changed. Four fields,
+ * one record, one fetch.
  *
  * Enrichment, never a dependency — a failing RV fetch leaves null fields
  * and no error, because the stations the stage list already names stand
@@ -120,6 +132,9 @@ async function enactmentOf(
     furtherRv: rvLinks.slice(0, -1).map((rv) => ({ label: rv.label, url: rv.url })),
     bgblNumber: null,
     bgblRisUrl: null,
+    amendedIn: null,
+    houseStatus: null,
+    houseStatusText: null,
     filingOpen: false,
   }
   try {
@@ -129,12 +144,27 @@ async function enactmentOf(
       enactment.bgblNumber = bgbl.number
       enactment.bgblRisUrl = bgbl.url
     }
+    // An empty array is an answer — „this Vorlage published no changed
+    // text" — and null is the absence of one. Only the second lets the
+    // spine fall back to the draft's mirror.
+    enactment.amendedIn = amendedStationsOf(rv.content?.statements?.documents)
+    // The house status, from the same payload: without it a decided, a
+    // rejected and a withdrawn Vorlage all looked like „im Parlament in
+    // Behandlung" — and once the GP was over, all three like „Ohne
+    // Beschluss". The reading happens in `app/utils/spine.ts`; what
+    // travels is what upstream said.
+    const status = rv.content?.status
+    enactment.houseStatus = status?.number == null ? null : String(status.number)
+    enactment.houseStatusText = status?.description
+      ? stripHtmlToText(status.description) || null
+      : null
     // The second window for input, from the same payload as the BGBl
     // link — no request of its own. Only while the GP runs: a Vorlage
     // that lapsed with its GP takes nothing, whatever a stale flag says.
     enactment.filingOpen = isFilingOpen(rv.content) && !gpHasEnded(gp, currentGp)
   } catch {
-    // RV enrichment is optional: bgblNumber/bgblRisUrl stay null, filingOpen false.
+    // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn and both
+    // status fields stay null, filingOpen false.
   }
   return enactment
 }

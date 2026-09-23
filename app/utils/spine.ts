@@ -147,7 +147,22 @@ function rvLatencyDe(deadline: string | null, rvDate: string | null): string | n
 export function procedureStatusDe(d: DraftDetail): string {
   const e = d.enactment
   if (e?.bgblNumber) return 'Gesetz geworden'
-  if (e) return d.gpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
+  if (e) {
+    // Each of these four used to read „Im Parlament" or, after the period,
+    // „Ohne Beschluss" — both wrong in a different direction. Temporal and
+    // factual (framing rule, docs/architecture.md §4): what the house did,
+    // never why. „Beschlossen – Kundmachung ausständig" is the one that
+    // states a gap, and it states it about the Kundmachung, not about the
+    // Vorlage.
+    switch (parliamentOutcome(d)) {
+      case 'rejected': return 'Im Nationalrat abgelehnt'
+      case 'withdrawn': return 'Zurückgezogen'
+      case 'decided': return 'Beschlossen – Kundmachung ausständig'
+      case 'recommitted': return 'Im Parlament'
+      default: break
+    }
+    return d.gpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
+  }
   if (d.active) return 'In Begutachtung'
   // Word for word the homepage chip's (OutcomeChip), and deliberately NOT
   // "Beim Ressort – bisher keine Regierungsvorlage": the marked row two
@@ -218,16 +233,83 @@ const carries = (d: DraftDetail, prefix: string) =>
   d.textEvolution.some((doc) => doc.title.startsWith(prefix))
 
 /**
- * The latest version parliament published, or null when it published none.
+ * Where parliament changed the text — from the Vorlage that supplies the
+ * BGBl number, and only failing that from the draft's own mirror of the
+ * same list.
  *
- * Which one matters for the comparison the Parlament station offers: against
+ * The two are the same list for a draft with one Regierungsvorlage, which is
+ * nearly all of them. They come apart where ME→RV is 1:n (§13.4): the mirror
+ * carries ONE Vorlage's documents, `enactment` names the LAST one, and on
+ * XXVIII/26/ME those are 130 d.B. and 129 d.B. — the mirror silent, 129 d.B.
+ * changed in committee and in the plenary and promulgated as BGBl. I 50/2025.
+ * The bar read the silence and stated „Text unverändert beschlossen".
+ *
+ * `amendedIn === null` means the Vorlage's record was unreadable, never that
+ * it changed nothing; the mirror is then the best evidence left.
+ */
+function amendedStations(d: DraftDetail): readonly LawStationId[] {
+  const fromRv = d.enactment?.amendedIn
+  if (fromRv) return fromRv
+  const mirrored: LawStationId[] = []
+  if (carries(d, AUSSCHUSS)) mirrored.push('ausschuss')
+  if (carries(d, PLENUM)) mirrored.push('plenum')
+  return mirrored
+}
+
+/**
+ * The latest version parliament published **on this page**, or null when
+ * there is none, for the comparison the Parlament station offers: against
  * the Regierungsvorlage, the Plenarfassung is the whole of what parliament
  * did, and the Ausschussfassung is the whole of it only while no plenary
  * text exists.
+ *
+ * DELIBERATELY THE MIRROR, not `amendedIn` — the one place in this file that
+ * reads the documents rather than the claim. A comparison is resolved from
+ * the draft's own document list (`server/utils/diff/stationDocuments.ts`),
+ * so for the 1:n case above the whole chain is on the OTHER Vorlage's
+ * documents: offering the pair would land on „Im Plenum wurde keine
+ * geänderte Fassung veröffentlicht" — the same false negative one screen
+ * further on. The fact line says what happened; the link is only offered
+ * where there is a text behind it.
  */
 export function lastParliamentStation(d: DraftDetail): LawStationId | null {
   if (carries(d, PLENUM)) return 'plenum'
   if (carries(d, AUSSCHUSS)) return 'ausschuss'
+  return null
+}
+
+/**
+ * What the house did with the Vorlage, from its own status record.
+ *
+ * Pure and exported for its tests: the input is upstream free text, so the
+ * rules that read it have to be visible and testable rather than buried in a
+ * branch. The reading is coarse on purpose — four terminal facts, each with
+ * its own word in the record, and everything else falls through to what the
+ * documents already say.
+ *
+ * Order is the order of finality. A Vorlage that was rejected in the third
+ * reading also carries „Beschlossen im Nationalrat" lines for the earlier
+ * ones, so „abgelehnt" has to be asked first; „zurückverwiesen" comes before
+ * „beschlossen" for the same reason. Status '3' is the same fact as a
+ * number, for the records that carry no wording for it.
+ *
+ * 'decided' says a Beschluss exists; whether it was promulgated is the BGBl
+ * link's answer, not this one's, so the caller asks that first.
+ */
+export type HouseOutcome = 'rejected' | 'withdrawn' | 'recommitted' | 'decided'
+
+/** Upstream's list-101 `Status`: zurückverwiesen an den Ausschuss. */
+const STATUS_RECOMMITTED = '3'
+
+export function houseOutcomeOf(
+  houseStatus: string | null | undefined,
+  houseStatusText: string | null | undefined,
+): HouseOutcome | null {
+  const text = houseStatusText ?? ''
+  if (/abgelehnt/i.test(text)) return 'rejected'
+  if (/zurückgezogen/i.test(text)) return 'withdrawn'
+  if (/zurückverwiesen/i.test(text) || houseStatus === STATUS_RECOMMITTED) return 'recommitted'
+  if (/beschlossen/i.test(text)) return 'decided'
   return null
 }
 
@@ -241,14 +323,26 @@ export function lastParliamentStation(d: DraftDetail): LawStationId | null {
  * 'unchanged' is the one that has to wait — before the Kundmachung the same
  * absence only means the bill is still being dealt with, and claiming a
  * finding there would be false.
+ *
+ * The four house outcomes below were invisible until 23.09.2026: the status
+ * record was fetched and dropped, so a Vorlage that was rejected, withdrawn,
+ * sent back to committee or decided-but-not-yet-promulgated all read as „Im
+ * Parlament" — or, once the period was over, as „Ohne Beschluss". Seven
+ * finished GP-XXVII/XXVIII Vorlagen carry no BGBl link; three of them were
+ * beschlossen.
  */
 export function parliamentOutcome(
   d: DraftDetail,
-): 'unchanged' | 'amended' | 'pending' | 'lapsed' | null {
+): 'unchanged' | 'amended' | 'pending' | 'lapsed' | HouseOutcome | null {
   const e = d.enactment
   if (!e) return null
-  if (carries(d, AUSSCHUSS) || carries(d, PLENUM)) return 'amended'
-  if (e.bgblNumber) return 'unchanged'
+  const amended = amendedStations(d).length > 0
+  // The Kundmachung is the end of the chain and outranks every reading of
+  // the status text: what is in the Bundesgesetzblatt was decided.
+  if (e.bgblNumber) return amended ? 'amended' : 'unchanged'
+  const house = houseOutcomeOf(e.houseStatus, e.houseStatusText)
+  if (house) return house
+  if (amended) return 'amended'
   return d.gpEnded ? 'lapsed' : 'pending'
 }
 
@@ -260,9 +354,12 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
   const e = d.enactment
 
   /** Which body changed the text — the one thing the parliament station can
-   *  report without a comparison behind it. */
-  const ausschuss = carries(d, AUSSCHUSS)
-  const plenum = carries(d, PLENUM)
+   *  report without a comparison behind it. Read from the Vorlage that
+   *  carries the outcome, so the fact and the Kundmachung beside it are
+   *  about the same Vorlage. */
+  const changedIn = amendedStations(d)
+  const ausschuss = changedIn.includes('ausschuss')
+  const plenum = changedIn.includes('plenum')
   const amended = ausschuss && plenum
     ? 'im Ausschuss und im Plenum geändert'
     : ausschuss
@@ -272,6 +369,13 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         : null
 
   const outcome = parliamentOutcome(d)
+  /** Terminal: parliament is done with the text, in one direction or the
+   *  other, so the station is `done` rather than `current` or `never`. */
+  const houseDone =
+    outcome === 'rejected' || outcome === 'withdrawn' || outcome === 'decided'
+  /** No Kundmachung will follow — the one case where the last station is
+   *  unreachable for a reason other than the end of the period. */
+  const noBgblEver = outcome === 'rejected' || outcome === 'withdrawn'
   /** Whether parliament is still holding the text — orthogonal to WHAT it
    *  did with it, so the two are read separately. */
   const running = e && !e.bgblNumber ? (d.gpEnded ? 'GP beendet' : 'in Behandlung') : null
@@ -389,23 +493,37 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // says what happened, not when.
       state: !e
         ? d.gpEnded && !d.active ? 'never' : 'open'
-        : e.bgblNumber
+        : e.bgblNumber || houseDone
           ? 'done'
           : d.gpEnded ? 'never' : 'current',
       // The outcome word is what happened; `running` is whether it is over.
       // Both are needed, because a text amended in the Ausschuss can still
       // be on its way ("in Behandlung · im Ausschuss geändert") or have died
       // with the GP — the outcome alone would not say which.
+      //
+      // The four house outcomes each replace that pair with the single fact
+      // they are: „in Behandlung" beside „abgelehnt" would say the procedure
+      // is still running. Only „beschlossen" keeps the amendment beside it,
+      // because there the reader is still owed what the text went through.
       facts: outcome === null
         ? []
         : outcome === 'unchanged'
           ? ['Text unverändert beschlossen']
-          : kept(running, amended),
-      // Only where parliament actually published a changed text. Where it
-      // did not, the station's own fact line already says so, and a link to
-      // a comparison of nothing would be the empty promise this model exists
-      // to avoid.
-      comparison: ausschuss || plenum
+          : outcome === 'rejected'
+            ? ['abgelehnt']
+            : outcome === 'withdrawn'
+              ? ['zurückgezogen']
+              : outcome === 'recommitted'
+                ? ['an den Ausschuss zurückverwiesen']
+                : outcome === 'decided'
+                  ? kept('beschlossen', amended)
+                  : kept(running, amended),
+      // Only where a changed text is ON THIS PAGE — `lastParliamentStation`,
+      // not the fact line above it. Where parliament changed the text of a
+      // sibling Vorlage (§13.4) the fact is true and the comparison still has
+      // nothing to read, and a link to a comparison of nothing would be the
+      // empty promise this model exists to avoid.
+      comparison: lastParliamentStation(d)
         ? { id: 'parlament', question: 'Was das Parlament am Text geändert hat' }
         : null,
     },
@@ -414,14 +532,31 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       name: 'Bundesgesetzblatt',
       // The GP is the boundary here as it is for the Vorlage: while it runs a
       // law can still come, whatever the Frist says; once it is over, nothing.
-      state: e?.bgblNumber ? 'done' : d.gpEnded ? 'never' : 'open',
+      //
+      // Two exceptions, both from the house status. A rejected or withdrawn
+      // Vorlage will not be promulgated whatever the calendar says. And a
+      // Beschluss outlives its period — the Kundmachung follows it, so the
+      // station stays `open` even after the GP ended: XXVII/1435 d.B. was
+      // decided in both chambers and carries no BGBl link, and „never" would
+      // have been our claim, not a fact.
+      state: e?.bgblNumber
+        ? 'done'
+        : noBgblEver
+          ? 'never'
+          : outcome === 'decided'
+            ? 'open'
+            : d.gpEnded ? 'never' : 'open',
       // "ausstehend" while the chain can still continue; nothing at all once
       // it cannot, because the station before it already says why.
       facts: e?.bgblNumber
         ? [bgblShort(e.bgblNumber)]
-        : d.gpEnded
+        : noBgblEver
           ? []
-          : ['ausstehend'],
+          : outcome === 'decided'
+            ? ['ausstehend']
+            : d.gpEnded
+              ? []
+              : ['ausstehend'],
       comparison: null,
     },
   ]

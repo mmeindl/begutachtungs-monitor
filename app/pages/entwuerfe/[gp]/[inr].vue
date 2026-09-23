@@ -909,7 +909,10 @@ const linkClasses =
           <!-- One sentence per outcome, from the same function the bar's fact
                line uses (`app/utils/spine.ts`), so the two can never
                disagree. "lapsed" says what happened and not why: we observe
-               the end of the GP, never the reason for it. -->
+               the end of the GP, never the reason for it. The same holds for
+               the four outcomes read off the house status since 23.09.2026 —
+               each names the step, none of them a motive, and upstream's own
+               wording for it is never printed. -->
           <p class="mt-1 max-w-prose text-sm text-ink-secondary">
             <template v-if="parliament === 'unchanged'">
               Der Nationalrat hat den Text der Regierungsvorlage unverändert
@@ -917,7 +920,21 @@ const linkClasses =
             </template>
             <template v-else-if="parliament === 'amended'">
               Nach der Regierungsvorlage wurde der Text im Parlament weiter
-              geändert. Diese Fassungen sind dabei entstanden:
+              geändert.<template v-if="data.textEvolution.length"> Diese Fassungen sind dabei entstanden:</template>
+            </template>
+            <template v-else-if="parliament === 'decided'">
+              Der Nationalrat hat den Text beschlossen. Eine Kundmachung im
+              Bundesgesetzblatt ist zu dieser Regierungsvorlage bisher nicht
+              verzeichnet.
+            </template>
+            <template v-else-if="parliament === 'rejected'">
+              Die Regierungsvorlage wurde im Nationalrat abgelehnt.
+            </template>
+            <template v-else-if="parliament === 'withdrawn'">
+              Die Regierungsvorlage wurde zurückgezogen.
+            </template>
+            <template v-else-if="parliament === 'recommitted'">
+              Die Regierungsvorlage wurde an den Ausschuss zurückverwiesen.
             </template>
             <template v-else-if="parliament === 'pending'">
               Die Regierungsvorlage ist im Nationalrat in Behandlung.

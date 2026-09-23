@@ -10,6 +10,7 @@ import type {
   DescriptionBlock,
   DocumentFormat,
   Handoff,
+  LawStationId,
   TextVersion,
   TraceStep,
 } from '../../../shared/types'
@@ -271,6 +272,41 @@ export function mapInvitedBy(names: RawName[] | null | undefined): string | null
 }
 
 /**
+ * The Dokumentnummer inside a BgblAuth link — `BGBLA_2024_I_42` = Teil I,
+ * Nr. 42 of 2024. Structured, in a way the title beside it is not.
+ */
+const BGBL_DOKUMENTNUMMER_RE = /\bDokumentnummer=BGBLA_(\d{4})_(I{1,3})_(\d+)\b/i
+
+/** The same three facts as upstream words them in the title, when it does. */
+const BGBL_TITLE_RE = /\b(I{1,3})\s+Nr\.\s*(\d+)\/(\d{4})\b/
+
+/**
+ * The citation, read from the link rather than from the title beside it.
+ *
+ * Both name the same Kundmachung, but only one of them is a structured
+ * field. 2446 d.B. (XXVII, out of 300/ME) titles its entry
+ * „Bundesgesetzblatt Nr. 42/2024" — the Teil is simply missing — while its
+ * link says `BGBLA_2024_I_42`. One typo, and three things downstream broke
+ * at once: `bgblOrderKey` refuses a citation without a Teil, so the law fell
+ * out of „Zuletzt Gesetz geworden"; `bgblShort` printed „BGBl. Nr. 42/2024";
+ * and the RIS lookup, which searches by exactly that short form, found
+ * nothing.
+ *
+ * So the link decides, and the title is kept only where it already says the
+ * same three things — a Ressort's own spelling of a correct citation is
+ * worth keeping, a wrong one is not.
+ */
+function bgblNumberOf(entry: RawBgblLink): string | null {
+  const title = entry.title?.trim() || null
+  const m = BGBL_DOKUMENTNUMMER_RE.exec(entry.link ?? '')
+  if (!m) return title
+  const [, year, teil, nr] = m
+  const t = title ? BGBL_TITLE_RE.exec(title) : null
+  if (t && t[1] === teil && t[2] === nr && t[3] === year) return title
+  return `Bundesgesetzblatt ${teil} Nr. ${nr}/${year}`
+}
+
+/**
  * content.status.bgbllinks[] of the RV → BGBl entry.
  * Selected via `Abfrage=BgblAuth` in the link — NEVER blindly [0]
  * (a "Kunsttext" entry exists alongside it).
@@ -281,7 +317,38 @@ export function extractBgblLink(
   if (!Array.isArray(bgbllinks)) return null
   const entry = bgbllinks.find((l) => (l?.link ?? '').includes('Abfrage=BgblAuth'))
   if (!entry?.link) return null
-  return { number: entry.title?.trim() || null, url: entry.link }
+  return { number: bgblNumberOf(entry), url: entry.link }
+}
+
+/** In procedural order, so the answer does not depend on upstream's ordering. */
+const PARLIAMENT_LAW_STATIONS: readonly LawStationId[] = ['ausschuss', 'plenum']
+
+/**
+ * The parliamentary stations at which a **Regierungsvorlage** published a
+ * changed text, read from its OWN document list.
+ *
+ * Why not from the Ministerialentwurf's copy of the same list, which is what
+ * the detail page renders: ME→RV is 1:n (§13.4), and the mirror on the draft
+ * belongs to exactly one of the Vorlagen. XXVIII/26/ME links three, filed the
+ * same day (128, 130, 129 d.B.); its mirror carries 130 d.B.'s Gesetzestext
+ * alone, while 129 d.B. — the one whose BGBl number the page states — lists
+ * „Geändert im Ausschuss" and „Geändert im Plenum". Read from the mirror, the
+ * page said „Text unverändert beschlossen" about a text both chambers changed
+ * (verified live 23.09.2026, 27/ME the same).
+ *
+ * Only the two parliamentary stations: the list's first entry is the
+ * Vorlage's own Gesetzestext, which is the text those two are changes TO.
+ */
+export function amendedStationsOf(
+  groups: RawDocumentGroup[] | null | undefined,
+): LawStationId[] {
+  const seen = new Set<LawStationId>()
+  for (const version of mapTextEvolution(groups)) {
+    if (version.stationId === 'ausschuss' || version.stationId === 'plenum') {
+      seen.add(version.stationId)
+    }
+  }
+  return PARLIAMENT_LAW_STATIONS.filter((id) => seen.has(id))
 }
 
 /**

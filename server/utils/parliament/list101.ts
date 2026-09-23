@@ -13,7 +13,9 @@ import { asNumber, asString } from './rowCells'
 // ---------------------------------------------------------------------------
 // List 101 — Verhandlungsgegenstände (36 columns, 0-based)
 // 0 gp · 2 inr · 6 title · 7 citation ("254 d.B.") · 8 dateSort yyyymmdd ·
-// 10 status ('2' = still before the Nationalrat, '5' = finished) ·
+// 10 status ('1' = Einlangen im Nationalrat, '2' = in Behandlung,
+//    '3' = zurückverwiesen an den Ausschuss, '5' = erledigt; read live
+//    23.09.2026 — the first and third were unknown until then) ·
 // 14 path to the item's page
 //
 // `Status` is the cheap half of "does this Vorlage still take
@@ -31,7 +33,8 @@ export interface VorlageRow {
   title: string
   /** Einlangen, ISO; '' when upstream has no sortable date. */
   date: string
-  /** Upstream's `STATUS`; '2' means the Nationalrat still has the text. */
+  /** Upstream's `STATUS`; '1' and '2' both mean the Nationalrat still has
+   *  the text (the vocabulary is above). */
   status: string
   parliamentUrl: string
 }

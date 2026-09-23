@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import type { DraftDetail } from '../shared/types'
+import type { DraftDetail, LawStationId } from '../shared/types'
 import { formatNumberDe } from '../shared/utils/format'
-import { procedureStatusDe, stations } from '../app/utils/spine'
+import {
+  houseOutcomeOf,
+  lastParliamentStation,
+  parliamentOutcome,
+  procedureStatusDe,
+  stations,
+} from '../app/utils/spine'
 
 /* Only what `stations()` reads; the rest of DraftDetail is irrelevant here. */
 function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
@@ -21,6 +27,12 @@ function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
       furtherRv: [],
       bgblNumber: 'Bundesgesetzblatt I Nr. 5/2024',
       bgblRisUrl: null,
+      // The three fields the Vorlage's own record fills. Null here is the
+      // "could not be read" case, which is what every test that does not
+      // exercise them wants: the draft's mirror answers instead.
+      amendedIn: null,
+      houseStatus: null,
+      houseStatusText: null,
       filingOpen: false,
     },
     ...overrides,
@@ -121,5 +133,208 @@ describe('procedureStatusDe — the card\'s one-line answer', () => {
       .toBe('Bisher keine Regierungsvorlage')
     expect(procedureStatusDe(draft({ enactment: null, active: false, gpEnded: true })))
       .toBe('Ohne Regierungsvorlage – Gesetzgebungsperiode beendet')
+  })
+})
+
+/**
+ * Where parliament changed the text, read from the Vorlage that supplies the
+ * BGBl number — not from the draft's mirror of one sibling's document list
+ * (ME→RV is 1:n, §13.4). Verified live 23.09.2026 on XXVIII/26/ME.
+ */
+describe('stations — what parliament did with the Vorlage', () => {
+  const doc = (title: string) => ({ title, formats: [{ type: 'pdf' as const, url: `https://x/${title}.pdf` }] })
+  const parlament = (d: DraftDetail) => stations(d).find((s) => s.id === 'parlament')!
+  const bgbl = (d: DraftDetail) => stations(d).find((s) => s.id === 'bgbl')!
+
+  const enacted = (
+    over: Partial<NonNullable<DraftDetail['enactment']>> = {},
+    textEvolution: DraftDetail['textEvolution'] = [],
+  ) => draft({ textEvolution, enactment: { ...draft().enactment!, ...over } })
+
+  /* The regression, in one case: the mirror is silent about a Vorlage the
+     Ausschuss and the Plenum both changed, and the page said the opposite. */
+  it('names the houses from the Vorlage even when the draft mirrors a sibling', () => {
+    const d = enacted({ amendedIn: ['ausschuss', 'plenum'] })
+    expect(parliamentOutcome(d)).toBe('amended')
+    expect(parlament(d).facts).toEqual(['im Ausschuss und im Plenum geändert'])
+  })
+
+  /* And the other direction: a mirror full of a sibling's Ausschussfassungen
+     may not turn an unchanged Vorlage into an amended one. */
+  it('lets the Vorlage say it changed nothing, against a mirror that shows changes', () => {
+    const d = enacted({ amendedIn: [] }, [doc('Geändert im Ausschuss')])
+    expect(parliamentOutcome(d)).toBe('unchanged')
+    expect(parlament(d).facts).toEqual(['Text unverändert beschlossen'])
+  })
+
+  /* The single-RV case — nearly all of them — where the mirror IS that
+     Vorlage's list: both sources have to give the same answer, or this fix
+     would have moved the majority case. */
+  it('is identical to the mirror wherever the draft produced one Vorlage', () => {
+    const cases: [LawStationId[], string[]][] = [
+      [[], []],
+      [['ausschuss'], ['Geändert im Ausschuss']],
+      [['plenum'], ['Geändert im Plenum']],
+      [['ausschuss', 'plenum'], ['Geändert im Ausschuss', 'Geändert im Plenum']],
+    ]
+    for (const [amendedIn, titles] of cases) {
+      const docs = titles.map(doc)
+      const fromRv = enacted({ amendedIn }, docs)
+      const fromMirror = enacted({ amendedIn: null }, docs)
+      expect(parliamentOutcome(fromRv)).toBe(parliamentOutcome(fromMirror))
+      expect(parlament(fromRv).facts).toEqual(parlament(fromMirror).facts)
+      expect(lastParliamentStation(fromRv)).toBe(lastParliamentStation(fromMirror))
+    }
+  })
+
+  /* `amendedIn: null` is "the Vorlage's record was unreadable", never "it
+     changed nothing" — so the mirror, the best evidence left, answers. */
+  it('falls back to the mirror when the Vorlage could not be read', () => {
+    expect(parlament(enacted({ amendedIn: null }, [doc('Geändert im Plenum')])).facts)
+      .toEqual(['im Plenum geändert'])
+  })
+
+  /* The comparison is resolved from the draft's own document list
+     (`server/utils/diff/stationDocuments.ts`), so a station that exists only
+     on the sibling Vorlage has no text behind it. The fact is stated; the
+     link is not offered. */
+  it('offers the comparison only where the text is on this page', () => {
+    expect(parlament(enacted({ amendedIn: ['plenum'] })).comparison).toBeNull()
+    expect(lastParliamentStation(enacted({ amendedIn: ['plenum'] }))).toBeNull()
+    expect(parlament(enacted({ amendedIn: ['plenum'] }, [doc('Geändert im Plenum')])).comparison)
+      .toEqual({ id: 'parlament', question: 'Was das Parlament am Text geändert hat' })
+  })
+
+  it('keeps the Bundesgesetzblatt row on the enacted draft untouched', () => {
+    const d = enacted({ amendedIn: ['ausschuss'] })
+    expect(bgbl(d).state).toBe('done')
+    expect(bgbl(d).facts).toEqual(['BGBl. I Nr. 5/2024'])
+  })
+})
+
+/**
+ * The house status, which was fetched and dropped until 23.09.2026. Seven
+ * finished GP-XXVII/XXVIII Vorlagen carry no BGBl link, and the page
+ * described every one of them wrongly.
+ */
+describe('houseOutcomeOf — reading the status record', () => {
+  it('reads the four terminal facts out of upstream\'s own wording', () => {
+    // XXVII/474 d.B. (out of 33/ME) and XXVII/1929 d.B. (out of 240/ME).
+    expect(houseOutcomeOf('5', 'Der Gesetzentwurf wurde in dritter Lesung abgelehnt')).toBe('rejected')
+    expect(houseOutcomeOf('5', 'in zweiter Lesung abgelehnt')).toBe('rejected')
+    // XXVIII/87 d.B.
+    expect(houseOutcomeOf('5', 'Zurückgezogen')).toBe('withdrawn')
+    // XXVII/2049 d.B.
+    expect(houseOutcomeOf('3', 'Zurückverwiesen an den Justizausschuss')).toBe('recommitted')
+    // XXVII/1435 d.B. (out of 171/ME) and XXVIII/80 d.B. (out of 2/ME).
+    expect(houseOutcomeOf('5', 'Beschlossen im Bundesrat 47/BNR, Beschlossen im Nationalrat 47/BNR')).toBe('decided')
+  })
+
+  it('asks in the order of finality, because the record keeps every step', () => {
+    /* A Vorlage rejected in the third reading still carries the Beschlüsse of
+       the earlier ones; reading „beschlossen" first would report it as
+       decided. Same for a text sent back after a reading. */
+    expect(houseOutcomeOf('5', 'Beschlossen im Nationalrat, in dritter Lesung abgelehnt')).toBe('rejected')
+    expect(houseOutcomeOf('3', 'Beschlossen im Nationalrat, Zurückverwiesen an den Ausschuss')).toBe('recommitted')
+  })
+
+  it('takes the status number where the record carries no wording for it', () => {
+    expect(houseOutcomeOf('3', null)).toBe('recommitted')
+    expect(houseOutcomeOf('3', '')).toBe('recommitted')
+  })
+
+  it('claims nothing about a record it does not recognise', () => {
+    expect(houseOutcomeOf('2', 'Zugewiesen an den Finanzausschuss')).toBeNull()
+    expect(houseOutcomeOf('1', 'Einlangen im Nationalrat')).toBeNull()
+    expect(houseOutcomeOf(null, null)).toBeNull()
+  })
+
+  it('reads whatever case upstream typed', () => {
+    expect(houseOutcomeOf('5', 'ABGELEHNT')).toBe('rejected')
+    expect(houseOutcomeOf('5', 'zurückgezogen')).toBe('withdrawn')
+  })
+})
+
+describe('the four house outcomes on the page', () => {
+  const at = (houseStatus: string | null, houseStatusText: string | null, over: Partial<DraftDetail> = {}) =>
+    draft({
+      gpEnded: false,
+      enactment: { ...draft().enactment!, bgblNumber: null, houseStatus, houseStatusText },
+      ...over,
+    })
+  const row = (d: DraftDetail, id: string) => stations(d).find((s) => s.id === id)!
+
+  it('says what happened instead of „Im Parlament"', () => {
+    expect(procedureStatusDe(at('5', 'in dritter Lesung abgelehnt'))).toBe('Im Nationalrat abgelehnt')
+    expect(procedureStatusDe(at('5', 'Zurückgezogen'))).toBe('Zurückgezogen')
+    expect(procedureStatusDe(at('5', 'Beschlossen im Nationalrat'))).toBe('Beschlossen – Kundmachung ausständig')
+    // Sent back to committee, the text IS still in parliament — the one of
+    // the four where the old headline was right.
+    expect(procedureStatusDe(at('3', 'Zurückverwiesen an den Ausschuss'))).toBe('Im Parlament')
+  })
+
+  it('says it after the period ended too, where it used to read „Ohne Beschluss"', () => {
+    // XXVII/1435 d.B. out of 171/ME: decided in both chambers, no BGBl link,
+    // GP long over — the page called it „Ohne Beschluss".
+    const d = at('5', 'Beschlossen im Bundesrat, Beschlossen im Nationalrat', { gpEnded: true })
+    expect(procedureStatusDe(d)).toBe('Beschlossen – Kundmachung ausständig')
+    expect(row(d, 'parlament').facts).toEqual(['beschlossen'])
+  })
+
+  it('states one fact per row: „in Behandlung" beside „abgelehnt" would be two', () => {
+    expect(row(at('5', 'abgelehnt'), 'parlament').facts).toEqual(['abgelehnt'])
+    expect(row(at('5', 'Zurückgezogen'), 'parlament').facts).toEqual(['zurückgezogen'])
+    expect(row(at('3', 'Zurückverwiesen'), 'parlament').facts).toEqual(['an den Ausschuss zurückverwiesen'])
+  })
+
+  it('keeps the amendment beside a Beschluss, where the reader is still owed it', () => {
+    const d = draft({
+      gpEnded: false,
+      enactment: {
+        ...draft().enactment!,
+        bgblNumber: null,
+        houseStatus: '5',
+        houseStatusText: 'Beschlossen im Nationalrat',
+        amendedIn: ['ausschuss'],
+      },
+    })
+    expect(row(d, 'parlament').facts).toEqual(['beschlossen', 'im Ausschuss geändert'])
+  })
+
+  it('leaves the Parlament station reached, not unreachable, once the house is done', () => {
+    for (const text of ['abgelehnt', 'Zurückgezogen', 'Beschlossen im Nationalrat']) {
+      expect(row(at('5', text, { gpEnded: true }), 'parlament').state).toBe('done')
+    }
+  })
+
+  it('keeps the Kundmachung ahead of a Beschluss, and takes it off the other two', () => {
+    /* A Beschluss outlives its period: the Kundmachung follows it, so the row
+       stays open even after the GP ended. A rejected or withdrawn Vorlage will
+       not be promulgated whatever the calendar says. */
+    const decided = at('5', 'Beschlossen im Nationalrat', { gpEnded: true })
+    expect(row(decided, 'bgbl').state).toBe('open')
+    expect(row(decided, 'bgbl').facts).toEqual(['ausstehend'])
+    for (const text of ['in dritter Lesung abgelehnt', 'Zurückgezogen']) {
+      expect(row(at('5', text), 'bgbl').state).toBe('never')
+      expect(row(at('5', text), 'bgbl').facts).toEqual([])
+    }
+  })
+
+  it('leaves a Vorlage nobody has decided about where it was', () => {
+    expect(procedureStatusDe(at('2', 'Zugewiesen an den Finanzausschuss'))).toBe('Im Parlament')
+    expect(procedureStatusDe(at(null, null, { gpEnded: true })))
+      .toBe('Ohne Beschluss – Gesetzgebungsperiode beendet')
+    expect(row(at('2', 'Zugewiesen'), 'parlament').facts).toEqual(['in Behandlung'])
+  })
+
+  it('never lets the status record outrank the Bundesgesetzblatt', () => {
+    /* What is in the Bundesgesetzblatt was decided — the citation is the end
+       of the chain, and no reading of the prose beside it may move the page
+       off „Gesetz geworden". */
+    const d = draft({
+      enactment: { ...draft().enactment!, houseStatus: '5', houseStatusText: 'Beschlossen im Nationalrat' },
+    })
+    expect(procedureStatusDe(d)).toBe('Gesetz geworden')
+    expect(parliamentOutcome(d)).toBe('unchanged')
   })
 })

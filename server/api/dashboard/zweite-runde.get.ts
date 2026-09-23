@@ -12,7 +12,8 @@
  *
  * Cost. ONE list-101 call for the whole period, narrowed by its `Status`
  * column to the handful still before the Nationalrat (6 of 117 on
- * 2026-09-15), then one detail JSON and one sizing call per candidate, plus
+ * 2026-09-15; the column has two such values, see below), then one detail
+ * JSON and one sizing call per candidate, plus
  * list 81 once — but only when a row names no Ministerialentwurf and the
  * section would otherwise claim there was none. The
  * `Status` column agreed with the authoritative flag on 117 of 117 GP-XXVIII
@@ -26,8 +27,21 @@
  */
 import type { DashboardSecondRound, OpenVorlage } from '#shared/types'
 
-/** Upstream's "still before the Nationalrat" (`mapVorlageRow`). */
-const STATUS_IN_HOUSE = '2'
+/**
+ * Upstream's "still before the Nationalrat" (`mapVorlageRow`) — BOTH values
+ * of it.
+ *
+ * `2` is the Vorlage in Behandlung; `1` is „Einlangen im Nationalrat", the
+ * days between arriving and being assigned. The form is open in both, and
+ * narrowing on `2` alone silently dropped the newest arrivals — exactly the
+ * ones with the most time left to file. On 23.09.2026 seven GP-XXVIII
+ * Vorlagen stood at status 1 (620–626 d.B.) and none of them reached this
+ * section.
+ *
+ * Still only a narrowing: `isFilingOpen` is read per item below and is what
+ * the section claims. Verify, then display.
+ */
+const STATUS_BEFORE_THE_HOUSE = new Set(['1', '2'])
 
 /** One row, before the cross-check has decided about the missing pointer. */
 type PendingVorlage = Omit<OpenVorlage, 'consultation'> & {
@@ -36,7 +50,7 @@ type PendingVorlage = Omit<OpenVorlage, 'consultation'> & {
 
 export default defineEventHandler(async (): Promise<DashboardSecondRound> => {
   const gp = await getCurrentGp()
-  const candidates = (await getVorlagenForGp(gp)).filter((v) => v.status === STATUS_IN_HOUSE)
+  const candidates = (await getVorlagenForGp(gp)).filter((v) => STATUS_BEFORE_THE_HOUSE.has(v.status))
 
   const resolved = await Promise.all(
     candidates.map(async (v): Promise<PendingVorlage | null> => {

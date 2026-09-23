@@ -147,6 +147,35 @@ export interface EnactmentInfo {
   bgblNumber: string | null
   bgblRisUrl: string | null
   /**
+   * Where the Vorlage NAMED ABOVE published a changed text — `['ausschuss']`,
+   * `['ausschuss', 'plenum']`, or `[]` when it published none. Null when its
+   * record could not be read; only then may the draft's own mirror of that
+   * list answer instead.
+   *
+   * It exists because the mirror belongs to one Vorlage and the BGBl number
+   * above to another whenever a draft produced several (ME→RV is 1:n, §13.4).
+   * XXVIII/26/ME mirrors 130 d.B. and cites 129 d.B.'s Kundmachung, and the
+   * page read „Text unverändert beschlossen" over a text the Ausschuss and
+   * the Plenum had both changed.
+   */
+  amendedIn: LawStationId[] | null
+  /**
+   * The Vorlage's house status as list 101 numbers it — '1' Einlangen im
+   * Nationalrat, '2' in Behandlung, '3' zurückverwiesen, '5' erledigt. Null
+   * when the Vorlage's record could not be read.
+   */
+  houseStatus: string | null
+  /**
+   * The same status as upstream writes it out („Zurückgezogen", „in dritter
+   * Lesung abgelehnt", „Beschlossen im Nationalrat …"), markup stripped.
+   *
+   * INPUT TO THE CLASSIFIER, NEVER TO THE PAGE (`houseOutcomeOf`,
+   * `app/utils/spine.ts`): it is a Ressort-independent but free-form field
+   * that also carries the voting lines by party, and this product does not
+   * republish upstream prose it has not measured.
+   */
+  houseStatusText: string | null
+  /**
    * Whether parliament currently accepts Stellungnahmen on this Vorlage —
    * upstream's `statementsstate` on the RV's detail JSON, "1" while the
    * Nationalrat has the text, "0" once it voted. The second window for
