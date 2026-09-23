@@ -177,7 +177,18 @@ useSeoMeta({
              less than half (`pnpm corpus:kurzinfo`, docs/architecture.md
              §13.1). The Kurzinformation is therefore Parliament's editorial
              work on the Ressort's material — and belongs named rather than
-             carried along under „Metadaten". -->
+             carried along under „Metadaten".
+
+             A third block, 23.09.2026: the two comparisons read the draft's
+             own Gesetzestext and its Erläuterungen from Parliament's copy
+             wherever Parliament publishes one — for parser symmetry, because
+             both sides then come out of the same Word template, and thus
+             against the source order the Textgegenüberstellung follows,
+             which reads RIS first for the licence. The same documents stand
+             in RIS under CC BY, so the copy names what it shows rather than
+             claiming a licence for it; whether the exclusion reaches these
+             documents at all is part of the open question
+             (docs/architecture.md §13.1). -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
           Nutzungsbedingungen unterscheiden sich je nach Datensatz.
@@ -188,8 +199,9 @@ useSeoMeta({
               Rechtsinformationssystem des Bundes (Bundeskanzleramt)
             </dt>
             <dd>
-              Entwurfstexte, Textgegenüberstellungen und geltendes
-              Bundesrecht –
+              Entwurfstexte und Erläuterungen der Ressorts,
+              Textgegenüberstellungen, geltendes Bundesrecht und das
+              Bundesgesetzblatt –
               <ExternalLink
                 href="https://creativecommons.org/licenses/by/4.0/deed.de"
                 class="link-inline"
@@ -201,7 +213,8 @@ useSeoMeta({
               Parlamentsdirektion, Stationen nach der Begutachtung
             </dt>
             <dd>
-              Regierungsvorlagen und Verhandlungsgegenstände –
+              Regierungsvorlagen, Ausschuss- und Plenarfassungen und
+              Verhandlungsgegenstände –
               <ExternalLink
                 href="https://creativecommons.org/licenses/by/4.0/deed.de"
                 class="link-inline"
@@ -220,12 +233,15 @@ useSeoMeta({
               Anzahl der Einreichungen und die Namen einreichender
               Organisationen – und die Kurzinformation, die das Parlament zu
               einem Entwurf veröffentlicht (Ziele, Inhalt, Hauptgesichtspunkte;
-              auf der Entwurfsseite unter „Worum geht es?“). Sie ist der
-              einzige zusammenhängende Text aus diesem Datensatz, den der
-              Monitor wiedergibt; ob der Ausschluss sie erfasst, ist offen –
-              wir haben die Parlamentsdirektion um Klärung gebeten, wie weit
-              er reicht. Volltexte
-              von Stellungnahmen übernimmt er nicht, sondern verlinkt sie auf
+              auf der Entwurfsseite unter „Worum geht es?“).
+              Dazu kommen im Textvergleich der Gesetzestext und die
+              Erläuterungen des Entwurfs in der Fassung, die das Parlament
+              veröffentlicht – Dokumente des Ressorts, die das RIS unter
+              CC BY 4.0 führt. Ob der Ausschluss die Kurzinformation oder
+              diese Dokumente erfasst, ist offen; wir haben die
+              Parlamentsdirektion um Klärung gebeten, wie weit er reicht.
+              Volltexte von Stellungnahmen übernimmt er nicht, sondern
+              verlinkt sie auf
               <ExternalLink
                 href="https://www.parlament.gv.at"
                 class="link-inline"

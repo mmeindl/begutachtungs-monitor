@@ -22,4 +22,4 @@ Worum es geht, ausführlich auf Deutsch: [begutachtungs-monitor.at/ueber](https:
 
 ---
 
-**Lizenz:** [AGPL-3.0-or-later](LICENSE) · Datenquelle: Republik Österreich – Parlamentsdirektion ([parlament.gv.at](https://www.parlament.gv.at)), Metadaten CC BY 4.0 · **Kontakt:** <kontakt@begutachtungs-monitor.at>
+**Lizenz:** [AGPL-3.0-or-later](LICENSE) · Datenquellen: Republik Österreich – Parlamentsdirektion ([parlament.gv.at](https://www.parlament.gv.at)) und Rechtsinformationssystem des Bundes ([ris.bka.gv.at](https://www.ris.bka.gv.at)); welche Lizenz für welchen Datensatz gilt, steht auf [begutachtungs-monitor.at/impressum](https://begutachtungs-monitor.at/impressum#imp-license) · **Kontakt:** <kontakt@begutachtungs-monitor.at>

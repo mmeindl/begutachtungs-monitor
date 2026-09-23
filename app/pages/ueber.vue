@@ -95,24 +95,30 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           Daten &amp; Lizenz
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
-          Entwurfstexte und Textgegenüberstellungen stammen aus dem
+          Textgegenüberstellungen, geltendes Bundesrecht, das
+          Bundesgesetzblatt und die Erläuterungen der Ressorts stammen aus dem
           Rechtsinformationssystem des Bundes, die Stationen nach der
-          Begutachtung von der Parlamentsdirektion; beide stehen unter
+          Begutachtung – Regierungsvorlage, Ausschuss- und Plenarfassung – von
+          der Parlamentsdirektion; beide stehen unter
           <ExternalLink
             href="https://creativecommons.org/licenses/by/4.0/deed.de"
             class="link-inline"
           >CC BY 4.0</ExternalLink>.
+          Den Gesetzestext und die Erläuterungen eines Ministerialentwurfs
+          liest der Textvergleich in der Fassung, die das Parlament
+          veröffentlicht; dieselben Dokumente führt das RIS unter CC BY 4.0.
         </p>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Für das Begutachtungsverfahren selbst – Ministerialentwürfe,
           Stellungnahmen und Zustimmungen – weist das Parlament keine
           Open-Data-Lizenz aus. Der Monitor zeigt daraus Metadaten – Fristen,
           Geschäftszahlen, Anzahl der Einreichungen und die Namen
-          einreichender Organisationen – und die Kurzinformation des
-          Parlaments zum Entwurf („Worum geht es?“). Volltexte von
-          Stellungnahmen übernimmt er nicht, sondern verlinkt sie auf
-          parlament.gv.at; Namen von Privatpersonen veröffentlicht er nicht.
-          Welche Lizenz für welchen Datensatz gilt, steht
+          einreichender Organisationen –, die Kurzinformation des Parlaments
+          zum Entwurf („Worum geht es?“) und im Textvergleich den Gesetzestext
+          und die Erläuterungen des Entwurfs. Volltexte von Stellungnahmen
+          übernimmt er nicht, sondern verlinkt sie auf parlament.gv.at; Namen
+          von Privatpersonen veröffentlicht er nicht. Welche Lizenz für
+          welchen Datensatz gilt, steht
           <NuxtLink
             to="/impressum#imp-license"
             class="link-inline"
