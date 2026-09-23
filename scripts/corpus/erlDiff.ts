@@ -2,7 +2,7 @@
 /**
  * Does the ressort's reasoning change between the draft and the
  * Regierungsvorlage? — the measurement that gates the last open piece of the
- * diff layer (`TODO.md`, docs/architecture.md §12.10).
+ * diff layer (docs/architecture.md §12.10).
  *
  * Usage:  npx vite-node scripts/corpus/erlDiff.ts XXVIII [anzahl] [cacheDir]
  *

@@ -18,7 +18,8 @@
  * one.** Measured, the Parliament copy is the more complete and the more
  * finely cut. But RIS publishes the annex as CC BY (Bundeskanzleramt), while
  * Parliament explicitly excludes the Begutachtungsverfahren from reuse as
- * open data (§13.1, open question E3). Where both hold the same document the
+ * open data — the open licence question over that data
+ * (docs/architecture.md §13.1). Where both hold the same document the
  * site reads the settled source; where RIS holds none, it says so instead of
  * keeping quiet about a Gegenüberstellung that exists. The credit line
  * therefore travels with the source (`credit`) and is no longer hard-wired
@@ -162,10 +163,12 @@ async function readRis(annex: RisDocumentUrls | null, articles: readonly DraftAr
  *
  * `false` since 19.09.2026, and the reason is not a technical one — the
  * fallback works; measured, 3 GP-XXVIII drafts would gain a Gegenüberstellung
- * through it (upper bound 8, up to 13: `outreach/verfahrensfragen.md` E4a).
+ * through it (upper bound 8, up to 13, depending on a procedural question
+ * that is still open).
  *
  * It is off because Parliament expressly excludes the data of the
- * Begutachtungsverfahren from reuse (§13.1, open question E3), and the hard
+ * Begutachtungsverfahren from reuse — the open licence question over that
+ * data (docs/architecture.md §13.1) — and the hard
  * line drawn from that is „Stufe 1 bleibt metadaten-only". Reading the text
  * of an annex out of a parlament.gv.at document and displaying it is not a
  * metadatum. For exactly these drafts the usual argument does not hold
@@ -175,9 +178,9 @@ async function readRis(annex: RisDocumentUrls | null, articles: readonly DraftAr
  * **The document stays linked**, in every branch below. What is not shown is
  * its content.
  *
- * TURN IT BACK ON as soon as E3 is answered (letter to the
- * Parlamentsdirektion: `outreach/emails/ogd@parlament.gv.at.md`). It is then
- * three moves, and all three belong together:
+ * TURN IT BACK ON as soon as that licence question is answered
+ * (docs/architecture.md §13.1). It is then three moves, and all three belong
+ * together:
  *  1. this constant to `true`,
  *  2. the licence lines on `/impressum` and `/ueber` — they say
  *     „ausschließlich Metadaten" today, and that would no longer be true,

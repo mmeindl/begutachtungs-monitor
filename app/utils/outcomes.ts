@@ -9,7 +9,7 @@
  * depend on 350 upstream fetches. Re-run the script and add a row when GP
  * XXVIII ends.
  *
- * Framing rule (CLAUDE.md): these sentences give the reader the base rate,
+ * Framing rule (docs/architecture.md §4): these sentences give the reader the base rate,
  * never a verdict. "4 von 61" says how likely a late Regierungsvorlage is;
  * it does not say the draft failed.
  */

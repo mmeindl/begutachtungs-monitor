@@ -12,7 +12,7 @@
  * is demonstrably in public use — not a description someone could have
  * written, and never a campaign slogan.
  *
- * FRAMING RULE (CLAUDE.md): these are terms of the public debate, not the
+ * FRAMING RULE (docs/architecture.md §4): these are terms of the public debate, not the
  * tool's own naming. The UI says so ("In der öffentlichen Debatte: …"); the
  * heading stays the official title. Search matches them, so a reader who
  * only knows the debate term finds the procedure.

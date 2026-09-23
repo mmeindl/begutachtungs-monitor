@@ -1,12 +1,12 @@
 /**
  * Can the Erläuterungen be read, or only linked? — the measurement that gates
- * the Erläuterungen package (`TODO.md`, docs/architecture.md §12.29).
+ * the Erläuterungen package (docs/architecture.md §12.29).
  *
  * The relevance check starts at the Allgemeiner Teil: what is this law
  * supposed to do. The page has been offering that document as a PDF link and
  * nothing else. Before a section prints it inline, three numbers have to exist,
- * and one draft read by eye is not a number — the Verordnung note in `TODO.md`
- * was written that way and got two of its three claims wrong:
+ * and one draft read by eye is not a number: an earlier note on the
+ * Verordnungen was written that way and got two of its three claims wrong:
  *
  *  1. HOW MANY drafts carry an Erläuterungen document as XML at all?
  *  2. Of those, how many say „Allgemeiner Teil" in a typed heading — i.e. can

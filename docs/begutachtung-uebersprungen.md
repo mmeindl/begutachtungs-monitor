@@ -501,8 +501,8 @@ that never pass, and for genuinely urgent matters. The finding is **not**
 The finding is narrower and harder to argue with: **the consultation stage is
 optional, roughly half of enacted law does not pass through it, and most of
 that is government business rather than parliamentary business.** Whether that
-should be so is a political question this memo does not answer — see
-`outreach/verfahrensfragen.md` for what still needs a procedural expert.
+should be so is a political question this memo does not answer, and one of
+several that still need a procedural expert.
 
 Nor is it "these laws escaped the public" (§4c). They skipped the stage where
 input is cheap to act on. Several of them drew thousands of statements later,
@@ -517,7 +517,8 @@ parties file their bills this way" is a description of a practice. It becomes
 a charge only once someone establishes what the practice is owed, and that is
 not this document's call to make.
 
-Accordingly, and per the framing rule in `CLAUDE.md`: this number belongs in
+Accordingly, and per the framing rule (`docs/architecture.md` §4): this
+number belongs in
 the product, if at all, as *a fact on an individual procedure* ("dieser
 Entwurf ging ohne Begutachtung ins Parlament") and as *a system-level
 statistic*. **Never as a ministry ranking** — "BMF skipped consultation more
@@ -533,7 +534,7 @@ this dataset would make it trivially easy to build.
   precise about which rule the evidence supports.
 - **A procedural prerequisite for showing ME-less procedures in the UI.**
   The product decision (state "ohne Begutachtung" instead of rendering empty
-  stations) is noted in `TODO.md`; it is deliberately downstream of this
+  stations) is not taken yet; it is deliberately downstream of this
   measurement.
 - **And §4a is a hard blocker on that label.** "Ohne Begutachtung" on a
   procedure that *was* consulted, and merely arrived by another route, is a
@@ -564,7 +565,7 @@ this dataset would make it trivially easy to build.
   hold a Begutachtung, and what the status of the six-week Frist actually is.
   The memo's argument is strongest if the answer is "none, and a
   recommendation" — which is exactly why it must be verified by someone
-  qualified before it is said in public. See `outreach/verfahrensfragen.md`.
+  qualified before it is said in public.
 
 ## 7. API by-products
 

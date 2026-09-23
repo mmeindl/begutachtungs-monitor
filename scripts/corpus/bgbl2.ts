@@ -1,7 +1,7 @@
 /**
  * Does a Verordnung draft become a Kundmachung — and can we say so without
- * guessing? The measurement that gates the join draft → BGBl II (`TODO.md`,
- * docs/architecture.md §12.32).
+ * guessing? The measurement that gates the join draft → BGBl II
+ * (docs/architecture.md §12.32).
  *
  * Two thirds of the corpus are Verordnung drafts, and for them the monitor
  * ends with the deadline. The road after that is the Kundmachung in BGBl II;

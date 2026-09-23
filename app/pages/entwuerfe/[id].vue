@@ -141,8 +141,9 @@ const documents = computed(() => {
            monitor does not yet follow it, and a rail whose last station is
            permanently "unbekannt" would be a promise, not a map. So the
            card answers in words what the spine answers in stations: where
-           this is now, and what comes after it. See `TODO.md` for the
-           tracked version. -->
+           this is now, and what comes after it. A rail of its own waits
+           until every station of that course can be read
+           (docs/architecture.md §12.32). -->
       <div class="mt-6">
         <div class="rounded-xl border border-hairline bg-surface p-5">
           <!-- Heading and link as on the Ministerialentwurf page: the same

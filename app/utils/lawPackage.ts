@@ -6,7 +6,7 @@
  * Regierungsvorlage that merges several drafts carries over a hundred of
  * them, and "die … nicht vorkommt" is wrong German for all but one of them.
  *
- * Framing rule (CLAUDE.md): both sentences state what the two texts contain,
+ * Framing rule (docs/architecture.md §4): both sentences state what the two texts contain,
  * never a verdict. A law missing from this Regierungsvorlage is not a law
  * that was dropped — a draft can end up in more than one (architecture.md
  * §13.4), and the sentence says so.

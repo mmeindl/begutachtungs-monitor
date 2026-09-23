@@ -13,7 +13,7 @@ import { SECOND_ROUND_CLAUSE } from '~/utils/spine'
  * round until a reader pointed at the second (September 2026). In the
  * Nachverfolgung reading this is the input that can still change the text
  * in the Ausschuss, so it belongs on the Vorlage's card, phrased as what was
- * filed — never as what it achieved (framing rule, CLAUDE.md).
+ * filed — never as what it achieved (framing rule, docs/architecture.md §4).
  *
  * Same row grammar as the Begutachtung's panel (StatementRow): the
  * organisations by name, persons and non-public submissions as counts, the

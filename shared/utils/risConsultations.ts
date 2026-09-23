@@ -33,7 +33,7 @@ export const RIS_KIND_PLURAL: Record<RisConsultationKind, string> = {
 /**
  * What the type means for someone deciding whether to read on. One sentence,
  * procedural — never a judgement about the instrument or the ministry
- * (framing rule, CLAUDE.md).
+ * (framing rule, docs/architecture.md §4).
  *
  * Null where the honest answer is nothing. `unbestimmt` used to explain our
  * own classifier („Der Titel nennt keine Rechtsform, deshalb steht hier

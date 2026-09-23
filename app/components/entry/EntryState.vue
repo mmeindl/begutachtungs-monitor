@@ -18,7 +18,7 @@ import type { EntryState } from '~/utils/entryView'
  * THE FILLING: urgency gets colour (red ≤3 days, orange ≤7, pale blue for an
  * open window without haste), everything closed gets the same grey —
  * highlighting success or muting silence would both be a verdict (framing
- * rule, CLAUDE.md). Rejected: `mark-wash` (yellow), which has exactly one job
+ * rule, docs/architecture.md §4). Rejected: `mark-wash` (yellow), which has exactly one job
  * in lists („Neu") and would be 84 yellow boxes on
  * `/entwuerfe?station=bgbl`; a larger size for the running countdown, a
  * second carrier of what the colour already says; the dot, a third one.

@@ -885,7 +885,8 @@ const linkClasses =
             :filing-open="windows.vorlage"
           />
           <!-- The accountability core: what became of the draft, § by §, both
-               ways — changed and unchanged alike (CLAUDE.md framing rule). Only
+               ways — changed and unchanged alike (framing rule,
+               docs/architecture.md §4). Only
                once a Regierungsvorlage exists; before that there is nothing to
                hold the draft against. -->
           <LawDiffSection v-if="data.enactment" :gp="data.gp" :inr="data.inr" />

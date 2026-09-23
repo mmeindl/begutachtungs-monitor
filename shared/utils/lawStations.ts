@@ -167,7 +167,7 @@ export const DEFAULT_LAW_STATION_PAIR: { from: LawStationId; to: LawStationId } 
  * rather than as the name of a procedure — the wording rule the station bar
  * already follows (`app/utils/spine.ts`).
  *
- * Temporal, never causal (framing rule, CLAUDE.md): a text changed after the
+ * Temporal, never causal (framing rule, docs/architecture.md §4): a text changed after the
  * Begutachtung is not a text changed BY it, and the comparison cannot know
  * which it was. The ME→RV wording is unchanged because the outcome card
  * links to it by that name. The `bgbl` pairs follow the same rule: „Was vom
@@ -202,7 +202,7 @@ export function lawStationPairQuestion(from: LawStationId, to: LawStationId): st
  * Ausschussbericht for what happened in committee, where the
  * Abänderungsanträge are recorded by name.
  *
- * Framing rule (CLAUDE.md): each sentence points at a document and stops
+ * Framing rule (docs/architecture.md §4): each sentence points at a document and stops
  * there. "Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt der Text
  * nicht" is the whole claim — the tool does not assert causation it cannot
  * observe.
@@ -220,7 +220,8 @@ export function lawStationPairHint(from: LawStationId, to: LawStationId): string
  * Not a detail: the Ministerialentwurf belongs to the Begutachtungsverfahren,
  * which Parliament expressly excludes from open-data reuse, while the
  * Regierungsvorlage and the parliamentary versions are licensed datasets
- * (CLAUDE.md, Legal constraints). So a comparison of two parliamentary
+ * (the open licence question over that data, docs/architecture.md §13.1). So a
+ * comparison of two parliamentary
  * stations may name its licence, and one involving the draft may not — the
  * same per-source split the footer and the Impressum carry.
  */

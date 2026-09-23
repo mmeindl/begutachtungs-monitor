@@ -1,7 +1,7 @@
 /**
  * Can the promulgated text be read as a station — and does the comparison
  * against it say anything sensible? The measurement that gates the BGBl
- * station (`TODO.md`, docs/architecture.md §12.33).
+ * station (docs/architecture.md §12.33).
  *
  * The station bar of the § comparison ends at the Plenum version today. The
  * last version, though, is the promulgated one, and it is exactly the one

@@ -85,8 +85,8 @@ const CONCURRENCY = 4
  *    "Budget" in its name.
  *
  * TWO CANDIDATE CLASSES the first run surfaced, left in the count on purpose
- * until someone who knows the procedure rules on them (see
- * `outreach/verfahrensfragen.md` Q3):
+ * until someone who knows the procedure rules on them — an open question for
+ * a procedural expert, not one this script can settle:
  *
  *  a) **Budgetprovisorium** — 71/A and 123/A (Gesetzliches Budgetprovisorium
  *     2025). Budget procedure like the BFG, but filed as an Initiativantrag
@@ -157,7 +157,8 @@ const EXEMPT: Record<string, string> = {
  * b) BUDGETPROVISORIUM — budget matter, but filed as an Initiativantrag during
  *    the formation of a government. Identical to 71/A and 123/A in GP XXVIII,
  *    which stay in the count there too for as long as nobody with knowledge of
- *    the procedure has decided otherwise (`verfahrensfragen.md` B2).
+ *    the procedure has decided otherwise — another of the open questions for
+ *    a procedural expert.
  *      282/A, 112/A  Gesetzliches Budgetprovisorium 2020
  */
 

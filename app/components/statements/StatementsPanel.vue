@@ -466,7 +466,7 @@ const mixSegments = computed(() => {
         <!-- The one thing find-in-page can never say. A reader searching for
              a private individual's name gets silence from Cmd+F, and silence
              here reads as "did not file" when the truth is that we do not
-             publish that name (GDPR, CLAUDE.md). The field is ours, so it
+             publish that name (GDPR, docs/architecture.md §3). The field is ours, so it
              can say which of the two it is. -->
         <div v-else-if="searchActive" class="p-5">
           <EmptyState

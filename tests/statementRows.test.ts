@@ -47,7 +47,7 @@ const summary = (list: OrgEntry[]): StatementsSummary => ({
 /**
  * The GDPR guard, and the reason this module exists as a module: a rule that
  * decides whether a private person's name reaches a public page has to be
- * executable by a test (CLAUDE.md, GDPR).
+ * executable by a test (GDPR, docs/architecture.md §3).
  */
 describe('submitterLabel', () => {
   it('never names a private person — not even one upstream named', () => {

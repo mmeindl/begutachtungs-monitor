@@ -232,7 +232,8 @@ const toc = [
       </p>
     </section>
 
-    <!-- Mechanism 3 from CLAUDE.md, and the reason this page is prose at all:
+    <!-- The design risk behind the mission, and the reason this page is
+         prose at all:
          a tool that only counts what stayed without consequence proves that
          taking part is pointless. The sentence „Ministerien überarbeiten
          Entwürfe regelmäßig" used to stand once on the site, small and grey

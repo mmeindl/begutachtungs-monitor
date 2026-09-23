@@ -17,7 +17,7 @@ import { formatDateDe } from '#shared/utils/format'
  * Frist is more than a year back. The rest are partly Verordnungen that were
  * never enacted (the information this is about) and partly our own failures.
  * Both look alike from here, so the way to check stands beside it. Framing
- * rule, CLAUDE.md: never an accusation, always a state of the procedure.
+ * rule (docs/architecture.md §4): never an accusation, always a state of the procedure.
  */
 const props = defineProps<{
   risId: string

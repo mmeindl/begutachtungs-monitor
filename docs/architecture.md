@@ -618,7 +618,8 @@ Artikel dieselbe Nummer adressieren, zeigt die Schicht deshalb nichts:
 dieselbe Regel wie bei den §-Namen, ein falscher Bezug ist schlechter als
 keiner. Kostet bei 8/ME einen von 17 Paragraphen. Die bessere Lösung wäre der
 Artikel aus der Adresszeile selbst („Zu Art. 5 (Änderung des …) Z 1 (§ 15)");
-sie steht als Messung in `TODO.md`, nicht als Vermutung hier.
+sie gehört am Korpus gemessen, bevor sie gebaut wird, und steht deshalb
+nicht als Vermutung hier.
 
 **Und der Aufklapper war leer, wo die Passage zu lang war.** `diffTokens` gibt
 oberhalb von 2,5 Mio. Zellen keine Segmente zurück, sondern nur die
@@ -763,7 +764,7 @@ Keine dieser Klassen ist ein Sprachmodell-Problem; drei davon sind
 Nachschlagefehler und eine ist eine korrekte Verweigerung.
 
 *Und eine Einordnung, die aus dem neuen Kriterium folgt:* Dieses Paket trägt
-keine der vier Kostenarten (`TODO.md`) — kein Betrieb, kein Partner, keine
+keine der vier Kostenarten — kein Betrieb, kein Partner, keine
 Rechnung, kein offener Ausgang. Es ist gewöhnliche Arbeit und steht seit
 19.09.2026 nicht mehr unter den Antragspaketen.
 
@@ -2162,7 +2163,8 @@ bevor er so etwas behauptet — auch beim fehlenden und beim schwach
 zugeordneten RIS-Datensatz, wo das Parlaments-Dokument sogar die *bessere*
 Quelle ist, weil es unter der Nummer dieses Entwurfs liegt und die Zuordnung
 gar nicht erst geraten werden muss. **Gelesen wird es nicht:** ein Parser für
-den Parlaments-Anhang ist eigene Arbeit (`TODO.md`), die Zeile verlinkt ihn.
+den Parlaments-Anhang ist eigene Arbeit und nicht gebaut; die Zeile
+verlinkt ihn.
 Der Aufruf passiert nur in diesen Zweigen, also für rund 20 der 132 Entwürfe,
 und er fängt keine Fehler — dieselbe Regel wie oben.
 
@@ -2522,8 +2524,8 @@ anderes zu bieten, an dem sich schneiden ließe.
 Das ist **eine von 114 Beilagen** der GP XXVIII — nur diese eine druckt
 Anordnungen statt Fassungen in der rechten Spalte (15 solcher Zeilen von 685).
 Ein Schnitt an der Nummer einer Novellierungsanordnung wäre die Regel, die
-diesen Fall auflöste; sie ist am Korpus zu messen, bevor sie geschrieben wird,
-und sie steht in `TODO.md`, nicht hier. Solange es sie nicht gibt, tut das Tor
+diesen Fall auflöste; sie ist am Korpus zu messen, bevor sie geschrieben
+wird. Solange es sie nicht gibt, tut das Tor
 genau das Richtige: § 13 wird einbehalten, der Text erreicht die Leserin nicht
 als neues Recht, und der Grund, den die Seite nennt, stimmt.
 
@@ -3815,7 +3817,8 @@ von 40 Entwürfen, paragraphweise 12 Gewinne gegen 2 Verluste). Weil die beiden
 Kopien sich nicht im Inhalt unterscheiden, sondern in der Lizenz: Das RIS
 veröffentlicht die Beilage als CC BY 4.0 (Bundeskanzleramt), das Parlament
 schließt die Begutachtungsverfahren ausdrücklich von der Weiterverwendung als
-Open Data aus (§13.1, Frage E3 ist offen). Wo beide dasselbe Dokument führen,
+Open Data aus (die Lizenzfrage darüber ist offen, §13.1). Wo beide dasselbe
+Dokument führen,
 ist die geklärte Quelle die richtige. Wo das RIS keine führt, steht die Wahl
 zwischen „aus der offenen Frage lesen" und „dem Leser eine Gegenüberstellung
 vorenthalten, die es gibt" — und dann liest die Seite, sagt aber dazu, woher,
@@ -3871,7 +3874,8 @@ wahren Grund: **nicht** „ließ sich nicht auslesen" (das wäre eine Aussage ü
 ein Dokument, das wir gar nicht angefasst haben), sondern dass wir es
 verlinken, solange die Weiterverwendung ungeklärt ist. Der Schalter zieht drei
 Stellen mit sich, und sie stehen im Kommentar an ihm; die Fallunterscheidung
-nach der Antwort der Parlamentsdirektion steht bei E3.
+nach der Antwort der Parlamentsdirektion steht bei der offenen Lizenzfrage
+(§13.1).
 
 Die allgemeinere Lehre, weil sie sich wiederholen wird: **Eine Lizenzfrage ist
 selten eine Frage der Beschriftung.** Ein `credit`-Feld pro Quelle ist die
@@ -4150,8 +4154,8 @@ dem Slot, in dem die Entwurfsseite ihre fünf Stationen zeigt, steht eine
 Karte, die dasselbe in Worten beantwortet** — wo der Entwurf gerade steht,
 und was danach kommt, ausdrücklich mit „verfolgt der Monitor bisher nicht".
 Eine echte Leiste, deren letzte Station dauerhaft „unbekannt" hieße, wäre
-ein Versprechen, keine Karte. Die verfolgte Fassung steht als eigener Punkt
-in `TODO.md`.
+ein Versprechen, keine Karte. Eine solche Leiste wartet darauf, dass jede
+Station dieses Wegs lesbar ist.
 
 #### Dieselbe Anatomie wie die Entwurfsseite
 
@@ -4757,8 +4761,9 @@ zeigt an einem gewöhnlichen Tag vier Karten „Bisher keine
 Regierungsvorlage" — das ist ME→RV-Latenz, nicht Schubladisierung, und
 der Erklärsatz darüber sagt das auch. Aber der Abschnitt, der den Block
 eröffnet, bringt die Lektion bei, und vier Fehlanzeigen als Eröffnung
-sind genau die Zynismus-Maschine, vor der `CLAUDE.md` (Mechanismus 3)
-warnt. Die Rangliste eröffnet mit Erfolgen wie Fehlanzeigen und mit
+sind genau die Zynismus-Maschine, die die Rahmenregel (§4) verhindern
+soll: ein Werkzeug, das nur Fehlanzeigen zeigt, beweist, dass Mitreden
+nichts ändert. Die Rangliste eröffnet mit Erfolgen wie Fehlanzeigen und mit
 Einsatz; die
 Verlaufsliste liest sich danach als lebende Kante. Der Anker im zweiten
 Satz der Dachzeile zeigt entsprechend auf den ersten der beiden
@@ -4798,7 +4803,8 @@ getrennt herleiten und Chips auf anderen Zeilen landen als den
 gezeigten.
 
 **Nicht gebaut:** keine fünfte Liste. „Kommende Begutachtungen" hat keine
-Quelle (offene Forschungsfrage, `CLAUDE.md`); eine reine Erfolgsliste
+Quelle — die Parlaments-API kennt eine Begutachtung erst, wenn sie läuft
+(offene Forschungsfrage); eine reine Erfolgsliste
 („Zuletzt Gesetz geworden") wäre ein Punktestand mit umgekehrtem
 Vorzeichen, und Erfolge wie Fehlanzeigen stehen schon in zwei Abschnitten
 nebeneinander;
@@ -5276,7 +5282,7 @@ Schnittstelle verzeichnet für dieselbe Periode 270 Regierungsvorlagen
 nicht bloß etwas Unbelegtes, sondern etwas, dem der Nachbardatensatz
 widerspricht — eine Ablagequote von 100 %, erzeugt aus einer Archivlücke,
 ohne dass ein Ministerium irgendetwas getan hätte. Das ist genau die
-Zynismus-Maschine, vor der CLAUDE.md unter Mechanismus 3 warnt, und sie
+Zynismus-Maschine, die die Rahmenregel (§4) verhindern soll, und sie
 entstand ohne Absicht.
 
 **Warum es pro Entwurf nicht zu lösen ist.** Gemessen am 18.09.2026 trägt ein
@@ -6453,7 +6459,7 @@ und überlebt jede Beugung.
 
 ## 13. Open questions
 
-1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. Tracked as E3 in `outreach/verfahrensfragen.md`. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **E3 has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum.
+1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum.
 2. ~~Join key RIS↔Parliament at corpus level~~ **Resolved (Sept 2026):** GP XXVII corpus test, 337/350 matched, 0 ambiguous, 12 without any RIS record, no one-sided extensions — `docs/ris-join.md`.
 3. Is list-81 `Frist` updated on deadline extensions? (Affects future alerts and history.)
 4. Multiple RVs (ME→RV 1:n): is "latest RV" enough or does the UI need all strands? **Corpus evidence 2026-09-08:** it happens — 27/ME (IFG-Anpassung BMF) has two, 134 d.B. and 129 d.B., both dated 18.06.2025, and its diff against the one we pick reports 25 laws as absent that are plausibly in the other. Until this is decided, the comparison says "in dieser Regierungsvorlage" and adds that a draft can end up in more than one — it must never read as "the law was dropped".

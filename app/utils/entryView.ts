@@ -170,7 +170,7 @@ function endedState(deadline: string | null, label: string): EntryState {
  * statement.
  *
  * „Bisher" survives every shortening: it is the word that makes „keine
- * Regierungsvorlage" a state and not a verdict (framing rule, CLAUDE.md).
+ * Regierungsvorlage" a state and not a verdict (framing rule, docs/architecture.md §4).
  * Nothing is abbreviated here any more — the column may wrap since the pill
  * went, and the old short forms („Bisher keine Vorlage", „Im Parlament") were
  * owed to its `whitespace-nowrap` alone.

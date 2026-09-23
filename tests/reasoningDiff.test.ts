@@ -101,7 +101,7 @@ describe('compareReasoning', () => {
   // address with siblings and returns the first Paragraph, although the
   // instruction changes two. The reasoning shown is then the one for § 6 —
   // the same narrowing has hit the § names since 08.09. It belongs fixed and
-  // measured there, not worked around here (TODO.md).
+  // measured in `addressedParagraph`, not worked around here.
   it('nennt bei „§§ 6 und 7" heute nur den ersten Paragraphen', () => {
     const units = [unit(SNG, 'Z2', 'Die §§ 6 und 7 samt Überschriften entfallen.')]
     const out = compareReasoning(units, new Map([['6', 'a']]), new Map([['6', 'b sehr anders']]))

@@ -56,7 +56,7 @@ describe('RIS kind vocabulary', () => {
   })
 
   it('never frames a kind as a failing — Nachverfolgung, not blame', () => {
-    // The framing rule in CLAUDE.md, pinned where the words actually live.
+    // The framing rule (docs/architecture.md §4), pinned where the words live.
     for (const hint of Object.values(RIS_KIND_HINT)) {
       if (hint === null) continue
       expect(hint).not.toMatch(/versäum|verheimlich|umgeh|vermeid|trick/i)

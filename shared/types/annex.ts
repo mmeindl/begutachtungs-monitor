@@ -170,7 +170,7 @@ export interface TextComparisonResponse {
    * Server-side, because the source is chosen here: the section used to have
    * the CC-BY sentence hard-wired, and the moment the same section reads a
    * Parliament document that is a licence claim nobody has checked
-   * (docs/architecture.md §13.1, question E3 open).
+   * (the open licence question over that data, docs/architecture.md §13.1).
    */
   credit: string
   /**

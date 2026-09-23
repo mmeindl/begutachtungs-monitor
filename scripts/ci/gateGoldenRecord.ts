@@ -17,7 +17,7 @@
  * Everything written out comes from the RIS OGD API (CC-BY 4.0,
  * data.bka.gv.at) — the settled source for draft texts and their
  * Textgegenüberstellung. Parliament's copy of the same annex is deliberately
- * not used here: it is the one excluded from open data (CLAUDE.md, §12.11).
+ * not used here: it is the one excluded from open data (docs/architecture.md §13.1).
  *
  * Usage:  npx vite-node scripts/ci/gateGoldenRecord.ts -- --only=Organtransplantations --out=tests/fixtures/gate-organtransplantation.json
  */

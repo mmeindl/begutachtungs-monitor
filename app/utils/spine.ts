@@ -64,7 +64,7 @@ export interface Station {
   /**
    * Plain-text facts, rendered joined by " · ". Temporal, never causal:
    * "nach der Begutachtung", not "durch die Stellungnahmen" (framing rule,
-   * CLAUDE.md).
+   * docs/architecture.md §4).
    */
   facts: string[]
   /** The comparison this station produced, as the question it answers; null

@@ -158,8 +158,9 @@ describe('lawStationPairQuestion', () => {
   })
 
   it('stays temporal, never causal or accusatory', () => {
-    // Framing rule (CLAUDE.md): a text changed after the Begutachtung is not
-    // a text changed BY it, and no pair may read as a verdict.
+    // Framing rule (docs/architecture.md §4): a text changed after the
+    // Begutachtung is not a text changed BY it, and no pair may read as a
+    // verdict.
     for (const [from, to] of pairs) {
       const q = lawStationPairQuestion(from, to)
       expect(q, q).not.toMatch(/wegen|aufgrund|ignor|versäum|verwässer|abgeschwächt|durchgesetzt/i)
@@ -185,7 +186,7 @@ describe('isLicensedPair', () => {
   it('is true only where both sides are licensed parliamentary datasets', () => {
     // The Regierungsvorlage and the parliamentary versions are licensed;
     // the Ministerialentwurf belongs to the Begutachtungsverfahren, which
-    // Parliament expressly excludes from open-data reuse (CLAUDE.md). A
+    // Parliament expressly excludes from open-data reuse (docs/architecture.md §13.1). A
     // joint "CC BY 4.0" over a pair containing the draft would be wrong for
     // that half.
     expect(isLicensedPair('rv', 'ausschuss')).toBe(true)

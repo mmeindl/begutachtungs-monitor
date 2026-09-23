@@ -9,7 +9,7 @@
  * three of them is worse than no sentence at all. Here they can be held
  * against a small response object.
  *
- * Framing rule (CLAUDE.md): every one of them states what was found, never a
+ * Framing rule (docs/architecture.md §4): every one of them states what was found, never a
  * verdict on the ministry — and where the finding may be OUR reading, it says
  * so first.
  */

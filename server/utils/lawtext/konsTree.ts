@@ -156,7 +156,8 @@ function lastChild(node: LawNode, level: NodeLevel): LawNode | null {
  * and whether the 406 `ebene="1"` clauses that *end* their list close the
  * Ziffer or the Absatz is exactly the question `ebene` cannot answer on its
  * own. That needs the amendment engine's harness over a corpus, not this
- * module (TODO.md).
+ * module — the consolidation engine and its corpus measurements are
+ * docs/architecture.md §12.12.
  */
 function closingHost(abs: LawNode, typ: string): LawNode {
   const depth = /^e(\d+)$/i.exec(typ)

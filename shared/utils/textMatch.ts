@@ -33,7 +33,7 @@
  *     then leaves visually clipped; a filter puts the row on screen.
  *   - Searched for a private person's name it answers with silence, which
  *     reads as "did not file" when the truth is "we do not publish that"
- *     (GDPR, CLAUDE.md). A field of ours can say which one it is.
+ *     (GDPR, docs/architecture.md §3). A field of ours can say which one it is.
  *
  * The overflow rows stay findable all the same — `hidden="until-found"` in
  * the panel — because the field needs JavaScript and the SSR HTML does not.

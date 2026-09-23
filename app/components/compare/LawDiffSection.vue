@@ -705,7 +705,8 @@ const droppedNote = computed(() =>
            Ministerialentwurf on one side a shared „CC BY 4.0" would be wrong
            for that half — the Vorlage is a licensed dataset, the draft belongs
            to the Begutachtungsverfahren, which Parliament excludes from
-           open-data use (CLAUDE.md, Legal constraints). Comparing two
+           open-data use — the open licence question over that data
+           (docs/architecture.md §13.1). Comparing two
            parliamentary versions, both sides are licensed and the statement
            belongs there — the same per-source split as in the Impressum. -->
       <SectionCredits>
