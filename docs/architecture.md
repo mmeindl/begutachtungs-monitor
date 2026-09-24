@@ -4067,6 +4067,31 @@ identity is `feld_name` where the API gives one and the display label
 otherwise. The uptime workflow's data canary (§12.7) is the same guard from
 the outside.
 
+**What becomes of a statement on the Vorlage (read 24.09.2026).** The panel
+shows them; it did not say where they go. Parliament's own page on
+statements to legislative initiatives says approved statements "werden den
+parlamentarischen Klubs und dem zuständigen Bundesministerium für ihre
+Arbeit zur Verfügung gestellt" and are published at the Gegenstand; § 23b
+GOG-NR (as amended by BGBl. I 81/2024) regulates the publication and nothing
+more. The research service's Fachinfo on Begutachtungsverfahren (updated
+03.02.2026) adds that the Parlamentsdirektion does no further processing —
+no overviews, no evaluations — and that which statements are taken up "liegt
+in der Verantwortung der zuständigen Ministerien oder der Abgeordneten".
+There is no committee procedure and no duty to consider. One case read end
+to end: the Informationsfreiheitsgesetz, 95/ME → 2238 d.B. (GP XXVII), 10
+statements on the Vorlage. Our comparisons: ME→RV 21 of 34 units changed,
+RV→Ausschuss 12 of 35 changed and 5 inserted, Ausschuss→Plenum 2 changed.
+The committee report 2420 d.B. attributes the reworking to the roughly 200
+Begutachtungs-Stellungnahmen on the ME and records a hearing with invited
+experts, among them civil-society organisations; it does not mention any of
+the 10 statements on the Vorlage. Consequences, both small and neither
+built yet: the panel's copy should say where the statements go, and the
+hearings a committee report records — with the experts it names — are data
+this station could show, once counted over a GP. What is *not* worth
+measuring is a "weight": the research service's own count for GP XXVII has
+only about 40 % of initiatives passing unchanged, so committee changes are
+common with or without statements, and contested bills attract both.
+
 ### 12.15 Lange Stellungnahmen-Listen: zwei Faltungen und ein Suchfeld
 
 Die Organisationsliste eines Entwurfs wurde ungekürzt gerendert — 8/ME sind
