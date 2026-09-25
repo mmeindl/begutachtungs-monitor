@@ -1944,6 +1944,35 @@ Tests, kein Abend, und damit ein Posten des Arbeitspakets, kein Nebenbei.
 Der Ertrag ist gemessen: ein Entwurf von 0 auf bis zu 26 Anweisungen, dazu
 19 verstreute.
 
+**Auf dem Telefon angesehen — 25.09.2026, und die Schicht hält bis auf eine
+Stelle.** Geprüft war sie bis dahin nur bei 1.100 px. Bei 390 px und bei
+320 px läuft nichts über (`scrollWidth` gleich `clientWidth`, kein Element
+rechts aus dem Bild), die Silbentrennung greift, der Aufklapper, die Fußnote
+„Nicht amtliche Lesefassung" und die Überschrift des § sitzen richtig. Die
+Messung braucht echte Viewport-Emulation: Chromes Fenster hat auf dem Mac
+eine Untergrenze von rund 500 px, ein „390-px-Screenshot" ist sonst ein
+Ausschnitt aus einem 500-px-Layout (`Emulation.setDeviceMetricsOverride`
+über CDP kennt die Grenze nicht).
+
+**Was nicht hält, ist der Befund vom 19.09. eine Ebene tiefer.** Der
+Absatzschnitt (`absaetze.ts`) trennt an `(1)`, `(2a)`. § 111 RStDG hat
+**keinen einzigen Absatzmarker** — er ist nach Ziffern gegliedert („1. das
+Oberlandesgericht Wien … 5. der Oberste Gerichtshof …"), 2.792 Zeichen — und
+steht deshalb als ein Block: bei 390 px rund 40 Zeilen, bei 320 px rund 55.
+Die Ursache ist dieselbe wie damals: Die Segmente tragen **0
+Zeilenumbrüche**, die Marke überlebt, die Gliederung nicht. Häufigkeit an
+126/ME: 5 von 31 Paragraphen führen gar keinen Absatzmarker, 13 von 31
+tragen Ziffern innerhalb ihrer Absätze.
+
+**Der naheliegende Einzeiler ist nicht gebaut, und das ist die
+Entscheidung.** `1.` ist nicht selbstbegrenzend wie `(1)`: „mit 1. Jänner
+2027 in Kraft" würde einen Satz mitten durchschneiden, und ein falsch
+gegliederter Gesetzestext ist schlimmer als eine Wand — dieselbe Lehre wie
+bei den zwei zurückgenommenen Abkürzungen oben. Die sichere Regel (nur
+schneiden, wo die Ziffern eine aufsteigende Folge ab 1 bilden) ist eine
+Korpusmessung über die Lesefassungen einer GP, kein Abend. Steht als offener
+Posten in `TODO.md` § 5d.
+
 ### 12.12b Der Besondere Teil als zweites Verifikationssignal — gemessen, und er trägt nicht
 
 Die teuerste offene Frage des Pakets ist, ob es neben der
