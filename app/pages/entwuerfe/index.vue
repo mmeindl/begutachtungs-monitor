@@ -48,11 +48,31 @@ useSeoMeta({
  * it is not a station but a property of one, and choosing it would bring
  * along every long-decided Vorlage. As the intersection of both axes it is
  * exactly nameable and stays shareable: `?status=open&station=rv`.
+ *
+ * **„Nicht möglich", not „Abgeschlossen" — 24.09.2026.** The third option is
+ * the negation of the second and nothing more: it selects the rows where no
+ * window is open, neither a running Frist nor a Vorlage parliament still
+ * takes Stellungnahmen on (`canParticipate`). The set has been right since
+ * 18.09.2026; the WORD claimed something on top of it that this page cannot
+ * know. Measured on the running period on 24.09.2026: of the 119 rows under
+ * it, 84 are kundgemacht — and 35 are anything but finished, 34 waiting for
+ * a Regierungsvorlage and one lying in the Nationalrat. Where a Verfahren
+ * really has ended the row says so itself („Kundgemacht"); what the filter
+ * answers is the question above it („Was kann ich tun"), and for this set
+ * the answer is „nicht möglich" — today, not forever, because a Vorlage can
+ * open the second window months later.
+ *
+ * Why not the full „Keine Stellungnahme möglich": at a 390 px viewport the
+ * segmented group is 338 px against a line of 358, and that label takes it
+ * to 432 px, „Nicht mehr möglich" to 366 (measured 24.09.2026, CDP device
+ * metrics). „Nicht möglich" is 329 px and reads in the group as the negation
+ * it is. The VALUE stays `closed`, so every shared `?status=closed` link
+ * keeps working.
  */
 const statusOptions: { value: DraftStatus; label: string }[] = [
   { value: 'all', label: 'Alle' },
   { value: 'open', label: 'Stellungnahme möglich' },
-  { value: 'closed', label: 'Abgeschlossen' },
+  { value: 'closed', label: 'Nicht möglich' },
 ]
 
 const stationOptions: { value: DraftStation; label: string }[] = DRAFT_STATION_ORDER.map((value) => ({
@@ -302,7 +322,7 @@ const ministries = computed(() => {
  *
  * Under the same controls as everything else, as far as they reach. Status:
  * only where „Stellungnahme möglich" is asked or nothing is filtered — an
- * open window has no business under „Abgeschlossen". Station: they stand at
+ * open window has no business under „Nicht möglich". Station: they stand at
  * the Regierungsvorlage. Art: they are no Verordnungsentwürfe. Ressort:
  * `OpenVorlage` carries none, so the row steps back as soon as one is
  * filtered for. Search: the same word rule as above (`matchesQuery`).
@@ -438,11 +458,20 @@ const stationConflict = computed(() => laterStationsOnly.value && art.value === 
  * would otherwise vanish wordlessly. */
 const chainUnlinkedPeriod = computed(() => meData.value?.chainCoverage === 'unlinked')
 
+const stationsMissing = computed(
+  () => meData.value?.stationsAvailable === false && !chainUnlinkedPeriod.value,
+)
+
+/* A THIRD case since 24.09.2026, and the only one where the missing map does
+ * not cost a column but cuts the SET wrong: „Nicht möglich" excludes a draft
+ * whose Regierungsvorlage parliament still takes Stellungnahmen on, and that
+ * is known from the station map alone. Without it those rows fall in here
+ * and say „Begutachtung abgeschlossen" over an open window — 13 of the
+ * running period's 132 expired drafts on 24.09.2026. Rare (the deploy waits
+ * for the prewarm since the same day, `deploy/deploy.sh`) and therefore
+ * worth one sentence rather than a second data path. */
 const stationsUnavailable = computed(
-  () =>
-    meData.value?.stationsAvailable === false &&
-    !chainUnlinkedPeriod.value &&
-    stations.value.length > 0,
+  () => stationsMissing.value && (stations.value.length > 0 || statusFilter.value === 'closed'),
 )
 
 const countLabel = computed(() => {
@@ -779,9 +808,13 @@ const countLabel = computed(() => {
            NOT doing stands above the rows — read afterwards it is
            worthless. -->
       <p v-if="stationsUnavailable" class="mt-3 max-w-prose text-sm text-ink-muted">
-        Wo die Entwürfe stehen, lässt sich gerade nicht abrufen – die Liste
-        ist deshalb <span class="font-medium text-ink">nicht</span> nach
-        Station gefiltert.
+        Wo die Entwürfe stehen, lässt sich gerade nicht abrufen<template
+          v-if="stations.length"
+        > – die Liste ist deshalb <span class="font-medium text-ink">nicht</span>
+          nach Station gefiltert</template>.<template v-if="statusFilter === 'closed'">
+          Hier zählt nur, ob die Frist abgelaufen ist: Zu einzelnen
+          Regierungsvorlagen kann im Nationalrat noch Stellung genommen
+          werden.</template>
       </p>
       <!-- The gap is named rather than passed off as a finding: without this
            sentence a list without stations would read as if nothing had ever

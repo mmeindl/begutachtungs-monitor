@@ -5421,6 +5421,38 @@ gibt es jetzt: `?station=bgbl`. Umgekehrt zeigt „Jetzt in Begutachtung" auf
 `?status=open&station=begutachtung`, weil die Zahl daneben laufende Fristen
 zählt und `status=open` seit heute mehr umfasst.
 
+**Die dritte Option hieß „Abgeschlossen" bis 25.09.2026 und versprach mehr,
+als diese Seite wissen kann.** Die *Menge* stimmt seit dem Umbau oben:
+`canParticipate` nimmt einen Entwurf heraus, zu dessen Regierungsvorlage im
+Nationalrat noch Stellung genommen werden kann — 13 von 132 abgelaufenen der
+GP XXVIII am 24.09.2026. Das *Wort* behauptete darüber hinaus, das Verfahren
+sei zu Ende. Von den 119 Zeilen darunter sind 84 kundgemacht und **35 alles
+andere als fertig**: 34 warten auf eine Regierungsvorlage, eine liegt im
+Nationalrat. Wo ein Verfahren wirklich endet, sagt das die Zeile selbst
+(„Kundgemacht", §12.28); der Filter beantwortet die Frage über ihm („Was
+kann ich tun"), und die ehrliche Antwort für diese Menge ist **„Nicht
+möglich"** — heute, nicht für immer, denn eine Vorlage kann das zweite
+Fenster Monate später öffnen. Der Wert bleibt `closed`: Geteilte Links sind
+das Einzige, was dieses Projekt nicht neu ausgeben kann (§12.19).
+
+**Warum nicht die ausgeschriebene Form.** Bei 390 px steht die
+Segmentgruppe auf 338 px gegen eine Zeile von 358. „Keine Stellungnahme
+möglich" bringt sie auf 432 px, „Nicht mehr möglich" auf 366 — beide
+sprengen die Zeile auf dem Telefon, und die Gruppe ist `shrink-0`.
+„Nicht möglich" misst 329 px und liest sich in der Gruppe als die
+Verneinung, die es ist (gemessen 24.09.2026).
+
+**Und der eine Fall, in dem die Menge doch falsch ist, steht jetzt als Satz
+über der Liste.** Ohne Stationskarte kennt die Liste `filingOpen` nicht, die
+13 fallen herein, und ihre Zeilen sagen „Begutachtung abgeschlossen" über
+einem offenen Fenster — die Karte ist Anreicherung mit 2,5-s-Budget, ihr
+Fehlen also kein Ausnahmefall, sondern eine Minute nach jedem Neustart. Der
+Hinweis, den es für den Stationsfilter schon gab, gilt seither auch unter
+„Nicht möglich" („Hier zählt nur, ob die Frist abgelaufen ist: Zu einzelnen
+Regierungsvorlagen kann im Nationalrat noch Stellung genommen werden"). Und
+die Minute selbst ist seit demselben Tag kürzer: Der Deploy wartet auf den
+Prewarm, statt ihn im Hintergrund zu starten (§10).
+
 ### 12.27 Eine Lücke ist kein Befund: wo die Seite über Stationen schweigen muss
 
 Der Stationsfilter aus §12.26 hatte einen blinden Fleck, der genau die

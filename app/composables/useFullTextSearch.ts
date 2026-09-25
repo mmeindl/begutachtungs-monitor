@@ -52,7 +52,7 @@ export async function useFullTextSearch(
   /**
    * Can the full text say anything at all under these filters?
    *
-   * It knows only the running Begutachtungen. Under „Abgeschlossen", in an
+   * It knows only the running Begutachtungen. Under „Nicht möglich", in an
    * older period and under a station AFTER the Begutachtung there is nothing
    * for it to search — and a block of running Verfahren there would
    * contradict the filter the reader set. Instead a line above the list says
