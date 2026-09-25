@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraphs, byParagraphOrder, gateParagraph } from '../server/utils/kons/konsGate'
+import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph } from '../server/utils/kons/konsGate'
 import { parsePayload, type Instruction } from '../server/utils/kons/lawApply'
 import { parseInstruction } from '../server/utils/kons/novao'
 
@@ -65,5 +65,49 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
 
   it('is empty when a unit carries no instruction at all', () => {
     expect(addressedParagraphs([], [])).toEqual([])
+  })
+})
+
+describe('addressedLabels — unter welchem Etikett das RIS den § führt', () => {
+  it('keys an ordinary § by its bare designation', () => {
+    const labels = addressedLabels(instr('§ 5 Abs. 1 lautet:', ['(1) Neu.']), [])
+    expect(labels?.get('5')).toBe('§ 5')
+  })
+
+  // Under "§ 3" RIS carries no document in such a law at all — leaving the
+  // Artikel off does not widen the search, it empties it (§12.12a).
+  it('keys a § of a law divided into Artikel the way RIS prints it', () => {
+    const labels = addressedLabels(instr('Art. II § 3 Abs. 2 lautet:', ['(2) Neu.']), [])
+    expect(labels?.get('3')).toBe('Art. 2 § 3')
+  })
+
+  it('keys a refused line by the Artikel it names', () => {
+    const labels = addressedLabels([], ['In Artikel II § 7 wird etwas Unlesbares getan.'])
+    expect(labels?.get('7')).toBe('Art. 2 § 7')
+  })
+
+  // The stock is held by bare id, so two Artikel with a § 3 would put two
+  // documents under one key and the first one fetched would answer for both.
+  it('refuses where two Artikel of one law share a § number', () => {
+    const both = [...instr('Art. II § 3 lautet:', ['§ 3. Neu.']), ...instr('Art. III § 3 lautet:', ['§ 3. Auch neu.'])]
+    expect(addressedLabels(both, [])).toBeNull()
+  })
+
+  it('refuses where the same § is named once with and once without its Artikel', () => {
+    const both = [...instr('Art. II § 3 lautet:', ['§ 3. Neu.']), ...instr('§ 3 lautet:', ['§ 3. Auch neu.'])]
+    expect(addressedLabels(both, [])).toBeNull()
+  })
+
+  // It produces no operation and no node, so it cannot put a second document
+  // into the stock — and refusing the Artikel over it cost 116/ME one of its
+  // 65 laws.
+  it('lets a refused line fill a gap but never contradict an instruction', () => {
+    const labels = addressedLabels(instr('Art. II § 3 lautet:', ['§ 3. Neu.']), ['In § 3 wird etwas Unlesbares getan.'])
+    expect(labels?.get('3')).toBe('Art. 2 § 3')
+  })
+
+  it('files a § an instruction creates under the Artikel that instruction addresses', () => {
+    const labels = addressedLabels(instr('Nach Art. II § 12 wird folgender § 12a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 12a. (1) Neu.']), [])
+    expect(labels?.get('12a')).toBe('Art. 2 § 12a')
   })
 })

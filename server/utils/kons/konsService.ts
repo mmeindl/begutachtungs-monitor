@@ -29,7 +29,7 @@
  */
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
-import { addressedParagraphs, gateParagraph } from './konsGate'
+import { addressedLabels, addressedParagraphs, gateParagraph } from './konsGate'
 import { anlageLabelKey, bareParaId } from '../text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from '../lawtext/amendedLawsService'
@@ -152,7 +152,11 @@ export const getConsolidatedText = defineCachedFunction(
       // The denominator, counted before anything can fail — pure and tested
       // in `kons/konsGate.ts`, because a number that stands on the page is a
       // statement and not an intermediate result.
-      return { index, article, instructions, refused, addressed: addressedParagraphs(instructions, refused.map((r) => r.line)) }
+      const refusedLines = refused.map((r) => r.line)
+      // The RIS labels beside the denominator, and from the same pure step:
+      // a law divided into Artikel files its § 3 as „Art. 2 § 3", and null
+      // here means two addressed §§ would collide under one id (§12.12a).
+      return { index, article, instructions, refused, addressed: addressedParagraphs(instructions, refusedLines), labels: addressedLabels(instructions, refusedLines) }
     })
     for (const w of perArticle) if (w) touched += w.addressed.length
 
@@ -174,6 +178,11 @@ export const getConsolidatedText = defineCachedFunction(
       // exactly what `annex/annexGuardService.ts` cost once already.
       const law = article.bgbl ? await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '') : null
       if (!law) return null
+      // Two §§ of this Artikel share a number under different Artikel of the
+      // standing law. The stock is held by bare id, so one of them would
+      // answer for the other; nothing is shown rather than the wrong text.
+      const labels = w.labels
+      if (!labels) return null
 
       // Where the budget bites, it should bite the §§ that could show
       // nothing anyway.
@@ -190,7 +199,10 @@ export const getConsolidatedText = defineCachedFunction(
       // the order decide what is missing.
       const covered = (id: string): boolean =>
         paragraphRows(byParagraph, id, isPackage ? article.key : undefined).length > 0
-      const wanted = new Map([...w.addressed].map((id) => [anlageLabelKey(`§ ${id}`), covered(id)]))
+      // Asked for under the label RIS prints, not under the bare designation:
+      // in a law divided into Artikel there is no document called „§ 3", and
+      // a lookup without the Artikel comes back empty rather than wide.
+      const wanted = new Map([...w.addressed].map((id) => [anlageLabelKey(labels.get(id) ?? `§ ${id}`), covered(id)]))
       const refs = Object.entries(law.paragraphs)
         .filter(([label]) => wanted.has(anlageLabelKey(label)))
         .sort(([a], [b]) => Number(wanted.get(anlageLabelKey(b))) - Number(wanted.get(anlageLabelKey(a))))

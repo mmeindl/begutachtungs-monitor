@@ -182,6 +182,29 @@ describe('parseKonsParagraph', () => {
     expect(plainText(node)).toContain('§ 22 tritt mit 1. Jänner 2006 in Kraft.')
   })
 
+  // A law that is itself divided into Artikel prints both designations in one
+  // Gliederungssymbol. The id was read off the FIRST number, so the third § of
+  // the second Artikel arrived as "2" — a twin of the same law's § 2. Nothing
+  // noticed while `kons/novao.ts` refused every address into such a law
+  // (§12.12a, Lebensmittelbewirtschaftungsgesetz 1997).
+  it('reads the § of an article-qualified designation, not the Artikel', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">Art. 2 § 3</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 3.</gldsym> (1) Der Bundesminister kann Lenkungsmaßnahmen erlassen.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    expect(parseKonsParagraph(xml)!.id).toBe('3')
+  })
+
+  // The § there is a cross-reference, not a container, and the Anlage keeps
+  // its own number — so the rule above is anchored at the Artikel.
+  it('leaves a § cited inside an Anlage designation alone', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">Anlage 5 zu § 14</absatz>
+      <absatz typ="abs" ct="text"><gldsym>Anlage 5.</gldsym> Erster Punkt.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    expect(parseKonsParagraph(xml)!.id).toBe('5')
+  })
+
   // An Anlage is a bare list with no <absatz> at all, so the § node was never
   // created and the whole document parsed to null (6.521 characters of one
   // law's Anlage 1 became nothing).

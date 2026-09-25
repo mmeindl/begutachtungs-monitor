@@ -1939,10 +1939,65 @@ Zu bauen ist also nicht ein Ausdruck, sondern eine **artikelqualifizierte
 Paragraphenidentität**: in der Adresse (`novao.ts`), im Etikett, mit dem
 `konsService` das §-Dokument sucht (römisch → arabisch), und im Schlüssel, mit
 dem Tor und Orakel den § in der Beilage wiederfinden — die Beilage schreibt
-„§ 3." ohne Artikel, also braucht auch sie den Kontext. Ein halber Tag mit
-Tests, kein Abend, und damit ein Posten des Arbeitspakets, kein Nebenbei.
-Der Ertrag ist gemessen: ein Entwurf von 0 auf bis zu 26 Anweisungen, dazu
-19 verstreute.
+„§ 3." ohne Artikel, also braucht auch sie den Kontext.
+
+**Gebaut am 25.09.2026, und es waren vier Stellen, nicht drei.** Die vierte
+stand hinter der Verweigerung und war von ihr verdeckt: `parseKonsParagraph`
+las die Kennung aus der *ersten* Zahl des Gliederungssymbols, und „Art. 2 § 3"
+kam damit als Kennung „2" an — als Zwilling des § 2 desselben Gesetzes. Solange
+`novao.ts` jede Adresse in ein solches Gesetz abwies, fragte nie jemand danach;
+mit dem ersten Schritt allein wäre daraus ein falscher § mit richtig
+aussehendem Text geworden. Das ist das Muster, das diese Klasse teuer macht:
+Eine Verweigerung hält nicht nur eine Anzeige zurück, sie hält auch alles
+ungeprüft, was hinter ihr liegt.
+
+Die Teile, jeder mit Tests: die Adresse trägt den Artikel **neben** der
+Bezeichnung und nicht in ihr (`NovaoAddress.artikel`, arabisch normalisiert),
+weil jeder Leser der Bezeichnung — `bareParaId`, das „§ 3." der Beilage, der
+Nenner — den § allein will; `text/designation.articleNumberKey` verbindet
+römisch und arabisch und gibt für eine Zahl, die es nicht lesen kann, `null`
+zurück, was an jeder Aufrufstelle eine Verweigerung ist; `addressedLabels`
+(`konsGate.ts`) liefert das RIS-Etikett je § und **verweigert den ganzen
+Artikel**, sobald zwei adressierte §§ unter verschiedenen Artikeln dieselbe
+Nummer tragen — der Bestand hängt an der nackten Kennung, zwei Dokumente unter
+einem Schlüssel wären der erste, der für beide antwortet.
+
+**Zwei Regeln, die beim Messen entstanden und beide eine Verengung sind.**
+Erstens muss der § **unmittelbar** hinter dem Artikel stehen. „Art. n"
+irgendwo vor einem § trifft auch ein Zitat („In Umsetzung von Art. 5 der
+Richtlinie wird in § 3 …"), und `PARA_RE` liest das Zitat dann als Ziel: die
+Änderung ginge an § 5 statt an § 3. Diese Form behält die Verweigerung, die
+sie immer hatte — geöffnet wurde nur die anliegende. Zweitens **füllt eine
+abgewiesene Zeile eine Lücke, widerspricht aber nie**: sie erzeugt weder
+Operation noch Knoten, kann also keinen zweiten Bestand anlegen, und sie am
+Konflikt teilnehmen zu lassen kostete 116/ME eines seiner 65 Gesetze an einer
+Zeile, deren § anderswo einwandfrei adressiert war.
+
+**Der Ertrag, gemessen — und er ist nicht der, der hier vorhergesagt stand.**
+Über die 6.576 Anweisungen des Korpus (300 Entwürfe): 5.554 → **5.584**
+vollständig gelesen, „keine auflösbare Adresse" 407 → **376**. An 40/ME
+stimmt der Nenner erstmals (14 → **20** geänderte §§), 18 §-Dokumente werden
+gefunden, geladen und angewandt, 33 von 36 Anweisungen greifen. **Gezeigt
+wird weiterhin nichts**, und das lag nie am Artikel: Das Orakel prüft, ob die
+geltende Spalte der Beilage als *zusammenhängende* Zeichenfolge im
+Ausgangstext steht, und auf dem PDF-Pfad ist eine Zeile ein **ganzer
+Paragraph**. Wo das Ressort darin unveränderte Strecken auslässt („1. ...
+oder 2. ...", „(2) bis (4) ..."), ist die Zeile unser § mit Löchern, und die
+Enthaltung kann nicht gelten; dazu stellt der PDF-Pfad die Gruppenüberschrift
+(„Lenkungsmaßnahmen") voran, die RIS dem §-Text bewusst nicht zurechnet. Der
+Tabellenpfad trifft das nicht, weil er am Absatz schneidet und die
+ausgelassenen Zeilen mit `elided` kennzeichnet (126/ME: 272 Zeilen gegen 20).
+**Der PDF-Pfad an sich ist nicht das Hindernis** — 88/ME wird daraus geprüft
+und bestätigt zwei §§; das Hindernis ist die Auslassung *innerhalb* einer
+Ganz-§-Zeile. Steht als eigener Posten in `TODO.md` § 5a.
+
+Womit die Klasse nachträglich dorthin gehört, wo die anderen Restfehlerklassen
+schon stehen: Sie hebt **nicht** die Anzeige, sondern die Menge dessen, was
+überhaupt geprüft werden kann — plus einen verdeckten Fehler, der ohne sie
+verdeckt geblieben wäre. Die Vorhersage „hebt, was das Tor zeigen kann" war
+falsch, und sie war es, weil die Beilage lesbar war und daraus geschlossen
+wurde, sie sei auch *feinkörnig genug*. Lesbarkeit und Korngröße sind zwei
+Eigenschaften.
 
 **Auf dem Telefon angesehen — 25.09.2026, und die Schicht hält bis auf eine
 Stelle.** Geprüft war sie bis dahin nur bei 1.100 px. Bei 390 px und bei

@@ -34,9 +34,9 @@
  */
 
 import type { Instruction } from './lawApply'
-import { opAddress } from './novao'
+import { articleQualifier, opAddress } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
-import { bareParaId } from '../text/designation'
+import { articleNumberKey, bareParaId } from '../text/designation'
 
 /**
  * Why a produced § is not shown.
@@ -135,4 +135,61 @@ export function addressedParagraphs(
     if (id) out.add(id)
   }
   return [...out].sort(byParagraphOrder)
+}
+
+/**
+ * The label RIS files each addressed § under — „§ 3" ordinarily, „Art. 2 § 3"
+ * where the standing law is itself divided into Artikel (§12.12a).
+ *
+ * Two keys for one § that must not be conflated, which is why this is a map
+ * and not a renaming: the DISPLAY keys a § by its bare number („3"), because
+ * that is what the draft, the annex and the reader call it, and inside one
+ * Artikel it is unique. The RIS LOOKUP needs the Artikel, because under „§ 3"
+ * alone RIS carries no document in such a law at all — leaving the Artikel
+ * off does not widen the search, it empties it.
+ *
+ * **Null as soon as two addressed §§ carry one number under different
+ * labels.** The stock is held by bare id, so two Artikel with a § 3 would put
+ * two documents under one key and the first one fetched would answer for
+ * both — a § with the wrong law's text under a right-looking number. The same
+ * trade as everywhere in this engine: a refusal beats half an application
+ * (§12.12). Costs nothing measurable — no Ministerialentwurf of the corpus
+ * addresses two Artikel of one law (300 Entwürfe, 25.09.2026).
+ */
+export function addressedLabels(
+  instructions: readonly Instruction[],
+  refusedLines: readonly string[],
+): Map<string, string> | null {
+  const out = new Map<string, string>()
+  const add = (id: string, artikel: string | null): boolean => {
+    const label = artikel ? `Art. ${artikel} § ${id}` : `§ ${id}`
+    const seen = out.get(id)
+    if (seen !== undefined && seen !== label) return false
+    out.set(id, label)
+    return true
+  }
+  for (const { op, payload } of instructions) {
+    const address = opAddress(op)
+    if (address?.para) {
+      const id = bareParaId(address.para)
+      if (id && !add(id, address.artikel)) return null
+    }
+    // A § this instruction CREATES lives in the Artikel the instruction
+    // addresses — it has no designation of its own to read one from.
+    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
+      for (const block of payload) if (block.id && !add(block.id, address?.artikel ?? null)) return null
+    }
+  }
+  // A refused line fills a gap and never contradicts one. It produces no
+  // operation and no node, so it cannot put a second document into the stock
+  // — the collision this guards against is between two things that are
+  // actually applied. Letting it refuse the Artikel anyway cost 116/ME one of
+  // its 65 laws on a line whose § was addressed perfectly well elsewhere.
+  for (const line of refusedLines) {
+    const id = /§+\s*(\d+[a-z]*)/.exec(line)?.[1]
+    if (!id || out.has(id)) continue
+    const numeral = articleQualifier(line)
+    out.set(id, numeral ? `Art. ${articleNumberKey(numeral) ?? numeral} § ${id}` : `§ ${id}`)
+  }
+  return out
 }

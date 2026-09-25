@@ -191,7 +191,18 @@ export function parseKonsParagraph(xml: string): LawNode | null {
 
   const paraId = /<absatz[^>]*ct="artikel_anlage"[^>]*>([\s\S]*?)<\/absatz>/.exec(body)
   const idText = paraId ? text(paraId[1]!) : ''
-  const idMatch = /(?:§|Art\.?|Artikel|Anlage)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
+  // A law that is itself divided into Artikel prints both designations in one
+  // Gliederungssymbol: RIS carries „Art. 2 § 3" for the third § of the second
+  // Artikel. The general reading below takes the first number it finds, so
+  // that § arrived as id „2" — the Artikel's number, and therefore as a twin
+  // of the same law's § 2. It stayed invisible while `kons/novao.ts` refused
+  // every address into such a law; the moment the Artikel became part of an
+  // address (§12.12a, 25.09.2026), it would have been a wrong § with a
+  // correct-looking text. „Anlage 5 zu § 14" is NOT this shape — the § there
+  // is a cross-reference and the Anlage keeps its own number — so the § is
+  // read only where it stands directly behind the Artikel.
+  const artikelPara = /^\s*Art(?:\.|ikel)?\s*[\dIVXLCDM]+\s*§+\s*(\d+[a-z]*(?:\.\d+)?)/i.exec(idText)
+  const idMatch = artikelPara ?? /(?:§|Art\.?|Artikel|Anlage)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
 
   let root: LawNode | null = null
   let heading: string | null = null

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressKey, expandRange, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoOp } from '../server/utils/kons/novao'
+import { addressKey, expandRange, opAddress, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoOp } from '../server/utils/kons/novao'
 
 /** The single operation of an instruction, or a failure that names the reason. */
 function op(line: string): NovaoOp {
@@ -130,10 +130,45 @@ describe('parseInstruction', () => {
 describe('laws organised in Artikel', () => {
   // "Art. II § 1" resolved to the document's first § — Art. 1's
   // Verfassungsbestimmung — and only missed editing it because that § had no
-  // Abs. 5. Refused until the Artikel is part of a paragraph's identity.
-  it('refuses a § addressed inside an Artikel', () => {
-    expect(parseInstruction('Art. II § 1 Abs. 5 lautet:').ops).toHaveLength(0)
-    expect(parseInstruction('In Art. 2 § 7 Abs. 1 entfällt die Wortfolge "und".').ops).toHaveLength(0)
+  // Abs. 5. Refused until 25.09.2026; now the Artikel is part of the address,
+  // normalised to the arabic form RIS keys its documents by (§12.12a).
+  it('carries the Artikel of a § addressed inside one', () => {
+    expect(op('Art. II § 1 Abs. 5 lautet:')).toMatchObject({ target: { artikel: '2', para: '§ 1', abs: '5' } })
+    expect(op('In Art. 2 § 7 Abs. 1 entfällt die Wortfolge "und".')).toMatchObject({ target: { artikel: '2', para: '§ 7', abs: '1' } })
+  })
+
+  it('reads the components out of the §, not out of the Artikel in front of it', () => {
+    // `PARA_RE` matches "Artikel 1" too, so the arabic form is the dangerous
+    // one: read from the start, "Artikel 1 § 2 Abs. 3" becomes "Art. 1 Abs. 3".
+    expect(op('In Artikel 1 § 2 Abs. 3 entfällt die Wortfolge "und".')).toMatchObject({ target: { artikel: '1', para: '§ 2', abs: '3' } })
+  })
+
+  it('writes the Artikel into the key, so two Artikel never share one', () => {
+    const [a] = parseAddressList('Art. II § 3 Abs. 2')!
+    const [b] = parseAddressList('Art. III § 3 Abs. 2')!
+    expect(addressKey(a!)).toBe('Art. 2 § 3 Abs. 2')
+    expect(addressKey(b!)).toBe('Art. 3 § 3 Abs. 2')
+  })
+
+  it('carries the Artikel to the further §§ of one instruction', () => {
+    // The Artikel is written once and holds for the rest of the list, exactly
+    // like the § sign in the plural shorthand.
+    const parsed = parseInstruction('In Artikel II § 8 und § 9 Abs. 1 wird folgender Satz angefügt: "Neu."')
+    expect(parsed.ops).toHaveLength(2)
+    expect(parsed.ops.map((o) => addressKey(opAddress(o)!))).toEqual(['Art. 2 § 8', 'Art. 2 § 9 Abs. 1'])
+  })
+
+  // Only the Artikel written DIRECTLY in front of the § is a container. One
+  // standing further ahead is a citation, and `PARA_RE` would read it as the
+  // target — "Art. 5 Abs. 1" instead of "§ 3 Abs. 1", a change to the wrong §.
+  // So that shape keeps the refusal it always had.
+  it('refuses a cited Artikel ahead of the §, rather than targeting it', () => {
+    expect(parseInstruction('In Umsetzung von Art. 5 der Richtlinie wird in § 3 Abs. 1 die Wortfolge "alt" durch "neu" ersetzt.').ops).toHaveLength(0)
+  })
+
+  it('refuses a numeral it cannot read rather than guessing at it', () => {
+    // "IIII" is no roman numeral; joining it to an Artikel would pick one.
+    expect(parseInstruction('In Artikel IIII § 3 entfällt die Wortfolge "und".').ops).toHaveLength(0)
   })
 
   it('still reads an Artikel address that names no §', () => {

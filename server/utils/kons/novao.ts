@@ -20,6 +20,7 @@
  * comes back as `null` with a reason, and stays an instruction on screen.
  */
 import { normalizeText, stripQuotes } from '../lawtext/normalize'
+import { articleNumberKey } from '../text/designation'
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -36,6 +37,18 @@ export type UnitLevel = 'para' | 'abs' | 'z' | 'lit' | 'satz' | 'abschnitt' | 't
 export interface NovaoAddress {
   /** "§ 9", "Art. 3", "Anlage 2" — the top-level unit, as written */
   para: string | null
+  /**
+   * "2" — the Artikel of the STANDING law this § lives in, normalised to the
+   * arabic form RIS keys it by; null where the law has no Artikel level,
+   * which is the ordinary case.
+   *
+   * Not part of `para`, and deliberately so: `para` is the designation as
+   * written, and every reader of it downstream — `bareParaId`, the annex's
+   * `§ 3.`, `addressedParagraphs` — wants the § alone. The Artikel is the
+   * SCOPE the § is unique in, so it belongs beside the designation rather
+   * than inside it (§12.12a).
+   */
+  artikel: string | null
   abs: string | null
   z: string | null
   lit: string | null
@@ -158,6 +171,32 @@ const LIT_RE = /\blit\.?\s*([a-z]+)\b/i
 const ABSCHNITT_RE = /\b(\d+[a-z]*)\.\s*(?:Haupt|Unter)?[Aa]bschnitt(?:e?s)?\b|\b(?:Haupt|Unter)?[Aa]bschnitt\s+([\dIVXL]+[a-z]*)/
 const TITEL_RE = /\bTitel des (?:Bundesgesetzes|Gesetzes)\b|\bder Titel dieses\b/i
 const DOCUMENT_RE = /\b(?:im|Im) gesamten (?:Gesetzes|Verordnungs|Bundesgesetzes)?text\b|\bin allen (?:Bestimmungen|Paragraf)/i
+/**
+ * The Artikel DIRECTLY in front of a § — "Art. II § 3", "Artikel 1 § 2".
+ * Roman and arabic both occur, in one draft even both spellings of the same
+ * Artikel (`articleNumberKey` joins them).
+ *
+ * The adjacency is the whole rule, and it was bought: "Art. n" anywhere ahead
+ * of a § also matches a citation that has nothing to do with the target — "In
+ * Umsetzung von Art. 5 der Richtlinie wird § 3 geändert". Read as a container
+ * that § is looked up in an Artikel the law does not have, and worse, it
+ * disagrees with the same § addressed plainly elsewhere, which costs the whole
+ * Artikel its display (`kons/konsGate.ts`, measured on 116/ME). Every
+ * container form in the corpus writes the § immediately behind the Artikel.
+ */
+const ARTIKEL_QUALIFIER_RE = /\bArt(?:\.|ikel)\s*([\dIVXLCDM]+)\s*§/i
+
+/**
+ * The Artikel a line names in front of its §, as the line writes it —
+ * null where none stands there.
+ *
+ * Exported so that the readers outside this module ask the same grammar
+ * rather than a second regex of their own; the arabic join is
+ * `text/designation.articleNumberKey`, deliberately a separate step.
+ */
+export function articleQualifier(text: string): string | null {
+  return ARTIKEL_QUALIFIER_RE.exec(maskQuotes(normalizeText(text)))?.[1] ?? null
+}
 
 /**
  * "Die Überschrift zu § 5 lautet" targets the heading; "§ 5 lautet samt
@@ -290,30 +329,49 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const alsoHeading = !heading && ALSO_HEADING_RE.test(t)
 
   // A law organised in Artikel addresses a § that exists only inside one of
-  // them: "Art. II § 1 Abs. 5 lautet". Neither this address model nor the
-  // standing law carries the Artikel, so the § resolved against the whole
-  // document — in the Lebensmittelbewirtschaftungsgesetz "Art. II § 1" found
-  // Art. 1's Verfassungsbestimmung and missed editing it by a single Absatz
-  // (2026-09-09). An `Art.` *after* the § is a citation ("die Wortfolge Art. 9
-  // der Verordnung"), not a container, so only the leading form is refused.
-  // Until the Artikel is part of a paragraph's identity this is a refusal.
-  const artikel = /\bArt(?:\.|ikel)\s*[\dIVXL]+/i.exec(t)
+  // them: "Art. II § 1 Abs. 5 lautet". The Artikel is then not decoration but
+  // the scope the § number is unique in — read as if it were not there, the §
+  // resolves against the whole document, and in the
+  // Lebensmittelbewirtschaftungsgesetz "Art. II § 1" found Art. 1's
+  // Verfassungsbestimmung and missed editing it by a single Absatz
+  // (2026-09-09). Until 25.09.2026 that was a refusal; now the Artikel is
+  // carried as part of the address, and the refusal stays for the one case
+  // that still cannot be joined: a numeral this cannot read.
+  //
+  // An `Art.` *after* the § is a citation ("die Wortfolge Art. 9 der
+  // Verordnung"), not a container, so only the leading form qualifies.
+  const leadingArtikel = ARTIKEL_QUALIFIER_RE.exec(t)
+  // An `Art.` that stands ahead of the § WITHOUT the § behind it is neither a
+  // container nor harmless: `PARA_RE` reads it as the target, so "In Umsetzung
+  // von Art. 5 der Richtlinie wird in § 3 Abs. 1 …" would change § 5. That was
+  // refused before the Artikel became part of an address and is refused still
+  // — only the adjacent form was opened.
+  const anyArtikel = /\bArt(?:\.|ikel)\s*[\dIVXLCDM]+/i.exec(t)
   const paragraphAt = t.indexOf('§')
-  if (artikel && paragraphAt > artikel.index) return null
+  if (anyArtikel && paragraphAt > anyArtikel.index && anyArtikel.index !== leadingArtikel?.index) return null
+  const artikel = leadingArtikel ? articleNumberKey(leadingArtikel[1]!) : (inherited?.artikel ?? null)
+  if (leadingArtikel && artikel === null) return null
+  // From the § on, so the components are read out of the § and not out of the
+  // Artikel in front of it: `PARA_RE` matches "Artikel 1" too, and the arabic
+  // form of "Artikel 1 § 2 Abs. 3" would otherwise come back as "Art. 1
+  // Abs. 3" — the very confusion the refusal used to prevent. The sentence
+  // word and the heading words are still read from the whole address, because
+  // both may stand in front of the Artikel.
+  const scope = leadingArtikel ? t.slice(leadingArtikel.index + leadingArtikel[0].length - 1) : t
 
   if (DOCUMENT_RE.test(t)) {
-    return { para: null, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'document', heading: false, alsoHeading: false, raw: t }
+    return { para: null, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'document', heading: false, alsoHeading: false, raw: t }
   }
 
-  const pm = PARA_RE.exec(t)
+  const pm = PARA_RE.exec(scope)
   if (!pm) {
-    const sm = ABSCHNITT_RE.exec(t)
+    const sm = ABSCHNITT_RE.exec(scope)
     if (sm) {
       const nr = sm[1] ?? sm[2] ?? ''
-      return { para: `Abschnitt ${nr}`, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'abschnitt', heading, alsoHeading, raw: t }
+      return { para: `Abschnitt ${nr}`, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'abschnitt', heading, alsoHeading, raw: t }
     }
     if (TITEL_RE.test(t)) {
-      return { para: null, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'titel', heading: true, alsoHeading: false, raw: t }
+      return { para: null, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'titel', heading: true, alsoHeading: false, raw: t }
     }
     if (!inherited?.para) return null
   }
@@ -321,7 +379,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const para = pm ? (pm[1] ? `§ ${pm[1]}` : pm[2] ? `Art. ${pm[2]}` : `${pm[3]} ${pm[4]}`) : inherited!.para
   // Components are read after the § so a § number is not mistaken for an
   // Absatz of an earlier reference in the same sentence.
-  const tail = pm ? t.slice(pm.index + pm[0].length) : t
+  const tail = pm ? scope.slice(pm.index + pm[0].length) : scope
   const am = ABS_RE.exec(tail)
   const zm = Z_RE.exec(tail)
   const lm = LIT_RE.exec(tail)
@@ -375,7 +433,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   // a component of their own really stand there.
   if (level !== 'para' && /§§/.test(t) && [...t.matchAll(/\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))/gi)].length > 1) return null
 
-  return { para, abs, z, lit, satz, satzCount, siblings, level, heading, alsoHeading, raw: t }
+  return { para, artikel, abs, z, lit, satz, satzCount, siblings, level, heading, alsoHeading, raw: t }
 }
 
 /**
@@ -446,10 +504,20 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
     const single = parseAddress(text, inherited)
     return single ? [single] : null
   }
+  // The Artikel is written once and holds for the rest of the list, exactly
+  // like the § sign in the plural shorthand: "In Artikel II § 8 und § 9
+  // Abs. 1" names two §§ of Artikel II, not one of it and one of the whole
+  // law. It is handed on as TEXT rather than as a parsed value, so every
+  // segment goes through the one reading in `parseAddress` — a second place
+  // that decides what an Artikel is would be a second place for the two to
+  // drift apart.
+  const carried = ARTIKEL_QUALIFIER_RE.exec(t)
+  const prefix = carried ? `Art. ${carried[1]} ` : ''
   const out: NovaoAddress[] = []
   for (const segment of segments) {
     for (const one of splitPluralParagraphs(segment) ?? [segment]) {
-      const a = parseAddress(one, inherited)
+      const qualified = prefix && !ARTIKEL_QUALIFIER_RE.test(one) ? prefix + one : one
+      const a = parseAddress(qualified, inherited)
       if (!a) return null
       out.push(a)
     }
@@ -462,7 +530,9 @@ export function addressKey(a: NovaoAddress): string {
   if (a.level === 'document') return '(gesamter Text)'
   if (a.level === 'titel') return '(Titel)'
   const satz = a.satz === 'einleitung' ? 'Einleitungssatz' : a.satz === 'schluss' ? 'Schlussteil' : a.satz && (a.satzCount > 1 ? `${a.satz} Satz +${a.satzCount - 1}` : `${a.satz} Satz`)
-  return [a.para, a.abs && `Abs. ${a.abs}`, a.z && `Z ${a.z}`, a.lit && `lit. ${a.lit}`, satz].filter(Boolean).join(' ')
+  // The Artikel leads, in RIS's own spelling ("Art. 2 § 3"): it is the scope
+  // the § number is unique in, so two Artikel of one law must not share a key.
+  return [a.artikel && `Art. ${a.artikel}`, a.para, a.abs && `Abs. ${a.abs}`, a.z && `Z ${a.z}`, a.lit && `lit. ${a.lit}`, satz].filter(Boolean).join(' ')
 }
 
 // ---------------------------------------------------------------------------
