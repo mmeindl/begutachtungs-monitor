@@ -1,0 +1,74 @@
+#!/bin/sh
+# Runs, before every push, exactly the four commands that
+# `.github/workflows/ci.yml` runs — so "green here" means "green on the
+# runner". Roughly ten seconds when the caches are warm.
+#
+# Why it exists: `pnpm typecheck:tools` is the only check that sees `tests/`
+# and `scripts/` — `nuxt typecheck` covers the app, the server and `shared/`,
+# and vitest does not typecheck at all. So a type error in a test file was
+# invisible locally and could only be found on the runner. On 25.09.2026 a
+# field added to `EnactmentInfo` left a test builder behind exactly that way,
+# and two pushes went red one after the other, the second inheriting the
+# first.
+#
+# What it does NOT do, said plainly: it checks the working tree, not the
+# commits being pushed. Uncommitted work is therefore part of the verdict —
+# which is the right trade for a checkout that is usually clean at push time,
+# and the reason the hook does not stash anything.
+#
+# `git push --no-verify` skips it. A push that only deletes refs skips itself.
+#
+# One-time setup per clone — the hook is version-controlled, so it is not in
+# `.git/hooks/` where git looks by default:
+#
+#   git config core.hooksPath .githooks
+
+# Before reading stdin: `exec` below must inherit it. A push from a GUI (the
+# editor's source-control panel) can carry the bare launchd PATH, without the
+# node version manager and without Homebrew. Rather than hard-coding those
+# paths, ask the login shell once — the cost lands only in the case that would
+# otherwise fail with "pnpm: not found".
+if ! command -v pnpm >/dev/null 2>&1 && [ -z "$PREPUSH_LOGIN_SHELL" ]; then
+  PREPUSH_LOGIN_SHELL=1
+  export PREPUSH_LOGIN_SHELL
+  exec "${SHELL:-/bin/sh}" -lc '"$0" "$@"' "$0" "$@"
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  echo "pre-push: pnpm not found, even through the login shell." >&2
+  echo "          Fix the PATH, or push with --no-verify and watch CI." >&2
+  exit 1
+fi
+
+# git feeds one line per ref: <local ref> <local sha> <remote ref> <remote sha>.
+# A deletion carries the all-zero sha as its local one, and there is nothing to
+# check about a deletion.
+pushes_content=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+    *[!0]*) pushes_content=1 ;;
+  esac
+done
+[ "$pushes_content" -eq 1 ] || exit 0
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+run() {
+  label=$1
+  script=$2
+  printf '  %-28s' "$label"
+  if output=$(pnpm "$script" 2>&1); then
+    printf 'ok\n'
+    return 0
+  fi
+  printf 'FAILED\n\n%s\n\n' "$output"
+  echo "pre-push: \`pnpm $script\` failed — the same step would fail in CI." >&2
+  echo "          Push anyway with: git push --no-verify" >&2
+  exit 1
+}
+
+echo "pre-push: the four checks from ci.yml"
+run "Tests"                       test
+run "Typecheck app/server"        typecheck
+run "Typecheck scripts/tests"     typecheck:tools
+run "Lint"                        lint
