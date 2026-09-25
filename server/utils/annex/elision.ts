@@ -145,3 +145,61 @@ export function elisionOpens(current: string, proposed: string): string | null {
   const head = ELISION_HEAD_RE.exec(current)
   return head ? `${head[1]!.replace(/\s+/g, ' ').trim()}.` : null
 }
+
+/**
+ * The stretches a cell actually prints, with its elision runs taken out.
+ *
+ * `isElidedPair` above answers whether a whole row is nothing but the
+ * notation. This answers the other half, and it is the half the PDF path
+ * needs: there a row is a **whole §**, so the ressort leaves unchanged
+ * stretches out *inside* it — „Landwirtschaftliche Fläche § 25. (1) und (2)
+ * … (3) Grünland sind Flächen, …" is one provision with holes, not an
+ * elided row. Over the 400 most recent Begut records (25.09.2026) 1.835 of
+ * the PDF path's 2.950 substantive rows carry such a hole, in 84 of its 95
+ * drafts; on the table path, where a row is an Absatz, 98 of 6.168 in 29 of
+ * 118 drafts.
+ *
+ * A caller that needs the cell's words unbroken — `annexText.comparableTokens`
+ * for the coverage bag — does not want this; a caller that compares the cell
+ * against a running text does, because the holes make the cell a subsequence
+ * of that text and never a substring of it (`kons/tguOracle.ts`).
+ *
+ * **A stretch loses the designation chain that introduces the dots, and only
+ * there.** „(2) bis (4) …" abbreviates three Absätze: „bis" is not law text
+ * and „(4)" names what is missing rather than showing it. The chain is taken
+ * off a stretch a mark FOLLOWS, never off the last one — a cell ending in
+ * „… gemäß § 5 Abs. 3" ends in law, not in an announcement. That is what
+ * keeps this a generalisation: a cell without a mark comes back whole, so
+ * every row that reads correctly today reads identically.
+ *
+ * Same notation as `withoutElision`, and again written out rather than
+ * imported: that function asks whether anything is left, this one where the
+ * cuts are, and a shared regex would have to answer both. Kept in step by
+ * hand — designations joined by bis/und, closed by three dots, and the
+ * brackets some ressorts put around them („[…]", GAP-Strategieplan).
+ */
+const ELISION_RUN_RE = /\[\s*(?:\.{2,}|…+)\s*\]|\.{2,}|…+/g
+const DESIGNATION_TOKEN = String.raw`(?:\(\s*\d+[a-z]*\s*\)|\d+[a-z]*(?:\.\d+)?\.?|[a-z]{1,2}[).]|x{2,4}\.?)`
+const DESIGNATION_PART = String.raw`(?:§+\s*)?(?:(?:Abs|Z|lit|Art|Artikel|Anlage|Anhang|Teil|Abschnitt|Unterabschnitt|Hauptstück|Kapitel)\b\.?\s*)?${DESIGNATION_TOKEN}`
+/** „bis", „und" — or a plain space, which is how a compound designation joins („(5) Z 1 …"). */
+const DESIGNATION_JOIN = String.raw`(?:\s*(?:bis|und|sowie|oder|,|[-–—])\s*|\s+)`
+/**
+ * The chain at the end of a stretch, anchored at a word boundary and bounded
+ * in length — both deliberately. Without `(?:^|\s)` the chain would eat the
+ * last two letters of „Förderwerber." as a litera; without the `{0,8}` an
+ * unbounded run of an optional unit backtracks, which is the trap
+ * `withoutElision` records one function above.
+ */
+const ELISION_HEAD_RE_TAIL = new RegExp(String.raw`(?:^|\s)${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'i')
+
+export function printedStretches(text: string): string[] {
+  const out: string[] = []
+  let at = 0
+  ELISION_RUN_RE.lastIndex = 0
+  for (let mark = ELISION_RUN_RE.exec(text); mark; mark = ELISION_RUN_RE.exec(text)) {
+    out.push(text.slice(at, mark.index).replace(ELISION_HEAD_RE_TAIL, ''))
+    at = mark.index + mark[0].length
+  }
+  out.push(text.slice(at))
+  return out.map((s) => s.trim()).filter((s) => s !== '')
+}

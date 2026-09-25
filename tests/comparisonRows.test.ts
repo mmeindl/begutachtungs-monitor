@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseTextComparison, summarizeComparison } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { isElidedPair } from '../server/utils/annex/elision'
+import { isElidedPair, printedStretches } from '../server/utils/annex/elision'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
 
@@ -856,6 +856,55 @@ describe('isElidedPair — a number is not elision syntax', () => {
 
   it('keeps a row elided where only the dots differ', () => {
     expect(isElidedPair('(1) bis (4) ...', '(1) bis (4) …')).toBe(true)
+  })
+})
+
+describe('printedStretches — the other half of the notation', () => {
+  // On the PDF path a row is a whole §, so the ressort's elisions sit INSIDE
+  // it and the cell is our § with holes. 1.835 of the PDF path's 2.950
+  // substantive rows carry one (25.09.2026, `pnpm corpus:inner-elision`).
+  it('cuts a whole-§ row at its holes', () => {
+    expect(printedStretches('Landwirtschaftliche Fläche § 25. (1) und (2) ... (3) Grünland sind Flächen. (4) bis (6) ...')).toEqual([
+      'Landwirtschaftliche Fläche',
+      '(3) Grünland sind Flächen.',
+    ])
+  })
+
+  // The chain that introduces the dots names what is missing instead of
+  // showing it, so it goes with them — litterae, hyphen ranges, the "xx" a
+  // ressort writes for a number it has not fixed, and the compound
+  // designation "(5) Z 1" the corpus prints joined by a plain space.
+  it('takes the announcement off with the dots', () => {
+    expect(printedStretches('a) bis d) … b) Text')).toEqual(['b) Text'])
+    expect(printedStretches('Vor. (1) - (4) … Nach')).toEqual(['Vor.', 'Nach'])
+    expect(printedStretches('Vor 1. bis xxx. … Nach')).toEqual(['Vor', 'Nach'])
+    expect(printedStretches('Kopf § 209. (1) bis (5) Z 1 … 2. Rest')).toEqual(['Kopf', '2. Rest'])
+    // "[…]" — the GAP-Strategieplan annex brackets its dots.
+    expect(printedStretches('Eins [...] Zwei')).toEqual(['Eins', 'Zwei'])
+  })
+
+  // The whole safety of the generalisation: a cell without a mark comes back
+  // whole, so every row that reads correctly today reads identically. Measured
+  // over 3.550 unmarked rows of the corpus — nought differences.
+  it('gives back a cell without a mark unchanged', () => {
+    const cell = 'Der Antrag ist gemäß § 5 Abs. 3 zu stellen.'
+    expect(printedStretches(cell)).toEqual([cell])
+  })
+
+  // …and that includes a cell that ENDS in a designation. The chain is taken
+  // off a stretch a mark follows, never off the last one: "… gemäß § 5 Abs. 3"
+  // ends in law, not in an announcement.
+  it('keeps a trailing designation that announces nothing', () => {
+    expect(printedStretches('(1) Vorher … (2) Es gilt § 5 Abs. 3')).toEqual(['(1) Vorher', '(2) Es gilt § 5 Abs. 3'])
+  })
+
+  // The word-boundary anchor, and why it is not decoration: without it the
+  // chain reads the last two letters of "Förderwerber." as a litera and eats
+  // the sentence's last word.
+  it('does not read the end of a word as a litera', () => {
+    expect(printedStretches('(3) Die Summe beträgt 225 000 € je Förderwerber. (4) und (5) …')).toEqual([
+      '(3) Die Summe beträgt 225 000 € je Förderwerber.',
+    ])
   })
 })
 

@@ -1999,6 +1999,65 @@ falsch, und sie war es, weil die Beilage lesbar war und daraus geschlossen
 wurde, sie sei auch *feinkörnig genug*. Lesbarkeit und Korngröße sind zwei
 Eigenschaften.
 
+**Die Binnenauslassung ist gemessen und segmentiert (25.09.2026).** Erst die
+Häufigkeit, denn sie entscheidet, ob die Klasse überhaupt gebaut gehört: über
+die 400 jüngsten Begut-Sätze tragen **84 der 95 Entwürfe** mit lesbarer
+PDF-Beilage (88,4 %) mindestens eine Substanzzeile mit einer Auslassungsmarke,
+und **1.835 der 2.950 Substanzzeilen** (62,2 %) sind selbst eine; in der
+vorgeschlagenen Spalte 1.801 (61,1 %). Auf dem Tabellenpfad, wo eine Zeile ein
+Absatz ist, sind es 29 von 118 Entwürfen und 98 von 6.168 Zeilen (1,6 %). Die
+Binnenauslassung ist also keine Randerscheinung des PDF-Pfads, sondern seine
+Normalform — das Messgerät steht als `pnpm corpus:inner-elision`.
+
+**Was die Segmentierung einbringt**, gemessen durch dieselbe Funktion, die der
+Server benutzt (`annex/elision.ts`, `printedStretches`): Von den 1.585
+markierten Zeilen, deren Paragraph sich im RIS auflösen lässt, bestand Check 1
+vorher **0**, nachher **697 (44,0 %)**; auf dem Tabellenpfad 3 von 66 gegen
+**58 (87,9 %)**. Dazu die Zusicherung, die das Ganze zu einer
+Verallgemeinerung macht statt zu einer Lockerung: über die 3.550 Zeilen
+**ohne** Marke urteilen alte und neue Prüfung Zeichen für Zeichen gleich —
+**0 Abweichungen**. Eine Zelle ohne Marke kommt ungeteilt zurück, und die
+einleitende Bezeichnungskette wird nur einer Strecke genommen, auf die eine
+Marke *folgt*: „… gemäß § 5 Abs. 3" am Ende einer Zelle ist Gesetzestext, keine
+Ankündigung.
+
+**Beide Enthaltungsprüfungen, nicht nur die erste** — und das ist keine
+Gründlichkeit, sondern die Bedingung dafür, dass der Umbau überhaupt etwas
+bringt. Check 2 hält die vorgeschlagene Spalte gegen unser Ergebnis und hatte
+dasselbe Problem, von demselben Ressort in derselben Zeile erzeugt. Nur
+Check 1 zu öffnen hätte die Paragraphen aus `fremd` herausgeholt, damit sie
+unmittelbar an Check 2 scheitern — und die Seite hätte dem Leser dann „die
+Beilage widerspricht" gesagt, wo das Ressort bloß Text weggelassen hat. Eine
+falsche Zurechnung ist schlechter als gar keine.
+
+**In Reihenfolge und ohne Überlappung**, sonst wäre es keine Prüfung mehr:
+drei einzeln nachgeschlagene Strecken dürften überall stehen, und eine Zelle,
+deren Absätze in der falschen Ordnung ankommen — was eine falsch gelesene
+Seite erzeugt —, ginge durch. Der Index wandert deshalb mit.
+
+**Am Tor, Ende zu Ende** (laufender Server, 15 Entwürfe, vorher gegen nachher
+am selben Tag): gezeigte Paragraphen **4 → 58** von 851 adressierten, 14 der
+Entwürfe mit lesbarer Beilage. 40/ME, der Fall, an dem die Klasse gefunden
+wurde, zeigt erstmals etwas — **0 → 4 von 20** (§§ 3, 4, 21, 25); 108/ME
+0 → 11 von 92, 128/ME 0 → 8 von 28, 97/ME 0 → 5 von 15, 25/ME 2 → 9 von 22.
+Drei bleiben bei null (81, 85 und der Tabellenpfad-Entwurf 77): die Klasse war
+nicht die einzige Ursache, und diesmal steht die Vorhersage neben der Messung
+statt vor ihr.
+
+**Was jetzt bremst, ist der Kopf der Zeile — eine andere Ursache, gemessen und
+nicht mitgebaut.** 888 der 1.585 Zeilen hängen weiter an Check 1, und der
+Rest, an dem sie hängen, ist fast durchwegs derselbe: „1. Kapitel Allgemeine
+Bestimmungen Verfahren für die Antragstellung", „3. Abschnitt Antragstellung
+Inhalt des Mehrfachantrags" — der Stapel Gruppenüberschriften, den der
+PDF-Pfad der Zeile voranstellt und den RIS dem §-Text bewusst nicht zurechnet.
+**Der naheliegende Schnitt ist gemessen und zu grob:** alles vor der eigenen
+Kennung der Zeile wegzunehmen hebt Check 1 auf 1.204 (76,0 %), schneidet aber
+dort, wo eine Zeile ihren eigenen Paragraphen *zitiert*, 472 Zeichen echten
+Textes weg und mitten in eine Auslassungskette hinein — aus „§ 1. bis § 3. …"
+wird „bis". Den RIS-Kontext mitzugeben, also die Gruppenüberschriften, die
+`fetchParagraphTree` als `context` führt, bringt **4 Zeilen** und damit
+nichts. Eigener Posten in `TODO.md` § 5a.
+
 **Auf dem Telefon angesehen — 25.09.2026, und die Schicht hält bis auf eine
 Stelle.** Geprüft war sie bis dahin nur bei 1.100 px. Bei 390 px und bei
 320 px läuft nichts über (`scrollWidth` gleich `clientWidth`, kein Element

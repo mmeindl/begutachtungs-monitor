@@ -138,3 +138,55 @@ describe('the oracle reads removals too (2026-09-23)', () => {
     expect(oracleVerdict('8', before, 'a) die Anzeige,', rows)).toMatchObject({ verdict: 'bestätigt' })
   })
 })
+
+describe('a whole-§ row with holes in it (2026-09-25)', () => {
+  // The PDF path emits one row per §, and the ressort leaves the §'s
+  // unchanged stretches out inside that row. The cell is then a subsequence
+  // of the standing text and never a substring of it, so the first
+  // containment refused every such row as `fremd`: 0 of 1.585 rows the corpus
+  // could resolve against RIS passed it (`pnpm corpus:inner-elision`,
+  // 25.09.2026). Both checks segment at the marks now, and 697 of them pass.
+  const before = 'Zuständig ist die Behörde. (2) Die Frist beträgt sechs Wochen. (3) Der Antrag ist schriftlich zu stellen.'
+  const got = 'Zuständig ist die Behörde. (2) Die Frist beträgt sechs Wochen. (3) Der Antrag ist elektronisch zu stellen.'
+  const whole = pair(
+    '§ 6. (1) Zuständig ist die Behörde. (2) … (3) Der Antrag ist schriftlich zu stellen.',
+    '§ 6. (1) Zuständig ist die Behörde. (2) … (3) Der Antrag ist elektronisch zu stellen.',
+    '§ 6.',
+  )
+
+  it('confirms a § whose unchanged middle the annex left out', () => {
+    expect(oracleVerdict('6', before, got, [whole])).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('still calls a row about another version foreign', () => {
+    // The holes must not become a licence: what the annex does print has to
+    // be in the standing text, or the row is talking about another law.
+    const other = pair('§ 6. (1) Zuständig ist das Landesgericht. (2) … (3) Der Antrag ist schriftlich zu stellen.', '§ 6. (1) Zuständig ist das Landesgericht. (2) … (3) Der Antrag ist elektronisch zu stellen.', '§ 6.')
+    expect(oracleVerdict('6', before, got, [other])).toMatchObject({ verdict: 'fremd' })
+  })
+
+  it('still contradicts a result the annex does not show', () => {
+    const wrong = 'Zuständig ist die Behörde. (2) Die Frist beträgt sechs Wochen. (3) Der Antrag ist mündlich zu stellen.'
+    expect(oracleVerdict('6', before, wrong, [whole])).toMatchObject({ verdict: 'widersprochen' })
+  })
+
+  // The stretches are walked in the order the annex prints them and without
+  // overlap. Looked up one by one each could match anywhere, and a cell whose
+  // Absätze arrived in the wrong order — which is what a mis-read page
+  // produces — would pass as if nothing were wrong.
+  it('refuses stretches the standing text carries in the other order', () => {
+    const swapped = pair('§ 6. (3) Der Antrag ist schriftlich zu stellen. (2) … (1) Zuständig ist die Behörde.', '§ 6. (3) Der Antrag ist elektronisch zu stellen. (2) … (1) Zuständig ist die Behörde.', '§ 6.')
+    expect(oracleVerdict('6', before, got, [swapped])).toMatchObject({ verdict: 'fremd' })
+  })
+
+  // Freeing the geltende column alone would have moved the § out of `fremd`
+  // only for its proposed column — elided by the same ressort in the same row
+  // — to contradict it, and the page would tell the reader the annex
+  // disagrees with us where it simply left text out. 1.801 of the PDF path's
+  // 2.950 substantive rows carry a mark on that side too.
+  it('segments the proposed column as well', () => {
+    const rows = [pair('§ 6. (1) Zuständig ist die Behörde. (2) und (3) …', '§ 6. (1) Zuständig ist das Amt. (2) und (3) …', '§ 6.')]
+    const after = 'Zuständig ist das Amt. (2) Die Frist beträgt sechs Wochen. (3) Der Antrag ist schriftlich zu stellen.'
+    expect(oracleVerdict('6', before, after, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})

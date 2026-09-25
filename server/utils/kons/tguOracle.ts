@@ -31,6 +31,7 @@
 import { diffTokens } from '../diff/wordDiff'
 import { normalizeText } from '../lawtext/normalize'
 import type { ComparisonRow } from '../annex/comparisonRows'
+import { printedStretches } from '../annex/elision'
 import { punctuationTokens } from '../text/punctuationTokens'
 
 export type OracleVerdict =
@@ -182,6 +183,44 @@ function words(t: string): string[] {
 }
 
 /**
+ * The stretch of a cell that `text` does not account for — null when it
+ * accounts for all of them, in the order the cell prints them.
+ *
+ * **Containment had to become piecewise, and the PDF path is why.** The two
+ * checks below ask whether a running text carries what the annex prints, and
+ * they asked it of the cell as ONE string. On the table path a cell is an
+ * Absatz, so that mostly holds; on the PDF path a cell is a **whole §**, and
+ * the ressort leaves its unchanged stretches out inside it („(2) bis (4) …").
+ * A § with holes is a subsequence of the standing text and never a substring
+ * of it, so check 1 refused every such row as `fremd` — **0 of 1.585** rows
+ * the corpus could resolve against RIS passed it (25.09.2026). Segmenting at
+ * the marks and asking the same question of each stretch answers 682 of them
+ * (43,0 %); on the table path 58 of 66 against 3 today.
+ *
+ * **In order and without overlap**, which is what keeps this a check. Three
+ * stretches looked up independently could each match anywhere, so a cell whose
+ * Absätze the annex printed in the wrong order would pass; walking an index
+ * forward means the standing text has to carry them as the annex prints them.
+ *
+ * **A cell without a mark comes back whole** (`printedStretches`), so this is
+ * `includes` for every row that reads correctly today — the generalisation
+ * costs no strictness anywhere the old test already had an answer.
+ */
+function unaccountedStretch(text: string, cell: string): string | null {
+  let at = 0
+  for (const stretch of printedStretches(cell)) {
+    const piece = key(stretch)
+    // A stretch that is nothing but markers — "§ 5." alone at the head of a
+    // PDF row — keys to the empty string and says nothing either way.
+    if (piece === '') continue
+    const found = text.indexOf(piece, at)
+    if (found < 0) return stretch
+    at = found + piece.length
+  }
+  return null
+}
+
+/**
  * The oracle's verdict on one §: `before` and `got` as `plainText` gives
  * them (`before` null for a § the draft creates), `rows` the annex rows of
  * that §.
@@ -193,8 +232,9 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   const beforeKey = key(before ?? '')
   const gotKey = key(got)
   for (const row of substantive) {
-    if (row.current && !beforeKey.includes(key(row.current))) {
-      return { para: id, verdict: 'fremd', rows: rows.length, note: `Geltende Fassung der Gegenüberstellung nicht im Ausgangstext: "${row.current.slice(0, 60)}"` }
+    const missing = row.current ? unaccountedStretch(beforeKey, row.current) : null
+    if (missing !== null) {
+      return { para: id, verdict: 'fremd', rows: rows.length, note: `Geltende Fassung der Gegenüberstellung nicht im Ausgangstext: "${missing.slice(0, 60)}"` }
     }
   }
   for (const row of substantive) {
@@ -204,13 +244,19 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
     // read. What it has to say is the mirror image: the text must be *gone*
     // from the result (23.09.2026).
     if (!row.proposed) {
-      if (row.current && gotKey.includes(key(row.current))) {
+      if (row.current && unaccountedStretch(gotKey, row.current) === null) {
         return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Gestrichene Fassung steht noch im Ergebnis: "${row.current.slice(0, 60)}"` }
       }
       continue
     }
-    if (!gotKey.includes(key(row.proposed))) {
-      return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Vorgeschlagene Fassung nicht im Ergebnis: "${row.proposed.slice(0, 60)}"` }
+    // The same segmentation as check 1, and it has to be the same: freeing
+    // the geltende column alone would move a § out of `fremd` only to have
+    // its proposed column — elided by the very same ressort in the very same
+    // row — contradict it, and the page would then tell the reader the annex
+    // disagrees with us where in truth it simply left text out.
+    const missing = unaccountedStretch(gotKey, row.proposed)
+    if (missing !== null) {
+      return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Vorgeschlagene Fassung nicht im Ergebnis: "${missing.slice(0, 60)}"` }
     }
   }
   // Everything the engine inserted must be a word the annex's proposed
