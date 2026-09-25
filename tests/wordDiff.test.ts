@@ -189,3 +189,39 @@ describe('isAddressOnlyDifference', () => {
     expect(isAddressOnlyDifference(null)).toBe(false)
   })
 })
+
+describe('diffTokens — die Anzeigeform trägt den Bindestrich', () => {
+  // Between 23.09. and 25.09.2026 the diff aligned on the folded form AND
+  // built its segments from it, so the page published „BundesKinder- und
+  // Jugendhilfegesetzes" for „Bundes-Kinder- und Jugendhilfegesetzes" — the
+  // law's own name misspelt in a law text (126/ME § 9).
+  it('shows a hyphenated word as the document writes it', () => {
+    expect(diffTokens('', 'Art. 20 Abs. 2 B-VG gilt sinngemäß.').segments).toEqual([
+      { type: 'inserted', text: 'Art. 20 Abs. 2 B-VG gilt sinngemäß.' },
+    ])
+  })
+
+  it('keeps the inner hyphen of a word that only one side carries', () => {
+    const d = diffTokens('bei einem Kinder- und Jugendhilfeträger', 'bei einem Kinder- und Jugendhilfeträger nach dem Bundes-Kinder- und Jugendhilfegesetz')
+    expect(d.segments).toEqual([
+      { type: 'equal', text: 'bei einem Kinder- und Jugendhilfeträger' },
+      { type: 'inserted', text: 'nach dem Bundes-Kinder- und Jugendhilfegesetz' },
+    ])
+  })
+
+  // The 23.09.2026 measurement, unchanged: Parliament's HTML sets a soft
+  // hyphen where the law has a hard one, and a unit must not turn substantive
+  // over it. Equal words come from the EARLIER text, so the reader sees the
+  // spelling of the document that carried the word.
+  it('still counts a word that differs only in hyphenation as unchanged', () => {
+    const d = diffTokens('die E-Mail-Adresse der Bundes-Vergabekontrollkommission', 'die EMailAdresse der BundesVergabekontrollkommission')
+    expect(d.similarity).toBe(1)
+    expect(d.segments).toEqual([{ type: 'equal', text: 'die E-Mail-Adresse der Bundes-Vergabekontrollkommission' }])
+  })
+
+  it('still folds the leader dots and the space before a punctuation mark', () => {
+    const d = diffTokens('monatlich........................ 13 , und', 'monatlich 13, und')
+    expect(d.similarity).toBe(1)
+    expect(d.segments).toEqual([{ type: 'equal', text: 'monatlich 13, und' }])
+  })
+})

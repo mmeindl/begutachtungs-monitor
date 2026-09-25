@@ -6833,6 +6833,49 @@ unentdeckt. Die aufgelösten Paare verteilen sich auf zwölf Entwürfe (20, 30,
 die freigewordene rechte Seite im selben Artikel ein anderes Gegenstück
 findet.
 
+**Nummer 3 hatte zwei Tage lang einen Fehler, und es war derselbe wie in
+§12.12a — eine Urteilsform, die auf die Seite geriet (gefunden und behoben
+25.09.2026).** `tokens()` las `compareTokens`, und der Wortdiff baute daraus
+**auch seine Segmente**: die Angleichung und die Anzeige aus einem Array. Der
+gefaltete Bindestrich stand damit im ausgelieferten Gesetzestext. 126/ME § 9
+zeigte „des BundesKinder- und Jugendhilfegesetzes 2013" statt
+„Bundes-Kinder-…" — der Name des Gesetzes falsch geschrieben in einem
+Gesetzestext —, und über die ganze Lesefassung dieses Entwurfs überlebte
+**kein einziger** innerer Bindestrich. Der Kommentar an `compareTokens`
+behauptete das Gegenteil und widersprach sich dabei selbst („niemals die
+ANZEIGEFORM: die Segmente, die der Leser sieht, werden aus diesen Token
+gebaut").
+
+**Die Trennung folgt der Frage, welche Faltung eine Wortgrenze bewegt.**
+Füllpunkte und das Leerzeichen vor `.,;:` tun das — eine Punktreihe ist ein
+Token, das es nur auf einer Seite gibt, „13 ," sind zwei Token gegen eines —,
+also müssen sie fallen, bevor irgendetwas gezählt wird, und sie sind ohnehin
+Satz und nicht Wort. Der Bindestrich bewegt keine Grenze; er steht **in** einem
+Wort, und ihn zu falten schreibt das Wort um. Seit 25.09.2026 liefert
+`displayTokens` deshalb die Anzeigeform und `compareToken` den Vergleichs-
+schlüssel **je Token**: `INNER_HYPHEN_RE` braucht links und rechts ein
+Zeichen, kann also kein Token teilen, zwei verbinden oder eines leeren — die
+beiden Arrays laufen Index für Index. Angeglichen wird auf `compare`,
+ausgegeben wird `display`.
+
+Gemessen, beides: Über 147.131 Texte mit 16,7 Mio. Zeichen (300 Entwurfs-XML
+plus die Erläuterungen der GP XXVIII), davon 9.747 mit innerem Bindestrich,
+ist das Angleichungs-Array **bitgleich** mit dem alten — Ähnlichkeit, LCS-Pfad
+und Segmentgrenzen können sich also nicht bewegt haben, nur der ausgegebene
+Text. Über 998 Zeilenpaare aus 13 Textgegenüberstellungen ändert sich in 182
+(18 %) die **Anzeige**, und `isEditorialChange` wie
+`isAddressOnlyDifference` kippen in **null** Fällen. Die Tabelle oben gilt
+unverändert.
+
+Die Anzeige war nicht der einzige Schaden: Der gefaltete Bindestrich zählte im
+Plausibilitätswächter als unerklärtes Wort, weil die Operanden ihn tragen und
+das Segment nicht. Deshalb hielt das Tor Paragraphen zurück. An sechs
+gemessenen Entwürfen 38 → **43** gezeigte §§ — 132/ME 0 → 3, 100/ME 5 → 6,
+126/ME 31 → 32 (womit die 32 von 61 dieser Sektion wieder stimmen; § 212b
+RStDG war der verlorene). Gefunden wurde das nicht am Text, sondern an der
+einen fehlenden Zahl: Zwei Worktrees auf denselben RIS-Daten, einer auf
+6475f6d, einer auf HEAD — dieselbe Beilage, ein § Unterschied.
+
 **Auf der Strecke Regierungsvorlage → Bundesgesetzblatt zahlt Nummer 3 genau
 das ein, wofür sie gebaut ist, und Nummer 1 legt eine alte Asymmetrie frei.**
 Mit Nummer 3 allein fallen 51/ME, 58/ME und 60/ME auf **null** substanzielle

@@ -72,9 +72,12 @@ const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])/g
  * falls away here decides whether two texts count as EQUAL — not how they
  * look.
  *
- * Its word-level twin is `compareTokens` below, and the two have to agree:
- * this one answers „sind die Texte gleich?", that one „ist DIESES Wort
- * geändert?" — and a difference only one of them sees is a false verdict.
+ * Its word-level twin is `displayTokens` + `compareToken` below, and the
+ * three have to agree: this one answers „sind die Texte gleich?", those two
+ * „ist DIESES Wort geändert?" — and a difference only one side sees is a
+ * false verdict. That the word level needs TWO functions where this one needs
+ * none is the difference between them: an equality form is never shown, a
+ * word diff is.
  */
 export function compareKey(t: string): string {
   return normalizeText(t)
@@ -83,8 +86,8 @@ export function compareKey(t: string): string {
 }
 
 /**
- * The comparison form of a text at WORD level: everything `compareKey` folds
- * away, minus the space that separates two words.
+ * The words of a text as a word diff SHOWS them — the reader's form, and the
+ * one the token count is defined by.
  *
  * **Measured 23.09.2026, rv→bgbl over GP XXVIII.** `compareKey` decides
  * whether a unit counts as unchanged, the word diff decides which words
@@ -97,21 +100,49 @@ export function compareKey(t: string): string {
  * „BT-06", „E-GoVG" and „E-Mail-Adresse" and the Parliament document sets the
  * same words without the hyphen.
  *
- * The space in front of `.,;:` is the same kind of artefact as the soft
- * hyphen `compareKey` documents: a property of how a source sets its text,
- * never of the norm. It is removed rather than tokenised away, because
- * removing it welds the mark onto the word it closes — which is where every
- * other source puts it.
+ * **Two of those three folds live here and the third does not, and the split
+ * is the whole point (25.09.2026).** Leader dots and the space in front of
+ * `.,;:` change where the word boundaries ARE — a run of dots is a token that
+ * exists on one side only, and „13 ," is two tokens against one — so they have
+ * to fall away before anything is counted, and they are layout either way: no
+ * reader loses a word by them. The hyphen is not like that. It sits INSIDE a
+ * word, it folds no boundary, and folding it rewrites the word itself.
  *
- * Like `compareKey`, this is never the DISPLAYED form: the segments the
- * reader sees are built from these tokens, so a folded hyphen shows the
- * document's own spelling of whichever side carried the word.
+ * Which is why it is `compareToken` below and not part of this: for two
+ * days this function folded all three and the word diff built its segments
+ * from the result, so the page published „BundesKinder- und
+ * Jugendhilfegesetzes" for „Bundes-Kinder- und Jugendhilfegesetzes" — the law's
+ * own name misspelt in a law text (126/ME § 9, found 25.09.2026; across that
+ * draft's whole Lesefassung not one inner hyphen survived). The same mistake
+ * as the comparison form on the page in §12.12a, one level further down: a
+ * form that is right for a judgement is not thereby right for a text.
  */
-export function compareTokens(t: string): string {
+export function displayTokens(t: string): string[] {
   return normalizeText(t)
     .replace(LEADER_DOTS_RE, ' ')
     .replace(SPACE_BEFORE_PUNCT_RE, '$1')
-    .replace(INNER_HYPHEN_RE, '')
+    .split(' ')
+    .filter(Boolean)
+}
+
+/**
+ * The comparison key of ONE displayed word — the hyphen `compareKey` folds,
+ * folded the same way.
+ *
+ * Per token, not per text, and that is what makes it safe to show a word and
+ * compare it by something else: `INNER_HYPHEN_RE` needs a letter or digit on
+ * both sides, so it can never split a token, join two or empty one. The two
+ * arrays therefore run index for index, and the diff can align on this while
+ * emitting what `displayTokens` gave it.
+ *
+ * The measurement it carries is `compareKey`'s: Parliament's HTML sets a SOFT
+ * hyphen where the law has a hard one, `normalizeText` strips soft hyphens to
+ * nothing, and „OTCDerivaten" against „OTC-Derivaten" reported 11 of 58 units
+ * changed in 9/ME and 7 of 78 in 10/ME — every one of them a verdict on
+ * parliament that nobody had earned.
+ */
+export function compareToken(word: string): string {
+  return word.replace(INNER_HYPHEN_RE, '')
 }
 
 /**

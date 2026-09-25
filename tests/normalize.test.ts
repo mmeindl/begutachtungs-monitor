@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareKey, stripMarkup } from '../server/utils/lawtext/normalize'
+import { compareKey, compareToken, displayTokens, stripMarkup } from '../server/utils/lawtext/normalize'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 
@@ -94,5 +94,36 @@ describe('compareKey and the leader dots', () => {
 
   it('leaves ordinary sentence punctuation alone', () => {
     expect(compareKey('Der Satz endet.')).not.toBe(compareKey('Der Satz endet'))
+  })
+})
+
+describe('displayTokens and compareToken — die zwei Formen des Wortdiffs', () => {
+  // The split exists so the diff can align on one and show the other. The
+  // guarantee that makes it safe is the length: `compareToken` folds inside a
+  // token, so it can never split one, join two or empty one.
+  it('gives one compare key per displayed word, index for index', () => {
+    const text = 'die E-Mail-Adresse der Bundes-Vergabekontrollkommission, 13 , und monatlich......... 100'
+    const display = displayTokens(text)
+    expect(display.map(compareToken)).toHaveLength(display.length)
+    expect(display.every((w) => compareToken(w).length > 0)).toBe(true)
+  })
+
+  it('shows the hyphen and compares without it', () => {
+    expect(displayTokens('die E-Mail-Adresse')).toEqual(['die', 'E-Mail-Adresse'])
+    expect(compareToken('E-Mail-Adresse')).toBe('EMailAdresse')
+    expect(compareToken('E-Mail-Adresse')).toBe(compareToken('EMailAdresse'))
+  })
+
+  // Both fold a word BOUNDARY, which is why they cannot wait for the token
+  // level: a run of dots is a token on one side only, „13 ," is two against one.
+  it('folds the leader dots and the space before punctuation away', () => {
+    expect(displayTokens('monatlich......................... 100')).toEqual(['monatlich', '100'])
+    expect(displayTokens('der Betrag 13 , und')).toEqual(['der', 'Betrag', '13,', 'und'])
+  })
+
+  it('leaves a hyphen that closes a word alone, and one that stands alone', () => {
+    // „Kinder- und Jugendhilfe": the trailing hyphen is the word, not layout.
+    expect(compareToken('Kinder-')).toBe('Kinder-')
+    expect(compareToken('-')).toBe('-')
   })
 })

@@ -13,7 +13,7 @@
  * are measured decisions (`docs/refactor-plan.md` §9).
  */
 import type { LawDiffSegment } from '../../../shared/types'
-import { compareTokens } from '../lawtext/normalize'
+import { compareToken, displayTokens } from '../lawtext/normalize'
 
 /** Above this many token pairs the word-level diff is skipped (O(n·m) memory). */
 const MAX_DP_CELLS = 2_500_000
@@ -23,18 +23,30 @@ const MAX_DP_CELLS = 2_500_000
 // ---------------------------------------------------------------------------
 
 /**
- * The compared words of a text — `compareTokens`, not `normalizeText`, since
- * 23.09.2026.
+ * A text as two arrays that run index for index: what the reader is shown,
+ * and what decides whether a word counts as changed.
  *
  * The two forms have to fold the same artefacts away, or a unit that is
  * „geändert" for any other reason collects a changed WORD for every space in
  * front of a full stop and every hyphen one side sets and the other does not
- * (the measurement is at `compareTokens`). The reader still sees the
- * document's own spelling: the segments carry these tokens, and the side that
- * wrote „E-Mail-Adresse" is the side the word comes from.
+ * (the measurement is at `displayTokens`). But they must not be the SAME
+ * array: aligning on the folded form and emitting it too is what published
+ * „BundesKinder-" for „Bundes-Kinder-" (25.09.2026). So the alignment reads
+ * `compare` and every segment is built from `display`.
+ *
+ * The promise this finally keeps: a word that differs only in hyphenation
+ * aligns as `equal`, and `emit` takes the equal word from the EARLIER text —
+ * so the reader sees the spelling of the document that carried it.
  */
-function tokens(t: string): string[] {
-  return compareTokens(t).split(' ').filter(Boolean)
+interface Words {
+  display: string[]
+  compare: string[]
+}
+
+function words(t: string): Words {
+  const display = displayTokens(t)
+  // Never a different length: `compareToken` folds inside a token only.
+  return { display, compare: display.map(compareToken) }
 }
 
 export interface TokenDiff {
@@ -44,19 +56,19 @@ export interface TokenDiff {
 
 /** Longest-common-subsequence diff over word tokens; similarity = 2·lcs/(n+m). */
 export function diffTokens(aText: string, bText: string): TokenDiff {
-  const a = tokens(aText)
-  const b = tokens(bText)
-  const n = a.length
-  const m = b.length
+  const a = words(aText)
+  const b = words(bText)
+  const n = a.compare.length
+  const m = b.compare.length
   if (n === 0 && m === 0) return { similarity: 1, segments: [] }
-  if (n * m > MAX_DP_CELLS) return { similarity: bagSimilarity(a, b), segments: null }
+  if (n * m > MAX_DP_CELLS) return { similarity: bagSimilarity(a.compare, b.compare), segments: null }
 
   // dp[i][j] = LCS length of a[i..] and b[j..]
   const width = m + 1
   const dp = new Uint16Array((n + 1) * width)
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      dp[i * width + j] = a[i] === b[j] ? dp[(i + 1) * width + j + 1]! + 1 : Math.max(dp[(i + 1) * width + j]!, dp[i * width + j + 1]!)
+      dp[i * width + j] = a.compare[i] === b.compare[j] ? dp[(i + 1) * width + j + 1]! + 1 : Math.max(dp[(i + 1) * width + j]!, dp[i * width + j + 1]!)
     }
   }
   const lcs = dp[0]!
@@ -69,20 +81,20 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
   let i = 0
   let j = 0
   while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      emit('equal', a[i]!)
+    if (a.compare[i] === b.compare[j]) {
+      emit('equal', a.display[i]!)
       i++
       j++
     } else if (dp[(i + 1) * width + j]! >= dp[i * width + j + 1]!) {
-      emit('removed', a[i]!)
+      emit('removed', a.display[i]!)
       i++
     } else {
-      emit('inserted', b[j]!)
+      emit('inserted', b.display[j]!)
       j++
     }
   }
-  while (i < n) emit('removed', a[i++]!)
-  while (j < m) emit('inserted', b[j++]!)
+  while (i < n) emit('removed', a.display[i++]!)
+  while (j < m) emit('inserted', b.display[j++]!)
   return { similarity: (2 * lcs) / (n + m), segments }
 }
 
@@ -105,8 +117,8 @@ export function diffTokens(aText: string, bText: string): TokenDiff {
  * units = 2,0 s (`docs/refactor-plan.md` §6.3).
  */
 export function tokenSimilarity(aText: string, bText: string, minimum = 0): number {
-  const a = tokens(aText)
-  const b = tokens(bText)
+  const a = words(aText).compare
+  const b = words(bText).compare
   const n = a.length
   const m = b.length
   if (n === 0 && m === 0) return 1
