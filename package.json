@@ -31,6 +31,7 @@
     "corpus:skipped": "vite-node scripts/corpus/begutachtungSkipped.ts --",
     "corpus:me-antrag": "vite-node scripts/corpus/meAntragJoin.ts --",
     "corpus:rv-latenz": "vite-node scripts/corpus/rvLatency.ts --",
+    "corpus:list81-drift": "vite-node scripts/corpus/list81Drift.ts --",
     "ci:annex-drift": "vite-node scripts/ci/annexDrift.ts --",
     "ci:gate-record": "vite-node scripts/ci/gateGoldenRecord.ts --",
     "postinstall": "nuxt prepare"

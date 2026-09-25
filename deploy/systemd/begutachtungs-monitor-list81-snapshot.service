@@ -1,0 +1,26 @@
+# Installed by deploy/deploy.sh on every deploy (rsync + daemon-reload).
+# One daily copy of list 81 into /var/lib/begutachtungs-monitor/list81/, for
+# the two questions in the script's header (docs/architecture.md §13.3 and the
+# size of the persistence package). Started 24.09.2026, planned for about two
+# weeks — a measurement, not a feature: nothing the site serves reads it.
+#
+# The work is in a script rather than in ExecStart because the filename
+# carries the date, and a `$(date)` inside a unit file is an escaping question
+# nobody should have to answer twice.
+#
+# One request a day against an API whose rate limits are undocumented (§13.6)
+# — small enough that it needs no coordination with the prewarm timer, but it
+# runs after it anyway, so the two never share a minute.
+[Unit]
+Description=Begutachtungs-Monitor: daily snapshot of Parliament list 81
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=app
+Group=app
+StateDirectory=begutachtungs-monitor
+ExecStart=/usr/local/lib/begutachtungs-monitor/list81-snapshot.sh
+NoNewPrivileges=true
+PrivateTmp=true

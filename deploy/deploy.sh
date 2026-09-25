@@ -20,9 +20,15 @@ rsync -az --delete .output/ "$SERVER:$APP_DIR/"
 # systemd units live in git (deploy/systemd/) and are installed on every
 # deploy — idempotent, no manual step on the server when a unit changes.
 rsync -az deploy/systemd/ "$SERVER:/etc/systemd/system/"
-ssh "$SERVER" "chown -R app:app $APP_DIR \
+# What those units execute when it is more than one command (deploy/bin/).
+# Outside $APP_DIR, which is rsynced with --delete.
+ssh "$SERVER" "mkdir -p /usr/local/lib/begutachtungs-monitor"
+rsync -az deploy/bin/ "$SERVER:/usr/local/lib/begutachtungs-monitor/"
+ssh "$SERVER" "chmod +x /usr/local/lib/begutachtungs-monitor/*.sh \
+  && chown -R app:app $APP_DIR \
   && systemctl daemon-reload \
   && systemctl enable --now --quiet begutachtungs-monitor-prewarm.timer \
+  && systemctl enable --now --quiet begutachtungs-monitor-list81-snapshot.timer \
   && systemctl restart begutachtungs-monitor"
 
 sleep 2

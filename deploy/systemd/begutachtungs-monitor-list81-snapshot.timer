@@ -1,0 +1,20 @@
+# Installed by deploy/deploy.sh on every deploy.
+#
+# 05:10 UTC: after the RIS prewarm (04:30 + up to 20 min jitter), so the two
+# never overlap, and far from Parliament's own sync — `lastSync` on list 81
+# was minutes old whenever it was read, so no hour is the right one to wait
+# for and any quiet hour does.
+#
+# Persistent=true does double duty: it catches up a run the server slept
+# through, and it makes the FIRST snapshot happen at `enable --now` instead of
+# a day later — the series starts with the deploy that installs it.
+[Unit]
+Description=Begutachtungs-Monitor: daily list-81 snapshot
+
+[Timer]
+OnCalendar=*-*-* 05:10:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

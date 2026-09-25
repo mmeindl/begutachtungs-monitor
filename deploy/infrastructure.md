@@ -68,9 +68,28 @@ idempotent and safe to re-run:
 - **unattended-upgrades** — automatic security patches.
 - **1 GB swapfile** — headroom next to the 1 GB RAM.
 
-The server holds **no state**: the app caches upstream data in memory only.
-The box is disposable — a full rebuild is bootstrap + deploy, ~15 minutes,
-on any Ubuntu VPS (the scripts are provider-agnostic).
+Two systemd timers come with [deploy.sh](deploy.sh) rather than with
+bootstrap.sh, because their unit files live in git
+([deploy/systemd/](systemd/)) and are reinstalled on every deploy:
+
+- **`begutachtungs-monitor-prewarm.timer`** — nightly 04:30, warms the
+  RIS↔ME map, the BGBl volumes, the Verordnungen and the station map; the
+  Nitro cache is in memory, so a restart empties it.
+- **`begutachtungs-monitor-list81-snapshot.timer`** — daily 05:10 UTC, keeps
+  one copy of Parliament's list 81 in
+  `/var/lib/begutachtungs-monitor/list81/`. A measurement, not a feature: it
+  answers whether `Frist` moves when a Begutachtung is extended
+  (`docs/architecture.md` §13.3) and how many rows change per day at all.
+  Started 24.09.2026 and planned for about two weeks;
+  `deploy/bin/list81-snapshot.sh` says how to stop it.
+
+Nothing the site serves comes from disk. What does live in
+`/var/lib/begutachtungs-monitor` is the last-good Stellungnahmen fallback
+(`server/utils/parliament/lastgood.ts`, losing it costs a degraded page) and
+the snapshot series above (losing it costs the measurement, and it is not
+republished anywhere — the licence question is open). Otherwise the box is
+disposable: a full rebuild is bootstrap + deploy, ~15 minutes, on any Ubuntu
+VPS (the scripts are provider-agnostic).
 
 ## Recurring commands
 
@@ -81,6 +100,10 @@ on any Ubuntu VPS (the scripts are provider-agnostic).
 | Uptime: test the alarm mail | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor -f simulate=down` — opens a `downtime` issue titled "Testalarm" with the @mention (= the e-mail an outage sends); the next scheduled run, at most 30 min later, closes it. First tested 08.09.2026 |
 | Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab. **Timing:** GitHub's cron is best-effort — after the workflow was first pushed (08.09.2026, 11:35 UTC) the first scheduled run came at 15:17 UTC, six slots later, and runs start ~10 min after their slot. Good enough to catch an outage of hours, not one of minutes |
 | App logs | `ssh root@85.235.66.11 journalctl -u begutachtungs-monitor -f` |
+| Timers: when do they fire | `ssh root@85.235.66.11 'systemctl list-timers begutachtungs-monitor-*'` |
+| list-81 snapshots: are they arriving | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/list81/'` — one file per day; a gap means the run failed, and `journalctl -u begutachtungs-monitor-list81-snapshot` says why |
+| list-81 snapshots: read the series | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/list81/ .cache/list81/ && pnpm corpus:list81-drift` |
+| list-81 snapshots: stop collecting | `ssh root@85.235.66.11 'systemctl disable --now begutachtungs-monitor-list81-snapshot.timer'` — and take the `enable` line out of [deploy.sh](deploy.sh), or the next deploy turns it back on |
 | Service status | `ssh root@85.235.66.11 'systemctl status begutachtungs-monitor caddy'` |
 | Re-run setup | `scp deploy/bootstrap.sh root@85.235.66.11: && ssh root@85.235.66.11 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'` |
 
