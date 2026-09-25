@@ -71,12 +71,12 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) — plus list 81 of the period before it in two independent places, both only around a Periodenwechsel: the still-running Fristen it carries into `open` (§12.36) and, while the new period is too young to be ranked, the volume ranking (§12.35) |
 | `GET /api/dashboard/outcomes` | `DashboardOutcomes` | The outcomes of the volume ranking — of the SAME period `/api/dashboard` ranked, through `rankedPeriod.ts` (§12.35) — (closed rows only, ≤5 ME-Gegenstand + their RV leg through the 30-min leaf caches). Server-rendered on `/` with a 4 s timeout. The recency pool and its extension probe were removed on 18.09.2026 with the section they fed (§12.23) |
 | `GET /api/dashboard/enacted` | `DashboardEnacted` | "Zuletzt Gesetz geworden": list 101 narrowed by `Status` to the finished Vorlagen, detail JSON for the newest 30 of them, ordered by BGBl number (Teil I), deduplicated per draft, top 4 joined against list 81; falls back to the period before while the running one has promulgated nothing, and names which it read (§12.35). Server-rendered with a 4 s timeout — measured 0.93 s fully cold (30 parallel Gegenstand fetches: 0.54 s), 14 ms warm |
-| `GET /api/drafts?gp&status&station&ministry&q` | `DraftsResponse` | List 81 + the station map (§12.26); `status`: `open\|closed\|all` (default `all`), where **`open` = „Stellungnahme möglich"**: laufende Frist ODER offenes Vorlagen-Formular. `station`: comma list of `begutachtung\|rv\|parlament\|bgbl` (default all), read under a 2.5 s budget — on timeout the answer carries `stationsAvailable: false` and is NOT filtered. `q` searches title/citation/ministry CODE and the debate names server-side: the words of the query are AND-linked and each one a substring, read raw or with umlauts, transliterations and punctuation folded — either reading may match, so „oekostrom" finds „Ökostromförderung" and „ergesetz" still finds „Paketsteuergesetz" (`shared/utils/textMatch.ts`, measured 22.09.2026). No `art`: this list holds Ministerialentwürfe and nothing else, so the Art filter of `/entwuerfe` does not narrow it — it decides whether the endpoint is asked at all (§7) |
+| `GET /api/drafts?gp&status&station&ministry&q` | `DraftsResponse` | List 81 + the station map (§12.26). **Without `gp` the answer carries the Fristen that outlive a Periodenwechsel** and names their period in `carriedOverFrom`; with a `gp` it is strictly that period (§12.36). `status`: `open\|closed\|all` (default `all`), where **`open` = „Stellungnahme möglich"**: laufende Frist ODER offenes Vorlagen-Formular. `station`: comma list of `begutachtung\|rv\|parlament\|bgbl` (default all), read under a 2.5 s budget — on timeout the answer carries `stationsAvailable: false` and is NOT filtered. `q` searches title/citation/ministry CODE and the debate names server-side: the words of the query are AND-linked and each one a substring, read raw or with umlauts, transliterations and punctuation folded — either reading may match, so „oekostrom" finds „Ökostromförderung" and „ergesetz" still finds „Paketsteuergesetz" (`shared/utils/textMatch.ts`, measured 22.09.2026). No `art`: this list holds Ministerialentwürfe and nothing else, so the Art filter of `/entwuerfe` does not narrow it — it decides whether the endpoint is asked at all (§7) |
 | `GET /api/stations/:gp` | counts per station | The station map of one period (`aktuell` = running GP), awaited in full — the prewarm call that pays the cold build (227 requests for GP XXVIII, 650 for XXVII). Its counts are the live base rate of a running period (§12.26) |
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
 | `GET /api/drafts/:gp/:inr/statements` | `StatementsResponse` | List 142, GDPR-filtered, date descending; on failure the persisted last-good list with `staleAsOf` (cache rule 4), 502 only without any record |
 | `GET /api/drafts/:gp/:inr/diff` | `LawDiffResponse` | The two Gesetzestext HTMLs (ME from `content.documents`, RV from `content.statements.documents`) → § units → **scoped to the laws both texts carry** → aligned → word diff; cached 24 h. `lawsOnlyInTo` / `lawsOnlyInFrom` name the laws left out, with their unit counts — a Regierungsvorlage that merges several drafts would otherwise report hundreds of §§ as new (§6d). `available: false` with a German reason when no RV exists yet or a text is PDF-only (GP XXVII and earlier). `docs/ris-join.md` §6b |
-| `GET /api/ris-drafts?gp&status&ministry&art&q` | `RisConsultationsResponse` | The RIS Begut records Parliament has no Gegenstand for — mostly Verordnungsentwürfe (§12.16). Same query vocabulary as `/api/drafts` plus `art` — which here means the INSTRUMENT KIND (`verordnung\|gesetz\|unbestimmt`) and not the Art filter of `/entwuerfe`: that one names a HALF, and 3 of the 201 records of this half are no Verordnungen (measured 23.09.2026), so the page selects the half and never passes its value on. Sorted by the same `compareDrafts`, because `/entwuerfe` merges both lists (§12.19) |
+| `GET /api/ris-drafts?gp&status&ministry&art&q` | `RisConsultationsResponse` | The RIS Begut records Parliament has no Gegenstand for — mostly Verordnungsentwürfe (§12.16). Same query vocabulary as `/api/drafts` plus `art` — which here means the INSTRUMENT KIND (`verordnung\|gesetz\|unbestimmt`) and not the Art filter of `/entwuerfe`: that one names a HALF, and 3 of the 201 records of this half are no Verordnungen (measured 23.09.2026), so the page selects the half and never passes its value on. Sorted by the same `compareDrafts`, because `/entwuerfe` merges both lists (§12.19). Without `gp` it carries the still-running Begutachtungen of the period before (§12.36) and reports them in `carriedOverFrom`; a record whose Ministerialentwurf belongs to that earlier period is claimed by its map too, so the boundary cannot produce the same draft twice (§12.37) |
 | `GET /api/ris-drafts/:id` | `RisConsultationDetail` | One such record by its RIS document id (`BEGUT_…`, validated against `RIS_ID_RE` — the same pattern the page route and the per-item `.ics` test). Renders at `/entwuerfe/:id`, the same namespace as a draft (§12.19) |
 | `GET /api/ris-map/:gp` (or `aktuell`) | `RisMapResponse` | RIS Begut record per ME of the GP with status/tier/score, RIS URL and document URLs, the Ende offset (a non-zero value is a Fristabweichung). Cached 30 min on top of the 20-h corpus cache; the nightly prewarm timer calls `aktuell`. `docs/ris-join.md` §3a |
 | `GET /feed.xml` | RSS 2.0 | Current GP plus the Fristen still running from the period before it (§12.36), newest arrival first, max 50 items; deterministic output (no `Date.now()`, absolute dates in descriptions — never countdowns), ETag/304; builders in `server/utils/feeds.ts` (pure, tested) |
@@ -7147,14 +7147,73 @@ leer, nicht beinahe leer. Beide Regeln schalten sich außerdem selbst ab:
 `windowPeriodFor` greift nur für die Periode direkt nach der neuesten
 Tabellenzeile und hört auf, sobald sie ergänzt ist.
 
-**Was NICHT mitgeht: `/entwuerfe`.** Die Liste ist periodengebunden, und
-zwar sichtbar — sie trägt einen Periodenwähler, und quer über die Grenze zu
-lesen änderte, was dieser Wähler bedeutet; dazu wird die Stationskarte je
-Periode gebaut. Die Folge ist bekannt und begrenzt: im Übergangsfenster
-zeigt der eine Weg hinaus aus „Jetzt in Begutachtung" weniger Zeilen als der
-Abschnitt darüber (mit erzwungener GP XXIX: 9 gegen 0). Das verletzt §12.24
-für diese Wochen; die Abwägung steht in `TODO.md`, die Behebung wäre eine
-eigene Messung wert und keine Nebenwirkung dieser hier.
+**`/entwuerfe` geht mit — aber nur, wenn der Aufruf keine Periode genannt
+hat.** Die Liste trägt einen sichtbaren Periodenwähler; quer über die Grenze
+zu lesen änderte, was dieser Wähler bedeutet. Also entscheidet nicht die
+Seite, sondern die Frage: `?gp=XXVII` ist eine Frage nach einer Periode und
+wird periodenrein beantwortet, ohne `gp` fragt jemand „was gibt es gerade",
+und dann gehört eine Frist, die den Wechsel überlebt, zur Antwort. Wählt
+jemand oben eine Periode, hört das Mitlesen von selbst auf. Ohne diese Regel
+zeigte der eine Weg hinaus aus „Jetzt in Begutachtung" im Übergangsfenster
+**9 gegen 0** Zeilen — §12.24 gebrochen in genau den Wochen, um die es hier
+geht.
+
+**Und die Liste sagt es.** Der Periodenwähler zeigt in diesen Wochen die
+laufende Periode, während ein paar Zeilen aus der davor stammen; zwei
+Perioden stillschweigend unter einem Etikett ist das, was §12.21 ablehnt.
+Ein Satz über den Zeilen nennt sie, und beide Endpunkte melden nur, was das
+Filtern überlebt hat — `status=closed` siebt die mitgelesenen Zeilen ohnehin
+alle aus.
+
+**Die Stationskarte bleibt bei ihrer Periode.** `chains` ist nach `inr`
+allein verschlüsselt, und Geschäftszahlen fangen in jeder Periode wieder bei
+1 an: eine mitgelesene Zeile bekäme sonst die Station eines fremden Entwurfs
+mit derselben Nummer aufgesetzt. Sie bleibt deshalb ohne Chain und fällt in
+`filterDraftList` auf `begutachtung` zurück — für eine laufende Frist die
+richtige und zugleich schwächste Behauptung. Eine zweite Karte zu bauen wäre
+für diese paar Zeilen ein kalter 35-Sekunden-Lauf (§12.26).
+
+### 12.37 Drei Tage Versatz: derselbe Entwurf zweimal auf der Startseite
+
+**Beim Prüfen von §12.36 gefunden, am 25.09.2026, und es lag schon vorher
+da.** Eine RIS-Begutachtung wird ihrer Periode nach dem **Beginn**
+zugeschlagen, ihr Ministerialentwurf nach dem **Einlangen** im Parlament —
+und die beiden Daten liegen ein paar Tage auseinander, weil RIS die
+Begutachtung veröffentlicht, wenn sie beginnt, und das Parlament den Entwurf
+verzeichnet, wenn er einlangt.
+
+An einer Periodengrenze fallen sie damit auf verschiedene Seiten: der
+Entwurf steht noch in Liste 81 der alten Periode, sein Record schon im
+Fenster der neuen. `getRisMapForGp` der neuen Periode kennt nur deren eigene
+Entwürfe, beansprucht ihn also nicht — und der Record erscheint als
+„Begutachtung ohne Gegenstand im Parlament", was das eine ist, was er nicht
+ist.
+
+**Mit dem Carry-over daneben wird daraus eine sichtbare Doppelung.**
+Nachgestellt mit einer Grenze am 20.09.2026 (Produktionsbuild, kalte Caches):
+137/ME Klimagesetz, 138/ME UVP-G und 139/ME CO2-Speicherungsgesetz standen
+zweimal auf der Startseite — einmal als Ministerialentwurf aus dem
+Carry-over, einmal als Verordnungsentwurf aus der RIS-Hälfte. In der Karte
+der XXVIII sind alle drei sauber `matched`; es fehlte nicht der Join,
+sondern die Frage.
+
+**Also zwei Karten.** `getRisOnlyForGp` beansprucht einen Record jetzt auch
+dann, wenn ihn die Karte der **Vorperiode** hält. Nur diese eine Richtung,
+und die ist nicht symmetrisch gewählt: der Versatz geht „Entwurf früher,
+Record später", die fehlende Karte ist damit immer die der Periode davor.
+
+**Im Normalbetrieb ändert das nichts, und das ist gemessen, nicht gehofft:**
+am 25.09.2026 trägt die Karte der XXVIII 137 Zeilen mit `risId`, und
+`withGegenstand` der XXVIII ist 137 — Differenz null, die zweite Karte
+beansprucht heute keinen einzigen zusätzlichen Record. Sie greift an der
+Grenze und sonst nie.
+
+(Eine Warnung zur Messmethode nebenbei: zwei frühere Zahlenpaare zu dieser
+Stelle waren in sich widersprüchlich, weil der `derived`-Cache des
+Dev-Servers Einträge aus der Zeit vor einer Änderung hielt und der
+RIS-Bestand zwischen zwei Messungen wächst. Was hier steht, ist an einem
+frischen Produktionsbuild auf eigenem Port gemessen — bei Fragen an dieser
+Kette ist das der einzige verlässliche Weg.)
 
 ## 13. Open questions
 

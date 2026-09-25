@@ -1,5 +1,7 @@
 /**
  * GET /api/drafts?gp&status&station&ministry&q → DraftsResponse.
+ * Without `gp` the answer carries the Fristen that outlive a Periodenwechsel
+ * (§12.36); with one it is strictly that period.
  * status: open|closed|all (default all); station: a comma list of
  * begutachtung|rv|parlament|bgbl (default all); q searches title, citation,
  * ministry CODE and aliases server-side — never the ministry name
@@ -10,6 +12,7 @@ import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { gpHasEnded } from '#shared/utils/gp'
 import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
 import { dedupeDraftList, filterDraftList, sortDraftList } from '../../utils/parliament/draftList'
+import { getCarryOverDrafts } from '../../utils/parliament/carryOver'
 
 /** How long the list waits for the station map before answering without it.
  *  2,5 s: warm the map costs 8 ms, cold 35 s — there is nothing in between
@@ -27,7 +30,18 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
    * reported 353 of 350 entries for GP XXVII (`dedupeDraftList`). Every
    * list answer this endpoint gives — the rows, `total`, the Ressort
    * options — comes through here, so the fold belongs at this one point. */
-  const rows = dedupeDraftList((await getDraftsForGp(gp)).items.map(reconcileActive))
+  /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat
+   * (§12.36). `?gp=XXVII` ist eine Frage nach einer Periode und wird
+   * periodenrein beantwortet — sonst hieße der sichtbare Periodenwähler auf
+   * `/entwuerfe` etwas anderes, als er sagt. Ohne `gp` fragt jemand „was
+   * gibt es gerade", und dann ist eine Frist, die den Wechsel überlebt, Teil
+   * der Antwort: genau daran hing der eine Weg aus „Jetzt in Begutachtung"
+   * heraus, der im Übergangsfenster ins Leere lief. */
+  const carried = query.gp === undefined ? await getCarryOverDrafts(currentGp) : []
+  const rows = dedupeDraftList([
+    ...(await getDraftsForGp(gp)).items.map(reconcileActive),
+    ...carried,
+  ])
 
   /* The station map is ENRICHMENT, never a precondition: a cold build costs
    * hundreds of upstream fetches (`parliament/stationMap.ts`), and a list
@@ -58,7 +72,17 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
     gpHasEnded(gp, currentGp),
   )
   const speakable = chains && mayClaimOutcome(coverage)
-  const items = speakable ? rows.map((item) => ({ ...item, chain: chains[item.inr] })) : rows
+  /* DIE KARTE GILT NUR FÜR IHRE PERIODE. `chains` ist nach `inr` allein
+   * verschlüsselt, und Geschäftszahlen fangen in jeder Periode wieder bei 1
+   * an — eine mitgelesene Zeile bekäme sonst die Station eines fremden
+   * Entwurfs mit derselben Nummer aufgesetzt, also eine erfundene Aussage
+   * über ihren Weg. Ohne Chain fällt sie auf `begutachtung` zurück
+   * (`filterDraftList`), und das ist für eine laufende Frist die richtige
+   * und schwächste Behauptung; eine zweite Stationskarte zu bauen wäre für
+   * die paar Zeilen ein kalter 35-Sekunden-Lauf (§12.26). */
+  const items = speakable
+    ? rows.map((item) => (item.gp === gp ? { ...item, chain: chains[item.inr] } : item))
+    : rows
 
   const ministries = ministryFilterOptions(items)
 
@@ -73,6 +97,9 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
     items: sorted,
     total: sorted.length,
     gp,
+    /* Gemeldet wird erst, was nach dem Filtern wirklich dasteht — ein
+     * `status=closed` siebt die mitgelesenen Zeilen ohnehin alle aus. */
+    carriedOverFrom: sorted.find((item) => item.gp !== gp)?.gp ?? null,
     availableGps,
     ministries,
     stationsAvailable: Boolean(speakable),

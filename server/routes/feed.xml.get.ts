@@ -28,20 +28,23 @@ export default defineEventHandler(async (event) => {
   // was the wrong answer to that (docs/architecture.md §12.16). They obey
   // the ?ressort= scope like every other item — the RIS ministry code is
   // the same vocabulary.
-  const [{ items }, risOnly, carryOver] = await Promise.all([
+  // Both halves carry over the Fristen that outlive a Periodenwechsel
+  // (§12.36) — the RIS half is the bigger one (20 records at the 2019
+  // boundary against 4 Ministerialentwürfe). Empty except in the weeks
+  // after a Wechsel, and there the difference between a feed and a feed
+  // that dropped a running Frist.
+  const [{ items }, risOnly, carryOver, risCarryOver] = await Promise.all([
     getDraftsForGp(gp),
     getRisOnlyForGp(gp),
-    // Begutachtungen whose Frist outlives the Periodenwechsel (§12.35).
-    // Empty except in the weeks after one, and there it is the difference
-    // between a feed and a feed that dropped a running Frist.
     getCarryOverDrafts(gp),
+    getCarryOverRisConsultations(gp),
   ])
   const all = [...items.map(reconcileActive), ...carryOver]
   const scoped = code ? all.filter((item) => item.ministryCode === code) : all
   // `active` per request (`risRecord.withRisActiveOn`), the same rule
   // `reconcileActive` applies to the Parliament half one line above: the
   // feed prints it as the filing note.
-  const risItems = withRisActiveOn(risOnly.items)
+  const risItems = [...withRisActiveOn(risOnly.items), ...risCarryOver]
   const risScoped = code ? risItems.filter((item) => item.ministryCode === code) : risItems
   const body = buildRssFeed(
     siteUrl,

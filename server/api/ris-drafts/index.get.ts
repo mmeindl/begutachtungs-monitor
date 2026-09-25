@@ -20,6 +20,8 @@ import type {
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
 import { filterRisConsultations, risStationWants } from '../../utils/ris/risList'
+import { getCarryOverRisConsultations } from '../../utils/ris/risOnly'
+import { previousGp } from '#shared/utils/gp'
 
 /** How long the list waits for the outcome while it only fills a column. */
 const OUTCOMES_BUDGET_MS = 3_000
@@ -44,7 +46,15 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * status filter never answers with the calendar day of whoever filled the
    * cache (`ris/risOnly.ts`, `risRecord.withRisActiveOn`). Same rule and same
    * place as `reconcileActive` for list 81. */
-  const items = withRisActiveOn(cached.items).sort(sortConsultations)
+  const ownItems = withRisActiveOn(cached.items).sort(sortConsultations)
+
+  /* CARRY-OVER, und nur wenn der Aufruf KEINE Periode genannt hat
+   * (§12.36). `?gp=XXVII` ist eine Frage nach einer Periode und wird
+   * periodenrein beantwortet; ohne `gp` fragt jemand „was läuft gerade", und
+   * eine Frist, die den Wechsel überlebt, läuft gerade. Im Normalbetrieb
+   * leer — die Vorperiode hat dann keine offenen Records mehr. */
+  const carried = query.gp === undefined ? await getCarryOverRisConsultations(currentGp) : []
+  const items = carried.length ? [...ownItems, ...carried].sort(sortConsultations) : ownItems
 
   const ministries = ministryFilterOptions(items)
   /* The same vocabulary once more, as a strike list for the search: a
@@ -75,8 +85,17 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   return {
     items: filtered.map((item) => ({ ...item, outcome: outcomes[item.id] ?? null })),
     total: filtered.length,
-    gpTotal: items.length,
+    /* Die Periode, nicht die Ansicht: `gpTotal` und `withGegenstand`
+     * beschreiben das durchsuchte Fenster, und mitgelesene Zeilen der
+     * Vorperiode gehören nicht hinein. */
+    gpTotal: ownItems.length,
     gp,
+    /* Gemeldet wird erst, was nach dem Filtern wirklich dasteht: ein
+     * `status=closed` siebt die mitgelesenen Zeilen ohnehin alle aus, und
+     * ein Hinweis über Zeilen, die niemand sieht, wäre falsch. */
+    carriedOverFrom: filtered.some((item) => carried.includes(item))
+      ? (previousGp(currentGp) ?? null)
+      : null,
     availableGps,
     ministries,
     withGegenstand,

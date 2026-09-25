@@ -458,6 +458,20 @@ const stationConflict = computed(() => laterStationsOnly.value && art.value === 
  * would otherwise vanish wordlessly. */
 const chainUnlinkedPeriod = computed(() => meData.value?.chainCoverage === 'unlinked')
 
+/* Zeilen der Vorperiode, deren Frist noch läuft (§12.36) — beide Hälften
+ * melden das für sich, und gemeldet wird nur, was das Filtern überlebt hat.
+ *
+ * Die Liste MUSS das sagen. Sie trägt einen sichtbaren Periodenwähler, der
+ * in diesen Wochen die laufende Periode zeigt, während ein paar Zeilen aus
+ * der davor stammen; zwei Perioden stillschweigend unter einem Etikett ist
+ * genau das, was §12.21 ablehnt. Die Endpunkte lesen nur mit, wenn der
+ * Aufruf gar keine Periode genannt hat — sobald jemand oben eine auswählt,
+ * ist die Antwort wieder periodenrein und dieser Satz verschwindet von
+ * selbst. */
+const carriedOverFrom = computed(
+  () => meData.value?.carriedOverFrom ?? risData.value?.carriedOverFrom ?? null,
+)
+
 const stationsMissing = computed(
   () => meData.value?.stationsAvailable === false && !chainUnlinkedPeriod.value,
 )
@@ -804,6 +818,14 @@ const countLabel = computed(() => {
       </p>
 
       <h2 class="sr-only">Ergebnisse</h2>
+      <!-- Above the rows, like every other statement about what the list is
+           doing: read afterwards it is worthless. -->
+      <p v-if="carriedOverFrom" class="mt-3 max-w-prose text-sm text-ink-muted">
+        Darunter Entwürfe der {{ carriedOverFrom }}. Gesetzgebungsperiode, deren
+        Begutachtungsfrist noch läuft – eine Frist endet nicht damit, dass eine
+        neue Gesetzgebungsperiode beginnt. Über die Auswahl oben lässt sich
+        jede Periode für sich ansehen.
+      </p>
       <!-- Like the sort caveat below it: a statement about what the list is
            NOT doing stands above the rows — read afterwards it is
            worthless. -->

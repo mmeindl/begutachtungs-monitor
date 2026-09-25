@@ -184,6 +184,17 @@ export interface RisConsultationsResponse {
   gpTotal: number
   /** The Gesetzgebungsperiode whose window was searched. */
   gp: string
+  /**
+   * The period whose still-running Fristen were read along, or null — set
+   * only when the caller named NO period and such rows survived the filters
+   * (docs/architecture.md §12.36).
+   *
+   * The page needs it because the period selector shows the running period
+   * while these rows belong to the one before: a list that quietly mixes two
+   * periods under one label is exactly what §12.21 refuses. It names them
+   * instead.
+   */
+  carriedOverFrom: string | null
   availableGps: string[]
   /** Distinct ministries present in the result's GP (for the filter UI). */
   ministries: { code: string; name: string }[]

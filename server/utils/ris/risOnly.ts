@@ -35,7 +35,7 @@ import type {
   RisConsultationDetail,
   RisConsultationKind,
 } from '#shared/types'
-import { gpWindow, windowPeriodFor } from '#shared/utils/gp'
+import { gpWindow, previousGp, windowPeriodFor } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { classifyRisRecord, type RisClass } from './risJoin'
 import { ministryCodeOf, ministryNameOf } from './ministryCodes'
@@ -118,12 +118,41 @@ export const getRisOnlyForGp = defineCachedFunction(
     const w = bearer === null ? null : gpWindow(bearer)
     if (!w) return { items: [], withGegenstand: 0, undecided: 0 }
 
-    const [corpus, map] = await Promise.all([getRisBegutCorpus(), getRisMapForGp(gp)])
+    /* ZWEI KARTEN, und die zweite ist keine Vorsicht, sondern eine Korrektur
+     * (§12.36). Ein Record wird nach seinem RIS-**Beginn** einer Periode
+     * zugeschlagen, sein Ministerialentwurf nach dem **Einlangen** im
+     * Parlament — und die beiden Daten liegen ein paar Tage auseinander. An
+     * einer Periodengrenze fallen sie damit auf verschiedene Seiten: der
+     * Entwurf steht noch in Liste 81 der alten Periode, sein Record schon im
+     * Fenster der neuen. Die Karte der neuen Periode kennt nur deren eigene
+     * Entwürfe, beansprucht ihn also nicht — und der Record erschiene als
+     * „Begutachtung ohne Gegenstand im Parlament", was das eine ist, was er
+     * nicht ist. Mit dem Carry-over daneben (`getCarryOverDrafts`) stünde
+     * derselbe Entwurf zweimal auf der Startseite: einmal als
+     * Ministerialentwurf, einmal als Verordnungsentwurf.
+     *
+     * Gemessen am 25.09.2026 mit einer Grenze am 20.09.2026: 137/ME
+     * (Klimagesetz), 138/ME (UVP-G) und 139/ME (CO2-Speicherung) sind in der
+     * Karte der XXVIII sauber `matched`, ihre Records liegen im Fenster der
+     * XXIX. Drei Doppelungen aus drei Tagen Versatz.
+     *
+     * Nur die VORPERIODE, und nur diese Richtung: RIS veröffentlicht die
+     * Begutachtung, wenn sie beginnt, das Parlament verzeichnet den Entwurf,
+     * wenn er einlangt — der Versatz geht also „Entwurf früher, Record
+     * später", und damit ist die Karte, die fehlt, immer die der Periode
+     * davor. */
+    const prev = previousGp(gp)
+    const [corpus, map, prevMap] = await Promise.all([
+      getRisBegutCorpus(),
+      getRisMapForGp(gp),
+      prev ? getRisMapForGp(prev).catch(() => null) : Promise.resolve(null),
+    ])
 
     // Claimed by a Ministerialentwurf: the record the join chose for it.
     // Those are already on a monitor page, under the ME's own citation.
     const claimed = new Set<string>()
     for (const row of map.rows) if (row.risId) claimed.add(row.risId)
+    for (const row of prevMap?.rows ?? []) if (row.risId) claimed.add(row.risId)
 
     // KNOWN AND UNFIXED, deliberately. An `ambiguous` row chose no record,
     // so the record that really is that Ministerialentwurf stays unclaimed
@@ -150,6 +179,43 @@ export const getRisOnlyForGp = defineCachedFunction(
   },
   { name: 'ris-only-gp', base: DERIVED_CACHE, getKey: (gp: string) => gp, maxAge: RIS_ONLY_TTL_S, swr: false },
 )
+
+/**
+ * Die RIS-Begutachtungen der Vorperiode, deren Frist noch läuft
+ * (docs/architecture.md §12.36).
+ *
+ * Die zweite Hälfte des Carry-over, und die GRÖSSERE: `inWindow` verankert
+ * einen Record an seinem **Beginn**, nicht an der Überlappung — eine
+ * Verordnung, die zwei Wochen vor dem Wechsel aufgelegt wurde, gehört damit
+ * bis zum Schluss ins Fenster der alten Periode, auch wenn ihre Frist
+ * mitten in die neue läuft. Gemessen am 25.09.2026 über den Bestand:
+ * **20 Records** trugen ihre Frist über den 23.10.2019, **5** über den
+ * 24.10.2024 — gegen 4 und 2 Ministerialentwürfe.
+ *
+ * **Warum `windowPeriodFor` hier die Abbruchbedingung ist.** Solange die
+ * neue Periode noch keine `GP_STARTS`-Zeile hat, antwortet die Vorperiode
+ * ohnehin schon ganz für sie (oben) — der Carry-over wäre dann derselbe
+ * Bestand ein zweites Mal. Er greift also erst, wenn die Zeile ergänzt ist,
+ * und genau dort entsteht das Loch: der Kommentar an `GP_STARTS` fordert
+ * diese Zeile ausdrücklich an, und ohne diese Funktion wäre das Ergänzen der
+ * Tabelle der Moment, in dem die laufenden Verordnungsfristen aus Startseite,
+ * Feed und Kalender fallen. Die eine Abhilfe darf die andere nicht
+ * aufheben.
+ */
+export async function getCarryOverRisConsultations(currentGp: string): Promise<RisConsultation[]> {
+  if (windowPeriodFor(currentGp) !== currentGp) return []
+  const prev = previousGp(currentGp)
+  if (!prev) return []
+  try {
+    const { items } = await getRisOnlyForGp(prev)
+    /* `active` wie überall zur Anfragezeit, nicht aus dem Cache — der
+     * Bestand oben ist absichtlich tagunabhängig. */
+    return withRisActiveOn(items).filter((item) => item.active)
+  } catch {
+    // Eine Ergänzung darf die Liste, die sie ergänzt, nie mitreißen.
+    return []
+  }
+}
 
 /**
  * One record with its documents, by RIS ID.

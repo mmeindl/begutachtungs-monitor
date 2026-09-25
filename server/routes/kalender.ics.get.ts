@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   // Verordnungsfristen too — they are deadlines like any other, and this
   // calendar is the account-free substitute for the alerts that are not
   // built (docs/architecture.md §12.3, §12.16).
-  const [{ items }, risOnly, carryOver] = await Promise.all([
+  const [{ items }, risOnly, carryOver, risCarryOver] = await Promise.all([
     getDraftsForGp(gp),
     getRisOnlyForGp(gp),
     /* The Fristen that outlive a Periodenwechsel (§12.35). This is the
@@ -20,13 +20,16 @@ export default defineEventHandler(async (event) => {
      * would simply have fallen out of the subscriber's calendar on the day
      * the new period convened (352/ME, 24.10.2024). */
     getCarryOverDrafts(gp),
+    // The same for the RIS half, and it is the bigger one: 20 records
+    // carried a Frist over the 2019 boundary against 4 Ministerialentwürfe.
+    getCarryOverRisConsultations(gp),
   ])
   // Both halves get their `active` at request time, never from a cache:
   // `reconcileActive` for list 81, `withRisActiveOn` for the RIS records.
   const body = buildIcsCalendar(
     siteUrl,
     [...items.map(reconcileActive), ...carryOver],
-    withRisActiveOn(risOnly.items),
+    [...withRisActiveOn(risOnly.items), ...risCarryOver],
   )
 
   return respondWithEtag(event, body, 'text/calendar; charset=utf-8')
