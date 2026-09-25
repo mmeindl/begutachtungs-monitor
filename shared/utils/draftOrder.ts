@@ -95,6 +95,35 @@ export function rankByStatements<T extends { inr: number; statementCount: number
 }
 
 /**
+ * Whether a Gesetzgebungsperiode can carry „Wo am meisten mitgeredet wurde"
+ * at all — the condition behind the Periodenwechsel fallback (§12.35).
+ *
+ * Two clauses, and both are needed because they fail at different moments
+ * of a new period (measured 2026-09-25 over the last two Wechsel):
+ *
+ *  - **Enough rows to be a list.** The section is cut to
+ *    `HOME_LIST_LENGTH`, and a period that cannot fill it is not being
+ *    ranked, it is being enumerated. GP XXVIII had its first
+ *    Ministerialentwurf 54 days after it convened and its fifth after 83;
+ *    GP XXVII took 15 and 20 days. In between, the section renders one to
+ *    four rows under a superlative heading — or, at zero rows, silently
+ *    disappears from the page, which is what would actually have happened
+ *    on 24.10.2024.
+ *  - **Something to rank by.** A fresh Begutachtung starts at zero and
+ *    fills over its Frist, so five drafts of a week-old period are five
+ *    zeroes, and „am meisten mitgeredet" over five zeroes is a ranking of
+ *    the item numbers. `some` rather than a look at the leader is the same
+ *    test — the leader is the maximum.
+ *
+ * MONOTONE, on purpose: a period only ever gains drafts and Stellungnahmen,
+ * so this flips once and never flips back. Nothing here needs a timer, a
+ * date, or a row added to `GP_STARTS` on the day of the Wechsel.
+ */
+export function canRankPeriod(items: readonly { statementCount: number }[]): boolean {
+  return items.length >= HOME_LIST_LENGTH && items.some((i) => i.statementCount > 0)
+}
+
+/**
  * Open first, then by nearest Frist; closed ones most recently ended first.
  *
  * The reasoning, in the order the comparisons run:

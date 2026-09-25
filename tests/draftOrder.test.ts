@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
 import {
+  canRankPeriod,
   compareDrafts,
   compareRowsByStatements,
   type DraftListRow,
   draftOrderKey,
+  HOME_LIST_LENGTH,
   type OrderedDraft,
   rowOrderKey,
 } from '../shared/utils/draftOrder'
@@ -278,5 +280,52 @@ describe('compareRowsByStatements', () => {
         risRow('bald', { deadline: '2026-09-20' }),
       ]),
     ).toEqual(['ris-bald', 'ris-spaet'])
+  })
+})
+
+/**
+ * When a Gesetzgebungsperiode may carry „Wo am meisten mitgeredet wurde" —
+ * the condition the Periodenwechsel fallback switches on (§12.35).
+ *
+ * The states below are the measured ones, not invented: on 25.09.2026 the
+ * last two Wechsel were read out of list 81, and GP XXVIII's first
+ * Ministerialentwurf arrived 54 days after the period convened, its fifth
+ * after 83 (GP XXVII: 15 and 20). Everything in between is a real state this
+ * page was in, or would have been.
+ */
+describe('canRankPeriod', () => {
+  const period = (...counts: number[]) => counts.map((statementCount) => ({ statementCount }))
+  const full = (top: number) => period(top, 0, 0, 0, 0)
+
+  it('ranks a period that can fill the list and has something to rank', () => {
+    expect(canRankPeriod(full(846))).toBe(true)
+    // One Stellungnahme anywhere is enough — the threshold is zero, not a size.
+    expect(canRankPeriod(full(1))).toBe(true)
+  })
+
+  it('refuses the day of the Wechsel, when the period has no drafts at all', () => {
+    // Not a thin section but NO section: the page renders it on `v-if`.
+    expect(canRankPeriod([])).toBe(false)
+  })
+
+  it('refuses a period that cannot fill the list', () => {
+    for (let n = 1; n < HOME_LIST_LENGTH; n++) {
+      expect(canRankPeriod(period(...Array.from({ length: n }, () => 99)))).toBe(false)
+    }
+  })
+
+  it('refuses five fresh Begutachtungen, which are five zeroes', () => {
+    // A ranking over these ranks the item numbers, not the participation.
+    expect(canRankPeriod(period(0, 0, 0, 0, 0))).toBe(false)
+  })
+
+  it('is monotone: it never takes the section back off a period', () => {
+    // A period only gains drafts and Stellungnahmen, so once true, true.
+    const growing = period(0, 0, 0, 0, 0)
+    expect(canRankPeriod(growing)).toBe(false)
+    growing[2]!.statementCount = 3
+    expect(canRankPeriod(growing)).toBe(true)
+    growing.push({ statementCount: 0 })
+    expect(canRankPeriod(growing)).toBe(true)
   })
 })

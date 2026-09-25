@@ -107,6 +107,23 @@ export function gpWindow(gp: string): { from: string; to: string | null } | null
 }
 
 /**
+ * The Gesetzgebungsperiode immediately before `gp` — XXVIII → XXVII. Null
+ * for a code that is not a Roman numeral and below GP I, where there is no
+ * period before.
+ *
+ * ARITHMETIC ON THE NUMERAL, not a lookup in `GP_STARTS`, and that is the
+ * point: the one caller is the Periodenwechsel fallback (§12.35), which has
+ * to work on the day GP XXIX constitutes itself — before anybody has added
+ * a row to the table above. A fallback that needed maintenance at the
+ * cutover would need it on exactly the day it exists to survive.
+ */
+export function previousGp(gp: string): string | null {
+  const n = romanToInt(gp)
+  if (n === null || n <= 1) return null
+  return intToRoman(n - 1)
+}
+
+/**
  * Whether `gp` lies before the GP that is running (`currentGp`, read from
  * Parliament's page configuration). Falls to false on unparseable codes and
  * when the current GP is unknown — the safe direction: a page never claims

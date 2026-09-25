@@ -1,14 +1,31 @@
 import type { DraftSummary } from './drafts'
 
 export interface DashboardPayload {
+  /** The Gesetzgebungsperiode that is RUNNING — what `open` is a list of. */
   gp: string
   /** Drafts whose Frist is still running, soonest deadline first */
   open: DraftSummary[]
-  stats: {
-    consultationsTotalGp: number
-  }
-  /** Top 5 of the GP by statement count, descending */
-  topByStatements: DraftSummary[]
+  ranked: RankedByStatements
+}
+
+/**
+ * „Wo am meisten mitgeredet wurde", and the period it speaks about.
+ *
+ * The period is carried rather than assumed to be `DashboardPayload.gp`,
+ * because during a Periodenwechsel it is not (§12.35): a period too young to
+ * be ranked hands the section to the one before it, and the page has to name
+ * which one it is showing. The three fields travel together for the same
+ * reason — rows, their period and the size of the set behind the section's
+ * link are one statement, and `gp` plus a loose `topByStatements` plus a
+ * `stats.consultationsTotalGp` (what stood here until 25.09.2026) let two of
+ * the three come from different periods without anything breaking loudly.
+ */
+export interface RankedByStatements {
+  gp: string
+  /** Top 5 of that period by statement count, descending */
+  items: DraftSummary[]
+  /** Ministerialentwürfe of that period — the set behind the „Alle …" link */
+  total: number
 }
 
 /** One recently closed draft with its resolved chain state.
@@ -24,7 +41,7 @@ export interface ClosedOutcome extends DraftSummary {
 
 /**
  * Payload of /api/dashboard/outcomes — what became of the drafts the volume
- * ranking shows (`DashboardPayload.topByStatements`).
+ * ranking shows (`DashboardPayload.ranked`).
  */
 export interface DashboardOutcomes {
   /**
@@ -47,6 +64,15 @@ export interface DashboardOutcomes {
  * without a Kundmachung is not in this list.
  */
 export interface DashboardEnacted {
+  /**
+   * The period whose Regierungsvorlagen were scanned — the running one, or,
+   * while it has promulgated nothing, the one before it (§12.35).
+   *
+   * NOT the period of the rows: a Vorlage may carry a Ministerialentwurf
+   * from the period before it, and regularly does around a Wechsel. This is
+   * what the section's subline may claim, and nothing more.
+   */
+  gp: string
   /** Newest promulgation first; empty is a normal state, not an error. */
   items: ClosedOutcome[]
 }

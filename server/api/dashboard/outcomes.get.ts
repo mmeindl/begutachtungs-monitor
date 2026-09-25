@@ -18,6 +18,7 @@
  */
 import type { ClosedOutcome, DraftSummary, DashboardOutcomes } from '#shared/types'
 import { rankByStatements } from '#shared/utils/draftOrder'
+import { getRankedPeriod } from '../../utils/parliament/rankedPeriod'
 
 async function resolveOutcome(item: DraftSummary): Promise<ClosedOutcome | null> {
   try {
@@ -30,14 +31,18 @@ async function resolveOutcome(item: DraftSummary): Promise<ClosedOutcome | null>
 }
 
 export default defineEventHandler(async (): Promise<DashboardOutcomes> => {
-  const gp = await getCurrentGp()
-  const { items: rawItems } = await getDraftsForGp(gp)
-  const items = rawItems.map(reconcileActive)
+  /* THE SAME PERIOD /api/dashboard RANKED, through the same function — not
+   * `getCurrentGp()` on its own. During a Periodenwechsel the ranking speaks
+   * about the period before (§12.35), and resolving the outcomes of the
+   * running period instead would leave five rows without chips: every key
+   * carries its GP (`${o.gp}-${o.inr}`), so nothing would match and the
+   * section would quietly lose the half it exists for. */
+  const ranked = await getRankedPeriod(await getCurrentGp())
 
   /* The ranking's own rows, minus the ones still running: an open
    * Begutachtung has no outcome to resolve, and asking for one would cost an
    * upstream fetch per row to learn what the `active` flag already says. */
-  const rankedClosed = rankByStatements(items).filter((item) => !item.active)
+  const rankedClosed = rankByStatements(ranked.items).filter((item) => !item.active)
 
   const rankedOutcomes = (await Promise.all(rankedClosed.map(resolveOutcome))).filter(
     (o): o is ClosedOutcome => o !== null,

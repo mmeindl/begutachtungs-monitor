@@ -180,7 +180,7 @@ const rankedRows = computed(() => {
   const byKey = new Map(
     (outcomes.value?.rankedOutcomes ?? []).map((o) => [`${o.gp}-${o.inr}`, o]),
   )
-  return (data.value?.topByStatements ?? []).map((draft) =>
+  return (data.value?.ranked.items ?? []).map((draft) =>
     viewOfDraft(draft, byKey.get(`${draft.gp}-${draft.inr}`) ?? null),
   )
 })
@@ -208,28 +208,75 @@ const visibleSecondRound = computed(
 const enactedEntries = computed(() => enacted.value?.items.map(viewOfOutcome) ?? [])
 
 /**
- * The Gesetzgebungsperiode everything below the open list is counted over,
- * spelled out rather than implied.
+ * The Gesetzgebungsperiode each accountability section is counted over,
+ * spelled out rather than implied — and read PER SECTION, not once for the
+ * page (§12.35).
  *
- * Both accountability sections read list 81/101 of the CURRENT period only,
- * and until 18.09.2026 the page said so once, in a subline, as „in dieser
+ * Until 18.09.2026 the page said it once, in a subline, as „in dieser
  * Gesetzgebungsperiode" — a demonstrative pronoun pointing at nothing the
  * reader can see. It names the period now, and the start date with it: a
  * ranking of counts is a ranking over a window, and the window belongs on
  * screen.
  *
- * Why the scope is not widened (measured 2026-09-18): across GP XXVII the
- * top five by Stellungnahmen are 106.184 (COVID-19-Impfpflichtgesetz),
- * 35.296, 19.026, 16.534 and 14.334 — four of them Epidemiegesetz-Novellen.
- * A cross-period ranking is a COVID monument that can never change again and
- * says nothing about what is being decided now; GP XXVIII's largest is 846.
- * The period boundary is what keeps this section alive.
+ * Until 25.09.2026 that name came from `data.gp`, the RUNNING period, for
+ * both sections at once. From the day a new Gesetzgebungsperiode constitutes
+ * itself that is the wrong name for either: each section falls back to the
+ * period before on its own condition and at its own moment (the ranking
+ * needs five rows and a count above zero, the Kundmachungen need one law),
+ * so each carries its own period in its own payload and labels itself from
+ * it.
+ *
+ * Why the scope is not WIDENED — one fallback period, never a merge
+ * (measured 2026-09-18): across GP XXVII the top five by Stellungnahmen are
+ * 106.184 (COVID-19-Impfpflichtgesetz), 35.296, 19.026, 16.534 and 14.334 —
+ * four of them Epidemiegesetz-Novellen. A cross-period ranking is a COVID
+ * monument that can never change again and says nothing about what is being
+ * decided now; GP XXVIII's largest is 846. The period boundary is what keeps
+ * this section alive, and the fallback moves it rather than dissolving it.
  */
-const gpLabel = computed(() => data.value?.gp ?? null)
-const gpStart = computed(() => {
-  const from = gpLabel.value ? gpWindow(gpLabel.value)?.from : null
+const currentGp = computed(() => data.value?.gp ?? null)
+const rankedGp = computed(() => data.value?.ranked.gp ?? null)
+const enactedGp = computed(() => enacted.value?.gp ?? null)
+
+/* „(seit 24.10.2024)" on the ranking, when the table knows the date.
+ *
+ * It needs no row added on the day of the Wechsel, and that is worth
+ * stating: while the fallback is active the label is the PREVIOUS period,
+ * which `GP_STARTS` has had a row for since it ended — and once the new
+ * period takes the section over, `gpWindow` returns null for it and the
+ * template simply omits the parenthesis until someone adds the row. The
+ * page never waits for maintenance and never prints a wrong date. */
+const rankedGpStart = computed(() => {
+  const from = rankedGp.value ? gpWindow(rankedGp.value)?.from : null
   return from ? formatDateDe(from) : null
 })
+
+/* Each section's own answer to „is this the running period?". Both are
+ * false in the ordinary case and for the whole life of a period; they turn
+ * true only in the weeks after a Wechsel, and independently of each other —
+ * measured 2026-09-25, the Kundmachungen of GP XXVIII were 201 days behind
+ * the period while its ranking was usable after 83. */
+const rankedIsFallback = computed(
+  () => !!rankedGp.value && !!currentGp.value && rankedGp.value !== currentGp.value,
+)
+const enactedIsFallback = computed(
+  () => !!enactedGp.value && !!currentGp.value && enactedGp.value !== currentGp.value,
+)
+
+/* The section's one way out points at the filter that shows the same list
+ * uncut (§12.24) — and during a fallback that filter needs the period
+ * spelled into it, because `/entwuerfe` defaults to the RUNNING one and
+ * would otherwise answer the link with an empty list. Only during the
+ * fallback: in the ordinary case the period is already the default, and the
+ * parameter would buy nothing but an active-filter chip on arrival. */
+const rankedHref = computed(
+  () =>
+    '/entwuerfe?art=ministerialentwurf&sort=stellungnahmen' +
+    (rankedIsFallback.value ? `&gp=${rankedGp.value}` : ''),
+)
+const enactedHref = computed(
+  () => '/entwuerfe?station=bgbl' + (enactedIsFallback.value ? `&gp=${enactedGp.value}` : ''),
+)
 </script>
 
 <template>
@@ -426,9 +473,9 @@ const gpStart = computed(() => {
              link. -->
         <ListHeader
           id="ranked-heading"
-          to="/entwuerfe?art=ministerialentwurf&sort=stellungnahmen"
+          :to="rankedHref"
           noun="Ministerialentwürfe"
-          :total="data.stats.consultationsTotalGp"
+          :total="data.ranked.total"
           :visible="rankedRows.length"
         >
           Wo am meisten mitgeredet wurde
@@ -441,11 +488,21 @@ const gpStart = computed(() => {
         <!-- Volumetric, not "gerade": the ranking spans the whole GP,
              open and closed — the Frist line under each count says which
              is which. -->
+        <!-- The fallback says itself, in its own sentence and BEFORE the
+             claim it qualifies (§12.35). Naming the period inside the
+             existing sentence would have been enough to be accurate and not
+             enough to be read: „der XXVIII." where the reader expects
+             „XXIX." is a single changed numeral in the middle of a line.
+             The reason goes first, then the ordinary sentence with the
+             ordinary period in it. -->
         <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-          Die Entwürfe mit den meisten Stellungnahmen der
-          <template v-if="gpLabel">{{ gpLabel }}. </template>Gesetzgebungsperiode<template
-            v-if="gpStart"
-          > (seit {{ gpStart }})</template> – offene und abgeschlossene – und
+          <template v-if="rankedIsFallback">Die {{ currentGp }}. Gesetzgebungsperiode
+            hat dafür noch zu wenige Begutachtungen. Hier stehen deshalb die
+            Entwürfe</template><template v-else>Die Entwürfe</template> mit den
+          meisten Stellungnahmen der
+          <template v-if="rankedGp">{{ rankedGp }}. </template>Gesetzgebungsperiode<template
+            v-if="rankedGpStart"
+          > (seit {{ rankedGpStart }})</template> – offene und abgeschlossene – und
           daneben, was aus ihnen geworden ist.
         </p>
         <!-- The same anatomy as everywhere, and here that is the point: the
@@ -482,7 +539,7 @@ const gpStart = computed(() => {
              beside it would be the number of all of them. -->
         <ListHeader
           id="enacted-heading"
-          to="/entwuerfe?station=bgbl"
+          :to="enactedHref"
           noun="kundgemachten Entwürfe"
         >
           Zuletzt Gesetz geworden
@@ -496,12 +553,22 @@ const gpStart = computed(() => {
              surprise: this list can stand still for two months and then
              turn over almost completely. Better read as the institution's
              calendar than as a stale page. -->
+        <!-- The Blöcke sentence explains why nothing moves here for weeks,
+             and it is the wrong explanation during a fallback: then the list
+             stands still because the period it belongs to is over. So the
+             fallback replaces it rather than adding to it — one reason per
+             state, and the true one. -->
         <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-          Die jüngsten Kundmachungen im Bundesgesetzblatt aus der
-          <template v-if="gpLabel">{{ gpLabel }}. </template>Gesetzgebungsperiode
-          – und die Begutachtung, aus der sie hervorgegangen sind. Der
-          Nationalrat beschließt in Blöcken: zwischen zwei Plenarwochen ändert
-          sich hier nichts.
+          <template v-if="enactedIsFallback">Aus der {{ currentGp }}.
+            Gesetzgebungsperiode ist noch kein Entwurf kundgemacht. Hier stehen
+            deshalb die jüngsten Kundmachungen im Bundesgesetzblatt aus der
+            {{ enactedGp }}. Gesetzgebungsperiode – und die Begutachtung, aus der
+            sie hervorgegangen sind.</template>
+          <template v-else>Die jüngsten Kundmachungen im Bundesgesetzblatt aus der
+            <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
+            – und die Begutachtung, aus der sie hervorgegangen sind. Der
+            Nationalrat beschließt in Blöcken: zwischen zwei Plenarwochen ändert
+            sich hier nichts.</template>
         </p>
         <!-- Same row and the same chip as the section above: the object
              is the Begutachtung, and what became of it goes in the aside. -->
@@ -509,9 +576,14 @@ const gpStart = computed(() => {
         <!-- Two different silences, said differently: nothing promulgated
              yet is a fact about the period, an unreachable endpoint is a
              fact about us. -->
+        <!-- Reached only when the period before has nothing either — the
+             fallback has already run by the time the page sees this. It
+             names the period rather than saying „dieser", for the reason
+             §12.21 gives: a demonstrative here points at nothing the reader
+             can see, and now there are two periods it could mean. -->
         <p v-else-if="enacted" class="mt-4 text-sm text-ink-muted">
-          Aus dieser Gesetzgebungsperiode ist bisher kein Entwurf im
-          Bundesgesetzblatt kundgemacht worden.
+          Aus der <template v-if="enactedGp">{{ enactedGp }}. </template>Gesetzgebungsperiode
+          ist bisher kein Entwurf im Bundesgesetzblatt kundgemacht worden.
         </p>
         <p v-else class="mt-4 text-sm text-ink-muted">
           Die Kundmachungen sind derzeit nicht abrufbar.

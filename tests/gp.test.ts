@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GP_STARTS, gpEndedOn, gpHasEnded, intToRoman, romanToInt } from '../shared/utils/gp'
+import { GP_STARTS, gpEndedOn, gpHasEnded, intToRoman, previousGp, romanToInt } from '../shared/utils/gp'
 
 describe('Roman numerals', () => {
   it('round-trips and rejects malformed codes strictly', () => {
@@ -47,5 +47,33 @@ describe('Gesetzgebungsperioden calendar', () => {
       expect(GP_STARTS[codes[i]!]! > GP_STARTS[codes[i - 1]!]!).toBe(true)
     }
     expect(codes.at(-1)).toBe(intToRoman(28))
+  })
+})
+
+/**
+ * The period before a period — the arithmetic the Periodenwechsel fallback
+ * stands on (§12.35, `server/utils/parliament/rankedPeriod.ts`).
+ *
+ * Its whole job is to work on a day nobody prepared for, so the case that
+ * matters most is the one the calendar above does NOT know: on the day GP
+ * XXIX constitutes itself there is no `GP_STARTS` row for it, and the
+ * fallback still has to find XXVIII.
+ */
+describe('previousGp', () => {
+  it('counts back one period, table or no table', () => {
+    expect(previousGp('XXVIII')).toBe('XXVII')
+    expect(previousGp('XXVII')).toBe('XXVI')
+    // The case the fallback exists for: a period the calendar has no row for.
+    expect(GP_STARTS['XXIX']).toBeUndefined()
+    expect(previousGp('XXIX')).toBe('XXVIII')
+    // And far below the table, where the monitor still has drafts.
+    expect(previousGp('XIV')).toBe('XIII')
+  })
+
+  it('has nothing before GP I and nothing for a code it cannot read', () => {
+    expect(previousGp('I')).toBeNull()
+    expect(previousGp('IIX')).toBeNull()
+    expect(previousGp('')).toBeNull()
+    expect(previousGp('XXVIII ')).toBeNull()
   })
 })

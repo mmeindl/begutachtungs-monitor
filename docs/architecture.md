@@ -68,9 +68,9 @@ badges. Tone: factual, precise, no exclamation marks.
 
 | Route | Response | Source |
 |---|---|---|
-| `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) |
-| `GET /api/dashboard/outcomes` | `DashboardOutcomes` | The outcomes of the volume ranking (closed rows only, ≤5 ME-Gegenstand + their RV leg through the 30-min leaf caches). Server-rendered on `/` with a 4 s timeout. The recency pool and its extension probe were removed on 18.09.2026 with the section they fed (§12.23) |
-| `GET /api/dashboard/enacted` | `DashboardEnacted` | "Zuletzt Gesetz geworden": list 101 narrowed by `Status` to the finished Vorlagen, detail JSON for the newest 30 of them, ordered by BGBl number (Teil I), deduplicated per draft, top 4 joined against list 81. Server-rendered with a 4 s timeout — measured 0.93 s fully cold (30 parallel Gegenstand fetches: 0.54 s), 14 ms warm |
+| `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) — plus list 81 of the period before it for the volume ranking alone, while a new Gesetzgebungsperiode is too young to be ranked (§12.35) |
+| `GET /api/dashboard/outcomes` | `DashboardOutcomes` | The outcomes of the volume ranking — of the SAME period `/api/dashboard` ranked, through `rankedPeriod.ts` (§12.35) — (closed rows only, ≤5 ME-Gegenstand + their RV leg through the 30-min leaf caches). Server-rendered on `/` with a 4 s timeout. The recency pool and its extension probe were removed on 18.09.2026 with the section they fed (§12.23) |
+| `GET /api/dashboard/enacted` | `DashboardEnacted` | "Zuletzt Gesetz geworden": list 101 narrowed by `Status` to the finished Vorlagen, detail JSON for the newest 30 of them, ordered by BGBl number (Teil I), deduplicated per draft, top 4 joined against list 81; falls back to the period before while the running one has promulgated nothing, and names which it read (§12.35). Server-rendered with a 4 s timeout — measured 0.93 s fully cold (30 parallel Gegenstand fetches: 0.54 s), 14 ms warm |
 | `GET /api/drafts?gp&status&station&ministry&q` | `DraftsResponse` | List 81 + the station map (§12.26); `status`: `open\|closed\|all` (default `all`), where **`open` = „Stellungnahme möglich"**: laufende Frist ODER offenes Vorlagen-Formular. `station`: comma list of `begutachtung\|rv\|parlament\|bgbl` (default all), read under a 2.5 s budget — on timeout the answer carries `stationsAvailable: false` and is NOT filtered. `q` searches title/citation/ministry CODE and the debate names server-side: the words of the query are AND-linked and each one a substring, read raw or with umlauts, transliterations and punctuation folded — either reading may match, so „oekostrom" finds „Ökostromförderung" and „ergesetz" still finds „Paketsteuergesetz" (`shared/utils/textMatch.ts`, measured 22.09.2026). No `art`: this list holds Ministerialentwürfe and nothing else, so the Art filter of `/entwuerfe` does not narrow it — it decides whether the endpoint is asked at all (§7) |
 | `GET /api/stations/:gp` | counts per station | The station map of one period (`aktuell` = running GP), awaited in full — the prewarm call that pays the cold build (227 requests for GP XXVIII, 650 for XXVII). Its counts are the live base rate of a running period (§12.26) |
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
@@ -6935,6 +6935,125 @@ Abstimmungen), auf den BNR-Gegenständen und bei Anträgen nur, wenn das
 Plenum direkt über sie abgestimmt hat (64 von 1.047 in GP XXVIII) — für die
 §4a-Fälle, die als Initiativantrag wiederkommen, ist die Zeile also meist
 leer.
+
+### 12.35 Der Periodenwechsel: ein benannter Rückfall, kein stiller Merge
+
+**Gebaut am 25.09.2026, lange vor dem Tag, an dem er gebraucht wird** — und
+genau deshalb: Am Stichtag ist der Umbau der schlechteste Zeitpunkt, weil die
+Aufmerksamkeit dann am größten ist und die Daten am dünnsten.
+
+Beide Rechenschaftsabschnitte der Startseite lesen Liste 81 bzw. 101 der
+**laufenden** Gesetzgebungsperiode (`getCurrentGp()`, aus der
+Seitenkonfiguration des Parlaments). An dem Tag, an dem eine neue Periode
+sich konstituiert, ist diese Periode leer — und bleibt es nicht Tage,
+sondern Monate.
+
+**Gemessen am 25.09.2026 über die letzten beiden Wechsel**
+(`scripts/corpus/periodenwechsel.ts`, Liste 81 und 101 direkt):
+
+| | XXVI → XXVII (23.10.2019) | XXVII → XXVIII (24.10.2024) |
+|---|---|---|
+| 1. Ministerialentwurf der neuen GP | +15 Tage | **+54 Tage** |
+| 5. Ministerialentwurf | +20 Tage | **+83 Tage** |
+| erste Kundmachung aus einer Begutachtung | +14 Tage | **+201 Tage** |
+
+Die Spannweite ist der eigentliche Befund. Nach der Wahl 2024 dauerte die
+Regierungsbildung bis März 2025: kein Ressort schickte etwas in Begutachtung,
+und die ersten fertigen Vorlagen der XXVIII (BGBl. I 159/2024, 9/2025) kamen
+aus gar keiner — Budget- und Anlassgesetze. „Zuletzt Gesetz geworden" hätte
+also rund **sieben Monate** den Satz „Aus dieser Gesetzgebungsperiode ist
+bisher kein Entwurf im Bundesgesetzblatt kundgemacht worden" getragen. Er
+wäre wahr gewesen und sieben Monate lang das Letzte, was die Seite sagt.
+
+Und „Wo am meisten mitgeredet wurde" wäre in dieser Zeit nicht dünn gewesen,
+sondern **weg**: der Abschnitt rendert auf `v-if="rankedRows.length"`. Danach
+kommt der schlechtere Zustand — eine Handvoll frischer Entwürfe, deren
+Stellungnahmen erst über ihre Frist einlaufen, also eine Rangliste von
+Nullen unter einem Superlativ.
+
+**Die Entscheidung: der Rückfall verschiebt das Fenster, er löst es nicht
+auf.** §12.21 begründet ausführlich, warum diese Rangliste nicht über
+Perioden hinweg zählen darf — über GP XXVII lauten die fünf größten
+Begutachtungen 106.184, 35.296, 19.026, 16.534 und 14.334 Stellungnahmen,
+vier davon Epidemiegesetz-Novellen, ein COVID-Denkmal, das sich nie wieder
+ändert. Ein Rückfall, der die Perioden mischte, wäre genau diese Rangliste,
+nur unabsichtlich. Also: **eine Periode, ganz, benannt** — und die Seite
+sagt, welche.
+
+**Zwei Bedingungen, weil die Abschnitte zu verschiedenen Zeitpunkten
+umschalten** (die Tabelle oben: 83 gegen 201 Tage):
+
+- **Rangliste** — `canRankPeriod` (`shared/utils/draftOrder.ts`): mindestens
+  `HOME_LIST_LENGTH` Zeilen **und** irgendeine Stellungnahme. Beide Hälften
+  sind nötig. Ohne die erste ist eine „Rangliste" von zwei Entwürfen eine
+  Aufzählung; ohne die zweite rangiert sie bei fünf frischen Entwürfen die
+  Geschäftszahlen.
+- **Kundmachungen** — eine einzige Zeile genügt (`getRecentlyEnacted`). Eine
+  Rangliste von eins ist keine Rangliste; eine Kundmachung ist ein ganzer
+  Fakt, und „zuletzt Gesetz geworden" stimmt über sie, sobald es sie gibt.
+
+Beide Bedingungen sind **monoton** — eine Periode gewinnt nur Entwürfe und
+Stellungnahmen hinzu —, also kippen sie einmal und nie zurück. Und keine
+braucht Pflege: `previousGp` rechnet auf der römischen Zahl statt in
+`GP_STARTS` nachzuschlagen, damit der Rückfall an dem Tag funktioniert, an
+dem noch niemand eine Zeile ergänzt hat. Das „(seit 24.10.2024)" der
+Rangliste kommt weiter aus der Tabelle und fällt stillschweigend weg, solange
+die neue Periode dort fehlt — die Seite wartet nie auf Wartung und druckt
+nie ein falsches Datum.
+
+**Eine Funktion für beide Ranglisten-Endpunkte** (`rankedPeriod.ts`).
+`/api/dashboard` liefert die Zeilen, `/api/dashboard/outcomes` leitet
+dieselbe Rangliste noch einmal her, um die Ergebnis-Chips daranzuhängen
+(`HOME_LIST_LENGTH` sagt, warum). Fiele nur einer von beiden zurück, zeigte
+die Seite fünf Zeilen der einen Periode mit den Chips der anderen — die
+Drift, gegen die beide geschrieben sind, nur lautlos und nur im
+Periodenwechsel. Jeder Schlüssel trägt seine GP (`${gp}-${inr}`), also
+träfe schlicht nichts aufeinander und der Abschnitt verlöre die Hälfte,
+für die es ihn gibt.
+
+**Was die Seite sagt, und wo.** Der Grund steht in einem eigenen Satz **vor**
+der Aussage, die er einschränkt. Die Periode nur im bestehenden Satz zu
+nennen wäre korrekt und würde nicht gelesen: „der XXVIII." an einer Stelle,
+an der „XXIX." erwartet wird, ist eine geänderte Ziffer mitten in einer
+Zeile. Dazu tauscht der Kundmachungs-Abschnitt seinen Erklärsatz aus — „Der
+Nationalrat beschließt in Blöcken" erklärt, warum sich hier gewöhnlich wochenlang
+nichts rührt, und ist im Rückfall die falsche Erklärung: dann steht die Liste
+still, weil ihre Periode vorbei ist. Ein Grund je Zustand, und der wahre.
+
+**Und der Link geht mit.** Beide Abschnitte tragen genau einen Weg hinaus, auf
+den Filter, der dieselbe Liste ungekürzt zeigt (§12.24). `/entwuerfe`
+voreingestellt ist die **laufende** Periode, der Link liefe also in eine leere
+Liste — im Rückfall trägt er deshalb `&gp=…`, sonst nicht: im Normalfall ist
+die Periode ohnehin die Voreinstellung und der Parameter brächte nur einen
+aktiven Filter-Chip bei der Ankunft. Aus demselben Grund gehört die Zahl im
+Kopf der Rangliste zur **zurückgefallenen** Periode: „Alle 138
+Ministerialentwürfe →" ist die Größe der Menge hinter dem Link, und die des
+laufenden Fensters wäre eine Zahl über eine andere Liste.
+
+**Was der Rückfall NICHT ist.** Er verschiebt nicht die Periode der *Zeilen*,
+sondern die der gelesenen Liste. Dass eine Regierungsvorlage einen
+Ministerialentwurf der Vorperiode trägt, ist der Normalfall rund um einen
+Wechsel und war immer schon abgedeckt: vier der ersten sechs Gesetze der
+XXVII kamen aus Begutachtungen der XXVI (BGBl. I 111/2019 aus XXVI/161/ME,
+18/2020 aus 148/ME, 19/2020 aus 170/ME, 20/2020 aus 162/ME). Der Abschnitt
+liest das Ende der Kette auf der Vorlage (§12.23), und genau deshalb erzählt
+er über den Wechsel hinweg die richtige Geschichte — „deine Stellungnahme aus
+der letzten Periode ist gerade Gesetz geworden" ist Mechanismus 3, nicht ein
+Randfall.
+
+**Offen, und beim Messen gefunden — die offene Liste überlebt den Wechsel
+ebenfalls nicht.** Am Stichtag liefen noch Begutachtungen der alten Periode:
+2 am 24.10.2024 (352/ME bis +18 Tage), 4 am 23.10.2019 (169/ME bis +40 Tage).
+Sie verschwinden in dem Moment von `/`, aus `/feed.xml` und aus
+`/kalender.ics`, in dem `getCurrentGp()` umspringt — obwohl ihre Frist läuft
+und jede und jeder noch eine Stellungnahme einbringen kann. Gegengeprüft am
+25.09.2026 mit erzwungener GP XXIX: die offene Liste ist leer, die RIS-Hälfte
+ebenfalls, `/feed.xml` und `/kalender.ics` tragen **null** Einträge. Das ist
+kein Rechenschafts-, sondern ein Teilnahmeproblem, und es trifft genau den
+Ersatz für die E-Mail-Alerts. Es ist hier **nicht** gelöst: die Abhilfe ist
+kein benannter Rückfall, sondern die laufenden Fristen der Vorperiode
+mitzulesen — ein Merge, der hier richtig wäre, weil eine laufende Frist eine
+laufende Frist ist. Eigener Punkt in `TODO.md`.
 
 ## 13. Open questions
 

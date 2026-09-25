@@ -25,6 +25,7 @@ import { HOME_LIST_LENGTH } from '#shared/utils/draftOrder'
 import { STATUS_FINISHED } from '#shared/utils/draftStations'
 import { bgblOrderKey, extractBgblLink } from './detailJson'
 import { pickEnacted, type EnactedCandidate } from './enactedOrder'
+import { previousGp } from '#shared/utils/gp'
 import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp, reconcileActive } from './drafts'
 
 /**
@@ -50,8 +51,8 @@ interface Candidate extends EnactedCandidate {
   bgblNumber: string
 }
 
-export async function getRecentlyEnacted(): Promise<ClosedOutcome[]> {
-  const gp = await getCurrentGp()
+/** One period's newest Kundmachungen, at most `HOME_LIST_LENGTH` of them. */
+async function enactedOf(gp: string): Promise<ClosedOutcome[]> {
   const vorlagen = (await getVorlagenForGp(gp))
     .filter((v) => v.status === STATUS_FINISHED)
     .sort((a, b) => b.date.localeCompare(a.date) || b.inr - a.inr)
@@ -121,4 +122,45 @@ export async function getRecentlyEnacted(): Promise<ClosedOutcome[]> {
   }
 
   return items
+}
+
+/**
+ * The section as the page gets it: the newest Kundmachungen, and the period
+ * they came out of (docs/architecture.md §12.35).
+ *
+ * A new Gesetzgebungsperiode promulgates nothing for months — measured
+ * 2026-09-25, GP XXVIII's first law out of a Ministerialentwurf was BGBl. I
+ * Nr. 25/2025, whose Vorlage did not even arrive until 201 days after the
+ * period convened; GP XXVII's first was 14 days in. So the section falls
+ * back to the period before, NAMED, instead of standing empty through the
+ * weeks in which a new government is watched hardest.
+ *
+ * THE CONDITION IS „no row at all", not a count, and here that is enough —
+ * unlike the volume ranking next to it, which needs a second clause
+ * (`canRankPeriod`). A ranking of one is not a ranking; a single Kundmachung
+ * is a whole fact, and „zuletzt Gesetz geworden" is true of it the moment it
+ * exists.
+ *
+ * Note what the fallback is NOT needed for: a row whose draft comes from an
+ * earlier period. That case is ordinary and already handled — the scan reads
+ * list 101 of one period, but a Vorlage may carry a Ministerialentwurf from
+ * the one before it, and four of GP XXVII's first six laws did. The fallback
+ * moves the period whose VORLAGEN are scanned, nothing else.
+ */
+export async function getRecentlyEnacted(): Promise<{ gp: string; items: ClosedOutcome[] }> {
+  const gp = await getCurrentGp()
+  const items = await enactedOf(gp)
+  if (items.length) return { gp, items }
+
+  const prev = previousGp(gp)
+  if (!prev) return { gp, items }
+  try {
+    const fallback = await enactedOf(prev)
+    return fallback.length ? { gp: prev, items: fallback } : { gp, items }
+  } catch {
+    /* Per-period tolerance, as everywhere in this layer: the fallback is a
+     * second chance, never a second way to fail. The page then says the
+     * running period has no Kundmachung yet, which is what it knows. */
+    return { gp, items }
+  }
 }

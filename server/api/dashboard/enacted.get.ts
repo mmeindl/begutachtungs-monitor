@@ -7,5 +7,7 @@ import type { DashboardEnacted } from '#shared/types'
 import { getRecentlyEnacted } from '../../utils/parliament/enacted'
 
 export default defineEventHandler(async (): Promise<DashboardEnacted> => {
-  return { items: await getRecentlyEnacted() }
+  // Period and rows come from one call: which period the rows are from is
+  // part of the answer, not something the page may infer (§12.35).
+  return await getRecentlyEnacted()
 })
