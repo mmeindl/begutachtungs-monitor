@@ -90,7 +90,9 @@ deploy. Verify with
   predecessor died in operation).
 - **RIS prewarm:** the units in `deploy/systemd/` are rsynced to
   `/etc/systemd/system/` and enabled on every deploy. The timer curls
-  `/api/ris-map/aktuell` nightly at 04:30, and `deploy.sh` starts the same
-  oneshot after every restart, so the ~46-request RIS corpus fetch never lands
-  on a visitor. Nothing to do by hand; the next deploy installs it.
+  `/api/ris-map/aktuell` nightly at 04:30, and `deploy.sh` **waits for** the
+  same oneshot after every restart, so the ~46-request RIS corpus fetch never
+  lands on a visitor. That wait is why a deploy takes about a minute longer
+  than the restart: the restart empties the in-memory caches, and „✔ deployed"
+  is meant to say that the next visitor finds a warm server. Nothing to do by hand; the next deploy installs it.
   Check: `systemctl list-timers begutachtungs-monitor-prewarm.timer`.

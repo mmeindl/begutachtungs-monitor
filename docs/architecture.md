@@ -452,6 +452,23 @@ claim nobody can re-check (§12.13).
 
 `npm run dev` (local), `npm run build` → `.output/` (Node server). Hosting (settled Aug 2026, §13.8): **netcup VPS pico G11s** (1 vCPU/1 GB, Ubuntu LTS, Nuremberg, DE) — Nitro bundle as a systemd service behind Caddy (auto-TLS). Build runs locally; the self-contained `.output/` is rsynced (no toolchain on the server; bootstrap adds a 1 GB swapfile). Runbook + scripts: `deploy/`; **live since 2026-08-26** — the inventory (domain/DNS at INWX, IPs, TLS, costs) is `deploy/infrastructure.md`. The one piece of persistent state is the last-good statements store in `/var/lib/begutachtungs-monitor` (systemd `StateDirectory=`, §5 cache rule 4) — losing it costs a degraded page, never data; there is nothing to back up.
 
+**The deploy waits for the prewarm (25.09.2026).** `systemctl restart`
+empties every cache: in production Nitro mounts no storage, so both layers
+live in the very process systemd is replacing (§5, cache rule 5). Warming
+*before* the restart is therefore pointless — it would warm the process about
+to die — and the only thing a deploy can do about the cold window is not to
+walk away in the middle of it. `deploy.sh` starts the prewarm unit without
+`--no-block` since then, so `✔ deployed` means the next visitor finds a warm
+server. Until that day the first `/entwuerfe` after every deploy ran its RIS
+half ~15 s into an 8 s budget and answered „gerade nicht abrufbar" — honest,
+and avoidable; the same window cost the station filter its answer, which is
+what let the closed list claim too much (§12.26). A failed prewarm does not
+fail the deploy: the app is up — the smoke check runs before it — and what is
+lost is a warm cache, not a release; it is printed with the journal command
+instead. `TimeoutStartSec=2000` on the unit is the sum of its own
+`--max-time` budgets, so the wait has a stated upper bound rather than an
+inherited one.
+
 **EU sovereignty (hard invariant):** at runtime the application loads
 **no** third-party resources — no web fonts (system sans), no icon/script
 CDNs (icons bundled from the locally installed `@iconify-json/lucide`,
