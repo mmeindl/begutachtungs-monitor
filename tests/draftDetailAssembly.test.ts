@@ -54,6 +54,7 @@ function enactment(over: Partial<EnactmentInfo> = {}): EnactmentInfo {
     amendedIn: null,
     houseStatus: null,
     houseStatusText: null,
+    vote: null,
     filingOpen: false,
     ...over,
   }
