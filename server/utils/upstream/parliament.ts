@@ -17,6 +17,7 @@ import type {
   RawName,
   RawShortinfo,
   RawStage,
+  RawVote,
 } from '../parliament/detailJson'
 import { upstreamJson, UpstreamHttpError, type UpstreamPolicy } from './fetch'
 
@@ -65,6 +66,13 @@ export interface GegenstandResponse {
       description?: string | null
       bgbllinks?: RawBgblLink[] | null
     } | null
+    /**
+     * The third-reading vote, club by club (`parseVote`). Null until the
+     * Vorlage has been voted on. The structured sibling of the voting lines
+     * inside `status.description` above — that one stays unprinted prose,
+     * this one is a record.
+     */
+    vote?: RawVote | null
     /** "1" while the item takes Stellungnahmen, "0" afterwards (`isFilingOpen`). */
     statementsstate?: string | number | null
     /**

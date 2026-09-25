@@ -8,6 +8,7 @@ import {
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
+  voteLineDe,
 } from '~/utils/spine'
 import { aliasesFor } from '#shared/utils/draftAliases'
 // Explicit: `draftStations.ts` is a pure module and stays out of the
@@ -119,6 +120,13 @@ const stationContext = computed<StationContext>(() => ({
 /* What parliament did, for the sentence in "Im Parlament". Same function as
  * the bar's fact line, so the heading and the row cannot disagree. */
 const parliament = computed(() => (data.value ? parliamentOutcome(data.value) : null))
+
+/* And how the clubs voted on it — the same phrase the bar's row carries,
+ * here as the tail of a sentence that names the reading it belongs to. Null
+ * until the third reading happened, and null for the few records upstream
+ * keeps without club lists (`parseVote`), where the section simply says one
+ * sentence less rather than a vaguer one. */
+const voteLine = computed(() => voteLineDe(data.value?.enactment?.vote))
 
 /* The comparisons, keyed by the question they answer. All three exist since
  * 17.09.2026: the ressort's annex, the ME→RV diff, and — where parliament
@@ -972,9 +980,22 @@ const linkClasses =
           <div v-if="data.textEvolution.length" class="mt-3">
             <DocumentList :documents="data.textEvolution" />
           </div>
+          <!-- Who carried it, as its own sentence after the versions: the
+               paragraph above says what happened to the Vorlage, this one
+               who stood where on it.
+
+               It names the reading, because that is the vote parliament
+               records — one vote on the whole bill at the end. A club can
+               vote against it and still have put a change into the text
+               listed above, so the two facts are neighbours, never a
+               cause and its effect. The sentence is missing rather than
+               vaguer where upstream kept no club list (`parseVote`). -->
+          <p v-if="voteLine" class="mt-3 max-w-prose text-sm text-ink-secondary">
+            In dritter Lesung stimmten {{ voteLine }}.
+          </p>
           <!-- The parliamentary record itself. Our trace ends at the
-               Regierungsvorlage; its page upstream is where the readings,
-               dates and votes live. -->
+               Regierungsvorlage; its page upstream is where the readings
+               and dates live. -->
           <p class="mt-3 text-sm text-ink-secondary">
             <ExternalLink
               :href="data.enactment.rvUrl"

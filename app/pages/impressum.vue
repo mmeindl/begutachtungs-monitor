@@ -230,7 +230,9 @@ useSeoMeta({
               <ExternalLink
                 href="https://creativecommons.org/licenses/by/4.0/deed.de"
                 class="link-inline"
-              >CC BY 4.0</ExternalLink>. Die Dokumente selbst – Gesetzestexte,
+              >CC BY 4.0</ExternalLink>. Daraus stammt auch, welche Klubs in
+              dritter Lesung dafür und dagegen gestimmt haben. Die Dokumente
+              selbst – Gesetzestexte,
               Erläuterungen, Ausschuss- und Plenarfassungen – bezeichnet das
               Parlament als freie Werke, „ohne Lizenzierung frei nutzbar“.
             </dd>

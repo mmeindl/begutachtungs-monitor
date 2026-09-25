@@ -98,9 +98,15 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
         /* The second window stands here, and since 18.09.2026 this is its
            only fixed address: it was explained five times on list and detail
            pages and not at all on the page that explains the procedure. */
-        text: `Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Vorlage selbst sind noch Stellungnahmen möglich. ${SECOND_ROUND_WINDOW}`,
+        text: `Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Vorlage selbst sind noch Stellungnahmen möglich. ${SECOND_ROUND_WINDOW} Am Ende steht eine einzige Abstimmung über das ganze Gesetz, die dritte Lesung.`,
+        /* „welche Klubs" und nicht „wie das Parlament abgestimmt hat": das
+           Parlament zählt das Handzeichen je Klub, nicht je Abgeordnetem
+           (`docs/architecture.md` §12.34). Der Satz über der Zeile sagt, dass
+           es eine Abstimmung über das ganze Gesetz ist — damit die Klubs
+           neben den Fassungen nicht als Urteil über einen Paragraphen
+           gelesen werden. */
         monitor:
-          'Ob der Nationalrat den Text unverändert beschlossen oder im Ausschuss und im Plenum geändert hat – mit den Fassungen, die dabei entstanden sind, und den Stellungnahmen, die zur Vorlage noch eingegangen sind.',
+          'Ob der Nationalrat den Text unverändert beschlossen oder im Ausschuss und im Plenum geändert hat – mit den Fassungen, die dabei entstanden sind, den Stellungnahmen, die zur Vorlage noch eingegangen sind, und welche Klubs in dritter Lesung dafür und dagegen gestimmt haben.',
       },
       {
         id: 'bundesgesetzblatt',

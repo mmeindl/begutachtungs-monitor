@@ -7,6 +7,7 @@ import {
   parliamentOutcome,
   procedureStatusDe,
   stations,
+  voteLineDe,
 } from '../app/utils/spine'
 
 /* Only what `stations()` reads; the rest of DraftDetail is irrelevant here. */
@@ -33,6 +34,7 @@ function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
       amendedIn: null,
       houseStatus: null,
       houseStatusText: null,
+      vote: null,
       filingOpen: false,
     },
     ...overrides,
@@ -336,5 +338,54 @@ describe('the four house outcomes on the page', () => {
     })
     expect(procedureStatusDe(d)).toBe('Gesetz geworden')
     expect(parliamentOutcome(d)).toBe('unchanged')
+  })
+})
+
+describe('the third-reading vote on the Parlament row', () => {
+  const vote = (infavor: string[], against: string[], passed = true) => ({ infavor, against, passed })
+  const withVote = (v: ReturnType<typeof vote> | null, over: Partial<NonNullable<DraftDetail['enactment']>> = {}) =>
+    draft({ enactment: { ...draft().enactment!, vote: v, ...over } })
+  const row = (d: DraftDetail) => stations(d).find((s) => s.id === 'parlament')!
+
+  it('reads as one phrase, in the bar and in the section alike', () => {
+    expect(voteLineDe(vote(['ÖVP', 'SPÖ', 'NEOS'], ['FPÖ', 'GRÜNE'])))
+      .toBe('ÖVP, SPÖ und NEOS dafür, FPÖ und GRÜNE dagegen')
+    expect(voteLineDe(vote(['ÖVP'], ['FPÖ']))).toBe('ÖVP dafür, FPÖ dagegen')
+  })
+
+  /* Never „einstimmig": parliament counts the show of hands per Klub, so a
+     club is what we can report — a single deputy is invisible to it. */
+  it('says „alle Klubs dafür" where nobody was against', () => {
+    expect(voteLineDe(vote(['ÖVP', 'SPÖ', 'NEOS', 'FPÖ', 'GRÜNE'], []))).toBe('alle Klubs dafür')
+    expect(voteLineDe(vote([], ['ÖVP', 'SPÖ']))).toBe('alle Klubs dagegen')
+  })
+
+  it('claims nothing where upstream kept no club list, and nothing before the vote', () => {
+    expect(voteLineDe(null)).toBeNull()
+    expect(voteLineDe(vote([], []))).toBeNull()
+    expect(row(withVote(null)).facts).toEqual(['Text unverändert beschlossen'])
+  })
+
+  it('comes after the amendment, so the row reads in procedural order', () => {
+    const d = withVote(vote(['ÖVP', 'GRÜNE'], ['SPÖ']), {
+      bgblNumber: null,
+      houseStatus: '5',
+      houseStatusText: 'Beschlossen im Nationalrat',
+      amendedIn: ['ausschuss'],
+    })
+    expect(row(d).facts).toEqual(['beschlossen', 'im Ausschuss geändert', 'ÖVP und GRÜNE dafür, SPÖ dagegen'])
+  })
+
+  it('states it on a rejected Vorlage too — who was for it is the finding there', () => {
+    const d = withVote(vote(['ÖVP', 'GRÜNE'], ['SPÖ', 'FPÖ', 'NEOS'], false), {
+      bgblNumber: null,
+      houseStatus: '5',
+      houseStatusText: 'in dritter Lesung abgelehnt',
+    })
+    expect(row(d).facts).toEqual(['abgelehnt', 'ÖVP und GRÜNE dafür, SPÖ, FPÖ und NEOS dagegen'])
+  })
+
+  it('says nothing at all where there is no Vorlage to vote on', () => {
+    expect(row(draft({ enactment: null })).facts).toEqual([])
   })
 })

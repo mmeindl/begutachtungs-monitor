@@ -4,6 +4,7 @@ import {
   bgblOrderKey,
   extractBgblLink,
   isFilingOpen,
+  parseVote,
   findHandoff,
   findLastRvLink,
   findRvLinks,
@@ -329,6 +330,64 @@ describe('amendedStationsOf', () => {
     // The Vorlage's Gesetzestext is what the two stations are changes TO, and
     // a Verhältnismäßigkeitsprüfung is no version of the law at all.
     expect(amendedStationsOf([group('Gesetzestext'), group('Verhältnismäßigkeitsprüfung')])).toEqual([])
+  })
+})
+
+describe('parseVote', () => {
+  const club = (text: string, infavor: boolean) => ({ text, code: text[0], fraction: 1, infavor })
+
+  /* 474 d.B. (XXVIII), the Vorlage out of 88/ME — read live 24.09.2026. */
+  it('splits the clubs into the two sides upstream flags them as', () => {
+    expect(parseVote({
+      result: [
+        club('FPÖ', false), club('ÖVP', true), club('SPÖ', true),
+        club('NEOS', true), club('GRÜNE', false),
+      ],
+      infavor: true,
+      code: 'fVSNg',
+      text: 'Dafür: V, S, N, Dagegen: F, G',
+    })).toEqual({ infavor: ['ÖVP', 'SPÖ', 'NEOS'], against: ['FPÖ', 'GRÜNE'], passed: true })
+  })
+
+  /* XXVII/474 d.B.: two clubs for it, and it still failed — it needed a
+     two-thirds majority. `passed` is upstream's flag, never a headcount of
+     ours. */
+  it('takes whether the vote carried from upstream, not from the sides', () => {
+    const v = parseVote({
+      result: [club('ÖVP', true), club('GRÜNE', true), club('SPÖ', false), club('FPÖ', false), club('NEOS', false)],
+      infavor: false,
+    })
+    expect(v?.passed).toBe(false)
+    expect(v?.infavor).toEqual(['ÖVP', 'GRÜNE'])
+  })
+
+  /* Shape 2: upstream's prose vocabulary with no club record behind it —
+     „Namentliche Abstimmung" (2 of 110 voted Vorlagen in GP XXVIII),
+     „mehrstimmig", „Einstimmig". The comment beside them is a sentence in
+     shifting formats, so nothing is read out of it. */
+  it('answers null where upstream kept a word instead of the clubs', () => {
+    expect(parseVote({
+      result: [],
+      infavor: true,
+      code: '_namen',
+      text: 'Namentliche Abstimmung',
+      comment: 'abgegebene Stimmen: 176; davon Ja-Stimmen: 105, Nein-Stimmen: 71',
+    })).toBeNull()
+    expect(parseVote({ result: [], infavor: true, code: '_mehr', text: 'mehrstimmig', comment: 'dafür: V, F, N, tlw. P' })).toBeNull()
+  })
+
+  /* A Vorlage that has not been voted on carries `vote: null` — all 13
+     GP-XXVIII Vorlagen without one were still in Behandlung. */
+  it('answers null for a Vorlage that has not been voted on', () => {
+    expect(parseVote(null)).toBeNull()
+    expect(parseVote(undefined)).toBeNull()
+    expect(parseVote({})).toBeNull()
+  })
+
+  it('drops nameless entries and treats anything but an explicit true as against', () => {
+    expect(parseVote({ result: [{ text: '  ', infavor: true }, { text: 'SPÖ', infavor: null }, club('ÖVP', true)] }))
+      .toEqual({ infavor: ['ÖVP'], against: ['SPÖ'], passed: false })
+    expect(parseVote({ result: [{ infavor: true }] })).toBeNull()
   })
 })
 

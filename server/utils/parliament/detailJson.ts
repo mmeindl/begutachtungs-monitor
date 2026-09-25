@@ -10,6 +10,7 @@ import type {
   DescriptionBlock,
   DocumentFormat,
   Handoff,
+  HouseVote,
   LawStationId,
   TextVersion,
   TraceStep,
@@ -349,6 +350,60 @@ export function amendedStationsOf(
     }
   }
   return PARLIAMENT_LAW_STATIONS.filter((id) => seen.has(id))
+}
+
+export interface RawVote {
+  result?: { text?: unknown; infavor?: unknown }[] | null
+  infavor?: unknown
+  code?: unknown
+  text?: unknown
+  comment?: unknown
+}
+
+/**
+ * content.vote of a Regierungsvorlage → who voted how in the third reading.
+ *
+ * Upstream ships TWO shapes under the same key, and only the first is a
+ * record of clubs:
+ *
+ * 1. `result[]` with one entry per Klub (`text`, `infavor`, plus a seat
+ *    count and a colour we do not read) — the club-level vote.
+ * 2. `result: []` with a controlled word in `text` instead („Namentliche
+ *    Abstimmung", „mehrstimmig", „Einstimmig"; the `code` starts with an
+ *    underscore). Upstream has no club record for those, and the `comment`
+ *    beside them is free prose in shifting formats („abgegebene Stimmen:
+ *    176; davon Ja-Stimmen: 105 …", „dafür: V, F, N, tlw. P", and in GP XXV
+ *    once „abgegene Stimmen"). Reading clubs out of that would be our
+ *    parse of a sentence, not a record, so shape 2 answers null.
+ *
+ * Measured 24.09.2026 over the Regierungsvorlagen of nine periods (list 101,
+ * columns 31–35 carry the same values): of the Vorlagen that were voted on,
+ * shape 1 covers 108 of 110 in GP XXVIII, 360 of 361 in XXVII, and 398 of
+ * 423 as far back as GP XX. The residue is shape 2, almost all of it
+ * namentliche Abstimmungen and old „mehrstimmig" rows. `vote` itself is null
+ * until the third reading happens: all 13 GP-XXVIII Vorlagen without one
+ * were still in Behandlung.
+ *
+ * We do not compute vote COUNTS from the seat numbers upstream also ships.
+ * They are the clubs' mandates, not the deputies in the room — the
+ * namentliche Abstimmungen record 176 and 163 votes cast out of 183 seats —
+ * so a total added up here would be our arithmetic wearing the authority of
+ * a count.
+ */
+export function parseVote(vote: RawVote | null | undefined): HouseVote | null {
+  const result = vote?.result
+  if (!Array.isArray(result) || result.length === 0) return null
+  const infavor: string[] = []
+  const against: string[] = []
+  for (const club of result) {
+    const name = typeof club?.text === 'string' ? club.text.trim() : ''
+    if (!name) continue
+    // Anything that is not an explicit `true` counts as not in favour —
+    // upstream's own two-way flag, and there is no third state in it.
+    ;(club.infavor === true ? infavor : against).push(name)
+  }
+  if (infavor.length === 0 && against.length === 0) return null
+  return { infavor, against, passed: vote?.infavor === true }
 }
 
 /**

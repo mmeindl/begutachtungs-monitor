@@ -139,6 +139,33 @@ export interface RelatedDraft {
   hasRv: boolean | null
 }
 
+/**
+ * How the Nationalrat voted on a Regierungsvorlage in the third reading —
+ * upstream's own `content.vote`, club by club.
+ *
+ * CLUB LEVEL IS ALL THERE IS. Parliament records who raised their hand per
+ * Klub, never per Abgeordneter: the Stenographisches Protokoll says „Das ist
+ * die Mehrheit, angenommen" and nothing more. So this says what the clubs
+ * did, and a dissenting single deputy is invisible to it — which is also why
+ * a vote with nobody against is reported as „alle Klubs dafür" and never as
+ * „einstimmig": unanimity is a claim about people, and upstream keeps its
+ * own separate vocabulary for it (see `parseVote`).
+ *
+ * Club names travel exactly as upstream writes them („ÖVP", „GRÜNE", and in
+ * the older periods „F", „L", „STRONACH"). A prettier display list would be
+ * a vocabulary to maintain that goes stale the moment a new club enters.
+ */
+export interface HouseVote {
+  /** Klubs that voted for, in upstream's order (largest first). */
+  infavor: string[]
+  /** Klubs that voted against. Empty means every club was in favour. */
+  against: string[]
+  /** Whether the vote carried — upstream's own flag, not our arithmetic.
+   *  False happens: XXVII/474 d.B. had ÖVP and GRÜNE for it and still
+   *  failed, because it needed a two-thirds majority. */
+  passed: boolean
+}
+
 /** "Was wurde daraus" — filled once a Regierungsvorlage exists */
 export interface EnactmentInfo {
   /** e.g. "2238 d.B." */
@@ -184,8 +211,20 @@ export interface EnactmentInfo {
    * `app/utils/spine.ts`): it is a Ressort-independent but free-form field
    * that also carries the voting lines by party, and this product does not
    * republish upstream prose it has not measured.
+   *
+   * That exclusion is about the PROSE, not about the fact: the same vote
+   * exists as a structured record one field below, and that one is shown.
    */
   houseStatusText: string | null
+  /**
+   * The third-reading vote on the Vorlage NAMED ABOVE, club by club — null
+   * while it has not been voted on, and null for the handful of records that
+   * carry only upstream's prose vocabulary instead of the club lists
+   * (`parseVote`). Read from the Vorlage's own record, like the four fields
+   * above it, so the vote and the Kundmachung beside it are about the same
+   * Vorlage (ME→RV is 1:n, §13.4).
+   */
+  vote: HouseVote | null
   /**
    * Whether parliament currently accepts Stellungnahmen on this Vorlage —
    * upstream's `statementsstate` on the RV's detail JSON, "1" while the

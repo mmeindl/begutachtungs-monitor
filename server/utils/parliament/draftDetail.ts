@@ -16,6 +16,7 @@ import {
   findRvLinks,
   isFilingOpen,
   parseStages,
+  parseVote,
   type RvLink,
 } from './detailJson'
 import { assembleDraftDetail } from './draftDetailAssembly'
@@ -90,8 +91,8 @@ export async function getDraftOutcome(
 
 /**
  * The Regierungsvorlage's half of the outcome: its Kundmachung, what the
- * house did with it, where it was changed, and whether the Nationalrat still
- * takes Stellungnahmen on it.
+ * house did with it, how the clubs voted on it, where it was changed, and
+ * whether the Nationalrat still takes Stellungnahmen on it.
  *
  * ALL OF IT FROM THE SAME VORLAGE. The BGBl number was always read from the
  * last Vorlage in the stage list; what parliament did with the text was read
@@ -99,7 +100,7 @@ export async function getDraftOutcome(
  * Vorlage among several whenever a draft produced more than one (§13.4). On
  * XXVIII/26/ME those are two different Vorlagen, and the page put one's
  * silence under the other's Kundmachung: „Text unverändert beschlossen"
- * about a text the Ausschuss and the Plenum had both changed. Four fields,
+ * about a text the Ausschuss and the Plenum had both changed. Five fields,
  * one record, one fetch.
  *
  * Enrichment, never a dependency — a failing RV fetch leaves null fields
@@ -127,6 +128,7 @@ async function enactmentOf(
     amendedIn: null,
     houseStatus: null,
     houseStatusText: null,
+    vote: null,
     filingOpen: false,
   }
   try {
@@ -150,13 +152,17 @@ async function enactmentOf(
     enactment.houseStatusText = status?.description
       ? stripHtmlToText(status.description) || null
       : null
+    // Who voted how, from the same payload — the one fact the page was
+    // missing at the end of the chain. The status prose above carries it
+    // too, in a sentence we do not print; this is the record behind it.
+    enactment.vote = parseVote(rv.content?.vote)
     // The second window for input, from the same payload as the BGBl
     // link — no request of its own. Only while the GP runs: a Vorlage
     // that lapsed with its GP takes nothing, whatever a stale flag says.
     enactment.filingOpen = isFilingOpen(rv.content) && !gpHasEnded(gp, currentGp)
   } catch {
-    // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn and both
-    // status fields stay null, filingOpen false.
+    // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn, both
+    // status fields and the vote stay null, filingOpen false.
   }
   return enactment
 }

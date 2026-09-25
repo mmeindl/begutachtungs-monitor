@@ -41,7 +41,7 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { DraftDetail, LawStationId } from '#shared/types'
+import type { DraftDetail, HouseVote, LawStationId } from '#shared/types'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
 import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
 
@@ -346,6 +346,39 @@ export function parliamentOutcome(
   return d.gpEnded ? 'lapsed' : 'pending'
 }
 
+/** "ÖVP", "ÖVP und SPÖ", "ÖVP, SPÖ und NEOS" — upstream's club names,
+ *  never a prettier list of our own (`HouseVote`). */
+const clubsDe = (clubs: readonly string[]): string =>
+  clubs.length < 2
+    ? clubs[0] ?? ''
+    : `${clubs.slice(0, -1).join(', ')} und ${clubs.at(-1)}`
+
+/**
+ * How the clubs voted, as one phrase — „alle Klubs dafür" or „ÖVP, SPÖ und
+ * NEOS dafür, FPÖ und GRÜNE dagegen".
+ *
+ * ONE function for the bar's fact line and the page's sentence, like
+ * `parliamentOutcome` above: the phrase is built so it works bare in the
+ * row and as the tail of „In dritter Lesung stimmten …" in the section.
+ *
+ * Deliberately not „einstimmig" where nobody was against: parliament
+ * records the show of hands per Klub, so what we know is that every club
+ * was in favour, not that every deputy was — and upstream keeps „Einstimmig"
+ * as its own separate vocabulary for the records where it means that.
+ *
+ * It says nothing about WHY a club voted as it did, and nothing about any
+ * Stellungnahme: the vote is on the whole bill in the third reading, so it
+ * is the end of the chain, never evidence about a single §.
+ */
+export function voteLineDe(vote: HouseVote | null | undefined): string | null {
+  if (!vote) return null
+  const { infavor, against } = vote
+  if (!infavor.length && !against.length) return null
+  if (!against.length) return 'alle Klubs dafür'
+  if (!infavor.length) return 'alle Klubs dagegen'
+  return `${clubsDe(infavor)} dafür, ${clubsDe(against)} dagegen`
+}
+
 /** Empty slots are dropped rather than rendered, so a row never reads "· ·". */
 const kept = (...facts: (string | null | undefined)[]): string[] =>
   facts.filter((f): f is string => Boolean(f))
@@ -379,6 +412,10 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
   /** Whether parliament is still holding the text — orthogonal to WHAT it
    *  did with it, so the two are read separately. */
   const running = e && !e.bgblNumber ? (d.gpEnded ? 'GP beendet' : 'in Behandlung') : null
+  /** How the clubs voted in the third reading. No condition guards it: the
+   *  record is null until that reading happens, so the phrase appears
+   *  exactly where there is one. */
+  const voteLine = voteLineDe(e?.vote)
 
   /** The head of the old chain, as a fact of the draft that produces it. */
   const changes = ctx.createsNewLaw
@@ -505,19 +542,26 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // they are: „in Behandlung" beside „abgelehnt" would say the procedure
       // is still running. Only „beschlossen" keeps the amendment beside it,
       // because there the reader is still owed what the text went through.
-      facts: outcome === null
-        ? []
-        : outcome === 'unchanged'
-          ? ['Text unverändert beschlossen']
-          : outcome === 'rejected'
-            ? ['abgelehnt']
-            : outcome === 'withdrawn'
-              ? ['zurückgezogen']
-              : outcome === 'recommitted'
-                ? ['an den Ausschuss zurückverwiesen']
-                : outcome === 'decided'
-                  ? kept('beschlossen', amended)
-                  : kept(running, amended),
+      //
+      // The vote goes last, and after the amendment rather than before it:
+      // the row reads in the order the procedure ran — what the house did,
+      // what that did to the text, and how the clubs stood on it.
+      facts: kept(
+        ...(outcome === null
+          ? []
+          : outcome === 'unchanged'
+            ? ['Text unverändert beschlossen']
+            : outcome === 'rejected'
+              ? ['abgelehnt']
+              : outcome === 'withdrawn'
+                ? ['zurückgezogen']
+                : outcome === 'recommitted'
+                  ? ['an den Ausschuss zurückverwiesen']
+                  : outcome === 'decided'
+                    ? kept('beschlossen', amended)
+                    : kept(running, amended)),
+        voteLine,
+      ),
       // Only where a changed text is ON THIS PAGE — `lastParliamentStation`,
       // not the fact line above it. Where parliament changed the text of a
       // sibling Vorlage (§13.4) the fact is true and the comparison still has
