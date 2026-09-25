@@ -6876,6 +6876,60 @@ RStDG war der verlorene). Gefunden wurde das nicht am Text, sondern an der
 einen fehlenden Zahl: Zwei Worktrees auf denselben RIS-Daten, einer auf
 6475f6d, einer auf HEAD — dieselbe Beilage, ein § Unterschied.
 
+**Dieselbe Frage noch einmal, eine Zeile weiter — die Füllpunkte, und dort
+war die Regel in BEIDE Richtungen falsch (25.09.2026).** `LEADER_DOTS_RE` war
+`/\.{3,}/`, kannte also nur die ASCII-Schreibweise. Gemessen an 1.566
+Punktreihen (300 Entwurfs-XML, die Erläuterungen der GP XXVIII, 13
+Textgegenüberstellungen), „…" für die drei Punkte gezählt, die es druckt:
+
+| Gewicht | Vorkommen | was es ist |
+|---|---:|---|
+| genau 3 | **1.375** | die Auslassung der Beilage |
+| 4–9 | 15 | Formularvorlagen und Tarifzeilen |
+| 10+ | **176** | Spaltenfüller zur Zahl |
+
+Die beiden Gebräuche überschneiden sich nicht, ein Schwellenwert trennt sie
+also — und die fünfzehn dazwischen sind Füller, keine Auslassungen. Die alte
+Regel trennte statt nach Gewicht nach **Schreibweise**, und das hieß: Von den
+1.375 Auslassungen **löschte sie 660 aus der Anzeige und behielt 715** —
+dieselbe Notation las sich auf der Seite zweierlei —, und von den 176 Füllern
+**sah sie 133 nicht**, weil sie mit „…" gesetzt sind. Der Schutz, für den sie
+gebaut wurde (15/ME, zwölf von 398 Einheiten „geändert" wegen einer
+Punktreihe), griff für die häufigere Schreibweise gar nicht.
+
+Seit 25.09.2026 entscheidet das Gewicht: `foldLeaders` nimmt ab 10 heraus und
+lässt die Auslassung stehen, `foldDotRuns` nimmt für die Gleichheitsform beide
+heraus, und `compareToken` vergleicht eine reine Punktreihe als „…", damit
+„..." und „…" dieselbe Auskunft sind. Ein Stück der Reihe sind zwei Punkte
+oder ein „…", nie ein einzelner Punkt: Sonst schluckt der Ausdruck den
+Schlusspunkt der Ordnungszahl davor („3. bis 6. ...") — in der ersten Messung
+289 von 1.566 Reihen, und genau daran wäre die Trennung gescheitert.
+
+Gemessen über 2.236 Paare (13 Beilagen, 11 Gesetzesvergleiche): Die **Anzeige**
+ändert sich in 198, `isEditorialChange` und `isAddressOnlyDifference` kippen in
+**null** Fällen, und die Einheiten-Gleichheit (`compareKey`) bewegt sich dort in
+**null** Fällen. Der Anzeigenteil ist gezählt: **1.243 Auslassungszeichen
+erreichen den Leser, die vorher zur Hälfte verschwanden** (116/ME allein 355 in
+den ausgelieferten Segmenten — „§ 41. (1) bis (3) ... (4) Zur
+Beitragsgrundlage …", vorher „(1) bis (3) (4)").
+
+**Die Null bei `compareKey` hielt nur bis zum Drift-Lauf, und das ist die
+Pointe.** Über die 126 Entwürfe mit Beilage des Tabellenpfads meldete Klasse B
+genau einen Entwurf (118/ME, `changeRowsNoPara` 2 → 1), und die Zeile dazu ist
+der Beleg, den die 2.236 Paare nicht liefern konnten:
+
+    links:  „§ 1 Abs. 1 bis 8 …"
+    rechts: „§ 1 Abs. 1 bis 8"
+
+Die Beilage lässt links aus und rechts nicht. Das alte `compareKey` sah „…"
+nicht, die Spalten waren damit ungleich, und die Zeile zählte als **Änderung
+des Gesetzes** — ein Fehlalarm derselben Klasse, für die die Faltung 2026 an
+15/ME gebaut wurde, nur in der Schreibweise, die sie nie abdeckte. Der Ertrag
+des Füllerteils ist also gemessen, wenn auch klein: ein falsches „geändert"
+weniger auf 126 Entwürfe. Die Grundlinie
+(`tests/fixtures/annex-baseline.json`) ist im selben Commit nachgezogen, wie
+es `.github/workflows/annex-drift.yml` verlangt.
+
 **Auf der Strecke Regierungsvorlage → Bundesgesetzblatt zahlt Nummer 3 genau
 das ein, wofür sie gebaut ist, und Nummer 1 legt eine alte Asymmetrie frei.**
 Mit Nummer 3 allein fallen 51/ME, 58/ME und 60/ME auf **null** substanzielle

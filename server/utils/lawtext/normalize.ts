@@ -33,12 +33,58 @@ export function stripQuotes(t: string): string {
   return normalizeText(t).replace(/^["'\u00ab\u00bb\u2039\u203a\s]+|["'\u00ab\u00bb\u2039\u203a\s]+$/g, '')
 }
 
-/** Runs of dots are layout in an amount table, not punctuation — see `compareKey`. */
-const LEADER_DOTS_RE = /\.{3,}/g
+/**
+ * ONE run of dot characters — „...", „…", „…………………..", and „..... ........"
+ * too, because a leader is regularly broken by spaces.
+ *
+ * A piece is two or more dots or one „…", never a single dot: a lone full stop
+ * next to a run belongs to the sentence or to the ordinal in front of it, and
+ * letting it join swallowed the „6." of „3. bis 6. ..." in 289 of 1.566 runs
+ * when this was first measured (25.09.2026).
+ */
+const DOT_RUN_RE = /(?:…+|\.{2,})(?:\s+(?:…+|\.{2,}))*/g
+
+/** What a run PRINTS, „…" counting for the three dots it shows. */
+function dotWeight(run: string): number {
+  return (run.match(/\./g) ?? []).length + 3 * (run.match(/…/g) ?? []).length
+}
+
+/**
+ * Where a dot run stops being an omission and becomes column padding.
+ *
+ * **Measured over 1.566 runs** — 300 Entwurfs-XML, die Erläuterungen der
+ * GP XXVIII und 13 Textgegenüberstellungen (25.09.2026): 1.375 runs weigh
+ * exactly 3 and every one of them is the annex's „unchanged, left out"; 176
+ * weigh 10 or more and every one of them pads an amount table to its figure
+ * („monatlich........................ 1,21 Euro"). Fifteen lie between, and
+ * all fifteen are pieces of form templates and rate tables — leaders, not
+ * omissions. The two uses do not overlap, so a threshold separates them.
+ */
+const LEADER_WEIGHT = 10
+
+/** The layout runs, gone; the omissions kept. */
+function foldLeaders(t: string): string {
+  return t.replace(DOT_RUN_RE, (run) => (dotWeight(run) >= LEADER_WEIGHT ? ' ' : run))
+}
+
+/** Every dot run, layout and omission alike — for the equality form only. */
+function foldDotRuns(t: string): string {
+  return t.replace(DOT_RUN_RE, (run) => (dotWeight(run) >= 3 ? ' ' : run))
+}
+
+/** A token that is nothing but dots — the omission mark, in whichever spelling. */
+const DOT_TOKEN_RE = /^[.…]+$/
+
 /** A hyphen BETWEEN letters or digits: the one `compareKey` folds away, „E-Mail" → „EMail". */
 const INNER_HYPHEN_RE = /(?<=[\p{L}\p{N}])-+(?=[\p{L}\p{N}])/gu
-/** The space a source sets in front of the punctuation mark that closes a sentence or a list item. */
-const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])/g
+/**
+ * The space a source sets in front of the punctuation mark that closes a
+ * sentence or a list item.
+ *
+ * Not in front of a dot RUN: „(1) bis (5) ..." would otherwise weld the
+ * omission onto the designation before it and print „(5)...".
+ */
+const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])(?![.…])/g
 
 /**
  * Comparison form: insensitive to whitespace AND to hyphens.
@@ -80,9 +126,7 @@ const SPACE_BEFORE_PUNCT_RE = /\s+([.,;:])/g
  * word diff is.
  */
 export function compareKey(t: string): string {
-  return normalizeText(t)
-    .replace(LEADER_DOTS_RE, ' ')
-    .replace(/[\s-]+/g, '')
+  return foldDotRuns(normalizeText(t)).replace(/[\s-]+/g, '')
 }
 
 /**
@@ -118,8 +162,7 @@ export function compareKey(t: string): string {
  * form that is right for a judgement is not thereby right for a text.
  */
 export function displayTokens(t: string): string[] {
-  return normalizeText(t)
-    .replace(LEADER_DOTS_RE, ' ')
+  return foldLeaders(normalizeText(t))
     .replace(SPACE_BEFORE_PUNCT_RE, '$1')
     .split(' ')
     .filter(Boolean)
@@ -142,7 +185,11 @@ export function displayTokens(t: string): string[] {
  * parliament that nobody had earned.
  */
 export function compareToken(word: string): string {
-  return word.replace(INNER_HYPHEN_RE, '')
+  const folded = word.replace(INNER_HYPHEN_RE, '')
+  // „..." and „…" are one notation in two spellings, and „…." is it with the
+  // sentence's full stop behind it. Compared as written, the same omission on
+  // the two sides of a Gegenüberstellung reads as a changed word.
+  return DOT_TOKEN_RE.test(folded) ? '…' : folded
 }
 
 /**

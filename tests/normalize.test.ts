@@ -127,3 +127,48 @@ describe('displayTokens and compareToken — die zwei Formen des Wortdiffs', () 
     expect(compareToken('-')).toBe('-')
   })
 })
+
+describe('Punktreihen — Auslassung oder Spaltenfüller', () => {
+  // Measured over 1.566 runs (25.09.2026): weight 3 is always the annex's
+  // „unchanged, left out", weight 10+ always pads a table to its figure, and
+  // the fifteen in between are form templates. „…" counts for three dots.
+  it('shows the omission, in whichever spelling the ressort set it', () => {
+    expect(displayTokens('§ 41. (1) bis (3) ... (4) Zur Beitragsgrundlage')).toContain('...')
+    expect(displayTokens('§ 50. (1) bis (37) … (38) Die Bestimmung')).toContain('…')
+  })
+
+  it('takes the column filler out, in whichever spelling', () => {
+    expect(displayTokens('monatlich........................ 1,21 Euro')).toEqual(['monatlich', '1,21', 'Euro'])
+    expect(displayTokens('Betrag gemäß § 26 Abs. 1……………………………………… 361 Euro').join(' ')).not.toMatch(/…/)
+  })
+
+  // A leader is regularly broken by spaces („..... ......................").
+  it('reads a filler split by spaces as one run', () => {
+    expect(displayTokens('Kerngebiet liegt ................. ................ 1,21 Euro')).toEqual(['Kerngebiet', 'liegt', '1,21', 'Euro'])
+  })
+
+  // The greedy version of this rule swallowed the „6." of „3. bis 6. ..." in
+  // 289 of 1.566 runs, which is why a piece is two dots or one „…", never one.
+  it('leaves the full stop of the ordinal in front of an omission alone', () => {
+    expect(displayTokens('3. bis 6. ...')).toEqual(['3.', 'bis', '6.', '...'])
+  })
+
+  it('does not weld the omission onto the designation before it', () => {
+    expect(displayTokens('(1) bis (5) ...')).toEqual(['(1)', 'bis', '(5)', '...'])
+    // …while the space before an ordinary mark is still welded away.
+    expect(displayTokens('der Betrag 13 , und')).toEqual(['der', 'Betrag', '13,', 'und'])
+  })
+
+  it('compares an omission by what it means, not by how it is spelt', () => {
+    expect(compareToken('...')).toBe(compareToken('…'))
+    expect(compareToken('….')).toBe(compareToken('...'))
+  })
+
+  // The equality form never shows, so it folds both uses away — this is the
+  // rule 15/ME needed, now for „…" as well, which it never covered.
+  it('folds every dot run out of the equality form, both spellings', () => {
+    expect(compareKey('monatlich.........................')).toBe(compareKey('monatlich'))
+    expect(compareKey('monatlich………………………………')).toBe(compareKey('monatlich'))
+    expect(compareKey('(1) bis (5) ...')).toBe(compareKey('(1) bis (5) …'))
+  })
+})

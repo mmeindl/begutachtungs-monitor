@@ -225,3 +225,25 @@ describe('diffTokens — die Anzeigeform trägt den Bindestrich', () => {
     expect(d.segments).toEqual([{ type: 'equal', text: 'monatlich 13, und' }])
   })
 })
+
+describe('diffTokens — die Auslassung der Beilage', () => {
+  // 660 of 1.375 omissions were deleted from the display and 715 kept, purely
+  // because the old rule saw „..." and not „…" (25.09.2026). The reader lost
+  // the one mark saying that unchanged text stands here.
+  it('shows the omission instead of swallowing it', () => {
+    const d = diffTokens('§ 41. (1) bis (3) ... (4) alte Fassung', '§ 41. (1) bis (3) ... (4) neue Fassung')
+    expect(d.segments!.map((s) => s.text).join(' ')).toContain('...')
+  })
+
+  it('counts the same omission in two spellings as unchanged', () => {
+    const d = diffTokens('§ 41. (1) bis (3) ... (4) Text', '§ 41. (1) bis (3) … (4) Text')
+    expect(d.similarity).toBe(1)
+    expect(d.segments).toEqual([{ type: 'equal', text: '§ 41. (1) bis (3) ... (4) Text' }])
+  })
+
+  it('still drops a column filler of either spelling', () => {
+    const d = diffTokens('monatlich........................ 1,21 Euro', 'monatlich………………………… 1,21 Euro')
+    expect(d.similarity).toBe(1)
+    expect(d.segments).toEqual([{ type: 'equal', text: 'monatlich 1,21 Euro' }])
+  })
+})
