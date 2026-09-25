@@ -124,6 +124,37 @@ export function previousGp(gp: string): string | null {
 }
 
 /**
+ * Which period's DATE WINDOW answers for `gp` — itself, normally.
+ *
+ * The RIS Begut records carry no Gesetzgebungsperiode at all; they are
+ * assigned to one by their Begutachtungsbeginn falling inside `gpWindow`
+ * (`server/utils/ris/risOnly.ts`). So a period the calendar above has no row
+ * for gets no records — not a thin list but no list, and it would stay that
+ * way until someone edited the table. On the day a new period convenes that
+ * is exactly the wrong dependency, and it costs roughly half of what is open
+ * (§12.16, §12.35).
+ *
+ * The predecessor answers for it, because its window is open-ended by
+ * construction: `gpEndedOn` reads the successor's start, which is precisely
+ * the row that is missing, so the window already runs to today and covers
+ * the new period's records too.
+ *
+ * The condition is exact and self-disabling. An open-ended predecessor
+ * window means no successor row exists, so this returns a different code
+ * only for the period straight after the newest one in the table, and stops
+ * the moment that row is added. A gap further back — GP XIX and older, which
+ * the table simply does not reach — fails it and returns null, because there
+ * the predecessor has no window either and inventing one would date records
+ * into a period nobody verified.
+ */
+export function windowPeriodFor(gp: string): string | null {
+  if (GP_STARTS[gp]) return gp
+  const prev = previousGp(gp)
+  const prevWindow = prev ? gpWindow(prev) : null
+  return prev && prevWindow && prevWindow.to === null ? prev : null
+}
+
+/**
  * Whether `gp` lies before the GP that is running (`currentGp`, read from
  * Parliament's page configuration). Falls to false on unparseable codes and
  * when the current GP is unknown — the safe direction: a page never claims

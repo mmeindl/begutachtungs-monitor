@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { GP_STARTS, gpEndedOn, gpHasEnded, intToRoman, previousGp, romanToInt } from '../shared/utils/gp'
+import {
+  GP_STARTS,
+  gpEndedOn,
+  gpHasEnded,
+  intToRoman,
+  previousGp,
+  romanToInt,
+  windowPeriodFor,
+} from '../shared/utils/gp'
 
 describe('Roman numerals', () => {
   it('round-trips and rejects malformed codes strictly', () => {
@@ -75,5 +83,48 @@ describe('previousGp', () => {
     expect(previousGp('IIX')).toBeNull()
     expect(previousGp('')).toBeNull()
     expect(previousGp('XXVIII ')).toBeNull()
+  })
+})
+
+/**
+ * Which period's date window answers for a period (§12.35).
+ *
+ * This is what keeps the RIS half of „Jetzt in Begutachtung" alive across a
+ * Periodenwechsel. Those records carry no GP and are dated into one, so a
+ * period without a calendar row gets no records at all — and roughly half of
+ * what is open is a Verordnungsentwurf. The rule has to fire for the period
+ * that just convened and for nothing else, including the gaps further back
+ * where the table simply stops.
+ */
+describe('windowPeriodFor', () => {
+  it('lets a period with its own row answer for itself', () => {
+    expect(windowPeriodFor('XXVIII')).toBe('XXVIII')
+    expect(windowPeriodFor('XXVII')).toBe('XXVII')
+    expect(windowPeriodFor('XX')).toBe('XX')
+  })
+
+  it('hands the period that just convened to its predecessor', () => {
+    // The case the rule exists for: no row for XXIX yet, and XXVIII's window
+    // is open-ended precisely BECAUSE that row is missing.
+    expect(GP_STARTS['XXIX']).toBeUndefined()
+    expect(gpEndedOn('XXVIII')).toBeNull()
+    expect(windowPeriodFor('XXIX')).toBe('XXVIII')
+  })
+
+  it('refuses the gaps below the table, where the predecessor has no window either', () => {
+    // GP XIX and older: the monitor reaches back to XIV, but dating records
+    // into a period nobody verified is exactly what must not happen.
+    expect(windowPeriodFor('XIX')).toBeNull()
+    expect(windowPeriodFor('XIV')).toBeNull()
+  })
+
+  it('refuses a period two beyond the table, not just the one after it', () => {
+    // XXX's predecessor XXIX has no row at all, so nothing is open-ended.
+    expect(windowPeriodFor('XXX')).toBeNull()
+  })
+
+  it('refuses what it cannot read', () => {
+    expect(windowPeriodFor('IIX')).toBeNull()
+    expect(windowPeriodFor('')).toBeNull()
   })
 })

@@ -68,7 +68,7 @@ badges. Tone: factual, precise, no exclamation marks.
 
 | Route | Response | Source |
 |---|---|---|
-| `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) — plus list 81 of the period before it for the volume ranking alone, while a new Gesetzgebungsperiode is too young to be ranked (§12.35) |
+| `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) — plus list 81 of the period before it in two independent places, both only around a Periodenwechsel: the still-running Fristen it carries into `open` (§12.36) and, while the new period is too young to be ranked, the volume ranking (§12.35) |
 | `GET /api/dashboard/outcomes` | `DashboardOutcomes` | The outcomes of the volume ranking — of the SAME period `/api/dashboard` ranked, through `rankedPeriod.ts` (§12.35) — (closed rows only, ≤5 ME-Gegenstand + their RV leg through the 30-min leaf caches). Server-rendered on `/` with a 4 s timeout. The recency pool and its extension probe were removed on 18.09.2026 with the section they fed (§12.23) |
 | `GET /api/dashboard/enacted` | `DashboardEnacted` | "Zuletzt Gesetz geworden": list 101 narrowed by `Status` to the finished Vorlagen, detail JSON for the newest 30 of them, ordered by BGBl number (Teil I), deduplicated per draft, top 4 joined against list 81; falls back to the period before while the running one has promulgated nothing, and names which it read (§12.35). Server-rendered with a 4 s timeout — measured 0.93 s fully cold (30 parallel Gegenstand fetches: 0.54 s), 14 ms warm |
 | `GET /api/drafts?gp&status&station&ministry&q` | `DraftsResponse` | List 81 + the station map (§12.26); `status`: `open\|closed\|all` (default `all`), where **`open` = „Stellungnahme möglich"**: laufende Frist ODER offenes Vorlagen-Formular. `station`: comma list of `begutachtung\|rv\|parlament\|bgbl` (default all), read under a 2.5 s budget — on timeout the answer carries `stationsAvailable: false` and is NOT filtered. `q` searches title/citation/ministry CODE and the debate names server-side: the words of the query are AND-linked and each one a substring, read raw or with umlauts, transliterations and punctuation folded — either reading may match, so „oekostrom" finds „Ökostromförderung" and „ergesetz" still finds „Paketsteuergesetz" (`shared/utils/textMatch.ts`, measured 22.09.2026). No `art`: this list holds Ministerialentwürfe and nothing else, so the Art filter of `/entwuerfe` does not narrow it — it decides whether the endpoint is asked at all (§7) |
@@ -79,8 +79,8 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/ris-drafts?gp&status&ministry&art&q` | `RisConsultationsResponse` | The RIS Begut records Parliament has no Gegenstand for — mostly Verordnungsentwürfe (§12.16). Same query vocabulary as `/api/drafts` plus `art` — which here means the INSTRUMENT KIND (`verordnung\|gesetz\|unbestimmt`) and not the Art filter of `/entwuerfe`: that one names a HALF, and 3 of the 201 records of this half are no Verordnungen (measured 23.09.2026), so the page selects the half and never passes its value on. Sorted by the same `compareDrafts`, because `/entwuerfe` merges both lists (§12.19) |
 | `GET /api/ris-drafts/:id` | `RisConsultationDetail` | One such record by its RIS document id (`BEGUT_…`, validated against `RIS_ID_RE` — the same pattern the page route and the per-item `.ics` test). Renders at `/entwuerfe/:id`, the same namespace as a draft (§12.19) |
 | `GET /api/ris-map/:gp` (or `aktuell`) | `RisMapResponse` | RIS Begut record per ME of the GP with status/tier/score, RIS URL and document URLs, the Ende offset (a non-zero value is a Fristabweichung). Cached 30 min on top of the 20-h corpus cache; the nightly prewarm timer calls `aktuell`. `docs/ris-join.md` §3a |
-| `GET /feed.xml` | RSS 2.0 | Current GP, newest arrival first, max 50 items; deterministic output (no `Date.now()`, absolute dates in descriptions — never countdowns), ETag/304; builders in `server/utils/feeds.ts` (pure, tested) |
-| `GET /kalender.ics` | iCalendar (RFC 5545) | All deadlines of the current GP as all-day transparent events; UID domain FROZEN (`@begutachtungs-monitor.at`, survives renames); DTSTAMP follows the deadline so extensions propagate through import paths; ETag/304 |
+| `GET /feed.xml` | RSS 2.0 | Current GP plus the Fristen still running from the period before it (§12.36), newest arrival first, max 50 items; deterministic output (no `Date.now()`, absolute dates in descriptions — never countdowns), ETag/304; builders in `server/utils/feeds.ts` (pure, tested) |
+| `GET /kalender.ics` | iCalendar (RFC 5545) | All deadlines of the current GP, plus those still running from the period before it (§12.36 — a subscription replaces its whole event set on refresh, so this is what keeps a running Frist from falling out of the calendar), as all-day transparent events; UID domain FROZEN (`@begutachtungs-monitor.at`, survives renames); DTSTAMP follows the deadline so extensions propagate through import paths; ETag/304 |
 
 Param validation: `gp` = Roman numerals (`/^[IVXLC]+$/`), `inr` = positive integer; otherwise 400. Unknown item → 404.
 
@@ -7041,19 +7041,77 @@ er über den Wechsel hinweg die richtige Geschichte — „deine Stellungnahme a
 der letzten Periode ist gerade Gesetz geworden" ist Mechanismus 3, nicht ein
 Randfall.
 
-**Offen, und beim Messen gefunden — die offene Liste überlebt den Wechsel
-ebenfalls nicht.** Am Stichtag liefen noch Begutachtungen der alten Periode:
-2 am 24.10.2024 (352/ME bis +18 Tage), 4 am 23.10.2019 (169/ME bis +40 Tage).
-Sie verschwinden in dem Moment von `/`, aus `/feed.xml` und aus
-`/kalender.ics`, in dem `getCurrentGp()` umspringt — obwohl ihre Frist läuft
-und jede und jeder noch eine Stellungnahme einbringen kann. Gegengeprüft am
-25.09.2026 mit erzwungener GP XXIX: die offene Liste ist leer, die RIS-Hälfte
-ebenfalls, `/feed.xml` und `/kalender.ics` tragen **null** Einträge. Das ist
-kein Rechenschafts-, sondern ein Teilnahmeproblem, und es trifft genau den
-Ersatz für die E-Mail-Alerts. Es ist hier **nicht** gelöst: die Abhilfe ist
-kein benannter Rückfall, sondern die laufenden Fristen der Vorperiode
-mitzulesen — ein Merge, der hier richtig wäre, weil eine laufende Frist eine
-laufende Frist ist. Eigener Punkt in `TODO.md`.
+### 12.36 Eine laufende Frist ist eine laufende Frist — die offene Liste über den Wechsel
+
+**Gebaut am 25.09.2026, unmittelbar nach §12.35 und beim Messen dafür
+gefunden.** Am Stichtag liefen noch Begutachtungen der alten Periode: 2 am
+24.10.2024 (352/ME bis +18 Tage), 4 am 23.10.2019 (169/ME bis +40 Tage). Sie
+verschwanden in dem Moment von `/`, aus `/feed.xml` und aus `/kalender.ics`,
+in dem `getCurrentGp()` umsprang — obwohl ihre Frist lief und jede und jeder
+noch eine Stellungnahme einbringen konnte. Mit erzwungener GP XXIX
+nachgestellt: offene Liste leer, RIS-Hälfte leer, Feed und Kalender **null**
+Einträge.
+
+Das ist kein Rechenschafts-, sondern ein **Teilnahmeproblem**, und damit das
+schwerere: §12.35 kostet Sichtbarkeit, das hier kostet die Mitwirkung selbst.
+Am härtesten im Kalender, weil ein Abo keine Liste ist, die man neu lädt,
+sondern eine Menge, die die App bei jedem Refresh **ersetzt** — die noch 18
+Tage entfernte Frist von 352/ME wäre den Abonnentinnen und Abonnenten am
+24.10.2024 schlicht aus dem Kalender gefallen. Und es trifft genau den
+Ersatz, der gebaut wurde, um die Betriebslast der E-Mail-Alerts zu vermeiden
+(§12.3).
+
+**Hier ein Merge, kein benannter Rückfall — und der Unterschied ist nicht
+Geschmack.** Bei den Rechenschaftsabschnitten IST die Periode die Aussage
+(„die meisten Stellungnahmen DIESER Periode"), deshalb muss sie benannt
+werden. Hier ist sie Verwaltung: diese Abschnitte behaupten „jetzt", nicht
+„in dieser Periode", und tragen darum auch keine Periodenangabe, die falsch
+werden könnte. Eine laufende Frist ist eine laufende Frist.
+
+**Zwei Hälften, zwei verschiedene Ursachen, zwei verschiedene Abhilfen** —
+das ist der eigentliche Befund. Liste 81 ist hart nach GP partitioniert, der
+RIS-Bestand nach **Datum**:
+
+- **Parlaments-Hälfte:** die noch offenen Entwürfe der Vorperiode werden
+  dazugelesen (`carryOver.ts`) und in `open`, `/feed.xml` und
+  `/kalender.ics` eingemischt.
+- **RIS-Hälfte:** hier fehlt der neuen Periode nicht der Inhalt, sondern die
+  **Kalenderzeile**. `gpWindow` kennt sie nicht, also liefert
+  `getRisOnlyForGp` gar nichts — und zwar nicht wochenlang, sondern bis
+  jemand `GP_STARTS` ergänzt. Das sind rund die Hälfte aller offenen
+  Verfahren (§12.16), unbefristet weg, abhängig von einer Handbearbeitung an
+  genau dem Tag, an dem nichts von Hand passieren darf. Die Vorperiode
+  antwortet daher für sie — **ganz**, Fenster und Join-Map zusammen
+  (`windowPeriodFor`). Ihr Fenster ist ohnehin offen nach hinten, weil
+  `gpEndedOn` den Beginn der Nachfolgerin liest und genau diese Zeile fehlt.
+
+Nur das Fenster der Vorperiode zu nehmen und die Map der neuen wäre der
+Fehler, nach dem es aussieht: die Map entscheidet, welche Records ein
+Ministerialentwurf schon beansprucht, und eine leere Map veröffentlichte
+jeden davon erneut als „ohne Gegenstand im Parlament" — neben dem Entwurf,
+zu dem er gehört.
+
+**Ohne Bedingung, und das ist die Entscheidung.** Eine Schwelle müsste am
+Alter der neuen Periode hängen, und genau das trägt nicht: 2024 kam ihr
+erster Entwurf +54 Tage nach der Konstituierung, die alten Fristen waren bei
++18 vorbei — 2019 kam er +15 Tage, während die alten bis +40 liefen. Jede
+Schwelle über die neue Periode wäre an einem der beiden Wechsel falsch
+gewesen. Also wird immer nachgesehen und nur behalten, was läuft. Folgenlos
+im Normalbetrieb, und das ist gemessen, nicht gehofft: über die
+abgeschlossenen Perioden XXVII, XXVI, XXV und XXIV — 1.390 Entwürfe,
+25.09.2026 — trägt **kein einziger** noch `AKTIV='J'`. Die Menge ist dort
+leer, nicht beinahe leer. Beide Regeln schalten sich außerdem selbst ab:
+`windowPeriodFor` greift nur für die Periode direkt nach der neuesten
+Tabellenzeile und hört auf, sobald sie ergänzt ist.
+
+**Was NICHT mitgeht: `/entwuerfe`.** Die Liste ist periodengebunden, und
+zwar sichtbar — sie trägt einen Periodenwähler, und quer über die Grenze zu
+lesen änderte, was dieser Wähler bedeutet; dazu wird die Stationskarte je
+Periode gebaut. Die Folge ist bekannt und begrenzt: im Übergangsfenster
+zeigt der eine Weg hinaus aus „Jetzt in Begutachtung" weniger Zeilen als der
+Abschnitt darüber (mit erzwungener GP XXIX: 9 gegen 0). Das verletzt §12.24
+für diese Wochen; die Abwägung steht in `TODO.md`, die Behebung wäre eine
+eigene Messung wert und keine Nebenwirkung dieser hier.
 
 ## 13. Open questions
 

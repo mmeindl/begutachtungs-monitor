@@ -1,6 +1,7 @@
 /**
- * GET /feed.xml — RSS 2.0 feed of the current GP's consultations,
- * newest arrival first. Reuses the cached list-81 leaf (no extra
+ * GET /feed.xml — RSS 2.0 feed of the current GP's consultations, plus any
+ * whose Frist is still running from the period before (§12.35), newest
+ * arrival first. Reuses the cached list-81 leaf (no extra
  * upstream load); the route itself is uncached (architecture.md §5).
  * Feed readers poll frequently — the deterministic body makes a strong
  * ETag effective, so conditional GETs answer 304 without the payload.
@@ -27,8 +28,15 @@ export default defineEventHandler(async (event) => {
   // was the wrong answer to that (docs/architecture.md §12.16). They obey
   // the ?ressort= scope like every other item — the RIS ministry code is
   // the same vocabulary.
-  const [{ items }, risOnly] = await Promise.all([getDraftsForGp(gp), getRisOnlyForGp(gp)])
-  const all = items.map(reconcileActive)
+  const [{ items }, risOnly, carryOver] = await Promise.all([
+    getDraftsForGp(gp),
+    getRisOnlyForGp(gp),
+    // Begutachtungen whose Frist outlives the Periodenwechsel (§12.35).
+    // Empty except in the weeks after one, and there it is the difference
+    // between a feed and a feed that dropped a running Frist.
+    getCarryOverDrafts(gp),
+  ])
+  const all = [...items.map(reconcileActive), ...carryOver]
   const scoped = code ? all.filter((item) => item.ministryCode === code) : all
   // `active` per request (`risRecord.withRisActiveOn`), the same rule
   // `reconcileActive` applies to the Parliament half one line above: the

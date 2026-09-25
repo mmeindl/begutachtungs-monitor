@@ -35,7 +35,7 @@ import type {
   RisConsultationDetail,
   RisConsultationKind,
 } from '#shared/types'
-import { gpWindow } from '#shared/utils/gp'
+import { gpWindow, windowPeriodFor } from '#shared/utils/gp'
 import { sortConsultations } from '#shared/utils/risConsultations'
 import { classifyRisRecord, type RisClass } from './risJoin'
 import { ministryCodeOf, ministryNameOf } from './ministryCodes'
@@ -105,7 +105,17 @@ interface RisOnlyResult {
  */
 export const getRisOnlyForGp = defineCachedFunction(
   async (gp: string): Promise<RisOnlyResult> => {
-    const w = gpWindow(gp)
+    /* NO CALENDAR ROW YET — the period that convened before anybody
+     * extended `GP_STARTS` (§12.35). The predecessor then answers for it,
+     * WHOLE: window and join map together, never this period's map on the
+     * predecessor's window. The map decides which records a
+     * Ministerialentwurf has already claimed, and an empty one would
+     * republish every claimed record as „ohne Gegenstand im Parlament" —
+     * right next to the draft it belongs to. The rule itself, and why it
+     * disables itself, is `windowPeriodFor`. */
+    const bearer = windowPeriodFor(gp)
+    if (bearer !== null && bearer !== gp) return await getRisOnlyForGp(bearer)
+    const w = bearer === null ? null : gpWindow(bearer)
     if (!w) return { items: [], withGegenstand: 0, undecided: 0 }
 
     const [corpus, map] = await Promise.all([getRisBegutCorpus(), getRisMapForGp(gp)])
