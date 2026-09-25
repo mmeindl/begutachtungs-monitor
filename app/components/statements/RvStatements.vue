@@ -102,6 +102,32 @@ function links(org: OrgEntry) {
   }))
 }
 
+/**
+ * WHERE A STELLUNGNAHME ZUR VORLAGE GOES — read from sources on 24.09.2026,
+ * and the one thing this panel showed without saying (docs/architecture.md
+ * §12.14, `verfahrensfragen.md` C2).
+ *
+ * Three facts, all documented and none of them a measurement of ours:
+ * Parliament's own page on statements to legislative initiatives says
+ * approved statements are made available to the parliamentary clubs and to
+ * the responsible ministry; they are published at the Gegenstand; and § 23b
+ * GOG-NR regulates that publication and nothing else — there is no committee
+ * procedure for them.
+ *
+ * The third clause names the Geschäftsordnung rather than an omission: „wer
+ * sie liest, entscheidet niemand hier" would be a verdict, „die
+ * Geschäftsordnung sieht dafür kein eigenes Verfahren vor" is the rule as it
+ * stands (framing rule, docs/architecture.md §4). What it is NOT allowed to
+ * grow into is a sentence about what statements achieve — the one case we
+ * read end to end (95/ME → 2238 d.B.) says nothing either way, and „ohne
+ * Wirkung" would be exactly the cynicism engine this product must not be.
+ *
+ * Local to this component on purpose: it is true of the second round, not of
+ * the Begutachtung, whose statements go to the Ressort.
+ */
+const STATEMENT_DESTINATION =
+  'Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden beim Gegenstand veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor.'
+
 /* The house inline link (`link-inline` in `main.css`) plus the focus ring. */
 const LINK =
   'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
@@ -119,6 +145,10 @@ const LINK =
         <ExternalLink :href="data.rvUrl" :class="LINK">Stellungnahme abgeben</ExternalLink></template>.
     </p>
 
+    <p v-if="data.total === 0 && filingOpen" class="mt-2 max-w-prose text-sm text-ink-secondary">
+      {{ STATEMENT_DESTINATION }}
+    </p>
+
     <template v-else>
       <p class="mt-2 max-w-prose text-sm text-ink">
         Zur Regierungsvorlage {{ data.rvCitation }} selbst gingen im Nationalrat
@@ -129,6 +159,13 @@ const LINK =
           Bei mehr als {{ formatNumberDe(data.cap) }} entfällt die Aufschlüsselung
           nach Einbringern.
         </template>
+      </p>
+
+      <!-- Under the count and above the rows: it is the answer to the
+           question the count raises („und dann?"), so it has to be read
+           before the names, not after them. -->
+      <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+        {{ STATEMENT_DESTINATION }}
       </p>
 
       <div v-if="showSearch" class="mt-3">

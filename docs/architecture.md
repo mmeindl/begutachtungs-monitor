@@ -4101,8 +4101,19 @@ RV→Ausschuss 12 of 35 changed and 5 inserted, Ausschuss→Plenum 2 changed.
 The committee report 2420 d.B. attributes the reworking to the roughly 200
 Begutachtungs-Stellungnahmen on the ME and records a hearing with invited
 experts, among them civil-society organisations; it does not mention any of
-the 10 statements on the Vorlage. Consequences, both small and neither
-built yet: the panel's copy should say where the statements go, and the
+the 10 statements on the Vorlage. Two consequences, both small, and **the
+first is built since 25.09.2026**: the panel says it in one sentence, under
+the count and above the rows („Freigegebene Stellungnahmen gehen an die
+parlamentarischen Klubs und an das zuständige Ministerium und werden beim
+Gegenstand veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die
+Geschäftsordnung dafür nicht vor."), and in the empty state only while filing
+is open — where nothing was filed and the window is shut, where it *would*
+have gone is a fact about nothing. The third clause names the
+Geschäftsordnung rather than an omission, which is what keeps it a rule and
+not a verdict (framing rule, §4); what it must never grow into is a sentence
+about what a Stellungnahme achieves, because the one case read end to end
+says nothing either way and „ohne Wirkung" would be exactly the cynicism
+engine this product may not become. The second consequence is unbuilt: the
 hearings a committee report records — with the experts it names — are data
 this station could show, once counted over a GP. What is *not* worth
 measuring is a "weight": the research service's own count for GP XXVII has
