@@ -148,8 +148,16 @@ describe('addressedUnits on a refused instruction', () => {
   })
 
   it('keeps the § of an instruction whose verb it does not know', () => {
-    const line = 'Dem Text des § 5 wird die Absatzbezeichnung "(1)" vorangestellt; folgender Abs. 2 wird angefügt:'
+    const line = 'In § 5 wird die Absatzbezeichnung "(1)" gesetzt; folgender Abs. 2 wird angefügt:'
     expect(parseInstruction(line).ops).toHaveLength(0)
+    expect(paras(line)).toEqual(['§ 5'])
+  })
+
+  it('reads the Absatz drawn in, and names the § once', () => {
+    // This line stood above as the unknown verb until 26.09.2026: the one
+    // unnumbered Absatz becomes Abs. 1, and Abs. 2 is appended to the §.
+    const line = 'Dem Text des § 5 wird die Absatzbezeichnung "(1)" vorangestellt; folgender Abs. 2 wird angefügt:'
+    expect(parseInstruction(line).ops.map((o) => o.kind)).toEqual(['renumber', 'append'])
     expect(paras(line)).toEqual(['§ 5'])
   })
 

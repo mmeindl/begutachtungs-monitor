@@ -1553,7 +1553,12 @@ export function addressedUnits(line: string, inherited?: NovaoAddress | null): A
     if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
       for (const id of op.childIds) paras.add(designationOf(address.para ?? '§', id))
     }
-    if (op.kind === 'renumber') {
+    // Only a § renumbered names a new §. „erhält Abs. 4 die Absatzbezeichnung
+    // ‚(5)'" and „Der bisherige Inhalt des § 5 erhält die Absatzbezeichnung
+    // ‚(1)'" carried „(5)" and „(1)" in here as if they were designations of
+    // their own — dropped downstream by `designationKey`, which reads them as
+    // nothing, but a wrong entry all the same.
+    if (op.kind === 'renumber' && op.target.level === 'para') {
       if (op.to) {
         paras.add(op.to)
         if (op.target.para) aliases.push([op.target.para, op.to])
