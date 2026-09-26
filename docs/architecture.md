@@ -2391,6 +2391,44 @@ andere Richtung. 1,2 Prozentpunkte Deckung für eine Fehlerklasse, die genau
 die Art Fehler ist, gegen die das Tor existiert: ein Text, den es nie gab, mit
 allen drei Signalen grün. Verweigern schlägt Deckung, auch hier.
 
+**Wo die Verweigerungen am Abend des 26.09.2026 stehen — und warum das
+Messgerät die Klassifikation schon mitbringt.** Nach den Schritten dieses
+Tages sind es **424** über 40 Sammelnovellen. Die größte Klasse heißt „nicht
+im geltenden Text" (103 mit den Ankern), und der Prüfstand hält zu **jeder**
+dieser Zeilen die RIS-Wahrheit daneben — das muss niemand mehr von Hand
+lesen:
+
+| Was der Prüfstand gegen das RIS feststellt | Zeilen |
+|---|---:|
+| Untereinheit steht nicht im Ausgangstext (die Fassung ist älter als der Entwurf annimmt) | 48 |
+| RIS kennt das Label nicht | 18 |
+| **RIS-Dokument geladen, aber nicht als Paragraph lesbar** | 15 |
+| Untereinheit stand im Ausgangstext — **eine frühere Anweisung hat sie entfernt** | 13 |
+| Paragraph stand im Ausgangstext — eine frühere Anweisung hat ihn entfernt oder umbenannt | 8 |
+| entsteht erst durch diese Novelle | 1 |
+
+**Zwei Drittel sind keine Fehler von uns**: eine Anweisung, die eine Ziffer
+ändert, die es in der Fassung zum Stichtag noch nicht gibt, gehört verweigert.
+**Die 21 in der Mitte sind die nächste Klasse**: dort stand die Einheit im
+Ausgangstext, und eine frühere Anweisung derselben Novelle hat sie
+weggenommen — entweder wenden wir die frühere falsch an, oder die Reihenfolge
+des Entwurfs ist wirklich so. Jede will einzeln gelesen werden, und keine
+bewegt für sich mehr als eine Zeile.
+
+*Eine Fährte, die keine war:* In den Verweigerungstexten steht der Operand
+als leeres Anführungspaar („entfällt die Wendung """), was nach verlorenen
+Operanden aussieht. Es ist `maskQuotes` — die Adresse wird ohne ihre Zitate
+gelesen, weil ein Zitat nie eine Adresse ist, und der Grund druckt genau
+diese maskierte Form.
+
+**Und was der Bestand jetzt nicht mehr lesen kann**, nach Tabelle und „§ 0":
+**422 von 20.700** geholten Paragraphendokumenten (2,0 %), und davon sind
+**417 Absicht** — 275 Inhaltsverzeichnisse unter „§ 0", 142 Paragraphen mit
+Tabelle, deren Bezeichnungen sich wiederholen. Die **fünf** übrigen sind
+Anlagen, deren Inhalt ein **Bild** ist (`abbobj`: das Signet nach § 12
+Denkmalschutzgesetz, ein Formular der Zulassungsstellenverordnung) oder eine
+bloße Liste ohne Absatzstruktur. Vor heute waren es 968.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
