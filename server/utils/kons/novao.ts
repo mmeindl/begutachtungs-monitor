@@ -626,6 +626,15 @@ function instructionHead(t: string): string {
  * the alternation is tried left to right, so a compound has to precede the
  * word it starts with, or "Zeichen- und Wortfolge" matches as bare "Zeichen".
  *
+ * **The plural is part of the noun**, because one clause may name several
+ * texts: "es entfallen die Zitierungen „A" und „B"", "nach den Wortfolgen „A"
+ * und „B"". Without it the clause missed the phrase branch entirely and fell
+ * through to the *unit* deletion below it, which reads the same sentence as
+ * an order to remove the whole Absatz — reachable only since compound lines
+ * are split at a conjunction, and the one outcome worse than a refusal. The
+ * suffix covers the regular forms; the three legistic umlaut plurals are
+ * written out, longest first so the alternation cannot stop at the singular.
+ *
  * Prozentsatz and Altersangabe came out of the third reading of the refusals
  * (18.09.2026): „In § 4 Z 2 wird der Prozentsatz ‚65%' durch den Prozentsatz
  * ‚50%' ersetzt" is an ordinary phrase replacement and failed on the noun
@@ -635,7 +644,7 @@ function instructionHead(t: string): string {
  * better.
  */
 const PHRASE_OBJECT =
-  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Ausdruck|Zitierung|Zitat|Klammerausdruck|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Eintrag)'
+  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Klammerausdrücke|Klammerausdruck|Ausdrücke|Ausdruck|Zitierung|Zitat|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Einträge|Eintrag)(?:e|en|n|s)?'
 const PHRASE_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'i')
 const PHRASE_OBJECT_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'gi')
 
@@ -662,10 +671,55 @@ function wordOperand(line: string, index: number): boolean {
   if (!quote) return false
   const nouns = [...line.slice(0, quote.index).matchAll(PHRASE_OBJECT_RE)]
   const noun = nouns[nouns.length - 1]
-  return noun !== undefined && /^Worte?$/i.test(noun[0])
+  return noun !== undefined && /^Worte?[ns]?$/i.test(noun[0])
 }
 const AFTER_ANCHOR_RE = new RegExp(`\\bnach (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
 const BEFORE_ANCHOR_RE = new RegExp(`\\bvor (?:dem|der|den) ${PHRASE_OBJECT}\\b`, 'i')
+
+/**
+ * The same two anchors as they stand in front of the quotation they point at
+ * — "nach dem Zitat " immediately before the opening mark, and nothing but
+ * spacing in between. Anchored at the end because a clause may carry both an
+ * anchor and an object, and only the quotation that FOLLOWS the anchor phrase
+ * is the anchor.
+ */
+const ANCHOR_BEFORE_QUOTE_RE = new RegExp(`\\b(?:nach|vor)\\s+(?:dem|der|den)\\s+${PHRASE_OBJECT}\\b\\s*$`, 'i')
+
+/** A quotation of the instruction line that is an operand, not an anchor. */
+interface QuoteMark {
+  /** Where it opens in the line — the fronted forms are told apart by position. */
+  at: number
+  /** Its place among ALL quotations, which is what `wordOperand` counts. */
+  ord: number
+  text: string
+}
+
+/**
+ * The quotations a clause offers as OPERANDS — everything that is not
+ * introduced as an anchor.
+ *
+ * An anchor says where in the unit to look ("wird nach dem Ausdruck „AsylG
+ * 2005" das Wort „und" durch einen Beistrich ersetzt"), and counting it as an
+ * operand paired the citation with the word and wrote one over the other
+ * (BFA-VG § 14, caught by the corpus run of 26.09.2026). It is dropped rather
+ * than resolved, because the engine's own requirement — the text must stand
+ * exactly once in the addressed unit — is stricter than the anchor, so an
+ * instruction that needed it is refused instead of misplaced.
+ *
+ * A clause may carry several operands: "es entfallen die Zitierungen „A" und
+ * „B"" removes two texts, and removing one of them left a § that was neither
+ * the old law nor the new one.
+ */
+function operandQuotes(line: string): QuoteMark[] {
+  const marks = [...line.matchAll(QUOTED)]
+  const out: QuoteMark[] = []
+  let from = 0
+  marks.forEach((m, ord) => {
+    if (!ANCHOR_BEFORE_QUOTE_RE.test(line.slice(from, m.index))) out.push({ at: m.index, ord, text: stripQuotes(m[1]!) })
+    from = m.index + m[0].length
+  })
+  return out
+}
 
 const CHILD_BY_WORD: readonly (readonly [RegExp, ChildLevel])[] = [
   [/\bAbs(atz|ätze)?\.?\s*\d|\bAbsätze\b|\bAbsatz\b/i, 'abs'],
@@ -693,10 +747,39 @@ function childIds(payload: string, level: ChildLevel): string[] {
 /**
  * A single line can carry two instructions: "In § 1 Abs. 4 Z 8 werden der
  * Punkt am Ende durch einen Strichpunkt ersetzt sowie folgende Z 9 und Z 10
- * angefügt:". 1,7 % of the corpus. The split is deliberately conservative —
- * only where the second half opens with "folgende…" and a creating verb.
+ * angefügt:". 1,7 % of the corpus in the form that creates a unit.
+ *
+ * The conjunction used to be a boundary only where the second half opened
+ * with "folgende…" and a creating verb, and that left the commonest compound
+ * of all unread: **two text operations in one sentence** — "… wird die
+ * Wortfolge „A" durch „B" ersetzt und es entfällt die Wortfolge „C"". One
+ * verb branch was handed both halves' quotations, so the line came out as an
+ * operand count ("4 Operanden, Paarbildung unklar", "Ersetzung ohne zwei
+ * Operanden"): 71 of 469 refusals over 40 Sammelnovellen, the largest class
+ * left after „jeweils" (26.09.2026).
+ *
+ * What makes a separator a boundary is **a verb on each side** — the test the
+ * semicolon already carried, now asked of "und", "sowie" and the comma too.
+ * It is the whole guard, and it holds because a German legistic clause puts
+ * its verb at the end: in an address list ("In § 12 Abs. 1 Z 1 und § 13
+ * Abs. 1 wird …"), in an operand list ("die Wortfolge „A" und die Wortfolge
+ * „B" entfallen") and in a chain of operand pairs ("der Ausdruck „A" durch
+ * „B", das Wort „C" durch „D" … ersetzt") everything in front of the
+ * separator carries no verb, so none of them is split.
+ *
+ * The comma is in the list because leaving it out left the same sentence half
+ * read rather than refused: "wird der Beistrich … durch das Wort „sowie"
+ * ersetzt, entfällt die Z 6 und erhält die bisherige Z 7 …" had its
+ * replacement carried out and its deletion dropped on the floor (Ärztegesetz
+ * § 14, corpus run of 26.09.2026) — the branch that read the clause consumed
+ * it whole.
+ *
+ * Splitting cannot half-apply a line: `kons/lawApply.ts` refuses an
+ * instruction whose parse carries any reason at all, so a compound with one
+ * unreadable half is refused whole — the same outcome as before, reached
+ * after reading the other half rather than instead of it.
  */
-const COMPOUND_SPLIT = /;\s*(?=[A-Za-zÄÖÜ§])|\s+(?:sowie|und)\s+(?=(?:es wird |es werden )?folgende[rnms]?\s)/gi
+const COMPOUND_SPLIT = /[;,]\s*(?=[A-Za-zÄÖÜ§])|\s+(?:sowie|und)\s+/gi
 
 // `bezeichnung` without a leading boundary: "die Z 5 bis 9 erhalten die
 // Ziffernbezeichnungen" is the second half of a compound line, and with
@@ -737,6 +820,39 @@ export function splitCompound(line: string): string[] {
  */
 const PUNCT_WORD: Record<string, string> = { punkt: '.', strichpunkt: ';', beistrich: ',', doppelpunkt: ':', gedankenstrich: '–' }
 const PUNCT_REPLACE_RE = /\bde[rn]\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b[^"]*?\bdurch\s+(?:einen|ein|das|die|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b/i
+/** The same five characters where only ONE of the two operands is named. */
+const PUNCT_NAMED_RE = /\b(?:de[rn]|das|die|einen?|eine)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b/i
+
+/**
+ * A replacement whose two operands are written differently: one in quotation
+ * marks, one named in words.
+ *
+ * "In § 15 Abs. 1 Z 2 wird der Strichpunkt am Ende durch das Wort „ oder"
+ * ersetzt" and "In § 15 Abs. 1 Z 3 wird das Wort „oder" durch einen Punkt
+ * ersetzt" are the two halves of one renumbering of a list, and both were
+ * refused as "Ersetzung ohne zwei Operanden" — the count says one operand
+ * because only one of them can be quoted.
+ *
+ * Which is which is decided by the position of "durch" and never by the order
+ * of the two, so the fronted form cannot swap them. A quotation introduced by
+ * an anchor is no operand at all and refuses the reading rather than being
+ * replaced.
+ */
+function punctReplacement(head: string, operands: readonly QuoteMark[], line = head): { from: string; to: string; wordBound: boolean } | null {
+  const only = operands.length === 1 ? operands[0]! : null
+  const cut = /\bdurch\b/i.exec(head)
+  if (!only || !cut || only.at >= head.length) return null
+  const named = (part: string): string | null => {
+    const m = PUNCT_NAMED_RE.exec(part)
+    return m ? PUNCT_WORD[m[1]!.toLowerCase()]! : null
+  }
+  if (only.at < cut.index) {
+    const to = named(head.slice(cut.index))
+    return to ? { from: only.text, to, wordBound: wordOperand(line, only.ord) } : null
+  }
+  const from = named(head.slice(0, cut.index))
+  return from ? { from, to: only.text, wordBound: false } : null
+}
 
 /**
  * Does "jeweils" mean *every occurrence*? Only when the instruction names a
@@ -859,17 +975,34 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // Not a text operation; refused.
     if (/grammatikalisch (?:richtigen|korrekten) Form/i.test(head)) return fail('Ersetzung in der grammatikalisch richtigen Form — nicht mechanisch')
     if (/\bersetzt\b|\ban (?:die )?Stelle\b/i.test(head)) {
-      if (quotes.length < 2) return fail('Ersetzung ohne zwei Operanden')
+      // One operand quoted and one named in words, because a single character
+      // carries no quotation of its own: "wird das Wort „oder" durch einen
+      // Punkt ersetzt", "wird der Punkt durch das Wort „ und" ersetzt".
+      // `PUNCT_REPLACE_RE` above reads the form where BOTH sides are named;
+      // this is the mixed one, and the position of "durch" says which side
+      // the quotation stands on.
+      // An anchor is not an operand — "nach dem Ausdruck „AsylG 2005" das
+      // Wort „und" durch einen Beistrich ersetzt" says where to look first.
+      const operands = operandQuotes(line)
+      const mixed = operands.length < 2 ? punctReplacement(head, operands, line) : null
+      if (mixed) {
+        return {
+          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
+          reason: null,
+          line,
+        }
+      }
+      if (operands.length < 2) return fail('Ersetzung ohne zwei Operanden')
       // "… der Verweis auf A durch B und der Betrag von C durch D ersetzt":
       // four operands, two substitutions. Applying only the first pair would
       // publish a text that is half-amended — so either every pair is read,
       // or the instruction is refused.
-      if (quotes.length > 2) {
+      if (operands.length > 2) {
         const pairs = (head.match(/\bdurch\b/gi) ?? []).length
-        if (quotes.length % 2 !== 0 || pairs !== quotes.length / 2) return fail(`${quotes.length} Operanden, Paarbildung unklar`)
+        if (operands.length % 2 !== 0 || pairs !== operands.length / 2) return fail(`${operands.length} Operanden, Paarbildung unklar`)
         const everywhere = everyOccurrence(head, targets)
         const many: NovaoOp[] = []
-        for (const t of places) for (let i = 0; i + 1 < quotes.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: quotes[i]!, to: quotes[i + 1]!, everywhere, eachUnit, wordBound: wordOperand(line, i) })
+        for (const t of places) for (let i = 0; i + 1 < operands.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: operands[i]!.text, to: operands[i + 1]!.text, everywhere, eachUnit, wordBound: wordOperand(line, operands[i]!.ord) })
         return { ops: many, reason: null, line }
       }
       // Both German forms name the old text first — "wird A durch B ersetzt"
@@ -877,12 +1010,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // the new text is fronted ("Die Wortfolge B tritt an die Stelle von A")
       // does the order flip, and the position of the verb says which it is.
       const verb = /an (?:die )?Stelle/i.exec(line)
-      const firstQuote = line.indexOf('"')
-      const reversed = verb !== null && firstQuote >= 0 && verb.index > firstQuote
-      const from = reversed ? quotes[1]! : quotes[0]!
-      const to = reversed ? quotes[0]! : quotes[1]!
+      const reversed = verb !== null && verb.index > operands[0]!.at
+      const from = reversed ? operands[1]! : operands[0]!
+      const to = reversed ? operands[0]! : operands[1]!
       const everywhere = everyOccurrence(head, targets)
-      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from, to, everywhere, eachUnit, wordBound: wordOperand(line, reversed ? 1 : 0) })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: from.text, to: to.text, everywhere, eachUnit, wordBound: wordOperand(line, from.ord) })), reason: null, line }
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
@@ -902,8 +1034,16 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text, eachUnit, wordBound: wordOperand(line, 0) })), reason: null, line }
     }
     if (/\bentfäll[te]\b|\bentfallen\b|\bgestrichen\b|\baufgehoben\b|\bentfernt\b/i.test(head)) {
-      if (!quotes[0]) return fail('Streichung ohne Text')
-      return { ops: places.map((t) => ({ kind: 'deletePhrase' as const, target: t, text: quotes[0]!, eachUnit, wordBound: wordOperand(line, 0) })), reason: null, line }
+      // A deletion's operands are read by their ROLE, not by position: an
+      // anchor names where the text stands ("entfällt nach dem Zitat „49
+      // Abs. 1" das Zitat „ , 2""), every other quotation is a text that goes.
+      // Taking the first one deleted the anchor there, and deleted only the
+      // first of several ("es entfallen die Zitierungen „A" und „B"") — both
+      // were reachable before this file split compound lines, and the second
+      // one was a silently half-carried instruction.
+      const objects = operandQuotes(line)
+      if (objects.length === 0) return fail('Streichung ohne Text')
+      return { ops: places.flatMap((t) => objects.map((q) => ({ kind: 'deletePhrase' as const, target: t, text: q.text, eachUnit, wordBound: wordOperand(line, q.ord) }))), reason: null, line }
     }
     if (/\blaute[nt]\b/i.test(head)) return fail('Wortfolge lautet — Teiltext-Ersetzung, nicht abgesichert')
     return fail('Wortfolge genannt, aber kein bekanntes Verb')
@@ -925,6 +1065,13 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   }
 
   if (/\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|\bgestrichen\b/i.test(head)) {
+    // A unit deletion removes a whole Absatz, Ziffer or Paragraph, and it
+    // names no text while doing so. A quotation in the clause therefore says
+    // this was a *text* deletion whose noun the phrase branch above has no
+    // word for — and carrying it out as a unit deletion would remove law the
+    // ressort left standing. The refusal carries the clause, so the next
+    // reading of the list can name the noun.
+    if (head.includes('"')) return fail('Streichung nennt einen Text — Einheit oder Textstelle nicht entscheidbar')
     return { ops: targets.map((t) => ({ kind: 'delete' as const, target: t, withHeading })), reason: null, line }
   }
 
@@ -971,6 +1118,18 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
 }
 
 /**
+ * The address an operation leaves behind for the clause after it — its target,
+ * or the anchor of an operation that has no target of its own. `insertPhrase`
+ * carries an `anchor` that is a piece of TEXT rather than an address, so the
+ * target is asked for first.
+ */
+function opContext(op: NovaoOp): NovaoAddress | null {
+  if ('target' in op) return op.target
+  if ('anchor' in op && typeof op.anchor !== 'string') return op.anchor
+  return null
+}
+
+/**
  * One Novellierungsanordnung line → its operations, or a reason why not.
  *
  * `inherited` carries the address of an enclosing container instruction, so
@@ -983,16 +1142,44 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
 
   const ops: NovaoOp[] = []
   const reasons: string[] = []
-  let context = inherited ?? null
+  // The second half of "…in § 1 Abs. 4 Z 8 … sowie folgende Z 9 angefügt"
+  // has no address of its own; it inherits the first half's.
+  //
+  // **All of them, not the first.** "In § 12 Abs. 1 Z 1 und § 13 Abs. 1 wird
+  // … eingefügt und entfällt … das Zitat „ , 2"" names two places, and the
+  // second clause names none: carrying the first address alone into it wrote
+  // the insertion into both §§ and the deletion into one — an instruction
+  // half carried out, which is the outcome the engine may never produce. So
+  // the clause is read once per inherited place and the results are merged;
+  // a clause with an address of its own resolves the same way every time and
+  // the duplicates fall out.
+  let contexts: (NovaoAddress | null)[] = [inherited ?? null]
   for (const part of parts) {
-    const parsed = parseOne(part, context, line)
-    if (parsed.ops.length === 0) reasons.push(parsed.reason ?? '?')
-    ops.push(...parsed.ops)
-    // The second half of "…in § 1 Abs. 4 Z 8 … sowie folgende Z 9 angefügt"
-    // has no address of its own; it inherits the first half's.
-    const first = parsed.ops[0]
-    if (first && 'target' in first) context = first.target
-    else if (first && 'anchor' in first) context = first.anchor
+    const seen = new Set<string>()
+    const got: NovaoOp[] = []
+    let refusal: string | null = null
+    for (const context of contexts) {
+      const parsed = parseOne(part, context, line)
+      if (parsed.ops.length === 0) {
+        // One place out of several that will not resolve refuses the whole
+        // line, for the same reason: the alternative is a partial reading.
+        refusal ??= parsed.reason ?? '?'
+        continue
+      }
+      for (const op of parsed.ops) {
+        const key = JSON.stringify(op)
+        if (seen.has(key)) continue
+        seen.add(key)
+        got.push(op)
+      }
+    }
+    if (refusal !== null) reasons.push(refusal)
+    ops.push(...got)
+    const next = got.map(opContext).filter((a): a is NovaoAddress => a !== null)
+    if (next.length > 0) {
+      const byKey = new Map(next.map((a) => [addressKey(a), a] as const))
+      contexts = [...byKey.values()]
+    }
   }
   if (ops.length === 0) return { ops: [], reason: reasons[0] ?? 'kein bekanntes Verb', line }
   return { ops, reason: reasons.length ? `Teil nicht gelesen: ${reasons[0]}` : null, line }

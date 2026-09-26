@@ -654,9 +654,20 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
   })
 
   it('refuses a heading replacement whose payload is a whole §', () => {
-    const { results } = run(law(), instr('Es entfällt die Überschrift des § 6 und § 6 lautet:', ['§ 6. (1) Erster.', '(2) Zweiter.']))
+    const { results } = run(law(), instr('Die Überschrift des § 6 lautet:', ['§ 6. (1) Erster.', '(2) Zweiter.']))
     expect(results[0]!.applied).toBe(false)
     expect(results[0]!.reason).toMatch(/Fließtext/)
+  })
+
+  it('reads the same line as two operations where it carries two', () => {
+    // "Es entfällt die Überschrift des § 6 und § 6 lautet: …" says both things
+    // outright, and since 26.09.2026 the conjunction separates them. It was
+    // refused as one ambiguous heading replacement before — the reading above
+    // is what remains dangerous, and it is the one without the conjunction.
+    const { law: out, results } = run(law(), instr('Es entfällt die Überschrift des § 6 und § 6 lautet:', ['§ 6. (1) Erster.', '(2) Zweiter.']))
+    expect(results.map((r) => r.applied)).toEqual([true, true])
+    expect(out.paragraphs[1]!.heading).toBeNull()
+    expect(out.paragraphs[1]!.children.map((c) => c.text)).toEqual(['Erster.', 'Zweiter.'])
   })
 
   it('refuses a payload that is a table, and a standing § that holds one', () => {

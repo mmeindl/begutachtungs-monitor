@@ -112,6 +112,64 @@ describe('parseInstruction', () => {
     expect(splitCompound('§ 5 lautet:')).toHaveLength(1)
   })
 
+  it('splits two text operations joined by a conjunction', () => {
+    const parsed = parseInstruction('In § 21 Abs. 1 wird die Wortfolge "A B" durch das Wort "B" ersetzt und es entfällt die Wortfolge "C".')
+    expect(parsed.reason).toBeNull()
+    expect(parsed.ops.map((o) => o.kind)).toEqual(['replacePhrase', 'deletePhrase'])
+  })
+
+  it('leaves a conjunction inside an address or an operand list alone', () => {
+    // Both carry their verb at the end, so neither half in front of the "und"
+    // has one — the test that makes the wider split safe.
+    expect(splitCompound('In § 12 Abs. 1 Z 1 und § 13 Abs. 1 wird das Wort "A" durch "B" ersetzt.')).toHaveLength(1)
+    expect(splitCompound('In § 5 wird der Ausdruck "A" durch "B" und die Wortfolge "C" durch "D" ersetzt.')).toHaveLength(1)
+  })
+
+  it('carries every address of the first clause into the second', () => {
+    // Carrying only the first wrote the insertion into both §§ and the
+    // deletion into one — an instruction half carried out.
+    const parsed = parseInstruction('In § 12 Abs. 1 und § 13 Abs. 1 wird nach dem Zitat "Abs. 4" das Zitat "46a" eingefügt und entfällt das Zitat "Abs. 2".')
+    expect(parsed.reason).toBeNull()
+    expect(parsed.ops.filter((o) => o.kind === 'deletePhrase')).toHaveLength(2)
+    expect(parsed.ops.map((o) => ('target' in o ? o.target.para : null))).toEqual(['§ 12', '§ 13', '§ 12', '§ 13'])
+  })
+
+  it('reads a deletion by the role of its operands, not their order', () => {
+    const several = parseInstruction('In § 131 Abs. 4 entfallen die Zitierungen "ABl. L 71" und "ABl. L 326".')
+    expect(several.ops).toMatchObject([{ kind: 'deletePhrase', text: 'ABl. L 71' }, { kind: 'deletePhrase', text: 'ABl. L 326' }])
+    // The anchor says where the text stands; deleting it removed the wrong one.
+    const anchored = parseInstruction('In § 12 Abs. 1 entfällt nach dem Zitat "49 Abs. 1" das Zitat ", 2".')
+    expect(anchored.ops).toMatchObject([{ kind: 'deletePhrase', text: ', 2' }])
+  })
+
+  it('does not pair a replacement with its anchor', () => {
+    // "nach dem Ausdruck „AsylG 2005"" says where to look; pairing it with the
+    // word wrote the citation over the word it was meant to find (BFA-VG § 14).
+    expect(op('In § 14 wird nach dem Ausdruck "AsylG 2005" das Wort "und" durch einen Beistrich ersetzt.')).toMatchObject({ from: 'und', to: ',' })
+  })
+
+  it('reads a replacement whose second operand is named rather than quoted', () => {
+    expect(op('In § 15 Abs. 1 Z 3 wird das Wort "oder" durch einen Punkt ersetzt.')).toMatchObject({ from: 'oder', to: '.' })
+    expect(op('In § 15 Abs. 1 Z 2 wird der Strichpunkt am Ende durch das Wort " oder" ersetzt.')).toMatchObject({ from: ';', to: 'oder' })
+  })
+
+  it('separates two clauses at a comma as well', () => {
+    // "… durch das Wort „sowie" ersetzt, entfällt die Z 6 und erhält die
+    // bisherige Z 7 …": the replacement was carried out and the deletion
+    // dropped while only "und" and ";" separated clauses (Ärztegesetz § 14).
+    const parsed = parseInstruction('In § 14 Abs. 1 wird der Beistrich am Ende der Z 5 durch das Wort "sowie" ersetzt, entfällt die Z 6 und erhält die bisherige Z 7 die Ziffernbezeichnung "6." .')
+    expect(parsed.reason).toBeNull()
+    expect(parsed.ops.map((o) => o.kind)).toEqual(['replacePhrase', 'delete', 'renumber'])
+  })
+
+  it('refuses a unit deletion that names a text', () => {
+    // A unit deletion takes a whole Absatz out; a quotation says the clause
+    // was about a text whose noun this parser has no word for.
+    const parsed = parseInstruction('In § 5 Abs. 1 entfällt die Passage "auf Antrag".')
+    expect(parsed.ops).toHaveLength(0)
+    expect(parsed.reason).toMatch(/nennt einen Text/)
+  })
+
   it('marks the table of contents as derivable, never applied', () => {
     expect(op('Im Inhaltsverzeichnis wird nach dem Eintrag zu § 5 folgender Eintrag eingefügt:')).toMatchObject({ kind: 'toc' })
   })

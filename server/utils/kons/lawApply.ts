@@ -798,6 +798,19 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'delete': {
+      // "Es entfällt die Überschrift des § 6": the heading goes and the § stays.
+      // The address says so — `parseAddress` marks a heading address — and
+      // without reading it here the branch below took the whole § out of the
+      // law and reported success, the failure class of 09.09.2026 one level
+      // up. Reachable on its own ("Die Überschrift zu § 8 entfällt.") and now
+      // also as half of a compound line, since those are split at "und".
+      if (op.target.heading) {
+        const node = resolveTarget(law, op.target)
+        if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+        if (!node.heading) return 'Überschrift nicht im geltenden Text'
+        node.heading = null
+        return null
+      }
       // "In § 37 Abs. 2 entfällt der zweite Satz" removes a sentence, not the
       // Absatz. This case read only the unit level and dropped the whole node
       // — the engine's worst failure mode, deleting standing law while

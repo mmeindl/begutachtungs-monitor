@@ -1691,6 +1691,103 @@ wenig, weil das Tor zusätzlich die Bestätigung der Beilage verlangt (§12.12a)
 — aber es ist die richtige Richtung, um es hier hinzuschreiben und nicht in
 der Zusammenfassung zu verlieren.
 
+**Die zweitgrößte Klasse war ein Satzzeichen (26.09.2026).** 71 der 469
+Verweigerungen meldeten eine Zahl: „4 Operanden, Paarbildung unklar" (42),
+„4 Operanden für eine Einfügung" (15), „Ersetzung ohne zwei Operanden" (9).
+Die Zahl war nie die Ursache. Ein Satz trug **mehrere Anweisungen**, und ein
+einziger Verbzweig bekam die Anführungen aller zu sehen:
+
+```
+In § 21 Abs. 1 Z 7 wird die Wortfolge „A" durch das Wort „B" ersetzt
+  und es entfällt im Klammerausdruck die Wortfolge „C".
+In § 4 Abs. 2 wird nach der Wortfolge „D" die Wortfolge „E" eingefügt,
+  das Wort „F" durch „G" und das Wort „H" durch „I" ersetzt.
+```
+
+`splitCompound` trennte bis dahin am Strichpunkt und an „sowie/und" **nur vor
+„folgende…"** — der Form, die eine Einheit erzeugt. Die Form, die Text ändert,
+blieb ungelesen. Was einen Trenner zum Trenner macht, ist **ein Verb auf jeder
+Seite**; die Prüfung stand schon da, sie galt nur dem Strichpunkt. Sie trägt,
+weil ein legistischer Satz sein Verb ans Ende stellt: Vor dem „und" einer
+Adressliste („In § 12 Abs. 1 Z 1 und § 13 Abs. 1 wird …"), einer Operandenliste
+(„die Wortfolge „A" und die Wortfolge „B" entfallen") und einer Paarkette
+(„der Ausdruck „A" durch „B", das Wort „C" durch „D" … ersetzt") steht keines.
+
+**Das Komma gehört dazu, und das war keine Zugabe.** Ohne es wurde derselbe
+Satz halb gelesen statt verweigert: „wird der Beistrich … durch das Wort
+„sowie" ersetzt, entfällt die Z 6 und erhält die bisherige Z 7 …" führte die
+Ersetzung aus und ließ die Streichung fallen (Ärztegesetz § 14) — der Zweig,
+der die Klausel las, verbrauchte sie ganz. Erst die Messung zeigte es; der
+Entwurf ohne Komma stand schon einen Lauf lang da.
+
+**Das Trennen legte drei Fehler frei, die älter sind als es selbst** — jeder
+einzelne gefährlicher als die Verweigerung, die ihn verdeckt hatte:
+
+- *Der Anker war ein Operand.* „wird nach dem Ausdruck „AsylG 2005" das Wort
+  „und" durch einen Beistrich ersetzt" — nach Position gepaart schrieb die
+  Engine das Zitat über das Wort (BFA-VG § 14, im Korpuslauf gefunden).
+  `operandQuotes` liest jetzt die **Rolle**: Was ein Anker einführt, ist kein
+  Operand. Aufgelöst wird er nicht — die eigene Forderung der Engine, die
+  Textstelle müsse in der adressierten Einheit **einmal** vorkommen, ist
+  strenger als der Anker.
+- *Der Plural fiel durch.* „es entfallen die Zitierungen „A" und „B"" traf
+  `PHRASE_OBJECT` nicht (das Wortende steht am „g") und landete im Zweig
+  darunter — der **Einheitenstreichung**, die den ganzen Absatz entfernt
+  hätte. Die Nomen tragen jetzt ihre Pluralform, und eine Einheitenstreichung,
+  die einen Text nennt, verweigert.
+- *Die Überschrift nahm den Paragraphen mit.* „Es entfällt die Überschrift des
+  § 6" adressiert eine Überschrift (`a.heading`), und `lawApply` las nur die
+  Ebene: § 6 fiel aus dem Gesetz, und der Lauf meldete Erfolg. Allein stehend
+  erreichbar, seit dem Trennen auch als Hälfte eines Satzes.
+
+Dazu die **gemischte Ersetzung**: Ein Operand in Anführungszeichen, einer
+benannt, weil ein einzelnes Zeichen keine Anführung trägt — „das Wort „oder"
+durch einen Punkt ersetzt" und „der Strichpunkt am Ende durch das Wort „ oder"
+ersetzt" sind die zwei Hälften einer Ziffernumnummerierung, und beide hießen
+„Ersetzung ohne zwei Operanden". Welche Seite welche ist, entscheidet die
+Stellung von „durch", nie die Reihenfolge der beiden.
+
+**Gemessen über dieselben 40 Sammelnovellen, vorher und nachher, gleicher
+Aufruf:**
+
+| Paragraphen (geprüft 1.045 → 1.047) | vorher | nachher |
+|---|---|---|
+| identisch mit dem RIS | 725 | **749** |
+| unverändert gelassen | 137 | **120** |
+| halb angewendet | 94 | **78** |
+| unvollständig | 55 | 66 |
+| **eigene Abweichung** | **30** | **30** |
+| ohne Verweigerung: identisch | 712 | **736** |
+| ohne Verweigerung: abweichend | 16 | **14** |
+| kein geltender Text (Rest des Tores) | 44 | **35** |
+| Verweigerungen gesamt (Zeilen) | 469 | **453** |
+| davon die Operandenklasse | 66 | **17** |
+
+**Die schärfste Klasse bewegt sich nicht**: 30 vor und nach dem Eingriff, und
+im unverweigerten Topf 16 → 14. Drei Paragraphen kommen hinzu, drei fallen
+heraus; alle drei neuen tragen eine Verweigerung, und zwei davon sind gar
+keine Erfindung der Engine — sie schreibt „GVG - B 2005", weil die Novelle es
+so schreibt, und das RIS führt „GVG-B 2005". Der Wortdiff kann das nicht
+trennen (→ die Normalisierungsklasse, § 5a Nr. 2).
+
+**Was teurer wurde, gehört genannt:** „Teil nicht gelesen" steigt 25 → 38.
+Das ist Buchhaltung, keine Verschlechterung — mehr Zeilen werden getrennt,
+also haben mehr Zeilen **eine** ungelesene Hälfte, und `lawApply` verweigert
+die ganze Zeile, sobald ihr Parse irgendeinen Grund trägt. Genau das macht das
+Trennen ungefährlich: Es kann keine Anweisung halb ausführen.
+
+**Die Anzeige bewegt sich nicht**, und das war die Vorhersage: Der
+Drift-Lauf über beide Pfade (129 Tabellen-, 114 PDF-Beilagen) meldet **ohne
+Befund** — keine Grundlinie war nachzuziehen. Das Tor verlangt zusätzlich die
+Bestätigung durch die Beilage, und die ist anhangsgebunden; was hier wächst,
+ist die Menge der Paragraphen, die überhaupt bestätigt werden *können*.
+
+*Zur Vorsicht bei den Prozentsätzen dieses Prüfstands:* „Anweisungen",
+„gelesen" und „angewendet" zählen **Operationen**, nicht Zeilen (2.079 →
+2.173), weil eine getrennte Zeile zwei davon liefert. Vergleichbar über den
+Eingriff hinweg sind die Paragraphenurteile und die Verweigerungen — beide
+oben.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides

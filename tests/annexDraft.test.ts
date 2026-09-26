@@ -131,10 +131,19 @@ describe('draftUnits', () => {
  */
 describe('addressedUnits on a refused instruction', () => {
   it('keeps the § of an instruction whose operands could not be paired', () => {
-    // "4 Operanden, Paarbildung unklar" — 40 units on the PDF path. The two
-    // substitutions are not applicable; the § is not in doubt.
-    const line = 'In § 4 Abs. 2 wird nach der Wortfolge "Vorgaben des Abschnittes II" die Wortfolge "und VI" eingefügt, das Wort "Gesamtabwassers" durch das Wort "Abwassers" und das Wort "Gesamtabwasserstrom" durch das Wort "Abwasserstrom" ersetzt.'
+    // "4 Operanden, Paarbildung unklar": three texts replaced by one, and
+    // which by which is not in the sentence. The § is not in doubt.
+    const line = 'In § 5 Abs. 1 werden die Wortfolgen "A", "B" und "C" durch die Wortfolge "D" ersetzt.'
     expect(parseInstruction(line).ops).toHaveLength(0)
+    expect(paras(line)).toEqual(['§ 5'])
+  })
+
+  it('reads the three operations of one sentence instead of refusing it', () => {
+    // The same line stood here as an example of a refusal until 26.09.2026:
+    // an insertion and two substitutions, separated by a comma and an "und",
+    // each with its own verb (`splitCompound`).
+    const line = 'In § 4 Abs. 2 wird nach der Wortfolge "Vorgaben des Abschnittes II" die Wortfolge "und VI" eingefügt, das Wort "Gesamtabwassers" durch das Wort "Abwassers" und das Wort "Gesamtabwasserstrom" durch das Wort "Abwasserstrom" ersetzt.'
+    expect(parseInstruction(line).ops.map((o) => o.kind)).toEqual(['insertPhrase', 'replacePhrase', 'replacePhrase'])
     expect(paras(line)).toEqual(['§ 4'])
   })
 
