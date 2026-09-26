@@ -1877,6 +1877,34 @@ Antwort, nicht eine Lücke. Der `Anhang` dagegen ist die eine große und
 geschlossene: zwei Gesetze, ein Dokument im RIS (`Anl. 1`), Ziffern und
 Litera darin — und er steht damit ganz oben, wenn diese Klasse drankommt.
 
+**„Artikelgegliederte Gesetze" waren zwei Zeilen und eine Zahlschrift
+(26.09.2026).** Die vierte Restklasse stand ohne Zahl im Plan, und das war
+der Grund, sie zuletzt zu nehmen. Gezählt über dieselben 40 Sammelnovellen:
+**4 der 157 Gesetze** tragen überhaupt eine Einheit, die als `Art.` geprüft
+wird, zusammen **11 Einheiten** — und 9 davon werden bereits richtig gelesen
+(Bundes-Verfassungsgesetz 7/7 identisch, ALVG „Art. 1 § 1" identisch). Die
+artikelqualifizierte Identität vom 25.09. (§12.12a) hatte die Klasse also
+schon geschlossen; übrig blieben **zwei Zeilen**:
+
+```
+Dem Art. VI wird folgende Z 85 angefügt:      (Gerichtsgebührengesetz)
+Dem Art. VII wird folgender Abs. 28 angefügt: (Altlastensanierungsgesetz)
+```
+
+Kein Strukturproblem, eine **Zahlschrift**: Die älteren Gesetze numerieren
+ihre Artikel römisch, die Anweisung folgt ihnen, und das RIS führt die
+Einheit als „Art. 6" und „Art. 7". `articleNumberKey` verbindet die beiden
+Schreibweisen seit jeher — aber nur für den Artikel, der **vor** einem §
+steht („Art. II § 7"); `PARA_RE` las als Ziel nur Ziffern. Jetzt beide, mit
+der einen Schranke, dass hinter der römischen Zahl kein Buchstabe stehen
+darf, sonst wäre „Art. Inkrafttreten" der Artikel 1.
+
+Ertrag, gleicher Aufruf: **identisch 753 → 755**, unverändert gelassen 119 →
+117, „Artikel in römischer Zahl" 2 → **0**, Abweichung in jedem Topf
+unverändert (34 / 17). Damit ist die Klasse gezählt **und** erledigt, und die
+Zählung ist das Ergebnis: Was wie eine Strukturklasse aussah, war der Rest
+einer, die vor zwei Tagen gebaut wurde.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides

@@ -200,7 +200,25 @@ function parseSatz(tail: string): { satz: string | null; satzCount: number } | n
   return null
 }
 
-const PARA_RE = /(?:§+\s*(\d+[a-z]*(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?)|\b(Anlage|Anhang)\s+([\dIVXL]+[a-z]*))/i
+/**
+ * The unit an address names: a §, an Artikel that IS the target, or an
+ * Anlage/Anhang.
+ *
+ * The Artikel branch reads a Roman numeral as well, because the older laws
+ * number their Artikel that way and the instruction follows them: „Dem
+ * Art. VI wird folgende Z 85 angefügt" (Gerichtsgebührengesetz), „Dem
+ * Art. VII wird folgender Abs. 28 angefügt" (Altlastensanierungsgesetz).
+ * Both were refused for want of a readable address while RIS carries the
+ * unit as „Art. 6" and „Art. 7" — `articleNumberKey` joins the two
+ * spellings, exactly as it already does for the Artikel that stands in front
+ * of a § („Art. II § 7").
+ *
+ * The numeral may not be followed by a letter, or „Art. Inkrafttreten" would
+ * read as Artikel 1. This branch is reached only where no § follows the
+ * Artikel at all — with one, `parseAddress` cuts the scope at the § before
+ * `PARA_RE` ever sees the Artikel.
+ */
+const PARA_RE = /(?:§+\s*(\d+[a-z]*(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)\s+([\dIVXL]+[a-z]*))/i
 const ABS_RE = /\bAbs\.?\s*(\d+[a-z]*)/i
 const Z_RE = /\bZ(?:iffer)?\.?\s*(\d+[a-z]*)/i
 const LIT_RE = /\blit\.?\s*([a-z]+)\b/i
@@ -412,7 +430,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     if (!inherited?.para) return null
   }
 
-  const para = pm ? (pm[1] ? `§ ${pm[1]}` : pm[2] ? `Art. ${pm[2]}` : `${pm[3]} ${pm[4]}`) : inherited!.para
+  const para = pm ? (pm[1] ? `§ ${pm[1]}` : pm[2] ? `Art. ${articleNumberKey(pm[2]) ?? pm[2]}` : `${pm[3]} ${pm[4]}`) : inherited!.para
   // Components are read after the § so a § number is not mistaken for an
   // Absatz of an earlier reference in the same sentence.
   const tail = pm ? scope.slice(pm.index + pm[0].length) : scope

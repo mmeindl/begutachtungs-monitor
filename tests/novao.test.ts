@@ -169,10 +169,21 @@ describe('parseInstruction', () => {
     expect(of('Z 1 lit. n des Anhangs entfällt.')).toBe('Anhang ohne eigene Ebene')
     expect(of('In der Tarifpost 9 Anmerkung 16 entfällt der letzte Satz.')).toBe('Tarifpost ohne eigene Ebene')
     expect(of('Der Titel lautet:')).toBe('Titel ohne eigene Ebene')
-    expect(of('Dem Art. VI wird folgende Z 85 angefügt:')).toBe('Artikel in römischer Zahl ohne eigene Ebene')
+    // An Artikel of a directive standing in front of a § is refused by the
+    // guard in `parseAddress`; the refusal now says what it saw.
+    expect(of('In Umsetzung von Art. VI der Richtlinie wird in § 3 Abs. 1 die Wortfolge "A" gestrichen.')).toBe('Artikel in römischer Zahl ohne eigene Ebene')
     expect(of('Die Überschrift des 2. Hauptstücks lautet:')).toBe('Hauptstück ohne eigene Ebene')
     // A § the parser can read is not touched by any of this.
     expect(of('In § 5 Abs. 1 entfällt die Wortfolge "A".')).toBeNull()
+  })
+
+  it('reads an Artikel written in Roman as the unit RIS labels in arabic', () => {
+    // „Dem Art. VI wird folgende Z 85 angefügt" (GGG) against RIS's „Art. 6"
+    // — the same join `articleNumberKey` already does for „Art. II § 7".
+    expect(op('Dem Art. VI wird folgende Z 85 angefügt:')).toMatchObject({ kind: 'append', target: { para: 'Art. 6' } })
+    expect(op('Dem Art. VII wird folgender Abs. 28 angefügt:')).toMatchObject({ kind: 'append', target: { para: 'Art. 7' } })
+    // An Artikel in front of a § stays the container it was.
+    expect(op('In Art. II § 7 Abs. 1 entfällt die Wortfolge "A".')).toMatchObject({ target: { artikel: '2', para: '§ 7', abs: '1' } })
   })
 
   it('refuses a unit deletion that names a text', () => {
