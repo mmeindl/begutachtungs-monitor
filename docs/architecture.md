@@ -798,6 +798,57 @@ Verweigerung ist hier richtig) und **§ ohne Überschrift im RIS** (einzelne).
 Keine dieser Klassen ist ein Sprachmodell-Problem; drei davon sind
 Nachschlagefehler und eine ist eine korrekte Verweigerung.
 
+*Die größte dieser Klassen war eine Fehldiagnose, 26.09.2026.* „Keine Klausel
+für den Artikel" klang nach einem Leseausfall und war keiner: Die 16 Einheiten
+in 79/ME stehen alle im **Artikel 2, der das Verbraucherkreditgesetz 2026
+erlässt** — ein neues Gesetz ändert nichts, hat also keine
+Promulgationsklausel, kein geltendes Recht und nichts nachzuschlagen. Die
+Verweigerung war richtig. Falsch war, den Namen woanders zu suchen: Der
+Entwurf **druckt ihn selbst** über den Paragraphen („§ 1 Regelungsgegenstand",
+„§ 2 Begriffsbestimmungen"), `segmentUnits` liest ihn seit jeher als
+`heading`, und die Seite zeigte ihn auch — nur eben in der Zeile für „die
+Überschrift, die der Block nicht ohnehin sagt", nicht als Namen. Gezählt wurde
+er darum nirgends.
+
+Die Regel ist jetzt eine Stelle mit drei Quellen (`shared/utils/unitName.ts`,
+getestet): zitierte Überschrift der Anweisung, dann Nachschlag im geltenden
+Recht, dann die eigene Überschrift des Entwurfs — **letztere nur für einen §**.
+In einer Novelle ist die Einheit eine Novellierungsanordnung, und deren
+Überschrift IST die Anweisungszeile (`novaoHeading`); als Name stünde der
+halbe Satz zweimal (121/ME Z 9, 116/ME Z 2 sind genau das).
+
+*Und was die Klasse wirklich enthält, über 40 Entwürfe mit Vergleich und 1.250
+geänderte Einheiten gemessen:* 46 Einheiten ohne Klausel, davon **39 §§ neuer
+Gesetze mit eigener Überschrift** (79/ME 16, 93/ME 23 — die sind jetzt
+benannt), vier §§ neuer Gesetze, über denen der Entwurf gar keine Überschrift
+druckt (nichts vorhanden, nichts zu holen), und **drei echte Ausfälle**: drei
+Novellierungsanordnungen in Artikeln, deren Klausel dasteht und deren Zitat
+nur anders geschrieben ist — der Rest der Ursache, und eine Frage an den
+Zitatleser, nicht an die Namensregel.
+
+Die Deckung hat seither einen Befehl statt einer Handrechnung:
+`npx vite-node scripts/audit/paraTitle.ts XXVIII 40` zählt sie mit derselben
+Regel, die die Seite anzeigt, und prüft im zweiten Block wie bisher die
+Richtigkeit. Über 40 Entwürfe mit Vergleich und 1.250 geänderte Einheiten:
+
+| Quelle des Namens | Einheiten |
+|---|---|
+| zitierte Überschrift der Anweisung | 101 |
+| Nachschlag im geltenden Recht | 675 |
+| **eigene Überschrift (neues Gesetz)** | **39** |
+| benannt | **815 (65 %)**, vorher 776 (62 %) |
+| Median je Entwurf | 73 % · Entwürfe ganz ohne Namen: 3 |
+
+Der Richtigkeitsblock desselben Laufs: 415 angezeigte Namen, 238 mit Gesetz,
+§ und Überschrift bestätigt, **0 falsche Überschriften**, 24 nicht unabhängig
+prüfbar und 143, bei denen ein Bundesgesetzblatt mehrere Gesetze schafft — die
+Auflösung hängt dort am Artikelnamen, den die Prüfung gerade nicht benutzen
+darf, wenn sie unabhängig bleiben soll. Zehn Namen meldet sie als „falsches
+Gesetz"; das ist die im Skriptkopf beschriebene Falschmeldungsklasse
+(Abkürzung im Artikeltitel, seither umbenanntes Gesetz). **Keiner der zehn
+liegt in einem Entwurf, dessen Zitat jetzt neu gelesen wird** — für 96/ME und
+109/ME einzeln nachgeprüft: zehn aufgelöste Gesetze, null Abweichungen.
+
 *Und eine Einordnung, die aus dem neuen Kriterium folgt:* Dieses Paket trägt
 keine der vier Kostenarten — kein Betrieb, kein Partner, keine
 Rechnung, kein offener Ausgang. Es ist gewöhnliche Arbeit und steht seit

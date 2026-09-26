@@ -15,6 +15,7 @@ import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, Paragr
 import { unitKey } from '#shared/utils/diffKey'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
+import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote } from '~/utils/lawPackage'
 import {
   DEFAULT_LAW_STATION_PAIR,
@@ -201,14 +202,9 @@ const question = computed(() => lawStationPairQuestion(pair.value.from, pair.val
 const fromLabel = computed(() => LAW_STATION_LABEL[pair.value.from])
 const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
 
-/**
- * What to call a change. The draft's own quoted heading wins — it is the
- * name the § will carry once the amendment passes. Otherwise the heading it
- * carries today, looked up in the standing law. Both are quoted from an
- * official text; neither is generated, so neither needs a marking.
- */
-function unitName(u: LawDiffUnit): string | null {
-  return u.quotedHeading ?? paraTitles.value?.titles?.[unitKey(u)] ?? null
+/** The three sources of a name and their order live in `#shared/utils/unitName`. */
+function nameOf(u: LawDiffUnit): string | null {
+  return unitName(u, paraTitles.value?.titles, unitKey(u))
 }
 
 /** Whether any name on screen was looked up, which decides the source note. */
@@ -332,7 +328,11 @@ interface UnitView {
   unit: LawDiffUnit
   /** `unitLabel` — "§ 6 Erweiterte Gefahrenerforschung", null where no name is known */
   label: string | null
-  /** `extraHeading` — the heading, only where it says something the block does not */
+  /**
+   * `extraHeading` — the heading, only where it says something the block does
+   * not AND is not already the name: a § of a new law is named by exactly
+   * this heading, and the row would otherwise carry it twice.
+   */
   extra: string | null
 }
 
@@ -341,7 +341,9 @@ type Block =
   | { kind: 'context'; units: UnitView[] }
 
 function viewOf(u: LawDiffUnit): UnitView {
-  return { unit: u, label: unitLabel(u), extra: extraHeading(u) }
+  const label = unitLabel(u)
+  const extra = extraHeading(u)
+  return { unit: u, label, extra: extra === label ? null : extra }
 }
 
 function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Block[]; hidden: number } {
@@ -409,29 +411,6 @@ const isNovelle = computed(() => {
 const hasZiffern = computed(() => (data.value?.units ?? []).some((u) => /^Z\d/.test(u.id)))
 
 /**
- * The heading, but only where it says something the block does not.
- *
- * For a § of a Stammgesetz it is the § title ("Anwendungsbereich") — real
- * information. For a Novellierungsanordnung it IS the instruction line, cut
- * at the colon or after 100 characters (`novaoHeading`): it exists so that
- * renumbered Ziffern can pair by heading, and it was the row label back when
- * the text sat behind a click. Now that every block shows its text, printing
- * a truncated copy of the same sentence above it is noise.
- */
-function extraHeading(u: LawDiffUnit): string | null {
-  if (!u.heading) return null
-  const norm = (s: string) => s.replace(/\s*…\s*$/, '').replace(/\s+/g, ' ').trim().toLowerCase()
-  const heading = norm(u.heading)
-  const body = norm((u.change === 'removed' ? u.fromText : u.toText) ?? '')
-  return heading && body.startsWith(heading) ? null : u.heading
-}
-
-/** "§5" → "§ 5", "Z3" → "Z 3" */
-function displayId(id: string): string {
-  return id.replace(/^§/, '§ ').replace(/^Z(\d)/, 'Z $1')
-}
-
-/**
  * The Paragraph a change amends — placed in front of the name.
  *
  * „Z 2" is the Novellierungsanordnung's number, not the Paragraph's; without
@@ -448,7 +427,7 @@ function unitParagraph(u: LawDiffUnit): string | null {
 
 /** Paragraph and name as one line: „§ 6 Erweiterte Gefahrenerforschung". */
 function unitLabel(u: LawDiffUnit): string | null {
-  const name = unitName(u)
+  const name = nameOf(u)
   if (!name) return null
   const para = unitParagraph(u)
   return para ? `${para} ${name}` : name
