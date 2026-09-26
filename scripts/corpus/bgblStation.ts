@@ -207,7 +207,7 @@ for (const inr of numbers) {
           let at = 0
           while (at < a.length && at < b.length && a[at] === b[at]) at++
           const from = Math.max(0, at - 60)
-          console.log(`\n    ### ${inr}/ME ${u.law ?? '—'} / ${u.id} — gleich bis Zeichen ${at} von ${a.length}/${b.length}`)
+          console.log(`\n    ### ${inr}/ME ${u.article ?? '—'} / ${u.id} — gleich bis Zeichen ${at} von ${a.length}/${b.length}`)
           console.log(`      PARLAMENT: …${JSON.stringify(a.slice(from, at + 160))}`)
           console.log(`      RIS      : …${JSON.stringify(b.slice(from, at + 160))}`)
         }
