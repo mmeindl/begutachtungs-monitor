@@ -5150,12 +5150,23 @@ im RIS als Tabelle"; eine Tabelle allein ist jetzt kein Grund mehr, also sagt
 er „ist im RIS nicht eindeutig gegliedert", und `/so-funktionierts` sagt es
 in denselben Worten.
 
-**Nebenbefund, nicht behoben:** RIS führt die Kundmachungsklausel samt
-Änderungshistorie als Dokument mit dem Etikett **„§ 0"** — 275 im Cache, 141
-davon ohne Tabelle und deshalb schon bisher geladen. Die übrigen 134 kommen
-mit diesem Schritt dazu, was den Nenner des Prüfstands um 15 Paragraphen
-hebt, die nichts ändern („unverändert gelassen"). Harmlos, aber es verwässert
-eine Quote; ein § 0 ist keine Bestimmung. Eigener Schritt, eigene Messung.
+**Der Nebenbefund war schlimmer als gedacht, und ist im nächsten Schritt
+behoben.** RIS führt die Kundmachungsklausel eines Gesetzes unter dem Etikett
+**„§ 0"** — 275 solche Dokumente im Cache —, und was darin steht, ist kein
+Vorspann, sondern das **Inhaltsverzeichnis**: im Schnitt 5.624 Zeichen
+„1. Hauptstück Allgemeine Bestimmungen § 1. Gegenstand § 2. …". Sie kamen
+bisher nicht in den Baum, weil ihr Verzeichnis eine Tabelle ist — mit dem
+Schritt oben wären es 134 Paragraphen geworden, die ein Inhaltsverzeichnis
+als Bestimmung halten. Ein `§ 0` ist keine Bestimmung, keine
+Novellierungsanordnung adressiert eines, und so bleibt es draußen.
+
+Der Prüfstand sagt genau das: geprüfte Paragraphen 1.072 → **1.058**,
+„unverändert gelassen" 137 → **124** — und identisch mit dem RIS 771 →
+**770**, weil **ein** Inhaltsverzeichnis als Erfolg gezählt hatte. Die Quoten
+werden dadurch wieder vergleichbar (71,9 % → 72,8 %, im unverweigerten Topf
+89,9 % → 91,3 %). Am Tor ändert sich nichts (1.715 / 1.120 bestätigt wie
+zuvor), Drift über beide Pfade ohne Befund — die Beilage hat nie ein „§ 0"
+adressiert.
 
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 

@@ -220,6 +220,15 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // Measured on the Anhang of the Bundesgesetzes gegen den unlauteren
   // Wettbewerb (26.09.2026): id „?", marker „Anl. 1", 41 Ziffern.
   const idMatch = artikelPara ?? /(?:§|Art\.?|Artikel|Anl(?:age)?\.?)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
+  // **„§ 0" is not a provision.** RIS files a law's front matter under that
+  // label — the Inhaltsverzeichnis, the Promulgationsklausel, the list of
+  // amendments — and no Novellierungsanordnung addresses it. It stayed out
+  // of the tree by accident while its table was a reason to drop the whole
+  // document; since the table is read (26.09.2026) it would come in as a
+  // paragraph holding 5.624 characters of table of contents on average, over
+  // 134 documents of the cache. Kept out on purpose now, and the bench's
+  // denominator says why: 15 §§ that nothing ever changes.
+  if (/^§+\s*0\s*$/.test(idText.trim())) return null
 
   let root: LawNode | null = null
   let sawTable = false
