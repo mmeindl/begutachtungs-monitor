@@ -1058,3 +1058,60 @@ describe('the sentences of a § without Absatz numbering (26.09.2026)', () => {
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Der erste Satz. Der zweite Satz.')
   })
 })
+
+describe('the sentences of an Absatz that carries a list (26.09.2026)', () => {
+  /** § 9 Abs. 1 with an Einleitung, a list and optionally a Schlussteil. */
+  function listed(lead: string, ziffern: string[], schluss: string | null): StandingLaw {
+    const p = para('9', 'Beirat', [{ text: lead, ziffern }])
+    if (schluss) p.children[0]!.children.push(makeNode('schluss', 'schluss', '', schluss))
+    return { paragraphs: [p] }
+  }
+  const textOf = (out: StandingLaw) => plainText(out.paragraphs[0]!.children[0]!)
+
+  it('finds the last sentence in the Schlussteil behind the tail of the list sentence', () => {
+    // Gesundheitsqualitätsgesetz § 9a Abs. 1, BGBl. I Nr. 64/2026.
+    const l = listed('Die Bundesministerin hat eine Kommission unter Einbeziehung von Vertretern', ['des Bundes,', 'der Länder'], 'einzurichten. Neben den in Z 1 bis 2 genannten Vertretern können weitere beigezogen werden.')
+    const { law: out, results } = run(l, instr('In § 9 Abs. 1 letztem Satz wird die Zahl "2" durch die Zahl "3" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(textOf(out)).toContain('Neben den in Z 1 bis 3 genannten')
+  })
+
+  it('takes the whole Schlussteil as the last sentence where it opens one of its own', () => {
+    // Umweltförderungsgesetz § 23 Abs. 1: the last Ziffer closes with a full stop.
+    const l = listed('Angestrebt werden Maßnahmen, die', ['Energie sparen oder', 'Emissionen senken.'], 'Insgesamt soll damit ein Beitrag zum Umweltschutz geleistet werden.')
+    const { law: out, results } = run(l, instr('In § 9 Abs. 1 letzter Satz wird das Wort "Umweltschutz" durch den Ausdruck "Klima- und Umweltschutz" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(textOf(out)).toContain('Beitrag zum Klima- und Umweltschutz geleistet')
+  })
+
+  it('counts the complete sentences in front of the list from the front', () => {
+    // Stabilitätsabgabegesetz § 5 Abs. 1.
+    const l = listed('Für die Kalenderjahre 2025 und 2026 ist eine Sonderzahlung zu entrichten. Dabei gilt:', ['Die Sonderzahlung beträgt 1 %.', 'Sie ist sofort fällig.'], null)
+    const { law: out, results } = run(l, instr('In § 9 Abs. 1 erster Satz wird die Wortfolge "Kalenderjahre 2025 und 2026" durch die Wortfolge "Kalenderjahre 2025 bis 2029" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Für die Kalenderjahre 2025 bis 2029 ist eine Sonderzahlung zu entrichten. Dabei gilt:')
+  })
+
+  it('opens the sentence that runs through the list to a phrase in one of its pieces', () => {
+    // Volksanwaltschaftsgesetz 1982 § 1 Abs. 2: the whole Absatz is one sentence.
+    const l = listed('Außer der Geschäftsverteilung gemäß Art. 148h Abs. 4 B-VG unterliegen dem Kollegium:', ['Empfehlungen gemäß Art. 148c B-VG,', 'Berichte gemäß Art. 148d B-VG.'], null)
+    const { law: out, results } = run(l, instr('In § 9 Abs. 1 erster Satz wird der Ausdruck "Art. 148h Abs. 4" durch den Ausdruck "Art. 148h Abs. 5" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Außer der Geschäftsverteilung gemäß Art. 148h Abs. 5 B-VG unterliegen dem Kollegium:')
+  })
+
+  it('still refuses to replace or delete the sentence that runs through the list', () => {
+    const l = () => listed('Ausgenommen sind:', ['Verfahren nach dem AVG,', 'Verfahren vor Gerichten'], 'soweit nichts anderes bestimmt ist. Das gilt sinngemäß.')
+    expect(run(l(), instr('§ 9 Abs. 1 erster Satz lautet:', ['Neu.'])).results[0]!.applied).toBe(false)
+    expect(run(l(), instr('In § 9 Abs. 1 entfällt der erste Satz.')).results[0]!.applied).toBe(false)
+    // The sentence behind it is an ordinary one.
+    const { law: out, results } = run(l(), instr('In § 9 Abs. 1 entfällt der letzte Satz.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children.at(-1)!.text).toBe('soweit nichts anderes bestimmt ist.')
+  })
+
+  it('refuses to count forward past the list', () => {
+    const l = listed('Ausgenommen sind:', ['Verfahren nach dem AVG,', 'Verfahren vor Gerichten'], 'soweit nichts anderes bestimmt ist. Das gilt sinngemäß.')
+    expect(run(l, instr('In § 9 Abs. 1 zweiter Satz wird das Wort "sinngemäß" durch das Wort "entsprechend" ersetzt.')).results[0]!.applied).toBe(false)
+  })
+})

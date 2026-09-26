@@ -680,33 +680,45 @@ export function splitSentences(text: string): string[] | null {
  * an ordinal to a run ("die ersten beiden Sätze").
  */
 function sentenceSlot(unit: LawNode, satz: string, count = 1): Slot | null {
+  const found = sentenceSlots(unit, satz, count)
+  // The sentence that runs through a list is open to phrase operations only
+  // (`listSentences`): a replacement or deletion of it would have to take the
+  // list along, and writing only its first piece is the Ärztegesetz failure.
+  return found && !found.throughList ? found.slots[0]! : null
+}
+
+/**
+ * The slots of the sentence(s) an address names, and whether they are the
+ * one sentence that runs through a list — which is several pieces of text in
+ * several nodes, and only a phrase can be looked for across them.
+ */
+function sentenceSlots(unit: LawNode, satz: string, count = 1): { slots: Slot[]; throughList: boolean } | null {
   // „In § 8 erster Satz", „Im Schlussteil des § 11": a § without Absatz
   // numbering has its sentences in its one unnumbered Absatz, and the § node
   // itself only carries that Absatz — so it counted as a unit with a list and
   // every sentence of it was refused (4 of the 21 lines filed under „eine
   // frühere Anweisung", 26.09.2026).
   const node = bodyOf(unit)
-  if (satz === 'einleitung') return node.children.length ? textSlot(node) : null
+  const one = (slot: Slot | null) => (slot ? { slots: [slot], throughList: false } : null)
+  if (satz === 'einleitung') return one(node.children.length ? textSlot(node) : null)
   if (satz === 'schluss') {
     // `id === 'schluss'`: a table of the standing text is filed as a
     // `schluss` node too (`lawtext/konsTree.ts`), and it is not the
     // Schlussteil an instruction means.
     const schluss = [...node.children].reverse().find((c) => c.level === 'schluss' && c.id === 'schluss')
-    return schluss ? textSlot(schluss) : null
+    return one(schluss ? textSlot(schluss) : null)
   }
-  // An Absatz that carries a list has no countable sentences: "…sind die
-  // Ordinationsstätten von 1. … 2. …, denen die Anerkennung erteilt worden
-  // ist." runs from the Einleitungssatz through the Ziffern into the
-  // Schlussteil. "erster Satz lautet" then replaced the fragment in front
-  // of the list and left the list standing (Ärztegesetz §§ 12, 12a, 13,
-  // BGBl. I Nr. 21/2024, 2026-09-09). Only Einleitungssatz and Schlussteil
-  // are addressable there.
-  if (node.children.length) return null
+  if (node.children.length) return listSentences(node, satz, count)
   const parts = splitSentences(node.text)
   if (!parts) return null
   const n = Math.max(1, count)
   const first = satz === 'letzter' ? parts.length - n : satz === 'vorletzter' ? parts.length - 2 : (ORDINALS[satz] ?? -1)
   if (first < 0 || first + n > parts.length) return null
+  return one(partsSlot(node, parts, first, n))
+}
+
+/** Sentences `first` to `first + n` of `parts`, written back into `node.text`. */
+function partsSlot(node: LawNode, parts: readonly string[], first: number, n: number): Slot {
   return {
     read: () => parts.slice(first, first + n).join(' '),
     write: (v) => {
@@ -714,6 +726,80 @@ function sentenceSlot(unit: LawNode, satz: string, count = 1): Slot | null {
       node.text = next.join(' ').replace(/\s{2,}/g, ' ').trim()
     },
   }
+}
+
+/** Where the last piece of a list item's text stands — a Ziffer's own text, or its last Litera's. */
+function lastTextOf(node: LawNode): string {
+  const last = node.children.at(-1)
+  return last ? lastTextOf(last) : node.text
+}
+
+const ENDS_SENTENCE = /[.!?]["')\]]*$/
+
+/**
+ * The sentences of an Absatz that carries a list, counted only where the
+ * count is certain.
+ *
+ * "…sind die Ordinationsstätten von 1. … 2. …, denen die Anerkennung erteilt
+ * worden ist." runs from the Einleitung through the Ziffern into the
+ * Schlussteil, and until 26.09.2026 that made every sentence of such an
+ * Absatz uncountable — "erster Satz lautet" had replaced the fragment in
+ * front of the list and left the list standing (Ärztegesetz §§ 12, 12a, 13,
+ * BGBl. I Nr. 21/2024, 2026-09-09). But the sentences on either side of that
+ * one are ordinary sentences in one node each:
+ *
+ *  - in front of the list, every part of the Einleitung except its last,
+ *    which is where the list sentence begins — „erster Satz" in StabAbgG § 5
+ *    Abs. 1, whose Ziffern follow a second sentence;
+ *  - behind it, every part of the Schlussteil except its first where that
+ *    continues the list sentence („einzurichten. Neben den in Z 1 bis 10
+ *    genannten …", Gesundheitsqualitätsgesetz § 9a Abs. 1). Where the last
+ *    item closes with a full stop and the Schlussteil opens with a capital, it
+ *    begins a sentence of its own (Umweltförderungsgesetz § 23 Abs. 1).
+ *
+ * So the front is counted from the front and the back from the back. The
+ * list sentence itself is named where the count lands on it — „erster Satz"
+ * when nothing stands before it, „letzter Satz" when nothing follows — and
+ * comes back as its pieces, for a phrase to be found in exactly one of them.
+ * Counting forward past the list is refused: whether the Ziffern's own full
+ * sentences count is not settled by the text.
+ */
+function listSentences(node: LawNode, satz: string, count: number): { slots: Slot[]; throughList: boolean } | null {
+  // A table is no list, and a lead that ends its own sentence before the list
+  // is a shape this reading does not know.
+  if (node.children.some((c) => c.level === 'schluss' && c.id !== 'schluss')) return null
+  const schluss = node.children.at(-1)?.level === 'schluss' ? node.children.at(-1)! : null
+  const list = node.children.filter((c) => c !== schluss)
+  if (list.length === 0) return null
+  const lead = node.text.trim() ? splitSentences(node.text) : []
+  const tail = schluss ? splitSentences(schluss.text) : []
+  if (lead === null || tail === null) return null
+  if (lead.length > 0 && ENDS_SENTENCE.test(lead.at(-1)!)) return null
+  const closed = ENDS_SENTENCE.test(lastTextOf(list.at(-1)!).trim()) && /^[A-ZÄÖÜ"„§(]/.test(tail[0] ?? '')
+  const continues = tail.length > 0 && !closed
+  const before = Math.max(0, lead.length - 1)
+  const after = tail.length - (continues ? 1 : 0)
+  const throughList = (): { slots: Slot[]; throughList: boolean } => ({
+    slots: [
+      ...(lead.length > 0 ? [partsSlot(node, lead, lead.length - 1, 1)] : []),
+      ...list.flatMap((c) => lawTextNodes(c).map(textSlot)),
+      ...(continues ? [partsSlot(schluss!, tail, 0, 1)] : []),
+    ],
+    throughList: true,
+  })
+  const n = Math.max(1, count)
+  if (satz === 'letzter') {
+    if (after >= n) return { slots: [partsSlot(schluss!, tail, tail.length - n, n)], throughList: false }
+    return n === 1 && after === 0 ? throughList() : null
+  }
+  if (satz === 'vorletzter') {
+    if (after >= 2) return { slots: [partsSlot(schluss!, tail, tail.length - 2, 1)], throughList: false }
+    return after === 1 ? throughList() : null
+  }
+  const first = ORDINALS[satz] ?? -1
+  if (first < 0) return null
+  if (first + n <= before) return { slots: [partsSlot(node, lead, first, n)], throughList: false }
+  return first === before && n === 1 ? throughList() : null
 }
 
 /**
@@ -761,9 +847,9 @@ function phraseSlotGroups(law: StandingLaw, a: NovaoAddress): Slot[][] | { error
   const groups: Slot[][] = []
   for (const node of scope) {
     if (a.satz) {
-      const only = sentenceSlot(node, a.satz, a.satzCount)
-      if (!only) return { error: `Satz ${a.satz} nicht auffindbar` }
-      groups.push([only])
+      const found = sentenceSlots(node, a.satz, a.satzCount)
+      if (!found) return { error: `Satz ${a.satz} nicht auffindbar` }
+      groups.push(found.slots)
       continue
     }
     groups.push(lawTextNodes(node).map(textSlot))
