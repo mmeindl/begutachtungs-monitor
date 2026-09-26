@@ -1629,6 +1629,68 @@ Vergleichs, die die 68 „nicht gefunden" verkleinern würde, vergrößert diese
 78. Die beiden Hälften ziehen gegeneinander, und ein Eingriff, der nur die
 eine misst, verschlechtert die andere still.
 
+**Die größere Hälfte war gar keine Lockerung (26.09.2026).** „Mehrfach
+gefunden" liest sich wie eine Schwelle, die man verschieben müsste, und ist
+in der Mehrzahl der Fälle ein Wort: **„jeweils"**.
+
+```
+In § 81 Abs. 1 und 2 wird das Wort „Acten" jeweils durch „Akten" ersetzt.
+In § 34 Abs. 1 und 2 und § 36 Abs. 1 und 4 entfällt jeweils „der Länder".
+In § 12 Abs. 4 und 7 wird nach „oder Abs. 4" jeweils „oder § 46a" eingefügt.
+```
+
+Eine Adresse, mehrere Einheiten, die Phrase **einmal in jeder**. Über die
+Vereinigung gefragt kommt sie zweimal vor, `uniqueSlot` verweigert, und die
+ganze Anweisung fällt aus.
+
+**Die Regel stand schon da, nur an der falschen Hälfte.** `everyOccurrence`
+in `kons/novao.ts` schreibt seit seiner Entstehung: Mit mehreren Stellen
+verteilt „jeweils" die Änderung über sie, „und inside each the phrase must
+still be unique". Die *lesende* Hälfte hielt sich daran — sie schaltet
+`everywhere` genau dann nicht ein. Die *anwendende* bekam die Einheiten nie
+einzeln zu sehen: `phraseSlots` warf sie in eine Liste. Jetzt gruppiert
+`phraseSlotGroups` je adressierter Einheit, und `eachUnit` reist mit der
+Operation mit, weil es eine Aussage über den *Satz* ist und nur der Parser
+sie hat.
+
+**Ohne „jeweils" ändert sich nichts**, und das ist der Schutz: Die Adresse
+bleibt EINE Stelle, wie viele Einheiten sie auch umspannt, und die Phrase muss
+über alle eindeutig sein. Eine Anweisung, die zwei Paragraphen nennt und einen
+meint, darf nicht in beide schreiben.
+
+**Zwei Durchgänge, und der erste Entwurf hatte einen.** Einheit für Einheit
+anzuwenden und beim ersten Fehlschlag zurückzukehren ließ die Einheiten davor
+geändert und die Anweisung verweigert — eine halb angewendete Anweisung, das
+eine Ergebnis, das diese Engine nie erzeugen darf. `locateInUnits` löst
+deshalb alle Einheiten auf, bevor in eine geschrieben wird; ein Test hält es
+fest.
+
+**Gemessen über 40 Sammelnovellen, 2.079 Anweisungen, derselbe Korpus vorher
+und nachher:**
+
+| | vorher | nachher |
+|---|---|---|
+| angewendet | 1.595 (76,7 %) | **1.610 (77,4 %)** |
+| identisch mit dem RIS | 716 | **725** |
+| halb angewendet | 99 | **94** |
+| unverändert gelassen | 140 | 137 |
+| Verweigerungen gesamt | 484 | **469** |
+| davon „nicht eindeutig" | 32 | **17** |
+
+Von den Verweigerungsklassen bewegt sich **genau eine** — die, für die der
+Eingriff gebaut ist —, und keine andere um eine einzige Zeile. −15
+Verweigerungen, +15 angewendete Anweisungen, +9 Paragraphen, die der Text
+sind, den das RIS wirklich führt.
+
+**Der Preis, und er gehört genannt:** „ohne Verweigerung, abweichend" steigt
+18 → 19 und „kein geltender Text" 43 → 44. Die Abweichung über *alle*
+geprüften Paragraphen bleibt bei 34 — es entsteht also **kein neuer Fehler**;
+ein Paragraph, der schon abwich und zusätzlich verweigert war, verliert seine
+Verweigerung und steht jetzt im unverweigerten Topf. Für die Anzeige heißt das
+wenig, weil das Tor zusätzlich die Bestätigung der Beilage verlangt (§12.12a)
+— aber es ist die richtige Richtung, um es hier hinzuschreiben und nicht in
+der Zusammenfassung zu verlieren.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides

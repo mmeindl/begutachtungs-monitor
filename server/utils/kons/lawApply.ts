@@ -554,25 +554,82 @@ export function addressedSentence(node: LawNode, satz: string, count = 1): strin
   return sentenceSlot(node, satz, count)?.read() ?? null
 }
 
-/** Every slot an address opens up for a phrase operation. */
-function phraseSlots(law: StandingLaw, a: NovaoAddress): Slot[] | null {
+/**
+ * Every slot an address opens up for a phrase operation, **grouped by the
+ * addressed unit** — one group per § or Absatz the address names.
+ *
+ * The grouping is what „jeweils" needs. „In § 81 Abs. 1 und 2 wird das Wort
+ * „Acten" jeweils durch das Wort „Akten" ersetzt" is ONE address covering two
+ * Absätze, and the word stands once in each; asked across the union it is
+ * found twice and the instruction is refused. Over the corpus that is the
+ * single largest class of applications that read correctly and then failed —
+ * 95 of 804 refusals (26.09.2026), against 64 for „Textstelle nicht
+ * gefunden".
+ *
+ * `everyOccurrence` in `kons/novao.ts` has stated the rule since it was
+ * written: with several places „jeweils" distributes the change over them,
+ * „und inside each the phrase must still be unique". The reading half obeyed
+ * it; the applying half never got the units to obey it *in*.
+ */
+function phraseSlotGroups(law: StandingLaw, a: NovaoAddress): Slot[][] | null {
   const scope = scopeOf(law, a)
   if (!scope) return null
   if (a.heading) {
     const titled = scope.filter((n) => (n.heading ?? '') !== '')
-    return titled.length ? titled.map(headingSlot) : null
+    return titled.length ? titled.map((n) => [headingSlot(n)]) : null
   }
-  const slots: Slot[] = []
+  const groups: Slot[][] = []
   for (const node of scope) {
     if (a.satz) {
       const only = sentenceSlot(node, a.satz, a.satzCount)
       if (!only) return null
-      slots.push(only)
+      groups.push([only])
       continue
     }
-    slots.push(...lawTextNodes(node).map(textSlot))
+    groups.push(lawTextNodes(node).map(textSlot))
   }
-  return slots
+  return groups
+}
+
+/**
+ * The units a phrase operation has to be applied in, in order.
+ *
+ * Without „jeweils" the address is ONE place however many units it spans, and
+ * the phrase has to be unique across all of them — that is the old behaviour
+ * and it stays, because loosening it everywhere would let an instruction that
+ * names two §§ and means one of them write into both. With „jeweils" the
+ * instruction says outright that it means each unit once, so each unit is its
+ * own question.
+ */
+function phraseUnits(law: StandingLaw, a: NovaoAddress, eachUnit: boolean): Slot[][] | null {
+  const groups = phraseSlotGroups(law, a)
+  if (!groups) return null
+  return eachUnit ? groups : [groups.flat()]
+}
+
+/**
+ * Where the phrase sits in every addressed unit — resolved for ALL of them
+ * before a single one is written to.
+ *
+ * **Two passes, and the first version was one.** Applying unit by unit and
+ * returning on the first failure left the units before it changed and the
+ * instruction refused: „In § 81 Abs. 1 und 2 … jeweils" over a § whose second
+ * Absatz does not carry the word rewrote the first and reported a refusal.
+ * A half-applied instruction is the one outcome this engine may never produce
+ * — the same rule the operand pairing states one file over („either every
+ * pair is read, or the instruction is refused"), and a unit test now holds it.
+ *
+ * The units cannot overlap, so the offsets stay valid until the writes:
+ * `scopeOf` reads one level, and its nodes are siblings.
+ */
+function locateInUnits(units: readonly (readonly Slot[])[], needle: string, wordBound: boolean): { hits: { slot: Slot; at: number }[] } | { error: string } {
+  const hits: { slot: Slot; at: number }[] = []
+  for (const slots of units) {
+    const found = uniqueSlot(slots, needle, wordBound)
+    if ('error' in found) return { error: found.error }
+    hits.push({ slot: found.slot, at: phraseIndex(found.slot.read(), needle, wordBound) })
+  }
+  return { hits }
 }
 
 /**
@@ -850,11 +907,11 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       return renumberBatch(law, [{ op, payload }], [])
 
     case 'replacePhrase': {
-      const slots = phraseSlots(law, op.target)
-      if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      const units = phraseUnits(law, op.target, op.eachUnit)
+      if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       if (op.everywhere) {
         let hits = 0
-        for (const slot of slots) {
+        for (const slot of units.flat()) {
           // Seam by seam: "/" replaced by "bzw." inside "Bundesministerin/der"
           // needs the spaces a plain split-and-join does not add
           // (Tierschutzgesetz, BGBl. I Nr. 124/2024, 2026-09-09). Cut by
@@ -875,37 +932,45 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         }
         return hits === 0 ? `Textstelle nicht gefunden: "${op.from.slice(0, 60)}"` : null
       }
-      const found = uniqueSlot(slots, op.from, op.wordBound)
-      if ('error' in found) return found.error
-      const current = found.slot.read()
-      const at = phraseIndex(current, op.from, op.wordBound)
-      found.slot.write(joinPhrase(current.slice(0, at), op.to, current.slice(at + op.from.length)))
+      // One unit without „jeweils", one question per unit with it. A unit
+      // the phrase is not in, or is in twice, refuses the whole instruction:
+      // „jeweils" is the ressort saying every one of them carries it, so a
+      // unit that does not is a disagreement about the standing text and not
+      // a place to skip quietly.
+      const located = locateInUnits(units, op.from, op.wordBound)
+      if ('error' in located) return located.error
+      for (const { slot, at } of located.hits) {
+        const current = slot.read()
+        slot.write(joinPhrase(current.slice(0, at), op.to, current.slice(at + op.from.length)))
+      }
       return null
     }
 
     case 'insertPhrase': {
-      const slots = phraseSlots(law, op.target)
-      if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-      const found = uniqueSlot(slots, op.anchor, op.wordBound)
-      if ('error' in found) return found.error
-      const current = found.slot.read()
-      const at = phraseIndex(current, op.anchor, op.wordBound)
-      found.slot.write(
-        op.where === 'after'
-          ? joinPhrase(current.slice(0, at + op.anchor.length), op.text, current.slice(at + op.anchor.length))
-          : joinPhrase(current.slice(0, at), op.text, current.slice(at)),
-      )
+      const units = phraseUnits(law, op.target, op.eachUnit)
+      if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      const located = locateInUnits(units, op.anchor, op.wordBound)
+      if ('error' in located) return located.error
+      for (const { slot, at } of located.hits) {
+        const current = slot.read()
+        slot.write(
+          op.where === 'after'
+            ? joinPhrase(current.slice(0, at + op.anchor.length), op.text, current.slice(at + op.anchor.length))
+            : joinPhrase(current.slice(0, at), op.text, current.slice(at)),
+        )
+      }
       return null
     }
 
     case 'deletePhrase': {
-      const slots = phraseSlots(law, op.target)
-      if (!slots) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
-      const found = uniqueSlot(slots, op.text, op.wordBound)
-      if ('error' in found) return found.error
-      const current = found.slot.read()
-      const at = phraseIndex(current, op.text, op.wordBound)
-      found.slot.write(`${current.slice(0, at)}${current.slice(at + op.text.length)}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
+      const units = phraseUnits(law, op.target, op.eachUnit)
+      if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      const located = locateInUnits(units, op.text, op.wordBound)
+      if ('error' in located) return located.error
+      for (const { slot, at } of located.hits) {
+        const current = slot.read()
+        slot.write(`${current.slice(0, at)}${current.slice(at + op.text.length)}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
+      }
       return null
     }
   }

@@ -731,3 +731,70 @@ describe('a word operand matches whole words only (2026-09-23)', () => {
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Behörde entscheidet.')
   })
 })
+
+describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () => {
+  // „In § 81 Abs. 1 und 2 wird das Wort „Acten" jeweils durch das Wort
+  // „Akten" ersetzt" is ONE address over two Absätze, and the word stands
+  // once in each. Asked across the union it is found twice and the whole
+  // instruction is refused — 95 of 804 refusals over the corpus, the largest
+  // class of instructions that were read correctly and then not carried out.
+  //
+  // `everyOccurrence` in `kons/novao.ts` has stated the rule since it was
+  // written: with several places „jeweils" distributes over them and inside
+  // each the phrase must still be unique. The reading half obeyed it, the
+  // applying half never got the units to obey it in.
+  const twoAbsaetze = (): StandingLaw => ({
+    paragraphs: [para('81', 'Akteneinsicht', ['Die Acten sind zu führen.', 'Die Acten sind aufzubewahren.'])],
+  })
+
+  it('applies the change once in each addressed Absatz', () => {
+    const { law: out, results } = run(twoAbsaetze(), instr('In § 81 Abs. 1 und 2 wird das Wort "Acten" jeweils durch das Wort "Akten" ersetzt.'))
+    expect(results.every((r) => r.reason === null), results.map((r) => r.reason).join(' | ')).toBe(true)
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Akten sind zu führen.')
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Die Akten sind aufzubewahren.')
+  })
+
+  it('deletes and inserts per unit too', () => {
+    const l: StandingLaw = { paragraphs: [para('34', 'Mitwirkung', ['Die Behörden der Länder wirken mit.', 'Die Ämter der Länder berichten.'])] }
+    const { law: del, results: r1 } = run(l, instr('In § 34 Abs. 1 und 2 entfällt jeweils die Wortfolge "der Länder".'))
+    expect(r1.every((r) => r.reason === null)).toBe(true)
+    expect(plainText(del.paragraphs[0]!.children[0]!)).toBe('Die Behörden wirken mit.')
+    expect(plainText(del.paragraphs[0]!.children[1]!)).toBe('Die Ämter berichten.')
+
+    const l2: StandingLaw = { paragraphs: [para('12', 'Verweise', ['Es gilt Abs. 4 sinngemäß.', 'Auch Abs. 4 bleibt unberührt.'])] }
+    const { law: ins, results: r2 } = run(l2, instr('In § 12 Abs. 1 und 2 wird nach dem Zitat "Abs. 4" jeweils das Zitat "oder § 46a" eingefügt.'))
+    expect(r2.every((r) => r.reason === null), r2.map((r) => r.reason).join(' | ')).toBe(true)
+    expect(plainText(ins.paragraphs[0]!.children[0]!)).toContain('Abs. 4 oder § 46a')
+    expect(plainText(ins.paragraphs[0]!.children[1]!)).toContain('Abs. 4 oder § 46a')
+  })
+
+  // The guard that makes the loosening safe: without „jeweils" the address is
+  // ONE place however many units it spans, and the phrase must be unique
+  // across all of them. An instruction that names two Absätze and means one
+  // of them must not write into both.
+  it('keeps demanding one occurrence across the whole address without „jeweils"', () => {
+    const { results } = run(twoAbsaetze(), instr('In § 81 Abs. 1 und 2 wird das Wort "Acten" durch das Wort "Akten" ersetzt.'))
+    expect(results[0]!.reason).toMatch(/nicht eindeutig/)
+  })
+
+  // „jeweils" is the ressort saying every one of the units carries the
+  // phrase. A unit that does not is a disagreement about the standing text,
+  // so the instruction is refused rather than half-applied.
+  it('refuses when one of the addressed units does not carry the phrase', () => {
+    const l: StandingLaw = { paragraphs: [para('81', 'Akteneinsicht', ['Die Acten sind zu führen.', 'Die Unterlagen sind aufzubewahren.'])] }
+    const { law: out, results } = run(l, instr('In § 81 Abs. 1 und 2 wird das Wort "Acten" jeweils durch das Wort "Akten" ersetzt.'))
+    expect(results[0]!.reason).toMatch(/nicht gefunden/)
+    // …and nothing is written: a half-applied instruction is the one outcome
+    // the engine may never produce.
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Acten sind zu führen.')
+  })
+
+  // The single-place reading of „jeweils" is untouched: there it still means
+  // every occurrence INSIDE the one unit.
+  it('still means every occurrence where the address names one place', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'Amt', ['Das Amt entscheidet, das Amt verkündet.'])] }
+    const { law: out, results } = run(l, instr('In § 5 wird jeweils das Wort "Amt" durch das Wort "Behörde" ersetzt.'))
+    expect(results.every((r) => r.reason === null)).toBe(true)
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Das Behörde entscheidet, das Behörde verkündet.')
+  })
+})

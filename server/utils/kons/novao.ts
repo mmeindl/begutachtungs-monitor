@@ -557,12 +557,20 @@ export type NovaoOp =
   | { kind: 'insertAfter'; anchor: NovaoAddress; child: ChildLevel; childIds: string[]; where: 'after' | 'before' }
   /** "§ 5 Abs. 3 entfällt." */
   | { kind: 'delete'; target: NovaoAddress; withHeading: boolean }
-  /** "In § 5 Abs. 1 wird die Wortfolge X durch die Wortfolge Y ersetzt." */
-  | { kind: 'replacePhrase'; target: NovaoAddress; from: string; to: string; everywhere: boolean; wordBound: boolean }
+  /**
+   * "In § 5 Abs. 1 wird die Wortfolge X durch die Wortfolge Y ersetzt."
+   *
+   * `everywhere` — every occurrence inside ONE place ("In § 5 wird jeweils …").
+   * `eachUnit` — once in EACH unit the address spans ("In § 81 Abs. 1 und 2
+   * wird das Wort X jeweils durch Y ersetzt"). The two are the two readings of
+   * „jeweils", and which one applies is decided by whether the address names
+   * one place or several (`everyOccurrence`).
+   */
+  | { kind: 'replacePhrase'; target: NovaoAddress; from: string; to: string; everywhere: boolean; eachUnit: boolean; wordBound: boolean }
   /** "In § 5 Abs. 1 wird nach der Wortfolge X die Wortfolge Y eingefügt." */
-  | { kind: 'insertPhrase'; target: NovaoAddress; anchor: string; where: 'after' | 'before'; text: string; wordBound: boolean }
+  | { kind: 'insertPhrase'; target: NovaoAddress; anchor: string; where: 'after' | 'before'; text: string; eachUnit: boolean; wordBound: boolean }
   /** "In § 5 Abs. 1 entfällt die Wortfolge X." */
-  | { kind: 'deletePhrase'; target: NovaoAddress; text: string; wordBound: boolean }
+  | { kind: 'deletePhrase'; target: NovaoAddress; text: string; eachUnit: boolean; wordBound: boolean }
   /**
    * "Der bisherige § 10 erhält die Paragrafenbezeichnung „§ 11.“"; with
    * `toLast`, a run: "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“"
@@ -740,7 +748,30 @@ const PUNCT_REPLACE_RE = /\bde[rn]\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Ge
 function everyOccurrence(head: string, targets: readonly NovaoAddress[]): boolean {
   if (targets.some((t) => t.level === 'document')) return true
   const single = targets.length === 1 && targets[0]!.siblings.length === 0
-  return single && /\bjeweils\b|\bjedes Mal\b/i.test(head)
+  return single && JEWEILS_RE.test(head)
+}
+
+const JEWEILS_RE = /\bjeweils\b|\bjedes Mal\b/i
+
+/**
+ * The OTHER reading of „jeweils": once in each unit the address spans.
+ *
+ * „In § 81 Abs. 1 und 2 wird das Wort „Acten" jeweils durch das Wort „Akten"
+ * ersetzt" — one address, two Absätze, the word once in each. Asked across
+ * the union of the two the word is found twice and the instruction is
+ * refused; asked per Absatz it is unique in both. 95 of 804 refusals over the
+ * corpus were this, the largest class of instructions that were read
+ * correctly and then not carried out (26.09.2026).
+ *
+ * The flag travels with the operation rather than being re-derived in
+ * `kons/lawApply.ts`, because it is a statement about the *sentence* and only
+ * the parser has it. Without „jeweils" nothing changes: the address stays one
+ * place however many units it spans, and the phrase has to be unique across
+ * all of them — a rule worth keeping, because an instruction that names two
+ * §§ and means one of them must not write into both.
+ */
+function eachUnitOccurrence(head: string): boolean {
+  return JEWEILS_RE.test(head)
 }
 
 function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole: string): ParsedInstruction {
@@ -803,6 +834,10 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       from: PUNCT_WORD[punct[1]!.toLowerCase()]!,
       to: PUNCT_WORD[punct[2]!.toLowerCase()]!,
       everywhere: false,
+      // „In § 27a Abs. 2 und § 27b Abs. 2 wird in Z 16 jeweils das Wort
+      // „sowie" durch einen Beistrich ersetzt" — the punctuation form carries
+      // the same „jeweils" as the quoted one.
+      eachUnit: eachUnitOccurrence(head),
       // A single punctuation character carries no word boundary to ask for.
       wordBound: false,
     })
@@ -815,6 +850,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // place exactly once — and a heading that does not carry the phrase
     // refuses the instruction instead of quietly renaming only the body.
     const places = targets.flatMap((t) => (t.alsoHeading ? [t, headingTwin(t)] : [t]))
+    const eachUnit = eachUnitOccurrence(head)
     // "wird in der jeweils grammatikalisch richtigen Form die Wortfolge X
     // durch Y ersetzt": the drafters say outright that the replacement is to
     // be declined per context — "der Bundesministerin" becomes "des
@@ -833,7 +869,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
         if (quotes.length % 2 !== 0 || pairs !== quotes.length / 2) return fail(`${quotes.length} Operanden, Paarbildung unklar`)
         const everywhere = everyOccurrence(head, targets)
         const many: NovaoOp[] = []
-        for (const t of places) for (let i = 0; i + 1 < quotes.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: quotes[i]!, to: quotes[i + 1]!, everywhere, wordBound: wordOperand(line, i) })
+        for (const t of places) for (let i = 0; i + 1 < quotes.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: quotes[i]!, to: quotes[i + 1]!, everywhere, eachUnit, wordBound: wordOperand(line, i) })
         return { ops: many, reason: null, line }
       }
       // Both German forms name the old text first — "wird A durch B ersetzt"
@@ -846,7 +882,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const from = reversed ? quotes[1]! : quotes[0]!
       const to = reversed ? quotes[0]! : quotes[1]!
       const everywhere = everyOccurrence(head, targets)
-      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from, to, everywhere, wordBound: wordOperand(line, reversed ? 1 : 0) })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from, to, everywhere, eachUnit, wordBound: wordOperand(line, reversed ? 1 : 0) })), reason: null, line }
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
@@ -863,11 +899,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // (Luftfahrtgesetz §§ 9, 131, 2026-09-09).
       const punctFirst = /\b(?:ein|der|das)\s+(Beistrich|Strichpunkt|Punkt|Doppelpunkt)\s+(?:gesetzt\s+und\s+danach|(?:und|sowie)\s+die)\b/i.exec(head)
       const text = punctFirst ? `${PUNCT_WORD[punctFirst[1]!.toLowerCase()]} ${quotes[1]!}` : quotes[1]!
-      return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text, wordBound: wordOperand(line, 0) })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text, eachUnit, wordBound: wordOperand(line, 0) })), reason: null, line }
     }
     if (/\bentfäll[te]\b|\bentfallen\b|\bgestrichen\b|\baufgehoben\b|\bentfernt\b/i.test(head)) {
       if (!quotes[0]) return fail('Streichung ohne Text')
-      return { ops: places.map((t) => ({ kind: 'deletePhrase' as const, target: t, text: quotes[0]!, wordBound: wordOperand(line, 0) })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'deletePhrase' as const, target: t, text: quotes[0]!, eachUnit, wordBound: wordOperand(line, 0) })), reason: null, line }
     }
     if (/\blaute[nt]\b/i.test(head)) return fail('Wortfolge lautet — Teiltext-Ersetzung, nicht abgesichert')
     return fail('Wortfolge genannt, aber kein bekanntes Verb')
