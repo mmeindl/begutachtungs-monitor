@@ -353,9 +353,18 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-Vitest, 81 files, 1.213 cases, no network and no Nitro: everything under test
-is a pure module with relative imports, which is why the modules are cut that
-way in the first place. `pnpm test` runs in under a second, `pnpm typecheck` covers
+Vitest, 91 files, 1.581 cases, no network: everything under test is a pure
+module with relative imports, which is why the modules are cut that way in
+the first place. The two exceptions name themselves — `params.ts`, because
+reading a request IS the Nitro boundary, and since 26.09.2026
+`ris/bgblService.ts`, because the half of the Kundmachung lookup that reads
+the CALENDAR cannot be cut pure (`tests/bgblService.test.ts`: which Jahrgänge
+are asked of RIS, which of the two lifetimes each is read on, and that a Frist
+still running survives the cached record). Both run against the handful of
+Nitro names in `tests/helpers/nitroGlobals.ts`, which are added one at a time
+on purpose: pulling in the generated `nitro-imports.d.ts` would declare all
+900 auto-imports, and `scripts/` runs under vite-node where none of them
+exists. `pnpm test` runs in under a second, `pnpm typecheck` covers
 app/server/`shared`, and `pnpm typecheck:tools` covers `scripts/` and `tests/`
 (`tsconfig.tools.json`) — the half that `nuxt typecheck` does not see and that
 the log below blames twice for shipped bugs. `pnpm lint` (`@nuxt/eslint`,
@@ -448,6 +457,46 @@ so the two harnesses cross-check each other, and the reach
 measured once in a scratch file, and a claim whose instrument is gone is a
 claim nobody can re-check (§12.13).
 
+**Der SSR-Rauchtest über das gebaute Artefakt (26.09.2026).** Die Suite oben
+ist netzfrei und ohne Nitro, und das ist ihre Stärke; ihre Blindstelle heißt
+„vue-tsc grün, Laufzeit 500" und ist zweimal ausgeliefert worden — ein
+Bezeichner, den nur ein `<template>` benutzt, und ein `shared/`-Modul, das
+relativ importiert im Dev-Server, in vitest und im Typecheck läuft und erst
+im Rollup-Bündel bricht (23.09.2026, `14a65d8`). `tests/templateImports.ts`
+ist die statische Hälfte davon. `scripts/ci/ssrSmoke.ts` ist die andere: es
+importiert `.output/server/index.mjs` — das Artefakt, das deployt würde, nicht
+den Dev-Server und nicht `@nuxt/test-utils` — und holt sich vierzehn Routen:
+jede gerenderte Seite, die drei Server-Routen (`feed.xml`, `kalender.ics`,
+`sitemap.xml`), zwei Detailseiten, die aus der Liste des laufenden Servers
+geholt werden statt mit fester Geschäftszahl dazustehen, und eine Nummer, die
+es nicht gibt und die 404 sein muss und nicht 500.
+
+Geprüft werden Statuscode UND ein Merkmal je Route, nämlich der `<title>`, den
+die Seite selbst setzt: Nuxts Fehlerseite antwortet zwar mit 500, aber ein
+Abschnitt, der still leer bleibt, antwortet 200.
+
+Gestubbt wird an `upstream/fetch.ts` — genauer an dessen einzigem `fetch(`,
+dem einen HTTP-Aufruf des ganzen `server/`-Baums. `globalThis.fetch` wird
+ersetzt, bevor das Bündel importiert wird; die Kassette ist dieselbe Mechanik
+wie beim Drift-Alarm (`scripts/lib/harnessCache.ts`), seit diesem Tag mit dem
+Request-Body im Schlüssel, weil die Filter-API des Parlaments eine
+POST-Adresse je Liste ist und erst der Body entscheidet, welche Periode
+zurückkommt. Ehrlich benannt, wie dort: der Lauf merkt damit NICHT, wenn ein
+Upstream ein Dokument nachträglich ändert. Was er merkt, ist jede Änderung an
+unserem Code.
+
+**Durch Fehlerinjektion geprüft**, weil ein Prüfstand, der nie rot war,
+nichts prüft: `{{ (undefined as unknown as string).toUpperCase() }}` in
+`app/pages/ueber.vue` lässt `pnpm typecheck` bei 0 Fehlern, `pnpm lint` grün
+und `pnpm build` bei Exit 0 — und `/ueber` antwortet 500, während die übrigen
+dreizehn Routen grün bleiben. Ein Bezeichner, den gar nichts bindet, fällt
+dagegen schon dem Typecheck auf und ist deshalb nicht die Klasse, um die es
+geht.
+
+Nächtlich und nicht je Push (`.github/workflows/ssr-smoke.yml`, 02:41 UTC):
+`ci.yml` läuft in anderthalb Minuten und soll das bleiben; ein Build plus
+vierzehn gerenderte Seiten ist die Prüfung, die man einmal am Tag macht.
+
 ## 10. Operations (v1)
 
 `npm run dev` (local), `npm run build` → `.output/` (Node server). Hosting (settled Aug 2026, §13.8): **netcup VPS pico G11s** (1 vCPU/1 GB, Ubuntu LTS, Nuremberg, DE) — Nitro bundle as a systemd service behind Caddy (auto-TLS). Build runs locally; the self-contained `.output/` is rsynced (no toolchain on the server; bootstrap adds a 1 GB swapfile). Runbook + scripts: `deploy/`; **live since 2026-08-26** — the inventory (domain/DNS at INWX, IPs, TLS, costs) is `deploy/infrastructure.md`. The one piece of persistent state is the last-good statements store in `/var/lib/begutachtungs-monitor` (systemd `StateDirectory=`, §5 cache rule 4) — losing it costs a degraded page, never data; there is nothing to back up.
@@ -468,6 +517,40 @@ lost is a warm cache, not a release; it is printed with the journal command
 instead. `TimeoutStartSec=2000` on the unit is the sum of its own
 `--max-time` budgets, so the wait has a stated upper bound rather than an
 inherited one.
+
+**Die Vorperiode wird mitgewärmt (26.09.2026).** Eine fünfte Zeile in der
+Prewarm-Unit, `/api/stations/vorperiode`. Dasselbe Argument wie bei der
+laufenden Periode, eine Periode zurück: Die Liste liest die Stationskarte
+unter einem 2,5-s-Budget und antwortet sonst ohne Stationsfilter samt Hinweis
+(§12.26) — und die abgeschlossene Periode ist die, in der „was ist daraus
+geworden" überhaupt eine Antwort hat. Es ist die teure Zeile (650
+Upstream-Anfragen gegen 227, 35,6 s kalt) und steht deshalb zuletzt: bricht
+die Unit mitten drin ab, soll die Aufwärmung fehlen, die am wenigsten
+besucht wird, nicht die der Startseite. `TimeoutStartSec` wächst auf 2.900,
+weiter die Summe der eigenen Budgets.
+
+`vorperiode` und nicht `XXVII`, aus demselben Grund, aus dem es `aktuell`
+gibt: eine römische Zahl in einer Unit-Datei ist eine Zeile, die genau an dem
+Tag falsch wird, an dem niemand hinsieht — dem Periodenwechsel, wo sie dann
+die eben beendete Periode wärmt. Beide Wörter löst `gpFromParam` in
+`server/utils/http/params.ts` auf; `previousGp` rechnet auf der Zahl und
+nicht in `GP_STARTS`, damit die Auflösung am Tag der Konstituierung von GP
+XXIX bereits stimmt.
+
+**Gemessen und absichtlich nicht getan:** `/api/drafts/:gp/:inr/konsolidiert`
+für die Entwürfe in Begutachtung vorwärmen (kalt ~12 s, warm 10 ms,
+Tagescache). Drei Gründe, und der erste entscheidet. Dieser Abschnitt ist der
+EINZIGE der Seite, der faul und clientseitig geholt wird
+(`compare/TextComparisonSection.vue`, `server: false, lazy: true`): die Seite
+rendert und liest sich ohne ihn und füllt sich dann — niemandem wird
+inzwischen etwas Falsches gesagt, und genau das trennt ihn von der
+Stationskarte und den BGBl-Jahrgängen. Zweitens ist er je Entwurf und nach
+oben offen: 19 Entwürfe standen am 26.09.2026 offen, also gut vier Minuten
+zusätzlich auf einem Deploy, der auf diese Unit wartet, und er wächst mit der
+Zahl der ME — ein Deploy, der jeden Monat länger dauert, ist ein Deploy, den
+niemand mehr fährt. Drittens zöge jeder Entwurf jeden § jedes geänderten
+Gesetzes nächtlich aus dem RIS, für eine Schicht, die im Median an 12 % der
+Paragraphen eines Entwurfs überhaupt existiert (§12.12a).
 
 **EU sovereignty (hard invariant):** at runtime the application loads
 **no** third-party resources — no web fonts (system sans), no icon/script
@@ -2405,6 +2488,57 @@ zu verletzen — ein eingefügter Absatz bleibt grün, auch wenn er einen eigene
 Block bekommt. Die Marke ist `(1)`, `(2a)`; „(EU) 2018/1808" trifft sie nicht
 (Buchstaben), „Abs. 1" auch nicht (keine Klammern), und beide stehen im selben
 Text daneben.
+
+**Und eine Ziffer je Ziffer — gemessen, 26.09.2026.** Der Absatz war die
+halbe Antwort. 1.051 von 3.433 Paragraphen (30,6 %) führen gar keine
+Absatzmarke, und wer Ziffern trägt, stand weiter als Wand: § 111 RStDG, 2.792
+Zeichen, bei 390 px rund 40 Zeilen. Die naheliegende zweite Regel geht nicht,
+weil `1.` nicht selbstbegrenzend ist — „mit 1. Jänner 2027 in Kraft" trägt
+dieselbe Form mitten im Satz. Was hilft, entscheidet kein Nachdenken, sondern
+ein Korpus.
+
+**Das Orakel liegt im Text selbst**, und darum kostet die Messung nichts
+Zusätzliches: jeder `\n` in `bodyText` IST eine Blockgrenze, vom Baum
+gesetzt, und die Anzeige sieht denselben Text ohne Umbrüche. Umbrüche
+entfernen, die Kandidatenregel darauf laufen lassen, ihre Trennstellen gegen
+die des Baums halten (`scripts/corpus/absatzMarker.ts`, `pnpm
+corpus:absatz-marker`). Korpus: 3.433 Paragraphen aus 30 Gesetzen, die
+Entwürfe der laufenden Periode ändern — 15.257 Blockgrenzen, davon 14.642
+(96 %) überhaupt an einer Marke.
+
+| Regel | gefunden | erfunden | §§ mit Erfindung |
+| --- | --- | --- | --- |
+| nur `(1)` (bis 26.09.) | 49,7 % | 3 | 3 (0,1 %) |
+| jede Form `n.` | 92,9 % | 2.411 | 465 (13,5 %) |
+| aufsteigende Ziffern ab 1 | 88,8 % | 173 | 35 (1,0 %) |
+| dazu Litera | 95,5 % | 191 | 48 (1,4 %) |
+| **dazu die Ausnahmen — ausgeliefert** | **95,5 %** | **14** | **8 (0,2 %)** |
+
+Die naive Regel ist damit widerlegt: sie zerreißt in jedem siebenten
+Paragraphen einen laufenden Satz des geltenden Rechts. Die aufsteigende Folge
+ab 1 allein — der Vorschlag, mit dem die Frage in `TODO.md` stand — reicht
+auch nicht, sie erfindet noch in jedem hundertsten. Drei Ausnahmen bringen
+das auf 14 Stellen in 8 Paragraphen, und zwei dieser acht gehen auf die
+Absatzregel zurück, die schon vorher stand („(247a)" als Verweisung in StGB
+§ 52b): eine Zahl, hinter der ein Monatsname, eine Ordnungszahl-Einheit
+(„6. Abschnitt", „2. Klasse") oder ein Jahrgang steht, ist keine Ziffer; eine
+Zahl, vor der „Abs.", „Z", „§" oder „mit" steht, ist eine Verweisung; und
+eine Literafolge unmittelbar hinter einer Ziffer steht im Fließtext DIESER
+Ziffer, wo das RIS die Untergliederung nicht ausgezeichnet hat — die fällt
+ganz, nicht nur ihr „a)", sonst bekäme „b)" einen Block und „a)" keinen.
+
+**Verworfen, und zwar gemessen:** zusätzlich zu verlangen, dass das Wort
+DAVOR einen Block abschließt. Das kostet 892 echte Grenzen (95,5 % → 89,4 %)
+und spart gegenüber den Ausnahmen keine einzige Erfindung mehr.
+
+Absatzgrenzen übersieht keine dieser Regeln — 0 von 7.278 in jeder Zeile.
+Was die 4,5 % Rest ausmacht, sind Ziffernlisten, die nicht bei 1 anfangen,
+und Schlussteile, die im Text gar kein Zeichen tragen, an dem sie zu erkennen
+wären. An 126/ME gemessen: von 33 gezeigten Paragraphen steht seitdem keiner
+mehr als Wand über 900 Zeichen, § 111 RStDG liest sich als sechs Blöcke. Die
+Messung ruft die **ausgelieferte** Funktion auf (`blockStarts` in
+`app/utils/absaetze.ts`), nicht einen Nachbau davon; die widerlegten
+Varianten liegen im Skript, weil es sie sonst nirgends mehr gäbe.
 
 **Das Tor ist das Modul, nicht die Funktion.** Drei Signale, und keines
 reicht allein: keine Verweigerung, plausibel (`applyGuard`), vom Anhang
@@ -4969,6 +5103,60 @@ meldete für *jeden* Entwurf „bestätigt → 0, Grund: die Beilage nennt mehr
 Paragraphen …". Dritter Fall an einem Tag, in dem der Befund am Instrument
 hing und nicht an der Sache.
 
+**Die Tabelle als undurchsichtiger Block, und der Wächter dahinter
+(26.09.2026).** Der Posten stand am Vormittag als „eigener Schritt, hinter
+allem, was zehnmal so viel bewegt" in `TODO.md` — die Posten davor sind
+erledigt, und dies ist der Rest. Ein Dokument mit `<table>` wurde **ganz**
+verworfen (Befund vom 09.09.2026 an NEHG §§ 24, 26, 27), weil die Zellen
+eigene `<absatz>`-Blöcke tragen und in Dokumentreihenfolge zu Absätzen des
+Paragraphen würden. Mit dem Dokument ging seine **Prosa** mit: 693 der 20.419
+geholten Paragraphendokumente in 151 von 607 Gesetzen, und ein nicht
+geladener Paragraph kann auch nie gezeigt werden.
+
+**Zwei Hälften, und die zweite ist wieder die Wache.** `BLOCK_RE` nimmt
+`<table>` auf, trifft also `<table>…</table>` am Stück; der Scan läuft
+dahinter weiter, die Zellen werden nie als Blöcke gelesen. Der Text bleibt
+trotzdem im Baum, als `schluss`-Knoten mit der Kennung `tabelle` — ein
+Paragraph **ohne** seinen Tarif wäre ein falscher Text und nicht bloß ein
+unvollständiger, und `sentenceSlot` in `kons/lawApply.ts` hält ihn mit
+derselben Kennung aus dem Schlussteil-Slot heraus. Die zweite Hälfte: **ein
+Paragraph, dessen Einheiten sich nicht auseinanderhalten lassen, wird
+weiterhin nicht geladen.** Das Gebührengesetz druckt seine Tarifposten als
+Überschriften *im* § 14, der Paragraph führt also ein Dutzend Absätze „(2)",
+und „§ 14 Tarifpost 8 Abs. 2" würde den ersten davon ändern. Beide
+Tarifparagraphen — GebG § 14 und GGG Art. 1 § 32 — bleiben damit genau so
+unlesbar wie vorher, und die 13 GGG-Zeilen verweigern weiter an der Adresse.
+
+| Prüfstand (40 Sammelnovellen) | vorher | nachher |
+|---|---|---|
+| angewendet | 1.737 | 1.749 |
+| geprüfte Paragraphen | 1.050 | 1.072 |
+| identisch mit dem RIS | 764 | **771** |
+| unverändert gelassen | 122 | 137 |
+| halb angewendet | 71 | 71 |
+| eigene Abweichung | 27 / 14 | **27 / 14** |
+| Verweigerungen | 437 | **424** |
+
+Am Tor der Beilage: bestätigte Paragraphen **1.696 → 1.715** (PDF) und
+**1.093 → 1.120** (Tabelle), einbehalten 286 → 306 und 63 → 67. Die
+Lesefassung bewegt sich **nicht** (509 von 120 Entwürfen, 18 Paragraphen mehr
+mit Text): was neu geladen wird, ist Text, den die Beilage nicht bestätigt.
+Drift 33 Grundlinien, alle mit derselben Signatur — „der geltende Paragraph
+steht im RIS als Tabelle" verschwindet als Grund —, Grundlinie im selben
+Commit mitgehoben.
+
+**Der Grund heißt deshalb anders.** `REASON_NOT_REPRESENTABLE` sagte „steht
+im RIS als Tabelle"; eine Tabelle allein ist jetzt kein Grund mehr, also sagt
+er „ist im RIS nicht eindeutig gegliedert", und `/so-funktionierts` sagt es
+in denselben Worten.
+
+**Nebenbefund, nicht behoben:** RIS führt die Kundmachungsklausel samt
+Änderungshistorie als Dokument mit dem Etikett **„§ 0"** — 275 im Cache, 141
+davon ohne Tabelle und deshalb schon bisher geladen. Die übrigen 134 kommen
+mit diesem Schritt dazu, was den Nenner des Prüfstands um 15 Paragraphen
+hebt, die nichts ändern („unverändert gelassen"). Harmlos, aber es verwässert
+eine Quote; ein § 0 ist keine Bestimmung. Eigener Schritt, eigene Messung.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the
@@ -4991,11 +5179,50 @@ section with the organisations in the panel's row grammar
 (`RvStatements.vue`). Client-side like the laws in force: enrichment of a
 station the page already draws, off the SSR path. Sized before it is
 fetched: without `showAll` the API returns one page plus the total, and
-above `RV_STATEMENTS_CAP` (5,000) only the count travels — the COVID-era
+above `RV_STATEMENTS_CAP` (5,000) the rows are not fetched — the COVID-era
 Vorlagen carry tens of thousands (1289 d.B.: 41,376), ten megabytes of names
 for one line. No last-good fallback: a failed fetch costs a line, not the
-page. Not built: the anonymous rows as a list, and the Ausschuss's answer to
-this input (that is the parliament comparison, §12.2).
+page. Not built: the Ausschuss's answer to this input (that is the
+parliament comparison, §12.2).
+
+**Two of the three Reste closed on 26.09.2026.**
+
+*Die anonymen Zeilen als Liste.* The panel counted them and showed only the
+organisations, so „2 von Privatpersonen" was a fact about the Vorlage with
+nothing behind it. What the row adds is everything about a Stellungnahme
+that is public — the day it came in, its Geschäftszahl, its Zustimmungen and
+the link to the document — and what stays withheld is the NAME, which is the
+whole GDPR line (§3) and nothing more. So the endpoint ships `items` beside
+the summary and the panel renders ONE list: organisations (grouped, named),
+then Privatpersonen, then nicht-öffentlich, in the order of the partition
+sentence above it, so the list reads as that sentence enumerates. Not the
+big panel's four segments: they exist because 707 rows need narrowing, and a
+Vorlage draws a handful (2238 d.B.: ten) — four buttons over eight rows
+explain a list that fits on one screen. 2238 d.B. now renders its 7
+organisations, 2 „Privatperson" rows and 1 „Nicht-öffentliche Stellungnahme",
+each with its own citation link.
+
+*Der >5.000-Fall.* The cap was written as „then only the count travels", and
+that was one measurement short. List 142's hidden `TYP` column is a FILTER
+dimension, not only a column (`api-exploration.md`, list 142): `TYP: ["I"]`
+on the worst case the cap exists for — 1289 d.B. of GP XXVII — answers **17**
+rows against its 41,376, and `TYP: ["P"]` the other 41,359, an exact
+partition. The mass half of a mass campaign is the private persons, whom
+this site never names anyway; what the cap threw away with them was
+seventeen chambers, law firms and associations that can be named. So above
+the cap the organisations are fetched on their own and `unlisted` carries
+the rest. Three guards, because the API answers the UNFILTERED list for a
+key it does not know and that would be 41,359 private persons under the
+heading „Organisationen": the institution fetch is itself capped, every
+returned row must carry the flag, and `mapStatementRow` classifies each one
+the ordinary way — the flag can suppress a name, never publish one
+(`privacy.ts`). The copy may not call the remainder Privatpersonen, and
+that too is measured: over GP XXVIII's 6,325 SNME rows, 955 of the 3,459 `P`
+rows are non-public, so „nicht als Organisation geführt" is the most the
+flag supports.
+
+*Kein Last-good-Rückfall* stays unbuilt, by design — this is enrichment of a
+station the page already draws.
 
 **The door follows the open window (2026-09-15, same day).** The head card
 that holds the Frist and the "Stellungnahme abgeben" button used to exist
@@ -5291,14 +5518,38 @@ damit nicht zwei Produkte entstehen:
 | Metazeile über dem Titel | Geschäftszahl · Ressort-Badge (verlinkt) · Frist-Pille | **Typwort** · Ressort-Badge (verlinkt) · Frist-Pille |
 | `h1` | Kurztitel | Kurztitel |
 | Unterzeile | amtlicher Sammeltitel | langer RIS-Titel |
-| Herkunftszeile | „Auf parlament.gv.at ansehen ↗" | „Im RIS ansehen ↗" |
+| Herkunftszeile | „Auf parlament.gv.at ansehen ↗" | **Dokumentnummer** · „Im RIS ansehen ↗" |
 | Karte darunter | Status + SpineRail (5 Stationen) | Status + Verfahrensweg in Worten |
 | CTA-Karte | Frist + Stellungnahme-Knopf + `.ics` | Frist + Begleitschreiben-Knopf + `.ics` |
 | Abschnitte | fünf, den Stationen folgend | einer: Dokumente |
 
 Das Typwort steht dort, wo die Entwurfsseite die Geschäftszahl führt: Diese
 Sätze haben keine, und das Typwort ist das, was sie einem Leser
-identifiziert. Der `.ics`-Knopf hat hier mehr Gewicht als dort — auf einem
+identifiziert.
+
+**Die Zitierform stand bis 26.09.2026 nirgends, und das war die eine bewusste
+Lücke dieser Tabelle.** „132/ME" ist der String, den man zitiert, in eine
+Mail schreibt, in einer Anfrage nennt — diesen Sätzen fehlte sein
+Gegenstück. Es gibt eines: die **RIS-Dokumentnummer**. Sie ist die Adresse,
+unter der das RIS den Satz führt, sie ist das, was der Link daneben auflöst,
+und sie ist die eigene URL dieser Seite — sichtbar war sie nur in der
+Adresszeile, ohne ein Wort dazu, was sie ist.
+
+**Sie steht in der Herkunftszeile und nicht in der Metazeile, gegen die
+Zeile der Tabelle darüber — gemessen, bevor entschieden wurde.** Die
+Entwurfsseite trägt ihre Geschäftszahl oben, weil „137/ME" fünf Zeichen hat;
+die GUID-Form der Dokumentnummer hat 42, und in demselben Slot kostete sie
+am Telefon **zwei zusätzliche Zeilen über der h1** (drei Metazeilen bei
+500 px gegen die eine der Entwurfsseite) — grauer Code, der die Überschrift
+nach unten drückt, die sagt, worum es geht. Die Herkunftszeile ist Fließtext
+mit „·"-Trennern, sie bricht ohnehin um, und dort steht der Auflöser der
+Nummer. Die Anatomie behält damit denselben **Job** an derselben Stelle —
+Identität dort, wo ein Leser sie kopieren kann — und legt sie dorthin, wo
+eine lange hinpasst. Kein eigener Link auf der Nummer: er zeigte auf die
+RIS-Seite, die diese Zeile schon verlinkt, und die Entwurfsseite trennt
+genauso — die Geschäftszahl ist Text, ihr Auflöser steht daneben. Das Wort
+„Dokumentnummer" ist `sr-only`: gedruckt wäre es das Längste auf der Zeile
+für eine Tatsache, die nur beim Zitieren gebraucht wird. Der `.ics`-Knopf hat hier mehr Gewicht als dort — auf einem
 Ministerialentwurf ist die Frist einer von mehreren Wegen zu handeln, hier
 ist sie zusammen mit dem Begleitschreiben die ganze Handlungsfläche.
 
@@ -6006,9 +6257,32 @@ eben weil neue Entwürfe mit langer Frist unter den Deckel rutschen. Am
 17.09.2026 ist genau das zu sehen — 135/ME und 134/ME sind oben markiert,
 136/ME (am selben Tag eingelangt) steht erst auf `/entwuerfe`. Die Marke
 macht die Neuzugänge *auffindbar, wo alle Zeilen stehen*; den Deckel hebt
-sie nicht auf. Das wäre ein Sortier- oder Filterkriterium „zuletzt
-dazugekommen" auf `/entwuerfe` — eigener Schritt, und erst dann lohnt
-auch ein Zeiger von der Startseite dorthin.
+sie nicht auf.
+
+**Das Sortierkriterium dazu gibt es seit 26.09.2026** — „Zuletzt
+dazugekommen", die dritte Option des Sortier-Selects von `/entwuerfe`
+(`compareByArrival`, `SortKey: 'neu'`). Die Marke macht Neuzugänge
+auffindbar, erst eine Ordnung hebt sie nach oben: unter ihr stehen am
+26.09.2026 genau die drei markierten Zeilen (139/ME, 137/ME, 138/ME) ganz
+oben, darunter 135/ME, das mit kürzerer Frist unter „Nach Frist" über allen
+dreien steht.
+
+**Die Entscheidung in diesem Vergleicher: kein Offen/Geschlossen-Vorlauf.**
+Die anderen beiden Ordnungen führen mit dem, was noch zu beeinflussen ist;
+diese wird nach einer Chronologie gefragt, und eine Chronologie, die nach
+Handlungsfähigkeit umsortiert, ist keine. Praktisch unterscheiden sich die
+beiden kaum — ein Entwurf, der vor Tagen begonnen hat, läuft fast immer
+noch —, aber wo sie es tun, entscheidet das Etikett. Und sie braucht
+**keinen Vorbehaltssatz über der Liste**, anders als „Meiste
+Stellungnahmen": `startedAt` ist das eine Feld, das alle drei Zeilenarten
+führen (`rowOrderKey`), also muss keine Hälfte des Korpus hinten geparkt
+werden. Eine Zeile ohne Datum sortiert nach hinten, der Titel bricht die
+Gleichstände — und die sind hier der Normalfall, nicht die Ecke: ein Tag ist
+eine grobe Einheit, und Ressorts versenden in Schüben.
+
+Offen bleibt der **Zeiger von der Startseite** („3 neu" als Link auf
+`/entwuerfe?sort=neu`): erst dieses Kriterium macht ihn möglich, ob er
+gebaut wird, ist eine Produktentscheidung und keine Folge davon.
 
 **Nicht gebaut:** keine Zählzeile „3 neu diese Woche" über oder unter der
 Liste. Das ist die Zahl im Fließtext, die §12.20 gerade abgeschafft hat —

@@ -522,9 +522,10 @@ const toc = [
           <dd>
             Es gibt nichts zum Vergleichen. Ein Entwurf, der neues Recht
             schafft, hat keinen geltenden Text; eine Verordnung steht nicht im
-            Bundesrecht; manchmal führt das RIS den Paragraphen nicht oder hält
-            ihn als Tabelle. Das ist kein Befund über den Entwurf, sondern
-            einer über die Prüfbarkeit.
+            Bundesrecht; manchmal führt das RIS den Paragraphen nicht oder
+            gliedert ihn so, dass sich seine Absätze nicht auseinanderhalten
+            lassen. Das ist kein Befund über den Entwurf, sondern einer über
+            die Prüfbarkeit.
           </dd>
         </div>
       </dl>

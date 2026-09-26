@@ -636,7 +636,10 @@ export function splitSentences(text: string): string[] | null {
 function sentenceSlot(node: LawNode, satz: string, count = 1): Slot | null {
   if (satz === 'einleitung') return node.children.length ? textSlot(node) : null
   if (satz === 'schluss') {
-    const schluss = [...node.children].reverse().find((c) => c.level === 'schluss')
+    // `id === 'schluss'`: a table of the standing text is filed as a
+    // `schluss` node too (`lawtext/konsTree.ts`), and it is not the
+    // Schlussteil an instruction means.
+    const schluss = [...node.children].reverse().find((c) => c.level === 'schluss' && c.id === 'schluss')
     return schluss ? textSlot(schluss) : null
   }
   // An Absatz that carries a list has no countable sentences: "…sind die

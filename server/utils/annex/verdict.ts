@@ -244,7 +244,13 @@ export const REASON_NO_BGBL = 'im Entwurf steht keine Fundstelle im Bundesgesetz
 export const REASON_UNRESOLVED = 'das geänderte Gesetz ließ sich im RIS Bundesrecht nicht auflösen'
 export const REASON_UNREADABLE_DESIGNATION = 'die Beilage bezeichnet diese Stellen nicht als Paragraphen'
 export const REASON_NO_SUCH_PARAGRAPH = 'das RIS Bundesrecht führt diese Paragraphen nicht'
-export const REASON_NOT_REPRESENTABLE = 'der geltende Paragraph steht im RIS als Tabelle und ist so nicht vergleichbar'
+/**
+ * Narrowed on 26.09.2026: a table alone is no longer a reason. `konsTree`
+ * reads it as one opaque block, and only a § whose designations then repeat —
+ * a dozen Absätze „(2)", one per Tarifpost of the Gebührengesetz — stays
+ * unloaded, because there is no telling which „Abs. 2" an instruction means.
+ */
+export const REASON_NOT_REPRESENTABLE = 'der geltende Paragraph ist im RIS nicht eindeutig gegliedert und so nicht vergleichbar'
 export const REASON_CEILING = 'die Beilage nennt mehr Paragraphen, als in einer Anfrage geprüft werden können'
 export const REASON_TOO_SHORT = 'die gezeigten Änderungen tragen zu wenig Text für einen Abgleich'
 /**

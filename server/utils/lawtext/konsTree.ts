@@ -73,7 +73,7 @@ const STRIP = [/<kzinhalt[\s\S]*?<\/kzinhalt>/g, /<fzinhalt[\s\S]*?<\/fzinhalt>/
  * `lawtext/risXml.ts` reads both names for the same reason, on the other
  * kind of document.
  */
-const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss)\b([^>]*)>([\s\S]*?)<\/\1>/g
+const BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|table)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
 const SYMBOL_RE = /<symbol\b[^>]*>([\s\S]*?)<\/symbol>/
 /** "(2) " opens an Absatz; "(2a)" and "(2b)" are legal too. */
@@ -183,12 +183,19 @@ function closingHost(abs: LawNode, typ: string, ebene: string | null = null): La
 export function parseKonsParagraph(xml: string): LawNode | null {
   let body = xml
   for (const re of STRIP) body = body.replace(re, '')
-  // A table has no place in the tree (§ → Abs → Z → lit); its cells would
-  // be read as Absätze in document order and any instruction on the § would
-  // edit a text that is not the law's. Not representable, so not loaded —
-  // every instruction on such a § is then refused as "nicht im geltenden
-  // Text" (NEHG §§ 24, 26, 27, BGBl. I Nr. 60/2024, 2026-09-09).
-  if (/<table\b/.test(body)) return null
+  // A table has no place in the tree (§ → Abs → Z → lit): its cells carry
+  // their own `<absatz>` blocks, and read in document order they become
+  // Absätze of the §. The whole document used to be dropped for that (NEHG
+  // §§ 24, 26, 27, 2026-09-09), which took its prose with it — 693 of 20.419
+  // fetched documents in 151 of 607 laws, and a § that is not loaded can
+  // never be shown either (26.09.2026, §12.12).
+  //
+  // **So the table is read as ONE opaque block** and its inner blocks are
+  // not read at all: `BLOCK_RE` matches `<table>…</table>` whole, and the
+  // scan resumes behind it. The text stays in the tree, under a `schluss`
+  // node whose id says what it is, because a § shown WITHOUT its tariff
+  // table would be a wrong text rather than a missing one — and
+  // `kons/lawApply.ts` keeps it out of the Schlussteil slot by that id.
 
   /** Does the document carry Absatz-shaped law text of its own? */
   const hasAbsaetze = /<absatz[^>]*typ="(?:abs|satz)"[^>]*ct="text"/.test(body)
@@ -215,6 +222,7 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   const idMatch = artikelPara ?? /(?:§|Art\.?|Artikel|Anl(?:age)?\.?)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
 
   let root: LawNode | null = null
+  let sawTable = false
   let heading: string | null = null
   const context: string[] = []
   let currentAbs: LawNode | null = null
@@ -255,7 +263,15 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     const tag = m[1]!
     const attrs = m[2]!
     const inner = m[3]!
-    if (!/ct="text"/.test(attrs)) continue
+    // A `<table>` carries no `ct`, and it is the one block read for its text
+    // rather than for its structure.
+    if (tag !== 'table' && !/ct="text"/.test(attrs)) continue
+    if (tag === 'table') {
+      sawTable = true
+      const t = text(inner)
+      if (t) (currentAbs ?? absatz()).children.push(makeNode('schluss', 'tabelle', '', t))
+      continue
+    }
     const typ = /typ="([^"]+)"/.exec(attrs)?.[1] ?? ''
 
     if (tag === 'ueberschrift') {
@@ -326,7 +342,28 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       absatz().text = rest
     }
   }
+  // **A § whose units are not uniquely addressable is still not loaded.**
+  // Only for documents with a table, and it is the second half of reading
+  // them: the Gebührengesetz prints its Tarifposten as headings inside § 14
+  // („8 Einreise- und Aufenthaltstitel"), so the § holds a dozen Absätze
+  // „(2)" — one per Tarifpost — and „§ 14 Tarifpost 8 Abs. 2" would resolve
+  // to the first of them and edit the wrong law. Where the designations do
+  // not tell the units apart, the refusal is the right answer and stays.
+  if (sawTable && root && !uniquelyAddressable(root)) return null
   return root
+}
+
+/** No two children of a node share a level and a designation. */
+function uniquelyAddressable(node: LawNode): boolean {
+  const seen = new Set<string>()
+  for (const c of node.children) {
+    if (c.level === 'schluss') continue
+    const key = `${c.level}#${c.id}`
+    if (c.id !== '' && seen.has(key)) return false
+    seen.add(key)
+    if (!uniquelyAddressable(c)) return false
+  }
+  return true
 }
 
 // ---------------------------------------------------------------------------

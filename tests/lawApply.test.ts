@@ -762,7 +762,36 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
     const { instructions, refused } = instructionsFromUnits(units)
     expect(instructions).toHaveLength(0)
     expect(refused[0]!.reason).toMatch(/Tabelle/)
-    expect(parseKonsParagraph('<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 26.</gldsym> Text</absatz><table><tr><td><absatz typ="tabtext" ct="text">Zelle</absatz></td></tr></table></abschnitt></nutzdaten></risdok>')).toBeNull()
+    // The standing § is read since 26.09.2026 — the table as ONE opaque
+    // block, its cells never as Absätze (§12.12).
+    const node = parseKonsParagraph('<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 26.</gldsym> Text</absatz><table><tr><td><absatz typ="tabtext" ct="text">Zelle</absatz></td></tr></table></abschnitt></nutzdaten></risdok>')!
+    expect(node.children.map((c) => `${c.level}:${c.id}`)).toEqual(['abs:'])
+    expect(node.children[0]!.children.map((c) => `${c.level}:${c.id}`)).toEqual(['schluss:tabelle'])
+    expect(plainText(node)).toBe('Text Zelle')
+  })
+
+  // The other half of reading them: the Gebührengesetz prints its
+  // Tarifposten as headings inside § 14, so the § holds a dozen Absätze
+  // „(2)" and „§ 14 Tarifpost 8 Abs. 2" would edit the first of them.
+  it('leaves a § with a table unloaded when its designations do not tell the units apart', () => {
+    const xml = (second: string): string =>
+      `<risdok><nutzdaten><abschnitt><absatz typ="abs" ct="text"><gldsym>§ 14.</gldsym> (1) Erster Tarifposten</absatz>` +
+      `<table><tr><td><absatz typ="tabtext" ct="text">21 Euro</absatz></td></tr></table>` +
+      `<absatz typ="abs" ct="text">(${second}) Zweiter Tarifposten</absatz></abschnitt></nutzdaten></risdok>`
+    expect(parseKonsParagraph(xml('1'))).toBeNull()
+    expect(parseKonsParagraph(xml('2'))).not.toBeNull()
+  })
+
+  // A closing clause and a table are both `schluss` nodes; only the clause
+  // answers „Im Schlussteil des Absatzes".
+  it('does not let a table take the Schlussteil slot', () => {
+    const abs = makeNode('abs', '1', '(1)', 'Zu entrichten sind')
+    abs.children.push(makeNode('schluss', 'schluss', '', 'je Bogen.'), makeNode('schluss', 'tabelle', '', '21 Euro'))
+    const p = makeNode('para', '9', '§ 9.', '')
+    p.children.push(abs)
+    const { law: out, results } = run({ paragraphs: [p] }, instr('Im Schlussteil des § 9 Abs. 1 wird das Wort "Bogen" durch das Wort "Blatt" ersetzt.', []))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children.map((c) => c.text)).toEqual(['je Blatt.', '21 Euro'])
   })
 })
 
