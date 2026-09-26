@@ -8,6 +8,7 @@ import {
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
+  stations,
   voteLineDe,
 } from '~/utils/spine'
 import { aliasesFor } from '#shared/utils/draftAliases'
@@ -107,15 +108,16 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
 })
 
 /* The station bar's three context values, named ONCE. They come from two
- * lazily loaded endpoints, so the template names that dependency in one
- * place; the bar reads its props from this object below. (The „Station n von
- * 5" header that counted the same list was removed on 18.09.2026, so the bar
- * is the only reader left.) */
+ * lazily loaded endpoints, so this is the one place that names that
+ * dependency; the bar gets the finished list. (The „Station n von 5" header
+ * that counted the same list was removed on 18.09.2026, so the bar is the
+ * only reader left.) */
 const stationContext = computed<StationContext>(() => ({
   createsNewLaw: amendedLaws.value?.createsNewLaw,
   amendedLawCount: amendedLaws.value?.laws.length,
   rvStatementTotal: rvStatements.value?.total,
 }))
+const stationList = computed(() => (data.value ? stations(data.value, stationContext.value) : []))
 
 /* What parliament did, for the sentence in "Im Parlament". Same function as
  * the bar's fact line, so the heading and the row cannot disagree. */
@@ -458,12 +460,9 @@ const ministryBadges = computed(() => {
             </div>
             <SpineRail
               class="mt-4"
-              :data="data"
+              :stations="stationList"
               :anchors="stationAnchors"
               :comparison-anchors="comparisonAnchors"
-              :creates-new-law="stationContext.createsNewLaw"
-              :rv-statement-total="stationContext.rvStatementTotal"
-              :amended-law-count="stationContext.amendedLawCount"
             />
             <!-- The "second attempt" fact, in both lifecycle states: a same-title
                draft ran before and produced no Regierungsvorlage. Same title

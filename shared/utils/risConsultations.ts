@@ -41,10 +41,14 @@ export const RIS_KIND_PLURAL: Record<RisConsultationKind, string> = {
  * lists — both are facts about how the monitor is built, told to a reader
  * who asked about a draft. A page that explains its own machinery to
  * everyone is answering a question nobody has.
+ *
+ * `verordnung` is null since 26.09.2026, when its card got a station bar:
+ * „erlässt ein Ministerium selbst … geht nicht durch das Parlament" only
+ * restated what the three rows show, and the card's link now lands on the
+ * fork of /so-funktionierts (`#wege`) that explains it.
  */
 export const RIS_KIND_HINT: Record<RisConsultationKind, string | null> = {
-  verordnung:
-    'Eine Verordnung erlässt ein Ministerium selbst, auf Grundlage eines Gesetzes; sie geht nicht durch das Parlament.',
+  verordnung: null,
   gesetz:
     'Ein Gesetzesentwurf, zu dem das Parlament keinen Ministerialentwurf führt.',
   unbestimmt: null,

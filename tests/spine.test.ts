@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { DraftDetail, LawStationId } from '../shared/types'
+import type { BgblOutcome, DraftDetail, LawStationId } from '../shared/types'
 import { formatNumberDe } from '../shared/utils/format'
 import {
   houseOutcomeOf,
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
+  regulationStations,
   stations,
   voteLineDe,
 } from '../app/utils/spine'
@@ -387,5 +388,60 @@ describe('the third-reading vote on the Parlament row', () => {
 
   it('says nothing at all where there is no Vorlage to vote on', () => {
     expect(row(draft({ enactment: null })).facts).toEqual([])
+  })
+})
+
+describe('regulationStations — the Verordnung path', () => {
+  const ended = { startedAt: '2026-01-05', deadline: '2026-02-16', active: false }
+  const outcome = (o: Partial<BgblOutcome>): BgblOutcome =>
+    ({ state: 'unbekannt', nummer: null, datum: null, url: null, days: null, ...o })
+  const last = (o: BgblOutcome | null, r = ended) => regulationStations(r, o)[2]!
+
+  it('draws three stations, Entwurf · Begutachtung · Bundesgesetzblatt II', () => {
+    const list = regulationStations(ended, null)
+    expect(list.map((s) => s.name)).toEqual(['Entwurf', 'Begutachtung', 'Bundesgesetzblatt II'])
+    expect(list[0]!.facts).toEqual(['05.01.2026'])
+    expect(list[1]!.facts).toEqual(['6 Wochen Frist, endete am 16.02.2026'])
+  })
+
+  it('marks the Begutachtung while the Frist runs, and the Kundmachung is simply ahead', () => {
+    const running = { ...ended, active: true }
+    const list = regulationStations(running, outcome({ state: 'begutachtung' }))
+    expect(list[1]!.state).toBe('current')
+    expect(list[1]!.facts).toEqual(['6 Wochen Frist, bis 16.02.2026'])
+    expect(list[2]).toMatchObject({ state: 'open', facts: ['ausstehend'] })
+  })
+
+  it('reports the Kundmachung with its date and its distance to the Fristende', () => {
+    const row = last(outcome({
+      state: 'kundgemacht',
+      nummer: 'BGBl. II Nr. 50/2026',
+      datum: '2026-03-20',
+      url: 'https://www.ris.bka.gv.at/eli/bgbl/II/2026/50',
+      days: 32,
+    }))
+    expect(row.state).toBe('done')
+    expect(row.facts).toEqual(['BGBl. II Nr. 50/2026', '20.03.2026, 32 Tage nach Fristende'])
+    expect(row.source).toEqual({ lead: null, href: 'https://www.ris.bka.gv.at/eli/bgbl/II/2026/50', label: 'Kundmachung im RIS' })
+  })
+
+  it('says it takes time inside the usual span, and claims no finding', () => {
+    const row = last(outcome({ state: 'ausstehend' }))
+    expect(row.state).toBe('current')
+    expect(row.facts[0]).toBe('bisher keine Kundmachung')
+    expect(row.source).toBeUndefined()
+  })
+
+  it('says „not found" only with the search named and the way to check beside it', () => {
+    const row = last(outcome({ state: 'keine' }))
+    expect(row.facts).toEqual(['keine Kundmachung gefunden'])
+    expect(row.source?.lead).toMatch(/Titel, Ressort und Datum/)
+    expect(row.source?.href).toBe('https://www.ris.bka.gv.at/Bgbl-Auth/')
+  })
+
+  it('says nothing while the outcome is undetermined — null is not „nicht kundgemacht"', () => {
+    for (const o of [null, outcome({ state: 'unbekannt' })]) {
+      expect(last(o)).toMatchObject({ state: 'open', facts: [] })
+    }
   })
 })

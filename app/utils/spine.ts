@@ -41,7 +41,7 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { DraftDetail, HouseVote, LawStationId } from '#shared/types'
+import type { BgblOutcome, DraftDetail, HouseVote, LawStationId, RisConsultation } from '#shared/types'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
 import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
 
@@ -70,6 +70,13 @@ export interface Station {
   /** The comparison this station produced, as the question it answers; null
    *  where none exists or none can be shown. */
   comparison: { id: ComparisonId; question: string } | null
+  /**
+   * Where the station's own record stands, when that is not on this page:
+   * a Verordnung's Kundmachung lives in RIS and nowhere here, so the row
+   * links out rather than into a section. `lead` is the sentence the link
+   * finishes, where the link alone would not say why it is there.
+   */
+  source?: { lead: string | null; href: string; label: string }
 }
 
 /**
@@ -91,8 +98,8 @@ export interface StationContext {
 }
 
 /**
- * How long the Begutachtungsfrist ran — Einlangen im Nationalrat until
- * Fristende. The one number that says at a glance whether a consultation
+ * How long the Begutachtungsfrist ran — Einlangen im Nationalrat (for a
+ * RIS record: Beginn der Begutachtungsfrist) until Fristende. The one number that says at a glance whether a consultation
  * was a real one: the Legistische Richtlinien recommend six weeks, and a
  * ten-day Frist is the finding, not the dates it sits between.
  *
@@ -106,16 +113,37 @@ export interface StationContext {
  * the Frist's start to within a day in 94 % of cases — and it is the date
  * the row above states, so a reader can do the subtraction.
  */
-function fristDurationDe(d: DraftDetail): string | null {
-  const days = spanInDays(d.arrivedAt, d.deadline)
+function fristDurationDe(start: string | null, deadline: string | null): string | null {
+  const days = spanInDays(start, deadline)
   if (days === null || days < 1) return null
   if (days >= 14 && days % 7 === 0) return `${days / 7} Wochen Frist`
   return days === 1 ? '1 Tag Frist' : `${days} Tage Frist`
 }
 
 /**
- * How long after the Fristende the Regierungsvorlage came — temporal, never
- * causal (framing rule). Reads as an apposition to the RV's date rather
+ * The Begutachtung row's Frist fact, for both rails.
+ *
+ * Duration first, then the date — "6 Wochen Frist, endete am 24.06.2026".
+ * Without a Frist the sentence is the absence itself.
+ *
+ * One wording for an ended Frist, site-wide (`fristEndedDe`): without a
+ * duration this line IS that sentence. With one, the duration already
+ * carries the word „Frist", so the line takes the builder's wording
+ * („endete am …") instead of the builder — one wording, two sentence
+ * shapes, rather than the „endete 24.06.2026" this said before.
+ */
+function fristLineDe(start: string | null, deadline: string | null, active: boolean): string {
+  if (!deadline) return 'keine Frist angegeben'
+  const dur = fristDurationDe(start, deadline)
+  return active
+    ? dur ? `${dur}, bis ${formatDateDe(deadline)}` : `Frist bis ${formatDateDe(deadline)}`
+    : dur ? `${dur}, endete am ${formatDateDe(deadline)}` : fristEndedDe(deadline)
+}
+
+/**
+ * How long after the Fristende the next station came — the
+ * Regierungsvorlage, or a Verordnung's Kundmachung. Temporal, never
+ * causal (framing rule). Reads as an apposition to that date rather
  * than as a fact of its own, so the row keeps at most two middot-separated
  * parts.
  *
@@ -124,8 +152,11 @@ function fristDurationDe(d: DraftDetail): string | null {
  * Two identical dates in two rows hid that completely; naming the span is
  * the whole reason this line exists.
  */
-function rvLatencyDe(deadline: string | null, rvDate: string | null): string | null {
-  const days = spanInDays(deadline, rvDate)
+function afterFristDe(deadline: string | null, date: string | null): string | null {
+  return daysAfterFristDe(spanInDays(deadline, date))
+}
+
+function daysAfterFristDe(days: number | null): string | null {
   if (days === null) return null
   if (days < 0) return 'noch vor Fristende'
   if (days === 0) return 'am Tag des Fristendes'
@@ -426,24 +457,11 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         ? `ändert ${ctx.amendedLawCount} Gesetze`
         : null
 
-  /** Duration first, then the date — "6 Wochen Frist, endete am 24.06.2026".
-   *  Without a Frist the sentence is the absence itself.
-   *
-   *  One wording for an ended Frist, site-wide (`fristEndedDe`): without a
-   *  duration this line IS that sentence. With one, the duration already
-   *  carries the word „Frist", so the line takes the builder's wording
-   *  („endete am …") instead of the builder — one wording, two sentence
-   *  shapes, rather than the „endete 24.06.2026" this said before. */
-  const dur = fristDurationDe(d)
-  const fristLine = !d.deadline
-    ? 'keine Frist angegeben'
-    : d.active
-      ? dur ? `${dur}, bis ${formatDateDe(d.deadline)}` : `Frist bis ${formatDateDe(d.deadline)}`
-      : dur ? `${dur}, endete am ${formatDateDe(d.deadline)}` : fristEndedDe(d.deadline)
+  const fristLine = fristLineDe(d.arrivedAt, d.deadline, d.active)
 
   /** The RV's date with its distance to the Fristende as an apposition —
    *  one fact, not two, so the row does not grow a third middot. */
-  const latency = e ? rvLatencyDe(d.deadline, e.rvDate) : null
+  const latency = e ? afterFristDe(d.deadline, e.rvDate) : null
   const rvWhen = e
     ? e.rvDate
       ? latency ? `${formatDateDe(e.rvDate)}, ${latency}` : formatDateDe(e.rvDate)
@@ -602,6 +620,92 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
               ? []
               : ['ausstehend'],
       comparison: null,
+    },
+  ]
+}
+
+/**
+ * The same bar for a Verordnungsentwurf: three stations, the Verordnung path
+ * of /so-funktionierts — Entwurf · Begutachtung · Bundesgesetzblatt II
+ * (docs/architecture.md §12.32).
+ *
+ * It had no bar until 26.09.2026, and for a reason that held until the
+ * 19th: the monitor did not follow a Verordnung past its Frist, and a last
+ * station that is permanently „unbekannt" is a promise, not a map. Since the
+ * BGBl-II match it is followed, and a card saying „Station 2 von 3" in words
+ * where the other half of the corpus draws its stations had become the
+ * counter the Ministerialentwurf's bar dropped on 18.09.2026.
+ *
+ * No station for the Erlassung: the Ressort's decision is not published, the
+ * Kundmachung is the act that reports it — the reasoning that already folded
+ * Kundmachung into the law's Bundesgesetzblatt row.
+ *
+ * THE LAST ROW KEEPS THE OUTCOME'S ASYMMETRY. `ausstehend` and `keine` both
+ * stand on the station as `current` — the procedure is with the Ressort, as
+ * a Ministerialentwurf without Vorlage is — but only `keine` says „nicht
+ * gefunden", and it says it about our search, with the way to check beside
+ * it. A bare hollow dot after 180 days would read as the verdict the
+ * headline deliberately does not give (`regulationStatusDe`).
+ *
+ * `outcome` null is „not determined yet", never „not kundgemacht": the row
+ * then says nothing and keeps its state for the screen reader.
+ */
+export function regulationStations(
+  r: Pick<RisConsultation, 'startedAt' | 'deadline' | 'active'>,
+  outcome: BgblOutcome | null,
+): Station[] {
+  const o = outcome
+  const bgbl: Pick<Station, 'state' | 'facts' | 'source'> = r.active || o?.state === 'begutachtung'
+    ? { state: 'open', facts: ['ausstehend'] }
+    : o?.state === 'kundgemacht' && o.nummer
+      ? {
+          state: 'done',
+          facts: kept(
+            bgblShort(o.nummer),
+            o.datum
+              ? kept(formatDateDe(o.datum), daysAfterFristDe(o.days)).join(', ')
+              : null,
+          ),
+          source: o.url ? { lead: null, href: o.url, label: 'Kundmachung im RIS' } : undefined,
+        }
+      : o?.state === 'ausstehend'
+        // It names the usual span, because without it the absence after six
+        // weeks looks like a finding and is none (median 57 days, §12.32).
+        ? { state: 'current', facts: ['bisher keine Kundmachung', 'üblich sind rund zwei Monate nach Fristende'] }
+        : o?.state === 'keine'
+          ? {
+              state: 'current',
+              facts: ['keine Kundmachung gefunden'],
+              source: {
+                lead: 'Gesucht wird über Titel, Ressort und Datum; das findet nicht jede –',
+                href: 'https://www.ris.bka.gv.at/Bgbl-Auth/',
+                label: 'im Bundesgesetzblatt nachsehen',
+              },
+            }
+          : { state: 'open', facts: [] }
+
+  return [
+    {
+      id: 'entwurf',
+      name: 'Entwurf',
+      state: 'done',
+      facts: kept(r.startedAt ? formatDateDe(r.startedAt) : null),
+      comparison: { id: 'vorschlag', question: 'Was ändert der Entwurf?' },
+    },
+    {
+      id: 'begutachtung',
+      name: 'Begutachtung',
+      state: r.active ? 'current' : 'done',
+      // No count beside the Frist: nobody publishes who filed on these —
+      // the card says so once, under the bar, instead of a „0" here.
+      facts: [fristLineDe(r.startedAt, r.deadline, r.active)],
+      comparison: null,
+    },
+    {
+      id: 'bgbl',
+      name: 'Bundesgesetzblatt II',
+      comparison: null,
+      ...bgbl,
     },
   ]
 }

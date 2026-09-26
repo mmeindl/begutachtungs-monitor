@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
+import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
+import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
-import { regulationStatusDe } from '~/utils/spine'
+import { regulationStations, regulationStatusDe } from '~/utils/spine'
 
 /**
  * One Begutachtung without a Gegenstand at Parliament
@@ -15,7 +16,7 @@ import { regulationStatusDe } from '~/utils/spine'
  * data. The difference is real and stays visible — in the page, not in the
  * path (docs/architecture.md §12.19).
  *
- * WHAT THIS PAGE DELIBERATELY DOES NOT HAVE: the Stationenleiste, the Stellungnahmen
+ * WHAT THIS PAGE DELIBERATELY DOES NOT HAVE: the five-station bar, the Stellungnahmen
  * panel, the submitter counts, the ME→RV comparison. Not one of them is
  * "missing" in the sense of not built yet — they cannot exist here, because
  * every one of them is fed by a parliamentary Gegenstand and there is none.
@@ -44,6 +45,32 @@ const id = computed(() => String(route.params.id ?? ''))
 const { data, error, refresh, status } = await useFetch<RisConsultationDetail>(
   () => `/api/ris-drafts/${id.value}`,
 )
+
+/* What became of a Verordnung, for the heading and the bar's last station.
+
+   Normally it comes along in the page's own response. Null there means
+   „not determined inside the page's budget", not „nicht kundgemacht" — so
+   the page asks for it once more from the browser, and a cold cache only
+   delays the information instead of swallowing it. One value for both
+   readers: the heading and the bar cannot disagree about the outcome. */
+const needsOutcome = computed(() => data.value?.kind === 'verordnung' && !data.value.outcome)
+const { data: fetchedOutcome } = await useFetch<BgblOutcome>(
+  () => `/api/ris-drafts/${id.value}/kundmachung`,
+  { lazy: true, server: false, immediate: needsOutcome.value },
+)
+const outcome = computed(() => data.value?.outcome ?? fetchedOutcome.value ?? null)
+
+/* Only a Verordnung has a path the monitor follows to its end. A Gesetz
+   without a Gegenstand would need the five stations, and none of the three
+   after the Begutachtung can be read for it; `unbestimmt` has no path to
+   draw at all. Those two keep the card in words. */
+const stationList = computed(() =>
+  data.value?.kind === 'verordnung' ? regulationStations(data.value, outcome.value) : [])
+
+/* Same contract as on the draft page: only a section this page renders. */
+const stationAnchors: Partial<Record<StationId, string>> = { entwurf: '#dokumente' }
+const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() =>
+  data.value?.textComparison ? { vorschlag: '#gegenueberstellung' } : {})
 
 useSeoMeta({
   title: () => data.value?.title ?? 'Entwurf',
@@ -148,80 +175,65 @@ const documents = computed(() => {
         </p>
       </DraftHeader>
 
-      <!-- The map, in the slot the draft page gives its five-station spine.
-           NOT a spine of its own, and that is a decision with a reason:
-           a Verordnung really does have a further course — Begutachtung,
-           Erlassung durch das Ressort, Kundmachung im BGBl II — but the
-           monitor does not yet follow it, and a rail whose last station is
-           permanently "unbekannt" would be a promise, not a map. So the
-           card answers in words what the spine answers in stations: where
-           this is now, and what comes after it. A rail of its own waits
-           until every station of that course can be read
-           (docs/architecture.md §12.32). -->
+      <!-- The map, in the slot the draft page gives its station bar.
+
+           A BAR OF ITS OWN SINCE 26.09.2026, for a Verordnung: Entwurf ·
+           Begutachtung · Bundesgesetzblatt II. Until then the card said
+           „Station 2 von 3" in words, on the argument that a last station
+           the monitor did not follow would be a promise rather than a map.
+           Since the BGBl-II match of 19.09.2026 it is followed, so the
+           argument had lapsed and the card was the counter the draft page
+           dropped on 18.09.2026, standing in for rows it never drew
+           (`regulationStations`, docs/architecture.md §12.32). A Gesetz or
+           an untyped record keeps the card in words: neither has a path
+           here that can be read to its end. -->
       <div class="mt-6">
         <div class="rounded-xl border border-hairline bg-surface p-5">
           <!-- Heading and link as on the Ministerialentwurf page: the same
-               card, the same place, the same weights.
-
-               „Station 2 von 3" ONLY while the Frist runs. After that the
-               draft has left the Begutachtung and the third station names
-               itself: since 19.09.2026 the heading says „Kundgemacht" as soon
-               as the match against the Bundesgesetzblatt has a Fundstelle
-               (docs/architecture.md §12.32). A running count beside it would
-               be the third statement of one thing.
-
-               The three is the Verordnung path's on /so-funktionierts
-               (Entwurf · Begutachtung · Bundesgesetzblatt II). The sentence
-               below it that marked station 3 as „verfolgt der Monitor bisher
-               nicht" is gone — it is followed. -->
+               card, the same place, the same weights. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 class="font-medium text-ink">
-              {{ regulationStatusDe(data.active, data.outcome?.state === 'kundgemacht') }}
+              {{ regulationStatusDe(data.active, outcome?.state === 'kundgemacht') }}
             </h2>
-            <p class="flex flex-wrap items-baseline gap-x-2 text-sm">
-              <span v-if="data.active" class="text-ink-secondary">Station 2 von 3</span>
-              <NuxtLink
-                to="/so-funktionierts"
-                class="tap-target rounded font-medium text-accent-deep hover:underline"
-              >
-                Wie funktioniert das Verfahren? →
-              </NuxtLink>
-            </p>
+            <!-- With a bar, straight to the fork: „why three stations and
+                 not five" is answered there, and the card no longer says it
+                 itself (the sentence that did went on 26.09.2026). -->
+            <NuxtLink
+              :to="stationList.length ? '/so-funktionierts#wege' : '/so-funktionierts'"
+              class="tap-target rounded text-sm font-medium text-accent-deep hover:underline"
+            >
+              Wie funktioniert das Verfahren? →
+            </NuxtLink>
           </div>
-          <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-            <template v-if="data.startedAt">
+          <SpineRail
+            v-if="stationList.length"
+            class="mt-4"
+            :stations="stationList"
+            :anchors="stationAnchors"
+            :comparison-anchors="comparisonAnchors"
+          />
+          <!-- Without a bar the dates are the sentence, and the kind hint
+               says why the card has no path to draw. With a bar both go: the
+               rows carry the dates, and the Verordnung hint („erlässt ein
+               Ministerium selbst … geht nicht durch das Parlament") only
+               restated what the three rows show — the link above answers it
+               at the fork. What stays is the sentence nothing else says once
+               the Frist is over and no action card can say where a
+               Stellungnahme went: why the Begutachtung row carries no count. -->
+          <p
+            v-if="!stationList.length || !data.active"
+            class="mt-3 max-w-prose text-sm text-ink-secondary"
+          >
+            <template v-if="!stationList.length && data.startedAt">
               In Begutachtung seit {{ formatDateDe(data.startedAt) }}<template v-if="data.deadline">, Frist bis {{ formatDateWeekdayDe(data.deadline) }}</template>.
             </template>
             <template v-if="RIS_KIND_HINT[data.kind]">
               {{ RIS_KIND_HINT[data.kind] }}
             </template>
-          </p>
-          <!-- ONE sentence about what the monitor cannot follow, not two.
-               Until 18.09.2026 this said „Keine Stellungnahmen-Liste und keine
-               Einbringer: ohne Gegenstand im Parlament veröffentlicht niemand
-               …" — the same statement the paragraph above and the card below
-               already make, and it explained an absence by comparison with a
-               page the reader has never seen.
-
-               What stays is the half that stands nowhere else: the way
-               onwards. The distinction that matters is carried by two
-               different places now — the missing participation list is stated
-               by the action card below, where somebody misses it; that the
-               tracking ends here is stated here.
-
-               SINCE 19.09.2026 THE ANSWER STANDS HERE INSTEAD OF THE
-               ADMISSION. The sentence before read „… verfolgt der Monitor
-               bisher nicht" — honest, and the place where two thirds of the
-               corpus ended without an accountability layer
-               (docs/architecture.md §12.32). -->
-          <BgblOutcomeBlock v-if="data.kind === 'verordnung'" :ris-id="data.id" :outcome="data.outcome" />
-          <!-- After the Fristende there is no action card left that could say
-               where a Stellungnahme went. The card then says it, once, in the
-               perfect — the question is no longer „wohin" but „warum steht
-               hier keine Zahl". -->
-          <p v-if="!data.active" class="mt-3 max-w-prose text-sm text-ink-secondary">
-            Stellungnahmen gingen direkt an das Ministerium; wer Stellung
-            genommen hat, wird nicht veröffentlicht.
+            <template v-if="!data.active">
+              Stellungnahmen gingen direkt an das Ministerium; wer Stellung
+              genommen hat, wird nicht veröffentlicht.
+            </template>
           </p>
         </div>
       </div>

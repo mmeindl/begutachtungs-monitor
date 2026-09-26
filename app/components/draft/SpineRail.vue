@@ -1,6 +1,10 @@
 <script setup lang="ts">
 /**
- * Where does this draft stand? Five stations, one row each.
+ * Where does this draft stand? One row per station — five for a
+ * Ministerialentwurf (`stations`), three for a Verordnungsentwurf
+ * (`regulationStations`). The PAGE builds the list, because only the page
+ * knows which record it holds; the bar knows how a station looks, not how a
+ * procedure runs.
  *
  * The bar answers three things and nothing else: where the text is right
  * now, what happened at each station it passed, and what is still ahead.
@@ -52,12 +56,11 @@
  * the negative findings ("bisher keine", "in Behandlung", "ausstehend") are
  * in the HTML.
  */
-import type { DraftDetail } from '#shared/types'
-import type { ComparisonId, StationId } from '~/utils/spine'
-import { markedStation, stations } from '~/utils/spine'
+import type { ComparisonId, Station, StationId } from '~/utils/spine'
+import { markedStation } from '~/utils/spine'
 
 const props = defineProps<{
-  data: DraftDetail
+  stations: Station[]
   /**
    * In-page target per station: the section that holds it. A station
    * without one keeps its name as plain text rather than becoming a dead
@@ -72,16 +75,6 @@ const props = defineProps<{
    * surface this page does not have.
    */
   comparisonAnchors?: Partial<Record<ComparisonId, string>>
-  /** From `/geltendesrecht`: the draft creates law rather than changing it.
-   *  Arrives after mount, so the bar renders first and the Entwurf's fact
-   *  line corrects itself — it never blocks. */
-  createsNewLaw?: boolean
-  /** How many laws in force the draft changes — the Entwurf's second fact. */
-  amendedLawCount?: number
-  /** From `/rv-stellungnahmen`: how many Stellungnahmen the Vorlage itself
-   *  received — the Regierungsvorlage's second fact, after its date. Arrives
-   *  after mount like the two above. */
-  rvStatementTotal?: number | null
 }>()
 
 /* Two link styles, and only one of them looks like a link at rest.
@@ -128,11 +121,7 @@ const STATION = [
 ].join(' ')
 const LINK = 'link-inline'
 
-const list = computed(() => stations(props.data, {
-  createsNewLaw: props.createsNewLaw,
-  amendedLawCount: props.amendedLawCount,
-  rvStatementTotal: props.rvStatementTotal,
-}))
+const list = computed(() => props.stations)
 const marked = computed(() => markedStation(list.value))
 
 /**
@@ -170,6 +159,9 @@ const rows = computed(() => list.value.map((s, i) => {
     href: props.anchors?.[s.id],
     facts: facts.join(' · '),
     comparison: href && s.comparison ? { href, question: s.comparison.question } : null,
+    // Silent with the facts: a link out of a row that says nothing yet
+    // would be the only thing it says.
+    source: silent ? null : s.source ?? null,
     announce: facts.length
       ? null
       : s.state === 'open' ? 'ausstehend' : s.state === 'never' ? 'nicht erreicht' : null,
@@ -257,6 +249,16 @@ const rows = computed(() => list.value.map((s, i) => {
              its own focus ring and its own destination. -->
         <p v-if="row.comparison" class="relative z-10 mt-1 leading-snug">
           <a :href="row.comparison.href" :class="LINK">{{ row.comparison.question }} →</a>
+        </p>
+        <!-- The station's own record, where it lives off this page. Above
+             the overlay like the question, and in the same link style: it
+             is the evidence for the fact line above it. -->
+        <p v-if="row.source" class="relative z-10 mt-1 leading-snug text-ink-secondary">
+          <!-- The space inside the mustache: Vue's whitespace condensing
+               drops one that trails a <template>, and the lead ran into
+               the link („jede –im"). -->
+          <template v-if="row.source.lead">{{ `${row.source.lead} ` }}</template>
+          <ExternalLink :href="row.source.href" :class="LINK">{{ row.source.label }}</ExternalLink>
         </p>
         <p v-if="row.announce" class="sr-only">{{ row.announce }}</p>
       </div>
