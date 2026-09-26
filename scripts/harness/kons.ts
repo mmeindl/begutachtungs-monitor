@@ -289,6 +289,24 @@ const labelKey = anlageLabelKey
 /** "§ 5" → "5", the id `parseKonsParagraph` gives a paragraph — mirrors the engine's own lookup. */
 const paraId = bareParaId
 
+/** „Anl. 1" in RIS, „Anlage 1" in an instruction — mirrors `SCHEDULE_RE` in `kons/lawApply.ts`. */
+const SCHEDULE_LABEL = /^(?:Anlage|Anhang|Anl\.?)\b/i
+
+/**
+ * The engine's node for a RIS label — **of the same kind**.
+ *
+ * A law may carry a § 1 and an Anl. 1, and the id is the bare number for
+ * both. Matching by number alone scored the engine's schedule against the
+ * §'s truth and reported two invented texts that were nothing of the sort
+ * (Erneuerbaren-Ausbau-Gesetz, UStG 1994, 26.09.2026) — an artefact of the
+ * instrument, and it appeared the moment `lawtext/konsTree.ts` learned to
+ * read „Anl. 1" at all. The engine's own lookup carries the same rule.
+ */
+function nodeFor(nodes: readonly LawNode[], label: string, id: string | undefined): LawNode | undefined {
+  const wantsSchedule = SCHEDULE_LABEL.test(label.trim())
+  return nodes.find((p) => p.id === id && SCHEDULE_LABEL.test(p.marker.trim()) === wantsSchedule)
+}
+
 /**
  * A reason without its case detail, so the census groups.
  *
@@ -333,7 +351,7 @@ function missingTargetNote(address: NovaoAddress, resolved: ResolvedLaw, before:
   const pair = resolved.pairs.get(label)
   if (pair && !pair.before) return `${count('entsteht erst durch diese Novelle')}: ${label}`
   if (unparsed.has(label)) return `${count('RIS-Dokument geladen, aber nicht als Paragraph lesbar')}: ${label}`
-  const node = before.paragraphs.find((p) => p.id === paraId(label))
+  const node = nodeFor(before.paragraphs, label, paraId(label) ?? undefined)
   if (!node) return `${count('im RIS vorhanden, vom Prüfstand nicht geladen')}: ${label}`
   const sub = address.abs ?? address.z ?? address.lit
   if (!sub) return `${count('Paragraph stand im Ausgangstext — eine frühere Anweisung hat ihn entfernt oder umbenannt')}: ${label}`
@@ -648,7 +666,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   const divergences: { label: string; got: string; expected: string; before: string }[] = []
   for (const [label, pair] of [...pairs].sort()) {
     const id = /(\d+[a-z]*)/.exec(label)?.[1]
-    const node = after.paragraphs.find((p) => p.id === id)
+    const node = nodeFor(after.paragraphs, label, id)
     // Every version this BGBl created is law text that exists; the engine's
     // end state is scored against the best match among them (see
     // `versionPairFor`). The report names the version that matched.
@@ -660,7 +678,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     if (!node || truths.length === 0) continue
     checked++
     const got = plainText(node)
-    const beforeNode = law.paragraphs.find((p) => p.id === (id === undefined ? id : (originOf.get(id) ?? id)))
+    const beforeNode = nodeFor(law.paragraphs, label, id === undefined ? id : (originOf.get(id) ?? id))
     const beforeText = beforeNode ? plainText(beforeNode) : null
     const rank = { identisch: 0, unvollständig: 1, unverändert: 2, halbangewendet: 3, abweichend: 4 }
     const best = truths

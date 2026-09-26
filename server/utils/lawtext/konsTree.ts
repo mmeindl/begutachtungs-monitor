@@ -202,7 +202,13 @@ export function parseKonsParagraph(xml: string): LawNode | null {
   // is a cross-reference and the Anlage keeps its own number — so the § is
   // read only where it stands directly behind the Artikel.
   const artikelPara = /^\s*Art(?:\.|ikel)?\s*[\dIVXLCDM]+\s*§+\s*(\d+[a-z]*(?:\.\d+)?)/i.exec(idText)
-  const idMatch = artikelPara ?? /(?:§|Art\.?|Artikel|Anlage)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
+  // `Anl\.?` and not only „Anlage": RIS writes a schedule's Gliederungssymbol
+  // as **„Anl. 1"**, and the word this read was the one an INSTRUCTION uses.
+  // So every Anlage of every law arrived with the id „?" — its 41 Ziffern
+  // parsed and unreachable, because `findParagraph` looks a § up by that id.
+  // Measured on the Anhang of the Bundesgesetzes gegen den unlauteren
+  // Wettbewerb (26.09.2026): id „?", marker „Anl. 1", 41 Ziffern.
+  const idMatch = artikelPara ?? /(?:§|Art\.?|Artikel|Anl(?:age)?\.?)\s*([\d]+[a-z]*(?:\.\d+)?)/i.exec(idText)
 
   let root: LawNode | null = null
   let heading: string | null = null

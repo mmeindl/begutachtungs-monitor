@@ -323,9 +323,30 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
 // Lookup
 // ---------------------------------------------------------------------------
 
-function findParagraph(law: StandingLaw, a: NovaoAddress): LawNode | null {
-  const id = bareParaId(a.para)
-  return id === null ? null : (law.paragraphs.find((p) => p.id === id) ?? null)
+/** „Anl. 1" in RIS, „Anlage 1" or „Anhang" in an instruction — one kind. */
+const SCHEDULE_RE = /^(?:Anlage|Anhang|Anl\.?)\b/i
+
+/**
+ * The unit an address names — and **never one of another kind**.
+ *
+ * A law may carry a § 1 and an Anl. 1, and the id is the bare number for
+ * both, so a lookup by number alone could hand „§ 1" the schedule's text or
+ * the other way round. The kind is read off the RIS Gliederungssymbol the
+ * node keeps in `marker` („Anl. 1"), which is the only place it survives: the
+ * id is a number, and the display keys by that number.
+ *
+ * The collision was unreachable until 26.09.2026 only because `konsTree`
+ * failed to read „Anl. 1" at all and every schedule arrived with the id „?".
+ */
+function findParagraph(law: StandingLaw, a: NovaoAddress, overrideId?: string): LawNode | null {
+  const wantsSchedule = SCHEDULE_RE.test((a.para ?? '').trim())
+  const pool = law.paragraphs.filter((p) => SCHEDULE_RE.test(p.marker.trim()) === wantsSchedule)
+  const id = overrideId ?? bareParaId(a.para)
+  // „Z 1 lit. n des Anhangs" names no number, because the law has exactly
+  // one schedule. Where it has several the instruction has to say which, and
+  // an address that does not is refused rather than guessed at.
+  if (id === null) return wantsSchedule && pool.length === 1 ? pool[0]! : null
+  return pool.find((p) => p.id === id) ?? null
 }
 
 /**
@@ -1172,7 +1193,9 @@ function scopeOf(law: StandingLaw, a: NovaoAddress): LawNode[] | null {
   const ids = [deepestId(a), ...a.siblings]
   const nodes: LawNode[] = []
   for (const id of ids) {
-    const node = a.level === 'para' ? (law.paragraphs.find((p) => p.id === id) ?? null) : resolveTarget(law, a, id)
+    // Through `findParagraph`, not past it: a second lookup by bare number is
+    // how an Anlage and a § of the same number changed places (26.09.2026).
+    const node = a.level === 'para' ? findParagraph(law, a, id) : resolveTarget(law, a, id)
     if (!node) return null
     nodes.push(node)
   }

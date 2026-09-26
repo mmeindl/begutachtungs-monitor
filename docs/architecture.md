@@ -1905,6 +1905,53 @@ unverändert (34 / 17). Damit ist die Klasse gezählt **und** erledigt, und die
 Zählung ist das Ergebnis: Was wie eine Strukturklasse aussah, war der Rest
 einer, die vor zwei Tagen gebaut wurde.
 
+**Die Anlage war ein Paragraph mit derselben Nummer (26.09.2026).** Der
+`Anhang` ist die größte der acht Adressklassen (18 Zeilen), und der erste
+Schritt dorthin sollte nur sein, ihn überhaupt lesbar zu machen. Er legte
+etwas anderes frei.
+
+*Erstens, das RIS schreibt es anders, als eine Anweisung es schreibt.* Das
+Gliederungssymbol einer Anlage lautet **„Anl. 1"**; `lawtext/konsTree.ts`
+kannte beim Lesen der Kennung nur das Wort „Anlage" — das Wort der
+**Anweisung**. Jede Anlage jedes Gesetzes kam damit mit der Kennung „?" an.
+Am Anhang des Bundesgesetzes gegen den unlauteren Wettbewerb gemessen: 41
+Ziffern, sauber geparst, und keine davon erreichbar.
+
+*Zweitens, und das ist der eigentliche Fund: Kennung ist Zahl, und eine
+Anlage 1 und ein § 1 haben dieselbe.* Drei Stellen suchten den Knoten allein
+über die Zahl — `findParagraph`, `scopeOf` mit einer zweiten eigenen Suche,
+und der **Prüfstand** beim Paaren von RIS-Etikett und Engine-Knoten. Solange
+Anlagen die Kennung „?" trugen, konnte nichts kollidieren; mit der ersten
+Korrektur wäre aus jeder dieser drei Stellen ein Paragraph mit dem Text einer
+Anlage geworden. Alle drei fragen jetzt zusätzlich nach der **Art**, und die
+steht im `marker` — der einzigen Stelle, die sie überlebt.
+
+Was der Prüfstand daraufhin meldet, ist die Umkehrung dessen, was die erste
+Messung zeigte: **acht Paragraphen verlassen die Klasse „eigene Abweichung",
+und alle acht sind Anlagen.** Sie standen dort, weil das Messgerät den Text
+einer Anlage gegen die Wahrheit eines gleichnumerierten Paragraphen hielt —
+ein Artefakt des Instruments, nicht der Engine, und es lag vor diesem Tag
+genauso da.
+
+| | vorher | nachher |
+|---|---|---|
+| geprüfte Paragraphen | 1.047 | **1.050** |
+| identisch mit dem RIS | 755 | **757** |
+| **eigene Abweichung** | 30 | **22** |
+| ohne Verweigerung: abweichend | 14 | **10** |
+| kein geltender Text (Rest des Tores) | 35 | **31** |
+| Gate: abweichend, plausibel | 7 | **3** |
+
+**Der `Anhang` selbst ist damit noch nicht gelesen**, und das ist ehrlich
+gesagt der kleinere Teil: Die 18 Zeilen schreiben „Z 1 lit. n **des
+Anhangs**" ohne Nummer, weil das Gesetz genau einen hat. Der Engine-Pfad
+könnte das schon — `findParagraph` nimmt die einzige Anlage, wenn die Adresse
+keine Nummer nennt —, aber `PARA_RE` liest die nummernlose Form nicht, und
+`konsGate.addressedLabels` baut aus einer Adresse immer ein Etikett „§ N", so
+dass das Anlagendokument im Anfragepfad gar nicht erst geholt würde. Zwei
+Stellen also, beide benannt, beide klein — aber sie gehören in denselben
+Schritt wie die Messung, die sie rechtfertigt.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides

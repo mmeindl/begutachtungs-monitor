@@ -615,6 +615,31 @@ describe('renumbering (2026-09-09)', () => {
   })
 })
 
+describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {
+  /** A law that carries a § 1 and an Anl. 1 — the collision RIS's own numbering produces. */
+  function withSchedule(): StandingLaw {
+    const schedule = makeNode('para', '1', 'Anl. 1', 'Die Liste der unlauteren Praktiken.', 'Anhang')
+    return { paragraphs: [para('1', 'Anwendungsbereich', ['Dieses Bundesgesetz gilt für alle Verfahren.']), schedule] }
+  }
+
+  it('sends an Anlage address to the Anlage and a § address to the §', () => {
+    const one = run(withSchedule(), instr('In Anlage 1 wird das Wort "Liste" durch das Wort "Aufzählung" ersetzt.'))
+    expect(one.results[0]!.reason).toBeNull()
+    expect(one.law.paragraphs[1]!.text).toBe('Die Aufzählung der unlauteren Praktiken.')
+    expect(one.law.paragraphs[0]!.children[0]!.text).toBe('Dieses Bundesgesetz gilt für alle Verfahren.')
+
+    const two = run(withSchedule(), instr('In § 1 wird das Wort "Verfahren" durch das Wort "Sachen" ersetzt.'))
+    expect(two.law.paragraphs[0]!.children[0]!.text).toBe('Dieses Bundesgesetz gilt für alle Sachen.')
+    expect(two.law.paragraphs[1]!.text).toBe('Die Liste der unlauteren Praktiken.')
+  })
+
+  it('refuses an Anlage the law does not carry instead of taking the § of that number', () => {
+    const { results } = run(withSchedule(), instr('In Anlage 2 wird das Wort "Liste" durch das Wort "Aufzählung" ersetzt.'))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/Nicht im geltenden Text/)
+  })
+})
+
 describe('Schreibweise einer Fundstelle (26.09.2026)', () => {
   const cited = (): StandingLaw => ({ paragraphs: [para('5', 'A', ['Die Betreuung erfolgt nach dem BBU-Errichtungsgesetz, BGBl. I Nr. 53/2019.'])] })
 
