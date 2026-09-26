@@ -1993,9 +1993,25 @@ wäre identisch gewesen.
 **Auf der Seite ändert sich weiterhin nichts**, und diesmal mit einem
 benannten Grund: `konsGate.addressedLabels` baut aus jeder Adresse ein
 Etikett „§ N", und eine Adresse ohne Nummer liefert gar keines — das
-Anlagendokument wird im Anfragepfad also nicht geholt. Die Engine kann den
-Anhang jetzt, der Anfragepfad holt ihn noch nicht. Das ist der nächste
-Schritt, und er ist eine Stelle.
+Anlagendokument wird im Anfragepfad also nicht geholt.
+
+**Die Schätzung dafür war „eine Stelle", und sie war falsch; es sind vier**,
+und der Grund ist derselbe wie oben eine Ebene höher: **Der Anzeigepfad
+schlüsselt jede Einheit über ihre nackte Nummer**, und eine Anlage hat keine
+eigene. `addressedParagraphs` (die Kennung, zugleich der Nenner „X von Y"),
+`addressedLabels` (das RIS-Etikett), die Auswahl der zu holenden Dokumente in
+`kons/konsService.ts` und dort `nodeById`, das die Knoten mit „first
+occurrence wins" über `node.id` in eine Map legt — eine Anl. 1 und ein § 1
+fielen darin zusammen, genau wie im Prüfstand, nur unerreichbar, solange das
+Anlagendokument gar nicht erst geholt wird. Dazu kommt die Frage, unter
+welchem Schlüssel das Beilagen-Orakel eine Anhangszeile führt.
+
+Das ist kein Verdrahten, sondern ein **Einheitenschlüssel, der die Art
+trägt**, durch Bestand, Orakel, Wächter und Anzeige gezogen. Es gehört in
+einen eigenen Schritt mit eigener Messung an einer Entwurfsseite — zehn
+Entwürfe des Korpus tragen nummernlose Anhang-Anweisungen (Altlastenatlas-VO,
+Kraftstoffverordnung, Suchtgiftverordnung, ETV 2020, UWG), also ist er
+prüfbar.
 
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
