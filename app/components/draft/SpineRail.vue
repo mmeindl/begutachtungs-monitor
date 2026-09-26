@@ -112,15 +112,21 @@ const props = defineProps<{
 
    The at-rest underline comes back where hover cannot be had: on a touch
    device nothing would ever reveal these rows as targets. */
-const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
 const STATION = [
   'station rounded underline-offset-4 group-hover:underline',
   // The hit area, the pointer cursor and the focus ring, all on the row.
   'after:absolute after:inset-0 after:rounded-md',
-  'focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-accent-deep',
+  // The focus ring belongs around the whole row, not around the name. Two
+  // halves: `focus-ring-off` takes the app's ring off the <a> — a plain
+  // `focus-visible:outline-none` CANNOT, it is a `@layer utilities` rule and
+  // the app's ring is unlayered, which is why this row quietly drew TWO
+  // rings until 26.09.2026 (`main.css`, next to the ring itself) — and the
+  // `after:` half draws it on the overlay instead. That half always worked:
+  // the app's rule matches elements, not pseudo-elements.
+  'focus-ring-off focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-accent',
   '[@media(hover:none)]:underline [@media(hover:none)]:decoration-baseline',
 ].join(' ')
-const LINK = `link-inline ${FOCUS}`
+const LINK = 'link-inline'
 
 const list = computed(() => stations(props.data, {
   createsNewLaw: props.createsNewLaw,

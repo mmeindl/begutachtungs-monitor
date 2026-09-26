@@ -325,6 +325,38 @@
  * at all. Those differences stay at the call site, beside this name; what is
  * shared is the signature the comment above describes.
  *
+ * **The focus ring among them was never a difference at all — it only
+ * looked like one — and is gone since 26.09.2026.** Five call sites
+ * appended `focus-visible:outline-2 outline-offset-2 outline-accent-deep`
+ * and not one of those three declarations ever reached the screen. The
+ * reason is the cascade, not specificity: `:focus-visible` below is written
+ * UNLAYERED, and an unlayered rule beats every rule in a layer — Tailwind
+ * emits its utilities into `@layer utilities`, so the whole override loses
+ * to it no matter how specific it is. Measured 26.09.2026 by rendering both
+ * class lists against the served stylesheet: `solid 2px rgb(42,120,214)
+ * offset 2px` for both, i.e. `--color-accent` and not the accent-deep the
+ * call sites asked for. Removing them is a verified no-op, which is the
+ * best case — the intent of the rule below („one visible accent ring for
+ * every focusable element") was the reality all along, and five files now
+ * say so too.
+ *
+ * TWO CONSEQUENCES WORTH KNOWING BEFORE ADDING A `focus-visible:` UTILITY
+ * HERE. It will do nothing, for the same reason — change the rule below
+ * instead, or put the declaration in the same unlayered context. And the
+ * same trap catches `focus-visible:outline-none`: `SpineRail` uses it to
+ * move a station's ring onto a full-row `::after` overlay, and the overlay
+ * ring works (pseudo-elements are not what the rule below matches) while
+ * the suppression does not — so a focused station draws both rings. That
+ * is why its overlay is `outline-accent` since 26.09.2026 and no longer
+ * `outline-accent-deep`: two rings in one colour read as one ring, two
+ * colours read as a mistake. Fixing the doubling itself is still open.
+ *
+ * For the record, in case the colour is ever revisited: both clear
+ * WCAG 1.4.11 comfortably on this page (accent 4.01:1, accent-deep 9.00:1),
+ * so nothing forced the override — and an accent-deep ring around
+ * accent-deep link text is the link's own colour twice, which reads as one
+ * blob rather than as a ring around text.
+ *
  * `rounded` is part of it although the link has no ground of its own: the
  * focus ring and the selection box follow the radius, and a square ring on a
  * link inside a rounded page is the kind of detail nobody names and everybody
@@ -358,10 +390,57 @@ h2 {
  * Keyboard focus: one visible accent ring for every focusable element
  * (links, buttons, inputs). Outline follows border-radius in modern
  * browsers, so cards and pills get correctly rounded rings for free.
+ *
+ * UNLAYERED ON PURPOSE, and that is load-bearing. An unlayered rule beats
+ * every rule inside a layer whatever its specificity, which is how this one
+ * ring reaches past Nuxt UI's own focus styling: its base layer sets
+ * `a:focus-visible { outline-offset: 0 }`, and its buttons and inputs carry
+ * `focus-visible:outline-3` over a translucent `outline-primary/25` halo.
+ * Measured 26.09.2026 against the served stylesheet, both arrangements side
+ * by side: as it stands, every link, UButton and UInput settles on
+ * `solid 2px rgb(42,120,214)`. Move this rule into `@layer base` and the
+ * controls jump to `solid 3px` of that 25 %-opacity halo — which composites
+ * to roughly #bebeba on the page, **1.7:1**, under the 3:1 that WCAG 1.4.11
+ * asks of a focus indicator, where the accent ring sits at 4.0:1. So the
+ * layer is not a style preference, it is what keeps the ring legible.
+ *
+ * MEASURING IT: switch transitions off first
+ * (`* { transition: none !important }`). Nuxt UI's controls carry
+ * `transition-colors`, whose property list includes `outline-color`, so
+ * `getComputedStyle` straight after `.focus()` reports the PRE-focus colour
+ * — a translucent value that looks exactly like the failure above and is
+ * only the first frame of the fade-in. That false reading cost one wrong
+ * bug report on 26.09.2026.
+ *
+ * THE PRICE, and it has already cost once: `focus-visible:*` utilities are
+ * INERT app-wide. They live in `@layer utilities` and lose here, silently —
+ * five call sites carried `focus-visible:outline-2 outline-offset-2
+ * outline-accent-deep` for months and never rendered a single one of those
+ * three declarations (see `link-inline` above). Do not reach for them.
+ * Where an element must not draw this ring, use `focus-ring-off`.
  */
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/*
+ * The opt-out — for an element whose focus ring is drawn somewhere else.
+ *
+ * `SpineRail` is the one case: its station rows grow a full-row `::after`
+ * overlay and ring THAT, so the ring on the <a> around the name is a second,
+ * smaller ring sitting inside the first. It tried to say so with Tailwind's
+ * `focus-visible:outline-none`, which is exactly the inert kind above — so
+ * the doubled ring shipped and nobody saw it, because both rings are blue
+ * and only a keyboard reaches them.
+ *
+ * A plain class rather than `@utility`, for that same reason: `@utility`
+ * emits into `@layer utilities` and would lose to the rule above. Unlayered
+ * and one class more specific, so it wins where it is asked for and changes
+ * nothing anywhere else.
+ */
+.focus-ring-off:focus-visible {
+  outline: none;
 }
 
 /* Calm product: no spinning/transitions for users who opted out of motion. */

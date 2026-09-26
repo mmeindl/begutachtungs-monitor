@@ -135,9 +135,15 @@ const documents = computed(() => {
         <p class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary">
           <span>{{ data.ministryName }}</span>
           <span aria-hidden="true">·</span>
+          <!-- `link-inline`, i.e. the same link as „Auf parlament.gv.at
+               ansehen" on the draft page — this one was hand-rolled and had
+               every part of it EXCEPT the colour, so the page's one way out
+               to its source rendered as grey body text while the draft
+               page's rendered blue. Two pages, one anatomy: the provenance
+               link may not differ by half a utility class. -->
           <ExternalLink
             :href="data.risUrl"
-            class="tap-target rounded underline underline-offset-2 hover:no-underline"
+            class="link-inline tap-target"
           >Im RIS ansehen</ExternalLink>
         </p>
       </DraftHeader>

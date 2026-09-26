@@ -107,10 +107,6 @@ const sourceLabel = computed(() => {
  */
 const loading = computed(() => status.value !== 'error' && !data.value)
 
-/* The house link form (`link-inline` in `main.css`) plus the focus ring. */
-const LINK =
-  'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
-
 /**
  * The screen-reader announcement once the section has been fetched — the same
  * mechanics as in the comparison: the region is empty when mounted and filled
@@ -225,7 +221,7 @@ const loadAnnouncement = computed(() => {
         <template v-if="data.hasSpecial">
           <template v-if="data.paragraphsAtAnnex">
             Die Erläuterungen zu den einzelnen Paragraphen stehen unten bei der
-            <a href="#gegenueberstellung" :class="LINK">Gegenüberstellung</a>, an
+            <a href="#gegenueberstellung" class="link-inline">Gegenüberstellung</a>, an
             dem Paragraphen, um den es jeweils geht — und vollständig im
             Dokument selbst.
           </template>

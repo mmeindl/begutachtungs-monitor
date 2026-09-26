@@ -333,9 +333,6 @@ const ministryBadges = computed(() => {
     label: `Alle Entwürfe des Ministeriums ${m.name} anzeigen`,
   }))
 })
-
-const linkClasses =
-  'link-inline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-deep'
 </script>
 
 <template>
@@ -414,7 +411,7 @@ const linkClasses =
                  longer applies. tap-target restores the 44px it had there. -->
             <ExternalLink
               :href="data.parliamentUrl"
-              :class="[linkClasses, 'tap-target']"
+              class="link-inline tap-target"
             >Auf parlament.gv.at ansehen</ExternalLink>
           </p>
         </DraftHeader>
@@ -476,7 +473,7 @@ const linkClasses =
               Ein gleichlautender Entwurf war bereits in Begutachtung:
               <NuxtLink
                 :to="`/entwuerfe/${data.predecessor.gp}/${data.predecessor.inr}`"
-                :class="linkClasses"
+                class="link-inline"
               >{{ data.predecessor.citation }}</NuxtLink>{{ relatedGpSuffix(data.predecessor.gp) }}<template v-if="data.predecessor.deadline">, Frist bis {{ formatDateDe(data.predecessor.deadline) }}</template> – ohne Regierungsvorlage.
             </p>
           </div>
@@ -663,7 +660,7 @@ const linkClasses =
               <ul class="mt-2 divide-y divide-hairline">
                 <li v-for="law in amendedLaws.laws" :key="law.title" class="py-3">
                   <p class="text-sm text-ink">
-                    <ExternalLink v-if="law.risUrl" :href="law.risUrl" :class="linkClasses">{{ law.title }}</ExternalLink>
+                    <ExternalLink v-if="law.risUrl" :href="law.risUrl" class="link-inline">{{ law.title }}</ExternalLink>
                     <template v-else>{{ law.title }}</template>
                   </p>
                   <!-- A law whose Stammnorm is no Bundesgesetzblatt has no
@@ -708,7 +705,7 @@ const linkClasses =
                 und Textgegenüberstellung im
                 <ExternalLink
                   :href="data.risDraft.risUrl"
-                  :class="linkClasses"
+                  class="link-inline"
                 >RIS-Eintrag</ExternalLink>.
               </p>
               <div v-if="risDocuments.length" class="mt-3">
@@ -752,7 +749,7 @@ const linkClasses =
               abrufbar, daher können Details hier nicht angezeigt werden.
               <ExternalLink
                 :href="data.parliamentUrl"
-                :class="linkClasses"
+                class="link-inline"
               >Auf parlament.gv.at ansehen</ExternalLink>
             </p>
             <template v-else-if="data.statements.total > 0">
@@ -845,7 +842,7 @@ const linkClasses =
               Der Entwurf wurde als
               <ExternalLink
                 :href="data.enactment.rvUrl"
-                :class="linkClasses"
+                class="link-inline"
               >Regierungsvorlage {{ data.enactment.rvCitation }}</ExternalLink>
               eingebracht.
             </p>
@@ -857,7 +854,7 @@ const linkClasses =
               <template
                 v-for="(rv, i) in data.enactment.furtherRv"
                 :key="rv.url"
-              ><span v-if="i > 0">, </span><ExternalLink :href="rv.url" :class="linkClasses">{{ rv.label }}</ExternalLink></template>
+              ><span v-if="i > 0">, </span><ExternalLink :href="rv.url" class="link-inline">{{ rv.label }}</ExternalLink></template>
               hervor.
             </p>
             <!-- Mechanism 3, by hand: the invitation to the comparison the
@@ -866,7 +863,7 @@ const linkClasses =
                  linked, not repeated. -->
             <p class="mt-2 max-w-prose text-sm text-ink-secondary">
               {{ RV_DEFINITION }} Ob und wie der Entwurf geändert wurde, zeigt
-              <a href="#textvergleich" :class="linkClasses">der Vergleich der beiden Texte</a>
+              <a href="#textvergleich" class="link-inline">der Vergleich der beiden Texte</a>
               weiter unten.
             </p>
           </div>
@@ -897,7 +894,7 @@ const linkClasses =
               Ein gleichlautender späterer Entwurf liegt vor:
               <NuxtLink
                 :to="`/entwuerfe/${data.successor.gp}/${data.successor.inr}`"
-                :class="linkClasses"
+                class="link-inline"
               >{{ data.successor.citation }}</NuxtLink>{{ relatedGpSuffix(data.successor.gp) }}, eingelangt am
               {{ formatDateDe(data.successor.arrivedAt) }}.
             </p>
@@ -999,7 +996,7 @@ const linkClasses =
           <p class="mt-3 text-sm text-ink-secondary">
             <ExternalLink
               :href="data.enactment.rvUrl"
-              :class="linkClasses"
+              class="link-inline"
             >Verlauf auf parlament.gv.at</ExternalLink>
           </p>
         </section>
@@ -1021,7 +1018,7 @@ const linkClasses =
             <ExternalLink
               v-if="data.enactment.bgblRisUrl"
               :href="data.enactment.bgblRisUrl"
-              :class="linkClasses"
+              class="link-inline"
             >{{ data.enactment.bgblNumber }}</ExternalLink><span v-else>{{ data.enactment.bgblNumber }}</span>.
           </p>
         </section>
@@ -1031,7 +1028,7 @@ const linkClasses =
           Hinweise an
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            :class="linkClasses"
+            class="link-inline"
           >kontakt@begutachtungs-monitor.at</a> — die Suche findet den Entwurf dann auch darunter.
         </p>
       </article>
