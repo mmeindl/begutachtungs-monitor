@@ -183,8 +183,16 @@ const haystacks = computed(() => {
  *  share with the § comparison (`diffBadges.ts`). */
 const BADGE_LABEL = badgeLabels('entfällt')
 
+/**
+ * A row whose two columns are nothing but the annex's elision notation, reaching
+ * differently far („(1) bis (54) …" against „(1) bis (55) …"), is not the § changing
+ * — it is the ressort leaving one Absatz more out. 13 such rows in the corpus
+ * (26.09.2026). „redaktionell" is the pill this section already has for a
+ * difference that is not one of substance, so it gets no sixth word; the line
+ * below the pill says which case it is.
+ */
 function badgeOf(row: TextComparisonRow): DiffBadge {
-  return row.editorial ? 'editorial' : row.change
+  return row.editorial || row.elisionRange ? 'editorial' : row.change
 }
 
 interface Group {
@@ -603,6 +611,15 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                       <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
                         {{ BADGE_LABEL[badgeOf(b.row)] }}
                       </span>
+                    </p>
+
+                    <!-- Both columns are the annex's own notation and reach
+                       differently far: what changed is how much it leaves
+                       out, not the provision. Said in words, because the word
+                       diff of „(54)" against „(55)" shows the difference and
+                       hides what it means. -->
+                    <p v-if="b.row.elisionRange" class="mb-1 text-sm leading-relaxed text-ink-secondary">
+                      Nicht der Paragraph ändert sich, sondern der Bereich, den die Beilage auslässt.
                     </p>
 
                     <!-- An unchanged row only reaches a block of its own while

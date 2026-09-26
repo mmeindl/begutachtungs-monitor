@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseTextComparison, summarizeComparison } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { isElidedPair, printedStretches } from '../server/utils/annex/elision'
+import { isElidedPair, isElisionRangeOnly, printedStretches } from '../server/utils/annex/elision'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
 
@@ -832,6 +832,35 @@ describe('an elision line that names its own §', () => {
     // itself and says nothing about where a § starts.
     const rows = parse(annex([open, pair('§ 16 Abs. 1 bis 24 …', '§ 16 Abs. 1 bis 25 …')]))
     expect(rows.map((r) => r.para)).toEqual(['§ 10.', '§ 10.'])
+  })
+})
+
+describe('isElisionRangeOnly — the Auslassung changed, not the paragraph', () => {
+  // 13 rows of the corpus (26.09.2026): both cells are nothing but the
+  // notation and reach differently far. Shown as „geändert" they claim the §
+  // moved; the page says what moved instead.
+  it('names the rows where only the range differs', () => {
+    expect(isElisionRangeOnly('1. bis 59. ...', '1. bis 60. ...')).toBe(true)
+    expect(isElisionRangeOnly('(1) bis (54) …', '(1) bis (55) …')).toBe(true)
+    expect(isElisionRangeOnly('(1) …', '§ 37. (1) …')).toBe(true)
+  })
+
+  it('leaves every row that carries text alone', () => {
+    // A cell that reduces to nothing under `withoutElision` can still say
+    // something — 20 v.H. against 50 v.H. is a rate going from a fifth to a
+    // half, and it was this test that caught the first version of the rule.
+    expect(isElisionRangeOnly('20 v.H. ... 2026', '50 v.H. ... 2026')).toBe(false)
+    expect(isElisionRangeOnly('............ 500', '............ 700')).toBe(false)
+    expect(isElisionRangeOnly('(1) Der Antrag ist zu stellen. …', '(1) Der Antrag ist schriftlich zu stellen. …')).toBe(false)
+    // Identical notation is elided, not a range change.
+    expect(isElisionRangeOnly('(1) bis (4) …', '(1) bis (4) …')).toBe(false)
+    // No mark at all: an ordinary pair of cells.
+    expect(isElisionRangeOnly('(1) 54', '(1) 55')).toBe(false)
+  })
+
+  it('reaches the row the parse produces', () => {
+    const rows = parse(annex([pair('§ 906. (1) bis (54) ...', '§ 906. (1) bis (55) ...')]))
+    expect(rows.map((r) => [r.change, r.elided, r.elisionRange])).toEqual([['changed', false, true]])
   })
 })
 

@@ -28,7 +28,7 @@ import { candidateOf, headingOf, resolveBoundaries, type BoundaryCandidate } fro
 import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import type { LawDiffSegment } from '../../../shared/types'
-import { elisionOpens, isElidedPair } from './elision'
+import { elisionOpens, isElidedPair, isElisionRangeOnly } from './elision'
 import { compareKey } from '../lawtext/normalize'
 import { cellText, headingOnly, paraHeading, stripGld, stripParaHeading, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 import { COLSPAN_RE, columnSpans, columnsOf, coversTheWidth, itemsInOrder, liftTables, outermost, type ComparisonItem } from './tableElements'
@@ -79,6 +79,13 @@ export interface ComparisonRow {
    * "geändert".
    */
   editorial: boolean
+  /**
+   * Both columns are nothing but the annex's elision notation, and they reach
+   * differently far („(1) bis (54) …" against „(1) bis (55) …"). What changed
+   * is how much the ressort leaves out, not the provision — the page says so
+   * instead of marking the § as changed (`annex/elision.ts`, 26.09.2026).
+   */
+  elisionRange: boolean
 }
 
 /**
@@ -352,7 +359,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
         releaseHeadings()
         law = article.key
         openPara = null
-        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false })
+        rows.push({ kind: 'article', law, heading: headingOf(article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
         pendingHeading = []
         continue
       }
@@ -458,6 +465,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
       elided,
       segments,
       editorial: isEditorialChange(segments),
+      elisionRange: change === 'changed' && !elided && isElisionRangeOnly(current, proposed),
     }
     pendingHeading = []
     // A heading the annex prints in **both** columns, in a row of its own and

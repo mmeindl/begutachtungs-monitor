@@ -5206,6 +5206,40 @@ werden dadurch wieder vergleichbar (71,9 % → 72,8 %, im unverweigerten Topf
 zuvor), Drift über beide Pfade ohne Befund — die Beilage hat nie ein „§ 0"
 adressiert.
 
+**Nicht der Paragraph ändert sich, sondern die Auslassung (26.09.2026).**
+Seit dem Wortdiff stehen Zeilen auf der Seite, deren beide Spalten nichts als
+die Auslassungssyntax der Beilage tragen und sich nur darin unterscheiden,
+wie weit sie reicht: „(1) bis (54) …" gegen „(1) bis (55) …". Als „geändert"
+gelesen behaupten sie, § 906 sei geändert worden — wahr über die Beilage,
+falsch über das Gesetz. Der Posten stand mit „erst zählen" in `TODO.md`, weil
+die Zahl zweimal veraltet war.
+
+**Gezählt: 13** über 400 Entwürfe — 12 auf dem Tabellenpfad (6.366
+Substanzzeilen) und **eine** auf dem PDF-Pfad (2.990), nicht die 48 aus der
+ersten Schätzung. Zwei der zwölf unterscheiden sich nicht im Bereich, sondern
+darin, wo die Kennung steht („(1) …" gegen „§ 37. (1) …"); sie lesen sich
+gleich und gehören zur selben Klasse.
+
+**Keine eigene Urteilsform für 13 Zeilen.** Das Abzeichen „redaktionell" gibt
+es in diesem Abschnitt schon für einen Unterschied, der keiner der Substanz
+ist; die Zeile bekommt es und darunter einen Satz, der sagt, welcher Fall es
+ist: *„Nicht der Paragraph ändert sich, sondern der Bereich, den die Beilage
+auslässt."* Der Wortdiff bleibt darunter stehen, und was wirklich neu ist —
+im UGB der Abs. 56 mit dem Inkrafttreten — steht unverändert als „neu"
+daneben. Am Entwurf 1098/ME nachgesehen und im Bild bestätigt.
+
+**Der Test der Regel ist `printedStretches`, nicht `withoutElision`, und das
+ist die halbe Sicherheit.** `withoutElision` löscht „v.H." zusammen mit den
+Punkten, also reduzieren sich „20 v.H. ... 2026" und „50 v.H. ... 2026"
+beide auf nichts — ein Satz, der von einem Fünftel auf die Hälfte geht, wäre
+als Formalie abgelegt worden. Die erste Fassung der Regel tat genau das, und
+der eigene Test hat sie erwischt; `printedStretches` schneidet nur die
+Bezeichnungskette vor einer Marke weg und nie den Text hinter der letzten,
+also behält jede Zelle, die etwas Eigenes druckt, ihre Änderung.
+
+Am Tor ändert sich nichts (`change` und `elided` bleiben, wie sie waren),
+Drift über beide Pfade ohne Befund.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the
@@ -5567,38 +5601,65 @@ damit nicht zwei Produkte entstehen:
 | Metazeile über dem Titel | Geschäftszahl · Ressort-Badge (verlinkt) · Frist-Pille | **Typwort** · Ressort-Badge (verlinkt) · Frist-Pille |
 | `h1` | Kurztitel | Kurztitel |
 | Unterzeile | amtlicher Sammeltitel | langer RIS-Titel |
-| Herkunftszeile | „Auf parlament.gv.at ansehen ↗" | **Dokumentnummer** · „Im RIS ansehen ↗" |
+| Herkunftszeile | „Auf parlament.gv.at ansehen ↗" | „Im RIS ansehen ↗" (seit 26.09.2026 auch optisch) |
 | Karte darunter | Status + SpineRail (5 Stationen) | Status + Verfahrensweg in Worten |
 | CTA-Karte | Frist + Stellungnahme-Knopf + `.ics` | Frist + Begleitschreiben-Knopf + `.ics` |
-| Abschnitte | fünf, den Stationen folgend | einer: Dokumente |
+| Abschnitte | fünf, den Stationen folgend | einer: Dokumente — und dort die **Zitierform** |
 
 Das Typwort steht dort, wo die Entwurfsseite die Geschäftszahl führt: Diese
 Sätze haben keine, und das Typwort ist das, was sie einem Leser
 identifiziert.
 
+**Die Zeile „Herkunftszeile" behauptete eine Gleichheit, die sie nicht
+hatte** — bis 26.09.2026, und es war eine halbe Utility-Klasse. Die
+Entwurfsseite setzt `link-inline` (`text-accent-deep`, unterstrichen in
+Ruhe), diese Seite hatte dieselbe Klassenliste von Hand nachgebaut, **ohne
+die Farbe**: der eine Weg der Seite zu ihrer Quelle stand als grauer
+Fließtext da, während derselbe Link daneben blau ist. Eine
+Anatomie-Tabelle vergleicht Beschriftungen; sie sieht so etwas nicht. Lehre
+für die nächste Angleichung: gemeinsame Klasse statt nachgebauter
+Klassenliste.
+
 **Die Zitierform stand bis 26.09.2026 nirgends, und das war die eine bewusste
 Lücke dieser Tabelle.** „132/ME" ist der String, den man zitiert, in eine
 Mail schreibt, in einer Anfrage nennt — diesen Sätzen fehlte sein
 Gegenstück. Es gibt eines: die **RIS-Dokumentnummer**. Sie ist die Adresse,
-unter der das RIS den Satz führt, sie ist das, was der Link daneben auflöst,
+unter der das RIS den Satz führt, sie ist das, was „Im RIS ansehen" auflöst,
 und sie ist die eigene URL dieser Seite — sichtbar war sie nur in der
 Adresszeile, ohne ein Wort dazu, was sie ist.
 
-**Sie steht in der Herkunftszeile und nicht in der Metazeile, gegen die
-Zeile der Tabelle darüber — gemessen, bevor entschieden wurde.** Die
-Entwurfsseite trägt ihre Geschäftszahl oben, weil „137/ME" fünf Zeichen hat;
-die GUID-Form der Dokumentnummer hat 42, und in demselben Slot kostete sie
-am Telefon **zwei zusätzliche Zeilen über der h1** (drei Metazeilen bei
-500 px gegen die eine der Entwurfsseite) — grauer Code, der die Überschrift
-nach unten drückt, die sagt, worum es geht. Die Herkunftszeile ist Fließtext
-mit „·"-Trennern, sie bricht ohnehin um, und dort steht der Auflöser der
-Nummer. Die Anatomie behält damit denselben **Job** an derselben Stelle —
-Identität dort, wo ein Leser sie kopieren kann — und legt sie dorthin, wo
-eine lange hinpasst. Kein eigener Link auf der Nummer: er zeigte auf die
-RIS-Seite, die diese Zeile schon verlinkt, und die Entwurfsseite trennt
-genauso — die Geschäftszahl ist Text, ihr Auflöser steht daneben. Das Wort
-„Dokumentnummer" ist `sr-only`: gedruckt wäre es das Längste auf der Zeile
-für eine Tatsache, die nur beim Zitieren gebraucht wird. Der `.ics`-Knopf hat hier mehr Gewicht als dort — auf einem
+**Sie steht jetzt im Abschnitt „Dokumente", bei dem Satz, der die Quelle
+ohnehin nennt — und der Kopf bleibt, wie er war.** Zwei verworfene Versuche
+stehen hinter dieser Zeile, und beide sind der Grund für sie:
+
+- *In der Metazeile*, neben dem Typwort, also dort, wo die Tabelle oben die
+  Geschäftszahl führt. Kostete am Telefon **zwei zusätzliche Zeilen über der
+  h1** — drei Metazeilen bei 500 px gegen die eine der Entwurfsseite. Grauer
+  Code, der die Überschrift nach unten drückt, die sagt, worum es geht.
+- *Eine Zeile tiefer, in der Herkunftszeile.* Nicht kleiner, sondern falsch
+  in der Art: diese Zeile sind menschenlesbare Angaben mit „·" getrennt — ein
+  Ressortname, eine Linkbeschriftung —, und eine 42-Zeichen-GUID in
+  derselben Größe, Stärke und Farbe ist nicht dieselbe Sorte Ding. Sie las
+  sich als Rauschen und schob den Link auf eine eigene Zeile.
+
+**Der Fehler hinter beiden war, von der Anatomie-Tabelle her zu denken statt
+vom String.** „137/ME" gehört in den Kopf, weil es kurz ist und Leute es
+aussprechen; `BEGUT_C769778C_3342_41D1_A1DF_931D7F4BBF1B` ist ein
+Nachschlageschlüssel, den niemand im Kopf trägt. Gleichheit der *Position*
+war das falsche Ziel, Gleichheit des *Jobs* das richtige — und der Job ist
+„zitieren und nachschlagen". Also steht die Nummer da, wo wer zitieren oder
+herunterladen will ohnehin hinsieht, in einem eigenen typografischen Register
+(`font-mono text-xs`), damit sie als Schlüssel liest und nicht als Fließtext.
+Unten kostet ihre Länge nichts. Kein eigener Link auf der Nummer: er zeigte
+auf die RIS-Seite, die der Kopf schon verlinkt, und die Entwurfsseite trennt
+genauso — die Geschäftszahl ist Text, ihr Auflöser steht anderswo.
+
+**Und die Gegenrechnung gehört dazu, weil sie knapp ausging:** Die Nummer
+*ist* die URL dieser Seite (`/entwuerfe/BEGUT_…`), wer zitiert, kopiert also
+ohnehin die Adresszeile. Der Zugewinn ist, dass sie kopierbar ist, ohne in
+die Adresszeile zu greifen, und dass ein Wort danebensteht, was sie ist —
+klein, aber echt, und im Fuß einer Seite billig genug dafür. Im Kopf war er
+das nicht. Der `.ics`-Knopf hat hier mehr Gewicht als dort — auf einem
 Ministerialentwurf ist die Frist einer von mehreren Wegen zu handeln, hier
 ist sie zusammen mit dem Begleitschreiben die ganze Handlungsfläche.
 

@@ -85,6 +85,37 @@ export function isElidedPair(current: string, proposed: string): boolean {
 }
 
 /**
+ * Both columns are the annex's own notation and they differ only in how far
+ * it reaches: „(1) bis (54) …" against „(1) bis (55) …".
+ *
+ * The row is NOT elided — `isElidedPair` refuses it on the digits, and rightly
+ * so, because a cell reducing to nothing can still say something („20 v.H."
+ * against „50 v.H."). But where nothing is left but the notation, what changed
+ * is the **Auslassung**, not the provision: the ressort leaves one Absatz more
+ * or less out. Shown as a change of the § it reads „§ 906 geändert" over two
+ * lines of dots, which is true of the annex and false of the law.
+ *
+ * Counted 26.09.2026 over 400 drafts: **13 rows** — 12 on the table path
+ * (6.366 substantive rows) and one on the PDF path (2.990). Two of the twelve
+ * differ in where the designation stands rather than in the range („(1) …"
+ * against „§ 37. (1) …"); they read the same way and belong to the same
+ * class.
+ *
+ * **The test is `printedStretches`, not `withoutElision`**, and the
+ * difference is the whole safety of it: `withoutElision` deletes „v.H." along
+ * with the dots, so „20 v.H. ... 2026" against „50 v.H. ... 2026" — a rate
+ * going from a fifth to a half — would reduce to nothing and be filed as a
+ * formality. `printedStretches` cuts only the designation chain that
+ * introduces a mark and never the text behind the last one, so a cell that
+ * prints anything of its own keeps it and stays a change.
+ */
+export function isElisionRangeOnly(current: string, proposed: string): boolean {
+  if (!ELISION_MARK_RE.test(current) || !ELISION_MARK_RE.test(proposed)) return false
+  if (printedStretches(current).length > 0 || printedStretches(proposed).length > 0) return false
+  return digitRun(current) !== digitRun(proposed)
+}
+
+/**
  * Every digit of a row, in printed order — the one thing `withoutElision`
  * throws away that a reader may not lose.
  *

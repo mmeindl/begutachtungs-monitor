@@ -24,7 +24,7 @@ import { diffTokens, isEditorialChange } from '../diff/wordDiff'
 import { normalizeText } from '../lawtext/normalize'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { classify, type ComparisonRow } from './comparisonRows'
-import { isElidedPair } from './elision'
+import { isElisionRangeOnly, isElidedPair } from './elision'
 import { HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
 
 /**
@@ -904,6 +904,7 @@ function rowOf(law: string | null, gld: string | null, current: string, proposed
     elided,
     segments,
     editorial: isEditorialChange(segments),
+    elisionRange: change === 'changed' && !elided && isElisionRangeOnly(current, proposed),
   }
 }
 
@@ -1192,7 +1193,7 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
   for (const section of sections) {
     const law = section.article?.key ?? null
     if (section.opened && section.article) {
-      rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false })
+      rows.push({ kind: 'article', law, heading: headingOf(section.article), gld: null, para: null, current: '', proposed: '', change: 'unchanged', elided: false, segments: null, editorial: false, elisionRange: false })
     }
     const left = unitsOfColumn(section.lines.map((l) => ({ text: l.left, wrapped: reachedEdge(l.leftEnd, edges.left), context: contextFor.get(l) })))
     const right = unitsOfColumn(section.lines.map((l) => ({ text: l.right, wrapped: reachedEdge(l.rightEnd, edges.right), context: contextFor.get(l) })))

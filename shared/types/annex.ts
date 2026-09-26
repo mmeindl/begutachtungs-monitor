@@ -119,6 +119,8 @@ export interface TextComparisonRow {
   elided: boolean
   segments: LawDiffSegment[] | null
   editorial: boolean
+  /** Both columns are only the annex's elision notation, reaching differently far */
+  elisionRange: boolean
   /**
    * How the row's "Geltende Fassung" fared against the standing law in RIS
    * (`server/utils/annex/verdict.ts`, docs/architecture.md §12.13).
