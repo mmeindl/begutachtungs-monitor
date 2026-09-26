@@ -312,6 +312,26 @@ describe('parseKonsParagraph', () => {
     expect(abs.children[0]!.children.at(-1)).toMatchObject({ level: 'schluss', text: 'oder' })
   })
 
+  // The newer spelling names the level in `ebene`, read since 26.09.2026:
+  // 0/0.5 Absatz, 1 Ziffer, 2 and deeper Litera. Measured on `harness:kons`
+  // over 40 Sammelnovellen — identisch 762 → 764, „kein geltender Text"
+  // 27 → 25 — and the variant that files a clause ENDING its list on the
+  // Absatz instead is worse (763 / 26), so it closes its Ziffer like any
+  // other (docs/architecture.md §12.13).
+  it('reads the level of a closing clause from `ebene`, list ended or not', () => {
+    const xml = (tail: string): string => `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 7</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 7.</gldsym> (1) Zu ersetzen sind die Kosten, die</absatz>
+      <liste><ziffernliste ebene="1"><listelem ct="text"><symbol stellen="2">1.</symbol>für Unterkunft erwachsen,</listelem></ziffernliste>
+      <schlussteil ebene="1" ct="text">soweit sie angemessen sind,</schlussteil>${tail}</liste>
+    </abschnitt></nutzdaten></risdok>`
+    for (const tail of ['', '<ziffernliste ebene="1"><listelem ct="text"><symbol stellen="2">2.</symbol>sonst anfallen.</listelem></ziffernliste>']) {
+      const abs = parseKonsParagraph(xml(tail))!.children[0]!
+      expect(abs.children.some((c) => c.level === 'schluss')).toBe(false)
+      expect(abs.children[0]!.children.at(-1)).toMatchObject({ level: 'schluss', text: 'soweit sie angemessen sind,' })
+    }
+  })
+
   // The newer spelling carries no level and keeps the Absatz it has always
   // been given, and an Absatz without any enumeration is untouched by all of
   // this — the regression guard for 2.824 documents that read fine today.

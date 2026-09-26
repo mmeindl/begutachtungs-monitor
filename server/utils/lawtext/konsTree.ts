@@ -147,21 +147,25 @@ function lastChild(node: LawNode, level: NodeLevel): LawNode | null {
  * and in every one of those it was empty before (docs/architecture.md
  * §12.13).
  *
- * **Measured and deliberately not done.** `<schlussteil>` carries the same
- * information in `ebene` — 0 and 0.5 for
- * the Absatz (4.792 blocks), 1 for the Ziffer (2.640), 2 and deeper for the
- * Litera (587) — and using it takes the documents whose `plainText` is still
- * out of document order from 220 to 121. It is *not* used, because it would
- * also empty the Absatz-level Schlussteil slot in 2.352 documents,
- * and whether the 406 `ebene="1"` clauses that *end* their list close the
- * Ziffer or the Absatz is exactly the question `ebene` cannot answer on its
- * own. That needs the amendment engine's harness over a corpus, not this
- * module — the consolidation engine and its corpus measurements are
- * docs/architecture.md §12.12.
+ * **`<schlussteil>` names it in `ebene`, and since 26.09.2026 that is read**
+ * — 0 and 0.5 for the Absatz (4.792 blocks), 1 for the Ziffer (2.640), 2 and
+ * deeper for the Litera (587); it takes the documents whose `plainText` is
+ * out of document order from 220 to 121. It stood here as „measured and
+ * deliberately not done" for two reasons, and the corpus answered both. It
+ * empties the Absatz-level Schlussteil slot in 2.352 documents — which costs
+ * nothing that shows: `harness:kons` over 40 Sammelnovellen moves identisch
+ * 762 → **764**, „kein geltender Text" 27 → **25**, and the sharpest class
+ * not at all. And whether the 406 `ebene="1"` clauses that *end* their list
+ * close the Ziffer or the Absatz was the question `ebene` cannot answer on
+ * its own: the variant that files an ending clause on the Absatz was built
+ * and measured on the same bench and is **worse** (763 / 26), so they close
+ * the Ziffer like every other one. Protocol: docs/architecture.md §12.13.
  */
-function closingHost(abs: LawNode, typ: string): LawNode {
+function closingHost(abs: LawNode, typ: string, ebene: string | null = null): LawNode {
   const depth = /^e(\d+)$/i.exec(typ)
-  const level: NodeLevel = depth ? (Number(depth[1]) >= 2 ? 'lit' : 'z') : /^ziff$/i.test(typ) ? 'z' : /^lit$/i.test(typ) ? 'lit' : 'abs'
+  const byEbene: NodeLevel | null = ebene === null ? null : Number(ebene) >= 2 ? 'lit' : Number(ebene) >= 1 ? 'z' : 'abs'
+  const level: NodeLevel =
+    byEbene ?? (depth ? (Number(depth[1]) >= 2 ? 'lit' : 'z') : /^ziff$/i.test(typ) ? 'z' : /^lit$/i.test(typ) ? 'lit' : 'abs')
   if (level === 'abs') return abs
   const z = lastChild(abs, 'z')
   if (z === null) return abs
@@ -268,7 +272,8 @@ export function parseKonsParagraph(xml: string): LawNode | null {
 
     if (tag === 'schlussteil' || tag === 'schluss') {
       const t = text(inner)
-      if (currentAbs && t) closingHost(currentAbs, typ).children.push(makeNode('schluss', 'schluss', '', t))
+      const ebene = tag === 'schlussteil' ? (/ebene="([^"]+)"/.exec(attrs)?.[1] ?? null) : null
+      if (currentAbs && t) closingHost(currentAbs, typ, ebene).children.push(makeNode('schluss', 'schluss', '', t))
       continue
     }
 

@@ -4900,6 +4900,32 @@ verweigert wurde (Verweigerung → null, geprüft 0 → 3, bestätigt 0 → 2). 
 Methodenverordnung bleibt Zahl für Zahl, wie sie war — das ist die richtige
 Antwort, nicht ein ausbleibender Ertrag.
 
+**Die Ebene des Schlussteils, und die Frage, die nur ein Korpus beantworten
+konnte (26.09.2026).** Im Register der Restrisiken stand `<schlussteil
+ebene="…">` als „gemessen und bewusst nicht getan": Die Ebene zu lesen nimmt
+die Dokumente mit verletzter Dokumentreihenfolge von 220 auf 121, **leert
+aber** in 2.352 Dokumenten den Schlussteil-Slot des Absatzes, an dem „Im
+Schlussteil des § 169 Abs. 1" hängt. Und die 406 Klauseln mit `ebene="1"`,
+die ihre Liste *beenden*, könnten ebenso gut den Absatz schließen wie die
+Ziffer — das kann `ebene` aus sich heraus nicht sagen.
+
+Beides hat jetzt eine Zahl, vom Prüfstand der Engine über 40 Sammelnovellen,
+weil nur dort ein falsch abgelegter Schlussteil sichtbar wird — als Text, den
+eine Anweisung nicht findet oder an der falschen Stelle ändert:
+
+| | heute | Ebene gelesen | Ebene, aber die letzte Klausel dem Absatz |
+|---|---|---|---|
+| identisch mit dem RIS | 762 | **764** | 763 |
+| halb angewendet | 72 | **71** | 72 |
+| kein geltender Text (Rest des Tores) | 27 | **25** | 26 |
+| eigene Abweichung | 22 | 22 | 22 |
+
+Die geleerten Slots kosten also nichts, was sich zeigt, und die offene Frage
+ist beantwortet: **eine Klausel schließt ihre Ziffer, auch wenn die Liste
+danach endet** — die Variante, die sie dem Absatz gibt, ist um einen
+Paragraphen schlechter. Anzeigbare Paragraphen über 120 Entwürfe 508 → 509,
+Drift über beide Beilagenpfade ohne Befund.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the
