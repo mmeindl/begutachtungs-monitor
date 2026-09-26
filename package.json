@@ -17,6 +17,7 @@
     "harness:annex": "vite-node scripts/harness/annexPdf.ts --",
     "harness:fault-injection": "vite-node scripts/harness/faultInjection.ts --",
     "harness:guard-eval": "vite-node scripts/harness/guardEval.ts --",
+    "harness:segments": "vite-node scripts/harness/segments.ts --",
     "audit:classifier": "vite-node scripts/audit/classifier.ts --",
     "audit:para-title": "vite-node scripts/audit/paraTitle.ts --",
     "corpus:verordnungen": "vite-node scripts/corpus/verordnungen.ts --",
