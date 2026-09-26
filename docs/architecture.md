@@ -353,7 +353,7 @@ Viz rules (from the dataviz skill, binding for everything future): text never ca
 
 ## 9. Tests
 
-Vitest, 91 files, 1.581 cases, no network: everything under test is a pure
+Vitest, 90 files, 1.581 cases, no network: everything under test is a pure
 module with relative imports, which is why the modules are cut that way in
 the first place. The two exceptions name themselves — `params.ts`, because
 reading a request IS the Nitro boundary, and since 26.09.2026

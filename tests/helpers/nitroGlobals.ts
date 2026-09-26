@@ -25,17 +25,56 @@
  */
 
 /**
- * The same three names for the TOOLS typecheck. `tsconfig.tools.json`
+ * The same names for the TOOLS typecheck. `tsconfig.tools.json`
  * replaces the server project's `include`, so the generated
  * `.nuxt/types/nitro-imports.d.ts` is not part of it — and `params.ts`,
  * which this half now imports, would not compile there although it compiles
- * under `nuxt typecheck`. Declared with h3's own signatures rather than with
- * the fakes' below, so the two typechecks agree on what these functions are.
+ * under `nuxt typecheck`. Declared with h3's and Nitro's own signatures
+ * rather than with the fakes' below, so the two typechecks agree on what
+ * these functions are.
+ *
+ * NAMED ONE BY ONE, and that is the decision, not laziness: pulling
+ * `nitro-imports.d.ts` into the tools project would declare all 900
+ * auto-imports at once — including every `server/utils` export — and the
+ * scripts run under vite-node, where NO auto-import exists. A script that
+ * forgot an explicit import would then typecheck and crash. So a name is
+ * added here when a test needs it, and each one is a Nitro/h3 name, never
+ * one of ours.
+ *
+ * `defineCachedFunction`, `DERIVED_CACHE` and `import.meta.dev` came with
+ * `tests/bgblService.test.ts` (26.09.2026): executing a `*Service.ts` at all
+ * means executing the cache wrapper its cached functions are built with at
+ * module load, and a module a test mocks away at RUNTIME is still part of the
+ * type program, so `risOnly.ts` and `begutCorpus.ts` came with it.
+ *
+ * `defineCachedFunction` is written out instead of imported, unlike the h3
+ * three: `nitropack` is Nuxt's dependency and not ours, so the specifier does
+ * not resolve from `tests/` under pnpm. That it is permissive costs nothing —
+ * every file that CALLS it lives under `server/`, which `pnpm typecheck`
+ * checks against Nitro's real types. What this declaration has to do is stop
+ * the tools project failing on a file it does not own.
  */
 declare global {
   const createError: typeof import('h3').createError
   const getQuery: typeof import('h3').getQuery
   const getRouterParam: typeof import('h3').getRouterParam
+  const defineCachedFunction: <T, A extends unknown[]>(
+    fn: (...args: A) => Promise<T>,
+    opts: {
+      name: string
+      getKey?: (...args: A) => string
+      maxAge?: number
+      swr?: boolean
+      base?: string
+      shouldBypassCache?: (...args: A) => boolean
+    },
+  ) => (...args: A) => Promise<T>
+  const DERIVED_CACHE: typeof import('../../server/utils/cache/base').DERIVED_CACHE
+
+  /** Nuxt's build-time flag, read by `ris/begutCorpus.ts` to cache RIS pages in dev only. */
+  interface ImportMeta {
+    readonly dev: boolean
+  }
 }
 
 /** The fake event both readers take, in place of an `H3Event`. */
