@@ -997,9 +997,17 @@ export interface AnnexParse {
    */
   unreadable?: string
   /**
-   * Blocks of the annex that belong to no provision and were left out —
-   * everything a column prints before its first § marker, and the entries of
-   * a reprinted Inhaltsverzeichnis that no provision of the annex answers.
+   * Blocks of the annex that belong to no provision and were left out.
+   *
+   * **Two different things, counted apart since 26.09.2026**, because they
+   * would have to be phrased apart the moment a page discloses them:
+   * `frontMatter` is everything a column prints before its first § marker —
+   * „E n t w u r f", a Langtitel, a Promulgationsklausel, and one of them
+   * 94.000 characters of Inhaltsverzeichnis — while `contents` is an entry of
+   * a *reprinted* table of contents that no provision of the annex answers.
+   * „We are not showing the front matter" is a triviality; „we are not
+   * showing an entry the annex prints as a provision" is a statement about
+   * coverage. `unplaced` stays as their sum so nothing that reads it moves.
    *
    * Optional and read by no shipping caller: one that wants to disclose "so
    * many blocks of the annex are not shown" can. Until one does, the number
@@ -1009,6 +1017,8 @@ export interface AnnexParse {
    * to be its other reader was removed on 22.09.2026.
    */
   unplaced?: number
+  /** The two halves of `unplaced`, for a caller that has to name them. */
+  unplacedKinds?: { frontMatter: number; contents: number }
   /**
    * Pages whose geometry the parse could not vouch for and therefore did not
    * read — 0 when none, which is every document of GP XXVIII (`isProven`).
@@ -1177,7 +1187,8 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     sections[sections.length - 1]!.lines.push(line)
   }
 
-  let unplaced = 0
+  let frontMatter = 0
+  let contents = 0
   for (const section of sections) {
     const law = section.article?.key ?? null
     if (section.opened && section.article) {
@@ -1201,14 +1212,14 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     // dropped now, and counted.
     for (const unit of right) {
       if (!unit.id) {
-        unplaced++
+        frontMatter++
         continue
       }
       const mate = byId.get(unit.id)
       // A one-sided entry of the annex's Inhaltsverzeichnis, which would go
       // out as an insertion — counted, like the front matter above it.
       if (!mate && isContentsEntry(unit.gld, unit.text)) {
-        unplaced++
+        contents++
         continue
       }
       if (mate?.id) used.add(mate.id)
@@ -1219,17 +1230,17 @@ export function parseAnnexPdf(pages: readonly AnnexPage[], articles: readonly Dr
     // column's order everything else follows, it would otherwise vanish.
     for (const unit of left) {
       if (!unit.id) {
-        unplaced++
+        frontMatter++
         continue
       }
       if (used.has(unit.id)) continue
       if (isContentsEntry(unit.gld, unit.text)) {
-        unplaced++
+        contents++
         continue
       }
       const row = rowOf(law, unit.gld, unit.text, '', unit.context)
       if (row) rows.push(row)
     }
   }
-  return { rows, refusal: resolution.refusal, unplaced, droppedPages }
+  return { rows, refusal: resolution.refusal, unplaced: frontMatter + contents, unplacedKinds: { frontMatter, contents }, droppedPages }
 }

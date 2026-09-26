@@ -216,6 +216,7 @@ describe('the PDF annex of the UWG-Novelle, whose pages are turned', () => {
     // The Langtitel and the table of contents pair with nothing, and the
     // proposed side alone would read as an insertion.
     expect(parsed.unplaced).toBe(2)
+    expect(parsed.unplacedKinds!.frontMatter + parsed.unplacedKinds!.contents).toBe(2)
     expect(parsed.rows.some((r) => r.proposed.includes('StF: BGBl. Nr. 448/1984'))).toBe(false)
   })
 

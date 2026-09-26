@@ -759,6 +759,11 @@ describe('an entry of the annex’s own table of contents', () => {
     ])], ONE_LAW)
     expect(parsed.rows.map((r) => r.gld)).toEqual(['§ 12.', '§ 14.'])
     expect(parsed.unplaced).toBe(2)
+    // The two are different things and are counted apart (26.09.2026): both
+    // of these are contents entries, and no front matter stands here — which
+    // is the point of the split, since the corpus is 236 blocks of front
+    // matter against 4 contents entries in 105 PDF annexes.
+    expect(parsed.unplacedKinds).toEqual({ frontMatter: 0, contents: 2 })
   })
 
   // Two shapes stay: an elision is the annex saying it left the text out, and
