@@ -7186,6 +7186,33 @@ Das ist eine Parser-Asymmetrie, kein Unterschied der Dokumente; sie war vorher
 durch die Zitatregel verdeckt und ist jetzt sichtbar. Sie zu schließen ist die
 nächste Arbeit an dieser Strecke, nicht ein Grund, die Regel zurückzunehmen.
 
+**Geschlossen am 26.09.2026, und die Asymmetrie lag an einer Zeile.** RIS
+markiert die Bezeichnung einer Anlage im zitierten Text als
+`<ueberschrift typ="anlage">`; die Word-Vorlage des Parlaments gibt derselben
+Zeile eine Klasse, die unsere Zuordnung nicht kennt, also landet sie dort als
+`other`. `segmentUnits` nahm `other` in die Einheit auf und verwarf `section`
+ausnahmslos — beide Leser sahen dieselbe Zeile, und nur einer behielt sie.
+
+**Die Bezeichnung ist der ganze Test**, und das ist es, was die beiden Leser
+gleich hält. Der *Titel* der Anlage („Liste der zentralen öffentlichen
+Auftraggeber*)") ist auf **beiden** Seiten ein `section` und wird auf beiden
+weiter verworfen; ihn hier mitzunehmen hieße, dieselbe Asymmetrie in die
+andere Richtung zu bauen. Die öffnende Anführung taugte als Test nicht: Eine
+Anordnung kann zwei Anlagen erlassen („Anhang VIII wird durch folgende Anhänge
+VIII und IX ersetzt"), und die zweite Bezeichnung steht mitten im Zitat.
+Ein Ressort setzt die „zu"-Klausel auf eine eigene Zeile („Anlage 3", „(zu
+§ 10 Abs. 1a UStG)"), weshalb eine bloße Klammer **unmittelbar hinter** einer
+Bezeichnung sie fortsetzt — und die Zeile danach ist wieder der Titel.
+
+**Gemessen über die 84 Entwürfe mit Kundmachung** (`pnpm corpus:bgbl-station`):
+substanziell geänderte Einheiten **37 → 24**, gleiche Einheiten 9.051 → 9.063,
+und **kein Entwurf verliert** eine gleiche Einheit. 58/ME 6 → 0, 60/ME 2 → 0,
+76/ME 2 → 0, 88/ME 1 → 0; dazu 14/ME 3 → 1, das in der Klasse nie gezählt war.
+
+**Was bleibt, ist kein Parserfehler mehr, sondern der Befund selbst.** 14/ME
+meldet „BGBl. I Nr.xxx/2025" gegen „BGBl. I Nr. 28/2025" — der Platzhalter des
+Entwurfs, den die Kundmachung ausfüllt. Genau das soll die Station zeigen.
+
 **Und der Preis, offen genannt:** Die Textgegenüberstellung
 (`annex/comparisonRows.ts`) stellt zwei Spalten **desselben** Paragraphen
 nebeneinander und kann deshalb nie eine Umnummerierung feststellen. Dort ist

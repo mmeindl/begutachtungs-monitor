@@ -142,6 +142,29 @@ export function novaoHeading(text: string): string {
 }
 
 /**
+ * „Anlage 1", „Anhang III", „Anlage 5 zu § 14" — a schedule naming itself at
+ * the head of the text it enacts, optionally behind the payload's opening
+ * quote.
+ *
+ * Deliberately anchored and deliberately only the designation: it has to miss
+ * the schedule's *title*, which is a `section` on both sides and dropped on
+ * both. Both readers must end up with the same words, and the cheapest way to
+ * be sure of that is to move as little as possible.
+ */
+const ANLAGE_DESIGNATION_RE = /^"?\s*(?:Anlage|Anlagen|Anhang|Anhänge|Anl\.)\s+\S/i
+
+/**
+ * „(zu § 10 Abs. 1a UStG)" — the rest of the designation, set on its own line.
+ *
+ * A schedule is named „Anlage 5 zu § 14", and where that fits one line the
+ * rule above already has it. One ressort breaks it (88/ME, UStG-Anlage 3),
+ * and then the second line is a `section` too. Only right behind the
+ * designation and only as a bare parenthetical: the line after THAT is the
+ * schedule's title, which both readers drop.
+ */
+const ANLAGE_CONTINUATION_RE = /^\(\s*zu\s/i
+
+/**
  * How a block changes the quotation state. A payload is enclosed in
  * quotation marks: `normalizeText` folds „ “ ” to ", so that pair is a
  * parity bit, while »…« nests around an instruction quoted inside another
@@ -171,6 +194,8 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
   let pendingHeading: string | null = null
   /** Was the block just read a § heading too? Only then does the next one continue it. */
   let headingRun = false
+  /** Was the block just read an Anlage designation? Only then may the next line continue it. */
+  let anlageRun = false
   let current: LawUnit | null = null
   let novelleMode = false
   // Quotation state of everything *before* the block being read, and the
@@ -214,6 +239,8 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     prev = b
     const continuesHeading = headingRun
     headingRun = false
+    const continuesAnlage = anlageRun
+    anlageRun = false
     const inPayload = quoted || guillemets > 0
 
     switch (b.kind) {
@@ -228,6 +255,29 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         lastNovao = 0
         continue
       case 'section':
+        // **An Anlage's own designation is law text, not a heading of ours.**
+        // „Anlage 1 lautet: \"Anlage 1 …" — the schedule repeats its
+        // designation as the first line of the enacted text, and one such
+        // instruction can enact two („Anhang VIII wird durch folgende Anhänge
+        // VIII und IX ersetzt"), so the second designation stands in the
+        // middle of the payload. RIS marks every one of them
+        // `<ueberschrift typ="anlage">`; Parliament's Word template leaves the
+        // class unmapped, so its reader kept the line as `other` while this
+        // one dropped it. The rv→bgbl comparison then reported units as
+        // substantively changed where the two sides differ by exactly that
+        // designation — 11 units over 58/60/76/88/ME, and three more in
+        // 14/ME (measured 26.09.2026, `pnpm corpus:bgbl-station -- --dump`).
+        //
+        // **The designation is the whole test, and that is what keeps the two
+        // readers equal.** The payload's *further* headings — an Anlage's
+        // subtitle („Liste der zentralen öffentlichen Auftraggeber*)") — are a
+        // `section` on BOTH sides and go on being dropped on both; keeping
+        // them here would create the same asymmetry in the other direction.
+        if (novelleMode && current && (ANLAGE_DESIGNATION_RE.test(b.text) || (continuesAnlage && ANLAGE_CONTINUATION_RE.test(b.text)))) {
+          current.blocks.push(b)
+          anlageRun = true
+          continue
+        }
         // **A law is named before its first instruction, and only there.**
         // Later a heading of the same RIS type is quoted payload, and read as
         // a name it renames the law half way through the draft. Measured over

@@ -29,13 +29,15 @@ import { extractBgblLink, mapTextEvolution } from '../../server/utils/parliament
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
 import { diffLawPackage, summarizeDiff } from '../../server/utils/diff/lawDiff'
 import { installFetchCache } from '../lib/harnessCache'
-import { argFlag, argPair } from '../lib/args'
+import { argAssigned, argFlag, argPair } from '../lib/args'
 import { PARLIAMENT, RIS_API, getJson as fetchJson, getText as fetchText, type HttpOptions } from '../lib/http'
 
 if (argFlag('cache')) installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
 const gp = argPair('gp') ?? 'XXVIII'
 const sample = Number(argPair('sample')) || 0
+const dump = argFlag('dump')
+const only = Number(argPair('only') ?? argAssigned('only')) || 0
 const SCRIPT = 'corpus/bgblStation'
 /** Three attempts on anything, 45 s each: one run reads hundreds of documents. */
 const PATIENT: HttpOptions = { script: SCRIPT, attempts: 3, backoffMs: (retry) => 1_200 * retry, timeoutMs: 45_000, retryOnHttpError: true }
@@ -130,6 +132,7 @@ let withBgbl = 0
 let checked = 0
 for (const inr of numbers) {
   if (sample && checked >= sample) break
+  if (only && inr !== only) continue
   let content: unknown
   try {
     content = await getJson(`${PARLIAMENT}/gegenstand/${gp}/ME/${inr}?json=True`)
@@ -188,6 +191,27 @@ for (const inr of numbers) {
       const html = await getText(last.url)
       const { units: diff, lawsOnlyInTo, lawsOnlyInFrom } = diffLawPackage(parseLawUnits(html), units)
       const st = summarizeDiff(diff)
+      // `--dump` prints the units that are neither equal nor merely editorial
+      // — the residue a reader would be shown as a real change between the
+      // last parliamentary version and the Kundmachung. Almost nothing may
+      // change there, so every one of them is either a finding about the
+      // procedure or a fault of our parse, and a count cannot tell which.
+      if (dump) {
+        for (const u of diff.filter((x) => x.change === 'changed' && !x.editorial)) {
+          const a = String(u.fromText ?? '')
+          const b = String(u.toText ?? '')
+          // Where the two texts first part company, with a window around it.
+          // The head of such a unit is identical for hundreds of characters —
+          // printing the head says nothing about the difference, which is the
+          // mistake the first version of this dump made.
+          let at = 0
+          while (at < a.length && at < b.length && a[at] === b[at]) at++
+          const from = Math.max(0, at - 60)
+          console.log(`\n    ### ${inr}/ME ${u.law ?? '—'} / ${u.id} — gleich bis Zeichen ${at} von ${a.length}/${b.length}`)
+          console.log(`      PARLAMENT: …${JSON.stringify(a.slice(from, at + 160))}`)
+          console.log(`      RIS      : …${JSON.stringify(b.slice(from, at + 160))}`)
+        }
+      }
       row.compared = {
         label: last.label,
         total: st.total,

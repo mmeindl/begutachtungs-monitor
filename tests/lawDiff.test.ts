@@ -535,3 +535,77 @@ function writeLawDiffGolden(golden: { summary: unknown; units: string[] }): void
   }
   writeFileSync(new URL(GOLDEN_PATH, import.meta.url), JSON.stringify(out, null, 1) + '\n')
 }
+
+describe('die Anlage nennt sich im eigenen Text (26.09.2026)', () => {
+  // „Anlage 1 lautet: \"Anlage 1 …" — the schedule repeats its designation as
+  // the first line of the text it enacts. RIS marks that line
+  // `<ueberschrift typ="anlage">`, Parliament's Word template leaves the class
+  // unmapped, so one reader kept it and the other dropped it. The rv→bgbl
+  // comparison then reported units as substantively changed where the two
+  // sides differ by exactly that designation: 13 units over 58/60/76/88/ME and
+  // 14/ME (`pnpm corpus:bgbl-station -- --dump`).
+  const ris = (...blocks: string[]) =>
+    `<dokument><ueberschrift typ="titel">Bundesgesetz</ueberschrift><absatz typ="promkleinlsatz">Das X-Gesetz, BGBl. I Nr. 1/2000, wird wie folgt ge&auml;ndert:</absatz>${blocks.join('')}</dokument>`
+  const anlage = (t: string) => `<ueberschrift typ="anlage">${t}</ueberschrift>`
+
+  it('keeps the designation and drops the schedule’s title', () => {
+    const units = parseLawUnitsFromRis(
+      ris(
+        '<absatz typ="novao1">193. Anhang III lautet:</absatz>',
+        anlage('"Anhang III'),
+        anlage('Liste der zentralen &ouml;ffentlichen Auftraggeber*)'),
+        '<listelem>1. Bundeskanzleramt</listelem>',
+      ),
+    )
+    expect(units[0]!.text).toContain('"Anhang III')
+    // The title is a `section` on BOTH sides and stays dropped on both —
+    // keeping it here would be the same asymmetry in the other direction.
+    expect(units[0]!.text).not.toContain('Liste der zentralen')
+    expect(units[0]!.text).toContain('1. Bundeskanzleramt')
+  })
+
+  it('keeps the second designation of an instruction that enacts two', () => {
+    // „Anhang VIII wird durch folgende Anhänge VIII und IX ersetzt" — the
+    // second designation stands in the middle of the payload, so the opening
+    // quote cannot be the test.
+    const units = parseLawUnitsFromRis(
+      ris(
+        '<absatz typ="novao1">97. Anhang VIII wird durch folgende Anh&auml;nge VIII und IX ersetzt:</absatz>',
+        anlage('"Anhang VIII'),
+        '<listelem>1. Bundeskanzleramt</listelem>',
+        anlage('Anhang IX'),
+        '<listelem>a) Soweit Waren</listelem>',
+      ),
+    )
+    expect(units[0]!.text).toContain('Anhang IX')
+  })
+
+  it('keeps a designation whose „zu“-clause stands on its own line', () => {
+    // 88/ME: „Anlage 3" and „(zu § 10 Abs. 1a UStG)" as two blocks. Only
+    // directly behind the designation, and only as a bare parenthetical —
+    // the line after that is the title again.
+    const units = parseLawUnitsFromRis(
+      ris(
+        '<absatz typ="novao1">4. Nach der Anlage 2 wird folgende Anlage 3 eingef&uuml;gt:</absatz>',
+        anlage('"Anlage 3'),
+        anlage('(zu &sect; 10 Abs. 1a UStG)'),
+        anlage('Verzeichnis der dem Steuersatz unterliegenden Gegenst&auml;nde'),
+        '<listelem>1. Milch</listelem>',
+      ),
+    )
+    expect(units[0]!.text).toContain('(zu § 10 Abs. 1a UStG)')
+    expect(units[0]!.text).not.toContain('Verzeichnis der dem Steuersatz')
+  })
+
+  it('still lets a section heading name the law before the first instruction', () => {
+    // The rule this branch sits in front of: a law is named before its first
+    // instruction, and only there. A Novelle-mode guard is what keeps the two
+    // apart, so it is worth a test of its own.
+    const units = parseLawUnitsFromRis(
+      `<dokument><ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="anlage">&Auml;nderung des Aktiengesetzes</ueberschrift>` +
+      `<absatz typ="promkleinlsatz">Das Aktiengesetz wird wie folgt ge&auml;ndert:</absatz>` +
+      `<absatz typ="novao1">1. &sect; 2 lautet:</absatz><absatz typ="abs">"(1) Neu."</absatz></dokument>`,
+    )
+    expect(units[0]!.article).toBe('Änderung des Aktiengesetzes')
+  })
+})
