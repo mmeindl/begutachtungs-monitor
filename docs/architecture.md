@@ -2077,6 +2077,53 @@ nur der Filter wird zum Zusammenlegen.
 Vier Paragraphen wechseln von „halb angewendet" nach „identisch", und die
 schärfste Klasse steht still. Drift ohne Befund.
 
+**„Tarifpost" ist keine Adressklasse, sondern die Tabelle (26.09.2026).** Von
+den acht Adressklassen des Eimers von 55 stand `Tarifpost` 13 als die letzte,
+die ohne neuen Bestand baubar schien. Sie ist es nicht, und der Grund liegt
+eine Schicht tiefer.
+
+Das RIS führt den **Tarif des Gerichtsgebührengesetzes gar nicht als eigenes
+Dokument**: Unter der Gesetzesnummer des GGG stehen 67 Dokumente, §§ 1 bis 32
+und ein Dutzend Übergangsartikel — und der ganze Tarif, alle Tarifposten mit
+ihren Anmerkungen, steckt **in `Art. 1 § 32`**, 433 KB, als eine einzige
+Tabelle hinter dem Satz über die Einbringung. Das Gebührengesetz 1957 macht
+es anders und endet am selben Punkt: dort sind die Tarifposten
+`<ueberschrift>`-Abschnitte innerhalb des § 14 („8 Einreise- und
+Aufenthaltstitel"), und der Absatz, den eine Anweisung meint
+(„§ 14 Tarifpost 8 Abs. 2"), ist eine von vielen Absatzkennungen desselben
+Dokuments.
+
+Beide Dokumente kommen aus `parseKonsParagraph` als `null` zurück, und zwar
+**mit Absicht**: ein Dokument mit `<table>` wird nicht geladen, weil die
+Zellen sonst in Dokumentreihenfolge als Absätze gelesen würden (Befund vom
+09.09.2026, NEHG §§ 24, 26, 27). Die 13 GGG-Zeilen würden also, selbst wenn
+die Adresse gelesen wäre, an derselben Stelle verweigert wie die vier des
+GebG — nur mit einem anderen Grund. **Adressarbeit kauft hier nichts.**
+
+Damit ist die Klasse neu vermessen und heißt anders:
+
+| | Zahl |
+|---|---|
+| geholte Paragraphendokumente im Cache | 20.419 |
+| davon mit `<table>`, also nie geladen | **693 (3,4 %)** |
+| betroffene Gesetze | 151 von 607 |
+| Verweigerungen „nicht im geltenden Text" gesamt | 108 von 437 |
+| davon einer Tabelle zuzuordnen | **18** |
+| dazu die GGG-Tarifposten | 13 |
+
+Die größte verbliebene Verweigerungsklasse ist „nicht im geltenden Text"
+(108), und die Tabelle erklärt davon 18. Der Rest ist nicht sie.
+
+**Was daraus folgt.** Die Tabelle ist ein eigener Posten, kein
+Adressenposten: Sie müsste als **undurchsichtiger Knoten** geladen werden —
+der Paragraph kommt mit seinem übrigen Baum an, die Tabelle als ein Block,
+den keine Anweisung betreten darf. Das gewinnt Anzeige (ein nicht geladener
+Paragraph kann nie gezeigt werden) und hält die Zusage, dass keine Zelle als
+Absatz gelesen wird. Es ist aber ein Eingriff in den sichersten Parser für
+31 Anweisungen, und er gehört hinter die Posten, die zehnmal so viel bewegen.
+Bis dahin ist die Verweigerung die richtige Antwort, und `Tarifpost` steht
+nicht mehr unter den Adressklassen.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides
