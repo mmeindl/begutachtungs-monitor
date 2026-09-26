@@ -633,6 +633,19 @@ describe('renumbering (2026-09-09)', () => {
     expect(run(l(), instr('Die §§ 5 und 6 erhalten die Paragraphenbezeichnungen "§ 6." bis "§ 8."')).results[0]!.applied).toBe(false)
     expect(run(l(), instr('§ 5 erhält die Paragraphenbezeichnung "§ 8."')).results[0]!.applied).toBe(false)
   })
+
+  it('changes the renumbered unit under its new designation when the same line goes on', () => {
+    // Reisegebührenvorschrift 1955 § 7, BGBl. I Nr. 43/2026: the phrase half
+    // addressed „Abs. 6" after its own first half had made it Abs. 5.
+    const l: StandingLaw = { paragraphs: [para('7', 'Kosten', ['Eins.', 'Zwei.', 'Die Summe darf höchstens 2.450,00 Euro betragen.'])] }
+    const { law: out, results } = run(
+      l,
+      instr('§ 7 Abs. 2 entfällt.'),
+      instr('In § 7 erhält Abs. 3 die Absatzbezeichnung "(2)" und wird die Wortfolge "höchstens 2.450,00 Euro betragen" durch die Wortfolge "die Kosten nicht übersteigen" ersetzt.'),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null, null])
+    expect(out.paragraphs[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:Eins.', '2:Die Summe darf die Kosten nicht übersteigen.'])
+  })
 })
 
 describe('Anlagen sind keine Paragraphen (26.09.2026)', () => {

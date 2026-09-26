@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressKey, expandRange, opAddress, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoOp } from '../server/utils/kons/novao'
+import { addressKey, expandRange, opAddress, parseAddress, parseAddressList, parseInstruction, splitCompound, splitPayloadScope, type NovaoAddress, type NovaoOp } from '../server/utils/kons/novao'
 
 /** The single operation of an instruction, or a failure that names the reason. */
 function op(line: string): NovaoOp {
@@ -556,5 +556,43 @@ describe('a word operand is a word, not a substring (2026-09-23)', () => {
     expect(op('In § 5 Abs. 1 wird nach dem Wort "Behörde" die Wortfolge "am Sitz der Partei" eingefügt.')).toMatchObject({ kind: 'insertPhrase', anchor: 'Behörde', wordBound: true })
     // The other way round: what is searched for is the Wortfolge.
     expect(op('In § 5 Abs. 1 wird die Wortfolge "die Behörde" durch das Wort "Bezirksverwaltungsbehörde" ersetzt.')).toMatchObject({ kind: 'replacePhrase', from: 'die Behörde', wordBound: false })
+  })
+})
+
+describe('what the second half of a compound line keeps of the first (26.09.2026)', () => {
+  const targets = (line: string) => parseInstruction(line).ops.map((o) => {
+    const t = (o as { target: NovaoAddress }).target
+    return { kind: o.kind, abs: t.abs, z: t.z, lit: t.lit, satz: t.satz, siblings: t.siblings }
+  })
+
+  it('keeps the Ziffer and the Litera where the second half names no place of its own', () => {
+    // It kept the § and the Absatz only: the deletion ran across all of Abs. 1.
+    expect(targets('In § 5 Abs. 1 Z 6 wird das Wort "a" durch das Wort "b" ersetzt und entfällt das Wort "c".')[1]).toMatchObject({ kind: 'deletePhrase', abs: '1', z: '6', lit: null })
+    expect(targets('In § 5 Abs. 1 Z 6 lit. a wird das Wort "a" durch das Wort "b" ersetzt und entfällt das Wort "c".')[1]).toMatchObject({ abs: '1', z: '6', lit: 'a' })
+  })
+
+  it('keeps the siblings of the first half, and not its sentence', () => {
+    expect(targets('In § 5 Abs. 1 und 2 wird das Wort "a" durch das Wort "b" ersetzt und entfällt das Wort "c".')[1]).toMatchObject({ abs: '1', siblings: ['2'] })
+    // „nach dem zweiten Satz" is the anchor of the insertion, not the place of
+    // the deletion behind it (Niederlassungs- und Aufenthaltsgesetz § 12).
+    const parsed = parseInstruction('In § 12 Abs. 3 wird nach dem zweiten Satz der Satz "Neu." eingefügt; die Wortfolge "alt" entfällt.')
+    expect(parsed.ops.at(-1)).toMatchObject({ kind: 'deletePhrase', target: { abs: '3', satz: null } })
+  })
+
+  it('replaces what lies below the place the second half names', () => {
+    expect(targets('In § 5 Abs. 1 Z 6 lit. a wird das Wort "a" durch das Wort "b" ersetzt und in Z 7 entfällt das Wort "c".')[1]).toMatchObject({ abs: '1', z: '7', lit: null })
+  })
+
+  it('reads a sentence-only half against the Absatz, as before', () => {
+    // „in Z 1 … und im Schlussteil …" means the Absatz's Schlussteil.
+    expect(targets('In § 59 Abs. 4 Z 1 wird das Wort "a" durch das Wort "b" ersetzt; im Schlussteil entfällt das Wort "c".')[1]).toMatchObject({ abs: '4', z: null, satz: 'schluss' })
+  })
+
+  it('hands a renumbered unit on under its new designation', () => {
+    // „In § 7 erhält Abs. 6 die Absatzbezeichnung ‚(5)' und wird …": one Absatz, called (5) by then.
+    expect(targets('In § 7 erhält Abs. 6 die Absatzbezeichnung "(5)" und wird die Wortfolge "x" durch die Wortfolge "y" ersetzt.')[1]).toMatchObject({ kind: 'replacePhrase', abs: '5' })
+    expect(targets('In § 32 entfällt Abs. 2; Abs. 3 erhält die Absatzbezeichnung "(2)" und lautet:')[2]).toMatchObject({ kind: 'replace', abs: '2' })
+    // One level down, where the old reading replaced the whole Absatz.
+    expect(targets('In § 5 Abs. 1 erhält Z 6 die Ziffernbezeichnung "5." und lautet:')[1]).toMatchObject({ kind: 'replace', abs: '1', z: '5' })
   })
 })

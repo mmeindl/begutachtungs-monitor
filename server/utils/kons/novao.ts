@@ -20,7 +20,7 @@
  * comes back as `null` with a reason, and stays an instruction on screen.
  */
 import { normalizeText, stripQuotes } from '../lawtext/normalize'
-import { articleNumberKey } from '../text/designation'
+import { articleNumberKey, bareParaId } from '../text/designation'
 
 // ---------------------------------------------------------------------------
 // Addresses
@@ -461,16 +461,40 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   // unit if it is ignored — the over-deletion this module exists to prevent.
   if (sentence && sentence.satz === null) return null
 
-  const abs = am?.[1] ?? (pm ? null : inherited?.abs) ?? null
-  const z = zm?.[1] ?? null
-  const lit = lm?.[1] ?? null
+  // **What an inheriting clause keeps of the place before it** — the second
+  // half of a compound line, which names no § of its own.
+  //
+  // It used to keep the § and the Absatz and nothing else, so „In § 5 Abs. 1
+  // Z 6 wird A durch B ersetzt und entfällt das Wort ‚c'" deleted „c"
+  // anywhere in Abs. 1, and „… erhält Z 6 die Ziffernbezeichnung ‚5.' und
+  // lautet:" replaced the whole Absatz with the new Ziffer's text (26.09.2026).
+  // A clause with no place of its own IS the place before it, down to the
+  // Litera, the siblings and the heading. A clause that names one keeps what
+  // lies above it and replaces the rest.
+  //
+  // **Not the sentence.** In an address it is as often the anchor as the
+  // place: „In § 12 Abs. 3 wird nach dem zweiten Satz der Satz ‚…' eingefügt;
+  // die Wortfolge ‚…' entfällt" deletes in the Absatz, and carried over, the
+  // second sentence confined the deletion to a place the phrase is not in
+  // (Niederlassungs- und Aufenthaltsgesetz, measured the same day).
+  //
+  // One exception, and it is the old reading: a clause that names only a
+  // sentence („und im Schlussteil …") after a Ziffer. Whether that is the
+  // Ziffer's Schlussteil or the Absatz's is not in the words; the Absatz's is
+  // what the drafting means in the corpus (`in Z 1 … und im Schlussteil …`),
+  // so the Ziffer and the Litera stay behind.
+  const from = pm ? null : (inherited ?? null)
+  const carry = from !== null && !am && !zm && !lm && !sentence
+  const abs = am?.[1] ?? from?.abs ?? null
+  const z = zm?.[1] ?? (!am && !sentence ? from?.z : null) ?? null
+  const lit = lm?.[1] ?? (!am && !zm && !sentence ? from?.lit : null) ?? null
   const satz = sentence?.satz ?? null
   const satzCount = sentence?.satzCount ?? 0
   const level: UnitLevel = satz ? 'satz' : lit ? 'lit' : z ? 'z' : abs ? 'abs' : 'para'
 
   // The enumeration attaches to the deepest numbered component.
   const deepest = lm ?? zm ?? am
-  let siblings: string[] = []
+  let siblings: string[] = carry ? [...from.siblings] : []
   if (deepest) {
     const after = tail.slice(deepest.index + deepest[0].length)
     const found = siblingsAfter(after, deepest[1]!)
@@ -504,7 +528,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   // a component of their own really stand there.
   if (level !== 'para' && /§§/.test(t) && [...t.matchAll(/\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))/gi)].length > 1) return null
 
-  return { para, artikel, abs, z, lit, satz, satzCount, siblings, level, heading, alsoHeading, raw: t }
+  return { para, artikel, abs, z, lit, satz, satzCount, siblings, level, heading: heading || (carry && from.heading), alsoHeading, raw: t }
 }
 
 /**
@@ -1241,8 +1265,25 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
  * or the anchor of an operation that has no target of its own. `insertPhrase`
  * carries an `anchor` that is a piece of TEXT rather than an address, so the
  * target is asked for first.
+ *
+ * **A renumbering leaves its unit behind under the NEW designation.** „In § 7
+ * erhält Abs. 6 die Absatzbezeichnung ‚(5)' und wird die Wortfolge … ersetzt"
+ * is one Absatz throughout — the subject of both verbs — and by the time the
+ * second clause runs it is called (5). Handed on as Abs. 6 it pointed at a
+ * unit that no longer existed, and was refused (Reisegebührenvorschrift, AsylG
+ * 2005 § 32, 26.09.2026); where the old number is taken by the next renumbering,
+ * it would have pointed at the wrong one. Only a single renumbering — a run
+ * „Z 5 bis 9 … ‚4.' bis ‚8.'" leaves no one unit behind.
  */
 function opContext(op: NovaoOp): NovaoAddress | null {
+  if (op.kind === 'renumber' && op.toLast === null && op.target.siblings.length === 0) {
+    const t = op.target
+    const id = bareParaId(op.to) ?? op.to.replace(/[^\w]/g, '')
+    if (t.lit !== null) return { ...t, lit: id }
+    if (t.z !== null) return { ...t, z: id }
+    if (t.abs !== null) return { ...t, abs: id }
+    return t.level === 'para' && t.para?.startsWith('§') && id ? { ...t, para: `§ ${id}` } : t
+  }
   if ('target' in op) return op.target
   if ('anchor' in op && typeof op.anchor !== 'string') return op.anchor
   return null
