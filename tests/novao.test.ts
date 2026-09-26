@@ -166,7 +166,7 @@ describe('parseInstruction', () => {
     // The refusal is the same as before; the word is what makes the census
     // of 55 readable. No colon — the harness cuts its tally at one.
     const of = (line: string): string | null => parseInstruction(line).reason
-    expect(of('Z 1 lit. n des Anhangs entfällt.')).toBe('Anhang ohne eigene Ebene')
+    expect(of('Die Anhänge II und III entfallen.')).toBe('Anhang ohne eigene Ebene')
     expect(of('In der Tarifpost 9 Anmerkung 16 entfällt der letzte Satz.')).toBe('Tarifpost ohne eigene Ebene')
     expect(of('Der Titel lautet:')).toBe('Titel ohne eigene Ebene')
     // An Artikel of a directive standing in front of a § is refused by the
@@ -175,6 +175,17 @@ describe('parseInstruction', () => {
     expect(of('Die Überschrift des 2. Hauptstücks lautet:')).toBe('Hauptstück ohne eigene Ebene')
     // A § the parser can read is not touched by any of this.
     expect(of('In § 5 Abs. 1 entfällt die Wortfolge "A".')).toBeNull()
+  })
+
+  it('reads a schedule that names no number, and its unit in front of it', () => {
+    // „Z 1 lit. d des Anhangs entfällt" — the law has exactly one Anhang, so
+    // the definite article is the designation, and German puts the unit
+    // first. Read from behind the designation the address was the whole
+    // schedule, and the deletion would have taken it instead of the litera.
+    expect(op('Z 1 lit. d des Anhangs entfällt.')).toMatchObject({ kind: 'delete', target: { para: 'Anhang', z: '1', lit: 'd' } })
+    expect(op('Z 1 lit. c des Anhangs lautet:')).toMatchObject({ kind: 'replace', target: { para: 'Anhang', z: '1', lit: 'c' } })
+    // A number behind it reads the same as it always did.
+    expect(op('In Anlage 2 Z 3 entfällt die Wortfolge "A".')).toMatchObject({ target: { para: 'Anlage 2', z: '3' } })
   })
 
   it('reads an Artikel written in Roman as the unit RIS labels in arabic', () => {

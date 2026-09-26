@@ -1952,6 +1952,51 @@ dass das Anlagendokument im Anfragepfad gar nicht erst geholt würde. Zwei
 Stellen also, beide benannt, beide klein — aber sie gehören in denselben
 Schritt wie die Messung, die sie rechtfertigt.
 
+**Der bestimmte Artikel IST die Bezeichnung (26.09.2026).** Die 18 Zeilen der
+`Anhang`-Klasse schreiben keine Nummer:
+
+```
+Z 1 lit. d des Anhangs entfällt.
+Der Z 1 des Anhangs wird folgende lit. o angefügt:
+Im Anhang wird nach Z 2 folgende Z 2a eingefügt:
+```
+
+Das Gesetz hat genau einen, also sagt „des Anhangs" schon alles. Die Adresse
+bekommt die Nummer deshalb **nicht** angedichtet — welche Einheit gemeint
+ist, beantwortet der geltende Text (`findParagraph` nimmt die einzige Anlage
+und verweigert, wo es mehrere gibt), nicht der Parser.
+
+**Zwei Fallen, beide beim ersten Lauf sichtbar geworden:**
+
+- *Die Einheit steht VOR dem Dokument.* „Z 1 lit. d des Anhangs" — Deutsch
+  stellt die Untergliederung voran, und `parseAddress` liest die Komponenten
+  hinter der Bezeichnung, damit ein zitierter § nicht als Absatz gelesen
+  wird. Von hinten gelesen war die Adresse der **ganze Anhang**, und die
+  Streichung hätte ihn statt seiner Litera genommen. Bei einer Anlage werden
+  die Komponenten daher aus der ganzen Adresse gelesen; steht die Nummer
+  dahinter („Anlage 2 Z 3"), ändert das nichts.
+- *„lautet" ist eine römische Zahl.* Die optionale Nummer stand als
+  `[\dIVXL]+[a-z]*` da, und unter `/i` trifft `L` das „l" von „lautet" —
+  „Z 1 lit. c des Anhangs lautet:" kam als Anlage „lautet" heraus. Die Zahl
+  darf jetzt kein Wort anschließen.
+
+Ertrag am selben Prüfstand: **gelesene Anweisungen 2.014 → 2.032** (genau die
+18), angewendet 1.729 → 1.737, „Anhang ohne eigene Ebene" 18 → **0**,
+identisch 757 → **758** — der Anhang des UWG ist jetzt Wort für Wort der
+Text, den das RIS führt. **Die scharfen Klassen stehen still:** eigene
+Abweichung 22, im unverweigerten Topf 10, „kein geltender Text" 31, alle drei
+unverändert. Eine Anlage (IFG 2011) wandert von „unverändert gelassen" nach
+„nicht prüfbar" — der Wortdiff des Prüfstands ist für ein Dokument dieser
+Größe zu grob; das Tor verweigert sie deshalb, und das RIS sagt, der Text
+wäre identisch gewesen.
+
+**Auf der Seite ändert sich weiterhin nichts**, und diesmal mit einem
+benannten Grund: `konsGate.addressedLabels` baut aus jeder Adresse ein
+Etikett „§ N", und eine Adresse ohne Nummer liefert gar keines — das
+Anlagendokument wird im Anfragepfad also nicht geholt. Die Engine kann den
+Anhang jetzt, der Anfragepfad holt ihn noch nicht. Das ist der nächste
+Schritt, und er ist eine Stelle.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides

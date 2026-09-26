@@ -218,7 +218,7 @@ function parseSatz(tail: string): { satz: string | null; satzCount: number } | n
  * Artikel at all — with one, `parseAddress` cuts the scope at the § before
  * `PARA_RE` ever sees the Artikel.
  */
-const PARA_RE = /(?:§+\s*(\d+[a-z]*(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)\s+([\dIVXL]+[a-z]*))/i
+const PARA_RE = /(?:§+\s*(\d+[a-z]*(?:\.\d+)?)|\bArt(?:\.|ikel)\s*(\d+[a-z]*(?:\.\d+)?|[IVXLCDM]+(?![A-Za-zÄÖÜäöüß]))|\b(Anlage|Anhang)(?:e?s)?\b(?:\s+((?:\d+[a-z]*|[IVXL]+)(?![A-Za-zÄÖÜäöüß])))?)/i
 const ABS_RE = /\bAbs\.?\s*(\d+[a-z]*)/i
 const Z_RE = /\bZ(?:iffer)?\.?\s*(\d+[a-z]*)/i
 const LIT_RE = /\blit\.?\s*([a-z]+)\b/i
@@ -430,10 +430,27 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     if (!inherited?.para) return null
   }
 
-  const para = pm ? (pm[1] ? `§ ${pm[1]}` : pm[2] ? `Art. ${articleNumberKey(pm[2]) ?? pm[2]}` : `${pm[3]} ${pm[4]}`) : inherited!.para
+  // „Z 1 lit. n des Anhangs" names no number, and that is not an omission:
+  // the law has exactly one, so the definite article IS the designation. The
+  // number stays off the address rather than being invented — which of the
+  // law's units it is, is the standing text's answer and not the parser's
+  // (`findParagraph` takes the single schedule, and refuses where there are
+  // several). 18 lines over 40 Sammelnovellen, all of them in two laws
+  // (Verbraucherbehördenkooperationsgesetz, UWG; 26.09.2026).
+  const para = pm ? (pm[1] ? `§ ${pm[1]}` : pm[2] ? `Art. ${articleNumberKey(pm[2]) ?? pm[2]}` : `${pm[3]}${pm[4] ? ` ${pm[4]}` : ''}`) : inherited!.para
   // Components are read after the § so a § number is not mistaken for an
   // Absatz of an earlier reference in the same sentence.
-  const tail = pm ? scope.slice(pm.index + pm[0].length) : scope
+  //
+  // **A schedule is the exception, because German puts it the other way
+  // round:** „Z 1 lit. d des Anhangs entfällt" names the unit first and the
+  // document afterwards. Read from the tail, that address came out as the
+  // whole Anhang and the deletion would have taken the schedule instead of
+  // its litera — the over-deletion this module exists to prevent. So where
+  // the designation is a schedule, the components are read from the whole
+  // address; a schedule that carries them behind it („Anlage 2 Z 3") reads
+  // the same either way.
+  const schedule = pm !== null && pm[3] !== undefined
+  const tail = pm && !schedule ? scope.slice(pm.index + pm[0].length) : scope
   const am = ABS_RE.exec(tail)
   const zm = Z_RE.exec(tail)
   const lm = LIT_RE.exec(tail)
