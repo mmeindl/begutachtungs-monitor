@@ -20,7 +20,7 @@
 import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from '../lawtext/konsTree'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
-import { expandRange, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
+import { expandRange, namedParagraphs, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId, isSchedule } from '../text/designation'
 
 export interface StandingLaw {
@@ -851,12 +851,24 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       const ids = [op.target.level === 'para' ? (bareParaId(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
       if (op.target.level === 'para') {
         const paras = ids.map((id) => law.paragraphs.find((p) => p.id === id) ?? null)
-        if (paras.some((p) => p === null)) return `§ nicht im geltenden Text: ${op.target.para}`
-        const outgoing = paras as LawNode[]
         // "§ 7 lautet:" can arrive without a para-level block at all, when the
         // payload opens straight into "(1) …" and the § symbol stayed in the
         // instruction. One target and one block is still a 1:1 replacement.
         const blocks = payload.filter((p) => p.level === 'para')
+        const absent = ids.filter((_, i) => paras[i] === null)
+        if (absent.length > 0) {
+          // „Die §§ 34a bis 34e samt Überschriften lauten:" where § 34e is new
+          // (BUAG, BGBl. I Nr. 66/2026): the range runs past the standing
+          // text, and the payload spells out every § of it. That is the run
+          // form, and it is determinate exactly when the blocks ARE the named
+          // §§, one each and in order — the check that keeps a stale heading
+          // from becoming a § of its own (Privatschulgesetz, below). A range
+          // none of whose §§ stand is no replacement at all.
+          const named = blocks.length === ids.length && blocks.every((b, i) => b.id === ids[i])
+          if (!named || absent.length === ids.length) return `§ nicht im geltenden Text: § ${absent[0]}`
+          return spliceRun(law.paragraphs, paras.filter((p): p is LawNode => p !== null), blocks, 'para')
+        }
+        const outgoing = paras as LawNode[]
         const single = outgoing.length === 1 && blocks.length === 0 && payload.length > 0
         // Taking the first block and dropping the rest looked like a success
         // and deleted seven §§ of the IVS-Gesetz (2026-09-09). A run that
@@ -1325,7 +1337,10 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
       else if (para) renumberedIn.add(para)
     }
     results.push({ line, kind: op.kind, applied: reason === null, reason, para }, ...extra)
-    if (reason !== null && para) unresolved.add(para)
+    // Every § the address names: a failed „Die §§ 12a und 13 entfallen"
+    // leaves § 13 as unresolved as § 12a, and a § 13 that is marked clean
+    // would be shown as if the line had never been written.
+    if (reason !== null && target) for (const p of namedParagraphs(target)) unresolved.add(p)
     for (const r of extra) if (r.reason !== null && r.para) unresolved.add(r.para)
     extra.length = 0
   }

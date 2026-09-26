@@ -54,6 +54,13 @@ describe('addressedParagraphs — der Nenner der Anzeige', () => {
     expect(addressedParagraphs(instructions, ['In den §§ 9 und 10 wird etwas Unlesbares getan.'])).toEqual(['5', '9'])
   })
 
+  it('counts and fetches every § of a list, not the first one only', () => {
+    // „Die §§ 12a und 13 entfallen" failed on § 13, which was never fetched (AsylG 2005).
+    expect(addressedParagraphs(instr('Die §§ 12a und 13 entfallen samt Überschriften.'), [])).toEqual(['12a', '13'])
+    expect(addressedParagraphs(instr('Die §§ 34a bis 34c samt Überschriften lauten:', ['§ 34a. A.', '§ 34b. B.', '§ 34c. C.']), [])).toEqual(['34a', '34b', '34c'])
+    expect([...addressedLabels(instr('Die §§ 12a und 13 entfallen samt Überschriften.'), [])!.values()]).toEqual(['§ 12a', '§ 13'])
+  })
+
   it('counts a § the draft inserts, which the standing law does not have', () => {
     const instructions = instr('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 5a. (1) Neuer Paragraph.'])
     expect(addressedParagraphs(instructions, [])).toContain('5a')

@@ -34,7 +34,7 @@
  */
 
 import type { Instruction } from './lawApply'
-import { articleQualifier, opAddress } from './novao'
+import { articleQualifier, namedParagraphs, opAddress } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { articleNumberKey, isSchedule, unitKey } from '../text/designation'
 
@@ -126,10 +126,12 @@ export function addressedParagraphs(
   const out = new Set<string>()
   for (const { op, payload } of instructions) {
     const address = opAddress(op)
-    if (address?.para) {
-      // `unitKey` and not the bare number: a law may carry a § 1 and an
-      // Anl. 1, and everything downstream holds the unit under this key.
-      const id = unitKey(address.para)
+    // `unitKey` and not the bare number: a law may carry a § 1 and an
+    // Anl. 1, and everything downstream holds the unit under this key. Every
+    // § of „Die §§ 12a und 13 entfallen", not the first one only — the second
+    // was neither counted nor fetched, and the instruction failed on it.
+    for (const para of address ? namedParagraphs(address) : []) {
+      const id = unitKey(para)
       if (id) out.add(id)
     }
     if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
@@ -179,9 +181,9 @@ export function addressedLabels(
   }
   for (const { op, payload } of instructions) {
     const address = opAddress(op)
-    if (address?.para) {
-      const id = unitKey(address.para)
-      if (id && !add(id, address.artikel)) return null
+    for (const para of address ? namedParagraphs(address) : []) {
+      const id = unitKey(para)
+      if (id && !add(id, address!.artikel)) return null
     }
     // A § this instruction CREATES lives in the Artikel the instruction
     // addresses — it has no designation of its own to read one from.

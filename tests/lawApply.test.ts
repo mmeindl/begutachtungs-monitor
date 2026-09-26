@@ -982,3 +982,30 @@ describe('a list extended by the clause behind its last Ziffer (26.09.2026)', ()
     expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:eins;', '2:zwei;', '3:drei.'])
   })
 })
+
+describe('a list of §§ is every § it names (26.09.2026)', () => {
+  it('marks every § of a failed list unresolved, not the first one only', () => {
+    // § 13 stood unmarked, so a loaded § 13 would have been shown untouched.
+    const l: StandingLaw = { paragraphs: [para('12a', 'A', ['a'])] }
+    const { results, unresolved } = run(l, instr('Die §§ 12a und 13 entfallen samt Überschriften.'))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toBe('§ nicht im geltenden Text: § 13')
+    expect([...unresolved].sort()).toEqual(['§ 12a', '§ 13'])
+  })
+
+  it('replaces a range whose last § is new, where the payload spells out each one', () => {
+    // BUAG, BGBl. I Nr. 66/2026: „Die §§ 34a bis 34e samt Überschriften lauten:", § 34e new.
+    const l: StandingLaw = { paragraphs: [para('34', 'Z', ['z']), para('34a', 'A', ['alt a']), para('34b', 'B', ['alt b']), para('35', 'N', ['n'])] }
+    const { law: out, results } = run(l, instr('Die §§ 34a bis 34c samt Überschriften lauten:', [{ text: 'Neu A', heading: true }, '§ 34a. neu a', { text: 'Neu B', heading: true }, '§ 34b. neu b', { text: 'Neu C', heading: true }, '§ 34c. neu c']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['34', '34a', '34b', '34c', '35'])
+    expect(out.paragraphs.find((p) => p.id === '34c')!.heading).toBe('Neu C')
+  })
+
+  it('refuses such a range where the payload is not exactly the named §§', () => {
+    const l: StandingLaw = { paragraphs: [para('34a', 'A', ['alt a']), para('34b', 'B', ['alt b'])] }
+    const { results } = run(l, instr('Die §§ 34a bis 34c samt Überschriften lauten:', ['§ 34a. neu a', '§ 34b. neu b']))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toBe('§ nicht im geltenden Text: § 34c')
+  })
+})

@@ -1441,6 +1441,22 @@ function designationOf(para: string, id: string): string {
   return `${prefix ? prefix[1] : '§'} ${id}`
 }
 
+/**
+ * Every top-level unit ONE address names, written as the draft writes them.
+ *
+ * „Die §§ 12a und 13 entfallen" is one address, and its siblings are §§ of
+ * their own; below the § they are Absätze or Ziffern of the one § and name no
+ * further one. The loader, the refusal bookkeeping and the annex side each
+ * read this — the annex side (`addressedUnits`) always did, the other two
+ * stopped at the first §, so § 13 was neither fetched nor marked refused
+ * when the line failed on it (AsylG 2005, BGBl. I Nr. 39/2026, 26.09.2026).
+ */
+export function namedParagraphs(address: NovaoAddress): string[] {
+  if (!address.para) return []
+  if (address.level !== 'para') return [address.para]
+  return [address.para, ...address.siblings.map((id) => designationOf(address.para!, id))]
+}
+
 /** The numeral inside a new designation: "„§ 11.“" → "11", "4." → "4". */
 function numeralOf(designation: string): string | null {
   return /(\d+[a-z]*)/.exec(designation)?.[1] ?? null
@@ -1538,14 +1554,11 @@ export function addressedUnits(line: string, inherited?: NovaoAddress | null): A
     // own; an instruction that only touches it addresses no § (`NovaoOp`).
     if (op.kind === 'toc') continue
     const address = opAddress(op)
-    if (address.para) {
-      paras.add(address.para)
-      // A trailing enumeration attaches to the address's *deepest* component,
-      // so "§ 5 Abs. 2 und 3" lists Absätze and names one §. Only at para
-      // level do the siblings name §§ of their own — "§§ 7 bis 14", which
-      // `parseAddress` has already expanded through `expandRange`.
-      if (address.level === 'para') for (const id of address.siblings) paras.add(designationOf(address.para, id))
-    }
+    // A trailing enumeration attaches to the address's *deepest* component,
+    // so "§ 5 Abs. 2 und 3" lists Absätze and names one §. Only at para
+    // level do the siblings name §§ of their own — "§§ 7 bis 14", which
+    // `parseAddress` has already expanded through `expandRange`.
+    for (const para of namedParagraphs(address)) paras.add(para)
     // "Nach § 5 wird folgender § 5a eingefügt": § 5 is the anchor and § 5a is
     // what the payload spells out. Both belong here — the anchor because an
     // insertion inside a § is common enough to be worth its words, the child

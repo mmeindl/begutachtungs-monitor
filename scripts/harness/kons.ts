@@ -48,7 +48,7 @@ import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { sameBgbl } from '../../server/utils/lawtext/bgblCitation'
 import { articleBlocks, draftArticles, promulgationByArticle, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { lawNameScore } from '../../server/utils/lawtext/lawNames'
-import type { NovaoAddress } from '../../server/utils/kons/novao'
+import { namedParagraphs, type NovaoAddress } from '../../server/utils/kons/novao'
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../../server/utils/harness/risKonsHistory'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../../server/utils/harness/applyReport'
@@ -601,7 +601,8 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
     const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
     if (!address) continue
     if (address.level === 'document') wholeText = true
-    if (address.para) wanted.add(labelKey(address.para))
+    // Every § of a list, as the site's loader fetches them (`addressedParagraphs`).
+    for (const para of namedParagraphs(address)) wanted.add(labelKey(para))
   }
   const paragraphs: LawNode[] = []
   /** Fetched, but `parseKonsParagraph` found no paragraph in the document — an Anlage without `<absatz>` blocks, for one. */
