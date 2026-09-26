@@ -207,3 +207,40 @@ export function compareRowsByStatements(a: DraftListRow, b: DraftListRow): numbe
   }
   return compareDrafts(rowOrderKey(a), rowOrderKey(b))
 }
+
+/**
+ * Most recently arrived first — the order „Zuletzt dazugekommen"
+ * (docs/architecture.md §12.22).
+ *
+ * The „Neu" mark answered „was ist dazugekommen?" only where a reader was
+ * already looking: it rides on the row, and the row sits where the Frist
+ * puts it. Measured 17.09.2026, that is a median of **0** marked rows among
+ * the homepage's visible ones — a draft that arrives today with a six-week
+ * Frist sorts behind everything that ends this week. The mark makes new
+ * arrivals findable; only an ORDER lifts them to the top.
+ *
+ * NO open/closed split, unlike `compareDrafts`, and that is the decision in
+ * this function. The other two orders both lead with what a reader can still
+ * act on; this one is asked for a chronology, and a chronology that reshuffles
+ * by actionability is not one. In practice the two hardly differ — a draft
+ * that started days ago is almost always still open — but where they do, the
+ * label decides.
+ *
+ * Nothing is left behind either, which is why this order needs no caveat
+ * line above the list the way „Meiste Stellungnahmen" does: `startedAt` is
+ * the one field ALL THREE row kinds carry (`rowOrderKey`), so no half of the
+ * corpus has to be parked at the end. A row without a date sorts last — it
+ * carries no position in a chronology — and the title breaks the ties, which
+ * on this key are many: a day is a coarse unit and ressorts send in batches.
+ */
+export function compareByArrival(a: OrderedDraft, b: OrderedDraft): number {
+  return (
+    (b.startedAt ?? '').localeCompare(a.startedAt ?? '') ||
+    a.title.localeCompare(b.title, 'de-AT')
+  )
+}
+
+/** The same order over the list's three row kinds. */
+export function compareRowsByArrival(a: DraftListRow, b: DraftListRow): number {
+  return compareByArrival(rowOrderKey(a), rowOrderKey(b))
+}

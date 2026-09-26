@@ -29,7 +29,12 @@ import { firstQueryValue } from '#shared/utils/queryParams'
  */
 export type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
 
-export type SortKey = 'frist' | 'stellungnahmen'
+/**
+ * `neu` is „Zuletzt dazugekommen", spelt the way the mark on the row is
+ * („Neu", `isNewArrival`): the order exists to lift exactly what that mark
+ * points at, and one word for one thing keeps a shared link readable.
+ */
+export type SortKey = 'frist' | 'stellungnahmen' | 'neu'
 
 /** What the two list endpoints are asked for. `art` is not among them: it
  *  selects the half, so the page leaves the excluded endpoint unasked
@@ -68,7 +73,8 @@ function parseArt(v: unknown): ArtFilter {
 }
 
 function parseSort(v: unknown): SortKey {
-  return firstQueryValue(v) === 'stellungnahmen' ? 'stellungnahmen' : 'frist'
+  const s = firstQueryValue(v)
+  return s === 'stellungnahmen' || s === 'neu' ? s : 'frist'
 }
 
 export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilterValues {

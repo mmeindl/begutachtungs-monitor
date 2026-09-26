@@ -7,7 +7,13 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
-import { compareDrafts, compareRowsByStatements, type DraftListRow, rowOrderKey } from '#shared/utils/draftOrder'
+import {
+  compareDrafts,
+  compareRowsByArrival,
+  compareRowsByStatements,
+  type DraftListRow,
+  rowOrderKey,
+} from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfRis, viewOfVorlage } from '~/utils/entryView'
 import type { ArtFilter, SortKey } from '~/utils/draftFilters'
 import { romanToInt } from '#shared/utils/gp'
@@ -107,7 +113,8 @@ const artOptions: { value: ArtFilter; label: string }[] = [
 ]
 
 /**
- * Two orders, because the homepage has two questions (§12.24).
+ * Three orders, and each of them answers a question this page is actually
+ * asked (§12.24, §12.22).
  *
  * „Frist" is the list's own order and the default everywhere: open first,
  * nearest deadline on top (`compareDrafts`). „Meiste Stellungnahmen" exists
@@ -117,12 +124,32 @@ const artOptions: { value: ArtFilter; label: string }[] = [
  * instead of at the list. It is the same comparator the ranking uses
  * (`rankByStatements`), so the first five rows here ARE those five rows.
  *
- * The slot for „zuletzt dazugekommen" (TODO, §12.22) is this select.
+ * „Zuletzt dazugekommen" is the third since 26.09.2026, and it is the half
+ * the „Neu"-Marke never had (§12.22): the mark rides on the row and the row
+ * sits where the Frist puts it, so a draft that arrives today with a
+ * six-week Frist is marked somewhere far down the list — a median of 0
+ * marked rows among the ones the homepage shows, against a median of 3 over
+ * all open ones. The mark makes new arrivals FINDABLE; only an order lifts
+ * them. Why it has no open/closed split, unlike the other two:
+ * `compareByArrival`.
  */
 const sortOptions: { value: SortKey; label: string }[] = [
   { value: 'frist', label: 'Nach Frist' },
   { value: 'stellungnahmen', label: 'Meiste Stellungnahmen' },
+  { value: 'neu', label: 'Zuletzt dazugekommen' },
 ]
+
+/**
+ * One comparator per option, so adding a fourth order is a line here rather
+ * than another branch inside `rows`. The comparators live in
+ * `shared/utils/draftOrder.ts`, next to the row kinds they order and where
+ * vitest can reach them.
+ */
+const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow) => number> = {
+  frist: (a, b) => compareDrafts(rowOrderKey(a), rowOrderKey(b)),
+  stellungnahmen: compareRowsByStatements,
+  neu: compareRowsByArrival,
+}
 
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
@@ -345,9 +372,7 @@ const rows = computed<DraftListRow[]>(() => {
   for (const d of meData.value?.items ?? []) out.push({ kind: 'me', key: `me-${d.gp}-${d.inr}`, draft: d })
   for (const c of risData.value?.items ?? []) out.push({ kind: 'ris', key: `ris-${c.id}`, item: c })
   out.push(...vorlageRows.value)
-  return out.sort((a, b) =>
-    sort.value === 'stellungnahmen' ? compareRowsByStatements(a, b) : compareDrafts(rowOrderKey(a), rowOrderKey(b)),
-  )
+  return out.sort(rowComparators[sort.value])
 })
 
 /**
