@@ -392,12 +392,121 @@ const WORD_CHAR = /[\p{L}\p{N}]/u
  * begins and ends in punctuation, and demanding a boundary there would refuse
  * matches that are perfectly sound.
  */
-function atWordBoundary(haystack: string, needle: string, at: number): boolean {
+function atWordBoundary(haystack: string, needle: string, at: number, len = needle.length): boolean {
   const before = at > 0 ? haystack[at - 1]! : ''
-  const after = haystack[at + needle.length] ?? ''
+  const after = haystack[at + len] ?? ''
   if (WORD_CHAR.test(needle[0]!) && before && WORD_CHAR.test(before)) return false
   if (WORD_CHAR.test(needle[needle.length - 1]!) && after && WORD_CHAR.test(after)) return false
   return true
+}
+
+/** Where a match sits and how long the STANDING text writes it. */
+interface Span {
+  at: number
+  len: number
+}
+
+/**
+ * The dashes that are one dash: hyphen, non-breaking hyphen, figure dash, en
+ * and em dash. A ressort writes „BBU - Errichtungsgesetz", the consolidated
+ * text carries „BBU-Errichtungsgesetz", and both mean the same law.
+ */
+const DASH = '[-\u2010\u2011\u2012\u2013\u2014]'
+const DASH_RE = /[-\u2010\u2011\u2012\u2013\u2014]/
+
+/**
+ * The same text as the other document would write it — spacing and dash
+ * tolerated, nothing else.
+ *
+ * The operand of an amendment is a **quotation of the standing law**, and the
+ * two documents do not always spell a citation identically: „(§ 1 Abs. 1 BBU
+ * - Errichtungsgesetz, BGBl. I Nr. 53/2019)" in the Novelle against
+ * „BBU-Errichtungsgesetz" in the consolidated text. The instruction is not in
+ * doubt — it is the same name — and refusing it withheld §§ over a space.
+ *
+ * Exactly two liberties, both invisible in print: a run of whitespace matches
+ * any run of whitespace, and a dash matches any dash with any spacing around
+ * it. Not tolerated: a missing full stop in „Abs 1", a different number, a
+ * different word — those are differences a reader would see, and they are the
+ * ressort quoting something else than what stands in the law.
+ *
+ * Returns null where the needle carries neither space nor dash, so the common
+ * case costs nothing.
+ */
+function tolerantPattern(needle: string): RegExp | null {
+  if (!/\s/.test(needle) && !DASH_RE.test(needle)) return null
+  const tight = needle.replace(/\s*([-\u2010\u2011\u2012\u2013\u2014])\s*/g, '$1')
+  const src = tight
+    .split(/(\s+|[-\u2010\u2011\u2012\u2013\u2014])/)
+    .filter((part) => part !== '')
+    .map((part) => {
+      if (/^\s+$/.test(part)) return '\\s+'
+      if (DASH_RE.test(part) && part.length === 1) return `\\s*${DASH}\\s*`
+      return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    })
+    .join('')
+  return new RegExp(src, 'g')
+}
+
+/**
+ * The new text in the spelling the standing document uses for its dashes.
+ *
+ * Only where the tolerance above was needed — that is, where the two
+ * documents already disagree about the spacing of one dash, and the ressort
+ * writes the disputed name the same way on BOTH sides of its instruction:
+ * "der Ausdruck „… (GVG - B 2005), BGBl. I Nr. 100/2005," wird durch den
+ * Ausdruck „GVG - B 2005" ersetzt". Finding the old text and then writing the
+ * ressort's spacing produced a § that differs from the promulgated one in
+ * exactly that space — the Bundeskanzleramt sets it tight when it typesets.
+ * Three §§ of BGBl. I Nr. 39/2026 measured so on 26.09.2026, and they are the
+ * whole reason this function exists.
+ *
+ * Two readings, and the corpus needed both:
+ *
+ * - **The document already writes this name.** „GVG - B 2005" stands in the
+ *   § as „GVG-B 2005", so that is how it goes back in. Only where the § is of
+ *   one mind about it: a name spelled two ways in the same § says nothing.
+ * - **Otherwise the found place decides.** Where the standing text set every
+ *   dash of the place tight and the instruction set one loose, the new text
+ *   follows suit — that covers the name the § does not carry yet („BBU -
+ *   Errichtungsgesetzes" in a text that knows only „BBU-Errichtungsgesetz").
+ *
+ * Never the other way round: a document that itself writes the dash loose
+ * leaves the draft's text exactly as the draft wrote it.
+ */
+function likeStanding(text: string, needle: string, found: string, standing: string): string {
+  if (found === needle) return text
+  const re = tolerantPattern(text)
+  if (re) {
+    const spellings = new Set<string>()
+    for (let m = re.exec(standing); m; m = re.exec(standing)) {
+      spellings.add(m[0])
+      if (re.lastIndex === m.index) re.lastIndex++
+    }
+    if (spellings.size === 1) return [...spellings][0]!
+  }
+  const loose = (s: string): boolean => new RegExp(`\\s${DASH}|${DASH}\\s`).test(s)
+  if (!loose(needle) || loose(found)) return text
+  return text.replace(new RegExp(`\\s*(${DASH})\\s*`, 'g'), '$1')
+}
+
+/** Every place the text stands, spelled exactly — the offsets and their length. */
+function exactSpans(haystack: string, needle: string, wordBound: boolean): Span[] {
+  const out: Span[] = []
+  for (let at = phraseIndex(haystack, needle, wordBound); at >= 0; at = phraseIndex(haystack, needle, wordBound, at + needle.length)) out.push({ at, len: needle.length })
+  return out
+}
+
+/** Every place it stands in the other document's spelling. */
+function tolerantSpans(haystack: string, needle: string, wordBound: boolean): Span[] {
+  const re = tolerantPattern(needle)
+  if (!re) return []
+  const out: Span[] = []
+  for (let m = re.exec(haystack); m; m = re.exec(haystack)) {
+    if (!wordBound || atWordBoundary(haystack, needle, m.index, m[0].length)) out.push({ at: m.index, len: m[0].length })
+    if (re.lastIndex === m.index) re.lastIndex++
+  }
+  return out
 }
 
 /**
@@ -411,17 +520,6 @@ function phraseIndex(haystack: string, needle: string, wordBound: boolean, from 
   let i = haystack.indexOf(needle, from)
   while (i >= 0 && wordBound && !atWordBoundary(haystack, needle, i)) i = haystack.indexOf(needle, i + 1)
   return i
-}
-
-function countOccurrences(haystack: string, needle: string, wordBound = false): number {
-  if (!needle) return 0
-  let n = 0
-  let i = phraseIndex(haystack, needle, wordBound)
-  while (i >= 0) {
-    n++
-    i = phraseIndex(haystack, needle, wordBound, i + needle.length)
-  }
-  return n
 }
 
 /**
@@ -622,12 +720,12 @@ function phraseUnits(law: StandingLaw, a: NovaoAddress, eachUnit: boolean): Slot
  * The units cannot overlap, so the offsets stay valid until the writes:
  * `scopeOf` reads one level, and its nodes are siblings.
  */
-function locateInUnits(units: readonly (readonly Slot[])[], needle: string, wordBound: boolean): { hits: { slot: Slot; at: number }[] } | { error: string } {
-  const hits: { slot: Slot; at: number }[] = []
+function locateInUnits(units: readonly (readonly Slot[])[], needle: string, wordBound: boolean): { hits: (Span & { slot: Slot })[] } | { error: string } {
+  const hits: (Span & { slot: Slot })[] = []
   for (const slots of units) {
     const found = uniqueSlot(slots, needle, wordBound)
     if ('error' in found) return { error: found.error }
-    hits.push({ slot: found.slot, at: phraseIndex(found.slot.read(), needle, wordBound) })
+    hits.push(found.hit)
   }
   return { hits }
 }
@@ -637,20 +735,20 @@ function locateInUnits(units: readonly (readonly Slot[])[], needle: string, word
  * across the whole addressed scope. Anything else — not found, found twice,
  * found in two units — is a refusal, not a choice.
  */
-function uniqueSlot(slots: readonly Slot[], needle: string, wordBound = false): { slot: Slot } | { error: string } {
+function uniqueSlot(slots: readonly Slot[], needle: string, wordBound = false): { hit: Span & { slot: Slot } } | { error: string } {
   if (!needle) return { error: 'Textstelle ohne Inhalt' }
-  let total = 0
-  let hit: Slot | null = null
-  for (const slot of slots) {
-    const n = countOccurrences(slot.read(), needle, wordBound)
-    if (n > 0) {
-      total += n
-      hit ??= slot
-    }
-  }
-  if (total === 0) return { error: `Textstelle nicht gefunden: "${needle.slice(0, 60)}"` }
-  if (total > 1) return { error: `Textstelle ${total}× gefunden, nicht eindeutig: "${needle.slice(0, 60)}"` }
-  return { slot: hit! }
+  const find = (spans: (h: string, n: string, w: boolean) => Span[]): (Span & { slot: Slot })[] =>
+    slots.flatMap((slot) => spans(slot.read(), needle, wordBound).map((s) => ({ ...s, slot })))
+  const exact = find(exactSpans)
+  if (exact.length === 1) return { hit: exact[0]! }
+  if (exact.length > 1) return { error: `Textstelle ${exact.length}× gefunden, nicht eindeutig: "${needle.slice(0, 60)}"` }
+  // Only where the text is nowhere to be found as written. A spelling that
+  // matches in TWO places says the tolerance is what made it ambiguous, and
+  // then the instruction is refused as it was before — never applied to a
+  // place the exact spelling did not point at.
+  const loose = find(tolerantSpans)
+  if (loose.length === 1) return { hit: loose[0]! }
+  return { error: `Textstelle nicht gefunden${loose.length > 1 ? `, in anderer Schreibweise ${loose.length}×` : ''}: "${needle.slice(0, 60)}"` }
 }
 
 // ---------------------------------------------------------------------------
@@ -952,9 +1050,9 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // a place to skip quietly.
       const located = locateInUnits(units, op.from, op.wordBound)
       if ('error' in located) return located.error
-      for (const { slot, at } of located.hits) {
+      for (const { slot, at, len } of located.hits) {
         const current = slot.read()
-        slot.write(joinPhrase(current.slice(0, at), op.to, current.slice(at + op.from.length)))
+        slot.write(joinPhrase(current.slice(0, at), likeStanding(op.to, op.from, current.slice(at, at + len), current), current.slice(at + len)))
       }
       return null
     }
@@ -964,12 +1062,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       const located = locateInUnits(units, op.anchor, op.wordBound)
       if ('error' in located) return located.error
-      for (const { slot, at } of located.hits) {
+      for (const { slot, at, len } of located.hits) {
         const current = slot.read()
+        const text = likeStanding(op.text, op.anchor, current.slice(at, at + len), current)
         slot.write(
           op.where === 'after'
-            ? joinPhrase(current.slice(0, at + op.anchor.length), op.text, current.slice(at + op.anchor.length))
-            : joinPhrase(current.slice(0, at), op.text, current.slice(at)),
+            ? joinPhrase(current.slice(0, at + len), text, current.slice(at + len))
+            : joinPhrase(current.slice(0, at), text, current.slice(at)),
         )
       }
       return null
@@ -980,9 +1079,9 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       const located = locateInUnits(units, op.text, op.wordBound)
       if ('error' in located) return located.error
-      for (const { slot, at } of located.hits) {
+      for (const { slot, at, len } of located.hits) {
         const current = slot.read()
-        slot.write(`${current.slice(0, at)}${current.slice(at + op.text.length)}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
+        slot.write(`${current.slice(0, at)}${current.slice(at + len)}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
       }
       return null
     }

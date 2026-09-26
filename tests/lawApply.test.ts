@@ -615,6 +615,48 @@ describe('renumbering (2026-09-09)', () => {
   })
 })
 
+describe('Schreibweise einer Fundstelle (26.09.2026)', () => {
+  const cited = (): StandingLaw => ({ paragraphs: [para('5', 'A', ['Die Betreuung erfolgt nach dem BBU-Errichtungsgesetz, BGBl. I Nr. 53/2019.'])] })
+
+  it('finds a citation the standing law spells with another dash', () => {
+    const { law: out, results } = run(cited(), instr('In § 5 wird der Ausdruck "BBU - Errichtungsgesetz" durch den Ausdruck "BBU - G" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    // And writes it the way this document writes its dashes, because the
+    // ressort spells the name loose on both sides of its own instruction.
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Betreuung erfolgt nach dem BBU-G, BGBl. I Nr. 53/2019.')
+  })
+
+  it('does not tolerate a missing full stop in a citation', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'A', ['Es gilt § 20 Abs. 1 und 7.'])] }
+    const { results } = run(l, instr('In § 5 wird der Verweis auf "§ 20 Abs 1 und 7" durch den Verweis auf "§ 20 Abs. 1, 4 und 7" ersetzt.'))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/nicht gefunden/)
+  })
+
+  it('refuses where only the tolerance makes the text ambiguous', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'A', ['Das BBU-Errichtungsgesetz und das BBU–Errichtungsgesetz.'])] }
+    const { results } = run(l, instr('In § 5 wird der Ausdruck "BBU - Errichtungsgesetz" durch den Ausdruck "BBU - G" ersetzt.'))
+    expect(results[0]!.applied).toBe(false)
+    expect(results[0]!.reason).toMatch(/anderer Schreibweise 2×/)
+  })
+
+  it('leaves the draft\'s spelling alone where the document itself writes it loose', () => {
+    // The place being replaced sets its own dash loose, so nothing here says
+    // the new text should be set tight: the draft's spelling goes in as written.
+    const l: StandingLaw = { paragraphs: [para('5', 'A', ['Das BBU – Errichtungsgesetz ist anzuwenden.'])] }
+    const { law: out } = run(l, instr('In § 5 wird der Ausdruck "BBU - Errichtungsgesetz" durch den Ausdruck "GVG - B 2005" ersetzt.'))
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Das GVG - B 2005 ist anzuwenden.')
+  })
+
+  it('takes the tight spelling from the place it replaces', () => {
+    // „BBU-Errichtungsgesetz" in the §, „BBU - Errichtungsgesetz" in the
+    // instruction: the § is set tight, so the new name goes in tight too —
+    // even one the § does not carry yet (BFA-VG § 28, BGBl. I Nr. 39/2026).
+    const { law: out } = run(cited(), instr('In § 5 wird der Ausdruck "BBU - Errichtungsgesetz" durch den Ausdruck "BBU - Errichtungsgesetzes (BBU - G)" ersetzt.'))
+    expect(out.paragraphs[0]!.children[0]!.text).toContain('dem BBU-Errichtungsgesetzes (BBU-G), BGBl.')
+  })
+})
+
 describe('compound lines and punctuation (2026-09-09)', () => {
   it('refuses a compound line whole when one half is not read', () => {
     // Half-applying turned a full stop into a comma and stopped there.

@@ -1788,6 +1788,64 @@ ist die Menge der Paragraphen, die überhaupt bestätigt werden *können*.
 Eingriff hinweg sind die Paragraphenurteile und die Verweigerungen — beide
 oben.
 
+**Eine Fundstelle, zwei Schreibweisen (26.09.2026).** „Textstelle nicht
+gefunden" stand 34× im Anwendungsteil, und die Vermutung im Plan war
+Typografie. Die Durchsicht der 34 Zeilen sagt: **es ist keine Klasse.** Unser
+Anteil daran ist eine einzige Form — dieselbe Fundstelle, anders gesetzt:
+
+```
+Novelle:               „(§ 1 Abs. 1 BBU - Errichtungsgesetz, BGBl. I Nr. 53/2019)"
+geltender Text:         (§ 1 Abs. 1 BBU-Errichtungsgesetz, BGBl. I Nr. 53/2019)
+Novelle:               „Grundversorgungsgesetz - Bund 2005 (GVG - B 2005), …"
+geltender Text:         Grundversorgungsgesetz – Bund 2005 (GVG-B 2005), …
+```
+
+Der Operand einer Novelle ist ein **Zitat des geltenden Rechts**, und die
+beiden Dokumente setzen denselben Namen nicht immer gleich. Die Anweisung
+steht dabei nicht in Frage; verweigert wurde über ein Leerzeichen.
+
+**Genau zwei Freiheiten, beide im Druck unsichtbar:** Ein Weißraumlauf trifft
+jeden Weißraumlauf, und ein Gedankenstrich trifft jeden Gedankenstrich mit
+beliebigem Abstand. **Nicht** toleriert wird der fehlende Punkt in „§ 20 Abs 1
+und 7", eine andere Zahl, ein anderes Wort — das sind Unterschiede, die ein
+Leser sieht, und dort zitiert das Ressort etwas anderes, als im Gesetz steht.
+Gesucht wird die Toleranz erst, wenn die exakte Schreibweise **nirgends**
+steht, und angewendet nur, wenn sie **genau eine** Stelle trifft: Zwei Treffer
+heißen, dass erst die Toleranz die Mehrdeutigkeit erzeugt hat, und dann bleibt
+es bei der Verweigerung.
+
+**Die erste Fassung kaufte zwei Paragraphen und kostete zwei** — und die zwei
+standen im unverweigerten Topf, also in dem, was eine Seite zeigen würde. Der
+Grund stand im Wortdiff: Die Engine fand die Stelle und schrieb dann die
+Schreibweise des Ressorts in ein Dokument, das sie eng setzt („+[GVG B]",
+„+[BBU - Errichtungsgesetzes (BBU - G),]"). Der neue Text folgt seither dem
+Dokument, in das er geschrieben wird, und zwar in dieser einen Hinsicht:
+Schreibt der Paragraph den Namen selbst schon (und schreibt er ihn
+einheitlich), gilt seine Schreibweise; sonst entscheidet die ersetzte Stelle,
+und nur wenn sie alle ihre Striche eng setzt. Umgekehrt nie — ein Dokument,
+das den Strich selbst weit setzt, bekommt den Entwurfstext unverändert.
+
+| Paragraphen | vor der Toleranz | danach |
+|---|---|---|
+| identisch mit dem RIS | 749 | **753** |
+| halb angewendet | 78 | **75** |
+| unverändert gelassen | 120 | 119 |
+| **eigene Abweichung** | **30** | **30** |
+| ohne Verweigerung: identisch | 736 | **740** |
+| ohne Verweigerung: abweichend | 17 | 17 |
+| „Textstelle nicht gefunden" | 34 | **30** |
+
+**Die übrigen 30 sind nicht unsere**, und das ist das eigentliche Ergebnis
+dieser Messung: 2 adressieren die Überschrift eines *Abschnitts* oder
+*Hauptstücks*, für die das Adressmodell keine Ebene hat (→ Klasse „keine
+auflösbare Adresse"); 2 schreiben „§ 20 Abs 1 und 7" ohne Punkt; eine zitiert
+„BGB. I Nr. 28/2010" statt „BGBl." — ein Tippfehler des Ressorts, der
+verweigert bleiben muss; der Rest zitiert einen Wortlaut, der im geltenden
+Text so nicht (mehr) steht, oder eine frühere Anweisung derselben Novelle hat
+ihn schon geändert. **Eine Normalisierung, die diese 30 aufmacht, gibt es
+nicht** — die Vermutung aus dem Plan ist damit beantwortet und die Klasse
+geschlossen.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides
