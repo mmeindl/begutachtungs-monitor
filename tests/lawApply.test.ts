@@ -14,7 +14,7 @@ function law(): StandingLaw {
 }
 
 /** Parse an instruction line and pair it with its quoted payload lines. */
-function instr(line: string, payloadLines: string[] = []): Instruction[] {
+function instr(line: string, payloadLines: Parameters<typeof parsePayload>[0] = []): Instruction[] {
   const parsed = parseInstruction(line)
   expect(parsed.ops.length, `refused: ${parsed.reason}`).toBeGreaterThan(0)
   return parsed.ops.map((op) => ({ op, payload: parsePayload(payloadLines), line }))
