@@ -596,3 +596,37 @@ describe('what the second half of a compound line keeps of the first (26.09.2026
     expect(targets('In § 5 Abs. 1 erhält Z 6 die Ziffernbezeichnung "5." und lautet:')[1]).toMatchObject({ kind: 'replace', abs: '1', z: '5' })
   })
 })
+
+describe('a clause that opens with its own payload appends to the place before it (26.09.2026)', () => {
+  const last = (line: string) => {
+    const parsed = parseInstruction(line)
+    expect(parsed.reason, line).toBeNull()
+    return parsed.ops.at(-1) as { kind: string; target: NovaoAddress; child: string; childIds: string[] }
+  }
+
+  it('appends new Ziffern to the Absatz, not to the Ziffer they follow', () => {
+    // The address used to be read out of the payload: „Z 5", which does not exist yet.
+    const op = last('In § 31a Abs. 1 wird der Punkt am Ende der Z 4 durch einen Strichpunkt ersetzt; folgende Z 5 und 6 werden angefügt:')
+    expect(op).toMatchObject({ kind: 'append', child: 'z', target: { para: '§ 31a', abs: '1', z: null, level: 'abs' } })
+    expect(last('In § 1 Abs. 4 Z 10 werden der Punkt am Ende durch einen Strichpunkt ersetzt sowie folgende Z 11 bis Z 17 angefügt:').target).toMatchObject({ abs: '4', z: null })
+  })
+
+  it('appends a Litera to the Ziffer, and an Absatz to the §', () => {
+    expect(last('In § 21h Abs. 6 Z 2 wird der Punkt am Ende der lit. i durch einen Beistrich ersetzt und folgende lit. j angefügt:').target).toMatchObject({ abs: '6', z: '2', lit: null, level: 'z' })
+    expect(last('Der Text des § 26 erhält die Absatzbezeichnung "(1)" ; folgender Abs. 2 wird angefügt:').target).toMatchObject({ para: '§ 26', abs: null, level: 'para' })
+  })
+
+  it('refuses where the place before names several units at the host level', () => {
+    const parsed = parseInstruction('In § 5 Abs. 1 und 2 wird das Wort "a" durch das Wort "b" ersetzt; folgende Z 9 wird angefügt:')
+    expect(parsed.reason).toMatch(/nicht eindeutig/)
+  })
+})
+
+describe('two quotations under two „durch" (26.09.2026)', () => {
+  it('refuses to pair them into one replacement', () => {
+    // Each replacement has one operand in words; the two quotes belong to different pairs.
+    const parsed = parseInstruction('In § 81 Abs. 1 wird in Z 1 das Wort " oder" durch einen Beistrich und in Z 2 der Punkt durch das Wort " , oder" ersetzt.')
+    expect(parsed.ops.filter((o) => o.kind === 'replacePhrase' && o.from === ' oder' && o.to === ' , oder')).toEqual([])
+    expect(parsed.reason).toMatch(/Paarbildung/)
+  })
+})

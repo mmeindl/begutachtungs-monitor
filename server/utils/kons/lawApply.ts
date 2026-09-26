@@ -366,6 +366,20 @@ function childThrough(node: LawNode, level: NodeLevel, id: string): LawNode | nu
 }
 
 /**
+ * The body of a § without Absatz numbering: its one unnumbered Absatz.
+ *
+ * `lawtext/konsTree.ts` files such a § as a single Absatz with an empty
+ * designation, and that Absatz — not the § — carries its text, its list and
+ * its Schlussteil. An address that names the § and means what is in it
+ * („Dem § 3 werden folgende Z 16 bis 20 angefügt") has to be answered there.
+ * Every other node is its own body.
+ */
+function bodyOf(node: LawNode): LawNode {
+  const only = node.level === 'para' && node.children.length === 1 ? node.children[0]! : null
+  return only && only.level === 'abs' && only.id === '' ? only : node
+}
+
+/**
  * The node an address points at, descending Abs → Z → lit. Returns null as
  * soon as a level is missing: a partially resolved address is not a target.
  */
@@ -969,7 +983,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'append': {
-      const host = resolveTarget(law, op.target)
+      let host = resolveTarget(law, op.target)
       if (!host) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       if (payload.length === 0) return 'Anfügung ohne Text'
       // A Satz is not a node: it joins the target's own text. Common enough
@@ -988,6 +1002,11 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       }
       const level = levelOf(op.child)
       if (!level) return 'Angefügte Einheit nicht bestimmbar'
+      // „Dem § 3 werden folgende Z 16 bis 20 angefügt" in a § without Absatz
+      // numbering: its Ziffern hang off the one unnumbered Absatz, so the new
+      // ones do too. Pushed onto the § they would stand beside that Absatz —
+      // the same words in a tree no rendering reads as one list.
+      if (host.level === 'para' && level === 'z') host = bodyOf(host)
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) if (n.id && childById(host, level, n.id)) return `${n.marker} existiert bereits`
       // The end of the enumeration, not the end of the node. Where the Absatz

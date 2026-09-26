@@ -961,3 +961,24 @@ describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () =>
     expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Das Behörde entscheidet, das Behörde verkündet.')
   })
 })
+
+describe('a list extended by the clause behind its last Ziffer (26.09.2026)', () => {
+  it('appends the new Ziffern to the Absatz, in front of its Schlussteil', () => {
+    const l: StandingLaw = { paragraphs: [para('31a', 'Pflichten', [{ text: 'Der Arbeitgeber hat', ziffern: ['A zu tun,', 'B zu tun.'] }])] }
+    const { law: out, results } = run(l, instr('In § 31a Abs. 1 wird der Punkt am Ende der Z 2 durch einen Strichpunkt ersetzt; folgende Z 3 und 4 werden angefügt:', ['3. C zu tun;', '4. D zu tun.']))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:A zu tun,', '2:B zu tun;', '3:C zu tun;', '4:D zu tun.'])
+  })
+
+  it('appends Ziffern of a § without Absatz numbering inside its one Absatz', () => {
+    // Fern- und Auswärtsgeschäfte-Gesetz § 3: the Ziffern hang off the unnumbered Absatz.
+    const p = makeNode('para', '3', '§ 3.', '', 'Begriffe')
+    const body = makeNode('abs', '', '', 'Im Sinne dieses Gesetzes bedeutet')
+    body.children.push(makeNode('z', '1', '1.', 'eins;'), makeNode('z', '2', '2.', 'zwei.'))
+    p.children.push(body)
+    const { law: out, results } = run({ paragraphs: [p] }, instr('In § 3 wird der Punkt am Ende der Z 2 durch einen Strichpunkt ersetzt; folgende Z 3 wird angefügt:', ['3. drei.']))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs[0]!.children).toHaveLength(1)
+    expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:eins;', '2:zwei;', '3:drei.'])
+  })
+})

@@ -1029,6 +1029,33 @@ function absatzDrawnIn(head: string, quotes: readonly string[], targets: readonl
   return { op: { kind: 'renumber', target: { ...target, abs: '', level: 'abs' }, to: '(1)', toLast: null } }
 }
 
+/**
+ * The unit a clause like „folgende Z 5 und 6 werden angefügt" appends to:
+ * the place the clause before it named, cut to the level above what it
+ * appends. „In § 1 Abs. 4 Z 10 wird der Punkt … ersetzt sowie folgende
+ * Z 11 bis 17 angefügt" appends to Abs. 4, not to Z 10; „Der Text des § 26
+ * erhält die Absatzbezeichnung ‚(1)'; folgender Abs. 2 wird angefügt" to
+ * § 26.
+ *
+ * Null where the cut leaves more than one unit — the place before named
+ * several Absätze and the Ziffer could go into any of them — or where the
+ * level above is missing, a Litera behind a place that names no Ziffer. A
+ * Ziffer behind a place that names no Absatz is appended to the §: a § without
+ * Absatz numbering carries its Ziffern in its one unnumbered Absatz, and the
+ * engine descends into it (`kons/lawApply.ts`).
+ */
+function appendHost(from: NovaoAddress, child: 'abs' | 'z' | 'lit'): NovaoAddress | null {
+  if (!from.para || from.level === 'document') return null
+  const depth = from.lit !== null ? 3 : from.z !== null ? 2 : from.abs !== null ? 1 : 0
+  const hostDepth = child === 'abs' ? 0 : child === 'z' ? 1 : 2
+  if (child === 'lit' && from.z === null) return null
+  if (depth <= hostDepth && from.siblings.length > 0) return null
+  const base: NovaoAddress = { ...from, satz: null, satzCount: 0, siblings: [], heading: false, alsoHeading: false }
+  if (child === 'abs') return { ...base, abs: null, z: null, lit: null, level: 'para' }
+  if (child === 'z') return { ...base, z: null, lit: null, level: from.abs !== null ? 'abs' : 'para' }
+  return { ...base, lit: null, level: 'z' }
+}
+
 function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole: string): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
   const head = instructionHead(line)
@@ -1148,6 +1175,13 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
         for (const t of places) for (let i = 0; i + 1 < operands.length; i += 2) many.push({ kind: 'replacePhrase', target: t, from: operands[i]!.text, to: operands[i + 1]!.text, everywhere, eachUnit, wordBound: wordOperand(line, operands[i]!.ord) })
         return { ops: many, reason: null, line }
       }
+      // Two quotations under two „durch" are two replacements, each with one
+      // operand named in words: „wird in Z 1 das Wort ‚ oder' durch einen
+      // Beistrich und in Z 2 der Punkt durch das Wort ‚ , oder' ersetzt".
+      // Paired with each other they made one replacement that neither half
+      // says, and it ran as soon as the line around it stopped being refused
+      // (Fremdenpolizeigesetz 2005 § 81, 26.09.2026).
+      if ((maskQuotes(head).match(/\bdurch\b/gi) ?? []).length > 1) return fail('2 Operanden unter zwei „durch" — Paarbildung unklar')
       // Both German forms name the old text first — "wird A durch B ersetzt"
       // and "tritt an die Stelle der Wortfolge A die Wortfolge B". Only when
       // the new text is fronted ("Die Wortfolge B tritt an die Stelle von A")
@@ -1250,6 +1284,18 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     if (child === 'para') {
       if (targets.length > 1) return fail(`${targets.length} Anker für einen neuen Paragraphen`)
       return ok({ kind: 'insertAfter', anchor: target, child, childIds: childIds(payload, child), where: 'after' })
+    }
+    // „… wird der Punkt am Ende der Z 4 durch einen Strichpunkt ersetzt;
+    // folgende Z 5 und 6 werden angefügt:" — the ordinary way to extend a
+    // list. The second clause opens with its own payload and names no place,
+    // so the address was read out of the payload: „Z 5", which does not
+    // exist yet, and the append was refused as „Nicht im geltenden Text".
+    // The Prüfstand filed those under „die Fassung ist älter, als der Entwurf
+    // annimmt" — 21 of its 48 lines there were this (26.09.2026).
+    if (scope.trim() === '' && inherited && (child === 'abs' || child === 'z' || child === 'lit')) {
+      const host = appendHost(inherited, child)
+      if (!host) return fail(`Anfügung ${child === 'abs' ? 'eines Absatzes' : child === 'z' ? 'einer Ziffer' : 'einer Litera'} — Einheit davor nicht eindeutig`)
+      return ok({ kind: 'append', target: host, child, childIds: childIds(payload, child) })
     }
     // "§ 3 Abs. 1 und § 4 Abs. 1 wird jeweils folgender Satz angefügt" names
     // two places; appending to the first alone reported success on a law
