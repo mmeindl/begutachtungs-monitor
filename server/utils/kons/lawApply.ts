@@ -647,7 +647,13 @@ export function splitSentences(text: string): string[] | null {
  * that list to exist; "schluss" is the Schlussteil behind it. `count` widens
  * an ordinal to a run ("die ersten beiden Sätze").
  */
-function sentenceSlot(node: LawNode, satz: string, count = 1): Slot | null {
+function sentenceSlot(unit: LawNode, satz: string, count = 1): Slot | null {
+  // „In § 8 erster Satz", „Im Schlussteil des § 11": a § without Absatz
+  // numbering has its sentences in its one unnumbered Absatz, and the § node
+  // itself only carries that Absatz — so it counted as a unit with a list and
+  // every sentence of it was refused (4 of the 21 lines filed under „eine
+  // frühere Anweisung", 26.09.2026).
+  const node = bodyOf(unit)
   if (satz === 'einleitung') return node.children.length ? textSlot(node) : null
   if (satz === 'schluss') {
     // `id === 'schluss'`: a table of the standing text is filed as a
@@ -1003,6 +1009,9 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (op.child === 'satz') {
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Anfügung ohne Text'
+        // „Dem § 8 wird folgender Satz angefügt": into the § 's one Absatz,
+        // not as a Schlussteil beside it.
+        host = bodyOf(host)
         // "Dem Abs. 2 wird folgender Satz angefügt" puts the sentence at the
         // end of the Absatz. When the Absatz carries a list, its end is
         // behind the list — the Schlussteil — not the text in front of it.

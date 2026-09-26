@@ -1009,3 +1009,36 @@ describe('a list of §§ is every § it names (26.09.2026)', () => {
     expect(results[0]!.reason).toBe('§ nicht im geltenden Text: § 34c')
   })
 })
+
+describe('the sentences of a § without Absatz numbering (26.09.2026)', () => {
+  /** § 8 as RIS files it: one Absatz without designation. */
+  function unnumbered(text: string, ziffern: string[] = [], schluss: string | null = null): StandingLaw {
+    const p = makeNode('para', '8', '§ 8.', '', 'Auskunftspflicht')
+    const body = makeNode('abs', '', '', text)
+    ziffern.forEach((z, i) => body.children.push(makeNode('z', String(i + 1), `${i + 1}.`, z)))
+    if (schluss) body.children.push(makeNode('schluss', 'schluss', '', schluss))
+    p.children.push(body)
+    return { paragraphs: [p] }
+  }
+
+  it('counts the sentences of its one Absatz', () => {
+    // Erneuerbaren-Ausbau-Gesetz § 8, BGBl. I Nr. 47/2026.
+    const { law: out, results } = run(unnumbered('Alle sind verpflichtet, Daten zur Prüfung und zur Planung zu übermitteln. Das gilt auch sonst.'), instr('In § 8 erster Satz entfällt die Wortfolge "und zur Planung".'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Alle sind verpflichtet, Daten zur Prüfung zu übermitteln. Das gilt auch sonst.')
+  })
+
+  it('finds the Schlussteil behind its list', () => {
+    // Pflichtschulabschluss-Prüfungs-Gesetz § 11, BGBl. I Nr. 76/2026.
+    const { law: out, results } = run(unnumbered('Den Prüfern der', ['ersten Kommission,', 'zweiten Kommission'], 'gebührt eine Abgeltung gemäß dem Prüfungstaxengesetz - Schulen/Pädagogische Hochschulen.'), instr('Im Schlussteil des § 8 entfällt die Wendung " - Schulen/Pädagogische Hochschulen".'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children.at(-1)!.text).toBe('gebührt eine Abgeltung gemäß dem Prüfungstaxengesetz.')
+  })
+
+  it('appends a sentence to its one Absatz, not beside it', () => {
+    const { law: out, results } = run(unnumbered('Der erste Satz.'), instr('Dem § 8 wird folgender Satz angefügt:', ['Der zweite Satz.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children).toHaveLength(1)
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Der erste Satz. Der zweite Satz.')
+  })
+})
