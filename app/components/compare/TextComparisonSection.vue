@@ -28,9 +28,19 @@ import {
   annexWithheldText,
 } from '~/utils/annexNotes'
 
-const props = defineProps<{ gp: string; inr: number }>()
+/**
+ * The draft's address, in the two shapes the corpus has — the same parameter
+ * `useExplanations` takes, and for the same reason: a Ministerialentwurf is
+ * reached through the RIS↔ME join, a Begutachtung without a Gegenstand
+ * through its RIS id (docs/architecture.md §12.16). Everything this component
+ * renders is identical for both; only the endpoint differs.
+ */
+const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
 
-const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/drafts/${props.gp}/${props.inr}/gegenueberstellung`, {
+/** `/api/drafts/XXVIII/40` or `/api/ris-drafts/BEGUT_…` — the section's two endpoints hang off it. */
+const base = computed(() => (props.risId ? `/api/ris-drafts/${props.risId}` : `/api/drafts/${props.gp}/${props.inr}`))
+
+const { data, status } = await useFetch<TextComparisonResponse>(() => `${base.value}/gegenueberstellung`, {
   lazy: true,
   server: false,
 })
@@ -45,7 +55,7 @@ const { data, status } = await useFetch<TextComparisonResponse>(() => `/api/draf
  * this section caring: the Textgegenüberstellung is the information, the
  * reasoning is the addition.
  */
-const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr }))
+const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
 
 /**
  * The konsolidierte Lesefassung — a third layer on the same Paragraph
@@ -61,7 +71,7 @@ const { data: explanations } = useExplanations(() => ({ gp: props.gp, inr: props
  * of two screens further down.
  */
 const { data: consolidated } = await useFetch<ConsolidatedTextResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/konsolidiert`,
+  () => `${base.value}/konsolidiert`,
   { lazy: true, server: false },
 )
 

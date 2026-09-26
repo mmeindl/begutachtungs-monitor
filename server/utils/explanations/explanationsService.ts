@@ -206,12 +206,21 @@ export const getRisExplanations = defineCachedFunction(
   async (id: string): Promise<ExplanationsResponse> => {
     const detail = await getRisConsultation(id)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
-    // Never at a Paragraph: the page of a Begutachtung without a Gegenstand
-    // does not render the Gegenüberstellung, it links it (§12.30). Without a
-    // Gegenstand there is no (GP, Nummer) for the shared cache to key on; the
-    // document read is the same one.
+    // **At the Paragraph since 26.09.2026.** These pages render the
+    // Gegenüberstellung now instead of only linking it (§12.16), so the
+    // passages of the Besonderer Teil have a § to stand at, exactly as on a
+    // Ministerialentwurf's page (§12.30).
+    //
+    // The cheap half of the question, like there: whether a Gegenüberstellung
+    // exists at all — never whether it can also be *read*, which only the
+    // parser knows and which costs seconds. Parliament plays no part: a
+    // Begutachtung without a Gegenstand has no copy there to find.
+    //
+    // Without a Gegenstand there is no (GP, Nummer) for the shared cache to
+    // key on; the document read is the same one.
     const xml = detail.mainDocument.xml
-    return read(detail.explanations, () => (xml ? draftArticlesOfXml(xml) : Promise.resolve({ blocks: [], articles: [] })), async () => false)
+    const hasAnnex = detail.textComparisonParts.length > 0
+    return read(detail.explanations, () => (xml ? draftArticlesOfXml(xml) : Promise.resolve({ blocks: [], articles: [] })), async () => hasAnnex)
   },
   { name: 'erlaeuterungen-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

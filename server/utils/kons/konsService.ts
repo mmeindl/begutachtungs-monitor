@@ -38,12 +38,14 @@ import { applyNovelle, instructionsFromUnits, type StandingLaw } from './lawAppl
 import { bodyText, parseKonsParagraph, plainText, type LawNode } from '../lawtext/konsTree'
 import { segmentUnits } from '../lawtext/lawUnits'
 import { articleBlocks } from '../lawtext/draftArticles'
-import { getDraftArticles } from '../lawtext/draftArticlesService'
+import { draftArticlesOfXml, getDraftArticles } from '../lawtext/draftArticlesService'
 import { opAddress } from './novao'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { mapWithConcurrency } from '../pool'
 import type { KonsParagraphRef } from '../ris/konsLaw'
-import { annexSourceFor } from '../annex/annexSource'
+import { annexSourceFor, annexSourceForDraft } from '../annex/annexSource'
+import { getRisConsultation } from '../ris/risOnly'
+import type { DraftIdentity } from '../ris/draftIdentity'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { oracleVerdict, paragraphRows, rowsByParagraph } from './tguOracle'
 
@@ -92,24 +94,72 @@ async function standingParagraphs(queue: readonly KonsParagraphRef[]): Promise<L
   return trees
 }
 
+/** Nothing to show, and the denominator with it. */
+function emptyConsolidated(who: DraftIdentity, touched = 0): ConsolidatedTextResponse {
+  return { ...who, paragraphs: [], touched }
+}
+
 export const getConsolidatedText = defineCachedFunction(
   async (gp: string, inr: number): Promise<ConsolidatedTextResponse> => {
-    const empty = (): ConsolidatedTextResponse => ({ gp, inr, paragraphs: [], touched: 0 })
-
+    const who: DraftIdentity = { gp, inr, risId: null }
     const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
     // The same rule as for the Gegenüberstellung: a weak join is dates and
     // ministry without the title, and the standing text of *another* draft
     // reads exactly as credibly as the right one.
-    if (!row?.risId || row.status !== 'matched') return empty()
+    if (!row?.risId || row.status !== 'matched') return emptyConsolidated(who)
     // Without the first day of the consultation period we do not know which
     // version of the law the draft was written against.
     const asOf = row.risBeginn ?? null
-    if (!asOf) return empty()
+    if (!asOf) return emptyConsolidated(who)
     // The instructions are read from the XML only.
     const xmlUrl = row.risDocument?.xml
-    if (!xmlUrl) return empty()
+    if (!xmlUrl) return emptyConsolidated(who)
 
     const { blocks } = await getDraftArticles(gp, inr, 'ris-xml')
+    // The same source as the section above, out of the same function: RIS
+    // first, Parliament as the fallback (`annex/textComparisonService.ts`).
+    return consolidate(who, blocks, asOf, (articles) => annexSourceForDraft(gp, inr, row.textComparisonParts ?? [], articles))
+  },
+  { name: 'kons-text', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+)
+
+/**
+ * The same reading for a Begutachtung without a Gegenstand at Parliament
+ * (§12.16) — Verordnungsentwürfe above all.
+ *
+ * A sibling for the same reason as `getRisTextComparison`: what differs is
+ * everything ABOVE the reading (no join to doubt, no second copy of the annex
+ * to look for), and what they share is the whole engine below it.
+ */
+export const getRisConsolidatedText = defineCachedFunction(
+  async (id: string): Promise<ConsolidatedTextResponse> => {
+    const detail = await getRisConsultation(id)
+    if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
+    const who: DraftIdentity = { gp: null, inr: null, risId: id }
+    const asOf = detail.startedAt
+    const xmlUrl = detail.mainDocument.xml
+    if (!asOf || !xmlUrl) return emptyConsolidated(who)
+    const parts = detail.textComparisonParts ?? []
+    const { blocks } = await draftArticlesOfXml(xmlUrl)
+    return consolidate(who, blocks, asOf, (articles) => annexSourceFor(parts, articles))
+  },
+  { name: 'kons-text-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+)
+
+/**
+ * Draft blocks + the day the law is read at → the §§ the gate lets through.
+ *
+ * Everything from here down is common to both halves of the corpus; the
+ * caller has already decided who the draft is and where its annex comes from.
+ */
+async function consolidate(
+  who: DraftIdentity,
+  blocks: readonly TextBlock[],
+  asOf: string,
+  resolveAnnex: (articles: readonly DraftArticle[]) => Promise<Awaited<ReturnType<typeof annexSourceFor>>>,
+): Promise<ConsolidatedTextResponse> {
+  {
+    const empty = (): ConsolidatedTextResponse => emptyConsolidated(who)
     const parts = articleBlocks(blocks).filter((p) => p.article.amends)
     // A draft that creates a law instead of amending one has no version „davor".
     if (parts.length === 0) return empty()
@@ -129,7 +179,7 @@ export const getConsolidatedText = defineCachedFunction(
     // Since 22.09.2026 the PARSE lives in a derived cache
     // (`annex-pdf-parse`), so this path too is paid once per draft per day.
     const articles = parts.map((p) => p.article)
-    const annex = await annexSourceFor(gp, inr, row.textComparisonParts ?? [], articles)
+    const annex = await resolveAnnex(articles)
     const byParagraph = typeof annex === 'string' ? null : rowsByParagraph(annex.parsed.rows)
     const isPackage = parts.length > 1
 
@@ -165,7 +215,7 @@ export const getConsolidatedText = defineCachedFunction(
     // dozens of § documents only to show nothing afterwards. The number of
     // changed §§ still stands there — it costs no call, it is in the draft's
     // own text.
-    if (!byParagraph) return { gp, inr, paragraphs: [], touched }
+    if (!byParagraph) return emptyConsolidated(who, touched)
 
     const workable = perArticle.flatMap((w) => (w && w.index < MAX_LAWS ? [w] : []))
 
@@ -314,13 +364,11 @@ export const getConsolidatedText = defineCachedFunction(
     const shown = shownPerArticle.flat()
 
     return {
-      gp,
-      inr,
+      ...who,
       // An empty list is not an error but the normal case: in half of the
       // drafts the annex confirms not a single paragraph (§12.12).
       paragraphs: shown,
       touched,
     }
-  },
-  { name: 'kons-text', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
-)
+  }
+}

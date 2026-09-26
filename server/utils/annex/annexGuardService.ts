@@ -66,20 +66,25 @@ const sources: AnnexSources = {
  * has no standing law to check against.
  *
  * `rows`, `articles` and `draftBlocks` are outside the key deliberately: all
- * three are derived from the same two documents `gp`/`inr`/`asOf` address,
- * and the verdict map is keyed by the annex's own § designations — if a
- * parser change moved those, a stale map matches no row and every row comes
- * out `unchecked`, which is the safe direction. The derived cache dies with
- * the worker anyway (`cache/base.ts`).
+ * three are derived from the same two documents `draft`/`asOf` address, and
+ * the verdict map is keyed by the annex's own § designations — if a parser
+ * change moved those, a stale map matches no row and every row comes out
+ * `unchecked`, which is the safe direction. The derived cache dies with the
+ * worker anyway (`cache/base.ts`).
+ *
+ * `draft` is the draft's identity as ONE string — „XXVIII-40" for a
+ * Ministerialentwurf, the RIS document id for a Begutachtung without a
+ * Gegenstand (§12.16). One cached function for both, because it is one
+ * question; two would be two chances for the caching to drift apart while
+ * the logic stays shared.
  */
 export const getAnnexVerification = defineCachedFunction(
   async (
-    gp: string,
-    inr: number,
+    draft: string,
     asOf: string,
     rows: readonly ComparisonRow[],
     articles: readonly DraftArticle[],
     draftBlocks: readonly TextBlock[],
   ): Promise<AnnexVerification> => verifyAnnex(rows, { articles, asOf, blocks: draftBlocks }, sources),
-  { name: 'annex-verification', base: DERIVED_CACHE, getKey: (gp: string, inr: number, asOf: string) => `${gp}-${inr}-${asOf}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+  { name: 'annex-verification', base: DERIVED_CACHE, getKey: (draft: string, asOf: string) => `${draft}-${asOf}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

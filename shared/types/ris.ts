@@ -153,6 +153,12 @@ export interface RisConsultationDetail extends RisConsultation {
   /** Current law against proposed law, where the ministry wrote one. */
   textComparison: RisDocumentFormats | null
   /**
+   * Every document of that annex, in RIS's order — the first is
+   * `textComparison`. A ressort may publish it in parts, and the annex engine
+   * reads them as one (`ris/risRecord.ts`).
+   */
+  textComparisonParts: RisDocumentFormats[]
+  /**
    * The Begleitschreiben. It names the address a Stellungnahme goes to, and
    * for these procedures that is the ONLY way to file one: there is no
    * parliamentary form, because there is no Gegenstand.

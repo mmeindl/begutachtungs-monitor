@@ -236,6 +236,7 @@ export async function getRisConsultation(id: string): Promise<RisConsultationDet
     mainDocument: r.mainDocument,
     explanations: hasDocument(r.explanations) ? r.explanations : null,
     textComparison: hasDocument(r.textComparison) ? r.textComparison : null,
+    textComparisonParts: r.textComparisonParts.filter(hasDocument),
     coverLetter: hasDocument(r.coverLetter) ? r.coverLetter : null,
     // Everything else the record carries — WFA, Vorblatt, Digicheck,
     // Anhänge. Only the full-text search reads it (§12.31); the draft page

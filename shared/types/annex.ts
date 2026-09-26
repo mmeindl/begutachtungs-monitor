@@ -61,8 +61,10 @@ export interface ConsolidatedParagraph {
  * absence must never look like „unverändert" on this page (§12.27).
  */
 export interface ConsolidatedTextResponse {
-  gp: string
-  inr: number
+  /** As on `TextComparisonResponse`: (GP, Nummer) or a RIS document id. */
+  gp: string | null
+  inr: number | null
+  risId: string | null
   paragraphs: ConsolidatedParagraph[]
   /** How many §§ the draft amends at all — the denominator on display. */
   touched: number
@@ -152,8 +154,15 @@ export interface TextComparisonRow {
  * drafts have the annex and four in ten of those only as a scan.
  */
 export interface TextComparisonResponse {
-  gp: string
-  inr: number
+  /**
+   * Who the draft is. A Ministerialentwurf answers with (GP, Nummer), a
+   * Begutachtung that RIS carries alone with its RIS document id and nulls
+   * for the other two (§12.16) — the same three fields either way, so the
+   * section does not have to know which half of the corpus it is rendering.
+   */
+  gp: string | null
+  inr: number | null
+  risId: string | null
   available: boolean
   unavailableReason: string | null
   /**

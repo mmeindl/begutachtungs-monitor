@@ -236,13 +236,28 @@ async function readParliament(gp: string, inr: number, articles: readonly DraftA
  * file header). Measured, the Parliament copy is the more complete one.
  */
 export async function annexSourceFor(
+  parts: readonly RisDocumentUrls[],
+  articles: readonly DraftArticle[],
+  /**
+   * The second copy, for a draft that HAS a Gegenstand — null where there is
+   * none. A Begutachtung that Parliament does not carry cannot have a copy
+   * there, and asking would be one upstream call for a document that cannot
+   * exist (`ris/risOnly.ts`, §12.16).
+   */
+  atParliament: (() => Promise<AnnexSource | null>) | null = null,
+): Promise<AnnexSource | string> {
+  const ris = await readRis(parts, articles)
+  if (typeof ris !== 'string') return ris
+  if (!READ_PARLIAMENT_COPY || !atParliament) return ris
+  return (await atParliament()) ?? ris
+}
+
+/** The same decision for a Ministerialentwurf, with Parliament's copy wired in. */
+export async function annexSourceForDraft(
   gp: string,
   inr: number,
   parts: readonly RisDocumentUrls[],
   articles: readonly DraftArticle[],
 ): Promise<AnnexSource | string> {
-  const ris = await readRis(parts, articles)
-  if (typeof ris !== 'string') return ris
-  if (!READ_PARLIAMENT_COPY) return ris
-  return (await readParliament(gp, inr, articles)) ?? ris
+  return annexSourceFor(parts, articles, () => readParliament(gp, inr, articles))
 }

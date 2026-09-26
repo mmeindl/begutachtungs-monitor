@@ -4703,6 +4703,47 @@ erklärende Absatz außerhalb des Fetch-Ergebnisses: Auch wenn die Zeilen
 fehlen, sagt die Seite weiterhin, dass es sie gibt und dass die Zahlen oben
 sie nicht zählen.
 
+#### Die Gegenüberstellung und die Lesefassung, seit 26.09.2026
+
+Bis dahin hatten diese Seiten **einen** Abschnitt: Dokumente. Nicht, weil zu
+einem Verordnungsentwurf weniger zu sagen wäre, sondern weil beide Dienste auf
+(GP, Nummer) verschlüsselt waren — `getTextComparison` und
+`getConsolidatedText` beginnen mit `getRisMapForGp(gp)`, und ein Satz ohne
+Gegenstand hat dort keine Zeile. Eine Adressierung, kein Befund.
+
+**Der Ertrag ist nicht klein:** von den 201 Begutachtungen ohne Gegenstand im
+laufenden Fenster tragen **104 (51,7 %)** eine Textgegenüberstellung, und
+jede einzelne zeigte bisher nichts. Über den ganzen RIS-Korpus sind es 582
+der 3.012 Verordnungen (19,3 %). An der GAP-Strategieplan-Anwendungsverordnung
+gemessen: 32 Zeilen aus dem PDF, 28 geprüfte Paragraphen, 24 bestätigt, und
+die Lesefassung steht an 9 von 32 — auf einer Seite, die vorher darüber
+schwieg.
+
+**Gebaut als Geschwister, nicht als Parameter.** `getRisTextComparison(id)`
+neben `getTextComparison(gp, inr)`, `getRisConsolidatedText(id)` neben
+`getConsolidatedText(gp, inr)` — und das ist keine Verdopplung, weil sich
+unterscheidet, was **über** dem Lesen liegt: Ein Ministerialentwurf wird über
+den RIS↔ME-Join gefunden und kann zweifelhaft zugeordnet sein, und das
+Parlament veröffentlicht eine zweite Kopie seiner Beilage, die die Seite
+mindestens verlinken muss. Ein Satz ohne Gegenstand hat nichts davon — kein
+Join, an dem zu zweifeln wäre, keine zweite Kopie. Die Sätze, die über diese
+Zustände sprechen, wären hier Sätze über etwas, das es nicht geben kann.
+Gemeinsam ist das Lesen, das Tor und das Zählen, und das steht einmal da
+(`readAndCheck`, `consolidate`).
+
+Drei Stellen tragen die Identität jetzt als **drei Felder statt zwei**
+(`ris/draftIdentity.ts`): `gp`/`inr` für einen Ministerialentwurf, `risId` für
+den Rest, und der Cache-Schlüssel der Prüfung ist eine Zeichenkette aus
+beiden. Die Antworten führen alle drei, damit der Abschnitt nicht wissen muss,
+welche Hälfte des Korpus er gerade zeichnet.
+
+**Ein Nebeneffekt, der vorher ausdrücklich verneint war:** Die Erläuterungen
+zu den einzelnen Paragraphen stehen auf diesen Seiten jetzt **am Paragraphen**
+(§12.30). Der Kommentar dazu sagte „Nie am Paragraphen: die Seite rendert die
+Gegenüberstellung nicht, sie verlinkt sie" — das war wahr und ist es nicht
+mehr, und die Bedingung dafür ist dieselbe billige Hälfte der Frage wie
+drüben: ob es eine Beilage *gibt*, nie ob sie sich auch lesen lässt.
+
 #### Bekannt und offen
 
 - **`ambiguous` im Join.** Eine unentschiedene Zeile wählt keinen RIS-Satz,

@@ -289,6 +289,18 @@ const documents = computed(() => {
         <ExplanationsSection :ris-id="data.id" />
       </section>
 
+      <!-- The ressort's own comparison, from day one — and on these pages it
+           carries more weight than on a Ministerialentwurf's. There is no
+           Regierungsvorlage to compare against later and no parliamentary
+           Kurzinformation above it, so this is the only place the procedure
+           says what would change. Shown since 26.09.2026; until then both
+           services were keyed on (GP, Nummer) and two thirds of the corpus
+           had no section at all (§12.16). -->
+      <section id="gegenueberstellung" class="page-section scroll-mt-6" aria-labelledby="gegenueberstellung-heading">
+        <h2 id="gegenueberstellung-heading" class="section-heading">Was ändert der Entwurf?</h2>
+        <TextComparisonSection :ris-id="data.id" />
+      </section>
+
       <section class="page-section" aria-labelledby="dokumente">
         <h2 id="dokumente" class="section-heading">Dokumente</h2>
         <p class="mt-1 max-w-prose text-sm text-ink-secondary">

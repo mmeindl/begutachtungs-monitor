@@ -35,30 +35,98 @@
  */
 
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { annexSourceFor, parliamentAnnex, PARLIAMENT_CREDIT, READ_PARLIAMENT_COPY, RIS_CREDIT } from './annexSource'
+import { annexSourceFor, annexSourceForDraft, parliamentAnnex, PARLIAMENT_CREDIT, READ_PARLIAMENT_COPY, RIS_CREDIT } from './annexSource'
 import { checkAnnexRows, notRunReason } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
-import { getDraftArticles } from '../lawtext/draftArticlesService'
+import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
 import { getRisMapForGp } from '../ris/begutCorpus'
+import { getRisConsultation } from '../ris/risOnly'
+import type { RisDocumentUrls } from '../ris/risRecord'
+import { identityKey, type DraftIdentity } from '../ris/draftIdentity'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
+
+/** The section with nothing in it, and the sentence that says why. */
+function emptyComparison(who: DraftIdentity, reason: string, source: TraceLink | null = null, pdf: TraceLink | null = null): TextComparisonResponse {
+  return {
+    ...who,
+    available: false,
+    unavailableReason: reason,
+    source,
+    credit: RIS_CREDIT,
+    pdf,
+    readFrom: null,
+    droppedPages: 0,
+    boundaryNote: null,
+    stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
+    verification: null,
+    rows: [],
+  }
+}
+
+/**
+ * The annex read, checked and counted — everything both callers share.
+ *
+ * Above this line the two differ in what they know about the draft (a
+ * parliamentary Gegenstand or a bare RIS record) and therefore in the
+ * sentences they can offer when nothing can be read. From here down there is
+ * one question, and it is answered once.
+ */
+async function readAndCheck(
+  who: DraftIdentity,
+  parts: readonly RisDocumentUrls[],
+  asOf: string,
+  draft: DraftText,
+  chosen: Awaited<ReturnType<typeof annexSourceFor>>,
+  pdfFallback: TraceLink | null,
+): Promise<TextComparisonResponse | string> {
+  if (typeof chosen === 'string') return chosen
+  const { parsed, source, credit, readFrom, droppedPages } = chosen
+  const { rows, refusal } = parsed
+  // Both columns are checked before the rows are sent. The left one claims
+  // to be the standing law and RIS holds that text independently; the right
+  // one must not show as new what already stands there, and must occur in
+  // the draft's own Gesetzestext. The reference date is RIS's own start of
+  // the Begutachtungsfrist — the day the ministry wrote the annex, not
+  // today. Called even without one: `verifyAnnex` then reports why it could
+  // check nothing, which the page needs to be able to say.
+  const verification = await getAnnexVerification(identityKey(who), asOf, rows, draft.articles, draft.blocks)
+  const checked = checkAnnexRows(rows, verification)
+  return {
+    ...who,
+    available: true,
+    unavailableReason: null,
+    source,
+    credit,
+    pdf: pdfFallback,
+    readFrom,
+    droppedPages,
+    boundaryNote: refusal,
+    // Counted over the rows as sent, so the numbers on the page and the
+    // rows on the page cannot disagree.
+    stats: checked.stats,
+    verification: {
+      ran: verification.ran,
+      notRunReason: notRunReason(verification),
+      // The day the ministry wrote the annex, so the page can name the
+      // version of the law its left column was held against instead of
+      // leaving the reader to assume "today".
+      asOf: asOf || null,
+      judged: verification.judged,
+      verified: verification.verified,
+      withheldParagraphs: checked.withheldParagraphs,
+      withheldByCause: checked.withheldByCause,
+      doubtfulLaws: verification.doubtfulLaws.map((l) => l.law).filter((l): l is string => l !== null),
+      uncheckedParagraphs: checked.uncheckedParagraphs,
+      rowsWithoutParagraph: checked.rowsWithoutParagraph,
+    },
+    rows: checked.rows,
+  }
+}
 
 export const getTextComparison = defineCachedFunction(
   async (gp: string, inr: number): Promise<TextComparisonResponse> => {
-    const empty = (reason: string, source: TraceLink | null = null, pdf: TraceLink | null = null): TextComparisonResponse => ({
-      gp,
-      inr,
-      available: false,
-      unavailableReason: reason,
-      source,
-      credit: RIS_CREDIT,
-      pdf,
-      readFrom: null,
-      droppedPages: 0,
-      boundaryNote: null,
-      stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
-      verification: null,
-      rows: [],
-    })
+    const who: DraftIdentity = { gp, inr, risId: null }
+    const empty = (reason: string, source: TraceLink | null = null, pdf: TraceLink | null = null): TextComparisonResponse => emptyComparison(who, reason, source, pdf)
 
     /** What Parliament publishes, and the sentence that follows from it. */
     const fromParliament = async (
@@ -130,9 +198,9 @@ export const getTextComparison = defineCachedFunction(
     // own Gesetzestext (`rightColumnCheck` in `annex/rightColumn.ts`).
     // Fetched before the source is chosen, because every parse path below
     // needs it.
-    const { blocks: draftBlocks, articles } = await getDraftArticles(gp, inr, 'ris-xml')
+    const draft = await getDraftArticles(gp, inr, 'ris-xml')
 
-    const chosen = await annexSourceFor(gp, inr, row.textComparisonParts ?? [], articles)
+    const chosen = await annexSourceForDraft(gp, inr, row.textComparisonParts ?? [], draft.articles)
     if (typeof chosen === 'string') {
       const parl = await parliamentAnnex(gp, inr)
       const atParliament = parl.pdf ?? parl.html
@@ -161,55 +229,53 @@ export const getTextComparison = defineCachedFunction(
       // The document stays linked even where we could not read it.
       return empty(chosen, null, pdf ?? atParliament)
     }
-
-    const { parsed, source, credit, readFrom, droppedPages } = chosen
-    const { rows, refusal } = parsed
     // Where the Parliament copy was the one read, RIS usually carries no
     // document for this draft at all — and then Parliament's PDF is the only
     // one a reader can open.
-    const pdfLink = pdf ?? (credit === PARLIAMENT_CREDIT ? (await parliamentAnnex(gp, inr)).pdf : null)
-
-    // Both columns are checked before the rows are sent. The left one claims
-    // to be the standing law and RIS holds that text independently; the right
-    // one must not show as new what already stands there, and must occur in
-    // the draft's own Gesetzestext. The reference date is RIS's own start of
-    // the Begutachtungsfrist — the day the ministry wrote the annex, not
-    // today. Called even without one: `verifyAnnex` then reports why it could
-    // check nothing, which the page needs to be able to say.
-    const verification = await getAnnexVerification(gp, inr, row.risBeginn ?? '', rows, articles, draftBlocks)
-    const checked = checkAnnexRows(rows, verification)
-
-    return {
-      gp,
-      inr,
-      available: true,
-      unavailableReason: null,
-      source,
-      credit,
-      pdf: pdfLink,
-      readFrom,
-      droppedPages,
-      boundaryNote: refusal,
-      // Counted over the rows as sent, so the numbers on the page and the
-      // rows on the page cannot disagree.
-      stats: checked.stats,
-      verification: {
-        ran: verification.ran,
-        notRunReason: notRunReason(verification),
-        // The day the ministry wrote the annex, so the page can name the
-        // version of the law its left column was held against instead of
-        // leaving the reader to assume "today".
-        asOf: row.risBeginn ?? null,
-        judged: verification.judged,
-        verified: verification.verified,
-        withheldParagraphs: checked.withheldParagraphs,
-        withheldByCause: checked.withheldByCause,
-        doubtfulLaws: verification.doubtfulLaws.map((l) => l.law).filter((l): l is string => l !== null),
-        uncheckedParagraphs: checked.uncheckedParagraphs,
-        rowsWithoutParagraph: checked.rowsWithoutParagraph,
-      },
-      rows: checked.rows,
-    }
+    const pdfLink = pdf ?? (chosen.credit === PARLIAMENT_CREDIT ? (await parliamentAnnex(gp, inr)).pdf : null)
+    const out = await readAndCheck(who, row.textComparisonParts ?? [], row.risBeginn ?? '', draft, chosen, pdfLink)
+    return typeof out === 'string' ? empty(out, null, pdfLink) : out
   },
   { name: 'text-comparison', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
+)
+
+/**
+ * The same section for a Begutachtung without a Gegenstand at Parliament
+ * (§12.16).
+ *
+ * **Why it is a sibling and not a parameter.** Everything that differs sits
+ * ABOVE the reading: a Ministerialentwurf is found through the RIS↔ME map and
+ * can be doubtful (a weak join), and Parliament publishes a second copy of its
+ * annex that the page must at least link. A RIS-only record has none of that —
+ * no join to doubt, no second copy to look for — so the sentences that speak
+ * about those states would be sentences about a thing that cannot exist here.
+ * What the two share is the reading, the gate and the counting, and that is
+ * `readAndCheck`.
+ *
+ * Until 26.09.2026 these pages showed no Gegenüberstellung at all, for the
+ * one reason that both services were keyed on (GP, Nummer). That is two
+ * thirds of the corpus — Verordnungsentwürfe above all — and for them the
+ * annex is the only place the procedure says what would change.
+ */
+export const getRisTextComparison = defineCachedFunction(
+  async (id: string): Promise<TextComparisonResponse> => {
+    const detail = await getRisConsultation(id)
+    if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
+    const who: DraftIdentity = { gp: null, inr: null, risId: id }
+    const parts = detail.textComparisonParts ?? []
+    const first = parts[0]
+    const pdf: TraceLink | null = first?.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: first.pdf } : null
+    if (!first) {
+      return emptyComparison(who, 'Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.')
+    }
+    // No (GP, Nummer) for the shared parse to key on, so the document is read
+    // under its own URL — the same parse, a different cache key
+    // (`lawtext/draftArticlesService.ts`).
+    const xml = detail.mainDocument.xml
+    const draft = xml ? await draftArticlesOfXml(xml) : { blocks: [], articles: [] }
+    const chosen = await annexSourceFor(parts, draft.articles)
+    const out = await readAndCheck(who, parts, detail.startedAt ?? '', draft, chosen, pdf)
+    return typeof out === 'string' ? emptyComparison(who, out, null, pdf) : out
+  },
+  { name: 'text-comparison-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
