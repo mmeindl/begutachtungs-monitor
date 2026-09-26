@@ -162,6 +162,19 @@ describe('parseInstruction', () => {
     expect(parsed.ops.map((o) => o.kind)).toEqual(['replacePhrase', 'delete', 'renumber'])
   })
 
+  it('names the unit an unresolvable address points at', () => {
+    // The refusal is the same as before; the word is what makes the census
+    // of 55 readable. No colon — the harness cuts its tally at one.
+    const of = (line: string): string | null => parseInstruction(line).reason
+    expect(of('Z 1 lit. n des Anhangs entfällt.')).toBe('Anhang ohne eigene Ebene')
+    expect(of('In der Tarifpost 9 Anmerkung 16 entfällt der letzte Satz.')).toBe('Tarifpost ohne eigene Ebene')
+    expect(of('Der Titel lautet:')).toBe('Titel ohne eigene Ebene')
+    expect(of('Dem Art. VI wird folgende Z 85 angefügt:')).toBe('Artikel in römischer Zahl ohne eigene Ebene')
+    expect(of('Die Überschrift des 2. Hauptstücks lautet:')).toBe('Hauptstück ohne eigene Ebene')
+    // A § the parser can read is not touched by any of this.
+    expect(of('In § 5 Abs. 1 entfällt die Wortfolge "A".')).toBeNull()
+  })
+
   it('refuses a unit deletion that names a text', () => {
     // A unit deletion takes a whole Absatz out; a quotation says the clause
     // was about a text whose noun this parser has no word for.

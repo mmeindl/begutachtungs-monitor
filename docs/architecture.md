@@ -1846,6 +1846,37 @@ ihn schon geändert. **Eine Normalisierung, die diese 30 aufmacht, gibt es
 nicht** — die Vermutung aus dem Plan ist damit beantwortet und die Klasse
 geschlossen.
 
+**Ein Eimer von 55 sagt nichts (26.09.2026).** „Keine auflösbare Adresse"
+war die größte verbliebene Verweigerungsklasse und zugleich die
+uninformativste: Sie nennt nicht, *was* nicht adressierbar war. Die Zeilen
+nennen es sehr wohl, und sie verteilen sich auf acht Dinge, die nichts
+miteinander zu tun haben:
+
+| was die Adresse nennt | Zeilen | wo |
+|---|---|---|
+| `Anhang` mit eigenen Ziffern und Litera | 18 | Verbraucherbehördenkooperationsgesetz, UWG |
+| `Tarifpost` samt `Anmerkung` | 13 | Gerichtsgebührengesetz |
+| der `Titel` des Gesetzes | 7 | ORF-G, FinStrG, GlücksspielG, … |
+| `Halbsatz` | 5 | RAO, Notariatsprüfungsgesetz, LFG |
+| Überschrift eines `Hauptstücks` | 3 | AsylG 2005 |
+| `Abschnitt`, `Teil` | je 2 | TDBG, UmgrStG, EAG |
+| `Artikel` in römischer Zahl | 2 | GGG, ALSAG |
+| nennt keine Einheit | 3 | |
+
+Das ist der ganze Eingriff: Der Grund trägt jetzt das Wort, und **ohne
+Doppelpunkt**, weil der Prüfstand seine Zählung am Doppelpunkt abschneidet
+(`causeOf`) — mit einem wären alle acht wieder ein Eimer. Verweigert wird
+genau wie vorher, und der Lauf bestätigt es: **jede Zahl des Prüfstands
+identisch**, Zeile für Zeile.
+
+Was daraus folgt, ist kein Tag Arbeit, sondern acht verschiedene: Drei der
+Klassen brauchen den geltenden Text selbst — `StandingLaw` führt Paragraphen
+und nichts darüber, also hat „Der Titel lautet:" keinen Ort, an den es
+geschrieben werden könnte, und die Verweigerung ist dort die richtige
+Antwort, nicht eine Lücke. Der `Anhang` dagegen ist die eine große und
+geschlossene: zwei Gesetze, ein Dokument im RIS (`Anl. 1`), Ziffern und
+Litera darin — und er steht damit ganz oben, wenn diese Klasse drankommt.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides

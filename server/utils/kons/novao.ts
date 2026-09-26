@@ -131,6 +131,42 @@ export function unplaceableSubUnit(text: string): string | null {
   return SUBUNIT_WORD.exec(maskQuotes(normalizeText(text)))?.[1] ?? null
 }
 
+/**
+ * The unit an address names that this model has **no root for** — not a
+ * subdivision of a Paragraph like `sublit` above, but a structure standing
+ * beside it: the law's `Titel`, an `Anhang` with its own Ziffern and Litera,
+ * the `Tarifpost` of the Gerichtsgebührengesetz, the `Halbsatz` inside a
+ * sentence, the heading of a `Hauptstück`, `Abschnitt` or `Teil`.
+ *
+ * All of them are refused either way — the point is the **census**. „Keine
+ * auflösbare Adresse" was one bucket of 55 over 40 Sammelnovellen, and a
+ * bucket that size says nothing about what to build. Named, it is: Anhang 18,
+ * Tarifpost 13, Titel 7, Halbsatz 6, Hauptstück 3, Abschnitt 2, Artikel in
+ * römischer Zahl 2, Teil 2 — and 2 that name no unit at all (26.09.2026).
+ * Each of those is a different piece of work on a different part of the
+ * model, and three of them need the standing text to carry the unit at all
+ * (`StandingLaw` holds paragraphs and nothing above them, so „Der Titel
+ * lautet:" has nowhere to go and is right to be refused).
+ *
+ * The reason carries the word **without a colon**, because the harness cuts
+ * its census at the colon (`causeOf`) — with one, all eight would collapse
+ * back into the single bucket this exists to split.
+ */
+const UNROOTED_UNIT = /\b(Anhang|Anhäng|Tarifpost|Anmerkung|Halbsatz|Halbsätz|Hauptstück|Abschnittsbezeichnung|Abschnitt|Titel|Teil)(?:e|en|es|s|n)?\b/i
+const UNROOTED_NAME: Record<string, string> = { anhäng: 'Anhang', halbsätz: 'Halbsatz', abschnittsbezeichnung: 'Abschnitt' }
+
+/** „Dem Art. VI wird folgende Z 85 angefügt" — the old laws number their Artikel in Roman. */
+const ROMAN_ARTICLE = /\bArt(?:\.|ikel)\s+[IVXLCDM]+\b/
+
+/** The unit an unresolvable address names, in one word — null where it names none. */
+export function unrootedUnit(text: string): string | null {
+  const clean = maskQuotes(normalizeText(text))
+  if (ROMAN_ARTICLE.test(clean)) return 'Artikel in römischer Zahl'
+  const word = UNROOTED_UNIT.exec(clean)?.[1]
+  if (!word) return null
+  return UNROOTED_NAME[word.toLowerCase()] ?? word
+}
+
 const ORDINAL_INDEX: Record<string, number> = { erste: 0, zweite: 1, dritte: 2, vierte: 3, fünfte: 4, sechste: 5, siebente: 6, siebte: 6, achte: 7, neunte: 8, zehnte: 9 }
 const ORDINAL_BY_INDEX = ['erster', 'zweiter', 'dritter', 'vierter', 'fünfter', 'sechster', 'siebenter', 'achter', 'neunter', 'zehnter']
 const COUNT_WORD: Record<string, number> = { beiden: 2, zwei: 2, drei: 3, vier: 4, fünf: 5 }
@@ -906,7 +942,9 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // two Strich forms are perfectly readable addresses that this model has no
     // level for, and the refusal list is what decides what gets built next.
     const sub = unplaceableSubUnit(scope || head)
-    return fail(sub ? `Untergliederung ohne eigene Ebene: ${sub}` : 'keine auflösbare Adresse')
+    if (sub) return fail(`Untergliederung ohne eigene Ebene: ${sub}`)
+    const unit = unrootedUnit(scope || head)
+    return fail(unit ? `${unit} ohne eigene Ebene` : 'keine auflösbare Adresse')
   }
   const target = targets[0]!
 
