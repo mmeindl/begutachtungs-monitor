@@ -31,17 +31,54 @@
 # It stands BEFORE the list call, ever since the list shows the outcome per
 # row (§12.32): the list waits only 3 s for it and otherwise renders without
 # the column — which is right, but avoidable when the volumes are already in.
+#
+# Fifth call since 2026-09-26: the station map of the PREVIOUS period. Same
+# argument as the fourth call, one period back — the list reads the map under
+# a 2,5 s budget, so whoever picks GP XXVII from the period chooser on a cold
+# server waits those 2,5 s and then gets a list without the station filter
+# plus a note. The note is honest and the filter is the accountability layer,
+# so it is the one that must not be missing: the finished period is where the
+# question „was ist daraus geworden" has an answer at all.
+#
+# It is the expensive line — 650 upstream requests against 227 for the
+# running period, 35,6 s cold (§12.26) — and it stands LAST because of it:
+# every call before it serves a page somebody reaches without choosing
+# anything, and a deploy that breaks off in the middle of this unit should
+# lose the least-visited warm-up, not the start page's.
+#
+# `vorperiode` and not `XXVII`, for the reason `aktuell` exists
+# (`server/utils/http/params.ts`): a Roman numeral in a unit file is a line
+# that goes wrong on exactly the day nobody is watching it, the
+# Periodenwechsel — and then it would warm the period that just ended while
+# the list shows the one that just began.
+#
+# MEASURED AND DELIBERATELY NOT DONE: warming
+# `/api/drafts/:gp/:inr/konsolidiert` for the drafts in Begutachtung (cold
+# ~12 s, warm 10 ms, day cache). Three reasons, and the first is the one that
+# decides. That section is the ONLY one on the page that is fetched lazily
+# and client-side (`compare/TextComparisonSection.vue`,
+# `server: false, lazy: true`): the page renders and reads without it and
+# then fills in — nobody is told something false in the meantime, which is
+# what separates it from the station map and the BGBl volumes above. Second,
+# it is per draft and unbounded: 19 drafts were open on 26.09.2026, so a good
+# four minutes added to a deploy this unit blocks by design, and it grows
+# with the ME count — a deploy that gets slower every month is a deploy that
+# stops being run. Third, each draft pulls every § of every law it amends
+# from RIS, nightly, for a layer that is opened on a median 12 % of a draft's
+# §§ (§12.12a). The first visitor of the day pays 12 s for a section that
+# says „lädt"; that is the right one to pay it.
 [Unit]
-Description=Begutachtungs-Monitor: warm the RIS↔ME map of the current GP
+Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes and both station maps
 After=begutachtungs-monitor.service
 Requires=begutachtungs-monitor.service
 
 [Service]
 Type=oneshot
-# The unit's own worst case, stated rather than inherited: the four --max-time
-# budgets below add up to 1.920 s, and deploy.sh blocks on this job.
-TimeoutStartSec=2000
+# The unit's own worst case, stated rather than inherited: the five --max-time
+# budgets below add up to 2.820 s, and deploy.sh blocks on this job.
+TimeoutStartSec=2900
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/api/bgbl/teil2
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode

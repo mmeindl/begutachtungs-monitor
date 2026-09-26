@@ -12,7 +12,7 @@
 import type { H3Event } from 'h3'
 import type { DraftStation, DraftStatus, LawStationId } from '#shared/types'
 import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
-import { GP_RE, INR_RE } from '#shared/utils/gp'
+import { GP_RE, INR_RE, previousGp } from '#shared/utils/gp'
 import {
   DEFAULT_LAW_STATION_PAIR,
   LAW_STATION_ORDER,
@@ -105,19 +105,62 @@ export function readLawStationPair(event: H3Event): { from: LawStationId; to: La
 }
 
 /**
- * `:gp` as a route param, in the one spelling both routes that take it now
- * use — `aktuell` in any case means the running period.
+ * The period before the running one, named instead of spelled out.
  *
- * It comes back as `null` rather than resolved: `getCurrentGp()` is an
- * upstream call, and the caller decides where in its own sequence it pays
- * for that.
+ * Exists for the prewarm unit (`deploy/systemd/…-prewarm.service`), which
+ * must warm GP XXVII without knowing that it is XXVII: a Roman numeral in a
+ * unit file is a line that goes wrong on exactly the day nobody is watching,
+ * the Periodenwechsel. `aktuell` has had that property since the map was
+ * warmed at all; this is its neighbour.
+ *
+ * A symbol and not a string, so it cannot be confused with a period code
+ * anywhere downstream — `readGpParam` returns `string | null | typeof
+ * PREVIOUS_PERIOD`, and the compiler makes every caller say what it does
+ * with the third case.
  */
-export function readGpParam(event: H3Event, options: { defaultsToCurrent?: boolean } = {}): string | null {
+export const PREVIOUS_PERIOD: unique symbol = Symbol('vorperiode')
+
+/**
+ * `:gp` as a route param, in the one spelling both routes that take it now
+ * use — `aktuell` in any case means the running period, `vorperiode` the one
+ * before it.
+ *
+ * Neither comes back resolved: `getCurrentGp()` is an upstream call, and the
+ * caller decides where in its own sequence it pays for that. `gpFromParam`
+ * is the other half.
+ */
+export function readGpParam(
+  event: H3Event,
+  options: { defaultsToCurrent?: boolean } = {},
+): string | null | typeof PREVIOUS_PERIOD {
   const raw = getRouterParam(event, 'gp') ?? (options.defaultsToCurrent ? 'aktuell' : '')
   if (raw.toUpperCase() === 'AKTUELL') return null
+  if (raw.toUpperCase() === 'VORPERIODE') return PREVIOUS_PERIOD
   const gp = raw.toUpperCase()
   if (!GP_RE.test(gp)) throw createError({ statusCode: 400, statusMessage: INVALID_GP })
   return gp
+}
+
+/**
+ * What `readGpParam` left open, resolved against the running period.
+ *
+ * Takes `currentGp` as an argument rather than calling for it: this module
+ * reads requests and makes no upstream call, which is the one reason vitest
+ * can execute it at all (`tests/helpers/nitroGlobals.ts`).
+ *
+ * 404 and not 400 where there is no period before: the request is
+ * well-formed, the period it names does not exist. Arithmetic on the
+ * numeral, like `previousGp` itself — the fallback has to work on the day
+ * GP XXIX constitutes itself, before anybody has added a row to `GP_STARTS`.
+ */
+export function gpFromParam(param: string | null | typeof PREVIOUS_PERIOD, currentGp: string): string {
+  if (typeof param === 'string') return param
+  if (param === null) return currentGp
+  const prev = previousGp(currentGp)
+  if (!prev) {
+    throw createError({ statusCode: 404, statusMessage: 'Vor dieser Gesetzgebungsperiode liegt keine weitere' })
+  }
+  return prev
 }
 
 /** `:id` as a route param — the RIS document number of a Begutachtung. */

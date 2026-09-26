@@ -1,6 +1,8 @@
 import type { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
 import {
+  PREVIOUS_PERIOD,
+  gpFromParam,
   ministryFilterOptions,
   readGpParam,
   readLawStationPair,
@@ -179,6 +181,11 @@ describe('readGpParam', () => {
     expect(readGpParam(params({ gp: 'AKTUELL' }))).toBeNull()
   })
 
+  it('reads „vorperiode" in any case as the period before it', () => {
+    expect(readGpParam(params({ gp: 'vorperiode' }))).toBe(PREVIOUS_PERIOD)
+    expect(readGpParam(params({ gp: 'VORPERIODE' }))).toBe(PREVIOUS_PERIOD)
+  })
+
   it('normalises a period and refuses a malformed one', () => {
     expect(readGpParam(params({ gp: 'xxvii' }))).toBe('XXVII')
     expect(refusal(() => readGpParam(params({ gp: '27' })))?.statusCode).toBe(400)
@@ -187,6 +194,32 @@ describe('readGpParam', () => {
   it('needs the param unless the caller says it defaults to the running period', () => {
     expect(refusal(() => readGpParam(params({})))?.statusCode).toBe(400)
     expect(readGpParam(params({}), { defaultsToCurrent: true })).toBeNull()
+  })
+})
+
+/* The other half of the pair: the two words the prewarm unit uses instead of
+ * a Roman numeral, resolved once the running period is known. The numeral is
+ * arithmetic and not a table lookup on purpose — the unit has to warm the
+ * right period on the day GP XXIX constitutes itself, which is before anyone
+ * has added a row to `GP_STARTS` (`#shared/utils/gp.previousGp`). */
+describe('gpFromParam', () => {
+  it('passes a named period through untouched', () => {
+    expect(gpFromParam('XXVI', 'XXVIII')).toBe('XXVI')
+  })
+
+  it('resolves „aktuell" and „vorperiode" against the running period', () => {
+    expect(gpFromParam(null, 'XXVIII')).toBe('XXVIII')
+    expect(gpFromParam(PREVIOUS_PERIOD, 'XXVIII')).toBe('XXVII')
+    // The day after the Periodenwechsel, with no `GP_STARTS` row for XXIX yet.
+    expect(gpFromParam(PREVIOUS_PERIOD, 'XXIX')).toBe('XXVIII')
+  })
+
+  /* 404, not 400: the request is well-formed, the period it names does not
+   * exist. Unreachable in production — GP I is 1920 — and stated all the
+   * same, because the alternative is `previousGp`'s null arriving on a page
+   * as the string „null". */
+  it('answers 404 where no period lies before the running one', () => {
+    expect(refusal(() => gpFromParam(PREVIOUS_PERIOD, 'I'))?.statusCode).toBe(404)
   })
 })
 

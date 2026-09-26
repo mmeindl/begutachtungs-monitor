@@ -16,15 +16,16 @@
  * a claim on a page is a separate decision — this endpoint only makes the
  * number available and says nothing about a draft that has not moved.
  *
- * `:gp` accepts `aktuell` for the running period, like `/api/ris-map/:gp`,
- * so the prewarm unit needs no knowledge of which one that is.
+ * `:gp` accepts `aktuell` for the running period and `vorperiode` for the
+ * one before it, like `/api/ris-map/:gp`, so the prewarm unit needs no
+ * knowledge of which ones those are.
  */
 import type { DraftStation } from '#shared/types'
-import { readGpParam } from '../../utils/http/params'
+import { gpFromParam, readGpParam } from '../../utils/http/params'
 
 // Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async (event) => {
-  const gp = readGpParam(event, { defaultsToCurrent: true }) ?? (await getCurrentGp())
+  const gp = gpFromParam(readGpParam(event, { defaultsToCurrent: true }), await getCurrentGp())
 
   const chains = await getStationMapForGp(gp)
   const counts: Record<DraftStation, number> = { begutachtung: 0, rv: 0, parlament: 0, bgbl: 0 }

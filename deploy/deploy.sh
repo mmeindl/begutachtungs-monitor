@@ -48,7 +48,8 @@ ssh "$SERVER" \
 # Hence no `--no-block`. On a Type=oneshot `systemctl start` returns when the
 # last ExecStart has — the RIS corpus (46 requests, 46 s cold), the BGBl
 # volumes, the open Begut records, the station map (227 requests, 35,6 s for
-# GP XXVIII). Until then this script said "✔ deployed" while the caches were
+# GP XXVIII) and, since 26.09.2026, the previous period's (650 requests).
+# Until then this script said "✔ deployed" while the caches were
 # still empty, so the first /entwuerfe ran its RIS half ~15 s into an 8 s
 # budget and answered "gerade nicht abrufbar" — honest, and avoidable. Same
 # window, same minute: without the station map the list cannot tell a draft
@@ -58,7 +59,7 @@ ssh "$SERVER" \
 # A failed prewarm does NOT fail the deploy. The app is up — that was checked
 # above — and what is lost is a warm cache, not a release; rolling back would
 # be the wrong answer to an upstream hiccup. It is said out loud instead.
-echo "… prewarming (RIS corpus, BGBl volumes, station map) — cold, this is the slow part"
+echo "… prewarming (RIS corpus, BGBl volumes, both station maps) — cold, this is the slow part"
 if ! ssh "$SERVER" "systemctl start begutachtungs-monitor-prewarm.service"; then
   echo "⚠ prewarm failed — the first visitor pays for it:"
   echo "    ssh $SERVER journalctl -u begutachtungs-monitor-prewarm -n 30 --no-pager"
