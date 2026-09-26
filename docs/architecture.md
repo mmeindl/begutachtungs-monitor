@@ -824,7 +824,7 @@ benannt), vier §§ neuer Gesetze, über denen der Entwurf gar keine Überschrif
 druckt (nichts vorhanden, nichts zu holen), und **drei echte Ausfälle**: drei
 Novellierungsanordnungen in Artikeln, deren Klausel dasteht und deren Zitat
 nur anders geschrieben ist — der Rest der Ursache, und eine Frage an den
-Zitatleser, nicht an die Namensregel.
+Zitatleser, nicht an die Namensregel. Der folgende Absatz behandelt sie.
 
 Die Deckung hat seither einen Befehl statt einer Handrechnung:
 `npx vite-node scripts/audit/paraTitle.ts XXVIII 40` zählt sie mit derselben
@@ -848,6 +848,48 @@ Gesetz"; das ist die im Skriptkopf beschriebene Falschmeldungsklasse
 (Abkürzung im Artikeltitel, seither umbenanntes Gesetz). **Keiner der zehn
 liegt in einem Entwurf, dessen Zitat jetzt neu gelesen wird** — für 96/ME und
 109/ME einzeln nachgeprüft: zehn aufgelöste Gesetze, null Abweichungen.
+
+*Die Klausel, die das Ressort anders schreibt, 26.09.2026.* Über die 137
+Entwürfe der XXVIII. GP mit RIS-Dokument: von 511 ändernden Artikeln nannten
+**neun** ihre Stammnorm in einer Schreibweise, die `parseBgbl` nicht las — und
+keiner davon zitierte etwas anderes, alle neun zitierten dasselbe anders
+getippt. „BGBI." mit großem I statt kleinem l (20/ME, zweimal), „BGBl. Nr. I
+Nr. 30/2006" mit doppeltem Kürzel (109/ME), „BGBl. I. Nr. 100/2018" mit Punkt
+hinter dem Teil (20/ME), „dRGBl. S 219/1897" ohne Punkt hinter dem Kürzel
+(UGB, 4/ME und 100/ME) und „BGBl. 624/1978" ganz ohne Kürzel (FSVG, 96/ME).
+Der Ausdruck liest diese fünf Formen jetzt; `organKey` lässt beim Vergleich
+das Kürzel weg, weil RIS es immer schreibt und das Ressort manchmal nicht.
+**Der Teil wird dabei nie angetastet** — 30/2006 ist im Teil I das
+Hochschulgesetz 2005 und im Teil III eine Grenzgänger-Durchführung.
+
+Zwei bleiben ungelesen, und zwar richtig: „BGBl. I Nr. 29/200" (61/ME) ist
+eine Jahreszahl mit drei Stellen, und aus ihr 2000 zu raten hieße, ein Gesetz
+hinter eine Nummer zu stellen, die im Entwurf nicht steht; eine Klausel ohne
+jedes Organ (4/ME, „…(GenRevG 1997), wird wie folgt geändert") hat keine
+Stammnorm zu lesen.
+
+**Alt gegen Neu über 475 Entwürfe** (XXVIII und XXVII, 1.465 ändernde
+Artikel): **11 neu gelesen, 0 anders gelesen, 0 verloren.** Jedes der elf
+wurde einzeln gegen das RIS geprüft — jedes löst auf das Gesetz auf, das der
+Artikel in seiner Überschrift nennt, auch dort, wo ein Bundesgesetzblatt zwei
+Gesetze schafft (BGBl. I Nr. 100/2018 → Selbständigen-Sozialversicherungs-
+gesetz *und* Notarversorgungsgesetz, beide über den Artikelnamen getrennt).
+Das ist der Grund, warum diese Weitung überhaupt vertretbar ist: ein falsches
+Gesetz wäre schlimmer als keines, und die Messung zeigt, dass keine einzige
+bisher richtige Auflösung sich bewegt hat.
+
+Der Ausfall war wie am 19.09. dreifach — kein Name, kein Eintrag unter
+„Geltendes Recht", kein Nenner in der Lesefassung —, und der dritte davon ist
+der sichtbarste. **Am Tor gemessen, je Entwurf vorher/nachher**
+(`harness:annex`): 100/ME (ESAP-Justizgesetz, XML-Pfad) bestätigt **2 → 4**
+Paragraphen, ungeprüft 14 → 12, „Stammnorm im RIS nicht auflösbar" 2 → 0;
+96/ME (Sozialversicherungspaket, PDF-Pfad) bestätigt **11 → 12**, ungeprüft
+13 → 12, nicht auflösbar 1 → 0. Das ist Text in „Wie das Gesetz danach lauten
+würde", der vorher fehlte. **Vier der fünf betroffenen Entwürfe der XXVIII. GP
+stehen in der Drift-Grundlinie** (4/ME und 96/ME im PDF-, 100/ME und 109/ME im
+XML-Pfad), der nächste Wochenlauf wird also Klasse-B-Bewegung melden — sie
+gehört zu diesem Commit, und die Grundlinie wird aus dem Lauf-Artefakt neu
+geschrieben.
 
 *Und eine Einordnung, die aus dem neuen Kriterium folgt:* Dieses Paket trägt
 keine der vier Kostenarten — kein Betrieb, kein Partner, keine

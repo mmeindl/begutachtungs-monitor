@@ -51,6 +51,44 @@ describe('stammnormOf', () => {
       .toEqual({ organ: 'RGBl. Nr.', nummer: '113/1895' })
   })
 
+  // Measured over GP XXVIII on 25.09.2026: nine of 511 amending Artikel cited
+  // their Stammnorm in a spelling this parser refused, and every one of them
+  // was the ordinary citation typed differently (docs/architecture.md §12.11).
+  it('liest die Schreibvarianten der Ressorts, ohne die Teile zu verlieren', () => {
+    // "BGBI" is no organ; it is the l typed as a capital i (20/ME).
+    expect(stammnormOf('Das Bundesbehindertengesetz, BGBI. Nr. 283/1990, wird wie folgt geändert:'))
+      .toEqual({ organ: 'BGBl. Nr.', nummer: '283/1990' })
+    expect(stammnormOf('Das Bundes-Seniorengesetz, BGBI. I Nr. 84/1998, wird wie folgt geändert:'))
+      .toEqual({ organ: 'BGBl. I Nr.', nummer: '84/1998' })
+    // The marker printed twice (109/ME) — and the Teil between them is the
+    // load-bearing part: 30/2006 is the Hochschulgesetz in Teil I and a
+    // Grenzgänger-Durchführungsverordnung in Teil III.
+    expect(stammnormOf('Das Hochschulgesetz 2005, BGBl. Nr. I Nr. 30/2006, zuletzt geändert durch BGBl. I Nr. 100/2025, wird wie folgt geändert:'))
+      .toEqual({ organ: 'BGBl. I Nr.', nummer: '30/2006' })
+    // A period after the Teil (20/ME).
+    expect(stammnormOf('Das Notarversorgungsgesetz - NVG 2020, BGBl. I. Nr. 100/2018, wird wie folgt geändert:'))
+      .toEqual({ organ: 'BGBl. I Nr.', nummer: '100/2018' })
+    // The marker without its period (UGB, 4/ME and 100/ME).
+    expect(stammnormOf('Das Unternehmensgesetzbuch - UGB, dRGBl. S 219/1897, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 26/2026, wird wie folgt geändert:'))
+      .toEqual({ organ: 'dRGBl. S.', nummer: '219/1897' })
+    // No marker at all (FSVG, 96/ME) — and RIS stores "BGBl. Nr.", so the
+    // comparison has to survive the missing one.
+    expect(stammnormOf('Das Freiberuflichen-Sozialversicherungsgesetz - FSVG, BGBl. 624/1978, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 110/2023, wird wie folgt geändert:'))
+      .toEqual({ organ: 'BGBl.', nummer: '624/1978' })
+    expect(sameBgbl({ organ: 'BGBl.', nummer: '624/1978' }, { organ: 'BGBl. Nr.', nummer: '624/1978' })).toBe(true)
+    expect(sameBgbl({ organ: 'BGBl.', nummer: '84/2001' }, { organ: 'BGBl. I Nr.', nummer: '84/2001' })).toBe(false)
+  })
+
+  it('rät nicht, wo das Zitat selbst kaputt ist', () => {
+    // A three-digit year (61/ME, "BGBl. I Nr. 29/200"): the reading 2000 is a
+    // guess, and a guessed number resolves to a law the draft never cited.
+    expect(stammnormOf('Das Werbeabgabegesetz 2000, BGBl. I Nr. 29/200, wird wie folgt geändert:')).toBeNull()
+    // A clause that names no organ at all (4/ME).
+    expect(stammnormOf('Das Bundesgesetz über die Revision von Erwerbs- und Wirtschaftsgenossenschaften (GenRevG 1997), wird wie folgt geändert:')).toBeNull()
+    // The placeholder a draft prints for its own future BGBl.
+    expect(stammnormOf('Das Bundesgesetz X, BGBl. I Nr. xxx/2026, wird wie folgt geändert:')).toBeNull()
+  })
+
   it('hält die Teile auseinander, auch über Organe hinweg', () => {
     // Normalisation may level spelling only, never the Teil: 84/2001 is both
     // the AMD-G (BGBl. I) and an Amtssitzgesetz (BGBl. III).

@@ -36,22 +36,52 @@ export interface BgblCitation {
  * their entries; RIS stores the UGB's organ as "dRGBl. S", without the
  * closing period, which is why `sameBgbl` compares normalised and not
  * literally.
+ *
+ * **The spelling is the ministry's, not the Rechtsinformationssystem's**
+ * (25.09.2026). Measured over the 137 drafts of GP XXVIII that carry a RIS
+ * document: of 511 amending Artikel, nine cite a Stammnorm this expression
+ * could not read, and none of the nine was a different kind of citation —
+ * they were the same citation typed differently. Four variants, each with
+ * exactly one reading, are therefore accepted:
+ *
+ *   "BGBI. Nr. 283/1990"     capital i for the l — 20/ME, twice
+ *   "BGBl. Nr. I Nr. 30/2006"  the marker printed twice — 109/ME
+ *   "BGBl. I. Nr. 100/2018"    a period after the Teil — 20/ME
+ *   "dRGBl. S 219/1897"        the marker without its period — UGB, 4+100/ME
+ *   "BGBl. 624/1978"           no marker at all — FSVG, 96/ME
+ *
+ * Two stay unread, and deliberately: "BGBl. I Nr. 29/200" (61/ME) is a year
+ * with three digits, and guessing 2000 from it would put a law behind a
+ * number the draft does not carry; a clause naming no organ at all (4/ME,
+ * "…(GenRevG 1997), wird wie folgt geändert") has no Stammnorm to read. A
+ * wrong law is worse than none, and that is the whole rule of this module.
  */
-const BGBL_RE = /(d?RGBl\.?|BGBl\.?|StGBl\.?|JGS\.?|GBlÖ\.?)\s*(I{1,3})?\s*(Nr|S)\.\s*(\d+\/\d{4})/
+const BGBL_RE = /(d?RGBl|BGB[lI]|StGBl|JGS|GBlÖ)(\.?)\s*(?:(?:Nr\.\s*)?(I{1,3})\b\.?\s*)?(?:(Nr|S)\.?\s*)?(\d+\/\d{4})/
 
 /**
  * First promulgation citation in a text, or null.
  *
- * The organ is kept **as the source writes it** rather than rebuilt from a
- * canonical list: RIS prints "JGS Nr." without a period after the
+ * The abbreviation is kept **as the source writes it** rather than rebuilt
+ * from a canonical list: RIS prints "JGS Nr." without a period after the
  * abbreviation and "dRGBl. S" with one, and a reconstruction has to be right
  * about a convention that differs per organ. `sameBgbl` normalises for the
  * comparison, so the stored string only has to be faithful, not canonical.
+ *
+ * Two things are levelled all the same, because both are printed on the page
+ * under „Geltendes Recht": "BGBI" is no organ, it is the l typed as a capital
+ * i, and the marker is written with its period — "BGBl. I. Nr." goes out as
+ * "BGBl. I Nr.". The Teil is never touched.
  */
 export function parseBgbl(text: string): BgblCitation | null {
   const m = BGBL_RE.exec(normalizeText(text))
   if (!m) return null
-  return { organ: `${m[1]}${m[2] ? ` ${m[2]}` : ''} ${m[3]}.`, nummer: m[4]! }
+  // The abbreviation keeps the source's own period; only the impossible
+  // letter is corrected, and the citation marker is given the period that
+  // every organ writes it with. The Teil is never touched — it identifies
+  // the law.
+  const abbr = `${m[1] === 'BGBI' ? 'BGBl' : m[1]}${m[2]}`
+  const organ = [abbr, m[3], m[4] ? `${m[4]}.` : null].filter(Boolean).join(' ')
+  return { organ, nummer: m[5]! }
 }
 
 /**
@@ -82,7 +112,14 @@ export function stammnormOf(text: string): BgblCitation | null {
  * (BGBl. III), and telling those apart is the whole point of the field.
  */
 function organKey(organ: string): string {
-  return organ.toLowerCase().replace(/[^a-zäöüß0-9i]+/g, '')
+  const tokens = organ.toLowerCase().split(/[^a-zäöüß0-9]+/).filter(Boolean)
+  // The citation marker is noise for the comparison and a ministry regularly
+  // omits it ("BGBl. 624/1978", FSVG in 96/ME), while RIS always writes it.
+  // Dropping it cannot merge two organs: no Bundesgesetzblatt is cited by
+  // page and no older organ by number, so "Nr." and "S." never distinguish
+  // two series of the same abbreviation — the Teil does, and it stays.
+  if (tokens.length > 1 && (tokens.at(-1) === 'nr' || tokens.at(-1) === 's')) tokens.pop()
+  return tokens.join('')
 }
 
 export function sameBgbl(a: BgblCitation, b: BgblCitation): boolean {
