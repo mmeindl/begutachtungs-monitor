@@ -1150,6 +1150,11 @@ function renumberBatch(law: StandingLaw, batch: readonly Pick<Instruction, 'op' 
     }
     if (newIds.length !== nodes.length) return `${nodes.length} Einheiten, ${newIds.length} neue Bezeichnungen`
     const siblings = op.target.level === 'para' ? law.paragraphs : (parentOf(law, nodes[0]!)?.children ?? [])
+    // „Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung ‚(1)'"
+    // (`absatzDrawnIn` in `kons/novao.ts`): the unnumbered Absatz is the
+    // bisherige Inhalt only where it IS the whole §. Anything beside it would
+    // stay outside the new Abs. 1 and read as text of no Absatz at all.
+    if (op.target.level === 'abs' && nodes.some((n) => n.id === '') && siblings.length !== 1) return 'Der bisherige Inhalt ist nicht ein einziger Absatz'
     nodes.forEach((node, i) => moves.push({ node, id: newIds[i]!, level: node.level, siblings, para: op.target.para ?? '' }))
   }
   const moving = new Set(moves.map((m) => m.node))

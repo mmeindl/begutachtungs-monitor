@@ -740,6 +740,29 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
     expect(out.paragraphs[1]!.children[0]).toMatchObject({ id: '', marker: '', text: 'Zuständig ist die Behörde am Sitz der Partei.' })
   })
 
+  it('numbers the bisherige Inhalt as Abs. 1 and appends Abs. 2 behind it', () => {
+    // Notariatsprüfungsgesetz § 29, BGBl. I Nr. 63/2026: the § had no Absatz
+    // numbering, and the line in front of the Abs. 2 used to rename it § 1.
+    const l: StandingLaw = { paragraphs: [makeNode('para', '29', '§ 29.', '', 'Übergang')] }
+    l.paragraphs[0]!.children.push(makeNode('abs', '', '', 'Der bisherige Text.'))
+    const { law: out, results } = run(
+      l,
+      instr('Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung "(1)" .'),
+      instr('Dem § 29 wird folgender Abs. 2 angefügt:', ['(2) Der neue Text.']),
+    )
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['29'])
+    expect(out.paragraphs[0]!.children.map((c) => [c.id, c.marker, c.text])).toEqual([
+      ['1', '(1)', 'Der bisherige Text.'],
+      ['2', '(2)', 'Der neue Text.'],
+    ])
+  })
+
+  it('refuses to draw in a level where the § already has numbered Absätze', () => {
+    const { results } = run(law(), instr('Der bisherige Inhalt des § 5 erhält die Absatzbezeichnung "(1)".'))
+    expect(results[0]!.applied).toBe(false)
+  })
+
   it('refuses a heading replacement whose payload is a whole §', () => {
     const { results } = run(law(), instr('Die Überschrift des § 6 lautet:', ['§ 6. (1) Erster.', '(2) Zweiter.']))
     expect(results[0]!.applied).toBe(false)

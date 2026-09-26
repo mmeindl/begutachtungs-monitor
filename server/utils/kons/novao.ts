@@ -976,6 +976,35 @@ function eachUnitOccurrence(head: string): boolean {
   return JEWEILS_RE.test(head)
 }
 
+/**
+ * „Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung ‚(1)'", „Dem
+ * Text des § 26 wird die Absatzbezeichnung ‚(1)' vorangestellt": a Paragraph
+ * without Absatz numbering gets its first number, because the next line
+ * appends an Abs. 2.
+ *
+ * **Read as what it is — the one unnumbered Absatz becomes Abs. 1.** The
+ * standing text already carries a § like that as a single Absatz with an
+ * empty designation (`lawtext/konsTree.ts`), so the operation is an ordinary
+ * renumbering one level below the §, from „" to „(1)". Refused until
+ * 26.09.2026 in one word order and, in the other one, carried out as the
+ * renumbering of the **Paragraph**: „Der bisherige Inhalt des § 29 erhält …"
+ * put the verb straight before the noun, passed the guard that was meant to
+ * stop exactly this, and turned § 29 into a § 1 while reporting success. The
+ * next line, „Dem § 29 wird folgender Abs. 2 angefügt", then found no § 29
+ * (Notariatsprüfungsgesetz, BGBl. I Nr. 63/2026).
+ *
+ * An Absatzbezeichnung other than „(1)" on a whole Paragraph has no reading
+ * and is refused — it is never a new number for the §.
+ */
+function absatzDrawnIn(head: string, quotes: readonly string[], targets: readonly NovaoAddress[]): { op?: NovaoOp; reason?: string } | null {
+  const target = targets[0]!
+  if (target.level !== 'para' || !target.para?.startsWith('§')) return null
+  if (!/\bAbsatzbezeichnung\b/i.test(head) || !/\berh(?:äl|al)t(?:en)?\b|\bvorangestellt\b/i.test(head)) return null
+  if (targets.length > 1 || target.siblings.length > 0) return { reason: `${targets.length + target.siblings.length} Paragraphen für eine Absatzbezeichnung` }
+  if (quotes.length !== 1 || quotes[0]!.replace(/\s+/g, '') !== '(1)') return { reason: 'Absatzbezeichnung für einen ganzen Paragraphen' }
+  return { op: { kind: 'renumber', target: { ...target, abs: '', level: 'abs' }, to: '(1)', toLast: null } }
+}
+
 function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole: string): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
   const head = instructionHead(line)
@@ -1014,8 +1043,10 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // **Only where the subject is a sub-unit.** „In § 10 erhält der bisherige
   // *Inhalt* die Absatzbezeichnung ‚(1)'" renames nothing; it pulls in a
   // level — the whole Paragraph text becomes Abs. 1. That is a different
-  // operation with a different danger, and it stays refused rather than
-  // running as a renumbering of the Paragraph.
+  // operation with a different danger, and it is read by its own branch
+  // below rather than running as a renumbering of the Paragraph.
+  const drawnIn = absatzDrawnIn(head, quotes, targets)
+  if (drawnIn) return drawnIn.reason ? fail(drawnIn.reason) : ok(drawnIn.op!)
   if (/erh(?:äl|al)t(?:en)?\s+(?:[^"]{0,60}?\s+)?die\s+\w*bezeichnung(?:en)?\b/i.test(head) && (/erh(?:äl|al)t(?:en)?\s+die\s+\w*bezeichnung/i.test(head) || target.level !== 'para')) {
     const to = quotes[0]
     if (!to) return fail('Umbenennung ohne neue Bezeichnung')

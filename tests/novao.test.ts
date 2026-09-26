@@ -478,12 +478,28 @@ describe('Operandenvokabular und ausgeschriebene Umbenennungen', () => {
     expect((ops[0] as { target: { abs: string } }).target).toMatchObject({ abs: '8' })
   })
 
-  it('verweigert weiterhin „der bisherige Inhalt" — das ist keine Umbenennung', () => {
+  it('liest „der bisherige Inhalt" als das unbezifferte Absatz, nie als den Paragraphen', () => {
     // The whole Paragraph's text becomes Abs. 1: a level drawn in, not a new
-    // number. A different operation, a different danger.
-    const { ops, reason } = parseInstruction('In § 10 erhält der bisherige Inhalt die Absatzbezeichnung "(1)".')
-    expect(ops.filter((o) => o.kind === 'renumber')).toHaveLength(0)
-    expect(reason ?? 'nicht gelesen').toBeTruthy()
+    // number for the §. Every word order lands on the Absatz without a
+    // designation — „Der bisherige Inhalt des § 29 erhält …" ran as a
+    // renumbering of § 29 to § 1 (Notariatsprüfungsgesetz, 26.09.2026).
+    for (const line of [
+      'In § 10 erhält der bisherige Inhalt die Absatzbezeichnung "(1)".',
+      'Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung "(1)" .',
+      'Der Text des § 26 erhält die Absatzbezeichnung "(1)".',
+      'Dem Text des § 26 wird die Absatzbezeichnung "(1)" vorangestellt.',
+    ]) {
+      const { ops, reason } = parseInstruction(line)
+      expect(reason, line).toBeNull()
+      expect(ops, line).toHaveLength(1)
+      expect(ops[0], line).toMatchObject({ kind: 'renumber', to: '(1)', target: { abs: '', level: 'abs' } })
+    }
+  })
+
+  it('verweigert jede andere Absatzbezeichnung für einen ganzen Paragraphen', () => {
+    const { ops, reason } = parseInstruction('Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung "(2)".')
+    expect(ops).toEqual([])
+    expect(reason).toMatch(/ganzen Paragraphen/)
   })
 })
 
