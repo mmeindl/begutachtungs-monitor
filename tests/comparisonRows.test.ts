@@ -859,6 +859,35 @@ describe('isElidedPair — a number is not elision syntax', () => {
   })
 })
 
+describe('eine Beilage in mehreren Dokumenten (26.09.2026)', () => {
+  // 2 of the 240 records with a Gegenüberstellung publish it in parts. The
+  // law boundaries are resolved against the draft's WHOLE Artikel list, so a
+  // part read on its own is refused for skipping a law it never claimed to
+  // carry — the refusal is then about our reading, not about the document.
+  const TWO_LAWS = draft({ n: '1', title: 'Änderung des Aktiengesetzes' }, { n: '2', title: 'Änderung des GmbH-Gesetzes' })
+  const wide = (t: string) => `<tr><td colspan="2">${t}</td></tr>`
+  const partOne = annex([wide('Artikel 1 Änderung des Aktiengesetzes'), pair('<absatz typ="abs"><gldsym>§ 5.</gldsym> alt eins</absatz>', '<absatz typ="abs"><gldsym>§ 5.</gldsym> neu eins</absatz>')])
+  const partTwo = annex([wide('Artikel 2 Änderung des GmbH-Gesetzes'), pair('<absatz typ="abs"><gldsym>§ 5.</gldsym> alt zwei</absatz>', '<absatz typ="abs"><gldsym>§ 5.</gldsym> neu zwei</absatz>')])
+
+  it('refuses half an annex read on its own', () => {
+    expect(parseTextComparison(partOne, TWO_LAWS).refusal).toMatch(/überspringt|grenzt/)
+  })
+
+  it('reads the parts as one annex and stops refusing', () => {
+    const parsed = parseTextComparison([partOne, partTwo], TWO_LAWS)
+    expect(parsed.refusal).toBeNull()
+    expect(parsed.rows.filter((r) => r.kind === 'pair').map((r) => r.law)).toEqual([
+      'Änderung des Aktiengesetzes',
+      'Änderung des GmbH-Gesetzes',
+    ])
+  })
+
+  it('reads a single document exactly as before', () => {
+    // The generalisation may not move the 238 records with one document.
+    expect(parseTextComparison([partOne], TWO_LAWS)).toEqual(parseTextComparison(partOne, TWO_LAWS))
+  })
+})
+
 describe('printedStretches — the other half of the notation', () => {
   // On the PDF path a row is a whole §, so the ressort's elisions sit INSIDE
   // it and the cell is our § with holes. 1.835 of the PDF path's 2.950

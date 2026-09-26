@@ -128,12 +128,26 @@ export interface AnnexSource {
  * auslesen" — because those sentences say something about *this document*.
  * They are printed only if Parliament has nothing either.
  */
-async function readRis(annex: RisDocumentUrls | null, articles: readonly DraftArticle[]): Promise<AnnexSource | string> {
+async function readRis(parts: readonly RisDocumentUrls[], articles: readonly DraftArticle[]): Promise<AnnexSource | string> {
+  const annex = parts[0]
   if (!annex) return 'Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.'
+  // **The parts of one annex are read as one annex.** 2 of the 240 records
+  // with a Gegenüberstellung publish it in several documents (26.09.2026), and
+  // the law boundaries are resolved against the draft's WHOLE Artikel list —
+  // so a part read on its own is held against laws it never claimed to carry.
+  // The Weinrecht-Sammelverordnung is the case that shows it: read alone,
+  // „(Artikel1)" refuses with „Die Beilage überspringt ein Gesetz des
+  // Entwurfs", and the reader is told the ressort's document is defective when
+  // in truth we read half of it.
+  //
+  // Which format decides is still the FIRST part's, because the parts of one
+  // annex are typeset together: RIS rasterises a document or it does not, and
+  // no record in the corpus mixes the two within one annex.
   const xml = annex.xml ? await fetchDocument(annex.xml) : null
   const rasterised = xml === null || isScanned(xml)
   if (!rasterised) {
-    const parsed = parseTextComparison(xml!, articles)
+    const rest = await Promise.all(parts.slice(1).map((p) => (p.xml ? fetchDocument(p.xml) : null)))
+    const parsed = parseTextComparison([xml!, ...rest.filter((x): x is string => x !== null && !isScanned(x))], articles)
     if (parsed.rows.length === 0) return parsed.unreadable ?? 'Die Textgegenüberstellung ließ sich nicht auslesen.'
     return {
       parsed,
@@ -146,15 +160,16 @@ async function readRis(annex: RisDocumentUrls | null, articles: readonly DraftAr
       droppedPages: 0,
     }
   }
-  if (!annex.pdf) return 'Die Textgegenüberstellung liegt nur als Scan vor, ohne auslesbaren Text.'
+  const pdfs = parts.map((p) => p.pdf).filter((u): u is string => u !== null)
+  if (pdfs.length === 0) return 'Die Textgegenüberstellung liegt nur als Scan vor, ohne auslesbaren Text.'
   // The PDF parse is held under its own name because it answers one thing the
   // table parse cannot: how many pages it refused.
-  const fromPdf = await annexFromPdf(annex.pdf, articles)
+  const fromPdf = await annexFromPdf(pdfs, articles)
   if (fromPdf === null) return 'Die Textgegenüberstellung ließ sich auch aus dem PDF nicht auslesen.'
   if (fromPdf.rows.length === 0) return fromPdf.unreadable ?? 'Die Textgegenüberstellung ließ sich nicht auslesen.'
   return {
     parsed: fromPdf,
-    source: { label: 'Textgegenüberstellung des Ressorts, aus dem PDF gelesen', url: annex.pdf },
+    source: { label: 'Textgegenüberstellung des Ressorts, aus dem PDF gelesen', url: pdfs[0]! },
     credit: RIS_CREDIT,
     readFrom: 'pdf',
     droppedPages: fromPdf.droppedPages,
@@ -223,10 +238,10 @@ async function readParliament(gp: string, inr: number, articles: readonly DraftA
 export async function annexSourceFor(
   gp: string,
   inr: number,
-  annex: RisDocumentUrls | null,
+  parts: readonly RisDocumentUrls[],
   articles: readonly DraftArticle[],
 ): Promise<AnnexSource | string> {
-  const ris = await readRis(annex, articles)
+  const ris = await readRis(parts, articles)
   if (typeof ris !== 'string') return ris
   if (!READ_PARLIAMENT_COPY) return ris
   return (await readParliament(gp, inr, articles)) ?? ris

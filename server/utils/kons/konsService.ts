@@ -129,7 +129,7 @@ export const getConsolidatedText = defineCachedFunction(
     // Since 22.09.2026 the PARSE lives in a derived cache
     // (`annex-pdf-parse`), so this path too is paid once per draft per day.
     const articles = parts.map((p) => p.article)
-    const annex = await annexSourceFor(gp, inr, row.textComparison ?? null, articles)
+    const annex = await annexSourceFor(gp, inr, row.textComparisonParts ?? [], articles)
     const byParagraph = typeof annex === 'string' ? null : rowsByParagraph(annex.parsed.rows)
     const isPackage = parts.length > 1
 

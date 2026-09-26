@@ -216,12 +216,25 @@ interface Parsed {
  * boundary in the same shape, and § 5 of the second law of a package is a
  * different provision from § 5 of the first. Passing an empty list says "no
  * draft to check against", and the annex is then read as one undivided law.
+ *
+ * **Several documents are ONE annex, and that is not a convenience.** A
+ * ressort may publish the Gegenüberstellung of one draft in parts —
+ * „Textgegenüberstellung (Artikel1)" and „(Artikel 2)", „(Verordnung)" and
+ * „(Anlagen)"; 2 of the 240 records carrying an annex do (26.09.2026). The
+ * parts are joined here, before the law boundaries are resolved, because the
+ * boundary check asks whether the annex accounts for every Artikel the draft
+ * names — and half an annex, by construction, does not. Read on its own,
+ * „(Artikel1)" refuses with „Die Beilage überspringt ein Gesetz des
+ * Entwurfs"; that refusal is about our reading, not about the document.
  */
-export function parseTextComparison(xml: string, articles: readonly DraftArticle[] = []): ComparisonParse {
-  let body = xml
-  for (const re of STRIP) body = body.replace(re, '')
+export function parseTextComparison(xml: string | readonly string[], articles: readonly DraftArticle[] = []): ComparisonParse {
+  const strip = (part: string): string => {
+    let body = part
+    for (const re of STRIP) body = body.replace(re, '')
+    return body
+  }
 
-  const items = itemsInOrder(body)
+  const items = (typeof xml === 'string' ? [xml] : xml).flatMap((part) => itemsInOrder(strip(part)))
   const span = columnSpans(items.filter((i): i is Extract<ComparisonItem, { kind: 'row' }> => i.kind === 'row'))
   if (span === null) return { rows: [], refusal: null, unreadable: 'Das Dokument ist keine zweispaltige Gegenüberstellung.' }
 

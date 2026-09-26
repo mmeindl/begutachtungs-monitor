@@ -149,6 +149,7 @@ function toMapRow(
     risUrl: row.risId ? risDocumentUrl(row.risId) : null,
     risDocument: rec?.mainDocument ?? null,
     textComparison: rec?.textComparison ?? null,
+    textComparisonParts: rec?.textComparisonParts ?? [],
     explanations: rec?.explanations ?? null,
     score: c?.score ?? null,
     risBeginn: rec?.beginn ?? null,

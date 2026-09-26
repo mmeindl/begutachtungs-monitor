@@ -26,6 +26,14 @@ export interface RisMapRow {
    */
   textComparison: { html: string | null; xml: string | null; pdf: string | null } | null
   /**
+   * Every document of that annex, in RIS's order — the first is
+   * `textComparison` above. A ressort may publish one draft's
+   * Gegenüberstellung in parts („(Artikel1)" beside „(Artikel 2)"), and the
+   * annex engine has to read them as ONE annex or hold half of it against the
+   * whole draft (`ris/risRecord.ts`).
+   */
+  textComparisonParts: { html: string | null; xml: string | null; pdf: string | null }[]
+  /**
    * The Erläuterungen as their own RIS document — the Allgemeiner Teil a
    * reader triages the draft by. Carried here for the same reason as the
    * annex above: Parliament publishes the document only as a PDF, RIS as

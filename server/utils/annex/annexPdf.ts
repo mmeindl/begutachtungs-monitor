@@ -401,6 +401,28 @@ function isProven(page: AnnexPage, width: number): boolean {
   return page.geometry.offTurn <= page.geometry.runs * OFF_TURN_SHARE
 }
 
+/**
+ * Are two documents set alike — may their pages be read as ONE annex?
+ *
+ * A ressort may publish one draft's Gegenüberstellung in several PDFs, and
+ * then the parts have to be joined before the law boundaries are resolved, or
+ * half an annex is held against the whole draft (`annex/annexSource.ts`).
+ * Joined pages, however, are measured as one document: `dominantWidth` picks
+ * the width most pages share and `isProven` drops every page that disagrees.
+ *
+ * Both parts of the Weinrecht-Sammelverordnung are 842 pt, so joining them is
+ * what the ressort itself did on paper. The Methodenverordnung Wasser prints
+ * „(Verordnung)" on 7 landscape pages of 842 and „(Anlagen)" on 72 portrait
+ * pages of 595 — joined, the 72 win the majority and the 7 pages that carry
+ * the actual comparison are dropped as strangers. That is the opposite of the
+ * repair (measured 26.09.2026), so a part set otherwise is read on its own.
+ */
+export function sameTypesetting(a: readonly AnnexPage[], b: readonly AnnexPage[]): boolean {
+  const wa = dominantWidth(a)
+  const wb = dominantWidth(b)
+  return Math.abs(wa - wb) <= Math.max(wa, wb) * WIDTH_TOLERANCE
+}
+
 /** The width the document is set in: the one most of its pages share. */
 function dominantWidth(pages: readonly AnnexPage[]): number {
   const byWidth = new Map<number, number>()

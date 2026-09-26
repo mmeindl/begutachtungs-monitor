@@ -1,5 +1,5 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { columnBoundary, linesFromPage, parseAnnexPdf, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
+import { columnBoundary, linesFromPage, parseAnnexPdf, sameTypesetting, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
 import { uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
@@ -834,5 +834,32 @@ describe('uprightRuns', () => {
     ], A4)
     expect(turned.width).toBeCloseTo(841.92, 2)
     expect(turned.items[1]!.y).toBeCloseTo(turned.items[2]!.y, 2)
+  })
+})
+
+describe('sameTypesetting — when several PDFs are one annex (26.09.2026)', () => {
+  // 2 of the 240 records with a Gegenüberstellung publish it in parts. Joined
+  // pages are measured as ONE document, so the question is not „is this the
+  // same draft" but „is this the same paper".
+  it('joins parts set on the same paper', () => {
+    expect(sameTypesetting([pageOf([], 842)], [pageOf([], 842)])).toBe(true)
+    // The Weinrecht-Sammelverordnung: „(Artikel1)" and „(Artikel 2)", both
+    // landscape. Joined, its refusal („Die Beilage überspringt ein Gesetz des
+    // Entwurfs") disappears — it was our reading, not the document.
+    expect(sameTypesetting([pageOf([], 841.92)], [pageOf([], 842)])).toBe(true)
+  })
+
+  it('keeps a part set on other paper apart', () => {
+    // The Methodenverordnung Wasser: 7 landscape pages of comparison against
+    // 72 portrait pages of schedules. Joined, the 72 take the majority and
+    // the 7 that carry the comparison are dropped as strangers — the opposite
+    // of the repair.
+    expect(sameTypesetting([pageOf([], 842)], [pageOf([], 595)])).toBe(false)
+  })
+
+  it('reads the width most pages share, not the first page', () => {
+    // A title page in another format must not decide what the document is.
+    const doc = [pageOf([], 595), pageOf([], 842), pageOf([], 842), pageOf([], 842)]
+    expect(sameTypesetting(doc, [pageOf([], 842)])).toBe(true)
   })
 })

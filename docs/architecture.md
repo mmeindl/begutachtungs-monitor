@@ -4278,6 +4278,58 @@ Messskripte) —, absichtlich als drei Literale und von Hand im Gleichschritt:
 Ein Skript darf nicht weiten können, was als Beilage zählt, ohne dass die
 Seite mitweitet.
 
+**Eine Beilage in mehreren Dokumenten (26.09.2026).** 2 der 240 Sätze mit
+Gegenüberstellung veröffentlichen sie in Teilen:
+„Textgegenüberstellung (Verordnung)" neben „(Anlagen)" (Methodenverordnung
+Wasser), „(Artikel1)" neben „(Artikel 2)"
+(Weinrecht-Sammelverordnung). Gelesen wurde bisher das erste; das zweite war
+weder gezeigt noch erwähnt.
+
+**Der Befund ist nicht „ein Dokument fehlt", sondern „die Verweigerung war
+unsere".** Die Gesetzesgrenzen werden gegen die **ganze** Artikelliste des
+Entwurfs aufgelöst, und ein Teil für sich genommen deckt sie nicht: Allein
+gelesen verweigert „(Artikel1)" mit „Die Beilage überspringt ein Gesetz des
+Entwurfs" — ein Satz über das Dokument des Ressorts, der in Wahrheit von
+unserer Lesung handelt. Zusammengelegt verschwindet die Verweigerung, und der
+Entwurf zeigt **3 von 3** geprüften Paragraphen statt gar nichts.
+
+**Zusammengelegt wird vor der Grenzauflösung**, auf dem Tabellenpfad die
+`items` der Teile, auf dem PDF-Pfad ihre Seiten — nicht die fertigen Zeilen.
+Zeilen eines verweigerten Teils tragen `law: null`, und eine Mischung aus
+zugeordneten und nicht zugeordneten Zeilen ist schlechter als eine saubere
+Verweigerung.
+
+**Aber nur, wo die Teile auf demselben Papier stehen** (`sameTypesetting`).
+Zusammengelegte Seiten werden als EIN Dokument vermessen: `dominantWidth`
+nimmt die Breite, die die meisten Seiten teilen, und `isProven` verwirft jede
+abweichende. Beide Teile der Weinrecht-Verordnung sind 842 pt breit, das
+Zusammenlegen ist also das, was das Ressort auf Papier selbst getan hat. Die
+Methodenverordnung druckt „(Verordnung)" auf 7 Querformatseiten zu 842 und
+„(Anlagen)" auf 72 Hochformatseiten zu 595 — zusammengelegt gewinnen die 72
+die Mehrheit, und die 7 Seiten, die die Gegenüberstellung tragen, fallen als
+Fremdkörper heraus. Das ist das Gegenteil der Reparatur, gemessen.
+
+**Und die Anlagen sind gar keine Gegenüberstellung.** Für sich gelesen sagt
+der Parser das von selbst: „Die beiden Spaltenüberschriften der Beilage waren
+nicht zu finden" — es ist eine einspaltige Liste von Methoden, 72 Seiten, null
+Zeilen. Ein Teil, der eigens gelesen keine Zeile trägt, steuert deshalb auch
+seine **nicht gelesenen Seiten nicht bei**: `droppedPages` heißt „Seiten
+*dieser* Beilage, deren Geometrie wir nicht belegen konnten", und ein Dokument,
+das keine zweispaltige Gegenüberstellung ist, ist eine andere Aussage — die,
+die `unreadable` bereits macht. Ohne diese Unterscheidung meldete die Klasse A
+des Alarms ab sofort jede Woche 10 nicht gelesene Seiten für einen Fall, den
+wir verstanden haben.
+
+**Die weiteren Teile bleiben in `otherDocuments`.** Dort findet sie ein Leser
+heute unter dem Namen des Ressorts, und dort liest sie die Volltextsuche
+(§12.31); sie herauszunehmen hieße, ein Dokument von der Seite zu entfernen,
+um es besser einzuordnen.
+
+**Drift:** genau **ein** Entwurf bewegt sich, und es ist der, der zu Unrecht
+verweigert wurde (Verweigerung → null, geprüft 0 → 3, bestätigt 0 → 2). Die
+Methodenverordnung bleibt Zahl für Zahl, wie sie war — das ist die richtige
+Antwort, nicht ein ausbleibender Ertrag.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the

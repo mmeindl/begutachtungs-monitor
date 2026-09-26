@@ -31,6 +31,30 @@ export interface RisBegutFlat extends RisBegutRecord {
    */
   textComparison: RisDocumentUrls | null
   /**
+   * EVERY document of that annex, in the order RIS lists them — the first of
+   * them is `textComparison` above.
+   *
+   * A ressort may publish one draft's Gegenüberstellung in parts:
+   * „Textgegenüberstellung (Verordnung)" beside „(Anlagen)",
+   * „(Artikel1)" beside „(Artikel 2)". Measured over the 400 most recent Begut
+   * records (26.09.2026), **2 of the 240 records with an annex** do, and until
+   * then only the first was ever read.
+   *
+   * Two fields rather than one, and the reason is that they answer two
+   * questions. `textComparison` is the document a reader is sent to and the
+   * one the search labels „in der Textgegenüberstellung"; this is the input of
+   * the annex engine, which has to read the parts as ONE annex or hold half a
+   * Gegenüberstellung against the whole draft (`annex/annexSource.ts`). They
+   * cannot drift apart: both are built here, from the same match, in the same
+   * expression.
+   *
+   * The further parts deliberately stay in `otherDocuments` as well. That is
+   * where a reader finds them under the ressort's own name today, and where
+   * the full-text search reads them (§12.31); taking them out would remove a
+   * document from the page in the name of classifying it better.
+   */
+  textComparisonParts: RisDocumentUrls[]
+  /**
    * The Erläuterungen as their own RIS document — the Allgemeiner Teil a
    * reader triages a draft by, and the "Zu Z 4 (§ 54c …)" passages under it.
    * Carried for every record class; on a Verordnungsentwurf it is the only
@@ -141,7 +165,8 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
   }
   const named = (re: RegExp) => references.find((c) => re.test(String(c?.Name ?? '').trim()))
   const main = references.find((c) => c?.ContentType === 'MainDocument')
-  const tgu = named(TEXT_COMPARISON_NAME)
+  const tguAll = references.filter((c) => TEXT_COMPARISON_NAME.test(String(c?.Name ?? '').trim()))
+  const tgu = tguAll[0]
   const erl = named(EXPLANATIONS_NAME)
   const letter = references.find((c) => c?.ContentType === 'Letter')
   const classified = new Set([main, tgu, erl, letter].filter(Boolean))
@@ -156,6 +181,10 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     geaendert: isoDate(meta?.Allgemein?.Geaendert),
     mainDocument: formatsOf(main) ?? { html: null, xml: null, pdf: null },
     textComparison: formatsOf(tgu),
+    // In RIS's own order, and the first is `textComparison`: the engine reads
+    // the parts as one annex, so „(Artikel1)" must not arrive after
+    // „(Artikel 2)".
+    textComparisonParts: tguAll.map(formatsOf).filter((u): u is RisDocumentUrls => u !== null),
     explanations: formatsOf(erl),
     // By ContentType, not by name: "Begleitschreiben Begutachtungsentwurf"
     // is the usual wording, but the type is what RIS actually commits to.

@@ -33,7 +33,7 @@ import {
   type AnnexSources,
   type ParagraphVerdict,
 } from '../../server/utils/annex/verdict'
-import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
+import { parseAnnexPdf, sameTypesetting, type AnnexPage, type AnnexParse } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { plainText } from '../../server/utils/lawtext/konsTree'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
@@ -179,6 +179,26 @@ interface GateResult {
   verdicts: Record<string, ParagraphVerdict>
 }
 
+/**
+ * The parts of one PDF annex as the request path reads them: joined where they
+ * are set alike, read apart where they are not, and only the rows of a part
+ * read apart are taken over (`annex/annexPdfService.ts`, `annexFromPdf`).
+ * Kept in step by hand, like every other copy of a shipped rule in here — the
+ * harness has to measure the decision the site makes.
+ */
+function parseOnePdfAnnex(parts: readonly AnnexPage[][], articles: readonly DraftArticle[]): AnnexParse {
+  const first = parts[0]!
+  const annex = parseAnnexPdf(parts.filter((p) => sameTypesetting(first, p)).flat(), articles)
+  for (const part of parts.filter((p) => !sameTypesetting(first, p))) {
+    const apart = parseAnnexPdf(part, articles)
+    if (apart.rows.length > 0) {
+      annex.rows.push(...apart.rows)
+      annex.droppedPages += apart.droppedPages
+    }
+  }
+  return annex
+}
+
 async function verify(doc: any): Promise<DraftResult | null> {
   const meta = doc?.Data?.Metadaten
   const begut = meta?.Bundesrecht?.Begut
@@ -191,10 +211,16 @@ async function verify(doc: any): Promise<DraftResult | null> {
 
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
   const main = contents.find((c) => c?.ContentType === 'MainDocument')
-  const annex = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
+  // EVERY document of the annex, in RIS's order — the same rule the request
+  // path applies (`ris/risRecord.ts`, `annex/annexSource.ts`). 2 of the 240
+  // records with a Gegenüberstellung publish it in parts, and a harness that
+  // read only the first would measure a decision the site does not make.
+  const parts = contents.filter((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
+  const annex = parts[0]
   if (!annex) return null
-  const annexXml = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
-  const pdfUrl = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
+  const urlOf = (ref: any, type: string): string | null => asArray<any>(ref?.Urls?.ContentUrl).find((u) => u?.DataType === type)?.Url ?? null
+  const annexXml = urlOf(annex, 'Xml')
+  const pdfUrl = urlOf(annex, 'Pdf')
   const annexXmlText = annexXml ? await getText(annexXml) : null
   const readable = annexXmlText !== null && !isScanned(annexXmlText)
   // Two paths, one ruler. `--xml` measures the annexes the page shows today
@@ -221,10 +247,21 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // geometry. `'droppedPages' in parsed` would not narrow a union whose other
   // member simply lacks the field — the property comes out `unknown` — and
   // which parser ran is known here anyway.
-  const fromPdf = readable
-    ? null
-    : parseAnnexPdf(await pagesOf(new Uint8Array(await (await fetch(pdfUrl!, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })).arrayBuffer())), articles)
-  const parsed: ComparisonParse = fromPdf ?? parseTextComparison(annexXmlText!, articles)
+  // Joined before the parse, not after: the law boundaries are resolved
+  // against the draft's whole Artikel list, so half an annex is refused for
+  // skipping a law it never claimed to carry. Joined only where the parts are
+  // set alike, because joined pages are measured as one document — the same
+  // two rules the request path applies (`annex/annexPdfService.ts`).
+  const pageBytes = async (url: string) =>
+    pagesOf(new Uint8Array(await (await fetch(url, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })).arrayBuffer()))
+  const pdfParts = readable
+    ? []
+    : (await Promise.all(parts.map((p) => urlOf(p, 'Pdf')).filter((u): u is string => u !== null).map(pageBytes))).filter((pages) => pages.some((page) => page.items.length > 0))
+  const fromPdf = readable || pdfParts.length === 0 ? null : parseOnePdfAnnex(pdfParts, articles)
+  const restXml = readable
+    ? (await Promise.all(parts.slice(1).map((p) => (urlOf(p, 'Xml') ? getText(urlOf(p, 'Xml')!) : null)))).filter((x): x is string => x !== null && !isScanned(x))
+    : []
+  const parsed: ComparisonParse = fromPdf ?? parseTextComparison([annexXmlText!, ...restXml], articles)
   const droppedPages = fromPdf?.droppedPages ?? 0
   if (parsed.refusal) return { ...blank(`verweigert: ${parsed.refusal.slice(0, 52)}`, amending.length), droppedPages }
 

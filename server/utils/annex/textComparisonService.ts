@@ -132,7 +132,7 @@ export const getTextComparison = defineCachedFunction(
     // needs it.
     const { blocks: draftBlocks, articles } = await getDraftArticles(gp, inr, 'ris-xml')
 
-    const chosen = await annexSourceFor(gp, inr, annex, articles)
+    const chosen = await annexSourceFor(gp, inr, row.textComparisonParts ?? [], articles)
     if (typeof chosen === 'string') {
       const parl = await parliamentAnnex(gp, inr)
       const atParliament = parl.pdf ?? parl.html
