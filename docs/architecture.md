@@ -2429,6 +2429,83 @@ Anlagen, deren Inhalt ein **Bild** ist (`abbobj`: das Signet nach § 12
 Denkmalschutzgesetz, ein Formular der Zulassungsstellenverordnung) oder eine
 bloße Liste ohne Absatzstruktur. Vor heute waren es 968.
 
+**Die „frühere Anweisung" war ein Ausschluss, keine Klassifikation — und
+die 21 Zeilen waren sieben Lücken (26.09.2026, später am Abend).** Der
+Absatz oben ist in zwei Punkten zu korrigieren. Das Etikett „eine frühere
+Anweisung hat sie entfernt" vergab der Prüfstand, wenn die Engine „Nicht im
+geltenden Text" meldete und `resolveTarget` Abs., Z oder lit. im
+Ausgangstext trotzdem fand — es blieb nur die frühere Anweisung übrig.
+Einzeln gelesen passte das auf **drei** der 21 Zeilen. Und „zwei Drittel
+sind keine Fehler von uns" stimmt nicht: **21 der 48** Zeilen unter
+„Untereinheit nicht im Ausgangstext" waren unsere.
+
+| was die Zeile wirklich war | Zeilen | Schritt |
+|---|---:|---|
+| Satz eines § ohne Absatzzählung („In § 8 erster Satz") — der §-Knoten trägt nur seinen einen unbezifferten Absatz | 4 | `bodyOf` |
+| Satz eines Absatzes mit Liste — verweigert, obwohl der Satz ganz in Einleitung oder Schlussteil steht | 4 | `listSentences` |
+| ein Verb, mehrere Orte („in Z 1 … und im Schlussteil … ersetzt") — gelesen als der Schlussteil der Z 1 | 5 | `splitPlaces` |
+| die zweite Satzhälfte adressiert die Einheit unter der Nummer, die die erste ihr gerade genommen hat | 2 | `opContext` |
+| §-Liste: Prüfstand und Seite holten nur den ersten § | 3 | `namedParagraphs` |
+| „Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung ‚(1)'" — als Umbenennung des **§** in § 1 ausgeführt | 1 | `absatzDrawnIn` |
+| Satzgrenze „Z 6. Die", Ordnungszahl „des 2. Teiles" | 2 | `splitSentences` |
+
+Die erste Spalte ist erst messbar, seit die Engine sagt, *was* fehlt:
+„Satz … nicht auffindbar" statt „Nicht im geltenden Text", wo die Einheit
+dasteht und nur ihr Satz nicht zu zählen ist, und der Prüfstand fragt eine
+§-Liste § für § ab. Alle 21 werden jetzt angewendet.
+
+Beim Bauen kamen fünf Nachbarklassen dazu, die dieselbe Mechanik hatten
+und sich unter anderen Etiketten versteckten — jede einzeln gemessen, jede
+eigener Commit:
+
+- **„…; folgende Z 5 und 6 werden angefügt"** — der gewöhnlichste Weg, eine
+  Liste zu verlängern. Die zweite Hälfte nennt keinen Ort, die Adresse wurde
+  aus ihrem eigenen Text gelesen („Z 5", die es noch nicht gibt). Das sind
+  die 21 der 48 (`appendHost`).
+- **Eine Satzhälfte ohne eigenen Ort erbte nur § und Absatz** — „… Z 6 wird A
+  durch B ersetzt und entfällt das Wort ‚c'" strich im ganzen Absatz.
+- **Eine Adresse nennt einen Ort.** „§ 48 Abs. 1 Z 2 und Abs. 4" verlor den
+  Abs. 4, „Abs. 1 und Abs. 2" den Abs. 2, „lit. b, c, e und f entfällt"
+  strich nur lit. b, „Abs. 3 und Abs. 6 Z 1" wurde zu „Abs. 3 Z 1" — jedes
+  Mal angewendet und als Erfolg gemeldet (`siblingsAfter`, `onePlace`,
+  `opensPlace`). Dazu zählte eine verweigerte Zeile nur ihren ersten § als
+  verweigert, und auf der Seite war der Schlüssel dafür die nackte Zahl, so
+  dass eine gescheiterte Anweisung an der Anl. 1 den § 1 sperrte und die
+  Anlage frei ließ (`refusedUnits`).
+- **Ein Zitat, das das Bundesgesetzblatt um einen Strich herum in mehrere
+  `<n>`-Stücke setzt**, kam als „ARF - oder KSF - Leistungen" an (65 solcher
+  Schnitte). Im alten Text überbrückte die tolerante Suche das, im neuen
+  nicht — zwei Paragraphen standen allein deshalb unverweigert abweichend da.
+
+| `--discover=40 --sammel --cache` | vorher | nachher |
+|---|---:|---:|
+| Verweigerungen | 424 | **355** |
+| angewendet | 1.749 | 1.838 |
+| identisch mit dem RIS | 770 | **830** |
+| halb angewendet | 71 | 57 |
+| ohne Verweigerung abweichend | 14 | **12** |
+| eigene Abweichung | 22 | 16 |
+| „kein geltender Text" ohne Verweigerung | 25 | 20 |
+| ME-Prüfstand, anzeigbar über 120 Entwürfe | 509 | **537** |
+
+Kein Schritt hat die Drift bewegt. Zwei Mal hat ein Schritt eine alte
+Fehllesung sichtbar gemacht, indem er die Verweigerung aufhob, die sie
+verdeckte (FPG § 81, KFG § 48); beide sind im jeweils nächsten Schritt
+behoben. Eine ist offen: Beim AsylG 2005 § 59 fehlt der neuen Überschrift
+das schließende Anführungszeichen („… der ‚Aufenthaltsberechtigung
+besonderer Schutz'"), ein Fehler beim Lesen der Überschriftszeile, der jetzt
+unverweigert „unvollständig" dasteht.
+
+**Die Adressklassen über dem §** (`Titel`, `Hauptstück`, `Abschnitt`,
+`Teil`) bleiben verweigert, und das ist nachgeprüft: Gruppenüberschriften
+kommen in den Baum nur als `context` des ersten § und von dort auf keine
+Seite, einen Titel führt das RIS als Dokument gar nicht. `StandingLaw` um
+Einheiten über dem § zu erweitern, bewegte Zahlen des Prüfstands und nichts,
+was jemand liest. `Halbsatz` gehört nicht dazu — er liegt unter dem Satz,
+und zwei seiner fünf Zeilen sind gar keine Adressen: „wird nach dem Wort
+‚X' **der Halbsatz** ‚…' eingefügt" benutzt ihn als Nomen des Zitats, wie
+„die Wortfolge".
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
