@@ -303,8 +303,44 @@ const documents = computed(() => {
 
       <section class="page-section" aria-labelledby="dokumente">
         <h2 id="dokumente" class="section-heading">Dokumente</h2>
+        <!-- THE ZITIERFORM, since 26.09.2026 — the one deliberate gap the
+             anatomy comparison of 17.09.2026 left open
+             (docs/architecture.md §12.16).
+
+             These Verfahren have no Geschäftszahl, so „132/ME" — the string
+             a reader quotes and a lawyer cites — had no counterpart on the
+             page. The RIS Dokumentnummer is it: how RIS addresses the
+             record, what „Im RIS ansehen" resolves, and this page's own URL.
+             Until now it was on screen only in the address bar, with nothing
+             saying what it was.
+
+             HERE AND NOT IN THE HEADER, and the first two attempts are the
+             reason. In the Metazeile beside the type word it cost the phone
+             TWO EXTRA LINES above the h1 (three meta rows at 500 px against
+             the draft page's one). Moved one line down into the
+             Herkunftszeile it was worse in kind rather than in size: that
+             line is human-readable facts separated by „·" — a ministry, a
+             link label — and a 42-character GUID at the same size, weight
+             and colour is not the same kind of thing, so it read as noise
+             and pushed the link onto its own line.
+
+             The mistake behind both was reasoning from the anatomy table
+             instead of from the string. „137/ME" belongs in the header
+             because it is short and people say it out loud; `BEGUT_C7697…`
+             is a lookup key nobody carries in their head. So it keeps the
+             JOB, not the slot: it stands with the sentence that already
+             names the source, at the bottom, where whoever wants to cite or
+             download is looking anyway — and in its own typographic class,
+             so it reads as a key and not as prose. -->
         <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-          Aus dem Rechtsinformationssystem des Bundes (RIS), CC BY 4.0.
+          Aus dem Rechtsinformationssystem des Bundes (RIS), CC BY 4.0. Im RIS
+          steht dieser Entwurf unter der Dokumentnummer
+          <!-- Not a link: it would be the second element on this page
+               pointing at the RIS page the header already links, and the
+               draft page makes the same split — the Geschäftszahl is text,
+               its resolver stands elsewhere. `break-all` because 42
+               characters do not fit a phone column unbroken. -->
+          <span class="break-all font-mono text-xs text-ink">{{ data.id }}</span>.
         </p>
         <div class="mt-3">
           <DocumentList :documents="documents" source="ris.bka.gv.at" />
