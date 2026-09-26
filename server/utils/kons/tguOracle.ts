@@ -33,6 +33,7 @@ import { normalizeText } from '../lawtext/normalize'
 import type { ComparisonRow } from '../annex/comparisonRows'
 import { printedStretches } from '../annex/elision'
 import { punctuationTokens } from '../text/punctuationTokens'
+import { isSchedule, unitKey } from '../text/designation'
 
 export type OracleVerdict =
   /** All three containments hold */
@@ -61,8 +62,15 @@ export interface OracleReport {
  * label: a row opening with anything but a § must not answer here.
  */
 export function paraIdOfGld(gld: string | null): string | null {
-  const m = /^§+\s*(\d+[a-z]*)\b/.exec(normalizeText(gld ?? ''))
-  return m ? m[1]! : null
+  const t = normalizeText(gld ?? '')
+  const m = /^§+\s*(\d+[a-z]*)\b/.exec(t)
+  if (m) return m[1]!
+  // A schedule names itself, and it is a unit of the law like any other:
+  // „Anlage 1", „Anhang". Keyed under `unitKey` so it meets the address side
+  // under the same name — 11 rows in 2 of the 10 Entwürfe whose instructions
+  // address a schedule at all (26.09.2026). Anchored like the § above: a row
+  // that merely MENTIONS an Anlage opens none.
+  return isSchedule(t) ? unitKey(t.replace(/[.,;:]\s*$/, '')) : null
 }
 
 /**
@@ -115,9 +123,27 @@ export function paragraphKey(id: string, law: string | null): string {
  * counter did, and it held the engine's § 5 against another law's § 5.
  */
 export function paragraphRows(byParagraph: ReadonlyMap<string, ComparisonRow[]>, id: string, law?: string | null): ComparisonRow[] {
-  if (law !== undefined) return byParagraph.get(paragraphKey(id, law)) ?? []
-  const hits = rowsById(byParagraph).get(id) ?? []
+  // „Anl." is an instruction saying „the schedule", and the annex writes the
+  // number („Anlage 1"). They are the same unit wherever the map holds
+  // exactly one schedule; where it holds several the instruction named none
+  // and nothing here may choose for it.
+  const key = id === 'Anl.' ? soleSchedule(byParagraph, law) ?? id : id
+  if (law !== undefined) return byParagraph.get(paragraphKey(key, law)) ?? []
+  const hits = rowsById(byParagraph).get(key) ?? []
   return hits.length === 1 ? hits[0]! : []
+}
+
+/** The one schedule of this law in the annex — null where there is none or several. */
+function soleSchedule(byParagraph: ReadonlyMap<string, ComparisonRow[]>, law?: string | null): string | null {
+  const ids = new Set<string>()
+  for (const full of byParagraph.keys()) {
+    const at = full.indexOf('#')
+    const lawPart = at < 0 ? '' : full.slice(0, at)
+    const unit = at < 0 ? full : full.slice(at + 1)
+    if (law !== undefined && law !== null && lawPart !== law) continue
+    if (isSchedule(unit)) ids.add(unit)
+  }
+  return ids.size === 1 ? [...ids][0]! : null
 }
 
 /**

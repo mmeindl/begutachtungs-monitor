@@ -26,6 +26,21 @@ describe('rowsByParagraph', () => {
     expect(paraIdOfGld('1.')).toBeNull()
   })
 
+  it('files a schedule under its own kind, so it never answers for a § of that number', () => {
+    // A law may carry a § 1 and an Anlage 1; the annex names both, and the
+    // key has to tell them apart (26.09.2026).
+    expect(paraIdOfGld('Anlage 1')).toBe('Anl. 1')
+    expect(paraIdOfGld('Anhang')).toBe('Anl.')
+    expect(paraIdOfGld('gemäß Anlage 1')).toBeNull()
+    const rows = [pair('§ 1. alt', '§ 1. neu', '§ 1.'), pair('Anhang alt', 'Anhang neu', 'Anlage 1')]
+    const grouped = rowsByParagraph(rows)
+    expect(grouped.get('#1')).toHaveLength(1)
+    expect(grouped.get('#Anl. 1')).toHaveLength(1)
+    // „des Anhangs" names no number; the one schedule of the annex answers it.
+    expect(paragraphRows(grouped, 'Anl.', null)).toHaveLength(1)
+    expect(paragraphRows(grouped, '1', null)[0]!.current).toBe('§ 1. alt')
+  })
+
   // Asking for a bare "§ 5" of a package has no answer. The counter answered
   // anyway, with the first law's § 5, and that silently held the engine's
   // result against a different provision.

@@ -36,7 +36,7 @@
 import type { Instruction } from './lawApply'
 import { articleQualifier, opAddress } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
-import { articleNumberKey, bareParaId } from '../text/designation'
+import { articleNumberKey, isSchedule, unitKey } from '../text/designation'
 
 /**
  * Why a produced § is not shown.
@@ -99,7 +99,11 @@ export function gateParagraph({ refused, plausible, oracle }: GateInput): { show
  */
 export function byParagraphOrder(a: string, b: string): number {
   const num = (id: string): number => Number.parseInt(id, 10) || 0
-  return num(a) - num(b) || a.localeCompare(b, 'de')
+  // A law prints its schedules behind its Paragraphen, and so does the page.
+  // Without this they sorted to the front, because „Anl. 1" parses as 0.
+  if (isSchedule(a) !== isSchedule(b)) return isSchedule(a) ? 1 : -1
+  const key = (id: string): string => (isSchedule(id) ? id.replace(/^\S+\s*/, '') : id)
+  return num(key(a)) - num(key(b)) || a.localeCompare(b, 'de')
 }
 
 /**
@@ -123,7 +127,9 @@ export function addressedParagraphs(
   for (const { op, payload } of instructions) {
     const address = opAddress(op)
     if (address?.para) {
-      const id = bareParaId(address.para)
+      // `unitKey` and not the bare number: a law may carry a § 1 and an
+      // Anl. 1, and everything downstream holds the unit under this key.
+      const id = unitKey(address.para)
       if (id) out.add(id)
     }
     if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') {
@@ -162,7 +168,10 @@ export function addressedLabels(
 ): Map<string, string> | null {
   const out = new Map<string, string>()
   const add = (id: string, artikel: string | null): boolean => {
-    const label = artikel ? `Art. ${artikel} § ${id}` : `§ ${id}`
+    // A schedule is already written the way RIS files it („Anl. 2"), and the
+    // unnumbered „Anl." is resolved where the law's labels are known
+    // (`kons/konsService.ts`) — a law with one schedule needs no number.
+    const label = isSchedule(id) ? id : artikel ? `Art. ${artikel} § ${id}` : `§ ${id}`
     const seen = out.get(id)
     if (seen !== undefined && seen !== label) return false
     out.set(id, label)
@@ -171,7 +180,7 @@ export function addressedLabels(
   for (const { op, payload } of instructions) {
     const address = opAddress(op)
     if (address?.para) {
-      const id = bareParaId(address.para)
+      const id = unitKey(address.para)
       if (id && !add(id, address.artikel)) return null
     }
     // A § this instruction CREATES lives in the Artikel the instruction

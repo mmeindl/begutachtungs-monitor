@@ -30,6 +30,34 @@ export function anlageLabelKey(label: string): string {
   return label.replace(/\s+/g, ' ').trim().replace(/^(?:Anlage|Anhang)\b/, 'Anl.')
 }
 
+/** Does this designation name a schedule rather than a Paragraph or Artikel? */
+export function isSchedule(label: string | null | undefined): boolean {
+  return /^(?:Anlage|Anhang|Anl\.?)\b/i.test((label ?? '').trim())
+}
+
+/**
+ * The key a unit is held under — **the bare number, and for a schedule its
+ * kind as well**.
+ *
+ * Every stock, map and denominator in the consolidation path keys a unit by
+ * its number, because inside one law that is unique: „§ 5" is „5". A schedule
+ * breaks it — a law may carry a § 1 and an Anl. 1, and „first occurrence
+ * wins" then hands one of them the other's text. The collision was found in
+ * the Prüfstand on 26.09.2026 and is the same one this key exists to close
+ * everywhere else.
+ *
+ * „Anl." without a number is the form an instruction uses when the law has
+ * exactly one schedule („Z 1 lit. n des Anhangs"). It is a key of its own on
+ * purpose: which schedule it is, is the standing text's answer, and the two
+ * places that know the law resolve it there.
+ */
+export function unitKey(label: string | null): string | null {
+  if (!label) return null
+  const id = bareParaId(label)
+  if (!isSchedule(label)) return id
+  return id === null ? 'Anl.' : `Anl. ${id}`
+}
+
 /**
  * The Artikel of a law that is itself divided into Artikel, as RIS keys it:
  * „II" → „2", „2" → „2". Null for a numeral this cannot read.

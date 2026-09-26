@@ -21,7 +21,7 @@ import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLe
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { expandRange, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
-import { bareParaId } from '../text/designation'
+import { bareParaId, isSchedule } from '../text/designation'
 
 export interface StandingLaw {
   /** Paragraphs in printed order; insert and append change this list */
@@ -323,9 +323,6 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
 // Lookup
 // ---------------------------------------------------------------------------
 
-/** „Anl. 1" in RIS, „Anlage 1" or „Anhang" in an instruction — one kind. */
-const SCHEDULE_RE = /^(?:Anlage|Anhang|Anl\.?)\b/i
-
 /**
  * The unit an address names — and **never one of another kind**.
  *
@@ -339,8 +336,8 @@ const SCHEDULE_RE = /^(?:Anlage|Anhang|Anl\.?)\b/i
  * failed to read „Anl. 1" at all and every schedule arrived with the id „?".
  */
 function findParagraph(law: StandingLaw, a: NovaoAddress, overrideId?: string): LawNode | null {
-  const wantsSchedule = SCHEDULE_RE.test((a.para ?? '').trim())
-  const pool = law.paragraphs.filter((p) => SCHEDULE_RE.test(p.marker.trim()) === wantsSchedule)
+  const wantsSchedule = isSchedule(a.para)
+  const pool = law.paragraphs.filter((p) => isSchedule(p.marker) === wantsSchedule)
   const id = overrideId ?? bareParaId(a.para)
   // „Z 1 lit. n des Anhangs" names no number, because the law has exactly
   // one schedule. Where it has several the instruction has to say which, and

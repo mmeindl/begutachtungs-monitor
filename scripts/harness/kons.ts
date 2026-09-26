@@ -60,7 +60,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { ANNEX_NAME_RE, asArray } from '../lib/ris'
-import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
+import { anlageLabelKey, bareParaId, isSchedule } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
 interface Verdict {
@@ -289,9 +289,6 @@ const labelKey = anlageLabelKey
 /** "§ 5" → "5", the id `parseKonsParagraph` gives a paragraph — mirrors the engine's own lookup. */
 const paraId = bareParaId
 
-/** „Anl. 1" in RIS, „Anlage 1" in an instruction — mirrors `SCHEDULE_RE` in `kons/lawApply.ts`. */
-const SCHEDULE_LABEL = /^(?:Anlage|Anhang|Anl\.?)\b/i
-
 /**
  * The engine's node for a RIS label — **of the same kind**.
  *
@@ -303,8 +300,8 @@ const SCHEDULE_LABEL = /^(?:Anlage|Anhang|Anl\.?)\b/i
  * read „Anl. 1" at all. The engine's own lookup carries the same rule.
  */
 function nodeFor(nodes: readonly LawNode[], label: string, id: string | undefined): LawNode | undefined {
-  const wantsSchedule = SCHEDULE_LABEL.test(label.trim())
-  return nodes.find((p) => p.id === id && SCHEDULE_LABEL.test(p.marker.trim()) === wantsSchedule)
+  const wantsSchedule = isSchedule(label)
+  return nodes.find((p) => p.id === id && isSchedule(p.marker) === wantsSchedule)
 }
 
 /**

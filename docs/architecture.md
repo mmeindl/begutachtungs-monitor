@@ -2013,6 +2013,34 @@ Entwürfe des Korpus tragen nummernlose Anhang-Anweisungen (Altlastenatlas-VO,
 Kraftstoffverordnung, Suchtgiftverordnung, ETV 2020, UWG), also ist er
 prüfbar.
 
+**Ein Einheitenschlüssel, der die Art trägt (26.09.2026).** Die vier Stellen
+aus der korrigierten Schätzung, plus die fünfte, die beim Bauen dazukam.
+`text/designation.ts` hält jetzt `unitKey`: die nackte Nummer wie bisher, und
+für eine Anlage ihre Art dazu („Anl. 1"); ohne Nummer „Anl.", die Form, die
+eine Anweisung benutzt, wenn das Gesetz genau eine hat. Damit rechnen
+`addressedParagraphs` (Kennung **und** Nenner), `addressedLabels`, die
+Dokumentauswahl und `nodeById` in `kons/konsService.ts`, `findParagraph` in
+`kons/lawApply.ts`, der Prüfstand — und seit diesem Schritt auch das
+Beilagen-Orakel: `paraIdOfGld` liest „Anlage 1" als „Anl. 1", so dass eine
+Anhangszeile der Beilage überhaupt unter einem Schlüssel steht. Wo Anweisung
+(„Anl.") und Beilage („Anl. 1") verschieden schreiben, treffen sie sich an
+der einzigen Anlage des Gesetzes und sonst nirgends.
+
+**Ertrag am Prüfstand: keiner, und das ist die richtige Zahl** — jede Zeile
+identisch, Drift ohne Befund. Der Schritt schließt eine Kollision, die
+unerreichbar war, solange kein Anlagendokument geholt wurde, und macht den
+Weg frei; er bewegt nichts, was vorher schon ging.
+
+**Auf der Seite ist die Kette jetzt vollständig und trotzdem leer**, und der
+Grund ist gemessen: Von den zehn Entwürfen des Korpus, deren Anweisungen eine
+Anlage adressieren, tragen **zwei** überhaupt Anlagenzeilen in ihrer Beilage
+(Suchtgiftverordnung 3, Tierarzneimittel-Anpassungsverordnung 8 von 61) — und
+bei beiden zeigt die Lesefassung auch für ihre **Paragraphen** nichts, weil
+der geltende Text dieser Verordnungen nicht auflöst. Es gibt in diesem Korpus
+also keinen Entwurf, bei dem Adresse, Beilage und geltender Text zugleich
+stimmen. Die Anzeige eines Anhangs wartet nicht mehr auf Code, sondern auf
+einen Entwurf, der alle drei mitbringt.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides

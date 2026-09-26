@@ -30,7 +30,7 @@
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
 import { addressedLabels, addressedParagraphs, gateParagraph } from './konsGate'
-import { anlageLabelKey, bareParaId } from '../text/designation'
+import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from '../lawtext/amendedLawsService'
 import { diffTokens } from '../diff/wordDiff'
@@ -253,6 +253,14 @@ async function consolidate(
       // in a law divided into Artikel there is no document called „§ 3", and
       // a lookup without the Artikel comes back empty rather than wide.
       const wanted = new Map([...w.addressed].map((id) => [anlageLabelKey(labels.get(id) ?? `§ ${id}`), covered(id)]))
+      // „Anl." without a number is an instruction saying „the schedule",
+      // which only a law with exactly one can mean („Z 1 lit. n des
+      // Anhangs"). Here the law's labels are known, so this is the place that
+      // answers it — and it answers nothing where the law has several.
+      const schedules = Object.keys(law.paragraphs).filter((label) => isSchedule(label))
+      if (wanted.has('Anl.') && schedules.length === 1) {
+        wanted.set(anlageLabelKey(schedules[0]!), wanted.get('Anl.')!)
+      }
       const refs = Object.entries(law.paragraphs)
         .filter(([label]) => wanted.has(anlageLabelKey(label)))
         .sort(([a], [b]) => Number(wanted.get(anlageLabelKey(b))) - Number(wanted.get(anlageLabelKey(a))))
@@ -289,10 +297,20 @@ async function consolidate(
           payloadIds: insertsParagraphs ? new Set(payload.map((pl) => pl.id).filter((id) => !!id)) : null,
         }
       })
+      // Held under the unit key, not the bare number: a § 1 and an Anl. 1 fell
+      // together here, and „first occurrence wins" then gave one of them the
+      // other's text. Unreachable while no schedule document was ever fetched
+      // — which is exactly what changed. The schedule is entered under its
+      // own key AND, where the law has only one, under the bare „Anl." an
+      // instruction without a number addresses it by.
       const nodeById = (nodes: readonly LawNode[]): Map<string, LawNode> => {
         const out = new Map<string, LawNode>()
-        // First occurrence wins, exactly as `find` decided.
-        for (const node of nodes) if (!out.has(node.id)) out.set(node.id, node)
+        const marks = nodes.filter((n) => isSchedule(n.marker))
+        for (const node of nodes) {
+          const key = isSchedule(node.marker) ? (unitKey(node.marker) ?? node.id) : node.id
+          if (!out.has(key)) out.set(key, node)
+        }
+        if (marks.length === 1 && !out.has('Anl.')) out.set('Anl.', marks[0]!)
         return out
       }
       const afterById = nodeById(after.paragraphs)
