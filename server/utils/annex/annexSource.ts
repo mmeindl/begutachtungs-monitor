@@ -41,9 +41,12 @@ import { isScanned } from './tableCells'
  * "Textgegenbüberstellung" (docs/api-exploration.md §2c). Over GP XXVIII
  * every one of the 121 Parliament document groups it matches is titled
  * "Textgegenüberstellung" exactly, so the looseness costs nothing here and
- * keeps the two sides reading the same vocabulary.
+ * keeps the two sides reading the same vocabulary. The prefixed abbreviation
+ * („SAG_TGÜ") was added on 26.09.2026 for the same reason: it changes nothing
+ * on this side of the corpus, and two vocabularies that drift apart are the
+ * expensive kind of difference.
  */
-const ANNEX_NAME_RE = /gegen.?über|^TG(Ü|G|UE)$/i
+const ANNEX_NAME_RE = /gegen.?über|(^|_)TG(Ü|G|UE)$/i
 
 /**
  * The credit line at the foot of the section, one per copy that can be read.

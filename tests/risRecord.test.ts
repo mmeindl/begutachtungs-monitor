@@ -128,13 +128,26 @@ describe('flattenRisRecord', () => {
     }
   })
 
-  it('does NOT match a per-law prefixed annex — known, and its own step', () => {
-    // "SAG_TGÜ" occurs on Sammelnovellen (135/ME, 2026-09-17). Widening the
-    // pattern changes the annex engine's input, whose baseline is pinned per
-    // draft and watched weekly, so it is a measured change of its own and
-    // not a side effect of the Verordnungen work (see risRecord.ts).
-    const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: 'SAG_TGÜ' }]))!
-    expect(flat.textComparison).toBeNull()
+  it('matches a per-law prefixed annex (26.09.2026)', () => {
+    // A ressort that writes one Gegenüberstellung per law of a Sammelnovelle
+    // prefixes the abbreviation with the law's short name. Four records of
+    // the 400 most recent carried nothing as far as the site was concerned,
+    // and all four are readable (19, 28, 12, 81 rows). One ressort writes the
+    // separator twice.
+    for (const name of ['SAG_TGÜ', 'GuKG-Novelle_2024_TGÜ', 'GuK-EWRV-Novelle_2024__TGÜ', 'Bundesstraßen-Lärmimmissionsschutzverordnung-Novelle_TGÜ']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: name }]))!
+      expect(flat.textComparison?.xml, name).toBe('https://ogd.ris.bka.gv.at/t.xml')
+    }
+  })
+
+  it('takes the underscore as the separator, not „anything before TGÜ"', () => {
+    // The looseness is bounded by what the corpus prints. A name that merely
+    // ends in the letters is not an annex, and a record's other documents
+    // must not be swallowed into the one field the engine reads.
+    for (const name of ['AnhangTGÜ', 'Beilage TGÜ-Vergleich', 'WFA']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: name }]))!
+      expect(flat.textComparison, name).toBeNull()
+    }
   })
 
   it('sammelt alles Übrige, was der Satz an Text führt', () => {
@@ -154,19 +167,21 @@ describe('flattenRisRecord', () => {
     expect(flat.otherDocuments[0]!.urls.pdf).toBe('https://ogd.ris.bka.gv.at/wfa.pdf')
   })
 
-  it('nimmt die Gegenüberstellung und die Erläuterungen mit, die unsere Namensregeln verfehlen', () => {
-    // The cheap half of the known gap: „SAG_TGÜ" and „EB" stay invisible to
-    // the annex engine (its baseline is pinned), but the search reads them as
-    // a further document.
+  it('nimmt die Erläuterungen mit, die unsere Namensregeln verfehlen', () => {
+    // The remaining half of the known gap (§12.31). „SAG_TGÜ" left this list
+    // on 26.09.2026 — the annex engine reads it now, so it has a field of its
+    // own and must not stand here a second time. „EB" is still only the
+    // ressort's abbreviation for the Erläuterungen, and the search reads it
+    // as a further document rather than the engine guessing at it.
     const flat = flattenRisRecord(
       record([
         { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: 'SAG_TGÜ' },
         { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/eb.xml'), Name: 'Entwurf EB Klimagesetz' },
       ]),
     )!
-    expect(flat.textComparison).toBeNull()
+    expect(flat.textComparison?.xml).toBe('https://ogd.ris.bka.gv.at/t.xml')
     expect(flat.explanations).toBeNull()
-    expect(flat.otherDocuments.map((d) => d.name)).toEqual(['SAG_TGÜ', 'Entwurf EB Klimagesetz'])
+    expect(flat.otherDocuments.map((d) => d.name)).toEqual(['Entwurf EB Klimagesetz'])
   })
 
   it('zählt ein eingebettetes Bild nicht als Dokument', () => {

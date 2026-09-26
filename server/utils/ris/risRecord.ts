@@ -89,14 +89,27 @@ function str(v: unknown): string | null {
  * "TGÜ", "TGG", and a misspelt "Textgegenbüberstellung" all occur in the
  * corpus, so the match has to be loose (docs/api-exploration.md §2c).
  *
- * Known and deliberately NOT widened here: a Sammelnovelle can prefix the
- * abbreviation per law ("SAG_TGÜ" on 135/ME), which the anchored half of
- * this pattern misses. Widening it changes the input of the annex engine,
- * whose baseline is pinned per draft (`tests/fixtures/annex-baseline.json`)
- * and watched by the weekly drift alarm — so it is its own step, with its
- * own measurement, not a side effect of this one.
+ * **The prefixed abbreviation is read since 26.09.2026.** A ressort that
+ * writes one Gegenüberstellung per law of a Sammelnovelle prefixes the
+ * abbreviation with the law's short name — "SAG_TGÜ", "GuKG-Novelle_2024_TGÜ"
+ * — and the anchored half of this pattern used to miss it. Over the 400 most
+ * recent Begut records that is **4 records** which carried no
+ * Gegenüberstellung at all as far as the site was concerned, and every one of
+ * them is readable: 19, 28, 12 and 81 rows. The separator is an underscore in
+ * all four (one writes two), never a hyphen, so the pattern takes the
+ * underscore and not „anything before TGÜ" — a name ending in „AnhangTGÜ"
+ * stays out.
+ *
+ * Widening this changes the input of the annex engine, whose baseline is
+ * pinned per draft (`tests/fixtures/annex-baseline.json`) and watched by the
+ * weekly drift alarm, so it was its own step with its own measurement and the
+ * baseline was pulled up in the same commit.
+ *
+ * The same literal stands in `annex/annexSource.ts` (the Parliament side) and
+ * `scripts/lib/ris.ts` (the measurement scripts); when one moves, those two
+ * are the ones to check.
  */
-const TEXT_COMPARISON_NAME = /gegen.?über|^TG(Ü|G|UE)$/i
+const TEXT_COMPARISON_NAME = /gegen.?über|(^|_)TG(Ü|G|UE)$/i
 
 /**
  * The Erläuterungen document. Spelt consistently across the corpus so far,

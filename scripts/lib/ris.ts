@@ -19,4 +19,4 @@ export { asArray } from '../../server/utils/ris/risRecord'
  * moves, those two are the ones to check. No `g` flag, so the instance is
  * safe to share across call sites.
  */
-export const ANNEX_NAME_RE = /gegen.?über|^TG(Ü|G|UE)$/i
+export const ANNEX_NAME_RE = /gegen.?über|(^|_)TG(Ü|G|UE)$/i

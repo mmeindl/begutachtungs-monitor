@@ -4246,6 +4246,38 @@ selten eine Frage der Beschriftung.** Ein `credit`-Feld pro Quelle ist die
 richtige Mechanik und beantwortet trotzdem nur, *was man sagt* — nicht, *was
 man tut*.
 
+**Die präfixierte Abkürzung, gemessen und gelesen (26.09.2026).** Ein Ressort,
+das die Gegenüberstellung einer Sammelnovelle je Gesetz schreibt, stellt der
+Abkürzung den Kurznamen des Gesetzes voran — „SAG_TGÜ",
+„GuKG-Novelle_2024_TGÜ", eines schreibt den Trenner doppelt. Der verankerte
+Teil des Musters (`^TG(Ü|G|UE)$`) verfehlte das, und für die Seite hatten
+diese Entwürfe damit **gar keine** Gegenüberstellung.
+
+Über die 400 jüngsten Begut-Sätze sind es **4 Sätze**, und alle vier sind
+lesbar: 19, 28, 12 und 81 Zeilen. Geweitet wird auf den Unterstrich und nicht
+auf „irgendetwas vor TGÜ" — ein „AnhangTGÜ" bleibt draußen —, weil der
+Unterstrich das ist, was der Korpus druckt.
+
+**Die Drift-Signatur ist die, die eine rein additive Änderung haben muss:**
+Der Prüfstand wächst auf dem Tabellenpfad von 126 auf 129 Entwürfe, und von
+den schon gemessenen bewegt sich **kein einziger** — nicht eine Zahl, in
+keinem der beiden Berichte. Die Klasse B des Alarms schweigt dazu von selbst,
+weil ein Entwurf ohne Grundlinien-Eintrag kein Befund ist; die Grundlinie
+musste für diesen Schritt also nicht gezogen werden. Der vierte Satz ist auf
+dem PDF-Pfad und erscheint im Prüfstand erst, wenn dessen Fenster ihn kennt:
+der Harness-Cache hält eine ältere Abfrage der 400 Sätze, und die
+Schlüsselreihenfolge der Parameter gehört zum Cache-Schlüssel — zwei Läufe mit
+denselben Parametern in anderer Reihenfolge lesen zwei verschiedene
+Momentaufnahmen. Das ist keine Eigenschaft der Änderung, sondern eine des
+Messgeräts, und sie gehört aufgeschrieben, weil sie beim nächsten Mal wieder
+wie ein Befund aussieht.
+
+Die Regel steht an drei Stellen — `ris/risRecord.ts` (der Erzeuger),
+`annex/annexSource.ts` (die Parlamentsseite) und `scripts/lib/ris.ts` (die
+Messskripte) —, absichtlich als drei Literale und von Hand im Gleichschritt:
+Ein Skript darf nicht weiten können, was als Beilage zählt, ohne dass die
+Seite mitweitet.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the
@@ -4631,10 +4663,12 @@ sie nicht zählen.
   hier wie in der RIS-Abfrage `InBegutachtungAm`. Jede Zahl ist also eine
   Untergrenze. Gemessen: **1 von 4.574**.
 - **`SAG_TGÜ`** — eine Sammelnovelle kann die Gegenüberstellung pro Gesetz
-  präfixen (135/ME). Der verankerte Teil des Musters findet das nicht. Das
-  Muster zu weiten ändert die Eingabe der Beilagen-Engine, deren Grundlinie
-  je Entwurf festgenagelt und wöchentlich überwacht ist — also ein eigener
-  Schritt mit eigener Messung, kein Nebeneffekt dieser Arbeit.
+  präfixen (135/ME). Der verankerte Teil des Musters fand das nicht, und das
+  Muster zu weiten ändert die Eingabe der Beilagen-Engine, deren Grundlinie je
+  Entwurf festgenagelt und wöchentlich überwacht ist — also ein eigener
+  Schritt mit eigener Messung. **Getan am 26.09.2026** (§12.13, „Die
+  präfixierte Abkürzung"): 4 Sätze der 400 jüngsten, alle vier lesbar, und
+  der Prüfstand bewegt **keinen einzigen** der schon gemessenen Entwürfe.
 - **Der Name der Route** war eine Arbeitsentscheidung und ist seit dem
   18.09.2026 erledigt — nicht durch einen besseren Namen, sondern durch
   keinen: die Seiten liegen unter `/entwuerfe/:id`, ein eigenes Präfix haben
@@ -6666,6 +6700,12 @@ die Anlagen-Maschine mit ihrer gepinnten Baseline und der
 Erläuterungen-Abschnitt der Entwurfsseite, und **dass das Klimagesetz dort
 keine Erläuterungen zeigt, ist ein eigener Befund mit eigener Messung**
 (§12.11), nicht ein Nebeneffekt der Suche.
+
+**Die erste der beiden Regeln ist seit 26.09.2026 geweitet** (§12.13): Die
+Engine liest die präfixierte Gegenüberstellung selbst, `SAG_TGÜ` hat damit
+ein eigenes Feld und steht nicht mehr unter „weiteres Dokument". Die zweite
+steht noch — „EB" bleibt der Suche überlassen, weil eine Abkürzung, die im
+Korpus einmal vorkommt, keine Regel trägt.
 
 **Das Budget war danach die Grenze, nicht die Zeit.** Mit 16 PDFs je Suche
 fiel die Benennungsquote auf 91,4 % — das Budget ging mitten in der
