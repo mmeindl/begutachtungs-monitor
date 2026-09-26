@@ -558,15 +558,17 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   // second sentence confined the deletion to a place the phrase is not in
   // (Niederlassungs- und Aufenthaltsgesetz, measured the same day).
   //
-  // One exception, and it is the old reading: a clause that names only a
-  // sentence („und im Schlussteil …") after a Ziffer. Whether that is the
-  // Ziffer's Schlussteil or the Absatz's is not in the words; the Absatz's is
-  // what the drafting means in the corpus (`in Z 1 … und im Schlussteil …`),
-  // so the Ziffer and the Litera stay behind.
+  // One exception: a clause that names only a sentence. A Schlussteil or an
+  // Einleitung belongs to the unit that carries the list, one level above the
+  // place before — „in Z 1 … ersetzt; im Schlussteil …" is the Absatz's,
+  // „in der lit. e … ersetzt; der Schlussteil wird durch folgende lit. f …
+  // ersetzt" the Ziffer's (Ärztegesetz 1998 § 59 Abs. 1 Z 3). An ordinal
+  // sentence keeps the old reading, the Absatz's.
   const from = pm ? null : (inherited ?? null)
   const carry = from !== null && !am && !zm && !lm && !sentence
   const abs = am?.[1] ?? from?.abs ?? null
-  const z = zm?.[1] ?? (!am && !sentence ? from?.z : null) ?? null
+  const listPart = sentence?.satz === 'schluss' || sentence?.satz === 'einleitung'
+  const z = zm?.[1] ?? (!am && (!sentence || (listPart && from?.lit)) ? from?.z : null) ?? null
   const lit = lm?.[1] ?? (!am && !zm && !sentence ? from?.lit : null) ?? null
   const satz = sentence?.satz ?? null
   const satzCount = sentence?.satzCount ?? 0
@@ -1476,10 +1478,77 @@ function opContext(op: NovaoOp): NovaoAddress | null {
  * `inherited` carries the address of an enclosing container instruction, so
  * that "a) In Abs. 5 wird …" under "§ 12 wird wie folgt geändert:" resolves.
  */
+/**
+ * A place of its own at the head of a segment behind the verb: „in Z 1",
+ * „in der lit. d", „in Abs. 3", „im Schlussteil", „im Einleitungsteil",
+ * „im zweiten Satz".
+ */
+const LEADING_PLACE_RE = /(?<![\p{L}])(?:im\s+(?:Schlussteil|Schlusssatz|Einleitungsteil|Einleitungssatz|(?:ersten|zweiten|dritten|vierten|fünften|letzten|vorletzten)\s+Satz)|in\s+(?:der\s+|dem\s+)?(?:Z(?:iffer)?\s*\d+[a-z]*|lit\.\s*[a-z]{1,2}(?![\p{L}])|Abs\.\s*\d+[a-z]*))/gu
+const GAPPED_VERB_RE = /(?<![\p{L}])(?:wird|werden|entfällt|entfallen)(?![\p{L}])/u
+const PARTICIPLE_RE = /(?<![\p{L}])(ersetzt|eingefügt|angefügt|gestrichen)(?![\p{L}])/u
+const OPERAND_RE = /\uE000|(?<![\p{L}])(?:Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)(?![\p{L}])/u
+
+/**
+ * „In § 59 Abs. 4 wird in Z 1 die Wortfolge A durch B und im Schlussteil der
+ * Ausdruck C durch D ersetzt": one verb for several operations, and each
+ * names its own place. Read as one instruction the address took the Ziffer
+ * AND the Schlussteil — the Schlussteil of Z 1, which does not exist — and
+ * both replacements were refused (AsylG 2005 § 59, Energieausweis-Vorlage-
+ * Gesetz § 9, Transparenzdatenbankgesetz 2012 § 40b; 26.09.2026). Worse, where
+ * each operation has one operand in words („in Z 1 das Wort ‚ oder' durch
+ * einen Beistrich und in Z 2 der Punkt durch das Wort ‚ , oder'"), the two
+ * quotations were paired with each other.
+ *
+ * Split into one instruction per segment, each with the head in front of the
+ * verb and — where the verb closes the line — the participle behind it:
+ * „In § 59 Abs. 4 wird in Z 1 die Wortfolge A durch B ersetzt", „In § 59
+ * Abs. 4 wird im Schlussteil der Ausdruck C durch D ersetzt". Two places
+ * in a row share what follows them: „im Einleitungsteil und in der Z 6 der
+ * Ausdruck A jeweils durch B ersetzt" is the same replacement in both.
+ *
+ * Only where EVERY segment opens with a place of its own. „In § 5 Abs. 1
+ * wird in Z 1 das Wort A durch B und das Wort C durch D ersetzt" names one
+ * place, and whether it holds for both is not in the words — that line stays
+ * whole, as it was.
+ */
+export function splitPlaces(line: string): string[] {
+  const masked = line.replace(/"[^"]*"/g, (m) => '\uE000'.repeat(m.length))
+  const verb = GAPPED_VERB_RE.exec(masked)
+  if (!verb) return [line]
+  const afterVerb = verb.index + verb[0].length
+  const places = [...masked.matchAll(LEADING_PLACE_RE)].filter((m) => m.index! >= afterVerb)
+  if (places.length < 2 || masked.slice(afterVerb, places[0]!.index).trim() !== '') return [line]
+  // Every later place stands behind a separator — otherwise it is part of a
+  // segment („nach dem Wort ‚A' in Z 3"), not the head of one.
+  const starts: number[] = []
+  for (const [i, p] of places.entries()) {
+    if (i === 0) continue
+    const before = masked.slice(places[i - 1]!.index!, p.index)
+    const sep = /(?:,|\s(?:und|sowie))\s*$/u.exec(before)
+    if (!sep) return [line]
+    starts.push(places[i - 1]!.index! + sep.index)
+  }
+  const base = line.slice(0, afterVerb)
+  const segments = places.map((p, i) => line.slice(p.index, i + 1 < places.length ? starts[i] : line.length).trim())
+  // Places in a row share the operation behind the last of them.
+  for (let i = segments.length - 2; i >= 0; i--) {
+    if (OPERAND_RE.test(masked.slice(places[i]!.index!, starts[i]))) continue
+    const next = places[i + 1]!
+    segments[i] = `${segments[i]} ${line.slice(next.index! + next[0].length, i + 2 < places.length ? starts[i + 1] : line.length).trim()}`
+  }
+  const closing = PARTICIPLE_RE.exec(masked.slice(places.at(-1)!.index!))
+  const parts = segments.map((seg) => {
+    const withVerb = closing && !PARTICIPLE_RE.test(seg.replace(/"[^"]*"/g, '""')) ? `${seg.replace(/[.\s]+$/, '')} ${closing[1]}` : seg
+    return `${base} ${withVerb}`.replace(/\s{2,}/g, ' ')
+  })
+  if (parts.some((p) => !OPERAND_RE.test(p.replace(/"[^"]*"/g, (m) => '\uE000'.repeat(m.length))))) return [line]
+  return parts
+}
+
 export function parseInstruction(raw: string, inherited?: NovaoAddress | null): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
-  const parts = splitCompound(line)
-  if (parts.length === 1) return parseOne(line, inherited, line)
+  const parts = splitCompound(line).flatMap(splitPlaces)
+  if (parts.length === 1) return parseOne(parts[0]!, inherited, line)
 
   const ops: NovaoOp[] = []
   const reasons: string[] = []

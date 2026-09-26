@@ -625,9 +625,43 @@ describe('a clause that opens with its own payload appends to the place before i
 describe('two quotations under two „durch" (26.09.2026)', () => {
   it('refuses to pair them into one replacement', () => {
     // Each replacement has one operand in words; the two quotes belong to different pairs.
-    const parsed = parseInstruction('In § 81 Abs. 1 wird in Z 1 das Wort " oder" durch einen Beistrich und in Z 2 der Punkt durch das Wort " , oder" ersetzt.')
+    const parsed = parseInstruction('In § 81 Abs. 1 wird das Wort " oder" durch einen Beistrich und der Punkt durch das Wort " , oder" ersetzt.')
     expect(parsed.ops.filter((o) => o.kind === 'replacePhrase' && o.from === ' oder' && o.to === ' , oder')).toEqual([])
     expect(parsed.reason).toMatch(/Paarbildung/)
+  })
+
+  it('reads them as two replacements where each names its own place', () => {
+    // Fremdenpolizeigesetz 2005 § 81, read by `splitPlaces` since the same day.
+    const parsed = parseInstruction('In § 81 Abs. 1 wird in Z 1 das Wort " oder" durch einen Beistrich und in Z 2 der Punkt durch das Wort " , oder" ersetzt.')
+    expect(parsed.reason).toBeNull()
+    expect(parsed.ops.map((o) => (o.kind === 'replacePhrase' ? [o.target.z, o.to] : null))).toEqual([['1', ','], ['2', ', oder']])
+  })
+})
+
+describe('one verb, several places (26.09.2026)', () => {
+  const read = (line: string) => parseInstruction(line).ops.map((o) => {
+    const t = (o as { target: NovaoAddress }).target
+    return `${o.kind} ${t.abs ?? '-'}/${t.z ?? '-'}/${t.satz ?? '-'}`
+  })
+
+  it('gives each operation the place in front of it', () => {
+    // AsylG 2005 § 59 Abs. 4: read as the Schlussteil of Z 1, which does not exist.
+    expect(read('In § 59 Abs. 4 wird in Z 1 die Wortfolge "a" durch die Wortfolge "b" und im Schlussteil der Ausdruck "c" durch den Ausdruck "d" ersetzt.')).toEqual(['replacePhrase 4/1/-', 'replacePhrase 4/-/schluss'])
+    expect(read('In § 9 Abs. 2 entfällt in Z 2 die Wortfolge "a" und im Schlussteil die Wortfolge "b" .')).toEqual(['deletePhrase 2/2/-', 'deletePhrase 2/-/schluss'])
+  })
+
+  it('shares one operation between two places in a row', () => {
+    // Transparenzdatenbankgesetz 2012 § 40b Abs. 2.
+    expect(read('In § 40b Abs. 2 wird im Einleitungsteil und in der Z 6 der Ausdruck "a" jeweils durch die Wortfolge "b" ersetzt.')).toEqual(['replacePhrase 2/-/einleitung', 'replacePhrase 2/6/-'])
+  })
+
+  it('leaves a line whole where only the first operation names a place', () => {
+    expect(read('In § 5 Abs. 1 wird in Z 1 das Wort "a" durch das Wort "b" und das Wort "c" durch das Wort "d" ersetzt.')).toEqual(['replacePhrase 1/1/-', 'replacePhrase 1/1/-'])
+  })
+
+  it('reads the Schlussteil behind a Litera as the Ziffer\'s', () => {
+    // Ärztegesetz 1998 § 59 Abs. 1 Z 3: lit. f joins the Ziffer's list.
+    expect(read('In § 59 Abs. 1 Z 3 wird in der lit. e der Beistrich durch den Ausdruck " , sowie" ersetzt; der Schlussteil lautet:').at(-1)).toBe('replace 1/3/schluss')
   })
 })
 
