@@ -689,19 +689,28 @@ export function addressedSentence(node: LawNode, satz: string, count = 1): strin
  * written: with several places „jeweils" distributes the change over them,
  * „und inside each the phrase must still be unique". The reading half obeyed
  * it; the applying half never got the units to obey it *in*.
+ *
+ * **Two failures, two reasons.** A unit that is not there and a unit whose
+ * sentences cannot be counted both came back as „Nicht im geltenden Text",
+ * and the Prüfstand then filed the second kind under „eine frühere Anweisung
+ * hat sie entfernt" — 13 of the 21 lines it counted there were sentences of a
+ * unit that stood untouched in the standing text (26.09.2026). The replace and
+ * delete branches have said „Satz … nicht auffindbar" since they were
+ * written; the phrase branch now says the same.
  */
-function phraseSlotGroups(law: StandingLaw, a: NovaoAddress): Slot[][] | null {
+function phraseSlotGroups(law: StandingLaw, a: NovaoAddress): Slot[][] | { error: string } {
+  const missing = { error: `Nicht im geltenden Text: ${a.raw.slice(0, 60)}` }
   const scope = scopeOf(law, a)
-  if (!scope) return null
+  if (!scope) return missing
   if (a.heading) {
     const titled = scope.filter((n) => (n.heading ?? '') !== '')
-    return titled.length ? titled.map((n) => [headingSlot(n)]) : null
+    return titled.length ? titled.map((n) => [headingSlot(n)]) : missing
   }
   const groups: Slot[][] = []
   for (const node of scope) {
     if (a.satz) {
       const only = sentenceSlot(node, a.satz, a.satzCount)
-      if (!only) return null
+      if (!only) return { error: `Satz ${a.satz} nicht auffindbar` }
       groups.push([only])
       continue
     }
@@ -720,9 +729,9 @@ function phraseSlotGroups(law: StandingLaw, a: NovaoAddress): Slot[][] | null {
  * instruction says outright that it means each unit once, so each unit is its
  * own question.
  */
-function phraseUnits(law: StandingLaw, a: NovaoAddress, eachUnit: boolean): Slot[][] | null {
+function phraseUnits(law: StandingLaw, a: NovaoAddress, eachUnit: boolean): Slot[][] | { error: string } {
   const groups = phraseSlotGroups(law, a)
-  if (!groups) return null
+  if ('error' in groups) return groups
   return eachUnit ? groups : [groups.flat()]
 }
 
@@ -1040,7 +1049,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
 
     case 'replacePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
-      if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      if ('error' in units) return units.error
       if (op.everywhere) {
         let hits = 0
         for (const slot of units.flat()) {
@@ -1080,7 +1089,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
 
     case 'insertPhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
-      if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      if ('error' in units) return units.error
       const located = locateInUnits(units, op.anchor, op.wordBound)
       if ('error' in located) return located.error
       for (const { slot, at, len } of located.hits) {
@@ -1097,7 +1106,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
 
     case 'deletePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
-      if (!units) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+      if ('error' in units) return units.error
       const located = locateInUnits(units, op.text, op.wordBound)
       if ('error' in located) return located.error
       for (const { slot, at, len } of located.hits) {

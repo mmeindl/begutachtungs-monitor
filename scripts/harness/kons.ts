@@ -336,7 +336,22 @@ function missingTargetNote(address: NovaoAddress, resolved: ResolvedLaw, before:
     return cause
   }
   if (!address.para) return count('Adresse ohne Paragraph')
-  const key = labelKey(address.para)
+  // „Die §§ 12a und 13 entfallen" failed on § 13, and this note asked about
+  // § 12a — which stood, so the line was filed under „eine frühere Anweisung
+  // hat ihn entfernt" when nobody had loaded § 13 at all (26.09.2026). A list
+  // of §§ is asked about § by §, and the first one that did not stand answers.
+  if (address.level === 'para' && address.siblings.length > 0) {
+    for (const id of address.siblings) {
+      const sibling: NovaoAddress = { ...address, para: `§ ${id}`, siblings: [] }
+      const label = [...resolved.versions.keys()].find((l) => labelKey(l) === labelKey(sibling.para!))
+      if (!label || !nodeFor(before.paragraphs, label, paraId(label) ?? undefined)) return missingParagraphNote(sibling, resolved, before, unparsed, count, kundmachung)
+    }
+  }
+  return missingParagraphNote(address, resolved, before, unparsed, count, kundmachung)
+}
+
+function missingParagraphNote(address: NovaoAddress, resolved: ResolvedLaw, before: StandingLaw, unparsed: ReadonlySet<string>, count: (cause: string) => string, kundmachung: string): string {
+  const key = labelKey(address.para!)
   const byKey = new Map([...resolved.versions.keys()].map((l) => [labelKey(l), l] as const))
   const label = byKey.get(key)
   if (!label) {
