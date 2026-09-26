@@ -34,7 +34,7 @@
  */
 
 import type { Instruction } from './lawApply'
-import { articleQualifier, namedParagraphs, opAddress } from './novao'
+import { articleQualifier, namedParagraphs, opAddress, refusedAddresses } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { articleNumberKey, isSchedule, unitKey } from '../text/designation'
 
@@ -104,6 +104,41 @@ export function byParagraphOrder(a: string, b: string): number {
   if (isSchedule(a) !== isSchedule(b)) return isSchedule(a) ? 1 : -1
   const key = (id: string): string => (isSchedule(id) ? id.replace(/^\S+\s*/, '') : id)
   return num(key(a)) - num(key(b)) || a.localeCompare(b, 'de')
+}
+
+/**
+ * The units a run of `applyNovelle` must not show as clean: every one an
+ * unresolved instruction names, and every one a refused line names.
+ *
+ * Two readings stood in three places (`konsService`, both Prüfstände), and
+ * both stopped short. A refused line counted with its first § only, so the
+ * KFG line „In § 24 Abs. 2 Z 2, § 24a Abs. 2 lit. b, § 40 …" refused § 24 and
+ * left §§ 24a, 40, 87 and 123a clean with nothing applied to them (26.09.2026).
+ * And both were keyed by the bare number, while the page keys a schedule as
+ * „Anl. 1": a failed instruction on the Anlage marked § 1 refused and left the
+ * Anlage clean. `key` is the form the caller looks units up in.
+ */
+const TOC_LINE_RE = /^(?:\d+[a-z]?\.\s*)?(?:Im |Das |Die |In dem )?Inhaltsverzeichnis/i
+
+export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonly string[], key: (designation: string) => string | null): Set<string> {
+  const out = new Set<string>()
+  for (const p of unresolved) {
+    const id = key(p)
+    if (id) out.add(id)
+  }
+  for (const line of refusedLines) {
+    // „Im Inhaltsverzeichnis entfällt der Eintrag zu § 17; die Einträge zu den
+    // §§ 18 und 19 lauten": the table of contents, which no § text carries —
+    // the grammar reads it as `toc` for the same reason. Named §§ are its
+    // entries, not its targets (BFA-VG, BGBl. I Nr. 39/2026).
+    if (TOC_LINE_RE.test(line.trim())) continue
+    const named = refusedAddresses(line) ?? [/§+\s*\d+[a-z]*/.exec(line)?.[0] ?? '']
+    for (const p of named) {
+      const id = p ? key(p) : null
+      if (id) out.add(id)
+    }
+  }
+  return out
 }
 
 /**

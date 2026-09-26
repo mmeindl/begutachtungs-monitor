@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph } from '../server/utils/kons/konsGate'
+import { addressedLabels, addressedParagraphs, byParagraphOrder, gateParagraph, refusedUnits } from '../server/utils/kons/konsGate'
+import { unitKey } from '../server/utils/text/designation'
 import { parsePayload, type Instruction } from '../server/utils/kons/lawApply'
 import { parseInstruction } from '../server/utils/kons/novao'
 
@@ -116,5 +117,17 @@ describe('addressedLabels — unter welchem Etikett das RIS den § führt', () =
   it('files a § an instruction creates under the Artikel that instruction addresses', () => {
     const labels = addressedLabels(instr('Nach Art. II § 12 wird folgender § 12a samt Überschrift eingefügt:', ['Neue Überschrift', '§ 12a. (1) Neu.']), [])
     expect(labels?.get('12a')).toBe('Art. 2 § 12a')
+  })
+})
+
+describe('refusedUnits — was nicht als sauber gelten darf (26.09.2026)', () => {
+  it('marks every § a refused line names, not the first one only', () => {
+    // KFG: the line was refused and §§ 24a, 40, 87 stood clean.
+    const line = 'In § 24 Abs. 2 Z 2, § 24a Abs. 2 lit. b, § 40 Abs. 1 lit. a und § 87 Abs. 1 wird etwas Unlesbares geändert.'
+    expect([...refusedUnits([], [line], unitKey)].sort()).toEqual(['24', '24a', '40', '87'])
+  })
+
+  it('keys a schedule the way the page does', () => {
+    expect([...refusedUnits(['Anl. 1', '§ 5'], [], unitKey)].sort()).toEqual(['5', 'Anl. 1'])
   })
 })

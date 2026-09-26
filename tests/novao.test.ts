@@ -630,3 +630,45 @@ describe('two quotations under two „durch" (26.09.2026)', () => {
     expect(parsed.reason).toMatch(/Paarbildung/)
   })
 })
+
+describe('one address names one place (26.09.2026)', () => {
+  const places = (line: string) => {
+    const parsed = parseInstruction(line)
+    return parsed.ops.map((o) => {
+      const t = (o as { target: NovaoAddress }).target
+      return [t.para, t.abs, t.z, t.lit, t.siblings.join(',') || null].map((x) => x ?? '-').join(' ')
+    })
+  }
+
+  it('reads a sibling that repeats its designator', () => {
+    // „In § 139a Abs. 1 und Abs. 2 wird jeweils …" changed Abs. 1 and reported success.
+    expect(places('In § 5 Abs. 1 und Abs. 2 wird das Wort "x" durch das Wort "y" ersetzt.')).toEqual(['§ 5 1 - - 2'])
+    expect(places('In § 1 Z 7 und Z 7a wird jeweils nach dem Wort "x" das Wort "y" eingefügt.')).toEqual(['§ 1 - 7 - 7a'])
+  })
+
+  it('reads a chain of siblings however it is joined', () => {
+    // `parseAddressList` hands „Abs. 1, Abs. 2 und Abs. 3" back as „… und … und …".
+    expect(places('In § 14a Abs. 1, Abs. 2 und Abs. 3 wird das Wort "x" durch das Wort "y" ersetzt.')).toEqual(['§ 14a 1 - - 2,3'])
+    expect(places('In § 55 werden die Abs. 1, 1a, 2, 3 und 4 durch folgende Abs. 1 bis 4 ersetzt:')).toEqual(['§ 55 1 - - 1a,2,3,4'])
+  })
+
+  it('reads Litera letters as siblings', () => {
+    // „§ 21c Z 1 lit. b, c, e und f entfällt." deleted lit. b alone.
+    expect(places('§ 21c Z 1 lit. b, c, e und f entfällt.')).toEqual(['§ 21c - 1 b c,e,f'])
+    expect(places('In § 5 Abs. 1 Z 2 lit. a und lit. b wird das Wort "x" durch das Wort "y" ersetzt.')).toEqual(['§ 5 1 2 a b'])
+    // „und im Schlussteil" is no Litera „im".
+    expect(places('In § 5 Abs. 1 Z 2 lit. a und im Schlussteil wird das Wort "x" durch das Wort "y" ersetzt.')[0]).toBe('§ 5 1 2 a -')
+  })
+
+  it('reads a place that opens a higher level as a place of its own', () => {
+    // KFG § 48: „§ 48 Abs. 1 Z 2 und Abs. 4" lost the Abs. 4.
+    expect(places('In § 48 Abs. 1 Z 2 und Abs. 4 wird jeweils das Wort "x" durch das Wort "y" ersetzt.')).toEqual(['§ 48 1 2 - -', '§ 48 4 - - -'])
+    // Pflichtschulabschluss-Prüfungs-Gesetz § 6: read as „Abs. 3 Z 1", a place neither names.
+    expect(places('In § 6 Abs. 3 und Abs. 6 Z 1 wird das Zitat "a" jeweils durch das Zitat "b" ersetzt.')).toEqual(['§ 6 3 - - -', '§ 6 6 1 - -'])
+  })
+
+  it('refuses a place the reading would leave out or fuse', () => {
+    expect(parseInstruction('In § 5 Abs. 1 und Z 3 wird das Wort "x" durch das Wort "y" ersetzt.').ops).toEqual([])
+    expect(parseInstruction('In § 5 Abs. 1 und 2 werden der Punkt am Ende der Z 3 durch einen Strichpunkt ersetzt.').ops).toEqual([])
+  })
+})

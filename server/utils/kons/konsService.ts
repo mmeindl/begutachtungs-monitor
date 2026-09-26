@@ -29,7 +29,7 @@
  */
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
-import { addressedLabels, addressedParagraphs, gateParagraph } from './konsGate'
+import { addressedLabels, addressedParagraphs, gateParagraph, refusedUnits } from './konsGate'
 import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from '../lawtext/amendedLawsService'
@@ -276,11 +276,7 @@ async function consolidate(
       const standing: StandingLaw = { paragraphs: await standingParagraphs(queue) }
       const { law: after, results, unresolved } = applyNovelle(standing, instructions)
 
-      const refusedIds = new Set([...unresolved].map((p) => /(\d+[a-z]*)/.exec(p)?.[1] ?? p))
-      for (const r of refused) {
-        const id = /§+\s*(\d+[a-z]*)/.exec(r.line)?.[1]
-        if (id) refusedIds.add(id)
-      }
+      const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), unitKey)
 
       // Read once instead of once per §: the designation every instruction
       // addresses, and the §§ its payload inserts. The condition below is

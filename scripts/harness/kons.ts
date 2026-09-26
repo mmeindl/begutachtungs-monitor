@@ -53,6 +53,7 @@ import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/u
 import { amendedBy, fetchAllVersions, fetchParagraphTree, resolveGesetzesnummer, versionPairFor } from '../../server/utils/harness/risKonsHistory'
 import { extraTokens, isSubsetOfRis, verdictForTrees } from '../../server/utils/harness/applyReport'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
+import { refusedUnits } from '../../server/utils/kons/konsGate'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type OracleVerdict } from '../../server/utils/kons/tguOracle'
@@ -629,11 +630,8 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // The question a per-paragraph publication gate turns on: when the engine
   // reports no refusal for a §, is that § actually right? Refusals are known
   // at draft time; correctness is not, because the law has not been passed yet.
-  const refusedIds = new Set([...unresolved].map((p) => /(\d+[a-z]*)/.exec(p)?.[1] ?? p))
-  for (const r of refused) {
-    const m = /§+\s*(\d+[a-z]*)/.exec(r.line)
-    if (m) refusedIds.add(m[1]!)
-  }
+  // The site's reading (`refusedUnits`), keyed by the bare number this Prüfstand holds its §§ under.
+  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), bareParaId)
   const applied = results.filter((r) => r.applied).length
 
   if (verbose) {

@@ -306,6 +306,13 @@ export function expandRange(from: string, to: string): string[] | null {
     if (b <= a || b - a > 60) return null
     return Array.from({ length: b - a }, (_, i) => String(a + i + 1))
   }
+  // „lit. h bis k": the Litera run itself, one letter each.
+  if (/^[a-z]$/.test(from) && /^[a-z]$/.test(to)) {
+    const a = from.charCodeAt(0)
+    const b = to.charCodeAt(0)
+    if (b <= a) return null
+    return Array.from({ length: b - a }, (_, i) => String.fromCharCode(a + i + 1))
+  }
   const fm = /^(\d+)([a-z])$/.exec(from)
   const tm = /^(\d+)([a-z])$/.exec(to)
   if (fm && tm && fm[1] === tm[1]) {
@@ -354,17 +361,90 @@ const OWN_COMPONENT_RE = /^\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))
  * same decision as for the article-structured laws. A refusal always beats
  * half an application („Verweigern schlägt Deckung", §12.12).
  */
-function siblingsAfter(rest: string, first: string): string[] | null {
-  const m = /^\s*((?:,\s*\d+[a-z]*\s*)*)(und|bis|sowie|,)\s*(\d+[a-z]*)\b/i.exec(rest)
-  if (!m) return []
-  if (OWN_COMPONENT_RE.test(rest.slice(m[0].length))) return null
-  const listed = [...m[1]!.matchAll(/(\d+[a-z]*)/g)].map((x) => x[1]!)
-  const last = m[3]!
-  if (/^bis$/i.test(m[2]!)) {
-    const range = expandRange(first, last)
-    return range === null ? null : [...listed, ...range]
+function siblingsAfter(rest: string, first: string, level: EnumLevel = 'abs'): { ids: string[]; consumed: number } | null {
+  const id = ENUM_ID[level]
+  const des = ENUM_DESIGNATOR[level]
+  // One sibling at a time, behind any of the separators: „1, 2 und 5", but
+  // also „1 und 2 und 3" — which is how `parseAddressList` hands back „Abs. 1,
+  // Abs. 2 und Abs. 3" after cutting it at every comma, and the old pattern
+  // read two of the three (26.09.2026).
+  const step = new RegExp(`^\\s*(,|und|sowie|bis)\\s*${des ? `${des}?` : ''}(${id})(?![\\p{L}\\p{N}])`, 'u')
+  const ids: string[] = []
+  let at = 0
+  let previous = first
+  for (let m = step.exec(rest); m; m = step.exec(rest.slice(at))) {
+    const next = m[2]!
+    // A Litera is one letter or a doubled one („aa"). Anything else the
+    // two-letter pattern catches is a word — „und im Schlussteil" is no
+    // Litera „im" — and ends the enumeration in front of it.
+    if (level === 'lit' && next.length === 2 && next[0] !== next[1]) break
+    if (m[1] === 'bis') {
+      const range = expandRange(previous, next)
+      if (range === null) return null
+      ids.push(...range)
+    } else ids.push(next)
+    previous = next
+    at += m[0].length
   }
-  return [...listed, last]
+  if (ids.length === 0) return { ids: [], consumed: 0 }
+  if (OWN_COMPONENT_RE.test(rest.slice(at))) return null
+  return { ids, consumed: at }
+}
+
+type EnumLevel = 'para' | 'abs' | 'z' | 'lit'
+/**
+ * What a sibling looks like at each level: a number, and for a Litera a
+ * letter — „§ 21c Z 1 lit. b, c, e und f entfällt" deleted lit. b alone,
+ * because only numbers were read as siblings (26.09.2026).
+ */
+const ENUM_ID: Record<EnumLevel, string> = { para: '\\d+[a-z]*', abs: '\\d+[a-z]*', z: '\\d+[a-z]*', lit: '[a-z]{1,2}' }
+/**
+ * The designator a sibling may repeat: „Abs. 1 und Abs. 2", „Z 7 und Z 7a",
+ * „lit. a und lit. b". Repeated, the enumeration was not read at all and the
+ * second unit dropped — „In § 139a Abs. 1 und Abs. 2 wird jeweils … eingefügt"
+ * changed Abs. 1 and reported success.
+ */
+const ENUM_DESIGNATOR: Record<EnumLevel, string> = { para: '', abs: '(?:Abs(?:\\.|atz)\\s*)', z: '(?:Z(?:iffer)?\\s*)', lit: '(?:lit(?:\\.|era)\\s*)' }
+
+/** Where the address ends and the instruction begins: its finite verb. */
+const FINITE_VERB_RE = /(?<![\p{L}])(?:wird|werden|entfällt|entfallen|lautet|lauten|erhält|erhalten|tritt|treten)(?![\p{L}])/u
+/** „Abs. 4", „Z 7a", „lit. b" — a designator with its number, wherever it stands. */
+const DESIGNATOR_TOKEN_RE = /(?<![\p{L}\p{N}])(?:Abs(?:\.|atz)\s*\d|Z(?:iffer)?\s*\d|lit(?:\.|era)\s*[a-z](?![\p{L}]))/u
+const JOIN_RE = /(?<![\p{L}])(?:und|sowie|oder|bis)(?![\p{L}])|,/u
+
+/**
+ * **One address names one place** (26.09.2026). Its designators descend —
+ * Abs., Z, lit. — and one of them repeats only in the enumeration of the
+ * deepest, which `siblingsAfter` reads.
+ *
+ * Everything else was read as if it were not there. „§ 48 Abs. 1 Z 2 und
+ * Abs. 4" came out as Abs. 1 Z 2 and changed that one; „In § 6 Abs. 3 und
+ * Abs. 6 Z 1" was taken apart component by component and put back together
+ * as Abs. 3 Z 1, a place the instruction does not name; „In § 5 Abs. 1 und 2
+ * werden … der Z 3 …" dropped the Abs. 2. Over the Prüfstand's 1.711
+ * instruction lines these shapes stood in a dozen, and every one was either
+ * refused for the wrong reason or carried out on part of what it names. So a
+ * place the reading would leave out refuses the address; the list reading
+ * (`parseAddressList`) takes apart what are really two.
+ *
+ * Only the stretch in front of the verb is the address. A designator behind
+ * it is an anchor or an operand's description („wird der Punkt am Ende der
+ * Z 22 … ersetzt") and is read as it always was.
+ */
+function onePlace(tail: string, components: readonly (RegExpExecArray | null)[], deepest: RegExpExecArray, enumerationEnd: number): boolean {
+  const verb = FINITE_VERB_RE.exec(tail)
+  const end = verb ? verb.index : tail.length
+  const inAddress = components.filter((c): c is RegExpExecArray => c !== null && c.index < end).sort((a, b) => a.index - b.index)
+  for (const [i, c] of inAddress.entries()) {
+    const stop = inAddress[i + 1]?.index ?? end
+    if (c === deepest) {
+      if (DESIGNATOR_TOKEN_RE.test(tail.slice(enumerationEnd, stop))) return false
+      continue
+    }
+    const between = tail.slice(c.index + c[0].length, stop)
+    if (JOIN_RE.test(between) || DESIGNATOR_TOKEN_RE.test(between)) return false
+  }
+  return true
 }
 
 /**
@@ -496,14 +576,15 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const deepest = lm ?? zm ?? am
   let siblings: string[] = carry ? [...from.siblings] : []
   if (deepest) {
-    const after = tail.slice(deepest.index + deepest[0].length)
-    const found = siblingsAfter(after, deepest[1]!)
+    const at = deepest.index + deepest[0].length
+    const found = siblingsAfter(tail.slice(at), deepest[1]!, lm ? 'lit' : zm ? 'z' : 'abs')
     if (found === null) return null
-    siblings = found
+    siblings = found.ids
+    if (!onePlace(tail, [am, zm, lm], deepest, at + found.consumed)) return null
   } else if (pm) {
-    const found = siblingsAfter(tail, pm[1] ?? pm[2] ?? pm[4] ?? '')
+    const found = siblingsAfter(tail, pm[1] ?? pm[2] ?? pm[4] ?? '', 'para')
     if (found === null) return null
-    siblings = found
+    siblings = found.ids
   }
 
   // The plural sign, as the last signal. „In den §§ 46 Abs. 3 zweiter Satz,
@@ -600,19 +681,39 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
   // where it belongs. Standing alone („In § 9 Abs. 1 und 2 wird …") the
   // address was always right; only inside a longer list did the part lose
   // its § and with it its home.
-  const merged: string[] = []
+  //
+  // **A part that opens a level above the one before it is a place of its
+  // own** under the same § (26.09.2026): „§ 48 Abs. 1 Z 2 und Abs. 4", „§ 6
+  // Abs. 3 und Abs. 6 Z 1". Joined on, it was either dropped or put together
+  // with the part before it into a place neither names (`onePlace`). Read on
+  // its own, it keeps what lies above it from the place before — the § and,
+  // for a Ziffer, the Absatz.
+  const units: { text: string; place: boolean }[] = []
   for (const part of parts) {
-    if (merged.length === 0 || PARA_RE.test(part)) merged.push(part)
-    else merged[merged.length - 1] += ` und ${part}`
+    const last = units.at(-1)
+    if (!last || PARA_RE.test(part)) units.push({ text: part, place: false })
+    else if (opensPlace(last.text, part)) units.push({ text: part, place: true })
+    else last.text += ` und ${part}`
   }
+  const merged = units.filter((u) => !u.place).map((u) => u.text)
   const withPara = merged.filter((p) => PARA_RE.test(p))
+  const hasPlaces = units.some((u) => u.place)
   // Either every paragraph carries its own symbol, or the plural shorthand
   // spells the first one and leaves the rest bare. Both can occur in one
   // instruction, so each explicit segment is offered to the splitter again.
-  const segments = withPara.length >= 2 ? withPara : splitPluralParagraphs(t)
+  const segments = withPara.length >= 2 ? withPara : hasPlaces ? null : splitPluralParagraphs(t)
   if (!segments) {
-    const single = parseAddress(text, inherited)
-    return single ? [single] : null
+    if (!hasPlaces) {
+      const single = parseAddress(text, inherited)
+      return single ? [single] : null
+    }
+    const out: NovaoAddress[] = []
+    for (const u of units) {
+      const a = parseAddress(u.text, u.place ? (out.at(-1) ?? inherited) : inherited)
+      if (!a) return null
+      out.push(a)
+    }
+    return out
   }
   // The Artikel is written once and holds for the rest of the list, exactly
   // like the § sign in the plural shorthand: "In Artikel II § 8 und § 9
@@ -624,8 +725,17 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
   const carried = ARTIKEL_QUALIFIER_RE.exec(t)
   const prefix = carried ? `Art. ${carried[1]} ` : ''
   const out: NovaoAddress[] = []
-  for (const segment of segments) {
-    for (const one of splitPluralParagraphs(segment) ?? [segment]) {
+  // The explicit segments are the units, and a unit's places follow it; the
+  // plural shorthand's segments come from the whole text and carry none.
+  const ordered = segments === withPara ? units.filter((u) => u.place || withPara.includes(u.text)) : segments.map((text) => ({ text, place: false }))
+  for (const u of ordered) {
+    if (u.place) {
+      const a = parseAddress(u.text, out.at(-1) ?? inherited)
+      if (!a) return null
+      out.push(a)
+      continue
+    }
+    for (const one of splitPluralParagraphs(u.text) ?? [u.text]) {
       const qualified = prefix && !ARTIKEL_QUALIFIER_RE.test(one) ? prefix + one : one
       const a = parseAddress(qualified, inherited)
       if (!a) return null
@@ -633,6 +743,31 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
     }
   }
   return out
+}
+
+const COMPONENT_DEPTH: Record<string, number> = { abs: 1, absatz: 1, z: 2, ziffer: 2, lit: 3, litera: 3 }
+const COMPONENT_AT_RE = /(?<![\p{L}\p{N}])(Abs(?:\.|atz)|Z(?:iffer)?|lit(?:\.|era))\s*(?:\d+[a-z]*|[a-z](?![\p{L}]))/gu
+
+/** Depth of each designator in `text`, in order: „§ 48 Abs. 1 Z 2" → [1, 2]. */
+function componentDepths(text: string): number[] {
+  return [...text.matchAll(COMPONENT_AT_RE)].map((m) => COMPONENT_DEPTH[m[1]!.replace(/\.$/, '').toLowerCase()] ?? 0)
+}
+
+/**
+ * Does `part`, standing behind `before` in an address list, open a place of
+ * its own? Where it begins above the deepest level before it („Z 2 und
+ * Abs. 4"), or on that level with a deeper one behind it („Abs. 3 und
+ * Abs. 6 Z 1"). A bare sibling on the same level („Abs. 1 und Abs. 2") is
+ * an enumeration, and one that begins deeper („Abs. 1 und Z 3") has no
+ * reading and is left to `onePlace` to refuse.
+ */
+function opensPlace(before: string, part: string): boolean {
+  if (!OWN_COMPONENT_RE.test(part)) return false
+  const own = componentDepths(part.slice(0, FINITE_VERB_RE.exec(part)?.index ?? part.length))
+  const prior = componentDepths(before.slice(0, FINITE_VERB_RE.exec(before)?.index ?? before.length))
+  if (own.length === 0 || prior.length === 0) return false
+  const deepest = Math.max(...prior)
+  return own[0]! < deepest || (own[0]! === deepest && own.length > 1)
 }
 
 /** Stable key of an address, for matching against parsed law units. */
@@ -850,8 +985,8 @@ function childIds(payload: string, level: ChildLevel): string[] {
   const m = re.exec(payload)
   if (!m) return []
   const first = m[1] ?? m[2] ?? m[4] ?? ''
-  const more = siblingsAfter(payload.slice(m.index + m[0].length), first)
-  return more === null ? [first] : [first, ...more]
+  const more = siblingsAfter(payload.slice(m.index + m[0].length), first, level === 'z' || level === 'lit' || level === 'abs' ? level : 'para')
+  return more === null ? [first] : [first, ...more.ids]
 }
 
 /**

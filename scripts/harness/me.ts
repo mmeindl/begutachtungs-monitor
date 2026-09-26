@@ -48,6 +48,7 @@ import { articleBlocks, draftArticles, type DraftArticle } from '../../server/ut
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
+import { refusedUnits } from '../../server/utils/kons/konsGate'
 import { parseTextComparison } from '../../server/utils/annex/comparisonRows'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
@@ -390,11 +391,8 @@ async function verifyLaw(
   const { law: after, results, unresolved } = applyNovelle(law, instructions)
   result.applied = results.filter((r) => r.applied).length
 
-  const refusedIds = new Set([...unresolved].map((p) => /(\d+[a-z]*)/.exec(p)?.[1] ?? p))
-  for (const r of refused) {
-    const m = /§+\s*(\d+[a-z]*)/.exec(r.line)
-    if (m) refusedIds.add(m[1]!)
-  }
+  // The site's reading (`refusedUnits`), keyed by the bare number this Prüfstand holds its §§ under.
+  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), bareParaId)
 
   if (verbose) {
     console.log(`\n${draft.id}${article.number ? ` ${article.number}` : ''} — ${result.law} (Begutachtung ab ${draft.beginn})`)
