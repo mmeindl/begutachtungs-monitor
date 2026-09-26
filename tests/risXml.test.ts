@@ -56,3 +56,19 @@ describe('parseRisXml strips what RIS prints around the text, not in it', () => 
     expect(parseRisXml(xml).map((b) => b.text)).toEqual(['Zu Z 4 (§ 54c): Die Frist wird verlängert.'])
   })
 })
+
+describe('a quotation cut into Novellentext around a dash (26.09.2026)', () => {
+  const read = (inner: string) => parseRisXml(`<risdok><nutzdaten><absatz typ="novao2" ct="text">${inner}</absatz></nutzdaten></risdok>`).map((b) => b.text)
+
+  it('reads the dash the ressort wrote, without the spaces the tags would make', () => {
+    // Transparenzdatenbankgesetz 2012 § 40b, BGBl. I Nr. 62/2026: read as „ARF - oder KSF - Leistungen".
+    expect(read('In § 40b Abs. 2 wird der Ausdruck <n>„ARF-Leistungen“</n> jeweils durch die Wortfolge <n>„ARF</n><gdash /><n> oder KSF</n><gdash /><n>Leistungen“</n> ersetzt.')).toEqual([
+      'In § 40b Abs. 2 wird der Ausdruck "ARF-Leistungen" jeweils durch die Wortfolge "ARF- oder KSF-Leistungen" ersetzt.',
+    ])
+    expect(read('die Wortfolge <n><b>„Einnahmen aus ORF</b></n><gdash /><n><b>Beiträgen“</b></n> ersetzt.')).toEqual(['die Wortfolge "Einnahmen aus ORF-Beiträgen" ersetzt.'])
+  })
+
+  it('keeps every other Novellentext boundary a word boundary', () => {
+    expect(read('der Ausdruck <n>„A“</n> durch den Ausdruck <n>„B“</n> ersetzt.')).toEqual(['der Ausdruck "A" durch den Ausdruck "B" ersetzt.'])
+  })
+})

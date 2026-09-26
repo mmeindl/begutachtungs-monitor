@@ -54,8 +54,21 @@ const RIS_ABSATZ_KIND: Record<string, BlockKind> = {
 const RIS_BLOCK_RE = /<(ueberschrift|absatz|listelem|schlussteil|schluss|inhaltsvz)\b([^>]*)>([\s\S]*?)<\/\1>/g
 const RIS_GLD_RE = /<gldsym>([\s\S]*?)<\/gldsym>/
 
+/**
+ * The Novellentext tags a quotation is cut into where it holds a dash:
+ * „<n>„ARF</n><gdash /><n> oder KSF</n><gdash /><n>Leistungen“</n>". Every
+ * other tag is a word boundary (`stripMarkup`), so these two came out as
+ * „ARF - oder KSF - Leistungen" — a spelling the ressort never wrote, which
+ * the engine then wrote into the law (Transparenzdatenbankgesetz 2012
+ * § 40b, 26.09.2026). 65 such cuts in the Prüfstand's documents; in an old
+ * text the tolerant match had quietly bridged them, in a new one nothing
+ * did. Inline markup between them („</b></n><gdash /><n><b>") is kept for
+ * `stripMarkup` to drop.
+ */
+const N_AT_DASH_RE = /<\/n>((?:<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>)*)(?=<gdash\s*\/>)|(<gdash\s*\/>(?:<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>)*)<n>/g
+
 function risText(inner: string): string {
-  return stripTags(inner.replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' '))
+  return stripTags(inner.replace(N_AT_DASH_RE, '$1$2').replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' '))
 }
 
 /** RIS Begut main-document XML → flat block list, same kinds as the Parliament HTML parser. */
