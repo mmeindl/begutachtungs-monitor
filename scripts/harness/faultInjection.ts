@@ -34,9 +34,9 @@
  *   dragged out of a neighbouring provision of the same draft. It was the
  *   known blind spot of rule 2 as long as its word bag was built for the
  *   whole draft: the words are in the draft, only in the wrong §. This run is
- *   what measured that (12,0 % caught on the PDF path, 32,3 % on the table
+ *   what measured that (12,4 % caught on the PDF path, 32,1 % on the table
  *   path) and what measured the per-§ reference that answered it (77,0 % and
- *   82,1 %).
+ *   83,2 %; 12,0 / 32,3 and 77,0 / 82,1 when it was first run).
  * - **U** — add a row printing another §'s standing text **identically in both
  *   columns**. A mirrored row the annex files under the wrong §, which is the
  *   shape the table path produces by construction: a Teil-, Abschnitt- or
@@ -69,25 +69,28 @@
  * `harness/annexPdf.ts` over the same population, so the two harnesses
  * cross-check each other.
  *
- * **What it said on 2026-09-11** (GP XXVIII, both paths run separately, with
- * 93,6 % / 93,4 % of the drafts' instructions addressed to a § and the shared markup rule of
- * `lawText.stripMarkup` in place):
+ * **What it says on 2026-09-26** (GP XXVIII, both paths run separately; the
+ * populations grew with the reading, the rates did not move):
  *
  * | | §§ | linke Prüfung | Regel 1 | Regel 2 ganz | Regel 2 je § | zusammen je § |
  * |---|---:|---:|---:|---:|---:|---:|
- * | L, PDF-Pfad    | 942 | 870 (92,4 %) | 371 (39,4 %) | 146 (15,5 %) | 350 (37,2 %) | 584 (62,0 %) |
- * | L, Tabellenpfad| 246 | 246 (100 %)  | 145 (58,9 %) |  49 (19,9 %) |  95 (38,6 %) | 171 (69,5 %) |
- * | R-alt, PDF     | 905 | 905 (100 %)  |   7 ( 0,8 %) | 222 (24,5 %) | 596 (65,9 %) | 599 (66,2 %) |
- * | R-alt, Tabelle | 238 | 238 (100 %)  |   1 ( 0,4 %) |  98 (41,2 %) | 183 (76,9 %) | 183 (76,9 %) |
- * | R-neu, PDF     | 904 | 904 (100 %)  |   8 ( 0,9 %) | 107 (11,8 %) | 696 (77,0 %) | 696 (77,0 %) |
- * | R-neu, Tabelle | 237 | 237 (100 %)  |   1 ( 0,4 %) |  76 (32,1 %) | 196 (82,7 %) | 197 (83,1 %) |
+ * | L, PDF-Pfad    | 971 | 896 (92,3 %) | 385 (39,6 %) | 148 (15,2 %) | 355 (36,6 %) | 598 (61,6 %) |
+ * | L, Tabellenpfad| 272 | 271 (99,6 %) | 153 (56,3 %) |  54 (19,9 %) | 103 (37,9 %) | 182 (66,9 %) |
+ * | R-alt, PDF     | 932 | 932 (100 %)  |   9 ( 1,0 %) | 229 (24,6 %) | 614 (65,9 %) | 618 (66,3 %) |
+ * | R-alt, Tabelle | 263 | 263 (100 %)  |   1 ( 0,4 %) | 118 (44,9 %) | 208 (79,1 %) | 208 (79,1 %) |
+ * | R-neu, PDF     | 931 | 931 (100 %)  |  10 ( 1,1 %) | 115 (12,4 %) | 717 (77,0 %) | 717 (77,0 %) |
+ * | R-neu, Tabelle | 262 | 262 (100 %)  |   1 ( 0,4 %) |  84 (32,1 %) | 218 (83,2 %) | 219 (83,6 %) |
+ * | U, PDF         | 932 | 932 (100 %)  |   9 ( 1,0 %) |   5 ( 0,5 %) |   7 ( 0,8 %) |  16 ( 1,7 %) |
+ * | U, Tabelle     | 263 | 263 (100 %)  |   2 ( 0,8 %) |   0 ( 0,0 %) |   2 ( 0,8 %) |   4 ( 1,5 %) |
  *
  * Read across: fault L gets past the left check in 92 to 100 % of cases,
  * which is what the right column had to be checked for at all; rule 1 is the
  * one that answers it. R-alt is rule 2's own case, and R-neu was the fault it
  * was measurably weakest on until its reference narrowed to one §. False
- * alarms without any fault: 19 and 22 §§ on the PDF path (rule 1 and rule 2)
- * and 5 and 4 on the table path — rule 2 stood at 7 and 0 with the
+ * alarms without any fault (26.09.2026, over 2.495 §§ of the PDF path and
+ * 1.452 of the table path): **21 and 19** §§ on the PDF path (rule 1 and
+ * rule 2 per §) and **6 and 4** on the table path — 19 and 22 / 5 and 4 on
+ * 2026-09-11; rule 2 stood at 7 and 0 with the
  * whole-draft reference; sixteen of the extra ones are named in
  * docs/architecture.md §12.13, the seventeenth is the one the better
  * addressing of 2026-09-11 uncovered (Obstweinverordnung § 13, whose right
@@ -96,10 +99,13 @@
  * fault, found unstaged in the corpus), the eighteenth the one the shared
  * markup rule handed from the left check to rule 2 (MPBV § 11, below).
  *
- * **The table is the state of 2026-09-11.** Five engine changes of that day
- * moved the population rather than the rates: the PDF path went 918/881/880 →
- * 942/905/904 and the table path 244/236/235 → 246/238/237, because §§ that
- * used to fail the left check now reach the injection site at all. Which
+ * **The populations keep growing, and that is the point of re-running it.**
+ * Five engine changes of 2026-09-11 moved the PDF path 918/881/880 →
+ * 942/905/904 and the table path 244/236/235 → 246/238/237; by 26.09.2026
+ * they stand at 971/932/931 and 272/263/262 — §§ that used to fail the left
+ * check now reach the injection site at all, most recently through the two
+ * rules for the head of a Ganz-§-Zeile (§12.12a). The rates stayed put, which
+ * is the finding: a bigger corpus, the same gate. Which
  * change moved which cell, and every corpus alarm it added or removed by
  * name, is in docs/architecture.md §12.13 — kept there rather than here,
  * because the doc records it per change and a second copy would have to be

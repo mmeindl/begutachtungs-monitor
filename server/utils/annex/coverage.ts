@@ -119,8 +119,11 @@ export function coverageOf(column: string, standing: string): Coverage {
  *
  * Until the residue is re-read the blind spot is stated rather than closed:
  * fault **U** of `scripts/harness/faultInjection.ts` injects exactly this row
- * and the gate catches **0 of 238** on the table path and **0 of 883** on the
- * PDF path, and `pnpm harness:annex` prints the population on every run. The
+ * and the gate catches **4 of 263** on the table path and **16 of 932** on
+ * the PDF path (26.09.2026; 0 of 238 and 0 of 883 when this was written, so
+ * the rules have grown a sliver of reach into the fault they were never built
+ * for, and it stays a blind spot). `pnpm harness:annex` prints the population
+ * on every run. The
  * sharper half the injection did not settle in advance: a mirrored row is not
  * merely unchecked, it is an **alibi** — both right-column rules exempt
  * whatever stands in the left column (`rightColumnCheck`), and fault U
