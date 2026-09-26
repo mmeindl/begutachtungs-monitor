@@ -584,8 +584,39 @@ const ABBREVIATIONS = new Set(
     .toLowerCase()
     .split(' '),
 )
-/** After "1." these are ordinals, not sentence ends: "am 1. Jänner", "im 2. Abschnitt". */
-const ORDINAL_FOLLOWERS = /^(?:J[äa]nner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Satz|Halbsatz|Abschnitt|Hauptstück|Teil|Unterabschnitt|Kapitel|Stufe|Instanz|Klasse|Kategorie|Quartal|Halbjahr|Jahr|Lebensjahr|Schuljahr|Kalenderjahr|Semester|Absatz|Ziffer|Fall|Alternative|Variante|Tatbestand|Spiegelstrich|Anstrich|Untergliederung|Rate|Tranche|Runde|Wahlgang|Lesung|Auflage|Ausfertigung|Stock|Ebene)\b/
+/**
+ * After "1." these are ordinals, not sentence ends: "am 1. Jänner", "im 2.
+ * Abschnitt" — and in the genitive, "des 2. Teiles 1. Hauptstückes", which
+ * the bare nouns missed and which refused every sentence of InvFG 2011
+ * § 164 Abs. 1 (26.09.2026).
+ */
+const ORDINAL_FOLLOWERS = /^(?:J[äa]nner|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Satz|Halbsatz|Abschnitt|Hauptstück|Teil|Unterabschnitt|Kapitel|Stufe|Instanz|Klasse|Kategorie|Quartal|Halbjahr|Jahr|Lebensjahr|Schuljahr|Kalenderjahr|Semester|Absatz|Ziffer|Fall|Alternative|Variante|Tatbestand|Spiegelstrich|Anstrich|Untergliederung|Rate|Tranche|Runde|Wahlgang|Lesung|Auflage|Ausfertigung|Stock|Ebene)(?:e?s)?\b/
+
+/**
+ * The words a designation number stands behind, by depth: „§ 8 Abs. 1 Z 6".
+ * Behind one of them a number is the unit's number and never an ordinal, so
+ * „gemäß § 8 Abs. 1 Z 6. Die Ziffern …" ends a sentence where „am 3. Tag"
+ * does not have to (Transparenzdatenbankgesetz 2012 § 25 Abs. 2).
+ */
+const DESIGNATOR_DEPTH: Record<string, number> = { '§': 0, '§§': 0, art: 0, artikel: 0, anl: 0, anlage: 0, anhang: 0, abs: 1, absatz: 1, z: 2, ziffer: 2, lit: 3, litera: 3 }
+/** An address that goes on one level down: „Abs. 1. Z 1 lit. b", a stray full stop inside a citation. */
+const DEEPER_DESIGNATION = /^(Abs\.|Absatz|Z|Ziffer|lit\.|litera)\s*(?:\(?\d|[a-z]\b)|^\(\d/
+
+/**
+ * Is the full stop behind a number at `at` the end of a sentence because the
+ * number is a designation? Null where the word before the number is no
+ * designator; false where the text goes on down the address, which is a
+ * citation with a stray full stop rather than a new sentence.
+ */
+function endsDesignation(before: string, rest: string): boolean | null {
+  const word = /(\S+)\s+\S+$/.exec(before)?.[1]?.replace(/\.$/, '').toLowerCase()
+  const depth = word === undefined ? undefined : DESIGNATOR_DEPTH[word]
+  if (depth === undefined) return null
+  const next = DEEPER_DESIGNATION.exec(rest)
+  if (!next) return true
+  const nextWord = (next[1] ?? 'abs').replace(/\.$/, '').toLowerCase()
+  return (DESIGNATOR_DEPTH[nextWord] ?? 1) <= depth
+}
 
 /**
  * Sentences of a node's text, or null when a boundary is not decidable.
@@ -594,8 +625,9 @@ const ORDINAL_FOLLOWERS = /^(?:J[äa]nner|Januar|Februar|März|April|Mai|Juni|Ju
  * abbreviation nor a bare number or single letter, and the text goes on with
  * a capital, a quote or a §. A period after a number followed by a capital
  * — "gemäß Z 3. Der Bundesminister" against "am 1. Jänner" — is decided by
- * the following word where it is a month or an ordinal noun, and refused
- * otherwise. Quotes are tracked so a full stop inside a quoted warning text
+ * the following word where it is a month or an ordinal noun, by the word in
+ * front of the number where that makes it a designation („Z 3", `endsDesignation`),
+ * and refused otherwise. Quotes are tracked so a full stop inside a quoted warning text
  * ("… abhängig macht. Es wird …") does not count.
  */
 export function splitSentences(text: string): string[] | null {
@@ -627,7 +659,7 @@ export function splitSentences(text: string): string[] | null {
       if (/^\d+$/.test(lower) || /^[a-z]$/.test(lower) || /^[ivx]+$/.test(lower)) {
         if (!/^[A-ZÄÖÜ"„§(]/.test(rest)) continue
         if (ORDINAL_FOLLOWERS.test(rest)) continue
-        return null
+        if (endsDesignation(t.slice(start, i), rest) !== true) return null
       }
       if (/^[a-zäöüß]/.test(rest)) continue
     }

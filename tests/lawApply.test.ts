@@ -490,8 +490,23 @@ describe('sentence splitting (2026-09-09)', () => {
   })
 
   it('refuses when a number before the full stop leaves the boundary open', () => {
-    // "gemäß Z 3. Der Bund" — sentence end, or an ordinal like "1. Jänner"?
-    expect(splitSentences('Es gilt Z 3. Der Bund zahlt.')).toBeNull()
+    // "ab dem 3. Tag" — sentence end, or an ordinal like "1. Jänner"?
+    expect(splitSentences('Es gilt ab dem 3. Tag. Der Bund zahlt.')).toBeNull()
+  })
+
+  it('ends a sentence behind the number of a designation (26.09.2026)', () => {
+    // „Z 3" is a Ziffer's number, never an ordinal. This stood above as
+    // undecidable until the Transparenzdatenbankgesetz 2012 § 25 Abs. 2 asked
+    // for its second sentence.
+    expect(splitSentences('Es gilt Z 3. Der Bund zahlt.')).toEqual(['Es gilt Z 3.', 'Der Bund zahlt.'])
+    expect(splitSentences('Abs. 1 gilt nicht für § 8 Abs. 1 Z 6. Die Ziffern gelten nur nach § 23 Abs. 1 Z 2. Z 11 gilt nur für Förderungen.')).toHaveLength(3)
+    // A full stop inside a citation that goes on down the address stays open.
+    expect(splitSentences('Im Sinne des § 4 Abs. 1. Z 1 lit. b gilt das. Mehr nicht.')).toBeNull()
+  })
+
+  it('reads a genitive ordinal as an ordinal', () => {
+    // InvFG 2011 § 164 Abs. 1.
+    expect(splitSentences('Er wird verwaltet. Die Bestimmungen des 2. Teiles 1. Hauptstückes sind anzuwenden.')).toEqual(['Er wird verwaltet.', 'Die Bestimmungen des 2. Teiles 1. Hauptstückes sind anzuwenden.'])
   })
 })
 
@@ -540,7 +555,8 @@ describe('sentence operations (2026-09-09)', () => {
   })
 
   it('refuses a sentence address when the boundaries are not decidable', () => {
-    const l2: StandingLaw = { paragraphs: [para('9', 'H', ['Es gilt Z 3. Der Bund zahlt. Ende.'])] }
+    // „3. Tag" may be an ordinal and a noun; „Z 3." could not (below).
+    const l2: StandingLaw = { paragraphs: [para('9', 'H', ['Es gilt ab dem 3. Tag. Der Bund zahlt. Ende.'])] }
     const { results } = run(l2, instr('§ 9 Abs. 1 zweiter Satz lautet:', ['Neu.']))
     expect(results[0]!.applied).toBe(false)
     expect(results[0]!.reason).toMatch(/nicht auffindbar/)
