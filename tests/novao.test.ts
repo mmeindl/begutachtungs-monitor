@@ -177,6 +177,18 @@ describe('parseInstruction', () => {
     expect(of('In § 5 Abs. 1 entfällt die Wortfolge "A".')).toBeNull()
   })
 
+  it('keeps a sibling Absatz that stands inside a longer list', () => {
+    // „In § 9, § 10 Abs. 1 und 2, § 11a …": the „2" carries no § of its own,
+    // and the list reader dropped every part that carries none — so § 10 was
+    // addressed in one of its two Absätze and the instruction reported
+    // success. 27 of 219 such addresses over 300 Entwürfe (26.09.2026).
+    const list = parseAddressList('In § 9, § 10 Abs. 1 und 2, § 11a')!
+    expect(list.map((a) => addressKey(a))).toEqual(['§ 9', '§ 10 Abs. 1', '§ 11a'])
+    expect(list[1]!.siblings).toEqual(['2'])
+    // Standing alone it was always right, and stays so.
+    expect(parseAddressList('In § 9 Abs. 1 und 2')![0]!.siblings).toEqual(['2'])
+  })
+
   it('reads a schedule that names no number, and its unit in front of it', () => {
     // „Z 1 lit. d des Anhangs entfällt" — the law has exactly one Anhang, so
     // the definite article is the designation, and German puts the unit

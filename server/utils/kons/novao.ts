@@ -566,7 +566,22 @@ function headingTwin(a: NovaoAddress): NovaoAddress {
 export function parseAddressList(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
   const t = maskQuotes(normalizeText(text))
   const parts = t.split(/\s*,\s*|\s+(?:und|sowie)\s+/i).filter((p) => p.trim())
-  const withPara = parts.filter((p) => PARA_RE.test(p))
+  // **A part that carries no designation is no place of its own — it is the
+  // continuation of the one before it.** In „In § 9, § 10 Abs. 1 und 2,
+  // § 11a …" that part is **„2"**: the second Absatz of § 10. Dropped, the
+  // address came out as „§ 10 Abs. 1", the instruction was carried out in one
+  // of the two Absätze and reported success — 27 of 219 addresses with an
+  // „Abs. X und Y" over 300 Entwürfe (26.09.2026), and nothing but the
+  // Beilage would have caught them. Joined back on, `siblingsAfter` reads it
+  // where it belongs. Standing alone („In § 9 Abs. 1 und 2 wird …") the
+  // address was always right; only inside a longer list did the part lose
+  // its § and with it its home.
+  const merged: string[] = []
+  for (const part of parts) {
+    if (merged.length === 0 || PARA_RE.test(part)) merged.push(part)
+    else merged[merged.length - 1] += ` und ${part}`
+  }
+  const withPara = merged.filter((p) => PARA_RE.test(p))
   // Either every paragraph carries its own symbol, or the plural shorthand
   // spells the first one and leaves the rest bare. Both can occur in one
   // instruction, so each explicit segment is offered to the splitter again.

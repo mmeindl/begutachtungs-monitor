@@ -2041,6 +2041,42 @@ also keinen Entwurf, bei dem Adresse, Beilage und geltender Text zugleich
 stimmen. Die Anzeige eines Anhangs wartet nicht mehr auf Code, sondern auf
 einen Entwurf, der alle drei mitbringt.
 
+**Der zweite Absatz fiel aus der Liste (26.09.2026).** Der Posten stand mit
+„erst zählen" in § 5a, und die Zahl ist: **27 von 219** Adressen mit einem
+„Abs. X und Y" verlieren das Y — über 300 Entwürfe, und keine davon wird
+verweigert. Sie werden **halb ausgeführt**: Die Anweisung trifft Abs. 1 und
+nicht Abs. 2, und der Lauf meldet Erfolg.
+
+```
+In § 9, § 10 Abs. 1 und 2, § 11a, § 13 Abs. 1 und 2, § 14, § 15 Abs. 4 …
+                     ↑ dieses „2" trug kein §, also fiel es weg
+```
+
+`parseAddressList` trennt an „," und „und" und behielt dann nur die Teile,
+die ein Gliederungssymbol tragen — das ist der Filter, der die Liste
+überhaupt erst lesbar macht, und er wirft genau die Fortsetzung weg. Ein Teil
+ohne eigene Bezeichnung ist **keine eigene Stelle, sondern die Fortsetzung
+der vorigen**; wieder angehängt liest `siblingsAfter` ihn dort, wo er
+hingehört. Allein stehend („In § 9 Abs. 1 und 2 wird …") war die Adresse
+immer richtig — erst in der längeren Liste verlor der Teil sein § und damit
+sein Zuhause.
+
+**Ein erster Entwurf schnitt stattdessen an den Bezeichnungen** und brach 12
+Tests: `PARA_RE` trifft auch „Art. 2", und ein Artikel, der einen Paragraphen
+qualifiziert, ist keine zweite Adresse. Der Schnitt an den Trennern bleibt,
+nur der Filter wird zum Zusammenlegen.
+
+| | vorher | nachher |
+|---|---|---|
+| identisch mit dem RIS | 758 | **762** |
+| halb angewendet | 76 | **72** |
+| kein geltender Text (Rest des Tores) | 31 | **27** |
+| ohne Verweigerung: identisch | 744 | **748** |
+| eigene Abweichung | 22 | 22 |
+
+Vier Paragraphen wechseln von „halb angewendet" nach „identisch", und die
+schärfste Klasse steht still. Drift ohne Befund.
+
 **Zehnte Messung, 19.09.2026: zwei Aufrufe, die den Namen wegwarfen, und ein
 Vokabular, das drei Jahrhunderte übersah.** Beides betrifft dieselbe Frage
 - welches Gesetz ändert dieser Artikel? -, beides ist klein, und beides
