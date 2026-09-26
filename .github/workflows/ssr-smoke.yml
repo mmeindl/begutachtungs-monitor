@@ -1,0 +1,87 @@
+# Nächtlicher SSR-Rauchtest über das gebaute Artefakt
+# (`scripts/ci/ssrSmoke.ts`, docs/architecture.md §10).
+#
+# Was hier geprüft wird und in `ci.yml` nicht: ob die Seiten RENDERN. Die
+# Fehlerklasse heißt „vue-tsc grün, Laufzeit 500" und ist zweimal
+# ausgeliefert worden — ein Bezeichner, den nur ein `<template>` benutzt, und
+# ein `shared/`-Modul, das relativ importiert erst im Rollup-Bündel bricht.
+# `tests/templateImports.test.ts` ist die statische Hälfte davon; diese ist
+# die andere, und sie kostet einen Build.
+#
+# **Nächtlich und nicht je Push, und das ist die ganze Begründung für einen
+# eigenen Workflow:** `ci.yml` läuft in anderthalb Minuten und soll das
+# bleiben. Ein Build plus vierzehn gerenderte Seiten ist die Prüfung, die man
+# einmal am Tag macht.
+#
+# **Die Kassette** (`.cache/ssr-cassette`) ist dieselbe Mechanik wie beim
+# Drift-Alarm: `scripts/lib/harnessCache.ts` legt jede Upstream-Antwort auf
+# die Platte und gibt sie wieder. Warm ist ein Lauf offline und in Sekunden
+# fertig; kalt holt er, was fehlt, und legt es dazu. Ehrlich benannt, wie in
+# `annex-drift.yml`: damit merkt der Lauf NICHT, wenn RIS oder das Parlament
+# ein Dokument nachträglich ändern. Was er merkt, ist jede Änderung an
+# unserem Code, und dafür ist er da.
+#
+# Restore und Save sind getrennt, aus demselben Grund wie dort: `actions/cache`
+# sichert im Post-Schritt nur nach einem ERFOLGREICHEN Job, und dieser Job
+# geht bei einem Befund absichtlich rot — die Kassette wäre dann genau in den
+# Nächten nicht gewachsen, in denen etwas gefunden wurde.
+#
+# Bekannte Falle, dieselbe wie in `uptime.yml` und `annex-drift.yml`: GitHub
+# schaltet geplante Workflows in Repositories ohne Commits nach 60 Tagen ab
+# und schickt eine Mail.
+name: SSR-Rauchtest
+
+on:
+  schedule:
+    # Nachts, abseits der vollen Stunde — dort ist GitHubs Cron voll.
+    - cron: '41 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ssr-smoke
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    # Kalt zieht der Lauf die Liste, den RIS-Korpus und eine Stationskarte —
+    # das ist die erste Nacht. Danach sind es Minuten.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Kassette laden
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/ssr-cassette
+          key: ssr-cassette-${{ github.run_id }}
+          restore-keys: ssr-cassette-
+
+      # Das Artefakt, das geprüft wird — nicht der Dev-Server und nicht
+      # `@nuxt/test-utils`, sondern was auf den Server kopiert würde.
+      - name: Bauen
+        run: pnpm build
+
+      - name: Seiten rendern
+        run: pnpm ci:ssr-smoke
+
+      - name: Kassette sichern
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/ssr-cassette
+          key: ssr-cassette-${{ github.run_id }}

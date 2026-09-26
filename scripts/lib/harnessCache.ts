@@ -1,5 +1,6 @@
 /**
- * Opt-in disk cache for RIS traffic, for harness runs only (`--cache`).
+ * Opt-in disk cache for upstream traffic, for harness and CI runs
+ * (`--cache`, and the SSR smoke test's cassette).
  *
  * The harness fetches a few hundred RIS documents per run. Iterating on the
  * engine against a live API means minutes per measurement, which is the
@@ -52,7 +53,24 @@ export function installFetchCache(dir: string): void {
   const real = globalThis.fetch
   globalThis.fetch = (async (input: any, init?: any) => {
     const url = typeof input === 'string' ? input : String(input?.url ?? input)
-    const hash = createHash('sha1').update(url).digest('hex')
+    // THE BODY IS PART OF THE KEY, since the SSR smoke test
+    // (`scripts/ci/ssrSmoke.ts`) records Parliament traffic too: its Filter
+    // API is one POST URL per list, and which rows come back is decided
+    // entirely by the JSON body — `…/data/81` for GP XXVII and for GP XXVIII
+    // is the same address. Keyed by URL alone the second period would have
+    // been served the first one's rows, silently.
+    //
+    // A request WITHOUT a body hashes exactly as before, so every RIS entry
+    // already on disk keeps its name and the drift alarm's cache
+    // (`annex-drift.yml`, warmed since 16.09.2026) stays warm. What does get
+    // new names is the Parliament traffic of `corpus/bgblStation.ts`, the one
+    // other script that installs this cache and POSTs: those entries are
+    // fetched once more, and they are exactly the ones that could collide
+    // before.
+    const hasher = createHash('sha1').update(url)
+    const body = typeof init?.body === 'string' ? init.body : null
+    if (body !== null) hasher.update('\u0000').update(body)
+    const hash = hasher.digest('hex')
     // Bodies are stored as bytes, not as a string. Round-tripping a PDF
     // through `res.text()` and back through utf8 corrupts every deflate
     // stream in it — pdf.js then reports "Bad FCHECK in flate stream" and

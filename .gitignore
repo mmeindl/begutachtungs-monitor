@@ -16,7 +16,8 @@ CLAUDE.md
 TODO.md
 outreach/
 
-# Corpus caches of the measurement scripts (`.cache/<corpus>/`, six write them)
+# Corpus caches of the measurement scripts (`.cache/<corpus>/`) and the SSR
+# smoke test's cassette (`.cache/ssr-cassette/`, carried in GitHub's cache)
 .cache/
 # The harnesses' opt-in RIS cache (`scripts/lib/harnessCache.ts`, `--cache`)
 .harness-cache/
