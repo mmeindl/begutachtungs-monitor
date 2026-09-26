@@ -49,6 +49,8 @@ import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/u
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
 import { parseTextComparison } from '../../server/utils/annex/comparisonRows'
+import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
+import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../../server/utils/ris/risJoin'
@@ -57,7 +59,7 @@ import { explanationsByParagraph } from '../../server/utils/explanations/explana
 import { explanationKey, explanationParaId } from '../../shared/utils/explanationKey'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
-import { PARLIAMENT, getJson, risJson as risQuery } from '../lib/http'
+import { PARLIAMENT, getJson, risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { ANNEX_NAME_RE, asArray } from '../lib/ris'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
@@ -115,6 +117,8 @@ interface Draft {
   beginn: string
   mainXml: string | null
   annexXml: string | null
+  /** The annex as a PDF — the path the site falls back to when the XML is a scan or missing */
+  annexPdf: string | null
   /** An annex that exists but only as a PDF or a scan, which is not the same as none */
   annexNote: string | null
   /** The Erläuterungen as a RIS document of their own (`--erl`) */
@@ -128,6 +132,7 @@ function draftOf(ref: any): Draft | null {
   if (!id || !beginn) return null
   const contents = asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)
   const xmlOf = (c: any): string | null => asArray<any>(c?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
+  const pdfOf = (c: any): string | null => asArray<any>(c?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
   const annex = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '').trim()))
   return {
     id,
@@ -135,6 +140,7 @@ function draftOf(ref: any): Draft | null {
     beginn,
     mainXml: xmlOf(contents.find((c) => c?.ContentType === 'MainDocument')),
     annexXml: annex ? xmlOf(annex) : null,
+    annexPdf: annex ? pdfOf(annex) : null,
     annexNote: !annex ? 'ohne Textgegenüberstellung' : xmlOf(annex) ? null : 'Textgegenüberstellung nur als PDF',
     erlXml: xmlOf(contents.find((c) => ERL_NAME.test(String(c?.Name ?? '').trim()))),
   }
@@ -278,6 +284,24 @@ async function verifyDraft(draft: Draft): Promise<LawResult[]> {
       rows = rowsByParagraph(parsed)
       note = `Gegenüberstellung gelesen (${c.from})`
       break
+    }
+    // **The PDF path, since 26.09.2026 — because the site has it and this
+    // harness did not.** A Beilage that is a scan or has no XML at all is
+    // not „no Gegenüberstellung": `annex/annexPdfService.ts` reads it from
+    // the PDF, and `kons/konsService.ts` hands those rows to the very oracle
+    // measured here. Without it a third of the corpus (26 Scans and 21
+    // without XML of 120 drafts) counted as silent, and every improvement on
+    // that path reported as „bewegt nichts".
+    if (!rows && draft.annexPdf) {
+      const parsed = await pagesOf(new Uint8Array(await (await fetch(draft.annexPdf, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })).arrayBuffer()))
+        .then((pages) => parseAnnexPdf(pages, draftArticles(blocks)))
+        .catch(() => null)
+      if (parsed && !parsed.refusal && parsed.rows.length > 0) {
+        rows = rowsByParagraph(parsed.rows)
+        note = 'Gegenüberstellung gelesen (PDF)'
+      } else if (parsed?.refusal) {
+        note = `Beilage verweigert (PDF): ${parsed.refusal}`.slice(0, 60)
+      }
     }
     tally(annexNotes, note)
   }

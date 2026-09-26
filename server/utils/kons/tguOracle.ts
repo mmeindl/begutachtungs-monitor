@@ -183,11 +183,24 @@ function isHeadingRow(row: ComparisonRow): boolean {
 /**
  * Comparison form of annex text: markers the tree does not carry are
  * dropped, whitespace and quotes normalised the way `plainText` does.
+ *
+ * **The Paragraphenkennung is dropped wherever it stands, not only at the
+ * head of the cell** (26.09.2026, §12.12a). The anchor was right while a cell
+ * was an Absatz: there „§ 5." can only be the first thing printed. On the PDF
+ * path a cell is a whole §, and the Beilage prints the §'s own Überschrift
+ * *before* the designation — „Spielbedingungen und Vertrieb § 16. (1) Der
+ * Konzessionär hat …" — so the designation stood in the middle of the cell
+ * and stayed. It is not law text on either side: `konsTree` carries it as
+ * `marker`, and `plainText` never prints it. Dropping it globally keeps the
+ * two sides symmetrical, because both go through this function; a citation
+ * that ends a sentence („gemäß § 5.") loses its number in the comparison
+ * form on both sides at once, which costs a little sharpness and cannot
+ * create a false match.
  */
 export function stripMarkers(t: string): string {
   return normalizeText(
     normalizeText(t)
-      .replace(/^§+\s*\d+[a-z]*\.\s*/, '')
+      .replace(/§+\s*\d+[a-z]*\.\s*/g, ' ')
       .replace(/(^|\s)\(\d+[a-z]*\)(?=\s|$)/g, '$1')
       .replace(/(^|\s)\d+[a-z]*\.(?=\s)/g, '$1')
       .replace(/(^|\s)[a-z]{1,2}\)(?=\s)/g, '$1'),
@@ -206,6 +219,51 @@ function key(t: string): string {
 /** Words without punctuation — "36," and "36" are the same word. */
 function words(t: string): string[] {
   return punctuationTokens(stripMarkers(t))
+}
+
+/**
+ * How much of the standing text's beginning has to reappear in the cell
+ * before a prefix counts as a heading stack. Long enough that the §'s own
+ * Überschrift is what was found and not a stray word, short enough that a
+ * ressort's hyphen or footnote mark inside the heading does not defeat it.
+ */
+const HEAD_PROBE = 24
+/** „3. Abschnitt", „1. Hauptstück", „II. Teil" — a group heading opens with its unit. */
+const STACK_HEAD_RE = /^(?:\d+[a-z]*\.|[IVXLCDM]+\.)?(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)/i
+/** The dots that belong to a designation rather than to a sentence. */
+const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+)\./g
+
+/**
+ * The cell without the stack of group headings the PDF path prints above a §
+ * — null when there is none, or when what stands in front is not a stack.
+ *
+ * RIS keeps „3. Teil", „1. Hauptstück", „2. Abschnitt" out of the §'s own
+ * text on purpose (`konsTree.context`): they head a group of §§, and a
+ * Novelle replacing the § does not replace them. The Beilage prints them over
+ * the § all the same, so the first stretch of a PDF row regularly reads
+ * „3. Abschnitt Antragstellung Inhalt des Mehrfachantrags § 34. (1) …" where
+ * the standing text begins at the §'s own heading. RIS carries the stack for
+ * this § in only a small minority of documents, so asking it is no answer —
+ * measured 26.09.2026, §12.12a.
+ *
+ * **The rule is structural, and both halves of it carry weight.** What is
+ * dropped has to *open with a group unit* and contain no sentence punctuation
+ * of its own, and what remains has to be the standing text's own beginning.
+ * Without the first half the previous §'s last words would be dropped too —
+ * „beträgt 75 000 € je Förderwerber Ausmaß der Förderung" — and a row
+ * carrying foreign text would pass a check whose whole purpose is to catch
+ * it. That is not a hypothetical: over 60 drafts the guard refuses exactly 5
+ * such rows while admitting 24 true stacks.
+ */
+function withoutHeadingStack(piece: string, text: string): string | null {
+  const head = text.slice(0, HEAD_PROBE)
+  if (head.length < HEAD_PROBE) return null
+  const at = piece.indexOf(head)
+  if (at <= 0) return null
+  const dropped = piece.slice(0, at)
+  if (!STACK_HEAD_RE.test(dropped)) return null
+  if (/[.;:!?]/.test(dropped.replace(DESIGNATION_DOT_RE, ''))) return null
+  return piece.slice(at)
 }
 
 /**
@@ -232,16 +290,29 @@ function words(t: string): string[] {
  * `includes` for every row that reads correctly today — the generalisation
  * costs no strictness anywhere the old test already had an answer.
  */
-function unaccountedStretch(text: string, cell: string): string | null {
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+export function unaccountedStretch(text: string, cell: string): string | null {
   let at = 0
+  let first = true
   for (const stretch of printedStretches(cell)) {
-    const piece = key(stretch)
+    let piece = key(stretch)
     // A stretch that is nothing but markers — "§ 5." alone at the head of a
     // PDF row — keys to the empty string and says nothing either way.
     if (piece === '') continue
-    const found = text.indexOf(piece, at)
+    let found = text.indexOf(piece, at)
+    // Only the first stretch of a cell can carry the heading stack: it is
+    // what stands above the § itself.
+    if (found < 0 && first) {
+      const rescued = withoutHeadingStack(piece, text)
+      const retry = rescued === null ? -1 : text.indexOf(rescued, at)
+      if (retry >= 0) {
+        piece = rescued!
+        found = retry
+      }
+    }
     if (found < 0) return stretch
     at = found + piece.length
+    first = false
   }
   return null
 }

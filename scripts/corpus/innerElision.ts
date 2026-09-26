@@ -28,7 +28,7 @@ import { parseTextComparison, type ComparisonParse } from '../../server/utils/an
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { designationKey } from '../../server/utils/annex/annexText'
 import { printedStretches } from '../../server/utils/annex/elision'
-import { stripMarkers } from '../../server/utils/kons/tguOracle'
+import { stripMarkers, unaccountedStretch } from '../../server/utils/kons/tguOracle'
 import { plainText } from '../../server/utils/lawtext/konsTree'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
@@ -62,17 +62,17 @@ function containedWhole(text: string, cell: string): boolean {
   return text.includes(key(cell))
 }
 
-/** Die neue Prüfung: Stück für Stück, der Reihe nach und ohne Überlappung. */
+/**
+ * Die neue Prüfung — **die des Servers**, nicht eine Kopie davon.
+ *
+ * Stand hier bis 26.09.2026 als eigene Schleife, Zeichen für Zeichen
+ * dieselbe. Das war einmal richtig (die alte Prüfung braucht ihren
+ * Ausgangspunkt, und den gibt es sonst nirgends mehr) und wurde falsch, als
+ * die Prüfung um den Überschriftenstapel wuchs: eine Messung, die eine Kopie
+ * misst, berichtet den Ertrag des Servers nicht.
+ */
 function containedPiecewise(text: string, cell: string): boolean {
-  let at = 0
-  for (const stretch of printedStretches(cell)) {
-    const piece = key(stretch)
-    if (piece === '') continue
-    const found = text.indexOf(piece, at)
-    if (found < 0) return false
-    at = found + piece.length
-  }
-  return true
+  return unaccountedStretch(text, cell) === null
 }
 
 interface Tally {
@@ -84,12 +84,13 @@ interface Tally {
   checked: number
   wholeOk: number
   pieceOk: number
-  /** Zeilen ohne Marke: hier müssen alte und neue Prüfung Zeichen für Zeichen übereinstimmen. */
+  /** Zeilen ohne Marke: die Segmentierung ändert hier nichts — die beiden Regeln von 26.09. schon. */
   unmarked: number
-  unmarkedDiff: number
+  unmarkedGain: number
+  unmarkedLoss: number
   misses: string[]
 }
-const mk = (): Tally => ({ drafts: 0, draftsWithInner: 0, rows: 0, inner: 0, innerProposed: 0, checked: 0, wholeOk: 0, pieceOk: 0, unmarked: 0, unmarkedDiff: 0, misses: [] })
+const mk = (): Tally => ({ drafts: 0, draftsWithInner: 0, rows: 0, inner: 0, innerProposed: 0, checked: 0, wholeOk: 0, pieceOk: 0, unmarked: 0, unmarkedGain: 0, unmarkedLoss: 0, misses: [] })
 const tally: Record<'pdf' | 'xml', Tally> = { pdf: mk(), xml: mk() }
 
 const limit = Number(argAssigned('limit') ?? 400)
@@ -164,10 +165,13 @@ for (const doc of docs.slice(0, limit)) {
       const whole = containedWhole(standing, r.current)
       const piece = containedPiecewise(standing, r.current)
       if (!inner) {
-        // Die Zusicherung: ohne Marke ist die Zelle ein Stück, und die neue
-        // Prüfung muss Zeichen für Zeichen die alte sein. Muss 0 bleiben.
+        // Ohne Marke ist die Zelle ein Stück, die Segmentierung also wirkungslos.
+        // Was hier auseinandergeht, sind die beiden Regeln vom 26.09. (Kennung
+        // überall, Überschriftenstapel) — deshalb in beide Richtungen gezählt:
+        // ein Verlust wäre ein Rückschritt, ein Gewinn ist der Ertrag.
         t.unmarked++
-        if (whole !== piece) t.unmarkedDiff++
+        if (!whole && piece) t.unmarkedGain++
+        if (whole && !piece) t.unmarkedLoss++
         continue
       }
       t.checked++
@@ -197,6 +201,6 @@ for (const path of ['pdf', 'xml'] as const) {
   console.log(`  Check 1 gegen den geltenden Text im RIS, Zeilen mit Marke: ${t.checked}`)
   console.log(`    alt  (ganze Zelle als eine Zeichenfolge): ${t.wholeOk} (${pct(t.wholeOk, t.checked)})`)
   console.log(`    neu  (an den Marken segmentiert)        : ${t.pieceOk} (${pct(t.pieceOk, t.checked)})`)
-  console.log(`  Zusicherung — Zeilen ohne Marke: ${t.unmarked}, davon alt ≠ neu: ${t.unmarkedDiff} (muss 0 sein)`)
+  console.log(`  Zeilen ohne Marke: ${t.unmarked}, davon neu bestanden: ${t.unmarkedGain}, neu verloren: ${t.unmarkedLoss} (Verlust muss 0 sein)`)
   for (const m of t.misses) console.log(`      · ${m}`)
 }

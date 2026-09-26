@@ -72,6 +72,17 @@ describe('stripMarkers', () => {
   it('drops the markers the tree does not carry', () => {
     expect(stripMarkers('§ 5. (1) Der Text 1. erste a) zweite')).toBe('Der Text erste zweite')
   })
+
+  // On the PDF path a cell is a whole §, and the Beilage prints the §'s own
+  // heading BEFORE the designation — so the designation stands in the middle
+  // of the cell (26.09.2026).
+  it('drops the designation wherever it stands, not only at the head', () => {
+    expect(stripMarkers('Spielbedingungen und Vertrieb § 16. (1) Der Konzessionär hat')).toBe('Spielbedingungen und Vertrieb Der Konzessionär hat')
+  })
+
+  it('leaves a citation that carries no dot of its own alone', () => {
+    expect(stripMarkers('Ausspielungen nach § 2 Abs. 3 an ortsfesten')).toBe('Ausspielungen nach § 2 Abs. 3 an ortsfesten')
+  })
 })
 
 describe('oracleVerdict', () => {
@@ -99,6 +110,34 @@ describe('oracleVerdict', () => {
 
   it('calls an annex that talks about another version foreign, not confirming', () => {
     const rows = [pair('§ 6. (1) Zuständig ist das Landesgericht.', '§ 6. (1) Zuständig ist das Bezirksgericht.', '§ 6.')]
+    expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'fremd' })
+  })
+
+  // The PDF path prints the group headings over the §; RIS keeps them out of
+  // the §'s own text on purpose, and carries them for this § only rarely.
+  it('reads past a stack of group headings printed above the §', () => {
+    const rows = [
+      pair(
+        '3. Abschnitt Verfahren Zuständig ist die Behörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '3. Abschnitt Verfahren Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '§ 6.',
+      ),
+    ]
+    const got = 'Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. Sie entscheidet binnen sechs Wochen.'
+    expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  // The other half of the same rule: what precedes the standing text has to
+  // open with a group unit. The previous §'s last words do not, and a row
+  // carrying them is exactly what this check exists to catch.
+  it('still calls a row foreign when the text in front is not a heading stack', () => {
+    const rows = [
+      pair(
+        'beträgt 75 000 Euro je Förderwerber Zuständig ist die Behörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        'beträgt 75 000 Euro je Förderwerber Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '§ 6.',
+      ),
+    ]
     expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'fremd' })
   })
 

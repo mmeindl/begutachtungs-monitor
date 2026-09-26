@@ -2675,6 +2675,81 @@ schneiden, wo die Ziffern eine aufsteigende Folge ab 1 bilden) ist eine
 Korpusmessung über die Lesefassungen einer GP, kein Abend. Steht als offener
 Posten in `TODO.md` § 5d.
 
+**Der Kopf der Ganz-§-Zeile: zwei Regeln, und die zweite ist eine Wache
+(26.09.2026).** Der Posten stand seit dem 25.09. mit einer Zahl daneben: Nach
+der Segmentierung an den Auslassungsmarken bestand Check 1 des Orakels 697
+von 1.585 markierten Zeilen des PDF-Pfads, und an **888** hing weiter der
+Kopf, den die Beilage vor die Zeile stellt. Zwei Kandidaten waren gemessen
+und beide untauglich (alles vor der eigenen Kennung wegschneiden: 1.204, aber
+472 Zeichen echten Textes verloren; den RIS-Kontext mitgeben: 4 Zeilen).
+Gesucht war die strukturelle Regel. Es sind zwei, und sie liegen an ganz
+verschiedenen Stellen.
+
+*Die erste ist ein Anker, der zu eng geworden war.* `stripMarkers` warf die
+Paragraphenkennung nur am **Anfang** der Zelle weg. Das war richtig, solange
+eine Zelle ein Absatz ist — dort kann „§ 5." nur zuerst stehen. Auf dem
+PDF-Pfad ist eine Zelle ein ganzer Paragraph, und die Beilage druckt die
+Überschrift **vor** die Kennung: „Spielbedingungen und Vertrieb § 16. (1) Der
+Konzessionär hat …". Die Kennung stand also mitten in der Zelle und blieb
+stehen — gegen einen RIS-Text, der sie nie trägt (`konsTree` führt sie als
+`marker`, `plainText` druckt sie nicht). Sie fällt jetzt überall, und weil
+beide Seiten durch dieselbe Funktion gehen, bleibt der Vergleich symmetrisch.
+
+*Die zweite ist der Stapel selbst.* „3. Abschnitt Antragstellung Inhalt des
+Mehrfachantrags § 34. …" — die Gruppenüberschriften stehen über dem §, RIS
+hält sie bewusst aus seinem Text heraus (`context`), und **es nützt nichts,
+RIS danach zu fragen**: bei den gemessenen Fällen ist `context` leer, die
+Überschriften wohnen in den Dokumenten der Gruppe, nicht im § . Also von der
+Zeile her: Was vor dem eigenen Anfang des geltenden Textes steht, darf weg —
+**wenn es mit einer Gruppeneinheit öffnet und kein eigenes Satzzeichen
+trägt**. Diese Wache ist die halbe Regel. Ohne sie fiele auch der Schwanz des
+vorigen Paragraphen mit („beträgt 75 000 € je Förderwerber Ausmaß der
+Förderung"), und eine Zeile mit fremdem Text bestünde genau die Prüfung, die
+fremden Text finden soll: über 60 Entwürfe lässt die Wache 24 echte Stapel
+durch und weist 5 solche Zeilen ab.
+
+| Check 1, PDF-Pfad (400 Entwürfe) | vorher | nachher |
+|---|---|---|
+| markierte Zeilen bestanden | 697 von 1.585 | **1.030 (65,0 %)** |
+| Zeilen ohne Marke: neu bestanden | — | 48 |
+| Zeilen ohne Marke: verloren | — | **0** |
+| Tabellenpfad, markiert | 58 von 66 | 58 (+1 unmarkiert, 0 verloren) |
+
+**Und dann maß das Messgerät das Falsche — zum zweiten Mal in dieser Woche.**
+Der erste Ende-zu-Ende-Lauf über 120 Entwürfe zeigte **261 → 262** anzeigbare
+Paragraphen, also nichts. Der Grund lag nicht am Ertrag, sondern am
+Prüfstand: `harness/me.ts` las die Beilage **nur als XML** und buchte alles
+andere als „Scan" oder „ohne Textgegenüberstellung" — 26 und 21 der 120
+Entwürfe. Genau dort liegt der PDF-Pfad. Die Seite selbst liest ihn seit
+jeher (`annex/annexPdfService.ts` über `kons/konsService.ts`), der Prüfstand
+also gegen eine Auswahl, in der die Verbesserung gar nicht vorkommen konnte.
+Mit dem PDF-Pfad im Prüfstand, derselbe Korpus, dasselbe Kommando:
+
+| 120 Entwürfe, Ende zu Ende | vorher | nachher |
+|---|---|---|
+| **vom Anhang bestätigt — was heute anzeigbar wäre** | 359 (25,2 %) | **508 (35,7 %)** |
+| plausibel, Orakel „fremd" | 216 | **99** |
+| unplausibel, Orakel „fremd" | 128 | **86** |
+| plausibel, Orakel „widersprochen" | 151 | 119 |
+| unplausibel, Orakel „widersprochen" | 197 | 229 |
+| unplausibel, Orakel bestätigt | 42 | 52 |
+
+**149 Paragraphen mehr, die die Seite zeigen darf**, und die Bewegung liest
+sich wie sie soll: „fremd" — wir konnten die geltende Spalte nicht einmal
+lesen — schrumpft um 159, und was dabei herauskommt, ist überwiegend
+Bestätigung, zum kleineren Teil ein Widerspruch, der vorher hinter der
+Unlesbarkeit steckte und jetzt benannt ist. Der Engine-Prüfstand
+(`harness:kons`) bleibt **Zeile für Zeile identisch** — richtig so, das
+Orakel urteilt über das Ergebnis, es erzeugt keines. Drift über beide
+Beilagenpfade ohne Befund.
+
+**Nebenbei fiel eine Kopie** (`corpus/innerElision.ts`): Die Prüfung stand
+dort ein zweites Mal, Zeichen für Zeichen dieselbe, damit der Vorher-Wert
+erhalten bleibt. Das war einmal richtig und wurde in dem Augenblick falsch,
+in dem die Prüfung um eine Regel wuchs — eine Messung, die eine Kopie misst,
+berichtet den Ertrag des Servers nicht. Das Skript ruft jetzt
+`unaccountedStretch` selbst auf.
+
 ### 12.12b Der Besondere Teil als zweites Verifikationssignal — gemessen, und er trägt nicht
 
 Die teuerste offene Frage des Pakets ist, ob es neben der
