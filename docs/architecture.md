@@ -4926,6 +4926,49 @@ danach endet** — die Variante, die sie dem Absatz gibt, ist um einen
 Paragraphen schlechter. Anzeigbare Paragraphen über 120 Entwürfe 508 → 509,
 Drift über beide Beilagenpfade ohne Befund.
 
+**Die Obergrenze war die Größe des Korpus, nicht die einer Krankheit
+(26.09.2026).** `MAX_PARAGRAPHS = 160` steht im Tor, damit ein einziges
+Monster-Sammelgesetz keine Anfrage aufhängt, und im Register der Restrisiken
+stand daneben nur, dass `REASON_CEILING` es wenigstens sagt. Was sie kostet,
+war nie gemessen — messbar ist es nur, indem man sie hebt, also hat der
+Prüfstand jetzt einen Knopf dafür (`--obergrenze=`).
+
+**Sechs der 83 Entwürfe des PDF-Pfads von GP XXVIII adressieren mehr
+Paragraphen als 160**, auf dem Tabellenpfad kein einziger (Größter dort:
+105). Es sind das Vergaberechtsgesetz 2026 mit 413, das Budgetbegleitgesetz
+2027-2028 mit 271, die Asyl- und Migrationspakt-Anpassung mit 252, das
+Abgabenänderungsgesetz 2025 mit 210, das Gaswirtschaftsgesetz mit 194 und das
+Finanzmarktsammelgesetz mit 170 — zusammen **550 Paragraphen, die das Tor nie
+angesehen hat**, nicht weil es an ihnen zweifelte, sondern weil es vorher
+aufhörte zu zählen.
+
+| GP XXVIII, PDF-Pfad | 160 | 500 |
+|---|---|---|
+| bestätigt | 1.435 | **1.696** |
+| einbehalten | 257 | 286 |
+| ungeprüft | 1.799 | 1.509 |
+
+**Der Preis ist ein RIS-Dokument je Paragraph**, und das kostet im Median
+**0,05 s** (zehn Dokumente live gemessen, von einem Entwicklungsrechner aus,
+nicht vom VPS): die 253 zusätzlichen Abrufe des größten Entwurfs sind bei
+`CONCURRENCY` 4 rund drei Sekunden, einmal je Entwurf und Tag, weil die Seite
+abgeleitet zwischengespeichert ist. Die Grenze steht jetzt bei **500** — über
+allem, was GP XXVIII enthält, und immer noch eine Grenze: eine Beilage mit
+tausend Paragraphen hört weiter auf.
+
+Die Drift-Grundlinie geht im selben Commit mit hoch, und ihr Befund ist
+genau die Vorhersage: **sechs Entwürfe, alle nach oben** (Vergaberecht
+80 → 169, Asyl- und Migrationspakt 132 → 201, Budgetbegleitgesetz 85 → 150,
+Abgabenänderung 115 → 144, Gaswirtschaft 1 → 8, Finanzmarktsammelgesetz
+47 → 49), Tabellenpfad ohne Befund.
+
+**Der erste Lauf sagte das Gegenteil, und schuld war wieder das Messgerät.**
+`argAssigned` gibt `null` zurück, wenn die Option fehlt, nicht `undefined` —
+der neue Knopf las daraus `Number(null) = 0`, setzte die Grenze auf null und
+meldete für *jeden* Entwurf „bestätigt → 0, Grund: die Beilage nennt mehr
+Paragraphen …". Dritter Fall an einem Tag, in dem der Befund am Instrument
+hing und nicht an der Sache.
+
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 
 Three things from one round of user feedback (2026-09-15), all shipped the

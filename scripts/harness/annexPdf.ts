@@ -434,7 +434,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
  *    prints would not sum to the total beside it (2026-09-10).
  */
 async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promise<GateResult> {
-  const check = await verifyAnnex(rows, draft, gateSources)
+  const check = await verifyAnnex(rows, draft, gateSources, ceiling === null ? {} : { maxParagraphs: ceiling })
   const checked = checkAnnexRows(rows, check)
 
   let rowsNoPara = 0
@@ -485,6 +485,15 @@ async function runGate(rows: readonly ComparisonRow[], draft: AnnexDraft): Promi
 const gp = argAssigned('gp') ?? 'XXVIII'
 const limit = Number(argAssigned('limit') ?? 400)
 const only = argAssigned('only') ?? null
+/**
+ * `--obergrenze=` raises `MAX_PARAGRAPHS` for one run.
+ *
+ * The production ceiling exists so that one monster Sammelgesetz cannot hang
+ * a request, and what it costs in coverage is only knowable by lifting it —
+ * so the knob lives here and nowhere else (26.09.2026).
+ */
+const ceilingArg = argAssigned('obergrenze')
+const ceiling = ceilingArg === null ? null : Number(ceilingArg)
 const dumpWorst = argFlag('dump-worst')
 const xmlMode = argFlag('xml')
 const calibrate = argFlag('calibrate')

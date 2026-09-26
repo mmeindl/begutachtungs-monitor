@@ -191,8 +191,30 @@ export interface AnnexDraft {
   blocks: readonly TextBlock[]
 }
 
-/** Ceiling on § lookups per draft, so one monster Sammelgesetz cannot hang a request. */
-export const MAX_PARAGRAPHS = 160
+/**
+ * Ceiling on § lookups per draft, so one monster Sammelgesetz cannot hang a
+ * request.
+ *
+ * **160 was the corpus's own size, not a pathology — raised to 500 on
+ * 26.09.2026, measured.** Six of the 83 PDF-path drafts of GP XXVIII address
+ * more §§ than that (Vergaberechtsgesetz 2026 with 413, Budgetbegleitgesetz
+ * 2027-2028 with 271, Asyl- und Migrationspakt-Anpassung 252,
+ * Abgabenänderungsgesetz 2025 210, Gaswirtschaftsgesetz 194,
+ * Finanzmarktsammelgesetz 170); on the table path not one does. Their tails
+ * were 550 §§ the gate never looked at, and looking costs what a RIS document
+ * costs: median 0,05 s measured live, so the largest draft's 253 extra
+ * lookups are about three seconds at `CONCURRENCY` 4 — and the page is
+ * derived-cached, so a reader pays it once a day at most. What it buys, over
+ * the same corpus with `--obergrenze=500`: **confirmed §§ 1.435 → 1.696**,
+ * withheld 257 → 286, unchecked 1.799 → 1.509.
+ *
+ * 500 still keeps a guard — an annex naming a thousand §§ stops — and it is
+ * above everything GP XXVIII contains, so `REASON_CEILING` now means a
+ * document outside anything measured rather than an ordinary Sammelgesetz.
+ * The latencies were measured from a development machine against RIS, not
+ * from the VPS.
+ */
+export const MAX_PARAGRAPHS = 500
 const CONCURRENCY = 4
 
 /** Knobs the tests turn; the defaults are what a request uses. */
