@@ -91,8 +91,26 @@ export interface RvStatementsResponse {
   rvUrl: string
   /** Upstream's count — known above the cap too. */
   total: number
-  /** Null above `cap`: the count is shown, the breakdown deliberately not fetched. */
+  /**
+   * The breakdown of the rows that were READ, which below `cap` is all of
+   * them. Above it, only the organisations are fetched, so `summary.total`
+   * is their number and `unlisted` holds the rest. Null when not even those
+   * could be read.
+   */
   summary: StatementsSummary | null
+  /**
+   * One row per Stellungnahme, so the panel can list the anonymous ones and
+   * not merely count them — a private person's submission has a date, a
+   * Geschäftszahl and a public document, and only the NAME is withheld
+   * (§12.14). Never carries a name for a person: `StatementMeta.submitterName`
+   * is null for everything but an organisation. Null where `summary` is.
+   */
+  items: StatementMeta[] | null
+  /**
+   * Counted upstream and deliberately not fetched — the person half of a
+   * Vorlage above `cap` (1289 d.B.: 41,359 of 41,376). 0 everywhere else.
+   */
+  unlisted: number
   cap: number
 }
 

@@ -86,10 +86,14 @@ const getStatementsForMe = defineCachedFunction(
 )
 
 /**
- * Above this many Stellungnahmen on one Regierungsvorlage only the count is
- * fetched. The COVID-era Vorlagen carry tens of thousands (1289 d.B. of GP
- * XXVII: 41,376 — ten megabytes of names for one fact line); everything
+ * Above this many Stellungnahmen on one Regierungsvorlage the full list is
+ * not fetched. The COVID-era Vorlagen carry tens of thousands (1289 d.B. of
+ * GP XXVII: 41,376 — ten megabytes of names for one fact line); everything
  * else measured in GP XXVII/XXVIII stays far below.
+ *
+ * It is a cap on the ROWS, not on what the page may say: since 26.09.2026 a
+ * Vorlage above it still gets its organisations by name
+ * (`fetchInstitutionStatements`).
  */
 export const RV_STATEMENTS_CAP = 5_000
 
@@ -106,8 +110,93 @@ export async function findRvForDraft(gp: string, inr: number): Promise<RvLink | 
 export interface RvStatements {
   /** Upstream's total, known above the cap too. */
   total: number
-  /** Classified rows, date descending; null above the cap. */
+  /**
+   * Classified rows, date descending. Above the cap these are the
+   * INSTITUTIONS only (see `unlisted`); null when not even those could be
+   * read.
+   */
   items: StatementMeta[] | null
+  /**
+   * Counted upstream and deliberately not fetched — the person half of a
+   * mass campaign. 0 wherever every row was read, which is every Vorlage
+   * below the cap.
+   */
+  unlisted: number
+}
+
+/**
+ * The organisations of a Vorlage that is too large to read whole — and the
+ * reason the cap no longer costs the named half (`api-exploration.md`,
+ * list 142).
+ *
+ * List 142's hidden column 19 (`TYP`) is a filter dimension, not only a
+ * column: `TYP: ['I']` narrows the list to the submitters who registered as
+ * an institution. Measured live on 26.09.2026 against the worst case the
+ * cap was written for — 1289 d.B. of GP XXVII answers **17** rows against
+ * its 41,376, and `TYP: ['P']` the other 41,359, so the two partition the
+ * list exactly. The mass half of a mass campaign is the private persons,
+ * whom this site never names anyway; what the cap used to throw away with
+ * them was seventeen chambers, law firms and associations that can be named.
+ *
+ * The narrowing is ASSERTED, not trusted. The filter API ignores keys it
+ * does not know and answers the unfiltered list (`upstream/parliament.ts`) —
+ * here that would be 41,376 rows of private persons' names presented as
+ * organisations. Two independent guards catch it: the sizing call below
+ * refuses anything above the cap — and a list that did not narrow is the
+ * whole list, which is above it by definition, or we would not be here —
+ * and every row must carry the flag (`assertInstitutionRows`), on the
+ * column the header check has just identified by its `feld_name`. Behind
+ * both, `mapStatementRow` classifies each row the ordinary way, so the flag
+ * opens no GDPR door it does not open on the uncapped path either — it can
+ * suppress a name, never publish one (`privacy.ts`).
+ *
+ * Null is „unknown", never „none": this runs where the whole list could not
+ * be read, so a zero here would print „keine Organisation" about a Vorlage
+ * nobody looked at. The caller keeps the total and says nothing else.
+ */
+async function fetchInstitutionStatements(
+  body: Record<string, unknown>,
+  gp: string,
+  inr: number,
+): Promise<StatementMeta[] | null> {
+  const typBody = { ...body, TYP: ['I'] }
+  const head = await fetchFilterList(142, typBody, {}, { all: false })
+  const headRows = head.rows ?? []
+  const count = typeof head.count === 'number' ? head.count : headRows.length
+  if (count === 0) return []
+  /* Both guards against an ignored `TYP`: a list that did not narrow is the
+   * whole list, which is by definition above the cap that sent us here. */
+  if (count > RV_STATEMENTS_CAP) return null
+
+  const res = headRows.length >= count ? head : await fetchFilterList(142, typBody)
+  const rows = res.rows ?? []
+  /* The index glitch (a count with no rows) — unknown, not empty. */
+  if (rows.length === 0) return null
+  assertRowsMatchParent(rows, gp, 'I', inr)
+  assertListHeader(142, res)
+  assertInstitutionRows(rows)
+  const items = rows.map(mapStatementRow)
+  /* Same order as the uncapped path, so one list renders both. */
+  items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  return items
+}
+
+/**
+ * Every row of a `TYP: ['I']` fetch must carry that flag in column 19 — the
+ * column the header check has just vouched for by its `feld_name`. An
+ * ignored filter key is the documented failure mode of this API, and on
+ * this path it would hand the page a list of private persons under the
+ * heading „Organisationen".
+ */
+function assertInstitutionRows(rows: unknown[][]): void {
+  for (const row of rows) {
+    if (!Array.isArray(row) || row[19] !== 'I') {
+      throw createError({
+        statusCode: 502,
+        statusMessage: 'Upstream-Filter TYP hat nicht gegriffen (Liste 142)',
+      })
+    }
+  }
 }
 
 /**
@@ -119,9 +208,14 @@ export interface RvStatements {
  *
  * Sized before it is fetched: the first call omits `showAll` and gets one
  * page plus the total. Small lists arrive complete in that page and cost
- * nothing more; above the cap only the total travels, and the page says the
- * breakdown is missing instead of showing a subset. Derived cache, like the
- * ME list: the raw rows name private persons and are never stored.
+ * nothing more. Derived cache, like the ME list: the raw rows name private
+ * persons and are never stored.
+ *
+ * ABOVE THE CAP the organisations are fetched on their own since
+ * 26.09.2026 (`fetchInstitutionStatements`) and `unlisted` carries the
+ * rest. Until then the page had the count and nothing else, which on
+ * 1289 d.B. meant dropping seventeen nameable organisations to avoid
+ * 41,359 names nobody may republish anyway.
  *
  * No last-good fallback here — this enriches a station the page already
  * draws, so a failed fetch costs one line, not the page.
@@ -132,8 +226,11 @@ export const getStatementsForRv = defineCachedFunction(
     const head = await fetchFilterList(142, body, {}, { all: false })
     const headRows = head.rows ?? []
     const total = typeof head.count === 'number' ? head.count : headRows.length
-    if (total === 0) return { total: 0, items: [] }
-    if (total > RV_STATEMENTS_CAP) return { total, items: null }
+    if (total === 0) return { total: 0, items: [], unlisted: 0 }
+    if (total > RV_STATEMENTS_CAP) {
+      const institutions = await fetchInstitutionStatements(body, gp, inr)
+      return { total, items: institutions, unlisted: total - (institutions?.length ?? 0) }
+    }
 
     let res = headRows.length >= total ? head : await fetchFilterList(142, body)
     let rows = res.rows ?? []
@@ -152,7 +249,7 @@ export const getStatementsForRv = defineCachedFunction(
     assertListHeader(142, res)
     const items = rows.map(mapStatementRow)
     items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
-    return { total, items }
+    return { total, items, unlisted: 0 }
   },
   {
     name: 'statements-rv',
