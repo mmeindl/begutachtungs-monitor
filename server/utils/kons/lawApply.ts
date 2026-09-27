@@ -242,10 +242,21 @@ export function stripPayloadQuotes(lines: readonly PayloadLine[]): PayloadLine[]
   // Im Antrag …` and `payloadLine` joins them with the quote in the middle,
   // where an anchored strip cannot see it. Three §§ of the Luftfahrtgesetz
   // carried a stray `" (1)` into the consolidated text that way (2026-09-09).
-  edit(0, (t) => t.replace(/^((?:§+\s*\d+[a-z]*\.\s*)?)["\u00ab\u2039]\s*/, '$1'))
+  //
+  // **Not on a heading line.** `segmentUnits` has already taken the
+  // instruction's marks off a quoted § heading (`stripQuotes`), so a mark
+  // left at its end is the heading's own: „Die Überschrift zu § 59 lautet:
+  // ‚… der ‚Aufenthaltsberechtigung besonderer Schutz''" lost its inner
+  // closing mark here, the second strip after the first (AsylG 2005,
+  // BGBl. I Nr. 39/2026, 27.09.2026).
+  const heading = (i: number): boolean => {
+    const l = out[i]
+    return typeof l === 'object' && l.heading
+  }
+  if (!heading(0)) edit(0, (t) => t.replace(/^((?:§+\s*\d+[a-z]*\.\s*)?)["\u00ab\u2039]\s*/, '$1'))
   // A closing quote is sometimes followed by the instruction's own full stop
   // ("… zu verlangen."."), which left `verlangen".` in the text.
-  edit(out.length - 1, (t) => t.replace(/\s*["\u00bb\u203a]\s*\.?$/, ''))
+  if (!heading(out.length - 1)) edit(out.length - 1, (t) => t.replace(/\s*["\u00bb\u203a]\s*\.?$/, ''))
   return out
 }
 

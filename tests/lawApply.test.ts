@@ -1115,3 +1115,13 @@ describe('the sentences of an Absatz that carries a list (26.09.2026)', () => {
     expect(run(l, instr('In § 9 Abs. 1 zweiter Satz wird das Wort "sinngemäß" durch das Wort "entsprechend" ersetzt.')).results[0]!.applied).toBe(false)
   })
 })
+
+describe('a new heading keeps a quotation it ends on (27.09.2026)', () => {
+  it('does not strip the heading a second time', () => {
+    // AsylG 2005 § 59: `segmentUnits` has unquoted the heading line already.
+    const lines = stripPayloadQuotes([{ text: 'Verfahren und der "Aufenthaltsberechtigung besonderer Schutz"', heading: true }])
+    expect(lines).toEqual([{ text: 'Verfahren und der "Aufenthaltsberechtigung besonderer Schutz"', heading: true }])
+    // The body behind a heading still loses the instruction's closing mark.
+    expect(stripPayloadQuotes([{ text: 'Titel', heading: true }, '§ 5. (1) Text."'])).toEqual([{ text: 'Titel', heading: true }, '§ 5. (1) Text.'])
+  })
+})

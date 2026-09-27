@@ -28,9 +28,23 @@ export function normalizeText(t: string): string {
  * that installs it ("§ 5 lautet samt Überschrift: \u0022Landesausspielungen\u0022").
  * The marks belong to the instruction, not to the heading — and the UI puts
  * its own around it, so leaving them nests two pairs.
+ *
+ * **Its own pair, and not a mark more** (27.09.2026). A heading may end on a
+ * quotation of its own: „Verfahren … und der ‚Aufenthaltsberechtigung
+ * besonderer Schutz'" arrives as `"… der "Aufenthaltsberechtigung besonderer
+ * Schutz" "`, because `normalizeText` folds the opening and closing marks
+ * into one. Stripping every mark at the ends took the inner closing one too,
+ * and the engine wrote a heading with an open quotation into the law (AsylG
+ * 2005 § 59, BGBl. I Nr. 39/2026). So one mark comes off the front, and one
+ * off the end only where the count says it closes the instruction's pair:
+ * an odd number left means the last one is the instruction's, an even
+ * number means the heading's own quotations are balanced.
  */
 export function stripQuotes(t: string): string {
-  return normalizeText(t).replace(/^["'\u00ab\u00bb\u2039\u203a\s]+|["'\u00ab\u00bb\u2039\u203a\s]+$/g, '')
+  const ends = /^['\u00ab\u00bb\u2039\u203a\s]+|['\u00ab\u00bb\u2039\u203a\s]+$/g
+  const open = normalizeText(t).replace(ends, '').replace(/^"\s*/, '')
+  const closing = (open.match(/"/g) ?? []).length % 2 === 1 && /"\s*$/.test(open)
+  return (closing ? open.replace(/\s*"\s*$/, '') : open).replace(ends, '')
 }
 
 /**

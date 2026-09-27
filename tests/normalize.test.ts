@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareKey, compareToken, displayTokens, stripMarkup } from '../server/utils/lawtext/normalize'
+import { compareKey, compareToken, displayTokens, stripMarkup, stripQuotes } from '../server/utils/lawtext/normalize'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 
@@ -170,5 +170,19 @@ describe('Punktreihen — Auslassung oder Spaltenfüller', () => {
     expect(compareKey('monatlich.........................')).toBe(compareKey('monatlich'))
     expect(compareKey('monatlich………………………………')).toBe(compareKey('monatlich'))
     expect(compareKey('(1) bis (5) ...')).toBe(compareKey('(1) bis (5) …'))
+  })
+})
+
+describe('stripQuotes — the pair of the instruction, and not a mark more (27.09.2026)', () => {
+  it('keeps a quotation the heading ends on', () => {
+    // AsylG 2005 § 59: the inner closing mark went with the instruction's.
+    expect(stripQuotes('„Verfahren … und der „Aufenthaltsberechtigung besonderer Schutz“\u00a0“')).toBe('Verfahren … und der "Aufenthaltsberechtigung besonderer Schutz"')
+    expect(stripQuotes('„Der „Titel“ des Gesetzes')).toBe('Der "Titel" des Gesetzes')
+  })
+
+  it('still strips the pair around a plain heading, and each half where the heading is split', () => {
+    expect(stripQuotes('„Landesausspielungen“')).toBe('Landesausspielungen')
+    expect(stripQuotes('„Aufbau und Zuständigkeit')).toBe('Aufbau und Zuständigkeit')
+    expect(stripQuotes('der Staatsanwaltschaften“')).toBe('der Staatsanwaltschaften')
   })
 })
