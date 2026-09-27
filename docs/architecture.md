@@ -788,6 +788,12 @@ je Entwurf. In Einheitenreihenfolge gefüllt, hätte der zweite Schlüssel bei
 füllen die eindeutigen Nummern die Grenze zuerst, und **kein vorher gezeigter
 Paragraph geht verloren**. Ob die Grenze für Sammelgesetze höher gehört, ist
 eine eigene Frage — sie begrenzt die Antwortgröße, nicht die Richtigkeit.
+**Beantwortet am 27.09.2026** (`e9217eb`): ohne Grenze trägt ein Entwurf im
+Median 8 Einträge, p99 129–175, höchstens 237 (XXVII 230/ME); fünf Entwürfe
+lagen über 120. Die Grenze steht jetzt bei 250. Der Preis, am laufenden
+Server gemessen: 230/ME 81 → 188 kB auf einer Seite, deren
+Paragraphenvergleich allein 800 kB wiegt. Zurück kommen damit 314
+Paragraphen in XXVII, 143 in XXVI, 165 in XXVIII.
 Am laufenden Server: 18/ME führt § 4 jetzt zweimal, unter Artikel 5 und 6.
 
 **Und der Aufklapper war leer, wo die Passage zu lang war.** `diffTokens` gibt
@@ -5665,6 +5671,14 @@ committee two ways to hear anyone, and they behave in opposite ways:
   — the classifier files three institutions as persons. The error is on the
   safe side (a name withheld, none published), but the label is wrong; a
   change to `privacy.ts` needs its corpus comparison first (§12 Nr. 9).
+  **Fixed the same day (`5ff49dd`)** with three name patterns, not with the
+  flag: the `I` flag measurably also marks persons (law firms under the
+  lawyer's name, „Organisation; Mag. <name>", bare first and last names), so
+  it cannot publish on its own. Old against new over list 142, row by row:
+  27 rows newly public over four corpora, every name read, every one an
+  organisation; none newly hidden. About 130 further `I`-flagged
+  organisations remain filed as persons — a review queue, each to be checked
+  before a pattern publishes it.
 
 False positives read by eye and excluded: „Anhörung" and „Sachverständige"
 in the law's own text (the IFG's right to be heard, AVG/StPO experts),
@@ -6357,13 +6371,44 @@ warum die Rate aus §12.38 nicht vor ihnen auf die Seite gehört.
   Paarung und sind mit ihnen verschwunden; in XXVI bleiben 11 in drei
   Entwürfen (162/ME: 9).
 
-**Offen:** Wo der Entwurf seine eigene Artikelgliederung nicht lesbar druckt
-(27, 124, 151/ME XXVII; 9/ME XXVI), bleibt es bei der ehrlichen Absage — das
-ist eine Frage an `lawUnits`, nicht an die Paarung. Und derselbe Entwurf
-76/ME zeigt einen älteren Fehler, den der neue Durchgang nur freigelegt hat:
-Der Rückfall auf die **Artikelnummer**, wenn die Titel nicht passen, paart das
-Notarversorgungsgesetz des Entwurfs mit dem GSVG der Vorlage und das BSVG mit
-dem FSVG — die Vorlage hat umnummeriert, und die Nummer ist dann kein Beleg.
+**Auch die übrigen zwei, am selben Tag gemessen und gebaut:**
+
+- **Die Artikelnummer zählt nur mit den Paragraphen dahinter** (`c70a686`).
+  Über GP XXVI–XXVIII machte der Rückfall auf die Nummer 50 Paare, und die
+  Hälfte waren zwei Gesetze, die nach einer Umnummerierung dieselbe Nummer
+  trugen (Notarversorgungsgesetz gegen GSVG, EStG gegen FSVG, StGB gegen
+  Finanzstrafgesetz). Was sie trennt, ist, was die Novellierungsanordnungen
+  adressieren: jedes falsche Paar überlappt in seinen Paragraphen zu 0–50 %,
+  jedes richtige (ABGB, „Gewerbeordung", Bindestrich-Varianten) zu 100 %,
+  und nach Titel gepaarte Artikel liegen schon am p10 bei 100 %. Die Nummer
+  zählt jetzt ab 80 % Überlappung, oder wo keine Seite etwas adressiert. Für
+  das Übrige paart ein vierter Durchgang nur mit zwei Belegen zugleich —
+  Paragraphen UND Name (gleicher Anfang ohne Leerzeichen und Vorlagenwörter,
+  oder eine Abkürzung wie „StGB", „ARHG") —, weil Artikel paralleler Gesetze
+  ihre Paragraphen gemessen in 0,4–5 % der Fälle zufällig teilen; die erste
+  Namensprobe (ein gemeinsames Stück irgendwo) paarte das GSVG mit dem BSVG.
+  Zwölf Entwürfe bewegen sich, jeder von Hand gelesen; Inkrafttretens-Artikel
+  zählen nicht mehr als Gesetz des Pakets. Messgerät:
+  `pnpm corpus:aenderungsrate -- --gp <GP> --pairs`.
+- **Die Artikel des Entwurfs, wo er sie setzt** (`a39ff34`). Die acht
+  Entwürfe ohne lesbare Artikelgliederung hatten eine Ursache in sechs
+  Formen: die Artikelzeile in `44UeberschrArt`, im Inhaltsverzeichnis, mit
+  dem Namen in `11Titel`, der Titel eines Entwurfs ohne Artikel in
+  `41UeberschrG1`, das kleine „x" als Platzhalter, gesperrtes „A r t i k e
+  l". Ein gemeinsamer Nachlauf beider Parser (`lawtext/articleHeadings.ts`)
+  liest sie, mit Wachen für Inhaltsverzeichnis-Tabellen und zitierten
+  Änderungstext. Alle acht vergleichen jetzt (XXVII 274 → 279, XXVI 98 →
+  101), keiner fällt in die Absage. Am Beilagen-Tor bewegten sich sechs
+  Einträge der Grundlinie, alle von verweigert zu geprüft und gegen das RIS
+  bestätigt (Hochschülerinnen- und Hochschülerschaftsgesetz 0 → 26
+  bestätigte Paragraphen, LMSVG-Novelle 0 → 17); die Grundlinie ist im
+  selben Commit nachgezogen.
+
+**Offen bleibt:** XXVII 92/ME und XXVIII 26/ME, deren Artikel gar keinen
+Namen tragen; 85/ME, dessen Artikel 1 nur eine Anordnung hat und damit an
+der Paragraphenprobe scheitert; zwei neue Gesetze unter verschiedenen langen
+Titeln (Notarversorgungsgesetz in XXVI 76/ME), die weder Paragraphen noch
+Namensanfang teilen.
 
 
 ### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
@@ -9048,6 +9093,24 @@ XXVII **274 von 277 (98,9 %)**, XXVI **98 von 101 (97,0 %)**. Neun der zehn
 Entwürfe ohne Artikelpaarung zählen jetzt als nicht vergleichbar statt als
 geändert, der zehnte (216/ME) als echter Vergleich; die Verteilung des Umfangs ist damit
 die, auf der eine Umfangszahl stehen kann.
+
+**Das Maß, gemessen und gebaut (27.09.2026, `d160d32`, `a39ff34`).** Drei
+Kandidaten gegen den Korpus gehalten: Die Zahl geänderter Einheiten hängt an
+der Länge des Gesetzes (p10 2, p90 42 in XXVII), der Anteil aller berührten
+Einheiten zählt mit, was die Vorlage hinzufügt. Was trägt, ist der **Anteil
+der eigenen Bestimmungen des Entwurfs, den die Vorlage im Wortlaut geändert
+oder gestrichen hat**, redaktionelle Änderungen nicht gezählt
+(`shared/utils/changeShare.ts`, eine Definition für Seite und Messung): XXVII
+p25 46 %, Median 63 %, p75 75 % (n 282), XXVI 34 / 50 / 73 % (n 104); die
+Parser-Korrekturen desselben Tages haben daran nichts verschoben. Die Seite
+sagt es im Vergleich Entwurf gegen Vorlage, mit der Zahl des Entwurfs und
+der mittleren Hälfte seiner Periode (eine laufende Periode gegen die
+jüngste abgeschlossene): „Von den 15 Änderungsanordnungen des Entwurfs hat
+die Regierungsvorlage 3 (20 %) geändert oder gestrichen, bloß redaktionelle
+Änderungen nicht mitgezählt. Zum Vergleich: In der XXVII.
+Gesetzgebungsperiode lag dieser Anteil bei der Hälfte der Entwürfe zwischen
+46 und 75 %." Eine Spanne, kein Urteil; über die Wirkung einer
+Stellungnahme sagt der Satz nichts.
 
 ## 13. Open questions
 
