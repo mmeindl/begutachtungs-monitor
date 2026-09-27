@@ -28,7 +28,7 @@
 import { diffTokens } from '../diff/wordDiff'
 import { lawTextNodes, plainText, type LawNode } from '../lawtext/konsTree'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
-import { addressedSentence, resolveTarget } from './lawApply'
+import { addressedHalbsatz, addressedSentence, resolveTarget } from './lawApply'
 import { punctuationTokens } from '../text/punctuationTokens'
 
 export type GuardFlag =
@@ -161,7 +161,10 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
         }
         const ids = [op.target.lit ?? op.target.z ?? op.target.abs ?? '', ...op.target.siblings]
         for (const t of ids) {
-          const old = unitText(op, t)
+          // A Halbsatz replaced is charged as that Halbsatz — the whole unit
+          // would weigh a one-clause change as the loss of the Absatz.
+          const node = op.target.halbsatz && beforeTree ? resolveTarget(before, op.target, t) : null
+          const old = op.target.halbsatz ? (node ? addressedHalbsatz(node, op.target, payloadText) : null) : unitText(op, t)
           if (old !== null) loss(old)
         }
         break

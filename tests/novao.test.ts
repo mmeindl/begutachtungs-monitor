@@ -308,7 +308,8 @@ describe('sentence addresses (2026-09-09)', () => {
   })
 
   it('refuses a sentence word it cannot place instead of widening to the Absatz', () => {
-    expect(parseAddress('§ 169 Abs. 5 erster Halbsatz lautet')).toBeNull()
+    // „erster Halbsatz" stood here until 27.09.2026; it is read now, as a Halbsatz.
+    expect(parseAddress('§ 169 Abs. 5 erster Halbsatz lautet')).toMatchObject({ abs: '5', satz: null, halbsatz: 'erster', level: 'satz' })
     expect(parseAddress('In § 5 Abs. 2 entfallen die Sätze')).toBeNull()
     // Non-consecutive pair: which sentences?
     expect(parseAddress('§ 5 Abs. 3 erster und dritter Satz lautet')).toBeNull()
@@ -727,7 +728,10 @@ describe('„der Halbsatz ‚…‘" is the noun of a quotation (27.09.2026)', (
     expect(parseInstruction('Dem § 27 Abs. 1 lit. b wird folgender Halbsatz angefügt:').ops[0]).toMatchObject({ kind: 'append' })
   })
 
-  it('still refuses a Halbsatz as an address', () => {
-    expect(parseInstruction('§ 169 Abs. 5 erster Halbsatz lautet:').ops).toEqual([])
+  it('reads a Halbsatz as an address of its own, inside the sentence it names', () => {
+    expect(parseInstruction('§ 169 Abs. 5 erster Halbsatz lautet:').ops[0]).toMatchObject({ kind: 'replace', target: { abs: '5', halbsatz: 'erster', satz: null } })
+    expect(parseAddress('In § 24 Abs. 7 lautet im letzten Satz der zweite Halbsatz')).toMatchObject({ satz: 'letzter', halbsatz: 'zweiter' })
+    // „der nachfolgende Halbsatz" names no ordinal and stays refused.
+    expect(parseAddress('In § 27 Abs. 2 entfällt der nachfolgende Halbsatz')).toBeNull()
   })
 })

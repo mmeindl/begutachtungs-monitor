@@ -823,6 +823,85 @@ export function addressedSentence(node: LawNode, satz: string, count = 1): strin
 }
 
 /**
+ * The sentence a Halbsatz lies in: the one the address names, or — where it
+ * names none — the first for the first Halbsatz and the last for the last.
+ * Any other ordinal needs a unit of one sentence. Where the first sentence
+ * runs through a list, its first Halbsatz is in front of it („§ 36 Abs. 9
+ * lautet der erste Halbsatz: ‚… beziehen:'"), so that piece is the host.
+ */
+function halbsatzHost(node: LawNode, a: NovaoAddress): Slot | null {
+  const satz = a.satz ?? (a.halbsatz === 'erster' ? 'erster' : a.halbsatz === 'letzter' ? 'letzter' : null)
+  if (satz) {
+    const found = sentenceSlots(node, satz, 1)
+    if (!found) return null
+    if (!found.throughList) return found.slots[0]!
+    return a.halbsatz === 'erster' ? (found.slots[0] ?? null) : null
+  }
+  const only = sentenceSlots(node, 'erster', 1)
+  const all = only && !only.throughList ? splitSentences(bodyOf(node).text) : null
+  return all?.length === 1 ? only!.slots[0]! : null
+}
+
+const MARK_END = /[,;:.]$/
+
+/**
+ * Where the Halbsatz a replacement names lies in its sentence — found
+ * through the text that replaces it.
+ *
+ * The drafting does not agree on what a Halbsatz is. All seven „lautet der
+ * erste Halbsatz" of the draft corpus end their new text at a comma („…
+ * Auskünfte darüber verlangen,"), RAO § 50 means the part in front of a
+ * semicolon, and one draft says „der zweite Halbsatz nach dem Strichpunkt"
+ * because the word alone does not. A boundary rule would be right for one
+ * usage and write the wrong text for the other, so there is none: the new
+ * text says where it ends. The old Halbsatz ends where the old sentence
+ * carries the same last two words with the same mark — exactly once — and a
+ * later Halbsatz also begins where the old sentence carries the new text's
+ * first two words right behind a mark. The first begins with the sentence.
+ * Where either is not unique, the replacement is refused; a change in the
+ * very words the anchor needs is refused too, and that is the price.
+ */
+export function halbsatzSpan(sentence: string, halbsatz: string, replacement: string): { at: number; end: number } | null {
+  const words = [...sentence.matchAll(/\S+/g)].map((m) => ({ text: m[0], at: m.index!, end: m.index! + m[0].length }))
+  const next = replacement.trim().split(/\s+/)
+  if (next.length < 2 || !MARK_END.test(next.at(-1)!)) return null
+  const [pen, last] = [next.at(-2)!, next.at(-1)!]
+  const ends = words.flatMap((w, i) => (i > 0 && w.text === last && words[i - 1]!.text === pen ? [w.end] : []))
+  let at = words[0]?.at ?? 0
+  if (halbsatz !== 'erster') {
+    const starts = words.flatMap((w, i) => (i > 0 && MARK_END.test(words[i - 1]!.text) && w.text === next[0] && words[i + 1]?.text === next[1] ? [w.at] : []))
+    if (starts.length !== 1) return null
+    at = starts[0]!
+  }
+  const after = ends.filter((e) => e > at)
+  if (after.length === 1) return { at, end: after[0]! }
+  if (after.length > 1) return null
+  // The new text may change the very last words of its Halbsatz — RAO § 50
+  // Abs. 2 Z 2 lit. a replaces its second one by two. Two ends are exact
+  // then. A semicolon closes a Halbsatz and hardly anything else in legal
+  // text, so where the new text closes with one, the old Halbsatz ends at the
+  // next one. Otherwise only the last Halbsatz can be found: where the new
+  // text closes with the mark the sentence closes with, and none stands in
+  // between. A comma is never looked for — it separates too much else.
+  const closing = replacement.trim().at(-1)!
+  const rest = sentence.trimEnd()
+  if (closing === ';') {
+    const semicolon = rest.indexOf(';', at)
+    return semicolon >= 0 ? { at, end: semicolon + 1 } : null
+  }
+  if (halbsatz !== 'erster' && rest.endsWith(closing) && !rest.slice(at, -1).includes(closing)) return { at, end: rest.length }
+  return null
+}
+
+/** The old text of the Halbsatz a replacement names — for the guard, which charges a Halbsatz, not its unit. */
+export function addressedHalbsatz(node: LawNode, a: NovaoAddress, replacement: string): string | null {
+  const host = a.halbsatz ? halbsatzHost(node, a) : null
+  const text = host?.read() ?? ''
+  const span = host ? halbsatzSpan(text, a.halbsatz!, replacement) : null
+  return span ? text.slice(span.at, span.end) : null
+}
+
+/**
  * Every slot an address opens up for a phrase operation, **grouped by the
  * addressed unit** — one group per § or Absatz the address names.
  *
@@ -857,6 +936,17 @@ function phraseSlotGroups(law: StandingLaw, a: NovaoAddress): Slot[][] | { error
   }
   const groups: Slot[][] = []
   for (const node of scope) {
+    // A phrase inside a Halbsatz is looked for in the sentence the Halbsatz
+    // lies in, and must be unique there. Its boundary is not in the words
+    // („im letzten Halbsatz vor der Wortfolge ‚…' wird das Wort ‚oder' …");
+    // the qualifier is there because the phrase recurs, and if it recurs in
+    // that sentence the instruction is refused as any other would be.
+    if (a.halbsatz) {
+      const host = halbsatzHost(node, a)
+      if (!host) return { error: `Halbsatz ${a.halbsatz} nicht auffindbar` }
+      groups.push([host])
+      continue
+    }
     if (a.satz) {
       const found = sentenceSlots(node, a.satz, a.satzCount)
       if (!found) return { error: `Satz ${a.satz} nicht auffindbar` }
@@ -1053,7 +1143,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // lost two Absätze before this existed (2026-09-09). It only applies
       // when the address names no sentence — "der zweite Satz durch folgende
       // Sätze" replaces text inside a node, not the node.
-      if (!op.target.satz && payload.length > 0 && ids.length !== payload.length) {
+      if (!op.target.satz && !op.target.halbsatz && payload.length > 0 && ids.length !== payload.length) {
         const level = op.target.lit ? 'lit' : op.target.z ? 'z' : 'abs'
         if (!op.run) return `${ids.length} Ziel(e), ${payload.length} Textblöcke`
         if (payload.some((p) => p.level !== level)) return `${ids.length} Ziele, aber ${payload.length} Textblöcke`
@@ -1072,6 +1162,16 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
         const block = payload[i] ?? payload[0]
         if (!block) return 'Ersetzung ohne neuen Text'
+        if (op.target.halbsatz) {
+          const host = halbsatzHost(node, op.target)
+          if (!host) return `Halbsatz ${op.target.halbsatz} nicht auffindbar`
+          const replacement = payload.map((p) => plainText(p)).join(' ').trim()
+          const text = host.read()
+          const span = halbsatzSpan(text, op.target.halbsatz, replacement)
+          if (!span) return `Halbsatz ${op.target.halbsatz}: Grenze im geltenden Text nicht bestimmbar`
+          host.write(joinPhrase(text.slice(0, span.at), replacement, text.slice(span.end)))
+          continue
+        }
         if (op.target.satz) {
           // The whole payload replaces the addressed sentence(s): "der zweite
           // Satz durch folgende Sätze ersetzt" installs several at once.
@@ -1104,6 +1204,9 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // Absatz. This case read only the unit level and dropped the whole node
       // — the engine's worst failure mode, deleting standing law while
       // reporting success (LMSVG 75/2026, LWA-G 30/2026, 2026-09-09).
+      // A Halbsatz names no boundary a deletion could cut at — only a
+      // replacement brings one (`halbsatzSpan`).
+      if (op.target.halbsatz) return `Streichung eines Halbsatzes — Grenze nicht bestimmbar`
       if (op.target.satz) {
         const node = resolveTarget(law, op.target)
         if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`

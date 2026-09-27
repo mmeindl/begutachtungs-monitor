@@ -1140,3 +1140,42 @@ describe('a new heading keeps a quotation it ends on (27.09.2026)', () => {
     expect(stripPayloadQuotes([{ text: 'Titel', heading: true }, '§ 5. (1) Text."'])).toEqual([{ text: 'Titel', heading: true }, '§ 5. (1) Text.'])
   })
 })
+
+describe('a Halbsatz is where the new text says it ends (27.09.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('169', 'Strafen', ['Die Behörde kann vom Halter Auskünfte darüber verlangen, wer das Luftfahrzeug verwendet hat. Diese Auskünfte sind zu erteilen.'])] })
+
+  it('replaces the first Halbsatz up to the comma the new text ends on', () => {
+    // LFG § 169 Abs. 5, BGBl. I Nr. 80/2026.
+    const { law: out, results } = run(l(), instr('§ 169 Abs. 1 erster Halbsatz lautet:', ['Die Behörde kann vom Halter oder von der Halterin Auskünfte darüber verlangen,']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Behörde kann vom Halter oder von der Halterin Auskünfte darüber verlangen, wer das Luftfahrzeug verwendet hat. Diese Auskünfte sind zu erteilen.')
+  })
+
+  it('replaces a later Halbsatz between the words it begins and ends with', () => {
+    // RAO § 50 Abs. 2 Z 2 lit. a: the Halbsätze stand around a semicolon.
+    const l2: StandingLaw = { paragraphs: [para('50', 'V', ['die Beitragspflicht von zwölf Monaten; in der Satzung kann Näheres bestimmt werden;'])] }
+    const { law: out, results } = run(l2, instr('§ 50 Abs. 1 zweiter Halbsatz lautet:', ['in der Satzung kann Weiteres bestimmt werden;']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('die Beitragspflicht von zwölf Monaten; in der Satzung kann Weiteres bestimmt werden;')
+  })
+
+  it('ends a Halbsatz that changes its own ending at the next semicolon', () => {
+    // RAO § 50 Abs. 2 Z 2 lit. a, BGBl. I Nr. 63/2026: the second Halbsatz becomes two.
+    // The Litera carries a third Halbsatz behind it, which stays.
+    const l2: StandingLaw = { paragraphs: [para('50', 'V', ['die Beitragspflicht von zwölf Monaten; in der Satzung kann Näheres bestimmt werden; eine Pension kann vorgesehen werden;'])] }
+    const { law: out, results } = run(l2, instr('§ 50 Abs. 1 zweiter Halbsatz wird durch folgende Halbsätze ersetzt:', ['in der Satzung kann Weiteres bestimmt werden; ein solcher Erwerb ist zulässig;']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('die Beitragspflicht von zwölf Monaten; in der Satzung kann Weiteres bestimmt werden; ein solcher Erwerb ist zulässig; eine Pension kann vorgesehen werden;')
+  })
+
+  it('refuses where the old text does not carry the new ending exactly once', () => {
+    const { results } = run(l(), instr('§ 169 Abs. 1 erster Halbsatz lautet:', ['Die Behörde kann vom Halter Auskünfte fordern,']))
+    expect(results[0]!.applied).toBe(false)
+  })
+
+  it('looks for a phrase of a Halbsatz in its sentence, and nowhere else', () => {
+    const { law: out, results } = run(l(), instr('In § 169 Abs. 1 wird im letzten Halbsatz das Wort "Auskünfte" durch das Wort "Angaben" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Behörde kann vom Halter Auskünfte darüber verlangen, wer das Luftfahrzeug verwendet hat. Diese Angaben sind zu erteilen.')
+  })
+})

@@ -60,6 +60,15 @@ export interface NovaoAddress {
   satz: string | null
   /** How many sentences from `satz` on: "die ersten beiden Sätze" is erster + 2 */
   satzCount: number
+  /**
+   * "erster", "zweiter", "letzter" — a Halbsatz, inside `satz` where one is
+   * named. What a Halbsatz IS the drafting does not settle: in the corpus it
+   * ends at a comma (all seven „lautet der erste Halbsatz" of the drafts, LFG
+   * § 169 Abs. 5) or at a semicolon (RAO § 50). So the address carries only the
+   * ordinal, and the engine finds the boundary where the operation itself
+   * says it lies (`halbsatzSpan` in `kons/lawApply.ts`).
+   */
+  halbsatz: string | null
   /** Further targets of the same instruction ("Abs. 2 und 3"): ids at `level` */
   siblings: string[]
   /** The deepest level the address names */
@@ -97,9 +106,11 @@ const ORDINAL_SATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?(?:\\s+und\\s+(${ORD
 const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b/i
 const GROUP_SATZ = /\b(ersten|letzten)\s+(beiden|zwei|drei|vier|fünf)\s+Sätze\b/i
 const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|Schlusssatz|Schlussteil)\b/i
-/** Any sentence word at all — an address that carries one must resolve it or be refused. */
 /** „der Halbsatz" in front of a (masked) quotation: the noun of the quoted text, not a sentence word. */
 const HALBSATZ_NOUN_RE = /\b(?:der|den|dem|einen?|ein)\s+Halbsatz(?:es)?\s*(?="")/gi
+/** „erster Halbsatz", „im letzten Halbsatz", „der zweite Halbsatz". */
+const ORDINAL_HALBSATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?\\s+Halbsatz(?:es)?\\b`, 'i')
+/** Any sentence word at all — an address that carries one must resolve it or be refused. */
 const SATZ_WORD = /\bS[äa]tze?s?\b|\bHalbsatz|\bEinleitungssatz|\bEinleitungsteil|\bSchlusssatz|\bSchlussteil/i
 
 /**
@@ -178,7 +189,20 @@ const COUNT_WORD: Record<string, number> = { beiden: 2, zwei: 2, drei: 3, vier: 
  * addressed; `{ satz: null }` means a sentence word is there but not
  * understood, and the caller must refuse.
  */
-function parseSatz(tail: string): { satz: string | null; satzCount: number } | null {
+function parseSatz(text: string): { satz: string | null; satzCount: number; halbsatz: string | null } | null {
+  // The Halbsatz first, and out of the text, so the sentence words that are
+  // left say which sentence it lies in („im letzten Satz der zweite
+  // Halbsatz") — or that there is one the reading cannot place.
+  const hm = ORDINAL_HALBSATZ.exec(text)
+  const halbsatz = hm ? `${hm[1]!.toLowerCase()}r` : null
+  const tail = hm ? text.replace(hm[0], ' ') : text
+  const sentence = parseSentence(tail)
+  if (!halbsatz) return sentence ? { ...sentence, halbsatz: null } : null
+  if (sentence?.satz === null) return { satz: null, satzCount: 0, halbsatz: null }
+  return { satz: sentence?.satz ?? null, satzCount: sentence?.satzCount ?? 0, halbsatz }
+}
+
+function parseSentence(tail: string): { satz: string | null; satzCount: number } | null {
   const part = PART_SATZ.exec(tail)
   if (part) return { satz: /^Einleitung/i.test(part[1]!) ? 'einleitung' : 'schluss', satzCount: 1 }
   const group = GROUP_SATZ.exec(tail)
@@ -496,7 +520,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const scope = leadingArtikel ? t.slice(leadingArtikel.index + leadingArtikel[0].length - 1) : t
 
   if (DOCUMENT_RE.test(t)) {
-    return { para: null, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'document', heading: false, alsoHeading: false, raw: t }
+    return { para: null, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, halbsatz: null, siblings: [], level: 'document', heading: false, alsoHeading: false, raw: t }
   }
 
   const pm = PARA_RE.exec(scope)
@@ -504,10 +528,10 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
     const sm = ABSCHNITT_RE.exec(scope)
     if (sm) {
       const nr = sm[1] ?? sm[2] ?? ''
-      return { para: `Abschnitt ${nr}`, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'abschnitt', heading, alsoHeading, raw: t }
+      return { para: `Abschnitt ${nr}`, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, halbsatz: null, siblings: [], level: 'abschnitt', heading, alsoHeading, raw: t }
     }
     if (TITEL_RE.test(t)) {
-      return { para: null, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'titel', heading: true, alsoHeading: false, raw: t }
+      return { para: null, artikel, abs: null, z: null, lit: null, satz: null, satzCount: 0, halbsatz: null, siblings: [], level: 'titel', heading: true, alsoHeading: false, raw: t }
     }
     if (!inherited?.para) return null
   }
@@ -544,7 +568,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const sentence = parseSatz(t.replace(HALBSATZ_NOUN_RE, ' '))
   // A sentence word the parser cannot place widens the target to the whole
   // unit if it is ignored — the over-deletion this module exists to prevent.
-  if (sentence && sentence.satz === null) return null
+  if (sentence && sentence.satz === null && sentence.halbsatz === null) return null
 
   // **What an inheriting clause keeps of the place before it** — the second
   // half of a compound line, which names no § of its own.
@@ -577,7 +601,8 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const lit = lm?.[1] ?? (!am && !zm && !sentence ? from?.lit : null) ?? null
   const satz = sentence?.satz ?? null
   const satzCount = sentence?.satzCount ?? 0
-  const level: UnitLevel = satz ? 'satz' : lit ? 'lit' : z ? 'z' : abs ? 'abs' : 'para'
+  const halbsatz = sentence?.halbsatz ?? null
+  const level: UnitLevel = satz || halbsatz ? 'satz' : lit ? 'lit' : z ? 'z' : abs ? 'abs' : 'para'
 
   // The enumeration attaches to the deepest numbered component.
   const deepest = lm ?? zm ?? am
@@ -616,7 +641,7 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   // a component of their own really stand there.
   if (level !== 'para' && /§§/.test(t) && [...t.matchAll(/\d+[a-z]*\s*(?:Abs(?:\.|atz)|Z(?:iff(?:er)?)?\b|lit(?:\.|era))/gi)].length > 1) return null
 
-  return { para, artikel, abs, z, lit, satz, satzCount, siblings, level, heading: heading || (carry && from.heading), alsoHeading, raw: t }
+  return { para, artikel, abs, z, lit, satz, satzCount, halbsatz, siblings, level, heading: heading || (carry && from.heading), alsoHeading, raw: t }
 }
 
 /**
@@ -663,7 +688,7 @@ function splitPluralParagraphs(t: string): string[] | null {
  * level being left behind here.
  */
 function headingTwin(a: NovaoAddress): NovaoAddress {
-  return { ...a, abs: null, z: null, lit: null, satz: null, satzCount: 0, siblings: [], level: 'para', heading: true, alsoHeading: false }
+  return { ...a, abs: null, z: null, lit: null, satz: null, satzCount: 0, halbsatz: null, siblings: [], level: 'para', heading: true, alsoHeading: false }
 }
 
 /**
@@ -1204,7 +1229,7 @@ function appendHost(from: NovaoAddress, child: 'abs' | 'z' | 'lit'): NovaoAddres
   const hostDepth = child === 'abs' ? 0 : child === 'z' ? 1 : 2
   if (child === 'lit' && from.z === null) return null
   if (depth <= hostDepth && from.siblings.length > 0) return null
-  const base: NovaoAddress = { ...from, satz: null, satzCount: 0, siblings: [], heading: false, alsoHeading: false }
+  const base: NovaoAddress = { ...from, satz: null, satzCount: 0, halbsatz: null, siblings: [], heading: false, alsoHeading: false }
   if (child === 'abs') return { ...base, abs: null, z: null, lit: null, level: 'para' }
   if (child === 'z') return { ...base, z: null, lit: null, level: from.abs !== null ? 'abs' : 'para' }
   return { ...base, lit: null, level: 'z' }
