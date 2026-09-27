@@ -1116,6 +1116,21 @@ describe('the sentences of an Absatz that carries a list (26.09.2026)', () => {
   })
 })
 
+describe('an insertion in front of the mark that ends the unit (27.09.2026)', () => {
+  it('writes before the last full stop, not before any', () => {
+    // Zahnärztegesetz § 22 Abs. 2: „gemäß § 5 Abs. 1" carries full stops of its own.
+    const l: StandingLaw = { paragraphs: [para('22', 'Pflichten', ['Sie haben gemäß § 5 Abs. 1 teilzunehmen.'])] }
+    const { law: out, results } = run(l, instr('In § 22 Abs. 1 wird vor dem Punkt am Ende der Halbsatz " , sofern Standards betroffen sind" eingefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Sie haben gemäß § 5 Abs. 1 teilzunehmen, sofern Standards betroffen sind.')
+  })
+
+  it('refuses where the unit does not end on that mark', () => {
+    const l: StandingLaw = { paragraphs: [para('22', 'Pflichten', ['Sie haben teilzunehmen:'])] }
+    expect(run(l, instr('In § 22 Abs. 1 wird vor dem Punkt am Ende der Halbsatz " , sofern x" eingefügt.')).results[0]!.applied).toBe(false)
+  })
+})
+
 describe('a new heading keeps a quotation it ends on (27.09.2026)', () => {
   it('does not strip the heading a second time', () => {
     // AsylG 2005 § 59: `segmentUnits` has unquoted the heading line already.

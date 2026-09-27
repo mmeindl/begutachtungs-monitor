@@ -1259,6 +1259,24 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'insertPhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
       if ('error' in units) return units.error
+      if (op.atEnd) {
+        // The mark that ends each unit's text in reading order — and only
+        // where it IS its last character; a unit that ends otherwise is a
+        // disagreement with the draft, not a place to choose another mark.
+        const ends: { slot: Slot; at: number }[] = []
+        for (const slots of units) {
+          const last = [...slots].reverse().find((sl) => sl.read().trim() !== '')
+          const text = last?.read().trimEnd() ?? ''
+          if (!last || !text.endsWith(op.anchor)) return `Satzzeichen „${op.anchor}" steht nicht am Ende`
+          ends.push({ slot: last, at: text.length - op.anchor.length })
+        }
+        for (const { slot, at } of ends) {
+          const current = slot.read().trimEnd()
+          const cut = op.where === 'before' ? at : at + op.anchor.length
+          slot.write(joinPhrase(current.slice(0, cut), op.text, current.slice(cut)))
+        }
+        return null
+      }
       const located = locateInUnits(units, op.anchor, op.wordBound)
       if ('error' in located) return located.error
       for (const { slot, at, len } of located.hits) {

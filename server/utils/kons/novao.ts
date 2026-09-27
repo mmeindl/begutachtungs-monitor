@@ -98,6 +98,8 @@ const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b/i
 const GROUP_SATZ = /\b(ersten|letzten)\s+(beiden|zwei|drei|vier|fünf)\s+Sätze\b/i
 const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|Schlusssatz|Schlussteil)\b/i
 /** Any sentence word at all — an address that carries one must resolve it or be refused. */
+/** „der Halbsatz" in front of a (masked) quotation: the noun of the quoted text, not a sentence word. */
+const HALBSATZ_NOUN_RE = /\b(?:der|den|dem|einen?|ein)\s+Halbsatz(?:es)?\s*(?="")/gi
 const SATZ_WORD = /\bS[äa]tze?s?\b|\bHalbsatz|\bEinleitungssatz|\bEinleitungsteil|\bSchlusssatz|\bSchlussteil/i
 
 /**
@@ -536,7 +538,10 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   const lm = LIT_RE.exec(tail)
   // The sentence word can stand in front of the § ("Im Schlussteil des
   // § 169 Abs. 1"), so it is read from the whole address, not from the tail.
-  const sentence = parseSatz(t)
+  // „der Halbsatz ‚…'" is the noun of the quotation behind it, like „die
+  // Wortfolge" — not a place. Read as a sentence word it refused the whole
+  // address (Zahnärztegesetz §§ 19, 22, 27.09.2026).
+  const sentence = parseSatz(t.replace(HALBSATZ_NOUN_RE, ' '))
   // A sentence word the parser cannot place widens the target to the whole
   // unit if it is ignored — the over-deletion this module exists to prevent.
   if (sentence && sentence.satz === null) return null
@@ -815,7 +820,17 @@ export type NovaoOp =
    */
   | { kind: 'replacePhrase'; target: NovaoAddress; from: string; to: string; everywhere: boolean; eachUnit: boolean; wordBound: boolean }
   /** "In § 5 Abs. 1 wird nach der Wortfolge X die Wortfolge Y eingefügt." */
-  | { kind: 'insertPhrase'; target: NovaoAddress; anchor: string; where: 'after' | 'before'; text: string; eachUnit: boolean; wordBound: boolean }
+  | {
+    kind: 'insertPhrase'
+    target: NovaoAddress
+    anchor: string
+    where: 'after' | 'before'
+    text: string
+    eachUnit: boolean
+    wordBound: boolean
+    /** „vor dem Punkt am Ende": the anchor is the mark that ends the unit's text, not any occurrence of it. */
+    atEnd?: boolean
+  }
   /** "In § 5 Abs. 1 entfällt die Wortfolge X." */
   | { kind: 'deletePhrase'; target: NovaoAddress; text: string; eachUnit: boolean; wordBound: boolean }
   /**
@@ -891,7 +906,7 @@ function instructionHead(t: string): string {
  * better.
  */
 const PHRASE_OBJECT =
-  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Klammerausdrücke|Klammerausdruck|Ausdrücke|Ausdruck|Zitierung|Zitat|Begriff|Bezeichnung|Satzteil|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Einträge|Eintrag)(?:e|en|n|s)?'
+  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Klammerausdrücke|Klammerausdruck|Ausdrücke|Ausdruck|Zitierung|Zitat|Begriff|Bezeichnung|Satzteil|Halbsatz(?=\\s*")|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Einträge|Eintrag)(?:e|en|n|s)?'
 const PHRASE_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'i')
 const PHRASE_OBJECT_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'gi')
 
@@ -1066,6 +1081,8 @@ export function splitCompound(line: string): string[] {
  * because they are single characters.
  */
 const PUNCT_WORD: Record<string, string> = { punkt: '.', strichpunkt: ';', beistrich: ',', doppelpunkt: ':', gedankenstrich: '–' }
+/** „vor dem Punkt am Ende", „nach dem Strichpunkt am Ende": the mark that closes the unit, as an anchor. */
+const END_MARK_RE = /\b(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt)\s+am\s+Ende\b/i
 const PUNCT_REPLACE_RE = /\bde[rn]\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b[^"]*?\bdurch\s+(?:einen|ein|das|die|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b/i
 /** The same five characters where only ONE of the two operands is named. */
 const PUNCT_NAMED_RE = /\b(?:de[rn]|das|die|einen?|eine)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b/i
@@ -1332,6 +1349,15 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
+      // „vor dem Punkt am Ende der Halbsatz ‚ , sofern …' eingefügt": the
+      // anchor is a mark named in words, and „am Ende" says which of the
+      // unit's marks it is — Zahnärztegesetz § 22 Abs. 2 carries six full
+      // stops, so asking for a unique one would refuse (27.09.2026).
+      const endMark = END_MARK_RE.exec(maskQuotes(head))
+      if (endMark && quotes.length === 1) {
+        const where = endMark[1]!.toLowerCase() === 'vor' ? 'before' : 'after'
+        return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: PUNCT_WORD[endMark[2]!.toLowerCase()]!, where: where as 'before' | 'after', text: quotes[0]!, eachUnit, wordBound: false, atEnd: true })), reason: null, line }
+      }
       if (quotes.length < 2) return fail('Einfügung ohne Anker und Text')
       // "das Wort „zuletzt“ gestrichen sowie nach der Wort- und Zeichenfolge
       // „…“ die Wort- und Zeichenfolge „…“ eingefügt": three operands, and

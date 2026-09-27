@@ -706,3 +706,28 @@ describe('one address names one place (26.09.2026)', () => {
     expect(parseInstruction('In § 5 Abs. 1 und 2 werden der Punkt am Ende der Z 3 durch einen Strichpunkt ersetzt.').ops).toEqual([])
   })
 })
+
+describe('„der Halbsatz ‚…‘" is the noun of a quotation (27.09.2026)', () => {
+  it('reads it like „die Wortfolge"', () => {
+    // Zahnärztegesetz § 19 Abs. 2.
+    const parsed = parseInstruction('In § 19 Abs. 2 wird nach dem Wort "ermöglichen" der Halbsatz " , wobei eine erste Kopie unentgeltlich ist" eingefügt.')
+    expect(parsed.reason).toBeNull()
+    expect(parsed.ops[0]).toMatchObject({ kind: 'insertPhrase', anchor: 'ermöglichen', where: 'after', target: { abs: '2', satz: null } })
+  })
+
+  it('reads the mark at the end as the anchor', () => {
+    // Zahnärztegesetz § 22 Abs. 2: six full stops in the Absatz, and the one meant is the last.
+    const parsed = parseInstruction('In § 22 Abs. 2 wird vor dem Punkt am Ende der Halbsatz " , sofern Standards betroffen sind" eingefügt.')
+    expect(parsed.ops[0]).toMatchObject({ kind: 'insertPhrase', anchor: '.', where: 'before', atEnd: true })
+    // The same form with the unit named behind „am Ende" (Amt für Betrugsbekämpfung § 3 Z 2).
+    expect(parseInstruction('In § 3 Z 2 wird vor dem Strichpunkt am Ende der lit. h die Wortfolge "und x" eingefügt.').ops[0]).toMatchObject({ anchor: ';', atEnd: true, target: { z: '2', lit: 'h' } })
+  })
+
+  it('leaves „folgender Halbsatz angefügt" to the append branch', () => {
+    expect(parseInstruction('Dem § 27 Abs. 1 lit. b wird folgender Halbsatz angefügt:').ops[0]).toMatchObject({ kind: 'append' })
+  })
+
+  it('still refuses a Halbsatz as an address', () => {
+    expect(parseInstruction('§ 169 Abs. 5 erster Halbsatz lautet:').ops).toEqual([])
+  })
+})
