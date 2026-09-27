@@ -43,10 +43,17 @@ import { articleParagraphKey, explanationParaId } from '../../../shared/utils/ex
 
 /** Below this it is punctuation and whitespace, not a revision. */
 const CHANGED_AT = 0.02
-/** A draft rarely gives reasons for more; the ceiling keeps an outlier off the page. */
+/**
+ * A ceiling for the outlier, set from the corpus (27.09.2026, `aenderungsrate.ts
+ * --reasoning`): uncapped, a draft carries median 8 entries, p99 129–175 over
+ * GP XXVI–XXVIII, and the most any draft reaches is 237 (XXVII 230/ME). At 120
+ * five drafts lost Begründungen once the Artikel key added entries; 250 holds
+ * every measured one. The size is carried by a few long passages, not by the
+ * count — median 100–300 bytes an entry.
+ */
 // Not exported: Nitro's auto-imports share one namespace, and
 // `MAX_PARAGRAPHS` already exists in `annex/verdict.ts`.
-const MAX_PARAGRAPHS = 120
+const MAX_PARAGRAPHS = 250
 
 export interface ReasoningComparison {
   /**

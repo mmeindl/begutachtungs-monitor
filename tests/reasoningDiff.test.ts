@@ -82,13 +82,13 @@ describe('compareReasoning', () => {
       unit(SNG, 'Z1', 'In § 15 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.', 'changed', { to: '1' }),
       unit(BVWG, 'Z1', 'In § 15 Abs. 2 entfällt die Wortfolge "in der Regel".', 'changed', { to: '2' }),
     ]
-    const unique = Array.from({ length: 120 }, (_, i) => unit(SNG, `Z${i + 2}`, `In § ${100 + i} Abs. 1 wird das Wort "a" durch das Wort "b" ersetzt.`, 'changed', { to: '1' }))
+    const unique = Array.from({ length: 250 }, (_, i) => unit(SNG, `Z${i + 2}`, `In § ${100 + i} Abs. 1 wird das Wort "a" durch das Wort "b" ersetzt.`, 'changed', { to: '1' }))
     const texts = new Map(unique.map((_, i) => [String(100 + i), `Begründung ${i}.`]))
     const byArticle = { before: new Map([['1|15', 'A.'], ['2|15', 'B.']]), after: new Map([['1|15', 'A.'], ['2|15', 'B.']]) }
 
     const out = compareReasoning([...ambiguousFirst, ...unique], texts, texts, byArticle)
 
-    expect(out.stats.compared).toBe(120)
+    expect(out.stats.compared).toBe(250)
     expect(Object.keys(out.paragraphs).some((k) => k.startsWith('Art. '))).toBe(false)
   })
 

@@ -746,6 +746,7 @@ async function reasoningReport(): Promise<void> {
   let draftsGained = 0
   const keyedMismatch: string[] = []
   const keyedLost: string[] = []
+  const potentialEntries: { draft: string; n: number }[] = []
   let draftsAmbiguous = 0
   let ambiguousTotal = 0
   let ambiguousBoth = 0
@@ -799,6 +800,25 @@ async function reasoningReport(): Promise<void> {
       after: passageTexts(passagesByArticleParagraph(rvParsed)),
     })
     const keyedEntries = Object.keys(keyed.paragraphs).filter((k) => k.startsWith('Art. '))
+    // What the comparison would hold without its ceiling: the same keys
+    // `compareReasoning` forms, counted instead of built.
+    {
+      const amb = new Set([...articlesPerParagraph(units)].filter(([, a]) => a.size > 1).map(([p]) => p))
+      const byArtBefore = passageTexts(passagesByArticleParagraph(meParsed))
+      const byArtAfter = passageTexts(passagesByArticleParagraph(rvParsed))
+      const keys = new Set<string>()
+      for (const u of units) {
+        const para = addressedParagraphOf(u)
+        const id = explanationParaId(para)
+        if (!para || !id) continue
+        if (!amb.has(para)) {
+          if (before.get(id) && after.get(id)) keys.add(para)
+        } else if (u.fromArticleKey && u.articleKey && byArtBefore.get(`${u.fromArticleKey}|${id}`) && byArtAfter.get(`${u.articleKey}|${id}`)) {
+          keys.add(`Art. ${u.articleKey} ${para}`)
+        }
+      }
+      potentialEntries.push({ draft: `${r.inr}/ME`, n: keys.size })
+    }
     shippedByArticle += keyedEntries.length
     shippedByArticleParas += new Set(keyedEntries.map((k) => k.replace(/^Art\. \S+ /, ''))).size
     // Nothing shown before may go: every entry of the call without the second key stays.
@@ -888,6 +908,11 @@ async function reasoningReport(): Promise<void> {
   console.log(`  Eimer 3–5: ${candidates.length} · Population (beide mit HTML-Erläuterungen): ${population.length}`)
   for (const [k, v] of notIn) console.log(`    nicht dabei: ${String(v).padStart(3)}  ${k}`)
   console.log(`  Entwürfe mit ≥ 1 verglichenem §: ${draftsCompared} · §§ verglichen: ${parasCompared}`)
+  {
+    const ns = potentialEntries.map((p) => p.n)
+    const over = potentialEntries.filter((p) => p.n > 120).sort((a, b) => b.n - a.n)
+    console.log(`  Einträge ohne Obergrenze je Entwurf: Median ${quantile(ns, 0.5)}, p90 ${quantile(ns, 0.9)}, p99 ${quantile(ns, 0.99)}, max ${Math.max(0, ...ns)}; über 120: ${over.map((p) => `${p.draft} (${p.n})`).join(', ') || 'keiner'}`)
+  }
   console.log(`  Ausgeliefert (Artikel, §), seit 27.09.2026: +${shippedByArticle} Vergleiche je Artikel über ${shippedByArticleParas} vorher mehrdeutige §§ (je Entwurf gezählt) in ${draftsGained} Entwürfen${keyedMismatch.length ? ` — an der Obergrenze: ${keyedMismatch.join(', ')}` : ''}; vorher gezeigt und jetzt verloren: ${keyedLost.length ? keyedLost.join(', ') : 'keiner'}`)
   console.log(`  Entwürfe mit ≥ 1 mehrdeutigen §: ${draftsAmbiguous} · mehrdeutige §§: ${ambiguousTotal}, davon mit Begründung auf beiden Seiten: ${ambiguousBoth}`)
   console.log(`  Anteil mehrdeutig an (verglichen + mehrdeutig mit Begründung beidseits): ${ambiguousBoth} / ${parasCompared + ambiguousBoth} = ${pct(ambiguousBoth, parasCompared + ambiguousBoth)}`)
