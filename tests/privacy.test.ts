@@ -97,6 +97,27 @@ describe('classifySubmitter', () => {
       }
     })
 
+    /* The class list 142 flags `I` and the name heuristic filed as "person"
+     * (2026-09-27): 3 of the 21 Stellungnahmen on 313 d.B. (GP XXVIII), and
+     * 27 rows across GP XXVIII/XXVII in all. Real list-142 spellings. The
+     * flag is what found them; the patterns are what publish them, so each
+     * holds WITHOUT a flag too. */
+    it.each([
+      'Energie-Control ; Recht',
+      'Österreichs E-Wirtschaft; Energiepolitik & Strategie',
+      'Österreichs E-Wirtschaft',
+      'Oesterreichs Energie; Generalsekretariat',
+      'Arbeiter-Samariter-Bund Österreichs',
+      'Sozialdemokratische Lehrende Österreichs; Bund',
+      'Parlamentarisches Datenschutzkomitee',
+      'Parlamentarisches Datenschutzkommitee',
+      'Parlamentarisches Datenschutzkomitee (PDK)',
+      'Komitee 3 Gemeinden – 1 Ziel',
+    ])('%s → organisation (upstream I, read as person until 2026-09-27)', (name) => {
+      expect(classifySubmitter(name)).toEqual({ kind: 'organisation', name })
+      expect(classifySubmitter(name, 'I')).toEqual({ kind: 'organisation', name })
+    })
+
     it('allowlisted brand-style names without org keywords (§12.9)', () => {
       expect(classifySubmitter('epicenter.works')).toEqual({
         kind: 'organisation',
@@ -282,6 +303,23 @@ describe('classifySubmitter', () => {
       expect(classifySubmitter('Kammer, Josef')).toEqual({ kind: 'person', name: null })
       expect(classifySubmitter('Kirchner, Maria')).toEqual({ kind: 'person', name: null })
       expect(classifySubmitter('Österreicher, Franz')).toEqual({ kind: 'person', name: null })
+    })
+
+    /* The shapes the 2026-09-27 patterns (`Österreichs`, `Komitee`,
+     * `E-Control`) meet among persons in list 142 — every one of them
+     * `P`-flagged there, so each is asserted WITHOUT the flag: the name
+     * decides, the veto is not what holds them. Persons synthetic, the
+     * affiliations as they stand upstream. */
+    it.each([
+      'Mustermann, Anna; Bürgerin Österreichs',
+      'Mustermann, Max; Staatsbürger; innen Österreichs',
+      'Mustermann Dr., Max; Christliche Partei Österreichs',
+      'Mustermann, Max M.; Komitee zur Verteidigung der Grundrechte',
+      'Anna Mustermann; Österreichs E-Wirtschaft',
+      'Mustermann, Anna, Energie-Control Austria',
+      'Mustermann Anna, Parlamentarisches Datenschutzkomitee',
+    ])('a person filing with an org word of 2026-09-27 stays hidden: %s', (name) => {
+      expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
     })
   })
 

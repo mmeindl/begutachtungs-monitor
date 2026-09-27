@@ -202,7 +202,10 @@ const ORG_PATTERNS: RegExp[] = [
   /verband/i,
   /institut/i,
   /\bbundes[a-zäöüß]/i,
-  /österreich\b|oesterreich\b|\baustria\b/i,
+  // The genitive too (2026-09-27): "Österreichs E-Wirtschaft", "Oesterreichs
+  // Energie", "Arbeiter-Samariter-Bund Österreichs" — two capitalized words,
+  // so without the signal the head read as a bare "Vorname Nachname".
+  /österreichs?\b|oesterreichs?\b|\baustria\b/i,
   /\bgemeinde\b|marktgemeinde|stadtgemeinde|gemeindebund/i,
   /\bstadt\b/i,
   /\bland\s+(?:tirol|salzburg|steiermark|kärnten|oberösterreich|niederösterreich|burgenland|vorarlberg|wien)\b/i,
@@ -247,6 +250,12 @@ const ORG_PATTERNS: RegExp[] = [
   /gemeinschaft\b/i, // "AktionsGemeinschaft"; also the `arbeitsgemeinschaft` above
   /^Fa\.\s/, // the Firma abbreviation, case-sensitive like `^BM f.` — "Fa. Softec, www.softec.at"
   /:innen\b/i, // the gender colon never occurs in a name — "Pflichtschullehrer:innen"
+  // Added 2026-09-27 from the rows list 142 flags `I` and this module filed
+  // as "person" (313 d.B.: 3 of 21). The flag found them; it does not
+  // publish them — these patterns do, and each was held against every row
+  // of GP XXVIII/XXVII (ME and RV) before it went in.
+  /kom{1,2}itee\b/i, // "Parlamentarisches Datenschutzkomitee" — upstream spells it with "mm" too
+  /\b(?:energie|e)-control\b/i, // the regulator E-Control: "Energie-Control ; Recht"
 ]
 
 /**

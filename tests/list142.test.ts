@@ -83,6 +83,26 @@ describe('mapStatementRow', () => {
     })
   })
 
+  it('files the three institutions of 313 d.B. as organisations', () => {
+    // Real rows, list 142 for XXVIII 313/I (read 2026-09-27): all 21 carry
+    // `I` in column 19, and these three were counted as "Privatperson" —
+    // 18 + 3 on the panel where upstream says 21 + 0.
+    const rv313 = (sn: number, date: string, submitter: string) => [
+      'XXVIII', 'SN', sn, null, date.split('-').reverse().join('.'), `${date}T12:00:00`,
+      `<a href="/gegenstand/XXVIII/SN/${sn}/" target="_blank">${submitter} (${sn}/SN)</a>`,
+      'XXVIII', '313', 'I', `000000${date.replaceAll('-', '')}`, `${date.replaceAll('-', '')}000000`, 0,
+      'Art:\nStellungnahme zu Gesetzesinitiativen und sonstigen Gegenständen\n<br />\nKürzel:\nSN\n<br />\n',
+      null, `${sn}/SN`, '313/I', null, '/gegenstand/XXVIII/I/313', 'I', 27825448, sn, '1',
+    ]
+    for (const [row, name] of [
+      [rv313(872, '2025-12-02', 'Energie-Control ; Recht'), 'Energie-Control; Recht'],
+      [rv313(813, '2025-11-28', 'Österreichs E-Wirtschaft; Energiepolitik & Strategie'), 'Österreichs E-Wirtschaft; Energiepolitik & Strategie'],
+      [rv313(882, '2025-12-02', 'Parlamentarisches Datenschutzkomitee'), 'Parlamentarisches Datenschutzkomitee'],
+    ] as const) {
+      expect(mapStatementRow([...row]), name).toMatchObject({ submitterKind: 'organisation', submitterName: name })
+    }
+  })
+
   it('maps a non-public row (placeholder instead of a link)', () => {
     const row = [...LIST142_PERSON_ROW]
     row[2] = 5240
