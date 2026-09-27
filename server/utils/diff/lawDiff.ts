@@ -27,6 +27,7 @@ import type { LawUnit } from '../lawtext/lawUnits'
 import { compareKey, normalizeText } from '../lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
 import { bareParaId, leadingArticleKey } from '../text/designation'
+import { addressedParagraph } from '../lawtext/instructionAddress'
 import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
 
 // ---------------------------------------------------------------------------
@@ -57,13 +58,25 @@ function distinctArticles(units: readonly LawUnit[]): ArticleRef[] {
  * title per earlier article title.
  */
 export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): Map<string | null, string | null> {
+  return new Map(articlePairs(from, to).map((p) => [p.from, p.to]))
+}
+
+/** Which rule made a pair — the measured surface of `pairArticles` (`scripts/corpus/aenderungsrate.ts --pairs`). */
+export type ArticlePairVia = 'only' | 'title' | 'contained' | 'number' | 'addressed'
+
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+/** `pairArticles` with the rule behind each pair, in the order the pairs were made. */
+export function articlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): { from: string | null; to: string | null; via: ArticlePairVia }[] {
   const fromArts = distinctArticles(from)
   const toArts = distinctArticles(to)
   const map = new Map<string | null, string | null>()
+  const via = new Map<string | null, ArticlePairVia>()
   const usedTo = new Set<ArticleRef>()
+  const result = () => [...map].map(([f, t]) => ({ from: f, to: t, via: via.get(f)! }))
   if (fromArts.length === 1 && toArts.length === 1) {
     map.set(fromArts[0]!.article, toArts[0]!.article)
-    return map
+    via.set(fromArts[0]!.article, 'only')
+    return result()
   }
   const scored: { m: ArticleRef; r: ArticleRef; s: number }[] = []
   for (const m of fromArts) {
@@ -74,17 +87,10 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
   for (const { m, r, s } of scored) {
     if (s < 0.5 || map.has(m.article) || usedTo.has(r)) continue
     map.set(m.article, r.article)
+    via.set(m.article, 'title')
     usedTo.add(r)
   }
-  for (const m of fromArts) {
-    if (map.has(m.article) || !m.number) continue
-    const r = toArts.find((x) => !usedTo.has(x) && x.number === m.number)
-    if (r) {
-      map.set(m.article, r.article)
-      usedTo.add(r)
-    }
-  }
-  // Third, the law named INSIDE the other title (27.09.2026). A draft without
+  // Second, the law named INSIDE the other title (27.09.2026). A draft without
   // Artikel carries its whole title — „Bundesgesetz, mit dem das
   // Einkommensteuergesetz 1988 geändert wird (Teuerungs-Entlastungspaket
   // Teil II)" — and the package name drags the similarity under 0,5 against
@@ -108,9 +114,55 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
     const candidates = toArts.filter((r) => !usedTo.has(r) && containment(mt, articleNameTokens(r.article)) >= CONTAINED_AT)
     if (candidates.length !== 1) continue
     map.set(m.article, candidates[0]!.article)
+    via.set(m.article, 'contained')
     usedTo.add(candidates[0]!)
   }
-  return map
+  // Third, the Artikel number — but only where the §§ agree (27.09.2026).
+  // Measured over GP XXVI–XXVIII (`aenderungsrate.ts --pairs`): this rule made
+  // 50 pairs, and half were two different laws that happened to share a
+  // number after the Vorlage renumbered — Einkommensteuergesetz against
+  // Freiberuflichen-Sozialversicherungsgesetz (XXVIII 103/ME), StGB against
+  // Finanzstrafgesetz (XXVII 99/ME). What separates them is what the
+  // Novellierungsanordnungen address: every one of the wrong pairs overlaps
+  // 0–50 % in its §§, every right one (a law spelled differently — ABGB,
+  // „Gewerbeordung", „Referenzwerte-Vollzugsgesetz" against
+  // „ReferenzwerteVollzugsgesetz") 100 %; pairs the title made, 100 % at p10.
+  // So the number counts only with the §§ behind it, or where neither side
+  // addresses any (two new laws). It runs after the containment pass,
+  // because it used to take the Artikel that pass needs (XXVI 76/ME: GSVG).
+  for (const m of fromArts) {
+    if (map.has(m.article) || !m.number) continue
+    const r = toArts.find((x) => !usedTo.has(x) && x.number === m.number)
+    if (r && sameAddresses(addressesOf(from, m.article), addressesOf(to, r.article))) {
+      map.set(m.article, r.article)
+      via.set(m.article, 'number')
+      usedTo.add(r)
+    }
+  }
+  // Fourth, two signals at once, for what is still unpaired: the §§ agree
+  // AND the law's name agrees as a string once spacing and hyphens are
+  // ignored. Either alone is not enough — articles of parallel laws (ASVG,
+  // GSVG, BSVG) share §§ by chance in 0,4–5 % of the measured cases, and a
+  // name alone is what the title pass already asked. Together they catch a
+  // title broken by a stray space („Einkommensteuergese tzes", 103/ME) and a
+  // law under its long name („Bundesgesetz über Krankenanstalten und
+  // Kuranstalten", 20/ME), which otherwise would be called absent from the
+  // Vorlage while it stands there.
+  for (const m of fromArts) {
+    if (map.has(m.article) || namesSeveralLaws(m.article, from)) continue
+    const mine = addressesOf(from, m.article)
+    if (mine.size < 2) continue
+    const candidates = toArts.filter((r) => {
+      if (usedTo.has(r)) return false
+      const theirs = addressesOf(to, r.article)
+      return theirs.size >= 2 && overlapOf(mine, theirs) >= SAME_ADDRESSES_AT && sameCompactName(m.article, r.article)
+    })
+    if (candidates.length !== 1) continue
+    map.set(m.article, candidates[0]!.article)
+    via.set(m.article, 'addressed')
+    usedTo.add(candidates[0]!)
+  }
+  return result()
 }
 
 /**
@@ -124,6 +176,95 @@ function namesSeveralLaws(article: string | null, units: readonly LawUnit[]): bo
   if (/\b(?:geändert|erlassen|aufgehoben)\s+werden\b/i.test(title) || /\bund\s+(?:das|die|der)\s+\S/i.test(title)) return true
   return units.some((u) => u.article === article && u.id.includes('#dup'))
 }
+
+/** The §§ an article's Novellierungsanordnungen address. */
+function addressesOf(units: readonly LawUnit[], article: string | null): Set<string> {
+  const out = new Set<string>()
+  for (const u of units) {
+    if (u.article !== article) continue
+    const para = addressedParagraph(u.text)
+    if (para) out.add(para)
+  }
+  return out
+}
+
+/** How much of the smaller set the other one carries. */
+function overlapOf(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+  if (small.size === 0) return 0
+  let n = 0
+  for (const x of small) if (large.has(x)) n++
+  return n / small.size
+}
+
+/** 4 of 5 §§ — every title pair of three periods reached 100 %, the wrong number pairs at most 50 %. */
+const SAME_ADDRESSES_AT = 0.8
+
+/** The number pass's evidence: the §§ agree, or neither side addresses any (two new laws). */
+function sameAddresses(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size === 0 && b.size === 0) return true
+  if (a.size === 0 || b.size === 0) return false
+  return overlapOf(a, b) >= SAME_ADDRESSES_AT
+}
+
+/**
+ * The words of the title template, which say nothing about which law. Dropped
+ * by word, not by `\b`: JavaScript's word boundary does not see one before
+ * „ä" or „ü", so a regex left „Änderung" and „über" standing.
+ */
+const TEMPLATE_WORDS = new Set(['änderung', 'bundesgesetz', 'bundesgesetzes', 'mit', 'dem', 'über', 'des', 'der', 'die', 'das', 'den', 'geändert', 'wird', 'werden', 'und', 'artikel', 'zur', 'zum'])
+
+/** The name part of an Artikel title as one string: no template words, no spacing, no hyphens, no numbers. */
+function compactName(title: string | null): string {
+  return normalizeText(title ?? '')
+    .toLowerCase()
+    .replace(/ß/g, 'ss')
+    .split(/[^a-zäöü]+/)
+    .filter((w) => w && !TEMPLATE_WORDS.has(w))
+    .join('')
+}
+
+/**
+ * The name both titles START with, against the shorter one:
+ * „einkommensteuergese tzes" and „einkommensteuergesetzes 1988" share all of
+ * the first; „krankenanstalten- und kuranstaltengesetzes" and „über
+ * krankenanstalten und kuranstalten" all of the second. A shared run
+ * anywhere was the first version and it paired the GSVG with the BSVG —
+ * parallel laws differ at the front („gewerblichen…", „bauern…") and share
+ * the whole rest („sozialversicherungsgesetzes"), 27 of 39 letters.
+ */
+function sameCompactName(a: string | null, b: string | null): boolean {
+  const x = compactName(a)
+  const y = compactName(b)
+  if (abbreviates(a, y) || abbreviates(b, x)) return true
+  if (x.length < 6 || y.length < 6) return false
+  let n = 0
+  while (n < x.length && n < y.length && x[n] === y[n]) n++
+  return n / Math.min(x.length, y.length) >= SAME_NAME_AT
+}
+
+/**
+ * Does the title carry an abbreviation of the other name — „StGB" for
+ * „Strafgesetzbuches", „ARHG" for „Auslieferungs- und Rechtshilfegesetzes"
+ * (XXVII 99/ME, XXVI 162/ME)? The abbreviation's letters must appear in the
+ * other name in order, starting at its first letter: the parallel-law case
+ * („GSVG" against „bauernsozialversicherungsgesetzes") fails on the first.
+ */
+function abbreviates(title: string | null, otherCompact: string): boolean {
+  if (otherCompact.length < 6) return false
+  for (const token of normalizeText(title ?? '').split(/[\s,;:()„“"]+/)) {
+    const letters = token.replace(/[^A-Za-zÄÖÜäöü]/g, '')
+    if (letters.length < 3 || letters.length > 8 || (letters.match(/[A-ZÄÖÜ]/g) ?? []).length < 2) continue
+    const abbr = letters.toLowerCase()
+    if (abbr[0] !== otherCompact[0]) continue
+    let i = 0
+    for (const ch of otherCompact) if (ch === abbr[i]) i++
+    if (i === abbr.length) return true
+  }
+  return false
+}
+
+const SAME_NAME_AT = 0.8
 
 /** How much of the smaller name the larger one carries. */
 function containment(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
@@ -385,11 +526,20 @@ export interface LawPackageDiff {
   unpaired: boolean
 }
 
+/**
+ * An Artikel that enters no law but the package's own commencement —
+ * „Inkrafttreten", „Inkrafttreten des Art. 119", „Inkrafttretens- und
+ * Übergangsbestimmungen". Measured over GP XXVI–XXVIII: 20 of 2.260
+ * one-sided package entries were these, every one a single unit, and the
+ * note counted each as „ein Gesetz, das in diesem Entwurf nicht vorkommt".
+ */
+const COMMENCEMENT_ARTICLE = /^(?:artikel\s+\S+\s+)?(?:inkrafttreten|inkrafttretens-|schlussbestimmung|übergangsbestimmung)/i
+
 /** Units of articles the other side does not have, counted per law. */
 function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): LawPackageEntry[] {
   const counts = new Map<string, number>()
   for (const u of units) {
-    if (u.article === null || keep(u.article)) continue
+    if (u.article === null || keep(u.article) || COMMENCEMENT_ARTICLE.test(normalizeText(u.article).trim())) continue
     counts.set(u.article, (counts.get(u.article) ?? 0) + 1)
   }
   return [...counts].map(([article, n]) => ({ article, units: n }))

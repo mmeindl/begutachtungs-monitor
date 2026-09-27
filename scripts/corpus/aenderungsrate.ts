@@ -70,7 +70,8 @@ import type { DraftDocument, LawDiffUnit, LawStationId, LawPackageEntry } from '
 import { meTextTitleRank } from '../../shared/utils/lawStations'
 import { findLastRvLink, findRvLinks, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup, type RawStage } from '../../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
-import { diffLawPackage, pairArticles, summarizeDiff } from '../../server/utils/diff/lawDiff'
+import { articlePairs, diffLawPackage, pairArticles, summarizeDiff } from '../../server/utils/diff/lawDiff'
+import { articleNameTokens } from '../../server/utils/lawtext/lawNames'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { dedupeMeRows, joinRisToMe, toMeListRows } from '../../server/utils/ris/risJoin'
 import type { RisBegutFlat } from '../../server/utils/ris/risRecord'
@@ -83,7 +84,7 @@ import { argFlag, argPair } from '../lib/args'
 import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
 import { compareReasoning } from '../../server/utils/explanations/reasoningDiff'
 import { addressOf, isAddressHeading } from '../../server/utils/explanations/risExplanations'
-import { addressedParagraphOf } from '../../server/utils/lawtext/instructionAddress'
+import { addressedParagraph, addressedParagraphOf } from '../../server/utils/lawtext/instructionAddress'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { explanationParaId } from '../../shared/utils/explanationKey'
@@ -909,3 +910,111 @@ async function reasoningReport(): Promise<void> {
 
 // Last, so every constant above is initialised before the pass reads it.
 if (argFlag('reasoning')) await reasoningReport()
+if (argFlag('pairs')) pairsReport()
+
+/**
+ * `--pairs` (27.09.2026): which rule of `pairArticles` made each pair, over
+ * every draft that reached the diff. The question behind it is the number
+ * fallback — an Artikel paired by its number because the titles did not
+ * match (XXVI 76/ME: Notarversorgungsgesetz → GSVG after renumbering). A
+ * number pair whose two titles share no word of a law name is printed in
+ * full, to be read by eye.
+ */
+/** The §§ an article's Novellierungsanordnungen address, as a set. */
+function addressesOf(units: readonly LawUnit[], article: string | null): Set<string> {
+  const out = new Set<string>()
+  for (const u of units) {
+    if (u.article !== article) continue
+    const para = addressedParagraph(u.text)
+    if (para) out.add(para)
+  }
+  return out
+}
+
+/** How much of the smaller address set the other one carries; null when either side addresses nothing. */
+function addressOverlap(a: ReadonlySet<string>, b: ReadonlySet<string>): number | null {
+  if (a.size === 0 || b.size === 0) return null
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+  let n = 0
+  for (const x of small) if (large.has(x)) n++
+  return n / small.size
+}
+
+function pairsReport(): void {
+  const byVia = new Map<string, number>()
+  const numberPairs: { alternative: string | null; draft: string; from: string; to: string; shared: number; fromUnits: number; toUnits: number; overlap: number | null; sizes: string }[] = []
+  // Calibration: the overlap of pairs the TITLE made (right by construction
+  // in all the cases read), and of a draft article against every Vorlage
+  // article it is NOT paired with (a different law by construction).
+  const titleOverlaps: number[] = []
+  const strangerOverlaps: number[] = []
+  const strangerBySize = new Map<string, { n: number; hit: number }>()
+  for (const [inr, { fromUnits, toUnits }] of parsed) {
+    const pairs = articlePairs(fromUnits, toUnits)
+    const toArticles = [...new Set(toUnits.map((u) => u.article))]
+    for (const p of pairs) {
+      byVia.set(p.via, (byVia.get(p.via) ?? 0) + 1)
+      if (p.via === 'addressed' || p.via === 'contained') console.log(`    ${p.via.padEnd(9)} ${inr}/ME  ${String(p.from).slice(0, 70)}  ⇒  ${String(p.to).slice(0, 70)}`)
+      const a = addressesOf(fromUnits, p.from)
+      if (p.via === 'title') {
+        const o = addressOverlap(a, addressesOf(toUnits, p.to))
+        if (o !== null) titleOverlaps.push(o)
+        for (const other of toArticles) {
+          if (other === p.to) continue
+          const ob = addressesOf(toUnits, other)
+          const so = addressOverlap(a, ob)
+          if (so !== null) strangerOverlaps.push(so)
+          if (so !== null) {
+            const m = Math.min(a.size, ob.size)
+            const k = m >= 3 ? '≥3' : m === 2 ? '2' : '1'
+            const e = strangerBySize.get(k) ?? { n: 0, hit: 0 }
+            e.n++
+            if (so >= 0.8) e.hit++
+            strangerBySize.set(k, e)
+          }
+        }
+      }
+      if (p.via !== 'number') continue
+      const ta = articleNameTokens(p.from)
+      const tb = articleNameTokens(p.to)
+      const shared = [...ta].filter((t) => tb.has(t) && !/^\d+$/.test(t)).length
+      const b2 = addressesOf(toUnits, p.to)
+      // Where the number pair is doubtful: is the draft article's real partner
+      // elsewhere in the Vorlage? The best §-overlap among all its articles.
+      let alternative: string | null = null
+      const own = addressOverlap(a, b2)
+      if (own === null || own < 0.8) {
+        const best = toArticles
+          .filter((t) => t !== p.to)
+          .map((t) => ({ t, o: addressOverlap(a, addressesOf(toUnits, t)), n: addressesOf(toUnits, t).size }))
+          .filter((x) => x.o !== null)
+          .sort((x, y) => y.o! - x.o!)[0]
+        if (best) alternative = `${(best.o! * 100).toFixed(0)} % (${a.size}/${best.n}) ${String(best.t).slice(0, 60)}${pairs.some((q) => q.to === best.t) ? ' [schon gepaart]' : ''}`
+      }
+      numberPairs.push({
+        alternative,
+        overlap: addressOverlap(a, b2),
+        sizes: `${a.size}/${b2.size}`,
+        draft: `${inr}/ME`,
+        from: p.from ?? '(ohne Titel)',
+        to: p.to ?? '(ohne Titel)',
+        shared,
+        fromUnits: fromUnits.filter((u) => u.article === p.from).length,
+        toUnits: toUnits.filter((u) => u.article === p.to).length,
+      })
+    }
+  }
+  console.log(`\nGP ${gp} — Artikelpaare je Regel (über ${parsed.size} verglichene Entwürfe)`)
+  for (const [v, n] of [...byVia].sort((x, y) => y[1] - x[1])) console.log(`  ${v.padEnd(10)} ${n}`)
+  const blind = numberPairs.filter((p) => p.shared === 0)
+  console.log(`  davon nach Nummer: ${numberPairs.length}, ohne gemeinsames Wort im Gesetzesnamen: ${blind.length} in ${new Set(blind.map((p) => p.draft)).size} Entwürfen`)
+  for (const p of numberPairs.sort((x, y) => x.shared - y.shared || x.draft.localeCompare(y.draft))) {
+    const o = p.overlap === null ? '  –  ' : `${(p.overlap * 100).toFixed(0).padStart(3)} %`
+    if (p.alternative) console.log(`        bester andere Partner nach §§: ${p.alternative}`)
+    console.log(`    ${p.shared === 0 ? '✗' : '·'} ${p.draft.padEnd(7)} [${p.fromUnits}→${p.toUnits}] §-Überlappung ${o} (${p.sizes})  ${p.from.slice(0, 60)}  ⇒  ${p.to.slice(0, 60)}`)
+  }
+  const dist = (xs: number[]) => xs.length ? `n ${xs.length}, p10 ${(quantile(xs, 0.1) * 100).toFixed(0)} %, Median ${(quantile(xs, 0.5) * 100).toFixed(0)} %, p90 ${(quantile(xs, 0.9) * 100).toFixed(0)} %, max ${(Math.max(...xs) * 100).toFixed(0)} %` : 'n 0'
+  console.log(`  Eichung §-Überlappung — nach Titel gepaart: ${dist(titleOverlaps)}`)
+  console.log(`  Eichung §-Überlappung — fremde Artikel:     ${dist(strangerOverlaps)}; ≥ 50 %: ${strangerOverlaps.filter((x) => x >= 0.5).length}`)
+  console.log(`  fremde Artikel mit ≥ 80 % nach kleinerer Menge: ${[...strangerBySize].sort().map(([k, v]) => `${k}: ${v.hit} von ${v.n}`).join(' · ')}`)
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff } from '../server/utils/diff/lawDiff'
+import { alignUnits, articlePairs, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff } from '../server/utils/diff/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
@@ -665,5 +665,45 @@ describe('diffLawPackage: nothing pairs', () => {
     const d = diffLawPackage(me, rv)
     expect(d.unpaired).toBe(true)
     expect(d.units.every((x) => x.change === 'inserted' || x.change === 'removed')).toBe(true)
+  })
+})
+
+describe('the Artikel number counts only with the §§ behind it (27.09.2026)', () => {
+  const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
+  const u = (article: string | null, id: string, text: string, articleNumber: string | null): LawUnit => ({
+    article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [],
+  })
+  const art = (title: string, n: number, paras: number[]) => paras.map((p, i) => u(title, `Z${i + 1}`, ins(p), `Artikel ${n}`))
+
+  it('refuses a number pair whose §§ do not meet — two laws after a renumbering (XXVIII 103/ME)', () => {
+    const me = [...art('Änderung des Einkommensteuergesetzes 1988', 1, [3, 4]), ...art('Änderung des Umsatzsteuergesetzes 1994', 2, [6, 12])]
+    const rv = [...art('Änderung des Freiberuflichen-Sozialversicherungsgesetzes', 1, [40, 41]), ...art('Änderung des Umsatzsteuergesetzes 1994', 2, [6, 12])]
+    const pairs = articlePairs(me, rv)
+    expect(pairs.find((p) => p.from === 'Änderung des Einkommensteuergesetzes 1988')).toBeUndefined()
+    expect(diffLawPackage(me, rv).lawsOnlyInFrom.map((l) => l.article)).toEqual(['Änderung des Einkommensteuergesetzes 1988'])
+  })
+
+  it('keeps it where the §§ agree — the same law spelled differently (XXVII 107/ME: ABGB)', () => {
+    const me = [...art('Änderung des ABGB', 1, [1, 2, 3]), ...art('Änderung des Mietrechtsgesetzes', 2, [5])]
+    const rv = [...art('Änderung des allgemeinen bürgerlichen Gesetzbuchs', 1, [1, 2, 3]), ...art('Änderung des Mietrechtsgesetzes', 2, [5])]
+    expect(articlePairs(me, rv).find((p) => p.from === 'Änderung des ABGB')).toMatchObject({ to: 'Änderung des allgemeinen bürgerlichen Gesetzbuchs', via: 'number' })
+  })
+
+  it('pairs a title broken by a stray space, where §§ and name agree (XXVIII 103/ME)', () => {
+    const me = [...art('Änderung des Einkommensteuergese tzes', 1, [3, 4]), ...art('Änderung des Umsatzsteuergesetzes 1994', 2, [6, 12])]
+    const rv = [...art('Änderung des Umsatzsteuergesetzes 1994', 1, [6, 12]), ...art('Änderung des Einkommensteuergesetzes 1988', 2, [3, 4, 5])]
+    expect(articlePairs(me, rv).find((p) => p.from === 'Änderung des Einkommensteuergese tzes')).toMatchObject({ to: 'Änderung des Einkommensteuergesetzes 1988', via: 'addressed' })
+  })
+
+  it('does not pair on shared §§ alone — parallel laws share them by chance', () => {
+    const me = [...art('Änderung des Gewerblichen Sozialversicherungsgesetzes', 1, [3, 4]), ...art('Änderung des Mietrechtsgesetzes', 2, [5])]
+    const rv = [...art('Änderung des Mietrechtsgesetzes', 1, [5]), ...art('Änderung des Bauern-Sozialversicherungsgesetzes', 2, [3, 4])]
+    expect(articlePairs(me, rv).find((p) => p.from === 'Änderung des Gewerblichen Sozialversicherungsgesetzes')).toBeUndefined()
+  })
+
+  it('does not count a commencement Artikel as a law of the package', () => {
+    const me = art('Änderung des Mietrechtsgesetzes', 1, [5])
+    const rv = [...art('Änderung des Mietrechtsgesetzes', 1, [5]), u('Inkrafttreten des Art. 119', 'Z1', 'Dieses Bundesgesetz tritt mit 1. Jänner in Kraft.', 'Artikel 2')]
+    expect(diffLawPackage(me, rv).lawsOnlyInTo).toEqual([])
   })
 })
