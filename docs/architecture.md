@@ -2529,10 +2529,14 @@ eigener Commit:
 Kein Schritt hat die Drift bewegt. Zwei Mal hat ein Schritt eine alte
 Fehllesung sichtbar gemacht, indem er die Verweigerung aufhob, die sie
 verdeckte (FPG § 81, KFG § 48); beide sind im jeweils nächsten Schritt
-behoben. Eine ist offen: Beim AsylG 2005 § 59 fehlt der neuen Überschrift
-das schließende Anführungszeichen („… der ‚Aufenthaltsberechtigung
-besonderer Schutz'"), ein Fehler beim Lesen der Überschriftszeile, der jetzt
-unverweigert „unvollständig" dasteht.
+behoben. Die dritte ist am 27.09.2026 behoben: Beim AsylG 2005 § 59 fehlte
+der neuen Überschrift das schließende Anführungszeichen („… der
+‚Aufenthaltsberechtigung besonderer Schutz'"), weil es zweimal abgenommen
+wurde — `stripQuotes` nahm jedes Zeichen am Ende, und `stripPayloadQuotes`
+nahm von der schon entzitierten Überschriftszeile noch eines. Jetzt zählt
+`stripQuotes`, ob das letzte Zeichen das Paar der Anordnung schließt, und
+eine Überschriftszeile wird kein zweites Mal angefasst (identisch 830 → 831,
+sonst nichts bewegt).
 
 **Die Adressklassen über dem §** (`Titel`, `Hauptstück`, `Abschnitt`,
 `Teil`) bleiben verweigert, und das ist nachgeprüft: Gruppenüberschriften
@@ -2542,7 +2546,12 @@ Einheiten über dem § zu erweitern, bewegte Zahlen des Prüfstands und nichts,
 was jemand liest. `Halbsatz` gehört nicht dazu — er liegt unter dem Satz,
 und zwei seiner fünf Zeilen sind gar keine Adressen: „wird nach dem Wort
 ‚X' **der Halbsatz** ‚…' eingefügt" benutzt ihn als Nomen des Zitats, wie
-„die Wortfolge".
+„die Wortfolge". Seit 27.09.2026 so gelesen, dazu „vor dem Punkt am Ende"
+als Anker (`atEnd`: das Zeichen, auf das die Einheit endet — Zahnärztegesetz
+§ 22 Abs. 2 trägt sechs Punkte); identisch 831 → 834. Offen bleibt die
+Familie, die eine Ebene unter dem Satz braucht: „erster Halbsatz lautet"
+(3), „folgender Halbsatz angefügt" (3) und „der nachfolgende Halbsatz
+entfällt" (1).
 
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
