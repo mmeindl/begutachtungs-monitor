@@ -777,6 +777,19 @@ Vorlage, also scheinbar zweimal. Das behebt kein zweiter Schlüssel, sondern die
 Artikelpaarung — derselbe Fehler, der im Vergleich darüber alles als entfernt
 und neu zeigt (§12.18, Nachtrag).
 
+**Gebaut 27.09.2026.** `HtmlPassage.article` trägt den Artikel, die
+Diff-Einheiten tragen `articleKey` und `fromArticleKey`, und `compareReasoning`
+schlägt eine mehrdeutige Nummer unter (Artikel, §) nach. Durch denselben
+Aufruf wie der Dienst gemessen kommen **249 Paragraphen der GP XXVII und 142
+der XXVI** zurück (421 bzw. 234 Vergleiche je Artikel) — weniger als die 292
+der Vorhersage, und der Grund ist gemessen: Die Obergrenze von 120 Einträgen
+je Entwurf. In Einheitenreihenfolge gefüllt, hätte der zweite Schlüssel bei
+43, 202 und 230/ME Begründungen verdrängt, die dort heute stehen; deshalb
+füllen die eindeutigen Nummern die Grenze zuerst, und **kein vorher gezeigter
+Paragraph geht verloren**. Ob die Grenze für Sammelgesetze höher gehört, ist
+eine eigene Frage — sie begrenzt die Antwortgröße, nicht die Richtigkeit.
+Am laufenden Server: 18/ME führt § 4 jetzt zweimal, unter Artikel 5 und 6.
+
 **Und der Aufklapper war leer, wo die Passage zu lang war.** `diffTokens` gibt
 oberhalb von 2,5 Mio. Zellen keine Segmente zurück, sondern nur die
 Ähnlichkeit — dieselbe Schranke, die schon die Messung oben in die Irre
@@ -5146,13 +5159,15 @@ Momentaufnahmen. Das ist keine Eigenschaft der Änderung, sondern eine des
 Messgeräts, und sie gehört aufgeschrieben, weil sie beim nächsten Mal wieder
 wie ein Befund aussieht.
 
-Die Regel steht an drei Stellen — `ris/risRecord.ts` (der Erzeuger),
+Die Regel stand an drei Stellen — `ris/risRecord.ts` (der Erzeuger),
 `annex/annexSource.ts` (die Parlamentsseite) und `scripts/lib/ris.ts` (die
 Messskripte) —, absichtlich als drei Literale und von Hand im Gleichschritt:
 Ein Skript darf nicht weiten können, was als Beilage zählt, ohne dass die
-Seite mitweitet.
+Seite mitweitet. **Seit 27.09.2026 ist es eine Regel** (`pickTextComparisons`
+in `risRecord.ts`, importiert von beiden anderen): Der Grund für die drei
+Literale ist genau, was ein Import garantiert und drei Literale nicht.
 
-**Die Abkürzung mitten im Namen — gemessen, noch nicht gebaut (26.09.2026).**
+**Die Abkürzung mitten im Namen — gemessen 26.09., gebaut 27.09.2026.**
 Die Weitung auf den Unterstrich hat die Klasse nicht geschlossen, sondern ihren
 kleinsten Teil. Die Ressorts setzen die Abkürzung überall in den Namen, mit
 Leerzeichen, Punkt, Bindestrich oder Klammer davor und danach: „TGÜ Anpassung
@@ -5186,6 +5201,23 @@ Formen — `begtxt`, `begmat`, „GGUe", „Textüberstellung" — sind ein zwei
 Schritt und kein Namensproblem: `begtxt` ist in 30 von 51 Fällen die
 Gegenüberstellung und in den übrigen etwas anderes, das entscheidet der
 Inhalt.
+
+**Gebaut, und strikt additiv.** `textComparisonNameRank` gibt zwei Ränge:
+2 für die alte Form, 1 für das Token (nach NFC, ohne Bündel wie
+„Vbl.Erl.TxtGGÜ"), und gelesen wird nur der beste Rang eines Satzes. Wo die
+alte Regel traf, liest die Seite also genau dieselben Dokumente in derselben
+Reihenfolge — ein einziges geweitetes Muster hätte zwei Sätzen (2014, 2016)
+neben der „Textgegenüberstellung" einen Teil „TGÜ_Anhänge" gegeben. Die
+Drift, gemessen in zwei sauberen Arbeitsbäumen gegen denselben Cache:
+Tabellenpfad 129 → **140** Entwürfe, PDF-Pfad 114 → **120**, **kein schon
+gemessener Entwurf bewegt sich um eine Zahl**, der Alarm gegen die alte
+Grundlinie ohne Befund. Die 17 neuen — die elf „Parlamentsfälle" und sechs
+Verordnungen — tragen **224 geprüfte Paragraphen** am Tor; die Grundlinie ist
+aus denselben Berichten nachgezogen, ihre 243 alten Einträge unverändert. Über
+den ganzen Korpus liest die Seite jetzt in GP XXVIII die Beilage bei 124 von
+139 Gesetzesentwürfen (die übrigen 15 führen keine), in XXVII bei 290 statt
+227 von 342. Am laufenden Server: 105/ME (42. KFG-Novelle) zeigt 158 Zeilen
+aus dem RIS, wo die Seite zuvor sagte, das RIS führe keine.
 
 **Eine Beilage in mehreren Dokumenten (26.09.2026).** 2 der 240 Sätze mit
 Gegenüberstellung veröffentlichen sie in Teilen:
@@ -5582,11 +5614,19 @@ committee two ways to hear anyone, and they behave in opposite ways:
   RV 313: 98 addressees, median 193). Field and prose agree 8 of 8. On
   ME-derived Vorlagen: **GP XXVIII 2 of 79**, GP XXVII 0. Small, but it is the
   form that fits this product — an invitation, readable without a prose
-  parser. Unanswered: whether those invited statements arrive in list 142 on
-  the Vorlage and would then stand in the same panel as the unsolicited ones,
-  under a sentence that says no committee procedure exists. For the
-  unsolicited ones the sentence is right; beside an Ausschussbegutachtung it
-  would read wrong.
+  parser. **Answered and built on 27.09.2026:** the invited answers do
+  arrive in list 142 on the Vorlage — 313 d.B. (from 19/ME) carries 21
+  Stellungnahmen, every one flagged as an institution, dated 25.11.–03.12.2025,
+  after the committee wrote to 98 bodies on 20.11. Under the panel's sentence
+  they read as unsolicited input no procedure takes up. `readCommitteeConsultation`
+  (`parliament/detailJson.ts`) reads the stage, the endpoint carries it, and
+  the panel now names committee, day and number of bodies written to, and
+  scopes the old sentence to what someone files on their own. A side finding
+  on the same Vorlage: the panel says „18 von Organisationen, 3 von
+  Privatpersonen" although all 21 rows carry the institution flag (column 19)
+  — the classifier files three institutions as persons. The error is on the
+  safe side (a name withheld, none published), but the label is wrong; a
+  change to `privacy.ts` needs its corpus comparison first (§12 Nr. 9).
 
 False positives read by eye and excluded: „Anhörung" and „Sachverständige"
 in the law's own text (the IFG's right to be heard, AVG/StPO experts),
@@ -6254,6 +6294,38 @@ Stichprobe von Hand aufgefallen:
 
 Alle vier verfälschen dasselbe: den *Umfang* der Änderung. Das ist der Grund,
 warum die Rate aus §12.38 nicht vor ihnen auf die Seite gehört.
+
+**Behoben am 27.09.2026, drei von vier:**
+
+- „Vertragstext": `missingStationReason` fragt den Verlauf, und wo eine
+  Vorlage verlinkt ist, nennt der Satz den fehlenden Gesetzestext statt einer
+  fehlenden Vorlage.
+- **Kein gepaarter Artikel, kein Vergleich.** Alle zehn Entwürfe ohne jede
+  Artikelpaarung zeigten jede Einheit als entfallen und jede als neu — nicht
+  einen schwachen Vergleich, sondern keinen (0 geändert, 0 unverändert je
+  Entwurf). `diffLawPackage` meldet das als `unpaired`, und der Vergleich sagt
+  den Grund statt der Einheiten. Darunter 9/ME mit seinen 1.119 „neuen"
+  Einheiten.
+- **Das Gesetz im Titel.** Ein dritter Durchgang in `pairArticles` paart den
+  einen Artikel, dessen Gesetzesname im längeren Titel steht (216/ME:
+  Einkommensteuergesetz im Titel des Teuerungs-Entlastungspakets) — nur bei
+  genau einem Kandidaten und nie für einen Titel, der mehrere Gesetze nennt
+  oder dessen Ziffern neu anfangen. Die erste Fassung ohne diese Wache paarte
+  85/ME, das zwei Gesetze in einem Text führt, mit dem ersten allein; die
+  Seite hätte das zweite „nur in der Regierungsvorlage" genannt. Nebenbei
+  richtig gepaart: das ASVG in XXVI 76/ME, das die Klammer „(89. Novelle zum
+  ASVG)" unter die Schwelle gedrückt hatte.
+- Die Phantompaare der XXVII (67 in 5 Entwürfen) waren alle in Entwürfen ohne
+  Paarung und sind mit ihnen verschwunden; in XXVI bleiben 11 in drei
+  Entwürfen (162/ME: 9).
+
+**Offen:** Wo der Entwurf seine eigene Artikelgliederung nicht lesbar druckt
+(27, 124, 151/ME XXVII; 9/ME XXVI), bleibt es bei der ehrlichen Absage — das
+ist eine Frage an `lawUnits`, nicht an die Paarung. Und derselbe Entwurf
+76/ME zeigt einen älteren Fehler, den der neue Durchgang nur freigelegt hat:
+Der Rückfall auf die **Artikelnummer**, wenn die Titel nicht passen, paart das
+Notarversorgungsgesetz des Entwurfs mit dem GSVG der Vorlage und das BSVG mit
+dem FSVG — die Vorlage hat umnummeriert, und die Nummer ist dann kein Beleg.
 
 
 ### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
@@ -8075,7 +8147,12 @@ Vorblatt, Erläuterungen und Gegenüberstellung zugleich — das ist kein
 Namensproblem, sondern ein anderes Dokument. Die Folge heute: Diese Entwürfe
 zeigen keinen Allgemeinen Teil, weil `getExplanations` nur den RIS-Satz liest.
 Die Regel ist damit ein Bauposten, kein Suchetikett mehr; an ihr hängt über
-`scripts/harness/me.ts` auch die Anlagen-Grundlinie.
+`scripts/harness/me.ts` auch die Anlagen-Grundlinie. **Gebaut 27.09.2026**
+(`explanationsNameRank`, dieselben zwei Ränge wie für die Beilage, §12.13):
+NFC, „EB" nur in Großbuchstaben, „Erl"/„Erläut"/„Erläuternde" als Token,
+„Erledigung" und „Erlass" bleiben draußen. GP XXVIII: 139 von 139
+Gesetzesentwürfen haben ihre Erläuterungen, XXVII 334 von 342; `harness/me.ts`
+liest sie über dieselbe Funktion statt über eine eigene Kopie.
 
 **Das Budget war danach die Grenze, nicht die Zeit.** Mit 16 PDFs je Suche
 fiel die Benennungsquote auf 91,4 % — das Budget ging mitten in der
@@ -8927,6 +9004,12 @@ deutete auf 1–3 von 8 gegen 7 von 8 heute. Beides trägt nicht:
   und reicht damit in XXIII hinein, aber lückenhaft.
 
 Offen bleibt damit nur, welche Umfangszahl — nicht, ob es eine gibt.
+
+**Nach den Vergleichsfehlern (27.09.2026)** steht die Rate, wie sie stand:
+XXVII **274 von 277 (98,9 %)**, XXVI **98 von 101 (97,0 %)**. Neun der zehn
+Entwürfe ohne Artikelpaarung zählen jetzt als nicht vergleichbar statt als
+geändert, der zehnte (216/ME) als echter Vergleich; die Verteilung des Umfangs ist damit
+die, auf der eine Umfangszahl stehen kann.
 
 ## 13. Open questions
 
