@@ -735,3 +735,19 @@ describe('„der Halbsatz ‚…‘" is the noun of a quotation (27.09.2026)', (
     expect(parseAddress('In § 27 Abs. 2 entfällt der nachfolgende Halbsatz')).toBeNull()
   })
 })
+
+describe('a clause that opens with „folgender (Halb)Satz" (27.09.2026)', () => {
+  it('appends to the place handed on, with its sentence', () => {
+    // The replaced mark travels with the append (`mergeEndMarks`): one act, one operation.
+    const ops = parseInstruction('In § 49 Abs. 1a zweiter Satz wird der Punkt durch einen Strichpunkt ersetzt und folgender Halbsatz angefügt:').ops
+    expect(ops).toHaveLength(1)
+    expect(ops[0]).toMatchObject({ kind: 'append', child: 'halbsatz', endMark: { from: '.', to: ';' }, target: { abs: '1a', satz: 'zweiter' } })
+    // „folgender Satz" was refused as a sentence word the parser could not place.
+    expect(parseInstruction('In § 5 Abs. 1 wird der Punkt durch einen Beistrich ersetzt und folgender Satz angefügt:').reason).toBeNull()
+  })
+
+  it('reads „am Ende des Satzes" as the end of the unit, not as a sentence', () => {
+    expect(parseInstruction('In § 19 Abs. 1 wird der Punkt am Ende des Satzes durch einen Beistrich ersetzt und danach folgender Halbsatz angefügt:').ops[0]).toMatchObject({ endMark: { from: '.', to: ',' }, target: { satz: null } })
+    expect(parseInstruction('In § 19 Abs. 1 wird der Punkt am Ende des Satzes durch einen Beistrich ersetzt.').ops[0]).toMatchObject({ kind: 'replacePhrase', atEnd: true, target: { satz: null } })
+  })
+})

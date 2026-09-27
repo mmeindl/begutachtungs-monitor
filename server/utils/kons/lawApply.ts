@@ -1238,9 +1238,29 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (payload.length === 0) return 'Anfügung ohne Text'
       // A Satz is not a node: it joins the target's own text. Common enough
       // that refusing it cost a fifth of the appends in the harness.
-      if (op.child === 'satz') {
+      if (op.child === 'satz' || op.child === 'halbsatz') {
         const added = payload.map((p) => plainText(p)).join(' ').trim()
         if (!added) return 'Anfügung ohne Text'
+        // Behind the sentence the clause before named, where it named one —
+        // the mark it replaced ends that sentence (`novao.ts`, payload-only
+        // clauses) — and with that mark replaced in the same step
+        // (`mergeEndMarks`): read once, before either change moves it.
+        if (op.target.satz || op.endMark) {
+          const slot = op.target.satz ? sentenceSlot(host, op.target.satz, op.target.satzCount) : lastTextSlot(bodyOf(host))
+          if (!slot) return op.target.satz ? `Satz ${op.target.satz} nicht auffindbar` : 'Ende der Einheit nicht auffindbar'
+          let text = slot.read().trimEnd()
+          if (op.endMark) {
+            if (!text.endsWith(op.endMark.from)) return `Satzzeichen „${op.endMark.from}" steht nicht am Ende`
+            text = joinPhrase(text.slice(0, -op.endMark.from.length), op.endMark.to, '')
+          }
+          // A new sentence of a unit named without one goes behind its list
+          // as a Schlussteil, below; the mark in front of it is replaced here.
+          if (!op.target.satz && op.child === 'satz' && host.children.length) slot.write(text)
+          else {
+            slot.write(`${text} ${added}`.replace(/\s+/g, ' ').trim())
+            return null
+          }
+        }
         // „Dem § 8 wird folgender Satz angefügt": into the § 's one Absatz,
         // not as a Schlussteil beside it.
         host = bodyOf(host)
@@ -1322,6 +1342,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'replacePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
       if ('error' in units) return units.error
+      if (op.atEnd) return replaceEndMark(units, op.from, op.to)
       if (op.everywhere) {
         let hits = 0
         for (const slot of units.flat()) {
@@ -1406,6 +1427,30 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       return null
     }
   }
+}
+
+/** The last text of a unit in reading order — where its last sentence ends. */
+function lastTextSlot(node: LawNode): Slot | null {
+  const last = [...lawTextNodes(node)].reverse().find((n) => n.text.trim() !== '')
+  return last ? textSlot(last) : null
+}
+
+/**
+ * Replace the mark each unit's text ends on — only where it IS its last
+ * character; a unit that ends otherwise disagrees with the draft.
+ */
+function replaceEndMark(units: readonly (readonly Slot[])[], from: string, to: string): string | null {
+  const ends: Slot[] = []
+  for (const slots of units) {
+    const last = [...slots].reverse().find((sl) => sl.read().trim() !== '')
+    if (!last || !last.read().trimEnd().endsWith(from)) return `Satzzeichen „${from}" steht nicht am Ende`
+    ends.push(last)
+  }
+  for (const slot of ends) {
+    const text = slot.read().trimEnd()
+    slot.write(joinPhrase(text.slice(0, -from.length), to, ''))
+  }
+  return null
 }
 
 /**

@@ -565,7 +565,9 @@ export function parseAddress(text: string, inherited?: NovaoAddress | null): Nov
   // „der Halbsatz ‚…'" is the noun of the quotation behind it, like „die
   // Wortfolge" — not a place. Read as a sentence word it refused the whole
   // address (Zahnärztegesetz §§ 19, 22, 27.09.2026).
-  const sentence = parseSatz(t.replace(HALBSATZ_NOUN_RE, ' '))
+  // „am Ende des Satzes" locates a mark (`atEnd`), it names no sentence —
+  // LFG § 19 Abs. 1 has three, and the end meant is the Absatz's.
+  const sentence = parseSatz(t.replace(HALBSATZ_NOUN_RE, ' ').replace(/\bam\s+Ende\s+des\s+Satzes\b/gi, ' am Ende '))
   // A sentence word the parser cannot place widens the target to the whole
   // unit if it is ignored — the over-deletion this module exists to prevent.
   if (sentence && sentence.satz === null && sentence.halbsatz === null) return null
@@ -817,7 +819,7 @@ export function addressKey(a: NovaoAddress): string {
 // ---------------------------------------------------------------------------
 
 /** What kind of child an insert/append instruction creates. */
-export type ChildLevel = 'para' | 'abs' | 'z' | 'lit' | 'satz' | 'unknown'
+export type ChildLevel = 'para' | 'abs' | 'z' | 'lit' | 'satz' | 'halbsatz' | 'unknown'
 
 export type NovaoOp =
   /**
@@ -829,7 +831,18 @@ export type NovaoOp =
   /** "Die Überschrift zu § 5 lautet:" */
   | { kind: 'replaceHeading'; target: NovaoAddress }
   /** "Dem § 5 wird folgender Abs. 4 angefügt:" — appended as the last child */
-  | { kind: 'append'; target: NovaoAddress; child: ChildLevel; childIds: string[] }
+  | {
+    kind: 'append'
+    target: NovaoAddress
+    child: ChildLevel
+    childIds: string[]
+    /**
+     * „wird der Punkt am Ende durch einen Beistrich ersetzt und folgender
+     * Halbsatz angefügt": the mark the new text is joined behind, replaced in
+     * the same step (`mergeEndMarks`).
+     */
+    endMark?: { from: string; to: string }
+  }
   /** "Nach § 5 wird folgender § 5a eingefügt:" — inserted behind the anchor */
   | { kind: 'insertAfter'; anchor: NovaoAddress; child: ChildLevel; childIds: string[]; where: 'after' | 'before' }
   /** "§ 5 Abs. 3 entfällt." */
@@ -843,7 +856,17 @@ export type NovaoOp =
    * „jeweils", and which one applies is decided by whether the address names
    * one place or several (`everyOccurrence`).
    */
-  | { kind: 'replacePhrase'; target: NovaoAddress; from: string; to: string; everywhere: boolean; eachUnit: boolean; wordBound: boolean }
+  | {
+    kind: 'replacePhrase'
+    target: NovaoAddress
+    from: string
+    to: string
+    everywhere: boolean
+    eachUnit: boolean
+    wordBound: boolean
+    /** „der Punkt am Ende … durch einen Beistrich": the mark that ends the unit's text, not any occurrence of it. */
+    atEnd?: boolean
+  }
   /** "In § 5 Abs. 1 wird nach der Wortfolge X die Wortfolge Y eingefügt." */
   | {
     kind: 'insertPhrase'
@@ -1012,6 +1035,7 @@ const CHILD_BY_WORD: readonly (readonly [RegExp, ChildLevel])[] = [
   [/\bAbs(atz|ätze)?\.?\s*\d|\bAbsätze\b|\bAbsatz\b/i, 'abs'],
   [/\bZ(?:iffern?)?\.?\s*\d/i, 'z'],
   [/\blit(era)?\.?\s*[a-z]\b/i, 'lit'],
+  [/\bHalbs(?:atz|ätze)\b/i, 'halbsatz'],
   [/\bSätze\b|\bSatz\b/i, 'satz'],
   [/§|\bParagraf|\bArt(\.|ikel)|\bAnlage\b/i, 'para'],
 ]
@@ -1108,6 +1132,10 @@ export function splitCompound(line: string): string[] {
 const PUNCT_WORD: Record<string, string> = { punkt: '.', strichpunkt: ';', beistrich: ',', doppelpunkt: ':', gedankenstrich: '–' }
 /** „vor dem Punkt am Ende", „nach dem Strichpunkt am Ende": the mark that closes the unit, as an anchor. */
 const END_MARK_RE = /\b(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt)\s+am\s+Ende\b/i
+/** The verbs of an append. */
+const APPEND_VERB_RE = /\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i
+/** „… ersetzt und (danach) folgender (Halb)Satz angefügt", „…; folgender Satz wird angefügt". */
+const APPENDS_SENTENCE_RE = /\bersetzt\b[^"]*?(?:\bund\b|\bsowie\b|;)\s*(?:danach\s+)?(?:wird\s+)?folgende[rn]?\s+(?:Halbs(?:atz|ätze)|S(?:atz|ätze))\b/i
 const PUNCT_REPLACE_RE = /\bde[rn]\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b[^"]*?\bdurch\s+(?:einen|ein|das|die|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b/i
 /** The same five characters where only ONE of the two operands is named. */
 const PUNCT_NAMED_RE = /\b(?:de[rn]|das|die|einen?|eine)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)\b/i
@@ -1245,7 +1273,14 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   if (/^(Im |Das |Die |In dem )?Inhaltsverzeichnis/i.test(head)) return ok({ kind: 'toc' })
 
   const { scope, payload } = splitPayloadScope(head)
-  const targets = parseAddressList(scope || head, inherited)
+  // „…; folgender Satz wird angefügt", „… und danach folgender Halbsatz
+  // angefügt": a clause that opens with its payload names no place of its
+  // own — the place is the one handed on. Its head is the payload's
+  // announcement, and read as an address it gave „Z 5" out of „folgende
+  // Z 5" (see `appendHost`) or refused „folgender Satz" as a sentence word it
+  // could not place (7 draft lines, 27.09.2026).
+  const payloadOnly = scope.replace(/\b(?:danach|dann|sodann|ferner|weiters)\b/gi, '').trim() === '' && payload !== '' && !!inherited && APPEND_VERB_RE.test(head)
+  const targets = payloadOnly ? [inherited!] : parseAddressList(scope || head, inherited)
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
     // two Strich forms are perfectly readable addresses that this model has no
@@ -1293,11 +1328,18 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // phrase deletion, not the deletion of Abs. 1.
   const punct = PUNCT_REPLACE_RE.exec(head)
   if (punct) {
+    // „der Punkt am Ende …", or a mark whose line appends a sentence behind
+    // it: the mark the unit ends on. Asked for as a unique occurrence, a
+    // Punkt was refused in every sentence that carries an abbreviation — RAO
+    // § 49 Abs. 1a „zweiter Satz wird der Punkt durch einen Strichpunkt ersetzt
+    // und folgender Halbsatz angefügt" has „31. Dezember" in it (27.09.2026).
+    const atEnd = /\bam\s+Ende\b/i.test(maskQuotes(head)) || APPENDS_SENTENCE_RE.test(maskQuotes(whole))
     return ok({
       kind: 'replacePhrase',
       target,
       from: PUNCT_WORD[punct[1]!.toLowerCase()]!,
       to: PUNCT_WORD[punct[2]!.toLowerCase()]!,
+      ...(atEnd ? { atEnd: true } : {}),
       everywhere: false,
       // „In § 27a Abs. 2 und § 27b Abs. 2 wird in Z 16 jeweils das Wort
       // „sowie" durch einen Beistrich ersetzt" — the punctuation form carries
@@ -1463,7 +1505,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     return ok({ kind: 'insertAfter', anchor: target, child, childIds: childIds(payload, child), where: before ? 'before' : 'after' })
   }
 
-  if (/\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i.test(head)) {
+  if (APPEND_VERB_RE.test(head)) {
     const child = childLevel(payload || whole)
     // "Nach § 408a wird folgender § 408b samt Überschrift angefügt": a new §
     // behind the named one, not a child of it. As an append it was pushed
@@ -1480,10 +1522,20 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // exist yet, and the append was refused as „Nicht im geltenden Text".
     // The Prüfstand filed those under „die Fassung ist älter, als der Entwurf
     // annimmt" — 21 of its 48 lines there were this (26.09.2026).
-    if (scope.trim() === '' && inherited && (child === 'abs' || child === 'z' || child === 'lit')) {
-      const host = appendHost(inherited, child)
+    if (payloadOnly && (child === 'abs' || child === 'z' || child === 'lit')) {
+      const host = appendHost(inherited!, child)
       if (!host) return fail(`Anfügung ${child === 'abs' ? 'eines Absatzes' : child === 'z' ? 'einer Ziffer' : 'einer Litera'} — Einheit davor nicht eindeutig`)
       return ok({ kind: 'append', target: host, child, childIds: childIds(payload, child) })
+    }
+    // A sentence or a Halbsatz goes where the clause before it left off —
+    // behind the mark it has just replaced, at the end of the sentence it
+    // names: „In § 57 Abs. 2 erster Satz wird am Ende der Punkt durch einen
+    // Beistrich ersetzt und folgender Halbsatz angefügt". Here, and only
+    // here, the sentence is handed on: in any other clause it is as often
+    // the anchor as the place (`parseAddress`).
+    if (payloadOnly && (child === 'satz' || child === 'halbsatz')) {
+      if (inherited!.siblings.length > 0) return fail(`Anfügung ${child === 'satz' ? 'eines Satzes' : 'eines Halbsatzes'} — Einheit davor nicht eindeutig`)
+      return ok({ kind: 'append', target: { ...inherited!, heading: false, alsoHeading: false }, child, childIds: [] })
     }
     // "§ 3 Abs. 1 und § 4 Abs. 1 wird jeweils folgender Satz angefügt" names
     // two places; appending to the first alone reported success on a law
@@ -1643,7 +1695,28 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
     }
   }
   if (ops.length === 0) return { ops: [], reason: reasons[0] ?? 'kein bekanntes Verb', line }
-  return { ops, reason: reasons.length ? `Teil nicht gelesen: ${reasons[0]}` : null, line }
+  return { ops: mergeEndMarks(ops), reason: reasons.length ? `Teil nicht gelesen: ${reasons[0]}` : null, line }
+}
+
+/**
+ * „In § 57 Abs. 2 erster Satz wird am Ende der Punkt durch einen Beistrich
+ * ersetzt und folgender Halbsatz angefügt" is one act, and as two operations
+ * the first undid what the second needs: with its Punkt a comma, the first
+ * sentence ran into the second, and the Halbsatz was joined behind both
+ * (27.09.2026). So the replacement of the closing mark travels with the
+ * append behind it, and the engine does both at once — or neither.
+ */
+function mergeEndMarks(ops: readonly NovaoOp[]): NovaoOp[] {
+  const out: NovaoOp[] = []
+  for (const op of ops) {
+    const before = out.at(-1)
+    if (op.kind === 'append' && (op.child === 'satz' || op.child === 'halbsatz') && before?.kind === 'replacePhrase' && before.atEnd && addressKey(before.target) === addressKey(op.target)) {
+      out[out.length - 1] = { ...op, endMark: { from: before.from, to: before.to } }
+      continue
+    }
+    out.push(op)
+  }
+  return out
 }
 
 /**

@@ -1179,3 +1179,27 @@ describe('a Halbsatz is where the new text says it ends (27.09.2026)', () => {
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Behörde kann vom Halter Auskünfte darüber verlangen, wer das Luftfahrzeug verwendet hat. Diese Angaben sind zu erteilen.')
   })
 })
+
+describe('a Halbsatz or a sentence appended behind the mark it replaces (27.09.2026)', () => {
+  it('replaces the mark the unit ends on and joins the Halbsatz there', () => {
+    // LFG § 19 Abs. 1: „der Punkt am Ende des Satzes" in an Absatz of two sentences.
+    const l: StandingLaw = { paragraphs: [para('19', 'F', ['Die Beurkundung gilt nicht mehr. Die Urkunden sind zurückzugeben.'])] }
+    const { law: out, results } = run(l, instr('In § 19 Abs. 1 wird der Punkt am Ende des Satzes durch einen Beistrich ersetzt und danach folgender Halbsatz angefügt:', ['außer der Status kann abgefragt werden.']))
+    // One step: the mark and the text behind it (`mergeEndMarks`).
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Beurkundung gilt nicht mehr. Die Urkunden sind zurückzugeben, außer der Status kann abgefragt werden.')
+  })
+
+  it('writes into the sentence the line names, not at the end of the Absatz', () => {
+    // § 57 Abs. 2 erster Satz; the first sentence carries „31. Dezember", so its Punkt is not unique.
+    const l: StandingLaw = { paragraphs: [para('57', 'F', ['Der Beitrag ist bis 31. Dezember zu leisten. Er ist zu melden.'])] }
+    const { law: out, results } = run(l, instr('In § 57 Abs. 1 erster Satz wird am Ende der Punkt durch einen Beistrich ersetzt und folgender Halbsatz angefügt:', ['wobei der Tag der Zahlung zählt.']))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Der Beitrag ist bis 31. Dezember zu leisten, wobei der Tag der Zahlung zählt. Er ist zu melden.')
+  })
+
+  it('refuses where the unit does not end on the mark to be replaced', () => {
+    const l: StandingLaw = { paragraphs: [para('19', 'F', ['Die Urkunden sind zurückzugeben:'])] }
+    expect(run(l, instr('In § 19 Abs. 1 wird der Punkt am Ende durch einen Beistrich ersetzt.')).results[0]!.applied).toBe(false)
+  })
+})
