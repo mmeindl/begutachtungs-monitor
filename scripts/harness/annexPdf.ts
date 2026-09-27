@@ -46,7 +46,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import type { AnnexReport } from '../lib/annexReport'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
-import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { asArray, pickTextComparisons } from '../lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
@@ -215,7 +215,7 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // path applies (`ris/risRecord.ts`, `annex/annexSource.ts`). 2 of the 240
   // records with a Gegenüberstellung publish it in parts, and a harness that
   // read only the first would measure a decision the site does not make.
-  const parts = contents.filter((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
+  const parts = pickTextComparisons(contents, (c) => String(c?.Name ?? ''))
   const annex = parts[0]
   if (!annex) return null
   const urlOf = (ref: any, type: string): string | null => asArray<any>(ref?.Urls?.ContentUrl).find((u) => u?.DataType === type)?.Url ?? null

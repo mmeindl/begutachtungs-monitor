@@ -60,7 +60,7 @@ import { oracleVerdict, paragraphRows, rowsByParagraph, stripMarkers, type Oracl
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
-import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { asArray, pickTextComparisons } from '../lib/ris'
 import { anlageLabelKey, bareParaId, isSchedule } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
@@ -465,7 +465,7 @@ async function loadOracle(gesetzesnummer: string, bgblNumber: string, kundmachun
   if (candidates.length === 0) return { note: `kein RIS-Begut-Datensatz zu ${me.zitation ?? me.inr}` }
   const record = candidates[0]!.ref
   // 4. The annex.
-  const annex = asArray<any>(record?.Data?.Dokumentliste?.ContentReference).find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '').trim()))
+  const annex = pickTextComparisons(asArray<any>(record?.Data?.Dokumentliste?.ContentReference), (c) => String(c?.Name ?? ''))[0]
   const xmlUrl = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
   if (!annex) return { note: 'Entwurf ohne Textgegenüberstellung' }
   if (!xmlUrl) return { note: 'Textgegenüberstellung nur als PDF' }

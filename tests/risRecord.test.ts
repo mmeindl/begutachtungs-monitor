@@ -140,14 +140,43 @@ describe('flattenRisRecord', () => {
     }
   })
 
-  it('takes the underscore as the separator, not „anything before TGÜ"', () => {
-    // The looseness is bounded by what the corpus prints. A name that merely
-    // ends in the letters is not an annex, and a record's other documents
-    // must not be swallowed into the one field the engine reads.
-    for (const name of ['AnhangTGÜ', 'Beilage TGÜ-Vergleich', 'WFA']) {
+  it('reads the abbreviation anywhere in the name, but not inside a word (27.09.2026)', () => {
+    // Measured over the whole RIS corpus: 11 of 139 GP-XXVIII Gesetzesentwürfe
+    // carried the Gegenüberstellung under names the anchored rule missed —
+    // every one of the drafts counted as „nur beim Parlament" (§12.13).
+    for (const name of ['TGÜ Anpassung QJF-G', '42. KFG-Nov.TGÜ.11.05.2026', 'IFG-TGÜ (2025-05-07)', 'BBG 2027-2028, BMFWF, TGÜ', 'TxtGGÜ', 'UbG-IPG-Nov TextGG', 'CBDF_TGUe_201008', 'Beilage TGÜ-Vergleich']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: name }]))!
+      expect(flat.textComparison?.xml, name).toBe('https://ogd.ris.bka.gv.at/t.xml')
+    }
+    // A letter on either side keeps a name out, and so does a bundle: a
+    // document with Vorblatt, Erläuterungen and Gegenüberstellung in one is a
+    // different document, not a differently named one.
+    for (const name of ['AnhangTGÜ', 'WFA', 'Vbl.Erl.TxtGGÜ.14.FSG.Nov', 'KFG-Änd. Vorblatt Erl TxTGGÜ']) {
       const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: name }]))!
       expect(flat.textComparison, name).toBeNull()
     }
+  })
+
+  it('compares names in NFC — a decomposed „ä" looks the same and matched nothing', () => {
+    const flat = flattenRisRecord(
+      record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/e.xml'), Name: 'Erla\u0308uterungen' }]),
+    )!
+    expect(flat.explanations?.xml).toBe('https://ogd.ris.bka.gv.at/e.xml')
+  })
+
+  it('widens strictly: where the old rule matched, the same documents are read as before', () => {
+    // Two records (2014, 2016) list „TGÜ_Anhänge" beside a „Textgegenüberstellung";
+    // a single widened pattern would have given them a second part.
+    const flat = flattenRisRecord(
+      record([
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/anh.xml'), Name: 'TGÜ_Anhänge' },
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: 'Textgegenüberstellung' },
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/erl.xml'), Name: 'Erl_Beg' },
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/e.xml'), Name: 'Erläuterungen' },
+      ]),
+    )!
+    expect(flat.textComparisonParts.map((u) => u.xml)).toEqual(['https://ogd.ris.bka.gv.at/t.xml'])
+    expect(flat.explanations?.xml).toBe('https://ogd.ris.bka.gv.at/e.xml')
   })
 
   it('sammelt alles Übrige, was der Satz an Text führt', () => {
@@ -167,21 +196,19 @@ describe('flattenRisRecord', () => {
     expect(flat.otherDocuments[0]!.urls.pdf).toBe('https://ogd.ris.bka.gv.at/wfa.pdf')
   })
 
-  it('nimmt die Erläuterungen mit, die unsere Namensregeln verfehlen', () => {
-    // The remaining half of the known gap (§12.31). „SAG_TGÜ" left this list
-    // on 26.09.2026 — the annex engine reads it now, so it has a field of its
-    // own and must not stand here a second time. „EB" is still only the
-    // ressort's abbreviation for the Erläuterungen, and the search reads it
-    // as a further document rather than the engine guessing at it.
-    const flat = flattenRisRecord(
-      record([
-        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: 'SAG_TGÜ' },
-        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/eb.xml'), Name: 'Entwurf EB Klimagesetz' },
-      ]),
-    )!
-    expect(flat.textComparison?.xml).toBe('https://ogd.ris.bka.gv.at/t.xml')
-    expect(flat.explanations).toBeNull()
-    expect(flat.otherDocuments.map((d) => d.name)).toEqual(['Entwurf EB Klimagesetz'])
+  it('liest die Erläuterungen unter der Abkürzung des Ressorts (27.09.2026)', () => {
+    // „EB" is not one form but three with „Erl" and the decomposed „ä" (§12.31):
+    // 6 of 139 GP-XXVIII Gesetzesentwürfe showed no Allgemeiner Teil for it.
+    for (const name of ['Entwurf EB Klimagesetz', 'SVÄG_2024_EB_19.04.2024', 'EBs_TAMG_final', '42. KFG-Nov. Erl. 11.05.2026', 'Pol-W-G Erl', 'Erläuternde Bemerkungen', 'Mobilpaket  Erläut', 'begerl']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/eb.xml'), Name: name }]))!
+      expect(flat.explanations?.xml, name).toBe('https://ogd.ris.bka.gv.at/eb.xml')
+      expect(flat.otherDocuments, name).toEqual([])
+    }
+    // „EB" only in capitals; „Erledigung" and „Erlass" are other words.
+    for (const name of ['Erledigung (Einladung zur Begutachtung)', 'Erlass-VO-561_Entwurf', 'Webinar eb', 'WFA']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/x.xml'), Name: name }]))!
+      expect(flat.explanations, name).toBeNull()
+    }
   })
 
   it('zählt ein eingebettetes Bild nicht als Dokument', () => {

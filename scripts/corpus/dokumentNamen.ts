@@ -18,9 +18,11 @@
  *     „42. KFG-Nov.TGÜ.11.05.2026", „IFG-TGÜ (2025-05-07)". The shipped rule
  *     anchors the abbreviation at the end or after an underscore.
  *
- * The widened patterns below are the PROBE, not a proposal for the shipped
- * rule: they are loose on purpose, to show what exists. The shipped rule is
- * what the site sees, and that is the first column.
+ * **Built on 27.09.2026** (`textComparisonNameRank`, `explanationsNameRank`
+ * in `risRecord.ts`). The first column is the shipped rule, read from
+ * `flattenRisRecord`; the probe columns after it show what the shipped rule
+ * STILL misses — before that date they measured the gap, now the remainder.
+ * The probes are loose on purpose, to show what exists.
  *
  *     pnpm corpus:dokument-namen                 # all periods
  *     pnpm corpus:dokument-namen -- --list XXVIII  # plus every miss of one GP
@@ -47,7 +49,7 @@ const PERIODS: readonly [gp: string, from: string, to: string][] = [
   ['XXVIII', '2024-10-24', '9999-12-31'],
 ]
 
-/** The shipped rules, copied for the NFC column only — the first column reads `flattenRisRecord`'s own answer. */
+/** The rules before 27.09.2026, for the NFC column only — the first column reads `flattenRisRecord`'s own answer. */
 const SHIPPED_ERL = /erl(ä|ae|a)uterung/i
 const SHIPPED_TGU = /gegen.?über|(^|_)TG(Ü|G|UE)$/i
 

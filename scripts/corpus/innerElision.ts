@@ -37,7 +37,7 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
-import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { asArray, pickTextComparisons } from '../lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 const SCRIPT = 'corpus/innerElision'
@@ -110,7 +110,7 @@ for (const doc of docs.slice(0, limit)) {
   const beginn: string | null = begut?.BeginnBegutachtungsfrist ?? null
   const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
   const main = contents.find((c) => c?.ContentType === 'MainDocument')
-  const annex = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
+  const annex = pickTextComparisons(contents, (c) => String(c?.Name ?? ''))[0]
   if (!annex || !beginn) continue
   try {
     const annexXml = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null

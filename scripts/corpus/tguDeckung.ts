@@ -52,12 +52,14 @@
  * Nothing expires — delete the directory to read the corpus again. Per-ME rows
  * go to `<out>/<GP>-rows.json` (default `.cache/tgu-deckung/`).
  *
- * The name rule is `ANNEX_NAME_RE` from `scripts/lib/ris.ts`, which is a copy:
- * the Parliament-side rule in `server/utils/annex/annexSource.ts` is not
- * exported and that module is not importable here (it pulls in the Nitro
- * cache through `parliament/drafts.ts`). So the run first reads both shipped
- * literals out of their source files and refuses to start if either differs
- * from the copy — a measurement with a drifted rule measures itself.
+ * The name rule is the shipped one, imported (`pickTextComparisons` from
+ * `server/utils/ris/risRecord.ts`, which the Parliament side imports too).
+ * Until 27.09.2026 it stood as three literals and this run compared them
+ * before starting; with one rule there is nothing left to compare.
+ *
+ * `ris-begut.json` holds the corpus FLATTENED, i.e. with the name rule of the
+ * day it was written. Delete it after any change to `risRecord.ts`, or the
+ * RIS columns measure the old rule.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -68,7 +70,7 @@ import { isScanned } from '../../server/utils/annex/tableCells'
 import { hasDocument, type RisBegutFlat, type RisDocumentUrls } from '../../server/utils/ris/risRecord'
 import { meTextTitleRank } from '../../shared/utils/lawStations'
 import { GP_STARTS } from '../../shared/utils/gp'
-import { ANNEX_NAME_RE } from '../lib/ris'
+import { pickTextComparisons, textComparisonNameRank } from '../lib/ris'
 import { fetchRisBegutCorpus, type RisCorpus } from '../lib/corpus'
 import { argFlag, argPair } from '../lib/args'
 import { PARLIAMENT as BASE, getJson, getText, scriptUserAgent } from '../lib/http'
@@ -91,16 +93,6 @@ for (const gp of gps) {
   }
 }
 mkdirSync(outDir, { recursive: true })
-
-// --- the rule is the shipped one, or the run does not start -----------------
-for (const file of ['server/utils/annex/annexSource.ts', 'server/utils/ris/risRecord.ts']) {
-  const src = readFileSync(file, 'utf8')
-  const m = /const (?:ANNEX_NAME_RE|TEXT_COMPARISON_NAME) = (\/.+\/[a-z]*)\s*$/m.exec(src)
-  if (!m || m[1] !== String(ANNEX_NAME_RE)) {
-    console.error(`Name rule drifted: ${file} has ${m?.[1] ?? '(none found)'}, scripts/lib/ris.ts has ${String(ANNEX_NAME_RE)}`)
-    process.exit(1)
-  }
-}
 
 /** Three attempts on a 5xx or a dropped connection; a 4xx is the answer and is not retried. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -255,7 +247,7 @@ const risById = new Map(corpus.records.map((r) => [r.id, r]))
 const dated = corpus.records.map((r) => r.beginn).filter((d): d is string => Boolean(d)).sort()
 console.log(`RIS Begut: ${corpus.records.length} Records gelesen, API meldet ${corpus.hits}; ` +
   `frühester Beginn ${dated[0] ?? '–'}, ohne Beginn ${corpus.records.length - dated.length}`)
-console.log(`Join ruleVersion ${RULE_VERSION}, Namensregel ${String(ANNEX_NAME_RE)}${probe ? ', mit Inhaltsprobe' : ''}`)
+console.log(`Join ruleVersion ${RULE_VERSION}, Namensregel textComparisonNameRank (risRecord.ts)${probe ? ', mit Inhaltsprobe' : ''}`)
 
 interface Row {
   inr: number
@@ -320,7 +312,7 @@ for (const gp of gps) {
       const content = (detail as any)?.content ?? {}
       const documents = mapDocuments(content.documents as RawDocumentGroup[] | null)
       // The shipped Parliament-side lookup (`annex/annexSource.ts` parliamentAnnex).
-      const group = documents.find((d) => ANNEX_NAME_RE.test(d.title.trim()))
+      const group = pickTextComparisons(documents, (d) => d.title)[0]
       const meUrls = new Set(documents.flatMap((d) => d.formats.map((f) => f.url)))
       const rvHtml = mapTextEvolution(content.statements?.documents, meUrls).some((v) => v.station === RV_STATION && v.url.endsWith('.html'))
       const meText = documents.filter((d) => meTextTitleRank(d.title) >= 0).sort((a, b) => meTextTitleRank(a.title) - meTextTitleRank(b.title))[0]
@@ -335,7 +327,7 @@ for (const gp of gps) {
         parlTguWide: Boolean(group) || documents.some((d) => wide(d.title)),
         meTextHtml: Boolean(meText?.formats.some((f) => f.type === 'html')),
         rvHtml,
-        looseTitles: documents.map((d) => d.title.trim()).filter((t) => !ANNEX_NAME_RE.test(t) && LOOSE_ANNEX.test(t)),
+        looseTitles: documents.map((d) => d.title.trim()).filter((t) => textComparisonNameRank(t) === 0 && LOOSE_ANNEX.test(t)),
       }
     } catch (err) {
       return { ...base, parl: { tgu: false, html: false, pdf: false, titles: [] }, parlTguWide: false, meTextHtml: false, rvHtml: false, looseTitles: [], error: String(err) }
@@ -461,7 +453,7 @@ for (const gp of gps) {
   console.log(`  [Diagnose] RIS 'gesetz' ohne TGÜ: sonstige Dokumente (häufigste 6): ` +
     [...risOther].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, n]) => `${JSON.stringify(t)} ${n}`).join(', '))
   const tguParl = new Map<string, number>()
-  for (const r of parl) for (const t of r.parl.titles.filter((x) => ANNEX_NAME_RE.test(x))) tguParl.set(t, (tguParl.get(t) ?? 0) + 1)
+  for (const r of parl) for (const t of r.parl.titles.filter((x) => textComparisonNameRank(x) > 0)) tguParl.set(t, (tguParl.get(t) ?? 0) + 1)
   console.log(`  [Diagnose] Titel, die die Regel beim Parlament als TGÜ liest (häufigste 5): ` +
     [...tguParl].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([t, n]) => `${JSON.stringify(t)} ${n}`).join(', '))
 

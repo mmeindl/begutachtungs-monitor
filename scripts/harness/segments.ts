@@ -66,7 +66,7 @@ import { argAssigned, argFlag } from '../lib/args'
 import { pool } from '../lib/async'
 import { installFetchCache } from '../lib/harnessCache'
 import { getText } from '../lib/http'
-import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { asArray, pickTextComparisons } from '../lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
@@ -243,7 +243,7 @@ function annexCandidates(): { id: string; cite: string; annexUrl: string; xml: s
       const id = String(meta?.Technisch?.ID ?? '')
       const xml = join(NOVAO_DIR, 'xml', `${id}.xml`)
       if (!id || !existsSync(xml)) continue
-      const annex = asArray<any>(ref?.Data?.Dokumentliste?.ContentReference).find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
+      const annex = pickTextComparisons(asArray<any>(ref?.Data?.Dokumentliste?.ContentReference), (c) => String(c?.Name ?? ''))[0]
       const url = asArray<any>(annex?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url
       if (!url) continue
       out.push({ id, cite: String(meta?.Bundesrecht?.Kurztitel ?? id).slice(0, 34), annexUrl: String(url), xml })

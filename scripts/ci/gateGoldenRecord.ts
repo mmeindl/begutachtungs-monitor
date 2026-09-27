@@ -41,7 +41,7 @@ import { compactLaw, resolveKey, standingKey, type RecordedLaw } from '../lib/ga
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
-import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { asArray, pickTextComparisons } from '../lib/ris'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
@@ -84,7 +84,7 @@ if (!asOf) {
 
 const contents = asArray<any>(doc?.Data?.Dokumentliste?.ContentReference)
 const mainRef = contents.find((c) => c?.ContentType === 'MainDocument')
-const annexRef = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '')))
+const annexRef = pickTextComparisons(contents, (c) => String(c?.Name ?? ''))[0]
 const urlOf = (ref: any, type: 'Xml' | 'Pdf'): string | null => asArray<any>(ref?.Urls?.ContentUrl).find((u) => u?.DataType === type)?.Url ?? null
 
 const draftUrl = urlOf(mainRef, 'Xml')

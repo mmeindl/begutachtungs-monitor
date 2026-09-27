@@ -4,8 +4,11 @@
  *
  * **"Not in RIS" is not "does not exist" (2026-09-10).** Parliament publishes
  * the annex too, on the ME's own document list, and for 11 of the 130 matched
- * GP-XXVIII drafts it is there while the RIS record has none — 8 of them with
- * an HTML version. Saying „keine Textgegenüberstellung" about a draft that
+ * GP-XXVIII drafts it was there while the RIS record seemed to have none — 8
+ * of them with an HTML version. **Measured again 27.09.2026: all eleven are
+ * in RIS**, under names the anchored rule did not read („TGÜ Anpassung
+ * QJF-G", „IFG-TGÜ (…)"); since `textComparisonNameRank` reads them, not one
+ * GP-XXVIII draft is a Parliament-only case (docs/architecture.md §12.13). Saying „keine Textgegenüberstellung" about a draft that
  * has one, on a page whose whole claim is that it traces documents, is the
  * worst kind of wrong answer here. So the Parliament copy is always
  * **linked**. Whether its content is also **read** is `READ_PARLIAMENT_COPY`
@@ -29,24 +32,11 @@ import type { TraceLink } from '#shared/types'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { mapDocuments } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
-import type { RisDocumentUrls } from '../ris/risRecord'
+import { pickTextComparisons, type RisDocumentUrls } from '../ris/risRecord'
 import { fetchDocument } from '../upstream/fetchDocument'
 import { annexFromPdf } from './annexPdfService'
 import { parseTextComparison, type ComparisonParse } from './comparisonRows'
 import { isScanned } from './tableCells'
-
-/**
- * The same loose match `ris/begutCorpus.ts` uses on the RIS side: ressorts write
- * "Textgegenüberstellung", "TGÜ", "TGG" and a misspelt
- * "Textgegenbüberstellung" (docs/api-exploration.md §2c). Over GP XXVIII
- * every one of the 121 Parliament document groups it matches is titled
- * "Textgegenüberstellung" exactly, so the looseness costs nothing here and
- * keeps the two sides reading the same vocabulary. The prefixed abbreviation
- * („SAG_TGÜ") was added on 26.09.2026 for the same reason: it changes nothing
- * on this side of the corpus, and two vocabularies that drift apart are the
- * expensive kind of difference.
- */
-const ANNEX_NAME_RE = /gegen.?über|(^|_)TG(Ü|G|UE)$/i
 
 /**
  * The credit line at the foot of the section, one per copy that can be read.
@@ -70,7 +60,10 @@ export const PARLIAMENT_CREDIT = 'Quelle (Dokument des Ressorts, veröffentlicht
  */
 export async function parliamentAnnex(gp: string, inr: number): Promise<{ pdf: TraceLink | null; html: TraceLink | null }> {
   const detail = await getGegenstand(gp, 'ME', inr)
-  const group = mapDocuments(detail.content?.documents).find((d) => ANNEX_NAME_RE.test(d.title.trim()))
+  // The RIS side's rule, imported: over GP XXVIII every group it matches is
+  // titled „Textgegenüberstellung" exactly, so it costs nothing here, and two
+  // vocabularies that drift apart are the expensive kind of difference.
+  const group = pickTextComparisons(mapDocuments(detail.content?.documents), (d) => d.title)[0]
   const of = (type: 'pdf' | 'html'): string | null => group?.formats.find((f) => f.type === type)?.url ?? null
   const pdf = of('pdf')
   const html = of('html')

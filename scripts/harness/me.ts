@@ -61,13 +61,11 @@ import { explanationKey, explanationParaId } from '../../shared/utils/explanatio
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, getJson, risJson as risQuery, scriptUserAgent } from '../lib/http'
-import { ANNEX_NAME_RE, asArray } from '../lib/ris'
+import { asArray, pickExplanations, pickTextComparisons } from '../lib/ris'
 import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
 const SCRIPT = 'harness/me'
-/** Dieselbe lose Schreibweise wie in `ris/risRecord.ts`. */
-const ERL_NAME = /erl(ä|ae|a)uterung/i
 
 /**
  * `--annex=parlament` reads the ressort's Textgegenüberstellung from
@@ -134,7 +132,7 @@ function draftOf(ref: any): Draft | null {
   const contents = asArray<any>(ref?.Data?.Dokumentliste?.ContentReference)
   const xmlOf = (c: any): string | null => asArray<any>(c?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
   const pdfOf = (c: any): string | null => asArray<any>(c?.Urls?.ContentUrl).find((u) => u?.DataType === 'Pdf')?.Url ?? null
-  const annex = contents.find((c) => ANNEX_NAME_RE.test(String(c?.Name ?? '').trim()))
+  const annex = pickTextComparisons(contents, (c) => String(c?.Name ?? ''))[0]
   return {
     id,
     titel: String(meta?.Bundesrecht?.Kurztitel ?? meta?.Bundesrecht?.Titel ?? '').replace(/<br\/>[\s\S]*/, '').trim(),
@@ -143,7 +141,7 @@ function draftOf(ref: any): Draft | null {
     annexXml: annex ? xmlOf(annex) : null,
     annexPdf: annex ? pdfOf(annex) : null,
     annexNote: !annex ? 'ohne Textgegenüberstellung' : xmlOf(annex) ? null : 'Textgegenüberstellung nur als PDF',
-    erlXml: xmlOf(contents.find((c) => ERL_NAME.test(String(c?.Name ?? '').trim()))),
+    erlXml: xmlOf(pickExplanations(contents, (c) => String(c?.Name ?? ''))),
   }
 }
 
@@ -202,7 +200,7 @@ async function parliamentAnnexHtml(risId: string): Promise<string | null> {
   const me = parliamentMeFor(risId)
   if (!me) return null
   const detail = await getJson<any>(`${PARLIAMENT}/gegenstand/${me.gp}/ME/${me.inr}?json=True`, { script: SCRIPT })
-  const group = asArray<any>(detail?.content?.documents).find((d) => ANNEX_NAME_RE.test(String(d?.title ?? '').trim()))
+  const group = pickTextComparisons(asArray<any>(detail?.content?.documents), (d) => String(d?.title ?? ''))[0]
   const link = asArray<any>(group?.documents).find((d) => d?.type === 'HTML')?.link
   if (!link) return null
   return await getText(link.startsWith('http') ? link : `${PARLIAMENT}${link}`)

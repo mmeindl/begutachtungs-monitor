@@ -113,34 +113,121 @@ function str(v: unknown): string | null {
  * "TGÜ", "TGG", and a misspelt "Textgegenbüberstellung" all occur in the
  * corpus, so the match has to be loose (docs/api-exploration.md §2c).
  *
- * **The prefixed abbreviation is read since 26.09.2026.** A ressort that
- * writes one Gegenüberstellung per law of a Sammelnovelle prefixes the
- * abbreviation with the law's short name — "SAG_TGÜ", "GuKG-Novelle_2024_TGÜ"
- * — and the anchored half of this pattern used to miss it. Over the 400 most
- * recent Begut records that is **4 records** which carried no
- * Gegenüberstellung at all as far as the site was concerned, and every one of
- * them is readable: 19, 28, 12 and 81 rows. The separator is an underscore in
- * all four (one writes two), never a hyphen, so the pattern takes the
- * underscore and not „anything before TGÜ" — a name ending in „AnhangTGÜ"
- * stays out.
- *
- * Widening this changes the input of the annex engine, whose baseline is
- * pinned per draft (`tests/fixtures/annex-baseline.json`) and watched by the
- * weekly drift alarm, so it was its own step with its own measurement and the
- * baseline was pulled up in the same commit.
- *
- * The same literal stands in `annex/annexSource.ts` (the Parliament side) and
- * `scripts/lib/ris.ts` (the measurement scripts); when one moves, those two
- * are the ones to check.
+ * **The prefixed abbreviation is read since 26.09.2026** — "SAG_TGÜ",
+ * "GuKG-Novelle_2024_TGÜ": 4 of the 400 most recent records, all readable.
  */
 const TEXT_COMPARISON_NAME = /gegen.?über|(^|_)TG(Ü|G|UE)$/i
 
 /**
- * The Erläuterungen document. Spelt consistently across the corpus so far,
- * but matched loosely for the same reason the annex above is: a ressort's
- * spelling is not a contract.
+ * The Erläuterungen document, by its full word.
  */
 const EXPLANATIONS_NAME = /erl(ä|ae|a)uterung/i
+
+/**
+ * What ends a token in a document name: anything but a letter. An underscore,
+ * digit, dot, space or bracket does not — which is the point, because `\b`
+ * treats `_` as a word character and the ressorts write „SVÄG_2024_EB_…".
+ */
+const NOT_LETTER = '[^A-Za-zÄÖÜäöüß]'
+
+/**
+ * **The abbreviation anywhere in the name, measured 27.09.2026**
+ * (`pnpm corpus:dokument-namen`, docs/architecture.md §12.13 „Die Abkürzung
+ * mitten im Namen"). The anchored rule above missed „TGÜ Anpassung QJF-G",
+ * „42. KFG-Nov.TGÜ.11.05.2026", „IFG-TGÜ (2025-05-07)", „TxtGGÜ", „TextGG":
+ * 11 of 139 Gesetzesentwürfe of GP XXVIII whose RIS record carries the
+ * Gegenüberstellung — every one of the drafts `annex/annexSource.ts` had
+ * counted as „nur beim Parlament". A letter on either side still keeps a
+ * name out („AnhangTGÜ").
+ */
+const TEXT_COMPARISON_TOKEN = new RegExp(`(^|${NOT_LETTER})(TG(Ü|G|UE)|TxtGGÜ|TxTGGÜ|TxtGG|TextGG|TGGÜ)($|${NOT_LETTER})`, 'i')
+
+/**
+ * The Erläuterungen under an abbreviation (same measurement, §12.31): „EB",
+ * „EBs", „Erl", „Erl.", „Erläut", „Erläuternde Bemerkungen", and the old BMF
+ * form „begerl". „EB" only in capitals — as a lower-case token it is a
+ * syllable. „Erledigung" and „Erlass" stay out because a letter follows.
+ */
+const EXPLANATIONS_EB = new RegExp(`(^|${NOT_LETTER})EBs?($|${NOT_LETTER})`)
+const EXPLANATIONS_ERL = new RegExp(`(^|${NOT_LETTER})(erl|erläut|erläuternde|begerl)($|${NOT_LETTER})`, 'i')
+
+/**
+ * One document carrying several: „Vbl.Erl.TxtGGÜ", „Vorblatt_Erl-Bü-ARG",
+ * „Materialien". A bundle is a different document, not a differently named
+ * one, and neither field takes it through a token — only through the full
+ * word, as before.
+ */
+const BUNDLE_MARK = new RegExp(`(^|${NOT_LETTER})(vorbl|vbl|vb)|materiali`, 'i')
+
+/**
+ * The names are compared in NFC. Seven document names in the corpus are
+ * decomposed („Erläuterungen" with a + U+0308), look like every other one and
+ * match nothing.
+ */
+function nameForm(name: string): string {
+  return name.normalize('NFC').trim()
+}
+
+function explanationsToken(name: string): boolean {
+  return EXPLANATIONS_EB.test(name) || EXPLANATIONS_ERL.test(name)
+}
+
+/**
+ * How firmly a name says „Textgegenüberstellung": 2 for the full word or the
+ * shipped anchored form, 1 for the abbreviation as a token, 0 for no.
+ *
+ * Two ranks rather than one widened pattern, so that the widening is strictly
+ * additive: wherever a record carries a name the old rule read, the pick
+ * below reads exactly that as before — in the same order, with no new part
+ * next to it. Measured: 2 records (2014, 2016) would otherwise have gained a
+ * part; neither is in the drift baseline, but the rule should not depend on
+ * that.
+ */
+export function textComparisonNameRank(raw: string): 0 | 1 | 2 {
+  const name = nameForm(raw)
+  if (TEXT_COMPARISON_NAME.test(name)) return 2
+  if (TEXT_COMPARISON_TOKEN.test(name) && !BUNDLE_MARK.test(name) && !explanationsToken(name)) return 1
+  return 0
+}
+
+/** The same two ranks for the Erläuterungen; a name that is also a Gegenüberstellung is a bundle. */
+export function explanationsNameRank(raw: string): 0 | 1 | 2 {
+  const name = nameForm(raw)
+  if (EXPLANATIONS_NAME.test(name)) return 2
+  if (explanationsToken(name) && !TEXT_COMPARISON_TOKEN.test(name) && !/materiali/i.test(name)) return 1
+  return 0
+}
+
+/**
+ * Every item carrying the best rank, in the given order — the parts of a
+ * Gegenüberstellung published as several documents.
+ *
+ * ONE rule for the request path and the measurement scripts. It stood as
+ * three literals kept in step by hand (`risRecord.ts`, `annex/annexSource.ts`,
+ * `scripts/lib/ris.ts`), and the reason given for that — a script must not
+ * widen what counts as an annex without the site widening with it — is
+ * exactly what a single import guarantees and three literals do not.
+ */
+export function pickTextComparisons<T>(items: readonly T[], nameOf: (item: T) => string): T[] {
+  const ranked = items.map((item) => ({ item, rank: textComparisonNameRank(nameOf(item)) }))
+  const best = Math.max(0, ...ranked.map((r) => r.rank))
+  return best === 0 ? [] : ranked.filter((r) => r.rank === best).map((r) => r.item)
+}
+
+/** The first item of the best Erläuterungen rank, if any. */
+export function pickExplanations<T>(items: readonly T[], nameOf: (item: T) => string): T | undefined {
+  let found: T | undefined
+  let best = 0
+  for (const item of items) {
+    const rank = explanationsNameRank(nameOf(item))
+    if (rank > best) {
+      best = rank
+      found = item
+      if (rank === 2) break
+    }
+  }
+  return found
+}
 
 /** Human-readable RIS page of one Begut record. */
 export function risDocumentUrl(id: string): string {
@@ -163,11 +250,11 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     const of = (type: string) => str(list.find((u) => u?.DataType === type)?.Url)
     return { html: of('Html'), xml: of('Xml'), pdf: of('Pdf') }
   }
-  const named = (re: RegExp) => references.find((c) => re.test(String(c?.Name ?? '').trim()))
+  const nameOf = (c: any) => String(c?.Name ?? '')
   const main = references.find((c) => c?.ContentType === 'MainDocument')
-  const tguAll = references.filter((c) => TEXT_COMPARISON_NAME.test(String(c?.Name ?? '').trim()))
+  const tguAll = pickTextComparisons(references, nameOf)
   const tgu = tguAll[0]
-  const erl = named(EXPLANATIONS_NAME)
+  const erl = pickExplanations(references, nameOf)
   const letter = references.find((c) => c?.ContentType === 'Letter')
   const classified = new Set([main, tgu, erl, letter].filter(Boolean))
   return {
