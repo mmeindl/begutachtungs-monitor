@@ -23,7 +23,7 @@
 import type { LawDiffResponse, LawStationId, LawStationOption, TraceLink } from '#shared/types'
 import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
 import { diffLawPackage, summarizeDiff } from './lawDiff'
-import { findLawStations, MISSING_STATION_REASON } from './stationDocuments'
+import { findLawStations, missingStationReason } from './stationDocuments'
 import { parseLawUnits, parseLawUnitsFromRis } from '../lawtext/lawUnits'
 import { extractBgblLink, findLastRvLink, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
@@ -117,8 +117,17 @@ export const getLawDiff = defineCachedFunction(
       ...extra,
     })
 
+    // Whether the stage record links a Vorlage, asked apart from the text
+    // documents: a Vorlage without an accepted Gesetzestext is not „noch
+    // keine Regierungsvorlage" (`missingStationReason`).
+    let rvLinked = false
+    try {
+      rvLinked = findLastRvLink(parseStages(content.stages)) !== null
+    } catch {
+      // An unreadable stage record claims nothing either way.
+    }
     for (const id of [to, from]) {
-      if (!found.has(id)) return answer(MISSING_STATION_REASON[id])
+      if (!found.has(id)) return answer(missingStationReason(id, rvLinked))
     }
     if (!comparable(from)) {
       return answer(

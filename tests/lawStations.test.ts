@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LawStationId } from '../shared/types'
+import { MISSING_STATION_REASON, missingStationReason } from '../server/utils/diff/stationDocuments'
 import {
   DEFAULT_LAW_STATION_PAIR,
   LAW_STATION_LABEL,
@@ -213,5 +214,24 @@ describe('lawDiffSourceCredit', () => {
 
   it('claims nothing where neither side names a publisher', () => {
     expect(lawDiffSourceCredit(side('me', null), side('rv', null))).toBe('Quellen:')
+  })
+})
+
+describe('missingStationReason', () => {
+  it('denies a Vorlage only where the stage record links none', () => {
+    expect(missingStationReason('rv', false)).toBe(MISSING_STATION_REASON.rv)
+    expect(missingStationReason('rv', false)).toMatch(/noch keine Regierungsvorlage/)
+  })
+
+  it('names the missing text, not a missing Vorlage, where one is linked (XXVI 79/ME „Vertragstext")', () => {
+    const reason = missingStationReason('rv', true)
+    expect(reason).not.toMatch(/keine Regierungsvorlage/)
+    expect(reason).toMatch(/Zur Regierungsvorlage ist kein Gesetzestext/)
+  })
+
+  it('leaves every other station as the table has it', () => {
+    for (const id of ['me', 'ausschuss', 'plenum', 'bgbl'] as const) {
+      expect(missingStationReason(id, true)).toBe(MISSING_STATION_REASON[id])
+    }
   })
 })

@@ -86,3 +86,22 @@ export const MISSING_STATION_REASON: Record<LawStationId, string> = {
   plenum: 'Im Plenum wurde keine geänderte Fassung des Gesetzestexts veröffentlicht.',
   bgbl: 'Dieser Entwurf ist bisher nicht als Gesetz kundgemacht worden.',
 }
+
+/**
+ * The reason for an absent station, given what the stage record says.
+ *
+ * An absent `rv` station is two different facts. Usually there is no
+ * Regierungsvorlage yet. But the station is read from the text documents,
+ * and a Vorlage can exist without a Gesetzestext the whitelist accepts: two
+ * GP-XXVI Art.-15a-Vereinbarungen (79/ME → 331 d.B., 97/ME → 383 d.B.)
+ * publish theirs as „Vertragstext", which is rightly not offered for a §
+ * comparison. The table's sentence then denied a Vorlage that the same page
+ * names two sections higher (docs/architecture.md §12.18, Nachtrag) — the
+ * false accusation `parliament/stationMap.ts` exists to avoid.
+ */
+export function missingStationReason(id: LawStationId, rvLinked: boolean): string {
+  if (id === 'rv' && rvLinked) {
+    return 'Zur Regierungsvorlage ist kein Gesetzestext als eigenes Dokument veröffentlicht, mit dem sich der Entwurf vergleichen ließe.'
+  }
+  return MISSING_STATION_REASON[id]
+}
