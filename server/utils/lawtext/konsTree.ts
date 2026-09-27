@@ -344,8 +344,19 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       currentAbs = makeNode('abs', am[1]!, `(${am[1]})`, rest.slice(am[0].length))
       root!.children.push(currentAbs)
     } else if (currentAbs) {
-      // A continuation paragraph of the same Absatz (Satz block).
-      if (rest) currentAbs.text = `${currentAbs.text} ${rest}`.trim()
+      // A continuation paragraph of the same Absatz (Satz block) — and behind
+      // a list its closing part. RIS writes the text that follows the
+      // Ziffern of an Absatz as a plain `<absatz typ="abs">` as often as a
+      // `<schlussteil>`; glued onto the Absatz's own text it stood IN FRONT
+      // of the list it closes: „Durch Verordnung ist festzusetzen, Im Falle
+      // von Testfahrten … 1. in welchen Verkehrssituationen, …" (KFG § 102
+      // Abs. 3a, 27.09.2026) — the order on the page and the text every
+      // Satz address and every phrase in it was looked for in.
+      if (rest && currentAbs.children.length > 0) {
+        const last = currentAbs.children.at(-1)!
+        if (last.level === 'schluss' && last.id === 'schluss') last.text = `${last.text} ${rest}`.trim()
+        else currentAbs.children.push(makeNode('schluss', 'schluss', '', rest))
+      } else if (rest) currentAbs.text = `${currentAbs.text} ${rest}`.trim()
     } else if (rest) {
       // A § without Absatz numbering: the whole text is one implicit Absatz.
       absatz().text = rest

@@ -182,6 +182,22 @@ describe('parseKonsParagraph', () => {
     expect(plainText(node)).toContain('§ 22 tritt mit 1. Jänner 2006 in Kraft.')
   })
 
+  it('puts an unnumbered block behind a list behind it, as the Schlussteil', () => {
+    // KFG § 102 Abs. 3a: RIS writes the closing part as a plain `<absatz typ="abs">`.
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="abs" ct="text"><gldsym>§ 102.</gldsym>(3a) Durch Verordnung ist festzusetzen,</absatz>
+      <liste><aufzaehlung>
+        <listelem ct="text"><symbol stellen="2">1.</symbol>in welchen Verkehrssituationen,</listelem>
+        <listelem ct="text"><symbol stellen="2">2.</symbol>auf welchen Straßen.</listelem>
+      </aufzaehlung></liste>
+      <absatz typ="abs" ct="text">Im Falle von Testfahrten kann eine Bescheinigung ausgestellt werden.</absatz>
+    </abschnitt></nutzdaten></risdok>`
+    const abs = parseKonsParagraph(xml)!.children[0]!
+    expect(abs.text).toBe('Durch Verordnung ist festzusetzen,')
+    expect(abs.children.map((c) => `${c.level}:${c.id}`)).toEqual(['z:1', 'z:2', 'schluss:schluss'])
+    expect(abs.children.at(-1)!.text).toBe('Im Falle von Testfahrten kann eine Bescheinigung ausgestellt werden.')
+  })
+
   // A law that is itself divided into Artikel prints both designations in one
   // Gliederungssymbol. The id was read off the FIRST number, so the third § of
   // the second Artikel arrived as "2" — a twin of the same law's § 2. Nothing
