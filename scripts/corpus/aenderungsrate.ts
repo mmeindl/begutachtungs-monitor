@@ -153,6 +153,13 @@ const MISSING_REASON = {
   me: 'Zu diesem Entwurf ist kein Gesetzestext als eigenes Dokument veröffentlicht.',
   rv: 'Es liegt noch keine Regierungsvorlage vor, mit der sich der Entwurf vergleichen ließe.',
 }
+/**
+ * Copy of `missingStationReason('rv', true)` (since 27.09.2026): this path only
+ * gets there with a Vorlage linked, so it is the sentence the service says.
+ */
+const RV_WITHOUT_TEXT = 'Zur Regierungsvorlage ist kein Gesetzestext als eigenes Dokument veröffentlicht, mit dem sich der Entwurf vergleichen ließe.'
+/** Copy of `getLawDiff`'s answer for a package whose Artikel pair nowhere (since 27.09.2026). */
+const UNPAIRED = 'Die Artikel der beiden Texte ließen sich keinem gemeinsamen Gesetz zuordnen. Ein Vergleich Paragraph für Paragraph würde deshalb jede Bestimmung als entfallen und als neu zeigen.'
 
 /** Copy of `decodeHtml` (server/utils/upstream/fetchDocument.ts). */
 function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string {
@@ -170,7 +177,7 @@ function decodeHtml(buf: ArrayBuffer, headerCharset: string | undefined): string
 
 // The shipped function, where the alias makes it loadable (second usage line).
 type Finder = typeof findLawStationsCopy
-const shipped: { findLawStations: Finder; MISSING_STATION_REASON: Record<string, string> } | null = await import(
+const shipped: { findLawStations: Finder; MISSING_STATION_REASON: Record<string, string>; missingStationReason: (id: 'rv', linked: boolean) => string } | null = await import(
   '../../server/utils/diff/stationDocuments'
 ).catch(() => null)
 let copyMismatches = 0
@@ -180,6 +187,10 @@ if (shipped) {
       console.error(`MISSING_STATION_REASON.${k} weicht von der Kopie ab`)
       copyMismatches++
     }
+  }
+  if (shipped.missingStationReason('rv', true) !== RV_WITHOUT_TEXT) {
+    console.error('missingStationReason(rv, true) weicht von der Kopie ab')
+    copyMismatches++
   }
 }
 
@@ -419,7 +430,9 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
   const comparable = (id: LawStationId) => Boolean(found.get(id)?.html) || Boolean(found.get(id)?.xml)
 
   // Same order as getLawDiff: `to` first, then `from`.
-  if (!found.has('rv')) return { row: { ...row, reason: MISSING_REASON.rv }, units: [] }
+  // A Vorlage is linked here (bucket 1 returned above), so this is the sentence
+  // for a Vorlage without an accepted Gesetzestext.
+  if (!found.has('rv')) return { row: { ...row, reason: RV_WITHOUT_TEXT }, units: [] }
   if (!found.has('me')) return { row: { ...row, reason: MISSING_REASON.me }, units: [] }
   if (!comparable('me')) {
     row.reason = risRowExists
@@ -441,7 +454,8 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
   row.toUnits = toUnits.length
   parsed.set(inr, { fromUnits, toUnits })
 
-  const { units, lawsOnlyInTo, lawsOnlyInFrom } = diffLawPackage(fromUnits, toUnits)
+  const { units, lawsOnlyInTo, lawsOnlyInFrom, unpaired } = diffLawPackage(fromUnits, toUnits)
+  if (unpaired) return { row: { ...row, reason: UNPAIRED }, units: [] }
   if (units.length === 0) return { row: { ...row, reason: 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.' }, units }
   const stats = summarizeDiff(units)
   const substantive = units.filter((u) => u.change === 'changed' && !u.editorial).length + stats.inserted + stats.removed

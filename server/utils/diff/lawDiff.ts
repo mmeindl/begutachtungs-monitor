@@ -24,7 +24,7 @@
  */
 import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../../shared/types'
 import type { LawUnit } from '../lawtext/lawUnits'
-import { compareKey } from '../lawtext/normalize'
+import { compareKey, normalizeText } from '../lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
 import { bareParaId, leadingArticleKey } from '../text/designation'
 import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
@@ -84,8 +84,58 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
       usedTo.add(r)
     }
   }
+  // Third, the law named INSIDE the other title (27.09.2026). A draft without
+  // Artikel carries its whole title — „Bundesgesetz, mit dem das
+  // Einkommensteuergesetz 1988 geändert wird (Teuerungs-Entlastungspaket
+  // Teil II)" — and the package name drags the similarity under 0,5 against
+  // „Änderung des Einkommensteuergesetzes 1988" (XXVII 216/ME: 0,40). The
+  // shorter name contained in the longer one is the evidence then, and only
+  // where exactly one candidate has it: a draft naming two laws the Vorlage
+  // splits into two Artikel („… das Fern- und Auswärtsgeschäfte-Gesetz und
+  // das Konsumentenschutzgesetz …", 169/ME) is one text for two Artikel,
+  // which no pairing of one to one describes. That case does not always show
+  // as two candidates: 85/ME names its second law by its long title („… und
+  // das Bundesgesetz über die äußeren Rechtsverhältnisse islamischer
+  // Religionsgesellschaften geändert werden"), the Vorlage by its short one
+  // („Islamgesetz 2015"), and the first attempt paired the whole draft with
+  // the first law — the page would have called the second one „nur in der
+  // Regierungsvorlage". So a title that names several laws, or units whose
+  // numbering starts over, never pair this way.
+  for (const m of fromArts) {
+    if (map.has(m.article) || namesSeveralLaws(m.article, from)) continue
+    const mt = articleNameTokens(m.article)
+    if (mt.size === 0) continue
+    const candidates = toArts.filter((r) => !usedTo.has(r) && containment(mt, articleNameTokens(r.article)) >= CONTAINED_AT)
+    if (candidates.length !== 1) continue
+    map.set(m.article, candidates[0]!.article)
+    usedTo.add(candidates[0]!)
+  }
   return map
 }
+
+/**
+ * One Artikel title that is really several: the plural of the template
+ * („… geändert werden"), a second law joined by „und das/die/der", or a
+ * Ziffer number that occurs twice among the article's units (the numbering
+ * starts over at the next law, which `lawUnits` marks with `#dup`).
+ */
+function namesSeveralLaws(article: string | null, units: readonly LawUnit[]): boolean {
+  const title = normalizeText(article ?? '')
+  if (/\b(?:geändert|erlassen|aufgehoben)\s+werden\b/i.test(title) || /\bund\s+(?:das|die|der)\s+\S/i.test(title)) return true
+  return units.some((u) => u.article === article && u.id.includes('#dup'))
+}
+
+/** How much of the smaller name the larger one carries. */
+function containment(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+  if (small.size === 0) return 0
+  let shared = 0
+  for (const t of small) if (large.has(t)) shared++
+  return shared / small.size
+}
+
+/** 4 of 5 words: 85/ME's „Bundesgesetz über die Rechtspersönlichkeit von religiösen Bekenntnisgemeinschaften" against its Artikel title. */
+const CONTAINED_AT = 0.8
 
 // ---------------------------------------------------------------------------
 // Alignment
@@ -325,6 +375,14 @@ export interface LawPackageDiff {
   units: LawDiffUnit[]
   lawsOnlyInTo: LawPackageEntry[]
   lawsOnlyInFrom: LawPackageEntry[]
+  /**
+   * No Artikel of the one document could be matched to one of the other.
+   * The units are then every unit removed and every unit inserted — not a
+   * weak comparison but none, measured on all ten such drafts of GP XXVII
+   * and XXVI (0 changed, 0 unchanged each; XXVI 9/ME: 1.119 „neu"). The
+   * caller must say so instead of showing them.
+   */
+  unpaired: boolean
 }
 
 /** Units of articles the other side does not have, counted per law. */
@@ -351,12 +409,13 @@ function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): 
  * So laws only one side carries leave the § list and are named as what they
  * are: a package that grew or shrank. That keeps the fact (the bill added or
  * dropped a law) and drops the false precision (600 paragraphs "new").
- * Units without an article always stay in the comparison, and when no article
- * pairs at all the scoping is skipped — an empty comparison helps nobody.
+ * Units without an article always stay in the comparison. When no article
+ * pairs at all, there is no scoping to do — and no comparison either, only
+ * every unit on both sides; `unpaired` says so.
  */
 export function diffLawPackage(from: readonly LawUnit[], to: readonly LawUnit[]): LawPackageDiff {
   const map = pairArticles(from, to)
-  if (map.size === 0) return { units: diffLawUnits(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [] }
+  if (map.size === 0) return { units: diffLawUnits(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [], unpaired: from.length > 0 && to.length > 0 }
   const pairedFrom = new Set(map.keys())
   const pairedTo = new Set(map.values())
   const keepFrom = (u: LawUnit) => u.article === null || pairedFrom.has(u.article)
@@ -365,6 +424,7 @@ export function diffLawPackage(from: readonly LawUnit[], to: readonly LawUnit[])
     units: diffLawUnits(from.filter(keepFrom), to.filter(keepTo)),
     lawsOnlyInTo: lawsOf(to, (a) => pairedTo.has(a)),
     lawsOnlyInFrom: lawsOf(from, (a) => pairedFrom.has(a)),
+    unpaired: false,
   }
 }
 

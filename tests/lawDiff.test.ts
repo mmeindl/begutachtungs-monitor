@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { alignUnits, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff } from '../server/utils/diff/lawDiff'
-import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis } from '../server/utils/lawtext/lawUnits'
+import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -607,5 +607,63 @@ describe('die Anlage nennt sich im eigenen Text (26.09.2026)', () => {
       `<absatz typ="novao1">1. &sect; 2 lautet:</absatz><absatz typ="abs">"(1) Neu."</absatz></dokument>`,
     )
     expect(units[0]!.article).toBe('Änderung des Aktiengesetzes')
+  })
+})
+
+describe('the law named inside a draft title that carries no Artikel (27.09.2026)', () => {
+  const u = (article: string | null, id: string, articleNumber: string | null = null): LawUnit => ({
+    article,
+    articleNumber,
+    id,
+    heading: null,
+    quotedHeadings: [],
+    text: `${id} Text`,
+    blocks: [],
+  })
+  const ESTG = 'Änderung des Einkommensteuergesetzes 1988'
+  const FLAG = 'Änderung des Familienlastenausgleichsgesetzes 1967'
+  const USTG = 'Änderung des Umsatzsteuergesetzes 1994'
+  const rv = [u(ESTG, 'Z1', 'Artikel 1'), u(ESTG, 'Z2', 'Artikel 1'), u(FLAG, 'Z1', 'Artikel 2'), u(USTG, 'Z1', 'Artikel 3')]
+
+  it('pairs the one law the title names, past the package name (XXVII 216/ME)', () => {
+    const title = 'Bundesgesetz, mit dem das Einkommensteuergesetz 1988 geändert wird (Teuerungs-Entlastungspaket Teil II)'
+    const me = [u(title, 'Z1'), u(title, 'Z2')]
+    expect(pairArticles(me, rv).get(title)).toBe(ESTG)
+    const d = diffLawPackage(me, rv)
+    expect(d.unpaired).toBe(false)
+    expect(d.lawsOnlyInTo.map((l) => l.article)).toEqual([FLAG, USTG])
+  })
+
+  it('refuses a title that names two laws, even when only one of them is recognisable (XXVII 85/ME)', () => {
+    // The second law by its long title, the Vorlage's by its short one: one
+    // candidate, and still the wrong answer for half the draft.
+    const title = 'Bundesgesetz, mit dem das Einkommensteuergesetz 1988 und das Bundesgesetz über Familienbeihilfe und Kinderabsetzbetrag geändert werden (Entlastungspaket)'
+    const me = [u(title, 'Z1'), u(title, 'Z2')]
+    expect(pairArticles(me, rv).size).toBe(0)
+    expect(diffLawPackage(me, rv).unpaired).toBe(true)
+  })
+
+  it('refuses a draft whose numbering starts over — two laws under one title', () => {
+    const title = 'Bundesgesetz, mit dem das Einkommensteuergesetz 1988 geändert wird (Teuerungs-Entlastungspaket Teil II)'
+    const me = [u(title, 'Z1'), u(title, 'Z1#dup')]
+    expect(pairArticles(me, rv).size).toBe(0)
+  })
+
+  it('refuses where two Artikel of the Vorlage fit', () => {
+    const title = 'Bundesgesetz, mit dem das Einkommensteuergesetz 1988 geändert wird (Teuerungs-Entlastungspaket Teil II)'
+    const twoEstg = [...rv, u('Einkommensteuergesetz 1988', 'Z1', 'Artikel 4')]
+    expect(pairArticles([u(title, 'Z1')], twoEstg).size).toBe(0)
+  })
+})
+
+describe('diffLawPackage: nothing pairs', () => {
+  it('says so instead of calling every unit removed and inserted (XXVI 9/ME: 1.119 „neu")', () => {
+    const me: LawUnit[] = [{ article: null, articleNumber: null, id: '§1', heading: null, quotedHeadings: [], text: 'x', blocks: [] }]
+    const rv: LawUnit[] = ['Änderung des Bundesarchivgesetzes', 'Änderung des Mediengesetzes'].map((a, i) => ({
+      article: a, articleNumber: `Artikel ${i + 1}`, id: 'Z1', heading: null, quotedHeadings: [], text: 'y', blocks: [],
+    }))
+    const d = diffLawPackage(me, rv)
+    expect(d.unpaired).toBe(true)
+    expect(d.units.every((x) => x.change === 'inserted' || x.change === 'removed')).toBe(true)
   })
 })

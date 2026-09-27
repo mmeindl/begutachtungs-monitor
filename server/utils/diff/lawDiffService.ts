@@ -157,7 +157,16 @@ export const getLawDiff = defineCachedFunction(
     const fromUnits = fromHtml ? parseLawUnits(fromDoc) : parseLawUnitsFromRis(fromDoc)
     const toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)
 
-    const { units, lawsOnlyInTo, lawsOnlyInFrom } = diffLawPackage(fromUnits, toUnits)
+    const { units, lawsOnlyInTo, lawsOnlyInFrom, unpaired } = diffLawPackage(fromUnits, toUnits)
+    if (unpaired) {
+      // Showing the units here would put the whole draft under „entfallen"
+      // and the whole later text under „neu" — a claim about the draft the
+      // documents do not make (docs/architecture.md §12.18, Nachtrag).
+      return answer(
+        'Die Artikel der beiden Texte ließen sich keinem gemeinsamen Gesetz zuordnen. Ein Vergleich Paragraph für Paragraph würde deshalb jede Bestimmung als entfallen und als neu zeigen.',
+        { fromSource, toSource },
+      )
+    }
     if (units.length === 0) {
       return answer('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', { fromSource, toSource })
     }
