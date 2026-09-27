@@ -1433,6 +1433,18 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
         const where = endMark[1]!.toLowerCase() === 'vor' ? 'before' : 'after'
         return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: PUNCT_WORD[endMark[2]!.toLowerCase()]!, where: where as 'before' | 'after', text: quotes[0]!, eachUnit, wordBound: false, atEnd: true })), reason: null, line }
       }
+      // „In Abs. 2 Z 1 wird am Ende der Halbsatz ‚…;' angefügt": the text is
+      // quoted in the line itself and joined behind the last character of
+      // the unit — an anchor of nothing, at its end. Only for a Halbsatz and
+      // only for „angefügt": a clause stands behind its unit's closing mark,
+      // while „am Ende der Z 2 der Ausdruck ‚, oder' angefügt" would land
+      // behind a full stop, „am Ende der Z 13 vor dem Beistrich …" names an
+      // anchor of its own, and whether „eingefügt" means in front of the
+      // closing mark or behind it is not in the words.
+      const masked = maskQuotes(head)
+      if (quotes.length === 1 && !endMark && /\bam\s+Ende\b/i.test(masked) && /\b(?:der|den)\s+Halbsatz\s*""/i.test(masked) && /\bangefügt\b/i.test(head) && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked)) {
+        return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: '', where: 'after' as const, text: quotes[0]!, eachUnit, wordBound: false, atEnd: true })), reason: null, line }
+      }
       if (quotes.length < 2) return fail('Einfügung ohne Anker und Text')
       // "das Wort „zuletzt“ gestrichen sowie nach der Wort- und Zeichenfolge
       // „…“ die Wort- und Zeichenfolge „…“ eingefügt": three operands, and

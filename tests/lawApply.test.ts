@@ -1234,3 +1234,13 @@ describe('the Halbsatz behind a replaced semicolon (27.09.2026)', () => {
     expect(run(l, instr('In § 27 Abs. 1 letzter Satz wird der Strichpunkt durch einen Punkt ersetzt; der nachfolgende Halbsatz entfällt.')).results[0]!.applied).toBe(false)
   })
 })
+
+describe('a Halbsatz quoted in the line and joined at the end (27.09.2026)', () => {
+  it('appends it behind the last character of the unit', () => {
+    // Glücksspiel draft, § … Abs. 2 Z 1: „wird am Ende der Halbsatz ‚…;' angefügt".
+    const l: StandingLaw = { paragraphs: [para('5', 'S', [{ text: 'Die Spielbank hat', ziffern: ['die Identität festzustellen;', 'Aufzeichnungen zu führen.'] }])] }
+    const { law: out, results } = run(l, instr('In § 5 Abs. 1 Z 1 wird am Ende der Halbsatz "die Vorlage kann entfallen;" angefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[0]!.text).toBe('die Identität festzustellen; die Vorlage kann entfallen;')
+  })
+})
