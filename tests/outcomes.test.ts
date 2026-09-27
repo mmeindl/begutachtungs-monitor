@@ -5,6 +5,8 @@ import {
   RV_BASE_RATES,
   rvBaseRateFor,
   rvBaseRateSentenceDe,
+  changeShareRateFor,
+  changeShareSentenceDe,
 } from '../app/utils/outcomes'
 import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
 import { GP_STARTS, gpEndedOn, romanToInt } from '../shared/utils/gp'
@@ -85,5 +87,23 @@ describe('GP-ended copy', () => {
     for (const s of [gpEndedHeadlineDe('XXVII', '2024-10-23'), gpEndedBodyDe('XXVII'), rvBaseRateSentenceDe('XXVII')]) {
       expect(s).not.toMatch(/gescheitert|versenkt|ignoriert|verschleppt|Schublade/i)
     }
+  })
+})
+
+describe('changeShareSentenceDe (§12.38)', () => {
+  it('states the count of the draft and the middle half of the period, not a verdict', () => {
+    const s = changeShareSentenceDe('XXVII', 12, 21, 'Änderungsanordnungen')
+    expect(s).toContain('Von den 21 Änderungsanordnungen des Entwurfs hat die Regierungsvorlage 12 (57 %) geändert oder gestrichen')
+    expect(s).toContain('bei der Hälfte der Entwürfe zwischen')
+    expect(s).not.toMatch(/nur|kaum|erfolgreich|ignoriert|Wirkung/)
+  })
+
+  it('says none and all in words', () => {
+    expect(changeShareSentenceDe('XXVII', 0, 5, 'Paragraphen')).toContain('übernimmt die 5 Paragraphen des Entwurfs im Wortlaut')
+    expect(changeShareSentenceDe('XXVII', 5, 5, 'Paragraphen')).toContain('alle 5 geändert')
+  })
+
+  it('holds a running period against the newest closed one', () => {
+    expect(changeShareRateFor('XXVIII').gp).toBe('XXVII')
   })
 })

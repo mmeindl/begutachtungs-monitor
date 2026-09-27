@@ -13,6 +13,8 @@
  */
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { unitKey } from '#shared/utils/diffKey'
+import { ownChangeShare } from '#shared/utils/changeShare'
+import { changeShareSentenceDe } from '~/utils/outcomes'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
@@ -111,6 +113,19 @@ const reasoningNote = computed<string | null>(() => {
   const { compared, changed } = stats
   if (changed === 0) return `Zu allen ${compared} Paragraphen, für die beide Fassungen eine Begründung führen, ist sie unverändert geblieben.`
   return `Zu ${changed} von ${compared} Paragraphen, für die beide Fassungen eine Begründung führen, hat das Ressort sie geändert — aufklappbar an der Änderung.`
+})
+
+/**
+ * How much of THIS draft the Vorlage changed, held against the measured range
+ * of a whole period (docs/architecture.md §12.38) — only for the pair the
+ * base rate is measured on, draft against Regierungsvorlage. The comparison
+ * shows what changed; this sentence says whether that is much.
+ */
+const changeShareNote = computed<string | null>(() => {
+  if (pair.value.from !== 'me' || pair.value.to !== 'rv' || !data.value?.available) return null
+  const share = ownChangeShare(data.value.stats)
+  if (!share) return null
+  return changeShareSentenceDe(props.gp, share.changed, share.own, unitNoun(2))
 })
 
 /**
@@ -523,6 +538,7 @@ const droppedNote = computed(() =>
       <!-- The reasoning, once as a rate above the list instead of
            „unverändert" on every row (docs/architecture.md §12.10b). Arrives
            when its fetch does. -->
+      <p v-if="changeShareNote" class="mt-3 max-w-prose text-sm text-ink-secondary">{{ changeShareNote }}</p>
       <p v-if="reasoningNote" class="mt-3 max-w-prose text-sm text-ink-secondary">{{ reasoningNote }}</p>
 
       <template v-if="data.units.length">

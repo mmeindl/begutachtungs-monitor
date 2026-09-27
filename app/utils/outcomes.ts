@@ -51,6 +51,59 @@ export function rvBaseRateSentenceDe(gp: string | null | undefined): string {
 }
 
 /**
+ * How much of a draft its Regierungsvorlage changed, across a whole closed
+ * Gesetzgebungsperiode — the second base rate (docs/architecture.md §12.38).
+ *
+ * Measured with `scripts/corpus/aenderungsrate.ts` through the page's own
+ * formula (`ownChangeShare`): per comparable draft, the share of its own
+ * units the Vorlage changed in wording or dropped, editorial changes not
+ * counted. Hand-copied like the row above, re-run when a GP closes.
+ *
+ * Why a range and not a yes/no: 274 of 277 comparable drafts of GP XXVII
+ * changed at all, so „geändert" separates nothing, while the share runs from
+ * a few percent to all of them. The middle half (p25–p75) is what a reader
+ * can hold one draft against — a range, not a verdict (framing rule, §4):
+ * a large change is not a failure of the draft and a small one no win.
+ */
+export interface ChangeShareRate {
+  gp: string
+  /** Comparable drafts (both texts readable, both sides paired) */
+  drafts: number
+  /** Percent, rounded */
+  p25: number
+  median: number
+  p75: number
+}
+
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+/** Newest GP first. */
+export const CHANGE_SHARE_RATES: readonly ChangeShareRate[] = [
+  { gp: 'XXVII', drafts: 277, p25: 46, median: 63, p75: 75 },
+]
+
+/** The measured row for `gp`, else the newest one — a running GP has no row of its own yet. */
+export function changeShareRateFor(gp: string | null | undefined): ChangeShareRate {
+  return CHANGE_SHARE_RATES.find((r) => r.gp === gp) ?? CHANGE_SHARE_RATES[0]!
+}
+
+/**
+ * „Von den 21 Änderungsanordnungen des Entwurfs hat die Regierungsvorlage 12
+ * (57 %) geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt.
+ * Zum Vergleich: In der XXVII. Gesetzgebungsperiode lag dieser Anteil bei der
+ * Hälfte der Entwürfe zwischen 46 und 75 %."
+ */
+export function changeShareSentenceDe(gp: string | null | undefined, changed: number, own: number, unitPlural: string): string {
+  const r = changeShareRateFor(gp)
+  // Zero in its own words: „keine davon" would have to decline with the noun
+  // („keinen davon" for Paragraphen), a sentence without the count does not.
+  const lead =
+    changed === 0
+      ? `Die Regierungsvorlage übernimmt die ${own} ${unitPlural} des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. `
+      : `Von den ${own} ${unitPlural} des Entwurfs hat die Regierungsvorlage ${changed === own ? `alle ${own}` : `${changed} (${Math.round((changed / own) * 100)} %)`} geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt. `
+  return `${lead}Zum Vergleich: In der ${r.gp}. Gesetzgebungsperiode lag dieser Anteil bei der Hälfte der Entwürfe zwischen ${r.p25} und ${r.p75} %.`
+}
+
+/**
  * What the outcome card says INSTEAD of all of the above when the period
  * links no draft to a Vorlage at all (§12.27, `chainCoverageOf`).
  *

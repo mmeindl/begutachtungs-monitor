@@ -68,6 +68,7 @@ import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import type { DraftDocument, LawDiffUnit, LawStationId, LawPackageEntry } from '../../shared/types'
 import { meTextTitleRank } from '../../shared/utils/lawStations'
+import { ownChangeShare } from '../../shared/utils/changeShare'
 import { findLastRvLink, findRvLinks, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup, type RawStage } from '../../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
 import { articlePairs, diffLawPackage, pairArticles, summarizeDiff } from '../../server/utils/diff/lawDiff'
@@ -604,6 +605,17 @@ console.log(`    Einheiten mit Wortänderung/echt neu/entfallen, Anzahl je Entwu
 const robustShare = b5.map((r) => Math.max(0, r.diag!.robust) / r.stats!.total)
 console.log(`    Anteil mit Wortänderung/echt neu/entfallen  p10 ${q(robustShare, 0.1)} · Median ${q(robustShare, 0.5)} · p90 ${q(robustShare, 0.9)}`)
 
+{
+  // The base rate the page prints (§12.38), through the page's own formula.
+  const shares = results
+    .filter((r) => r.bucket === 3 || r.bucket === 4 || r.bucket === 5)
+    .map((r) => (r.stats ? ownChangeShare(r.stats) : null))
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .map((x) => x.share)
+  const pctOf = (q: number) => Math.round(quantile(shares, q) * 100)
+  console.log(`\n  Basisrate (ownChangeShare, verglichene Entwürfe): n ${shares.length}, p25 ${pctOf(0.25)} %, Median ${pctOf(0.5)} %, p75 ${pctOf(0.75)} %`)
+  console.log(`    für app/utils/outcomes.ts: { gp: '${gp}', drafts: ${shares.length}, p25: ${pctOf(0.25)}, median: ${pctOf(0.5)}, p75: ${pctOf(0.75)} }`)
+}
 console.log(`\n  ME-Quelle der verglichenen: Parlament ${results.filter((r) => r.stats && r.meSource === 'parlament').length} · RIS ${results.filter((r) => r.stats && r.meSource === 'ris').length}`)
 if (shipped) console.log(`  Kopie ≠ findLawStations: ${results.filter((r) => r.copyMismatch).length + copyMismatches} Abweichungen`)
 else console.log('  (Kopie von findLawStations ungeprüft — mit -c vitest.config.ts laufen lassen)')
