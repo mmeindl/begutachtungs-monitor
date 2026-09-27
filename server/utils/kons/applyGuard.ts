@@ -139,6 +139,8 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
           gain(op.to)
           loss(op.from)
         }
+        // The Halbsatz behind the mark goes with it.
+        if (op.truncate && scope) loss(scope.slice(scope.indexOf(op.from) + op.from.length))
         break
       }
       case 'insertPhrase':

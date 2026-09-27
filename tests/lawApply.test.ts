@@ -1219,3 +1219,18 @@ describe('a Halbsatz or a sentence appended behind the mark it replaces (27.09.2
     expect(run(l, instr('In § 19 Abs. 1 wird der Punkt am Ende durch einen Beistrich ersetzt.')).results[0]!.applied).toBe(false)
   })
 })
+
+describe('the Halbsatz behind a replaced semicolon (27.09.2026)', () => {
+  it('ends the sentence at the new full stop and drops what followed', () => {
+    // RAO § 27 Abs. 2 letzter Satz, BGBl. I Nr. 63/2026.
+    const l: StandingLaw = { paragraphs: [para('27', 'B', ['Die Beiträge sind gleich hoch. Sie können nachgesehen werden; insbesondere kann die Plenarversammlung das beschließen.'])] }
+    const { law: out, results } = run(l, instr('In § 27 Abs. 1 letzter Satz wird der Strichpunkt durch einen Punkt ersetzt; der nachfolgende Halbsatz entfällt.'))
+    expect(results.map((r) => r.reason)).toEqual([null])
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Beiträge sind gleich hoch. Sie können nachgesehen werden.')
+  })
+
+  it('refuses where the sentence carries more than one such mark', () => {
+    const l: StandingLaw = { paragraphs: [para('27', 'B', ['Sie können nachgesehen werden; das gilt; insbesondere hier.'])] }
+    expect(run(l, instr('In § 27 Abs. 1 letzter Satz wird der Strichpunkt durch einen Punkt ersetzt; der nachfolgende Halbsatz entfällt.')).results[0]!.applied).toBe(false)
+  })
+})

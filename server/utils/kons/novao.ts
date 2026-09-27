@@ -866,6 +866,12 @@ export type NovaoOp =
     wordBound: boolean
     /** „der Punkt am Ende … durch einen Beistrich": the mark that ends the unit's text, not any occurrence of it. */
     atEnd?: boolean
+    /**
+     * „… wird der Strichpunkt durch einen Punkt ersetzt; der nachfolgende
+     * Halbsatz entfällt": the new mark ends the sentence, and what followed
+     * the old one goes with it.
+     */
+    truncate?: boolean
   }
   /** "In § 5 Abs. 1 wird nach der Wortfolge X die Wortfolge Y eingefügt." */
   | {
@@ -1132,6 +1138,8 @@ export function splitCompound(line: string): string[] {
 const PUNCT_WORD: Record<string, string> = { punkt: '.', strichpunkt: ';', beistrich: ',', doppelpunkt: ':', gedankenstrich: '–' }
 /** „vor dem Punkt am Ende", „nach dem Strichpunkt am Ende": the mark that closes the unit, as an anchor. */
 const END_MARK_RE = /\b(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt)\s+am\s+Ende\b/i
+/** „der nachfolgende Halbsatz entfällt" — the Halbsatz behind a mark the clause before has replaced. */
+const FOLLOWING_HALBSATZ_GONE_RE = /^(?:der|die)\s+(?:nachfolgende|darauf\s*folgende|danach\s+folgende)\s+Halbs(?:atz|ätze)\s+(?:entfällt|entfallen)\.?$/i
 /** The verbs of an append. */
 const APPEND_VERB_RE = /\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i
 /** „… ersetzt und (danach) folgender (Halb)Satz angefügt", „…; folgender Satz wird angefügt". */
@@ -1668,6 +1676,16 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
   // the duplicates fall out.
   let contexts: (NovaoAddress | null)[] = [inherited ?? null]
   for (const part of parts) {
+    // „In § 27 Abs. 2 letzter Satz wird der Strichpunkt durch einen Punkt
+    // ersetzt; der nachfolgende Halbsatz entfällt" (RAO, BGBl. I Nr. 63/2026):
+    // the Halbsatz has no boundary of its own left once its semicolon is a
+    // full stop, so the two halves are one act — the sentence ends at the new
+    // mark (`truncate`). Only behind exactly that replacement.
+    const before = ops.at(-1)
+    if (FOLLOWING_HALBSATZ_GONE_RE.test(part.trim()) && before?.kind === 'replacePhrase' && (before.from === ';' || before.from === ',') && before.to === '.' && !before.everywhere && !before.atEnd) {
+      ops[ops.length - 1] = { ...before, truncate: true }
+      continue
+    }
     const seen = new Set<string>()
     const got: NovaoOp[] = []
     let refusal: string | null = null

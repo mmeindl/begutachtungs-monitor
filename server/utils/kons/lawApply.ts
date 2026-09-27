@@ -1343,6 +1343,18 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       const units = phraseUnits(law, op.target, op.eachUnit)
       if ('error' in units) return units.error
       if (op.atEnd) return replaceEndMark(units, op.from, op.to)
+      if (op.truncate) {
+        // One place, one mark: the sentence ends at the new mark, and the
+        // Halbsatz behind the old one goes. Across several slots „the rest"
+        // would reach into units the instruction does not name.
+        const slots = units.flat()
+        if (slots.length !== 1) return 'Halbsatz hinter dem Zeichen — Stelle nicht eindeutig'
+        const found = uniqueSlot(slots, op.from)
+        if ('error' in found) return found.error
+        const text = found.hit.slot.read()
+        found.hit.slot.write(joinPhrase(text.slice(0, found.hit.at), op.to, ''))
+        return null
+      }
       if (op.everywhere) {
         let hits = 0
         for (const slot of units.flat()) {
