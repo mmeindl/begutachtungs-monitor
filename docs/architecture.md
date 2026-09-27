@@ -739,6 +739,44 @@ Artikel aus der Adresszeile selbst („Zu Art. 5 (Änderung des …) Z 1 (§ 15)
 sie gehört am Korpus gemessen, bevor sie gebaut wird, und steht deshalb
 nicht als Vermutung hier.
 
+**Gemessen am 26.09.2026 — und 8/ME war der milde Fall.** Über alle Entwürfe,
+deren Entwurf und Regierungsvorlage beide Erläuterungen als HTML führen (GP
+XXVII: 207, XXVI: 69), durch denselben Weg wie der Dienst
+(`pnpm corpus:aenderungsrate -- --gp XXVII --reasoning`; der Blockdurchlauf
+ist gegen `parseExplanationsHtml` geprüft, 0 Abweichungen): **Mehrdeutig sind
+14,7 % der vergleichbaren Paragraphen in XXVII (413 von 2.801) und 22,4 % in
+XXVI (263 von 1.174)**, verteilt auf 80 bzw. 32 Entwürfe. Das ist keine
+Randregel, sondern ein Siebtel der Schicht.
+
+Ein Schlüssel aus Artikel und Paragraph brächte **292 der 413** zurück (XXVI:
+138 von 263). Zurück heißt: Jede Passage, die den Paragraphen nennt, steht auf
+beiden Seiten unter einer Artikelnummer, und mindestens ein Artikel der
+Einheiten findet seine Passage auf beiden Seiten. Die Nummer der Entwurfsseite
+geht dabei über `pairArticles` auf die der Vorlage — 18/ME nummeriert von
+Artikel 3 und 4 auf 6 und 5 um, und die Passagen passen erst dann. Übrig
+bleiben Einheiten ohne Artikelnummer (92 Paragraphen in 15 Entwürfen, etwa
+zwei getrennte Bundesgesetze ohne Artikelgliederung, wo nur der Gesetzestitel
+schlüsseln könnte), Überschriften über mehrere Artikel („Zu Art. 1 Z 5 …
+sowie zu Art. 13 Z 1 bis 3 …" — dort ist die Verweigerung richtig, weil die
+einzige Passage zu § 7 ein anderes Gesetz meint als die Einheiten) und Marken
+nur auf einer Seite.
+
+**Eine Falle, die der Bau vermeiden muss.** Als Marke ein nacktes
+„Artikel N" aus jedem Block zu nehmen, macht Richtlinienzitate und
+Tabellenzellen zu Artikelgrenzen: „Art. 15 der Richtlinie 2019/790" legte in
+143/ME § 86 UrhG unter einen Artikel 15, über XXVII sind es 184 solche Blöcke.
+Ein nacktes „Artikel N" zählt deshalb nur in einer Überschriften-Klasse des
+Word-Exports; „Zu Art. N …" gilt überall, wie schon für `isAddressHeading`.
+Die RIS-Seite (`risExplanations.ts`) tut das stillschweigend, weil sie Marken
+nur aus Überschriften-Elementen liest.
+
+**Und ein Teil davon ist gar keine Mehrdeutigkeit.** 60 der 413 Paragraphen
+stehen in Entwürfen, deren Artikel sich überhaupt nicht paaren (27, 124, 169,
+216/ME): dasselbe Gesetz unter dem Titel des Entwurfs und unter Artikel 1 der
+Vorlage, also scheinbar zweimal. Das behebt kein zweiter Schlüssel, sondern die
+Artikelpaarung — derselbe Fehler, der im Vergleich darüber alles als entfernt
+und neu zeigt (§12.18, Nachtrag).
+
 **Und der Aufklapper war leer, wo die Passage zu lang war.** `diffTokens` gibt
 oberhalb von 2,5 Mio. Zellen keine Segmente zurück, sondern nur die
 Ähnlichkeit — dieselbe Schranke, die schon die Messung oben in die Irre
@@ -3351,6 +3389,14 @@ verlinkt ihn.
 Der Aufruf passiert nur in diesen Zweigen, also für rund 20 der 132 Entwürfe,
 und er fängt keine Fehler — dieselbe Regel wie oben.
 
+**Nachtrag 26.09.2026: Keiner der elf ist ein reiner Parlamentsfall.** Alle
+elf Entwürfe, die hier als „beim Parlament, im RIS nicht" gezählt sind,
+tragen die Gegenüberstellung auch im RIS-Datensatz — unter einem Namen, den
+unsere Regel nicht liest („TGÜ Anpassung QJF-G", „IFG-TGÜ (2025-05-07)").
+Der Satz oben stimmt also für das, was der Service sah, und nicht für das, was
+das RIS hat. Befund und Folge stehen unten bei der präfixierten Abkürzung
+(„Die Abkürzung mitten im Namen").
+
 Und die Absagen werden genauer: sagt ein Parser, *wie* ihn ein Dokument
 abgewiesen hat (`ComparisonParse.unreadable`, `AnnexParse.unreadable` — „Das
 Dokument ist keine zweispaltige Gegenüberstellung", „Die beiden
@@ -5097,6 +5143,41 @@ Messskripte) —, absichtlich als drei Literale und von Hand im Gleichschritt:
 Ein Skript darf nicht weiten können, was als Beilage zählt, ohne dass die
 Seite mitweitet.
 
+**Die Abkürzung mitten im Namen — gemessen, noch nicht gebaut (26.09.2026).**
+Die Weitung auf den Unterstrich hat die Klasse nicht geschlossen, sondern ihren
+kleinsten Teil. Die Ressorts setzen die Abkürzung überall in den Namen, mit
+Leerzeichen, Punkt, Bindestrich oder Klammer davor und danach: „TGÜ Anpassung
+QJF-G", „42. KFG-Nov.TGÜ.11.05.2026", „IFG-TGÜ (2025-05-07)",
+„BBG 2027-2028, BMFWF, TGÜ", dazu die Langformen „TxtGGÜ" und „TextGG" und
+„TGUe". Über den ganzen RIS-Korpus (4.577 Sätze, Gesetzesentwürfe nach Beginn
+der Frist) übersieht die Regel eine Gegenüberstellung, die im Satz steht, in
+**11 von 139** Sätzen der GP XXVIII und **59 von 342** der GP XXVII
+(`pnpm corpus:dokument-namen`). Von der Parlamentsseite her gezählt
+(`pnpm corpus:tgu-deckung`): Wo das Parlament eine Gegenüberstellung führt und
+der zugeordnete RIS-Satz nach unserer Regel keine, ist das in XXVIII **12 Mal
+— 11 davon Namen, einer ohne Zuordnung, kein einziger ein Parlamentsfall**. In
+XXVII 79 = 62 Namen, 12 ohne Zuordnung, 5 nur beim Parlament (davon 3 wieder
+Namen, „Text GG" mit Leerzeichen).
+
+**Warum das mehr ist als ein Etikett.** Seit `READ_PARLIAMENT_COPY` aus ist,
+liest die Seite die Gegenüberstellung nur aus dem RIS. Ein verfehlter Name
+heißt also: kein gelesener Vergleich, kein Paragraph am Tor, und der Satz, das
+RIS führe keine — über ein Dokument, das dort unter CC BY liegt. Die
+Quellenreihenfolge, die diese Seite aus Lizenzgründen einhält, wird durch die
+Weitung nicht verschoben, sondern erst eingehalten.
+
+**Was eine Weitung braucht.** NFC vor dem Vergleich (sieben Dokumentnamen im
+Korpus sind zerlegt geschrieben, ä als a + U+0308, und sehen aus wie jeder
+andere), dann die Abkürzung als Token zwischen Nicht-Buchstaben statt am Ende
+— so bleibt „AnhangTGÜ" weiterhin draußen. Die drei Literale ziehen gemeinsam
+(`scripts/corpus/tguDeckung.ts` liest die ausgelieferten aus dem Quelltext und
+bricht ab, wenn sie auseinanderlaufen), und weil das Tor sich für laufende
+Entwürfe bewegt, geht die Drift-Grundlinie im selben Commit mit. Die älteren
+Formen — `begtxt`, `begmat`, „GGUe", „Textüberstellung" — sind ein zweiter
+Schritt und kein Namensproblem: `begtxt` ist in 30 von 51 Fällen die
+Gegenüberstellung und in den übrigen etwas anderes, das entscheidet der
+Inhalt.
+
 **Eine Beilage in mehreren Dokumenten (26.09.2026).** 2 der 240 Sätze mit
 Gegenüberstellung veröffentlichen sie in Teilen:
 „Textgegenüberstellung (Verordnung)" neben „(Anlagen)" (Methodenverordnung
@@ -5465,6 +5546,43 @@ this station could show, once counted over a GP. What is *not* worth
 measuring is a "weight": the research service's own count for GP XXVII has
 only about 40 % of initiatives passing unchanged, so committee changes are
 common with or without statements, and contested bills attract both.
+
+**Counted on 26.09.2026 — and the example was the exception**
+(`pnpm corpus:anhoerungen -- --gp XXVIII,XXVII`). § 40 Abs. 1 GOG-NR gives a
+committee two ways to hear anyone, and they behave in opposite ways:
+
+- **Oral** (Auskunftspersonen, Expert:innen, a public hearing) exists **only
+  as prose** in the report. No field carries it — not the report's stages,
+  not the Vorlage's Verlauf, not the names tables, whose whole function
+  vocabulary is Pro, Contra, Regierungsbank, Berichterstatter. Among the
+  committee reports our draft pages reach (a Vorlage that came from a
+  Ministerialentwurf): **GP XXVIII 1 of 79**, and that one heard
+  Parliament's own budget office; **GP XXVII 8 of 286**, and only one of them
+  with civil society — 2420 d.B., seven invited experts (not eight, as noted
+  above before the count). The others heard the ministry's own
+  Sektionschefs, the Rechnungshof or the budget office. Across all committee
+  reports it is 34 of 459 and 166 of 2,096, mostly on Berichte, Volksbegehren
+  and in the budget committee. **Below the threshold, so no row:** a line
+  that shows up once per period and mostly names officials would read as a
+  channel that does not exist.
+- **Written** — the Ausschussbegutachtung, a second, invited round of
+  Stellungnahmen at the committee — is **structured**: the Vorlage's Verlauf
+  carries one stage „Beschlussfassung auf Einholung schriftlicher
+  Stellungnahmen im Rahmen einer Ausschussbegutachtung" and one stage per
+  addressee („Antrag auf Einholung einer Stellungnahme von … – angenommen";
+  RV 313: 98 addressees, median 193). Field and prose agree 8 of 8. On
+  ME-derived Vorlagen: **GP XXVIII 2 of 79**, GP XXVII 0. Small, but it is the
+  form that fits this product — an invitation, readable without a prose
+  parser. Unanswered: whether those invited statements arrive in list 142 on
+  the Vorlage and would then stand in the same panel as the unsolicited ones,
+  under a sentence that says no committee procedure exists. For the
+  unsolicited ones the sentence is right; beside an Ausschussbegutachtung it
+  would read wrong.
+
+False positives read by eye and excluded: „Anhörung" and „Sachverständige"
+in the law's own text (the IFG's right to be heard, AVG/StPO experts),
+rejected motions for an Ausschussbegutachtung, and „Auskunftsperson" in the
+Untersuchungsausschuss sense. Persons are counted, never printed.
 
 ### 12.15 Lange Stellungnahmen-Listen: zwei Faltungen und ein Suchfeld
 
@@ -6095,6 +6213,38 @@ Join, den §12.16 für die Verordnungen schon notiert hat. Und die Auswahl
 kennt nur, was Parlament als eigenes Dokument veröffentlicht: ein
 **zugespielter** vollabändernder Abänderungsantrag, der vor der Sitzung
 kursiert, ist kein Datensatz und wird keiner.
+
+**Nachtrag 26.09.2026: Was der Vergleich über zwei ganze Perioden falsch
+macht.** Die Änderungsrate (§12.38) hat den ME→RV-Vergleich über jeden
+Entwurf der GP XXVII und XXVI laufen lassen, durch dieselben Module wie der
+Dienst, und dabei vier Fehler der Seite freigelegt — keiner davon ist in einer
+Stichprobe von Hand aufgefallen:
+
+- **„Es liegt noch keine Regierungsvorlage vor" über zwei Entwürfe, die eine
+  haben** (XXVI 79/ME → 331 d.B., 97/ME → 383 d.B.). Beides sind
+  Art.-15a-Vereinbarungen, deren Text beim Parlament „Vertragstext" heißt. Die
+  Whitelist lässt ihn aus guten Gründen aus (oben), aber
+  `MISSING_STATION_REASON.rv` spricht dann über die Existenz der Vorlage statt
+  über die ihres Gesetzestexts — genau die falsche Anschuldigung, die
+  `stationMap.ts` ausschließen will.
+- **Ein Gesetz geht in einem fremden Sammelgesetz auf.** Das Weingesetz (XXVI
+  9/ME, eine Einheit) erscheint in der Vorlage als Artikel des
+  Materien-Datenschutz-Anpassungsgesetzes; die Artikel paaren nicht, und die
+  Seite meldet **1.119 Einheiten „neu"**. `lawsOnlyInTo` fängt es nicht, weil
+  kein Gesetz *fehlt* — ein neues kommt nur dazu. Ebenso 115/ME
+  (Brexit-Begleitgesetz), und von der anderen Seite XXVII 11/ME: zwei Ziffern,
+  in einer 42-Einheiten-Novelle desselben Gesetzes aufgegangen.
+- **Artikel paaren nicht, obwohl es dasselbe Gesetz ist** (XXVII 216/ME: „…
+  geändert wird (Teuerungs-Entlastungspaket Teil II)" gegen „Änderung des
+  Einkommensteuergesetzes 1988"; die Titelähnlichkeit in `pairArticles`
+  bleibt unter 0,5). Dann steht alles als entfernt und neu. 7 Entwürfe der
+  XXVII ohne jede Artikelpaarung, 3 der XXVI.
+- **Gleiche Anordnungen als entfernt und neu** (XXVII 92/ME; 5 Entwürfe mit
+  zusammen 67 Paaren gleichen Texts) — ein Fehler der Ausrichtung, nicht des
+  Texts.
+
+Alle vier verfälschen dasselbe: den *Umfang* der Änderung. Das ist der Grund,
+warum die Rate aus §12.38 nicht vor ihnen auf die Seite gehört.
 
 
 ### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
@@ -7900,6 +8050,24 @@ ein eigenes Feld und steht nicht mehr unter „weiteres Dokument". Die zweite
 steht noch — „EB" bleibt der Suche überlassen, weil eine Abkürzung, die im
 Korpus einmal vorkommt, keine Regel trägt.
 
+**Die Begründung war falsch — gezählt am 26.09.2026**
+(`pnpm corpus:dokument-namen`). „EB" steht nicht einmal im Korpus, sondern an
+19 Dokumenten, meist zwischen Unterstrichen („SVÄG_2024_EB_19.04.2024",
+„EBs_TAMG_final"), wo `\b` nicht greift, weil der Unterstrich als
+Wortzeichen gilt. Und „EB" ist nicht einmal die größte Lücke der Regel
+`/erl(ä|ae|a)uterung/`. Von 139 Gesetzessätzen der GP XXVIII findet sie 133;
+die sechs übrigen heißen einmal „EB", viermal „Erl"/„Erl." („42. KFG-Nov.
+Erl. 11.05.2026", „Pol-W-G Erl") und einmal wörtlich „Erläuterungen" — in
+zerlegter Schreibweise, ä als a + U+0308, die die Regel nicht sieht. In GP
+XXVII findet sie 299 von 342; von den 43 übrigen sind 35 über den Namen zu
+holen (2 zerlegt, 15 „EB", 18 „Erl"/„Erläut"/„Erläuternde Bemerkungen").
+Vor XXVI ist „Materialien"/„begmat" die Normalform: ein Dokument mit
+Vorblatt, Erläuterungen und Gegenüberstellung zugleich — das ist kein
+Namensproblem, sondern ein anderes Dokument. Die Folge heute: Diese Entwürfe
+zeigen keinen Allgemeinen Teil, weil `getExplanations` nur den RIS-Satz liest.
+Die Regel ist damit ein Bauposten, kein Suchetikett mehr; an ihr hängt über
+`scripts/harness/me.ts` auch die Anlagen-Grundlinie.
+
 **Das Budget war danach die Grenze, nicht die Zeit.** Mit 16 PDFs je Suche
 fiel die Benennungsquote auf 91,4 % — das Budget ging mitten in der
 Trefferliste aus. Ohne Deckel sind es **100 % (58 von 58 über zwölf
@@ -8680,6 +8848,76 @@ Dev-Servers Einträge aus der Zeit vor einer Änderung hielt und der
 RIS-Bestand zwischen zwei Messungen wächst. Was hier steht, ist an einem
 frischen Produktionsbuild auf eigenem Port gemessen — bei Fragen an dieser
 Kette ist das der einzige verlässliche Weg.)
+
+### 12.38 Die erste Änderungsrate einer ganzen Periode — und warum sie so nicht auf die Seite kommt
+
+„Wie viele Entwürfe haben sich nach der Begutachtung geändert?" ist die
+Hälfte von Mechanismus 2, die neben „wie viele kommen überhaupt durch" fehlte
+(`app/utils/outcomes.ts`, §12.10 Nr. 10). Gerechnet einmal über jede
+abgeschlossene Periode, als Rechenzeit und ohne Betrieb, mit
+`pnpm corpus:aenderungsrate -- --gp XXVII` (kalt 85 s, warm 8 s). Der Weg ist
+der des Dienstes: dieselben Module für Stationen, Gesetzestexte, Artikelpaarung
+und Vergleich; wo `getLawDiff` nicht importierbar ist, eine Kopie, die ein
+zweiter Lauf mit dem Alias gegen die ausgelieferte Stationenauflösung hält
+(0 Abweichungen in beiden Perioden).
+
+**Das Ergebnis.** GP XXVII: 350 Entwürfe; 57 ohne Regierungsvorlage (die
+296/353 aus `outcomes.ts` reproduziert), 10 nicht vergleichbar (der
+Gesetzestext nur als PDF beim Parlament und nicht im RIS), **3 textgleich, 0
+nur redaktionell, 280 geändert — 98,9 % der 283 verglichenen**. GP XXVI:
+**101 von 104 (97,1 %)**. Von Hand nachgesehen, weil eine so hohe Zahl zuerst
+nach Messfehler aussieht: 13/ME ist wirklich zeichengleich, 203/ME auch;
+221/ME halbiert einen Rabatt, 23/ME fasst eine Prüfregel neu, 30/ME ersetzt
+„XXX" durch ein Datum und ändert einen Plural. Parser-Asymmetrie und Paare
+gleichen Texts betreffen weniger als zehn Entwürfe je Periode.
+
+**Warum das keine Konstante für die Seite ist.** „296 von 353 wurden zur
+Regierungsvorlage" trennt: Wer keine hat, ist in der Minderheit, und die Zahl
+ordnet den einzelnen Entwurf ein. „280 von 283 wurden geändert" trennt
+nichts — es sagt dem Leser eines Entwurfs nur, dass seiner vermutlich auch
+geändert wurde, und das zeigt ihm der Vergleich auf derselben Seite genauer.
+Was trägt, ist **das Wieviel**: Der Median der berührten Einheiten liegt bei
+rund zwei Dritteln, der der Einheiten mit Wortänderung bei 16 je Entwurf
+(p10: 3); vier Entwürfe ändern nur das Inkrafttreten, 65 kommen mit einem
+anders geschnittenen Paket an. Diese Verteilung ist aber genau die, die die
+Vergleichsfehler aus §12.18 (Nachtrag) verfälschen — 1.119 „neue" Einheiten
+bei einem Entwurf mit einer. Die Reihenfolge ist deshalb: erst die
+Paarungsfehler, dann eine Umfangszahl, und welche, ist eine
+Produktentscheidung.
+
+**Was die Zahl nicht sagt.** Dass eine Stellungnahme eine Änderung bewirkt
+hat. Die Ressorts arbeiten nach der Begutachtung praktisch immer weiter am
+Text — das ist gemessen. Wodurch, wäre der Abgleich einer Stellungnahme mit
+dem geänderten Paragraphen, eine andere Messung, und die Rahmenregel (§4)
+verbietet, die eine Zahl als die andere zu lesen.
+
+**Die Vorfrage war falsch gestellt.** Notiert war, die Rate sei für die
+alten Perioden nicht ehrlich zu bilden, falls die amtliche
+Textgegenüberstellung dort fehlt — eine Stichprobe von acht Entwürfen
+deutete auf 1–3 von 8 gegen 7 von 8 heute. Beides trägt nicht:
+
+- **Die Beilage steht nicht auf diesem Pfad.** Der ME→RV-Vergleich liest die
+  Gesetzestexte beider Stationen (`diff/stationDocuments.ts`,
+  `diff/lawDiffService.ts`); nichts in `server/utils/diff/` kennt die Beilage.
+  Sie steht nur am Konsolidierungs-Tor (`kons/konsService.ts`,
+  `kons/konsGate.ts`). Was die Rate begrenzt, ist die Vergleichbarkeit der
+  beiden Texte: **64 · 70 · 87 · 93 · 97 · 100 %** der Entwürfe mit
+  Regierungsvorlage in XXIII bis XXVIII. Das ist die Zahl, die ein Antrag für
+  die alten Perioden nennen darf.
+- **Und die Stichprobe lag falsch** (`pnpm corpus:tgu-deckung -- --gp
+  XXIII,XXIV,XXV,XXVI,XXVII,XXVIII --probe`). Beim Parlament, ohne jeden Join
+  gezählt, trägt die Beilage **40,8 · 60,4 · 67,8 · 86,5 · 86,9 · 89,9 %**
+  der Entwürfe; mit den gebündelten „Materialien"-Dokumenten, geprüft an der
+  Kopfzeile „Geltende Fassung | Vorgeschlagene Fassung", **71,7 · 75,9 ·
+  82,7 · 86,5 · 86,9 · 89,9 %**. Die RIS-Seite sieht mit unserer Regel nur
+  18,9 bis 81,2 %, und der Abstand ist in XXV–XXVIII **nicht der Join**
+  (Zuordnung 82–99 %, die joinfreie Kontrolle über alle Gesetzessätze der
+  Periode liegt gleich), sondern zum größten Teil der Name (§12.13, „Die
+  Abkürzung mitten im Namen"). In XXIII und XXIV kommt ein unvollständiges RIS
+  dazu: 124 Gesetzessätze für 233 Entwürfe. Das RIS beginnt am 17.12.2003
+  und reicht damit in XXIII hinein, aber lückenhaft.
+
+Offen bleibt damit nur, welche Umfangszahl — nicht, ob es eine gibt.
 
 ## 13. Open questions
 
