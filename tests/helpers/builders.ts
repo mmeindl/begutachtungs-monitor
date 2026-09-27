@@ -39,6 +39,7 @@ export const comparisonRow = (over: Partial<ComparisonRow> = {}): ComparisonRow 
   elided: false,
   segments: null,
   editorial: false,
+  elisionRange: false,
   ...over,
 })
 
