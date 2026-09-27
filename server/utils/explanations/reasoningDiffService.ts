@@ -28,7 +28,7 @@
  * rather than comparing something similar.
  */
 import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
-import { parseExplanationsHtml, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
+import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
 import { getLawDiff } from '../diff/lawDiffService'
 import { fetchDocument } from '../upstream/fetchDocument'
 import { findLastRvLink, mapDocuments, parseStages } from '../parliament/detailJson'
@@ -97,8 +97,11 @@ const compareMeToRv = defineCachedFunction(
     }
 
     const [meHtml, rvHtml] = await Promise.all([fetchDocument(meDoc.url), fetchDocument(rvDoc.url)])
-    const before = passageTexts(passagesByParagraph(parseExplanationsHtml(meHtml)))
-    const after = passageTexts(passagesByParagraph(parseExplanationsHtml(rvHtml)))
+    const meParsed = parseExplanationsHtml(meHtml)
+    const rvParsed = parseExplanationsHtml(rvHtml)
+    const before = passageTexts(passagesByParagraph(meParsed))
+    const after = passageTexts(passagesByParagraph(rvParsed))
+    const byArticle = { before: passageTexts(passagesByArticleParagraph(meParsed)), after: passageTexts(passagesByArticleParagraph(rvParsed)) }
     const sources = [meDoc, rvDoc]
     if (before.size === 0 && after.size === 0) {
       return empty(gp, inr, 'Die Erläuterungen dieses Entwurfs sind nicht nach Paragraphen gegliedert; ein Vergleich am Paragraphen ginge daneben.', sources)
@@ -107,7 +110,7 @@ const compareMeToRv = defineCachedFunction(
     const diff = await getLawDiff(gp, inr, 'me', 'rv')
     if (!diff.available) return empty(gp, inr, null, sources)
 
-    const { units, paragraphs, stats } = compareReasoning(diff.units, before, after)
+    const { units, paragraphs, stats } = compareReasoning(diff.units, before, after, byArticle)
     return {
       gp,
       inr,

@@ -80,7 +80,7 @@ import { cachedJson, cachedText } from '../lib/diskCache'
 import { fetchRisBegutCorpus } from '../lib/corpus'
 import { pool } from '../lib/async'
 import { argFlag, argPair } from '../lib/args'
-import { parseExplanationsHtml, passagesByParagraph, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
+import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
 import { compareReasoning } from '../../server/utils/explanations/reasoningDiff'
 import { addressOf, isAddressHeading } from '../../server/utils/explanations/risExplanations'
 import { addressedParagraphOf } from '../../server/utils/lawtext/instructionAddress'
@@ -726,6 +726,11 @@ async function reasoningReport(): Promise<void> {
   const notIn = new Map<string, number>()
   let draftsCompared = 0
   let parasCompared = 0
+  let shippedByArticle = 0
+  let shippedByArticleParas = 0
+  let draftsGained = 0
+  const keyedMismatch: string[] = []
+  const keyedLost: string[] = []
   let draftsAmbiguous = 0
   let ambiguousTotal = 0
   let ambiguousBoth = 0
@@ -773,6 +778,19 @@ async function reasoningReport(): Promise<void> {
     const cmp = compareReasoning(units, before, after)
     if (cmp.stats.compared > 0) draftsCompared++
     parasCompared += cmp.stats.compared
+    // The shipped second key (since 27.09.2026): the same call as the service.
+    const keyed = compareReasoning(units, before, after, {
+      before: passageTexts(passagesByArticleParagraph(meParsed)),
+      after: passageTexts(passagesByArticleParagraph(rvParsed)),
+    })
+    const keyedEntries = Object.keys(keyed.paragraphs).filter((k) => k.startsWith('Art. '))
+    shippedByArticle += keyedEntries.length
+    shippedByArticleParas += new Set(keyedEntries.map((k) => k.replace(/^Art\. \S+ /, ''))).size
+    // Nothing shown before may go: every entry of the call without the second key stays.
+    const lost = Object.keys(cmp.paragraphs).filter((k) => !keyed.paragraphs[k])
+    if (lost.length) keyedLost.push(`${r.inr}/ME (${lost.join(', ')})`)
+    if (keyed.stats.compared !== cmp.stats.compared + keyedEntries.length) keyedMismatch.push(`${r.inr}/ME (${cmp.stats.compared} + ${keyedEntries.length} → ${keyed.stats.compared})`)
+    if (keyedEntries.length) draftsGained++
 
     const perPara = articlesPerParagraph(units)
     const ambiguous = [...perPara].filter(([, arts]) => arts.size > 1)
@@ -855,6 +873,7 @@ async function reasoningReport(): Promise<void> {
   console.log(`  Eimer 3–5: ${candidates.length} · Population (beide mit HTML-Erläuterungen): ${population.length}`)
   for (const [k, v] of notIn) console.log(`    nicht dabei: ${String(v).padStart(3)}  ${k}`)
   console.log(`  Entwürfe mit ≥ 1 verglichenem §: ${draftsCompared} · §§ verglichen: ${parasCompared}`)
+  console.log(`  Ausgeliefert (Artikel, §), seit 27.09.2026: +${shippedByArticle} Vergleiche je Artikel über ${shippedByArticleParas} vorher mehrdeutige §§ (je Entwurf gezählt) in ${draftsGained} Entwürfen${keyedMismatch.length ? ` — an der Obergrenze: ${keyedMismatch.join(', ')}` : ''}; vorher gezeigt und jetzt verloren: ${keyedLost.length ? keyedLost.join(', ') : 'keiner'}`)
   console.log(`  Entwürfe mit ≥ 1 mehrdeutigen §: ${draftsAmbiguous} · mehrdeutige §§: ${ambiguousTotal}, davon mit Begründung auf beiden Seiten: ${ambiguousBoth}`)
   console.log(`  Anteil mehrdeutig an (verglichen + mehrdeutig mit Begründung beidseits): ${ambiguousBoth} / ${parasCompared + ambiguousBoth} = ${pct(ambiguousBoth, parasCompared + ambiguousBoth)}`)
   console.log(`    davon nur scheinbar mehrdeutig — Artikel gar nicht gepaart, dieselbe Nummer unter ME- und RV-Titel: ${ambiguousUnpairedParas} §§ in ${[...ambiguousUnpaired].join(', ') || '–'}`)

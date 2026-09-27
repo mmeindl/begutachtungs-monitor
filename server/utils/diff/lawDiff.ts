@@ -26,7 +26,7 @@ import type { LawDiffUnit, LawPackageEntry, LawUnitChange } from '../../../share
 import type { LawUnit } from '../lawtext/lawUnits'
 import { compareKey } from '../lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
-import { bareParaId } from '../text/designation'
+import { bareParaId, leadingArticleKey } from '../text/designation'
 import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
 
 // ---------------------------------------------------------------------------
@@ -263,6 +263,8 @@ function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null,
   const ref = to ?? from!
   return {
     article: ref.article,
+    articleKey: leadingArticleKey(ref.articleNumber),
+    fromArticleKey: from ? leadingArticleKey(from.articleNumber) : null,
     id: ref.id,
     fromId: from?.id ?? null,
     heading: to?.heading ?? from?.heading ?? null,

@@ -3,9 +3,11 @@ import type { LawDiffUnit } from '../shared/types'
 import { compareReasoning } from '../server/utils/explanations/reasoningDiff'
 
 /** A Novellierungsanordnung the way the comparison emits it. */
-function unit(article: string, id: string, line: string, change: LawDiffUnit['change'] = 'changed'): LawDiffUnit {
+function unit(article: string, id: string, line: string, change: LawDiffUnit['change'] = 'changed', keys: { to?: string; from?: string } = {}): LawDiffUnit {
   return {
     article,
+    articleKey: keys.to ?? null,
+    fromArticleKey: keys.from ?? keys.to ?? null,
     id,
     fromId: id,
     heading: line.slice(0, 100),
@@ -50,6 +52,54 @@ describe('compareReasoning', () => {
     const after = new Map([['15', 'Die neue Begründung des einen Gesetzes, deutlich umformuliert.']])
 
     const out = compareReasoning(units, before, after)
+
+    expect(out.units).toEqual({})
+    expect(out.stats).toEqual({ compared: 0, changed: 0 })
+  })
+
+  it('vergleicht die mehrdeutige Nummer unter ihrem Artikel, wo beide Seiten ihn nennen (27.09.2026)', () => {
+    // 18/ME: the Vorlage renumbers the draft's Artikel 3 and 4 to 6 and 5. The
+    // draft's passages carry the draft's numbers, the Vorlage's the Vorlage's.
+    const units = [
+      unit(SNG, 'Z9', 'In § 15 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.', 'changed', { from: '3', to: '6' }),
+      unit(BVWG, 'Z1', 'In § 15 Abs. 2 entfällt die Wortfolge "in der Regel".', 'changed', { from: '4', to: '5' }),
+    ]
+    const byArticle = {
+      before: new Map([['3|15', 'Die Begründung zum Staatsschutz.'], ['4|15', 'Die Begründung zum BVwGG.']]),
+      after: new Map([['6|15', 'Die Begründung zum Staatsschutz, deutlich umformuliert und ergänzt.'], ['5|15', 'Die Begründung zum BVwGG.']]),
+    }
+
+    const out = compareReasoning(units, new Map(), new Map(), byArticle)
+
+    expect(Object.keys(out.paragraphs).sort()).toEqual(['Art. 5 § 15', 'Art. 6 § 15'])
+    expect(out.paragraphs['Art. 6 § 15']).toMatchObject({ paragraph: '§ 15', changed: true })
+    expect(out.paragraphs['Art. 5 § 15']).toMatchObject({ paragraph: '§ 15', changed: false })
+    expect(Object.values(out.units).sort()).toEqual(['Art. 5 § 15', 'Art. 6 § 15'])
+  })
+
+  it('füllt die Obergrenze zuerst mit den eindeutigen Nummern — der zweite Schlüssel kostet keine', () => {
+    const ambiguousFirst = [
+      unit(SNG, 'Z1', 'In § 15 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.', 'changed', { to: '1' }),
+      unit(BVWG, 'Z1', 'In § 15 Abs. 2 entfällt die Wortfolge "in der Regel".', 'changed', { to: '2' }),
+    ]
+    const unique = Array.from({ length: 120 }, (_, i) => unit(SNG, `Z${i + 2}`, `In § ${100 + i} Abs. 1 wird das Wort "a" durch das Wort "b" ersetzt.`, 'changed', { to: '1' }))
+    const texts = new Map(unique.map((_, i) => [String(100 + i), `Begründung ${i}.`]))
+    const byArticle = { before: new Map([['1|15', 'A.'], ['2|15', 'B.']]), after: new Map([['1|15', 'A.'], ['2|15', 'B.']]) }
+
+    const out = compareReasoning([...ambiguousFirst, ...unique], texts, texts, byArticle)
+
+    expect(out.stats.compared).toBe(120)
+    expect(Object.keys(out.paragraphs).some((k) => k.startsWith('Art. '))).toBe(false)
+  })
+
+  it('lässt die mehrdeutige Nummer weg, wo eine Seite keinen Artikel nennt', () => {
+    const units = [
+      unit(SNG, 'Z9', 'In § 15 Abs. 1 wird das Wort "kann" durch das Wort "darf" ersetzt.', 'changed', { to: '1' }),
+      unit(BVWG, 'Z1', 'In § 15 Abs. 2 entfällt die Wortfolge "in der Regel".'),
+    ]
+    const byArticle = { before: new Map([['1|15', 'Nur im Entwurf unter Artikel 1.']]), after: new Map<string, string>() }
+
+    const out = compareReasoning(units, new Map([['15', 'x']]), new Map([['15', 'y']]), byArticle)
 
     expect(out.units).toEqual({})
     expect(out.stats).toEqual({ compared: 0, changed: 0 })

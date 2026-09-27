@@ -40,3 +40,13 @@ export function explanationParaId(designation: string | null): string | null {
 export function explanationKey(law: string | null, paraId: string): string {
   return `${law ?? ''}#${paraId}`
 }
+
+/**
+ * The second key, for a § number two Artikel of one draft share
+ * (docs/architecture.md §12.10b): the Artikel as `leadingArticleKey` writes it
+ * („2"), then the § key above. Both sides of the Begründungsvergleich build it
+ * here, so the passage and the unit cannot be keyed two ways.
+ */
+export function articleParagraphKey(article: string, paragraphId: string): string {
+  return `${article}|${paragraphId}`
+}

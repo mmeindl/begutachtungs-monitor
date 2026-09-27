@@ -22,6 +22,14 @@
  * number — one law's Begründung would be shown under the other's Paragraph.
  * So where two Artikel address the same number this layer shows nothing, the
  * same rule as for the § names: a wrong reference is worse than none.
+ *
+ * **Unless the Artikel says which (27.09.2026).** Measured, the rule was not
+ * a margin: 14,7 % of the comparable §§ of GP XXVII (413 of 2.801), 22,4 % of
+ * GP XXVI (§12.10b). Where both documents set the passage under an Artikel
+ * (`HtmlPassage.article`) and the unit carries its Artikel number on each
+ * side (`articleKey`, `fromArticleKey` — renumbered between draft and
+ * Vorlage, 18/ME: 3 → 6), the § is compared under that pair; measured, 292
+ * of the 413 come back. What still cannot be keyed stays out, as before.
  */
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
 import { unitKey } from '../../../shared/utils/diffKey'
@@ -31,7 +39,7 @@ import { addressedParagraphOf } from '../lawtext/instructionAddress'
 // with. Its `\b` changes nothing for the designations `parseAddress` builds:
 // 0 of 4.215 differ over the offline corpus (22.09.2026). It bites only on a
 // raw Gliederungssymbol such as § 365m1, which never reaches here.
-import { explanationParaId } from '../../../shared/utils/explanationKey'
+import { articleParagraphKey, explanationParaId } from '../../../shared/utils/explanationKey'
 
 /** Below this it is punctuation and whitespace, not a revision. */
 const CHANGED_AT = 0.02
@@ -41,7 +49,12 @@ const CHANGED_AT = 0.02
 const MAX_PARAGRAPHS = 120
 
 export interface ReasoningComparison {
-  /** `unitKey` → „§ 11": which change points at which Paragraph. */
+  /**
+   * `unitKey` → „§ 11": which change points at which Paragraph. Where the
+   * number is shared by two Artikel of the draft, the key names the Artikel
+   * too („Art. 2 § 15") — a lookup key, not display text; the entry's
+   * `paragraph` stays „§ 15".
+   */
   units: Record<string, string>
   /** „§ 11" → the comparison of its Begründung, once per Paragraph. */
   paragraphs: Record<string, ReasoningDiffEntry>
@@ -78,28 +91,51 @@ export function compareReasoning(
   units: readonly LawDiffUnit[],
   before: ReadonlyMap<string, string>,
   after: ReadonlyMap<string, string>,
+  byArticle: { before: ReadonlyMap<string, string>; after: ReadonlyMap<string, string> } | null = null,
 ): ReasoningComparison {
   const ambiguous = ambiguousParagraphs(units)
   const out: ReasoningComparison = { units: {}, paragraphs: {}, stats: { compared: 0, changed: 0 } }
   const skipped = new Set<string>()
 
-  for (const unit of units) {
+  // Two passes: every unique number first, the Artikel-keyed ones after. The
+  // ceiling below counts entries, and in unit order an Artikel-keyed § early
+  // in a long Sammelgesetz took the place of a unique one that had been shown
+  // before the second key existed — measured, 43, 202 and 230/ME of GP XXVII
+  // would have lost Begründungen they have today.
+  const ordered = [...units.filter((u) => !ambiguous.has(addressedParagraphOf(u) ?? '')), ...units.filter((u) => ambiguous.has(addressedParagraphOf(u) ?? ''))]
+  for (const unit of ordered) {
     const para = addressedParagraphOf(unit)
     const id = explanationParaId(para)
-    if (!para || !id || ambiguous.has(para) || skipped.has(para)) continue
+    if (!para || !id) continue
 
-    if (!out.paragraphs[para]) {
+    // The entry's key and the two texts it compares: by § where the number
+    // is unique in the draft, by Artikel and § where it is not — and where
+    // not even that holds, nothing.
+    let key: string
+    let a: string
+    let b: string
+    if (!ambiguous.has(para)) {
+      key = para
+      a = before.get(id) ?? ''
+      b = after.get(id) ?? ''
+    } else {
+      if (!byArticle || !unit.fromArticleKey || !unit.articleKey) continue
+      key = `Art. ${unit.articleKey} ${para}`
+      a = byArticle.before.get(articleParagraphKey(unit.fromArticleKey, id)) ?? ''
+      b = byArticle.after.get(articleParagraphKey(unit.articleKey, id)) ?? ''
+    }
+    if (skipped.has(key)) continue
+
+    if (!out.paragraphs[key]) {
       if (Object.keys(out.paragraphs).length >= MAX_PARAGRAPHS) continue
-      const a = before.get(id) ?? ''
-      const b = after.get(id) ?? ''
       if (!a || !b) {
-        skipped.add(para)
+        skipped.add(key)
         continue
       }
       const { similarity, segments } = diffTokens(a, b)
       const drift = 1 - similarity
       const changed = drift >= CHANGED_AT
-      out.paragraphs[para] = {
+      out.paragraphs[key] = {
         paragraph: para,
         drift,
         changed,
@@ -113,7 +149,7 @@ export function compareReasoning(
         toText: changed && !segments ? b : null,
       }
     }
-    out.units[unitKey(unit)] = para
+    out.units[unitKey(unit)] = key
   }
 
   const entries = Object.values(out.paragraphs)

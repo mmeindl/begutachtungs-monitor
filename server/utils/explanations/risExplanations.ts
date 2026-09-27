@@ -251,7 +251,7 @@ export function addressOf(heading: string): { paragraphs: string[]; items: strin
  * Only where the heading names no § of its own: „Zu Art. 2 Z 1 (§ 7)" is a
  * passage about § 7, not a division of the package.
  */
-const ARTICLE_HEADING_RE = /^(?:zu\s+)?art(?:ikel)?\.?\s*(?:[0-9]+[a-z]?|[ivxlc]+)\b/i
+export const ARTICLE_HEADING_RE = /^(?:zu\s+)?art(?:ikel)?\.?\s*(?:[0-9]+[a-z]?|[ivxlc]+)\b/i
 
 function kindOf(heading: string): ExplanationsPartKind {
   const squeezed = squeeze(heading)

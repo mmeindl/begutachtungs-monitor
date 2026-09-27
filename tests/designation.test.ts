@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anlageLabelKey, articleNumberKey, bareParaId } from '../server/utils/text/designation'
+import { anlageLabelKey, articleKeysNamed, articleNumberKey, bareParaId, leadingArticleKey } from '../server/utils/text/designation'
 
 describe('bareParaId', () => {
   it('reads the number out of a designation, whatever the kind', () => {
@@ -44,5 +44,30 @@ describe('articleNumberKey', () => {
     expect(articleNumberKey('2a')).toBeNull()
     expect(articleNumberKey('')).toBeNull()
     expect(articleNumberKey('0')).toBeNull()
+  })
+})
+
+describe('leadingArticleKey', () => {
+  it('reads the Artikel a heading opens with, roman or arabic', () => {
+    expect(leadingArticleKey('Artikel 3')).toBe('3')
+    expect(leadingArticleKey('Zu Art. II (Änderung des Weingesetzes)')).toBe('2')
+    expect(leadingArticleKey('Zu Art. 2 Z 1 (§ 7)')).toBe('2')
+  })
+
+  it('refuses what it cannot read, and a heading that opens with no Artikel', () => {
+    expect(leadingArticleKey('Zu Art. 2a (…)')).toBeNull()
+    expect(leadingArticleKey('Zu Z 4 (§ 54c Abs. 1a):')).toBeNull()
+    expect(leadingArticleKey(null)).toBeNull()
+  })
+})
+
+describe('articleKeysNamed', () => {
+  it('names every Artikel of a heading, once', () => {
+    expect(articleKeysNamed('Zu Art. 1 Z 5 sowie zu Art. 13 Z 1 bis 3 (§ 6 und § 7 KfzStG)')).toEqual(['1', '13'])
+    expect(articleKeysNamed('Zu Z 3 (§ 5):')).toEqual([])
+  })
+
+  it('does not read the letters inside a word as an Artikel', () => {
+    expect(articleKeysNamed('Zu Z 2 (§ 3 Startart 5)')).toEqual([])
   })
 })

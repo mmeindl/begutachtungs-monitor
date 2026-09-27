@@ -22,13 +22,14 @@
  * „Zu Z 4 (§ 54c Abs. 1a und 1b):" has to mean the same Paragraph on both
  * sides, or the Begründung hangs on the wrong §.
  */
-import { addressOf, isAddressHeading } from './risExplanations'
+import { addressOf, ARTICLE_HEADING_RE, isAddressHeading } from './risExplanations'
+import { articleKeysNamed, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 // One reading of a designation for both sides of the lookup. Its `\b` changes
 // nothing for what `addressOf` builds: 0 of 4.215 designations differ over the
 // offline corpus (22.09.2026).
-import { explanationParaId } from '../../../shared/utils/explanationKey'
+import { articleParagraphKey, explanationParaId } from '../../../shared/utils/explanationKey'
 
 /** One passage of the Besonderer Teil, at its address. */
 export interface HtmlPassage {
@@ -38,6 +39,19 @@ export interface HtmlPassage {
   paragraphs: string[]
   /** The passage's paragraphs, in printed order. */
   text: string[]
+  /**
+   * The Artikel the passage stands under, as a key („2"), or null.
+   *
+   * The § a passage names is not unique in a Sammelgesetz: two Artikel each
+   * amend a § 15, and the passage says only „§ 15" — 14,7 % of the comparable
+   * §§ of GP XXVII (§12.10b). The Artikel comes from the passage's own
+   * heading („Zu Art. 2 Z 1 (§ 5)") or from the Artikel heading above it,
+   * which a ressort types either as a passage („Zu Art. 5 (Änderung des …)")
+   * or as a bare „Artikel 5" line. Null where the heading names several
+   * Artikel („Zu Art. 1 Z 5 … sowie zu Art. 13 Z 1"): one passage for two
+   * laws belongs to neither.
+   */
+  article: string | null
 }
 
 export interface HtmlExplanations {
@@ -72,6 +86,8 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
   const special: HtmlPassage[] = []
   let inSpecial = false
   let current: HtmlPassage | null = null
+  /** The Artikel heading in force above the passages. */
+  let mark: string | null = null
 
   for (const block of parseParliamentHtml(html)) {
     const text = normalizeText(block.text).trim()
@@ -81,14 +97,37 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
     if (part) {
       inSpecial = part === 'special'
       current = null
+      mark = null
       continue
     }
 
     if (isAddressHeading(text)) {
-      current = { heading: text, paragraphs: addressOf(text).paragraphs, text: [] }
+      const paragraphs = addressOf(text).paragraphs
+      let article: string | null
+      if (articleKeysNamed(text).length > 1) {
+        // One passage for several laws: it belongs to none, and the mark
+        // above it no longer says which law follows.
+        article = null
+        mark = null
+      } else {
+        const own = leadingArticleKey(text)
+        if (own) mark = own
+        article = own ?? mark
+      }
+      current = { heading: text, paragraphs, text: [], article }
       special.push(current)
       inSpecial = true
       continue
+    }
+
+    // A bare „Artikel 5" divides the package — but only where the ressort
+    // typed it as a heading. The same shape in prose or in a table cell is a
+    // citation („Art. 15 der Richtlinie 2019/790", 143/ME): 184 such blocks
+    // over GP XXVII, and each would have put the passages after it under the
+    // wrong law. The RIS reader has the same guard implicitly, because it
+    // takes marks from heading elements only.
+    if (ARTICLE_HEADING_RE.test(text) && addressOf(text).paragraphs.length === 0 && /Ueberschr/i.test(block.cls)) {
+      mark = leadingArticleKey(text)
     }
 
     if (inSpecial && current) current.text.push(text)
@@ -97,6 +136,25 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
     // no §, and is not added to the last one seen.
   }
   return { general, special }
+}
+
+/**
+ * The passages under Artikel and §, keyed `<Artikel>|<§ key>` — the second
+ * lookup for a § number that is ambiguous in its draft. A passage without an
+ * Artikel is not in it.
+ */
+export function passagesByArticleParagraph(doc: HtmlExplanations): Map<string, HtmlPassage[]> {
+  const out = new Map<string, HtmlPassage[]>()
+  for (const passage of doc.special) {
+    if (!passage.article) continue
+    for (const para of passage.paragraphs) {
+      const id = explanationParaId(para)
+      if (!id) continue
+      const key = articleParagraphKey(passage.article, id)
+      out.set(key, [...(out.get(key) ?? []), passage])
+    }
+  }
+  return out
 }
 
 /** The passages under „§ 54c" → its number, as `shared/utils/explanationKey.ts` builds it. */

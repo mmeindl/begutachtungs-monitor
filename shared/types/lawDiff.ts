@@ -93,7 +93,12 @@ export interface ReasoningDiffResponse {
   unavailableReason: string | null
   /** The two documents that were read, for the credit line. */
   sources: TraceLink[]
-  /** `unitKey` → „§ 11": which change points at which Paragraph. */
+  /**
+   * `unitKey` → „§ 11": which change points at which Paragraph. Where the
+   * number is shared by two Artikel of the draft, the key names the Artikel
+   * too („Art. 2 § 15") — a lookup key, not display text; the entry's
+   * `paragraph` stays „§ 15".
+   */
   units: Record<string, string>
   /** „§ 11" → the comparison, once per Paragraph. */
   paragraphs: Record<string, ReasoningDiffEntry>
@@ -129,6 +134,14 @@ export interface ParagraphTitlesResponse {
 export interface LawDiffUnit {
   /** Artikel title of a package, law title otherwise, null when unknown */
   article: string | null
+  /**
+   * The Artikel number of the side `id` refers to, as a key („2" for
+   * „Artikel II"); null outside an Artikel-divided package. The Erläuterungen
+   * key a passage by it where a § number alone is ambiguous (§12.10b).
+   */
+  articleKey: string | null
+  /** The same for the earlier side — an Artikel is renumbered between draft and Vorlage (18/ME: 3 → 6). */
+  fromArticleKey: string | null
   /** Unit id on the later side of the pair (or the earlier one, for removed units): "§5", "Z3" */
   id: string
   /** The same unit's id on the earlier side; differs from `id` after renumbering */

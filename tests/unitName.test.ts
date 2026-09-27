@@ -5,6 +5,8 @@ import { displayId, extraHeading, unitName } from '../shared/utils/unitName'
 function unit(u: Partial<LawDiffUnit>): LawDiffUnit {
   return {
     article: null,
+    articleKey: null,
+    fromArticleKey: null,
     id: '§1',
     fromId: null,
     heading: null,

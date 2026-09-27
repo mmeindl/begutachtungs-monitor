@@ -110,3 +110,24 @@ export function articleNumberKey(numeral: string): string | null {
   if (rest.length > 0 || value === 0) return null
   return romanOf(value) === upper ? String(value) : null
 }
+
+/**
+ * The Artikel a heading opens with, as `articleNumberKey` writes it:
+ * „Artikel 3" → „3", „Zu Art. II (Änderung des …)" → „2", „Zu Art. 2 Z 1
+ * (§ 7)" → „2". Null where the heading opens with no Artikel or with one
+ * this cannot read (a letter suffix, „Art. 2a"): the caller then refuses.
+ */
+export function leadingArticleKey(heading: string | null | undefined): string | null {
+  const m = /^(?:zu\s+)?art(?:ikel)?\.?\s*([0-9]+|[ivxlcdm]+)(?![0-9a-z])/i.exec((heading ?? '').trim())
+  return m ? articleNumberKey(m[1]!) : null
+}
+
+/** Every Artikel a heading names — „Zu Art. 1 Z 5 … sowie zu Art. 13 Z 1" names two. */
+export function articleKeysNamed(heading: string): string[] {
+  const out = new Set<string>()
+  for (const m of heading.matchAll(/(?<![a-zäöü])art(?:ikel)?\.?\s*([0-9]+|[ivxlcdm]+)(?![0-9a-z])/gi)) {
+    const key = articleNumberKey(m[1]!)
+    if (key) out.add(key)
+  }
+  return [...out]
+}
