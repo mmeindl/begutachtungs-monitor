@@ -2561,10 +2561,48 @@ und zwei seiner fünf Zeilen sind gar keine Adressen: „wird nach dem Wort
 ‚X' **der Halbsatz** ‚…' eingefügt" benutzt ihn als Nomen des Zitats, wie
 „die Wortfolge". Seit 27.09.2026 so gelesen, dazu „vor dem Punkt am Ende"
 als Anker (`atEnd`: das Zeichen, auf das die Einheit endet — Zahnärztegesetz
-§ 22 Abs. 2 trägt sechs Punkte); identisch 831 → 834. Offen bleibt die
-Familie, die eine Ebene unter dem Satz braucht: „erster Halbsatz lautet"
-(3), „folgender Halbsatz angefügt" (3) und „der nachfolgende Halbsatz
-entfällt" (1).
+§ 22 Abs. 2 trägt sechs Punkte); identisch 831 → 834.
+
+**Der Halbsatz unter dem Satz (27.09.2026).** Die sieben übrigen Zeilen
+brauchten eine Einheit unter dem Satz, und die Messung davor hat entschieden,
+welche: **keine feste**. Alle sieben „lautet der erste Halbsatz" der 300
+Entwürfe enden ihren neuen Text an einem Beistrich (einmal an einem
+Doppelpunkt vor der Liste), LFG § 169 Abs. 5 im Prüfstand auch; RAO § 50
+meint den Teil vor dem Strichpunkt, und ein Entwurf schreibt „der zweite
+Halbsatz nach dem Strichpunkt", weil das Wort es allein nicht sagt. Eine
+Grenzregel am Strichpunkt hätte in den sieben Zeilen den ganzen ersten Satz
+ersetzt. Deshalb trägt die Adresse nur die Ordnungszahl (`halbsatz`), und die
+Grenze kommt aus der Operation selbst:
+
+- **Ersetzen:** Der neue Text ist der Zeuge (`halbsatzSpan`). Der alte
+  Halbsatz endet, wo der alte Satz dieselben letzten zwei Wörter mit
+  demselben Zeichen trägt, genau einmal; ein späterer beginnt hinter einem
+  Satzzeichen mit den ersten zwei Wörtern des neuen. Ändert der neue Text
+  gerade sein Ende, endet der alte am nächsten Strichpunkt, wo der neue mit
+  einem schließt — einen Beistrich sucht die Regel nie —, sonst nur der
+  letzte Halbsatz am Satzende. Alles andere wird verweigert.
+- **Eine Phrase im Halbsatz** wird in dessen Satz gesucht und muss dort
+  eindeutig sein.
+- **Anfügen:** „… wird der Punkt am Ende durch einen Beistrich ersetzt und
+  folgender Halbsatz angefügt" ist eine Handlung und eine Operation
+  (`mergeEndMarks`): das Zeichen, auf das die Einheit oder der genannte Satz
+  endet, wird ersetzt und der Halbsatz dahinter gesetzt. Getrennt machte die
+  Ersetzung die Anfügung falsch — ohne ihren Punkt lief der erste Satz in den
+  zweiten. Dieselbe Regel liest jetzt „folgender Satz angefügt" (7 Zeilen der
+  Entwürfe, bisher verweigert) und den gewöhnlichsten Weg, eine Liste zu
+  verlängern, wo die Ziffer mehr als einen Punkt trägt (9 Zeilen).
+- **„der nachfolgende Halbsatz entfällt"** hinter „der Strichpunkt durch einen
+  Punkt ersetzt" ist ebenfalls eine Operation (`truncate`): Der Satz endet am
+  neuen Punkt.
+
+Über die Schritte a3cf04e bis d095e19, gleicher Aufruf: Verweigerungen 352 →
+336, identisch 834 → **849**, halb angewendet 57 → 52, ohne Verweigerung
+abweichend 12 → 12, „kein geltender Text" ohne Verweigerung 20 → 19; im
+Prüfstand steht keine Halbsatz-Zeile mehr verweigert. Nebenbei gefunden und
+behoben: `parseKonsParagraph` klebte einen unbezifferten Absatzblock hinter
+einer Liste an den Einleitungstext statt ihn als Schlussteil hinter die Liste
+zu stellen (KFG § 102 Abs. 3a) — der geltende Text der Seite stand dort in
+falscher Reihenfolge.
 
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
