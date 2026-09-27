@@ -6,6 +6,7 @@
  */
 import type { BlockKind, TextBlock } from './lawUnits'
 import { stripTags } from './normalize'
+import { ARTICLE_RE, refineArticleHeadings } from './articleHeadings'
 
 // ---------------------------------------------------------------------------
 // Parsing
@@ -23,19 +24,6 @@ const KIND_BY_CLASS: Record<string, BlockKind> = {
   '11Titel': 'title',
 }
 
-/**
- * "Artikel 3" — the article marker. Which heading level carries it is not
- * fixed: 125/ME puts it in 43UeberschrG2 and the package title in
- * 41UeberschrG1, its Regierungsvorlage the other way round. So the text
- * decides, not the class — otherwise the articles never pair and every § of
- * the package reads as inserted.
- *
- * The X is a placeholder: a draft written for a collective act numbers its
- * articles "Artikel X1", "Artikel X2" because the final count is only known
- * once every ministry's draft is merged (22/ME, IFG-Anpassung of the BKA).
- */
-export const ARTICLE_RE = /^Artikel\s+(?:X?\d+|[IVXL]+)(?=\s|$|[.,])/
-
 function kindOf(cls: string, text: string): BlockKind {
   const mapped = KIND_BY_CLASS[cls]
   if (mapped === 'article' || mapped === 'section') return ARTICLE_RE.test(text) ? 'article' : 'section'
@@ -48,7 +36,11 @@ function kindOf(cls: string, text: string): BlockKind {
 const P_RE = /<p\s+class=["']?([\w-]+)["']?[^>]*>([\s\S]*?)<\/p\s*>/gi
 const GLD_RE = /<span\s+class=["']?991GldSymbol["']?[^>]*>([\s\S]*?)<\/span>/i
 
-/** Word-filtered Parliament HTML → flat block list. Empty paragraphs are dropped. */
+/**
+ * Word-filtered Parliament HTML → flat block list. Empty paragraphs are
+ * dropped; the Artikel headings a class alone cannot show are marked by
+ * `refineArticleHeadings`.
+ */
 export function parseParliamentHtml(html: string): TextBlock[] {
   const bodyStart = html.search(/<body[^>]*>/i)
   const body = bodyStart >= 0 ? html.slice(bodyStart) : html
@@ -62,5 +54,5 @@ export function parseParliamentHtml(html: string): TextBlock[] {
     if (!text && !gld) continue
     blocks.push({ kind: kindOf(cls, text), cls, text, gld: gld || null })
   }
-  return blocks
+  return refineArticleHeadings(blocks)
 }

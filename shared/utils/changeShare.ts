@@ -6,7 +6,7 @@
  * things.
  *
  * WHY THIS MEASURE, measured 27.09.2026 over the comparable drafts of GP
- * XXVII and XXVI. „Changed yes/no" separates nothing: 274 of 277 drafts were
+ * XXVII and XXVI. „Changed yes/no" separates nothing: 279 of 282 drafts were
  * changed. The count of changed units depends on the size of the law more
  * than on the change (p10 2, p90 42). The share of all units touched counts
  * what the Vorlage ADDS, which is its own question. What stays is the share

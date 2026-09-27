@@ -5,7 +5,7 @@
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
 import type { BlockKind, TextBlock } from './lawUnits'
-import { ARTICLE_RE } from './parliamentHtml'
+import { ARTICLE_RE, refineArticleHeadings } from './articleHeadings'
 import { stripTags } from './normalize'
 
 // ---------------------------------------------------------------------------
@@ -71,7 +71,11 @@ function risText(inner: string): string {
   return stripTags(inner.replace(N_AT_DASH_RE, '$1$2').replace(/<gdash\s*\/>/g, '-').replace(/<nbsp\s*\/>/g, ' '))
 }
 
-/** RIS Begut main-document XML → flat block list, same kinds as the Parliament HTML parser. */
+/**
+ * RIS Begut main-document XML → flat block list, same kinds as the Parliament
+ * HTML parser — including the pass that marks the Artikel headings RIS types
+ * as `art` or as a table-of-contents column (`refineArticleHeadings`).
+ */
 export function parseRisXml(xml: string): TextBlock[] {
   // `fzinhalt` is the page FOOTER RIS prints under every page
   // ("www.ris.bka.gv.at   Seite 2 von 2"), the counterpart to the `kzinhalt`
@@ -120,5 +124,5 @@ export function parseRisXml(xml: string): TextBlock[] {
     }
     blocks.push({ kind, cls: `${inTable(m.index!) ? 'table:' : ''}${tag}/${typ}`, text, gld: gld || null })
   }
-  return blocks
+  return refineArticleHeadings(blocks)
 }
