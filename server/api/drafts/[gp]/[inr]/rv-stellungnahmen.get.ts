@@ -25,7 +25,15 @@ export default defineEventHandler(async (event): Promise<RvStatementsResponse> =
   if (!rv) {
     throw createError({ statusCode: 404, statusMessage: 'Der Entwurf hat keine Regierungsvorlage' })
   }
-  const { total, items, unlisted } = await getStatementsForRv(rv.gp, rv.inr)
+  const [{ total, items, unlisted }, committeeConsultation] = await Promise.all([
+    getStatementsForRv(rv.gp, rv.inr),
+    // The Vorlage's own detail, already in the leaf cache for the page's
+    // chain; an unreadable Verlauf claims no consultation rather than failing
+    // the list.
+    getGegenstand(rv.gp, 'I', rv.inr)
+      .then((d) => readCommitteeConsultation(d.content?.phase))
+      .catch(() => null),
+  ])
   return {
     rvCitation: rv.label,
     rvUrl: rv.url,
@@ -34,5 +42,6 @@ export default defineEventHandler(async (event): Promise<RvStatementsResponse> =
     items,
     unlisted,
     cap: RV_STATEMENTS_CAP,
+    committeeConsultation,
   }
 })

@@ -112,6 +112,27 @@ export interface RvStatementsResponse {
    */
   unlisted: number
   cap: number
+  /**
+   * The committee's own call for Stellungnahmen on this Vorlage, when it made
+   * one (Ausschussbegutachtung, § 40 Abs. 1 GOG-NR) — the invited answers
+   * then stand among `items`. Null where the Verlauf records none, which is
+   * the rule: GP XXVIII 2 of 79 Vorlagen from a Ministerialentwurf
+   * (docs/architecture.md §12.14).
+   */
+  committeeConsultation: CommitteeConsultation | null
+}
+
+/**
+ * A committee's own consultation on a Vorlage, read from the Verlauf
+ * (`parliament/detailJson.ts` readCommitteeConsultation).
+ */
+export interface CommitteeConsultation {
+  /** „Ausschuss für Wirtschaft, Industrie und Energie", as the stage names it; null when it does not. */
+  committee: string | null
+  /** ISO date of the decision to consult, null when the stage is undated */
+  date: string | null
+  /** How many institutions the committee wrote to — one accepted motion each. */
+  invited: number
 }
 
 export interface StatementsResponse {

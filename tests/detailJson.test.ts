@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  readCommitteeConsultation,
   amendedStationsOf,
   bgblOrderKey,
   extractBgblLink,
@@ -485,5 +486,32 @@ describe('bgblOrderKey', () => {
     expect(bgblOrderKey(null)).toBeNull()
     expect(bgblOrderKey('')).toBeNull()
     expect(bgblOrderKey('Kunsttext')).toBeNull()
+  })
+})
+
+describe('readCommitteeConsultation (27.09.2026)', () => {
+  // RV 313 of GP XXVIII as its Verlauf records it, shortened to three addressees.
+  const phases = [
+    { name: 'Einlangen NR', stages: [{ date: '20.11.2025', text: 'Einlangen im Nationalrat' }] },
+    {
+      name: 'Ausschussberatungen NR',
+      stages: [
+        { date: '20.11.2025', text: 'Ausschuss für Wirtschaft, Industrie und Energie: Beschlussfassung auf Einholung schriftlicher Stellungnahmen im Rahmen eines "Ausschussbegutachtungsverfahrens"' },
+        { date: '20.11.2025', text: 'Antrag auf Ausschussbegutachtung der Vorlage (<a href="/gegenstand/XXVIII/AUA/52">52/AUA</a>)' },
+        { date: '20.11.2025', text: 'Antrag auf Einholung einer Stellungnahme von Bundeskanzleramt - angenommen' },
+        { date: '20.11.2025', text: 'Antrag auf Einholung einer Stellungnahme von Amt der Tiroler Landesregierung - angenommen' },
+        { date: '20.11.2025', text: 'Antrag auf Einholung einer Stellungnahme von Österreichischer Gewerkschaftsbund - angenommen' },
+      ],
+    },
+  ]
+
+  it('reads the committee, the day and how many it wrote to', () => {
+    expect(readCommitteeConsultation(phases)).toEqual({ committee: 'Ausschuss für Wirtschaft, Industrie und Energie', date: '2025-11-20', invited: 3 })
+  })
+
+  it('reads nothing where no consultation was decided — a rejected motion leaves no decision', () => {
+    const rejected = [{ stages: [{ date: '15.01.2024', text: 'Antrag auf Ausschussbegutachtung - abgelehnt' }, { date: '15.01.2024', text: 'In der Sitzung vom 15. Jänner 2024 vertagt.' }] }]
+    expect(readCommitteeConsultation(rejected)).toBeNull()
+    expect(readCommitteeConsultation(null)).toBeNull()
   })
 })

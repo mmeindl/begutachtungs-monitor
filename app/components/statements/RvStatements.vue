@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RvStatementsResponse, StatementMeta, StatementsSummary, SubmitterKind } from '#shared/types'
-import { endorsementLabel } from '#shared/utils/format'
+import { countLabelDe, endorsementLabel, formatDateDe } from '#shared/utils/format'
 import { submitterLabel } from '~/utils/statementRows'
 import { SECOND_ROUND_CLAUSE } from '~/utils/spine'
 
@@ -223,6 +223,36 @@ const hiddenOrgCount = computed(() => {
  */
 const STATEMENT_DESTINATION =
   'Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden beim Gegenstand veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor.'
+
+/**
+ * UNLESS THE COMMITTEE ASKED (27.09.2026). A committee can call for written
+ * Stellungnahmen itself — the Ausschussbegutachtung, § 40 Abs. 1 GOG-NR —
+ * and the answers are published in the same list 142 this panel reads: RV
+ * 313 of GP XXVIII, 98 institutions written to on 20.11.2025, 21
+ * Stellungnahmen from institutions between 25.11. and 03.12. Under the
+ * sentence above they read as unsolicited input no committee procedure
+ * takes up — the exact opposite of what happened. So where the Verlauf
+ * records a consultation, the panel says so first and scopes the rule to
+ * the Stellungnahmen someone files on their own. Both halves are facts
+ * from Parliament's record; neither says what the answers achieved.
+ */
+const consultation = computed(() => props.data.committeeConsultation ?? null)
+
+const consultationSentence = computed<string | null>(() => {
+  const c = consultation.value
+  if (!c) return null
+  const who = c.committee ? `Der ${c.committee}` : 'Der Ausschuss'
+  const when = c.date ? ` am ${formatDateDe(c.date)}` : ''
+  const whom = c.invited > 0 ? `, und dafür ${countLabelDe(c.invited, 'Stelle', 'Stellen')} angeschrieben` : ''
+  const answers = props.data.total > 0 ? 'ihre Antworten stehen unter den Stellungnahmen hier' : 'eingelangt ist bisher keine'
+  return `${who} hat${when} beschlossen, schriftliche Stellungnahmen einzuholen${whom} (Ausschussbegutachtung); ${answers}.`
+})
+
+const destination = computed(() =>
+  consultation.value
+    ? 'Stellungnahmen, die jemand von sich aus einbringt, gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden beim Gegenstand veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung für sie nicht vor.'
+    : STATEMENT_DESTINATION,
+)
 </script>
 
 <template>
@@ -237,8 +267,12 @@ const STATEMENT_DESTINATION =
         <ExternalLink :href="data.rvUrl" class="link-inline">Stellungnahme abgeben</ExternalLink></template>.
     </p>
 
+    <p v-if="data.total === 0 && consultationSentence" class="mt-2 max-w-prose text-sm text-ink-secondary">
+      {{ consultationSentence }}
+    </p>
+
     <p v-if="data.total === 0 && filingOpen" class="mt-2 max-w-prose text-sm text-ink-secondary">
-      {{ STATEMENT_DESTINATION }}
+      {{ destination }}
     </p>
 
     <template v-else>
@@ -271,8 +305,11 @@ const STATEMENT_DESTINATION =
       <!-- Under the count and above the rows: it is the answer to the
            question the count raises („und dann?"), so it has to be read
            before the names, not after them. -->
+      <p v-if="consultationSentence" class="mt-2 max-w-prose text-sm text-ink-secondary">
+        {{ consultationSentence }}
+      </p>
       <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-        {{ STATEMENT_DESTINATION }}
+        {{ destination }}
       </p>
 
       <div v-if="showSearch" class="mt-3">

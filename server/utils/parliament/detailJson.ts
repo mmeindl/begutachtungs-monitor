@@ -6,6 +6,7 @@
  * so vitest can execute the module directly.
  */
 import type {
+  CommitteeConsultation,
   DraftDocument,
   DescriptionBlock,
   DocumentFormat,
@@ -72,6 +73,40 @@ export function parseStages(stages: RawStage[] | null | undefined): TraceStep[] 
       links: extractLinks(html),
     }
   })
+}
+
+/** One phase of a Gegenstand's Verlauf („Einlangen NR", „Ausschussberatungen NR", …). */
+export interface RawPhase {
+  name?: string | null
+  stages?: RawStage[] | null
+}
+
+const CONSULTATION_DECIDED = /Beschlussfassung auf Einholung schriftlicher Stellungnahmen/i
+const CONSULTATION_ADDRESSEE = /Antrag auf Einholung einer Stellungnahme von .+ - angenommen\s*$/i
+
+/**
+ * The Ausschussbegutachtung of a Vorlage, read from its Verlauf — or null.
+ *
+ * STRUCTURED, unlike the oral hearing (docs/architecture.md §12.14, counted
+ * 26.09.2026): one stage „…: Beschlussfassung auf Einholung schriftlicher
+ * Stellungnahmen im Rahmen einer Ausschussbegutachtung" and one stage per
+ * addressee, „Antrag auf Einholung einer Stellungnahme von <Institution> -
+ * angenommen". Field and report prose agreed on 8 of 8 Vorlagen of GP XXVIII.
+ * A rejected motion for a consultation leaves no decision stage, so it is not
+ * read as one.
+ */
+export function readCommitteeConsultation(phases: RawPhase[] | null | undefined): CommitteeConsultation | null {
+  if (!Array.isArray(phases)) return null
+  const stages = phases.flatMap((p) => (Array.isArray(p?.stages) ? p.stages : []))
+  const decided = stages.find((s) => CONSULTATION_DECIDED.test(stripHtmlToText(s?.text ?? '')))
+  if (!decided) return null
+  const text = stripHtmlToText(decided.text ?? '')
+  const colon = text.indexOf(':')
+  return {
+    committee: colon > 0 ? text.slice(0, colon).trim() : null,
+    date: parseGermanDate(decided.date) ?? parseIsoDate(decided.date),
+    invited: stages.filter((s) => CONSULTATION_ADDRESSEE.test(stripHtmlToText(s?.text ?? ''))).length,
+  }
 }
 
 export interface RvLink {

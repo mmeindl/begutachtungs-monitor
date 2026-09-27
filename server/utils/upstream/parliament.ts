@@ -15,6 +15,7 @@ import type {
   RawBgblLink,
   RawDocumentGroup,
   RawName,
+  RawPhase,
   RawShortinfo,
   RawStage,
   RawVote,
@@ -49,6 +50,8 @@ export interface FilterListResponse {
 export interface GegenstandResponse {
   content?: {
     stages?: RawStage[] | null
+    /** The Verlauf of a Vorlage, phase by phase — where a committee's own consultation is recorded (`readCommitteeConsultation`). */
+    phase?: RawPhase[] | null
     documents?: RawDocumentGroup[] | null
     names?: RawName[] | null
     shortinfo?: RawShortinfo | null
