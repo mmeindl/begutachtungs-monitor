@@ -707,3 +707,26 @@ describe('the Artikel number counts only with the §§ behind it (27.09.2026)', 
     expect(diffLawPackage(me, rv).lawsOnlyInTo).toEqual([])
   })
 })
+
+describe('a nameless Artikel title pairs by its number (XXVII 85/ME, 28.09.2026)', () => {
+  const u = (article: string, id: string, text: string, articleNumber: string): LawUnit => ({
+    article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [],
+  })
+  it('pairs „Artikel 1" of the draft with the Vorlage\'s Artikel 1 when its only instruction inserts a new §', () => {
+    const me = [u('Artikel 1', 'Z1', 'Nach § 11a wird folgender § 11b eingefügt: „§ 11b. Neu."', 'Artikel 1'), u('Artikel 2', 'Z1', 'In § 3 Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.', 'Artikel 2')]
+    const rv = [
+      u('Änderung des Bekenntnisgemeinschaftengesetzes', 'Z1', 'Dem Titel wird ein Klammerausdruck angefügt.', 'Artikel 1'),
+      u('Änderung des Bekenntnisgemeinschaftengesetzes', 'Z2', 'Nach § 11a wird folgender § 11b eingefügt: „§ 11b. Neu."', 'Artikel 1'),
+      u('Änderung des Islamgesetzes 2015', 'Z1', 'In § 3 Abs. 1 wird das Wort „a" durch das Wort „c" ersetzt.', 'Artikel 2'),
+    ]
+    const pairs = articlePairs(me, rv)
+    expect(pairs.find((p) => p.from === 'Artikel 1')).toMatchObject({ to: 'Änderung des Bekenntnisgemeinschaftengesetzes', via: 'number' })
+    expect(diffLawPackage(me, rv).lawsOnlyInFrom).toEqual([])
+  })
+
+  it('still refuses when both titles name a law and the §§ disagree', () => {
+    const me = [u('Änderung des Einkommensteuergesetzes 1988', 'Z1', 'In § 3 Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.', 'Artikel 1')]
+    const rv = [u('Änderung des Gewerblichen Sozialversicherungsgesetzes', 'Z1', 'In § 40 Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.', 'Artikel 1'), u('Änderung des Mietrechtsgesetzes', 'Z1', 'In § 5 entfällt Abs. 2.', 'Artikel 2')]
+    expect(articlePairs(me, rv).find((p) => p.from === 'Änderung des Einkommensteuergesetzes 1988')).toBeUndefined()
+  })
+})

@@ -133,7 +133,7 @@ export function articlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): 
   for (const m of fromArts) {
     if (map.has(m.article) || !m.number) continue
     const r = toArts.find((x) => !usedTo.has(x) && x.number === m.number)
-    if (r && sameAddresses(addressesOf(from, m.article), addressesOf(to, r.article))) {
+    if (r && numberHolds(m, r, addressesOf(from, m.article), addressesOf(to, r.article))) {
       map.set(m.article, r.article)
       via.set(m.article, 'number')
       usedTo.add(r)
@@ -199,6 +199,25 @@ function overlapOf(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
 
 /** 4 of 5 §§ — every title pair of three periods reached 100 %, the wrong number pairs at most 50 %. */
 const SAME_ADDRESSES_AT = 0.8
+
+/**
+ * Whether a pair by number may stand: the §§ agree — or one title names no
+ * law at all („Artikel 1", the RIS Artikel line without a name, XXVII 85/ME)
+ * and the §§ do not speak against it. A nameless title cannot contradict the
+ * number, and an Artikel that only inserts new §§ addresses none of the
+ * standing ones (85/ME Artikel 1: „Nach § 11a wird folgender § 11b
+ * eingefügt"), so absence of evidence is not evidence against it there.
+ */
+function numberHolds(m: ArticleRef, r: ArticleRef, a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (sameAddresses(a, b)) return true
+  if (!namesNoLaw(m.article) && !namesNoLaw(r.article)) return false
+  return a.size === 0 || b.size === 0 || overlapOf(a, b) >= SAME_ADDRESSES_AT
+}
+
+/** „Artikel 1", „Artikel II." — a title that is only its own number. */
+function namesNoLaw(title: string | null): boolean {
+  return /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)\.?$/.test(normalizeText(title ?? '').trim())
+}
 
 /** The number pass's evidence: the §§ agree, or neither side addresses any (two new laws). */
 function sameAddresses(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
