@@ -6404,11 +6404,30 @@ warum die Rate aus §12.38 nicht vor ihnen auf die Seite gehört.
   bestätigte Paragraphen, LMSVG-Novelle 0 → 17); die Grundlinie ist im
   selben Commit nachgezogen.
 
-**Offen bleibt:** XXVII 92/ME und XXVIII 26/ME, deren Artikel gar keinen
-Namen tragen; 85/ME, dessen Artikel 1 nur eine Anordnung hat und damit an
-der Paragraphenprobe scheitert; zwei neue Gesetze unter verschiedenen langen
-Titeln (Notarversorgungsgesetz in XXVI 76/ME), die weder Paragraphen noch
-Namensanfang teilen.
+**Und der Rest, am 28.09.2026** (`d92a946`, `63a8e17`, `3cc7ae8`,
+`7ba81a3`), jeder Schritt über drei Perioden gemessen, und jeder bewegte nur
+den Entwurf, um den es ging:
+
+- **Ein Titel ohne Namen widerspricht nicht.** „Artikel 1" nennt kein
+  Gesetz; dort hält die Nummer, solange die Paragraphen nicht dagegen
+  sprechen (85/ME, dessen Artikel 1 nur einen neuen § einfügt), und in der
+  Paragraphen-Probe entscheiden die Paragraphen allein (92/ME).
+- **Der Kurztitel in der Klammer** paart zwei lange Titel desselben neuen
+  Gesetzes — nur wo die Klammer ein Gesetzesname ist, nicht „(89. Novelle
+  zum ASVG)" (76/ME: Notarversorgungsgesetz, 59 unverändert, 74 geändert).
+- **Derselbe Name Buchstabe für Buchstabe**, ohne Bindestriche, Leerzeichen
+  und Genitiv: die Umwandlung verliert den Bindestrich
+  („BildungsdirektionenEinrichtungsgesetz", XXVIII 26/ME). Gleichheit, keine
+  Ähnlichkeit; 12 Paare über drei Perioden, alle gelesen.
+- Das kleine „x" auch in den drei Geschwister-Regeln von Beilage und
+  Artikelliste; Drift ohne Befund.
+
+Stand danach: **kein Entwurf in GP XXVI–XXVIII wird mehr abgesagt, weil kein
+Artikel paart**; nicht vergleichbar bleiben nur Entwürfe, deren Gesetzestext
+nur als PDF vorliegt (je 10 in XXVII und XXVI). Die Phantompaare in XXVI
+standen am 28.09. schon bei 0 — die Paarungskorrekturen des Vortags hatten
+sie mitgenommen. Die Basisrate verschiebt sich nicht (XXVII n 283, 46 / 63 /
+75 %).
 
 
 ### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
