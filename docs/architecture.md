@@ -2610,6 +2610,51 @@ einer Liste an den Einleitungstext statt ihn als Schlussteil hinter die Liste
 zu stellen (KFG § 102 Abs. 3a) — der geltende Text der Seite stand dort in
 falscher Reihenfolge.
 
+**Was nach der Halbsatz-Familie blieb (28.09.2026).** Sieben offene Posten,
+Zeile für Zeile gelesen; die meisten Verweigerungen waren richtig, die
+übrigen fielen in wenige Formen. Die Regel hinter allen: **Wo der Wortlaut
+den Ort nicht eindeutig sagt, entscheidet der geltende Text — und wo auch der
+nicht, bleibt die Zeile verweigert.**
+
+- **Ein Wort ohne Anker gehört ans Ende seiner Einheit.** „der Z 3 das Wort
+  ‚ oder' angefügt" hängt hinter alles, auch hinter den schließenden
+  Beistrich — so zeigt es das RIS für alle belegten Fälle. „am Ende …
+  eingefügt" sagt nicht, auf welcher Seite eines schließenden Zeichens, und
+  gilt nur, wo die Einheit ohne eines endet (`bareEnd`); ebenso ein Text, der
+  selbst mit einem Zeichen beginnt, und ein in Worten genanntes Zeichen
+  („der lit. d ein Strichpunkt angefügt").
+- **Ein Zeichen als Anker** („vor dem Strichpunkt die Wortfolge ‚…'") muss in
+  der Einheit einmal stehen; der Punkt nie, den trägt jede Abkürzung.
+- **Der Anker einer Ersetzung** („vor der Wortfolge ‚X' das Wort ‚Y' durch
+  …") wurde überlesen, und das genügte, solange Y einmal stand. Steht es
+  öfter, wird das Paar aus Operand und Anker gesucht, nebeneinander und
+  seinerseits eindeutig (`beside`). Nötig wurde das auch innerhalb einer
+  Zeile: Deren erste Hälfte fügt ein zweites Vorkommen ein, die zweite
+  ersetzt eines davon (FPG § 76 Abs. 6).
+- **Eine Zahl ist nie Teil einer längeren.** Mit „die Beträge ‚50' jeweils
+  durch …" wäre „150" zu „170" geworden; das galt schon für „Betrag" und
+  „Zahl", bevor ein neues Hauptwort es sichtbar machte.
+- **Eine doppelte Bezeichnung** (zweimal „Z 3" unter einem Absatz) macht jede
+  Adresse darauf unbestimmt (`uniqueChild`). Global beim Laden geprüft,
+  kostete dieselbe Regel 16 identische §§ und 23 lesbare Dokumente — sie
+  gehört an die Adresse, nicht an den Baum.
+- **„z. B." beendet keinen Satz**, und **„(Anm. : …)"** ist eine
+  RIS-Anmerkung wie „(Anm.: …)" — die Form, die die Anhangseite seit
+  10.09.2026 entfernte, die RIS-Seite aber nicht: dieselbe Asymmetrie, vor
+  der der Kommentar an `text()` warnt.
+
+Die Halbsatz-Regel selbst ist dabei am echten Text geprüft worden: alle 11
+angewendeten Halbsatz-Ersetzungen aus 300 Entwürfen (Tabakmonopol- und
+Tabaksteuergesetz ×7, B-VG ×3, LFG, RAO) setzen die Grenze an das richtige
+Zeichen, der Rest des Satzes steht unversehrt dahinter.
+
+Über dc9e52f bis 45be622, gleicher Aufruf: Verweigerungen 336 → 319,
+identisch 849 → **864**, halb angewendet 52 → 48, **eigene Abweichung
+unverändert 15**, ohne Verweigerung abweichend 12 → 12; „kein geltender
+Text" ohne Verweigerung 19 → 20, beide Zugänge Unterschiede, die vorher neben
+einer Verweigerung standen. Entwürfe vom Anhang bestätigt 602 → 614;
+Annex-Drift in jedem Schritt ohne Befund.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
