@@ -59,7 +59,7 @@ export function rvBaseRateSentenceDe(gp: string | null | undefined): string {
  * units the Vorlage changed in wording or dropped, editorial changes not
  * counted. Hand-copied like the row above, re-run when a GP closes.
  *
- * Why a range and not a yes/no: 279 of 282 comparable drafts of GP XXVII
+ * Why a range and not a yes/no: 280 of 283 comparable drafts of GP XXVII
  * changed at all, so „geändert" separates nothing, while the share runs from
  * a few percent to all of them. The middle half (p25–p75) is what a reader
  * can hold one draft against — a range, not a verdict (framing rule, §4):
@@ -78,7 +78,7 @@ export interface ChangeShareRate {
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Newest GP first. */
 export const CHANGE_SHARE_RATES: readonly ChangeShareRate[] = [
-  { gp: 'XXVII', drafts: 282, p25: 46, median: 63, p75: 75 },
+  { gp: 'XXVII', drafts: 283, p25: 46, median: 63, p75: 75 },
   { gp: 'XXVI', drafts: 104, p25: 34, median: 50, p75: 73 },
 ]
 
