@@ -1060,7 +1060,7 @@ schon für „§ 4 … sowie § 4a" galt: kein Name. Ein halber Name ist schlech
 als keiner. **Zwei Fragen, zwei Funktionen:** Die Artikelpaarung ME→RV
 (`diff/lawDiff.ts`) fragt nicht nach *einem* Namen, sondern nach der Menge der
 adressierten §§ — für sie heißt die Form beide, nicht keiner
-(`addressedParagraphs`). Gemessen über XXVI–XXVIII
+(`instructionParagraphs`). Gemessen über XXVI–XXVIII
 (`corpus:aenderungsrate -- --reasoning`): Basisrate, Eimer und Phantompaare
 **unverändert** in allen drei Perioden; der Begründungsvergleich verliert
 97 Einheiten, netto **23 verglichene §§** (919 → 918, 2.461 → 2.443,

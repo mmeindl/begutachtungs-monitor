@@ -32,7 +32,7 @@ import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 import { parseRisXml } from '../lawtext/risXml'
 import { promulgationByArticle } from '../lawtext/draftArticles'
 import { addressedParagraphOf } from '../lawtext/instructionAddress'
-import { unitKey } from '#shared/utils/diffKey'
+import { diffUnitKey } from '#shared/utils/diffKey'
 import { parseKonsParagraph } from '../lawtext/konsTree'
 import { getDraftsForGp, getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
@@ -104,7 +104,7 @@ export const getParagraphTitles = defineCachedFunction(
     const paragraphs: Record<string, string> = {}
     for (const unit of diff?.units ?? []) {
       const para = addressedParagraphOf(unit)
-      if (para) paragraphs[unitKey(unit)] = para
+      if (para) paragraphs[diffUnitKey(unit)] = para
     }
 
     const empty: ParagraphTitlesResponse = { asOf, titles: {}, paragraphs }
@@ -123,11 +123,11 @@ export const getParagraphTitles = defineCachedFunction(
     const wanted = new Map<string | null, Map<string, string[]>>()
     for (const unit of diff.units) {
       if (!clauses.has(unit.article)) continue
-      const para = paragraphs[unitKey(unit)]
+      const para = paragraphs[diffUnitKey(unit)]
       if (!para) continue
       const byPara = wanted.get(unit.article) ?? new Map<string, string[]>()
       const keys = byPara.get(para) ?? []
-      keys.push(unitKey(unit))
+      keys.push(diffUnitKey(unit))
       byPara.set(para, keys)
       wanted.set(unit.article, byPara)
     }

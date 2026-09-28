@@ -12,7 +12,7 @@
  * Ministerialentwurf → Regierungsvorlage, the question this product is about.
  */
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
-import { unitKey } from '#shared/utils/diffKey'
+import { diffUnitKey } from '#shared/utils/diffKey'
 import { ownChangeShare } from '#shared/utils/changeShare'
 import { changeShareSentenceDe } from '~/utils/outcomes'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
@@ -93,7 +93,7 @@ const { data: reasoning } = await useFetch<ReasoningDiffResponse>(
  * Paragraph (8/ME: six at § 11).
  */
 function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
-  const para = reasoning.value?.units?.[unitKey(u)]
+  const para = reasoning.value?.units?.[diffUnitKey(u)]
   const entry = para ? reasoning.value?.paragraphs?.[para] : null
   return entry?.changed ? entry : null
 }
@@ -219,7 +219,7 @@ const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
 
 /** The three sources of a name and their order live in `#shared/utils/unitName`. */
 function nameOf(u: LawDiffUnit): string | null {
-  return unitName(u, paraTitles.value?.titles, unitKey(u))
+  return unitName(u, paraTitles.value?.titles, diffUnitKey(u))
 }
 
 /** Whether any name on screen was looked up, which decides the source note. */
@@ -250,7 +250,7 @@ function badgeOf(u: LawDiffUnit): DiffBadge {
 const query = ref('')
 
 function key(u: LawDiffUnit): string {
-  return unitKey(u)
+  return diffUnitKey(u)
 }
 
 /**
@@ -263,11 +263,11 @@ function key(u: LawDiffUnit): string {
  * element for — and the reader finds someone else's § open.
  *
  * The kind is part of the key for the same reason: it is what tells the two
- * shapes apart, and `unitKey` alone cannot, because a context block is named
+ * shapes apart, and `diffUnitKey` alone cannot, because a context block is named
  * after the first unit it folds.
  */
 function blockKey(b: Block): string {
-  return b.kind === 'unit' ? `unit|${unitKey(b.unit)}` : `context|${unitKey(b.units[0]!.unit)}`
+  return b.kind === 'unit' ? `unit|${diffUnitKey(b.unit)}` : `context|${diffUnitKey(b.units[0]!.unit)}`
 }
 
 /**
@@ -436,7 +436,7 @@ const hasZiffern = computed(() => (data.value?.units ?? []).some((u) => /^Z\d/.t
  * one line.
  */
 function unitParagraph(u: LawDiffUnit): string | null {
-  const para = paraTitles.value?.paragraphs?.[unitKey(u)] ?? null
+  const para = paraTitles.value?.paragraphs?.[diffUnitKey(u)] ?? null
   return para && para !== displayId(u.id) ? para : null
 }
 

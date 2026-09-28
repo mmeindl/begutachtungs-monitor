@@ -14,6 +14,6 @@ import type { LawDiffUnit } from '../types'
  * Keyed on `article|id` alone they collide, and the § heading looked up for
  * one appears on the other (SNG 8/ME, caught on screen 2026-09-09).
  */
-export function unitKey(unit: Pick<LawDiffUnit, 'article' | 'id' | 'change'>): string {
+export function diffUnitKey(unit: Pick<LawDiffUnit, 'article' | 'id' | 'change'>): string {
   return `${unit.article ?? ''}|${unit.id}|${unit.change}`
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph, addressedParagraphs } from '../server/utils/lawtext/instructionAddress'
+import { addressedParagraph, instructionParagraphs } from '../server/utils/lawtext/instructionAddress'
 
 describe('addressedParagraph', () => {
   it('names the § an instruction edits', () => {
@@ -29,10 +29,10 @@ describe('addressedParagraph', () => {
   })
 
   it('lists every § for the pairing sets', () => {
-    expect(addressedParagraphs('Die §§ 6 und 7 samt Überschriften entfallen.')).toEqual(['§ 6', '§ 7'])
-    expect(addressedParagraphs('Die §§ 5 bis 7 entfallen.')).toEqual(['§ 5', '§ 6', '§ 7'])
-    expect(addressedParagraphs('§ 5 Abs. 2 und 3 entfallen.')).toEqual(['§ 5'])
-    expect(addressedParagraphs('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:')).toEqual([])
+    expect(instructionParagraphs('Die §§ 6 und 7 samt Überschriften entfallen.')).toEqual(['§ 6', '§ 7'])
+    expect(instructionParagraphs('Die §§ 5 bis 7 entfallen.')).toEqual(['§ 5', '§ 6', '§ 7'])
+    expect(instructionParagraphs('§ 5 Abs. 2 und 3 entfallen.')).toEqual(['§ 5'])
+    expect(instructionParagraphs('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:')).toEqual([])
   })
 
   it('returns null for an instruction it cannot read', () => {

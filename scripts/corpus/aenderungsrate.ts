@@ -85,7 +85,7 @@ import { argFlag, argPair } from '../lib/args'
 import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
 import { compareReasoning } from '../../server/utils/explanations/reasoningDiff'
 import { addressOf, isAddressHeading } from '../../server/utils/explanations/risExplanations'
-import { addressedParagraphOf, addressedParagraphs } from '../../server/utils/lawtext/instructionAddress'
+import { addressedParagraphOf, instructionParagraphs } from '../../server/utils/lawtext/instructionAddress'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { explanationParaId } from '../../shared/utils/explanationKey'
@@ -962,7 +962,7 @@ function addressesOf(units: readonly LawUnit[], article: string | null): Set<str
   const out = new Set<string>()
   for (const u of units) {
     if (u.article !== article) continue
-    for (const para of addressedParagraphs(u.text)) out.add(para)
+    for (const para of instructionParagraphs(u.text)) out.add(para)
   }
   return out
 }

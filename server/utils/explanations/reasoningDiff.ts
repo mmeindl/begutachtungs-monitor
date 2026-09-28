@@ -11,7 +11,7 @@
  * instructions over 17 Paragraphen, § 11 six times on its own). Counting per
  * instruction counts the same Begründung several times and then calls the
  * result „Paragraphen". So: one comparison per Paragraph in `paragraphs`, and
- * `units` says which instruction points at which — the key stays `unitKey`, as
+ * `units` says which instruction points at which — the key stays `diffUnitKey`, as
  * for the § names (`diff/paraTitleService.ts`), so no second key arises at
  * which check and display could drift apart.
  *
@@ -32,7 +32,7 @@
  * of the 413 come back. What still cannot be keyed stays out, as before.
  */
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
-import { unitKey } from '../../../shared/utils/diffKey'
+import { diffUnitKey } from '../../../shared/utils/diffKey'
 import { diffTokens } from '../diff/wordDiff'
 import { addressedParagraphOf } from '../lawtext/instructionAddress'
 // The key of `passagesByParagraph`, and the same reading the page looks up
@@ -57,7 +57,7 @@ const MAX_PARAGRAPHS = 250
 
 export interface ReasoningComparison {
   /**
-   * `unitKey` → „§ 11": which change points at which Paragraph. Where the
+   * `diffUnitKey` → „§ 11": which change points at which Paragraph. Where the
    * number is shared by two Artikel of the draft, the key names the Artikel
    * too („Art. 2 § 15") — a lookup key, not display text; the entry's
    * `paragraph` stays „§ 15".
@@ -156,7 +156,7 @@ export function compareReasoning(
         toText: changed && !segments ? b : null,
       }
     }
-    out.units[unitKey(unit)] = key
+    out.units[diffUnitKey(unit)] = key
   }
 
   const entries = Object.values(out.paragraphs)

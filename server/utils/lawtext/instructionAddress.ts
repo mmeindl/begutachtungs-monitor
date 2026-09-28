@@ -20,7 +20,7 @@ import type { LawDiffUnit } from '../../../shared/types'
  * eingefügt") does happen inside § 5, so its heading fits.
  */
 export function addressedParagraph(line: string): string | null {
-  const paras = addressedParagraphs(line)
+  const paras = instructionParagraphs(line)
   // Several paragraphs in one instruction have no single name.
   return paras.length === 1 ? paras[0]! : null
 }
@@ -34,7 +34,7 @@ export function addressedParagraph(line: string): string | null {
  * bare numbers behind the first one's designator; below § level („§ 5 Abs. 2
  * und 3") the siblings are Absätze of the one §.
  */
-export function addressedParagraphs(line: string): string[] {
+export function instructionParagraphs(line: string): string[] {
   const { ops } = parseInstruction(line)
   const paras = new Set<string>()
   for (const op of ops) {

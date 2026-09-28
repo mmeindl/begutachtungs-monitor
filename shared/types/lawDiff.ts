@@ -78,7 +78,7 @@ export interface ReasoningDiffEntry {
  *
  * TWO LEVELS, BECAUSE THERE ARE TWO: computed per Paragraph (`paragraphs`),
  * shown at the Novellierungsanordnung — several instructions amend the same
- * Paragraph. `units` maps from `unitKey` to the Paragraph, so as with
+ * Paragraph. `units` maps from `diffUnitKey` to the Paragraph, so as with
  * `paragraphtitel` it is the comparison's own key and not a second alignment
  * problem.
  */
@@ -94,7 +94,7 @@ export interface ReasoningDiffResponse {
   /** The two documents that were read, for the credit line. */
   sources: TraceLink[]
   /**
-   * `unitKey` → „§ 11": which change points at which Paragraph. Where the
+   * `diffUnitKey` → „§ 11": which change points at which Paragraph. Where the
    * number is shared by two Artikel of the draft, the key names the Artikel
    * too („Art. 2 § 15") — a lookup key, not display text; the entry's
    * `paragraph` stays „§ 15".
@@ -110,7 +110,7 @@ export interface ReasoningDiffResponse {
  * GET /api/drafts/:gp/:inr/paragraphtitel — the heading of each § a
  * change amends, looked up in the standing law (docs/architecture.md §12.11).
  *
- * Keyed by `unitKey` (shared/utils/diffKey.ts) so it merges straight onto the
+ * Keyed by `diffUnitKey` (shared/utils/diffKey.ts) so it merges straight onto the
  * diff units — `article|id|change`, because a Regierungsvorlage can carry a
  * removed and an inserted unit with the same Ziffer number. A
  * missing key means no name could be resolved with certainty, which is the
@@ -121,7 +121,7 @@ export interface ParagraphTitlesResponse {
   asOf: string | null
   titles: Record<string, string>
   /**
-   * `unitKey` → „§ 6": the Paragraph the instruction addresses. Kept beside
+   * `diffUnitKey` → „§ 6": the Paragraph the instruction addresses. Kept beside
    * the name, because „Z 2" is the Novellierungsanordnung's number and not
    * the Paragraph's — without it the name floats above a designation that
    * never names the §. Independent of `titles`: the § stands in the
