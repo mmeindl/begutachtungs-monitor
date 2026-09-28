@@ -62,7 +62,7 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
 }
 
 /** Which rule made a pair — the measured surface of `pairArticles` (`scripts/corpus/aenderungsrate.ts --pairs`). */
-export type ArticlePairVia = 'only' | 'title' | 'contained' | 'number' | 'addressed'
+export type ArticlePairVia = 'only' | 'title' | 'shortTitle' | 'contained' | 'number' | 'addressed'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** `pairArticles` with the rule behind each pair, in the order the pairs were made. */
@@ -89,6 +89,24 @@ export function articlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): 
     map.set(m.article, r.article)
     via.set(m.article, 'title')
     usedTo.add(r)
+  }
+  // Next, the official short title in brackets (28.09.2026). Two new laws
+  // can carry different long titles for the same law — XXVI 76/ME:
+  // „Bundesgesetz über die Versorgung der Notare und Notarinnen sowie ihrer
+  // Hinterbliebenen (Notarversorgungsgesetz)" against „Bundesgesetz über die
+  // Versorgung für das österreichische Notariat (Notarversorgungsgesetz -
+  // NVG 2020)". The bracket is the law's own name; only a bracket that is a
+  // law name counts („(89. Novelle zum ASVG)", „(Verfassungsbestimmung)",
+  // „(Teuerungs-Entlastungspaket Teil II)" are not), and only one candidate.
+  for (const m of fromArts) {
+    if (map.has(m.article)) continue
+    const mine = shortTitleOf(m.article)
+    if (!mine) continue
+    const candidates = toArts.filter((r) => !usedTo.has(r) && shortTitleOf(r.article) === mine)
+    if (candidates.length !== 1) continue
+    map.set(m.article, candidates[0]!.article)
+    via.set(m.article, 'shortTitle')
+    usedTo.add(candidates[0]!)
   }
   // Second, the law named INSIDE the other title (27.09.2026). A draft without
   // Artikel carries its whole title — „Bundesgesetz, mit dem das
@@ -212,6 +230,21 @@ function numberHolds(m: ArticleRef, r: ArticleRef, a: ReadonlySet<string>, b: Re
   if (sameAddresses(a, b)) return true
   if (!namesNoLaw(m.article) && !namesNoLaw(r.article)) return false
   return a.size === 0 || b.size === 0 || overlapOf(a, b) >= SAME_ADDRESSES_AT
+}
+
+/**
+ * The short title a long title carries in its last bracket, compacted —
+ * „(Notarversorgungsgesetz - NVG 2020)" → „notarversorgungsgesetz" — or null
+ * when the bracket is no law name. The abbreviation and year after a dash
+ * drop, because the draft often has neither.
+ */
+function shortTitleOf(title: string | null): string | null {
+  const brackets = [...normalizeText(title ?? '').matchAll(/\(([^()]+)\)/g)]
+  const inner = brackets.at(-1)?.[1]
+  if (!inner) return null
+  const name = inner.split(/\s+[-–]\s+/)[0]!.trim()
+  if (!/^\p{Lu}[\p{L}-]*(?:gesetz|ordnung|gesetzbuch|statut)(?:\s+\d{4})?$/u.test(name)) return null
+  return name.toLowerCase().replace(/[^a-zäöüß0-9]/g, '')
 }
 
 /** „Artikel 1", „Artikel II." — a title that is only its own number. */

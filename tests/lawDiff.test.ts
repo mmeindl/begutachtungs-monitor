@@ -730,3 +730,19 @@ describe('a nameless Artikel title pairs by its number (XXVII 85/ME, 28.09.2026)
     expect(articlePairs(me, rv).find((p) => p.from === 'Änderung des Einkommensteuergesetzes 1988')).toBeUndefined()
   })
 })
+
+describe('the short title in brackets pairs two long titles of one law (XXVI 76/ME, 28.09.2026)', () => {
+  const u = (article: string, id: string): LawUnit => ({ article, articleNumber: null, id, heading: null, quotedHeadings: [], text: `${id} Text`, blocks: [] })
+  const ME_NVG = 'Bundesgesetz über die Versorgung der Notare und Notarinnen sowie ihrer Hinterbliebenen (Notarversorgungsgesetz)'
+  const RV_NVG = 'Bundesgesetz über die Versorgung für das österreichische Notariat (Notarversorgungsgesetz - NVG 2020)'
+  it('pairs on the equal short title', () => {
+    const me = [u(ME_NVG, '§1'), u('Änderung des Mietrechtsgesetzes', 'Z1')]
+    const rv = [u(RV_NVG, '§1'), u('Änderung des Mietrechtsgesetzes', 'Z1')]
+    expect(articlePairs(me, rv).find((p) => p.from === ME_NVG)).toMatchObject({ to: RV_NVG, via: 'shortTitle' })
+  })
+  it('does not take a bracket that is no law name', () => {
+    const me = [u('Änderung des Allgemeinen Sozialversicherungsgesetzes (89. Novelle zum ASVG)', 'Z1'), u('Änderung des Mietrechtsgesetzes', 'Z1')]
+    const rv = [u('Änderung des Beamten-Kranken- und Unfallversicherungsgesetzes (89. Novelle zum ASVG)', 'Z1'), u('Änderung des Mietrechtsgesetzes', 'Z1')]
+    expect(articlePairs(me, rv).some((p) => p.via === 'shortTitle')).toBe(false)
+  })
+})
