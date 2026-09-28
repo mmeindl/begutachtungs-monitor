@@ -1049,6 +1049,28 @@ Auskunft. Angezeigt wird „§ 6 Erweiterte Gefahrenerforschung …" — und weg
 bleibt der Vorsatz, wo die Einheit selbst der Paragraph ist
 (Gegenüberstellung, neues Gesetz), sonst stünde er zweimal in einer Zeile.
 
+*„Die §§ 6 und 7" ist kein § 6, seit 28.09.2026.* `novao` liest die Form als
+**eine** Adresse mit Geschwistern (`para: '§ 6'`, `siblings: ['7']`), und
+`addressedParagraph` nahm nur `para` — die Einheit bekam Karte, Namen und
+Begründung des ersten Paragraphen. Die Stichproben zeigen, was das hieß: „In
+den §§ 19, 24, 25, … und 87 wird die Wortfolge … ersetzt" stand als § 19, „Die
+§§ 7 bis 12 werden durch folgende §§ 7 bis 9 ersetzt" als § 7. Seither zählen
+Geschwister auf §-Ebene als Paragraphen, und für mehrere gilt die Regel, die
+schon für „§ 4 … sowie § 4a" galt: kein Name. Ein halber Name ist schlechter
+als keiner. **Zwei Fragen, zwei Funktionen:** Die Artikelpaarung ME→RV
+(`diff/lawDiff.ts`) fragt nicht nach *einem* Namen, sondern nach der Menge der
+adressierten §§ — für sie heißt die Form beide, nicht keiner
+(`addressedParagraphs`). Gemessen über XXVI–XXVIII
+(`corpus:aenderungsrate -- --reasoning`): Basisrate, Eimer und Phantompaare
+**unverändert** in allen drei Perioden; der Begründungsvergleich verliert
+97 Einheiten, netto **23 verglichene §§** (919 → 918, 2.461 → 2.443,
+1.031 → 1.027), weil die meisten dieser §§ auch über eine andere Einheit
+erreicht werden. Die Namensdeckung über 40 Entwürfe der XXVIII bewegt sich
+nicht (861 → 863 ist Rauschen kalter RIS-Abrufe, beide Zeilen „nicht
+unabhängig prüfbar" → „bestätigt"). Offen und jetzt beziffert: die 97
+Einheiten mit **allen** ihren Paragraphen zu zeigen („§§ 65–68", je § die
+Erläuterung) — eine Formänderung des Ergebnisses, kein Zweizeiler.
+
 ### 12.12 Consolidated law text — engine built, not yet published
 
 Today a Novelle compares *amendment instructions*: "In § 9 Abs. 1 wird nach
