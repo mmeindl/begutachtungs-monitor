@@ -489,6 +489,8 @@ describe('Operandenvokabular und ausgeschriebene Umbenennungen', () => {
       'Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung "(1)" .',
       'Der Text des § 26 erhält die Absatzbezeichnung "(1)".',
       'Dem Text des § 26 wird die Absatzbezeichnung "(1)" vorangestellt.',
+      // ASVG § 459f: the bare noun, carried by the „(1)" alone (28.09.2026).
+      'Dem bisherigen Text des § 459f wird die Bezeichnung "(1)" vorangestellt.',
     ]) {
       const { ops, reason } = parseInstruction(line)
       expect(reason, line).toBeNull()

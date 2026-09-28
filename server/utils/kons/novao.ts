@@ -1267,7 +1267,12 @@ function eachUnitOccurrence(head: string): boolean {
 function absatzDrawnIn(head: string, quotes: readonly string[], targets: readonly NovaoAddress[]): { op?: NovaoOp; reason?: string } | null {
   const target = targets[0]!
   if (target.level !== 'para' || !target.para?.startsWith('§')) return null
-  if (!/\bAbsatzbezeichnung\b/i.test(head) || !/\berh(?:äl|al)t(?:en)?\b|\bvorangestellt\b/i.test(head)) return null
+  if (!/\berh(?:äl|al)t(?:en)?\b|\bvorangestellt\b/i.test(head)) return null
+  // „Dem bisherigen Text des § 459f wird die Bezeichnung ‚(1)' vorangestellt"
+  // (ASVG): the bare noun, and „(1)" is the only thing that makes it an
+  // Absatz — so without the „(1)" the line is not read here at all.
+  const bare = !/\bAbsatzbezeichnung\b/i.test(head)
+  if (bare && !(/\bBezeichnung\b/i.test(head) && quotes.length === 1 && quotes[0]!.replace(/\s+/g, '') === '(1)')) return null
   if (targets.length > 1 || target.siblings.length > 0) return { reason: `${targets.length + target.siblings.length} Paragraphen für eine Absatzbezeichnung` }
   if (quotes.length !== 1 || quotes[0]!.replace(/\s+/g, '') !== '(1)') return { reason: 'Absatzbezeichnung für einen ganzen Paragraphen' }
   return { op: { kind: 'renumber', target: { ...target, abs: '', level: 'abs' }, to: '(1)', toLast: null } }
