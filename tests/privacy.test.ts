@@ -118,6 +118,83 @@ describe('classifySubmitter', () => {
       expect(classifySubmitter(name, 'I')).toEqual({ kind: 'organisation', name })
     })
 
+    /* The whole review queue of 2026-09-28 (flag `I`, filed as "person"),
+     * one real list-142 spelling per pattern added that day. Like the block
+     * above, each holds without the flag: the pattern publishes, not `I`. */
+    it.each([
+      'Datenschutzrat',
+      'Büro des Fiskalrates',
+      'Rat für Forschung und Technologieentwicklung',
+      'Unabhängiger Monitoringausschuss zur Umsetzung der UN-BRK',
+      'Zentralausschuss für APS in Kärnten',
+      'Finanzprokuratur; Geschäftsfeld VII',
+      'Generalprokuratur beim OGH',
+      'Bildungsdirektion Tirol',
+      'ORF Generaldirektion',
+      'Präsidentschaftskanzlei',
+      'UN-Flüchtlingshochkommissariat UNHCR',
+      'FH Campus Wien; Rektorat',
+      'TU Wien; Senat',
+      'Begutachtungssenat des Oberlandesgerichtes Linz',
+      'Der Präsident des Oberlandesgerichtes Graz',
+      'Danube Private University; Rektorat',
+      'Gustav Mahler Privatuniverstität für Musik',
+      'Hochschulkollegium der PH Tirol',
+      'Psychoanalytisches Seminar Innsbruck (PSI)',
+      'Arbeitskreis der Automobilimporteure',
+      'ARGE Pflegedirektoren Salzburg',
+      'IG Bildende Kunst',
+      'Amnesty International',
+      'Austrian Nursing Directors Association',
+      'Open Knowledge Foundation',
+      'European Writers\' Council',
+      'Management Center Innsbruck',
+      'Austrian Convention Bureau; Dachverband der österreichischen Kongress- und Tagungsindustrie',
+      'SBA Research gGmbH; DECSYS - Decentralized Systems Group',
+      'TikTok Technology Limited',
+      'Entain Plc',
+      'Facebook Ireland Inc.',
+      'Die Tagespresse Medien FlexCo; FlexCo',
+      'lab10 collective eG; sustainable blockchain solutions',
+      'Bündnis gegen Armut und Wohnungsnot',
+      'Bürgerbewegung #BürgerVerändernGemeinsam',
+      'Radlobby Vorarlberg',
+      'Echte Demokratie - Volksbegehren',
+      'Union für die Rechte von Gefangenen',
+      'Demokratische Alternative; Vorstand',
+      'VÖS - Bund der Steuerzahler',
+      'Volkshilfe',
+      'Stabsstelle Ukraine Flüchtlingskoordination',
+      'Ombudstelle für Studierende',
+      'Naturhistorisches Museum Wien; Generaldirektion',
+      'Israelitische Kultusgemeinde Wien',
+      'SOS-Kinderdorf; Geschäftsführung',
+      'Landtagsklub der Grünen Steiermark',
+      'Wiener Stadtwerke Gruppe; Public Affairs',
+      'Südwind-Magazin',
+      'Landesumweltanwalt Tirol',
+      'PSY-Weiterbildungseinrichtungen Österreichweit',
+      'Zentralanstalt für Meteorologie und Geodynamik (ZAMG)',
+      'Naturschutzfreunde',
+      'Verkehrswende Tulln-Klosterneuburg',
+      'Aktienforum',
+      'NÖ Landesvereins für Erwachsenenschutz; Erwachsenenvertretung, Bewohnervertretung',
+      'AK Österreich, Bundesarbeitskammer',
+      'BM für Bildung, Wissenschaft und Forschung; Zentralausschuss im Bereich Wissenschaft und Forschung',
+    ])('%s → organisation (upstream I, read as person until 2026-09-28)', (name) => {
+      expect(classifySubmitter(name)).toEqual({ kind: 'organisation', name })
+      expect(classifySubmitter(name, 'I')).toEqual({ kind: 'organisation', name })
+    })
+
+    it('reads decomposed umlauts as the letters they are (NFC)', () => {
+      // Upstream: "Steirische Landesgeschäftsstelle des Österreichischen …".
+      const decomposed = 'Steirische Landesgeschäftsstelle des Österreichischen Hebammengremiums'
+      expect(classifySubmitter(decomposed)).toEqual({
+        kind: 'organisation',
+        name: decomposed.normalize('NFC'),
+      })
+    })
+
     it('allowlisted brand-style names without org keywords (§12.9)', () => {
       expect(classifySubmitter('epicenter.works')).toEqual({
         kind: 'organisation',
@@ -321,6 +398,62 @@ describe('classifySubmitter', () => {
     ])('a person filing with an org word of 2026-09-27 stays hidden: %s', (name) => {
       expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
     })
+
+    /* The same guard for the words of 2026-09-28, in the shapes persons file
+     * them in list 142 — affiliation after a semicolon, after a comma, a
+     * title before the name. Persons synthetic, affiliations real. Without
+     * a flag, so the name shape is what holds them. */
+    it.each([
+      'Mustermann, Anna; Datenschutzrat',
+      'Mustermann, Max; Rat für Forschung und Technologieentwicklung',
+      'Mustermann, Max; GR Obmann des Umweltausschusses',
+      'Mustermann Anna, Volkshilfe',
+      'Anna Mustermann; FH Campus Wien',
+      'Dr. Max Mustermann; Finanzprokuratur',
+      'Mustermann, Anna; Amnesty International',
+      'Mustermann, Max; Wiener Kinderfreunde',
+      'Mustermann, Anna; Grüne Wirtschaft',
+      'Mustermann, Max; KGS Group Max Mustermann und Partner',
+      'Mustermann, Anna; Senat der Universität Wien',
+      'Mustermann, Max; Präsident des Vereins Muster',
+      'Mustermann, Anna; Volksschule',
+      'Mustermann, Max, Richter des Oberlandesgerichtes Wien',
+      'Mag. Anna Mustermann; ARGE Pflegedirektoren Salzburg',
+      'Mustermann, Anna (1010 Wien); Bildungsdirektion Wien',
+      'Müller, Anna; Universität Wien',
+    ])('a person filing with an org word of 2026-09-28 stays hidden: %s', (name) => {
+      expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
+    })
+
+    /* Surnames and first names that contain a word the 2026-09-28 patterns
+     * were cut around — each one a shape of the corpus (Murat, a surname in
+     * -rat, Hub, Wende, Estelle), which is why the patterns take compounds
+     * only. The names are synthetic. */
+    it.each([
+      'Rat, Anna',
+      'Musterrat, Max',
+      'Mustermann, Murat',
+      'Hub, Anna',
+      'Wende, Anna',
+      'Mustermann, Estelle',
+      'Estelle Mustermann',
+      'Union, Max',
+    ])('a name that contains a 2026-09-28 org word stays hidden: %s', (name) => {
+      expect(classifySubmitter(name)).toEqual({ kind: 'person', name: null })
+    })
+
+    it('an org word in a head does not publish the person named after it', () => {
+      // "Ausschuss" is taken as a compound only: the one bare "Ausschuss der
+      // …" in the queue names a person inside the head itself.
+      expect(
+        classifySubmitter('Ausschuss der Abteilung der Angestellten und Mag. Anna Mustermann; Österreichische Tierärztekammer'),
+      ).toEqual({ kind: 'person', name: null })
+    })
+
+    it('the P flag still vetoes what a 2026-09-28 pattern would publish', () => {
+      expect(classifySubmitter('Datenschutzrat', 'P')).toEqual({ kind: 'person', name: null })
+      expect(classifySubmitter('Volkshilfe; Anna Mustermann', 'P')).toEqual({ kind: 'person', name: null })
+    })
   })
 
   describe('non-public Stellungnahmen', () => {
@@ -487,6 +620,27 @@ describe('classifySubmitter', () => {
         kind: 'organisation',
         name: 'epicenter.works',
       })
+    })
+
+    /* The entries of 2026-09-28 that exist because the head is an
+     * organisation and the tail, in this data, names a person. The head is
+     * what prints, whatever the flag says. */
+    it('an allowlisted head of 2026-09-28 prints without the person behind it', () => {
+      expect(classifySubmitter('Digital Society; DI Max Mustermann; Vizepräsident Interessensvertretung', 'I')).toEqual({
+        kind: 'organisation',
+        name: 'Digital Society',
+      })
+      expect(classifySubmitter('LinkedIn Ireland UC; Senior Manager, Public Policy; Anna Mustermann', 'I')).toEqual({
+        kind: 'organisation',
+        name: 'LinkedIn Ireland UC',
+      })
+      expect(classifySubmitter('ÖPU NÖ; Mag. Anna Mustermann, Vorsitzende der ÖPU-NÖ', 'I')).toEqual({
+        kind: 'organisation',
+        name: 'ÖPU NÖ',
+      })
+      expect(classifySubmitter('ASFINAG; Vorstand').name).toBe('ASFINAG')
+      expect(classifySubmitter('KommAustria; Kommunikationsbehörde Austria').name).toBe('KommAustria')
+      expect(classifySubmitter('Biogas; Bruck/Leitha GmbH & Co KG').name).toBe('Biogas Bruck/Leitha GmbH & Co KG')
     })
 
     it('leaves a string that is not allowlisted alone', () => {

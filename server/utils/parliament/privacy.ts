@@ -90,6 +90,202 @@ const ORG_ALLOWLIST = new Map<string, string | null>([
    * where the affiliation guard in `classifyByName` no longer reads it. */
   ['ebay', null],
   ['akzente salzburg', null],
+
+  /* Verified 2026-09-28 from the whole review queue — list 142 flags `I`,
+   * this module filed them as "person", GP XXVIII/XXVII, ME and RV. Every
+   * one read and identified as an organisation or a public body; what no
+   * general pattern could publish safely. Most are heads: acronyms, brand
+   * names and bodies whose department follows the semicolon ("ASFINAG;
+   * Vorstand", "BAK; Wirtschaftswissenschaft"). A head match prints the head
+   * alone, which is what makes "Digital Society", "LinkedIn Ireland UC" and
+   * "ÖPU NÖ" safe to list: in this data each also files as "<head>; <title>
+   * <Vorname Nachname> …", and that person stays off the page. Left out on
+   * purpose: law firms and practices named after their owners, sole traders
+   * (e.U.), bare names, and every string whose identity was not certain. */
+  ['akm autoren, komponisten und musikverleger reggenmbh', null],
+  ['akv europa', null],
+  ['alter orden vom st. georg', null],
+  ['amazon', null],
+  ['microsoft', null],
+  ['google', null],
+  ['ambulatorium amalienbad', null],
+  ['anti-diskriminierung - unabhängiger bedienstetenschutz', null],
+  ['access info europe', null],
+  ['ages', null],
+  ['arche noah', null],
+  ['article 19', null],
+  ['asb - arge schuldnerberatungen', null],
+  ['asfinag', null],
+  ['at&t / warnermedia', null],
+  ['aucen', null],
+  ['austrian cats united', null],
+  ['austrian society for artificial intelligence (asai)', null],
+  ['austrianstartups', null],
+  ['austromed', null],
+  ['austropapier', null],
+  ['auva', null],
+  ['bag intensiv- und anästhesiepflege des ögkv, bargi und öbai', null],
+  ['bak', null],
+  ['barmherzige brüder', null],
+  ['bawo - wohnen für alle', null],
+  ['bawo, bundesarbeitsgemeinschaft wohnungslosenhilfe', null],
+  ['bildung brennt', null],
+  ['biobauern gegen gentechnik', null],
+  ['biogas; bruck/leitha gmbh & co kg', 'Biogas Bruck/Leitha GmbH & Co KG'],
+  ['bizeps', null],
+  ['bka - verfassungsdienst', null],
+  ['bmb', null],
+  ['bmbwf', null],
+  ['bmsgpk - abt. i/a/4', null],
+  ['böp', null],
+  ['bote aus der buckligen welt', null],
+  ['brightstar lottery', null],
+  ['bsa ahs', null],
+  ['bsa-ahs', null],
+  ['bund sozialdemokratischer akademikerinnen', null],
+  ['canal+ luxembourg s.à r.l.', null],
+  ['casino innsbruck', null],
+  ['cmg-ae', null],
+  ['complexity science hub vienna', null],
+  ['cultural broadcasting archive', null],
+  ['data intelligence offensive', null],
+  ['deca - eine stimme für energieeffizienz', null],
+  ['deca dienstleister energieeffizienz & contracting', null],
+  ['department für integrierte sensorsysteme', null],
+  ['der standard', null],
+  ['die sharing-anbieter dott, lime und voi', null],
+  ['digital society', null],
+  ['digital society.at', null],
+  ['digitize!', null],
+  ['dignitas - menschenwüridg leben - menschenwürdig sterben', null],
+  ['doctors against forced organ harvesting', null],
+  ['dowas', null],
+  ['energie steiermark', null],
+  ['epex spot', null],
+  ['european energy exchange (eex), epex spot', null],
+  ['epicenter.works - for digital rights', null],
+  ['fachschaft raumplanung', null],
+  ['fdj united', null],
+  ['fhwien der wkw', null],
+  ['forschung burgenland', null],
+  ['fstv-bildungswissenschaften und stv erziehungswissenschaften', null],
+  ['freiheitlichen wirtschaft', null],
+  ['grüne wirtschaft', null],
+  ['grüne bäuerinnen und bauern (gbb)', null],
+  ['gemeinwohlenergie innsbruck', null],
+  ['gesundheit burgenland', null],
+  ['göd', null],
+  ['gras - grüne & alternative student_innen', null],
+  ['gras - grüne & alternative studentinnen', null],
+  ['grüne & alternative student_innen (gras)', null],
+  ['great spa towns of europe world heritage site', null],
+  ['grenzenlos - interkultureller austausch', null],
+  ['gymnasium draschestraße (grg23vbs)', null],
+  ['haus der barmherzigkeit', null],
+  ['helping hands', null],
+  ['htu wien', null],
+  ['iapö', null],
+  ['ifwa', null],
+  ['ifkbw:nhf', null],
+  ['iibw', null],
+  ['ispa', null],
+  ['pharmig', null],
+  ['vvo', null],
+  ['imwind', null],
+  ['infoladen-servicebuchhandlung', null],
+  ['initiative stadtbildschutz, verein', null],
+  ['isda', null],
+  ['ivs wien', null],
+  ['iwo', null],
+  ['jam music lab pu', null],
+  ['jku linzq', null], // upstream's spelling, printed as it stands
+  ['jugend eine welt - don bosco entwicklungszusammenarbeit', null],
+  ['jugend für das leben', null],
+  ['kaizen gaming', null],
+  ['kardinal könig haus', null],
+  ['kelag, kng', null],
+  ['kiwi - kinder in wien', null],
+  ['kommaustria', null],
+  ['ksv 1870', null],
+  ['ksw', null],
+  ['kunst uni graz', null],
+  ['kz-gedenkstätte mauthausen/mauthausen memorial', null],
+  ['landeshauptleute', null],
+  ['laola1', null],
+  ['licht ins dunkel', null],
+  ['linkedin ireland uc', null],
+  ['linz school of education', null],
+  ['liste perspektive', null],
+  ['lkh wiener neustadt', null],
+  ['logopädieaustria', null],
+  ['lsg wahrnehmung von leistungsschutzrecht', null],
+  ['lvwg steiermark', null],
+  ['mdw', null],
+  ['megaphon', null],
+  ['nawi graz koordinationsbüro', null],
+  ['netzpolitik.org und fragdenstaat', null],
+  ['nsks, zso, sks', null],
+  ['öaab-lehrerinnen und lehrer vorarlberg', null],
+  ['öaw', null],
+  ['öbvp', null],
+  ['ögkv', null],
+  ['öglmkc', null],
+  ['öli-ug', null],
+  ['open knowledge fourndation', null],
+  ['open science - lebenswissenschaften im dialog', null],
+  ['öpu/fcg', null],
+  ['öpuk', null],
+  ['öpu nö', null],
+  ['öquasta und galp vereine für qual.sicherung im med. labor', null],
+  ['orange 94.0 - das freie radio in wien', null],
+  ['orf', null],
+  ['öskor * radiologietechnologie', null],
+  ['österr. apothekerverlagsgesmbh', null],
+  ['österreichischer mieter-, siedler und wohnungseigentümerbund', null],
+  ['övsv', null],
+  ['physioaustria', null],
+  ['pro mente oö', null],
+  ['pro thayatal', null],
+  ['protect', null],
+  ['queer base', null],
+  ['quintessenz', null],
+  ['rechtsanwälte für grundrechte - anwälte für aufklärung', null],
+  ['rechtsanwälte für grundrechte – anwälte für aufklärung', null],
+  ['rechtsanwälte für grundrechte- anwälte für aufklärung (“rfg-afa“)', null],
+  ['rechtsschutzbeauftragter der justiz', null],
+  ['redcare pharmacy', null],
+  ['referat für studieren mit beeinträchtigung(en)', null],
+  ['refurbed', null],
+  ['reporter ohne grenzen', null],
+  ['schlichtung für verbrauchergeschäfte', null],
+  ['schuldenberatung fsw', null],
+  ['schutzgebietsverwaltung wildnisgebiet dürresntein-lassingtal', null],
+  ['slö wien', null],
+  ['sol - menschen für solidarität - ökologie - lebensstil. zvr-zahl: 384533867', null],
+  ['sportunion west-wien', null],
+  ['spusu', null],
+  ['stift klosterneuburg', null],
+  ['studienvertretungen technische mathematik, lehramt und geodäsie und geoinformation', null],
+  ['supro - gesundheitsförderung und prävention', null],
+  ['swv wien', null],
+  ['tourismusschulen semmering', null],
+  ['ulv tu graz', null],
+  ['uniability', null],
+  ['unser burgenland', null],
+  ['vertretungsnetz', null],
+  ['vöwg/vkö', null],
+  ['vsstö', null],
+  ['wiener kreis für psychoanalyse und selbstpsychologie', null],
+  ['wiener linien', null],
+  ['wu wien', null],
+  ['za-bmhs', null],
+  ['zamg', null],
+  ['zara - zivilcourage und anti-rassismus-arbeit', null],
+  ['koordinator für psychiatrie, sucht- und drogenfragen', null],
+  ['abteilung für unternehmensrechnung & revision - wu wien', null],
+  ['fakultätsleitung und der studienprogrammleitung der fakultät für psychologie der uni wien', null],
+  ['hv ph salzburg, stv lehramt uni salzburg, fv soe uni salzburg', null],
+  ['bezirksvorstehung innere stadt (1010 wien)', null],
 ])
 
 /**
@@ -161,9 +357,10 @@ const STRONG_ORG_PATTERNS: RegExp[] = [
   /ministerium/i,
   // The ministries' own short form in list 142 ("BM f. Finanzen", "BM f.
   // Arbeit, Soziales, …") — 221 rows of GP XXVIII read as "Privatperson".
-  /^BM\s?f\.\s/i,
+  // Written out as "BM für …" too (GP XXVII, 2026-09-28).
+  /^BM\s?(?:f\.|für)\s/i,
   /kanzleramt/i,
-  /(?:wirtschafts|arbeiter|land(?:es)?|landwirtschafts|ärzte|zahnärzte|tierärzte|apotheker|notariats?|rechtsanwalts|ziviltechniker|patentanwalts|ingenieur)kammer/i,
+  /(?:wirtschafts|arbeiter|arbeits|land(?:es)?|landwirtschafts|ärzte|zahnärzte|tierärzte|apotheker|notariats?|rechtsanwalts|ziviltechniker|patentanwalts|ingenieur)kammer/i,
   /kammer\s+(?:für|der|des)\b/i,
   /gewerkschaft/i,
   /gesellschaft\b/i,
@@ -176,7 +373,7 @@ const STRONG_ORG_PATTERNS: RegExp[] = [
   // "Huber, Anna; Rechtsanwältin"); Datenschutzbehörde; Finanzmarktaufsicht.
   // Strong, because these file in comma form too ("Staatsanwaltschaft
   // Innsbruck, Staatsanwaltschaft Feldkirch").
-  /gericht(?:e|s|en)?\b/i,
+  /gericht(?:e|s|es|en)?\b/i,
   /anwaltschaft(?:en)?\b/i,
   /behörden?\b/i,
   /aufsicht\b/i,
@@ -256,6 +453,47 @@ const ORG_PATTERNS: RegExp[] = [
   // of GP XXVIII/XXVII (ME and RV) before it went in.
   /kom{1,2}itee\b/i, // "Parlamentarisches Datenschutzkomitee" — upstream spells it with "mm" too
   /\b(?:energie|e)-control\b/i, // the regulator E-Control: "Energie-Control ; Recht"
+
+  // Added 2026-09-28 from the whole review queue of list 142 (flag `I`, filed
+  // as "person": 558 distinct strings over GP XXVIII/XXVII, ME and RV). Each
+  // was held against every row of that snapshot, both flags, and every string
+  // it newly published was read; none names a person. What is NOT here, and
+  // why: bare `rat\b` (the first name Murat, surnames ending in -rat, the
+  // surname Rat itself), `\bhub\b` and `wende\b` without a compound (both
+  // surnames in this data), `stelle\b` (the first name Estelle),
+  // `\bsociety\b` and `\bUC\b` (each would have published the person named in
+  // the segment after an org head — "Org; DI <Vorname Nachname>"), `Kanzlei`,
+  // `Rechtsanwälte`, `Büro`, `Consulting` (firms named after their owners).
+  /(?:datenschutz|fiskal|ernährungs|redaktions|fakultäts)rat(?:es)?\b/i, // the compounds only
+  /^Rat\s+(?:der|des|für)\s/, // "Rat für Forschung …", "Rat der Kärntner Slowenen"
+  /[a-zäöüß]ausschuss(?:es)?\b/i, // Monitoring-, Zentral-, Dienststellenausschuss — not "Ausschuss der … und Mag. <Name>"
+  /prokuratur\b/i, // Finanzprokuratur, Generalprokuratur
+  /bildungsdirektion|generaldirektion\b/i,
+  /präsidentschaftskanzlei|hochkommissariat/i,
+  /^(?:FH|TU|PH|KPH)(?=[\s;,-]|$)/, // "FH Campus Wien", "TU Wien; Senat" — case-sensitive
+  /senat(?:e|s)?\b/i, // "TU Graz Senat", "Begutachtungssenat des OLG Linz"
+  /universit|universtität/i, // "Danube Private University", "Privatuniverstität" as upstream spells it
+  /kollegium|gremium|seminar\b/i,
+  /arbeitskreis/i,
+  /^(?:ARGE|Arge|IG)\s/, // Arbeits- and Interessengemeinschaft by their short forms — case-sensitive
+  /\binternational\b/i,
+  /\b(?:association|foundation|council|federation|confederation|alliance|agency|chapter|cent(?:er|re)|network|bureau)\b/i,
+  /gmbh\b|\b(?:ltd|limited|plc)\b/i, // "gGmbH", "BetriebsgmbH" have no boundary before GmbH
+  /\b(?:Inc|FlexCo|GbR|eG)\b/, // case-sensitive: "eG" is not "EG", "Inc" not "inc"
+  /bündnis|bewegung\b|lobby\b|volksbegehren/i,
+  /\bunion\b|demokratische?\b|demokratie\b/i,
+  /(?:^|\s)Bund\s+(?:der|des)\s/, // "Bund der Steuerzahler" — case-sensitive, and never "Bund, Anna"
+  /hilfe\b/i, // Volkshilfe, Suchthilfe, Lebenshilfe, Aids Hilfe, Bewährungshilfe
+  /(?:antidiskriminierungs|doku|stabs|fachausbildungs|ombud)stelle\b/i, // extends the -stelle list above
+  /museum\b|kultusgemeinde|kinderdorf|kinderschutz|schulamt\b/i,
+  /klub\b|gruppe\b|\bgroup\b/i,
+  /magazin\b|zeitung\b|rundschau\b|\bjournal\b/i,
+  /^ORF\b/,
+  /umweltanwalt\b/i, // Landesumweltanwalt — the office, like the Umweltanwaltschaft above
+  /\bUN-|\bUNHCR\b|\bOSCE\b/,
+  /einrichtung(?:en)?\b|anstalt\b/i,
+  /[a-zäöüß](?:freunde|wende|forum)\b/i, // compounds only: "Naturschutzfreunde", "Verkehrswende", "Aktienforum"
+  /vereins\b/i, // the genitive, which `[a-zäöüß]vereine?\b` above misses: "NÖ Landesvereins für …"
 ]
 
 /**
@@ -492,7 +730,14 @@ export function classifySubmitter(
   // Zero-width characters go before the whitespace collapse: `\s` does not
   // match U+200B, so one of them inside "Nachname, Vorname" breaks the comma
   // form while the string still reads as a name to anyone looking at it.
-  const s = (raw ?? '').replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim()
+  // NFC first, for the same reason one level down: list 142 carries decomposed
+  // umlauts ("O" + U+0308, 6 rows in GP XXVIII/XXVII), and a combining mark is
+  // neither `\p{L}` for the name shapes nor "ö" for the org patterns.
+  const s = (raw ?? '')
+    .normalize('NFC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (!s) return PERSON
 
   // Orthogonal to the flag: non-public rows carry both values (902 `P` and
