@@ -458,7 +458,14 @@ const JOIN_RE = /(?<![\p{L}])(?:und|sowie|oder|bis)(?![\p{L}])|,/u
  * Z 22 … ersetzt") and is read as it always was.
  */
 function onePlace(tail: string, components: readonly (RegExpExecArray | null)[], deepest: RegExpExecArray, enumerationEnd: number): boolean {
-  const verb = FINITE_VERB_RE.exec(tail)
+  // The address ends at the first verb behind its first component — not at
+  // the first verb at all: „… und wird in den Z 5 und 7 lit. a jeweils …"
+  // puts the verb in front, and measured from there the address was empty
+  // and „Z 5 und 7" passed as one place: Z 5 lit. a, and Z 7 dropped
+  // (AsylG § 72, 28.09.2026).
+  const first = Math.min(...components.filter((c): c is RegExpExecArray => c !== null).map((c) => c.index))
+  const verbs = [...tail.matchAll(new RegExp(FINITE_VERB_RE.source, FINITE_VERB_RE.flags.replace('g', '') + 'g'))]
+  const verb = verbs.find((v) => v.index > first)
   const end = verb ? verb.index : tail.length
   const inAddress = components.filter((c): c is RegExpExecArray => c !== null && c.index < end).sort((a, b) => a.index - b.index)
   for (const [i, c] of inAddress.entries()) {

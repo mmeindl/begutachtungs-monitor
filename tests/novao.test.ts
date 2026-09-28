@@ -784,3 +784,16 @@ describe('the table of contents as a whole line (28.09.2026)', () => {
     ]) expect(parseInstruction(line).ops, line).toEqual([{ kind: 'toc' }])
   })
 })
+
+describe('an address behind its verb (28.09.2026)', () => {
+  it('does not read two places as one, nor the locator as the target', () => {
+    for (const line of [
+      // Z 7 was dropped: Z 5 lit. a (AsylG § 72).
+      'In § 72 wird in den Z 5 und 7 lit. a jeweils die Wortfolge "A" durch die Wortfolge "B" ersetzt.',
+      // Abs. 2 was deleted.
+      'In § 10 entfällt nach Abs. 2 der Abs. 3.',
+      // Inserted behind Abs. 8, and the renumbering lost.
+      'In § 7 wird der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7 folgender Abs. 8 eingefügt:',
+    ]) expect(parseInstruction(line).ops, line).toEqual([])
+  })
+})
