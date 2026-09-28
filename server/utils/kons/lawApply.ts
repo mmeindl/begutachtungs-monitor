@@ -561,8 +561,16 @@ function tolerantSpans(haystack: string, needle: string, wordBound: boolean): Sp
  */
 function phraseIndex(haystack: string, needle: string, wordBound: boolean, from = 0): number {
   let i = haystack.indexOf(needle, from)
-  while (i >= 0 && wordBound && !atWordBoundary(haystack, needle, i)) i = haystack.indexOf(needle, i + 1)
+  while (i >= 0 && ((wordBound && !atWordBoundary(haystack, needle, i)) || insideNumber(haystack, needle, i))) i = haystack.indexOf(needle, i + 1)
   return i
+}
+
+/**
+ * „die Beträge ‚50' jeweils durch die Beträge ‚70'" — a number is never a
+ * piece of a longer one: „150" does not contain the amount 50 (28.09.2026).
+ */
+function insideNumber(haystack: string, needle: string, at: number): boolean {
+  return (/^\d/.test(needle) && /\d/.test(haystack[at - 1] ?? '')) || (/\d$/.test(needle) && /\d/.test(haystack[at + needle.length] ?? ''))
 }
 
 /**

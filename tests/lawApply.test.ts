@@ -1365,3 +1365,23 @@ describe('a mark as the anchor of an insertion (28.09.2026)', () => {
     expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('die Mittel, die Wege und Ziele,')
   })
 })
+
+describe('nouns read against the refusals of 28.09.2026', () => {
+  it('replaces a sentence named with its text inside the Schlussteil', () => {
+    // LFG § 169 Abs. 1: „Im Schlussteil … wird der Satz ‚…' durch die Sätze ‚…' ersetzt".
+    const abs = makeNode('abs', '1', '(1)', 'Wer')
+    abs.children.push(makeNode('z', '1', '1.', 'fliegt,'), makeNode('schluss', 'schluss', '', 'begeht eine Übertretung. In Fällen A ist B zu verhängen.'))
+    const p = makeNode('para', '169', '§ 169', '')
+    p.children.push(abs)
+    const { law: out, results } = run({ paragraphs: [p] }, instr('Im Schlussteil des § 169 Abs. 1 wird der Satz "In Fällen A ist B zu verhängen." durch die Sätze "In Fällen C. Sonst D." ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('begeht eine Übertretung. In Fällen C. Sonst D.')
+  })
+
+  it('does not find a number inside a longer one', () => {
+    const l: StandingLaw = { paragraphs: [para('10', 'S', ['Die Gebühr beträgt 150 Euro, ermäßigt 50 Euro.'])] }
+    const { law: out, results } = run(l, instr('In § 10 werden die Beträge "50" jeweils durch die Beträge "70" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Gebühr beträgt 150 Euro, ermäßigt 70 Euro.')
+  })
+})

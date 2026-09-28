@@ -106,8 +106,8 @@ const ORDINAL_SATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?(?:\\s+und\\s+(${ORD
 const NUMERIC_SATZ = /\b(\d{1,2})\.\s*Satz(?:es)?\b/i
 const GROUP_SATZ = /\b(ersten|letzten)\s+(beiden|zwei|drei|vier|fünf)\s+Sätze\b/i
 const PART_SATZ = /\b(Einleitungssatz|Einleitungsteil|Schlusssatz|Schlussteil)\b/i
-/** „der Halbsatz" in front of a (masked) quotation: the noun of the quoted text, not a sentence word. */
-const HALBSATZ_NOUN_RE = /\b(?:der|den|dem|einen?|ein)\s+Halbsatz(?:es)?\s*(?="")/gi
+/** „der Halbsatz", „der Satz" in front of a (masked) quotation: the noun of the quoted text, not a sentence word. */
+const HALBSATZ_NOUN_RE = /\b(?:der|den|dem|die|einen?|ein)\s+(?:Halbsatz(?:es)?|Satz(?:es)?|Sätze)\s*(?="")/gi
 /** „erster Halbsatz", „im letzten Halbsatz", „der zweite Halbsatz". */
 const ORDINAL_HALBSATZ = new RegExp(`\\b(${ORDINAL_WORD})[rnsm]?\\s+Halbsatz(?:es)?\\b`, 'i')
 /** Any sentence word at all — an address that carries one must resolve it or be refused. */
@@ -962,8 +962,15 @@ function instructionHead(t: string): string {
  * better.
  */
 const PHRASE_OBJECT =
-  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Klammerausdrücke|Klammerausdruck|Ausdrücke|Ausdruck|Zitierung|Zitat|Begriff|Bezeichnung|Satzteil|Halbsatz(?=\\s*")|Verweis|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Einträge|Eintrag)(?:e|en|n|s)?'
+  '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Klammerausdrücke|Klammerausdruck|Ausdrücke|Ausdruck|Zitierung|Zitat|Begriff|Bezeichnung|Satzzeichen|Satzteil|Halbsatz(?=\\s*")|Klammerzitat|Verweiskette|Verweis|Abkürzung|Datumsangabe|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Beträge|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Einträge|Eintrag)(?:e|en|n|s)?'
 const PHRASE_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'i')
+/**
+ * „Im Schlussteil des § 169 Abs. 1 wird der Satz ‚…' durch die Sätze ‚…'
+ * ersetzt" (LFG): a sentence named by its text is a phrase operand — but
+ * only where it is replaced. „nach dem zweiten Satz der Satz ‚Neu.'
+ * eingefügt" inserts a sentence and is read as one (28.09.2026).
+ */
+const SATZ_REPLACED_RE = /\b(?:der|den)\s+Satz\s*"[^"]*"\s*durch\s+(?:den|die)\s+(?:Satz|Sätze)\s*"/i
 const PHRASE_OBJECT_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'gi')
 
 /**
@@ -1394,7 +1401,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     })
   }
 
-  if (PHRASE_RE.test(head)) {
+  if (PHRASE_RE.test(head) || SATZ_REPLACED_RE.test(head)) {
     // "In § 22 samt Überschrift, § 23 Abs. 1a … wird das Wort X durch Y
     // ersetzt": the heading is a second place, not a second reading of the
     // same one. It becomes its own op, so the phrase must be found in each
