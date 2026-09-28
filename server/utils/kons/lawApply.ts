@@ -1157,6 +1157,22 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         if (!parent) return 'Elternknoten nicht gefunden'
         return spliceRun(parent.children, outgoing, payload, level)
       }
+      // „§ 1 Z 1 bis 5 lautet:" where Z 5 is new (Waldresilienzfondsgesetz):
+      // the run below the § — the form `Die §§ 34a bis 34e lauten` has at §
+      // level, under the same condition, the blocks ARE the named units,
+      // one each and in order.
+      if (!op.target.satz && !op.target.halbsatz && ids.length > 1) {
+        const nodes = ids.map((id) => resolveTarget(law, op.target, id))
+        const absent = ids.filter((_, i) => nodes[i] === null)
+        if (absent.length > 0 && absent.length < ids.length) {
+          const level = op.target.lit ? 'lit' : op.target.z ? 'z' : 'abs'
+          const named = payload.length === ids.length && payload.every((b, i) => b.level === level && b.id === ids[i])
+          const present = nodes.filter((n): n is LawNode => n !== null)
+          const parent = parentOf(law, present[0]!)
+          if (!named || !parent) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
+          return spliceRun(parent.children, present, payload, level)
+        }
+      }
       for (const [i, id] of ids.entries()) {
         const node = resolveTarget(law, op.target, id)
         if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`

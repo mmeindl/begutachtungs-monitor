@@ -1265,3 +1265,18 @@ describe('a Halbsatz quoted in the line and joined at the end (27.09.2026)', () 
     expect(out.paragraphs[0]!.children[0]!.children[0]!.text).toBe('die Identität festzustellen; die Vorlage kann entfallen;')
   })
 })
+
+describe('a range below the § whose last unit is new (28.09.2026)', () => {
+  it('replaces the run where the payload spells out every named unit', () => {
+    // Waldresilienzfondsgesetz § 1: „§ 1 Z 1 bis 5 lautet:", Z 5 new.
+    const l: StandingLaw = { paragraphs: [para('1', 'Ziele', [{ text: 'Ziele sind:', ziffern: ['a,', 'b,', 'c.'] }])] }
+    const { law: out, results } = run(l, instr('§ 1 Abs. 1 Z 1 bis 4 lautet:', ['1. A,', '2. B,', '3. C,', '4. D.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children.map((c) => `${c.id}:${c.text}`)).toEqual(['1:A,', '2:B,', '3:C,', '4:D.'])
+  })
+
+  it('refuses where the payload is not exactly the named units', () => {
+    const l: StandingLaw = { paragraphs: [para('1', 'Ziele', [{ text: 'Ziele sind:', ziffern: ['a,', 'b,', 'c.'] }])] }
+    expect(run(l, instr('§ 1 Abs. 1 Z 1 bis 4 lautet:', ['1. A,', '2. B,', '3. C.'])).results[0]!.applied).toBe(false)
+  })
+})
