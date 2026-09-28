@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressedParagraph } from '../server/utils/lawtext/instructionAddress'
+import { addressedParagraph, addressedParagraphs } from '../server/utils/lawtext/instructionAddress'
 
 describe('addressedParagraph', () => {
   it('names the § an instruction edits', () => {
@@ -18,6 +18,21 @@ describe('addressedParagraph', () => {
 
   it('refuses when one instruction spans several paragraphs', () => {
     expect(addressedParagraph('In § 17 Abs. 4, § 19 Abs. 1 und § 46 Abs. 2 wird jeweils die Wortfolge "a" durch die Wortfolge "b" ersetzt.')).toBeNull()
+    // One address with a sibling, and the sibling is a § of its own.
+    expect(addressedParagraph('Die §§ 6 und 7 samt Überschriften entfallen.')).toBeNull()
+    expect(addressedParagraph('Die §§ 5 bis 7 entfallen.')).toBeNull()
+  })
+
+  it('keeps the § when the siblings sit below it', () => {
+    expect(addressedParagraph('§ 5 Abs. 2 und 3 entfallen.')).toBe('§ 5')
+    expect(addressedParagraph('In § 9 Abs. 1 und 2 wird das Wort "alt" durch das Wort "neu" ersetzt.')).toBe('§ 9')
+  })
+
+  it('lists every § for the pairing sets', () => {
+    expect(addressedParagraphs('Die §§ 6 und 7 samt Überschriften entfallen.')).toEqual(['§ 6', '§ 7'])
+    expect(addressedParagraphs('Die §§ 5 bis 7 entfallen.')).toEqual(['§ 5', '§ 6', '§ 7'])
+    expect(addressedParagraphs('§ 5 Abs. 2 und 3 entfallen.')).toEqual(['§ 5'])
+    expect(addressedParagraphs('Nach § 5 wird folgender § 5a samt Überschrift eingefügt:')).toEqual([])
   })
 
   it('returns null for an instruction it cannot read', () => {

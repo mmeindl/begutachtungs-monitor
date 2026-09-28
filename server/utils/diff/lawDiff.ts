@@ -27,7 +27,7 @@ import type { LawUnit } from '../lawtext/lawUnits'
 import { compareKey, normalizeText } from '../lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
 import { bareParaId, leadingArticleKey } from '../text/designation'
-import { addressedParagraph } from '../lawtext/instructionAddress'
+import { addressedParagraphs } from '../lawtext/instructionAddress'
 import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
 
 // ---------------------------------------------------------------------------
@@ -219,8 +219,7 @@ function addressesOf(units: readonly LawUnit[], article: string | null): Set<str
   const out = new Set<string>()
   for (const u of units) {
     if (u.article !== article) continue
-    const para = addressedParagraph(u.text)
-    if (para) out.add(para)
+    for (const para of addressedParagraphs(u.text)) out.add(para)
   }
   return out
 }

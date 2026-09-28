@@ -147,15 +147,12 @@ describe('compareReasoning', () => {
     expect(out.units).toEqual({})
   })
 
-  // Recorded, not wanted: `addressedParagraph` reads „§§ 6 und 7" as ONE
-  // address with siblings and returns the first Paragraph, although the
-  // instruction changes two. The reasoning shown is then the one for § 6 —
-  // the same narrowing has hit the § names since 08.09. It belongs fixed and
-  // measured in `addressedParagraph`, not worked around here.
-  it('nennt bei „§§ 6 und 7" heute nur den ersten Paragraphen', () => {
+  // „§§ 6 und 7" is one address with a sibling, and the instruction changes
+  // two Paragraphen: showing the reasoning for § 6 alone would be half of it.
+  it('lässt „§§ 6 und 7" weg wie jede Anweisung über mehrere Paragraphen', () => {
     const units = [unit(SNG, 'Z2', 'Die §§ 6 und 7 samt Überschriften entfallen.')]
     const out = compareReasoning(units, new Map([['6', 'a']]), new Map([['6', 'b sehr anders']]))
 
-    expect(out.units).toEqual({ [`${SNG}|Z2|changed`]: '§ 6' })
+    expect(out.units).toEqual({})
   })
 })

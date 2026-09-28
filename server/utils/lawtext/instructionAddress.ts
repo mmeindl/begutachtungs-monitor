@@ -20,17 +20,32 @@ import type { LawDiffUnit } from '../../../shared/types'
  * eingefügt") does happen inside § 5, so its heading fits.
  */
 export function addressedParagraph(line: string): string | null {
+  const paras = addressedParagraphs(line)
+  // Several paragraphs in one instruction have no single name.
+  return paras.length === 1 ? paras[0]! : null
+}
+
+/**
+ * Every § this instruction edits — the set an Artikel's addresses are paired
+ * by (`diff/lawDiff.ts`), where „§§ 6 und 7" has to count as both and not as
+ * none. Empty for an instruction that creates a §, for the reason above.
+ *
+ * „Die §§ 6 und 7" is ONE address whose siblings are paragraphs, written as
+ * bare numbers behind the first one's designator; below § level („§ 5 Abs. 2
+ * und 3") the siblings are Absätze of the one §.
+ */
+export function addressedParagraphs(line: string): string[] {
   const { ops } = parseInstruction(line)
-  if (ops.length === 0) return null
   const paras = new Set<string>()
   for (const op of ops) {
     if (op.kind === 'toc' || op.kind === 'container') continue
-    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return null
+    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return []
     const address = opAddress(op)
-    if (address.para) paras.add(address.para)
+    if (!address.para) continue
+    paras.add(address.para)
+    if (address.level === 'para') for (const id of address.siblings) paras.add(address.para.replace(/\S+$/, id))
   }
-  // Several paragraphs in one instruction have no single name.
-  return paras.size === 1 ? [...paras][0]! : null
+  return [...paras]
 }
 
 /**
