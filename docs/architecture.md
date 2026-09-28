@@ -5257,6 +5257,19 @@ bestätigt — das Tor arbeitet auf der Parlamentskopie wie auf der RIS-Kopie.
 Lesefassung teilen. Läsen die beiden verschiedene Kopien, könnte ein Paragraph
 durch ein Tor gehen, dessen Beleg auf der Seite gar nicht steht.
 
+*Und damit gibt es nichts zu OCRen — gezählt 28.09.2026.* Über den ganzen
+Begut-Bestand des RIS (2006–2026) tragen **alle 527** Beilagen, deren XML
+gerastert ist, ein PDF mit Textebene (`pagesOf`); keines ist reines Bild,
+drei haben eine einzige Seite ohne Text. Auch die mit dem niedrigsten Anteil
+gewöhnlicher Wörter sind echter Text — Lehrberufslisten und andere Tabellen.
+„Anhangsdeckung" ist also keine Pipeline-Frage mehr: Was fehlt, sind Entwürfe
+ganz ohne Beilage. Eine Simulation am Rand (gerenderte Seiten, OCR mit Apple
+Vision, die Textebene als Wahrheit) zeigte außerdem, warum OCR hier auch
+nicht vertrauenswürdig wäre: Beide Prüfungen des Tors sind Enthaltensein,
+ein fehlendes Wort oder eine fehlende Zeile — der häufigste OCR-Fehler — fällt
+durch, und rund ein Drittel der bestätigten §§ trug einen inhaltlichen
+Fehler.
+
 *Was der Satz „keine Textgegenüberstellung" weiterhin nicht sagen darf.* Liegt
 sie beim Parlament nur als PDF (41 von 42 Scans sind auf beiden Seiten
 dieselben), sagt die Seite das ausdrücklich und verlinkt sie, statt ihre
