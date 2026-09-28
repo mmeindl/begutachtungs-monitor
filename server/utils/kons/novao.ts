@@ -1491,6 +1491,12 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
           return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: '', where: 'after' as const, text: quotes[0]!, eachUnit, wordBound: false, atEnd: true, ...(appended ? {} : { bareEnd: true }) })), reason: null, line }
         }
       }
+      // „In § 5 wird nach dem Wort ‚Absicht' ein Beistrich eingefügt": the
+      // anchor is quoted, the text is a mark named in words (27.09.2026).
+      const markInserted = /\b(?:ein|einen|der|das)\s+(Beistrich|Strichpunkt|Punkt|Doppelpunkt)\s+(?:eingefügt|gesetzt)\b/i.exec(masked)
+      if (quotes.length === 1 && !endMark && markInserted && (before ? BEFORE_ANCHOR_RE : AFTER_ANCHOR_RE).test(masked)) {
+        return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text: PUNCT_WORD[markInserted[1]!.toLowerCase()]!, eachUnit, wordBound: wordOperand(line, 0) })), reason: null, line }
+      }
       if (quotes.length < 2) return fail('Einfügung ohne Anker und Text')
       // "das Wort „zuletzt“ gestrichen sowie nach der Wort- und Zeichenfolge
       // „…“ die Wort- und Zeichenfolge „…“ eingefügt": three operands, and

@@ -1451,7 +1451,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if ('error' in located) return located.error
       for (const { slot, at, len } of located.hits) {
         const current = slot.read()
-        slot.write(`${current.slice(0, at)}${current.slice(at + len)}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
+        // „(§ 43 BFA-VG)" without „ BFA-VG" is „(§ 43)", not „(§ 43 )" — the
+        // space goes where the cut meets a parenthesis (BFA-VG § 10, 28.09.2026).
+        let left = current.slice(0, at)
+        let right = current.slice(at + len)
+        if (right.startsWith(')')) left = left.trimEnd()
+        if (left.endsWith('(')) right = right.trimStart()
+        slot.write(`${left}${right}`.replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim())
       }
       return null
     }

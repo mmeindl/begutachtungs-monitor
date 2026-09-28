@@ -1302,3 +1302,20 @@ describe('a quoted word joined at the end of its unit (28.09.2026)', () => {
     expect(parseInstruction('In § 5 Abs. 1 wird am Ende der Z 2 der Ausdruck ", oder" angefügt.').ops).toEqual([])
   })
 })
+
+describe('a mark named in words inserted behind a quoted word (28.09.2026)', () => {
+  it('joins the mark to the anchor', () => {
+    const l: StandingLaw = { paragraphs: [para('5', 'S', ['Wer in der Absicht handelt und schadet'])] }
+    const { law: out, results } = run(l, instr('In § 5 Abs. 1 wird nach dem Wort "Absicht" ein Beistrich eingefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Wer in der Absicht, handelt und schadet')
+  })
+})
+
+describe('a deletion in front of a closing parenthesis (28.09.2026)', () => {
+  it('leaves no space inside it', () => {
+    const l: StandingLaw = { paragraphs: [para('10', 'S', ['Sie sind zu verbringen (§ 43 BFA-VG).'])] }
+    const { law: out } = run(l, instr('In § 10 Abs. 1 entfällt der Ausdruck " BFA-VG".'))
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Sie sind zu verbringen (§ 43).')
+  })
+})
