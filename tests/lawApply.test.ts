@@ -1385,3 +1385,15 @@ describe('nouns read against the refusals of 28.09.2026', () => {
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Gebühr beträgt 150 Euro, ermäßigt 70 Euro.')
   })
 })
+
+describe('a spaced abbreviation inside a sentence (28.09.2026)', () => {
+  it('„z. B." does not end a sentence, so the last Halbsatz can be found', () => {
+    // Bäderhygieneverordnung § 57 Abs. 6.
+    const t = 'Die Dauer hat fünf Minuten zu betragen. Gutachten sind vorzulegen; weitere Unterlagen (z. B. Betriebsanleitung) sind anzuschließen; auf Verlangen der Behörde oder der oder des Sachverständigen ist Einsicht zu gewähren.'
+    expect(splitSentences(t)).toHaveLength(2)
+    const l: StandingLaw = { paragraphs: [para('57', 'S', [t])] }
+    const { law: out, results } = run(l, instr('In § 57 Abs. 1 wird im letzten Halbsatz vor der Wortfolge "des Sachverständigen" das Wort "oder" durch das Wort "bzw." ersetzt.'))
+    expect(results[0]!.reason).toMatch(/2× gefunden/)
+    expect(out.paragraphs[0]!.children[0]!.text).toBe(t)
+  })
+})

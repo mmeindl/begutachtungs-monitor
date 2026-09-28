@@ -675,6 +675,10 @@ export function splitSentences(text: string): string[] | null {
     const lower = wordBefore.replace(/^[("„'§]+/, '').toLowerCase()
     if (ch === '.' && rest) {
       if (ABBREVIATIONS.has(lower)) continue
+      // „z. B.", „d. h.", „u. a.": a letter and its full stop behind another
+      // one is a spaced abbreviation, not a Litera ending a sentence — the
+      // splitter refused Bäderhygieneverordnung § 57 Abs. 6 over it (28.09.2026).
+      if (/^[a-z]$/.test(lower) && /(?:^|[\s(])[a-zA-Z]\.\s?[a-zA-Z]$/.test(t.slice(start, i))) continue
       if (/^\d+$/.test(lower) || /^[a-z]$/.test(lower) || /^[ivx]+$/.test(lower)) {
         if (!/^[A-ZÄÖÜ"„§(]/.test(rest)) continue
         if (ORDINAL_FOLLOWERS.test(rest)) continue
