@@ -24,7 +24,13 @@ rsync -az deploy/systemd/ "$SERVER:/etc/systemd/system/"
 # Outside $APP_DIR, which is rsynced with --delete.
 ssh "$SERVER" "mkdir -p /usr/local/lib/begutachtungs-monitor"
 rsync -az deploy/bin/ "$SERVER:/usr/local/lib/begutachtungs-monitor/"
+# rsync -a keeps the owner of the source files, and as root on the other end
+# that is the local uid (501:staff on the Mac) — on files root executes. With
+# a trailing slash on the source it hands the target DIRECTORY the source
+# directory's owner too, so /etc/systemd/system itself is put back.
 ssh "$SERVER" "chmod +x /usr/local/lib/begutachtungs-monitor/*.sh \
+  && chown -R root:root /usr/local/lib/begutachtungs-monitor \
+  && chown root:root /etc/systemd/system /etc/systemd/system/begutachtungs-monitor* \
   && chown -R app:app $APP_DIR \
   && systemctl daemon-reload \
   && systemctl enable --now --quiet begutachtungs-monitor-prewarm.timer \
