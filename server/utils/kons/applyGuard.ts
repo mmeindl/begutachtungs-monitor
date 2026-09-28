@@ -28,7 +28,7 @@
 import { diffTokens } from '../diff/wordDiff'
 import { lawTextNodes, plainText, type LawNode } from '../lawtext/konsTree'
 import type { ApplyResult, Instruction, StandingLaw } from './lawApply'
-import { addressedHalbsatz, addressedSentence, resolveTarget } from './lawApply'
+import { addressedHalbsatz, addressedHalbsatzHost, addressedSentence, resolveTarget } from './lawApply'
 import { punctuationTokens } from '../text/punctuationTokens'
 
 export type GuardFlag =
@@ -122,6 +122,9 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
     if (op.target.level === 'para') return targetId === id ? plainText(beforeTree) : null
     const node = resolveTarget(before, op.target, targetId)
     if (!node) return null
+    // A phrase inside a Halbsatz is searched in the sentence it lies in, not
+    // in the whole unit (`halbsatzHost`), so a „jeweils" is counted there.
+    if (op.target.halbsatz) return addressedHalbsatzHost(node, op.target)
     return op.target.satz ? addressedSentence(node, op.target.satz, op.target.satzCount) : plainText(node)
   }
   for (const { op, payload } of ops) {

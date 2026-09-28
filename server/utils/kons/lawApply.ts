@@ -147,7 +147,6 @@ export function parsePayload(lines: readonly PayloadLine[]): LawNode[] {
       para = makeNode('para', pm[1]!, `§ ${pm[1]}.`, '', pendingHeading)
       pendingHeading = null
       out.push(para)
-      abs = null
       z = null
       const rest = line.slice(pm[0].length)
       const am = ABS_LINE.exec(rest)
@@ -903,6 +902,11 @@ export function halbsatzSpan(sentence: string, halbsatz: string, replacement: st
   }
   if (halbsatz !== 'erster' && rest.endsWith(closing) && !rest.slice(at, -1).includes(closing)) return { at, end: rest.length }
   return null
+}
+
+/** The sentence a Halbsatz address searches — for the guard, which counts a „jeweils" where the engine replaces it. */
+export function addressedHalbsatzHost(node: LawNode, a: NovaoAddress): string | null {
+  return halbsatzHost(node, a)?.read() ?? null
 }
 
 /** The old text of the Halbsatz a replacement names — for the guard, which charges a Halbsatz, not its unit. */

@@ -99,3 +99,16 @@ describe('guardParagraph', () => {
     expect(r.plausible).toBe(false)
   })
 })
+
+describe('a „jeweils" inside a Halbsatz (28.09.2026)', () => {
+  it('is counted in the sentence the engine searches, not in the whole unit', () => {
+    const l: StandingLaw = { paragraphs: [para('6', 'Zuständigkeit', ['Die Behörde prüft. Die Behörde entscheidet; die Behörde hört an.'])] }
+    const line = 'In § 6 Abs. 1 wird im letzten Halbsatz das Wort "Behörde" jeweils durch das Wort "Stelle" ersetzt.'
+    expect(guard(l, instr(line)).flags).toEqual([])
+    // A third replacement outside that sentence is not covered by the line.
+    const r = guard(l, instr(line), (after) => {
+      after.children[0]!.text = after.children[0]!.text.replace('Die Behörde prüft', 'Die Stelle prüft')
+    })
+    expect(r.flags).toContain('unerklärt')
+  })
+})
