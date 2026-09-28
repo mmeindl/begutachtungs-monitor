@@ -1502,6 +1502,13 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       if (quotes.length === 1 && !endMark && markInserted && (before ? BEFORE_ANCHOR_RE : AFTER_ANCHOR_RE).test(masked)) {
         return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: quotes[0]!, where: (before ? 'before' : 'after') as 'before' | 'after', text: PUNCT_WORD[markInserted[1]!.toLowerCase()]!, eachUnit, wordBound: wordOperand(line, 0) })), reason: null, line }
       }
+      // „In § 38 Abs. 1 Z 2 wird folgender Satzteil angefügt:", „… wird der
+      // Z 1 folgende Wortfolge angefügt:": the text is the payload, and it
+      // joins the unit's end like a Halbsatz — behind the closing Beistrich,
+      // as the RIS shows for both (LMSVG § 38, ALSAG § 3, 28.09.2026).
+      if (quotes.length === 0 && /^folgende[rn]?\s+(?:Satzteil|Wortfolge|Wortgruppe)\s+(?:wird\s+)?angefügt\b/i.test(payload) && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked)) {
+        return { ops: places.map((t) => ({ kind: 'append' as const, target: t, child: 'halbsatz' as const, childIds: [] })), reason: null, line }
+      }
       if (quotes.length < 2) return fail('Einfügung ohne Anker und Text')
       // "das Wort „zuletzt“ gestrichen sowie nach der Wort- und Zeichenfolge
       // „…“ die Wort- und Zeichenfolge „…“ eingefügt": three operands, and

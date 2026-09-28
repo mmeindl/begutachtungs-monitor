@@ -1319,3 +1319,13 @@ describe('a deletion in front of a closing parenthesis (28.09.2026)', () => {
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Sie sind zu verbringen (§ 43).')
   })
 })
+
+describe('a Satzteil or Wortfolge announced with its text as payload (28.09.2026)', () => {
+  it('joins it at the end of the unit, behind the closing Beistrich', () => {
+    // Lebensmittelsicherheitsgesetz § 38 Abs. 1 Z 2: „bereitzustellen," → „bereitzustellen, oder ihnen …".
+    const l: StandingLaw = { paragraphs: [para('38', 'S', [{ text: 'Sie haben', ziffern: ['zu nennen,', 'bereitzustellen,', 'zu dulden.'] }])] }
+    const { law: out, results } = run(l, instr('In § 38 Abs. 1 Z 2 wird folgender Satzteil angefügt:', ['oder ihnen die Ware zu übergeben,']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('bereitzustellen, oder ihnen die Ware zu übergeben,')
+  })
+})
