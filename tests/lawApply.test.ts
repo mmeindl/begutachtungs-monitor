@@ -400,6 +400,14 @@ describe('parseKonsParagraph', () => {
     expect(plainText(parseKonsParagraph(xml)!)).toBe('Der Beförderungsunternehmer hat die Kosten zu ersetzen, die für Unterkunft erwachsen,')
   })
 
+  it('strips one whose colon stands apart from „Anm." (KFG § 102, 28.09.2026)', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 102</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 102.</gldsym> (12) Der Lenker ist anwesend. <i>(Anm. : Abs. 13 aufgehoben durch BGBl. I Nr. 175/2004)</i></absatz>
+    </abschnitt></nutzdaten></risdok>`
+    expect(plainText(parseKonsParagraph(xml)!)).toBe('Der Lenker ist anwesend.')
+  })
+
   // A § without its own heading used to take the name of the Abschnitt above
   // it — a wrong name on someone's paragraph, which is worse than none.
   it('does not give a § the name of the Abschnitt above it', () => {

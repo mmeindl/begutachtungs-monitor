@@ -102,9 +102,12 @@ const ABS_Z_MARKER_RE = /^\((\d+[a-z]*)\)\s*(\d+[a-z]*)\.$/
  * into Abs. 1 — so "§ 40d Abs. 1 lautet:" wiped it while RIS kept it, and
  * the harness called that a divergence (BGBl. I Nr. 68/2025, 2026-09-09).
  * Stripped from every block; an Absatz that consisted of one keeps its
- * marker and an empty text.
+ * marker and an empty text. The colon may stand apart from „Anm." — KFG
+ * § 102 carries „(Anm. : Abs. 13 aufgehoben …)" — and the period may be
+ * missing: the same shape `annex/annexText.ts` strips from the annex since
+ * 10.09.2026, so the two sides read a note alike again (28.09.2026).
  */
-const ANNOTATION_RE = /\(Anm\.:[^()]*(?:\([^()]*\)[^()]*)*\)/g
+const ANNOTATION_RE = /\(Anm\.?(?:\s|<[^>]+>)*:[^()]*(?:\([^()]*\)[^()]*)*\)/g
 
 /**
  * A block's text. `stripMarkup` carries the block/inline distinction, and it
