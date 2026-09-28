@@ -182,6 +182,27 @@ describe('parseKonsParagraph', () => {
     expect(plainText(node)).toContain('§ 22 tritt mit 1. Jänner 2006 in Kraft.')
   })
 
+  it('opens an Absatz from a symbol that carries its first Ziffer, and reads „a." as a Litera', () => {
+    // UStG 1994 § 26 Abs. 3 („(3) 1.") and FPG § 76 Abs. 3 Z 6 („a.").
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="abs" ct="text"><gldsym>§ 26.</gldsym>(2) Zweiter Absatz.</absatz>
+      <liste><aufzaehlung ebene="2"><listelem ct="text"><symbol stellen="6">(3) 1.</symbol>Erste Ziffer,</listelem><listelem ct="text"><symbol>2.</symbol>zweite Ziffer, sofern</listelem></aufzaehlung>
+      <aufzaehlung ebene="2"><listelem ct="text"><symbol>a.</symbol>erstens,</listelem><listelem ct="text"><symbol>b.</symbol>zweitens.</listelem></aufzaehlung></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const node = parseKonsParagraph(xml)!
+    expect(node.children.map((c) => c.id)).toEqual(['2', '3'])
+    expect(node.children[1]!.children.map((c) => `${c.level}:${c.id}`)).toEqual(['z:1', 'z:2'])
+    expect(node.children[1]!.children[1]!.children.map((c) => `${c.level}:${c.id}`)).toEqual(['lit:a', 'lit:b'])
+  })
+
+  it('refuses an address into a designation that stands twice', () => {
+    // BAO § 323: two Novellen each added an „Abs. 90"; the first one found used to answer.
+    const p = para('323', 'I', ['eins', 'zwei'])
+    p.children[1]!.id = '1'
+    const { results } = run({ paragraphs: [p] }, instr('In § 323 Abs. 1 wird das Wort "zwei" durch das Wort "drei" ersetzt.'))
+    expect(results[0]!.applied).toBe(false)
+  })
+
   it('puts an unnumbered block behind a list behind it, as the Schlussteil', () => {
     // KFG § 102 Abs. 3a: RIS writes the closing part as a plain `<absatz typ="abs">`.
     const xml = `<risdok><nutzdaten><abschnitt>

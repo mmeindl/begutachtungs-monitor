@@ -81,6 +81,18 @@ const ABS_MARKER_RE = /^\((\d+[a-z]*)\)\s*/
 /** "3." opens a Ziffer, "b)" a Litera. */
 const Z_MARKER_RE = /^(\d+[a-z]*)\.$/
 const LIT_MARKER_RE = /^([a-z]{1,2})\)$/
+/**
+ * „a." — a Litera in the spelling some laws use (FPG § 76 Abs. 3 Z 6). Read
+ * as a Ziffer, „a", „b" and „c" stood beside Z 6 instead of under it, and
+ * „in lit. b" found nothing (27.09.2026).
+ */
+const LIT_DOT_MARKER_RE = /^([a-z])\.$/
+/**
+ * „(3) 1." — the Absatz and its first Ziffer in one symbol, where an Absatz
+ * opens straight into its list (UStG 1994 § 26 Abs. 3). Read as a Ziffer „(3)
+ * 1" of Abs. 2, Abs. 3 did not exist.
+ */
+const ABS_Z_MARKER_RE = /^\((\d+[a-z]*)\)\s*(\d+[a-z]*)\.$/
 
 /**
  * RIS prints its own editorial notes into the consolidated text, in italics:
@@ -306,9 +318,15 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       const sym = SYMBOL_RE.exec(inner)
       const marker = sym ? text(sym[1]!) : ''
       const t = text(sym ? inner.replace(sym[0], ' ') : inner)
-      const z = Z_MARKER_RE.exec(marker)
-      const lit = LIT_MARKER_RE.exec(marker)
-      const node = makeNode(z ? 'z' : lit ? 'lit' : 'z', z?.[1] ?? lit?.[1] ?? marker.replace(/[.)]$/, ''), marker, t)
+      const opens = ABS_Z_MARKER_RE.exec(marker)
+      if (opens) {
+        para()
+        currentAbs = makeNode('abs', opens[1]!, `(${opens[1]})`, '')
+        root!.children.push(currentAbs)
+      }
+      const z = opens ? ([opens[2]!, opens[2]!] as const) : Z_MARKER_RE.exec(marker)
+      const lit = LIT_MARKER_RE.exec(marker) ?? LIT_DOT_MARKER_RE.exec(marker)
+      const node = makeNode(z ? 'z' : lit ? 'lit' : 'z', z?.[1] ?? lit?.[1] ?? marker.replace(/[.)]$/, ''), opens ? `${opens[2]}.` : marker, t)
       // Litera hang off the Ziffer above them, Ziffern off the Absatz.
       const host = node.level === 'lit' ? (lastChild(absatz(), 'z') ?? absatz()) : absatz()
       host.children.push(node)
@@ -439,4 +457,19 @@ export function lawTextNodes(node: LawNode): LawNode[] {
 
 export function childById(node: LawNode, level: NodeLevel, id: string): LawNode | null {
   return node.children.find((c) => c.level === level && c.id === id) ?? null
+}
+
+/**
+ * The one child an address names — null where two carry the designation.
+ *
+ * An Anlage that restarts its numbering under group headings
+ * (Volksgruppengesetz Anlage 2: „1.", „2." under each of I., II.) holds two
+ * Z 1 in one list, and „Z 1" found whichever came first (27.09.2026). Not
+ * loading such a document at all cost 23 §§ of the Prüfstand whose
+ * instructions never touch the repeated numbers; an address that does is
+ * refused, and that is the whole of the danger.
+ */
+export function uniqueChild(node: LawNode, level: NodeLevel, id: string): LawNode | null {
+  const found = node.children.filter((c) => c.level === level && c.id === id)
+  return found.length === 1 ? found[0]! : null
 }

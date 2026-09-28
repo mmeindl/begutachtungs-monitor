@@ -17,7 +17,7 @@
  * one refused operation must be shown as instructions, not as text — the
  * caller enforces that, `unresolved` reports it.
  */
-import { childById, lawTextNodes, makeNode, plainText, type LawNode, type NodeLevel } from '../lawtext/konsTree'
+import { childById, lawTextNodes, makeNode, plainText, uniqueChild, type LawNode, type NodeLevel } from '../lawtext/konsTree'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { expandRange, namedParagraphs, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
@@ -365,11 +365,11 @@ function findParagraph(law: StandingLaw, a: NovaoAddress, overrideId?: string): 
  * failing. Found by the harness on the Energieausweis-Vorlage-Gesetz.
  */
 function childThrough(node: LawNode, level: NodeLevel, id: string): LawNode | null {
-  const direct = childById(node, level, id)
+  const direct = uniqueChild(node, level, id)
   if (direct) return direct
   for (const child of node.children) {
     if (child.id === '' && child.level !== level) {
-      const nested = childById(child, level, id)
+      const nested = uniqueChild(child, level, id)
       if (nested) return nested
     }
   }
