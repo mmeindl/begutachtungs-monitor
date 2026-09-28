@@ -1220,7 +1220,9 @@ export function splitCompound(line: string): string[] {
     // dropped and only Z 2 deleted — FPG § 52 Abs. 4, and „entfallen Abs. 1
     // und 1a; …" in the Waldresilienzfondsgesetz (28.09.2026).
     if (/^\s*(?:\d+[a-z]*|[a-z]{1,2})(?=\s*(?:[;,.)]|und\b|sowie\b|bis\b|$))/.test(masked.slice(at))) continue
-    if (VERB_RE.test(line.slice(last, m.index!)) && VERB_RE.test(line.slice(at))) {
+    // The verbs of the instruction, not of the law text it quotes: „die
+    // Wortfolge ‚wird ersetzt' und …" names no second clause (28.09.2026).
+    if (VERB_RE.test(masked.slice(last, m.index!)) && VERB_RE.test(masked.slice(at))) {
       bounds.push(m.index!, at)
       last = at
     }

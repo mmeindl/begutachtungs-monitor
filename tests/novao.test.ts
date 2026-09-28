@@ -818,3 +818,9 @@ describe('a conjunction inside an enumeration (28.09.2026)', () => {
     expect(parseInstruction('In § 6 entfallen Abs. 1 und 1a; die Abs. 2 und 3 erhalten die Absatzbezeichnungen "(1)" und "(2)".').ops[0]).toMatchObject({ kind: 'delete', target: { abs: '1', siblings: ['1a'] } })
   })
 })
+
+describe('a verb inside a quotation (28.09.2026)', () => {
+  it('licenses no cut of the line', () => {
+    expect(splitCompound('In § 5 wird die Wortfolge "a und b wird ersetzt" durch die Wortfolge "c" ersetzt.')).toHaveLength(1)
+  })
+})
