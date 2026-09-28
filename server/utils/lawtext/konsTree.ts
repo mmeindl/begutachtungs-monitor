@@ -93,6 +93,8 @@ const LIT_DOT_MARKER_RE = /^([a-z])\.$/
  * 1" of Abs. 2, Abs. 3 did not exist.
  */
 const ABS_Z_MARKER_RE = /^\((\d+[a-z]*)\)\s*(\d+[a-z]*)\.$/
+/** A list opening and its depth: `<aufzaehlung ebene="3">`, `<ziffernliste ebene="1">`. */
+const LIST_OPEN_RE = /<(?:aufzaehlung|[a-z]*liste)\b[^>]*\bebene="(\d+)"/g
 
 /**
  * RIS prints its own editorial notes into the consolidated text, in italics:
@@ -283,6 +285,19 @@ export function parseKonsParagraph(xml: string): LawNode | null {
     return currentAbs
   }
 
+  // „(3) 1. … 2. Abweichend davon … – … – …": the dashes are one `ebene`
+  // deeper than the Ziffern and belong to Z 2. Read as Ziffern of their own
+  // they stood beside it, and „Z 2 lautet" would have left the old dashes
+  // standing (UStG § 26 Abs. 3, 28.09.2026). The depth of each list opening,
+  // so a list item can ask how deep it stands.
+  const openings = [...body.matchAll(LIST_OPEN_RE)].map((o) => ({ at: o.index, ebene: Number(o[1]) }))
+  const ebeneAt = (at: number): number | null => {
+    let found: number | null = null
+    for (const o of openings) if (o.at < at) found = o.ebene
+    return found
+  }
+  let lastItem: { node: LawNode; abs: LawNode; ebene: number | null } | null = null
+
   for (const m of body.matchAll(BLOCK_RE)) {
     const tag = m[1]!
     const attrs = m[2]!
@@ -329,10 +344,16 @@ export function parseKonsParagraph(xml: string): LawNode | null {
       }
       const z = opens ? ([opens[2]!, opens[2]!] as const) : Z_MARKER_RE.exec(marker)
       const lit = LIT_MARKER_RE.exec(marker) ?? LIT_DOT_MARKER_RE.exec(marker)
-      const node = makeNode(z ? 'z' : lit ? 'lit' : 'z', z?.[1] ?? lit?.[1] ?? marker.replace(/[.)]$/, ''), opens ? `${opens[2]}.` : marker, t)
+      const ebene = ebeneAt(m.index)
+      // A dash or other unnumbered item one level below the Ziffer or
+      // Litera before it is part of that item — filed as a Litera, the level
+      // under it, which no address names by a dash.
+      const sub = !z && !lit && lastItem !== null && lastItem.abs === absatz() && ebene !== null && lastItem.ebene !== null && ebene > lastItem.ebene
+      const node = makeNode(z ? 'z' : lit || sub ? 'lit' : 'z', z?.[1] ?? lit?.[1] ?? marker.replace(/[.)]$/, ''), opens ? `${opens[2]}.` : marker, t)
       // Litera hang off the Ziffer above them, Ziffern off the Absatz.
-      const host = node.level === 'lit' ? (lastChild(absatz(), 'z') ?? absatz()) : absatz()
+      const host = sub ? lastItem!.node : node.level === 'lit' ? (lastChild(absatz(), 'z') ?? absatz()) : absatz()
       host.children.push(node)
+      if (!sub) lastItem = { node, abs: absatz(), ebene }
       continue
     }
 

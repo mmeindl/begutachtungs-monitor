@@ -400,6 +400,23 @@ describe('parseKonsParagraph', () => {
     expect(plainText(parseKonsParagraph(xml)!)).toBe('Der Beförderungsunternehmer hat die Kosten zu ersetzen, die für Unterkunft erwachsen,')
   })
 
+  it('hangs dashes one ebene deeper under the Ziffer before them (UStG § 26, 28.09.2026)', () => {
+    const xml = `<risdok><nutzdaten><abschnitt>
+      <absatz typ="erltext" ct="artikel_anlage">§ 26</absatz>
+      <absatz typ="abs" ct="text"><gldsym>§ 26.</gldsym> (1) Es gilt:</absatz>
+      <liste><aufzaehlung ebene="2"><listelem ct="text"><symbol>1.</symbol>die Regel,</listelem>
+      <listelem ct="text"><symbol>2.</symbol>die Ausnahme, wenn</listelem></aufzaehlung>
+      <aufzaehlung ebene="3"><listelem ct="text"><symbol>–</symbol>dies,</listelem>
+      <listelem ct="text"><symbol>–</symbol>jenes.</listelem></aufzaehlung></liste>
+    </abschnitt></nutzdaten></risdok>`
+    const abs = parseKonsParagraph(xml)!.children[0]!
+    expect(abs.children.map((c) => `${c.level}:${c.id}`)).toEqual(['z:1', 'z:2'])
+    expect(abs.children[1]!.children.map((c) => c.text)).toEqual(['dies,', 'jenes.'])
+    // „Z 2 lautet" now takes its dashes with it.
+    const { law: out } = run({ paragraphs: [parseKonsParagraph(xml)!] }, instr('§ 26 Abs. 1 Z 2 lautet:', ['2. die Ausnahme.']))
+    expect(plainText(out.paragraphs[0]!)).toBe('Es gilt: die Regel, die Ausnahme.')
+  })
+
   it('strips one whose colon stands apart from „Anm." (KFG § 102, 28.09.2026)', () => {
     const xml = `<risdok><nutzdaten><abschnitt>
       <absatz typ="erltext" ct="artikel_anlage">§ 102</absatz>
