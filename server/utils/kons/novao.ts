@@ -313,7 +313,7 @@ function maskQuotes(t: string): string {
  * payload, not address — reading it as the target made "§ 5" become
  * "§ 5 Abs. 4", which would have appended into the wrong place.
  */
-const PAYLOAD_MARKER = /\bfolgende[rnms]?\b|\bnachstehende[rnms]?\b/i
+const PAYLOAD_MARKER = /\bfolgende[rnms]?\b|\bnachstehende[rnms]?\b|\bals\s+neue[rnms]?\b/i
 
 export function splitPayloadScope(head: string): { scope: string; payload: string } {
   const m = PAYLOAD_MARKER.exec(head)
@@ -1105,7 +1105,19 @@ const COMPOUND_SPLIT = /[;,]\s*(?=[A-Za-zÄÖÜ§])|\s+(?:sowie|und)\s+/gi
 // the old Z 6 (LMSVG, BGBl. I Nr. 75/2026, 2026-09-09).
 const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|bezeichnung(?:en)?\b|wie folgt geändert/i
 
+/**
+ * „Der bisherige § 57 erhält die Absatzbezeichnung ‚(1)'. Als neuer Abs. 2
+ * wird angefügt:" — two instruction sentences in one line. Read as one, the
+ * address took the „Abs. 2" of the second and the renumbering ran on it:
+ * Abs. 2 → (1), where the line renumbers the § 's one Absatz and appends a
+ * second (Notarversorgungsgesetz, 27.09.2026). A full stop separates where
+ * the next sentence opens the way an instruction does and both carry a verb.
+ */
+const SENTENCE_SPLIT = /\s*\.\s+(?=(?:Als|Dem|Den|Der|Die|Das|In|Im|Nach|Vor)\s)/g
+
 export function splitCompound(line: string): string[] {
+  const sentences = splitInstructionSentences(line)
+  if (sentences.length > 1) return sentences.flatMap(splitCompound)
   // A semicolon only separates instructions when both halves carry a verb;
   // inside a quoted law text it separates nothing. Quotes are masked first so
   // "…27,5 vH; für Sofortlotterien…" cannot be mistaken for a second clause.
@@ -1128,6 +1140,21 @@ export function splitCompound(line: string): string[] {
   }
   parts.push(line.slice(start))
   return parts.map((p) => p.trim()).filter(Boolean)
+}
+
+function splitInstructionSentences(line: string): string[] {
+  const masked = line.replace(/"[^"]*"/g, (m) => '\uE000'.repeat(m.length))
+  const out: string[] = []
+  let start = 0
+  for (const m of masked.matchAll(SENTENCE_SPLIT)) {
+    const left = line.slice(start, m.index)
+    const right = line.slice(m.index! + m[0].length)
+    if (!VERB_RE.test(left.replace(/"[^"]*"/g, '""')) || !(VERB_RE.test(right) || /:\s*$/.test(right))) continue
+    out.push(left.trim())
+    start = m.index! + m[0].length
+  }
+  out.push(line.slice(start).trim())
+  return out.filter(Boolean)
 }
 
 /**

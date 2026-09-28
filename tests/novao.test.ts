@@ -751,3 +751,16 @@ describe('a clause that opens with „folgender (Halb)Satz" (27.09.2026)', () =>
     expect(parseInstruction('In § 19 Abs. 1 wird der Punkt am Ende des Satzes durch einen Beistrich ersetzt.').ops[0]).toMatchObject({ kind: 'replacePhrase', atEnd: true, target: { satz: null } })
   })
 })
+
+describe('two instruction sentences in one line (28.09.2026)', () => {
+  it('reads each sentence on its own', () => {
+    // Notarversorgungsgesetz § 57: read as one, Abs. 2 was renumbered to (1).
+    const ops = parseInstruction('Der bisherige § 57 erhält die Absatzbezeichnung "(1)" . Als neuer Abs. 2 wird angefügt:').ops
+    expect(ops[0]).toMatchObject({ kind: 'renumber', to: '(1)', target: { abs: '' } })
+    expect(ops[1]).toMatchObject({ kind: 'append', child: 'abs', target: { para: '§ 57', abs: null } })
+  })
+
+  it('does not split at an abbreviation', () => {
+    expect(parseInstruction('In § 323 erhält der mit der Novelle BGBl. I Nr. 98/2025 angefügte Abs. 90 die Absatzbezeichnung "(91)".').ops).toHaveLength(1)
+  })
+})
