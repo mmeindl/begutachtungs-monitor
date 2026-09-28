@@ -1412,7 +1412,22 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // unit that does not is a disagreement about the standing text and not
       // a place to skip quietly.
       const located = locateInUnits(units, op.from, op.wordBound)
-      if ('error' in located) return located.error
+      if ('error' in located) {
+        // „vor der Wortfolge ‚des Sachverständigen' das Wort ‚oder'": where
+        // the operand recurs, the anchor says which one — the operand and
+        // the anchor side by side, and that pair must be unique in turn.
+        if (!op.beside || op.everywhere || !/nicht eindeutig/.test(located.error)) return located.error
+        const b = op.beside
+        const pair = b.where === 'before' ? `${op.from.trim()} ${b.text.trim()}` : `${b.text.trim()} ${op.from.trim()}`
+        const next = b.where === 'before' ? joinPhrase('', op.to, b.text) : joinPhrase(b.text, op.to, '')
+        const near = locateInUnits(units, pair, op.wordBound)
+        if ('error' in near) return located.error
+        for (const { slot, at, len } of near.hits) {
+          const current = slot.read()
+          slot.write(joinPhrase(current.slice(0, at), next, current.slice(at + len)))
+        }
+        return null
+      }
       for (const { slot, at, len } of located.hits) {
         const current = slot.read()
         slot.write(joinPhrase(current.slice(0, at), likeStanding(op.to, op.from, current.slice(at, at + len), current), current.slice(at + len)))

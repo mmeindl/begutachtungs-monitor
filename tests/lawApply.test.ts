@@ -1393,7 +1393,30 @@ describe('a spaced abbreviation inside a sentence (28.09.2026)', () => {
     expect(splitSentences(t)).toHaveLength(2)
     const l: StandingLaw = { paragraphs: [para('57', 'S', [t])] }
     const { law: out, results } = run(l, instr('In § 57 Abs. 1 wird im letzten Halbsatz vor der Wortfolge "des Sachverständigen" das Wort "oder" durch das Wort "bzw." ersetzt.'))
-    expect(results[0]!.reason).toMatch(/2× gefunden/)
-    expect(out.paragraphs[0]!.children[0]!.text).toBe(t)
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe(t.replace('der oder des', 'der bzw. des'))
+  })
+})
+
+describe('the anchor of a replacement, where the operand recurs (28.09.2026)', () => {
+  const t = 'Auf Verlangen der Behörde oder der oder des Sachverständigen ist Einsicht zu gewähren.'
+  const l = (): StandingLaw => ({ paragraphs: [para('57', 'S', [t])] })
+
+  it('replaces the operand that stands right beside the anchor', () => {
+    // Bäderhygieneverordnung § 57 Abs. 6, AWG 2002 § 42 Abs. 4.
+    const { law: out, results } = run(l(), instr('In § 57 Abs. 1 wird vor der Wortfolge "des Sachverständigen" das Wort "oder" durch das Wort "bzw." ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Auf Verlangen der Behörde oder der bzw. des Sachverständigen ist Einsicht zu gewähren.')
+  })
+
+  it('joins a mark behind the anchor without a space', () => {
+    const l2: StandingLaw = { paragraphs: [para('4', 'S', ['nach Art. 12 und Art. 14 und Art. 16 der Verordnung'])] }
+    const { law: out, results } = run(l2, instr('In § 4 Abs. 1 wird nach der Zeichenfolge "Art. 14" die Zeichenfolge "und" durch einen Beistrich ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('nach Art. 12 und Art. 14, Art. 16 der Verordnung')
+  })
+
+  it('refuses where the operand does not stand beside the anchor', () => {
+    expect(run(l(), instr('In § 57 Abs. 1 wird nach der Wortfolge "Verlangen" das Wort "oder" durch das Wort "bzw." ersetzt.')).results[0]!.applied).toBe(false)
   })
 })

@@ -872,6 +872,12 @@ export type NovaoOp =
      * the old one goes with it.
      */
     truncate?: boolean
+    /**
+     * „vor der Wortfolge ‚des Sachverständigen' das Wort ‚oder'": the text the
+     * operand stands right beside — asked only where the operand alone is
+     * not unique.
+     */
+    beside?: { text: string; where: 'before' | 'after' }
   }
   /** "In § 5 Abs. 1 wird nach der Wortfolge X die Wortfolge Y eingefügt." */
   | {
@@ -1009,6 +1015,23 @@ const BEFORE_ANCHOR_RE = new RegExp(`\\bvor (?:dem|der|den) ${PHRASE_OBJECT}\\b`
  * is the anchor.
  */
 const ANCHOR_BEFORE_QUOTE_RE = new RegExp(`\\b(?:nach|vor)\\s+(?:dem|der|den)\\s+${PHRASE_OBJECT}\\b\\s*$`, 'i')
+
+/**
+ * The one anchor quotation of a replacement and which side of it the
+ * operand stands on: „vor der Wortfolge ‚X' das Wort ‚Y' durch …" puts Y
+ * right before X. Null where there is none or more than one.
+ */
+function besideAnchor(line: string): { text: string; where: 'before' | 'after' } | null {
+  const marks = [...line.matchAll(QUOTED)]
+  const found: { text: string; where: 'before' | 'after' }[] = []
+  let from = 0
+  for (const m of marks) {
+    const a = ANCHOR_BEFORE_QUOTE_RE.exec(line.slice(from, m.index))
+    if (a) found.push({ text: stripQuotes(m[1]!), where: /^vor\b/i.test(a[0]) ? 'before' : 'after' })
+    from = m.index + m[0].length
+  }
+  return found.length === 1 && found[0]!.text.trim() !== '' ? found[0]! : null
+}
 
 /** A quotation of the instruction line that is an operand, not an anchor. */
 interface QuoteMark {
@@ -1426,13 +1449,14 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // An anchor is not an operand — "nach dem Ausdruck „AsylG 2005" das
       // Wort „und" durch einen Beistrich ersetzt" says where to look first.
       const operands = operandQuotes(line)
+      const beside = besideAnchor(line)
       const mixed = operands.length < 2 ? punctReplacement(head, operands, line) : null
       if (mixed) {
         return {
           // „der Punkt am Ende der Z 4 durch das Wort ‚oder'": the mark named
           // in words is the one the unit ends on, as in the form with both
           // marks named (`atEnd` above).
-          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, ...(/^[.;,:]$/.test(mixed.from) && /\bam\s+Ende\b/i.test(maskQuotes(head)) ? { atEnd: true } : {}), everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
+          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, ...(/^[.;,:]$/.test(mixed.from) && /\bam\s+Ende\b/i.test(maskQuotes(head)) ? { atEnd: true } : {}), ...(beside ? { beside } : {}), everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
           reason: null,
           line,
         }
@@ -1466,7 +1490,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const from = reversed ? operands[1]! : operands[0]!
       const to = reversed ? operands[0]! : operands[1]!
       const everywhere = everyOccurrence(head, targets)
-      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: from.text, to: to.text, everywhere, eachUnit, wordBound: wordOperand(line, from.ord) })), reason: null, line }
+      return { ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: from.text, to: to.text, everywhere, eachUnit, wordBound: wordOperand(line, from.ord), ...(beside && !everywhere ? { beside } : {}) })), reason: null, line }
     }
     if (/\beingefügt\b|\bergänzt\b|\bangefügt\b|\bvorangestellt\b|\beinzufügen\b|\bgesetzt\b/i.test(head)) {
       const before = BEFORE_ANCHOR_RE.test(head) || /vorangestellt/i.test(head)
