@@ -884,6 +884,8 @@ export type NovaoOp =
     wordBound: boolean
     /** „vor dem Punkt am Ende": the anchor is the mark that ends the unit's text, not any occurrence of it. */
     atEnd?: boolean
+    /** „am Ende das Wort ‚ sowie' eingefügt": holds only where the unit ends without a closing mark. */
+    bareEnd?: boolean
   }
   /** "In § 5 Abs. 1 entfällt die Wortfolge X." */
   | { kind: 'deletePhrase'; target: NovaoAddress; text: string; eachUnit: boolean; wordBound: boolean }
@@ -1474,6 +1476,20 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const masked = maskQuotes(head)
       if (quotes.length === 1 && !endMark && /\bam\s+Ende\b/i.test(masked) && /\b(?:der|den)\s+Halbsatz\s*""/i.test(masked) && /\bangefügt\b/i.test(head) && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked)) {
         return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: '', where: 'after' as const, text: quotes[0]!, eachUnit, wordBound: false, atEnd: true })), reason: null, line }
+      }
+      // „In § 5 Abs. 1 wird der Z 3 das Wort ‚ oder' angefügt", „In § 2 Abs. 1
+      // Z 5 wird am Ende das Wort ‚ sowie' eingefügt": one quoted word and no
+      // anchor, so the unit's end is the place. „angefügt" joins it behind
+      // everything, the closing Beistrich included — Lebensmittelsicherheits-
+      // gesetz § 5 reads „entsprechen, oder" in the RIS. „eingefügt" does not
+      // say which side of a closing mark it means, so it holds only where
+      // the unit ends without one (`bareEnd`). A text that opens with a mark
+      // („der Ausdruck ‚, oder'") would double the one standing there (27.09.2026).
+      if (quotes.length === 1 && !endMark && /\b(?:das\s+Wort|die\s+Wortfolge|der\s+Ausdruck)\s*""/i.test(masked) && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked) && /^\s*[\p{L}\d]/u.test(quotes[0]!)) {
+        const appended = /\bangefügt\b/i.test(head)
+        if (appended || (/\beingefügt\b/i.test(head) && /\bam\s+Ende\b/i.test(masked))) {
+          return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: '', where: 'after' as const, text: quotes[0]!, eachUnit, wordBound: false, atEnd: true, ...(appended ? {} : { bareEnd: true }) })), reason: null, line }
+        }
       }
       if (quotes.length < 2) return fail('Einfügung ohne Anker und Text')
       // "das Wort „zuletzt“ gestrichen sowie nach der Wort- und Zeichenfolge

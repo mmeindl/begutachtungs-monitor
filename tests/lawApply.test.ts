@@ -1280,3 +1280,25 @@ describe('a range below the § whose last unit is new (28.09.2026)', () => {
     expect(run(l, instr('§ 1 Abs. 1 Z 1 bis 4 lautet:', ['1. A,', '2. B,', '3. C.'])).results[0]!.applied).toBe(false)
   })
 })
+
+describe('a quoted word joined at the end of its unit (28.09.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('5', 'S', [{ text: 'Verboten ist,', ziffern: ['zu täuschen,', 'zu schaden'] }])] })
+
+  it('„angefügt" joins it behind everything, the closing mark included', () => {
+    // Lebensmittelsicherheitsgesetz § 5 Abs. 1 Z 3: „entsprechen," → „entsprechen, oder".
+    const { law: out, results } = run(l(), instr('In § 5 Abs. 1 wird der Z 1 das Wort " oder" angefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[0]!.text).toBe('zu täuschen, oder')
+  })
+
+  it('„am Ende … eingefügt" holds where the unit ends without a mark, and only there', () => {
+    const { law: out, results } = run(l(), instr('In § 5 Abs. 1 Z 2 wird am Ende das Wort " sowie" eingefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('zu schaden sowie')
+    expect(run(l(), instr('In § 5 Abs. 1 Z 1 wird am Ende das Wort " sowie" eingefügt.')).results[0]!.applied).toBe(false)
+  })
+
+  it('refuses a text that opens with a mark', () => {
+    expect(parseInstruction('In § 5 Abs. 1 wird am Ende der Z 2 der Ausdruck ", oder" angefügt.').ops).toEqual([])
+  })
+})

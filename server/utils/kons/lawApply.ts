@@ -1420,6 +1420,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           const last = [...slots].reverse().find((sl) => sl.read().trim() !== '')
           const text = last?.read().trimEnd() ?? ''
           if (!last || !text.endsWith(op.anchor)) return `Satzzeichen „${op.anchor}" steht nicht am Ende`
+          if (op.bareEnd && /[.,;:]$/.test(text)) return `Einheit endet mit „${text.at(-1)}" — vor oder nach dem Zeichen nicht entscheidbar`
           ends.push({ slot: last, at: text.length - op.anchor.length })
         }
         for (const { slot, at } of ends) {
