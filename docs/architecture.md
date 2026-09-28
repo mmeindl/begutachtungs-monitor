@@ -3923,6 +3923,21 @@ wird. Solange es sie nicht gibt, tut das Tor
 genau das Richtige: § 13 wird einbehalten, der Text erreicht die Leserin nicht
 als neues Recht, und der Grund, den die Seite nennt, stimmt.
 
+**Gemessen 28.09.2026, und die Regel wird nicht geschrieben.** Über alle 118
+PDF-Beilagen der jüngsten 400 Begut-Datensätze (3.948 Zeilenpaare, gelesen
+mit `parseAnnexPdf` wie der Anfragepfad) trifft der Kopf einer
+Novellierungsanordnung — Nummer, dann „In/Dem/Nach/Die … §/Art./Anlage" mit
+Ziffer oder „§ N … lautet/entfällt/wird", und ein Änderungsverb binnen 160
+Zeichen — **genau eine** Zelle der rechten Spalte: diese. In der linken Spalte,
+der Kontrolle, keine. Von den übrigen 14 Anordnungszeilen dieser Beilage
+findet das Muster keine in einer Zelle. Der erste Versuch, jede Nummer mit
+`parseInstruction` zu prüfen, fand den Fall nicht: Die Anordnung endet in der
+Zelle vor ihrem Verb („… durch di"), und der Parser verlangt eine vollständige
+— eine Schnittregel müsste also am *Kopf* erkennen. Der Ertrag wäre ein
+Paragraph, den das Tor schon richtig einbehält, der Preis eine Sonderregel im
+PDF-Parser und eine bewegte Drift-Grundlinie. Taucht eine zweite solche
+Beilage auf, findet sie dieselbe Prüfung in Minuten.
+
 **Eine Variante gemessen und verworfen:** eine *Obergrenze* auf den
 unerklärten Anteil. Sie liegt nahe, weil ein Block, der zwei Bestimmungen
 umspannt, fast vollständig unerklärt ist, während ein bloß verunreinigter
