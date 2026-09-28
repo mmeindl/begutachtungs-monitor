@@ -5764,9 +5764,14 @@ committee two ways to hear anyone, and they behave in opposite ways:
   person part after the semicolon stays hidden. Old against new, measured
   twice: 405 rows newly public, 266 distinct names, each an organisation, a
   public body or an office without a name; none newly hidden, no P-flag row
-  published, the audit's leak candidates unchanged. 133 stay in the queue,
-  each with its reason; 6.184 rows of XXVII 164/ME lie beyond the API cap
-  and were never seen.
+  published, the audit's leak candidates unchanged. The 6.184 rows of XXVII
+  164/ME beyond the API cap were closed the next day through the `TYP`
+  filter: all 8.611 institution rows of XXVII/ME fit in one answer, and the
+  135 names not read before were read (`d0c182f`). The allowlist moved into
+  its own data module (`parliament/orgAllowlist.ts`), with the two public
+  bodies the audit's comma shape misreads listed there and in the audit as
+  reviewed. What stays hidden is decided, not pending: 43 persons and 88
+  strings whose identity is not certain — in doubt, no name.
 
 False positives read by eye and excluded: „Anhörung" and „Sachverständige"
 in the law's own text (the IFG's right to be heard, AVG/StPO experts),
