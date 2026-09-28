@@ -71,7 +71,6 @@ describe('classifySubmitter', () => {
       'ÖKOBÜRO - Allianz der Umweltbewegung',
       'Anwältin für Gleichbehandlungsfragen für Menschen mit Behinderungen',
       'LEFÖ-IBF Interventionsstelle für Betroffene des Frauenhandels; NGO',
-      'AK Wien; Klima, Umwelt und Verkehr',
       'VCÖ',
       'ÖVI',
       'ÖHGB; Rechtsabteilung',
@@ -108,7 +107,6 @@ describe('classifySubmitter', () => {
       'Österreichs E-Wirtschaft',
       'Oesterreichs Energie; Generalsekretariat',
       'Arbeiter-Samariter-Bund Österreichs',
-      'Sozialdemokratische Lehrende Österreichs; Bund',
       'Parlamentarisches Datenschutzkomitee',
       'Parlamentarisches Datenschutzkommitee',
       'Parlamentarisches Datenschutzkomitee (PDK)',
@@ -155,7 +153,6 @@ describe('classifySubmitter', () => {
       'Entain Plc',
       'Facebook Ireland Inc.',
       'Die Tagespresse Medien FlexCo; FlexCo',
-      'lab10 collective eG; sustainable blockchain solutions',
       'Bündnis gegen Armut und Wohnungsnot',
       'Bürgerbewegung #BürgerVerändernGemeinsam',
       'Radlobby Vorarlberg',
@@ -456,6 +453,53 @@ describe('classifySubmitter', () => {
     })
   })
 
+  /* The shapes of GP XXVI/XXVII that printed a person behind an organisation
+   * head, flag `I` (measured 2026-09-28: 18 strings in XXVI, 14 in XXVII).
+   * Real shapes, placeholder names. */
+  describe('the printed name ends before a person', () => {
+    it.each([
+      // GP XXVI writes the star where later periods write the semicolon.
+      ['Verbund AG*Mag. Maria Mustermann', 'Verbund AG'],
+      ['ÖBB-Holding AG*Dr. Maria Mustermann*Leiterin Konzernrecht und Vorstandssekretariat', 'ÖBB-Holding AG'],
+      ['Stadt Graz*Stadträtin Maria Mustermann*Umwelt, Frauen und Gleichstellung', 'Stadt Graz'],
+      ['FH Campus Wien*Department Soziales', 'FH Campus Wien; Department Soziales'],
+      // A title, or a name after a function word, ends the printed name.
+      ['Universität Wien; Institut für Zivilrecht; Univ.-Ass. Mag. Max Mustermann, LL.B. (WU)', 'Universität Wien; Institut für Zivilrecht'],
+      ['Gesellschaft für Wirtschaftsmediation; Obfrau; Mag. Maria Mustermann', 'Gesellschaft für Wirtschaftsmediation'],
+      ['Universität Wien, Institut für Finanzrecht, Univ.-Prof. Dr. Maria Mustermann', 'Universität Wien, Institut für Finanzrecht'],
+      ['Initiative Ärzte gegen Rauch (www.example.at); Vorstand, vertreten durch Max Mustermann & Maria Muster', 'Initiative Ärzte gegen Rauch (www.example.at); Vorstand'],
+      ['Die Grünen UmweltlandesrätInnen Max Mustermann (Vorarlberg), Maria Muster (Tirol), Hans Huber (Salzburg) und Rudi Rot (Oberösterreich)', 'Die Grünen'],
+      // A function without a name, and a segment naming no organisation, go too.
+      ['Demokratische Alternative; Vorsitzender', 'Demokratische Alternative'],
+      ['AK Wien; Klima, Umwelt und Verkehr', 'AK Wien'],
+      // Departments stay.
+      ['Bundeskanzleramt; Verfassungsdienst', 'Bundeskanzleramt; Verfassungsdienst'],
+      ['Wiener Stadtwerke Gruppe; Public Affairs', 'Wiener Stadtwerke Gruppe; Public Affairs'],
+      ['NEUSTART - Bewährungshilfe, Konfliktregelung, Soziale Arbeit', 'NEUSTART - Bewährungshilfe, Konfliktregelung, Soziale Arbeit'],
+      ['Stadt Wien, MA 62; Verfassungsdienst', 'Stadt Wien, MA 62; Verfassungsdienst'],
+      ['Oberlandesgericht Innsbruck - Der Vizepräsident, Landesgericht Innsbruck - Der Präsident', 'Oberlandesgericht Innsbruck - Der Vizepräsident, Landesgericht Innsbruck - Der Präsident'],
+    ])('%s → %s', (raw, printed) => {
+      expect(classifySubmitter(raw, 'I')).toEqual({ kind: 'organisation', name: printed })
+    })
+
+    it.each([
+      // A person leading the string, however the rest reads.
+      'Univ.-Prof. Dr. Maria Mustermann, Universität Wien, Rechtswissenschaftliche Fakultät',
+      'Max Mustermann, Institut für Strafrecht und Kriminologie, Universität Wien',
+      'Generalanwalt Max Mustermann*Justizanstalt Krems - Stein',
+      'LandesrätInnen Max Mustermann (Oberösterreich), Maria Muster (Tirol)',
+      'Knauf Gesellschaft m.b.H. - GF Mag.ª (FH) Maria Mustermann',
+    ])('%s → person', (raw) => {
+      expect(classifySubmitter(raw, 'I')).toEqual({ kind: 'person', name: null })
+    })
+
+    it('keeps the gender star, and a star with no word after it', () => {
+      for (const name of ['Vereinigung der Richter*innen', 'Hochschüler*innenschaft der Universität Wien', 'Verein karitativer Arbeitgeber*innen (VkA*)']) {
+        expect(classifySubmitter(name, 'I'), name).toEqual({ kind: 'organisation', name })
+      }
+    })
+  })
+
   describe('non-public Stellungnahmen', () => {
     it('recognizes the placeholder', () => {
       expect(classifySubmitter('Nicht-öffentliche Stellungnahme')).toEqual({
@@ -523,14 +567,19 @@ describe('classifySubmitter', () => {
     })
 
     it.each([
-      // The class the name heuristic cannot reach: the naming segment is an
-      // organisation and the person stands behind it.
-      'Windland Energieerzeugungs GmbH; Max Mustermann',
-      'Verein Erneuerbare Energie Bregenzerwald, Max Mustermann',
-      'i.A. Mustermann, dabei-austria/ Dachverband',
-    ])('P suppresses a name the string alone would publish: %s', (name) => {
-      expect(classifySubmitter(name)).toEqual({ kind: 'organisation', name })
-      expect(classifySubmitter(name, 'P')).toEqual({ kind: 'person', name: null })
+      // The class the name heuristic could not reach until 2026-09-28: the
+      // naming segment is an organisation and the person stands behind it.
+      // The string alone now prints the organisation without the person
+      // (`printedName`); the flag still suppresses the row as a whole.
+      ['Windland Energieerzeugungs GmbH; Max Mustermann', 'Windland Energieerzeugungs GmbH'],
+      ['Verein Erneuerbare Energie Bregenzerwald, Max Mustermann', 'Verein Erneuerbare Energie Bregenzerwald'],
+    ])('P suppresses a row whose string names a person behind the organisation: %s', (raw, printed) => {
+      expect(classifySubmitter(raw)).toEqual({ kind: 'organisation', name: printed })
+      expect(classifySubmitter(raw, 'P')).toEqual({ kind: 'person', name: null })
+    })
+
+    it('a string that opens with „i.A." is a person acting for an organisation', () => {
+      expect(classifySubmitter('i.A. Mustermann, dabei-austria/ Dachverband')).toEqual({ kind: 'person', name: null })
     })
 
     it('never publishes a name on the flag alone — I changes nothing', () => {

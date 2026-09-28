@@ -5773,6 +5773,47 @@ committee two ways to hear anyone, and they behave in opposite ways:
   reviewed. What stays hidden is decided, not pending: 43 persons and 88
   strings whose identity is not certain — in doubt, no name.
 
+  **The person behind the organisation (28.09.2026).** Neither comparison
+  above had looked at GP XXVI, and GP XXVI showed a class the module never
+  guarded: a published organisation string with a person *behind* the
+  head — „Org*Mag. <Vorname Nachname>", and in the later periods
+  „Org; Univ.-Prof. Dr. <Vorname Nachname>". Both guards read only the head
+  for a person, the `I` flag does not veto, and the patterns printed the
+  whole string. Live before any of the above: 18 such strings in GP XXVI
+  and 14 in GP XXVII carried a titled name, and two of the 28.09. patterns
+  (`klub`, `anstalt`) would have added two more in GP XXVI. Four changes
+  in `privacy.ts`:
+  - The star is GP XXVI's segment separator (1.519 rows) and is read as a
+    semicolon — except the gender star („*in", „*innen…") and a star with
+    no word after it.
+  - `printedName`: after the head, a segment is printed only while it names
+    an organisation or a department (a separate word list, never evidence
+    for a head) and carries no title and no person shape once the
+    department words are removed; within a segment a comma part with a
+    title or a person shape ends it; „vertreten durch", „i.A.", „z.H." and
+    a function followed by a name („Obmann", „…landesrätInnen",
+    „Präsident" + two capitalised words that read as a person) end it too.
+  - A title or a person shape in the first comma part of the head files the
+    row as a person — the comma form reads the first two parts together,
+    and the second carries the organisation word that cleared them.
+  - `allowlistedName` takes the longest listed run of leading segments, so
+    a verified name of two segments survives the star.
+
+  Measured row by row against `9fbae9b` over GP XXVI/ME, XXVIII/ME,
+  XXVIII/I, XXVII/I, XXVII/ME (100.000 rows) and all 8.611 institution rows
+  of XXVII/ME: newly hidden 17 distinct strings, every one carrying a
+  person; newly public 3 allowlisted heads; 18 organisations of the form
+  „KÜRZEL*voller Name" that the star turned into the unsigned-head shape
+  were read and listed whole, three more single ones likewise. Every
+  shortened printed name was read (≈ 530 distinct): the cut removes names,
+  functions and departments without a department word; what it keeps is an
+  organisation. The price is detail, on the safe side — „Bundesarbeitskammer;
+  Wirtschaftswissenschaft" prints as „Bundesarbeitskammer". After the change
+  no published string carries a title, and a probe for a function followed
+  by two capitalised words finds none. Untitled names in positions none of
+  these rules reads remain possible; the audit reads raw strings, not the
+  printed name, and so still lists two already-cut rows as leak candidates.
+
 False positives read by eye and excluded: „Anhörung" and „Sachverständige"
 in the law's own text (the IFG's right to be heard, AVG/StPO experts),
 rejected motions for an Ausschussbegutachtung, and „Auskunftsperson" in the

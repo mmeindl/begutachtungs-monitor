@@ -44,6 +44,17 @@ const NONPUBLIC: SubmitterClassification = { kind: 'nonpublic', name: null }
 const NONPUBLIC_RE = /nicht-?\s*öffentliche?\s+stellungnahme/i
 
 /**
+ * The segment separator of GP XXVI and earlier: „Organisation*Funktion*Name"
+ * where later periods write a semicolon — 1.519 rows of GP XXVI/ME carry
+ * it. Read as one, every rule that splits at the semicolon saw a single
+ * segment there. Not the gender star, which is always „*in" or „*innen…"
+ * with no further letter („Richter*innen", „Hochschüler*innenschaft",
+ * „Pflegeanwält*innen"); „*institut" and „*international" are separators.
+ * And only where a word follows: „(VkA*)" and a trailing „Frauen*" are not.
+ */
+const STAR_SEPARATOR_RE = /\s*\*(?!in(?:nen\p{Ll}*)?(?!\p{L}))(?=\s*\p{L})\s*/gu
+
+/**
  * The whole string, or its naming segment: "Vier Pfoten; Stiftung für
  * Tierschutz" is allowlisted by its first segment, the department after the
  * semicolon varies from filing to filing.
@@ -60,15 +71,26 @@ const NONPUBLIC_RE = /nicht-?\s*öffentliche?\s+stellungnahme/i
  * so "not listed" and "listed, print as it stands" stay distinguishable.
  */
 function allowlistedName(s: string): string | null {
-  const full = ORG_ALLOWLIST.get(s.toLowerCase())
+  const full = ALLOWLIST.get(allowlistKey(s))
   if (full !== undefined) return full ?? s
-  const semicolon = s.indexOf(';')
-  if (semicolon < 0) return null
-  const head = s.slice(0, semicolon).trim()
-  const listed = ORG_ALLOWLIST.get(head.toLowerCase())
-  if (listed === undefined) return null
-  return listed ?? head
+  // The longest listed run of leading segments, not only the first: with the
+  // star read as a separator, „ÖSKOR * Radiologietechnologie; …" is a
+  // verified name of two segments followed by an unverified third.
+  const segments = s.split(';').map((t) => t.trim())
+  for (let n = segments.length - 1; n >= 1; n--) {
+    const head = segments.slice(0, n).join('; ')
+    const listed = ALLOWLIST.get(allowlistKey(head))
+    if (listed !== undefined) return listed ?? head
+  }
+  return null
 }
+
+/** Case and the spacing around a semicolon do not distinguish two entries. */
+function allowlistKey(s: string): string {
+  return s.toLowerCase().replace(/\s*;\s*/g, '; ')
+}
+
+const ALLOWLIST = new Map([...ORG_ALLOWLIST].map(([k, v]) => [allowlistKey(k), v]))
 
 /**
  * "(4880 St. Georgen im Attergau)" suffix — only ever appears on private
@@ -383,6 +405,110 @@ function leadsWithUnsignedSegment(s: string): boolean {
 }
 
 /**
+ * The segments of an organisation's string that go on the page: the head,
+ * and after it only segments that are themselves organisational — up to the
+ * first that carries a title, reads as a person, or names no organisation.
+ *
+ * The same rule `allowlistedName` applies to its heads, for the strings the
+ * patterns publish. They matched the whole string, and printed it whole:
+ * „Verbund AG; Mag. <Vorname Nachname>", „Universität Wien; Institut für
+ * Zivilrecht; Univ.-Ass. Mag. <Vorname Nachname>" were on the site (GP XXVI
+ * 18 strings, GP XXVII 14, measured 2026-09-28), because both guards above
+ * read the HEAD for a person and this shape has the person behind it, where
+ * the `I` flag does not veto. A department survives („TU Wien; Senat",
+ * „Die Tagespresse Medien FlexCo; FlexCo"); a function does not
+ * („Demokratische Alternative; Vorsitzender") — it names no organisation,
+ * and it is the segment a name follows.
+ */
+function printedName(full: string): string {
+  const marker = personMarkerAt(full)
+  const s = marker > 0 ? full.slice(0, marker).replace(/[\s,;]+$/, '') : full
+  const segments = s.split(';').map((t) => t.trim())
+  const kept = [withoutPersonPart(segments[0]!)]
+  if (kept[0] === segments[0]) {
+    for (const segment of segments.slice(1)) {
+      if (!(carriesOrgSignal(segment) || DEPARTMENT_RE.test(segment)) || namesPerson(segment)) break
+      const part = withoutPersonPart(segment)
+      kept.push(part)
+      if (part !== segment) break
+    }
+  }
+  // Nothing cut: the string as it stands, spacing included.
+  return s === full && kept.length === segments.length && kept.every((k, i) => k === segments[i]) ? s : kept.join('; ')
+}
+
+/**
+ * The words a department, office or body of an organisation is named by —
+ * evidence for a segment AFTER the head only, never a head of its own:
+ * „Rechtsabteilung", „Rektorat", „Verfassungsdienst", „Geschäftsführung".
+ */
+const DEPARTMENT_RE =
+  /abteilung|rektorat|dekanat|fakultät|institut|hauptstelle|arbeit\b|dienst\b|geschäftsf(?:ü|ue)hrung|geschäftsfeld|geschäftsstelle|sekretariat|vorstand\b|präsidi|referat\b|bereich\b|sektion\b|direktion\b|leitung\b|legistik|recht\b|politik\b|angelegenheiten|affairs\b|strategie\b|stellungnahme\b|bibliothek\b|department\b/i
+
+/**
+ * A title anywhere, or what is left once the department words are gone
+ * reads as a person: „Abteilung Sozialpolitik" and „Public Affairs" are two
+ * capitalised words and no name, „Rechtsabteilung Anna Huber" is a name.
+ */
+function namesPerson(segment: string): boolean {
+  // „MA 62" is the Magistratsabteilung, not the degree.
+  if (stripTitles(segment.replace(/\bMA\s?\d+\b/g, '')).hadTitle) return true
+  // „LandesrätInnen <Vorname Nachname> (Oberösterreich)": the bracket is
+  // where a name is placed, not part of it.
+  const rest = segment
+    .replace(/\s*\([^)]*\)/g, '')
+    .split(/\s+/)
+    .filter((token) => !DEPARTMENT_RE.test(token))
+    .join(' ')
+  return isPersonShaped(rest, true)
+}
+
+/**
+ * Who files ON BEHALF of the organisation: „…; Vorstand, vertreten durch
+ * <Vorname Nachname> & <Vorname Nachname>", „i.A. <Nachname>, <Verband>".
+ * What follows is a person however it is spelled, so the printed name ends
+ * before it — and a string that opens with it is a person's.
+ */
+const ON_BEHALF_RE = /(?:^|[\s,;])(?:vertreten\s+durch|im\s+Auftrag|i\.\s?A\.|z\.\s?H\.)/i
+
+/**
+ * A function followed by a name: „Die Grünen UmweltlandesrätInnen <Vorname
+ * Nachname> (Vorarlberg), …", „…; Obmann <Vorname Nachname>". Also inside a
+ * compound, and wherever it stands — in the head, where no comma split
+ * reaches it. Only with two capitalised words after it, so „Leiterin
+ * Konzernrecht und …" is a function, not a name.
+ */
+const FUNCTION_BEFORE_NAME_RE =
+  /(?:^|[\s,;])\S*?(?:[Ll]andesr[aä]t|[Ss]tadtr[aä]t|[Bb]ürgermeister|[Oo]bmann|[Oo]bfrau|[Vv]orsitzende|[Ss]precher|[Ll]eiter|[Pp]räsident|[Gg]eschäftsführer|[Dd]irektor|[Rr]ektor)(?:in|innen|Innen|en|e|s|r|n)?\s+(\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+)/gu
+
+/** Where the part of the string that names a person begins; -1 when nowhere. */
+function personMarkerAt(s: string): number {
+  const at = [s.search(ON_BEHALF_RE)]
+  // The two words after the function must read as a person: „Der
+  // Vizepräsident, Landesgericht Innsbruck" names a court, not a judge.
+  for (const m of s.matchAll(FUNCTION_BEFORE_NAME_RE)) if (isPersonShaped(m[1]!, true)) at.push(m.index)
+  const found = at.filter((i) => i >= 0)
+  return found.length ? Math.min(...found) : -1
+}
+
+/**
+ * „Verein Erneuerbare Energie Bregenzerwald, Max Mustermann": a comma inside
+ * a segment is how organisations name themselves („Universität Wien,
+ * Institut für …") and how a person is appended. So the cut there is at the
+ * first comma part that carries a title or reads as a person, not at the
+ * first without an organisation word.
+ */
+function withoutPersonPart(segment: string): string {
+  const [first, ...parts] = segment.split(',')
+  const kept = [first!]
+  for (const part of parts) {
+    if (namesPerson(part.trim())) break
+    kept.push(part)
+  }
+  return kept.join(',').trim()
+}
+
+/**
  * What list 142 column 19 says about the submitter: `I` for an institution,
  * `P` for a person, null when the column is missing or holds anything else.
  *
@@ -426,9 +552,17 @@ function classifyByName(s: string): SubmitterClassification {
   // Allowlisted heads never reach this — `classifySubmitter` returns first.
   if (leadsWithUnsignedSegment(withoutPlz)) return PERSON
 
+  // „Univ.-Prof. Dr. <Vorname Nachname>, Universität Wien, …": a title in
+  // the first comma part of the head is a person leading the string. The
+  // comma form above reads the first TWO parts together, and the second
+  // carries the organisation word that clears them (measured 2026-09-28,
+  // three strings in GP XXVI/XXVII published that way).
+  if (namesPerson(withoutPlz.split(';')[0]!.split(',')[0]!.trim())) return PERSON
+  if (personMarkerAt(withoutPlz) === 0) return PERSON
+
   // Legal forms are unambiguous — no person is called "GmbH".
   if (matchesAny(LEGAL_FORM_PATTERNS, withoutPlz)) {
-    return { kind: 'organisation', name: withoutPlz }
+    return { kind: 'organisation', name: printedName(withoutPlz) }
   }
 
   const { core, hadTitle } = stripTitles(withoutPlz)
@@ -440,7 +574,7 @@ function classifyByName(s: string): SubmitterClassification {
   }
 
   if (matchesAny(ORG_PATTERNS, withoutPlz)) {
-    return { kind: 'organisation', name: withoutPlz }
+    return { kind: 'organisation', name: printedName(withoutPlz) }
   }
 
   // Safe default: when in doubt, private person with the name suppressed.
@@ -493,6 +627,8 @@ export function classifySubmitter(
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+    .replace(STAR_SEPARATOR_RE, '; ')
+    .replace(/[;\s]+$/, '')
   if (!s) return PERSON
 
   // Orthogonal to the flag: non-public rows carry both values (902 `P` and

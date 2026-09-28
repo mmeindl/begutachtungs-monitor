@@ -205,7 +205,7 @@ export const ORG_ALLOWLIST = new Map<string, string | null>([
   ['öquasta und galp vereine für qual.sicherung im med. labor', null],
   ['orange 94.0 - das freie radio in wien', null],
   ['orf', null],
-  ['öskor * radiologietechnologie', null],
+  ['öskor; radiologietechnologie', null], // upstream „ÖSKOR * …", the star read as the separator it is (`privacy.ts`)
   ['österr. apothekerverlagsgesmbh', null],
   ['österreichischer mieter-, siedler und wohnungseigentümerbund', null],
   ['övsv', null],
@@ -256,4 +256,33 @@ export const ORG_ALLOWLIST = new Map<string, string | null>([
   // „Nachname, Vorname" test would misread, listed there as reviewed.
   ['parlamentsdirektion, rechts-, legislativ- und wissenschaftlicher dienst', null],
   ['tierschutzombudspersonen k, nö, oö, slzbg, stmk, tirol, vlbg und wien', null],
+
+  /* Read 28.09.2026 (GP XXVI/ME, flag I): „KÜRZEL*voller Name", once the
+   * star is read as the separator it is (`privacy.ts`) the shape of
+   * `leadsWithUnsignedSegment` — a head without an organisation word before
+   * one with it — and so filed as a person. Each an organisation, the whole
+   * string without a personal name; full entries, so they print whole. */
+  ['afpa; austrian financial and insurance professionals association', null],
+  ['agn; arbeitsgemeinschaft für notfallmedizin', null],
+  ['arbeit plus; soziale unternehmen österreich', null],
+  ['argesodit; arbeitsgemeinschaft der sozialen dienstleistungsanbieter in tirol', null],
+  ['austrian mobile power; the e-mobility alliance', null],
+  ['bodenfreiheit; verein zur erhaltung von freiräumen', null],
+  ['circulus pro disciplina ferentarii; club für lehrendes schiesswesen', null],
+  ['die grünen burgenland; grüner gemeindevertreterinnenverband (gvv burgenland)', null],
+  ['die termiten; plattform kritische sozialarbeit in tirol', null],
+  ['entschleunigung und orientierung; institut für alterskompetenzen', null],
+  ['epicenter.works for digital rights; epizentrum - plattform für grundrechtsbasierte zukunftspolitik (vormals akvorrat)', null],
+  ['feykom; rat der kurdischen gesellschaft in österreich', null],
+  ['noe3; ärztinnen und ärzte für niederösterreich', null],
+  ['novartis; sandoz gmbh', null],
+  ['plasser & theurer; export von bahnbaumaschinen gesellschaft m.b.h.', null],
+  ['rtaustria; berufsfachverband für radiologietechnologie österreich', null],
+  ['ulv; verband des wissenschaftlichen und künstlerischen personals an den österreichischen universitäten', null],
+  ['wifo; österreichisches institut für wirtschaftsforschung', null],
+  // The star as a slash, not a separator: „Deutsch als Fremd*Zweitsprache".
+  ['ödaf - österreichischer verband für deutsch als fremd; zweitsprache', 'ÖDaF - Österreichischer Verband für Deutsch als Fremd*Zweitsprache'],
+  // Read as „<Vorname Nachname> Institut" by the head rule of `classifyByName`.
+  ['wolfgang pauli institut', null],
+  ['medizinisches institut kreispunkt physiotherapie', null],
 ])
