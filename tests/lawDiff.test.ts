@@ -692,7 +692,7 @@ describe('the Artikel number counts only with the §§ behind it (27.09.2026)', 
   it('pairs a title broken by a stray space, where §§ and name agree (XXVIII 103/ME)', () => {
     const me = [...art('Änderung des Einkommensteuergese tzes', 1, [3, 4]), ...art('Änderung des Umsatzsteuergesetzes 1994', 2, [6, 12])]
     const rv = [...art('Änderung des Umsatzsteuergesetzes 1994', 1, [6, 12]), ...art('Änderung des Einkommensteuergesetzes 1988', 2, [3, 4, 5])]
-    expect(articlePairs(me, rv).find((p) => p.from === 'Änderung des Einkommensteuergese tzes')).toMatchObject({ to: 'Änderung des Einkommensteuergesetzes 1988', via: 'addressed' })
+    expect(articlePairs(me, rv).find((p) => p.from === 'Änderung des Einkommensteuergese tzes')).toMatchObject({ to: 'Änderung des Einkommensteuergesetzes 1988', via: 'sameName' })
   })
 
   it('does not pair on shared §§ alone — parallel laws share them by chance', () => {
@@ -744,5 +744,21 @@ describe('the short title in brackets pairs two long titles of one law (XXVI 76/
     const me = [u('Änderung des Allgemeinen Sozialversicherungsgesetzes (89. Novelle zum ASVG)', 'Z1'), u('Änderung des Mietrechtsgesetzes', 'Z1')]
     const rv = [u('Änderung des Beamten-Kranken- und Unfallversicherungsgesetzes (89. Novelle zum ASVG)', 'Z1'), u('Änderung des Mietrechtsgesetzes', 'Z1')]
     expect(articlePairs(me, rv).some((p) => p.via === 'shortTitle')).toBe(false)
+  })
+})
+
+describe('the same law name without hyphen, and a nameless Vorlage Artikel (28.09.2026)', () => {
+  const u = (article: string, id: string, text: string, articleNumber: string | null = null): LawUnit => ({ article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [] })
+  const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
+  it('pairs „Bildungsdirektionen-Einrichtungsgesetzes" with „BildungsdirektionenEinrichtungsgesetz" (XXVIII 26/ME)', () => {
+    const me = [u('Änderung des Bildungsdirektionen-Einrichtungsgesetzes', 'Z1', ins(7), 'Artikel 1'), u('Änderung des IQS-Gesetzes', 'Z1', ins(5), 'Artikel 2')]
+    const rv = [u('Bundesgesetz, mit dem das BildungsdirektionenEinrichtungsgesetz geändert wird', 'Z1', ins(7))]
+    expect(articlePairs(me, rv)[0]).toMatchObject({ from: 'Änderung des Bildungsdirektionen-Einrichtungsgesetzes', via: 'sameName' })
+  })
+  it('pairs a single named law with a nameless Artikel on its §§ alone (XXVII 92/ME)', () => {
+    const title = 'Bundesgesetz, mit dem das KommAustria-Gesetz geändert wird'
+    const me = [u(title, 'Z1', ins(17)), u(title, 'Z2', ins(44)), u(title, 'Z3', ins(45))]
+    const rv = [u('Artikel 1', 'Z1', ins(17), 'Artikel 1'), u('Artikel 1', 'Z2', ins(44), 'Artikel 1'), u('Artikel 1', 'Z3', ins(45), 'Artikel 1'), u('Artikel 2', 'Z1', 'In § 8 entfällt Abs. 4.', 'Artikel 2')]
+    expect(articlePairs(me, rv)[0]).toMatchObject({ from: title, to: 'Artikel 1', via: 'addressed' })
   })
 })

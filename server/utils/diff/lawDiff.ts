@@ -62,7 +62,7 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
 }
 
 /** Which rule made a pair — the measured surface of `pairArticles` (`scripts/corpus/aenderungsrate.ts --pairs`). */
-export type ArticlePairVia = 'only' | 'title' | 'shortTitle' | 'contained' | 'number' | 'addressed'
+export type ArticlePairVia = 'only' | 'title' | 'sameName' | 'shortTitle' | 'contained' | 'number' | 'addressed'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** `pairArticles` with the rule behind each pair, in the order the pairs were made. */
@@ -89,6 +89,22 @@ export function articlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): 
     map.set(m.article, r.article)
     via.set(m.article, 'title')
     usedTo.add(r)
+  }
+  // Next, the same law name letter for letter once spacing, hyphens and the
+  // genitive are gone (28.09.2026). The conversion drops hyphens now and then
+  // — XXVIII 130 d.B. prints „BildungsdirektionenEinrichtungsgesetz", its
+  // draft 26/ME „Bildungsdirektionen-Einrichtungsgesetzes" —, and then no word
+  // token meets. Exact equality, not similarity: two laws never share a whole
+  // name.
+  for (const m of fromArts) {
+    if (map.has(m.article)) continue
+    const mine = exactNameOf(m.article)
+    if (!mine) continue
+    const candidates = toArts.filter((r) => !usedTo.has(r) && exactNameOf(r.article) === mine)
+    if (candidates.length !== 1) continue
+    map.set(m.article, candidates[0]!.article)
+    via.set(m.article, 'sameName')
+    usedTo.add(candidates[0]!)
   }
   // Next, the official short title in brackets (28.09.2026). Two new laws
   // can carry different long titles for the same law — XXVI 76/ME:
@@ -173,7 +189,10 @@ export function articlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): 
     const candidates = toArts.filter((r) => {
       if (usedTo.has(r)) return false
       const theirs = addressesOf(to, r.article)
-      return theirs.size >= 2 && overlapOf(mine, theirs) >= SAME_ADDRESSES_AT && sameCompactName(m.article, r.article)
+      // A nameless title („Artikel 1", XXVII 92/ME) cannot contradict; there
+      // the §§ alone decide. Both named, both have to agree.
+      const names = namesNoLaw(m.article) || namesNoLaw(r.article) || sameCompactName(m.article, r.article)
+      return theirs.size >= 2 && overlapOf(mine, theirs) >= SAME_ADDRESSES_AT && names
     })
     if (candidates.length !== 1) continue
     map.set(m.article, candidates[0]!.article)
@@ -230,6 +249,19 @@ function numberHolds(m: ArticleRef, r: ArticleRef, a: ReadonlySet<string>, b: Re
   if (sameAddresses(a, b)) return true
   if (!namesNoLaw(m.article) && !namesNoLaw(r.article)) return false
   return a.size === 0 || b.size === 0 || overlapOf(a, b) >= SAME_ADDRESSES_AT
+}
+
+/**
+ * A title's law name as one string, genitive dropped — „Änderung des
+ * Bildungsdirektionen-Einrichtungsgesetzes" and „Bundesgesetz, mit dem das
+ * BildungsdirektionenEinrichtungsgesetz geändert wird" both
+ * „bildungsdirektioneneinrichtungsgesetz". Null for a nameless title or a
+ * name too short to be one.
+ */
+function exactNameOf(title: string | null): string | null {
+  if (namesNoLaw(title)) return null
+  const name = compactName(title).replace(/(?<=(?:gesetz|buch|statut|vertrag))(?:es|s)$/, '')
+  return name.length >= 8 ? name : null
 }
 
 /**

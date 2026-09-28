@@ -991,7 +991,7 @@ function pairsReport(): void {
     const toArticles = [...new Set(toUnits.map((u) => u.article))]
     for (const p of pairs) {
       byVia.set(p.via, (byVia.get(p.via) ?? 0) + 1)
-      if (p.via === 'addressed' || p.via === 'contained') console.log(`    ${p.via.padEnd(9)} ${inr}/ME  ${String(p.from).slice(0, 70)}  ⇒  ${String(p.to).slice(0, 70)}`)
+      if (p.via === 'addressed' || p.via === 'contained' || p.via === 'sameName' || p.via === 'shortTitle') console.log(`    ${p.via.padEnd(9)} ${inr}/ME  ${String(p.from).slice(0, 70)}  ⇒  ${String(p.to).slice(0, 70)}`)
       const a = addressesOf(fromUnits, p.from)
       if (p.via === 'title') {
         const o = addressOverlap(a, addressesOf(toUnits, p.to))
