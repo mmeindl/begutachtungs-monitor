@@ -657,3 +657,12 @@ describe('classifySubmitter', () => {
     })
   })
 })
+
+describe('reviewed public bodies the „Nachname, Vorname" shape misreads (28.09.2026)', () => {
+  it.each([
+    'Parlamentsdirektion, Rechts-, Legislativ- und Wissenschaftlicher Dienst',
+    'Tierschutzombudspersonen K, NÖ, OÖ, Slzbg, Stmk, Tirol, Vlbg und Wien',
+  ])('%s → organisation', (name) => {
+    expect(classifySubmitter(name, 'I')).toEqual({ kind: 'organisation', name })
+  })
+})

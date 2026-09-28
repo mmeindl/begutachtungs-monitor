@@ -77,6 +77,18 @@ function namingSegment(s: string): string {
   return parts.length >= 3 ? `${parts[0]},${parts[1]}`.trim() : ''
 }
 
+/**
+ * Strings list 2's shape test misreads, each READ and found to be a public
+ * body (28.09.2026). An exact list, not a looser shape: loosening the „Nachname,
+ * Vorname" form to spare these two stopped it recognising persons written in
+ * capitals, and list 1 grew from 101 to 200 strings in GP XXVII/I. A string
+ * belongs here only once someone has read it; a new spelling is a new entry.
+ */
+const REVIEWED_NOT_PERSONS = new Set([
+  'Parlamentsdirektion, Rechts-, Legislativ- und Wissenschaftlicher Dienst',
+  'Tierschutzombudspersonen K, NÖ, OÖ, Slzbg, Stmk, Tirol, Vlbg und Wien',
+])
+
 const counts: Record<string, number> = {}
 const hidden = new Map<string, { rows: number; endorsements: number }>()
 const leaks = new Map<string, number>()
@@ -105,7 +117,7 @@ for (const row of rows) {
   }
   if (kind === 'organisation') {
     const seg = namingSegment(raw)
-    if (seg && personShaped(seg)) leaks.set(raw, (leaks.get(raw) ?? 0) + 1)
+    if (seg && personShaped(seg) && !REVIEWED_NOT_PERSONS.has(raw)) leaks.set(raw, (leaks.get(raw) ?? 0) + 1)
   }
 }
 
