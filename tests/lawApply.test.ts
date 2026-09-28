@@ -1474,3 +1474,24 @@ describe('a Schlussteil appended to a unit with a list (28.09.2026)', () => {
     expect(run({ paragraphs: [p] }, instr('Dem § 26 Abs. 3 Z 1 wird folgender Schlussteil angefügt:', ['Das gilt auch sonst.'])).results[0]!.applied).toBe(false)
   })
 })
+
+describe('several insertions under one „eingefügt" (28.09.2026)', () => {
+  it('inserts the same text behind each anchor', () => {
+    const l: StandingLaw = { paragraphs: [para('34b', 'S', ['Die geführten Konten und diesen Konten zugeordnete Werte.'])] }
+    const { law: out, results } = run(l, instr('In § 34b Abs. 1 wird nach den Wortfolgen "geführten Konten" und "diesen Konten" jeweils die Wortfolge " und Depots" eingefügt.'))
+    expect(results.every((r) => r.reason === null)).toBe(true)
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die geführten Konten und Depots und diesen Konten und Depots zugeordnete Werte.')
+  })
+
+  it('reads pairs, a mark named in words among them', () => {
+    // AsylG § 61 Abs. 3.
+    const l: StandingLaw = { paragraphs: [para('61', 'S', ['Er ist abzuliefern, wenn er führt und bleibt.'])] }
+    const { law: out, results } = run(l, instr('In § 61 Abs. 1 wird nach dem Wort "abzuliefern" die Wortfolge " ; dies gilt nicht" und nach dem Wort "führt" ein Beistrich eingefügt.'))
+    expect(results.every((r) => r.reason === null)).toBe(true)
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Er ist abzuliefern; dies gilt nicht, wenn er führt, und bleibt.')
+  })
+
+  it('keeps refusing a line whose first quotation is deleted, not an anchor', () => {
+    expect(parseInstruction('In § 20 wird das Wort "zuletzt" gestrichen sowie nach der Wortfolge "A" die Wortfolge "B" eingefügt.').ops).toEqual([])
+  })
+})

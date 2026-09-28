@@ -1040,6 +1040,50 @@ function besideAnchor(line: string): { text: string; where: 'before' | 'after' }
   return found.length === 1 && found[0]!.text.trim() !== '' ? found[0]! : null
 }
 
+/**
+ * Several insertions under one „eingefügt" (28.09.2026):
+ *
+ * - „nach den Wortfolgen ‚A' und ‚B' jeweils die Wortfolge ‚C' eingefügt":
+ *   the same text behind each anchor;
+ * - „nach dem Wort ‚A' die Wortfolge ‚B' und nach dem Wort ‚C' ein Beistrich
+ *   eingefügt": pairs, each with its own anchor and its own text — a quoted
+ *   one or a mark named in words.
+ *
+ * Every part must carry both, and the line no other verb: „das Wort
+ * ‚zuletzt' gestrichen sowie nach … eingefügt" stays refused, because reading
+ * its first two quotations as a pair inserted behind the word to be deleted.
+ */
+function insertionSeries(line: string): { anchor: string; where: 'before' | 'after'; text: string; wordBound: boolean }[] | null {
+  const masked = maskQuotes(line)
+  if (/\b(?:ersetzt|entfäll[te]|entfallen|gestrichen|angefügt|laute[nt]|aufgehoben|vorangestellt)\b/i.test(masked)) return null
+  if ((masked.match(/\beingefügt\b/gi) ?? []).length !== 1 || !/\beingefügt\W*$/i.test(masked)) return null
+  const quotes = [...line.matchAll(QUOTED)].map((m) => stripQuotes(m[1]!))
+  const object = `(?:${PHRASE_OBJECT})`
+  const same = new RegExp(`\\b(nach|vor)\\s+den\\s+${object}\\s*""((?:\\s*(?:,|und|sowie)\\s*"")+)\\s+jeweils\\s+(?:die|das|der|den)\\s+${object}\\s*""\\s*eingefügt\\W*$`, 'i').exec(masked)
+  if (same) {
+    if ((masked.slice(0, same.index).match(/""/g) ?? []).length > 0) return null
+    const where = same[1]!.toLowerCase() === 'vor' ? 'before' : 'after'
+    const text = quotes.at(-1)!
+    return quotes.slice(0, -1).map((anchor, i) => ({ anchor, where, text, wordBound: wordOperand(line, i) }))
+  }
+  const cuts = [...masked.matchAll(/\s+(?:und|sowie)\s+(?=(?:nach|vor)\s+(?:dem|der|den)\s)/gi)]
+  if (cuts.length === 0) return null
+  const out: { anchor: string; where: 'before' | 'after'; text: string; wordBound: boolean }[] = []
+  let from = 0
+  let ord = 0
+  const part = new RegExp(`\\b(nach|vor)\\s+(?:dem|der|den)\\s+${object}\\s*""\\s*(?:(?:die|das|der|den)\\s+${object}\\s*""|(?:ein|einen)\\s+(Beistrich|Strichpunkt|Doppelpunkt))\\s*(?:eingefügt)?\\W*$`, 'i')
+  for (const end of [...cuts.map((c) => c.index), masked.length]) {
+    const seg = masked.slice(from, end)
+    const m = part.exec(seg)
+    const n = (seg.match(/""/g) ?? []).length
+    if (!m || (m[2] ? n !== 1 : n !== 2)) return null
+    out.push({ anchor: quotes[ord]!, where: m[1]!.toLowerCase() === 'vor' ? 'before' : 'after', text: m[2] ? PUNCT_WORD[m[2].toLowerCase()]! : quotes[ord + 1]!, wordBound: wordOperand(line, ord) })
+    ord += n
+    from = end
+  }
+  return out
+}
+
 /** A quotation of the instruction line that is an operand, not an anchor. */
 interface QuoteMark {
   /** Where it opens in the line — the fronted forms are told apart by position. */
@@ -1573,6 +1617,8 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // „…“ die Wort- und Zeichenfolge „…“ eingefügt": three operands, and
       // reading the first two as anchor and text inserted a citation behind
       // the word that was to be deleted (BGBl. I Nr. 36/2025 § 20, 2026-09-09).
+      const series = quotes.length > 2 ? insertionSeries(line) : null
+      if (series) return { ops: places.flatMap((t) => series.map((i) => ({ kind: 'insertPhrase' as const, target: t, anchor: i.anchor, where: i.where, text: i.text, eachUnit, wordBound: i.wordBound }))), reason: null, line }
       if (quotes.length > 2) return fail(`${quotes.length} Operanden für eine Einfügung`)
       if (!before && !AFTER_ANCHOR_RE.test(head)) return fail('Einfügung ohne erkennbaren Anker')
       // "wird nach dem Wort X ein Beistrich gesetzt und danach die Wortfolge Y
