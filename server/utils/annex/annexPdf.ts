@@ -546,7 +546,7 @@ const UNIT_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*\d+[a-
  */
 const CITATION_TAIL_RE = /^\s*(?:Abs\.|Z\s|lit\b|Buchstabe|Unterabsatz|Nr\.|Nummer|der\b|des\b|dieser\b|dieses\b|und\b|bis\b|sowie\b|zur\b|zum\b|in\b)/
 /** "Artikel 3" with nothing else on the line. */
-const BARE_ARTICLE_RE = /^Artikel\s+(?:X?\d+[a-z]?|[IVXL]+)$/
+const BARE_ARTICLE_RE = /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)$/
 /** A qualifier that stands where the law's name would, and is not one. */
 const QUALIFIER_RE = /^\((?:Verfassungs|Grundsatz)bestimmung(?:en)?\)$/i
 

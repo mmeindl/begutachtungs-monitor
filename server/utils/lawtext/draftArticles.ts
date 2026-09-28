@@ -63,7 +63,7 @@ export function isAmendmentClause(text: string): boolean {
 const QUALIFIER_RE = /^\((?:Verfassungs|Grundsatz)bestimmung(?:en)?\)$/i
 
 /** The numeral of an Artikel heading: "3", "III", "X1". */
-const ARTICLE_NUMERAL_RE = /^Artikel\s+(X?\d+[a-z]?|[IVXL]+)\b/
+const ARTICLE_NUMERAL_RE = /^Artikel\s+([Xx]?\d+[a-z]?|[IVXL]+)\b/
 
 /**
  * One Artikel of a draft — the unit a package's annex divides into.
@@ -152,7 +152,7 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   for (const b of blocks) {
     if (b.kind === 'article') {
       close()
-      current = { index: out.length, number: b.text, numeral: ARTICLE_NUMERAL_RE.exec(b.text)?.[1] ?? null, title: null, key: null, amends: false, bgbl: null }
+      current = { index: out.length, number: b.text, numeral: ARTICLE_NUMERAL_RE.exec(b.text)?.[1]?.replace(/^x(?=\d)/, 'X') ?? null, title: null, key: null, amends: false, bgbl: null }
       seenNovao = false
       continue
     }

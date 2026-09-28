@@ -46,7 +46,7 @@ import { pickClearWinner } from '../text/clearWinner'
  * article. Hence: the full word, no trailing period, and a title that does not
  * open with a genitive article.
  */
-const LAW_BOUNDARY_RE = /^Artikel\s+(X?\d+[a-z]?|[IVXL]+)(?:\s+(?!der\b|des\b|Abs\.)(.+))?$/
+const LAW_BOUNDARY_RE = /^Artikel\s+([Xx]?\d+[a-z]?|[IVXL]+)(?:\s+(?!der\b|des\b|Abs\.)(.+))?$/
 /** "Änderung des Aktiengesetzes" — the law's name, printed under its Artikel line. */
 const LAW_TITLE_RE = /^(?:Änderung(?:en)?\s+(?:des|der)\b|Bundesgesetz,|Aufhebung\s+(?:des|der)\b)/i
 
@@ -64,7 +64,8 @@ export interface BoundaryCandidate {
 export function candidateOf(line: string): BoundaryCandidate | null {
   const text = normalizeText(line)
   const m = LAW_BOUNDARY_RE.exec(text)
-  if (m) return { text, numeral: m[1]!, title: m[2]?.trim() || null }
+  // „x1" and „X1" are the same placeholder (XXVI 115/ME); one spelling on both sides of the join.
+  if (m) return { text, numeral: m[1]!.replace(/^x(?=\d)/, 'X'), title: m[2]?.trim() || null }
   if (LAW_TITLE_RE.test(text)) return { text, numeral: null, title: text }
   return null
 }

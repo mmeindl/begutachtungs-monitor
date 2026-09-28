@@ -11,7 +11,7 @@
  * than on the change (p10 2, p90 42). The share of all units touched counts
  * what the Vorlage ADDS, which is its own question. What stays is the share
  * of the draft's own units — the ones a Stellungnahme could have been about —
- * that the Vorlage changed in wording or dropped: p25 46 %, median 62 %,
+ * that the Vorlage changed in wording or dropped: p25 46 %, median 63 %,
  * p75 75 % in XXVII, and the spread is wide enough to say something about a
  * single draft.
  *
