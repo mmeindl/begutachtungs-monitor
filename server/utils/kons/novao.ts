@@ -1202,6 +1202,8 @@ const END_MARK_REV_RE = /\bam\s+Ende\s+(?:der|des)\s+(?:Z(?:iffer)?\s*\d+[a-z]*|
 /** „der nachfolgende Halbsatz entfällt" — the Halbsatz behind a mark the clause before has replaced. */
 const FOLLOWING_HALBSATZ_GONE_RE = /^(?:der|die)\s+(?:nachfolgende|darauf\s*folgende|danach\s+folgende)\s+Halbs(?:atz|ätze)\s+(?:entfällt|entfallen)\.?$/i
 /** The verbs of an append. */
+/** „Im Inhaltsverzeichnis …" — also as „Inhaltverzeichnis", which the Bankwesengesetz prints. */
+const TOC_RE = /^(?:Im |Das |Die |In dem )?Inhalts?verzeichnis\b/i
 const APPEND_VERB_RE = /\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i
 /** „… ersetzt und (danach) folgender (Halb)Satz angefügt", „…; folgender Satz wird angefügt". */
 const APPENDS_SENTENCE_RE = /\bersetzt\b[^"]*?(?:\bund\b|\bsowie\b|;)\s*(?:danach\s+)?(?:wird\s+)?folgende[rn]?\s+(?:Halbs(?:atz|ätze)|S(?:atz|ätze))\b/i
@@ -1344,7 +1346,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const ok = (op: NovaoOp): ParsedInstruction => ({ ops: [op], reason: null, line })
   const fail = (reason: string): ParsedInstruction => ({ ops: [], reason, line })
 
-  if (/^(Im |Das |Die |In dem )?Inhaltsverzeichnis/i.test(head)) return ok({ kind: 'toc' })
+  if (TOC_RE.test(head)) return ok({ kind: 'toc' })
 
   const { scope, payload } = splitPayloadScope(head)
   // „…; folgender Satz wird angefügt", „… und danach folgender Halbsatz
@@ -1790,6 +1792,11 @@ export function splitPlaces(line: string): string[] {
 
 export function parseInstruction(raw: string, inherited?: NovaoAddress | null): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
+  // „Im Inhaltsverzeichnis entfällt der Eintrag zu § 17; die Einträge zu den
+  // §§ 18 und 19 lauten:" — the second clause has lost its subject, and split
+  // off it was read as a phrase replacement. The whole line is the table of
+  // contents, which follows from the headings (BFA-VG, 28.09.2026).
+  if (TOC_RE.test(line)) return { ops: [{ kind: 'toc' }], reason: null, line }
   const parts = splitCompound(line).flatMap(splitPlaces)
   if (parts.length === 1) return parseOne(parts[0]!, inherited, line)
 

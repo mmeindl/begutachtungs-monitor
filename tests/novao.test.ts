@@ -775,3 +775,12 @@ describe('a segment that carries its place inside it (28.09.2026)', () => {
     expect(ops[1]).toMatchObject({ atEnd: true })
   })
 })
+
+describe('the table of contents as a whole line (28.09.2026)', () => {
+  it('reads every clause of it, and the spelling without s', () => {
+    for (const line of [
+      'Im Inhaltsverzeichnis entfällt der Eintrag zu § 17; die Einträge zu den §§ 18 und 19 lauten:',
+      'Im Inhaltverzeichnis wird nach dem Eintrag zu § 33 folgender Eintrag eingefügt:',
+    ]) expect(parseInstruction(line).ops, line).toEqual([{ kind: 'toc' }])
+  })
+})
