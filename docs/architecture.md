@@ -5678,7 +5678,18 @@ committee two ways to hear anyone, and they behave in opposite ways:
   27 rows newly public over four corpora, every name read, every one an
   organisation; none newly hidden. About 130 further `I`-flagged
   organisations remain filed as persons — a review queue, each to be checked
-  before a pattern publishes it.
+  before a pattern publishes it. **Worked through on 28.09.2026 (`21ca5c9`):**
+  558 distinct `I`-flagged strings filed as persons, every one read — 427
+  organisations, 43 persons or strings containing a person's name, 88
+  unclear; only the first are published, through patterns measured safe
+  against every row of both flags (compounds on -rat/-ausschuss rather than
+  bare „rat", which hits Murat and surnames) and 183 allowlist heads whose
+  person part after the semicolon stays hidden. Old against new, measured
+  twice: 405 rows newly public, 266 distinct names, each an organisation, a
+  public body or an office without a name; none newly hidden, no P-flag row
+  published, the audit's leak candidates unchanged. 133 stay in the queue,
+  each with its reason; 6.184 rows of XXVII 164/ME lie beyond the API cap
+  and were never seen.
 
 False positives read by eye and excluded: „Anhörung" and „Sachverständige"
 in the law's own text (the IFG's right to be heard, AVG/StPO experts),
