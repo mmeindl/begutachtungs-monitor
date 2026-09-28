@@ -75,7 +75,14 @@ Always parse date fields from `Datesort`/`Fristsort`, never from the `dd.mm.yyyy
 
 **History:** 4,204 MEs in total, back to GP XIV (oldest: 1/ME, arrived 1979-01-05). GP XXVIII: 132 MEs (as of 2026-08-15); front-runners by volume: 88/ME 707 SN, 44/ME 616, 32/ME 572, 126/ME 450.
 
-The list configuration names export formats `json`, `rss`, `csv` — **RSS could be a cheap change feed** (export URL scheme not yet explored).
+The list configuration names export formats `json`, `rss`, `csv`. **Measured 2026-09-28: none of them is a change feed.** All three run the same filter query as `data/{listId}`, serialised differently:
+
+- **RSS** — `GET /Filter/api/filter/rss/81?GP_CODE=XXVIII&SORTRNR=11&ASCDESC=DESC` (a POST returns 0 items). The filter dimensions apply as in the JSON (`AKTIV=J` → the open ones; a repeated key is an OR), and unknown keys are ignored silently, the same trap. An item carries `title`, `description` (the citation, „139/ME"), a site-relative `link` and `pubDate` — the Einlangen date at 00:00, in ISO rather than RFC 822. No guid, no Frist, no AKTIV, no counts.
+- **CSV** — `POST /Filter/api/filter/csv/81?sortrnr=11&ascDesc=DESC` with the JSON body (GET → 405): UTF-8 with BOM, semicolons, one header row of the column labels, the same rows as the JSON field for field. The website only offers it where a page config lists it; the endpoint answers regardless.
+- **`data/81?export=true`** is the JSON with an attachment header.
+- **No conditional requests anywhere:** no ETag, Last-Modified or Cache-Control on data, rss or csv, and `If-None-Match`/`If-Modified-Since` still return a full 200.
+
+So a new Begutachtung shows in the RSS as a new item — exactly what list 81 already shows — while a Frist change or statement growth needs the snapshot diff either way (`deploy/bin/list81-snapshot.sh`). The RSS of list 142 works too but titles each item with the submitter's name, private persons included — not for use here (GDPR: no name-level republication of private persons).
 
 ### Detail JSON of an item
 
