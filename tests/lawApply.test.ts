@@ -1428,3 +1428,16 @@ describe('the anchor of a replacement, where the operand recurs (28.09.2026)', (
     expect(run(l(), instr('In § 57 Abs. 1 wird nach der Wortfolge "Verlangen" das Wort "oder" durch das Wort "bzw." ersetzt.')).results[0]!.applied).toBe(false)
   })
 })
+
+describe('an Absatz quoted with its Paragraph around it (28.09.2026)', () => {
+  it('replaces the Absatz, not nests the § inside it', () => {
+    // RAO § 24 Abs. 1: „§ 24 Abs. 1 lautet:" with the payload „§ 24. (1) …".
+    const l: StandingLaw = { paragraphs: [para('24', 'Wahlen', [{ text: 'Es werden', ziffern: ['der Präsident,', 'die Prüfer'] }, 'Die Wahl ist geheim.'])] }
+    const { law: out, results } = run(l, instr('§ 24 Abs. 1 lautet:', ['§ 24. (1) Es werden', '1. der Präsident und', '2. die Prüfer gewählt.']))
+    expect(results[0]!.reason).toBeNull()
+    const abs = out.paragraphs[0]!.children
+    expect(abs.map((a) => a.id)).toEqual(['1', '2'])
+    expect(abs[0]!.children.map((c) => c.level)).toEqual(['z', 'z'])
+    expect(plainText(abs[0]!)).toBe('Es werden der Präsident und die Prüfer gewählt.')
+  })
+})

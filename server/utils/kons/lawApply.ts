@@ -1089,6 +1089,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'replace': {
+      if (op.target.level !== 'para') payload = unwrapParaPayload(payload, op.target)
       const ids = [op.target.level === 'para' ? (bareParaId(op.target.para) ?? '') : deepestId(op.target), ...op.target.siblings]
       if (op.target.level === 'para') {
         const paras = ids.map((id) => law.paragraphs.find((p) => p.id === id) ?? null)
@@ -1596,6 +1597,31 @@ function spliceRun(siblings: LawNode[], outgoing: LawNode[], incoming: LawNode[]
   for (const n of incoming) if (survivors.has(`${level}|${n.id}`)) return `${n.marker} existiert bereits`
   siblings.splice(at, outgoing.length, ...incoming.map((n) => ({ ...n, level })))
   return null
+}
+
+/**
+ * „§ 24 Abs. 1 lautet:" with a payload that opens „§ 24. (1) …": the ressort
+ * quoted the Absatz with its Paragraph around it. Read as it stood, the whole
+ * § went INTO Abs. 1 — the old text flattened and the new Absatz nested below
+ * it (RAO, BGBl. I Nr. 63/2026, 28.09.2026). Unwrapped to the addressed units,
+ * and only where every step down the address finds exactly the one named unit;
+ * anything else is left as it came.
+ */
+function unwrapParaPayload(payload: readonly LawNode[], a: NovaoAddress): LawNode[] {
+  if (payload.length !== 1 || payload[0]!.level !== 'para' || payload[0]!.id !== bareParaId(a.para)) return [...payload]
+  const path: [NodeLevel, string | null][] = [['abs', a.abs], ['z', a.z], ['lit', a.lit]]
+  let node = payload[0]!
+  for (const [level, id] of path) {
+    if (level === a.level) {
+      const units = node.children.filter((c) => c.level === level)
+      return units.length > 0 && units.length === node.children.length && units[0]!.id === id ? units : [...payload]
+    }
+    if (id === null) return [...payload]
+    const next = node.children.filter((c) => c.level === level && c.id === id)
+    if (next.length !== 1 || node.children.length !== 1) return [...payload]
+    node = next[0]!
+  }
+  return [...payload]
 }
 
 function deepestId(a: NovaoAddress): string {
