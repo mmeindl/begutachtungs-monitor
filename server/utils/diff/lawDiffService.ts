@@ -25,7 +25,7 @@ import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
 import { diffLawPackage, summarizeDiff } from './lawDiff'
 import { findLawStations, missingStationReason } from './stationDocuments'
 import { parseLawUnits, parseLawUnitsFromRis } from '../lawtext/lawUnits'
-import { extractBgblLink, findLastRvLink, parseStages } from '../parliament/detailJson'
+import { extractBgblLink, findComparisonRvLink, findLastRvLink, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
@@ -63,7 +63,10 @@ export const getLawDiff = defineCachedFunction(
      */
     let bgblLink: TraceLink | null = null
     try {
-      const rvLink = findLastRvLink(parseStages(content.stages))
+      // The Kundmachung of the Vorlage whose text this comparison reads, not
+      // of the latest one: a split draft has one per Vorlage.
+      const rvText = found.get('rv')
+      const rvLink = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)
       if (rvLink) {
         const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
         const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number

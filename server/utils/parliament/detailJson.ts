@@ -143,9 +143,31 @@ export function findRvLinks(trace: TraceStep[]): RvLink[] {
   return found
 }
 
-/** The latest RV — the one the outcome and the BGBl enrichment hang off. */
+/** The latest RV — the one the outcome hangs off. */
 export function findLastRvLink(trace: TraceStep[]): RvLink | null {
   return findRvLinks(trace).at(-1) ?? null
+}
+
+/**
+ * The RV a comparison stands on: the one whose Gesetzestext the draft's own
+ * text-evolution list carries (`rvTextUrl`, the `rv` station of
+ * `findLawStations`), else the latest.
+ *
+ * ME→RV 1:n is a split, not a choice between versions: in the four drafts
+ * of XXVI–XXVIII where the two readings disagree, every Vorlage is a
+ * different law and each was kundgemacht (26/ME XXVIII → 128, 130 and
+ * 129 d.B., three Bundesgesetzblätter; read 28.09.2026). Parliament attaches one of those texts to the draft.
+ * The § comparison reads that text, so the Erläuterungen and the
+ * Kundmachung compared beside it have to come from the same Vorlage — by
+ * stage order alone, 26/ME compared the Bildungsdirektionen-Einrichtungsgesetz
+ * against the Erläuterungen and the Bundesgesetzblatt of the
+ * Informationsfreiheits-Anpassungsgesetz (docs/architecture.md §13.4).
+ */
+export function findComparisonRvLink(trace: TraceStep[], rvTextUrl: string | null | undefined): RvLink | null {
+  const links = findRvLinks(trace)
+  const m = rvTextUrl ? /\/dokument\/([IVXLC]+)\/I\/(\d+)\//.exec(rvTextUrl) : null
+  const own = m ? links.find((l) => l.gp === m[1] && l.inr === Number(m[2])) : undefined
+  return own ?? links.at(-1) ?? null
 }
 
 /**

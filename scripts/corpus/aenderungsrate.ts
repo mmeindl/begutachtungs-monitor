@@ -69,7 +69,7 @@ import { join } from 'node:path'
 import type { DraftDocument, LawDiffUnit, LawStationId, LawPackageEntry } from '../../shared/types'
 import { meTextTitleRank } from '../../shared/utils/lawStations'
 import { ownChangeShare } from '../../shared/utils/changeShare'
-import { findLastRvLink, findRvLinks, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup, type RawStage } from '../../server/utils/parliament/detailJson'
+import { findComparisonRvLink, findRvLinks, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup, type RawStage } from '../../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
 import { articlePairs, diffLawPackage, pairArticles, summarizeDiff } from '../../server/utils/diff/lawDiff'
 import { articleNameTokens } from '../../server/utils/lawtext/lawNames'
@@ -779,7 +779,8 @@ async function reasoningReport(): Promise<void> {
   const candidates = results.filter((r) => r.bucket >= 3)
   await pool(candidates, CONCURRENCY, async (r) => {
     const content = await detailOf(r.inr)
-    const rv = findLastRvLink(parseStages(content.stages))!
+    const rvText = findLawStationsCopy(content).get('rv')
+    const rv = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)!
     await mkdir(join(CACHE, rv.gp), { recursive: true })
     const rvDetail = await cachedJson<{ content?: DetailContent }>(join(CACHE, rv.gp, `I-${rv.inr}.json`), () =>
       fetchJson(`${PARLIAMENT}/gegenstand/${rv.gp}/I/${rv.inr}?json=True`),

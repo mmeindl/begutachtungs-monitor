@@ -31,7 +31,8 @@ import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/typ
 import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
 import { getLawDiff } from '../diff/lawDiffService'
 import { fetchDocument } from '../upstream/fetchDocument'
-import { findLastRvLink, mapDocuments, parseStages } from '../parliament/detailJson'
+import { findComparisonRvLink, mapDocuments, parseStages } from '../parliament/detailJson'
+import { findLawStations } from '../diff/stationDocuments'
 import { getGegenstand } from '../parliament/drafts'
 import { compareReasoning } from './reasoningDiff'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
@@ -78,7 +79,9 @@ export function getReasoningDiff(gp: string, inr: number, from: LawStationId, to
 const compareMeToRv = defineCachedFunction(
   async (gp: string, inr: number): Promise<ReasoningDiffResponse> => {
     const detail = await getGegenstand(gp, 'ME', inr)
-    const rv = findLastRvLink(parseStages(detail.content?.stages))
+    // The Vorlage whose Gesetzestext the § comparison beside it reads.
+    const rvText = findLawStations(detail.content ?? {}).get('rv')
+    const rv = findComparisonRvLink(parseStages(detail.content?.stages), rvText?.html ?? rvText?.fallbackUrl)
     if (!rv) return empty(gp, inr, 'Zu diesem Entwurf gibt es noch keine Regierungsvorlage.')
 
     const [meDoc, rvDoc] = await Promise.all([

@@ -7,6 +7,7 @@ import {
   isFilingOpen,
   parseVote,
   findHandoff,
+  findComparisonRvLink,
   findLastRvLink,
   findRvLinks,
   mapDocuments,
@@ -107,6 +108,32 @@ describe('findRvLinks / findLastRvLink', () => {
     ])
     expect(findRvLinks(trace)).toEqual([])
     expect(findLastRvLink(trace)).toBeNull()
+  })
+})
+
+describe('findComparisonRvLink', () => {
+  // 26/ME XXVIII: three Vorlagen on one day, each a different law, and the
+  // draft's text-evolution list carries the Gesetzestext of 130.
+  const SPLIT_SAME_DAY = parseStages([
+    { date: '18.06.2025', text: 'RV (<a href="/gegenstand/XXVIII/I/128">128 d.B.</a>)' },
+    { date: '18.06.2025', text: 'RV (<a href="/gegenstand/XXVIII/I/130">130 d.B.</a>)' },
+    { date: '18.06.2025', text: 'RV (<a href="/gegenstand/XXVIII/I/129">129 d.B.</a>)' },
+  ])
+  const TEXT_130 = 'https://www.parlament.gv.at/dokument/XXVIII/I/130/fnameorig_1693606.html'
+
+  it('takes the Vorlage whose Gesetzestext the draft carries, not the latest', () => {
+    expect(findLastRvLink(SPLIT_SAME_DAY)?.inr).toBe(129)
+    expect(findComparisonRvLink(SPLIT_SAME_DAY, TEXT_130)?.inr).toBe(130)
+  })
+
+  it('falls back to the latest without a text, or with one no stage links', () => {
+    expect(findComparisonRvLink(SPLIT_SAME_DAY, null)?.inr).toBe(129)
+    expect(findComparisonRvLink(SPLIT_SAME_DAY, 'https://www.parlament.gv.at/dokument/XXVIII/I/999/x.html')?.inr).toBe(129)
+    expect(findComparisonRvLink(SPLIT_SAME_DAY, 'https://www.parlament.gv.at/dokument/XXVIII/ME/26/x.html')?.inr).toBe(129)
+  })
+
+  it('does not match a number from another period', () => {
+    expect(findComparisonRvLink(SPLIT_SAME_DAY, 'https://www.parlament.gv.at/dokument/XXVII/I/130/x.html')?.inr).toBe(129)
   })
 })
 
