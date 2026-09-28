@@ -2655,6 +2655,38 @@ Text" ohne Verweigerung 19 → 20, beide Zugänge Unterschiede, die vorher neben
 einer Verweigerung standen. Entwürfe vom Anhang bestätigt 602 → 614;
 Annex-Drift in jedem Schritt ohne Befund.
 
+**Nachtrag, derselbe Tag.** Was danach noch offen stand, trug drei stille
+Fehler, und alle drei hatte eine spätere Verweigerung **derselben Zeile**
+verdeckt: Solange ein Satzteil scheiterte, wurde die ganze Zeile
+verweigert; sobald er gelesen wurde, lief die falsche Hälfte davor mit. Die
+Lehre für die Messung: Eine neue Regel, die eine Zeile ganz lesbar macht,
+prüft auch deren übrige Teile — und die Zahl, die das zeigt, ist „kein
+geltender Text" ohne Verweigerung, nicht „identisch".
+
+- **Die Zerlegung schnitt Aufzählungen.** `splitCompound` teilte an jedem
+  „und" mit einem Verb links und rechts: „entfallen die Z 2 und 3; im
+  Schlussteil …" strich nur Z 2, „die Absatzbezeichnungen ‚(3)' und ‚(4)'"
+  benannte Abs. 7 und 8 beide in (3) um, und ein Verb *im Zitat* zählte als
+  Verb der Anordnung. Eine Konjunktion vor einer bloßen Bezeichnung oder vor
+  einem Zitat setzt jetzt eine Aufzählung fort.
+- **Eine Adresse hinter ihrem Verb** („… wird in den Z 5 und 7 lit. a …",
+  „entfällt nach Abs. 2 der Abs. 3") galt als ein Ort, weil `onePlace` bis
+  zum *ersten* Verb der Zeile prüfte, das vor ihr stand. Das strich in einem
+  Entwurf Abs. 2 statt Abs. 3. Jetzt bis zum Verb hinter der Adresse; die
+  Zeilen sind verweigert.
+- **Die Nutzlast „§ 24. (1) …" unter „§ 24 Abs. 1 lautet:"** legte den
+  ganzen § in den Absatz (RAO § 24) — jetzt auf die genannte Einheit
+  ausgepackt, wo jeder Schritt der Adresse genau eine findet.
+- **Gedankenstriche eine `ebene` tiefer** gehören zur Ziffer davor. Als
+  Ziffern daneben gelesen, ersetzte „§ 4 Abs. 4 Z 8 lautet:" die Ziffer und
+  ließ ihre alten Striche stehen (EStG) — 178 solche Striche im Prüfstand.
+
+Dazu gelesen: „folgender Schlussteil angefügt", mehrere Einfügungen unter
+einem „eingefügt", die Einträge des Inhaltsverzeichnisses als ganze Zeile.
+Über b020075 bis 87f01a7: identisch 864 → **884**, eigene Abweichung 15 →
+**13**, Verweigerungen 319 → 288, „kein geltender Text" ohne Verweigerung
+20 → 18; vom Anhang bestätigt 614 → 621; Annex-Drift ohne Befund.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
