@@ -1413,7 +1413,10 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       const mixed = operands.length < 2 ? punctReplacement(head, operands, line) : null
       if (mixed) {
         return {
-          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
+          // „der Punkt am Ende der Z 4 durch das Wort ‚oder'": the mark named
+          // in words is the one the unit ends on, as in the form with both
+          // marks named (`atEnd` above).
+          ops: places.map((t) => ({ kind: 'replacePhrase' as const, target: t, from: mixed.from, to: mixed.to, ...(/^[.;,:]$/.test(mixed.from) && /\bam\s+Ende\b/i.test(maskQuotes(head)) ? { atEnd: true } : {}), everywhere: everyOccurrence(head, targets), eachUnit, wordBound: mixed.wordBound })),
           reason: null,
           line,
         }
@@ -1634,6 +1637,7 @@ function opContext(op: NovaoOp): NovaoAddress | null {
  * „im zweiten Satz".
  */
 const LEADING_PLACE_RE = /(?<![\p{L}])(?:im\s+(?:Schlussteil|Schlusssatz|Einleitungsteil|Einleitungssatz|(?:ersten|zweiten|dritten|vierten|fünften|letzten|vorletzten)\s+Satz)|in\s+(?:der\s+|dem\s+)?(?:Z(?:iffer)?\s*\d+[a-z]*|lit\.\s*[a-z]{1,2}(?![\p{L}])|Abs\.\s*\d+[a-z]*))/gu
+const EMBEDDED_PLACE_RE = /(?<=(?:,|\sund|\ssowie)\s+)(?:der|den|das|die)\s+(?:Punkt|Strichpunkt|Beistrich|Doppelpunkt)\s+am\s+Ende\s+(?:der|des)\s+(?:Z(?:iffer)?\s*\d+[a-z]*|lit\.\s*[a-z]{1,2})(?![\p{L}])/gu
 const GAPPED_VERB_RE = /(?<![\p{L}])(?:wird|werden|entfällt|entfallen)(?![\p{L}])/u
 const PARTICIPLE_RE = /(?<![\p{L}])(ersetzt|eingefügt|angefügt|gestrichen)(?![\p{L}])/u
 const OPERAND_RE = /\uE000|(?<![\p{L}])(?:Punkt|Strichpunkt|Beistrich|Doppelpunkt|Gedankenstrich)(?![\p{L}])/u
@@ -1666,7 +1670,13 @@ export function splitPlaces(line: string): string[] {
   const verb = GAPPED_VERB_RE.exec(masked)
   if (!verb) return [line]
   const afterVerb = verb.index + verb[0].length
-  const places = [...masked.matchAll(LEADING_PLACE_RE)].filter((m) => m.index! >= afterVerb)
+  // A segment may also carry its place inside it, behind the mark it
+  // replaces: „in Z 3 das Wort ‚oder' durch einen Strichpunkt und der Punkt
+  // am Ende der Z 4 durch das Wort ‚oder' ersetzt" (AsylG 2005 § 53,
+  // 28.09.2026). Such a segment starts at its article; the place in it is
+  // read by the address as it always is.
+  const embedded = [...masked.matchAll(EMBEDDED_PLACE_RE)].map((m) => Object.assign([''] as unknown as RegExpExecArray, { index: m.index! }))
+  const places = [...masked.matchAll(LEADING_PLACE_RE), ...embedded].filter((m) => m.index! >= afterVerb).sort((a, b) => a.index! - b.index!)
   if (places.length < 2 || masked.slice(afterVerb, places[0]!.index).trim() !== '') return [line]
   // Every later place stands behind a separator — otherwise it is part of a
   // segment („nach dem Wort ‚A' in Z 3"), not the head of one.

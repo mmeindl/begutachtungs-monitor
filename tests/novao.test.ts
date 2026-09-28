@@ -764,3 +764,12 @@ describe('two instruction sentences in one line (28.09.2026)', () => {
     expect(parseInstruction('In § 323 erhält der mit der Novelle BGBl. I Nr. 98/2025 angefügte Abs. 90 die Absatzbezeichnung "(91)".').ops).toHaveLength(1)
   })
 })
+
+describe('a segment that carries its place inside it (28.09.2026)', () => {
+  it('splits „in Z 3 … und der Punkt am Ende der Z 4 durch …"', () => {
+    // AsylG 2005 § 53 Abs. 1.
+    const ops = parseInstruction('In § 53 Abs. 1 wird in Z 3 das Wort "oder" durch einen Strichpunkt und der Punkt am Ende der Z 4 durch das Wort "oder" ersetzt.').ops
+    expect(ops.map((o) => (o.kind === 'replacePhrase' ? [o.target.z, o.from, o.to] : o.kind))).toEqual([['3', 'oder', ';'], ['4', '.', 'oder']])
+    expect(ops[1]).toMatchObject({ atEnd: true })
+  })
+})
