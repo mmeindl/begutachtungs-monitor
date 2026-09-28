@@ -797,3 +797,24 @@ describe('an address behind its verb (28.09.2026)', () => {
     ]) expect(parseInstruction(line).ops, line).toEqual([])
   })
 })
+
+describe('designations listed with „und" (28.09.2026)', () => {
+  it('pairs them with the units one each, and does not split the line between them', () => {
+    // AsylG § 22.
+    const { ops, reason } = parseInstruction('In § 22 erhalten die Abs. 7 und 8 die Absatzbezeichnungen "(3)" und "(4)" ; in Abs. 3 (neu) wird das Wort "a" durch das Wort "b" ersetzt.')
+    expect(reason).toBeNull()
+    expect(ops.map((o) => o.kind === 'renumber' ? `${o.target.abs}→${o.to}` : o.kind)).toEqual(['7→(3)', '8→(4)', 'replacePhrase'])
+  })
+
+  it('still refuses where the counts differ', () => {
+    expect(parseInstruction('In § 22 erhalten die Abs. 7 bis 9 die Absatzbezeichnungen "(3)" und "(4)".').ops).toEqual([])
+  })
+})
+
+describe('a conjunction inside an enumeration (28.09.2026)', () => {
+  it('does not split „Z 2 und 3; …" into „Z 2" and a stray „3"', () => {
+    const { ops } = parseInstruction('In § 52 Abs. 4 entfallen die Z 2 und 3; im Schlussteil wird nach dem Wort "verpflichtet" ein Beistrich eingefügt.')
+    expect(ops[0]).toMatchObject({ kind: 'delete', target: { z: '2', siblings: ['3'] } })
+    expect(parseInstruction('In § 6 entfallen Abs. 1 und 1a; die Abs. 2 und 3 erhalten die Absatzbezeichnungen "(1)" und "(2)".').ops[0]).toMatchObject({ kind: 'delete', target: { abs: '1', siblings: ['1a'] } })
+  })
+})

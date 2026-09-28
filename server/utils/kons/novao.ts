@@ -1210,6 +1210,16 @@ export function splitCompound(line: string): string[] {
   let last = 0
   for (const m of masked.matchAll(COMPOUND_SPLIT)) {
     const at = m.index! + m[0].length
+    // „die Absatzbezeichnungen ‚(3)' und ‚(4)'": a conjunction in front of a
+    // quotation joins operands, never clauses — no clause opens with one. Cut
+    // there, the first half renumbered Abs. 7 and 8 both to (3) (AsylG § 22,
+    // 28.09.2026).
+    if (masked.slice(at).trimStart().startsWith('\u0000')) continue
+    // „entfallen die Z 2 und 3; im Schlussteil …": a bare designation behind
+    // the conjunction continues the enumeration. Cut there, the „3" was
+    // dropped and only Z 2 deleted — FPG § 52 Abs. 4, and „entfallen Abs. 1
+    // und 1a; …" in the Waldresilienzfondsgesetz (28.09.2026).
+    if (/^\s*(?:\d+[a-z]*|[a-z]{1,2})(?=\s*(?:[;,.)]|und\b|sowie\b|bis\b|$))/.test(masked.slice(at))) continue
     if (VERB_RE.test(line.slice(last, m.index!)) && VERB_RE.test(line.slice(at))) {
       bounds.push(m.index!, at)
       last = at
@@ -1447,6 +1457,13 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // "die Z 5 bis 9 erhalten die Ziffernbezeichnungen „4.“ bis „8.“" — a run,
     // which the applier expands and checks against the number of targets.
     const range = quotes.length === 2 && /"\s*bis\s*"/.test(line)
+    // „erhalten die Abs. 7 und 8 die Absatzbezeichnungen ‚(3)' und ‚(4)'":
+    // as many designations as units, listed the same way — one each, in order.
+    const units = [target.level === 'abs' ? target.abs : target.level === 'z' ? target.z : target.level === 'lit' ? target.lit : null, ...target.siblings]
+    if (!range && quotes.length > 1 && units[0] !== null && quotes.length === units.length && /^(?:\s*"[^"]*"\s*(?:,|und)?)+$/.test(line.slice(line.indexOf('"'), line.lastIndexOf('"') + 1))) {
+      const key = target.level as 'abs' | 'z' | 'lit'
+      return { ops: units.map((id, i) => ({ kind: 'renumber' as const, target: { ...target, [key]: id, siblings: [] }, to: quotes[i]!, toLast: null })), reason: null, line }
+    }
     if (quotes.length > 1 && !range) return fail(`${quotes.length} neue Bezeichnungen, Zuordnung unklar`)
     return ok({ kind: 'renumber', target, to, toLast: range ? quotes[1]! : null })
   }
