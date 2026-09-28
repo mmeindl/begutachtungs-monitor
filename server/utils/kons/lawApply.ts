@@ -1306,6 +1306,20 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         else host.text = `${host.text} ${added}`.replace(/\s+/g, ' ').trim()
         return null
       }
+      // „Dem § 26 Abs. 3 Z 2 wird folgender Schlussteil angefügt": the text
+      // that closes the unit's list, behind it. Only where the unit HAS a list
+      // and no Schlussteil yet — a second one, or one without a list to
+      // close, has no place the words determine (28.09.2026).
+      if (op.child === 'schluss') {
+        const added = payload.map((p) => plainText(p)).join(' ').trim()
+        if (!added) return 'Anfügung ohne Text'
+        const body = bodyOf(host)
+        const items = body.children.filter((c) => c.level !== 'schluss')
+        if (items.length === 0) return 'Schlussteil ohne Liste, die er schließt'
+        if (body.children.some((c) => c.level === 'schluss')) return 'Schlussteil besteht bereits'
+        body.children.push(makeNode('schluss', 'schluss', '', added))
+        return null
+      }
       const level = levelOf(op.child)
       if (!level) return 'Angefügte Einheit nicht bestimmbar'
       // „Dem § 3 werden folgende Z 16 bis 20 angefügt" in a § without Absatz

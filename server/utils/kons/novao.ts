@@ -819,7 +819,7 @@ export function addressKey(a: NovaoAddress): string {
 // ---------------------------------------------------------------------------
 
 /** What kind of child an insert/append instruction creates. */
-export type ChildLevel = 'para' | 'abs' | 'z' | 'lit' | 'satz' | 'halbsatz' | 'unknown'
+export type ChildLevel = 'para' | 'abs' | 'z' | 'lit' | 'satz' | 'halbsatz' | 'schluss' | 'unknown'
 
 export type NovaoOp =
   /**
@@ -1074,6 +1074,7 @@ const CHILD_BY_WORD: readonly (readonly [RegExp, ChildLevel])[] = [
   [/\bZ(?:iffern?)?\.?\s*\d/i, 'z'],
   [/\blit(era)?\.?\s*[a-z]\b/i, 'lit'],
   [/\bHalbs(?:atz|ätze)\b/i, 'halbsatz'],
+  [/\bSchlussteil\b/i, 'schluss'],
   [/\bSätze\b|\bSatz\b/i, 'satz'],
   [/§|\bParagraf|\bArt(\.|ikel)|\bAnlage\b/i, 'para'],
 ]

@@ -1458,3 +1458,19 @@ describe('an Absatz quoted with its Paragraph around it (28.09.2026)', () => {
     expect(plainText(abs[0]!)).toBe('Es werden der Präsident und die Prüfer gewählt.')
   })
 })
+
+describe('a Schlussteil appended to a unit with a list (28.09.2026)', () => {
+  it('closes the list, and only where there is one and no Schlussteil yet', () => {
+    // UStG § 26 Abs. 3 Z 2: „Dem § 26 Abs. 3 Z 2 wird folgender Schlussteil angefügt:".
+    const z2 = makeNode('z', '2', '2.', 'Abweichend davon, wenn')
+    z2.children.push(makeNode('lit', '–', '–', 'dies,'), makeNode('lit', '–', '–', 'jenes.'))
+    const abs = makeNode('abs', '3', '(3)', '')
+    abs.children.push(makeNode('z', '1', '1.', 'Die Regel.'), z2)
+    const p = makeNode('para', '26', '§ 26.', '')
+    p.children.push(abs)
+    const { law: out, results } = run({ paragraphs: [p] }, instr('Dem § 26 Abs. 3 Z 2 wird folgender Schlussteil angefügt:', ['Das gilt auch sonst.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.children.at(-1)).toMatchObject({ level: 'schluss', text: 'Das gilt auch sonst.' })
+    expect(run({ paragraphs: [p] }, instr('Dem § 26 Abs. 3 Z 1 wird folgender Schlussteil angefügt:', ['Das gilt auch sonst.'])).results[0]!.applied).toBe(false)
+  })
+})
