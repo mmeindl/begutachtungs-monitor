@@ -1298,8 +1298,24 @@ describe('a quoted word joined at the end of its unit (28.09.2026)', () => {
     expect(run(l(), instr('In § 5 Abs. 1 Z 1 wird am Ende das Wort " sowie" eingefügt.')).results[0]!.applied).toBe(false)
   })
 
-  it('refuses a text that opens with a mark', () => {
-    expect(parseInstruction('In § 5 Abs. 1 wird am Ende der Z 2 der Ausdruck ", oder" angefügt.').ops).toEqual([])
+  it('joins a text that opens with a mark only where no mark ends the unit', () => {
+    const { law: out, results } = run(l(), instr('In § 5 Abs. 1 wird am Ende der Z 2 der Ausdruck ", oder" angefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('zu schaden, oder')
+    expect(run(l(), instr('In § 5 Abs. 1 wird am Ende der Z 1 der Ausdruck ", oder" angefügt.')).results[0]!.applied).toBe(false)
+  })
+
+  it('reads the text quoted behind „folgende Wortfolge angefügt:"', () => {
+    const { law: out, results } = run(l(), instr('In § 5 Abs. 1 Z 2 wird folgende Wortfolge angefügt: " und zu stören"'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('zu schaden und zu stören')
+  })
+
+  it('appends a mark named in words only where none ends the unit', () => {
+    const { law: out, results } = run(l(), instr('In § 5 Abs. 1 wird der Z 2 ein Strichpunkt angefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('zu schaden;')
+    expect(run(l(), instr('In § 5 Abs. 1 wird der Z 1 ein Strichpunkt angefügt.')).results[0]!.applied).toBe(false)
   })
 })
 
@@ -1327,5 +1343,25 @@ describe('a Satzteil or Wortfolge announced with its text as payload (28.09.2026
     const { law: out, results } = run(l, instr('In § 38 Abs. 1 Z 2 wird folgender Satzteil angefügt:', ['oder ihnen die Ware zu übergeben,']))
     expect(results[0]!.reason).toBeNull()
     expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('bereitzustellen, oder ihnen die Ware zu übergeben,')
+  })
+})
+
+describe('a mark as the anchor of an insertion (28.09.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('69', 'S', [{ text: 'Zu prüfen sind', ziffern: ['die Strategien; die Verfahren,', 'die Mittel, die Wege,'] }])] })
+
+  it('inserts in front of the unit\'s only Strichpunkt', () => {
+    const { law: out, results } = run(l(), instr('In § 69 Abs. 1 Z 1 wird vor dem Strichpunkt die Wortfolge " und Pläne" eingefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[0]!.text).toBe('die Strategien und Pläne; die Verfahren,')
+  })
+
+  it('refuses where the mark stands twice', () => {
+    expect(run(l(), instr('In § 69 Abs. 1 Z 2 wird vor dem Beistrich die Wortfolge " und Pläne" eingefügt.')).results[0]!.applied).toBe(false)
+  })
+
+  it('reads „am Ende der Z 2 vor dem Beistrich" as the closing one', () => {
+    const { law: out, results } = run(l(), instr('Im § 69 Abs. 1 wird am Ende der Z 2 vor dem Beistrich die Wortfolge " und Ziele" eingefügt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children[0]!.children[1]!.text).toBe('die Mittel, die Wege und Ziele,')
   })
 })

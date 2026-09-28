@@ -1167,6 +1167,8 @@ function splitInstructionSentences(line: string): string[] {
 const PUNCT_WORD: Record<string, string> = { punkt: '.', strichpunkt: ';', beistrich: ',', doppelpunkt: ':', gedankenstrich: '–' }
 /** „vor dem Punkt am Ende", „nach dem Strichpunkt am Ende": the mark that closes the unit, as an anchor. */
 const END_MARK_RE = /\b(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt)\s+am\s+Ende\b/i
+/** „am Ende der Z 13 vor dem Beistrich": the same place with the unit named in between. */
+const END_MARK_REV_RE = /\bam\s+Ende\s+(?:der|des)\s+(?:Z(?:iffer)?\s*\d+[a-z]*|lit\.\s*[a-z]{1,2}|Abs(?:\.|atzes)\s*\d+[a-z]*)\s+(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt)\b/i
 /** „der nachfolgende Halbsatz entfällt" — the Halbsatz behind a mark the clause before has replaced. */
 const FOLLOWING_HALBSATZ_GONE_RE = /^(?:der|die)\s+(?:nachfolgende|darauf\s*folgende|danach\s+folgende)\s+Halbs(?:atz|ätze)\s+(?:entfällt|entfallen)\.?$/i
 /** The verbs of an append. */
@@ -1465,7 +1467,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // anchor is a mark named in words, and „am Ende" says which of the
       // unit's marks it is — Zahnärztegesetz § 22 Abs. 2 carries six full
       // stops, so asking for a unique one would refuse (27.09.2026).
-      const endMark = END_MARK_RE.exec(maskQuotes(head))
+      const endMark = END_MARK_RE.exec(maskQuotes(head)) ?? END_MARK_REV_RE.exec(maskQuotes(head))
       if (endMark && quotes.length === 1) {
         const where = endMark[1]!.toLowerCase() === 'vor' ? 'before' : 'after'
         return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: PUNCT_WORD[endMark[2]!.toLowerCase()]!, where: where as 'before' | 'after', text: quotes[0]!, eachUnit, wordBound: false, atEnd: true })), reason: null, line }
@@ -1488,13 +1490,29 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // everything, the closing Beistrich included — Lebensmittelsicherheits-
       // gesetz § 5 reads „entsprechen, oder" in the RIS. „eingefügt" does not
       // say which side of a closing mark it means, so it holds only where
-      // the unit ends without one (`bareEnd`). A text that opens with a mark
-      // („der Ausdruck ‚, oder'") would double the one standing there (27.09.2026).
-      if (quotes.length === 1 && !endMark && /\b(?:das\s+Wort|die\s+Wortfolge|der\s+Ausdruck)\s*""/i.test(masked) && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked) && /^\s*[\p{L}\d]/u.test(quotes[0]!)) {
+      // the unit ends without one (`bareEnd`). So does a text that opens
+      // with a mark („der Ausdruck ‚, oder'"): behind a standing one it
+      // would double it (27.09.2026).
+      if (quotes.length === 1 && !endMark && (/\b(?:das\s+Wort|die\s+Wortfolge|der\s+Ausdruck)\s*""/i.test(masked) || /\bfolgende\s+Wortfolge\s+angefügt\s*:\s*""\W*$/i.test(maskQuotes(line))) && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked)) {
         const appended = /\bangefügt\b/i.test(head)
+        const bareEnd = !appended || !/^\s*[\p{L}\d]/u.test(quotes[0]!)
         if (appended || (/\beingefügt\b/i.test(head) && /\bam\s+Ende\b/i.test(masked))) {
-          return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: '', where: 'after' as const, text: quotes[0]!, eachUnit, wordBound: false, atEnd: true, ...(appended ? {} : { bareEnd: true }) })), reason: null, line }
+          return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: '', where: 'after' as const, text: quotes[0]!, eachUnit, wordBound: false, atEnd: true, ...(bareEnd ? { bareEnd: true } : {}) })), reason: null, line }
         }
+      }
+      // „In § 9 Abs. 4 Z 5 wird der lit. d ein Strichpunkt angefügt": a mark
+      // named in words at the unit's end — only where none stands there.
+      const markAppended = /\b(?:ein|einen)\s+(Beistrich|Strichpunkt|Punkt|Doppelpunkt)\s+angefügt\b/i.exec(masked)
+      if (quotes.length === 0 && markAppended && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked)) {
+        return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: '', where: 'after' as const, text: PUNCT_WORD[markAppended[1]!.toLowerCase()]!, eachUnit, wordBound: false, atEnd: true, bareEnd: true })), reason: null, line }
+      }
+      // „In § 69 Abs. 2 Z 1 wird vor dem Strichpunkt die Wortfolge ‚…'
+      // eingefügt": the anchor is a mark without „am Ende", so it must be the
+      // unit's only one — `locateInUnits` refuses a second. Not the Punkt: an
+      // abbreviation carries one too.
+      const markAnchor = /\b(nach|vor)\s+(?:dem|der)\s+(Strichpunkt|Beistrich|Doppelpunkt)\b/i.exec(masked)
+      if (quotes.length === 1 && !endMark && markAnchor && /\beingefügt\b/i.test(head)) {
+        return { ops: places.map((t) => ({ kind: 'insertPhrase' as const, target: t, anchor: PUNCT_WORD[markAnchor[2]!.toLowerCase()]!, where: (markAnchor[1]!.toLowerCase() === 'vor' ? 'before' : 'after') as 'before' | 'after', text: quotes[0]!, eachUnit, wordBound: false })), reason: null, line }
       }
       // „In § 5 wird nach dem Wort ‚Absicht' ein Beistrich eingefügt": the
       // anchor is quoted, the text is a mark named in words (27.09.2026).
