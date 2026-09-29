@@ -143,7 +143,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
         name: 'Bundesgesetzblatt II',
         text: 'Das Ministerium erlässt die überarbeitete Verordnung und macht sie im Bundesgesetzblatt Teil II kund – erst damit gilt sie. Eine Regierungsvorlage und einen Beschluss des Nationalrats gibt es hier nicht; zwischen Fristende und Kundmachung ist von außen nichts zu sehen.',
         monitor:
-          'Die Kundmachung selbst: „Kundgemacht als BGBl. II Nr. 410/2024, 44 Tage nach Ende der Begutachtungsfrist“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 291 Verordnungsentwürfe seit 2024 gemessen findet der Abgleich 84,2 % der Kundmachungen, bei Fristen von vor mehr als einem Jahr 92,3 %. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen mehr als ein halbes Jahr.',
+          'Die Kundmachung selbst: „Kundgemacht als BGBl. II Nr. 410/2024, 44 Tage nach Ende der Begutachtungsfrist“ – auf der Seite des Entwurfs und als Stand in der Liste. Gefunden wird sie über Titel, Ressort und Datum, also nicht lückenlos: Über 291 Verordnungsentwürfe seit 2024 gemessen findet der Abgleich 84,2\u00a0% der Kundmachungen, bei Fristen von vor mehr als einem Jahr 92,3\u00a0%. Zwischen Fristende und Kundmachung liegen im Median 57 Tage, in einem von zehn Fällen mehr als ein halbes Jahr.',
         link: {
           to: 'https://www.ris.bka.gv.at/Bgbl-Auth/',
           label: 'Bundesgesetzblatt II im RIS',

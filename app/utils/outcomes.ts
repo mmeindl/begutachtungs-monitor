@@ -100,8 +100,8 @@ export function changeShareSentenceDe(gp: string | null | undefined, changed: nu
   const lead =
     changed === 0
       ? `Die Regierungsvorlage übernimmt die ${own} ${unitPlural} des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. `
-      : `Von den ${own} ${unitPlural} des Entwurfs hat die Regierungsvorlage ${changed === own ? `alle ${own}` : `${changed} (${Math.round((changed / own) * 100)} %)`} geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt. `
-  return `${lead}Zum Vergleich: In der ${r.gp}. Gesetzgebungsperiode lag dieser Anteil bei der Hälfte der Entwürfe zwischen ${r.p25} und ${r.p75} %.`
+      : `Von den ${own} ${unitPlural} des Entwurfs hat die Regierungsvorlage ${changed === own ? `alle ${own}` : `${changed} (${Math.round((changed / own) * 100)}\u00a0%)`} geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt. `
+  return `${lead}Zum Vergleich: In der ${r.gp}. Gesetzgebungsperiode lag dieser Anteil bei der Hälfte der Entwürfe zwischen ${r.p25} und ${r.p75}\u00a0%.`
 }
 
 /**

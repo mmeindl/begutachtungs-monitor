@@ -93,7 +93,7 @@ describe('GP-ended copy', () => {
 describe('changeShareSentenceDe (§12.38)', () => {
   it('states the count of the draft and the middle half of the period, not a verdict', () => {
     const s = changeShareSentenceDe('XXVII', 12, 21, 'Änderungsanordnungen')
-    expect(s).toContain('Von den 21 Änderungsanordnungen des Entwurfs hat die Regierungsvorlage 12 (57 %) geändert oder gestrichen')
+    expect(s).toContain('Von den 21 Änderungsanordnungen des Entwurfs hat die Regierungsvorlage 12 (57\u00a0%) geändert oder gestrichen')
     expect(s).toContain('bei der Hälfte der Entwürfe zwischen')
     expect(s).not.toMatch(/nur|kaum|erfolgreich|ignoriert|Wirkung/)
   })
