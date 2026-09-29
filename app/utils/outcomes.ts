@@ -132,7 +132,8 @@ export function tabledBeforeFristEnd(deadline: string | null | undefined, rvDate
  * The same count, but instead of the range: when the Vorlage came. Temporal,
  * never causal — it says the Frist was still running, not that the
  * Stellungnahmen were ignored or could not have reached the Ressort (45/ME's
- * Vorlage came five days before the Fristende, and much had arrived by then).
+ * Vorlage came five days before the Fristende, when three of its eleven
+ * Stellungnahmen had already arrived).
  *
  * `laterPair` names the comparison where the text moved next, if the draft
  * has one — the question a reader of this sentence is left with. It points
