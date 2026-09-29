@@ -77,7 +77,12 @@ Type=oneshot
 # The unit's own worst case, stated rather than inherited: the five --max-time
 # budgets below add up to 2.820 s, and deploy.sh blocks on this job.
 TimeoutStartSec=2900
-ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell
+# The first request waits for the port. `After=` orders this job behind the
+# app's START, not behind its LISTEN: after a hand-typed `systemctl restart`
+# the curl came at 16:56:15 and Node listened at 16:56:16 (29.09.2026,
+# status 7). deploy.sh only escaped it through its `sleep 2`. Ten seconds of
+# connection-refused retries cost nothing when the port is already open.
+ExecStart=/usr/bin/curl -fsS -o /dev/null --retry 10 --retry-connrefused --retry-delay 1 --max-time 600 http://127.0.0.1:3000/api/ris-map/aktuell
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/api/bgbl/teil2
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell
