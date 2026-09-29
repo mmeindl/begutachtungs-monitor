@@ -14,7 +14,7 @@
  * it does not say the draft failed.
  */
 import { RV_LATENCY_CONTEXT_DAYS } from './deadlines'
-import { formatDateDe } from '#shared/utils/format'
+import { formatDateDe, spanInDays } from '#shared/utils/format'
 
 export interface RvBaseRate {
   gp: string
@@ -95,13 +95,68 @@ export function changeShareRateFor(gp: string | null | undefined): ChangeShareRa
  */
 export function changeShareSentenceDe(gp: string | null | undefined, changed: number, own: number, unitPlural: string): string {
   const r = changeShareRateFor(gp)
+  return `${changeShareLeadDe(changed, own, unitPlural)}Zum Vergleich: In der ${r.gp}. Gesetzgebungsperiode lag dieser Anteil bei der Hälfte der Entwürfe zwischen ${r.p25} und ${r.p75}\u00a0%.`
+}
+
+/** How much of the draft the Vorlage changed — the half both sentences share. */
+function changeShareLeadDe(changed: number, own: number, unitPlural: string): string {
   // Zero in its own words: „keine davon" would have to decline with the noun
   // („keinen davon" for Paragraphen), a sentence without the count does not.
-  const lead =
-    changed === 0
-      ? `Die Regierungsvorlage übernimmt die ${own} ${unitPlural} des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. `
-      : `Von den ${own} ${unitPlural} des Entwurfs hat die Regierungsvorlage ${changed === own ? `alle ${own}` : `${changed} (${Math.round((changed / own) * 100)}\u00a0%)`} geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt. `
-  return `${lead}Zum Vergleich: In der ${r.gp}. Gesetzgebungsperiode lag dieser Anteil bei der Hälfte der Entwürfe zwischen ${r.p25} und ${r.p75}\u00a0%.`
+  return changed === 0
+    ? `Die Regierungsvorlage übernimmt die ${own} ${unitPlural} des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. `
+    : `Von den ${own} ${unitPlural} des Entwurfs hat die Regierungsvorlage ${changed === own ? `alle ${own}` : `${changed} (${Math.round((changed / own) * 100)}\u00a0%)`} geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt. `
+}
+
+/**
+ * Was the Regierungsvorlage tabled while the Begutachtung was still running
+ * — on or before the day its Frist ended?
+ *
+ * Then the period's range is the wrong yardstick. It was measured on drafts
+ * whose Vorlage came after the Begutachtung, and set beside a Vorlage the
+ * Stellungnahmen could not have shaped, „im Wortlaut" reads as input
+ * ignored — the blame reading the framing rule forbids (§4). Measured
+ * 29.09.2026: 7 of 91 drafts with a Vorlage in GP XXVIII (33, 45, 46, 92,
+ * 115, 116, 117/ME; median share 0 % against 60 % for the other 84), 1 of
+ * 296 in XXVII — so the XXVII range above is not skewed by them.
+ *
+ * The day of the Fristende counts: a Vorlage tabled that day cannot have
+ * taken in what arrived that day either. Same arithmetic as the spine's
+ * „noch vor Fristende" (`spine.ts`), so the two cannot disagree.
+ */
+export function tabledBeforeFristEnd(deadline: string | null | undefined, rvDate: string | null | undefined): boolean {
+  const days = spanInDays(deadline, rvDate)
+  return days !== null && days <= 0
+}
+
+/**
+ * The same count, but instead of the range: when the Vorlage came. Temporal,
+ * never causal — it says the Frist was still running, not that the
+ * Stellungnahmen were ignored or could not have reached the Ressort (45/ME's
+ * Vorlage came five days before the Fristende, and much had arrived by then).
+ *
+ * `laterPair` names the comparison where the text moved next, if the draft
+ * has one — the question a reader of this sentence is left with. It points
+ * at the control above rather than claiming why anything changed there.
+ */
+export function earlyVorlageSentenceDe(
+  changed: number,
+  own: number,
+  unitPlural: string,
+  dates: { arrivedAt: string | null; deadline: string; rvDate: string },
+  laterPair: string | null,
+): string {
+  const rv = formatDateDe(dates.rvDate)
+  const sinceStart = spanInDays(dates.arrivedAt, dates.rvDate)
+  const when =
+    sinceStart !== null && sinceStart < 0
+      ? `am ${rv}, noch bevor der Entwurf in Begutachtung ging`
+      : sinceStart === 0
+        ? `am ${rv}, am selben Tag, an dem der Entwurf in Begutachtung ging`
+        : spanInDays(dates.deadline, dates.rvDate) === 0
+          ? `am ${rv}, dem letzten Tag der Begutachtungsfrist`
+          : `am ${rv}, noch während der Begutachtung`
+  const next = laterPair ? ` Was danach am Text geändert wurde, zeigt der Vergleich ${laterPair}.` : ''
+  return `${changeShareLeadDe(changed, own, unitPlural)}Eingebracht wurde sie ${when} — die Frist für Stellungnahmen lief bis ${formatDateDe(dates.deadline)}.${next}`
 }
 
 /**

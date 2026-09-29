@@ -14,7 +14,7 @@
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { ownChangeShare } from '#shared/utils/changeShare'
-import { changeShareSentenceDe } from '~/utils/outcomes'
+import { changeShareSentenceDe, earlyVorlageSentenceDe, tabledBeforeFristEnd } from '~/utils/outcomes'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
@@ -30,7 +30,14 @@ import {
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
 
-const props = defineProps<{ gp: string; inr: number }>()
+const props = defineProps<{
+  gp: string
+  inr: number
+  /** The draft's own dates — they decide which sentence stands under ME→RV (`tabledBeforeFristEnd`). */
+  arrivedAt?: string | null
+  deadline?: string | null
+  rvDate?: string | null
+}>()
 
 const route = useRoute()
 const router = useRouter()
@@ -125,7 +132,24 @@ const changeShareNote = computed<string | null>(() => {
   if (pair.value.from !== 'me' || pair.value.to !== 'rv' || !data.value?.available) return null
   const share = ownChangeShare(data.value.stats)
   if (!share) return null
+  // A Vorlage tabled while the Frist still ran is not held against the
+  // range: that range was measured on Vorlagen that came after the
+  // Begutachtung (`tabledBeforeFristEnd`, 115/ME).
+  if (props.deadline && props.rvDate && tabledBeforeFristEnd(props.deadline, props.rvDate)) {
+    const dates = { arrivedAt: props.arrivedAt ?? null, deadline: props.deadline, rvDate: props.rvDate }
+    return earlyVorlageSentenceDe(share.changed, share.own, unitNoun(2), dates, laterPairLabel.value)
+  }
   return changeShareSentenceDe(props.gp, share.changed, share.own, unitNoun(2))
+})
+
+/** „Regierungsvorlage → Ausschussfassung": the Vorlage against the next text this draft has, as the select names it. */
+const laterPairLabel = computed<string | null>(() => {
+  const stations = data.value?.stations ?? []
+  const i = stations.findIndex((s) => s.id === 'rv')
+  const rv = stations[i]
+  const next = stations[i + 1]
+  if (!rv || !next || !isLawStationPair(rv.id, next.id)) return null
+  return `${rv.label} → ${next.label}`
 })
 
 /**

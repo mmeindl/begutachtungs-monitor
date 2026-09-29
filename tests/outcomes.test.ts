@@ -7,6 +7,8 @@ import {
   rvBaseRateSentenceDe,
   changeShareRateFor,
   changeShareSentenceDe,
+  earlyVorlageSentenceDe,
+  tabledBeforeFristEnd,
 } from '../app/utils/outcomes'
 import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
 import { GP_STARTS, gpEndedOn, romanToInt } from '../shared/utils/gp'
@@ -105,5 +107,43 @@ describe('changeShareSentenceDe (§12.38)', () => {
 
   it('holds a running period against the newest closed one', () => {
     expect(changeShareRateFor('XXVIII').gp).toBe('XXVII')
+  })
+})
+
+describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
+  it('counts the Fristende itself, not the day after, and nothing without both dates', () => {
+    expect(tabledBeforeFristEnd('2026-06-24', '2026-06-10')).toBe(true) // 115/ME
+    expect(tabledBeforeFristEnd('2026-06-24', '2026-06-24')).toBe(true)
+    expect(tabledBeforeFristEnd('2026-06-24', '2026-06-25')).toBe(false)
+    expect(tabledBeforeFristEnd(null, '2026-06-10')).toBe(false)
+    expect(tabledBeforeFristEnd('2026-06-24', null)).toBe(false)
+  })
+
+  const pair = 'Regierungsvorlage → Ausschussfassung'
+
+  it('115/ME: same day as the draft, the count kept, the range replaced by the date', () => {
+    const s = earlyVorlageSentenceDe(0, 8, 'Änderungsanordnungen', { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }, pair)
+    expect(s).toBe(
+      'Die Regierungsvorlage übernimmt die 8 Änderungsanordnungen des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. ' +
+      'Eingebracht wurde sie am 10.06.2026, am selben Tag, an dem der Entwurf in Begutachtung ging — die Frist für Stellungnahmen lief bis 24.06.2026. ' +
+      'Was danach am Text geändert wurde, zeigt der Vergleich Regierungsvorlage → Ausschussfassung.',
+    )
+  })
+
+  it('names the other three timings', () => {
+    const at = (arrivedAt: string, rvDate: string, deadline: string) =>
+      earlyVorlageSentenceDe(1, 20, 'Paragraphen', { arrivedAt, deadline, rvDate }, null)
+    expect(at('2026-03-25', '2026-03-24', '2026-04-09')).toContain('am 24.03.2026, noch bevor der Entwurf in Begutachtung ging') // 92/ME
+    expect(at('2025-09-15', '2025-09-24', '2025-09-29')).toContain('am 24.09.2025, noch während der Begutachtung') // 45/ME
+    expect(at('2025-09-15', '2025-09-29', '2025-09-29')).toContain('am 29.09.2025, dem letzten Tag der Begutachtungsfrist')
+  })
+
+  it('points at the next comparison only when there is one, and never says why', () => {
+    const dates = { arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' }
+    const without = earlyVorlageSentenceDe(1, 33, 'Änderungsanordnungen', dates, null)
+    expect(without).not.toContain('Was danach')
+    expect(without).toContain('1 (3\u00a0%) geändert oder gestrichen')
+    const s = earlyVorlageSentenceDe(0, 8, 'Paragraphen', dates, pair)
+    expect(s).not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
   })
 })

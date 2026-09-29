@@ -912,7 +912,14 @@ const ministryBadges = computed(() => {
                docs/architecture.md §4). Only
                once a Regierungsvorlage exists; before that there is nothing to
                hold the draft against. -->
-          <LawDiffSection v-if="data.enactment" :gp="data.gp" :inr="data.inr" />
+          <LawDiffSection
+            v-if="data.enactment"
+            :gp="data.gp"
+            :inr="data.inr"
+            :arrived-at="data.arrivedAt"
+            :deadline="data.deadline"
+            :rv-date="data.enactment.rvDate"
+          />
         </section>
 
         <!-- The station exists as soon as a Regierungsvorlage does, not only
