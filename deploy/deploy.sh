@@ -30,11 +30,13 @@ rsync -az deploy/bin/ "$SERVER:/usr/local/lib/begutachtungs-monitor/"
 # directory's owner too, so /etc/systemd/system itself is put back.
 ssh "$SERVER" "chmod +x /usr/local/lib/begutachtungs-monitor/*.sh \
   && chown -R root:root /usr/local/lib/begutachtungs-monitor \
-  && chown root:root /etc/systemd/system /etc/systemd/system/begutachtungs-monitor* \
+  && chown root:root /etc/systemd/system \
+  && chown -R root:root /etc/systemd/system/begutachtungs-monitor* \
   && chown -R app:app $APP_DIR \
   && systemctl daemon-reload \
   && systemctl enable --now --quiet begutachtungs-monitor-prewarm.timer \
   && systemctl enable --now --quiet begutachtungs-monitor-list81-snapshot.timer \
+  && systemctl enable --now --quiet begutachtungs-monitor-watchdog.timer \
   && systemctl restart begutachtungs-monitor"
 
 sleep 2

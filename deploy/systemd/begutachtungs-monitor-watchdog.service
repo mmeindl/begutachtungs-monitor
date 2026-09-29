@@ -1,0 +1,14 @@
+[Unit]
+Description=Begutachtungs-Monitor: restart the app when the draft list hangs, after writing a report
+After=begutachtungs-monitor.service
+
+[Service]
+Type=oneshot
+# Root, not `app`: it restarts units and signals the app's process.
+ExecStart=/usr/local/lib/begutachtungs-monitor/watchdog.sh
+# Its own state (the restart budget), not the app's directory: root writes it.
+StateDirectory=begutachtungs-monitor-watchdog
+# Two 60-s probes and the pause between them, the route map, the report, the
+# restart and its wait for the port — about three minutes at worst.
+TimeoutStartSec=300
+PrivateTmp=true

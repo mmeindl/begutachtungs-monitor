@@ -68,7 +68,7 @@ idempotent and safe to re-run:
 - **unattended-upgrades** — automatic security patches.
 - **1 GB swapfile** — headroom next to the 1 GB RAM.
 
-Two systemd timers come with [deploy.sh](deploy.sh) rather than with
+Three systemd timers come with [deploy.sh](deploy.sh) rather than with
 bootstrap.sh, because their unit files live in git
 ([deploy/systemd/](systemd/)) and are reinstalled on every deploy:
 
@@ -82,6 +82,16 @@ bootstrap.sh, because their unit files live in git
   (`docs/architecture.md` §13.3) and how many rows change per day at all.
   Started 24.09.2026 and planned for about two weeks;
   `deploy/bin/list81-snapshot.sh` says how to stop it.
+- **`begutachtungs-monitor-watchdog.timer`** — every five minutes, probes
+  `/api/drafts` locally. Two timeouts 30 s apart count as a hang: it logs
+  memory and which routes answer, has Node write a diagnostic report (the
+  drop-in `begutachtungs-monitor.service.d/diagnostics.conf` arms
+  `SIGUSR2`), then restarts the app and starts the prewarm. It does not judge
+  in the first ten minutes after a start or while the prewarm runs, ignores
+  HTTP errors (a restart does not help when Parliament is down), and stops
+  after three restarts in 24 hours — then its unit fails. Added after the
+  hang of 29.09.2026 (TODO.md § 5d); `deploy/bin/watchdog.sh` has the
+  reasoning.
 
 Nothing the site serves comes from disk. What does live in
 `/var/lib/begutachtungs-monitor` is the last-good Stellungnahmen fallback
@@ -102,6 +112,10 @@ VPS (the scripts are provider-agnostic).
 | App logs | `ssh root@85.235.66.11 journalctl -u begutachtungs-monitor -f` |
 | Timers: when do they fire | `ssh root@85.235.66.11 'systemctl list-timers begutachtungs-monitor-*'` |
 | list-81 snapshots: start the series | after installing the timer on a fresh box, once: `ssh root@85.235.66.11 'systemctl start begutachtungs-monitor-list81-snapshot.service'` — the timer itself only waits for its next slot |
+| Watchdog: did it act | `ssh root@85.235.66.11 'journalctl -u begutachtungs-monitor-watchdog --since -7d --no-pager \| grep -E "HANG\|RESTART\|GIVING UP\|route\|report"'` — silence means every probe answered |
+| Watchdog: read a report | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/reports/'`, then `scp` one and look at `libuv` (open handles) and `javascriptHeap`; kept 30 days |
+| Watchdog: after it gave up | fix the cause, then `ssh root@85.235.66.11 'rm /var/lib/begutachtungs-monitor-watchdog/restarts && systemctl reset-failed begutachtungs-monitor-watchdog'` |
+| Diagnostic report by hand | `ssh root@85.235.66.11 'kill -USR2 $(systemctl show -p MainPID --value begutachtungs-monitor)'` — does not stop the app; the file lands in `/var/lib/begutachtungs-monitor/reports/` |
 | list-81 snapshots: are they arriving | `ssh root@85.235.66.11 'ls -la /var/lib/begutachtungs-monitor/list81/'` — one file per day; a gap means the run failed, and `journalctl -u begutachtungs-monitor-list81-snapshot` says why |
 | list-81 snapshots: read the series | `rsync -az root@85.235.66.11:/var/lib/begutachtungs-monitor/list81/ .cache/list81/ && pnpm corpus:list81-drift` |
 | list-81 snapshots: stop collecting | `ssh root@85.235.66.11 'systemctl disable --now begutachtungs-monitor-list81-snapshot.timer'` — and take the `enable` line out of [deploy.sh](deploy.sh), or the next deploy turns it back on |

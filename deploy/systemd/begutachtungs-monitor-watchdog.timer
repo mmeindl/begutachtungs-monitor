@@ -1,0 +1,15 @@
+[Unit]
+Description=Begutachtungs-Monitor: probe the draft list every five minutes
+
+[Timer]
+# OnActiveSec starts the cycle when the timer itself is started (the first
+# deploy that brings it): OnUnitActiveSec counts from the service's last run
+# and never fires for a service that has not run yet, and OnBootSec has long
+# passed on a box that is up for weeks.
+OnBootSec=15min
+OnActiveSec=15min
+OnUnitActiveSec=5min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
