@@ -1,7 +1,13 @@
 <script setup lang="ts">
 /**
- * The top of a detail page: one meta row carrying identity, ressort and
- * urgency, then the title. Both detail pages have this anatomy.
+ * The top of a detail page: one meta row carrying identity and urgency, then
+ * the title. Both detail pages have this anatomy. The Ressort is not in the
+ * meta row since 30.09.2026 — it is written out and linked in each page's
+ * byline (`MinistryLinks`), where the code chip used to repeat it.
+ *
+ * `#source` is the provenance link, in the same row: it opens this very
+ * record upstream, so it stands with the identity rather than in the byline,
+ * which since 30.09.2026 carries only who sent the draft.
  *
  * `#identity` is where they differ and why it is a slot: a Ministerialentwurf
  * leads with its Geschäftszahl („Ministerialentwurf 132/ME"), a RIS record
@@ -16,22 +22,6 @@
  * to grow (refactor-plan.md §4.3).
  */
 defineProps<{
-  /**
-   * The ressorts that sent this draft, lead first — empty where RIS names
-   * none. A LIST since 23.09.2026: three Ministerialentwürfe of GP XXVII
-   * were sent by two ministries jointly, and the header named whichever of
-   * them upstream had returned first. Each gets its own badge, because each
-   * badge is a link into that Ressort's own list — one chip naming both
-   * could only lead to one of the two.
-   */
-  ministries: {
-    code: string
-    name: string
-    /** The filtered list this badge leads to — a different one per page. */
-    to: string
-    /** The badge's accessible name, which says which list that is. */
-    label: string
-  }[]
   /** ISO date, or null where upstream has none. */
   deadline: string | null
   active: boolean
@@ -41,31 +31,29 @@ defineProps<{
 
 <template>
   <header>
-    <div class="flex flex-wrap items-center gap-2">
-      <slot name="identity" />
-      <!-- Every Ressort gets a de-facto page for free: the filtered list
-           URL. Only here — cards are themselves links. -->
-      <NuxtLink
-        v-for="m in ministries"
-        :key="m.code"
-        :to="m.to"
-        :aria-label="m.label"
-        class="tap-target rounded"
-      >
-        <MinistryBadge
-          :code="m.code"
-          :name="m.name"
-          class="transition-colors hover:border-baseline hover:underline"
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <div class="flex flex-wrap items-center gap-2">
+        <slot name="identity" />
+        <!-- Only while it runs: the badge exists to carry urgency (tone +
+             "Noch 3 Tage"). Closed, it degrades to "Frist endete am …" — which
+             the card below states, better. -->
+        <DeadlineBadge
+          v-if="active"
+          :deadline="deadline"
+          :active="active"
         />
-      </NuxtLink>
-      <!-- Only while it runs: the badge exists to carry urgency (tone +
-           "Noch 3 Tage"). Closed, it degrades to "Frist endete am …" — which
-           the card below states, better. -->
-      <DeadlineBadge
-        v-if="active"
-        :deadline="deadline"
-        :active="active"
-      />
+      </div>
+      <!-- The record at its source, beside the identifier it resolves —
+           „135/ME" is Parliament's own number. Two groups under
+           `justify-between`, not `ml-auto` behind a breakpoint: while the
+           row fits, the link sits at its right end; once it wraps, it is
+           alone on its line and `space-between` starts a lone item at the
+           left. A breakpoint cannot know when the row wraps — between `sm`
+           and the width the row needs, it stranded the link at the right
+           edge. -->
+      <span v-if="$slots.source" class="text-sm">
+        <slot name="source" />
+      </span>
     </div>
     <!-- German compounds: "Elektrizitätswirtschaftsgesetz" at text-2xl is
          wider than a 320px viewport's content box, so the title hyphenates

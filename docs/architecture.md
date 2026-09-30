@@ -251,7 +251,6 @@ name has to stay globally unique.
 | `EntryList` | `entries: EntryView[]; ordered?: boolean; lead?: string` + slot `evidence` | **Every list of them** (§12.28): cards below `md`, from `md` up a sheet with a column header and rules, switched purely by CSS so both stand in the SSR HTML. `ordered` → `ol`, only where the order is the statement; `lead` names the first column where the rows are not drafts |
 | `EntryState` | `state: EntryState` | Zone 4: the state over what pins it down, as one box of two lines. One component for countdown, open Vorlagen window and every reached station — only a row someone can still act on is loud; everything closed is calm ink without pill or dot |
 | `DeadlineBadge` | `deadline: string\|null; active: boolean` | Deadline chip with text from `fristLabel()`; status hue in dot and wash, the text in ink tokens: ≤3 days critical, ≤7 serious, otherwise neutral, expired muted. **Color never without text** |
-| `MinistryBadge` | `code: string; name: string` | Ministry chip (code visible, full name as `title`/sr-only) |
 | `NewBadge` | – | „Neu" on a Begutachtung that began inside the last week (`isNewArrival`, `app/utils/deadlines.ts`); rendered by the call site's `v-if` and merging into the phrase that follows (§12.21) |
 | `SearchEvidence` | `hit?: Pick<BegutSearchHit, 'place'\|'designation'\|'snippet'\|'ministryOnly'>\|null` | The evidence under a full-text hit: the Fundstelle plus the sentence the word stands in (§12.31). No frame — it already stands inside the hit's row |
 

@@ -333,12 +333,12 @@ useSeoMeta({
 })
 
 /**
- * The Ressort chips of the header: the lead and every co-ressort, each with
- * its own link into that Ressort's list. Two of them only on a jointly
+ * The Ressorts of the byline: the lead and every co-ressort, each with its
+ * own link into that Ressort's list. Two of them only on a jointly
  * issued Entwurf — three drafts of GP XXVII
  * (`server/utils/parliament/draftList.ts`).
  */
-const ministryBadges = computed(() => {
+const ministryLinks = computed(() => {
   const d = data.value
   if (!d) return []
   return [{ code: d.ministryCode, name: d.ministryName }, ...d.coMinistries].map((m) => ({
@@ -362,11 +362,19 @@ const ministryBadges = computed(() => {
       <article>
         <DraftBackLink />
         <DraftHeader
-          :ministries="ministryBadges"
           :deadline="data.deadline"
           :active="data.active"
           :title="data.shortTitle ?? data.title"
         >
+          <!-- `link-inline`, underlined at rest (WCAG 1.4.1), and tap-target
+               for the 44px. The mid-page CTA stays the only door; this is
+               the receipt. -->
+          <template #source>
+            <ExternalLink
+              :href="data.parliamentUrl"
+              class="link-inline tap-target"
+            >Auf parlament.gv.at ansehen</ExternalLink>
+          </template>
           <template #identity>
             <!-- The type word leads, exactly as on the row — and the row's
                  reasoning (`EntryItem.vue`) always held here too: „132/ME"
@@ -391,42 +399,12 @@ const ministryBadges = computed(() => {
             In der öffentlichen Debatte:
             <span class="text-ink">{{ aliases.map((a) => `„${a}“`).join(' · ') }}</span>
           </p>
-          <!-- Eingelangt/Frist deliberately absent: the bar below states
-               both, and the pill above already repeats the Frist. What is left
-               is the one fact no other surface carries — plus the provenance
-               link, which belongs next to the item's identity rather than
-               floating mid-page as an action it isn't. Present in both
-               lifecycle states: the mid-page CTA stays the only door, this is
-               the receipt. -->
-          <p
-            class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary"
-          >
-            <!-- The Ressort written out, as the Verordnung page already does.
-                 Above there is only the code in the badge, and for sighted
-                 users on touch devices that resolves nothing: the full name
-                 sits there in `title` and `sr-only`, i.e. behind a hover the
-                 phone does not have. Here it has room, because this is a
-                 prose line. -->
-            <!-- „und", not the „·" of this line: the dot is this line's
-                 separator between facts (Ressort · Übermittelt von · Link),
-                 and two ressorts joined by it would read as two facts rather
-                 than as one joint submission. Three drafts of GP XXVII have
-                 two (`server/utils/parliament/draftList.ts`); a prose line
-                 has the room to say so. -->
-            <span>{{ [data.ministryName, ...data.coMinistries.map((m) => m.name)].join(' und ') }}</span>
-            <span aria-hidden="true">·</span>
-            <template v-if="data.invitedBy">
-              <span>Übermittelt von {{ data.invitedBy }}</span>
-              <span aria-hidden="true">·</span>
-            </template>
-            <!-- `linkClasses`, i.e. underlined at rest: sharing a line with
-                 body text of the same size, colour alone would not mark it
-                 (WCAG 1.4.1) — the standalone styling it wore mid-page no
-                 longer applies. tap-target restores the 44px it had there. -->
-            <ExternalLink
-              :href="data.parliamentUrl"
-              class="link-inline tap-target"
-            >Auf parlament.gv.at ansehen</ExternalLink>
+          <!-- One sentence about who sent the draft: the Ressort and the
+               Minister are one fact. Eingelangt/Frist stay absent — the bar
+               below states both, the pill above repeats the Frist — and the
+               provenance link stands in the identity row (`#source`). -->
+          <p class="mt-2 text-sm text-ink-secondary">
+            <MinistryLinks :ministries="ministryLinks" /><template v-if="data.invitedBy">, übermittelt von {{ data.invitedBy }}</template>
           </p>
         </DraftHeader>
 

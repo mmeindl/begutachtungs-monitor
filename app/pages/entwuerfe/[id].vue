@@ -132,36 +132,12 @@ const documents = computed(() => {
            slot holds the type word where a draft holds its Geschäftszahl —
            these records have none, and the type is what identifies them to a
            reader. -->
-      <!-- One Stelle per RIS record — the joint submission of two ressorts
-           exists only in list 81, so this list never holds more than one. -->
       <DraftHeader
-        :ministries="
-          data.ministryCode
-            ? [{
-              code: data.ministryCode,
-              name: data.ministryName ?? data.ministryCode,
-              to: `/entwuerfe?art=verordnung&ministry=${data.ministryCode}`,
-              label: `Alle Verordnungsentwürfe des Ministeriums ${data.ministryName} anzeigen`,
-            }]
-            : []
-        "
         :deadline="data.deadline"
         :active="data.active"
         :title="data.title"
       >
-        <template #identity>
-          <span class="text-sm font-medium text-ink-muted">
-            {{ RIS_KIND_LABEL[data.kind] }}
-          </span>
-        </template>
-        <!-- The long title only when it says more than the heading already
-             does; on a Verordnung it is where the subject matter lives. -->
-        <p v-if="data.longTitle" class="mt-1 max-w-prose text-sm text-ink-secondary">
-          {{ data.longTitle }}
-        </p>
-        <p class="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary">
-          <span>{{ data.ministryName }}</span>
-          <span aria-hidden="true">·</span>
+        <template #source>
           <!-- `link-inline`, i.e. the same link as „Auf parlament.gv.at
                ansehen" on the draft page — this one was hand-rolled and had
                every part of it EXCEPT the colour, so the page's one way out
@@ -172,6 +148,31 @@ const documents = computed(() => {
             :href="data.risUrl"
             class="link-inline tap-target"
           >Im RIS ansehen</ExternalLink>
+        </template>
+        <template #identity>
+          <span class="text-sm font-medium text-ink-muted">
+            {{ RIS_KIND_LABEL[data.kind] }}
+          </span>
+        </template>
+        <!-- The long title only when it says more than the heading already
+             does; on a Verordnung it is where the subject matter lives. -->
+        <p v-if="data.longTitle" class="mt-1 max-w-prose text-sm text-ink-secondary">
+          {{ data.longTitle }}
+        </p>
+        <!-- Who sent it, as on the draft page. One Stelle per RIS record —
+             the joint submission of two ressorts exists only in list 81. -->
+        <p v-if="data.ministryCode" class="mt-2 text-sm text-ink-secondary">
+          <MinistryLinks
+            :ministries="[{
+              code: data.ministryCode,
+              name: data.ministryName ?? data.ministryCode,
+              to: `/entwuerfe?art=verordnung&ministry=${data.ministryCode}`,
+              label: `Alle Verordnungsentwürfe des Ministeriums ${data.ministryName ?? data.ministryCode} anzeigen`,
+            }]"
+          />
+        </p>
+        <p v-else-if="data.ministryName" class="mt-2 text-sm text-ink-secondary">
+          Vom {{ data.ministryName }}
         </p>
       </DraftHeader>
 
