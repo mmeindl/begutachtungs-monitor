@@ -119,7 +119,7 @@ interface Route {
  * Fall, der KEIN 500 sein darf.
  */
 const ROUTES: Route[] = [
-  { path: '/', marker: '<title>Aktuell · Begutachtungs-Monitor</title>' },
+  { path: '/', marker: '<title>Begutachtungs-Monitor · Laufende Begutachtungen in Österreich</title>' },
   { path: '/entwuerfe', marker: '<title>Entwürfe · Begutachtungs-Monitor</title>' },
   // Eine abgeschlossene Periode mit Stationsfilter — die andere Hälfte der
   // Liste, und die, die ohne Stationskarte anders rendert (§12.27).
