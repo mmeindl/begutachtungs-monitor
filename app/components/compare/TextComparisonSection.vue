@@ -20,6 +20,7 @@ import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
+import { formatDateDe } from '#shared/utils/format'
 import {
   annexCheckNote,
   annexDoubtfulNote,
@@ -98,7 +99,7 @@ function consolidatedFor(law: string | null, para: string | null): ConsolidatedP
   return consolidatedByKey.value.get(explanationKey(law, id)) ?? consolidatedByKey.value.get(`*#${id}`) ?? null
 }
 
-/** How many §§ the Lesefassung carries — for the sentence above the list. */
+/** How many §§ the Lesefassung carries — for the credit line at the foot. */
 const consolidatedShown = computed(() => consolidated.value?.paragraphs.length ?? 0)
 
 /** The passages, lookupable by (law, Paragraph). */
@@ -388,7 +389,12 @@ const loadAnnouncement = computed(() => {
  * `app/utils/annexNotes.ts`, where they can be tested against a small
  * response object. They are functions of the response and of nothing
  * else. */
-const checkNote = computed(() => annexCheckNote(data.value?.verification ?? null))
+const checkNote = computed(() => annexCheckNote(data.value?.verification ?? null, data.value?.readFrom ?? null))
+/** Which version of the law the check measured against — provenance, so it sits in the credits. */
+const checkAsOf = computed(() => {
+  const asOf = data.value?.verification?.asOf
+  return asOf ? formatDateDe(asOf) : null
+})
 const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
 const doubtfulNote = computed(() =>
   annexDoubtfulNote(data.value?.verification?.doubtfulLaws ?? [], data.value?.readFrom ?? null),
@@ -436,70 +442,45 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            source it concerns. The provenance itself is not dropped — it must
            never sit behind a link.
 
-           What stays on top is the caveat: on the PDF path more than the
+           What stays on top is the caveat — since 30.09.2026 as a fragment
+           of the status line below: on the PDF path more than the
            marking is ours — RIS publishes the annex only as an image, the
            row pairing is inferred. That is not a provenance note but the
            statement that what follows may be wrong; it belongs before the
            comparison, not under it. That the text was read from the PDF is
            now said by the credit line itself
            (`textComparisonService`: „aus dem PDF gelesen"). -->
-      <!-- The three preliminary notes as one group: `space-y-3` sets the space
-           BETWEEN the paragraphs that exist and gives the first none —
-           whichever one that happens to be. Each used to carry its own
-           conditional top margin, and which is first depends on `readFrom`
-           and `boundaryNote`. -->
+      <!-- What stands above the comparison since 30.09.2026: one status line,
+           and below it only warnings that are specific to THIS draft and rare.
+           Until then four paragraphs stood here — a PDF caveat, the check
+           result with every withheld cause, and an announcement of the
+           Lesefassung — before the reader reached what they came for. The
+           causes stand at each withheld block, the Stichtag and the
+           Lesefassung's denominator in the credits at the foot, the method on
+           /so-funktionierts (`annexCheckNote` says what moved where).
+
+           The line is never empty: a comparison nothing could be checked in
+           says so rather than falling silent, which reads as a clean bill.
+           `space-y-3` spaces whichever notes exist and gives the first none. -->
       <div class="space-y-3">
-        <p v-if="data.readFrom === 'pdf'" class="text-sm text-ink-secondary">
-          Welche Zeile links zu welcher Zeile rechts gehört, haben wir aus dem
-          Seitenlayout des PDF erschlossen — die Zuordnung kann daneben liegen.
-          <!-- And where the layout could not be vouched for at all, the page
-               says which part of the annex is missing rather than showing a
-               comparison with a silent hole in it. -->
-          <template v-if="droppedPagesNote"> {{ droppedPagesNote }}</template>
+        <p class="text-sm text-ink-secondary">
+          {{ checkNote }} ·
+          <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir prüfen</NuxtLink>
         </p>
+
+        <!-- Finding and doubt stay together: `doubtfulNote` elaborates the
+             line above it. -->
+        <p v-if="doubtfulNote" class="text-sm text-ink-secondary">{{ doubtfulNote }}</p>
+
+        <!-- Where the layout could not be vouched for at all, the page says
+             which part of the annex is missing rather than showing a
+             comparison with a silent hole in it. -->
+        <p v-if="droppedPagesNote" class="text-sm text-ink-secondary">{{ droppedPagesNote }}</p>
 
         <!-- Several laws in one draft, and the annex does not say where one
              ends. Shown undivided, and said so: dividing it wrongly would put
              one law's § 5 under another law's name. -->
         <p v-if="data.boundaryNote" class="text-sm text-ink-secondary">{{ data.boundaryNote }}</p>
-
-        <!-- What the RIS check made of the annex. Stated rather than implied:
-             the reader is looking at the ministry's own text, and how much of
-             it we could hold against the standing law is part of reading it.
-             Always present — a comparison nothing could be checked in says so
-             rather than falling silent, which reads as a clean bill.
-
-             Finding and doubt stay together: `doubtfulNote` elaborates the
-             sentence above it and therefore sits closer to that than to
-             anything else. -->
-        <div>
-          <p class="text-sm text-ink-secondary">
-            {{ checkNote }}
-            <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir prüfen</NuxtLink>
-          </p>
-          <p v-if="doubtfulNote" class="mt-2 text-sm text-ink-secondary">{{ doubtfulNote }}</p>
-        </div>
-
-        <!-- The Lesefassung's balance, here rather than under a list of its
-             own (docs/architecture.md §12.12a). Two jobs in one sentence: it
-             announces that some §§ carry a third disclosure — otherwise only
-             whoever clicks by chance finds it — and it names the denominator.
-             Without that, a handful of expandable Paragraphen would read as
-             „bei den anderen bleibt alles beim Alten", the one statement that
-             may never stand here (§12.27).
-
-             Only when there is something to announce: where the gate shows no
-             Paragraph at all — the more common case — this sentence stays
-             silent instead of reporting on a section that does not exist on
-             this page. -->
-        <p v-if="consolidatedShown > 0" class="max-w-prose text-sm text-ink-secondary">
-          Bei {{ consolidatedShown }} von {{ consolidated?.touched ?? consolidatedShown }}
-          {{ (consolidated?.touched ?? consolidatedShown) === 1 ? 'geänderten Paragraph' : 'geänderten Paragraphen' }}
-          steht unten auch, wie die Bestimmung danach ganz lautet — der geltende
-          Text mit den Anweisungen dieses Entwurfs, soweit die Gegenüberstellung
-          des Ressorts dasselbe Ergebnis trägt. Wo das fehlt, ist der Paragraph
-          nicht unverändert, sondern ungeprüft.
-        </p>
       </div>
 
       <!-- Same toolbar as the § comparison, same order, so the two sections
@@ -742,6 +723,19 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
              has a licence and a Fundstelle of its own. Naming it here is the
              same rule as in the section before, only that it now belongs to a
              layer INSIDE this section. -->
+        <!-- The Stichtag of the RIS check: not a method but a statement
+             about THIS check — which version of the law was measured
+             against. Moved here from the status line on 30.09.2026. -->
+        <span v-if="checkAsOf">RIS-Abgleich: Stand {{ checkAsOf }} (Beginn der Begutachtungsfrist)</span>
+        <!-- The Lesefassung's denominator (docs/architecture.md §12.12a):
+             without it, a handful of expandable Paragraphen could read as
+             „bei den anderen bleibt alles beim Alten" (§12.27). It stood as
+             a paragraph above the comparison until 30.09.2026; each
+             disclosure carries its own caveat, so the count is what remains. -->
+        <span v-if="consolidatedShown > 0">
+          Lesefassung bei {{ consolidatedShown }} von {{ consolidated?.touched ?? consolidatedShown }}
+          {{ (consolidated?.touched ?? consolidatedShown) === 1 ? 'geänderten Paragraph' : 'geänderten Paragraphen' }}
+        </span>
         <template v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl">
           <span>Geltender Text (CC BY 4.0, RIS):</span>
           <ExternalLink :href="consolidated.paragraphs[0]!.risUrl!" class="text-accent-deep hover:underline">Konsolidierte Fassung im RIS</ExternalLink>

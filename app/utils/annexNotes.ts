@@ -14,109 +14,64 @@
  * so first.
  */
 import type { AnnexWithheldCause, TextComparisonResponse } from '#shared/types'
-import { formatDateDe } from '#shared/utils/format'
 
 type Verification = TextComparisonResponse['verification']
 type ReadFrom = TextComparisonResponse['readFrom']
 
-/** "bei einem", "bei 3" — the subject of each clause stays singular either way. */
-function atCount(n: number): string {
-  return n === 1 ? 'bei einem' : `bei ${n}`
-}
-
 /**
- * "3 Paragraphen werden nicht gezeigt: bei einem …, bei zwei …" — the total
- * and what stands behind it.
+ * What the check found, as one status line above the comparison — counts
+ * only, joined by „ · ".
  *
- * The withheld count is split by cause, because "the current version is not
- * in RIS like that" and "it shows text as new that already applies" are two
- * different findings and only the first is about the left column. The split
- * sums to the total by construction (`checkAnnexRows`), and a cause with a
- * count of zero gets no clause.
+ * **Short since 30.09.2026.** Until then this was a sentence of up to five
+ * clauses: the Stichtag, every withheld § with its cause, and — beside it —
+ * a PDF caveat and a paragraph announcing the Lesefassung. Four paragraphs
+ * stood between the heading and the diff. What moved where:
+ *
+ * - **The causes** stand at each withheld block (`annexWithheldText`,
+ *   `annexWithheldBlame`), which is the only place a cause means anything.
+ *   The count stays here: in a collapsed group that block is not visible, and
+ *   the top line is then the only place the reader learns something is
+ *   missing.
+ * - **The Stichtag** is provenance — which version of the law was measured
+ *   against — and sits in the section's credits since then.
+ * - **The PDF caveat** shrinks to a fragment. It stays at the top, because it
+ *   says what follows may be our misreading; the long form of whose reading
+ *   it may be stands at every withheld block and on /so-funktionierts.
+ *
+ * The nouns are the ones /so-funktionierts#gegenueberstellung explains:
+ * „nicht gezeigt" and „nicht geprüft".
+ *
+ * **Never empty while the comparison is shown.** Silence on a page that
+ * otherwise reports its checks reads as „checked, nothing to report" — 21
+ * drafts of GP XXVIII until 2026-09-10. `notRunReason` is the server's own
+ * fragment for that case (`REASON_*` in `server/utils/annex/verdict.ts`),
+ * written to follow a colon.
+ *
+ * `rowsWithoutParagraph` is the only quantity that counts rows, not §§:
+ * changes the annex attributes to no § at all, so no verdict can reach them.
+ * Printed only when there are any — a clause about an empty set is noise.
  */
-export function annexWithheldClause(total: number, by: Record<AnnexWithheldCause, number>): string {
-  const head = total === 1 ? 'ein Paragraph wird nicht gezeigt' : `${total} Paragraphen werden nicht gezeigt`
-  const causes: string[] = []
-  if (by.standing > 0) causes.push(`${atCount(by.standing)} steht die geltende Fassung so nicht im RIS`)
-  if (by.alreadyStanding > 0) causes.push(`${atCount(by.alreadyStanding)} zeigt die vorgeschlagene Fassung Text als neu, der schon gilt`)
-  if (by.notInDraft > 0) {
-    // "sie" only where the clause before it named the vorgeschlagene Fassung.
-    const subject = by.alreadyStanding > 0 ? 'sie' : 'die vorgeschlagene Fassung'
-    causes.push(`${atCount(by.notInDraft)} enthält ${subject} Text, den der Entwurf für diese Paragraphen nicht anordnet`)
-  }
-  return causes.length > 0 ? `${head}: ${causes.join(', ')}` : head
-}
-
-/**
- * What the check found, in two sentences — and, where it found nothing, that
- * it found nothing.
- *
- * **Both columns are held to something (2026-09-10).** The left one claims to
- * be the law in force and RIS holds that text independently; the right one
- * must not show as new what already stands in the §, and what it does show as
- * new has to occur in the draft's own Gesetzestext
- * (`server/utils/annex/verdict.ts`). Saying
- * so is not a disclaimer — it is the difference between a comparison the
- * reader can rely on and one they cannot, and the count of what was withheld
- * is the honest part of it.
- *
- * **Never empty while the comparison is shown.** Until 2026-09-10 this fell
- * silent whenever no § could be judged — 21 drafts of GP XXVIII — and silence
- * on a page that otherwise reports its checks reads as "checked, nothing to
- * report". `notRunReason` is the server's own fragment for that case
- * (`REASON_*` in `server/utils/annex/verdict.ts`, lower-case, joined by
- * "; "), written to follow a colon.
- *
- * **Units, twice over.** `withheldParagraphs` and `uncheckedParagraphs` count
- * §§; the notice inside a block counts rows ("2 Änderungen hier nicht
- * gezeigt"). Both nouns therefore appear here explicitly — "3 Paragraphen
- * werden nicht gezeigt" against "2 Änderungen" — rather than the earlier
- * "Stellen", which read as rows and counted §§. `rowsWithoutParagraph` is the
- * third quantity and the only one that really is rows: changes the annex
- * attributes to no § at all, so no verdict can reach them. It is named as
- * changes, and printed only when there are any — for most drafts it is zero,
- * and a clause about an empty set is noise.
- *
- * §§ that could not be checked are counted, never as a fault: a draft
- * creating new law has no standing text to check against, and only §§ that
- * actually show a change are counted at all (`checkAnnexRows`).
- */
-export function annexCheckNote(v: Verification): string {
+export function annexCheckNote(v: Verification, readFrom: ReadFrom = null): string {
+  const parts: string[] = []
   // Null verification with `available: true` is not a state the server
   // produces; if it ever did, the honest reading is "no check happened".
   if (!v || v.judged === 0) {
     const why = v?.notRunReason
-    const head = why
-      ? `Nichts an dieser Gegenüberstellung konnte gegen den geltenden Text im RIS geprüft werden: ${why}`
-      : 'Diese Gegenüberstellung wurde nicht gegen den geltenden Text im RIS geprüft'
-    // Rare but reachable: no left column was judgeable, and a right-column
-    // rule withheld a § all the same — an annex that only inserts §§ and puts
-    // text into one that the draft never wrote. Saying "nothing could be
-    // checked" while quietly dropping a § would be the silence this sentence
-    // exists to end.
-    const withheld = v && v.withheldParagraphs > 0 ? `; ${annexWithheldClause(v.withheldParagraphs, v.withheldByCause)}` : ''
-    return `${head}${withheld}.`
+    parts.push(why ? `Nicht gegen das geltende Recht im RIS geprüft: ${why}` : 'Nicht gegen das geltende Recht im RIS geprüft')
+  } else {
+    parts.push(`${v.verified} von ${v.judged} geprüften Paragraphen halten dem geltenden Recht im RIS stand`)
   }
-  /* THE RESULT ONLY, since 18.09.2026 — no longer the method.
-   *
-   * The sentence „Geprüft wird beides: die geltende Fassung gegen das RIS
-   * Bundesrecht …" stood here word for word on every draft page, above the
-   * very thing the reader had come for, and it stands in more detail on
-   * /so-funktionierts#gegenueberstellung anyway. The link „Wie wir prüfen"
-   * has always closed this paragraph and leads exactly there.
-   *
-   * The Stichtag stays: it is not a method but a statement about THIS check
-   * — which version of the law was measured against. */
-  const asOf = v.asOf ? ` (Stand ${formatDateDe(v.asOf)}, dem Beginn der Begutachtungsfrist)` : ''
-  const parts = [`${v.verified} von ${v.judged} geprüften Paragraphen halten dem geltenden Recht im RIS stand${asOf}`]
-  if (v.withheldParagraphs > 0) parts.push(annexWithheldClause(v.withheldParagraphs, v.withheldByCause))
-  if (v.uncheckedParagraphs > 0) {
-    parts.push(`${v.uncheckedParagraphs} ${v.uncheckedParagraphs === 1 ? 'Paragraph mit Änderungen ließ' : 'Paragraphen mit Änderungen ließen'} sich nicht prüfen`)
+  // Also where nothing could be judged: an annex that only inserts §§ can
+  // still put text into one the draft never wrote, and a right-column rule
+  // withholds it. „Nicht geprüft" while quietly dropping a § would be the
+  // silence this line exists to end.
+  if (v && v.withheldParagraphs > 0) parts.push(`${v.withheldParagraphs} nicht gezeigt`)
+  if (v && v.judged > 0 && v.uncheckedParagraphs > 0) parts.push(`${v.uncheckedParagraphs} nicht geprüft`)
+  if (v && v.rowsWithoutParagraph > 0) {
+    parts.push(`${v.rowsWithoutParagraph} ${v.rowsWithoutParagraph === 1 ? 'Änderung' : 'Änderungen'} ohne Paragraphenangabe, nicht geprüft`)
   }
-  if (v.rowsWithoutParagraph > 0) {
-    parts.push(`dazu ${v.rowsWithoutParagraph} ${v.rowsWithoutParagraph === 1 ? 'gezeigte Änderung ohne Paragraphenangabe' : 'gezeigte Änderungen ohne Paragraphenangabe'}, ebenfalls ungeprüft`)
-  }
-  return `${parts.join('; ')}.`
+  if (readFrom === 'pdf') parts.push('Zeilenzuordnung aus dem PDF erschlossen, ohne Gewähr')
+  return parts.join(' · ')
 }
 
 /**

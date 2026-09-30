@@ -5,7 +5,6 @@ import {
   annexDoubtfulNote,
   annexDroppedPagesNote,
   annexWithheldBlame,
-  annexWithheldClause,
   annexWithheldText,
 } from '../app/utils/annexNotes'
 
@@ -29,14 +28,12 @@ describe('annexCheckNote', () => {
   it('never falls silent — a comparison nothing could be checked in says so', () => {
     // Until 2026-09-10 this was empty for 21 drafts of GP XXVIII, and silence
     // on a page that otherwise reports its checks reads as a clean bill.
-    expect(annexCheckNote(null)).toBe(
-      'Diese Gegenüberstellung wurde nicht gegen den geltenden Text im RIS geprüft.',
-    )
+    expect(annexCheckNote(null)).toBe('Nicht gegen das geltende Recht im RIS geprüft')
   })
 
   it('prints the server’s own reason after a colon', () => {
     expect(annexCheckNote(v({ judged: 0, notRunReason: 'im RIS fehlt der Beginn der Begutachtungsfrist' }))).toBe(
-      'Nichts an dieser Gegenüberstellung konnte gegen den geltenden Text im RIS geprüft werden: im RIS fehlt der Beginn der Begutachtungsfrist.',
+      'Nicht gegen das geltende Recht im RIS geprüft: im RIS fehlt der Beginn der Begutachtungsfrist',
     )
   })
 
@@ -50,67 +47,40 @@ describe('annexCheckNote', () => {
           verified: 0,
           withheldParagraphs: 1,
           withheldByCause: { standing: 0, alreadyStanding: 0, notInDraft: 1 },
+          uncheckedParagraphs: 4,
         }),
       ),
-    ).toBe(
-      'Diese Gegenüberstellung wurde nicht gegen den geltenden Text im RIS geprüft; ein Paragraph wird nicht gezeigt: bei einem enthält die vorgeschlagene Fassung Text, den der Entwurf für diese Paragraphen nicht anordnet.',
-    )
+    ).toBe('Nicht gegen das geltende Recht im RIS geprüft · 1 nicht gezeigt')
   })
 
-  it('states the result and, with a Stichtag, what it was measured against', () => {
-    expect(annexCheckNote(v({ judged: 32, verified: 30, asOf: '2026-08-15' }))).toBe(
-      '30 von 32 geprüften Paragraphen halten dem geltenden Recht im RIS stand (Stand 15.08.2026, dem Beginn der Begutachtungsfrist).',
+  it('counts, and leaves the causes and the Stichtag to the block and the credits', () => {
+    const note = annexCheckNote(
+      v({
+        judged: 32,
+        verified: 28,
+        asOf: '2026-08-15',
+        withheldParagraphs: 3,
+        withheldByCause: { standing: 1, alreadyStanding: 2, notInDraft: 0 },
+        uncheckedParagraphs: 1,
+        rowsWithoutParagraph: 2,
+      }),
     )
+    expect(note).toBe(
+      '28 von 32 geprüften Paragraphen halten dem geltenden Recht im RIS stand · 3 nicht gezeigt · ' +
+      '1 nicht geprüft · 2 Änderungen ohne Paragraphenangabe, nicht geprüft',
+    )
+    expect(note).not.toContain('15.08.2026')
   })
 
-  it('counts §§ and rows in their own nouns, in one sentence', () => {
-    expect(
-      annexCheckNote(
-        v({
-          judged: 32,
-          verified: 28,
-          withheldParagraphs: 3,
-          withheldByCause: { standing: 1, alreadyStanding: 2, notInDraft: 0 },
-          uncheckedParagraphs: 1,
-          rowsWithoutParagraph: 2,
-        }),
-      ),
-    ).toBe(
-      '28 von 32 geprüften Paragraphen halten dem geltenden Recht im RIS stand; ' +
-      '3 Paragraphen werden nicht gezeigt: bei einem steht die geltende Fassung so nicht im RIS, ' +
-      'bei 2 zeigt die vorgeschlagene Fassung Text als neu, der schon gilt; ' +
-      '1 Paragraph mit Änderungen ließ sich nicht prüfen; ' +
-      'dazu 2 gezeigte Änderungen ohne Paragraphenangabe, ebenfalls ungeprüft.',
+  it('names the PDF pairing as ours', () => {
+    expect(annexCheckNote(v({ judged: 5, verified: 5 }), 'pdf')).toBe(
+      '5 von 5 geprüften Paragraphen halten dem geltenden Recht im RIS stand · Zeilenzuordnung aus dem PDF erschlossen, ohne Gewähr',
     )
   })
 
   it('says nothing about an empty set', () => {
-    const note = annexCheckNote(v({ judged: 5, verified: 5 }))
-    expect(note).toBe('5 von 5 geprüften Paragraphen halten dem geltenden Recht im RIS stand.')
-    expect(note).not.toContain('ohne Paragraphenangabe')
-    expect(note).not.toContain('nicht gezeigt')
-  })
-})
-
-describe('annexWithheldClause', () => {
-  it('names only the causes that fired', () => {
-    expect(annexWithheldClause(1, { standing: 1, alreadyStanding: 0, notInDraft: 0 })).toBe(
-      'ein Paragraph wird nicht gezeigt: bei einem steht die geltende Fassung so nicht im RIS',
-    )
-  })
-
-  it('says „sie" only where the clause before it named the vorgeschlagene Fassung', () => {
-    expect(annexWithheldClause(2, { standing: 0, alreadyStanding: 1, notInDraft: 1 })).toContain(
-      'bei einem enthält sie Text',
-    )
-    expect(annexWithheldClause(1, { standing: 0, alreadyStanding: 0, notInDraft: 1 })).toContain(
-      'bei einem enthält die vorgeschlagene Fassung Text',
-    )
-  })
-
-  it('states the total alone when no cause was recorded', () => {
-    expect(annexWithheldClause(3, { standing: 0, alreadyStanding: 0, notInDraft: 0 })).toBe(
-      '3 Paragraphen werden nicht gezeigt',
+    expect(annexCheckNote(v({ judged: 5, verified: 5 }), 'table')).toBe(
+      '5 von 5 geprüften Paragraphen halten dem geltenden Recht im RIS stand',
     )
   })
 })
