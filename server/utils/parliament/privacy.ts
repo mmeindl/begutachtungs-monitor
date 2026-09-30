@@ -479,11 +479,37 @@ const ON_BEHALF_RE = /(?:^|[\s,;])(?:vertreten\s+durch|im\s+Auftrag|i\.\s?A\.|z\
  * Konzernrecht und …" is a function, not a name.
  */
 const FUNCTION_BEFORE_NAME_RE =
-  /(?:^|[\s,;])\S*?(?:[Ll]andesr[aä]t|[Ss]tadtr[aä]t|[Bb]ürgermeister|[Oo]bmann|[Oo]bfrau|[Vv]orsitzende|[Ss]precher|[Ll]eiter|[Pp]räsident|[Gg]eschäftsführer|[Dd]irektor|[Rr]ektor)(?:in|innen|Innen|en|e|s|r|n)?\s+(\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+)/gu
+  /(?:^|[\s,;])\S*?(?:[Ll]andesr[aä]t|[Ss]tadtr[aä]t|[Bb]undesr[aä]t|[Nn]ationalr[aä]t|[Gg]emeinder[aä]t|[Aa]bgeordnete|[Mm]inister|[Ss]taatssekretär|[Bb]ürgermeister|[Oo]bmann|[Oo]bfrau|[Vv]orsitzende|[Ss]precher|[Ll]eiter|[Pp]räsident|[Gg]eschäftsführer|[Dd]irektor|[Rr]ektor)(?:in|innen|Innen|en|e|s|r|n)?\s+(\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+)/gu
+
+/**
+ * A person named NEXT TO an organisation in its own head, joined by „und"
+ * or „&" and placed by an affiliation in brackets: „<Verein …> und <Vorname
+ * Nachname> (TU Graz)". No title, no function word, no comma or semicolon
+ * of its own — no other rule reads that position (measured 30.09.2026: one
+ * string over GP XXVI–XXVIII, published whole).
+ *
+ * The bracket is what makes it decidable, and the rule needs it. Two
+ * capitalised words after „und" are, in this data, overwhelmingly an
+ * organisation's own words: read without the bracket, the same test cut 70
+ * published names over the three periods to catch this one among them —
+ * „Bereich Bildung und Gesellschaft", „Klinische Chemie", „Globale
+ * Gerechtigkeit" — and hid five. An untitled name there without a bracket
+ * stays a shape no rule reads; `scripts/audit/classifier.ts` looks for it
+ * with first names.
+ */
+const JOINT_PERSON_WITH_AFFILIATION_RE =
+  /\s+(?:und|&)\s+(\p{Lu}[\p{L}'’-]+(?:\s+\p{Lu}[\p{L}'’-]+){1,2})\s*\(([^)]+)\)/gu
+
+function jointPersonAt(s: string): number {
+  for (const m of s.matchAll(JOINT_PERSON_WITH_AFFILIATION_RE)) {
+    if (isPersonShaped(m[1]!, true) && carriesOrgSignal(m[2]!)) return m.index
+  }
+  return -1
+}
 
 /** Where the part of the string that names a person begins; -1 when nowhere. */
 function personMarkerAt(s: string): number {
-  const at = [s.search(ON_BEHALF_RE)]
+  const at = [s.search(ON_BEHALF_RE), jointPersonAt(s)]
   // The two words after the function must read as a person: „Der
   // Vizepräsident, Landesgericht Innsbruck" names a court, not a judge.
   for (const m of s.matchAll(FUNCTION_BEFORE_NAME_RE)) if (isPersonShaped(m[1]!, true)) at.push(m.index)
@@ -506,6 +532,21 @@ function withoutPersonPart(segment: string): string {
     kept.push(part)
   }
   return kept.join(',').trim()
+}
+
+/**
+ * „<Vorname Nachname> e.U.": the eingetragene Unternehmer is a natural person
+ * trading under a registered firm name, and the firm name of one is very
+ * often the owner's own. The legal form beats every person pattern
+ * elsewhere, because no person is called „GmbH" — but this one names the
+ * person it belongs to, so what stands before it decides (measured
+ * 30.09.2026, one string in GP XXVII).
+ */
+const SOLE_TRADER_RE = /\s*\be\.\s?U\.?(?=\s|$)/
+
+function isSoleTraderName(s: string): boolean {
+  const head = s.split(';')[0]!.split(',')[0]!
+  return SOLE_TRADER_RE.test(head) && isPersonShaped(head.replace(SOLE_TRADER_RE, ' ').trim(), true)
 }
 
 /**
@@ -559,6 +600,7 @@ function classifyByName(s: string): SubmitterClassification {
   // three strings in GP XXVI/XXVII published that way).
   if (namesPerson(withoutPlz.split(';')[0]!.split(',')[0]!.trim())) return PERSON
   if (personMarkerAt(withoutPlz) === 0) return PERSON
+  if (isSoleTraderName(withoutPlz)) return PERSON
 
   // Legal forms are unambiguous — no person is called "GmbH".
   if (matchesAny(LEGAL_FORM_PATTERNS, withoutPlz)) {

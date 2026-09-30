@@ -31,9 +31,11 @@ describe('classifySubmitter', () => {
         kind: 'organisation',
         name: 'Verbund AG',
       })
-      expect(classifySubmitter('Tischlerei Huber e.U.')).toEqual({
+      // e.U. is a legal form too, but it names its owner — see „an e.U.
+      // under its owner’s name is the owner" below.
+      expect(classifySubmitter('Tischlerei und Montage e.U.')).toEqual({
         kind: 'organisation',
-        name: 'Tischlerei Huber e.U.',
+        name: 'Tischlerei und Montage e.U.',
       })
     })
 
@@ -491,6 +493,43 @@ describe('classifySubmitter', () => {
       'Knauf Gesellschaft m.b.H. - GF Mag.ª (FH) Maria Mustermann',
     ])('%s → person', (raw) => {
       expect(classifySubmitter(raw, 'I')).toEqual({ kind: 'person', name: null })
+    })
+
+    /* 30.09.2026: the two positions none of the rules above read — a
+     * function the list did not know, and an untitled name joined by „und"
+     * with its affiliation in brackets. Real shapes, placeholder names. */
+    it.each([
+      ['Die Grünen BundesrätInnen Maria Muster und Max Mustermann', 'Die Grünen'],
+      ['Beispielverein - Verein zur Förderung von Informationssicherheit und Max Mustermann (TU Graz)', 'Beispielverein - Verein zur Förderung von Informationssicherheit'],
+    ])('%s → %s', (raw, printed) => {
+      expect(classifySubmitter(raw, 'I')).toEqual({ kind: 'organisation', name: printed })
+    })
+
+    it('reads two capitalised words after „und" as the organisation’s own, without the bracket', () => {
+      // Each published whole before and after; the bare-name test without
+      // the bracket cut 70 names like these over GP XXVI–XXVIII.
+      for (const name of [
+        'Industriellenvereinigung; Bereich Bildung und Gesellschaft',
+        'Österreichische Gesellschaft für Laboratoriumsmedizin und Klinische Chemie',
+        'Südwind - Verein für Entwicklungspolitik und Globale Gerechtigkeit',
+        'Österreichische Gesellschaft für Psychosomatik und Psychotherapeutische Medizin (ÖGPPM)',
+        'Fridays For Future & Klimavolksbegehren',
+        'Graz-Köflacher Bahn und Busbetrieb GmbH',
+        'Büro der Bundesministerin für EU und Verfassung',
+      ]) {
+        expect(classifySubmitter(name, 'I'), name).toEqual({ kind: 'organisation', name })
+      }
+    })
+
+    it('an e.U. under its owner’s name is the owner', () => {
+      expect(classifySubmitter('Maria Mustermann e.U.', 'I')).toEqual({ kind: 'person', name: null })
+      expect(classifySubmitter('Maria Mustermann e.U.; Geschäftsführung', 'I')).toEqual({ kind: 'person', name: null })
+      // The trade and the owner's surname: the shape cannot tell it from a
+      // first name, and it names the owner either way. Until 30.09.2026 this
+      // was the legal-form example of an organisation.
+      expect(classifySubmitter('Tischlerei Huber e.U.', 'I')).toEqual({ kind: 'person', name: null })
+      const brand = 'Beispiel - information security consulting e.U.'
+      expect(classifySubmitter(brand, 'I')).toEqual({ kind: 'organisation', name: brand })
     })
 
     it('keeps the gender star, and a star with no word after it', () => {

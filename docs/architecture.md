@@ -5862,6 +5862,62 @@ committee two ways to hear anyone, and they behave in opposite ways:
   these rules reads remain possible; the audit reads raw strings, not the
   printed name, and so still lists two already-cut rows as leak candidates.
 
+  **Die zwei Reste, am 30.09.2026.** Gelesen wurden diesmal nicht die
+  Rohstrings, sondern alle 3.712 verschiedenen gedruckten Namen über GP
+  XXVI–XXVIII (Entwürfe und Vorlagen, beide Flags; von XXVII/ME alle 8.611
+  Institutionszeilen und 100.000 Personenzeilen), dazu eine Vornamen-Probe:
+  ein großgeschriebenes Wort, das in den `P`-Zeilen der Form „Nachname,
+  Vorname" als Vorname vorkommt, und das Wort danach. Drei Stellen, die
+  keine Regel las:
+  - eine Funktion, die die Liste nicht kannte: „<Partei> BundesrätInnen
+    <Vorname Nachname> und <Vorname Nachname>" (4 Zeilen, GP XXVI). Die
+    Funktionswörter vor einem Namen kennen jetzt auch Bundes-, National- und
+    Gemeinderat, Abgeordnete, Minister und Staatssekretär.
+  - ein Name ohne Titel, mit „und" an den Kopf der Organisation gehängt und
+    durch die Zugehörigkeit in Klammern verortet: „<Verein …> und <Vorname
+    Nachname> (TU Graz)" (1 Zeile, GP XXVIII). Die Regel verlangt die
+    Klammer mit einem Organisationswort darin. Ohne sie kürzte derselbe Test
+    70 veröffentlichte Namen („Bereich Bildung und Gesellschaft", „… und
+    Klinische Chemie") und verbarg fünf — für einen einzigen Treffer unter
+    ihnen.
+  - ein e.U. unter dem Namen seines Inhabers: „<Vorname Nachname> e.U."
+    (1 Zeile, GP XXVII). Der eingetragene Unternehmer ist eine natürliche
+    Person; ob sie genannt wird, entscheidet jetzt, was vor der Rechtsform
+    steht. Der Preis: ein e.U. unter einem Markennamen aus zwei Wörtern wird
+    ebenso verborgen, und das Testbeispiel „Tischlerei Huber e.U." ist seither
+    eine Person.
+
+  Alt gegen neu, Zeile für Zeile über dieselben Korpora (212.626 Zeilen):
+  zwei Strings gekürzt, beide um eine Person, keiner neu öffentlich; zwei
+  neu verborgen, beide ein e.U.; keine Zeile mit `P`-Flag verändert.
+
+  *Nicht gebaut.* Drei GmbH führen einen vollen Personennamen im Firmenwortlaut
+  („<Vorname Nachname> GmbH"). Die e.U.-Regel auf GmbH, AG, OG und KG
+  ausgedehnt verbarg 95 Strings, darunter Flughafen Wien AG und Bühnen Graz
+  GmbH: die Form allein trennt einen Vornamen nicht von einem Ort oder einer
+  Branche. Das braucht ein Vornamenverzeichnis im Klassifikator oder eine
+  Produktentscheidung über Firmennamen, die eine Person nennen — beides
+  offen; das Audit zeigt zwei der drei bei jedem Lauf maskiert an (die Probe
+  kennt nur Vornamen, die in der Periode mindestens zweimal vorkommen). Ebenso bleibt
+  ein Name ohne Titel nach „und" ohne Klammer eine Stelle, die nur die
+  Probe liest, nicht der Klassifikator.
+
+  *Das Audit liest, was gedruckt wird.* `scripts/audit/classifier.ts`
+  klassifizierte den Rohstring, nachdem es den „(PLZ Ort)"-Zusatz selbst
+  entfernt hatte — nicht auf dem Produktionsweg —, und prüfte Liste 2 am
+  Rohstring. Jetzt läuft jede Zeile durch `mapStatementRow`, und Liste 2
+  prüft den gedruckten Namen: das Namenssegment wie bisher, dazu die
+  Vornamen-Probe, beides maskiert. `--typ I` liest alle Institutionszeilen
+  einer Periode über die Kappung hinweg (XXVII/ME: 8.611 in einer Antwort);
+  die Vornamen kommen dann aus einem zweiten Abruf der `P`-Zeilen. Liste 2
+  vorher → nachher: XXVI/ME 2 → 0 (die zwei schon gekürzten Zeilen),
+  XXVIII/ME 2 → 1, XXVII/ME vorher nicht lauffähig, nachher 2; XXVII/I und
+  XXVIII/I 0 → 0. Die zwei Treffer von vorher in XXVIII/ME und fünf neue in
+  XXVII/ME waren Organisationen in Kommaform, ein weiterer ein Namenspatron;
+  gelesen, stehen sie in den Prüflisten des Audits. Was bleibt, sind
+  Firmennamen, die eine Person nennen könnten — die zwei GmbH oben und eine
+  KG, deren Name ein Gründer sein mag.
+
 False positives read by eye and excluded: „Anhörung" and „Sachverständige"
 in the law's own text (the IFG's right to be heard, AVG/StPO experts),
 rejected motions for an Ausschussbegutachtung, and „Auskunftsperson" in the
