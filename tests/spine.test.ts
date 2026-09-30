@@ -96,14 +96,25 @@ describe('stations — how long the Frist ran', () => {
 
   it('leads with the duration, in weeks where the span is a clean multiple', () => {
     expect(beg(draft({ arrivedAt: '2026-08-11', deadline: '2026-09-22', active: true })))
-      .toEqual(['6 Wochen Frist, bis 22.09.2026', '143 Stellungnahmen'])
+      .toEqual(['Volle Frist: 6 Wochen, bis 22.09.2026', '143 Stellungnahmen'])
     expect(beg(draft({ arrivedAt: '2026-06-10', deadline: '2026-06-24' })))
-      .toEqual(['143 Stellungnahmen', '2 Wochen Frist, endete am 24.06.2026'])
+      .toEqual(['143 Stellungnahmen', 'Kurze Frist: 2 Wochen, endete am 24.06.2026'])
+  })
+
+  it('names the class only at the edges: short under three weeks, full from six', () => {
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-29' }))[1])
+      .toBe('4 Wochen Frist, endete am 29.06.2026')
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-22' }))[1])
+      .toBe('3 Wochen Frist, endete am 22.06.2026')
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-21' }))[1])
+      .toBe('Kurze Frist: 20 Tage, endete am 21.06.2026')
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-07-12' }))[1])
+      .toBe('41 Tage Frist, endete am 12.07.2026')
   })
 
   it('stays in days for spans that are not whole weeks', () => {
     expect(beg(draft({ arrivedAt: '2026-06-10', deadline: '2026-06-20' })))
-      .toEqual(['143 Stellungnahmen', '10 Tage Frist, endete am 20.06.2026'])
+      .toEqual(['143 Stellungnahmen', 'Kurze Frist: 10 Tage, endete am 20.06.2026'])
   })
 
   /* The duration is derived; the date is upstream's. Where the subtraction
@@ -401,14 +412,14 @@ describe('regulationStations — the Verordnung path', () => {
     const list = regulationStations(ended, null)
     expect(list.map((s) => s.name)).toEqual(['Entwurf', 'Begutachtung', 'Bundesgesetzblatt II'])
     expect(list[0]!.facts).toEqual(['05.01.2026'])
-    expect(list[1]!.facts).toEqual(['6 Wochen Frist, endete am 16.02.2026'])
+    expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen, endete am 16.02.2026'])
   })
 
   it('marks the Begutachtung while the Frist runs, and the Kundmachung is simply ahead', () => {
     const running = { ...ended, active: true }
     const list = regulationStations(running, outcome({ state: 'begutachtung' }))
     expect(list[1]!.state).toBe('current')
-    expect(list[1]!.facts).toEqual(['6 Wochen Frist, bis 16.02.2026'])
+    expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen, bis 16.02.2026'])
     expect(list[2]).toMatchObject({ state: 'open', facts: ['ausstehend'] })
   })
 

@@ -70,5 +70,11 @@ const groundClass: Record<DeadlineTone, string> = {
     <p v-if="state.detail" class="mt-0.5 text-xs leading-tight text-ink">
       {{ state.detail }}
     </p>
+    <!-- A third line, open windows only: how long the window is, where that
+         length is itself the finding (`fristClassLineDe`). Same size as the
+         detail — it belongs to the same statement, not above it. -->
+    <p v-if="state.span" class="mt-0.5 text-xs leading-tight text-ink">
+      {{ state.span }}
+    </p>
   </div>
 </template>

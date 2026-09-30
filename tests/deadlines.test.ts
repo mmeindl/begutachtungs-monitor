@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   deadlineTone,
+  fristClassOf,
+  fristContextDe,
   fristDivergence,
   isNewArrival,
   NEW_ARRIVAL_DAYS,
@@ -115,5 +117,38 @@ describe('isNewArrival', () => {
     expect(isNewArrival(null, true)).toBe(false)
     expect(isNewArrival(undefined, true)).toBe(false)
     expect(isNewArrival(daysAgo(-3), true)).toBe(false)
+  })
+})
+
+describe('fristClassOf — only the edges carry a class', () => {
+  it('is short under 21 days, full from 42, silent between', () => {
+    expect(fristClassOf('2026-06-01', '2026-06-21')).toBe('short') // 20
+    expect(fristClassOf('2026-06-01', '2026-06-22')).toBeNull() // 21
+    expect(fristClassOf('2026-06-01', '2026-07-12')).toBeNull() // 41
+    expect(fristClassOf('2026-06-01', '2026-07-13')).toBe('full') // 42
+  })
+
+  it('says nothing where the span cannot be made', () => {
+    expect(fristClassOf(null, '2026-06-21')).toBeNull()
+    expect(fristClassOf('2026-06-21', '2026-06-21')).toBeNull()
+    expect(fristClassOf('2026-06-21', '2026-06-01')).toBeNull()
+  })
+})
+
+describe('fristContextDe — the yardstick sentence', () => {
+  it('names practice and the Verordnung for a short Frist, in the right tense', () => {
+    expect(fristContextDe('short', '2 Wochen', false)).toBe(
+      'Die Frist war mit 2 Wochen kurz: Die Hälfte der Entwürfe seit 2013 hatte mindestens vier Wochen, im Regelfall vorgesehen sind sechs (§ 9 Abs. 3 WFA-Grundsatz-Verordnung).',
+    )
+    expect(fristContextDe('short', '10 Tage', true)).toMatch(/^Die Frist ist mit 10 Tagen kurz/)
+  })
+
+  it('names a full Frist as plainly', () => {
+    expect(fristContextDe('full', '6 Wochen', false)).toMatch(/^Die Frist lief 6 Wochen – so lang, wie/)
+    expect(fristContextDe('full', '6 Wochen', true)).toMatch(/^Die Frist läuft 6 Wochen/)
+  })
+
+  it('is silent in the middle', () => {
+    expect(fristContextDe(null, '4 Wochen', false)).toBeNull()
   })
 })

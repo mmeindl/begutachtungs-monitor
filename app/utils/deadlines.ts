@@ -3,7 +3,7 @@
  * badge tones (`DeadlineBadge`) and for the state line of a list row
  * (`EntryState`).
  */
-import { daysUntil } from '#shared/utils/format'
+import { daysUntil, spanInDays } from '#shared/utils/format'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
 const DEADLINE_CRITICAL_DAYS = 3
@@ -130,4 +130,80 @@ export function noRvVerdictDe(deadline: string | null | undefined): string | nul
         ? 'vor über einem Jahr'
         : `vor ${months} Monaten`
   return `Seit Ende der Begutachtungsfrist ${elapsed} liegt keine Regierungsvorlage vor.`
+}
+
+/**
+ * Below this many days a Begutachtungsfrist is called short. Measured on
+ * 30.09.2026 over list 81, Einlangen → Frist, GP XXV–XXVIII (983 drafts):
+ * the median is 28 days in every period, with peaks at 28 and 42; under 21
+ * days ran 26–33 % of drafts, under 14 days 11–17 %.
+ *
+ * Three weeks and not two, because two would miss the case the flag is for:
+ * 115/ME XXVIII, the Sterbeverfügungsgesetz, ran exactly 14 days.
+ */
+export const SHORT_FRIST_DAYS = 21
+
+/**
+ * From this many days on the Frist is the one § 9 Abs. 3
+ * WFA-Grundsatz-Verordnung names for the Regelfall: six weeks. Reached by
+ * 22–25 % of drafts in the same measurement.
+ */
+export const FULL_FRIST_DAYS = 42
+
+/**
+ * Where a Frist sits against practice and the Verordnung — only at the
+ * edges, and at both of them.
+ *
+ * A flag against the six-week norm alone would stand on three quarters of
+ * all pages: a blame counter, and one that stops meaning anything. So the
+ * middle says nothing beyond its length, and a full Frist is named as
+ * plainly as a short one (framing rule: what became of the procedure, both
+ * ways).
+ */
+export type FristClass = 'short' | 'full' | null
+
+export function fristClassOf(start: string | null | undefined, deadline: string | null | undefined): FristClass {
+  const days = spanInDays(start, deadline)
+  if (days === null || days < 1) return null
+  if (days < SHORT_FRIST_DAYS) return 'short'
+  if (days >= FULL_FRIST_DAYS) return 'full'
+  return null
+}
+
+/** The length alone — „2 Wochen", „10 Tage": weeks wherever the span is a
+ *  clean multiple of seven, days otherwise. Shared by the rail, the list
+ *  entry and the page's sentence, so none of them can disagree. */
+export function fristSpanDe(start: string | null | undefined, deadline: string | null | undefined): string | null {
+  const days = spanInDays(start, deadline)
+  if (days === null || days < 1) return null
+  if (days >= 14 && days % 7 === 0) return `${days / 7} Wochen`
+  return days === 1 ? '1 Tag' : `${days} Tage`
+}
+
+/** „Kurze Frist: 2 Wochen" / „Volle Frist: 6 Wochen" at the edges, null in
+ *  the middle — the one wording of the class, for rail and list alike. */
+export function fristClassLineDe(start: string | null | undefined, deadline: string | null | undefined): string | null {
+  const cls = fristClassOf(start, deadline)
+  const span = fristSpanDe(start, deadline)
+  if (!cls || !span) return null
+  return `${cls === 'short' ? 'Kurze' : 'Volle'} Frist: ${span}`
+}
+
+/**
+ * The sentence under „Die Begutachtung" that gives the rail's „Kurze Frist"
+ * or „Volle Frist" its yardstick. Null in the middle. `duration` is the
+ * rail's own wording („2 Wochen", „10 Tage"), so the two cannot disagree.
+ */
+export function fristContextDe(
+  cls: FristClass,
+  duration: string | null,
+  active: boolean,
+): string | null {
+  if (!cls || !duration) return null
+  if (cls === 'short') {
+    // „mit" takes the dative: „mit 10 Tagen"; „Wochen" and „1 Tag" stay.
+    const dative = duration.replace(/ Tage$/, ' Tagen')
+    return `Die Frist ${active ? 'ist' : 'war'} mit ${dative} kurz: Die Hälfte der Entwürfe seit 2013 hatte mindestens vier Wochen, im Regelfall vorgesehen sind sechs (§ 9 Abs. 3 WFA-Grundsatz-Verordnung).`
+  }
+  return `Die Frist ${active ? 'läuft' : 'lief'} ${duration} – so lang, wie es die WFA-Grundsatz-Verordnung im Regelfall vorsieht (§ 9 Abs. 3). Das erreicht etwa jeder vierte Entwurf.`
 }

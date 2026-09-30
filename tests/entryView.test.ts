@@ -103,6 +103,17 @@ describe('Zone 4 — Stand', () => {
     expect(state.detail).toMatch(/^bis \w+\., 16\.10\.2099$/)
   })
 
+  it('names a short or full window on an open entry only, and nothing in the middle', () => {
+    const open = (arrivedAt: string, deadline: string) =>
+      viewOfDraft(draft({ active: true, arrivedAt, deadline })).state.span
+    expect(open('2099-10-02', '2099-10-16')).toBe('Kurze Frist: 2 Wochen')
+    expect(open('2099-09-04', '2099-10-16')).toBe('Volle Frist: 6 Wochen')
+    expect(open('2099-09-18', '2099-10-16')).toBeNull()
+    // Closed: the archive carries no class, the detail page says it.
+    expect(viewOfDraft(draft({ active: false, arrivedAt: '2025-08-17', deadline: PAST })).state.span)
+      .toBeUndefined()
+  })
+
   /* A status reached is evidenced by its citation, not by the deadline's end
    * — two facts in one slot was the old conflation. */
   it('pins a reached station with its citation', () => {

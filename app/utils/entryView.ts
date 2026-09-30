@@ -45,7 +45,7 @@ import type {
   RisConsultation,
 } from '#shared/types'
 import { aliasesFor } from '#shared/utils/draftAliases'
-import { type DeadlineTone, deadlineTone, isNewArrival } from './deadlines'
+import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival } from './deadlines'
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel } from '#shared/utils/format'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 
@@ -78,6 +78,13 @@ export interface EntryState {
   label: string
   /** What pins it down: a date or a citation. Null → line 1 stands alone. */
   detail: string | null
+  /**
+   * „Kurze Frist: 2 Wochen" / „Volle Frist: 6 Wochen" — open windows only,
+   * and only at the edges (`fristClassLineDe`). On a running Frist it is the
+   * one thing a reader can still act on; on a closed one it would stand on a
+   * quarter of the archive, so the detail page says it there instead.
+   */
+  span?: string | null
   tone: DeadlineTone
   /** Something can still be filed — the one condition that may be loud. */
   actionable: boolean
@@ -126,10 +133,11 @@ export interface EntryView {
  * past date is looked up, not planned around, and the weekday beside it is
  * then ballast in a column a hundred rows long.
  */
-function openState(deadline: string | null, active: boolean): EntryState {
+function openState(start: string | null, deadline: string | null, active: boolean): EntryState {
   return {
     label: fristLabel(deadline, active),
     detail: deadline ? `bis ${formatDateWeekdayDe(deadline)}` : null,
+    span: fristClassLineDe(start, deadline),
     tone: deadlineTone(deadline, active),
     actionable: true,
   }
@@ -233,7 +241,7 @@ export function viewOfDraft(
   outcome?: { rvCitation: string | null; bgblNumber: string | null } | null,
 ): EntryView {
   const state = draft.active
-    ? openState(draft.deadline, true)
+    ? openState(draft.arrivedAt, draft.deadline, true)
     : outcome
       ? outcomeState(outcome, draft.deadline)
       : draft.chain
@@ -318,7 +326,7 @@ export function viewOfRis(c: RisConsultation): EntryView {
      * not by the column in two words.
      */
     state: c.active
-      ? openState(c.deadline, true)
+      ? openState(c.startedAt, c.deadline, true)
       : c.outcome?.state === 'kundgemacht' && c.outcome.nummer
         ? { label: 'Kundgemacht', detail: c.outcome.nummer, tone: 'inactive', actionable: false }
         : endedState(c.deadline, 'Begutachtung abgeschlossen'),

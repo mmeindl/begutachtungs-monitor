@@ -44,6 +44,7 @@
 import type { BgblOutcome, DraftDetail, HouseVote, LawStationId, RisConsultation } from '#shared/types'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
 import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
+import { fristClassLineDe, fristSpanDe } from './deadlines'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -114,10 +115,12 @@ export interface StationContext {
  * the row above states, so a reader can do the subtraction.
  */
 function fristDurationDe(start: string | null, deadline: string | null): string | null {
-  const days = spanInDays(start, deadline)
-  if (days === null || days < 1) return null
-  if (days >= 14 && days % 7 === 0) return `${days / 7} Wochen Frist`
-  return days === 1 ? '1 Tag Frist' : `${days} Tage Frist`
+  // At the edges the class leads, so the row says at a glance what the
+  // sentence under „Die Begutachtung" explains (`fristClassLineDe`).
+  const edge = fristClassLineDe(start, deadline)
+  if (edge) return edge
+  const span = fristSpanDe(start, deadline)
+  return span ? `${span} Frist` : null
 }
 
 /**

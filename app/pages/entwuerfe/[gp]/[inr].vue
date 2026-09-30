@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
+import { fristClassOf, fristContextDe, fristSpanDe } from '~/utils/deadlines'
 import {
   RV_DEFINITION,
   SECOND_ROUND_CLAUSE,
@@ -196,6 +197,14 @@ const risDocuments = computed<(DraftDocument & { hint?: string })[]>(() => {
 
 /** Both lists in the one fold, counted for its summary. */
 const documentCount = computed(() => (data.value?.documents.length ?? 0) + risDocuments.value.length)
+
+/** The yardstick behind the rail's „Kurze Frist" / „Volle Frist" — the rail
+ *  says which, this sentence says against what. Null in the middle. */
+const fristContext = computed(() => {
+  const d = data.value
+  if (!d) return null
+  return fristContextDe(fristClassOf(d.arrivedAt, d.deadline), fristSpanDe(d.arrivedAt, d.deadline), d.active)
+})
 
 // The bar already states "Regierungsvorlage · bisher keine", so the
 // card must not say it again. Its job is the bracket the bar cannot carry:
@@ -550,6 +559,16 @@ const ministryBadges = computed(() => {
             Parlament<template v-if="data.deadline">, maßgeblich ist daher der
               {{ formatDateDe(data.deadline) }}</template>.
           </p>
+          <!-- How long the window is, measured against practice and the
+               Verordnung — here while the Frist runs, because this card is
+               where a reader decides whether a Stellungnahme is still
+               feasible. After the Divergenz note, which settles WHICH date
+               governs; this sentence is about the length. When the window
+               closes, the card goes and the sentence moves back under „Die
+               Begutachtung": one place at a time, the one that matters now. -->
+          <p v-if="windows.begutachtung && fristContext" class="mt-2 max-w-prose text-sm text-ink-secondary">
+            {{ fristContext }}
+          </p>
           <!-- Both windows open: stated as a sequence of facts, not as a
                verdict on the ministry (framing rule). The reader gets both
                doors and the fact that makes the second one matter. -->
@@ -763,6 +782,13 @@ const ministryBadges = computed(() => {
              sub-heading of the stage before it. -->
         <section id="begutachtung" class="page-section scroll-mt-6" aria-labelledby="begutachtung-heading">
           <h2 id="begutachtung-heading" class="section-heading">Die Begutachtung</h2>
+          <!-- Before the Stellungnahmen: how long the window was is the
+               condition under which every one of them was written. Only
+               once it has closed — while it runs, the action card above
+               carries the sentence. -->
+          <p v-if="!windows.begutachtung && fristContext" class="mt-2 max-w-prose text-sm text-ink-secondary">
+            {{ fristContext }}
+          </p>
           <h3 class="mt-4 text-base font-semibold text-ink">Stellungnahmen</h3>
           <div class="mt-4">
             <p
