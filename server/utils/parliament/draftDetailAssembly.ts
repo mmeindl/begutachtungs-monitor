@@ -25,6 +25,7 @@ import type {
   StatementMeta,
   TraceStep,
 } from '../../../shared/types'
+import { antragPathFor } from '../../../shared/utils/antragPath'
 import { chainCoverageOf } from '../../../shared/utils/draftStations'
 import { gpEndedOn, gpHasEnded } from '../../../shared/utils/gp'
 import {
@@ -141,6 +142,9 @@ export function assembleDraftDetail(input: DraftDetailInputs): DraftDetail {
           degraded: true,
         },
     enactment,
+    // The documented chain wins: a draft with a Vorlage keeps it, even where
+    // the same text ALSO went as an Antrag (docs/architecture.md §12.10).
+    antragPath: enactment ? null : antragPathFor(gp, summary.inr),
   }
 }
 

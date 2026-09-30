@@ -8,6 +8,7 @@ import type {
   EnactmentInfo,
   RelatedDraft,
 } from '#shared/types'
+import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import { gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import {
   amendedStationsOf,
@@ -273,10 +274,15 @@ async function findRelated(
     try {
       const prev = await getGegenstand(predecessor.gp, 'ME', predecessor.inr)
       const prevHasRv = findLastRvLink(parseStages(prev.content?.stages)) !== null
-      if (!prevHasRv) checkedPredecessor = { ...predecessor, hasRv: false }
+      // A predecessor whose text became law as an Initiativantrag passed
+      // too — a different cycle, not a second attempt (`antragPath.ts`).
+      if (!prevHasRv && !carriesDraft(antragPathFor(predecessor.gp, predecessor.inr))) {
+        checkedPredecessor = { ...predecessor, hasRv: false }
+      }
     } catch {
       // Unknown outcome → no claim.
     }
   }
-  return { predecessor: checkedPredecessor, successor: hasRv ? null : successor }
+  const passed = hasRv || carriesDraft(antragPathFor(summary.gp, summary.inr))
+  return { predecessor: checkedPredecessor, successor: passed ? null : successor }
 }

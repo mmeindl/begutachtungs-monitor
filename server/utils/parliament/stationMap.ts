@@ -42,6 +42,7 @@
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftStations'
 import { gpHasEnded } from '#shared/utils/gp'
+import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import type { VorlageRow } from './list101'
 import { mapWithConcurrency } from '../pool'
 
@@ -80,7 +81,17 @@ async function chainOf(
   try {
     const detail = await getGegenstand(gp, 'ME', inr)
     const rv = findLastRvLink(parseStages(detail.content?.stages))
-    if (!rv) return nothing
+    if (!rv) {
+      /* No Vorlage in the stage record — but the text may have come as an
+       * Initiativantrag, which no pointer records (`antragPath.ts`). Only
+       * where the Antrag carries the draft does the station move; the
+       * Antrag route skips the Vorlage, so `rvCitation` stays null and the
+       * Kundmachung is the Antrag's. A table lookup, no request. */
+      const path = antragPathFor(gp, inr)
+      return carriesDraft(path)
+        ? { ...nothing, station: 'bgbl', bgblNumber: path.antrag.bgblNumber, antragCitation: path.antrag.citation }
+        : nothing
+    }
 
     /* The Vorlage's OWN period, not the draft's: a carry-over names the
      * next one, and there the Vorlage is alive (docs/architecture.md

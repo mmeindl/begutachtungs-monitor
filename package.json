@@ -31,6 +31,7 @@
     "corpus:novao-forms": "vite-node scripts/corpus/novaoForms.ts --",
     "corpus:skipped": "vite-node scripts/corpus/begutachtungSkipped.ts --",
     "corpus:me-antrag": "vite-node scripts/corpus/meAntragJoin.ts --",
+    "corpus:me-antrag-table": "vite-node scripts/corpus/meAntragTable.ts --",
     "corpus:rv-latenz": "vite-node scripts/corpus/rvLatency.ts --",
     "corpus:inner-elision": "vite-node scripts/corpus/innerElision.ts --",
     "corpus:absatz-marker": "vite-node scripts/corpus/absatzMarker.ts --",

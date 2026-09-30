@@ -95,6 +95,40 @@ export interface DraftChain {
    * period runs: the list then says what it said before.
    */
   rvGpEnded?: boolean
+  /**
+   * The Initiativantrag this draft's Gesetzestext came to the Nationalrat
+   * as, e.g. „1065/A" — THE ONE FIELD HERE THAT IS AN INFERENCE, not a
+   * fact read upstream: no pointer connects a draft to an Antrag, the match
+   * is by wording (`shared/utils/antragPath.ts`). Set only where it carries
+   * the draft (`carriesDraft`), and then the station is `bgbl` with the
+   * Antrag's Kundmachung as `bgblNumber` and no `rvCitation`.
+   */
+  antragCitation?: string
+}
+
+/**
+ * A Ministerialentwurf whose Gesetzestext came to the Nationalrat as an
+ * Initiativantrag instead of a Regierungsvorlage — matched by wording, since
+ * no pointer in the data connects the two (docs/architecture.md §12.10,
+ * `scripts/corpus/meAntragJoin.ts`).
+ */
+export interface AntragPath {
+  antrag: {
+    /** „1065/A" */
+    citation: string
+    inr: number
+    title: string
+    /** Einlangen in the Nationalrat, ISO */
+    einlangen: string
+    /** „Bundesgesetzblatt I Nr. 19/2021" — every Antrag in the table was promulgated. */
+    bgblNumber: string
+  }
+  /** Share of the DRAFT's Gesetzestext found word for word in the Antrag, 0…1. */
+  draftShare: number
+  /** Share of the ANTRAG's Gesetzestext found word for word in the draft, 0…1. */
+  antragShare: number
+  /** Filed on or before the draft's Fristende — while the Begutachtung ran. */
+  duringFrist: boolean
 }
 
 /** A TraceLink that knows which station of the process it belongs to. */
@@ -301,6 +335,10 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
   /** Later same-title draft; only while this one has no Regierungsvorlage,
       searched in this and the next GP. `hasRv` stays null (not checked). */
   successor: RelatedDraft | null
+  /** The Initiativantrag path, where the draft has no Regierungsvorlage and
+      the wording ties it to a promulgated Antrag (`antragPathFor`); null
+      otherwise, and always null beside an `enactment`. */
+  antragPath: AntragPath | null
 }
 
 export type DraftStatus = 'open' | 'closed' | 'all'

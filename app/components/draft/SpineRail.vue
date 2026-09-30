@@ -138,7 +138,10 @@ const marked = computed(() => markedStation(list.value))
  */
 const rows = computed(() => list.value.map((s, i) => {
   const reached = (state: string) => state === 'done' || state === 'current'
-  const silent = list.value.slice(0, i).some((earlier) => !reached(earlier.state))
+  // A station that WAS reached speaks even behind one that was not — the
+  // Initiativantrag route skips the Vorlage and still reaches the house and
+  // the Bundesgesetzblatt (docs/architecture.md §12.10, 30.09.2026).
+  const silent = !reached(s.state) && list.value.slice(0, i).some((earlier) => !reached(earlier.state))
   const facts = silent ? [] : s.facts
   const href = s.comparison ? props.comparisonAnchors?.[s.comparison.id] : undefined
   const next = list.value[i + 1]

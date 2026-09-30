@@ -17,12 +17,26 @@
  * screen.
  */
 import type { ClosedOutcome, DraftSummary, DashboardOutcomes } from '#shared/types'
+import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import { rankByStatements } from '#shared/utils/draftOrder'
 import { getRankedPeriod } from '../../utils/parliament/rankedPeriod'
 
 async function resolveOutcome(item: DraftSummary): Promise<ClosedOutcome | null> {
   try {
     const outcome = await getDraftOutcome(item.gp, item.inr)
+    /* The Initiativantrag route, as on the list (`stationMap.ts`): no
+     * Vorlage, and the Antrag's Kundmachung instead — with the chain the
+     * row reads its „als Initiativantrag" note from (`entryView.ts`). */
+    const path = outcome.rvCitation ? null : antragPathFor(item.gp, item.inr)
+    if (carriesDraft(path)) {
+      const bgblNumber = path.antrag.bgblNumber
+      return {
+        ...item,
+        rvCitation: null,
+        bgblNumber,
+        chain: { station: 'bgbl', rvCitation: null, rvDate: null, bgblNumber, filingOpen: false, antragCitation: path.antrag.citation },
+      }
+    }
     return { ...item, rvCitation: outcome.rvCitation, bgblNumber: outcome.bgblNumber }
   } catch {
     // Per-item tolerance: one failing Gegenstand must not kill the section.

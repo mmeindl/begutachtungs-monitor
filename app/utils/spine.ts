@@ -42,6 +42,7 @@
  * the values are handed in rather than guessed or fetched here.
  */
 import type { BgblOutcome, DraftDetail, HouseVote, LawStationId, RisConsultation } from '#shared/types'
+import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
 import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
 import { fristClassLineDe, fristSpanDe } from './deadlines'
@@ -198,6 +199,10 @@ export function procedureStatusDe(d: DraftDetail): string {
     return d.gpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
   }
   if (d.active) return 'In Begutachtung'
+  // The Antrag route (docs/architecture.md §12.10, 30.09.2026): no Vorlage,
+  // and still a law — matched by wording, so the headline names the route
+  // it rests on instead of reading like the Vorlage's „Gesetz geworden".
+  if (carriesDraft(d.antragPath)) return 'Gesetz geworden – als Initiativantrag'
   // Word for word the homepage chip's (OutcomeChip), and deliberately NOT
   // "Beim Ressort – bisher keine Regierungsvorlage": the marked row two
   // lines below already reads "bisher keine · seit 29.06.2026 beim
@@ -447,6 +452,12 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
 
   const fristLine = fristLineDe(d.arrivedAt, d.deadline, d.active)
 
+  /** The Initiativantrag route: no Vorlage, and the text reached the house
+   *  and the Bundesgesetzblatt anyway (`antragPath.ts`). Only where the
+   *  Antrag carries the draft; a partial match stays a sentence on the page
+   *  and moves no station. */
+  const viaAntrag = !e && !d.active && carriesDraft(d.antragPath) ? d.antragPath : null
+
   /** The RV's date with its distance to the Fristende as an apposition —
    *  one fact, not two, so the row does not grow a third middot. */
   const latency = e ? afterFristDe(d.deadline, e.rvDate) : null
@@ -507,7 +518,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
     {
       id: 'rv',
       name: 'Regierungsvorlage',
-      state: e ? 'done' : d.active ? 'open' : d.gpEnded ? 'never' : 'current',
+      state: e ? 'done' : d.active ? 'open' : d.gpEnded || viaAntrag ? 'never' : 'current',
       // "bisher keine" is temporal, never accusatory (framing rule), and it
       // is only claimed once the Frist has ended — while it runs the
       // Vorlage is simply not due yet. Once the GP itself is over the
@@ -517,12 +528,14 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         ? kept(rvWhen, rvCount)
         : d.active
           ? ['ausstehend']
-          : d.gpEnded
-            ? ['keine – GP beendet']
-            : kept(
-                'bisher keine',
-                d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ressort` : null,
-              ),
+          : viaAntrag
+            ? ['keine – als Initiativantrag eingebracht']
+            : d.gpEnded
+              ? ['keine – GP beendet']
+              : kept(
+                  'bisher keine',
+                  d.handoff?.date ? `seit ${formatDateDe(d.handoff.date)} beim Ressort` : null,
+                ),
       comparison: e
         ? { id: 'begutachtung', question: 'Was sich nach der Begutachtung geändert hat' }
         : null,
@@ -535,7 +548,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // own dates live on the Vorlage's record, not on ours. So the row
       // says what happened, not when.
       state: !e
-        ? d.gpEnded && !d.active ? 'never' : 'open'
+        ? viaAntrag ? 'done' : d.gpEnded && !d.active ? 'never' : 'open'
         : e.bgblNumber || houseDone
           ? 'done'
           : d.gpEnded ? 'never' : 'current',
@@ -553,6 +566,10 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // the row reads in the order the procedure ran — what the house did,
       // what that did to the text, and how the clubs stood on it.
       facts: kept(
+        // The Antrag route: the Antrag and its own Einlangen, the one date
+        // this station has here. `outcome` is null on that route (no
+        // Vorlage), so the chain below adds nothing to it.
+        ...(viaAntrag ? [`Initiativantrag ${viaAntrag.antrag.citation}`, formatDateDe(viaAntrag.antrag.einlangen)] : []),
         ...(outcome === null
           ? []
           : outcome === 'unchanged'
@@ -589,7 +606,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // station stays `open` even after the GP ended: XXVII/1435 d.B. was
       // decided in both chambers and carries no BGBl link, and „never" would
       // have been our claim, not a fact.
-      state: e?.bgblNumber
+      state: e?.bgblNumber || viaAntrag
         ? 'done'
         : noBgblEver
           ? 'never'
@@ -600,13 +617,15 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // it cannot, because the station before it already says why.
       facts: e?.bgblNumber
         ? [bgblShort(e.bgblNumber)]
-        : noBgblEver
-          ? []
-          : outcome === 'decided'
-            ? ['ausstehend']
-            : d.gpEnded
-              ? []
-              : ['ausstehend'],
+        : viaAntrag
+          ? [bgblShort(viaAntrag.antrag.bgblNumber)]
+          : noBgblEver
+            ? []
+            : outcome === 'decided'
+              ? ['ausstehend']
+              : d.gpEnded
+                ? []
+                : ['ausstehend'],
       comparison: null,
     },
   ]
@@ -720,7 +739,9 @@ export function markedStation(list: Station[]): StationId | null {
  *
  *  - `reached` states form a PREFIX of the list, so the marked station is
  *    always the last row the bar sets in `font-medium text-ink`. That
- *    boundary is weight, not colour.
+ *    boundary is weight, not colour. (One exception since 30.09.2026: the
+ *    Initiativantrag route skips the Vorlage row, and the headline names
+ *    that route in words — „Gesetz geworden – als Initiativantrag".)
  *  - `procedureStatusDe` heads the same card and names the station in
  *    words — that is the sentence that takes the mark off colour.
  *  - The bar is an <ol> with `aria-current="step"`, so assistive tech

@@ -276,7 +276,14 @@ export function viewOfDraft(
     ministry: { code: draft.ministryCode, name: draft.ministryName },
     coMinistries: draft.coMinistries,
     alias: aliasesFor(draft.gp, draft.inr)[0] ?? null,
-    note: openFristNote(draft.arrivedAt, draft.deadline, draft.active),
+    /* The Antrag route is named in zone 2, because zone 4 then reads like
+     * the Vorlage route („Kundgemacht") and the station is OUR inference —
+     * matched by wording, not read off a pointer (`antragPath.ts`). A
+     * procedural fact beside the citation, like „ohne Begutachtung". */
+    note:
+      !draft.active && draft.chain?.antragCitation
+        ? `als Initiativantrag ${draft.chain.antragCitation}`
+        : openFristNote(draft.arrivedAt, draft.deadline, draft.active),
     isNew: isNewArrival(draft.arrivedAt, draft.active),
     participation: { kind: 'count', count: draft.statementCount },
     state,

@@ -11,6 +11,7 @@ import {
   voteLineDe,
 } from '~/utils/spine'
 import { aliasesFor } from '#shared/utils/draftAliases'
+import { carriesDraft } from '#shared/utils/antragPath'
 // Explicit: `draftStations.ts` is a pure module and stays out of the
 // auto-imports, so that server map and vitest run the same functions.
 import { mayClaimOutcome } from '#shared/utils/draftStations'
@@ -254,9 +255,13 @@ const chainUnlinked = computed(() => {
   return Boolean(d && !d.enactment && !d.active && !mayClaimOutcome(d.chainCoverage))
 })
 
+/* The Initiativantrag route replaces all three sentences below: no Vorlage,
+ * and still a law (docs/architecture.md §12.10, `AntragPathNote`). */
+const viaAntrag = computed(() => carriesDraft(data.value?.antragPath))
+
 const noRvVerdict = computed(() => {
   const d = data.value
-  if (!d) return null
+  if (!d || viaAntrag.value) return null
   if (chainUnlinked.value) return chainUnlinkedHeadlineDe(d.gp)
   if (lapsed.value) return gpEndedHeadlineDe(d.gp, d.gpEndedOn)
   return noRvVerdictDe(d.deadline)
@@ -282,7 +287,7 @@ const noRvBody = computed(() => {
  * fast (app/utils/outcomes.ts). Numbers, so the reader can weigh the
  * silence without the page weighing it for them. */
 const noRvBaseRate = computed(() =>
-  lapsed.value || chainUnlinked.value ? null : rvBaseRateSentenceDe(data.value?.gp),
+  lapsed.value || chainUnlinked.value || viaAntrag.value ? null : rvBaseRateSentenceDe(data.value?.gp),
 )
 
 /** Debate names for this procedure, if any (`shared/utils/draftAliases.ts`). */
@@ -907,6 +912,7 @@ const ministryLinks = computed(() => {
               {{ noRvVerdict }}
             </p>
             <p
+              v-if="!viaAntrag"
               class="max-w-prose text-sm text-ink-secondary"
               :class="noRvVerdict ? 'mt-2' : ''"
             >
@@ -915,6 +921,13 @@ const ministryLinks = computed(() => {
             <p v-if="noRvBaseRate" class="mt-2 max-w-prose text-sm text-ink-secondary">
               {{ noRvBaseRate }}
             </p>
+            <AntragPathNote
+              v-if="data.antragPath"
+              :path="data.antragPath"
+              :gp="data.gp"
+              :deadline="data.deadline"
+              :class="viaAntrag ? '' : 'mt-3'"
+            />
             <!-- The win side of the same mechanism: the draft that finds a
                  lapsed one also finds the one that took its place. Ink, not
                  secondary — it is the one actionable line in the section. -->

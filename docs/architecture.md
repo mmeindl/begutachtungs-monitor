@@ -262,6 +262,7 @@ name has to stay globally unique.
 | `DraftDescription` | `blocks: DescriptionBlock[]` | The Kurzinformation of a Ministerialentwurf, grouped into its own sections; folded parts use a native `<details>`, so no hydration, keyboard access as-is and the text stays in the SSR HTML |
 | `DocumentList` | `documents: DocumentListItem[]; source?: string` | Document rows: title plus hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |
 | `SpineRail` | `stations: Station[]; anchors?; comparisonAnchors?` | Where does this draft stand: one row per station — five for a Ministerialentwurf (`stations`), three for a Verordnungsentwurf (`regulationStations`, since 26.09.2026). The page builds the list; the bar answers three things and nothing else — where the text is now, what happened at each station it passed, what is still ahead — and each station links into the section that carries it (§12.26), or, where its record lives off the page, out to it (`Station.source`) |
+| `AntragPathNote` | `path: AntragPath; gp: string; deadline: string\|null` | The Initiativantrag route under „Die Regierungsvorlage" on a draft without one (§12.10, 30.09.2026): which Antrag carried the text and where it was promulgated, that it was matched by wording and with which share, and — where it applies — that it was filed while the Frist ran. „Ein Teil dieses Gesetzestexts" where the Antrag carries less than half of the draft (`carriesDraft`) |
 | ~~`BgblOutcomeBlock`~~ | — | Removed 26.09.2026: what became of a Verordnungsentwurf is the Bundesgesetzblatt-II row of its bar now, with the same asymmetry (§12.32) — up to 180 days after the Frist the row says it takes time, only after that that nothing can be found, and then with the search named and the way to check beside it |
 
 **`statements/` — who filed, and on what**
@@ -628,6 +629,69 @@ after a clean install.
     Entwürfen kamen noch in der Folgeperiode), und die Grenze der Periode sagt die
     Detailseite in einem ganzen Satz. Ältere Perioden werden nicht vorgewärmt:
     Das wären über tausend Abrufe je Nacht für Seiten, die kaum jemand öffnet.
+
+    **Der Initiativantrag-Pfad — gebaut 30.09.2026, und er ist kein Randfall.**
+    Gezählt über die Stationskarte: Entwürfe mit abgelaufener Frist und ohne jede
+    Regierungsvorlage gibt es in GP XXVI 49, in XXVII 57, in XXVIII bisher 34. Der
+    ME→Antrag-Join (`pnpm corpus:me-antrag`, Stufe „belegt": ≥ 0,6 des kürzeren
+    Gesetzestexts wörtlich im längeren) bindet davon **11, 25 und 6** an einen
+    kundgemachten Initiativantrag — **42 von 140, fast ein Drittel** dessen, was
+    bisher als „keine Regierungsvorlage" dastand. In XXVI stehen 9 der 11 im
+    Juni/Juli 2019, nach dem Ende der Regierung; in XXVII und XXVIII wurden 8 der
+    31 Anträge eingebracht, **während die Begutachtungsfrist noch lief** (die
+    Pflegepakete 204–208/ME am 15.06.2022, Frist bis 21.06.). Kalibrierung XXVI:
+    69 dokumentierte Entwurf→Vorlage-Paare (5-%-Quantil 0,53), kein einziges der
+    100 versetzten falschen Paare über 0,026; 11 belegt, 0 schwach. Gelesen und
+    bestätigt u. a.: 319/ME ↔ 4124/A (BRÄG 2024, der Antrag nimmt das RStDG dazu),
+    159/ME ↔ 970/A (die Meldepflicht im B-KJHG, aufgegangen im
+    Gewaltschutzgesetz 2019), 94/ME ↔ 1301/A (das Homeoffice-Paket ohne den
+    EStG-Teil des Entwurfs).
+
+    **Ein Fehler im Join-Skript, gefunden an XXVI:** Der Nachfolgezeiger nennt
+    seine eigene Periode, das Skript las ihn aber mit der des Entwurfs — bei einer
+    übertragenen Vorlage also eine andere Vorlage mit derselben Nummer (XXVI/I/1164
+    gibt es nicht: 404). In XXVII verzerrte das vier Kalibrierungspaare (Recall
+    99,1 % → 100 % nach der Korrektur); die Treffer beider Perioden sind
+    Stück für Stück dieselben geblieben.
+
+    **Zwei Stärken, weil „enthalten" nicht sagt, wer in wem steht.** Das Maß ist
+    der Anteil des KÜRZEREN Texts im längeren: 72/A (570 Wörter) steht zu 77 % in
+    6/ME (11.934), während 159/ME (198 Wörter) zu 97 % im Gewaltschutzgesetz
+    steht. `scripts/corpus/meAntragTable.ts` rechnet aus Containment und Jaccard
+    beide Richtungen aus und schreibt `shared/utils/antragPathTable.ts`. Trägt
+    der Antrag mindestens die Hälfte des Entwurfstexts (`carriesDraft`, die
+    Schwelle liegt in der Lücke 0,36 → 0,58 der 42 Werte), ist es der Weg des
+    Entwurfs: 38 Entwürfe. Sonst nur der eines Teils: 4 (XXVI/27, XXVI/146,
+    XXVII/94, XXVIII/6) — dort bleibt die Station, wo das Stufenprotokoll sie
+    hinstellt, und die Seite nennt den Antrag in einem Satz.
+
+    **Was die Oberfläche daraus macht:** Die Zeile sagt „Kundgemacht" mit der
+    Fundstelle des Antrags und in Zone 2 „als Initiativantrag 1065/A" — die
+    Station ist hier UNSERE Folgerung aus dem Wortlaut, also steht der Weg dabei
+    (`DraftChain.antragCitation`, das eine erschlossene Feld der Kette). Die
+    Stationskarte stellt diese Entwürfe auf `bgbl`: XXVII 57 → 33 Entwürfe an der
+    Begutachtung, XXVI 49 → 40, XXVIII 40 → 35 (laufende Fristen inklusive). Die
+    Detailseite überschreibt „Gesetz geworden – als Initiativantrag", die Leiste
+    liest „keine – als Initiativantrag eingebracht", dann „Initiativantrag 1065/A
+    · 20.11.2020" und die Kundmachung; unter „Die Regierungsvorlage" stehen statt
+    der Wartesätze drei prüfbare: welcher Antrag, wie zugeordnet (mit dem Anteil),
+    und — wo es zutrifft — dass er während der Frist eingebracht wurde. Zeitlich,
+    nie ursächlich. Die Leiste hat dafür eine Regel gelockert: Eine erreichte
+    Station spricht auch hinter einer nicht erreichten (`SpineRail`). Die
+    Startseite und der Vorgänger-/Nachfolger-Hinweis folgen derselben Tabelle: Ein
+    Vorgänger, der als Antrag Gesetz wurde, ist kein „zweiter Anlauf".
+
+    **Kosten: keine Anfrage zur Laufzeit.** Der Join liest je Periode 700 bis
+    1.100 Gesetzestexte und läuft deshalb von Hand, wie `rvLatency.ts` für die
+    Basisraten; die Tabelle ist statisch. Für die laufende Periode veraltet sie
+    ab `ANTRAG_PATHS_MEASURED` — ein neuer Antrag fehlt dann, und die Zeile sagt,
+    was sie vorher sagte: die schwächere Aussage, keine falsche. Die Messung für
+    XXVI kostete einmalig rund 700 Abrufe. **Nicht gebaut:** die Fälle MIT
+    Vorlage, deren Text trotzdem als Antrag Gesetz wurde (XXVII/171, 240, 259/ME,
+    XXVIII/2/ME — die Leiste zeigt dort weiter die belegte Vorlage, etwa „Im
+    Parlament behandelt"), die schwache Stufe (20 in XXVII, 3 in XXVIII), die
+    zu kurzen Anträge (2 in XXVI, 59 in XXVII, 6 in XXVIII), Perioden vor XXVI, und eine Erklärung des Wegs
+    auf `/so-funktionierts`.
 
 ### 12.10b Ändert sich die Begründung? — gemessen, 22.09.2026
 

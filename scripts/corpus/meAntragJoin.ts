@@ -226,6 +226,8 @@ interface MeRow {
   start: string | null
   frist: string | null
   rv: string | null
+  /** Any Regierungsvorlage at all, in this GP or a later one. */
+  becameRv: boolean
 }
 const meInrs = (meList.rows ?? []).map((r) => String(r[2]))
 console.error(`Lese ${meInrs.length} Ministerialentwurf-Details …`)
@@ -237,8 +239,15 @@ const mes: MeRow[] = await pool(meInrs, CONCURRENCY, async (inr) => {
     const m = /Ende der Begutachtungsfrist\s+(\d{2})\.(\d{2})\.(\d{4})/.exec(String(s.text ?? ''))
     if (m) frist = `${m[3]}-${m[2]}-${m[1]}`
   }
-  const rv = stages.flatMap((s) => [...String(s.text ?? '').matchAll(/\/gegenstand\/[IVXLC]+\/I\/(\d+)/g)].map((m) => m[1]!))[0] ?? null
-  return { inr, title: c.title ?? '', start: String(c.einlangen ?? '').slice(0, 10) || null, frist, rv }
+  /* The pointer names its own GP, and a carry-over points into the NEXT
+   * one (XXVI/37/ME → XXVII/I/…). Read with this GP's prefix that asks for
+   * a different Vorlage with the same number — or, as for GP XXVI on
+   * 30.09.2026, for one that does not exist (404). Such a Vorlage is still a
+   * Vorlage (`becameRv`), but it is no calibration pair: its text lives in
+   * another period's corpus. */
+  const links = stages.flatMap((s) => [...String(s.text ?? '').matchAll(/\/gegenstand\/([IVXLC]+)\/I\/(\d+)/g)])
+  const rv = links.find((m) => m[1] === gp)?.[2] ?? null
+  return { inr, title: c.title ?? '', start: String(c.einlangen ?? '').slice(0, 10) || null, frist, rv, becameRv: links.length > 0 }
 })
 
 const pairs = mes.filter((m): m is MeRow & { rv: string } => Boolean(m.rv))
@@ -370,7 +379,7 @@ for (const a of antraege) {
     citation: a.citation, inr: a.inr, title: a.title, bgbl: a.bgbl,
     einlangen: when, kind: a.kind ?? null,
     meInr: best.me.inr, meTitle: best.me.title, meStart: best.me.start, meFrist: best.me.frist,
-    meBecameRv: Boolean(best.me.rv),
+    meBecameRv: best.me.becameRv,
     score: Number(best.score.toFixed(3)),
     jaccard: Number(best.jac.toFixed(3)),
     strong: best.score >= STRONG,
