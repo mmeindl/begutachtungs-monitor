@@ -148,5 +148,15 @@ describe('fristContextDe — the yardstick sentence', () => {
 
   it('is silent in the middle', () => {
     expect(fristContextDe(null)).toBeNull()
+    expect(fristContextDe(null, 'verordnung')).toBeNull()
+  })
+
+  it('compares a Verordnungsentwurf with its own kind', () => {
+    expect(fristContextDe('short', 'verordnung')).toBe(
+      'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Verordnungsentwürfe seit 2013 hatte mindestens vier.',
+    )
+    expect(fristContextDe('full', 'verordnung')).toBe(
+      'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Verordnungsentwurf.',
+    )
   })
 })

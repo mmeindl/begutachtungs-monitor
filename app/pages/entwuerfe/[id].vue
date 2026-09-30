@@ -2,7 +2,7 @@
 import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
-import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
+import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
 
 /**
@@ -67,6 +67,15 @@ const outcome = computed(() => data.value?.outcome ?? fetchedOutcome.value ?? nu
    draw at all. Those two keep the card in words. */
 const stationList = computed(() =>
   data.value?.kind === 'verordnung' ? regulationStations(data.value, outcome.value) : [])
+
+/* The yardstick behind the rail's „Kurze Frist" / „Volle Frist", as on the
+   draft page — measured against Verordnungsentwürfe, because only a
+   Verordnung has the rail that names the class (`fristContextDe`). */
+const fristContext = computed(() => {
+  const d = data.value
+  if (!d || !stationList.value.length) return null
+  return fristContextDe(fristClassOf(d.startedAt, d.deadline), 'verordnung')
+})
 
 /* Same contract as on the draft page: only a section this page renders. */
 const stationAnchors: Partial<Record<StationId, string>> = { entwurf: '#dokumente' }
@@ -247,6 +256,11 @@ const documents = computed(() => {
               <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
             </template>
           </p>
+          <!-- While the Frist runs the action card carries this sentence;
+               one place at a time, as on the draft page. -->
+          <p v-if="!data.active && fristContext" class="mt-2 max-w-prose text-sm text-ink-secondary">
+            {{ fristContext }}
+          </p>
         </div>
       </div>
 
@@ -284,6 +298,9 @@ const documents = computed(() => {
             Einreichadresse ist nicht veröffentlicht; die zuständige Stelle nennt
             der RIS-Eintrag.
           </template>
+        </p>
+        <p v-if="fristContext" class="mt-2 max-w-prose text-sm text-ink">
+          {{ fristContext }}
         </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
           <!-- Linked, never read out. Measured 2026-09-17 over 40 records:

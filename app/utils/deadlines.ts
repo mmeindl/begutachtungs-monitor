@@ -235,13 +235,24 @@ export function fristClassLineDe(start: string | null | undefined, deadline: str
  * (§ 9 Abs. 3 WFA-Grundsatz-Verordnung) — the first stands in the rail one
  * screen up, the second on /so-funktionierts#begutachtung. What the rail
  * cannot say is how this Frist compares, so that is what stays.
+ *
+ * A Verordnungsentwurf is compared with its own kind. Measured the same
+ * day over the RIS Begut corpus, Beginn → Ende der Begutachtungsfrist,
+ * since 2013 (1.707 Verordnungen): the median is 28 days as for the
+ * Gesetze and 66 % ran at least four weeks, but only 16,8 % reached six —
+ * one in six, not one in four (the RIS Gesetze of the same pass: 23,0 %,
+ * which matches list 81's 22–25 % and so checks the instrument). Under
+ * three weeks 18,7 %, stable across 2013–2019, 2020–2022 and since 2023.
  */
-export function fristContextDe(cls: FristClass): string | null {
+export function fristContextDe(cls: FristClass, kind: 'entwurf' | 'verordnung' = 'entwurf'): string | null {
+  const drafts = kind === 'verordnung' ? 'Verordnungsentwürfe' : 'Entwürfe'
   if (cls === 'short') {
-    return 'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Entwürfe seit 2013 hatte mindestens vier.'
+    return `Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der ${drafts} seit 2013 hatte mindestens vier.`
   }
   if (cls === 'full') {
-    return 'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder vierte Entwurf.'
+    return kind === 'verordnung'
+      ? 'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Verordnungsentwurf.'
+      : 'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder vierte Entwurf.'
   }
   return null
 }
