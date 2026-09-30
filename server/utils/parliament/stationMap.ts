@@ -41,6 +41,7 @@
  */
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftStations'
+import { gpHasEnded } from '#shared/utils/gp'
 import type { VorlageRow } from './list101'
 import { mapWithConcurrency } from '../pool'
 
@@ -67,6 +68,7 @@ async function chainOf(
   gp: string,
   inr: number,
   houseRow: (gp: string, inr: number) => Promise<VorlageRow | null>,
+  currentGp: string,
 ): Promise<DraftChain> {
   const nothing: DraftChain = {
     station: 'begutachtung',
@@ -80,12 +82,18 @@ async function chainOf(
     const rv = findLastRvLink(parseStages(detail.content?.stages))
     if (!rv) return nothing
 
+    /* The Vorlage's OWN period, not the draft's: a carry-over names the
+     * next one, and there the Vorlage is alive (docs/architecture.md
+     * §12.10, 30.09.2026). */
+    const rvGpEnded = gpHasEnded(rv.gp, currentGp)
     let bgblNumber: string | null = null
     let filingOpen = false
     try {
       const rvDetail = await getGegenstand(rv.gp, 'I', rv.inr)
       bgblNumber = extractBgblLink(rvDetail.content?.status?.bgbllinks)?.number ?? null
-      filingOpen = isFilingOpen(rvDetail.content)
+      // Same guard as the detail page (`draftDetail.ts`): a Vorlage that
+      // lapsed with its period takes nothing, whatever a stale flag says.
+      filingOpen = isFilingOpen(rvDetail.content) && !rvGpEnded
     } catch {
       // The Vorlage exists — the stage record says so. Only what the Vorlage
       // itself would have added is missing, so the station stays `rv`: the
@@ -97,7 +105,7 @@ async function chainOf(
      * the row rather than the status alone costs nothing. */
     const row = await houseRow(rv.gp, rv.inr)
     const station = stationFor(bgblNumber, row?.status ?? null)
-    return { station, rvCitation: rv.label, rvDate: row?.date || null, bgblNumber, filingOpen }
+    return { station, rvCitation: rv.label, rvDate: row?.date || null, bgblNumber, filingOpen, rvGpEnded }
   } catch {
     return nothing
   }
@@ -111,7 +119,7 @@ async function chainOf(
  */
 export const getStationMapForGp = defineCachedFunction(
   async (gp: string): Promise<Record<number, DraftChain>> => {
-    const { items } = await getDraftsForGp(gp)
+    const [{ items }, currentGp] = await Promise.all([getDraftsForGp(gp), getCurrentGp()])
 
     /* The Vorlagen list of a period, for the two facts the Vorlage's own
      * detail JSON does not carry in a form we read: whether the house is
@@ -131,7 +139,7 @@ export const getStationMapForGp = defineCachedFunction(
     }
 
     const chains = await mapWithConcurrency(items, CONCURRENCY, (item) =>
-      chainOf(item.gp, item.inr, houseRow),
+      chainOf(item.gp, item.inr, houseRow, currentGp),
     )
 
     // Duplicate rows exist upstream (dual-ministry drafts, `outcomes.ts`);

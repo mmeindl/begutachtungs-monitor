@@ -599,6 +599,36 @@ after a clean install.
 9. **Classifier review loop** — ~~a manual org allowlist~~ ~~a review loop that surfaces candidates~~ **Done (2026-09-15):** `scripts/audit/classifier.ts` (`pnpm audit:classifier -- --gp XXVIII`, `--ityp I` for the Regierungsvorlagen, `--inr` for one item) runs the classifier over a GP's list-142 rows and prints the two error classes: institutions filed as "person" (in full — candidates for a pattern or `ORG_ALLOWLIST`, each to be verified before it is added) and organisations whose naming segment is shaped like a person (masked — those are leaks). What the first run found, and what became of it: 334+ hidden rows led by the ministries' short form "BM f. …" (221), courts, the Datenschutzbehörde, the FMA, the Anwaltschaften, brand-style NGOs → patterns, checked against the comma-form persons of the corpus (zero hits each); ÖGB/ÖAMTC/SPÖ/ARBÖ hidden by JavaScript's ASCII-only `\b` before "Ö" → lookarounds; and the leak class (§3) → `leadsWithPersonName`. Occasion: a reader reported one hidden organisation (Presseclub Concordia); the audit showed it was a class. Re-run when a GP closes or a reader reports the next one. The classifier still runs inside the derived `statements-me` cache (memory-only, §5 cache rule 5), so a change shows on the next request and nothing has to be deleted by hand.
 10. **Dead-ME marker** — shipped 2026-09-08 as a *boundary* statement, not a verdict. Upstream has no status field (`vhg_fertig` = `J` everywhere, `api-exploration.md` §5.5). The page therefore states (a) that the draft's Gesetzgebungsperiode is over, with the date from the constituent-session table in `shared/utils/gp.ts` (Art. 27 B-VG: GP n ends the day before GP n+1 convenes; verified against Wikipedia's GP table and the list-81 arrival boundary), (b) the measured rarity of a late Regierungsvorlage, and (c) same-title drafts before and after (`server/utils/parliament/related.ts`; predecessor only when it produced no RV). Base rates from `scripts/corpus/rvLatency.ts`, hand-copied into `app/utils/outcomes.ts` (re-run when a GP closes): **GP XXVII** 353 MEs → 296 RVs (84 %), median 40 d, p90 189 d, 89.5 % within the 180-day window the copy already used; 57 without RV, 10 of them with a Frist in the GP's last six months; **4 of 61** drafts open at the GP's end got an RV in GP XXVIII, linked in the old ME's stage list. **GP XXVI** 163 → 114 (70 %), 14 of 63 carried over — under a continuing coalition the carry-over is three times as common, which is why the copy says "selten", never "nicht mehr möglich". Title matching is exact on purpose: on the 57 dead XXVII drafts it found the real re-submissions (ElWG 310/ME → 32/ME, 173/ME → 3/ME) and the re-run Begutachtungen (41/ME → 55/ME), while every fuzzy threshold added different-law pairs; a generic title ("Tierschutzgesetz, Änderung") does match its next occurrence, so the copy claims "gleichlautend" and nothing more. Still deferred: the Initiativantrag path (a draft that became law via an MPs' motion reads as "keine RV" — the stage vocabulary never links `/A/` items), a state word in the archive list (needs one detail fetch per row), per-ministry rates once persistence exists (§12.4).
 
+    **Nachtrag 30.09.2026 — das Zustandswort der Archivliste gibt es längst, und
+    eines davon war falsch.** „Braucht einen Detailabruf je Zeile" stammt vom
+    08.09.2026; seit dem 18.09. zahlt die Stationskarte (§12.26) genau diesen
+    Abruf, für jede Periode, sechs Stunden gecacht, und `/api/drafts` hängt die
+    Kette auch an die Zeilen einer beendeten Periode. Gemessen am Produktionsbuild
+    (`pnpm build`, `PORT=3012 node .output/server/index.mjs`, erst
+    `/api/stations/<GP>`, dann `/api/drafts?gp=<GP>`): **XXVII** 350 Zeilen, jede
+    mit Station (57 Begutachtung, 1 Regierungsvorlage, 5 Parlament, 287 BGBl.),
+    kalt 35,5 s; **XXVI** 163 (49/0/1/113), 17,8 s; **XXV** 329 (44/3/1/281),
+    29,7 s; **XXIV** 543 (91/8/2/442), 62,1 s — alle `linked`. Neue Anfragen
+    kostet das keine: Der Prewarm wärmt die laufende Periode und die Vorperiode,
+    eine ältere zahlt den kalten Bau beim ersten Besuch, und die Liste antwortet
+    bis dahin ohne Stationen und sagt das (2,5-s-Budget, unverändert).
+
+    **Falsch war ein Wort, und nur in beendeten Perioden:** Eine Vorlage auf der
+    Station `rv` hieß „Regierungsvorlage liegt vor" — über 2704 d.B. der GP XXVII,
+    über 3 Vorlagen der XXV. und 8 der XXIV., die das Haus nie entschieden hat und
+    die mit ihrer Periode verfallen sind. Die Detailseite nennt denselben Fall
+    seit 23.09.2026 „Ohne Beschluss – Gesetzgebungsperiode beendet"; die Zeile
+    sagt jetzt „Ohne Beschluss – GP beendet", die Kürzung der Leiste. Entschieden
+    wird am Kalender der **Vorlage**, nicht des Entwurfs (`DraftChain.rvGpEnded`):
+    Eine übertragene Vorlage (XXVII/352/ME → 127 d.B./XXVIII. GP) lebt in der
+    laufenden Periode und liegt weiter vor. Derselbe Schalter sperrt seither in
+    der Karte das Formular-Flag einer verfallenen Vorlage, wie es die Detailseite
+    schon tat. **Nicht geändert:** „Bisher keine Regierungsvorlage" bleibt auf den
+    Archivzeilen stehen — „bisher" stimmt dort weiter (4 von 61 bzw. 14 von 63
+    Entwürfen kamen noch in der Folgeperiode), und die Grenze der Periode sagt die
+    Detailseite in einem ganzen Satz. Ältere Perioden werden nicht vorgewärmt:
+    Das wären über tausend Abrufe je Nacht für Seiten, die kaum jemand öffnet.
+
 ### 12.10b Ändert sich die Begründung? — gemessen, 22.09.2026
 
 Das letzte offene Stück des Diff-Layers war eine Frage, keine Aufgabe: Der

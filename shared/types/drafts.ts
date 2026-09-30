@@ -82,6 +82,19 @@ export interface DraftChain {
   bgblNumber: string | null
   /** Stellungnahmen can still be filed on the Vorlage — the zweite Runde. */
   filingOpen: boolean
+  /**
+   * The Vorlage's own Gesetzgebungsperiode is over — `gpHasEnded` on the GP
+   * its link names, which for a carry-over is the NEXT one (XXVII/352/ME →
+   * 127 d.B./XXVIII. GP). A calendar fact, not an inference.
+   *
+   * It exists for one row state: a Vorlage at station `rv` in an ended
+   * period does not „liegen vor" any more — the house never decided it and
+   * the period took it with it, which the detail page has called „Ohne
+   * Beschluss – Gesetzgebungsperiode beendet" since 23.09.2026
+   * (docs/architecture.md §12.10). Absent where no Vorlage exists or the
+   * period runs: the list then says what it said before.
+   */
+  rvGpEnded?: boolean
 }
 
 /** A TraceLink that knows which station of the process it belongs to. */

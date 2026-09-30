@@ -228,6 +228,15 @@ function chainState(chain: DraftChain, deadline: string | null): EntryState {
   if (chain.station === 'parlament') {
     return { label: 'Im Parlament behandelt', detail: chain.rvCitation, tone: 'inactive', actionable: false }
   }
+  /* A Vorlage the house never decided, in a period that is over, does not
+   * „liegen vor" any more. The words are the detail page's
+   * (`procedureStatusDe`: „Ohne Beschluss – Gesetzgebungsperiode beendet"),
+   * shortened the way the spine shortens them. Measured 30.09.2026: 1 row in
+   * GP XXVII, 3 in XXV, 8 in XXIV — every one of them said „liegt vor"
+   * about a Vorlage of a closed period (docs/architecture.md §12.10). */
+  if (chain.station === 'rv' && chain.rvGpEnded) {
+    return { label: 'Ohne Beschluss – GP beendet', detail: chain.rvCitation, tone: 'inactive', actionable: false }
+  }
   return outcomeState(chain, deadline)
 }
 

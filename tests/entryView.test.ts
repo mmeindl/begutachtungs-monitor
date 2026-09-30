@@ -181,6 +181,21 @@ describe('Zone 4 — Stand', () => {
     })
   })
 
+  /* The archive row (§12.10, 30.09.2026): a Vorlage whose period is over
+   * and that the house never decided does not „liegen vor". A carry-over
+   * Vorlage in the running period still does — the flag is the Vorlage's
+   * period, not the draft's. */
+  it('does not say „liegt vor" about a Vorlage of a closed period', () => {
+    const chain = { station: 'rv' as const, rvCitation: '2704 d.B.', rvDate: '2024-09-18', bgblNumber: null, filingOpen: false }
+    expect(viewOfDraft(draft({ gp: 'XXVII', chain: { ...chain, rvGpEnded: true } })).state).toMatchObject({
+      label: 'Ohne Beschluss – GP beendet',
+      detail: '2704 d.B.',
+      actionable: false,
+    })
+    expect(viewOfDraft(draft({ chain: { ...chain, rvGpEnded: false } })).state.label).toBe('Regierungsvorlage liegt vor')
+    expect(viewOfDraft(draft({ chain })).state.label).toBe('Regierungsvorlage liegt vor')
+  })
+
   /* A Verordnungsentwurf has no station after the Begutachtung, and that is
    * not a missing value: its road ends there. */
   it('ends a record without a Gegenstand at its own Begutachtung', () => {
