@@ -97,17 +97,14 @@ function toDocument(
 }
 
 /* Reading order, not RIS's document order: reasoning first, then the text,
- * then what changes against current law. */
+ * then what changes against current law. The hints are DocumentList's
+ * DOC_HINTS wording, so the same document reads the same on both pages. */
 const documents = computed(() => {
   const d = data.value
   if (!d) return []
   return [
-    toDocument(
-      'Erläuterungen',
-      d.explanations,
-      'Die Begründung des Ministeriums – der Allgemeine Teil sagt, was der Entwurf überhaupt soll',
-    ),
-    toDocument('Entwurfstext', d.mainDocument, 'Der Entwurf selbst'),
+    toDocument('Erläuterungen', d.explanations, 'Die Begründung des Ministeriums'),
+    toDocument('Entwurfstext', d.mainDocument, 'Der Entwurfstext selbst'),
     toDocument(
       'Textgegenüberstellung',
       d.textComparison,
@@ -297,99 +294,107 @@ const documents = computed(() => {
         </p>
       </div>
 
-      <!-- FIRST what the draft changes, then why, and the documents last,
+      <!-- ONE chapter, „Der Entwurf", with h3 blocks — the draft page's
+           anatomy. Until 30.09.2026 comparison, reasoning and documents were
+           three h2 sections of their own here, so the folded document list
+           stood as a chapter heading of the same weight as the diff.
+
+           FIRST what the draft changes, then why, and the documents last,
            folded — the order of the draft page since 30.09.2026, for the same
            reason: a reader who opens a draft wants the diff, and nobody comes
-           for the PDFs. Until then the Erläuterungen led here.
+           for the PDFs. Until then the Erläuterungen led here. -->
+      <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
+        <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
 
-           The ressort's own comparison, from day one — and on these pages it
-           carries more weight than on a Ministerialentwurf's. There is no
-           Regierungsvorlage to compare against later and no parliamentary
-           Kurzinformation above it, so this is the only place the procedure
-           says what would change. Shown since 26.09.2026; until then both
-           services were keyed on (GP, Nummer) and two thirds of the corpus
-           had no section at all (§12.16). -->
-      <section id="gegenueberstellung" class="page-section scroll-mt-6" aria-labelledby="gegenueberstellung-heading">
-        <h2 id="gegenueberstellung-heading" class="section-heading">Was ändert der Entwurf?</h2>
-        <TextComparisonSection :ris-id="data.id" />
-      </section>
+        <!-- The ressort's own comparison, from day one — and on these pages it
+             carries more weight than on a Ministerialentwurf's. There is no
+             Regierungsvorlage to compare against later and no parliamentary
+             Kurzinformation above it, so this is the only place the procedure
+             says what would change. Shown since 26.09.2026; until then both
+             services were keyed on (GP, Nummer) and two thirds of the corpus
+             had no section at all (§12.16). -->
+        <div id="gegenueberstellung" class="mt-4 scroll-mt-6">
+          <h3 class="text-base font-semibold text-ink">Was ändert der Entwurf?</h3>
+          <TextComparisonSection :ris-id="data.id" />
+        </div>
 
-      <!-- It weighs more here than on the draft page: this Verfahren has no
-           Kurzbeschreibung from Parliament, because it never reaches
-           Parliament. The Erläuterungen are therefore the only information
-           about its purpose the Verfahren publishes at all — and 72,1 % of
-           the Verordnung records carry them (`pnpm corpus:verordnungen`).
-           Still second: its Besonderer Teil hangs at the §§ of the comparison
-           above anyway. -->
-      <section id="erlaeuterungen" class="page-section scroll-mt-6" aria-labelledby="erlaeuterungen-heading">
-        <h2 id="erlaeuterungen-heading" class="section-heading">Was das Ressort begründet</h2>
-        <ExplanationsSection :ris-id="data.id" />
-      </section>
+        <!-- It weighs more here than on the draft page: this Verfahren has no
+             Kurzbeschreibung from Parliament, because it never reaches
+             Parliament. The Erläuterungen are therefore the only information
+             about its purpose the Verfahren publishes at all — and 72,1 % of
+             the Verordnung records carry them (`pnpm corpus:verordnungen`).
+             Still second: its Besonderer Teil hangs at the §§ of the comparison
+             above anyway. -->
+        <div id="erlaeuterungen" class="mt-8 scroll-mt-6">
+          <h3 class="text-base font-semibold text-ink">Was das Ressort begründet</h3>
+          <ExplanationsSection :ris-id="data.id" />
+        </div>
 
-      <!-- The house <details> with the heading in the <summary>, as on the
-           draft page and in DraftDescription: the outline does not depend on
-           what is open, find-in-page still opens it, and nothing above it
-           moves when it opens. -->
-      <section class="page-section" aria-labelledby="dokumente">
-        <details class="group">
+        <!-- The house <details> with the heading in the <summary>, as on the
+             draft page and in DraftDescription: the outline does not depend on
+             what is open, find-in-page still opens it, and nothing above it
+             moves when it opens. -->
+        <details class="group mt-8 border-t border-hairline">
           <summary
             class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
           >
-            <h2 id="dokumente" class="section-heading">
+            <h3 id="dokumente" class="text-base font-semibold text-ink">
               Dokumente<template v-if="documents.length"> ({{ documents.length }})</template>
-            </h2>
+            </h3>
             <UIcon
               name="i-lucide-chevron-down"
-              class="size-5 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+              class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
               aria-hidden="true"
             />
           </summary>
-          <!-- THE ZITIERFORM, since 26.09.2026 — the one deliberate gap the
-               anatomy comparison of 17.09.2026 left open
-               (docs/architecture.md §12.16).
+          <div class="pb-2">
+            <!-- THE ZITIERFORM, since 26.09.2026 — the one deliberate gap the
+                 anatomy comparison of 17.09.2026 left open
+                 (docs/architecture.md §12.16).
 
-               These Verfahren have no Geschäftszahl, so „132/ME" — the string
-               a reader quotes and a lawyer cites — had no counterpart on the
-               page. The RIS Dokumentnummer is it: how RIS addresses the
-               record, what „Im RIS ansehen" resolves, and this page's own URL.
-               Until now it was on screen only in the address bar, with nothing
-               saying what it was.
+                 These Verfahren have no Geschäftszahl, so „132/ME" — the string
+                 a reader quotes and a lawyer cites — had no counterpart on the
+                 page. The RIS Dokumentnummer is it: how RIS addresses the
+                 record, what „Im RIS ansehen" resolves, and this page's own URL.
+                 Until now it was on screen only in the address bar, with nothing
+                 saying what it was.
 
-               HERE AND NOT IN THE HEADER, and the first two attempts are the
-               reason. In the Metazeile beside the type word it cost the phone
-               TWO EXTRA LINES above the h1 (three meta rows at 500 px against
-               the draft page's one). Moved one line down into the
-               Herkunftszeile it was worse in kind rather than in size: that
-               line is human-readable facts separated by „·" — a ministry, a
-               link label — and a 42-character GUID at the same size, weight
-               and colour is not the same kind of thing, so it read as noise
-               and pushed the link onto its own line.
+                 HERE AND NOT IN THE HEADER, and the first two attempts are the
+                 reason. In the Metazeile beside the type word it cost the phone
+                 TWO EXTRA LINES above the h1 (three meta rows at 500 px against
+                 the draft page's one). Moved one line down into the
+                 Herkunftszeile it was worse in kind rather than in size: that
+                 line is human-readable facts separated by „·" — a ministry, a
+                 link label — and a 42-character GUID at the same size, weight
+                 and colour is not the same kind of thing, so it read as noise
+                 and pushed the link onto its own line.
 
-               The mistake behind both was reasoning from the anatomy table
-               instead of from the string. „137/ME" belongs in the header
-               because it is short and people say it out loud; `BEGUT_C7697…`
-               is a lookup key nobody carries in their head. So it keeps the
-               JOB, not the slot: it stands with the sentence that already
-               names the source, at the bottom, where whoever wants to cite or
-               download is looking anyway — and in its own typographic class,
-               so it reads as a key and not as prose. -->
-          <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-            Aus dem Rechtsinformationssystem des Bundes (RIS), CC BY 4.0. Im RIS
-            steht dieser Entwurf unter der Dokumentnummer
-            <!-- Not a link: it would be the second element on this page
-                 pointing at the RIS page the header already links, and the
-                 draft page makes the same split — the Geschäftszahl is text,
-                 its resolver stands elsewhere. `break-all` because 42
-                 characters do not fit a phone column unbroken. -->
-            <span class="break-all font-mono text-xs text-ink">{{ data.id }}</span>.
-          </p>
-          <div class="mt-3 pb-2">
-            <DocumentList :documents="documents" source="ris.bka.gv.at" />
+                 The mistake behind both was reasoning from the anatomy table
+                 instead of from the string. „137/ME" belongs in the header
+                 because it is short and people say it out loud; `BEGUT_C7697…`
+                 is a lookup key nobody carries in their head. So it keeps the
+                 JOB, not the slot: it stands with the sentence that already
+                 names the source, at the bottom, where whoever wants to cite or
+                 download is looking anyway — and in its own typographic class,
+                 so it reads as a key and not as prose. -->
+            <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+              Aus dem Rechtsinformationssystem des Bundes (RIS), CC BY 4.0. Im RIS
+              steht dieser Entwurf unter der Dokumentnummer
+              <!-- Not a link: it would be the second element on this page
+                   pointing at the RIS page the header already links, and the
+                   draft page makes the same split — the Geschäftszahl is text,
+                   its resolver stands elsewhere. `break-all` because 42
+                   characters do not fit a phone column unbroken. -->
+              <span class="break-all font-mono text-xs text-ink">{{ data.id }}</span>.
+            </p>
+            <div class="mt-3">
+              <DocumentList :documents="documents" source="ris.bka.gv.at" />
+            </div>
+            <!-- No second "Datensatz im RIS" link here: the header line already
+                 carries it, in the slot where the draft page puts "Auf
+                 parlament.gv.at ansehen" — provenance belongs next to the
+                 item's identity, not mid-page as an action it is not. -->
           </div>
-          <!-- No second "Datensatz im RIS" link here: the header line already
-               carries it, in the slot where the draft page puts "Auf
-               parlament.gv.at ansehen" — provenance belongs next to the
-               item's identity, not mid-page as an action it is not. -->
         </details>
       </section>
 
