@@ -50,6 +50,19 @@ export const RIS_CREDIT = 'Quelle (CC BY 4.0, RIS):'
 export const PARLIAMENT_CREDIT = 'Quelle (Dokument des Ressorts, veröffentlicht vom Parlament):'
 
 /**
+ * The page's sentence where no source carries an annex — a fact about the
+ * document and nothing else (30.09.2026).
+ *
+ * It used to add „Sie ist nicht verpflichtend, und ein neues Gesetz hat
+ * nichts gegenüberzustellen": two reasons joined by „und" as if both applied,
+ * where the server knows neither. On an amending draft the second is false,
+ * on a new law the first adds nothing. That the annex is optional is
+ * background about the procedure and stands on
+ * /so-funktionierts#gegenueberstellung.
+ */
+export const NO_ANNEX = 'Zu diesem Entwurf gibt es keine Textgegenüberstellung.'
+
+/**
  * The annex on Parliament's own document list for this ME, in the formats it
  * offers — the second place the ressort's Textgegenüberstellung is published.
  *
@@ -123,7 +136,7 @@ export interface AnnexSource {
  */
 async function readRis(parts: readonly RisDocumentUrls[], articles: readonly DraftArticle[]): Promise<AnnexSource | string> {
   const annex = parts[0]
-  if (!annex) return 'Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.'
+  if (!annex) return NO_ANNEX
   // **The parts of one annex are read as one annex.** 2 of the 240 records
   // with a Gegenüberstellung publish it in several documents (26.09.2026), and
   // the law boundaries are resolved against the draft's WHOLE Artikel list —

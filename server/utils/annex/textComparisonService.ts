@@ -35,7 +35,7 @@
  */
 
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { annexSourceFor, annexSourceForDraft, parliamentAnnex, PARLIAMENT_CREDIT, READ_PARLIAMENT_COPY, RIS_CREDIT } from './annexSource'
+import { annexSourceFor, annexSourceForDraft, NO_ANNEX, parliamentAnnex, PARLIAMENT_CREDIT, READ_PARLIAMENT_COPY, RIS_CREDIT } from './annexSource'
 import { checkAnnexRows, notRunReason } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
@@ -204,7 +204,7 @@ export const getTextComparison = defineCachedFunction(
     if (typeof chosen === 'string') {
       const parl = await parliamentAnnex(gp, inr)
       const atParliament = parl.pdf ?? parl.html
-      // „Keine Textgegenüberstellung" over a draft that has one is the worst
+      // „Keine Textgegenüberstellung" (`NO_ANNEX`) over a draft that has one is the worst
       // sentence this page can print (`annex/annexSource.ts`, 10.09.2026). So
       // it may stand only where Parliament carries none either. Where it is
       // there as a PDF only, the page says exactly that: it exists, we did
@@ -266,7 +266,7 @@ export const getRisTextComparison = defineCachedFunction(
     const first = parts[0]
     const pdf: TraceLink | null = first?.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: first.pdf } : null
     if (!first) {
-      return emptyComparison(who, 'Keine Textgegenüberstellung: Sie ist nicht verpflichtend, und ein neues Gesetz hat nichts gegenüberzustellen.')
+      return emptyComparison(who, NO_ANNEX)
     }
     // No (GP, Nummer) for the shared parse to key on, so the document is read
     // under its own URL — the same parse, a different cache key

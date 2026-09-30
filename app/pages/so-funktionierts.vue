@@ -463,7 +463,10 @@ const toc = [
         des Bundeskanzleramts vom 27.03.2002 schreibt diese Form vor – die
         Spaltentitel, und dass unveränderter Text dazwischen abgekürzt wird
         („2. bis 26b. …“). Der Text auf unserer Seite stammt aus diesem
-        Dokument des Ministeriums, Wort für Wort.
+        Dokument des Ministeriums, Wort für Wort. Verpflichtend ist die
+        Gegenüberstellung nicht, und ein Entwurf, der ein neues Gesetz schafft,
+        hat nichts gegenüberzustellen – fehlt sie, steht auf der Seite nur,
+        dass es keine gibt.
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
