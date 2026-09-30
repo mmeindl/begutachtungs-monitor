@@ -95,14 +95,14 @@ describe('GP-ended copy', () => {
 describe('changeShareSentenceDe (§12.38)', () => {
   it('states the count of the draft and the middle half of the period, not a verdict', () => {
     const s = changeShareSentenceDe('XXVII', 12, 21, 'Änderungsanordnungen')
-    expect(s).toContain('Von den 21 Änderungsanordnungen des Entwurfs hat die Regierungsvorlage 12 (57\u00a0%) geändert oder gestrichen')
+    expect(s).toContain('Die Regierungsvorlage hat 12 der 21 Änderungsanordnungen des Entwurfs geändert oder gestrichen (57\u00a0%')
     expect(s).toContain('Bei der Hälfte der Entwürfe der XXVII. Gesetzgebungsperiode waren es')
     expect(s).not.toMatch(/nur|kaum|erfolgreich|ignoriert|Wirkung/)
   })
 
   it('says none and all in words', () => {
     expect(changeShareSentenceDe('XXVII', 0, 5, 'Paragraphen')).toContain('übernimmt die 5 Paragraphen des Entwurfs im Wortlaut')
-    expect(changeShareSentenceDe('XXVII', 5, 5, 'Paragraphen')).toContain('alle 5 geändert')
+    expect(changeShareSentenceDe('XXVII', 5, 5, 'Paragraphen')).toContain('alle 5 Paragraphen des Entwurfs geändert')
   })
 
   it('holds a running period against the newest closed one', () => {
@@ -142,7 +142,7 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
     const dates = { arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' }
     const without = earlyVorlageSentenceDe(1, 33, 'Änderungsanordnungen', dates, null)
     expect(without).not.toContain('Was danach')
-    expect(without).toContain('1 (3\u00a0%) geändert oder gestrichen')
+    expect(without).toContain('1 der 33 Änderungsanordnungen des Entwurfs geändert oder gestrichen (3\u00a0%')
     const s = earlyVorlageSentenceDe(0, 8, 'Paragraphen', dates, pair)
     expect(s).not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
   })

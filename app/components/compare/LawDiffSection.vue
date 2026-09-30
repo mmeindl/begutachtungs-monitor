@@ -13,6 +13,7 @@
  */
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
+import { formatDateDe } from '#shared/utils/format'
 import { ownChangeShare } from '#shared/utils/changeShare'
 import { changeShareSentenceDe, earlyVorlageSentenceDe, tabledBeforeFristEnd } from '~/utils/outcomes'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
@@ -118,8 +119,10 @@ const reasoningNote = computed<string | null>(() => {
   const stats = reasoning.value?.stats
   if (!stats?.compared) return null
   const { compared, changed } = stats
-  if (changed === 0) return `Zu allen ${compared} Paragraphen, für die beide Fassungen eine Begründung führen, ist sie unverändert geblieben.`
-  return `Zu ${changed} von ${compared} Paragraphen, für die beide Fassungen eine Begründung führen, hat das Ressort sie geändert — aufklappbar an der Änderung.`
+  // Shorter since 30.09.2026; „— aufklappbar an der Änderung" went, the
+  // disclosure at each change announces itself.
+  if (changed === 0) return `Die Begründung ist bei allen ${compared} Paragraphen, die in beiden Fassungen eine haben, gleich geblieben.`
+  return `Auch die Begründung hat das Ressort geändert: bei ${changed} von ${compared} Paragraphen, die in beiden Fassungen eine haben.`
 })
 
 /**
@@ -141,6 +144,29 @@ const changeShareNote = computed<string | null>(() => {
   }
   return changeShareSentenceDe(props.gp, share.changed, share.own, unitNoun(2))
 })
+
+/* The two Erläuterungen, one per side. The service sends them as
+ * [Entwurf, Regierungsvorlage] (`reasoningDiffService`), and only where both
+ * were found. */
+const reasoningDocs = computed(() => (reasoning.value?.sources?.length === 2 ? reasoning.value.sources : null))
+const rvReasoningDoc = computed(() => reasoningDocs.value?.[1] ?? null)
+/** A side's Erläuterungen for the credit line — only where the comparison of them ran. */
+function reasoningDocFor(station: LawStationId) {
+  if (!reasoning.value?.stats?.compared || !reasoningDocs.value) return null
+  if (station === 'me') return reasoningDocs.value[0] ?? null
+  if (station === 'rv') return reasoningDocs.value[1] ?? null
+  return null
+}
+/** One entry per compared version for the credit line: its name, its text, its Erläuterungen. */
+const creditSides = computed(() => {
+  const d = data.value
+  if (!d) return []
+  return [
+    { station: pair.value.from, label: fromLabel.value, text: d.fromDocument, reasoning: reasoningDocFor(pair.value.from) },
+    { station: pair.value.to, label: toLabel.value, text: d.toDocument, reasoning: reasoningDocFor(pair.value.to) },
+  ].filter((side) => side.text || side.reasoning)
+})
+const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(paraTitles.value.asOf) : null))
 
 /** „Regierungsvorlage → Ausschussfassung": the Vorlage against the next text this draft has, as the select names it. */
 const laterPairLabel = computed<string | null>(() => {
@@ -518,36 +544,18 @@ const droppedNote = computed(() =>
     <template v-else>
       <!-- What the selected pair answers, where the selection happened. -->
       <p v-if="!isDefaultPair" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
-      <!-- What „Z 1" is and what „redaktionell" means stood up here until
-           18.09.2026. Both are vocabulary, not findings about this draft:
-           they belong in the legend at the foot of the section, where they
-           are looked up when the word turns up — not two screens earlier.
-           What stays here says something about this text: that it amends an
-           existing law, and which two versions are compared. -->
+      <!-- Where the reason for a change may be found, and nothing else
+           (30.09.2026). „Ministerialentwurf gegen Regierungsvorlage." went:
+           the pills above show the selected pair, and a non-default one
+           prints its own question. The hint names the reader's question and
+           a document, never a cause (framing rule) — as a link where the
+           Regierungsvorlage's Erläuterungen are known. -->
       <p class="mt-1 text-sm text-ink-secondary">
-        <!-- „Z 1" stands in the parenthesis, not in a legend: it is the unit
-             THIS comparison counts in, so a sentence about this draft. A
-             glossary entry of its own was a footnote to a word that has to
-             appear in the same sentence anyway. -->
-        <!-- Only WHICH two versions since 30.09.2026. How they are compared
-             — Änderungsanordnung für Änderungsanordnung (Z 1, Z 2 …) where a
-             text amends a law, else Paragraph für Paragraph — is the method,
-             and stands on /so-funktionierts#vergleich behind the link at the
-             end of this line. The unit this draft counts in is named by the
-             headline figure itself („Von den 26 Änderungsanordnungen …"). -->
-        {{ fromLabel }} gegen {{ toLabel }}.
-        {{ lawStationPairHint(pair.from, pair.to) }}
-        <!-- „Unveränderte Stellen sind eingeklappt." went on 18.09.2026: the
-             list shows the folded runs as rows of their own with their count
-             („12 Paragraphen unverändert"). Telling a reader what he can see
-             costs a line and says nothing.
-
-             The way to the explanation, since 18.09.2026: this section
-             carried the same badges as the Textgegenüberstellung but was the
-             only one without a link to the page that explains them. Whoever
-             does not know „redaktionell" stood here in front of the word with
-             no way out. -->
-        <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
+        <template v-if="pair.to === 'rv' && rvReasoningDoc">
+          Ob eine Stellungnahme dahintersteht, sagen oft die
+          <ExternalLink :href="rvReasoningDoc.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>.
+        </template>
+        <template v-else>{{ lawStationPairHint(pair.from, pair.to) }}</template>
       </p>
 
       <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
@@ -558,7 +566,16 @@ const droppedNote = computed(() =>
       <!-- The reasoning, once as a rate above the list instead of
            „unverändert" on every row (docs/architecture.md §12.10b). Arrives
            when its fetch does. -->
-      <p v-if="changeShareNote" class="mt-3 max-w-prose text-sm text-ink-secondary">{{ changeShareNote }}</p>
+      <!-- „Wie wir vergleichen" closes the figure: the figure is what the
+           method explains (what counts, against what). Where there is no
+           figure it closes the hint instead, below. -->
+      <p v-if="changeShareNote" class="mt-3 max-w-prose text-sm text-ink-secondary">
+        {{ changeShareNote }}
+        <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
+      </p>
+      <p v-else class="mt-1 text-sm">
+        <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
+      </p>
       <p v-if="reasoningNote" class="mt-3 max-w-prose text-sm text-ink-secondary">{{ reasoningNote }}</p>
 
       <template v-if="data.units.length">
@@ -724,21 +741,20 @@ const droppedNote = computed(() =>
            question is about (docs/architecture.md §13.1). -->
       <SectionCredits>
         <span>{{ lawDiffSourceCredit({ station: pair.from, source: data.fromSource }, { station: pair.to, source: data.toSource }) }}</span>
-        <ExternalLink v-if="data.fromDocument" :href="data.fromDocument.url" class="text-accent-deep hover:underline">{{ data.fromDocument.label }}</ExternalLink>
-        <ExternalLink v-if="data.toDocument" :href="data.toDocument.url" class="text-accent-deep hover:underline">{{ data.toDocument.label }}</ExternalLink>
+        <!-- Grouped by version since 30.09.2026: „Entwurf: Text ·
+             Erläuterungen" instead of four links each carrying its version's
+             name. The links stay — the documents are freie Werke and need no
+             attribution, so they are there for the reader. -->
+        <span v-for="side in creditSides" :key="side.station">
+          {{ side.label }}:
+          <ExternalLink v-if="side.text" :href="side.text.url" class="text-accent-deep hover:underline">Text</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="text-accent-deep hover:underline">Erläuterungen</ExternalLink>
+        </span>
         <!-- The § names come from a third source; a page that shows text has
-             to say where it is from, even when the text is one word long. -->
-        <span v-if="namedCount">§-Titel: RIS Bundesrecht, Stand {{ paraTitles?.asOf }}</span>
-        <!-- The Erläuterungen are two more documents, and whoever shows text
-             says where it is from — even when it is folded away. -->
-        <template v-if="reasoning?.stats?.compared">
-          <ExternalLink
-            v-for="src in reasoning.sources"
-            :key="src.url"
-            :href="src.url"
-            class="text-accent-deep hover:underline"
-          >{{ src.label }}</ExternalLink>
-        </template>
+             to say where it is from, even when the text is one word long.
+             RIS is CC BY 4.0, so the licence is part of that sentence — it
+             said „§-Titel: RIS Bundesrecht, Stand 2026-03-11" until
+             30.09.2026, without licence and with the date unformatted. -->
+        <span v-if="namedCount">Paragraphenüberschriften (CC BY 4.0, RIS): Stand {{ paraTitlesAsOf }}</span>
       </SectionCredits>
     </template>
   </div>

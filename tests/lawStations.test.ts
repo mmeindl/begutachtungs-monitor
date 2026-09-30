@@ -176,9 +176,9 @@ describe('lawStationPairHint', () => {
     expect(lawStationPairHint('rv', 'plenum')).toContain('Ausschussbericht')
   })
 
-  it('never claims the comparison shows a cause', () => {
+  it('names a document, never a cause', () => {
     for (const [from, to] of [['me', 'rv'], ['rv', 'plenum']] as [LawStationId, LawStationId][]) {
-      expect(lawStationPairHint(from, to)).toMatch(/sagt der Text nicht/)
+      expect(lawStationPairHint(from, to)).not.toMatch(/wegen|aufgrund|zurückzuführen|bewirkt|führte zu/)
     }
   })
 })

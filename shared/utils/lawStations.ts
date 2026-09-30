@@ -213,15 +213,15 @@ export function lawStationPairQuestion(from: LawStationId, to: LawStationId): st
  * Abänderungsanträge are recorded by name.
  *
  * Framing rule (docs/architecture.md §4): each sentence points at a document and stops
- * there. "Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt der Text
- * nicht" is the whole claim — the tool does not assert causation it cannot
- * observe.
+ * there — the tool does not assert causation it cannot observe. Shortened
+ * on 30.09.2026: „…, sagt der Text nicht; …" went, the question and the
+ * document stay, and neither sentence names a cause.
  */
 export function lawStationPairHint(from: LawStationId, to: LawStationId): string {
   if (to === 'rv') {
-    return 'Ob eine Änderung auf eine Stellungnahme zurückgeht, sagt der Text nicht; die Erläuterungen der Regierungsvorlage oft schon.'
+    return 'Ob eine Stellungnahme dahintersteht, sagen oft die Erläuterungen der Regierungsvorlage.'
   }
-  return 'Warum sich etwas geändert hat, sagt der Text nicht; der Ausschussbericht nennt die Abänderungsanträge, die dazu eingebracht wurden.'
+  return 'Welche Abänderungsanträge dahinterstehen, nennt der Ausschussbericht.'
 }
 
 /** Where one side of the comparison was read. */

@@ -88,14 +88,14 @@ export function changeShareRateFor(gp: string | null | undefined): ChangeShareRa
 }
 
 /**
- * „Von den 21 Änderungsanordnungen des Entwurfs hat die Regierungsvorlage 12
- * (57 %) geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt.
- * Zum Vergleich: Bei der Hälfte der Entwürfe der XXVII. Gesetzgebungsperiode
- * waren es 46 bis 75 %."
+ * „Die Regierungsvorlage hat 12 der 21 Änderungsanordnungen des Entwurfs
+ * geändert oder gestrichen (57 %, redaktionelle nicht gezählt). Bei der
+ * Hälfte der Entwürfe der XXVII. Gesetzgebungsperiode waren es 46–75 %."
+ * Shortened on 30.09.2026; the percentage stays at every size of draft.
  */
 export function changeShareSentenceDe(gp: string | null | undefined, changed: number, own: number, unitPlural: string): string {
   const r = changeShareRateFor(gp)
-  return `${changeShareLeadDe(changed, own, unitPlural)}Zum Vergleich: Bei der Hälfte der Entwürfe der ${r.gp}. Gesetzgebungsperiode waren es ${r.p25} bis ${r.p75}\u00a0%.`
+  return `${changeShareLeadDe(changed, own, unitPlural)}Bei der Hälfte der Entwürfe der ${r.gp}. Gesetzgebungsperiode waren es ${r.p25}–${r.p75}\u00a0%.`
 }
 
 /** How much of the draft the Vorlage changed — the half both sentences share. */
@@ -104,7 +104,9 @@ function changeShareLeadDe(changed: number, own: number, unitPlural: string): st
   // („keinen davon" for Paragraphen), a sentence without the count does not.
   return changed === 0
     ? `Die Regierungsvorlage übernimmt die ${own} ${unitPlural} des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. `
-    : `Von den ${own} ${unitPlural} des Entwurfs hat die Regierungsvorlage ${changed === own ? `alle ${own}` : `${changed} (${Math.round((changed / own) * 100)}\u00a0%)`} geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt. `
+    : changed === own
+      ? `Die Regierungsvorlage hat alle ${own} ${unitPlural} des Entwurfs geändert oder gestrichen (redaktionelle nicht gezählt). `
+      : `Die Regierungsvorlage hat ${changed} der ${own} ${unitPlural} des Entwurfs geändert oder gestrichen (${Math.round((changed / own) * 100)}\u00a0%, redaktionelle nicht gezählt). `
 }
 
 /**
