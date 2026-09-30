@@ -199,7 +199,19 @@ useSeoMeta({
              exclusion sentence here — it names the Stellungnahmen, not the
              Ministerialentwürfe — and moved the documents of the
              parliamentary stations out of CC BY: Parliament calls them
-             freie Werke and licenses the lists around them. -->
+             freie Werke and licenses the lists around them.
+
+             The Beteiligungen half of that reading was wrong (corrected
+             30.09.2026). The Beteiligungen dataset is „Aktuelle
+             Beteiligungen" (list 143): initiatives, Bürgerinitiativen and
+             petitions open for participation on the day of the query, and
+             its page says „Ministerialentwürfe und Stellungnahmen fallen
+             nicht darunter". Its CC BY grant never reached list 142. The
+             Regierungsvorlagen page excludes „sämtliche Informationen zu
+             Stellungnahmen" from free use and licensing alike, for data
+             protection and copyright — so the Stellungnahmen zur
+             Regierungsvorlage stand where those zum Entwurf stand: no
+             licence, and the same open question. -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
           Nutzungsbedingungen unterscheiden sich je nach Datensatz.
@@ -225,8 +237,8 @@ useSeoMeta({
             </dt>
             <dd>
               Regierungsvorlagen, Ausschussberichte und Beschlüsse: die
-              Ergebnislisten der Filter und der API sowie die Geschichtsseiten
-              –
+              Ergebnislisten der Filter und der API sowie die Geschichtsseiten,
+              ausgenommen alles zu Stellungnahmen –
               <ExternalLink
                 href="https://creativecommons.org/licenses/by/4.0/deed.de"
                 class="link-inline"
@@ -239,19 +251,17 @@ useSeoMeta({
           </div>
           <div>
             <dt class="font-medium text-ink">
-              Parlamentsdirektion, Beteiligungen
+              Parlamentsdirektion, Stellungnahmen zu Regierungsvorlagen
             </dt>
             <dd>
-              Stellungnahmen zu Regierungsvorlagen und anderen
-              Verhandlungsgegenständen: die Ergebnislisten der Filter und der
-              API –
-              <ExternalLink
-                href="https://creativecommons.org/licenses/by/4.0/deed.de"
-                class="link-inline"
-              >CC BY 4.0</ExternalLink>. Der Monitor zeigt daraus Anzahl,
-              Datum und die Namen einreichender Organisationen; die
-              Stellungnahmen selbst verlinkt er. Ausdrücklich ausgenommen sind
-              die Beteiligungen zu Ministerialentwürfen – der nächste Punkt.
+              Für diese Daten weist das Parlament keine Open-Data-Lizenz aus:
+              „sämtliche Informationen zu Stellungnahmen“ nimmt es von der
+              freien Nutzung und Lizenzierung ausdrücklich aus, aus Gründen
+              des Datenschutzes und des Schutzes von Urheber- und
+              Persönlichkeitsrechten. Der Monitor zeigt daraus Anzahl, Datum
+              und Zustimmungen, die Namen einreichender Organisationen und den
+              Link auf die Stellungnahme. Ob der Ausschluss auch diese Angaben
+              erfasst, ist Teil unserer Frage an die Parlamentsdirektion.
             </dd>
           </div>
           <div>

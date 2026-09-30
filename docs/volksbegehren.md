@@ -278,7 +278,9 @@ in any documentation — and may change without notice: a research aid, not a ru
 Parliament's 25 CC-BY-4.0 datasets contain none dedicated to Volksbegehren.
 The "Aktuelle Beteiligungen" dataset (list 143) does include Volksbegehren
 currently open for Stellungnahmen (dimension `VOLKBG`) and licenses its
-result lists CC BY 4.0; it excludes only Beteiligungen zu Ministerialentwürfen.
+result lists CC BY 4.0; Ministerialentwürfe and Stellungnahmen are not part
+of it („fallen nicht darunter"), and Beteiligungen zu Ministerialentwürfen are
+excluded expressly.
 The RV/Anträge/BI dataset pages exclude "sämtliche Informationen zu
 Stellungnahmen" from both free use and CC-BY; assume the same for
 Volksbegehren Stellungnahmen. The
