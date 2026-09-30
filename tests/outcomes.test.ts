@@ -79,9 +79,9 @@ describe('GP-ended copy', () => {
 
   it('gives the carry-over rarity of THAT GP where measured', () => {
     // XXVII: 57 without RV + 4 late RVs = 61 open at the GP's end.
-    expect(gpEndedBodyDe('XXVII')).toContain('4 von 61 Entwürfen')
+    expect(gpEndedBodyDe('XXVII')).toContain('4 von 61 solcher Entwürfe')
     // XXVI: 49 + 14 = 63.
-    expect(gpEndedBodyDe('XXVI')).toContain('14 von 63 Entwürfen')
+    expect(gpEndedBodyDe('XXVI')).toContain('14 von 63 solcher Entwürfe')
     expect(gpEndedBodyDe('XXV')).toContain('XXVII. Gesetzgebungsperiode')
   })
 

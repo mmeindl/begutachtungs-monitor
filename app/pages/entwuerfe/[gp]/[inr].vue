@@ -4,7 +4,6 @@ import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
 import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe } from '~/utils/deadlines'
 import {
   SECOND_ROUND_CLAUSE,
-  SECOND_ROUND_WINDOW,
   lastParliamentStation,
   parliamentOutcome,
   procedureStatusDe,
@@ -270,7 +269,7 @@ const noRvBody = computed(() => {
   // No Frist, no bracket to measure — the only branch where the card
   // restates the bar, because otherwise it would say nothing at all.
   if (daysUntil(data.value?.deadline) === null) {
-    return 'Der Entwurf wurde bislang nicht als Regierungsvorlage eingebracht. Ob und wie es weitergeht, ist offen.'
+    return 'Bisher gibt es keine Regierungsvorlage.'
   }
   // „Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere
   // Monate" stood here until 30.09.2026; the base rate below says the same
@@ -529,22 +528,19 @@ const ministryLinks = computed(() => {
           <!-- The second window alone: the Begutachtung is over, parliament
                still listens. No date, because upstream publishes none — the
                form closes with the vote, and the card says exactly that. -->
+          <!-- Short since 30.09.2026: that the Begutachtung is over and when
+               it ended stands in the bar directly above. -->
           <h2 v-else class="font-semibold text-ink">
-            Die Begutachtung ist vorbei – zur Regierungsvorlage
-            {{ data.enactment?.rvCitation }} kann im Nationalrat weiter Stellung
-            genommen werden.
+            Stellungnahme zur Regierungsvorlage {{ data.enactment?.rvCitation }} möglich
           </h2>
           <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 max-w-prose text-sm text-ink-secondary">
-            {{ SECOND_ROUND_WINDOW }}<template v-if="data.deadline">
-              Die Begutachtungsfrist endete am
-              {{ formatDateDe(data.deadline) }}.</template>
+            Ohne Frist – {{ SECOND_ROUND_CLAUSE }}.
           </p>
           <!-- Directly under the date it qualifies, above the CTA: whoever is
                about to submit reads it before acting, and the sentence ends by
                naming the date that governs. -->
           <p v-if="windows.begutachtung && divergence" class="mt-2 max-w-prose text-sm text-ink">
-            Zweite amtliche Quelle, andere Frist: Das Rechtsinformationssystem
-            nennt als Fristende
+            Das RIS nennt als Fristende
             <ExternalLink
               v-if="divergence.url"
               :href="divergence.url"
@@ -553,10 +549,10 @@ const ministryLinks = computed(() => {
               {{ formatDateDe(divergence.date) }}</ExternalLink><span v-else class="font-medium text-ink">{{
               formatDateDe(divergence.date)
             }}</span>
-            – {{ countLabelDe(divergence.days, 'Tag', 'Tage') }}
-            {{ divergence.later ? 'später' : 'früher' }}. Eingebracht wird beim
-            Parlament<template v-if="data.deadline">, maßgeblich ist daher der
-              {{ formatDateDe(data.deadline) }}</template>.
+            ({{ countLabelDe(divergence.days, 'Tag', 'Tage') }}
+            {{ divergence.later ? 'später' : 'früher' }}).<template v-if="data.deadline">
+              Maßgeblich ist der {{ formatDateDe(data.deadline) }}: eingebracht
+              wird beim Parlament.</template><template v-else> Eingebracht wird beim Parlament.</template>
           </p>
           <!-- How long the window is, measured against practice and the
                Verordnung — here while the Frist runs, because this card is
@@ -572,9 +568,8 @@ const ministryLinks = computed(() => {
                verdict on the ministry (framing rule). The reader gets both
                doors and the fact that makes the second one matter. -->
           <p v-if="windows.begutachtung && windows.vorlage" class="mt-2 max-w-prose text-sm text-ink">
-            Die Regierungsvorlage {{ data.enactment?.rvCitation }} liegt bereits
-            im Nationalrat, während die Begutachtungsfrist noch läuft. Auch dort
-            kann Stellung genommen werden, {{ SECOND_ROUND_CLAUSE }}.
+            Die Regierungsvorlage {{ data.enactment?.rvCitation }} liegt schon im
+            Nationalrat; auch zu ihr ist eine Stellungnahme möglich.
           </p>
           <div class="mt-3 flex flex-wrap items-center gap-3">
             <UButton
@@ -610,7 +605,7 @@ const ministryLinks = computed(() => {
               :variant="windows.begutachtung ? 'outline' : 'solid'"
               class="min-h-11"
             >
-              Stellungnahme zur Regierungsvorlage auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
+              Stellungnahme zur Regierungsvorlage abgeben<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
             </UButton>
           </div>
           <!-- The documented base fact (drafts get revised routinely), no
@@ -797,8 +792,7 @@ const ministryLinks = computed(() => {
               class="rounded-xl border border-hairline bg-surface p-5 text-sm leading-relaxed text-ink-secondary"
             >
               {{ countLabelDe(data.statements.total, 'Stellungnahme', 'Stellungnahmen') }}
-              laut Übersicht – die Liste ist auf parlament.gv.at derzeit nicht
-              abrufbar, daher können Details hier nicht angezeigt werden.
+              laut Übersicht; die Liste selbst ist gerade nicht abrufbar.
               <ExternalLink
                 :href="data.parliamentUrl"
                 class="link-inline"
@@ -817,29 +811,19 @@ const ministryLinks = computed(() => {
                 "
                 class="mt-3 text-xs text-ink-muted"
               >
-                Die Übersicht des Parlaments zählt
-                {{ formatNumberDe(data.statements.overviewTotal) }} Stellungnahmen
-                – davon hier aufgeschlüsselt:
-                {{ formatNumberDe(data.statements.total) }}.
-                <template v-if="data.statements.overviewTotal > data.statements.total">
-                  Die Übersichtszahl kann Einträge enthalten, die noch nicht in
-                  der Liste veröffentlicht sind.
-                </template>
+                Das Parlament zählt
+                {{ formatNumberDe(data.statements.overviewTotal) }} Stellungnahmen,
+                in der Liste stehen <template v-if="data.statements.overviewTotal > data.statements.total">bisher </template>{{ formatNumberDe(data.statements.total) }}.
               </p>
               <p v-if="data.statements.staleAsOf" class="mt-3 text-xs text-ink-muted">
                 Stand der Liste: {{ formatDateTimeDe(data.statements.staleAsOf) }}
-                – die aktuelle Liste ist auf parlament.gv.at derzeit nicht
-                abrufbar.
+                (die aktuelle ist gerade nicht abrufbar).
               </p>
             </template>
             <EmptyState
               v-else
-              title="Noch keine Stellungnahmen"
-              :description="
-                data.active
-                  ? 'Zu diesem Entwurf ist noch keine Stellungnahme eingelangt – die Frist läuft.'
-                  : 'Zu diesem Entwurf sind keine Stellungnahmen eingelangt.'
-              "
+              :title="data.active ? 'Noch keine Stellungnahmen' : 'Keine Stellungnahmen'"
+              :description="data.active ? 'Die Frist läuft.' : undefined"
             />
           </div>
           <!-- The moment the ressort takes over — the accountability clock's
@@ -994,13 +978,14 @@ const ministryLinks = computed(() => {
               beschlossen.
             </template>
             <template v-else-if="parliament === 'amended'">
-              Nach der Regierungsvorlage wurde der Text im Parlament weiter
-              geändert.<template v-if="data.textEvolution.length"> Diese Fassungen sind dabei entstanden:</template>
+              <!-- Where it changed — Ausschuss, Plenum — stands in the bar;
+                   here only the versions (30.09.2026). -->
+              <template v-if="data.textEvolution.length">Die geänderten Fassungen:</template>
+              <template v-else>Der Text wurde im Parlament weiter geändert.</template>
             </template>
             <template v-else-if="parliament === 'decided'">
-              Der Nationalrat hat den Text beschlossen. Eine Kundmachung im
-              Bundesgesetzblatt ist zu dieser Regierungsvorlage bisher nicht
-              verzeichnet.
+              Der Nationalrat hat den Text beschlossen; kundgemacht ist er bisher
+              nicht.
             </template>
             <template v-else-if="parliament === 'rejected'">
               Die Regierungsvorlage wurde im Nationalrat abgelehnt.

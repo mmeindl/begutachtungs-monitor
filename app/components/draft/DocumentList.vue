@@ -33,9 +33,9 @@ const DOC_HINTS: [prefix: string, hint: string][] = [
   ['Erläuterungen', 'Die Begründung des Ministeriums'],
   ['Vorblatt und WFA', 'Kurzüberblick und Folgenabschätzung'],
   ['Textgegenüberstellung', 'Geltendes Recht und Entwurf nebeneinander'],
-  // Later stations of the same law text (DraftDetail.textEvolution)
-  ['Geändert im Ausschuss', 'Fassung nach den Beratungen im Ausschuss des Nationalrats'],
-  ['Geändert im Plenum', 'Fassung nach der Abstimmung im Nationalrat'],
+  // No hint for the later stations („Geändert im Ausschuss", „Geändert im
+  // Plenum", DraftDetail.textEvolution) since 30.09.2026: the sub-line only
+  // restated the title.
 ]
 
 function docHint(doc: DocumentListItem): string | null {

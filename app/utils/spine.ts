@@ -665,7 +665,10 @@ export function regulationStations(
               state: 'current',
               facts: ['keine Kundmachung gefunden'],
               source: {
-                lead: 'Gesucht wird über Titel, Ressort und Datum; das findet nicht jede –',
+                // How we search (Titel, Ressort, Datum) went on 30.09.2026;
+                // that the search is ours and misses some is what keeps
+                // „nicht gefunden" from reading as „gibt es nicht".
+                lead: 'unsere Suche findet nicht jede –',
                 href: 'https://www.ris.bka.gv.at/Bgbl-Auth/',
                 label: 'im Bundesgesetzblatt nachsehen',
               },

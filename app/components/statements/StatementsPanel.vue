@@ -61,8 +61,14 @@ const filterLabels: Record<StatementFilter, string> = {
 /* Only the segments this Verfahren has, in the fixed order of the legend
  * above — the rule, and why an empty one is not offered, is in
  * `app/utils/statementRows.ts`, where it is tested. */
+const filterCounts = computed<Record<StatementFilter, number>>(() => ({
+  organisations: props.summary.organisations,
+  persons: props.summary.privatePersons,
+  nonpublic: props.summary.nonPublic,
+  all: props.summary.total,
+}))
 const filterOptions = computed(() =>
-  availableStatementFilters(props.summary).map((value) => ({ value, label: filterLabels[value] })),
+  availableStatementFilters(props.summary).map((value) => ({ value, label: filterLabels[value], count: filterCounts.value[value] })),
 )
 
 /* Default first, as on the archive page: the leftmost segment reads as "where
@@ -186,13 +192,6 @@ const listStaleAsOf = computed(() =>
 function statementCountLabel(n: number): string {
   return countLabelDe(n, 'Stellungnahme', 'Stellungnahmen')
 }
-
-const miniStats = computed(() => [
-  { label: 'Gesamt', value: props.summary.total },
-  { label: 'Organisationen', value: props.summary.organisations },
-  { label: 'Privatpersonen', value: props.summary.privatePersons },
-  { label: 'Nicht öffentlich', value: props.summary.nonPublic },
-])
 
 /* Sorting, grouping and the rows themselves live in
  * `app/utils/statementRows.ts`, where they are tested. */
@@ -352,19 +351,14 @@ const mixSegments = computed(() => {
 
 <template>
   <div>
-    <dl class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-      <div v-for="stat in miniStats" :key="stat.label">
-        <dt class="text-sm text-ink-secondary">{{ stat.label }}</dt>
-        <!-- Number scale: inline stats 2xl. These are the last large
-             figures on the site — the homepage's 3xl–4xl stat tiles were
-             removed on 17.09.2026 (docs/architecture.md §12.20). -->
-        <dd class="mt-0.5 font-heading text-2xl font-semibold text-ink">
-          {{ formatNumberDe(stat.value) }}
-        </dd>
-      </div>
-    </dl>
-
-    <!-- Decorative; the figures above carry the numbers. -->
+    <!-- NO ROW OF COUNT TILES since 30.09.2026. „Gesamt · Organisationen ·
+         Privatpersonen · Nicht öffentlich" stood here as four figures, and
+         the filter group below repeated the same four labels one line
+         further down. The counts now ride on the filter buttons; the total
+         stands in the bar's Begutachtung row and on „Alle". Where only one
+         segment exists the buttons are absent, and the count line above the
+         list carries the number. -->
+    <!-- Decorative; the counts on the filter buttons carry the numbers. -->
     <div
       v-if="mixSegments.length"
       class="mt-3 flex h-2 w-full overflow-hidden rounded-[2px] border border-hairline"
@@ -378,14 +372,14 @@ const mixSegments = computed(() => {
       />
     </div>
 
-    <!-- Two axes, two groups: WHO filed (the legend's own groups, so the
-         counts stay up there and these labels carry none) and IN WHICH ORDER.
+    <!-- Two axes, two groups: WHO filed (each segment with its count) and
+         IN WHICH ORDER.
          Keeping them apart is what let the count line stop naming the sort.
          Either group is absent where it would have nothing to switch
          between, and the row with it. -->
     <div
       v-if="showFilterGroup || showSort"
-      class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"
+      class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2"
     >
       <!-- Four labels this long cannot fit a phone column — the text alone is
            ~330px against 288px at 320px wide — and left to overflow, the
@@ -400,10 +394,11 @@ const mixSegments = computed(() => {
             :color="filter === opt.value ? 'primary' : 'neutral'"
             :variant="filter === opt.value ? 'subtle' : 'outline'"
             :aria-pressed="filter === opt.value"
-            class="min-h-11"
+            class="min-h-11 whitespace-nowrap"
             @click="filter = opt.value"
           >
             {{ opt.label }}
+            <span class="tabular-nums text-ink-muted">{{ formatNumberDe(opt.count) }}</span>
           </UButton>
         </UFieldGroup>
       </div>
@@ -453,8 +448,8 @@ const mixSegments = computed(() => {
          above is sr-only in every state this note can appear in (it needs
          the item list), so there is no visible box to sit under. -->
     <p v-if="needsList && listStaleAsOf" class="mt-4 text-xs text-ink-muted">
-      Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} – die aktuelle
-      Liste ist auf parlament.gv.at derzeit nicht abrufbar.
+      Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
+      gerade nicht abrufbar).
     </p>
 
     <h3 class="sr-only">Liste der Stellungnahmen</h3>
@@ -512,7 +507,7 @@ const mixSegments = computed(() => {
         <div v-else-if="searchActive" class="p-5">
           <EmptyState
             title="Keine Organisation gefunden"
-            description="Privatpersonen werden nicht namentlich gelistet – gesucht wird nur in den Organisationen und ihren Geschäftszahlen."
+            description="Gesucht wird nur in Organisationen; Privatpersonen stehen hier nicht mit Namen."
           />
         </div>
         <!-- No third branch: this segment is offered only where an
@@ -549,7 +544,6 @@ const mixSegments = computed(() => {
         <div v-else class="p-5">
           <EmptyState
             title="Keine Stellungnahmen in dieser Auswahl"
-            description="Ein anderes Filter-Segment zeigt die übrigen Einreichungen."
           />
         </div>
       </template>

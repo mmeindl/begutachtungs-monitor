@@ -227,9 +227,10 @@ const documents = computed(() => {
             <template v-if="RIS_KIND_HINT[data.kind]">
               {{ RIS_KIND_HINT[data.kind] }}
             </template>
+            <!-- Why there is no list stands on the explainer (30.09.2026). -->
             <template v-if="!data.active">
-              Stellungnahmen gingen direkt an das Ministerium; wer Stellung
-              genommen hat, wird nicht veröffentlicht.
+              Die Stellungnahmen werden nicht veröffentlicht –
+              <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
             </template>
           </p>
         </div>
@@ -255,11 +256,20 @@ const documents = computed(() => {
              `risFilingNote`: one word per thing. The page carried both side by
              side, and „Ressort" is the administration's word, not the
              reader's. -->
+        <!-- One sentence since 30.09.2026, and it knows whether there is a
+             Begleitschreiben: the address is in it, or it is published
+             nowhere. „es gibt kein Formular des Parlaments" went — the button
+             below is the Begleitschreiben, not a form. -->
         <p class="mt-2 max-w-prose text-sm text-ink">
-          Eine Stellungnahme geht hier direkt an das Ministerium – es gibt
-          kein Formular des Parlaments. An welche Adresse, steht im
-          Begleitschreiben, mit dem das Ministerium den Entwurf versendet
-          hat.
+          <template v-if="data.coverLetter">
+            Stellungnahmen gehen hier direkt an das Ministerium – an die Adresse
+            im Begleitschreiben.
+          </template>
+          <template v-else>
+            Stellungnahmen gehen hier direkt an das Ministerium. Eine
+            Einreichadresse ist nicht veröffentlicht; die zuständige Stelle nennt
+            der RIS-Eintrag.
+          </template>
         </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
           <!-- Linked, never read out. Measured 2026-09-17 over 40 records:
@@ -289,11 +299,6 @@ const documents = computed(() => {
             Frist in den Kalender (.ics)
           </UButton>
         </div>
-        <p v-if="!data.coverLetter" class="mt-3 max-w-prose text-sm text-ink">
-          Zu diesem Entwurf liegt im RIS kein Begleitschreiben – und damit
-          keine veröffentlichte Einreichadresse. Der Weg führt über das
-          Ministerium selbst; der Datensatz im RIS nennt die einbringende Stelle.
-        </p>
       </div>
 
       <!-- ONE chapter, „Der Entwurf", with h3 blocks — the draft page's

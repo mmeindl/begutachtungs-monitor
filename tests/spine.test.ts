@@ -446,7 +446,7 @@ describe('regulationStations — the Verordnung path', () => {
   it('says „not found" only with the search named and the way to check beside it', () => {
     const row = last(outcome({ state: 'keine' }))
     expect(row.facts).toEqual(['keine Kundmachung gefunden'])
-    expect(row.source?.lead).toMatch(/Titel, Ressort und Datum/)
+    expect(row.source?.lead).toMatch(/unsere Suche/)
     expect(row.source?.href).toBe('https://www.ris.bka.gv.at/Bgbl-Auth/')
   })
 

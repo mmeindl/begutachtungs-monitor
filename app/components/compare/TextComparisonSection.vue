@@ -540,7 +540,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                      affordance, as on every other disclosure of this page. -->
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  Warum? Die Begründung des Ressorts
+                  Begründung des Ressorts
                 </summary>
                 <!-- Indented, without a rule (18.09.2026). A rule on the left
                      means something in this section: it is the coloured gutter
@@ -649,18 +649,16 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
               <details v-if="p.consolidated" class="group mt-3">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  So lautet der Paragraph dann — ganz
+                  Ganzer Paragraph danach (nicht amtlich)
                 </summary>
                 <div class="mt-1 pl-6">
-                  <!-- The caveat stands with the text it applies to, not once
-                       at the top for 26 disclosures. Two words since
-                       30.09.2026 — „nicht amtlich" is what must not be
-                       missed; how the text is made (RIS in force plus this
-                       draft's instructions, confirmed by the ressort's own
-                       Gegenüberstellung) stands behind the link. -->
+                  <!-- „nicht amtlich" stands IN the summary since 30.09.2026,
+                       so it is read before the disclosure opens, not after;
+                       inside, only the way to how the text is made (RIS in
+                       force plus this draft's instructions, confirmed by the
+                       ressort's own Gegenüberstellung). -->
                   <p class="max-w-prose text-xs text-ink-muted">
-                    Nicht amtliche Lesefassung.
-                    <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie sie entsteht</NuxtLink>
+                    <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie diese Lesefassung entsteht</NuxtLink>
                   </p>
                   <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
                     <DiffText :segments="p.consolidated.headingSegments" removed-normal-weight />

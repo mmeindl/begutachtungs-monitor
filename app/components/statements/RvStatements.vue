@@ -2,7 +2,6 @@
 import type { RvStatementsResponse, StatementMeta, StatementsSummary, SubmitterKind } from '#shared/types'
 import { countLabelDe, endorsementLabel, formatDateDe } from '#shared/utils/format'
 import { submitterLabel } from '~/utils/statementRows'
-import { SECOND_ROUND_CLAUSE } from '~/utils/spine'
 
 /**
  * The Stellungnahmen filed on the Regierungsvorlage itself.
@@ -259,12 +258,12 @@ const destination = computed(() =>
   <div class="mt-8">
     <h3 class="text-base font-semibold text-ink">Stellungnahmen zur Regierungsvorlage</h3>
 
+    <!-- The fact alone since 30.09.2026. That one can file on a
+         Regierungsvorlage, until when, and the button to do it stand in the
+         action card at the top of the page whenever `filingOpen` is true —
+         it is the same window (`windows.vorlage`). -->
     <p v-if="data.total === 0" class="mt-2 max-w-prose text-sm text-ink-secondary">
-      Auch zur Regierungsvorlage selbst können auf parlament.gv.at Stellungnahmen
-      eingebracht werden. Zu dieser Vorlage wurde <template v-if="filingOpen">bisher</template> keine eingebracht<template
-        v-if="filingOpen"
-      >; möglich ist es, {{ SECOND_ROUND_CLAUSE }}:
-        <ExternalLink :href="data.rvUrl" class="link-inline">Stellungnahme abgeben</ExternalLink></template>.
+      {{ filingOpen ? 'Bisher keine eingebracht.' : 'Keine eingebracht.' }}
     </p>
 
     <p v-if="data.total === 0 && consultationSentence" class="mt-2 max-w-prose text-sm text-ink-secondary">
@@ -281,8 +280,9 @@ const destination = computed(() =>
          eingebracht" and „0 Stellungnahmen ein". -->
     <template v-if="data.total > 0">
       <p class="mt-2 max-w-prose text-sm text-ink">
-        Zur Regierungsvorlage {{ data.rvCitation }} selbst gingen im Nationalrat
-        {{ countLabelDe(data.total, 'Stellungnahme', 'Stellungnahmen') }} ein<template
+        <!-- The heading names the Vorlage; the count needs no sentence of its
+             own around it (30.09.2026). -->
+        {{ countLabelDe(data.total, 'Stellungnahme', 'Stellungnahmen') }}<template
           v-if="partition && !organisationsOnly"
         >: {{ partition }}</template>.
         <!-- Above the cap the partition describes the fetched rows, not the
@@ -293,12 +293,8 @@ const destination = computed(() =>
              because the flag separates institutions from everything else
              and a non-public submission can sit on either side of it. -->
         <template v-if="organisationsOnly">
-          Aufgeschlüsselt sind hier nur die Einbringer, die das Parlament als
-          Organisation führt<template v-if="partition">: {{ partition }}</template>.
-          Die übrigen {{ formatNumberDe(data.unlisted) }} bleiben ohne
-          Aufschlüsselung – über {{ formatNumberDe(data.cap) }} Stellungnahmen
-          liest der Monitor nur noch die Organisationen, und namentlich
-          gelistet würde von den übrigen ohnehin keine.
+          Aufgeschlüsselt sind nur die Organisationen<template v-if="partition">: {{ partition }}</template>;
+          die übrigen {{ formatNumberDe(data.unlisted) }} nicht.
         </template>
         <template v-else-if="!summary">
           Bei mehr als {{ formatNumberDe(data.cap) }} entfällt die Aufschlüsselung
@@ -366,7 +362,7 @@ const destination = computed(() =>
         <div v-else class="p-5">
           <EmptyState
             title="Keine Organisation gefunden"
-            description="Privatpersonen werden nicht namentlich gelistet – gesucht wird nur in den Organisationen und ihren Geschäftszahlen."
+            description="Gesucht wird nur in Organisationen; Privatpersonen stehen hier nicht mit Namen."
           />
         </div>
       </div>
@@ -380,17 +376,11 @@ const destination = computed(() =>
         @all="visibleCount = matched.length"
       />
 
-      <p v-if="hiddenOrgCount > 0" class="mt-3 max-w-prose text-sm text-ink-muted">
-        und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen – sie
-        stehen vollständig beim Gegenstand auf parlament.gv.at.
-      </p>
-
-      <p class="mt-2 text-sm">
-        <ExternalLink :href="data.rvUrl" class="link-inline">
-          Alle Stellungnahmen zur Vorlage auf parlament.gv.at
-        </ExternalLink><template v-if="filingOpen">
-          – dort kann weiter Stellung genommen werden,
-          {{ SECOND_ROUND_CLAUSE }}.</template>
+      <!-- One pointer, not two in a row (30.09.2026): „– sie stehen
+           vollständig beim Gegenstand" and the link under it said the same,
+           and whether one can still file is the action card's job. -->
+      <p class="mt-3 max-w-prose text-sm text-ink-muted">
+        <template v-if="hiddenOrgCount > 0">und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen – </template><ExternalLink :href="data.rvUrl" class="link-inline">{{ hiddenOrgCount > 0 ? 'alle' : 'Alle' }} Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
       </p>
     </template>
   </div>

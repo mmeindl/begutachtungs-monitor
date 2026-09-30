@@ -180,10 +180,12 @@ export function chainUnlinkedHeadlineDe(gp: string): string {
 
 export function chainUnlinkedBodyDe(): string {
   return (
+    // The third sentence („Regierungsvorlagen aus dieser Periode verzeichnet
+    // das Parlament sehr wohl; nur der Bezug … fehlt") went on 30.09.2026:
+    // the first already places the gap in the data, not in the draft.
     'Ob aus diesem Entwurf eine Regierungsvorlage wurde, lässt sich hier ' +
     'nicht sagen – das ist eine Lücke im Datenbestand, kein Befund über den ' +
-    'Entwurf. Regierungsvorlagen aus dieser Periode verzeichnet das Parlament ' +
-    'sehr wohl; nur der Bezug zum Ministerialentwurf fehlt in den Daten.'
+    'Entwurf.'
   )
 }
 
@@ -209,5 +211,8 @@ export function gpEndedHeadlineDe(gp: string, endedOn: string | null): string {
 export function gpEndedBodyDe(gp: string): string {
   const r = rvBaseRateFor(gp)
   const openAtEnd = r.drafts - r.withRv + r.rvInLaterGp
-  return `Ein Entwurf wird nur selten in der folgenden Periode noch als Regierungsvorlage eingebracht – in der ${r.gp}. Gesetzgebungsperiode betraf das ${r.rvInLaterGp} von ${openAtEnd} Entwürfen, die bei ihrem Ende ohne Regierungsvorlage waren. Häufiger beginnt das Ministerium mit einem neuen Entwurf von vorne.`
+  // The number alone since 30.09.2026; the rule of thumb around it („nur
+  // selten … häufiger beginnt das Ministerium von vorne") stands on
+  // /so-funktionierts#regierungsvorlage.
+  return `In der ${r.gp}. Gesetzgebungsperiode wurden ${r.rvInLaterGp} von ${openAtEnd} solcher Entwürfe später noch als Regierungsvorlage eingebracht.`
 }
