@@ -194,6 +194,9 @@ const risDocuments = computed<(DraftDocument & { hint?: string })[]>(() => {
     : []
 })
 
+/** Both lists in the one fold, counted for its summary. */
+const documentCount = computed(() => (data.value?.documents.length ?? 0) + risDocuments.value.length)
+
 // The bar already states "Regierungsvorlage · bisher keine", so the
 // card must not say it again. Its job is the bracket the bar cannot carry:
 // elapsed time. Once the quiet stretch exceeds the latency window, the
@@ -622,17 +625,37 @@ const ministryBadges = computed(() => {
         <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
           <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
 
-          <!-- FIRST the reasoning, then the law in force, then the documents,
-               then the Textgegenüberstellung: the order in which a reader
-               checks a new draft — „was soll das Gesetz?" before the text.
-               Until 18.09.2026 it was only a PDF link in the document list
-               further down.
+          <!-- FIRST what the draft changes, then why, then the law in force,
+               and the documents last, folded. The order in which a reader
+               actually uses the section: a reader who opens a draft wants the
+               diff, and nobody comes for the PDFs — feedback from a user
+               conversation in September 2026, and the Verordnung page had
+               already put its documents last. Until 30.09.2026 the reasoning
+               led („was soll das Gesetz?" before the text) and two document
+               lists stood between it and the comparison, so the diff was the
+               fifth block of its own section. The reasoning lost little by
+               moving: its Besonderer Teil already hangs at the §§ of the
+               comparison.
 
                Not under „Worum geht es?": that is Parliament's
                Kurzbeschreibung, written for the parliamentary process. The
                Erläuterungen are the Ressort's own reasoning, and they belong
                to the draft, not to the procedure. -->
-          <div id="erlaeuterungen" class="mt-4 scroll-mt-6">
+
+          <!-- The ressort's own comparison, available from day one.
+               `#gegenueberstellung` is kept as the anchor because that link is
+               already in circulation. A new law has nothing to be held
+               against, so the question is not asked — the same rule the bar
+               applies. `amendedLaws` arrives on the client, so for the rare
+               Stammgesetz this block can disappear after first paint; that is
+               accepted, the alternative is asking a question we know is
+               wrong on every other draft's first paint. -->
+          <div v-if="!amendedLaws?.createsNewLaw" id="gegenueberstellung" class="mt-4 scroll-mt-6">
+            <h3 class="text-base font-semibold text-ink">Was ändert der Entwurf?</h3>
+            <TextComparisonSection :gp="data.gp" :inr="data.inr" />
+          </div>
+
+          <div id="erlaeuterungen" :class="[amendedLaws?.createsNewLaw ? 'mt-4' : 'mt-8', 'scroll-mt-6']">
             <h3 class="text-base font-semibold text-ink">Was das Ressort begründet</h3>
             <ExplanationsSection :gp="data.gp" :inr="data.inr" />
           </div>
@@ -678,56 +701,59 @@ const ministryBadges = computed(() => {
             </template>
           </div>
 
-          <!-- A heading of its own, because the list is no longer the first
-               thing under the h2: after the Geltendes Recht block above it, an
-               unheaded list read as more of that block. -->
-          <div v-if="data.documents.length" class="mt-8">
-            <h3 class="text-base font-semibold text-ink">Dokumente</h3>
-            <div class="mt-3">
-              <DocumentList :documents="data.documents" />
-            </div>
-          </div>
-
-          <!-- The same documents from the other official source, next to them
-               rather than in a "Quellen" appendix nobody scrolled to: RIS
-               carries the text as HTML/XML back to 2004 — the raw material of
-               the Entwurf ↔ Regierungsvorlage comparison. "Not in RIS" is a
-               state worth showing, not an error (docs/ris-join.md §2): a dozen
-               drafts per GP never get there. -->
-          <div v-if="data.risDraft" class="mt-8">
-            <h3 class="text-base font-semibold text-ink">
-              Zweite Quelle: Rechtsinformationssystem (RIS)
-            </h3>
-            <template v-if="data.risDraft.risUrl">
-              <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-                Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
-                und Textgegenüberstellung im
-                <ExternalLink
-                  :href="data.risDraft.risUrl"
-                  class="link-inline"
-                >RIS-Eintrag</ExternalLink>.
-              </p>
-              <div v-if="risDocuments.length" class="mt-3">
-                <DocumentList :documents="risDocuments" source="ris.bka.gv.at" />
+          <!-- Both document lists in ONE fold, the house <details> with the
+               heading in the <summary> (as in DraftDescription): the outline
+               does not depend on what is open, find-in-page still opens it,
+               and nothing above it moves when it opens. Folded because the
+               documents are what a citing or downloading reader looks for,
+               and that reader expects them at the end. -->
+          <details
+            v-if="data.documents.length || data.risDraft"
+            class="group mt-8 border-t border-hairline"
+          >
+            <summary
+              class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+            >
+              <h3 class="text-base font-semibold text-ink">
+                Dokumente<template v-if="documentCount"> ({{ documentCount }})</template>
+              </h3>
+              <UIcon
+                name="i-lucide-chevron-down"
+                class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </summary>
+            <div class="pb-2">
+              <DocumentList v-if="data.documents.length" :documents="data.documents" />
+              <!-- The same documents from the other official source, next to them
+                 rather than in a "Quellen" appendix nobody scrolled to: RIS
+                 carries the text as HTML/XML back to 2004 — the raw material of
+                 the Entwurf ↔ Regierungsvorlage comparison. "Not in RIS" is a
+                 state worth showing, not an error (docs/ris-join.md §2): a dozen
+                 drafts per GP never get there. -->
+              <div v-if="data.risDraft" class="mt-6">
+                <h4 class="text-sm font-semibold text-ink">
+                  Zweite Quelle: Rechtsinformationssystem (RIS)
+                </h4>
+                <template v-if="data.risDraft.risUrl">
+                  <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+                    Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
+                    und Textgegenüberstellung im
+                    <ExternalLink
+                      :href="data.risDraft.risUrl"
+                      class="link-inline"
+                    >RIS-Eintrag</ExternalLink>.
+                  </p>
+                  <div v-if="risDocuments.length" class="mt-3">
+                    <DocumentList :documents="risDocuments" source="ris.bka.gv.at" />
+                  </div>
+                </template>
+                <p v-else class="mt-1 max-w-prose text-sm text-ink-secondary">
+                  Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
+                </p>
               </div>
-            </template>
-            <p v-else class="mt-1 max-w-prose text-sm text-ink-secondary">
-              Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
-            </p>
-          </div>
-
-          <!-- The ressort's own comparison, available from day one.
-               `#gegenueberstellung` is kept as the anchor because that link is
-               already in circulation. A new law has nothing to be held
-               against, so the question is not asked — the same rule the bar
-               applies. `amendedLaws` arrives on the client, so for the rare
-               Stammgesetz this block can disappear after first paint; that is
-               accepted, the alternative is asking a question we know is
-               wrong on every other draft's first paint. -->
-          <div v-if="!amendedLaws?.createsNewLaw" id="gegenueberstellung" class="mt-8 scroll-mt-6">
-            <h3 class="text-base font-semibold text-ink">Was ändert der Entwurf?</h3>
-            <TextComparisonSection :gp="data.gp" :inr="data.inr" />
-          </div>
+            </div>
+          </details>
 
         </section>
 
