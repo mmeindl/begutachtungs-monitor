@@ -1527,6 +1527,30 @@ function appendHost(from: NovaoAddress, child: 'abs' | 'z' | 'lit'): NovaoAddres
   return { ...base, lit: null, level: 'z' }
 }
 
+/** „Abs. 3" behind „Abs. 2", „Z 5" behind „Z 4", „lit. c" behind „lit. b" — the next designation on the same level, or nothing. */
+function nextDesignation(id: string): string | null {
+  if (/^\d+$/.test(id)) return String(Number(id) + 1)
+  if (/^[a-y]$/.test(id)) return String.fromCharCode(id.charCodeAt(0) + 1)
+  return null
+}
+
+const DESIGNATOR_LEVEL: Record<string, 'abs' | 'z' | 'lit'> = { 'abs.': 'abs', z: 'z', 'lit.': 'lit' }
+
+/**
+ * „In § 10 entfällt nach Abs. 2 der Abs. 3." — the „nach Abs. 2" only says
+ * where the Absatz stands. Read as part of the address, it was the target:
+ * Abs. 2 was deleted, until fdc994a refused the line (Seilbahn-Verordnung,
+ * 28.09.2026). The Beilage deletes Abs. 3.
+ *
+ * Dropped only where it says nothing but that: the unit it names is the one
+ * right in front of the deleted one, on the same level. Where it says more —
+ * „nach Abs. 7 der Absatz mit der Bezeichnung ‚(6)'", a numbering out of
+ * order — it is a second place and the line stays refused. And a deleted unit
+ * that is not unique is refused by the engine (`uniqueChild`), so a duplicated
+ * „Abs. 3" cannot be the wrong one.
+ */
+const DELETION_LOCATOR_RE = /\b(entfällt|entfallen)\s+nach\s+(Abs\.|Z|lit\.)\s*(\d+|[a-z])\s+(?=(?:der|die)\s+(Abs\.|Z|lit\.)\s*(\d+|[a-z])(?![\p{L}\p{N}]))/iu
+
 function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole: string): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
   const head = instructionHead(line)
@@ -1549,7 +1573,12 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // (`sentencePairPlaces`). The punctuation form reads one target, a
   // renumbering or a container none of this.
   const textOp = (PHRASE_RE.test(head) || SATZ_REPLACED_RE.test(head)) && !PUNCT_REPLACE_RE.test(head) && !/\berh(?:äl|al)t(?:en)?\b|wie folgt geändert/i.test(head)
-  const targets = payloadOnly ? [inherited!] : (parseAddressList(scope || head, inherited) ?? (textOp ? sentencePairPlaces(scope || head, inherited) : null))
+  // A locator that only repeats where the deleted unit stands is no place of
+  // its own (`DELETION_LOCATOR_RE`).
+  const locator = DELETION_LOCATOR_RE.exec(maskQuotes(scope || head))
+  const redundantLocator = locator !== null && DESIGNATOR_LEVEL[locator[2]!.toLowerCase()] === DESIGNATOR_LEVEL[locator[4]!.toLowerCase()] && nextDesignation(locator[3]!) === locator[5]
+  const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : scope || head
+  const targets = payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null))
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
     // two Strich forms are perfectly readable addresses that this model has no

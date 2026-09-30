@@ -1495,3 +1495,24 @@ describe('several insertions under one „eingefügt" (28.09.2026)', () => {
     expect(parseInstruction('In § 20 wird das Wort "zuletzt" gestrichen sowie nach der Wortfolge "A" die Wortfolge "B" eingefügt.').ops).toEqual([])
   })
 })
+
+describe('two sentences of one unit (30.09.2026)', () => {
+  it('changes the phrase once in each, and refuses where one of them lacks it', () => {
+    const l = (): StandingLaw => ({ paragraphs: [para('22', 'E', ['Die Aufhebung des Schutzes ergeht mündlich. Sie gilt. Über die Aufhebung des Schutzes wird entschieden.'])] })
+    const { law: out, results } = run(l(), instr('In § 22 Abs. 1 wird im ersten und letzten Satz jeweils das Wort "Schutzes" durch die Wortfolge "Rechts auf Verbleib" ersetzt.'))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Die Aufhebung des Rechts auf Verbleib ergeht mündlich. Sie gilt. Über die Aufhebung des Rechts auf Verbleib wird entschieden.')
+    // BFA-VG § 52 Abs. 3: the word stands in the first and the third sentence.
+    const wrong = run(l(), instr('In § 22 Abs. 1 wird im ersten und im zweiten Satz jeweils das Wort "Schutzes" durch die Wortfolge "Rechts auf Verbleib" ersetzt.'))
+    expect(wrong.results.some((r) => !r.applied)).toBe(true)
+  })
+
+  it('changes the later sentence before the earlier one can split', () => {
+    // „ oder" → „." makes two sentences out of the first; run in the order
+    // written, „dritter" would have counted the new one.
+    const l: StandingLaw = { paragraphs: [para('5', 'S', ['Eins oder zwei. Zwei. Drei oder vier.'])] }
+    const { law: out, results } = run(l, instr('In § 5 Abs. 1 wird im ersten und dritten Satz jeweils das Wort " oder" durch einen Punkt ersetzt.'))
+    expect(results.every((r) => r.reason === null)).toBe(true)
+    expect(out.paragraphs[0]!.children[0]!.text).toBe('Eins. zwei. Zwei. Drei. vier.')
+  })
+})

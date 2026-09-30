@@ -790,8 +790,7 @@ describe('an address behind its verb (28.09.2026)', () => {
     for (const line of [
       // Z 7 was dropped: Z 5 lit. a (AsylG § 72).
       'In § 72 wird in den Z 5 und 7 lit. a jeweils die Wortfolge "A" durch die Wortfolge "B" ersetzt.',
-      // Abs. 2 was deleted.
-      'In § 10 entfällt nach Abs. 2 der Abs. 3.',
+      // „In § 10 entfällt nach Abs. 2 der Abs. 3." deleted Abs. 2; read since 30.09.2026 (below).
       // Inserted behind Abs. 8, and the renumbering lost.
       'In § 7 wird der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7 folgender Abs. 8 eingefügt:',
     ]) expect(parseInstruction(line).ops, line).toEqual([])
@@ -898,5 +897,15 @@ describe('a noun broken by a space (30.09.2026)', () => {
 
   it('never inside one: the operand stays as printed', () => {
     expect(op('In § 17 wird die Wend ung "mit der Maßgabe d ass" durch die Wend ung "mit der Maßgabe, dass" ersetzt.')).toMatchObject({ kind: 'replacePhrase', from: 'mit der Maßgabe d ass' })
+  })
+})
+
+describe('a locator in front of the deleted unit (30.09.2026)', () => {
+  it('drops „nach Abs. 2" before „der Abs. 3", and only there', () => {
+    // Seilbahn-Verordnung § 10; the Beilage deletes Abs. 3.
+    expect(op('In § 10 entfällt nach Abs. 2 der Abs. 3.')).toMatchObject({ kind: 'delete', target: { para: '§ 10', abs: '3', level: 'abs' } })
+    expect(op('In § 5 Abs. 1 entfällt nach Z 3 die Z 4.')).toMatchObject({ kind: 'delete', target: { abs: '1', z: '4', level: 'z' } })
+    // Not the unit right behind: a second place, refused.
+    expect(parseInstruction('In § 10 entfällt nach Abs. 2 der Abs. 4.').ops).toEqual([])
   })
 })
