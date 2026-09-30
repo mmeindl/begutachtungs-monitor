@@ -202,11 +202,28 @@ function parseSatz(text: string): { satz: string | null; satzCount: number; halb
   return { satz: sentence?.satz ?? null, satzCount: sentence?.satzCount ?? 0, halbsatz }
 }
 
+/**
+ * Two sentences named in one breath: „im ersten und letzten Satz", „erster
+ * und letzter Satz", „im ersten und im zweiten Satz". Only the plain
+ * consecutive pair without a second article („erster und zweiter Satz") is
+ * one place, a run of two (`ORDINAL_SATZ`); every other pair is two places.
+ *
+ * `ORDINAL_SATZ` alone read „im ersten und im zweiten Satz" as the second
+ * sentence — the article in between broke the pair, and the first sentence
+ * dropped out without a refusal (two draft lines over 300 Entwürfe,
+ * 30.09.2026). So the pair is recognised whole, and in the address itself it
+ * is refused; only a text operation reads it as two places
+ * (`sentencePairPlaces`).
+ */
+const SENTENCE_PAIR_RE = new RegExp(`\\b(${ORDINAL_WORD}[rnsm]?)\\s+und\\s+((?:im|in\\s+dem|de[mnrs])\\s+)?(${ORDINAL_WORD}[rnsm]?)\\s+(Satz(?:es)?)\\b`, 'gi')
+
 function parseSentence(tail: string): { satz: string | null; satzCount: number } | null {
   const part = PART_SATZ.exec(tail)
   if (part) return { satz: /^Einleitung/i.test(part[1]!) ? 'einleitung' : 'schluss', satzCount: 1 }
   const group = GROUP_SATZ.exec(tail)
   if (group) return { satz: /^ersten$/i.test(group[1]!) ? 'erster' : 'letzter', satzCount: COUNT_WORD[group[2]!.toLowerCase()]! }
+  // A pair with the article repeated is two places, never the second alone.
+  if ([...tail.matchAll(SENTENCE_PAIR_RE)].some((m) => m[2])) return { satz: null, satzCount: 0 }
   const ordinal = ORDINAL_SATZ.exec(tail)
   if (ordinal) {
     const first = ordinal[1]!.toLowerCase()
@@ -784,6 +801,69 @@ export function parseAddressList(text: string, inherited?: NovaoAddress | null):
     }
   }
   return out
+}
+
+/**
+ * „das Wort ‚Abschiebeschutzes' im ersten und letzten Satz wird jeweils durch
+ * … ersetzt" — two sentences of one unit, and a text operation in each: the
+ * same reading as „In § 28 Abs. 3 und § 99 Abs. 1 wird jeweils …", one place
+ * per sentence and the phrase unique inside each (AsylG 2005 § 22,
+ * 30.09.2026).
+ *
+ * The pair is written out as two addresses, each with one of the two
+ * ordinals, and both are read by the one address reading there is. Null
+ * unless the text names exactly one pair and both readings resolve.
+ *
+ * **Text operations only** — the caller decides. A unit operation over two
+ * sentences is not two independent steps: „entfallen der zweite und vierte
+ * Satz" run one after the other deletes the second and then the fifth, since
+ * the fourth has moved up; „zweiter und letzter Satz lautet:" has one text
+ * for two places.
+ *
+ * **The step that cannot move the other place goes first.** A phrase can
+ * still move a boundary — „das Wort ‚oder' durch einen Punkt" makes two
+ * sentences out of one — and the second ordinal would then count a sentence
+ * the first step made. An ordinal counted from the front only sees what
+ * stands before it, so of two such the later one is changed first; „letzter"
+ * only sees what stands behind it, so „vorletzter und letzter" changes the
+ * „vorletzter" first. „zweiter und vorletzter" counts from both ends — one
+ * sentence or either order — and is refused.
+ */
+function sentencePairPlaces(text: string, inherited?: NovaoAddress | null): NovaoAddress[] | null {
+  const norm = normalizeText(text)
+  // Masked to the same length, so the match indexes the unmasked text.
+  const masked = norm.replace(/"[^"]*"/g, (m) => ''.repeat(m.length))
+  const pairs = [...masked.matchAll(SENTENCE_PAIR_RE)]
+  if (pairs.length !== 1) return null
+  const pair = pairs[0]!
+  const out: NovaoAddress[] = []
+  const seen = new Set<string>()
+  for (const ordinal of [pair[1]!, pair[3]!]) {
+    const one = `${norm.slice(0, pair.index)}${ordinal} ${pair[4]!}${norm.slice(pair.index + pair[0].length)}`
+    const places = parseAddressList(one, inherited)
+    if (!places) return null
+    // In a longer list („§ 5a Abs. 2, § 6a Abs. 1 erster und letzter Satz
+    // …") every other place comes back from both readings, once is enough.
+    for (const place of places) {
+      const key = JSON.stringify({ ...place, raw: '' })
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(place)
+    }
+  }
+  const sentences = out.filter((p) => p.satz !== null)
+  if (sentences.length !== 2) return null
+  // The order of the steps: higher runs first.
+  const kinds = sentences.map((p) => p.satz!)
+  const rank = (satz: string): number | null => {
+    if (satz === 'letzter') return kinds.includes('vorletzter') ? 0 : Number.POSITIVE_INFINITY
+    if (satz === 'vorletzter') return kinds.includes('letzter') ? 1 : null
+    return ORDINAL_INDEX[satz.replace(/r$/, '')] ?? null
+  }
+  const ranked = sentences.map((p) => ({ p, at: rank(p.satz!) }))
+  if (ranked.some((r) => r.at === null) || ranked[0]!.at === ranked[1]!.at) return null
+  ranked.sort((a, b) => b.at! - a.at!)
+  return [...out.filter((p) => p.satz === null), ...ranked.map((r) => r.p)]
 }
 
 const COMPONENT_DEPTH: Record<string, number> = { abs: 1, absatz: 1, z: 2, ziffer: 2, lit: 3, litera: 3 }
@@ -1420,7 +1500,12 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // Z 5" (see `appendHost`) or refused „folgender Satz" as a sentence word it
   // could not place (7 draft lines, 27.09.2026).
   const payloadOnly = scope.replace(/\b(?:danach|dann|sodann|ferner|weiters)\b/gi, '').trim() === '' && payload !== '' && !!inherited && APPEND_VERB_RE.test(head)
-  const targets = payloadOnly ? [inherited!] : parseAddressList(scope || head, inherited)
+  // Two sentences named as one place are two places — for a text operation,
+  // and only one that reaches the phrase branch below with all its places
+  // (`sentencePairPlaces`). The punctuation form reads one target, a
+  // renumbering or a container none of this.
+  const textOp = (PHRASE_RE.test(head) || SATZ_REPLACED_RE.test(head)) && !PUNCT_REPLACE_RE.test(head) && !/\berh(?:äl|al)t(?:en)?\b|wie folgt geändert/i.test(head)
+  const targets = payloadOnly ? [inherited!] : (parseAddressList(scope || head, inherited) ?? (textOp ? sentencePairPlaces(scope || head, inherited) : null))
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
     // two Strich forms are perfectly readable addresses that this model has no

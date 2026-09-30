@@ -824,3 +824,38 @@ describe('a verb inside a quotation (28.09.2026)', () => {
     expect(splitCompound('In § 5 wird die Wortfolge "a und b wird ersetzt" durch die Wortfolge "c" ersetzt.')).toHaveLength(1)
   })
 })
+
+describe('two sentences of one unit (30.09.2026)', () => {
+  const sentences = (line: string) => parseInstruction(line).ops.map((o) => opAddress(o)!.satz)
+
+  it('reads „im ersten und letzten Satz" as two places of a text operation, the later one first', () => {
+    const parsed = parseInstruction('In § 5 Abs. 1 wird im ersten und letzten Satz jeweils das Wort "A" durch das Wort "B" ersetzt.')
+    expect(parsed.reason).toBeNull()
+    expect(parsed.ops).toMatchObject([{ kind: 'replacePhrase', everywhere: false, eachUnit: true }, { kind: 'replacePhrase' }])
+    expect(sentences('In § 5 Abs. 1 wird im ersten und letzten Satz jeweils das Wort "A" durch das Wort "B" ersetzt.')).toEqual(['letzter', 'erster'])
+    expect(sentences('In § 5 Abs. 1 entfällt im ersten und dritten Satz jeweils das Wort "A".')).toEqual(['dritter', 'erster'])
+    // Counted from the end, the front one goes first.
+    expect(sentences('In § 5 Abs. 1 wird im vorletzten und letzten Satz jeweils das Wort "A" durch das Wort "B" ersetzt.')).toEqual(['vorletzter', 'letzter'])
+  })
+
+  it('never reads „im ersten und im zweiten Satz" as the second sentence alone', () => {
+    // The first sentence dropped out without a refusal (Hochschulgesetz-Entwurf § 38c Abs. 6).
+    expect(sentences('In § 38c Abs. 6 wird im ersten und im zweiten Satz jeweils nach der Wendung "A" die Wendung "B" eingefügt.')).toEqual(['zweiter', 'erster'])
+    expect(parseAddress('In § 2 Abs. 2 entfallen der zweite und der vierte Satz')).toBeNull()
+  })
+
+  it('keeps the consecutive pair a run of two', () => {
+    expect(parseAddress('§ 134a Abs. 3 erster und zweiter Satz lautet')).toMatchObject({ satz: 'erster', satzCount: 2 })
+  })
+
+  it('refuses a unit operation over two sentences, a mark named in words, and a pair without a known order', () => {
+    for (const line of [
+      // Deleted the fourth, or the last, alone.
+      'In § 2 Abs. 2 entfallen der zweite und der vierte Satz.',
+      'In § 23 Abs. 3 entfallen der vorletzte und der letzte Satz.',
+      '§ 3 Abs. 1b zweiter und letzter Satz lautet:',
+      'In § 5 Abs. 1 wird im ersten und letzten Satz jeweils der Punkt durch einen Strichpunkt ersetzt.',
+      'In § 5 Abs. 1 wird im zweiten und vorletzten Satz jeweils das Wort "A" durch das Wort "B" ersetzt.',
+    ]) expect(parseInstruction(line).ops, line).toEqual([])
+  })
+})
