@@ -1288,7 +1288,10 @@ const COMPOUND_SPLIT = /[;,]\s*(?=[A-Za-zÄÖÜ§])|\s+(?:sowie|und)\s+/gi
 // `\bBezeichnung\b` it never counted as a verb, so the line was not split, the
 // renumbering silently dropped, and "§ 107 Z 6 (neu) lautet" then landed on
 // the old Z 6 (LMSVG, BGBl. I Nr. 75/2026, 2026-09-09).
-const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|bezeichnung(?:en)?\b|wie folgt geändert/i
+// `bezeichnet`: „der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7
+// folgender Abs. 8 eingefügt" is a renumbering and an insertion (`NAMED_AS_RE`);
+// two lines of the corpus carry the word outside a quotation (30.09.2026).
+const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfäll[te]\b|\bentfallen\b|\baufgehoben\b|bezeichnung(?:en)?\b|\bbezeichnet\b|wie folgt geändert/i
 
 /**
  * „Der bisherige § 57 erhält die Absatzbezeichnung ‚(1)'. Als neuer Abs. 2
@@ -1551,6 +1554,20 @@ const DESIGNATOR_LEVEL: Record<string, 'abs' | 'z' | 'lit'> = { 'abs.': 'abs', z
  */
 const DELETION_LOCATOR_RE = /\b(entfällt|entfallen)\s+nach\s+(Abs\.|Z|lit\.)\s*(\d+|[a-z])\s+(?=(?:der|die)\s+(Abs\.|Z|lit\.)\s*(\d+|[a-z])(?![\p{L}\p{N}]))/iu
 
+/**
+ * „In § 7 wird der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7
+ * folgender Abs. 8 eingefügt" — a renumbering without the quoted
+ * designation. Read as an address it named Abs. 8 and Abs. 9 at once and was
+ * refused (fdc994a); before that the insertion landed behind Abs. 8 and the
+ * renumbering was lost (Bundesstraßengesetz 1971, 28.09.2026).
+ *
+ * The new designation is written in the form the level prints — „(9)", „9.",
+ * „i)" — and only on the level of the unit renamed: „Abs. 8 als Z 9" is not a
+ * renumbering. „durch Abs. 11 bezeichnet" (one draft line) is not read: the
+ * preposition of the replacement is not taken for the one of the name.
+ */
+const NAMED_AS_RE = /\bals\s+(Abs\.|Z|lit\.)\s*(\d+[a-z]*|[a-z])\s+bezeichnet\b/iu
+
 function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole: string): ParsedInstruction {
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
   const head = instructionHead(line)
@@ -1577,7 +1594,12 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // its own (`DELETION_LOCATOR_RE`).
   const locator = DELETION_LOCATOR_RE.exec(maskQuotes(scope || head))
   const redundantLocator = locator !== null && DESIGNATOR_LEVEL[locator[2]!.toLowerCase()] === DESIGNATOR_LEVEL[locator[4]!.toLowerCase()] && nextDesignation(locator[3]!) === locator[5]
-  const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : scope || head
+  // The new name of „als Abs. 9 bezeichnet" is no place either (`NAMED_AS_RE`)
+  // — and only at the end of its clause: the renumbering is the whole of
+  // what it reads, so a clause that goes on after it must not end here.
+  const namedMatch = NAMED_AS_RE.exec(maskQuotes(head))
+  const namedAs = namedMatch && /^[\s.;]*$/.test(maskQuotes(head).slice(namedMatch.index + namedMatch[0].length)) ? namedMatch : null
+  const addressText = redundantLocator ? (scope || head).replace(locator[0], `${locator[1]} `) : namedAs ? (scope || head).replace(namedAs[0], 'bezeichnet') : scope || head
   const targets = payloadOnly ? [inherited!] : (parseAddressList(addressText, inherited) ?? (textOp ? sentencePairPlaces(addressText, inherited) : null))
   if (!targets || targets.length === 0) {
     // Name the word rather than report a missing address: „sublit." and the
@@ -1610,6 +1632,12 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   // below rather than running as a renumbering of the Paragraph.
   const drawnIn = absatzDrawnIn(head, quotes, targets)
   if (drawnIn) return drawnIn.reason ? fail(drawnIn.reason) : ok(drawnIn.op!)
+  if (namedAs) {
+    const level = DESIGNATOR_LEVEL[namedAs[1]!.toLowerCase()]!
+    const id = namedAs[2]!
+    if (targets.length !== 1 || target.siblings.length > 0 || target.level !== level || target.satz !== null || quotes.length > 0) return fail('Umbenennung „als … bezeichnet" — Ziel nicht eindeutig')
+    return ok({ kind: 'renumber', target, to: level === 'abs' ? `(${id})` : level === 'z' ? `${id}.` : `${id})`, toLast: null })
+  }
   if (/erh(?:äl|al)t(?:en)?\s+(?:[^"]{0,60}?\s+)?die\s+\w*bezeichnung(?:en)?\b/i.test(head) && (/erh(?:äl|al)t(?:en)?\s+die\s+\w*bezeichnung/i.test(head) || target.level !== 'para')) {
     const to = quotes[0]
     if (!to) return fail('Umbenennung ohne neue Bezeichnung')

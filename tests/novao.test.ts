@@ -790,9 +790,9 @@ describe('an address behind its verb (28.09.2026)', () => {
     for (const line of [
       // Z 7 was dropped: Z 5 lit. a (AsylG § 72).
       'In § 72 wird in den Z 5 und 7 lit. a jeweils die Wortfolge "A" durch die Wortfolge "B" ersetzt.',
-      // „In § 10 entfällt nach Abs. 2 der Abs. 3." deleted Abs. 2; read since 30.09.2026 (below).
-      // Inserted behind Abs. 8, and the renumbering lost.
-      'In § 7 wird der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7 folgender Abs. 8 eingefügt:',
+      // „In § 10 entfällt nach Abs. 2 der Abs. 3." deleted Abs. 2 and „… als Abs. 9 bezeichnet
+      // und nach Abs. 7 folgender Abs. 8 eingefügt" lost the renumbering; both are read since
+      // 30.09.2026 (below).
     ]) expect(parseInstruction(line).ops, line).toEqual([])
   })
 })
@@ -907,5 +907,25 @@ describe('a locator in front of the deleted unit (30.09.2026)', () => {
     expect(op('In § 5 Abs. 1 entfällt nach Z 3 die Z 4.')).toMatchObject({ kind: 'delete', target: { abs: '1', z: '4', level: 'z' } })
     // Not the unit right behind: a second place, refused.
     expect(parseInstruction('In § 10 entfällt nach Abs. 2 der Abs. 4.').ops).toEqual([])
+  })
+})
+
+describe('„als Abs. 9 bezeichnet" (30.09.2026)', () => {
+  it('reads a renumbering without a quoted designation, and the insertion behind it', () => {
+    const { ops, reason } = parseInstruction('In § 7 wird der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7 folgender Abs. 8 eingefügt:')
+    expect(reason).toBeNull()
+    expect(ops).toMatchObject([
+      { kind: 'renumber', target: { para: '§ 7', abs: '8' }, to: '(9)', toLast: null },
+      { kind: 'insertAfter', anchor: { para: '§ 7', abs: '7' }, child: 'abs', childIds: ['8'] },
+    ])
+    expect(op('In § 7 wird die bisherige Z 8 als Z 9 bezeichnet.')).toMatchObject({ kind: 'renumber', to: '9.' })
+  })
+
+  it('refuses another level, a sentence, and „durch … bezeichnet"', () => {
+    for (const line of [
+      'In § 7 wird der bisherige Abs. 8 als Z 9 bezeichnet.',
+      'In § 7 Abs. 1 wird der erste Satz als Abs. 9 bezeichnet.',
+      'In § 174 wird der bisherige Abs. 8 durch Abs. 11 bezeichnet und werden nach Abs. 7 folgende neue Abs. 8 bis 10 eingefügt:',
+    ]) expect(parseInstruction(line).ops, line).toEqual([])
   })
 })

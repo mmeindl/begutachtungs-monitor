@@ -1534,3 +1534,13 @@ describe('a new unit without its designation (30.09.2026)', () => {
     expect(out.paragraphs[0]!.children.map((c) => [c.id, c.text])).toEqual([['1', 'Eins.'], ['2', 'Zwei.'], ['2a', 'Neu.'], ['3', 'Drei.']])
   })
 })
+
+describe('„als Abs. 9 bezeichnet" (30.09.2026)', () => {
+  it('renumbers, then inserts under the freed number', () => {
+    // Bundesstraßengesetz-Entwurf § 7.
+    const l: StandingLaw = { paragraphs: [para('7', 'G', ['Eins.', 'Zwei.', 'Drei.', 'Vier.', 'Fünf.', 'Sechs.', 'Sieben.', 'Acht.'])] }
+    const { law: out, results } = run(l, instr('In § 7 wird der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7 folgender Abs. 8 eingefügt:', ['(8) Neu acht.']))
+    expect(results.map((r) => r.reason)).toEqual([null, null])
+    expect(out.paragraphs[0]!.children.slice(6).map((c) => [c.id, c.marker, c.text])).toEqual([['7', '(7)', 'Sieben.'], ['8', '(8)', 'Neu acht.'], ['9', '(9)', 'Acht.']])
+  })
+})
