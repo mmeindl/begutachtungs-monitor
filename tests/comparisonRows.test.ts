@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseTextComparison, summarizeComparison } from '../server/utils/annex/comparisonRows'
+import { parseTextComparison, summarizeComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
 import { isElidedPair, isElisionRangeOnly, printedStretches } from '../server/utils/annex/elision'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
@@ -344,6 +344,48 @@ describe('the laws of a package', () => {
     const rows = parse(annex(['<tr><td colspan="2">3. Abschnitt</td></tr>', pair('<gldsym>§ 4.</gldsym>Alt.', '<gldsym>§ 4.</gldsym>Neu.')]))
     expect(rows.filter((r) => r.kind === 'article')).toHaveLength(0)
     expect(rows[0]).toMatchObject({ gld: '§ 4.', heading: '3. Abschnitt', law: 'Änderung des Aktiengesetzes' })
+  })
+
+  // The IKT-Schulverordnung template (30.09.2026): header 1 + 3, the second
+  // Artikel line `colspan="3"` with a spacer cell — across the seam, not the
+  // width. Read as a „removed" pair row the boundary vanished and the draft
+  // was refused.
+  const seamTable = (rows: string[]) => `<risdok><nutzdaten><abschnitt><table>
+    <tr><td><ueberschrift typ="tgue">Geltende Fassung</ueberschrift></td><td colspan="3"><ueberschrift typ="tgue">Vorgeschlagene Fassung</ueberschrift></td></tr>
+    <tr><td colspan="4"><ueberschrift typ="g1">Artikel 1</ueberschrift><ueberschrift typ="g2">Änderung des Aktiengesetzes</ueberschrift></td></tr>
+    <tr><td><gldsym>§ 1.</gldsym>Alt.</td><td colspan="3"><gldsym>§ 1.</gldsym>Neu.</td></tr>
+    ${rows.join('')}
+  </table></abschnitt></nutzdaten></risdok>`
+  const wide = (a: string, b: string) => `<tr><td>${a}</td><td colspan="3">${b}</td></tr>`
+
+  it('reads an Artikel line set across the seam but not the width', () => {
+    const { rows, refusal } = parseTextComparison(seamTable([
+      '<tr><td colspan="3"><ueberschrift typ="g1">Artikel 2</ueberschrift><ueberschrift typ="g2">Änderung des GmbH-Gesetzes</ueberschrift></td><td><nbsp /></td></tr>',
+      wide('<gldsym>§ 1.</gldsym>Alt.', '<gldsym>§ 1.</gldsym>Neu 2.'),
+    ]), pkg)
+    expect(refusal).toBeNull()
+    expect(rows.filter((r) => r.kind === 'article').map((r) => r.heading)).toEqual(['Artikel 1 — Änderung des Aktiengesetzes', 'Artikel 2 — Änderung des GmbH-Gesetzes'])
+    expect(rows.filter((r) => r.gld === '§ 1.').map((r) => r.law)).toEqual(['Änderung des Aktiengesetzes', 'Änderung des GmbH-Gesetzes'])
+    // No „removed" row is left behind for the line.
+    expect(rows.some((r) => r.kind === 'pair' && r.current.startsWith('Artikel 2'))).toBe(false)
+  })
+
+  it('leaves law text across the seam, a bare one-sided Artikel and an unknown law where they were', () => {
+    // Each of these leaves the package one boundary short, so it is refused
+    // exactly as before the rule existed — and the line stays a row.
+    const line = (r: ComparisonRow) => r.kind === 'pair' && r.change === 'removed'
+    // A removed Absatz set across two columns: 42 of the 45 straddling rows
+    // of GP XXVIII are that, and it is no boundary.
+    const text = parseTextComparison(seamTable(['<tr><td colspan="3"><absatz typ="abs">Artikel 2 Änderung des GmbH-Gesetzes</absatz></td><td><nbsp /></td></tr>']), pkg)
+    expect(text.refusal).not.toBeNull()
+    expect(text.rows.some((r) => line(r) && r.current.startsWith('Artikel 2'))).toBe(true)
+    // Numeral without a title: a provision of a law organised in Artikel as often as a boundary.
+    const bare = parseTextComparison(seamTable(['<tr><td colspan="3"><ueberschrift typ="g1">Artikel 2</ueberschrift></td><td><nbsp /></td></tr>']), pkg)
+    expect(bare.refusal).not.toBeNull()
+    // Offered, not taken: a law the draft does not name stays the row it was.
+    const foreign = parseTextComparison(seamTable(['<tr><td colspan="3"><ueberschrift typ="g1">Artikel 7</ueberschrift><ueberschrift typ="g2">Änderung des Firmenbuchgesetzes</ueberschrift></td><td><nbsp /></td></tr>']), pkg)
+    expect(foreign.refusal).not.toBeNull()
+    expect(foreign.rows.some((r) => line(r) && r.current.startsWith('Artikel 7'))).toBe(true)
   })
 
   it('attributes nothing when a package leaves its laws unmarked', () => {

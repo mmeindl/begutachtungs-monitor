@@ -211,7 +211,43 @@ interface Parsed {
   heading: string | null
   /** Set when the row is a pair row printing the same text in both columns */
   mirrored: string | null
+  /** Set when the row is an Artikel line set across the seam but not the width (`straddlingArticle`) */
+  straddling: string | null
   cells: { html: string; span: number }[]
+}
+
+/**
+ * An Artikel line set across the column seam without reaching the edge — a
+ * boundary the reader used to read as a one-sided pair row (30.09.2026,
+ * docs/architecture.md §12.13).
+ *
+ * Some templates head a four-column table 1 + 3 and then set the Artikel line
+ * `colspan="3"` with an empty spacer cell behind it: not the full width, so
+ * not a heading, and started in the left column, so a „removed" row reading
+ * „Artikel 2 Änderung der Zeugnisformularverordnung". The boundary vanished
+ * with it, and the IKT-Schulverordnung — three Verordnungen in one draft —
+ * was refused with „Die Beilage überspringt ein Gesetz des Entwurfs".
+ *
+ * Three things have to hold, because straddling alone says nothing: 42 of
+ * the 45 rows of GP XXVIII whose one filled cell crosses the seam are
+ * ordinary law text, a removed Absatz set across two columns. The cell has to
+ * cross the seam (the layout), RIS has to type all of it as `<ueberschrift>`
+ * (the markup), and it has to read as „Artikel N" *with* a law title (the
+ * wording) — a bare „Artikel 4" printed on one side is a provision of a law
+ * organised in Artikel as often as a boundary. And it is only offered:
+ * `resolveBoundaries` still has to find it in the draft's own Artikel list,
+ * and where it does not, the row stays the pair row it was.
+ */
+function straddlingArticle(cells: readonly { html: string; span: number }[], span: { left: number; right: number }): string | null {
+  const filled = cells.filter((c) => cellText(c.html) !== '')
+  if (filled.length !== 1) return null
+  const cell = filled[0]!
+  const start = cells.slice(0, cells.indexOf(cell)).reduce((n, c) => n + c.span, 0)
+  if (!(start < span.left && start + cell.span > span.left)) return null
+  if (!headingOnly(cell.html)) return null
+  const text = cellText(cell.html)
+  const candidate = candidateOf(text)
+  return candidate !== null && candidate.numeral !== null && candidate.title !== null ? text : null
 }
 
 /** The removals of `STRIP`, applied to one document. */
@@ -261,7 +297,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
   const parsed: Parsed[] = []
   for (const item of items) {
     if (item.kind === 'heading') {
-      parsed.push({ item, heading: item.text, mirrored: null, cells: [] })
+      parsed.push({ item, heading: item.text, mirrored: null, straddling: null, cells: [] })
       continue
     }
     const own = outermost(item.inner, 'td')
@@ -273,7 +309,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     const firstFilled = cells.find((c) => cellText(c.html) !== '') ?? cells[0]!
     if (cells.length === 1 || firstFilled.span >= span.left + span.right) {
       const heading = cellText(firstFilled.html)
-      if (heading) parsed.push({ item, heading, mirrored: null, cells })
+      if (heading) parsed.push({ item, heading, mirrored: null, straddling: null, cells })
       continue
     }
     const { currentHtml, proposedHtml } = columnsOf(cells, span)
@@ -284,7 +320,8 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     if (!current && !proposed) continue
     // An Artikel line is often printed once per column rather than across
     // both, and read as an ordinary pair row it left the boundary invisible.
-    parsed.push({ item, heading: null, mirrored: current && current === proposed ? current : null, cells })
+    const mirrored = current && current === proposed ? current : null
+    parsed.push({ item, heading: null, mirrored, straddling: mirrored === null ? straddlingArticle(cells, span) : null, cells })
   }
 
   // Pass 2: which of the heading-shaped lines open a law.
@@ -294,7 +331,7 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
   const titleOf = new Map<number, number>()
   for (const [i, p] of parsed.entries()) {
     if (candidateAt.has(i) || titleOf.has(i)) continue
-    const text = p.heading ?? p.mirrored
+    const text = p.heading ?? p.mirrored ?? p.straddling
     if (!text) continue
     const candidate = candidateOf(text)
     if (!candidate) continue

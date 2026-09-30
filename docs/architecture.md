@@ -5381,6 +5381,48 @@ spaltenübergreifend noch spiegelgleich ist — **3 Zeilen** der GP XXVIII
 Das ist eine Frage der Gesetzesabgrenzung und nicht der Paragraphenzuordnung,
 also ein eigener Schritt mit eigener Messung.
 
+**Die „einseitige" Artikelzeile ist eine über die Naht gesetzte — gemessen
+und gebaut (30.09.2026).** Nachgelesen sind die drei Zeilen gar nicht
+einseitig gedruckt: Die Vorlage des Ressorts teilt die Tabelle 1 + 3 (bzw.
+1 + 4) Spalten, setzt die Artikelzeile `colspan="3"` (bzw. 4) und dahinter
+eine leere Abstandszelle. Nicht die volle Breite, also keine Überschrift;
+in der linken Spalte begonnen, also eine Zeile „entfällt: Artikel 2
+Änderung der Zeugnisformularverordnung". Über die 140 Tabellenbeilagen des
+Prüfstands gibt es **45 Zeilen, deren einzige gefüllte Zelle die Naht
+überquert, und 42 davon sind gewöhnlicher Gesetzestext** — ein aufgehobener
+Absatz über zwei Spalten gesetzt. Das Überqueren allein sagt also nichts.
+`straddlingArticle` (`comparisonRows.ts`) verlangt drei Dinge zugleich: Die
+Zelle überquert die Naht (das Layout), das RIS zeichnet ihren ganzen Inhalt
+als `<ueberschrift>` aus (die Auszeichnung), und sie liest sich als
+„Artikel N" *mit* Gesetzestitel (der Wortlaut). Dann wird sie
+`resolveBoundaries` nur **angeboten** — die Grenze gilt erst, wenn der
+Entwurf selbst diesen Artikel führt; sonst bleibt die Zeile die, die sie
+war. Draußen bleibt damit bewusst die vierte einseitige Kandidatenzeile des
+Korpus, ein bloßes „Artikel 4" in der rechten Spalte ohne Titel und ohne
+Naht (Warenreparaturrichtlinie-Umsetzungsgesetz): Das ist in einem in
+Artikel gegliederten Gesetz so oft eine Bestimmung wie eine Grenze.
+
+*Gemessen* (Prüfstand, 400 jüngste Sätze): Tabellenpfad **zwei Entwürfe
+bewegen sich, beide aus der Verweigerung heraus**, sonst keiner. Die
+IKT-Schulverordnung samt Zeugnisformular- und Externistenprüfungsverordnung
+war verweigert („Die Beilage überspringt ein Gesetz des Entwurfs") und zeigt
+jetzt drei Artikel mit **21 bestätigten**, 2 einbehaltenen und 4 ungeprüften
+Paragraphen; das Paket aus Bildungsdirektionen-Einrichtungsgesetz,
+Bildungsdokumentationsgesetz 2020, IQS-Gesetz und Hochschulgesetz 2005 zeigt
+vier Artikel mit **5 bestätigten** und 6 ungeprüften. Tor 1.271 / 80 / 787
+→ 1.297 / 82 / 797, verweigerte Sammelgesetze 3 → 1, alle vier Zusicherungen
+0. Der PDF-Pfad ist unberührt (`parseTextComparison` läuft dort nicht):
+120 → 120, kein Entwurf bewegt. **Gelesen, Paragraph für Paragraph:** jeder
+der 26 neu bestätigten ist gegen *sein* Gesetz gehalten und dort zu 100 %
+gedeckt; der gleichnamige Paragraph eines Nachbargesetzes desselben Pakets
+käme auf 26 bis 57 %, weit unter der Schwelle — eine Bestätigung über die
+falsche Grenze ist darunter nicht. Die zwei einbehaltenen sind Anlagen, die
+die Beilage als „(wird hier nicht abgebildet)" führt. Fehlerinjektion,
+Tabellenpfad: Grundmenge 326 → 335, Fangquoten je Fehler gleich bis auf
+Zehntel (R-alt je § 79,9 → 80,4 %, R-neu 81,4 → 81,5 %, L 38,7 → 38,2 %),
+keine neue Meldung ohne Injektion. Die Grundlinie ist aus denselben
+Berichten nachgezogen, die zwei Entwürfe nach oben.
+
 **Der Drift-Alarm (16.09.2026).** Die Engine bricht nicht daran, dass wir sie
 ändern — dafür gibt es 600+ Tests und `annexGolden.test.ts`, das zwei echte
 Beilagen samt ihren Zahlen einfriert. Sie bricht daran, dass ein Ressort seine
