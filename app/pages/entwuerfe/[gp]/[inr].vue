@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
-import { fristClassOf, fristContextDe, fristSpanDe } from '~/utils/deadlines'
+import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristSpanDe } from '~/utils/deadlines'
 import {
   RV_DEFINITION,
   SECOND_ROUND_CLAUSE,
@@ -175,6 +175,20 @@ const showOutcome = computed(() => {
 /* Decision and sign convention live in app/utils/deadlines.ts, next to
  * the other deadline rules and covered by tests — a flipped sign here would
  * tell a submitter the wrong date. */
+/**
+ * The door card's ground. While the Begutachtung runs, the card IS the
+ * countdown's box — the list row's tone (`deadlineGroundClass`, shared with
+ * `EntryState`) over the whole card, not a chip inside the heading, which
+ * broke the sentence and read as bolted on. The words say the urgency, the
+ * ground repeats it, so meaning never rides on colour alone. The Vorlage
+ * window alone has no Frist to tone and keeps the plain card.
+ */
+const doorClass = computed(() =>
+  windows.value.begutachtung && data.value
+    ? deadlineCardClass(deadlineTone(data.value.deadline, true))
+    : 'border-hairline bg-surface',
+)
+
 const divergence = computed(() =>
   fristDivergence(data.value?.risDraft ?? null, Boolean(data.value?.active)),
 )
@@ -362,8 +376,6 @@ const ministryLinks = computed(() => {
       <article>
         <DraftBackLink />
         <DraftHeader
-          :deadline="data.deadline"
-          :active="data.active"
           :title="data.shortTitle ?? data.title"
         >
           <!-- `link-inline`, underlined at rest (WCAG 1.4.1), and tap-target
@@ -468,20 +480,6 @@ const ministryLinks = computed(() => {
           </div>
         </div>
 
-        <section
-          v-if="description.length"
-          class="page-section"
-          aria-labelledby="kurzinfo-heading"
-        >
-          <!-- Was sr-only: sighted readers got a section whose first visible
-               marker was a 14px "Ziel". The page now reads as a question
-               sequence — worum geht es, was wurde daraus. -->
-          <h2 id="kurzinfo-heading" class="section-heading">Worum geht es?</h2>
-          <div class="mt-4">
-            <DraftDescription :blocks="description" />
-          </div>
-        </section>
-
         <!-- Deadline, action and calendar welded into one card: the page's
              door, shown while any window for input is open. The Begutachtung
              while its Frist runs; the Regierungsvorlage while the Nationalrat
@@ -493,10 +491,15 @@ const ministryLinks = computed(() => {
              This card is the ONE deliberate break with the station order
              below: the Entwurf section with its Gegenüberstellung can run
              long, and the page's action must not sink below it. The door
-             stays at the front and follows the window that is open. -->
+             stays at the front and follows the window that is open. Since
+             30.09.2026 it stands directly under the spine, above „Worum geht
+             es?" too, as on the RIS page: it is the page's one countdown since
+             the badge beside the title went, and under a long Kurzinformation
+             it sat a screen and a half down. -->
         <div
           v-if="windows.begutachtung || windows.vorlage"
-          class="mt-6 rounded-xl border border-hairline bg-surface p-5"
+          class="mt-6 rounded-xl border p-5"
+          :class="doorClass"
         >
           <!-- Headings, not paragraphs (18.09.2026): this is the only action
                the page offers, and for heading navigation it did not appear in
@@ -521,7 +524,7 @@ const ministryLinks = computed(() => {
           <!-- Directly under the date it qualifies, above the CTA: whoever is
                about to submit reads it before acting, and the sentence ends by
                naming the date that governs. -->
-          <p v-if="windows.begutachtung && divergence" class="mt-2 max-w-prose text-sm text-ink-secondary">
+          <p v-if="windows.begutachtung && divergence" class="mt-2 max-w-prose text-sm text-ink">
             Zweite amtliche Quelle, andere Frist: Das Rechtsinformationssystem
             nennt als Fristende
             <ExternalLink
@@ -544,7 +547,7 @@ const ministryLinks = computed(() => {
                governs; this sentence is about the length. When the window
                closes, the card goes and the sentence moves back under „Die
                Begutachtung": one place at a time, the one that matters now. -->
-          <p v-if="windows.begutachtung && fristContext" class="mt-2 max-w-prose text-sm text-ink-secondary">
+          <p v-if="windows.begutachtung && fristContext" class="mt-2 max-w-prose text-sm text-ink">
             {{ fristContext }}
           </p>
           <!-- Both windows open: stated as a sequence of facts, not as a
@@ -597,7 +600,7 @@ const ministryLinks = computed(() => {
                "your input changed §5" until the diff layer exists. Once the
                Vorlage exists, that comparison IS on the page, so the card
                points at it instead. -->
-          <p v-if="windows.begutachtung && !data.enactment" class="mt-3 max-w-prose text-sm text-ink-secondary">
+          <p v-if="windows.begutachtung && !data.enactment" class="mt-3 max-w-prose text-sm text-ink">
             Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
             Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
           </p>
@@ -607,6 +610,20 @@ const ministryLinks = computed(() => {
                Regierungsvorlage section links the same anchor once more. Three
                ways to one place are not an offer. -->
         </div>
+
+        <section
+          v-if="description.length"
+          class="page-section"
+          aria-labelledby="kurzinfo-heading"
+        >
+          <!-- Was sr-only: sighted readers got a section whose first visible
+               marker was a 14px "Ziel". The page now reads as a question
+               sequence — worum geht es, was wurde daraus. -->
+          <h2 id="kurzinfo-heading" class="section-heading">Worum geht es?</h2>
+          <div class="mt-4">
+            <DraftDescription :blocks="description" />
+          </div>
+        </section>
 
         <!-- From here the page follows the STATIONS of the bar, in the bar's
              order, and each section exists exactly when its station has

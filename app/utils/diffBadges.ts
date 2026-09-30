@@ -18,7 +18,7 @@ export type DiffBadge = LawUnitChange | 'editorial'
  * Red for what goes, green for what arrives — the diff convention everyone
  * has read on GitHub (Manu, 08.09.2026; the note in main.css follows). Text
  * on a wash is always `text-ink`: ink-secondary drops below 7:1 there, the
- * same reason DeadlineBadge carries full ink.
+ * same reason the deadline card carries full ink.
  *
  * Meaning never rides on colour alone: the pill says the state in words and
  * the gutter repeats it beside the block. The strikethrough is reserved for

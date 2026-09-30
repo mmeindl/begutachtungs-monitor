@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DeadlineTone } from '~/utils/deadlines'
+import { deadlineGroundClass } from '~/utils/deadlines'
 import type { EntryState } from '~/utils/entryView'
 
 /**
@@ -36,20 +36,6 @@ import type { EntryState } from '~/utils/entryView'
  */
 defineProps<{ state: EntryState }>()
 
-/**
- * `accent-50` for the calm open state, not `accent-wash`.
- *
- * The open list is typically 13 rows long, one of them critical. With
- * `accent-wash` (#cde2fb) twelve strong blue boxes would stand beside one
- * pale red — the rarest colour has to be the most conspicuous, or the column
- * is decoration.
- */
-const groundClass: Record<DeadlineTone, string> = {
-  critical: 'bg-status-critical/15',
-  serious: 'bg-status-serious/15',
-  neutral: 'bg-accent-50',
-  inactive: 'bg-ink-muted/15',
-}
 </script>
 
 <template>
@@ -57,7 +43,7 @@ const groundClass: Record<DeadlineTone, string> = {
        Below `sm` the card is left-aligned, above it right, and the dense row
        always right — an `align` prop would have to name each of those cases
        again where inheritance already knows it. -->
-  <div class="rounded-lg px-2.5 py-1.5" :class="groundClass[state.tone]">
+  <div class="rounded-lg px-2.5 py-1.5" :class="deadlineGroundClass[state.tone]">
     <!-- Wrapping is allowed since the pill went: „Bisher keine
          Regierungsvorlage" and „Stellungnahme möglich" run onto two lines in
          the md column and stay whole. The short forms they used to need

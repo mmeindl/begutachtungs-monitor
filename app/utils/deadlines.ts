@@ -1,6 +1,6 @@
 /**
  * Urgency thresholds for Begutachtung deadlines — one definition for the
- * badge tones (`DeadlineBadge`) and for the state line of a list row
+ * tones of a detail page's deadline card and for the state line of a list row
  * (`EntryState`).
  */
 import { daysUntil, spanInDays } from '#shared/utils/format'
@@ -41,8 +41,8 @@ export function isNewArrival(
 export type DeadlineTone = 'critical' | 'serious' | 'neutral' | 'inactive'
 
 /**
- * One tone decision for every deadline surface — the `DeadlineBadge` pill and
- * the state line of a row (`EntryState`). Defense in depth alongside
+ * One tone decision for every deadline surface — a detail page's
+ * deadline card and the state line of a row (`EntryState`). Defense in depth alongside
  * server-side `reconcileActive`: even with stale client data an expired
  * deadline renders muted, never as a red element.
  */
@@ -57,6 +57,43 @@ export function deadlineTone(
   if (days <= DEADLINE_CRITICAL_DAYS) return 'critical'
   if (days <= DEADLINE_SERIOUS_DAYS) return 'serious'
   return 'neutral'
+}
+
+/**
+ * The ground of every deadline surface, keyed by tone — the list row's state
+ * box (`EntryState`) and a detail page's deadline card share it, so
+ * one state reads as one colour wherever it stands.
+ *
+ * `accent-50` for the calm open state, not `accent-wash`: the open list is
+ * typically 13 rows long, one of them critical. With `accent-wash` (#cde2fb)
+ * twelve strong blue boxes would stand beside one pale red — the rarest
+ * colour has to be the most conspicuous, or the column is decoration.
+ */
+export const deadlineGroundClass: Record<DeadlineTone, string> = {
+  critical: 'bg-status-critical/15',
+  serious: 'bg-status-serious/15',
+  neutral: 'bg-accent-50',
+  inactive: 'bg-ink-muted/15',
+}
+
+/**
+ * The edge of a detail page's deadline card, beside its ground. The list's
+ * boxes stand on white rows; the card stands on the page, and `accent-50`
+ * (#e6f0fd) against `page` (#f5f4ef) is ~1,08:1 — only hue parted them, and
+ * the page's one action read weaker than the white spine card above it. A
+ * border in the card's own tone gives it back an edge. Not a WCAG need (a
+ * grouping outline is exempt from 1.4.11), a legibility one.
+ */
+const deadlineEdgeClass: Record<DeadlineTone, string> = {
+  critical: 'border-status-critical/40',
+  serious: 'border-status-serious/40',
+  neutral: 'border-accent-200',
+  inactive: 'border-hairline',
+}
+
+/** Ground and edge of a detail page's deadline card, for one tone. */
+export function deadlineCardClass(tone: DeadlineTone): string {
+  return `${deadlineGroundClass[tone]} ${deadlineEdgeClass[tone]}`
 }
 
 interface FristDivergence {

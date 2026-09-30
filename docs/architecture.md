@@ -250,7 +250,6 @@ name has to stay globally unique.
 | `EntryItem` | `entry: EntryView; density?: 'card'\|'row'` + slot `evidence` | **Every list entry on the site, in one anatomy** (§12.28): Titel · Kennung · Stellungnahmen · Stand, in fixed zones. `card` under `md`, `row` in the dense sheet above it. Knows nothing about the kinds — what each kind puts in each zone is decided in `app/utils/entryView.ts` |
 | `EntryList` | `entries: EntryView[]; ordered?: boolean; lead?: string` + slot `evidence` | **Every list of them** (§12.28): cards below `md`, from `md` up a sheet with a column header and rules, switched purely by CSS so both stand in the SSR HTML. `ordered` → `ol`, only where the order is the statement; `lead` names the first column where the rows are not drafts |
 | `EntryState` | `state: EntryState` | Zone 4: the state over what pins it down, as one box of two lines. One component for countdown, open Vorlagen window and every reached station — only a row someone can still act on is loud; everything closed is calm ink without pill or dot |
-| `DeadlineBadge` | `deadline: string\|null; active: boolean` | Deadline chip with text from `fristLabel()`; status hue in dot and wash, the text in ink tokens: ≤3 days critical, ≤7 serious, otherwise neutral, expired muted. **Color never without text** |
 | `NewBadge` | – | „Neu" on a Begutachtung that began inside the last week (`isNewArrival`, `app/utils/deadlines.ts`); rendered by the call site's `v-if` and merging into the phrase that follows (§12.21) |
 | `SearchEvidence` | `hit?: Pick<BegutSearchHit, 'place'\|'designation'\|'snippet'\|'ministryOnly'>\|null` | The evidence under a full-text hit: the Fundstelle plus the sentence the word stands in (§12.31). No frame — it already stands inside the hit's row |
 
@@ -258,7 +257,7 @@ name has to stay globally unique.
 
 | Component | Props | Purpose |
 |---|---|---|
-| `DraftHeader` | `ministryCode; ministryName; ministryTo; ministryLabel; deadline: string\|null; active: boolean; title: string` + slots `identity`, default | The top of a detail page: one meta row carrying identity, ressort and urgency, then the title. `identity` is where the two pages differ — a Ministerialentwurf leads with its Geschäftszahl, a RIS record does not have one |
+| `DraftHeader` | `title: string` + slots `identity`, `source`, default | The top of a detail page: one meta row carrying identity and the source link, then the title. `identity` is where the two pages differ — a Ministerialentwurf leads with its Geschäftszahl, a RIS record does not have one |
 | `DraftBackLink` | – | Back into the one list, unfiltered — one target, one word, on every detail page, because shared-link landers are the declared primary case |
 | `DraftDescription` | `blocks: DescriptionBlock[]` | The Kurzinformation of a Ministerialentwurf, grouped into its own sections; folded parts use a native `<details>`, so no hydration, keyboard access as-is and the text stays in the SSR HTML |
 | `DocumentList` | `documents: DocumentListItem[]; source?: string` | Document rows: title plus hint line, formats as small bordered accent tags with ↗ in two fixed columns (PDF, HTML). Tags, not buttons: buttons act inside the page, accent + ↗ leaves it. Used for Entwurfsdokumente, RIS documents and Spätere Textfassungen |

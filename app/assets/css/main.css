@@ -96,7 +96,7 @@
      block names it in words and the gutter repeats it. The strikethrough
      stays in the word-level diff only — on a whole removed passage it would
      just make the text harder to read. Grounds use the /10 and /15 washes
-     with full ink, like DeadlineBadge. */
+     with full ink, like the deadline card. */
   --color-status-good: #0ca30c;
   --color-status-serious: #ec835a;
   --color-status-critical: #d03b3b;

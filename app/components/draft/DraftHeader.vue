@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /**
- * The top of a detail page: one meta row carrying identity and urgency, then
- * the title. Both detail pages have this anatomy. The Ressort is not in the
- * meta row since 30.09.2026 — it is written out and linked in each page's
+ * The top of a detail page: one meta row carrying identity, then the title.
+ * The countdown is not in the meta row since 30.09.2026 — it stands once, in
+ * the Stellungnahme card, whose ground carries the tone, where the date and
+ * the action are. Both detail pages have this anatomy. The Ressort is not in
+ * the meta row since 30.09.2026 — it is written out and linked in each page's
  * byline (`MinistryLinks`), where the code chip used to repeat it.
  *
  * `#source` is the provenance link, in the same row: it opens this very
@@ -22,9 +24,6 @@
  * to grow (refactor-plan.md §4.3).
  */
 defineProps<{
-  /** ISO date, or null where upstream has none. */
-  deadline: string | null
-  active: boolean
   title: string
 }>()
 </script>
@@ -34,14 +33,6 @@ defineProps<{
     <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
       <div class="flex flex-wrap items-center gap-2">
         <slot name="identity" />
-        <!-- Only while it runs: the badge exists to carry urgency (tone +
-             "Noch 3 Tage"). Closed, it degrades to "Frist endete am …" — which
-             the card below states, better. -->
-        <DeadlineBadge
-          v-if="active"
-          :deadline="deadline"
-          :active="active"
-        />
       </div>
       <!-- The record at its source, beside the identifier it resolves —
            „135/ME" is Parliament's own number. Two groups under

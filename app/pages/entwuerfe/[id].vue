@@ -2,6 +2,7 @@
 import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
+import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
 
 /**
@@ -133,8 +134,6 @@ const documents = computed(() => {
            these records have none, and the type is what identifies them to a
            reader. -->
       <DraftHeader
-        :deadline="data.deadline"
-        :active="data.active"
         :title="data.title"
       >
         <template #source>
@@ -245,7 +244,8 @@ const documents = computed(() => {
            afternoon. -->
       <div
         v-if="data.active"
-        class="mt-6 rounded-xl border border-hairline bg-surface p-5"
+        class="mt-6 rounded-xl border p-5"
+        :class="deadlineCardClass(deadlineTone(data.deadline, data.active))"
       >
         <!-- A heading, not a paragraph: the one action the page offers
              belongs in the outline. -->
@@ -256,7 +256,7 @@ const documents = computed(() => {
              `risFilingNote`: one word per thing. The page carried both side by
              side, and „Ressort" is the administration's word, not the
              reader's. -->
-        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+        <p class="mt-2 max-w-prose text-sm text-ink">
           Eine Stellungnahme geht hier direkt an das Ministerium – es gibt
           kein Formular des Parlaments. An welche Adresse, steht im
           Begleitschreiben, mit dem das Ministerium den Entwurf versendet
@@ -290,7 +290,7 @@ const documents = computed(() => {
             Frist in den Kalender (.ics)
           </UButton>
         </div>
-        <p v-if="!data.coverLetter" class="mt-3 max-w-prose text-sm text-ink-secondary">
+        <p v-if="!data.coverLetter" class="mt-3 max-w-prose text-sm text-ink">
           Zu diesem Entwurf liegt im RIS kein Begleitschreiben – und damit
           keine veröffentlichte Einreichadresse. Der Weg führt über das
           Ministerium selbst; der Datensatz im RIS nennt die einbringende Stelle.
