@@ -275,7 +275,11 @@ const destination = computed(() =>
       {{ destination }}
     </p>
 
-    <template v-else>
+    <!-- `v-if`, not `v-else` (30.09.2026): a `v-else` binds to the sibling
+         directly above it — the `total === 0 && filingOpen` paragraph — so a
+         closed Vorlage without Stellungnahmen got both branches: „keine
+         eingebracht" and „0 Stellungnahmen ein". -->
+    <template v-if="data.total > 0">
       <p class="mt-2 max-w-prose text-sm text-ink">
         Zur Regierungsvorlage {{ data.rvCitation }} selbst gingen im Nationalrat
         {{ countLabelDe(data.total, 'Stellungnahme', 'Stellungnahmen') }} ein<template
@@ -308,7 +312,10 @@ const destination = computed(() =>
       <p v-if="consultationSentence" class="mt-2 max-w-prose text-sm text-ink-secondary">
         {{ consultationSentence }}
       </p>
-      <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+      <!-- Where they go, only while one can still file (30.09.2026): then it
+           belongs to the decision to file. Once the window is shut it is a
+           rule of procedure, and it stands on /so-funktionierts#parlament. -->
+      <p v-if="filingOpen" class="mt-2 max-w-prose text-sm text-ink-secondary">
         {{ destination }}
       </p>
 
