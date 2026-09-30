@@ -94,15 +94,15 @@ describe('GP-ended copy', () => {
 
 describe('changeShareSentenceDe (§12.38)', () => {
   it('states the count of the draft and the middle half of the period, not a verdict', () => {
-    const s = changeShareSentenceDe('XXVII', 12, 21, 'Änderungsanordnungen')
-    expect(s).toContain('Die Regierungsvorlage hat 12 der 21 Änderungsanordnungen des Entwurfs geändert oder gestrichen (57\u00a0%')
-    expect(s).toContain('Bei der Hälfte der Entwürfe der XXVII. Gesetzgebungsperiode waren es')
+    const s = changeShareSentenceDe('XXVII', 12, 21, 'Änderungen')
+    expect(s).toContain('Die Regierungsvorlage hat 12 von 21 Änderungen des Entwurfs umgeschrieben oder gestrichen (57\u00a0%).')
+    expect(s).toContain('Üblich waren in der XXVII. Gesetzgebungsperiode')
     expect(s).not.toMatch(/nur|kaum|erfolgreich|ignoriert|Wirkung/)
   })
 
   it('says none and all in words', () => {
-    expect(changeShareSentenceDe('XXVII', 0, 5, 'Paragraphen')).toContain('übernimmt die 5 Paragraphen des Entwurfs im Wortlaut')
-    expect(changeShareSentenceDe('XXVII', 5, 5, 'Paragraphen')).toContain('alle 5 Paragraphen des Entwurfs geändert')
+    expect(changeShareSentenceDe('XXVII', 0, 5, 'Paragraphen')).toContain('übernimmt alle 5 Paragraphen des Entwurfs im Wortlaut')
+    expect(changeShareSentenceDe('XXVII', 5, 5, 'Paragraphen')).toContain('alle 5 Paragraphen des Entwurfs umgeschrieben')
   })
 
   it('holds a running period against the newest closed one', () => {
@@ -122,9 +122,9 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
   const pair = 'Regierungsvorlage → Ausschussfassung'
 
   it('115/ME: same day as the draft, the count kept, the range replaced by the date', () => {
-    const s = earlyVorlageSentenceDe(0, 8, 'Änderungsanordnungen', { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }, pair)
+    const s = earlyVorlageSentenceDe(0, 8, 'Änderungen', { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }, pair)
     expect(s).toBe(
-      'Die Regierungsvorlage übernimmt die 8 Änderungsanordnungen des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. ' +
+      'Die Regierungsvorlage übernimmt alle 8 Änderungen des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen. ' +
       'Eingebracht wurde sie am 10.06.2026, am selben Tag, an dem der Entwurf in Begutachtung ging — die Frist für Stellungnahmen lief bis 24.06.2026. ' +
       'Was danach am Text geändert wurde, zeigt der Vergleich Regierungsvorlage → Ausschussfassung.',
     )
@@ -140,9 +140,9 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
 
   it('points at the next comparison only when there is one, and never says why', () => {
     const dates = { arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' }
-    const without = earlyVorlageSentenceDe(1, 33, 'Änderungsanordnungen', dates, null)
+    const without = earlyVorlageSentenceDe(1, 33, 'Änderungen', dates, null)
     expect(without).not.toContain('Was danach')
-    expect(without).toContain('1 der 33 Änderungsanordnungen des Entwurfs geändert oder gestrichen (3\u00a0%')
+    expect(without).toContain('1 von 33 Änderungen des Entwurfs umgeschrieben oder gestrichen (3\u00a0%)')
     const s = earlyVorlageSentenceDe(0, 8, 'Paragraphen', dates, pair)
     expect(s).not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
   })

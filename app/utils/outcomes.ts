@@ -88,25 +88,31 @@ export function changeShareRateFor(gp: string | null | undefined): ChangeShareRa
 }
 
 /**
- * „Die Regierungsvorlage hat 12 der 21 Änderungsanordnungen des Entwurfs
- * geändert oder gestrichen (57 %, redaktionelle nicht gezählt). Bei der
- * Hälfte der Entwürfe der XXVII. Gesetzgebungsperiode waren es 46–75 %."
+ * „Die Regierungsvorlage hat 12 von 21 Änderungen des Entwurfs
+ * umgeschrieben oder gestrichen (57 %). Üblich waren in der XXVII.
+ * Gesetzgebungsperiode 46–75 %."
  * Shortened on 30.09.2026; the percentage stays at every size of draft.
  */
 export function changeShareSentenceDe(gp: string | null | undefined, changed: number, own: number, unitPlural: string): string {
   const r = changeShareRateFor(gp)
-  return `${changeShareLeadDe(changed, own, unitPlural)}Bei der Hälfte der Entwürfe der ${r.gp}. Gesetzgebungsperiode waren es ${r.p25}–${r.p75}\u00a0%.`
+  // „Üblich" for the middle half of the period (p25–p75): looser than „bei
+  // der Hälfte der Entwürfe", and read at a glance; the exact reading stands
+  // on /so-funktionierts#vergleich (30.09.2026).
+  return `${changeShareLeadDe(changed, own, unitPlural)}Üblich waren in der ${r.gp}. Gesetzgebungsperiode ${r.p25}–${r.p75}\u00a0%.`
 }
 
 /** How much of the draft the Vorlage changed — the half both sentences share. */
 function changeShareLeadDe(changed: number, own: number, unitPlural: string): string {
   // Zero in its own words: „keine davon" would have to decline with the noun
   // („keinen davon" for Paragraphen), a sentence without the count does not.
+  // „redaktionelle nicht gezählt" left the counted cases on 30.09.2026 — it
+  // stands on /so-funktionierts#vergleich. The zero case keeps its
+  // qualifier: „im Wortlaut" would be untrue without it.
   return changed === 0
-    ? `Die Regierungsvorlage übernimmt die ${own} ${unitPlural} des Entwurfs im Wortlaut, bloß redaktionelle Änderungen ausgenommen. `
+    ? `Die Regierungsvorlage übernimmt alle ${own} ${unitPlural} des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen. `
     : changed === own
-      ? `Die Regierungsvorlage hat alle ${own} ${unitPlural} des Entwurfs geändert oder gestrichen (redaktionelle nicht gezählt). `
-      : `Die Regierungsvorlage hat ${changed} der ${own} ${unitPlural} des Entwurfs geändert oder gestrichen (${Math.round((changed / own) * 100)}\u00a0%, redaktionelle nicht gezählt). `
+      ? `Die Regierungsvorlage hat alle ${own} ${unitPlural} des Entwurfs umgeschrieben oder gestrichen. `
+      : `Die Regierungsvorlage hat ${changed} von ${own} ${unitPlural} des Entwurfs umgeschrieben oder gestrichen (${Math.round((changed / own) * 100)}\u00a0%). `
 }
 
 /**

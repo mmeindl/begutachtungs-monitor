@@ -583,7 +583,10 @@ const toc = [
         Wie viel die Regierungsvorlage am Entwurf geändert hat, zählen wir ohne
         redaktionelle Änderungen. {{ EDITORIAL_BADGE_SENTENCE }}
         Verglichen wird dieser Anteil mit den Entwürfen der letzten
-        abgeschlossenen Gesetzgebungsperiode. Ob eine Änderung auf eine
+        abgeschlossenen Gesetzgebungsperiode; „üblich“ heißt dabei die
+        mittlere Hälfte von ihnen – ein Viertel lag darunter, ein Viertel
+        darüber. Gezählt werden die Änderungsanordnungen, auf der
+        Entwurfsseite kurz „Änderungen“. Ob eine Änderung auf eine
         Stellungnahme zurückgeht, sagt der Vergleich nicht.
       </p>
     </section>

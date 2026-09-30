@@ -140,9 +140,9 @@ const changeShareNote = computed<string | null>(() => {
   // Begutachtung (`tabledBeforeFristEnd`, 115/ME).
   if (props.deadline && props.rvDate && tabledBeforeFristEnd(props.deadline, props.rvDate)) {
     const dates = { arrivedAt: props.arrivedAt ?? null, deadline: props.deadline, rvDate: props.rvDate }
-    return earlyVorlageSentenceDe(share.changed, share.own, unitNoun(2), dates, laterPairLabel.value)
+    return earlyVorlageSentenceDe(share.changed, share.own, shareNoun.value, dates, laterPairLabel.value)
   }
-  return changeShareSentenceDe(props.gp, share.changed, share.own, unitNoun(2))
+  return changeShareSentenceDe(props.gp, share.changed, share.own, shareNoun.value)
 })
 
 /* The two Erläuterungen, one per side. The service sends them as
@@ -458,6 +458,11 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
 const view = ref<'inline' | 'split'>('inline')
 
 /** What one unit is called, so a context line can count them. */
+/* The reader's word for the counted unit in the headline figure: an
+ * Änderungsanordnung is an „Änderung" there (30.09.2026); the precise term
+ * stays on /so-funktionierts#vergleich and in the group labels. */
+const shareNoun = computed(() => (isNovelle.value ? 'Änderungen' : 'Paragraphen'))
+
 function unitNoun(n: number): string {
   if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
   return n === 1 ? 'Paragraph' : 'Paragraphen'
