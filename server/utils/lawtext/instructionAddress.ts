@@ -4,8 +4,17 @@
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
-import { opAddress, parseInstruction } from '../kons/novao'
+import { opAddress, parseInstruction, refusedAddresses } from '../kons/novao'
 import type { LawDiffUnit } from '../../../shared/types'
+import { isParagraphUnit } from '../../../shared/utils/unitName'
+
+/**
+ * „… wird folgender § 5a eingefügt", „… werden folgende §§ 5a bis 5c
+ * angefügt", „… durch folgende Paragraphen ersetzt": the payload creates a §,
+ * and the § before the marker is its anchor — the trap of the next function,
+ * one reading further down.
+ */
+const CREATES_PARAGRAPH_RE = /\b(?:folgende[rnms]?|nachstehende[rnms]?|neue[rnms]?)\s+(?:§|Paragraph)/i
 
 /**
  * The § whose heading names this instruction — or null when there is none.
@@ -20,10 +29,45 @@ import type { LawDiffUnit } from '../../../shared/types'
  * eingefügt") does happen inside § 5, so its heading fits.
  */
 export function addressedParagraph(line: string): string | null {
-  const paras = instructionParagraphs(line)
+  const { paras, typed } = readParagraphs(line)
   // Several paragraphs in one instruction have no single name.
-  return paras.length === 1 ? paras[0]! : null
+  if (paras.length > 0 || typed) return paras.length === 1 ? paras[0]! : null
+  // **The grammar refused the verb, not the address (30.09.2026).** „In § 5
+  // Abs. 1 entfällt die Wort- und Zeichenfolge …, nach der Wortfolge … wird
+  // … eingefügt" is one of a dozen shapes `parseInstruction` cannot TYPE —
+  // right for `kons/lawApply.ts`, which has to perform it, beside the point
+  // for a name, which only asks where the change happens. The address is
+  // read again, by the same function the annex side reads it with
+  // (`refusedAddresses`, with its three measured refusals), and only where
+  // no operation came out at all: a `toc` op or an insertion says on purpose
+  // which § it does not address.
+  //
+  // Not in `instructionParagraphs`: the Artikel pairing is calibrated on the
+  // typed reading (docs/architecture.md §12.11, 28.09.2026), and this is a
+  // question of the name, not of which Artikel is which.
+  //
+  // Five forms stay unread, each met in the corpus as a wrong § (GP
+  // XXVI–XXVIII, every new reading read): the table of contents in the
+  // wordings `parseInstruction` does not know as one („Der den § 56
+  // betreffende Eintrag des Inhaltsverzeichnisses lautet:"), a § the
+  // instruction creates („… wird ersetzt durch § 16 (neu) samt
+  // Überschrift"), a division that only stands next to a § („Vor § 40
+  // werden folgende Abschnittsbezeichnung und Abschnittsüberschrift
+  // eingefügt"), a § inside an Artikel of the law („In Art. I § 9a …" —
+  // which § 9a the standing law means is not the name's question to guess),
+  // and anything that is not a §, Artikel, Anlage or Anhang („Der bisherige
+  // Abschnitt Va …").
+  const head = (line.split(':')[0] ?? line).replace(/"[^"]*"/g, '""')
+  if (CREATES_PARAGRAPH_RE.test(head) || REFUSED_HEAD_RE.test(head)) return null
+  const refused = [...new Set(refusedAddresses(line) ?? [])]
+  return refused.length === 1 && DESIGNATION_RE.test(refused[0]!) ? refused[0]! : null
 }
+
+/** See `addressedParagraph`: the table of contents, a § marked new, a division beside a §, a § inside an Artikel. */
+const REFUSED_HEAD_RE =
+  /Inhaltsverzeichnis|§\s*\d+[a-z]*\s*\(neu\)|\b(?:vor|nach)\s+(?:dem\s+)?§|abschnitts(?:bezeichnung|überschrift)|\bbezeichnung\s+und\s+überschrift|hauptstück|\bArt(?:ikel|\.)\s*[IVXLC\d]+[a-z]?\s+§/i
+/** The designations a name can be looked up under. */
+const DESIGNATION_RE = /^(?:§|Art\.|Anlage|Anhang)\s/
 
 /**
  * Every § this instruction edits — the set an Artikel's addresses are paired
@@ -35,17 +79,22 @@ export function addressedParagraph(line: string): string | null {
  * und 3") the siblings are Absätze of the one §.
  */
 export function instructionParagraphs(line: string): string[] {
+  return readParagraphs(line).paras
+}
+
+/** The typed reading, and whether the grammar typed anything at all — `addressedParagraph` reads further only where it did not. */
+function readParagraphs(line: string): { paras: string[]; typed: boolean } {
   const { ops } = parseInstruction(line)
   const paras = new Set<string>()
   for (const op of ops) {
     if (op.kind === 'toc' || op.kind === 'container') continue
-    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return []
+    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return { paras: [], typed: true }
     const address = opAddress(op)
     if (!address.para) continue
     paras.add(address.para)
     if (address.level === 'para') for (const id of address.siblings) paras.add(address.para.replace(/\S+$/, id))
   }
-  return [...paras]
+  return { paras: [...paras], typed: ops.length > 0 }
 }
 
 /**
@@ -59,6 +108,16 @@ export function instructionParagraphs(line: string): string[] {
  * Begründungsvergleich have to mean the same Paragraph.
  */
 export function addressedParagraphOf(unit: LawDiffUnit): string | null {
+  // A unit that IS a § carries law text, not an instruction, and its text
+  // cites other §§ as law does („… ihren Pflichten gemäß § 47 nachkommen",
+  // § 48 of 32/ME, XXVIII). Read as an instruction it came out as that
+  // citation — measured 30.09.2026 over the ME→RV comparisons of GP
+  // XXVI–XXVIII: 10 §-units addressed one foreign §, every one of them a
+  // citation, and the Begründungsvergleich compared the cited §'s Begründung
+  // under the citing one (GP XXVI: one draft's only compared § was such a
+  // citation). Such a unit addresses nothing but itself, and its designation
+  // says so already.
+  if (isParagraphUnit(unit)) return null
   const line = unit.toText ?? unit.fromText ?? unit.heading
   return line ? addressedParagraph(line) : null
 }

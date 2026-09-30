@@ -9,7 +9,7 @@
  * Usage:   npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII [--out dir] [--show inr]
  *          npx vite-node -c vitest.config.ts scripts/corpus/aenderungsrate.ts -- --gp XXVII
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --reasoning [--show-para inr]
- *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --multi
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --multi | --addresses
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
  * reproduce is a second opinion, not a number about the page. So every draft
@@ -1059,7 +1059,41 @@ async function multiReport(): Promise<void> {
   console.log(`\n    ${lines.sort().join('\n    ')}`)
 }
 
+/**
+ * `--addresses` (30.09.2026): which unit's addressed § the shipped
+ * `addressedParagraphOf` reads differently from the reading before it
+ * learned the refused address and stopped reading §-units as instructions.
+ * The old rule is copied (it was three lines: the single § of
+ * `instructionParagraphs`, for every unit). Every difference is printed, so
+ * each new reading can be read against its instruction.
+ */
+function addressesReport(): void {
+  const oldAddressed = (u: LawDiffUnit): string | null => {
+    const line = u.toText ?? u.fromText ?? u.heading
+    const ps = line ? instructionParagraphs(line) : []
+    return ps.length === 1 ? ps[0]! : null
+  }
+  const tally = new Map<string, number>()
+  const lines: string[] = []
+  let total = 0
+  for (const [inr, { units }] of parsed) {
+    for (const u of units ?? []) {
+      total++
+      const before = oldAddressed(u)
+      const after = addressedParagraphOf(u)
+      if (before === after) continue
+      const k = `${u.id.startsWith('§') ? '§-Einheit' : 'Anweisung'}: ${before ? 'alt ' + (after ? 'anders' : '→ keiner') : 'neu gelesen'}${u.change === 'unchanged' ? ' (unverändert)' : ''}`
+      tally.set(k, (tally.get(k) ?? 0) + 1)
+      lines.push(`${inr}/ME ${u.change} ${u.id} ${before ?? '–'} → ${after ?? '–'} | ${String(u.toText ?? u.fromText ?? u.heading).replace(/\s+/g, ' ').slice(0, 170)}`)
+    }
+  }
+  console.log(`\nGP ${gp} — adressierter § alt gegen neu über ${total} Einheiten`)
+  for (const [k, v] of [...tally].sort((a, b) => b[1] - a[1])) console.log(`  ${String(v).padStart(4)}  ${k}`)
+  console.log(`    ${lines.sort().join('\n    ')}`)
+}
+
 // Last, so every constant above is initialised before the pass reads it.
+if (argFlag('addresses')) addressesReport()
 if (argFlag('reasoning')) await reasoningReport()
 if (argFlag('multi')) await multiReport()
 if (argFlag('pairs')) pairsReport()

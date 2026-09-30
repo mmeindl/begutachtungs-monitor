@@ -1120,6 +1120,83 @@ sechs Ziffern dieselbe Begründung von § 11 zeigen (8/ME) — eine Entscheidung
 über §12.10b und nicht ein Nachtrag an dieser Stelle. Deshalb bleibt die
 Einheit über mehrere §§ ohne Namen und ohne Begründung, wie seit dem 28.09.
 
+*Die Anweisung, deren Verb die Grammatik nicht kennt, nennt ihren § trotzdem —
+gelesen seit 30.09.2026.* Die Klasse „kein lesbarer § in der Anweisung" war
+zum großen Teil kein Problem der Adresse, sondern eines des Verbs: „In § 5
+Abs. 1 entfällt die Wort- und Zeichenfolge …, nach der Wortfolge … wird …
+eingefügt" verweigert `parseInstruction` („Streichung ohne Text"), und das
+zu Recht für `kons/lawApply.ts`, das die Anweisung ausführen muss. Ein Name
+fragt nur, *wo* sie geschieht. `addressedParagraph` liest die Adresse jetzt
+dort nach, wo gar keine Operation herauskam, mit derselben Funktion wie die
+Beilagenseite (`refusedAddresses` und ihre drei gemessenen Verweigerungen).
+Die Artikelpaarung bleibt bei der getippten Lesung — `instructionParagraphs`
+ist unverändert, und Basisrate, Eimer und Median stehen in allen drei
+Perioden wie vorher.
+
+**Alt gegen Neu über 27.203 Einheiten** der ME→RV-Vergleiche XXVI–XXVIII
+(`corpus:aenderungsrate -- --gp … --addresses`, jede Abweichung gedruckt):
+**602 Anweisungen neu gelesen** (430 davon geändert), **0 anders gelesen**.
+Gelesen wurden alle, und fünf Formen ergaben dabei einen falschen § — die
+erste Fassung las 660. Sie bleiben ungelesen, jede mit einem Test: das
+Inhaltsverzeichnis in Wortlauten, die die Grammatik nicht als solches kennt
+(„Der den § 56 betreffende Eintrag des Inhaltsverzeichnisses lautet:"), ein
+§, den die Anweisung erst schafft („… ersetzt durch § 16 (neu) samt
+Überschrift"), eine Gliederung neben einem § („Vor § 40 werden folgende
+Abschnittsbezeichnung und Abschnittsüberschrift eingefügt", „§ 484 werden
+folgende Bezeichnung und Überschrift vorangestellt"), ein § innerhalb eines
+Artikels des Gesetzes („In Art. I § 9a …" — welcher § 9a gemeint ist, rät
+der Name nicht) und alles, was weder §, Artikel, Anlage noch Anhang ist
+(„Der bisherige Abschnitt Va …").
+
+*Und eine Einheit, die selbst ein § ist, adressiert nichts.* Ihr Text ist
+Gesetzestext, und Gesetzestext zitiert („… ihren Pflichten gemäß § 47
+nachkommen", § 48 von 32/ME XXVIII). Als Anweisung gelesen kam das Zitat als
+ihre Adresse heraus: **10 §-Einheiten** in den drei Perioden, jede ein Zitat.
+Die Namenskarte stellte, wo die Einheit eine Überschrift trägt, den fremden
+§ davor, und der Begründungsvergleich verglich die Begründung des zitierten
+Paragraphen unter dem zitierenden.
+
+**Namen**, gezählt mit der Regel der Seite
+(`npx vite-node scripts/audit/paraTitle.ts XXVIII 40`, seit heute mit
+`AUDIT_ORIGIN` gegen jeden laufenden Server): über 40 Entwürfe der XXVIII und 1.252 geänderte Einheiten
+**863 → 884 benannt (69 → 71 %)**, Median je Entwurf 78 → 81 %, drei
+Entwürfe weiter ganz ohne Namen. Der Nachschlag trägt die 21 (723 → 744).
+Vorher gegen den laufenden Dev-Server, nachher gegen einen Produktionsbuild
+mit kalten Caches; eine Schätzung ohne Neustart über dieselben Entwürfe (der
+Titel eines Geschwisters mit demselben (Artikel, §), sonst ein Abruf im RIS)
+kam auf 882. Richtigkeitsblock nachher: 451 angezeigte Namen, 279
+bestätigt, **0 falsche Überschriften**, die drei „falschen Gesetze" dieselbe
+Falschmeldungsklasse wie vorher.
+
+**Begründungsvergleich**, Eintrag für Eintrag alt gegen neu (derselbe Lauf mit
+`--reasoning`, beide Schlüssel wie ausgeliefert): 5.623 → **5.697** Einträge,
+102 neu (38 mit geänderter Begründung), 28 weg. Von den 28 sind 4 die
+§-Einheiten oben, gewollt; 16 stehen jetzt unter ihrem Artikel, weil die neue
+Lesung einen zweiten Artikel mit derselben §-Nummer sichtbar macht — der
+eindeutige Schlüssel hatte die Passagen zweier Gesetze verbunden —; 2 sind
+die richtige Verweigerung desselben Falls dort, wo der Entwurf seine
+Passagen keinem Artikel zuordnet (6/ME § 3 und 74/ME § 4, XXVI). **Sechs
+sind ein Verlust**, in drei Entwürfen der XXVII, die dasselbe Gesetz im
+Entwurf und in der Vorlage unter zwei Titeln führen, ohne dass die Paarung
+sie verbindet (142/ME, 274/ME, 285/ME — „…mit dem das Freiwilligengesetz
+geändert wird" gegen „…mit dem das Bundesgesetz zur Förderung von
+freiwilligem Engagement …"): Die entfallenen Einheiten tragen den einen
+Titel, die eingefügten den anderen, und die Mehrdeutigkeitsregel zählt zwei
+Artikel — die bekannte
+Klasse „nur scheinbar mehrdeutig" aus §12.10b, die jetzt drei Entwürfe mehr
+erreicht, weil ihre entfallenen Einheiten erstmals einen § tragen.
+
+*Absichtlich nicht angefasst:* die Obergrenze von 120 Nachschlägen je
+Entwurf (`MAX_HEADINGS`). Sie ist, nicht die Lesung, der Grund, warum 74/ME
+XXVIII namenlos bleibt: 194 verschiedene (Artikel, §), 119 davon geholt, und
+108 seiner unbenannten geänderten Einheiten haben einen lesbaren §. Sie zu
+heben ist eine Entscheidung über die Dauer einer kalten Anfrage, keine über
+Lesen. Ebenso unberührt: Überschriften, die das RIS samt Bezeichnung führt
+(„§ 37. Sonderformen der allgemeinbildenden höheren Schulen", SchOG) und die
+auf der Seite als „§ 37 § 37. …" erscheinen, und die Verweigerung des
+Inhaltsverzeichnisses in `konsGate.refusedUnits`, die dieselben Wortlaute
+nicht kennt.
+
 ### 12.12 Consolidated law text — engine built, not yet published
 
 Today a Novelle compares *amendment instructions*: "In § 9 Abs. 1 wird nach

@@ -3,7 +3,8 @@
  * Audit of the § names shown beside a change (docs/architecture.md §12.11).
  *
  * Usage:  npx vite-node scripts/audit/paraTitle.ts [GP] [maxDrafts]
- *         (needs a dev server on :3000 for the API routes)
+ *         (needs a running server for the API routes: the dev server on :3000,
+ *         or AUDIT_ORIGIN for another instance)
  *
  * `maxDrafts` counts drafts that HAVE a comparison, not rows scanned — the
  * report says over how many it ran.
@@ -42,7 +43,10 @@ import { unitName } from '../../shared/utils/unitName'
 
 const GP = process.argv[2] ?? 'XXVIII'
 const MAX_DRAFTS = Number(process.argv[3] ?? 40)
-const BASE = `http://localhost:3000/api/drafts/${GP}`
+// Any running instance: the dev server, or a production build with cold
+// caches (`PORT=3002 node .output/server/index.mjs`, AUDIT_ORIGIN=http://localhost:3002).
+const ORIGIN = process.env.AUDIT_ORIGIN ?? 'http://localhost:3000'
+const BASE = `${ORIGIN}/api/drafts/${GP}`
 
 /**
  * One draft may not take the run down.
@@ -62,8 +66,8 @@ async function json<T>(url: string, fallback: T, timeoutMs = 15 * 60 * 1000): Pr
   }
 }
 
-const map = await json<any>(`http://localhost:3000/api/ris-map/${GP}`, { rows: [] })
-const list = await json<any>(`http://localhost:3000/api/drafts?gp=${GP}`, { items: [] })
+const map = await json<any>(`${ORIGIN}/api/ris-map/${GP}`, { rows: [] })
+const list = await json<any>(`${ORIGIN}/api/drafts?gp=${GP}`, { items: [] })
 const arrived = new Map<number, string>(list.items.map((i: any) => [i.inr, i.arrivedAt]))
 
 /**
