@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useSeoMeta({
+usePageSeo({
   title: 'Über das Projekt',
   description:
     'Worum es beim Begutachtungs-Monitor geht, wie er funktioniert, woher die Daten stammen und warum Privatpersonen nicht namentlich genannt werden.',

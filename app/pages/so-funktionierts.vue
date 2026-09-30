@@ -34,10 +34,10 @@
 import { EDITORIAL_BADGE_SENTENCE } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 
-useSeoMeta({
+usePageSeo({
   title: "So funktioniert's",
   description:
-    'Wie die Begutachtung in Österreich funktioniert und was danach kommt: Ein Gesetzesentwurf geht über Regierungsvorlage und Parlament ins Bundesgesetzblatt, eine Verordnung erlässt das Ministerium selbst. Und woher die Textgegenüberstellung kommt, die zeigt, was ein Entwurf am geltenden Recht ändert.',
+    'Wie die Begutachtung in Österreich funktioniert, was danach kommt – vom Entwurf bis ins Bundesgesetzblatt – und woher die Textgegenüberstellung stammt.',
 })
 
 interface Step {

@@ -21,12 +21,34 @@ import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 const pageDescription =
   'Laufende Begutachtungen österreichischer Gesetzes- und Verordnungsentwürfe: Fristen und Stellungnahmen – und danach: Regierungsvorlage, Bundesgesetzblatt.'
 
+const { siteUrl } = useRuntimeConfig().public
+
 useSeoMeta({
-  title: 'Aktuell',
+  // The one title that does not follow the template: the home page is what a
+  // search for the name finds, and a result reading „Aktuell · …" says
+  // nothing about what the site is. Name first, then what it watches.
+  title: 'Begutachtungs-Monitor · Laufende Begutachtungen in Österreich',
   description: pageDescription,
   // Homepage shares (the demo case) get the product name, not "Aktuell".
   ogTitle: 'Begutachtungs-Monitor',
   ogDescription: pageDescription,
+})
+
+useHead({
+  titleTemplate: '%s',
+  // WebSite markup is what Google reads for the site name above a result —
+  // without it the name is guessed from the domain.
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Begutachtungs-Monitor',
+      url: `${siteUrl}/`,
+      inLanguage: 'de-AT',
+      description: pageDescription,
+    }),
+  }],
 })
 
 /* Both fetches are started here and awaited below, so they overlap instead

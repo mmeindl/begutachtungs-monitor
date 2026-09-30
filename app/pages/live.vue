@@ -16,7 +16,7 @@ if (MEETING_URL) {
   await navigateTo(MEETING_URL, { external: true, redirectCode: 302 })
 }
 
-useSeoMeta({
+usePageSeo({
   title: 'Begutachtungs-Monitor live',
   description:
     'Online-Workshop bei der Demokratiewoche 2026: Donnerstag, 22. Oktober 2026, 19:00–20:30 Uhr. Der Teilnahmelink erscheint hier.',

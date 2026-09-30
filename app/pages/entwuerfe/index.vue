@@ -35,10 +35,10 @@ import { SECOND_ROUND_WINDOW } from '~/utils/spine'
  * total. The count line states each kind separately, because a headline
  * "336 Entwürfe" would imply the Stellungnahmen figures cover all of them.
  */
-useSeoMeta({
+usePageSeo({
   title: 'Entwürfe',
   description:
-    'Alle Begutachtungen: Ministerialentwürfe mit Gegenstand im Parlament und Verordnungsentwürfe, die nur im RIS erscheinen – filterbar nach Art, Status, Gesetzgebungsperiode und Ministerium.',
+    'Alle Begutachtungen: Gesetzes- und Verordnungsentwürfe, filterbar nach Art, Status, Gesetzgebungsperiode und Ministerium.',
 })
 
 /**

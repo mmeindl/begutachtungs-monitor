@@ -18,7 +18,7 @@
  * Art 14 (data from Parliament) is the part standard texts do not know at
  * all — here it is the actual content.
  */
-useSeoMeta({
+usePageSeo({
   title: 'Datenschutz',
   description:
     'Welche Daten der Begutachtungs-Monitor verarbeitet: keine Cookies, kein Tracking, keine Zugriffsprotokolle – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',

@@ -12,15 +12,18 @@ useHead({
   link: [{ rel: 'canonical', href: () => `${siteUrl}${route.path}` }],
 })
 
-// Site-wide share defaults; pages override ogTitle/ogDescription where a
-// specific preview matters (detail pages, home).
+// Site-wide share defaults; each page sets its own ogTitle/ogDescription
+// (`usePageSeo`), and home and the detail pages a preview of their own.
 useSeoMeta({
   ogSiteName: 'Begutachtungs-Monitor',
   ogLocale: 'de_AT',
   ogType: 'website',
+  // Same URL as the canonical: a share of a filtered list unfurls as the list.
+  ogUrl: () => `${siteUrl}${route.path}`,
   ogImage: `${siteUrl}/og.png`,
   ogImageWidth: 1200,
   ogImageHeight: 630,
+  ogImageAlt: 'Begutachtungs-Monitor – Was wurde aus den Stellungnahmen?',
   twitterCard: 'summary_large_image',
 })
 </script>

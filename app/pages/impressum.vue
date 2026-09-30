@@ -26,7 +26,7 @@
  * footer link on every page. Not in the main navigation — that is capped at
  * four entries, and nobody looks for this page there.
  */
-useSeoMeta({
+usePageSeo({
   title: 'Impressum & Offenlegung',
   description:
     'Offenlegung nach § 25 Mediengesetz: Medieninhaber, Unternehmensgegenstand, Beteiligungsverhältnisse und grundlegende Richtung des Begutachtungs-Monitors.',

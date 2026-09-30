@@ -73,14 +73,28 @@ const stationAnchors: Partial<Record<StationId, string>> = { entwurf: '#dokument
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() =>
   data.value?.textComparison ? { vorschlag: '#gegenueberstellung' } : {})
 
+usePageSeo({
+  // Capped like the draft page's: a tab and a search result show ~60
+  // characters, and some RIS titles run to three lines.
+  title: () => truncate(data.value?.title ?? 'Entwurf', 60),
+  // The Ressort after a separator, not in the genitive: „des
+  // Bundesministerium für …" read wrong, and inflecting the names
+  // (Bundeskanzleramt → -amts) is a table nobody should keep. The Frist in
+  // the draft page's words, so a closed one does not read „in Begutachtung".
+  description: () => {
+    const d = data.value
+    if (!d) return undefined
+    const frist = d.active
+      ? d.deadline ? `in Begutachtung bis ${formatDateDe(d.deadline)}` : 'in Begutachtung'
+      : d.deadline ? `Begutachtung endete am ${formatDateDe(d.deadline)}` : 'Begutachtung abgeschlossen'
+    return `${RIS_KIND_LABEL[d.kind]}, ${frist} · ${d.ministryName}`
+  },
+})
+
 useSeoMeta({
-  title: () => data.value?.title ?? 'Entwurf',
-  description: () =>
-    data.value
-      ? `${RIS_KIND_LABEL[data.value.kind]} des ${data.value.ministryName} in Begutachtung${
-        data.value.deadline ? ` bis ${formatDateDe(data.value.deadline)}` : ''
-      }.`
-      : undefined,
+  // The full official title for shares, as on the draft page.
+  ogTitle: () => data.value?.longTitle ?? data.value?.title ?? 'Entwurf',
+  ogType: 'article',
 })
 
 /** RIS formats → the shape DocumentList renders, so both sources look alike. */

@@ -96,12 +96,18 @@ export default defineNuxtConfig({
         },
       ],
       link: [
-        {
-          // § on the marker-yellow tile — the one identity mark (also the
-          // header brand and the og:image). Inline SVG, zero external assets.
-          rel: 'icon',
-          href: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23ffd84d%22/><text x=%2250%22 y=%2274%22 font-family=%22Georgia,serif%22 font-size=%2268%22 text-anchor=%22middle%22 fill=%22%230b0b0b%22>%C2%A7</text></svg>',
-        },
+        // § on the marker-yellow tile — the one identity mark (also the
+        // header brand and the og:image). The § is the Source Serif 4
+        // SemiBold glyph of the header, as a path: an SVG favicon that names
+        // a font renders in whatever serif the visitor happens to have.
+        // `favicon.svg` is the source; the .ico (16/32/48, the 16 with a
+        // larger glyph so it stays legible) and the 180px touch icon (full
+        // bleed — iOS rounds the corners itself) are renders of it. The
+        // .ico is for everything that asks `/favicon.ico` without reading
+        // the HTML: feed readers, bookmark lists, link-preview bots.
+        { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
+        { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
         {
           rel: 'alternate',
           type: 'application/rss+xml',

@@ -16,6 +16,8 @@ const description = computed(() =>
 )
 
 useSeoMeta({ title })
+// error.vue replaces app.vue, and with it the title template.
+useHead({ titleTemplate: '%s · Begutachtungs-Monitor' })
 
 function goHome() {
   clearError({ redirect: '/' })
