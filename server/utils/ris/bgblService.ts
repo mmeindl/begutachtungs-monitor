@@ -213,6 +213,12 @@ interface BgblDocument {
   html: string | null
   /** The document's page in RIS. */
   page: string
+  /**
+   * The act's Kurztitel („Informationsfreiheits-Anpassungsgesetz"), from the
+   * same record — named on the draft page when the draft is one part of it
+   * (docs/architecture.md §12.33).
+   */
+  kurztitel: string | null
 }
 
 /**
@@ -235,6 +241,7 @@ export const getBgblDocument = defineCachedFunction(
       xml: urls.find((u: any) => u?.DataType === 'Xml')?.Url ?? null,
       html: urls.find((u: any) => u?.DataType === 'Html')?.Url ?? null,
       page: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${id}`,
+      kurztitel: String(ref?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '').trim() || null,
     }
   },
   { name: 'bgbl-dokument', base: DERIVED_CACHE, getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },

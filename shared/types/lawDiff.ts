@@ -229,5 +229,29 @@ export interface LawDiffResponse {
   lawsOnlyInTo: LawPackageEntry[]
   /** Laws the earlier text carried and the later one does not. Their units are NOT in `units` or `stats`. */
   lawsOnlyInFrom: LawPackageEntry[]
+  /**
+   * Laws BOTH texts carry and the draft does not — the rest of a
+   * Regierungsvorlage that bundles this draft with other
+   * Ministerialentwürfe, cut from a pair of two later stations
+   * (`scopeToDraft`, docs/architecture.md §12.33). Their units are NOT in
+   * `units` or `stats`. Empty wherever one side is the draft: there
+   * `lawsOnlyInTo` already names them.
+   */
+  lawsOutsideDraft: LawPackageEntry[]
+  /**
+   * The Regierungsvorlage bundles this draft with other Ministerialentwürfe
+   * (its `preconst`, `bundlesOtherDrafts`). With `lawsOutsideDraft` empty on
+   * a later pair it means the counts are the whole text's: the draft's
+   * changes could not be told apart from the others' — XXVII 6/ME and
+   * 11/ME amend the same one law inside the Geldwäschenovelle 2020, and a
+   * cut by law has nothing to cut there.
+   */
+  bundledWithOtherDrafts: boolean
+  /**
+   * The act the draft was kundgemacht in, where the pair ends at the
+   * Bundesgesetzblatt and the Vorlage bundles other drafts: the draft is then
+   * one part of it, and the page says which act. Null otherwise.
+   */
+  largerAct: { citation: string; title: string | null } | null
   units: LawDiffUnit[]
 }

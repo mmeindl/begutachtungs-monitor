@@ -20,16 +20,34 @@
  * 59 Plenarfassungen does.
  */
 
-import type { LawDiffResponse, LawStationId, LawStationOption, TraceLink } from '#shared/types'
+import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, TraceLink } from '#shared/types'
+import { bgblShort } from '#shared/utils/format'
 import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
-import { diffLawPackage, summarizeDiff } from './lawDiff'
+import { diffLawPackage, scopeToDraft, summarizeDiff } from './lawDiff'
 import { findLawStations, missingStationReason } from './stationDocuments'
-import { parseLawUnits, parseLawUnitsFromRis } from '../lawtext/lawUnits'
-import { extractBgblLink, findComparisonRvLink, findLastRvLink, parseStages } from '../parliament/detailJson'
+import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../lawtext/lawUnits'
+import { bundlesOtherDrafts, extractBgblLink, findComparisonRvLink, findLastRvLink, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { fetchDocument } from '../upstream/fetchDocument'
+
+/**
+ * The draft's own law text as units, for cutting a later pair to its laws —
+ * Parliament's HTML, else the RIS XML the station carries for a PDF-only
+ * draft. Null when neither is readable: then nothing is cut.
+ */
+async function readDraftUnits(station: { html: string | null; xml: string | null } | undefined): Promise<LawUnit[] | null> {
+  const url = station?.html ?? station?.xml
+  if (!url) return null
+  try {
+    const doc = await fetchDocument(url)
+    const units = station!.html ? parseLawUnits(doc) : parseLawUnitsFromRis(doc)
+    return units.length ? units : null
+  } catch {
+    return null
+  }
+}
 
 export const getLawDiff = defineCachedFunction(
   async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<LawDiffResponse> => {
@@ -62,6 +80,10 @@ export const getLawDiff = defineCachedFunction(
      * simply absent — the comparison of the other four must not hang on it.
      */
     let bgblLink: TraceLink | null = null
+    let act: LawDiffResponse['largerAct'] = null
+    // Whether the Vorlage bundles this draft with others — read off the same
+    // Vorlage detail the Kundmachung comes from, so it costs no request.
+    let bundled: boolean | null = null
     try {
       // The Kundmachung of the Vorlage whose text this comparison reads, not
       // of the latest one: a split draft has one per Vorlage.
@@ -69,11 +91,13 @@ export const getLawDiff = defineCachedFunction(
       const rvLink = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)
       if (rvLink) {
         const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
+        bundled = bundlesOtherDrafts(rv.content?.preconst, gp, inr)
         const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
         const doc = nummer ? await getBgblDocument(nummer) : null
-        if (doc?.xml) {
+        if (doc?.xml && nummer) {
           found.set('bgbl', { id: 'bgbl', html: null, xml: doc.xml, fallbackUrl: doc.html ?? doc.page })
           bgblLink = { label: `${nummer} (RIS)`, url: doc.page }
+          act = { citation: bgblShort(nummer), title: doc.kurztitel }
         }
       }
     } catch {
@@ -116,6 +140,9 @@ export const getLawDiff = defineCachedFunction(
       stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
       lawsOnlyInTo: [],
       lawsOnlyInFrom: [],
+      lawsOutsideDraft: [],
+      bundledWithOtherDrafts: bundled === true,
+      largerAct: null,
       units: [],
       ...extra,
     })
@@ -157,8 +184,38 @@ export const getLawDiff = defineCachedFunction(
       fetchDocument(fromHtml ?? found.get(from)!.xml!),
       fetchDocument(toHtml ?? found.get(to)!.xml!),
     ])
-    const fromUnits = fromHtml ? parseLawUnits(fromDoc) : parseLawUnitsFromRis(fromDoc)
-    const toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)
+    let fromUnits = fromHtml ? parseLawUnits(fromDoc) : parseLawUnitsFromRis(fromDoc)
+    let toUnits = toHtml ? parseLawUnits(toDoc) : parseLawUnitsFromRis(toDoc)
+
+    /*
+     * Between two LATER stations of a Vorlage that bundles this draft with
+     * others, only the draft's laws (docs/architecture.md §12.33,
+     * 30.09.2026). Both sides then carry the whole Sammelgesetz, every
+     * Artikel pairs, and `diffLawPackage` has nothing to cut — 17/ME XXVIII
+     * counted 629 units of the Informationsfreiheits-Anpassungsgesetz for a
+     * draft that brought 39 of them.
+     *
+     * Only where Parliament's record says the Vorlage bundles other drafts:
+     * a law the Ressort added to its own Vorlage is part of THIS Vorlage, and
+     * what the committee did to it belongs in the committee's comparison.
+     * Where nothing can be cut — the draft's text unreadable, or its laws
+     * the whole text (XXVII 6/ME and 11/ME: one law, two drafts) — the
+     * counts stay those of the whole text, and `bundledWithOtherDrafts`
+     * lets the page say so.
+     */
+    let lawsOutsideDraft: LawPackageEntry[] = []
+    if (from !== 'me' && bundled === true) {
+      const draft = await readDraftUnits(found.get('me'))
+      if (draft) {
+        const scoped = scopeToDraft(draft, fromUnits, toUnits)
+        fromUnits = scoped.from
+        toUnits = scoped.to
+        lawsOutsideDraft = scoped.outside
+      }
+    }
+    // Named only where the draft is one part of the act; a Kundmachung of
+    // the draft's own Vorlage needs no introduction.
+    const largerAct = to === 'bgbl' && bundled === true ? act : null
 
     const { units, lawsOnlyInTo, lawsOnlyInFrom, unpaired } = diffLawPackage(fromUnits, toUnits)
     if (unpaired) {
@@ -173,7 +230,16 @@ export const getLawDiff = defineCachedFunction(
     if (units.length === 0) {
       return answer('Der Gesetzestext ließ sich nicht in Paragraphen gliedern.', { fromSource, toSource })
     }
-    return answer(null, { fromSource, toSource, stats: summarizeDiff(units), lawsOnlyInTo, lawsOnlyInFrom, units })
+    return answer(null, {
+      fromSource,
+      toSource,
+      stats: summarizeDiff(units),
+      lawsOnlyInTo,
+      lawsOnlyInFrom,
+      lawsOutsideDraft,
+      largerAct,
+      units,
+    })
   },
   {
     name: 'law-diff',

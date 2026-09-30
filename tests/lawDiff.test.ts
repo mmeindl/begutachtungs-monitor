@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, articlePairs, diffLawPackage, diffLawUnits, pairArticles, summarizeDiff } from '../server/utils/diff/lawDiff'
+import { alignUnits, articlePairs, diffLawPackage, diffLawUnits, pairArticles, scopeToDraft, summarizeDiff } from '../server/utils/diff/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
@@ -356,6 +356,67 @@ describe('a Regierungsvorlage that merges several drafts', () => {
     expect(d.lawsOnlyInTo).toEqual([])
     expect(d.lawsOnlyInFrom).toEqual([])
     expect(d.units).toHaveLength(1)
+  })
+
+  // Two LATER stations of the same Sammelgesetz: both carry every Artikel,
+  // so `diffLawPackage` alone scopes nothing and the draft's page counts the
+  // whole act (17/ME XXVIII: 629 units for a draft that brought 39,
+  // docs/architecture.md §12.33).
+  describe('scopeToDraft — a later pair cut to the draft’s laws', () => {
+    const later = pkg([
+      { title: 'Bundesgesetz, mit dem das Auskunftspflichtgesetz ge&auml;ndert wird', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;neuer&ldquo;', '2. &sect;&nbsp;2 lautet: &bdquo;gleich&ldquo;'] },
+      { title: '&Auml;nderung des Datenschutzgesetzes', ziffern: ['1. &sect;&nbsp;4 lautet: &bdquo;x2&ldquo;', '2. &sect;&nbsp;5 lautet: &bdquo;y&ldquo;'] },
+      { title: '&Auml;nderung des Sicherheitspolizeigesetzes', ziffern: ['1. &sect;&nbsp;9 lautet: &bdquo;z&ldquo;'] },
+    ])
+
+    it('counts only the draft’s law between two later texts', () => {
+      expect(summarizeDiff(diffLawPackage(parseLawUnits(bill), parseLawUnits(later)).units).total).toBe(5)
+      const s = scopeToDraft(parseLawUnits(draft), parseLawUnits(bill), parseLawUnits(later))
+      const d = diffLawPackage(s.from, s.to)
+      expect(summarizeDiff(d.units)).toMatchObject({ total: 2, changed: 1, unchanged: 1 })
+      // The other laws are in both texts: neither „only in" list may claim them.
+      expect(d.lawsOnlyInTo).toEqual([])
+      expect(d.lawsOnlyInFrom).toEqual([])
+      expect(s.outside).toEqual([
+        { article: 'Änderung des Datenschutzgesetzes', units: 2 },
+        { article: 'Änderung des Sicherheitspolizeigesetzes', units: 1 },
+      ])
+    })
+
+    it('keeps a law added on the way — that one is new, not someone else’s', () => {
+      const grown = pkg([
+        { title: 'Bundesgesetz, mit dem das Auskunftspflichtgesetz ge&auml;ndert wird', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;neu&ldquo;'] },
+        { title: '&Auml;nderung des Datenschutzgesetzes', ziffern: ['1. &sect;&nbsp;4 lautet: &bdquo;x&ldquo;'] },
+        { title: '&Auml;nderung des Sicherheitspolizeigesetzes', ziffern: ['1. &sect;&nbsp;9 lautet: &bdquo;z&ldquo;'] },
+        { title: '&Auml;nderung des Meldegesetzes 1991', ziffern: ['1. &sect;&nbsp;3 lautet: &bdquo;m&ldquo;'] },
+      ])
+      const s = scopeToDraft(parseLawUnits(draft), parseLawUnits(bill), parseLawUnits(grown))
+      expect(diffLawPackage(s.from, s.to).lawsOnlyInTo.map((l) => l.article)).toEqual(['Änderung des Meldegesetzes 1991'])
+    })
+
+    it('returns its input where the earlier text carries nothing beyond the draft', () => {
+      const s = scopeToDraft(parseLawUnits(draft), parseLawUnits(draft), parseLawUnits(bill))
+      expect(s.outside).toEqual([])
+      expect(s.from).toHaveLength(parseLawUnits(draft).length)
+      expect(s.to).toHaveLength(parseLawUnits(bill).length)
+    })
+
+    it('cuts the act’s commencement Artikel too, without naming it as a law', () => {
+      const withCommencement = pkg([
+        { title: 'Bundesgesetz, mit dem das Auskunftspflichtgesetz ge&auml;ndert wird', ziffern: ['1. &sect;&nbsp;1 lautet: &bdquo;neu&ldquo;'] },
+        { title: '&Auml;nderung des Datenschutzgesetzes', ziffern: ['1. &sect;&nbsp;4 lautet: &bdquo;x&ldquo;'] },
+        { title: 'Inkrafttretens- und &Uuml;bergangsbestimmungen', ziffern: ['1. Dieses Bundesgesetz tritt mit 1. J&auml;nner in Kraft.'] },
+      ])
+      const s = scopeToDraft(parseLawUnits(draft), parseLawUnits(withCommencement), parseLawUnits(withCommencement))
+      expect(new Set(s.from.map((u) => u.article))).toEqual(new Set(['Bundesgesetz, mit dem das Auskunftspflichtgesetz geändert wird']))
+      expect(s.outside.map((e) => e.article)).toEqual(['Änderung des Datenschutzgesetzes'])
+    })
+
+    it('cuts nothing without a readable draft', () => {
+      const s = scopeToDraft([], parseLawUnits(bill), parseLawUnits(later))
+      expect(s.outside).toEqual([])
+      expect(s.to).toHaveLength(parseLawUnits(later).length)
+    })
   })
 })
 

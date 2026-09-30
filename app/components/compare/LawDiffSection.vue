@@ -19,7 +19,7 @@ import { changeShareSentenceDe, earlyVorlageSentenceDe, tabledBeforeFristEnd } f
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
-import { droppedLawsNote, mergedLawsNote } from '~/utils/lawPackage'
+import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import {
   DEFAULT_LAW_STATION_PAIR,
   LAW_STATION_LABEL,
@@ -509,7 +509,17 @@ function unitLabel(u: LawDiffUnit): string | null {
  * The sentences live in app/utils/lawPackage.ts, where they are tested.
  */
 const mergedNote = computed(() =>
-  mergedLawsNote(data.value?.lawsOnlyInTo ?? [], pair.value.from, pair.value.to),
+  mergedLawsNote(data.value?.lawsOnlyInTo ?? [], pair.value.from, pair.value.to, data.value?.largerAct ?? null),
+)
+/**
+ * Between two later stations of a Vorlage that bundles this draft with
+ * others, the counts are the draft's — and this sentence is what says so
+ * (docs/architecture.md §12.33). From the draft, `mergedNote` names the act.
+ */
+const outsideNote = computed(() =>
+  pair.value.from === 'me' || !data.value?.bundledWithOtherDrafts
+    ? null
+    : outsideDraftNote(data.value.lawsOutsideDraft, data.value.largerAct),
 )
 const droppedNote = computed(() =>
   droppedLawsNote(data.value?.lawsOnlyInFrom ?? [], pair.value.from, pair.value.to),
@@ -563,9 +573,10 @@ const droppedNote = computed(() =>
         <template v-else>{{ lawStationPairHint(pair.from, pair.to) }}</template>
       </p>
 
-      <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
+      <div v-if="outsideNote || mergedNote || droppedNote" class="mt-3 space-y-1.5 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
+        <p v-if="outsideNote">{{ outsideNote }}</p>
         <p v-if="mergedNote">{{ mergedNote }}</p>
-        <p v-if="droppedNote" :class="mergedNote ? 'mt-1.5' : ''">{{ droppedNote }}</p>
+        <p v-if="droppedNote">{{ droppedNote }}</p>
       </div>
 
       <!-- The reasoning, once as a rate above the list instead of

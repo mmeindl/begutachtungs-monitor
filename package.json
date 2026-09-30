@@ -26,7 +26,7 @@
     "corpus:erl-diff": "vite-node scripts/corpus/erlDiff.ts --",
     "corpus:kurzinfo": "vite-node scripts/corpus/kurzinfo.ts --",
     "corpus:bgbl2": "vite-node scripts/corpus/bgbl2.ts --",
-    "corpus:bgbl-station": "vite-node scripts/corpus/bgblStation.ts --",
+    "corpus:bgbl-station": "vite-node -c vitest.config.ts scripts/corpus/bgblStation.ts --",
     "corpus:novao": "vite-node scripts/corpus/novao.ts --",
     "corpus:novao-forms": "vite-node scripts/corpus/novaoForms.ts --",
     "corpus:skipped": "vite-node scripts/corpus/begutachtungSkipped.ts --",

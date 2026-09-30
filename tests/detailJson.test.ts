@@ -3,6 +3,7 @@ import {
   readCommitteeConsultation,
   amendedStationsOf,
   bgblOrderKey,
+  bundlesOtherDrafts,
   extractBgblLink,
   isFilingOpen,
   parseVote,
@@ -540,5 +541,28 @@ describe('readCommitteeConsultation (27.09.2026)', () => {
     const rejected = [{ stages: [{ date: '15.01.2024', text: 'Antrag auf Ausschussbegutachtung - abgelehnt' }, { date: '15.01.2024', text: 'In der Sitzung vom 15. Jänner 2024 vertagt.' }] }]
     expect(readCommitteeConsultation(rejected)).toBeNull()
     expect(readCommitteeConsultation(null)).toBeNull()
+  })
+})
+
+// The Vorlage names every draft it absorbed (docs/architecture.md §12.33):
+// 129 d.B. XXVIII lists twelve, 186 d.B. only 1/ME.
+describe('bundlesOtherDrafts', () => {
+  it('true where the Vorlage names another Ministerialentwurf', () => {
+    const pre = [{ gp_code: 'XXVIII', ityp: 'ME', inr: 12 }, { gp_code: 'XXVIII', ityp: 'ME', inr: 17 }]
+    expect(bundlesOtherDrafts(pre, 'XXVIII', 17)).toBe(true)
+  })
+
+  it('false where it names only this one', () => {
+    expect(bundlesOtherDrafts([{ gp_code: 'XXVIII', ityp: 'ME', inr: '1' }], 'XXVIII', 1)).toBe(false)
+  })
+
+  it('a draft of an earlier period is another draft', () => {
+    expect(bundlesOtherDrafts([{ gp_code: 'XXVII', ityp: 'ME', inr: 1 }, { gp_code: 'XXVIII', ityp: 'ME', inr: 1 }], 'XXVIII', 1)).toBe(true)
+  })
+
+  it('null where the record says nothing — no proof in either direction', () => {
+    expect(bundlesOtherDrafts(undefined, 'XXVIII', 1)).toBeNull()
+    expect(bundlesOtherDrafts([], 'XXVIII', 1)).toBeNull()
+    expect(bundlesOtherDrafts([{ gp_code: 'XXVIII', ityp: 'A', inr: 5 }], 'XXVIII', 1)).toBeNull()
   })
 })

@@ -661,6 +661,75 @@ export function diffLawPackage(from: readonly LawUnit[], to: readonly LawUnit[])
   }
 }
 
+/** Two later texts, cut to the laws of the draft — and what was cut. */
+export interface DraftScope {
+  from: LawUnit[]
+  to: LawUnit[]
+  /**
+   * Laws the earlier text carries and the draft does not, counted on that
+   * side — the other laws of a Sammelgesetz this draft went into. Their units
+   * are in neither `from` nor `to`.
+   */
+  outside: LawPackageEntry[]
+}
+
+/**
+ * A comparison between two LATER stations, cut to the laws of the draft
+ * (docs/architecture.md §12.33, 30.09.2026).
+ *
+ * `diffLawPackage` scopes a pair to the laws both sides carry. That is enough
+ * as long as one side is the draft; between two later stations it is not.
+ * A ministry's draft that goes into someone else's Sammelgesetz — 17–25/ME of
+ * GP XXVIII into the Informationsfreiheits-Anpassungsgesetz, 138 Artikel —
+ * finds the whole act on BOTH sides of Regierungsvorlage → Bundesgesetzblatt,
+ * every Artikel pairs, and the page counted 629 units on a draft that
+ * brought 39. The numbers were the act's, stated on the draft's page.
+ *
+ * WHEN to call it is the caller's decision, and it is not „whenever `from`
+ * carries more than the draft": a Ressort that adds a law to its own Vorlage
+ * (1/ME XXVIII, the Tilgungsgesetz 1972) has not handed the draft to anyone,
+ * and what the committee did to that law is the committee's change. The
+ * service cuts only where Parliament's record says the Vorlage bundles other
+ * drafts (`bundlesOtherDrafts`).
+ *
+ * The draft's laws are the Artikel of `from` that pair with the draft
+ * (`pairArticles`, the same pairing ME → RV shows). The rest of `from` is
+ * cut, and so is whatever it pairs with in `to` — through `from`, not
+ * through the draft, because two later versions of one text pair far more
+ * reliably than a draft with a Vorlage. An Artikel of `to` that pairs with
+ * nothing in `from` stays: that is a law added on the way, and
+ * `diffLawPackage` names it as before.
+ *
+ * Nothing is cut where the draft is empty, where no Artikel of it pairs, or
+ * where `from` carries no Artikel beyond the draft's — the last is the
+ * common case, and then this returns its input. Units without an Artikel
+ * always stay, as in `diffLawPackage`. The act's commencement Artikel goes
+ * unless the draft has one it pairs with, again as there: it belongs to the
+ * whole act (XXVI 9/ME showed the Materien-Datenschutz-Anpassungsgesetz's
+ * „Inkrafttretens- und Übergangsbestimmungen" beside its one Weingesetz
+ * unit), and it is never named as a law of its own.
+ */
+export function scopeToDraft(draft: readonly LawUnit[], from: readonly LawUnit[], to: readonly LawUnit[]): DraftScope {
+  const unchanged: DraftScope = { from: [...from], to: [...to], outside: [] }
+  if (!draft.length || !from.length) return unchanged
+  const own = new Set(pairArticles(draft, from).values())
+  if (own.size === 0) return unchanged
+  const cutFrom = new Set<string>()
+  for (const u of from) {
+    if (u.article !== null && !own.has(u.article)) cutFrom.add(u.article)
+  }
+  if (cutFrom.size === 0) return unchanged
+  const cutTo = new Set<string>()
+  for (const [f, t] of pairArticles(from, to)) {
+    if (f !== null && t !== null && cutFrom.has(f)) cutTo.add(t)
+  }
+  return {
+    from: from.filter((u) => u.article === null || !cutFrom.has(u.article)),
+    to: to.filter((u) => u.article === null || !cutTo.has(u.article)),
+    outside: lawsOf(from, (a) => !cutFrom.has(a)),
+  }
+}
+
 export function summarizeDiff(units: readonly LawDiffUnit[]): Record<LawUnitChange, number> & { total: number; editorial: number } {
   const s = { total: units.length, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
   for (const u of units) {

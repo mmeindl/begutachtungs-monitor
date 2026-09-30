@@ -8958,6 +8958,144 @@ den die vier Fälle oben gezeigt haben. Der Satz auf /so-funktionierts trägt
 die Bedingung jetzt mit und sagt für die Gegenüberstellung ausdrücklich dazu,
 dass sie dort nie erfüllt ist.
 
+#### Ein Entwurf als Teil eines größeren Gesetzes — die Zahlen des Entwurfs, nicht die des Akts (30.09.2026)
+
+**Die Beschriftung war schon erledigt.** Als Copy-Frage notiert war noch
+„Fassung im Bundesgesetzblatt"; so heißt die Station seit 19.09.2026 in
+`LAW_STATION_LABEL` (oben, „Eine Lehre über Beschriftungen"), und keine Seite
+trägt die alte Form mehr. Die neuen Sätze unten folgen derselben Lehre: Den
+Kurztitel eines Akts setzen sie nie in den Genitiv, sondern hinter einen
+Doppelpunkt („als Teil eines größeren Gesetzes kundgemacht:
+Budgetbegleitgesetz 2025, BGBl. I Nr. 25/2025"), weil ein Kurztitel jede
+Nominalphrase sein kann.
+
+**Der Befund.** `diffLawPackage` beschränkt einen Vergleich auf die Gesetze,
+die beide Seiten führen. Das reicht, solange eine Seite der Entwurf ist.
+Zwischen zwei späteren Stationen reicht es nicht: Ist der Entwurf in eine
+Regierungsvorlage eingegangen, die mehrere Ministerialentwürfe bündelt, steht
+auf **beiden** Seiten der ganze Sammelakt, jeder Artikel paart, und nichts
+fällt heraus. 17/ME der GP XXVIII, einer der zwölf Informationsfreiheits-
+Entwürfe, zählte unter „Regierungsvorlage → Fassung im Bundesgesetzblatt"
+629 Einheiten des Informationsfreiheits-Anpassungsgesetzes, 6 davon
+substanziell geändert. Der Entwurf selbst bringt 39, und davon ist eine
+substanziell geändert. Die Zahlen beschrieben also den Akt, standen aber auf
+der Seite des Entwurfs. Für Regierungsvorlage → Ausschuss- und → Plenarfassung
+galt dasselbe; die BGBl-Station hat es nur am sichtbarsten gemacht.
+
+**Gemessen** mit `pnpm corpus:bgbl-station -- --gp <GP> --scope`, offline über
+den Harness-Cache, durch `findLawStations`, `findComparisonRvLink`,
+`diffLawPackage` und `scopeToDraft`, also die Module der Seite. Von den
+Entwürfen mit lesbarer Kundmachung und Parlaments-HTML des Entwurfs (XXVIII
+81, XXVII 223, XXVI 78) trägt die Kundmachung bei 26, 48 und 29 Gesetze, die
+der Entwurf nicht trägt. Das sind aber zwei verschiedene Fälle:
+
+| | XXVIII | XXVII | XXVI |
+|---|---:|---:|---:|
+| Vorlage bündelt andere Entwürfe (`preconst`) | **14** | **5** | **11** |
+| Vorlage nennt nur diesen Entwurf; das Ressort hat ein Gesetz dazugenommen | 12 | 44 | 18 |
+| `preconst` fehlt | 0 | 0 | 0 |
+
+Die zweite Zeile ist für XXVIII vollständig von Hand gelesen: 1/ME
+(Tilgungsgesetz 1972), 47/ME (Gerichtsgebührengesetz), 60/ME
+(eEltern-Kind-Pass-Gesetz), 95/ME (Suchtmittelgesetz) und die übrigen nahmen
+nach der Begutachtung ein Gesetz in die eigene Vorlage auf; 7/ME tauschte
+das UGB gegen das Arbeitsverfassungsgesetz. Ein Paarungsfehler ist nicht
+darunter.
+
+**Die Regel: Geschnitten wird nur, wo die Vorlage andere Entwürfe bündelt.**
+Die Gesetze allein trennen die beiden Fälle nicht, der Datensatz des
+Parlaments schon: `preconst[]` der Vorlage nennt jeden Entwurf, den sie
+aufgenommen hat (129 d.B.: zwölf, 186 d.B.: nur 1/ME). Ein Gesetz, das das
+Ressort seiner eigenen Vorlage beifügt, gehört zu **dieser** Vorlage, und was
+der Ausschuss daran ändert, gehört in dessen Vergleich. Bei 1/ME trägt der
+Tilgungsgesetz-Artikel unter Regierungsvorlage → Ausschussfassung eine
+entfallene und eine neue Einheit. Ein Schnitt nach dem Entwurf allein hätte
+genau das verschwiegen. Die Abfrage ist `bundlesOtherDrafts` in
+`parliament/detailJson.ts`. Fehlt `preconst`, liefert sie `null`, und es wird
+nicht geschnitten; gemessen fehlt es bei keinem betroffenen Entwurf.
+
+**Wie geschnitten wird** (`scopeToDraft` in `diff/lawDiff.ts`): Es bleiben die
+Artikel der früheren Station, die mit dem Entwurf paaren (dieselbe Paarung,
+die ME → RV zeigt), und in der späteren Station das, was mit ihnen paart. Die
+Brücke ist die frühere Station, nicht der Entwurf, weil zwei späte Fassungen
+desselben Texts viel verlässlicher paaren als ein Entwurf mit seiner Vorlage.
+Ein Artikel, der erst in der späteren Station dazukam, bleibt und wird wie
+bisher als weiteres Gesetz genannt. Der Inkrafttretens-Artikel des Akts fällt
+mit heraus, wenn er mit keinem des Entwurfs paart; in der ersten Fassung
+blieb er, und bei XXVI 9/ME stand neben der einen Weingesetz-Einheit die
+Übergangsbestimmung des Materien-Datenschutz-Anpassungsgesetzes. Als Gesetz
+gezählt wird er nie. Der Kurztitel des Akts kommt aus demselben RIS-Datensatz
+wie die Kundmachung (`getBgblDocument`), `preconst` aus der Vorlage, die für
+die Fundstelle ohnehin geholt wird: keine zusätzliche Anfrage. Nur das
+Dokument des Entwurfs wird bei einem späteren Paar jetzt mitgelesen, aus dem
+Blatt-Cache.
+
+**Wirkung, wie ausgeliefert.** Einheiten und substanziell geänderte
+Einheiten, summiert über alle gemessenen Entwürfe, wobei die zwölf
+IFG-Entwürfe denselben Akt je einmal zählten:
+
+| | XXVIII | XXVII | XXVI |
+|---|---:|---:|---:|
+| rv→bgbl: Entwürfe bewegt | 14 | 5 | 11 |
+| rv→bgbl: Einheiten | 10.860 → 4.848 | 11.994 → 11.732 | 11.767 → 5.787 |
+| rv→bgbl: substanziell geändert | 373 → 294 | 422 → 412 | 314 → 150 |
+| rv→ausschuss: substanziell geändert | 200 → 160 | 213 → 211 | 259 → 120 |
+| rv→plenum: substanziell geändert | 283 → 214 | 165 → 160 | 253 → 109 |
+
+Einzeln, rv→bgbl: 17/ME XXVIII 629 → 39 Einheiten (substanziell 6 → 1),
+12/ME 629 → 12 (6 → 0), 77/ME 66 → 8 (Verbraucherkreditrechts-
+Änderungsgesetz 2026, zusammen mit 79/ME); XXVI 9/ME, das Weingesetz aus
+§12.18, 1.065 → 2 (24 → 0). Die zwölf Entwürfe der XXVIII mit eigener
+Vorlage bewegen sich nicht. Am gebauten Server (`pnpm build`, API und
+gerenderte Seite) ergeben 17/ME, 12/ME, 77/ME, 15/ME XXVIII und 9/ME, 12/ME,
+162/ME XXVI dieselben Zahlen wie das Skript.
+
+**Was die Seite sagt.** Über dem Vergleich eines späteren Paars steht:
+„Die Regierungsvorlage fasst diesen Entwurf mit anderen Ministerialentwürfen
+zusammen, und er wurde als Teil eines größeren Gesetzes kundgemacht:
+Informationsfreiheits-Anpassungsgesetz, BGBl. I Nr. 50/2025. Verglichen und
+gezählt wird nur, was zu diesem Entwurf gehört; nicht verglichen sind 126
+weitere Gesetze: …". Den Halbsatz zum Akt gibt es nur, wo das Paar beim
+Bundesgesetzblatt endet (`outsideDraftNote` in `app/utils/lawPackage.ts`).
+Vom Entwurf aus (me→bgbl) nennt der bestehende Satz über weitere Gesetze
+jetzt den Akt, statt den Mechanismus zu raten: „Im Parlament werden Vorlagen
+zusammengefasst" stimmt nicht, wenn die Regierung gebündelt hat.
+
+**Wo nichts zu schneiden ist, sagt die Seite auch das.** XXVII 6/ME und
+11/ME ändern dasselbe eine Gesetz, beide in der Geldwäschenovelle 2020 (BGBl.
+I Nr. 65/2020). Ein Schnitt nach Gesetzen findet dort nichts, und die 42
+Einheiten sind die beider Entwürfe. Der Satz endet dann mit „Welche
+Änderungen aus diesem Entwurf stammen, lässt sich im Text nicht trennen;
+verglichen wird der ganze Text." (`bundledWithOtherDrafts`). So steht es
+auch, wo der Text des Entwurfs nicht lesbar ist.
+
+**Bewusst nicht getan:**
+
+- **Kein Schnitt bei den 74 Entwürfen, deren Vorlage nur sie selbst nennt**,
+  aus dem Grund oben. Unter ME → RV nennt der bestehende Satz diese Gesetze
+  weiterhin als „weiteres Gesetz, das in diesem Entwurf nicht vorkommt".
+- **Keine Trennung unterhalb der Gesetzesebene.** Zwei Entwürfe, die dasselbe
+  Gesetz ändern (XXVII 6/11/ME), bleiben zusammen gezählt, und die Seite sagt
+  es. Einzelne Ziffern einem Entwurf zuzuordnen hieße, die ME→RV-Ausrichtung
+  gegen den Sammelakt laufen zu lassen. Das ist möglich, braucht aber eine
+  eigene Messung.
+- **Kein Fix der Paarung.** XXVI 162/ME führt das EU-JZG unter seinem
+  Langtitel („Bundesgesetz über die justizielle Zusammenarbeit in Strafsachen
+  mit den Mitgliedstaaten der Europäischen Union"), die Vorlage als
+  „Änderung des EU-JZG". `pairArticles` paart die beiden nicht, und der
+  Schnitt nimmt damit ein Gesetz des Entwurfs (46 Einheiten) aus den späteren
+  Paaren. Unter ME → RV steht derselbe Fehler schon (das Gesetz auf beiden
+  Seiten als nur dort vorhanden genannt). Betroffen ist einer von 30
+  Entwürfen, und die Stelle für den Fix ist die Abkürzungsprobe in
+  `pairArticles`.
+- **Fünf gebündelte Entwürfe, deren Text das Parlament nur als PDF führt**
+  (XXVII 6, 11; XXVI 12, 89, 92), liest die Seite aus dem RIS; das Messskript
+  baut diesen Rückfall nicht nach und zählt sie nur. Am gebauten Server sind
+  alle fünf geprüft: XXVI 12/ME 37 Einheiten (117 Gesetze ausgenommen), 89/ME
+  105 (1), 92/ME 19 (10), XXVII 6/ME und 11/ME der Fall oben.
+- **Die Entwurfsliste und die Stationsleiste nennen den Akt nicht**, nur der
+  Vergleich, wo die Zahlen stehen.
+
 ### 12.34 Wie die Klubs abgestimmt haben — der letzte Fakt der Kette
 
 **Gebaut am 24./25.09.2026.** Die Parlament-Station sagte bisher, *was* mit dem

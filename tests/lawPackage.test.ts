@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { droppedLawsNote, formatLawList, mergedLawsNote } from '../app/utils/lawPackage'
+import { droppedLawsNote, formatLawList, mergedLawsNote, outsideDraftNote } from '../app/utils/lawPackage'
 
 const laws = (...names: string[]) => names.map((article, i) => ({ article, units: i + 1 }))
 
@@ -68,5 +68,47 @@ describe('the notes name the pair they are about', () => {
     expect(mergedLawsNote(laws('A'), 'me', 'rv')!).toContain('fasst häufig mehrere Ministerialentwürfe zusammen')
     expect(mergedLawsNote(laws('A'), 'rv', 'ausschuss')!).not.toContain('Ministerialentwürfe')
     expect(droppedLawsNote(laws('A'), 'rv', 'ausschuss')!).not.toContain('Regierungsvorlagen münden')
+  })
+})
+
+// A draft kundgemacht as one part of a larger act (docs/architecture.md
+// §12.33): the act after a colon, never declined — a Kurztitel is any noun
+// phrase, and the genitive is the mistake the station label made once.
+describe('a draft inside a larger act', () => {
+  const act = { citation: 'BGBl. I Nr. 50/2025', title: 'Informationsfreiheits-Anpassungsgesetz' }
+
+  it('names the act and says the counts are the draft’s', () => {
+    const s = outsideDraftNote(laws('A', 'B', 'C', 'D'), act)!
+    expect(s).toContain('fasst diesen Entwurf mit anderen Ministerialentwürfen zusammen')
+    expect(s).toContain('als Teil eines größeren Gesetzes kundgemacht: Informationsfreiheits-Anpassungsgesetz, BGBl. I Nr. 50/2025')
+    expect(s).toContain('Verglichen und gezählt wird nur, was zu diesem Entwurf gehört')
+    expect(s).toContain('nicht verglichen sind 4 weitere Gesetze: A, B, C und ein weiteres.')
+  })
+
+  it('singular, and without an act where the pair ends before the Bundesgesetzblatt', () => {
+    const s = outsideDraftNote(laws('A'), null)!
+    expect(s).toContain('nicht verglichen ist ein weiteres Gesetz: A.')
+    expect(s).not.toContain('kundgemacht')
+  })
+
+  it('where nothing could be cut, says the counts are the whole text’s', () => {
+    // XXVII 6/ME and 11/ME: two drafts, one law, the Geldwäschenovelle 2020.
+    const s = outsideDraftNote([], { citation: 'BGBl. I Nr. 65/2020', title: 'Geldwäschenovelle 2020' })
+    expect(s).toBe(
+      'Die Regierungsvorlage fasst diesen Entwurf mit anderen Ministerialentwürfen zusammen, und er wurde als Teil eines größeren Gesetzes kundgemacht: Geldwäschenovelle 2020, BGBl. I Nr. 65/2020. ' +
+      'Welche Änderungen aus diesem Entwurf stammen, lässt sich im Text nicht trennen; verglichen wird der ganze Text.',
+    )
+    expect(outsideDraftNote([], null)).not.toContain('kundgemacht')
+  })
+
+  it('without a Kurztitel, the citation alone', () => {
+    expect(outsideDraftNote([], { citation: 'BGBl. I Nr. 50/2025', title: null })).toContain('kundgemacht: BGBl. I Nr. 50/2025.')
+  })
+
+  it('from the draft itself, the merged-laws note names the act instead of guessing the mechanism', () => {
+    const s = mergedLawsNote(laws('A', 'B'), 'me', 'bgbl', act)!
+    expect(s).toContain('Die Fassung im Bundesgesetzblatt ändert 2 weitere Gesetze, die in diesem Entwurf nicht vorkommen')
+    expect(s).toContain('Der Entwurf wurde als Teil eines größeren Gesetzes kundgemacht: Informationsfreiheits-Anpassungsgesetz')
+    expect(s).not.toContain('Im Parlament werden Vorlagen')
   })
 })

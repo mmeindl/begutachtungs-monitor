@@ -171,6 +171,36 @@ export function findComparisonRvLink(trace: TraceStep[], rvTextUrl: string | nul
 }
 
 /**
+ * Does this Regierungsvorlage bundle the draft with OTHER
+ * Ministerialentwürfe? Read off the Vorlage's `preconst[]`
+ * (docs/architecture.md §12.33, 30.09.2026).
+ *
+ * The question behind it is whose laws the later texts carry. A Vorlage can
+ * hold more laws than its draft for two reasons, and the page must treat them
+ * differently: the Ressort added a law of its own after the Begutachtung
+ * (1/ME XXVIII: the Tilgungsgesetz 1972 beside the new RKEG) — then that law
+ * is part of THIS Vorlage, and what the committee did to it belongs in the
+ * committee's comparison —, or the government merged several ministries'
+ * drafts into one Sammelgesetz (129 d.B.: twelve drafts, 138 Artikel) — then
+ * all but a few Artikel are someone else's. The laws alone cannot tell the
+ * two apart; Parliament's record can, because the Vorlage names every draft
+ * it absorbed.
+ *
+ * `null` where the record says nothing: `preconst` is not a universal field
+ * (32 of 117 Vorlagen of GP XXVIII carry none, `precedingDraft.ts`), and a
+ * missing list proves no bundling in either direction.
+ */
+export function bundlesOtherDrafts(
+  preconst: { gp_code?: string | null; ityp?: string | null; inr?: number | string | null }[] | null | undefined,
+  gp: string,
+  inr: number,
+): boolean | null {
+  const drafts = (preconst ?? []).filter((p) => p?.ityp === 'ME' && p.gp_code && p.inr != null)
+  if (!drafts.length) return null
+  return drafts.some((p) => String(p.gp_code) !== gp || Number(p.inr) !== inr)
+}
+
+/**
  * The Übermittlung stage → who received the Stellungnahmen and when. Text
  * is ministries' free wording behind a fixed prefix ("Übermittlung an das
  * Bundesministerium für …", "… an das Bundeskanzleramt"), so match the

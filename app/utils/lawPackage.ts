@@ -15,7 +15,7 @@
  * Ministerialentwurf → Regierungsvorlage (docs/architecture.md §12.18) and
  * these sentences name the two sides out loud.
  */
-import type { LawPackageEntry, LawStationId } from '#shared/types'
+import type { LawDiffResponse, LawPackageEntry, LawStationId } from '#shared/types'
 import { LAW_STATION_LABEL } from '#shared/utils/lawStations'
 
 /** How many law names a sentence lists before it counts the rest. */
@@ -44,11 +44,25 @@ export function formatLawList(entries: readonly LawPackageEntry[]): string {
 const subject = (id: LawStationId) => (id === 'me' ? 'Der Entwurf' : `Die ${LAW_STATION_LABEL[id]}`)
 const inThis = (id: LawStationId) => (id === 'me' ? 'in diesem Entwurf' : `in dieser ${LAW_STATION_LABEL[id]}`)
 
+type LargerAct = LawDiffResponse['largerAct']
+
+/**
+ * „als Teil eines größeren Gesetzes kundgemacht: Informationsfreiheits-
+ * Anpassungsgesetz, BGBl. I Nr. 50/2025" — the act after a colon, never in
+ * the genitive. A Kurztitel is any noun phrase („Budgetbegleitgesetz 2025",
+ * „Resilienz kritischer Einrichtungen-Gesetz sowie Änderung des …"), and
+ * declining it is exactly the mistake the station's own label made once
+ * (docs/architecture.md §12.33).
+ */
+const actPhrase = (act: NonNullable<LargerAct>) =>
+  `als Teil eines größeren Gesetzes kundgemacht: ${act.title ? `${act.title}, ` : ''}${act.citation}`
+
 /** Laws the later text carries and the earlier one never had. */
 export function mergedLawsNote(
   laws: readonly LawPackageEntry[],
   from: LawStationId,
   to: LawStationId,
+  act: LargerAct = null,
 ): string | null {
   if (!laws.length) return null
   const clause =
@@ -59,8 +73,12 @@ export function mergedLawsNote(
   // pair: a Regierungsvorlage bundles several Ministerialentwürfe, while a
   // committee merges and splits Vorlagen already before parliament. Only the
   // part that is true of the pair at hand is said.
-  const why =
-    from === 'me' && to === 'rv'
+  //
+  // And where the act is known to bundle this draft with others, the
+  // mechanism is not a guess: the sentence names the act.
+  const why = act
+    ? `Der Entwurf wurde ${actPhrase(act)}; verglichen wird deshalb, was in beiden Texten steht.`
+    : from === 'me' && to === 'rv'
       ? 'Eine Regierungsvorlage fasst häufig mehrere Ministerialentwürfe zusammen; verglichen wird deshalb, was in beiden Texten steht.'
       : 'Im Parlament werden Vorlagen zusammengefasst und geteilt; verglichen wird deshalb, was in beiden Texten steht.'
   return `${subject(to)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
@@ -82,4 +100,32 @@ export function droppedLawsNote(
       ? `Ein Entwurf kann in mehrere Regierungsvorlagen münden — möglicherweise ${one ? 'steht es' : 'stehen sie'} in einer anderen.`
       : `Der Text kann im Parlament geteilt worden sein — möglicherweise ${one ? 'steht es' : 'stehen sie'} in einer anderen Vorlage.`
   return `${subject(from)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
+}
+
+/**
+ * Laws BOTH compared texts carry and the draft does not — cut from a pair of
+ * two later stations, because the Regierungsvorlage bundles this draft with
+ * other Ministerialentwürfe (`scopeToDraft`, docs/architecture.md §12.33).
+ *
+ * The one sentence that must stand wherever a later pair runs over such a
+ * Vorlage, because it says whose counts the reader sees: without it, „3
+ * geändert" under „Was das Parlament an der Regierungsvorlage geändert hat"
+ * reads as the whole Vorlage — or, where nothing could be cut, as the
+ * draft's. Where the pair ends at the Bundesgesetzblatt it names the act.
+ *
+ * Framing rule (docs/architecture.md §4): what the texts contain, never a
+ * verdict on a draft that went into a larger act.
+ */
+export function outsideDraftNote(laws: readonly LawPackageEntry[], act: LargerAct): string {
+  const kundgemacht = act ? `, und er wurde ${actPhrase(act)}` : ''
+  const lead = `Die Regierungsvorlage fasst diesen Entwurf mit anderen Ministerialentwürfen zusammen${kundgemacht}.`
+  // Nothing cut: the draft's text unreadable, or its laws the whole text
+  // (two drafts amending one law). Then the counts are the text's, and the
+  // sentence has to say so rather than let them pass for the draft's.
+  if (!laws.length) return `${lead} Welche Änderungen aus diesem Entwurf stammen, lässt sich im Text nicht trennen; verglichen wird der ganze Text.`
+  const rest =
+    laws.length === 1
+      ? `nicht verglichen ist ein weiteres Gesetz: ${formatLawList(laws)}`
+      : `nicht verglichen sind ${laws.length} weitere Gesetze: ${formatLawList(laws)}`
+  return `${lead} Verglichen und gezählt wird nur, was zu diesem Entwurf gehört; ${rest}.`
 }
