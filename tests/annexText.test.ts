@@ -55,6 +55,18 @@ describe('designationKey', () => {
     expect(designationKey('Anl. 1/59')).not.toBe(designationKey('Anl. 1'))
   })
 
+  it('reads a lettered or dotted part of an Anlage whole (30.09.2026)', () => {
+    // Four Lehrplan-Verordnungen cut their schedules into parts like these;
+    // with only a digit suffix read, „Anl. 1/e" and „Anl. 1/m1" both landed on
+    // „Anl 1", and first wins decided which part a § was held against.
+    for (const [label, key] of [['Anl. 1/e', 'Anl 1/e'], ['Anl. 2/m1', 'Anl 2/m1'], ['Anl. 1/01.1', 'Anl 1/01.1'], ['Anl. 1/PTS', 'Anl 1/pts'], ['Anl. 1/10a', 'Anl 1/10a'], ['Anlage 1/PTS', 'Anl 1/pts']] as const) {
+      expect(designationKey(label), label).toBe(key)
+    }
+    expect(designationKey('Anl. 1/e')).not.toBe(designationKey('Anl. 1'))
+    expect(designationKey('Anl. 1/01.1')).not.toBe(designationKey('Anl. 1/01.2'))
+    expect(designationKey('Anl. 1/59')).toBe('Anl 1/59')
+  })
+
   it('reads the numeral forms RIS actually prints', () => {
     // "§ 373i1" and "§ 373i2" are two provisions; the old id regex cut both
     // to "373i" and then matched neither.

@@ -82,8 +82,19 @@ export function annexParagraphKey(law: string | null, para: string): string {
   return `${law ?? ''}#${para}`
 }
 
-/** "§ 5", "Art. 3 § 5", "Anl. 1/59" — a designation and its numeral, in order. */
-const DESIGNATION_PART_RE = /(§|Art|Anl|Anh)[a-zäöüß.]*\s*(\d+(?:\.\d+)?[a-z]*\d*(?:\/\d+)?)/gi
+/**
+ * "§ 5", "Art. 3 § 5", "Anl. 1/59" — a designation and its numeral, in order.
+ *
+ * **The part after the slash is read whole since 30.09.2026**: „Anl. 1/e",
+ * „Anl. 2/m1", „Anl. 1/01.1", „Anl. 1/PTS". Until then only a digit suffix
+ * survived, and the lettered parts of a schedule lost theirs and landed on
+ * the whole Anlage — 14 keys claimed by more than one RIS label in four
+ * Lehrplan-Verordnungen, where „first wins" decided which fraction of the
+ * schedule a § was held against. Measured over every label of the offline
+ * corpus: 32 labels change their key, all of them in those four laws, and no
+ * key collides afterwards (docs/architecture.md §12.13).
+ */
+const DESIGNATION_PART_RE = /(§|Art|Anl|Anh)[a-zäöüß.]*\s*(\d+(?:\.\d+)?[a-z]*\d*(?:\/[\da-z]+(?:\.\d+)*)?)/gi
 /** A Gliederungssymbol that dropped its sign: "5.", "12a". */
 const BARE_NUMERAL_RE = /^\s*(\d+(?:\.\d+)?[a-z]*\d*)\s*\.?\s*$/i
 /**

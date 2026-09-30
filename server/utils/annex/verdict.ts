@@ -328,20 +328,13 @@ function indexOf(law: KonsLawAtDate): LawIndex {
   const paragraphs = new Map<string, KonsParagraphRef>()
   for (const [label, ref] of Object.entries(law.paragraphs)) {
     const key = designationKey(label)
-    // First wins, and the key is only nearly injective: re-measured over
-    // every label occurrence of the offline corpus on 2026-09-11, 15 keys
-    // are claimed by more than one label and 13 of those collide *inside a
-    // single RIS answer*, which is the population this map is built from.
-    //
-    // They are one shape, the one the numeral half of `DESIGNATION_PART_RE`
-    // half-covers: a schedule cut into lettered parts. "Anl. 1/59" is read
-    // whole because the suffix is digits, while "Anl. 1/e", "Anl. 2/m1" and
-    // "Anl. 1/01.1" lose theirs. Three laws carry it and **no GP-XXVIII draft
-    // amends any of them**, so nothing in the measured corpus is scored
-    // against a fraction of its schedule today. Widening the numeral is its
-    // own step with its own measurement: it moves every designation on the
-    // annex and draft side too, not just the labels here
-    // (docs/architecture.md §12.13).
+    // First wins — and since 30.09.2026 no key of the offline corpus is
+    // claimed by two labels. The 14 that were came from one shape, a
+    // schedule cut into lettered parts („Anl. 1/e", „Anl. 1/01.1"), whose
+    // suffix `DESIGNATION_PART_RE` now reads whole; the measurement across
+    // all three sides — labels, annex, draft — is in docs/architecture.md
+    // §12.13. First wins stays as the rule for a collision the corpus has
+    // not shown yet.
     if (key !== null && !paragraphs.has(key)) paragraphs.set(key, ref)
   }
   return { law, paragraphs }

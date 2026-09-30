@@ -5227,6 +5227,30 @@ Anlage gehalten. Den Numeral-Teil zu weiten ist ein eigener Schritt mit eigener
 Messung: er bewegt jede Bezeichnung auch auf der Beilagen- und der
 Entwurfsseite, nicht nur die Labels.
 
+**Geweitet, gemessen auf allen drei Seiten (30.09.2026).** Der Numeral-Teil
+von `DESIGNATION_PART_RE` liest den Teil nach dem Schrägstrich jetzt ganz —
+Ziffern, Buchstaben, Punktzahlen: „Anl. 1/e", „Anl. 2/m1", „Anl. 1/01.1",
+„Anl. 1/PTS". *Labels:* über alle 325.716 Label-Vorkommen der 4.359
+gecachten RIS-Antworten ändern **32 Labels** ihren Schlüssel, alle in vier
+Lehrplan-Verordnungen (AHS, HAK/HAS, humanberufliche Schulen und — seit der
+Zählung oben in den Cache gekommen — Polytechnische Schule mit „Anl. 1/PTS"),
+und die mehrfach beanspruchten Schlüssel gehen von **14 auf 0**; „first wins"
+entscheidet im Korpus nichts mehr. *Beilagen:* keine gecachte Beilage druckt
+eine Bezeichnung, die die Weitung anders liest. *Entwürfe:* einer — eine
+Lehrplan-Verordnung, deren Anordnungen „Anlage 1/PTS" nennen und deren
+Beilage die Anlagen als „nicht abgebildet" führt; ihre Anordnungen landen im
+Sack „Anl 1/pts" statt „Anl 1", und keine Zeile der Beilage fragt danach.
+*Gemessen:* Prüfstand beider Pfade (400 jüngste Sätze) 140 → 140 und 120 →
+120 Entwürfe, **kein Entwurf bewegt sich**, die Berichte bis auf den
+Zeitstempel gleich; die Fehlerinjektion beider Pfade Zeile für Zeile gleich.
+Die Weitung ist also im gemessenen Korpus ohne Wirkung auf ein Urteil — sie
+nimmt einer Anlage, die erst ein künftiger Entwurf ändert, die Möglichkeit,
+gegen ein Fünfzigstel ihrer selbst gehalten zu werden. Richtung der
+Unsicherheit, die sie übrig lässt: Wo eine Beilage die ganze „Anlage 1"
+druckt und das RIS nur ihre Teile führt, ist der Paragraph jetzt
+*ungeprüft* statt gegen den erstbesten Teil gehalten — eine verlorene,
+keine falsche Bestätigung.
+
 **Eine einseitig gedruckte Überschrift gehört dem Paragraphen darunter
 (11.09.2026).** Fügt ein Entwurf einen Paragraphen samt Überschrift ein oder
 hebt er einen auf, ist die Spalte, in der die Bestimmung noch nicht oder nicht
