@@ -1279,6 +1279,23 @@ const VERB_RE = /\blaute[nt]\b|\bersetzt\b|\bangefügt\b|\beingefügt\b|\bentfä
  */
 const SENTENCE_SPLIT = /\s*\.\s+(?=(?:Als|Dem|Den|Der|Die|Das|In|Im|Nach|Vor)\s)/g
 
+/**
+ * „das Wort ‚A' im ersten und letzten Satz wird jeweils durch die Wortfolge
+ * ‚B' und der Ausdruck ‚C' wird durch den Ausdruck ‚D' ersetzt" — two
+ * clauses, each with its subject and its own „wird", sharing the participle
+ * at the end. Read as one, the place of the first (two sentences) held for
+ * the second as well, and „C" was looked for in a sentence it is not in
+ * (AsylG 2005 § 22, 30.09.2026).
+ *
+ * Cut only where the right side is a whole clause of this shape — an article,
+ * a noun, a quotation, its own „wird … durch … ersetzt" — and the left side
+ * ends in its „durch" operand with a finite verb before it and no participle.
+ * „A durch B und C durch D ersetzt" has no second verb and stays one
+ * instruction, as it always was. The left side gets the shared participle.
+ */
+const GAPPED_LEFT_RE = /(?<![\p{L}])(?:wird|werden)(?![\p{L}])[^"]*\bdurch\s+(?:(?:de[mnrs]|die|das|eine?[mnrs]?)\s+)?(?:[\p{L}-]+\s+)?""\s*$/u
+const GAPPED_RIGHT_RE = /^(?:der|die|das|den)\s+[\p{L}-]+\s+""\s+(?:wird|werden)\s+durch\s+(?:(?:de[mnrs]|die|das|eine?[mnrs]?)\s+)?(?:[\p{L}-]+\s+)?""\s+ersetzt\b/u
+
 export function splitCompound(line: string): string[] {
   const sentences = splitInstructionSentences(line)
   if (sentences.length > 1) return sentences.flatMap(splitCompound)
@@ -1287,6 +1304,7 @@ export function splitCompound(line: string): string[] {
   // "…27,5 vH; für Sofortlotterien…" cannot be mistaken for a second clause.
   const masked = line.replace(/"[^"]*"/g, (m) => '\u0000'.repeat(m.length))
   const bounds: number[] = []
+  const gapped = new Set<number>()
   let last = 0
   for (const m of masked.matchAll(COMPOUND_SPLIT)) {
     const at = m.index! + m[0].length
@@ -1302,7 +1320,12 @@ export function splitCompound(line: string): string[] {
     if (/^\s*(?:\d+[a-z]*|[a-z]{1,2})(?=\s*(?:[;,.)]|und\b|sowie\b|bis\b|$))/.test(masked.slice(at))) continue
     // The verbs of the instruction, not of the law text it quotes: „die
     // Wortfolge ‚wird ersetzt' und …" names no second clause (28.09.2026).
-    if (VERB_RE.test(masked.slice(last, m.index!)) && VERB_RE.test(masked.slice(at))) {
+    const left = masked.slice(last, m.index!)
+    if (VERB_RE.test(left) && VERB_RE.test(masked.slice(at))) {
+      bounds.push(m.index!, at)
+      last = at
+    } else if (/^\s+und\s+$/.test(m[0]) && !VERB_RE.test(left) && GAPPED_LEFT_RE.test(maskQuotes(line.slice(last, m.index!))) && GAPPED_RIGHT_RE.test(maskQuotes(line.slice(at)))) {
+      gapped.add(bounds.length)
       bounds.push(m.index!, at)
       last = at
     }
@@ -1311,7 +1334,7 @@ export function splitCompound(line: string): string[] {
   const parts: string[] = []
   let start = 0
   for (let i = 0; i < bounds.length; i += 2) {
-    parts.push(line.slice(start, bounds[i]))
+    parts.push(gapped.has(i) ? `${line.slice(start, bounds[i])} ersetzt` : line.slice(start, bounds[i]))
     start = bounds[i + 1]!
   }
   parts.push(line.slice(start))

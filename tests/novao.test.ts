@@ -859,3 +859,29 @@ describe('two sentences of one unit (30.09.2026)', () => {
     ]) expect(parseInstruction(line).ops, line).toEqual([])
   })
 })
+
+describe('two clauses under one participle (30.09.2026)', () => {
+  // AsylG 2005 § 22: the second pair was looked for in both sentences of the first.
+  const line = 'In § 22 erhält Abs. 10 die Absatzbezeichnung "(6)" ; das Wort "A" im ersten und letzten Satz wird jeweils durch die Wortfolge "B" und der Ausdruck "C" wird durch den Ausdruck "D" ersetzt.'
+
+  it('cuts where each side has its own subject and „wird", and hands the participle on', () => {
+    expect(splitCompound(line)).toEqual([
+      'In § 22 erhält Abs. 10 die Absatzbezeichnung "(6)"',
+      'das Wort "A" im ersten und letzten Satz wird jeweils durch die Wortfolge "B" ersetzt',
+      'der Ausdruck "C" wird durch den Ausdruck "D" ersetzt.',
+    ])
+    const { ops, reason } = parseInstruction(line)
+    expect(reason).toBeNull()
+    expect(ops).toMatchObject([
+      { kind: 'renumber', target: { abs: '10' }, to: '(6)' },
+      { kind: 'replacePhrase', target: { abs: '6', satz: 'letzter' }, from: 'A' },
+      { kind: 'replacePhrase', target: { abs: '6', satz: 'erster' }, from: 'A' },
+      { kind: 'replacePhrase', target: { abs: '6', satz: null }, from: 'C', to: 'D' },
+    ])
+  })
+
+  it('leaves the pairs under one verb as they were', () => {
+    expect(splitCompound('In § 5 wird der Ausdruck "A" durch "B" und die Wortfolge "C" durch "D" ersetzt.')).toHaveLength(1)
+    expect(splitCompound('In § 5 wird das Wort "A" durch das Wort "B" und das Wort "C" durch das Wort "D" ersetzt.')).toHaveLength(1)
+  })
+})
