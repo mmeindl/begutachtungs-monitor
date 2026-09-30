@@ -34,13 +34,19 @@ describe('stripMarkup', () => {
     expect(stripMarkup('Wort<i></i>zwei')).toBe('Wortzwei')
   })
 
-  it('leaves a superscript and a subscript as a word boundary', () => {
-    // Deliberate: `CO<sub>2</sub>` belongs to the token and
-    // `Meerkatzen<super>1)</super>` is a footnote mark that does not, and the
-    // two cannot be told apart by shape. Both sides of every comparison carry
-    // the tag, so a space there is symmetric; welding them moved no verdict.
+  it('welds a subscript to its word and leaves a superscript a word boundary (30.09.2026)', () => {
+    // `CO<sub>2</sub>` belongs to the token, `Meerkatzen<super>1)</super>` is
+    // a footnote mark that does not. The shape cannot tell them apart, the
+    // tag can: over the cached corpus `<sub>` carries indices only, while
+    // `<super>`/`<sup>` carry footnotes and exponents alike.
+    expect(stripMarkup('K<sub>2A</sub>')).toBe('K2A')
+    expect(stripMarkup('CO<sub>2</sub>-Emissionen')).toBe('CO2-Emissionen')
+    expect(stripMarkup('Na<sub>2</sub>CO<sub>3</sub>')).toBe('Na2CO3')
     expect(stripMarkup('cm<super>2</super>')).toBe('cm 2 ')
-    expect(stripMarkup('K<sub>2A</sub>')).toBe('K 2A ')
+    expect(stripMarkup('Meerkatzen<super>1)</super>')).toBe('Meerkatzen 1) ')
+    expect(stripMarkup('m<sup>3</sup>')).toBe('m 3 ')
+    // `<subtitle>` or any other tag starting with the letters is not a subscript.
+    expect(stripMarkup('a<subtitle>b</subtitle>')).toBe('a b ')
   })
 
   it('is invisible to the whitespace-insensitive keys', () => {

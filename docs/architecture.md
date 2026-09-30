@@ -4088,6 +4088,48 @@ Gewinn gehört zu einer *anderen* Asymmetrie und damit in einen eigenen
 Schritt: die PDF-Textebene trägt überhaupt kein Markup, also ist
 `KW<sub>el</sub>` dort ein Wort und hier zwei.
 
+**Getrennt am Tag, nicht an der Form — und `<sub>` zusammengezogen
+(30.09.2026).** Gezählt über alle gecachten RIS-Dokumente (Beilagen,
+geltendes Recht, Entwürfe) trägt `<sub>` **nur Indizes**: SO₄, O₂, KMnO₄,
+Q_A, G_F,Ei, kW_peak, die Fahrzeugklassen M₁ bis N₃ — und in 2.146
+Vorkommen kein einziges Zeichen der Fußnotenformen „1)", „(Anm. 1)" oder
+„*)". `<super>`/`<sup>` tragen beides, die Fußnoten („1)", „(Anm. 1)",
+„*)", die Ziffern einer Stundentafel) *und* die Exponenten (m³,
+km², 10⁻³⁴, „Abs. 2bis"), und die sind auch innerhalb des Tags an der Form
+nicht zu trennen. Also zieht `stripMarkup` jetzt `<sub>` an sein Wort, wie
+die PDF-Textebene es ohnehin tut, und `<sup>`/`<super>` bleiben ein
+Leerzeichen. Nach rechts schließt ein Index fast immer an Leerzeichen,
+Satzzeichen oder Bindestrich an („CO₂-Emissionen" → „CO2-Emissionen");
+direkt an einen Buchstaben 97-mal, und das ist Chemie (N₂O, Na₂CO₃) bis auf
+eine Handvoll Satzfehler des Ressorts („M₃sind").
+
+*Gemessen* (Prüfstand, 400 jüngste Sätze, gegen den Stand davor):
+Tabellenpfad **kein Urteil bewegt**, Deckung ≥ 99 % 1.234 → 1.235
+(Bäderhygieneverordnung § 6, „KMnO4"). PDF-Pfad Deckung 1.886 → 1.894 in
+fünf Entwürfen, und **drei Urteile gehen von einbehalten auf bestätigt**:
+EAG-Investitionszuschüsseverordnung-Strom § 5 (kW_peak) und
+EAG-Marktprämienverordnung §§ 5 und 12 (kW_peak, kW_el) — Tor 1.860 / 355 /
+1.519 → 1.863 / 352 / 1.519. Gelesen: Die linke Spalte ist in allen drei der
+geltende Paragraph zum Fristbeginn, Wort für Wort; einbehalten waren sie nur,
+weil das RIS „kW peak" als zwei Wörter führte und das PDF als eines. Dass
+die PDF-Lesung die Tabelle darin in Zeilenfolge statt Zellfolge druckt
+(„Fördermi Technologie Fördercalls … ttel"), ist die bekannte Eigenschaft
+dieses Pfads und keine der Änderung: Die linke Prüfung ist ein Sack und
+verspricht die Reihenfolge nicht. Dass das Zusammenziehen am 11.09. „kein
+Urteil" bewegte und jetzt drei, liegt am Korpus — beide EAG-Novellen sind
+vom 23.12.2025. Fehlerinjektion: Tabellenpfad Zeile für Zeile gleich,
+PDF-Pfad Grundmenge 2.717 → 2.720 (genau die drei), Fangquoten gleich;
+`harness:me` gleich. Die Drift-Grundlinie ist aus denselben Berichten
+nachgezogen: die sechs Entwürfe oben, alle nach oben, und dazu drei
+Vermerke des PDF-Pfads, die schon vor dieser Änderung abwichen — der
+Verweigerungssatz „Der Entwurf nennt keine Artikel, die Beilage schon" heißt
+seit 3e2faf7 „Die Beilage ist in Artikel gegliedert, …", keine Zahl bewegt
+sich daran.
+
+**Nicht gebaut:** `<sup>`/`<super>` zusammenzuziehen. Eine Fußnote an ihrem
+Wort („Meerkatzen1)") wäre ein Wort, das es nicht gibt, und die Exponenten
+lassen sich von ihr nicht trennen, ohne die Bedeutung zu raten.
+
 **Die bessere Adressierung (11.09.2026) kostete genau eine Meldung mehr**, und
 sie ist keine falsche: PDF-Pfad 20 → 21 im Prüfstand, 16 → 17 im Tor mit
 Deckelung; Tabellenpfad unverändert 3 → 3, dort ändert sich kein einziges

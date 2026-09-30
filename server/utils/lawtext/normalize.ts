@@ -216,10 +216,10 @@ export function compareToken(word: string): string {
  * a symbol inside a formula — so a space there invents a word boundary the
  * document does not have.
  *
- * `<sup>`/`<sub>`/`<super>` are deliberately **not** here, and that is a
- * measurement, not an oversight: see `stripMarkup`.
+ * `<sub>` is here since 30.09.2026, `<sup>`/`<super>` deliberately are not —
+ * a measurement, not an oversight: see `stripMarkup`.
  */
-const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>/gi
+const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font|sub)\b[^>]*>/gi
 
 /**
  * Markup → text, with the one distinction the comparison depends on: a block
@@ -252,15 +252,19 @@ const INLINE_MARKUP_RE = /<\/?(?:i|b|u|em|strong|span|font)\b[^>]*>/gi
  * of the three sides) and `<a>` around a citation (0 occurrences, RIS does
  * not use the tag).
  *
- * **`<sup>`/`<sub>`/`<super>` stay out, and that is a measurement, not an
- * oversight:** they sit directly on a word 152 times in the annexes, 785
- * times in the standing law and 338 times in the drafts, and the two meanings
- * **cannot be told apart by shape** — `CO<sub>2</sub>` belongs to the token,
+ * **`<sub>` is welded, `<sup>`/`<super>` stay a space — separated by the
+ * tag, not by the shape (30.09.2026).** The two meanings cannot be told apart
+ * by shape — `CO<sub>2</sub>` belongs to the token,
  * `Meerkatzen<super>1)</super>` is a footnote mark that does not, and both
- * are "letter, then digits". Welding them moved **no verdict** on either
- * path, so there is nothing to weigh against the risk. The gain it does carry
- * belongs to a *different* asymmetry and to its own step: the PDF text layer
- * has no markup at all, so `KW<sub>el</sub>` is one word there and two here.
+ * are "letter, then digits". They can be told apart by the TAG: over every
+ * cached RIS document (annexes, standing law, drafts) `<sub>` carries an
+ * index and nothing else — SO₄, O₂, KMnO₄, Q_A, G_F,Ei, the vehicle classes
+ * M₁ to N₃ — while `<super>`/`<sup>` carry the footnotes („1)", „(Anm. 1)",
+ * „*)", the digits of a Lehrplan's Stundentafel) *and* the exponents (m³,
+ * km², 10⁻³⁴, „Abs. 2bis"), which shape cannot separate. So the index joins
+ * its word, as the PDF text layer — which has no markup at all — already
+ * joins it, and the footnote stays apart. The measurement and what the
+ * welding moved are in docs/architecture.md §12.13.
  */
 export function stripMarkup(html: string): string {
   return html.replace(INLINE_MARKUP_RE, '').replace(/<[^>]*>/g, ' ')
