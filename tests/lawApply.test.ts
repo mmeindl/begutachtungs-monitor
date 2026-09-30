@@ -1516,3 +1516,21 @@ describe('two sentences of one unit (30.09.2026)', () => {
     expect(out.paragraphs[0]!.children[0]!.text).toBe('Eins. zwei. Zwei. Drei. vier.')
   })
 })
+
+describe('a new unit without its designation (30.09.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('7', 'G', ['Eins.', 'Zwei.', 'Drei.'])] })
+
+  it('is refused, not inserted empty', () => {
+    // Bundesstraßengesetz-Entwurf § 7: the bare sentence came out as a heading,
+    // and an Absatz with no number and no text went in.
+    const { law: out, results } = run(l(), instr('In § 7 wird nach Abs. 2 folgender Abs. 2a eingefügt:', ['Neu.']))
+    expect(results[0]).toMatchObject({ applied: false, reason: 'Eingefügte Einheit ohne eigene Bezeichnung' })
+    expect(out.paragraphs[0]!.children.map((c) => c.id)).toEqual(['1', '2', '3'])
+  })
+
+  it('goes in where it prints one', () => {
+    const { law: out, results } = run(l(), instr('In § 7 wird nach Abs. 2 folgender Abs. 2a eingefügt:', ['(2a) Neu.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs[0]!.children.map((c) => [c.id, c.text])).toEqual([['1', 'Eins.'], ['2', 'Zwei.'], ['2a', 'Neu.'], ['3', 'Drei.']])
+  })
+})

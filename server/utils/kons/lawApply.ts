@@ -1377,6 +1377,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       const host = op.anchor.level === 'para' ? para : (resolveTarget(law, op.anchor) ?? para)
       const anchorId = op.anchor.level === 'para' ? null : deepestId(op.anchor)
       const container = anchorId && host !== para ? (parentOf(law, host) ?? para) : para
+      // A new Absatz, Ziffer or Litera prints its own designation. Without
+      // one the payload line was read as something else — „nach Abs. 7
+      // folgender Abs. 8 eingefügt:" over a bare sentence came out as a
+      // heading, and the unit went in with no number and no text while the
+      // insertion reported success (Bundesstraßengesetz 1971 § 7, 30.09.2026).
+      // The Paragraph branch above refuses the same case; this one never did.
+      if ((level === 'abs' || level === 'z' || level === 'lit') && payload.some((p) => !p.id || p.level !== level)) return 'Eingefügte Einheit ohne eigene Bezeichnung'
       const nodes = payload.map((p) => ({ ...p, level }))
       for (const n of nodes) if (n.id && childById(container, level, n.id)) return `${n.marker} existiert bereits`
       if (!spliceChildren(container, anchorId, level, nodes, op.where)) return `Anker nicht gefunden: ${op.anchor.raw.slice(0, 60)}`
