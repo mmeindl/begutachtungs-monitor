@@ -1069,6 +1069,57 @@ unabhängig prüfbar" → „bestätigt"). Offen und jetzt beziffert: die 97
 Einheiten mit **allen** ihren Paragraphen zu zeigen („§§ 65–68", je § die
 Erläuterung) — eine Formänderung des Ergebnisses, kein Zweizeiler.
 
+*Mehrere §§ in einer Anweisung: die Erläuterungen sind nach Ziffern
+gegliedert, nicht nach Paragraphen — gemessen 30.09.2026, und darum nicht
+gebaut.* Die Formänderung hing an einer Voraussetzung, die vorher zu lesen
+war: dass der Besondere Teil eine solche Anweisung je Paragraph erklärt. Er
+tut es fast nie. In den ME→RV-Vergleichen der XXVI.–XXVIII. GP, bei denen
+beide Erläuterungen als HTML vorliegen, adressieren **449
+Novellierungsanordnungen mehr als einen §** (zusammen 1.509 §§). Gelesen
+wurde, welche Passagen die Ziffer der Einheit in ihrer Überschrift nennen
+(`corpus:aenderungsrate -- --gp … --multi`; jede Einheit steht mit den
+Überschriften und dem Anfang ihrer Passagen im Lauf, gelesen wurden sie
+auch):
+
+| Passagen zur Ziffer, Regierungsvorlage | Einheiten |
+|---|---:|
+| eine Passage für alle §§ der Anweisung | 173 |
+| … davon zusammen mit anderen Ziffern („Zu Z 1 bis 3: Anpassung an das Bundesministeriengesetz") | 112 |
+| eine Passage für einen Teil der §§ | 102 |
+| keine Passage zur Ziffer | 106 |
+| mehrere, gemischt — meist gleich nummerierte Ziffern anderer Artikel | 60 |
+| **je § eine eigene Passage** („Zu Art. 2 Z 22 (§ 65):", „… (§ 66):") | **8 (1,8 %)** |
+
+Im Entwurf sind es 12. Die acht sind alle Neufassungen eines Bereichs („Die
+§§ 65 bis 68 samt Überschriften lauten", 74/ME XXVI — genau das Beispiel
+der Frage —, 51/ME XXVIII, 75/ME, 76/ME und 165/ME XXVI), und selbst diese
+Form wird häufiger gemeinsam erklärt („Zu Z 19 (§§ 23 und 24):", 56/ME
+XXVI). Die Masse sind Querschnittsanordnungen — „In § 1 Abs. 1, § 7
+Abs. 3, § 9 Abs. 1 … wird die Abkürzung ‚BBG' durch ‚BBezG' ersetzt" —, und
+die begründet das Ressort mit einem Satz für die Ziffer.
+
+*Was der Join am Paragraphen daraus machte, und warum das gegen die Liste
+spricht.* `passagesByParagraph` sammelt je § alle Passagen, die ihn nennen,
+auch die anderer Ziffern — für eine Einheit mit einem § ist das die
+bewusste Entscheidung von §12.10b („am Paragraphen gerechnet, an der
+Anweisung gezeigt"). Von den 449 Einheiten haben 111 auf allen ihren §§
+beidseits eine Begründung, und bei **63** davon unterscheiden sich die Texte
+von § zu §, obwohl das Ressort die Ziffer in einem Satz erklärt: Der
+Unterschied sind die Begründungen *anderer* Änderungen am selben
+Paragraphen. Weitere 207 Einheiten berühren eine §-Nummer, die ein zweiter
+Artikel desselben Pakets ebenfalls adressiert. Eine Liste „je § die
+Erläuterung" hätte unter einer Anordnung, die eine Ressortbezeichnung
+tauscht, die Begründung fremder Ziffern ausgeklappt, oft dieselbe Passage
+mehrmals — eine Genauigkeit, die in der Quelle nicht steht.
+
+Was zur Quelle passen würde, ist ein anderer Join: die Passage an **ihrer
+Ziffer** („Zu Z 22"), über `fromId` durch die Umnummerierung ME→RV geführt
+und in Paketen mit dem Artikel geschlüsselt wie der zweite Schlüssel vom
+27.09. Er beträfe auch die Einheiten mit einem einzigen §, unter denen heute
+sechs Ziffern dieselbe Begründung von § 11 zeigen (8/ME) — eine Entscheidung
+über §12.10b und nicht ein Nachtrag an dieser Stelle. Deshalb bleibt die
+Einheit über mehrere §§ ohne Namen und ohne Begründung, wie seit dem 28.09.
+
 ### 12.12 Consolidated law text — engine built, not yet published
 
 Today a Novelle compares *amendment instructions*: "In § 9 Abs. 1 wird nach

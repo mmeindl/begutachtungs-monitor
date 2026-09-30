@@ -9,6 +9,7 @@
  * Usage:   npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII [--out dir] [--show inr]
  *          npx vite-node -c vitest.config.ts scripts/corpus/aenderungsrate.ts -- --gp XXVII
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --reasoning [--show-para inr]
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --multi
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
  * reproduce is a second opinion, not a number about the page. So every draft
@@ -84,6 +85,7 @@ import { pool } from '../lib/async'
 import { argFlag, argPair } from '../lib/args'
 import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
 import { compareReasoning } from '../../server/utils/explanations/reasoningDiff'
+import { diffTokens } from '../../server/utils/diff/wordDiff'
 import { addressOf, isAddressHeading } from '../../server/utils/explanations/risExplanations'
 import { addressedParagraphOf, instructionParagraphs } from '../../server/utils/lawtext/instructionAddress'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
@@ -946,8 +948,120 @@ async function reasoningReport(): Promise<void> {
   for (const [w, labels] of why) console.log(`\n  [${w}]\n    ${labels.sort().join('\n    ')}`)
 }
 
+/**
+ * `--multi` (30.09.2026, TODO.md § 5b „Eine Einheit über mehrere §§"): the
+ * Novellierungsanordnungen that address several §§ at once („Die §§ 65 bis
+ * 68 samt Überschriften lauten", „In § 1 Abs. 1, § 7 Abs. 3 … wird … ersetzt")
+ * and carry no single Paragraph since 28.09.2026. How does the Besonderer
+ * Teil explain such an instruction? Two readings per unit and side:
+ *
+ *  1. **The ressort's own structure** — the passages whose heading names the
+ *     unit's Ziffer („Zu Z 22 (§ 65):", „Zu Z 19 (§§ 23 und 24):"), the
+ *     Ziffer read outside the brackets, where „Z 1" is a § sub-item. One
+ *     passage for the Ziffer is a joint explanation; several, each on one §,
+ *     are per §. Where the draft is an Artikel package and neither side names
+ *     the Artikel, Ziffern of the same number from other Artikel land here
+ *     too — that is the bulk of „mehrere, gemischt".
+ *  2. **What the shipped join at the Paragraph would hand the unit**
+ *     (`passagesByParagraph` → one text per §, as `compareReasoning` reads
+ *     it): all its §§ with a Begründung on both sides, and whether those texts
+ *     are one and the same passage or differ from § to §.
+ *
+ * Every unit is printed with the headings and the first words of its
+ * passages, so the shapes can be read, not only counted.
+ */
+async function multiReport(): Promise<void> {
+  type Shape = 'je § eine Passage' | 'eine Passage für alle §§' | 'eine Passage für einen Teil' | 'mehrere, gemischt' | 'keine Passage zur Ziffer'
+  /** „Zu Z 5, 6, 8 und 13 (§ …)", „Zu Z 3 bis 6" → the Ziffern, outside the brackets. Ours. */
+  const ziffernOf = (heading: string): string[] => {
+    const out: string[] = []
+    const flat = heading.replace(/\([^)]*\)/g, ' ')
+    for (const m of flat.matchAll(/\bZ\s*(\d+[a-z]?(?:\s*(?:,|und|sowie|bis|–|-)\s*(?:Z\s*)?\d+[a-z]?)*)/g)) {
+      for (const t of m[1]!.split(/\s*(?:,|und|sowie)\s*(?:Z\s*)?/)) {
+        const range = /^(\d+)\s*(?:bis|–|-)\s*(?:Z\s*)?(\d+)$/.exec(t.trim())
+        if (range) for (let n = Number(range[1]); n <= Number(range[2]) && n - Number(range[1]) < 80; n++) out.push(String(n))
+        else if (t.trim()) out.push(t.trim().toLowerCase())
+      }
+    }
+    return out
+  }
+  const shapes = { ME: new Map<string, number>(), RV: new Map<string, number>() }
+  const joinTally = new Map<string, number>()
+  const lines: string[] = []
+  let units = 0
+  let paras = 0
+  const candidates = results.filter((r) => r.bucket >= 3)
+  await pool(candidates, CONCURRENCY, async (r) => {
+    const content = await detailOf(r.inr)
+    const rvText = findLawStationsCopy(content).get('rv')
+    const rv = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)!
+    await mkdir(join(CACHE, rv.gp), { recursive: true })
+    const rvDetail = await cachedJson<{ content?: DetailContent }>(join(CACHE, rv.gp, `I-${rv.inr}.json`), () =>
+      fetchJson(`${PARLIAMENT}/gegenstand/${rv.gp}/I/${rv.inr}?json=True`),
+    )
+    const meUrl = explanationsUrl(content.documents)
+    const rvUrl = explanationsUrl(rvDetail.content?.documents)
+    if (!meUrl || !rvUrl) return
+    const meParsed = parseExplanationsHtml(await fetchDocument(meUrl))
+    const rvParsed = parseExplanationsHtml(await fetchDocument(rvUrl))
+    const before = passageTexts(passagesByParagraph(meParsed))
+    const after = passageTexts(passagesByParagraph(rvParsed))
+    const { units: diffUnits } = parsed.get(r.inr) as { units: LawDiffUnit[] }
+    // A number addressed from two Artikel is ambiguous — over every § of every instruction.
+    const artsOf = new Map<string, Set<string>>()
+    for (const u of diffUnits) {
+      const l = u.toText ?? u.fromText ?? u.heading
+      for (const p of l && u.id.startsWith('Z') ? instructionParagraphs(l) : []) artsOf.set(p, new Set([...(artsOf.get(p) ?? []), u.article ?? '']))
+    }
+    for (const u of diffUnits) {
+      if (!u.id.startsWith('Z')) continue
+      const line = u.toText ?? u.fromText ?? u.heading
+      const ps = line ? instructionParagraphs(line) : []
+      if (ps.length < 2) continue
+      units++
+      paras += ps.length
+      const ids = new Set(ps.map((p) => explanationParaId(p)))
+      const detail: string[] = []
+      for (const side of [
+        { name: 'ME' as const, passages: meParsed.special, z: u.fromId ?? u.id, art: u.fromArticleKey },
+        { name: 'RV' as const, passages: rvParsed.special, z: u.id, art: u.articleKey },
+      ]) {
+        const z = side.z.replace(/^Z/, '').replace(/#.*$/, '').toLowerCase()
+        const mine = side.passages.filter((p) => ziffernOf(p.heading).includes(z) && (!side.art || !p.article || p.article === side.art))
+        const covers = (p: HtmlPassage) => p.paragraphs.filter((x) => ids.has(explanationParaId(x))).length
+        const shape: Shape =
+          mine.length === 0
+            ? 'keine Passage zur Ziffer'
+            : mine.length === 1
+              ? (covers(mine[0]!) >= ids.size ? 'eine Passage für alle §§' : 'eine Passage für einen Teil')
+              : mine.every((p) => p.paragraphs.length === 1) ? 'je § eine Passage' : 'mehrere, gemischt'
+        const shared = mine.some((p) => ziffernOf(p.heading).length > 1) ? ' (mit anderen Ziffern)' : ''
+        shapes[side.name].set(shape + shared, (shapes[side.name].get(shape + shared) ?? 0) + 1)
+        detail.push(`${side.name} ${shape}${shared}: ${mine.map((p) => `«${p.heading.slice(0, 100)}» ${p.text.join(' ').slice(0, 160)}`).join(' ‖ ')}`)
+      }
+      const idList = [...ids].filter((id): id is string => !!id)
+      const amb = ps.some((p) => (artsOf.get(p)?.size ?? 0) > 1)
+      const both = idList.filter((id) => before.get(id) && after.get(id))
+      const changedIds = both.filter((id) => 1 - diffTokens(before.get(id)!, after.get(id)!).similarity >= 0.02)
+      const oneText = both.length === idList.length && new Set(idList.map((id) => before.get(id))).size === 1 && new Set(idList.map((id) => after.get(id))).size === 1
+      const j = `${amb ? 'Nummer mehrdeutig' : both.length === 0 ? 'kein § mit Begründung beidseits' : both.length < idList.length ? 'ein Teil der §§' : oneText ? 'alle §§, ein Text' : 'alle §§, je § verschieden'}${changedIds.length ? ', geändert' : ''}`
+      joinTally.set(j, (joinTally.get(j) ?? 0) + 1)
+      lines.push(`${r.inr}/ME ${u.change} ${u.id} [${ps.join(', ')}] Join: ${j} (${both.length}/${idList.length}, ${changedIds.length} geändert) | ${String(line).replace(/\s+/g, ' ').slice(0, 110)}\n      ${detail.join('\n      ')}`)
+    }
+  })
+  console.log(`\nGP ${gp} — Anweisungen über mehrere §§ (instructionParagraphs ≥ 2), beide Erläuterungen als HTML: ${units}, zusammen ${paras} §§`)
+  for (const side of ['RV', 'ME'] as const) {
+    console.log(`  Besonderer Teil ${side}, Passagen zur Ziffer der Einheit:`)
+    for (const [k, v] of [...shapes[side]].sort((a, b) => b[1] - a[1])) console.log(`    ${String(v).padStart(3)}  ${k}`)
+  }
+  console.log('  Was der Join am Paragraphen der Einheit gäbe:')
+  for (const [k, v] of [...joinTally].sort((a, b) => b[1] - a[1])) console.log(`    ${String(v).padStart(3)}  ${k}`)
+  console.log(`\n    ${lines.sort().join('\n    ')}`)
+}
+
 // Last, so every constant above is initialised before the pass reads it.
 if (argFlag('reasoning')) await reasoningReport()
+if (argFlag('multi')) await multiReport()
 if (argFlag('pairs')) pairsReport()
 
 /**
