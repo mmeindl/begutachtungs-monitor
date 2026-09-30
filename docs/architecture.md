@@ -2835,6 +2835,89 @@ einem „eingefügt", die Einträge des Inhaltsverzeichnisses als ganze Zeile.
 **13**, Verweigerungen 319 → 288, „kein geltender Text" ohne Verweigerung
 20 → 18; vom Anhang bestätigt 614 → 621; Annex-Drift ohne Befund.
 
+**Die Einzelfälle, je eine Zeile (30.09.2026).** Der Posten „bewusst
+verweigert" hielt zehn Zeilen, von denen keine eine Klasse ist. Gelesen wird
+seither nur, was eine Regel trägt, die sonst nirgends greift — geprüft als
+Alt-gegen-Neu-Lesung über alle 10.464 Anweisungszeilen, die vorliegen (300
+Entwürfe aus `.cache/novao`, die 150 des ME-Prüfstands, die Zeilen des
+Sammelnovellen-Prüfstands): **13 Zeilen lesen sich anders, jede davon
+gelesen.**
+
+- **Zwei Sätze einer Einheit** („das Wort ‚…' im ersten und letzten Satz
+  wird jeweils …") sind zwei Orte einer Textoperation, der Ausdruck in jedem
+  genau einmal (AsylG 2005 § 22). Die Suche nach der Form fand zwei ältere
+  stille Fehler: „im ersten und im zweiten Satz" las nur den zweiten, weil
+  der Artikel dazwischen das Paar brach (Hochschulgesetz-Entwurf § 38c, vom
+  Anhang bis dahin widersprochen, jetzt bestätigt), und „entfallen der
+  zweite und der vierte Satz" wie „der vorletzte und der letzte Satz"
+  strichen nur den zuletzt genannten. **Eine Einheitenoperation über zwei
+  Sätze bleibt verweigert**: nacheinander ausgeführt, verschiebt die erste
+  Streichung die Zählung der zweiten. Auch eine Textoperation kann eine
+  Satzgrenze setzen („das Wort ‚ oder' durch einen Punkt"), deshalb läuft
+  zuerst die Stelle, deren Änderung die andere nicht verschiebt: von vorn
+  gezählt die spätere, bei „vorletzter und letzter" der vorletzte;
+  „zweiter und vorletzter" hat keine sichere Reihenfolge und bleibt
+  verweigert, ebenso das in Worten genannte Zeichen, dessen Zweig nur ein
+  Ziel liest. Im BFA-VG § 52 Abs. 3 nennt die Novelle den ersten und
+  zweiten Satz, das Wort steht im ersten und dritten — das RIS hat nach dem
+  Sinn konsolidiert, die Engine verweigert.
+- **Zwei Sätze unter einem Partizip** („… wird jeweils durch ‚B' und der
+  Ausdruck ‚C' wird durch ‚D' ersetzt") sind zwei Anordnungen; als eine
+  galt der Ort der ersten, zwei Sätze, auch für die zweite, und „C" wurde in
+  einem Satz gesucht, in dem es nicht steht. Getrennt wird nur, wo rechts
+  ein ganzer Satz mit eigenem Subjekt und eigenem „wird" steht — eine Zeile
+  im Korpus. AsylG § 22 ist damit wortgleich bis auf eine überzählige
+  schließende Klammer im RIS-Text, die die Novelle nicht setzt; der
+  Prüfstand bucht ihn deshalb als „unvollständig", nicht als identisch.
+- **Ein durch ein Leerzeichen zerbrochenes Hauptwort** („Wortfolg e",
+  „Wortfol ge", „Wend ung" — drei Zeilen) wird außerhalb der Zitate wieder
+  zusammengesetzt, nie darin: ein Operand bleibt, wie er gedruckt ist.
+  Kontenregister- und Konteneinschaugesetz § 1 ist jetzt identisch; die
+  Strafvollzugs-Zeile bleibt verweigert, weil ihre Zitate selbst zerbrochen
+  sind („d ass", ein Anführungszeichen an falscher Stelle) und sich die
+  Operanden nicht paaren lassen.
+- **„In § 10 entfällt nach Abs. 2 der Abs. 3."** Die Ortsangabe fällt nur
+  weg, wo sie nichts sagt als das: Die genannte Einheit steht unmittelbar
+  vor der gestrichenen, auf derselben Ebene. „nach Abs. 7 der Absatz mit
+  der Bezeichnung ‚(6)'" — eine Zählung außer der Reihe — ist ein zweiter
+  Ort; und ein doppeltes „Abs. 3" verweigert `uniqueChild`. Der
+  Seilbahn-Entwurf § 10 ist jetzt vom Anhang bestätigt und anzeigbar.
+- **„der bisherige Abs. 8 als Abs. 9 bezeichnet"** ist eine Umbenennung ohne
+  Zitat, nur auf derselben Ebene; „durch Abs. 11 bezeichnet" (eine Zeile)
+  wird nicht gelesen, die Präposition der Ersetzung ist keine des Namens. Die
+  Einfügung dahinter legte eine ältere Lücke frei: **Eine neue Untereinheit,
+  deren Nutzlast keine eigene Bezeichnung druckt, ging ohne Nummer und ohne
+  Text in den Baum und meldete Erfolg** — die Zeile stand als Überschrift
+  da. Der Zweig für Paragraphen verweigert das seit jeher, der für Absatz,
+  Ziffer und Litera nicht; jetzt tut er es. Der Bundesstraßengesetz-Entwurf
+  § 7 bleibt damit verweigert, aus dem richtigen Grund. Die Regel steht
+  deshalb vor der Umbenennung: in umgekehrter Reihenfolge wäre der § für
+  einen Schritt unverweigert und ohne seinen neuen Absatz gewesen.
+
+Über die sechs Schritte, `--discover=40 --sammel --cache`: Verweigerungen
+288 → 286, identisch 884 → **885**, halb angewendet 46 → 45, **eigene
+Abweichung unverändert 13, ohne Verweigerung abweichend unverändert 10**,
+„kein geltender Text" ohne Verweigerung unverändert 18. Entwürfe
+(`--discover=120 --cache`): gelesen 2.597 → 2.601, vom Anhang bestätigt
+621 → **623**. Annex-Drift unverändert, beide Pfade.
+
+**Weiter verweigert, mit Absicht:** IESG §§ 17a–43 (eine Kette
+ineinandergreifender Umbauten), Hauptstück- und Abschnittsüberschriften und
+UStG „Art. 21 Abs. 2 (Anhang) … zweiter Unterabsatz" (der Baum hat keine
+Ebene dafür), AsylG § 72 „in den Z 5 und 7 lit. a" (Ziele auf zwei Ebenen),
+AsylG § 36 „der Klammerausdruck nach dem Wort ‚Binnengrenzen'" (das alte
+Zitat stünde nur im geltenden Text, und keine zweite Zeile trägt die Form),
+EStG § 24 Abs. 7 „lautet … der zweite Halbsatz nach dem Strichpunkt ‚…'"
+(der neue Text in der Zeile statt als Nutzlast; ein Entwurf ohne
+Prüfsignal).
+
+**Eine Lücke des Orakels, offen:** Der Seilbahn-§ 10 galt schon als
+„bestätigt", als er verweigert war und sein Abs. 3 noch stand. Die Beilage
+streicht ihn in einer *geänderten* Zeile, und die drei Enthaltensein-Proben
+fragen, ob die vorgeschlagene Fassung im Ergebnis steht — nicht, ob das
+Ergebnis mehr enthält. Hier harmlos, weil verweigert; ohne Verweigerung
+hätte nur noch die Plausibilität die fehlende Streichung aufhalten können.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
