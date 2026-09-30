@@ -5599,6 +5599,72 @@ den ganzen Korpus liest die Seite jetzt in GP XXVIII die Beilage bei 124 von
 227 von 342. Am laufenden Server: 105/ME (42. KFG-Novelle) zeigt 158 Zeilen
 aus dem RIS, wo die Seite zuvor sagte, das RIS führe keine.
 
+**Die älteren Formen, gemessen und gebaut (30.09.2026).** Über den ganzen
+RIS-Korpus (4.577 Begut-Sätze) tragen **80 Sätze** einen Namen der alten
+Formen und keinen, den die Regel oben liest: 74 „begtxt" (auch
+„begtxtggue", „StRefG_2019-20_Begtxt"), fünf „GGUe", eine
+„Textüberstellung" — GP XXIV bis XXVII, keiner in XXVIII. „begtxt" ist die
+Form des BMF und steht neben „begmat" (dort die Erläuterungen) und
+„begVorblatt_WFA". Gelesen mit den ausgelieferten Lesern: **79 der 80**
+ergeben eine Gegenüberstellung, 44 aus der Tabelle, 35 aus dem PDF, weil
+das RIS sie gerastert hat. Der Satz oben, `begtxt` sei in den übrigen Fällen
+etwas anderes, hält am Inhalt gemessen nicht: Die übrigen sind die
+gerasterten, und deren PDF druckt das Überschriftenpaar, ohne das der
+PDF-Leser nichts liest. Die eine Ausnahme ist eine echte Gegenüberstellung,
+die der Tabellenleser nicht kann — das Stabilitätsgesetz 2012 setzt eine
+leere Abstandsspalte vor die beiden.
+
+**Gebaut als Kandidat, nicht als Name.** `pickOlderTextComparisons`
+(`risRecord.ts`) bietet diese Dokumente nur an, wo die Namensregel nichts
+findet — ein Satz, den sie heute liest, kann keinen Kandidaten bekommen —,
+und `textComparison`, das Dokument, auf das die Seite unter
+„Textgegenüberstellung" verweist, bleibt unberührt. Ob ein Kandidat die
+Beilage *ist*, entscheidet `holdsAsAnnex` (`annex/olderAnnex.ts`) beim Lesen:
+Zeilen, und auf dem Tabellenpfad das Überschriftenpaar „Geltende Fassung" /
+„Vorgeschlagene Fassung" in einer Tabellenzeile. Der Tabellenleser liest
+sonst auch eine Tabelle ohne dieses Paar nach ihrer Zeilenform — richtig für
+ein Dokument, das das Ressort „TGÜ" nennt, falsch für eines, dessen Name nur
+„vielleicht" sagt, denn die zweispaltige Tabelle eines Vorblatts hat dieselbe
+Form. Hält ein Kandidat nicht, antwortet die Seite wie vorher: keine
+Gegenüberstellung. Die Gegenüberstellung und die konsolidierte Lesefassung
+bekommen dieselben Dokumente als ein Wert (`AnnexDocuments`), damit keine der
+beiden den Kandidaten vergisst.
+
+**Additiv, gemessen in zwei Fenstern.** Im Fenster des Drift-Alarms (die 400
+jüngsten Sätze, beide Pfade, derselbe Cache) ändert sich **nichts**:
+Tabellenpfad 140 → 140, PDF-Pfad 120 → 120 Entwürfe, kein Entwurf bewegt
+sich um eine Zahl, beide Berichte bis auf den Zeitstempel gleich. Die alten
+Namen erreicht dieses Fenster nicht, also misst der Prüfstand den neuen Pfad
+nur über den ganzen Korpus (`harness/annexPdf.ts --nur-inhalt
+--limit=4600`, dafür liest die Schleife jetzt so viele Seiten, wie `--limit`
+verlangt — sie hörte bei Seite 4 auf, gleich was verlangt war). Dort:
+**Tabellenpfad 44 Entwürfe, 827 bestätigt / 57 einbehalten / 626 ungeprüft;
+PDF-Pfad 35 Entwürfe, 1.239 / 78 / 683**; alle vier Zusicherungen auf beiden
+Pfaden 0. Vorher hatten diese 79 Entwürfe gar keine Gegenüberstellung. Die
+Ursachen des Ungeprüften, die der Prüfstand nennt, sind die bekannten —
+darunter 326 Zeilen, deren Stammnorm das RIS nicht auflöst (156 Tabelle, 170
+PDF) —, keine neue. Gelesen, nicht nur gezählt: bestätigte Paragraphen aus KMG 2019
+(Börsegesetz 2018 §§ 39, 40, 42, 46), PKG-Novelle §§ 5, 6,
+Endbesteuerungsgesetz §§ 1, 2 und Umsatzsteuerbetrugsbekämpfungsverordnung
+§§ 2, 3, jeweils linke Spalte gegen den geltenden Text zum Fristbeginn — Wort
+für Wort derselbe Text.
+
+**Bewusst nicht gebaut.** *„begmat"/„Materialien" allein* — die Normalform
+vor XXVI (§12.31), 936 Sätze ohne Namen der Regel, 584 davon vor XXIV — ist ein Bündel aus
+Vorblatt, Erläuterungen und Gegenüberstellung. 36 solche Dokumente in XXIV
+bis XXVII tragen das Überschriftenpaar oder sind gerastert. Als Ganzes
+gelesen macht der Tabellenleser in 7 der 26 lesbaren aus den Tabellen des
+Vorblatts „geänderte" Zeilen ohne Paragraph — 309 Zeilen, beim
+Zahlungsbilanzstabilisierungsgesetz 25 von 39, beim Jahressteuergesetz 2018
+alle 9 —, und der PDF-Leser findet in keinem der 9 gerasterten die
+Spaltenüberschriften, weil die Prosaseiten die Geometrie bestimmen. Das
+braucht einen Schnitt auf die Tabellen, die mit dem Überschriftenpaar
+beginnen — ein eigener Schritt mit eigener Messung. *Der
+Stabilitätsgesetz-Fall* (Abstandsspalte) bleibt beim Tabellenleser. *Der
+Hinweis der Erläuterungen* auf die Gegenüberstellung (`hasAnnexDocument`)
+fragt weiter nur den Namen: ob ein Kandidat hält, weiß erst der Leser, und
+den soll dieser billige Hinweis nicht bezahlen.
+
 **Eine Beilage in mehreren Dokumenten (26.09.2026).** 2 der 240 Sätze mit
 Gegenüberstellung veröffentlichen sie in Teilen:
 „Textgegenüberstellung (Verordnung)" neben „(Anlagen)" (Methodenverordnung

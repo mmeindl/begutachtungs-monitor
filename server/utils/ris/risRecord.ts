@@ -55,6 +55,19 @@ export interface RisBegutFlat extends RisBegutRecord {
    */
   textComparisonParts: RisDocumentUrls[]
   /**
+   * Documents under an OLDER annex name — „begtxt", „GGUe",
+   * „Textüberstellung" — that may be the Gegenüberstellung, and only where
+   * the name rule above found none. Empty whenever `textComparisonParts` is
+   * not, so every record the name rule reads is read exactly as before.
+   *
+   * A candidate, not an annex: whether it IS one is decided by its content,
+   * when the annex engine reads it (`annex/olderAnnex.ts`). That is why it is
+   * a field of its own and not a part of `textComparison`: that one is the
+   * document a reader is sent to under the label „Textgegenüberstellung",
+   * and the label must not stand on a name that only says „maybe".
+   */
+  textComparisonCandidates: RisDocumentUrls[]
+  /**
    * The Erläuterungen as their own RIS document — the Allgemeiner Teil a
    * reader triages a draft by, and the "Zu Z 4 (§ 54c …)" passages under it.
    * Carried for every record class; on a Verordnungsentwurf it is the only
@@ -214,6 +227,33 @@ export function pickTextComparisons<T>(items: readonly T[], nameOf: (item: T) =>
   return best === 0 ? [] : ranked.filter((r) => r.rank === best).map((r) => r.item)
 }
 
+/**
+ * The older names of the annex, before the ressorts wrote „TGÜ" — measured
+ * 30.09.2026 over the whole RIS Begut corpus (docs/architecture.md §12.13,
+ * „Die älteren Formen"). „begtxt" is the BMF's Begutachtungstext beside
+ * „begmat" (the Materialien, i.e. the Erläuterungen) and „begVorblatt_WFA";
+ * „GGUe" and „Textüberstellung" are other ressorts' forms. 80 records carry
+ * one of them and no name the rule above reads, GP XXIV to XXVII.
+ *
+ * „begmat"/„Materialien" is deliberately NOT here: where it stands alone it
+ * is a bundle — Vorblatt, Erläuterungen and Gegenüberstellung in one
+ * document — and reading the whole of it as an annex turns the Vorblatt's
+ * tables into „changed" rows. That is a different document, not a
+ * differently named one.
+ */
+const OLDER_TEXT_COMPARISON_NAME = new RegExp(`begtxt|(^|${NOT_LETTER})GGUe($|${NOT_LETTER})|textüberstellung`, 'i')
+
+/**
+ * The documents that may be the Gegenüberstellung by an older name, in RIS's
+ * order — and none at all where the name rule picks something. The second
+ * half is what makes this strictly additive: a record the rule reads today
+ * cannot gain a candidate.
+ */
+export function pickOlderTextComparisons<T>(items: readonly T[], nameOf: (item: T) => string): T[] {
+  if (pickTextComparisons(items, nameOf).length > 0) return []
+  return items.filter((item) => OLDER_TEXT_COMPARISON_NAME.test(nameForm(nameOf(item))))
+}
+
 /** The first item of the best Erläuterungen rank, if any. */
 export function pickExplanations<T>(items: readonly T[], nameOf: (item: T) => string): T | undefined {
   let found: T | undefined
@@ -272,6 +312,9 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     // the parts as one annex, so „(Artikel1)" must not arrive after
     // „(Artikel 2)".
     textComparisonParts: tguAll.map(formatsOf).filter((u): u is RisDocumentUrls => u !== null),
+    // They stay in `otherDocuments` as well, like the further parts above:
+    // until the content says otherwise they are what the ressort called them.
+    textComparisonCandidates: pickOlderTextComparisons(references, nameOf).map(formatsOf).filter((u): u is RisDocumentUrls => u !== null && hasDocument(u)),
     explanations: formatsOf(erl),
     // By ContentType, not by name: "Begleitschreiben Begutachtungsentwurf"
     // is the usual wording, but the type is what RIS actually commits to.

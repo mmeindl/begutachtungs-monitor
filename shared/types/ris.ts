@@ -34,6 +34,13 @@ export interface RisMapRow {
    */
   textComparisonParts: { html: string | null; xml: string | null; pdf: string | null }[]
   /**
+   * Documents under an older annex name („begtxt", „GGUe") where the name
+   * rule found no Gegenüberstellung — candidates whose content decides
+   * (`ris/risRecord.ts`, `annex/olderAnnex.ts`). Optional because a corpus
+   * cached before 30.09.2026 does not carry it.
+   */
+  textComparisonCandidates?: { html: string | null; xml: string | null; pdf: string | null }[]
+  /**
    * The Erläuterungen as their own RIS document — the Allgemeiner Teil a
    * reader triages the draft by. Carried here for the same reason as the
    * annex above: Parliament publishes the document only as a PDF, RIS as
@@ -158,6 +165,8 @@ export interface RisConsultationDetail extends RisConsultation {
    * reads them as one (`ris/risRecord.ts`).
    */
   textComparisonParts: RisDocumentFormats[]
+  /** Older-name candidates for the annex, decided by content (`RisMapRow.textComparisonCandidates`). */
+  textComparisonCandidates?: RisDocumentFormats[]
   /**
    * The Begleitschreiben. It names the address a Stellungnahme goes to, and
    * for these procedures that is the ONLY way to file one: there is no

@@ -287,17 +287,13 @@ export function itemsInOrder(body: string): ComparisonItem[] {
  * comparisons, and 221 pair rows were swallowed across 7 annexes (2026-09-09).
  */
 export function columnSpans(rows: readonly { inner: string }[]): { left: number; right: number } | null {
-  const spanOf = (cell: Element): number => Number(COLSPAN_RE.exec(cell.attrs)?.[1] ?? 1)
+  const header = headerPairSpans(rows)
+  if (header !== null) return header
   /** How often each row shape occurs, for the annexes that print no header. */
   const shapes = new Map<string, number>()
   for (const row of rows) {
     const cells = outermost(row.inner, 'td')
     if (cells.length < 2) continue
-    const first = cellText(liftTables(cells[0]!.inner, false).text)
-    const second = cellText(liftTables(cells[1]!.inner, false).text)
-    if (HEADER_CURRENT_RE.test(first) && HEADER_PROPOSED_RE.test(second)) {
-      return { left: spanOf(cells[0]!), right: spanOf(cells[1]!) }
-    }
     const shape = cells.map(spanOf).join('+')
     shapes.set(shape, (shapes.get(shape) ?? 0) + 1)
   }
@@ -312,6 +308,35 @@ export function columnSpans(rows: readonly { inner: string }[]): { left: number;
   const spans = dominant?.[0].split('+').map(Number) ?? []
   if (spans.length !== 2) return null
   return { left: spans[0]!, right: spans[1]! }
+}
+
+function spanOf(cell: Element): number {
+  return Number(COLSPAN_RE.exec(cell.attrs)?.[1] ?? 1)
+}
+
+/**
+ * The column widths as the mandated header pair states them — the first row
+ * whose first two cells read „Geltende Fassung" and „Vorgeschlagene Fassung" —
+ * or null where no row prints it.
+ *
+ * `columnSpans` without its fallback, and exported for the one caller that
+ * needs the difference: a document picked by an older name rather than by
+ * „TGÜ" (`annex/olderAnnex.ts`). For a document the ressort NAMED a
+ * Gegenüberstellung, the row shape is evidence enough; for one whose name
+ * only says „maybe", the header pair is the evidence, because a Vorblatt's
+ * two-column table has the same shape.
+ */
+export function headerPairSpans(rows: readonly { inner: string }[]): { left: number; right: number } | null {
+  for (const row of rows) {
+    const cells = outermost(row.inner, 'td')
+    if (cells.length < 2) continue
+    const first = cellText(liftTables(cells[0]!.inner, false).text)
+    const second = cellText(liftTables(cells[1]!.inner, false).text)
+    if (HEADER_CURRENT_RE.test(first) && HEADER_PROPOSED_RE.test(second)) {
+      return { left: spanOf(cells[0]!), right: spanOf(cells[1]!) }
+    }
+  }
+  return null
 }
 
 /**

@@ -36,6 +36,7 @@ import { pickTextComparisons, type RisDocumentUrls } from '../ris/risRecord'
 import { fetchDocument } from '../upstream/fetchDocument'
 import { annexFromPdf } from './annexPdfService'
 import { parseTextComparison, type ComparisonParse } from './comparisonRows'
+import { holdsAsAnnex } from './olderAnnex'
 import { isScanned } from './tableCells'
 
 /**
@@ -118,6 +119,26 @@ export async function hasAnnexDocument(gp: string, inr: number, annex: RisDocume
   return Boolean(parl.html ?? parl.pdf)
 }
 
+/**
+ * The RIS documents a draft's annex may be read from: the ones the name rule
+ * picked, and — only where it picked none — the older-name candidates whose
+ * content decides (`ris/risRecord.ts`, `annex/olderAnnex.ts`).
+ *
+ * One value rather than two parameters, because the two sections that read
+ * the annex — the Gegenüberstellung and the konsolidierte Lesefassung — must
+ * read the same documents, or a § passes a gate whose evidence is nowhere on
+ * the page. A second parameter with a default is the one a caller forgets.
+ */
+export interface AnnexDocuments {
+  parts: readonly RisDocumentUrls[]
+  candidates: readonly RisDocumentUrls[]
+}
+
+/** The documents of a map row or a RIS-only record — also of one cached before the candidates existed. */
+export function annexDocumentsOf(record: { textComparisonParts?: readonly RisDocumentUrls[] | null; textComparisonCandidates?: readonly RisDocumentUrls[] | null }): AnnexDocuments {
+  return { parts: record.textComparisonParts ?? [], candidates: record.textComparisonCandidates ?? [] }
+}
+
 /** What was read, from where — and under which licence that may be said. */
 export interface AnnexSource {
   parsed: ComparisonParse
@@ -185,6 +206,30 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
 }
 
 /**
+ * The older-name candidates, one at a time: the first whose content holds as
+ * a Gegenüberstellung is the annex (`annex/olderAnnex.ts`).
+ *
+ * Each is read exactly as a named annex is, through `readRis` — and then
+ * asked for the header pair, which the name no longer vouches for. Measured
+ * 30.09.2026 over the whole corpus: 80 records carry exactly one candidate,
+ * so the order among several has never been exercised; first wins because
+ * it is RIS's order, the same rule as for the parts.
+ *
+ * Null where none holds, and the caller then says what it said before the
+ * candidates existed.
+ */
+async function readOlder(candidates: readonly RisDocumentUrls[], articles: readonly DraftArticle[]): Promise<AnnexSource | null> {
+  for (const doc of candidates) {
+    const read = await readRis([doc], articles)
+    if (typeof read === 'string') continue
+    // The same URL `readRis` just read, out of the leaf cache.
+    const xml = read.readFrom === 'table' && doc.xml ? await fetchDocument(doc.xml) : null
+    if (holdsAsAnnex(read.parsed, read.readFrom, xml)) return read
+  }
+  return null
+}
+
+/**
  * THE SWITCH: is the Parliament copy also **read**?
  *
  * `false` since 19.09.2026, and the reason is not a technical one — the
@@ -244,7 +289,7 @@ async function readParliament(gp: string, inr: number, articles: readonly DraftA
  * file header). Measured, the Parliament copy is the more complete one.
  */
 export async function annexSourceFor(
-  parts: readonly RisDocumentUrls[],
+  documents: AnnexDocuments,
   articles: readonly DraftArticle[],
   /**
    * The second copy, for a draft that HAS a Gegenstand — null where there is
@@ -254,7 +299,11 @@ export async function annexSourceFor(
    */
   atParliament: (() => Promise<AnnexSource | null>) | null = null,
 ): Promise<AnnexSource | string> {
-  const ris = await readRis(parts, articles)
+  // Candidates exist only where the name rule found nothing, so a draft it
+  // reads is read exactly as before (`pickOlderTextComparisons`). A candidate
+  // whose content does not hold leaves the answer where it was: no annex.
+  const older = documents.parts.length === 0 && documents.candidates.length > 0 ? await readOlder(documents.candidates, articles) : null
+  const ris = older ?? (await readRis(documents.parts, articles))
   if (typeof ris !== 'string') return ris
   if (!READ_PARLIAMENT_COPY || !atParliament) return ris
   return (await atParliament()) ?? ris
@@ -264,8 +313,8 @@ export async function annexSourceFor(
 export async function annexSourceForDraft(
   gp: string,
   inr: number,
-  parts: readonly RisDocumentUrls[],
+  documents: AnnexDocuments,
   articles: readonly DraftArticle[],
 ): Promise<AnnexSource | string> {
-  return annexSourceFor(parts, articles, () => readParliament(gp, inr, articles))
+  return annexSourceFor(documents, articles, () => readParliament(gp, inr, articles))
 }

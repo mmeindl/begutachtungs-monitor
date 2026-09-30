@@ -15,4 +15,4 @@ export { asArray } from '../../server/utils/ris/risRecord'
  * request path by hand, and a copy is what lets a script count what the site
  * does not.
  */
-export { explanationsNameRank, pickExplanations, pickTextComparisons, textComparisonNameRank } from '../../server/utils/ris/risRecord'
+export { explanationsNameRank, pickExplanations, pickOlderTextComparisons, pickTextComparisons, textComparisonNameRank } from '../../server/utils/ris/risRecord'

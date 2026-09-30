@@ -46,7 +46,8 @@ import { installFetchCache } from '../lib/harnessCache'
 import type { AnnexReport } from '../lib/annexReport'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
-import { asArray, pickTextComparisons } from '../lib/ris'
+import { asArray, pickOlderTextComparisons, pickTextComparisons } from '../lib/ris'
+import { holdsAsAnnex } from '../../server/utils/annex/olderAnnex'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
 
@@ -199,6 +200,33 @@ function parseOnePdfAnnex(parts: readonly AnnexPage[][], articles: readonly Draf
   return annex
 }
 
+/**
+ * The first older-name candidate whose content holds as a Gegenüberstellung,
+ * read the way `readOlder` in `annex/annexSource.ts` reads it: the table if
+ * RIS has one, the PDF where RIS rasterised it, and the decision itself is the
+ * shipped `holdsAsAnnex`.
+ */
+async function olderAnnexParts(contents: any[], main: any, urlOf: (ref: any, type: string) => string | null): Promise<any[]> {
+  const candidates = pickOlderTextComparisons(contents, (c) => String(c?.Name ?? ''))
+  if (candidates.length === 0) return []
+  const mainXml = urlOf(main, 'Xml')
+  const articles = mainXml ? draftArticles(parseRisXml(await getText(mainXml))) : []
+  for (const candidate of candidates) {
+    const xmlUrl = urlOf(candidate, 'Xml')
+    const xml = xmlUrl ? await getText(xmlUrl) : null
+    if (xml !== null && !isScanned(xml)) {
+      if (holdsAsAnnex(parseTextComparison(xml, articles), 'table', xml)) return [candidate]
+      continue
+    }
+    const pdfUrl = urlOf(candidate, 'Pdf')
+    if (!pdfUrl) continue
+    const pages = await pagesOf(new Uint8Array(await (await fetch(pdfUrl, { headers: { 'User-Agent': scriptUserAgent(SCRIPT) } })).arrayBuffer()))
+    if (!pages.some((page) => page.items.length > 0)) continue
+    if (holdsAsAnnex(parseOnePdfAnnex([pages], articles), 'pdf', null)) return [candidate]
+  }
+  return []
+}
+
 async function verify(doc: any): Promise<DraftResult | null> {
   const meta = doc?.Data?.Metadaten
   const begut = meta?.Bundesrecht?.Begut
@@ -215,10 +243,16 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // path applies (`ris/risRecord.ts`, `annex/annexSource.ts`). 2 of the 240
   // records with a Gegenüberstellung publish it in parts, and a harness that
   // read only the first would measure a decision the site does not make.
-  const parts = pickTextComparisons(contents, (c) => String(c?.Name ?? ''))
+  const urlOf = (ref: any, type: string): string | null => asArray<any>(ref?.Urls?.ContentUrl).find((u) => u?.DataType === type)?.Url ?? null
+  const named = pickTextComparisons(contents, (c) => String(c?.Name ?? ''))
+  // Where no name reads as a Gegenüberstellung, the older names „begtxt",
+  // „GGUe" — decided by content, as the request path decides them
+  // (`annex/annexSource.ts`, `readOlder`). Without this the harness would
+  // report „no effect" for a change it never reaches.
+  const parts = named.length > 0 ? named : await olderAnnexParts(contents, main, urlOf)
+  if (onlyByContent && named.length > 0) return null
   const annex = parts[0]
   if (!annex) return null
-  const urlOf = (ref: any, type: string): string | null => asArray<any>(ref?.Urls?.ContentUrl).find((u) => u?.DataType === type)?.Url ?? null
   const annexXml = urlOf(annex, 'Xml')
   const pdfUrl = urlOf(annex, 'Pdf')
   const annexXmlText = annexXml ? await getText(annexXml) : null
@@ -496,13 +530,22 @@ const ceilingArg = argAssigned('obergrenze')
 const ceiling = ceilingArg === null ? null : Number(ceilingArg)
 const dumpWorst = argFlag('dump-worst')
 const xmlMode = argFlag('xml')
+/**
+ * `--nur-inhalt` scores only the drafts whose annex was picked by content
+ * (`annex/olderAnnex.ts`). The older names stand in GP XXIV to XXVII, which
+ * the default window of the 400 newest records does not reach, so it goes
+ * with a `--limit=` over the whole corpus (4.600, 30.09.2026).
+ */
+const onlyByContent = argFlag('nur-inhalt')
 const calibrate = argFlag('calibrate')
 
 // RIS **ignores** `Begut.Gesetzgebungsperiode` — it answers with the whole
 // Begut corpus, newest first, so `--gp` narrows the label and not the window
 // (measured 23.09.2026, `lib/annexReport.ts`). `--limit` is what bounds a run.
 const docs: any[] = []
-for (let page = 1; page <= 4 && docs.length < limit; page++) {
+// As many pages as `--limit` asks for. The loop stopped at page 4 whatever the
+// limit said, so `--limit=1000` measured the same 400 records.
+for (let page = 1; page <= Math.ceil(limit / 100) && docs.length < limit; page++) {
   const body = await risJson({
     Applikation: 'Begut',
     'Begut.Gesetzgebungsperiode': gp,

@@ -35,7 +35,7 @@
  */
 
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { annexSourceFor, annexSourceForDraft, NO_ANNEX, parliamentAnnex, PARLIAMENT_CREDIT, READ_PARLIAMENT_COPY, RIS_CREDIT } from './annexSource'
+import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, parliamentAnnex, PARLIAMENT_CREDIT, READ_PARLIAMENT_COPY, RIS_CREDIT } from './annexSource'
 import { checkAnnexRows, notRunReason } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
@@ -200,7 +200,7 @@ export const getTextComparison = defineCachedFunction(
     // needs it.
     const draft = await getDraftArticles(gp, inr, 'ris-xml')
 
-    const chosen = await annexSourceForDraft(gp, inr, row.textComparisonParts ?? [], draft.articles)
+    const chosen = await annexSourceForDraft(gp, inr, annexDocumentsOf(row), draft.articles)
     if (typeof chosen === 'string') {
       const parl = await parliamentAnnex(gp, inr)
       const atParliament = parl.pdf ?? parl.html
@@ -262,10 +262,13 @@ export const getRisTextComparison = defineCachedFunction(
     const detail = await getRisConsultation(id)
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
     const who: DraftIdentity = { gp: null, inr: null, risId: id }
-    const parts = detail.textComparisonParts ?? []
+    const documents = annexDocumentsOf(detail)
+    const parts = documents.parts
     const first = parts[0]
     const pdf: TraceLink | null = first?.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: first.pdf } : null
-    if (!first) {
+    // An older-name candidate is read before this is said: whether it is a
+    // Gegenüberstellung only its content can tell (`annex/olderAnnex.ts`).
+    if (!first && documents.candidates.length === 0) {
       return emptyComparison(who, NO_ANNEX)
     }
     // No (GP, Nummer) for the shared parse to key on, so the document is read
@@ -273,7 +276,7 @@ export const getRisTextComparison = defineCachedFunction(
     // (`lawtext/draftArticlesService.ts`).
     const xml = detail.mainDocument.xml
     const draft = xml ? await draftArticlesOfXml(xml) : { blocks: [], articles: [] }
-    const chosen = await annexSourceFor(parts, draft.articles)
+    const chosen = await annexSourceFor(documents, draft.articles)
     const out = await readAndCheck(who, parts, detail.startedAt ?? '', draft, chosen, pdf)
     return typeof out === 'string' ? emptyComparison(who, out, null, pdf) : out
   },

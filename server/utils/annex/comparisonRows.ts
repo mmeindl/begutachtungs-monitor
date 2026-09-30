@@ -31,7 +31,7 @@ import type { LawDiffSegment } from '../../../shared/types'
 import { elisionOpens, isElidedPair, isElisionRangeOnly } from './elision'
 import { compareKey } from '../lawtext/normalize'
 import { cellText, headingOnly, paraHeading, stripGld, stripParaHeading, HEADER_CURRENT_RE, HEADER_PROPOSED_RE } from './tableCells'
-import { COLSPAN_RE, columnSpans, columnsOf, coversTheWidth, itemsInOrder, liftTables, outermost, type ComparisonItem } from './tableElements'
+import { COLSPAN_RE, columnSpans, columnsOf, coversTheWidth, headerPairSpans, itemsInOrder, liftTables, outermost, type ComparisonItem } from './tableElements'
 
 /** How one row of the comparison differs. */
 export type ComparisonChange = 'unchanged' | 'changed' | 'inserted' | 'removed'
@@ -214,6 +214,24 @@ interface Parsed {
   cells: { html: string; span: number }[]
 }
 
+/** The removals of `STRIP`, applied to one document. */
+function strip(part: string): string {
+  let body = part
+  for (const re of STRIP) body = body.replace(re, '')
+  return body
+}
+
+/**
+ * Does the document print the mandated header pair in a table row — the
+ * content evidence for a document picked by an older name
+ * (`annex/olderAnnex.ts`)? Read exactly as `parseTextComparison` reads it:
+ * the same stripping, the same rows in the same order.
+ */
+export function printsHeaderPair(xml: string): boolean {
+  const rows = itemsInOrder(strip(xml)).filter((i): i is Extract<ComparisonItem, { kind: 'row' }> => i.kind === 'row')
+  return headerPairSpans(rows) !== null
+}
+
 /**
  * One Textgegenüberstellung XML → its rows, in printed order.
  *
@@ -235,12 +253,6 @@ interface Parsed {
  * Entwurfs"; that refusal is about our reading, not about the document.
  */
 export function parseTextComparison(xml: string | readonly string[], articles: readonly DraftArticle[] = []): ComparisonParse {
-  const strip = (part: string): string => {
-    let body = part
-    for (const re of STRIP) body = body.replace(re, '')
-    return body
-  }
-
   const items = (typeof xml === 'string' ? [xml] : xml).flatMap((part) => itemsInOrder(strip(part)))
   const span = columnSpans(items.filter((i): i is Extract<ComparisonItem, { kind: 'row' }> => i.kind === 'row'))
   if (span === null) return { rows: [], refusal: null, unreadable: 'Das Dokument ist keine zweispaltige Gegenüberstellung.' }

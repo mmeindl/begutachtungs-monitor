@@ -150,6 +150,8 @@ function toMapRow(
     risDocument: rec?.mainDocument ?? null,
     textComparison: rec?.textComparison ?? null,
     textComparisonParts: rec?.textComparisonParts ?? [],
+    // `?? []` twice over: no record, or a corpus cached before the field existed.
+    textComparisonCandidates: rec?.textComparisonCandidates ?? [],
     explanations: rec?.explanations ?? null,
     score: c?.score ?? null,
     risBeginn: rec?.beginn ?? null,

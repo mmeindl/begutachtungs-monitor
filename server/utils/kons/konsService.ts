@@ -43,7 +43,7 @@ import { opAddress } from './novao'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { mapWithConcurrency } from '../pool'
 import type { KonsParagraphRef } from '../ris/konsLaw'
-import { annexSourceFor, annexSourceForDraft } from '../annex/annexSource'
+import { annexDocumentsOf, annexSourceFor, annexSourceForDraft } from '../annex/annexSource'
 import { getRisConsultation } from '../ris/risOnly'
 import type { DraftIdentity } from '../ris/draftIdentity'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
@@ -118,7 +118,7 @@ export const getConsolidatedText = defineCachedFunction(
     const { blocks } = await getDraftArticles(gp, inr, 'ris-xml')
     // The same source as the section above, out of the same function: RIS
     // first, Parliament as the fallback (`annex/textComparisonService.ts`).
-    return consolidate(who, blocks, asOf, (articles) => annexSourceForDraft(gp, inr, row.textComparisonParts ?? [], articles))
+    return consolidate(who, blocks, asOf, (articles) => annexSourceForDraft(gp, inr, annexDocumentsOf(row), articles))
   },
   { name: 'kons-text', base: DERIVED_CACHE, getKey: (gp: string, inr: number) => `${gp}-${inr}`, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )
@@ -139,9 +139,9 @@ export const getRisConsolidatedText = defineCachedFunction(
     const asOf = detail.startedAt
     const xmlUrl = detail.mainDocument.xml
     if (!asOf || !xmlUrl) return emptyConsolidated(who)
-    const parts = detail.textComparisonParts ?? []
+    const documents = annexDocumentsOf(detail)
     const { blocks } = await draftArticlesOfXml(xmlUrl)
-    return consolidate(who, blocks, asOf, (articles) => annexSourceFor(parts, articles))
+    return consolidate(who, blocks, asOf, (articles) => annexSourceFor(documents, articles))
   },
   { name: 'kons-text-ris', base: DERIVED_CACHE, getKey: (id: string) => id, maxAge: DERIVED_ANALYSIS_TTL_S, swr: false },
 )

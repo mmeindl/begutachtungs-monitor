@@ -179,6 +179,35 @@ describe('flattenRisRecord', () => {
     expect(flat.explanations?.xml).toBe('https://ogd.ris.bka.gv.at/e.xml')
   })
 
+  it('offers the older annex names as candidates, never beside a named annex (30.09.2026)', () => {
+    // „begtxt" (BMF, beside „begmat" and „begVorblatt_WFA"), „GGUe",
+    // „Textüberstellung": 80 records of GP XXIV–XXVII, 79 of them readable
+    // as a Gegenüberstellung. The content decides (`annex/olderAnnex.ts`).
+    for (const name of ['begtxt', 'begtxt_1', 'StRefG_2019-20_Begtxt', 'begtxtggue', 'Aktionärsrechte_GGUe 190214', '20180419_KMG_GGUe_Entwurf', 'Textüberstellung']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/c.xml'), Name: name }]))!
+      expect(flat.textComparison, name).toBeNull()
+      expect(flat.textComparisonCandidates.map((u) => u.xml), name).toEqual(['https://ogd.ris.bka.gv.at/c.xml'])
+      // Still where the reader found it before, under the ressort's name.
+      expect(flat.otherDocuments.map((d) => d.name), name).toEqual([name])
+    }
+    // The bundle is not a candidate: Vorblatt, Erläuterungen and
+    // Gegenüberstellung in one document read as a whole turn the Vorblatt's
+    // tables into „changed" rows.
+    for (const name of ['begmat', 'Materialien', 'RIS_Materialien', 'begVorblatt_WFA']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/c.xml'), Name: name }]))!
+      expect(flat.textComparisonCandidates, name).toEqual([])
+    }
+    // Strictly additive: where the name rule reads a document, no candidate.
+    const named = flattenRisRecord(
+      record([
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/c.xml'), Name: 'begtxt' },
+        { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: 'Textgegenüberstellung' },
+      ]),
+    )!
+    expect(named.textComparisonParts.map((u) => u.xml)).toEqual(['https://ogd.ris.bka.gv.at/t.xml'])
+    expect(named.textComparisonCandidates).toEqual([])
+  })
+
   it('sammelt alles Übrige, was der Satz an Text führt', () => {
     // Measured on 22.09.2026: 41 text documents over the running records,
     // the four named fields catch 25. The full-text search reads the rest
