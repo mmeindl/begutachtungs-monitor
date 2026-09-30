@@ -1057,6 +1057,27 @@ function instructionHead(t: string): string {
 const PHRASE_OBJECT =
   '(?:Wort-\\s*und\\s*Zeichenfolge|Zeichen-\\s*und\\s*Wortfolge|Wortfolge|Wortgruppe|Wortlaut|Worte|Wort|Wendung|Klammerausdrücke|Klammerausdruck|Ausdrücke|Ausdruck|Zitierung|Zitat|Begriff|Bezeichnung|Satzzeichen|Satzteil|Halbsatz(?=\\s*")|Klammerzitat|Verweiskette|Verweis|Abkürzung|Datumsangabe|Fundstelle|Zeichenfolge|Zeichen|Punkt|Strichpunkt|Beistrich|Datum|Beträge|Betrag|Prozentsatz|Altersangabe|Zahl|Jahreszahl|Fassung der Kundmachung|Norm|Einträge|Eintrag)(?:e|en|n|s)?'
 const PHRASE_RE = new RegExp(`\\b${PHRASE_OBJECT}\\b`, 'i')
+
+/**
+ * „nach der Wortfolg e ‚…' die Wortfol ge ‚…' eingefügt" — a noun of the
+ * instruction broken by a space in the published document (Kontenregister-
+ * und Konteneinschaugesetz § 1, BGBl. I Nr. 46/2026). Unread, the anchor had
+ * no noun and the line was refused; „Wortfol ge" and „Wend ung" stand in two
+ * more lines of the corpus (30.09.2026).
+ *
+ * Joined back only where nothing else is possible: outside the quotations —
+ * an operand is looked for in the standing text and must stay as printed —,
+ * where the joined word is a noun of `PHRASE_OBJECT`, its
+ * head is none and capitalised, and the tail is at most three letters. „das
+ * Wort e…" keeps its space, since „Wort" is a noun of its own.
+ */
+const PHRASE_NOUN_WHOLE_RE = new RegExp(`^${PHRASE_OBJECT}$`, 'i')
+function rejoinBrokenNouns(line: string): string {
+  return line.replace(/"[^"]*"|(?<![\p{L}])(\p{Lu}\p{L}+) (\p{Ll}{1,3})(?![\p{L}])/gu, (m, head?: string, tail?: string) => {
+    if (head === undefined || tail === undefined) return m
+    return PHRASE_NOUN_WHOLE_RE.test(head + tail) && !PHRASE_NOUN_WHOLE_RE.test(head) ? head + tail : m
+  })
+}
 /**
  * „Im Schlussteil des § 169 Abs. 1 wird der Satz ‚…' durch die Sätze ‚…'
  * ersetzt" (LFG): a sentence named by its text is a phrase operand — but
@@ -1972,7 +1993,7 @@ export function splitPlaces(line: string): string[] {
 }
 
 export function parseInstruction(raw: string, inherited?: NovaoAddress | null): ParsedInstruction {
-  const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
+  const line = rejoinBrokenNouns(normalizeText(raw).replace(NUMBER_PREFIX, ''))
   // „Im Inhaltsverzeichnis entfällt der Eintrag zu § 17; die Einträge zu den
   // §§ 18 und 19 lauten:" — the second clause has lost its subject, and split
   // off it was read as a phrase replacement. The whole line is the table of

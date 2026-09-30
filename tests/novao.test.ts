@@ -885,3 +885,18 @@ describe('two clauses under one participle (30.09.2026)', () => {
     expect(splitCompound('In § 5 wird das Wort "A" durch das Wort "B" und das Wort "C" durch das Wort "D" ersetzt.')).toHaveLength(1)
   })
 })
+
+describe('a noun broken by a space (30.09.2026)', () => {
+  it('joins it back outside the quotations', () => {
+    // Kontenregister- und Konteneinschaugesetz § 1: the anchor had no noun.
+    expect(op('In § 1 Abs. 1 wird nach der Wortfolg e "der Abgaben des Bundes" die Wortfol ge ", der Sozialbetrugsbekämpfung" samt Satzzeichen eingefügt.')).toMatchObject({
+      kind: 'insertPhrase',
+      anchor: 'der Abgaben des Bundes',
+      text: ', der Sozialbetrugsbekämpfung',
+    })
+  })
+
+  it('never inside one: the operand stays as printed', () => {
+    expect(op('In § 17 wird die Wend ung "mit der Maßgabe d ass" durch die Wend ung "mit der Maßgabe, dass" ersetzt.')).toMatchObject({ kind: 'replacePhrase', from: 'mit der Maßgabe d ass' })
+  })
+})
