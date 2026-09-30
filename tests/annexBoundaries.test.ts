@@ -157,7 +157,7 @@ describe('resolveBoundaries', () => {
   // the annex: one draft's parse holds only two of its Artikel.
   it('refuses when the annex is divided into Artikel the draft does not know', () => {
     const { refusal } = resolveBoundaries(cands('Artikel 1', 'Artikel 2'), draft({ title: 'Änderung des Eisenbahngesetzes 1957' }))
-    expect(refusal).toContain('Der Entwurf nennt keine Artikel')
+    expect(refusal).toContain('Die Beilage ist in Artikel gegliedert, der Entwurf nicht')
   })
 
   it('leaves a Stammgesetz without a law rather than inventing one', () => {

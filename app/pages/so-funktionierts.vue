@@ -25,7 +25,8 @@
  * `#ohne-stellungnahmen`, instead of four times in halves.
  *
  * ANCHORS. `#gegenueberstellung` is linked from `TextComparisonSection` and
- * must stay. `#leiste` is gone — a legend for a UI element on another page,
+ * must stay; so are `#lesefassung` (its disclosures) and `#vergleich`
+ * (`LawDiffSection`), both since 30.09.2026. `#leiste` is gone — a legend for a UI element on another page,
  * reached by no link at all, and stale within a day of the third comparison
  * („die beiden Fragen in der Leiste"). The rail says its own state in words
  * instead.
@@ -63,7 +64,10 @@ const sharedSteps: Step[] = [
   {
     id: 'begutachtung',
     name: 'Begutachtung',
-    text: 'Mehrere Wochen lang kann jede und jeder eine Stellungnahme abgeben – Privatpersonen genauso wie Kammern, Vereine und Unternehmen. Die Frist setzt das Ministerium.',
+    /* The Regelfall and its source stand here since 30.09.2026 — they stood
+       under every draft's „Die Begutachtung" before, where the page now keeps
+       only how that draft's Frist compares (`fristContextDe`). */
+    text: 'Mehrere Wochen lang kann jede und jeder eine Stellungnahme abgeben – Privatpersonen genauso wie Kammern, Vereine und Unternehmen. Die Frist setzt das Ministerium; im Regelfall vorgesehen sind sechs Wochen (§ 9 Abs. 3 WFA-Grundsatz-Verordnung). Der Monitor nennt eine Frist ab sechs Wochen „voll“ und unter drei Wochen „kurz“.',
     monitor:
       'Die Frist. Dazu, wo das Parlament den Entwurf führt, die Zahl der Stellungnahmen und wer sie abgegeben hat – Organisationen mit Namen, Privatpersonen ohne.',
     link: {
@@ -98,7 +102,7 @@ const paths: { id: string; name: string; count: string; lede: string; steps: Ste
         /* The second window stands here, and since 18.09.2026 this is its
            only fixed address: it was explained five times on list and detail
            pages and not at all on the page that explains the procedure. */
-        text: `Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Vorlage selbst sind noch Stellungnahmen möglich. ${SECOND_ROUND_WINDOW} Am Ende steht eine einzige Abstimmung über das ganze Gesetz, die dritte Lesung.`,
+        text: `Nationalrat und Bundesrat beraten die Vorlage; im Ausschuss und im Plenum kann sich der Text weiter ändern. Auch zur Vorlage selbst sind noch Stellungnahmen möglich. ${SECOND_ROUND_WINDOW} Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden bei der Vorlage veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor – außer der Ausschuss holt selbst Stellungnahmen ein (Ausschussbegutachtung). Am Ende steht eine einzige Abstimmung über das ganze Gesetz, die dritte Lesung.`,
         /* „welche Klubs" und nicht „wie das Parlament abgestimmt hat": das
            Parlament zählt das Handzeichen je Klub, nicht je Abgeordnetem
            (`docs/architecture.md` §12.34). Der Satz über der Zeile sagt, dass
@@ -163,6 +167,7 @@ const toc = [
   { to: '#stationen', label: 'Der Weg eines Entwurfs' },
   { to: '#ohne-stellungnahmen', label: 'Warum manche Entwürfe keine Stellungnahmen zeigen' },
   { to: '#gegenueberstellung', label: 'Woher „Was ändert der Entwurf?“ kommt' },
+  { to: '#vergleich', label: 'Wie wir Entwurf und Regierungsvorlage vergleichen' },
 ]
 </script>
 
@@ -539,7 +544,47 @@ const toc = [
         Ministeriums und erschließen aus dem Seitenlayout, welche Zeile links
         zu welcher Zeile rechts gehört. Der Text ist auch dort der des
         Ministeriums – die Zuordnung ist unsere, und sie kann daneben liegen.
-        Auf solchen Seiten steht das ausdrücklich dabei.
+        Auf solchen Seiten steht das ausdrücklich dabei. Eine Stelle, die dort
+        „nicht gezeigt“ wird, kann deshalb auch heißen: Wir haben Zeilen
+        falsch einander zugeordnet, beim Lesen der linken Spalte Text verloren
+        oder Text aus einer Nachbarzeile in die rechte gezogen.
+      </p>
+
+      <!-- Since 30.09.2026 the only place the Lesefassung explains itself:
+           each disclosure on a draft page says „Nicht amtliche Lesefassung"
+           and links here. -->
+      <h3 id="lesefassung" class="mt-8 scroll-mt-6 text-base font-semibold text-ink">Die Lesefassung</h3>
+      <p class="mt-2 leading-relaxed text-ink-secondary">
+        Bei manchen Paragraphen lässt sich aufklappen, wie die Bestimmung nach
+        dem Entwurf ganz lauten würde. Das ist keine amtliche Fassung: Wir
+        nehmen den geltenden Text aus dem RIS und wenden die Anweisungen des
+        Entwurfs darauf an. Gezeigt wird das Ergebnis nur, wo die
+        Gegenüberstellung des Ministeriums zum selben Text kommt. Fehlt die
+        Lesefassung bei einem Paragraphen, heißt das nicht, dass er gleich
+        bleibt – nur, dass wir sie nicht bestätigen konnten.
+      </p>
+    </section>
+
+    <!-- The comparison AFTER the Begutachtung, since 30.09.2026 with an
+         address of its own: its „Wie wir vergleichen" link used to land on
+         the Gegenüberstellung above, which explains a different document,
+         and its method sentence stood on every draft page instead. -->
+    <section id="vergleich" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
+      <h2 class="text-lg font-semibold text-ink">Wie wir Entwurf und Regierungsvorlage vergleichen</h2>
+      <p class="mt-3 leading-relaxed text-ink-secondary">
+        Nach der Begutachtung vergleichen wir die Texte selbst: den Entwurf mit
+        der Regierungsvorlage, und weiter mit den Fassungen aus Ausschuss,
+        Plenum und Bundesgesetzblatt. Ein Gesetz, das ein bestehendes ändert,
+        besteht aus nummerierten Änderungsanordnungen (Z 1, Z 2 …) – verglichen
+        wird dann Anordnung für Anordnung. Ein neues Gesetz vergleichen wir
+        Paragraph für Paragraph.
+      </p>
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Wie viel die Regierungsvorlage am Entwurf geändert hat, zählen wir ohne
+        redaktionelle Änderungen. {{ EDITORIAL_BADGE_SENTENCE }}
+        Verglichen wird dieser Anteil mit den Entwürfen der letzten
+        abgeschlossenen Gesetzgebungsperiode. Ob eine Änderung auf eine
+        Stellungnahme zurückgeht, sagt der Vergleich nicht.
       </p>
     </section>
 

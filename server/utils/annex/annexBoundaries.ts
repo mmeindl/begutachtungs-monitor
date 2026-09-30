@@ -195,7 +195,7 @@ export function resolveBoundaries(candidates: readonly BoundaryCandidate[], arti
   if (candidates.some((c) => c.numeral !== null) && numbered.length === 0) {
     // The cross-check is symmetric, and here it indicts the draft: the annex
     // is divided into Artikel that the draft's own parse does not know about.
-    return { accepted, whole: null, refusal: 'Der Entwurf nennt keine Artikel, die Beilage schon — die Zuordnung wäre geraten.' }
+    return { accepted, whole: null, refusal: 'Die Beilage ist in Artikel gegliedert, der Entwurf nicht; die Paragraphen lassen sich darum keinem einzelnen Gesetz zuordnen.' }
   }
   if (amending.length === 1) return { accepted, whole: amending[0]!, refusal: null }
   if (amending.length === 0) return { accepted, whole: articles.length === 1 ? articles[0]! : null, refusal: null }

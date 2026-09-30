@@ -108,7 +108,7 @@ const documents = computed(() => {
     toDocument(
       'Textgegenüberstellung',
       d.textComparison,
-      'Geltendes Recht und Entwurf nebeneinander – zeigt, was sich ändern würde',
+      'Geltendes Recht und Entwurf nebeneinander',
     ),
   ].filter((x): x is DraftDocument & { hint: string } => x !== null)
 })
@@ -247,7 +247,9 @@ const documents = computed(() => {
         <!-- A heading, not a paragraph: the one action the page offers
              belongs in the outline. -->
         <h2 class="font-medium text-ink">
-          {{ fristLabel(data.deadline, data.active) }}<template v-if="data.deadline"> – die Frist endet am {{ formatDateDe(data.deadline) }}</template>
+          <!-- The countdown alone since 30.09.2026: the date stands in the
+               bar directly above. -->
+          {{ fristLabel(data.deadline, data.active) }}
         </h2>
         <!-- „Ministerium" rather than „Ressort", here and in
              `risFilingNote`: one word per thing. The page carried both side by
@@ -378,8 +380,11 @@ const documents = computed(() => {
                  download is looking anyway — and in its own typographic class,
                  so it reads as a key and not as prose. -->
             <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-              Aus dem Rechtsinformationssystem des Bundes (RIS), CC BY 4.0. Im RIS
-              steht dieser Entwurf unter der Dokumentnummer
+              <!-- Source, licence and key as a caption since 30.09.2026, not two
+                   sentences: „Aus dem Rechtsinformationssystem des Bundes (RIS),
+                   CC BY 4.0. Im RIS steht dieser Entwurf unter der
+                   Dokumentnummer …". -->
+              Quelle: RIS (CC BY 4.0) · Dokumentnummer
               <!-- Not a link: it would be the second element on this page
                    pointing at the RIS page the header already links, and the
                    draft page makes the same split — the Geschäftszahl is text,

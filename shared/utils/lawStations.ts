@@ -263,7 +263,7 @@ export function lawDiffSourceCredit(from: LawDiffSourceSide, to: LawDiffSourceSi
   if (sides.some((s) => s.source === 'ris')) notes.push('RIS (CC BY 4.0)')
   if (sides.some((s) => s.source === 'parlament')) {
     const free = sides.some((s) => s.source === 'parlament' && PARLIAMENTARY_STATIONS.has(s.station))
-    notes.push(free ? 'Parlament (Dokumente: freie Werke, § 7 UrhG)' : 'Parlament')
+    notes.push(free ? 'Parlament (Dokumente: freie Werke)' : 'Parlament')
   }
   if (notes.length === 0) return 'Quellen:'
   return `Quellen: ${notes.join(' und ')}`

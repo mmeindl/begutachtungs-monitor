@@ -136,19 +136,17 @@ describe('fristClassOf — only the edges carry a class', () => {
 })
 
 describe('fristContextDe — the yardstick sentence', () => {
-  it('names practice and the Verordnung for a short Frist, in the right tense', () => {
-    expect(fristContextDe('short', '2 Wochen', false)).toBe(
-      'Die Frist war mit 2 Wochen kurz: Die Hälfte der Entwürfe seit 2013 hatte mindestens vier Wochen, im Regelfall vorgesehen sind sechs (§ 9 Abs. 3 WFA-Grundsatz-Verordnung).',
+  it('compares a short Frist with the Regelfall and with practice', () => {
+    expect(fristContextDe('short')).toBe(
+      'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Entwürfe seit 2013 hatte mindestens vier.',
     )
-    expect(fristContextDe('short', '10 Tage', true)).toMatch(/^Die Frist ist mit 10 Tagen kurz/)
   })
 
-  it('names a full Frist as plainly', () => {
-    expect(fristContextDe('full', '6 Wochen', false)).toMatch(/^Die Frist lief 6 Wochen – so lang, wie/)
-    expect(fristContextDe('full', '6 Wochen', true)).toMatch(/^Die Frist läuft 6 Wochen/)
+  it('names how rare a full Frist is', () => {
+    expect(fristContextDe('full')).toMatch(/^Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen/)
   })
 
   it('is silent in the middle', () => {
-    expect(fristContextDe(null, '4 Wochen', false)).toBeNull()
+    expect(fristContextDe(null)).toBeNull()
   })
 })

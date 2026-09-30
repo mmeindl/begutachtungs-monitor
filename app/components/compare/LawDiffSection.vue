@@ -447,7 +447,6 @@ const isNovelle = computed(() => {
   const units = data.value?.units ?? []
   return units.length > 0 && units.every((u) => /^Z\d/.test(u.id))
 })
-const hasZiffern = computed(() => (data.value?.units ?? []).some((u) => /^Z\d/.test(u.id)))
 
 /**
  * The Paragraph a change amends — placed in front of the name.
@@ -530,16 +529,13 @@ const droppedNote = computed(() =>
              THIS comparison counts in, so a sentence about this draft. A
              glossary entry of its own was a footnote to a word that has to
              appear in the same sentence anyway. -->
-        <template v-if="isNovelle">
-          Dieser Text ändert ein bestehendes Gesetz — verglichen wird deshalb
-          Änderungsanordnung für Änderungsanordnung (Z 1, Z 2 …),
-          {{ fromLabel }} gegen {{ toLabel }}.
-        </template>
-        <template v-else-if="hasZiffern">
-          Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}; wo ein
-          bestehendes Gesetz geändert wird, Anordnung für Anordnung (Z 1, Z 2 …).
-        </template>
-        <template v-else>Paragraph für Paragraph, {{ fromLabel }} gegen {{ toLabel }}.</template>
+        <!-- Only WHICH two versions since 30.09.2026. How they are compared
+             — Änderungsanordnung für Änderungsanordnung (Z 1, Z 2 …) where a
+             text amends a law, else Paragraph für Paragraph — is the method,
+             and stands on /so-funktionierts#vergleich behind the link at the
+             end of this line. The unit this draft counts in is named by the
+             headline figure itself („Von den 26 Änderungsanordnungen …"). -->
+        {{ fromLabel }} gegen {{ toLabel }}.
         {{ lawStationPairHint(pair.from, pair.to) }}
         <!-- „Unveränderte Stellen sind eingeklappt." went on 18.09.2026: the
              list shows the folded runs as rows of their own with their count
@@ -551,7 +547,7 @@ const droppedNote = computed(() =>
              only one without a link to the page that explains them. Whoever
              does not know „redaktionell" stood here in front of the word with
              no way out. -->
-        <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir vergleichen</NuxtLink>
+        <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
       </p>
 
       <div v-if="mergedNote || droppedNote" class="mt-3 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">

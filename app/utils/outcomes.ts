@@ -90,12 +90,12 @@ export function changeShareRateFor(gp: string | null | undefined): ChangeShareRa
 /**
  * „Von den 21 Änderungsanordnungen des Entwurfs hat die Regierungsvorlage 12
  * (57 %) geändert oder gestrichen, bloß redaktionelle Änderungen nicht mitgezählt.
- * Zum Vergleich: In der XXVII. Gesetzgebungsperiode lag dieser Anteil bei der
- * Hälfte der Entwürfe zwischen 46 und 75 %."
+ * Zum Vergleich: Bei der Hälfte der Entwürfe der XXVII. Gesetzgebungsperiode
+ * waren es 46 bis 75 %."
  */
 export function changeShareSentenceDe(gp: string | null | undefined, changed: number, own: number, unitPlural: string): string {
   const r = changeShareRateFor(gp)
-  return `${changeShareLeadDe(changed, own, unitPlural)}Zum Vergleich: In der ${r.gp}. Gesetzgebungsperiode lag dieser Anteil bei der Hälfte der Entwürfe zwischen ${r.p25} und ${r.p75}\u00a0%.`
+  return `${changeShareLeadDe(changed, own, unitPlural)}Zum Vergleich: Bei der Hälfte der Entwürfe der ${r.gp}. Gesetzgebungsperiode waren es ${r.p25} bis ${r.p75}\u00a0%.`
 }
 
 /** How much of the draft the Vorlage changed — the half both sentences share. */

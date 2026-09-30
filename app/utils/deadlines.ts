@@ -228,19 +228,20 @@ export function fristClassLineDe(start: string | null | undefined, deadline: str
 
 /**
  * The sentence under „Die Begutachtung" that gives the rail's „Kurze Frist"
- * or „Volle Frist" its yardstick. Null in the middle. `duration` is the
- * rail's own wording („2 Wochen", „10 Tage"), so the two cannot disagree.
+ * or „Volle Frist" its yardstick. Null in the middle.
+ *
+ * Only the comparison since 30.09.2026. It used to restate the rail's
+ * duration („Die Frist war mit 15 Tagen kurz") and cite the Verordnung
+ * (§ 9 Abs. 3 WFA-Grundsatz-Verordnung) — the first stands in the rail one
+ * screen up, the second on /so-funktionierts#begutachtung. What the rail
+ * cannot say is how this Frist compares, so that is what stays.
  */
-export function fristContextDe(
-  cls: FristClass,
-  duration: string | null,
-  active: boolean,
-): string | null {
-  if (!cls || !duration) return null
+export function fristContextDe(cls: FristClass): string | null {
   if (cls === 'short') {
-    // „mit" takes the dative: „mit 10 Tagen"; „Wochen" and „1 Tag" stay.
-    const dative = duration.replace(/ Tage$/, ' Tagen')
-    return `Die Frist ${active ? 'ist' : 'war'} mit ${dative} kurz: Die Hälfte der Entwürfe seit 2013 hatte mindestens vier Wochen, im Regelfall vorgesehen sind sechs (§ 9 Abs. 3 WFA-Grundsatz-Verordnung).`
+    return 'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Entwürfe seit 2013 hatte mindestens vier.'
   }
-  return `Die Frist ${active ? 'läuft' : 'lief'} ${duration} – so lang, wie es die WFA-Grundsatz-Verordnung im Regelfall vorsieht (§ 9 Abs. 3). Das erreicht etwa jeder vierte Entwurf.`
+  if (cls === 'full') {
+    return 'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder vierte Entwurf.'
+  }
+  return null
 }

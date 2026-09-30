@@ -32,7 +32,7 @@ const DOC_HINTS: [prefix: string, hint: string][] = [
   ['Gesetzestext', 'Der Entwurfstext selbst'],
   ['Erläuterungen', 'Die Begründung des Ministeriums'],
   ['Vorblatt und WFA', 'Kurzüberblick und Folgenabschätzung'],
-  ['Textgegenüberstellung', 'Geltendes Recht und Entwurf nebeneinander – zeigt, was sich ändern würde'],
+  ['Textgegenüberstellung', 'Geltendes Recht und Entwurf nebeneinander'],
   // Later stations of the same law text (DraftDetail.textEvolution)
   ['Geändert im Ausschuss', 'Fassung nach den Beratungen im Ausschuss des Nationalrats'],
   ['Geändert im Plenum', 'Fassung nach der Abstimmung im Nationalrat'],

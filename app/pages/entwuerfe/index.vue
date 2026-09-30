@@ -975,6 +975,14 @@ const countLabel = computed(() => {
             "
           />
         </div>
+        <!-- The one place the question arises (30.09.2026): it stood under
+             every draft page, where nobody who found the draft needs it.
+             Here it answers a search that found nothing. -->
+        <p v-if="qDebounced" class="mt-3 max-w-prose text-sm text-ink-secondary">
+          Heißt der Entwurf in der Debatte anders? Hinweise an
+          <a href="mailto:kontakt@begutachtungs-monitor.at" class="link-inline">kontakt@begutachtungs-monitor.at</a>
+          – die Suche findet ihn dann auch unter diesem Namen.
+        </p>
       </template>
 
       <!-- THE SAME FIELD'S SECOND ANSWER (docs/architecture.md §12.31). Its

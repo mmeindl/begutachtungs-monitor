@@ -244,21 +244,6 @@ export const SECOND_ROUND_CLAUSE = 'solange der Nationalrat den Text behandelt'
 export const SECOND_ROUND_WINDOW =
   `Eine veröffentlichte Frist gibt es dafür nicht – möglich, ${SECOND_ROUND_CLAUSE}.`
 
-/**
- * What a Regierungsvorlage is — the term a draft page uses most often
- * without explaining it.
- *
- * Until 18.09.2026 it was explained in exactly the branch where a Vorlage
- * exists. The other — „Bisher keine Regierungsvorlage", two thirds of the
- * cases — had no definition, although more depends on it there: whoever does
- * not know what a Regierungsvorlage is cannot place the fact that none came.
- *
- * Present tense, so the same sentence stands in both branches: in one it
- * defines something that happened, in the other something still pending.
- */
-export const RV_DEFINITION =
-  'Eine Regierungsvorlage ist die Fassung, die die Regierung nach der Begutachtung dem Nationalrat vorlegt.'
-
 /** Upstream's own wording, from the one place that maps it to a station. */
 const AUSSCHUSS = UPSTREAM_AUSSCHUSS_TITLE
 const PLENUM = UPSTREAM_PLENUM_TITLE

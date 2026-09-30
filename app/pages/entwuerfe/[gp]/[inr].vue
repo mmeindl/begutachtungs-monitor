@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import type { AmendedLawsResponse, DraftDetail, DraftDocument, RvStatementsResponse } from '#shared/types'
+import type { AmendedLawsResponse, DraftDetail, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
-import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristSpanDe } from '~/utils/deadlines'
+import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe } from '~/utils/deadlines'
 import {
-  RV_DEFINITION,
   SECOND_ROUND_CLAUSE,
   SECOND_ROUND_WINDOW,
   lastParliamentStation,
@@ -160,6 +159,32 @@ const description = computed(() =>
   Array.isArray(data.value?.description) ? data.value.description : [],
 )
 
+/* The Kurzinformation's „Hauptgesichtspunkte" is, on most drafts, the
+ * Allgemeiner Teil of the Erläuterungen in shorter words — and that part
+ * stands in „Was das Ressort begründet" further down, from the ministry's own
+ * document. Two versions of one text on one page (30.09.2026), so the
+ * section goes where the Erläuterungen are there to carry it; Ziele and
+ * Inhalt stay as the quick overview. Only the rendered blocks: the SEO
+ * snippet still reads the whole Kurzinformation.
+ *
+ * Same key as ExplanationsSection, so one request (`useExplanations`). The
+ * section is folded by default (`DraftDescription`, OPEN_SECTIONS), so where
+ * the Erläuterungen arrive only after hydration, what disappears is one
+ * closed row. */
+const { data: explanations } = useExplanations(() => ({ gp: gp.value, inr: inr.value }))
+const MAIN_POINTS_RE = /^Hauptgesichtspunkte\b/
+const kurzinfoBlocks = computed(() => {
+  const e = explanations.value
+  if (!e?.available || !e.passages.length) return description.value
+  const out: typeof description.value = []
+  let skipping = false
+  for (const block of description.value) {
+    if (block.kind === 'heading') skipping = MAIN_POINTS_RE.test(block.text)
+    if (!skipping) out.push(block)
+  }
+  return out
+})
+
 // Whether the Regierungsvorlage station has anything to show: the Vorlage
 // itself, or — once the Frist is over — the neutral note that none came,
 // with the base rate that puts the waiting in proportion. While the Frist
@@ -193,31 +218,15 @@ const divergence = computed(() =>
   fristDivergence(data.value?.risDraft ?? null, Boolean(data.value?.active)),
 )
 
-/* One draft text, up to three formats — a DocumentList row, not a chip per
- * format: a chip has to carry the format in its label ("Entwurfstext (PDF)"),
- * so the noun repeats and the row grows with every format RIS adds. The
- * RIS-Eintrag itself is a catalogue page, not a document, and stays a link
- * in the lead sentence. */
-const risDocuments = computed<(DraftDocument & { hint?: string })[]>(() => {
-  const doc = data.value?.risDraft?.risDocument
-  if (!doc) return []
-  const formats = ([['pdf', doc.pdf], ['html', doc.html]] as const)
-    .filter((pair): pair is readonly ['pdf' | 'html', string] => Boolean(pair[1]))
-    .map(([type, url]) => ({ type, url }))
-  return formats.length
-    ? [{ title: 'Entwurfstext', hint: 'Fassung im RIS des Bundes', formats }]
-    : []
-})
-
-/** Both lists in the one fold, counted for its summary. */
-const documentCount = computed(() => (data.value?.documents.length ?? 0) + risDocuments.value.length)
+/** The documents in the fold, counted for its summary. */
+const documentCount = computed(() => data.value?.documents.length ?? 0)
 
 /** The yardstick behind the rail's „Kurze Frist" / „Volle Frist" — the rail
  *  says which, this sentence says against what. Null in the middle. */
 const fristContext = computed(() => {
   const d = data.value
   if (!d) return null
-  return fristContextDe(fristClassOf(d.arrivedAt, d.deadline), fristSpanDe(d.arrivedAt, d.deadline), d.active)
+  return fristContextDe(fristClassOf(d.arrivedAt, d.deadline))
 })
 
 // The bar already states "Regierungsvorlage · bisher keine", so the
@@ -263,7 +272,10 @@ const noRvBody = computed(() => {
   if (daysUntil(data.value?.deadline) === null) {
     return 'Der Entwurf wurde bislang nicht als Regierungsvorlage eingebracht. Ob und wie es weitergeht, ist offen.'
   }
-  return 'Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere Monate – dieser Stand kann sich noch ändern.'
+  // „Zwischen Begutachtungsende und Regierungsvorlage liegen häufig mehrere
+  // Monate" stood here until 30.09.2026; the base rate below says the same
+  // with numbers.
+  return 'Bisher gibt es keine Regierungsvorlage.'
 })
 
 /* The base rate under the waiting sentence, while the GP still runs: how
@@ -289,8 +301,13 @@ function relatedGpSuffix(gp: string): string {
  * sentence closes that section — temporal, no causality claimed (framing
  * rule). */
 const handoffSentence = computed(() => {
-  const h = data.value?.handoff
-  if (!h?.date) return null
+  const d = data.value
+  const h = d?.handoff
+  if (!d || !h?.date) return null
+  // The bar's Regierungsvorlage row says „bisher keine · seit … beim Ressort"
+  // exactly while no Vorlage exists and the GP runs (`spine.ts`); there the
+  // sentence only repeated it (30.09.2026).
+  if (!d.enactment && !d.gpEnded) return null
   return `Die Stellungnahmen wurden am ${formatDateDe(h.date)} an ${h.recipient} übermittelt.`
 })
 
@@ -504,9 +521,10 @@ const ministryLinks = computed(() => {
           <!-- Headings, not paragraphs (18.09.2026): this is the only action
                the page offers, and for heading navigation it did not appear in
                the outline at all. Only one of the two ever renders. -->
+          <!-- The countdown alone since 30.09.2026: the date stands in the
+               bar's Begutachtung row directly above („bis 16.10.2026"). -->
           <h2 v-if="windows.begutachtung" class="font-semibold text-ink">
-            {{ fristLabel(data.deadline, true) }}<template v-if="data.deadline">
-              – die Frist endet am {{ formatDateDe(data.deadline) }}</template>
+            {{ fristLabel(data.deadline, true) }}
           </h2>
           <!-- The second window alone: the Begutachtung is over, parliament
                still listens. No date, because upstream publishes none — the
@@ -612,7 +630,7 @@ const ministryLinks = computed(() => {
         </div>
 
         <section
-          v-if="description.length"
+          v-if="kurzinfoBlocks.length"
           class="page-section"
           aria-labelledby="kurzinfo-heading"
         >
@@ -621,7 +639,7 @@ const ministryLinks = computed(() => {
                sequence — worum geht es, was wurde daraus. -->
           <h2 id="kurzinfo-heading" class="section-heading">Worum geht es?</h2>
           <div class="mt-4">
-            <DraftDescription :blocks="description" />
+            <DraftDescription :blocks="kurzinfoBlocks" />
           </div>
         </section>
 
@@ -739,33 +757,21 @@ const ministryLinks = computed(() => {
             </summary>
             <div class="pb-2">
               <DocumentList v-if="data.documents.length" :documents="data.documents" />
-              <!-- The same documents from the other official source, next to them
-                 rather than in a "Quellen" appendix nobody scrolled to: RIS
-                 carries the text as HTML/XML back to 2004 — the raw material of
-                 the Entwurf ↔ Regierungsvorlage comparison. "Not in RIS" is a
-                 state worth showing, not an error (docs/ris-join.md §2): a dozen
-                 drafts per GP never get there. -->
-              <div v-if="data.risDraft" class="mt-6">
-                <h4 class="text-sm font-semibold text-ink">
-                  Zweite Quelle: Rechtsinformationssystem (RIS)
-                </h4>
-                <template v-if="data.risDraft.risUrl">
-                  <p class="mt-1 max-w-prose text-sm text-ink-secondary">
-                    Das RIS des Bundes führt denselben Entwurf mit Text, Erläuterungen
-                    und Textgegenüberstellung im
-                    <ExternalLink
-                      :href="data.risDraft.risUrl"
-                      class="link-inline"
-                    >RIS-Eintrag</ExternalLink>.
-                  </p>
-                  <div v-if="risDocuments.length" class="mt-3">
-                    <DocumentList :documents="risDocuments" source="ris.bka.gv.at" />
-                  </div>
-                </template>
-                <p v-else class="mt-1 max-w-prose text-sm text-ink-secondary">
-                  Zu diesem Entwurf ist im RIS keine Veröffentlichung zu finden.
-                </p>
-              </div>
+              <!-- The same draft at the other official source, as one line
+                   (30.09.2026). A heading „Zweite Quelle", a sentence and a
+                   second list with the RIS text stood here; the RIS-Eintrag
+                   carries text, Erläuterungen and Gegenüberstellung itself,
+                   and whoever works from RIS needs the door, not a copy of
+                   its catalogue. "Not in RIS" is a state worth showing, not
+                   an error (docs/ris-join.md §2). -->
+              <p v-if="data.risDraft" class="mt-4 text-sm text-ink-secondary">
+                <ExternalLink
+                  v-if="data.risDraft.risUrl"
+                  :href="data.risDraft.risUrl"
+                  class="link-inline"
+                >Derselbe Entwurf im RIS</ExternalLink>
+                <template v-else>Im RIS ist dieser Entwurf nicht veröffentlicht.</template>
+              </p>
             </div>
           </details>
 
@@ -903,15 +909,11 @@ const ministryLinks = computed(() => {
               ><span v-if="i > 0">, </span><ExternalLink :href="rv.url" class="link-inline">{{ rv.label }}</ExternalLink></template>
               hervor.
             </p>
-            <!-- Mechanism 3, by hand: the invitation to the comparison the
-                 diff layer will one day draw by itself. Told temporally, never
-                 causally. The comparison itself stands further down and is
-                 linked, not repeated. -->
-            <p class="mt-2 max-w-prose text-sm text-ink-secondary">
-              {{ RV_DEFINITION }} Ob und wie der Entwurf geändert wurde, zeigt
-              <a href="#textvergleich" class="link-inline">der Vergleich der beiden Texte</a>
-              weiter unten.
-            </p>
+            <!-- No definition and no pointer to the comparison since
+                 30.09.2026: what a Regierungsvorlage is stands on
+                 /so-funktionierts (linked from the head of the page as „Wie
+                 funktioniert das Verfahren?"), and the bar already links
+                 „Was sich nach der Begutachtung geändert hat". -->
           </div>
           <div v-if="!data.enactment && !data.active" id="ergebnis" class="mt-4">
             <!-- The quotable verdict sentence leads, in `font-medium`: the
@@ -920,15 +922,11 @@ const ministryLinks = computed(() => {
             <p v-if="noRvVerdict" class="max-w-prose text-sm font-medium text-ink">
               {{ noRvVerdict }}
             </p>
-            <!-- The definition stands HERE, not only in the branch with a
-                 Vorlage: whoever does not know what a Regierungsvorlage is
-                 cannot place the fact that none came — and that is the more
-                 common case. -->
             <p
               class="max-w-prose text-sm text-ink-secondary"
               :class="noRvVerdict ? 'mt-2' : ''"
             >
-              {{ RV_DEFINITION }} {{ noRvBody }}
+              {{ noRvBody }}
             </p>
             <p v-if="noRvBaseRate" class="mt-2 max-w-prose text-sm text-ink-secondary">
               {{ noRvBaseRate }}
@@ -1076,14 +1074,6 @@ const ministryLinks = computed(() => {
           </p>
         </section>
 
-        <p class="mt-10 border-t border-hairline pt-4 max-w-prose text-sm text-ink-secondary">
-          Wird dieses Verfahren öffentlich unter einem anderen Namen diskutiert?
-          Hinweise an
-          <a
-            href="mailto:kontakt@begutachtungs-monitor.at"
-            class="link-inline"
-          >kontakt@begutachtungs-monitor.at</a> — die Suche findet den Entwurf dann auch darunter.
-        </p>
       </article>
     </FetchGate>
   </div>

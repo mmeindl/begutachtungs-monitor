@@ -100,14 +100,14 @@ describe('annexWithheldText', () => {
 
 describe('annexWithheldBlame', () => {
   it('names our own reading first on the PDF path', () => {
-    expect(annexWithheldBlame('standing', 'pdf')).toContain('dass wir die Zeilen des PDF falsch einander zugeordnet haben')
+    expect(annexWithheldBlame('standing', 'pdf')).toBe('Das kann an unserer Lesung des PDF liegen.')
   })
 
   it('says nothing about a mismatching left column on the table path', () => {
     // There the pairing is the ressort's own, so there is nothing of ours to
     // blame — and no sentence beats an invented one.
     expect(annexWithheldBlame('standing', 'table')).toBeNull()
-    expect(annexWithheldBlame('notInDraft', 'table')).toContain('oder wir haben die Stelle dem falschen Paragraphen zugeordnet')
+    expect(annexWithheldBlame('notInDraft', 'table')).toContain('an unserer Zuordnung zum Paragraphen')
   })
 })
 
@@ -133,16 +133,13 @@ describe('annexDoubtfulNote', () => {
 
   it('names the law and, on the PDF path, our own reading as a cause', () => {
     expect(annexDoubtfulNote(['Asylgesetz 2005'], 'pdf')).toBe(
-      'Auffällig viele Stellen weichen vom geltenden Text ab bei „Asylgesetz 2005“. ' +
-      'Das kann daran liegen, dass wir die Zeilen des PDF falsch einander zugeordnet haben, ' +
-      'oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.',
+      'Auffällig viele Stellen weichen vom geltenden Text ab bei „Asylgesetz 2005“ – das kann an unserer Lesung des PDF liegen.',
     )
   })
 
   it('blames no one but the version on the ressort’s own table', () => {
     expect(annexDoubtfulNote(['A', 'B'], 'table')).toBe(
-      'Auffällig viele Stellen weichen vom geltenden Text ab bei „A“, „B“. ' +
-      'Die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen als das RIS zum Beginn der Begutachtung.',
+      'Auffällig viele Stellen weichen vom geltenden Text ab bei „A“, „B“ – die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen.',
     )
   })
 })

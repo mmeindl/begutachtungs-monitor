@@ -32,8 +32,9 @@ type ReadFrom = TextComparisonResponse['readFrom']
  *   The count stays here: in a collapsed group that block is not visible, and
  *   the top line is then the only place the reader learns something is
  *   missing.
- * - **The Stichtag** is provenance — which version of the law was measured
- *   against — and sits in the section's credits since then.
+ * - **The Stichtag** is always the first day of the Begutachtungsfrist; that
+ *   rule stands on /so-funktionierts#gegenueberstellung, and the date itself
+ *   in the bar and under „Geltendes Recht".
  * - **The PDF caveat** shrinks to a fragment. It stays at the top, because it
  *   says what follows may be our misreading; the long form of whose reading
  *   it may be stands at every withheld block and on /so-funktionierts.
@@ -90,22 +91,25 @@ export function annexCheckNote(v: Verification, readFrom: ReadFrom = null): stri
  * a neighbour's. Handing the ministry the blame for our own reading would be
  * both wrong and against the framing of this project.
  *
- * The three tables are the only place the causes are worded client-side.
+ * These tables are the only place the causes are worded client-side.
  */
 const WITHHELD_FINDING: Record<AnnexWithheldCause, string> = {
   standing: 'der geltende Text dieser Stelle steht so nicht im RIS.',
   alreadyStanding: 'die vorgeschlagene Fassung zeigt Text als neu, der im RIS schon gilt.',
   notInDraft: 'die vorgeschlagene Fassung enthält Text, den der Entwurf für diesen Paragraphen nicht anordnet.',
 }
-const WITHHELD_FROM_PDF: Record<AnnexWithheldCause, string> = {
-  standing: 'Das kann daran liegen, dass wir die Zeilen des PDF falsch einander zugeordnet haben, oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.',
-  alreadyStanding: 'Das kann daran liegen, dass unsere Lesung der linken Spalte hier Text verloren hat, oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.',
-  notInDraft: 'Das kann daran liegen, dass wir beim Lesen des PDF Text aus einer Nachbarzeile in die rechte Spalte gezogen haben, dass der Entwurf diese Änderung an einer anderen Stelle anordnet, oder dass die Beilage nicht zu seinem Gesetzestext passt.',
-}
+/* SHORT SINCE 30.09.2026 — one clause of attribution, not the list of
+ * causes. The PDF variants ran to two or three „Das kann daran liegen,
+ * dass …" alternatives at every withheld block; the alternatives stand once
+ * on /so-funktionierts#gegenueberstellung, and the block links there. What
+ * must stay at the block is the attribution itself: on the PDF path our own
+ * reading is named first, so the finding never reads as the ministry's
+ * fault. */
+const WITHHELD_FROM_PDF = 'Das kann an unserer Lesung des PDF liegen.'
 const WITHHELD_FROM_TABLE: Record<AnnexWithheldCause, string | null> = {
   standing: null,
-  alreadyStanding: 'In der linken Spalte der Beilage fehlt dieser Text; sie dürfte dort einen anderen Stand des Gesetzes zugrunde legen als das RIS zum Beginn der Begutachtung.',
-  notInDraft: 'Entweder ordnet der Entwurf diese Änderung an einer anderen Stelle an, oder die Beilage ist älter als sein Gesetzestext, oder wir haben die Stelle dem falschen Paragraphen zugeordnet.',
+  alreadyStanding: 'Die Beilage dürfte einen anderen Stand des Gesetzes zugrunde legen.',
+  notInDraft: 'Das kann auch an unserer Zuordnung zum Paragraphen liegen.',
 }
 
 export function annexWithheldText(cause: AnnexWithheldCause | null): string {
@@ -115,7 +119,7 @@ export function annexWithheldText(cause: AnnexWithheldCause | null): string {
 
 export function annexWithheldBlame(cause: AnnexWithheldCause | null, readFrom: ReadFrom): string | null {
   const key = cause ?? 'standing'
-  return readFrom === 'pdf' ? WITHHELD_FROM_PDF[key] : WITHHELD_FROM_TABLE[key]
+  return readFrom === 'pdf' ? WITHHELD_FROM_PDF : WITHHELD_FROM_TABLE[key]
 }
 
 /**
@@ -158,9 +162,10 @@ export function annexDroppedPagesNote(n: number): string | null {
 export function annexDoubtfulNote(laws: readonly string[], readFrom: ReadFrom): string | null {
   if (laws.length === 0) return null
   const named = laws.length === 1 ? `„${laws[0]}“` : laws.map((l) => `„${l}“`).join(', ')
+  // One clause since 30.09.2026, as at the withheld blocks.
   const cause =
     readFrom === 'pdf'
-      ? 'Das kann daran liegen, dass wir die Zeilen des PDF falsch einander zugeordnet haben, oder daran, dass die Beilage einen anderen Stand des Gesetzes zugrunde legt.'
-      : 'Die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen als das RIS zum Beginn der Begutachtung.'
-  return `Auffällig viele Stellen weichen vom geltenden Text ab bei ${named}. ${cause}`
+      ? 'das kann an unserer Lesung des PDF liegen'
+      : 'die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen'
+  return `Auffällig viele Stellen weichen vom geltenden Text ab bei ${named} – ${cause}.`
 }

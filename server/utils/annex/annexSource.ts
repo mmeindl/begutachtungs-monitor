@@ -175,7 +175,9 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
   if (fromPdf.rows.length === 0) return fromPdf.unreadable ?? 'Die Textgegenüberstellung ließ sich nicht auslesen.'
   return {
     parsed: fromPdf,
-    source: { label: 'Textgegenüberstellung des Ressorts, aus dem PDF gelesen', url: pdfs[0]! },
+    // „, aus dem PDF gelesen" went on 30.09.2026: the status line over the
+    // comparison says it, as the caveat it is (`annexCheckNote`).
+    source: { label: 'Textgegenüberstellung des Ressorts', url: pdfs[0]! },
     credit: RIS_CREDIT,
     readFrom: 'pdf',
     droppedPages: fromPdf.droppedPages,

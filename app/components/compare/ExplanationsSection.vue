@@ -189,46 +189,19 @@ const loadAnnouncement = computed(() => {
         </div>
       </details>
 
-      <!-- What deliberately does NOT stand here stands in the document:
-           tables and figures (we do not print image file paths as sentences)
-           and the Besonderer Teil, which belongs to the individual
-           Paragraphen and not in a relevance check. Both are named, not
-           passed over in silence.
+      <!-- What deliberately does NOT stand here: tables and figures (we do
+           not print image file paths as sentences). Named, not passed over in
+           silence — it is a gap in what the reader sees.
 
-           Since the Besonderer Teil's passages hang at the §§ of the
-           Textgegenüberstellung (docs/architecture.md §12.30), „steht im
-           Dokument selbst" is only half the information — and where the other
-           half applies, it is the more expensive one: it sends the reader
-           into a PDF while the place is two screens down on the same page.
-           Whether it applies is decided by the server (`paragraphsAtAnnex`),
-           not by the section below: a sentence that changes its claim once
-           the comparison has loaded would be worse than one that is right
-           from the start.
-
-           THE POINTER TAKES NOTHING AWAY, it adds — „und vollständig im
-           Dokument selbst" stands in both versions. That is the answer to the
-           one draft in 110 where the annex exists and could not be read
-           (measured 19.09.2026, §12.30; four with Parliament's copy read):
-           the pointer then leads to a section that says itself what went
-           wrong, and the sentence did not take the document away to send the
-           reader there. The second half also carries information of its own:
-           at the Paragraph stands what could be attributed to one, and 16,3 %
-           of the passages find none (§12.30). -->
-      <p v-if="data.dropped || data.hasSpecial" class="mt-4 max-w-prose text-sm text-ink-muted">
-        <template v-if="data.dropped">
-          Tabellen und Abbildungen des Dokuments stehen hier nicht.
-        </template>
-        <template v-if="data.hasSpecial">
-          <template v-if="data.paragraphsAtAnnex">
-            Die Erläuterungen zu den einzelnen Paragraphen stehen unten bei der
-            <a href="#gegenueberstellung" class="link-inline">Gegenüberstellung</a>, an
-            dem Paragraphen, um den es jeweils geht — und vollständig im
-            Dokument selbst.
-          </template>
-          <template v-else>
-            Die Erläuterungen zu den einzelnen Paragraphen stehen im Dokument selbst.
-          </template>
-        </template>
+           The Besonderer Teil is no longer announced (30.09.2026). „Die
+           Erläuterungen zu den einzelnen Paragraphen stehen unten bei der
+           Gegenüberstellung … und vollständig im Dokument selbst" stood here
+           since 19.09.2026 and pointed down at a section that has stood ABOVE
+           this one since the section was reordered. Each § of the comparison
+           carries its own „Erläuterungen" disclosure, and the whole document
+           is one link away — in the credit line below and in „Dokumente". -->
+      <p v-if="data.dropped" class="mt-4 max-w-prose text-sm text-ink-muted">
+        Tabellen und Abbildungen des Dokuments stehen hier nicht.
       </p>
 
       <p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">

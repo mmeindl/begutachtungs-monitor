@@ -20,7 +20,6 @@ import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
-import { formatDateDe } from '#shared/utils/format'
 import {
   annexCheckNote,
   annexDoubtfulNote,
@@ -99,7 +98,7 @@ function consolidatedFor(law: string | null, para: string | null): ConsolidatedP
   return consolidatedByKey.value.get(explanationKey(law, id)) ?? consolidatedByKey.value.get(`*#${id}`) ?? null
 }
 
-/** How many §§ the Lesefassung carries — for the credit line at the foot. */
+/** How many §§ the Lesefassung carries — whether the credit names its source. */
 const consolidatedShown = computed(() => consolidated.value?.paragraphs.length ?? 0)
 
 /** The passages, lookupable by (law, Paragraph). */
@@ -390,11 +389,8 @@ const loadAnnouncement = computed(() => {
  * response object. They are functions of the response and of nothing
  * else. */
 const checkNote = computed(() => annexCheckNote(data.value?.verification ?? null, data.value?.readFrom ?? null))
-/** Which version of the law the check measured against — provenance, so it sits in the credits. */
-const checkAsOf = computed(() => {
-  const asOf = data.value?.verification?.asOf
-  return asOf ? formatDateDe(asOf) : null
-})
+/** Whether the annex came from RIS — then the credit already names the licence the Lesefassung's text shares. */
+const creditIsRis = computed(() => data.value?.credit?.includes('CC BY 4.0, RIS') ?? false)
 const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
 const doubtfulNote = computed(() =>
   annexDoubtfulNote(data.value?.verification?.doubtfulLaws ?? [], data.value?.readFrom ?? null),
@@ -456,8 +452,8 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            result with every withheld cause, and an announcement of the
            Lesefassung — before the reader reached what they came for. The
            causes stand at each withheld block, the Stichtag and the
-           Lesefassung's denominator in the credits at the foot, the method on
-           /so-funktionierts (`annexCheckNote` says what moved where).
+           method on /so-funktionierts (`annexCheckNote` says what moved
+           where); the Lesefassung announces itself at each §.
 
            The line is never empty: a comparison nothing could be checked in
            says so rather than falling silent, which reads as a clean bill.
@@ -573,7 +569,10 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
               <div v-for="(b, bi) in p.blocks" :key="`${b.kind}-${bi}`" :class="bi > 0 ? 'mt-3' : ''">
                 <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
                   {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
-                  {{ withheldText(b.cause) }}<template v-if="withheldBlame(b.cause)"> {{ withheldBlame(b.cause) }}</template>
+                  <!-- The space as a string: Vue's whitespace condensing drops
+                       a leading space inside `<template v-if>`, which printed
+                       „…im RIS.Das kann …" (seen 30.09.2026). -->
+                  {{ withheldText(b.cause) }}{{ withheldBlame(b.cause) ? ` ${withheldBlame(b.cause)}` : '' }}
                   Die Beilage des Ministeriums sagt, was sich ändert.
                 </p>
                 <details v-else-if="b.kind === 'context'" class="group">
@@ -654,13 +653,14 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                 </summary>
                 <div class="mt-1 pl-6">
                   <!-- The caveat stands with the text it applies to, not once
-                       at the top for 26 disclosures: what stands here is no
-                       official version but the text in force from RIS with
-                       this draft's instructions applied. -->
+                       at the top for 26 disclosures. Two words since
+                       30.09.2026 — „nicht amtlich" is what must not be
+                       missed; how the text is made (RIS in force plus this
+                       draft's instructions, confirmed by the ressort's own
+                       Gegenüberstellung) stands behind the link. -->
                   <p class="max-w-prose text-xs text-ink-muted">
-                    Nicht amtliche Lesefassung: der geltende Text aus dem RIS mit den
-                    Anweisungen dieses Entwurfs, geprüft gegen die Gegenüberstellung
-                    des Ressorts.
+                    Nicht amtliche Lesefassung.
+                    <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie sie entsteht</NuxtLink>
                   </p>
                   <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
                     <DiffText :segments="p.consolidated.headingSegments" removed-normal-weight />
@@ -723,23 +723,22 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
              has a licence and a Fundstelle of its own. Naming it here is the
              same rule as in the section before, only that it now belongs to a
              layer INSIDE this section. -->
-        <!-- The Stichtag of the RIS check: not a method but a statement
-             about THIS check — which version of the law was measured
-             against. Moved here from the status line on 30.09.2026. -->
-        <span v-if="checkAsOf">RIS-Abgleich: Stand {{ checkAsOf }} (Beginn der Begutachtungsfrist)</span>
-        <!-- The Lesefassung's denominator (docs/architecture.md §12.12a):
-             without it, a handful of expandable Paragraphen could read as
-             „bei den anderen bleibt alles beim Alten" (§12.27). It stood as
-             a paragraph above the comparison until 30.09.2026; each
-             disclosure carries its own caveat, so the count is what remains. -->
-        <span v-if="consolidatedShown > 0">
-          Lesefassung bei {{ consolidatedShown }} von {{ consolidated?.touched ?? consolidatedShown }}
-          {{ (consolidated?.touched ?? consolidatedShown) === 1 ? 'geänderten Paragraph' : 'geänderten Paragraphen' }}
-        </span>
+        <!-- The geltender Text of the Lesefassung, only where one is
+             expandable somewhere: RIS text in force, with a Fundstelle of its
+             own. Where the annex itself came from RIS the licence is already
+             named in the line and is not said twice (30.09.2026); where it
+             came from Parliament's copy, this link needs its own. -->
         <template v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl">
-          <span>Geltender Text (CC BY 4.0, RIS):</span>
-          <ExternalLink :href="consolidated.paragraphs[0]!.risUrl!" class="text-accent-deep hover:underline">Konsolidierte Fassung im RIS</ExternalLink>
+          <span v-if="!creditIsRis">Geltender Text (CC BY 4.0, RIS):</span>
+          <ExternalLink :href="consolidated.paragraphs[0]!.risUrl!" class="text-accent-deep hover:underline">Geltender Text im RIS</ExternalLink>
         </template>
+        <!-- Gone on 30.09.2026, both added the same morning: the Stichtag
+             of the RIS check („RIS-Abgleich: Stand …") — the rule stands on
+             /so-funktionierts#gegenueberstellung and the date itself in the
+             bar and under „Geltendes Recht"; and the Lesefassung's
+             denominator („bei 6 von 14"), which is no source, and whose
+             worry — the other §§ read as unchanged (§12.27) — does not arise
+             in a diff that marks every change. -->
       </SectionCredits>
     </template>
   </div>
