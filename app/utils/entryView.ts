@@ -78,13 +78,6 @@ export interface EntryState {
   label: string
   /** What pins it down: a date or a citation. Null → line 1 stands alone. */
   detail: string | null
-  /**
-   * „Kurze Frist: 2 Wochen" / „Volle Frist: 6 Wochen" — open windows only,
-   * and only at the edges (`fristClassLineDe`). On a running Frist it is the
-   * one thing a reader can still act on; on a closed one it would stand on a
-   * quarter of the archive, so the detail page says it there instead.
-   */
-  span?: string | null
   tone: DeadlineTone
   /** Something can still be filed — the one condition that may be loud. */
   actionable: boolean
@@ -115,7 +108,11 @@ export interface EntryView {
   coMinistries: { code: string; name: string }[]
   /** Zone 2, last token — the debate name, quoted, ink. */
   alias: string | null
-  /** A procedural fact that belongs to the identity, e.g. „ohne Begutachtung". */
+  /**
+   * A procedural fact that belongs to the identity, e.g. „ohne Begutachtung"
+   * — or, on an open Entwurf, „Kurze Frist: 2 Wochen" / „Volle Frist: 6
+   * Wochen" (`openFristNote`).
+   */
   note: string | null
   isNew: boolean
   participation: Participation
@@ -133,14 +130,25 @@ export interface EntryView {
  * past date is looked up, not planned around, and the weekday beside it is
  * then ballast in a column a hundred rows long.
  */
-function openState(start: string | null, deadline: string | null, active: boolean): EntryState {
+function openState(deadline: string | null, active: boolean): EntryState {
   return {
     label: fristLabel(deadline, active),
     detail: deadline ? `bis ${formatDateWeekdayDe(deadline)}` : null,
-    span: fristClassLineDe(start, deadline),
     tone: deadlineTone(deadline, active),
     actionable: true,
   }
+}
+
+/**
+ * Zone 2's Frist token: the class of an OPEN window, at the edges only
+ * (`fristClassLineDe`). In the identity line and not in the Stand box: the
+ * box answers „how much time is left", this answers „how long was the
+ * window", and a third line in the box made that one row taller than every
+ * other (30.09.2026). Closed entries carry none — on the archive it would
+ * stand on a quarter of the rows; the detail page says it there.
+ */
+function openFristNote(start: string | null, deadline: string | null, active: boolean): string | null {
+  return active ? fristClassLineDe(start, deadline) : null
 }
 
 /**
@@ -241,7 +249,7 @@ export function viewOfDraft(
   outcome?: { rvCitation: string | null; bgblNumber: string | null } | null,
 ): EntryView {
   const state = draft.active
-    ? openState(draft.arrivedAt, draft.deadline, true)
+    ? openState(draft.deadline, true)
     : outcome
       ? outcomeState(outcome, draft.deadline)
       : draft.chain
@@ -259,7 +267,7 @@ export function viewOfDraft(
     ministry: { code: draft.ministryCode, name: draft.ministryName },
     coMinistries: draft.coMinistries,
     alias: aliasesFor(draft.gp, draft.inr)[0] ?? null,
-    note: null,
+    note: openFristNote(draft.arrivedAt, draft.deadline, draft.active),
     isNew: isNewArrival(draft.arrivedAt, draft.active),
     participation: { kind: 'count', count: draft.statementCount },
     state,
@@ -305,7 +313,7 @@ export function viewOfRis(c: RisConsultation): EntryView {
     // One record, one Stelle: RIS has no joint Begutachtung.
     coMinistries: [],
     alias: null,
-    note: null,
+    note: openFristNote(c.startedAt, c.deadline, c.active),
     isNew: isNewArrival(c.startedAt, c.active),
     participation: { kind: 'unpublished' },
     /**
@@ -326,7 +334,7 @@ export function viewOfRis(c: RisConsultation): EntryView {
      * not by the column in two words.
      */
     state: c.active
-      ? openState(c.startedAt, c.deadline, true)
+      ? openState(c.deadline, true)
       : c.outcome?.state === 'kundgemacht' && c.outcome.nummer
         ? { label: 'Kundgemacht', detail: c.outcome.nummer, tone: 'inactive', actionable: false }
         : endedState(c.deadline, 'Begutachtung abgeschlossen'),

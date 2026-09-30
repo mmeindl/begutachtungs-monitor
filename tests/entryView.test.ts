@@ -103,15 +103,17 @@ describe('Zone 4 — Stand', () => {
     expect(state.detail).toMatch(/^bis \w+\., 16\.10\.2099$/)
   })
 
-  it('names a short or full window on an open entry only, and nothing in the middle', () => {
+  it('names a short or full window in zone 2, on an open entry only', () => {
     const open = (arrivedAt: string, deadline: string) =>
-      viewOfDraft(draft({ active: true, arrivedAt, deadline })).state.span
+      viewOfDraft(draft({ active: true, arrivedAt, deadline })).note
     expect(open('2099-10-02', '2099-10-16')).toBe('Kurze Frist: 2 Wochen')
     expect(open('2099-09-04', '2099-10-16')).toBe('Volle Frist: 6 Wochen')
     expect(open('2099-09-18', '2099-10-16')).toBeNull()
     // Closed: the archive carries no class, the detail page says it.
-    expect(viewOfDraft(draft({ active: false, arrivedAt: '2025-08-17', deadline: PAST })).state.span)
-      .toBeUndefined()
+    expect(viewOfDraft(draft({ active: false, arrivedAt: '2025-08-17', deadline: PAST })).note).toBeNull()
+    // And never in the Stand box, whose height every row shares.
+    expect(viewOfDraft(draft({ active: true, arrivedAt: '2099-10-02', deadline: '2099-10-16' })).state)
+      .not.toHaveProperty('span')
   })
 
   /* A status reached is evidenced by its citation, not by the deadline's end
