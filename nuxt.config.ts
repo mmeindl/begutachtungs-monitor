@@ -71,6 +71,17 @@ export default defineNuxtConfig({
     // since 2026-08-27 (app/assets/css/main.css). Body text stays system
     // sans, and nothing is fetched from a third party at runtime.
     fonts: false,
+    // Theme CSS only for the Nuxt UI components the app uses (five of
+    // them), instead of all of Nuxt UI's. The one render-blocking
+    // stylesheet goes from 208 to 85 KB, 28,7 to 14,4 KB gzipped (measured
+    // 30.09.2026). Checked on production builds, 12 pages at 1280 and 390
+    // px: no computed style and no box of any element changed, and every
+    // class on the rendered pages still has its rule. What it does take
+    // away: a utility our templates use only by accident of standing in a
+    // Nuxt UI theme too. Such a class must be written out in full in our
+    // own source, as Tailwind requires anyway; a class assembled from a
+    // string is not found.
+    experimental: { componentDetection: true },
   },
   // EU sovereignty: icons come exclusively from the locally installed
   // @iconify-json/lucide bundle — never at runtime from api.iconify.design.
