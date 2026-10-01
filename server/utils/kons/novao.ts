@@ -1555,6 +1555,46 @@ function eachUnitOccurrence(head: string): boolean {
 }
 
 /**
+ * The places of an operation the engine carries out at ONE place — a
+ * sentence deleted, a sentence replaced, a sentence or a unit appended — one
+ * per unit the address lists.
+ *
+ * „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz" is one address
+ * whose siblings are the second Absatz, and the engine's sentence and append
+ * branches resolve the address once: the sentence left Abs. 1c, stayed in
+ * Abs. 1d, and the line counted as applied (KommAustria-Gesetz, 01.10.2026).
+ * The same held for „Dem § 13 Abs. 1 und 3 wird jeweils folgender Satz
+ * angefügt" and „Den §§ 34, 35 und 37 wird jeweils folgender Abs. 3
+ * angefügt". Split here, each unit is its own operation — the form the
+ * renumbering branch already uses for „Abs. 7 und 8 … ‚(3)' und ‚(4)'" — and
+ * every reader downstream (engine, guard, gate, annex) sees one place per op.
+ * The units are siblings, so one change cannot shift the next.
+ *
+ * **Only with „jeweils".** Without it, whether the sentence is the last of
+ * each Absatz or of the two together is not in the words — null, and the
+ * caller refuses. Across the corpus no such line occurs except two misread
+ * ones („In § 72 Abs. 1 lauten Z 1 und 2 sowie der Schlussteil"), which the
+ * refusal now names instead of the engine failing on a Schlussteil of Z 1.
+ */
+function oneUnitEach(head: string, targets: readonly NovaoAddress[]): NovaoAddress[] | null {
+  if (targets.every((t) => t.siblings.length === 0)) return [...targets]
+  if (!JEWEILS_RE.test(maskQuotes(head))) return null
+  return targets.flatMap((t) => {
+    if (t.siblings.length === 0) return [t]
+    const key = t.lit !== null ? 'lit' : t.z !== null ? 'z' : t.abs !== null ? 'abs' : null
+    const own = { ...t, siblings: [] }
+    return [own, ...t.siblings.map((id) => (key ? { ...own, [key]: id } : { ...own, para: designationOf(t.para ?? '§', id) }))]
+  })
+}
+
+/** A sentence or Halbsatz address, or the append of one: the operations `oneUnitEach` splits. */
+function sentenceLevel(t: NovaoAddress): boolean {
+  return t.satz !== null || t.halbsatz !== null
+}
+
+const ONE_PLACE_SEVERAL_UNITS = 'Mehrere Einheiten, eine Stelle — ohne „jeweils" nicht entscheidbar'
+
+/**
  * „Der bisherige Inhalt des § 29 erhält die Absatzbezeichnung ‚(1)'", „Dem
  * Text des § 26 wird die Absatzbezeichnung ‚(1)' vorangestellt": a Paragraph
  * without Absatz numbering gets its first number, because the next line
@@ -1919,7 +1959,9 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
       // joins the unit's end like a Halbsatz — behind the closing Beistrich,
       // as the RIS shows for both (LMSVG § 38, ALSAG § 3, 28.09.2026).
       if (quotes.length === 0 && /^folgende[rn]?\s+(?:Satzteil|Wortfolge|Wortgruppe)\s+(?:wird\s+)?angefügt\b/i.test(payload) && !/\b(?:vor|nach)\s+(?:dem|der|den)\b/i.test(masked)) {
-        return { ops: places.map((t) => ({ kind: 'append' as const, target: t, child: 'halbsatz' as const, childIds: [] })), reason: null, line }
+        const each = oneUnitEach(head, places)
+        if (!each) return fail(ONE_PLACE_SEVERAL_UNITS)
+        return { ops: each.map((t) => ({ kind: 'append' as const, target: t, child: 'halbsatz' as const, childIds: [] })), reason: null, line }
       }
       if (quotes.length < 2) return fail('Einfügung ohne Anker und Text')
       // "das Wort „zuletzt“ gestrichen sowie nach der Wort- und Zeichenfolge
@@ -1977,7 +2019,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // ressort left standing. The refusal carries the clause, so the next
     // reading of the list can name the noun.
     if (head.includes('"')) return fail('Streichung nennt einen Text — Einheit oder Textstelle nicht entscheidbar')
-    return { ops: targets.map((t) => ({ kind: 'delete' as const, target: t, withHeading })), reason: null, line }
+    // A unit deletion over siblings removes each of them (`lawApply`); a
+    // sentence deletion is carried out at one place (`oneUnitEach`).
+    const places = targets.some(sentenceLevel) ? oneUnitEach(head, targets) : targets
+    if (!places) return fail(ONE_PLACE_SEVERAL_UNITS)
+    return { ops: places.map((t) => ({ kind: 'delete' as const, target: t, withHeading })), reason: null, line }
   }
 
   // A unit replacement written with `ersetzt` instead of `lautet`: "In § 24j
@@ -1993,6 +2039,14 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // Several §§ with one quoted block: which text belongs to which § is not
     // decidable from the instruction alone.
     if (targets.length > 1) return fail(`${targets.length} Ziele für eine Neufassung`)
+    // „In § 5 Abs. 1 und 2 lautet jeweils der letzte Satz:" — the same
+    // sentence text in each unit; a unit run over siblings stays one op,
+    // because the payload is a block per unit (`lawApply`, `spliceRun`).
+    if (sentenceLevel(target)) {
+      const places = oneUnitEach(head, targets)
+      if (!places) return fail(ONE_PLACE_SEVERAL_UNITS)
+      return { ops: places.map((t) => ({ kind: 'replace' as const, target: t, withHeading, run: replacedByPayload })), reason: null, line }
+    }
     return ok({ kind: 'replace', target, withHeading, run: replacedByPayload })
   }
 
@@ -2038,7 +2092,11 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
     // "§ 3 Abs. 1 und § 4 Abs. 1 wird jeweils folgender Satz angefügt" names
     // two places; appending to the first alone reported success on a law
     // that was half amended (Bildungsinvestitionsgesetz, 2026-09-09).
-    return { ops: targets.map((t) => ({ kind: 'append' as const, target: t, child, childIds: childIds(payload, child) })), reason: null, line }
+    // „Dem § 13 Abs. 1 und 3 wird jeweils folgender Satz angefügt" names two
+    // Absätze in ONE address, which an append resolves once (`oneUnitEach`).
+    const places = oneUnitEach(head, targets)
+    if (!places) return fail(ONE_PLACE_SEVERAL_UNITS)
+    return { ops: places.map((t) => ({ kind: 'append' as const, target: t, child, childIds: childIds(payload, child) })), reason: null, line }
   }
 
   return fail('kein bekanntes Verb')

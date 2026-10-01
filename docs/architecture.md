@@ -3417,6 +3417,44 @@ folgender Eintrag eingefügt:") weiter als eigene Zeilen: Sie sperren den
 genannten Paragraphen, was einen kostet und nie einen falschen zeigt. Die
 Beilage liest sie seit heute als Teil des Inhaltsverzeichnisses (§12.13).
 
+**„jeweils" an einer Stelle je Einheit (02.10.2026).** „In § 35 Abs. 1c und
+1d entfällt jeweils der letzte Satz" (KommAustria-Gesetz, EMFG-Begleitgesetz,
+gefunden von Prüfung 4 des Orakels, §12.12a) ist *eine* Adresse, deren
+Geschwister Abs. 1d ist. Der Satz-Zweig der Streichung und der Zweig der
+Anfügung lösen eine Adresse einmal auf: Der Satz verließ Abs. 1c, blieb in
+Abs. 1d, und die Zeile galt als angewendet. Die Zählung, alt gegen neu über
+15.004 verschiedene Anweisungszeilen (`.cache/novao`, ME-Prüfstand,
+Sammelnovellen-Prüfstand, beide Beilagenpfade): **20 Wortlaute** tragen
+„jeweils" über mehrere Orte mit einer Satz- oder Halbsatzoperation. 15 nennen
+die Orte als eigene Adressen und sind schon eine Operation je Ort, einer ist
+eine Textoperation, die `eachUnit` je Einheit fragt — und **vier sind eine
+Adresse mit Geschwistern, alle vier still halb ausgeführt**: diese Streichung
+und drei Anfügungen („Dem § 13 Abs. 1 und 3 wird jeweils folgender Satz
+angefügt", Wirtschaftliche Eigentümer Registergesetz, dazu § 45 und § 24
+zweier Beilagen). Dieselbe Form eine Ebene höher: „Den §§ 34, 35 und 37 wird
+jeweils folgender Abs. 3 angefügt" fügte nur § 34 an. Jetzt teilt die
+Grammatik (`oneUnitEach` in `kons/novao.ts`) eine Streichung, Neufassung oder
+Anfügung an einer Stelle in eine Operation je Einheit — die Form, die die
+Umbenennung „Abs. 7 und 8 … ‚(3)' und ‚(4)'" schon hat —, und Engine, Wache,
+Tor und Beilage sehen dieselben Orte. Die Einheiten sind Geschwister, eine
+Änderung verschiebt die nächste nicht. **Ohne „jeweils" wird verweigert**:
+Ob der letzte Satz jedes Absatzes oder der beiden zusammen gemeint ist, steht
+nicht in den Worten. Im Korpus trifft das nur zwei ohnehin falsch gelesene
+Zeilen („In § 72 Abs. 1 lauten Z 1 und 2 sowie der Schlussteil", „In § 1k
+lautet der Einleitungsteil samt den Z 1 und 2"), die als Satz einer Ziffer
+gelesen waren und jetzt mit Grund verweigert werden. Dahinter wacht
+`kons/lawApply.ts`: Eine Operation an einer Stelle, deren Adresse noch
+Geschwister trägt, wird verweigert („Mehrere Einheiten für eine Stelle"),
+statt die erste zu ändern. Alt gegen neu: **8 Zeilen lesen sich anders, jede
+gelesen** — die sechs „jeweils"-Zeilen und die zwei Verweigerungen.
+Prüfstände: Sammelnovellen **jede Zahl gleich** (keine der Zeilen steht in
+den 40 Novellen); Entwürfe Anweisungen 2.893 → 2.894, gelesen 2.600 →
+2.601, angewendet 2.243 → 2.244, plausibel 1.061, **bestätigt 622 → 623** —
+der WiEReG-§ 13, dessen Abs. 3 den Satz jetzt auch trägt und den die Beilage
+damit bestätigt statt widerspricht. Der EMFG-Entwurf selbst liegt vor dem
+Fenster der 120: einzeln gemessen wird § 35 von unplausibel und widersprochen
+zu plausibel und bestätigt. Drift ohne Befund.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),

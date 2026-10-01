@@ -1061,6 +1061,13 @@ function spliceChildren(host: LawNode, anchorId: string | null, level: NodeLevel
 }
 
 /**
+ * The refusal of an operation the engine carries out at one place whose
+ * address still lists several units — carried out, it would change the first
+ * of them and report the line applied.
+ */
+const ONE_PLACE_SIBLINGS = 'Mehrere Einheiten für eine Stelle'
+
+/**
  * Applies one instruction. Mutates `law`; returns null on success or the
  * reason for refusal.
  */
@@ -1241,6 +1248,10 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // replacement brings one (`halbsatzSpan`).
       if (op.target.halbsatz) return `Streichung eines Halbsatzes — Grenze nicht bestimmbar`
       if (op.target.satz) {
+        // One place: the parser splits „Abs. 1c und 1d … jeweils" into one
+        // op per Absatz (`oneUnitEach`), and an op that still lists siblings
+        // would strike the sentence from the first of them alone.
+        if (op.target.siblings.length > 0) return ONE_PLACE_SIBLINGS
         const node = resolveTarget(law, op.target)
         if (!node) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
         const only = sentenceSlot(node, op.target.satz, op.target.satzCount)
@@ -1266,6 +1277,8 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'append': {
+      // Resolved once, so one place — the same rule as the sentence deletion.
+      if (op.target.siblings.length > 0) return ONE_PLACE_SIBLINGS
       let host = resolveTarget(law, op.target)
       if (!host) return `Nicht im geltenden Text: ${op.target.raw.slice(0, 60)}`
       if (payload.length === 0) return 'Anfügung ohne Text'
@@ -1371,7 +1384,9 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         law.paragraphs.splice(op.where === 'after' ? at + 1 : at, 0, ...blocks.map((p) => ({ ...p, level: 'para' as const })))
         return null
       }
-      // A sub-unit insert names its anchor at the same level inside the §.
+      // A sub-unit insert names its anchor at the same level inside the §,
+      // and one anchor.
+      if (op.anchor.siblings.length > 0) return ONE_PLACE_SIBLINGS
       const para = findParagraph(law, op.anchor)
       if (!para) return `§ nicht im geltenden Text: ${op.anchor.para}`
       const host = op.anchor.level === 'para' ? para : (resolveTarget(law, op.anchor) ?? para)

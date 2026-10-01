@@ -1040,6 +1040,50 @@ describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () =>
   })
 })
 
+describe('„jeweils" bei einer Operation an einer Stelle (02.10.2026)', () => {
+  // „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz" (KommAustria-
+  // Gesetz): the sentence branch resolved the address once, struck the
+  // sentence from the first Absatz and reported the line applied.
+  const twoAbsaetze = (): StandingLaw => ({
+    paragraphs: [para('35', 'Aufsicht', ['Die Behörde prüft. Sie berichtet jährlich.', 'Der Beirat berät. Er tagt jährlich.', 'Das bleibt.'])],
+  })
+
+  it('strikes the sentence from every Absatz the address lists', () => {
+    const { law: out, results } = run(twoAbsaetze(), instr('In § 35 Abs. 1 und 2 entfällt jeweils der letzte Satz.'))
+    expect(results.every((r) => r.applied), results.map((r) => r.reason).join(' | ')).toBe(true)
+    expect(out.paragraphs[0]!.children.map((c) => plainText(c))).toEqual(['Die Behörde prüft.', 'Der Beirat berät.', 'Das bleibt.'])
+  })
+
+  it('appends the sentence to every Absatz, and the Absatz to every §', () => {
+    const { law: out, results } = run(twoAbsaetze(), instr('Dem § 35 Abs. 1 und 2 wird jeweils folgender Satz angefügt:', ['Näheres regelt eine Verordnung.']))
+    expect(results.every((r) => r.applied), results.map((r) => r.reason).join(' | ')).toBe(true)
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Behörde prüft. Sie berichtet jährlich. Näheres regelt eine Verordnung.')
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Der Beirat berät. Er tagt jährlich. Näheres regelt eine Verordnung.')
+    expect(plainText(out.paragraphs[0]!.children[2]!)).toBe('Das bleibt.')
+
+    const l: StandingLaw = { paragraphs: [para('34', 'A', ['Eins.', 'Zwei.']), para('35', 'B', ['Eins.', 'Zwei.'])] }
+    const { law: both, results: r2 } = run(l, instr('Den §§ 34 und 35 wird jeweils folgender Abs. 3 angefügt:', ['(3) Drei.']))
+    expect(r2.every((r) => r.applied), r2.map((r) => r.reason).join(' | ')).toBe(true)
+    expect(both.paragraphs.map((p) => p.children.map((c) => c.id))).toEqual([['1', '2', '3'], ['1', '2', '3']])
+  })
+
+  // Without „jeweils" the last sentence of each Absatz and the last of the
+  // two together are both readings; the line is refused, not guessed.
+  it('refuses the same line without „jeweils"', () => {
+    expect(parseInstruction('In § 35 Abs. 1 und 2 entfällt der letzte Satz.').reason).toMatch(/ohne „jeweils"/)
+    expect(parseInstruction('Dem § 35 Abs. 1 und 2 wird folgender Satz angefügt:').reason).toMatch(/ohne „jeweils"/)
+  })
+
+  // The engine's own guard, for an op that reaches it with siblings anyway.
+  it('refuses an op at one place whose address still lists several units', () => {
+    const op = parseInstruction('In § 35 Abs. 1 entfällt der letzte Satz.').ops[0]!
+    if (op.kind !== 'delete') throw new Error(op.kind)
+    const { law: out, results } = applyNovelle(twoAbsaetze(), [{ op: { ...op, target: { ...op.target, siblings: ['2'] } }, payload: [], line: '' }])
+    expect(results[0]!.reason).toMatch(/Mehrere Einheiten für eine Stelle/)
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Behörde prüft. Sie berichtet jährlich.')
+  })
+})
+
 describe('a list extended by the clause behind its last Ziffer (26.09.2026)', () => {
   it('appends the new Ziffern to the Absatz, in front of its Schlussteil', () => {
     const l: StandingLaw = { paragraphs: [para('31a', 'Pflichten', [{ text: 'Der Arbeitgeber hat', ziffern: ['A zu tun,', 'B zu tun.'] }])] }
