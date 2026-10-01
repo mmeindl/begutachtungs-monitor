@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LawDiffUnit } from '../shared/types'
-import { displayId, extraHeading, unitName } from '../shared/utils/unitName'
+import { displayId, extraHeading, unitName, withoutOwnDesignation } from '../shared/utils/unitName'
 
 function unit(u: Partial<LawDiffUnit>): LawDiffUnit {
   return {
@@ -76,5 +76,37 @@ describe('displayId', () => {
     expect(displayId('§5')).toBe('§ 5')
     expect(displayId('Z3')).toBe('Z 3')
     expect(displayId('§5#dup')).toBe('§ 5#dup')
+  })
+})
+
+describe('withoutOwnDesignation', () => {
+  it('drops the § the heading repeats — the card prints it in front already', () => {
+    // SchOG § 37 as RIS serves it: „§ 37 § 37. Sonderformen …" on the card.
+    expect(withoutOwnDesignation('§ 37. Sonderformen der allgemeinbildenden höheren Schulen', '§ 37')).toBe(
+      'Sonderformen der allgemeinbildenden höheren Schulen',
+    )
+    expect(withoutOwnDesignation('§ 37 Sonderformen', '§ 37')).toBe('Sonderformen')
+    expect(withoutOwnDesignation('§ 57a. Wiederkehrende Begutachtung', '§ 57a')).toBe('Wiederkehrende Begutachtung')
+    // The trailing period of the heading itself stays: it is RIS's wording.
+    expect(withoutOwnDesignation('§ 2. Begriffsbestimmungen.', '§ 2')).toBe('Begriffsbestimmungen.')
+  })
+
+  it('returns null where the designation is all there is', () => {
+    expect(withoutOwnDesignation('§ 27.', '§ 27')).toBeNull()
+    // The older form of the Genossenschaftsgesetz.
+    expect(withoutOwnDesignation('§. 87.', '§ 87')).toBeNull()
+  })
+
+  it('never drops ANOTHER §', () => {
+    expect(withoutOwnDesignation('§ 37a. Sonderformen', '§ 37')).toBe('§ 37a. Sonderformen')
+    expect(withoutOwnDesignation('§ 370. Sonderformen', '§ 37')).toBe('§ 370. Sonderformen')
+    expect(withoutOwnDesignation('§ 38. Sonderformen', '§ 37')).toBe('§ 38. Sonderformen')
+  })
+
+  it('leaves an ordinary heading alone, including one that merely starts like a designation', () => {
+    expect(withoutOwnDesignation('Sonderformen', '§ 37')).toBe('Sonderformen')
+    // GrEStG § 4: „Art" is a word here, not an Artikel.
+    expect(withoutOwnDesignation('Art der Berechnung', '§ 4')).toBe('Art der Berechnung')
+    expect(withoutOwnDesignation('§ 37. Sonderformen', 'Art. 3')).toBe('§ 37. Sonderformen')
   })
 })

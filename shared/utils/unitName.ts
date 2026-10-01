@@ -53,6 +53,30 @@ export function extraHeading(u: LawDiffUnit): string | null {
   return heading && body.startsWith(heading) ? null : u.heading
 }
 
+/**
+ * A RIS § heading without the designation it sometimes carries itself.
+ *
+ * Most consolidated §§ keep the „§ 37." in a marker of its own and the
+ * heading beside it; some print both in the one heading element („§ 37.
+ * Sonderformen der allgemeinbildenden höheren Schulen", SchOG). The card
+ * puts the addressed § in front of the name, so such a heading read
+ * „§ 37 § 37. Sonderformen …". Measured 01.10.2026 over 2.973 cached RIS
+ * headings: 60 carry their own designation, none another one
+ * (docs/architecture.md §12.11).
+ *
+ * Only the SAME § is removed — `para` is the one the instruction addresses
+ * („§ 37"). A heading that opens with any other designation keeps it: that
+ * is a different statement, and „§ 37a" is not „§ 37". A heading that is
+ * nothing but the designation („§ 27.", the older „§. 87.") names nothing
+ * and comes back as null.
+ */
+export function withoutOwnDesignation(heading: string, para: string): string | null {
+  const own = /^§\s*(\d+[a-z]*)$/i.exec(para.trim())?.[1]
+  const lead = /^\s*§\s*\.?\s*(\d+[a-z]*)(?:\s*\.)?(?=\s|$)/i.exec(heading)
+  if (!own || !lead || lead[1]!.toLowerCase() !== own.toLowerCase()) return heading
+  return heading.slice(lead[0].length).trim() || null
+}
+
 /** Whether this unit IS a paragraph rather than an instruction that amends one. */
 export function isParagraphUnit(u: LawDiffUnit): boolean {
   return u.id.startsWith('§')

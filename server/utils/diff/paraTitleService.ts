@@ -33,6 +33,7 @@ import { parseRisXml } from '../lawtext/risXml'
 import { promulgationByArticle } from '../lawtext/draftArticles'
 import { addressedParagraphOf } from '../lawtext/instructionAddress'
 import { diffUnitKey } from '#shared/utils/diffKey'
+import { withoutOwnDesignation } from '#shared/utils/unitName'
 import { parseKonsParagraph } from '../lawtext/konsTree'
 import { getDraftsForGp, getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
@@ -157,7 +158,10 @@ export const getParagraphTitles = defineCachedFunction(
         // returned early.
         if (fetched >= MAX_HEADINGS) return
         fetched++
-        const heading = await fetchHeading(law.paragraphs[para]!).catch(() => null)
+        const raw = await fetchHeading(law.paragraphs[para]!).catch(() => null)
+        // The card prints the § in front of the name; a heading that
+        // carries its own „§ 37." would print it twice (`withoutOwnDesignation`).
+        const heading = raw ? withoutOwnDesignation(raw, para) : null
         if (!heading) return
         for (const key of keys) titles[key] = heading
       })

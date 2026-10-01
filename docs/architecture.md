@@ -1431,6 +1431,41 @@ auf der Seite als „§ 37 § 37. …" erscheinen, und die Verweigerung des
 Inhaltsverzeichnisses in `konsGate.refusedUnits`, die dieselben Wortlaute
 nicht kennt.
 
+**Nachtrag 01.10.2026 — „§ 37 § 37." ist behoben.** Die meisten Paragraphen
+im RIS führen „§ 37." als eigene Marke und die Überschrift daneben; manche
+drucken beides in dasselbe Überschriftselement. Die Karte stellt den
+adressierten § vor den Namen, also stand er zweimal da.
+`withoutOwnDesignation` (`shared/utils/unitName.ts`) nimmt die Bezeichnung
+aus der RIS-Überschrift, wenn sie **derselbe** § ist, den die Anweisung
+adressiert, mit oder ohne Punkt; jede andere Bezeichnung bleibt stehen
+(„§ 37a" ist nicht „§ 37"). Eine Überschrift, die nur aus der Bezeichnung
+besteht („§ 27.", im Genossenschaftsgesetz noch „§. 87."), nennt nichts und
+wird kein Name. Angewandt in `paraTitleService.ts`, wo der § bekannt ist,
+und im Audit, damit dessen Überschriftsprüfung dieselbe Lesung vergleicht.
+**Gemessen offline** über den Dokumentcache des RIS (3.386 Paragraphen,
+2.973 mit Überschrift): **60** tragen die eigene Bezeichnung, verteilt auf
+KFG 1967 (17), StVO 1960 (10), BewG 1955 (7), SchOG (3), GenG (2), je einer
+in RAO, JN, GmbHG und GOG, 17 in Dokumenten ohne Abkürzung; **9** davon bestehen nur aus ihr; **keine** einzige beginnt
+mit einer anderen Bezeichnung. Der einzige Treffer einer naiven Suche nach
+„Art" am Anfang war ein Wort („Art der Berechnung", GrEStG § 4) — deshalb
+prüft die Funktion nur „§".
+**Über die 40 Entwürfe der XXVIII** (dieselbe Auswahl wie
+`scripts/audit/paraTitle.ts`, Produktionsbuild mit kalten Caches, jeder
+nachgeschlagene Name vor der Änderung gesichert und die Funktion danach
+darauf angewandt): von 1.385 nachgeschlagenen Namen ändern sich **54**, in
+vier Entwürfen — 69/ME (Privatschulgesetz, 34), 66/ME (SchOG, 8), 112/ME (RAO,
+6) und 116/ME (JN, GOG und BewG 1955, 6); **42**
+verlieren nur die doppelte Bezeichnung, **12** waren nichts als sie („§ 27
+§ 27.", „§ 121 §. 121.") und sind jetzt kein Name. Kein einziger beginnt mit
+einem anderen §. Auf geänderten Einheiten, wo der Name auch sichtbar ist
+(kein zitierter Titel geht vor), sind es 19, davon 2 ohne Namen danach
+(69/ME Z 28 und Z 30); der Rest steht auf unveränderten Einheiten in der
+Kontextzeile. **Der Preis dieser 12:** Ohne Namen stellt die Karte auch den
+§ nicht mehr davor, die Zeile sagt dann nur „Z 28" statt „Z 28 § 27 § 27." —
+weniger, aber nichts Falsches. Ob eine Ziffer ohne Namen ihren § trotzdem
+zeigen soll, ist eine eigene Frage für alle namenlosen Ziffern, nicht für
+diese zwölf.
+
 ### 12.12 Consolidated law text — engine built, not yet published
 
 Today a Novelle compares *amendment instructions*: "In § 9 Abs. 1 wird nach

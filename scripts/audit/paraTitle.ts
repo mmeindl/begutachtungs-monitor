@@ -39,7 +39,7 @@ import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { promulgationByArticle } from '../../server/utils/lawtext/draftArticles'
-import { unitName } from '../../shared/utils/unitName'
+import { unitName, withoutOwnDesignation } from '../../shared/utils/unitName'
 
 const GP = process.argv[2] ?? 'XXVIII'
 const MAX_DRAFTS = Number(process.argv[3] ?? 40)
@@ -166,7 +166,10 @@ for (const row of map.rows.filter((r: any) => r.risDocument?.xml)) {
     const ref = law.paragraphs?.[para]
     if (!ref) { skipped++; continue }
     const tree = await fetchParagraphTree(ref).catch(() => null)
-    if (tree?.heading === shown) ok++
+    // The service shows the heading without its own „§ 37." where RIS
+    // prints one inside it, so the refetched heading is read the same way.
+    const expected = tree?.heading ? withoutOwnDesignation(tree.heading, para) : null
+    if (expected === shown) ok++
     else {
       badHeading++
       if (problems.length < 8) problems.push(`${row.inr}/ME ${u.id} ${para}: gezeigt "${shown}" · RIS "${tree?.heading}"`)
