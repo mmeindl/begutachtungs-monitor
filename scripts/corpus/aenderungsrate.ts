@@ -11,6 +11,7 @@
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --reasoning [--show-para inr]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --multi | --addresses
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer [--list]
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer --save file | --against file [--list]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --pairs | --unpaired
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
@@ -1106,7 +1107,7 @@ function addressesReport(): void {
  * the Ziffern read from them, `--show-units inr` its unit pairing.
  */
 async function zifferReport(): Promise<void> {
-  const tally = { uncompared: 0, guarded: 0, multi: 0, multiShown: 0, lost: 0, lostForeign: 0, gained: 0, caught: 0, drafts: 0, titled: 0, oldUnits: 0, newUnits: 0, oldCompared: 0, oldChanged: 0, newCompared: 0, newChanged: 0, zifferRoute: 0, paragraphRoute: 0, zEntries: 0, pEntries: 0, ceiling: 0 }
+  const tally = { uncompared: 0, guarded: 0, multi: 0, multiShown: 0, lost: 0, lostForeign: 0, gained: 0, caught: 0, drafts: 0, titled: 0, oldUnits: 0, newUnits: 0, oldCompared: 0, oldChanged: 0, newCompared: 0, newChanged: 0, zifferRoute: 0, paragraphRoute: 0, ownParagraphRoute: 0, zEntries: 0, pEntries: 0, ceiling: 0 }
   const fallbackTally = new Map<string, number>()
   const perDraft: { draft: string; old: number; neu: number }[] = []
   const flips = new Map<string, string[]>()
@@ -1122,6 +1123,7 @@ async function zifferReport(): Promise<void> {
   }
   const zOf = (id: string | null) => /^Z(\d+[a-z]?)$/i.exec(id ?? '')?.[1]?.toLowerCase() ?? null
   const isPairedUnit = (u: LawDiffUnit) => u.change === 'changed' || u.change === 'unchanged'
+  const snapshots: Record<number, Snapshot> = {}
   const candidates = results.filter((r) => r.bucket >= 3)
   await pool(candidates, CONCURRENCY, async (r) => {
     const content = await detailOf(r.inr)
@@ -1155,6 +1157,7 @@ async function zifferReport(): Promise<void> {
       after: passageTexts(passagesByArticleParagraph(rvParsed)),
     })
     const neu = compareReasoning(units, meParsed, rvParsed)
+    snapshots[r.inr] = snapshotOf(neu, units, meParsed, rvParsed)
     if (neu.routes.ziffer > 0) tally.titled++
     tally.oldUnits += Object.keys(old.units).length
     tally.newUnits += Object.keys(neu.units).length
@@ -1165,6 +1168,7 @@ async function zifferReport(): Promise<void> {
     tally.newChanged += neu.stats.changed
     tally.zifferRoute += neu.routes.ziffer
     tally.paragraphRoute += neu.routes.paragraph
+    tally.ownParagraphRoute += neu.routes.ownParagraph
     tally.zEntries += Object.keys(neu.entries).filter((k) => k.startsWith('Z ') || k.startsWith('N ')).length
     tally.pEntries += Object.keys(neu.entries).filter((k) => !k.startsWith('Z ') && !k.startsWith('N ')).length
     const neuEntries = Object.keys(neu.entries).length
@@ -1197,8 +1201,8 @@ async function zifferReport(): Promise<void> {
     /** The headings behind an entry key, on one side — the Ziffer passages, or every passage the § join read. */
     const headingsOf = (doc: HtmlExplanations, key: string | undefined, side: 0 | 1, byPara: Map<string, HtmlPassage[]>, art: string | null) => {
       if (!key) return '–'
-      if (key.startsWith('Z ') || key.startsWith('N ')) {
-        const idx = key.slice(2).split('|')[side]!.split('+').map(Number)
+      if (/^(?:Z|N|P|PN) /.test(key)) {
+        const idx = key.replace(/^\S+ /, '').split('|')[side]!.split('+').map(Number)
         return idx.map((i) => `«${doc.special[i]!.heading.slice(0, 90)}»`).join(' + ')
       }
       const id = explanationParaId(key.replace(/^Art\. \S+ /, ''))
@@ -1222,7 +1226,7 @@ async function zifferReport(): Promise<void> {
       if (fb === 'scope') scopeLines.push(`${r.inr}/ME ${u.change} ${u.fromId ?? '–'}→${u.id} Art ${u.fromArticleKey ?? '–'}→${u.articleKey ?? '–'} | alt: ${a}`)
       if (a === b) continue
       const newKey = neu.units[key]
-      const route = fb ? `Rückfall ${fb}` : newKey?.startsWith('Z ') || newKey?.startsWith('N ') ? 'Ziffer' : '§-Join wie bisher'
+      const route = fb ? `Rückfall ${fb}` : newKey?.startsWith('Z ') || newKey?.startsWith('N ') ? 'Ziffer' : newKey?.startsWith('P ') || newKey?.startsWith('PN ') ? '§-Einheit' : '§-Join wie bisher'
       if (route === '§-Join wie bisher') paragraphRouteFlips++
       const oldKey = old.units[key]
       // Whose Begründung did the old join show? Its passages on each side,
@@ -1251,7 +1255,7 @@ async function zifferReport(): Promise<void> {
   console.log(`\nGP ${gp} — Begründung alt (§-Join) gegen neu (Ziffer-Join), ${t.drafts} Entwürfe mit beiden HTML-Erläuterungen, ${t.titled} davon beidseits nach Ziffern betitelt`)
   console.log(`  (a') Einheiten mit gezeigter Begründung (verglichen oder nicht): alt ${t.oldUnits} → neu ${t.newUnits} · verloren ${t.lost} (davon ${t.lostForeign} mit nur fremden Passagen), dazu ${t.gained} · vom Rückfall aufgefangen (eingefügt/entfernt über den §-Join, §-betitelt, ohne Vergleich gezeigt) ${t.caught} → Tor ${t.lost <= t.caught ? 'hält' : 'HÄLT NICHT'}`)
   console.log(`  (b) verglichene Einträge: alt ${t.oldCompared} → neu ${t.newCompared} · geändert: alt ${t.oldChanged} → neu ${t.newChanged} · gezeigt ohne Vergleich: ${t.uncompared} · Einträge Ziffer ${t.zEntries}, § ${t.pEntries}`)
-  console.log(`  Wege: Ziffer-Join ${t.zifferRoute} Einheiten, §-Join von vornherein ${t.paragraphRoute} · gepaarte Anweisungen über mehrere §§: ${t.multi}, davon mit Begründung ${t.multiShown}`)
+  console.log(`  Wege: Ziffer-Join ${t.zifferRoute} Einheiten, §-Join von vornherein ${t.paragraphRoute}, §-Einheiten nach eigener Bezeichnung ${t.ownParagraphRoute} · gepaarte Anweisungen über mehrere §§: ${t.multi}, davon mit Begründung ${t.multiShown}`)
   console.log(`  Ziffer-Join ohne Ziffer-Eintrag: ${[...fallbackTally].map(([k, v]) => `${k} ${v}`).join(' · ') || '–'}`)
   {
     const ns = perDraft.map((d) => d.neu)
@@ -1270,6 +1274,125 @@ async function zifferReport(): Promise<void> {
     console.log(`\n  [Umfangsregel greift]\n    ${scopeLines.sort().join('\n    ')}`)
     console.log(`\n  [§-Wache]\n    ${guardLines.sort().join('\n    ')}`)
     console.log(`\n  [Umfangsregel nach Grund]\n    ${scopeKindLines.sort().join('\n    ')}`)
+  }
+  const save = argPair('save')
+  if (save) {
+    await writeFile(save, JSON.stringify({ gp, snapshots }))
+    console.log(`\n  Stand gespeichert: ${save} (${Object.keys(snapshots).length} Entwürfe)`)
+  }
+  const against = argPair('against')
+  if (against) againstReport(JSON.parse(readFileSync(against, 'utf8')) as { gp: string; snapshots: Record<number, Snapshot> }, snapshots)
+}
+
+/** One unit's Begründung as `compareReasoning` gave it — what `--save` keeps and `--against` holds against. */
+interface UnitSnapshot {
+  unit: string
+  state: string
+  key: string | null
+  route: string
+  me: string
+  rv: string
+  drift: number | null
+}
+interface Snapshot {
+  units: Record<string, UnitSnapshot>
+  stats: { compared: number; changed: number; uncompared: number }
+}
+
+/**
+ * The route an entry key says it came by — the prefixes `compareReasoning`
+ * builds: „Z"/„N" the Ziffer join (compared / shown without a verdict),
+ * „P"/„PN" a § unit by its own designation (01.10.2026), anything else the §
+ * join as before.
+ */
+function routeOfKey(key: string | null): string {
+  if (!key) return '–'
+  if (key.startsWith('Z ') || key.startsWith('N ')) return 'Ziffer'
+  if (key.startsWith('P ') || key.startsWith('PN ')) return '§-Einheit'
+  return '§-Join'
+}
+
+/** The passage headings behind an entry key, on one side; for a § join key, every passage naming that §. */
+function keyHeadings(doc: HtmlExplanations, key: string | null, side: 0 | 1): string {
+  if (!key) return '–'
+  const indexed = /^(?:Z|N|P|PN) (\S+)$/.exec(key)
+  if (indexed) {
+    return indexed[1]!.split('|')[side]!.split('+').map((i) => `«${doc.special[Number(i)]?.heading.slice(0, 100) ?? '?'}»`).join(' + ')
+  }
+  const art = /^Art\. (\S+) /.exec(key)?.[1] ?? null
+  const id = explanationParaId(key.replace(/^Art\. \S+ /, ''))
+  const ps = doc.special.filter((p) => p.paragraphs.some((x) => explanationParaId(x) === id) && (!art || p.article === art))
+  return `[${key}] ${ps.map((p) => `«${p.heading.slice(0, 70)}»`).join(' + ')}`
+}
+
+function snapshotOf(cmp: ReturnType<typeof compareReasoning>, units: readonly LawDiffUnit[], me: HtmlExplanations, rv: HtmlExplanations): Snapshot {
+  const out: Record<string, UnitSnapshot> = {}
+  for (const u of units) {
+    const key = cmp.units[diffUnitKey(u)] ?? null
+    const e = key ? cmp.entries[key] : undefined
+    out[diffUnitKey(u)] = {
+      unit: `${u.change} ${u.fromArticleKey ?? '–'}:${u.fromId ?? '–'}→${u.articleKey ?? '–'}:${u.id} | ${String(u.toText ?? u.fromText ?? '').replace(/\s+/g, ' ').slice(0, 80)}`,
+      state: !e ? 'keine' : !e.comparable ? 'gezeigt, nicht verglichen' : e.changed ? 'geändert' : 'unverändert',
+      key,
+      route: routeOfKey(key),
+      me: keyHeadings(me, key, 0),
+      rv: keyHeadings(rv, key, 1),
+      drift: e?.drift ?? null,
+    }
+  }
+  return { units: out, stats: cmp.stats }
+}
+
+/**
+ * `--against <file>` (01.10.2026): the Begründungsvergleich now against a
+ * stand saved with `--save` — the same `compareReasoning` at an earlier
+ * commit, through the same units. Per GP: units with a Begründung shown (a′),
+ * every unit that loses one, the units that gain one by route, compared,
+ * changed and uncompared, and every verdict that moves, by route old → new.
+ */
+function againstReport(base: { gp: string; snapshots: Record<number, Snapshot> }, now: Record<number, Snapshot>): void {
+  const drafts = [...new Set([...Object.keys(base.snapshots), ...Object.keys(now)])].map(Number).sort((a, b) => a - b)
+  const t = { oldUnits: 0, newUnits: 0, oldCompared: 0, newCompared: 0, oldChanged: 0, newChanged: 0, oldUncompared: 0, newUncompared: 0 }
+  const lost: string[] = []
+  const gained = new Map<string, string[]>()
+  const moved = new Map<string, string[]>()
+  for (const inr of drafts) {
+    const a = base.snapshots[inr]
+    const b = now[inr]
+    if (!a || !b) {
+      console.log(`  ${inr}/ME nur ${a ? 'alt' : 'neu'} gemessen`)
+      continue
+    }
+    t.oldCompared += a.stats.compared
+    t.newCompared += b.stats.compared
+    t.oldChanged += a.stats.changed
+    t.newChanged += b.stats.changed
+    t.oldUncompared += a.stats.uncompared
+    t.newUncompared += b.stats.uncompared
+    for (const k of new Set([...Object.keys(a.units), ...Object.keys(b.units)])) {
+      const x = a.units[k]
+      const y = b.units[k]
+      if (x && x.state !== 'keine') t.oldUnits++
+      if (y && y.state !== 'keine') t.newUnits++
+      if (!x || !y) continue
+      const line = `${inr}/ME ${y.unit}\n        alt ME ${x.me}\n        alt RV ${x.rv}\n        neu ME ${y.me}\n        neu RV ${y.rv}${y.drift === null ? '' : ` (Drift ${(y.drift * 100).toFixed(1)} %)`}`
+      if (x.state !== 'keine' && y.state === 'keine') lost.push(line)
+      else if (x.state === 'keine' && y.state !== 'keine') gained.set(`${y.route} → ${y.state}`, [...(gained.get(`${y.route} → ${y.state}`) ?? []), line])
+      else if (x.state !== y.state || x.key !== y.key) {
+        const kind = `${x.route}: ${x.state} → ${y.route}: ${y.state}${x.state === y.state ? ' (andere Passagen)' : ''}`
+        moved.set(kind, [...(moved.get(kind) ?? []), line])
+      }
+    }
+  }
+  console.log(`\nGP ${gp} — gegen den gespeicherten Stand (${base.gp}), ${drafts.length} Entwürfe`)
+  console.log(`  (a') Einheiten mit gezeigter Begründung: alt ${t.oldUnits} → neu ${t.newUnits} · verloren ${lost.length} · dazu ${[...gained.values()].reduce((n, l) => n + l.length, 0)}`)
+  console.log(`  (b) verglichen alt ${t.oldCompared} → neu ${t.newCompared} · geändert alt ${t.oldChanged} → neu ${t.newChanged} · ohne Urteil alt ${t.oldUncompared} → neu ${t.newUncompared}`)
+  for (const [k, l] of [...gained].sort((p, q) => q[1].length - p[1].length)) console.log(`    dazu ${String(l.length).padStart(5)}  ${k}`)
+  for (const [k, l] of [...moved].sort((p, q) => q[1].length - p[1].length)) console.log(`    bewegt ${String(l.length).padStart(4)}  ${k}`)
+  if (argFlag('list')) {
+    console.log(`\n  [verloren]\n    ${lost.sort().join('\n    ')}`)
+    for (const [k, l] of gained) console.log(`\n  [dazu: ${k}]\n    ${l.sort().join('\n    ')}`)
+    for (const [k, l] of moved) console.log(`\n  [bewegt: ${k}]\n    ${l.sort().join('\n    ')}`)
   }
 }
 

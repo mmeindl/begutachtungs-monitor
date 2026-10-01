@@ -345,7 +345,7 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
     const neu = compareReasoning(units, before, after)
     const alt = compareReasoningByParagraph(units, new Map([['5', 'Die Begründung.']]), new Map([['5', 'Die Begründung.']]))
 
-    expect(neu.routes).toEqual({ ziffer: 0, paragraph: 2 })
+    expect(neu.routes).toEqual({ ziffer: 0, paragraph: 2, ownParagraph: 0 })
     expect(neu.units).toEqual(alt.units)
     expect(neu.stats).toEqual(alt.stats)
   })
@@ -376,5 +376,100 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
 
     expect(out.entries[out.units[`${SNG}|Z7|changed`]!]).toMatchObject({ label: 'Zu Z 7 (§ 22):', changed: true })
     expect(out.entries[out.units[`${BVWG}|Z7|changed`]!]).toMatchObject({ label: 'Zu Z 7 (§ 17):', changed: false })
+  })
+})
+
+/** A § of a new law, renumbered from `from` in the draft to `id` in the Vorlage. */
+function para(id: string, from: string | null, text: string, change: LawDiffUnit['change'] = 'changed', keys: { to?: string; from?: string } = {}, law = 'Neues Gesetz'): LawDiffUnit {
+  return { ...unit(law, id, text, change, keys), fromId: from, fromArticleKey: keys.from ?? keys.to ?? null }
+}
+
+describe('compareReasoning — der § eines neuen Gesetzes nach seiner eigenen Bezeichnung (01.10.2026)', () => {
+  it('gibt einem § die Passage, die ihn betitelt — jede Seite in ihrer eigenen Nummerierung', () => {
+    // The text of § 6 cites § 2: as an instruction it read as „§ 2" until
+    // 30.09.2026 (32/ME XXVIII). It is joined by what it is, not by what it cites.
+    const units = [para('§1', '§1', 'Dieses Bundesgesetz regelt …'), para('§6', '§5', '(1) Wer gemäß § 2 verpflichtet ist, hat …')]
+    const before = erl('Zu § 1:', 'Der Anwendungsbereich.', 'Zu § 2:', 'Die Pflichten.', 'Zu § 5:', 'Die Meldepflicht.')
+    const after = erl('Zu § 1:', 'Der Anwendungsbereich.', 'Zu § 2:', 'Die Pflichten, nach der Begutachtung neu gefasst.', 'Zu § 6:', 'Die Meldepflicht, nun mit einer Frist von vier Wochen.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.routes).toEqual({ ziffer: 0, paragraph: 0, ownParagraph: 2 })
+    expect(out.stats).toEqual({ compared: 2, changed: 1, uncompared: 0 })
+    expect(out.entries[out.units['Neues Gesetz|§1|changed']!]).toMatchObject({ basis: 'paragraph', label: '§ 1', changed: false })
+    expect(out.entries[out.units['Neues Gesetz|§6|changed']!]).toMatchObject({ basis: 'paragraph', label: '§ 6', changed: true })
+  })
+
+  it('zählt eine Passage über mehrere §§ einmal und zeigt sie an jedem', () => {
+    const units = [para('§11', '§11', 'Verweisungen …', 'unchanged'), para('§12', '§12', 'Personenbezogene Bezeichnungen …', 'unchanged')]
+    const before = erl('Zu §§ 11 und 12:', 'Schlussbestimmungen.')
+    const after = erl('Zu §§ 11 und 12:', 'Schlussbestimmungen, ergänzt um die Vollziehung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.stats).toEqual({ compared: 1, changed: 1, uncompared: 0 })
+    expect(new Set(Object.values(out.units)).size).toBe(1)
+  })
+
+  it('vergleicht nicht, wo eine Seite die §§ anders zusammenfasst — und zeigt beide ohne Urteil', () => {
+    const units = [para('§1', '§1', 'Ziel …'), para('§2', '§2', 'Begriffe …')]
+    const before = erl('Zu § 1:', 'Das Ziel.', 'Zu § 2:', 'Die Begriffe.')
+    const after = erl('Zu §§ 1 und 2:', 'Ziel und Begriffe.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.stats).toEqual({ compared: 0, changed: 0, uncompared: 2 })
+    expect(out.entries[out.units['Neues Gesetz|§1|changed']!]).toMatchObject({ basis: 'paragraph', comparable: false, label: 'Zu §§ 1 und 2:', fromHeading: 'Zu § 1:', fromText: 'Das Ziel.' })
+  })
+
+  it('gibt einem eingefügten oder entfallenen § keine Begründung — es fehlt die Gegenseite', () => {
+    const units = [para('§3', null, 'Neu …', 'inserted'), para('§4', '§4', 'Alt …', 'removed')]
+    const before = erl('Zu § 4:', 'Entfällt.')
+    const after = erl('Zu § 3:', 'Neu in der Vorlage.')
+
+    expect(compareReasoning(units, before, after).units).toEqual({})
+  })
+
+  it('schlüsselt im Paket nach Artikel — die Passage eines anderen Gesetzes mit derselben Nummer bleibt draußen', () => {
+    // 104/ME XXVI: two new laws, each with a § 1.
+    const units = [
+      para('§1', '§1', 'Grundsätze …', 'changed', { to: '1' }, 'Sozialhilfe-Grundsatzgesetz'),
+      para('§1', '§1', 'Statistik …', 'changed', { to: '2' }, 'Sozialhilfe-Statistikgesetz'),
+    ]
+    const before = erl('Zu Artikel I (Grundsatzgesetz)', 'Zu § 1:', 'Grundsätze.', 'Zu Artikel II (Statistikgesetz)', 'Zu § 1:', 'Die Statistik.')
+    const after = erl('Zu Artikel I (Grundsatzgesetz)', 'Zu § 1:', 'Grundsätze, nach der Begutachtung neu.', 'Zu Artikel II (Statistikgesetz)', 'Zu § 1:', 'Die Statistik.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units['Sozialhilfe-Grundsatzgesetz|§1|changed']!]).toMatchObject({ changed: true })
+    expect(out.entries[out.units['Sozialhilfe-Statistikgesetz|§1|changed']!]).toMatchObject({ changed: false })
+  })
+
+  it('nimmt im Paket eine Passage ohne Artikel nur für eine Nummer, die kein anderes Gesetz des Entwurfs trägt', () => {
+    // 99/ME XXVII: „Zu § 5 EUStA-DG" under no Artikel mark, beside a Novelle of the EU-JZG.
+    const units = [
+      para('§5', '§5', 'Die Delegierten …', 'changed', { to: '1' }, 'EUStA-DG'),
+      para('§6', '§6', 'Die Ernennung …', 'changed', { to: '1' }, 'EUStA-DG'),
+      { ...unit('Änderung des EU-JZG', 'Z1', 'In § 6 Abs. 1 wird "a" durch "b" ersetzt.', 'changed', { to: '2' }) },
+    ]
+    const before = erl('Zu § 5 EUStA-DG', 'Die Delegierten.', 'Zu § 6 EUStA-DG', 'Die Ernennung.')
+    const after = erl('Zu § 5 EUStA-DG', 'Die Delegierten, neu gefasst nach der Begutachtung.', 'Zu § 6 EUStA-DG', 'Die Ernennung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units['EUStA-DG|§5|changed']!]).toMatchObject({ changed: true })
+    // § 6 is also the § the EU-JZG instruction amends: which law the passage means, the heading does not say.
+    expect(out.units['EUStA-DG|§6|changed']).toBeUndefined()
+  })
+
+  it('liest den § aus der eigenen Adresse der Überschrift, nicht aus dem Satz, in den sie weiterläuft', () => {
+    const units = [para('§6', '§6', 'Begriffe …'), para('§2', '§2', 'Ziel …')]
+    const before = erl('Zu § 6:', 'Die Begriffe.', 'Zu Abs. 4: Die Regelung knüpft an § 2 an.', 'Mehr dazu.', 'Zu § 2:', 'Das Ziel.')
+    const after = erl('Zu § 6:', 'Die Begriffe.', 'Zu Abs. 4: Die Regelung knüpft an § 2 an.', 'Mehr dazu.', 'Zu § 2:', 'Das Ziel.')
+
+    const out = compareReasoning(units, before, after)
+
+    // The sub-passage is § 6's and stays out of § 2's scope, so both are compared.
+    expect(out.stats).toEqual({ compared: 2, changed: 0, uncompared: 0 })
   })
 })

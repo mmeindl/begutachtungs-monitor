@@ -35,13 +35,23 @@
  * without a verdict (`comparable: false`), so nothing loses the Begründung it
  * showed before.
  *
- * WHAT STAYS PER §. A unit that IS a § (a new law, `isParagraphUnit`), a
- * unit that is neither, every unit of a draft one of whose documents titles
- * no passage by Ziffer at all, and an inserted or removed instruction, which
- * has no Ziffer on the other side to be held against: the § join as before,
- * unchanged — below. Measured old against new over GP XXVI–XXVIII
- * (`aenderungsrate.ts --ziffer`, §12.10b): units with a Begründung shown,
- * compared or not, 2.036 → 2.461, 4.864 → 5.772, 2.272 → 2.455.
+ * WHAT STAYS PER §. A unit that is neither a § nor a Ziffer, every unit of a
+ * draft one of whose documents titles no passage by Ziffer at all, and an
+ * inserted or removed instruction, which has no Ziffer on the other side to
+ * be held against: the § join as before, unchanged — below. Measured old
+ * against new over GP XXVI–XXVIII (`aenderungsrate.ts --ziffer`, §12.10b):
+ * units with a Begründung shown, compared or not, 2.036 → 2.461, 4.864 →
+ * 5.772, 2.272 → 2.455.
+ *
+ * A UNIT THAT IS A § (a new law, `isParagraphUnit`) BY ITS OWN DESIGNATION
+ * (01.10.2026, `joinOwnParagraph`). It addresses nothing — read as an
+ * instruction its law text gave the §§ it cites — so the § join never gave it
+ * a Begründung. It gets the passages titled by its own §, „Zu § 9:", on each
+ * side in that side's numbering, under the same rules as the Ziffer join:
+ * one entry per pair of passages, the scope rule, keyed by Artikel in a
+ * package. Measured against the stand before (`aenderungsrate.ts --ziffer
+ * --against`): 245, 1.373 and 274 units more with a Begründung in GP XXVI,
+ * XXVII and XXVIII, none lost, no other verdict moved.
  *
  * THE § JOIN. One comparison per Paragraph, `units` pointing there.
  *
@@ -63,6 +73,7 @@
  */
 import type { LawDiffUnit, ReasoningDiffEntry } from '../../../shared/types'
 import { diffUnitKey } from '../../../shared/utils/diffKey'
+import { displayId, isParagraphUnit } from '../../../shared/utils/unitName'
 import { diffTokens } from '../diff/wordDiff'
 import { addressedParagraph, addressedParagraphOf, instructionParagraphs } from '../lawtext/instructionAddress'
 import { passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from './explanationsHtml'
@@ -160,8 +171,8 @@ interface Filling {
  * them apart (`sameScope`). The Vorlage's text is what the reader is shown;
  * the draft's comes along, empty where its passage is a bare heading.
  */
-function uncomparedOf(label: string, fromHeading: string, a: string, b: string): ReasoningDiffEntry {
-  return { basis: 'ziffer', label, comparable: false, fromHeading, drift: null, changed: false, segments: null, fromText: a || null, toText: b }
+function uncomparedOf(basis: ReasoningDiffEntry['basis'], label: string, fromHeading: string, a: string, b: string): ReasoningDiffEntry {
+  return { basis, label, comparable: false, fromHeading, drift: null, changed: false, segments: null, fromText: a || null, toText: b }
 }
 
 /**
@@ -201,7 +212,7 @@ function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput
       return
     }
     f.out.entries[key] = uncompared && !sameWords(a, b)
-      ? uncomparedOf(label, uncompared.fromHeading, a, b)
+      ? uncomparedOf(basis, label, uncompared.fromHeading, a, b)
       : entryOf(basis, label, a, b)
   }
   f.out.units[diffUnitKey(unit)] = key
@@ -539,8 +550,8 @@ export type ZifferFallback = 'scope' | 'oneSided' | 'paragraphTitled' | 'none'
 export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
   /** Units of the Ziffer join that are not plainly Ziffer against Ziffer, and where they went. */
   fallbacks: Record<string, ZifferFallback>
-  /** How many units the Ziffer join took, how many went the § join from the start. */
-  routes: { ziffer: number; paragraph: number }
+  /** How many units the Ziffer join took, how many went the § join from the start, how many are §§ joined by their own designation. */
+  routes: { ziffer: number; paragraph: number; ownParagraph: number }
   /** Ziffer passages a unit's key found but `fitsParagraphs` turned away — `diffUnitKey`, side, heading. */
   guarded: { unit: string; side: Side; heading: string }[]
   /** For every unit the scope rule left without a verdict, the units each side's passages cover. */
@@ -563,9 +574,12 @@ export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
  *     the other side to hold it against, so the § join as before — its
  *     entry says „Paragraph", and the Begründung of the Paragraph is what
  *     moved with it.
- *  3. Everything else — a unit that IS a §, any other unit, every unit of a
- *     draft one of whose documents titles nothing by Ziffer: the § join as
- *     before, unchanged (`compareReasoningByParagraph`).
+ *  3. Everything else — any unit that is neither a § nor a Ziffer, every
+ *     unit of a draft one of whose documents titles nothing by Ziffer: the §
+ *     join as before, unchanged (`compareReasoningByParagraph`).
+ *  4. A unit that IS a §, last: the passages titled by its own designation
+ *     (`joinOwnParagraph`) — after everything else, so a new law's §§ never
+ *     take the ceiling from an entry the layer showed before.
  */
 export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExplanations, after: HtmlExplanations): ReasoningComparisonAtZiffer {
   const ambiguous = ambiguousParagraphs(units)
@@ -651,8 +665,16 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
 
   const atParagraph: LawDiffUnit[] = []
   const oneSided: LawDiffUnit[] = []
+  const ownParagraph: LawDiffUnit[] = []
   let zifferRoute = 0
   for (const unit of units) {
+    // A § of a new law: by its own designation, after everything else
+    // (below). The § join never gave it one — it addresses nothing
+    // (`addressedParagraphOf`), so taking it out of that list moves nothing.
+    if (isParagraphUnit(unit)) {
+      ownParagraph.push(unit)
+      continue
+    }
     if (!z || !zifferOfId(unit.id)) {
       atParagraph.push(unit)
       continue
@@ -706,5 +728,166 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   const me = texts(before)
   const rv = texts(after)
   joinAtParagraph(f, [...rest.filter((u) => !isAmbiguous(u)), ...rest.filter(isAmbiguous)], ambiguous, me.all, rv.all, { before: me.byArticle, after: rv.byArticle })
-  return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length }, guarded: [...guarded.values()], scopes }
+  // Last, so a new law's §§ never take the ceiling from an entry the layer
+  // showed before they had one.
+  joinOwnParagraph(f, units, ownParagraph, before, after)
+  return { ...finish(f.out), fallbacks, routes: { ziffer: zifferRoute, paragraph: atParagraph.length, ownParagraph: ownParagraph.length }, guarded: [...guarded.values()], scopes }
+}
+
+/** „§9" → „9", „§5a" → „5a"; null for anything else — a duplicate number („§9#dup") is refused. */
+function paragraphOfId(id: string | null): string | null {
+  const m = /^§(\d+[a-z]*)$/i.exec(id ?? '')
+  return m ? m[1]!.toLowerCase() : null
+}
+
+/** The § and Artikel a § unit carries on one side — none on the side where it does not exist. */
+function unitParagraph(unit: LawDiffUnit, side: Side): { para: string | null; article: string | null } {
+  if (!existsOn(unit, side)) return { para: null, article: null }
+  return side === 'after' ? { para: paragraphOfId(unit.id), article: unit.articleKey } : { para: paragraphOfId(unit.fromId), article: unit.fromArticleKey }
+}
+
+/** One document's side of the join by the unit's own §: which passages each § unit finds there. */
+interface OwnSide {
+  /** `diffUnitKey` → the passages titled by its §, in printed order. */
+  found: Map<string, number[]>
+  /** Passage → the § units it was found for: the scope of a passage. */
+  covers: Map<number, Set<string>>
+}
+
+/** What may stand in a § heading's own address beside `ADDRESS_WORD_RE`: the Artikel of „Zu Art. 2 § 1" (21/ME XXVII). */
+const PARAGRAPH_ADDRESS_WORD_RE = /^(?:art\.?|artikel)$/i
+
+/**
+ * The §§ a passage is titled by — read from its heading's own address, as
+ * `leadingAddress` reads it, not from every § the heading cites: „Zu Abs. 4:
+ * Die Regelung … § 2 …" set below „Zu § 6:" is § 6's, and „Zu § 77a Abs. 9
+ * vertritt die Kommission … § 40 …" is not § 40's.
+ */
+function titledParagraphs(passage: HtmlPassage): string[] {
+  const out: string[] = []
+  for (const word of (passage.heading.split(':')[0] ?? passage.heading).split(/\s+/)) {
+    if (/^[§\d(),.–-]/.test(word) || ADDRESS_WORD_RE.test(word) || PARAGRAPH_ADDRESS_WORD_RE.test(word)) out.push(word)
+    else break
+  }
+  return addressOf(out.join(' ')).paragraphs
+}
+
+/**
+ * The passages one document titles by a § unit's own designation — „Zu § 9:",
+ * „Zu § 9 Abs. 2:", „Zu §§ 8 bis 10:" — on one side, in that side's
+ * numbering (`fromId`/`fromArticleKey` in the draft, `id`/`articleKey` in the
+ * Vorlage).
+ *
+ * A passage titled by Ziffer is an amendment's, and one set under a Ziffer's
+ * heading belongs to that Ziffer (`ownedPassages`): neither is a new law's.
+ * The Artikel is read as the Ziffer join reads it (`ArticleMode`): one law on
+ * the side, and the Artikel is dropped from the key; several, and the
+ * passage must stand under the unit's own Artikel. Where one of the two
+ * carries none — a passage under no Artikel mark, a law the draft's text
+ * prints without „Artikel 1" — only a § number no other law of the draft
+ * carries answers (as § unit or as the § an instruction amends), and never
+ * a passage under another law's Artikel. Two units of one key on a side (a
+ * duplicate number) are both refused.
+ */
+function ownSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side): OwnSide {
+  const present = units.filter((u) => existsOn(u, side))
+  const articleOf = (u: LawDiffUnit) => (side === 'after' ? u.articleKey : u.fromArticleKey)
+  const unitArticles = new Set(present.map((u) => articleOf(u) ?? ''))
+  const passageArticles = new Set(doc.special.flatMap((p) => (p.article ? [p.article] : [])))
+  const mode: ArticleMode = unitArticles.size <= 1 && passageArticles.size <= 1 ? 'single' : 'package'
+
+  /** § number → the § units carrying it on this side. */
+  const byParagraph = new Map<string, LawDiffUnit[]>()
+  /** § number → every law of the draft (by Artikel) that carries or amends it on this side. */
+  const laws = new Map<string, Set<string>>()
+  const addLaw = (para: string, law: string) => laws.set(para, (laws.get(para) ?? new Set<string>()).add(law))
+  for (const u of present) {
+    const law = articleOf(u) ?? ''
+    if (!isParagraphUnit(u)) {
+      for (const para of unitParagraphIds(u, side)) addLaw(para, law)
+      continue
+    }
+    const { para } = unitParagraph(u, side)
+    if (!para) continue
+    byParagraph.set(para, [...(byParagraph.get(para) ?? []), u])
+    addLaw(para, law)
+  }
+  /** The one § unit a passage under `article` titled by `para` is about — or none. */
+  const unitFor = (article: string | null, para: string): LawDiffUnit | null => {
+    const all = byParagraph.get(para) ?? []
+    let hits: LawDiffUnit[]
+    if (mode === 'single') hits = all
+    else if (article && all.some((u) => articleOf(u) === article)) hits = all.filter((u) => articleOf(u) === article)
+    else {
+      // One side without an Artikel: only a number of one law, and not
+      // under the Artikel of a different one.
+      if ((laws.get(para)?.size ?? 0) !== 1) return null
+      hits = all.filter((u) => !article || !articleOf(u))
+    }
+    return hits.length === 1 ? hits[0]! : null
+  }
+
+  const owned = new Set<number>()
+  doc.special.forEach((p, i) => {
+    if (p.ziffern.length > 0) for (const j of ownedPassages(doc, i)) owned.add(j)
+  })
+  const found = new Map<string, number[]>()
+  const covers = new Map<number, Set<string>>()
+  doc.special.forEach((p, i) => {
+    if (owned.has(i) || p.ziffern.length > 0) return
+    for (const designation of titledParagraphs(p)) {
+      const para = explanationParaId(designation)
+      const unit = para ? unitFor(p.article, para) : null
+      if (!unit) continue
+      const unitKey = diffUnitKey(unit)
+      const list = found.get(unitKey) ?? []
+      if (!list.includes(i)) list.push(i)
+      found.set(unitKey, list)
+      covers.set(i, (covers.get(i) ?? new Set<string>()).add(unitKey))
+    }
+  })
+  return { found, covers }
+}
+
+/**
+ * THE § OF A NEW LAW, BY ITS OWN DESIGNATION (01.10.2026). A unit that IS a §
+ * addresses nothing (`addressedParagraphOf`: read as an instruction, its law
+ * text gave the §§ it cites), so the § join never gave it a Begründung. The
+ * ressorts explain a new law by § („Zu § 9:"), and that is the join: the
+ * unit's own § against the passages titled by it, on each side through the
+ * unit pairing. The same rules as the Ziffer join — one entry per pair of
+ * passages, compared only where both sides' passages cover the same §§
+ * (`sameScope`, a draft's „Zu § 1:" and „Zu § 2:" against the Vorlage's „Zu
+ * §§ 1 und 2:" is a regrouping), shown without a verdict otherwise — and only
+ * for a § present on both sides: an inserted or removed one has no passage
+ * on the other side to be held against.
+ */
+function joinOwnParagraph(f: Filling, units: readonly LawDiffUnit[], candidates: readonly LawDiffUnit[], before: HtmlExplanations, after: HtmlExplanations): void {
+  if (!candidates.some(isPaired)) return
+  const me = ownSide(units, before, 'before')
+  const rv = ownSide(units, after, 'after')
+  const cover = (side: OwnSide, passages: readonly number[]) => new Set(passages.flatMap((i) => [...(side.covers.get(i) ?? [])]))
+  const sorted = (xs: readonly number[]) => [...xs].sort((a, b) => a - b)
+  const headingsOf = (doc: HtmlExplanations, passages: readonly number[]) =>
+    sorted(passages)
+      .map((i) => doc.special[i]!.heading)
+      .join(' · ')
+  for (const unit of candidates) {
+    if (!isPaired(unit)) continue
+    const a = me.found.get(diffUnitKey(unit)) ?? []
+    const b = rv.found.get(diffUnitKey(unit)) ?? []
+    if (!a.length || !b.length) continue
+    const pair = `${sorted(a).join('+')}|${sorted(b).join('+')}`
+    if (!sameScope(cover(me, a), cover(rv, b))) {
+      fill(f, unit, `PN ${pair}`, () => ({
+        basis: 'paragraph',
+        label: headingsOf(after, b),
+        a: textOf(before, a),
+        b: textOf(after, b),
+        uncompared: { fromHeading: headingsOf(before, a) },
+      }))
+      continue
+    }
+    fill(f, unit, `P ${pair}`, () => ({ basis: 'paragraph', label: displayId(unit.id), a: textOf(before, a), b: textOf(after, b) }))
+  }
 }

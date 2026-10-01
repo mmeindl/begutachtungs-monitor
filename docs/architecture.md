@@ -1041,6 +1041,65 @@ Seite weder nach ihrer Ziffer noch nach ihrem §. Die Obergrenze steigt von
 und die ohne Urteil gezeigten Paare mitzählen: höchstens 311 je Entwurf
 (XXVII 230/ME).
 
+**Nachgezogen am 01.10.2026: der § eines neuen Gesetzes nach seiner eigenen
+Bezeichnung.** „Was am Paragraphen bleibt" stimmte für die Einheit, die ein §
+*ist*, nur dem Wortlaut nach. Seit `dac81ec` (30.09.) adressiert sie nichts
+mehr — als Anweisung gelesen, kam aus ihrem Gesetzestext das Zitat als
+Adresse heraus —, und damit gab ihr auch der §-Join nichts: Über alle drei
+Perioden hatte kein einziger § eines neuen Gesetzes eine Begründung. Die
+Ressorts erklären ein neues Gesetz aber nach Paragraphen, „Zu § 9:", und das
+ist jetzt der Join (`joinOwnParagraph` in `reasoningDiff.ts`): die eigene
+Bezeichnung der Einheit gegen die Passagen, die nach diesem § betitelt sind,
+jede Seite in ihrer Nummerierung — der Entwurf über `fromId` und
+`fromArticleKey`, 306/ME XXVII stellt „Zu § 12 (Verwaltungsdirektorin …)"
+gegen „Zu § 14 (Verwaltungsdirektorin …)". Die Zitate aus dem Gesetzestext
+bleiben ungelesen. Es gelten die Regeln des Ziffer-Joins: ein Eintrag je
+Passagenpaar („Zu §§ 11 bis 15:" ist eine Begründung an fünf §§), verglichen
+nur bei gleichem Umfang, sonst ohne Urteil gezeigt (82/ME XXVII: „Zu §§ 57
+bis 59:" gegen „Zu §§ 57 bis 58:", weil die Vorlage umnummeriert), und nur
+für einen §, den es auf beiden Seiten gibt. Eine Passage, die eine Ziffer
+betitelt oder unter einer Ziffer steht, gehört nicht dazu; der § einer
+Überschrift wird aus ihrer eigenen Adresse gelesen, nicht aus dem Satz, in
+den sie weiterläuft („Zu Abs. 4: Die Regelung … § 2 …" unter „Zu § 6:"). Die
+Einträge kommen zuletzt in die Obergrenze, damit sie keinen verdrängen, der
+vorher stand.
+
+*Der Artikel, wie beim Ziffer-Join — mit einer Lockerung, die gemessen ist.*
+Im Paket muss die Passage unter dem Artikel der Einheit stehen. So gebaut
+kamen in XXVIII 159 Einheiten dazu; nachgelesen fehlten vor allem Fälle, in
+denen eine Seite gar keinen Artikel trägt — „Zu § 5 EUStA-DG" ohne
+Artikelmarke (99/ME XXVII), oder der Entwurfstext druckt das neue Gesetz ohne
+„Artikel 1", seine Erläuterungen aber darunter (326/ME XXVII). Dort zählt
+jetzt nur eine Nummer, die kein anderes Gesetz des Entwurfs trägt — weder als
+§-Einheit noch als § einer Anweisung — und nie eine Passage unter dem Artikel
+eines anderen Gesetzes. Damit 274.
+
+*Alt gegen neu durch dieselbe Funktion gemessen*
+(`pnpm corpus:aenderungsrate -- --gp <GP> --ziffer --save <datei>` auf
+`fec045a`, dann `--against <datei>`):
+
+| | XXVI | XXVII | XXVIII |
+|---|---|---|---|
+| (a′) Einheiten mit gezeigter Begründung | 2.465 → **2.710** | 5.772 → **7.145** | 2.455 → **2.729** |
+| verloren | 0 | 0 | 0 |
+| neu dazu, alle §-Einheiten | 245 | 1.373 | 274 |
+| davon geändert / unverändert / ohne Urteil | 137 / 107 / 1 | 671 / 693 / 9 | 129 / 145 / 0 |
+| verglichene Begründungen | 1.330 → 1.562 | 3.589 → 4.893 | 1.556 → 1.827 |
+| davon geändert | 485 → 613 | 1.429 → 2.077 | 602 → 728 |
+| gezeigt ohne Urteil | 112 → 113 | 288 → 296 | 107 → 107 |
+
+Kein anderes Urteil hat sich bewegt, und ein Entwurf trägt weiterhin
+höchstens 311 Einträge (XXVII 230/ME). Gelesen sind 42 der neuen Einträge, quer über
+die drei Perioden, und alle ohne Urteil gezeigten: Jeder nennt auf beiden
+Seiten den eigenen § der Einheit, die Umnummerierten eingeschlossen. Ohne
+Begründung bleiben gepaarte §-Einheiten, deren Dokumente keine nach dem §
+betitelte Passage führen (162, 526 und 58 — darunter ganze Gesetze, deren
+Erläuterungen nach Abschnitten gegliedert sind), die nur eine Seite erklärt
+(20, 40, 8), deren Passage unter einem anderen Artikel steht (3, 6, 4, etwa
+104/ME XXVI: das zweite Gesetz ohne eigene Artikelmarke im Entwurf) und deren
+Nummer im Paket mehrere Gesetze tragen (0, 5, 89, fast alle 32/ME XXVIII),
+dazu 34 Einheiten mit doppelt vergebener Nummer in XXVII.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and
