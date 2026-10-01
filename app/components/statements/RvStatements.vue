@@ -262,15 +262,15 @@ const destination = computed(() =>
          Regierungsvorlage, until when, and the button to do it stand in the
          action card at the top of the page whenever `filingOpen` is true —
          it is the same window (`windows.vorlage`). -->
-    <p v-if="data.total === 0" class="mt-2 max-w-prose text-sm text-ink-secondary">
+    <p v-if="data.total === 0" class="mt-2 text-sm text-ink-secondary">
       {{ filingOpen ? 'Bisher keine eingebracht.' : 'Keine eingebracht.' }}
     </p>
 
-    <p v-if="data.total === 0 && consultationSentence" class="mt-2 max-w-prose text-sm text-ink-secondary">
+    <p v-if="data.total === 0 && consultationSentence" class="mt-2 text-sm text-ink-secondary">
       {{ consultationSentence }}
     </p>
 
-    <p v-if="data.total === 0 && filingOpen" class="mt-2 max-w-prose text-sm text-ink-secondary">
+    <p v-if="data.total === 0 && filingOpen" class="mt-2 text-sm text-ink-secondary">
       {{ destination }}
     </p>
 
@@ -279,7 +279,7 @@ const destination = computed(() =>
          closed Vorlage without Stellungnahmen got both branches: „keine
          eingebracht" and „0 Stellungnahmen ein". -->
     <template v-if="data.total > 0">
-      <p class="mt-2 max-w-prose text-sm text-ink">
+      <p class="mt-2 text-sm text-ink">
         <!-- The heading names the Vorlage; the count needs no sentence of its
              own around it (30.09.2026). -->
         {{ countLabelDe(data.total, 'Stellungnahme', 'Stellungnahmen') }}<template
@@ -305,13 +305,13 @@ const destination = computed(() =>
       <!-- Under the count and above the rows: it is the answer to the
            question the count raises („und dann?"), so it has to be read
            before the names, not after them. -->
-      <p v-if="consultationSentence" class="mt-2 max-w-prose text-sm text-ink-secondary">
+      <p v-if="consultationSentence" class="mt-2 text-sm text-ink-secondary">
         {{ consultationSentence }}
       </p>
       <!-- Where they go, only while one can still file (30.09.2026): then it
            belongs to the decision to file. Once the window is shut it is a
            rule of procedure, and it stands on /so-funktionierts#parlament. -->
-      <p v-if="filingOpen" class="mt-2 max-w-prose text-sm text-ink-secondary">
+      <p v-if="filingOpen" class="mt-2 text-sm text-ink-secondary">
         {{ destination }}
       </p>
 
@@ -379,7 +379,7 @@ const destination = computed(() =>
       <!-- One pointer, not two in a row (30.09.2026): „– sie stehen
            vollständig beim Gegenstand" and the link under it said the same,
            and whether one can still file is the action card's job. -->
-      <p class="mt-3 max-w-prose text-sm text-ink-muted">
+      <p class="mt-3 text-sm text-ink-muted">
         <template v-if="hiddenOrgCount > 0">und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen – </template><ExternalLink :href="data.rvUrl" class="link-inline">{{ hiddenOrgCount > 0 ? 'alle' : 'Alle' }} Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
       </p>
     </template>

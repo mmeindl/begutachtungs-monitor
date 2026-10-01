@@ -189,7 +189,7 @@ const documents = computed(() => {
         </template>
         <!-- The long title only when it says more than the heading already
              does; on a Verordnung it is where the subject matter lives. -->
-        <p v-if="data.longTitle" class="mt-1 max-w-prose text-sm text-ink-secondary">
+        <p v-if="data.longTitle" class="mt-1 text-sm text-ink-secondary">
           {{ data.longTitle }}
         </p>
         <!-- Who sent it, as on the draft page. One Stelle per RIS record —
@@ -256,7 +256,7 @@ const documents = computed(() => {
                Stellungnahme went: why the Begutachtung row carries no count. -->
           <p
             v-if="!stationList.length || !data.active"
-            class="mt-3 max-w-prose text-sm text-ink-secondary"
+            class="mt-3 text-sm text-ink-secondary"
           >
             <template v-if="!stationList.length && data.startedAt">
               In Begutachtung seit {{ formatDateDe(data.startedAt) }}<template v-if="data.deadline">, Frist bis {{ formatDateWeekdayDe(data.deadline) }}</template>.
@@ -304,7 +304,7 @@ const documents = computed(() => {
              Begleitschreiben: the address is in it, or it is published
              nowhere. „es gibt kein Formular des Parlaments" went — the button
              below is the Begleitschreiben, not a form. -->
-        <p class="mt-2 max-w-prose text-sm text-ink">
+        <p class="mt-2 text-sm text-ink">
           <template v-if="data.coverLetter">
             Stellungnahmen gehen hier direkt an das Ministerium – an die Adresse
             im Begleitschreiben.
@@ -315,7 +315,7 @@ const documents = computed(() => {
             der RIS-Eintrag.
           </template>
         </p>
-        <p v-if="fristContext" class="mt-2 max-w-prose text-sm text-ink">
+        <p v-if="fristContext" class="mt-2 text-sm text-ink">
           {{ fristContext }}
         </p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
@@ -431,7 +431,7 @@ const documents = computed(() => {
                  names the source, at the bottom, where whoever wants to cite or
                  download is looking anyway — and in its own typographic class,
                  so it reads as a key and not as prose. -->
-            <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+            <p class="mt-1 text-sm text-ink-secondary">
               <!-- Source, licence and key as a caption since 30.09.2026, not two
                    sentences: „Aus dem Rechtsinformationssystem des Bundes (RIS),
                    CC BY 4.0. Im RIS steht dieser Entwurf unter der

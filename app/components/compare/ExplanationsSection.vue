@@ -145,7 +145,7 @@ const loadAnnouncement = computed(() => {
       <!-- The caveat stands ABOVE the text, the source below it: one says how
            what follows is to be read, the other is a caption (the same rule
            as in the comparison section). -->
-      <p v-if="!data.labelled" class="max-w-prose text-sm text-ink-muted">
+      <p v-if="!data.labelled" class="text-sm text-ink-muted">
         Das Ressort gliedert diese Erläuterungen nicht selbst.<template v-if="data.hasSpecial">
           Wo die Erläuterungen zu den einzelnen Paragraphen beginnen, haben wir
           abgegrenzt.</template>
@@ -200,7 +200,7 @@ const loadAnnouncement = computed(() => {
            this one since the section was reordered. Each § of the comparison
            carries its own „Erläuterungen" disclosure, and the whole document
            is one link away — in the credit line below and in „Dokumente". -->
-      <p v-if="data.dropped" class="mt-4 max-w-prose text-sm text-ink-muted">
+      <p v-if="data.dropped" class="mt-4 text-sm text-ink-muted">
         Tabellen und Abbildungen des Dokuments stehen hier nicht.
       </p>
 

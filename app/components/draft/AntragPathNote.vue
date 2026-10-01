@@ -34,14 +34,14 @@ const antragIsLarger = computed(() => props.path.antragShare < 0.5)
 
 <template>
   <div>
-    <p class="max-w-prose text-sm text-ink" :class="carries ? 'font-medium' : ''">
+    <p class="text-sm text-ink" :class="carries ? 'font-medium' : ''">
       <template v-if="carries">Der Gesetzestext kam nicht als Regierungsvorlage ins Parlament, sondern als</template>
       <template v-else>Ein Teil dieses Gesetzestexts kam als</template>
       <ExternalLink :href="url" class="link-inline">Initiativantrag {{ path.antrag.citation }}</ExternalLink>
       <template v-if="!carries"> ins Parlament</template>
       und ist kundgemacht: {{ bgblShort(path.antrag.bgblNumber) }}.
     </p>
-    <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+    <p class="mt-2 text-sm text-ink-secondary">
       Zugeordnet über den Wortlaut – einen Verweis zwischen Entwurf und Antrag
       führt das Parlament nicht:
       <template v-if="carries">
@@ -56,7 +56,7 @@ const antragIsLarger = computed(() => props.path.antragShare < 0.5)
         des Entwurfstexts).
       </template>
     </p>
-    <p v-if="path.duringFrist" class="mt-2 max-w-prose text-sm text-ink-secondary">
+    <p v-if="path.duringFrist" class="mt-2 text-sm text-ink-secondary">
       Eingebracht wurde der Antrag am {{ formatDateDe(path.antrag.einlangen) }}, noch
       während der Begutachtung<template v-if="deadline"> – die Frist für
         Stellungnahmen lief bis {{ formatDateDe(deadline) }}</template>.

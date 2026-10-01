@@ -526,7 +526,7 @@ const ministryLinks = computed(() => {
                draft ran before and produced no Regierungsvorlage. Same title
                is all that is claimed (the sentence says "gleichlautend"); the
                link lets the reader judge whether it is the same text. -->
-            <p v-if="data.predecessor" class="mt-4 max-w-prose text-sm text-ink-secondary">
+            <p v-if="data.predecessor" class="mt-4 text-sm text-ink-secondary">
               Ein gleichlautender Entwurf war bereits in Begutachtung:
               <NuxtLink
                 :to="`/entwuerfe/${data.predecessor.gp}/${data.predecessor.inr}`"
@@ -573,13 +573,13 @@ const ministryLinks = computed(() => {
           <h2 v-else class="font-semibold text-ink">
             Stellungnahme zur Regierungsvorlage {{ data.enactment?.rvCitation }} möglich
           </h2>
-          <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 max-w-prose text-sm text-ink-secondary">
+          <p v-if="windows.vorlage && !windows.begutachtung" class="mt-2 text-sm text-ink-secondary">
             Ohne Frist – {{ SECOND_ROUND_CLAUSE }}.
           </p>
           <!-- Directly under the date it qualifies, above the CTA: whoever is
                about to submit reads it before acting, and the sentence ends by
                naming the date that governs. -->
-          <p v-if="windows.begutachtung && divergence" class="mt-2 max-w-prose text-sm text-ink">
+          <p v-if="windows.begutachtung && divergence" class="mt-2 text-sm text-ink">
             Das RIS nennt als Fristende
             <ExternalLink
               v-if="divergence.url"
@@ -601,13 +601,13 @@ const ministryLinks = computed(() => {
                governs; this sentence is about the length. When the window
                closes, the card goes and the sentence moves back under „Die
                Begutachtung": one place at a time, the one that matters now. -->
-          <p v-if="windows.begutachtung && fristContext" class="mt-2 max-w-prose text-sm text-ink">
+          <p v-if="windows.begutachtung && fristContext" class="mt-2 text-sm text-ink">
             {{ fristContext }}
           </p>
           <!-- Both windows open: stated as a sequence of facts, not as a
                verdict on the ministry (framing rule). The reader gets both
                doors and the fact that makes the second one matter. -->
-          <p v-if="windows.begutachtung && windows.vorlage" class="mt-2 max-w-prose text-sm text-ink">
+          <p v-if="windows.begutachtung && windows.vorlage" class="mt-2 text-sm text-ink">
             Die Regierungsvorlage {{ data.enactment?.rvCitation }} liegt schon im
             Nationalrat; auch zu ihr ist eine Stellungnahme möglich.
           </p>
@@ -653,7 +653,7 @@ const ministryLinks = computed(() => {
                "your input changed §5" until the diff layer exists. Once the
                Vorlage exists, that comparison IS on the page, so the card
                points at it instead. -->
-          <p v-if="windows.begutachtung && !data.enactment" class="mt-3 max-w-prose text-sm text-ink">
+          <p v-if="windows.begutachtung && !data.enactment" class="mt-3 text-sm text-ink">
             Ministerien überarbeiten Entwürfe nach der Begutachtung regelmäßig.
             Der Monitor verfolgt auch bei diesem Entwurf, was daraus wird.
           </p>
@@ -738,12 +738,12 @@ const ministryLinks = computed(() => {
             class="mt-8 scroll-mt-6"
           >
             <h3 class="text-base font-semibold text-ink">Geltendes Recht</h3>
-            <p v-if="amendedLaws.createsNewLaw" class="mt-1 max-w-prose text-sm text-ink-secondary">
+            <p v-if="amendedLaws.createsNewLaw" class="mt-1 text-sm text-ink-secondary">
               Dieser Entwurf schafft neues Recht. Es gibt keinen geltenden Text,
               gegen den er gehalten werden könnte.
             </p>
             <template v-else>
-              <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+              <p class="mt-1 text-sm text-ink-secondary">
                 {{ amendedLaws.laws.length === 1 ? 'Dieses Gesetz würde der Entwurf ändern' : `Diese ${amendedLaws.laws.length} Gesetze würde der Entwurf ändern` }}<template v-if="amendedLaws.asOf">, in der Fassung vom {{ formatDateDe(amendedLaws.asOf) }}</template>:
               </p>
               <ul class="mt-2 divide-y divide-hairline">
@@ -935,7 +935,7 @@ const ministryLinks = computed(() => {
                  where both windows stand open at once). Inside the box the
                  repetition went unnoticed, in prose it stands there
                  naked. -->
-            <p class="max-w-prose text-sm text-ink">
+            <p class="text-sm text-ink">
               Der Entwurf wurde als
               <ExternalLink
                 :href="data.enactment.rvUrl"
@@ -946,7 +946,7 @@ const ministryLinks = computed(() => {
             <!-- ME→RV is 1:n: without this sentence the second
                  Regierungsvorlage of a split draft is invisible (4 of 132 in
                  the GP-XXVIII corpus). -->
-            <p v-if="data.enactment.furtherRv.length" class="mt-2 max-w-prose text-sm text-ink">
+            <p v-if="data.enactment.furtherRv.length" class="mt-2 text-sm text-ink">
               Aus dem Entwurf ging außerdem
               <template
                 v-for="(rv, i) in data.enactment.furtherRv"
@@ -964,17 +964,17 @@ const ministryLinks = computed(() => {
             <!-- The quotable verdict sentence leads, in `font-medium`: the
                  rank inside the section is carried by size and weight now, no
                  longer by a border. -->
-            <p v-if="noRvVerdict" class="max-w-prose text-sm font-medium text-ink">
+            <p v-if="noRvVerdict" class="text-sm font-medium text-ink">
               {{ noRvVerdict }}
             </p>
             <p
               v-if="!viaAntrag"
-              class="max-w-prose text-sm text-ink-secondary"
+              class="text-sm text-ink-secondary"
               :class="noRvVerdict ? 'mt-2' : ''"
             >
               {{ noRvBody }}
             </p>
-            <p v-if="noRvBaseRate" class="mt-2 max-w-prose text-sm text-ink-secondary">
+            <p v-if="noRvBaseRate" class="mt-2 text-sm text-ink-secondary">
               {{ noRvBaseRate }}
             </p>
             <AntragPathNote
@@ -987,7 +987,7 @@ const ministryLinks = computed(() => {
             <!-- The win side of the same mechanism: the draft that finds a
                  lapsed one also finds the one that took its place. Ink, not
                  secondary — it is the one actionable line in the section. -->
-            <p v-if="data.successor" class="mt-3 max-w-prose text-sm text-ink">
+            <p v-if="data.successor" class="mt-3 text-sm text-ink">
               Ein gleichlautender späterer Entwurf liegt vor:
               <NuxtLink
                 :to="`/entwuerfe/${data.successor.gp}/${data.successor.inr}`"
@@ -1043,7 +1043,7 @@ const ministryLinks = computed(() => {
                the four outcomes read off the house status since 23.09.2026 —
                each names the step, none of them a motive, and upstream's own
                wording for it is never printed. -->
-          <p class="mt-1 max-w-prose text-sm text-ink-secondary">
+          <p class="mt-1 text-sm text-ink-secondary">
             <template v-if="parliament === 'unchanged'">
               Der Nationalrat hat den Text der Regierungsvorlage unverändert
               beschlossen.
@@ -1156,7 +1156,7 @@ const ministryLinks = computed(() => {
           aria-labelledby="bgbl-heading"
         >
           <h2 id="bgbl-heading" class="section-heading">Im Bundesgesetzblatt</h2>
-          <p class="mt-4 max-w-prose text-sm text-ink">
+          <p class="mt-4 text-sm text-ink">
             Kundgemacht als
             <ExternalLink
               v-if="data.enactment.bgblRisUrl"

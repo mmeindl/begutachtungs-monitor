@@ -657,7 +657,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                      inside, only the way to how the text is made (RIS in
                      force plus this draft's instructions, confirmed by the
                      ressort's own Gegenüberstellung). -->
-                <p class="max-w-prose text-xs text-ink-muted">
+                <p class="text-xs text-ink-muted">
                   <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie diese Lesefassung entsteht</NuxtLink>
                 </p>
                 <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
