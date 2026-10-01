@@ -96,3 +96,7 @@ deploy. Verify with
   than the restart: the restart empties the in-memory caches, and „✔ deployed"
   is meant to say that the next visitor finds a warm server. Nothing to do by hand; the next deploy installs it.
   Check: `systemctl list-timers begutachtungs-monitor-prewarm.timer`.
+  Behind it, and without the deploy waiting (since 30.09.2026): the pages of
+  the open drafts are rendered once (`prewarm-pages` unit, ~20–30 pages), so
+  their first reader of the day gets ~0,15 s instead of ~1 s. Check:
+  `journalctl -u begutachtungs-monitor-prewarm-pages -n 5 --no-pager`.

@@ -1,0 +1,21 @@
+# Installed by deploy/deploy.sh on every deploy (rsync + daemon-reload).
+# Renders the page of every open draft once (deploy/bin/prewarm-pages.sh).
+#
+# Its own unit and not a sixth line of the prewarm unit, because deploy.sh
+# BLOCKS on that one and must not grow with the number of open drafts (the
+# argument recorded there against warming `/konsolidiert`). This unit is
+# started by the prewarm unit's ExecStartPost with --no-block: after the
+# corpora are in — the pages read them — and without anyone waiting for it.
+# So it runs nightly behind the timer and after every deploy, and needs no
+# timer of its own.
+#
+# A cold page is slow, not false, which is why nothing waits for this one.
+[Unit]
+Description=Begutachtungs-Monitor: render the pages of the open drafts once
+After=begutachtungs-monitor.service begutachtungs-monitor-prewarm.service
+Requires=begutachtungs-monitor.service
+
+[Service]
+Type=oneshot
+TimeoutStartSec=1800
+ExecStart=/usr/local/lib/begutachtungs-monitor/prewarm-pages.sh

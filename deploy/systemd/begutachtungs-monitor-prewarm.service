@@ -87,3 +87,7 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/a
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode
+# Since 30.09.2026: the pages of the open drafts, in their own unit and
+# without blocking (begutachtungs-monitor-prewarm-pages.service) — after the
+# corpora above, which those pages read.
+ExecStartPost=/usr/bin/systemctl start --no-block begutachtungs-monitor-prewarm-pages.service
