@@ -84,11 +84,11 @@ function docHint(doc: DocumentListItem): string | null {
               :href="formatOf(doc, type)!.url"
               target="_blank"
               rel="noopener"
-              class="group flex min-h-target items-center justify-center rounded"
+              class="group/format flex min-h-target items-center justify-center rounded"
               :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen (neues Fenster)`"
             >
               <span
-                class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-baseline group-hover:underline"
+                class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover/format:border-baseline group-hover/format:underline"
               >
                 {{ formatNames[type] }}<span aria-hidden="true">&nbsp;↗</span>
               </span>

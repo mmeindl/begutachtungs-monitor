@@ -80,13 +80,13 @@ const ariaLabel = computed(() => {
       :href="href"
       target="_blank"
       rel="noopener"
-      class="group tap-target w-full"
+      class="group/format tap-target w-full"
       :aria-label="ariaLabel"
     >
       <!-- The <a> keeps the full hit area, the visible tag is smaller —
            same construction as DocumentList's format tags. -->
       <span
-        class="inline-flex w-full justify-center rounded border border-hairline px-1.5 py-0.5 text-xs font-medium text-accent-deep group-hover:border-baseline group-hover:underline"
+        class="inline-flex w-full justify-center rounded border border-hairline px-1.5 py-0.5 text-xs font-medium text-accent-deep group-hover/format:border-baseline group-hover/format:underline"
       >
         PDF<span aria-hidden="true">&nbsp;↗</span>
       </span>
