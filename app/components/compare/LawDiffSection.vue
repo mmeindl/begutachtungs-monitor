@@ -10,22 +10,34 @@
  * a comparison can be linked to — unlike the view toggle and the search,
  * which change how the same thing is read. Default stays
  * Ministerialentwurf → Regierungsvorlage, the question this product is about.
+ *
+ * Three instances on a draft page since 01.10.2026, one per `scope`: each
+ * shows the step that led into its station (`lawDiffSteps`) — ME→RV under
+ * „Die Regierungsvorlage", the committee's and the plenary's steps under „Im
+ * Parlament", the whole way from the draft under „Im Bundesgesetzblatt".
+ * They share the one `?von=…&bis=…`: the instance whose scope holds `bis`
+ * reads it, the others show their defaults, so a shared link still opens one
+ * comparison.
  */
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
-import { ownChangeShare } from '#shared/utils/changeShare'
+import { changeShareNounDe, isNovelleUnits, ownChangeShare } from '#shared/utils/changeShare'
 import { changeShareSentenceDe, earlyVorlageSentenceDe, tabledBeforeFristEnd } from '~/utils/outcomes'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import {
-  DEFAULT_LAW_STATION_PAIR,
   LAW_STATION_LABEL,
-  defaultFromFor,
+  LAW_STEP_LABEL,
+  PARLIAMENT_COMPARISON_QUESTION,
+  type LawDiffScope,
+  type LawStationPair,
   isLawStationId,
-  isLawStationPair,
+  lawDiffKey,
+  lawDiffScopeOf,
+  lawDiffSteps,
   lawDiffSourceCredit,
   lawStationPairHint,
   lawStationPairQuestion,
@@ -38,7 +50,24 @@ const props = defineProps<{
   arrivedAt?: string | null
   deadline?: string | null
   rvDate?: string | null
+  /** Which station's step this instance shows; „rv" by default. */
+  scope?: LawDiffScope
+  /** The parliamentary texts the draft has (`parliamentTexts`), which decide
+   *  the steps under „Im Parlament". Known before the comparison loads, so
+   *  the first request already asks for the right pair. */
+  parliamentTexts?: readonly LawStationId[]
+  /** Fetch only once the section nears the viewport: under „Im Parlament" it
+   *  is the second comparison of the page, two more documents to parse, and
+   *  most readers of a draft page never scroll that far. */
+  deferred?: boolean
 }>()
+
+const scope: LawDiffScope = props.scope ?? 'rv'
+const steps: LawStationPair[] = lawDiffSteps(scope, props.parliamentTexts ?? [])
+/** The pair this instance shows when the URL names none of its own. */
+const scopeDefault: LawStationPair = steps[0] ?? { from: 'me', to: 'rv' }
+/** `#textvergleich` stays the Vorlage's: that anchor is in circulation. */
+const anchorId = scope === 'rv' ? 'textvergleich' : `textvergleich-${scope}`
 
 const route = useRoute()
 const router = useRouter()
@@ -49,19 +78,33 @@ const router = useRouter()
  * a validation message. The server validates the same query independently
  * (`readLawStationPair`), because a request can arrive without this page.
  */
-function pairFromRoute(): { from: LawStationId; to: LawStationId } {
+function pairFromRoute(): LawStationPair {
   const bis = route.query.bis
   const von = route.query.von
-  const to = isLawStationId(bis) ? bis : DEFAULT_LAW_STATION_PAIR.to
-  const from = isLawStationId(von) ? von : defaultFromFor(to)
-  if (!from || !isLawStationPair(from, to)) return { ...DEFAULT_LAW_STATION_PAIR }
-  return { from, to }
+  // Only a step of this section: a pair that ends at another station is that
+  // instance's to show, and a pair offered before 01.10.2026 that is no step
+  // (`?von=me&bis=plenum`) opens the section's default.
+  const step = steps.find((s) => s.to === bis && (!isLawStationId(von) || s.from === von))
+  return { ...(step ?? scopeDefault) }
 }
 const pair = ref(pairFromRoute())
 
-const { data, status } = await useFetch<LawDiffResponse>(
+/** Whether the three requests below may go out — at once, unless `deferred`. */
+const enabled = ref(!props.deferred)
+
+/* Keyed by draft and pair, so the line under „Die Begutachtung" that reads
+ * the same ME→RV count (`VorlageChangeNote`) shares this request — and
+ * `defer`, because Nuxt's default `cancel` aborts the first caller's request
+ * and sends it again (two requests on 11/ME XXVIII, measured 01.10.2026). */
+const { data, status, execute: executeDiff } = await useFetch<LawDiffResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/diff?von=${pair.value.from}&bis=${pair.value.to}`,
-  { lazy: true, server: false },
+  {
+    key: () => lawDiffKey(props.gp, props.inr, pair.value.from, pair.value.to),
+    lazy: true,
+    server: false,
+    dedupe: 'defer',
+    immediate: enabled.value,
+  },
 )
 
 /**
@@ -73,9 +116,9 @@ const { data, status } = await useFetch<LawDiffResponse>(
  * stations addresses a different §, so names from another pair would be
  * wrong names.
  */
-const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(
+const { data: paraTitles, execute: executeTitles } = await useFetch<ParagraphTitlesResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel?von=${pair.value.from}&bis=${pair.value.to}`,
-  { lazy: true, server: false },
+  { lazy: true, server: false, immediate: enabled.value },
 )
 
 /**
@@ -88,10 +131,58 @@ const { data: paraTitles } = await useFetch<ParagraphTitlesResponse>(
  * from Parliament must neither hold the comparison up nor take it down with
  * them.
  */
-const { data: reasoning } = await useFetch<ReasoningDiffResponse>(
+const { data: reasoning, execute: executeReasoning } = await useFetch<ReasoningDiffResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${pair.value.from}&bis=${pair.value.to}`,
-  { lazy: true, server: false },
+  { lazy: true, server: false, immediate: enabled.value },
 )
+
+const root = useTemplateRef<HTMLElement>('root')
+let observer: IntersectionObserver | null = null
+
+function enable() {
+  if (enabled.value) return
+  enabled.value = true
+  observer?.disconnect()
+  observer = null
+  void executeDiff()
+  void executeTitles()
+  void executeReasoning()
+}
+
+onMounted(() => {
+  // A link from before 01.10.2026 — `?von=rv&bis=plenum#textvergleich` —
+  // names a pair this instance holds and an anchor the Vorlage's carries.
+  // Take the reader to the comparison the link meant, and fix the hash so
+  // the address they share from here is the current one.
+  // The URL's own `bis`, not `pair`: the pair falls back to this instance's
+  // default, which is always in scope, and would claim every bare
+  // `#textvergleich` — the Vorlage's anchor.
+  const bis = route.query.bis
+  if (scope !== 'rv' && route.hash === '#textvergleich' && isLawStationId(bis) && lawDiffScopeOf(bis) === scope) {
+    enable()
+    root.value?.scrollIntoView()
+    void router.replace({ query: route.query, hash: `#${anchorId}` })
+    return
+  }
+  if (enabled.value) return
+  // No IntersectionObserver (old browser, jsdom): load straight away.
+  if (!root.value || typeof IntersectionObserver === 'undefined') {
+    enable()
+    return
+  }
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) enable()
+    },
+    { rootMargin: '600px 0px' },
+  )
+  observer.observe(root.value)
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  observer = null
+})
 
 /**
  * The reasoning to show at one unit: a changed one, or one shown without a
@@ -126,12 +217,17 @@ const reasoningNote = computed<string | null>(() => {
   // 01.10.2026, not Paragraphen: what is compared is the ressort's passage to
   // a change — one passage on three Ziffern is one Begründung, and only where
   // the Erläuterungen are titled by § is it the Paragraph's.
-  if (changed === 0) {
-    return compared === 1
-      ? 'Die Begründung, die beide Fassungen zu den Änderungen führen, hat das Ressort nicht geändert.'
-      : `Keine der ${compared} Begründungen, die beide Fassungen zu den Änderungen führen, hat das Ressort geändert.`
+  //
+  // Shorter again on 01.10.2026: „die beide Fassungen zu den Änderungen
+  // führen" became „die in beiden Fassungen stehen" — the same restriction,
+  // the one the count needs to be read right.
+  if (compared === 1) {
+    return changed === 0
+      ? 'Die Begründung, die in beiden Fassungen steht, hat das Ressort nicht geändert.'
+      : 'Die Begründung, die in beiden Fassungen steht, hat das Ressort geändert.'
   }
-  return `Auch die Begründung hat das Ressort geändert: bei ${changed} von ${compared} Begründungen, die beide Fassungen zu den Änderungen führen.`
+  const how = changed === 0 ? 'keine' : changed === compared ? 'alle' : String(changed)
+  return `Von den ${compared} Begründungen, die in beiden Fassungen stehen, hat das Ressort ${how} geändert.`
 })
 
 /**
@@ -149,7 +245,7 @@ const changeShareNote = computed<string | null>(() => {
   // Begutachtung (`tabledBeforeFristEnd`, 115/ME).
   if (props.deadline && props.rvDate && tabledBeforeFristEnd(props.deadline, props.rvDate)) {
     const dates = { arrivedAt: props.arrivedAt ?? null, deadline: props.deadline, rvDate: props.rvDate }
-    return earlyVorlageSentenceDe(share.changed, share.own, shareNoun.value, dates, laterPairLabel.value)
+    return earlyVorlageSentenceDe(share.changed, share.own, shareNoun.value, dates)
   }
   return changeShareSentenceDe(props.gp, share.changed, share.own, shareNoun.value)
 })
@@ -179,77 +275,31 @@ const creditSides = computed(() => {
 })
 const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(paraTitles.value.asOf) : null))
 
-/** „Regierungsvorlage → Ausschussfassung": the Vorlage against the next text this draft has, as the select names it. */
-const laterPairLabel = computed<string | null>(() => {
-  const stations = data.value?.stations ?? []
-  const i = stations.findIndex((s) => s.id === 'rv')
-  const rv = stations[i]
-  const next = stations[i + 1]
-  if (!rv || !next || !isLawStationPair(rv.id, next.id)) return null
-  return `${rv.label} → ${next.label}`
-})
-
 /**
- * Every comparison this draft can show, as ordered pairs of the stations it
- * actually published a text for.
- *
- * ONE control offering comparisons, not two offering stations: the reader's
- * question is "what did the committee change?", not "which two documents
- * shall I pick". It also makes an impossible pair unrepresentable — no
- * flipped, no equal ends — which two independent selects would have to catch
- * and explain. Both ends stay freely selectable, they are just enumerated.
- *
- * A station whose text is PDF-only says so in the option: the § parser needs
- * the HTML export, and a reader who picks it should know beforehand rather
- * than get an explanation afterwards.
+ * Where a section has two steps — the committee's and the plenary's — a
+ * two-button toggle picks one, named by the body that took it. It replaced a
+ * select of every ordered pair (up to nine) on 01.10.2026: most of those
+ * mixed two actors in one column of differences, and none of them was the
+ * question a section asks.
  */
-const comparisons = computed(() => {
-  const stations = data.value?.stations ?? []
-  const out: { value: string; from: LawStationId; to: LawStationId; label: string }[] = []
-  for (const from of stations) {
-    for (const to of stations) {
-      // `isLawStationPair` rather than an index comparison: since the BGBl
-      // station the rule has an exception (no actor stands behind
-      // plenum→bgbl, docs/architecture.md §12.33), and it may live in ONE
-      // place only — the server checks what is offered here with the same
-      // function.
-      if (!isLawStationPair(from.id, to.id)) continue
-      const pdfOnly = [from, to].filter((s) => !s.comparable).map((s) => s.label)
-      out.push({
-        value: `${from.id}>${to.id}`,
-        from: from.id,
-        to: to.id,
-        label:
-          `${from.label} → ${to.label}` +
-          (pdfOnly.length ? ` (${pdfOnly.join(' und ')} nur als PDF)` : ''),
-      })
-    }
+function chooseStep(step: LawStationPair) {
+  pair.value = { ...step }
+  // `replace`, not `push`: the pair belongs in the URL so it can be
+  // shared, but flipping between comparisons should not fill the back
+  // button with steps the reader has to walk out of. The default pair
+  // leaves the query empty, so the canonical URL of a draft stays clean —
+  // and an empty query is what makes this instance show it again.
+  const query = { ...route.query }
+  if (step.from === scopeDefault.from && step.to === scopeDefault.to) {
+    delete query.von
+    delete query.bis
+  } else {
+    query.von = step.from
+    query.bis = step.to
   }
-  return out
-})
-
-/** The value of the select, kept in sync with the pair in the URL. */
-const selectedComparison = computed({
-  get: () => `${pair.value.from}>${pair.value.to}`,
-  set: (value: string) => {
-    const choice = comparisons.value.find((c) => c.value === value)
-    if (!choice) return
-    pair.value = { from: choice.from, to: choice.to }
-    // `replace`, not `push`: the pair belongs in the URL so it can be
-    // shared, but flipping between comparisons should not fill the back
-    // button with steps the reader has to walk out of. The default pair
-    // leaves the query empty, so the canonical URL of a draft stays clean.
-    const query = { ...route.query }
-    if (choice.from === DEFAULT_LAW_STATION_PAIR.from && choice.to === DEFAULT_LAW_STATION_PAIR.to) {
-      delete query.von
-      delete query.bis
-    } else {
-      query.von = choice.from
-      query.bis = choice.to
-    }
-    router.replace({ query })
-  },
-})
+  router.replace({ query })
+}
+const isStep = (step: LawStationPair) => step.from === pair.value.from && step.to === pair.value.to
 
 /**
  * The section's heading never changes, and the question of the selected pair
@@ -262,19 +312,20 @@ const selectedComparison = computed({
  * select — heading, description, source line, package notes — and the select
  * itself was the only thing in view.
  *
- * The heading is the DEFAULT pair's question, and that is not a compromise:
- * it names the era every one of these comparisons belongs to — everything
- * here happened after the Begutachtung — while the line under the controls
- * names the step. It also keeps the wording the two links that point here
- * already use (the Regierungsvorlage station of the spine, and the outcome
- * card).
+ * The heading is the question of the station the instance stands under, in
+ * the wording the links that point here already use: the Regierungsvorlage
+ * and Parlament stations of the bar, and the outcome card. Under „Im
+ * Parlament" the line under the toggle names the step.
  */
-const heading = lawStationPairQuestion(DEFAULT_LAW_STATION_PAIR.from, DEFAULT_LAW_STATION_PAIR.to)
-const isDefaultPair = computed(
-  () => pair.value.from === DEFAULT_LAW_STATION_PAIR.from && pair.value.to === DEFAULT_LAW_STATION_PAIR.to,
+const heading = scope === 'parlament'
+  ? PARLIAMENT_COMPARISON_QUESTION
+  : lawStationPairQuestion(scopeDefault.from, scopeDefault.to)
+/** The step's own question, under „Im Parlament" only: there the heading
+ *  names the station, and the step — which two texts — is said nowhere else.
+ *  The other sections have one step, and their heading is its question. */
+const question = computed(() =>
+  scope === 'parlament' ? lawStationPairQuestion(pair.value.from, pair.value.to) : null,
 )
-/** Only for the other pairs: on the default one it would repeat the heading. */
-const question = computed(() => lawStationPairQuestion(pair.value.from, pair.value.to))
 const fromLabel = computed(() => LAW_STATION_LABEL[pair.value.from])
 const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
 
@@ -472,7 +523,7 @@ const view = ref<'inline' | 'split'>('inline')
 /* The reader's word for the counted unit in the headline figure: an
  * Änderungsanordnung is an „Änderung" there (30.09.2026); the precise term
  * stays on /so-funktionierts#vergleich and in the group labels. */
-const shareNoun = computed(() => (isNovelle.value ? 'Änderungen' : 'Paragraphen'))
+const shareNoun = computed(() => changeShareNounDe(data.value?.units ?? []))
 
 function unitNoun(n: number): string {
   if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
@@ -485,10 +536,7 @@ function isMinor(u: LawDiffUnit): boolean {
 }
 
 /** A Novelle has no §§ of its own; its units are the numbered amendment instructions. */
-const isNovelle = computed(() => {
-  const units = data.value?.units ?? []
-  return units.length > 0 && units.every((u) => /^Z\d/.test(u.id))
-})
+const isNovelle = computed(() => isNovelleUnits(data.value?.units ?? []))
 
 /**
  * The Paragraph a change amends — placed in front of the name.
@@ -544,20 +592,29 @@ const droppedNote = computed(() =>
 
 <template>
   <!-- id: the outcome card above links here ("der Vergleich der beiden Texte"). -->
-  <div id="textvergleich" class="mt-8 scroll-mt-24">
+  <div :id="anchorId" ref="root" class="mt-8 scroll-mt-24">
     <h3 class="text-base font-semibold text-ink">{{ heading }}</h3>
 
     <!-- Section-level control, and therefore in the section's header rather
          than in the toolbar of the list: it changes WHAT is compared, while
          the toggle and the search below change how the result is read.
          Outside every branch on purpose — a pair whose text is PDF-only
-         answers with a reason and no units, and with the select inside that
+         answers with a reason and no units, and with the toggle inside that
          branch the reader would lose the control that got them there. -->
-    <div v-if="comparisons.length > 1" class="mt-2">
-      <TokenSelect v-model="selectedComparison" aria-label="Welche zwei Fassungen vergleichen">
-        <option v-for="c in comparisons" :key="c.value" :value="c.value">{{ c.label }}</option>
-      </TokenSelect>
-    </div>
+    <UFieldGroup v-if="steps.length > 1" role="group" aria-label="Welcher Schritt im Parlament" class="mt-2">
+      <UButton
+        v-for="step in steps"
+        :key="`${step.from}>${step.to}`"
+        :color="isStep(step) ? 'primary' : 'neutral'"
+        :variant="isStep(step) ? 'subtle' : 'outline'"
+        :aria-pressed="isStep(step)"
+        size="sm"
+        class="min-h-target"
+        @click="chooseStep(step)"
+      >
+        {{ LAW_STEP_LABEL[step.to] }}
+      </UButton>
+    </UFieldGroup>
 
     <p v-if="status === 'pending' || status === 'idle'" class="mt-1 text-sm text-ink-secondary">
       Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
@@ -574,7 +631,7 @@ const droppedNote = computed(() =>
 
     <template v-else>
       <!-- What the selected pair answers, where the selection happened. -->
-      <p v-if="!isDefaultPair" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
+      <p v-if="question" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
       <!-- Where the reason for a change may be found, and nothing else
            (30.09.2026). „Ministerialentwurf gegen Regierungsvorlage." went:
            the pills above show the selected pair, and a non-default one
@@ -586,6 +643,10 @@ const droppedNote = computed(() =>
           Ob eine Stellungnahme dahintersteht, sagen oft die
           <ExternalLink :href="rvReasoningDoc.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>.
         </template>
+        <!-- The whole way: the steps hold the reasons, and under „Im
+             Parlament" there are steps only where parliament published a
+             changed text. -->
+        <template v-else-if="scope === 'bgbl' && !parliamentTexts?.length">Den Schritt des Ressorts zeigt der Vergleich unter „Die Regierungsvorlage“.</template>
         <template v-else>{{ lawStationPairHint(pair.from, pair.to) }}</template>
       </p>
 
@@ -595,20 +656,21 @@ const droppedNote = computed(() =>
         <p v-if="droppedNote">{{ droppedNote }}</p>
       </div>
 
+      <!-- Full column width since 01.10.2026, like the hint above: with
+           `max-w-prose` on these two and not on the hint the block had two
+           right edges, and inside the 768 px column the cap bought little. -->
+      <p v-if="changeShareNote" class="mt-3 text-sm text-ink-secondary">{{ changeShareNote }}</p>
       <!-- The reasoning, once as a rate above the list instead of
            „unverändert" on every row (docs/architecture.md §12.10b). Arrives
            when its fetch does. -->
-      <!-- „Wie wir vergleichen" closes the figure: the figure is what the
-           method explains (what counts, against what). Where there is no
-           figure it closes the hint instead, below. -->
-      <p v-if="changeShareNote" class="mt-3 max-w-prose text-sm text-ink-secondary">
-        {{ changeShareNote }}
+      <p v-if="reasoningNote" class="mt-3 text-sm text-ink-secondary">{{ reasoningNote }}</p>
+      <!-- Always on its own line, and last: it explains every sentence above
+           it. It used to close the figure where there was one and stand
+           under the hint where there was none, so it jumped between the end
+           of a line and a line of its own (01.10.2026). -->
+      <p class="mt-3 text-sm">
         <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
       </p>
-      <p v-else class="mt-1 text-sm">
-        <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
-      </p>
-      <p v-if="reasoningNote" class="mt-3 max-w-prose text-sm text-ink-secondary">{{ reasoningNote }}</p>
 
       <template v-if="data.units.length">
         <!-- How to read the result, and a search: both scope the list below

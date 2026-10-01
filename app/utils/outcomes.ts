@@ -136,6 +136,46 @@ export function tabledBeforeFristEnd(deadline: string | null | undefined, rvDate
   return days !== null && days <= 0
 }
 
+/** When an early Vorlage came, against the Begutachtung's own dates —
+ *  „am 10.06.2026, am selben Tag, an dem der Entwurf in Begutachtung ging". */
+export function earlyVorlageWhenDe(dates: { arrivedAt: string | null; deadline: string; rvDate: string }): string {
+  const rv = formatDateDe(dates.rvDate)
+  const sinceStart = spanInDays(dates.arrivedAt, dates.rvDate)
+  return sinceStart !== null && sinceStart < 0
+    ? `am ${rv}, noch bevor der Entwurf in Begutachtung ging`
+    : sinceStart === 0
+      ? `am ${rv}, am selben Tag, an dem der Entwurf in Begutachtung ging`
+      : spanInDays(dates.deadline, dates.rvDate) === 0
+        ? `am ${rv}, dem letzten Tag der Begutachtungsfrist`
+        : `am ${rv}, noch während der Begutachtung`
+}
+
+/**
+ * The line that closes „Die Begutachtung" once a Vorlage exists: what came
+ * of the text after it, one section before the comparison that shows it
+ * (01.10.2026). Input and outcome stand next to each other, the comparison
+ * stays with the Vorlage the Ressort wrote — the section claims no change.
+ *
+ * Only the count, not the period's range: the range belongs to the
+ * comparison it explains. And for a Vorlage tabled before the Fristende not
+ * even the count — set under the Stellungnahmen, „im Wortlaut übernommen"
+ * reads as input ignored, the blame reading `tabledBeforeFristEnd` exists to
+ * prevent. There the line says when the Vorlage came, with its date — the
+ * comparison says it in a clause (`earlyVorlageWhenDe`). Null where the count
+ * is not known.
+ */
+export function begutachtungAftermathDe(
+  share: { changed: number; own: number } | null,
+  unitPlural: string,
+  dates: { arrivedAt: string | null; deadline: string | null; rvDate: string | null },
+): string | null {
+  if (dates.deadline && dates.rvDate && tabledBeforeFristEnd(dates.deadline, dates.rvDate)) {
+    const when = earlyVorlageWhenDe({ arrivedAt: dates.arrivedAt, deadline: dates.deadline, rvDate: dates.rvDate })
+    return `Eingebracht wurde die Regierungsvorlage ${when}.`
+  }
+  return share ? changeShareLeadDe(share.changed, share.own, unitPlural).trim() : null
+}
+
 /**
  * The same count, but instead of the range: when the Vorlage came. Temporal,
  * never causal — it says the Frist was still running, not that the
@@ -143,29 +183,28 @@ export function tabledBeforeFristEnd(deadline: string | null | undefined, rvDate
  * Vorlage came five days before the Fristende, when three of its eleven
  * Stellungnahmen had already arrived).
  *
- * `laterPair` names the comparison where the text moved next, if the draft
- * has one — the question a reader of this sentence is left with. It points
- * at the control above rather than claiming why anything changed there.
+ * One clause since 01.10.2026, in the bar's words and without the dates:
+ * „Eingebracht wurde sie am 10.06.2026, am selben Tag, an dem … — die Frist
+ * für Stellungnahmen lief bis 24.06.2026" said again what the bar and the
+ * line closing „Die Begutachtung" (`begutachtungAftermathDe`) already state.
+ * The clause itself stays: beside the count it is what keeps „im Wortlaut"
+ * from reading as input ignored. The pointer to the next comparison went
+ * with it — „Im Parlament" is the next section.
  */
 export function earlyVorlageSentenceDe(
   changed: number,
   own: number,
   unitPlural: string,
   dates: { arrivedAt: string | null; deadline: string; rvDate: string },
-  laterPair: string | null,
 ): string {
-  const rv = formatDateDe(dates.rvDate)
   const sinceStart = spanInDays(dates.arrivedAt, dates.rvDate)
   const when =
-    sinceStart !== null && sinceStart < 0
-      ? `am ${rv}, noch bevor der Entwurf in Begutachtung ging`
-      : sinceStart === 0
-        ? `am ${rv}, am selben Tag, an dem der Entwurf in Begutachtung ging`
-        : spanInDays(dates.deadline, dates.rvDate) === 0
-          ? `am ${rv}, dem letzten Tag der Begutachtungsfrist`
-          : `am ${rv}, noch während der Begutachtung`
-  const next = laterPair ? ` Was danach am Text geändert wurde, zeigt der Vergleich ${laterPair}.` : ''
-  return `${changeShareLeadDe(changed, own, unitPlural)}Eingebracht wurde sie ${when} — die Frist für Stellungnahmen lief bis ${formatDateDe(dates.deadline)}.${next}`
+    sinceStart !== null && sinceStart <= 0
+      ? 'noch vor Beginn der Begutachtung'
+      : spanInDays(dates.deadline, dates.rvDate) === 0
+        ? 'am letzten Tag der Begutachtungsfrist'
+        : 'noch während der Begutachtung'
+  return `${changeShareLeadDe(changed, own, unitPlural).trim().replace(/\.$/, '')} – eingebracht ${when}.`
 }
 
 /**

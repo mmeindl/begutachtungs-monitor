@@ -44,7 +44,7 @@
 import type { BgblOutcome, DraftDetail, HouseVote, LawStationId, RisConsultation } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
-import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
+import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
@@ -323,9 +323,16 @@ function amendedStations(d: DraftDetail): readonly LawStationId[] {
  * where there is a text behind it.
  */
 export function lastParliamentStation(d: DraftDetail): LawStationId | null {
-  if (carries(d, PLENUM)) return 'plenum'
-  if (carries(d, AUSSCHUSS)) return 'ausschuss'
-  return null
+  return parliamentTexts(d).at(-1) ?? null
+}
+
+/** The parliamentary texts on this page, in procedural order — what the
+ *  steps under „Im Parlament" are built from (`lawDiffSteps`). */
+export function parliamentTexts(d: DraftDetail): LawStationId[] {
+  const texts: LawStationId[] = []
+  if (carries(d, AUSSCHUSS)) texts.push('ausschuss')
+  if (carries(d, PLENUM)) texts.push('plenum')
+  return texts
 }
 
 /**
@@ -628,7 +635,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // nothing to read, and a link to a comparison of nothing would be the
       // empty promise this model exists to avoid.
       comparison: lastParliamentStation(d)
-        ? { id: 'parlament', question: 'Was das Parlament am Text geändert hat' }
+        ? { id: 'parlament', question: PARLIAMENT_COMPARISON_QUESTION }
         : null,
     },
     {

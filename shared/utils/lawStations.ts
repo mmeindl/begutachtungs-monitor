@@ -24,7 +24,9 @@ export const LAW_STATION_ORDER: readonly LawStationId[] = ['me', 'rv', 'ausschus
 
 /**
  * The label names the VERSION, not the event: "Ausschussfassung", not
- * "Geändert im Ausschuss" (upstream's wording, kept for the document list).
+ * "Geändert im Ausschuss" (upstream's wording). Since 01.10.2026 the document
+ * list under „Im Parlament" uses these names too: it is folded under the
+ * comparison that names the same texts so.
  * In a selector the options are two texts being picked, so they have to read
  * as things rather than as happenings.
  */
@@ -173,6 +175,68 @@ export function defaultFromFor(to: LawStationId): LawStationId | null {
 export const DEFAULT_LAW_STATION_PAIR: { from: LawStationId; to: LawStationId } = { from: 'me', to: 'rv' }
 
 /**
+ * Which section of the draft page a comparison stands in, and which
+ * comparisons there are — decided 01.10.2026: every section shows the step
+ * that LED INTO its station, and only that step, so each comparison has one
+ * actor behind it (the rule `defaultFromFor` states for the defaults).
+ *
+ *   Die Regierungsvorlage   Ministerialentwurf → Regierungsvorlage (the ministry)
+ *   Im Parlament            Regierungsvorlage → Ausschussfassung (the committee)
+ *                           Ausschussfassung → Plenarfassung (the plenary)
+ *   Im Bundesgesetzblatt    Ministerialentwurf → Fassung im Bundesgesetzblatt
+ *
+ * Until then every pair stood in „Die Regierungsvorlage" behind one select of
+ * up to nine, and „Im Parlament" compared nothing — in the majority case, as
+ * 52 of 91 GP-XXVIII Vorlagen were changed again. Most of those pairs mixed
+ * two actors; they went with the select.
+ *
+ * The plenary's step stays with parliament, not with the Bundesgesetzblatt:
+ * the Plenarfassung is the Nationalrat's text, and between Beschluss and
+ * Kundmachung nobody changes it (`isLawStationPair`). The Bundesgesetzblatt
+ * carries the one comparison that is not a step, the whole way from the
+ * draft: the station where „what became of it" can first be answered in
+ * full. Where parliament published only one text, its step starts at the
+ * Vorlage (RV → Plenarfassung where the plenary changed it directly).
+ */
+export type LawDiffScope = 'rv' | 'parlament' | 'bgbl'
+
+export function lawDiffScopeOf(to: LawStationId): LawDiffScope | null {
+  if (to === 'me') return null
+  if (to === 'rv') return 'rv'
+  return to === 'bgbl' ? 'bgbl' : 'parlament'
+}
+
+export interface LawStationPair { from: LawStationId; to: LawStationId }
+
+/** The comparisons of one section, in procedural order; the first is its
+ *  default. `parliamentTexts` are the parliamentary versions the draft has. */
+export function lawDiffSteps(scope: LawDiffScope, parliamentTexts: readonly LawStationId[]): LawStationPair[] {
+  if (scope === 'rv') return [{ from: 'me', to: 'rv' }]
+  if (scope === 'bgbl') return [{ from: 'me', to: 'bgbl' }]
+  const ausschuss = parliamentTexts.includes('ausschuss')
+  const plenum = parliamentTexts.includes('plenum')
+  if (ausschuss && plenum) return [{ from: 'rv', to: 'ausschuss' }, { from: 'ausschuss', to: 'plenum' }]
+  if (ausschuss) return [{ from: 'rv', to: 'ausschuss' }]
+  if (plenum) return [{ from: 'rv', to: 'plenum' }]
+  return []
+}
+
+/** The fetch key of one comparison, shared by every component that reads it. */
+export function lawDiffKey(gp: string, inr: number, from: LawStationId, to: LawStationId): string {
+  return `law-diff:${gp}:${inr}:${from}>${to}`
+}
+
+/** A parliamentary step by the body that took it — the toggle's word. */
+export const LAW_STEP_LABEL: Partial<Record<LawStationId, string>> = {
+  ausschuss: 'Im Ausschuss',
+  plenum: 'Im Plenum',
+}
+
+/** The heading of the comparison under „Im Parlament", and the bar's question
+ *  that links to it — one string, so the two cannot drift apart. */
+export const PARLIAMENT_COMPARISON_QUESTION = 'Was das Parlament am Text geändert hat'
+
+/**
  * The heading over the comparison, phrased as the question the pair answers
  * rather than as the name of a procedure — the wording rule the station bar
  * already follows (`app/utils/spine.ts`).
@@ -220,6 +284,11 @@ export function lawStationPairQuestion(from: LawStationId, to: LawStationId): st
 export function lawStationPairHint(from: LawStationId, to: LawStationId): string {
   if (to === 'rv') {
     return 'Ob eine Stellungnahme dahintersteht, sagen oft die Erläuterungen der Regierungsvorlage.'
+  }
+  // The whole way spans ministry and parliament, so no one document holds
+  // the reasons; the steps do, one actor each.
+  if (from === 'me') {
+    return 'Wer was geändert hat, zeigen die einzelnen Schritte unter „Die Regierungsvorlage“ und „Im Parlament“.'
   }
   return 'Welche Abänderungsanträge dahinterstehen, nennt der Ausschussbericht.'
 }

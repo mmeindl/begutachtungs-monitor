@@ -6,6 +6,7 @@ import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristRan
 import {
   SECOND_ROUND_CLAUSE,
   lastParliamentStation,
+  parliamentTexts,
   parliamentOutcome,
   procedureStatusDe,
   stations,
@@ -17,6 +18,7 @@ import { carriesDraft } from '#shared/utils/antragPath'
 // auto-imports, so that server map and vitest run the same functions.
 import { mayClaimOutcome } from '#shared/utils/draftStations'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
+import { LAW_STATION_LABEL, lawStationOf } from '#shared/utils/lawStations'
 
 definePageMeta({
   // Messenger/autocorrect lowercasing kills valid shared links — 301 to
@@ -138,18 +140,30 @@ const voteLine = computed(() => voteLineDe(data.value?.enactment?.vote))
  * offered unconditionally here; whether the question is worth asking for a
  * draft that creates new law is the station model's call, not this map's.
  *
- * The parliament link carries a query, not just a hash: landing on
- * `#textvergleich` alone would show the ME→RV comparison, which does not
- * answer "what did parliament change". `von=rv` follows the rule that keeps
- * a difference attributable to one actor. */
+ * The parliament link leads into „Im Parlament" since 01.10.2026, where that
+ * station's steps stand now (`lawDiffSteps`), and opens the first of them —
+ * the section's default, so it carries no pair. */
 const parliamentStation = computed(() =>
   data.value ? lastParliamentStation(data.value) : null,
+)
+const parliamentTextList = computed(() => (data.value ? parliamentTexts(data.value) : []))
+
+/* Parliament's versions under the names the comparison above them uses —
+ * „Ausschussfassung", not upstream's „Geändert im Ausschuss" (01.10.2026):
+ * in a fold right under a toggle and a source line that say
+ * „Ausschussfassung", the same document must not carry a second name. A
+ * title upstream gives that is no station keeps its own. */
+const parliamentDocuments = computed(() =>
+  (data.value?.textEvolution ?? []).map((doc) => {
+    const station = lawStationOf(doc.title)
+    return station ? { ...doc, title: LAW_STATION_LABEL[station] } : doc
+  }),
 )
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() => ({
   vorschlag: '#gegenueberstellung',
   ...(data.value?.enactment ? { begutachtung: '#textvergleich' } : {}),
   ...(parliamentStation.value
-    ? { parlament: `?von=rv&bis=${parliamentStation.value}#textvergleich` }
+    ? { parlament: '#textvergleich-parlament' }
     : {}),
 }))
 
@@ -822,7 +836,11 @@ const ministryLinks = computed(() => {
               <FristBar :start="data.arrivedAt" :deadline="data.deadline" />
             </template>
           </FactList>
-          <h3 class="mt-4 text-base font-semibold text-ink">Stellungnahmen</h3>
+          <!-- A sub-section like „Geltendes Recht", so the same mt-8 after
+               content: at mt-4 the heading stood closer to „Übermittelt" than
+               the facts stand to each other, and read as the list's next
+               label (01.10.2026). -->
+          <h3 :class="[begutachtungFacts.length ? 'mt-8' : 'mt-4', 'text-base font-semibold text-ink']">Stellungnahmen</h3>
           <div class="mt-4">
             <p
               v-if="data.statements.degraded"
@@ -863,6 +881,17 @@ const ministryLinks = computed(() => {
               :description="data.active ? 'Die Frist läuft.' : undefined"
             />
           </div>
+          <!-- What came of the text after the Begutachtung, beside the input
+               — the comparison itself stays with the Vorlage the Ressort wrote
+               (`VorlageChangeNote`, 01.10.2026). -->
+          <VorlageChangeNote
+            v-if="data.enactment"
+            :gp="data.gp"
+            :inr="data.inr"
+            :arrived-at="data.arrivedAt"
+            :deadline="data.deadline"
+            :rv-date="data.enactment.rvDate"
+          />
         </section>
 
         <!-- The station that had no home: the Regierungsvorlage lived as a
@@ -967,6 +996,21 @@ const ministryLinks = computed(() => {
               {{ formatDateDe(data.successor.arrivedAt) }}.
             </p>
           </div>
+          <!-- The accountability core: what became of the draft, § by §, both
+               ways — changed and unchanged alike (framing rule,
+               docs/architecture.md §4). Only
+               once a Regierungsvorlage exists; before that there is nothing to
+               hold the draft against. Before the Vorlage's own Stellungnahmen
+               since 01.10.2026: the comparison is what led into this station,
+               they are the input to the next one. -->
+          <LawDiffSection
+            v-if="data.enactment"
+            :gp="data.gp"
+            :inr="data.inr"
+            :arrived-at="data.arrivedAt"
+            :deadline="data.deadline"
+            :rv-date="data.enactment.rvDate"
+          />
           <!-- The second window for input: what was filed on the Vorlage itself,
                in the same row grammar as the Begutachtung's panel. Client-side
                data, so the block appears once it is there and says nothing
@@ -976,19 +1020,6 @@ const ministryLinks = computed(() => {
             :data="rvStatements"
             :filing-open="windows.vorlage"
           />
-          <!-- The accountability core: what became of the draft, § by §, both
-               ways — changed and unchanged alike (framing rule,
-               docs/architecture.md §4). Only
-               once a Regierungsvorlage exists; before that there is nothing to
-               hold the draft against. -->
-          <LawDiffSection
-            v-if="data.enactment"
-            :gp="data.gp"
-            :inr="data.inr"
-            :arrived-at="data.arrivedAt"
-            :deadline="data.deadline"
-            :rv-date="data.enactment.rvDate"
-          />
         </section>
 
         <!-- The station exists as soon as a Regierungsvorlage does, not only
@@ -996,8 +1027,8 @@ const ministryLinks = computed(() => {
              unverändert beschlossen" IS a finding, and it had no place on this
              page before. Where change does happen it is the majority case —
              52 of the 91 GP-XXVIII drafts that reached a Vorlage were changed
-             again afterwards — and the comparisons for it are not built yet,
-             so the section carries the texts. -->
+             again afterwards — and the section carries the texts and, since
+             01.10.2026, their comparison. -->
         <section
           v-if="data.enactment"
           id="parlament"
@@ -1018,10 +1049,11 @@ const ministryLinks = computed(() => {
               beschlossen.
             </template>
             <template v-else-if="parliament === 'amended'">
-              <!-- Where it changed — Ausschuss, Plenum — stands in the bar;
-                   here only the versions (30.09.2026). -->
-              <template v-if="data.textEvolution.length">Die geänderten Fassungen:</template>
-              <template v-else>Der Text wurde im Parlament weiter geändert.</template>
+              <!-- Where it changed — Ausschuss, Plenum — stands in the bar
+                   and in the comparison's toggle below. „Die geänderten
+                   Fassungen:" introduced an open list until 01.10.2026; the
+                   list is folded at the end of the section now. -->
+              Der Text wurde im Parlament weiter geändert.
             </template>
             <template v-else-if="parliament === 'decided'">
               Der Nationalrat hat den Text beschlossen; kundgemacht ist er bisher
@@ -1044,15 +1076,19 @@ const ministryLinks = computed(() => {
               Kundmachung.
             </template>
           </p>
-          <!-- A first-time reader cannot know these rows ARE the law text at
-               successive stations — the sentence above says it once. The
-               Regierungsvorlage itself is not among them: the section above
-               offers it, and the same link under two headings is what this
-               page had too much of. Documents wear the Entwurfsdokumente
-               pattern: one row per station, formats as buttons. -->
-          <div v-if="data.textEvolution.length" class="mt-3">
-            <DocumentList :documents="data.textEvolution" />
-          </div>
+          <!-- What the committee and the plenary did to the text, one step
+               each (`lawDiffSteps`, 01.10.2026) — the section's content, so it
+               comes first, before who voted how. Only where parliament published
+               a changed text, as the bar's link. Deferred: the page's second
+               comparison, and below most readers' scroll. -->
+          <LawDiffSection
+            v-if="parliamentStation"
+            :gp="data.gp"
+            :inr="data.inr"
+            scope="parlament"
+            :parliament-texts="parliamentTextList"
+            deferred
+          />
           <!-- Who carried it, as its own sentence after the versions: the
                paragraph above says what happened to the Vorlage, this one
                who stood where on it.
@@ -1063,7 +1099,9 @@ const ministryLinks = computed(() => {
                listed above, so the two facts are neighbours, never a
                cause and its effect. The sentence is missing rather than
                vaguer where upstream kept no club list (`parseVote`). -->
-          <p v-if="voteLine" class="mt-3 max-w-prose text-sm text-ink-secondary">
+          <!-- mt-8 after the comparison, whose source line it otherwise read as
+               the last line of. -->
+          <p v-if="voteLine" :class="[parliamentStation ? 'mt-8' : 'mt-3', 'text-sm text-ink-secondary']">
             In dritter Lesung stimmten {{ voteLine }}.
           </p>
           <!-- The parliamentary record itself. Our trace ends at the
@@ -1075,6 +1113,35 @@ const ministryLinks = computed(() => {
               class="link-inline"
             >Verlauf auf parlament.gv.at</ExternalLink>
           </p>
+          <!-- The versions themselves, folded at the end as under „Der
+               Entwurf" (01.10.2026): the documents are what a citing or
+               downloading reader looks for, and that reader expects them
+               last. Open above the comparison they stood between the
+               section's sentence and its content, and repeated the two texts
+               the comparison's source line links anyway. Named as the
+               comparison names them (`parliamentDocuments`). The
+               Regierungsvorlage itself is not among them: the section above
+               offers it. -->
+          <details
+            v-if="parliamentDocuments.length"
+            class="group mt-8 border-t border-hairline"
+          >
+            <summary
+              class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+            >
+              <h3 class="text-base font-semibold text-ink">
+                Dokumente ({{ parliamentDocuments.length }})
+              </h3>
+              <UIcon
+                name="i-lucide-chevron-down"
+                class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </summary>
+            <div class="pb-2">
+              <DocumentList :documents="parliamentDocuments" />
+            </div>
+          </details>
         </section>
 
         <!-- Short by design: the end of the story, and one line is all of it.
@@ -1097,6 +1164,18 @@ const ministryLinks = computed(() => {
               class="link-inline"
             >{{ data.enactment.bgblNumber }}</ExternalLink><span v-else>{{ data.enactment.bgblNumber }}</span>.
           </p>
+          <!-- The one comparison that is no step: the whole way from the draft
+               to the law, at the station where „what became of it" can first
+               be answered in full (`lawDiffSteps`, 01.10.2026). The steps and
+               who took them stand in the sections above. Deferred, as the
+               parliament's. -->
+          <LawDiffSection
+            :gp="data.gp"
+            :inr="data.inr"
+            scope="bgbl"
+            :parliament-texts="parliamentTextList"
+            deferred
+          />
         </section>
 
       </article>

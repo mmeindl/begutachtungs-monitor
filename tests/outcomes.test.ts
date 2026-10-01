@@ -7,6 +7,7 @@ import {
   rvBaseRateSentenceDe,
   changeShareRateFor,
   changeShareSentenceDe,
+  begutachtungAftermathDe,
   earlyVorlageSentenceDe,
   tabledBeforeFristEnd,
 } from '../app/utils/outcomes'
@@ -119,31 +120,45 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
     expect(tabledBeforeFristEnd('2026-06-24', null)).toBe(false)
   })
 
-  const pair = 'Regierungsvorlage → Ausschussfassung'
-
-  it('115/ME: same day as the draft, the count kept, the range replaced by the date', () => {
-    const s = earlyVorlageSentenceDe(0, 8, 'Änderungen', { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }, pair)
-    expect(s).toBe(
-      'Die Regierungsvorlage übernimmt alle 8 Änderungen des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen. ' +
-      'Eingebracht wurde sie am 10.06.2026, am selben Tag, an dem der Entwurf in Begutachtung ging — die Frist für Stellungnahmen lief bis 24.06.2026. ' +
-      'Was danach am Text geändert wurde, zeigt der Vergleich Regierungsvorlage → Ausschussfassung.',
-    )
+  it('115/ME: the count kept, the range replaced by when the Vorlage came, in the bar\'s words', () => {
+    expect(earlyVorlageSentenceDe(0, 8, 'Änderungen', { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }))
+      .toBe('Die Regierungsvorlage übernimmt alle 8 Änderungen des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen – eingebracht noch vor Beginn der Begutachtung.')
   })
 
-  it('names the other three timings', () => {
+  it('names the other timings', () => {
     const at = (arrivedAt: string, rvDate: string, deadline: string) =>
-      earlyVorlageSentenceDe(1, 20, 'Paragraphen', { arrivedAt, deadline, rvDate }, null)
-    expect(at('2026-03-25', '2026-03-24', '2026-04-09')).toContain('am 24.03.2026, noch bevor der Entwurf in Begutachtung ging') // 92/ME
-    expect(at('2025-09-15', '2025-09-24', '2025-09-29')).toContain('am 24.09.2025, noch während der Begutachtung') // 45/ME
-    expect(at('2025-09-15', '2025-09-29', '2025-09-29')).toContain('am 29.09.2025, dem letzten Tag der Begutachtungsfrist')
+      earlyVorlageSentenceDe(1, 20, 'Paragraphen', { arrivedAt, deadline, rvDate })
+    expect(at('2026-03-25', '2026-03-24', '2026-04-09')).toContain('– eingebracht noch vor Beginn der Begutachtung.') // 92/ME
+    expect(at('2025-09-15', '2025-09-24', '2025-09-29')).toContain('(5\u00a0%) – eingebracht noch während der Begutachtung.') // 45/ME
+    expect(at('2025-09-15', '2025-09-29', '2025-09-29')).toContain('– eingebracht am letzten Tag der Begutachtungsfrist.')
   })
 
-  it('points at the next comparison only when there is one, and never says why', () => {
-    const dates = { arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' }
-    const without = earlyVorlageSentenceDe(1, 33, 'Änderungen', dates, null)
-    expect(without).not.toContain('Was danach')
-    expect(without).toContain('1 von 33 Änderungen des Entwurfs umgeschrieben oder gestrichen (3\u00a0%)')
-    const s = earlyVorlageSentenceDe(0, 8, 'Paragraphen', dates, pair)
+  it('never says why', () => {
+    const s = earlyVorlageSentenceDe(0, 8, 'Paragraphen', { arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' })
     expect(s).not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
+  })
+})
+
+describe('begutachtungAftermathDe — the line that closes „Die Begutachtung"', () => {
+  const after = { arrivedAt: '2026-05-01', deadline: '2026-06-12', rvDate: '2026-09-02' }
+
+  it('states the count once the Vorlage came after the Fristende, without the range', () => {
+    expect(begutachtungAftermathDe({ changed: 12, own: 21 }, 'Änderungen', after))
+      .toBe('Die Regierungsvorlage hat 12 von 21 Änderungen des Entwurfs umgeschrieben oder gestrichen (57\u00a0%).')
+    expect(begutachtungAftermathDe({ changed: 0, own: 8 }, 'Paragraphen', after))
+      .toBe('Die Regierungsvorlage übernimmt alle 8 Paragraphen des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen.')
+  })
+
+  /* Under the Stellungnahmen, „im Wortlaut übernommen" for a Vorlage they
+     could not have shaped reads as input ignored — so no count at all. */
+  it('says only when an early Vorlage came, count or not (115/ME)', () => {
+    const early = { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }
+    const line = 'Eingebracht wurde die Regierungsvorlage am 10.06.2026, am selben Tag, an dem der Entwurf in Begutachtung ging.'
+    expect(begutachtungAftermathDe({ changed: 0, own: 8 }, 'Paragraphen', early)).toBe(line)
+    expect(begutachtungAftermathDe(null, 'Paragraphen', early)).toBe(line)
+  })
+
+  it('says nothing while the count is unknown', () => {
+    expect(begutachtungAftermathDe(null, 'Paragraphen', after)).toBeNull()
   })
 })

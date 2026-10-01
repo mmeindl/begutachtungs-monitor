@@ -8,7 +8,9 @@ import {
   defaultFromFor,
   isLawStationId,
   isLawStationPair,
+  lawDiffScopeOf,
   lawDiffSourceCredit,
+  lawDiffSteps,
   lawStationOf,
   lawStationPairHint,
   lawStationPairQuestion,
@@ -232,6 +234,45 @@ describe('missingStationReason', () => {
   it('leaves every other station as the table has it', () => {
     for (const id of ['me', 'ausschuss', 'plenum', 'bgbl'] as const) {
       expect(missingStationReason(id, true)).toBe(MISSING_STATION_REASON[id])
+    }
+  })
+})
+
+describe('lawDiffScopeOf and lawDiffSteps', () => {
+  /* Every section shows the step that led into its station, one actor each;
+     the Bundesgesetzblatt carries the whole way from the draft. */
+  it('puts a pair under the station it ends at', () => {
+    expect(lawDiffScopeOf('rv')).toBe('rv')
+    expect(lawDiffScopeOf('ausschuss')).toBe('parlament')
+    expect(lawDiffScopeOf('plenum')).toBe('parlament')
+    expect(lawDiffScopeOf('bgbl')).toBe('bgbl')
+    expect(lawDiffScopeOf('me')).toBeNull()
+  })
+
+  it('gives the Vorlage and the law one comparison each', () => {
+    expect(lawDiffSteps('rv', ['ausschuss', 'plenum'])).toEqual([DEFAULT_LAW_STATION_PAIR])
+    expect(lawDiffSteps('bgbl', [])).toEqual([{ from: 'me', to: 'bgbl' }])
+  })
+
+  it('splits parliament into the committee\'s and the plenary\'s step', () => {
+    expect(lawDiffSteps('parlament', ['ausschuss', 'plenum']))
+      .toEqual([{ from: 'rv', to: 'ausschuss' }, { from: 'ausschuss', to: 'plenum' }])
+  })
+
+  /* With one parliamentary text, its step starts at the Vorlage — the
+     plenary can change a Vorlage directly. */
+  it('starts a lone parliamentary step at the Vorlage', () => {
+    expect(lawDiffSteps('parlament', ['ausschuss'])).toEqual([{ from: 'rv', to: 'ausschuss' }])
+    expect(lawDiffSteps('parlament', ['plenum'])).toEqual([{ from: 'rv', to: 'plenum' }])
+    expect(lawDiffSteps('parlament', [])).toEqual([])
+  })
+
+  it('offers only pairs the server accepts', () => {
+    for (const scope of ['rv', 'parlament', 'bgbl'] as const) {
+      for (const p of lawDiffSteps(scope, ['ausschuss', 'plenum'])) {
+        expect(isLawStationPair(p.from, p.to)).toBe(true)
+        expect(lawDiffScopeOf(p.to)).toBe(scope)
+      }
     }
   })
 })

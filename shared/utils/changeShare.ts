@@ -35,3 +35,17 @@ export function ownChangeShare(stats: ChangeCounts): { changed: number; own: num
   const changed = stats.changed - stats.editorial + stats.removed
   return { changed, own, share: changed / own }
 }
+
+/**
+ * The reader's word for the counted unit: an Änderungsanordnung is an
+ * „Änderung" in the sentence (30.09.2026), a § of a new law a Paragraph. A
+ * Novelle has no §§ of its own; its units are the numbered amendment
+ * instructions (`Z 1`, `Z 2`, …).
+ */
+export function isNovelleUnits(units: readonly { id: string }[]): boolean {
+  return units.length > 0 && units.every((u) => /^Z\d/.test(u.id))
+}
+
+export function changeShareNounDe(units: readonly { id: string }[]): string {
+  return isNovelleUnits(units) ? 'Änderungen' : 'Paragraphen'
+}
