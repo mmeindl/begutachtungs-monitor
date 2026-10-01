@@ -335,7 +335,10 @@ const enactedHref = computed(
            failed `/api/dashboard` used to take the one still-working offer
            down with the data. Footer keeps the full version with the
            manual URL. -->
-      <p class="mt-4 text-sm text-ink-secondary">
+      <!-- `leading-7`: the links are `tap-target` boxes of 28 px in the line,
+           so a text-sm line of 20 px made every wrapped line a different
+           height on a phone. -->
+      <p class="mt-4 text-sm leading-7 text-ink-secondary">
         <UIcon
           name="i-lucide-calendar-plus"
           class="me-1 inline-block size-4 align-text-bottom"

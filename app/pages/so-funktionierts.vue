@@ -290,7 +290,7 @@ const toc = [
       </p>
     </section>
 
-    <section id="stationen" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
+    <section id="stationen" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
       <h2 class="text-xl font-semibold text-ink">Der Weg eines Entwurfs</h2>
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Die ersten beiden Stationen sind für jeden Entwurf dieselben. Danach
@@ -363,9 +363,11 @@ const toc = [
         :key="path.id"
         class="mt-10 scroll-mt-6 rounded-xl border border-hairline bg-surface p-4 sm:p-6"
       >
+        <!-- The count moves to the next line whole or not at all: it broke
+             as „drei weitere / Stationen" at 390 px (30.09.2026). -->
         <h3 class="text-base font-semibold text-ink">
-          {{ path.name }}
-          <span class="ml-1 font-normal text-ink-muted">· {{ path.count }}</span>
+          {{ path.name }}<span class="font-normal text-ink-muted">&nbsp;·</span>
+          <span class="inline-block font-normal text-ink-muted">{{ path.count }}</span>
         </h3>
         <p class="mt-2 leading-relaxed text-ink-secondary">{{ path.lede }}</p>
 
@@ -427,7 +429,7 @@ const toc = [
          here too, because here somebody came looking for them; on a draft page
          they would be information about us given to a reader who asked about a
          draft. -->
-    <section id="ohne-stellungnahmen" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
+    <section id="ohne-stellungnahmen" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
       <h2 class="text-lg font-semibold text-ink">
         Warum manche Entwürfe keine Stellungnahmen zeigen
       </h2>
@@ -458,7 +460,7 @@ const toc = [
          the numbered lists because it describes a document, not a step of the
          procedure — but keeps the page's typography, because it answers the
          same kind of question. -->
-    <section id="gegenueberstellung" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
+    <section id="gegenueberstellung" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
       <h2 class="text-lg font-semibold text-ink">Woher „Was ändert der Entwurf?“ kommt</h2>
 
       <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -569,13 +571,13 @@ const toc = [
          address of its own: its „Wie wir vergleichen" link used to land on
          the Gegenüberstellung above, which explains a different document,
          and its method sentence stood on every draft page instead. -->
-    <section id="vergleich" class="mt-16 scroll-mt-6 border-t border-hairline pt-10">
+    <section id="vergleich" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
       <h2 class="text-lg font-semibold text-ink">Wie wir Entwurf und Regierungsvorlage vergleichen</h2>
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Nach der Begutachtung vergleichen wir die Texte selbst: den Entwurf mit
         der Regierungsvorlage, und weiter mit den Fassungen aus Ausschuss,
         Plenum und Bundesgesetzblatt. Ein Gesetz, das ein bestehendes ändert,
-        besteht aus nummerierten Änderungsanordnungen (Z 1, Z 2 …) – verglichen
+        besteht aus nummerierten Änderungsanordnungen (Z&nbsp;1, Z&nbsp;2&nbsp;…) – verglichen
         wird dann Anordnung für Anordnung. Ein neues Gesetz vergleichen wir
         Paragraph für Paragraph.
       </p>

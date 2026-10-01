@@ -36,7 +36,7 @@ usePageSeo({
       Erklärung kurz – und sie beschreibt nur, was tatsächlich passiert.
     </p>
 
-    <div class="mt-10 space-y-20">
+    <div class="mt-10 space-y-14 sm:space-y-20">
       <section aria-labelledby="dse-controller">
         <h2 id="dse-controller" class="section-heading">
           Verantwortlicher

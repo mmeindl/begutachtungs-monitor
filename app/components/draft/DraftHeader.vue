@@ -23,9 +23,13 @@
  * exclusive slots, which is the shape this page anatomy was explicitly not
  * to grow (refactor-plan.md §4.3).
  */
-defineProps<{
+import { keepDashWithPrecedingWord } from '~/utils/typography'
+
+const props = defineProps<{
   title: string
 }>()
+
+const displayTitle = computed(() => keepDashWithPrecedingWord(props.title))
 </script>
 
 <template>
@@ -53,7 +57,7 @@ defineProps<{
     <h1
       class="mt-3 text-2xl font-semibold text-ink hyphens-auto break-words sm:text-3xl"
     >
-      {{ title }}
+      {{ displayTitle }}
     </h1>
     <slot />
   </header>

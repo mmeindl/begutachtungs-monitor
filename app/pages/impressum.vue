@@ -42,7 +42,7 @@ usePageSeo({
       Offenlegung nach § 25 Mediengesetz.
     </p>
 
-    <div class="mt-10 space-y-20">
+    <div class="mt-10 space-y-14 sm:space-y-20">
       <section aria-labelledby="imp-owner">
         <h2 id="imp-owner" class="section-heading">
           Medieninhaber &amp; Herausgeber

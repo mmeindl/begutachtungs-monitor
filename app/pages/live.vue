@@ -23,7 +23,9 @@ usePageSeo({
 })
 
 const facts = [
-  { label: 'Wann', value: 'Donnerstag, 22. Oktober 2026, 19:00–20:30 Uhr' },
+  // Word joiners around the dash and a no-break space before „Uhr": the range
+  // broke as „19:00– / 20:30 Uhr" on a phone (30.09.2026).
+  { label: 'Wann', value: 'Donnerstag, 22. Oktober 2026, 19:00\u2060–\u206020:30\u00a0Uhr' },
   { label: 'Wo', value: 'Online – der Teilnahmelink erscheint auf dieser Seite' },
   { label: 'Kosten', value: 'Kostenlos, ohne Anmeldung' },
 ] as const
@@ -63,7 +65,10 @@ const facts = [
       <p class="mt-2 leading-relaxed text-ink-secondary">
         Der Videokonferenz-Raum wird rechtzeitig vor der Veranstaltung
         eingerichtet. Diese Adresse bleibt gleich:
-        <strong class="font-medium text-ink">begutachtungs-monitor.at/live</strong>
+        <!-- The domain whole, a break only before „/live": it split at its
+             own hyphen, „begutachtungs- / monitor.at/live". No U+2011 — a
+             copied address must stay one. -->
+        <strong class="font-medium text-ink"><span class="whitespace-nowrap">begutachtungs-monitor.at</span><wbr>/live</strong>
         führt dann direkt in den Raum – ohne Konto, ohne Installation.
       </p>
       <p class="mt-2 leading-relaxed text-ink-secondary">

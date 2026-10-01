@@ -53,11 +53,15 @@ const pageable = computed(() => props.total > props.step)
       <!-- The escape hatch for the long lists — 88/ME carries 707
            Stellungnahmen, where stepping in tens is 70 presses. Hidden on
            the short ones, where a second button would only say what the
-           first already says. -->
+           first already says.
+
+           `outline` like its neighbour, not `ghost`: at rest a ghost button
+           is bare text, and beside a bordered one it read as a caption, not
+           as a second thing to press (30.09.2026). -->
       <UButton
         v-if="allAbove !== undefined && remaining > allAbove"
         color="neutral"
-        variant="ghost"
+        variant="outline"
         class="min-h-11"
         @click="emit('all')"
       >

@@ -284,9 +284,13 @@
  * separates reliably from ~3:1), and a short ink bar that cannot be read as
  * a container edge: short where borders run full width, ink where they are
  * hairline grey, above the heading rather than around content.
+ *
+ * Below sm it is 56px (3.5:1, still above the ~3:1 floor). 80px on a
+ * 390 px phone is most of a screen of paper between two sections, and they
+ * read as separate pages rather than parts of one (measured 30.09.2026).
  */
 @utility page-section {
-  @apply mt-20;
+  @apply mt-14 sm:mt-20;
 }
 
 @utility section-heading {
@@ -384,6 +388,57 @@ body {
 h1,
 h2 {
   font-family: var(--font-heading);
+}
+
+/*
+ * Line breaking, once for the whole site — measured at 320 and 390 px on
+ * 30.09.2026, where every one of these was a visible fault:
+ *
+ * - `overflow-wrap: break-word`: text we do not write (Erläuterungen,
+ *   titles, submitter names) carries unbreakable tokens — a europarl.eu URL
+ *   in one Allgemeiner Teil scrolled a whole draft page 72 px sideways at
+ *   320. It only breaks a token that would otherwise overflow, so ordinary
+ *   text never changes.
+ * - `text-wrap: pretty`: no single word, and no „hat →", left alone on the
+ *   last line — running text and headings alike.
+ * - Headings hyphenate, but only long words with four letters on each side:
+ *   „Unternehmensgegenstand" at text-2xl is wider than a 320 px column, and
+ *   the unlimited `hyphens-auto` on the draft title split
+ *   „Me-thodenverordnung" after two letters. Hyphenation only happens where
+ *   a word does not fit, so wide screens do not change.
+ *
+ * NOT `balance` on headings, though it was the first attempt: balance
+ * narrows the line to even the lines out, hyphenation then fires inside the
+ * narrower line, and „Sterbeverfügungsgesetz, / Änderung" became
+ * „Sterbeverfügungs- / gesetz, Änderung". `pretty` never narrows the line.
+ *
+ * In @layer base so a `text-balance`, `hyphens-none` or `break-all` at a call
+ * site still wins.
+ */
+@layer base {
+  body {
+    overflow-wrap: break-word;
+  }
+
+  p,
+  li,
+  dd,
+  blockquote,
+  figcaption,
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    hyphens: auto;
+    hyphenate-limit-chars: 10 4 4;
+  }
 }
 
 /*

@@ -20,6 +20,11 @@
  * announcement, it stays attached to `target` here, and a call site can take
  * neither without the other. That pairing is what this component is for.
  *
+ * A no-break space before the ↗, never a plain one: with a plain space the
+ * arrow wrapped onto a line of its own on a phone, „(ris.bka.gv.at / ↗)." in
+ * the footer of every page (30.09.2026). The hand-built copies listed below
+ * carry the same `&nbsp;`.
+ *
  * The same rule, hand-built, in the places that cannot use this component:
  * `EntryItem` (the whole row is the link), `DocumentList` and
  * `StatementDocumentTag` (they announce it inside their `aria-label`), and
@@ -36,6 +41,6 @@ defineProps<{
     target="_blank"
     rel="noopener"
   >
-    <slot /><span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
+    <slot /><span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
   </a>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NuxtLink } from '#components'
 import type { EntryView } from '~/utils/entryView'
+import { keepDashWithPrecedingWord } from '~/utils/typography'
 
 /**
  * Eine Zeile, vier Zonen — every list entry on the site, in one anatomy
@@ -52,6 +53,7 @@ const props = defineProps<{
  * SSR resolved it, the browser did not, so the markup was right until
  * hydration replaced it.
  */
+const displayTitle = computed(() => keepDashWithPrecedingWord(props.entry.title))
 const linkComponent = computed(() => (props.entry.to ? NuxtLink : 'a'))
 
 /**
@@ -124,7 +126,7 @@ const externalHost = computed(() => {
         class="font-medium text-ink group-hover:underline"
         :title="entry.titleFull ?? entry.title"
       >
-        {{ entry.title }}<span v-if="!entry.to" aria-hidden="true"> ↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
+        {{ displayTitle }}<span v-if="!entry.to" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
       </component>
 
       <!-- ZONE 2 — Kennung: what kind of thing, which one, from whom. Fixed
@@ -237,12 +239,17 @@ const externalHost = computed(() => {
            no longer promotes this figure into the Stand slot — doing so
            EVICTED the outcome, and „846 Stellungnahmen → Bisher keine
            Regierungsvorlage" is the accountability story itself. A ranked
-           list shows its key by order. -->
+           list shows its key by order.
+
+           No start inset on the card since 30.09.2026: it lined the count up
+           with the text inside the Stand box above it, and on a phone that
+           read as a stray 10 px indent against the title and the Kennung —
+           the edge the eye actually follows down the card. -->
       <div
         :class="
           density === 'row'
             ? 'entry-col-count order-1'
-            : 'min-w-0 ps-2.5 sm:pe-2.5 sm:ps-0'
+            : 'min-w-0 sm:pe-2.5'
         "
       >
         <!-- The unit word stands on the card and NOT in the dense row:

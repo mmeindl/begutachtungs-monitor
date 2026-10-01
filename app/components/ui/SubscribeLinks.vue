@@ -42,6 +42,5 @@ const { webcalUrl, googleCalUrl } = useFeedUrls()
   <a
     href="/feed.xml"
     class="tap-target link-inline font-medium"
-  >RSS</a>
-  – ohne Konto, ohne Tracking.
+  >RSS</a><!-- the dash stays on the link's line, never starts one -->&nbsp;– ohne Konto, ohne Tracking.
 </template>

@@ -252,7 +252,7 @@ const documents = computed(() => {
             </template>
             <!-- Why there is no list stands on the explainer (30.09.2026). -->
             <template v-if="!data.active">
-              Die Stellungnahmen werden nicht veröffentlicht –
+              Die Stellungnahmen werden nicht veröffentlicht&nbsp;–
               <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
             </template>
           </p>
@@ -317,7 +317,7 @@ const documents = computed(() => {
             color="primary"
             class="min-h-11"
           >
-            Begleitschreiben öffnen<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
+            Begleitschreiben öffnen<span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
           </UButton>
           <UButton
             v-if="data.deadline"

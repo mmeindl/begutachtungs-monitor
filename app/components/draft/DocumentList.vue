@@ -89,7 +89,7 @@ function docHint(doc: DocumentListItem): string | null {
               <span
                 class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover:border-baseline group-hover:underline"
               >
-                {{ formatNames[type] }}<span aria-hidden="true"> ↗</span>
+                {{ formatNames[type] }}<span aria-hidden="true">&nbsp;↗</span>
               </span>
             </a>
             <span v-else aria-hidden="true" />

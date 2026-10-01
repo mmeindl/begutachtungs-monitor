@@ -53,6 +53,15 @@ type ReadFrom = TextComparisonResponse['readFrom']
  * Printed only when there are any — a clause about an empty set is noise.
  */
 export function annexCheckNote(v: Verification, readFrom: ReadFrom = null): string {
+  return annexCheckNoteParts(v, readFrom).join(' · ')
+}
+
+/**
+ * The same note as its separate facts, for `FactLine`: on a phone the joined
+ * string broke inside a fact („· 1 nicht geprüft · / Zeilenzuordnung …"),
+ * and only the parts let the line break between them.
+ */
+export function annexCheckNoteParts(v: Verification, readFrom: ReadFrom = null): string[] {
   const parts: string[] = []
   // Null verification with `available: true` is not a state the server
   // produces; if it ever did, the honest reading is "no check happened".
@@ -72,7 +81,7 @@ export function annexCheckNote(v: Verification, readFrom: ReadFrom = null): stri
     parts.push(`${v.rowsWithoutParagraph} ${v.rowsWithoutParagraph === 1 ? 'Änderung' : 'Änderungen'} ohne Paragraphenangabe, nicht geprüft`)
   }
   if (readFrom === 'pdf') parts.push('Zeilenzuordnung aus dem PDF erschlossen, ohne Gewähr')
-  return parts.join(' · ')
+  return parts
 }
 
 /**

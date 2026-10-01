@@ -381,26 +381,33 @@ const mixSegments = computed(() => {
       v-if="showFilterGroup || showSort"
       class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2"
     >
-      <!-- Four labels this long cannot fit a phone column — the text alone is
-           ~330px against 288px at 320px wide — and left to overflow, the
-           browser scales the whole page down to fit them. So this one group
-           scrolls sideways instead; the sort group beside it fits and stays
-           whole on its own line. -->
-      <div v-if="showFilterGroup" class="min-w-0 max-w-full overflow-x-auto">
-        <UFieldGroup role="group" aria-label="Stellungnahmen nach Einbringer:in filtern">
-          <UButton
-            v-for="opt in filterOptions"
-            :key="opt.value"
-            :color="filter === opt.value ? 'primary' : 'neutral'"
-            :variant="filter === opt.value ? 'subtle' : 'outline'"
-            :aria-pressed="filter === opt.value"
-            class="min-h-11 whitespace-nowrap"
-            @click="filter = opt.value"
-          >
-            {{ opt.label }}
-            <span class="tabular-nums text-ink-muted">{{ formatNumberDe(opt.count) }}</span>
-          </UButton>
-        </UFieldGroup>
+      <!-- Four labels this long cannot fit a phone column — 516 px of
+           segment against 358 px at 390 px wide. Until 30.09.2026 the group
+           scrolled sideways, and that hid „Alle" and half of „Nicht
+           öffentlich" behind an edge with nothing to say there was more: a
+           filter nobody can see is not offered. Below sm it is a grid of
+           two columns now, every option in view, an odd last one across both;
+           from sm on the joined segment as before. That is UFieldGroup's
+           own rounding, written out, because a field group cannot turn into
+           a grid at a breakpoint. -->
+      <div
+        v-if="showFilterGroup"
+        role="group"
+        aria-label="Stellungnahmen nach Einbringer:in filtern"
+        class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:gap-0 sm:-space-x-px"
+      >
+        <UButton
+          v-for="opt in filterOptions"
+          :key="opt.value"
+          :color="filter === opt.value ? 'primary' : 'neutral'"
+          :variant="filter === opt.value ? 'subtle' : 'outline'"
+          :aria-pressed="filter === opt.value"
+          class="relative min-h-11 flex-wrap justify-center gap-x-1.5 text-center odd:last:col-span-2 focus-visible:z-1 sm:flex-nowrap sm:whitespace-nowrap sm:not-only:first:rounded-e-none sm:not-only:last:rounded-s-none sm:not-last:not-first:rounded-none"
+          @click="filter = opt.value"
+        >
+          {{ opt.label }}
+          <span class="tabular-nums text-ink-muted">{{ formatNumberDe(opt.count) }}</span>
+        </UButton>
       </div>
 
       <UFieldGroup v-if="showSort" role="group" aria-label="Stellungnahmen sortieren">
@@ -419,8 +426,8 @@ const mixSegments = computed(() => {
     </div>
 
     <!-- Its own line under the two control groups, not inside them: this is
-         a third axis, and the filter group already overflows its row at
-         320px. Directly above the list, so it reads as searching the thing
+         a third axis, and the filter group already fills its rows on a
+         phone. Directly above the list, so it reads as searching the thing
          beneath it. -->
     <div v-if="showOrgSearch" class="mt-4">
       <label class="sr-only" for="org-search">Organisation suchen</label>

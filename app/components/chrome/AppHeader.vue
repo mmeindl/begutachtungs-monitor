@@ -37,10 +37,13 @@ function isActive(to: string): boolean {
         <span class="font-heading text-lg">Begutachtungs-Monitor</span>
       </NuxtLink>
       <nav aria-label="Hauptnavigation">
-        <!-- Wraps rather than scrolls the page: the four labels are 31px too
-             wide for a 320px viewport, and a nav item is not worth a
-             horizontal scrollbar on the whole document. -->
-        <ul class="flex flex-wrap items-center gap-x-4 gap-y-1 sm:gap-x-6">
+        <!-- Wraps rather than scrolls the page: a nav item is not worth a
+             horizontal scrollbar on the whole document. But it should not
+             have to: the four labels measure 240 px (30.09.2026), and with
+             `gap-x-4` that was 288 px against a 287.95 px column — „Über"
+             fell onto a line of its own at 320 px by a rounding error, and
+             the header grew by a third. `gap-x-3` leaves 12 px to spare. -->
+        <ul class="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-6">
           <li v-for="item in navItems" :key="item.to">
             <NuxtLink
               :to="item.to"

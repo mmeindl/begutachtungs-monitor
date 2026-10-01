@@ -27,10 +27,17 @@ export type DiffBadge = LawUnitChange | 'editorial'
  * the passage this tool exists to show harder to read, and GitHub does not
  * strike removed lines either.
  */
+/*
+ * The two quiet pills carry a hairline ring: their ground is the page's, and
+ * the group header stands on the page too, so there the pill was invisible
+ * and only its padding remained — „38 unverändert" read as text indented by
+ * 8 px, alone on a line of its own at 390 px (30.09.2026). Inset, so no pill
+ * changes size; the ground and so the contrast stay as they were.
+ */
 export const BADGE_CLASS: Record<DiffBadge, string> = {
   changed: 'bg-accent-50 text-accent-deep',
-  editorial: 'bg-page text-ink-muted',
-  unchanged: 'bg-page text-ink-muted',
+  editorial: 'bg-page text-ink-muted ring-1 ring-inset ring-hairline',
+  unchanged: 'bg-page text-ink-muted ring-1 ring-inset ring-hairline',
   inserted: 'bg-status-good/15 text-ink',
   removed: 'bg-status-critical/10 text-ink',
 }

@@ -14,7 +14,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       Über das Projekt
     </h1>
 
-    <div class="mt-10 space-y-20">
+    <div class="mt-10 space-y-14 sm:space-y-20">
       <section aria-labelledby="about-mission">
         <h2 id="about-mission" class="section-heading">
           Worum es geht

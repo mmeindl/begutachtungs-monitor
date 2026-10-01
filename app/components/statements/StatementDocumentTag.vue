@@ -88,7 +88,7 @@ const ariaLabel = computed(() => {
       <span
         class="inline-flex w-full justify-center rounded border border-hairline px-1.5 py-0.5 text-xs font-medium text-accent-deep group-hover:border-baseline group-hover:underline"
       >
-        PDF<span aria-hidden="true"> ↗</span>
+        PDF<span aria-hidden="true">&nbsp;↗</span>
       </span>
     </a>
     <!-- Nothing to say yet: a hairline ghost of the tag, so the column does

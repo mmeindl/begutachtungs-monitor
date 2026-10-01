@@ -21,7 +21,7 @@ import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } f
 import { splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
 import {
-  annexCheckNote,
+  annexCheckNoteParts,
   annexDoubtfulNote,
   annexDroppedPagesNote,
   annexWithheldBlame,
@@ -388,7 +388,7 @@ const loadAnnouncement = computed(() => {
  * `app/utils/annexNotes.ts`, where they can be tested against a small
  * response object. They are functions of the response and of nothing
  * else. */
-const checkNote = computed(() => annexCheckNote(data.value?.verification ?? null, data.value?.readFrom ?? null))
+const checkNote = computed(() => annexCheckNoteParts(data.value?.verification ?? null, data.value?.readFrom ?? null))
 /** Whether the annex came from RIS — then the credit already names the licence the Lesefassung's text shares. */
 const creditIsRis = computed(() => data.value?.credit?.includes('CC BY 4.0, RIS') ?? false)
 const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
@@ -460,8 +460,9 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            `space-y-3` spaces whichever notes exist and gives the first none. -->
       <div class="space-y-3">
         <p class="text-sm text-ink-secondary">
-          {{ checkNote }} ·
-          <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir prüfen</NuxtLink>
+          <FactLine :parts="checkNote">
+            <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir prüfen</NuxtLink>
+          </FactLine>
         </p>
 
         <!-- Finding and doubt stay together: `doubtfulNote` elaborates the

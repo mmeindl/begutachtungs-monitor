@@ -759,15 +759,22 @@ const countLabel = computed(() => {
              `mt-5` against the `space-y-3` INSIDE the panel: a group boundary
              runs here — narrowing above, the second axis and the search below
              — and with the same 12 px as between chips and selects the
-             segment stuck to the „Weitere Filter" switch. -->
+             segment stuck to the „Weitere Filter" switch.
+
+             Below sm the segment takes the whole line and its buttons share
+             it: at 320 px the 338 px segment was wider than the 288 px column
+             and scrolled the page sideways (measured 30.09.2026). Now
+             „Stellungnahme möglich" wraps inside its button instead — at 390
+             px everything still stands on one line. -->
         <div class="mt-5 flex flex-wrap items-center gap-3">
-          <UFieldGroup role="group" aria-label="Was kann ich tun" class="shrink-0">
+          <UFieldGroup role="group" aria-label="Was kann ich tun" class="w-full sm:w-auto sm:shrink-0">
             <UButton
               v-for="opt in statusOptions"
               :key="opt.value"
               :color="statusFilter === opt.value ? 'primary' : 'neutral'"
               :variant="statusFilter === opt.value ? 'subtle' : 'outline'"
               :aria-pressed="statusFilter === opt.value"
+              class="flex-auto justify-center text-center sm:flex-none"
               @click="statusFilter = opt.value"
             >
               {{ opt.label }}
@@ -790,14 +797,20 @@ const countLabel = computed(() => {
                there 242 px narrow — narrower than at 430 px, where it has the
                whole line. That is the same disease as before in a new place.
                At 320 px it wraps instead until there really is room (from
-               ~700 px) and only grows from there. -->
+               ~700 px) and only grows from there.
+
+               As `basis-80 min-w-0` since 30.09.2026, not `min-w-80`: a flex
+               line wraps on the basis, so the field still takes a line of
+               its own in the same places — but a minimum of 320 px was wider
+               than the 288 px column of a 320 px phone and scrolled the page
+               sideways. The basis may shrink, the minimum could not. -->
           <UInput
             v-model="q"
             type="search"
             icon="i-lucide-search"
             :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
             aria-label="Entwürfe durchsuchen"
-            class="min-w-80 flex-1"
+            class="min-w-0 flex-1 basis-80"
             :ui="{ base: 'min-h-11' }"
           />
         </div>
@@ -838,7 +851,7 @@ const countLabel = computed(() => {
            invitation out on every keystroke in the search. Two offers,
            following what the filter bar currently says — the Ressort filter is
            the moment somebody decides „dieses Ressort verfolge ich“. -->
-      <p class="mt-1 text-sm text-ink-muted">
+      <p class="mt-1 text-sm leading-7 text-ink-muted">
         <SubscribeLinks :ministry="ministry" />
       </p>
 

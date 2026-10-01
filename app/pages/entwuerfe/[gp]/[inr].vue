@@ -437,7 +437,7 @@ const ministryLinks = computed(() => {
                below states both, the pill above repeats the Frist — and the
                provenance link stands in the identity row (`#source`). -->
           <p class="mt-2 text-sm text-ink-secondary">
-            <MinistryLinks :ministries="ministryLinks" /><template v-if="data.invitedBy">, übermittelt von {{ data.invitedBy }}</template>
+            <MinistryLinks :ministries="ministryLinks" /><template v-if="data.invitedBy">, übermittelt von <span class="inline-block">{{ data.invitedBy }}</span></template>
           </p>
         </DraftHeader>
 
@@ -585,7 +585,7 @@ const ministryLinks = computed(() => {
               color="primary"
               class="min-h-11"
             >
-              Stellungnahme auf parlament.gv.at abgeben<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
+              Stellungnahme auf parlament.gv.at abgeben<span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
             </UButton>
             <UButton
               v-if="windows.begutachtung && data.deadline"
@@ -610,7 +610,7 @@ const ministryLinks = computed(() => {
               :variant="windows.begutachtung ? 'outline' : 'solid'"
               class="min-h-11"
             >
-              Stellungnahme zur Regierungsvorlage abgeben<span aria-hidden="true"> ↗</span><span class="sr-only"> (neues Fenster)</span>
+              Stellungnahme zur Regierungsvorlage abgeben<span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
             </UButton>
           </div>
           <!-- The documented base fact (drafts get revised routinely), no

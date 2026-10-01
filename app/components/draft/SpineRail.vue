@@ -160,7 +160,7 @@ const rows = computed(() => list.value.map((s, i) => {
     // for attention in favour of the link.
     factClass: reached(s.state) ? 'text-ink' : 'text-ink-secondary',
     href: props.anchors?.[s.id],
-    facts: facts.join(' · '),
+    facts,
     comparison: href && s.comparison ? { href, question: s.comparison.question } : null,
     // Silent with the facts: a link out of a row that says nothing yet
     // would be the only thing it says.
@@ -245,8 +245,8 @@ const rows = computed(() => list.value.map((s, i) => {
           <a v-if="row.href" :href="row.href" :class="STATION">{{ row.name }}</a>
           <template v-else>{{ row.name }}</template>
         </p>
-        <p v-if="row.facts" class="mt-0.5 leading-snug" :class="row.factClass">
-          {{ row.facts }}
+        <p v-if="row.facts.length" class="mt-0.5 leading-snug" :class="row.factClass">
+          <FactLine :parts="row.facts" />
         </p>
         <!-- Above the row's overlay, so the question keeps its own target,
              its own focus ring and its own destination. -->
