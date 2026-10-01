@@ -163,6 +163,14 @@ export interface LawDiffUnit {
   articleKey: string | null
   /** The same for the earlier side — an Artikel is renumbered between draft and Vorlage (18/ME: 3 → 6). */
   fromArticleKey: string | null
+  /**
+   * The earlier side's Artikel title, set only where it differs from
+   * `article`, which is the later side's: 22/ME XXVIII titles its „Art. X3"
+   * „Änderung des Bundesgesetzes über den Zivildienst", the Vorlage the same
+   * law „Änderung des Zivildienstgesetzes 1986" — and the draft's
+   * Erläuterungen head it in the draft's words (§12.10b, 02.10.2026).
+   */
+  fromArticle?: string
   /** Unit id on the later side of the pair (or the earlier one, for removed units): "§5", "Z3" */
   id: string
   /** The same unit's id on the earlier side; differs from `id` after renumbering */

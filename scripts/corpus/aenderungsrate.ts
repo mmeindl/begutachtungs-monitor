@@ -1144,6 +1144,15 @@ async function zifferReport(): Promise<void> {
     if (Number(argPair('show-units')) === r.inr) {
       console.log(`\n  ${r.inr}/ME Einheiten: ${units.map((u) => `${u.fromArticleKey ?? '–'}:${u.fromId ?? '–'}→${u.articleKey ?? '–'}:${u.id}${u.change === 'unchanged' ? '' : `(${u.change[0]})`}`).join(' ')}`)
     }
+    if (Number(argPair('show-laws')) === r.inr) {
+      const { fromUnits, toUnits } = parsed.get(r.inr) as { fromUnits: LawUnit[]; toUnits: LawUnit[] }
+      for (const [name, us] of [['ME', fromUnits], ['RV', toUnits]] as const) {
+        const laws = new Map<string, LawUnit>()
+        for (const u of us) if (!laws.has(u.article ?? '')) laws.set(u.article ?? '', u)
+        console.log(`\n  ${r.inr}/ME ${name}-Gesetze: ${laws.size}`)
+        for (const [title, u] of laws) console.log(`    [${u.articleNumber ?? '–'}] ${title.slice(0, 110)} · Stammnorm ${u.stammnorm ? JSON.stringify(u.stammnorm) : '–'}`)
+      }
+    }
     if (Number(argPair('show-heads')) === r.inr) {
       for (const [name, doc] of [['ME', meParsed], ['RV', rvParsed]] as const) {
         console.log(`\n  ${r.inr}/ME ${name}: ${doc.special.length} Passagen`)

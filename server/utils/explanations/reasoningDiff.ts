@@ -313,9 +313,13 @@ function zifferOfId(id: string | null): string | null {
  * Bundesgesetzes über die Einrichtung einer Dokumentations- und
  * Informationsstelle für Sektenfragen …)", „X2", „X3" — placeholders, and
  * its text has none either; by number, the three „Zu Z 1" were one key, and
- * refused (01.10.2026). A law whose heading words it differently („über den
- * Zivildienst" for the Zivildienstgesetz 1986) gets nothing: the title is
- * compared as printed, not guessed at.
+ * refused (01.10.2026). The title is compared as printed, not guessed at —
+ * and as THIS side's text prints it (`unitTitle`, 02.10.2026): „Art. X3
+ * (Änderung des Bundesgesetzes über den Zivildienst)" is how the draft's own
+ * text titles the law its Vorlage calls „Änderung des Zivildienstgesetzes
+ * 1986", and held against the Vorlage's words it got nothing. Which law of
+ * the draft is which of the Vorlage the article pairing says, here by the
+ * Stammnorm both promulgation clauses cite (BGBl. Nr. 679/1986).
  */
 type ArticleMode = 'single' | 'package' | 'title'
 
@@ -357,6 +361,18 @@ function lawTitleKey(title: string): string {
     .replace(/\s+/g, ' ')
     .replace(/[\s:]+$/, '')
     .trim()
+}
+
+/**
+ * The unit's law title as one side's text prints it: the draft's own words
+ * where they differ from the Vorlage's (`fromArticle`, 22/ME XXVIII „Änderung
+ * des Bundesgesetzes über den Zivildienst" against „Änderung des
+ * Zivildienstgesetzes 1986"). Each document's Erläuterungen head a law as
+ * that document's text titles it, so the title is held against its own side
+ * only — never against a similar one.
+ */
+function unitTitle(unit: LawDiffUnit, side: Side): string | null {
+  return side === 'before' ? (unit.fromArticle ?? unit.article) : unit.article
 }
 
 /** The key of a Ziffer under its law's title — `title` mode. */
@@ -428,7 +444,10 @@ function sideKeys(unit: LawDiffUnit, side: Side, mode: ArticleMode, ambiguous: R
   const { ziffer, article } = unitZiffer(unit, side)
   if (!ziffer) return []
   if (mode === 'single') return [zifferKey(null, ziffer)]
-  if (mode === 'title') return unit.article ? [titleZifferKey(unit.article, ziffer)] : []
+  if (mode === 'title') {
+    const title = unitTitle(unit, side)
+    return title ? [titleZifferKey(title, ziffer)] : []
+  }
   const keys = article ? [zifferKey(article, ziffer)] : []
   const para = addressedParagraphOf(unit)
   const id = explanationParaId(para)
@@ -528,9 +547,12 @@ function textOf(doc: HtmlExplanations, passages: readonly number[]): string {
  * Artikel number, but at least two laws, and the document heads at least two
  * of them by their exact title.
  */
-function titledLaws(units: readonly LawDiffUnit[], doc: HtmlExplanations, articleOf: (u: LawDiffUnit) => string | null): boolean {
-  if (units.some((u) => articleOf(u))) return false
-  const titles = new Set(units.flatMap((u) => (u.article ? [lawTitleKey(u.article)] : [])))
+function titledLaws(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side): boolean {
+  if (units.some((u) => unitZiffer(u, side).article)) return false
+  const titles = new Set(units.flatMap((u) => {
+    const title = unitTitle(u, side)
+    return title ? [lawTitleKey(title)] : []
+  }))
   if (titles.size < 2) return false
   const headed = new Set(doc.special.flatMap((p) => (p.law ? [lawTitleKey(p.law)] : [])))
   return [...titles].filter((t) => headed.has(t)).length >= 2
@@ -540,7 +562,7 @@ function titledLaws(units: readonly LawDiffUnit[], doc: HtmlExplanations, articl
 function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side, ambiguous: ReadonlySet<string>): ZifferSide {
   const unitArticles = new Set(units.filter((u) => unitZiffer(u, side).ziffer).map((u) => unitZiffer(u, side).article ?? ''))
   const passageArticles = new Set(doc.special.flatMap((p) => p.ziffern.map((z) => z.article ?? '')))
-  const titled = titledLaws(units.filter((u) => unitZiffer(u, side).ziffer), doc, (u) => unitZiffer(u, side).article)
+  const titled = titledLaws(units.filter((u) => unitZiffer(u, side).ziffer), doc, side)
   const mode: ArticleMode = titled ? 'title' : unitArticles.size <= 1 && passageArticles.size <= 1 ? 'single' : 'package'
   const map = new Map<string, LawDiffUnit[]>()
   const byParagraph = new Map<string, LawDiffUnit[]>()
@@ -571,7 +593,10 @@ function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: 
  * a shared one only under the unit's Artikel.
  */
 function sameLaw(side: ZifferSide, passage: HtmlPassage, unit: LawDiffUnit, ambiguous: ReadonlySet<string>): boolean {
-  if (side.mode === 'title') return passage.law !== null && unit.article !== null && lawTitleKey(passage.law) === lawTitleKey(unit.article)
+  if (side.mode === 'title') {
+    const title = unitTitle(unit, side.side)
+    return passage.law !== null && title !== null && lawTitleKey(passage.law) === lawTitleKey(title)
+  }
   if (side.mode === 'single' || !ambiguous.has(addressedParagraphOf(unit) ?? '')) return true
   return passage.article !== null && passage.article === unitZiffer(unit, side.side).article
 }

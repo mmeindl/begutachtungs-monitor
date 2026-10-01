@@ -574,6 +574,9 @@ function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null,
     article: ref.article,
     articleKey: leadingArticleKey(ref.articleNumber),
     fromArticleKey: from ? leadingArticleKey(from.articleNumber) : null,
+    // Only where the two texts title the law differently — the unit names
+    // the later side's title, and most packages keep it word for word.
+    ...(from?.article && to && from.article !== to.article ? { fromArticle: from.article } : {}),
     id: ref.id,
     fromId: from?.id ?? null,
     heading: to?.heading ?? from?.heading ?? null,

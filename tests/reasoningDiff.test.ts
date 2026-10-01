@@ -570,7 +570,18 @@ describe('compareReasoning — die Sammelvorlage in der Nummerierung des gebünd
 
     expect(out.entries[out.units[`${SEKTEN}|Z1|changed`]!]).toMatchObject({ changed: false })
     expect(out.entries[out.units[`${FAMILIE}|Z1|changed`]!]).toMatchObject({ changed: true })
-    // „über den Zivildienst" is not the title the text prints: nothing rather than a guess.
+    // „über den Zivildienst" is not the title the Vorlage's text prints, and
+    // the unit says nothing of the draft's: nothing rather than a guess.
     expect(out.units[`${ZIVI}|Z1|changed`]).toBeUndefined()
+
+    // The draft's own text titles the law as its Erläuterungen do
+    // (`fromArticle`, 02.10.2026): its side is keyed by its own words.
+    const titled = units.map((u) => (u.article === ZIVI ? { ...u, fromArticle: 'Änderung des Bundesgesetzes über den Zivildienst' } : u))
+    const now = compareReasoning(titled, before, after)
+    expect(now.entries[now.units[`${ZIVI}|Z1|changed`]!]).toMatchObject({ label: 'Zu Z 1 (§ 23 Abs. 2):', changed: false })
+
+    // A similar title of another wording still gets nothing.
+    const similar = units.map((u) => (u.article === ZIVI ? { ...u, fromArticle: 'Änderung des Zivildienstgesetzes' } : u))
+    expect(compareReasoning(similar, before, after).units[`${ZIVI}|Z1|changed`]).toBeUndefined()
   })
 })

@@ -1240,6 +1240,32 @@ die Zeilen der Liste, weil der Entwurf keine Überschrift „Zu Z 192" setzt —
 das Urteil „geändert" stand vorher schon). Urteilswechsel auf dem §-Join wie
 bisher: 0 in allen drei Perioden.
 
+**Nachgezogen am 02.10.2026: der Titel, wie die eigene Seite ihn druckt.**
+„X3" in 22/ME XXVIII bekam nichts, weil der Titel der Erläuterungen mit dem
+falschen Text verglichen wurde, nicht weil er anders formuliert ist. Der
+Gesetzestext des Entwurfs überschreibt X3 genau so wie seine Erläuterungen,
+„Änderung des Bundesgesetzes über den Zivildienst"; „Änderung des
+Zivildienstgesetzes 1986" ist der Titel der Vorlage. Die Diff-Einheit trug
+aber nur den Titel der Vorlage, und der `title`-Schlüssel hielt ihn gegen die
+Überschrift des Entwurfs. Dass X3 und Artikel 13 dasselbe Gesetz sind, sagt
+die Artikelpaarung, hier über die Stammnorm, die beide
+Promulgationsklauseln zitieren (BGBl. Nr. 679/1986, `fec045a`). Eine
+Ähnlichkeitsregel braucht es dafür nicht. Jetzt trägt die Einheit den Titel
+des Entwurfs mit (`LawDiffUnit.fromArticle`), und zwar nur, wo er ein anderer
+ist, und jede Seite schlüsselt mit ihren eigenen Worten (`unitTitle` in
+`reasoningDiff.ts`). Verglichen wird weiter der Titel wie gedruckt: Ein
+ähnlicher, aber anders formulierter Titel bekommt nichts. Das Feld steht in
+der Vergleichsantwort, weil der Dienst nur deren Einheiten hat. Es kostet
+wenig, gemessen über XXVIII: 25 Entwürfe tragen es, höchstens 47 Einheiten
+und 4 kB (71/ME).
+
+*Alt gegen neu* (`--against` den Stand nach dem Absatz davor): XXVIII 2.804 →
+**2.808**, 0 verloren, 4 dazu, alle in 22/ME X3. Z 1 bis Z 4 des Entwurfs
+gegen „Zu Z 1 (§ 23 Abs. 2 ZDG):" bis „Zu Z 4 (§ 76c Abs. 40 ZDG):" der
+Vorlage, gelesen, alle vier „geändert" (Drift 17–46 %, „aufgrund des
+Informationsfreiheitsgesetzes" wurde „auf Grund des IFG"). XXVI und XXVII: 0
+dazu, 0 verloren, kein Urteil bewegt.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and

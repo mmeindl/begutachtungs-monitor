@@ -856,6 +856,14 @@ describe('the Stammnorm stands in for the name: a long title against an abbrevia
     const d = diffLawPackage(me, rv)
     expect(d.lawsOnlyInFrom).toEqual([])
     expect(d.lawsOnlyInTo.map((l) => l.article)).toEqual(['Änderung des Bundesgesetzes über die Zusammenarbeit mit dem Internationalen Strafgerichtshof'])
+    // The unit names the Vorlage's title, and the draft's where it is
+    // another — the draft's Erläuterungen head the law in the draft's words
+    // (§12.10b, 02.10.2026). Where both print the same, nothing is added.
+    const units = diffLawPackage(me, rv).units
+    const paired = units.filter((x) => x.article === SHORT && x.fromId !== null)
+    expect(paired.length).toBeGreaterThan(0)
+    expect(paired.every((x) => x.fromArticle === LONG)).toBe(true)
+    expect(units.filter((x) => x.article === 'Änderung der Strafprozeßordnung 1975').every((x) => !('fromArticle' in x))).toBe(true)
   })
 
   it('refuses where the §§ do not agree — the citation never stands in for them', () => {
