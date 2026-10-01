@@ -193,7 +193,12 @@ export function procedureStatusDe(d: DraftDetail): string {
       case 'rejected': return 'Im Nationalrat abgelehnt'
       case 'withdrawn': return 'Zurückgezogen'
       case 'decided': return 'Beschlossen – Kundmachung ausständig'
-      case 'recommitted': return 'Im Parlament'
+      // Sent back to committee and never decided: „Im Parlament" while the
+      // Vorlage's period runs, „Ohne Beschluss" once it has ended — the
+      // calendar below decides, as for any undecided Vorlage. Until
+      // 02.10.2026 this case returned „Im Parlament" for good, while the
+      // Parlament station already turned `never`.
+      case 'recommitted': break
       default: break
     }
     // The VORLAGE's period, not the draft's (§12.14, 02.10.2026): a

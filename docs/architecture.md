@@ -6756,10 +6756,13 @@ denn heute ist keine betroffen (siehe oben). **Ändern kann sich etwas erst
 beim nächsten Periodenwechsel:** ein Entwurf der XXVIII. GP, dessen letzte
 Vorlage in der XXIX. eingebracht und noch nicht entschieden ist, hieße bisher
 „Ohne Beschluss", solange die Vorlage noch vor dem Nationalrat liegt; jetzt
-„Im Parlament", bis auch ihre Periode endet. **Nicht geändert:** Eine an den
-Ausschuss zurückverwiesene Vorlage heißt im Kopf auch nach dem Periodenende
-„Im Parlament" — das galt schon vorher und hängt an keiner der beiden
-Perioden.
+„Im Parlament", bis auch ihre Periode endet. **Am selben Tag nachgezogen:**
+Eine an den Ausschuss zurückverwiesene Vorlage hieß im Kopf auch nach dem
+Periodenende „Im Parlament", während die Parlament-Station schon `never` war.
+Sie geht jetzt durch dieselbe Kalenderprüfung wie jede unentschiedene Vorlage
+und heißt nach dem Ende ihrer Periode „Ohne Beschluss –
+Gesetzgebungsperiode beendet"; die Station behält ihre Tatsache („an den
+Ausschuss zurückverwiesen").
 
 **The document link.** The row's citation leads to the Stellungnahme's page
 upstream; a journalist working through fifty organisations' submissions

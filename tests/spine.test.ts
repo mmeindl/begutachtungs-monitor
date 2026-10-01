@@ -305,6 +305,15 @@ describe('the four house outcomes on the page', () => {
     expect(row(d, 'parlament').facts).toEqual(['beschlossen'])
   })
 
+  // Sent back to committee and never decided before the Vorlage's period ended:
+  // the headline must agree with the Parlament station, which already turns
+  // `never` then. Until 02.10.2026 it kept „Im Parlament" for good.
+  it('calls a recommitted Vorlage „Ohne Beschluss" once its period has ended', () => {
+    const d = at('3', 'Zurückverwiesen an den Ausschuss', { gpEnded: true })
+    expect(procedureStatusDe(d)).toBe('Ohne Beschluss – Gesetzgebungsperiode beendet')
+    expect(row(d, 'parlament').facts).toEqual(['an den Ausschuss zurückverwiesen'])
+  })
+
   it('states one fact per row: „in Behandlung" beside „abgelehnt" would be two', () => {
     expect(row(at('5', 'abgelehnt'), 'parlament').facts).toEqual(['abgelehnt'])
     expect(row(at('5', 'Zurückgezogen'), 'parlament').facts).toEqual(['zurückgezogen'])
