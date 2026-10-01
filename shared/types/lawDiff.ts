@@ -46,13 +46,33 @@ export interface AmendedLawsResponse {
 }
 
 /**
- * Whether the Ressort's reasoning for ONE Paragraph changed between the
+ * Whether the Ressort's reasoning for one change changed between the
  * Ministerialentwurf and the Regierungsvorlage (docs/architecture.md
  * §12.10b).
  */
 export interface ReasoningDiffEntry {
-  /** „§ 54c" — the Paragraph whose reasoning is compared here. */
-  paragraph: string
+  /**
+   * What was joined: `ziffer` — the passage(s) whose heading names the
+   * Novellierungsanordnung („Zu Z 1 bis 3 (§ 5):"), one entry however many
+   * Ziffern they cover; `paragraph` — every passage naming the §, where the
+   * Erläuterungen are titled by § alone or the unit is not an instruction.
+   */
+  basis: 'ziffer' | 'paragraph'
+  /**
+   * The Regierungsvorlage's heading(s) for a Ziffer entry („Zu Z 1 bis 3
+   * (§ 5):"), the Paragraph for a § entry („§ 54c").
+   */
+  label: string
+  /**
+   * False where the scope rule holds the two sides apart: the draft's and the
+   * Vorlage's passages explain different sets of changes („Zu Z 1:" + „Zu
+   * Z 2:" against „Zu Z 1 und 2:"), so their texts are shown, not compared —
+   * `toText` (and `fromText`, where the draft's passage has text) carry them,
+   * `drift` is null and `changed` false.
+   */
+  comparable: boolean
+  /** The draft's heading(s) of an uncompared entry; null otherwise. */
+  fromHeading: string | null
   /** Word diff of the two passages; null when too long to compute. */
   segments: LawDiffSegment[] | null
   /**
@@ -62,25 +82,25 @@ export interface ReasoningDiffEntry {
    */
   fromText: string | null
   toText: string | null
-  /** Share of changed words, 0 to 1 — the number behind `changed`. */
-  drift: number
+  /** Share of changed words, 0 to 1 — the number behind `changed`; null where not compared. */
+  drift: number | null
   /** From 2 % diverging words up: below that it is punctuation. */
   changed: boolean
 }
 
 /**
- * The Ressort's reasoning, Paragraph by Paragraph, between the
- * Ministerialentwurf and the Regierungsvorlage (docs/architecture.md
- * §12.10b).
+ * The Ressort's reasoning between the Ministerialentwurf and the
+ * Regierungsvorlage, at the changes of the § comparison
+ * (docs/architecture.md §12.10b).
  *
  * Measured over GP XXVIII: 1.515 §§ stand on both sides, and for 728 of them
  * (48 %) the reasoning changed — the section has something to show, often.
  *
- * TWO LEVELS, BECAUSE THERE ARE TWO: computed per Paragraph (`paragraphs`),
- * shown at the Novellierungsanordnung — several instructions amend the same
- * Paragraph. `units` maps from `diffUnitKey` to the Paragraph, so as with
- * `paragraphtitel` it is the comparison's own key and not a second alignment
- * problem.
+ * TWO LEVELS, BECAUSE THERE ARE TWO: computed per passage (`entries` — one
+ * passage on Z 1 bis 3 is one comparison; per Paragraph where the
+ * Erläuterungen are titled by §), shown at the Novellierungsanordnung.
+ * `units` maps from `diffUnitKey` to the entry, so as with `paragraphtitel`
+ * it is the comparison's own key and not a second alignment problem.
  */
 export interface ReasoningDiffResponse {
   gp: string
@@ -94,16 +114,17 @@ export interface ReasoningDiffResponse {
   /** The two documents that were read, for the credit line. */
   sources: TraceLink[]
   /**
-   * `diffUnitKey` → „§ 11": which change points at which Paragraph. Where the
-   * number is shared by two Artikel of the draft, the key names the Artikel
-   * too („Art. 2 § 15") — a lookup key, not display text; the entry's
-   * `paragraph` stays „§ 15".
+   * `diffUnitKey` → the key of its entry: „Z …" for a Ziffer entry, „§ 11"
+   * or „Art. 2 § 15" for a § entry — a lookup key, not display text.
    */
   units: Record<string, string>
-  /** „§ 11" → the comparison, once per Paragraph. */
-  paragraphs: Record<string, ReasoningDiffEntry>
-  /** How many §§ could be compared, and how many of them changed. */
-  stats: { compared: number; changed: number }
+  /** The comparisons, once per passage (Ziffer) or per Paragraph (§). */
+  entries: Record<string, ReasoningDiffEntry>
+  /**
+   * How many Begründungen were compared and how many of them changed — and
+   * how many are shown without a comparison (`comparable: false`).
+   */
+  stats: { compared: number; changed: number; uncompared: number }
 }
 
 /**

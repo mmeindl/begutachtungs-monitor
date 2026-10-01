@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasReadableText, parseExplanations } from '../server/utils/explanations/risExplanations'
+import { addressOf, hasReadableText, parseExplanations, ziffernOf } from '../server/utils/explanations/risExplanations'
 import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
 
 /**
@@ -216,5 +216,46 @@ describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
     expect(explanationsByParagraph(parsed, pack)).toEqual([
       { law: 'Änderung der Rechtsanwaltsordnung', para: '7', heading: 'Zu Art. 2 Z 1 (§ 7):', text: ['Dazu.'] },
     ])
+  })
+})
+
+describe('ziffernOf — die Novellierungsanordnungen einer Passagenüberschrift (01.10.2026)', () => {
+  const read = (heading: string) => ziffernOf(heading).map((z) => `${z.article ?? '–'}:${z.ziffer}`)
+
+  it('liest Ziffern, Listen und Bereiche', () => {
+    expect(read('Zu Z 4 (§ 54c Abs. 1a):')).toEqual(['–:4'])
+    expect(read('Zu Z 1 bis 3:')).toEqual(['–:1', '–:2', '–:3'])
+    expect(read('Zu Z 1, 14, 24 bis 27 (§ 1):')).toEqual(['–:1', '–:14', '–:24', '–:25', '–:26', '–:27'])
+    expect(read('Zu Z 89 und Z 90 (§ 18):')).toEqual(['–:89', '–:90'])
+    expect(read('Zu Z 2 (§ 69b Abs. 1 Z 5) und 3 (§ 69 Abs. 1 Z 7):')).toEqual(['–:2', '–:3'])
+    expect(read('Zu Z 1 lit. b und Z 4 (§ 9 Abs. 6 Z 6):')).toEqual(['–:1', '–:4'])
+  })
+
+  it('ordnet jede Ziffer dem Artikel zu, den die Überschrift vor ihr nennt', () => {
+    expect(read('Zu Art. 2 Z 1 (§ 7):')).toEqual(['2:1'])
+    expect(read('Zu Art. 1 Z 5 sowie zu Art. 13 Z 1 bis 3 (§ 6 und § 7 KfzStG):')).toEqual(['1:5', '13:1', '13:2', '13:3'])
+    expect(read('Zu Art. II Z 3 bis Z 5:')).toEqual(['2:3', '2:4', '2:5'])
+  })
+
+  // „Zu § 4 Z 1:" is item 1 of § 4 in a new law, not an instruction.
+  it('liest ein „Z" hinter einem §, Absatz oder einer Anlage nicht als Ziffer', () => {
+    expect(read('Zu § 4 Z 1:')).toEqual([])
+    expect(read('Zu § 18 Abs. 9 Z 3:')).toEqual([])
+    expect(read('Zu Abs. 11 Z 1:')).toEqual([])
+    expect(read('Zu Anlage 1 Z 3.20 BDG 1979:')).toEqual([])
+    expect(read('Zu Art. 12 Abs. 1 Z 1 B-VG:')).toEqual([])
+  })
+
+  it('erfindet in „Z 5a bis 5c" keine Buchstaben dazwischen', () => {
+    expect(read('Zu Z 5a bis 5c:')).toEqual(['–:5a', '–:5c'])
+  })
+
+  it('liest eine Überschrift, die in Prosa weiterläuft, als keine Anweisung', () => {
+    expect(read('Zu Z 4: Diese Definition ergeht in Umsetzung des Art. 2 Z 9a der Richtlinie (EU) 2018/2001.')).toEqual([])
+    expect(read('Zu Z 5 ist festzuhalten, dass der Gesamtwert …')).toEqual([])
+  })
+
+  it('füllt addressOf().items aus derselben Lesung', () => {
+    expect(addressOf('Zu Z 1 bis 3 (§ 5 Abs. 2 Z 7):').items).toEqual(['Z 1', 'Z 2', 'Z 3'])
   })
 })

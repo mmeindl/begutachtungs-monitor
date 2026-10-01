@@ -1,6 +1,6 @@
 /**
  * „Hat sich die Begründung geändert?" — the ressort's Erläuterungen from the
- * draft to the Regierungsvorlage, Paragraph by Paragraph
+ * draft to the Regierungsvorlage, at each change of the § comparison
  * (docs/architecture.md §12.10b).
  *
  * Nuxt glue around `explanations/explanationsHtml.ts`. Measured before this
@@ -20,15 +20,17 @@
  * numbering, and a second, home-made key would be the second chance to hang a
  * Begründung on the wrong change.
  *
- * The rule itself — one comparison per Paragraph, ambiguous numbers stay out
- * — lives in `explanations/reasoningDiff.ts` and is tested there.
+ * The rule itself — an instruction gets the passage of its Ziffer, a § or a
+ * document titled by § the passages of the Paragraph, one comparison per
+ * passage, ambiguous numbers stay out — lives in
+ * `explanations/reasoningDiff.ts` and is tested there.
  *
  * DRAFT → REGIERUNGSVORLAGE ONLY. The later stations have reports of their
  * own, not continued Erläuterungen; for those this service returns nothing
  * rather than comparing something similar.
  */
 import type { LawStationId, ReasoningDiffResponse, TraceLink } from '#shared/types'
-import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from './explanationsHtml'
+import { parseExplanationsHtml, type HtmlExplanations } from './explanationsHtml'
 import { getLawDiff } from '../diff/lawDiffService'
 import { fetchDocument } from '../upstream/fetchDocument'
 import { findComparisonRvLink, mapDocuments, parseStages } from '../parliament/detailJson'
@@ -45,11 +47,6 @@ async function explanationsDocument(gp: string, ityp: string, inr: number): Prom
   return url ? { label: `Erläuterungen (${ityp === 'ME' ? 'Entwurf' : 'Regierungsvorlage'})`, url } : null
 }
 
-/** A document's passages as text per Paragraph number. */
-function passageTexts(byParagraph: Map<string, HtmlPassage[]>): Map<string, string> {
-  return new Map([...byParagraph].map(([id, passages]) => [id, passages.flatMap((p) => p.text).join(' ')]))
-}
-
 /** The answer without a comparison, with the sentence that says why — or without one. */
 function empty(gp: string, inr: number, reason: string | null, sources: TraceLink[] = []): ReasoningDiffResponse {
   return {
@@ -59,8 +56,8 @@ function empty(gp: string, inr: number, reason: string | null, sources: TraceLin
     unavailableReason: reason,
     sources,
     units: {},
-    paragraphs: {},
-    stats: { compared: 0, changed: 0 },
+    entries: {},
+    stats: { compared: 0, changed: 0, uncompared: 0 },
   }
 }
 
@@ -102,26 +99,28 @@ const compareMeToRv = defineCachedFunction(
     const [meHtml, rvHtml] = await Promise.all([fetchDocument(meDoc.url), fetchDocument(rvDoc.url)])
     const meParsed = parseExplanationsHtml(meHtml)
     const rvParsed = parseExplanationsHtml(rvHtml)
-    const before = passageTexts(passagesByParagraph(meParsed))
-    const after = passageTexts(passagesByParagraph(rvParsed))
-    const byArticle = { before: passageTexts(passagesByArticleParagraph(meParsed)), after: passageTexts(passagesByArticleParagraph(rvParsed)) }
     const sources = [meDoc, rvDoc]
-    if (before.size === 0 && after.size === 0) {
-      return empty(gp, inr, 'Die Erläuterungen dieses Entwurfs sind nicht nach Paragraphen gegliedert; ein Vergleich am Paragraphen ginge daneben.', sources)
+    // Addressed means by § or by Ziffer: „Zu Z 1 bis 3:" names no § and is
+    // still the passage of three instructions.
+    const addressed = (doc: HtmlExplanations) => doc.special.some((p) => p.paragraphs.length > 0 || p.ziffern.length > 0)
+    if (!addressed(meParsed) && !addressed(rvParsed)) {
+      return empty(gp, inr, 'Die Erläuterungen dieses Entwurfs sind weder nach Ziffern noch nach Paragraphen gegliedert; ein Vergleich an der Änderung ginge daneben.', sources)
     }
 
     const diff = await getLawDiff(gp, inr, 'me', 'rv')
     if (!diff.available) return empty(gp, inr, null, sources)
 
-    const { units, paragraphs, stats } = compareReasoning(diff.units, before, after, byArticle)
+    const { units, entries, stats } = compareReasoning(diff.units, meParsed, rvParsed)
+    // Shown is shown: an uncompared passage is Begründung on the page too.
+    const shown = stats.compared + stats.uncompared > 0
     return {
       gp,
       inr,
-      available: stats.compared > 0,
-      unavailableReason: stats.compared > 0 ? null : 'Zu den geänderten Bestimmungen führen beide Dokumente keine gemeinsame Begründung.',
+      available: shown,
+      unavailableReason: shown ? null : 'Zu den geänderten Bestimmungen führen beide Dokumente keine gemeinsame Begründung.',
       sources,
       units,
-      paragraphs,
+      entries,
       stats,
     }
   },

@@ -907,6 +907,130 @@ andere Art von Änderung aussieht. Weggelassen wird nichts: Dass die Begründung
 eine andere ist, ist der Befund, und die Schranke ist unsere, nicht die des
 Ressorts.
 
+**Gebaut am 01.10.2026: die Begründung an der Ziffer.** „Gerechnet am
+Paragraphen, gezeigt an der Anordnung" war präziser, als die Quelle ist. Die
+Ressorts erklären eine Novelle nach Ziffern („Zu Z 4 (§ 54c Abs. 1a):", „Zu
+Art. 2 Z 1 (§ 7):", „Zu Z 1 bis 3:") und ein neues Gesetz nach Paragraphen
+(„Zu § 9:"); über 658 Erläuterungen nennen 15.166 Passagen eine Ziffer und
+7.450 nur einen §. Am Paragraphen gesammelt, stand unter jeder Anweisung die
+Begründung aller Ziffern am selben § — unter jeder der sechs Ziffern zu § 11
+von 8/ME alle sechs —, und „Begründung geändert" kam oft von einer *anderen*
+Änderung desselben Paragraphen (§12.11: bei 63 von 111 Einheiten über mehrere
+§§). Jetzt gilt:
+
+- **Eine Anweisung, die es auf beiden Seiten gibt, bekommt die Passage ihrer
+  Ziffer**, jede Seite in ihrer eigenen Nummerierung — die Vorlage über
+  Ziffer und Artikel der Einheit, der Entwurf über `fromId` und
+  `fromArticleKey`. Die Ziffern liest `ziffernOf` aus der Überschrift:
+  außerhalb der Klammern, mit Listen und Bereichen („Zu Z 1, 14, 24 bis 27"),
+  mit dem Artikel je Ziffer („Zu Art. 1 Z 5 sowie zu Art. 13 Z 1 bis 3"),
+  nicht hinter einem §, Absatz oder einer Anlage („Zu § 4 Z 1:" ist die
+  Ziffer eines neuen Gesetzes) und nicht, wo die Überschrift in Prosa
+  weiterläuft („Zu Z 4: Diese Definition …", 169 von 14.246
+  Ziffer-Überschriften, jede gelesene die Ziffer einer Begriffsbestimmung).
+  Passagen, die das Ressort unter eine Ziffer ohne eigenen Text setzt („Zu
+  Z 3 (§ 6 Abs. 4 und 5):", darunter „Zu § 6 Abs. 4:" und „Zu § 6 Abs. 5:"),
+  gehören zu ihr — gelesen an ihrer eigenen Adresse, nicht an den §§, die ein
+  in Prosa weiterlaufender Absatz zitiert („Zu § 77a Abs. 9 vertritt die
+  Kommission … § 40 …", 55/ME XXVIII, sonst auf beiden Seiten abgeschnitten).
+  Nennen zwei Passagen dieselbe Ziffer („Zu Z 6 und 7 (§§ 17 und 18 …)" und
+  „Zu Z 5 und 6 (§ 23a …)", 2/ME XXVIII), entscheiden die §§ der
+  Überschriften: Es bleibt, was einen § nennt, den die Anweisung ändert, und
+  passt keine, bekommt die Anweisung keine. Eine *einzelne* Passage wird nicht
+  nach ihren §§ beurteilt — ihre §-Liste ist die Kurzschrift des Ressorts für
+  eine Reihe von Ziffern („Zu Z 54 bis 58 (§ 40 Abs. 1 … § 48 Abs. 9)"
+  erklärt auch Z 54 an § 39, 61/ME XXVIII), und so beurteilt hätte die Wache
+  78, 333 und 472 richtige Passagen verworfen; als Wache bei Kollisionen sind
+  es 27, 113 und 72 in XXVIII, XXVII und XXVI. Wo eine Seite die Änderung
+  nach § betitelt — häufig der Entwurf, den die Vorlage dann nach Ziffern
+  neu überschreibt („Zu § 11
+  Abs. 1b und 2:" gegen „Zu Z 9 und 10 (§ 11 Abs. 1b und 2):", 48/ME
+  XXVIII) —, zählen auf dieser Seite die nur nach § betitelten Passagen. Die
+  Passage einer *anderen* Ziffer bekommt eine Anweisung nicht mehr.
+- **Gezählt wird die Passage, gezeigt an jeder Anweisung.** Ein Eintrag ist
+  ein Paar von Passagen; „Zu Z 1 bis 3" ist eine Begründung, die an drei
+  Anweisungen steht — derselbe Schutz, den der §-Join am 22.09. am
+  Paragraphen gebaut hatte. Der Satz über dem Vergleich zählt deshalb
+  Begründungen, nicht Paragraphen, und der Aufklapper sagt „zu dieser
+  Änderung" und nennt die Überschrift der Vorlage.
+- **Verglichen wird nur bei gleichem Umfang.** „Zu Z 1:" und „Zu Z 2:" im
+  Entwurf gegen „Zu Z 1 und 2:" in der Vorlage ist eine Umgruppierung, keine
+  Überarbeitung. Verglichen wird, wo die Passagen beider Seiten dieselben
+  Einheiten umfassen, eingefügte und entfernte eingeschlossen: „Zu Z 26
+  (§ 122 Abs. 1):" gegen „Zu Z 31 und 32 (§ 122 Abs. 1 und 2):", deren Z 32
+  neu ist (41/ME XXVIII), erklärt jetzt eine zweite Änderung mit. Unter zehn
+  Einheiten muss der Umfang gleich sein, darüber reicht ein Anteil von 0,9 —
+  für die Querschnittspassage, deren Liste von zwanzig Ziffern in der Vorlage
+  eine mehr führt (131/ME XXVI). Die Regel greift bei 242, 645 und 396
+  Einheiten in XXVIII, XXVII und XXVI, 8–13 % der Anweisungen am
+  Ziffer-Join. Nach Grund: verschiedene gepaarte Einheiten 79, 295 und 223;
+  nur eingefügte 74, 127 und 49; nur entfernte 13, 50 und 14; eine entfernte
+  auf der einen und eine eingefügte auf der anderen Seite 76, 173 und 110 —
+  in den gelesenen Fällen oft dieselbe umgeschriebene Anweisung, die die
+  Paarung nicht als eine erkannt hat (65/ME XXVIII).
+- **Wo die Regel greift, steht die Begründung ohne Urteil.** Der Eintrag
+  trägt beide Passagen (`comparable: false`, Überschrift und Text beider
+  Seiten), einmal je Passagenpaar und an jeder Anweisung gezeigt wie die
+  anderen; der Aufklapper heißt „Die Begründung des Ressorts zu dieser
+  Änderung", sagt in einem Satz, warum nicht verglichen wird („Entwurf und
+  Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden
+  zusammen; verglichen wird sie deshalb nicht."), und zeigt beide Texte unter
+  ihren Überschriften — ohne „geändert", ohne „unverändert". Der Satz über
+  dem Vergleich zählt weiter nur die verglichenen. So gezeigt sind 130, 356
+  und 157 Passagenpaare in XXVIII, XXVII und XXVI.
+- **Der Artikel wird gelesen, wie das Dokument ihn schreibt.** Ein einzelnes
+  Gesetz, das eine Seite als „Artikel 1" führt und die andere nicht (124/ME
+  und 268/ME XXVII), wird ohne Artikel geschlüsselt; ein Paket, dessen
+  Erläuterungen keine Artikel markieren, nach Ziffer und § („Zu Z 7
+  (§ 22):", 151/ME XXVI) — dort nur für einen § mit eindeutiger Nummer,
+  dieselbe Wache wie beim §-Join.
+
+**Was am Paragraphen bleibt.** Eine Einheit, die ein § *ist* (ein neues
+Gesetz), jede andere Einheit und jeder Entwurf, dessen eines Dokument keine
+Passage nach Ziffern betitelt: dort der §-Join unverändert, und gemessen hat
+sich auf diesem Weg kein Urteil bewegt. Ebenso eingefügte und entfernte
+Anweisungen: Ihnen fehlt auf der anderen Seite die Ziffer, gegen die man ihre
+Passage halten könnte; ihr Eintrag sagt „Paragraph", weil sich mit ihnen die
+Begründung des Paragraphen bewegt. Die Aufklapper an der Gegenüberstellung
+(§12.30) bleiben je §, wie sie sind.
+
+**Das Tor, ausdrücklich:** Nichts verliert eine Begründung, die es heute
+zeigt. Gezählt werden die Einheiten mit einer gezeigten Begründung,
+verglichen oder nicht (a′); verloren ist eine Einheit, die alt eine hatte und
+neu keine, aufgefangen eine, die ihre über einen Rückfall bekommt — den
+§-Join für eingefügte und entfernte Anweisungen, eine nach § betitelte
+Passage oder die Anzeige ohne Urteil. Die Urteile (verglichen, geändert)
+stehen getrennt daneben. Auf dem unveränderten §-Weg hat sich kein Urteil
+bewegt.
+
+*Alt gegen neu durch dieselben Funktionen gemessen*
+(`pnpm corpus:aenderungsrate -- --gp <GP> --ziffer`:
+`compareReasoningByParagraph` gegen `compareReasoning`):
+
+| | XXVI | XXVII | XXVIII |
+|---|---|---|---|
+| (a′) Einheiten mit gezeigter Begründung | 2.036 → **2.461** | 4.864 → **5.772** | 2.272 → **2.455** |
+| verloren | 63 | 90 | 83 |
+| davon mit nur fremden Passagen | 37 | 24 | 55 |
+| vom Rückfall aufgefangen | 620 | 1.354 | 526 |
+| neu dazu | 488 | 998 | 266 |
+| verglichene Begründungen | 1.237 → 1.282 | 3.102 → 3.521 | 1.357 → 1.533 |
+| davon geändert | 560 → 485 | 1.454 → 1.429 | 628 → 602 |
+| gezeigt ohne Urteil | 157 | 356 | 130 |
+| „geändert" → „unverändert", die eigene Passage gleich | 191 | 356 | 150 |
+
+Die größte Bewegung ist die gewollte: Anweisungen, deren eigene Passage
+gleich geblieben ist und die nur „geändert" hießen, weil eine andere Ziffer
+am selben § neu begründet wurde. Dazu kommen die Anweisungen über mehrere
+§§, die seit dem 28.09. keine Begründung hatten: 169 der 327 gepaarten haben
+jetzt eine. Das Tor hält in allen drei Perioden, deutlich: verloren 63, 90
+und 83 Einheiten, davon 37, 24 und 55 mit einer Begründung, die nur aus
+Passagen anderer Ziffern bestand. Die übrigen erklärt das Ressort auf einer
+Seite weder nach ihrer Ziffer noch nach ihrem §. Die Obergrenze steigt von
+250 auf 350 Einträge, weil eine Passage kürzer ist als alle Passagen ihres §
+und die ohne Urteil gezeigten Paare mitzählen: höchstens 311 je Entwurf
+(XXVII 230/ME).
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and
@@ -1220,6 +1344,9 @@ und in Paketen mit dem Artikel geschlüsselt wie der zweite Schlüssel vom
 sechs Ziffern dieselbe Begründung von § 11 zeigen (8/ME) — eine Entscheidung
 über §12.10b und nicht ein Nachtrag an dieser Stelle. Deshalb bleibt die
 Einheit über mehrere §§ ohne Namen und ohne Begründung, wie seit dem 28.09.
+*Die Begründung ist seit 01.10.2026 gebaut (§12.10b):* 169 der 327 gepaarten
+Einheiten über mehrere §§ in XXVI–XXVIII haben sie jetzt, über ihre Ziffer;
+einen Namen weiterhin nicht.
 
 *Die Anweisung, deren Verb die Grammatik nicht kennt, nennt ihren § trotzdem —
 gelesen seit 30.09.2026.* Die Klasse „kein lesbarer § in der Anweisung" war

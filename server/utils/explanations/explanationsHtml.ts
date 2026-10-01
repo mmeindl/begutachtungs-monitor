@@ -22,7 +22,7 @@
  * „Zu Z 4 (§ 54c Abs. 1a und 1b):" has to mean the same Paragraph on both
  * sides, or the Begründung hangs on the wrong §.
  */
-import { addressOf, ARTICLE_HEADING_RE, isAddressHeading } from './risExplanations'
+import { addressOf, ARTICLE_HEADING_RE, isAddressHeading, ziffernOf } from './risExplanations'
 import { articleKeysNamed, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
@@ -52,6 +52,14 @@ export interface HtmlPassage {
    * laws belongs to neither.
    */
   article: string | null
+  /**
+   * The Ziffern the heading names — „Zu Z 1 bis 3 (§ 5):" names three —
+   * each under its Artikel: the one the heading names before it, else
+   * `article`. Empty for a passage titled by § alone („Zu § 9:"), which is
+   * how a new law is explained; an amendment is explained by Ziffer
+   * (docs/architecture.md §12.10b, 01.10.2026).
+   */
+  ziffern: { article: string | null; ziffer: string }[]
 }
 
 export interface HtmlExplanations {
@@ -114,7 +122,8 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
         if (own) mark = own
         article = own ?? mark
       }
-      current = { heading: text, paragraphs, text: [], article }
+      const ziffern = ziffernOf(text).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer }))
+      current = { heading: text, paragraphs, text: [], article, ziffern }
       special.push(current)
       inSpecial = true
       continue

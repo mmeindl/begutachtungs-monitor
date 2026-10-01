@@ -10,6 +10,7 @@
  *          npx vite-node -c vitest.config.ts scripts/corpus/aenderungsrate.ts -- --gp XXVII
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --reasoning [--show-para inr]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --multi | --addresses
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer [--list]
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
  * reproduce is a second opinion, not a number about the page. So every draft
@@ -55,7 +56,7 @@
  * how many of them an Artikel key would bring back, because both
  * Erläuterungen place the passage under an Artikel mark whose number matches.
  * The shipped path runs as it is (`parseExplanationsHtml`,
- * `passagesByParagraph`, `compareReasoning`); see the section at the end for
+ * `passagesByParagraph`, `compareReasoningByParagraph`); see the section at the end for
  * what had to be copied. A flag here rather than a script of its own, because
  * the question needs exactly the diff units this script already reproduces.
  *
@@ -83,14 +84,15 @@ import { cachedJson, cachedText } from '../lib/diskCache'
 import { fetchRisBegutCorpus } from '../lib/corpus'
 import { pool } from '../lib/async'
 import { argFlag, argPair } from '../lib/args'
-import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
-import { compareReasoning } from '../../server/utils/explanations/reasoningDiff'
+import { parseExplanationsHtml, passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from '../../server/utils/explanations/explanationsHtml'
+import { compareReasoning, compareReasoningByParagraph, passageTexts } from '../../server/utils/explanations/reasoningDiff'
 import { diffTokens } from '../../server/utils/diff/wordDiff'
 import { addressOf, isAddressHeading } from '../../server/utils/explanations/risExplanations'
 import { addressedParagraphOf, instructionParagraphs } from '../../server/utils/lawtext/instructionAddress'
 import { parseParliamentHtml } from '../../server/utils/lawtext/parliamentHtml'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { explanationParaId } from '../../shared/utils/explanationKey'
+import { diffUnitKey } from '../../shared/utils/diffKey'
 import { pct, quantile } from '../lib/fmt'
 
 const SCRIPT = 'corpus/aenderungsrate'
@@ -633,11 +635,6 @@ function explanationsUrl(documents: RawDocumentGroup[] | null | undefined): stri
   return group?.formats.find((f) => f.type === 'html')?.url ?? null
 }
 
-/** Copy of `passageTexts` (reasoningDiffService.ts). */
-function passageTexts(byParagraph: Map<string, HtmlPassage[]>): Map<string, string> {
-  return new Map([...byParagraph].map(([id, passages]) => [id, passages.flatMap((p) => p.text).join(' ')]))
-}
-
 /** Copy of `ambiguousParagraphs` (reasoningDiff.ts, not exported) — returning the Artikel per number too. */
 function articlesPerParagraph(units: readonly LawDiffUnit[]): Map<string, Set<string>> {
   const articles = new Map<string, Set<string>>()
@@ -806,15 +803,15 @@ async function reasoningReport(): Promise<void> {
       return
     }
     const { units, fromUnits, toUnits } = parsed.get(r.inr) as { units: LawDiffUnit[]; fromUnits: LawUnit[]; toUnits: LawUnit[] }
-    const cmp = compareReasoning(units, before, after)
+    const cmp = compareReasoningByParagraph(units, before, after)
     if (cmp.stats.compared > 0) draftsCompared++
     parasCompared += cmp.stats.compared
     // The shipped second key (since 27.09.2026): the same call as the service.
-    const keyed = compareReasoning(units, before, after, {
+    const keyed = compareReasoningByParagraph(units, before, after, {
       before: passageTexts(passagesByArticleParagraph(meParsed)),
       after: passageTexts(passagesByArticleParagraph(rvParsed)),
     })
-    const keyedEntries = Object.keys(keyed.paragraphs).filter((k) => k.startsWith('Art. '))
+    const keyedEntries = Object.keys(keyed.entries).filter((k) => k.startsWith('Art. '))
     // What the comparison would hold without its ceiling: the same keys
     // `compareReasoning` forms, counted instead of built.
     {
@@ -837,7 +834,7 @@ async function reasoningReport(): Promise<void> {
     shippedByArticle += keyedEntries.length
     shippedByArticleParas += new Set(keyedEntries.map((k) => k.replace(/^Art\. \S+ /, ''))).size
     // Nothing shown before may go: every entry of the call without the second key stays.
-    const lost = Object.keys(cmp.paragraphs).filter((k) => !keyed.paragraphs[k])
+    const lost = Object.keys(cmp.entries).filter((k) => !keyed.entries[k])
     if (lost.length) keyedLost.push(`${r.inr}/ME (${lost.join(', ')})`)
     if (keyed.stats.compared !== cmp.stats.compared + keyedEntries.length) keyedMismatch.push(`${r.inr}/ME (${cmp.stats.compared} + ${keyedEntries.length} → ${keyed.stats.compared})`)
     if (keyedEntries.length) draftsGained++
@@ -1092,7 +1089,190 @@ function addressesReport(): void {
   console.log(`    ${lines.sort().join('\n    ')}`)
 }
 
+/**
+ * `--ziffer` (01.10.2026, TODO.md § 5b „Begründung an der Ziffer bauen"): the
+ * Begründungsvergleich old against new, side by side, through the shipped
+ * functions — `compareReasoningByParagraph` (the § join as it stood until
+ * 01.10.2026) and `compareReasoning` (the Ziffer join, with its fallbacks).
+ * Per GP: units with a Begründung on both sides, compared and changed
+ * entries, how often the scope rule fires and where the other fallbacks
+ * went, and EVERY unit whose verdict moves (geändert ↔ unverändert ↔ keine)
+ * with draft, Ziffer and the headings of the passages on both sides, old and
+ * new, so each one can be read (`--list`). Each lost unit says whose
+ * Begründung the old join had shown it: a passage naming its own Ziffer, or
+ * only others'. `--show-heads inr` prints a draft's passage headings with
+ * the Ziffern read from them, `--show-units inr` its unit pairing.
+ */
+async function zifferReport(): Promise<void> {
+  const tally = { uncompared: 0, guarded: 0, multi: 0, multiShown: 0, lost: 0, lostForeign: 0, gained: 0, caught: 0, drafts: 0, titled: 0, oldUnits: 0, newUnits: 0, oldCompared: 0, oldChanged: 0, newCompared: 0, newChanged: 0, zifferRoute: 0, paragraphRoute: 0, zEntries: 0, pEntries: 0, ceiling: 0 }
+  const fallbackTally = new Map<string, number>()
+  const perDraft: { draft: string; old: number; neu: number }[] = []
+  const flips = new Map<string, string[]>()
+  let paragraphRouteFlips = 0
+  const scopeLines: string[] = []
+  const guardLines: string[] = []
+  const scopeKinds = new Map<string, number>()
+  const scopeKindLines: string[] = []
+  const state = (cmp: { units: Record<string, string>; entries: Record<string, { changed: boolean; comparable: boolean }> }, u: LawDiffUnit) => {
+    const k = cmp.units[diffUnitKey(u)]
+    const e = k ? cmp.entries[k] : undefined
+    return !e ? 'keine' : !e.comparable ? 'gezeigt, nicht verglichen' : e.changed ? 'geändert' : 'unverändert'
+  }
+  const zOf = (id: string | null) => /^Z(\d+[a-z]?)$/i.exec(id ?? '')?.[1]?.toLowerCase() ?? null
+  const isPairedUnit = (u: LawDiffUnit) => u.change === 'changed' || u.change === 'unchanged'
+  const candidates = results.filter((r) => r.bucket >= 3)
+  await pool(candidates, CONCURRENCY, async (r) => {
+    const content = await detailOf(r.inr)
+    const rvText = findLawStationsCopy(content).get('rv')
+    const rv = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)!
+    await mkdir(join(CACHE, rv.gp), { recursive: true })
+    const rvDetail = await cachedJson<{ content?: DetailContent }>(join(CACHE, rv.gp, `I-${rv.inr}.json`), () =>
+      fetchJson(`${PARLIAMENT}/gegenstand/${rv.gp}/I/${rv.inr}?json=True`),
+    )
+    const meUrl = explanationsUrl(content.documents)
+    const rvUrl = explanationsUrl(rvDetail.content?.documents)
+    if (!meUrl || !rvUrl) return
+    const meParsed = parseExplanationsHtml(await fetchDocument(meUrl))
+    const rvParsed = parseExplanationsHtml(await fetchDocument(rvUrl))
+    const meByPara = passagesByParagraph(meParsed)
+    const rvByPara = passagesByParagraph(rvParsed)
+    const { units } = parsed.get(r.inr) as { units: LawDiffUnit[] }
+    if (Number(argPair('show-units')) === r.inr) {
+      console.log(`\n  ${r.inr}/ME Einheiten: ${units.map((u) => `${u.fromArticleKey ?? '–'}:${u.fromId ?? '–'}→${u.articleKey ?? '–'}:${u.id}${u.change === 'unchanged' ? '' : `(${u.change[0]})`}`).join(' ')}`)
+    }
+    if (Number(argPair('show-heads')) === r.inr) {
+      for (const [name, doc] of [['ME', meParsed], ['RV', rvParsed]] as const) {
+        console.log(`\n  ${r.inr}/ME ${name}: ${doc.special.length} Passagen`)
+        for (const p of doc.special) console.log(`    [Art ${p.article ?? '–'}] ${p.heading.slice(0, 110)} → ${p.ziffern.map((x) => `${x.article ?? '–'}:${x.ziffer}`).join(' ')} [§§ ${p.paragraphs.join(', ')}] [${p.text.length} Abs., ${p.text.join(' ').length} Z.]`)
+      }
+    }
+    tally.drafts++
+    // The old call exactly as the service made it until 01.10.2026.
+    const old = compareReasoningByParagraph(units, passageTexts(meByPara), passageTexts(rvByPara), {
+      before: passageTexts(passagesByArticleParagraph(meParsed)),
+      after: passageTexts(passagesByArticleParagraph(rvParsed)),
+    })
+    const neu = compareReasoning(units, meParsed, rvParsed)
+    if (neu.routes.ziffer > 0) tally.titled++
+    tally.oldUnits += Object.keys(old.units).length
+    tally.newUnits += Object.keys(neu.units).length
+    tally.oldCompared += old.stats.compared
+    tally.oldChanged += old.stats.changed
+    tally.newCompared += neu.stats.compared
+    tally.uncompared += neu.stats.uncompared
+    tally.newChanged += neu.stats.changed
+    tally.zifferRoute += neu.routes.ziffer
+    tally.paragraphRoute += neu.routes.paragraph
+    tally.zEntries += Object.keys(neu.entries).filter((k) => k.startsWith('Z ') || k.startsWith('N ')).length
+    tally.pEntries += Object.keys(neu.entries).filter((k) => !k.startsWith('Z ') && !k.startsWith('N ')).length
+    const neuEntries = Object.keys(neu.entries).length
+    if (neuEntries >= 350 || old.stats.compared >= 250) tally.ceiling++
+    perDraft.push({ draft: `${r.inr}/ME`, old: old.stats.compared, neu: neuEntries })
+    tally.guarded += neu.guarded.length
+    // Why the scope rule fired: the paired units differ, or only unpaired ones
+    // do — and those either one-sided (an inserted Ziffer the Vorlage now
+    // explains too) or both ways (a removed and an inserted Ziffer).
+    for (const sc of neu.scopes) {
+      const changeOf = new Map(units.map((u) => [diffUnitKey(u), u.change]))
+      const paired = (xs: string[]) => new Set(xs.filter((k) => changeOf.get(k) === 'changed' || changeOf.get(k) === 'unchanged'))
+      const pa = paired(sc.before)
+      const pb = paired(sc.after)
+      const samePaired = pa.size === pb.size && [...pa].every((k) => pb.has(k))
+      const removed = sc.before.filter((k) => changeOf.get(k) === 'removed').length
+      const inserted = sc.after.filter((k) => changeOf.get(k) === 'inserted').length
+      const kind = !samePaired ? 'gepaarte Einheiten verschieden' : removed && inserted ? 'nur ungepaarte, beidseitig (entfernt + eingefügt)' : inserted ? 'nur ungepaarte: eingefügt' : 'nur ungepaarte: entfernt'
+      scopeKinds.set(kind, (scopeKinds.get(kind) ?? 0) + 1)
+      const u = units.find((x) => diffUnitKey(x) === sc.unit)!
+      scopeKindLines.push(`${kind} :: ${r.inr}/ME ${u.fromId ?? '–'}→${u.id} Art ${u.fromArticleKey ?? '–'}→${u.articleKey ?? '–'} · ME ${sc.before.length} (${removed} entfernt) · RV ${sc.after.length} (${inserted} eingefügt) · gepaart gemeinsam ${[...pa].filter((k) => pb.has(k)).length}`)
+    }
+    for (const g of neu.guarded) {
+      const u = units.find((x) => diffUnitKey(x) === g.unit)!
+      const id = g.side === 'after' ? u.id : u.fromId
+      const line = (g.side === 'after' ? u.toText ?? u.fromText : u.fromText ?? u.toText) ?? ''
+      guardLines.push(`${r.inr}/ME ${g.side === 'after' ? 'RV' : 'ME'} ${id} Art ${(g.side === 'after' ? u.articleKey : u.fromArticleKey) ?? '–'} «${g.heading.slice(0, 90)}» | ${line.replace(/\s+/g, ' ').slice(0, 90)}`)
+    }
+
+    /** The headings behind an entry key, on one side — the Ziffer passages, or every passage the § join read. */
+    const headingsOf = (doc: HtmlExplanations, key: string | undefined, side: 0 | 1, byPara: Map<string, HtmlPassage[]>, art: string | null) => {
+      if (!key) return '–'
+      if (key.startsWith('Z ') || key.startsWith('N ')) {
+        const idx = key.slice(2).split('|')[side]!.split('+').map(Number)
+        return idx.map((i) => `«${doc.special[i]!.heading.slice(0, 90)}»`).join(' + ')
+      }
+      const id = explanationParaId(key.replace(/^Art\. \S+ /, ''))
+      const ps = (id ? byPara.get(id) ?? [] : []).filter((p) => !key.startsWith('Art. ') || p.article === art)
+      return `[§ ${key}] ${ps.map((p) => `«${p.heading.slice(0, 70)}»`).join(' + ')}`
+    }
+    for (const u of units) {
+      const key = diffUnitKey(u)
+      const fb = neu.fallbacks[key]
+      if (fb) fallbackTally.set(fb, (fallbackTally.get(fb) ?? 0) + 1)
+      const a = state(old, u)
+      const b = state(neu, u)
+      // The instruction over several §§ (§12.11): no single § to join at, so the § join gave it nothing.
+      if (zOf(u.id) && isPairedUnit(u) && instructionParagraphs(u.toText ?? u.fromText ?? '').length > 1) {
+        tally.multi++
+        if (b !== 'keine') tally.multiShown++
+      }
+      if (a !== 'keine' && b === 'keine') tally.lost++
+      if (a === 'keine' && b !== 'keine') tally.gained++
+      if ((fb === 'oneSided' || fb === 'paragraphTitled' || fb === 'scope') && b !== 'keine') tally.caught++
+      if (fb === 'scope') scopeLines.push(`${r.inr}/ME ${u.change} ${u.fromId ?? '–'}→${u.id} Art ${u.fromArticleKey ?? '–'}→${u.articleKey ?? '–'} | alt: ${a}`)
+      if (a === b) continue
+      const newKey = neu.units[key]
+      const route = fb ? `Rückfall ${fb}` : newKey?.startsWith('Z ') || newKey?.startsWith('N ') ? 'Ziffer' : '§-Join wie bisher'
+      if (route === '§-Join wie bisher') paragraphRouteFlips++
+      const oldKey = old.units[key]
+      // Whose Begründung did the old join show? Its passages on each side,
+      // and whether any of them names this unit's own Ziffer there.
+      const ownOld = (byPara: Map<string, HtmlPassage[]>, z: string | null, art: string | null) => {
+        if (!oldKey || !z) return false
+        const id = explanationParaId(oldKey.replace(/^Art\. \S+ /, ''))
+        const ps = (id ? byPara.get(id) ?? [] : []).filter((p) => !oldKey.startsWith('Art. ') || p.article === art)
+        return ps.some((p) => p.ziffern.some((x) => x.ziffer === z))
+      }
+      const own = [ownOld(meByPara, zOf(u.fromId), u.fromArticleKey), ownOld(rvByPara, zOf(u.id), u.articleKey)]
+      const whose = a === 'keine' ? '' : own[0] && own[1] ? ' · alt: eigene Ziffer beidseits' : own[0] || own[1] ? ' · alt: eigene Ziffer einseitig' : ' · alt: nur fremde Passagen'
+      const k = `${a} → ${b} [${route}]${whose}`
+      if (b === 'keine' && !own[0] && !own[1]) tally.lostForeign++
+      flips.set(k, [
+        ...(flips.get(k) ?? []),
+        `${r.inr}/ME ${u.change} ${u.fromId ?? '–'}→${u.id} Art ${u.fromArticleKey ?? '–'}→${u.articleKey ?? '–'} | ${String(u.toText ?? u.fromText ?? '').replace(/\s+/g, ' ').slice(0, 90)}\n` +
+        `        alt ME ${headingsOf(meParsed, oldKey, 0, meByPara, u.fromArticleKey)}\n        alt RV ${headingsOf(rvParsed, oldKey, 1, rvByPara, u.articleKey)}` +
+        (oldKey && old.entries[oldKey] ? ` (Drift ${((old.entries[oldKey]!.drift ?? 0) * 100).toFixed(1)} %)` : '') +
+        `\n        neu ME ${headingsOf(meParsed, newKey, 0, meByPara, u.fromArticleKey)}\n        neu RV ${headingsOf(rvParsed, newKey, 1, rvByPara, u.articleKey)}` +
+        (newKey && neu.entries[newKey] ? ` (${neu.entries[newKey]!.drift === null ? 'ohne Vergleich' : `Drift ${(neu.entries[newKey]!.drift! * 100).toFixed(1)} %`}, ${newKey})` : ''),
+      ])
+    }
+  })
+  const t = tally
+  console.log(`\nGP ${gp} — Begründung alt (§-Join) gegen neu (Ziffer-Join), ${t.drafts} Entwürfe mit beiden HTML-Erläuterungen, ${t.titled} davon beidseits nach Ziffern betitelt`)
+  console.log(`  (a') Einheiten mit gezeigter Begründung (verglichen oder nicht): alt ${t.oldUnits} → neu ${t.newUnits} · verloren ${t.lost} (davon ${t.lostForeign} mit nur fremden Passagen), dazu ${t.gained} · vom Rückfall aufgefangen (eingefügt/entfernt über den §-Join, §-betitelt, ohne Vergleich gezeigt) ${t.caught} → Tor ${t.lost <= t.caught ? 'hält' : 'HÄLT NICHT'}`)
+  console.log(`  (b) verglichene Einträge: alt ${t.oldCompared} → neu ${t.newCompared} · geändert: alt ${t.oldChanged} → neu ${t.newChanged} · gezeigt ohne Vergleich: ${t.uncompared} · Einträge Ziffer ${t.zEntries}, § ${t.pEntries}`)
+  console.log(`  Wege: Ziffer-Join ${t.zifferRoute} Einheiten, §-Join von vornherein ${t.paragraphRoute} · gepaarte Anweisungen über mehrere §§: ${t.multi}, davon mit Begründung ${t.multiShown}`)
+  console.log(`  Ziffer-Join ohne Ziffer-Eintrag: ${[...fallbackTally].map(([k, v]) => `${k} ${v}`).join(' · ') || '–'}`)
+  {
+    const ns = perDraft.map((d) => d.neu)
+    const top = [...perDraft].sort((a, b) => b.neu - a.neu).slice(0, 3)
+    console.log(`  Einträge je Entwurf neu: Median ${quantile(ns, 0.5)}, p99 ${quantile(ns, 0.99)}, max ${Math.max(0, ...ns)} (${top.map((d) => `${d.draft} ${d.old} → ${d.neu}`).join(', ')})`)
+  }
+  console.log(`  Umfangsregel, nach Grund: ${[...scopeKinds].map(([k, v]) => `${k} ${v}`).join(' · ')}`)
+  console.log(`  §-Wache: ${t.guarded} Zuordnungen einer Ziffer-Passage verworfen, deren §§ die Anweisung nicht ändert`)
+  for (const l of guardLines.sort().filter((_, i) => i % Math.max(1, Math.floor(guardLines.length / 8)) === 0).slice(0, 8)) console.log(`    ${l}`)
+  console.log(`  Entwürfe an der Obergrenze (alt 250, neu 350): ${t.ceiling} · Urteilswechsel auf dem §-Join wie bisher (muss 0 sein): ${paragraphRouteFlips}`)
+  const total = [...flips.values()].reduce((n, l) => n + l.length, 0)
+  console.log(`  (c) Urteil gekippt: ${total} Einheiten`)
+  for (const [k, l] of [...flips].sort((a, b) => b[1].length - a[1].length)) console.log(`    ${String(l.length).padStart(5)}  ${k}`)
+  if (argFlag('list')) {
+    for (const [k, l] of flips) console.log(`\n  [${k}]\n    ${l.sort().join('\n    ')}`)
+    console.log(`\n  [Umfangsregel greift]\n    ${scopeLines.sort().join('\n    ')}`)
+    console.log(`\n  [§-Wache]\n    ${guardLines.sort().join('\n    ')}`)
+    console.log(`\n  [Umfangsregel nach Grund]\n    ${scopeKindLines.sort().join('\n    ')}`)
+  }
+}
+
 // Last, so every constant above is initialised before the pass reads it.
+if (argFlag('ziffer')) await zifferReport()
 if (argFlag('addresses')) addressesReport()
 if (argFlag('reasoning')) await reasoningReport()
 if (argFlag('multi')) await multiReport()

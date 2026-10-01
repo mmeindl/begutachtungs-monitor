@@ -54,6 +54,7 @@
  *     did not head „Allgemeiner Teil" must not be labelled as if it had.
  */
 import { normalizeText } from '../lawtext/normalize'
+import { articleNumberKey } from '../text/designation'
 import { parseRisXml } from '../lawtext/risXml'
 
 /**
@@ -183,8 +184,146 @@ const IMAGE_PATH_RE = /^\/?Dokumente\/[\w-]+\/[\w.-]+\.(?:gif|png|jpe?g)$/i
 
 /** „§ 54c", „§§ 12 und 13", „§ 5 Abs. 1" — every § named in a passage heading. */
 const PARA_RE = /§+\s*(\d+[a-z]?)/gi
-/** „Z 4", „Z 4 und 5" — the Novellierungsanordnung the passage explains. */
-const ITEM_RE = /\bZ\s*(\d+[a-z]?)/g
+/**
+ * One Ziffer a heading names — the Novellierungsanordnung the passage
+ * explains — and the Artikel the heading itself names for it, or null.
+ */
+export interface HeadingZiffer {
+  /** „4", „12a" — the number of „Z 4", lowercased. */
+  ziffer: string
+  /** „2" for „Zu Art. 2 Z 1 (§ 7)", as `articleNumberKey` writes it; null where the heading names none before it. */
+  article: string | null
+}
+
+/** A finite verb right behind the Ziffern: the heading is the first words of a sentence. */
+const PROSE_VERB_RE = /^(?:ist|sind|wird|werden|wurde|wurden|darf|soll|sollen|kann|können|bleibt|bleiben|gilt|gelten)$/i
+/** Ziffer ranges longer than this are not expanded — the longest measured is far below. */
+const MAX_ZIFFER_RANGE = 80
+
+/**
+ * Every Ziffer a passage heading names, in the order printed, read as the
+ * Novellierungsanordnung it is (docs/architecture.md §12.10b, 01.10.2026):
+ * „Zu Z 4 (§ 54c Abs. 1a):", „Zu Art. 2 Z 1 (§ 7):", „Zu Z 1 bis 3:",
+ * „Zu Z 1, 3 und 5 (…)", „Zu Z 2 (…) und 3 (…)", „Zu Art. 1 Z 5 sowie zu
+ * Art. 13 Z 1 bis 3".
+ *
+ * A „Z" counts only where it stands at the start of the address, behind an
+ * Artikel or inside a running list of Ziffern. Behind a §, an Absatz or an
+ * Anlage it is a sub-item of the law („Zu § 4 Z 1:", „Zu Abs. 11 Z 1:",
+ * „(§ 30 Abs. 1 Z 9b)") — measured over 688 Parliament Erläuterungen, 215
+ * passages head „Zu § N Z N:" and 138 „Zu § N Abs. N Z N:", and each of them
+ * is a new law's numbered item, not an instruction. So the brackets go
+ * first, and what follows the first colon is prose, not address.
+ *
+ * A range expands only between plain numbers — „Z 5a bis 5c" would need the
+ * letters in between invented, which is what `PARA_RANGE_RE` refuses too.
+ * „lit. a" behind a Ziffer is part of that Ziffer and adds none.
+ *
+ * **A heading that runs on into prose names no instruction.** „Zu Z 4: Diese
+ * Definition ergeht in Umsetzung …" and „Zu Z 5 ist festzuhalten, dass …"
+ * explain the numbered items of a § — a definitions list, an Anhang — not a
+ * Novellierungsanordnung; of 14.246 Ziffer headings over the corpus, 169 run
+ * on behind the colon, and every one read is such an item. Those give none.
+ */
+export function ziffernOf(heading: string): HeadingZiffer[] {
+  let flat = normalizeText(heading)
+  // Twice, for a bracket inside a bracket („(§ 2 Z 3 (neu))").
+  for (let i = 0; i < 2; i++) flat = flat.replace(/\([^()]*\)/g, ' ')
+  const [address = flat, ...rest] = flat.split(':')
+  if (/[A-Za-zÄÖÜäöüß]/.test(rest.join(':'))) return []
+  flat = address
+  const tokens = flat.match(/§+|\d+[a-z]?(?![a-z])|[A-Za-zÄÖÜäöüß]+\.?|,|–|-/g) ?? []
+  const out: HeadingZiffer[] = []
+  const seen = new Set<string>()
+  const add = (ziffer: string, article: string | null) => {
+    const key = `${article ?? ''}|${ziffer}`
+    if (seen.has(key)) return
+    seen.add(key)
+    out.push({ ziffer, article })
+  }
+
+  /**
+   * `address`: a Ziffer may come next (after „Zu", after an Artikel, after a
+   * list joiner). `list`: a Ziffer was just read, so a bare number after a
+   * joiner is another one. `range`: „bis" was read inside a list. `off`:
+   * something else was read — a §, an Absatz, a word — and a „Z" is a
+   * sub-item until a new „zu" or Artikel opens an address again.
+   */
+  let state: 'address' | 'list' | 'joined' | 'range' | 'expectNumber' | 'off' | 'article' = 'off'
+  let article: string | null = null
+  let last: string | null = null
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]!
+    const lower = t.toLowerCase()
+    if (lower === 'zu') {
+      state = 'address'
+      continue
+    }
+    if (/^art(?:ikel|\.)?$/i.test(t) && (state === 'address' || state === 'joined')) {
+      const key = articleNumberKey(tokens[i + 1] ?? '')
+      if (key) {
+        article = key
+        i++
+        state = 'article'
+        continue
+      }
+      state = 'off'
+      continue
+    }
+    if (t === 'Z' && (state === 'address' || state === 'article' || state === 'joined')) {
+      state = 'expectNumber'
+      continue
+    }
+    if (/^\d/.test(t)) {
+      if (state === 'expectNumber' || state === 'joined') {
+        add(t.toLowerCase(), article)
+        last = t.toLowerCase()
+        state = 'list'
+        continue
+      }
+      if (state === 'range' && last) {
+        const from = Number(last)
+        const to = Number(t)
+        if (/^\d+$/.test(last) && /^\d+$/.test(t) && to > from && to - from <= MAX_ZIFFER_RANGE) {
+          for (let n = from + 1; n <= to; n++) add(String(n), article)
+        } else add(t.toLowerCase(), article)
+        last = t.toLowerCase()
+        state = 'list'
+        continue
+      }
+      // A number where none was expected: an Artikel's „Art. 12 Abs. 1" or
+      // the year of a law title — whatever it is, not a Ziffer.
+      if (state !== 'off') state = 'off'
+      continue
+    }
+    if (state === 'list') {
+      if (t === ',' || lower === 'und' || lower === 'sowie') {
+        state = 'joined'
+        continue
+      }
+      if (lower === 'bis' || t === '–' || t === '-') {
+        state = 'range'
+        continue
+      }
+      // „Z 16 lit. a", „Z 1 lit. b und Z 4": the letter belongs to the Ziffer.
+      if (lower === 'lit.' || lower === 'lit') {
+        if (/^[a-z]{1,2}$/.test(tokens[i + 1] ?? '')) i++
+        continue
+      }
+      // „Zu Z 5 ist festzuhalten, dass …": a sentence, not an address.
+      if (PROSE_VERB_RE.test(t)) return []
+      state = 'off'
+      continue
+    }
+    if (state === 'range' && t === 'Z') continue
+    if (state === 'joined' && t === 'Z') {
+      state = 'expectNumber'
+      continue
+    }
+    state = 'off'
+  }
+  return out
+}
 /**
  * „§§ 23 bis 25" — a range, where only the first § carries the symbol.
  *
@@ -232,7 +371,7 @@ export function addressOf(heading: string): { paragraphs: string[]; items: strin
   }
   return {
     paragraphs: uniq(paragraphs),
-    items: uniq([...heading.matchAll(ITEM_RE)].map((m) => `Z ${m[1]!.toLowerCase()}`)),
+    items: uniq(ziffernOf(heading).map((z) => `Z ${z.ziffer}`)),
   }
 }
 

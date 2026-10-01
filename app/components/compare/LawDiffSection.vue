@@ -94,16 +94,18 @@ const { data: reasoning } = await useFetch<ReasoningDiffResponse>(
 )
 
 /**
- * The changed reasoning for one unit, or nothing.
+ * The reasoning to show at one unit: a changed one, or one shown without a
+ * comparison (`comparable: false`, the scope rule) — or nothing.
  *
- * Two steps, because there are two levels: computed per Paragraph, shown at
- * the Novellierungsanordnung — and several instructions point at the same
- * Paragraph (8/ME: six at § 11).
+ * Two steps, because there are two levels: computed per passage — the one on
+ * the instruction's Ziffer, or where the Erläuterungen are titled by § the
+ * Paragraph's (docs/architecture.md §12.10b, 01.10.2026) — and shown at the
+ * Novellierungsanordnung; one passage „Zu Z 1 bis 3" serves three.
  */
 function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
-  const para = reasoning.value?.units?.[diffUnitKey(u)]
-  const entry = para ? reasoning.value?.paragraphs?.[para] : null
-  return entry?.changed ? entry : null
+  const key = reasoning.value?.units?.[diffUnitKey(u)]
+  const entry = key ? reasoning.value?.entries?.[key] : null
+  return entry && (entry.changed || !entry.comparable) ? entry : null
 }
 
 /**
@@ -120,9 +122,16 @@ const reasoningNote = computed<string | null>(() => {
   if (!stats?.compared) return null
   const { compared, changed } = stats
   // Shorter since 30.09.2026; „— aufklappbar an der Änderung" went, the
-  // disclosure at each change announces itself.
-  if (changed === 0) return `Die Begründung ist bei allen ${compared} Paragraphen, die in beiden Fassungen eine haben, gleich geblieben.`
-  return `Auch die Begründung hat das Ressort geändert: bei ${changed} von ${compared} Paragraphen, die in beiden Fassungen eine haben.`
+  // disclosure at each change announces itself. Counts Begründungen since
+  // 01.10.2026, not Paragraphen: what is compared is the ressort's passage to
+  // a change — one passage on three Ziffern is one Begründung, and only where
+  // the Erläuterungen are titled by § is it the Paragraph's.
+  if (changed === 0) {
+    return compared === 1
+      ? 'Die Begründung, die beide Fassungen zu den Änderungen führen, hat das Ressort nicht geändert.'
+      : `Keine der ${compared} Begründungen, die beide Fassungen zu den Änderungen führen, hat das Ressort geändert.`
+  }
+  return `Auch die Begründung hat das Ressort geändert: bei ${changed} von ${compared} Begründungen, die beide Fassungen zu den Änderungen führen.`
 })
 
 /**
@@ -152,7 +161,9 @@ const reasoningDocs = computed(() => (reasoning.value?.sources?.length === 2 ? r
 const rvReasoningDoc = computed(() => reasoningDocs.value?.[1] ?? null)
 /** A side's Erläuterungen for the credit line — only where the comparison of them ran. */
 function reasoningDocFor(station: LawStationId) {
-  if (!reasoning.value?.stats?.compared || !reasoningDocs.value) return null
+  const stats = reasoning.value?.stats
+  // Uncompared passages are text on the page too, so their documents are credited.
+  if (!stats || stats.compared + (stats.uncompared ?? 0) === 0 || !reasoningDocs.value) return null
   if (station === 'me') return reasoningDocs.value[0] ?? null
   if (station === 'rv') return reasoningDocs.value[1] ?? null
   return null
@@ -693,30 +704,60 @@ const droppedNote = computed(() =>
                   <details v-if="b.reasoning" class="group mt-2">
                     <summary class="-mx-1 flex min-h-target cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
                       <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                      Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert
+                      <!-- Says what was compared (01.10.2026): the passage on
+                           this change, or — where the Erläuterungen are titled
+                           by § — everything they say about the Paragraph. -->
+                      <template v-if="!b.reasoning.comparable">Die Begründung des Ressorts zu dieser Änderung</template>
+                      <template v-else>{{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ressorts zu dieser Änderung hat sich geändert' : 'Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert' }}</template>
                     </summary>
-                    <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
-                      <DiffText :segments="b.reasoning.segments ?? []" />
-                    </p>
-                    <!-- Without a word diff: both versions in full, side by
+                    <!-- Shown, not compared (01.10.2026): the two documents
+                         explain this change together with different others,
+                         so a word diff would measure the regrouping. One
+                         sentence says why, then the texts under their own
+                         headings — no „geändert", no „unverändert". -->
+                    <div v-if="!b.reasoning.comparable" class="pb-2 pl-6">
+                      <p class="mb-2 text-xs text-ink-muted">Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.</p>
+                      <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed" :class="b.reasoning.fromText ? 'sm:grid-cols-2' : ''">
+                        <div v-if="b.reasoning.fromText">
+                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                          <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.fromHeading }}</p>
+                          <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
+                        </div>
+                        <div>
+                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                          <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.label }}</p>
+                          <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <template v-else>
+                      <!-- The Vorlage's heading, because one passage often
+                         explains several changes („Zu Z 1 bis 3 (§ 5):") and
+                         the same drawer then opens at each of them. -->
+                      <p v-if="b.reasoning.basis === 'ziffer'" class="pb-1 pl-6 text-xs text-ink-muted">{{ b.reasoning.label }}</p>
+                      <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
+                        <DiffText :segments="b.reasoning.segments ?? []" />
+                      </p>
+                      <!-- Without a word diff: both versions in full, side by
                          side as in the comparison above, so a technical
                          ceiling does not look like a different kind of
                          change. The drawer is never empty — that the
                          reasoning is a different one is the finding, and the
                          ceiling is ours, not the Ressort's. -->
-                    <div v-else class="pb-2 pl-6">
-                      <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
-                      <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                        <div>
-                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
-                          <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
-                        </div>
-                        <div>
-                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
-                          <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
+                      <div v-else class="pb-2 pl-6">
+                        <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
+                        <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                          <div>
+                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                            <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
+                          </div>
+                          <div>
+                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                            <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </template>
                   </details>
                 </div>
               </div>
