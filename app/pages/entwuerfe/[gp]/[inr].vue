@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { AmendedLawsResponse, DraftDetail, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
-import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe } from '~/utils/deadlines'
+import type { Fact } from '~/components/ui/FactList.vue'
+import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristRangeDe } from '~/utils/deadlines'
 import {
   SECOND_ROUND_CLAUSE,
   lastParliamentStation,
@@ -301,18 +302,38 @@ function relatedGpSuffix(gp: string): string {
 
 /* The one fact the upstream stage list holds that no other surface does:
  * when parliament handed the Stellungnahmen to the ressort. That is where
- * the ministry's clock starts and where the Begutachtung ends, so the
- * sentence closes that section — temporal, no causality claimed (framing
- * rule). */
-const handoffSentence = computed(() => {
+ * the ministry's clock starts and where the Begutachtung ends — temporal,
+ * no causality claimed (framing rule). */
+const handoffFact = computed<Fact | null>(() => {
   const d = data.value
   const h = d?.handoff
   if (!d || !h?.date) return null
   // The bar's Regierungsvorlage row says „bisher keine · seit … beim Ressort"
   // exactly while no Vorlage exists and the GP runs (`spine.ts`); there the
-  // sentence only repeated it (30.09.2026).
+  // row only repeated it (30.09.2026).
   if (!d.enactment && !d.gpEnded) return null
-  return `Die Stellungnahmen wurden am ${formatDateDe(h.date)} an ${h.recipient} übermittelt.`
+  return { key: 'uebermittelt', title: 'Übermittelt', text: `${formatDateDe(h.date)} an ${h.recipient}` }
+})
+
+/* The Begutachtung's own dates, before the Stellungnahmen. The Frist only
+ * once it has closed — while it runs, the action card above carries it.
+ * Its length and dates stand here although the rail names them too: the
+ * bar under them needs the value it draws beside it (01.10.2026; the
+ * sentence that stood here alone compared nothing a reader could see). */
+const begutachtungFacts = computed<Fact[]>(() => {
+  const d = data.value
+  if (!d) return []
+  const facts: Fact[] = []
+  if (!windows.value.begutachtung && d.deadline) {
+    const range = fristRangeDe(d.arrivedAt, d.deadline)
+    facts.push({
+      key: 'frist',
+      title: 'Begutachtungsfrist',
+      text: range,
+    })
+  }
+  if (handoffFact.value) facts.push(handoffFact.value)
+  return facts
 })
 
 const seoTitle = computed(() => {
@@ -784,12 +805,23 @@ const ministryLinks = computed(() => {
         <section id="begutachtung" class="page-section scroll-mt-6" aria-labelledby="begutachtung-heading">
           <h2 id="begutachtung-heading" class="section-heading">Die Begutachtung</h2>
           <!-- Before the Stellungnahmen: how long the window was is the
-               condition under which every one of them was written. Only
-               once it has closed — while it runs, the action card above
-               carries the sentence. -->
-          <p v-if="!windows.begutachtung && fristContext" class="mt-2 max-w-prose text-sm text-ink-secondary">
-            {{ fristContext }}
-          </p>
+               condition under which every one of them was written. The
+               handoff to the ressort is the stage's other date: under the
+               list it read as the pagination's footnote and moved with every
+               „Weitere" (01.10.2026). On a card: the Frist with its bar is a
+               measurement with a scale, a page object with a job of its own,
+               and without an edge it floated — the bar ended mid-column with
+               nothing to align to. -->
+          <FactList
+            v-if="begutachtungFacts.length"
+            :facts="begutachtungFacts"
+            divided
+            class="mt-4 rounded-xl border border-hairline bg-surface px-5 [--frist-cut:var(--color-surface)]"
+          >
+            <template #after-frist>
+              <FristBar :start="data.arrivedAt" :deadline="data.deadline" />
+            </template>
+          </FactList>
           <h3 class="mt-4 text-base font-semibold text-ink">Stellungnahmen</h3>
           <div class="mt-4">
             <p
@@ -831,11 +863,6 @@ const ministryLinks = computed(() => {
               :description="data.active ? 'Die Frist läuft.' : undefined"
             />
           </div>
-          <!-- The moment the ressort takes over — the accountability clock's
-               start, and the only thing the raw stage list adds. -->
-          <p v-if="handoffSentence" class="mt-3 text-sm text-ink-secondary">
-            {{ handoffSentence }}
-          </p>
         </section>
 
         <!-- The station that had no home: the Regierungsvorlage lived as a

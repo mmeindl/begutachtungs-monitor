@@ -4,6 +4,7 @@ import {
   fristClassOf,
   fristContextDe,
   fristDivergence,
+  fristRangeDe,
   isNewArrival,
   NEW_ARRIVAL_DAYS,
   noRvVerdictDe,
@@ -158,5 +159,19 @@ describe('fristContextDe — the yardstick sentence', () => {
     expect(fristContextDe('full', 'verordnung')).toBe(
       'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Verordnungsentwurf.',
     )
+  })
+})
+
+describe('fristRangeDe — the Frist as dates', () => {
+  it('names the year once where both ends share it', () => {
+    expect(fristRangeDe('2026-06-03', '2026-06-17')).toBe('03.06.–17.06.2026')
+  })
+
+  it('names both years across the turn of a year', () => {
+    expect(fristRangeDe('2025-12-15', '2026-01-26')).toBe('15.12.2025 – 26.01.2026')
+  })
+
+  it('falls back to the deadline alone without a usable start', () => {
+    expect(fristRangeDe(null, '2026-06-17')).toBe('bis 17.06.2026')
   })
 })

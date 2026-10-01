@@ -2,7 +2,8 @@
 import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
-import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe } from '~/utils/deadlines'
+import type { Fact } from '~/components/ui/FactList.vue'
+import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristRangeDe } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
 
 /**
@@ -75,6 +76,19 @@ const fristContext = computed(() => {
   const d = data.value
   if (!d || !stationList.value.length) return null
   return fristContextDe(fristClassOf(d.startedAt, d.deadline), 'verordnung')
+})
+
+/* The closed Frist as a fact, as on the draft page: length and dates,
+   drawn against the Regelfall under them (01.10.2026). */
+const fristFacts = computed<Fact[]>(() => {
+  const d = data.value
+  if (!d || d.active || !d.deadline || !stationList.value.length) return []
+  const range = fristRangeDe(d.startedAt, d.deadline)
+  return [{
+    key: 'frist',
+    title: 'Begutachtungsfrist',
+    text: range,
+  }]
 })
 
 /* Same contract as on the draft page: only a section this page renders. */
@@ -256,11 +270,13 @@ const documents = computed(() => {
               <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
             </template>
           </p>
-          <!-- While the Frist runs the action card carries this sentence;
-               one place at a time, as on the draft page. -->
-          <p v-if="!data.active && fristContext" class="mt-2 max-w-prose text-sm text-ink-secondary">
-            {{ fristContext }}
-          </p>
+          <!-- While the Frist runs the action card carries it; one place
+               at a time, as on the draft page. -->
+          <FactList v-if="fristFacts.length" :facts="fristFacts" class="mt-3">
+            <template #after-frist>
+              <FristBar :start="data.startedAt" :deadline="data.deadline" class="[--frist-cut:var(--color-surface)]" />
+            </template>
+          </FactList>
         </div>
       </div>
 

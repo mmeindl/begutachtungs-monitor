@@ -3,7 +3,7 @@
  * tones of a detail page's deadline card and for the state line of a list row
  * (`EntryState`).
  */
-import { daysUntil, spanInDays } from '#shared/utils/format'
+import { daysUntil, formatDateDe, spanInDays } from '#shared/utils/format'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
 const DEADLINE_CRITICAL_DAYS = 3
@@ -188,6 +188,14 @@ export const SHORT_FRIST_DAYS = 21
 export const FULL_FRIST_DAYS = 42
 
 /**
+ * The median Frist, the same 28 days in every period of the measurement
+ * above (list 81, GP XXV–XXVIII, i.e. since 2013) and for the
+ * Verordnungsentwürfe of the RIS corpus (`fristYardstickDe`). Context on the
+ * `FristBar`, never its yardstick.
+ */
+export const MEDIAN_FRIST_DAYS = 28
+
+/**
  * Where a Frist sits against practice and the Verordnung — only at the
  * edges, and at both of them.
  *
@@ -227,32 +235,43 @@ export function fristClassLineDe(start: string | null | undefined, deadline: str
 }
 
 /**
- * The sentence under „Die Begutachtung" that gives the rail's „Kurze Frist"
- * or „Volle Frist" its yardstick. Null in the middle.
+ * The yardstick for the rail's „Kurze Frist" or „Volle Frist": how this
+ * Frist compares with the Regelfall and with practice. Null in the middle.
  *
- * Only the comparison since 30.09.2026. It used to restate the rail's
- * duration („Die Frist war mit 15 Tagen kurz") and cite the Verordnung
- * (§ 9 Abs. 3 WFA-Grundsatz-Verordnung) — the first stands in the rail one
- * screen up, the second on /so-funktionierts#begutachtung. What the rail
- * cannot say is how this Frist compares, so that is what stays.
- *
- * A Verordnungsentwurf is compared with its own kind. Measured the same
- * day over the RIS Begut corpus, Beginn → Ende der Begutachtungsfrist,
- * since 2013 (1.707 Verordnungen): the median is 28 days as for the
- * Gesetze and 66 % ran at least four weeks, but only 16,8 % reached six —
- * one in six, not one in four (the RIS Gesetze of the same pass: 23,0 %,
- * which matches list 81's 22–25 % and so checks the instrument). Under
- * three weeks 18,7 %, stable across 2013–2019, 2020–2022 and since 2023.
+ * A Verordnungsentwurf is compared with its own kind. Measured on
+ * 30.09.2026 over the RIS Begut corpus, Beginn → Ende der
+ * Begutachtungsfrist, since 2013 (1.707 Verordnungen): the median is 28
+ * days as for the Gesetze and 66 % ran at least four weeks, but only
+ * 16,8 % reached six — one in six, not one in four (the RIS Gesetze of the
+ * same pass: 23,0 %, which matches list 81's 22–25 % and so checks the
+ * instrument). Under three weeks 18,7 %, stable across 2013–2019,
+ * 2020–2022 and since 2023.
  */
-export function fristContextDe(cls: FristClass, kind: 'entwurf' | 'verordnung' = 'entwurf'): string | null {
+function fristYardstickDe(cls: FristClass, kind: 'entwurf' | 'verordnung'): string | null {
   const drafts = kind === 'verordnung' ? 'Verordnungsentwürfe' : 'Entwürfe'
   if (cls === 'short') {
-    return `Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der ${drafts} seit 2013 hatte mindestens vier.`
+    return `Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der ${drafts} seit 2013 hatte mindestens vier.`
   }
   if (cls === 'full') {
     return kind === 'verordnung'
-      ? 'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Verordnungsentwurf.'
-      : 'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder vierte Entwurf.'
+      ? 'Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Verordnungsentwurf.'
+      : 'Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder vierte Entwurf.'
   }
   return null
+}
+
+/** The yardstick as a sentence of its own, for the action card while the
+ *  Frist runs: the countdown heads that card, the rail names the class. */
+export function fristContextDe(cls: FristClass, kind: 'entwurf' | 'verordnung' = 'entwurf'): string | null {
+  const yardstick = fristYardstickDe(cls, kind)
+  return yardstick ? `Zum Vergleich: ${yardstick}` : null
+}
+
+/** „03.06.–17.06.2026", the year once where both ends share it; the
+ *  deadline alone („bis 17.06.2026") without a start. */
+export function fristRangeDe(start: string | null | undefined, deadline: string): string {
+  const end = formatDateDe(deadline)
+  if (!start || spanInDays(start, deadline) === null) return `bis ${end}`
+  const from = formatDateDe(start)
+  return from.slice(-4) === end.slice(-4) ? `${from.slice(0, -4)}–${end}` : `${from} – ${end}`
 }

@@ -66,8 +66,8 @@ const sharedSteps: Step[] = [
     name: 'Begutachtung',
     /* The Regelfall and its source stand here since 30.09.2026 — they stood
        under every draft's „Die Begutachtung" before, where the page now keeps
-       only how that draft's Frist compares (`fristContextDe`). */
-    text: 'Mehrere Wochen lang kann jede und jeder eine Stellungnahme abgeben – Privatpersonen genauso wie Kammern, Vereine und Unternehmen. Die Frist setzt das Ministerium; im Regelfall vorgesehen sind sechs Wochen (§ 9 Abs. 3 WFA-Grundsatz-Verordnung). Der Monitor nennt eine Frist ab sechs Wochen „voll“ und unter drei Wochen „kurz“.',
+       the draft's Frist drawn against the Regelfall (`FristBar`). */
+    text: 'Mehrere Wochen lang kann jede und jeder eine Stellungnahme abgeben – Privatpersonen genauso wie Kammern, Vereine und Unternehmen. Die Frist setzt das Ministerium; im Regelfall vorgesehen sind sechs Wochen (§ 9 Abs. 3 WFA-Grundsatz-Verordnung). Der Monitor nennt eine Frist ab sechs Wochen „voll“ und unter drei Wochen „kurz“; zum Vergleich zeigt er den Median der Entwürfe seit 2013, vier Wochen.',
     monitor:
       'Die Frist. Dazu, wo das Parlament den Entwurf führt, die Zahl der Stellungnahmen und wer sie abgegeben hat – Organisationen mit Namen, Privatpersonen ohne.',
     link: {
