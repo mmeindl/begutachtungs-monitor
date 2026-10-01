@@ -35,7 +35,6 @@ import type { EntryState } from '~/utils/entryView'
  * `inactive` AND actionable (`deadlineTone`'s stale-data guard).
  */
 defineProps<{ state: EntryState }>()
-
 </script>
 
 <template>
