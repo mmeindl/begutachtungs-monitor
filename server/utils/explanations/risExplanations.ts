@@ -186,8 +186,13 @@ const WFA_PREFIXES = [
  */
 const IMAGE_PATH_RE = /^\/?Dokumente\/[\w-]+\/[\w.-]+\.(?:gif|png|jpe?g)$/i
 
-/** „§ 54c", „§§ 12 und 13", „§ 5 Abs. 1" — every § named in a passage heading. */
-const PARA_RE = /§+\s*(\d+[a-z]?)/gi
+/**
+ * „§ 54c", „§§ 12 und 13", „§ 5 Abs. 1" — every § named in a passage heading.
+ * The letter stands alone: „§ 31Abs. 3" and „§ 92AKG", printed without the
+ * space, are § 31 and § 92, not § 31a and § 92a (02.10.2026, 14 headings in
+ * the Erläuterungen of GP XXVI–XXVIII); „§ 243ba" keeps both its letters.
+ */
+const PARA_RE = /§+\s*(\d+(?:(?:[a-z]{1,2}|[A-Z])(?![a-zA-ZäöüÄÖÜß]))?)/g
 /**
  * One Ziffer a heading names — the Novellierungsanordnung the passage
  * explains — and the Artikel the heading itself names for it, or null.
@@ -386,6 +391,44 @@ export function addressOf(heading: string): { paragraphs: string[]; items: strin
  */
 const TITLE_MAX_WORDS = 7
 const SENTENCE_END_RE = /[.!?;:]["'»)\]]*$/
+/** The words an address is made of — what may stand in „Zu § 6 Abs. 4 und 5 erster Satz". */
+export const ADDRESS_WORD_RE = /^(?:zu|abs\.?|lit\.?|satz|z|und|sowie|bis|bzw\.?|sublit\.?|erster|zweiter|dritter|vierter|letzter|[a-z])[,;]?$/i
+
+/** Whether a word belongs to an address: a §, a number, a bracket, or one of `ADDRESS_WORD_RE`. */
+function isAddressWord(word: string): boolean {
+  return /^[§\d(),.–-]/.test(word) || ADDRESS_WORD_RE.test(word)
+}
+
+/**
+ * A heading's own address, without the sentence it runs on into. „Zu § 77a
+ * Abs. 9 vertritt die Kommission die Auffassung … § 40 …" (55/ME XXVIII) is
+ * prose the parser opened as a passage; its address is „Zu § 77a Abs. 9",
+ * and the § 40 cited in the sentence must not break the run under „Zu Z 1
+ * (§ 77a Abs. 9) und Z 4 (§ 356b Abs. 7):" — on both sides it did, and the
+ * Ziffer was compared on its one line of text alone.
+ */
+export function leadingAddress(heading: string): string {
+  const out: string[] = []
+  for (const word of (heading.split(':')[0] ?? heading).split(/\s+/)) {
+    if (isAddressWord(word)) out.push(word)
+    else break
+  }
+  return out.join(' ')
+}
+
+/**
+ * The finite verbs a heading without a colon runs on with into its sentence
+ * — „Zu Abs. 3 ist festzuhalten, dass …", „Zu § 280 Abs. 1 und 2 wird
+ * festgehalten …", „Zu § 77a Abs. 9 vertritt die Kommission …", „Zu Abs. 3
+ * siehe die Erläuterungen zu § 12b GTelG 2012." Read off the corpus
+ * (02.10.2026), not guessed: every colon-less heading of GP XXVI–XXVIII whose
+ * address is followed by one of these is prose. What else follows an address
+ * there is not: a title („Zu § 16 Abs. 2 allgemein und zur neuen Systematik
+ * des § 16", „Zu Abs. 6 Z 4 - staatliche Lizenzen …") or an address that
+ * goes on into another act („Zu Art. 7 Abs. 4 der RL Prozesskostenhilfe …").
+ */
+const RUN_ON_VERB_RE = /^(?:ist|sind|wird|werden|darf|sei|siehe|vertritt)$/
+
 /** The words of the remainder, for `TITLE_MAX_WORDS`. */
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length
@@ -431,7 +474,7 @@ export function splitHeading(heading: string): SplitHeading {
   // The same blanking as `ziffernOf`, length kept, so the colon is the one it reads.
   for (let i = 0; i < 2; i++) flat = flat.replace(/\([^()]*\)/g, (m) => ' '.repeat(m.length))
   const at = flat.indexOf(':')
-  if (at === -1) return { address: heading, prose: null }
+  if (at === -1) return splitRunOn(heading)
   const address = heading.slice(0, at + 1).trim()
   const rest = heading.slice(at + 1).trim()
   if (!/[A-Za-zÄÖÜäöüß]/.test(rest)) return { address: heading, prose: null }
@@ -440,6 +483,23 @@ export function splitHeading(heading: string): SplitHeading {
   if (ARTICLE_HEADING_RE.test(address) && !own.paragraphs.length && !own.items.length) return { address: heading, prose: null }
   if (!SENTENCE_END_RE.test(rest) && (own.paragraphs.length > 0 || wordCount(rest) <= TITLE_MAX_WORDS)) return { address: heading, prose: null }
   return { address, prose: rest }
+}
+
+/**
+ * A heading without a colon that runs straight on into its sentence („Zu
+ * Abs. 3 ist festzuhalten, dass …"): the address is the words before the
+ * verb (`RUN_ON_VERB_RE`), and the whole line is the passage's first
+ * paragraph. Whole, not cut at the verb: here the address is part of the
+ * sentence — the subject of „Zu Abs. 3 ist festzuhalten" —, and „ist
+ * festzuhalten, dass …" alone would be no sentence. Only where it ends one,
+ * as in `splitHeading`.
+ */
+function splitRunOn(heading: string): SplitHeading {
+  const words = heading.trim().split(/\s+/)
+  let k = 0
+  while (k < words.length && isAddressWord(words[k]!)) k++
+  if (k < 2 || !RUN_ON_VERB_RE.test(words[k] ?? '') || !SENTENCE_END_RE.test(heading.trim())) return { address: heading, prose: null }
+  return { address: words.slice(0, k).join(' '), prose: heading.trim() }
 }
 
 /**

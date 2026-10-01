@@ -613,3 +613,46 @@ describe('compareReasoning — eine Seite zählt ihre Ziffern versetzt (02.10.20
     expect(out.units['Gesetz|Z23|changed']).toBeDefined()
   })
 })
+
+describe('compareReasoning — Unterpassagen unter einer nach § betitelten Überschrift (02.10.2026)', () => {
+  it('nimmt im §-Join die Unterpassagen ohne eigenen § mit (4/ME XXVIII, § 267a UGB)', () => {
+    // Neither document titles by Ziffer: the whole draft goes the § join, and
+    // „Zu § 267a:" has no text of its own.
+    const units = [z('Z22', 'Z22', '§ 267a lautet samt Überschrift: …')]
+    const before = erl('Zu § 267a:', 'Zu Abs. 1:', 'Die Konzernnachhaltigkeitsberichterstattung.', 'Zu Abs. 9:', 'Die Prüfung.', 'Zu § 268:', 'Anderes.')
+    const after = erl('Zu § 267a:', 'Zu Abs. 1:', 'Die Konzernnachhaltigkeitsberichterstattung, nach der Begutachtung gekürzt.', 'Zu Abs. 8:', 'Die Prüfung.', 'Zu § 268:', 'Anderes.')
+
+    const out = compareReasoning(units, before, after)
+
+    const entry = out.entries[out.units['Gesetz|Z22|changed']!]
+    expect(entry).toMatchObject({ basis: 'paragraph', label: '§ 267a', changed: true })
+    expect(entry!.segments!.map((s) => s.text).join('')).not.toContain('Anderes')
+  })
+
+  it('nimmt unter „Zu §§ 52 bis 54:" nicht die Geschwister „Zu § 53:" mit (82/ME XXVII)', () => {
+    const units = [para('§52', '§52', '(1) Bereitsteller …'), para('§53', '§53', '(1) Bereitsteller …')]
+    const before = erl('Zu §§ 52 bis 54:', 'Allgemeines.', 'Zu § 52:', 'Das Leitungsrecht.', 'Zu § 53:', 'Die Mitbenutzung.')
+    const after = erl('Zu §§ 52 bis 54:', 'Allgemeines.', 'Zu § 52:', 'Das Leitungsrecht.', 'Zu § 53:', 'Die Mitbenutzung, nach der Begutachtung neu gefasst.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units['Neues Gesetz|§52|changed']!]).toMatchObject({ changed: false })
+    expect(out.entries[out.units['Neues Gesetz|§53|changed']!]).toMatchObject({ changed: true })
+  })
+
+  it('zählt den § eines neuen Gesetzes zu den Nummern, die zwei Artikel tragen (32/ME XXVIII)', () => {
+    // Artikel 1 enacts a law with its own § 5, Artikel 3 amends another law's
+    // § 5. The Erläuterungen explain only the first.
+    const units = [
+      para('§5', '§5', '(1) Ziele …', 'changed', { to: '1' }, 'Elektrizitätswirtschaftsgesetz'),
+      unit('Änderung des Energie-Control-Gesetzes', 'Z15', 'In § 5 Abs. 4 wird das Wort "a" durch das Wort "b" ersetzt.', 'changed', { to: '3' }),
+    ]
+    const before = erl('Zu Artikel 1 (Elektrizitätswirtschaftsgesetz)', 'Zu § 5:', 'Die Ziele des Elektrizitätsmarktes.')
+    const after = erl('Zu Artikel 1 (Elektrizitätswirtschaftsgesetz)', 'Zu § 5:', 'Die Ziele des Elektrizitätsmarktes, nach der Begutachtung ergänzt.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.units['Änderung des Energie-Control-Gesetzes|Z15|changed']).toBeUndefined()
+    expect(out.entries[out.units['Elektrizitätswirtschaftsgesetz|§5|changed']!]).toMatchObject({ changed: true })
+  })
+})

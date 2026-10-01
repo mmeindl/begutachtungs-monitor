@@ -1438,6 +1438,125 @@ dieser Schritt sichtbar macht, nicht schafft. Urteilswechsel auf dem §-Join wie
 bisher (dieselben Funktionen, alt gegen neu im selben Lauf): 0 in allen drei
 Perioden.
 
+**Nachgezogen am 02.10.2026: die drei Reste dieses Schritts.** Gebaut sind
+die Lücke des §-Joins, die Überschriften ohne Doppelpunkt und das falsche Paar
+in 54/ME. Zwei Fehler, die dabei sichtbar wurden, sind mitgebaut, weil der
+erste Schritt sie lauter gemacht hätte. Gemessen ist alles zusammen gegen
+einen Stand auf `9a21d85` (`--ziffer --save`, dann `--against`). Gelesen sind
+alle Einheiten, die ein Urteil oder ihre Begründung gewinnen, verlieren oder
+wechseln.
+
+*1. Der §-Join liest die Unterpassagen mit.* Seine Texte je § (`ownedTexts`)
+nehmen jetzt jede nach dem § betitelte Passage mitsamt den Passagen, die
+`ownedPassages` ihr zuschreibt. Das ist dieselbe Lesung, die der Ziffer-Join
+und der Join nach der eigenen Bezeichnung schon hatten. 4/ME XXVIII betitelt
+keine Passage nach Ziffern, also geht der ganze Entwurf den §-Join, und Z 22
+(§ 267a UGB) hat jetzt ihre Begründung aus „Zu Abs. 1:" und „Zu Abs. 9:"
+(geändert, 14 % Drift). Die erste Fassung hat einen alten Fehler von
+`ownedPassages` breiter gemacht. Unter einer nach § betitelten Überschrift
+galt jede folgende als Unterpassage, deren § die Überschrift nennt. „Zu § 3
+Abs. 1 und 2, § 9 Abs. 3, § 34, …" (35/ME XXVI, rund 170 §§ in neun Gesetzen)
+nahm so die nächsten Passagen als ihre eigenen: „Zu § 14 Abs. 4 BDG 1979",
+„Zu § 17 …" und so weiter. Sechs §§ in sechs Gesetzen kippten auf „geändert",
+alle mit 13 % Drift. Seitdem gilt unter einer Überschrift, die nur nach §
+betitelt ist, nur eine Passage ohne eigenen § als Unterpassage („Zu Abs. 1:",
+„Zu lit. b:"). Eine Passage mit § ist eine Schwester, und sie steht in jedem
+Join ohnehin an ihrem eigenen §. Das korrigiert auch den Join nach der
+eigenen Bezeichnung: In 82/ME XXVII trug § 52 unter „Zu §§ 52 bis 54:" die
+Begründungen von § 53 und § 54 und hieß deshalb „geändert". Jetzt steht er
+bei 0,0 % Drift. Sechs solche §§ kippen von „geändert" auf „unverändert",
+drei von „ohne Urteil" auf „unverändert".
+
+*2. Der § eines neuen Gesetzes ist eine vergebene Nummer.*
+`ambiguousParagraphs` zählte nur die §§, die eine Anweisung adressiert, und
+eine §-Einheit adressiert nichts. 32/ME XXVIII erlässt in Artikel 1 das ElWG
+und ändert in Artikel 3 das E-Control-Gesetz. Dessen §§ 5, 6, 8, 9, 10, 21,
+27 und 32 galten als eindeutig, und der §-Join zeigte an ihnen die Begründung
+des ElWG („Zu § 5 (Ziele und Grundsätze des Elektrizitätsmarktes):"). Mit
+Schritt 1 wäre das oft „geändert" geworden, weil unter dem ElWG-§ jetzt auch
+die Unterpassage des anderen Gesetzes mitlief. Jetzt zählt die Nummer der
+§-Einheit mit, und wo sie in zwei Artikeln vorkommt, gilt die Regel des Kopfs
+von `reasoningDiff.ts`: unter dem Artikel, oder gar nicht. **Verloren sind
+damit 251 Einheiten (9, 161 und 81), und jede davon war ein Vergleich gegen
+ein anderes Gesetz.** Das ist gezählt, nicht geschätzt: Bei jeder stand
+mindestens eine Seite nur auf Passagen unter einem fremden Artikel. Bei 179
+war es keine Seite mit einer eigenen Passage, bei 72 stand eine eigene gegen
+eine fremde. Die größten Fälle sind 32/ME XXVIII (77) sowie 284/ME (45),
+226/ME (17) und 82/ME XXVII (16), dazu 284/ME Art. 2 mit „Zu § 57:
+Zulassungsüberschreitende Anwendung …", der Begründung des neuen TAMG an
+einer Beistrichkorrektur. Wo beide Seiten den Artikel nennen, findet der
+Artikelschlüssel jetzt die richtige Passage. In XXVII wechseln 71 Einheiten
+so die Passage, das Urteil bleibt „geändert".
+
+*3. Das falsche Paar in 54/ME XXVIII.* Die Erläuterungen der Vorlage zählen
+ab Z 12 versetzt: „Zu Z 12 (§ 82 Abs. 29):" gehört zur Z 13 des Textes, „Zu
+Z 13 (§ 82j samt Überschrift):" zur Z 14. `misnumbered` erkannte das nicht.
+Seine Ausnahme für einen Tippfehler („§ 124" für § 124b, 61/ME) ließ jede
+Passage durch, deren § die Grundnummer mit dem der Anweisung teilt, und § 82j
+teilt sie mit § 82. Ein Tippfehler lässt einen Buchstaben aus. Er fügt keinen
+an den § an, den die Anweisung ändert: „§ 82j" ist ein anderer §, hier der
+einer Z 14, die ihn einfügt. Z 13 wird nicht mehr gepaart. Z 14 bleibt ohne
+Begründung, denn die richtige Passage wiederzufinden hieße, den Versatz zu
+raten. Dieselbe Regel nimmt in 168/ME XXVII einer Z 29 auf § 30 die Passage
+„Zu Z 29 (§ 30a)", die vorher ohne Urteil stand.
+
+*4. „§ 31Abs. 3" ist § 31.* Die Messung von Schritt 3 fand einen falschen
+Treffer: 86/ME XXVI „Zu Z 7 (§ 31Abs. 3 Z 3):". `PARA_RE` las ohne
+Leerzeichen „§ 31a", und die Ausnahme für den Tippfehler hatte das bisher
+verdeckt. Der Buchstabe eines § steht jetzt allein. Das sind ein oder zwei
+Kleinbuchstaben oder ein Großbuchstabe, und danach folgt kein weiterer
+Buchstabe. Der Zensus über die Erläuterungen der verglichenen Entwürfe ergibt
+15 Überschriften, und alle lesen jetzt richtig: „§ 92AKG", „§ 121Abs. 2",
+„§ 7Abs. 6" und andere. Bei 4/ME XXVIII „Zu § 243ba:" las die alte Regel
+„§ 243b", obwohl die Vorlage einen § 243ba einfügt. § 243b trug damit die
+Begründung des neuen §. Bewegt hat das 188/ME („geändert" → „unverändert":
+„Zu § 31Abs. 9" fehlte als § 31 auf einer Seite), 82/ME § 121, 187/ME § 7,
+197/ME § 7 und 86/ME zurück.
+
+*5. Überschriften ohne Doppelpunkt.* Bei „Zu Abs. 3 ist festzuhalten, dass
+…" fehlt der Doppelpunkt, an dem `splitHeading` schneidet. Der Zensus über
+dieselben Erläuterungen zählt 76 solche Überschriften, und nur eine Form davon
+ist Prosa. Diese Form erkennt ein Verb gleich hinter der Adresse (`ist`,
+`sind`, `wird`, `werden`, `darf`, `sei`, `siehe`, `vertritt`). Gleich danach
+kommen Titel („Zu § 16 Abs. 2 allgemein und zur neuen Systematik des § 16",
+„Zu Abs. 6 Z 4 - staatliche Lizenzen …"), die Artikelnamen in eckigen
+Klammern (110/ME, 146/ME) und Adressen, die in einen anderen Rechtsakt
+weitergehen („Zu Art. 7 Abs. 4 der RL Prozesskostenhilfe …", „Zu Art. 5
+Abs. 5 der Richtlinie (EU) 2024/1799 ist …"). Ein Schnitt am ersten Wort,
+das keine Adresse ist, hätte diese Formen falsch geschnitten. Geschnitten
+wird deshalb nur am Verb, und nur, wo die Zeile einen Satz beendet
+(`splitRunOn`). Das betrifft **37 Überschriften**. Anders als beim
+Doppelpunkt kommt die ganze Zeile in den Text, nicht der Rest hinter dem
+Verb: Hier ist die Adresse ein Satzglied, und „ist festzuhalten, dass …"
+allein wäre kein Satz. Als Überschrift bleibt die Adresse („Zu Abs. 3"), und
+ihre §§ kommen nur noch aus ihr. „Zu Abs. 3 siehe die Erläuterungen zu § 12b
+GTelG 2012." hängt damit nicht mehr an § 12b. `leadingAddress` und
+`ADDRESS_WORD_RE` stehen dafür jetzt in `risExplanations.ts`, unverändert:
+Wo eine Adresse endet, entscheidet ein Leser. Kein Urteil und keine Einheit
+bewegt sich, nur die Drift an 15 Einheiten, deren Text jetzt den Satz enthält.
+
+*Alt gegen neu, alle fünf zusammen:*
+
+| | XXVI | XXVII | XXVIII |
+|---|---|---|---|
+| (a′) Einheiten mit gezeigter Begründung | 2.755 → 2.749 | 7.159 → 7.053 | 2.808 → 2.730 |
+| verloren / dazu | 9 / 3 | 162 / 56 | 82 / 4 |
+| verglichene Begründungen | 1.585 → 1.578 | 4.900 → 4.835 | 1.907 → 1.878 |
+| davon geändert | 621 → 617 | 2.075 → 2.029 | 765 → 748 |
+| gezeigt ohne Urteil | 120 → 120 | 295 → 285 | 106 → 106 |
+| „unverändert" → „geändert" | 3 | 13 | 0 |
+| „geändert" → „unverändert" | 4 | 10 | 8 |
+
+Von den Verlusten stammen 251 aus Schritt 2, je einer aus Schritt 3 (54/ME,
+168/ME). Dazu kommen vor allem der §-Join von 114/ME XXVII (49 Einheiten,
+Art. 2 betitelt jeden § mit „Zu Abs. n:" darunter) und 4/ME § 267a. Die
+Wechsel auf „geändert" sind Unterpassagen, deren Text das Ressort geändert
+hat. Die Wechsel auf „unverändert" sind Schwestern, die nicht mehr
+mitgezählt werden (82/ME), fremde Gesetze, die wegfallen (255/ME, 331/ME), und
+188/ME aus Schritt 4. Die Deckung der Aufklapper an der Gegenüberstellung
+bleibt bei 1.816 von 2.396 (`pnpm corpus:erlaeuterungen -- --join`): Die
+Ausgabe ist vorher und nachher Byte für Byte gleich.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and

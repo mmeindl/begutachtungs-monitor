@@ -273,7 +273,25 @@ describe('splitHeading — die Begründung auf der Überschriftszeile (02.10.202
 
   it('lässt eine Überschrift ohne Prosa hinter dem Doppelpunkt, wie sie ist', () => {
     expect(splitHeading('Zu Z 4 (§ 54c Abs. 1a und 1b):')).toEqual({ address: 'Zu Z 4 (§ 54c Abs. 1a und 1b):', prose: null })
-    expect(splitHeading('Zu § 77a Abs. 9 vertritt die Kommission die Auffassung, dass § 40 nicht genügt.').prose).toBeNull()
+  })
+
+  it('nimmt eine Überschrift ohne Doppelpunkt, die mit einem Verb in ihren Satz läuft, ganz als Prosa', () => {
+    // The address is the subject of the sentence: cut at the verb, „vertritt
+    // die Kommission …" would be no sentence (55/ME XXVIII).
+    expect(splitHeading('Zu § 77a Abs. 9 vertritt die Kommission die Auffassung, dass § 40 nicht genügt.')).toEqual({
+      address: 'Zu § 77a Abs. 9',
+      prose: 'Zu § 77a Abs. 9 vertritt die Kommission die Auffassung, dass § 40 nicht genügt.',
+    })
+    expect(splitHeading('Zu Z 9 (neu) ist auf die Ausführungen in ErläutRV 69 BlgNR XXVI. GP 230 zu verweisen.').address).toBe('Zu Z 9 (neu)')
+    expect(splitHeading('Zu Abs. 3 siehe die Erläuterungen zu § 12b GTelG 2012.').address).toBe('Zu Abs. 3')
+  })
+
+  it('lässt eine Überschrift ohne Doppelpunkt ganz, wo kein Verb die Adresse beendet oder kein Satz endet', () => {
+    // A title, an address that goes on into another act, an unclosed sentence.
+    expect(splitHeading('Zu § 16 Abs. 2 allgemein und zur neuen Systematik des § 16').prose).toBeNull()
+    expect(splitHeading('Zu Abs. 6 Z 4 - staatliche Lizenzen oder Konzessionen').prose).toBeNull()
+    expect(splitHeading('Zu Art. 5 Abs. 5 der Richtlinie (EU) 2024/1799 ist vorweg darauf hinzuweisen, dass dies gilt.').prose).toBeNull()
+    expect(splitHeading('Zu Abs. 3 ist festzuhalten, dass die Begriffe').prose).toBeNull()
   })
 
   it('schneidet keinen Titel ab: den eines §, den Gesetzestitel einer Artikelüberschrift, keine zweite Adresse', () => {

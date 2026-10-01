@@ -89,7 +89,7 @@ import { displayId, isParagraphUnit } from '../../../shared/utils/unitName'
 import { diffTokens } from '../diff/wordDiff'
 import { addressedParagraph, addressedParagraphOf, instructionParagraphs } from '../lawtext/instructionAddress'
 import { passagesByArticleParagraph, passagesByParagraph, type HtmlExplanations, type HtmlPassage } from './explanationsHtml'
-import { addressOf } from './risExplanations'
+import { ADDRESS_WORD_RE, addressOf, leadingAddress } from './risExplanations'
 // The key of `passagesByParagraph`, and the same reading the page looks up
 // with. Its `\b` changes nothing for the designations `parseAddress` builds:
 // 0 of 4.215 differ over the offline corpus (22.09.2026). It bites only on a
@@ -136,11 +136,19 @@ type Texts = ReadonlyMap<string, string>
  * the file header. Computed over all units, the unchanged ones included:
  * whether a number is given out twice does not depend on what changed between
  * the two versions.
+ *
+ * A new law's § counts by its own designation (02.10.2026): it addresses
+ * nothing (`addressedParagraphOf`), but it is a § 32 all the same. 32/ME
+ * XXVIII enacts the ElWG in Artikel 1 and amends § 21, § 27 and § 32 of the
+ * Energie-Control-Gesetz in Artikel 3; read as unique, the § join showed the
+ * ElWG's „Zu § 32 (Besondere Bestimmungen für die Auffangversorgung …):" at
+ * the E-Control-Gesetz's instructions.
  */
 function ambiguousParagraphs(units: readonly LawDiffUnit[]): Set<string> {
   const articles = new Map<string, Set<string>>()
   for (const unit of units) {
-    const para = addressedParagraphOf(unit)
+    const own = isParagraphUnit(unit) ? paragraphOfId(unit.id) ?? paragraphOfId(unit.fromId) : null
+    const para = own ? `§ ${own}` : addressedParagraphOf(unit)
     if (!para) continue
     const seen = articles.get(para) ?? new Set<string>()
     seen.add(unit.article ?? '')
@@ -504,6 +512,13 @@ const SUB_HEADING_RE = /^zu\s+(?:§|abs\b|lit\b|z\s*\d)/i
  * Those belong to the heading above: they name no Ziffer of their own, stand
  * under the same Artikel, and name no § it does not. The first passage that
  * breaks one of these ends the run.
+ *
+ * Under a heading titled by § alone, only one naming no § at all: „Zu Abs.
+ * 1:" and „Zu Abs. 9:" under „Zu § 267a:" (4/ME XXVIII). One naming a § is a
+ * sibling, and it stands at its own § in every join anyway. Read by the rule
+ * above, „Zu § 3 Abs. 1 und 2, § 9 Abs. 3, § 34, …" (35/ME XXVI, some 170 §§
+ * in nine laws) took every passage after it whose § it lists — a stretch of
+ * the Besonderer Teil — as its own (02.10.2026).
  */
 function ownedPassages(doc: HtmlExplanations, index: number): number[] {
   const head = doc.special[index]!
@@ -512,30 +527,25 @@ function ownedPassages(doc: HtmlExplanations, index: number): number[] {
   for (let i = index + 1; i < doc.special.length; i++) {
     const p = doc.special[i]!
     if (p.ziffern.length > 0 || p.article !== head.article || !SUB_HEADING_RE.test(p.heading)) break
-    if (addressOf(leadingAddress(p.heading)).paragraphs.some((x) => !paras.has(explanationParaId(x)))) break
+    const named = addressOf(leadingAddress(p.heading)).paragraphs
+    if (named.some((x) => !paras.has(explanationParaId(x)))) break
+    if (head.ziffern.length === 0 && named.length > 0) break
     out.push(i)
   }
   return out
 }
 
-/** The words an address is made of — what may stand in „Zu § 6 Abs. 4 und 5 erster Satz". */
-const ADDRESS_WORD_RE = /^(?:zu|abs\.?|lit\.?|satz|z|und|sowie|bis|bzw\.?|sublit\.?|erster|zweiter|dritter|vierter|letzter|[a-z])[,;]?$/i
-
 /**
- * A heading's own address, without the sentence it runs on into. „Zu § 77a
- * Abs. 9 vertritt die Kommission die Auffassung … § 40 …" (55/ME XXVIII) is
- * prose the parser opened as a passage; its address is „Zu § 77a Abs. 9",
- * and the § 40 cited in the sentence must not break the run under „Zu Z 1
- * (§ 77a Abs. 9) und Z 4 (§ 356b Abs. 7):" — on both sides it did, and the
- * Ziffer was compared on its one line of text alone.
+ * The § join's input: per key the passages titled by that §, each with the
+ * sub-passages set under it (`ownedPassages`), in printed order — the reading
+ * the Ziffer join and the join by the unit's own § already had (02.10.2026).
+ * „Zu § 267a:" in 4/ME XXVIII has no text of its own; its Begründung stands
+ * in „Zu Abs. 1:" and „Zu Abs. 9:" below it, which name no §, so keyed by
+ * their own address they reached no Paragraph, and § 267a UGB showed none.
  */
-function leadingAddress(heading: string): string {
-  const out: string[] = []
-  for (const word of (heading.split(':')[0] ?? heading).split(/\s+/)) {
-    if (/^[§\d(),.–-]/.test(word) || ADDRESS_WORD_RE.test(word)) out.push(word)
-    else break
-  }
-  return out.join(' ')
+function ownedTexts(doc: HtmlExplanations, byKey: Map<string, HtmlPassage[]>): Map<string, string> {
+  const index = new Map(doc.special.map((p, i) => [p, i]))
+  return new Map([...byKey].map(([key, passages]) => [key, textOf(doc, passages.map((p) => index.get(p)!))]))
 }
 
 /** The joined text of passages with their sub-passages, in printed order. */
@@ -696,10 +706,15 @@ function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages): b
   const ownAfter = unitParagraphIds(unit, 'after')
   if (own.size === 0 || own.size !== ownAfter.size || [...own].some((x) => !ownAfter.has(x))) return false
   const bases = new Set([...own].map(paragraphBase))
+  // A slip drops a letter („§ 124" for § 124b); one that adds a letter to
+  // the § the instruction amends names another §: „Zu Z 13 (§ 82j samt
+  // Überschrift):" in 54/ME XXVIII's Vorlage is the passage of its Z 14,
+  // which inserts § 82j, not of Z 13 on § 82 Abs. 29 (02.10.2026).
+  const slip = (id: string) => (own.has(paragraphBase(id)) ? id === paragraphBase(id) : bases.has(paragraphBase(id)))
   const misfit = (f: FoundPassages, side: Side) => {
     if (f.byParagraph || f.passages.length !== 1) return false
     const p = f.doc.special[f.passages[0]!]!
-    return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side) && !p.paragraphs.some((x) => bases.has(paragraphBase(explanationParaId(x) ?? '')))
+    return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side) && !p.paragraphs.some((x) => slip(explanationParaId(x) ?? ''))
   }
   const fits = (f: FoundPassages, side: Side) => !f.byParagraph && f.passages.every((i) => f.doc.special[i]!.paragraphs.length > 0 && fitsParagraphs(f.doc.special[i]!, unit, side))
   return (misfit(me, 'before') && fits(rv, 'after')) || (misfit(rv, 'after') && fits(me, 'before'))
@@ -918,7 +933,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
   // the units it always served, and the inserted and removed ones.
   const isAmbiguous = (u: LawDiffUnit) => ambiguous.has(addressedParagraphOf(u) ?? '')
   const rest = [...atParagraph, ...oneSided]
-  const texts = (doc: HtmlExplanations) => ({ all: passageTexts(passagesByParagraph(doc)), byArticle: passageTexts(passagesByArticleParagraph(doc)) })
+  const texts = (doc: HtmlExplanations) => ({ all: ownedTexts(doc, passagesByParagraph(doc)), byArticle: ownedTexts(doc, passagesByArticleParagraph(doc)) })
   const me = texts(before)
   const rv = texts(after)
   joinAtParagraph(f, [...rest.filter((u) => !isAmbiguous(u)), ...rest.filter(isAmbiguous)], ambiguous, me.all, rv.all, { before: me.byArticle, after: rv.byArticle })
