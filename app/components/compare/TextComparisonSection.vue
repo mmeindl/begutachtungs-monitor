@@ -15,6 +15,7 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
+import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
@@ -466,18 +467,13 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
         </p>
 
         <!-- Finding and doubt stay together: `doubtfulNote` elaborates the
-             line above it. -->
-        <p v-if="doubtfulNote" class="text-sm text-ink-secondary">{{ doubtfulNote }}</p>
-
-        <!-- Where the layout could not be vouched for at all, the page says
-             which part of the annex is missing rather than showing a
-             comparison with a silent hole in it. -->
-        <p v-if="droppedPagesNote" class="text-sm text-ink-secondary">{{ droppedPagesNote }}</p>
-
-        <!-- Several laws in one draft, and the annex does not say where one
-             ends. Shown undivided, and said so: dividing it wrongly would put
-             one law's § 5 under another law's name. -->
-        <p v-if="data.boundaryNote" class="text-sm text-ink-secondary">{{ data.boundaryNote }}</p>
+             line above it. Where the layout could not be vouched for at all,
+             the page says which part of the annex is missing rather than
+             showing a comparison with a silent hole in it. And several laws
+             in one draft, where the annex does not say where one ends:
+             shown undivided, and said so — dividing it wrongly would put one
+             law's § 5 under another law's name. -->
+        <ComparisonCaveats :notes="[doubtfulNote, droppedPagesNote, data.boundaryNote]" />
       </div>
 
       <!-- Same toolbar as the § comparison, same order, so the two sections

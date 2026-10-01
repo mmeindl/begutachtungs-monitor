@@ -2,7 +2,7 @@
 /**
  * The line that closes „Die Begutachtung" once a Regierungsvorlage exists:
  * what came of the text after it, and the way to the comparison that shows
- * it (01.10.2026). The sentence and its two cases are `begutachtungAftermathDe`.
+ * it (01.10.2026). The sentence is `begutachtungAftermathDe`.
  *
  * Here and not the comparison itself: the change is the Ressort's, in the
  * Vorlage it wrote, and under the Stellungnahmen it would read as their
@@ -15,8 +15,9 @@
  *
  * The count comes from the ME→RV comparison under the same key
  * (`lawDiffKey`), so the line and the comparison one section down make one
- * request. A Vorlage tabled before the Fristende needs no count, and asks
- * for none.
+ * request. A Vorlage tabled before the Fristende gets no line at all, and
+ * asks for no count: its date stands in the Regierungsvorlage's station card
+ * (01.10.2026).
  */
 import type { LawDiffResponse } from '#shared/types'
 import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'

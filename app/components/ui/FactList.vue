@@ -17,13 +17,21 @@
  *
  * Only what the section shows nowhere else: a count the list below states
  * already does not belong here.
+ *
+ * `card` is the station card (01.10.2026): every station section of the
+ * draft page opens with one — the section's state and its facts, before
+ * any comparison or list. Neutral on purpose: the page has three kinds of
+ * box (the rail, the door that asks for action, and these), and only the
+ * door wears a colour. A fact whose value carries a link fills the slot
+ * `value-<key>`; `footer` takes the card's source link.
  */
 export interface Fact {
   key: string
   /** A name over the fact, in the rail's station style: the card's rows
    *  read like the rail's stations — name, then the fact under it. */
   title?: string
-  text: string
+  /** Optional where the slot `value-<key>` carries the value. */
+  text?: string
 }
 
 defineProps<{
@@ -31,19 +39,31 @@ defineProps<{
   /** Hairlines between the facts instead of space — for a list on a card,
    *  where the facts are one object's parts. */
   divided?: boolean
+  /** The station card: surface, hairline, divided rows. */
+  card?: boolean
 }>()
 </script>
 
 <template>
-  <ul
-    role="list"
-    class="flex flex-col text-sm text-ink"
-    :class="divided ? 'divide-y divide-hairline' : 'gap-4'"
+  <div
+    :class="card ? 'rounded-xl border border-hairline bg-surface px-5 [--frist-cut:var(--color-surface)]' : ''"
   >
-    <li v-for="fact in facts" :key="fact.key" :class="divided ? 'py-4' : ''">
-      <p v-if="fact.title" class="font-medium text-ink">{{ fact.title }}</p>
-      <p :class="fact.title ? 'mt-0.5' : ''">{{ fact.text }}</p>
-      <slot :name="`after-${fact.key}`" />
-    </li>
-  </ul>
+    <ul
+      role="list"
+      class="flex flex-col text-sm text-ink"
+      :class="divided || card ? 'divide-y divide-hairline' : 'gap-4'"
+    >
+      <li v-for="fact in facts" :key="fact.key" :class="divided || card ? 'py-4' : ''">
+        <p v-if="fact.title" class="font-medium text-ink">{{ fact.title }}</p>
+        <div v-if="$slots[`value-${fact.key}`]" :class="fact.title ? 'mt-0.5' : ''">
+          <slot :name="`value-${fact.key}`" />
+        </div>
+        <p v-else-if="fact.text" :class="fact.title ? 'mt-0.5' : ''">{{ fact.text }}</p>
+        <slot :name="`after-${fact.key}`" />
+      </li>
+    </ul>
+    <div v-if="$slots.footer" class="border-t border-hairline py-4 text-sm">
+      <slot name="footer" />
+    </div>
+  </div>
 </template>

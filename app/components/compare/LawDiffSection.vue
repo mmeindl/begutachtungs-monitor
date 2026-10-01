@@ -19,6 +19,7 @@
  * reads it, the others show their defaults, so a shared link still opens one
  * comparison.
  */
+import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
@@ -632,45 +633,43 @@ const droppedNote = computed(() =>
     <template v-else>
       <!-- What the selected pair answers, where the selection happened. -->
       <p v-if="question" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
-      <!-- Where the reason for a change may be found, and nothing else
-           (30.09.2026). „Ministerialentwurf gegen Regierungsvorlage." went:
-           the pills above show the selected pair, and a non-default one
-           prints its own question. The hint names the reader's question and
-           a document, never a cause (framing rule) — as a link where the
-           Regierungsvorlage's Erläuterungen are known. -->
-      <p class="mt-1 text-sm text-ink-secondary">
-        <template v-if="pair.to === 'rv' && rvReasoningDoc">
-          Ob eine Stellungnahme dahintersteht, sagen oft die
-          <ExternalLink :href="rvReasoningDoc.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>.
-        </template>
-        <!-- The whole way: the steps hold the reasons, and under „Im
-             Parlament" there are steps only where parliament published a
-             changed text. -->
-        <template v-else-if="scope === 'bgbl' && !parliamentTexts?.length">Den Schritt des Ressorts zeigt der Vergleich unter „Die Regierungsvorlage“.</template>
-        <template v-else>{{ lawStationPairHint(pair.from, pair.to) }}</template>
-      </p>
-
-      <div v-if="outsideNote || mergedNote || droppedNote" class="mt-3 space-y-1.5 border-l-2 border-hairline pl-3 text-xs text-ink-secondary">
-        <p v-if="outsideNote">{{ outsideNote }}</p>
-        <p v-if="mergedNote">{{ mergedNote }}</p>
-        <p v-if="droppedNote">{{ droppedNote }}</p>
+      <!-- One order for every comparison (01.10.2026): the figure first —
+           what the reader came for —, then the reasoning rate, where the
+           reasons stand, the warnings specific to this draft, and the method
+           last. The hint led until then and the figure came fifth, after the
+           warnings it is qualified by. -->
+      <div class="mt-1 space-y-3">
+        <!-- Full column width since 01.10.2026: with `max-w-prose` on some
+             lines and not on others the block had two right edges. -->
+        <p v-if="changeShareNote" class="text-sm text-ink-secondary">{{ changeShareNote }}</p>
+        <!-- The reasoning, once as a rate above the list instead of
+             „unverändert" on every row (docs/architecture.md §12.10b).
+             Arrives when its fetch does. -->
+        <p v-if="reasoningNote" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
+        <!-- Where the reason for a change may be found, and nothing else
+             (30.09.2026). „Ministerialentwurf gegen Regierungsvorlage." went:
+             the pills above show the selected pair, and a non-default one
+             prints its own question. The hint names the reader's question and
+             a document, never a cause (framing rule) — as a link where the
+             Regierungsvorlage's Erläuterungen are known. -->
+        <p class="text-sm text-ink-secondary">
+          <template v-if="pair.to === 'rv' && rvReasoningDoc">
+            Ob eine Stellungnahme dahintersteht, sagen oft die
+            <ExternalLink :href="rvReasoningDoc.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>.
+          </template>
+          <!-- The whole way: the steps hold the reasons, and under „Im
+               Parlament" there are steps only where parliament published a
+               changed text. -->
+          <template v-else-if="scope === 'bgbl' && !parliamentTexts?.length">Den Schritt des Ressorts zeigt der Vergleich unter „Die Regierungsvorlage“.</template>
+          <template v-else>{{ lawStationPairHint(pair.from, pair.to) }}</template>
+        </p>
+        <ComparisonCaveats :notes="[outsideNote, mergedNote, droppedNote]" />
+        <!-- Always on its own line, and last: it explains every sentence
+             above it. -->
+        <p class="text-sm">
+          <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
+        </p>
       </div>
-
-      <!-- Full column width since 01.10.2026, like the hint above: with
-           `max-w-prose` on these two and not on the hint the block had two
-           right edges, and inside the 768 px column the cap bought little. -->
-      <p v-if="changeShareNote" class="mt-3 text-sm text-ink-secondary">{{ changeShareNote }}</p>
-      <!-- The reasoning, once as a rate above the list instead of
-           „unverändert" on every row (docs/architecture.md §12.10b). Arrives
-           when its fetch does. -->
-      <p v-if="reasoningNote" class="mt-3 text-sm text-ink-secondary">{{ reasoningNote }}</p>
-      <!-- Always on its own line, and last: it explains every sentence above
-           it. It used to close the figure where there was one and stand
-           under the hint where there was none, so it jumped between the end
-           of a line and a line of its own (01.10.2026). -->
-      <p class="mt-3 text-sm">
-        <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
-      </p>
 
       <template v-if="data.units.length">
         <!-- How to read the result, and a search: both scope the list below

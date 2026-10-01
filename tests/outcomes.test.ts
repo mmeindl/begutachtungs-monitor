@@ -150,12 +150,12 @@ describe('begutachtungAftermathDe — the line that closes „Die Begutachtung"'
   })
 
   /* Under the Stellungnahmen, „im Wortlaut übernommen" for a Vorlage they
-     could not have shaped reads as input ignored — so no count at all. */
-  it('says only when an early Vorlage came, count or not (115/ME)', () => {
+     could not have shaped reads as input ignored — so no count; and the
+     date stands in the Regierungsvorlage's card, so no line at all. */
+  it('says nothing for an early Vorlage, count or not (115/ME)', () => {
     const early = { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }
-    const line = 'Eingebracht wurde die Regierungsvorlage am 10.06.2026, am selben Tag, an dem der Entwurf in Begutachtung ging.'
-    expect(begutachtungAftermathDe({ changed: 0, own: 8 }, 'Paragraphen', early)).toBe(line)
-    expect(begutachtungAftermathDe(null, 'Paragraphen', early)).toBe(line)
+    expect(begutachtungAftermathDe({ changed: 0, own: 8 }, 'Paragraphen', early)).toBeNull()
+    expect(begutachtungAftermathDe(null, 'Paragraphen', early)).toBeNull()
   })
 
   it('says nothing while the count is unknown', () => {

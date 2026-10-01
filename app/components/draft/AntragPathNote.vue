@@ -20,11 +20,12 @@ import { bgblShort, formatDateDe } from '#shared/utils/format'
  * the draft), the sentence says „ein Teil" and the rest of the section keeps
  * saying what it says without a Vorlage.
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   path: AntragPath
   gp: string
   deadline: string | null
-}>()
+  lead?: boolean
+}>(), { lead: true })
 
 const carries = computed(() => carriesDraft(props.path))
 const url = computed(() => antragUrl(props.gp, props.path))
@@ -34,14 +35,14 @@ const antragIsLarger = computed(() => props.path.antragShare < 0.5)
 
 <template>
   <div>
-    <p class="text-sm text-ink" :class="carries ? 'font-medium' : ''">
+    <p v-if="lead" class="text-sm text-ink" :class="carries ? 'font-medium' : ''">
       <template v-if="carries">Der Gesetzestext kam nicht als Regierungsvorlage ins Parlament, sondern als</template>
       <template v-else>Ein Teil dieses Gesetzestexts kam als</template>
       <ExternalLink :href="url" class="link-inline">Initiativantrag {{ path.antrag.citation }}</ExternalLink>
       <template v-if="!carries"> ins Parlament</template>
       und ist kundgemacht: {{ bgblShort(path.antrag.bgblNumber) }}.
     </p>
-    <p class="mt-2 text-sm text-ink-secondary">
+    <p class="text-sm text-ink-secondary" :class="lead ? 'mt-2' : ''">
       Zugeordnet über den Wortlaut – einen Verweis zwischen Entwurf und Antrag
       führt das Parlament nicht:
       <template v-if="carries">
