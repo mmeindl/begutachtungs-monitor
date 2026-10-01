@@ -15,8 +15,11 @@ export default withNuxt(
     // Everything generated, vendored, fetched or frozen. `tests/fixtures/`
     // holds recorded upstream documents and the baseline the drift job
     // writes, `data/` a generated join map, `.cache/` and `.harness-cache/`
-    // the offline corpora.
+    // the offline corpora. `.claude/` holds the worktrees of coding agents —
+    // whole copies of the repo with work in progress; linted as part of this
+    // tree, they failed the pre-push hook for code that was not being pushed.
     ignores: [
+      '.claude/**',
       '.nuxt/**',
       '.output/**',
       '.data/**',
