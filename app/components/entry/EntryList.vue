@@ -62,16 +62,32 @@ defineProps<{
 
     <!-- From `md` a sheet: a table names its columns once. `aria-hidden`,
          because the rows below are links and not table cells — the header is
-         a visual aid, the reading order stands in the row itself. -->
+         a visual aid, the reading order stands in the row itself.
+
+         The header is STICKY since 30.09.2026: past the first screen of a
+         339-row list the two right columns were digits nobody had named.
+         It sticks inside its own sheet only, so the homepage's four lists
+         each carry theirs and hand over at the boundary. `overflow-clip`
+         and not `overflow-hidden` on the sheet: both keep the rounded
+         corners, but `hidden` makes the sheet a scroll container, and a
+         sticky header inside one sticks to that and never to the window.
+         Rows keep a scroll margin (`EntryItem`), so a row reached by Tab is
+         never scrolled in under the header (WCAG 2.2 2.4.12). -->
     <div
-      class="hidden overflow-hidden rounded-xl border border-hairline bg-surface md:block"
+      class="hidden overflow-clip rounded-xl border border-hairline bg-surface md:block"
     >
       <div
         aria-hidden="true"
-        class="flex items-center gap-4 border-b border-hairline px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-muted"
+        class="sticky top-0 z-10 flex items-center gap-4 border-b border-hairline bg-surface px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-muted"
       >
         <span class="min-w-0 flex-1">{{ lead ?? 'Entwurf' }}</span>
-        <span class="entry-col-count">Stellungnahmen</span>
+        <!-- One line, and any excess spills LEFT, into the empty gap: the
+             label is 121 px against a 112 px column at `md` (128 in 128 at
+             `lg`, measured 30.09.2026). The right edge is what has to meet
+             the digits; `justify-end` keeps it there, where a plain
+             right-aligned text box overflows to the right, and the site-wide
+             `overflow-wrap: break-word` broke it as „STELLUNGNAHME / N". -->
+        <span class="entry-col-count flex justify-end whitespace-nowrap">Stellungnahmen</span>
         <span class="entry-col-state">Stand</span>
       </div>
       <component :is="ordered ? 'ol' : 'ul'" class="divide-y divide-hairline">

@@ -98,7 +98,7 @@ const externalHost = computed(() => {
     v-bind="linkProps"
     :class="
       density === 'row'
-        ? 'group flex min-h-11 items-center gap-4 px-4 py-3 transition-colors hover:bg-page'
+        ? 'group flex min-h-11 scroll-mt-12 items-center gap-4 px-4 py-3 transition-colors hover:bg-page'
         : 'group flex h-full flex-col gap-3 rounded-xl border border-hairline bg-surface p-5 transition-colors hover:border-baseline sm:flex-row sm:items-start sm:gap-4'
     "
   >
