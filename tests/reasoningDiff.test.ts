@@ -585,3 +585,31 @@ describe('compareReasoning — die Sammelvorlage in der Nummerierung des gebünd
     expect(compareReasoning(similar, before, after).units[`${ZIVI}|Z1|changed`]).toBeUndefined()
   })
 })
+
+describe('compareReasoning — eine Seite zählt ihre Ziffern versetzt (02.10.2026)', () => {
+  // 24/ME XXVIII: the draft's „Z 47 (§ 40 …)" is the passage of its Z 48;
+  // its Z 47 replaces § 39, which the Vorlage's „Zu Z 47" names.
+  it('hält die Passage einer Seite, die einen anderen § nennt, nicht gegen die richtige der anderen', () => {
+    const units = [z('Z47', 'Z47', '§ 39 samt Überschrift lautet: …'), z('Z46', 'Z46', 'In § 37 Abs. 3 Z 10 wird die Wortfolge "a" durch "b" ersetzt.')]
+    const before = erl('Zu Z 46 (§ 37 Abs. 3 Z 10):', 'Anpassung.', 'Zu Z 47 (§ 40 samt Überschrift):', 'Der Sportbericht.')
+    const after = erl('Zu Z 46 (§ 37 Abs. 3 Z 10):', 'Anpassung.', 'Zu Z 47 (§ 39 samt Überschrift):', 'Die Veröffentlichung.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.units['Gesetz|Z47|changed']).toBeUndefined()
+    expect(out.fallbacks['Gesetz|Z47|changed']).toBe('misnumbered')
+    expect(out.entries[out.units['Gesetz|Z46|changed']!]).toMatchObject({ changed: false })
+  })
+
+  it('urteilt nicht, wo beide Seiten dieselbe Überschrift führen oder die Nummer nur ein Buchstabe trennt', () => {
+    // Both documents head the entry „§ 78b", the instruction reads § 78a:
+    // our reading of the instruction differs, not the documents (230/ME XXVII).
+    const toc = [z('Z1', 'Z1', 'Im Inhaltsverzeichnis wird nach dem den § 78a betreffenden Eintrag folgender Eintrag eingefügt: …')]
+    const tocDoc = () => erl('Zu Z 1 (Der den § 78b betreffende Eintrag im Inhaltsverzeichnis):', 'Anpassung.')
+    expect(compareReasoning(toc, tocDoc(), tocDoc()).units['Gesetz|Z1|changed']).toBeDefined()
+    // „§ 124" for § 124b is a slip of the heading, not another § (61/ME XXVIII).
+    const slip = [z('Z23', 'Z24', '§ 124b wird wie folgt geändert: …')]
+    const out = compareReasoning(slip, erl('Zu Z 24 (§ 124b):', 'Text.'), erl('Zu Z 23 (§ 124):', 'Text.'))
+    expect(out.units['Gesetz|Z23|changed']).toBeDefined()
+  })
+})

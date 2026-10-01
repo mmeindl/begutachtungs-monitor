@@ -1291,6 +1291,50 @@ ihre Begründung nur in der Überschrift, zusammen rund 246.000 Zeichen. Sie
 als Text zu lesen, änderte den Text vieler Einträge, die heute ein Urteil
 tragen. Das gehört alt gegen neu gemessen, bevor es gebaut wird.
 
+**Nachgezogen am 02.10.2026: die Z 47 von 24/ME, und eine Wache, die nur den
+Fehler des Dokuments trifft.** Auf dem Ziffer-Weg ohne fremde Nummerierung
+stand Z 47 als „geändert": „Zu Art. 3 Z 47 (§ 40 BSFG 2017 samt
+Überschrift):" des Entwurfs, die Passage seiner Z 48, gegen „Zu Z 47 (§ 39
+BSFG 2017 samt Überschrift):" der Vorlage. Z 47 ersetzt § 39. Die naheliegende
+Wache — eine einzelne Passage, die nur diese Ziffer und einen § nennt, den die
+Anweisung nicht ändert, gilt nicht — ist gemessen und **kostet mehr, als sie
+bringt**: Sie nimmt 6, 24 und 10 Einheiten in XXVI, XXVII und XXVIII, und
+gelesen ist ein großer Teil davon richtig gepaart. Beide Dokumente führen
+dann dieselbe Überschrift, und anders ist nur unsere Lesung der Anweisung:
+ein Eintrag im Inhaltsverzeichnis („nach dem den § 78a betreffenden
+Eintrag" gegen „Der den § 78b betreffende Eintrag", 230/ME XXVII), ein
+eingefügter Abschnitt („Nach § 618 wird folgender Fünfter Abschnitt
+eingefügt" gegen „Zu Z 2 (§ 619):"), „§§82h" ohne Leerzeichen. Dazu kommen
+Tippfehler wie „§ 124" für § 124b.
+
+*Gebaut ist die Wache, die nur trifft, was das Dokument verschuldet*
+(`misnumbered` in `reasoningDiff.ts`). Sie verwirft ein Paar nur, wo alles
+zugleich gilt: Die Anweisung liest sich auf beiden Seiten mit denselben §§,
+die Lesung unterscheidet sich also nicht. Die einzige Passage der einen
+Seite nennt nur diese Ziffer und §§, von denen keiner zur Anweisung passt
+oder ihre Nummer teilt („§ 124" bei § 124b bleibt). Und die Passagen der
+anderen Seite nennen alle einen § der Anweisung. Gilt das, zählt die eine
+Seite ihre Ziffern neben dem eigenen Text, und die Einheit bekommt keine
+Begründung (Rückfall `misnumbered`, gezählt in `--ziffer`).
+
+*Alt gegen neu* (`--against` den Stand nach dem Titel-Absatz): **XXVI 2.733
+→ 2.733, XXVII 7.171 → 7.158, XXVIII 2.808 → 2.804**. Verloren sind 0, 13
+und 4 Einheiten, gelesen alle 17, und jede war ein falsches Paar: in XXVIII
+24/ME Z 46 und Z 47 (der Entwurf zählt schon ab seiner Z 46 versetzt: Sein
+„Zu Art. 3 Z 46 (§ 27 BSFG 2017 samt Überschrift):" beginnt „Bei § 39
+handelt es sich …" und steht gegen eine Wortersetzung in § 37), 20/ME Z 2
+(„Zu Z 2 (§ 7):" gegen § 84 TAMG) und 61/ME Z 19 der Vorlage („Zu Z 19
+(§ 95 Abs. 2 Z 3):" für § 99). In XXVII etwa 99/ME („Zu Z 3 (§ 65 Abs. 1
+ARHG)" gegen eine Anweisung an § 293 StGB), 105/ME („Zu Z 3 (§ 100 Abs. XX)"
+gegen § 107 Abs. 105), drei Ziffern des SchOG und SchUG in 190/ME, je zwei
+in 284/ME und 331/ME. Die Zahl sinkt, und was wegfällt, war falsch.
+Verglichen 1.565 → 1.565, 4.907 → 4.899,
+1.897 → 1.896; geändert 613 → 613, 2.081 → 2.074, 758 → 757; ohne Urteil
+120 → 120, 300 → 295, 111 → 108. Gegen den Stand von `b9a1ae3` steht die
+Zahl der Einheiten mit Begründung nach allen vier Schritten bei 2.710 →
+2.733, 7.145 → 7.158 und 2.742 → 2.804. Urteilswechsel auf dem §-Join wie
+bisher: 0.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and

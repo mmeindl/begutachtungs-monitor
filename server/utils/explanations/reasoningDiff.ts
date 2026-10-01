@@ -60,6 +60,11 @@
  * with the draft's Artikel and Ziffer (`foreignNumbered`), or the law's title
  * (`ArticleMode` `title`) — and never under the number of another law.
  *
+ * ONE SIDE COUNTING ITS ZIFFERN OFF (02.10.2026, `misnumbered`). Where one
+ * document's only passage to a Ziffer names another § than the instruction
+ * amends, and the other document's names the right one, the first is another
+ * Ziffer's passage (24/ME XXVIII Z 47), and the pair is not compared.
+ *
  * THE § JOIN. One comparison per Paragraph, `units` pointing there.
  *
  * AMBIGUOUS NUMBERS STAY OUT. A passage of the Besonderer Teil carries the
@@ -656,6 +661,50 @@ function fitsParagraphs(passage: HtmlPassage, unit: LawDiffUnit, side: Side): bo
   return passage.paragraphs.some((p) => own.has(explanationParaId(p) ?? ''))
 }
 
+/** „124b" → „124": the number a § designation is built on. */
+function paragraphBase(id: string): string {
+  return /^\d+/.exec(id)?.[0] ?? id
+}
+
+/** One side's passages for a unit, with the document they stand in. */
+interface FoundPassages {
+  doc: HtmlExplanations
+  passages: number[]
+  byParagraph: boolean
+}
+
+/**
+ * Whether one side's passage to the unit's Ziffer explains another § — the
+ * document counting its Ziffern off its own text (02.10.2026). 24/ME XXVIII
+ * explains its Z 47, which replaces § 39, under „Zu Art. 3 Z 47 (§ 40 BSFG
+ * 2017 samt Überschrift):" — the passage of its Z 48 —, while the Vorlage's
+ * „Zu Z 47 (§ 39 BSFG 2017 samt Überschrift):" is the right one; held
+ * against each other, the pair read „geändert" with 99 % drift.
+ *
+ * A single passage is otherwise taken as it is (`fitting`: its § list is
+ * shorthand for a run of Ziffern), and judged by its §§ alone the guard
+ * turned away right passages as well: an Inhaltsverzeichnis entry, an
+ * inserted Abschnitt, „§§82h" without a space. So it judges only where the
+ * fault can be the document's alone: the misfit passage names this one Ziffer
+ * and §§, none of which the instruction amends or shares a number with
+ * („§ 124" for § 124b is a slip, not another §); the instruction reads the
+ * same §§ on both sides, so our reading of it is not what differs; and the
+ * other side's passages all name a § it does amend.
+ */
+function misnumbered(unit: LawDiffUnit, me: FoundPassages, rv: FoundPassages): boolean {
+  const own = unitParagraphIds(unit, 'before')
+  const ownAfter = unitParagraphIds(unit, 'after')
+  if (own.size === 0 || own.size !== ownAfter.size || [...own].some((x) => !ownAfter.has(x))) return false
+  const bases = new Set([...own].map(paragraphBase))
+  const misfit = (f: FoundPassages, side: Side) => {
+    if (f.byParagraph || f.passages.length !== 1) return false
+    const p = f.doc.special[f.passages[0]!]!
+    return p.ziffern.length === 1 && p.paragraphs.length > 0 && !fitsParagraphs(p, unit, side) && !p.paragraphs.some((x) => bases.has(paragraphBase(explanationParaId(x) ?? '')))
+  }
+  const fits = (f: FoundPassages, side: Side) => !f.byParagraph && f.passages.every((i) => f.doc.special[i]!.paragraphs.length > 0 && fitsParagraphs(f.doc.special[i]!, unit, side))
+  return (misfit(me, 'before') && fits(rv, 'after')) || (misfit(rv, 'after') && fits(me, 'before'))
+}
+
 /**
  * What became of a unit the Ziffer join took but gave no Ziffer entry — for
  * the measurement (`scripts/corpus/aenderungsrate.ts --ziffer`), not for the
@@ -663,9 +712,10 @@ function fitsParagraphs(passage: HtmlPassage, unit: LawDiffUnit, side: Side): bo
  * changes, so shown without a verdict; `oneSided` — inserted or removed, so the § join
  * took it; `paragraphTitled` — compared, but one side or both explain it in
  * a passage titled by its § alone; `none` — one side explains it by neither
- * its Ziffer nor its §.
+ * its Ziffer nor its §; `misnumbered` — both explain it, but one document's
+ * passage to its Ziffer is about another § (`misnumbered`).
  */
-export type ZifferFallback = 'scope' | 'oneSided' | 'paragraphTitled' | 'none'
+export type ZifferFallback = 'scope' | 'oneSided' | 'paragraphTitled' | 'none' | 'misnumbered'
 
 export interface ReasoningComparisonAtZiffer extends ReasoningComparison {
   /** Units of the Ziffer join that are not plainly Ziffer against Ziffer, and where they went. */
@@ -827,6 +877,12 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
       !(me.passages.every((i) => fitsParagraphs(before.special[i]!, unit, 'before')) && rv.passages.every((i) => fitsParagraphs(after.special[i]!, unit, 'after')))
     ) {
       fallbacks[diffUnitKey(unit)] = 'none'
+      continue
+    }
+    // One side's own passage is about another § than the other side's: that
+    // document numbers its Ziffern off its own text (`misnumbered`).
+    if (misnumbered(unit, { doc: before, ...me }, { doc: after, ...rv })) {
+      fallbacks[diffUnitKey(unit)] = 'misnumbered'
       continue
     }
     const a = cover(z.before, me.passages)
