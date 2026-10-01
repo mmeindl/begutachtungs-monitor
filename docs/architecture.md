@@ -3484,6 +3484,37 @@ gleich** (der Entwurf steht in keinem der beiden); Beilage Tabellenpfad
 Adressierung 3.132 → 3.131, „zu Recht ohne Paragraph" 185 → 186, Säcke,
 Urteile und Berichtszahlen gleich, PDF-Pfad unverändert; Drift ohne Befund.
 
+**Die Literae unter dem Inhaltsverzeichnis (02.10.2026).** Der zweite Rest:
+Unter „Das Inhaltsverzeichnis wird wie folgt geändert:" las
+`instructionsFromUnits` die Literae („a) nach dem Eintrag zu § 20 wird
+folgender Eintrag eingefügt:") als eigene Zeilen. Die Beilage las sie seit
+dem 01.10. als Teil des Inhaltsverzeichnisses, die Engine jetzt auch — mit
+einer Wache mehr als die Beilage: Eine Litera einer solchen Einheit ist
+`toc` nur, wenn sie `continuesToc` ist, also von Einträgen spricht und von
+sonst nichts. Die Beilage legt eine falsch zugeordnete Zeile in den
+allgemeinen Sack; die Engine überspränge eine Änderung an einem Paragraphen,
+und der zeigte dann den alten Text als neuen. Alt gegen neu über dieselben
+1.353 Dateien: **39 Zeilen in 13 Gesetzesartikeln aus 11 Dateien, jede
+gelesen, jede ein Eintrag** (Börsegesetz 2018 und Zentralverwahrer-
+Vollzugsgesetz je in zwei Fassungen, Versicherungsaufsichtsgesetz 2016
+viermal, Kapitalmarktgesetz 2019, Transparenzdatenbankgesetz 2012 zweimal,
+Gentechnikgesetz, Qualitäts-Journalismus-Förderungs-Gesetz). 38 waren
+verweigert und sperrten zusammen 25 Paragraphen (je Gesetz gezählt).
+**Eine war angewendet**: „f) Im Eintrag zu § 88 entfällt die
+Wortfolge ‚und Gentherapie am Menschen'" (Gentechnikgesetz) strich die Wörter
+aus § 88 selbst — der eine Fall, in dem diese Lesart nicht nur einen
+Paragraphen kostete, sondern einen falschen Text hätte zeigen können. Drei
+Literae bleiben verweigert, weil ihnen etwas anderes bleibt als ein Eintrag
+(„Der Eintrag zur Überschrift des IV. Abschnitts lautet:", „Die Einträge der
+§§ 75 bis 78a samt Bezeichnung entfallen", „Vor dem Eintrag zu § 41 wird
+folgende Abschnittsüberschrift eingefügt:"); sie sperren, was sie nennen, und
+zeigen nie etwas Falsches. Prüfstände: Sammelnovellen **jede Zahl gleich**;
+Entwürfe gelesen 2.601 → 2.602 und angewendet 2.244 → 2.245 — die
+Qualitäts-Journalismus-Förderungs-Gesetz-Zeile „durch folgenden Eintrag
+ersetzt:", die zweite Zeile einer Inhaltsverzeichnis-Einheit —, kein Urteil
+einer Einheit bewegt sich; die Beilage liest die Engine nicht, ihre Berichte
+sind gleich; Drift ohne Befund.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),

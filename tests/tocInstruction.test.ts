@@ -92,6 +92,33 @@ describe('isTocInstruction — one predicate for the table of contents (01.10.20
   })
 })
 
+describe('the lettered lines under „Das Inhaltsverzeichnis wird wie folgt geändert" (02.10.2026)', () => {
+  // Börsegesetz 2018, Gentechnikgesetz: refused, the entries locked §§ 20 and
+  // 123 — and „Im Eintrag zu § 88 entfällt die Wortfolge …" struck the words
+  // from § 88 itself.
+  it('reads them as the table in the engine, as the annex does', () => {
+    const { instructions, refused } = instructionsFromUnits(segmentUnits([
+      instruction('1. Das Inhaltsverzeichnis wird wie folgt geändert:'),
+      instruction('a) nach dem Eintrag zu § 20 wird folgender Eintrag eingefügt:'),
+      quoted('Übergangsbestimmung', '§ 20a.'),
+      instruction('b) der Eintrag zu § 123 lautet:'),
+      instruction('c) Im Eintrag zu § 88 entfällt die Wortfolge "und Gentherapie am Menschen" .'),
+    ]))
+    expect(refused).toEqual([])
+    expect(instructions.map((i) => i.op.kind)).toEqual(['toc', 'toc', 'toc', 'toc'])
+  })
+
+  // Skipped, a line on a § would be a change carried out nowhere.
+  it('keeps reading a line that names more than an entry', () => {
+    const { instructions, refused } = instructionsFromUnits(segmentUnits([
+      instruction('1. Das Inhaltsverzeichnis wird wie folgt geändert:'),
+      instruction('a) Vor dem Eintrag zu § 41 wird folgende Abschnittsüberschrift eingefügt:'),
+    ]))
+    expect(instructions.map((i) => i.op.kind)).toEqual(['toc'])
+    expect(refused.map((r) => r.line)).toEqual(['a) Vor dem Eintrag zu § 41 wird folgende Abschnittsüberschrift eingefügt:'])
+  })
+})
+
 describe('an instruction that goes on with the table before it (02.10.2026)', () => {
   // Hochschülerschafts-Verordnung: Z 16 is on the table, Z 17 one more entry
   // of it — read alone, a phrase of § 29, refused, § 29 locked and named.

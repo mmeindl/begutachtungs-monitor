@@ -20,7 +20,7 @@
 import { childById, lawTextNodes, makeNode, plainText, uniqueChild, type LawNode, type NodeLevel } from '../lawtext/konsTree'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
-import { expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
+import { continuesToc, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId, isSchedule } from '../text/designation'
 
 export interface StandingLaw {
@@ -313,7 +313,16 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       }
       // The table of contents follows from the headings and is never applied;
       // a line that names it is the grammar's `toc` already.
-      if (gi === 0 && toc[ui] && !isTocInstruction(group.line)) {
+      //
+      // Under „Das Inhaltsverzeichnis wird wie folgt geändert:" the lettered
+      // lines („a) nach dem Eintrag zu § 20 wird folgender Eintrag
+      // eingefügt:") go on with the table their unit opened, as the annex
+      // reads them (`draftUnits`). Read on their own they were refused and
+      // locked § 20. Only a line that speaks of the table's entries and of
+      // nothing else (`continuesToc`): skipped, a line on a § would be a
+      // change carried out nowhere.
+      const onToc = toc[ui] && (gi === 0 ? !isTocInstruction(group.line) : continuesToc(group.line))
+      if (onToc) {
         instructions.push({ op: { kind: 'toc' }, payload: [], line: group.line })
         continue
       }
