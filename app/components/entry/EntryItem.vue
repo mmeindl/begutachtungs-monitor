@@ -18,6 +18,15 @@ import { keepDashWithPrecedingWord } from '~/utils/typography'
  * left, Stand flush right — so the card reads in the same left-to-right
  * order as the row it becomes at `md`.
  *
+ * ONE MARKUP FOR BOTH, since 01.10.2026: the card is the base and every
+ * `md:` class turns it into the row. Until then the component took a
+ * `density` prop and `EntryList` rendered every entry twice, a card list and
+ * a sheet, with CSS hiding one — each phone parsed and hydrated the desktop
+ * sheet it never showed, and the reverse. On a 50-row page of `/entwuerfe`
+ * that was 40 % of the DOM. What differs between the two is therefore only
+ * ever a class here, never a branch: a fact that stands in one density and
+ * not the other is an `md:hidden`, not a `v-if`.
+ *
  * WHAT IT REPLACED: `DraftCard`/`DraftRow`, `RisConsultationCard`/`Row` and
  * `SecondRoundCard`/`Row` — six components arranging the same facts six
  * ways, with the Stellungnahmen token drifting 168 px between two rows of
@@ -40,9 +49,6 @@ import { keepDashWithPrecedingWord } from '~/utils/typography'
  */
 const props = defineProps<{
   entry: EntryView
-  /** `card` below `md`, `row` in the dense sheet from `md` up — `EntryList`
-   *  sets both, never a page itself. */
-  density?: 'card' | 'row'
 }>()
 
 /**
@@ -96,11 +102,7 @@ const externalHost = computed(() => {
   <component
     :is="linkComponent"
     v-bind="linkProps"
-    :class="
-      density === 'row'
-        ? 'group flex min-h-11 scroll-mt-12 items-center gap-4 px-4 py-3 transition-colors hover:bg-page'
-        : 'group flex h-full flex-col gap-3 rounded-xl border border-hairline bg-surface p-5 transition-colors hover:border-baseline sm:flex-row sm:items-start sm:gap-4'
-    "
+    class="group flex h-full flex-col gap-3 rounded-xl border border-hairline bg-surface p-5 transition-colors hover:border-baseline sm:flex-row sm:items-start sm:gap-4 md:h-auto md:min-h-11 md:scroll-mt-12 md:items-center md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:hover:bg-page"
   >
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <!-- ZONE 1 — the title, WHOLE, in both densities. No `truncate`, no
@@ -120,14 +122,22 @@ const externalHost = computed(() => {
            This is therefore the bar for the „sprechende Namen" work package
            (TODO): it has to make the titles shorter, not the display.
            `title=` still carries the full title — for RIS records that is the
-           longer `longTitle`, which does not stand here either. -->
-      <component
-        :is="density === 'row' ? 'p' : 'h3'"
+           longer `longTitle`, which does not stand here either.
+
+           A heading in both densities since there is one markup. The row
+           used to be a `<p>`, carried over from the old row component and
+           never argued; the heading gives the dense sheet what the cards
+           already had, a way for a screen reader to jump from entry to
+           entry. And it hyphenates in both densities, as every heading does
+           (`main.css`): the row's `<p>` did not, so a
+           „Bundesstaatsanwaltschaft" went whole onto a line of its own and the
+           row stood a line taller than the card it is (01.10.2026). -->
+      <h3
         class="font-medium text-ink group-hover:underline"
         :title="entry.titleFull ?? entry.title"
       >
         {{ displayTitle }}<span v-if="!entry.to" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
-      </component>
+      </h3>
 
       <!-- ZONE 2 — Kennung: what kind of thing, which one, from whom. Fixed
            token order, the optional ones last, and NO dates — so the line's
@@ -208,11 +218,7 @@ const externalHost = computed(() => {
          stands before it. `contents`, so both become direct flex children of
          the row and line up with the column header. -->
     <div
-      :class="
-        density === 'row'
-          ? 'contents'
-          : 'mt-auto flex flex-col items-start gap-1.5 text-left sm:mt-0 sm:shrink-0 sm:items-end sm:text-right'
-      "
+      class="mt-auto flex flex-col items-start gap-1.5 text-left sm:mt-0 sm:shrink-0 sm:items-end sm:text-right md:contents"
     >
       <!-- ZONE 4 — Stand. In the DOM it stands before the number, so a
            screen reader reads it first; `order` reverses that VISIBLY in the
@@ -226,7 +232,7 @@ const externalHost = computed(() => {
            Stellungnahmen line below it on the card, as wide as the 14 rem
            column in the dense row, and a state became a grey bar
            (docs/architecture.md §12.28). -->
-      <div :class="density === 'row' ? 'entry-col-state order-2 flex justify-end' : ''">
+      <div class="md:entry-col-state md:order-2 md:flex md:justify-end">
         <EntryState :state="entry.state" />
       </div>
 
@@ -245,13 +251,7 @@ const externalHost = computed(() => {
            with the text inside the Stand box above it, and on a phone that
            read as a stray 10 px indent against the title and the Kennung —
            the edge the eye actually follows down the card. -->
-      <div
-        :class="
-          density === 'row'
-            ? 'entry-col-count order-1'
-            : 'min-w-0 sm:pe-2.5'
-        "
-      >
+      <div class="min-w-0 sm:pe-2.5 md:entry-col-count md:order-1 md:pe-0">
         <!-- The unit word stands on the card and NOT in the dense row:
              there it stands in the column header, once for the whole list.
              Both at once was the first attempt and read as a stutter —
@@ -262,7 +262,7 @@ const externalHost = computed(() => {
           class="text-sm font-semibold leading-tight tabular-nums text-ink"
         >
           {{ formatNumberDe(entry.participation.count) }}
-          <span v-if="density !== 'row'" class="font-normal text-ink-secondary">{{
+          <span class="font-normal text-ink-secondary md:hidden">{{
             entry.participation.count === 1 ? 'Stellungnahme' : 'Stellungnahmen'
           }}</span>
         </p>
@@ -294,12 +294,12 @@ const externalHost = computed(() => {
           v-else-if="entry.participation.kind === 'unpublished'"
           class="text-sm leading-tight text-ink-secondary"
         >
-          <template v-if="density !== 'row'">Stellungnahmen </template>nicht gezählt
+          <span class="md:hidden">Stellungnahmen </span>nicht gezählt
         </p>
         <!-- The temporary absence, said differently from the permanent one:
              we asked and could not read it. -->
         <p v-else class="text-sm leading-tight text-ink-muted">
-          <template v-if="density !== 'row'">Stellungnahmen </template>nicht abrufbar
+          <span class="md:hidden">Stellungnahmen </span>nicht abrufbar
         </p>
       </div>
 
