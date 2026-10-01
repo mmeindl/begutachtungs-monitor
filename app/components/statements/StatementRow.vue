@@ -150,7 +150,7 @@ function linkAriaLabel(citation: string): string {
         class="flex flex-col items-start gap-y-1 tabular-nums row-cols:col-start-3 row-cols:row-start-1"
       >
         <!-- The line box belongs to the WRAPPER, never to the link: the link
-             carries `tap-target`, whose 44px minimum a `min-h` of its own
+             carries `tap-target`, whose target minimum a `min-h` of its own
              would silently undercut. -->
         <span v-for="link in links ?? []" :key="link.href" class="flex min-h-6 items-center">
           <ExternalLink

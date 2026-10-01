@@ -83,7 +83,7 @@ const ariaLabel = computed(() => {
       class="group tap-target w-full"
       :aria-label="ariaLabel"
     >
-      <!-- The <a> keeps the 44px hit area, the visible tag is smaller —
+      <!-- The <a> keeps the full hit area, the visible tag is smaller —
            same construction as DocumentList's format tags. -->
       <span
         class="inline-flex w-full justify-center rounded border border-hairline px-1.5 py-0.5 text-xs font-medium text-accent-deep group-hover:border-baseline group-hover:underline"

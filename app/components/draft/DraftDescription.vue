@@ -67,7 +67,7 @@ const sections = computed<Section[]>(() => {
            when open, instead of the browser's triangle on the left. -->
       <summary
         v-if="section.collapsed"
-        class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-base font-semibold text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+        class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-base font-semibold text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
       >
         <!-- The heading stands IN the summary, since 18.09.2026. Before that
              the open section carried an <h3> and the closed one a <span>: the

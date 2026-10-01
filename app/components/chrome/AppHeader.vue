@@ -23,10 +23,10 @@ function isActive(to: string): boolean {
     <div
       class="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2 sm:px-6"
     >
-      <!-- AAA target size (WCAG 2.5.5) -->
+      <!-- Target size: 44px on touch, 36px with a mouse (main.css) -->
       <NuxtLink
         to="/"
-        class="inline-flex min-h-11 items-center gap-2 rounded-sm font-semibold text-ink"
+        class="inline-flex min-h-target items-center gap-2 rounded-sm font-semibold text-ink"
       >
         <!-- § on the marker tile — same mark as favicon and og:image.
              Decorative next to the wordmark, hence aria-hidden. -->
@@ -48,7 +48,7 @@ function isActive(to: string): boolean {
             <NuxtLink
               :to="item.to"
               :aria-current="isActive(item.to) ? 'page' : undefined"
-              class="inline-flex min-h-11 items-center rounded-sm text-sm transition-colors"
+              class="inline-flex min-h-target items-center rounded-sm text-sm transition-colors"
               :class="
                 isActive(item.to)
                   ? 'font-medium text-ink underline decoration-accent decoration-2 underline-offset-8'

@@ -167,7 +167,7 @@ const loadAnnouncement = computed(() => {
            the browser's find-in-page opens it instead of running past it. -->
       <details v-if="folded.length" class="group mt-4 border-t border-hairline">
         <summary
-          class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-sm font-medium text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+          class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-sm font-medium text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
         >
           <span class="group-open:hidden">Weiterlesen – noch {{ foldedParagraphs }} {{ foldedParagraphs === 1 ? 'Absatz' : 'Absätze' }}</span>
           <span class="hidden group-open:inline">Weniger anzeigen</span>

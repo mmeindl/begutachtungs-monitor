@@ -26,7 +26,7 @@ defineEmits<{
   <section class="border-b border-hairline last:border-b-0">
     <button
       type="button"
-      class="flex w-full min-h-11 flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
+      class="flex w-full min-h-target flex-col gap-2 bg-page px-3 py-3 text-left hover:bg-hairline/40"
       :aria-expanded="open"
       @click="$emit('toggle')"
     >

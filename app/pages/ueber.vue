@@ -151,8 +151,10 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor zielt auf WCAG 2.2, Konformitätsstufe AAA: alle
           Textfarben erreichen mindestens ein Kontrastverhältnis von 7:1,
-          Bedienelemente sind mindestens 44 Pixel groß, Bedeutung hängt nie an
-          Farbe allein, und die Seite ist vollständig per Tastatur nutzbar.
+          Bedeutung hängt nie an Farbe allein, und die Seite ist vollständig
+          per Tastatur nutzbar. Eine bewusste Ausnahme ist die Größe der
+          Bedienelemente: auf Touch-Geräten mindestens 44 Pixel, mit der Maus
+          mindestens 36 – das erfüllt Stufe AA, nicht AAA.
           Reduzierte Bewegung wird respektiert. Links auf fremde Seiten öffnen
           durchgehend ein neues Fenster und sagen es an.
           Wer dennoch auf eine Barriere

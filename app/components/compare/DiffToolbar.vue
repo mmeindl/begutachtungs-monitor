@@ -73,7 +73,7 @@ onUnmounted(() => clearTimeout(timer))
         :variant="view === v.value ? 'subtle' : 'outline'"
         :aria-pressed="view === v.value"
         size="sm"
-        class="min-h-11"
+        class="min-h-target"
         @click="view = v.value"
       >
         {{ v.label }}
@@ -86,7 +86,7 @@ onUnmounted(() => clearTimeout(timer))
       placeholder="Im Text suchen …"
       :aria-label="searchLabel"
       class="ml-auto min-w-56 flex-1 sm:flex-none"
-      :ui="{ base: 'min-h-11' }"
+      :ui="{ base: 'min-h-target' }"
     />
   </div>
 </template>

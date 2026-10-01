@@ -402,7 +402,7 @@ const mixSegments = computed(() => {
           :color="filter === opt.value ? 'primary' : 'neutral'"
           :variant="filter === opt.value ? 'subtle' : 'outline'"
           :aria-pressed="filter === opt.value"
-          class="relative min-h-11 flex-wrap justify-center gap-x-1.5 text-center odd:last:col-span-2 focus-visible:z-1 sm:flex-nowrap sm:whitespace-nowrap sm:not-only:first:rounded-e-none sm:not-only:last:rounded-s-none sm:not-last:not-first:rounded-none"
+          class="relative min-h-target flex-wrap justify-center gap-x-1.5 text-center odd:last:col-span-2 focus-visible:z-1 sm:flex-nowrap sm:whitespace-nowrap sm:not-only:first:rounded-e-none sm:not-only:last:rounded-s-none sm:not-last:not-first:rounded-none"
           @click="filter = opt.value"
         >
           {{ opt.label }}
@@ -417,7 +417,7 @@ const mixSegments = computed(() => {
           :color="sort === opt.value ? 'primary' : 'neutral'"
           :variant="sort === opt.value ? 'subtle' : 'outline'"
           :aria-pressed="sort === opt.value"
-          class="min-h-11"
+          class="min-h-target"
           @click="sort = opt.value"
         >
           {{ opt.label }}
@@ -439,7 +439,7 @@ const mixSegments = computed(() => {
         placeholder="Organisation suchen"
         autocomplete="off"
         class="w-full"
-        :ui="{ base: 'min-h-11' }"
+        :ui="{ base: 'min-h-target' }"
       />
     </div>
 

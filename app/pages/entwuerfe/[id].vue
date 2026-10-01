@@ -315,7 +315,7 @@ const documents = computed(() => {
             target="_blank"
             rel="noopener"
             color="primary"
-            class="min-h-11"
+            class="min-h-target"
           >
             Begleitschreiben öffnen<span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
           </UButton>
@@ -325,7 +325,7 @@ const documents = computed(() => {
             external
             color="neutral"
             variant="outline"
-            class="min-h-11"
+            class="min-h-target"
           >
             Frist in den Kalender (.ics)
           </UButton>
@@ -374,7 +374,7 @@ const documents = computed(() => {
              moves when it opens. -->
         <details class="group mt-8 border-t border-hairline">
           <summary
-            class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+            class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
           >
             <h3 id="dokumente" class="text-base font-semibold text-ink">
               Dokumente<template v-if="documents.length"> ({{ documents.length }})</template>

@@ -66,7 +66,7 @@ const label = computed(
     <!-- Standalone link: quiet at rest, underlined on hover (main.css). -->
     <NuxtLink
       :to="to"
-      class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
+      class="inline-flex min-h-target items-center rounded text-sm font-medium text-accent-deep hover:underline"
     >{{ label }}</NuxtLink>
   </div>
 </template>

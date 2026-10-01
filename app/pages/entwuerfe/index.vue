@@ -657,7 +657,7 @@ const countLabel = computed(() => {
         >
         <label
           for="filter-more"
-          class="tap-target inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-hairline bg-surface px-3 text-sm text-ink hover:border-baseline md:hidden"
+          class="tap-target inline-flex min-h-target cursor-pointer items-center gap-2 rounded-md border border-hairline bg-surface px-3 text-sm text-ink hover:border-baseline md:hidden"
         >
           <UIcon
             name="i-lucide-sliders-horizontal"
@@ -838,7 +838,7 @@ const countLabel = computed(() => {
             :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
             aria-label="Entwürfe durchsuchen"
             class="min-w-0 flex-1 basis-80"
-            :ui="{ base: 'min-h-11' }"
+            :ui="{ base: 'min-h-target' }"
           />
         </div>
       </div>

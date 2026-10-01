@@ -325,7 +325,7 @@ const destination = computed(() =>
           placeholder="Organisation suchen"
           autocomplete="off"
           class="w-full"
-          :ui="{ base: 'min-h-11' }"
+          :ui="{ base: 'min-h-target' }"
         />
         <p class="mt-2 text-sm text-ink-muted" aria-live="polite">
           {{

@@ -16,7 +16,7 @@
   <div class="mb-4">
     <NuxtLink
       to="/entwuerfe"
-      class="inline-flex min-h-11 items-center rounded text-sm font-medium text-accent-deep hover:underline"
+      class="inline-flex min-h-target items-center rounded text-sm font-medium text-accent-deep hover:underline"
     >
       ← Alle Entwürfe
     </NuxtLink>

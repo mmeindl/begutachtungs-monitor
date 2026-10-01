@@ -135,12 +135,23 @@
 }
 
 /*
- * WCAG 2.5.5 (AAA) target size: interactive controls at least 44×44 px.
- * Applies to all buttons and form fields (including Nuxt UI's);
- * link chips and standalone links get the height via a class.
+ * Target size by input, not one size for all: 44 px where the primary
+ * pointer is a finger (WCAG 2.5.5 AAA, Apple's and Material's touch
+ * minimum), 36 px where it is a mouse — still well above 2.5.8 AA's 24 px,
+ * and what desktop tools use. 44 px everywhere made a pagination footer
+ * taller than the list row above it (1.10.2026).
+ *
+ * Applies to all buttons and form fields (including Nuxt UI's); link chips,
+ * standalone links and summaries get the same height via `min-h-target`.
+ * Unlayered on purpose, so no utility undercuts it by accident.
  */
 :where(button, [role="button"], input, select, textarea) {
   min-height: 2.75rem;
+}
+@media (pointer: fine) {
+  :where(button, [role="button"], input, select, textarea) {
+    min-height: 2.25rem;
+  }
 }
 
 /*
@@ -252,12 +263,23 @@
 }
 
 /*
- * 44px target size for inline links WITHOUT layout shift: the padding
- * creates the hit area, the negative margins cancel it out in the layout.
- * Named once here instead of copied per link.
+ * The target height above, as a class — for what the element rule does not
+ * reach (links, summaries, row buttons that must say it themselves).
+ */
+@utility min-h-target {
+  min-height: 2.75rem;
+  @media (pointer: fine) {
+    min-height: 2.25rem;
+  }
+}
+
+/*
+ * Target size for inline links WITHOUT layout shift: the padding creates
+ * the hit area, the negative margins cancel it out in the layout. Named
+ * once here instead of copied per link.
  */
 @utility tap-target {
-  @apply -my-2 inline-flex min-h-11 items-center py-2;
+  @apply -my-2 inline-flex min-h-target items-center py-2;
 }
 
 /*

@@ -321,13 +321,20 @@ SemiBold, self-hosted from `public/fonts` since 2026-08-27 (`--font-heading`,
 
 Consequence: the gray hierarchy is flat (secondary ≈ muted) — hierarchy comes
 from size and weight. `accent` (500) is reserved for bars/non-text.
-Further AAA measures: **44-px target sizes** (global for buttons/form fields
-via CSS, link chips via `min-h-11`, row links via the `-my/py` trick),
-link purpose clear from the link alone (aria-labels with context, WCAG 2.4.9),
+Further AAA measures: link purpose clear from the link alone (aria-labels with context, WCAG 2.4.9),
 every link that leaves the site opens a new window and says so (WCAG 2.2 3.2.5,
 23.09.2026 — the announcement is what makes the uniform rule conformant),
 `leading-relaxed` in text blocks, `prefers-reduced-motion` respected,
-focus ring 2 px accent with offset. Known AAA limits (documented, not
+focus ring 2 px accent with offset.
+
+**Target size is AA, not AAA — by decision (01.10.2026).** 44 px where the
+primary pointer is coarse, 36 px under `@media (pointer: fine)` (global for
+buttons/form fields via CSS, everything else via the `min-h-target` utility,
+row links via the `-my/py` trick in `tap-target`). 2.5.5 AAA asks 44 px for
+every pointer; 2.5.8 AA asks 24. The reason: 44 px on desktop made controls
+taller than the list rows they sit under (a pagination footer outgrew the
+row above it), and touch, where the size matters, keeps the full 44. `/ueber`
+names this as the exception. Other known AAA limits (documented, not
 claimed): 3.1.5 reading level (law titles are officialese) and 3.1.4
 abbreviations (citation formats like "133/ME") are only partially
 achievable; a formal audit with real Austrian users is pending (§12).

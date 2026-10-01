@@ -400,7 +400,7 @@ const ministryLinks = computed(() => {
           :title="data.shortTitle ?? data.title"
         >
           <!-- `link-inline`, underlined at rest (WCAG 1.4.1), and tap-target
-               for the 44px. The mid-page CTA stays the only door; this is
+               for the hit area. The mid-page CTA stays the only door; this is
                the receipt. -->
           <template #source>
             <ExternalLink
@@ -583,7 +583,7 @@ const ministryLinks = computed(() => {
               target="_blank"
               rel="noopener"
               color="primary"
-              class="min-h-11"
+              class="min-h-target"
             >
               Stellungnahme auf parlament.gv.at abgeben<span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
             </UButton>
@@ -593,7 +593,7 @@ const ministryLinks = computed(() => {
               external
               color="neutral"
               variant="outline"
-              class="min-h-11"
+              class="min-h-target"
             >
               Frist in den Kalender (.ics)
             </UButton>
@@ -608,7 +608,7 @@ const ministryLinks = computed(() => {
               rel="noopener"
               color="primary"
               :variant="windows.begutachtung ? 'outline' : 'solid'"
-              class="min-h-11"
+              class="min-h-target"
             >
               Stellungnahme zur Regierungsvorlage abgeben<span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
             </UButton>
@@ -744,7 +744,7 @@ const ministryLinks = computed(() => {
             class="group mt-8 border-t border-hairline"
           >
             <summary
-              class="-mx-3 flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+              class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
             >
               <h3 class="text-base font-semibold text-ink">
                 Dokumente<template v-if="documentCount"> ({{ documentCount }})</template>

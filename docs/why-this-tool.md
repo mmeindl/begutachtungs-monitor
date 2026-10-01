@@ -75,7 +75,7 @@ emphasis, no stable, shareable, plain-language page per consultation. The
 monitor leads with what a non-insider needs — open consultations, days until
 the deadline, what the draft is about in plain terms — on clean URLs that a
 journalist can cite or an NGO can send to its members, with accessibility
-(WCAG AAA targets) and zero tracking.
+(aiming at WCAG AAA) and zero tracking.
 
 ### 4. The cross-procedure view
 

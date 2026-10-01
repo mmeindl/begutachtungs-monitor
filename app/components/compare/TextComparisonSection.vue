@@ -538,7 +538,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                    `font-medium text-ink` against the `text-ink-muted` of the
                    unchanged rows two lines below. The chevron carries the
                    affordance, as on every other disclosure of this page. -->
-              <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
+              <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
                 <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                 Begründung des Ressorts
               </summary>
@@ -576,7 +576,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                 Die Beilage des Ministeriums sagt, was sich ändert.
               </p>
               <details v-else-if="b.kind === 'context'" class="group">
-                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
+                <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                   {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
                 </summary>
@@ -647,7 +647,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                  front of the answer. The reasoning stays on top: it belongs
                  to the change, not to the result. -->
             <details v-if="p.consolidated" class="group mt-3">
-              <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
+              <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
                 <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                 Ganzer Paragraph danach (nicht amtlich)
               </summary>
@@ -680,7 +680,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           <button
             v-if="g.hidden"
             type="button"
-            class="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+            class="flex min-h-target w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
             @click="showAll(g.key)"
           >
             <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />

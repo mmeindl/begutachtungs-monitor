@@ -50,12 +50,13 @@ function docHint(doc: DocumentListItem): string | null {
   <div>
     <ul class="divide-y divide-hairline">
       <!-- `py-1.5`, not the `py-3` a text row would take: the format link's
-           44px hit area below already IS the row height, and a document name
+           hit area below already IS the row height, and a document name
            is one line of text — full padding on top of the target only spaced
            two invisible boxes apart (68px rows for 20px of text). What is
-           left keeps a sub-line clear of the divider below it. Both row
-           shapes, with and without that sub-line, stay 56px: the 44px target
-           binds in each, so the rhythm holds. -->
+           left keeps a sub-line clear of the divider below it. On touch both
+           row shapes, with and without that sub-line, stay 56px: the 44px
+           target binds in each, so the rhythm holds. With a mouse the target
+           is 36px and a row with a sub-line may stand a few px taller. -->
       <li
         v-for="(doc, i) in documents"
         :key="`${doc.title}-${i}`"
@@ -71,7 +72,7 @@ function docHint(doc: DocumentListItem): string | null {
              missing — so the same label never jumps between rows. A format
              is a small bordered accent tag: not a tall neutral button (an
              action inside the page) and not bare text (too light to scan).
-             The <a> keeps the 44px hit area, the visible tag is smaller.
+             The <a> keeps the full hit area, the visible tag is smaller.
              The ↗ stays on the tag: it is the page-wide mark for "leaves
              the page", and the aria-label names the host. -->
         <!-- Fixed track widths: every row's grid is the same width, so PDF
@@ -83,7 +84,7 @@ function docHint(doc: DocumentListItem): string | null {
               :href="formatOf(doc, type)!.url"
               target="_blank"
               rel="noopener"
-              class="group flex min-h-11 items-center justify-center rounded"
+              class="group flex min-h-target items-center justify-center rounded"
               :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen (neues Fenster)`"
             >
               <span
