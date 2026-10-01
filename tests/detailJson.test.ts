@@ -6,6 +6,7 @@ import {
   bundlesOtherDrafts,
   extractBgblLink,
   isFilingOpen,
+  isVorlageFilingOpen,
   parseVote,
   findHandoff,
   findComparisonRvLink,
@@ -244,6 +245,36 @@ describe('isFilingOpen', () => {
     expect(isFilingOpen(undefined)).toBe(false)
     expect(isFilingOpen({ statementsstate: 'true' })).toBe(false)
     expect(isFilingOpen({ statementsstate: '11' })).toBe(false)
+  })
+})
+
+describe('isVorlageFilingOpen', () => {
+  const open = { statementsstate: '1' }
+
+  it('judges a carried-over Vorlage by ITS period, not the draft\'s', () => {
+    // XXVII/352/ME → 127 d.B./XXVIII. GP: the draft's period is over, the
+    // Vorlage's runs. Judged by the draft's GP, an open form read as closed
+    // on the detail page while the station map called it open.
+    expect(isVorlageFilingOpen(open, 'XXVIII', 'XXVIII')).toBe(true)
+  })
+
+  it('closes a Vorlage that lapsed with its period, whatever a stale flag says', () => {
+    expect(isVorlageFilingOpen(open, 'XXVII', 'XXVIII')).toBe(false)
+    // The table knows XXVII's successor, so even a stale current GP agrees.
+    expect(isVorlageFilingOpen(open, 'XXVII', 'XXVII')).toBe(false)
+  })
+
+  it('opens nothing the flag does not open', () => {
+    expect(isVorlageFilingOpen({ statementsstate: '0' }, 'XXVIII', 'XXVIII')).toBe(false)
+    // What the Vorlagen before August 2021 carry instead of 0/1 (1 d.B. XXVII, read 01.10.2026).
+    expect(
+      isVorlageFilingOpen({ statementsstate: '9 Begutachtung erst ab 1.8.2021 bei dem Doktyp "RV" möglich' }, 'XXVII', 'XXVII'),
+    ).toBe(false)
+    expect(isVorlageFilingOpen(null, 'XXVIII', 'XXVIII')).toBe(false)
+  })
+
+  it('keeps the flag when the running period is unknown — gpHasEnded\'s safe direction', () => {
+    expect(isVorlageFilingOpen(open, 'XXVIII', null)).toBe(true)
   })
 })
 

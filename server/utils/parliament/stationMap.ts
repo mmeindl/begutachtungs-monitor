@@ -102,9 +102,10 @@ async function chainOf(
     try {
       const rvDetail = await getGegenstand(rv.gp, 'I', rv.inr)
       bgblNumber = extractBgblLink(rvDetail.content?.status?.bgbllinks)?.number ?? null
-      // Same guard as the detail page (`draftDetail.ts`): a Vorlage that
-      // lapsed with its period takes nothing, whatever a stale flag says.
-      filingOpen = isFilingOpen(rvDetail.content) && !rvGpEnded
+      // The same function as the detail page (`draftDetail.ts`), so door
+      // and row cannot disagree: a Vorlage that lapsed with its period
+      // takes nothing, whatever a stale flag says.
+      filingOpen = isVorlageFilingOpen(rvDetail.content, rv.gp, currentGp)
     } catch {
       // The Vorlage exists — the stage record says so. Only what the Vorlage
       // itself would have added is missing, so the station stays `rv`: the

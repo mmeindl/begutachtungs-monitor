@@ -15,7 +15,7 @@ import {
   extractBgblLink,
   findLastRvLink,
   findRvLinks,
-  isFilingOpen,
+  isVorlageFilingOpen,
   parseStages,
   parseVote,
   type RvLink,
@@ -111,7 +111,6 @@ export async function getDraftOutcome(
  */
 async function enactmentOf(
   rvLinks: readonly RvLink[],
-  gp: string,
   currentGp: string,
 ): Promise<EnactmentInfo | null> {
   const rvLink = rvLinks.at(-1)
@@ -158,9 +157,10 @@ async function enactmentOf(
     // too, in a sentence we do not print; this is the record behind it.
     enactment.vote = parseVote(rv.content?.vote)
     // The second window for input, from the same payload as the BGBl
-    // link — no request of its own. Only while the GP runs: a Vorlage
-    // that lapsed with its GP takes nothing, whatever a stale flag says.
-    enactment.filingOpen = isFilingOpen(rv.content) && !gpHasEnded(gp, currentGp)
+    // link — no request of its own. Only while the VORLAGE's GP runs, by
+    // the same function the station map asks: judged by the draft's GP, a
+    // carried-over Vorlage's open window read as closed.
+    enactment.filingOpen = isVorlageFilingOpen(rv.content, rvLink.gp, currentGp)
   } catch {
     // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn, both
     // status fields and the vote stay null, filingOpen false.
@@ -218,7 +218,7 @@ export async function getDraftDetail(
   // leg first and `findRelated` after it made every detail page pay two
   // sequential upstream hops for one answer each.
   const [enactment, related] = await Promise.all([
-    enactmentOf(rvLinks, gp, currentGp),
+    enactmentOf(rvLinks, currentGp),
     findRelated(summary, currentGp, rvLinks.length > 0),
   ])
 

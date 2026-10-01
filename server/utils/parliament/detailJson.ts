@@ -16,6 +16,7 @@ import type {
   TextVersion,
   TraceStep,
 } from '../../../shared/types'
+import { gpHasEnded } from '../../../shared/utils/gp'
 import { lawStationOf } from '../../../shared/utils/lawStations'
 import { parseGermanDate, parseIsoDate } from './dates'
 import { absolutizeUrl, extractLinks, stripHtmlToText } from './htmlText'
@@ -45,6 +46,26 @@ export interface RawDocumentGroup {
 export function isFilingOpen(content: { statementsstate?: unknown } | null | undefined): boolean {
   const state = content?.statementsstate
   return state === '1' || state === 1
+}
+
+/**
+ * Whether a Regierungsvorlage takes Stellungnahmen — the zweite Runde, as
+ * the detail page's door and the station map's row both state it. ONE
+ * function for both, because they once disagreed: the flag counts only
+ * while the VORLAGE's period runs, a Vorlage that lapsed with it takes
+ * nothing, whatever a stale flag says.
+ *
+ * `rvGp` is the period the Vorlage's own link names, never the draft's:
+ * a carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) lives in the next
+ * period, and judged by the draft's calendar its open window would read as
+ * closed (docs/architecture.md §12.14, 01.10.2026).
+ */
+export function isVorlageFilingOpen(
+  content: { statementsstate?: unknown } | null | undefined,
+  rvGp: string,
+  currentGp: string | null | undefined,
+): boolean {
+  return isFilingOpen(content) && !gpHasEnded(rvGp, currentGp)
 }
 
 export interface RawName {

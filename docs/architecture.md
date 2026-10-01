@@ -6312,6 +6312,30 @@ deadline, so its door says so and offers no calendar entry. The RV block in
 the section carries the same fact as one sentence with a link, not a second
 button.
 
+**Nachtrag 01.10.2026 — „gated on the GP still running": auf der Periode der
+Vorlage, nicht des Entwurfs.** Die Detailseite prüfte den Formular-Schalter
+gegen die Periode des **Entwurfs**, die Stationskarte seit 30.09.2026
+(§12.10) gegen die der **Vorlage**. Für eine übertragene Vorlage
+(XXVII/352/ME → 127 d.B./XXVIII. GP) hätte die Zeile damit „Stellungnahme
+möglich" gesagt und die Detailseite dieselbe offene Tür verschwiegen. Beide
+fragen jetzt dieselbe Funktion (`isVorlageFilingOpen` in
+`parliament/detailJson.ts`) mit der Periode, die der Link der Vorlage nennt;
+`enactmentOf` bekommt die Periode des Entwurfs gar nicht mehr, damit sie dort
+nicht wieder hineinrutscht. **Live gelesen am 01.10.2026, sichtbar ändert sich
+heute nichts:** Über XXV bis XXVIII haben 23 Entwürfe ihre letzte Vorlage in
+der Folgeperiode (5 aus XXV, 14 aus XXVI, 4 aus XXVII → 255, 308, 127 und
+89 d.B. der XXVIII. GP), und alle 23 sind kundgemacht, `statementsstate` steht
+auf „0" oder — bei Vorlagen vor August 2021 — auf „9 Begutachtung erst ab
+1.8.2021 …". Für die aus XXV und XXVI ist auch die Folgeperiode vorbei, dort
+sind alter und neuer Schalter gleich. Der Fehler hätte erst beim nächsten
+Periodenwechsel gegriffen, an einer Vorlage, die ein Entwurf der XXVIII. GP in
+der XXIX. bekommt — genau dann, wenn die zweite Runde die einzige offene Tür
+ist. **Nicht geändert, aber derselbe Fall:** Die Leiste der Detailseite sagt
+„Ohne Beschluss – Gesetzgebungsperiode beendet" weiter nach der Periode des
+Entwurfs (`DraftDetail.gpEnded` in `app/utils/spine.ts`); für eine übertragene,
+noch unentschiedene Vorlage widerspräche sie der Zeile, die „liegt vor" sagt.
+Heute trifft das keine Seite, weil alle 23 Vorlagen entschieden sind.
+
 **The document link.** The row's citation leads to the Stellungnahme's page
 upstream; a journalist working through fifty organisations' submissions
 asked for the PDF itself. The PDF's URL is not in the list row and needs one
