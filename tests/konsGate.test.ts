@@ -131,3 +131,16 @@ describe('refusedUnits — was nicht als sauber gelten darf (26.09.2026)', () =>
     expect([...refusedUnits(['Anl. 1', '§ 5'], [], unitKey)].sort()).toEqual(['5', 'Anl. 1'])
   })
 })
+
+describe('an Abschnitt is no § of its number (02.10.2026)', () => {
+  // Universitätsgesetz 2002, Asylgesetz 2005, …: a refused line on „Abschnitt
+  // 3" locked § 3 under the bare number, loaded it, and counted it.
+  it('keys a division apart, and neither counts nor fetches it', () => {
+    expect(unitKey('Abschnitt 4')).toBe('Abschnitt 4')
+    expect(unitKey('§ 4')).toBe('4')
+    expect([...refusedUnits(['Abschnitt 4'], ['Die Überschrift des 4. Abschnitts lautet:'], unitKey)]).toEqual(['Abschnitt 4'])
+    const instructions = [...instr('Die Überschrift des 4. Abschnitts lautet:'), ...instr('§ 5 lautet:')]
+    expect(addressedParagraphs(instructions, [])).toEqual(['5'])
+    expect([...(addressedLabels(instructions, []) ?? new Map()).keys()]).toEqual(['5'])
+  })
+})

@@ -3515,6 +3515,55 @@ ersetzt:", die zweite Zeile einer Inhaltsverzeichnis-Einheit —, kein Urteil
 einer Einheit bewegt sich; die Beilage liest die Engine nicht, ihre Berichte
 sind gleich; Drift ohne Befund.
 
+**„Abschnitt 4" ist nicht § 4 (02.10.2026).** Der dritte Rest war als
+Schlüsselkollision gemeldet: `unitKey("Abschnitt 4")` gab „4", eine
+verweigerte Anweisung auf den Abschnitt sperrte also § 4. Alt gegen neu über
+die 1.353 Dateien sperrten die verweigerten Zeilen allein so **9 Paragraphen**
+(je Gesetz gezählt, 12 Sperren über alle Kopien) ohne eigenen Grund:
+Asylgesetz 2005 § 2, Universitätsgesetz 2002 § 3, Apothekerkammergesetz 2001
+§ 8, Hypothekar- und Immobilienkreditgesetz § 4, Finanzmarkt-Geldwäschegesetz
+§ 6, KommAustria-Gesetz § 3a, Hochschul-Curriculaverordnung 2013 § 4,
+Tierschutz-Sonderhaltungsverordnung § 7, Bildungsdokumentationsverordnung
+2021 § 3. Die Suche nach der Ursache fand die schlimmere Hälfte: **Die
+Engine las dieselbe Adresse genauso.** `findParagraph` nahm von „Abschnitt 4"
+die Zahl, und `konsGate.addressedLabels` lud § 4 dazu, weil sein Schlüssel
+„4" war. „Die Überschrift des 4. Abschnitts lautet:" schrieb die
+Abschnittsüberschrift über die des § 4, „Der 4. Abschnitt lautet:" den
+Abschnitt über seinen Text, „Im 4. Abschnitt wird das Wort … ersetzt" ersetzte
+es in § 4 — jedes Mal als angewendet gemeldet. Im Prüfstand sichtbar: „Die
+Überschrift des 2. Abschnitts des 4. Hauptstücks entfällt" (BGBl. I Nr.
+39/2026) strich die Überschrift des § 2 des Asylgesetzes, der als „halb
+angewendet" lief; „Der bisherige 3. Abschnitt … erhält die Bezeichnung
+‚5. Abschnitt' und lautet …" (Außenwirtschaftsgesetz-Entwurf) wandte die
+Umbenennung auf § 3 an, und die Neufassung im selben Satz fand danach keinen
+§ 3 mehr.
+Vier Abschnittsüberschriften desselben Gesetzes scheiterten nur, weil der
+neue Text nicht wie eine Überschrift aussah. 51 Wortlaute über 15.004 Zeilen
+adressieren einen Abschnitt.
+
+Jetzt hat eine Gliederung über dem Paragraphen ihren eigenen Schlüsselraum:
+`isDivision` in `text/designation.ts`, und `unitKey` gibt „Abschnitt 4"
+zurück, nicht „4". Der Nenner (`addressedParagraphs`) zählt sie nicht, die
+Dokumentauswahl (`addressedLabels`) holt nichts für sie, `konsService` hängt
+sie keinem § als berührende Anweisung an, und `applyNovelle` verweigert jede
+Operation auf sie („Gliederung über dem Paragraphen, im geltenden Text nicht
+geführt") — `StandingLaw` führt Paragraphen und nichts darüber. **Eine
+Ausnahme, mit Grund:** „Nach der Überschrift zum 2. Abschnitt … werden
+folgende §§ 148a und 148b eingefügt" (Gaswirtschaftsgesetz-Entwurf) schafft
+Paragraphen, die ganz ihre Nutzlast sind; sie stehen jetzt, wo ihre Nummer
+sie hinstellt (`numberedSlot`, nur wenn die Nutzlast genau die angekündigten
+§§ sind), statt hinter § 2, wohin die Abschnittsnummer sie schickte. Die
+beiden Prüfstände lesen Sperre und berührende Anweisungen über denselben
+Schlüssel (`harnessKey`), sonst sperrten sie § 4 weiter, wo die Seite es
+nicht mehr tut. Prüfstände: Sammelnovellen angewendet 1.965 → 1.964 (die
+Asylgesetz-Zeile), **identisch 885 → 886**, ohne Verweigerung 921 → 925
+(identisch 870 → 874), **ohne Verweigerung abweichend 10 → 10, eigene
+Abweichung 13 → 13**, halb angewendet 45; Entwürfe angewendet 2.245 → 2.244,
+Paragraphen mit Text 1.471 → 1.472, plausibel 1.061 → 1.062, **bestätigt
+623 → 624** (Erste Außenwirtschaftsverordnung § 2, bisher von einer
+Abschnittszeile gesperrt). Die Beilage liest die Engine nicht, ihre Berichte
+sind gleich; Drift ohne Befund.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),

@@ -30,7 +30,7 @@
 import type { ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment } from '#shared/types'
 import { guardParagraph } from './applyGuard'
 import { addressedLabels, addressedParagraphs, gateParagraph, refusedUnits } from './konsGate'
-import { anlageLabelKey, bareParaId, isSchedule, unitKey } from '../text/designation'
+import { anlageLabelKey, bareParaId, isDivision, isSchedule, unitKey } from '../text/designation'
 import { fetchParagraphXml, resolveKonsLaw } from './konsCache'
 import { konsLawUrl } from '../lawtext/amendedLawsService'
 import { diffTokens } from '../diff/wordDiff'
@@ -289,7 +289,8 @@ async function consolidate(
         return {
           touching: { instruction, result: results[i]! },
           document: address?.level === 'document',
-          para: address?.para ? bareParaId(address.para) : null,
+          // An Abschnitt touches no § of its number (`isDivision`).
+          para: address?.para && !isDivision(address.para) ? bareParaId(address.para) : null,
           payloadIds: insertsParagraphs ? new Set(payload.map((pl) => pl.id).filter((id) => !!id)) : null,
         }
       })

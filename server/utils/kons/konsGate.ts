@@ -36,7 +36,7 @@
 import type { Instruction } from './lawApply'
 import { articleQualifier, isTocInstruction, namedParagraphs, opAddress, refusedAddresses } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
-import { articleNumberKey, isSchedule, unitKey } from '../text/designation'
+import { articleNumberKey, isDivision, isSchedule, unitKey } from '../text/designation'
 
 /**
  * Why a produced § is not shown.
@@ -167,6 +167,8 @@ export function addressedParagraphs(
     // § of „Die §§ 12a und 13 entfallen", not the first one only — the second
     // was neither counted nor fetched, and the instruction failed on it.
     for (const para of address ? namedParagraphs(address) : []) {
+      // „Abschnitt 4" is no § of the denominator, and § 4 even less.
+      if (isDivision(para)) continue
       const id = unitKey(para)
       if (id) out.add(id)
     }
@@ -218,6 +220,8 @@ export function addressedLabels(
   for (const { op, payload } of instructions) {
     const address = opAddress(op)
     for (const para of address ? namedParagraphs(address) : []) {
+      // Nothing to fetch for an Abschnitt: RIS files no document under it.
+      if (isDivision(para)) continue
       const id = unitKey(para)
       if (id && !add(id, address!.artikel)) return null
     }

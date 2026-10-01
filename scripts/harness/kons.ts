@@ -61,7 +61,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, risJson as risQuery } from '../lib/http'
 import { asArray, pickTextComparisons } from '../lib/ris'
-import { anlageLabelKey, bareParaId, isSchedule } from '../../server/utils/text/designation'
+import { anlageLabelKey, bareParaId, isDivision, isSchedule } from '../../server/utils/text/designation'
 import { appendFileSync, writeFileSync } from 'node:fs'
 
 interface Verdict {
@@ -88,6 +88,13 @@ interface Verdict {
 }
 
 type VersionPair = { before: KonsParagraphRef | null; after: KonsParagraphRef; afters: KonsParagraphRef[] }
+
+/**
+ * The bare number this Prüfstand holds its §§ under — and none for a division
+ * above the § („Abschnitt 4"), which the site keys apart (`unitKey`) and
+ * which locked § 4 here under its number.
+ */
+const harnessKey = (label: string): string | null => (isDivision(label) ? null : bareParaId(label))
 
 const verbose = !argFlag('quiet')
 /**
@@ -631,7 +638,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
   // reports no refusal for a §, is that § actually right? Refusals are known
   // at draft time; correctness is not, because the law has not been passed yet.
   // The site's reading (`refusedUnits`), keyed by the bare number this Prüfstand holds its §§ under.
-  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), bareParaId)
+  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), harnessKey)
   const applied = results.filter((r) => r.applied).length
 
   if (verbose) {
@@ -724,7 +731,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
       .filter(({ instruction: { op, payload } }) => {
         const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
         if (address?.level === 'document') return true
-        if (address?.para && paraId(address.para) === id) return true
+        if (address?.para && harnessKey(address.para) === id) return true
         if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
         return false
       })
@@ -774,7 +781,7 @@ async function verifyLaw(blocks: readonly TextBlock[], article: DraftArticle, ct
           const op = ins.op
           const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
           if (address?.level === 'document') return true
-          if (address?.para && paraId(address.para) === id) return true
+          if (address?.para && harnessKey(address.para) === id) return true
           // An instruction that creates this § names its anchor, not the § itself.
           if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return ins.payload.some((p) => p.id === id)
           return false

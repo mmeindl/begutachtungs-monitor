@@ -21,7 +21,8 @@ import { childById, lawTextNodes, makeNode, plainText, uniqueChild, type LawNode
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
 import { continuesToc, expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
-import { bareParaId, isSchedule } from '../text/designation'
+import { bareParaId, isDivision, isSchedule } from '../text/designation'
+import { byParagraphOrder } from './konsGate'
 
 export interface StandingLaw {
   /** Paragraphs in printed order; insert and append change this list */
@@ -1080,6 +1081,16 @@ function spliceChildren(host: LawNode, anchorId: string | null, level: NodeLevel
 }
 
 /**
+ * Where a new § stands among the Paragraphen when no § anchors it: in front
+ * of the first one its number precedes — § 148a behind § 148, before § 149 —
+ * and before the schedules, which a law prints last.
+ */
+function numberedSlot(paragraphs: readonly LawNode[], id: string): number {
+  const at = paragraphs.findIndex((p) => isSchedule(p.marker) || byParagraphOrder(p.id, id) > 0)
+  return at < 0 ? paragraphs.length : at
+}
+
+/**
  * The refusal of an operation the engine carries out at one place whose
  * address still lists several units — carried out, it would change the first
  * of them and report the line applied.
@@ -1380,8 +1391,13 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       if (!level) return 'Eingefügte Einheit nicht bestimmbar'
       if (payload.length === 0) return 'Einfügung ohne Text'
       if (level === 'para') {
-        const anchor = findParagraph(law, op.anchor)
-        if (!anchor) return `Anker nicht im geltenden Text: ${op.anchor.para}`
+        // „Nach der Überschrift zum 2. Abschnitt … werden folgende §§ 148a und
+        // 148b eingefügt": the stock holds no Abschnitt to stand behind, but a
+        // new § is wholly its payload, so it goes where its number puts it
+        // (`numberedSlot`) — only where the payload is exactly the announced §§.
+        const byNumber = isDivision(op.anchor.para)
+        const anchor = byNumber ? null : findParagraph(law, op.anchor)
+        if (!anchor && !byNumber) return `Anker nicht im geltenden Text: ${op.anchor.para}`
         // A payload without a § line of its own is the body of one new §:
         // "(1) …" straight after the instruction. Inserting those Absätze as
         // §§ gave them ids "1", "2", … and either collided ("§ 1 existiert
@@ -1399,6 +1415,11 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
           blocks = blocks.map((p, i) => ({ ...p, id: op.childIds[i]!, marker: `§ ${op.childIds[i]}.` }))
         }
         for (const p of blocks) if (law.paragraphs.some((x) => x.id === p.id)) return `§ ${p.id} existiert bereits`
+        if (!anchor) {
+          if (blocks.length !== op.childIds.length || blocks.some((p, i) => p.id !== op.childIds[i])) return `${op.anchor.para} — die eingefügten Paragraphen sind nicht die angekündigten`
+          law.paragraphs.splice(numberedSlot(law.paragraphs, blocks[0]!.id), 0, ...blocks.map((p) => ({ ...p, level: 'para' as const })))
+          return null
+        }
         const at = law.paragraphs.indexOf(anchor)
         law.paragraphs.splice(op.where === 'after' ? at + 1 : at, 0, ...blocks.map((p) => ({ ...p, level: 'para' as const })))
         return null
@@ -1768,6 +1789,12 @@ export function applyNovelle(input: StandingLaw, instructions: readonly Instruct
       // the Novelle does not license it; moved §§ do, for every § address.
       const renumbered = paragraphsRenumbered || (para !== null && renumberedIn.has(para))
       if (target && /\(neu\)/i.test(target.raw) && !renumbered) reason = '„(neu)" ohne vorangehende Umbenennung'
+      // „Die Überschrift des 4. Abschnitts lautet:" — the standing text holds
+      // no Abschnitt, and looked up by its number the address found § 4: the
+      // Abschnitt's heading went over § 4's, „Der 4. Abschnitt lautet:" over
+      // its text, and both reported success (02.10.2026).
+      // A new § announced by its number is the one exception (`numberedSlot`).
+      else if (isDivision(para) && !(op.kind === 'insertAfter' && op.child === 'para' && op.childIds.length > 0)) reason = `${para} — Gliederung über dem Paragraphen, im geltenden Text nicht geführt`
       else if (op.kind === 'renumber') {
         // Renumberings printed as one line happen at once: "Die §§ 5 bis 7
         // erhalten die Bezeichnungen § 7 bis § 9; die §§ 8 bis 13 erhalten

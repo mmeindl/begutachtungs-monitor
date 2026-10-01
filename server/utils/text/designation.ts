@@ -36,8 +36,22 @@ export function isSchedule(label: string | null | undefined): boolean {
 }
 
 /**
+ * Does this designation name a division ABOVE the Paragraph — „Abschnitt 4",
+ * the form `kons/novao.ts` writes for „im 4. Abschnitt" — rather than a unit?
+ *
+ * The standing text the engine works on holds Paragraphen and schedules and
+ * nothing above them (`StandingLaw`), so such an address is never a unit of
+ * it. Read by its number it was one: „Abschnitt 4" became „4", and the
+ * engine wrote the Abschnitt's heading over § 4 (02.10.2026).
+ */
+export function isDivision(label: string | null | undefined): boolean {
+  return /^(?:(?:Haupt|Unter)?Abschnitt|Hauptstück|Teil|Titel|Kapitel|Buch)\b/i.test((label ?? '').trim())
+}
+
+/**
  * The key a unit is held under — **the bare number, and for a schedule its
- * kind as well**.
+ * kind as well**; a division above the § (`isDivision`) keeps its whole
+ * designation, a key space of its own that no § and no schedule shares.
  *
  * Every stock, map and denominator in the consolidation path keys a unit by
  * its number, because inside one law that is unique: „§ 5" is „5". A schedule
@@ -53,6 +67,9 @@ export function isSchedule(label: string | null | undefined): boolean {
  */
 export function unitKey(label: string | null): string | null {
   if (!label) return null
+  // „Abschnitt 4" is not § 4: a failed instruction on the Abschnitt locked
+  // § 4 at the gate under the bare number (01.10.2026).
+  if (isDivision(label)) return label.replace(/\s+/g, ' ').trim()
   const id = bareParaId(label)
   if (!isSchedule(label)) return id
   return id === null ? 'Anl.' : `Anl. ${id}`

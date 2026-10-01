@@ -62,7 +62,7 @@ import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { PARLIAMENT, getJson, risJson as risQuery, scriptUserAgent } from '../lib/http'
 import { asArray, pickExplanations, pickTextComparisons } from '../lib/ris'
-import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
+import { anlageLabelKey, bareParaId, isDivision } from '../../server/utils/text/designation'
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs'
 
 const SCRIPT = 'harness/me'
@@ -101,6 +101,13 @@ const annexSource = (argAssigned('annex') ?? 'ris') as 'ris' | 'parlament'
  * once that is measured does a rule belong in `server/utils`.
  */
 const withExplanations = argFlag('erl')
+/**
+ * The bare number this Prüfstand holds its §§ under — and none for a division
+ * above the § („Abschnitt 4"), which the site keys apart (`unitKey`) and
+ * which locked § 4 here under its number.
+ */
+const harnessKey = (label: string): string | null => (isDivision(label) ? null : bareParaId(label))
+
 const verbose = !argFlag('quiet')
 const dumpFile = argAssigned('dump') ?? null
 if (dumpFile) writeFileSync(dumpFile, '')
@@ -205,9 +212,6 @@ async function parliamentAnnexHtml(risId: string): Promise<string | null> {
   if (!link) return null
   return await getText(link.startsWith('http') ? link : `${PARLIAMENT}${link}`)
 }
-
-/** "§ 5" → "5", the id `parseKonsParagraph` gives a paragraph. The shipped reader. */
-const paraId = bareParaId
 
 /** RIS prints an Anlage as "Anl. 2"; an instruction says "Anlage 2" (or "Anhang 2"). */
 const labelKey = anlageLabelKey
@@ -390,7 +394,7 @@ async function verifyLaw(
   result.applied = results.filter((r) => r.applied).length
 
   // The site's reading (`refusedUnits`), keyed by the bare number this Prüfstand holds its §§ under.
-  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), bareParaId)
+  const refusedIds = refusedUnits(unresolved, refused.map((r) => r.line), harnessKey)
 
   if (verbose) {
     console.log(`\n${draft.id}${article.number ? ` ${article.number}` : ''} — ${result.law} (Begutachtung ab ${draft.beginn})`)
@@ -404,7 +408,7 @@ async function verifyLaw(
   for (const { op, payload } of instructions) {
     const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
     if (address?.para) {
-      const id = paraId(address.para)
+      const id = harnessKey(address.para)
       if (id) touched.add(id)
     }
     if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) touched.add(p.id)
@@ -426,7 +430,7 @@ async function verifyLaw(
       .filter(({ instruction: { op, payload } }) => {
         const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
         if (address?.level === 'document') return true
-        if (address?.para && paraId(address.para) === id) return true
+        if (address?.para && harnessKey(address.para) === id) return true
         if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') return payload.some((p) => p.id === id)
         return false
       })

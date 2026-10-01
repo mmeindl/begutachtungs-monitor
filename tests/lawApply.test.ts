@@ -1040,6 +1040,33 @@ describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () =>
   })
 })
 
+describe('an Abschnitt is not the § of its number (02.10.2026)', () => {
+  // The standing text holds no Abschnitt. Looked up by the number, every one
+  // of these wrote into § 4 and reported success.
+  it.each([
+    ['Die Überschrift des 4. Abschnitts lautet:', ['Schlussbestimmungen']],
+    ['Der 4. Abschnitt lautet:', ['§ 10. Neu.']],
+    ['Im 4. Abschnitt wird das Wort "Amt" durch das Wort "Behörde" ersetzt.', []],
+    ['Abschnitt 4 entfällt.', []],
+  ])('refuses „%s"', (line, payload) => {
+    const l: StandingLaw = { paragraphs: [para('4', 'Zuständigkeit', ['Das Amt entscheidet.'])] }
+    const { law: out, results, unresolved } = run(l, instr(line, payload))
+    expect(results[0]!.reason).toMatch(/Gliederung über dem Paragraphen/)
+    expect(out.paragraphs[0]!.heading).toBe('Zuständigkeit')
+    expect(plainText(out.paragraphs[0]!)).toBe('Zuständigkeit Das Amt entscheidet.')
+    expect([...unresolved]).toEqual(['Abschnitt 4'])
+  })
+
+  // Gaswirtschaftsgesetz 2011: a new § is wholly its payload, so it goes where
+  // its number puts it — not behind § 2, where the Abschnitt's number sent it.
+  it('inserts the §§ an Abschnitt anchors by their number', () => {
+    const l: StandingLaw = { paragraphs: [para('2', 'A', ['Zwei.']), para('148', 'B', ['Alt.']), para('149', 'C', ['Neun.'])] }
+    const { law: out, results } = run(l, instr('Nach der Überschrift zum 2. Abschnitt des 15. Teils werden folgende §§ 148a und 148b samt Überschriften eingefügt:', ['§ 148a. Erstens', 'Text a.', '§ 148b. Zweitens', 'Text b.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(out.paragraphs.map((p) => p.id)).toEqual(['2', '148', '148a', '148b', '149'])
+  })
+})
+
 describe('„jeweils" bei einer Operation an einer Stelle (02.10.2026)', () => {
   // „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz" (KommAustria-
   // Gesetz): the sentence branch resolved the address once, struck the
