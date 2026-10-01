@@ -1266,6 +1266,31 @@ Vorlage, gelesen, alle vier „geändert" (Drift 17–46 %, „aufgrund des
 Informationsfreiheitsgesetzes" wurde „auf Grund des IFG"). XXVI und XXVII: 0
 dazu, 0 verloren, kein Urteil bewegt.
 
+**Nachgelesen am 02.10.2026: 32/ME XXVIII, das Paket aus drei Gesetzen.** Die
+„Passagen ohne Artikelmarke" waren keine Eigenheit des Dokuments: Beide
+Erläuterungen überschreiben jedes Gesetz („Zu Artikel 1:
+Elektrizitätswirtschaftsgesetz", „Zu Artikel 2:
+Energiearmuts-Definitions-Gesetz", „Zu Artikel 3: Energie-Control-Gesetz"), und
+gelöscht hat die Marke der Parser — an einer Prosazeile mit zwei zitierten
+Artikeln (der Absatz zum Artikel eines anderen Rechtsakts, oben). Seither
+stehen alle Passagen beider Dokumente unter ihrem Artikel, und von den 199
+gepaarten §-Einheiten sind 59 statt 111 ohne Begründung. Ein eigener
+Schlüssel braucht es nicht, und gebaut ist hier nichts. Die 59 bleiben, und
+zwar aus Gründen des Dokuments: 47 erklärt keine der beiden Erläuterungen
+unter ihrem eigenen § (die Erläuterungen zum ElWG gehen nur ausgewählte §§
+durch, so fehlen etwa die §§ 81 bis 84 der Vorlage; das Energiearmuts-Gesetz
+springt von § 7 zu § 12), 4 erklärt nur die Vorlage. Die übrigen 8 stehen
+unter einer §-Überschrift ohne eigenen Absatz, deren Begründung ganz in
+Unterüberschriften steht, die in Prosa weiterlaufen: „Zu § 6
+(Begriffsbestimmungen):", darunter „Zu Z 5 (Aggregierung): Durch die
+Wortfolge … soll zum Ausdruck gebracht werden …". Der Parser legt diese
+Prosa in die Überschrift, nicht in den Text, und eine Passage ohne Text
+vergleicht nichts. Das ist eine eigene Frage und keine Frage des Artikels.
+Über die 688 Erläuterungen des Korpus tragen 550 Passagen in 57 Dokumenten
+ihre Begründung nur in der Überschrift, zusammen rund 246.000 Zeichen. Sie
+als Text zu lesen, änderte den Text vieler Einträge, die heute ein Urteil
+tragen. Das gehört alt gegen neu gemessen, bevor es gebaut wird.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and
