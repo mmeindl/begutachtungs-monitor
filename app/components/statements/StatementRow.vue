@@ -81,7 +81,7 @@ function linkAriaLabel(citation: string): string {
        auto-placement would push the date, which sits in the track to its
        left, onto a second row. -->
   <li
-    class="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 row-cols:grid-cols-[6rem_minmax(8rem,1fr)_8.5rem_3.5rem_7.5rem]"
+    class="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 row-cols:grid-cols-[6rem_minmax(8rem,1fr)_8.5rem_3.5rem_9rem]"
   >
     <!-- Two lines, not one: what distinguishes these submitters sits at the
          END of the name ("Amt der Kärntner Landesregierung; Abteilung 1 –
@@ -183,9 +183,11 @@ function linkAriaLabel(citation: string): string {
            citation column in place on the rows without Zustimmungen — which
            is most of them. A grouped row prints the organisation's sum here
            and labels it as one; the sub-rows print what upstream counted for
-           each Stellungnahme. -->
+           each Stellungnahme. 9rem and no wrap: the track holds "9.999
+           Zustimmungen" on one line — at 7.5rem a three-digit count already
+           pushed the word onto a second line. -->
       <span
-        class="tabular-nums text-ink-secondary row-cols:col-start-5 row-cols:row-start-1 row-cols:text-right"
+        class="whitespace-nowrap tabular-nums text-ink-secondary row-cols:col-start-5 row-cols:row-start-1 row-cols:text-right"
       >
         <slot name="meta" />
       </span>

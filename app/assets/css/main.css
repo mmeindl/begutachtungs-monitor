@@ -187,21 +187,23 @@
  * (A container query measures the CONTENT box, so the panel's 1px borders
  * count against it.)
  *
- * 45rem = 720px of list width. Not the width at which the tracks first fit —
+ * 46.5rem = 744px of list width. Not the width at which the tracks first fit —
  * that is ~600px — but the width at which the identity column still holds a
- * whole name: 720 - 32 row inset - 96 date - 136 citation - 56 PDF-Tag - 120
+ * whole name: 744 - 32 row inset - 96 date - 136 citation - 56 PDF-Tag - 144
  * Zustimmungen - 4x12 gap = 232px, and at three clamped lines of text-sm
  * that is ~90 characters — past the longest name measured in GP XXVIII
  * ("Universität Wien / Rechtswissenschaftliche Fakultät; Institut für
  * Strafrecht und …"). The threshold was set for a two-line clamp and a
  * narrower citation track; the clamp went to three lines first, which is
- * what left the room the PDF tag now takes.
+ * what left the room the PDF tag now takes. The Zustimmungen track went from
+ * 120 to 144px so a three- or four-digit count stays on one line, and the
+ * threshold moved up by the same 24px so the name keeps its 232px.
  * Below it the name clamps mid-name, and what tells these submitters apart
  * sits at the END of it ("… Abteilung 1 – Verfassungsdienst"). The stacked
  * layout gives the name the full width, so under the threshold it is not the
  * compromise, it is the better row.
  */
-@custom-variant row-cols (@container list (min-width: 45rem));
+@custom-variant row-cols (@container list (min-width: 46.5rem));
 
 /*
  * `divide-y` for a list whose overflow rows are `hidden` until find-in-page
