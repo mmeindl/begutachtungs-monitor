@@ -13,6 +13,8 @@
 import { parseParliamentHtml } from './parliamentHtml'
 import { normalizeText, stripQuotes } from './normalize'
 import { parseRisXml } from './risXml'
+import { promulgationByArticle } from './draftArticles'
+import type { BgblCitation } from './bgblCitation'
 
 export type BlockKind =
   | 'para_head' // 45UeberschrPara — the § heading line ("Anwendungsbereich")
@@ -53,6 +55,16 @@ export interface LawUnit {
   quotedHeadings: string[]
   text: string
   blocks: TextBlock[]
+  /**
+   * The Stammnorm of the law this unit's Artikel amends, read from the
+   * Artikel's Promulgationsklausel (`promulgationByArticle`); null for a new
+   * law or a clause that cites none. The clause is no unit of its own — it
+   * stands before the first instruction — so this is where it survives
+   * segmentation. `pairArticles` reads it: „Änderung des EU-JZG" and the long
+   * title of the same law both cite its Stammnorm, 36/2004 (XXVI 162/ME,
+   * docs/architecture.md §12.18).
+   */
+  stammnorm: BgblCitation | null
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +235,7 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
         finalId = `${id}#dup`
       }
     }
-    const unit: LawUnit = { article, articleNumber, id: finalId, heading, quotedHeadings: [], text: first.text, blocks: [first] }
+    const unit: LawUnit = { article, articleNumber, id: finalId, heading, quotedHeadings: [], text: first.text, blocks: [first], stammnorm: null }
     units.push(unit)
     byKey.set(`${article ?? '?'} ${finalId}`, unit)
     return unit
@@ -401,7 +413,12 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     if (current) current.blocks.push(b)
   }
 
-  for (const u of units) u.text = u.blocks.map((x) => x.text).join(' ')
+  // Keyed as the units are (`articleTitle ?? articleNumber`), by contract.
+  const clauses = promulgationByArticle(blocks)
+  for (const u of units) {
+    u.text = u.blocks.map((x) => x.text).join(' ')
+    u.stammnorm = clauses.get(u.article) ?? null
+  }
   return units
 }
 

@@ -796,7 +796,7 @@ describe('Schreibweise einer Fundstelle (26.09.2026)', () => {
 describe('compound lines and punctuation (2026-09-09)', () => {
   it('refuses a compound line whole when one half is not read', () => {
     // Half-applying turned a full stop into a comma and stopped there.
-    const units = [{ article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], text: '', blocks: [{ kind: 'novao' as const, cls: '', text: '1. In § 5 Abs. 1 wird der Punkt am Ende durch einen Beistrich ersetzt und es wird folgende Wendung angefügt:', gld: null }, { kind: 'abs' as const, cls: '', text: '"sofern nichts anderes bestimmt ist."', gld: null }] }]
+    const units = [{ article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], stammnorm: null, text: '', blocks: [{ kind: 'novao' as const, cls: '', text: '1. In § 5 Abs. 1 wird der Punkt am Ende durch einen Beistrich ersetzt und es wird folgende Wendung angefügt:', gld: null }, { kind: 'abs' as const, cls: '', text: '"sofern nichts anderes bestimmt ist."', gld: null }] }]
     const { instructions, refused } = instructionsFromUnits(units)
     expect(instructions).toHaveLength(0)
     expect(refused).toHaveLength(1)
@@ -872,7 +872,7 @@ describe('forms from the held-out corpus (2026-09-09)', () => {
   })
 
   it('refuses a payload that is a table, and a standing § that holds one', () => {
-    const units = [{ article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], text: '', blocks: [{ kind: 'novao' as const, cls: '', text: '1. § 6 Abs. 1 lautet:', gld: null }, { kind: 'other' as const, cls: 'table:absatz/tabtext', text: '2022 7,5 Mio. Euro', gld: null }] }]
+    const units = [{ article: null, articleNumber: null, id: 'Z1', heading: null, quotedHeadings: [], stammnorm: null, text: '', blocks: [{ kind: 'novao' as const, cls: '', text: '1. § 6 Abs. 1 lautet:', gld: null }, { kind: 'other' as const, cls: 'table:absatz/tabtext', text: '2022 7,5 Mio. Euro', gld: null }] }]
     const { instructions, refused } = instructionsFromUnits(units)
     expect(instructions).toHaveLength(0)
     expect(refused[0]!.reason).toMatch(/Tabelle/)

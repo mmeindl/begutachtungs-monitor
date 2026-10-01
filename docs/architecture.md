@@ -7346,6 +7346,76 @@ standen am 28.09. schon bei 0 — die Paarungskorrekturen des Vortags hatten
 sie mitgenommen. Die Basisrate verschiebt sich nicht (XXVII n 283, 46 / 63 /
 75 %).
 
+**Nachtrag 01.10.2026: Langtitel gegen Abkürzung — die Stammnorm steht für
+den Namen.** XXVI 162/ME führt das EU-JZG unter seinem Langtitel („Änderung
+des Bundesgesetzes über die justizielle Zusammenarbeit in Strafsachen mit den
+Mitgliedstaaten der Europäischen Union"), die Vorlage als „Änderung des
+EU-JZG". Keine Namensprobe trifft: die Abkürzungsprobe verlangt den ersten
+Buchstaben des langen Namens vorn, und „EU" steht dort am Ende. Unter ME → RV
+stand das Gesetz deshalb auf beiden Seiten als „nur hier", und seit dem
+Schnitt nach Gesetzen (§12.33) fielen seine 46 Einheiten auch aus den
+späteren Paaren.
+
+**Gemessen vor dem Bau** (`pnpm corpus:aenderungsrate -- --gp <GP>
+--unpaired`): Ein Gesetz unter zwei Namen kann nur dort stehen, wo **beide**
+Seiten einen ungepaarten Artikel tragen — 4 Entwürfe in XXVI, 4 in XXVII, 3
+in XXVIII. Alle elf gelesen: nur 162/ME ist dasselbe Gesetz in Lang- und
+Kurzform. Neun sind verschiedene Gesetze (die Vorlage nahm eines heraus und
+ein anderes dazu), und XXVI 77/ME ist ein anderer Fehler: der Entwurf
+benennt sein neues Gesetz nach der Überschrift „1. Abschnitt …", die Vorlage
+nach dem Titel (PLABG), beide Seiten 26 Einheiten.
+
+Was die beiden Titel von 162/ME verbindet, steht nicht im Titel, sondern in
+der Promulgationsklausel: beide zitieren die Stammnorm 36/2004. Die Klausel
+ist keine Einheit, `segmentUnits` hat sie bisher verworfen; jetzt trägt jede
+Einheit die Stammnorm ihres Artikels (`LawUnit.stammnorm`, gelesen von
+`promulgationByArticle`, mit dem auch „Geltendes Recht" und die
+Paragraphentitel ihr Gesetz finden). Das kostet keine Anfrage — die Klausel
+steht im ohnehin geladenen Dokument. Die Gesetzesnummer aus dem RIS wäre
+schärfer, kostet aber je Artikel eine Anfrage, und gebraucht würde sie genau
+dort, wo die Regel ohnehin verweigert (unten).
+
+**Geeicht über drei Perioden, bevor sie paaren durfte:**
+
+- **Die Stammnorm benennt kein Gesetz.** 73 Paare aus einem Artikel des
+  Entwurfs und einem *anderen* Gesetz der Vorlage zitieren dieselbe — ein
+  BGBl schafft oft mehrere Gesetze, das Fremdenrechtspaket BGBl. I
+  Nr. 100/2005 allein vier. Zwei dieser Geschwister teilen sogar ihre
+  Paragraphen (BFA-Einrichtungsgesetz und BFA-Verfahrensgesetz, 87/2012,
+  XXVIII 74/ME; Eltern-Kind-Pass-Gesetz und eEltern-Kind-Pass-Gesetz, XXVIII
+  60/ME). Deshalb ersetzt die Stammnorm in der Paragraphen-Probe nur den
+  Namen, nie die Paragraphen, und nur wo kein zweiter Artikel desselben Texts
+  sie zitiert. Damit bleibt von den 73 keines übrig.
+- **Sie ist auch kein Veto.** Von den 1.620 Paaren der übrigen Regeln, deren
+  Klauseln beide eine Stammnorm zitieren, nennen 10 dasselbe Gesetz unter
+  verschiedener Nummer (das ABGB als „JGS Nr. 936/1811", das
+  Bankwesengesetz als 917/1993 statt 532/1993, vertippte Jahreszahlen).
+- **Den Teil tippt das Ressort von Hand.** 26 der 1.620 unterscheiden sich
+  nur darin, dass eine Seite das „I" weglässt oder dazuschreibt; 162/ME selbst
+  schreibt „BGBl. Nr. 36/2004". `sameStammnormCited` lässt einen fehlenden
+  Teil zu, zwei verschiedene Teile nicht; `sameBgbl` bleibt für den RIS-Join
+  streng.
+
+**Wirkung** (dieselben Läufe mit `--pairs`, `--reasoning`, `--ziffer`, Zeilen
+alt gegen neu): **ein** neues Paar in drei Perioden, 162/ME, Regel
+`stammnorm`. Von Hand gelesen: 8 der 9 Ziffern des Entwurfs finden ihre
+Anordnung in der Vorlage, in Reihenfolge (Z 1 → Z 12 … Z 9 → Z 44); 4
+unverändert, 4 geändert (das doppelte „wird wird" berichtigt, „Absatz" zu
+„Abs.", „StPO" in den Zitaten), eine entfällt, 38 kommen dazu. ME → RV für
+162/ME: 67 → 114 Einheiten (unverändert 25 → 29, geändert 22 → 26, neu 14 →
+52, entfallen 6 → 7); der Paketsatz nennt 4 statt 5 Gesetze „nur in der
+Vorlage" und 1 statt 2 „nur im Entwurf" — das Strafregistergesetz, das die
+Vorlage wirklich nicht mehr ändert. Kein anderer Entwurf bewegt sich, kein
+Eimer wechselt, die Basisrate bleibt (XXVI n 104, 34 / 50 / 73 %; XXVII n
+283, 46 / 63 / 75 %; XXVIII n 91, 29 / 57 / 76 %), Phantompaare 0 in allen
+drei. Die späteren Paare (`pnpm corpus:bgbl-station -- --gp XXVI --scope
+--cache`): 162/ME rv→bgbl 61 → 107 Einheiten, substanziell geändert 3 → 4,
+außerhalb 5 Gesetze mit 95 Einheiten → 4 mit 49; dieselbe Verschiebung in
+rv→ausschuss, rv→plenum und ausschuss→plenum/bgbl. XXVII und XXVIII
+unverändert. Die Begründung an der Ziffer findet für vier der neu gepaarten
+Einheiten ihre Passage (XXVI: Einheiten mit gezeigter Begründung 2.461 →
+2.465, Vergleiche 1.328 → 1.330).
+
 
 ### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
 
@@ -9766,7 +9836,9 @@ auch, wo der Text des Entwurfs nicht lesbar ist.
   Paaren. Unter ME → RV steht derselbe Fehler schon (das Gesetz auf beiden
   Seiten als nur dort vorhanden genannt). Betroffen ist einer von 30
   Entwürfen, und die Stelle für den Fix ist die Abkürzungsprobe in
-  `pairArticles`.
+  `pairArticles`. *Behoben am 01.10.2026, nicht an der Abkürzungsprobe,
+  sondern über die Stammnorm der Promulgationsklausel (§12.18, Nachtrag):
+  rv→bgbl für 162/ME 61 → 107 Einheiten, außerhalb 4 Gesetze statt 5.*
 - **Fünf gebündelte Entwürfe, deren Text das Parlament nur als PDF führt**
   (XXVII 6, 11; XXVI 12, 89, 92), liest die Seite aus dem RIS; das Messskript
   baut diesen Rückfall nicht nach und zählt sie nur. Am gebauten Server sind

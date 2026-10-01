@@ -125,3 +125,30 @@ function organKey(organ: string): string {
 export function sameBgbl(a: BgblCitation, b: BgblCitation): boolean {
   return organKey(a.organ) === organKey(b.organ) && a.nummer === b.nummer
 }
+
+/** "BGBl. I Nr." → { series: "bgbl", teil: "i" }; "BGBl. Nr." → teil null. */
+function organParts(organ: string): { series: string; teil: string | null } {
+  const tokens = organ.toLowerCase().split(/[^a-zäöüß0-9]+/).filter(Boolean)
+  if (tokens.length > 1 && (tokens.at(-1) === 'nr' || tokens.at(-1) === 's')) tokens.pop()
+  const teil = tokens.length > 1 && /^i{1,3}$/.test(tokens.at(-1)!) ? tokens.pop()! : null
+  return { series: tokens.join(''), teil }
+}
+
+/**
+ * Two legislative texts citing the same Stammnorm, where one dropped the Teil
+ * or added one (01.10.2026). Not for the RIS join — there `sameBgbl` holds,
+ * because RIS always writes the Teil and „BGBl. I" against „BGBl. III" is two
+ * laws. Between a draft and its Vorlage the Teil is typed by hand: of the
+ * 1.620 Artikel pairs of GP XXVI–XXVIII where both clauses cite a Stammnorm,
+ * 26 differ in nothing but a Teil one side left out or added — „BGBl. Nr.
+ * 36/2004" for the EU-JZG (XXVI 162/ME), „BGBl. Nr. 53/2016" for the
+ * Familienzeitbonusgesetz, „BGBl. I Nr. 839/1992" for the Passgesetz, which
+ * predates the Teile. A missing Teil is therefore no contradiction; two
+ * different Teile still are.
+ */
+export function sameStammnormCited(a: BgblCitation, b: BgblCitation): boolean {
+  if (a.nummer !== b.nummer) return false
+  const x = organParts(a.organ)
+  const y = organParts(b.organ)
+  return x.series === y.series && (x.teil === y.teil || x.teil === null || y.teil === null)
+}

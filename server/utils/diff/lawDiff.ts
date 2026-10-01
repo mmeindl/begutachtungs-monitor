@@ -27,6 +27,7 @@ import type { LawUnit } from '../lawtext/lawUnits'
 import { compareKey, normalizeText } from '../lawtext/normalize'
 import { articleNameTokens, jaccardSimilarity } from '../lawtext/lawNames'
 import { bareParaId, leadingArticleKey } from '../text/designation'
+import { sameStammnormCited, type BgblCitation } from '../lawtext/bgblCitation'
 import { instructionParagraphs } from '../lawtext/instructionAddress'
 import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity, type TokenDiff } from './wordDiff'
 
@@ -37,6 +38,8 @@ import { diffTokens, isAddressOnlyDifference, isEditorialChange, tokenSimilarity
 interface ArticleRef {
   article: string | null
   number: string | null
+  /** The Stammnorm the Artikel's Promulgationsklausel cites (`LawUnit.stammnorm`). */
+  stammnorm: BgblCitation | null
 }
 
 function distinctArticles(units: readonly LawUnit[]): ArticleRef[] {
@@ -46,7 +49,7 @@ function distinctArticles(units: readonly LawUnit[]): ArticleRef[] {
     const k = u.article ?? ''
     if (seen.has(k)) continue
     seen.add(k)
-    out.push({ article: u.article, number: u.articleNumber })
+    out.push({ article: u.article, number: u.articleNumber, stammnorm: u.stammnorm })
   }
   return out
 }
@@ -62,7 +65,7 @@ export function pairArticles(from: readonly LawUnit[], to: readonly LawUnit[]): 
 }
 
 /** Which rule made a pair — the measured surface of `pairArticles` (`scripts/corpus/aenderungsrate.ts --pairs`). */
-export type ArticlePairVia = 'only' | 'title' | 'sameName' | 'shortTitle' | 'contained' | 'number' | 'addressed'
+export type ArticlePairVia = 'only' | 'title' | 'sameName' | 'shortTitle' | 'contained' | 'number' | 'addressed' | 'stammnorm'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** `pairArticles` with the rule behind each pair, in the order the pairs were made. */
@@ -182,22 +185,39 @@ export function articlePairs(from: readonly LawUnit[], to: readonly LawUnit[]): 
   // law under its long name („Bundesgesetz über Krankenanstalten und
   // Kuranstalten", 20/ME), which otherwise would be called absent from the
   // Vorlage while it stands there.
+  //
+  // The name may also be the law's Stammnorm (01.10.2026). A long title
+  // against an abbreviation shares no string — „Änderung des Bundesgesetzes
+  // über die justizielle Zusammenarbeit in Strafsachen mit den Mitgliedstaaten
+  // der Europäischen Union" against „Änderung des EU-JZG" (XXVI 162/ME) —,
+  // but both Promulgationsklauseln cite its Stammnorm, 36/2004 (the draft
+  // without the Teil, `sameStammnormCited`). The citation
+  // stands in for the name, never for the §§: one BGBl regularly creates
+  // several laws — the Fremdenrechtspaket BGBl. I Nr. 100/2005 alone is four
+  // —, and over GP XXVI–XXVIII 73 pairs of different Artikel of one draft
+  // and its Vorlage cite the same Stammnorm. So it counts only where no
+  // second Artikel of either text cites it (`sameStammnorm`). Nor is it a
+  // veto: 10 of the 1.620 pairs the other rules made with a citation on both
+  // sides cite the same law differently („JGS Nr. 936/1811" for the ABGB's
+  // 946/1811, „BGBl. Nr. 917/1993" for the Bankwesengesetz's 532/1993).
   for (const m of fromArts) {
     if (map.has(m.article) || namesSeveralLaws(m.article, from)) continue
     const mine = addressesOf(from, m.article)
     if (mine.size < 2) continue
+    // A nameless title („Artikel 1", XXVII 92/ME) cannot contradict; there
+    // the §§ alone decide. Both named, both have to agree.
+    const sameName = (r: ArticleRef) => namesNoLaw(m.article) || namesNoLaw(r.article) || sameCompactName(m.article, r.article)
     const candidates = toArts.filter((r) => {
       if (usedTo.has(r)) return false
       const theirs = addressesOf(to, r.article)
-      // A nameless title („Artikel 1", XXVII 92/ME) cannot contradict; there
-      // the §§ alone decide. Both named, both have to agree.
-      const names = namesNoLaw(m.article) || namesNoLaw(r.article) || sameCompactName(m.article, r.article)
-      return theirs.size >= 2 && overlapOf(mine, theirs) >= SAME_ADDRESSES_AT && names
+      if (theirs.size < 2 || overlapOf(mine, theirs) < SAME_ADDRESSES_AT) return false
+      return sameName(r) || sameStammnorm(m, r, fromArts, toArts)
     })
     if (candidates.length !== 1) continue
-    map.set(m.article, candidates[0]!.article)
-    via.set(m.article, 'addressed')
-    usedTo.add(candidates[0]!)
+    const r = candidates[0]!
+    map.set(m.article, r.article)
+    via.set(m.article, sameName(r) ? 'addressed' : 'stammnorm')
+    usedTo.add(r)
   }
   return result()
 }
@@ -248,6 +268,21 @@ function numberHolds(m: ArticleRef, r: ArticleRef, a: ReadonlySet<string>, b: Re
   if (sameAddresses(a, b)) return true
   if (!namesNoLaw(m.article) && !namesNoLaw(r.article)) return false
   return a.size === 0 || b.size === 0 || overlapOf(a, b) >= SAME_ADDRESSES_AT
+}
+
+/**
+ * Both Promulgationsklauseln cite one Stammnorm — a missing Teil tolerated
+ * (`sameStammnormCited`) — and no other Artikel of either text cites it. Where
+ * a second one does, the BGBl created several laws and the citation cannot
+ * say which: over GP XXVIII two such siblings also share their §§ (BFA-
+ * Einrichtungsgesetz and BFA-Verfahrensgesetz, both BGBl. I Nr. 87/2012, in
+ * 74/ME; Eltern-Kind-Pass-Gesetz and eEltern-Kind-Pass-Gesetz in 60/ME).
+ */
+function sameStammnorm(m: ArticleRef, r: ArticleRef, fromArts: readonly ArticleRef[], toArts: readonly ArticleRef[]): boolean {
+  const cited = m.stammnorm
+  if (cited === null || r.stammnorm === null || !sameStammnormCited(cited, r.stammnorm)) return false
+  const citing = (arts: readonly ArticleRef[]) => arts.filter((a) => a.stammnorm !== null && sameStammnormCited(cited, a.stammnorm)).length
+  return citing(fromArts) === 1 && citing(toArts) === 1
 }
 
 /**

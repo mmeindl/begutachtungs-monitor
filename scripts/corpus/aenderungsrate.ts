@@ -11,6 +11,7 @@
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --reasoning [--show-para inr]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --multi | --addresses
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer [--list]
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --pairs | --unpaired
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
  * reproduce is a second opinion, not a number about the page. So every draft
@@ -78,6 +79,7 @@ import { articleNameTokens } from '../../server/utils/lawtext/lawNames'
 import { mapDraftRow } from '../../server/utils/parliament/list81'
 import { dedupeMeRows, joinRisToMe, toMeListRows } from '../../server/utils/ris/risJoin'
 import type { RisBegutFlat } from '../../server/utils/ris/risRecord'
+import { sameBgbl, sameStammnormCited, type BgblCitation } from '../../server/utils/lawtext/bgblCitation'
 import { upstreamBytes } from '../../server/utils/upstream/fetch'
 import { PARLIAMENT, getJson, scriptUserAgent } from '../lib/http'
 import { cachedJson, cachedText } from '../lib/diskCache'
@@ -1277,6 +1279,7 @@ if (argFlag('addresses')) addressesReport()
 if (argFlag('reasoning')) await reasoningReport()
 if (argFlag('multi')) await multiReport()
 if (argFlag('pairs')) pairsReport()
+if (argFlag('unpaired')) unpairedReport()
 
 /**
  * `--pairs` (27.09.2026): which rule of `pairArticles` made each pair, over
@@ -1319,7 +1322,7 @@ function pairsReport(): void {
     const toArticles = [...new Set(toUnits.map((u) => u.article))]
     for (const p of pairs) {
       byVia.set(p.via, (byVia.get(p.via) ?? 0) + 1)
-      if (p.via === 'addressed' || p.via === 'contained' || p.via === 'sameName' || p.via === 'shortTitle') console.log(`    ${p.via.padEnd(9)} ${inr}/ME  ${String(p.from).slice(0, 70)}  ⇒  ${String(p.to).slice(0, 70)}`)
+      if (p.via === 'addressed' || p.via === 'stammnorm' || p.via === 'contained' || p.via === 'sameName' || p.via === 'shortTitle') console.log(`    ${p.via.padEnd(9)} ${inr}/ME  ${String(p.from).slice(0, 70)}  ⇒  ${String(p.to).slice(0, 70)}`)
       const a = addressesOf(fromUnits, p.from)
       if (p.via === 'title') {
         const o = addressOverlap(a, addressesOf(toUnits, p.to))
@@ -1382,4 +1385,112 @@ function pairsReport(): void {
   console.log(`  Eichung §-Überlappung — nach Titel gepaart: ${dist(titleOverlaps)}`)
   console.log(`  Eichung §-Überlappung — fremde Artikel:     ${dist(strangerOverlaps)}; ≥ 50 %: ${strangerOverlaps.filter((x) => x >= 0.5).length}`)
   console.log(`  fremde Artikel mit ≥ 80 % nach kleinerer Menge: ${[...strangerBySize].sort().map(([k, v]) => `${k}: ${v.hit} von ${v.n}`).join(' · ')}`)
+}
+
+/**
+ * `--unpaired` (01.10.2026): every draft with an Artikel left unpaired on
+ * BOTH sides — the class where one side may carry a law under its long title
+ * and the other under its short title or abbreviation (XXVI 162/ME:
+ * „Bundesgesetz über die justizielle Zusammenarbeit in Strafsachen mit den
+ * Mitgliedstaaten der Europäischen Union" against „Änderung des EU-JZG").
+ * Each unpaired Artikel is printed with the Stammnorm its
+ * Promulgationsklausel cites (`LawUnit.stammnorm`), each draft Artikel with
+ * its best §-overlap among the unpaired Vorlage Artikel, to be read by eye.
+ * Commencement Artikel are left out, as `diffLawPackage` leaves them out of
+ * the package note.
+ *
+ * Then the calibration of the Stammnorm as evidence: over every pair the
+ * other rules made, how often both sides cite one and the same; over every
+ * draft Artikel against every Vorlage Artikel it is NOT paired with (a
+ * different law, by construction), how often the citations coincide anyway —
+ * one BGBl regularly creates several laws (`ris/konsLaw.ts`).
+ */
+function unpairedReport(): void {
+  const commencement = /^(?:artikel\s+\S+\s+)?(?:inkrafttreten|inkrafttretens-|schlussbestimmung|übergangsbestimmung)/i
+  const isLaw = (a: string | null) => a !== null && !commencement.test(normalizeText(a).trim())
+  const stammOf = (units: readonly LawUnit[], a: string | null) => units.find((u) => u.article === a)?.stammnorm ?? null
+  const cite = (c: BgblCitation | null) => (c ? `${c.organ} ${c.nummer}` : '—')
+  let bothSides = 0
+  let oneSide = 0
+  let none = 0
+  const pairCal = new Map<string, { n: number; both: number; same: number; loose: number }>()
+  const strangers = { n: 0, both: 0, same: 0, loose: 0, withParas: 0, unique: 0 }
+  const strangerParas: string[] = []
+  const strangerSame: string[] = []
+  const pairDiffer: string[] = []
+  for (const [inr, { fromUnits, toUnits }] of [...parsed].sort((a, b) => a[0] - b[0])) {
+    const pairs = articlePairs(fromUnits, toUnits)
+    if (pairs.length === 0) {
+      none++
+      continue
+    }
+    const map = new Map(pairs.map((p) => [p.from, p.to]))
+    const toArticles = [...new Set(toUnits.map((u) => u.article))]
+    for (const p of pairs) {
+      const a = stammOf(fromUnits, p.from)
+      const b = stammOf(toUnits, p.to)
+      const e = pairCal.get(p.via) ?? { n: 0, both: 0, same: 0, loose: 0 }
+      e.n++
+      if (a && b) {
+        e.both++
+        if (sameStammnormCited(a, b)) e.loose++
+        if (sameBgbl(a, b)) e.same++
+        else pairDiffer.push(`${inr}/ME  ${p.via}  ${cite(a)} ≠ ${cite(b)}  ${String(p.from).slice(0, 50)}  ⇒  ${String(p.to).slice(0, 50)}`)
+      }
+      pairCal.set(p.via, e)
+      if (!a) continue
+      for (const t of toArticles) {
+        if (t === p.to) continue
+        const c = stammOf(toUnits, t)
+        strangers.n++
+        if (!c) continue
+        strangers.both++
+        if (sameStammnormCited(a, c)) {
+          strangers.loose++
+          const x = addressesOf(fromUnits, p.from)
+          const y = addressesOf(toUnits, t)
+          const o = addressOverlap(x, y)
+          if (x.size >= 2 && y.size >= 2 && o !== null && o >= 0.8) {
+            strangers.withParas++
+            // The rule's own guard: no second Artikel of either text cites it.
+            const citing = (units: readonly LawUnit[]) => new Set(units.filter((u) => u.stammnorm && sameStammnormCited(a, u.stammnorm)).map((u) => u.article)).size
+            const unique = citing(fromUnits) === 1 && citing(toUnits) === 1
+            if (unique) strangers.unique++
+            strangerParas.push(`${inr}/ME  ${cite(a)}  §§ ${(o * 100).toFixed(0)} % (${x.size}/${y.size})${unique ? '' : ' [nicht eindeutig]'}  ${String(p.from).slice(0, 50)}  ≠  ${String(t).slice(0, 50)}`)
+          }
+        }
+        if (sameBgbl(a, c)) {
+          strangers.same++
+          strangerSame.push(`${inr}/ME  ${cite(a)}  ${String(p.from).slice(0, 55)}  ≠  ${String(t).slice(0, 55)}`)
+        }
+      }
+    }
+    const pairedTo = new Set(map.values())
+    const fromLeft = [...new Set(fromUnits.map((u) => u.article))].filter((a) => isLaw(a) && !map.has(a))
+    const toLeft = toArticles.filter((a) => isLaw(a) && !pairedTo.has(a))
+    if (!fromLeft.length && !toLeft.length) continue
+    if (!fromLeft.length || !toLeft.length) {
+      oneSide++
+      continue
+    }
+    bothSides++
+    console.log(`  ${inr}/ME  ${fromLeft.length} im Entwurf, ${toLeft.length} in der Vorlage ungepaart`)
+    for (const f of fromLeft) {
+      const a = addressesOf(fromUnits, f)
+      const best = toLeft
+        .map((t) => ({ t, o: addressOverlap(a, addressesOf(toUnits, t)), n: addressesOf(toUnits, t).size }))
+        .sort((x, y) => (y.o ?? -1) - (x.o ?? -1))[0]!
+      const o = best.o === null ? '  – ' : `${(best.o * 100).toFixed(0).padStart(3)} %`
+      console.log(`      ME [${fromUnits.filter((u) => u.article === f).length}] {${cite(stammOf(fromUnits, f))}} ${String(f).slice(0, 90)}`)
+      console.log(`        bester nach §§ ${o} (${a.size}/${best.n})  ⇒ [${toUnits.filter((u) => u.article === best.t).length}] ${String(best.t).slice(0, 90)}`)
+    }
+    for (const t of toLeft) console.log(`      RV [${toUnits.filter((u) => u.article === t).length}] {${cite(stammOf(toUnits, t))}} ${String(t).slice(0, 90)}`)
+  }
+  console.log(`\nGP ${gp} — ungepaarte Artikel: auf beiden Seiten ${bothSides} Entwürfe, nur auf einer ${oneSide}, gar keine Paarung ${none}`)
+  console.log(`  Eichung Stammnorm — je Regel: Paare · beide mit Stammnorm · davon gleich (sameBgbl) · gleich ohne Teil (sameStammnormCited)`)
+  for (const [v, e] of [...pairCal].sort((x, y) => y[1].n - x[1].n)) console.log(`    ${v.padEnd(10)} ${String(e.n).padStart(4)} · ${String(e.both).padStart(4)} · ${String(e.same).padStart(4)} · ${e.loose}`)
+  for (const l of pairDiffer) console.log(`    ≠ ${l}`)
+  console.log(`  Eichung Stammnorm — fremde Artikel: ${strangers.n} · beide mit Stammnorm ${strangers.both} · gleich ${strangers.same} · gleich ohne Teil ${strangers.loose} · davon auch §§ ≥ 80 % (je ≥ 2): ${strangers.withParas}, davon eindeutig zitiert (die Regel paarte sie): ${strangers.unique}`)
+  for (const l of strangerParas) console.log(`    §§ ${l}`)
+  for (const l of strangerSame) console.log(`    ${l}`)
 }

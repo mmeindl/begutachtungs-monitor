@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBgbl, sameBgbl, stammnormOf } from '../server/utils/lawtext/bgblCitation'
+import { parseBgbl, sameBgbl, sameStammnormCited, stammnormOf } from '../server/utils/lawtext/bgblCitation'
 
 describe('parseBgbl', () => {
   it('splits organ and number the way RIS stores them', () => {
@@ -95,5 +95,19 @@ describe('stammnormOf', () => {
     expect(sameBgbl({ organ: 'dRGBl. S.', nummer: '219/1897' }, { organ: 'dRGBl. S', nummer: '219/1897' })).toBe(true)
     expect(sameBgbl({ organ: 'BGBl. I Nr.', nummer: '84/2001' }, { organ: 'BGBl. III Nr.', nummer: '84/2001' })).toBe(false)
     expect(sameBgbl({ organ: 'JGS Nr.', nummer: '946/1811' }, { organ: 'RGBl. Nr.', nummer: '946/1811' })).toBe(false)
+  })
+})
+
+describe('sameStammnormCited — two ministry texts citing one law (01.10.2026)', () => {
+  it('tolerates a Teil one of them dropped or added (XXVI 162/ME: „BGBl. Nr. 36/2004" for the EU-JZG)', () => {
+    expect(sameStammnormCited({ organ: 'BGBl. Nr.', nummer: '36/2004' }, { organ: 'BGBl. I Nr.', nummer: '36/2004' })).toBe(true)
+    expect(sameStammnormCited({ organ: 'BGBl. I Nr.', nummer: '839/1992' }, { organ: 'BGBl. Nr.', nummer: '839/1992' })).toBe(true)
+    expect(sameStammnormCited({ organ: 'BGBl.', nummer: '624/1978' }, { organ: 'BGBl. Nr.', nummer: '624/1978' })).toBe(true)
+  })
+
+  it('still separates two Teile, two organs and two numbers', () => {
+    expect(sameStammnormCited({ organ: 'BGBl. I Nr.', nummer: '84/2001' }, { organ: 'BGBl. III Nr.', nummer: '84/2001' })).toBe(false)
+    expect(sameStammnormCited({ organ: 'JGS Nr.', nummer: '946/1811' }, { organ: 'RGBl. Nr.', nummer: '946/1811' })).toBe(false)
+    expect(sameStammnormCited({ organ: 'BGBl. I Nr.', nummer: '36/2004' }, { organ: 'BGBl. I Nr.', nummer: '36/2005' })).toBe(false)
   })
 })

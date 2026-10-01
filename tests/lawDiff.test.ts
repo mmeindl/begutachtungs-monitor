@@ -680,6 +680,7 @@ describe('the law named inside a draft title that carries no Artikel (27.09.2026
     quotedHeadings: [],
     text: `${id} Text`,
     blocks: [],
+    stammnorm: null,
   })
   const ESTG = 'Änderung des Einkommensteuergesetzes 1988'
   const FLAG = 'Änderung des Familienlastenausgleichsgesetzes 1967'
@@ -719,9 +720,9 @@ describe('the law named inside a draft title that carries no Artikel (27.09.2026
 
 describe('diffLawPackage: nothing pairs', () => {
   it('says so instead of calling every unit removed and inserted (XXVI 9/ME: 1.119 „neu")', () => {
-    const me: LawUnit[] = [{ article: null, articleNumber: null, id: '§1', heading: null, quotedHeadings: [], text: 'x', blocks: [] }]
+    const me: LawUnit[] = [{ article: null, articleNumber: null, id: '§1', heading: null, quotedHeadings: [], text: 'x', blocks: [], stammnorm: null }]
     const rv: LawUnit[] = ['Änderung des Bundesarchivgesetzes', 'Änderung des Mediengesetzes'].map((a, i) => ({
-      article: a, articleNumber: `Artikel ${i + 1}`, id: 'Z1', heading: null, quotedHeadings: [], text: 'y', blocks: [],
+      article: a, articleNumber: `Artikel ${i + 1}`, id: 'Z1', heading: null, quotedHeadings: [], text: 'y', blocks: [], stammnorm: null,
     }))
     const d = diffLawPackage(me, rv)
     expect(d.unpaired).toBe(true)
@@ -732,7 +733,7 @@ describe('diffLawPackage: nothing pairs', () => {
 describe('the Artikel number counts only with the §§ behind it (27.09.2026)', () => {
   const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
   const u = (article: string | null, id: string, text: string, articleNumber: string | null): LawUnit => ({
-    article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [],
+    article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [], stammnorm: null,
   })
   const art = (title: string, n: number, paras: number[]) => paras.map((p, i) => u(title, `Z${i + 1}`, ins(p), `Artikel ${n}`))
 
@@ -771,7 +772,7 @@ describe('the Artikel number counts only with the §§ behind it (27.09.2026)', 
 
 describe('a nameless Artikel title pairs by its number (XXVII 85/ME, 28.09.2026)', () => {
   const u = (article: string, id: string, text: string, articleNumber: string): LawUnit => ({
-    article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [],
+    article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [], stammnorm: null,
   })
   it('pairs „Artikel 1" of the draft with the Vorlage\'s Artikel 1 when its only instruction inserts a new §', () => {
     const me = [u('Artikel 1', 'Z1', 'Nach § 11a wird folgender § 11b eingefügt: „§ 11b. Neu."', 'Artikel 1'), u('Artikel 2', 'Z1', 'In § 3 Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.', 'Artikel 2')]
@@ -793,7 +794,7 @@ describe('a nameless Artikel title pairs by its number (XXVII 85/ME, 28.09.2026)
 })
 
 describe('the short title in brackets pairs two long titles of one law (XXVI 76/ME, 28.09.2026)', () => {
-  const u = (article: string, id: string): LawUnit => ({ article, articleNumber: null, id, heading: null, quotedHeadings: [], text: `${id} Text`, blocks: [] })
+  const u = (article: string, id: string): LawUnit => ({ article, articleNumber: null, id, heading: null, quotedHeadings: [], text: `${id} Text`, blocks: [], stammnorm: null })
   const ME_NVG = 'Bundesgesetz über die Versorgung der Notare und Notarinnen sowie ihrer Hinterbliebenen (Notarversorgungsgesetz)'
   const RV_NVG = 'Bundesgesetz über die Versorgung für das österreichische Notariat (Notarversorgungsgesetz - NVG 2020)'
   it('pairs on the equal short title', () => {
@@ -809,7 +810,7 @@ describe('the short title in brackets pairs two long titles of one law (XXVI 76/
 })
 
 describe('the same law name without hyphen, and a nameless Vorlage Artikel (28.09.2026)', () => {
-  const u = (article: string, id: string, text: string, articleNumber: string | null = null): LawUnit => ({ article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [] })
+  const u = (article: string, id: string, text: string, articleNumber: string | null = null): LawUnit => ({ article, articleNumber, id, heading: null, quotedHeadings: [], text, blocks: [], stammnorm: null })
   const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
   it('pairs „Bildungsdirektionen-Einrichtungsgesetzes" with „BildungsdirektionenEinrichtungsgesetz" (XXVIII 26/ME)', () => {
     const me = [u('Änderung des Bildungsdirektionen-Einrichtungsgesetzes', 'Z1', ins(7), 'Artikel 1'), u('Änderung des IQS-Gesetzes', 'Z1', ins(5), 'Artikel 2')]
@@ -821,5 +822,60 @@ describe('the same law name without hyphen, and a nameless Vorlage Artikel (28.0
     const me = [u(title, 'Z1', ins(17)), u(title, 'Z2', ins(44)), u(title, 'Z3', ins(45))]
     const rv = [u('Artikel 1', 'Z1', ins(17), 'Artikel 1'), u('Artikel 1', 'Z2', ins(44), 'Artikel 1'), u('Artikel 1', 'Z3', ins(45), 'Artikel 1'), u('Artikel 2', 'Z1', 'In § 8 entfällt Abs. 4.', 'Artikel 2')]
     expect(articlePairs(me, rv)[0]).toMatchObject({ from: title, to: 'Artikel 1', via: 'addressed' })
+  })
+})
+
+describe('the Stammnorm stands in for the name: a long title against an abbreviation (XXVI 162/ME, 01.10.2026)', () => {
+  /** A package Artikel with its Promulgationsklausel, in RIS's element vocabulary. */
+  const article = (nr: number, title: string, clause: string, paras: number[]) =>
+    `<ueberschrift typ="g1">Artikel ${nr}</ueberschrift><ueberschrift typ="g2">${title}</ueberschrift>` +
+    `<absatz typ="promkleinlsatz">${clause}</absatz>` +
+    paras.map((p, i) => `<absatz typ="novao1">${i + 1}. In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.</absatz>`).join('')
+  const doc = (...articles: string[]) => parseLawUnitsFromRis(`<dokument>${articles.join('')}</dokument>`)
+  const LONG = 'Änderung des Bundesgesetzes über die justizielle Zusammenarbeit in Strafsachen mit den Mitgliedstaaten der Europäischen Union'
+  const SHORT = 'Änderung des EU-JZG'
+  // The draft's clause as 162/ME prints it — without the Teil.
+  const longClause = 'Das Bundesgesetz über die justizielle Zusammenarbeit in Strafsachen mit den Mitgliedstaaten der Europäischen Union, BGBl. Nr. 36/2004, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 28/2018, wird wie folgt geändert:'
+  const shortClause = 'Das Bundesgesetz über die justizielle Zusammenarbeit in Strafsachen mit den Mitgliedstaaten der Europäischen Union (EU-JZG), BGBl. I Nr. 36/2004, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 28/2018, wird wie folgt geändert:'
+  const stpo = (nr: number) => article(nr, 'Änderung der Strafprozeßordnung 1975', 'Die Strafprozeßordnung 1975, BGBl. Nr. 631/1975, wird wie folgt geändert:', [59, 61])
+
+  it('stamps each unit with the Stammnorm of its Artikel', () => {
+    const me = doc(stpo(1), article(2, LONG, longClause, [16, 30]))
+    expect(me.find((u) => u.article === LONG)!.stammnorm).toEqual({ organ: 'BGBl. Nr.', nummer: '36/2004' })
+    expect(me.find((u) => u.article === 'Änderung der Strafprozeßordnung 1975')!.stammnorm).toEqual({ organ: 'BGBl. Nr.', nummer: '631/1975' })
+  })
+
+  it('pairs the two where the §§ agree, though the draft dropped the Teil and the Vorlage renumbered', () => {
+    const me = doc(stpo(1), article(2, LONG, longClause, [16, 30]))
+    const rv = doc(
+      stpo(1),
+      article(2, 'Änderung des Bundesgesetzes über die Zusammenarbeit mit dem Internationalen Strafgerichtshof', 'Das Bundesgesetz …, BGBl. I Nr. 135/2002, wird wie folgt geändert:', [40, 41]),
+      article(3, SHORT, shortClause, [2, 16, 30, 31]),
+    )
+    expect(articlePairs(me, rv).find((p) => p.from === LONG)).toMatchObject({ to: SHORT, via: 'stammnorm' })
+    const d = diffLawPackage(me, rv)
+    expect(d.lawsOnlyInFrom).toEqual([])
+    expect(d.lawsOnlyInTo.map((l) => l.article)).toEqual(['Änderung des Bundesgesetzes über die Zusammenarbeit mit dem Internationalen Strafgerichtshof'])
+  })
+
+  it('refuses where the §§ do not agree — the citation never stands in for them', () => {
+    const me = doc(stpo(1), article(2, LONG, longClause, [16, 30]))
+    const rv = doc(stpo(1), article(3, SHORT, shortClause, [40, 41]))
+    expect(articlePairs(me, rv).find((p) => p.from === LONG)).toBeUndefined()
+  })
+
+  it('refuses where a second Artikel cites the same BGBl — one BGBl, several laws (XXVIII 74/ME: BFA-G and BFA-VG)', () => {
+    const LONG_BFA = 'Änderung des Bundesgesetzes über die Einrichtung und Organisation des Bundesamtes für Fremdenwesen und Asyl'
+    const rv = doc(stpo(1), article(4, 'Änderung des BFA-G', 'Das BFA-Einrichtungsgesetz (BFA-G), BGBl. I Nr. 87/2012, wird wie folgt geändert:', [3, 5]))
+    const alone = doc(stpo(1), article(2, LONG_BFA, 'Das Bundesgesetz …, BGBl. I Nr. 87/2012, wird wie folgt geändert:', [3, 5]))
+    expect(articlePairs(alone, rv).find((p) => p.from === LONG_BFA)).toMatchObject({ via: 'stammnorm' })
+    // The same draft with the sibling law beside it: which of the two the
+    // citation means, it cannot say.
+    const withSibling = doc(
+      stpo(1),
+      article(2, LONG_BFA, 'Das Bundesgesetz …, BGBl. I Nr. 87/2012, wird wie folgt geändert:', [3, 5]),
+      article(3, 'Änderung des BFA-Verfahrensgesetzes', 'Das BFA-Verfahrensgesetz, BGBl. I Nr. 87/2012, wird wie folgt geändert:', [9, 10]),
+    )
+    expect(articlePairs(withSibling, rv).filter((p) => p.via === 'stammnorm')).toEqual([])
   })
 })
