@@ -1381,6 +1381,12 @@ function againstReport(base: { gp: string; snapshots: Record<number, Snapshot> }
       else if (x.state !== y.state || x.key !== y.key) {
         const kind = `${x.route}: ${x.state} → ${y.route}: ${y.state}${x.state === y.state ? ' (andere Passagen)' : ''}`
         moved.set(kind, [...(moved.get(kind) ?? []), line])
+      } else if (x.drift !== y.drift) {
+        // Same key, same verdict, another text: a passage set under the
+        // unit's own (`ownedPassages`) came or went (02.10.2026).
+        const kind = `${y.route}: ${y.state}, dieselben Passagen, Text anders`
+        const was = `alt Drift ${x.drift === null ? '–' : `${(x.drift * 100).toFixed(1)} %`}`
+        moved.set(kind, [...(moved.get(kind) ?? []), `${line} (${was})`])
       }
     }
   }

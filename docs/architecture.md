@@ -1169,6 +1169,77 @@ Art. 7 Z 3 (§ 19 Abs. 3 LLVG)" unter Artikel 8, dem LLVG; die Vorlage zu XXVI
 Artikelmarke setzte). Diese stehen nicht mehr unter dem Schlüssel des
 falschen Artikels und hängen an nichts.
 
+**Nachgezogen am 02.10.2026: der Artikel eines anderen Rechtsakts ist keine
+Marke.** Die Vorlage zu 162/ME XXVI war kein Einzelfall, sondern eine Form.
+„Zu Art. 7 Abs. 4 der RL …", „Zu Art. 79 Abs. 2 Z 2:" einer B-VG-Novelle und
+„Zu Art. 5 Abs. 5 der Richtlinie (EU) 2024/1799 ist vorweg …" zitieren eine
+Bestimmung, und der Parser las sie als Artikel des Pakets: Die Passagen
+darunter standen unter Artikel 7, 79 oder 5. Die zweite Form desselben Fehlers
+war größer. Eine Überschrift, die zwei Artikel nennt, gehört keinem Gesetz
+und löscht die Marke — und gezählt wurde jedes „Art. N" der Überschrift, auch
+in der Klammer, wo die geänderte Bestimmung steht („Zu Z 9 (Art. 97 Abs. 2)
+und Z 11 (Art. 98):", „Zu Art. 5 Z 17 (Art. I Abs. 16 der Anlage zum LDG
+1984):"), und hinter dem Doppelpunkt, wo Prosa läuft („Zu Abs. 2: … gemäß
+Art. 119 und Art. 120 der Verordnung (EU) 2017/1485 …"). Ab dort stand jede
+Passage ohne Artikel — im Entwurf des Elektrizitätswirtschaftsgesetzes (32/ME
+XXVIII) 186 von 232, in seiner Vorlage 210 von 262.
+
+*Die Regel* (`explanationsHtml.ts`): Ein „Art. N", hinter dessen Nummer ein
+Absatz, ein „der"/„des" oder die Abkürzung eines Rechtsakts steht („Abs.",
+„RL", „B-VG", „EMFG"), zitiert und setzt weder Marke noch Artikelüberschrift;
+die Passage steht unter der Marke darüber. Für „mehrere Artikel" zählen nur
+die Artikel der Adresse selbst, außerhalb der Klammern und vor dem
+Doppelpunkt. Der RIS-Leser (`risExplanations.ts`) bleibt, wie er ist: Er
+nimmt Marken nur aus Überschriften-Elementen, und sein Korpus liegt nicht
+offline vor, also ist dort nichts gemessen.
+
+*Zensus* über alle 843 zwischengespeicherten Erläuterungen mit Besonderem Teil
+(33.612 Passagen), alt gegen neu durch `parseExplanationsHtml`: 1.849
+Passagen in 42 Dokumenten stehen unter einem anderen Artikel oder einer
+anderen Artikelüberschrift, und **jede danach unter dem Artikel der
+Überschrift, die über ihr gilt** — keine verliert einen, keine bekommt einen,
+den keine Überschrift nennt. Ausgelöst von 73 Überschriften, alle gelesen: 13
+mit zitiertem führendem Artikel (B-VG, Richtlinien), 60, die alt mehrere
+Artikel nannten und neu höchstens einen — jede eine Bestimmung in der Klammer
+oder ein Zitat in der Prosa.
+
+*Alt gegen neu* (`--ziffer --save` auf `b9a1ae3`, dann `--against`):
+
+| | XXVI | XXVII | XXVIII |
+|---|---|---|---|
+| (a′) Einheiten mit gezeigter Begründung | 2.710 → **2.733** | 7.145 → **7.171** | 2.742 → **2.804** |
+| verloren | 0 | 0 | 2 |
+| neu dazu | 23 | 26 | 64 |
+| verglichene Begründungen | 1.562 → 1.565 | 4.893 → 4.907 | 1.831 → 1.893 |
+| davon geändert | 613 → 613 | 2.077 → 2.081 | 730 → 754 |
+| gezeigt ohne Urteil | 113 → 120 | 296 → 300 | 112 → 111 |
+
+Gelesen sind alle neuen Einträge. In XXVIII sind 52 davon §§ des neuen
+Elektrizitätswirtschaftsgesetzes (32/ME), jeder mit „Zu § N (Überschrift)"
+auf beiden Seiten, die umnummerierten eingeschlossen („Zu § 115
+(Netzentwicklungsplan …)" gegen „Zu § 123 (…)"), dazu vier §§ des EABG
+(43/ME), die Anhang-Ziffern 193 bis 199 des BVergG (58/ME) und zwei Ziffern
+des KSchG (86/ME), die unter dem zitierten Art. 5 der Richtlinie gestanden
+hatten. In XXVII Ziffern des UStG (202, 264, 338/ME), deren Klammern Artikel
+der Binnenmarktregelung nennen, des ASFINAG-Gesetzes (292/ME) und des EGVG
+(279/ME), dazu vier §§ des EUStA-DG (99/ME). In XXVI die
+B-VG-Novelle 57/ME, Ziffern des EU-JZG (20/ME) und die StPO-Ziffern der
+162/ME, die jetzt unter ihrem Artikel 2 stehen. **Die beiden verlorenen Einheiten waren falsch
+zugeordnet:** In 58/ME XXVIII hingen Z 192 und Z 53 an Zeilen der Liste in
+§ 382 BVergG („Zu Z 34: Art. 5 Abs. 3 lit. c der Richtlinie (EU) 2024/1203
+… §§ 78, 249, … 382"), die nur nach ihren §-Zitaten passten; jetzt gehören
+diese Zeilen zu der Ziffer, unter der sie stehen. Die sieben Urteile, die in
+XXVI von „geändert" zu „ohne Urteil" wandern, sind 162/ME: Dort erklärt der
+Entwurf Z 9 und Z 10 in eigenen Passagen, die Vorlage in einer Sammelpassage
+und noch einmal einzeln — gleicher Umfang ist das nicht mehr, seit beide
+Seiten unter dem richtigen Artikel gelesen werden. Weil `--against` bisher
+nur Schlüssel und Urteil verglich, meldet es jetzt auch einen anderen Text
+unter demselben Schlüssel: zwei Einheiten, beide gelesen (99/ME XXVII § 4
+trägt jetzt seine „Zu Abs. 1 Z 2:"-Absätze; 58/ME XXVIII Z 191 im Entwurf
+die Zeilen der Liste, weil der Entwurf keine Überschrift „Zu Z 192" setzt —
+das Urteil „geändert" stand vorher schon). Urteilswechsel auf dem §-Join wie
+bisher: 0 in allen drei Perioden.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and

@@ -23,7 +23,7 @@
  * sides, or the Begründung hangs on the wrong §.
  */
 import { addressOf, ARTICLE_HEADING_RE, isAddressHeading, ziffernOf } from './risExplanations'
-import { articleKeysNamed, articleNumberKey, leadingArticleKey } from '../text/designation'
+import { articleNumberKey, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 // One reading of a designation for both sides of the lookup. Its `\b` changes
@@ -121,6 +121,57 @@ function sectionOf(heading: string): string[] | null {
   return out.size ? [...out] : null
 }
 
+/**
+ * An „Art. N" with what follows its number — the second group decides whether
+ * it is this package's Artikel or another act's (`isCitation`).
+ */
+const ARTICLE_AND_NEXT_RE = /(?<![a-zäöü])art(?:ikel)?\.?\s*([0-9]+|[ivxlcdm]+)(?![0-9a-z])\s*(\S*)/gi
+
+/**
+ * What stands after the number when the Artikel is a provision of another act
+ * — „Zu Art. 7 Abs. 4 der RL Prozesskostenhilfe …" (Vorlage to 162/ME XXVI),
+ * „Art. 13 der Verordnung (EU) Nr. 1151/2012 sieht vor …", „Art. 22 EMFG
+ * verpflichtet …", „Zu Art. 79 Abs. 2 Z 2:" of a B-VG amendment: an Absatz,
+ * a „der"/„des", or the act's abbreviation (two capitals, „RL", „B-VG").
+ * A package's own Artikel is followed by its law in brackets, a Ziffer, a §,
+ * a colon or nothing (docs/architecture.md §12.10b, 02.10.2026).
+ */
+const CITATION_WORD_RE = /^(?:abs|absatz|uabs|unterabs|lit|satz|buchst|der|des)\b/i
+const ACT_ABBREVIATION_RE = /^[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]*[A-ZÄÖÜ]/
+
+function isCitation(next: string): boolean {
+  return CITATION_WORD_RE.test(next) || ACT_ABBREVIATION_RE.test(next)
+}
+
+/** Whether a heading's leading „Art. N" cites another act rather than naming this package's Artikel. */
+function isCitedArticle(heading: string): boolean {
+  const m = /^(?:zu\s+)?art(?:ikel)?\.?\s*(?:[0-9]+[a-z]?|[ivxlcdm]+)(?![0-9a-z])\s*(\S*)/i.exec(heading)
+  return m !== null && isCitation(m[1]!)
+}
+
+/**
+ * The package's Artikel a heading names — „Zu Art. 1 Z 5 sowie zu Art. 13 Z 1"
+ * names two —, read where the address stands: outside the brackets, which
+ * carry the provision the Ziffer amends („Zu Z 9 (Art. 97 Abs. 2) und Z 11
+ * (Art. 98):" amends two Artikel of the B-VG), before the colon, after which
+ * runs prose („Zu Abs. 2: … gemäß Art. 119 und Art. 120 der Verordnung (EU)
+ * 2017/1485 …"), and without a cited Artikel (`isCitation`). Each of those
+ * read as a package Artikel made the heading one „for several laws" and
+ * cleared the mark for every passage after it.
+ */
+function ownArticleKeys(heading: string): string[] {
+  let flat = heading
+  for (let i = 0; i < 2; i++) flat = flat.replace(/\([^()]*\)/g, ' ')
+  flat = flat.split(':')[0] ?? flat
+  const out = new Set<string>()
+  for (const m of flat.matchAll(ARTICLE_AND_NEXT_RE)) {
+    if (isCitation(m[2]!)) continue
+    const key = articleNumberKey(m[1]!)
+    if (key) out.add(key)
+  }
+  return [...out]
+}
+
 /** „Zu Art. X1 (Änderung des …):" — an Artikel heading whatever its number, with the law in brackets. */
 const LAW_HEADING_RE = /^(?:zu\s+)?art(?:ikel)?\b\.?\s*[^\s(]+\s*\(/i
 
@@ -179,21 +230,24 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
 
     if (isAddressHeading(text)) {
       const paragraphs = addressOf(text).paragraphs
+      // „Zu Art. 7 Abs. 4 der RL …" names no Artikel of this package: the
+      // passage stands under the mark above it and leaves that mark alone.
+      const cited = isCitedArticle(text)
       let article: string | null
-      if (articleKeysNamed(text).length > 1) {
+      if (ownArticleKeys(text).length > 1) {
         // One passage for several laws: it belongs to none, and the mark
         // above it no longer says which law follows.
         article = null
         mark = null
       } else {
-        const own = leadingArticleKey(text)
+        const own = cited ? null : leadingArticleKey(text)
         if (own) mark = own
         article = own ?? mark
       }
       const ziffern = ziffernOf(text).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer }))
       // An Artikel heading of its own — no Ziffer, no § — opens a section,
       // with or without a number the parser can read („Zu Art. X1 (…)").
-      if (ziffern.length === 0 && paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
+      if (!cited && ziffern.length === 0 && paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
         section = sectionOf(text)
         law = lawOf(text)
       }
@@ -209,7 +263,7 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
     // over GP XXVII, and each would have put the passages after it under the
     // wrong law. The RIS reader has the same guard implicitly, because it
     // takes marks from heading elements only.
-    if (ARTICLE_HEADING_RE.test(text) && addressOf(text).paragraphs.length === 0 && /Ueberschr/i.test(block.cls)) {
+    if (ARTICLE_HEADING_RE.test(text) && !isCitedArticle(text) && addressOf(text).paragraphs.length === 0 && /Ueberschr/i.test(block.cls)) {
       mark = leadingArticleKey(text)
       section = sectionOf(text)
       law = lawOf(text)

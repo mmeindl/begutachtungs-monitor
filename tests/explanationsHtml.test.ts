@@ -174,6 +174,57 @@ describe('the Artikel heading in force — section and law (01.10.2026)', () => 
     expect(parsed.special.map((p) => p.law)).toEqual([null, null, null, null])
   })
 
+  it('reads no Artikel of another act as a mark (Vorlage to 162/ME XXVI, 02.10.2026)', () => {
+    const parsed = parseExplanationsHtml(
+      classed(
+        ['MsoNormal', 'Besonderer Teil'],
+        ['MsoNormal', 'Zu Artikel 2 (Änderung der Strafprozeßordnung 1975)'],
+        ['MsoNormal', 'Zu Art. 7 Abs. 4 der RL Prozesskostenhilfe und dem danach vorzusehenden Recht (§ 45, § 62)'],
+        ['MsoNormal', 'Zu Z 1 (§ 53 Abs. 2 StPO):'],
+        ['MsoNormal', 'Text.'],
+        ['41UeberschrArt', 'Art. 13 der Verordnung (EU) Nr. 1151/2012 sieht vor'],
+        ['MsoNormal', 'Zu Z 2 (§ 58 StPO):'],
+        ['MsoNormal', 'Text.'],
+      ),
+    )
+    expect(parsed.special.map((p) => [p.article, p.section])).toEqual([
+      ['2', ['2']],
+      ['2', ['2']],
+      ['2', ['2']],
+      ['2', ['2']],
+    ])
+    expect(parsed.special[2]!.ziffern).toEqual([{ article: '2', ziffer: '1' }])
+  })
+
+  it('opens no section on a cited Artikel of the B-VG', () => {
+    const parsed = parseExplanationsHtml(doc('Besonderer Teil', 'Zu Art. 1 (Änderung des Bundes-Verfassungsgesetzes)', 'Zu Art. 79 Abs. 2 Z 2:', 'Text.', 'Zu Art. 12 Abs. 1 Z 1 B-VG („Volkspflegestätten"):', 'Text.'))
+    expect(parsed.special.map((p) => [p.article, p.section])).toEqual([
+      ['1', ['1']],
+      ['1', ['1']],
+      ['1', ['1']],
+    ])
+  })
+
+  it('counts only the package Artikel of the address towards a heading over several laws', () => {
+    // In the brackets stands the provision the Ziffer amends, after the
+    // colon prose: neither names a law of the package, and each, read as
+    // one, cleared the mark for every passage after it.
+    const parsed = parseExplanationsHtml(
+      doc(
+        'Besonderer Teil',
+        'Zu Art. 1 (Änderung des Bundes-Verfassungsgesetzes)',
+        'Zu Z 9 (Art. 97 Abs. 2) und Z 11 (Art. 98):',
+        'Text.',
+        'Zu Abs. 2: Der gemäß Art. 119 und Art. 120 der Verordnung (EU) 2017/1485 benannte Betreiber',
+        'Zu Art. 5 Z 17 (Art. I Abs. 16 der Anlage zum LDG 1984):',
+        'Text.',
+        'Zu Art. 1 Z 5 sowie zu Art. 13 Z 1 bis 3 (§ 6 und § 7 KfzStG):',
+        'Text.',
+      ),
+    )
+    expect(parsed.special.map((p) => p.article)).toEqual(['1', '1', '1', '5', null])
+  })
+
   it('reads the law of an Artikel heading without a number, nested brackets kept (22/ME XXVIII)', () => {
     const law = 'Änderung des Bundesgesetzes über die Einrichtung einer Dokumentations- und Informationsstelle für Sektenfragen (Bundesstelle für Sektenfragen)'
     const parsed = parseExplanationsHtml(doc('Besonderer Teil', `Zu Art. X1 (${law}):`, 'Zu Z 1', 'Text.'))
