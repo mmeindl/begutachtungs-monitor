@@ -39,10 +39,10 @@ import {
   lawDiffKey,
   lawDiffScopeOf,
   lawDiffSteps,
-  lawDiffSourceCredit,
   lawStationPairHint,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
+import { documentSource, parliamentDocumentSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 
 const props = defineProps<{
   gp: string
@@ -274,6 +274,29 @@ const creditSides = computed(() => {
     { station: pair.value.to, label: toLabel.value, text: d.toDocument, reasoning: reasoningDocFor(pair.value.to) },
   ].filter((side) => side.text || side.reasoning)
 })
+/**
+ * What this comparison shows, per document, for its credit line and the
+ * page's „Quellen" (`#shared/utils/provenance`): each side's text where it
+ * was read, the Erläuterungen where their comparison ran — those are always
+ * Parliament's copies — and the § names from RIS.
+ */
+const REASONING_DE: Partial<Record<LawStationId, string>> = {
+  me: 'Erläuterungen zum Ministerialentwurf',
+  rv: 'Erläuterungen zur Regierungsvorlage',
+}
+const sources = computed<SourceEntry[]>(() => {
+  const d = data.value
+  if (!d?.available) return []
+  const out: SourceEntry[] = []
+  for (const side of [{ station: pair.value.from, publisher: d.fromSource }, { station: pair.value.to, publisher: d.toSource }]) {
+    if (side.publisher) out.push(documentSource(LAW_STATION_LABEL[side.station], side.station, side.publisher))
+    const reasoningName = REASONING_DE[side.station]
+    if (reasoningName && reasoningDocFor(side.station)) out.push(parliamentDocumentSource(reasoningName, side.station))
+  }
+  if (namedCount.value) out.push(risSource('Paragraphenüberschriften'))
+  return out
+})
+usePageSources(sources)
 const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(paraTitles.value.asOf) : null))
 
 /**
@@ -855,28 +878,24 @@ const droppedNote = computed(() =>
            up while or after reading, never before — and it is one more block
            that used to rewrite itself above the select.
 
-           What may be claimed hangs on each SIDE — its publisher and its
-           station — and `lawDiffSourceCredit` puts the two together: RIS is CC
-           BY 4.0, a parliamentary document is a freies Werk (§ 7 UrhG, read
-           live 23.09.2026), and the Ministerialentwurf carries no claim at
-           all, because the Begutachtungsverfahren is what the open licence
-           question is about (docs/architecture.md §13.1). -->
-      <SectionCredits>
-        <span>{{ lawDiffSourceCredit({ station: pair.from, source: data.fromSource }, { station: pair.to, source: data.toSource }) }}</span>
+           The publishers only; what may be claimed hangs on each DOCUMENT —
+           its publisher and its station — and is said once, in the page's
+           „Quellen" (`sources` above, 01.10.2026). Until then this line
+           joined both sides into one claim, and „Parlament (Dokumente: freie
+           Werke)" under ME→RV read as covering the draft too. -->
+      <SectionCredits :sources="sources">
         <!-- Grouped by version since 30.09.2026: „Entwurf: Text ·
              Erläuterungen" instead of four links each carrying its version's
-             name. The links stay — the documents are freie Werke and need no
-             attribution, so they are there for the reader. -->
+             name. The links are there for the reader. -->
         <span v-for="side in creditSides" :key="side.station">
           {{ side.label }}:
           <ExternalLink v-if="side.text" :href="side.text.url" class="text-accent-deep hover:underline">Text</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="text-accent-deep hover:underline">Erläuterungen</ExternalLink>
         </span>
         <!-- The § names come from a third source; a page that shows text has
              to say where it is from, even when the text is one word long.
-             RIS is CC BY 4.0, so the licence is part of that sentence — it
-             said „§-Titel: RIS Bundesrecht, Stand 2026-03-11" until
-             30.09.2026, without licence and with the date unformatted. -->
-        <span v-if="namedCount">Paragraphenüberschriften (CC BY 4.0, RIS): Stand {{ paraTitlesAsOf }}</span>
+             The date stays here, beside the comparison it dates: it changes
+             per section, the licence does not. -->
+        <span v-if="namedCount">Paragraphenüberschriften<template v-if="paraTitlesAsOf">: Stand {{ paraTitlesAsOf }}</template></span>
       </SectionCredits>
     </template>
   </div>

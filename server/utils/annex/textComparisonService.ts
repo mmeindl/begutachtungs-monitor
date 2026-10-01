@@ -35,7 +35,7 @@
  */
 
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, parliamentAnnex, PARLIAMENT_CREDIT, READ_PARLIAMENT_COPY, RIS_CREDIT } from './annexSource'
+import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, parliamentAnnex, READ_PARLIAMENT_COPY } from './annexSource'
 import { checkAnnexRows, notRunReason } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
@@ -52,7 +52,7 @@ function emptyComparison(who: DraftIdentity, reason: string, source: TraceLink |
     available: false,
     unavailableReason: reason,
     source,
-    credit: RIS_CREDIT,
+    publisher: 'ris',
     pdf,
     readFrom: null,
     droppedPages: 0,
@@ -80,7 +80,7 @@ async function readAndCheck(
   pdfFallback: TraceLink | null,
 ): Promise<TextComparisonResponse | string> {
   if (typeof chosen === 'string') return chosen
-  const { parsed, source, credit, readFrom, droppedPages } = chosen
+  const { parsed, source, publisher, readFrom, droppedPages } = chosen
   const { rows, refusal } = parsed
   // Both columns are checked before the rows are sent. The left one claims
   // to be the standing law and RIS holds that text independently; the right
@@ -96,7 +96,7 @@ async function readAndCheck(
     available: true,
     unavailableReason: null,
     source,
-    credit,
+    publisher,
     pdf: pdfFallback,
     readFrom,
     droppedPages,
@@ -232,7 +232,7 @@ export const getTextComparison = defineCachedFunction(
     // Where the Parliament copy was the one read, RIS usually carries no
     // document for this draft at all — and then Parliament's PDF is the only
     // one a reader can open.
-    const pdfLink = pdf ?? (chosen.credit === PARLIAMENT_CREDIT ? (await parliamentAnnex(gp, inr)).pdf : null)
+    const pdfLink = pdf ?? (chosen.publisher === 'parlament' ? (await parliamentAnnex(gp, inr)).pdf : null)
     const out = await readAndCheck(who, row.textComparisonParts ?? [], row.risBeginn ?? '', draft, chosen, pdfLink)
     return typeof out === 'string' ? empty(out, null, pdfLink) : out
   },

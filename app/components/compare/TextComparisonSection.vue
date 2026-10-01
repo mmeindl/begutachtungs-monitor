@@ -18,6 +18,7 @@
 import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
+import { parliamentDocumentSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
@@ -390,8 +391,21 @@ const loadAnnouncement = computed(() => {
  * response object. They are functions of the response and of nothing
  * else. */
 const checkNote = computed(() => annexCheckNoteParts(data.value?.verification ?? null, data.value?.readFrom ?? null))
-/** Whether the annex came from RIS — then the credit already names the licence the Lesefassung's text shares. */
-const creditIsRis = computed(() => data.value?.credit?.includes('CC BY 4.0, RIS') ?? false)
+/**
+ * What this comparison shows, for its credit line and the page's „Quellen"
+ * (`#shared/utils/provenance`): the annex from the copy that was read — RIS,
+ * or Parliament's, which carries no claim — the Erläuterungen at the §§ (RIS,
+ * `useExplanations`), and the text in force behind the Lesefassung.
+ */
+const sources = computed<SourceEntry[]>(() => {
+  const d = data.value
+  if (!d?.available) return []
+  const out = [d.publisher === 'ris' ? risSource('Textgegenüberstellung') : parliamentDocumentSource('Textgegenüberstellung', 'me')]
+  if (explanationsByKey.value.size) out.push(risSource('Erläuterungen'))
+  if (consolidatedShown.value > 0 && consolidated.value?.paragraphs[0]?.risUrl) out.push(risSource('Geltender Text'))
+  return out
+})
+usePageSources(sources)
 const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
 const doubtfulNote = computed(() =>
   annexDoubtfulNote(data.value?.verification?.doubtfulLaws ?? [], data.value?.readFrom ?? null),
@@ -701,30 +715,24 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            sits under a table rather than over it (17.09.2026): it is looked up
            while or after reading, never before. „Markierung" stands beside
            „Quelle", because that is exactly the question a red/green marked
-           ministry text raises: who did the marking? Two statements in one
-           line, not three sentences above.
+           ministry text raises: who did the marking?
 
-           The licence comes from the server, because the source is chosen
-           there: if the section reads Parliament's copy instead of the RIS
-           one, a hard-wired „CC BY 4.0" would be a claim about a document
-           nobody checked it for (`textComparisonService.credit`). -->
-      <SectionCredits>
-        <span>{{ data.credit }}</span>
+           The publisher comes from the server, because the source is chosen
+           there (`textComparisonService.publisher`); what may be claimed for
+           it is said once, in the page's „Quellen" (`sources` above,
+           01.10.2026). The licence stood here until then, and so did a
+           second „CC BY 4.0, RIS" for the text in force wherever the annex
+           itself came from Parliament. -->
+      <SectionCredits :sources="sources">
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
-        <!-- The second source only where the Lesefassung really is expandable
-             somewhere: the disclosures show the text in force from RIS, which
-             has a licence and a Fundstelle of its own. Naming it here is the
-             same rule as in the section before, only that it now belongs to a
-             layer INSIDE this section. -->
         <!-- The geltender Text of the Lesefassung, only where one is
              expandable somewhere: RIS text in force, with a Fundstelle of its
-             own. Where the annex itself came from RIS the licence is already
-             named in the line and is not said twice (30.09.2026); where it
-             came from Parliament's copy, this link needs its own. -->
-        <template v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl">
-          <span v-if="!creditIsRis">Geltender Text (CC BY 4.0, RIS):</span>
-          <ExternalLink :href="consolidated.paragraphs[0]!.risUrl!" class="text-accent-deep hover:underline">Geltender Text im RIS</ExternalLink>
-        </template>
+             own. -->
+        <ExternalLink
+          v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl"
+          :href="consolidated.paragraphs[0]!.risUrl!"
+          class="text-accent-deep hover:underline"
+        >Geltender Text im RIS</ExternalLink>
         <!-- Gone on 30.09.2026, both added the same morning: the Stichtag
              of the RIS check („RIS-Abgleich: Stand …") — the rule stands on
              /so-funktionierts#gegenueberstellung and the date itself in the

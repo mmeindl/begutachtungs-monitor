@@ -21,6 +21,9 @@ export type DescriptionBlock =
   | { kind: 'paragraph'; text: string }
   | { kind: 'list'; items: string[] }
 
+/** Who published a document the page read: the federal RIS or Parliament (`#shared/utils/provenance`). */
+export type Publisher = 'ris' | 'parlament'
+
 export interface TraceLink {
   label: string
   url: string

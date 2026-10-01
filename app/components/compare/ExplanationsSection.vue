@@ -22,6 +22,7 @@
  * only while RIS answers within 800 ms. Why the deadline and why not longer
  * stands in `useExplanations`.
  */
+import { risSource, type SourceEntry } from '#shared/utils/provenance'
 
 /**
  * Two routes to the same document, because the two kinds of draft reach it
@@ -31,6 +32,10 @@
 const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
 
 const { data, status } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
+
+/** Always RIS (`risExplanations.ts`), for the credit line and the page's „Quellen" (`#shared/utils/provenance`). */
+const sources = computed<SourceEntry[]>(() => (data.value?.available ? [risSource('Erläuterungen')] : []))
+usePageSources(sources)
 
 /** One paragraph or subheading of the Ressort, in printing order. */
 interface Item {
@@ -204,14 +209,17 @@ const loadAnnouncement = computed(() => {
         Tabellen und Abbildungen des Dokuments stehen hier nicht.
       </p>
 
-      <p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <span>Quelle (CC BY 4.0, RIS):</span>
+      <!-- The same line as under the comparisons since 01.10.2026, where a
+           hand-written „Quelle (CC BY 4.0, RIS):" stood: the publisher here,
+           the licence once in the page's „Quellen". Unmarked — the
+           Ressort's paragraphs stand as written. -->
+      <SectionCredits :sources="sources" :marked="false">
         <ExternalLink
           v-if="data.document"
           :href="data.document.url"
           class="text-accent-deep hover:underline"
         >{{ sourceLabel }}</ExternalLink>
-      </p>
+      </SectionCredits>
     </template>
   </div>
 </template>

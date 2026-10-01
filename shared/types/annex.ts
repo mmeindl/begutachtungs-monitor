@@ -1,4 +1,4 @@
-import type { LawDiffSegment, TraceLink } from './common'
+import type { LawDiffSegment, Publisher, TraceLink } from './common'
 import type { LawUnitChange } from './lawDiff'
 
 /**
@@ -175,15 +175,15 @@ export interface TextComparisonResponse {
    */
   source: TraceLink | null
   /**
-   * The credit line's opening, licence included — „Quelle (CC BY 4.0, RIS):"
-   * or, where Parliament's copy was read, without a licence claim.
+   * Which copy the rows were read from — RIS or Parliament's — and so what
+   * the page may claim for it (`#shared/utils/provenance`): RIS is CC BY 4.0,
+   * Parliament's copy of a draft's annex carries no claim.
    *
-   * Server-side, because the source is chosen here: the section used to have
-   * the CC-BY sentence hard-wired, and the moment the same section reads a
-   * Parliament document that is a licence claim nobody has checked
-   * (the open licence question over that data, docs/architecture.md §13.1).
+   * Server-side, because the source is chosen here. Until 01.10.2026 this
+   * was the finished credit sentence, licence included; the claim is now
+   * made once per page, from this.
    */
-  credit: string
+  publisher: Publisher
   /**
    * The annex as a PDF, for a reader to open where we could not read it: the
    * RIS scan, or Parliament's copy for the drafts whose RIS record carries no

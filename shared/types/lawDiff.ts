@@ -1,4 +1,4 @@
-import type { LawDiffSegment, TraceLink } from './common'
+import type { LawDiffSegment, Publisher, TraceLink } from './common'
 
 // ---------------------------------------------------------------------------
 // ME → RV text comparison (docs/ris-join.md §6)
@@ -242,14 +242,14 @@ export interface LawDiffResponse {
   fromDocument: TraceLink | null
   toDocument: TraceLink | null
   /** Where the earlier text was read: Parliament HTML, or the RIS XML when Parliament has only a PDF (older periods, draft side only) */
-  fromSource: 'parlament' | 'ris' | null
+  fromSource: Publisher | null
   /**
    * The same for the later side. Since the BGBl station exists a RIS document
    * can stand on the RIGHT too — the Kundmachung is not at Parliament at all
    * (docs/architecture.md §12.33), and the credit line has to be able to say
    * so.
    */
-  toSource: 'parlament' | 'ris' | null
+  toSource: Publisher | null
   /** Every station this draft published a text for, in procedural order. */
   stations: LawStationOption[]
   /** `editorial` counts the subset of `changed` that is only citations, numbers, dates, punctuation */

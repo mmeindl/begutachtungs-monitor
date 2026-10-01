@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * The credit line at the foot of a comparison section: other people's
- * documents, the licence — and last, that the marking is ours.
+ * The credit line at the foot of a section: who published what it shows,
+ * the links to those documents — and last, that the marking is ours.
  *
  * Why at the foot: a source statement stands below the table, not above it —
  * it is looked up while or after reading, never before. Since 18.09.2026 it
@@ -9,16 +9,33 @@
  * briefly and is gone again — a term that reads the same on every page
  * belongs on the page that explains it, not under every comparison.
  *
+ * No licence since 01.10.2026: the line names the publisher („Quelle:
+ * RIS"), and what may be claimed about each document stands once, in the
+ * page's „Quellen" (`PageSources`). The same claim under every section was
+ * four wordings and up to five repetitions; one line in one grammar is what
+ * a reader scans, and the claim is made where it can be made per document.
+ * The pattern is the data-journalism caption — „Quelle: … · Grafik: …".
+ *
  * „Markierung" is rendered by the component itself and always last: other
- * people's things first, our own after — and the sentence is the same in both
- * sections because neither of them writes it. It answers the question a
- * red/green marked ministry text raises: who did the marking?
+ * people's things first, our own after — and the sentence is the same in every
+ * section because none of them writes it. It answers the question a
+ * red/green marked ministry text raises: who did the marking? A section that
+ * prints a text unmarked says `marked: false`.
  */
+import { sourceLineDe, type SourceEntry } from '#shared/utils/provenance'
+
+const props = withDefaults(defineProps<{
+  sources: readonly SourceEntry[]
+  marked?: boolean
+}>(), { marked: true })
+
+const line = computed(() => sourceLineDe(props.sources))
 </script>
 
 <template>
   <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
+    <span v-if="line">{{ line }}</span>
     <slot />
-    <span>Markierung: Begutachtungs-Monitor</span>
+    <span v-if="marked">Markierung: Begutachtungs-Monitor</span>
   </div>
 </template>

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * The switch that decides whether Parliament's copy of a
- * Textgegenüberstellung is READ, and the two credit lines that go with it
+ * Textgegenüberstellung is READ, and the publisher that goes with it
  * (`server/utils/annex/annexSource.ts`).
  *
  * A SOURCE SCAN, not an import: the module pulls `getGegenstand` and
@@ -64,22 +64,12 @@ describe('annexSource — the Parliament copy stays linked, not read', () => {
     expect(src).toContain('TURN IT BACK ON')
   })
 
-  /* The two credit lines are two different CLAIMS, which is the whole reason
-   * the credit travels with the source instead of standing in the section:
-   * RIS licenses the annex as CC BY 4.0 (Bundeskanzleramt), Parliament does
-   * not license the Begutachtungsverfahren at all. A blanket CC-BY note over
-   * a Parliament document is the mistake ruled out on 16.09.2026. */
-  it('claims CC BY only for the RIS copy', () => {
-    const line = (name: string) => new RegExp(`export const ${name} = '([^']*)'`).exec(src)?.[1]
-    const ris = line('RIS_CREDIT')
-    const parliament = line('PARLIAMENT_CREDIT')
-
-    expect(ris).toBeTypeOf('string')
-    expect(parliament).toBeTypeOf('string')
-    expect(ris).toContain('CC BY 4.0')
-    expect(parliament).not.toContain('CC BY')
-    // And it does not stay silent about where the document comes from —
-    // „Quelle" without a licence is the honest form here.
-    expect(parliament).toContain('Parlament')
+  /* Which copy was read travels with the source, because the two are
+   * different CLAIMS: RIS licenses the annex as CC BY 4.0 (Bundeskanzleramt),
+   * Parliament's copy of a draft's annex carries none. The claim itself is
+   * `#shared/utils/provenance` (tests/provenance.test.ts); what is watched
+   * here is that the Parliament path does not report itself as RIS. */
+  it('reports the Parliament copy as Parliament\'s', () => {
+    expect(src).toMatch(/source: parl\.html, publisher: 'parlament'/)
   })
 })

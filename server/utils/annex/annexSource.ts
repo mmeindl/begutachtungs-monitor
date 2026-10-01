@@ -24,11 +24,11 @@
  * open data — the open licence question over that data
  * (docs/architecture.md §13.1). Where both hold the same document the
  * site reads the settled source; where RIS holds none, it says so instead of
- * keeping quiet about a Gegenüberstellung that exists. The credit line
- * therefore travels with the source (`credit`) and is no longer hard-wired
- * into the section.
+ * keeping quiet about a Gegenüberstellung that exists. Which copy was read
+ * therefore travels with the source (`publisher`), and the page derives the
+ * claim from it (`#shared/utils/provenance`).
  */
-import type { TraceLink } from '#shared/types'
+import type { Publisher, TraceLink } from '#shared/types'
 import type { DraftArticle } from '../lawtext/draftArticles'
 import { mapDocuments } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
@@ -38,17 +38,6 @@ import { annexFromPdf } from './annexPdfService'
 import { parseTextComparison, type ComparisonParse } from './comparisonRows'
 import { holdsAsAnnex } from './olderAnnex'
 import { isScanned } from './tableCells'
-
-/**
- * The credit line at the foot of the section, one per copy that can be read.
- *
- * Two different sentences, because they are two different claims: RIS
- * licenses the annex as CC BY 4.0, Parliament does not. A blanket CC-BY note
- * over a Parliament document is exactly the mistake that has been ruled out
- * since 16.09.2026.
- */
-export const RIS_CREDIT = 'Quelle (CC BY 4.0, RIS):'
-export const PARLIAMENT_CREDIT = 'Quelle (Dokument des Ressorts, veröffentlicht vom Parlament):'
 
 /**
  * The page's sentence where no source carries an annex — a fact about the
@@ -143,7 +132,8 @@ export function annexDocumentsOf(record: { textComparisonParts?: readonly RisDoc
 export interface AnnexSource {
   parsed: ComparisonParse
   source: TraceLink
-  credit: string
+  /** Which copy was read — and so what the page may claim for it: RIS is CC BY 4.0, Parliament's copy of a draft's annex carries no claim. */
+  publisher: Publisher
   readFrom: 'table' | 'pdf'
   droppedPages: number
 }
@@ -182,7 +172,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
       // ressort's text with our reading of its layout on top, and the
       // difference belongs on the page.
       source: { label: 'Textgegenüberstellung des Ressorts', url: annex.html ?? annex.xml! },
-      credit: RIS_CREDIT,
+      publisher: 'ris',
       readFrom: 'table',
       droppedPages: 0,
     }
@@ -199,7 +189,7 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
     // „, aus dem PDF gelesen" went on 30.09.2026: the status line over the
     // comparison says it, as the caveat it is (`annexCheckNote`).
     source: { label: 'Textgegenüberstellung des Ressorts', url: pdfs[0]! },
-    credit: RIS_CREDIT,
+    publisher: 'ris',
     readFrom: 'pdf',
     droppedPages: fromPdf.droppedPages,
   }
@@ -273,7 +263,7 @@ async function readParliament(gp: string, inr: number, articles: readonly DraftA
   if (!parl.html) return null
   const parsed = parseTextComparison(await fetchDocument(parl.html.url), articles)
   if (parsed.rows.length === 0) return null
-  return { parsed, source: parl.html, credit: PARLIAMENT_CREDIT, readFrom: 'table', droppedPages: 0 }
+  return { parsed, source: parl.html, publisher: 'parlament', readFrom: 'table', droppedPages: 0 }
 }
 
 /**

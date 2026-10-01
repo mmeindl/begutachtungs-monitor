@@ -9,7 +9,6 @@ import {
   isLawStationId,
   isLawStationPair,
   lawDiffScopeOf,
-  lawDiffSourceCredit,
   lawDiffSteps,
   lawStationOf,
   lawStationPairHint,
@@ -182,40 +181,6 @@ describe('lawStationPairHint', () => {
     for (const [from, to] of [['me', 'rv'], ['rv', 'plenum']] as [LawStationId, LawStationId][]) {
       expect(lawStationPairHint(from, to)).not.toMatch(/wegen|aufgrund|zurückzuführen|bewirkt|führte zu/)
     }
-  })
-})
-
-describe('lawDiffSourceCredit', () => {
-  const side = (station: LawStationId, source: 'parlament' | 'ris' | null) => ({ station, source })
-
-  it('calls a parliamentary document a freies Werk, not CC BY 4.0', () => {
-    // Read live on 23.09.2026: Parliament's dataset pages for
-    // Regierungsvorlagen, Ausschussberichte and Beschlüsse say the DOCUMENTS
-    // are „freie Werke und somit ohne Lizenzierung frei nutzbar"; CC BY 4.0
-    // covers the result lists, the API and the history pages. The line said
-    // „CC BY 4.0" for two parliamentary versions until then (§13.1).
-    expect(lawDiffSourceCredit(side('rv', 'parlament'), side('ausschuss', 'parlament'))).toBe('Quellen: Parlament (Dokumente: freie Werke)')
-    expect(lawDiffSourceCredit(side('ausschuss', 'parlament'), side('plenum', 'parlament'))).toBe('Quellen: Parlament (Dokumente: freie Werke)')
-  })
-
-  it('names the Ministerialentwurf without any licence claim', () => {
-    // The draft belongs to the Begutachtungsverfahren, which Parliament
-    // excludes from open-data reuse — and whether that even bites for the
-    // documents is the open question (§13.1). So me→rv carries the Parliament
-    // note once, for the Vorlage's side, and claims nothing for the draft.
-    expect(lawDiffSourceCredit(side('me', 'parlament'), side('rv', 'parlament'))).toBe('Quellen: Parlament (Dokumente: freie Werke)')
-    // A pair whose ONLY Parliament document is the draft claims nothing at all.
-    expect(lawDiffSourceCredit(side('me', 'parlament'), side('bgbl', 'ris'))).toBe('Quellen: RIS (CC BY 4.0) und Parlament')
-  })
-
-  it('credits a RIS document under the one settled licence', () => {
-    expect(lawDiffSourceCredit(side('me', 'ris'), side('rv', 'parlament'))).toBe('Quellen: RIS (CC BY 4.0) und Parlament (Dokumente: freie Werke)')
-    expect(lawDiffSourceCredit(side('rv', 'parlament'), side('bgbl', 'ris'))).toBe('Quellen: RIS (CC BY 4.0) und Parlament (Dokumente: freie Werke)')
-    expect(lawDiffSourceCredit(side('me', 'ris'), side('bgbl', 'ris'))).toBe('Quellen: RIS (CC BY 4.0)')
-  })
-
-  it('claims nothing where neither side names a publisher', () => {
-    expect(lawDiffSourceCredit(side('me', null), side('rv', null))).toBe('Quellen:')
   })
 })
 
