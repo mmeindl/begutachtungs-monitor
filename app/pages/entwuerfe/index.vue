@@ -394,6 +394,33 @@ const entries = computed(() =>
   ),
 )
 
+/**
+ * How much of the list stands on the page (§12.24: `ListMore` belongs where
+ * a list is worked through).
+ *
+ * All rows stood in the SSR HTML until 30.09.2026, and each of them twice —
+ * `EntryList` renders both densities and lets CSS pick. Over a whole period
+ * that was 1,24 MB of HTML and 12.142 DOM nodes, 0,6 s of server render per
+ * request and 0,95 s of main thread on a 4× throttled phone (homepage: 0,28
+ * s). The rows are cut in the render only: counts, the Ressort menu and the
+ * full-text hits keep reading `entries` whole.
+ *
+ * Uncut under a search query, the rule of the Stellungnahmen lists
+ * (§12.15): whoever searches gets the whole result, and the full-text block
+ * below may only say „stehen schon in der Liste oben" of rows that are on
+ * the page. Not in the URL, like the panel's count: a link shares the
+ * filter, not how far somebody scrolled.
+ */
+const LIST_PAGE_SIZE = 50
+const visibleCount = ref(LIST_PAGE_SIZE)
+watch([query, art, sort], () => {
+  visibleCount.value = LIST_PAGE_SIZE
+})
+const listPaged = computed(() => !qDebounced.value)
+const shownEntries = computed(() =>
+  listPaged.value ? entries.value.slice(0, visibleCount.value) : entries.value,
+)
+
 /* ------------------------------------------------------------------ *
  * The search's second half: the full text (docs/architecture.md §12.31)
  *
@@ -956,14 +983,25 @@ const countLabel = computed(() => {
            18.09.2026 — the same list renders the homepage now, and the header
            has to align with the cells in `EntryItem` to the pixel
            (docs/architecture.md §12.28). -->
-      <EntryList v-if="entries.length" :entries="entries" class="mt-3">
-        <!-- Only the rows hit by the full text TOO carry evidence: the gain
-             on a row that is there anyway („das Wort steht in § 6") instead of
-             a second row for the same draft. -->
-        <template #evidence="{ entry }">
-          <SearchEvidence :hit="hitByKey.get(entry.key)" />
-        </template>
-      </EntryList>
+      <template v-if="entries.length">
+        <EntryList :entries="shownEntries" class="mt-3">
+          <!-- Only the rows hit by the full text TOO carry evidence: the gain
+               on a row that is there anyway („das Wort steht in § 6") instead of
+               a second row for the same draft. -->
+          <template #evidence="{ entry }">
+            <SearchEvidence :hit="hitByKey.get(entry.key)" />
+          </template>
+        </EntryList>
+        <ListMore
+          v-if="listPaged"
+          :visible="visibleCount"
+          :total="entries.length"
+          :step="LIST_PAGE_SIZE"
+          :all-above="LIST_PAGE_SIZE"
+          @more="visibleCount += LIST_PAGE_SIZE"
+          @all="visibleCount = entries.length"
+        />
+      </template>
       <template v-else-if="!stationConflict">
         <!-- EMPTY LIST, BUT NOT AN EMPTY PAGE: while the full text below is
              still answering, the large „Keine Entwürfe gefunden" card would be
