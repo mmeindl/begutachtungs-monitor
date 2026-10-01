@@ -493,202 +493,200 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
       />
 
       <div class="mt-3 border-y border-hairline">
-        <section v-for="g in renderedGroups" :key="g.key" class="border-b border-hairline last:border-b-0">
-          <DiffGroupHeader
-            :title="g.article"
-            :badges="badgeCounts(g.counts, BADGE_LABEL)"
-            :open="groupOpen(g.key)"
-            @toggle="toggleGroup(g.key)"
-          />
+        <DiffGroup
+          v-for="g in renderedGroups"
+          :key="g.key"
+          :title="g.article"
+          :badges="badgeCounts(g.counts, BADGE_LABEL)"
+          :open="groupOpen(g.key)"
+          @toggle="toggleGroup(g.key)"
+        >
+          <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-3 py-3 last:border-b-0">
+            <!-- The paragraph as law prints it: designation and title on one
+                 line, once, above its Absätze — and no rule between the two,
+                 because the line belongs to what follows it rather than
+                 heading a band of its own. LawDiffSection sets a unit's
+                 designation and name the same way. -->
+            <p v-if="p.gld || p.heading" class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+              <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}</span>
+              <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
+            </p>
 
-          <div v-if="groupOpen(g.key)" class="border-t border-hairline">
-            <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-3 py-3 last:border-b-0">
-              <!-- The paragraph as law prints it: designation and title on one
-                   line, once, above its Absätze — and no rule between the two,
-                   because the line belongs to what follows it rather than
-                   heading a band of its own. LawDiffSection sets a unit's
-                   designation and name the same way. -->
-              <p v-if="p.gld || p.heading" class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                <span v-if="p.gld" class="font-medium text-ink">{{ p.gld }}</span>
-                <span v-if="p.heading" class="min-w-0 text-ink-secondary">{{ p.heading }}</span>
+            <!-- Why this change — the Besonderer Teil's passage on this very
+                 Paragraph (docs/architecture.md §12.30).
+
+                 CLOSED and directly under the § line: the reader's question
+                 here is „was ändert sich", answered by the rows below;
+                 „warum" is the follow-up and does not arise for every §. A
+                 disclosure costs one line and stands where the question
+                 arises — below the Absätze it would be out of sight of its
+                 own heading on a § with twelve rows.
+
+                 The text is the Ressort's, unaltered and uncut: these
+                 passages are short (the Besonderer Teil spreads over many),
+                 and a second fold inside the disclosure would be a door
+                 behind a door. -->
+            <details v-if="p.explanations.length" class="group mb-2">
+              <!-- In ink, not in the accent colour (18.09.2026). Blue is the
+                   house colour of a link, and this disclosure leads
+                   nowhere. What decides it is the frequency: it stands on
+                   EVERY Paragraph, so 26 times on 26 §§ — exactly the case
+                   `SpineRail` already had, where five station names in
+                   accent-deep turned the card into seven blue rows out of
+                   eleven and the brand colour carried no information any
+                   more. The rank stays readable regardless:
+                   `font-medium text-ink` against the `text-ink-muted` of the
+                   unchanged rows two lines below. The chevron carries the
+                   affordance, as on every other disclosure of this page. -->
+              <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
+                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                Begründung des Ressorts
+              </summary>
+              <!-- Indented, without a rule (18.09.2026). A rule on the left
+                   means something in this section: it is the coloured gutter
+                   marking a row as „geändert" or „neu". A grey gutter on the
+                   reasoning would borrow that vocabulary for something that
+                   is no change at all. The indent alone carries the
+                   attribution — the same as the disclosure of unchanged
+                   rows two lines below. -->
+              <div class="mt-1 pl-6">
+                <div v-for="(e, ei) in p.explanations" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
+                  <p class="text-xs text-ink-muted">{{ e.heading }}</p>
+                  <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
+                </div>
+              </div>
+            </details>
+
+            <!-- Keyed by KIND and position, not by position alone. The blocks
+                 are rebuilt on every keystroke of the search field, and the
+                 three kinds render different elements — a folded `<details>`
+                 of unchanged rows, a changed row, a withheld notice. The
+                 open state of a `<details>` lives in the DOM, so an index
+                 key hands it to whatever takes that slot next. The rows of
+                 an annex carry no id of their own, so the position stays in
+                 the key; it is scoped to one §, because the `<section>`
+                 above is keyed by the § itself. -->
+            <div v-for="(b, bi) in p.blocks" :key="`${b.kind}-${bi}`" :class="bi > 0 ? 'mt-3' : ''">
+              <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
+                {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
+                <!-- The space as a string: Vue's whitespace condensing drops
+                     a leading space inside `<template v-if>`, which printed
+                     „…im RIS.Das kann …" (seen 30.09.2026). -->
+                {{ withheldText(b.cause) }}{{ withheldBlame(b.cause) ? ` ${withheldBlame(b.cause)}` : '' }}
+                Die Beilage des Ministeriums sagt, was sich ändert.
               </p>
-
-              <!-- Why this change — the Besonderer Teil's passage on this very
-                   Paragraph (docs/architecture.md §12.30).
-
-                   CLOSED and directly under the § line: the reader's question
-                   here is „was ändert sich", answered by the rows below;
-                   „warum" is the follow-up and does not arise for every §. A
-                   disclosure costs one line and stands where the question
-                   arises — below the Absätze it would be out of sight of its
-                   own heading on a § with twelve rows.
-
-                   The text is the Ressort's, unaltered and uncut: these
-                   passages are short (the Besonderer Teil spreads over many),
-                   and a second fold inside the disclosure would be a door
-                   behind a door. -->
-              <details v-if="p.explanations.length" class="group mb-2">
-                <!-- In ink, not in the accent colour (18.09.2026). Blue is the
-                     house colour of a link, and this disclosure leads
-                     nowhere. What decides it is the frequency: it stands on
-                     EVERY Paragraph, so 26 times on 26 §§ — exactly the case
-                     `SpineRail` already had, where five station names in
-                     accent-deep turned the card into seven blue rows out of
-                     eleven and the brand colour carried no information any
-                     more. The rank stays readable regardless:
-                     `font-medium text-ink` against the `text-ink-muted` of the
-                     unchanged rows two lines below. The chevron carries the
-                     affordance, as on every other disclosure of this page. -->
-                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
+              <details v-else-if="b.kind === 'context'" class="group">
+                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
                   <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  Begründung des Ressorts
+                  {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
                 </summary>
-                <!-- Indented, without a rule (18.09.2026). A rule on the left
-                     means something in this section: it is the coloured gutter
-                     marking a row as „geändert" or „neu". A grey gutter on the
-                     reasoning would borrow that vocabulary for something that
-                     is no change at all. The indent alone carries the
-                     attribution — the same as the disclosure of unchanged
-                     rows two lines below. -->
-                <div class="mt-1 pl-6">
-                  <div v-for="(e, ei) in p.explanations" :key="ei" :class="ei > 0 ? 'mt-3' : ''">
-                    <p class="text-xs text-ink-muted">{{ e.heading }}</p>
-                    <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
-                  </div>
+                <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
+                  <p v-for="(r, ri) in b.rows" :key="`${r.gld ?? r.para ?? ''}-${ri}`" class="hyphens-auto">{{ r.current }}</p>
                 </div>
               </details>
 
-              <!-- Keyed by KIND and position, not by position alone. The blocks
-                   are rebuilt on every keystroke of the search field, and the
-                   three kinds render different elements — a folded `<details>`
-                   of unchanged rows, a changed row, a withheld notice. The
-                   open state of a `<details>` lives in the DOM, so an index
-                   key hands it to whatever takes that slot next. The rows of
-                   an annex carry no id of their own, so the position stays in
-                   the key; it is scoped to one §, because the `<section>`
-                   above is keyed by the § itself. -->
-              <div v-for="(b, bi) in p.blocks" :key="`${b.kind}-${bi}`" :class="bi > 0 ? 'mt-3' : ''">
-                <p v-if="b.kind === 'withheld'" class="text-xs text-ink-muted">
-                  {{ b.count }} {{ b.count === 1 ? 'Änderung' : 'Änderungen' }} hier nicht gezeigt:
-                  <!-- The space as a string: Vue's whitespace condensing drops
-                       a leading space inside `<template v-if>`, which printed
-                       „…im RIS.Das kann …" (seen 30.09.2026). -->
-                  {{ withheldText(b.cause) }}{{ withheldBlame(b.cause) ? ` ${withheldBlame(b.cause)}` : '' }}
-                  Die Beilage des Ministeriums sagt, was sich ändert.
-                </p>
-                <details v-else-if="b.kind === 'context'" class="group">
-                  <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs text-ink-muted [&::-webkit-details-marker]:hidden">
-                    <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                    {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
-                  </summary>
-                  <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
-                    <p v-for="(r, ri) in b.rows" :key="`${r.gld ?? r.para ?? ''}-${ri}`" class="hyphens-auto">{{ r.current }}</p>
-                  </div>
-                </details>
+              <div v-else>
+                <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
+                  <p class="mb-1 text-sm">
+                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
+                      {{ BADGE_LABEL[badgeOf(b.row)] }}
+                    </span>
+                  </p>
 
-                <div v-else>
-                  <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
-                    <p class="mb-1 text-sm">
-                      <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
-                        {{ BADGE_LABEL[badgeOf(b.row)] }}
-                      </span>
-                    </p>
+                  <!-- Both columns are the annex's own notation and reach
+                     differently far: what changed is how much it leaves
+                     out, not the provision. Said in words, because the word
+                     diff of „(54)" against „(55)" shows the difference and
+                     hides what it means. -->
+                  <p v-if="b.row.elisionRange" class="mb-1 text-sm leading-relaxed text-ink-secondary">
+                    Nicht der Paragraph ändert sich, sondern der Bereich, den die Beilage auslässt.
+                  </p>
 
-                    <!-- Both columns are the annex's own notation and reach
-                       differently far: what changed is how much it leaves
-                       out, not the provision. Said in words, because the word
-                       diff of „(54)" against „(55)" shows the difference and
-                       hides what it means. -->
-                    <p v-if="b.row.elisionRange" class="mb-1 text-sm leading-relaxed text-ink-secondary">
-                      Nicht der Paragraph ändert sich, sondern der Bereich, den die Beilage auslässt.
-                    </p>
-
-                    <!-- An unchanged row only reaches a block of its own while
-                       a search is running; both columns hold the same text,
-                       so it reads as the one sentence it is. -->
-                    <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
-                    <p v-else-if="b.row.segments && view === 'inline'" class="hyphens-auto text-sm leading-relaxed text-ink">
-                      <DiffText :segments="b.row.segments" />
-                    </p>
-                    <!-- A row with only one side has one text; a column to hold
-                       nothing beside it would be a column about our layout,
-                       not about the law. Same rule as in the § comparison. -->
-                    <p v-else-if="b.row.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.proposed }}</p>
-                    <p v-else-if="b.row.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.current }}</p>
-                    <!-- The ressort's own two columns, under the ressort's own
-                       headings. ONE shape for two cases: the reader asked for
-                       them, or the word diff was too long to compute and
-                       `splitSegments` marks each side whole. -->
-                    <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                      <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
-                        <p class="hyphens-auto text-ink">
-                          <DiffText :segments="b.from" side="from" />
-                        </p>
-                      </div>
-                      <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
-                        <p class="hyphens-auto text-ink">
-                          <DiffText :segments="b.to" side="to" />
-                        </p>
-                      </div>
+                  <!-- An unchanged row only reaches a block of its own while
+                     a search is running; both columns hold the same text,
+                     so it reads as the one sentence it is. -->
+                  <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
+                  <p v-else-if="b.row.segments && view === 'inline'" class="hyphens-auto text-sm leading-relaxed text-ink">
+                    <DiffText :segments="b.row.segments" />
+                  </p>
+                  <!-- A row with only one side has one text; a column to hold
+                     nothing beside it would be a column about our layout,
+                     not about the law. Same rule as in the § comparison. -->
+                  <p v-else-if="b.row.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.proposed }}</p>
+                  <p v-else-if="b.row.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.current }}</p>
+                  <!-- The ressort's own two columns, under the ressort's own
+                     headings. ONE shape for two cases: the reader asked for
+                     them, or the word diff was too long to compute and
+                     `splitSegments` marks each side whole. -->
+                  <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                    <div>
+                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
+                      <p class="hyphens-auto text-ink">
+                        <DiffText :segments="b.from" side="from" />
+                      </p>
+                    </div>
+                    <div>
+                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
+                      <p class="hyphens-auto text-ink">
+                        <DiffText :segments="b.to" side="to" />
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <!-- The third layer on the same Paragraph: not what changes and
-                   not why, but how it reads afterwards (docs/architecture.md
-                   §12.12a).
+            <!-- The third layer on the same Paragraph: not what changes and
+                 not why, but how it reads afterwards (docs/architecture.md
+                 §12.12a).
 
-                   BELOW the changed rows, not above them (19.09.2026): the
-                   rows are the information somebody opens the § for; the whole
-                   Paragraph is the follow-up question and belongs where that
-                   arises — at the end. Above the rows it would be a door in
-                   front of the answer. The reasoning stays on top: it belongs
-                   to the change, not to the result. -->
-              <details v-if="p.consolidated" class="group mt-3">
-                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
-                  <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  Ganzer Paragraph danach (nicht amtlich)
-                </summary>
-                <div class="mt-1 pl-6">
-                  <!-- „nicht amtlich" stands IN the summary since 30.09.2026,
-                       so it is read before the disclosure opens, not after;
-                       inside, only the way to how the text is made (RIS in
-                       force plus this draft's instructions, confirmed by the
-                       ressort's own Gegenüberstellung). -->
-                  <p class="max-w-prose text-xs text-ink-muted">
-                    <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie diese Lesefassung entsteht</NuxtLink>
-                  </p>
-                  <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
-                    <DiffText :segments="p.consolidated.headingSegments" removed-normal-weight />
-                  </p>
-                  <!-- One paragraph per Absatz: that is how the law is
-                       structured, and eighteen of them in one block are no
-                       structure at all. -->
-                  <p
-                    v-for="(abs, ai) in absaetze(p.consolidated.segments)"
-                    :key="ai"
-                    class="mt-2 hyphens-auto text-sm leading-relaxed text-ink"
-                  >
-                    <DiffText :segments="abs" />
-                  </p>
-                </div>
-              </details>
-            </section>
+                 BELOW the changed rows, not above them (19.09.2026): the
+                 rows are the information somebody opens the § for; the whole
+                 Paragraph is the follow-up question and belongs where that
+                 arises — at the end. Above the rows it would be a door in
+                 front of the answer. The reasoning stays on top: it belongs
+                 to the change, not to the result. -->
+            <details v-if="p.consolidated" class="group mt-3">
+              <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink [&::-webkit-details-marker]:hidden">
+                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                Ganzer Paragraph danach (nicht amtlich)
+              </summary>
+              <div class="mt-1 pl-6">
+                <!-- „nicht amtlich" stands IN the summary since 30.09.2026,
+                     so it is read before the disclosure opens, not after;
+                     inside, only the way to how the text is made (RIS in
+                     force plus this draft's instructions, confirmed by the
+                     ressort's own Gegenüberstellung). -->
+                <p class="max-w-prose text-xs text-ink-muted">
+                  <NuxtLink to="/so-funktionierts#lesefassung" class="link-inline">Wie diese Lesefassung entsteht</NuxtLink>
+                </p>
+                <p v-if="p.consolidated.headingSegments" class="mt-2 text-sm font-semibold text-ink">
+                  <DiffText :segments="p.consolidated.headingSegments" removed-normal-weight />
+                </p>
+                <!-- One paragraph per Absatz: that is how the law is
+                     structured, and eighteen of them in one block are no
+                     structure at all. -->
+                <p
+                  v-for="(abs, ai) in absaetze(p.consolidated.segments)"
+                  :key="ai"
+                  class="mt-2 hyphens-auto text-sm leading-relaxed text-ink"
+                >
+                  <DiffText :segments="abs" />
+                </p>
+              </div>
+            </details>
+          </section>
 
-            <button
-              v-if="g.hidden"
-              type="button"
-              class="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
-              @click="showAll(g.key)"
-            >
-              <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
-              {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
-            </button>
-          </div>
-        </section>
+          <button
+            v-if="g.hidden"
+            type="button"
+            class="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+            @click="showAll(g.key)"
+          >
+            <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
+            {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
+          </button>
+        </DiffGroup>
       </div>
       <!-- A search box with no answer is worse than none: the section would
            just end, and an empty comparison reads as a claim about the

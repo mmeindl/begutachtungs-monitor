@@ -605,134 +605,133 @@ const droppedNote = computed(() =>
         />
 
         <div class="mt-3 border-y border-hairline">
-          <section v-for="g in renderedGroups" :key="g.article" class="border-b border-hairline last:border-b-0">
-            <DiffGroupHeader
-              :title="g.article"
-              :badges="badgeCounts(g.counts, BADGE_LABEL)"
-              :open="groupOpen(g.article)"
-              @toggle="toggleGroup(g.article)"
-            />
-            <div v-if="groupOpen(g.article)" class="border-t border-hairline">
-              <template v-for="b in g.blocks" :key="blockKey(b)">
-                <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
-                  <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
-                    <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                    {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
-                  </summary>
-                  <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
-                    <p v-for="u in b.units" :key="key(u.unit)" class="hyphens-auto">
-                      <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
-                      <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
-                      <span v-else-if="u.extra"> {{ u.extra }}</span>
-                      <span> — {{ u.unit.toText }}</span>
-                    </p>
-                  </div>
-                </details>
-
-                <div v-else class="border-b border-hairline px-3 py-3 last:border-b-0">
-                  <!-- Designation and name on a line of their own, above the
-                       badge. Beside it they had to share one line with the
-                       status, so "geändert Z 4 Geheimhaltung" read as a single
-                       token — and the Textgegenüberstellung, where a § heads
-                       several Absätze, cannot put them there at all. One shape
-                       for both sections: what this is, then how it changed. -->
-                  <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                    <span class="font-medium text-ink">
-                      {{ displayId(b.unit.id) }}
-                      <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
-                    </span>
-                    <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
-                    <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
+          <DiffGroup
+            v-for="g in renderedGroups"
+            :key="g.article"
+            :title="g.article"
+            :badges="badgeCounts(g.counts, BADGE_LABEL)"
+            :open="groupOpen(g.article)"
+            @toggle="toggleGroup(g.article)"
+          >
+            <template v-for="b in g.blocks" :key="blockKey(b)">
+              <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
+                <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
+                  <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
+                </summary>
+                <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
+                  <p v-for="u in b.units" :key="key(u.unit)" class="hyphens-auto">
+                    <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
+                    <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
+                    <span v-else-if="u.extra"> {{ u.extra }}</span>
+                    <span> — {{ u.unit.toText }}</span>
                   </p>
-                  <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
-                    <p class="mb-1 text-sm">
-                      <span
-                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                        :class="BADGE_CLASS[badgeOf(b.unit)]"
-                      >
-                        {{ BADGE_LABEL[badgeOf(b.unit)] }}
-                      </span>
-                    </p>
+                </div>
+              </details>
 
-                    <!-- Inline: one sentence, old struck out where the new
-                         stands. The default, and right for most changes. -->
-                    <p v-if="b.unit.change === 'changed' && view === 'inline' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
-                      <DiffText :segments="b.unit.segments" />
-                    </p>
-                    <!-- Side by side. ONE shape for two cases: the reader
-                         asked for columns, or the word diff hit its ceiling
-                         and there are no segments to inline (then
-                         `splitSegments` marks each side whole). The fallback
-                         used to be its own layout, which made a technical
-                         limit look like a different kind of change. -->
-                    <div v-else-if="b.unit.change === 'changed'" class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                      <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
-                        <p class="hyphens-auto text-ink">
-                          <DiffText :segments="b.from" side="from" />
-                        </p>
-                      </div>
-                      <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
-                        <p class="hyphens-auto text-ink">
-                          <DiffText :segments="b.to" side="to" />
-                        </p>
-                      </div>
-                    </div>
-                    <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.toText }}</p>
-                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
-                    <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
+              <div v-else class="border-b border-hairline px-3 py-3 last:border-b-0">
+                <!-- Designation and name on a line of their own, above the
+                     badge. Beside it they had to share one line with the
+                     status, so "geändert Z 4 Geheimhaltung" read as a single
+                     token — and the Textgegenüberstellung, where a § heads
+                     several Absätze, cannot put them there at all. One shape
+                     for both sections: what this is, then how it changed. -->
+                <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                  <span class="font-medium text-ink">
+                    {{ displayId(b.unit.id) }}
+                    <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
+                  </span>
+                  <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
+                  <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
+                </p>
+                <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
+                  <p class="mb-1 text-sm">
+                    <span
+                      class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                      :class="BADGE_CLASS[badgeOf(b.unit)]"
+                    >
+                      {{ BADGE_LABEL[badgeOf(b.unit)] }}
+                    </span>
+                  </p>
 
-                    <!-- What the Ressort says about it — and whether it says
-                         so differently after the Begutachtung than before.
-                         Closed, like the reasoning at the
-                         Textgegenüberstellung (docs/architecture.md §12.30):
-                         it answers a second question, not the first. A native
-                         <details>, so the browser's find-in-page opens it
-                         instead of running past it. -->
-                    <details v-if="b.reasoning" class="group mt-2">
-                      <summary class="-mx-1 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
-                        <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                        Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert
-                      </summary>
-                      <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
-                        <DiffText :segments="b.reasoning.segments ?? []" />
+                  <!-- Inline: one sentence, old struck out where the new
+                       stands. The default, and right for most changes. -->
+                  <p v-if="b.unit.change === 'changed' && view === 'inline' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
+                    <DiffText :segments="b.unit.segments" />
+                  </p>
+                  <!-- Side by side. ONE shape for two cases: the reader
+                       asked for columns, or the word diff hit its ceiling
+                       and there are no segments to inline (then
+                       `splitSegments` marks each side whole). The fallback
+                       used to be its own layout, which made a technical
+                       limit look like a different kind of change. -->
+                  <div v-else-if="b.unit.change === 'changed'" class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                    <div>
+                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                      <p class="hyphens-auto text-ink">
+                        <DiffText :segments="b.from" side="from" />
                       </p>
-                      <!-- Without a word diff: both versions in full, side by
-                           side as in the comparison above, so a technical
-                           ceiling does not look like a different kind of
-                           change. The drawer is never empty — that the
-                           reasoning is a different one is the finding, and the
-                           ceiling is ours, not the Ressort's. -->
-                      <div v-else class="pb-2 pl-6">
-                        <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
-                        <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                          <div>
-                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
-                            <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
-                          </div>
-                          <div>
-                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
-                            <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
-                          </div>
+                    </div>
+                    <div>
+                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                      <p class="hyphens-auto text-ink">
+                        <DiffText :segments="b.to" side="to" />
+                      </p>
+                    </div>
+                  </div>
+                  <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.toText }}</p>
+                  <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
+                  <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
+
+                  <!-- What the Ressort says about it — and whether it says
+                       so differently after the Begutachtung than before.
+                       Closed, like the reasoning at the
+                       Textgegenüberstellung (docs/architecture.md §12.30):
+                       it answers a second question, not the first. A native
+                       <details>, so the browser's find-in-page opens it
+                       instead of running past it. -->
+                  <details v-if="b.reasoning" class="group mt-2">
+                    <summary class="-mx-1 flex min-h-11 cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
+                      <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                      Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert
+                    </summary>
+                    <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
+                      <DiffText :segments="b.reasoning.segments ?? []" />
+                    </p>
+                    <!-- Without a word diff: both versions in full, side by
+                         side as in the comparison above, so a technical
+                         ceiling does not look like a different kind of
+                         change. The drawer is never empty — that the
+                         reasoning is a different one is the finding, and the
+                         ceiling is ours, not the Ressort's. -->
+                    <div v-else class="pb-2 pl-6">
+                      <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
+                      <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                        <div>
+                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                          <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
+                        </div>
+                        <div>
+                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                          <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
                         </div>
                       </div>
-                    </details>
-                  </div>
+                    </div>
+                  </details>
                 </div>
-              </template>
+              </div>
+            </template>
 
-              <button
-                v-if="g.hidden"
-                type="button"
-                class="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
-                @click="showAll(g.article)"
-              >
-                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
-                {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
-              </button>
-            </div>
-          </section>
+            <button
+              v-if="g.hidden"
+              type="button"
+              class="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+              @click="showAll(g.article)"
+            >
+              <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
+              {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
+            </button>
+          </DiffGroup>
         </div>
         <!-- Stays in the DOM as a live region and goes empty rather than
              disappearing: a region that comes into being with its text is not
