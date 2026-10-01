@@ -1392,9 +1392,94 @@ const END_MARK_RE = /\b(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|D
 const END_MARK_REV_RE = /\bam\s+Ende\s+(?:der|des)\s+(?:Z(?:iffer)?\s*\d+[a-z]*|lit\.\s*[a-z]{1,2}|Abs(?:\.|atzes)\s*\d+[a-z]*)\s+(nach|vor)\s+(?:dem|der)\s+(Punkt|Strichpunkt|Beistrich|Doppelpunkt)\b/i
 /** „der nachfolgende Halbsatz entfällt" — the Halbsatz behind a mark the clause before has replaced. */
 const FOLLOWING_HALBSATZ_GONE_RE = /^(?:der|die)\s+(?:nachfolgende|darauf\s*folgende|danach\s+folgende)\s+Halbs(?:atz|ätze)\s+(?:entfällt|entfallen)\.?$/i
-/** The verbs of an append. */
 /** „Im Inhaltsverzeichnis …" — also as „Inhaltverzeichnis", which the Bankwesengesetz prints. */
 const TOC_RE = /^(?:Im |Das |Die |In dem )?Inhalts?verzeichnis\b/i
+/** The table of contents named anywhere in a clause, in every case („des Inhaltsverzeichnisses"). */
+const TOC_NAMED_RE = /\bInhalt\p{L}{0,3}verzeichnis/iu
+/** A unit that prints its OWN table of contents: „In Anlage 2 werden im Inhaltsverzeichnis in Teil IV die Zeilen … angefügt". */
+const OWN_TOC_RE = /^(?:In\s+(?:der\s+)?(?:Anlage|Anhang)|Im\s+Anhang|In\s+dem\s+Anhang)\b/i
+
+/**
+ * Is this clause an instruction to the law's table of contents?
+ *
+ * The table of contents is derived from the headings and never applied
+ * (`NovaoOp` `toc`), and a § it names is one of its entries, not a target.
+ * „Im Inhaltsverzeichnis …" at the head was the one wording read as that
+ * (`TOC_RE`). The others named the table further in and were read as the §
+ * they mention: „Die § 15 betreffende Zeile im Inhaltsverzeichnis erhält die
+ * Paragraphenbezeichnung ‚16.'" renumbered § 15 of the Verordnung itself,
+ * „Im 3. Abschnitt des Inhaltsverzeichnisses entfällt im § 12 die Wortfolge
+ * …" struck the words from § 12, „Vor § 1 wird folgendes Inhaltsverzeichnis
+ * eingefügt" and „Nach dem Inhaltsverzeichnis zum 5. Abschnitt … wird nach
+ * § 32 folgender Abschnitt 5a samt Überschrift eingefügt" (whose payload is
+ * a list of entries) hung a table of contents behind a §, and „Der Eintrag
+ * zu § 50 im Inhaltsverzeichnis lautet:", refused as a phrase, still locked
+ * § 50 and filed the annex row under it (01.10.2026).
+ *
+ * Read on the clause with its quotations masked — „die Wortfolge
+ * ‚Inhaltsverzeichnis'" is an operand — and not where an Anlage carries its
+ * own: that table is part of the Anlage's text (Hitzeschutzverordnung
+ * Anlage 2), and the instruction is the Anlage's.
+ *
+ * **A clause read as the table is a clause the engine skips**, so the wider
+ * reading must never swallow a change to a §. `splitCompound` cuts only where
+ * it finds a verb on each side; a clause it could not cut („… entfällt der
+ * Eintrag zu § 12 und in § 40 Abs. 2 wird … geändert") may still hold a second
+ * instruction. So beyond the head form, a clause counts only with at most one
+ * instruction verb and no address below the § — an entry of the table names
+ * a §, never its Absatz.
+ */
+function isTocClause(head: string): boolean {
+  const masked = maskQuotes(head)
+  if (TOC_RE.test(masked)) return true
+  if (!TOC_NAMED_RE.test(masked) || OWN_TOC_RE.test(masked)) return false
+  // `INSTRUCTION_VERB_RE` is defined further down; read here at call time, after the module has loaded.
+  const verbs = masked.match(new RegExp(INSTRUCTION_VERB_RE.source, 'gi')) ?? []
+  return verbs.length <= 1 && !BELOW_PARAGRAPH_RE.test(masked)
+}
+
+/** An address below the §: „Abs. 2", „Z 3", „lit. a". */
+const BELOW_PARAGRAPH_RE = /\b(?:Abs\.|Z\s*\d|lit\.)/
+
+/** The table's own nouns, for a clause that goes on with it without naming it again. */
+const TOC_ENTRY_RE = /\b(?:Zeilen?|Eintr(?:ag|äge))\b/i
+
+/**
+ * Which clauses of one line are on the table of contents. „Die § 15
+ * betreffende Zeile im Inhaltsverzeichnis erhält … ‚16.' und die § 16
+ * betreffende Zeile lautet:" does not name the table twice; read alone, the
+ * second clause replaced § 16 of the Verordnung with an entry of it. A
+ * clause speaking of a Zeile or an Eintrag behind one on the table is on the
+ * table too — and only there: „die Zeile" of an Anlage's table is law text.
+ */
+function tocClauses(parts: readonly string[]): boolean[] {
+  const out: boolean[] = []
+  for (const [i, part] of parts.entries()) {
+    const head = instructionHead(part)
+    out.push(isTocClause(head) || (i > 0 && out[i - 1]! && TOC_ENTRY_RE.test(maskQuotes(head))))
+  }
+  return out
+}
+
+/**
+ * The same for a whole line — one predicate for every reader that asks which
+ * units an instruction names: the grammar (`toc`), the refusal bookkeeping of
+ * the gate (`kons/konsGate.ts` `refusedUnits`), the annex
+ * (`addressedUnits`) and the § names (`lawtext/instructionAddress.ts`).
+ *
+ * Every clause has to be one, or the line opens with „Im Inhaltsverzeichnis"
+ * — „… entfällt der Eintrag zu § 17; die Einträge zu den §§ 18 und 19
+ * lauten:" has lost its subject in the second clause (BFA-VG). A line that
+ * also changes a § is no table-of-contents line, and skipping it would
+ * leave that § unlocked.
+ */
+export function isTocInstruction(raw: string): boolean {
+  const line = rejoinBrokenNouns(normalizeText(raw).replace(NUMBER_PREFIX, ''))
+  if (TOC_RE.test(line)) return true
+  return tocClauses(splitCompound(line)).every(Boolean)
+}
+
+/** The verbs of an append. */
 const APPEND_VERB_RE = /\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i
 /** „… ersetzt und (danach) folgender (Halb)Satz angefügt", „…; folgender Satz wird angefügt". */
 const APPENDS_SENTENCE_RE = /\bersetzt\b[^"]*?(?:\bund\b|\bsowie\b|;)\s*(?:danach\s+)?(?:wird\s+)?folgende[rn]?\s+(?:Halbs(?:atz|ätze)|S(?:atz|ätze))\b/i
@@ -1593,7 +1678,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const ok = (op: NovaoOp): ParsedInstruction => ({ ops: [op], reason: null, line })
   const fail = (reason: string): ParsedInstruction => ({ ops: [], reason, line })
 
-  if (TOC_RE.test(head)) return ok({ kind: 'toc' })
+  if (isTocClause(head)) return ok({ kind: 'toc' })
   if (NAMED_BY_DESIGNATION_RE.test(maskQuotes(head))) return fail('Einheit über ihre Bezeichnung benannt („mit der Bezeichnung …")')
 
   const { scope, payload } = splitPayloadScope(head)
@@ -2077,6 +2162,7 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
   if (TOC_RE.test(line)) return { ops: [{ kind: 'toc' }], reason: null, line }
   const parts = splitCompound(line).flatMap(splitPlaces)
   if (parts.length === 1) return parseOne(parts[0]!, inherited, line)
+  const toc = tocClauses(parts)
 
   const ops: NovaoOp[] = []
   const reasons: string[] = []
@@ -2092,7 +2178,13 @@ export function parseInstruction(raw: string, inherited?: NovaoAddress | null): 
   // a clause with an address of its own resolves the same way every time and
   // the duplicates fall out.
   let contexts: (NovaoAddress | null)[] = [inherited ?? null]
-  for (const part of parts) {
+  for (const [i, part] of parts.entries()) {
+    // A clause on the table of contents (`tocClauses`) names no place, and
+    // hands none on.
+    if (toc[i]) {
+      ops.push({ kind: 'toc' })
+      continue
+    }
     // „In § 27 Abs. 2 letzter Satz wird der Strichpunkt durch einen Punkt
     // ersetzt; der nachfolgende Halbsatz entfällt" (RAO, BGBl. I Nr. 63/2026):
     // the Halbsatz has no boundary of its own left once its semicolon is a
@@ -2267,6 +2359,11 @@ function numeralOf(designation: string): string | null {
  *   Z 9 angefügt" is two instructions, and reading one of them files the whole
  *   unit — whose text covers both — under half its §§.
  *
+ * And a clause on the table of contents names no § at all
+ * (`isTocInstruction`, 01.10.2026): „Der Eintrag zu § 50 im
+ * Inhaltsverzeichnis lautet:" was read here as § 50, which locked § 50 at
+ * the gate and filed the annex row under it.
+ *
  * Payload and head are cut exactly as `parseOne` cuts them, so the §§ a
  * payload *creates* are not mistaken for the ones it addresses;
  * `annex/annexDraft.ts` picks those up from the quoted Gliederungssymbole,
@@ -2279,15 +2376,21 @@ const INSTRUCTION_VERB_RE =
 const OPENS_PAYLOAD_RE = /:\s*$/
 
 export function refusedAddresses(raw: string, inherited?: NovaoAddress | null): string[] | null {
+  if (isTocInstruction(raw)) return null
   const line = normalizeText(raw).replace(NUMBER_PREFIX, '')
   const paras: string[] = []
   // The second half of "Dem Text des § 5 wird die Absatzbezeichnung „(1)"
   // vorangestellt; folgender Abs. 2 wird angefügt:" has no address of its own
   // and inherits the first half's — the same carry `parseInstruction` does.
   let context = inherited ?? null
-  for (const part of splitCompound(line)) {
-    if (!INSTRUCTION_VERB_RE.test(part) && !OPENS_PAYLOAD_RE.test(part)) return null
+  const parts = splitCompound(line)
+  const toc = tocClauses(parts)
+  for (const [i, part] of parts.entries()) {
     const head = instructionHead(part)
+    // A clause on the table of contents names its entries, not a target
+    // (`isTocInstruction`); the line's other clauses still name theirs.
+    if (toc[i]) continue
+    if (!INSTRUCTION_VERB_RE.test(part) && !OPENS_PAYLOAD_RE.test(part)) return null
     const { scope } = splitPayloadScope(head)
     const found = parseAddressList(scope || head, context)
     if (!found) return null

@@ -26,7 +26,7 @@
  */
 import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
 import { draftTextOf } from './draftText'
-import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress } from '../kons/novao'
+import { NO_PARAGRAPH_ADDRESSED, addressedUnits, isTocInstruction, parseAddress } from '../kons/novao'
 
 /** One Novellierungsanordnung (or one § of a Stammgesetz), and what it addresses. */
 export interface DraftUnit {
@@ -83,6 +83,16 @@ const NO_INSTRUCTION = 'keine Novellierungsanordnung'
 export function draftUnits(blocks: readonly TextBlock[]): DraftUnit[] {
   return segmentUnits(blocks).map((unit) => {
     const instructions = unit.blocks.filter((b) => b.kind === 'novao')
+    // A unit on the table of contents names no § (`isTocInstruction`), and
+    // neither do its lettered lines nor its payload: „a) nach dem Eintrag zu
+    // § 20 wird folgender Eintrag eingefügt:" under „Das Inhaltsverzeichnis
+    // wird wie folgt geändert:" is an entry of the table, and „§ 19a. …" in
+    // the payload is the entry's text, not a § it installs. Both filed the
+    // table's words under a real § — 20 units over both paths of GP XXVIII
+    // (01.10.2026); they belong in the general bag (`annex/rightColumn.ts`).
+    if (instructions[0] && isTocInstruction(instructions[0].text)) {
+      return { law: unit.article, id: unit.id, paras: [], aliases: [], reason: NO_PARAGRAPH_ADDRESSED, text: draftTextOf(unit.blocks) }
+    }
     // The container's own address, for the lettered sub-instructions under it.
     const inherited = instructions[0] ? parseAddress(instructions[0].text) : null
     const paras = new Set<string>()

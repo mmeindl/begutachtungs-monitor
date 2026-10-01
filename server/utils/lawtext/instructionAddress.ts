@@ -48,8 +48,10 @@ export function addressedParagraph(line: string): string | null {
   //
   // Five forms stay unread, each met in the corpus as a wrong § (GP
   // XXVI–XXVIII, every new reading read): the table of contents in the
-  // wordings `parseInstruction` does not know as one („Der den § 56
-  // betreffende Eintrag des Inhaltsverzeichnisses lautet:"), a § the
+  // wordings `parseInstruction` did not know as one („Der den § 56
+  // betreffende Eintrag des Inhaltsverzeichnisses lautet:"; since
+  // 01.10.2026 the grammar's own `isTocInstruction`, which `refusedAddresses`
+  // asks too, so the gate and the annex leave the same lines unread), a § the
   // instruction creates („… wird ersetzt durch § 16 (neu) samt
   // Überschrift"), a division that only stands next to a § („Vor § 40
   // werden folgende Abschnittsbezeichnung und Abschnittsüberschrift
@@ -63,9 +65,9 @@ export function addressedParagraph(line: string): string | null {
   return refused.length === 1 && DESIGNATION_RE.test(refused[0]!) ? refused[0]! : null
 }
 
-/** See `addressedParagraph`: the table of contents, a § marked new, a division beside a §, a § inside an Artikel. */
+/** See `addressedParagraph`: a § marked new, a division beside a §, a § inside an Artikel. The table of contents is `isTocInstruction`'s. */
 const REFUSED_HEAD_RE =
-  /Inhaltsverzeichnis|§\s*\d+[a-z]*\s*\(neu\)|\b(?:vor|nach)\s+(?:dem\s+)?§|abschnitts(?:bezeichnung|überschrift)|\bbezeichnung\s+und\s+überschrift|hauptstück|\bArt(?:ikel|\.)\s*[IVXLC\d]+[a-z]?\s+§/i
+  /§\s*\d+[a-z]*\s*\(neu\)|\b(?:vor|nach)\s+(?:dem\s+)?§|abschnitts(?:bezeichnung|überschrift)|\bbezeichnung\s+und\s+überschrift|hauptstück|\bArt(?:ikel|\.)\s*[IVXLC\d]+[a-z]?\s+§/i
 /** The designations a name can be looked up under. */
 const DESIGNATION_RE = /^(?:§|Art\.|Anlage|Anhang)\s/
 

@@ -3212,6 +3212,77 @@ Zahl gleich bis auf „grammatikalisch gelesen" im ME-Prüfstand 2.601 → 2.600
 (die AußWV-Zeile; angewendet und bestätigt unverändert); Sammelnovellen und
 Beilagen-Drift ohne Bewegung.
 
+**Das Inhaltsverzeichnis ist eine Frage, nicht drei (01.10.2026).** Seit
+dac81ec lässt `addressedParagraph` Inhaltsverzeichnis-Anweisungen in den
+Wortlauten ungelesen, die die Grammatik nicht als solche kennt („Der Eintrag
+zu § 50 im Inhaltsverzeichnis lautet:"). Das Tor (`refusedUnits`, mit eigener
+Präfixprobe) und die Beilage (`addressedUnits`) kannten dieselben Formen
+nicht und lasen den Paragraphen, den der Eintrag nennt — als Sperre und als
+Adresse. Die Alt-gegen-Neu-Lesung über dieselben 14.818 Zeilen zeigte, dass
+es nicht bei der Adresse blieb: Zehn Wortlaute hatte die Grammatik als
+**Operation auf einen echten Paragraphen** typisiert. „Die § 15 betreffende
+Zeile im Inhaltsverzeichnis erhält die Paragraphenbezeichnung ‚16.' und die
+§ 16 betreffende Zeile lautet:" hätte § 15 der Verordnung umbenannt und § 16
+durch einen Eintrag ersetzt (sechs solche Zeilen in einem
+Hochschülerschafts-Entwurf), „Im 3. Abschnitt des Inhaltsverzeichnisses
+entfällt im § 12 die Wortfolge ‚…'" die Wörter aus § 12 gestrichen, „Die
+Überschrift des 8. Abschnitts im Inhaltsverzeichnis lautet:" eine
+Abschnittsüberschrift ersetzt, deren Schlüssel „8" das Tor als § 8 sperrt; „Vor § 1 wird
+folgendes Inhaltsverzeichnis eingefügt" und „Nach dem Inhaltsverzeichnis zum
+5. Abschnitt … wird nach § 32 folgender Abschnitt 5a samt Überschrift
+eingefügt" (dessen Nutzlast eine Liste von Einträgen ist) scheiterten nur an
+der Ausführung und sperrten § 1 und § 32.
+
+Jetzt gibt es **ein Prädikat**, `isTocInstruction` in `kons/novao.ts`: Ein
+Satzteil gehört dem Inhaltsverzeichnis, wenn er es außerhalb der Zitate nennt
+(auch „Inhaltverzeichnis" und „Inhaltalsverzeichnis", wie zwei Ressorts
+drucken), oder wenn er hinter einem solchen Teil mit dessen eigenen Nomen
+weiterspricht („… und die § 16 betreffende Zeile lautet:"). Die Grammatik
+typisiert ihn als `toc`, `refusedAddresses` überspringt ihn, `refusedUnits`
+fragt dasselbe statt seiner Präfixprobe, und `addressedParagraph` braucht
+seine eigene Inhaltsverzeichnis-Wache nicht mehr. Drei Grenzen, je mit Grund:
+**Eine Anlage mit eigenem Inhaltsverzeichnis** („In Anlage 2 werden im
+Inhaltsverzeichnis in Teil IV die Zeilen … angefügt", Hitzeschutzverordnung)
+bleibt die Anweisung der Anlage — dort ist es Gesetzestext. **„Zeile" und
+„Eintrag" allein** sind kein Inhaltsverzeichnis: Über die Prüfstände stehen
+sie fast nur in Tabellen von Anlagen. Und **ein Satzteil, den
+`splitCompound` nicht trennen konnte**, zählt nur mit höchstens einem
+Anordnungsverb und ohne Adresse unter dem Paragraphen — ein als
+Inhaltsverzeichnis gelesener Teil wird übersprungen, und das darf nie eine
+Änderung an einem Paragraphen mitnehmen. Die Wache kostet im Korpus keine
+Zeile.
+
+Gemessen, alt gegen neu: **25 Zeilen lesen sich anders (13 Wortlaute, die
+übrigen dieselben mit Nummer), jede gelesen, jede ein Inhaltsverzeichnis.**
+Die Sperrprobe (jede Zeile als verweigert an `refusedUnits`) verliert §§ 15–27
+(Hochschülerschafts-Entwurf), § 12 und § 4 — der Schlüssel von „Abschnitt 4"
+— (Universitätsgesetz-Entwurf), § 8 und § 50 (Medizinproduktegesetz), § 21b
+(Meldegesetz), § 1 (Informationssicherheitsgesetz), § 32
+(Grenzwerteverordnung), § 25 (Kapitalmarktgesetz) und zweimal § 33
+(„Inhaltverzeichnis" — gesperrt nur, wo die Zeile mit einer Tabelle
+verweigert wird; die Grammatik las sie schon als `toc`). Namen verlieren vier
+Zeilen, alle falsch: „§ 1" und „§ 32" für ein Inhaltsverzeichnis, „Abschnitt
+8", „§ 25". Prüfstände (`--discover=40 --sammel --cache`): **jede Zahl
+gleich** — Verweigerungen 286, angewendet 1.965, identisch 885, halb
+angewendet 45, eigene Abweichung 13, ohne Verweigerung abweichend 10, „kein
+geltender Text" ohne Verweigerung 18; von den 25 Zeilen steht nur die eine
+§-33-Zeile in den 40 Novellen. Entwürfe (`--discover=120
+--cache`): angewendet 2.242 → 2.243 und „ohne Verweigerung und plausibel"
+1.060 → 1.061, beides der Informationssicherheitsgesetz-Entwurf § 1, dessen
+Sperre allein die Einfügung des Inhaltsverzeichnisses war; anzeigbar wird er
+nicht (das Orakel findet seine geltende Fassung nicht), bestätigt bleibt bei
+623. Die Beilagenseite: §12.13.
+
+**Offen, eine Zeile:** „17. Der Eintrag nach der § 29 betreffenden Zeile
+lautet:" (Hochschülerschafts-Entwurf) setzt das Inhaltsverzeichnis der
+vorigen *Anweisung* fort, nicht eines Satzteils derselben Zeile; eine Zeile
+allein sieht das nicht, sie sperrt und benennt weiter § 29. Und unter einem
+Container „Das Inhaltsverzeichnis wird wie folgt geändert:" liest
+`kons/lawApply.ts` die Unteranweisungen („a) nach dem Eintrag zu § 20 wird
+folgender Eintrag eingefügt:") weiter als eigene Zeilen: Sie sperren den
+genannten Paragraphen, was einen kostet und nie einen falschen zeigt. Die
+Beilage liest sie seit heute als Teil des Inhaltsverzeichnisses (§12.13).
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
@@ -6286,6 +6357,31 @@ also behält jede Zelle, die etwas Eigenes druckt, ihre Änderung.
 
 Am Tor ändert sich nichts (`change` und `elided` bleiben, wie sie waren),
 Drift über beide Pfade ohne Befund.
+
+**Das Inhaltsverzeichnis legt keine Wörter unter einen Paragraphen
+(01.10.2026).** Dieselbe Frage wie in §12.12 („Das Inhaltsverzeichnis ist
+eine Frage, nicht drei"), auf der Beilagenseite mit zwei Wegen mehr: Unter
+„Das Inhaltsverzeichnis wird wie folgt geändert:" lasen die Literae („a)
+nach dem Eintrag zu § 20 wird folgender Eintrag eingefügt:") den genannten
+Paragraphen, und die Nutzlast eines Eintrags trägt ein Gliederungssymbol
+(„§ 19a. Aufenthaltstitel"), das `draftUnits` wie das eines eingefügten
+Paragraphen nahm. Eine Einheit, deren erste Anweisung `isTocInstruction`
+ist, nennt jetzt keinen Paragraphen; ihre Wörter gehen in den allgemeinen
+Sack, wohin das Inhaltsverzeichnis gehört. Einheit für Einheit alt gegen neu
+über GP XXVIII, `--limit=400`: **Tabellenpfad 13 Einheiten, PDF-Pfad 10, jede
+ein Inhaltsverzeichnis** — die sechs Hochschülerschafts-Zeilen, „Vor § 1 …
+Inhaltsverzeichnis", „Nach dem Inhaltsverzeichnis zum 5. Abschnitt … nach
+§ 32", die Nutzlast-Symbole § 29, § 7, § 84 und § 77 (Tierärzte-,
+Tierärztekammer-, Tierarzneimittel- und Medizinproduktegesetz) und § 19a,
+§ 46a, § 44, die Container von
+Börsegesetz, VAG, Transparenzdatenbank- und Zentralverwahrer-Vollzugsgesetz,
+„Inhaltalsverzeichnis … § 25", dazu drei, die schon nichts nannten und jetzt
+den richtigen Grund tragen. Adressierung: Tabellenpfad 3.144 → 3.132,
+„zu Recht ohne Paragraph" 172 → 185, ungelesen 92 → 91; PDF-Pfad 4.924 →
+4.916, 223 → 233, 143 → 141. **Kein Paragraph der Beilage verliert seinen
+eigenen Sack** (1.969 / 197 und 3.091 / 612 unverändert), jedes Urteil und
+jede Zahl der Berichte gleich, Drift gegen die Grundlinie ohne Befund — die
+Grundlinie bleibt.
 
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 

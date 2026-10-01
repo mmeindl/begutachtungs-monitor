@@ -34,7 +34,7 @@
  */
 
 import type { Instruction } from './lawApply'
-import { articleQualifier, namedParagraphs, opAddress, refusedAddresses } from './novao'
+import { articleQualifier, isTocInstruction, namedParagraphs, opAddress, refusedAddresses } from './novao'
 import type { ConsolidatedWithheldCause } from '../../../shared/types'
 import { articleNumberKey, isSchedule, unitKey } from '../text/designation'
 
@@ -118,8 +118,6 @@ export function byParagraphOrder(a: string, b: string): number {
  * „Anl. 1": a failed instruction on the Anlage marked § 1 refused and left the
  * Anlage clean. `key` is the form the caller looks units up in.
  */
-const TOC_LINE_RE = /^(?:\d+[a-z]?\.\s*)?(?:Im |Das |Die |In dem )?Inhaltsverzeichnis/i
-
 export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonly string[], key: (designation: string) => string | null): Set<string> {
   const out = new Set<string>()
   for (const p of unresolved) {
@@ -130,8 +128,11 @@ export function refusedUnits(unresolved: Iterable<string>, refusedLines: readonl
     // „Im Inhaltsverzeichnis entfällt der Eintrag zu § 17; die Einträge zu den
     // §§ 18 und 19 lauten": the table of contents, which no § text carries —
     // the grammar reads it as `toc` for the same reason. Named §§ are its
-    // entries, not its targets (BFA-VG, BGBl. I Nr. 39/2026).
-    if (TOC_LINE_RE.test(line.trim())) continue
+    // entries, not its targets (BFA-VG, BGBl. I Nr. 39/2026). The one
+    // predicate the grammar, the annex and the § names ask too: a prefix test
+    // here missed „Der Eintrag zu § 50 im Inhaltsverzeichnis lautet:" and
+    // locked § 50 (01.10.2026).
+    if (isTocInstruction(line)) continue
     const named = refusedAddresses(line) ?? [/§+\s*\d+[a-z]*/.exec(line)?.[0] ?? '']
     for (const p of named) {
       const id = p ? key(p) : null
