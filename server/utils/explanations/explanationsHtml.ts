@@ -22,7 +22,7 @@
  * „Zu Z 4 (§ 54c Abs. 1a und 1b):" has to mean the same Paragraph on both
  * sides, or the Begründung hangs on the wrong §.
  */
-import { addressOf, ARTICLE_HEADING_RE, isAddressHeading, ziffernOf } from './risExplanations'
+import { addressOf, ARTICLE_HEADING_RE, isAddressHeading, splitHeading, ziffernOf } from './risExplanations'
 import { articleNumberKey, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
@@ -33,9 +33,16 @@ import { articleParagraphKey, explanationParaId } from '../../../shared/utils/ex
 
 /** One passage of the Besonderer Teil, at its address. */
 export interface HtmlPassage {
-  /** The heading, as the ressort printed it. */
+  /**
+   * The heading, as the ressort printed it — up to the end of its address
+   * where the ressort wrote the reasoning on the heading line too („Zu Z 5
+   * (Aggregierung): Durch die Wortfolge …"): that prose is the first
+   * paragraph of `text` (`splitHeading`, 02.10.2026). The fields below are
+   * read from the whole line all the same, so `ziffernOf(heading)` is not
+   * `ziffern` for such a passage: a heading that runs on names no Ziffer.
+   */
   heading: string
-  /** „§ 54c" — the Paragraphen the heading names. */
+  /** „§ 54c" — the Paragraphen the heading's address names, not those its prose cites. */
   paragraphs: string[]
   /** The passage's paragraphs, in printed order. */
   text: string[]
@@ -229,7 +236,13 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
     }
 
     if (isAddressHeading(text)) {
-      const paragraphs = addressOf(text).paragraphs
+      // „Zu Z 5 (Aggregierung): Durch die Wortfolge …" — the reasoning on
+      // the heading line is the passage's first paragraph, and a § it cites
+      // is no § the passage is about (`splitHeading`). Everything else is
+      // read from the whole line, as before: the Ziffern above all, since a
+      // heading that runs on into prose names no instruction (`ziffernOf`).
+      const { address, prose } = splitHeading(text)
+      const paragraphs = addressOf(address).paragraphs
       // „Zu Art. 7 Abs. 4 der RL …" names no Artikel of this package: the
       // passage stands under the mark above it and leaves that mark alone.
       const cited = isCitedArticle(text)
@@ -247,11 +260,13 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
       const ziffern = ziffernOf(text).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer }))
       // An Artikel heading of its own — no Ziffer, no § — opens a section,
       // with or without a number the parser can read („Zu Art. X1 (…)").
-      if (!cited && ziffern.length === 0 && paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
+      // Asked of the whole line, as before the cut: what opens a section
+      // stays what it was.
+      if (!cited && ziffern.length === 0 && addressOf(text).paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
         section = sectionOf(text)
         law = lawOf(text)
       }
-      current = { heading: text, paragraphs, text: [], article, ziffern, section, law }
+      current = { heading: address, paragraphs, text: prose ? [prose] : [], article, ziffern, section, law }
       special.push(current)
       inSpecial = true
       continue

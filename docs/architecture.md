@@ -1335,6 +1335,109 @@ Zahl der Einheiten mit Begründung nach allen vier Schritten bei 2.710 →
 2.733, 7.145 → 7.158 und 2.742 → 2.804. Urteilswechsel auf dem §-Join wie
 bisher: 0.
 
+**Nachgezogen am 02.10.2026: die Begründung auf der Überschriftszeile.** Die
+Frage aus 32/ME XXVIII (oben, „Zu Z 5 (Aggregierung): Durch die Wortfolge …")
+ist jetzt gebaut. `splitHeading` in `risExplanations.ts` schneidet eine
+Passagenüberschrift am Ende ihrer Adresse, also am ersten Doppelpunkt
+außerhalb der Klammern, genau dort, wo `ziffernOf` die Adresse enden lässt.
+Der Rest wird der erste Absatz der Passage. Geschnitten wird nur, wo der Rest
+Prosa ist: keine zweite Adresse, keine Klammer „(§ …", nicht der
+Gesetzestitel einer Artikelüberschrift („Zu Artikel 1:
+Elektrizitätswirtschaftsgesetz"), und ein Satz, der endet. Unter einer
+Adresse ohne § zählt auch ein längerer, den das Ressort nicht geschlossen hat
+(„Zu Abs. 5: Daten sind … zur Verfügung zu stellen-" im Entwurf 32/ME, dessen
+Vorlage den Satz schließt — auf einer Seite geschnitten, hieße das Paar
+„geändert"). Ein §-Titel bleibt Überschrift: „Zu § 1: Ziel", und die langen
+des Tierarzneimittelgesetzes („Zu § 69: Dokumentation des Warenausgangs aus
+einer öffentlichen Apotheke …"). Die erste Fassung schnitt diese 14 auch ab,
+und die Zählung hat es gezeigt, bevor eine Zahl hier stand: Ein umbenannter §
+hätte als geänderte Begründung gegolten.
+
+*Was gleich gelesen bleibt, und was nicht.* Die Ziffern liest der Parser
+weiter aus der ganzen Zeile, denn eine Überschrift, die in Prosa weiterläuft,
+nennt keine Anweisung (`ziffernOf`, „Zu Z 4: Diese Definition …"). Auch
+Artikelmarke, Artikelüberschrift und Gesetz bleiben, wie sie waren. Die §§
+dagegen kommen jetzt nur aus der Adresse. Bei 367 der geschnittenen Passagen
+nennt die Prosa §§, die sie zitiert („§ 7 Zustellgesetz", „§ 52 AVG", „§ 2
+Abs. 1 UVP-G 2000"), und unter diesen hing die Passage im §-Join, in 125
+Fällen schon mit Text. Als Text gelesen, hätte die Prosa genau dort
+gestanden.
+
+*Zensus* über alle 688 zwischengespeicherten Erläuterungen mit Besonderem
+Teil (26.970 Passagen), alt gegen neu durch `parseExplanationsHtml`:
+**803 Überschriften in 66 Dokumenten geschnitten, 432.921 Zeichen**, 521 der
+Passagen hatten vorher keinen Text. (Die Schätzung oben, 550 Passagen in 57
+Dokumenten, war anders abgegrenzt; gezählt ist hier, was der Leser
+schneidet.) Sonst bewegt sich nichts: Ziffern,
+Artikel, Artikelüberschrift, Gesetz und der Allgemeine Teil sind in jedem
+Dokument gleich. Nicht geschnitten werden 69 Artikelüberschriften mit dem
+Gesetzestitel und 140 §-Titel; ungeschnitten bleiben auch die Überschriften
+ohne Doppelpunkt, die gleich in den Satz laufen („Zu Z 5 ist festzuhalten,
+dass …", „Zu § 77a Abs. 9 vertritt die Kommission …", 35 an einem Verb wie
+„ist" oder „wird" gezählt) — dort gibt es keine Stelle, an der die Adresse
+sicher endet. Gelesen sind 45 geschnittene als Stichprobe und
+alle 18, bei denen der Schnitt zweifelhaft aussah: Wörter in der Adresse, die
+keine Adresse sind („Zu Abs. 2 - Bedarf am Arbeitsmarkt:", „Zu Abs. 1 Z 16
+"Berufsjagdwirtschaft":", „Zu Z 19 neu:", „Zu § 10 Abs. 6 Z 6 ist Folgendes
+auszuführen:"), und Prosa, die klein beginnt („lit. a erläutert …", „wie
+bereits oben …"). Bei jeder endet die Adresse am Doppelpunkt.
+
+*Der RIS-Leser hat dieselbe Form, nur selten.* Sein Korpus liegt seit der
+Messung zu §12.30 offline vor (das Fenster ab 2024, 299 Erläuterungen mit
+Besonderem Teil), und geschnitten werden dort 3 Überschriften: „Zu Z 17
+(§ 80 Z 3): Die Umnummerierungen …" und „Zu Z 90 (§ 91a): …" hatten keinen
+Text und haben jetzt einen. „Zu Z 11b: … gemäß § 10 Abs. 2 Z 3 SchOG …" hing
+an § 10, einem Paragraphen eines anderen Gesetzes.
+
+*Alt gegen neu* (`--ziffer --save` auf `a83d254`, dann `--against`):
+
+| | XXVI | XXVII | XXVIII |
+|---|---|---|---|
+| (a′) Einheiten mit gezeigter Begründung | 2.755 → 2.755 | 7.158 → **7.159** | 2.804 → **2.808** |
+| verloren / dazu | 0 / 0 | 0 / 1 | 12 / 16 |
+| verglichene Begründungen | 1.585 → 1.585 | 4.899 → 4.900 | 1.896 → 1.907 |
+| davon geändert | 619 → 621 | 2.074 → 2.075 | 757 → 765 |
+| gezeigt ohne Urteil | 120 → 120 | 295 → 295 | 108 → 106 |
+| „unverändert" → „geändert" | 6 | 1 | 6 |
+| „geändert" → „unverändert" | 0 | 0 | 14 |
+
+Gelesen sind alle Einheiten, die dazukommen, verloren gehen oder ihr Urteil
+wechseln. **Dazu** kommen in XXVIII die acht §§ des ElWG aus 32/ME, die oben
+ohne Begründung standen (im Entwurf §§ 6, 7, 64, 109, 145, 149, 154, 158),
+und acht §§ des EABG (43/ME), in XXVII 224/ME Z 16 → Z 17 (§ 26),
+unverändert. Bei jedem lesen beide Seiten ihre Unterüberschriften gleich, und
+was sich am Text ändert, hat das Ressort geändert: Die Vorlage führt in § 6
+ElWG neue Begriffe („aktiver Kunde", „Gebotszone"), in § 20 EABG einen Satz
+zu den nichtamtlichen Sachverständigen. **„Unverändert" → „geändert"**:
+Jedes Mal hat die Vorlage auf einer Überschriftszeile einen Satz ergänzt oder
+gestrichen, der vorher in keinem Text stand. 36/ME XXVI ergänzt „Zum
+Beispiel können die Zollbehörden …" unter „Zu Z 13 lit. c):", und weil das
+eine Passage für Z 11 bis 15 ist, wechseln alle fünf Ziffern. 3/ME XXVI
+ergänzt einen Satz zu § 51 SPG, 32/ME XXVIII zu § 121 ElWG „Zu Abs. 5:
+Hintergrund des Abs. 5 ist …", 43/ME XXVIII streicht die Begründung zu § 8
+Abs. 5. Zwei davon sind nur redaktionell (138/ME XXVII „Sinn" → „Sinne",
+100/ME XXVIII ausgeschriebene Zitate), und dort urteilt die Schwelle wie
+überall.
+**„Geändert" → „unverändert"**, 14 Einheiten in 4/ME und 43/ME XXVIII, alle
+auf dem §-Join: Das „geändert" kam aus fremden Unterüberschriften, die am §
+nur hingen, weil ihre Prosa ihn zitiert („Zu Abs. 1: Zur Anpassung des
+Strafrahmens …" an §§ 222, 244, 245, 270 und 280 UGB).
+
+**Verloren** sind 12 Einheiten in XXVIII. Elf davon hatten eine fremde
+Begründung, die nur über ein Zitat in ihrer Prosa an der Einheit hing: Zehn
+in 58/ME (Z 11, „Kerndaten" in § 2 BVergG, trug „Zu Abs. 5 Z 3: Wenn in einer
+Beschwerde mehrere Anträge …"), dazu 43/ME Art. 2 Z 2 (§ 1), der eine
+Unterüberschrift über die Landesverwaltungsgerichte trug. Eine ist ein echter
+Verlust: 4/ME Z 22 (§ 267a UGB). Ihre alte Begründung bestand aus drei
+Unterüberschriften, nur eine davon ihre eigene, und auch die hing nur über
+ein Zitat an ihr. Ihre eigene Begründung steht in „Zu Abs. 1:" und „Zu
+Abs. 9:" (in der Vorlage „Zu Abs. 8:") unter „Zu § 267a:", und der §-Join sammelt
+keine Unterüberschriften ein, anders als der Ziffer-Join und der Join nach der
+eigenen Bezeichnung (`ownedPassages`). Das ist eine Lücke des §-Joins, die
+dieser Schritt sichtbar macht, nicht schafft. Urteilswechsel auf dem §-Join wie
+bisher (dieselben Funktionen, alt gegen neu im selben Lauf): 0 in allen drei
+Perioden.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and
@@ -9729,6 +9832,21 @@ Zeiger auf einen Abschnitt, der selbst sagt, woran es lag, kostet einen
 Blick; ein Zeiger ins PDF, während die Stelle auf derselben Seite steht,
 kostet den Weg zurück — und der Satz federt sie ab, indem er **nichts
 wegnimmt**: „und vollständig im Dokument selbst" steht in beiden Fassungen.
+
+**Nachgezogen am 02.10.2026: die Begründung auf der Überschriftszeile.** Der
+RIS-Leser schneidet eine Passagenüberschrift wie der des Parlaments am Ende
+ihrer Adresse (`splitHeading`, §12.10b): „Zu Z 17 (§ 80 Z 3): Die
+Umnummerierungen …" ist die Adresse und der erste Absatz, und die §§ kommen
+nur noch aus der Adresse. Über die 299 Erläuterungen mit Besonderem Teil im
+Fenster ab 2024 betrifft das 3 Überschriften. Gemessen mit `pnpm
+corpus:erlaeuterungen -- --join` vorher und nachher über dieselben,
+zwischengespeicherten Dokumente: **§§ mit Begründung am Paragraphen 1.816
+von 2.396 (75,8 %), vorher wie nachher**, Median je Entwurf 89 %. Die
+Einträge sinken von 2.245 auf 2.244 und die ohne § in der Beilage von 429
+auf 428: Weg ist „Zu Z 11b: … gemäß § 10 Abs. 2 Z 3 SchOG …" an einem § 10,
+den die Beilage nicht führt — ein Zitat, kein Ziel. Die beiden Passagen, die
+jetzt Text haben, stehen in Entwürfen, deren Beilage keine §§ liefert
+(Patentgesetz, Außenwirtschaftsgesetz), also außerhalb der 148 auswertbaren.
 
 ### 12.31 Die Vehikel-Frage: Volltextsuche über die laufenden Begutachtungen
 

@@ -225,6 +225,31 @@ describe('the Artikel heading in force — section and law (01.10.2026)', () => 
     expect(parsed.special.map((p) => p.article)).toEqual(['1', '1', '1', '5', null])
   })
 
+  // 32/ME XXVIII: the definitions of § 6 are explained on the heading line
+  // itself, and the passage had no text.
+  it('reads the reasoning on the heading line as the first paragraph of the passage (02.10.2026)', () => {
+    const parsed = parseExplanationsHtml(
+      doc(
+        'Besonderer Teil',
+        'Zu § 6 (Begriffsbestimmungen):',
+        'Zu Z 5 (Aggregierung): Durch die Wortfolge soll zum Ausdruck gebracht werden, dass § 7 gilt.',
+        'Zu Z 4: Diese Definition ergeht in Umsetzung des Art. 2 Z 9a der Richtlinie (EU) 2018/2001.',
+        'Weiter.',
+        'Zu § 1: Ziel',
+        'Text.',
+      ),
+    )
+    expect(parsed.special.map((p) => [p.heading, p.paragraphs, p.ziffern.length, p.text])).toEqual([
+      ['Zu § 6 (Begriffsbestimmungen):', ['§ 6'], 0, []],
+      // The § it cites is no § it is about, and a heading that runs on names no Ziffer.
+      ['Zu Z 5 (Aggregierung):', [], 0, ['Durch die Wortfolge soll zum Ausdruck gebracht werden, dass § 7 gilt.']],
+      ['Zu Z 4:', [], 0, ['Diese Definition ergeht in Umsetzung des Art. 2 Z 9a der Richtlinie (EU) 2018/2001.', 'Weiter.']],
+      // A § heading's title stays a heading.
+      ['Zu § 1: Ziel', ['§ 1'], 0, ['Text.']],
+    ])
+    expect(passagesByParagraph(parsed).has('7')).toBe(false)
+  })
+
   it('reads the law of an Artikel heading without a number, nested brackets kept (22/ME XXVIII)', () => {
     const law = 'Änderung des Bundesgesetzes über die Einrichtung einer Dokumentations- und Informationsstelle für Sektenfragen (Bundesstelle für Sektenfragen)'
     const parsed = parseExplanationsHtml(doc('Besonderer Teil', `Zu Art. X1 (${law}):`, 'Zu Z 1', 'Text.'))

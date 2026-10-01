@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressOf, hasReadableText, parseExplanations, ziffernOf } from '../server/utils/explanations/risExplanations'
+import { addressOf, hasReadableText, parseExplanations, splitHeading, ziffernOf } from '../server/utils/explanations/risExplanations'
 import { explanationsByParagraph } from '../server/utils/explanations/explanationsJoin'
 
 /**
@@ -257,5 +257,47 @@ describe('ziffernOf — die Novellierungsanordnungen einer Passagenüberschrift 
 
   it('füllt addressOf().items aus derselben Lesung', () => {
     expect(addressOf('Zu Z 1 bis 3 (§ 5 Abs. 2 Z 7):').items).toEqual(['Z 1', 'Z 2', 'Z 3'])
+  })
+})
+
+describe('splitHeading — die Begründung auf der Überschriftszeile (02.10.2026)', () => {
+  it('schneidet am Ende der Adresse und gibt den Rest als Prosa', () => {
+    expect(splitHeading('Zu Z 5 (Aggregierung): Durch die Wortfolge "gemeinsam" soll zum Ausdruck gebracht werden, dass …')).toEqual({
+      address: 'Zu Z 5 (Aggregierung):',
+      prose: 'Durch die Wortfolge "gemeinsam" soll zum Ausdruck gebracht werden, dass …',
+    })
+    expect(splitHeading('Zu Abs. 3: Die Regelung knüpft an § 2 an.')).toEqual({ address: 'Zu Abs. 3:', prose: 'Die Regelung knüpft an § 2 an.' })
+    // The colon inside the brackets is not the end of the address.
+    expect(splitHeading('Zu Z 2 (§ 5: neu): Dazu ist nichts zu sagen.').address).toBe('Zu Z 2 (§ 5: neu):')
+  })
+
+  it('lässt eine Überschrift ohne Prosa hinter dem Doppelpunkt, wie sie ist', () => {
+    expect(splitHeading('Zu Z 4 (§ 54c Abs. 1a und 1b):')).toEqual({ address: 'Zu Z 4 (§ 54c Abs. 1a und 1b):', prose: null })
+    expect(splitHeading('Zu § 77a Abs. 9 vertritt die Kommission die Auffassung, dass § 40 nicht genügt.').prose).toBeNull()
+  })
+
+  it('schneidet keinen Titel ab: den eines §, den Gesetzestitel einer Artikelüberschrift, keine zweite Adresse', () => {
+    expect(splitHeading('Zu § 1: Ziel').prose).toBeNull()
+    expect(splitHeading('Zu § 69: Dokumentation des Warenausgangs aus einer öffentlichen Apotheke oder einer Apotheke einer akademischen Ausbildungsstätte').prose).toBeNull()
+    expect(splitHeading('Zu Z 5: Nebenwirkungen').prose).toBeNull()
+    expect(splitHeading('Zu Artikel 1: Elektrizitätswirtschaftsgesetz').prose).toBeNull()
+    expect(splitHeading('Zu Artikel 10: Änderung des Pflichtschulerhaltungs-Grundsatzgesetzes:').prose).toBeNull()
+    expect(splitHeading('Zu Art. 1: Zu Z 1:').prose).toBeNull()
+  })
+
+  it('nimmt einen nicht geschlossenen Satz unter einer Adresse ohne § als Prosa', () => {
+    expect(splitHeading('Zu Abs. 1: Erarbeitung von Qualifikationen in Entwicklungsteams unter Beiziehung von').prose).toBe(
+      'Erarbeitung von Qualifikationen in Entwicklungsteams unter Beiziehung von',
+    )
+  })
+
+  it('gibt im RIS-Leser die Prosa als ersten Absatz und die §§ nur aus der Adresse', () => {
+    const parsed = parseExplanations(
+      doc(head('erlz', 'Besonderer Teil') + head('erll', 'Zu Z 90 (§ 91a): Bei Z 90 handelt es sich um eine Anpassung an § 5 KMG.') + text('Weiter.')),
+    )
+    // The Ziffern stay read from the whole line, as before: one that runs on names none.
+    expect(parsed.special?.passages.map((p) => [p.heading, p.paragraphs, p.items, p.text])).toEqual([
+      ['Zu Z 90 (§ 91a):', ['§ 91a'], [], ['Bei Z 90 handelt es sich um eine Anpassung an § 5 KMG.', 'Weiter.']],
+    ])
   })
 })

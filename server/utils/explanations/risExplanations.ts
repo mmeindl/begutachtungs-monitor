@@ -70,7 +70,11 @@ export type ExplanationsPartKind = 'general' | 'special' | 'wfa' | 'other'
 
 /** One passage: an `erll` heading and the prose under it. */
 export interface ExplanationsPassage {
-  /** The heading as printed, e.g. „Zu Z 1 (§ 12 Abs. 3):" — null before the first one. */
+  /**
+   * The heading as printed, e.g. „Zu Z 1 (§ 12 Abs. 3):" — null before the
+   * first one. Where the ressort wrote the reasoning on the heading line, only
+   * its address: the prose is the first paragraph of `text` (`splitHeading`).
+   */
   heading: string | null
   /**
    * The Artikel heading in force above this passage inside the Besonderer
@@ -376,6 +380,69 @@ export function addressOf(heading: string): { paragraphs: string[]; items: strin
 }
 
 /**
+ * Below an address without a §, a title is short („Zu Z 5: Nebenwirkungen",
+ * a Verordnung in RIS), and the three unclosed sentences of the cached
+ * Parliament corpus run 8, 28 and 39 words (`splitHeading`, 02.10.2026).
+ */
+const TITLE_MAX_WORDS = 7
+const SENTENCE_END_RE = /[.!?;:]["'»)\]]*$/
+/** The words of the remainder, for `TITLE_MAX_WORDS`. */
+function wordCount(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length
+}
+
+/** A passage heading, cut where its address ends — see `splitHeading`. */
+export interface SplitHeading {
+  /** „Zu Z 5 (Aggregierung):" — the heading up to and including the colon; the whole heading where nothing is cut. */
+  address: string
+  /** „Durch die Wortfolge … soll …" — the reasoning the ressort set on the heading line, or null. */
+  prose: string | null
+}
+
+/**
+ * A passage heading cut where its address ends, and the reasoning the
+ * ressort wrote on the same line behind it — „Zu Z 5 (Aggregierung): Durch
+ * die Wortfolge … soll zum Ausdruck gebracht werden …" (32/ME XXVIII) is the
+ * address „Zu Z 5 (Aggregierung):" and the first paragraph of the passage
+ * (docs/architecture.md §12.10b, 02.10.2026). Left in the heading, that prose
+ * was in no passage's text: 803 headings in 66 of 688 Parliament
+ * Erläuterungen, most of them the sub-headings of a new law's § („Zu Abs. 3:
+ * …", a definition's „Zu Z 4: Diese Definition …").
+ *
+ * The address ends where `ziffernOf` ends it: at the first colon outside the
+ * brackets. Cut only where what follows is prose, not more heading:
+ *  - it has letters (`ziffernOf`'s own test for a heading that runs on);
+ *  - it is no address of its own (`isAddressHeading`) and no bracketed
+ *    continuation of the address („(§ …");
+ *  - the address is no Artikel heading of the package — „Zu Artikel 1:
+ *    Elektrizitätswirtschaftsgesetz" names the law, not a reason;
+ *  - and it ends a sentence. „Zu § 1: Ziel", „Zu § 5: Qualitätsanforderungen
+ *    an Tierarzneimittel" (the TAMG, draft and Vorlage alike) and „Zu §§ 6 bis 10:
+ *    Allgemeine Anforderungen, Sachkundige Person, …" (a Verordnung in RIS)
+ *    title the §, and a title moved into the text would make a retitled §
+ *    read as a changed Begründung. Below an address without a §, a remainder
+ *    longer than any title measured counts too: „Zu Abs. 5: Daten sind …
+ *    zur Verfügung zu stellen-" (32/ME XXVIII) is a sentence the ressort did
+ *    not close, and its Vorlage did — cut on one side only, the pair would
+ *    read „geändert".
+ */
+export function splitHeading(heading: string): SplitHeading {
+  let flat = heading
+  // The same blanking as `ziffernOf`, length kept, so the colon is the one it reads.
+  for (let i = 0; i < 2; i++) flat = flat.replace(/\([^()]*\)/g, (m) => ' '.repeat(m.length))
+  const at = flat.indexOf(':')
+  if (at === -1) return { address: heading, prose: null }
+  const address = heading.slice(0, at + 1).trim()
+  const rest = heading.slice(at + 1).trim()
+  if (!/[A-Za-zÄÖÜäöüß]/.test(rest)) return { address: heading, prose: null }
+  if (isAddressHeading(rest) || /^\(\s*§/.test(rest)) return { address: heading, prose: null }
+  const own = addressOf(address)
+  if (ARTICLE_HEADING_RE.test(address) && !own.paragraphs.length && !own.items.length) return { address: heading, prose: null }
+  if (!SENTENCE_END_RE.test(rest) && (own.paragraphs.length > 0 || wordCount(rest) <= TITLE_MAX_WORDS)) return { address: heading, prose: null }
+  return { address, prose: rest }
+}
+
+/**
  * „Zu Art. 1 (Änderung der Notariatsordnung)" and the bare „Artikel 1" — the
  * Artikel heading of the Besonderer Teil, in the forms ressorts type when they
  * type it as a passage rather than as an `erlz`.
@@ -423,12 +490,15 @@ export function parseExplanations(xml: string): ExplanationsDocument {
   /** The Artikel heading in force — an `erlz` inside the Besonderer Teil. */
   let article: string | null = null
 
-  const newPassage = (heading: string | null): ExplanationsPassage => ({
-    heading,
-    article,
-    ...(heading ? addressOf(heading) : { paragraphs: [], items: [] }),
-    text: [],
-  })
+  const newPassage = (heading: string | null): ExplanationsPassage => {
+    if (!heading) return { heading, article, paragraphs: [], items: [], text: [] }
+    // The reasoning on the heading line is the passage's first paragraph, and
+    // its §§ are citations, not the address (`splitHeading`). The Ziffern stay
+    // read from the whole line: one that runs on names none (`ziffernOf`).
+    const { address, prose } = isAddressHeading(heading) ? splitHeading(heading) : { address: heading, prose: null }
+    if (prose) part.chars += prose.length
+    return { heading: address, article, paragraphs: addressOf(address).paragraphs, items: addressOf(heading).items, text: prose ? [prose] : [] }
+  }
 
   for (const block of blocks) {
     const [tag, typ = ''] = block.cls.replace(/^table:/, '').split('/')
