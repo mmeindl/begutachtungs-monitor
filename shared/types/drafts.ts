@@ -91,8 +91,9 @@ export interface DraftChain {
    * period does not „liegen vor" any more — the house never decided it and
    * the period took it with it, which the detail page has called „Ohne
    * Beschluss – Gesetzgebungsperiode beendet" since 23.09.2026
-   * (docs/architecture.md §12.10). Absent where no Vorlage exists or the
-   * period runs: the list then says what it said before.
+   * (docs/architecture.md §12.10) — and since 02.10.2026 decides by the same
+   * function (`isVorlageGpEnded`, `EnactmentInfo.rvGpEnded`). Absent where no
+   * Vorlage exists or the period runs: the list then says what it said before.
    */
   rvGpEnded?: boolean
   /**
@@ -279,6 +280,19 @@ export interface EnactmentInfo {
    * input; false when the RV record could not be read.
    */
   filingOpen: boolean
+  /**
+   * The Vorlage's own Gesetzgebungsperiode is over — the period its link
+   * names, which for a carry-over is the NEXT one (XXVII/352/ME → 127
+   * d.B./XXVIII. GP). Same function and same meaning as `DraftChain.rvGpEnded`
+   * (`isVorlageGpEnded`), so the list row and this page cannot disagree.
+   *
+   * Every statement the page makes about the Vorlage reads THIS, not
+   * `DraftDetail.gpEnded`: „Ohne Beschluss – Gesetzgebungsperiode beendet",
+   * the Parlament row's „GP beendet", the Kundmachung that will not come
+   * (docs/architecture.md §12.14, 02.10.2026). The draft's period stays the
+   * boundary only where there is no Vorlage.
+   */
+  rvGpEnded: boolean
 }
 
 /**
@@ -316,6 +330,10 @@ export interface DraftDetail extends Omit<DraftSummary, 'statementCount'> {
    * XXVII, 4 of the 61 drafts still without a Regierungsvorlage at the
    * GP's end got one in the next GP, so "bisher keine" turns into a
    * boundary statement here, not into "never" (app/utils/outcomes.ts).
+   *
+   * A statement about the DRAFT. Once a Vorlage exists, the page judges it
+   * by the Vorlage's own period, `enactment.rvGpEnded` — a carry-over lives
+   * in the next one.
    */
   gpEnded: boolean
   /** Its last day (the day before the next Nationalrat convened, Art. 27

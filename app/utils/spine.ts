@@ -196,7 +196,10 @@ export function procedureStatusDe(d: DraftDetail): string {
       case 'recommitted': return 'Im Parlament'
       default: break
     }
-    return d.gpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
+    // The VORLAGE's period, not the draft's (§12.14, 02.10.2026): a
+    // carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) is still before the
+    // house, and its list row says „liegt vor" by the same calendar.
+    return e.rvGpEnded ? 'Ohne Beschluss – Gesetzgebungsperiode beendet' : 'Im Parlament'
   }
   if (d.active) return 'In Begutachtung'
   // The Antrag route (docs/architecture.md §12.10, 30.09.2026): no Vorlage,
@@ -208,6 +211,8 @@ export function procedureStatusDe(d: DraftDetail): string {
   // lines below already reads "bisher keine · seit 29.06.2026 beim
   // Ressort", so the longer headline was the same two facts twice, 40px
   // apart. The headline states the finding, the row says since when.
+  //
+  // No Vorlage, so the boundary is the DRAFT's period (§12.10 Nr. 10).
   return d.gpEnded
     ? 'Ohne Regierungsvorlage – Gesetzgebungsperiode beendet'
     : 'Bisher keine Regierungsvorlage'
@@ -367,7 +372,7 @@ export function parliamentOutcome(
   const house = houseOutcomeOf(e.houseStatus, e.houseStatusText)
   if (house) return house
   if (amended) return 'amended'
-  return d.gpEnded ? 'lapsed' : 'pending'
+  return e.rvGpEnded ? 'lapsed' : 'pending'
 }
 
 /** "ÖVP", "ÖVP und SPÖ", "ÖVP, SPÖ und NEOS" — upstream's club names,
@@ -434,8 +439,15 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
    *  unreachable for a reason other than the end of the period. */
   const noBgblEver = outcome === 'rejected' || outcome === 'withdrawn'
   /** Whether parliament is still holding the text — orthogonal to WHAT it
-   *  did with it, so the two are read separately. */
-  const running = e && !e.bgblNumber ? (d.gpEnded ? 'GP beendet' : 'in Behandlung') : null
+   *  did with it, so the two are read separately. By the Vorlage's period:
+   *  a carry-over is still in Behandlung after the draft's has ended. */
+  const running = e && !e.bgblNumber ? (e.rvGpEnded ? 'GP beendet' : 'in Behandlung') : null
+
+  /** The period that bounds where the text now stands: the Vorlage's once
+   *  there is one, the draft's while there is none (§12.14, 02.10.2026).
+   *  Only the rows that can stand on either side of that line read it; the
+   *  ones that are about the draft alone keep `d.gpEnded`. */
+  const periodEnded = e ? e.rvGpEnded : d.gpEnded
   /** How the clubs voted in the third reading. No condition guards it: the
    *  record is null until that reading happens, so the phrase appears
    *  exactly where there is one. */
@@ -551,7 +563,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         ? viaAntrag ? 'done' : d.gpEnded && !d.active ? 'never' : 'open'
         : e.bgblNumber || houseDone
           ? 'done'
-          : d.gpEnded ? 'never' : 'current',
+          : e.rvGpEnded ? 'never' : 'current',
       // The outcome word is what happened; `running` is whether it is over.
       // Both are needed, because a text amended in the Ausschuss can still
       // be on its way ("in Behandlung · im Ausschuss geändert") or have died
@@ -612,7 +624,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
           ? 'never'
           : outcome === 'decided'
             ? 'open'
-            : d.gpEnded ? 'never' : 'open',
+            : periodEnded ? 'never' : 'open',
       // "ausstehend" while the chain can still continue; nothing at all once
       // it cannot, because the station before it already says why.
       facts: e?.bgblNumber
@@ -623,7 +635,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
             ? []
             : outcome === 'decided'
               ? ['ausstehend']
-              : d.gpEnded
+              : periodEnded
                 ? []
                 : ['ausstehend'],
       comparison: null,

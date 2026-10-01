@@ -49,6 +49,24 @@ export function isFilingOpen(content: { statementsstate?: unknown } | null | und
 }
 
 /**
+ * Whether a Regierungsvorlage's Gesetzgebungsperiode is over — the calendar
+ * every statement about the VORLAGE is judged by: its open form below, the
+ * station map's „Ohne Beschluss – GP beendet" row, and the detail page's
+ * headline and rail (`EnactmentInfo.rvGpEnded`). ONE function for all three,
+ * so the list row and the page cannot read a carry-over differently.
+ *
+ * `rvGp` is the period the Vorlage's own link names, never the draft's: a
+ * carry-over (XXVII/352/ME → 127 d.B./XXVIII. GP) lives in the next period,
+ * and judged by the draft's calendar it would read as lapsed while the house
+ * still has it (docs/architecture.md §12.14, 01.10. and 02.10.2026). Where a
+ * draft has no Vorlage, the draft's own period is the boundary
+ * (`DraftDetail.gpEnded`, §12.10 Nr. 10) — that statement is about the draft.
+ */
+export function isVorlageGpEnded(rvGp: string, currentGp: string | null | undefined): boolean {
+  return gpHasEnded(rvGp, currentGp)
+}
+
+/**
  * Whether a Regierungsvorlage takes Stellungnahmen — the zweite Runde, as
  * the detail page's door and the station map's row both state it. ONE
  * function for both, because they once disagreed: the flag counts only
@@ -65,7 +83,7 @@ export function isVorlageFilingOpen(
   rvGp: string,
   currentGp: string | null | undefined,
 ): boolean {
-  return isFilingOpen(content) && !gpHasEnded(rvGp, currentGp)
+  return isFilingOpen(content) && !isVorlageGpEnded(rvGp, currentGp)
 }
 
 export interface RawName {

@@ -7,6 +7,7 @@ import {
   extractBgblLink,
   isFilingOpen,
   isVorlageFilingOpen,
+  isVorlageGpEnded,
   parseVote,
   findHandoff,
   findComparisonRvLink,
@@ -245,6 +246,23 @@ describe('isFilingOpen', () => {
     expect(isFilingOpen(undefined)).toBe(false)
     expect(isFilingOpen({ statementsstate: 'true' })).toBe(false)
     expect(isFilingOpen({ statementsstate: '11' })).toBe(false)
+  })
+})
+
+describe('isVorlageGpEnded', () => {
+  it('judges a carried-over Vorlage by ITS period, not the draft\'s', () => {
+    // XXVII/352/ME → 127 d.B./XXVIII. GP: the draft's period is over, the Vorlage's runs.
+    expect(isVorlageGpEnded('XXVIII', 'XXVIII')).toBe(false)
+    // The next period change: a Vorlage of XXVIII once XXIX convened.
+    expect(isVorlageGpEnded('XXVIII', 'XXIX')).toBe(true)
+  })
+
+  it('reads the table, so a stale current GP cannot revive an ended period', () => {
+    expect(isVorlageGpEnded('XXVII', 'XXVII')).toBe(true)
+  })
+
+  it('never claims „beendet" without a current GP to compare against', () => {
+    expect(isVorlageGpEnded('XXVIII', null)).toBe(false)
   })
 })
 

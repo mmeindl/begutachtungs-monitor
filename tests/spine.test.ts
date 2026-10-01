@@ -37,6 +37,8 @@ function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
       houseStatusText: null,
       vote: null,
       filingOpen: false,
+      // 2238 d.B. is a Vorlage of the draft's own period, XXVII — over.
+      rvGpEnded: true,
     },
     ...overrides,
   } as unknown as DraftDetail
@@ -133,10 +135,10 @@ describe('procedureStatusDe — the card\'s one-line answer', () => {
   })
 
   it('separates "still in parliament" from "the period ended without a vote"', () => {
-    const noBgbl = { ...draft().enactment!, bgblNumber: null }
-    expect(procedureStatusDe(draft({ enactment: noBgbl, gpEnded: false })))
+    const noBgbl = (rvGpEnded: boolean) => ({ ...draft().enactment!, bgblNumber: null, rvGpEnded })
+    expect(procedureStatusDe(draft({ enactment: noBgbl(false), gpEnded: false })))
       .toBe('Im Parlament')
-    expect(procedureStatusDe(draft({ enactment: noBgbl, gpEnded: true })))
+    expect(procedureStatusDe(draft({ enactment: noBgbl(true), gpEnded: true })))
       .toBe('Ohne Beschluss – Gesetzgebungsperiode beendet')
   })
 
@@ -270,11 +272,19 @@ describe('houseOutcomeOf — reading the status record', () => {
 })
 
 describe('the four house outcomes on the page', () => {
+  /* A Vorlage of the draft's own period, so `gpEnded` is both periods —
+     the carry-over, where they differ, has its own block below. */
   const at = (houseStatus: string | null, houseStatusText: string | null, over: Partial<DraftDetail> = {}) =>
     draft({
       gpEnded: false,
-      enactment: { ...draft().enactment!, bgblNumber: null, houseStatus, houseStatusText },
       ...over,
+      enactment: {
+        ...draft().enactment!,
+        bgblNumber: null,
+        houseStatus,
+        houseStatusText,
+        rvGpEnded: over.gpEnded ?? false,
+      },
     })
   const row = (d: DraftDetail, id: string) => stations(d).find((s) => s.id === id)!
 
@@ -307,6 +317,7 @@ describe('the four house outcomes on the page', () => {
       enactment: {
         ...draft().enactment!,
         bgblNumber: null,
+        rvGpEnded: false,
         houseStatus: '5',
         houseStatusText: 'Beschlossen im Nationalrat',
         amendedIn: ['ausschuss'],
@@ -350,6 +361,80 @@ describe('the four house outcomes on the page', () => {
     })
     expect(procedureStatusDe(d)).toBe('Gesetz geworden')
     expect(parliamentOutcome(d)).toBe('unchanged')
+  })
+})
+
+/**
+ * The carry-over: a draft of an ended period whose Vorlage lives in the
+ * running one (XXVII/352/ME → 127 d.B./XXVIII. GP). Every statement about
+ * the Vorlage is judged by ITS period, the one its link names — the list row
+ * says „liegt vor" by that calendar (`stationMap.ts`, `entryView.ts`), and
+ * the page read „Ohne Beschluss – Gesetzgebungsperiode beendet" by the
+ * draft's until 02.10.2026 (docs/architecture.md §12.14). Today no page is
+ * affected — all 23 carry-overs in XXV–XXVII are kundgemacht — so these
+ * cases are the proof.
+ */
+describe('the Vorlage\'s period, not the draft\'s', () => {
+  const row = (d: DraftDetail, id: string) => stations(d).find((s) => s.id === id)!
+  /** Draft XXVII (over), Vorlage of the given period's state, undecided. */
+  const carried = (rvGpEnded: boolean, over: Partial<NonNullable<DraftDetail['enactment']>> = {}) =>
+    draft({
+      gpEnded: true,
+      enactment: {
+        ...draft().enactment!,
+        rvCitation: '127 d.B.',
+        rvUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/127',
+        bgblNumber: null,
+        houseStatus: '2',
+        houseStatusText: 'Zugewiesen an den Verfassungsausschuss',
+        rvGpEnded,
+        ...over,
+      },
+    })
+
+  it('keeps a carried-over Vorlage in parliament while ITS period runs', () => {
+    const d = carried(false)
+    expect(procedureStatusDe(d)).toBe('Im Parlament')
+    expect(parliamentOutcome(d)).toBe('pending')
+    expect(row(d, 'parlament')).toMatchObject({ state: 'current', facts: ['in Behandlung'] })
+    expect(row(d, 'bgbl')).toMatchObject({ state: 'open', facts: ['ausstehend'] })
+  })
+
+  it('keeps the amendment „in Behandlung" too, not „GP beendet"', () => {
+    const d = carried(false, { amendedIn: ['ausschuss'] })
+    expect(procedureStatusDe(d)).toBe('Im Parlament')
+    expect(row(d, 'parlament').facts).toEqual(['in Behandlung', 'im Ausschuss geändert'])
+  })
+
+  it('lets it lapse once its own period is over too', () => {
+    const d = carried(true)
+    expect(procedureStatusDe(d)).toBe('Ohne Beschluss – Gesetzgebungsperiode beendet')
+    expect(parliamentOutcome(d)).toBe('lapsed')
+    expect(row(d, 'parlament')).toMatchObject({ state: 'never', facts: ['GP beendet'] })
+    expect(row(d, 'bgbl')).toMatchObject({ state: 'never', facts: [] })
+  })
+
+  it('reads no period off the draft where a Vorlage exists — in either direction', () => {
+    /* A draft of the running period cannot have a Vorlage in an ended one;
+       the case exists to show which field decides, not because it occurs. */
+    const d = draft({
+      gpEnded: false,
+      enactment: { ...carried(true).enactment!, rvGpEnded: true },
+    })
+    expect(procedureStatusDe(d)).toBe('Ohne Beschluss – Gesetzgebungsperiode beendet')
+  })
+
+  it('keeps the draft\'s period as the boundary where there is no Vorlage', () => {
+    // §12.10 Nr. 10: the boundary statement is about the draft.
+    const none = draft({ enactment: null, gpEnded: true })
+    expect(procedureStatusDe(none)).toBe('Ohne Regierungsvorlage – Gesetzgebungsperiode beendet')
+    expect(row(none, 'rv')).toMatchObject({ state: 'never', facts: ['keine – GP beendet'] })
+    expect(row(none, 'parlament').state).toBe('never')
+    expect(row(none, 'bgbl')).toMatchObject({ state: 'never', facts: [] })
+    const running = draft({ enactment: null, gpEnded: false })
+    expect(procedureStatusDe(running)).toBe('Bisher keine Regierungsvorlage')
+    expect(row(running, 'rv').facts).toEqual(['bisher keine'])
+    expect(row(running, 'bgbl')).toMatchObject({ state: 'open', facts: ['ausstehend'] })
   })
 })
 

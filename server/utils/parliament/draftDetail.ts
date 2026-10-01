@@ -16,6 +16,7 @@ import {
   findLastRvLink,
   findRvLinks,
   isVorlageFilingOpen,
+  isVorlageGpEnded,
   parseStages,
   parseVote,
   type RvLink,
@@ -130,6 +131,12 @@ async function enactmentOf(
     houseStatusText: null,
     vote: null,
     filingOpen: false,
+    // A calendar fact about the link, not about the record behind it — so
+    // it stands even when the fetch below fails. The VORLAGE's period, by
+    // the same function the station map asks: judged by the draft's, a
+    // carried-over Vorlage the house still has read as „Ohne Beschluss –
+    // Gesetzgebungsperiode beendet" while its list row said „liegt vor".
+    rvGpEnded: isVorlageGpEnded(rvLink.gp, currentGp),
   }
   try {
     const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)

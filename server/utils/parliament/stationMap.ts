@@ -41,7 +41,6 @@
  */
 import type { DraftChain } from '#shared/types'
 import { furtherChain, stationFor } from '#shared/utils/draftStations'
-import { gpHasEnded } from '#shared/utils/gp'
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import type { VorlageRow } from './list101'
 import { mapWithConcurrency } from '../pool'
@@ -95,8 +94,9 @@ async function chainOf(
 
     /* The Vorlage's OWN period, not the draft's: a carry-over names the
      * next one, and there the Vorlage is alive (docs/architecture.md
-     * §12.10, 30.09.2026). */
-    const rvGpEnded = gpHasEnded(rv.gp, currentGp)
+     * §12.10, 30.09.2026). The same function the detail page's headline
+     * and rail read (`enactmentOf`), so row and page say the same word. */
+    const rvGpEnded = isVorlageGpEnded(rv.gp, currentGp)
     let bgblNumber: string | null = null
     let filingOpen = false
     try {

@@ -6736,6 +6736,31 @@ Entwurfs (`DraftDetail.gpEnded` in `app/utils/spine.ts`); für eine übertragene
 noch unentschiedene Vorlage widerspräche sie der Zeile, die „liegt vor" sagt.
 Heute trifft das keine Seite, weil alle 23 Vorlagen entschieden sind.
 
+**Nachtrag 02.10.2026 — Leiste und Kopf folgen derselben Periode.** Der
+Detail-Payload trägt jetzt `enactment.rvGpEnded`, gefüllt in `enactmentOf` von
+derselben Funktion, die auch die Zeile der Stationskarte füllt
+(`isVorlageGpEnded` in `parliament/detailJson.ts`, auf der Periode aus dem
+Link der Vorlage; `isVorlageFilingOpen` fragt sie ebenfalls). Alles, was die
+Seite über die **Vorlage** sagt, liest dieses Feld: „Ohne Beschluss –
+Gesetzgebungsperiode beendet" im Kopf, „GP beendet" und der Zustand der
+Parlament-Station, `lapsed` gegen `pending` im Abschnitt „Im Parlament", und
+ob die Bundesgesetzblatt-Station noch „ausstehend" ist. Die Periode des
+**Entwurfs** (`DraftDetail.gpEnded`) bleibt die Grenze, wo es keine Vorlage
+gibt — „Ohne Regierungsvorlage – Gesetzgebungsperiode beendet", „keine – GP
+beendet" und der Satz zum Periodenende aus §12.10 Nr. 10 sind Aussagen über
+den Entwurf, und dort ist seine Periode die richtige. Damit sagen Zeile und
+Seite für dieselbe Vorlage dasselbe: in laufender Periode „liegt vor" bzw. „Im
+Parlament · in Behandlung", in beendeter „Ohne Beschluss – GP beendet" bzw.
+dessen ungekürzte Form. Bewiesen ist das mit Tests, nicht an einer Seite,
+denn heute ist keine betroffen (siehe oben). **Ändern kann sich etwas erst
+beim nächsten Periodenwechsel:** ein Entwurf der XXVIII. GP, dessen letzte
+Vorlage in der XXIX. eingebracht und noch nicht entschieden ist, hieße bisher
+„Ohne Beschluss", solange die Vorlage noch vor dem Nationalrat liegt; jetzt
+„Im Parlament", bis auch ihre Periode endet. **Nicht geändert:** Eine an den
+Ausschuss zurückverwiesene Vorlage heißt im Kopf auch nach dem Periodenende
+„Im Parlament" — das galt schon vorher und hängt an keiner der beiden
+Perioden.
+
 **The document link.** The row's citation leads to the Stellungnahme's page
 upstream; a journalist working through fifty organisations' submissions
 asked for the PDF itself. The PDF's URL is not in the list row and needs one

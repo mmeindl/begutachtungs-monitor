@@ -15,8 +15,10 @@
  *    Verordnungsentwurf — its terminus is the Begutachtung itself.
  */
 import { describe, expect, it } from 'vitest'
-import type { ClosedOutcome, DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
+import type { ClosedOutcome, DraftDetail, DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
 import { todayIso } from '../shared/utils/format'
+import { isVorlageGpEnded } from '../server/utils/parliament/detailJson'
+import { procedureStatusDe, stations } from '../app/utils/spine'
 import {
   viewOfDraft,
   viewOfOutcome,
@@ -194,6 +196,56 @@ describe('Zone 4 — Stand', () => {
     })
     expect(viewOfDraft(draft({ chain: { ...chain, rvGpEnded: false } })).state.label).toBe('Regierungsvorlage liegt vor')
     expect(viewOfDraft(draft({ chain })).state.label).toBe('Regierungsvorlage liegt vor')
+  })
+
+  /* Row and page for the SAME Vorlage, each built from its own payload by
+   * the one function both payloads are filled with (`isVorlageGpEnded`).
+   * Until 02.10.2026 the page judged by the draft's period, and a carry-over
+   * the house still had read „liegt vor" here and „Ohne Beschluss –
+   * Gesetzgebungsperiode beendet" there (docs/architecture.md §12.14). */
+  it('says the same as the detail page about a carried-over Vorlage', () => {
+    const both = (rvGp: string, currentGp: string) => {
+      const rvGpEnded = isVorlageGpEnded(rvGp, currentGp)
+      const row = viewOfDraft(draft({
+        gp: 'XXVIII',
+        chain: { station: 'rv', rvCitation: '127 d.B.', rvDate: '2026-03-04', bgblNumber: null, filingOpen: false, rvGpEnded },
+      })).state.label
+      // Only what the headline and the Parlament row read; the draft's own
+      // period is over in every case — XXVIII under a running XXIX.
+      const page = {
+        active: false,
+        gpEnded: true,
+        textEvolution: [],
+        statements: { total: 0 },
+        enactment: {
+          rvCitation: '127 d.B.',
+          rvDate: '2026-03-04',
+          bgblNumber: null,
+          amendedIn: [],
+          houseStatus: '2',
+          houseStatusText: 'Zugewiesen an den Verfassungsausschuss',
+          vote: null,
+          filingOpen: false,
+          rvGpEnded,
+        },
+      } as unknown as DraftDetail
+      const parlament = stations(page).find((s) => s.id === 'parlament')!.facts
+      return { row, headline: procedureStatusDe(page), parlament }
+    }
+    // Draft XXVIII, Vorlage carried into XXIX, XXIX running: still before the house.
+    expect(both('XXIX', 'XXIX')).toEqual({
+      row: 'Regierungsvorlage liegt vor',
+      headline: 'Im Parlament',
+      parlament: ['in Behandlung'],
+    })
+    // The same Vorlage once XXIX is over too: one word on both surfaces.
+    expect(both('XXIX', 'XXX')).toEqual({
+      row: 'Ohne Beschluss – GP beendet',
+      headline: 'Ohne Beschluss – Gesetzgebungsperiode beendet',
+      parlament: ['GP beendet'],
+    })
+    // A Vorlage of the draft's own, ended period: unchanged since 30.09.2026.
+    expect(both('XXVIII', 'XXIX')).toMatchObject({ row: 'Ohne Beschluss – GP beendet', parlament: ['GP beendet'] })
   })
 
   /* A Verordnungsentwurf has no station after the Begutachtung, and that is
