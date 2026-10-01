@@ -330,23 +330,6 @@ const setLine = computed(() => {
 const setLineRedundant = computed(
   () => !searchActive.value && (needsList.value || !orgsFiledRepeatedly.value),
 )
-
-/* Submitter mix as one stacked bar — "707, davon 96 % Privatpersonen" in a
- * glance (org-mobilization vs. citizen-wave is a journalistic signature).
- * The <dl> above IS the legend with exact numbers, so the bar itself stays
- * aria-hidden decoration; segment order mirrors the <dl>. */
-const mixSegments = computed(() => {
-  const t = props.summary.total
-  if (t <= 0) return []
-  return [
-    { key: 'orgs', count: props.summary.organisations, class: 'bg-accent' },
-    { key: 'persons', count: props.summary.privatePersons, class: 'bg-accent-200' },
-    /* baseline, not hairline: hairline on surface is ~1.2:1, invisible */
-    { key: 'nonpublic', count: props.summary.nonPublic, class: 'bg-baseline' },
-  ]
-    .filter((s) => s.count > 0)
-    .map((s) => ({ ...s, pct: (s.count / t) * 100 }))
-})
 </script>
 
 <template>
@@ -358,20 +341,11 @@ const mixSegments = computed(() => {
          stands in the bar's Begutachtung row and on „Alle". Where only one
          segment exists the buttons are absent, and the count line above the
          list carries the number. -->
-    <!-- Decorative; the counts on the filter buttons carry the numbers. -->
-    <div
-      v-if="mixSegments.length"
-      class="mt-3 flex h-2 w-full overflow-hidden rounded-[2px] border border-hairline"
-      aria-hidden="true"
-    >
-      <div
-        v-for="seg in mixSegments"
-        :key="seg.key"
-        :class="seg.class"
-        :style="{ width: `${seg.pct}%` }"
-      />
-    </div>
-
+    <!-- NO MIX BAR since 01.10.2026. The org/private split stood here as a
+         stacked bar whose legend was the tile row removed on 30.09.2026;
+         after that it was a picture of the two counts the filter buttons
+         state exactly one line below, and a second bar a few lines under
+         the Frist's, counting something else. -->
     <!-- Two axes, two groups: WHO filed (each segment with its count) and
          IN WHICH ORDER.
          Keeping them apart is what let the count line stop naming the sort.
