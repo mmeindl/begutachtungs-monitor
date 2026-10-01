@@ -1548,11 +1548,29 @@ const DESIGNATOR_LEVEL: Record<string, 'abs' | 'z' | 'lit'> = { 'abs.': 'abs', z
  * Dropped only where it says nothing but that: the unit it names is the one
  * right in front of the deleted one, on the same level. Where it says more —
  * „nach Abs. 7 der Absatz mit der Bezeichnung ‚(6)'", a numbering out of
- * order — it is a second place and the line stays refused. And a deleted unit
- * that is not unique is refused by the engine (`uniqueChild`), so a duplicated
- * „Abs. 3" cannot be the wrong one.
+ * order — it is a second place, and the line is refused (`NAMED_BY_DESIGNATION_RE`).
+ * And a deleted unit that is not unique is refused by the engine
+ * (`uniqueChild`), so a duplicated „Abs. 3" cannot be the wrong one.
  */
 const DELETION_LOCATOR_RE = /\b(entfällt|entfallen)\s+nach\s+(Abs\.|Z|lit\.)\s*(\d+|[a-z])\s+(?=(?:der|die)\s+(Abs\.|Z|lit\.)\s*(\d+|[a-z])(?![\p{L}\p{N}]))/iu
+
+/**
+ * „In § 5 entfällt nach Abs. 7 der Absatz mit der Bezeichnung ‚(6)'" names a
+ * unit by the designation it carries, and the quotation is that designation —
+ * no operand. Read as one, the line deleted the TEXT „(6)" inside Abs. 7
+ * (Abgabenänderungsgesetz 2025, KfzStG 1992 § 5: the standing law prints a
+ * second „(6)" behind „(7)", and that Absatz is what goes; found 30.09.2026,
+ * refused since 01.10.2026). „Darstellung der Anlage als PDF mit der
+ * Bezeichnung ‚…' entfällt" (1. AußWV 2011) is the same shape: it deletes a
+ * document, not the words of its name.
+ *
+ * Refused rather than read. The address model has no „the unit behind Abs. 7
+ * whose designation is ‚(6)'", the one real case cannot be loaded at all (a
+ * table beside the duplicated „(6)", `parseKonsParagraph`), and two
+ * occurrences in 14.818 instruction lines carry no rule worth a new place
+ * kind. A refused line locks its § (`kons/konsGate.ts` `refusedUnits`).
+ */
+const NAMED_BY_DESIGNATION_RE = /\bmit\s+der\s+\p{L}*bezeichnung\s*""/iu
 
 /**
  * „In § 7 wird der bisherige Abs. 8 als Abs. 9 bezeichnet und nach Abs. 7
@@ -1576,6 +1594,7 @@ function parseOne(raw: string, inherited: NovaoAddress | null | undefined, whole
   const fail = (reason: string): ParsedInstruction => ({ ops: [], reason, line })
 
   if (TOC_RE.test(head)) return ok({ kind: 'toc' })
+  if (NAMED_BY_DESIGNATION_RE.test(maskQuotes(head))) return fail('Einheit über ihre Bezeichnung benannt („mit der Bezeichnung …")')
 
   const { scope, payload } = splitPayloadScope(head)
   // „…; folgender Satz wird angefügt", „… und danach folgender Halbsatz

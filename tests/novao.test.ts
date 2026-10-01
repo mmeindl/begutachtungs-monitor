@@ -929,3 +929,22 @@ describe('„als Abs. 9 bezeichnet" (30.09.2026)', () => {
     ]) expect(parseInstruction(line).ops, line).toEqual([])
   })
 })
+
+describe('a unit named by its designation (01.10.2026)', () => {
+  it('refuses „der Absatz mit der Bezeichnung (6)" instead of deleting the text „(6)"', () => {
+    for (const line of [
+      // Abgabenänderungsgesetz 2025, KfzStG 1992 § 5: a second „(6)" behind „(7)".
+      'In § 5 entfällt nach Abs. 7 der Absatz mit der Bezeichnung "(6)" .',
+      // 1. AußWV 2011: a document, not the words of its name.
+      'Darstellung der Anlage als PDF mit der Bezeichnung "CHEMIKALISCHER ANNEX" entfällt.',
+    ]) {
+      const parsed = parseInstruction(line)
+      expect(parsed.ops, line).toEqual([])
+      expect(parsed.reason, line).toMatch(/Bezeichnung benannt/)
+    }
+  })
+
+  it('still reads a designation as an operand where it is one', () => {
+    expect(op('In § 5 wird die Bezeichnung "Bundesminister" durch die Bezeichnung "Bundesministerin" ersetzt.')).toMatchObject({ kind: 'replacePhrase' })
+  })
+})

@@ -3188,6 +3188,30 @@ fragen, ob die vorgeschlagene Fassung im Ergebnis steht — nicht, ob das
 Ergebnis mehr enthält. Hier harmlos, weil verweigert; ohne Verweigerung
 hätte nur noch die Plausibilität die fehlende Streichung aufhalten können.
 
+**„der Absatz mit der Bezeichnung ‚(6)'" ist keine Wortfolge (01.10.2026).**
+Die Zeile, die oben als zweiter Ort stehen bleiben sollte, war gar nicht
+verweigert: „In § 5 entfällt nach Abs. 7 der Absatz mit der Bezeichnung
+‚(6)'" (Entwurf des Abgabenänderungsgesetzes 2025, KfzStG 1992) las die
+Grammatik als Streichung des *Textes* „(6)" in Abs. 7 — „Bezeichnung" ist
+eines ihrer Textnomen. Gemeint ist ein Absatz: Der geltende § 5 druckt hinter
+„(7)" einen zweiten „(6)", und genau den streicht BGBl. I Nr. 97/2025 (im RIS
+nachgesehen). Ein Zitat hinter „mit der …bezeichnung" benennt eine Einheit
+und ist nie ein Operand; die Zeile wird jetzt **verweigert**, nicht gelesen.
+Lesen hieße eine neue Art Ort („die Einheit hinter Abs. 7, die ‚(6)' trägt"),
+und der eine echte Fall ist ohnehin nicht ladbar — `parseKonsParagraph`
+verwirft einen § mit Tabelle, dessen Bezeichnungen doppelt stehen. Alt gegen
+neu über 14.818 Anweisungszeilen (`.cache/novao`, ME-Prüfstand,
+Sammelnovellen-Prüfstand, beide Beilagenpfade): **zwei Zeilen**, beide
+bisher als Wortfolge gestrichen, beide jetzt verweigert — diese und „Darstellung
+der Anlage als PDF mit der Bezeichnung ‚CHEMIKALISCHER ANNEX' entfällt"
+(1. AußWV 2011), die ein Dokument streicht, nicht die Wörter seines Namens.
+Gesperrt und adressiert bleibt in beiden dieselbe Einheit; nur der Name der
+AußWV-Zeile („Anlage") fällt weg, weil `addressedParagraph` auf dem Weg für
+ungelesene Zeilen eine Anlage nur mit Nummer nimmt. Prüfstände: jede
+Zahl gleich bis auf „grammatikalisch gelesen" im ME-Prüfstand 2.601 → 2.600
+(die AußWV-Zeile; angewendet und bestätigt unverändert); Sammelnovellen und
+Beilagen-Drift ohne Bewegung.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
