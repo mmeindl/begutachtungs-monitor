@@ -132,3 +132,52 @@ describe('the Artikel of a passage (27.09.2026)', () => {
     expect(parsed.special.at(-1)!.article).toBeNull()
   })
 })
+
+describe('the Artikel heading in force — section and law (01.10.2026)', () => {
+  it('keeps the section of the Artikel heading where a passage names the Artikel of another numbering', () => {
+    // 129 d.B. XXVIII keeps 24/ME's numbering inside its own Artikel heading.
+    const parsed = parseExplanationsHtml(
+      doc(
+        'Besonderer Teil',
+        'Zu Artikel 25 (Änderung des Bundes-Sportförderungsgesetzes 2017):',
+        'Zu Z 47 (§ 39 BSFG 2017):',
+        'Text.',
+        'Zu Art. 3 Z 48 (§ 40 BSFG 2017 samt Überschrift):',
+        'Text.',
+        'Zu Z 49 (§ 44 Abs. 7 BSFG 2017):',
+        'Text.',
+      ),
+    )
+    expect(parsed.special.map((p) => [p.article, p.section])).toEqual([
+      ['25', ['25']],
+      ['25', ['25']],
+      ['3', ['25']],
+      ['3', ['25']],
+    ])
+    expect(parsed.special[2]!.law).toBe('Änderung des Bundes-Sportförderungsgesetzes 2017')
+  })
+
+  it('names every Artikel of a heading over several, none for a range, and no law for either', () => {
+    const parsed = parseExplanationsHtml(
+      doc(
+        'Besonderer Teil',
+        'Zu Artikel 23 (Änderung des KommAustria-Gesetzes) und Artikel 24 (Änderung des ORF-Gesetzes):',
+        'Zu Art. 1 Z 1 (§ 6 Abs. 2 KOG) und zu Art. 2 Z 1 (§ 6a Abs. 2 ORF-G):',
+        'Text.',
+        'Zu Artikel 88 bis 102 (Änderungen des SPG, …):',
+        'Text.',
+        'Zu Art. 5, 8 und 9 (Änderung des DSt, der NO und der RAO)',
+        'Text.',
+      ),
+    )
+    expect(parsed.special.map((p) => p.section)).toEqual([['23', '24'], ['23', '24'], null, ['5', '8', '9']])
+    expect(parsed.special.map((p) => p.law)).toEqual([null, null, null, null])
+  })
+
+  it('reads the law of an Artikel heading without a number, nested brackets kept (22/ME XXVIII)', () => {
+    const law = 'Änderung des Bundesgesetzes über die Einrichtung einer Dokumentations- und Informationsstelle für Sektenfragen (Bundesstelle für Sektenfragen)'
+    const parsed = parseExplanationsHtml(doc('Besonderer Teil', `Zu Art. X1 (${law}):`, 'Zu Z 1', 'Text.'))
+    expect(parsed.special.map((p) => p.law)).toEqual([law, law])
+    expect(parsed.special[1]!.section).toBeNull()
+  })
+})

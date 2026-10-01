@@ -53,6 +53,13 @@
  * --against`): 245, 1.373 and 274 units more with a Begründung in GP XXVI,
  * XXVII and XXVIII, none lost, no other verdict moved.
  *
+ * A SAMMELVORLAGE IN THE DRAFT'S NUMBERING (01.10.2026). 129 d.B. XXVIII
+ * keeps 24/ME's Artikel numbers inside its own Artikel headings („Zu Art. 3
+ * Z 48 …" under „Zu Artikel 25 (…)"), and 22/ME heads its laws „Art. X1" to
+ * „X3". Such a passage is keyed by what it prints — the Vorlage's heading
+ * with the draft's Artikel and Ziffer (`foreignNumbered`), or the law's title
+ * (`ArticleMode` `title`) — and never under the number of another law.
+ *
  * THE § JOIN. One comparison per Paragraph, `units` pointing there.
  *
  * AMBIGUOUS NUMBERS STAY OUT. A passage of the Besonderer Teil carries the
@@ -298,8 +305,19 @@ function zifferOfId(id: string | null): string | null {
  * XXVI, two laws, not one Artikel heading the parser can read). Only where
  * the § is unique in the draft (`ambiguousParagraphs`) — the same guard as
  * the § join's.
+ *
+ * `title` — several laws, but no Artikel number on this side at all, and the
+ * Erläuterungen head at least two of them by the very title the law text
+ * gives them (`HtmlPassage.law`): every key is the law's title. 22/ME
+ * XXVIII, bundled into 129 d.B., heads its laws „Zu Art. X1 (Änderung des
+ * Bundesgesetzes über die Einrichtung einer Dokumentations- und
+ * Informationsstelle für Sektenfragen …)", „X2", „X3" — placeholders, and
+ * its text has none either; by number, the three „Zu Z 1" were one key, and
+ * refused (01.10.2026). A law whose heading words it differently („über den
+ * Zivildienst" for the Zivildienstgesetz 1986) gets nothing: the title is
+ * compared as printed, not guessed at.
  */
-type ArticleMode = 'single' | 'package'
+type ArticleMode = 'single' | 'package' | 'title'
 
 type Side = 'before' | 'after'
 
@@ -316,6 +334,8 @@ interface ZifferSide {
   owned: Set<number>
   /** § number → the units on this side addressing it — the scope of a passage titled by §. */
   byParagraph: Map<string, LawDiffUnit[]>
+  /** The Artikel the document gives an Artikel heading of their own (`HtmlPassage.section`) — see `foreignNumbered`. */
+  sectioned: Set<string>
 }
 
 /**
@@ -327,9 +347,59 @@ function zifferKey(article: string | null, ziffer: string): string {
   return `${article ?? ''}|${ziffer.toLowerCase()}`
 }
 
+/** A law's title as a key: case, spacing, quotes and the bracket shape („[…]" for „(…)") are typography. */
+function lawTitleKey(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/\[/g, '(')
+    .replace(/\]/g, ')')
+    .replace(/[„“"”]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[\s:]+$/, '')
+    .trim()
+}
+
+/** The key of a Ziffer under its law's title — `title` mode. */
+function titleZifferKey(title: string, ziffer: string): string {
+  return `T${lawTitleKey(title)}|${ziffer.toLowerCase()}`
+}
+
 /** The key of a Ziffer by the § it amends — for passages in a package that marks no Artikel. */
 function paragraphZifferKey(paragraphId: string, ziffer: string): string {
   return `§${paragraphId}|${ziffer.toLowerCase()}`
+}
+
+/**
+ * The key of a Ziffer a Sammelvorlage prints in the numbering of the draft it
+ * took the law from (`foreignNumbered`): under the Vorlage's Artikel heading
+ * (`section`), the draft's Artikel and Ziffer.
+ */
+function foreignZifferKey(section: string, article: string, ziffer: string): string {
+  return `F${section}|${article}|${ziffer.toLowerCase()}`
+}
+
+/**
+ * Whether a passage's Ziffern are numbered as another document numbers them —
+ * the draft a Sammelvorlage took the law from (01.10.2026, 129 d.B. XXVIII).
+ * Under „Zu Artikel 25 (Änderung des Bundes-Sportförderungsgesetzes 2017):"
+ * the Vorlage writes „Zu Art. 3 Z 48 (§ 40 BSFG 2017 …):", and under „Zu
+ * Artikel 23 (Änderung des KommAustria-Gesetzes) und Artikel 24 (Änderung
+ * des ORF-Gesetzes):" „Zu Art. 1 Z 1 (§ 6 Abs. 2 KOG) und zu Art. 2 Z 1
+ * (§ 6a Abs. 2 ORF-G):" — the Artikel numbers of 24/ME. Its own Artikel 3 is
+ * the Amtshaftungsgesetz, its Artikel 1 the AVG: read by the number, the
+ * passage was another law's Ziffer.
+ *
+ * Foreign is a passage none of whose Ziffern stands under an Artikel of the
+ * heading in force, and every one of whose Artikel the document heads
+ * elsewhere as a law of its own. Where it does not — a Vorlage that leaves
+ * out the heading „Zu Art. 4 (…)" and goes on „Zu Art. 4 Z 1 …" under
+ * Artikel 3's (165/ME XXVI) — the passage's number is the Vorlage's own, as
+ * before.
+ */
+function foreignNumbered(passage: HtmlPassage, sectioned: ReadonlySet<string>): boolean {
+  const { section, ziffern } = passage
+  if (!section || ziffern.length === 0) return false
+  return ziffern.every((z) => z.article !== null && !section.includes(z.article) && sectioned.has(z.article))
 }
 
 /** The Ziffer and Artikel a unit carries on one side — none on the side where it does not exist (inserted, removed). */
@@ -350,22 +420,31 @@ function existsOn(unit: LawDiffUnit, side: Side): boolean {
 
 /**
  * The unit's keys on one side, in the order they are asked: by Artikel, then
- * (in a package) by its §. None on the side where it does not exist.
+ * (in a package) by its §, and last — for a passage in the other side's
+ * numbering (`foreignNumbered`) — by this side's Artikel heading and the
+ * other side's Artikel and Ziffer. None on the side where it does not exist.
  */
 function sideKeys(unit: LawDiffUnit, side: Side, mode: ArticleMode, ambiguous: ReadonlySet<string>): string[] {
   const { ziffer, article } = unitZiffer(unit, side)
   if (!ziffer) return []
   if (mode === 'single') return [zifferKey(null, ziffer)]
+  if (mode === 'title') return unit.article ? [titleZifferKey(unit.article, ziffer)] : []
   const keys = article ? [zifferKey(article, ziffer)] : []
   const para = addressedParagraphOf(unit)
   const id = explanationParaId(para)
   if (para && id && !ambiguous.has(para)) keys.push(paragraphZifferKey(id, ziffer))
+  const other = unitZiffer(unit, side === 'after' ? 'before' : 'after')
+  if (article && other.article && other.ziffer) keys.push(foreignZifferKey(article, other.article, other.ziffer))
   return keys
 }
 
-/** The keys a passage's Ziffer goes under on a side — see `ArticleMode`. */
-function passageKeys(mode: ArticleMode, passage: HtmlPassage, z: { article: string | null; ziffer: string }): string[] {
-  if (mode === 'single') return [zifferKey(null, z.ziffer)]
+/** The keys a passage's Ziffer goes under on a side — see `ArticleMode` and `foreignNumbered`. */
+function passageKeys(side: Pick<ZifferSide, 'mode' | 'sectioned'>, passage: HtmlPassage, z: { article: string | null; ziffer: string }): string[] {
+  if (side.mode === 'single') return [zifferKey(null, z.ziffer)]
+  // By title only a Ziffer of the heading's own law: one another Artikel
+  // names has a number this side does not print.
+  if (side.mode === 'title') return passage.law && z.article === passage.article ? [titleZifferKey(passage.law, z.ziffer)] : []
+  if (z.article && foreignNumbered(passage, side.sectioned)) return passage.section!.map((s) => foreignZifferKey(s, z.article!, z.ziffer))
   if (z.article) return [zifferKey(z.article, z.ziffer)]
   return passage.paragraphs.map((p) => explanationParaId(p)).flatMap((id) => (id ? [paragraphZifferKey(id, z.ziffer)] : []))
 }
@@ -444,11 +523,25 @@ function textOf(doc: HtmlExplanations, passages: readonly number[]): string {
     .join(' ')
 }
 
+/**
+ * Whether a side keys its laws by title (`ArticleMode`): its units carry no
+ * Artikel number, but at least two laws, and the document heads at least two
+ * of them by their exact title.
+ */
+function titledLaws(units: readonly LawDiffUnit[], doc: HtmlExplanations, articleOf: (u: LawDiffUnit) => string | null): boolean {
+  if (units.some((u) => articleOf(u))) return false
+  const titles = new Set(units.flatMap((u) => (u.article ? [lawTitleKey(u.article)] : [])))
+  if (titles.size < 2) return false
+  const headed = new Set(doc.special.flatMap((p) => (p.law ? [lawTitleKey(p.law)] : [])))
+  return [...titles].filter((t) => headed.has(t)).length >= 2
+}
+
 /** One side of the Ziffer join, out of the units and that side's document. */
 function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: Side, ambiguous: ReadonlySet<string>): ZifferSide {
   const unitArticles = new Set(units.filter((u) => unitZiffer(u, side).ziffer).map((u) => unitZiffer(u, side).article ?? ''))
   const passageArticles = new Set(doc.special.flatMap((p) => p.ziffern.map((z) => z.article ?? '')))
-  const mode: ArticleMode = unitArticles.size <= 1 && passageArticles.size <= 1 ? 'single' : 'package'
+  const titled = titledLaws(units.filter((u) => unitZiffer(u, side).ziffer), doc, (u) => unitZiffer(u, side).article)
+  const mode: ArticleMode = titled ? 'title' : unitArticles.size <= 1 && passageArticles.size <= 1 ? 'single' : 'package'
   const map = new Map<string, LawDiffUnit[]>()
   const byParagraph = new Map<string, LawDiffUnit[]>()
   for (const u of units) {
@@ -458,17 +551,18 @@ function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: 
   }
   const byZiffer = new Map<string, number[]>()
   const owned = new Set<number>()
+  const sectioned = new Set(doc.special.flatMap((p) => p.section ?? []))
   doc.special.forEach((p, i) => {
     if (p.ziffern.length > 0) for (const j of ownedPassages(doc, i)) owned.add(j)
     for (const z of p.ziffern) {
-      for (const key of passageKeys(mode, p, z)) {
+      for (const key of passageKeys({ mode, sectioned }, p, z)) {
         const list = byZiffer.get(key) ?? []
         if (!list.includes(i)) list.push(i)
         byZiffer.set(key, list)
       }
     }
   })
-  return { side, doc, mode, byZiffer, units: map, owned, byParagraph }
+  return { side, doc, mode, byZiffer, units: map, owned, byParagraph, sectioned }
 }
 
 /**
@@ -477,6 +571,7 @@ function zifferSide(units: readonly LawDiffUnit[], doc: HtmlExplanations, side: 
  * a shared one only under the unit's Artikel.
  */
 function sameLaw(side: ZifferSide, passage: HtmlPassage, unit: LawDiffUnit, ambiguous: ReadonlySet<string>): boolean {
+  if (side.mode === 'title') return passage.law !== null && unit.article !== null && lawTitleKey(passage.law) === lawTitleKey(unit.article)
   if (side.mode === 'single' || !ambiguous.has(addressedParagraphOf(unit) ?? '')) return true
   return passage.article !== null && passage.article === unitZiffer(unit, side.side).article
 }
@@ -608,7 +703,10 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
    */
   const fitting = (side: ZifferSide, key: string, unit: LawDiffUnit): number[] => {
     const found = side.byZiffer.get(key) ?? []
-    if (found.length < 2) return found
+    // A passage in another document's numbering is held to the §§ even
+    // alone: its number was read past the Artikel heading it stands under,
+    // and the § is the second witness that it is this unit's law.
+    if (found.length < 2 && !key.startsWith('F')) return found
     const fits = found.filter((i) => fitsParagraphs(side.doc.special[i]!, unit, side.side))
     for (const i of found) {
       if (fits.includes(i)) continue
@@ -616,10 +714,13 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     }
     return fits
   }
+  /** `diffUnitKey|side` of every unit a side found through the other document's numbering (`foreignNumbered`). */
+  const viaForeign = new Set<string>()
   const lookup = (side: ZifferSide, unit: LawDiffUnit): number[] => {
     for (const key of sideKeys(unit, side.side, side.mode, ambiguous)) {
       if ((side.units.get(key)?.length ?? 0) !== 1) continue
       const found = fitting(side, key, unit)
+      if (found.length && key.startsWith('F')) viaForeign.add(`${diffUnitKey(unit)}|${side.side}`)
       if (found.length) return found
     }
     return []
@@ -638,7 +739,7 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     for (const i of passages) {
       const passage = side.doc.special[i]!
       for (const zi of passage.ziffern) {
-        for (const key of passageKeys(side.mode, passage, zi)) {
+        for (const key of passageKeys(side, passage, zi)) {
           for (const u of side.units.get(key) ?? []) if (fitting(side, key, u).includes(i)) out.add(diffUnitKey(u))
         }
       }
@@ -688,6 +789,18 @@ export function compareReasoning(units: readonly LawDiffUnit[], before: HtmlExpl
     const me = passagesOf(z.before, unit)
     const rv = passagesOf(z.after, unit)
     if (!me.passages.length || !rv.passages.length) {
+      fallbacks[diffUnitKey(unit)] = 'none'
+      continue
+    }
+    // Found on one side through the other document's numbering: then the
+    // passages of BOTH sides must name a § the unit amends. 24/ME XXVIII
+    // counts its own Ziffern one off at the end of its Artikel 3 („Zu Art. 3
+    // Z 48 (§ 44 Abs. 7 …)" explains its Z 49), and the Vorlage's right
+    // passage to Z 48 would have been held against the draft's wrong one.
+    if (
+      (viaForeign.has(`${diffUnitKey(unit)}|before`) || viaForeign.has(`${diffUnitKey(unit)}|after`)) &&
+      !(me.passages.every((i) => fitsParagraphs(before.special[i]!, unit, 'before')) && rv.passages.every((i) => fitsParagraphs(after.special[i]!, unit, 'after')))
+    ) {
       fallbacks[diffUnitKey(unit)] = 'none'
       continue
     }

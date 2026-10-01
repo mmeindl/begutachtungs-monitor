@@ -473,3 +473,104 @@ describe('compareReasoning — der § eines neuen Gesetzes nach seiner eigenen B
     expect(out.stats).toEqual({ compared: 2, changed: 0, uncompared: 0 })
   })
 })
+
+describe('compareReasoning — die Sammelvorlage in der Nummerierung des gebündelten Entwurfs (01.10.2026)', () => {
+  const BSFG = 'Änderung des Bundes-Sportförderungsgesetzes 2017'
+  const AHG = 'Änderung des Amtshaftungsgesetzes'
+
+  it('liest „Zu Art. 3 Z 48" unter dem Artikel 25 der Vorlage als Z 48 des Artikels 3 im Entwurf (24/ME XXVIII)', () => {
+    const units = [
+      unit(BSFG, 'Z48', '§ 40 samt Überschrift lautet: Sportbericht …', 'changed', { from: '3', to: '25' }),
+      unit(AHG, 'Z1', 'In § 1 wird "a" durch "b" ersetzt.', 'changed', { from: '1', to: '3' }),
+    ]
+    const before = erl(
+      'Zu Artikel 1 (Änderung des Amtshaftungsgesetzes):',
+      'Zu Z 1 (§ 1 AHG):',
+      'Zur Haftung.',
+      'Zu Artikel 3 (Änderung des BSFG 2017):',
+      'Zu Art. 3 Z 48 (§ 40 BSFG 2017 samt Überschrift):',
+      'Der Sportbericht.',
+    )
+    const after = erl(
+      'Zu Artikel 3 (Änderung des Amtshaftungsgesetzes):',
+      'Zu Z 1 (§ 1 AHG):',
+      'Zur Haftung.',
+      'Zu Artikel 25 (Änderung des Bundes-Sportförderungsgesetzes 2017):',
+      'Zu Art. 3 Z 48 (§ 40 BSFG 2017 samt Überschrift):',
+      'Der Sportbericht soll künftig jährlich erscheinen.',
+    )
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units[`${BSFG}|Z48|changed`]!]).toMatchObject({ basis: 'ziffer', changed: true, label: 'Zu Art. 3 Z 48 (§ 40 BSFG 2017 samt Überschrift):' })
+    // Read by its number, „Art. 3 Z 48" would be a Ziffer of the Vorlage's Artikel 3, the Amtshaftungsgesetz.
+    expect(out.entries[out.units[`${AHG}|Z1|changed`]!]).toMatchObject({ label: 'Zu Z 1 (§ 1 AHG):', changed: false })
+  })
+
+  it('verlangt den § beider Seiten, wo eine Seite über die fremde Nummer gefunden ist', () => {
+    // 24/ME counts its own Ziffern one off: its „Z 48" explains § 44, the unit amends § 40.
+    const units = [
+      unit(BSFG, 'Z48', '§ 40 samt Überschrift lautet: Sportbericht …', 'changed', { from: '3', to: '25' }),
+      unit(AHG, 'Z1', 'In § 1 wird "a" durch "b" ersetzt.', 'changed', { from: '1', to: '3' }),
+    ]
+    const before = erl('Zu Artikel 1 (Änderung des Amtshaftungsgesetzes):', 'Zu Z 1 (§ 1 AHG):', 'Text.', 'Zu Artikel 3 (Änderung des BSFG 2017):', 'Zu Art. 3 Z 48 (§ 44 Abs. 7 BSFG 2017):', 'Inkrafttreten.')
+    const after = erl('Zu Artikel 3 (Änderung des Amtshaftungsgesetzes):', 'Zu Z 1 (§ 1 AHG):', 'Text.', 'Zu Artikel 25 (Änderung des BSFG 2017):', 'Zu Art. 3 Z 48 (§ 40 BSFG 2017 samt Überschrift):', 'Der Sportbericht.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.units[`${BSFG}|Z48|changed`]).toBeUndefined()
+    expect(out.fallbacks[`${BSFG}|Z48|changed`]).toBe('none')
+  })
+
+  it('bleibt bei der eigenen Nummer, wo die Vorlage der Nummer keine eigene Artikelüberschrift gibt (165/ME XXVI)', () => {
+    const FFG = 'Änderung des FFG-Gesetzes'
+    const units = [unit(FFG, 'Z1', 'In § 1 Abs. 1 wird "a" durch "b" ersetzt.', 'changed', { to: '4' }), unit('Änderung des FTFG', 'Z1', 'In § 2 wird "a" durch "b" ersetzt.', 'changed', { to: '3' })]
+    const before = erl('Zu Art. 3 (Änderung des FTFG):', 'Zu Art. 3 Z 1 (§ 2):', 'Eins.', 'Zu Art. 4 (Änderung des FFG-Gesetzes):', 'Zu Art. 4 Z 1 (§ 1 Abs. 1):', 'Zwei.')
+    const after = erl('Zu Art. 3 (Änderung des FTFG):', 'Zu Art. 3 Z 1 (§ 2):', 'Eins.', 'Zu Art. 4 Z 1 (§ 1 Abs. 1):', 'Zwei.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units[`${FFG}|Z1|changed`]!]).toMatchObject({ label: 'Zu Art. 4 Z 1 (§ 1 Abs. 1):', changed: false })
+  })
+
+  it('schlüsselt nach dem Titel, wo eine Seite ihre Gesetze ohne Nummer führt (22/ME XXVIII: „Art. X1", „Art. X2")', () => {
+    const SEKTEN = 'Änderung des Bundesgesetzes über die Bundesstelle für Sektenfragen'
+    const FAMILIE = 'Änderung des Bundesgesetzes über die Errichtung der Gesellschaft "Familie & Beruf Management GmbH"'
+    const ZIVI = 'Änderung des Zivildienstgesetzes 1986'
+    const noFrom = (u: LawDiffUnit): LawDiffUnit => ({ ...u, fromArticleKey: null })
+    const units = [
+      noFrom(unit(SEKTEN, 'Z1', 'Im Titel entfällt der Klammerausdruck.', 'changed', { to: '11' })),
+      noFrom(unit(FAMILIE, 'Z1', 'In § 1 Abs. 4 wird "a" durch "b" ersetzt.', 'changed', { to: '12' })),
+      noFrom(unit(ZIVI, 'Z1', '§ 23 Abs. 2 lautet: …', 'changed', { to: '13' })),
+    ]
+    const before = erl(
+      `Zu Art. X1 (${SEKTEN}):`,
+      'Zu Z 1',
+      'Der Klammerausdruck entfällt.',
+      'Zu Art. X2 (Änderung des Bundesgesetzes über die Errichtung der Gesellschaft „Familie &amp; Beruf Management GmbH“):',
+      'Zu Z 1',
+      'Anpassung an das Bundesministeriengesetz.',
+      'Zu Art. X3 (Änderung des Bundesgesetzes über den Zivildienst):',
+      'Zu Z 1',
+      'Geheimhaltung.',
+    )
+    const after = erl(
+      `Zu Artikel 11 (${SEKTEN}):`,
+      'Zu Z 1 (Titel):',
+      'Der Klammerausdruck entfällt.',
+      'Zu Artikel 12 (Änderung des Bundesgesetzes über die Errichtung der Gesellschaft "Familie &amp; Beruf Management GmbH"):',
+      'Zu Z 1 (§ 1 Abs. 4):',
+      'Anpassung an das Bundesministeriengesetz 2025.',
+      `Zu Artikel 13 (${ZIVI}):`,
+      'Zu Z 1 (§ 23 Abs. 2):',
+      'Geheimhaltung.',
+    )
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.entries[out.units[`${SEKTEN}|Z1|changed`]!]).toMatchObject({ changed: false })
+    expect(out.entries[out.units[`${FAMILIE}|Z1|changed`]!]).toMatchObject({ changed: true })
+    // „über den Zivildienst" is not the title the text prints: nothing rather than a guess.
+    expect(out.units[`${ZIVI}|Z1|changed`]).toBeUndefined()
+  })
+})

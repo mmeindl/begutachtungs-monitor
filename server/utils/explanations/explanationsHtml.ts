@@ -23,7 +23,7 @@
  * sides, or the Begründung hangs on the wrong §.
  */
 import { addressOf, ARTICLE_HEADING_RE, isAddressHeading, ziffernOf } from './risExplanations'
-import { articleKeysNamed, leadingArticleKey } from '../text/designation'
+import { articleKeysNamed, articleNumberKey, leadingArticleKey } from '../text/designation'
 import { normalizeText } from '../lawtext/normalize'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 // One reading of a designation for both sides of the lookup. Its `\b` changes
@@ -60,6 +60,27 @@ export interface HtmlPassage {
    * (docs/architecture.md §12.10b, 01.10.2026).
    */
   ziffern: { article: string | null; ziffer: string }[]
+  /**
+   * The Artikel the Artikel heading in force above the passage names — „Zu
+   * Artikel 25 (Änderung des Bundes-Sportförderungsgesetzes 2017):", a bare
+   * „Artikel 25" line, „Zu Artikel 23 (…) und Artikel 24 (…):" names two —
+   * or null where none stands or it names a range („Zu Artikel 88 bis 102
+   * (…)", the summary over a bundle). Unlike `article`, a passage's own
+   * „Zu Art. 3 Z 48 (§ 40 BSFG 2017 …):" does not change it: a Sammelvorlage
+   * may keep the numbering of the draft it took a law from inside its own
+   * Artikel heading (129 d.B. XXVIII, docs/architecture.md §12.10b,
+   * 01.10.2026), and then the two disagree.
+   */
+  section: string[] | null
+  /**
+   * The law the Artikel heading in force names, in its words — „Änderung des
+   * Zivildienstgesetzes 1986" from „Zu Artikel 13 (Änderung des
+   * Zivildienstgesetzes 1986):" —, or null where none stands or it names
+   * several. Read also where the number is none at all: 22/ME XXVIII heads
+   * its three laws „Zu Art. X1 (…)", „Zu Art. X2 (…)", „Zu Art. X3 (…)",
+   * and the law is all that tells them apart.
+   */
+  law: string | null
 }
 
 export interface HtmlExplanations {
@@ -82,6 +103,47 @@ function partKind(text: string): 'general' | 'special' | null {
 }
 
 /**
+ * The Artikel an Artikel heading names — „Zu Artikel 25 (…):" one, „Zu Art. 5,
+ * 8 und 9 (…)" and „Zu Artikel 23 (…) und Artikel 24 (…):" several — read
+ * outside the brackets, where the law's title stands. Null for a range („Zu
+ * Artikel 88 bis 102 (…)"): a summary over a bundle, not one law's heading.
+ */
+function sectionOf(heading: string): string[] | null {
+  let flat = heading
+  for (let i = 0; i < 2; i++) flat = flat.replace(/\([^()]*\)/g, ' ')
+  flat = flat.split(':')[0] ?? flat
+  if (/\bbis\b|[–-]\s*\d/i.test(flat)) return null
+  const out = new Set<string>()
+  for (const m of flat.matchAll(/(?:(?<![a-zäöü])art(?:ikel)?\.?\s*|(?:,|\bund\b|\bsowie\b)\s*)([0-9]+|[ivxlc]+)(?![0-9a-z])/gi)) {
+    const key = articleNumberKey(m[1]!)
+    if (key) out.add(key)
+  }
+  return out.size ? [...out] : null
+}
+
+/** „Zu Art. X1 (Änderung des …):" — an Artikel heading whatever its number, with the law in brackets. */
+const LAW_HEADING_RE = /^(?:zu\s+)?art(?:ikel)?\b\.?\s*[^\s(]+\s*\(/i
+
+/**
+ * The law in an Artikel heading's brackets, nested brackets kept („… für
+ * Sektenfragen (Bundesstelle für Sektenfragen)") — null where the heading
+ * names several Artikel, since then the brackets name several laws.
+ */
+function lawOf(heading: string): string | null {
+  if (!LAW_HEADING_RE.test(heading)) return null
+  let outside = heading
+  for (let i = 0; i < 2; i++) outside = outside.replace(/\([^()]*\)/g, ' ')
+  if (/,|\b(?:und|sowie|bis)\b/i.test(outside.split(':')[0] ?? outside)) return null
+  const open = heading.indexOf('(')
+  let depth = 0
+  for (let i = open; i < heading.length; i++) {
+    if (heading[i] === '(') depth++
+    else if (heading[i] === ')' && --depth === 0) return heading.slice(open + 1, i).trim() || null
+  }
+  return null
+}
+
+/**
  * One Parliament Erläuterungen document, split into the Allgemeiner Teil and
  * the passages of the Besonderer Teil.
  *
@@ -96,6 +158,10 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
   let current: HtmlPassage | null = null
   /** The Artikel heading in force above the passages. */
   let mark: string | null = null
+  /** The Artikel the last Artikel heading named — see `HtmlPassage.section`. */
+  let section: string[] | null = null
+  /** The law it named — see `HtmlPassage.law`. */
+  let law: string | null = null
 
   for (const block of parseParliamentHtml(html)) {
     const text = normalizeText(block.text).trim()
@@ -106,6 +172,8 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
       inSpecial = part === 'special'
       current = null
       mark = null
+      section = null
+      law = null
       continue
     }
 
@@ -123,7 +191,13 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
         article = own ?? mark
       }
       const ziffern = ziffernOf(text).map((z) => ({ article: z.article ?? article, ziffer: z.ziffer }))
-      current = { heading: text, paragraphs, text: [], article, ziffern }
+      // An Artikel heading of its own — no Ziffer, no § — opens a section,
+      // with or without a number the parser can read („Zu Art. X1 (…)").
+      if (ziffern.length === 0 && paragraphs.length === 0 && (ARTICLE_HEADING_RE.test(text) || LAW_HEADING_RE.test(text))) {
+        section = sectionOf(text)
+        law = lawOf(text)
+      }
+      current = { heading: text, paragraphs, text: [], article, ziffern, section, law }
       special.push(current)
       inSpecial = true
       continue
@@ -137,6 +211,8 @@ export function parseExplanationsHtml(html: string): HtmlExplanations {
     // takes marks from heading elements only.
     if (ARTICLE_HEADING_RE.test(text) && addressOf(text).paragraphs.length === 0 && /Ueberschr/i.test(block.cls)) {
       mark = leadingArticleKey(text)
+      section = sectionOf(text)
+      law = lawOf(text)
     }
 
     if (inSpecial && current) current.text.push(text)

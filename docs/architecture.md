@@ -1100,6 +1100,75 @@ Erläuterungen nach Abschnitten gegliedert sind), die nur eine Seite erklärt
 Nummer im Paket mehrere Gesetze tragen (0, 5, 89, fast alle 32/ME XXVIII),
 dazu 34 Einheiten mit doppelt vergebener Nummer in XXVII.
 
+**Nachgezogen am 01.10.2026: die Sammelvorlage, die in der Nummerierung des
+gebündelten Entwurfs schreibt.** Die Vermutung war, dass die Erläuterungen
+der 129 d.B. (gebündelt aus 17, 18, 20 bis 24/ME XXVIII) die Artikelnummern
+der Entwürfe behalten und der Ziffer-Join deshalb nichts findet. Gelesen, was
+die Dokumente tun: **Fast überall nummeriert die Vorlage nach ihren eigenen
+Artikeln** — Artikel 88 bis 98 für 17/ME, 106 bis 122 für 18/ME —, und dort
+fand der Join schon alles, was beide Seiten erklären. Was in 18/ME und 20/ME
+ohne Begründung bleibt, erklärt eine Seite gar nicht: Die Inkrafttretens-
+Ziffern, die Artikel unter „Zu Art. 5, 8 und 9 (…)" ohne eigene Passagen, und
+in 20/ME fasst die Vorlage die Artikel 27 bis 31 (ASVG bis KSVG) in einer
+Passage ohne Ziffern zusammen, während der Entwurf seine Artikel 1 bis 5 gar
+nicht erläutert.
+
+Die Vermutung stimmt für **vier Passagen, alle aus 24/ME**: Unter „Zu Artikel
+23 (Änderung des KommAustria-Gesetzes) und Artikel 24 (Änderung des
+ORF-Gesetzes):" steht „Zu Art. 1 Z 1 (§ 6 Abs. 2 KOG) und zu Art. 2 Z 1 (§ 6a
+Abs. 2 ORF-G):", unter „Zu Artikel 25 (Änderung des
+Bundes-Sportförderungsgesetzes 2017):" „Zu Art. 3 Z 48 (§ 40 BSFG 2017 …):".
+Artikel 1 der Vorlage ist das AVG, Artikel 3 das Amtshaftungsgesetz: Nach der
+Nummer gelesen, war die Passage die Ziffer eines anderen Gesetzes. Und ein
+fünfter Fall, den die Vermutung nicht nannte: **22/ME führt seine drei
+Gesetze als „Art. X1", „X2" und „X3"** — Platzhalter, und sein Text trägt
+auch keine Nummer. Nach Nummer waren die drei „Zu Z 1" ein Schlüssel und
+wurden verweigert; der Entwurf hatte keine einzige Begründung.
+
+*Geschlüsselt wird, was gedruckt ist.* Der Parser hält dafür fest, welche
+Artikelüberschrift über einer Passage gilt (`HtmlPassage.section`, die Nummern
+der Überschrift; ein Bereich „Zu Artikel 88 bis 102" ist keine) und welches
+Gesetz sie nennt (`law`, der Titel in ihrer Klammer). Eine Passage, deren
+Ziffern unter keinem Artikel dieser Überschrift stehen und deren Artikel das
+Dokument anderswo als eigenes Gesetz überschreibt, ist in der Nummerierung
+eines anderen Dokuments geschrieben (`foreignNumbered`): Sie steht nicht mehr
+unter der fremden Nummer, sondern unter (Überschrift der Vorlage, Artikel und
+Ziffer des Entwurfs) und findet die Einheit über deren Entwurfsseite. Weil
+die Nummer hier am Artikel vorbei gelesen wird, muss der § beider Seiten
+passen, auch bei nur einer Passage. Wo die Vorlage einer Nummer keine eigene
+Überschrift gibt, bleibt die Nummer ihre eigene: 165/ME XXVI lässt „Zu Art. 4
+(…)" aus und schreibt „Zu Art. 4 Z 1 …" unter die Überschrift von Artikel 3,
+und diese Passagen gehören weiter zu Artikel 4. Führt eine Seite ihre Gesetze
+ganz ohne Nummer, aber mindestens zwei davon unter genau dem Titel, den der
+Text ihnen gibt, schlüsselt sie nach Titel (`ArticleMode` `title`); ein
+anders formulierter Titel („Bundesgesetz über den Zivildienst" für das
+Zivildienstgesetz 1986) bekommt nichts, geraten wird nicht.
+
+*Die Wache hat gleich einen Fehler des Dokuments gefunden.* Die Erläuterungen
+des Entwurfs 24/ME stehen am Ende seines Artikels 3 um eine Ziffer neben dem
+Text: Ihr „Zu Art. 3 Z 48 (§ 44 Abs. 7 …)" erklärt die Z 49, ihr „Z 47 (§ 40
+…)" die Z 48. Ohne die §-Prüfung hätte die richtige Passage der Vorlage zu
+Z 48 gegen die falsche des Entwurfs gestanden, mit 99 % „Abweichung". So
+bleiben Z 48 und Z 49 ohne Begründung. (Die Z 47 trifft derselbe Fehler auf
+dem bisherigen Weg und steht als „geändert": Dort hält keine Wache eine
+einzelne Passage an ihren §, aus dem oben beschriebenen Grund.)
+
+*Alt gegen neu* (`--against`, wie oben): **XXVIII 2.729 → 2.743 Einheiten mit
+Begründung, 0 verloren, 14 dazu** — 4 in 24/ME (die beiden KOG/ORF-G-Paare,
+eines unverändert, eines geändert: „Inkrafttretensbestimmungen." wurde
+begründet), 10 in 22/ME (Artikel X1 und X2; 8 davon ohne Urteil gezeigt, weil
+die Vorlage anders gruppiert). XXVI und XXVII: 0 dazu, 0 verloren, kein Urteil
+bewegt. Gelesen sind alle 14. Zwei der Paare ohne Urteil in 22/ME zeigen eine
+Passage des Entwurfs, die nach seiner eigenen Zählung zur nächsten Ziffer
+gehört — auch dessen Erläuterungen zählen in X1 und X2 eine Ziffer weniger als
+der Text —, wie gedruckt und ohne Urteil. Über alle drei Perioden erkennt die
+Regel 10 Passagen als fremd nummeriert: die vier der 129 d.B. und sechs, deren
+Nummer ein Tippfehler oder eine falsch gelesene Marke ist (XXVII 43/ME: „Zu
+Art. 7 Z 3 (§ 19 Abs. 3 LLVG)" unter Artikel 8, dem LLVG; die Vorlage zu XXVI
+162/ME, in der „Zu Art. 7 Abs. 4 der RL Prozesskostenhilfe …" die
+Artikelmarke setzte). Diese stehen nicht mehr unter dem Schlüssel des
+falschen Artikels und hängen an nichts.
+
 ### 12.11 Speaking names — mostly a lookup, not a language model
 
 Asked for in user feedback (2026-09-08): speaking names for procedures and
