@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { draftUnits } from '../server/utils/annex/annexDraft'
 import { refusedUnits } from '../server/utils/kons/konsGate'
-import { NO_PARAGRAPH_ADDRESSED, addressedUnits, isTocInstruction, parseInstruction } from '../server/utils/kons/novao'
-import { addressedParagraph } from '../server/utils/lawtext/instructionAddress'
-import type { TextBlock } from '../server/utils/lawtext/lawUnits'
+import { instructionsFromUnits } from '../server/utils/kons/lawApply'
+import { NO_PARAGRAPH_ADDRESSED, addressedUnits, continuesToc, isTocInstruction, parseInstruction, tocSequence } from '../server/utils/kons/novao'
+import { addressedParagraph, addressedParagraphOf, addressedParagraphsOf } from '../server/utils/lawtext/instructionAddress'
+import { segmentUnits, type TextBlock } from '../server/utils/lawtext/lawUnits'
+import type { LawDiffUnit } from '../shared/types'
 import { unitKey } from '../server/utils/text/designation'
 
 const instruction = (text: string): TextBlock => ({ kind: 'novao', cls: 'absatz/novao1', text, gld: null })
@@ -87,5 +89,54 @@ describe('isTocInstruction — one predicate for the table of contents (01.10.20
       ['Z2', [], NO_PARAGRAPH_ADDRESSED],
       ['Z3', ['§ 19a', '§ 19a.'], null],
     ])
+  })
+})
+
+describe('an instruction that goes on with the table before it (02.10.2026)', () => {
+  // Hochschülerschafts-Verordnung: Z 16 is on the table, Z 17 one more entry
+  // of it — read alone, a phrase of § 29, refused, § 29 locked and named.
+  const blocks = (): TextBlock[] => [
+    instruction('16. Die § 26 betreffende Zeile im 7. Abschnitt des Inhaltsverzeichnisses erhält die Paragraphenbezeichnung "28." und die § 27 betreffende Zeile lautet:'),
+    quoted('§ 29. Prüfung'),
+    instruction('17. Der Eintrag nach der § 29 betreffenden Zeile lautet:'),
+    quoted('§ 30. Inkrafttreten'),
+    instruction('18. Der Eintrag zu § 50 lautet:'),
+  ]
+
+  it('reads the line as one more entry, and only behind an entry', () => {
+    expect(continuesToc('Der Eintrag nach der § 29 betreffenden Zeile lautet:')).toBe(true)
+    expect(continuesToc('Die Einträge zu den §§ 18 und 19 lauten:')).toBe(true)
+    // A place of the law left over once the entries are out.
+    expect(continuesToc('In § 30 wird nach dem Eintrag "X" folgender Eintrag eingefügt:')).toBe(false)
+    expect(continuesToc('Die Zeile 3 der Tabelle in Anlage 1 lautet:')).toBe(false)
+    expect(continuesToc('In § 5 Abs. 2 entfällt die Zeile "Gebühr".')).toBe(false)
+    expect(continuesToc('§ 29 lautet:')).toBe(false)
+    // Behind a § instruction the same words are not the table: the chain breaks.
+    expect(tocSequence([
+      { line: 'Im Inhaltsverzeichnis lautet die § 5 betreffende Zeile:', law: 'A' },
+      { line: 'Der Eintrag zu § 6 lautet:', law: 'A' },
+      { line: '§ 7 lautet:', law: 'A' },
+      { line: 'Der Eintrag zu § 8 lautet:', law: 'A' },
+      { line: 'Im Inhaltsverzeichnis lautet die § 9 betreffende Zeile:', law: 'A' },
+      { line: 'Der Eintrag zu § 10 lautet:', law: 'B' },
+    ])).toEqual([true, true, false, false, true, false])
+  })
+
+  it('neither locks nor files the entry under its §, in the engine and in the annex', () => {
+    const { instructions, refused } = instructionsFromUnits(segmentUnits(blocks()))
+    expect(refused.map((r) => r.line)).toEqual([])
+    expect(instructions.every((i) => i.op.kind === 'toc')).toBe(true)
+    expect(draftUnits(blocks()).map((u) => [u.id, u.paras])).toEqual([['Z16', []], ['Z17', []], ['Z18', []]])
+  })
+
+  it('names no § in the comparison', () => {
+    const unit = (id: string, text: string): LawDiffUnit => ({ article: null, articleKey: null, fromArticleKey: null, id, fromId: id, heading: text, quotedHeading: null, change: 'unchanged', editorial: false, fromText: text, toText: text, segments: null })
+    const units = [
+      unit('Z16', '16. Die § 26 betreffende Zeile im 7. Abschnitt des Inhaltsverzeichnisses erhält die Paragraphenbezeichnung "28." und die § 27 betreffende Zeile lautet: § 29. Prüfung'),
+      unit('Z17', '17. Der Eintrag nach der § 29 betreffenden Zeile lautet: § 30. Inkrafttreten'),
+      unit('Z18', '18. § 31 lautet: § 31. Schluss'),
+    ]
+    expect(addressedParagraphOf(units[1]!)).toBe('§ 29')
+    expect(addressedParagraphsOf(units)).toEqual([null, null, '§ 31'])
   })
 })

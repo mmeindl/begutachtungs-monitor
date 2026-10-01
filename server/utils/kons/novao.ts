@@ -1479,6 +1479,65 @@ export function isTocInstruction(raw: string): boolean {
   return tocClauses(splitCompound(line)).every(Boolean)
 }
 
+/**
+ * The unit an entry of the table names, as the entry's own words name it —
+ * „die § 29 betreffende Zeile", „der Eintrag zu den §§ 18 und 19", „zum
+ * 5. Abschnitt". Taken out of a clause before `continuesToc` asks whether
+ * the clause names anything else.
+ */
+const ENTRY_TARGET = '(?:§§?\\s*\\d+[a-z]*(?:\\s*(?:,|und|bis)\\s*\\d+[a-z]*)*|(?:\\d+\\.\\s*)?(?:Abschnitt|Teil|Hauptstück)(?:\\s+\\d+[a-z]*)?)'
+const ENTRY_REF_RE = new RegExp(
+  `(?:\\b(?:der|die|den|dem|das)\\s+)?${ENTRY_TARGET}\\s+betreffende[nrs]?\\s+(?:Zeilen?|Eintr(?:ag|äge)s?)\\b|\\b(?:Zeilen?|Eintr(?:ag|äge)s?)\\s+(?:zu[mr]?|betreffend|für)\\s+(?:(?:den|dem|der|die|das)\\s+)?${ENTRY_TARGET}`,
+  'gi',
+)
+/** What is left of a clause once its entries are out: anything here is a place of the law, not of the table. */
+const UNIT_WORD_RE = /§|\bAbs\.|\bZ\s*\d|\blit\.|\bAnlage|\bAnhang|\bArt(?:ikel|\.)|\bAbschnitt|\bTeil\b|\bHauptstück|\bInhalt\p{L}{0,3}verzeichnis/iu
+
+/**
+ * Does this line go on with the table of contents of the instruction before
+ * it, without naming the table again?
+ *
+ * „16. Die § 26 betreffende Zeile im 7. Abschnitt des Inhaltsverzeichnisses
+ * erhält …" — „17. Der Eintrag nach der § 29 betreffenden Zeile lautet:"
+ * (Hochschülerschafts-Verordnung): the second line is one more entry, and
+ * only the line before it says of what. Read alone it was a phrase of § 29,
+ * refused, and the refusal locked § 29 and lent it its name. `isTocInstruction`
+ * is a predicate on one line and cannot see that; the caller that walks the
+ * instructions in order can (`tocSequence`).
+ *
+ * The line has to speak of the table's own nouns (a Zeile, an Eintrag) and
+ * of nothing else: once its entries are taken out — „der § 29 betreffenden
+ * Zeile" — no § and no other unit may be left, no Absatz below one, and at
+ * most one instruction verb, the same conditions `isTocClause` sets on the
+ * wider reading. „Die Zeile 3 der Tabelle in Anlage 1 lautet" names an
+ * Anlage, and a table there is law text.
+ */
+export function continuesToc(raw: string): boolean {
+  const line = rejoinBrokenNouns(normalizeText(raw).replace(NUMBER_PREFIX, ''))
+  return splitCompound(line).every((part) => {
+    const masked = maskQuotes(instructionHead(part))
+    if (!TOC_ENTRY_RE.test(masked) || OWN_TOC_RE.test(masked) || BELOW_PARAGRAPH_RE.test(masked)) return false
+    const verbs = masked.match(new RegExp(INSTRUCTION_VERB_RE.source, 'gi')) ?? []
+    return verbs.length <= 1 && !UNIT_WORD_RE.test(masked.replace(ENTRY_REF_RE, ' '))
+  })
+}
+
+/**
+ * Which of a law's instructions, in the order the draft prints them, are on
+ * the table of contents: those `isTocInstruction` knows, and every one that
+ * goes on with the one before it (`continuesToc`) **of the same law** — the
+ * table of one Artikel is not the next one's. A unit without an instruction
+ * (`line` null) breaks the chain.
+ */
+export function tocSequence(items: readonly { line: string | null; law: string | null }[]): boolean[] {
+  const out: boolean[] = []
+  for (const [i, { line, law }] of items.entries()) {
+    const goesOn = i > 0 && out[i - 1]! && items[i - 1]!.law === law
+    out.push(line !== null && (isTocInstruction(line) || (goesOn && continuesToc(line))))
+  }
+  return out
+}
+
 /** The verbs of an append. */
 const APPEND_VERB_RE = /\bangefügt\b|\bhinzugefügt\b|\bangeschlossen\b/i
 /** „… ersetzt und (danach) folgender (Halb)Satz angefügt", „…; folgender Satz wird angefügt". */

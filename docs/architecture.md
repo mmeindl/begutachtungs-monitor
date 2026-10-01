@@ -3455,6 +3455,35 @@ damit bestätigt statt widerspricht. Der EMFG-Entwurf selbst liegt vor dem
 Fenster der 120: einzeln gemessen wird § 35 von unplausibel und widersprochen
 zu plausibel und bestätigt. Drift ohne Befund.
 
+**Das Inhaltsverzeichnis der vorigen Anweisung (02.10.2026).** Der erste
+der drei offenen Reste oben: „17. Der Eintrag nach der § 29 betreffenden
+Zeile lautet:" ist ein weiterer Eintrag des Inhaltsverzeichnisses, von dem
+erst die Anweisung davor spricht. Allein gelesen war die Zeile eine
+Wortfolge in § 29, verweigert, und die Verweigerung sperrte und benannte
+§ 29. Jetzt trägt, wer die Anweisungen eines Gesetzes der Reihe nach liest,
+den Zusammenhang weiter (`tocSequence` in `kons/novao.ts`): Eine Anweisung,
+die hinter einer Inhaltsverzeichnis-Anweisung **desselben Gesetzes** steht
+und nur von dessen Nomen spricht (`continuesToc`: eine Zeile, ein Eintrag),
+gehört ihm auch. „Nur" heißt: Nimmt man die Einträge heraus („der § 29
+betreffenden Zeile", „Eintrag zu § 50"), bleibt kein Paragraph, kein Absatz
+darunter, keine Anlage und kein Abschnitt übrig, und höchstens ein
+Anordnungsverb — dieselben Bedingungen, die `isTocClause` an die weitere
+Lesart stellt; „Die Zeile 3 der Tabelle in Anlage 1 lautet" nennt eine
+Anlage, und deren Tabelle ist Gesetzestext. Es lesen so die Engine
+(`instructionsFromUnits`, die Zeile wird `toc` statt verweigert), die
+Beilage (`draftUnits`) und die Namen (`addressedParagraphsOf` für
+`paraTitleService`); der Begründungsvergleich fragt `addressedParagraphOf`
+weiter je Einheit, ohne Reihe — für ihn bleibt die Zeile § 29, wie bisher.
+Alt gegen neu, Engine, Sperre und Beilage je Einheit, über 1.353 Dateien
+(die 300 Entwürfe aus `.cache/novao` und die 1.053 Dokumente mit Anordnungen
+im Prüfstands-Cache, Entwürfe und Bundesgesetzblätter, teils dieselben):
+**eine Zeile, in beiden Kopien desselben Entwurfs** —
+diese, ihre Sperre auf § 29 fällt, die Beilage legt ihren Eintrag in den
+allgemeinen Sack. Prüfstände: Sammelnovellen und Entwürfe **jede Zahl
+gleich** (der Entwurf steht in keinem der beiden); Beilage Tabellenpfad
+Adressierung 3.132 → 3.131, „zu Recht ohne Paragraph" 185 → 186, Säcke,
+Urteile und Berichtszahlen gleich, PDF-Pfad unverändert; Drift ohne Befund.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),

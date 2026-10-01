@@ -20,7 +20,7 @@
 import { childById, lawTextNodes, makeNode, plainText, uniqueChild, type LawNode, type NodeLevel } from '../lawtext/konsTree'
 import type { LawUnit } from '../lawtext/lawUnits'
 import { normalizeText } from '../lawtext/normalize'
-import { expandRange, namedParagraphs, opAddress, parseInstruction, type NovaoAddress, type NovaoOp } from './novao'
+import { expandRange, isTocInstruction, namedParagraphs, opAddress, parseInstruction, tocSequence, type NovaoAddress, type NovaoOp } from './novao'
 import { bareParaId, isSchedule } from '../text/designation'
 
 export interface StandingLaw {
@@ -288,7 +288,11 @@ function payloadLine(b: { kind: string; text: string; gld: string | null }): Pay
 export function instructionsFromUnits(units: readonly LawUnit[]): { instructions: Instruction[]; refused: { line: string; reason: string }[] } {
   const instructions: Instruction[] = []
   const refused: { line: string; reason: string }[] = []
-  for (const unit of units) {
+  // „17. Der Eintrag nach der § 29 betreffenden Zeile lautet:" goes on with
+  // the table of contents of the instruction before it; read alone it was
+  // refused and locked § 29 (`tocSequence`).
+  const toc = tocSequence(units.map((u) => ({ line: u.blocks.find((b) => b.kind === 'novao')?.text ?? null, law: u.article })))
+  for (const [ui, unit] of units.entries()) {
     const groups: { line: string; payload: PayloadLine[] }[] = []
     const tables = new Set<number>()
     for (const b of unit.blocks) {
@@ -305,6 +309,12 @@ export function instructionsFromUnits(units: readonly LawUnit[]): { instructions
       // NEHG diverged that way (BGBl. I Nr. 60/2024, 2026-09-09). Refused.
       if (tables.has(gi)) {
         refused.push({ line: group.line, reason: 'Tabelle im neuen Text — nicht als Gesetzestext abbildbar' })
+        continue
+      }
+      // The table of contents follows from the headings and is never applied;
+      // a line that names it is the grammar's `toc` already.
+      if (gi === 0 && toc[ui] && !isTocInstruction(group.line)) {
+        instructions.push({ op: { kind: 'toc' }, payload: [], line: group.line })
         continue
       }
       const parsed = parseInstruction(group.line, container)

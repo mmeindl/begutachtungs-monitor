@@ -4,7 +4,7 @@
  *
  * PURE MODULE — relative imports only, so vitest runs it directly.
  */
-import { opAddress, parseInstruction, refusedAddresses } from '../kons/novao'
+import { opAddress, parseInstruction, refusedAddresses, tocSequence } from '../kons/novao'
 import type { LawDiffUnit } from '../../../shared/types'
 import { isParagraphUnit } from '../../../shared/utils/unitName'
 
@@ -120,6 +120,25 @@ export function addressedParagraphOf(unit: LawDiffUnit): string | null {
   // citation). Such a unit addresses nothing but itself, and its designation
   // says so already.
   if (isParagraphUnit(unit)) return null
-  const line = unit.toText ?? unit.fromText ?? unit.heading
+  const line = instructionLineOf(unit)
   return line ? addressedParagraph(line) : null
+}
+
+/** The unshortened instruction a unit carries — see `addressedParagraphOf`. */
+function instructionLineOf(unit: LawDiffUnit): string | null {
+  return unit.toText ?? unit.fromText ?? unit.heading
+}
+
+/**
+ * `addressedParagraphOf` for the units of one comparison, in their order.
+ *
+ * „17. Der Eintrag nach der § 29 betreffenden Zeile lautet:" goes on with the
+ * table of contents of the unit before it; read alone it named § 29
+ * (Hochschülerschafts-Verordnung, 02.10.2026). Only the sequence shows that
+ * (`tocSequence` in `kons/novao.ts`, the engine's and the annex's reading), so
+ * a caller that has the units in order asks here.
+ */
+export function addressedParagraphsOf(units: readonly LawDiffUnit[]): (string | null)[] {
+  const toc = tocSequence(units.map((u) => ({ line: isParagraphUnit(u) ? null : instructionLineOf(u), law: u.article })))
+  return units.map((u, i) => (toc[i] ? null : addressedParagraphOf(u)))
 }

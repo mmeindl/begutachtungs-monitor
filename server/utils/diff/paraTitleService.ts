@@ -31,7 +31,7 @@ import type { TextBlock } from '../lawtext/lawUnits'
 import { parseParliamentHtml } from '../lawtext/parliamentHtml'
 import { parseRisXml } from '../lawtext/risXml'
 import { promulgationByArticle } from '../lawtext/draftArticles'
-import { addressedParagraphOf } from '../lawtext/instructionAddress'
+import { addressedParagraphsOf } from '../lawtext/instructionAddress'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { withoutOwnDesignation } from '#shared/utils/unitName'
 import { parseKonsParagraph } from '../lawtext/konsTree'
@@ -103,9 +103,9 @@ export const getParagraphTitles = defineCachedFunction(
     // display puts it in front of the name, because „Z 2" is the number of
     // the Novellierungsanordnung and not that of the Paragraph.
     const paragraphs: Record<string, string> = {}
-    for (const unit of diff?.units ?? []) {
-      const para = addressedParagraphOf(unit)
-      if (para) paragraphs[diffUnitKey(unit)] = para
+    const units = diff?.units ?? []
+    for (const [i, para] of addressedParagraphsOf(units).entries()) {
+      if (para) paragraphs[diffUnitKey(units[i]!)] = para
     }
 
     const empty: ParagraphTitlesResponse = { asOf, titles: {}, paragraphs }

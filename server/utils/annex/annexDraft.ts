@@ -26,7 +26,7 @@
  */
 import { segmentUnits, type TextBlock } from '../lawtext/lawUnits'
 import { draftTextOf } from './draftText'
-import { NO_PARAGRAPH_ADDRESSED, addressedUnits, isTocInstruction, parseAddress } from '../kons/novao'
+import { NO_PARAGRAPH_ADDRESSED, addressedUnits, parseAddress, tocSequence } from '../kons/novao'
 
 /** One Novellierungsanordnung (or one § of a Stammgesetz), and what it addresses. */
 export interface DraftUnit {
@@ -81,7 +81,12 @@ const NO_INSTRUCTION = 'keine Novellierungsanordnung'
  * it depends on.
  */
 export function draftUnits(blocks: readonly TextBlock[]): DraftUnit[] {
-  return segmentUnits(blocks).map((unit) => {
+  const units = segmentUnits(blocks)
+  // „17. Der Eintrag nach der § 29 betreffenden Zeile lautet:" goes on with
+  // the table of the unit before it, and is on the table too — the engine's
+  // reading (`tocSequence`).
+  const toc = tocSequence(units.map((u) => ({ line: u.blocks.find((b) => b.kind === 'novao')?.text ?? null, law: u.article })))
+  return units.map((unit, ui) => {
     const instructions = unit.blocks.filter((b) => b.kind === 'novao')
     // A unit on the table of contents names no § (`isTocInstruction`), and
     // neither do its lettered lines nor its payload: „a) nach dem Eintrag zu
@@ -90,7 +95,7 @@ export function draftUnits(blocks: readonly TextBlock[]): DraftUnit[] {
     // the payload is the entry's text, not a § it installs. Both filed the
     // table's words under a real § — 20 units over both paths of GP XXVIII
     // (01.10.2026); they belong in the general bag (`annex/rightColumn.ts`).
-    if (instructions[0] && isTocInstruction(instructions[0].text)) {
+    if (toc[ui]) {
       return { law: unit.article, id: unit.id, paras: [], aliases: [], reason: NO_PARAGRAPH_ADDRESSED, text: draftTextOf(unit.blocks) }
     }
     // The container's own address, for the lettered sub-instructions under it.
