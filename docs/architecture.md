@@ -1460,11 +1460,12 @@ verlieren nur die doppelte Bezeichnung, **12** waren nichts als sie („§ 27
 einem anderen §. Auf geänderten Einheiten, wo der Name auch sichtbar ist
 (kein zitierter Titel geht vor), sind es 19, davon 2 ohne Namen danach
 (69/ME Z 28 und Z 30); der Rest steht auf unveränderten Einheiten in der
-Kontextzeile. **Der Preis dieser 12:** Ohne Namen stellt die Karte auch den
-§ nicht mehr davor, die Zeile sagt dann nur „Z 28" statt „Z 28 § 27 § 27." —
-weniger, aber nichts Falsches. Ob eine Ziffer ohne Namen ihren § trotzdem
-zeigen soll, ist eine eigene Frage für alle namenlosen Ziffern, nicht für
-diese zwölf.
+Kontextzeile. Diese 12 lesen jetzt „Z 28 § 27" statt „Z 28 § 27 § 27.":
+**Seit demselben Tag zeigt jede Ziffer ohne Namen ihren adressierten §**
+(`unitLabel`). Das stand oben schon als Absicht („„§ 6" allein ist schon eine
+Auskunft", 22.09.), umgesetzt war es nicht — die Zeile hing am Namen, und eine
+namenlose Ziffer sagte nur „Z 28". Wo auch der § fehlt (Anweisungen über
+mehrere §§, Anlagen), bleibt die Zeile wie bisher.
 
 ### 12.12 Consolidated law text — engine built, not yet published
 

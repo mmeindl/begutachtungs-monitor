@@ -402,7 +402,7 @@ const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
  */
 interface UnitView {
   unit: LawDiffUnit
-  /** `unitLabel` — "§ 6 Erweiterte Gefahrenerforschung", null where no name is known */
+  /** `unitLabel` — "§ 6 Erweiterte Gefahrenerforschung", "§ 6" where no name is known, null where neither is */
   label: string | null
   /**
    * `extraHeading` — the heading, only where it says something the block does
@@ -505,11 +505,16 @@ function unitParagraph(u: LawDiffUnit): string | null {
   return para && para !== displayId(u.id) ? para : null
 }
 
-/** Paragraph and name as one line: „§ 6 Erweiterte Gefahrenerforschung". */
+/**
+ * Paragraph and name as one line: „§ 6 Erweiterte Gefahrenerforschung" —
+ * and the Paragraph alone where no name is known. „§ 6" is already the
+ * answer to which provision a Ziffer changes (§12.11); until 01.10.2026 the
+ * label went with the name, so a nameless Ziffer said only „Z 28".
+ */
 function unitLabel(u: LawDiffUnit): string | null {
   const name = nameOf(u)
-  if (!name) return null
   const para = unitParagraph(u)
+  if (!name) return para
   return para ? `${para} ${name}` : name
 }
 
