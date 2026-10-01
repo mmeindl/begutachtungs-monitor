@@ -229,6 +229,20 @@ describe('compareReasoning — die Begründung an der Ziffer (01.10.2026)', () =
     })
   })
 
+  // 65/ME XXVIII: „Redaktionelle Anpassungen." under differently grouped Ziffern
+  // on both sides — not a word changed, so „unverändert" is true either way.
+  it('urteilt „unverändert", wo die Passagen anders gruppiert, aber Wort für Wort gleich sind', () => {
+    const units = [z('Z1', 'Z1', 'In § 1 wird "a" durch "b" ersetzt.'), z('Z2', 'Z2', 'In § 2 wird "a" durch "b" ersetzt.')]
+    const before = erl('Zu Z 1 (§ 1):', 'Redaktionelle Anpassungen.', 'Zu Z 2 (§ 2):', 'Anderes.')
+    const after = erl('Zu Z 1 und 2 (§§ 1 und 2):', 'Redaktionelle Anpassungen.')
+
+    const out = compareReasoning(units, before, after)
+
+    expect(out.fallbacks['Gesetz|Z1|changed']).toBe('scope')
+    expect(out.entries[out.units['Gesetz|Z1|changed']!]).toMatchObject({ comparable: true, changed: false, drift: 0 })
+    expect(out.entries[out.units['Gesetz|Z2|changed']!]).toMatchObject({ comparable: false })
+  })
+
   // 41/ME XXVIII: „Zu Z 26 (§ 122 Abs. 1):" against „Zu Z 31 und 32 (§ 122
   // Abs. 1 und 2):", whose Z 32 is new — the passage now explains a second change.
   it('zählt eingefügte und entfernte Ziffern zum Umfang — eine Passage, die eine neue Änderung mit erklärt, ist umgruppiert', () => {

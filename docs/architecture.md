@@ -976,8 +976,14 @@ von 8/ME alle sechs —, und „Begründung geändert" kam oft von einer *andere
   Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden
   zusammen; verglichen wird sie deshalb nicht."), und zeigt beide Texte unter
   ihren Überschriften — ohne „geändert", ohne „unverändert". Der Satz über
-  dem Vergleich zählt weiter nur die verglichenen. So gezeigt sind 130, 356
-  und 157 Passagenpaare in XXVIII, XXVII und XXVI.
+  dem Vergleich zählt weiter nur die verglichenen. So gezeigt sind 107, 288
+  und 111 Passagenpaare in XXVIII, XXVII und XXVI. **Außer, die beiden Texte
+  sind Wort für Wort gleich** (`sameWords`, nachgezogen am selben Tag): dann
+  kann keine Umgruppierung ein falsches „geändert" erzeugen, und
+  „unverändert" stimmt, wie immer die Ziffern gruppiert sind — 65/ME XXVIII
+  stellte sonst „Redaktionelle Anpassungen." unter acht Ziffern zweimal
+  nebeneinander. Das betraf 23, 68 und 46 Paare; die Zahl der geänderten
+  rührt es nicht an.
 - **Der Artikel wird gelesen, wie das Dokument ihn schreibt.** Ein einzelnes
   Gesetz, das eine Seite als „Artikel 1" führt und die andere nicht (124/ME
   und 268/ME XXVII), wird ohne Artikel geschlüsselt; ein Paket, dessen
@@ -1014,9 +1020,9 @@ bewegt.
 | davon mit nur fremden Passagen | 37 | 24 | 55 |
 | vom Rückfall aufgefangen | 620 | 1.354 | 526 |
 | neu dazu | 488 | 998 | 266 |
-| verglichene Begründungen | 1.237 → 1.282 | 3.102 → 3.521 | 1.357 → 1.533 |
+| verglichene Begründungen | 1.237 → 1.328 | 3.102 → 3.589 | 1.357 → 1.556 |
 | davon geändert | 560 → 485 | 1.454 → 1.429 | 628 → 602 |
-| gezeigt ohne Urteil | 157 | 356 | 130 |
+| gezeigt ohne Urteil | 111 | 288 | 107 |
 | „geändert" → „unverändert", die eigene Passage gleich | 191 | 356 | 150 |
 
 Die größte Bewegung ist die gewollte: Anweisungen, deren eigene Passage

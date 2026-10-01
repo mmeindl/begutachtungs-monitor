@@ -164,6 +164,18 @@ function uncomparedOf(label: string, fromHeading: string, a: string, b: string):
   return { basis: 'ziffer', label, comparable: false, fromHeading, drift: null, changed: false, segments: null, fromText: a || null, toText: b }
 }
 
+/**
+ * Not a word apart, by the same comparison that gives the verdict. The scope
+ * rule holds passages apart because a different grouping can make two texts
+ * differ without the Begründung changing — a false „geändert". Where the two
+ * texts are the same word for word, that cannot happen: „unverändert" is
+ * true however the Ziffern are grouped (65/ME XXVIII, „Redaktionelle
+ * Anpassungen." under eight Ziffern on both sides, 01.10.2026).
+ */
+function sameWords(a: string, b: string): boolean {
+  return Boolean(a) && diffTokens(a, b).similarity === 1
+}
+
 /** What `fill` builds an entry from. */
 interface EntryInput {
   label: string
@@ -188,7 +200,9 @@ function fill(f: Filling, unit: LawDiffUnit, key: string, make: () => EntryInput
       f.skipped.add(key)
       return
     }
-    f.out.entries[key] = uncompared ? uncomparedOf(label, uncompared.fromHeading, a, b) : entryOf(basis, label, a, b)
+    f.out.entries[key] = uncompared && !sameWords(a, b)
+      ? uncomparedOf(label, uncompared.fromHeading, a, b)
+      : entryOf(basis, label, a, b)
   }
   f.out.units[diffUnitKey(unit)] = key
 }
