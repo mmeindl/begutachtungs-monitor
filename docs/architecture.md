@@ -461,7 +461,11 @@ right-column withholdings of `harness/annexPdf.ts` over the same population,
 so the two harnesses cross-check each other, and the reach
 `annex/rightColumn.ts` states is the number this one prints. It exists because that number was
 measured once in a scratch file, and a claim whose instrument is gone is a
-claim nobody can re-check (§12.13).
+claim nobody can re-check (§12.13). Since 01.10.2026 it also breaks the
+engine's *result* for the consolidated text's oracle (`kons/tguOracle.ts`):
+in a § the annex confirmed it undoes one of the engine's deletions, or puts
+a replaced stretch back beside its replacement, and asks the oracle again —
+the measurement behind its fourth check (§12.12a).
 
 **Der SSR-Rauchtest über das gebaute Artefakt (26.09.2026).** Die Suite oben
 ist netzfrei und ohne Nitro, und das ist ihre Stärke; ihre Blindstelle heißt
@@ -3181,12 +3185,14 @@ EStG § 24 Abs. 7 „lautet … der zweite Halbsatz nach dem Strichpunkt ‚…'
 (der neue Text in der Zeile statt als Nutzlast; ein Entwurf ohne
 Prüfsignal).
 
-**Eine Lücke des Orakels, offen:** Der Seilbahn-§ 10 galt schon als
-„bestätigt", als er verweigert war und sein Abs. 3 noch stand. Die Beilage
-streicht ihn in einer *geänderten* Zeile, und die drei Enthaltensein-Proben
-fragen, ob die vorgeschlagene Fassung im Ergebnis steht — nicht, ob das
-Ergebnis mehr enthält. Hier harmlos, weil verweigert; ohne Verweigerung
-hätte nur noch die Plausibilität die fehlende Streichung aufhalten können.
+**Eine Lücke des Orakels, geschlossen am 01.10.2026:** Der Seilbahn-§ 10
+galt schon als „bestätigt", als er verweigert war und sein Abs. 3 noch
+stand. Die Beilage streicht ihn in einer *geänderten* Zeile, und die drei
+Enthaltensein-Proben fragten, ob die vorgeschlagene Fassung im Ergebnis
+steht — nicht, ob das Ergebnis mehr enthält. Hier harmlos, weil verweigert;
+ohne Verweigerung hätte nur noch die Plausibilität die fehlende Streichung
+aufhalten können. Gemessen, wie oft das vorkommt, und mit einer vierten
+Prüfung geschlossen: §12.12a, „Prüfung 4".
 
 **„der Absatz mit der Bezeichnung ‚(6)'" ist keine Wortfolge (01.10.2026).**
 Die Zeile, die oben als zweiter Ort stehen bleiben sollte, war gar nicht
@@ -3775,6 +3781,107 @@ erhalten bleibt. Das war einmal richtig und wurde in dem Augenblick falsch,
 in dem die Prüfung um eine Regel wuchs — eine Messung, die eine Kopie misst,
 berichtet den Ertrag des Servers nicht. Das Skript ruft jetzt
 `unaccountedStretch` selbst auf.
+
+**Prüfung 4: Das Ergebnis darf nicht mehr enthalten als die Beilage
+vorschlägt (01.10.2026).** Die Lücke aus §12.12 (30.09.): Die drei Proben
+fragten nur, ob die vorgeschlagene Fassung *im* Ergebnis steht. Eine
+Streichung, die die Engine nicht ausführt, fügt nichts ein und entfernt
+nichts, also bestand sie alle drei — sofern die Beilage sie in einer
+*geänderten* Zeile zeigt und nicht als leere rechte Zelle. Seilbahn-Entwurf
+§ 10: Die Zeile schreibt Abs. 2 um und lässt Abs. 3 fallen; das Ergebnis mit
+Abs. 3 galt als bestätigt. Es ist die eine Fehlerart, die das Tor nie machen
+darf, also zuerst gemessen.
+
+*Das Messgerät.* `harness/faultInjection.ts` bricht seither auch das
+**Ergebnis**, nicht nur die Beilage: Es lässt die Engine über jeden Entwurf
+laufen (dieselben Module wie `harness/me.ts`), und in jedem bestätigten §
+mit geltendem Text macht Fehler **E** eine Streichung der Engine rückgängig
+— eine ganze Einheit von mindestens sechs Wörtern, nicht ein Diff-Segment,
+denn die LCS zerlegt eine gestrichene Litera an jedem „die" in Bruchstücke,
+die keine Engine erzeugt. **E-neben** legt einen ersetzten Abschnitt neben
+seinen Ersatz („ersetzt" als „eingefügt" gelesen). Eine Kontrolle baut
+denselben Text ohne Fehler aus denselben Segmenten und muss bestätigt
+bleiben; sie verschob in keinem Lauf etwas.
+
+| GP XXVIII, `--gp=XXVIII` [`--xml`] | vorher | nachher |
+|---|---|---|
+| E, PDF-Pfad | 37 von 78 (47,4 %) | **76 von 78 (97,4 %)** |
+| E, Tabellenpfad | 69 von 89 (77,5 %) | **85 von 87 (97,7 %)** |
+| E-neben, PDF-Pfad | 122 von 133 (91,7 %) | **132 von 132 (100 %)** |
+| E-neben, Tabellenpfad | 109 von 113 (96,5 %) | **112 von 113 (99,1 %)** |
+| bestätigt ohne Injektion, PDF / Tabelle | 1.007 / 941 | 1.005 / 938 |
+
+Dass vorher überhaupt drei Viertel auf dem Tabellenpfad gefangen wurden,
+liegt an Prüfung 2: Sie will jede gedruckte Strecke als ein ununterbrochenes
+Stück, also bricht Text, der *in* einer Strecke stehen bleibt, sie auf, und
+eine ganz gestrichene Zeile hat eine leere rechte Zelle. Blind war sie für
+Text **neben** einer Strecke — hinter ihrem letzten oder vor ihrem ersten
+Wort, wo die Zeile endet oder die Beilage „…" setzt. Auf dem PDF-Pfad, wo eine
+Zeile ein ganzer Paragraph mit Löchern ist, ist das die Hälfte der Fälle.
+
+*Die Regel* (`keptDeletion`): Die Strecken der Zeile werden im Ergebnis
+gesucht, in Reihenfolge, wie Prüfung 2 sie findet, und an jedem offenen Rand
+wird gelesen, was das Ergebnis **dort** trägt. Sind es Wörter, die genau
+dieser Bereich des zeileneigenen Diffs streicht, und druckt die rechte Spalte
+des Paragraphen sie nirgends, steht Gestrichenes noch da. Ein gestrichenes
+Stück ohne gedruckte Strecke daneben — zwischen zwei Marken („a) bis e) …
+f) … g) bis j) …" gegen „a) bis e) … g) bis j) …"), oder rechts nur Marken
+(„§ 73. (1) und (2) …") — hat keinen Ort, nur eine Anwesenheit; es zählt ab
+sechs Wörtern, wo immer es steht. Nicht gelesen wird ein Rand, an dem nur die
+rechte Spalte eine Marke setzt (dort lässt die Beilage Text aus, sie streicht
+ihn nicht), und vor der ersten Strecke die Überschrift: Der PDF-Pfad kürzt
+die rechte Kopie, wo sie umbricht (SPG § 57). Zwei Marken bindet der
+zeileneigene Diff mit hohem Gewicht aneinander, sonst tauscht die LCS eine
+davon gegen drei Funktionswörter eines umgeschriebenen Satzes hinter ihr
+(AbgÄG § 16). `annex/elision.ts` gibt dafür den Schnitt von
+`printedStretches` mit den Marken zurück (`printedLayout`) — eine Funktion,
+keine zweite Kopie; die Berichte des Annex-Prüfstands sind Byte für Byte
+gleich.
+
+*Zwei lockerere Fassungen sind gemessen und verworfen.* Die gestrichenen
+Wörter mit etwas Kontext **irgendwo** im Paragraphen zu suchen, gab auf dem
+Tabellenpfad sechs Korpusalarme, vier davon Wendungen, die im Gesetz zweimal
+stehen — in einem Absatz, den die Beilage gar nicht druckt
+(Staatsanwaltschaftsgesetz § 34 Abs. 3), in der eigenen Überschrift des
+Paragraphen (VfGG § 56h). Und neben einer Strecke **alle** Wörter
+zuzulassen, die die linke Spalte der Zeile druckt und die rechte nicht, fing
+kaum mehr (Fehler E auf dem Tabellenpfad 98,8 statt 97,7 %, auf dem PDF-Pfad
+gleich) und hob die Korpusalarme beider Pfade von fünf auf siebzehn („die Bezeichnung
+des", „Der Sparkassenrat kann": alter Wortlaut eines ersetzten Satzes, der
+zufällig am Rand des nächsten steht).
+
+*Was die Prüfung ohne Injektion meldet — jeder Fall gelesen*, über die
+1.948 bestätigten Paragraphen beider Pfade:
+
+- **Zwei echte Engine-Fehler.** KommAustria-Gesetz § 35 (EMFG-Begleitgesetz):
+  „In § 35 Abs. 1c und 1d entfällt jeweils der letzte Satz" wurde als
+  angewendet gemeldet, und in Abs. 1d steht der Satz noch — die Plausibilität
+  hielt den Paragraphen ohnehin an („umfang"). Transparenzdatenbankgesetz
+  § 43 Abs. 8 Z 1 (Budgetbegleitgesetz 2027–2028): „der letzte Satz entfällt"
+  fand keinen Satz; verweigert. Beide galten bisher als vom Anhang bestätigt.
+- **Drei Beilagen, die der Anordnung widersprechen.** StPO § 22 (nur das Wort
+  „Generalprokuratur" wird ersetzt; die Beilage lässt rechts den zweiten und
+  dritten Satz weg), Sektenfragen-Gesetz § 11 (erster Satz neu, letzter
+  entfällt; die Beilage lässt auch den mittleren weg), InvFG 2011 § 10
+  Abs. 5 („erster Satz lautet"; die Beilage auf dem PDF-Pfad lässt den
+  zweiten weg). Die Engine liest hier richtig, und die Paragraphen waren
+  plausibel und bestätigt, standen also auf der Seite. **Das ist der Preis:
+  drei richtige Paragraphen von 1.948 Bestätigungen (0,15 %)** — und die
+  Aussage „von der Beilage bestätigt" war für sie falsch, denn die Beilage
+  zeigt es anders.
+
+Ende zu Ende (`harness/me.ts --discover=120 --cache`): vom Anhang bestätigt
+und plausibel **623 → 622** (StPO § 22), „unplausibel, Orakel bestätigt"
+71 → 70 (Transparenzdatenbankgesetz § 43). Das Tor der Gegenüberstellung
+bleibt unberührt — bestätigt/einbehalten/ungeprüft Tabellenpfad
+1.297/82/797, PDF-Pfad 1.863/352/1.519, Drift beider Pfade ohne Befund, die
+Fehler L, R-alt, R-neu und U Zeile für Zeile gleich.
+
+*Was durchgeht* (2 + 2 E, 1 E-neben): eine Zeile, deren Umschreibung die LCS
+so zerlegt, dass das Gestrichene nie an einem Rand liegt (AußWV § 3c,
+GAP-Strategieplan-Anwendungsverordnung § 232), und ein Rest unter drei
+Wörtern. Ein Rand, an dem die Beilage selbst „…" setzt, bleibt blind, mit
+Absicht — dort sagt sie nichts über den Text.
 
 ### 12.12b Der Besondere Teil als zweites Verifikationssignal — gemessen, und er trägt nicht
 
@@ -6382,6 +6489,15 @@ den richtigen Grund tragen. Adressierung: Tabellenpfad 3.144 → 3.132,
 eigenen Sack** (1.969 / 197 und 3.091 / 612 unverändert), jedes Urteil und
 jede Zahl der Berichte gleich, Drift gegen die Grundlinie ohne Befund — die
 Grundlinie bleibt.
+
+**Die Fehlerinjektion bricht seit dem 01.10.2026 auch das Ergebnis der
+Engine** (Fehler E und E-neben, `harness/faultInjection.ts`): Das ist kein
+Fehler der Beilage, sondern der des Orakels der Lesefassung, das die Beilage
+als Zeugin nimmt — ein Ergebnis, das eine Einheit behält, die die Beilage in
+einer geänderten Zeile streicht, galt als bestätigt. Gemessen, geschlossen
+und begründet ist das in §12.12a („Prüfung 4"); dieses Tor hier bleibt dabei
+Zeile für Zeile, wie es war — dieselben Berichte beider Pfade, dieselben
+Zeilen für L, R-alt, R-neu und U.
 
 ### 12.14 Stellungnahmen zur Regierungsvorlage, der Dokument-Link und der Spaltenkopf
 

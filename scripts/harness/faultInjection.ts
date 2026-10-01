@@ -128,7 +128,31 @@
  * path (18 against 15), and the three sit in the tail of Sammelnovellen that
  * no request reaches. With the ceiling emulated the two numbers are equal.
  *
- * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8]
+ * **And two faults in the engine's RESULT, since 01.10.2026** — the other gate,
+ * the one in front of the consolidated text (`kons/tguOracle.ts`, §12.12a).
+ * The annex is its witness there, and the question is whether the oracle
+ * notices a result that holds MORE than the annex proposes. The engine runs
+ * over every draft as in `harness/me.ts` (same modules), and in each § the
+ * oracle confirms:
+ *
+ * - **E** — one of the engine's deletions undone: a whole struck unit of at
+ *   least six words is put back where it stood. The Seilbahn-Entwurf § 10
+ *   shape, where the engine kept an Absatz the Beilage strikes in a changed
+ *   row and the oracle confirmed it (§12.12, 30.09.2026).
+ * - **E-neben** — a replaced stretch put back beside its replacement:
+ *   „ersetzt" read as „eingefügt".
+ *
+ * | 01.10.2026, GP XXVIII | E vorher | E nachher | E-neben vorher | E-neben nachher |
+ * |---|---:|---:|---:|---:|
+ * | PDF-Pfad     | 37/78 (47,4 %) | 76/78 (97,4 %) | 122/133 (91,7 %) | 132/132 (100 %) |
+ * | Tabellenpfad | 69/89 (77,5 %) | 85/87 (97,7 %) | 109/113 (96,5 %) | 112/113 (99,1 %) |
+ *
+ * „Nachher" is with check 4 (`keptDeletion`). Without injection it withdraws
+ * five of 1.948 confirmations; every one is named in §12.12a, and `--alarme`
+ * prints each with its annex rows and the result, because a count cannot be
+ * inspected. `--misses` lists what still gets through.
+ *
+ * Usage:  npx vite-node scripts/harness/faultInjection.ts --gp=XXVIII [--xml] [--limit=N] [--only=8] [--misses] [--alarme]
  */
 import { annexParagraphKey, comparableTokens, designationKey } from '../../server/utils/annex/annexText'
 import { PARAGRAPH_THRESHOLD, coverageOfParagraph } from '../../server/utils/annex/coverage'
@@ -143,14 +167,18 @@ import {
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { diffTokens } from '../../server/utils/diff/wordDiff'
-import { plainText } from '../../server/utils/lawtext/konsTree'
+import { plainText, type LawNode } from '../../server/utils/lawtext/konsTree'
 import { normalizeText } from '../../server/utils/lawtext/normalize'
 import { parseRisXml } from '../../server/utils/lawtext/risXml'
-import { draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
+import { articleBlocks, draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { getText, resolveLawByBgbl, type KonsLawAtDate, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
+import { applyNovelle, instructionsFromUnits, type StandingLaw } from '../../server/utils/kons/lawApply'
+import { KEPT_DELETION_NOTE, oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { segmentUnits } from '../../server/utils/lawtext/lawUnits'
+import { anlageLabelKey, bareParaId } from '../../server/utils/text/designation'
 import { installFetchCache } from '../lib/harnessCache'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
@@ -524,7 +552,177 @@ async function inject(doc: any): Promise<DraftResult | null> {
     // The number that is not settled in advance is `silenced`.
     if (oldDonor !== null) record(faults.U, judge(withMirroredRow(para.rows, site, oldDonor), para.standing, wide, bagOf(para)), baseVerdict)
   }
+  await injectIntoResults(cite, draftBlocks, amending.length, parsed.rows, lawOf)
   return { cite, judged: confirmed.length, injected }
+}
+
+// --- Faults in the RESULT: the oracle (`kons/tguOracle.ts`) ------------------
+
+/**
+ * A removed stretch has to be a unit or a sentence, not a word: six words is
+ * `MIN_STANDING_STRETCH`, the floor the right-column rules work from.
+ */
+const MIN_KEPT_TOKENS = MIN_STANDING_STRETCH
+
+/** One fault class of the engine's result, over the §§ the oracle confirmed. */
+interface OracleTally {
+  label: string
+  tried: number
+  caught: number
+  /** …of which by the check that asks whether the result holds what the annex strikes */
+  byKept: number
+  misses: string[]
+}
+
+const oracleTally = (label: string): OracleTally => ({ label, tried: 0, caught: 0, byKept: 0, misses: [] })
+
+/**
+ * The result with ONE of the engine's deletions undone — the fault class
+ * „eine Einheit zu viel" (§12.12, 30.09.2026).
+ *
+ * Built from the engine's own word diff of the standing § against its result,
+ * so the stretch put back is text the engine removed and the annex confirmed
+ * as removed: exactly the Seilbahn § 10 shape, where the engine kept an
+ * Absatz the Beilage strikes. `replaced` picks the other half of the class —
+ * a stretch the engine replaced, put back beside its replacement: old and new
+ * text side by side, which is „ersetzt" read as „eingefügt".
+ *
+ * **A unit, not a diff segment.** The LCS pairs a deleted Litera's „die" or
+ * „der" with the same word further on, so one struck unit comes out of the
+ * diff as several removed segments with one- or two-word equal runs between
+ * them. Putting back one of those segments would inject a fragment no engine
+ * produces; the pure class therefore puts back the whole *block* — removed
+ * segments joined across equal runs shorter than `BRIDGE` — which is exactly
+ * the standing text there, because the bridging words are shared.
+ *
+ * `control` is the same text rebuilt from the same segments without the
+ * fault, and it is judged too: the segments are display tokens joined by
+ * spaces, and a site where that alone moves the verdict measures the
+ * reconstruction, not the oracle.
+ */
+function withKeptRemoval(before: string, got: string, replaced: boolean): { control: string; faulted: string; kept: string } | null {
+  const { segments } = diffTokens(before, got)
+  if (!segments) return null
+  const keep = new Set<number>()
+  for (let i = 0; i < segments.length && keep.size === 0; i++) {
+    if (segments[i]!.type !== 'removed') continue
+    if (replaced) {
+      const besideInsert = segments[i - 1]?.type === 'inserted' || segments[i + 1]?.type === 'inserted'
+      if (besideInsert && toks(segments[i]!.text).length >= MIN_KEPT_TOKENS) keep.add(i)
+      continue
+    }
+    // The block: removed segments bridged by short equal runs, no insertion
+    // inside it or beside it.
+    const block = [i]
+    let j = i
+    while (segments[j + 1]?.type === 'equal' && toks(segments[j + 1]!.text).length < BRIDGE && segments[j + 2]?.type === 'removed') {
+      j += 2
+      block.push(j)
+    }
+    const besideInsert = segments[i - 1]?.type === 'inserted' || segments[j + 1]?.type === 'inserted'
+    const size = block.reduce((n, k) => n + toks(segments[k]!.text).length, 0)
+    if (!besideInsert && size >= MIN_KEPT_TOKENS) for (const k of block) keep.add(k)
+    i = j
+  }
+  if (keep.size === 0) return null
+  const join = (put: (i: number) => boolean): string => segments.filter((s, i) => s.type !== 'removed' || put(i)).map((s) => s.text).join(' ')
+  const kept = [...keep].map((k) => segments[k]!.text).join(' … ')
+  return { control: join(() => false), faulted: join((i) => keep.has(i)), kept }
+}
+
+/** Equal runs shorter than this inside a struck unit are the LCS pairing a function word by chance. */
+const BRIDGE = 3
+
+/**
+ * The engine on this draft, and the oracle on its result — once as computed,
+ * once per fault.
+ *
+ * The engine run is `harness/me.ts`'s, step for step, through the same
+ * production modules (`instructionsFromUnits`, `applyNovelle`, `oracleVerdict`),
+ * on the annex rows this run has already parsed for the path it measures.
+ * Only the law join is this script's (`lawOf`, the Stammnorm alone): a law the
+ * Kurztitel fallback of `me.ts` would find is simply not in the population.
+ */
+async function injectIntoResults(
+  cite: string,
+  draftBlocks: ReturnType<typeof parseRisXml>,
+  amendingCount: number,
+  rows: readonly ComparisonRow[],
+  lawOf: (key: string | null) => Promise<KonsLawAtDate | null>,
+): Promise<void> {
+  const byParagraph = rowsByParagraph(rows)
+  for (const { blocks, article } of articleBlocks(draftBlocks).filter((p) => p.article.amends)) {
+    const units = segmentUnits(blocks).filter((u) => u.blocks.some((b) => b.kind === 'novao'))
+    const { instructions } = instructionsFromUnits(units)
+    if (instructions.length === 0) continue
+    const resolved = await lawOf(article.key)
+    if (!resolved) continue
+    const wanted = new Set<string>()
+    let wholeText = false
+    const touched = new Set<string>()
+    for (const { op, payload } of instructions) {
+      const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+      if (address?.level === 'document') wholeText = true
+      if (address?.para) {
+        wanted.add(anlageLabelKey(address.para))
+        const id = bareParaId(address.para)
+        if (id) touched.add(id)
+      }
+      if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) touched.add(p.id)
+    }
+    const paragraphs: LawNode[] = []
+    for (const [label, ref] of Object.entries(resolved.paragraphs)) {
+      if (!wholeText && !wanted.has(anlageLabelKey(label))) continue
+      const tree = await fetchParagraphTree(ref)
+      if (tree) paragraphs.push(tree)
+    }
+    const law: StandingLaw = { paragraphs }
+    const { law: after } = applyNovelle(law, instructions)
+    const lawKey = amendingCount > 1 ? article.key : undefined
+    for (const id of [...touched].sort()) {
+      const node = after.paragraphs.find((p) => p.id === id)
+      if (!node) continue
+      const beforeNode = law.paragraphs.find((p) => p.id === id) ?? null
+      const before = beforeNode ? plainText(beforeNode) : null
+      const got = plainText(node)
+      const paraRows = paragraphRows(byParagraph, id, lawKey)
+      const report = oracleVerdict(id, before, got, paraRows)
+      results.verdicts.set(report.verdict, (results.verdicts.get(report.verdict) ?? 0) + 1)
+      // The false-alarm side of the new check: it runs last, so every § it
+      // speaks on had passed the other three — confirmed until 01.10.2026.
+      if (report.note?.startsWith(KEPT_DELETION_NOTE)) {
+        results.kept++
+        results.keptAlarms.push(`${cite} § ${id}${lawKey ? ` [${String(lawKey).slice(0, 24)}]` : ''} — ${report.note}`)
+        // An alarm withholds a § from the page, so it has to be readable
+        // against its annex rows, not just counted (`--alarme`).
+        if (argFlag('alarme')) {
+          const changed = paraRows.filter((r) => r.kind === 'pair' && r.change !== 'unchanged' && !r.elided)
+          results.keptAlarms.push(...changed.flatMap((r) => [`          geltend    : ${r.current}`, `          vorgeschlagen: ${r.proposed}`]), `          Ergebnis   : ${got}`)
+        }
+      }
+      if (report.verdict !== 'bestätigt' || before === null) continue
+      results.confirmed++
+      for (const [replaced, into] of [[false, oracleFaults.E], [true, oracleFaults.Ersatz]] as const) {
+        const fault = withKeptRemoval(before, got, replaced)
+        if (!fault) continue
+        if (oracleVerdict(id, before, fault.control, paraRows).verdict !== 'bestätigt') {
+          results.controlMoved++
+          continue
+        }
+        const judged = oracleVerdict(id, before, fault.faulted, paraRows)
+        into.tried++
+        if (judged.verdict !== 'bestätigt') into.caught++
+        if (judged.note?.startsWith(KEPT_DELETION_NOTE)) into.byKept++
+        if (judged.verdict === 'bestätigt') {
+          into.misses.push(`${cite} § ${id} — ${paraRows.length} Zeilen, behalten: "${fault.kept.slice(0, 90)}"`)
+          if (argFlag('alarme')) {
+            const changed = paraRows.filter((r) => r.kind === 'pair' && r.change !== 'unchanged' && !r.elided)
+            into.misses.push(...changed.flatMap((r) => [`    geltend      : ${r.current}`, `    vorgeschlagen: ${r.proposed}`]), `    Ergebnis mit Fehler: ${fault.faulted}`)
+          }
+        }
+      }
+    }
+  }
 }
 
 // --- CLI ----------------------------------------------------------------------
@@ -542,6 +740,12 @@ const faults = {
   Rold: tally('R-alt fremder geltender Satz rechts'),
   Rnew: tally('R-neu fremder Entwurfssatz rechts'),
   U: tally('U     fremder Satz beidspaltig gleich'),
+}
+/** The engine's result as the oracle judged it, without any fault. */
+const results = { verdicts: new Map<OracleVerdict, number>(), confirmed: 0, controlMoved: 0, kept: 0, keptAlarms: [] as string[] }
+const oracleFaults = {
+  E: oracleTally('E     eine Einheit zu viel'),
+  Ersatz: oracleTally('E-neben alter Text neben dem neuen'),
 }
 
 const docs: any[] = []
@@ -625,4 +829,21 @@ for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
 for (const fault of [faults.L, faults.Rold, faults.Rnew, faults.U]) {
   if (fault.silenced === 0) continue
   console.log(`    ${fault.label.trim()}: bringt eine vorher feuernde Regel zum Schweigen — ${fault.silenced}`)
+}
+
+// The oracle's side: faults in the engine's RESULT rather than in the annex.
+console.log(`\n  Orakel (kons/tguOracle.ts) über das Ergebnis der Engine, ohne Injektion`)
+for (const [verdict, n] of [...results.verdicts].sort((a, b) => b[1] - a[1])) console.log(`    ${verdict.padEnd(14)}: ${String(n).padStart(5)}`)
+console.log(`    Prüfung 4 („Gestrichenes steht noch im Ergebnis") meldet ohne Injektion: ${results.kept}`)
+for (const line of results.keptAlarms) console.log(`      + ${line}`)
+console.log(`\n  Mit Injektion ins Ergebnis, über ${results.confirmed} bestätigte Paragraphen mit geltendem Text (Kontrolle verschob ${results.controlMoved})`)
+console.log(`  Fehler                                §§   gefangen            davon Prüfung 4`)
+for (const fault of [oracleFaults.E, oracleFaults.Ersatz]) {
+  const cell = (n: number): string => `${String(n).padStart(6)} (${pct(n, fault.tried)})`
+  console.log(`  ${fault.label.padEnd(36)} ${String(fault.tried).padStart(4)}   ${cell(fault.caught)}   ${cell(fault.byKept)}`)
+}
+if (argFlag('misses')) {
+  for (const fault of [oracleFaults.E, oracleFaults.Ersatz]) {
+    for (const line of fault.misses) console.log(`    ${fault.label.slice(0, 8).trim()} durchgelassen: ${line}`)
+  }
 }

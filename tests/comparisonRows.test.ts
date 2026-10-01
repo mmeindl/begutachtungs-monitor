@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseTextComparison, summarizeComparison, type ComparisonRow } from '../server/utils/annex/comparisonRows'
 import { isScanned } from '../server/utils/annex/tableCells'
-import { isElidedPair, isElisionRangeOnly, printedStretches } from '../server/utils/annex/elision'
+import { isElidedPair, isElisionRangeOnly, printedLayout, printedStretches } from '../server/utils/annex/elision'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
 
@@ -1005,6 +1005,21 @@ describe('printedStretches — the other half of the notation', () => {
     expect(printedStretches('(3) Die Summe beträgt 225 000 € je Förderwerber. (4) und (5) …')).toEqual([
       '(3) Die Summe beträgt 225 000 € je Förderwerber.',
     ])
+  })
+
+  // The same cut with the marks left in, for the oracle's fourth check: it
+  // has to know whether a stretch ends at the cell's edge or at a mark.
+  // Marks with nothing printed between them are one mark — „(1) bis (4) …
+  // (5) bis (7) …" leaves out one run of Absätze, and nothing stands in it.
+  it('keeps the marks as nulls in printedLayout, one per run', () => {
+    expect(printedLayout('Landwirtschaftliche Fläche § 25. (1) und (2) ... (3) Grünland sind Flächen. (4) bis (6) ...')).toEqual([
+      'Landwirtschaftliche Fläche',
+      null,
+      '(3) Grünland sind Flächen.',
+      null,
+    ])
+    expect(printedLayout('§ 100. Kopf (1) bis (5b) … (5d) bis (11) …')).toEqual(['§ 100. Kopf', null])
+    expect(printedLayout('Der Antrag ist zu stellen.')).toEqual(['Der Antrag ist zu stellen.'])
   })
 })
 

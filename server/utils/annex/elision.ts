@@ -224,13 +224,31 @@ const DESIGNATION_JOIN = String.raw`(?:\s*(?:bis|und|sowie|oder|,|[-–—])\s*|
 const ELISION_HEAD_RE_TAIL = new RegExp(String.raw`(?:^|\s)${DESIGNATION_PART}(?:${DESIGNATION_JOIN}${DESIGNATION_PART}){0,8}\s*$`, 'i')
 
 export function printedStretches(text: string): string[] {
-  const out: string[] = []
+  return printedLayout(text).filter((s): s is string => s !== null)
+}
+
+/**
+ * The same cut with the marks kept: every printed stretch as a string, every
+ * elision run as `null`, in the order the cell prints them.
+ *
+ * `printedStretches` answers what a cell prints; the oracle's fourth check
+ * (`kons/tguOracle.keptDeletion`) also has to know where the cell leaves
+ * something out, because a stretch that ends at a mark ends there by the
+ * ressort's choice and one that ends at the cell's edge ends with the law.
+ * One function rather than a second copy of the cut, so the two cannot
+ * disagree about where a stretch begins.
+ */
+export function printedLayout(text: string): (string | null)[] {
+  const out: (string | null)[] = []
   let at = 0
   ELISION_RUN_RE.lastIndex = 0
   for (let mark = ELISION_RUN_RE.exec(text); mark; mark = ELISION_RUN_RE.exec(text)) {
-    out.push(text.slice(at, mark.index).replace(ELISION_HEAD_RE_TAIL, ''))
+    const stretch = text.slice(at, mark.index).replace(ELISION_HEAD_RE_TAIL, '').trim()
+    if (stretch !== '') out.push(stretch)
+    if (out[out.length - 1] !== null) out.push(null)
     at = mark.index + mark[0].length
   }
-  out.push(text.slice(at))
-  return out.map((s) => s.trim()).filter((s) => s !== '')
+  const rest = text.slice(at).trim()
+  if (rest !== '') out.push(rest)
+  return out
 }

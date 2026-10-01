@@ -13,7 +13,7 @@
  * verification available at draft time.
  *
  * The annex abbreviates unchanged text ("(2) bis (4) …") and prints markers
- * the tree does not carry, so the comparison is not text equality but three
+ * the tree does not carry, so the comparison is not text equality but four
  * containments over the rows of one §:
  *
  *   1. every changed row's *current* text is in the standing § — the annex
@@ -23,20 +23,24 @@
  *      is gone from it: the engine did what the ministry says the draft does;
  *   3. every word the engine inserted is one the annex's proposed column
  *      shows, and every word it removed one the geltende column shows — the
- *      engine did nothing the ministry does not show.
+ *      engine did nothing the ministry does not show;
+ *   4. what a changed row strikes does not still stand in the result where
+ *      the row took it out — the result holds no more than the annex
+ *      proposes (`keptDeletion`, since 01.10.2026; checks 1 to 3 only ever
+ *      asked whether the proposed text is IN the result).
  *
  * A § the annex does not mention, or mentions only in elided rows, gets no
  * verdict: the oracle is silent, not positive.
  */
 import { diffTokens } from '../diff/wordDiff'
-import { normalizeText } from '../lawtext/normalize'
+import { compareToken, normalizeText } from '../lawtext/normalize'
 import type { ComparisonRow } from '../annex/comparisonRows'
-import { printedStretches } from '../annex/elision'
+import { printedLayout, printedStretches } from '../annex/elision'
 import { punctuationTokens } from '../text/punctuationTokens'
 import { isSchedule, unitKey } from '../text/designation'
 
 export type OracleVerdict =
-  /** All three containments hold */
+  /** All four containments hold */
   | 'bestätigt'
   /** The annex shows a change the engine's text does not contain, or vice versa */
   | 'widersprochen'
@@ -317,6 +321,321 @@ export function unaccountedStretch(text: string, cell: string): string | null {
   return null
 }
 
+/** How check 4's report opens — the harness counts its alarms by it. */
+export const KEPT_DELETION_NOTE = 'Gestrichener Text steht noch im Ergebnis'
+
+/**
+ * Check 4's numbers, measured by `harness/faultInjection.ts` (class E,
+ * docs/architecture.md §12.12a, 01.10.2026).
+ *
+ * - `ANCHOR`: an equal run of the row's own diff this long is a word the row
+ *   keeps. A single equal word is the LCS pairing „die" or „ist" across a
+ *   rewritten sentence by chance, and a region cut there splits one deletion
+ *   into fragments no result carries.
+ * - `MIN_KEPT`: how many words have to stand beside a stretch before they
+ *   count. One or two are what the next Absatz happens to open with („Der",
+ *   „Die Behörde").
+ * - `PROBE`: how many are compared at most — enough to be a sentence.
+ * - `MIN_LOOSE`: struck text with no printed stretch beside it has no place
+ *   to be looked for, only a presence. It counts from this many words, the
+ *   `MIN_STANDING_STRETCH` floor of the right-column rules: below it, a
+ *   phrase can stand anywhere in a §.
+ * - `EDGE_PROBE`: how many of a stretch's words place it in the result — its
+ *   first ones for where it starts, its last ones for where it ends. The PDF
+ *   path prints a group heading over the first stretch („3. TEIL STRAF-,
+ *   SCHLUSS- UND ÜBERGANGSBESTIMMUNGEN") that RIS keeps out of the § — check 2
+ *   drops that stack (`withoutHeadingStack`); here the end of a stretch is
+ *   found without needing its start.
+ */
+const ANCHOR = 2
+const MIN_KEPT = 3
+const PROBE = 8
+const MIN_LOOSE = 6
+const EDGE_PROBE = 12
+/** Above this many token pairs the row diff is skipped — `MAX_DP_CELLS` of `diff/wordDiff.ts`. */
+const MAX_ROW_CELLS = 2_500_000
+
+/** The token that stands for an elision mark in `cellTokens`. */
+const ELISION = '…'
+/**
+ * What pairing two elision marks is worth to the row diff, in words. The
+ * marks are the annex's own structure — „this much is left out here" on both
+ * sides — and a plain LCS trades one of them for a few words of a rewritten
+ * sentence on the other side of it.
+ */
+const MARK_WEIGHT = 1000
+
+/**
+ * Words as check 4 compares them: markers dropped (`stripMarkers`), edge
+ * punctuation off (`punctuationTokens`), inner hyphens folded
+ * (`compareToken`).
+ *
+ * Words rather than the whitespace-free `key` of checks 1 and 2, because
+ * this check asks what stands NEXT to a stretch, and in `key` form
+ * „Bundesminister" has the „in" of „Bundesministerin" standing next to it.
+ */
+function words4(t: string): string[] {
+  return punctuationTokens(stripMarkers(t)).map(compareToken)
+}
+
+/**
+ * A cell as words, with every elision run as one `ELISION` token — cut by
+ * `printedLayout`, the cut `printedStretches` makes, so the designation chain
+ * that announces a mark („(3) bis (7) …") is gone exactly where checks 1 and
+ * 2 drop it.
+ */
+function cellTokens(t: string): string[] {
+  return printedLayout(t).flatMap((piece) => (piece === null ? [ELISION] : words4(piece)))
+}
+
+type TokenOp = 'equal' | 'removed' | 'inserted'
+interface TokenRun {
+  type: TokenOp
+  tokens: string[]
+}
+
+/**
+ * LCS over two token arrays, as runs — the recurrence of `diffTokens` on
+ * words already compared, with paired marks weighted by `MARK_WEIGHT`.
+ */
+function tokenRuns(a: readonly string[], b: readonly string[]): TokenRun[] | null {
+  const n = a.length
+  const m = b.length
+  if (n * m > MAX_ROW_CELLS) return null
+  const width = m + 1
+  const dp = new Uint32Array((n + 1) * width)
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i * width + j] = a[i] === b[j] ? dp[(i + 1) * width + j + 1]! + (a[i] === ELISION ? MARK_WEIGHT : 1) : Math.max(dp[(i + 1) * width + j]!, dp[i * width + j + 1]!)
+    }
+  }
+  const runs: TokenRun[] = []
+  const emit = (type: TokenOp, token: string): void => {
+    const last = runs[runs.length - 1]
+    if (last && last.type === type) last.tokens.push(token)
+    else runs.push({ type, tokens: [token] })
+  }
+  let i = 0
+  let j = 0
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      emit('equal', a[i]!)
+      i++
+      j++
+    } else if (dp[(i + 1) * width + j]! >= dp[i * width + j + 1]!) emit('removed', a[i++]!)
+    else emit('inserted', b[j++]!)
+  }
+  while (i < n) emit('removed', a[i++]!)
+  while (j < m) emit('inserted', b[j++]!)
+  return runs
+}
+
+/** Where `needle` stands in `hay` as one unbroken run of words, from `from` on — -1 if nowhere. */
+function runAt(hay: readonly string[], needle: readonly string[], from = 0): number {
+  if (needle.length === 0) return -1
+  outer: for (let i = from; i + needle.length <= hay.length; i++) {
+    for (let k = 0; k < needle.length; k++) if (hay[i + k] !== needle[k]) continue outer
+    return i
+  }
+  return -1
+}
+
+/** The words a cell prints ahead of its § symbol — the §'s heading on the PDF path, nothing on the table path. */
+function headingOf(cell: string): string[] {
+  const symbol = /§+\s*\d+[a-z]*\./.exec(cell)
+  return symbol && symbol.index > 0 ? words4(cell.slice(0, symbol.index)) : []
+}
+
+/** A region of a row's diff: what lies between two of its anchors. */
+interface Region {
+  /**
+   * The current column's words in it, cut at the current column's own
+   * elision marks — what the row strikes there, plus stray equal words
+   */
+  pieces: string[][]
+  /** Per piece: whether the proposed column prints words beside it inside the region */
+  printedIn: boolean[]
+  /** Whether the current column has words here the proposed one does not */
+  strikes: boolean
+  /** Whether the proposed column leaves text out here that the current one prints */
+  elided: boolean
+  /** The proposed column's word positions it covers, `[from, to)` */
+  from: number
+  to: number
+}
+
+/**
+ * The row's diff cut at its anchors — equal runs of `ANCHOR` words, or the
+ * elision marks both columns print at the same place.
+ */
+function regionsOf(runs: readonly TokenRun[]): Region[] {
+  const out: Region[] = []
+  let p = 0
+  let open: Region | null = null
+  for (const run of runs) {
+    const anchor = run.type === 'equal' && (run.tokens.length >= ANCHOR || run.tokens.includes(ELISION))
+    if (anchor) {
+      if (open) out.push(open)
+      open = null
+      p += run.tokens.length
+      continue
+    }
+    open ??= { pieces: [[]], printedIn: [false], strikes: false, elided: false, from: p, to: p }
+    if (run.type === 'inserted') {
+      if (run.tokens.includes(ELISION)) open.elided = true
+      open.printedIn[open.pieces.length - 1] = true
+    } else {
+      for (const w of run.tokens) {
+        if (w === ELISION) {
+          open.pieces.push([])
+          open.printedIn.push(false)
+        } else open.pieces[open.pieces.length - 1]!.push(w)
+      }
+      if (run.type === 'removed' && run.tokens.some((w) => w !== ELISION)) open.strikes = true
+      // A stray equal word is a word both columns print.
+      if (run.type === 'equal') open.printedIn[open.pieces.length - 1] = true
+    }
+    if (run.type !== 'removed') p += run.tokens.length
+    open.to = p
+  }
+  if (open) out.push(open)
+  return out
+}
+
+/**
+ * Check 4: text a changed row strikes, still standing in the result where
+ * the row took it out — the words found, or null.
+ *
+ * **The one direction checks 1 to 3 never asked** (§12.12, 30.09.2026). Check 2
+ * asks whether the proposed column is IN the result, never whether the result
+ * holds MORE; check 3 counts only words the engine inserted or removed, and a
+ * deletion the engine did not carry out inserts and removes nothing. So a
+ * result that kept an Absatz the annex strikes inside a *changed* row passed
+ * all three: Seilbahn-Entwurf § 10, whose Beilage drops Abs. 3 in the row
+ * that also rewrites Abs. 2. A row that strikes everything — an empty
+ * proposed cell — was already read (check 2's mirror image); this is the
+ * same question for the part of a row that goes.
+ *
+ * **What a row strikes** is read off its own word diff, current against
+ * proposed, cut into regions at the words it keeps (`regionsOf`). A region
+ * that strikes something sits in one of three places, and each is asked
+ * differently:
+ *
+ * - *Inside a printed stretch* — kept words on both sides. Check 2 already
+ *   answers it: it wants the stretch as one unbroken run, so text left
+ *   standing in its middle breaks it. That is why three quarters of the
+ *   injected faults were caught before this check existed, and nothing is
+ *   asked here.
+ * - *At the edge of a printed stretch* — after its last word or before its
+ *   first, where the row ends or the ressort set „…". Here the proposed
+ *   column is intact and the extra text merely stands beside it, which is
+ *   the blind spot. The row's stretches are placed in the result in order,
+ *   as check 2 places them, and the words the result carries **right there**
+ *   are read: where they are words this region strikes, and words the
+ *   proposed column of this § prints nowhere, the struck text still stands.
+ * - *With no printed word beside it* — between two marks („a) bis e) …
+ *   f) … g) bis j) …" against „a) bis e) … g) bis j) …"), or in a row whose
+ *   right column is nothing but marks („§ 73. (1) und (2) …" against a left
+ *   column that goes on to Abs. 3). There is no place to look, only a
+ *   presence: the struck text counts where it stands anywhere in the result,
+ *   as the empty-cell check reads it, and only from `MIN_LOOSE` words.
+ *
+ * **The calibration is how tightly the words are tied to their place**, and
+ * both loosenings were measured and failed. Looking for the struck text with
+ * a few words of context anywhere in the § gave six corpus alarms on the
+ * table path, four of them phrases that stand twice in the law — in an
+ * Absatz the annex never printed (Staatsanwaltschaftsgesetz § 34 Abs. 3), in
+ * the §'s own heading (VfGG § 56h). Accepting beside a stretch any words the
+ * row's left column prints and the § prints nowhere on the right caught
+ * hardly more (98.8 against 97.7 % of fault E on the table path, the same on
+ * the PDF path) and raised the corpus alarms over both paths from five to
+ * seventeen („die Bezeichnung des", „Der Sparkassenrat kann": old wording of a
+ * replaced sentence, standing by chance at the edge of the next one). The
+ * words have to be the ones *this* region strikes. They are read off the
+ * result rather than off the region's start, because where a row rewrites
+ * one sentence and drops the next the region holds both, and the struck
+ * sentence is its second half (Sektenfragen-Gesetz § 11).
+ *
+ * Not asked: a region where the proposed column sets a mark the current one
+ * does not — the ressort leaving text out, not striking it; and, before the
+ * first stretch, words the left column prints ahead of the § symbol, which
+ * is the §'s Überschrift — the PDF path cuts the right column's copy of it
+ * short where the heading wraps (SPG § 57), and a heading is not struck by
+ * being printed shorter.
+ */
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+export function keptDeletion(got: string, rows: readonly ComparisonRow[]): string | null {
+  const pairs = rows.filter((r) => r.kind === 'pair')
+  const gotTokens = words4(got)
+  const shownRight = cellTokens(pairs.map((r) => r.proposed).join(' '))
+  for (const row of pairs) {
+    if (row.elided || row.change === 'unchanged' || !row.current || !row.proposed) continue
+    const proposed = cellTokens(row.proposed)
+    const runs = tokenRuns(cellTokens(row.current), proposed)
+    if (!runs) continue
+
+    // The row's printed stretches: which one every proposed word belongs to,
+    // and where each starts and ends in the result — in order.
+    const stretchOf: number[] = []
+    const stretches: string[][] = []
+    for (const [i, w] of proposed.entries()) {
+      if (w === ELISION) continue
+      if (i === 0 || proposed[i - 1] === ELISION) stretches.push([])
+      stretches[stretches.length - 1]!.push(w)
+      stretchOf[i] = stretches.length - 1
+    }
+    const starts: (number | null)[] = []
+    const ends: (number | null)[] = []
+    let from = 0
+    for (const s of stretches) {
+      const head = runAt(gotTokens, s.slice(0, EDGE_PROBE), from)
+      const tailProbe = s.slice(-EDGE_PROBE)
+      const tail = runAt(gotTokens, tailProbe, Math.max(from, head))
+      // Not found in word form: `key` matched it across a line break or a
+      // hyphen the words split differently. No edge to stand next to.
+      starts.push(head < 0 ? null : head)
+      ends.push(tail < 0 ? null : tail + tailProbe.length)
+      if (tail >= 0) from = tail + tailProbe.length
+    }
+    // Words the result carries beside a stretch are struck text still
+    // standing when one piece of the region strikes those very words and the
+    // § prints them nowhere on the right.
+    const standing = (beside: string[], region: Region): boolean =>
+      beside.length >= MIN_KEPT && region.pieces.some((piece) => runAt(piece, beside) >= 0) && runAt(shownRight, beside) < 0
+    const heading = headingOf(row.current)
+
+    for (const region of regionsOf(runs)) {
+      if (!region.strikes || region.elided) continue
+      const leftPrinted = region.from > 0 && proposed[region.from - 1] !== ELISION
+      const rightPrinted = region.to < proposed.length && proposed[region.to] !== ELISION
+      if (leftPrinted && rightPrinted) continue
+      const inserted = region.to > region.from
+      const width = Math.min(PROBE, Math.max(...region.pieces.map((piece) => piece.length)))
+      // The stretch the region closes: the words after it in the result.
+      const end = !rightPrinted && (leftPrinted || inserted) ? ends[stretchOf[region.to - 1]!] : null
+      if (end != null) {
+        const beside = gotTokens.slice(end, end + width)
+        if (standing(beside, region)) return beside.join(' ')
+      }
+      // The stretch the region opens: the words before it.
+      const start = !leftPrinted && (rightPrinted || inserted) ? starts[stretchOf[region.from]!] : null
+      if (start != null) {
+        const beside = gotTokens.slice(Math.max(0, start - width), start)
+        if (standing(beside, region) && runAt(heading, beside) < 0) return beside.join(' ')
+      }
+      // Pieces with no printed word beside them inside the region and none
+      // at its edge: between the current column's own marks, or where the
+      // region touches no printed word at all.
+      const last = region.pieces.length - 1
+      for (const [i, piece] of region.pieces.entries()) {
+        if (region.printedIn[i] || (i === 0 && leftPrinted) || (i === last && rightPrinted) || piece.length < MIN_LOOSE) continue
+        if (runAt(shownRight, piece) < 0 && runAt(gotTokens, piece) >= 0) return piece.join(' ')
+      }
+    }
+  }
+  return null
+}
+
 /**
  * The oracle's verdict on one §: `before` and `got` as `plainText` gives
  * them (`before` null for a § the draft creates), `rows` the annex rows of
@@ -385,6 +704,12 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   const unshownRemoved = removed.filter((w) => !dropped.has(w))
   if (unshownRemoved.length > 0) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine entfernte, was die Gegenüberstellung nicht zeigt: ${unshownRemoved.slice(0, 6).join(' ')}` }
+  }
+  // Check 4, last on purpose: every § it speaks on passed the other three,
+  // so its alarms are exactly the confirmations it withdraws (`keptDeletion`).
+  const kept = keptDeletion(got, rows)
+  if (kept !== null) {
+    return { para: id, verdict: 'widersprochen', rows: rows.length, note: `${KEPT_DELETION_NOTE}: "${kept.slice(0, 60)}"` }
   }
   return { para: id, verdict: 'bestätigt', rows: rows.length, note: null }
 }

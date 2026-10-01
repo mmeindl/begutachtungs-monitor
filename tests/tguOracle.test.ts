@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
+import { KEPT_DELETION_NOTE, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {
@@ -242,5 +242,89 @@ describe('a whole-§ row with holes in it (2026-09-25)', () => {
     const rows = [pair('§ 6. (1) Zuständig ist die Behörde. (2) und (3) …', '§ 6. (1) Zuständig ist das Amt. (2) und (3) …', '§ 6.')]
     const after = 'Zuständig ist das Amt. (2) Die Frist beträgt sechs Wochen. (3) Der Antrag ist schriftlich zu stellen.'
     expect(oracleVerdict('6', before, after, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})
+
+describe('a result that holds more than the annex proposes (01.10.2026)', () => {
+  // Checks 1 to 3 asked only whether the proposed column is IN the result,
+  // and a deletion the engine did not carry out inserts and removes nothing.
+  // Seilbahn-Entwurf § 10: the Beilage rewrites Abs. 2 and drops Abs. 3 in
+  // one changed row; the engine kept Abs. 3, and the oracle confirmed it.
+  const before = 'Aufbewahrung Das Unternehmen hat Aufzeichnungen zu führen. Die Aufzeichnungen gemäß Abs. 1 und die Unterlagen gemäß § 9 sind aufzubewahren. Der Fertigstellungsbericht gemäß § 14 ist auf Bestanddauer aufzubewahren.'
+  const row = pair(
+    '(1) Das Unternehmen hat Aufzeichnungen zu führen. (2) Die Aufzeichnungen gemäß Abs. 1 und die Unterlagen gemäß § 9 sind aufzubewahren. (3) Der Fertigstellungsbericht gemäß § 14 ist auf Bestanddauer aufzubewahren.',
+    '(1) Das Unternehmen hat Aufzeichnungen zu führen. (2) Die Aufzeichnungen gemäß Abs. 1 und die Unterlagen gemäß den §§ 8 und 9 sind aufzubewahren.',
+    '§ 10.',
+  )
+  const right = 'Aufbewahrung Das Unternehmen hat Aufzeichnungen zu führen. Die Aufzeichnungen gemäß Abs. 1 und die Unterlagen gemäß den §§ 8 und 9 sind aufzubewahren.'
+
+  it('contradicts a result that kept the Absatz a changed row strikes', () => {
+    expect(oracleVerdict('10', before, right, [row])).toMatchObject({ verdict: 'bestätigt' })
+    const kept = oracleVerdict('10', before, `${right} Der Fertigstellungsbericht gemäß § 14 ist auf Bestanddauer aufzubewahren.`, [row])
+    expect(kept).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining(KEPT_DELETION_NOTE) })
+  })
+
+  // The struck sentence counts only where it stands: beside the stretch the
+  // annex cut it from. The same sentence in an Absatz the annex never
+  // printed is the law saying it twice — the first version of the check read
+  // it as kept and withheld StAG § 34 that way.
+  it('is not fooled by the same words standing elsewhere in the §', () => {
+    const twice = 'Die Behörde entscheidet. Die Frist beträgt sechs Wochen ab Einlangen. Zuständig ist das Amt. Die Frist beträgt sechs Wochen ab Einlangen.'
+    const rows = [pair('(2) Die Behörde entscheidet. Die Frist beträgt sechs Wochen ab Einlangen.', '(2) Die Behörde entscheidet.', '§ 6.')]
+    expect(oracleVerdict('6', twice, 'Die Behörde entscheidet. Zuständig ist das Amt. Die Frist beträgt sechs Wochen ab Einlangen.', rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('6', twice, twice, rows)).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining(KEPT_DELETION_NOTE) })
+  })
+
+  // Where a row rewrites one sentence and drops the next, the row's own diff
+  // runs both into one region; the struck sentence is its second half, and
+  // it is the result's words beside the stretch that are read
+  // (Sektenfragen-Gesetz § 11).
+  it('finds a struck sentence behind a rewritten one', () => {
+    const standing = 'Die Organe sind zur Verschwiegenheit über alle Tatsachen verpflichtet. Die Verpflichtung gilt auch nach dem Ausscheiden aus der Funktion.'
+    const rewritten = 'Die Organwalter sind zur Geheimhaltung verpflichtet, soweit dies erforderlich ist.'
+    const rows = [pair(standing, rewritten, '§ 11.')]
+    expect(oracleVerdict('11', standing, rewritten, rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('11', standing, `${rewritten} Die Verpflichtung gilt auch nach dem Ausscheiden aus der Funktion.`, rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+
+  // A stretch that ends at a mark ends there by the ressort's choice: what
+  // the left column prints before ITS mark and the right column does not is
+  // struck, and it must not stand right behind the stretch.
+  it('reads the edge of a stretch at an elision mark', () => {
+    const standing = 'Stellt sich die Unrichtigkeit heraus, ist sie mitzuteilen. Die nähere Regelung wird einer Verordnung vorbehalten. Die Frist beträgt einen Monat.'
+    const rows = [pair('§ 16. (1) Stellt sich die Unrichtigkeit heraus, ist sie mitzuteilen. Die nähere Regelung wird einer Verordnung vorbehalten. (2) …', '§ 16. (1) Stellt sich die Unrichtigkeit heraus, ist sie mitzuteilen. (2) …', '§ 16.')]
+    expect(oracleVerdict('16', standing, 'Stellt sich die Unrichtigkeit heraus, ist sie mitzuteilen. Die Frist beträgt einen Monat.', rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('16', standing, standing, rows)).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining(KEPT_DELETION_NOTE) })
+  })
+
+  // A unit the right column leaves out between two of its marks has no
+  // stretch beside it — „a) bis e) … g) bis j) …" against a left column that
+  // prints lit. f in between. It counts where it stands at all.
+  it('finds a unit struck between two marks', () => {
+    const standing = 'Zur Beitragsgrundlage gehören nicht: Ruhebezüge, Arbeitslöhne von Personen, die das 60. Lebensjahr vollendet haben, Sonstiges.'
+    const rows = [pair('§ 41. (4) a) bis e) … f) Arbeitslöhne von Personen, die das 60. Lebensjahr vollendet haben, g) bis j) …', '§ 41. (4) a) bis e) … g) bis j) …', '§ 41.')]
+    expect(oracleVerdict('41', standing, 'Zur Beitragsgrundlage gehören nicht: Ruhebezüge, Sonstiges.', rows)).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('41', standing, standing, rows)).toMatchObject({ verdict: 'widersprochen', note: expect.stringContaining(KEPT_DELETION_NOTE) })
+  })
+
+  // Before the first stretch, what the left column prints ahead of the §
+  // symbol is the §'s heading; the PDF path cuts the right column's copy of
+  // it short where it wraps (SPG § 57). A heading is not struck by being
+  // printed shorter.
+  it('does not read a heading the right column printed shorter as struck', () => {
+    const standing = 'Zentrale Informationssammlung aller Behörden Zulässigkeit der Ermittlung Die Behörde darf Daten verarbeiten.'
+    const rows = [pair('Zentrale Informationssammlung aller Behörden Zulässigkeit der Ermittlung § 57. (1) Die Behörde darf Daten verarbeiten.', 'Zulässigkeit der Ermittlung § 57. (1) Die Behörde darf Daten speichern.', '§ 57.')]
+    expect(oracleVerdict('57', standing, 'Zentrale Informationssammlung aller Behörden Zulässigkeit der Ermittlung Die Behörde darf Daten speichern.', rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  // A row the ressort split: what the first row's right column lacks, the
+  // next one prints. Words the § prints on the right are not struck.
+  it('lets the next row print what the first one leaves off', () => {
+    const standing = 'Die Behörde entscheidet über den Antrag. Sie hat dabei die Fristen des Abs. 2 zu wahren.'
+    const rows = [
+      pair('§ 6. (1) Die Behörde entscheidet über den Antrag. Sie hat dabei die Fristen des Abs. 2 zu wahren.', '§ 6. (1) Das Amt entscheidet über den Antrag.', '§ 6.'),
+      pair('', 'Sie hat dabei die Fristen des Abs. 2 zu wahren.'),
+    ]
+    expect(oracleVerdict('6', standing, 'Das Amt entscheidet über den Antrag. Sie hat dabei die Fristen des Abs. 2 zu wahren.', rows)).toMatchObject({ verdict: 'bestätigt' })
   })
 })
