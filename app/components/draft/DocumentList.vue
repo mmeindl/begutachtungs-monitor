@@ -56,13 +56,19 @@ function docHint(doc: DocumentListItem): string | null {
            left keeps a sub-line clear of the divider below it. On touch both
            row shapes, with and without that sub-line, stay 56px: the 44px
            target binds in each, so the rhythm holds. With a mouse the target
-           is 36px and a row with a sub-line may stand a few px taller. -->
+           is 36px and a row with a sub-line may stand a few px taller.
+
+           Two columns that never wrap (1.10.2026). With `flex-wrap` each row
+           decided alone whether its tags fit beside the title: on a phone
+           long titles pushed them under the text, short ones kept them
+           right, and the list zig-zagged. Now a long title wraps inside its
+           own column and the tags stay right in every row. -->
       <li
         v-for="(doc, i) in documents"
         :key="`${doc.title}-${i}`"
-        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-1.5"
+        class="flex items-center gap-x-3 py-1.5 sm:gap-x-4"
       >
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
           <p class="text-sm text-ink">{{ doc.title }}</p>
           <p v-if="docHint(doc)" class="mt-0.5 text-xs text-ink-muted">
             {{ docHint(doc) }}
@@ -76,8 +82,10 @@ function docHint(doc: DocumentListItem): string | null {
              The ↗ stays on the tag: it is the page-wide mark for "leaves
              the page", and the aria-label names the host. -->
         <!-- Fixed track widths: every row's grid is the same width, so PDF
-             sits at the same x whether or not an HTML tag follows. -->
-        <span class="grid shrink-0 grid-cols-[4.75rem_4.75rem] gap-1">
+             sits at the same x whether or not an HTML tag follows. Narrower
+             below sm — „HTML ↗" in text-xs is ~45px, so the tag pads px-1 there —
+             so a phone leaves the title ~225px instead of ~190px. -->
+        <span class="grid shrink-0 grid-cols-[3.5rem_3.5rem] gap-1 sm:grid-cols-[4.75rem_4.75rem]">
           <template v-for="type in FORMAT_ORDER" :key="type">
             <a
               v-if="formatOf(doc, type)"
@@ -88,7 +96,7 @@ function docHint(doc: DocumentListItem): string | null {
               :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen (neues Fenster)`"
             >
               <span
-                class="inline-flex w-full justify-center rounded border border-hairline px-2 py-1 text-xs font-medium text-accent-deep group-hover/format:border-baseline group-hover/format:underline"
+                class="inline-flex w-full justify-center rounded border border-hairline px-1 py-1 text-xs sm:px-2 font-medium text-accent-deep group-hover/format:border-baseline group-hover/format:underline"
               >
                 {{ formatNames[type] }}<span aria-hidden="true">&nbsp;↗</span>
               </span>
