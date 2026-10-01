@@ -75,7 +75,9 @@ export function endorsementLabel(n: number): string {
 }
 
 /**
- * "10 von 42 angezeigt" — where the reader stands in a paginated list.
+ * "10 von 42" — where the reader stands in a paginated list. The verb
+ * ("angezeigt") is `ListMore`'s, as screen-reader text: beside the button on
+ * the same line the eye does not need it, a live region read aloud does.
  *
  * The remainder is deliberately NOT spelled out beside it. "10 von 42"
  * already says that 32 are left, and the button under this line says how
@@ -83,21 +85,21 @@ export function endorsementLabel(n: number): string {
  * third time, in the one place on the panel where the reader is counting.
  */
 export function shownLabelDe(visible: number, total: number): string {
-  return `${formatNumberDe(Math.min(visible, total))} von ${formatNumberDe(total)} angezeigt`
+  return `${formatNumberDe(Math.min(visible, total))} von ${formatNumberDe(total)}`
 }
 
 /**
  * The step button's label, naming what the press will actually add — so the
- * last page reads "Weitere 3 anzeigen" and the button itself lands the
- * remainder.
+ * last page reads "Weitere 3" and the button itself lands the remainder.
  *
- * "anzeigen", never "laden": once a list is fetched nothing more travels,
- * and the organisation list ships with the page, where nothing ever did. A
- * button that says "laden" promises a request that does not happen.
+ * The verb is `ListMore`'s screen-reader text: "anzeigen", never "laden" —
+ * once a list is fetched nothing more travels, and the organisation list
+ * ships with the page, where nothing ever did. A button that says "laden"
+ * promises a request that does not happen.
  */
 export function moreLabelDe(remaining: number, step: number): string {
   const n = Math.min(remaining, step)
-  return n === 1 ? 'Eine weitere anzeigen' : `Weitere ${formatNumberDe(n)} anzeigen`
+  return n === 1 ? 'Eine weitere' : `Weitere ${formatNumberDe(n)}`
 }
 
 /** Cap at max characters at a word boundary; overlength ends in "…".

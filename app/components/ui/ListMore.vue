@@ -40,33 +40,44 @@ const pageable = computed(() => props.total > props.step)
 </script>
 
 <template>
-  <div v-if="pageable" class="mt-4 flex flex-col items-center gap-2">
+  <!-- One line, the list's footer: position at the left edge where the rows
+       are read, the control at the right (1.10.2026). Until then it was
+       three centred tiers — count, then two separate bordered buttons — and
+       took more height than a row of the list. The two actions share one
+       border now, so neither reads as a caption beside the other (the
+       reason the second button got its outline on 30.09.2026). Below sm
+       it stacks, the control across the full column. -->
+  <div
+    v-if="pageable"
+    class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+  >
     <p
-      :class="['text-sm text-ink-muted', remaining === 0 && 'sr-only']"
+      :class="['text-sm tabular-nums text-ink-muted', remaining === 0 && 'sr-only']"
       aria-live="polite"
-    >{{ shownLabelDe(visible, total) }}</p>
+    >{{ shownLabelDe(visible, total) }}<span class="sr-only"> angezeigt</span></p>
 
-    <div v-if="remaining > 0" class="flex flex-wrap items-center justify-center gap-2">
-      <UButton color="neutral" variant="outline" class="min-h-11" @click="emit('more')">
-        {{ moreLabelDe(remaining, step) }}
+    <UFieldGroup v-if="remaining > 0" class="w-full sm:w-auto">
+      <UButton
+        color="neutral"
+        variant="outline"
+        class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"
+        @click="emit('more')"
+      >
+        {{ moreLabelDe(remaining, step) }}<span class="sr-only"> anzeigen</span>
       </UButton>
       <!-- The escape hatch for the long lists — 88/ME carries 707
            Stellungnahmen, where stepping in tens is 70 presses. Hidden on
-           the short ones, where a second button would only say what the
-           first already says.
-
-           `outline` like its neighbour, not `ghost`: at rest a ghost button
-           is bare text, and beside a bordered one it read as a caption, not
-           as a second thing to press (30.09.2026). -->
+           the short ones, where a second segment would only say what the
+           first already says. -->
       <UButton
         v-if="allAbove !== undefined && remaining > allAbove"
         color="neutral"
         variant="outline"
-        class="min-h-11"
+        class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"
         @click="emit('all')"
       >
-        Alle {{ formatNumberDe(total) }} anzeigen
+        Alle {{ formatNumberDe(total) }}<span class="sr-only"> anzeigen</span>
       </UButton>
-    </div>
+    </UFieldGroup>
   </div>
 </template>
