@@ -61,6 +61,12 @@ export default defineNuxtConfig({
     // along, because Nitro appends the query to the target — whoever opens a
     // shared link sees hits and not an empty field.
     '/suche': { redirect: { to: '/entwuerfe', statusCode: 301 } },
+    // The font carries no hash in its name, so Nitro sends it without a
+    // Cache-Control and browsers guess a lifetime from Last-Modified — which
+    // every deploy resets, so returning readers revalidated it over and over.
+    // A year and immutable is safe because the face does not change, and a
+    // different face would be a different file name.
+    '/fonts/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
   },
   ui: {
     // Light-only prototype: Nuxt UI's color-mode integration would flip its
@@ -119,6 +125,19 @@ export default defineNuxtConfig({
         { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
         { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+        // The heading face, preloaded: the wordmark in the header uses it on
+        // every page, above the fold, and the browser would otherwise find
+        // the file only once the stylesheet is parsed — the wordmark and the
+        // H1 then paint in Georgia first and swap. `crossorigin` is required
+        // for a font preload even on the same origin, or the browser fetches
+        // the file twice.
+        {
+          rel: 'preload',
+          href: '/fonts/SourceSerif4-Semibold.woff2',
+          as: 'font',
+          type: 'font/woff2',
+          crossorigin: '',
+        },
         {
           rel: 'alternate',
           type: 'application/rss+xml',
