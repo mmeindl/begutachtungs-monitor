@@ -170,6 +170,64 @@ describe('the name under an Artikel line', () => {
     expect(units[0]).toMatchObject({ id: '§1', heading: 'Geltungsbereich' })
   })
 
+  it('reads the name set behind a line break in the Artikel paragraph, not the first Abschnitt (XXVI 77/ME)', () => {
+    const me = parseLawUnits(
+      html([
+        ['11Titel', 'Bundesgesetz, mit dem das Bundesgesetz über die Prüfung lohnabhängiger Abgaben und Beiträge erlassen wird und das Einkommensteuergesetz 1988 geändert wird'],
+        ['12PromKlEinlSatz', 'Der Nationalrat hat beschlossen:'],
+        ['41UeberschrG1', 'Artikel&nbsp;1<br>\nBundesgesetz über die Prüfung lohnabhängiger Abgaben und\nBeiträge (PLABG)'],
+        ['41UeberschrG1', '1.&nbsp;Abschnitt<br>\nPrüfdienst für lohnabhängige Abgaben und Beiträge'],
+        ['45UeberschrPara', 'Einrichtung'],
+        ['51Abs', '(1) Beim Bundesministerium für Finanzen wird ein Prüfdienst eingerichtet.', '§ 1.'],
+        ['41UeberschrG1', 'Artikel&nbsp;2<br>\nÄnderung des Einkommensteuergesetzes 1988'],
+        ['12PromKlEinlSatz', 'Das Einkommensteuergesetz 1988, BGBl. Nr. 400/1988, wird wie folgt geändert:'],
+        ['21NovAo1', '1. § 86 Abs. 1 lautet:'],
+      ]),
+    )
+    expect(articles(me)).toEqual(['Bundesgesetz über die Prüfung lohnabhängiger Abgaben und Beiträge (PLABG)', 'Änderung des Einkommensteuergesetzes 1988'])
+    expect(me.map((u) => u.articleNumber)).toEqual(['Artikel 1', 'Artikel 2'])
+    expect(me[0]).toMatchObject({ id: '§1', heading: 'Einrichtung' })
+
+    const rv = parseLawUnits(
+      html([
+        ['41UeberschrG1', 'Artikel 1'],
+        ['43UeberschrG2', 'Bundesgesetz über die Prüfung lohnabhängiger Abgaben und Beiträge (PLABG)'],
+        ['41UeberschrG1', '1.&nbsp;Abschnitt<br>\nPrüfdienst für lohnabhängige Abgaben und Beiträge'],
+        ['45UeberschrPara', 'Einrichtung'],
+        ['51Abs', '(1) Beim Bundesministerium für Finanzen wird ein Prüfdienst eingerichtet.', '§ 1.'],
+        ['41UeberschrG1', 'Artikel 2'],
+        ['43UeberschrG2', 'Änderung des Einkommensteuergesetzes 1988'],
+        ['12PromKlEinlSatz', 'Das Einkommensteuergesetz 1988, BGBl. Nr. 400/1988, wird wie folgt geändert:'],
+        ['21NovAo1', '1. § 86 Abs. 1 lautet:'],
+      ]),
+    )
+    const diff = diffLawPackage(me, rv)
+    expect(diff.lawsOnlyInFrom).toEqual([])
+    expect(diff.lawsOnlyInTo).toEqual([])
+    expect(diff.units.map((u) => u.change)).toEqual(['unchanged', 'unchanged'])
+  })
+
+  it('keeps an Abschnitt heading with a line break one block, and a quoted Artikel text', () => {
+    const blocks = parseParliamentHtml(
+      html([
+        ['41UeberschrG1', 'Artikel 1'],
+        ['43UeberschrG2', 'Änderung des Bundes-Verfassungsgesetzes'],
+        ['21NovAo1', '1. Art. 5 lautet:'],
+        ['41UeberschrG1', '„Artikel&nbsp;5<br>\nSitz der Bundeshauptstadt'],
+        ['51Abs', '(1) Bundeshauptstadt und Sitz der obersten Organe des Bundes ist Wien.“'],
+        ['41UeberschrG1', '1.&nbsp;Abschnitt<br>\nAllgemeines'],
+      ]),
+    )
+    expect(blocks.map((b) => [b.kind, b.text])).toEqual([
+      ['article', 'Artikel 1'],
+      ['section', 'Änderung des Bundes-Verfassungsgesetzes'],
+      ['novao', '1. Art. 5 lautet:'],
+      ['section', '"Artikel 5 Sitz der Bundeshauptstadt'],
+      ['abs', '(1) Bundeshauptstadt und Sitz der obersten Organe des Bundes ist Wien."'],
+      ['section', '1. Abschnitt Allgemeines'],
+    ])
+  })
+
   it('leaves a § heading below an Artikel line a § heading when the § follows it', () => {
     const units = parseLawUnits(
       html([

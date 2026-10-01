@@ -1610,6 +1610,22 @@ function unpairedReport(): void {
     for (const t of toLeft) console.log(`      RV [${toUnits.filter((u) => u.article === t).length}] {${cite(stammOf(toUnits, t))}} ${String(t).slice(0, 90)}`)
   }
   console.log(`\nGP ${gp} — ungepaarte Artikel: auf beiden Seiten ${bothSides} Entwürfe, nur auf einer ${oneSide}, gar keine Paarung ${none}`)
+  // A structure heading read as a law's name (02.10.2026): XXVI 77/ME printed
+  // „Artikel 1<br>Bundesgesetz über … (PLABG)" in one paragraph, and its new
+  // law went out as „1. Abschnitt Prüfdienst …". Every Artikel key on either
+  // side that reads as an Abschnitt, Hauptstück, Teil or Kapitel — paired or
+  // not, since a pair of two such keys would hide the class from the lines above.
+  const structure = /^(?:\d+\.\s*)?(?:Unterabschnitt|Abschnitt|Hauptstück|Teil|Kapitel)\b|^(?:Erster|Zweiter|Dritter|Vierter|Fünfter|Sechster|Siebenter|Achter|Neunter|Zehnter)\s+(?:Unterabschnitt|Abschnitt|Teil)\b|^(?:Erstes|Zweites|Drittes|Viertes|Fünftes|Sechstes|Siebentes|Achtes|Neuntes|Zehntes)\s+(?:Hauptstück|Kapitel)\b/i
+  const structureKeys: string[] = []
+  for (const [inr, { fromUnits, toUnits }] of [...parsed].sort((a, b) => a[0] - b[0])) {
+    for (const [side, units] of [['ME', fromUnits], ['RV', toUnits]] as const) {
+      for (const a of new Set(units.map((u) => u.article))) {
+        if (a !== null && structure.test(normalizeText(a).trim())) structureKeys.push(`${inr}/ME ${side} [${units.filter((u) => u.article === a).length}] ${a.slice(0, 90)}`)
+      }
+    }
+  }
+  console.log(`  Gliederungsüberschrift als Gesetzesname: ${structureKeys.length}`)
+  for (const l of structureKeys) console.log(`    ${l}`)
   console.log(`  Eichung Stammnorm — je Regel: Paare · beide mit Stammnorm · davon gleich (sameBgbl) · gleich ohne Teil (sameStammnormCited)`)
   for (const [v, e] of [...pairCal].sort((x, y) => y[1].n - x[1].n)) console.log(`    ${v.padEnd(10)} ${String(e.n).padStart(4)} · ${String(e.both).padStart(4)} · ${String(e.same).padStart(4)} · ${e.loose}`)
   for (const l of pairDiffer) console.log(`    ≠ ${l}`)

@@ -7808,6 +7808,63 @@ unverändert. Die Begründung an der Ziffer findet für vier der neu gepaarten
 Einheiten ihre Passage (XXVI: Einheiten mit gezeigter Begründung 2.461 →
 2.465, Vergleiche 1.328 → 1.330).
 
+**Nachtrag 02.10.2026: Artikelzeile und Name in einem Absatz.** XXVI 77/ME
+setzt die Artikelzeile und den Namen des neuen Gesetzes in denselben Absatz,
+getrennt durch einen Zeilenumbruch (`41UeberschrG1`: „Artikel 1<br>Bundesgesetz
+über die Prüfung lohnabhängiger Abgaben und Beiträge (PLABG)"); die Vorlage
+setzt beides als zwei Absätze. Der Parlaments-Leser machte aus dem Umbruch ein
+Leerzeichen, der Name wurde Teil der Artikelzeile, und das Namensfenster
+(`segmentUnits`, `draftArticles`, §12.13) nahm die nächste Überschrift vor der
+ersten Anordnung als Namen — bei einem neuen Gesetz seinen ersten Abschnitt,
+„1. Abschnitt Prüfdienst für lohnabhängige Abgaben und Beiträge". Die
+ändernden Artikel desselben Entwurfs tragen vor ihrer Promulgationsklausel
+keine Überschrift; ihr Schlüssel blieb die ganze Zeile („Artikel 2 Änderung des
+Einkommensteuergesetzes 1988") und paarte über den Namen darin. Deshalb fiel
+die Form nur dort auf, wo ein Artikel ein Gesetz erlässt.
+
+Der Ort ist der Leser, nicht das Fenster: `parseParliamentHtml` teilt einen
+Absatz der Artikel- und Abschnittsklassen am ersten Umbruch, wenn davor eine
+nackte Artikelzeile steht (`articleNameSplit`), in die Artikelzeile und ihren
+Namen als `section` — die Form der Vorlage, die beide Fenster schon lesen. So
+bleiben ihre zwei Kopien eine Regel, und keine der beiden ändert sich.
+„1. Abschnitt<br>Prüfdienst …" bleibt ein Block, ein zitierter Artikel beginnt
+mit dem Anführungszeichen und bleibt Text.
+
+**Gemessen** (`pnpm corpus:aenderungsrate -- --gp <GP> --pairs --unpaired`,
+das jetzt auch jeden Artikelschlüssel zählt, der als Gliederungsüberschrift
+lautet — Abschnitt, Hauptstück, Teil, Kapitel —, gepaart oder nicht): In
+XXVI–XXVIII trug genau ein Gesetz eine Gliederungsüberschrift als Namen, das
+PLABG in 77/ME auf Seite des Entwurfs; danach keines. Die Form selbst steht in
+7 der 944 gegliederten Gesetzestexte des Korpus (49 Artikel): XXVI 36/ME
+(Entwurf und Vorlage) und 77/ME, XXVII 77/ME und 155/ME, XXVIII 18/ME und
+21/ME. Bewegt haben sich zwei Entwürfe, beide gelesen:
+
+- **77/ME** paart das PLABG über den Titel (Regel `title` 411 → 412). ME → RV
+  12 → 39 Einheiten, Eimer 3 → 5: 30 unverändert, 7 geändert, je eine neu und
+  entfallen; „nur in der Vorlage" und „nur im Entwurf" je 1 → 0. Was sich
+  ändert, ist echt: § 5 prüft nicht mehr „auf begründete Anforderung", sondern
+  „auf Anforderung", aus dem Anregungsrecht des § 11 wird ein
+  Anforderungsrecht (deshalb entfallen und neu: die Überschrift wechselt, der
+  Text ist unter 0,6 ähnlich), § 18 verlegt den Stichtag vom 1. Jänner 2019
+  auf den 1. Oktober 2018.
+- **36/ME** (JStG 2018): die zwei Gesetze, die nur die Vorlage trägt, heißen
+  jetzt „Änderung des Bundesfinanzgerichtsgesetzes" statt „Artikel 19 Änderung
+  des …" — nur der Name, keine Zahl.
+
+In den übrigen fünf Texten dieser Form ändern sich nur die Schlüssel, keine
+Paarung und keine Zahl. Basisrate unverändert (XXVI n 104, 34 / 50 / 73 %;
+XXVII n 283, 46 / 63 / 75 %; XXVIII n 91, 29 / 57 / 76 %), Phantompaare 0 in
+allen drei, Entwürfe mit ungepaarten Artikeln auf beiden Seiten XXVI 4 → 3.
+Begründung an der Ziffer (`--ziffer --against`): XXVI Einheiten mit gezeigter
+Begründung 2.710 → 2.732, Vergleiche 1.562 → 1.582, verloren 0 — die 22 sind
+neu gepaarte Paragraphen von 77/ME, jeder unter seiner eigenen Passage („Zu
+§ 5 (Allgemeine Aufsichts- und Erhebungsmaßnahmen):"); XXVII und XXVIII
+unverändert, Urteilswechsel auf dem §-Join 0. Die späteren Paare (`pnpm
+corpus:bgbl-station -- --gp XXVI --scope --cache`): 77/ME steht nicht mehr
+unter den Entwürfen, deren Kundmachung ein Gesetz trägt, das der Entwurf nicht
+trägt (29 → 28); ausgeliefert wird dort nur bei bündelnden Vorlagen
+geschnitten, die späteren Paare von 77/ME bleiben deshalb, wie sie waren.
+
 
 ### 12.19 Eine Liste, ein Filter, zwei Zeilentypen
 

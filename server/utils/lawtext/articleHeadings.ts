@@ -54,8 +54,10 @@ export const ARTICLE_RE = /^Artikel\s+(?:[Xx]?\d+|[IVXL]+)(?=\s|$|[.,])/
  * than `ARTICLE_RE` on purpose: the classes it is applied to also carry
  * headings that merely begin with the word, and a quoted Artikel inside
  * amendment text begins with the quotation mark and so never matches.
+ * Exported for the Parliament reader, which splits such a line from the name
+ * set behind it in the same paragraph (`lawtext/parliamentHtml.ts`).
  */
-const ARTICLE_LINE_RE = /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)\s*\.?$/
+export const ARTICLE_LINE_RE = /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)\s*\.?$/
 
 /**
  * The template's own class for an Artikel heading. Most of its blocks are
