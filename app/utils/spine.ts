@@ -45,7 +45,7 @@ import type { BgblOutcome, DraftDetail, HouseVote, LawStationId, RisConsultation
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
 import { UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
-import { fristClassLineDe, fristSpanDe } from './deadlines'
+import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
 
@@ -125,23 +125,24 @@ function fristDurationDe(start: string | null, deadline: string | null): string 
 }
 
 /**
- * The Begutachtung row's Frist fact, for both rails.
+ * The Begutachtung row's Frist facts, for both rails.
  *
- * Duration first, then the date — "6 Wochen Frist, endete am 24.06.2026".
- * Without a Frist the sentence is the absence itself.
+ * Duration, then the dates — „Kurze Frist: 2 Wochen · 10.06.–24.06.2026" —
+ * in the words of „Die Begutachtung" below („2 Wochen · 10.06.–24.06.2026",
+ * `fristRangeDe`), so the rail and the section it summarises state one fact
+ * one way. The class prefix stays the rail's own, at the edges only.
  *
- * One wording for an ended Frist, site-wide (`fristEndedDe`): without a
- * duration this line IS that sentence. With one, the duration already
- * carries the word „Frist", so the line takes the builder's wording
- * („endete am …") instead of the builder — one wording, two sentence
- * shapes, rather than the „endete 24.06.2026" this said before.
+ * Two parts, not one phrase: until 01.10.2026 the date rode on the duration
+ * as „…, endete am 24.06.2026" and „…, bis …", a third wording beside the
+ * section's range. The range reads the same while the Frist runs and after,
+ * so the line no longer changes shape with the state. Without a duration the
+ * line is the absence or the bare date, as before (`fristEndedDe`).
  */
-function fristLineDe(start: string | null, deadline: string | null, active: boolean): string {
-  if (!deadline) return 'keine Frist angegeben'
+function fristLineDe(start: string | null, deadline: string | null, active: boolean): string[] {
+  if (!deadline) return ['keine Frist angegeben']
   const dur = fristDurationDe(start, deadline)
-  return active
-    ? dur ? `${dur}, bis ${formatDateDe(deadline)}` : `Frist bis ${formatDateDe(deadline)}`
-    : dur ? `${dur}, endete am ${formatDateDe(deadline)}` : fristEndedDe(deadline)
+  if (dur) return [dur, fristRangeDe(start, deadline)]
+  return [active ? `Frist bis ${formatDateDe(deadline)}` : fristEndedDe(deadline)]
 }
 
 /**
@@ -155,8 +156,23 @@ function fristLineDe(start: string | null, deadline: string | null, active: bool
  * on the day the draft went out, a fortnight before its own Frist ended.
  * Two identical dates in two rows hid that completely; naming the span is
  * the whole reason this line exists.
+ *
+ * Where the Vorlage is dated on or before the Einlangen, the sharper fact is
+ * that the Begutachtung had not begun (`start`, the Regierungsvorlage only).
+ * Measured on 01.10.2026 over the 482 closed drafts of GP XXVII and XXVIII:
+ * 8 Vorlagen before the Fristende, 5 of them on or before the Einlangen
+ * (115, 116, 92, 33/ME XXVIII, 132/ME XXVII). Three of the five are dated a
+ * day before it — the Ministerrat against Parliament's receipt, presumably —
+ * so the phrase says „vor Beginn" and never counts the days.
+ *
+ * Not „vor der Übermittlung": Parliament forwards the Stellungnahmen 1–6
+ * days after the Fristende (median 2, same pass), so that marks the same
+ * eight drafts, and it is not when the ministry first had them — submitters
+ * send to the ministry directly too.
  */
-function afterFristDe(deadline: string | null, date: string | null): string | null {
+function afterFristDe(deadline: string | null, date: string | null, start?: string | null): string | null {
+  const sinceStart = spanInDays(start, date)
+  if (sinceStart !== null && sinceStart <= 0) return 'noch vor Beginn der Begutachtung'
   return daysAfterFristDe(spanInDays(deadline, date))
 }
 
@@ -477,7 +493,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
 
   /** The RV's date with its distance to the Fristende as an apposition —
    *  one fact, not two, so the row does not grow a third middot. */
-  const latency = e ? afterFristDe(d.deadline, e.rvDate) : null
+  const latency = e ? afterFristDe(d.deadline, e.rvDate, d.arrivedAt) : null
   const rvWhen = e
     ? e.rvDate
       ? latency ? `${formatDateDe(e.rvDate)}, ${latency}` : formatDateDe(e.rvDate)
@@ -491,16 +507,18 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       ? '1 Stellungnahme'
       : `${formatNumberDe(n)} Stellungnahmen`
 
-  /** "zur Vorlage", because the row above already says how many came in the
-   *  Begutachtung — two bare counts in two rows read as one number said
-   *  twice. Zero is not stated: most Vorlagen get none, and a row that said
-   *  so on every page would be noise where it is not a finding. */
+  /** The Vorlage's own count, bare. It said „zur Vorlage" until 01.10.2026,
+   *  so that two bare counts in two rows would not read as one number said
+   *  twice; since both stand last in their rows, under the station names
+   *  „Begutachtung" and „Regierungsvorlage", the row names whose count it is.
+   *  Zero is not stated: most Vorlagen get none, and a row that said so on
+   *  every page would be noise where it is not a finding. */
   const rvN = ctx.rvStatementTotal ?? 0
   const rvCount = rvN === 0
     ? null
     : rvN === 1
-      ? '1 Stellungnahme zur Vorlage'
-      : `${formatNumberDe(rvN)} Stellungnahmen zur Vorlage`
+      ? '1 Stellungnahme'
+      : `${formatNumberDe(rvN)} Stellungnahmen`
 
   return [
     {
@@ -524,12 +542,14 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // three times. The bar carries the date, and since 16.09.2026 the
       // LENGTH of the Frist with it: how long a ministry gave is the fact
       // that separates a consultation from a formality, and it was the one
-      // thing five dates on this card left the reader to work out. While
-      // the Frist runs that line leads, because it is what a reader can act
-      // on; afterwards the count leads, because it is the result.
-      facts: d.active
-        ? kept(fristLine, count)
-        : kept(count, fristLine),
+      // thing five dates on this card left the reader to work out.
+      //
+      // The Frist first and the count last, in every state, as on every
+      // row: the station's own fact, then how many took part (01.10.2026).
+      // Until then the count led once the Frist had closed, so the two
+      // counts on the card — here and „zur Vorlage" — stood at opposite
+      // ends of their rows, and the row changed shape with the state.
+      facts: kept(...fristLine, count),
       comparison: null,
     },
     {
@@ -725,7 +745,7 @@ export function regulationStations(
       state: r.active ? 'current' : 'done',
       // No count beside the Frist: nobody publishes who filed on these —
       // the card says so once, under the bar, instead of a „0" here.
-      facts: [fristLineDe(r.startedAt, r.deadline, r.active)],
+      facts: fristLineDe(r.startedAt, r.deadline, r.active),
       comparison: null,
     },
     {

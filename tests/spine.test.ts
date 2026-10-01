@@ -48,9 +48,9 @@ const rvRow = (d: DraftDetail, ctx?: Parameters<typeof stations>[1]) =>
   stations(d, ctx).find((s) => s.id === 'rv')!
 
 describe('stations — the Regierungsvorlage row', () => {
-  it('adds the Vorlage\'s own Stellungnahmen after its date, phrased "zur Vorlage"', () => {
-    expect(rvRow(draft(), { rvStatementTotal: 10 }).facts).toEqual(['04.10.2023, 30 Monate nach Fristende', '10 Stellungnahmen zur Vorlage'])
-    expect(rvRow(draft(), { rvStatementTotal: 1 }).facts).toEqual(['04.10.2023, 30 Monate nach Fristende', '1 Stellungnahme zur Vorlage'])
+  it('adds the Vorlage\'s own Stellungnahmen after its date, bare, as the row names whose count it is', () => {
+    expect(rvRow(draft(), { rvStatementTotal: 10 }).facts).toEqual(['04.10.2023, 30 Monate nach Fristende', '10 Stellungnahmen'])
+    expect(rvRow(draft(), { rvStatementTotal: 1 }).facts).toEqual(['04.10.2023, 30 Monate nach Fristende', '1 Stellungnahme'])
   })
 
   it('says nothing about them while unknown or when there are none', () => {
@@ -67,8 +67,8 @@ describe('stations — the Regierungsvorlage row', () => {
     // dot in browsers) — the point is that both rows use the same one.
     const grouped = formatNumberDe(41376)
     expect(grouped).not.toBe('41376')
-    expect(list.find((s) => s.id === 'begutachtung')!.facts[0]).toBe(`${grouped} Stellungnahmen`)
-    expect(list.find((s) => s.id === 'rv')!.facts[1]).toBe(`${grouped} Stellungnahmen zur Vorlage`)
+    expect(list.find((s) => s.id === 'begutachtung')!.facts.at(-1)).toBe(`${grouped} Stellungnahmen`)
+    expect(list.find((s) => s.id === 'rv')!.facts[1]).toBe(`${grouped} Stellungnahmen`)
   })
 
   /* The whole point of the line: 115/ME XXVIII was tabled as 525 d.B. on the
@@ -80,11 +80,24 @@ describe('stations — the Regierungsvorlage row', () => {
       deadline: '2026-06-24',
       enactment: { ...draft().enactment!, rvDate },
     })).facts[0]
-    expect(at('2026-06-10')).toBe('10.06.2026, noch vor Fristende')
+    expect(at('2026-06-11')).toBe('11.06.2026, noch vor Fristende')
     expect(at('2026-06-24')).toBe('24.06.2026, am Tag des Fristendes')
     expect(at('2026-06-25')).toBe('25.06.2026, 1 Tag nach Fristende')
     expect(at('2026-07-14')).toBe('14.07.2026, 20 Tage nach Fristende')
     expect(at('2026-12-24')).toBe('24.12.2026, 6 Monate nach Fristende')
+  })
+
+  /* 115/ME XXVIII again, and 116/ME, whose Vorlage is dated the day before
+     the draft reached Parliament: the Begutachtung had not begun, which says
+     more than „vor Fristende" — and it never counts the day. */
+  it('says the Begutachtung had not begun where the Vorlage came on or before the Einlangen', () => {
+    const at = (rvDate: string) => rvRow(draft({
+      arrivedAt: '2026-06-10',
+      deadline: '2026-06-24',
+      enactment: { ...draft().enactment!, rvDate },
+    })).facts[0]
+    expect(at('2026-06-10')).toBe('10.06.2026, noch vor Beginn der Begutachtung')
+    expect(at('2026-06-09')).toBe('09.06.2026, noch vor Beginn der Begutachtung')
   })
 
   it('falls back to the citation when the stage carries no date', () => {
@@ -98,34 +111,34 @@ describe('stations — how long the Frist ran', () => {
 
   it('leads with the duration, in weeks where the span is a clean multiple', () => {
     expect(beg(draft({ arrivedAt: '2026-08-11', deadline: '2026-09-22', active: true })))
-      .toEqual(['Volle Frist: 6 Wochen, bis 22.09.2026', '143 Stellungnahmen'])
+      .toEqual(['Volle Frist: 6 Wochen', '11.08.–22.09.2026', '143 Stellungnahmen'])
     expect(beg(draft({ arrivedAt: '2026-06-10', deadline: '2026-06-24' })))
-      .toEqual(['143 Stellungnahmen', 'Kurze Frist: 2 Wochen, endete am 24.06.2026'])
+      .toEqual(['Kurze Frist: 2 Wochen', '10.06.–24.06.2026', '143 Stellungnahmen'])
   })
 
   it('names the class only at the edges: short under three weeks, full from six', () => {
-    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-29' }))[1])
-      .toBe('4 Wochen Frist, endete am 29.06.2026')
-    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-22' }))[1])
-      .toBe('3 Wochen Frist, endete am 22.06.2026')
-    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-21' }))[1])
-      .toBe('Kurze Frist: 20 Tage, endete am 21.06.2026')
-    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-07-12' }))[1])
-      .toBe('41 Tage Frist, endete am 12.07.2026')
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-29' }))[0])
+      .toBe('4 Wochen Frist')
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-22' }))[0])
+      .toBe('3 Wochen Frist')
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-06-21' }))[0])
+      .toBe('Kurze Frist: 20 Tage')
+    expect(beg(draft({ arrivedAt: '2026-06-01', deadline: '2026-07-12' }))[0])
+      .toBe('41 Tage Frist')
   })
 
   it('stays in days for spans that are not whole weeks', () => {
     expect(beg(draft({ arrivedAt: '2026-06-10', deadline: '2026-06-20' })))
-      .toEqual(['143 Stellungnahmen', 'Kurze Frist: 10 Tage, endete am 20.06.2026'])
+      .toEqual(['Kurze Frist: 10 Tage', '10.06.–20.06.2026', '143 Stellungnahmen'])
   })
 
   /* The duration is derived; the date is upstream's. Where the subtraction
      cannot be made the row keeps exactly what it always said. */
   it('drops the duration rather than guessing it', () => {
     expect(beg(draft({ arrivedAt: null as unknown as string, deadline: '2026-06-24' })))
-      .toEqual(['143 Stellungnahmen', 'Frist endete am 24.06.2026'])
+      .toEqual(['Frist endete am 24.06.2026', '143 Stellungnahmen'])
     expect(beg(draft({ deadline: null })))
-      .toEqual(['143 Stellungnahmen', 'keine Frist angegeben'])
+      .toEqual(['keine Frist angegeben', '143 Stellungnahmen'])
   })
 })
 
@@ -506,14 +519,14 @@ describe('regulationStations — the Verordnung path', () => {
     const list = regulationStations(ended, null)
     expect(list.map((s) => s.name)).toEqual(['Entwurf', 'Begutachtung', 'Bundesgesetzblatt II'])
     expect(list[0]!.facts).toEqual(['05.01.2026'])
-    expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen, endete am 16.02.2026'])
+    expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen', '05.01.–16.02.2026'])
   })
 
   it('marks the Begutachtung while the Frist runs, and the Kundmachung is simply ahead', () => {
     const running = { ...ended, active: true }
     const list = regulationStations(running, outcome({ state: 'begutachtung' }))
     expect(list[1]!.state).toBe('current')
-    expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen, bis 16.02.2026'])
+    expect(list[1]!.facts).toEqual(['Volle Frist: 6 Wochen', '05.01.–16.02.2026'])
     expect(list[2]).toMatchObject({ state: 'open', facts: ['ausstehend'] })
   })
 
