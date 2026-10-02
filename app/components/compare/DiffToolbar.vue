@@ -61,7 +61,8 @@ onUnmounted(() => clearTimeout(timer))
 </script>
 
 <template>
-  <div class="mt-4 flex flex-wrap items-center gap-3">
+  <!-- No margin: it stands in a `ListBox` head, which spaces it. -->
+  <div class="flex flex-wrap items-center gap-3">
     <!-- Whatever else changes only the list, first in the row: the step
          toggle under „Im Parlament" (`LawStepToggle`). -->
     <slot />

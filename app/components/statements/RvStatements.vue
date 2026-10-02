@@ -159,22 +159,26 @@ const destination = computed(() =>
         {{ destination }}
       </p>
 
+      <!-- One pointer, not two in a row (30.09.2026): „– sie stehen
+           vollständig beim Gegenstand" and the link under it said the same,
+           and whether one can still file is the action card's job.
+           A row of the panel's foot since 02.10.2026, on the right where the
+           list's other way to more stands („Weitere 10 · Alle"); a line of its
+           own only where no panel is shown. -->
       <StatementsPanel
         v-if="summary && summary.total > 0"
         :summary="summary"
         :items="data.items ?? []"
         :partial="organisationsOnly"
         :heading-level="4"
-      />
-
-      <!-- One pointer, not two in a row (30.09.2026): „– sie stehen
-           vollständig beim Gegenstand" and the link under it said the same,
-           and whether one can still file is the action card's job.
-           Under the card, on the right, where the list's other way to more
-           stands („Weitere 10 · Alle"): what leads on from a box is a
-           standalone link, quiet at rest (02.10.2026). It stood as an
-           underlined sentence of its own. -->
-      <p class="mt-3 flex text-sm sm:justify-end">
+      >
+        <template #footer>
+          <p class="flex border-t border-hairline px-4 py-3 text-sm sm:justify-end">
+            <ExternalLink :href="data.rvUrl" class="tap-target rounded font-medium text-accent-deep hover:underline">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
+          </p>
+        </template>
+      </StatementsPanel>
+      <p v-else class="mt-3 text-sm">
         <ExternalLink :href="data.rvUrl" class="tap-target rounded font-medium text-accent-deep hover:underline">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
       </p>
     </template>

@@ -21,6 +21,10 @@ const props = defineProps<{
   step: number
   /** Above this remainder, a second button skips to the end. Omitted → none. */
   allAbove?: number
+  /** A row at the foot of a `ListBox` instead of a line under a list: the
+   *  box's hairline and inset while there is something to show, nothing
+   *  visible once everything is shown, so no empty band is left. */
+  inset?: boolean
 }>()
 
 const emit = defineEmits<{ more: []; all: [] }>()
@@ -49,7 +53,8 @@ const pageable = computed(() => props.total > props.step)
        it stacks, the control across the full column. -->
   <div
     v-if="pageable"
-    class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+    class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+    :class="inset ? remaining > 0 && 'border-t border-hairline px-4 py-3' : 'mt-3'"
   >
     <p
       :class="['text-sm tabular-nums text-ink-muted', remaining === 0 && 'sr-only']"

@@ -12,6 +12,7 @@ import {
   submitterLabel,
   submitterName,
 } from '~/utils/statementRows'
+import ListBox from '~/components/ui/ListBox.vue'
 
 /**
  * Both rounds of Stellungnahmen render through this panel — the
@@ -341,6 +342,10 @@ const showColumnHeader = computed(() =>
     : renderedOrgRows.value.length > 0,
 )
 
+/* The box has a head where there is something to operate. Fixed per
+ * list: the set line's live region must not move between head and page. */
+const hasHeader = computed(() => showFilterGroup.value || showSort.value || showOrgSearch.value)
+
 const setLineRedundant = computed(
   () => !searchActive.value,
 )
@@ -359,106 +364,119 @@ const setLineRedundant = computed(
          after that it was a picture of the two counts the filter buttons
          state exactly one line below, and a second bar a few lines under
          the Frist's, counting something else. -->
-    <!-- Two axes, two groups: WHO filed (each segment with its count) and
-         IN WHICH ORDER.
-         Keeping them apart is what let the count line stop naming the sort.
-         Either group is absent where it would have nothing to switch
-         between, and the row with it. -->
-    <div
-      v-if="showFilterGroup || showSort"
-      class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2"
-    >
-      <!-- Four labels this long cannot fit a phone column — 516 px of
-           segment against 358 px at 390 px wide. Until 30.09.2026 the group
-           scrolled sideways, and that hid „Alle" and half of „Nicht
-           öffentlich" behind an edge with nothing to say there was more: a
-           filter nobody can see is not offered. Below sm it is a grid of
-           two columns now, every option in view, an odd last one across both;
-           from sm on the joined segment as before. That is UFieldGroup's
-           own rounding, written out, because a field group cannot turn into
-           a grid at a breakpoint. -->
-      <div
-        v-if="showFilterGroup"
-        role="group"
-        aria-label="Stellungnahmen nach Einbringer:in filtern"
-        class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:gap-0 sm:-space-x-px"
-      >
-        <UButton
-          v-for="opt in filterOptions"
-          :key="opt.value"
-          :color="filter === opt.value ? 'primary' : 'neutral'"
-          :variant="filter === opt.value ? 'subtle' : 'outline'"
-          :aria-pressed="filter === opt.value"
-          class="relative min-h-target flex-wrap justify-center gap-x-1.5 text-center odd:last:col-span-2 focus-visible:z-1 sm:flex-nowrap sm:whitespace-nowrap sm:not-only:first:rounded-e-none sm:not-only:last:rounded-s-none sm:not-last:not-first:rounded-none"
-          @click="filter = opt.value"
-        >
-          {{ opt.label }}
-          <span class="tabular-nums text-ink-muted">{{ formatNumberDe(opt.count) }}</span>
-        </UButton>
-      </div>
-
-      <UFieldGroup v-if="showSort" role="group" aria-label="Stellungnahmen sortieren">
-        <UButton
-          v-for="opt in sortOptions"
-          :key="opt.value"
-          :color="sort === opt.value ? 'primary' : 'neutral'"
-          :variant="sort === opt.value ? 'subtle' : 'outline'"
-          :aria-pressed="sort === opt.value"
-          class="min-h-target"
-          @click="sort = opt.value"
-        >
-          {{ opt.label }}
-        </UButton>
-      </UFieldGroup>
-    </div>
-
-    <!-- Its own line under the two control groups, not inside them: this is
-         a third axis, and the filter group already fills its rows on a
-         phone. Directly above the list, so it reads as searching the thing
-         beneath it. -->
-    <div v-if="showOrgSearch" class="mt-4">
-      <label class="sr-only" :for="searchId">Organisation suchen</label>
-      <UInput
-        :id="searchId"
-        v-model="orgQuery"
-        type="search"
-        icon="i-lucide-search"
-        placeholder="Organisation suchen"
-        autocomplete="off"
-        class="w-full"
-        :ui="{ base: 'min-h-target' }"
-      />
-    </div>
-
-    <p
-      :class="[
-        'text-sm text-ink-muted',
-        setLineRedundant ? 'sr-only' : 'mt-4',
-      ]"
-      aria-live="polite"
-    >{{ setLine }}</p>
-    <!-- Same wording as the summary-level note on the detail page: a stale
-         list must never read as the current one. mt-4, not mt-1: the line
-         above is sr-only in every state this note can appear in (it needs
-         the item list), so there is no visible box to sit under. -->
-    <p v-if="needsList && listStaleAsOf" class="mt-4 text-xs text-ink-muted">
-      Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
-      gerade nicht abrufbar).
-    </p>
+    <!-- Without controls there is no head, and the set line and the stale
+         note stand above the sheet as before. -->
+    <template v-if="!hasHeader">
+      <p
+        :class="[
+          'text-sm text-ink-muted',
+          setLineRedundant ? 'sr-only' : 'mt-4',
+        ]"
+        aria-live="polite"
+      >{{ setLine }}</p>
+      <!-- Same wording as the summary-level note on the detail page: a stale
+           list must never read as the current one. mt-4, not mt-1: the line
+           above is sr-only in every state this note can appear in (it needs
+           the item list), so there is no visible box to sit under. -->
+      <p v-if="needsList && listStaleAsOf" class="mt-4 text-xs text-ink-muted">
+        Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
+        gerade nicht abrufbar).
+      </p>
+    </template>
 
     <component :is="`h${headingLevel}`" class="sr-only">Liste der Stellungnahmen</component>
     <!-- Named query container: the rows inside decide their layout on THIS
          box's width (row-cols in main.css), not on the window's — the panel
-         never gets wider than the page's max-w-3xl column.
-         `overflow-clip`, not `overflow-hidden`: both keep the rounded
-         corners, but `hidden` makes the sheet a scroll container, and the
-         sticky column header would stick to it instead of the window. -->
-    <div
-      :class="[
-        '@container/list overflow-clip rounded-xl border border-hairline bg-surface',
-        showFilterGroup || showSort ? 'mt-3' : 'mt-6',
-      ]"
-    >
+         never gets wider than the page's max-w-3xl column. The head is part
+         of the box and does not change its width.
+
+         The two control groups, the search, the set line and the stale note
+         stand in the box's head since 02.10.2026, the pager and the ways to
+         more in rows at its foot (`ListBox`): before, a list here was up to
+         three loose rows of controls, the sheet, a pager and a link. -->
+    <ListBox class="@container/list mt-4">
+      <template v-if="hasHeader" #header>
+        <!-- Two axes, two groups: WHO filed (each segment with its count) and
+             IN WHICH ORDER.
+             Keeping them apart is what let the count line stop naming the sort.
+             Either group is absent where it would have nothing to switch
+             between, and the row with it. -->
+        <div
+          v-if="showFilterGroup || showSort"
+          class="flex flex-wrap items-center gap-x-3 gap-y-2"
+        >
+          <!-- Four labels this long cannot fit a phone column — 516 px of
+               segment against 358 px at 390 px wide. Until 30.09.2026 the group
+               scrolled sideways, and that hid „Alle" and half of „Nicht
+               öffentlich" behind an edge with nothing to say there was more: a
+               filter nobody can see is not offered. Below sm it is a grid of
+               two columns now, every option in view, an odd last one across both;
+               from sm on the joined segment as before. That is UFieldGroup's
+               own rounding, written out, because a field group cannot turn into
+               a grid at a breakpoint. -->
+          <div
+            v-if="showFilterGroup"
+            role="group"
+            aria-label="Stellungnahmen nach Einbringer:in filtern"
+            class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:gap-0 sm:-space-x-px"
+          >
+            <UButton
+              v-for="opt in filterOptions"
+              :key="opt.value"
+              :color="filter === opt.value ? 'primary' : 'neutral'"
+              :variant="filter === opt.value ? 'subtle' : 'outline'"
+              :aria-pressed="filter === opt.value"
+              class="relative min-h-target flex-wrap justify-center gap-x-1.5 text-center odd:last:col-span-2 focus-visible:z-1 sm:flex-nowrap sm:whitespace-nowrap sm:not-only:first:rounded-e-none sm:not-only:last:rounded-s-none sm:not-last:not-first:rounded-none"
+              @click="filter = opt.value"
+            >
+              {{ opt.label }}
+              <span class="tabular-nums text-ink-muted">{{ formatNumberDe(opt.count) }}</span>
+            </UButton>
+          </div>
+
+          <UFieldGroup v-if="showSort" role="group" aria-label="Stellungnahmen sortieren">
+            <UButton
+              v-for="opt in sortOptions"
+              :key="opt.value"
+              :color="sort === opt.value ? 'primary' : 'neutral'"
+              :variant="sort === opt.value ? 'subtle' : 'outline'"
+              :aria-pressed="sort === opt.value"
+              class="min-h-target"
+              @click="sort = opt.value"
+            >
+              {{ opt.label }}
+            </UButton>
+          </UFieldGroup>
+        </div>
+
+        <!-- Its own line under the two control groups, not inside them: this is
+             a third axis, and the filter group already fills its rows on a
+             phone. Last in the head, directly above the rows, so it reads as
+             searching the thing beneath it. -->
+        <div v-if="showOrgSearch">
+          <label class="sr-only" :for="searchId">Organisation suchen</label>
+          <UInput
+            :id="searchId"
+            v-model="orgQuery"
+            type="search"
+            icon="i-lucide-search"
+            placeholder="Organisation suchen"
+            autocomplete="off"
+            class="w-full"
+            :ui="{ base: 'min-h-target' }"
+          />
+        </div>
+
+        <p
+          :class="['text-sm text-ink-muted', setLineRedundant && 'sr-only']"
+          aria-live="polite"
+        >{{ setLine }}</p>
+        <p v-if="needsList && listStaleAsOf" class="text-xs text-ink-muted">
+          Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
+          gerade nicht abrufbar).
+        </p>
+      </template>
+
       <!-- Over rows only: above a loading line, an error or „keine
            gefunden" it would name columns nothing stands in. -->
       <StatementListHeader v-if="showColumnHeader" />
@@ -539,21 +557,27 @@ const setLineRedundant = computed(
           Keine Stellungnahmen in dieser Auswahl
         </p>
       </template>
-    </div>
 
-    <ListMore
-      :visible="visibleCount"
-      :total="segmentTotal"
-      :step="PAGE_SIZE"
-      :all-above="ALL_ABOVE"
-      @more="visibleCount += PAGE_SIZE"
-      @all="visibleCount = segmentTotal"
-    />
+      <ListMore
+        inset
+        :visible="visibleCount"
+        :total="segmentTotal"
+        :step="PAGE_SIZE"
+        :all-above="ALL_ABOVE"
+        @more="visibleCount += PAGE_SIZE"
+        @all="visibleCount = segmentTotal"
+      />
 
-    <p v-if="!needsList && hiddenOrgCount > 0" class="mt-3 text-sm text-ink-muted">
-      und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen<template
-        v-if="filterOptions.some((o) => o.value === 'all')"
-      > – sie stehen im Segment „Alle“</template>.
-    </p>
+      <p v-if="!needsList && hiddenOrgCount > 0" class="border-t border-hairline px-4 py-3 text-sm text-ink-muted">
+        und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen<template
+          v-if="filterOptions.some((o) => o.value === 'all')"
+        > – sie stehen im Segment „Alle“</template>.
+      </p>
+
+      <!-- A way on from the list that the panel's owner knows (the
+           Vorlage's „Alle Stellungnahmen … auf parlament.gv.at"): a row
+           of the foot, which the caller frames itself. -->
+      <slot name="footer" />
+    </ListBox>
   </div>
 </template>

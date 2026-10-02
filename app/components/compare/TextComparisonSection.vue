@@ -16,6 +16,7 @@
  * difference that is not there.
  */
 import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
+import ListBox from '~/components/ui/ListBox.vue'
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
@@ -528,19 +529,20 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
         <ComparisonCaveats :notes="[notRunNote, doubtfulNote, droppedPagesNote, data.boundaryNote]" />
       </div>
 
-      <!-- Same toolbar as the § comparison, same order, so the two sections
-           are operated alike. No filter select: the annex prints every § it
-           touches and the group pills already say how the changes divide —
-           isolating one class was the control this page never needed. -->
-      <DiffToolbar
-        v-if="hasRows"
-        v-model:view="view"
-        v-model:query="query"
-        view-label="Darstellung der Gegenüberstellung"
-        search-label="In der Gegenüberstellung suchen"
-      />
-
-      <div class="mt-3 overflow-clip rounded-xl border border-hairline bg-surface">
+      <ListBox class="mt-4">
+        <!-- Same toolbar as the § comparison, same order, in the box's head
+             as there (02.10.2026), so the two sections are operated alike. No
+             filter select: the annex prints every § it touches and the group
+             pills already say how the changes divide — isolating one class
+             was the control this page never needed. -->
+        <template v-if="hasRows" #header>
+          <DiffToolbar
+            v-model:view="view"
+            v-model:query="query"
+            view-label="Darstellung der Gegenüberstellung"
+            search-label="In der Gegenüberstellung suchen"
+          />
+        </template>
         <DiffGroup
           v-for="g in renderedGroups"
           :key="g.key"
@@ -743,19 +745,18 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
             {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
           </button>
         </DiffGroup>
-      </div>
-      <!-- A search box with no answer is worse than none: the section would
-           just end, and an empty comparison reads as a claim about the
-           draft. Same wording as the § comparison. -->
-      <!-- Stays in the DOM as a live region and goes empty rather than
-             disappearing: a region that comes into being with its text is not
-             announced — whoever searched and found nothing would otherwise
-             get silence back. -->
-      <p
-        v-if="hasRows"
-        role="status"
-        :class="matchCount ? 'sr-only' : 'mt-2 text-sm text-ink-secondary'"
-      >{{ matchCount ? '' : 'Nichts gefunden.' }}</p>
+        <!-- A search box with no answer is worse than none: the section
+             would just end, and an empty comparison reads as a claim about
+             the draft. Same wording as the § comparison. Stays in the DOM as
+             a live region and goes empty rather than disappearing: a region
+             that comes into being with its text is not announced. A row of
+             the box, under its head. -->
+        <p
+          v-if="hasRows"
+          role="status"
+          :class="matchCount ? 'sr-only' : 'px-4 py-4 text-sm text-ink-secondary'"
+        >{{ matchCount ? '' : 'Nichts gefunden.' }}</p>
+      </ListBox>
 
       <!-- Provenance under the text it belongs to, the way a source note
            sits under a table rather than over it (17.09.2026): it is looked up

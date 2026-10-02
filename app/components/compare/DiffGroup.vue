@@ -120,7 +120,9 @@ async function toggle() {
 </script>
 
 <template>
-  <section ref="section" class="border-b border-hairline last:border-b-0">
+  <!-- `last-of-type`, not `last`: the box's status line follows the last
+       group as a <p>, and the last group must still drop its rule. -->
+  <section ref="section" class="border-b border-hairline last-of-type:border-b-0">
     <div ref="sentinel" class="h-px -mb-px" aria-hidden="true" />
     <!-- The hairline under a stuck header is a shadow, not a border: a
          border would make it 1px taller each time it sticks. -->

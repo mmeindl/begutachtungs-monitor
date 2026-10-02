@@ -21,6 +21,7 @@
  */
 import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
 import LawStepToggle from '~/components/compare/LawStepToggle.vue'
+import ListBox from '~/components/ui/ListBox.vue'
 import PageSubsection from '~/components/ui/PageSubsection.vue'
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, Publisher, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
@@ -690,22 +691,10 @@ const droppedNote = computed(() =>
         </div>
       </template>
 
-      <!-- The step toggle stands first in the list's toolbar (02.10.2026):
-           under „Im Parlament" nothing above depends on the step — no figure,
-           no reasoning rate, one hint for both — so the step changes only the
-           list, and belongs with it. Where there is no list (loading, an
-           error, a PDF-only text) it stands alone at the same spot: a reader
-           who picked a step that cannot be compared keeps the way back. -->
-      <DiffToolbar
-        v-if="hasList"
-        v-model:view="view"
-        v-model:query="query"
-        view-label="Darstellung des Vergleichs"
-        search-label="Im Text suchen"
-      >
-        <LawStepToggle v-if="steps.length > 1" :steps="steps" :current="requested" @choose="chooseStep" />
-      </DiffToolbar>
-      <div v-else-if="steps.length > 1" class="mt-4">
+      <!-- Without a list the step toggle stands alone where the list would,
+           so a reader who picked a step that cannot be compared keeps the
+           way back. With one it is in the list's head (below). -->
+      <div v-if="!hasList && steps.length > 1" class="mt-4">
         <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
       </div>
 
@@ -722,8 +711,22 @@ const droppedNote = computed(() =>
 
       <template v-else>
         <template v-if="hasList">
-
-          <div class="mt-3 overflow-clip rounded-xl border border-hairline bg-surface">
+          <ListBox class="mt-4">
+            <!-- The step toggle stands first in the list's toolbar (02.10.2026):
+                 under „Im Parlament" nothing above depends on the step — no
+                 figure, no reasoning rate, one hint for both — so the step
+                 changes only the list, and belongs with it. In the box's head
+                 since 02.10.2026 (`ListBox`). -->
+            <template #header>
+              <DiffToolbar
+                v-model:view="view"
+                v-model:query="query"
+                view-label="Darstellung des Vergleichs"
+                search-label="Im Text suchen"
+              >
+                <LawStepToggle v-if="steps.length > 1" :steps="steps" :current="requested" @choose="chooseStep" />
+              </DiffToolbar>
+            </template>
             <DiffGroup
               v-for="g in renderedGroups"
               :key="g.article"
@@ -881,15 +884,15 @@ const droppedNote = computed(() =>
                 {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
               </button>
             </DiffGroup>
-          </div>
-          <!-- Stays in the DOM as a live region and goes empty rather than
-               disappearing: a region that comes into being with its text is not
-               announced — whoever searched and found nothing would otherwise
-               get silence back. -->
-          <p
-            role="status"
-            :class="visibleUnits.length ? 'sr-only' : 'mt-2 text-sm text-ink-secondary'"
-          >{{ visibleUnits.length ? '' : 'Nichts gefunden.' }}</p>
+            <!-- Stays in the DOM as a live region and goes empty rather than
+                 disappearing: a region that comes into being with its text is
+                 not announced — whoever searched and found nothing would
+                 otherwise get silence back. A row of the box, under its head. -->
+            <p
+              role="status"
+              :class="visibleUnits.length ? 'sr-only' : 'px-4 py-4 text-sm text-ink-secondary'"
+            >{{ visibleUnits.length ? '' : 'Nichts gefunden.' }}</p>
+          </ListBox>
         </template>
 
         <!-- Provenance under the text it belongs to, the way a source note
