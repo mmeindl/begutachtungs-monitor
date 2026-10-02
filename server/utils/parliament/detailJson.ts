@@ -13,7 +13,9 @@ import type {
   Handoff,
   HouseVote,
   LawStationId,
+  PlenaryAmendments,
   TextVersion,
+  TraceLink,
   TraceStep,
 } from '../../../shared/types'
 import { gpHasEnded } from '../../../shared/utils/gp'
@@ -145,6 +147,89 @@ export function readCommitteeConsultation(phases: RawPhase[] | null | undefined)
     committee: colon > 0 ? text.slice(0, colon).trim() : null,
     date: parseGermanDate(decided.date) ?? parseIsoDate(decided.date),
     invited: stages.filter((s) => CONSULTATION_ADDRESSEE.test(stripHtmlToText(s?.text ?? ''))).length,
+  }
+}
+
+const NR_COMMITTEE_PHASE = /^Ausschussberatungen NR$/i
+const COMMITTEE_REPORT_STAGE = /:\s*Bericht\b/
+const NR_REPORT_LINK = /\/gegenstand\/[IVXLC]+\/I\/\d+(?:[/?#]|$)/
+
+/**
+ * The Nationalrat committee's report on a Vorlage (Ausschussbericht, „11
+ * d.B."), read from its Verlauf — or null.
+ *
+ * One stage „<Ausschuss>: Bericht <a href="/gegenstand/XXVIII/I/11">11
+ * d.B.</a>" in the phase „Ausschussberatungen NR"; 12 of 13 sampled GP-XXVIII
+ * Vorlagen carried exactly one (02.10.2026), the 13th none. The Bundesrat's
+ * report („…des Bundesrates: Bericht 11666/BR d.B.") stands in a phase of its
+ * own and is not this one. Should a Vorlage be reported twice, the last
+ * report is the one behind the committee's text.
+ */
+export function findCommitteeReport(phases: RawPhase[] | null | undefined): TraceLink | null {
+  if (!Array.isArray(phases)) return null
+  let report: TraceLink | null = null
+  for (const phase of phases) {
+    if (!NR_COMMITTEE_PHASE.test((phase?.name ?? '').trim()) || !Array.isArray(phase.stages)) continue
+    for (const stage of phase.stages) {
+      const html = stage?.text ?? ''
+      if (!COMMITTEE_REPORT_STAGE.test(stripHtmlToText(html))) continue
+      report = extractLinks(html).find((link) => NR_REPORT_LINK.test(link.url)) ?? report
+    }
+  }
+  return report
+}
+
+const NR_PLENARY_PHASE = /^Plenarberatungen NR$/i
+const NR_SESSION_LINK = /\/gegenstand\/[IVXLC]+\/NRSITZ\/\d+(?:[/?#]|$)/
+const AMENDMENT_LINK = /\/gegenstand\/[IVXLC]+\/AA\/\d+(?:[/?#]|$)/
+const OUTCOME = /\b(angenommen|abgelehnt)\b/
+const THIRD_READING = /\bdritter Lesung\b/
+
+/**
+ * The Abänderungsanträge the Nationalrat adopted on a Vorlage in plenary,
+ * and the session that adopted them, read from its Verlauf — or null when
+ * the Verlauf has no plenary phase.
+ *
+ * Each motion is a stage of its own in „Plenarberatungen NR", „35. Sitzung
+ * des Nationalrates: Abänderungsantrag der Abgeordneten … (<a
+ * href="/gegenstand/XXVIII/AA/19">AA-19</a>)<br><b>angenommen</b>"; the
+ * session is linked from the stage that put the Vorlage on its agenda. Same
+ * shape in GP XXVII and XXVIII (02.10.2026). Where a Vorlage was debated in
+ * more than one session, the one that adopted the last motion — or, without
+ * one, held the third reading — is the session behind the Plenarfassung.
+ * Only the motion's number travels, never who tabled it.
+ */
+export function findPlenaryAmendments(phases: RawPhase[] | null | undefined): PlenaryAmendments | null {
+  if (!Array.isArray(phases)) return null
+  const sessions: TraceLink[] = []
+  const adopted: { session: string; motion: TraceLink }[] = []
+  let thirdReadingIn: string | null = null
+  let seen = false
+  for (const phase of phases) {
+    if (!NR_PLENARY_PHASE.test((phase?.name ?? '').trim()) || !Array.isArray(phase.stages)) continue
+    seen = true
+    for (const stage of phase.stages) {
+      const html = stage?.text ?? ''
+      const text = stripHtmlToText(html)
+      const colon = text.indexOf(':')
+      const sessionName = colon > 0 ? text.slice(0, colon).trim() : null
+      const links = extractLinks(html)
+      for (const link of links) {
+        if (NR_SESSION_LINK.test(link.url) && !sessions.some((s) => s.url === link.url)) sessions.push(link)
+      }
+      if (sessionName && THIRD_READING.test(text)) thirdReadingIn = sessionName
+      const motion = links.find((link) => AMENDMENT_LINK.test(link.url))
+      if (!motion || !sessionName) continue
+      // The outcome follows the motion's own number; the names before it are not read.
+      const after = text.slice(text.indexOf(motion.label) + motion.label.length)
+      if (OUTCOME.exec(after)?.[1] === 'angenommen') adopted.push({ session: sessionName, motion })
+    }
+  }
+  if (!seen) return null
+  const decidedIn = adopted.at(-1)?.session ?? thirdReadingIn
+  return {
+    session: sessions.find((s) => s.label === decidedIn) ?? sessions.at(-1) ?? null,
+    amendments: adopted.filter((a) => a.session === decidedIn).map((a) => a.motion),
   }
 }
 

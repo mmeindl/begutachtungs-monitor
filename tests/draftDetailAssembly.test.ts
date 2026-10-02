@@ -52,6 +52,8 @@ function enactment(over: Partial<EnactmentInfo> = {}): EnactmentInfo {
     bgblNumber: null,
     bgblRisUrl: null,
     amendedIn: null,
+    committeeReport: null,
+    plenaryAmendments: null,
     houseStatus: null,
     houseStatusText: null,
     vote: null,

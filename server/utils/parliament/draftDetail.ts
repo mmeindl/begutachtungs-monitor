@@ -13,6 +13,8 @@ import { gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import {
   amendedStationsOf,
   extractBgblLink,
+  findCommitteeReport,
+  findPlenaryAmendments,
   findLastRvLink,
   findRvLinks,
   isVorlageFilingOpen,
@@ -127,6 +129,8 @@ async function enactmentOf(
     bgblNumber: null,
     bgblRisUrl: null,
     amendedIn: null,
+    committeeReport: null,
+    plenaryAmendments: null,
     houseStatus: null,
     houseStatusText: null,
     vote: null,
@@ -149,6 +153,10 @@ async function enactmentOf(
     // text" — and null is the absence of one. Only the second lets the
     // spine fall back to the draft's mirror.
     enactment.amendedIn = amendedStationsOf(rv.content?.statements?.documents)
+    // Where the committee's changes are explained — the report it filed,
+    // linked from the Verlauf of the same payload.
+    enactment.committeeReport = findCommitteeReport(rv.content?.phase)
+    enactment.plenaryAmendments = findPlenaryAmendments(rv.content?.phase)
     // The house status, from the same payload: without it a decided, a
     // rejected and a withdrawn Vorlage all looked like „im Parlament in
     // Behandlung" — and once the GP was over, all three like „Ohne
@@ -169,8 +177,9 @@ async function enactmentOf(
     // carried-over Vorlage's open window read as closed.
     enactment.filingOpen = isVorlageFilingOpen(rv.content, rvLink.gp, currentGp)
   } catch {
-    // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn, both
-    // status fields and the vote stay null, filingOpen false.
+    // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn,
+    // committeeReport, plenaryAmendments, both status fields and the vote
+    // stay null, filingOpen false.
   }
   return enactment
 }

@@ -215,6 +215,17 @@ export interface HouseVote {
 }
 
 /** "Was wurde daraus" — filled once a Regierungsvorlage exists */
+/** The plenary's adopted Abänderungsanträge on a Vorlage
+ *  (`parliament/detailJson.ts` findPlenaryAmendments). */
+export interface PlenaryAmendments {
+  /** The session that adopted them („35. Sitzung des Nationalrates"); null
+      when the Verlauf links none. */
+  session: TraceLink | null
+  /** In the order adopted, by number only („AA-19"); empty when none was
+      adopted or none could be read. */
+  amendments: TraceLink[]
+}
+
 export interface EnactmentInfo {
   /** e.g. "2238 d.B." */
   rvCitation: string
@@ -245,6 +256,14 @@ export interface EnactmentInfo {
    * the Plenum had both changed.
    */
   amendedIn: LawStationId[] | null
+  /** The Nationalrat committee's report on that Vorlage („11 d.B."), where
+      the Abänderungsanträge behind the committee's text are named. Null
+      while there is none, or when the Vorlage's record could not be read. */
+  committeeReport: TraceLink | null
+  /** What the Nationalrat adopted on that Vorlage in plenary — the
+      Abänderungsanträge behind the Plenarfassung. Null when the Vorlage has
+      no plenary phase yet, or its record could not be read. */
+  plenaryAmendments: PlenaryAmendments | null
   /**
    * The Vorlage's house status as list 101 numbers it — '1' Einlangen im
    * Nationalrat, '2' in Behandlung, '3' zurückverwiesen, '5' erledigt. Null

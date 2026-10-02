@@ -33,6 +33,8 @@ function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
       // "could not be read" case, which is what every test that does not
       // exercise them wants: the draft's mirror answers instead.
       amendedIn: null,
+      committeeReport: null,
+      plenaryAmendments: null,
       houseStatus: null,
       houseStatusText: null,
       vote: null,

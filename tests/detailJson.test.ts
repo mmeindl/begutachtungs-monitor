@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   readCommitteeConsultation,
+  findCommitteeReport,
+  findPlenaryAmendments,
   amendedStationsOf,
   bgblOrderKey,
   bundlesOtherDrafts,
@@ -613,5 +615,60 @@ describe('bundlesOtherDrafts', () => {
     expect(bundlesOtherDrafts(undefined, 'XXVIII', 1)).toBeNull()
     expect(bundlesOtherDrafts([], 'XXVIII', 1)).toBeNull()
     expect(bundlesOtherDrafts([{ gp_code: 'XXVIII', ityp: 'A', inr: 5 }], 'XXVIII', 1)).toBeNull()
+  })
+})
+
+describe('findCommitteeReport (02.10.2026)', () => {
+  // RV 80 of GP XXVIII as its Verlauf records it, shortened — plus a
+  // Fristsetzung stage („…für Berichterstattung") that is not a report.
+  const phases = [
+    { name: 'Einlangen NR', stages: [{ date: '04.04.2025', text: 'Einlangen im Nationalrat' }] },
+    {
+      name: 'Ausschussberatungen NR',
+      stages: [
+        { date: '10.04.2025', text: 'Justizausschuss: Fristsetzung für Berichterstattung: 19.09.2025' },
+        { date: '05.06.2025', text: 'Justizausschuss: Bericht <a href="/gegenstand/XXVIII/I/145">145 d.B.</a>' },
+      ],
+    },
+    {
+      name: 'Ausschussberatungen BR',
+      stages: [{ date: '24.06.2025', text: 'Justizausschuss des Bundesrates: Bericht <a href="/gegenstand/BR/I-BR/11666">11666/BR d.B.</a>' }],
+    },
+  ]
+
+  it("reads the Nationalrat committee's report, not the Bundesrat's", () => {
+    expect(findCommitteeReport(phases)).toEqual({ label: '145 d.B.', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/I/145' })
+  })
+
+  it('is null without a report, and without a Verlauf', () => {
+    expect(findCommitteeReport([phases[0]!, phases[2]!])).toBeNull()
+    expect(findCommitteeReport(null)).toBeNull()
+  })
+})
+
+describe('findPlenaryAmendments (02.10.2026)', () => {
+  // RV 129 of GP XXVIII as its Verlauf records it, names shortened.
+  const plenary = (stages: { date: string; text: string }[]) => [{ name: 'Plenarberatungen NR', stages }]
+  const agenda = { date: '09.07.2025', text: 'Auf der <a href="/dokument/XXVIII/NRSITZ/35/TO_1.html">Tagesordnung</a> der <a href="/gegenstand/XXVIII/NRSITZ/35">35. Sitzung des Nationalrates</a>' }
+  const motion = (nr: number, outcome: string) => ({
+    date: '09.07.2025',
+    text: `35. Sitzung des Nationalrates: Abänderungsantrag der Abgeordneten <a href="/person/1">A. B.</a>, Kolleginnen und Kollegen (<a href="/gegenstand/XXVIII/AA/${nr}">AA-${nr}</a>)<br><b>${outcome}</b><br>Dafür: ÖVP, SPÖ, NEOS, GRÜNE, dagegen: FPÖ`,
+  })
+  const third = { date: '09.07.2025', text: '35. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b>' }
+  const session = { label: '35. Sitzung des Nationalrates', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/NRSITZ/35' }
+
+  it('reads the adopted motions by number, and the session', () => {
+    expect(findPlenaryAmendments(plenary([agenda, motion(19, 'angenommen'), motion(20, 'abgelehnt'), motion(21, 'angenommen'), third]))).toEqual({
+      session,
+      amendments: [
+        { label: 'AA-19', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/AA/19' },
+        { label: 'AA-21', url: 'https://www.parlament.gv.at/gegenstand/XXVIII/AA/21' },
+      ],
+    })
+  })
+
+  it('keeps the session where no motion was adopted, and is null without a plenary phase', () => {
+    expect(findPlenaryAmendments(plenary([agenda, motion(20, 'abgelehnt'), third]))).toEqual({ session, amendments: [] })
+    expect(findPlenaryAmendments([{ name: 'Ausschussberatungen NR', stages: [] }])).toBeNull()
   })
 })
