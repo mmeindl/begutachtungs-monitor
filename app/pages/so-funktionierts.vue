@@ -263,14 +263,15 @@ const toc = [
         weitergeht, und die eingelangten Stellungnahmen liegen ihm dabei vor.
         Bisher war das kaum nachvollziehbar: Wer eine Stellungnahme abgegeben
         hatte, erfuhr in der Regel nicht, ob sich an der Stelle, um die es
-        ihm ging, etwas getan hat.
+        ging, etwas getan hat.
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
-        Genau das zeigt der Monitor. Zu jedem Entwurf stellt er die Fassungen
+        Genau das zeigt der Monitor. Wo es die Fassungen gibt, stellt er sie
         nebeneinander und markiert, was sich Paragraph für Paragraph geändert
         hat. Und er zeigt die Entwürfe, aus denen nichts wurde: Ein Teil
-        erreicht das Parlament nie, ohne dass das je begründet würde.
+        erreicht das Parlament nie, und eine Pflicht, das zu begründen, gibt
+        es nicht.
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
@@ -279,8 +280,8 @@ const toc = [
         Begutachtung anders lautet, heißt nicht, dass eine bestimmte
         Stellungnahme ihn geändert hat – Änderungen entstehen auch aus der
         Ressortabstimmung, aus EU-Vorgaben oder aus Rechtsförmlichkeit. Der
-        Monitor zeigt, was sich geändert hat, und überlässt das Warum dem,
-        der beides gelesen hat.
+        Monitor zeigt, was sich geändert hat, und überlässt das Warum allen,
+        die beides gelesen haben.
         Die Liste lässt sich
         <NuxtLink
           to="/entwuerfe?art=ministerialentwurf&sort=stellungnahmen"
@@ -467,10 +468,9 @@ const toc = [
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Zu den meisten Entwürfen legt das Ministerium eine
         <strong class="font-medium text-ink">Textgegenüberstellung</strong> bei:
-        links die geltende Fassung, rechts die vorgeschlagene. Ein Rundschreiben
-        des Bundeskanzleramts vom 27.03.2002 schreibt diese Form vor – die
-        Spaltentitel, und dass unveränderter Text dazwischen abgekürzt wird
-        („2. bis 26b. …“). Der Text auf unserer Seite stammt aus diesem
+        links die geltende Fassung, rechts die vorgeschlagene, in der Form, die
+        ein Rundschreiben des Bundeskanzleramts vom 27.03.2002 vorschreibt. Der
+        Text auf unserer Seite stammt aus diesem
         Dokument des Ministeriums, Wort für Wort. Verpflichtend ist die
         Gegenüberstellung nicht, und ein Entwurf, der ein neues Gesetz schafft,
         hat nichts gegenüberzustellen – fehlt sie, steht auf der Seite nur,
@@ -498,45 +498,44 @@ const toc = [
       </p>
 
       <p class="mt-4 leading-relaxed text-ink-secondary">
-        Auch die rechte Spalte hat Bezugspunkte, und seit 10.09.2026 prüfen wir
-        sie: Was dort grün als <strong class="font-medium text-ink">neu</strong>
-        markiert ist, darf im geltenden Paragraphen nicht schon so stehen – tut
-        es das, fehlt der Text links, weil er beim Lesen verloren ging oder die
-        Beilage einen älteren Stand zugrunde legt, und der Entwurf sieht
-        umfangreicher aus, als er ist. Und es muss in den
+        Auch die rechte Spalte prüfen wir: Was dort als
+        <strong class="font-medium text-ink">neu</strong> markiert ist, darf im
+        geltenden Paragraphen nicht schon stehen – sonst fehlt links Text, und
+        der Entwurf wirkt umfangreicher, als er ist. Und es muss in den
         <strong class="font-medium text-ink">Novellierungsanordnungen</strong>
-        vorkommen, die der Entwurf für genau diesen Paragraphen trifft – der
-        Gesetzestext des Entwurfs steht im selben RIS-Dokument neben der
-        Beilage. Text, den weder das geltende Recht noch der Entwurf an dieser
-        Stelle anordnet, gehört dorthin nicht. Was bei beiden Prüfungen
-        herauskommt, steht im Kopf jedes Gesetzes. Zwei Ergebnisse brauchen
-        eine Erklärung:
+        vorkommen, die der Entwurf für diesen Paragraphen trifft.
+      </p>
+
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Was dabei herauskommt, zählt der Kopf jedes Gesetzes, Paragraph für
+        Paragraph; was nicht aufging, steht auch am Paragraphen selbst.
+        Bestätigte Paragraphen bleiben ohne Hinweis, ebenso neu eingefügte:
+        Sie haben keinen geltenden Text und brauchen keine Prüfung. Zwei
+        Ergebnisse brauchen eine Erklärung:
       </p>
 
       <dl class="mt-4 space-y-3 leading-relaxed text-ink-secondary">
         <div>
           <dt class="font-medium text-ink">„nicht gezeigt“</dt>
           <dd>
-            Eine der drei Prüfungen ist an dieser Stelle nicht aufgegangen: der
-            geltende Text im RIS deckt die linke Spalte nicht, oder die rechte
-            zeigt Geltendes als neu, oder sie trägt Text, den der Entwurf für
-            diesen Paragraphen nicht anordnet. Dann gehört die Zeile entweder
-            nicht zu dem Paragraphen, unter dem sie steht, oder die Beilage
-            legt einen älteren Stand des Gesetzes zugrunde. Wir blenden den Vergleich dort
-            aus, statt einen falschen zu zeigen – und verlinken die Beilage des
-            Ministeriums, die die Frage beantwortet. Über der Stelle steht
-            jeweils, welche der drei Prüfungen es war.
+            Eine der drei Prüfungen ist nicht aufgegangen: Die Zeile gehört
+            nicht zu ihrem Paragraphen, oder die Beilage legt einen älteren
+            Stand des Gesetzes zugrunde. Wir zeigen dort keinen Vergleich statt
+            eines falschen; an seiner Stelle steht, welche Prüfung es war. Was
+            sich ändert, sagt die Beilage des Ministeriums, die unter der
+            Gegenüberstellung verlinkt ist.
           </dd>
         </div>
         <div>
           <dt class="font-medium text-ink">„nicht geprüft“</dt>
           <dd>
-            Es gibt nichts zum Vergleichen. Ein Entwurf, der neues Recht
-            schafft, hat keinen geltenden Text; eine Verordnung steht nicht im
-            Bundesrecht; manchmal führt das RIS den Paragraphen nicht oder
-            gliedert ihn so, dass sich seine Absätze nicht auseinanderhalten
-            lassen. Das ist kein Befund über den Entwurf, sondern einer über
-            die Prüfbarkeit.
+            Die Änderung betrifft geltendes Recht, aber wir finden nichts, wogegen
+            sich prüfen ließe: Das RIS führt den Paragraphen nicht oder gliedert
+            ihn so, dass sich seine Absätze nicht auseinanderhalten lassen, das
+            geänderte Gesetz lässt sich im RIS nicht finden, oder die Beilage
+            grenzt ihre Gesetze nicht ab. Das ist kein Befund über den Entwurf,
+            sondern einer über die Prüfbarkeit. Lief die Prüfung für einen
+            ganzen Entwurf nicht, steht der Grund über der Gegenüberstellung.
           </dd>
         </div>
       </dl>
@@ -546,11 +545,10 @@ const toc = [
         das RIS die Beilage nur als Bild. Dann lesen wir das PDF des
         Ministeriums und erschließen aus dem Seitenlayout, welche Zeile links
         zu welcher Zeile rechts gehört. Der Text ist auch dort der des
-        Ministeriums – die Zuordnung ist unsere, und sie kann daneben liegen.
-        Auf solchen Seiten steht das ausdrücklich dabei. Eine Stelle, die dort
-        „nicht gezeigt“ wird, kann deshalb auch heißen: Wir haben Zeilen
-        falsch einander zugeordnet, beim Lesen der linken Spalte Text verloren
-        oder Text aus einer Nachbarzeile in die rechte gezogen.
+        Ministeriums – die Zuordnung ist unsere, und sie kann danebenliegen.
+        Auf solchen Seiten nennt die Quellenzeile das:
+        „Zeilenzuordnung: Begutachtungs-Monitor“. Ein „nicht gezeigt“ kann dort
+        auch an unserer Zuordnung liegen.
       </p>
 
       <!-- Since 30.09.2026 the only place the Lesefassung explains itself:
@@ -584,14 +582,23 @@ const toc = [
         Paragraph für Paragraph.
       </p>
       <p class="mt-4 leading-relaxed text-ink-secondary">
-        Wie viel die Regierungsvorlage am Entwurf geändert hat, zählen wir ohne
-        redaktionelle Änderungen. {{ EDITORIAL_BADGE_SENTENCE }}
-        Verglichen wird dieser Anteil mit den Entwürfen der letzten
-        abgeschlossenen Gesetzgebungsperiode; „üblich“ heißt dabei die
-        mittlere Hälfte von ihnen – ein Viertel lag darunter, ein Viertel
-        darüber. Gezählt werden die Änderungsanordnungen, auf der
-        Entwurfsseite kurz „Änderungen“. Ob eine Änderung auf eine
-        Stellungnahme zurückgeht, sagt der Vergleich nicht.
+        Wie viel die Regierungsvorlage am Entwurf geändert hat, zählen wir an
+        den Einheiten des Entwurfs – Änderungsanordnungen, auf der Seite kurz
+        „Änderungen“, oder Paragraphen: wie viele davon sie umgeschrieben oder
+        gestrichen hat. Was sie neu hinzufügt, zählt nicht mit, redaktionelle
+        Änderungen auch nicht. {{ EDITORIAL_BADGE_SENTENCE }}
+        Verglichen wird dieser Anteil mit den Entwürfen einer abgeschlossenen
+        Gesetzgebungsperiode – welcher, steht am Balken; „üblich“ heißt die
+        mittlere Hälfte von ihnen, ein Viertel lag darunter, ein Viertel
+        darüber. Kam die Vorlage noch während der Begutachtung, fehlt dieser
+        Vergleich: Die Spanne wurde an Vorlagen gemessen, die danach kamen.
+      </p>
+      <p class="mt-4 leading-relaxed text-ink-secondary">
+        Auch die Erläuterungen beider Fassungen halten wir gegeneinander.
+        Gezählt werden nur Begründungen, die in beiden Fassungen zur selben
+        Änderung stehen, und davon die, die das Ressort umgeschrieben hat. Ob
+        eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
+        beiden Vergleiche.
       </p>
     </section>
 
