@@ -594,7 +594,7 @@ const countLabel = computed(() => {
       <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
         Entwürfe
       </h1>
-      <p class="mt-2 max-w-prose text-ink-secondary">
+      <p class="mt-2 text-ink-secondary">
         Alle Begutachtungen einer Gesetzgebungsperiode – in Begutachtung und
         abgeschlossen, Gesetzes- wie Verordnungsentwürfe.
       </p>
@@ -885,7 +885,7 @@ const countLabel = computed(() => {
       <h2 class="sr-only">Ergebnisse</h2>
       <!-- Above the rows, like every other statement about what the list is
            doing: read afterwards it is worthless. -->
-      <p v-if="carriedOverFrom" class="mt-3 max-w-prose text-sm text-ink-muted">
+      <p v-if="carriedOverFrom" class="mt-3 text-sm text-ink-muted">
         Darunter Entwürfe der {{ carriedOverFrom }}. Gesetzgebungsperiode, deren
         Begutachtungsfrist noch läuft – eine Frist endet nicht damit, dass eine
         neue Gesetzgebungsperiode beginnt. Über die Auswahl oben lässt sich
@@ -894,7 +894,7 @@ const countLabel = computed(() => {
       <!-- Like the sort caveat below it: a statement about what the list is
            NOT doing stands above the rows — read afterwards it is
            worthless. -->
-      <p v-if="stationsUnavailable" class="mt-3 max-w-prose text-sm text-ink-muted">
+      <p v-if="stationsUnavailable" class="mt-3 text-sm text-ink-muted">
         Wo die Entwürfe stehen, lässt sich gerade nicht abrufen<template
           v-if="stations.length"
         > – die Liste ist deshalb <span class="font-medium text-ink">nicht</span>
@@ -906,7 +906,7 @@ const countLabel = computed(() => {
       <!-- The gap is named rather than passed off as a finding: without this
            sentence a list without stations would read as if nothing had ever
            become of any of these drafts (docs/architecture.md §12.27). -->
-      <p v-if="chainUnlinkedPeriod" class="mt-3 max-w-prose text-sm text-ink-muted">
+      <p v-if="chainUnlinkedPeriod" class="mt-3 text-sm text-ink-muted">
         Was aus diesen Entwürfen wurde, ist für diese Gesetzgebungsperiode
         nicht erfasst – der Bezug zwischen Ministerialentwurf und
         Regierungsvorlage fehlt im Datenbestand. Die Zeilen zeigen deshalb
@@ -923,7 +923,7 @@ const countLabel = computed(() => {
            Verordnung-Begutachtungen disappear. -->
       <p
         v-else-if="laterStationsOnly && art !== 'ministerialentwurf'"
-        class="mt-3 max-w-prose text-sm text-ink-muted"
+        class="mt-3 text-sm text-ink-muted"
       >
         <template v-if="stationConflict">
           <span class="font-medium text-ink">Verordnungsentwürfe haben keine
@@ -949,7 +949,7 @@ const countLabel = computed(() => {
            only there does the statement hold for the whole list. -->
       <p
         v-if="statusFilter === 'open' && secondRoundRowCount"
-        class="mt-3 max-w-prose text-sm text-ink-muted"
+        class="mt-3 text-sm text-ink-muted"
       >
         Darunter
         <span class="font-medium text-ink">{{ secondRoundRowCount }} in zweiter Runde</span>:
@@ -961,7 +961,7 @@ const countLabel = computed(() => {
            before the rows are. -->
       <p
         v-if="sort === 'stellungnahmen' && art !== 'ministerialentwurf'"
-        class="mt-3 max-w-prose text-sm text-ink-muted"
+        class="mt-3 text-sm text-ink-muted"
       >
         Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
         stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
@@ -972,7 +972,7 @@ const countLabel = computed(() => {
            every other statement about what it is not doing. -->
       <p
         v-if="qDebounced.length >= FULLTEXT_MIN_LEN && !fullTextApplies"
-        class="mt-3 max-w-prose text-sm text-ink-muted"
+        class="mt-3 text-sm text-ink-muted"
       >
         Gesucht ist hier nur in Titel, Zitat, Debattennamen und Ressortkürzel. In
         den Dokumenten selbst wird nur gesucht, solange eine Begutachtung
@@ -1008,7 +1008,7 @@ const countLabel = computed(() => {
              a claim about an answer that does not exist yet. One line then
              says what the title search returned, and the block below says the
              rest. -->
-        <p v-if="fullTextActive" class="mt-3 max-w-prose text-ink-secondary">
+        <p v-if="fullTextActive" class="mt-3 text-ink-secondary">
           Kein Titel, kein Zitat, kein Debattenname und kein Ressortkürzel
           trägt „{{ qDebounced }}“.
         </p>
@@ -1029,7 +1029,7 @@ const countLabel = computed(() => {
         <!-- The one place the question arises (30.09.2026): it stood under
              every draft page, where nobody who found the draft needs it.
              Here it answers a search that found nothing. -->
-        <p v-if="qDebounced" class="mt-3 max-w-prose text-sm text-ink-secondary">
+        <p v-if="qDebounced" class="mt-3 text-sm text-ink-secondary">
           Heißt der Entwurf in der Debatte anders? Hinweise an
           <a href="mailto:kontakt@begutachtungs-monitor.at" class="link-inline">kontakt@begutachtungs-monitor.at</a>
           – die Suche findet ihn dann auch unter diesem Namen.
@@ -1047,7 +1047,7 @@ const countLabel = computed(() => {
         <!-- The asterisk is explained here and not at the field: it applies
              to THIS half — RIS searches whole words, the list above searches
              substrings. A usage note belongs with what it changes. -->
-        <p class="mt-1 max-w-prose text-sm text-ink-muted">
+        <p class="mt-1 text-sm text-ink-muted">
           Alle Dokumente eines Entwurfs – Text, Erläuterungen,
           Gegenüberstellung, Anhänge. Gesucht werden ganze Wörter,
           <code>Klima*</code> findet auch zusammengesetzte.
@@ -1056,7 +1056,7 @@ const countLabel = computed(() => {
         <LoadingState v-if="fullTextPending" label="Im Volltext wird gesucht …" />
         <!-- AN ERROR IS NOT AN ANSWER (docs/architecture.md §12.13): „kommt
              nicht vor" would be this product's most expensive lie. -->
-        <p v-else-if="fullTextError" class="mt-3 max-w-prose text-sm text-ink-secondary">
+        <p v-else-if="fullTextError" class="mt-3 text-sm text-ink-secondary">
           Im Volltext konnte gerade nicht gesucht werden – das RIS hat nicht
           geantwortet. Die Liste oben ist davon nicht betroffen.
         </p>
@@ -1066,7 +1066,7 @@ const countLabel = computed(() => {
               <SearchEvidence :hit="hitByKey.get(entry.key)" />
             </template>
           </EntryList>
-          <p v-else-if="fullTextInList" class="mt-3 max-w-prose text-sm text-ink-secondary">
+          <p v-else-if="fullTextInList" class="mt-3 text-sm text-ink-secondary">
             Alle Volltext-Treffer stehen schon in der Liste oben – jeder mit
             seiner Fundstelle.
           </p>
@@ -1078,13 +1078,13 @@ const countLabel = computed(() => {
                below. -->
           <p
             v-else-if="!fullTextFilteredOut"
-            class="mt-3 max-w-prose text-sm text-ink-secondary"
+            class="mt-3 text-sm text-ink-secondary"
           >
             „{{ qDebounced }}“ kommt in den Dokumenten {{ fullTextCorpus }}
             nicht vor. Das Archiv bis 2004 durchsucht das
             <ExternalLink href="https://www.ris.bka.gv.at/Begut/">RIS selbst</ExternalLink>.
           </p>
-          <p v-if="fullTextFilteredOut" class="mt-3 max-w-prose text-sm text-ink-secondary">
+          <p v-if="fullTextFilteredOut" class="mt-3 text-sm text-ink-secondary">
             <span class="font-medium text-ink">Ausgeblendet:</span>
             {{ countLabelDe(fullTextFilteredOut, 'laufende Begutachtung', 'laufende Begutachtungen') }},
             die „{{ qDebounced }}“ im Volltext

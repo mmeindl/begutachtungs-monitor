@@ -303,9 +303,10 @@ const enactedHref = computed(
 
 <template>
   <div class="mx-auto w-full max-w-5xl">
-    <header class="max-w-2xl">
+    <header>
       <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-        Was passiert in der Begutachtung – und was wird daraus?
+        Was passiert in der Begutachtung –<br>
+        und was wird daraus?
       </h1>
       <!-- NO LINK in this sentence, since 18.09.2026. It carried an anchor
            to the accountability section, inherited from the stat tile's
@@ -388,7 +389,7 @@ const enactedHref = computed(
              state where its gloss below the list was suppressed — the
              gloss only rendered when such a row was present, and this line
              only renders when none is. -->
-        <p v-if="!risOnly" class="mt-2 max-w-prose text-sm text-ink-muted">
+        <p v-if="!risOnly" class="mt-2 text-sm text-ink-muted">
           Die Verordnungsentwürfe aus dem RIS sind gerade nicht abrufbar –
           <NuxtLink
             to="/entwuerfe?art=verordnung&status=open"
@@ -465,7 +466,7 @@ const enactedHref = computed(
         >
           Zweite Runde: Stellungnahme im Nationalrat möglich
         </ListHeader>
-        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+        <p class="mt-2 text-sm text-ink-secondary">
           Auch zu einer Regierungsvorlage kann Stellung genommen werden – dort
           kann der Ausschuss den Text noch ändern. {{ SECOND_ROUND_WINDOW }}
         </p>
@@ -520,7 +521,7 @@ const enactedHref = computed(
              „XXIX." is a single changed numeral in the middle of a line.
              The reason goes first, then the ordinary sentence with the
              ordinary period in it. -->
-        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+        <p class="mt-2 text-sm text-ink-secondary">
           <template v-if="rankedIsFallback">Die {{ currentGp }}. Gesetzgebungsperiode
             hat dafür noch zu wenige Begutachtungen. Hier stehen deshalb die
             Entwürfe</template><template v-else>Die Entwürfe</template> mit den
@@ -583,7 +584,7 @@ const enactedHref = computed(
              stands still because the period it belongs to is over. So the
              fallback replaces it rather than adding to it — one reason per
              state, and the true one. -->
-        <p class="mt-2 max-w-prose text-sm text-ink-secondary">
+        <p class="mt-2 text-sm text-ink-secondary">
           <template v-if="enactedIsFallback">Aus der {{ currentGp }}.
             Gesetzgebungsperiode ist noch kein Entwurf kundgemacht. Hier stehen
             deshalb die jüngsten Kundmachungen im Bundesgesetzblatt aus der
