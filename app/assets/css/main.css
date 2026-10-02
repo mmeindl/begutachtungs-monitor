@@ -419,10 +419,17 @@ body {
 }
 
 /* Page and section headings carry the serif; h3 and below stay in the UI
- * face — small headings read better in the sans. */
-h1,
-h2 {
-  font-family: var(--font-heading);
+ * face — small headings read better in the sans.
+ *
+ * In @layer base since 02.10.2026, so a utility can still say otherwise: a
+ * box title is an h2 in the outline but wears the sub-heading's sans
+ * (`font-sans`, the draft pages' spine and door cards). Unlayered, the rule
+ * beat every utility, the same trap the focus ring below fell into. */
+@layer base {
+  h1,
+  h2 {
+    font-family: var(--font-heading);
+  }
 }
 
 /*

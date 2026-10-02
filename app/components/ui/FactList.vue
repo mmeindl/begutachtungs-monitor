@@ -23,7 +23,12 @@
  * any comparison or list. Neutral on purpose: the page has three kinds of
  * box (the rail, the door that asks for action, and these), and only the
  * door wears a colour. A fact whose value carries a link fills the slot
- * `value-<key>`; `footer` takes the card's source link.
+ * `value-<key>`.
+ *
+ * No footer (02.10.2026). Its one user put „Verlauf auf parlament.gv.at"
+ * inside the card under a hairline, while every other box on the page says
+ * where it comes from and what leads on below itself, in the credit line.
+ * Inside a box stands its content, and its provenance stands under it.
  */
 export interface Fact {
   key: string
@@ -46,7 +51,7 @@ defineProps<{
 
 <template>
   <div
-    :class="card ? 'rounded-xl border border-hairline bg-surface px-5 [--frist-cut:var(--color-surface)]' : ''"
+    :class="card ? 'rounded-xl border border-hairline bg-surface px-4 [--frist-cut:var(--color-surface)]' : ''"
   >
     <ul
       role="list"
@@ -62,8 +67,5 @@ defineProps<{
         <slot :name="`after-${fact.key}`" />
       </li>
     </ul>
-    <div v-if="$slots.footer" class="border-t border-hairline py-4 text-sm">
-      <slot name="footer" />
-    </div>
   </div>
 </template>

@@ -55,7 +55,7 @@ const question = lawStationPairQuestion('me', 'rv')
 <template>
   <!-- Says nothing until the count is there: a link alone is the pointer
        the page dropped, and a placeholder would announce a number. -->
-  <p v-if="sentence" class="mt-6 text-sm text-ink-secondary">
+  <p v-if="sentence" class="text-sm text-ink-secondary">
     {{ sentence }}
     <NuxtLink to="#textvergleich" class="link-inline">{{ question }}</NuxtLink>
   </p>

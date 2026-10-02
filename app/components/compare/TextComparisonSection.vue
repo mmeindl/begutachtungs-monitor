@@ -475,7 +475,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
 </script>
 
 <template>
-  <div class="mt-1">
+  <div>
     <!-- Announces the end of loading, which otherwise happens silently.
          Stays in the DOM and empty rather than appearing only when done: a
          live region that does not yet exist when the change occurs is not
@@ -540,7 +540,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
         search-label="In der Gegenüberstellung suchen"
       />
 
-      <div class="mt-3 border-y border-hairline">
+      <div class="mt-3 overflow-clip rounded-xl border border-hairline bg-surface">
         <DiffGroup
           v-for="g in renderedGroups"
           :key="g.key"
@@ -551,7 +551,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           :open="groupOpen(g.key)"
           @toggle="toggleGroup(g.key)"
         >
-          <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-3 py-3 last:border-b-0">
+          <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-4 py-3 last:border-b-0">
             <!-- The paragraph as law prints it: designation and title on one
                  line, once, above its Absätze — and no rule between the two,
                  because the line belongs to what follows it rather than
@@ -736,7 +736,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           <button
             v-if="g.hidden"
             type="button"
-            class="flex min-h-target w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+            class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
             @click="showAll(g.key)"
           >
             <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />

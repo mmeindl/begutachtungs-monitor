@@ -125,7 +125,7 @@ const loadAnnouncement = computed(() => {
 </script>
 
 <template>
-  <div class="mt-4">
+  <div>
     <p aria-live="polite" class="sr-only">{{ loadAnnouncement }}</p>
 
     <p v-if="loading" class="text-sm text-ink-muted">
@@ -168,18 +168,24 @@ const loadAnnouncement = computed(() => {
 
       <!-- A native <details> as for the Kurzbeschreibung and the comparison's
            context lines: usable without hydration, reachable by keyboard, and
-           the browser's find-in-page opens it instead of running past it. -->
-      <details v-if="folded.length" class="group mt-4 border-t border-hairline">
+           the browser's find-in-page opens it instead of running past it.
+
+           The quiet toggle of „Alle N Gesetze anzeigen", chevron first, no
+           rule (02.10.2026): it shows more of the same text. A full-width
+           row under a hairline is what a collapsed sub-section wears
+           („Dokumente", just below), and the two read as one kind of thing,
+           with the credit line caught between their rules. -->
+      <details v-if="folded.length" class="group mt-3">
         <summary
-          class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-sm font-medium text-ink hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+          class="flex min-h-target cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden"
         >
-          <span class="group-open:hidden">Weiterlesen – noch {{ foldedParagraphs }} {{ foldedParagraphs === 1 ? 'Absatz' : 'Absätze' }}</span>
-          <span class="hidden group-open:inline">Weniger anzeigen</span>
           <UIcon
             name="i-lucide-chevron-down"
             class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
             aria-hidden="true"
           />
+          <span class="group-open:hidden">Weiterlesen – noch {{ foldedParagraphs }} {{ foldedParagraphs === 1 ? 'Absatz' : 'Absätze' }}</span>
+          <span class="hidden group-open:inline">Weniger anzeigen</span>
         </summary>
         <div class="pb-2">
           <template v-for="(item, i) in folded" :key="i">

@@ -13,7 +13,7 @@ const WIDTHS = ['w-11/12', 'w-4/5', 'w-2/3'] as const
 </script>
 
 <template>
-  <div class="space-y-2 border-y border-hairline px-3 py-3">
+  <div class="space-y-2 rounded-xl border border-hairline bg-surface px-4 py-3">
     <span class="sr-only"><slot /></span>
     <div
       v-for="w in WIDTHS"

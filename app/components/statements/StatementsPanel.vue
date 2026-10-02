@@ -502,11 +502,9 @@ const setLineRedundant = computed(
              here reads as "did not file" when the truth is that we do not
              publish that name (GDPR, docs/architecture.md §3). The field is ours, so it
              can say which of the two it is. -->
-        <div v-else-if="searchActive" class="p-5">
-          <EmptyState
-            title="Keine Organisation gefunden"
-            description="Gesucht wird nur in Organisationen; Privatpersonen stehen hier nicht mit Namen."
-          />
+        <div v-else-if="searchActive" class="px-4 py-4 text-sm">
+          <p class="font-medium text-ink">Keine Organisation gefunden</p>
+          <p class="mt-0.5 text-ink-secondary">Gesucht wird nur in Organisationen; Privatpersonen stehen hier nicht mit Namen.</p>
         </div>
         <!-- No third branch: this segment is offered only where an
              organisation filed, so without a query the list has rows. The
@@ -516,14 +514,15 @@ const setLineRedundant = computed(
 
       <!-- Everything else needs the item list, fetched on the first switch -->
       <template v-else>
-        <div v-if="status === 'pending'" class="p-5">
-          <LoadingState label="Stellungnahmen werden geladen …" />
-        </div>
-        <div v-else-if="status === 'error'" class="p-5">
-          <ErrorState
-            title="Stellungnahmen konnten nicht geladen werden"
-            @retry="execute()"
-          />
+        <!-- The states inside the sheet are rows of it, in the facts'
+             grammar (a name, the fact under it), not `EmptyState` cards: a
+             bordered card with 48px of air inside a bordered card was a box
+             in a box, and heavier than the rows it stood in for (02.10.2026).
+             The centred card stays for a page's own list. -->
+        <LoadingState v-if="status === 'pending'" label="Stellungnahmen werden geladen …" />
+        <div v-else-if="status === 'error'" role="alert" class="flex flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm">
+          <p class="font-medium text-ink">Stellungnahmen konnten nicht geladen werden</p>
+          <UButton color="primary" @click="execute()">Erneut versuchen</UButton>
         </div>
         <ul v-else-if="visibleItems.length" class="divide-y divide-hairline">
           <StatementRow
@@ -536,11 +535,9 @@ const setLineRedundant = computed(
             :endorsements="item.endorsements"
           />
         </ul>
-        <div v-else class="p-5">
-          <EmptyState
-            title="Keine Stellungnahmen in dieser Auswahl"
-          />
-        </div>
+        <p v-else class="px-4 py-4 text-sm font-medium text-ink">
+          Keine Stellungnahmen in dieser Auswahl
+        </p>
       </template>
     </div>
 

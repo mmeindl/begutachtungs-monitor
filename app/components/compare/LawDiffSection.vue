@@ -21,6 +21,7 @@
  */
 import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
 import LawStepToggle from '~/components/compare/LawStepToggle.vue'
+import PageSubsection from '~/components/ui/PageSubsection.vue'
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, Publisher, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
@@ -673,251 +674,251 @@ const droppedNote = computed(() =>
 
 <template>
   <!-- id: the outcome card above links here ("der Vergleich der beiden Texte"). -->
-  <div :id="anchorId" ref="root" class="mt-8 scroll-mt-24">
-    <h3 class="text-base font-semibold text-ink">{{ heading }}</h3>
+  <div :id="anchorId" ref="root" class="scroll-mt-24">
+    <PageSubsection :heading="heading">
+      <template v-if="sentencesShown">
+        <!-- Above the list only what is specific to THIS comparison. The
+             ME→RV counts — how much changed, against the period's range, and
+             how many Begründungen — and the way to the Erläuterungen stand in
+             the Regierungsvorlage's station card since 02.10.2026, as rows
+             instead of two paragraphs (`useVorlageOutcome`). What stays: a
+             reasoning rate for a pair the card does not hold, and the
+             warnings. -->
+        <div class="space-y-3">
+          <p v-if="reasoningNote && !countsInCard" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
+          <ComparisonCaveats :notes="[outsideNote, mergedNote, droppedNote]" />
+        </div>
+      </template>
 
-    <template v-if="sentencesShown">
-      <!-- Above the list only what is specific to THIS comparison. The
-           ME→RV counts — how much changed, against the period's range, and
-           how many Begründungen — and the way to the Erläuterungen stand in
-           the Regierungsvorlage's station card since 02.10.2026, as rows
-           instead of two paragraphs (`useVorlageOutcome`). What stays: a
-           reasoning rate for a pair the card does not hold, and the
-           warnings. -->
-      <div class="mt-1 space-y-3">
-        <p v-if="reasoningNote && !countsInCard" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
-        <ComparisonCaveats :notes="[outsideNote, mergedNote, droppedNote]" />
+      <!-- The step toggle stands first in the list's toolbar (02.10.2026):
+           under „Im Parlament" nothing above depends on the step — no figure,
+           no reasoning rate, one hint for both — so the step changes only the
+           list, and belongs with it. Where there is no list (loading, an
+           error, a PDF-only text) it stands alone at the same spot: a reader
+           who picked a step that cannot be compared keeps the way back. -->
+      <DiffToolbar
+        v-if="hasList"
+        v-model:view="view"
+        v-model:query="query"
+        view-label="Darstellung des Vergleichs"
+        search-label="Im Text suchen"
+      >
+        <LawStepToggle v-if="steps.length > 1" :steps="steps" :current="requested" @choose="chooseStep" />
+      </DiffToolbar>
+      <div v-else-if="steps.length > 1" class="mt-4">
+        <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
       </div>
-    </template>
 
-    <!-- The step toggle stands first in the list's toolbar (02.10.2026):
-         under „Im Parlament" nothing above depends on the step — no figure,
-         no reasoning rate, one hint for both — so the step changes only the
-         list, and belongs with it. Where there is no list (loading, an
-         error, a PDF-only text) it stands alone at the same spot: a reader
-         who picked a step that cannot be compared keeps the way back. -->
-    <DiffToolbar
-      v-if="hasList"
-      v-model:view="view"
-      v-model:query="query"
-      view-label="Darstellung des Vergleichs"
-      search-label="Im Text suchen"
-    >
-      <LawStepToggle v-if="steps.length > 1" :steps="steps" :current="requested" @choose="chooseStep" />
-    </DiffToolbar>
-    <div v-else-if="steps.length > 1" class="mt-4">
-      <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
-    </div>
+      <!-- Only on the first load: a later step keeps the previous list until
+           the next arrives. -->
+      <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
+        Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
+        wird mit dem der {{ toLabel }} verglichen …
+      </ListSkeleton>
+      <p v-else-if="status === 'error' || !data" class="mt-3 text-sm text-ink-secondary">
+        Der Vergleich ist gerade nicht verfügbar.
+      </p>
+      <p v-else-if="!data.available" class="mt-3 text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
 
-    <!-- Only on the first load: a later step keeps the previous list until
-         the next arrives. -->
-    <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
-      Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
-      wird mit dem der {{ toLabel }} verglichen …
-    </ListSkeleton>
-    <p v-else-if="status === 'error' || !data" class="mt-3 text-sm text-ink-secondary">
-      Der Vergleich ist gerade nicht verfügbar.
-    </p>
-    <p v-else-if="!data.available" class="mt-3 text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
+      <template v-else>
+        <template v-if="hasList">
 
-    <template v-else>
-      <template v-if="hasList">
-
-        <div class="mt-3 border-y border-hairline">
-          <DiffGroup
-            v-for="g in renderedGroups"
-            :key="g.article"
-            :title="g.article"
-            :badges="badgeCounts(g.counts, BADGE_LABEL)"
-            :open="groupOpen(g.article)"
-            @toggle="toggleGroup(g.article)"
-          >
-            <template v-for="b in g.blocks" :key="blockKey(b)">
-              <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
-                <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
-                  <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
-                </summary>
-                <div class="space-y-3 px-3 pb-3 pl-9 text-sm leading-relaxed text-ink-secondary">
-                  <p v-for="u in b.units" :key="key(u.unit)" class="hyphens-auto">
-                    <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
-                    <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
-                    <span v-else-if="u.extra"> {{ u.extra }}</span>
-                    <span> — {{ u.unit.toText }}</span>
-                  </p>
-                </div>
-              </details>
-
-              <div v-else class="border-b border-hairline px-3 py-3 last:border-b-0">
-                <!-- Designation and name on a line of their own, above the
-                     badge. Beside it they had to share one line with the
-                     status, so "geändert Z 4 Geheimhaltung" read as a single
-                     token — and the Textgegenüberstellung, where a § heads
-                     several Absätze, cannot put them there at all. One shape
-                     for both sections: what this is, then how it changed. -->
-                <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                  <span class="font-medium text-ink">
-                    {{ displayId(b.unit.id) }}
-                    <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
-                  </span>
-                  <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
-                  <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
-                </p>
-                <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
-                  <p class="mb-1 text-sm">
-                    <span
-                      class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                      :class="BADGE_CLASS[badgeOf(b.unit)]"
-                    >
-                      {{ BADGE_LABEL[badgeOf(b.unit)] }}
-                    </span>
-                  </p>
-
-                  <!-- Inline: one sentence, old struck out where the new
-                       stands. The default, and right for most changes. -->
-                  <p v-if="b.unit.change === 'changed' && view === 'inline' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
-                    <DiffText :segments="b.unit.segments" />
-                  </p>
-                  <!-- Side by side. ONE shape for two cases: the reader
-                       asked for columns, or the word diff hit its ceiling
-                       and there are no segments to inline (then
-                       `splitSegments` marks each side whole). The fallback
-                       used to be its own layout, which made a technical
-                       limit look like a different kind of change. -->
-                  <div v-else-if="b.unit.change === 'changed'" class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
-                      <p class="hyphens-auto text-ink">
-                        <DiffText :segments="b.from" side="from" />
-                      </p>
-                    </div>
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
-                      <p class="hyphens-auto text-ink">
-                        <DiffText :segments="b.to" side="to" />
-                      </p>
-                    </div>
+          <div class="mt-3 overflow-clip rounded-xl border border-hairline bg-surface">
+            <DiffGroup
+              v-for="g in renderedGroups"
+              :key="g.article"
+              :title="g.article"
+              :badges="badgeCounts(g.counts, BADGE_LABEL)"
+              :open="groupOpen(g.article)"
+              @toggle="toggleGroup(g.article)"
+            >
+              <template v-for="b in g.blocks" :key="blockKey(b)">
+                <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
+                  <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 px-4 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
+                    <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                    {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
+                  </summary>
+                  <div class="space-y-3 px-4 pb-3 pl-10 text-sm leading-relaxed text-ink-secondary">
+                    <p v-for="u in b.units" :key="key(u.unit)" class="hyphens-auto">
+                      <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
+                      <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
+                      <span v-else-if="u.extra"> {{ u.extra }}</span>
+                      <span> — {{ u.unit.toText }}</span>
+                    </p>
                   </div>
-                  <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.toText }}</p>
-                  <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
-                  <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
+                </details>
 
-                  <!-- What the Ressort says about it — and whether it says
-                       so differently after the Begutachtung than before.
-                       Closed, like the reasoning at the
-                       Textgegenüberstellung (docs/architecture.md §12.30):
-                       it answers a second question, not the first. A native
-                       <details>, so the browser's find-in-page opens it
-                       instead of running past it. -->
-                  <details v-if="b.reasoning" class="group mt-2">
-                    <summary class="-mx-1 flex min-h-target cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
-                      <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                      <!-- Says what was compared (01.10.2026): the passage on
-                           this change, or — where the Erläuterungen are titled
-                           by § — everything they say about the Paragraph. -->
-                      <template v-if="!b.reasoning.comparable">Die Begründung des Ressorts zu dieser Änderung</template>
-                      <template v-else>{{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ressorts zu dieser Änderung hat sich geändert' : 'Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert' }}</template>
-                    </summary>
-                    <!-- Shown, not compared (01.10.2026): the two documents
-                         explain this change together with different others,
-                         so a word diff would measure the regrouping. One
-                         sentence says why, then the texts under their own
-                         headings — no „geändert", no „unverändert". -->
-                    <div v-if="!b.reasoning.comparable" class="pb-2 pl-6">
-                      <p class="mb-2 text-xs text-ink-muted">Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.</p>
-                      <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed" :class="b.reasoning.fromText ? 'sm:grid-cols-2' : ''">
-                        <div v-if="b.reasoning.fromText">
-                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
-                          <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.fromHeading }}</p>
-                          <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
-                        </div>
-                        <div>
-                          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
-                          <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.label }}</p>
-                          <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
-                        </div>
+                <div v-else class="border-b border-hairline px-4 py-3 last:border-b-0">
+                  <!-- Designation and name on a line of their own, above the
+                       badge. Beside it they had to share one line with the
+                       status, so "geändert Z 4 Geheimhaltung" read as a single
+                       token — and the Textgegenüberstellung, where a § heads
+                       several Absätze, cannot put them there at all. One shape
+                       for both sections: what this is, then how it changed. -->
+                  <p class="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+                    <span class="font-medium text-ink">
+                      {{ displayId(b.unit.id) }}
+                      <span v-if="b.unit.fromId && b.unit.fromId !== b.unit.id" class="font-normal text-ink-muted">({{ fromLabel === 'Ministerialentwurf' ? 'im Entwurf' : `in der ${fromLabel}` }} {{ displayId(b.unit.fromId) }})</span>
+                    </span>
+                    <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
+                    <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
+                  </p>
+                  <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
+                    <p class="mb-1 text-sm">
+                      <span
+                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                        :class="BADGE_CLASS[badgeOf(b.unit)]"
+                      >
+                        {{ BADGE_LABEL[badgeOf(b.unit)] }}
+                      </span>
+                    </p>
+
+                    <!-- Inline: one sentence, old struck out where the new
+                         stands. The default, and right for most changes. -->
+                    <p v-if="b.unit.change === 'changed' && view === 'inline' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
+                      <DiffText :segments="b.unit.segments" />
+                    </p>
+                    <!-- Side by side. ONE shape for two cases: the reader
+                         asked for columns, or the word diff hit its ceiling
+                         and there are no segments to inline (then
+                         `splitSegments` marks each side whole). The fallback
+                         used to be its own layout, which made a technical
+                         limit look like a different kind of change. -->
+                    <div v-else-if="b.unit.change === 'changed'" class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                      <div>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                        <p class="hyphens-auto text-ink">
+                          <DiffText :segments="b.from" side="from" />
+                        </p>
+                      </div>
+                      <div>
+                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                        <p class="hyphens-auto text-ink">
+                          <DiffText :segments="b.to" side="to" />
+                        </p>
                       </div>
                     </div>
-                    <template v-else>
-                      <!-- The Vorlage's heading, because one passage often
-                         explains several changes („Zu Z 1 bis 3 (§ 5):") and
-                         the same drawer then opens at each of them. -->
-                      <p v-if="b.reasoning.basis === 'ziffer'" class="pb-1 pl-6 text-xs text-ink-muted">{{ b.reasoning.label }}</p>
-                      <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
-                        <DiffText :segments="b.reasoning.segments ?? []" />
-                      </p>
-                      <!-- Without a word diff: both versions in full, side by
-                         side as in the comparison above, so a technical
-                         ceiling does not look like a different kind of
-                         change. The drawer is never empty — that the
-                         reasoning is a different one is the finding, and the
-                         ceiling is ours, not the Ressort's. -->
-                      <div v-else class="pb-2 pl-6">
-                        <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
-                        <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                          <div>
+                    <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.toText }}</p>
+                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
+                    <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
+
+                    <!-- What the Ressort says about it — and whether it says
+                         so differently after the Begutachtung than before.
+                         Closed, like the reasoning at the
+                         Textgegenüberstellung (docs/architecture.md §12.30):
+                         it answers a second question, not the first. A native
+                         <details>, so the browser's find-in-page opens it
+                         instead of running past it. -->
+                    <details v-if="b.reasoning" class="group mt-2">
+                      <summary class="-mx-1 flex min-h-target cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
+                        <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                        <!-- Says what was compared (01.10.2026): the passage on
+                             this change, or — where the Erläuterungen are titled
+                             by § — everything they say about the Paragraph. -->
+                        <template v-if="!b.reasoning.comparable">Die Begründung des Ressorts zu dieser Änderung</template>
+                        <template v-else>{{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ressorts zu dieser Änderung hat sich geändert' : 'Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert' }}</template>
+                      </summary>
+                      <!-- Shown, not compared (01.10.2026): the two documents
+                           explain this change together with different others,
+                           so a word diff would measure the regrouping. One
+                           sentence says why, then the texts under their own
+                           headings — no „geändert", no „unverändert". -->
+                      <div v-if="!b.reasoning.comparable" class="pb-2 pl-6">
+                        <p class="mb-2 text-xs text-ink-muted">Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.</p>
+                        <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed" :class="b.reasoning.fromText ? 'sm:grid-cols-2' : ''">
+                          <div v-if="b.reasoning.fromText">
                             <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                            <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.fromHeading }}</p>
                             <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
                           </div>
                           <div>
                             <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                            <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.label }}</p>
                             <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
                           </div>
                         </div>
                       </div>
-                    </template>
-                  </details>
+                      <template v-else>
+                        <!-- The Vorlage's heading, because one passage often
+                           explains several changes („Zu Z 1 bis 3 (§ 5):") and
+                           the same drawer then opens at each of them. -->
+                        <p v-if="b.reasoning.basis === 'ziffer'" class="pb-1 pl-6 text-xs text-ink-muted">{{ b.reasoning.label }}</p>
+                        <p v-if="b.reasoning.segments" class="hyphens-auto pb-2 pl-6 text-sm leading-relaxed text-ink">
+                          <DiffText :segments="b.reasoning.segments ?? []" />
+                        </p>
+                        <!-- Without a word diff: both versions in full, side by
+                           side as in the comparison above, so a technical
+                           ceiling does not look like a different kind of
+                           change. The drawer is never empty — that the
+                           reasoning is a different one is the finding, and the
+                           ceiling is ours, not the Ressort's. -->
+                        <div v-else class="pb-2 pl-6">
+                          <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
+                          <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
+                            <div>
+                              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                              <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
+                            </div>
+                            <div>
+                              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                              <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </template>
+                    </details>
+                  </div>
                 </div>
-              </div>
-            </template>
+              </template>
 
-            <button
-              v-if="g.hidden"
-              type="button"
-              class="flex min-h-target w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
-              @click="showAll(g.article)"
-            >
-              <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
-              {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
-            </button>
-          </DiffGroup>
-        </div>
-        <!-- Stays in the DOM as a live region and goes empty rather than
-             disappearing: a region that comes into being with its text is not
-             announced — whoever searched and found nothing would otherwise
-             get silence back. -->
-        <p
-          role="status"
-          :class="visibleUnits.length ? 'sr-only' : 'mt-2 text-sm text-ink-secondary'"
-        >{{ visibleUnits.length ? '' : 'Nichts gefunden.' }}</p>
+              <button
+                v-if="g.hidden"
+                type="button"
+                class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+                @click="showAll(g.article)"
+              >
+                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
+                {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
+              </button>
+            </DiffGroup>
+          </div>
+          <!-- Stays in the DOM as a live region and goes empty rather than
+               disappearing: a region that comes into being with its text is not
+               announced — whoever searched and found nothing would otherwise
+               get silence back. -->
+          <p
+            role="status"
+            :class="visibleUnits.length ? 'sr-only' : 'mt-2 text-sm text-ink-secondary'"
+          >{{ visibleUnits.length ? '' : 'Nichts gefunden.' }}</p>
+        </template>
+
+        <!-- Provenance under the text it belongs to, the way a source note
+             sits under a table rather than over it (17.09.2026). It is looked
+             up while or after reading, never before — and it is one more block
+             that used to rewrite itself above the select.
+
+             Who published each document, never the licence: what may be
+             claimed hangs on publisher and station and stands once, in the
+             Impressum (`#shared/utils/provenance`, 02.10.2026). Where the line
+             mixes publishers each version names its own — „Quellen: Parlament,
+             RIS" over two documents left open which came from where, and
+             „Parlament (Dokumente: freie Werke)" under ME→RV read as covering
+             the draft too. -->
+        <SectionCredits :sources="sources" method="/so-funktionierts#vergleich">
+          <!-- Grouped by version since 30.09.2026: „Entwurf: Text ·
+               Erläuterungen" instead of four links each carrying its version's
+               name. The links are there for the reader. -->
+          <span v-for="side in creditSides" :key="side.station">
+            {{ side.label }}:
+            <ExternalLink v-if="side.text" :href="side.text.url" class="text-accent-deep hover:underline">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="text-accent-deep hover:underline">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
+          </span>
+          <!-- The § names come from a third source; a page that shows text has
+               to say where it is from, even when the text is one word long.
+               The date stays here, beside the comparison it dates: it changes
+               per section, the licence does not. -->
+          <span v-if="namedCount">Paragraphenüberschriften{{ paraTitlesTag }}<template v-if="paraTitlesAsOf">: Stand {{ paraTitlesAsOf }}</template></span>
+        </SectionCredits>
       </template>
-
-      <!-- Provenance under the text it belongs to, the way a source note
-           sits under a table rather than over it (17.09.2026). It is looked
-           up while or after reading, never before — and it is one more block
-           that used to rewrite itself above the select.
-
-           Who published each document, never the licence: what may be
-           claimed hangs on publisher and station and stands once, in the
-           Impressum (`#shared/utils/provenance`, 02.10.2026). Where the line
-           mixes publishers each version names its own — „Quellen: Parlament,
-           RIS" over two documents left open which came from where, and
-           „Parlament (Dokumente: freie Werke)" under ME→RV read as covering
-           the draft too. -->
-      <SectionCredits :sources="sources" method="/so-funktionierts#vergleich">
-        <!-- Grouped by version since 30.09.2026: „Entwurf: Text ·
-             Erläuterungen" instead of four links each carrying its version's
-             name. The links are there for the reader. -->
-        <span v-for="side in creditSides" :key="side.station">
-          {{ side.label }}:
-          <ExternalLink v-if="side.text" :href="side.text.url" class="text-accent-deep hover:underline">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="text-accent-deep hover:underline">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
-        </span>
-        <!-- The § names come from a third source; a page that shows text has
-             to say where it is from, even when the text is one word long.
-             The date stays here, beside the comparison it dates: it changes
-             per section, the licence does not. -->
-        <span v-if="namedCount">Paragraphenüberschriften{{ paraTitlesTag }}<template v-if="paraTitlesAsOf">: Stand {{ paraTitlesAsOf }}</template></span>
-      </SectionCredits>
-    </template>
+    </PageSubsection>
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RvStatementsResponse } from '#shared/types'
+import PageSubsection from '~/components/ui/PageSubsection.vue'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 
 /**
@@ -106,9 +107,7 @@ const destination = computed(() =>
 </script>
 
 <template>
-  <div class="mt-8">
-    <h3 class="text-base font-semibold text-ink">Stellungnahmen zur Regierungsvorlage</h3>
-
+  <PageSubsection heading="Stellungnahmen zur Regierungsvorlage">
     <!-- The fact alone since 30.09.2026. That one can file on a
          Regierungsvorlage, until when, and the button to do it stand in the
          action card at the top of the page whenever `filingOpen` is true —
@@ -170,10 +169,14 @@ const destination = computed(() =>
 
       <!-- One pointer, not two in a row (30.09.2026): „– sie stehen
            vollständig beim Gegenstand" and the link under it said the same,
-           and whether one can still file is the action card's job. -->
-      <p class="mt-3 text-sm text-ink-muted">
-        <ExternalLink :href="data.rvUrl" class="link-inline">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
+           and whether one can still file is the action card's job.
+           Under the card, on the right, where the list's other way to more
+           stands („Weitere 10 · Alle"): what leads on from a box is a
+           standalone link, quiet at rest (02.10.2026). It stood as an
+           underlined sentence of its own. -->
+      <p class="mt-3 flex text-sm sm:justify-end">
+        <ExternalLink :href="data.rvUrl" class="tap-target rounded font-medium text-accent-deep hover:underline">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
       </p>
     </template>
-  </div>
+  </PageSubsection>
 </template>

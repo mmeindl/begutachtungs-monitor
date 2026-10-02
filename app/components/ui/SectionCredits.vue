@@ -34,6 +34,12 @@
  * as „Wie wir vergleichen" and „Wie wir prüfen", once per section: the
  * licence's pattern again, one claim in several wordings. A section passes
  * its anchor on /so-funktionierts, the component writes the word.
+ *
+ * `own` names anything else on the box that is ours rather than the
+ * publisher's (02.10.2026): a station card shows Parliament's facts beside
+ * figures we compute from them, the Frist median or the count of rewritten
+ * paragraphs, and „Quelle: Parlament" alone would claim those for Parliament.
+ * Same grammar as the marking, in the same place: after the other people's things.
  */
 import { sourceLineDe, type SourceEntry } from '#shared/utils/provenance'
 
@@ -42,6 +48,8 @@ const props = withDefaults(defineProps<{
   marked?: boolean
   /** The section paired the rows itself (`readFrom: 'pdf'`). */
   paired?: boolean
+  /** What else on the box is ours, e.g. „Zählung" → „Zählung: Begutachtungs-Monitor". */
+  own?: string
   /** The section's anchor on the method page, e.g. `/so-funktionierts#vergleich`. */
   method?: string
 }>(), { marked: true })
@@ -54,6 +62,7 @@ const line = computed(() => sourceLineDe(props.sources))
     <span v-if="line">{{ line }}</span>
     <slot />
     <span v-if="paired">Zeilenzuordnung: Begutachtungs-Monitor</span>
+    <span v-if="own">{{ own }}: Begutachtungs-Monitor</span>
     <span v-if="marked">Markierung: Begutachtungs-Monitor</span>
     <NuxtLink v-if="method" :to="method" class="text-accent-deep hover:underline">Methode</NuxtLink>
   </div>

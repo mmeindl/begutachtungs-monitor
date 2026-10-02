@@ -3,6 +3,7 @@ import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentForm
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
 import type { Fact } from '~/components/ui/FactList.vue'
+import PageSubsection from '~/components/ui/PageSubsection.vue'
 import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristRangeDe } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
 
@@ -222,11 +223,11 @@ const documents = computed(() => {
            an untyped record keeps the card in words: neither has a path
            here that can be read to its end. -->
       <div class="mt-6">
-        <div class="rounded-xl border border-hairline bg-surface p-5">
+        <div class="rounded-xl border border-hairline bg-surface p-4">
           <!-- Heading and link as on the Ministerialentwurf page: the same
                card, the same place, the same weights. -->
           <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 class="font-medium text-ink">
+            <h2 class="font-sans text-base font-semibold text-ink">
               {{ regulationStatusDe(data.active, outcome?.state === 'kundgemacht') }}
             </h2>
             <!-- With a bar, straight to the fork: „why three stations and
@@ -286,12 +287,12 @@ const documents = computed(() => {
            afternoon. -->
       <div
         v-if="data.active"
-        class="mt-6 rounded-xl border p-5"
+        class="mt-6 rounded-xl border p-4"
         :class="deadlineCardClass(deadlineTone(data.deadline, data.active))"
       >
         <!-- A heading, not a paragraph: the one action the page offers
              belongs in the outline. -->
-        <h2 class="font-medium text-ink">
+        <h2 class="font-sans text-base font-semibold text-ink">
           <!-- The countdown alone since 30.09.2026: the date stands in the
                bar directly above. -->
           {{ fristLabel(data.deadline, data.active) }}
@@ -359,102 +360,102 @@ const documents = computed(() => {
            for the PDFs. Until then the Erläuterungen led here. -->
       <section id="entwurf" class="page-section scroll-mt-6" aria-labelledby="entwurf-heading">
         <h2 id="entwurf-heading" class="section-heading">Der Entwurf</h2>
+        <div class="mt-4 space-y-8">
 
-        <!-- The ressort's own comparison, from day one — and on these pages it
-             carries more weight than on a Ministerialentwurf's. There is no
-             Regierungsvorlage to compare against later and no parliamentary
-             Kurzinformation above it, so this is the only place the procedure
-             says what would change. Shown since 26.09.2026; until then both
-             services were keyed on (GP, Nummer) and two thirds of the corpus
-             had no section at all (§12.16). -->
-        <div id="gegenueberstellung" class="mt-4 scroll-mt-6">
-          <h3 class="text-base font-semibold text-ink">Was ändert der Entwurf?</h3>
-          <TextComparisonSection :ris-id="data.id" />
-        </div>
+          <!-- The ressort's own comparison, from day one — and on these pages it
+               carries more weight than on a Ministerialentwurf's. There is no
+               Regierungsvorlage to compare against later and no parliamentary
+               Kurzinformation above it, so this is the only place the procedure
+               says what would change. Shown since 26.09.2026; until then both
+               services were keyed on (GP, Nummer) and two thirds of the corpus
+               had no section at all (§12.16). -->
+          <PageSubsection id="gegenueberstellung" heading="Was ändert der Entwurf?">
+            <TextComparisonSection :ris-id="data.id" />
+          </PageSubsection>
 
-        <!-- It weighs more here than on the draft page: this Verfahren has no
-             Kurzbeschreibung from Parliament, because it never reaches
-             Parliament. The Erläuterungen are therefore the only information
-             about its purpose the Verfahren publishes at all — and 72,1 % of
-             the Verordnung records carry them (`pnpm corpus:verordnungen`).
-             Still second: its Besonderer Teil hangs at the §§ of the comparison
-             above anyway. -->
-        <div id="erlaeuterungen" class="mt-8 scroll-mt-6">
-          <h3 class="text-base font-semibold text-ink">Was das Ressort begründet</h3>
-          <ExplanationsSection :ris-id="data.id" />
-        </div>
+          <!-- It weighs more here than on the draft page: this Verfahren has no
+               Kurzbeschreibung from Parliament, because it never reaches
+               Parliament. The Erläuterungen are therefore the only information
+               about its purpose the Verfahren publishes at all — and 72,1 % of
+               the Verordnung records carry them (`pnpm corpus:verordnungen`).
+               Still second: its Besonderer Teil hangs at the §§ of the comparison
+               above anyway. -->
+          <PageSubsection id="erlaeuterungen" heading="Was das Ressort begründet">
+            <ExplanationsSection :ris-id="data.id" />
+          </PageSubsection>
 
-        <!-- The house <details> with the heading in the <summary>, as on the
-             draft page and in DraftDescription: the outline does not depend on
-             what is open, find-in-page still opens it, and nothing above it
-             moves when it opens. -->
-        <details class="group mt-8 border-t border-hairline">
-          <summary
-            class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
-          >
-            <h3 id="dokumente" class="text-base font-semibold text-ink">
-              Dokumente<template v-if="documents.length"> ({{ documents.length }})</template>
-            </h3>
-            <UIcon
-              name="i-lucide-chevron-down"
-              class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
-              aria-hidden="true"
-            />
-          </summary>
-          <div class="pb-2">
-            <!-- THE ZITIERFORM, since 26.09.2026 — the one deliberate gap the
-                 anatomy comparison of 17.09.2026 left open
-                 (docs/architecture.md §12.16).
+          <!-- The house <details> with the heading in the <summary>, as on the
+               draft page and in DraftDescription: the outline does not depend on
+               what is open, find-in-page still opens it, and nothing above it
+               moves when it opens. -->
+          <details class="group border-t border-hairline">
+            <summary
+              class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+            >
+              <h3 id="dokumente" class="text-base font-semibold text-ink">
+                Dokumente<template v-if="documents.length"> ({{ documents.length }})</template>
+              </h3>
+              <UIcon
+                name="i-lucide-chevron-down"
+                class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </summary>
+            <div class="pb-2">
+              <!-- THE ZITIERFORM, since 26.09.2026 — the one deliberate gap the
+                   anatomy comparison of 17.09.2026 left open
+                   (docs/architecture.md §12.16).
 
-                 These Verfahren have no Geschäftszahl, so „132/ME" — the string
-                 a reader quotes and a lawyer cites — had no counterpart on the
-                 page. The RIS Dokumentnummer is it: how RIS addresses the
-                 record, what „Im RIS ansehen" resolves, and this page's own URL.
-                 Until now it was on screen only in the address bar, with nothing
-                 saying what it was.
+                   These Verfahren have no Geschäftszahl, so „132/ME" — the string
+                   a reader quotes and a lawyer cites — had no counterpart on the
+                   page. The RIS Dokumentnummer is it: how RIS addresses the
+                   record, what „Im RIS ansehen" resolves, and this page's own URL.
+                   Until now it was on screen only in the address bar, with nothing
+                   saying what it was.
 
-                 HERE AND NOT IN THE HEADER, and the first two attempts are the
-                 reason. In the Metazeile beside the type word it cost the phone
-                 TWO EXTRA LINES above the h1 (three meta rows at 500 px against
-                 the draft page's one). Moved one line down into the
-                 Herkunftszeile it was worse in kind rather than in size: that
-                 line is human-readable facts separated by „·" — a ministry, a
-                 link label — and a 42-character GUID at the same size, weight
-                 and colour is not the same kind of thing, so it read as noise
-                 and pushed the link onto its own line.
+                   HERE AND NOT IN THE HEADER, and the first two attempts are the
+                   reason. In the Metazeile beside the type word it cost the phone
+                   TWO EXTRA LINES above the h1 (three meta rows at 500 px against
+                   the draft page's one). Moved one line down into the
+                   Herkunftszeile it was worse in kind rather than in size: that
+                   line is human-readable facts separated by „·" — a ministry, a
+                   link label — and a 42-character GUID at the same size, weight
+                   and colour is not the same kind of thing, so it read as noise
+                   and pushed the link onto its own line.
 
-                 The mistake behind both was reasoning from the anatomy table
-                 instead of from the string. „137/ME" belongs in the header
-                 because it is short and people say it out loud; `BEGUT_C7697…`
-                 is a lookup key nobody carries in their head. So it keeps the
-                 JOB, not the slot: it stands with the sentence that already
-                 names the source, at the bottom, where whoever wants to cite or
-                 download is looking anyway — and in its own typographic class,
-                 so it reads as a key and not as prose. -->
-            <p class="mt-1 text-sm text-ink-secondary">
-              <!-- Source and key as a caption since 30.09.2026, not two
-                   sentences: „Aus dem Rechtsinformationssystem des Bundes (RIS),
-                   CC BY 4.0. Im RIS steht dieser Entwurf unter der
-                   Dokumentnummer …". The licence went on 02.10.2026, as in
-                   every credit line: what may be claimed per source is the
-                   Impressum's, linked from the footer of every page. -->
-              Quelle: RIS · Dokumentnummer
-              <!-- Not a link: it would be the second element on this page
-                   pointing at the RIS page the header already links, and the
-                   draft page makes the same split — the Geschäftszahl is text,
-                   its resolver stands elsewhere. `break-all` because 42
-                   characters do not fit a phone column unbroken. -->
-              <span class="break-all font-mono text-xs text-ink">{{ data.id }}</span>.
-            </p>
-            <div class="mt-3">
-              <DocumentList :documents="documents" source="ris.bka.gv.at" />
+                   The mistake behind both was reasoning from the anatomy table
+                   instead of from the string. „137/ME" belongs in the header
+                   because it is short and people say it out loud; `BEGUT_C7697…`
+                   is a lookup key nobody carries in their head. So it keeps the
+                   JOB, not the slot: it stands with the sentence that already
+                   names the source, at the bottom, where whoever wants to cite or
+                   download is looking anyway — and in its own typographic class,
+                   so it reads as a key and not as prose. -->
+              <p class="mt-1 text-sm text-ink-secondary">
+                <!-- Source and key as a caption since 30.09.2026, not two
+                     sentences: „Aus dem Rechtsinformationssystem des Bundes (RIS),
+                     CC BY 4.0. Im RIS steht dieser Entwurf unter der
+                     Dokumentnummer …". The licence went on 02.10.2026, as in
+                     every credit line: what may be claimed per source is the
+                     Impressum's, linked from the footer of every page. -->
+                Quelle: RIS · Dokumentnummer
+                <!-- Not a link: it would be the second element on this page
+                     pointing at the RIS page the header already links, and the
+                     draft page makes the same split — the Geschäftszahl is text,
+                     its resolver stands elsewhere. `break-all` because 42
+                     characters do not fit a phone column unbroken. -->
+                <span class="break-all font-mono text-xs text-ink">{{ data.id }}</span>.
+              </p>
+              <div class="mt-3">
+                <DocumentList :documents="documents" source="ris.bka.gv.at" />
+              </div>
+              <!-- No second "Datensatz im RIS" link here: the header line already
+                   carries it, in the slot where the draft page puts "Auf
+                   parlament.gv.at ansehen" — provenance belongs next to the
+                   item's identity, not mid-page as an action it is not. -->
             </div>
-            <!-- No second "Datensatz im RIS" link here: the header line already
-                 carries it, in the slot where the draft page puts "Auf
-                 parlament.gv.at ansehen" — provenance belongs next to the
-                 item's identity, not mid-page as an action it is not. -->
-          </div>
-        </details>
+          </details>
+        </div>
       </section>
 
     </FetchGate>
