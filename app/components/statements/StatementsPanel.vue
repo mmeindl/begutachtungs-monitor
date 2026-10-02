@@ -251,16 +251,6 @@ const hiddenOrgCount = computed(() =>
   Math.max(0, props.summary.organisations - listedOrgStatements.value),
 )
 
-/* True when a row can stand for more than one submission. Decides the shape
- * of the count line, which is the whole explanation: "23 Stellungnahmen von
- * 22 Organisationen" says a row holds more than one without a sentence
- * saying so, and the grouped row itself states its count and lists them. */
-const orgsFiledRepeatedly = computed(
-  () =>
-    props.summary.organisationList.length > 0 &&
-    listedOrgStatements.value !== props.summary.organisationList.length,
-)
-
 /* What the segment would hold, known from the summary before the list is
  * fetched — so the count line says something during the first load instead
  * of flashing a zero. */
@@ -299,28 +289,19 @@ const setLine = computed(() => {
         'Organisationen',
       )}`
     }
-    /* `orgRows` maps the same list, so it has the same length. */
-    const orgs = countLabelDe(
-      orgRows.value.length,
-      'Organisation',
-      'Organisationen',
-    )
-    /* Both numbers in one line when they differ, so "25 Organisationen" is
-     * not stated twice under each other. */
-    return orgsFiledRepeatedly.value
-      ? `${statementCountLabel(listedOrgStatements.value)} von ${orgs}`
-      : orgs
+    /* `orgRows` maps the same list, so it has the same length. An
+     * organisation that filed more than once is one row, and that row states
+     * its count — "126 Stellungnahmen von 125 Organisationen" above the list
+     * explained a gap no reader was asking about. */
+    return countLabelDe(orgRows.value.length, 'Organisation', 'Organisationen')
   }
   return statementCountLabel(segmentTotal.value)
 })
 
-/* The size of a segment is already a number in the <dl> above — "58" under
- * Privatpersonen IS this line — so stating it again three centimetres lower
- * is the same sentence twice. The ONE thing the <dl> cannot say is that 26
- * statements came from 25 organisations, because its four counts must sum to
- * Gesamt and are therefore all statement counts.
+/* The size of a segment is already the number on its filter button, so
+ * stating it again under the controls is the same sentence twice.
  *
- * So the line stays in the DOM and goes visually silent everywhere else: it
+ * So the line stays in the DOM and goes visually silent outside a search: it
  * is the panel's live region, and switching a segment swaps the list without
  * moving focus, which leaves a screen-reader user with no other feedback that
  * anything happened.
@@ -328,7 +309,7 @@ const setLine = computed(() => {
  * Under a query it is never redundant: no number anywhere else on the panel
  * says how many rows the query found. */
 const setLineRedundant = computed(
-  () => !searchActive.value && (needsList.value || !orgsFiledRepeatedly.value),
+  () => !searchActive.value,
 )
 </script>
 
