@@ -14,11 +14,32 @@ import {
   submitterName,
 } from '~/utils/statementRows'
 
-const props = defineProps<{
-  gp: string
-  inr: number
-  summary: StatementsSummary
-}>()
+/**
+ * Both rounds of Stellungnahmen render through this panel — the
+ * Begutachtung's and, since 02.10.2026, the Regierungsvorlage's
+ * (RvStatements wraps it). One filter grammar for one kind of list: the
+ * Vorlage's used to be a single unfiltered list on the argument that it
+ * draws a handful, which holds for the median and not for the Vorlagen
+ * people look up (1289 d.B.: 41.376), and once the counts rode on the
+ * filter buttons, two cards on one page stated them in two different ways.
+ *
+ * The two differ only in where the item list comes from, hence the two
+ * props, exactly one of them set.
+ */
+const props = withDefaults(
+  defineProps<{
+    summary: StatementsSummary
+    /** The Begutachtung: fetched lazily, on the first segment that needs it. */
+    listUrl?: string
+    /** The Vorlage: already in the page's own response, so never fetched. */
+    items?: StatementMeta[] | null
+    /** The summary counts only part of the Stellungnahmen (above the cap). */
+    partial?: boolean
+    /** Of the list's sr-only heading — one below the section it sits in. */
+    headingLevel?: 3 | 4
+  }>(),
+  { listUrl: undefined, items: null, partial: false, headingLevel: 3 },
+)
 
 /* Ten, not the panel's old twenty-five: this list sits on a detail page with
  * five other sections, and a first page that fills the viewport makes the
@@ -68,7 +89,7 @@ const filterCounts = computed<Record<StatementFilter, number>>(() => ({
   all: props.summary.total,
 }))
 const filterOptions = computed(() =>
-  availableStatementFilters(props.summary).map((value) => ({ value, label: filterLabels[value], count: filterCounts.value[value] })),
+  availableStatementFilters(props.summary, { partial: props.partial }).map((value) => ({ value, label: filterLabels[value], count: filterCounts.value[value] })),
 )
 
 /* Default first, as on the archive page: the leftmost segment reads as "where
@@ -126,10 +147,12 @@ const visibleCount = ref(PAGE_SIZE)
  * for a reader without JavaScript too. It costs no upstream call: the route
  * reads the same cached list-142 aggregation this page's summary was built
  * from. */
-const { data, status, execute } = useFetch<StatementsResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/statements`,
-  { immediate: filter.value !== 'organisations' },
+const fetchesList = props.items === null
+const { data, status: fetchStatus, execute } = useFetch<StatementsResponse>(
+  () => props.listUrl ?? '',
+  { immediate: fetchesList && filter.value !== 'organisations' },
 )
+const status = computed(() => (fetchesList ? fetchStatus.value : 'success'))
 
 const needsList = computed(() => filter.value !== 'organisations')
 
@@ -149,7 +172,7 @@ watch(filter, async (value) => {
   /* The field is unmounted with the segment; a query left behind would
    * filter a list the reader can no longer see the field for. */
   orgQuery.value = ''
-  if (value !== 'organisations' && status.value === 'idle') {
+  if (value !== 'organisations' && fetchesList && fetchStatus.value === 'idle') {
     await execute()
   }
 })
@@ -170,7 +193,7 @@ watch(sort, () => {
  * that filed twice therefore appears twice under "Alle", which is what a raw
  * list should show; the grouped view is the Organisationen segment. */
 const items = computed<StatementMeta[]>(() => {
-  const all = [...(data.value?.items ?? [])].sort((a, b) => compareStatementRows(a, b, sort.value))
+  const all = [...(props.items ?? data.value?.items ?? [])].sort((a, b) => compareStatementRows(a, b, sort.value))
   if (filter.value === 'persons') {
     return all.filter((s) => s.submitterKind === 'person')
   }
@@ -240,6 +263,8 @@ function orgRowHidden(index: number): 'until-found' | undefined {
 /* Offered on the size of the WHOLE list, not of the current result — a field
  * that disappears once it has narrowed the list to three rows takes away the
  * only way back. */
+const searchId = useId()
+
 const showOrgSearch = computed(() => !needsList.value && orgRows.value.length > SEARCH_MIN)
 
 /* ORG_LIST_CAP is set far above every population measured in GP XXVIII, so
@@ -386,9 +411,9 @@ const setLineRedundant = computed(
          phone. Directly above the list, so it reads as searching the thing
          beneath it. -->
     <div v-if="showOrgSearch" class="mt-4">
-      <label class="sr-only" for="org-search">Organisation suchen</label>
+      <label class="sr-only" :for="searchId">Organisation suchen</label>
       <UInput
-        id="org-search"
+        :id="searchId"
         v-model="orgQuery"
         type="search"
         icon="i-lucide-search"
@@ -415,7 +440,7 @@ const setLineRedundant = computed(
       gerade nicht abrufbar).
     </p>
 
-    <h3 class="sr-only">Liste der Stellungnahmen</h3>
+    <component :is="`h${headingLevel}`" class="sr-only">Liste der Stellungnahmen</component>
     <!-- Named query container: the rows inside decide their layout on THIS
          box's width (row-cols in main.css), not on the window's — the panel
          never gets wider than the page's max-w-3xl column. -->
@@ -522,8 +547,9 @@ const setLineRedundant = computed(
     />
 
     <p v-if="!needsList && hiddenOrgCount > 0" class="mt-3 text-sm text-ink-muted">
-      und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen – sie
-      stehen im Segment „Alle“.
+      und {{ formatNumberDe(hiddenOrgCount) }} weitere Organisationen<template
+        v-if="filterOptions.some((o) => o.value === 'all')"
+      > – sie stehen im Segment „Alle“</template>.
     </p>
   </div>
 </template>

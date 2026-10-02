@@ -36,13 +36,21 @@ export type StatementFilter = 'organisations' | 'persons' | 'nonpublic' | 'all'
  * `organisationList` dropped. Where exactly one kind filed and it is not the
  * organisations, „Alle" IS that segment under a second name, so it is left
  * out and the panel shows that one segment alone, as the list's label.
+ *
+ * `partial`: the summary counts only part of the Stellungnahmen — a
+ * Regierungsvorlage above `RV_STATEMENTS_CAP`, where only the organisations
+ * are read. „Alle" would then state the organisations' number as the total
+ * (1289 d.B.: „Alle 17" over 41.376), so it is not offered.
  */
-export function availableStatementFilters(summary: StatementsSummary): StatementFilter[] {
+export function availableStatementFilters(
+  summary: StatementsSummary,
+  { partial = false }: { partial?: boolean } = {},
+): StatementFilter[] {
   const kinds: StatementFilter[] = []
   if (summary.organisations > 0) kinds.push('organisations')
   if (summary.privatePersons > 0) kinds.push('persons')
   if (summary.nonPublic > 0) kinds.push('nonpublic')
-  const allShowsMore = kinds.length !== 1 || kinds[0] === 'organisations'
+  const allShowsMore = !partial && (kinds.length !== 1 || kinds[0] === 'organisations')
   return allShowsMore ? [...kinds, 'all'] : kinds
 }
 

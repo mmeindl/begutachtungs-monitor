@@ -924,7 +924,7 @@ const ministryLinks = computed(() => {
               >Auf parlament.gv.at ansehen</ExternalLink>
             </p>
             <template v-else-if="data.statements.total > 0">
-              <StatementsPanel :gp="gp" :inr="inr" :summary="data.statements" />
+              <StatementsPanel :list-url="`${url}/statements`" :summary="data.statements" />
               <!-- Silent disagreement between the two upstream sources is the
                    one option that serves nobody — a journalist who cites the
                    card's number and screenshots this page must not find a
@@ -1061,7 +1061,7 @@ const ministryLinks = computed(() => {
             :rv-date="data.enactment.rvDate"
           />
           <!-- The second window for input: what was filed on the Vorlage itself,
-               in the same row grammar as the Begutachtung's panel. Client-side
+               through the same panel as the Begutachtung's. Client-side
                data, so the block appears once it is there and says nothing
                while it is not — an empty promise here would read as "none". -->
           <RvStatements

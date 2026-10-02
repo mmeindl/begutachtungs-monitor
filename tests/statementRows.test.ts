@@ -222,4 +222,8 @@ describe('availableStatementFilters', () => {
     expect(availableStatementFilters(counts(0, 12, 0))).toEqual(['persons'])
     expect(availableStatementFilters(counts(7, 0, 0))).toEqual(['organisations', 'all'])
   })
+
+  it('offers no „Alle" over a partial count', () => {
+    expect(availableStatementFilters(counts(17, 0, 0), { partial: true })).toEqual(['organisations'])
+  })
 })
