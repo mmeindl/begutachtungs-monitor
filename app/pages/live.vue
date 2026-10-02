@@ -10,6 +10,8 @@
  * sitemap (`server/utils/feeds.ts`) does not list it — the page belongs to
  * one event on one evening, not to the product.
  */
+import type { Fact } from '~/components/ui/FactList.vue'
+
 const MEETING_URL = '' // Videokonferenz-URL eintragen + deployen → /live leitet weiter
 
 if (MEETING_URL) {
@@ -22,13 +24,16 @@ usePageSeo({
     'Online-Workshop bei der Demokratiewoche 2026: Donnerstag, 22. Oktober 2026, 19:00–20:30 Uhr. Der Teilnahmelink erscheint hier.',
 })
 
-const facts = [
+// In FactList's grammar, a name over each fact, as the draft pages'
+// station cards have it (02.10.2026). A label column stood here, the form
+// FactList records as having read as a form.
+const facts: Fact[] = [
   // Word joiners around the dash and a no-break space before „Uhr": the range
   // broke as „19:00– / 20:30 Uhr" on a phone (30.09.2026).
-  { label: 'Wann', value: 'Donnerstag, 22. Oktober 2026, 19:00\u2060–\u206020:30\u00a0Uhr' },
-  { label: 'Wo', value: 'Online – der Teilnahmelink erscheint auf dieser Seite' },
-  { label: 'Kosten', value: 'Kostenlos, ohne Anmeldung' },
-] as const
+  { key: 'wann', title: 'Wann', text: 'Donnerstag, 22. Oktober 2026, 19:00\u2060–\u206020:30\u00a0Uhr' },
+  { key: 'wo', title: 'Wo', text: 'Online – der Teilnahmelink erscheint auf dieser Seite' },
+  { key: 'kosten', title: 'Kosten', text: 'Kostenlos, ohne Anmeldung' },
+]
 </script>
 
 <template>
@@ -43,25 +48,13 @@ const facts = [
       <span class="bg-mark px-1">Was wurde aus den Stellungnahmen?</span>
     </p>
 
-    <dl class="mt-8 rounded-xl border border-hairline bg-surface p-5">
-      <div
-        v-for="(fact, i) in facts"
-        :key="fact.label"
-        class="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:gap-6"
-        :class="i > 0 ? 'border-t border-hairline' : ''"
-      >
-        <dt class="w-24 shrink-0 text-sm font-medium text-ink-secondary sm:pt-0.5">
-          {{ fact.label }}
-        </dt>
-        <dd class="font-medium text-ink">{{ fact.value }}</dd>
-      </div>
-    </dl>
+    <FactList :facts="facts" card class="mt-8" />
 
     <!-- The promise this page exists for: the printed/linked URL stays,
          the destination changes. Wording must survive being read on
          22.10. at 18:55 by someone who just wants in. -->
-    <div class="mt-6 rounded-xl bg-mark-wash p-5">
-      <h2 class="font-semibold text-ink">Noch kein Teilnahmelink</h2>
+    <div class="mt-6 rounded-xl bg-mark-wash p-4">
+      <h2 class="font-sans text-base font-semibold text-ink">Noch kein Teilnahmelink</h2>
       <p class="mt-2 leading-relaxed text-ink-secondary">
         Der Videokonferenz-Raum wird rechtzeitig vor der Veranstaltung
         eingerichtet. Diese Adresse bleibt gleich:

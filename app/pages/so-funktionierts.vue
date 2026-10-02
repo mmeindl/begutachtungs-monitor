@@ -185,7 +185,7 @@ const toc = [
     </p>
 
     <nav class="mt-8 border-y border-hairline py-4" aria-labelledby="toc-heading">
-      <h2 id="toc-heading" class="text-sm font-medium text-ink">Auf dieser Seite</h2>
+      <h2 id="toc-heading" class="font-sans text-sm font-medium text-ink">Auf dieser Seite</h2>
       <ul class="mt-2 space-y-1">
         <li v-for="item in toc" :key="item.to">
           <NuxtLink
@@ -198,8 +198,8 @@ const toc = [
       </ul>
     </nav>
 
-    <section id="betrifft-mich" class="mt-12 scroll-mt-6">
-      <h2 class="text-lg font-semibold text-ink">Betrifft mich das?</h2>
+    <section id="betrifft-mich" class="page-section scroll-mt-6">
+      <h2 class="section-heading">Betrifft mich das?</h2>
 
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Eine Stellungnahme darf jede und jeder abgeben. Es braucht keine
@@ -254,8 +254,8 @@ const toc = [
          — on a page whose whole claim is checkability. The evidence is the
          list, which recomputes itself; the base rates over hundreds of
          Verfahren are a work package of their own. -->
-    <section id="wirkung" class="mt-12 scroll-mt-6">
-      <h2 class="text-lg font-semibold text-ink">Was eine Stellungnahme bewirkt</h2>
+    <section id="wirkung" class="page-section scroll-mt-6">
+      <h2 class="section-heading">Was eine Stellungnahme bewirkt</h2>
 
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Entwürfe ändern sich nach der Begutachtung – regelmäßig, nicht
@@ -291,8 +291,8 @@ const toc = [
       </p>
     </section>
 
-    <section id="stationen" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
-      <h2 class="text-xl font-semibold text-ink">Der Weg eines Entwurfs</h2>
+    <section id="stationen" class="page-section scroll-mt-6">
+      <h2 class="section-heading">Der Weg eines Entwurfs</h2>
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Die ersten beiden Stationen sind für jeden Entwurf dieselben. Danach
         trennen sich die Wege: Ein Gesetz geht über die Regierung ins
@@ -320,7 +320,7 @@ const toc = [
           >
             {{ i + 1 }}
           </span>
-          <h3 class="pt-1 text-lg font-semibold text-ink">
+          <h3 class="pt-1.5 text-base font-semibold text-ink">
             <span class="sr-only">Schritt {{ i + 1 }}: </span>{{ step.name }}
           </h3>
           <p class="mt-2 leading-relaxed text-ink-secondary">{{ step.text }}</p>
@@ -343,7 +343,7 @@ const toc = [
            line — that would have to be `aria-hidden` anyway and does not
            survive 320 px. -->
       <div id="wege" class="scroll-mt-6 pl-14">
-        <h3 class="text-lg font-semibold text-ink">
+        <h3 class="text-base font-semibold text-ink">
           Nach der Begutachtung trennen sich die Wege
         </h3>
         <p class="mt-2 leading-relaxed text-ink-secondary">
@@ -354,15 +354,16 @@ const toc = [
         </p>
       </div>
 
-      <!-- p-4 below sm, because the indents add up here: page margin (16) +
-           card padding + tile column. With p-5 and pl-14 about 192 px of text
-           column were left at 320 px, and „Rechtsinformationssystem" is wider
-           than that. -->
+      <!-- p-4, the card padding of every box on the site since 02.10.2026. It
+           was p-4 below sm already, because the indents add up here: page
+           margin (16) + card padding + tile column. With p-5 and pl-14 about
+           192 px of text column were left at 320 px, and
+           „Rechtsinformationssystem" is wider than that. -->
       <section
         v-for="path in paths"
         :id="path.id"
         :key="path.id"
-        class="mt-10 scroll-mt-6 rounded-xl border border-hairline bg-surface p-4 sm:p-6"
+        class="mt-10 scroll-mt-6 rounded-xl border border-hairline bg-surface p-4"
       >
         <!-- The count moves to the next line whole or not at all: it broke
              as „drei weitere / Stationen" at 390 px (30.09.2026). -->
@@ -390,7 +391,7 @@ const toc = [
             >
               {{ i + 3 }}
             </span>
-            <h4 class="pt-1 text-lg font-semibold text-ink">
+            <h4 class="pt-1.5 text-base font-semibold text-ink">
               <!-- „von M" only here, not on the shared stations: those are
                    steps 1 and 2 of both paths at once, and a total would
                    simply be wrong there. -->
@@ -430,8 +431,8 @@ const toc = [
          here too, because here somebody came looking for them; on a draft page
          they would be information about us given to a reader who asked about a
          draft. -->
-    <section id="ohne-stellungnahmen" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
-      <h2 class="text-lg font-semibold text-ink">
+    <section id="ohne-stellungnahmen" class="page-section scroll-mt-6">
+      <h2 class="section-heading">
         Warum manche Entwürfe keine Stellungnahmen zeigen
       </h2>
 
@@ -462,8 +463,8 @@ const toc = [
          the numbered lists because it describes a document, not a step of the
          procedure — but keeps the page's typography, because it answers the
          same kind of question. -->
-    <section id="gegenueberstellung" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
-      <h2 class="text-lg font-semibold text-ink">Woher „Was ändert der Entwurf?“ kommt</h2>
+    <section id="gegenueberstellung" class="page-section scroll-mt-6">
+      <h2 class="section-heading">Woher „Was ändert der Entwurf?“ kommt</h2>
 
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Zu den meisten Entwürfen legt das Ministerium eine
@@ -571,8 +572,8 @@ const toc = [
          the credit line, „Wie wir vergleichen" before) used to land on
          the Gegenüberstellung above, which explains a different document,
          and its method sentence stood on every draft page instead. -->
-    <section id="vergleich" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">
-      <h2 class="text-lg font-semibold text-ink">Wie wir Entwurf und Regierungsvorlage vergleichen</h2>
+    <section id="vergleich" class="page-section scroll-mt-6">
+      <h2 class="section-heading">Wie wir Entwurf und Regierungsvorlage vergleichen</h2>
       <p class="mt-3 leading-relaxed text-ink-secondary">
         Nach der Begutachtung vergleichen wir die Texte selbst: den Entwurf mit
         der Regierungsvorlage, und weiter mit den Fassungen aus Ausschuss,

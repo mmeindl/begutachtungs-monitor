@@ -102,7 +102,7 @@ const externalHost = computed(() => {
   <component
     :is="linkComponent"
     v-bind="linkProps"
-    class="group flex h-full flex-col gap-3 rounded-xl border border-hairline bg-surface p-5 transition-colors hover:border-baseline sm:flex-row sm:items-start sm:gap-4 md:h-auto md:min-h-target md:scroll-mt-12 md:items-center md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:hover:bg-page"
+    class="group flex h-full flex-col gap-3 rounded-xl border border-hairline bg-surface p-4 transition-colors hover:border-baseline sm:flex-row sm:items-start sm:gap-4 md:h-auto md:min-h-target md:scroll-mt-12 md:items-center md:rounded-none md:border-0 md:bg-transparent md:px-4 md:py-3 md:hover:bg-page"
   >
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <!-- ZONE 1 — the title, WHOLE, in both densities. No `truncate`, no

@@ -1041,7 +1041,11 @@ const countLabel = computed(() => {
            list searches a whole Gesetzgebungsperiode by title, this block the
            documents of what is open today. -->
       <section v-if="fullTextActive" class="mt-8">
-        <h2 class="text-lg font-semibold text-ink">
+        <!-- An h2 in the outline, the sub-heading's face on the page
+             (02.10.2026): it heads a block under the results, as the h3 of a
+             draft page's section does. In the serif it was a third heading
+             style. -->
+        <h2 class="font-sans text-base font-semibold text-ink">
           Außerdem im Volltext der laufenden Begutachtungen
         </h2>
         <!-- The asterisk is explained here and not at the field: it applies
