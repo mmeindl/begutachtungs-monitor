@@ -160,14 +160,15 @@
  * is `default`, so every button in the app (segmented filters, "Mehr laden",
  * "Erneut versuchen", the citation copy) read as unclickable on hover. The
  * <summary> elements already carried a hand-written `cursor-pointer` for the
- * same reason; this is that fix in one place.
+ * same reason; this is that fix in one place. A <select> is the same kind of
+ * control and had the same arrow (02.10.2026).
  *
  * In @layer base, not unlayered, so a `cursor-*` utility still wins where a
  * control wants a different arrow; disabled controls keep theirs, where "not
  * clickable" is the truth.
  */
 @layer base {
-  :where(button, [role="button"]):not(:disabled, [aria-disabled="true"]) {
+  :where(button, [role="button"], select):not(:disabled, [aria-disabled="true"]) {
     cursor: pointer;
   }
 }
