@@ -117,20 +117,6 @@ export function reasoningShareValueDe(changed: number, compared: number): string
   return `${changed} von ${compared} ${compared === 1 ? 'Begründung' : 'Begründungen'} geändert`
 }
 
-/** How much of the draft the Vorlage changed, as the sentence under „Die Begutachtung". */
-function changeShareLeadDe(changed: number, own: number, unitPlural: string): string {
-  // Zero in its own words: „keine davon" would have to decline with the noun
-  // („keinen davon" for Paragraphen), a sentence without the count does not.
-  // „redaktionelle nicht gezählt" left the counted cases on 30.09.2026 — it
-  // stands on /so-funktionierts#vergleich. The zero case keeps its
-  // qualifier: „im Wortlaut" would be untrue without it.
-  return changed === 0
-    ? `Die Regierungsvorlage übernimmt alle ${own} ${unitPlural} des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen. `
-    : changed === own
-      ? `Die Regierungsvorlage hat alle ${own} ${unitPlural} des Entwurfs umgeschrieben oder gestrichen. `
-      : `Die Regierungsvorlage hat ${changed} von ${own} ${unitPlural} des Entwurfs umgeschrieben oder gestrichen (${Math.round((changed / own) * 100)}\u00a0%). `
-}
-
 /**
  * Was the Regierungsvorlage tabled while the Begutachtung was still running
  * — on or before the day its Frist ended?
@@ -150,30 +136,6 @@ function changeShareLeadDe(changed: number, own: number, unitPlural: string): st
 export function tabledBeforeFristEnd(deadline: string | null | undefined, rvDate: string | null | undefined): boolean {
   const days = spanInDays(deadline, rvDate)
   return days !== null && days <= 0
-}
-
-/**
- * The line that closes „Die Begutachtung" once a Vorlage exists: what came
- * of the text after it, one section before the comparison that shows it
- * (01.10.2026). Input and outcome stand next to each other, the comparison
- * stays with the Vorlage the Ressort wrote — the section claims no change.
- *
- * Only the count, not the period's range: the range belongs to the
- * comparison it explains. And for a Vorlage tabled before the Fristende
- * nothing at all — set under the Stellungnahmen, „im Wortlaut übernommen"
- * reads as input ignored, the blame reading `tabledBeforeFristEnd` exists to
- * prevent. Until 01.10.2026 the line said there when the Vorlage came; the
- * Regierungsvorlage's station card now gives its date, and the comparison's
- * row the clause (`earlyVorlageWhenDe`), so it said it a third
- * time. Null where the count is not known.
- */
-export function begutachtungAftermathDe(
-  share: { changed: number; own: number } | null,
-  unitPlural: string,
-  dates: { arrivedAt: string | null; deadline: string | null; rvDate: string | null },
-): string | null {
-  if (dates.deadline && dates.rvDate && tabledBeforeFristEnd(dates.deadline, dates.rvDate)) return null
-  return share ? changeShareLeadDe(share.changed, share.own, unitPlural).trim() : null
 }
 
 /**

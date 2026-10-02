@@ -93,8 +93,8 @@ const requested = ref(pairFromRoute())
 /** Whether the three requests below may go out — at once, unless `deferred`. */
 const enabled = ref(!props.deferred)
 
-/* Keyed by draft and pair, so the line under „Die Begutachtung" that reads
- * the same ME→RV count (`VorlageChangeNote`) shares this request — and
+/* Keyed by draft and pair, so the Regierungsvorlage's station card, which
+ * reads the same ME→RV count (`useVorlageOutcome`), shares this request — and
  * `defer`, because Nuxt's default `cancel` aborts the first caller's request
  * and sends it again (two requests on 11/ME XXVIII, measured 01.10.2026). */
 const { data: fetchedDiff, status: fetchStatus, execute: executeDiff } = await useFetch<LawDiffResponse>(

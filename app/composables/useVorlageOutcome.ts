@@ -8,9 +8,8 @@
  * station's facts (`FactList`), and the comparison under it now opens with
  * its list.
  *
- * ONE REQUEST EACH. The comparison (`LawDiffSection`) and the line under
- * „Die Begutachtung" (`VorlageChangeNote`) read the same two responses, so
- * all of them fetch under the shared keys (`lawDiffKey`, `lawReasoningKey`)
+ * ONE REQUEST EACH. The comparison (`LawDiffSection`) reads the same two
+ * responses, so both fetch under the shared keys (`lawDiffKey`, `lawReasoningKey`)
  * and with `dedupe: 'defer'` — Nuxt's default `cancel` aborts the first
  * caller's request and sends it again. Client-side like the comparison: the
  * first request per draft parses two documents, and the page must not wait

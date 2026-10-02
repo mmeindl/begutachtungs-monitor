@@ -8,7 +8,6 @@ import {
   changeShareRateFor,
   changeShareValueDe,
   reasoningShareValueDe,
-  begutachtungAftermathDe,
   earlyVorlageWhenDe,
   tabledBeforeFristEnd,
 } from '../app/utils/outcomes'
@@ -138,29 +137,5 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
   it('never says why', () => {
     expect(earlyVorlageWhenDe({ arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' }))
       .not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
-  })
-})
-
-describe('begutachtungAftermathDe — the line that closes „Die Begutachtung"', () => {
-  const after = { arrivedAt: '2026-05-01', deadline: '2026-06-12', rvDate: '2026-09-02' }
-
-  it('states the count once the Vorlage came after the Fristende, without the range', () => {
-    expect(begutachtungAftermathDe({ changed: 12, own: 21 }, 'Änderungen', after))
-      .toBe('Die Regierungsvorlage hat 12 von 21 Änderungen des Entwurfs umgeschrieben oder gestrichen (57\u00a0%).')
-    expect(begutachtungAftermathDe({ changed: 0, own: 8 }, 'Paragraphen', after))
-      .toBe('Die Regierungsvorlage übernimmt alle 8 Paragraphen des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen.')
-  })
-
-  /* Under the Stellungnahmen, „im Wortlaut übernommen" for a Vorlage they
-     could not have shaped reads as input ignored — so no count; and the
-     date stands in the Regierungsvorlage's card, so no line at all. */
-  it('says nothing for an early Vorlage, count or not (115/ME)', () => {
-    const early = { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }
-    expect(begutachtungAftermathDe({ changed: 0, own: 8 }, 'Paragraphen', early)).toBeNull()
-    expect(begutachtungAftermathDe(null, 'Paragraphen', early)).toBeNull()
-  })
-
-  it('says nothing while the count is unknown', () => {
-    expect(begutachtungAftermathDe(null, 'Paragraphen', after)).toBeNull()
   })
 })

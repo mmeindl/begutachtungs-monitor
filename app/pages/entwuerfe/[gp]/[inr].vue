@@ -1007,17 +1007,13 @@ const ministryLinks = computed(() => {
                 {{ data.active ? 'Noch keine Stellungnahmen. Die Frist läuft.' : 'Keine Stellungnahmen.' }}
               </p>
             </PageSubsection>
-            <!-- What came of the text after the Begutachtung, beside the input
-                 — the comparison itself stays with the Vorlage the Ressort wrote
-                 (`VorlageChangeNote`, 01.10.2026). -->
-            <VorlageChangeNote
-              v-if="data.enactment"
-              :gp="data.gp"
-              :inr="data.inr"
-              :arrived-at="data.arrivedAt"
-              :deadline="data.deadline"
-              :rv-date="data.enactment.rvDate"
-            />
+            <!-- No closing line since 02.10.2026. „Die Regierungsvorlage hat
+                 193 von 311 Paragraphen … umgeschrieben oder gestrichen" stood
+                 here from 01.10.2026, to answer „und dann?" under the
+                 Stellungnahmen. Since the next day the same count is the first
+                 figure of the Regierungsvorlage's station card, one section
+                 down, and the spine links the comparison: the line said it a
+                 third time, and was the only sentence trailing a section. -->
           </div>
         </section>
 
