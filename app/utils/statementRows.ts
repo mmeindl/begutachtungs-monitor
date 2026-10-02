@@ -35,7 +35,7 @@ export type StatementFilter = 'organisations' | 'persons' | 'nonpublic' | 'all'
  * ungrouped list, one row per Stellungnahme, including the ones a capped
  * `organisationList` dropped. Where exactly one kind filed and it is not the
  * organisations, „Alle" IS that segment under a second name, so it is left
- * out and the panel offers no filter at all.
+ * out and the panel shows that one segment alone, as the list's label.
  */
 export function availableStatementFilters(summary: StatementsSummary): StatementFilter[] {
   const kinds: StatementFilter[] = []

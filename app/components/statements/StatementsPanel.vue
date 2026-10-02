@@ -87,9 +87,11 @@ watch(filterOptions, (options) => {
   }
 })
 
-/* One option is no choice: where only private persons — or only non-public
- * submissions — filed, the group would be that one list under two names. */
-const showFilterGroup = computed(() => filterOptions.value.length > 1)
+/* Even a single segment is shown: where only private persons — or only
+ * non-public submissions — filed, the one button is not a choice but the
+ * label and the count of the list beneath it, which nothing else on the
+ * panel states (the count line is sr-only outside a search). */
+const showFilterGroup = computed(() => filterOptions.value.length > 0)
 
 /* An order needs two things to order. On the total, not on the current
  * segment: a control that comes and goes as the reader switches segments is
@@ -320,8 +322,7 @@ const setLineRedundant = computed(
          the filter group below repeated the same four labels one line
          further down. The counts now ride on the filter buttons; the total
          stands in the bar's Begutachtung row and on „Alle". Where only one
-         segment exists the buttons are absent, and the count line above the
-         list carries the number. -->
+         segment exists it is still shown, as the list's label and count. -->
     <!-- NO MIX BAR since 01.10.2026. The org/private split stood here as a
          stacked bar whose legend was the tile row removed on 30.09.2026;
          after that it was a picture of the two counts the filter buttons
