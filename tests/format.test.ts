@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bgblShort, daysUntil, endorsementLabel, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe, todayIso } from '../shared/utils/format'
+import { bgblShort, daysUntil, endorsementUnit, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe, todayIso } from '../shared/utils/format'
 
 describe('shownLabelDe', () => {
   it('states position only — the remainder is not spelled out', () => {
@@ -116,12 +116,11 @@ describe('bgblShort', () => {
   })
 })
 
-describe('endorsementLabel', () => {
+describe('endorsementUnit', () => {
   it('keeps the word Parliament itself uses, singular exactly at one', () => {
-    // Three components printed this line; the vocabulary has to survive the
-    // click-through to parlament.gv.at.
-    expect(endorsementLabel(1)).toBe('1 Zustimmung')
-    expect(endorsementLabel(0)).toBe('0 Zustimmungen')
-    expect(endorsementLabel(12)).toBe('12 Zustimmungen')
+    // The vocabulary has to survive the click-through to parlament.gv.at.
+    expect(endorsementUnit(1)).toBe('Zustimmung')
+    expect(endorsementUnit(0)).toBe('Zustimmungen')
+    expect(endorsementUnit(12)).toBe('Zustimmungen')
   })
 })

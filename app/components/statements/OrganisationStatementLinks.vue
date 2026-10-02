@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { StatementsSummary } from '#shared/types'
-import { endorsementLabel } from '#shared/utils/format'
 
 /**
  * The statements of ONE organisation that filed more than once in the same
@@ -47,10 +46,7 @@ defineProps<{
       label=""
       :links="[{ citation: st.citation, href: st.parliamentUrl }]"
       :submitter="org.name"
-    >
-      <template v-if="st.endorsements > 0" #meta>
-        {{ endorsementLabel(st.endorsements) }}
-      </template>
-    </StatementRow>
+      :endorsements="st.endorsements"
+    />
   </ul>
 </template>

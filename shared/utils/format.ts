@@ -63,15 +63,16 @@ export function countLabelDe(n: number, singular: string, plural: string): strin
 }
 
 /**
- * "1 Zustimmung" / "12 Zustimmungen".
+ * "Zustimmung" / "Zustimmungen" — the unit word alone, singular exactly at 1.
  *
  * „Zustimmung" is Parliament's own term (upstream field: approvals) — the
- * vocabulary has to survive the click-through to parlament.gv.at. Here
- * because three components printed the same line: the panel, the
- * Regierungsvorlage's list and the organisation links.
+ * vocabulary has to survive the click-through to parlament.gv.at. The word
+ * alone and not the whole label, because the statements row prints number
+ * and word apart: from row-cols up the word belongs to the column header and
+ * stays in the cell only for a screen reader (StatementRow).
  */
-export function endorsementLabel(n: number): string {
-  return countLabelDe(n, 'Zustimmung', 'Zustimmungen')
+export function endorsementUnit(n: number): string {
+  return n === 1 ? 'Zustimmung' : 'Zustimmungen'
 }
 
 /**

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { endorsementUnit, formatNumberDe } from '#shared/utils/format'
+
 /**
  * One row of the statements panel, in the grammar every list in it shares:
  * date · identity · citation(s) · Zustimmungen.
@@ -49,6 +51,12 @@ const props = defineProps<{
   detail?: string | null
   /** Names the submitter in the links' accessible names — organisations only. */
   submitter?: string | null
+  /**
+   * Zustimmungen upstream counted; 0 or absent leaves the cell empty. The
+   * unit word is the column header's from row-cols up, and stays in the
+   * cell for a screen reader — the header is `aria-hidden`.
+   */
+  endorsements?: number
 }>()
 
 /* The visible link text is the citation, so the accessible name adds what
@@ -81,7 +89,7 @@ function linkAriaLabel(citation: string): string {
        auto-placement would push the date, which sits in the track to its
        left, onto a second row. -->
   <li
-    class="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 row-cols:grid-cols-[6rem_minmax(8rem,1fr)_8.5rem_3.5rem_9rem]"
+    class="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 row-cols:statement-tracks"
   >
     <!-- Two lines, not one: what distinguishes these submitters sits at the
          END of the name ("Amt der Kärntner Landesregierung; Abteilung 1 –
@@ -185,10 +193,19 @@ function linkAriaLabel(citation: string): string {
            and labels it as one; the sub-rows print what upstream counted for
            each Stellungnahme. 9rem and no wrap: the track holds "9.999
            Zustimmungen" on one line — at 7.5rem a three-digit count already
-           pushed the word onto a second line. -->
+           pushed the word onto a second line.
+           From row-cols up the word goes to the column header
+           (StatementListHeader, 02.10.2026): written out on every row it
+           was the loudest thing in the column, and the digits are what the
+           eye compares down it. On a phone there is no header, so the cell
+           keeps its word. The `meta` slot is for what follows the number
+           („gesamt" on a grouped row). -->
       <span
         class="whitespace-nowrap tabular-nums text-ink-secondary row-cols:col-start-5 row-cols:row-start-1 row-cols:text-right"
       >
+        <template v-if="endorsements">
+          {{ formatNumberDe(endorsements) }}<span class="row-cols:sr-only">{{ ` ${endorsementUnit(endorsements)}` }}</span>
+        </template>
         <slot name="meta" />
       </span>
     </div>

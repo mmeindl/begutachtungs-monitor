@@ -207,6 +207,16 @@
 @custom-variant row-cols (@container list (min-width: 46.5rem));
 
 /*
+ * The five tracks of that layout, in one place: the rows (StatementRow) and
+ * the column header above them (StatementListHeader) have to agree on them
+ * to the pixel, or the labels drift off the values they name. Used only
+ * under `row-cols:`.
+ */
+@utility statement-tracks {
+  grid-template-columns: 6rem minmax(8rem, 1fr) 8.5rem 3.5rem 9rem;
+}
+
+/*
  * `divide-y` for a list whose overflow rows are `hidden` until find-in-page
  * reveals them (StatementsPanel: the organisation list ships whole so the
  * names stay in the SSR HTML, and the rows past the page are folded away

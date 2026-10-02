@@ -3,7 +3,6 @@ import type {
   StatementMeta,
   StatementsResponse,
 } from '#shared/types'
-import { endorsementLabel } from '#shared/utils/format'
 import {
   type StatementFilter,
   type StatementSort,
@@ -335,6 +334,13 @@ const setLine = computed(() => {
  *
  * Under a query it is never redundant: no number anywhere else on the panel
  * says how many rows the query found. */
+/* Whether the sheet shows rows — the column header stands over rows only. */
+const showColumnHeader = computed(() =>
+  needsList.value
+    ? status.value !== 'pending' && status.value !== 'error' && visibleItems.value.length > 0
+    : renderedOrgRows.value.length > 0,
+)
+
 const setLineRedundant = computed(
   () => !searchActive.value,
 )
@@ -443,13 +449,20 @@ const setLineRedundant = computed(
     <component :is="`h${headingLevel}`" class="sr-only">Liste der Stellungnahmen</component>
     <!-- Named query container: the rows inside decide their layout on THIS
          box's width (row-cols in main.css), not on the window's — the panel
-         never gets wider than the page's max-w-3xl column. -->
+         never gets wider than the page's max-w-3xl column.
+         `overflow-clip`, not `overflow-hidden`: both keep the rounded
+         corners, but `hidden` makes the sheet a scroll container, and the
+         sticky column header would stick to it instead of the window. -->
     <div
       :class="[
-        '@container/list overflow-hidden rounded-xl border border-hairline bg-surface',
+        '@container/list overflow-clip rounded-xl border border-hairline bg-surface',
         showFilterGroup || showSort ? 'mt-3' : 'mt-6',
       ]"
     >
+      <!-- Over rows only: above a loading line, an error or „keine
+           gefunden" it would name columns nothing stands in. -->
+      <StatementListHeader v-if="showColumnHeader" />
+
       <!-- Organisations: from the SSR summary, so they are in the HTML a
            crawler and a find-in-page see — which is what lets an organisation
            find itself on this page. -->
@@ -463,6 +476,7 @@ const setLineRedundant = computed(
             v-for="({ org, row, expanded }, i) in renderedOrgRows"
             :key="org.name"
             v-bind="row"
+            :endorsements="org.endorsements"
             :hidden="orgRowHidden(i)"
           >
             <!-- Upstream counts Zustimmungen per Stellungnahme; this is the
@@ -472,12 +486,8 @@ const setLineRedundant = computed(
                  states a number that belongs to none of them alone, and the
                  reader who clicks one through finds a smaller one. The parts
                  stay upstream, one click away. -->
-            <template v-if="org.endorsements > 0" #meta>
-              {{ endorsementLabel(org.endorsements) }}
-              <span
-                v-if="expanded"
-                class="text-xs text-ink-muted row-cols:block"
-              >gesamt</span>
+            <template v-if="org.endorsements > 0 && expanded" #meta>
+              <span class="text-xs text-ink-muted row-cols:block">{{ ' gesamt' }}</span>
             </template>
             <!-- The v-if belongs on the slot, not inside it: passing a
                  default slot that renders nothing still costs the row its
@@ -523,11 +533,8 @@ const setLineRedundant = computed(
             :label="submitterLabel(item)"
             :links="[{ citation: item.citation, href: item.parliamentUrl }]"
             :submitter="submitterName(item)"
-          >
-            <template v-if="item.endorsements > 0" #meta>
-              {{ endorsementLabel(item.endorsements) }}
-            </template>
-          </StatementRow>
+            :endorsements="item.endorsements"
+          />
         </ul>
         <div v-else class="p-5">
           <EmptyState
