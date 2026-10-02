@@ -9,10 +9,14 @@ import type { LawStationId, Publisher } from '../types'
  * shared („Quellen: RIS (CC BY 4.0) und Parlament (Dokumente: freie
  * Werke)"), and the Erläuterungen section by hand. Four wordings had grown
  * out of them, and the licence stood up to five times on one draft page.
- * Now a section names only its PUBLISHER, under the text it belongs to, and
- * the claim is made once, at the foot of the page, per document — which is
- * also what one line over two documents could not do: „Parlament (Dokumente:
- * freie Werke)" under ME→RV read as covering the draft too.
+ * Now a section names only who published each document it shows, under the
+ * text it belongs to, and the claim itself stands once, in the Impressum
+ * (§ „Urheberrecht & Lizenzen"), which the footer of every page links — CC
+ * BY 4.0 § 3 a (2) allows exactly that. A „Quellen" block at the foot of
+ * every draft page did the same per document for one day (01.10.2026) and
+ * went again: the rules below decide every claim from publisher and
+ * document, so a reader who knows those two needs no list, and the block
+ * repeated the Impressum on every page.
  *
  * Three rules, and nothing else decides a claim:
  *   - a RIS document is CC BY 4.0 (Bundeskanzleramt) — the RIS OGD grant,
@@ -29,7 +33,7 @@ import type { LawStationId, Publisher } from '../types'
  *
  * The same document can exist under both (the Textgegenüberstellung in RIS
  * and in Parliament's copy): then the claim follows the copy that was READ,
- * which is why a section reports its sources from its data rather than from
+ * which is why a section derives its sources from its data rather than from
  * a constant.
  */
 
@@ -56,15 +60,6 @@ export function parliamentDocumentSource(what: string, station: LawStationId): S
   return { what, publisher: 'parlament', terms: PARLIAMENTARY_STATIONS.has(station) ? 'freies-werk' : 'keine-lizenz' }
 }
 
-/**
- * Parliament's own data — dates, counts, votes. CC BY 4.0 only for the
- * result lists, API and history pages of the stations after the
- * Begutachtung, and never for anything about Stellungnahmen.
- */
-export function parliamentDataSource(what: string, terms: 'cc-by' | 'keine-lizenz'): SourceEntry {
-  return { what, publisher: 'parlament', terms }
-}
-
 /** A document from either publisher, by where it was read. */
 export function documentSource(what: string, station: LawStationId, publisher: Publisher): SourceEntry {
   return publisher === 'ris' ? risSource(what) : parliamentDocumentSource(what, station)
@@ -75,36 +70,20 @@ export const PUBLISHER_NAME_DE: Record<Publisher, string> = {
   parlament: 'Parlament',
 }
 
-/** The section's line: „Quelle: RIS", „Quellen: Parlament, RIS" — publishers only, never a licence. */
+/** Whether a section's documents come from more than one publisher — then each item has to name its own. */
+export function mixedPublishers(sources: readonly SourceEntry[]): boolean {
+  return new Set(sources.map((s) => s.publisher)).size > 1
+}
+
+/**
+ * The opening of a section's line: „Quelle: RIS" where one publisher stands
+ * behind everything in it — never a licence. Where several do, only
+ * „Quellen:", and the items after it name theirs („Ministerialentwurf
+ * (Parlament)"): „Quellen: Parlament, RIS" over two documents left open
+ * which came from where, and that is what decides the claim.
+ */
 export function sourceLineDe(sources: readonly SourceEntry[]): string | null {
   const publishers = [...new Set(sources.map((s) => s.publisher))]
   if (!publishers.length) return null
-  return `${publishers.length === 1 ? 'Quelle' : 'Quellen'}: ${publishers.map((p) => PUBLISHER_NAME_DE[p]).join(', ')}`
-}
-
-/** One block of the page's foot: a publisher, what may be said about it, and what the page shows from it. */
-export interface SourceGroup {
-  publisher: Publisher
-  terms: SourceTerms
-  items: string[]
-}
-
-/** The foot's order: the settled licence first, the open question last. */
-const GROUP_ORDER: readonly (readonly [Publisher, SourceTerms])[] = [
-  ['ris', 'cc-by'],
-  ['parlament', 'cc-by'],
-  ['parlament', 'freies-werk'],
-  ['parlament', 'keine-lizenz'],
-]
-
-/**
- * The page's sources, grouped by what may be claimed: one group per
- * publisher and terms, in a fixed order, each item once and in the order
- * the page first reported it.
- */
-export function groupSources(sources: readonly SourceEntry[]): SourceGroup[] {
-  return GROUP_ORDER.flatMap(([publisher, terms]) => {
-    const items = [...new Set(sources.filter((s) => s.publisher === publisher && s.terms === terms).map((s) => s.what))]
-    return items.length ? [{ publisher, terms, items }] : []
-  })
+  return publishers.length === 1 ? `Quelle: ${PUBLISHER_NAME_DE[publishers[0]!]}` : 'Quellen:'
 }

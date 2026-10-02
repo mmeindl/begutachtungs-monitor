@@ -214,7 +214,9 @@ usePageSeo({
              licence, and the same open question. -->
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
-          Nutzungsbedingungen unterscheiden sich je nach Datensatz.
+          Nutzungsbedingungen unterscheiden sich je nach Datensatz. Unter
+          jedem Text auf einer Entwurfsseite steht, aus welcher der beiden
+          er stammt; Gliederung und Markierung sind vom Monitor.
         </p>
         <dl class="mt-3 space-y-3 leading-relaxed text-ink-secondary">
           <div>

@@ -180,8 +180,8 @@ export interface TextComparisonResponse {
    * Parliament's copy of a draft's annex carries no claim.
    *
    * Server-side, because the source is chosen here. Until 01.10.2026 this
-   * was the finished credit sentence, licence included; the claim is now
-   * made once per page, from this.
+   * was the finished credit sentence, licence included; the section now
+   * names the publisher and the Impressum makes the claim.
    */
   publisher: Publisher
   /**

@@ -62,6 +62,9 @@ onUnmounted(() => clearTimeout(timer))
 
 <template>
   <div class="mt-4 flex flex-wrap items-center gap-3">
+    <!-- Whatever else changes only the list, first in the row: the step
+         toggle under „Im Parlament" (`LawStepToggle`). -->
+    <slot />
     <!-- Inline / nebeneinander. A two-button group, not a select: it is a
          binary view switch the reader flips back and forth, and it has to be
          readable as the current state at a glance. -->

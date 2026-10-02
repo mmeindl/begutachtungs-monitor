@@ -456,7 +456,8 @@ const toc = [
     </section>
 
     <!-- Not a station: a note on one section of the detail page, which links
-         here from its check sentence ("Wie wir prüfen"). It stands apart from
+         here from its credit line („Methode", until 02.10.2026 „Wie wir
+         prüfen" after its check sentence). It stands apart from
          the numbered lists because it describes a document, not a step of the
          procedure — but keeps the page's typography, because it answers the
          same kind of question. -->
@@ -568,7 +569,8 @@ const toc = [
     </section>
 
     <!-- The comparison AFTER the Begutachtung, since 30.09.2026 with an
-         address of its own: its „Wie wir vergleichen" link used to land on
+         address of its own: its method link (since 02.10.2026 „Methode" in
+         the credit line, „Wie wir vergleichen" before) used to land on
          the Gegenüberstellung above, which explains a different document,
          and its method sentence stood on every draft page instead. -->
     <section id="vergleich" class="mt-12 scroll-mt-6 border-t border-hairline pt-8 sm:mt-16 sm:pt-10">

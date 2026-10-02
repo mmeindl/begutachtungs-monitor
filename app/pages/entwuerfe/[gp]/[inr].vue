@@ -21,7 +21,6 @@ import AmendedLawLine from '~/components/draft/AmendedLawLine.vue'
 import { mayClaimOutcome } from '#shared/utils/draftStations'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 import { LAW_STATION_LABEL, lawStationOf } from '#shared/utils/lawStations'
-import { parliamentDataSource, risSource, type SourceEntry } from '#shared/utils/provenance'
 
 definePageMeta({
   // Messenger/autocorrect lowercasing kills valid shared links — 301 to
@@ -50,10 +49,6 @@ const route = useRoute()
 const gp = computed(() => String(route.params.gp ?? ''))
 const inr = computed(() => Number(route.params.inr ?? 0))
 const url = computed(() => `/api/drafts/${gp.value}/${inr.value}`)
-
-// Before the first await: the sections report their sources into it from
-// their own setup (`usePageSources`).
-providePageSources()
 
 const { data, error, refresh, status } = await useFetch<DraftDetail>(url)
 
@@ -155,10 +150,20 @@ const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutc
   lapsed: 'Das Verfahren endete mit der Gesetzgebungsperiode ohne Kundmachung.',
 }
 
+const committeeReport = computed(() => data.value?.enactment?.committeeReport ?? null)
+const plenaryAmendments = computed(() => data.value?.enactment?.plenaryAmendments ?? null)
+
 const parliamentFacts = computed<Fact[]>(() => {
   const outcome = parliament.value ?? 'lapsed'
   return [
     { key: 'stand', title: 'Stand', text: PARLIAMENT_OUTCOME_DE[outcome] },
+    // Where the Abänderungsanträge are named, in procedural order between
+    // the state and the vote (02.10.2026). Values in the template's slots,
+    // they carry links. A row is missing where the Verlauf names nothing —
+    // never „keine", because a motion the reader missed would turn into a
+    // false negative.
+    ...(committeeReport.value ? [{ key: 'ausschuss', title: 'Im Ausschuss' }] : []),
+    ...(plenaryAmendments.value?.amendments.length ? [{ key: 'plenum', title: 'Im Plenum' }] : []),
     ...(voteLine.value ? [{ key: 'lesung', title: 'Dritte Lesung', text: `${voteLine.value}.` }] : []),
   ]
 })
@@ -227,23 +232,6 @@ const kurzinfoBlocks = computed(() => {
     if (block.kind === 'heading') skipping = MAIN_POINTS_RE.test(block.text)
     if (!skipping) out.push(block)
   }
-  return out
-})
-
-/* What the page shows from its own data, for „Quellen" at its foot; the
- * sections report theirs (`usePageSources`, `#shared/utils/provenance`).
- * The Erläuterungen are named here as well as by their section: the page
- * holds them before it renders, so their CC BY claim is in the delivered
- * HTML — the section's report joins only after mount. */
-const pageSources = computed<SourceEntry[]>(() => {
-  const d = data.value
-  if (!d) return []
-  const out = [parliamentDataSource('Angaben zum Begutachtungsverfahren', 'keine-lizenz')]
-  if (kurzinfoBlocks.value.length) out.push(parliamentDataSource('Kurzinformation', 'keine-lizenz'))
-  if (d.statements.total > 0) out.push(parliamentDataSource('Stellungnahmen', 'keine-lizenz'))
-  if (explanations.value?.available) out.push(risSource('Erläuterungen'))
-  if (d.enactment) out.push(parliamentDataSource('Verlauf nach der Begutachtung', 'cc-by'))
-  if (rvStatements.value?.total) out.push(parliamentDataSource('Stellungnahmen zur Regierungsvorlage', 'keine-lizenz'))
   return out
 })
 
@@ -1116,6 +1104,14 @@ const ministryLinks = computed(() => {
                effect. The row is missing rather than vaguer where upstream
                kept no club list (`parseVote`). -->
           <FactList :facts="parliamentFacts" card class="mt-4">
+            <template v-if="committeeReport" #value-ausschuss>
+              Bericht <ExternalLink :href="committeeReport.url" class="link-inline">{{ committeeReport.label }}</ExternalLink>
+            </template>
+            <!-- By number only, never who tabled the motion. -->
+            <template v-if="plenaryAmendments?.amendments.length" #value-plenum>
+              Angenommen: {{ plenaryAmendments.amendments.length > 1 ? 'Abänderungsanträge' : 'Abänderungsantrag' }}
+              <template v-for="(motion, i) in plenaryAmendments.amendments" :key="motion.url"><template v-if="i > 0">{{ i === plenaryAmendments.amendments.length - 1 ? ' und ' : ', ' }}</template><ExternalLink :href="motion.url" class="link-inline">{{ motion.label }}</ExternalLink></template><template v-if="plenaryAmendments.session">, <ExternalLink :href="plenaryAmendments.session.url" class="link-inline">{{ plenaryAmendments.session.label }}</ExternalLink></template>
+            </template>
             <template #footer>
               <ExternalLink
                 :href="data.enactment.rvUrl"
@@ -1203,12 +1199,6 @@ const ministryLinks = computed(() => {
             deferred
           />
         </section>
-
-        <!-- Every source the page shows, each claim once (01.10.2026): the
-             sections name only their publisher, under the text they belong
-             to. Last in the article, after the last station — provenance
-             is looked up after reading. -->
-        <PageSources :page="pageSources" />
 
       </article>
     </FetchGate>

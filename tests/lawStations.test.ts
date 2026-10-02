@@ -173,12 +173,17 @@ describe('lawStationPairQuestion', () => {
 describe('lawStationPairHint', () => {
   it('points at the document that comes closest to the reason', () => {
     expect(lawStationPairHint('me', 'rv')).toContain('Erläuterungen der Regierungsvorlage')
-    expect(lawStationPairHint('rv', 'ausschuss')).toContain('Ausschussbericht')
-    expect(lawStationPairHint('rv', 'plenum')).toContain('Ausschussbericht')
+    expect(lawStationPairHint('me', 'bgbl')).toContain('einzelnen Schritte')
+  })
+
+  it("leaves parliament's steps to the station card", () => {
+    expect(lawStationPairHint('rv', 'ausschuss')).toBeNull()
+    expect(lawStationPairHint('rv', 'plenum')).toBeNull()
+    expect(lawStationPairHint('ausschuss', 'plenum')).toBeNull()
   })
 
   it('names a document, never a cause', () => {
-    for (const [from, to] of [['me', 'rv'], ['rv', 'plenum']] as [LawStationId, LawStationId][]) {
+    for (const [from, to] of [['me', 'rv'], ['me', 'bgbl']] as [LawStationId, LawStationId][]) {
       expect(lawStationPairHint(from, to)).not.toMatch(/wegen|aufgrund|zurückzuführen|bewirkt|führte zu/)
     }
   })

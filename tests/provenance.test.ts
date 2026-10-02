@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   documentSource,
-  groupSources,
-  parliamentDataSource,
+  mixedPublishers,
   parliamentDocumentSource,
   risSource,
   sourceLineDe,
@@ -36,44 +35,29 @@ describe('documentSource', () => {
 })
 
 describe('sourceLineDe', () => {
-  it('names publishers, never a licence', () => {
+  it('names the one publisher, never a licence', () => {
     expect(sourceLineDe([risSource('Erläuterungen')])).toBe('Quelle: RIS')
     expect(sourceLineDe([
-      parliamentDocumentSource('Ministerialentwurf', 'me'),
       parliamentDocumentSource('Regierungsvorlage', 'rv'),
-      risSource('Paragraphenüberschriften'),
-    ])).toBe('Quellen: Parlament, RIS')
+      parliamentDocumentSource('Ausschussfassung', 'ausschuss'),
+    ])).toBe('Quelle: Parlament')
     expect(sourceLineDe([])).toBeNull()
+  })
+
+  it('leaves the publishers to the items where the line mixes them', () => {
+    // „Quellen: Parlament, RIS" over two documents left open which came
+    // from where — and that decides the claim.
+    const sources = [parliamentDocumentSource('Ministerialentwurf', 'me'), risSource('Fassung im Bundesgesetzblatt')]
+    expect(mixedPublishers(sources)).toBe(true)
+    expect(sourceLineDe(sources)).toBe('Quellen:')
   })
 })
 
-describe('groupSources', () => {
-  it('keeps ME and RV apart where one line used to join them', () => {
+describe('the ME→RV pair', () => {
+  it('keeps the draft out of the Vorlage\'s claim', () => {
     // „Quellen: Parlament (Dokumente: freie Werke)" stood under ME→RV until
     // 01.10.2026 and read as covering the draft too.
-    const groups = groupSources([
-      parliamentDocumentSource('Ministerialentwurf', 'me'),
-      parliamentDocumentSource('Regierungsvorlage', 'rv'),
-    ])
-    expect(groups).toEqual([
-      { publisher: 'parlament', terms: 'freies-werk', items: ['Regierungsvorlage'] },
-      { publisher: 'parlament', terms: 'keine-lizenz', items: ['Ministerialentwurf'] },
-    ])
-  })
-
-  it('orders groups settled-first and names each item once, in reported order', () => {
-    const groups = groupSources([
-      parliamentDataSource('Angaben zum Begutachtungsverfahren', 'keine-lizenz'),
-      risSource('Textgegenüberstellung'),
-      parliamentDataSource('Verlauf nach der Begutachtung', 'cc-by'),
-      risSource('Erläuterungen'),
-      risSource('Textgegenüberstellung'),
-    ])
-    expect(groups.map((g) => [g.publisher, g.terms])).toEqual([
-      ['ris', 'cc-by'],
-      ['parlament', 'cc-by'],
-      ['parlament', 'keine-lizenz'],
-    ])
-    expect(groups[0]!.items).toEqual(['Textgegenüberstellung', 'Erläuterungen'])
+    expect(parliamentDocumentSource('Ministerialentwurf', 'me').terms).toBe('keine-lizenz')
+    expect(parliamentDocumentSource('Regierungsvorlage', 'rv').terms).toBe('freies-werk')
   })
 })

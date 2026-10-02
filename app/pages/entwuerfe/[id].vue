@@ -2,7 +2,6 @@
 import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
-import { risSource, type SourceEntry } from '#shared/utils/provenance'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristRangeDe } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
@@ -44,12 +43,6 @@ definePageMeta({
 
 const route = useRoute()
 const id = computed(() => String(route.params.id ?? ''))
-
-// Before the first await: the sections report their sources into it from
-// their own setup (`usePageSources`).
-providePageSources()
-/** Everything on this page is RIS; the sections add what they read. */
-const pageSources: SourceEntry[] = [risSource('Angaben zum Begutachtungsverfahren')]
 
 const { data, error, refresh, status } = await useFetch<RisConsultationDetail>(
   () => `/api/ris-drafts/${id.value}`,
@@ -442,9 +435,10 @@ const documents = computed(() => {
               <!-- Source and key as a caption since 30.09.2026, not two
                    sentences: „Aus dem Rechtsinformationssystem des Bundes (RIS),
                    CC BY 4.0. Im RIS steht dieser Entwurf unter der
-                   Dokumentnummer …". The licence went to the page's „Quellen"
-                   on 01.10.2026, where every page states it once. -->
-              Dokumentnummer im RIS:
+                   Dokumentnummer …". The licence went on 02.10.2026, as in
+                   every credit line: what may be claimed per source is the
+                   Impressum's, linked from the footer of every page. -->
+              Quelle: RIS · Dokumentnummer
               <!-- Not a link: it would be the second element on this page
                    pointing at the RIS page the header already links, and the
                    draft page makes the same split — the Geschäftszahl is text,
@@ -462,10 +456,6 @@ const documents = computed(() => {
           </div>
         </details>
       </section>
-
-      <!-- Every source the page shows, each claim once (01.10.2026), as on
-           the draft page. -->
-      <PageSources :page="pageSources" />
 
     </FetchGate>
   </div>

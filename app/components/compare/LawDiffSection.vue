@@ -20,7 +20,8 @@
  * comparison.
  */
 import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
-import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
+import LawStepToggle from '~/components/compare/LawStepToggle.vue'
+import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, Publisher, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
 import { changeShareNounDe, isNovelleUnits, ownChangeShare } from '#shared/utils/changeShare'
@@ -31,7 +32,6 @@ import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import {
   LAW_STATION_LABEL,
-  LAW_STEP_LABEL,
   PARLIAMENT_COMPARISON_QUESTION,
   type LawDiffScope,
   type LawStationPair,
@@ -42,7 +42,7 @@ import {
   lawStationPairHint,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
-import { documentSource, parliamentDocumentSource, risSource, type SourceEntry } from '#shared/utils/provenance'
+import { documentSource, mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
 
 const props = defineProps<{
   gp: string
@@ -88,7 +88,10 @@ function pairFromRoute(): LawStationPair {
   const step = steps.find((s) => s.to === bis && (!isLawStationId(von) || s.from === von))
   return { ...(step ?? scopeDefault) }
 }
-const pair = ref(pairFromRoute())
+/** The step the reader asked for: the requests, the URL and the toggle follow
+ *  it at once. What is on screen follows it once its comparison is there
+ *  (`pair` below). */
+const requested = ref(pairFromRoute())
 
 /** Whether the three requests below may go out — at once, unless `deferred`. */
 const enabled = ref(!props.deferred)
@@ -97,10 +100,10 @@ const enabled = ref(!props.deferred)
  * the same ME→RV count (`VorlageChangeNote`) shares this request — and
  * `defer`, because Nuxt's default `cancel` aborts the first caller's request
  * and sends it again (two requests on 11/ME XXVIII, measured 01.10.2026). */
-const { data, status, execute: executeDiff } = await useFetch<LawDiffResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/diff?von=${pair.value.from}&bis=${pair.value.to}`,
+const { data: fetchedDiff, status: fetchStatus, execute: executeDiff } = await useFetch<LawDiffResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/diff?von=${requested.value.from}&bis=${requested.value.to}`,
   {
-    key: () => lawDiffKey(props.gp, props.inr, pair.value.from, pair.value.to),
+    key: () => lawDiffKey(props.gp, props.inr, requested.value.from, requested.value.to),
     lazy: true,
     server: false,
     dedupe: 'defer',
@@ -117,8 +120,8 @@ const { data, status, execute: executeDiff } = await useFetch<LawDiffResponse>(
  * stations addresses a different §, so names from another pair would be
  * wrong names.
  */
-const { data: paraTitles, execute: executeTitles } = await useFetch<ParagraphTitlesResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel?von=${pair.value.from}&bis=${pair.value.to}`,
+const { data: fetchedTitles, execute: executeTitles } = await useFetch<ParagraphTitlesResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel?von=${requested.value.from}&bis=${requested.value.to}`,
   { lazy: true, server: false, immediate: enabled.value },
 )
 
@@ -132,10 +135,49 @@ const { data: paraTitles, execute: executeTitles } = await useFetch<ParagraphTit
  * from Parliament must neither hold the comparison up nor take it down with
  * them.
  */
-const { data: reasoning, execute: executeReasoning } = await useFetch<ReasoningDiffResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${pair.value.from}&bis=${pair.value.to}`,
+const { data: fetchedReasoning, execute: executeReasoning } = await useFetch<ReasoningDiffResponse>(
+  () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${requested.value.from}&bis=${requested.value.to}`,
   { lazy: true, server: false, immediate: enabled.value },
 )
+
+/**
+ * What is on screen: one step with its comparison, its § names and its
+ * reasoning, swapped together once the requested step's comparison has
+ * arrived (02.10.2026). Rendering the requests directly made every switch
+ * flicker: a new key empties the fetch, so for at least a frame the list and
+ * the toolbar went and „wird verglichen …" stood in their place — measured
+ * on 115/ME XXVIII, the section fell from 286 to 164 px and came back.
+ *
+ * The names and the reasoning swap with the comparison, never on their own:
+ * a renumbered Ziffer addresses a different § in another step, so a name
+ * from one step on the other's list would be a wrong name. Where they arrive
+ * after the comparison they appear when they do, as on the first load.
+ */
+const pair = shallowRef<LawStationPair>({ ...requested.value })
+const data = shallowRef(fetchedDiff.value)
+const status = shallowRef(fetchStatus.value)
+const paraTitles = shallowRef(fetchedTitles.value)
+const reasoning = shallowRef(fetchedReasoning.value)
+const isShown = () => pair.value.from === requested.value.from && pair.value.to === requested.value.to
+watch([fetchStatus, fetchedDiff], ([s]) => {
+  if (s === 'success' || s === 'error') {
+    pair.value = { ...requested.value }
+    data.value = fetchedDiff.value
+    paraTitles.value = fetchedTitles.value
+    reasoning.value = fetchedReasoning.value
+    status.value = s
+  } else if (!data.value) {
+    // Nothing to keep — the first load, or a step that failed: say that
+    // the comparison is on its way.
+    status.value = s
+  }
+})
+watch(fetchedTitles, (v) => {
+  if (isShown()) paraTitles.value = v
+})
+watch(fetchedReasoning, (v) => {
+  if (isShown()) reasoning.value = v
+})
 
 const root = useTemplateRef<HTMLElement>('root')
 let observer: IntersectionObserver | null = null
@@ -256,6 +298,7 @@ const changeShareNote = computed<string | null>(() => {
  * were found. */
 const reasoningDocs = computed(() => (reasoning.value?.sources?.length === 2 ? reasoning.value.sources : null))
 const rvReasoningDoc = computed(() => reasoningDocs.value?.[1] ?? null)
+const hint = computed(() => lawStationPairHint(pair.value.from, pair.value.to))
 /** A side's Erläuterungen for the credit line — only where the comparison of them ran. */
 function reasoningDocFor(station: LawStationId) {
   const stats = reasoning.value?.stats
@@ -265,20 +308,11 @@ function reasoningDocFor(station: LawStationId) {
   if (station === 'rv') return reasoningDocs.value[1] ?? null
   return null
 }
-/** One entry per compared version for the credit line: its name, its text, its Erläuterungen. */
-const creditSides = computed(() => {
-  const d = data.value
-  if (!d) return []
-  return [
-    { station: pair.value.from, label: fromLabel.value, text: d.fromDocument, reasoning: reasoningDocFor(pair.value.from) },
-    { station: pair.value.to, label: toLabel.value, text: d.toDocument, reasoning: reasoningDocFor(pair.value.to) },
-  ].filter((side) => side.text || side.reasoning)
-})
 /**
- * What this comparison shows, per document, for its credit line and the
- * page's „Quellen" (`#shared/utils/provenance`): each side's text where it
- * was read, the Erläuterungen where their comparison ran — those are always
- * Parliament's copies — and the § names from RIS.
+ * What this comparison shows, per document, for its credit line
+ * (`#shared/utils/provenance`): each side's text where it was read, the
+ * Erläuterungen where their comparison ran — those are always Parliament's
+ * copies — and the § names from RIS.
  */
 const REASONING_DE: Partial<Record<LawStationId, string>> = {
   me: 'Erläuterungen zum Ministerialentwurf',
@@ -296,7 +330,36 @@ const sources = computed<SourceEntry[]>(() => {
   if (namedCount.value) out.push(risSource('Paragraphenüberschriften'))
   return out
 })
-usePageSources(sources)
+/**
+ * One entry per compared version for the credit line: its name, its text, its
+ * Erläuterungen — and, where the line mixes publishers, whose each is. The
+ * Erläuterungen are always Parliament's copy, the text may be RIS's, so a
+ * side whose two documents differ names the publisher at each link.
+ */
+const creditSides = computed(() => {
+  const d = data.value
+  if (!d) return []
+  const mixed = mixedPublishers(sources.value)
+  const tag = (p: Publisher | null) => (mixed && p ? ` (${PUBLISHER_NAME_DE[p]})` : '')
+  return [
+    { station: pair.value.from, text: d.fromDocument, textBy: d.fromSource },
+    { station: pair.value.to, text: d.toDocument, textBy: d.toSource },
+  ].flatMap(({ station, text, textBy }) => {
+    const reasoning = reasoningDocFor(station)
+    if (!text && !reasoning) return []
+    const by = [...new Set([text ? textBy : null, reasoning ? 'parlament' as const : null].filter((p) => p !== null))]
+    const oneBy = by.length === 1 ? by[0]! : null
+    return [{
+      station,
+      label: `${LAW_STATION_LABEL[station]}${tag(oneBy)}`,
+      text,
+      textTag: oneBy ? '' : tag(textBy),
+      reasoning,
+      reasoningTag: oneBy ? '' : tag('parlament'),
+    }]
+  })
+})
+const paraTitlesTag = computed(() => (mixedPublishers(sources.value) ? ' (RIS)' : ''))
 const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(paraTitles.value.asOf) : null))
 
 /**
@@ -307,7 +370,11 @@ const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(par
  * question a section asks.
  */
 function chooseStep(step: LawStationPair) {
-  pair.value = { ...step }
+  // The pressed button changes nothing — not even the URL: rewritten
+  // without its hash, the same query read as a link to the top of the page
+  // (`app/router.options.ts`), and the reader landed in the header.
+  if (step.from === requested.value.from && step.to === requested.value.to) return
+  requested.value = { ...step }
   // `replace`, not `push`: the pair belongs in the URL so it can be
   // shared, but flipping between comparisons should not fill the back
   // button with steps the reader has to walk out of. The default pair
@@ -323,7 +390,14 @@ function chooseStep(step: LawStationPair) {
   }
   router.replace({ query })
 }
-const isStep = (step: LawStationPair) => step.from === pair.value.from && step.to === pair.value.to
+
+/** The sentences above the list wait only for a reason not to stand: an
+ *  error, or a pair that cannot be compared. While a step loads they stay —
+ *  under „Im Parlament" they do not depend on the step, and the toggle below
+ *  them must not jump while the next one arrives. */
+const sentencesShown = computed(() => status.value !== 'error' && data.value?.available !== false)
+/** A list to read, and with it the view switch and the search. */
+const hasList = computed(() => status.value === 'success' && !!data.value?.available && data.value.units.length > 0)
 
 /**
  * The section's heading never changes, and the question of the selected pair
@@ -339,17 +413,12 @@ const isStep = (step: LawStationPair) => step.from === pair.value.from && step.t
  * The heading is the question of the station the instance stands under, in
  * the wording the links that point here already use: the Regierungsvorlage
  * and Parlament stations of the bar, and the outcome card. Under „Im
- * Parlament" the line under the toggle names the step.
+ * Parlament" the toggle names the step, by the body that took it; the pair's
+ * own question line under it went on 02.10.2026 — it repeated the toggle.
  */
 const heading = scope === 'parlament'
   ? PARLIAMENT_COMPARISON_QUESTION
   : lawStationPairQuestion(scopeDefault.from, scopeDefault.to)
-/** The step's own question, under „Im Parlament" only: there the heading
- *  names the station, and the step — which two texts — is said nowhere else.
- *  The other sections have one step, and their heading is its question. */
-const question = computed(() =>
-  scope === 'parlament' ? lawStationPairQuestion(pair.value.from, pair.value.to) : null,
-)
 const fromLabel = computed(() => LAW_STATION_LABEL[pair.value.from])
 const toLabel = computed(() => LAW_STATION_LABEL[pair.value.to])
 
@@ -619,43 +688,7 @@ const droppedNote = computed(() =>
   <div :id="anchorId" ref="root" class="mt-8 scroll-mt-24">
     <h3 class="text-base font-semibold text-ink">{{ heading }}</h3>
 
-    <!-- Section-level control, and therefore in the section's header rather
-         than in the toolbar of the list: it changes WHAT is compared, while
-         the toggle and the search below change how the result is read.
-         Outside every branch on purpose — a pair whose text is PDF-only
-         answers with a reason and no units, and with the toggle inside that
-         branch the reader would lose the control that got them there. -->
-    <UFieldGroup v-if="steps.length > 1" role="group" aria-label="Welcher Schritt im Parlament" class="mt-2">
-      <UButton
-        v-for="step in steps"
-        :key="`${step.from}>${step.to}`"
-        :color="isStep(step) ? 'primary' : 'neutral'"
-        :variant="isStep(step) ? 'subtle' : 'outline'"
-        :aria-pressed="isStep(step)"
-        size="sm"
-        class="min-h-target"
-        @click="chooseStep(step)"
-      >
-        {{ LAW_STEP_LABEL[step.to] }}
-      </UButton>
-    </UFieldGroup>
-
-    <p v-if="status === 'pending' || status === 'idle'" class="mt-1 text-sm text-ink-secondary">
-      Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
-      wird mit dem der {{ toLabel }} verglichen …
-    </p>
-
-    <p v-else-if="status === 'error' || !data" class="mt-1 text-sm text-ink-secondary">
-      Der Vergleich ist gerade nicht verfügbar.
-    </p>
-
-    <template v-else-if="!data.available">
-      <p class="mt-1 text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
-    </template>
-
-    <template v-else>
-      <!-- What the selected pair answers, where the selection happened. -->
-      <p v-if="question" class="mt-3 text-sm font-medium text-ink">{{ question }}</p>
+    <template v-if="sentencesShown">
       <!-- One order for every comparison (01.10.2026): the figure first —
            what the reader came for —, then the reasoning rate, where the
            reasons stand, the warnings specific to this draft, and the method
@@ -671,11 +704,13 @@ const droppedNote = computed(() =>
         <p v-if="reasoningNote" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
         <!-- Where the reason for a change may be found, and nothing else
              (30.09.2026). „Ministerialentwurf gegen Regierungsvorlage." went:
-             the pills above show the selected pair, and a non-default one
-             prints its own question. The hint names the reader's question and
-             a document, never a cause (framing rule) — as a link where the
-             Regierungsvorlage's Erläuterungen are known. -->
-        <p class="text-sm text-ink-secondary">
+             the step toggle shows the selected pair. The hint names the
+             reader's question and a document, never a cause (framing rule) — as a link where the
+             Regierungsvorlage's Erläuterungen are known. None under „Im
+             Parlament" (02.10.2026): the station card above names the
+             committee's report and the adopted motions for both steps, and a
+             sentence here would change with the toggle below it. -->
+        <p v-if="hint || (pair.to === 'rv' && rvReasoningDoc)" class="text-sm text-ink-secondary">
           <template v-if="pair.to === 'rv' && rvReasoningDoc">
             Ob eine Stellungnahme dahintersteht, sagen oft die
             <ExternalLink :href="rvReasoningDoc.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>.
@@ -684,25 +719,42 @@ const droppedNote = computed(() =>
                Parlament" there are steps only where parliament published a
                changed text. -->
           <template v-else-if="scope === 'bgbl' && !parliamentTexts?.length">Den Schritt des Ressorts zeigt der Vergleich unter „Die Regierungsvorlage“.</template>
-          <template v-else>{{ lawStationPairHint(pair.from, pair.to) }}</template>
+          <template v-else>{{ hint }}</template>
         </p>
         <ComparisonCaveats :notes="[outsideNote, mergedNote, droppedNote]" />
-        <!-- Always on its own line, and last: it explains every sentence
-             above it. -->
-        <p class="text-sm">
-          <NuxtLink to="/so-funktionierts#vergleich" class="link-inline">Wie wir vergleichen</NuxtLink>
-        </p>
       </div>
+    </template>
 
-      <template v-if="data.units.length">
-        <!-- How to read the result, and a search: both scope the list below
-             them and nothing above. -->
-        <DiffToolbar
-          v-model:view="view"
-          v-model:query="query"
-          view-label="Darstellung des Vergleichs"
-          search-label="Im Text suchen"
-        />
+    <!-- The step toggle stands first in the list's toolbar (02.10.2026):
+         under „Im Parlament" nothing above depends on the step — no figure,
+         no reasoning rate, one hint for both — so the step changes only the
+         list, and belongs with it. Where there is no list (loading, an
+         error, a PDF-only text) it stands alone at the same spot: a reader
+         who picked a step that cannot be compared keeps the way back. -->
+    <DiffToolbar
+      v-if="hasList"
+      v-model:view="view"
+      v-model:query="query"
+      view-label="Darstellung des Vergleichs"
+      search-label="Im Text suchen"
+    >
+      <LawStepToggle v-if="steps.length > 1" :steps="steps" :current="requested" @choose="chooseStep" />
+    </DiffToolbar>
+    <div v-else-if="steps.length > 1" class="mt-4">
+      <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
+    </div>
+
+    <p v-if="status === 'pending' || status === 'idle'" class="mt-3 text-sm text-ink-secondary">
+      Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
+      wird mit dem der {{ toLabel }} verglichen …
+    </p>
+    <p v-else-if="status === 'error' || !data" class="mt-3 text-sm text-ink-secondary">
+      Der Vergleich ist gerade nicht verfügbar.
+    </p>
+    <p v-else-if="!data.available" class="mt-3 text-sm text-ink-secondary">{{ data.unavailableReason }}</p>
+
+    <template v-else>
+      <template v-if="hasList">
 
         <div class="mt-3 border-y border-hairline">
           <DiffGroup
@@ -878,24 +930,26 @@ const droppedNote = computed(() =>
            up while or after reading, never before — and it is one more block
            that used to rewrite itself above the select.
 
-           The publishers only; what may be claimed hangs on each DOCUMENT —
-           its publisher and its station — and is said once, in the page's
-           „Quellen" (`sources` above, 01.10.2026). Until then this line
-           joined both sides into one claim, and „Parlament (Dokumente: freie
-           Werke)" under ME→RV read as covering the draft too. -->
-      <SectionCredits :sources="sources">
+           Who published each document, never the licence: what may be
+           claimed hangs on publisher and station and stands once, in the
+           Impressum (`#shared/utils/provenance`, 02.10.2026). Where the line
+           mixes publishers each version names its own — „Quellen: Parlament,
+           RIS" over two documents left open which came from where, and
+           „Parlament (Dokumente: freie Werke)" under ME→RV read as covering
+           the draft too. -->
+      <SectionCredits :sources="sources" method="/so-funktionierts#vergleich">
         <!-- Grouped by version since 30.09.2026: „Entwurf: Text ·
              Erläuterungen" instead of four links each carrying its version's
              name. The links are there for the reader. -->
         <span v-for="side in creditSides" :key="side.station">
           {{ side.label }}:
-          <ExternalLink v-if="side.text" :href="side.text.url" class="text-accent-deep hover:underline">Text</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="text-accent-deep hover:underline">Erläuterungen</ExternalLink>
+          <ExternalLink v-if="side.text" :href="side.text.url" class="text-accent-deep hover:underline">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="text-accent-deep hover:underline">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
         </span>
         <!-- The § names come from a third source; a page that shows text has
              to say where it is from, even when the text is one word long.
              The date stays here, beside the comparison it dates: it changes
              per section, the licence does not. -->
-        <span v-if="namedCount">Paragraphenüberschriften<template v-if="paraTitlesAsOf">: Stand {{ paraTitlesAsOf }}</template></span>
+        <span v-if="namedCount">Paragraphenüberschriften{{ paraTitlesTag }}<template v-if="paraTitlesAsOf">: Stand {{ paraTitlesAsOf }}</template></span>
       </SectionCredits>
     </template>
   </div>

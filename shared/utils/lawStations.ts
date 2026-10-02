@@ -268,20 +268,23 @@ export function lawStationPairQuestion(from: LawStationId, to: LawStationId): st
 }
 
 /**
- * Where to look for the REASON behind a change, per pair.
+ * Where to look for the REASON behind a change, per pair — or null.
  *
  * The comparison can only ever show that a text moved, never why — and the
  * document that comes closest to the why is a different one at each station:
- * the Erläuterungen of the Regierungsvorlage after the Begutachtung, the
- * Ausschussbericht for what happened in committee, where the
- * Abänderungsanträge are recorded by name.
+ * the Erläuterungen of the Regierungsvorlage after the Begutachtung; for
+ * parliament's steps the Ausschussbericht and the adopted
+ * Abänderungsanträge, which the card of „Im Parlament" names since
+ * 02.10.2026. Null for those steps: as a sentence over the comparison they
+ * changed with its step toggle, which sits below them, and the card holds
+ * for both steps at once.
  *
  * Framing rule (docs/architecture.md §4): each sentence points at a document and stops
  * there — the tool does not assert causation it cannot observe. Shortened
  * on 30.09.2026: „…, sagt der Text nicht; …" went, the question and the
  * document stay, and neither sentence names a cause.
  */
-export function lawStationPairHint(from: LawStationId, to: LawStationId): string {
+export function lawStationPairHint(from: LawStationId, to: LawStationId): string | null {
   if (to === 'rv') {
     return 'Ob eine Stellungnahme dahintersteht, sagen oft die Erläuterungen der Regierungsvorlage.'
   }
@@ -290,5 +293,5 @@ export function lawStationPairHint(from: LawStationId, to: LawStationId): string
   if (from === 'me') {
     return 'Wer was geändert hat, zeigen die einzelnen Schritte unter „Die Regierungsvorlage“ und „Im Parlament“.'
   }
-  return 'Welche Abänderungsanträge dahinterstehen, nennt der Ausschussbericht.'
+  return null
 }

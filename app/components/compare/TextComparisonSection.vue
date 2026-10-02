@@ -18,7 +18,7 @@
 import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
-import { parliamentDocumentSource, risSource, type SourceEntry } from '#shared/utils/provenance'
+import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
@@ -392,20 +392,23 @@ const loadAnnouncement = computed(() => {
  * else. */
 const checkNote = computed(() => annexCheckNoteParts(data.value?.verification ?? null, data.value?.readFrom ?? null))
 /**
- * What this comparison shows, for its credit line and the page's „Quellen"
- * (`#shared/utils/provenance`): the annex from the copy that was read — RIS,
- * or Parliament's, which carries no claim — the Erläuterungen at the §§ (RIS,
- * `useExplanations`), and the text in force behind the Lesefassung.
+ * What this comparison shows, for its credit line (`#shared/utils/provenance`):
+ * the annex from the copy that was read — RIS, or Parliament's, which carries
+ * no claim — and the text in force behind the Lesefassung, always RIS. The
+ * Erläuterungen at the §§ are credited by their own section.
  */
 const sources = computed<SourceEntry[]>(() => {
   const d = data.value
   if (!d?.available) return []
   const out = [d.publisher === 'ris' ? risSource('Textgegenüberstellung') : parliamentDocumentSource('Textgegenüberstellung', 'me')]
-  if (explanationsByKey.value.size) out.push(risSource('Erläuterungen'))
   if (consolidatedShown.value > 0 && consolidated.value?.paragraphs[0]?.risUrl) out.push(risSource('Geltender Text'))
   return out
 })
-usePageSources(sources)
+/** Where the annex came from Parliament and the text in force from RIS, the annex link names its publisher. */
+const annexTag = computed(() => {
+  const annex = sources.value[0]
+  return annex && mixedPublishers(sources.value) ? ` (${PUBLISHER_NAME_DE[annex.publisher]})` : ''
+})
 const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
 const doubtfulNote = computed(() =>
   annexDoubtfulNote(data.value?.verification?.doubtfulLaws ?? [], data.value?.readFrom ?? null),
@@ -475,9 +478,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            `space-y-3` spaces whichever notes exist and gives the first none. -->
       <div class="space-y-3">
         <p class="text-sm text-ink-secondary">
-          <FactLine :parts="checkNote">
-            <NuxtLink to="/so-funktionierts#gegenueberstellung" class="link-inline">Wie wir prüfen</NuxtLink>
-          </FactLine>
+          <FactLine :parts="checkNote" />
         </p>
 
         <!-- Finding and doubt stay together: `doubtfulNote` elaborates the
@@ -719,12 +720,12 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
 
            The publisher comes from the server, because the source is chosen
            there (`textComparisonService.publisher`); what may be claimed for
-           it is said once, in the page's „Quellen" (`sources` above,
-           01.10.2026). The licence stood here until then, and so did a
+           it stands once, in the Impressum (`#shared/utils/provenance`,
+           02.10.2026). The licence stood here until 01.10.2026, and so did a
            second „CC BY 4.0, RIS" for the text in force wherever the annex
            itself came from Parliament. -->
-      <SectionCredits :sources="sources">
-        <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
+      <SectionCredits :sources="sources" method="/so-funktionierts#gegenueberstellung">
+        <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}{{ annexTag }}</ExternalLink>
         <!-- The geltender Text of the Lesefassung, only where one is
              expandable somewhere: RIS text in force, with a Fundstelle of its
              own. -->

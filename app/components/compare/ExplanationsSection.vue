@@ -33,9 +33,8 @@ const props = defineProps<{ gp?: string; inr?: number; risId?: string }>()
 
 const { data, status } = useExplanations(() => ({ gp: props.gp, inr: props.inr, risId: props.risId }))
 
-/** Always RIS (`risExplanations.ts`), for the credit line and the page's „Quellen" (`#shared/utils/provenance`). */
+/** Always RIS (`risExplanations.ts`), for the credit line (`#shared/utils/provenance`). */
 const sources = computed<SourceEntry[]>(() => (data.value?.available ? [risSource('Erläuterungen')] : []))
-usePageSources(sources)
 
 /** One paragraph or subheading of the Ressort, in printing order. */
 interface Item {
@@ -211,7 +210,7 @@ const loadAnnouncement = computed(() => {
 
       <!-- The same line as under the comparisons since 01.10.2026, where a
            hand-written „Quelle (CC BY 4.0, RIS):" stood: the publisher here,
-           the licence once in the page's „Quellen". Unmarked — the
+           the licence once, in the Impressum. Unmarked — the
            Ressort's paragraphs stand as written. -->
       <SectionCredits :sources="sources" :marked="false">
         <ExternalLink
