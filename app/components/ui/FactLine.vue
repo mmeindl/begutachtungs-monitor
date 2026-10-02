@@ -5,8 +5,8 @@
  *
  * As a joined string the browser broke wherever the line ran out, and on a
  * phone that was usually mid-fact: „noch vor Fristende · 9 / Stellungnahmen"
- * on the spine, „· 1 nicht geprüft · / Zeilenzuordnung …" over the
- * comparison (measured at 390 px, 30.09.2026). Each fact is an
+ * on the spine, and over the comparison when a status line stood there
+ * (measured at 390 px, 30.09.2026). Each fact is an
  * `inline-block` now: one that does not fit the rest of the line moves to
  * the next one whole, and one longer than a whole line still wraps inside
  * itself — `nowrap` would have scrolled the page sideways there, and some of

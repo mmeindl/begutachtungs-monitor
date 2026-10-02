@@ -186,8 +186,8 @@ async function readRis(parts: readonly RisDocumentUrls[], articles: readonly Dra
   if (fromPdf.rows.length === 0) return fromPdf.unreadable ?? 'Die Textgegenüberstellung ließ sich nicht auslesen.'
   return {
     parsed: fromPdf,
-    // „, aus dem PDF gelesen" went on 30.09.2026: the status line over the
-    // comparison says it, as the caveat it is (`annexCheckNote`).
+    // „, aus dem PDF gelesen" went on 30.09.2026; the credit line says
+    // „Zeilenzuordnung: Begutachtungs-Monitor" for it (`SectionCredits`).
     source: { label: 'Textgegenüberstellung des Ressorts', url: pdfs[0]! },
     publisher: 'ris',
     readFrom: 'pdf',

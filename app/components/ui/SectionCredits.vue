@@ -23,6 +23,12 @@
  * red/green marked ministry text raises: who did the marking? A section that
  * prints a text unmarked says `marked: false`.
  *
+ * „Zeilenzuordnung" stands before it where the section paired the rows
+ * itself — a Textgegenüberstellung read from the PDF, which RIS publishes
+ * only as an image (02.10.2026). The same grammar for the same kind of
+ * claim: the pairing is ours, as the marking is, and may be wrong; the
+ * method page says how. It replaced the caveat over the comparison.
+ *
  * „Methode" closes the line since 02.10.2026, after the marking it explains —
  * where the caption convention puts it („Daten & Methodik"). It stood above
  * as „Wie wir vergleichen" and „Wie wir prüfen", once per section: the
@@ -34,6 +40,8 @@ import { sourceLineDe, type SourceEntry } from '#shared/utils/provenance'
 const props = withDefaults(defineProps<{
   sources: readonly SourceEntry[]
   marked?: boolean
+  /** The section paired the rows itself (`readFrom: 'pdf'`). */
+  paired?: boolean
   /** The section's anchor on the method page, e.g. `/so-funktionierts#vergleich`. */
   method?: string
 }>(), { marked: true })
@@ -45,6 +53,7 @@ const line = computed(() => sourceLineDe(props.sources))
   <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
     <span v-if="line">{{ line }}</span>
     <slot />
+    <span v-if="paired">Zeilenzuordnung: Begutachtungs-Monitor</span>
     <span v-if="marked">Markierung: Begutachtungs-Monitor</span>
     <NuxtLink v-if="method" :to="method" class="text-accent-deep hover:underline">Methode</NuxtLink>
   </div>

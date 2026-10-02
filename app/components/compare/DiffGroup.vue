@@ -8,12 +8,16 @@
  * stood here from 30.09. to 01.10.2026 and was taken out again: the group
  * header scrolls away with the page.
  */
-import { BADGE_CLASS, type DiffBadgeCount } from '~/utils/diffBadges'
+import { BADGE_CLASS, UNCHECKED_PILL, type DiffBadgeCount } from '~/utils/diffBadges'
 
 defineProps<{
   /** The law or Artikel this group collects; empty where the annex names none. */
   title: string
   badges: DiffBadgeCount[]
+  /** §§ the check withheld, and §§ shown that it could not reach — in the
+   *  same unit as the pills (Textgegenüberstellung only). */
+  withheld?: number
+  unchecked?: number
   open: boolean
 }>()
 
@@ -52,6 +56,20 @@ defineEmits<{
           :class="BADGE_CLASS[b.badge]"
         >
           {{ b.count }} {{ b.label }}
+        </span>
+        <!-- Not changes but states of the check, after the change pills
+             (02.10.2026). „nicht gezeigt" is a gap — dashed, the convention
+             for something left out; its cause stands at the § itself. „nicht
+             geprüft" is shown but unverified — the quiet outline of
+             „unverändert", because nothing is missing. -->
+        <span
+          v-if="withheld"
+          class="inline-flex items-center rounded-full border border-dashed border-ink-muted/60 px-2 py-0.5 text-xs font-medium tabular-nums text-ink-muted"
+        >
+          {{ withheld }} nicht gezeigt
+        </span>
+        <span v-if="unchecked" :class="UNCHECKED_PILL">
+          {{ unchecked }} nicht geprüft
         </span>
       </span>
     </button>

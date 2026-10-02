@@ -19,13 +19,13 @@ import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
 import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
-import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
+import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, UNCHECKED_PILL, badgeCounts, badgeLabels, paragraphBadge } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
 import {
-  annexCheckNoteParts,
   annexDoubtfulNote,
   annexDroppedPagesNote,
+  annexNotRunNote,
   annexWithheldBlame,
   annexWithheldText,
 } from '~/utils/annexNotes'
@@ -202,7 +202,33 @@ interface Group {
   key: string
   article: string
   rows: TextComparisonRow[]
+  /** The header's pills, in §§ (`paragraphBadge`). */
   counts: Record<DiffBadge, number>
+  /** §§ the check withheld — a pill of their own, so a collapsed group says
+   *  itself that something is missing. */
+  withheld: number
+  /** §§ shown with a change the check could not reach (`nicht geprüft`). */
+  unchecked: number
+}
+
+/**
+ * The § a row belongs to, as the check keys it (`gateRows`: `gld ?? para`).
+ * A row without one is a unit of its own — counting it into a „§ null"
+ * would merge unrelated rows.
+ */
+function paragraphKeyOf(row: TextComparisonRow, index: number): string {
+  return row.gld ?? row.para ?? `#${index}`
+}
+
+/** The server's „a check is owed" rule (`isDisplayedChange`): a change to
+ *  text in force. A new § has none, so it owes no check and is no gap. */
+function owesCheck(row: TextComparisonRow): boolean {
+  return row.current.length > 0 && (row.change === 'changed' || row.change === 'removed')
+}
+
+/** Owed a check and did not get one — „nicht geprüft". */
+function isUnchecked(row: TextComparisonRow): boolean {
+  return row.check === 'unchecked' && owesCheck(row)
 }
 
 /**
@@ -225,7 +251,7 @@ const groups = computed<Group[]>(() => {
   if (!data.value?.available) return []
   const out: Group[] = []
   const start = (row: TextComparisonRow): Group => {
-    const group: Group = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 } }
+    const group: Group = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }, withheld: 0, unchecked: 0 }
     out.push(group)
     return group
   }
@@ -234,7 +260,10 @@ const groups = computed<Group[]>(() => {
   // always survives, and a group left without rows drops out below.
   const q = query.value.trim().toLowerCase()
   let current: Group | null = null
-  for (const row of data.value.rows) {
+  /* Per group and §: the pills of its shown rows, and the check's state.
+   * The verdict is per §, so a § is withheld or unchecked as a whole. */
+  const paras = new Map<Group, Map<string, { badges: Set<DiffBadge>; withheld: boolean; unchecked: boolean }>>()
+  for (const [index, row] of data.value.rows.entries()) {
     if (row.kind === 'article') {
       current = start(row)
       continue
@@ -243,11 +272,29 @@ const groups = computed<Group[]>(() => {
     if (q && !haystacks.value.get(row)!.includes(q)) continue
     if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
     current.rows.push(row)
+    let byPara = paras.get(current)
+    if (!byPara) paras.set(current, (byPara = new Map()))
+    const key = paragraphKeyOf(row, index)
+    let p = byPara.get(key)
+    if (!p) byPara.set(key, (p = { badges: new Set(), withheld: false, unchecked: false }))
     // A withheld row keeps its `change` but lost its text, so counting it
     // would put a change in the header pill that the block below says is not
-    // shown — and `stats` already leaves those rows out. The block notice is
-    // where a withheld change is accounted for.
-    if (row.check !== 'withheld') current.counts[badgeOf(row)]++
+    // shown — and `stats` already leaves those rows out. It is counted as
+    // what it is: a § not shown.
+    if (row.check === 'withheld') p.withheld = true
+    else p.badges.add(badgeOf(row))
+    // Rows without a § too, one unit each: they owe a check no verdict can
+    // reach (they stood in the status line as „ohne Paragraphenangabe").
+    if (isUnchecked(row)) p.unchecked = true
+  }
+  // In §§ since 02.10.2026, not rows: every pill counts the same unit, so a
+  // law's pills add up to its §§ (`paragraphBadge`).
+  for (const [group, byPara] of paras) {
+    for (const p of byPara.values()) {
+      if (p.withheld) group.withheld++
+      else group.counts[paragraphBadge(p.badges)]++
+      if (p.unchecked) group.unchecked++
+    }
   }
   return out.filter((g) => g.rows.length > 0)
 })
@@ -257,7 +304,7 @@ const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
 type Block =
   /** The two columns come along computed: the template asked for each of them
    *  twice per row, on every render, and a render happens per keystroke. */
-  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[] }
+  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[]; unchecked: boolean }
   | { kind: 'context'; rows: TextComparisonRow[] }
   /**
    * Changes the RIS check would not vouch for. The server sends these rows
@@ -297,6 +344,8 @@ interface Para {
   explanations: ParagraphExplanationView[]
   /** The whole § as it would read after the draft; null where the gate withholds it. */
   consolidated: ConsolidatedParagraph | null
+  /** Whether a row of this § already carries the „nicht geprüft" pill. */
+  uncheckedMarked: boolean
 }
 
 function parasOf(g: Group): { paras: Para[]; hidden: number } {
@@ -306,7 +355,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
   // line that says only how many there were.
   const folding = !query.value.trim()
   const paras: Para[] = []
-  let current: Para = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [], consolidated: null }
+  let current: Para = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [], consolidated: null, uncheckedMarked: false }
   let context: TextComparisonRow[] = []
   let shown = 0
   let hidden = 0
@@ -331,7 +380,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
     const key = row.para ?? ''
     if (current.key !== key) {
       flush()
-      current = { key, gld: row.para, heading: null, blocks: [], explanations: explanationsFor(row.law, row.para), consolidated: consolidatedFor(row.law, row.para) }
+      current = { key, gld: row.para, heading: null, blocks: [], explanations: explanationsFor(row.law, row.para), consolidated: consolidatedFor(row.law, row.para), uncheckedMarked: false }
       paras.push(current)
     }
     // The heading belongs to the paragraph, not to the Absatz that carries it.
@@ -350,7 +399,13 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
       continue
     }
     flush()
-    current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed) })
+    // „nicht geprüft" beside the change badge, once per § (02.10.2026): the
+    // verdict is per §, and on every row of a five-row § it would repeat
+    // itself. At the first SHOWN row that owed a check, so a fold cannot
+    // swallow it. A row without a § is a unit of its own and always gets it.
+    const unchecked = isUnchecked(row) && (row.para === null || !current.uncheckedMarked)
+    if (unchecked && row.para !== null) current.uncheckedMarked = true
+    current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), unchecked })
     shown++
   }
   flush()
@@ -372,7 +427,7 @@ const matchCount = computed(() => groups.value.reduce((n, g) => n + g.rows.lengt
  * reads the page linearly waits for an announcement that never comes, and the
  * longest section of the page appears mutely.
  *
- * Empty while loading — the visible paragraph says that already, and a region
+ * Empty while loading — the skeleton's sentence says that already, and a region
  * that already carries text when it is mounted is read out immediately by
  * some screen readers.
  */
@@ -390,7 +445,7 @@ const loadAnnouncement = computed(() => {
  * `app/utils/annexNotes.ts`, where they can be tested against a small
  * response object. They are functions of the response and of nothing
  * else. */
-const checkNote = computed(() => annexCheckNoteParts(data.value?.verification ?? null, data.value?.readFrom ?? null))
+const notRunNote = computed(() => annexNotRunNote(data.value?.verification ?? null))
 /**
  * What this comparison shows, for its credit line (`#shared/utils/provenance`):
  * the annex from the copy that was read — RIS, or Parliament's, which carries
@@ -427,9 +482,9 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
          read out. -->
     <p class="sr-only" role="status">{{ loadAnnouncement }}</p>
 
-    <p v-if="status === 'pending' || status === 'idle'" class="text-sm text-ink-secondary">
+    <ListSkeleton v-if="status === 'pending' || status === 'idle'">
       Die Textgegenüberstellung wird geladen …
-    </p>
+    </ListSkeleton>
 
     <p v-else-if="status === 'error' || !data" class="text-sm text-ink-secondary">
       Die Gegenüberstellung ist gerade nicht verfügbar.
@@ -456,39 +511,21 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            source it concerns. The provenance itself is not dropped — it must
            never sit behind a link.
 
-           What stays on top is the caveat — since 30.09.2026 as a fragment
-           of the status line below: on the PDF path more than the
-           marking is ours — RIS publishes the annex only as an image, the
-           row pairing is inferred. That is not a provenance note but the
-           statement that what follows may be wrong; it belongs before the
-           comparison, not under it. That the text was read from the PDF is
-           now said by the credit line itself
-           (`textComparisonService`: „aus dem PDF gelesen"). -->
-      <!-- What stands above the comparison since 30.09.2026: one status line,
-           and below it only warnings that are specific to THIS draft and rare.
-           Until then four paragraphs stood here — a PDF caveat, the check
-           result with every withheld cause, and an announcement of the
-           Lesefassung — before the reader reached what they came for. The
-           causes stand at each withheld block, the Stichtag and the
-           method on /so-funktionierts (`annexCheckNote` says what moved
-           where); the Lesefassung announces itself at each §.
-
-           The line is never empty: a comparison nothing could be checked in
-           says so rather than falling silent, which reads as a clean bill.
-           `space-y-3` spaces whichever notes exist and gives the first none. -->
+           Nothing stands between the heading and the comparison since
+           02.10.2026 but warnings specific to THIS draft and rare — the check
+           that did not run, a doubtful layout, missing pages, laws that
+           could not be divided. The status line that stood here went
+           (`annexNotRunNote` says what moved where): the counts are pills
+           in each law's header, and the PDF caveat is the credit line's
+           „Zeilenzuordnung". `space-y-3` spaces whichever notes exist. -->
       <div class="space-y-3">
-        <p class="text-sm text-ink-secondary">
-          <FactLine :parts="checkNote" />
-        </p>
-
-        <!-- Finding and doubt stay together: `doubtfulNote` elaborates the
-             line above it. Where the layout could not be vouched for at all,
+        <!-- Where the layout could not be vouched for at all,
              the page says which part of the annex is missing rather than
              showing a comparison with a silent hole in it. And several laws
              in one draft, where the annex does not say where one ends:
              shown undivided, and said so — dividing it wrongly would put one
              law's § 5 under another law's name. -->
-        <ComparisonCaveats :notes="[doubtfulNote, droppedPagesNote, data.boundaryNote]" />
+        <ComparisonCaveats :notes="[notRunNote, doubtfulNote, droppedPagesNote, data.boundaryNote]" />
       </div>
 
       <!-- Same toolbar as the § comparison, same order, so the two sections
@@ -509,6 +546,8 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           :key="g.key"
           :title="g.article"
           :badges="badgeCounts(g.counts, BADGE_LABEL)"
+          :withheld="g.withheld"
+          :unchecked="g.unchecked"
           :open="groupOpen(g.key)"
           @toggle="toggleGroup(g.key)"
         >
@@ -602,6 +641,12 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                     <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
                       {{ BADGE_LABEL[badgeOf(b.row)] }}
                     </span>
+                    <!-- The check's state beside the change, as in the law
+                         header: identity on the § line above, state here.
+                         Confirmed §§ carry nothing — only the exception is
+                         marked, as „nicht gezeigt" is by its notice; the
+                         reasons stand on /so-funktionierts. -->
+                    <span v-if="b.unchecked" :class="['ml-1.5', UNCHECKED_PILL]">nicht geprüft</span>
                   </p>
 
                   <!-- Both columns are the annex's own notation and reach
@@ -724,7 +769,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            02.10.2026). The licence stood here until 01.10.2026, and so did a
            second „CC BY 4.0, RIS" for the text in force wherever the annex
            itself came from Parliament. -->
-      <SectionCredits :sources="sources" method="/so-funktionierts#gegenueberstellung">
+      <SectionCredits :sources="sources" :paired="data.readFrom === 'pdf'" method="/so-funktionierts#gegenueberstellung">
         <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}{{ annexTag }}</ExternalLink>
         <!-- The geltender Text of the Lesefassung, only where one is
              expandable somewhere: RIS text in force, with a Fundstelle of its

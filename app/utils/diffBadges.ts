@@ -80,6 +80,31 @@ export interface DiffBadgeCount {
   label: string
 }
 
+/** „nicht geprüft" — shown, but unverified: the quiet outline of
+ *  „unverändert", because nothing is missing. One class for the law header
+ *  and the § (02.10.2026). */
+export const UNCHECKED_PILL = 'inline-flex items-center rounded-full bg-page px-2 py-0.5 text-xs font-medium tabular-nums text-ink-muted ring-1 ring-inset ring-hairline'
+
+/**
+ * What one § is, from the pills of its rows — so a group header can count
+ * §§ instead of rows (02.10.2026).
+ *
+ * The Textgegenüberstellung prints a § over as many rows as it has Absätze,
+ * and its header counted rows: one new § with fourteen Absätze read „14 neu"
+ * (§ 8a, 115/ME XXVIII), while the check beside it counts §§ — so the pills
+ * did not add up to anything the line above them said.
+ *
+ * Not the strongest change: an existing § with one changed and four new
+ * Absätze is a changed §, not a new one (§ 8 of the same draft). A § is new
+ * only if all of it is new, gone only if all of it is gone; anything mixed
+ * is „geändert".
+ */
+export function paragraphBadge(rows: ReadonlySet<DiffBadge>): DiffBadge {
+  if (rows.size === 1) return [...rows][0]!
+  if ([...rows].every((b) => b === 'unchanged' || b === 'editorial')) return 'editorial'
+  return 'changed'
+}
+
 /** The summary pills of one group, in `BADGE_ORDER`; a zero gets no pill. */
 export function badgeCounts(
   counts: Record<DiffBadge, number>,

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { TextComparisonResponse } from '../shared/types'
 import {
-  annexCheckNote,
   annexDoubtfulNote,
   annexDroppedPagesNote,
+  annexNotRunNote,
   annexWithheldBlame,
   annexWithheldText,
 } from '../app/utils/annexNotes'
@@ -24,64 +24,23 @@ const v = (o: Partial<Verification> = {}): Verification => ({
   ...o,
 })
 
-describe('annexCheckNote', () => {
-  it('never falls silent — a comparison nothing could be checked in says so', () => {
-    // Until 2026-09-10 this was empty for 21 drafts of GP XXVIII, and silence
-    // on a page that otherwise reports its checks reads as a clean bill.
-    expect(annexCheckNote(null)).toBe('Nicht gegen das geltende Recht im RIS geprüft')
+describe('annexNotRunNote — the one note about the check above the comparison (02.10.2026)', () => {
+  it('says a check did not run where one was owed, with the server’s reason after a colon', () => {
+    expect(annexNotRunNote(v({ judged: 0, verified: 0, uncheckedParagraphs: 11, notRunReason: 'das RIS Bundesrecht führt diese Paragraphen nicht' })))
+      .toBe('Nicht gegen das geltende Recht im RIS geprüft: das RIS Bundesrecht führt diese Paragraphen nicht.') // 40/ME XXVIII
+    expect(annexNotRunNote(v({ judged: 0, verified: 0, rowsWithoutParagraph: 2 }))).toBe('Nicht gegen das geltende Recht im RIS geprüft.')
   })
 
-  it('prints the server’s own reason after a colon', () => {
-    expect(annexCheckNote(v({ judged: 0, notRunReason: 'im RIS fehlt der Beginn der Begutachtungsfrist' }))).toBe(
-      'Nicht gegen das geltende Recht im RIS geprüft: im RIS fehlt der Beginn der Begutachtungsfrist',
-    )
+  it('says nothing where the check ran — the law headers count its result', () => {
+    expect(annexNotRunNote(v({ judged: 46, verified: 39, withheldParagraphs: 7, uncheckedParagraphs: 1 }))).toBeNull() // 32/ME
   })
 
-  it('still reports a withheld § where nothing could be judged', () => {
-    // An annex that only inserts §§ and puts text into one the draft never
-    // wrote: no left column to judge, and a right-column rule fired anyway.
-    expect(
-      annexCheckNote(
-        v({
-          judged: 0,
-          verified: 0,
-          withheldParagraphs: 1,
-          withheldByCause: { standing: 0, alreadyStanding: 0, notInDraft: 1 },
-          uncheckedParagraphs: 4,
-        }),
-      ),
-    ).toBe('Nicht gegen das geltende Recht im RIS geprüft · 1 nicht gezeigt')
+  it('says nothing where no check was owed — an annex of new §§ alone', () => {
+    expect(annexNotRunNote(v({ judged: 0, verified: 0, notRunReason: 'der Entwurf schafft neues Recht' }))).toBeNull() // 57/ME
   })
 
-  it('counts, and leaves the causes and the Stichtag to the block and the credits', () => {
-    const note = annexCheckNote(
-      v({
-        judged: 32,
-        verified: 28,
-        asOf: '2026-08-15',
-        withheldParagraphs: 3,
-        withheldByCause: { standing: 1, alreadyStanding: 2, notInDraft: 0 },
-        uncheckedParagraphs: 1,
-        rowsWithoutParagraph: 2,
-      }),
-    )
-    expect(note).toBe(
-      '28 von 32 geprüften Paragraphen halten dem geltenden Recht im RIS stand · 3 nicht gezeigt · ' +
-      '1 nicht geprüft · 2 Änderungen ohne Paragraphenangabe, nicht geprüft',
-    )
-    expect(note).not.toContain('15.08.2026')
-  })
-
-  it('names the PDF pairing as ours', () => {
-    expect(annexCheckNote(v({ judged: 5, verified: 5 }), 'pdf')).toBe(
-      '5 von 5 geprüften Paragraphen halten dem geltenden Recht im RIS stand · Zeilenzuordnung aus dem PDF erschlossen, ohne Gewähr',
-    )
-  })
-
-  it('says nothing about an empty set', () => {
-    expect(annexCheckNote(v({ judged: 5, verified: 5 }), 'table')).toBe(
-      '5 von 5 geprüften Paragraphen halten dem geltenden Recht im RIS stand',
-    )
+  it('reads a missing verification as no check', () => {
+    expect(annexNotRunNote(null)).toBe('Nicht gegen das geltende Recht im RIS geprüft.')
   })
 })
 

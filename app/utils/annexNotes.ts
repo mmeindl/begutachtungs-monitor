@@ -19,69 +19,46 @@ type Verification = TextComparisonResponse['verification']
 type ReadFrom = TextComparisonResponse['readFrom']
 
 /**
- * What the check found, as one status line above the comparison — counts
- * only, joined by „ · ".
+ * The one thing about the check that has to stand above the comparison: that
+ * it did not run, and why — or null.
  *
- * **Short since 30.09.2026.** Until then this was a sentence of up to five
- * clauses: the Stichtag, every withheld § with its cause, and — beside it —
- * a PDF caveat and a paragraph announcing the Lesefassung. Four paragraphs
- * stood between the heading and the diff. What moved where:
+ * **No status line since 02.10.2026.** Until then one stood over every
+ * comparison: the result in counts, „n nicht gezeigt", „n nicht geprüft",
+ * the rows without a §, and the PDF caveat. What moved where:
  *
- * - **The causes** stand at each withheld block (`annexWithheldText`,
- *   `annexWithheldBlame`), which is the only place a cause means anything.
- *   The count stays here: in a collapsed group that block is not visible, and
- *   the top line is then the only place the reader learns something is
- *   missing.
- * - **The Stichtag** is always the first day of the Begutachtungsfrist; that
- *   rule stands on /so-funktionierts#gegenueberstellung, and the date itself
- *   in the bar and under „Geltendes Recht".
- * - **The PDF caveat** shrinks to a fragment. It stays at the top, because it
- *   says what follows may be our misreading; the long form of whose reading
- *   it may be stands at every withheld block and on /so-funktionierts.
+ * - **The counts** are pills in each law's header (`DiffGroup`), in §§, and
+ *   visible while the group is collapsed. „39 von 46 Paragraphen bestätigt"
+ *   was the shown §§ minus the withheld ones, and beside the pills it
+ *   invited a sum that could not work: the 46 leaves out the new §§, which
+ *   owe no check (115/ME and 32/ME XXVIII).
+ * - **The rows without a §** count into their law's „nicht geprüft".
+ * - **The PDF caveat** is the credit line's „Zeilenzuordnung:
+ *   Begutachtungs-Monitor" (`SectionCredits`), in the grammar of its
+ *   „Markierung"; its long form stands at every withheld block, in the
+ *   doubtful note and on /so-funktionierts. 48 of 120 annexes of GP XXVIII
+ *   are read from the PDF — a rare-warning box would have stood on four in
+ *   ten drafts.
+ * - **The causes** stood at each withheld block before (`annexWithheldText`),
+ *   the Stichtag on /so-funktionierts.
  *
- * The nouns are the ones /so-funktionierts#gegenueberstellung explains:
- * „nicht gezeigt" and „nicht geprüft".
+ * **Why silence is safe now.** The line had to be „never empty": silence
+ * reads as „checked, nothing to report" — 21 drafts of GP XXVIII until
+ * 2026-09-10. A check that did not run now marks every § that owed one as
+ * „nicht geprüft" in its header (measured 02.10.2026 over GP XXVIII: 28,
+ * 34, 40, 44, 75, 80, 90, 92/ME), so the page is not silent. What the pills
+ * cannot say is why, and that is draft-specific and rare: this caveat.
+ * Only where a check was owed — an annex of new §§ alone (57, 91/ME) has
+ * nothing to check and nothing to report.
  *
- * **Never empty while the comparison is shown.** Silence on a page that
- * otherwise reports its checks reads as „checked, nothing to report" — 21
- * drafts of GP XXVIII until 2026-09-10. `notRunReason` is the server's own
- * fragment for that case (`REASON_*` in `server/utils/annex/verdict.ts`),
- * written to follow a colon.
- *
- * `rowsWithoutParagraph` is the only quantity that counts rows, not §§:
- * changes the annex attributes to no § at all, so no verdict can reach them.
- * Printed only when there are any — a clause about an empty set is noise.
+ * `notRunReason` is the server's own fragment (`REASON_*` in
+ * `server/utils/annex/verdict.ts`), written to follow a colon.
  */
-export function annexCheckNote(v: Verification, readFrom: ReadFrom = null): string {
-  return annexCheckNoteParts(v, readFrom).join(' · ')
-}
-
-/**
- * The same note as its separate facts, for `FactLine`: on a phone the joined
- * string broke inside a fact („· 1 nicht geprüft · / Zeilenzuordnung …"),
- * and only the parts let the line break between them.
- */
-export function annexCheckNoteParts(v: Verification, readFrom: ReadFrom = null): string[] {
-  const parts: string[] = []
+export function annexNotRunNote(v: Verification): string | null {
   // Null verification with `available: true` is not a state the server
   // produces; if it ever did, the honest reading is "no check happened".
-  if (!v || v.judged === 0) {
-    const why = v?.notRunReason
-    parts.push(why ? `Nicht gegen das geltende Recht im RIS geprüft: ${why}` : 'Nicht gegen das geltende Recht im RIS geprüft')
-  } else {
-    parts.push(`${v.verified} von ${v.judged} geprüften Paragraphen halten dem geltenden Recht im RIS stand`)
-  }
-  // Also where nothing could be judged: an annex that only inserts §§ can
-  // still put text into one the draft never wrote, and a right-column rule
-  // withholds it. „Nicht geprüft" while quietly dropping a § would be the
-  // silence this line exists to end.
-  if (v && v.withheldParagraphs > 0) parts.push(`${v.withheldParagraphs} nicht gezeigt`)
-  if (v && v.judged > 0 && v.uncheckedParagraphs > 0) parts.push(`${v.uncheckedParagraphs} nicht geprüft`)
-  if (v && v.rowsWithoutParagraph > 0) {
-    parts.push(`${v.rowsWithoutParagraph} ${v.rowsWithoutParagraph === 1 ? 'Änderung' : 'Änderungen'} ohne Paragraphenangabe, nicht geprüft`)
-  }
-  if (readFrom === 'pdf') parts.push('Zeilenzuordnung aus dem PDF erschlossen, ohne Gewähr')
-  return parts
+  if (!v) return 'Nicht gegen das geltende Recht im RIS geprüft.'
+  if (v.judged > 0 || v.uncheckedParagraphs + v.rowsWithoutParagraph === 0) return null
+  return v.notRunReason ? `Nicht gegen das geltende Recht im RIS geprüft: ${v.notRunReason}.` : 'Nicht gegen das geltende Recht im RIS geprüft.'
 }
 
 /**

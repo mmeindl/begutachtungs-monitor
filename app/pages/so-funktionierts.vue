@@ -509,7 +509,7 @@ const toc = [
         Gesetzestext des Entwurfs steht im selben RIS-Dokument neben der
         Beilage. Text, den weder das geltende Recht noch der Entwurf an dieser
         Stelle anordnet, gehört dorthin nicht. Was bei beiden Prüfungen
-        herauskommt, steht über der Gegenüberstellung. Zwei Ergebnisse brauchen
+        herauskommt, steht im Kopf jedes Gesetzes. Zwei Ergebnisse brauchen
         eine Erklärung:
       </p>
 
