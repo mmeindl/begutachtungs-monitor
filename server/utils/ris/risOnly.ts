@@ -239,6 +239,8 @@ export async function getRisConsultation(id: string): Promise<RisConsultationDet
     textComparisonParts: r.textComparisonParts.filter(hasDocument),
     // A corpus cached before 30.09.2026 does not carry the field.
     textComparisonCandidates: (r.textComparisonCandidates ?? []).filter(hasDocument),
+    // … and one cached before 02.10.2026 not this one.
+    textComparisonBundles: (r.textComparisonBundles ?? []).filter(hasDocument),
     coverLetter: hasDocument(r.coverLetter) ? r.coverLetter : null,
     // Everything else the record carries — WFA, Vorblatt, Digicheck,
     // Anhänge. Only the full-text search reads it (§12.31); the draft page

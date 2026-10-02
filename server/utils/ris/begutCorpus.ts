@@ -152,6 +152,7 @@ function toMapRow(
     textComparisonParts: rec?.textComparisonParts ?? [],
     // `?? []` twice over: no record, or a corpus cached before the field existed.
     textComparisonCandidates: rec?.textComparisonCandidates ?? [],
+    textComparisonBundles: rec?.textComparisonBundles ?? [],
     explanations: rec?.explanations ?? null,
     score: c?.score ?? null,
     risBeginn: rec?.beginn ?? null,

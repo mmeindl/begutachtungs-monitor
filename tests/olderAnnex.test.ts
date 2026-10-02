@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseTextComparison, printsHeaderPair } from '../server/utils/annex/comparisonRows'
+import { annexSection, parseTextComparison, printsHeaderPair } from '../server/utils/annex/comparisonRows'
 import { holdsAsAnnex } from '../server/utils/annex/olderAnnex'
 import { draftArticles as draft } from './helpers/builders'
 
@@ -52,5 +52,36 @@ describe('holdsAsAnnex', () => {
   it('never takes a table read without its document', () => {
     const rows = parseTextComparison(doc(`<table>${HEADER}${ROW}</table>`), ONE_LAW)
     expect(holdsAsAnnex(rows, 'table', null)).toBe(false)
+  })
+})
+
+describe('annexSection — the Gegenüberstellung inside a bundle (02.10.2026)', () => {
+  const VORBLATT = `<ueberschrift typ="erlz">Vorblatt</ueberschrift><table>${pair('Problem', 'Die Novelle setzt eine Richtlinie um.')}${pair('Ziel', 'Rechtssicherheit')}</table>`
+  const ERL = '<ueberschrift typ="erlz">Besonderer Teil</ueberschrift><ueberschrift typ="erll">Zu Art. 2 (Änderung des Börsegesetzes):</ueberschrift><absatz>Die Bestimmung entfällt.</absatz>'
+  const TITLE = '<ueberschrift typ="erlz">Textgegenüberstellung</ueberschrift>'
+
+  it('cuts away the Vorblatt and the Erläuterungen, and reads only the annex', () => {
+    const bundle = doc(`${VORBLATT}${ERL}${TITLE}<table>${HEADER}${ROW}</table>`)
+    // Read whole, the Vorblatt's table comes out as rows without a §.
+    expect(parseTextComparison(bundle, ONE_LAW).rows.some((r) => r.para === null && r.change !== 'unchanged')).toBe(true)
+    const section = annexSection(bundle)!
+    expect(section.startsWith('<ueberschrift typ="erlz">Textgegenüberstellung')).toBe(true)
+    expect(section).not.toContain('Zu Art. 2')
+    const rows = parseTextComparison(section, ONE_LAW).rows
+    expect(rows.map((r) => [r.para, r.change])).toEqual([['§ 5.', 'changed']])
+  })
+
+  it('keeps an Artikel line set between the title and the table', () => {
+    const bundle = doc(`${ERL}${TITLE}<ueberschrift typ="art">Artikel 1 Änderung des Aktiengesetzes</ueberschrift><table>${HEADER}${ROW}</table>`)
+    expect(annexSection(bundle)).toContain('Artikel 1 Änderung des Aktiengesetzes')
+  })
+
+  it('starts at the table where no title stands before it', () => {
+    const bundle = doc(`${VORBLATT}<table>${HEADER}${ROW}</table>`)
+    expect(annexSection(bundle)!.startsWith('<table')).toBe(true)
+  })
+
+  it('finds nothing in a bundle whose tables print no header pair', () => {
+    expect(annexSection(doc(`${VORBLATT}${ERL}`))).toBeNull()
   })
 })

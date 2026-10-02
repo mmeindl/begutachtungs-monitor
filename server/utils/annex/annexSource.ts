@@ -35,7 +35,7 @@ import { getGegenstand } from '../parliament/drafts'
 import { pickTextComparisons, type RisDocumentUrls } from '../ris/risRecord'
 import { fetchDocument } from '../upstream/fetchDocument'
 import { annexFromPdf } from './annexPdfService'
-import { parseTextComparison, type ComparisonParse } from './comparisonRows'
+import { annexSection, parseTextComparison, type ComparisonParse } from './comparisonRows'
 import { holdsAsAnnex } from './olderAnnex'
 import { isScanned } from './tableCells'
 
@@ -111,7 +111,8 @@ export async function hasAnnexDocument(gp: string, inr: number, annex: RisDocume
 /**
  * The RIS documents a draft's annex may be read from: the ones the name rule
  * picked, and — only where it picked none — the older-name candidates whose
- * content decides (`ris/risRecord.ts`, `annex/olderAnnex.ts`).
+ * content decides (`ris/risRecord.ts`, `annex/olderAnnex.ts`), and — only
+ * where there are none of those either — the bundles, read through a cut.
  *
  * One value rather than two parameters, because the two sections that read
  * the annex — the Gegenüberstellung and the konsolidierte Lesefassung — must
@@ -121,11 +122,21 @@ export async function hasAnnexDocument(gp: string, inr: number, annex: RisDocume
 export interface AnnexDocuments {
   parts: readonly RisDocumentUrls[]
   candidates: readonly RisDocumentUrls[]
+  bundles: readonly RisDocumentUrls[]
 }
 
 /** The documents of a map row or a RIS-only record — also of one cached before the candidates existed. */
-export function annexDocumentsOf(record: { textComparisonParts?: readonly RisDocumentUrls[] | null; textComparisonCandidates?: readonly RisDocumentUrls[] | null }): AnnexDocuments {
-  return { parts: record.textComparisonParts ?? [], candidates: record.textComparisonCandidates ?? [] }
+export function annexDocumentsOf(record: {
+  textComparisonParts?: readonly RisDocumentUrls[] | null
+  textComparisonCandidates?: readonly RisDocumentUrls[] | null
+  textComparisonBundles?: readonly RisDocumentUrls[] | null
+}): AnnexDocuments {
+  return { parts: record.textComparisonParts ?? [], candidates: record.textComparisonCandidates ?? [], bundles: record.textComparisonBundles ?? [] }
+}
+
+/** Is there any RIS document the annex might be read from? */
+export function offersAnnex(documents: AnnexDocuments): boolean {
+  return documents.parts.length > 0 || documents.candidates.length > 0 || documents.bundles.length > 0
 }
 
 /** What was read, from where — and under which licence that may be said. */
@@ -220,6 +231,38 @@ async function readOlder(candidates: readonly RisDocumentUrls[], articles: reado
 }
 
 /**
+ * The bundles, one at a time: the first whose cut yields rows is the annex
+ * (`annexSection` in `annex/comparisonRows.ts`, docs/architecture.md §12.13).
+ *
+ * The table path only. Of the rasterised bundles, the PDF reader finds the
+ * column headings in none — the prose pages set the geometry — so a scan
+ * answers as before: no Gegenüberstellung. The cut needs no second check
+ * after the parse: it starts at a table that prints the header pair, which
+ * is the evidence `holdsAsAnnex` asks the older names for.
+ */
+async function readBundle(bundles: readonly RisDocumentUrls[], articles: readonly DraftArticle[]): Promise<AnnexSource | null> {
+  for (const doc of bundles) {
+    if (!doc.xml) continue
+    const xml = await fetchDocument(doc.xml)
+    if (isScanned(xml)) continue
+    const section = annexSection(xml)
+    if (section === null) continue
+    const parsed = parseTextComparison(section, articles)
+    if (parsed.rows.length === 0) continue
+    return {
+      parsed,
+      // The link opens the whole bundle, Vorblatt first; the label says where
+      // in it the rows stand.
+      source: { label: 'Textgegenüberstellung des Ressorts, am Ende der Materialien', url: doc.html ?? doc.xml },
+      publisher: 'ris',
+      readFrom: 'table',
+      droppedPages: 0,
+    }
+  }
+  return null
+}
+
+/**
  * THE SWITCH: is the Parliament copy also **read**?
  *
  * `false` since 19.09.2026, and the reason is not a technical one — the
@@ -293,7 +336,11 @@ export async function annexSourceFor(
   // reads is read exactly as before (`pickOlderTextComparisons`). A candidate
   // whose content does not hold leaves the answer where it was: no annex.
   const older = documents.parts.length === 0 && documents.candidates.length > 0 ? await readOlder(documents.candidates, articles) : null
-  const ris = older ?? (await readRis(documents.parts, articles))
+  // Bundles exist only where neither of the two found anything
+  // (`pickBundledTextComparisons`), and are read the same way: one that does
+  // not yield leaves the answer where it was.
+  const bundled = older === null && documents.parts.length === 0 && documents.bundles.length > 0 ? await readBundle(documents.bundles, articles) : null
+  const ris = older ?? bundled ?? (await readRis(documents.parts, articles))
   if (typeof ris !== 'string') return ris
   if (!READ_PARLIAMENT_COPY || !atParliament) return ris
   return (await atParliament()) ?? ris

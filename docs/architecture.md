@@ -6894,17 +6894,60 @@ Endbesteuerungsgesetz §§ 1, 2 und Umsatzsteuerbetrugsbekämpfungsverordnung
 §§ 2, 3, jeweils linke Spalte gegen den geltenden Text zum Fristbeginn — Wort
 für Wort derselbe Text.
 
-**Bewusst nicht gebaut.** *„begmat"/„Materialien" allein* — die Normalform
-vor XXVI (§12.31), 936 Sätze ohne Namen der Regel, 584 davon vor XXIV — ist ein Bündel aus
-Vorblatt, Erläuterungen und Gegenüberstellung. 36 solche Dokumente in XXIV
-bis XXVII tragen das Überschriftenpaar oder sind gerastert. Als Ganzes
-gelesen macht der Tabellenleser in 7 der 26 lesbaren aus den Tabellen des
-Vorblatts „geänderte" Zeilen ohne Paragraph — 309 Zeilen, beim
-Zahlungsbilanzstabilisierungsgesetz 25 von 39, beim Jahressteuergesetz 2018
-alle 9 —, und der PDF-Leser findet in keinem der 9 gerasterten die
-Spaltenüberschriften, weil die Prosaseiten die Geometrie bestimmen. Das
-braucht einen Schnitt auf die Tabellen, die mit dem Überschriftenpaar
-beginnen — ein eigener Schritt mit eigener Messung. *Der
+**Das Bündel, geschnitten (02.10.2026).** *„begmat"/„Materialien"* — die
+Normalform vor XXVI (§12.31) — ist ein Bündel aus Vorblatt, Erläuterungen und
+Gegenüberstellung, und es stand bisher unter „bewusst nicht gebaut": als
+Ganzes gelesen machte der Tabellenleser aus den Tabellen des Vorblatts
+„geänderte" Zeilen ohne Paragraph. Gemessen über den ganzen RIS-Korpus (4.578
+Sätze): **894 Sätze** führen ein Bündel und keinen Namen, den die beiden
+Regeln oben lesen; 17 davon sind gerastert, **155 drucken das
+Überschriftenpaar** in einer Tabelle, alle mit Fristbeginn 2004 bis 2013. Der
+Rest führt keine Gegenüberstellung oder druckt sie ohne Kopf.
+
+*Was als Ganzes gelesen schiefgeht, ist zweierlei,* nicht nur das Vorblatt:
+`itemsInOrder` nimmt jede Überschrift außerhalb einer Tabelle als möglichen
+Gesetzesanfang, und die Erläuterungen tragen davon Dutzende („Zu Art. 2
+(Änderung des …)"). Darum schneidet `annexSection` (`comparisonRows.ts`)
+nicht Tabellen, sondern einen Abschnitt: ab der ersten Tabelle, die das
+Überschriftenpaar druckt — oder, wo davor eine Überschrift „…überstellung"
+steht, ab der letzten solchen (150 von 155; auch „Textgegegenüberstellung",
+als `erlz`, `tgue`, `titel` oder `erll` gesetzt) — bis zum Ende. Die
+Gegenüberstellung ist in allen 155 der letzte Teil; im Schnitt steht keine
+einzige „Zu …"-Überschrift, und 28 Bündel verlieren Vorblatt-Tabellen, die
+vor ihm standen. Die `<abschnitt>`-Elemente des RIS hätten es fast auch
+getan (133 von 155 setzen die Gegenüberstellung in einen eigenen), aber nur
+fast.
+
+*Gemessen am Leser, ganz gegen geschnitten, über die 155:* geänderte Zeilen
+ohne Paragraph **921 → 189**, und die 189 sind ganz und geschnitten dieselben
+— kein Bündelproblem. Eine Verweigerung kommt dazu, und sie ist richtig: die
+Beilage des Abgabenänderungsgesetzes 2007 überspringt Artikel X2 des
+Entwurfs, und die ganze Lesung hatte ein „X2" in den Erläuterungen gefunden
+und Paragraphen gegen eine Grenze gehalten, die es nicht gibt.
+
+*Gebaut als dritte Stufe, strikt additiv.* `pickBundledTextComparisons`
+(`risRecord.ts`) bietet Bündel nur an, wo weder die Namensregel noch ein
+älterer Name etwas findet; als Bündel gilt auch die Abkürzung in einem Namen,
+der zugleich Vorblatt oder Erläuterungen sagt („Vorblatt, Erläuterungen und
+TGÜ", „Vbl.Erl.TxtGGÜ" — 14 Sätze mehr), also genau die Namen, die
+`textComparisonNameRank` als Bündel draußen hält. Ein eigenes Feld
+(`textComparisonBundles`), nicht die Kandidaten der älteren Namen: deren
+Dokumente durch denselben Schnitt zu lesen, hätte gemessene Beilagen
+verändert. Gelesen wird nur der Tabellenpfad (`readBundle` in
+`annexSource.ts`): in keinem gerasterten Bündel findet der PDF-Leser die
+Spaltenköpfe, weil die Prosaseiten die Geometrie bestimmen. Eine zweite
+Prüfung nach dem Lesen braucht es nicht — der Schnitt beginnt an einer
+Tabelle mit dem Überschriftenpaar, und das ist der Beleg, den `holdsAsAnnex`
+von den älteren Namen verlangt. Die Quelle heißt „Textgegenüberstellung des
+Ressorts, am Ende der Materialien", denn der Link öffnet das ganze Bündel,
+Vorblatt zuerst.
+
+*Im Fenster des Drift-Alarms ändert sich nichts* (beide Pfade, Tabelle 140,
+PDF 120 Entwürfe, ohne Befund): das jüngste Bündel ist von 2020, die 400
+jüngsten Sätze erreichen keines. Am laufenden Server zeigt ein Bündel von
+2007 seine Gegenüberstellung, 11 von 12 Zeilen am Tor bestätigt.
+
+**Bewusst nicht gebaut.** *Der
 Stabilitätsgesetz-Fall* (Abstandsspalte) bleibt beim Tabellenleser. *Der
 Hinweis der Erläuterungen* auf die Gegenüberstellung (`hasAnnexDocument`)
 fragt weiter nur den Namen: ob ein Kandidat hält, weiß erst der Leser, und

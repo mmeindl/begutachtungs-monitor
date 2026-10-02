@@ -208,6 +208,32 @@ describe('flattenRisRecord', () => {
     expect(named.textComparisonCandidates).toEqual([])
   })
 
+  it('offers a bundle only where neither name rule finds anything (02.10.2026)', () => {
+    // „begmat"/„Materialien": Vorblatt, Erläuterungen and Gegenüberstellung
+    // in one document, read only through the cut (`annexSection`).
+    const xml = 'https://ogd.ris.bka.gv.at/m.xml'
+    for (const name of ['begmat', 'Materialien', 'RIS_Materialien', 'Material', 'Vorblatt, Erläuterungen und TGÜ', '31.KFG-Nov.Vbl.Erl.TxtGGÜ 14.10.2011', 'Materialien (Vorblatt, Erläuterungen und TGG)']) {
+      const flat = flattenRisRecord(record([{ ...urls('Material', 'Xml', xml), Name: name }]))!
+      expect(flat.textComparisonBundles.map((u) => u.xml), name).toEqual([xml])
+      expect(flat.textComparisonCandidates, name).toEqual([])
+    }
+    // The Vorblatt alone is no bundle, and an embedded image of the bundle
+    // („Material-COO_….gif") carries no format at all.
+    for (const name of ['begVorblatt_WFA', 'Material-COO_2026_100_2_1759915_Temp.gif']) {
+      expect(flattenRisRecord(record([{ ...urls('Material', 'Xml', xml), Name: name }]))!.textComparisonBundles, name).toEqual([])
+    }
+    // Strictly additive: beside an older name or a named annex, no bundle.
+    for (const other of ['begtxt', 'Textgegenüberstellung']) {
+      const flat = flattenRisRecord(
+        record([
+          { ...urls('Material', 'Xml', xml), Name: 'begmat' },
+          { ...urls('Material', 'Xml', 'https://ogd.ris.bka.gv.at/t.xml'), Name: other },
+        ]),
+      )!
+      expect(flat.textComparisonBundles, other).toEqual([])
+    }
+  })
+
   it('sammelt alles Übrige, was der Satz an Text führt', () => {
     // Measured on 22.09.2026: 41 text documents over the running records,
     // the four named fields catch 25. The full-text search reads the rest

@@ -41,6 +41,13 @@ export interface RisMapRow {
    */
   textComparisonCandidates?: { html: string | null; xml: string | null; pdf: string | null }[]
   /**
+   * „begmat"/„Materialien" bundles where neither name rule found anything —
+   * read only through the cut to their Gegenüberstellung
+   * (`annex/comparisonRows.ts`, `annexSection`). Optional because a corpus
+   * cached before 02.10.2026 does not carry it.
+   */
+  textComparisonBundles?: { html: string | null; xml: string | null; pdf: string | null }[]
+  /**
    * The Erläuterungen as their own RIS document — the Allgemeiner Teil a
    * reader triages the draft by. Carried here for the same reason as the
    * annex above: Parliament publishes the document only as a PDF, RIS as
@@ -167,6 +174,8 @@ export interface RisConsultationDetail extends RisConsultation {
   textComparisonParts: RisDocumentFormats[]
   /** Older-name candidates for the annex, decided by content (`RisMapRow.textComparisonCandidates`). */
   textComparisonCandidates?: RisDocumentFormats[]
+  /** Bundles whose Gegenüberstellung is read through a cut (`RisMapRow.textComparisonBundles`). */
+  textComparisonBundles?: RisDocumentFormats[]
   /**
    * The Begleitschreiben. It names the address a Stellungnahme goes to, and
    * for these procedures that is the ONLY way to file one: there is no

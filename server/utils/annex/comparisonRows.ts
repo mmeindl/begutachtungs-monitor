@@ -268,6 +268,39 @@ export function printsHeaderPair(xml: string): boolean {
   return headerPairSpans(rows) !== null
 }
 
+/** The section title the annex of a bundle opens with — also „Textgegegenüberstellung", „Gegenüberstellung". */
+const ANNEX_SECTION_TITLE_RE = /überstellung/i
+
+/**
+ * The Gegenüberstellung inside a bundle — „begmat", „Materialien": Vorblatt,
+ * Erläuterungen and annex in one document (docs/architecture.md §12.13, „Das
+ * Bündel, geschnitten", 02.10.2026) — or null where the document prints the
+ * header pair in no table.
+ *
+ * Read whole, the bundle gave the reader two kinds of noise: the Vorblatt's
+ * two-column tables as „changed" rows without a §, and the Erläuterungen'
+ * headings („Zu Art. 2 (Änderung des …)") as law boundaries. The cut keeps
+ * neither. It starts at the first table that prints the header pair — or,
+ * where a heading reading „…überstellung" stands before it, at the last such
+ * heading, so an Artikel line set between title and table stays with the
+ * annex — and runs to the end: in all 155 bundles of the corpus that print
+ * the pair, the annex is the last part, and no „Zu …" heading of the
+ * Erläuterungen falls inside the cut.
+ *
+ * Over those 155: changed rows without a § 921 → 189, and the 189 are the
+ * same whole or cut. One package that read as whole was refused after the
+ * cut, and rightly: its annex skips Artikel X2 of the draft, and the whole
+ * read had found an „X2" in the Erläuterungen.
+ */
+export function annexSection(xml: string): string | null {
+  const body = strip(xml)
+  const first = outermost(body, 'table').find((t) => headerPairSpans(outermost(t.inner, 'tr')) !== null)
+  if (!first) return null
+  const before = body.slice(0, first.open)
+  const title = [...before.matchAll(/<ueberschrift\b[^>]*>([\s\S]*?)<\/ueberschrift\s*>/g)].filter((m) => ANNEX_SECTION_TITLE_RE.test(cellText(m[1]!))).at(-1)
+  return body.slice(title?.index ?? first.open)
+}
+
 /**
  * One Textgegenüberstellung XML → its rows, in printed order.
  *

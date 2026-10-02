@@ -40,13 +40,13 @@ import { parseRisXml } from '../../server/utils/lawtext/risXml'
 import { draftArticles, type DraftArticle } from '../../server/utils/lawtext/draftArticles'
 import { getText, resolveLawByBgbl, type KonsLawAtDate } from '../../server/utils/ris/konsLaw'
 import { fetchParagraphTree } from '../../server/utils/harness/risKonsHistory'
-import { parseTextComparison, type ComparisonParse, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
+import { annexSection, parseTextComparison, type ComparisonParse, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { isScanned } from '../../server/utils/annex/tableCells'
 import { installFetchCache } from '../lib/harnessCache'
 import type { AnnexReport } from '../lib/annexReport'
 import { argAssigned, argFlag } from '../lib/args'
 import { risJson as risQuery, scriptUserAgent } from '../lib/http'
-import { asArray, pickOlderTextComparisons, pickTextComparisons } from '../lib/ris'
+import { asArray, pickBundledTextComparisons, pickOlderTextComparisons, pickTextComparisons } from '../lib/ris'
 import { holdsAsAnnex } from '../../server/utils/annex/olderAnnex'
 
 installFetchCache(process.env.HARNESS_CACHE ?? '.harness-cache')
@@ -227,6 +227,27 @@ async function olderAnnexParts(contents: any[], main: any, urlOf: (ref: any, typ
   return []
 }
 
+/**
+ * The first bundle whose cut yields rows, read the way `readBundle` in
+ * `annex/annexSource.ts` reads it: the table path only, and only the section
+ * `annexSection` cuts out. The cut is returned with it, because that — not
+ * the whole bundle — is the document the rows come from.
+ */
+async function bundledAnnex(contents: any[], main: any, urlOf: (ref: any, type: string) => string | null): Promise<{ part: any; section: string } | null> {
+  const bundles = pickBundledTextComparisons(contents, (c) => String(c?.Name ?? ''))
+  if (bundles.length === 0) return null
+  const mainXml = urlOf(main, 'Xml')
+  const articles = mainXml ? draftArticles(parseRisXml(await getText(mainXml))) : []
+  for (const part of bundles) {
+    const xmlUrl = urlOf(part, 'Xml')
+    const xml = xmlUrl ? await getText(xmlUrl) : null
+    if (xml === null || isScanned(xml)) continue
+    const section = annexSection(xml)
+    if (section !== null && parseTextComparison(section, articles).rows.length > 0) return { part, section }
+  }
+  return null
+}
+
 async function verify(doc: any): Promise<DraftResult | null> {
   const meta = doc?.Data?.Metadaten
   const begut = meta?.Bundesrecht?.Begut
@@ -249,13 +270,19 @@ async function verify(doc: any): Promise<DraftResult | null> {
   // „GGUe" — decided by content, as the request path decides them
   // (`annex/annexSource.ts`, `readOlder`). Without this the harness would
   // report „no effect" for a change it never reaches.
-  const parts = named.length > 0 ? named : await olderAnnexParts(contents, main, urlOf)
+  const older = named.length > 0 ? named : await olderAnnexParts(contents, main, urlOf)
+  // Last, the bundle — only where neither found anything, and read only
+  // through its cut (`annexSection`), as the request path reads it.
+  const bundle = older.length > 0 ? null : await bundledAnnex(contents, main, urlOf)
+  const parts = bundle ? [bundle.part] : older
   if (onlyByContent && named.length > 0) return null
   const annex = parts[0]
   if (!annex) return null
   const annexXml = urlOf(annex, 'Xml')
-  const pdfUrl = urlOf(annex, 'Pdf')
-  const annexXmlText = annexXml ? await getText(annexXml) : null
+  // A bundle has no PDF path: of the rasterised ones, the PDF reader finds
+  // the column headings in none.
+  const pdfUrl = bundle ? null : urlOf(annex, 'Pdf')
+  const annexXmlText = bundle ? bundle.section : annexXml ? await getText(annexXml) : null
   const readable = annexXmlText !== null && !isScanned(annexXmlText)
   // Two paths, one ruler. `--xml` measures the annexes the page shows today
   // (a real HTML table in the RIS XML); the default measures the rasterised
@@ -532,9 +559,11 @@ const dumpWorst = argFlag('dump-worst')
 const xmlMode = argFlag('xml')
 /**
  * `--nur-inhalt` scores only the drafts whose annex was picked by content
- * (`annex/olderAnnex.ts`). The older names stand in GP XXIV to XXVII, which
- * the default window of the 400 newest records does not reach, so it goes
- * with a `--limit=` over the whole corpus (4.600, 30.09.2026).
+ * (`annex/olderAnnex.ts`) — and, since 02.10.2026, the bundles read through
+ * their cut (`annexSection`). The older names stand in GP XXIV to XXVII, the
+ * bundles that print the header pair between 2004 and 2013; the default
+ * window of the 400 newest records reaches neither, so it goes with a
+ * `--limit=` over the whole corpus (4.600, 30.09.2026).
  */
 const onlyByContent = argFlag('nur-inhalt')
 const calibrate = argFlag('calibrate')

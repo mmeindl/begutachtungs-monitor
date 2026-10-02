@@ -35,7 +35,7 @@
  */
 
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
-import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, parliamentAnnex, READ_PARLIAMENT_COPY } from './annexSource'
+import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, offersAnnex, parliamentAnnex, READ_PARLIAMENT_COPY } from './annexSource'
 import { checkAnnexRows, notRunReason } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
@@ -266,9 +266,10 @@ export const getRisTextComparison = defineCachedFunction(
     const parts = documents.parts
     const first = parts[0]
     const pdf: TraceLink | null = first?.pdf ? { label: 'Textgegenüberstellung des Ressorts (PDF)', url: first.pdf } : null
-    // An older-name candidate is read before this is said: whether it is a
-    // Gegenüberstellung only its content can tell (`annex/olderAnnex.ts`).
-    if (!first && documents.candidates.length === 0) {
+    // An older-name candidate or a bundle is read before this is said:
+    // whether it holds a Gegenüberstellung only its content can tell
+    // (`annex/olderAnnex.ts`, `annexSection` in `annex/comparisonRows.ts`).
+    if (!offersAnnex(documents)) {
       return emptyComparison(who, NO_ANNEX)
     }
     // No (GP, Nummer) for the shared parse to key on, so the document is read

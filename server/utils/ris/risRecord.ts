@@ -68,6 +68,12 @@ export interface RisBegutFlat extends RisBegutRecord {
    */
   textComparisonCandidates: RisDocumentUrls[]
   /**
+   * The „begmat"/„Materialien" bundles, where neither rule above found
+   * anything — read only through the cut to the section that opens with the
+   * header pair (`annex/comparisonRows.ts`, `annexSection`).
+   */
+  textComparisonBundles: RisDocumentUrls[]
+  /**
    * The Erläuterungen as their own RIS document — the Allgemeiner Teil a
    * reader triages a draft by, and the "Zu Z 4 (§ 54c …)" passages under it.
    * Carried for every record class; on a Verordnungsentwurf it is the only
@@ -239,7 +245,8 @@ export function pickTextComparisons<T>(items: readonly T[], nameOf: (item: T) =>
  * is a bundle — Vorblatt, Erläuterungen and Gegenüberstellung in one
  * document — and reading the whole of it as an annex turns the Vorblatt's
  * tables into „changed" rows. That is a different document, not a
- * differently named one.
+ * differently named one, and it has its own pick below
+ * (`pickBundledTextComparisons`), read through a cut.
  */
 const OLDER_TEXT_COMPARISON_NAME = new RegExp(`begtxt|(^|${NOT_LETTER})GGUe($|${NOT_LETTER})|textüberstellung`, 'i')
 
@@ -252,6 +259,36 @@ const OLDER_TEXT_COMPARISON_NAME = new RegExp(`begtxt|(^|${NOT_LETTER})GGUe($|${
 export function pickOlderTextComparisons<T>(items: readonly T[], nameOf: (item: T) => string): T[] {
   if (pickTextComparisons(items, nameOf).length > 0) return []
   return items.filter((item) => OLDER_TEXT_COMPARISON_NAME.test(nameForm(nameOf(item))))
+}
+
+/**
+ * The bundle — „begmat", „Materialien", „Material": Vorblatt, Erläuterungen
+ * and Gegenüberstellung in one document, the normal form before GP XXVI
+ * (docs/architecture.md §12.13, „Das Bündel, geschnitten", 02.10.2026). 894
+ * of the 4.578 Begut records carry one and no name either rule above reads.
+ *
+ * Offered last: only where neither the name rule nor an older name picks
+ * anything, so a record read today reads exactly as before. Read only
+ * through the cut (`annexSection` in `annex/comparisonRows.ts`) — as a whole,
+ * the Vorblatt's tables and the Erläuterungen' „Zu § 5" headings would stand
+ * among the annex's rows.
+ */
+const BUNDLE_NAME = /begmat|materiali|^material$/i
+
+/**
+ * Also a bundle: the annex's abbreviation inside a name that also says
+ * Vorblatt or Erläuterungen — „Vorblatt, Erläuterungen und TGÜ",
+ * „31.KFG-Nov.Vbl.Erl.TxtGGÜ". Exactly the names `textComparisonNameRank`
+ * keeps out as bundles, so the two rules cannot disagree about one.
+ */
+function isBundleName(raw: string): boolean {
+  const name = nameForm(raw)
+  return BUNDLE_NAME.test(name) || (TEXT_COMPARISON_TOKEN.test(name) && (BUNDLE_MARK.test(name) || explanationsToken(name)))
+}
+
+export function pickBundledTextComparisons<T>(items: readonly T[], nameOf: (item: T) => string): T[] {
+  if (pickOlderTextComparisons(items, nameOf).length > 0 || pickTextComparisons(items, nameOf).length > 0) return []
+  return items.filter((item) => isBundleName(nameOf(item)))
 }
 
 /** The first item of the best Erläuterungen rank, if any. */
@@ -315,6 +352,7 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
     // They stay in `otherDocuments` as well, like the further parts above:
     // until the content says otherwise they are what the ressort called them.
     textComparisonCandidates: pickOlderTextComparisons(references, nameOf).map(formatsOf).filter((u): u is RisDocumentUrls => u !== null && hasDocument(u)),
+    textComparisonBundles: pickBundledTextComparisons(references, nameOf).map(formatsOf).filter((u): u is RisDocumentUrls => u !== null && hasDocument(u)),
     explanations: formatsOf(erl),
     // By ContentType, not by name: "Begleitschreiben Begutachtungsentwurf"
     // is the usual wording, but the type is what RIS actually commits to.
