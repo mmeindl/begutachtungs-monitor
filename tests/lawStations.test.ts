@@ -11,7 +11,6 @@ import {
   lawDiffScopeOf,
   lawDiffSteps,
   lawStationOf,
-  lawStationPairHint,
   lawStationPairQuestion,
   meTextTitleRank,
 } from '../shared/utils/lawStations'
@@ -166,25 +165,6 @@ describe('lawStationPairQuestion', () => {
     for (const [from, to] of pairs) {
       const q = lawStationPairQuestion(from, to)
       expect(q, q).not.toMatch(/wegen|aufgrund|ignor|versäum|verwässer|abgeschwächt|durchgesetzt/i)
-    }
-  })
-})
-
-describe('lawStationPairHint', () => {
-  it('points at the document that comes closest to the reason', () => {
-    expect(lawStationPairHint('me', 'rv')).toContain('Erläuterungen der Regierungsvorlage')
-    expect(lawStationPairHint('me', 'bgbl')).toContain('einzelnen Schritte')
-  })
-
-  it("leaves parliament's steps to the station card", () => {
-    expect(lawStationPairHint('rv', 'ausschuss')).toBeNull()
-    expect(lawStationPairHint('rv', 'plenum')).toBeNull()
-    expect(lawStationPairHint('ausschuss', 'plenum')).toBeNull()
-  })
-
-  it('names a document, never a cause', () => {
-    for (const [from, to] of [['me', 'rv'], ['me', 'bgbl']] as [LawStationId, LawStationId][]) {
-      expect(lawStationPairHint(from, to)).not.toMatch(/wegen|aufgrund|zurückzuführen|bewirkt|führte zu/)
     }
   })
 })

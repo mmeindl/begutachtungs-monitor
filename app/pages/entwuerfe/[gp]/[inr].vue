@@ -16,6 +16,8 @@ import { aliasesFor } from '#shared/utils/draftAliases'
 import { antragUrl, carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort } from '#shared/utils/format'
 import AmendedLawLine from '~/components/draft/AmendedLawLine.vue'
+import ChangeShareBar from '~/components/draft/ChangeShareBar.vue'
+import { changeShareRateFor, changeShareValueDe, earlyVorlageWhenDe, reasoningShareValueDe, tabledBeforeFristEnd } from '~/utils/outcomes'
 // Explicit: `draftStations.ts` is a pure module and stays out of the
 // auto-imports, so that server map and vitest run the same functions.
 import { mayClaimOutcome } from '#shared/utils/draftStations'
@@ -80,6 +82,28 @@ const { data: rvStatements } = await useFetch<RvStatementsResponse>(
   () => `${url.value}/rv-stellungnahmen`,
   { lazy: true, server: false, immediate: Boolean(data.value?.enactment) },
 )
+
+/* What the Vorlage made of the draft — the rows of its station card that
+ * come from the ME→RV comparison (`useVorlageOutcome`, 02.10.2026). */
+const vorlageOutcome = useVorlageOutcome(() => ({ gp: gp.value, inr: inr.value }), Boolean(data.value?.enactment))
+const shareValue = computed(() => {
+  const s = vorlageOutcome.share.value
+  return s ? changeShareValueDe(s.changed, s.own, s.noun) : null
+})
+const shareRate = computed(() => changeShareRateFor(data.value?.gp))
+/* A Vorlage tabled while the Frist still ran is not held against the range:
+ * that range was measured on Vorlagen that came after the Begutachtung
+ * (`tabledBeforeFristEnd`, 115/ME). When it came stands in the bar's place. */
+const earlyVorlageWhen = computed(() => {
+  const d = data.value
+  const rvDate = d?.enactment?.rvDate
+  if (!d?.deadline || !rvDate || !tabledBeforeFristEnd(d.deadline, rvDate)) return null
+  return earlyVorlageWhenDe({ arrivedAt: d.arrivedAt, deadline: d.deadline, rvDate })
+})
+const reasoningValue = computed(() => {
+  const r = vorlageOutcome.reasoningStats.value
+  return r ? reasoningShareValueDe(r.changed, r.compared) : null
+})
 
 /* The two windows for input, as booleans the card below reads. Both can be
  * open at once: in GP XXVIII 7 of 91 Regierungsvorlagen arrived before the
@@ -350,6 +374,15 @@ const rvFacts = computed<Fact[]>(() => {
   const facts: Fact[] = []
   if (d.enactment) {
     facts.push({ key: 'rv', title: 'Eingebracht' })
+    // The comparison's counts, as rows (02.10.2026). The first holds its
+    // place while the comparison loads; the second appears when its
+    // documents are found — on many drafts they are not.
+    if (vorlageOutcome.share.value || vorlageOutcome.sharePending.value) {
+      facts.push({ key: 'aenderung', title: 'Umgeschrieben oder gestrichen' })
+    }
+    if (vorlageOutcome.reasoningStats.value || vorlageOutcome.rvExplanations.value) {
+      facts.push({ key: 'begruendung', title: 'Begründung' })
+    }
     if (d.enactment.furtherRv.length) facts.push({ key: 'weitere', title: 'Außerdem aus dem Entwurf hervorgegangen' })
     return facts
   }
@@ -1004,6 +1037,30 @@ const ministryLinks = computed(() => {
                 >Regierungsvorlage {{ data.enactment.rvCitation }}</ExternalLink><template v-if="data.enactment.rvDate">, am {{ formatDateDe(data.enactment.rvDate) }}</template>
               </p>
             </template>
+            <template v-if="data.enactment" #value-aenderung>
+              <p v-if="shareValue">{{ shareValue }}</p>
+              <div v-else class="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-hairline motion-reduce:animate-none" aria-hidden="true" />
+            </template>
+            <!-- The period's range as a bar; for an early Vorlage when it
+                 came instead. While loading the bar's height stays held, so
+                 the comparison below does not move when it arrives. -->
+            <template v-if="data.enactment" #after-aenderung>
+              <p v-if="earlyVorlageWhen && vorlageOutcome.share.value" class="mt-0.5 text-ink-secondary">{{ earlyVorlageWhen }}</p>
+              <ChangeShareBar v-else-if="vorlageOutcome.share.value" :share="vorlageOutcome.share.value.share" :rate="shareRate" />
+              <div v-else-if="!earlyVorlageWhen" class="mt-3 h-13" aria-hidden="true" />
+            </template>
+            <!-- Where the Ressort says why — the document, never a cause
+                 (framing rule): the Erläuterungen are the Ressort's reasons,
+                 and whether a Stellungnahme stood behind a change is what a
+                 submitter looks for there. The one sentence left on the
+                 card, because it is an invitation, not a fact. -->
+            <template v-if="data.enactment" #value-begruendung>
+              <p v-if="reasoningValue">{{ reasoningValue }}</p>
+              <p v-if="vorlageOutcome.rvExplanations.value" :class="reasoningValue ? 'mt-1 text-ink-secondary' : ''">
+                In den <ExternalLink :href="vorlageOutcome.rvExplanations.value.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>
+                steht oft, ob eine Stellungnahme dahintersteht.
+              </p>
+            </template>
             <template v-if="data.enactment?.furtherRv.length" #value-weitere>
               <p>
                 <template
@@ -1056,9 +1113,6 @@ const ministryLinks = computed(() => {
             v-if="data.enactment"
             :gp="data.gp"
             :inr="data.inr"
-            :arrived-at="data.arrivedAt"
-            :deadline="data.deadline"
-            :rv-date="data.enactment.rvDate"
           />
           <!-- The second window for input: what was filed on the Vorlage itself,
                through the same panel as the Begutachtung's. Client-side

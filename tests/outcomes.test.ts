@@ -6,9 +6,10 @@ import {
   rvBaseRateFor,
   rvBaseRateSentenceDe,
   changeShareRateFor,
-  changeShareSentenceDe,
+  changeShareValueDe,
+  reasoningShareValueDe,
   begutachtungAftermathDe,
-  earlyVorlageSentenceDe,
+  earlyVorlageWhenDe,
   tabledBeforeFristEnd,
 } from '../app/utils/outcomes'
 import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
@@ -93,17 +94,23 @@ describe('GP-ended copy', () => {
   })
 })
 
-describe('changeShareSentenceDe (§12.38)', () => {
-  it('states the count of the draft and the middle half of the period, not a verdict', () => {
-    const s = changeShareSentenceDe('XXVII', 12, 21, 'Änderungen')
-    expect(s).toContain('Die Regierungsvorlage hat 12 von 21 Änderungen des Entwurfs umgeschrieben oder gestrichen (57\u00a0%).')
-    expect(s).toContain('Üblich waren in der XXVII. Gesetzgebungsperiode')
-    expect(s).not.toMatch(/nur|kaum|erfolgreich|ignoriert|Wirkung/)
+describe("the Regierungsvorlage card's counts (§12.38, 02.10.2026)", () => {
+  it('one form for every count, zero and all included', () => {
+    expect(changeShareValueDe(12, 21, 'Änderungen')).toBe('12 von 21 Änderungen des Entwurfs (57 %)')
+    expect(changeShareValueDe(0, 5, 'Paragraphen')).toBe('0 von 5 Paragraphen des Entwurfs (0 %)')
+    expect(changeShareValueDe(5, 5, 'Paragraphen')).toBe('5 von 5 Paragraphen des Entwurfs (100 %)')
+    expect(changeShareValueDe(1, 1, 'Paragraphen')).toBe('1 von 1 Paragraph des Entwurfs (100 %)')
   })
 
-  it('says none and all in words', () => {
-    expect(changeShareSentenceDe('XXVII', 0, 5, 'Paragraphen')).toContain('übernimmt alle 5 Paragraphen des Entwurfs im Wortlaut')
-    expect(changeShareSentenceDe('XXVII', 5, 5, 'Paragraphen')).toContain('alle 5 Paragraphen des Entwurfs umgeschrieben')
+  it('counts the Begründungen in the singular too', () => {
+    expect(reasoningShareValueDe(66, 153)).toBe('66 von 153 Begründungen geändert')
+    expect(reasoningShareValueDe(1, 1)).toBe('1 von 1 Begründung geändert')
+  })
+
+  it('states counts, not a verdict', () => {
+    for (const s of [changeShareValueDe(12, 21, 'Änderungen'), reasoningShareValueDe(0, 4)]) {
+      expect(s).not.toMatch(/nur|kaum|erfolgreich|ignoriert|Wirkung/)
+    }
   })
 
   it('holds a running period against the newest closed one', () => {
@@ -120,22 +127,17 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
     expect(tabledBeforeFristEnd('2026-06-24', null)).toBe(false)
   })
 
-  it('115/ME: the count kept, the range replaced by when the Vorlage came, in the bar\'s words', () => {
-    expect(earlyVorlageSentenceDe(0, 8, 'Änderungen', { arrivedAt: '2026-06-10', deadline: '2026-06-24', rvDate: '2026-06-10' }))
-      .toBe('Die Regierungsvorlage übernimmt alle 8 Änderungen des Entwurfs im Wortlaut, abgesehen von redaktionellen Korrekturen – eingebracht noch vor Beginn der Begutachtung.')
-  })
-
-  it('names the other timings', () => {
-    const at = (arrivedAt: string, rvDate: string, deadline: string) =>
-      earlyVorlageSentenceDe(1, 20, 'Paragraphen', { arrivedAt, deadline, rvDate })
-    expect(at('2026-03-25', '2026-03-24', '2026-04-09')).toContain('– eingebracht noch vor Beginn der Begutachtung.') // 92/ME
-    expect(at('2025-09-15', '2025-09-24', '2025-09-29')).toContain('(5\u00a0%) – eingebracht noch während der Begutachtung.') // 45/ME
-    expect(at('2025-09-15', '2025-09-29', '2025-09-29')).toContain('– eingebracht am letzten Tag der Begutachtungsfrist.')
+  it('says when an early Vorlage came, in the bar\'s words', () => {
+    const at = (arrivedAt: string, rvDate: string, deadline: string) => earlyVorlageWhenDe({ arrivedAt, deadline, rvDate })
+    expect(at('2026-06-10', '2026-06-10', '2026-06-24')).toBe('Eingebracht noch vor Beginn der Begutachtung') // 115/ME
+    expect(at('2026-03-25', '2026-03-24', '2026-04-09')).toBe('Eingebracht noch vor Beginn der Begutachtung') // 92/ME
+    expect(at('2025-09-15', '2025-09-24', '2025-09-29')).toBe('Eingebracht noch während der Begutachtung') // 45/ME
+    expect(at('2025-09-15', '2025-09-29', '2025-09-29')).toBe('Eingebracht am letzten Tag der Begutachtungsfrist')
   })
 
   it('never says why', () => {
-    const s = earlyVorlageSentenceDe(0, 8, 'Paragraphen', { arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' })
-    expect(s).not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
+    expect(earlyVorlageWhenDe({ arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' }))
+      .not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
   })
 })
 

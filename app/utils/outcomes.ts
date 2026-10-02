@@ -88,20 +88,36 @@ export function changeShareRateFor(gp: string | null | undefined): ChangeShareRa
 }
 
 /**
- * „Die Regierungsvorlage hat 12 von 21 Änderungen des Entwurfs
- * umgeschrieben oder gestrichen (57 %). Üblich waren in der XXVII.
- * Gesetzgebungsperiode 46–75 %."
- * Shortened on 30.09.2026; the percentage stays at every size of draft.
+ * The value of the Regierungsvorlage card's row „Umgeschrieben oder
+ * gestrichen": „193 von 311 Paragraphen des Entwurfs (62 %)".
+ *
+ * A row since 02.10.2026, not a sentence: two sentences over the comparison
+ * — this count with the period's range, and the reasoning rate — changed
+ * shape with every draft, and the station card is where the page states its
+ * facts (`FactList`). One form for every count, zero and all included: the
+ * row's title says what is counted, so „im Wortlaut übernommen" — and the
+ * qualifier that sentence needed — has nothing left to say. The range is the
+ * bar under the row (`ChangeShareBar`); redaktionelle Korrekturen are not
+ * counted, which /so-funktionierts#vergleich states.
  */
-export function changeShareSentenceDe(gp: string | null | undefined, changed: number, own: number, unitPlural: string): string {
-  const r = changeShareRateFor(gp)
-  // „Üblich" for the middle half of the period (p25–p75): looser than „bei
-  // der Hälfte der Entwürfe", and read at a glance; the exact reading stands
-  // on /so-funktionierts#vergleich (30.09.2026).
-  return `${changeShareLeadDe(changed, own, unitPlural)}Üblich waren in der ${r.gp}. Gesetzgebungsperiode ${r.p25}–${r.p75}\u00a0%.`
+export function changeShareValueDe(changed: number, own: number, unitPlural: string): string {
+  const noun = own === 1 ? (SINGULAR_DE[unitPlural] ?? unitPlural) : unitPlural
+  return `${changed} von ${own} ${noun} des Entwurfs (${Math.round((changed / own) * 100)}\u00a0%)`
 }
 
-/** How much of the draft the Vorlage changed — the half both sentences share. */
+const SINGULAR_DE: Readonly<Record<string, string>> = { Paragraphen: 'Paragraph', Änderungen: 'Änderung' }
+
+/**
+ * The value of the card's row „Begründung": how many of the Begründungen in
+ * both Erläuterungen the Ressort rewrote (docs/architecture.md §12.10b).
+ * Counted over the passages both versions carry — the restriction stands on
+ * /so-funktionierts; the row's footnote names the document.
+ */
+export function reasoningShareValueDe(changed: number, compared: number): string {
+  return `${changed} von ${compared} ${compared === 1 ? 'Begründung' : 'Begründungen'} geändert`
+}
+
+/** How much of the draft the Vorlage changed, as the sentence under „Die Begutachtung". */
 function changeShareLeadDe(changed: number, own: number, unitPlural: string): string {
   // Zero in its own words: „keine davon" would have to decline with the noun
   // („keinen davon" for Paragraphen), a sentence without the count does not.
@@ -148,7 +164,7 @@ export function tabledBeforeFristEnd(deadline: string | null | undefined, rvDate
  * reads as input ignored, the blame reading `tabledBeforeFristEnd` exists to
  * prevent. Until 01.10.2026 the line said there when the Vorlage came; the
  * Regierungsvorlage's station card now gives its date, and the comparison's
- * first line the clause (`earlyVorlageSentenceDe`), so it said it a third
+ * row the clause (`earlyVorlageWhenDe`), so it said it a third
  * time. Null where the count is not known.
  */
 export function begutachtungAftermathDe(
@@ -161,34 +177,20 @@ export function begutachtungAftermathDe(
 }
 
 /**
- * The same count, but instead of the range: when the Vorlage came. Temporal,
- * never causal — it says the Frist was still running, not that the
- * Stellungnahmen were ignored or could not have reached the Ressort (45/ME's
- * Vorlage came five days before the Fristende, when three of its eleven
- * Stellungnahmen had already arrived).
- *
- * One clause since 01.10.2026, in the bar's words and without the dates:
- * „Eingebracht wurde sie am 10.06.2026, am selben Tag, an dem … — die Frist
- * für Stellungnahmen lief bis 24.06.2026" said again what the bar already
- * states.
- * The clause itself stays: beside the count it is what keeps „im Wortlaut"
- * from reading as input ignored. The pointer to the next comparison went
- * with it — „Im Parlament" is the next section.
+ * What stands under the count instead of the range when the Vorlage came
+ * before the Fristende: when it came. Temporal, never causal — it says the
+ * Frist was still running, not that the Stellungnahmen were ignored or could
+ * not have reached the Ressort (45/ME's Vorlage came five days before the
+ * Fristende, when three of its eleven Stellungnahmen had already arrived).
+ * Beside the count it is what keeps a low share from reading as input
+ * ignored; the range is left out because it was measured on Vorlagen that
+ * came after the Begutachtung (`tabledBeforeFristEnd`).
  */
-export function earlyVorlageSentenceDe(
-  changed: number,
-  own: number,
-  unitPlural: string,
-  dates: { arrivedAt: string | null; deadline: string; rvDate: string },
-): string {
+export function earlyVorlageWhenDe(dates: { arrivedAt: string | null; deadline: string; rvDate: string }): string {
   const sinceStart = spanInDays(dates.arrivedAt, dates.rvDate)
-  const when =
-    sinceStart !== null && sinceStart <= 0
-      ? 'noch vor Beginn der Begutachtung'
-      : spanInDays(dates.deadline, dates.rvDate) === 0
-        ? 'am letzten Tag der Begutachtungsfrist'
-        : 'noch während der Begutachtung'
-  return `${changeShareLeadDe(changed, own, unitPlural).trim().replace(/\.$/, '')} – eingebracht ${when}.`
+  if (sinceStart !== null && sinceStart <= 0) return 'Eingebracht noch vor Beginn der Begutachtung'
+  if (spanInDays(dates.deadline, dates.rvDate) === 0) return 'Eingebracht am letzten Tag der Begutachtungsfrist'
+  return 'Eingebracht noch während der Begutachtung'
 }
 
 /**

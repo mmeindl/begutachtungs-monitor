@@ -226,6 +226,12 @@ export function lawDiffKey(gp: string, inr: number, from: LawStationId, to: LawS
   return `law-diff:${gp}:${inr}:${from}>${to}`
 }
 
+/** The same for the reasoning comparison (`/begruendung`): the Vorlage's
+ *  station card and the comparison below it read one request (02.10.2026). */
+export function lawReasoningKey(gp: string, inr: number, from: LawStationId, to: LawStationId): string {
+  return `law-reasoning:${gp}:${inr}:${from}>${to}`
+}
+
 /** A parliamentary step by the body that took it — the toggle's word. */
 export const LAW_STEP_LABEL: Partial<Record<LawStationId, string>> = {
   ausschuss: 'Im Ausschuss',
@@ -265,33 +271,4 @@ export function lawStationPairQuestion(from: LawStationId, to: LawStationId): st
     PAIR_QUESTIONS[`${from}>${to}`] ??
     `Was sich zwischen ${LAW_STATION_LABEL[from]} und ${LAW_STATION_LABEL[to]} geändert hat`
   )
-}
-
-/**
- * Where to look for the REASON behind a change, per pair — or null.
- *
- * The comparison can only ever show that a text moved, never why — and the
- * document that comes closest to the why is a different one at each station:
- * the Erläuterungen of the Regierungsvorlage after the Begutachtung; for
- * parliament's steps the Ausschussbericht and the adopted
- * Abänderungsanträge, which the card of „Im Parlament" names since
- * 02.10.2026. Null for those steps: as a sentence over the comparison they
- * changed with its step toggle, which sits below them, and the card holds
- * for both steps at once.
- *
- * Framing rule (docs/architecture.md §4): each sentence points at a document and stops
- * there — the tool does not assert causation it cannot observe. Shortened
- * on 30.09.2026: „…, sagt der Text nicht; …" went, the question and the
- * document stay, and neither sentence names a cause.
- */
-export function lawStationPairHint(from: LawStationId, to: LawStationId): string | null {
-  if (to === 'rv') {
-    return 'Ob eine Stellungnahme dahintersteht, sagen oft die Erläuterungen der Regierungsvorlage.'
-  }
-  // The whole way spans ministry and parliament, so no one document holds
-  // the reasons; the steps do, one actor each.
-  if (from === 'me') {
-    return 'Wer was geändert hat, zeigen die einzelnen Schritte unter „Die Regierungsvorlage“ und „Im Parlament“.'
-  }
-  return null
 }

@@ -24,8 +24,7 @@ import LawStepToggle from '~/components/compare/LawStepToggle.vue'
 import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, Publisher, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
-import { changeShareNounDe, isNovelleUnits, ownChangeShare } from '#shared/utils/changeShare'
-import { changeShareSentenceDe, earlyVorlageSentenceDe, tabledBeforeFristEnd } from '~/utils/outcomes'
+import { isNovelleUnits } from '#shared/utils/changeShare'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
@@ -39,7 +38,7 @@ import {
   lawDiffKey,
   lawDiffScopeOf,
   lawDiffSteps,
-  lawStationPairHint,
+  lawReasoningKey,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
 import { documentSource, mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
@@ -47,10 +46,6 @@ import { documentSource, mixedPublishers, parliamentDocumentSource, PUBLISHER_NA
 const props = defineProps<{
   gp: string
   inr: number
-  /** The draft's own dates — they decide which sentence stands under ME→RV (`tabledBeforeFristEnd`). */
-  arrivedAt?: string | null
-  deadline?: string | null
-  rvDate?: string | null
   /** Which station's step this instance shows; „rv" by default. */
   scope?: LawDiffScope
   /** The parliamentary texts the draft has (`parliamentTexts`), which decide
@@ -137,7 +132,15 @@ const { data: fetchedTitles, execute: executeTitles } = await useFetch<Paragraph
  */
 const { data: fetchedReasoning, execute: executeReasoning } = await useFetch<ReasoningDiffResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${requested.value.from}&bis=${requested.value.to}`,
-  { lazy: true, server: false, immediate: enabled.value },
+  {
+    // Shared with the Vorlage's station card, which counts the same
+    // Begründungen (`useVorlageOutcome`, 02.10.2026).
+    key: () => lawReasoningKey(props.gp, props.inr, requested.value.from, requested.value.to),
+    lazy: true,
+    server: false,
+    dedupe: 'defer',
+    immediate: enabled.value,
+  },
 )
 
 /**
@@ -269,36 +272,24 @@ const reasoningNote = computed<string | null>(() => {
       ? 'Die Begründung, die in beiden Fassungen steht, hat das Ressort nicht geändert.'
       : 'Die Begründung, die in beiden Fassungen steht, hat das Ressort geändert.'
   }
-  const how = changed === 0 ? 'keine' : changed === compared ? 'alle' : String(changed)
-  return `Von den ${compared} Begründungen, die in beiden Fassungen stehen, hat das Ressort ${how} geändert.`
-})
-
-/**
- * How much of THIS draft the Vorlage changed, held against the measured range
- * of a whole period (docs/architecture.md §12.38) — only for the pair the
- * base rate is measured on, draft against Regierungsvorlage. The comparison
- * shows what changed; this sentence says whether that is much.
- */
-const changeShareNote = computed<string | null>(() => {
-  if (pair.value.from !== 'me' || pair.value.to !== 'rv' || !data.value?.available) return null
-  const share = ownChangeShare(data.value.stats)
-  if (!share) return null
-  // A Vorlage tabled while the Frist still ran is not held against the
-  // range: that range was measured on Vorlagen that came after the
-  // Begutachtung (`tabledBeforeFristEnd`, 115/ME).
-  if (props.deadline && props.rvDate && tabledBeforeFristEnd(props.deadline, props.rvDate)) {
-    const dates = { arrivedAt: props.arrivedAt ?? null, deadline: props.deadline, rvDate: props.rvDate }
-    return earlyVorlageSentenceDe(share.changed, share.own, shareNoun.value, dates)
-  }
-  return changeShareSentenceDe(props.gp, share.changed, share.own, shareNoun.value)
+  //
+  // „…, die in beiden Fassungen stehen" left the plural on 02.10.2026: it
+  // shares a paragraph with the pointer to the Erläuterungen now, and the
+  // restriction stands on /so-funktionierts. The singular keeps it — „Die
+  // Begründung" alone would not say which one.
+  if (changed === 0) return `Keine der ${compared} Begründungen hat das Ressort geändert.`
+  if (changed === compared) return `Alle ${compared} Begründungen hat das Ressort geändert.`
+  return `${changed} der ${compared} Begründungen hat das Ressort geändert.`
 })
 
 /* The two Erläuterungen, one per side. The service sends them as
  * [Entwurf, Regierungsvorlage] (`reasoningDiffService`), and only where both
  * were found. */
 const reasoningDocs = computed(() => (reasoning.value?.sources?.length === 2 ? reasoning.value.sources : null))
-const rvReasoningDoc = computed(() => reasoningDocs.value?.[1] ?? null)
-const hint = computed(() => lawStationPairHint(pair.value.from, pair.value.to))
+/** ME→RV states its counts in the Regierungsvorlage's station card
+ *  (`useVorlageOutcome`, 02.10.2026), so the comparison under it repeats
+ *  none of them. */
+const countsInCard = computed(() => pair.value.from === 'me' && pair.value.to === 'rv')
 /** A side's Erläuterungen for the credit line — only where the comparison of them ran. */
 function reasoningDocFor(station: LawStationId) {
   const stats = reasoning.value?.stats
@@ -391,11 +382,13 @@ function chooseStep(step: LawStationPair) {
   router.replace({ query })
 }
 
-/** The sentences above the list wait only for a reason not to stand: an
- *  error, or a pair that cannot be compared. While a step loads they stay —
- *  under „Im Parlament" they do not depend on the step, and the toggle below
- *  them must not jump while the next one arrives. */
-const sentencesShown = computed(() => status.value !== 'error' && data.value?.available !== false)
+/** The sentences above the list wait for a comparison to stand under: none
+ *  on the first load (02.10.2026). Until then the reasoning rate, which often
+ *  arrives first, stood alone at the top and the figure pushed in above it
+ *  when the diff came. While a later step loads they stay — the previous
+ *  data is kept (the watcher above), under „Im Parlament" they do not depend
+ *  on the step, and the toggle below them must not jump. */
+const sentencesShown = computed(() => status.value !== 'error' && !!data.value?.available)
 /** A list to read, and with it the view switch and the search. */
 const hasList = computed(() => status.value === 'success' && !!data.value?.available && data.value.units.length > 0)
 
@@ -613,11 +606,6 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
 const view = ref<'inline' | 'split'>('inline')
 
 /** What one unit is called, so a context line can count them. */
-/* The reader's word for the counted unit in the headline figure: an
- * Änderungsanordnung is an „Änderung" there (30.09.2026); the precise term
- * stays on /so-funktionierts#vergleich and in the group labels. */
-const shareNoun = computed(() => changeShareNounDe(data.value?.units ?? []))
-
 function unitNoun(n: number): string {
   if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
   return n === 1 ? 'Paragraph' : 'Paragraphen'
@@ -689,38 +677,15 @@ const droppedNote = computed(() =>
     <h3 class="text-base font-semibold text-ink">{{ heading }}</h3>
 
     <template v-if="sentencesShown">
-      <!-- One order for every comparison (01.10.2026): the figure first —
-           what the reader came for —, then the reasoning rate, where the
-           reasons stand, the warnings specific to this draft, and the method
-           last. The hint led until then and the figure came fifth, after the
-           warnings it is qualified by. -->
+      <!-- Above the list only what is specific to THIS comparison. The
+           ME→RV counts — how much changed, against the period's range, and
+           how many Begründungen — and the way to the Erläuterungen stand in
+           the Regierungsvorlage's station card since 02.10.2026, as rows
+           instead of two paragraphs (`useVorlageOutcome`). What stays: a
+           reasoning rate for a pair the card does not hold, and the
+           warnings. -->
       <div class="mt-1 space-y-3">
-        <!-- Full column width since 01.10.2026: with `max-w-prose` on some
-             lines and not on others the block had two right edges. -->
-        <p v-if="changeShareNote" class="text-sm text-ink-secondary">{{ changeShareNote }}</p>
-        <!-- The reasoning, once as a rate above the list instead of
-             „unverändert" on every row (docs/architecture.md §12.10b).
-             Arrives when its fetch does. -->
-        <p v-if="reasoningNote" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
-        <!-- Where the reason for a change may be found, and nothing else
-             (30.09.2026). „Ministerialentwurf gegen Regierungsvorlage." went:
-             the step toggle shows the selected pair. The hint names the
-             reader's question and a document, never a cause (framing rule) — as a link where the
-             Regierungsvorlage's Erläuterungen are known. None under „Im
-             Parlament" (02.10.2026): the station card above names the
-             committee's report and the adopted motions for both steps, and a
-             sentence here would change with the toggle below it. -->
-        <p v-if="hint || (pair.to === 'rv' && rvReasoningDoc)" class="text-sm text-ink-secondary">
-          <template v-if="pair.to === 'rv' && rvReasoningDoc">
-            Ob eine Stellungnahme dahintersteht, sagen oft die
-            <ExternalLink :href="rvReasoningDoc.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>.
-          </template>
-          <!-- The whole way: the steps hold the reasons, and under „Im
-               Parlament" there are steps only where parliament published a
-               changed text. -->
-          <template v-else-if="scope === 'bgbl' && !parliamentTexts?.length">Den Schritt des Ressorts zeigt der Vergleich unter „Die Regierungsvorlage“.</template>
-          <template v-else>{{ hint }}</template>
-        </p>
+        <p v-if="reasoningNote && !countsInCard" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
         <ComparisonCaveats :notes="[outsideNote, mergedNote, droppedNote]" />
       </div>
     </template>
@@ -744,10 +709,12 @@ const droppedNote = computed(() =>
       <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
     </div>
 
-    <p v-if="status === 'pending' || status === 'idle'" class="mt-3 text-sm text-ink-secondary">
+    <!-- Only on the first load: a later step keeps the previous list until
+         the next arrives. -->
+    <ListSkeleton v-if="status === 'pending' || status === 'idle'" class="mt-3">
       Der Gesetzestext {{ fromLabel === 'Ministerialentwurf' ? 'des Entwurfs' : `der ${fromLabel}` }}
       wird mit dem der {{ toLabel }} verglichen …
-    </p>
+    </ListSkeleton>
     <p v-else-if="status === 'error' || !data" class="mt-3 text-sm text-ink-secondary">
       Der Vergleich ist gerade nicht verfügbar.
     </p>
