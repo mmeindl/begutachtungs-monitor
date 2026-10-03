@@ -49,6 +49,12 @@ import { keepDashWithPrecedingWord } from '~/utils/typography'
  */
 const props = defineProps<{
   entry: EntryView
+  /**
+   * The search the list was filtered by. Its words are marked in every field
+   * the filter reads — title, Zitat, Ressortkürzel, Debattenname — so a row
+   * shows why it is there (`HighlightedText`).
+   */
+  query?: string | null
 }>()
 
 /**
@@ -136,7 +142,7 @@ const externalHost = computed(() => {
         class="font-medium text-ink group-hover:underline"
         :title="entry.titleFull ?? entry.title"
       >
-        {{ displayTitle }}<span v-if="!entry.to" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
+        <HighlightedText :text="displayTitle" :query="query" /><span v-if="!entry.to" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
       </h3>
 
       <!-- ZONE 2 — Kennung: what kind of thing, which one, from whom. Fixed
@@ -158,11 +164,11 @@ const externalHost = computed(() => {
            line reads as nothing at all. -->
       <p class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-ink-secondary">
         <span>{{ entry.kindLabel }}</span>
-        <span v-if="entry.citation">{{ entry.citation }}</span>
+        <span v-if="entry.citation"><HighlightedText :text="entry.citation" :query="query" /></span>
         <template v-if="entry.ministry">
           <span aria-hidden="true">·</span>
           <span :title="entry.ministry.name">
-            <span aria-hidden="true">{{ entry.ministry.code }}</span>
+            <span aria-hidden="true"><HighlightedText :text="entry.ministry.code" :query="query" /></span>
             <span class="sr-only">{{ entry.ministry.name }}</span>
           </span>
           <!-- A jointly issued Entwurf names every Ressort that sent it, and
@@ -176,7 +182,7 @@ const externalHost = computed(() => {
           <template v-for="co in entry.coMinistries" :key="co.code">
             <span aria-hidden="true">·</span>
             <span :title="co.name">
-              <span aria-hidden="true">{{ co.code }}</span>
+              <span aria-hidden="true"><HighlightedText :text="co.code" :query="query" /></span>
               <span class="sr-only">{{ co.name }}</span>
             </span>
           </template>
@@ -187,7 +193,7 @@ const externalHost = computed(() => {
         </template>
         <template v-if="entry.alias">
           <span aria-hidden="true">·</span>
-          <span class="text-ink">„{{ entry.alias }}“</span>
+          <span class="text-ink">„<HighlightedText :text="entry.alias" :query="query" />“</span>
         </template>
         <NewBadge v-if="entry.isNew" class="ms-0.5" />
       </p>

@@ -6,7 +6,7 @@
  * one field.
  */
 import { describe, expect, it } from 'vitest'
-import { foldForSearch, matchesQuery, queryTokens } from '../shared/utils/textMatch'
+import { foldForSearch, matchRanges, matchesQuery, queryTokens } from '../shared/utils/textMatch'
 
 /* Real names from the corpus wherever one makes the point — the folding
  * rules exist because of how ministries and offices actually spell
@@ -127,5 +127,54 @@ describe('matchesQuery — beide Lesarten, und eine genügt', () => {
     expect(matchesQuery(draft, '133/ME')).toBe(true)
     expect(matchesQuery(draft, '133 me')).toBe(true)
     expect(matchesQuery(draft, '132/ME')).toBe(false)
+  })
+})
+
+describe('matchRanges', () => {
+  const marked = (text: string, q: string) =>
+    matchRanges(text, q).map(([a, b]) => text.slice(a, b))
+
+  it('marks a substring inside a word, whatever the case', () => {
+    expect(marked('Klimagesetz – KliG', 'klima')).toEqual(['Klima'])
+    expect(marked('Klima- und Umweltschutz', 'KLIMA')).toEqual(['Klima'])
+  })
+
+  it('marks every token of the query, each where it stands', () => {
+    expect(marked('Klimagesetz – KliG', 'gesetz klima')).toEqual(['Klimagesetz'])
+    expect(marked('Amt der Wiener Landesregierung; Magistratsdirektion - Recht', 'wiener recht')).toEqual([
+      'Wiener',
+      'Recht',
+    ])
+  })
+
+  it('marks the printed umlaut for a transliterated query', () => {
+    expect(marked('Ökostromförderung', 'oekostrom')).toEqual(['Ökostrom'])
+    expect(marked('Österreichischer Rechtsanwaltskammertag', 'osterr')).toEqual(['Österr'])
+  })
+
+  it('marks across punctuation for a pasted citation', () => {
+    expect(marked('21/SN-8/ME', '21/sn')).toEqual(['21/SN'])
+    // Folded, punctuation parts the tokens, each marked where it stands.
+    expect(marked('21/SN-8/ME', '21-sn')).toEqual(['21', 'SN'])
+  })
+
+  it('keeps the raw reading where the fold swallows the start of a token', () => {
+    // The fold turns „Paketsteuergesetz" into „paketsteurgesetz".
+    expect(marked('Paketsteuergesetz', 'ergesetz')).toEqual(['ergesetz'])
+  })
+
+  it('marks nothing for an empty or punctuation-only query', () => {
+    expect(matchRanges('Klimagesetz', '')).toEqual([])
+    expect(matchRanges('Klimagesetz', ' – ')).toEqual([])
+  })
+
+  it('marks every text matchesQuery keeps for a single token', () => {
+    const titles = ['Ökostromförderung', 'Paketsteuergesetz', 'Audiovisuelle Mediendienste', 'Grüße']
+    for (const title of titles)
+      for (let a = 0; a < title.length; a++)
+        for (let b = a + 1; b <= title.length; b++) {
+          const q = title.slice(a, b)
+          if (matchesQuery(title, q) && foldForSearch(q)) expect(matchRanges(title, q), q).not.toEqual([])
+        }
   })
 })

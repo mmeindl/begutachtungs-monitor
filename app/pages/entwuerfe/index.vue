@@ -728,6 +728,7 @@ const countLabel = computed(() => {
         class="mt-6"
         :sortable="SORT_COLUMNS"
         :sort="sort"
+        :query="qDebounced"
         @update:sort="chooseSort"
       >
         <template #head>
@@ -1052,7 +1053,7 @@ const countLabel = computed(() => {
           geantwortet. Die Liste oben ist davon nicht betroffen.
         </p>
         <template v-else-if="fullText">
-          <EntryList v-if="fullTextExtra.length" :entries="fullTextExtraEntries" class="mt-3">
+          <EntryList v-if="fullTextExtra.length" :entries="fullTextExtraEntries" :query="qDebounced" class="mt-3">
             <template #evidence="{ entry }">
               <SearchEvidence :hit="hitByKey.get(entry.key)" />
             </template>

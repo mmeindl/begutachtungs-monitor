@@ -117,3 +117,114 @@ export function matchesQuery(haystack: string, q: string): boolean {
   const hay = foldForSearch(haystack)
   return folded.every((t) => hay.includes(t))
 }
+
+/** A string's characters with where each came from in the source, so a match
+ * found in a normalised reading can be marked in the text as printed. */
+interface MappedText {
+  chars: string[]
+  from: number[]
+  to: number[]
+}
+
+/** The raw reading of `matchesQuery`, character by character: lowercase. */
+function lowerWithMap(s: string): MappedText {
+  const out: MappedText = { chars: [], from: [], to: [] }
+  let i = 0
+  for (const ch of s) {
+    for (const c of ch.toLowerCase()) {
+      out.chars.push(c)
+      out.from.push(i)
+      out.to.push(i + ch.length)
+    }
+    i += ch.length
+  }
+  return out
+}
+
+/**
+ * `foldForSearch`, character by character — the same steps in the same order,
+ * so the folded text it yields is the one `matchesQuery` compares against
+ * (`matchRanges` tests pin that). A folded „oesterreich" then marks the
+ * „Österreich" that stands in the row.
+ */
+function foldWithMap(s: string): MappedText {
+  const lowered = lowerWithMap(s)
+  const step1: MappedText = { chars: [], from: [], to: [] }
+  lowered.chars.forEach((c, k) => {
+    const piece = (UMLAUT_FOLD[c] ?? c).normalize('NFD').replace(/\p{M}+/gu, '')
+    for (const p of piece) {
+      step1.chars.push(p)
+      step1.from.push(lowered.from[k]!)
+      step1.to.push(lowered.to[k]!)
+    }
+  })
+  // The digraph fold, greedy left to right like the regex in `foldForSearch`.
+  const step2: MappedText = { chars: [], from: [], to: [] }
+  for (let k = 0; k < step1.chars.length; k++) {
+    const c = step1.chars[k]!
+    step2.chars.push(c)
+    step2.from.push(step1.from[k]!)
+    if ('aou'.includes(c) && step1.chars[k + 1] === 'e') {
+      step2.to.push(step1.to[k + 1]!)
+      k++
+    } else {
+      step2.to.push(step1.to[k]!)
+    }
+  }
+  // Every punctuation run one space.
+  const out: MappedText = { chars: [], from: [], to: [] }
+  for (let k = 0; k < step2.chars.length; k++) {
+    if (/[\p{L}\p{N}]/u.test(step2.chars[k]!)) {
+      out.chars.push(step2.chars[k]!)
+      out.from.push(step2.from[k]!)
+      out.to.push(step2.to[k]!)
+    } else if (out.chars[out.chars.length - 1] !== ' ') {
+      out.chars.push(' ')
+      out.from.push(step2.from[k]!)
+      out.to.push(step2.to[k]!)
+    }
+  }
+  return out
+}
+
+function rangesIn(mapped: MappedText, tokens: string[]): Array<[number, number]> {
+  const text = mapped.chars.join('')
+  const ranges: Array<[number, number]> = []
+  for (const t of tokens) {
+    for (let at = text.indexOf(t); at !== -1; at = text.indexOf(t, at + 1)) {
+      ranges.push([mapped.from[at]!, mapped.to[at + t.length - 1]!])
+    }
+  }
+  return ranges
+}
+
+/**
+ * WHERE the query stands in a text — the half of `matchesQuery` a reader
+ * sees: the row that a search kept marks the words it was kept for
+ * (03.10.2026). Before, only the full-text evidence carried a mark, and a row
+ * found by its title gave no sign why it was there.
+ *
+ * The same two readings as `matchesQuery`, united: a token found raw or
+ * folded is marked, so a row never stands in the list without its mark when
+ * the match is in the text passed here. Returned as sorted, merged
+ * `[start, end)` ranges into `text` as given.
+ *
+ * It does NOT apply the AND: a text holding one of two tokens marks that one.
+ * A row is kept by its whole haystack (title, citation, codes, Debattenname),
+ * and each of those fields is marked on its own.
+ */
+export function matchRanges(text: string, q: string): Array<[number, number]> {
+  const folded = foldForSearch(q).split(' ').filter(Boolean)
+  if (!folded.length || !text) return []
+  const ranges = [
+    ...rangesIn(lowerWithMap(text), queryTokens(q)),
+    ...rangesIn(foldWithMap(text), folded),
+  ].sort((a, b) => a[0] - b[0])
+  const merged: Array<[number, number]> = []
+  for (const r of ranges) {
+    const last = merged[merged.length - 1]
+    if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1])
+    else merged.push([r[0], r[1]])
+  }
+  return merged
+}

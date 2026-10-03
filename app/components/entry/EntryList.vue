@@ -67,6 +67,8 @@ defineProps<{
   sortable?: Partial<Record<'count' | 'state', { key: string; order: string }>>
   /** The current order's key, with `sortable`. */
   sort?: string
+  /** The search the rows were filtered by; each row marks its words. */
+  query?: string | null
 }>()
 
 defineEmits<{ 'update:sort': [key: string] }>()
@@ -131,7 +133,7 @@ defineEmits<{ 'update:sort': [key: string] }>()
       class="divide-y divide-hairline"
     >
       <li v-for="entry in entries" :key="entry.key">
-        <EntryItem :entry="entry">
+        <EntryItem :entry="entry" :query="query">
           <template v-if="$slots.evidence" #evidence>
             <slot name="evidence" :entry="entry" />
           </template>
