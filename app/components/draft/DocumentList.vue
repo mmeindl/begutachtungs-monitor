@@ -62,7 +62,7 @@ function docHint(doc: DocumentListItem): string | null {
            decided alone whether its tags fit beside the title: on a phone
            long titles pushed them under the text, short ones kept them
            right, and the list zig-zagged. Now a long title wraps inside its
-           own column and the tags stay right in every row. -->
+           own column and the links stay right in every row. -->
       <li
         v-for="(doc, i) in documents"
         :key="`${doc.title}-${i}`"
@@ -76,30 +76,27 @@ function docHint(doc: DocumentListItem): string | null {
         </div>
         <!-- Two fixed columns, PDF then HTML, empty where a format is
              missing — so the same label never jumps between rows. A format
-             is a small bordered accent tag: not a tall neutral button (an
-             action inside the page) and not bare text (too light to scan).
-             The <a> keeps the full hit area, the visible tag is smaller.
-             The ↗ stays on the tag: it is the page-wide mark for "leaves
-             the page", and the aria-label names the host. -->
+             is a plain standalone link (`link-quiet`) since 03.10.2026, no
+             longer a bordered tag: it opens a document elsewhere and does
+             nothing on this page, and a box here reads as „do something"
+             — the outline buttons' job. The fixed columns, the weight and
+             the ↗ carry the scan the box was meant to; the <a> keeps the
+             full target height. The ↗ is the page-wide mark for "leaves the
+             page", and the aria-label names the host. -->
         <!-- Fixed track widths: every row's grid is the same width, so PDF
-             sits at the same x whether or not an HTML tag follows. Narrower
-             below sm — „HTML ↗" in text-xs is ~45px, so the tag pads px-1 there —
-             so a phone leaves the title ~225px instead of ~190px. -->
-        <span class="grid shrink-0 grid-cols-[3.5rem_3.5rem] gap-1 sm:grid-cols-[4.75rem_4.75rem]">
+             sits at the same x whether or not an HTML link follows. Sized
+             to the labels in text-sm — „PDF ↗" ~42px, „HTML ↗" ~54px. -->
+        <span class="grid shrink-0 grid-cols-[3rem_3.75rem] gap-x-3">
           <template v-for="type in FORMAT_ORDER" :key="type">
             <a
               v-if="formatOf(doc, type)"
               :href="formatOf(doc, type)!.url"
               target="_blank"
               rel="noopener"
-              class="group/format flex min-h-target items-center justify-center rounded"
+              class="link-quiet flex min-h-target items-center text-sm font-medium"
               :aria-label="`${doc.title} als ${formatNames[type]} auf ${source} öffnen (neues Fenster)`"
             >
-              <span
-                class="inline-flex w-full justify-center rounded border border-hairline px-1 py-1 text-xs sm:px-2 font-medium text-accent-deep group-hover/format:border-baseline group-hover/format:underline"
-              >
-                {{ formatNames[type] }}<span aria-hidden="true">&nbsp;↗</span>
-              </span>
+              {{ formatNames[type] }}<span aria-hidden="true">&nbsp;↗</span>
             </a>
             <span v-else aria-hidden="true" />
           </template>

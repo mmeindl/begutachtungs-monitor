@@ -88,16 +88,19 @@ onUnmounted(() => clearTimeout(timer))
         :key="b"
         type="button"
         :aria-pressed="!hidden.includes(b)"
-        class="inline-flex items-center gap-1 rounded-full border px-2.5 text-xs font-medium tabular-nums"
+        class="inline-flex items-center gap-1 rounded-full border px-2.5 text-xs font-medium tabular-nums hover:bg-[linear-gradient(var(--color-hover),var(--color-hover))]"
         :class="hidden.includes(b)
-          ? 'border-dashed border-baseline bg-surface text-ink-muted line-through'
-          : ['border-transparent', BADGE_CLASS[b]]"
+          ? 'border-dashed border-baseline bg-surface text-ink-muted line-through hover:border-hover-edge'
+          : ['border-transparent hover:ring-1 hover:ring-inset hover:ring-hover-edge', BADGE_CLASS[b]]"
         @click="toggle(b)"
       >
         <!-- A box, ticked when the kind is shown — the pills on the law
              headers below look the same and are no controls, and this says
              „switch". Both icons are one width, so switching a kind off
-             does not shift the chips after it. The same icons as
+             does not shift the chips after it. Hover as an outline
+             button's (main.css, hover grammar): the edge to hover-edge and
+             the ink tint — laid over the ground as an image, since the
+             ground is the kind's colour and must stay. The same icons as
              „Stellungnahme möglich" on `/entwuerfe`. -->
         <UIcon :name="hidden.includes(b) ? 'i-lucide-square' : 'i-lucide-square-check'" class="size-3.5 shrink-0" aria-hidden="true" />
         {{ formatNumberDe(counts[b]) }} {{ labels[b] }}

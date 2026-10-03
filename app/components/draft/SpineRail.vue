@@ -218,7 +218,7 @@ const rows = computed(() => list.value.map((s, i) => {
       <span
         v-if="row.href"
         aria-hidden="true"
-        class="absolute inset-0 -z-10 rounded-md bg-hover opacity-0 transition-opacity group-hover:opacity-100"
+        class="absolute inset-0 -z-10 rounded-md bg-hover opacity-0 group-hover:opacity-100"
       />
       <!-- py-2 plus the dot's mt-1.5 put every dot at y 14–26 of its row, so
            a line from 26px to 14px past the row's end runs from this dot's

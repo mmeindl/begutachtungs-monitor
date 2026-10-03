@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The PDF of one Stellungnahme, as the format tag the Dokumente section
+ * The PDF of one Stellungnahme, as the format link the Dokumente section
  * above already uses (`DocumentList`) — one vocabulary for "here is a file"
  * on the whole page.
  *
@@ -9,7 +9,9 @@
  * citation beside it already links to — so the absence says something, and
  * the row is spared a second link to the destination it already has. That
  * is only honest while the answer is known, hence the reserved, empty slot
- * until it is.
+ * until it is — empty also while the answer is pending: the fixed width
+ * keeps the column from reflowing when the link arrives, and since the
+ * link has no box (03.10.2026) there is no outline left to ghost.
  *
  * Asked for on approach, not on render: the panel can hold 700 rows, each
  * answer costs one request at the source, and a reader reads ten. The
@@ -27,12 +29,9 @@ const props = defineProps<{
   submitter?: string | null
 }>()
 
-const { request, pdfUrl, isPending } = useStatementDocuments()
+const { request, pdfUrl } = useStatementDocuments()
 const statementRef = computed(() => statementRefFromPageUrl(props.pageUrl))
 const href = computed(() => (statementRef.value ? pdfUrl(statementRef.value) : null))
-/* No ref means there is nothing to resolve — an empty line box, not a ghost
- * that would wait forever. */
-const pending = computed(() => statementRef.value !== null && isPending(statementRef.value))
 
 const root = useTemplateRef<HTMLElement>('root')
 let observer: IntersectionObserver | null = null
@@ -75,30 +74,13 @@ const ariaLabel = computed(() => {
        a row with several statements keeps citation n and tag n on one line,
        and so the column does not reflow when the answers arrive. -->
   <span ref="root" class="flex min-h-6 w-12 shrink-0 items-center">
-    <a
+    <!-- A plain standalone link, as the citation beside it — the same
+         form as DocumentList's format links. -->
+    <ExternalLink
       v-if="href"
       :href="href"
-      target="_blank"
-      rel="noopener"
-      class="group/format tap-target w-full"
       :aria-label="ariaLabel"
-    >
-      <!-- The <a> keeps the full hit area, the visible tag is smaller —
-           same construction as DocumentList's format tags. -->
-      <span
-        class="inline-flex w-full justify-center rounded border border-hairline px-1.5 py-0.5 text-xs font-medium text-accent-deep group-hover/format:border-baseline group-hover/format:underline"
-      >
-        PDF<span aria-hidden="true">&nbsp;↗</span>
-      </span>
-    </a>
-    <!-- Nothing to say yet: a hairline ghost of the tag, so the column does
-         not fill in with a jolt. Deliberately not a pulsing skeleton — on the
-         organisation list nearly every row has a PDF, and ten blinking boxes
-         are louder than the thing they stand for. -->
-    <span
-      v-else-if="pending"
-      aria-hidden="true"
-      class="h-[1.375rem] w-full rounded border border-dashed border-hairline/60"
-    />
+      class="tap-target font-medium link-quiet"
+    >PDF</ExternalLink>
   </span>
 </template>

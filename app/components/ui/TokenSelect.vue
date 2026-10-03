@@ -37,7 +37,7 @@ defineProps<{ id?: string; ariaLabel?: string; block?: boolean }>()
       :id="id"
       v-model="model"
       :aria-label="ariaLabel"
-      class="min-h-target w-full min-w-0 appearance-none truncate rounded-md border border-hairline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-baseline"
+      class="min-h-target w-full min-w-0 appearance-none truncate rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-hover-edge hover:bg-hover"
     >
       <slot />
     </select>
