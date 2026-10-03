@@ -16,8 +16,12 @@
  * switch a filter that also resets the pager and the search. The pressed
  * state is the honest contract, and the one the segments had.
  *
- * The selected tab is marked by an underline AND weight, never by colour
- * alone (WCAG 1.4.1); the underline is accent-deep on white, 9.7:1.
+ * The selected tab is told from the others by weight and its underline,
+ * not by hue (so never by colour alone, WCAG 1.4.1). The underline is ink,
+ * not blue, since 03.10.2026: blue means „you can do something here", and
+ * a selected tab is the one tab you cannot act on. An ink underline is not
+ * text — what it owes is 1.4.11's 3:1 for a state, and ink on white is
+ * 18.4:1.
  *
  * `collapse`: below `sm` the strip becomes one native select. Four tabs
  * with counts need ~465 px, a phone's box ~326; scrolling them sideways was
@@ -68,7 +72,7 @@ function choose(value: string) {
         :title="opt.disabled ? opt.reason : undefined"
         class="inline-flex items-center gap-1.5 border-b-2 py-2 text-sm"
         :class="model === opt.value
-          ? 'border-accent-deep font-medium text-ink'
+          ? 'border-ink font-medium text-ink'
           : opt.disabled
             ? 'cursor-not-allowed border-transparent text-ink-muted/60'
             : 'border-transparent text-ink-secondary hover:border-baseline hover:text-ink'"

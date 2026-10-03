@@ -800,7 +800,7 @@ const countLabel = computed(() => {
                 Filter
                 <span
                   v-if="moreFilters"
-                  class="rounded-full bg-accent-deep px-2 py-0.5 text-xs font-medium text-white"
+                  class="rounded-full bg-ink px-2 py-0.5 text-xs font-medium text-surface"
                 >{{ moreFilters }}<span class="sr-only"> aktiv</span></span>
               </UButton>
               <!-- Set widths and `block` selects: a native <select> sizes
@@ -853,7 +853,7 @@ const countLabel = computed(() => {
                 v-for="f in shownFilterChips"
                 :key="f.key"
                 size="sm"
-                color="primary"
+                color="neutral"
                 variant="subtle"
                 trailing-icon="i-lucide-x"
                 class="rounded-full"

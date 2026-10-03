@@ -72,10 +72,17 @@ export function deadlineTone(
  * typically 13 rows long, one of them critical. With `accent-wash` (#cde2fb)
  * twelve strong blue boxes would stand beside one pale red — the rarest
  * colour has to be the most conspicuous, or the column is decoration.
+ *
+ * Both urgent tones at /30 since 03.10.2026, in that order of strength:
+ * open < serious < critical. At /15 the serious wash was a second pink
+ * beside critical's and fainter than `accent-50`; orange is a light hue
+ * that needs twice the wash to read as orange, and critical followed to /30
+ * so that it stays the loudest. The numbers stand beside
+ * `--color-status-serious` in main.css.
  */
 export const deadlineGroundClass: Record<DeadlineTone, string> = {
-  critical: 'bg-status-critical/15',
-  serious: 'bg-status-serious/15',
+  critical: 'bg-status-critical/30',
+  serious: 'bg-status-serious/30',
   neutral: 'bg-accent-50',
   inactive: 'bg-ink-muted/15',
 }

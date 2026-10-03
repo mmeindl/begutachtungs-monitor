@@ -67,7 +67,7 @@ const facts: Fact[] = [
       <p class="mt-2 leading-relaxed text-ink-secondary">
         <a
           href="/live.ics"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          class="link-inline font-medium"
         >Termin in den Kalender übernehmen</a>
       </p>
     </div>
@@ -85,7 +85,7 @@ const facts: Fact[] = [
         Die Veranstaltung ist Teil der
         <ExternalLink
           href="https://buendnis2025.at/veranstaltungen/begutachtungs-monitor-live/"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          class="link-inline font-medium"
         >Demokratiewoche 2026 des Bündnis 2025</ExternalLink>
         (19.–26. Oktober).
       </p>
@@ -93,7 +93,7 @@ const facts: Fact[] = [
         Bis dahin:
         <NuxtLink
           to="/entwuerfe?status=open&station=begutachtung"
-          class="rounded font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+          class="link-inline font-medium"
         >die laufenden Begutachtungen ansehen →</NuxtLink>
       </p>
     </div>

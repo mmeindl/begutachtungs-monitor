@@ -106,7 +106,7 @@ const props = defineProps<{
    The at-rest underline comes back where hover cannot be had: on a touch
    device nothing would ever reveal these rows as targets. */
 const STATION = [
-  'station rounded underline-offset-4 group-hover:underline',
+  'station rounded underline-offset-4 group-hover:underline group-hover:decoration-2',
   // The hit area, the pointer cursor and the focus ring, all on the row.
   'after:absolute after:inset-0 after:rounded-md',
   // The focus ring belongs around the whole row, not around the name. Two

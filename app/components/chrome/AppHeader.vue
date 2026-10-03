@@ -51,7 +51,7 @@ function isActive(to: string): boolean {
               class="inline-flex min-h-target items-center rounded-sm text-sm transition-colors"
               :class="
                 isActive(item.to)
-                  ? 'font-medium text-ink underline decoration-accent decoration-2 underline-offset-8'
+                  ? 'font-medium text-ink underline decoration-ink decoration-2 underline-offset-8'
                   : 'text-ink-secondary hover:text-ink'
               "
             >

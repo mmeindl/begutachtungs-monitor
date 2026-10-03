@@ -24,19 +24,26 @@
  * TWO HUES, ONE MEANING EACH (03.10.2026, docs/architecture.md §8):
  *
  *   blue (accent)    YOU CAN DO SOMETHING HERE — on the page (links,
- *                    buttons, the active tab) and in the procedure (an
- *                    open Frist, a Vorlage that still takes Stellungnahmen:
- *                    the open Stand box, the deadline card). Both are the
+ *                    buttons) and in the procedure (an open Frist, a
+ *                    Vorlage that still takes Stellungnahmen: the open
+ *                    Stand box, the deadline card). Both are the
  *                    same sentence, and wherever blue is a ground, WORDS on
  *                    it say what can be done („Noch 13 Tage",
  *                    „Stellungnahme möglich", the card's button). Not on the
  *                    spine: a blue station row was tried and dropped the
  *                    same day — its dates and counts did not say why it
  *                    was blue, and the card below it already did.
- *   yellow (mark)    LOOK AT THIS — the highlighter: the brand, „Neu",
- *                    a search hit, and on the spine the station where the
- *                    text stands (the dot) and the line it is on now (the
- *                    wash). It points, it never invites.
+ *   yellow (mark)    LOOK AT THIS — the highlighter: the brand, „Neu" (a
+ *                    station reached this week), a search hit, and on the
+ *                    spine the station where the text stands (the dot) and
+ *                    the line it is on now (the wash). It points, it never
+ *                    invites.
+ *
+ * Selection is ink, in neither hue: the active tab's underline, the active
+ * nav item's, the active filter chips, the Filter count, and the ring of
+ * the ticked „Stellungnahme möglich", ink where the unticked one is grey.
+ * A selected control is the one you cannot act on, and blue means you can;
+ * ink is already how the spine marks position (its rail and dots).
  *
  * Not coloured at all: „geändert" in a diff (a fact, so neither hue). Status
  * colours below carry urgency and the diff direction, nothing else.
@@ -129,10 +136,23 @@
      GitHub. Still state, never decoration, and never colour alone: the
      block names it in words and the gutter repeats it. The strikethrough
      stays in the word-level diff only — on a whole removed passage it would
-     just make the text harder to read. Grounds use the /10 and /15 washes
-     with full ink, like the deadline card. */
+     just make the text harder to read. The diff's grounds use the /10 and
+     /15 washes with full ink; the deadline tones use /30, also under full
+     ink, since 03.10.2026. Serious moved toward orange then: #ec835a at
+     /15 composited to #fcece6 beside critical's #f8e2e2 — two pinks (CIE76
+     ΔE 4.7), and fainter than the common calm box, accent-50, that the
+     rarer urgent tones must outshine (ΔE from white 8.6 against 9.3; the
+     rule is in `deadlineGroundClass`). #ee8c2a sits in the orange zone
+     named above, but a light hue tints little — at /15 it is near white,
+     #fceedf — so it takes /30: #faddbf, ink on it 14.4:1, clearly apart
+     from the „Neu" mark-wash #fff3c8 (ΔE 11.5). Critical followed to /30
+     so that it stays the loudest: #f1c4c4, ink on it 12.0:1, ΔE from white
+     24.1 against serious's 21.7 and accent-50's 9.3 — open < serious <
+     critical, and the two urgent washes 16.9 apart. On the page under the
+     deadline card the order holds (23.6 / 20.8 / 10.1, ink 11.0:1 on the
+     critical ground). */
   --color-status-good: #0ca30c;
-  --color-status-serious: #ec835a;
+  --color-status-serious: #ee8c2a;
   --color-status-critical: #d03b3b;
 }
 
@@ -379,16 +399,21 @@
 /*
  * Hover grammar for clickable surfaces — one shared signature, one
  * container response fitted to the anatomy:
- *   always:            the primary text underlines (group-hover:underline)
+ *   sheet, row, label: the primary text underlines at 2 px
+ *                      (group-hover:underline group-hover:decoration-2)
  *   bordered sheet:    border darkens   (hover:border-baseline)
  *   bordered chip:     border darkens + its text underlines
  *   row inside sheet:  ink tint         (hover:bg-hover — rows own no border)
  *   naked bar/label:   text only
  * One ground for all of them, `--color-hover`; there were five.
- * Inline links invert instead: underlined at rest, hover:no-underline
- * (`link-inline`). Standalone links ("… →", back links, source credits)
- * rest quiet, underline on hover (`link-quiet`) — only links WITHIN text
- * need the rest-underline (WCAG 1.4.1); the blue says "link" everywhere.
+ * And one hover state for every link: a 2 px underline. Inline links are
+ * underlined at rest and thicken to 2 px under the pointer (`link-inline`);
+ * standalone links ("… →", back links, source credits) rest quiet and gain
+ * the same 2 px underline (`link-quiet`). Hover never removes an underline
+ * (until 03.10.2026 the inline link lost it), so the link under the pointer
+ * stays a link. The two differ only at rest: an inline link stands in
+ * running text and owes WCAG 1.4.1 its rest underline; a standalone one
+ * does not, because the blue already says "link".
  */
 
 /*
@@ -438,17 +463,19 @@
  * sees.
  */
 @utility link-inline {
-  @apply rounded text-link underline underline-offset-2 hover:no-underline;
+  @apply rounded text-link underline underline-offset-2 hover:decoration-2;
 }
 
 /*
  * The standalone link — „Alle 10 offenen Entwürfe →", „← Alle Entwürfe",
  * „Methode", a source credit — named once like `link-inline` above: it was
  * `text-accent-deep hover:underline` written out at some thirty call sites
- * (03.10.2026). Quiet at rest, because it does not stand in running text.
+ * (03.10.2026). Quiet at rest, because it does not stand in running text;
+ * its hover is the inline link's hover, the same 2 px underline at the same
+ * offset, so under the pointer the two cannot be told apart.
  */
 @utility link-quiet {
-  @apply rounded text-link hover:underline;
+  @apply rounded text-link underline-offset-2 hover:underline hover:decoration-2;
 }
 
 /* In-page anchor jumps glide — but only for users without reduced motion. */

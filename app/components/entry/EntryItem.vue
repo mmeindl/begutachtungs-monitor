@@ -139,7 +139,7 @@ const externalHost = computed(() => {
            „Bundesstaatsanwaltschaft" went whole onto a line of its own and the
            row stood a line taller than the card it is (01.10.2026). -->
       <h3
-        class="font-medium text-ink group-hover:underline"
+        class="font-medium text-ink group-hover:underline group-hover:decoration-2"
         :title="entry.titleFull ?? entry.title"
       >
         <HighlightedText :text="displayTitle" :query="query" /><span v-if="!entry.to" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
