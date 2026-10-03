@@ -60,9 +60,11 @@ defineProps<{
    * Columns whose label orders the list (`SortHeader`, 02.10.2026): the
    * order's key and what it does. Only `/entwuerfe` passes it; every other
    * list keeps plain labels. Below `md` there is no header to carry it, and
-   * the page offers the same order as a select.
+   * the page offers the same order as a select. The first column is never
+   * one: neither the arrival order nor A–Z earned a place under „Entwurf"
+   * (§12.22).
    */
-  sortable?: Partial<Record<'lead' | 'count' | 'state', { key: string; order: string }>>
+  sortable?: Partial<Record<'count' | 'state', { key: string; order: string }>>
   /** The current order's key, with `sortable`. */
   sort?: string
 }>()
@@ -104,10 +106,7 @@ defineEmits<{ 'update:sort': [key: string] }>()
       :class="sortable ? 'py-0.5' : 'py-2'"
       class="sticky top-0 z-10 hidden items-center gap-4 border-b border-hairline bg-surface px-4 text-xs font-medium uppercase tracking-wide text-ink-muted md:flex"
     >
-      <span class="min-w-0 flex-1">
-        <SortHeader v-if="sortable?.lead" :label="lead ?? 'Entwurf'" :order="sortable.lead.order" :active="sort === sortable.lead.key" @choose="$emit('update:sort', sortable.lead.key)" />
-        <span v-else :aria-hidden="sortable ? 'true' : undefined">{{ lead ?? 'Entwurf' }}</span>
-      </span>
+      <span class="min-w-0 flex-1" :aria-hidden="sortable ? 'true' : undefined">{{ lead ?? 'Entwurf' }}</span>
       <!-- One line, and any excess spills LEFT, into the empty gap: the
            label is 121 px against a 112 px column at `md` (128 in 128 at
            `lg`, measured 30.09.2026). The right edge is what has to meet
