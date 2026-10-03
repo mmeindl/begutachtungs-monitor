@@ -454,6 +454,7 @@ const LAW_FOLD_AT = 5
 const AMENDED_LAWS_SOURCES: SourceEntry[] = [risSource('Geltende Fassung')]
 const DRAFT_HISTORY_SOURCES: SourceEntry[] = [{ what: 'Verlauf des Entwurfs', publisher: 'parlament', terms: 'keine-lizenz' }]
 const PARLIAMENT_HISTORY_SOURCES: SourceEntry[] = [{ what: 'Verlauf', publisher: 'parlament', terms: 'cc-by' }]
+const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 'parlament', terms: 'keine-lizenz' }]
 const entwurfFacts = computed<Fact[]>(() => {
   const a = amendedLaws.value
   if (!a) return []
@@ -1055,6 +1056,20 @@ const ministryLinks = computed(() => {
                   Stand der Liste: {{ formatDateTimeDe(data.statements.staleAsOf) }}
                   (die aktuelle ist gerade nicht abrufbar).
                 </p>
+                <!-- The list's credit line, as under every other data block
+                     (03.10.2026). It was the one without a foot — on the data
+                     with the heaviest editorial hand: the Einordnung in
+                     Organisationen/Privatpersonen/Nicht öffentlich is ours
+                     (privacy.ts), and that Privatpersonen stand without names
+                     is our rule, not Parliament's record — until here only the
+                     empty search state said so. -->
+                <SectionCredits
+                  :sources="STATEMENTS_SOURCES"
+                  :marked="false"
+                  own="Einordnung der Einbringer:innen"
+                >
+                  <NuxtLink to="/ueber#about-privacy" class="link-muted">Privatpersonen ohne Namen</NuxtLink>
+                </SectionCredits>
               </template>
               <p v-else class="text-sm text-ink-secondary">
                 {{ data.active ? 'Noch keine Stellungnahmen. Die Frist läuft.' : 'Keine Stellungnahmen.' }}

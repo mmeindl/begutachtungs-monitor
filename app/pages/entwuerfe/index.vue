@@ -1104,6 +1104,10 @@ const countLabel = computed(() => {
         </template>
       </section>
 
+      <!-- NO credit line of its own, for the homepage's reason (03.10.2026):
+           rows are facts, not documents, nothing is marked or classified by
+           us here, and the footer's „Datenquellen und Lizenzen im Impressum"
+           link is the page's attribution. -->
     </FetchGate>
   </div>
 </template>

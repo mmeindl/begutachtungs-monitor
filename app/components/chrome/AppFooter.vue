@@ -6,16 +6,17 @@
  * stands on the list, where the need arises.
  *
  * What remains, one reason per line:
- *   - Sources plus a link to the licence statements — a licence condition,
- *     not a courtesy. BOTH sources are named: part of the data comes from the
- *     federal RIS (Bundeskanzleramt), not from the Parlamentsdirektion, and
- *     CC BY requires the licensor to be named. The licence itself is NOT
- *     stated here: it differs per dataset (Impressum, §„Urheberrecht &
- *     Lizenzen"), and a line claiming CC BY for all data would claim it for
- *     the Begutachtungsverfahren's too — which Parliament expressly excludes
- *     from reuse as open data. CC BY 4.0 § 3 a (2) expressly allows the
- *     attribution to be satisfied by a link to a page carrying it, which is
- *     exactly what this reference is;
+ *   - „Datenquellen und Lizenzen im Impressum" — the pointer, no longer the
+ *     naming (03.10.2026). The two sources stood here by name on every page;
+ *     they are named where their material actually shows (the draft page's
+ *     credit lines, under each section), and what may be claimed per source
+ *     stands once, in the Impressum. The licence was never stated here: it
+ *     differs per dataset, and a blanket claim would cover the
+ *     Begutachtungsverfahren's data too. This link is still a licence
+ *     condition, not a courtesy: on the pages without credit lines — the
+ *     lists, which show facts, not documents — it is the CC-BY attribution
+ *     for the RIS rows, which CC BY 4.0 § 3 a (2) expressly allows to be a
+ *     link to the page carrying it;
  *   - „Kein amtliches Angebot" — the load-bearing line on a .at address about
  *     ministries;
  *   - source code — AGPL § 13 requires offering users the source on network
@@ -38,19 +39,10 @@
     <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <div class="flex flex-col gap-2 text-sm leading-relaxed text-ink-muted">
         <p>
-          Datenquellen: Republik Österreich – Parlamentsdirektion
-          (<ExternalLink
-            href="https://www.parlament.gv.at"
-            class="link-muted"
-          >parlament.gv.at</ExternalLink>) und Rechtsinformationssystem des Bundes
-          (<ExternalLink
-            href="https://www.ris.bka.gv.at"
-            class="link-muted"
-          >ris.bka.gv.at</ExternalLink>).
           <NuxtLink
             to="/impressum#imp-license"
             class="link-muted"
-          >Lizenzen im Impressum</NuxtLink>. Kein amtliches Angebot.
+          >Datenquellen und Lizenzen im Impressum</NuxtLink>. Kein amtliches Angebot.
         </p>
         <p>
           <ExternalLink

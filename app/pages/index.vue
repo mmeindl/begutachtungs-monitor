@@ -699,6 +699,15 @@ const enactedHref = computed(
           Die Kundmachungen sind derzeit nicht abrufbar.
         </p>
       </section>
+
+      <!-- NO credit line of its own (03.10.2026, tried and removed within
+           the hour): nothing here is a document and nothing shown is marked
+           or classified by us, so the page has no per-section claim to
+           make. The per-block lines are the draft page's grammar, where the
+           publisher differs per section and our own marking must survive a
+           screenshot; here the footer's „Datenquellen und Lizenzen im
+           Impressum" link is the page's attribution — CC BY 4.0 § 3 a (2)
+           allows a link to the page carrying it. -->
     </FetchGate>
   </div>
 </template>

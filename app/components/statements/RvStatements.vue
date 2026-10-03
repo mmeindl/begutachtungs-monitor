@@ -2,6 +2,13 @@
 import type { RvStatementsResponse } from '#shared/types'
 import PageSubsection from '~/components/ui/PageSubsection.vue'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
+import type { SourceEntry } from '#shared/utils/provenance'
+
+/* `keine-lizenz`, not the station's freie Werke: the RV page excludes
+ * „sämtliche Informationen zu Stellungnahmen" from free use and licensing
+ * alike (read 30.09.2026) — the one part of a parliamentary station the
+ * documents rule does not cover. */
+const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen zur Regierungsvorlage', publisher: 'parlament', terms: 'keine-lizenz' }]
 
 /**
  * The Stellungnahmen filed on the Regierungsvorlage itself.
@@ -151,6 +158,19 @@ const consultationSentence = computed<string | null>(() => {
       <p v-else class="mt-3 text-sm">
         <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
       </p>
+      <!-- The same credit line as under the Begutachtung's list (03.10.2026):
+           the rows are Parliament's, the Einordnung and the nameless
+           Privatpersonen are ours. Only under the panel — the count-only
+           fallback above the cap shows no classification to credit, and its
+           sentence already names upstream. -->
+      <SectionCredits
+        v-if="summary && summary.total > 0"
+        :sources="STATEMENTS_SOURCES"
+        :marked="false"
+        own="Einordnung der Einbringer:innen"
+      >
+        <NuxtLink to="/ueber#about-privacy" class="link-muted">Privatpersonen ohne Namen</NuxtLink>
+      </SectionCredits>
     </template>
   </PageSubsection>
 </template>
