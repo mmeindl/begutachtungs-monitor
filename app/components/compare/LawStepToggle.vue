@@ -2,8 +2,12 @@
 /**
  * Which step of the Parliament's comparison is shown: „Im Ausschuss" or „Im
  * Plenum". Its own component because `LawDiffSection` renders it in two
- * places that are one place on screen — first in the toolbar over the list,
- * and alone at that spot where there is no list to read.
+ * places that are one place on screen — as the tabs of the list's box, and
+ * alone at that spot where there is no list to read.
+ *
+ * Tabs since 02.10.2026 (`ListTabs`): the step chooses WHAT is compared, the
+ * first layer of a list box, not how it is read. Two short labels fit every
+ * phone, so they never collapse into a select.
  */
 import { LAW_STEP_LABEL, type LawStationPair } from '#shared/utils/lawStations'
 
@@ -14,22 +18,19 @@ const props = defineProps<{
 
 const emit = defineEmits<{ choose: [step: LawStationPair] }>()
 
-const isCurrent = (step: LawStationPair) => step.from === props.current.from && step.to === props.current.to
+const keyOf = (step: LawStationPair) => `${step.from}>${step.to}`
+
+const options = computed(() => props.steps.map((step) => ({ value: keyOf(step), label: LAW_STEP_LABEL[step.to] ?? step.to })))
+
+const selected = computed({
+  get: () => keyOf(props.current),
+  set: (value: string) => {
+    const step = props.steps.find((s) => keyOf(s) === value)
+    if (step) emit('choose', step)
+  },
+})
 </script>
 
 <template>
-  <UFieldGroup role="group" aria-label="Welcher Schritt im Parlament" class="shrink-0">
-    <UButton
-      v-for="step in steps"
-      :key="`${step.from}>${step.to}`"
-      :color="isCurrent(step) ? 'primary' : 'neutral'"
-      :variant="isCurrent(step) ? 'subtle' : 'outline'"
-      :aria-pressed="isCurrent(step)"
-      size="sm"
-      class="min-h-target"
-      @click="emit('choose', step)"
-    >
-      {{ LAW_STEP_LABEL[step.to] }}
-    </UButton>
-  </UFieldGroup>
+  <ListTabs v-model="selected" :options="options" group-label="Welcher Schritt im Parlament" />
 </template>

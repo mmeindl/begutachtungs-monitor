@@ -21,7 +21,7 @@ import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextRespons
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, UNCHECKED_PILL, badgeCounts, badgeLabels, paragraphBadge } from '~/utils/diffBadges'
-import { splitSegments } from '~/utils/diffSides'
+import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
 import {
   annexDoubtfulNote,
@@ -134,24 +134,28 @@ function explanationsFor(law: string | null, para: string | null): ParagraphExpl
  * `DiffToolbar`'s two controls, and they are worth more here than in the §
  * comparison.
  *
- * **Nebeneinander is not a preference, it is the source's own shape.** The
- * annex IS a two-column table — "Geltende Fassung" beside "Vorgeschlagene
- * Fassung" — and this section deliberately reads it harmonised, as one
- * sentence with the change marked in place, because that is the better read
- * for a handful of swapped words. Where a ressort recasts a whole paragraph,
- * the toggle gives back the presentation the ressort chose. Nothing is
- * recomputed: `segments` carries `equal | removed | inserted` per run, so the
- * left column is everything but `inserted` and the right everything but
- * `removed`.
+ * **Nebeneinander is the source's own shape.** The annex IS a two-column
+ * table — "Geltende Fassung" beside "Vorgeschlagene Fassung" — and this
+ * section reads it harmonised, as one sentence with the change marked in
+ * place, because that is the better read for a handful of swapped words.
+ * Where a ressort recasts a whole Absatz, the row gives back the presentation
+ * the ressort chose — decided per row since 02.10.2026 (`readsSideBySide`),
+ * where a toggle made the reader choose one view for both kinds of row.
+ * Nothing is recomputed: `segments` carries `equal | removed | inserted` per
+ * run, so the left column is everything but `inserted` and the right
+ * everything but `removed`.
+ *
+ * **The kinds hide, they do not isolate** — the legend's reasoning is at
+ * `DiffToolbar`. Here they count and hide whole §§, the unit the group pills
+ * count in (`paragraphBadge`), so legend and pills add up alike.
  *
  * **The search matters more here too.** The comparison is complete by
  * construction — every § the annex prints is here, unchanged ones included —
  * so a reader with a term in mind ("Verwaltungsstrafe", "§ 40") has no other
  * way through. The diff section at least lets its pills lead the way.
  */
-const view = ref<'inline' | 'split'>('inline')
-
 const query = ref('')
+const hiddenKinds = ref<DiffBadge[]>([])
 
 /**
  * Both columns, the designation and the law are searchable — as one
@@ -248,6 +252,41 @@ function isUnchecked(row: TextComparisonRow): boolean {
  * what it means to: the 919 rows that carried a real change behind a trailing
  * "…" are no longer among them.
  */
+/** One § per law: the key both the legend and the filter count by. */
+function paragraphIdOf(row: TextComparisonRow, index: number): string {
+  return `${row.law ?? ''}|${paragraphKeyOf(row, index)}`
+}
+
+/**
+ * Each §'s pill over the rows the search leaves — the same rule the group
+ * headers apply below (`paragraphBadge`), and the same exclusion: a § the
+ * check withheld is no kind of change on screen, so it is neither counted
+ * nor ever hidden.
+ */
+const paragraphKinds = computed(() => {
+  const byPara = new Map<string, { badges: Set<DiffBadge>; withheld: boolean }>()
+  const q = query.value.trim().toLowerCase()
+  for (const [index, row] of (data.value?.available ? data.value.rows : []).entries()) {
+    if (row.kind === 'article' || row.elided) continue
+    if (q && !haystacks.value.get(row)!.includes(q)) continue
+    const id = paragraphIdOf(row, index)
+    let p = byPara.get(id)
+    if (!p) byPara.set(id, (p = { badges: new Set(), withheld: false }))
+    if (row.check === 'withheld') p.withheld = true
+    else p.badges.add(badgeOf(row))
+  }
+  const out = new Map<string, DiffBadge>()
+  for (const [id, p] of byPara) if (!p.withheld && p.badges.size) out.set(id, paragraphBadge(p.badges))
+  return out
+})
+
+/** The legend's counts, in §§ over the whole comparison. */
+const kindCounts = computed(() => {
+  const counts: Record<DiffBadge, number> = { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
+  for (const badge of paragraphKinds.value.values()) counts[badge]++
+  return counts
+})
+
 const groups = computed<Group[]>(() => {
   if (!data.value?.available) return []
   const out: Group[] = []
@@ -271,6 +310,10 @@ const groups = computed<Group[]>(() => {
     }
     if (row.elided) continue
     if (q && !haystacks.value.get(row)!.includes(q)) continue
+    if (hiddenKinds.value.length) {
+      const kind = paragraphKinds.value.get(paragraphIdOf(row, index))
+      if (kind && hiddenKinds.value.includes(kind)) continue
+    }
     if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
     current.rows.push(row)
     let byPara = paras.get(current)
@@ -305,7 +348,7 @@ const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
 type Block =
   /** The two columns come along computed: the template asked for each of them
    *  twice per row, on every render, and a render happens per keystroke. */
-  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[]; unchecked: boolean }
+  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; unchecked: boolean }
   | { kind: 'context'; rows: TextComparisonRow[] }
   /**
    * Changes the RIS check would not vouch for. The server sends these rows
@@ -406,7 +449,7 @@ function parasOf(g: Group): { paras: Para[]; hidden: number } {
     // swallow it. A row without a § is a unit of its own and always gets it.
     const unchecked = isUnchecked(row) && (row.para === null || !current.uncheckedMarked)
     if (unchecked && row.para !== null) current.uncheckedMarked = true
-    current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), unchecked })
+    current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), split: readsSideBySide(row.segments), unchecked })
     shown++
   }
   flush()
@@ -531,15 +574,14 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
 
       <ListBox class="mt-4">
         <!-- Same toolbar as the § comparison, same order, in the box's head
-             as there (02.10.2026), so the two sections are operated alike. No
-             filter select: the annex prints every § it touches and the group
-             pills already say how the changes divide — isolating one class
-             was the control this page never needed. -->
+             as there (02.10.2026), so the two sections are operated alike:
+             the legend that hides kinds of change, then the search. -->
         <template v-if="hasRows" #header>
           <DiffToolbar
-            v-model:view="view"
             v-model:query="query"
-            view-label="Darstellung der Gegenüberstellung"
+            v-model:hidden="hiddenKinds"
+            :counts="kindCounts"
+            :labels="BADGE_LABEL"
             search-label="In der Gegenüberstellung suchen"
           />
         </template>
@@ -664,7 +706,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                      a search is running; both columns hold the same text,
                      so it reads as the one sentence it is. -->
                   <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
-                  <p v-else-if="b.row.segments && view === 'inline'" class="hyphens-auto text-sm leading-relaxed text-ink">
+                  <p v-else-if="b.row.segments && !b.split" class="hyphens-auto text-sm leading-relaxed text-ink">
                     <DiffText :segments="b.row.segments" />
                   </p>
                   <!-- A row with only one side has one text; a column to hold
@@ -673,8 +715,9 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                   <p v-else-if="b.row.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.proposed }}</p>
                   <p v-else-if="b.row.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.current }}</p>
                   <!-- The ressort's own two columns, under the ressort's own
-                     headings. ONE shape for two cases: the reader asked for
-                     them, or the word diff was too long to compute and
+                     headings. ONE shape for two cases: the Absatz was recast
+                     too thoroughly to read inline, or the word diff was too
+                     long to compute and
                      `splitSegments` marks each side whole. -->
                   <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
                     <div>

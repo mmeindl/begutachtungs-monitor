@@ -1,36 +1,49 @@
 <script setup lang="ts">
-/**
- * How to read a comparison, and a search over it. Both scope the list below
- * them and nothing above (the positional rule, Manu 17.09.2026).
- *
- * Inline or side by side — GitHub's "unified / split", and the same reason.
- * Inline is right for most changes and stays the default: a few swapped words
- * read fastest in one sentence with the old struck out and the new beside it.
- * It is WRONG for a paragraph that was completely rewritten — there inline
- * first strikes out the whole old text and then prints the whole new one, and
- * the reader has to hold two versions in their head to see that they are
- * alternatives rather than a sequence. That is the case a domain user named
- * as the one thing a dedicated comparison tool does better than this page.
- *
- * The two sections label the controls differently because they compare
- * different things — „Darstellung des Vergleichs" against „Darstellung der
- * Gegenüberstellung" — so both labels are props. Everything else was
- * identical, in the same order, so the two sections are operated alike.
- */
-const view = defineModel<'inline' | 'split'>('view', { required: true })
-const query = defineModel<string>('query', { required: true })
+import { BADGE_CLASS, BADGE_ORDER, type DiffBadge } from '~/utils/diffBadges'
 
-defineProps<{
-  /** aria-label of the view switch */
-  viewLabel: string
+/**
+ * The tool row of a comparison: which kinds of change are shown, and a
+ * search over them. Both narrow the list below and change nothing above it
+ * (the positional rule, Manu 17.09.2026).
+ *
+ * THE KINDS ARE A LEGEND THAT HIDES, since 02.10.2026. A select „nur neu"
+ * stood here once and was removed on 17.09.2026: it offered ISOLATION where
+ * the reader's task is SUPPRESSION — hide the redaktionell changes to see
+ * the substance — and being single-select it could not suppress at all.
+ * These chips start all on, each is one press to hide its kind and one to
+ * bring it back, and together they state the comparison's overall counts,
+ * the one total the per-law pills do not print. Like a chart legend whose
+ * entries switch their series off — the idiom readers know for exactly this.
+ *
+ * `aria-pressed` = shown, under a group named for that („Angezeigte
+ * Änderungen"). A hidden kind is told apart by more than colour (1.4.1):
+ * no fill, a dashed outline, its label struck through and an empty box.
+ *
+ * NO VIEW SWITCH any more („Fließtext / Nebeneinander", 17.09.–02.10.2026).
+ * The case it existed for — a paragraph rewritten so thoroughly that the
+ * inline diff strikes out one text and prints another — is decided per unit
+ * now (`diffView.ts`), which is where the difference lies: one section holds
+ * both kinds of change, and a global switch made the reader pick the view
+ * that is wrong for half of them.
+ */
+const query = defineModel<string>('query', { required: true })
+const hidden = defineModel<DiffBadge[]>('hidden', { required: true })
+
+const props = defineProps<{
+  /** Over the whole comparison (after the search), in the section's unit. */
+  counts: Record<DiffBadge, number>
+  labels: Record<DiffBadge, string>
   /** aria-label of the search field */
   searchLabel: string
 }>()
 
-const VIEW_OPTIONS: { value: 'inline' | 'split'; label: string }[] = [
-  { value: 'inline', label: 'Fließtext' },
-  { value: 'split', label: 'Nebeneinander' },
-]
+/* Only the kinds this comparison has; a kind the search emptied stays while
+ * it is hidden, or there would be no way to switch it back on. */
+const kinds = computed(() => BADGE_ORDER.filter((b) => props.counts[b] > 0 || hidden.value.includes(b)))
+
+function toggle(b: DiffBadge) {
+  hidden.value = hidden.value.includes(b) ? hidden.value.filter((x) => x !== b) : [...hidden.value, b]
+}
 
 /**
  * The box types immediately, the section below follows 250 ms later.
@@ -61,35 +74,52 @@ onUnmounted(() => clearTimeout(timer))
 </script>
 
 <template>
-  <!-- No margin: it stands in a `ListBox` head, which spaces it. -->
-  <div class="flex flex-wrap items-center gap-3">
-    <!-- Whatever else changes only the list, first in the row: the step
-         toggle under „Im Parlament" (`LawStepToggle`). -->
-    <slot />
-    <!-- Inline / nebeneinander. A two-button group, not a select: it is a
-         binary view switch the reader flips back and forth, and it has to be
-         readable as the current state at a glance. -->
-    <UFieldGroup role="group" :aria-label="viewLabel" class="shrink-0">
-      <UButton
-        v-for="v in VIEW_OPTIONS"
-        :key="v.value"
-        :color="view === v.value ? 'primary' : 'neutral'"
-        :variant="view === v.value ? 'subtle' : 'outline'"
-        :aria-pressed="view === v.value"
-        size="sm"
-        class="min-h-target"
-        @click="view = v.value"
+  <!-- No margin: it stands in a `ListBox` head, which spaces it. Kinds
+       first, the search last, directly above the rows it searches. -->
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div
+      v-if="kinds.length > 1"
+      role="group"
+      aria-label="Angezeigte Änderungen"
+      class="flex flex-wrap items-center gap-1.5"
+    >
+      <button
+        v-for="b in kinds"
+        :key="b"
+        type="button"
+        :aria-pressed="!hidden.includes(b)"
+        class="inline-flex items-center gap-1 rounded-full border px-2.5 text-xs font-medium tabular-nums"
+        :class="hidden.includes(b)
+          ? 'border-dashed border-baseline bg-surface text-ink-muted line-through'
+          : ['border-transparent', BADGE_CLASS[b]]"
+        @click="toggle(b)"
       >
-        {{ v.label }}
+        <!-- A box, ticked when the kind is shown — the pills on the law
+             headers below look the same and are no controls, and this says
+             „switch". Both icons are one width, so switching a kind off
+             does not shift the chips after it. The same icons as
+             „Stellungnahme möglich" on `/entwuerfe`. -->
+        <UIcon :name="hidden.includes(b) ? 'i-lucide-square' : 'i-lucide-square-check'" class="size-3.5 shrink-0" aria-hidden="true" />
+        {{ formatNumberDe(counts[b]) }} {{ labels[b] }}
+      </button>
+      <UButton
+        v-if="hidden.length"
+        size="sm"
+        color="neutral"
+        variant="ghost"
+        class="rounded-full"
+        @click="hidden = []"
+      >
+        Alle zeigen
       </UButton>
-    </UFieldGroup>
+    </div>
     <UInput
       v-model="typed"
       type="search"
       icon="i-lucide-search"
       placeholder="Im Text suchen …"
       :aria-label="searchLabel"
-      class="ml-auto min-w-56 flex-1 sm:flex-none"
+      class="ml-auto min-w-0 flex-1 basis-56 sm:max-w-72"
       :ui="{ base: 'min-h-target' }"
     />
   </div>

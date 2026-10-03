@@ -8071,6 +8071,45 @@ Erneuerbaren-Ausbau-Kette. Die Annahme, das Tool arbeite git-artig, ist eine
 Informationslücke, kein Defekt.
 
 
+**Nachtrag 02.10.2026 — kein Umschalter mehr, und die Arten kommen als
+Legende zurück.** Beide Vergleiche bekamen die Grammatik aller Listenkästen
+(`ListBox`): Reiter wählen, *was* gelistet ist (hier der Schritt im
+Parlament, `LawStepToggle` auf `ListTabs`), eine Werkzeugzeile engt ein und
+sucht, der Spaltenkopf ordnet. Zwei Dinge änderten sich dabei an dieser
+Leiste.
+
+*Fließtext oder Spalten entscheidet die Einheit, nicht der Leser.* Der
+Umschalter ließ den Leser **eine** Ansicht für alle Änderungen eines
+Abschnitts wählen, obwohl ein Abschnitt beide Arten enthält: die getauschten
+Wörter, für die Fließtext richtig ist, und den neu gefassten Absatz, für den
+der Umschalter gebaut war. `readsSideBySide` (`app/utils/diffSides.ts`)
+misst je Einheit den **ersetzten** Anteil — das kleinere von gestrichenem und
+eingefügtem Text gegen das Gleichbleibende —, nicht den erhaltenen: Ein
+Paragraph, der einen ganzen Absatz dazubekommt, behält von seiner neuen
+Fassung wenig und liest sich inline trotzdem gut (ein grüner Block). Gemessen
+über GP XXVIII (87 Entwürfe mit §-Vergleich, 2.053 geänderte Einheiten; 115
+mit Textgegenüberstellung, 3.232 geänderte Zeilen), mit Stichproben beider
+Seiten der Linie: Ab 0,4 überwiegen ineinander verschränkte Bruchstücke, die
+der Leser zu zwei Fassungen zusammensetzen muss; zwischen 0,3 und 0,4 lesen
+sich die meisten noch als ein Satz. Eine Untergrenze von 60 Zeichen hält ein
+getauschtes Datum inline, wie hoch sein Anteil auch ist. An dieser Linie
+stehen 1,5 % der §-Einheiten und 6,8 % der Beilagenzeilen nebeneinander — die
+Ressorts fassen ganze Absätze neu, die Regierungsvorlage selten. Unter `sm`
+stehen die zwei Spalten untereinander; „Nebeneinander" war dort schon als
+Wort falsch.
+
+*Die Arten blenden aus, statt zu isolieren.* Der Einwand gegen den
+entfernten Filter (oben) galt der Isolation und der Einwertigkeit, nicht dem
+Wunsch, Arten zu steuern. Die Werkzeugzeile trägt jetzt eine **Legende**
+(`DiffToolbar`): je Art ein Schalter mit Zahl, alle an, ein Druck blendet
+eine Art aus — Unterdrückung in einem Schritt, Isolation in wenigen —, und
+zusammen drucken sie die Gesamtsumme, die mit dem Filter verloren ging. Das
+Muster ist die Diagrammlegende, deren Einträge ihre Reihe abschalten. In der
+Gegenüberstellung zählen und verbergen die Schalter ganze Paragraphen, die
+Einheit der Gruppenpillen (`paragraphBadge`), sodass Legende und Pillen
+gleich aufgehen; ein zurückgehaltener Paragraph ist keine Art und wird nie
+verborgen.
+
 ### 12.18 Vergleich über die Regierungsvorlage hinaus: ein Stationswähler
 
 Der §-Vergleich war auf ein Paar verdrahtet, Ministerialentwurf gegen

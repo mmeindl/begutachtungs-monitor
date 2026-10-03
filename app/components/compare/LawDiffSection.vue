@@ -28,7 +28,7 @@ import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
-import { splitSegments } from '~/utils/diffSides'
+import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
 import {
@@ -434,20 +434,18 @@ function badgeOf(u: LawDiffUnit): DiffBadge {
 }
 
 /**
- * Searching, but no filtering by change kind — the select that offered it was
- * removed on 17.09.2026 (Manu, with the page in front of him).
+ * Searching, and HIDING kinds of change — not isolating them.
  *
- * It offered ISOLATION ("show only neu") where the reader's actual task is
- * SUPPRESSION ("hide the redaktionell ones so I see the substance"), and
- * suppression was never on offer: the options were single-select. So it
- * answered a question almost nobody asks while the one they do ask stayed
- * unavailable — and the counts it carried are on the law headers anyway,
- * where they are per law instead of per page. What it cost is the only
- * printed OVERALL total, which matters just for a multi-law package; the
- * per-law pills are the more useful granularity, and a plain summary line
- * would be cheaper to read than a dropdown if the total is ever missed.
+ * A select „nur neu" was removed on 17.09.2026 (Manu, with the page in front
+ * of him): it offered ISOLATION where the reader's task is SUPPRESSION („hide
+ * the redaktionell ones so I see the substance"), and being single-select it
+ * could not suppress at all. Since 02.10.2026 the kinds are a legend in the
+ * tool row whose entries switch their kind off (`DiffToolbar`), all on by
+ * default — suppression is one press, and the legend prints the overall
+ * total the per-law pills do not.
  */
 const query = ref('')
+const hiddenKinds = ref<DiffBadge[]>([])
 
 function key(u: LawDiffUnit): string {
   return diffUnitKey(u)
@@ -484,11 +482,25 @@ const haystacks = computed(() =>
   ),
 )
 
-const visibleUnits = computed(() => {
+/** The units the search leaves — what the legend counts. */
+const searchedUnits = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return data.value?.units ?? []
   return (data.value?.units ?? []).filter((_, i) => haystacks.value[i]!.includes(q))
 })
+
+/** The legend's counts: over the whole comparison, in units like the pills. */
+const kindCounts = computed(() => {
+  const counts: Record<DiffBadge, number> = { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
+  for (const u of searchedUnits.value) counts[badgeOf(u)]++
+  return counts
+})
+
+const visibleUnits = computed(() =>
+  hiddenKinds.value.length
+    ? searchedUnits.value.filter((u) => !hiddenKinds.value.includes(badgeOf(u)))
+    : searchedUnits.value,
+)
 
 /**
  * One group per Gesetz (article of the package), folded by default. 32/ME
@@ -552,7 +564,8 @@ interface UnitView {
 }
 
 type Block =
-  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; reasoning: ReasoningDiffEntry | null } & UnitView)
+  /** `split`: this unit reads better as two columns (`readsSideBySide`). */
+  | ({ kind: 'unit'; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; reasoning: ReasoningDiffEntry | null } & UnitView)
   | { kind: 'context'; units: UnitView[] }
 
 function viewOf(u: LawDiffUnit): UnitView {
@@ -588,6 +601,7 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
       kind: 'unit',
       ...viewOf(u),
       ...splitSegments(u.segments, u.fromText, u.toText),
+      split: readsSideBySide(u.segments),
       reasoning: reasoningOf(u),
     })
     shown++
@@ -597,15 +611,6 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
 }
 
 const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocksOf(g.units, g.article) })))
-
-/**
- * Inline or side by side — the reasoning is at `DiffToolbar`, which offers
- * the choice. NO new endpoint and no second computation: `segments` already
- * carries `equal | removed | inserted` per run, so the left column is
- * everything that is not `inserted` and the right everything that is not
- * `removed` — the same data projected twice.
- */
-const view = ref<'inline' | 'split'>('inline')
 
 /** What one unit is called, so a context line can count them. */
 function unitNoun(n: number): string {
@@ -694,7 +699,7 @@ const droppedNote = computed(() =>
       <!-- Without a list the step toggle stands alone where the list would,
            so a reader who picked a step that cannot be compared keeps the
            way back. With one it is in the list's head (below). -->
-      <div v-if="!hasList && steps.length > 1" class="mt-4">
+      <div v-if="!hasList && steps.length > 1" class="mt-4 border-b border-hairline">
         <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
       </div>
 
@@ -712,20 +717,21 @@ const droppedNote = computed(() =>
       <template v-else>
         <template v-if="hasList">
           <ListBox class="mt-4">
-            <!-- The step toggle stands first in the list's toolbar (02.10.2026):
-                 under „Im Parlament" nothing above depends on the step — no
-                 figure, no reasoning rate, one hint for both — so the step
-                 changes only the list, and belongs with it. In the box's head
-                 since 02.10.2026 (`ListBox`). -->
+            <!-- The step is the box's tabs (02.10.2026): under „Im Parlament"
+                 nothing above depends on it — no figure, no reasoning rate,
+                 one hint for both — so it chooses what the list compares, the
+                 first layer of the box (`ListBox`). -->
+            <template v-if="steps.length > 1" #tabs>
+              <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
+            </template>
             <template #header>
               <DiffToolbar
-                v-model:view="view"
                 v-model:query="query"
-                view-label="Darstellung des Vergleichs"
+                v-model:hidden="hiddenKinds"
+                :counts="kindCounts"
+                :labels="BADGE_LABEL"
                 search-label="Im Text suchen"
-              >
-                <LawStepToggle v-if="steps.length > 1" :steps="steps" :current="requested" @choose="chooseStep" />
-              </DiffToolbar>
+              />
             </template>
             <DiffGroup
               v-for="g in renderedGroups"
@@ -777,12 +783,15 @@ const droppedNote = computed(() =>
                     </p>
 
                     <!-- Inline: one sentence, old struck out where the new
-                         stands. The default, and right for most changes. -->
-                    <p v-if="b.unit.change === 'changed' && view === 'inline' && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
+                         stands. Right for most changes; which ones read
+                         better as two columns is decided per unit
+                         (`readsSideBySide`), not by a switch. -->
+                    <p v-if="b.unit.change === 'changed' && !b.split && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
                       <DiffText :segments="b.unit.segments" />
                     </p>
-                    <!-- Side by side. ONE shape for two cases: the reader
-                         asked for columns, or the word diff hit its ceiling
+                    <!-- Side by side. ONE shape for two cases: the unit was
+                         rewritten too thoroughly to read inline, or the word
+                         diff hit its ceiling
                          and there are no segments to inline (then
                          `splitSegments` marks each side whole). The fallback
                          used to be its own layout, which made a technical
