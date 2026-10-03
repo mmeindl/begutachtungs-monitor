@@ -264,6 +264,7 @@ function orgRowHidden(index: number): 'until-found' | undefined {
  * that disappears once it has narrowed the list to three rows takes away the
  * only way back. */
 const searchId = useId()
+const sortId = useId()
 
 const showOrgSearch = computed(() => !needsList.value && orgRows.value.length > SEARCH_MIN)
 
@@ -342,10 +343,6 @@ const showColumnHeader = computed(() =>
     : renderedOrgRows.value.length > 0,
 )
 
-/* The box has a head where there is something to operate. Fixed per
- * list: the set line's live region must not move between head and page. */
-const hasHeader = computed(() => showFilterGroup.value || showSort.value || showOrgSearch.value)
-
 const setLineRedundant = computed(
   () => !searchActive.value,
 )
@@ -364,26 +361,6 @@ const setLineRedundant = computed(
          after that it was a picture of the two counts the filter buttons
          state exactly one line below, and a second bar a few lines under
          the Frist's, counting something else. -->
-    <!-- Without controls there is no head, and the set line and the stale
-         note stand above the sheet as before. -->
-    <template v-if="!hasHeader">
-      <p
-        :class="[
-          'text-sm text-ink-muted',
-          setLineRedundant ? 'sr-only' : 'mt-4',
-        ]"
-        aria-live="polite"
-      >{{ setLine }}</p>
-      <!-- Same wording as the summary-level note on the detail page: a stale
-           list must never read as the current one. mt-4, not mt-1: the line
-           above is sr-only in every state this note can appear in (it needs
-           the item list), so there is no visible box to sit under. -->
-      <p v-if="needsList && listStaleAsOf" class="mt-4 text-xs text-ink-muted">
-        Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
-        gerade nicht abrufbar).
-      </p>
-    </template>
-
     <component :is="`h${headingLevel}`" class="sr-only">Liste der Stellungnahmen</component>
     <!-- Named query container: the rows inside decide their layout on THIS
          box's width (row-cols in main.css), not on the window's — the panel
@@ -394,93 +371,72 @@ const setLineRedundant = computed(
          stand in the box's head since 02.10.2026, the pager and the ways to
          more in rows at its foot (`ListBox`): before, a list here was up to
          three loose rows of controls, the sheet, a pager and a link. -->
-    <ListBox class="@container/list mt-4">
-      <template v-if="hasHeader" #header>
-        <!-- Two axes, two groups: WHO filed (each segment with its count) and
-             IN WHICH ORDER.
-             Keeping them apart is what let the count line stop naming the sort.
-             Either group is absent where it would have nothing to switch
-             between, and the row with it. -->
-        <div
-          v-if="showFilterGroup || showSort"
-          class="flex flex-wrap items-center gap-x-3 gap-y-2"
-        >
-          <!-- Four labels this long cannot fit a phone column — 516 px of
-               segment against 358 px at 390 px wide. Until 30.09.2026 the group
-               scrolled sideways, and that hid „Alle" and half of „Nicht
-               öffentlich" behind an edge with nothing to say there was more: a
-               filter nobody can see is not offered. Below sm it is a grid of
-               two columns now, every option in view, an odd last one across both;
-               from sm on the joined segment as before. That is UFieldGroup's
-               own rounding, written out, because a field group cannot turn into
-               a grid at a breakpoint. -->
-          <div
-            v-if="showFilterGroup"
-            role="group"
-            aria-label="Stellungnahmen nach Einbringer:in filtern"
-            class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:gap-0 sm:-space-x-px"
-          >
-            <UButton
-              v-for="opt in filterOptions"
-              :key="opt.value"
-              :color="filter === opt.value ? 'primary' : 'neutral'"
-              :variant="filter === opt.value ? 'subtle' : 'outline'"
-              :aria-pressed="filter === opt.value"
-              class="relative min-h-target flex-wrap justify-center gap-x-1.5 text-center odd:last:col-span-2 focus-visible:z-1 sm:flex-nowrap sm:whitespace-nowrap sm:not-only:first:rounded-e-none sm:not-only:last:rounded-s-none sm:not-last:not-first:rounded-none"
-              @click="filter = opt.value"
-            >
-              {{ opt.label }}
-              <span class="tabular-nums text-ink-muted">{{ formatNumberDe(opt.count) }}</span>
-            </UButton>
-          </div>
-
-          <UFieldGroup v-if="showSort" role="group" aria-label="Stellungnahmen sortieren">
-            <UButton
-              v-for="opt in sortOptions"
-              :key="opt.value"
-              :color="sort === opt.value ? 'primary' : 'neutral'"
-              :variant="sort === opt.value ? 'subtle' : 'outline'"
-              :aria-pressed="sort === opt.value"
-              class="min-h-target"
-              @click="sort = opt.value"
-            >
-              {{ opt.label }}
-            </UButton>
-          </UFieldGroup>
-        </div>
-
-        <!-- Its own line under the two control groups, not inside them: this is
-             a third axis, and the filter group already fills its rows on a
-             phone. Last in the head, directly above the rows, so it reads as
-             searching the thing beneath it. -->
-        <div v-if="showOrgSearch">
-          <label class="sr-only" :for="searchId">Organisation suchen</label>
-          <UInput
-            :id="searchId"
-            v-model="orgQuery"
-            type="search"
-            icon="i-lucide-search"
-            placeholder="Organisation suchen"
-            autocomplete="off"
-            class="w-full"
-            :ui="{ base: 'min-h-target' }"
-          />
-        </div>
-
-        <p
-          :class="['text-sm text-ink-muted', setLineRedundant && 'sr-only']"
-          aria-live="polite"
-        >{{ setLine }}</p>
-        <p v-if="needsList && listStaleAsOf" class="text-xs text-ink-muted">
-          Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
-          gerade nicht abrufbar).
-        </p>
+    <!-- Named query container: the rows inside decide their layout on THIS
+         box's width (row-cols in main.css), not on the window's — the panel
+         never gets wider than the page's max-w-3xl column. The head is part
+         of the box and does not change its width.
+         Three layers since 02.10.2026, the grammar of every list box
+         (`ListBox`): WHO filed as tabs, the search as the tool row, the
+         order in the column header. Before, the head was three rows of
+         equal-looking button groups, on a phone five. -->
+    <ListBox class="@container/list mt-4" :header-class="!showOrgSearch && 'row-cols:hidden'">
+      <!-- Each segment with its count; where only one exists it is still
+           shown, as the list's label and count. -->
+      <template v-if="showFilterGroup" #tabs>
+        <ListTabs
+          v-model="filter"
+          :options="filterOptions"
+          group-label="Stellungnahmen nach Einbringer:in filtern"
+          collapse
+        />
       </template>
-
+      <template v-if="showOrgSearch || showSort" #header>
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- The order, where the column header that carries it is not
+               drawn: below row-cols the rows are stacked cards with no
+               header. Before the search, so the field stays last, directly
+               above the rows it searches. -->
+          <div v-if="showSort" class="flex min-w-0 items-center gap-2 row-cols:hidden">
+            <label :for="sortId" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
+            <TokenSelect :id="sortId" v-model="sort">
+              <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </TokenSelect>
+          </div>
+          <div v-if="showOrgSearch" class="min-w-0 flex-1 basis-60">
+            <label class="sr-only" :for="searchId">Organisation suchen</label>
+            <UInput
+              :id="searchId"
+              v-model="orgQuery"
+              type="search"
+              icon="i-lucide-search"
+              placeholder="Organisation suchen"
+              autocomplete="off"
+              class="w-full"
+              :ui="{ base: 'min-h-target' }"
+            />
+          </div>
+        </div>
+      </template>
+      <!-- The panel's live region, in the sheet and not in the head: the
+           head's tool row is display:none where it would hold only the
+           phone's sort select, and a live region inside it would be silent
+           there. Visible only under a query, where it is the result count
+           nothing else states; otherwise the number is on the tab. -->
+      <p
+        :class="setLineRedundant ? 'sr-only' : 'px-4 pt-3 text-sm text-ink-muted'"
+        aria-live="polite"
+      >{{ setLine }}</p>
+      <!-- Same wording as the summary-level note on the detail page: a stale
+           list must never read as the current one. -->
+      <p v-if="needsList && listStaleAsOf" class="px-4 pt-3 text-xs text-ink-muted">
+        Stand der Liste: {{ formatDateTimeDe(listStaleAsOf) }} (die aktuelle ist
+        gerade nicht abrufbar).
+      </p>
       <!-- Over rows only: above a loading line, an error or „keine
            gefunden" it would name columns nothing stands in. -->
-      <StatementListHeader v-if="showColumnHeader" />
-
+      <StatementListHeader v-if="showColumnHeader" v-model:sort="sort" :sortable="showSort" />
       <!-- Organisations: from the SSR summary, so they are in the HTML a
            crawler and a find-in-page see — which is what lets an organisation
            find itself on this page. -->
