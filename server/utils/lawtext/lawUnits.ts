@@ -413,6 +413,8 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     if (current) current.blocks.push(b)
   }
 
+  dropTocEntries(units)
+
   // Keyed as the units are (`articleTitle ?? articleNumber`), by contract.
   const clauses = promulgationByArticle(blocks)
   for (const u of units) {
@@ -420,6 +422,36 @@ export function segmentUnits(blocks: readonly TextBlock[]): LawUnit[] {
     u.stammnorm = clauses.get(u.article) ?? null
   }
   return units
+}
+
+/** „Artikel 5", „Art.5:", „Art. 5a." → „5"/„5a"; null for anything else. */
+const articleNo = (s: string | null) => /^(?:Art\.?|Artikel)\s*(\d+[a-z]*)\b/i.exec(s ?? '')?.[1]?.toLowerCase() ?? null
+
+/**
+ * Drops the table of contents of a package — „Artikel 1 – Änderung der
+ * Gewerbeordnung 1994", „Artikel 2 – Änderung des Bankwesengesetzes", … —
+ * that RIS sets as Artikel designations before the first Artikel opens.
+ * They came out as units of their own under the bill's title, never paired
+ * with anything, and the § comparison named the bill's title as a law the
+ * Regierungsvorlage had dropped (XXVI 93/ME, XXVII 115/ME; measured
+ * 03.10.2026, `scripts/corpus/mergedLaws.ts`). The echo removal in `push`
+ * misses them because their key is not that of any later unit.
+ *
+ * The test is the number, not the title: 115/ME's contents list
+ * „Hochschulgesetzes 2002" for an Artikel titled „… 2005". An entry is an
+ * `Art.` unit outside any Artikel, one short line, whose number an Artikel
+ * of the same document opens later. A law that is itself built from Artikel
+ * (a Verfassungsgesetz) opens no package Artikel, so it keeps every one.
+ */
+function dropTocEntries(units: LawUnit[]): void {
+  const opened = new Set(units.map((u) => articleNo(u.articleNumber)).filter((n): n is string => n !== null))
+  if (!opened.size) return
+  const isEntry = (u: LawUnit) => {
+    if (u.articleNumber !== null || u.blocks.length > 1) return false
+    const n = articleNo(u.id)
+    return n !== null && opened.has(n) && u.blocks[0]!.text.length <= 200
+  }
+  for (let i = units.length - 1; i >= 0; i--) if (isEntry(units[i]!)) units.splice(i, 1)
 }
 
 export function parseLawUnits(html: string): LawUnit[] {
