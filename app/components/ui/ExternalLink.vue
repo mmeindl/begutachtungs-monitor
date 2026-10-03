@@ -13,6 +13,10 @@
  * every statement row, so the warning below is read two dozen times in a
  * row. That cost is real and it is the price of the rule, not an oversight.
  *
+ * `/feed.xml` uses it too, although it lives on this site: the browser
+ * shows raw XML or hands it to a feed reader, which leaves the site just as
+ * surely, so it gets the same window and the same warning (03.10.2026).
+ *
  * What does NOT change is the warning itself. A new window is a change of
  * context, and one that arrives unannounced is what WCAG 2.2 3.2.5 is about
  * and what /ueber's AAA claim reads as promising. The ↗ is `aria-hidden`, so
@@ -29,6 +33,10 @@
  * `EntryItem` (the whole row is the link), `DocumentList` and
  * `StatementDocumentTag` (they announce it inside their `aria-label`), and
  * the `UButton` call sites on the draft pages.
+ *
+ * Not every link that leaves the page is one of these: the `webcal://`
+ * link in `SubscribeLinks` opens an app, not a window, and stays a plain
+ * <a> (see there).
  */
 defineProps<{
   href: string

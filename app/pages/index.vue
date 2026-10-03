@@ -360,12 +360,6 @@ const enactedHref = computed(
            so a text-sm line of 20 px made every wrapped line a different
            height on a phone. -->
       <p class="mt-4 text-sm leading-7 text-ink-secondary">
-        <UIcon
-          name="i-lucide-calendar-plus"
-          class="me-1 inline-block size-4 align-text-bottom"
-          aria-hidden="true"
-        />
-        Keine Frist verpassen:
         <SubscribeLinks />
       </p>
     </header>

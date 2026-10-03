@@ -225,10 +225,10 @@ const toc = [
           to="/entwuerfe?status=open"
           class="link-inline font-medium"
         >die Liste der offenen Begutachtungen</NuxtLink>, der
-        <a
+        <ExternalLink
           href="/feed.xml"
           class="link-inline font-medium"
-        >RSS-Feed</a>
+        >RSS-Feed</ExternalLink>
         und ein
         <!-- Points at /ueber instead of offering a webcal:// here. A webcal
              link visibly does nothing without a registered handler, and the

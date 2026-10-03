@@ -71,7 +71,7 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         </h2>
         <p class="mt-3 leading-relaxed text-ink-secondary">
           Neue Begutachtungsverfahren gibt es als
-          <a href="/feed.xml" class="link-inline">RSS-Feed</a> für jeden
+          <ExternalLink href="/feed.xml" class="link-inline">RSS-Feed</ExternalLink> für jeden
           Feed-Reader. Alle Begutachtungsfristen lassen sich als Kalender
           abonnieren:
           <a :href="webcalUrl" class="link-inline">Fristen-Kalender abonnieren</a>
