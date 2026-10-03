@@ -38,9 +38,13 @@
  *    `joinRisToMe` over the whole Begut corpus, sorted Ascending as
  *    production fetches it.
  *
- * Not reproduced, because it cannot change an ME→RV answer: the BGBl
- * enrichment (a Regierungsvorlage detail and a BgblAuth lookup), which
- * `getLawDiff` wraps in a try/catch and only uses for the `bgbl` station.
+ * Reproduced since 03.10.2026, because it now changes an ME→RV answer: the
+ * Regierungsvorlage's detail, whose `preconst` says whether it bundles other
+ * drafts. Where it does not, `getLawDiff` keeps the laws the Vorlage added
+ * (and, with a single Vorlage, the laws it dropped) in the comparison
+ * (docs/architecture.md §12.40). Not reproduced, because it cannot change an
+ * ME→RV answer: the BgblAuth lookup, which `getLawDiff` only uses for the
+ * `bgbl` station.
  *
  * Every Ministerialentwurf lands in exactly one bucket:
  *   1  no Regierungsvorlage (by the stage record, as rvLatency.ts counts)
@@ -73,7 +77,7 @@ import { join } from 'node:path'
 import type { DraftDocument, LawDiffUnit, LawStationId, LawPackageEntry } from '../../shared/types'
 import { meTextTitleRank } from '../../shared/utils/lawStations'
 import { ownChangeShare } from '../../shared/utils/changeShare'
-import { findComparisonRvLink, findRvLinks, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup, type RawStage } from '../../server/utils/parliament/detailJson'
+import { bundlesOtherDrafts, findComparisonRvLink, findRvLinks, mapDocuments, mapTextEvolution, parseStages, type RawDocumentGroup, type RawStage } from '../../server/utils/parliament/detailJson'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../../server/utils/lawtext/lawUnits'
 import { articlePairs, diffLawPackage, pairArticles, summarizeDiff } from '../../server/utils/diff/lawDiff'
 import { articleNameTokens } from '../../server/utils/lawtext/lawNames'
@@ -232,6 +236,16 @@ interface DetailContent {
   stages?: RawStage[] | null
   documents?: RawDocumentGroup[] | null
   statements?: { documents?: RawDocumentGroup[] | null } | null
+  preconst?: { gp_code?: string | null; ityp?: string | null; inr?: number | string | null }[] | null
+}
+
+/** The Regierungsvorlage's detail, as `getLawDiff` reads it for the BGBl station and the bundling. */
+async function rvDetailOf(rv: { gp: string; inr: number }): Promise<DetailContent> {
+  await mkdir(join(CACHE, rv.gp), { recursive: true })
+  const detail = await cachedJson<{ content?: DetailContent }>(join(CACHE, rv.gp, `I-${rv.inr}.json`), () =>
+    fetchJson(`${PARLIAMENT}/gegenstand/${rv.gp}/I/${rv.inr}?json=True`),
+  )
+  return detail.content ?? {}
 }
 
 async function listRows(): Promise<unknown[][]> {
@@ -320,6 +334,9 @@ interface Row {
   substantive: number
   lawsOnlyInTo: LawPackageEntry[]
   lawsOnlyInFrom: LawPackageEntry[]
+  /** Laws kept in the comparison because the Vorlage bundles no other draft (`getLawDiff`, §12.40). */
+  addedLaws: LawPackageEntry[]
+  droppedLaws: LawPackageEntry[]
   copyMismatch: boolean
   /** Diagnostics, not buckets: what the shipped result is made of (see `diagnose`). */
   diag: Diagnosis | null
@@ -421,6 +438,8 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
     substantive: 0,
     lawsOnlyInTo: [],
     lawsOnlyInFrom: [],
+    addedLaws: [],
+    droppedLaws: [],
     copyMismatch,
     diag: null,
   }
@@ -463,7 +482,14 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
   row.toUnits = toUnits.length
   parsed.set(inr, { fromUnits, toUnits })
 
-  const { units, lawsOnlyInTo, lawsOnlyInFrom, unpaired } = diffLawPackage(fromUnits, toUnits)
+  // getLawDiff: the Vorlage's record decides whether the laws only one side
+  // carries are the Ressort's own (§12.40). Its detail failing to load counts
+  // as no record, as getLawDiff's try/catch does.
+  const rvLink = findComparisonRvLink(parseStages(content.stages), found.get('rv')?.html ?? found.get('rv')?.fallbackUrl)
+  const bundled = rvLink ? await rvDetailOf(rvLink).then((d) => bundlesOtherDrafts(d.preconst, gp, inr)).catch(() => null) : null
+  const keepAddedLaws = bundled === false
+  const keepDroppedLaws = keepAddedLaws && new Set(rvLinks).size === 1
+  const { units, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws, unpaired } = diffLawPackage(fromUnits, toUnits, { keepAddedLaws, keepDroppedLaws })
   if (unpaired) return { row: { ...row, reason: UNPAIRED }, units: [] }
   if (units.length === 0) return { row: { ...row, reason: 'Der Gesetzestext ließ sich nicht in Paragraphen gliedern.' }, units }
   const stats = summarizeDiff(units)
@@ -472,7 +498,7 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
     stats.changed + stats.inserted + stats.removed === 0 ? 3 : substantive === 0 ? 4 : 5
   const diag = diagnose(fromUnits, toUnits, units)
   parsed.get(inr)!.units = units
-  return { row: { ...row, bucket, stats, substantive, lawsOnlyInTo, lawsOnlyInFrom, diag }, units }
+  return { row: { ...row, bucket, stats, substantive, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws, diag }, units }
 }
 
 // ---------------------------------------------------------------------------
@@ -517,7 +543,7 @@ const results: Row[] = await pool(
       return {
         inr, citation: meta.citation, title: meta.title, bucket: 2, reason: `Fehler: ${String(err).slice(0, 160)}`,
         rvLinks: [], rvDisagree: false, meSource: null, meUrl: null, rvUrl: null, fromUnits: 0, toUnits: 0,
-        stats: null, substantive: 0, lawsOnlyInTo: [], lawsOnlyInFrom: [], copyMismatch: false, diag: null,
+        stats: null, substantive: 0, lawsOnlyInTo: [], lawsOnlyInFrom: [], addedLaws: [], droppedLaws: [], copyMismatch: false, diag: null,
       }
     }
   },
@@ -786,10 +812,7 @@ async function reasoningReport(): Promise<void> {
     const content = await detailOf(r.inr)
     const rvText = findLawStationsCopy(content).get('rv')
     const rv = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)!
-    await mkdir(join(CACHE, rv.gp), { recursive: true })
-    const rvDetail = await cachedJson<{ content?: DetailContent }>(join(CACHE, rv.gp, `I-${rv.inr}.json`), () =>
-      fetchJson(`${PARLIAMENT}/gegenstand/${rv.gp}/I/${rv.inr}?json=True`),
-    )
+    const rvDetail = { content: await rvDetailOf(rv) }
     const meUrl = explanationsUrl(content.documents)
     const rvUrl = explanationsUrl(rvDetail.content?.documents)
     if (!meUrl || !rvUrl) {
@@ -998,10 +1021,7 @@ async function multiReport(): Promise<void> {
     const content = await detailOf(r.inr)
     const rvText = findLawStationsCopy(content).get('rv')
     const rv = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)!
-    await mkdir(join(CACHE, rv.gp), { recursive: true })
-    const rvDetail = await cachedJson<{ content?: DetailContent }>(join(CACHE, rv.gp, `I-${rv.inr}.json`), () =>
-      fetchJson(`${PARLIAMENT}/gegenstand/${rv.gp}/I/${rv.inr}?json=True`),
-    )
+    const rvDetail = { content: await rvDetailOf(rv) }
     const meUrl = explanationsUrl(content.documents)
     const rvUrl = explanationsUrl(rvDetail.content?.documents)
     if (!meUrl || !rvUrl) return
@@ -1132,10 +1152,7 @@ async function zifferReport(): Promise<void> {
     const content = await detailOf(r.inr)
     const rvText = findLawStationsCopy(content).get('rv')
     const rv = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)!
-    await mkdir(join(CACHE, rv.gp), { recursive: true })
-    const rvDetail = await cachedJson<{ content?: DetailContent }>(join(CACHE, rv.gp, `I-${rv.inr}.json`), () =>
-      fetchJson(`${PARLIAMENT}/gegenstand/${rv.gp}/I/${rv.inr}?json=True`),
-    )
+    const rvDetail = { content: await rvDetailOf(rv) }
     const meUrl = explanationsUrl(content.documents)
     const rvUrl = explanationsUrl(rvDetail.content?.documents)
     if (!meUrl || !rvUrl) return
