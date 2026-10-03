@@ -1021,16 +1021,21 @@ const countLabel = computed(() => {
 
           </div>
         </template>
+        <!-- The pager as the sheet's foot row, as in the Stellungnahmen
+             panel (03.10.2026). -->
+        <template #foot>
+          <ListMore
+            v-if="listPaged && entries.length"
+            inset
+            :visible="visibleCount"
+            :total="entries.length"
+            :step="LIST_PAGE_SIZE"
+            :all-above="LIST_PAGE_SIZE"
+            @more="visibleCount += LIST_PAGE_SIZE"
+            @all="visibleCount = entries.length"
+          />
+        </template>
       </EntryList>
-      <ListMore
-        v-if="listPaged && entries.length"
-        :visible="visibleCount"
-        :total="entries.length"
-        :step="LIST_PAGE_SIZE"
-        :all-above="LIST_PAGE_SIZE"
-        @more="visibleCount += LIST_PAGE_SIZE"
-        @all="visibleCount = entries.length"
-      />
       <!-- THE SAME FIELD'S SECOND ANSWER (docs/architecture.md §12.31). Its
            own section with its own heading, never mixed into the list: the
            list searches a whole Gesetzgebungsperiode by title, this block the

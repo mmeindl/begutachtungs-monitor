@@ -30,6 +30,13 @@ useSeoMeta({
 
 <template>
   <UApp :locale="de">
+    <!-- A client-side navigation keeps the old page on screen until the new
+         one's awaited fetches resolve — on a cold cache one to four seconds
+         in which a click looked like it had done nothing. The bar says it
+         did. Ink, not blue or yellow: it is neither something to do nor
+         something to look at (one hue, one meaning). Nuxt's 200 ms throttle
+         keeps it off warm navigations. -->
+    <NuxtLoadingIndicator color="var(--color-ink)" :height="2" />
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>

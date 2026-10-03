@@ -140,5 +140,11 @@ defineEmits<{ 'update:sort': [key: string] }>()
         </EntryItem>
       </li>
     </component>
+    <!-- The rows under the list, inside the sheet as a `ListBox`'s foot
+         (03.10.2026): the pager stood under the frame on `/entwuerfe` while
+         the Stellungnahmen panel carried it in its own. Each row brings its
+         own hairline and inset (`ListMore inset`), so nothing here draws an
+         empty band. -->
+    <slot name="foot" />
   </div>
 </template>
