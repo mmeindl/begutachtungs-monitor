@@ -41,7 +41,7 @@ describe('draftFiltersFromQuery', () => {
 
   it('falls back rather than erroring on a hand-typed link', () => {
     expect(
-      draftFiltersFromQuery({ status: 'halb', art: 'gesetz', sort: 'titel', station: 'mond' }),
+      draftFiltersFromQuery({ status: 'halb', art: 'gesetz', sort: 'neu', station: 'mond' }),
     ).toEqual(empty)
   })
 
@@ -60,11 +60,14 @@ describe('draftFiltersFromQuery', () => {
     expect(draftFiltersFromQuery({ gp: ['XXVII', 'XXVIII'] }).gp).toBe('XXVII')
   })
 
-  it('reads each of the three orders, and nothing else', () => {
+  it('reads each of the two orders, and nothing else', () => {
     // The select is the only writer of this value, so what has to hold is
     // the other direction: a link carrying an order we dropped must open the
     // list everybody means, not a page that sorts by a key nothing matches.
-    expect(draftFiltersFromQuery({ sort: 'neu' }).sort).toBe('neu')
+    // „Zuletzt dazugekommen" and the title order went on 02.10.2026; their
+    // old links open the default.
+    expect(draftFiltersFromQuery({ sort: 'neu' }).sort).toBe('frist')
+    expect(draftFiltersFromQuery({ sort: 'titel' }).sort).toBe('frist')
     expect(draftFiltersFromQuery({ sort: 'stellungnahmen' }).sort).toBe('stellungnahmen')
     expect(draftFiltersFromQuery({ sort: 'einlangen' }).sort).toBe('frist')
   })
@@ -77,7 +80,6 @@ describe('the round trip', () => {
     { ...empty, stations: ['begutachtung', 'rv'] },
     { ...empty, art: 'ministerialentwurf', gp: 'XXVIII', ministry: 'BMJ' },
     { ...empty, q: 'klimaschutz', sort: 'stellungnahmen' },
-    { ...empty, sort: 'neu' },
     { status: 'closed', stations: ['bgbl'], art: 'verordnung', gp: 'XXVII', ministry: 'BMF', q: 'x', sort: 'stellungnahmen' },
   ]
 

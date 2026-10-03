@@ -2,14 +2,12 @@
 import type {
   DashboardSecondRound,
   DraftStation,
-  DraftStatus,
   DraftsResponse,
   RisConsultationsResponse,
 } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import {
   compareDrafts,
-  compareRowsByArrival,
   compareRowsByStatements,
   type DraftListRow,
   rowOrderKey,
@@ -18,7 +16,6 @@ import { viewOfDraft, viewOfRis, viewOfVorlage } from '~/utils/entryView'
 import type { ArtFilter, SortKey } from '~/utils/draftFilters'
 import { romanToInt } from '#shared/utils/gp'
 import { matchesQuery } from '#shared/utils/textMatch'
-import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 
 /**
  * Every Begutachtung of a period, in ONE list — Ministerialentwürfe and the
@@ -55,36 +52,38 @@ usePageSeo({
  * along every long-decided Vorlage. As the intersection of both axes it is
  * exactly nameable and stays shareable: `?status=open&station=rv`.
  *
- * **„Nicht möglich", not „Abgeschlossen" — 24.09.2026.** The third option is
- * the negation of the second and nothing more: it selects the rows where no
- * window is open, neither a running Frist nor a Vorlage parliament still
- * takes Stellungnahmen on (`canParticipate`). The set has been right since
- * 18.09.2026; the WORD claimed something on top of it that this page cannot
- * know. Measured on the running period on 24.09.2026: of the 119 rows under
- * it, 84 are kundgemacht — and 35 are anything but finished, 34 waiting for
- * a Regierungsvorlage and one lying in the Nationalrat. Where a Verfahren
- * really has ended the row says so itself („Kundgemacht"); what the filter
- * answers is the question above it („Was kann ich tun"), and for this set
- * the answer is „nicht möglich" — today, not forever, because a Vorlage can
- * open the second window months later.
+ * **Since 02.10.2026 the stations are the list's tabs and the status is ONE
+ * chip, „Stellungnahme möglich".** The status was a three-way segment — Alle
+ * · Stellungnahme möglich · Nicht möglich — and stood above the stations as
+ * tabs for a day. That put the table-stakes axis above the one the product
+ * is about, and „Nicht möglich" was only the negation of the second option
+ * (`canParticipate`): of its 119 rows on 24.09.2026, 84 kundgemacht and 35
+ * waiting for a Vorlage or in the Nationalrat — which the station tabs now
+ * say more precisely. Nothing on the site links to it any more; an old
+ * `?status=closed` link keeps working and shows as a removable chip
+ * (`activeFilters`). The value „open" stays what the homepage's sections link
+ * through, so the chip stays in view.
  *
- * Why not the full „Keine Stellungnahme möglich": at a 390 px viewport the
- * segmented group is 338 px against a line of 358, and that label takes it
- * to 432 px, „Nicht mehr möglich" to 366 (measured 24.09.2026, CDP device
- * metrics). „Nicht möglich" is 329 px and reads in the group as the negation
- * it is. The VALUE stays `closed`, so every shared `?status=closed` link
- * keeps working.
+ * Under „Parlament" and „Bundesgesetzblatt" the chip is unavailable: the
+ * combination is empty by what the stations mean. „Parlament" is not „lies
+ * in Parliament" — it is the Nationalrat DONE with the Vorlage (list-101
+ * status 5, or sent back to committee, status 3; `stationFor`), and a
+ * Vorlage that is merely before it stays at „Regierungsvorlage". Parliament's
+ * form takes Stellungnahmen while the Nationalrat has the text and closes
+ * with its decision. Measured 03.10.2026: Parlament + open is 0 in GP XXVIII
+ * (of 1 row there; all 13 open Vorlagen stand at „Regierungsvorlage") and in
+ * XXVII and XXVI, where a lapsed period's Vorlage takes nothing anyway. The
+ * one unobserved exception — a Vorlage sent back whose form reopens — loses
+ * nothing: it still stands under „Alle" with the chip on.
  */
-const statusOptions: { value: DraftStatus; label: string }[] = [
-  { value: 'all', label: 'Alle' },
-  { value: 'open', label: 'Stellungnahme möglich' },
-  { value: 'closed', label: 'Nicht möglich' },
-]
-
-const stationOptions: { value: DraftStation; label: string }[] = DRAFT_STATION_ORDER.map((value) => ({
-  value,
-  label: DRAFT_STATION_LABEL[value],
-}))
+/** Why the chip is unavailable at a station, where it is. */
+const OPEN_UNAVAILABLE: Partial<Record<DraftStation, string>> = {
+  parlament: 'Der Nationalrat hat über die Vorlage schon entschieden',
+  bgbl: 'Nach der Kundmachung ist keine Stellungnahme mehr möglich',
+}
+const VERORDNUNG_NO_STATION = 'Verordnungsentwürfe kommen nicht ins Parlament'
+/* The value of the tab a multi-station link lands on — no station has it. */
+const SEVERAL_STATIONS = 'mehrere'
 
 /**
  * The filter is by WHERE a draft stands in the procedure, not by the type
@@ -124,19 +123,15 @@ const artOptions: { value: ArtFilter; label: string }[] = [
  * instead of at the list. It is the same comparator the ranking uses
  * (`rankByStatements`), so the first five rows here ARE those five rows.
  *
- * „Zuletzt dazugekommen" is the third since 26.09.2026, and it is the half
- * the „Neu"-Marke never had (§12.22): the mark rides on the row and the row
- * sits where the Frist puts it, so a draft that arrives today with a
- * six-week Frist is marked somewhere far down the list — a median of 0
- * marked rows among the ones the homepage shows, against a median of 3 over
- * all open ones. The mark makes new arrivals FINDABLE; only an order lifts
- * them. Why it has no open/closed split, unlike the other two:
- * `compareByArrival`.
+ * No third since 02.10.2026. „Zuletzt dazugekommen" (26.09.2026, §12.22)
+ * went when the column headers took over the sorting: no column fits it.
+ * A title order under „Entwurf" replaced it for a day and went too — a third
+ * of the titles start with „Änderung" or „Verordnung", and the search finds
+ * a law by name faster than an alphabet does.
  */
 const sortOptions: { value: SortKey; label: string }[] = [
   { value: 'frist', label: 'Nach Frist' },
   { value: 'stellungnahmen', label: 'Meiste Stellungnahmen' },
-  { value: 'neu', label: 'Zuletzt dazugekommen' },
 ]
 
 /**
@@ -148,47 +143,133 @@ const sortOptions: { value: SortKey; label: string }[] = [
 const rowComparators: Record<SortKey, (a: DraftListRow, b: DraftListRow) => number> = {
   frist: (a, b) => compareDrafts(rowOrderKey(a), rowOrderKey(b)),
   stellungnahmen: compareRowsByStatements,
-  neu: compareRowsByArrival,
 }
 
 /* Filter state, URL binding and the query for both endpoints:
  * `useDraftFilters`, with the pure half in `app/utils/draftFilters.ts`. */
 const filters = useDraftFilters()
-const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, toggleStation, query } = filters
+const { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, query } = filters
 
 /**
- * The filter bar folds away on the phone — and only there.
+ * The station tabs, single-select over the composable's list: the URL still
+ * carries a list (`station=rv,parlament`), so a link naming several keeps
+ * its set and lands on a tab that names them — no tab silently drops a
+ * station from a shared link. Choosing a tab narrows to that one.
  *
- * Measured 18.09.2026: at 390 px the bar was **432 px tall**, the list's
- * first row began at y = 880, so the first viewport of a 390 × 844 device
- * showed **not one row**. At 896 px it is 156 px and six rows. The rebuild
- * is therefore one for the phone.
+ * Under „Verordnungsentwürfe" two tabs cannot hold anything — without a
+ * Gegenstand there is no Regierungsvorlage — and stay in place, unavailable,
+ * so the strip does not change shape with the Art filter.
+ */
+const stationTabs = computed(() => {
+  const tabs: { value: string; label: string; disabled?: boolean; reason?: string; selectLabel?: string }[] = [
+    { value: '', label: 'Alle', selectLabel: 'Alle Stationen' },
+    ...DRAFT_STATION_ORDER.map((value) => {
+      const noVorlage = art.value === 'verordnung' && (value === 'rv' || value === 'parlament')
+      return { value: value as string, label: DRAFT_STATION_LABEL[value], disabled: noVorlage, reason: noVorlage ? VERORDNUNG_NO_STATION : undefined }
+    }),
+  ]
+  if (stations.value.length > 1) {
+    tabs.push({ value: SEVERAL_STATIONS, label: stations.value.map((st) => DRAFT_STATION_LABEL[st]).join(' + ') })
+  }
+  return tabs
+})
+
+const stationTab = computed<string>({
+  get: () => (stations.value.length > 1 ? SEVERAL_STATIONS : (stations.value[0] ?? '')),
+  set: (value) => {
+    if (value === SEVERAL_STATIONS) return
+    stations.value = value ? [value as DraftStation] : []
+  },
+})
+
+/** Why no row of the chosen station can take a Stellungnahme — null where
+ *  some can (and under several stations or none). */
+const openUnavailable = computed(() =>
+  stations.value.length === 1 ? (OPEN_UNAVAILABLE[stations.value[0]!] ?? null) : null,
+)
+
+/**
+ * What the reader chose, apart from what is applied (03.10.2026).
  *
- * What stays visible is the question people arrive with („was kann ich tun")
- * and the search. The station chips move behind the switch with the three
- * selects: they cost 96 of the 432 px and are reached for least often. That
- * price is real — the stations are the vocabulary the list and the spine
- * share (§12.26), and a first-time reader no longer picks it up in passing.
+ * Under „Parlament" and „Bundesgesetzblatt" the chip stands unavailable but
+ * KEEPS its state: a reader who looks at the Bundesgesetzblatt and comes
+ * back to „Begutachtung" finds the chip as they left it. Applied there it
+ * would empty the list by definition, so only the filter steps back — the
+ * URL then carries no `status=open`, because the list it describes has none.
+ */
+const wantsOpen = ref(statusFilter.value === 'open')
+
+function toggleOpen(): void {
+  if (openUnavailable.value) return
+  wantsOpen.value = !wantsOpen.value
+  statusFilter.value = wantsOpen.value ? 'open' : 'all'
+}
+
+/* An old `?status=closed` link is its own state (its chip clears it); the
+ * stations leave it alone. */
+watch(openUnavailable, (reason) => {
+  if (statusFilter.value === 'closed') return
+  statusFilter.value = wantsOpen.value && !reason ? 'open' : 'all'
+}, { immediate: true })
+
+/**
+ * The rarer filters — Art, period, Ressort — behind one disclosure, at every
+ * width since 02.10.2026.
  *
- * Two safeguards: opened as soon as one of these filters stands in the URL —
- * a shared link must never hide an active filter — and the count on the
- * switch appears only in the closed state, because it would otherwise stand
- * above the controls it counts.
+ * Until then the bar folded away on the phone only (measured 18.09.2026: at
+ * 390 px it was 432 px tall and the first viewport showed not one row) and
+ * took the station chips with it. Now the three selects go behind „Filter"
+ * at every width, and the stations stay out from `md` up — they are the axis
+ * the product is about (§12.26). On a phone they still open with the panel:
+ * out there they cost two rows before the first card (measured 02.10.2026).
  *
- * Rejected: a `<details>`, against the house pattern (four occurrences, not
- * one scripted toggle), because a closed `<details>` cannot be opened by CSS
- * from a breakpoint up. Checked 18.09.2026 in Chrome 152 —
- * `details:not([open]) > .body { display:block }` under
- * `@media (min-width:768px)` does NOT reveal the content (a
- * `getBoundingClientRect` measurement misleadingly reports a height; the
- * screenshot shows nothing). Without that the same bar would have to stand
- * twice in the markup, with colliding `for`/`id` pairs. A checkbox plus
- * `peer` stays CSS-only, SSR-safe and usable without JS.
+ * A shared link must never hide an active filter: while the panel is closed,
+ * every value it holds stands under the tool row as a chip that removes it
+ * (`activeFilters`), and the button counts them. A button with
+ * `aria-expanded`, not the checkbox-and-`peer` construction of 18.09.2026:
+ * that one existed so the panel could open by CSS from a breakpoint up, and
+ * there is no breakpoint any more. Without JavaScript nothing here filters
+ * anyway — every control writes the URL through Vue.
  */
 const moreFilters = computed(
-  () => Number(stations.value.length > 0) + Number(art.value !== '') + Number(gp.value !== '') + Number(ministry.value !== ''),
+  () => Number(art.value !== '') + Number(gp.value !== '') + Number(ministry.value !== ''),
 )
-const filtersOpen = ref(moreFilters.value > 0)
+const filtersOpen = ref(false)
+
+/** The closed panel's values, each with the press that clears it. */
+const activeFilters = computed(() => {
+  const out: { key: string; label: string; clear: () => void }[] = []
+  if (statusFilter.value === 'closed') out.push({ key: 'status', label: 'Nicht möglich', clear: () => { statusFilter.value = 'all' } })
+  if (art.value) out.push({ key: 'art', label: artOptions.find((o) => o.value === art.value)?.label ?? art.value, clear: () => { art.value = '' } })
+  if (gp.value) out.push({ key: 'gp', label: `GP ${gp.value}`, clear: () => { gp.value = '' } })
+  if (ministry.value) {
+    const m = ministries.value.find((x) => x.code === ministry.value)
+    out.push({ key: 'ministry', label: m?.code ?? ministry.value, clear: () => { ministry.value = '' } })
+  }
+  return out
+})
+
+/* With the panel open its selects state their own values; the status chip
+ * has no select, so it stands either way. */
+const shownFilterChips = computed(() =>
+  filtersOpen.value ? activeFilters.value.filter((f) => f.key === 'status') : activeFilters.value,
+)
+
+/**
+ * The three orders as the column header carries them (`EntryList`,
+ * `SortHeader`): Frist is the Stand column, the ranking the Stellungnahmen
+ * column, the arrival order the Entwurf column — the column a new row is
+ * new in. Below `md` the page offers the same three as a select.
+ */
+const SORT_COLUMNS = {
+  count: { key: 'stellungnahmen', order: 'meiste zuerst' },
+  state: { key: 'frist', order: 'nächste Frist zuerst' },
+} as const
+
+/* The header hands back one of `SORT_COLUMNS`' keys. */
+function chooseSort(key: string) {
+  sort.value = key as SortKey
+}
 
 /**
  * WHICH HALVES THIS `art` ASKS FOR — the filter decides the REQUEST, not just
@@ -465,18 +546,6 @@ const visibleTotal = computed(() => meTotal.value + risTotal.value)
  * of „Keine Entwürfe gefunden" — which sounds like too narrow a search term —
  * the page says in that case that the combination itself is empty, and offers
  * the way out. */
-/* How many rows of the list are currently the second round — the drafts with
- * an open Vorlagen form plus the Vorlagen without a Begutachtung. Counted so
- * it can be said above the list: whoever comes from the homepage saw „Zweite
- * Runde" there as a section and looks for it here. It is not gone, it is
- * sorted in. */
-/* Gone under „Verordnungsentwürfe", and that is right: without the
- * Ministerialentwurf half no row of the list is in a second round. */
-const secondRoundRowCount = computed(
-  () =>
-    (meData.value?.items ?? []).filter((d) => d.chain?.filingOpen).length + vorlageRows.value.length,
-)
-
 /* A station AFTER the Begutachtung excludes the Verordnungsentwürfe: without
  * a Gegenstand at Parliament there is no Regierungsvorlage. Under
  * „Begutachtung" the combination makes sense — that is where they stand. */
@@ -598,6 +667,15 @@ const countLabel = computed(() => {
         Alle Begutachtungen einer Gesetzgebungsperiode – in Begutachtung und
         abgeschlossen, Gesetzes- wie Verordnungsentwürfe.
       </p>
+      <!-- Subscribing belongs to the page, not to the list's controls
+           (02.10.2026): between the count line and the rows it split the
+           list from its head. It still follows the Ressort filter — choosing
+           one is the moment somebody decides „dieses Ressort verfolge ich" —
+           and stays outside every live region, so a screen reader does not
+           read it out on each keystroke. -->
+      <p class="mt-2 text-sm leading-7 text-ink-muted">
+        <SubscribeLinks :ministry="ministry" />
+      </p>
       <!-- THE WAY TO THE SEARCH STOOD HERE UNTIL 21.09.2026 — a link to
            `/suche` plus two sentences on what is different there from the
            field below. It is gone because the field below does both since
@@ -633,409 +711,316 @@ const countLabel = computed(() => {
            without a RIS record (`docs/ris-join.md` §2). Writing that down
            correctly would take a subordinate clause nobody reads. -->
 
-      <!-- Two zones, and the boundary is a rule rather than a look:
-           everything that fixes the SET stands above the count line; what
-           only decides HOW it is read — the sort order — stands with the
-           list. Behind it is the sharper form of „nothing above a control
-           changes": every number on the page describes the set that the
-           controls ABOVE it define. That is why the search stays the last
-           element of this zone — its placeholder names the corpus size, and a
-           number depending on controls below it would be wrong the moment
-           somebody used them. -->
-      <div class="group mt-6">
-        <!-- `sr-only`, not `hidden`: the checkbox has to stay an element
-             `:checked` can match — `peer-checked` on the panel and
-             `group-has-[:checked]` on the count depend on it. From md up
-             `md:block` on the panel decides anyway, and the switch disappears
-             there with its label. -->
-        <input
-          id="filter-more"
-          v-model="filtersOpen"
-          type="checkbox"
-          class="peer sr-only md:hidden"
-          aria-controls="filter-more-panel"
-        >
-        <label
-          for="filter-more"
-          class="tap-target inline-flex min-h-target cursor-pointer items-center gap-2 rounded-md border border-hairline bg-surface px-3 text-sm text-ink hover:border-baseline md:hidden"
-        >
-          <UIcon
-            name="i-lucide-sliders-horizontal"
-            class="size-4 text-ink-muted"
-            aria-hidden="true"
-          />
-          Weitere Filter
-          <!-- Closed only: when open, the chips and the selects say for
-               themselves what is on, and the count would then stand above the
-               controls it counts.
-
-               `group-has-*` rather than `peer-checked`, because the count sits
-               inside the label and is therefore no sibling of the checkbox —
-               `peer-*` reaches siblings, `group-*` reaches descendants (the
-               pattern of `group-open` on this page's <details> blocks).
-
-               And `[input:checked]` rather than the shorter
-               `group-has-checked`: `:checked` also matches the selected
-               `<option>`, and three <select> in the panel always have one.
-               With `:has(:checked)` the group therefore counted as open
-               ALWAYS and the number was never visible; measured that way on
-               18.09.2026, before anyone would have noticed. -->
-          <span
-            v-if="moreFilters"
-            class="rounded-full bg-accent-deep px-2 py-0.5 text-xs font-medium text-white group-has-[input:checked]:hidden"
-          >{{ moreFilters }}</span>
-        </label>
-
-        <div id="filter-more-panel" class="mt-3 hidden space-y-3 peer-checked:block md:mt-0 md:block">
-          <!-- The station bar comes first: „wo steht es" is the coarser
-               question, „was kann ich tun" cuts across it (docs/architecture.md
-               §12.26). Multi-select, because two stations side by side are a
-               sensible question („Vorlage oder schon Gesetz?") and because
-               selecting nothing already means „alle" — an „Alle" chip would be
-               a fourth state for what the empty state says already. Gone where
-               the period cannot answer the question (§12.27): a chip that can
-               filter nothing is not a control but a promise, and the sentence
-               above the rows says why.
-
-               No visible „Wo steht es:" in front of the chips (18.09.2026).
-               The four words are the stations themselves — whoever sees
-               „Begutachtung · Regierungsvorlage · Parlament ·
-               Bundesgesetzblatt" side by side reads the axis off its values.
-               The name stays as the group's `aria-label`: to a screen reader
-               the chips would otherwise be four unrelated buttons. -->
-          <div
-            v-if="!chainUnlinkedPeriod"
-            role="group"
-            aria-label="Wo steht es"
-            class="flex flex-wrap items-center gap-2"
-          >
-            <UButton
-              v-for="opt in stationOptions"
-              :key="opt.value"
-              size="sm"
-              :color="stations.includes(opt.value) ? 'primary' : 'neutral'"
-              :variant="stations.includes(opt.value) ? 'subtle' : 'outline'"
-              :aria-pressed="stations.includes(opt.value)"
-              class="rounded-full"
-              @click="toggleStation(opt.value)"
-            >
-              {{ opt.label }}
-            </UButton>
-            <UButton
-              v-if="stations.length"
-              size="sm"
-              color="neutral"
-              variant="ghost"
-              class="rounded-full"
-              @click="stations = []"
-            >
-              Alle Stationen
-            </UButton>
-          </div>
-
-          <!-- Fixed tracks instead of `flex-wrap`, and `block` on every
-               select. A native <select> sizes itself by its LONGEST option:
-               „Alle Arten" stood 267 px wide because „Verordnungsentwürfe und
-               andere" is in its list, „Nach Frist" 202 px because of „Meiste
-               Stellungnahmen". Together the four selects claimed 837 of
-               896 px, and where the bar wrapped was decided by the window
-               rather than by the design. Now the grid decides:
-               272 + 112 + 256 px plus 24 px gaps = 664 of 896. -->
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,17rem)_minmax(0,7rem)_minmax(0,16rem)]">
-            <div class="min-w-0">
-              <label for="filter-art" class="sr-only">Art des Entwurfs</label>
-              <TokenSelect id="filter-art" v-model="art" block>
-                <option v-for="opt in artOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </TokenSelect>
-            </div>
-
-            <div class="min-w-0">
-              <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
-              <TokenSelect id="filter-gp" v-model="selectedGp" block>
-                <option v-for="g in availableGps" :key="g" :value="g">
-                  GP {{ g }}
-                </option>
-              </TokenSelect>
-            </div>
-
-            <div class="min-w-0">
-              <label for="filter-ministry" class="sr-only">Ministerium</label>
-              <TokenSelect id="filter-ministry" v-model="ministry" block>
-                <option value="">Alle Ministerien</option>
-                <option v-for="m in ministries" :key="m.code" :value="m.code">
-                  {{ m.name || m.code }}
-                </option>
-              </TokenSelect>
-            </div>
-          </div>
-        </div>
-
-        <!-- The second axis, and it stays visible on the phone: „wo kann ich
-             jetzt etwas sagen" is the question people arrive with
-             (docs/architecture.md §12.26). Its three options explain
-             themselves; the axis name is only an `aria-label` now.
-
-             It shares the line with the search, and that is no relapse into
-             the old bar: the search stands to its right, i.e. AFTER it in
-             reading order, so its placeholder may still count the set the
-             controls above and left of it have left over. Below md both wrap
-             onto separate lines — the segment measures 338 px, the line 358.
-
-             `mt-5` against the `space-y-3` INSIDE the panel: a group boundary
-             runs here — narrowing above, the second axis and the search below
-             — and with the same 12 px as between chips and selects the
-             segment stuck to the „Weitere Filter" switch.
-
-             Below sm the segment takes the whole line and its buttons share
-             it: at 320 px the 338 px segment was wider than the 288 px column
-             and scrolled the page sideways (measured 30.09.2026). Now
-             „Stellungnahme möglich" wraps inside its button instead — at 390
-             px everything still stands on one line. -->
-        <div class="mt-5 flex flex-wrap items-center gap-3">
-          <UFieldGroup role="group" aria-label="Was kann ich tun" class="w-full sm:w-auto sm:shrink-0">
-            <UButton
-              v-for="opt in statusOptions"
-              :key="opt.value"
-              :color="statusFilter === opt.value ? 'primary' : 'neutral'"
-              :variant="statusFilter === opt.value ? 'subtle' : 'outline'"
-              :aria-pressed="statusFilter === opt.value"
-              class="flex-auto justify-center text-center sm:flex-none"
-              @click="statusFilter = opt.value"
-            >
-              {{ opt.label }}
-            </UButton>
-          </UFieldGroup>
-
-          <!-- Last in this zone, and that is the rule rather than taste: the
-               placeholder names the corpus size (a trust signal, after
-               kleineAnfragen) and therefore counts what the controls ABOVE it
-               left over. Placed above them it would carry a number depending
-               on controls below it.
-
-               It now gets the whole rest of the line instead of a strip: the
-               field used to SHRINK the wider the window became — 720 px at
-               768, 366 px at 896 — because it shared a line with Ressort and
-               sort order there. Neither stands here any more.
-
-               `min-w-80` and not `min-w-48`: at a 192 px minimum the field
-               already fits beside the 338 px segment at 640 px and stood
-               there 242 px narrow — narrower than at 430 px, where it has the
-               whole line. That is the same disease as before in a new place.
-               At 320 px it wraps instead until there really is room (from
-               ~700 px) and only grows from there.
-
-               As `basis-80 min-w-0` since 30.09.2026, not `min-w-80`: a flex
-               line wraps on the basis, so the field still takes a line of
-               its own in the same places — but a minimum of 320 px was wider
-               than the 288 px column of a 320 px phone and scrolled the page
-               sideways. The basis may shrink, the minimum could not. -->
-          <UInput
-            v-model="q"
-            type="search"
-            icon="i-lucide-search"
-            :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
-            aria-label="Entwürfe durchsuchen"
-            class="min-w-0 flex-1 basis-80"
-            :ui="{ base: 'min-h-target' }"
-          />
-        </div>
-      </div>
-
-      <!-- The count line and the sort control on one level, and that is the
-           boundary between the two zones: above stands what FIXES the set,
-           here stands how it is READ.
-
-           The sort control stood between Ressort and search until 18.09.2026,
-           in the same token styling as the three filters beside it — nothing
-           told the control that takes something away from the one that only
-           reorders. It belongs to the list: controls that change HOW the
-           result is read belong to the list they order
-           (docs/architecture.md §12.26). It takes nothing away, so it does
-           not change the count line beside it either — the sentence about the
-           Verordnungsentwürfe that it triggers stands below it.
-
-           `aria-live` stays on the number alone: with the select inside the
-           region a screen reader would re-read a number on every sort that
-           has not changed at all. -->
-      <div class="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p class="text-sm text-ink-muted" aria-live="polite">
-          {{ countLabel }}
-        </p>
-        <div class="flex min-w-0 items-center gap-2">
-          <label for="filter-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
-          <TokenSelect id="filter-sort" v-model="sort">
-            <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </TokenSelect>
-        </div>
-      </div>
-
-      <!-- Subscribing stands here rather than in the footer, and deliberately
-           OUTSIDE the live region above: otherwise a screen reader reads the
-           invitation out on every keystroke in the search. Two offers,
-           following what the filter bar currently says — the Ressort filter is
-           the moment somebody decides „dieses Ressort verfolge ich“. -->
-      <p class="mt-1 text-sm leading-7 text-ink-muted">
-        <SubscribeLinks :ministry="ministry" />
-      </p>
-
+      <!-- THREE LAYERS, the grammar of every list box (`ListBox`,
+           02.10.2026), in the list's own sheet: „was kann ich
+           tun" as tabs, a tool row that narrows (stations, the rarer filters
+           behind „Filter") and searches, and the order in the column header.
+           Until then five zones stood above the list — chips, three selects,
+           segment and search, count and sort, subscribe links — and on a
+           phone not one row was in the first viewport.
+           The rule of the two zones still holds inside the head: everything
+           that fixes the SET stands above the count line, the search last
+           among it, because its placeholder counts what the controls before
+           it left over. -->
       <h2 class="sr-only">Ergebnisse</h2>
-      <!-- Above the rows, like every other statement about what the list is
-           doing: read afterwards it is worthless. -->
-      <p v-if="carriedOverFrom" class="mt-3 text-sm text-ink-muted">
-        Darunter Entwürfe der {{ carriedOverFrom }}. Gesetzgebungsperiode, deren
-        Begutachtungsfrist noch läuft – eine Frist endet nicht damit, dass eine
-        neue Gesetzgebungsperiode beginnt. Über die Auswahl oben lässt sich
-        jede Periode für sich ansehen.
-      </p>
-      <!-- Like the sort caveat below it: a statement about what the list is
-           NOT doing stands above the rows — read afterwards it is
-           worthless. -->
-      <p v-if="stationsUnavailable" class="mt-3 text-sm text-ink-muted">
-        Wo die Entwürfe stehen, lässt sich gerade nicht abrufen<template
-          v-if="stations.length"
-        > – die Liste ist deshalb <span class="font-medium text-ink">nicht</span>
-          nach Station gefiltert</template>.<template v-if="statusFilter === 'closed'">
-          Hier zählt nur, ob die Frist abgelaufen ist: Zu einzelnen
-          Regierungsvorlagen kann im Nationalrat noch Stellung genommen
-          werden.</template>
-      </p>
-      <!-- The gap is named rather than passed off as a finding: without this
-           sentence a list without stations would read as if nothing had ever
-           become of any of these drafts (docs/architecture.md §12.27). -->
-      <p v-if="chainUnlinkedPeriod" class="mt-3 text-sm text-ink-muted">
-        Was aus diesen Entwürfen wurde, ist für diese Gesetzgebungsperiode
-        nicht erfasst – der Bezug zwischen Ministerialentwurf und
-        Regierungsvorlage fehlt im Datenbestand. Die Zeilen zeigen deshalb
-        keine Station; dass es keine Regierungsvorlagen gab, folgt daraus
-        <span class="font-medium text-ink">nicht</span>.<template v-if="stations.length">
-          Nach Station ist hier deshalb auch
-          <span class="font-medium text-ink">nicht</span> gefiltert.</template>
-      </p>
-      <!-- The caveat holds only for the stations AFTER the Begutachtung:
-           nothing without a Gegenstand at Parliament gets there. Under
-           „Begutachtung" the Verordnungsentwürfe do come along — leaving them
-           out there cost the parity with the homepage (4 instead of 7 under
-           „Begutachtung + Stellungnahme möglich") and made three running
-           Verordnung-Begutachtungen disappear. -->
-      <p
-        v-else-if="laterStationsOnly && art !== 'ministerialentwurf'"
-        class="mt-3 text-sm text-ink-muted"
+      <EntryList
+        :entries="shownEntries"
+        class="mt-6"
+        :sortable="SORT_COLUMNS"
+        :sort="sort"
+        @update:sort="chooseSort"
       >
-        <template v-if="stationConflict">
-          <span class="font-medium text-ink">Verordnungsentwürfe haben keine
-            Station:</span>
-          Sie führen keinen Gegenstand im Parlament, also auch keine
-          Regierungsvorlage. „Alle Arten" oder
-          <button
-            type="button"
-            class="tap-target link-inline font-medium"
-            @click="stations = []"
-          >alle Stationen</button>
-          zeigen wieder Zeilen.
-        </template>
-        <template v-else>
-          Verordnungsentwürfe stehen hier nicht: Ohne Gegenstand im Parlament
-          gibt es keine Regierungsvorlage – ihr Weg endet mit der Begutachtung.
-        </template>
-      </p>
-      <!-- The answer to „wo ist die zweite Runde?" — the question people
-           bring from the homepage, where it is a section of its own. Here it
-           is sorted in, by urgency like everything else, and each of these
-           rows carries its chip. Only under „Stellungnahme möglich", because
-           only there does the statement hold for the whole list. -->
-      <p
-        v-if="statusFilter === 'open' && secondRoundRowCount"
-        class="mt-3 text-sm text-ink-muted"
-      >
-        Darunter
-        <span class="font-medium text-ink">{{ secondRoundRowCount }} in zweiter Runde</span>:
-        Die Begutachtung ist vorbei, im Nationalrat kann zur Regierungsvorlage
-        weiter Stellung genommen werden. {{ SECOND_ROUND_WINDOW }}
-      </p>
-      <!-- What the sort order does with the half it cannot sort — above the
-           list, not below it: a caveat on what the order claims has to be read
-           before the rows are. -->
-      <p
-        v-if="sort === 'stellungnahmen' && art !== 'ministerialentwurf'"
-        class="mt-3 text-sm text-ink-muted"
-      >
-        Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
-        stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
-      </p>
-      <!-- THE SEARCH'S LIMIT, at the place where it affects somebody: under
-           these filters ONLY the title was searched, because the full text
-           knows nothing that is not currently running. Above the list, like
-           every other statement about what it is not doing. -->
-      <p
-        v-if="qDebounced.length >= FULLTEXT_MIN_LEN && !fullTextApplies"
-        class="mt-3 text-sm text-ink-muted"
-      >
-        Gesucht ist hier nur in Titel, Zitat, Debattennamen und Ressortkürzel. In
-        den Dokumenten selbst wird nur gesucht, solange eine Begutachtung
-        <span class="font-medium text-ink">läuft</span> – unter diesen Filtern
-        also nicht.
-      </p>
-      <!-- Both densities and the column header live in `EntryList` since
-           18.09.2026 — the same list renders the homepage now, and the header
-           has to align with the cells in `EntryItem` to the pixel
-           (docs/architecture.md §12.28). -->
-      <template v-if="entries.length">
-        <EntryList :entries="shownEntries" class="mt-3">
-          <!-- Only the rows hit by the full text TOO carry evidence: the gain
-               on a row that is there anyway („das Wort steht in § 6") instead of
-               a second row for the same draft. -->
-          <template #evidence="{ entry }">
-            <SearchEvidence :hit="hitByKey.get(entry.key)" />
-          </template>
-        </EntryList>
-        <ListMore
-          v-if="listPaged"
-          :visible="visibleCount"
-          :total="entries.length"
-          :step="LIST_PAGE_SIZE"
-          :all-above="LIST_PAGE_SIZE"
-          @more="visibleCount += LIST_PAGE_SIZE"
-          @all="visibleCount = entries.length"
-        />
-      </template>
-      <template v-else-if="!stationConflict">
-        <!-- EMPTY LIST, BUT NOT AN EMPTY PAGE: while the full text below is
-             still answering, the large „Keine Entwürfe gefunden" card would be
-             a claim about an answer that does not exist yet. One line then
-             says what the title search returned, and the block below says the
-             rest. -->
-        <p v-if="fullTextActive" class="mt-3 text-ink-secondary">
-          Kein Titel, kein Zitat, kein Debattenname und kein Ressortkürzel
-          trägt „{{ qDebounced }}“.
-        </p>
-        <!-- The description names the four fields instead of saying „Titel":
-             „Klimaschutz" returns nine rows here, all of them through the
-             RESSORT NAME (BMK) and none through a document — whoever believes
-             the title is searched takes that for a title hit. -->
-        <div v-else class="mt-3">
-          <EmptyState
-            title="Keine Entwürfe gefunden"
-            :description="
-              qDebounced
-                ? 'Dieses Feld durchsucht Titel, Zitat, Debattennamen und Ressortkürzel. Nach dem Ressort filtert die Auswahl daneben.'
-                : 'Andere Filter oder einen anderen Suchbegriff versuchen.'
-            "
+        <template #head>
+          <!-- WHERE IT STANDS as the tabs (02.10.2026): the stations are the
+               axis this product is about — what became of a draft — and the
+               most prominent control in the box belongs to it. Single-select,
+               a reversal of §12.26's multi-select chips: tabs that hold
+               several values are no tabs. A shared link naming several
+               stations still works and says so as a tab of its own. No counts,
+               unlike the Stellungnahmen: each would be one pooled total over
+               Ministerialentwürfe and Verordnungsentwürfe (§12.19). Five tabs
+               do not fit a phone, so below `sm` they are a select. Gone where
+               the period cannot answer the question (§12.27). -->
+          <ListTabs
+            v-if="!chainUnlinkedPeriod"
+            v-model="stationTab"
+            :options="stationTabs"
+            group-label="Wo steht es"
+            collapse
+            class="border-b border-hairline md:-mx-4 md:px-4"
           />
-        </div>
-        <!-- The one place the question arises (30.09.2026): it stood under
-             every draft page, where nobody who found the draft needs it.
-             Here it answers a search that found nothing. -->
-        <p v-if="qDebounced" class="mt-3 text-sm text-ink-secondary">
-          Heißt der Entwurf in der Debatte anders? Hinweise an
-          <a href="mailto:kontakt@begutachtungs-monitor.at" class="link-inline">kontakt@begutachtungs-monitor.at</a>
-          – die Suche findet ihn dann auch unter diesem Namen.
-        </p>
-      </template>
+          <div class="flex flex-col gap-3 py-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- „Was kann ich tun", reduced to its one value that matters:
+                   the question people arrive with (§12.26), and the filter
+                   the homepage's sections link through
+                   (`?status=open&station=begutachtung`, `…&station=rv`).
+                   „Nicht möglich" was only the rest; it survives as a chip
+                   for old links (`activeFilters`). Unavailable, not hidden,
+                   under „Parlament" and „Bundesgesetzblatt", where the
+                   combination is empty by what the stations mean
+                   (`OPEN_UNAVAILABLE`) — drawn as unavailable, not as a faded
+                   „on": no tint, the page's grey, muted text and a dashed
+                   outline, the tick kept (`wantsOpen`). Fading the tinted
+                   chip read as „on, a bit lighter" (03.10.2026).
+                   `aria-disabled` keeps it focusable with its reason. -->
+              <UButton
+                :color="wantsOpen && !openUnavailable ? 'primary' : 'neutral'"
+                :variant="wantsOpen && !openUnavailable ? 'subtle' : 'outline'"
+                :aria-pressed="wantsOpen"
+                :aria-disabled="openUnavailable ? true : undefined"
+                :title="openUnavailable ?? undefined"
+                class="shrink-0"
+                :class="openUnavailable && 'cursor-not-allowed border border-dashed border-baseline bg-page text-ink-muted ring-0 hover:bg-page'"
+                @click="toggleOpen"
+              >
+                <!-- A box, ticked when on: says „toggle" in both states,
+                     and both icons are one width, so pressing moves nothing. -->
+                <UIcon :name="wantsOpen ? 'i-lucide-square-check' : 'i-lucide-square'" class="size-4 shrink-0" aria-hidden="true" />
+                Stellungnahme möglich
+                <span v-if="openUnavailable" class="sr-only">({{ openUnavailable }})</span>
+              </UButton>
+              <!-- Art, period and Ressort stand in the same line from `md`
+                   up (03.10.2026), each select stating its own value; on a
+                   phone four selects cannot share a line, so they open with
+                   „Filter" and state their values as chips below while
+                   closed — a shared link never hides an active filter. -->
+              <UButton
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-sliders-horizontal"
+                class="shrink-0 md:hidden"
+                :aria-expanded="filtersOpen"
+                aria-controls="filter-more-panel"
+                @click="filtersOpen = !filtersOpen"
+              >
+                Filter
+                <span
+                  v-if="moreFilters"
+                  class="rounded-full bg-accent-deep px-2 py-0.5 text-xs font-medium text-white"
+                >{{ moreFilters }}<span class="sr-only"> aktiv</span></span>
+              </UButton>
+              <!-- Set widths and `block` selects: a native <select> sizes
+                   itself by its LONGEST option, so the widths are set here
+                   and the line holds — 190 + 240 + 112 px plus gaps, and
+                   the Ressort fills the rest of the 864 px of the box. -->
+              <div
+                id="filter-more-panel"
+                class="w-full gap-2 md:flex md:w-auto md:min-w-0 md:flex-1 md:items-center"
+                :class="filtersOpen ? 'grid grid-cols-1' : 'hidden'"
+              >
+                <div class="min-w-0 md:w-60">
+                  <label for="filter-art" class="sr-only">Art des Entwurfs</label>
+                  <TokenSelect id="filter-art" v-model="art" block>
+                    <option v-for="opt in artOptions" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </option>
+                  </TokenSelect>
+                </div>
+                <div class="min-w-0 md:w-28">
+                  <label for="filter-gp" class="sr-only">Gesetzgebungsperiode</label>
+                  <TokenSelect id="filter-gp" v-model="selectedGp" block>
+                    <option v-for="g in availableGps" :key="g" :value="g">
+                      GP {{ g }}
+                    </option>
+                  </TokenSelect>
+                </div>
+                <!-- The Ressort takes the rest of the line, so the filters end
+                     where the search below ends; its names are the longest. -->
+                <div class="min-w-0 md:flex-1">
+                  <label for="filter-ministry" class="sr-only">Ministerium</label>
+                  <TokenSelect id="filter-ministry" v-model="ministry" block>
+                    <option value="">Alle Ministerien</option>
+                    <option v-for="m in ministries" :key="m.code" :value="m.code">
+                      {{ m.name || m.code }}
+                    </option>
+                  </TokenSelect>
+                </div>
+              </div>
+            </div>
+            <!-- What the closed panel holds, each removable in one press —
+                 on a phone; from `md` up the selects state it themselves,
+                 and only the status chip of an old link stands here. -->
+            <div
+              v-if="shownFilterChips.length"
+              class="flex flex-wrap items-center gap-2"
+              :class="!shownFilterChips.some((f) => f.key === 'status') && 'md:hidden'"
+            >
+              <UButton
+                v-for="f in shownFilterChips"
+                :key="f.key"
+                size="sm"
+                color="primary"
+                variant="subtle"
+                trailing-icon="i-lucide-x"
+                class="rounded-full"
+                :class="f.key !== 'status' && 'md:hidden'"
+                @click="f.clear()"
+              >
+                {{ f.label }}<span class="sr-only"> – Filter entfernen</span>
+              </UButton>
+            </div>
+            <!-- The search on a line of its own, the whole width, last among
+                 what fixes the set: its placeholder counts what the controls
+                 above it left over. -->
+            <UInput
+              v-model="q"
+              type="search"
+              icon="i-lucide-search"
+              :placeholder="`In ${countLabelDe(visibleTotal, 'Entwurf', 'Entwürfen')} suchen …`"
+              aria-label="Entwürfe durchsuchen"
+              class="w-full"
+              :ui="{ base: 'min-h-target' }"
+            />
+            <!-- The count line, the boundary between the zones: above it what
+                 fixes the set, here how it is read. On a phone, where no
+                 column header is drawn, the order is a select beside it. -->
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <p class="text-sm text-ink-muted" aria-live="polite">
+                {{ countLabel }}
+              </p>
+              <div class="flex min-w-0 items-center gap-2 md:hidden">
+                <label for="filter-sort" class="shrink-0 text-sm text-ink-secondary">Sortieren</label>
+                <TokenSelect id="filter-sort" v-model="sort">
+                  <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+                    {{ opt.label }}
+                  </option>
+                </TokenSelect>
+              </div>
+            </div>
+            <!-- Above the rows, like every other statement about what the list is
+                   doing: read afterwards it is worthless. -->
+            <p v-if="carriedOverFrom" class="text-sm text-ink-muted">
+              Darunter Entwürfe der {{ carriedOverFrom }}. Gesetzgebungsperiode, deren
+              Begutachtungsfrist noch läuft – eine Frist endet nicht damit, dass eine
+              neue Gesetzgebungsperiode beginnt. Über die Auswahl oben lässt sich
+              jede Periode für sich ansehen.
+            </p>
+            <!-- Like the sort caveat below it: a statement about what the list is
+                   NOT doing stands above the rows — read afterwards it is
+                   worthless. -->
+            <p v-if="stationsUnavailable" class="text-sm text-ink-muted">
+              Wo die Entwürfe stehen, lässt sich gerade nicht abrufen<template
+                v-if="stations.length"
+              > – die Liste ist deshalb <span class="font-medium text-ink">nicht</span>
+                nach Station gefiltert</template>.<template v-if="statusFilter === 'closed'">
+                Hier zählt nur, ob die Frist abgelaufen ist: Zu einzelnen
+                Regierungsvorlagen kann im Nationalrat noch Stellung genommen
+                werden.</template>
+            </p>
+            <!-- The gap is named rather than passed off as a finding: without this
+                   sentence a list without stations would read as if nothing had ever
+                   become of any of these drafts (docs/architecture.md §12.27). -->
+            <p v-if="chainUnlinkedPeriod" class="text-sm text-ink-muted">
+              Was aus diesen Entwürfen wurde, ist für diese Gesetzgebungsperiode
+              nicht erfasst – der Bezug zwischen Ministerialentwurf und
+              Regierungsvorlage fehlt im Datenbestand. Die Zeilen zeigen deshalb
+              keine Station; dass es keine Regierungsvorlagen gab, folgt daraus
+              <span class="font-medium text-ink">nicht</span>.<template v-if="stations.length">
+                Nach Station ist hier deshalb auch
+                <span class="font-medium text-ink">nicht</span> gefiltert.</template>
+            </p>
+            <!-- Only for the combination that leaves NO row: „Verordnungsentwürfe"
+                 with a station they cannot reach. The tabs no longer offer it
+                 (unavailable, with this reason), so only an old link lands
+                 here, and an empty list must say why.
+                 The sentence that stood under the later stations at every Art
+                 („Verordnungsentwürfe stehen hier nicht …") went on 03.10.2026:
+                 the unavailable tabs carry it, and the count line names only
+                 the kinds that are in the list. -->
+            <p v-else-if="stationConflict" class="text-sm text-ink-muted">
+              <span class="font-medium text-ink">Verordnungsentwürfe haben keine
+                Station:</span>
+              Sie führen keinen Gegenstand im Parlament, also auch keine
+              Regierungsvorlage. „Alle Arten" oder
+              <button
+                type="button"
+                class="tap-target link-inline font-medium"
+                @click="stations = []"
+              >alle Stationen</button>
+              zeigen wieder Zeilen.
+            </p>
+            <!-- No „Darunter N in zweiter Runde" line since 03.10.2026: each of
+                 those rows carries its „Zweite Runde" chip, „Regierungsvorlage"
+                 with „Stellungnahme möglich" IS that list, and why there is no
+                 Frist for it is the detail page's to say. -->
+            <!-- What the sort order does with the half it cannot sort — above the
+                   list, not below it: a caveat on what the order claims has to be read
+                   before the rows are. -->
+            <p
+              v-if="sort === 'stellungnahmen' && art !== 'ministerialentwurf'"
+              class="text-sm text-ink-muted"
+            >
+              Verordnungsentwürfe und andere führen keine Stellungnahmen – sie
+              stehen hinter den gereihten Zeilen, weiter nach Frist geordnet.
+            </p>
+            <!-- THE SEARCH'S LIMIT, at the place where it affects somebody: under
+                   these filters ONLY the title was searched, because the full text
+                   knows nothing that is not currently running. Above the list, like
+                   every other statement about what it is not doing. -->
+            <p
+              v-if="qDebounced.length >= FULLTEXT_MIN_LEN && !fullTextApplies"
+              class="text-sm text-ink-muted"
+            >
+              Gesucht ist hier nur in Titel, Zitat, Debattennamen und Ressortkürzel. In
+              den Dokumenten selbst wird nur gesucht, solange eine Begutachtung
+              <span class="font-medium text-ink">läuft</span> – unter diesen Filtern
+              also nicht.
+            </p>
+          </div>
+        </template>
+        <!-- Only the rows hit by the full text TOO carry evidence: the gain
+             on a row that is there anyway („das Wort steht in § 6") instead of
+             a second row for the same draft. -->
+        <template #evidence="{ entry }">
+          <SearchEvidence :hit="hitByKey.get(entry.key)" />
+        </template>
+        <!-- Not under a station conflict: the sentence in the head already
+             says that the combination itself is empty, and how out. -->
+        <template v-if="!stationConflict" #empty>
+          <div class="md:px-4 md:py-4">
+            <!-- EMPTY LIST, BUT NOT AN EMPTY PAGE: while the full text below is
+                 still answering, the large „Keine Entwürfe gefunden" card would be
+                 a claim about an answer that does not exist yet. One line then
+                 says what the title search returned, and the block below says the
+                 rest. -->
+            <p v-if="fullTextActive" class="text-ink-secondary">
+              Kein Titel, kein Zitat, kein Debattenname und kein Ressortkürzel
+              trägt „{{ qDebounced }}“.
+            </p>
+            <!-- The description names the four fields instead of saying „Titel":
+                 „Klimaschutz" returns nine rows here, all of them through the
+                 RESSORT NAME (BMK) and none through a document — whoever believes
+                 the title is searched takes that for a title hit. -->
+            <div v-else class="text-sm">
+              <p class="font-medium text-ink">Keine Entwürfe gefunden</p>
+              <p class="mt-0.5 text-ink-secondary">
+                {{ qDebounced
+                  ? 'Dieses Feld durchsucht Titel, Zitat, Debattennamen und Ressortkürzel. Nach dem Ressort filtert „Filter“ daneben.'
+                  : 'Andere Filter oder einen anderen Suchbegriff versuchen.' }}
+              </p>
+            </div>
+            <!-- The one place the question arises (30.09.2026): it stood under
+                 every draft page, where nobody who found the draft needs it.
+                 Here it answers a search that found nothing. -->
+            <p v-if="qDebounced" class="mt-3 text-sm text-ink-secondary">
+              Heißt der Entwurf in der Debatte anders? Hinweise an
+              <a href="mailto:kontakt@begutachtungs-monitor.at" class="link-inline">kontakt@begutachtungs-monitor.at</a>
+              – die Suche findet ihn dann auch unter diesem Namen.
+            </p>
 
+          </div>
+        </template>
+      </EntryList>
+      <ListMore
+        v-if="listPaged && entries.length"
+        :visible="visibleCount"
+        :total="entries.length"
+        :step="LIST_PAGE_SIZE"
+        :all-above="LIST_PAGE_SIZE"
+        @more="visibleCount += LIST_PAGE_SIZE"
+        @all="visibleCount = entries.length"
+      />
       <!-- THE SAME FIELD'S SECOND ANSWER (docs/architecture.md §12.31). Its
            own section with its own heading, never mixed into the list: the
            list searches a whole Gesetzgebungsperiode by title, this block the

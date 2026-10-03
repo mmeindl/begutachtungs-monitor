@@ -30,11 +30,12 @@ import { firstQueryValue } from '#shared/utils/queryParams'
 export type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
 
 /**
- * `neu` is „Zuletzt dazugekommen", spelt the way the mark on the row is
- * („Neu", `isNewArrival`): the order exists to lift exactly what that mark
- * points at, and one word for one thing keeps a shared link readable.
+ * Two orders since 02.10.2026, each a column of the list. „Zuletzt
+ * dazugekommen" (`neu`) and the title order that replaced it for a day
+ * (`titel`) went; old links with either open the default order, like any
+ * key nothing matches.
  */
-export type SortKey = 'frist' | 'stellungnahmen' | 'neu'
+export type SortKey = 'frist' | 'stellungnahmen'
 
 /** What the two list endpoints are asked for. `art` is not among them: it
  *  selects the half, so the page leaves the excluded endpoint unasked
@@ -74,7 +75,7 @@ function parseArt(v: unknown): ArtFilter {
 
 function parseSort(v: unknown): SortKey {
   const s = firstQueryValue(v)
-  return s === 'stellungnahmen' || s === 'neu' ? s : 'frist'
+  return s === 'stellungnahmen' ? s : 'frist'
 }
 
 export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilterValues {

@@ -3,7 +3,6 @@ import type { DraftSummary, OpenVorlage, RisConsultation } from '../shared/types
 import {
   canRankPeriod,
   compareDrafts,
-  compareRowsByArrival,
   compareRowsByStatements,
   type DraftListRow,
   draftOrderKey,
@@ -328,76 +327,5 @@ describe('canRankPeriod', () => {
     expect(canRankPeriod(growing)).toBe(true)
     growing.push({ statementCount: 0 })
     expect(canRankPeriod(growing)).toBe(true)
-  })
-})
-
-/**
- * „Zuletzt dazugekommen" — the order the „Neu"-Marke was always missing
- * (§12.22). What earns tests here is not that dates sort, but the two
- * decisions inside `compareByArrival`: that it does NOT lead with the open
- * rows the way the other two orders do, and that all three row kinds enter
- * it, so no half of the corpus is parked at the end.
- */
-describe('compareByArrival', () => {
-  const byArrival = (rows: DraftListRow[]) => [...rows].sort(compareRowsByArrival).map((r) => r.key)
-
-  it('lifts the newest arrival over the nearest Frist', () => {
-    // The measured complaint: 136/ME arrived on the same day as 135/ME and
-    // 134/ME and stood on page two, because its Frist runs longest.
-    expect(
-      byArrival([
-        meRow(134, 0, { arrivedAt: '2026-09-17', deadline: '2026-09-25' }),
-        meRow(136, 0, { arrivedAt: '2026-09-17', deadline: '2026-11-30' }),
-        meRow(99, 0, { arrivedAt: '2026-07-01', deadline: '2026-09-20' }),
-      ]),
-    ).toEqual(['me-XXVIII-134', 'me-XXVIII-136', 'me-XXVIII-99'])
-  })
-
-  it('does not lead with the open rows, unlike the other two orders', () => {
-    // The decision of this comparator: a chronology that reshuffles by
-    // actionability is not one. `compareDrafts` puts the open row first
-    // whatever the dates say — here the later arrival wins.
-    const rows = [
-      meRow(7, 0, { arrivedAt: '2026-09-20', deadline: '2026-09-22', active: false }),
-      risRow('alt', { startedAt: '2026-01-05', active: true }),
-    ]
-    expect(byArrival(rows)).toEqual(['me-XXVIII-7', 'ris-alt'])
-    expect([...rows].sort((a, b) => compareDrafts(rowOrderKey(a), rowOrderKey(b))).map((r) => r.key)).toEqual([
-      'ris-alt',
-      'me-XXVIII-7',
-    ])
-  })
-
-  it('interleaves all three row kinds instead of parking one half', () => {
-    // Why this order needs no caveat line above the list and „Meiste
-    // Stellungnahmen" does: `startedAt` is the one key every kind carries.
-    expect(
-      byArrival([
-        risRow('vo', { startedAt: '2026-09-10' }),
-        meRow(5, 0, { arrivedAt: '2026-09-12' }),
-        vorlageRow('594 d.B.', '2026-09-11'),
-      ]),
-    ).toEqual(['me-XXVIII-5', 'rv-594 d.B.', 'ris-vo'])
-  })
-
-  it('sorts a row without a date last and breaks the ties by title', () => {
-    // A day is a coarse unit and ressorts send in batches, so the tie-break
-    // is the common case here, not the corner one.
-    expect(
-      byArrival([
-        risRow('ohne', { startedAt: null, title: 'Aaa-Verordnung' }),
-        risRow('zeta', { startedAt: '2026-09-10', title: 'Zeta-Verordnung' }),
-        risRow('alpha', { startedAt: '2026-09-10', title: 'Alpha-Verordnung' }),
-      ]),
-    ).toEqual(['ris-alpha', 'ris-zeta', 'ris-ohne'])
-  })
-
-  it('is a total order — sorting twice changes nothing', () => {
-    const rows = [
-      meRow(5, 0, { arrivedAt: '2026-09-10', title: 'Gleich' }),
-      risRow('gleich', { startedAt: '2026-09-10', title: 'Gleich' }),
-      vorlageRow('1 d.B.', '2026-09-10'),
-    ]
-    expect(byArrival([...rows].sort(compareRowsByArrival))).toEqual(byArrival(rows))
   })
 })

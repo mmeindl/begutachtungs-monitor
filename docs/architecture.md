@@ -8857,6 +8857,22 @@ werden. Eine Zeile ohne Datum sortiert nach hinten, der Titel bricht die
 Gleichstände — und die sind hier der Normalfall, nicht die Ecke: ein Tag ist
 eine grobe Einheit, und Ressorts versenden in Schüben.
 
+**Nachtrag 02.10.2026 — „Zuletzt dazugekommen" ist wieder weg.** Seit die
+Spaltenköpfe von `/entwuerfe` sortieren (`SortHeader`), stand die Ordnung
+für einen Tag unter dem Kopf „Entwurf" — und dort erwartet ein Leser das
+Alphabet, nicht die Ankunft. Eine Titelordnung A–Z stand dort danach einen
+Tag lang und ging ebenfalls: Ein Drittel der Titel beginnt mit „Änderung"
+oder „Verordnung" (99 von 340 in GP XXVIII), und die Suche findet ein Gesetz
+beim Namen schneller als das Alphabet. „Entwurf" ist seither wieder ein
+bloßes Etikett; sortiert wird nach Frist und nach Stellungnahmen. Für die Ankunftsordnung gab es keine
+Spalte, kein Link der Seite zeigte auf `?sort=neu`, und wer Neuzugänge
+verfolgt, bekommt sie über den RSS-Feed; ein eigenes Bedienelement nur für
+sie hätte zurückgebracht, was die Werkzeugleiste gerade verloren hatte. Der
+Preis ist der oben gemessene: Ein Entwurf mit langer Frist steht unter
+„Nach Frist" weiter unten, die Marke macht ihn nur auffindbar. Ein alter
+`?sort=neu`- oder `?sort=titel`-Link öffnet die Standardordnung. Damit entfällt auch der
+Startseiten-Zeiger unten.
+
 Offen bleibt der **Zeiger von der Startseite** („3 neu" als Link auf
 `/entwuerfe?sort=neu`): erst dieses Kriterium macht ihn möglich, ob er
 gebaut wird, ist eine Produktentscheidung und keine Folge davon.
@@ -9316,6 +9332,42 @@ Hinweis, den es für den Stationsfilter schon gab, gilt seither auch unter
 Regierungsvorlagen kann im Nationalrat noch Stellung genommen werden"). Und
 die Minute selbst ist seit demselben Tag kürzer: Der Deploy wartet auf den
 Prewarm, statt ihn im Hintergrund zu starten (§10).
+
+**Nachtrag 02.10.2026 — die Stationen sind die Reiter, der Status ist ein
+Chip.** In der Grammatik der Listenkästen (`ListBox`) sind Reiter die
+auffälligste Ebene, und für einen Tag trug sie „Alle · Stellungnahme möglich
+· Nicht möglich". Das stellte die Pflichtachse über die, um die es dem
+Produkt geht — was aus einem Entwurf wurde. Jetzt:
+
+- **Stationen als Reiter**, `Alle · Begutachtung · Regierungsvorlage ·
+  Parlament · Bundesgesetzblatt`, unter `sm` ein Select. **Einwertig** — das
+  nimmt die Mehrfachwahl dieses Abschnitts zurück: Reiter mit mehreren
+  Werten sind keine Reiter. Die URL trägt weiter eine Liste; ein alter Link
+  mit mehreren Stationen behält seine Menge und landet auf einem eigenen
+  Reiter, der sie nennt („Regierungsvorlage + Parlament"), statt still eine
+  zu verlieren. Unter „Verordnungsentwürfe" stehen Regierungsvorlage und
+  Parlament mit Begründung unverfügbar da, statt zu verschwinden — die
+  Leiste ändert ihre Form nicht mit dem Art-Filter.
+- **„Stellungnahme möglich" als ein Chip** in der Werkzeugzeile. Der Wert
+  `open` bleibt, weil die Abschnitte der Startseite durch ihn verlinken
+  (`?status=open&station=begutachtung`, `…&station=rv`,
+  `?art=verordnung&status=open`) — ohne ihn wäre der „ungeschnittene Filter"
+  dieser Abschnitte (§12.24) nicht mehr ausdrückbar. Unter „Parlament" und
+  „Bundesgesetzblatt" ist der Chip unverfügbar, mit Begründung: Die
+  Kombination ist schon durch die Bedeutung der Stationen leer. „Parlament"
+  heißt nicht „liegt im Parlament", sondern der Nationalrat ist mit der
+  Vorlage **fertig** (list-101-Status 5, oder an den Ausschuss
+  zurückverwiesen, Status 3; `stationFor`) — eine Vorlage, die ihm bloß
+  vorliegt, steht bei „Regierungsvorlage". Das Formular des Parlaments nimmt
+  Stellungnahmen, solange der Nationalrat den Text hat, und schließt mit dem
+  Beschluss. Gemessen 03.10.2026: Parlament + offen ist in GP XXVIII 0 (von
+  1 Zeile dort; alle 13 offenen Vorlagen stehen bei „Regierungsvorlage"),
+  ebenso in XXVII und XXVI. Die eine unbeobachtete Ausnahme — eine
+  zurückverwiesene Vorlage, deren Formular wieder aufgeht — verliert nichts:
+  Sie steht weiter unter „Alle" mit Chip.
+- **„Nicht möglich" ist aus der Oberfläche verschwunden.** Es war nur die
+  Negation, und kein Link der Seite zeigt mehr darauf. Ein alter
+  `?status=closed`-Link gilt weiter und steht als entfernbarer Chip da.
 
 ### 12.27 Eine Lücke ist kein Befund: wo die Seite über Stationen schweigen muss
 

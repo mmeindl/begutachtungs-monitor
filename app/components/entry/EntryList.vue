@@ -49,7 +49,18 @@ defineProps<{
    * contradicts the content.
    */
   lead?: string
+  /**
+   * Columns whose label orders the list (`SortHeader`, 02.10.2026): the
+   * order's key and what it does. Only `/entwuerfe` passes it; every other
+   * list keeps plain labels. Below `md` there is no header to carry it, and
+   * the page offers the same order as a select.
+   */
+  sortable?: Partial<Record<'lead' | 'count' | 'state', { key: string; order: string }>>
+  /** The current order's key, with `sortable`. */
+  sort?: string
 }>()
+
+defineEmits<{ 'update:sort': [key: string] }>()
 </script>
 
 <template>
@@ -62,6 +73,12 @@ defineProps<{
        rounded corners, but `hidden` makes the sheet a scroll container, and
        a sticky header inside one sticks to that and never to the window. -->
   <div class="md:overflow-clip md:rounded-xl md:border md:border-hairline md:bg-surface">
+    <!-- The list's controls, inside the sheet from `md` up (the head of a
+         `ListBox`, 02.10.2026); above the cards on a phone, where there is no
+         sheet to hold them. -->
+    <div v-if="$slots.head" class="mb-3 md:mb-0 md:border-b md:border-hairline md:px-4">
+      <slot name="head" />
+    </div>
     <!-- `aria-hidden`, because the rows below are links and not table
          cells — the header is a visual aid, the reading order stands in the
          row itself.
@@ -72,22 +89,40 @@ defineProps<{
          each carry theirs and hand over at the boundary. Rows keep a scroll
          margin (`EntryItem`), so a row reached by Tab is never scrolled in
          under the header (WCAG 2.2 2.4.12). -->
+    <!-- With `sortable`, `aria-hidden` moves from the row to its plain
+         labels: the sort buttons are the one part a screen reader must
+         reach (`SortHeader`). -->
     <div
-      aria-hidden="true"
-      class="sticky top-0 z-10 hidden items-center gap-4 border-b border-hairline bg-surface px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-muted md:flex"
+      v-if="entries.length"
+      :aria-hidden="sortable ? undefined : 'true'"
+      :class="sortable ? 'py-0.5' : 'py-2'"
+      class="sticky top-0 z-10 hidden items-center gap-4 border-b border-hairline bg-surface px-4 text-xs font-medium uppercase tracking-wide text-ink-muted md:flex"
     >
-      <span class="min-w-0 flex-1">{{ lead ?? 'Entwurf' }}</span>
+      <span class="min-w-0 flex-1">
+        <SortHeader v-if="sortable?.lead" :label="lead ?? 'Entwurf'" :order="sortable.lead.order" :active="sort === sortable.lead.key" @choose="$emit('update:sort', sortable.lead.key)" />
+        <span v-else :aria-hidden="sortable ? 'true' : undefined">{{ lead ?? 'Entwurf' }}</span>
+      </span>
       <!-- One line, and any excess spills LEFT, into the empty gap: the
            label is 121 px against a 112 px column at `md` (128 in 128 at
            `lg`, measured 30.09.2026). The right edge is what has to meet
            the digits; `justify-end` keeps it there, where a plain
            right-aligned text box overflows to the right, and the site-wide
            `overflow-wrap: break-word` broke it as „STELLUNGNAHME / N". -->
-      <span class="entry-col-count flex justify-end whitespace-nowrap">Stellungnahmen</span>
-      <span class="entry-col-state">Stand</span>
+      <span class="entry-col-count flex justify-end whitespace-nowrap">
+        <SortHeader v-if="sortable?.count" label="Stellungnahmen" :order="sortable.count.order" align="end" :active="sort === sortable.count.key" @choose="$emit('update:sort', sortable.count.key)" />
+        <span v-else :aria-hidden="sortable ? 'true' : undefined">Stellungnahmen</span>
+      </span>
+      <span class="entry-col-state">
+        <SortHeader v-if="sortable?.state" label="Stand" :order="sortable.state.order" align="end" :active="sort === sortable.state.key" @choose="$emit('update:sort', sortable.state.key)" />
+        <span v-else :aria-hidden="sortable ? 'true' : undefined">Stand</span>
+      </span>
     </div>
+    <!-- No rows: the list's own empty state, in the sheet's grammar (a
+         name, the fact under it) instead of a card in the card. -->
+    <slot v-if="!entries.length" name="empty" />
     <component
       :is="ordered ? 'ol' : 'ul'"
+      v-if="entries.length"
       class="space-y-3 md:space-y-0 md:divide-y md:divide-hairline"
     >
       <li v-for="entry in entries" :key="entry.key">
