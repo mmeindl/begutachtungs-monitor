@@ -393,12 +393,12 @@ const enactedHref = computed(
           Die Verordnungsentwürfe aus dem RIS sind gerade nicht abrufbar –
           <NuxtLink
             to="/entwuerfe?art=verordnung&status=open"
-            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+            class="link-inline font-medium"
           >noch einmal versuchen</NuxtLink>
           oder
           <ExternalLink
             href="https://www.ris.bka.gv.at/Begut/"
-            class="font-medium text-accent-deep underline underline-offset-2 hover:no-underline"
+            class="link-inline font-medium"
           >im RIS nachsehen</ExternalLink>.
         </p>
 

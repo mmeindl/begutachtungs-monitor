@@ -64,6 +64,6 @@ const line = computed(() => sourceLineDe(props.sources))
     <span v-if="paired">Zeilenzuordnung: Begutachtungs-Monitor</span>
     <span v-if="own">{{ own }}: Begutachtungs-Monitor</span>
     <span v-if="marked">Markierung: Begutachtungs-Monitor</span>
-    <NuxtLink v-if="method" :to="method" class="text-accent-deep hover:underline">Methode</NuxtLink>
+    <NuxtLink v-if="method" :to="method" class="link-quiet">Methode</NuxtLink>
   </div>
 </template>

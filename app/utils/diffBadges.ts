@@ -35,7 +35,7 @@ export type DiffBadge = LawUnitChange | 'editorial'
  * changes size; the ground and so the contrast stay as they were.
  */
 export const BADGE_CLASS: Record<DiffBadge, string> = {
-  changed: 'bg-accent-50 text-accent-deep',
+  changed: 'bg-ink/10 text-ink',
   editorial: 'bg-page text-ink-muted ring-1 ring-inset ring-hairline',
   unchanged: 'bg-page text-ink-muted ring-1 ring-inset ring-hairline',
   inserted: 'bg-status-good/15 text-ink',
@@ -44,12 +44,17 @@ export const BADGE_CLASS: Record<DiffBadge, string> = {
 
 /**
  * The gutter repeats the pill's colour, so state reads at a glance down the
- * page: red gone, green new, blue edited, grey formalities. `mark` stays out
- * of it — it is the brand's "what became of the input" ground, and a fifth
- * colour in one row helps nobody.
+ * page: red gone, green new, graphite edited, hairline formalities.
+ *
+ * „Geändert" has no hue since 03.10.2026 (docs/architecture.md §8). It was
+ * blue, and blue means "you can do something here" — on a pill that states a
+ * fact. An edited passage is neither gone nor new, so it gets the one thing
+ * between them: ink, a step stronger than the formalities' hairline. `mark`
+ * stays out of it too: yellow is the highlighter, and a fifth colour in one
+ * row helps nobody.
  */
 export const GUTTER_CLASS: Record<DiffBadge, string> = {
-  changed: 'border-accent-deep/50',
+  changed: 'border-ink-secondary',
   inserted: 'border-status-good',
   removed: 'border-status-critical',
   editorial: 'border-hairline',

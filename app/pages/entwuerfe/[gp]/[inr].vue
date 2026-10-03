@@ -629,7 +629,7 @@ const ministryLinks = computed(() => {
               </h2>
               <NuxtLink
                 to="/so-funktionierts"
-                class="tap-target rounded text-sm font-medium text-accent-deep hover:underline"
+                class="tap-target text-sm font-medium link-quiet"
               >
                 Wie funktioniert das Verfahren? →
               </NuxtLink>
@@ -705,7 +705,7 @@ const ministryLinks = computed(() => {
             <ExternalLink
               v-if="divergence.url"
               :href="divergence.url"
-              class="tap-target rounded font-medium text-accent-deep hover:underline"
+              class="tap-target font-medium link-quiet"
             >
               {{ formatDateDe(divergence.date) }}</ExternalLink><span v-else class="font-medium text-ink">{{
               formatDateDe(divergence.date)
@@ -899,7 +899,7 @@ const ministryLinks = computed(() => {
               class="group border-t border-hairline"
             >
               <summary
-                class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+                class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
               >
                 <h3 class="text-base font-semibold text-ink">
                   Dokumente<template v-if="documentCount"> ({{ documentCount }})</template>
@@ -961,7 +961,7 @@ const ministryLinks = computed(() => {
                 :own="begutachtungFacts.some((f) => f.key === 'frist') ? 'Median' : undefined"
                 method="/so-funktionierts#stationen"
               >
-                <ExternalLink :href="data.parliamentUrl" class="text-accent-deep hover:underline">Verlauf</ExternalLink>
+                <ExternalLink :href="data.parliamentUrl" class="link-quiet">Verlauf</ExternalLink>
               </SectionCredits>
             </div>
             <!-- A sub-section like the Entwurf's, spaced by the section body
@@ -1208,7 +1208,7 @@ const ministryLinks = computed(() => {
                    like every other box's source (02.10.2026). It stood inside the
                    card as a footer row. -->
               <SectionCredits :sources="PARLIAMENT_HISTORY_SOURCES" :marked="false">
-                <ExternalLink :href="data.enactment.rvUrl" class="text-accent-deep hover:underline">Verlauf</ExternalLink>
+                <ExternalLink :href="data.enactment.rvUrl" class="link-quiet">Verlauf</ExternalLink>
               </SectionCredits>
             </div>
             <!-- What the committee and the plenary did to the text, one step
@@ -1238,7 +1238,7 @@ const ministryLinks = computed(() => {
               class="group border-t border-hairline"
             >
               <summary
-                class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+                class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
               >
                 <h3 class="text-base font-semibold text-ink">
                   Dokumente ({{ parliamentDocuments.length }})

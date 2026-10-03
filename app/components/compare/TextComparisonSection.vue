@@ -542,8 +542,8 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            doubt; `pdf` the annex itself. Both are labelled, so both can be
            printed side by side. -->
       <p v-if="data.pdf || data.source" class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}</ExternalLink>
-        <ExternalLink v-if="data.pdf" :href="data.pdf.url" class="text-accent-deep hover:underline">{{ data.pdf.label }}</ExternalLink>
+        <ExternalLink v-if="data.source" :href="data.source.url" class="link-quiet">{{ data.source.label }}</ExternalLink>
+        <ExternalLink v-if="data.pdf" :href="data.pdf.url" class="link-quiet">{{ data.pdf.label }}</ExternalLink>
       </p>
     </template>
 
@@ -781,7 +781,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           <button
             v-if="g.hidden"
             type="button"
-            class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+            class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-hover"
             @click="showAll(g.key)"
           >
             <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
@@ -814,14 +814,14 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            second „CC BY 4.0, RIS" for the text in force wherever the annex
            itself came from Parliament. -->
       <SectionCredits :sources="sources" :paired="data.readFrom === 'pdf'" method="/so-funktionierts#gegenueberstellung">
-        <ExternalLink v-if="data.source" :href="data.source.url" class="text-accent-deep hover:underline">{{ data.source.label }}{{ annexTag }}</ExternalLink>
+        <ExternalLink v-if="data.source" :href="data.source.url" class="link-quiet">{{ data.source.label }}{{ annexTag }}</ExternalLink>
         <!-- The geltender Text of the Lesefassung, only where one is
              expandable somewhere: RIS text in force, with a Fundstelle of its
              own. -->
         <ExternalLink
           v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl"
           :href="consolidated.paragraphs[0]!.risUrl!"
-          class="text-accent-deep hover:underline"
+          class="link-quiet"
         >Geltender Text im RIS</ExternalLink>
         <!-- Gone on 30.09.2026, both added the same morning: the Stichtag
              of the RIS check („RIS-Abgleich: Stand …") — the rule stands on

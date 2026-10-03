@@ -174,12 +174,12 @@ const destination = computed(() =>
       >
         <template #footer>
           <p class="flex border-t border-hairline px-4 py-3 text-sm sm:justify-end">
-            <ExternalLink :href="data.rvUrl" class="tap-target rounded font-medium text-accent-deep hover:underline">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
+            <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
           </p>
         </template>
       </StatementsPanel>
       <p v-else class="mt-3 text-sm">
-        <ExternalLink :href="data.rvUrl" class="tap-target rounded font-medium text-accent-deep hover:underline">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
+        <ExternalLink :href="data.rvUrl" class="tap-target font-medium link-quiet">Alle Stellungnahmen zur Vorlage auf parlament.gv.at</ExternalLink>
       </p>
     </template>
   </PageSubsection>

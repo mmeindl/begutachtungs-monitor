@@ -235,7 +235,7 @@ const documents = computed(() => {
                  itself (the sentence that did went on 26.09.2026). -->
             <NuxtLink
               :to="stationList.length ? '/so-funktionierts#wege' : '/so-funktionierts'"
-              class="tap-target rounded text-sm font-medium text-accent-deep hover:underline"
+              class="tap-target text-sm font-medium link-quiet"
             >
               Wie funktioniert das Verfahren? →
             </NuxtLink>
@@ -390,7 +390,7 @@ const documents = computed(() => {
                moves when it opens. -->
           <details class="group border-t border-hairline">
             <summary
-              class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hairline/40 [&::-webkit-details-marker]:hidden"
+              class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
             >
               <h3 id="dokumente" class="text-base font-semibold text-ink">
                 Dokumente<template v-if="documents.length"> ({{ documents.length }})</template>

@@ -141,7 +141,7 @@ const loadAnnouncement = computed(() => {
       <!-- What we cannot read, a human can: the document is linked even
            when nothing stands here. -->
       <p v-if="data.document" class="mt-3 text-xs text-ink-muted">
-        <ExternalLink :href="data.document.url" class="text-accent-deep hover:underline">{{ data.document.label }}</ExternalLink>
+        <ExternalLink :href="data.document.url" class="link-quiet">{{ data.document.label }}</ExternalLink>
       </p>
     </template>
 
@@ -222,7 +222,7 @@ const loadAnnouncement = computed(() => {
         <ExternalLink
           v-if="data.document"
           :href="data.document.url"
-          class="text-accent-deep hover:underline"
+          class="link-quiet"
         >{{ sourceLabel }}</ExternalLink>
       </SectionCredits>
     </template>

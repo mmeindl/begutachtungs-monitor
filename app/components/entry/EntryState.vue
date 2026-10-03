@@ -16,10 +16,11 @@ import type { EntryState } from '~/utils/entryView'
  * one statement and its Fundstelle.
  *
  * THE FILLING: urgency gets colour (red ≤3 days, orange ≤7, pale blue for an
- * open window without haste), everything closed gets the same grey —
+ * open window without haste — blue being "you can do something here",
+ * main.css), everything closed gets the same grey —
  * highlighting success or muting silence would both be a verdict (framing
- * rule, docs/architecture.md §4). Rejected: `mark-wash` (yellow), which has exactly one job
- * in lists („Neu") and would be 84 yellow boxes on
+ * rule, docs/architecture.md §4). Rejected: `mark-wash` (yellow), the highlighter, whose
+ * job in lists is „Neu", and which would be 84 yellow boxes on
  * `/entwuerfe?station=bgbl`; a larger size for the running countdown, a
  * second carrier of what the colour already says; the dot, a third one.
  * „Noch 3 Tage" says the urgency in words, so meaning never rides on colour

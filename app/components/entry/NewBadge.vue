@@ -13,11 +13,15 @@
  * scannable; the chip carries the word, and in the card it merges into the
  * phrase that follows it ("Neu in Begutachtung seit 17.09.2026"), so screen
  * readers get a sentence rather than a loose label.
+ *
+ * The highlighter, because „Neu" says "look at this" — the marker's one
+ * meaning (main.css). Ink on it, not the blue it once carried: blue means
+ * "you can do something here", and the chip is not a target.
  */
 </script>
 
 <template>
   <span
-    class="inline-flex items-center rounded-md bg-mark-wash px-1.5 py-0.5 text-xs font-medium text-accent-deep"
+    class="inline-flex items-center rounded-md bg-mark-wash px-1.5 py-0.5 text-xs font-medium text-ink"
   >Neu</span>
 </template>

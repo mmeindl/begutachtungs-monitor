@@ -190,7 +190,7 @@ const toc = [
         <li v-for="item in toc" :key="item.to">
           <NuxtLink
             :to="item.to"
-            class="tap-target rounded text-sm text-accent-deep hover:underline"
+            class="tap-target text-sm link-quiet"
           >
             {{ item.label }}
           </NuxtLink>
@@ -330,7 +330,7 @@ const toc = [
           <p v-if="step.link" class="mt-2">
             <NuxtLink
               :to="step.link.to"
-              class="tap-target rounded text-sm font-medium text-accent-deep hover:underline"
+              class="tap-target text-sm font-medium link-quiet"
             >
               {{ step.link.label }}
             </NuxtLink>
@@ -407,14 +407,14 @@ const toc = [
               <ExternalLink
                 v-if="step.link.external"
                 :href="step.link.to"
-                class="tap-target rounded text-sm font-medium text-accent-deep hover:underline"
+                class="tap-target text-sm font-medium link-quiet"
               >
                 {{ step.link.label }}
               </ExternalLink>
               <NuxtLink
                 v-else
                 :to="step.link.to"
-                class="tap-target rounded text-sm font-medium text-accent-deep hover:underline"
+                class="tap-target text-sm font-medium link-quiet"
               >
                 {{ step.link.label }}
               </NuxtLink>

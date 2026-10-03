@@ -64,7 +64,11 @@ export function deadlineTone(
  * box (`EntryState`) and a detail page's deadline card share it, so
  * one state reads as one colour wherever it stands.
  *
- * `accent-50` for the calm open state, not `accent-wash`: the open list is
+ * Blue for the calm open state because blue means "you can do something
+ * here" (main.css, 03.10.2026): `neutral` is only ever an open window — an
+ * active Frist without haste, or a Vorlage that still takes Stellungnahmen.
+ *
+ * `accent-50` for it, not `accent-wash`: the open list is
  * typically 13 rows long, one of them critical. With `accent-wash` (#cde2fb)
  * twelve strong blue boxes would stand beside one pale red — the rarest
  * colour has to be the most conspicuous, or the column is decoration.

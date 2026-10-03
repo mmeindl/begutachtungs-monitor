@@ -164,7 +164,7 @@ function linkAriaLabel(citation: string): string {
           <ExternalLink
             :href="link.href"
             :aria-label="linkAriaLabel(link.citation)"
-            class="tap-target font-medium text-accent-deep hover:underline"
+            class="tap-target font-medium link-quiet"
           >
             {{ link.citation }}
           </ExternalLink>

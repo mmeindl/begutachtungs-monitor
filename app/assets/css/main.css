@@ -19,8 +19,32 @@
  * Design tokens — light mode only for the prototype (dark mode is a
  * deliberate later step, see docs/architecture.md).
  * Identity: Tinte, Papier, Textmarker — warm black ink and white sheets
- * on a deeper warm paper; ONE brand highlight (the marker); links and
- * data bars stay blue (usability convention, not brand).
+ * on a deeper warm paper.
+ *
+ * TWO HUES, ONE MEANING EACH (03.10.2026, docs/architecture.md §8):
+ *
+ *   blue (accent)    YOU CAN DO SOMETHING HERE — on the page (links,
+ *                    buttons, the active tab) and in the procedure (an
+ *                    open Frist, a Vorlage that still takes Stellungnahmen:
+ *                    the open Stand box, the deadline card). Both are the
+ *                    same sentence, and wherever blue is a ground, WORDS on
+ *                    it say what can be done („Noch 13 Tage",
+ *                    „Stellungnahme möglich", the card's button). Not on the
+ *                    spine: a blue station row was tried and dropped the
+ *                    same day — its dates and counts did not say why it
+ *                    was blue, and the card below it already did.
+ *   yellow (mark)    LOOK AT THIS — the highlighter: the brand, „Neu",
+ *                    a search hit, and on the spine the station where the
+ *                    text stands (the dot) and the line it is on now (the
+ *                    wash). It points, it never invites.
+ *
+ * Not coloured at all: „geändert" in a diff (a fact, so neither hue). Status
+ * colours below carry urgency and the diff direction, nothing else.
+ *
+ * Tried for a day and reverted: Graphit, the chrome in ink only with
+ * yellow as "you can act". Two reasons it did not hold: a highlighter
+ * reads as "look", not as "go", and links without their blue lost the
+ * one convention every reader brings.
  *
  * `static`: Nuxt UI references the accent scale at RUNTIME
  * (--ui-color-primary-N → var(--color-accent-N)); without `static`,
@@ -52,9 +76,9 @@
   --color-hairline: #deddd5;
   --color-baseline: #c3c2b7;
 
-  /* Accent (single data hue — bars, links, primary actions).
-     Full scale from the validated sequential blue ramp; Nuxt UI's
-     'primary' alias consumes it (see app.config.ts). */
+  /* Accent — "you can do something here" (see above). Full scale from the
+     validated sequential blue ramp; Nuxt UI's 'primary' alias consumes it
+     (see app.config.ts). */
   /* accent-deep is the TEXT-safe accent (links): #104281 = step 800,
      ≥7:1 on page (9.0), surface (9.7), accent-wash (7.5) AND mark-wash
      (8.9) — AAA everywhere. accent (500) stays reserved for bar fills /
@@ -77,17 +101,27 @@
   --color-accent-900: #0d366b;
   --color-accent-950: #092647;
 
-  /* Brand highlight — der Textmarker. NEVER a text color, only a ground
-     carrying full ink: ink on mark 13.5:1, ink on mark-wash 16.9:1,
-     accent-deep on mark-wash 8.9:1 — all AAA. The marker marks what became
-     of the input; it never carries the diff direction, which is red/green
-     (see status below). */
+  /* The link colour as a role, so the two link utilities below say what
+     they mean rather than which step of the scale they use. */
+  --color-link: var(--color-accent-deep);
+
+  /* The hover ground — ONE for every clickable surface: rows, row buttons,
+     summaries, the spine's stations, Nuxt UI's ghost and outline buttons.
+     Translucent ink, so it reads the same over the white sheet, over the
+     paper and over a wash. Replaced five near-identical grounds (bg-page,
+     bg-hairline/40, bg-ink/6, #ebe9e1, none) on 03.10.2026. */
+  --color-hover: color-mix(in srgb, var(--color-ink) 5%, transparent);
+
+  /* Der Textmarker — LOOK AT THIS: the brand, „Neu", a search hit, the
+     spine's "the text is here" dot and current row. NEVER a text color, only a ground
+     carrying full ink: ink on mark 13.5:1, ink on mark-wash 16.9:1 — all
+     AAA. Not an open window (that is something to DO — blue). */
   --color-mark: #ffd84d;
   --color-mark-wash: #fff3c8;
 
   /* Status (reserved for state, never decoration; always paired with text).
      A warning colour, should one come back, sits in the orange zone, NOT
-     yellow — yellow is the brand marker above, and a warning must never
+     yellow — yellow is the highlighter above, and a warning must never
      read as a highlight.
      Since 08.09.2026 critical/good carry a second state besides deadlines:
      the diff direction in the Textvergleich, red for a passage that goes,
@@ -120,16 +154,16 @@
   /*
    * Nuxt UI's hover ground for neutral controls (`hover:bg-elevated` on the
    * ghost and outline variants). Its default is neutral-100 = stone #f5f5f4,
-   * which against our page ground of #f5f4ef is a difference of four
-   * hundredths of a percent in lightness: the ghost button — no border, no
-   * fill — had no hover state at all, and the bordered ones had one nobody
-   * could see.
+   * practically the page ground: the ghost button — no border, no fill —
+   * had no hover state at all, and the bordered ones had one nobody could
+   * see.
    *
-   * One warm step down from the page instead, on the way to the hairline
-   * (#deddd5): visible as a state change, still quiet enough that a row of
-   * controls does not light up like a toolbar.
+   * The app's own hover ground (`--color-hover`), so a Nuxt UI button and
+   * a list row answer the pointer alike. Nuxt UI also paints a few resting
+   * grounds with `bg-elevated` (badges, kbd), and translucent ink suits
+   * those too.
    */
-  --ui-bg-elevated: #ebe9e1;
+  --ui-bg-elevated: var(--color-hover);
   --ui-border: var(--color-hairline);
   --ui-border-accented: var(--color-baseline);
 }
@@ -310,11 +344,11 @@
  *     edge, list divider, region edge) — and `border-t border-hairline` is
  *     literally what the collapsed Kurzinfo sections use;
  *   - a per-section ground would be the brand's job: `surface` means "a
- *     sheet", `mark-wash` means "what became of the input", the status
- *     washes mean deadline state. It would also need every ink token
- *     re-verified at AAA against each new ground (ink-secondary is already
- *     below 7:1 on accent-wash), and inside a max-w column it renders as
- *     one more card.
+ *     sheet", `mark-wash` means "look at this", the accent washes "you can
+ *     still act", the status washes urgency. It would also need every ink
+ *     token re-verified at AAA against each new ground (ink-secondary is
+ *     already below 7:1 on accent-wash), and inside a max-w column it
+ *     renders as one more card.
  * So: 80px of paper above the heading against 16px below it (5:1 — space
  * separates reliably from ~3:1), and a short ink bar that cannot be read as
  * a container edge: short where borders run full width, ink where they are
@@ -348,11 +382,13 @@
  *   always:            the primary text underlines (group-hover:underline)
  *   bordered sheet:    border darkens   (hover:border-baseline)
  *   bordered chip:     border darkens + its text underlines
- *   row inside sheet:  paper tint       (hover:bg-page — rows own no border)
+ *   row inside sheet:  ink tint         (hover:bg-hover — rows own no border)
  *   naked bar/label:   text only
- * Inline links invert instead: underlined at rest, hover:no-underline.
- * Standalone links ("… →", back links) rest quiet, underline on hover —
- * only links WITHIN text need the rest-underline (WCAG 1.4.1).
+ * One ground for all of them, `--color-hover`; there were five.
+ * Inline links invert instead: underlined at rest, hover:no-underline
+ * (`link-inline`). Standalone links ("… →", back links, source credits)
+ * rest quiet, underline on hover (`link-quiet`) — only links WITHIN text
+ * need the rest-underline (WCAG 1.4.1); the blue says "link" everywhere.
  */
 
 /*
@@ -402,7 +438,17 @@
  * sees.
  */
 @utility link-inline {
-  @apply rounded text-accent-deep underline underline-offset-2 hover:no-underline;
+  @apply rounded text-link underline underline-offset-2 hover:no-underline;
+}
+
+/*
+ * The standalone link — „Alle 10 offenen Entwürfe →", „← Alle Entwürfe",
+ * „Methode", a source credit — named once like `link-inline` above: it was
+ * `text-accent-deep hover:underline` written out at some thirty call sites
+ * (03.10.2026). Quiet at rest, because it does not stand in running text.
+ */
+@utility link-quiet {
+  @apply rounded text-link hover:underline;
 }
 
 /* In-page anchor jumps glide — but only for users without reduced motion. */

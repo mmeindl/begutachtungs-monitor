@@ -210,14 +210,15 @@ const rows = computed(() => list.value.map((s, i) => {
         aria-hidden="true"
         class="absolute inset-0 -z-10 rounded-md bg-mark-wash"
       />
-      <!-- The hover ground, on rows that lead somewhere. Translucent ink
-           rather than a colour of its own, so it reads the same over the
-           white sheet and over the marker's wash — the current row must
-           answer the pointer like every other. -->
+      <!-- The hover ground, on rows that lead somewhere: the app's one hover
+           token (`--color-hover`, main.css), translucent ink rather than a
+           colour of its own, so it reads the same over the white sheet and
+           over the marker's wash — the current row must answer the pointer
+           like every other. -->
       <span
         v-if="row.href"
         aria-hidden="true"
-        class="absolute inset-0 -z-10 rounded-md bg-ink/6 opacity-0 transition-opacity group-hover:opacity-100"
+        class="absolute inset-0 -z-10 rounded-md bg-hover opacity-0 transition-opacity group-hover:opacity-100"
       />
       <!-- py-2 plus the dot's mt-1.5 put every dot at y 14–26 of its row, so
            a line from 26px to 14px past the row's end runs from this dot's

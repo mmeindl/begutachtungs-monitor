@@ -743,7 +743,7 @@ const droppedNote = computed(() =>
             >
               <template v-for="b in g.blocks" :key="blockKey(b)">
                 <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
-                  <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 px-4 py-2 text-xs text-ink-muted hover:bg-page [&::-webkit-details-marker]:hidden">
+                  <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 px-4 py-2 text-xs text-ink-muted hover:bg-hover [&::-webkit-details-marker]:hidden">
                     <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
                     {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
                   </summary>
@@ -822,7 +822,7 @@ const droppedNote = computed(() =>
                          <details>, so the browser's find-in-page opens it
                          instead of running past it. -->
                     <details v-if="b.reasoning" class="group mt-2">
-                      <summary class="-mx-1 flex min-h-target cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-page [&::-webkit-details-marker]:hidden">
+                      <summary class="-mx-1 flex min-h-target cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-hover [&::-webkit-details-marker]:hidden">
                         <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                         <!-- Says what was compared (01.10.2026): the passage on
                              this change, or — where the Erläuterungen are titled
@@ -886,7 +886,7 @@ const droppedNote = computed(() =>
               <button
                 v-if="g.hidden"
                 type="button"
-                class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-page"
+                class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-hover"
                 @click="showAll(g.article)"
               >
                 <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
@@ -922,7 +922,7 @@ const droppedNote = computed(() =>
                name. The links are there for the reader. -->
           <span v-for="side in creditSides" :key="side.station">
             {{ side.label }}:
-            <ExternalLink v-if="side.text" :href="side.text.url" class="text-accent-deep hover:underline">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="text-accent-deep hover:underline">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
+            <ExternalLink v-if="side.text" :href="side.text.url" class="link-quiet">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="link-quiet">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
           </span>
           <!-- The § names come from a third source; a page that shows text has
                to say where it is from, even when the text is one word long.

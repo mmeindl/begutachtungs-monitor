@@ -312,6 +312,15 @@ system sans; headings, the wordmark and the stat values use Source Serif 4
 SemiBold, self-hosted from `public/fonts` since 2026-08-27 (`--font-heading`,
 `main.css:32`) — nothing is fetched from a third party at runtime.
 
+**Two hues, one meaning each (03.10.2026):**
+
+| Hue | Token | Means | Where |
+|---|---|---|---|
+| Blue | `accent` scale | **you can do something here** — on the page and in the procedure | links (`link-inline` in text, `link-quiet` standalone), buttons, the active tab, the open Stand box (`deadlineGroundClass.neutral`), a detail page's deadline card — as a ground only where words on it say what can be done |
+| Yellow | `mark` / `mark-wash` | **look at this** — the highlighter | the brand (stripe, § tile), „Neu", search hits, on the spine the dot where the text stands and the wash over the row that is current |
+
+Not coloured: „geändert" in a diff (ink /10). A blue "still open" wash on the spine row was tried and dropped the same day: its dates and counts did not say why the row was blue, and the deadline card right below says it in words. Status colours carry urgency and the diff direction only. One hover ground for every clickable surface, `--color-hover` (ink at 5 %, translucent, so it reads over sheet, paper and wash alike). Before, yellow had four jobs (brand, „Neu", the current station, search hits) and blue three (links, the open box, the „geändert" chip); the open box keeps its blue because "an open window" and "a link" are the same sentence, and every blue ground is a target anyway. A day of „Graphit" (ink-only chrome, yellow as "you can act") was tried and reverted: a highlighter reads as "look", not as "go", and ink links lost the convention readers bring.
+
 **AAA contrast system (WCAG 2.2, all values computationally verified, never by eye):**
 
 | Role | Token/value | Contrast | Target |

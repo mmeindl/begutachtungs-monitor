@@ -129,7 +129,7 @@ async function toggle() {
     <button
       ref="header"
       type="button"
-      class="flex w-full min-h-target flex-col gap-2 bg-surface px-4 text-left hover:bg-page"
+      class="flex w-full min-h-target flex-col gap-2 bg-surface px-4 text-left hover:bg-hover"
       :class="[
         open && 'sticky top-0 z-10',
         stuck ? 'py-2 shadow-[0_1px_0_var(--color-hairline)]' : 'py-3',
