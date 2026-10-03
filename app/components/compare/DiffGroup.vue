@@ -43,6 +43,9 @@ const props = defineProps<{
    *  same unit as the pills (Textgegenüberstellung only). */
   withheld?: number
   unchecked?: number
+  /** Why the „nicht geprüft" §§ went unchecked, said once at the top of the
+   *  open group (`annexUncheckedNote`). */
+  uncheckedNote?: string | null
   open: boolean
 }>()
 
@@ -179,6 +182,11 @@ async function toggle() {
     </button>
 
     <div v-if="open" class="border-t border-hairline">
+      <!-- A text line, not a tooltip on the pill (03.10.2026): the pill sits
+           in the header button, and a reason only reachable by hovering
+           would be lost on a phone. Inside the body, not the header, so it
+           is not read out as part of the button's name. -->
+      <p v-if="uncheckedNote" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ uncheckedNote }}</p>
       <slot />
     </div>
   </section>

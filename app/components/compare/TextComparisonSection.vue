@@ -26,7 +26,7 @@ import { absaetze } from '~/utils/absaetze'
 import {
   annexDoubtfulNote,
   annexDroppedPagesNote,
-  annexNotRunNote,
+  annexUncheckedNote,
   annexWithheldBlame,
   annexWithheldText,
 } from '~/utils/annexNotes'
@@ -214,6 +214,8 @@ interface Group {
   withheld: number
   /** §§ shown with a change the check could not reach (`nicht geprüft`). */
   unchecked: number
+  /** Why, as the server worded it — distinct, first seen first. */
+  uncheckedReasons: Set<string>
 }
 
 /**
@@ -291,7 +293,7 @@ const groups = computed<Group[]>(() => {
   if (!data.value?.available) return []
   const out: Group[] = []
   const start = (row: TextComparisonRow): Group => {
-    const group: Group = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }, withheld: 0, unchecked: 0 }
+    const group: Group = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }, withheld: 0, unchecked: 0, uncheckedReasons: new Set() }
     out.push(group)
     return group
   }
@@ -329,7 +331,10 @@ const groups = computed<Group[]>(() => {
     else p.badges.add(badgeOf(row))
     // Rows without a § too, one unit each: they owe a check no verdict can
     // reach (they stood in the status line as „ohne Paragraphenangabe").
-    if (isUnchecked(row)) p.unchecked = true
+    if (isUnchecked(row)) {
+      p.unchecked = true
+      if (row.uncheckedReason) current.uncheckedReasons.add(row.uncheckedReason)
+    }
   }
   // In §§ since 02.10.2026, not rows: every pill counts the same unit, so a
   // law's pills add up to its §§ (`paragraphBadge`).
@@ -489,7 +494,6 @@ const loadAnnouncement = computed(() => {
  * `app/utils/annexNotes.ts`, where they can be tested against a small
  * response object. They are functions of the response and of nothing
  * else. */
-const notRunNote = computed(() => annexNotRunNote(data.value?.verification ?? null))
 /**
  * What this comparison shows, for its credit line (`#shared/utils/provenance`):
  * the annex from the copy that was read — RIS, or Parliament's, which carries
@@ -542,8 +546,8 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            doubt; `pdf` the annex itself. Both are labelled, so both can be
            printed side by side. -->
       <p v-if="data.pdf || data.source" class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <ExternalLink v-if="data.source" :href="data.source.url" class="link-quiet">{{ data.source.label }}</ExternalLink>
-        <ExternalLink v-if="data.pdf" :href="data.pdf.url" class="link-quiet">{{ data.pdf.label }}</ExternalLink>
+        <ExternalLink v-if="data.source" :href="data.source.url" class="link-muted">{{ data.source.label }}</ExternalLink>
+        <ExternalLink v-if="data.pdf" :href="data.pdf.url" class="link-muted">{{ data.pdf.label }}</ExternalLink>
       </p>
     </template>
 
@@ -556,12 +560,14 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            never sit behind a link.
 
            Nothing stands between the heading and the comparison since
-           02.10.2026 but warnings specific to THIS draft and rare — the check
-           that did not run, a doubtful layout, missing pages, laws that
-           could not be divided. The status line that stood here went
-           (`annexNotRunNote` says what moved where): the counts are pills
-           in each law's header, and the PDF caveat is the credit line's
-           „Zeilenzuordnung". `space-y-3` spaces whichever notes exist. -->
+           02.10.2026 but warnings specific to THIS draft and rare — a
+           doubtful layout, missing pages, laws that could not be divided.
+           The status line that stood here went (`annexUncheckedNote` says
+           what moved where): the counts are pills in each law's header, and
+           the PDF caveat is the credit line's „Zeilenzuordnung". Why a check
+           did not run stood here too until 03.10.2026; it is under each
+           law's „nicht geprüft" pill now. `space-y-3` spaces whichever notes
+           exist. -->
       <div class="space-y-3">
         <!-- Where the layout could not be vouched for at all,
              the page says which part of the annex is missing rather than
@@ -569,7 +575,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
              in one draft, where the annex does not say where one ends:
              shown undivided, and said so — dividing it wrongly would put one
              law's § 5 under another law's name. -->
-        <ComparisonCaveats :notes="[notRunNote, doubtfulNote, droppedPagesNote, data.boundaryNote]" />
+        <ComparisonCaveats :notes="[doubtfulNote, droppedPagesNote, data.boundaryNote]" />
       </div>
 
       <ListBox class="mt-4">
@@ -592,6 +598,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           :badges="badgeCounts(g.counts, BADGE_LABEL)"
           :withheld="g.withheld"
           :unchecked="g.unchecked"
+          :unchecked-note="annexUncheckedNote([...g.uncheckedReasons])"
           :open="groupOpen(g.key)"
           @toggle="toggleGroup(g.key)"
         >
@@ -814,14 +821,14 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
            second „CC BY 4.0, RIS" for the text in force wherever the annex
            itself came from Parliament. -->
       <SectionCredits :sources="sources" :paired="data.readFrom === 'pdf'" method="/so-funktionierts#gegenueberstellung">
-        <ExternalLink v-if="data.source" :href="data.source.url" class="link-quiet">{{ data.source.label }}{{ annexTag }}</ExternalLink>
+        <ExternalLink v-if="data.source" :href="data.source.url" class="link-muted">{{ data.source.label }}{{ annexTag }}</ExternalLink>
         <!-- The geltender Text of the Lesefassung, only where one is
              expandable somewhere: RIS text in force, with a Fundstelle of its
              own. -->
         <ExternalLink
           v-if="consolidatedShown > 0 && consolidated?.paragraphs[0]?.risUrl"
           :href="consolidated.paragraphs[0]!.risUrl!"
-          class="link-quiet"
+          class="link-muted"
         >Geltender Text im RIS</ExternalLink>
         <!-- Gone on 30.09.2026, both added the same morning: the Stichtag
              of the RIS check („RIS-Abgleich: Stand …") — the rule stands on

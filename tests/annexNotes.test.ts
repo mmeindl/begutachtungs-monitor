@@ -1,46 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import type { TextComparisonResponse } from '../shared/types'
 import {
   annexDoubtfulNote,
   annexDroppedPagesNote,
-  annexNotRunNote,
+  annexUncheckedNote,
   annexWithheldBlame,
   annexWithheldText,
 } from '../app/utils/annexNotes'
 
-type Verification = NonNullable<TextComparisonResponse['verification']>
-
-const v = (o: Partial<Verification> = {}): Verification => ({
-  ran: true,
-  notRunReason: null,
-  asOf: null,
-  judged: 10,
-  verified: 9,
-  withheldParagraphs: 0,
-  withheldByCause: { standing: 0, alreadyStanding: 0, notInDraft: 0 },
-  doubtfulLaws: [],
-  uncheckedParagraphs: 0,
-  rowsWithoutParagraph: 0,
-  ...o,
-})
-
-describe('annexNotRunNote — the one note about the check above the comparison (02.10.2026)', () => {
-  it('says a check did not run where one was owed, with the server’s reason after a colon', () => {
-    expect(annexNotRunNote(v({ judged: 0, verified: 0, uncheckedParagraphs: 11, notRunReason: 'das RIS Bundesrecht führt diese Paragraphen nicht' })))
-      .toBe('Nicht gegen das geltende Recht im RIS geprüft: das RIS Bundesrecht führt diese Paragraphen nicht.') // 40/ME XXVIII
-    expect(annexNotRunNote(v({ judged: 0, verified: 0, rowsWithoutParagraph: 2 }))).toBe('Nicht gegen das geltende Recht im RIS geprüft.')
+describe('annexUncheckedNote — why a law\'s §§ went unchecked, under its pill (03.10.2026)', () => {
+  it('names the group\'s reasons after a colon, in the order given', () => {
+    expect(annexUncheckedNote(['das RIS Bundesrecht führt diese Paragraphen nicht']))
+      .toBe('Nicht geprüft: das RIS Bundesrecht führt diese Paragraphen nicht.') // 40/ME XXVIII
+    expect(annexUncheckedNote(['a', 'b'])).toBe('Nicht geprüft: a; b.')
   })
 
-  it('says nothing where the check ran — the law headers count its result', () => {
-    expect(annexNotRunNote(v({ judged: 46, verified: 39, withheldParagraphs: 7, uncheckedParagraphs: 1 }))).toBeNull() // 32/ME
-  })
-
-  it('says nothing where no check was owed — an annex of new §§ alone', () => {
-    expect(annexNotRunNote(v({ judged: 0, verified: 0, notRunReason: 'der Entwurf schafft neues Recht' }))).toBeNull() // 57/ME
-  })
-
-  it('reads a missing verification as no check', () => {
-    expect(annexNotRunNote(null)).toBe('Nicht gegen das geltende Recht im RIS geprüft.')
+  it('says nothing where the group recorded no reason', () => {
+    expect(annexUncheckedNote([])).toBeNull()
   })
 })
 

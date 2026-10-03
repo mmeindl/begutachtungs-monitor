@@ -15,50 +15,30 @@
  */
 import type { AnnexWithheldCause, TextComparisonResponse } from '#shared/types'
 
-type Verification = TextComparisonResponse['verification']
 type ReadFrom = TextComparisonResponse['readFrom']
 
 /**
- * The one thing about the check that has to stand above the comparison: that
- * it did not run, and why — or null.
+ * Why a law's „nicht geprüft" §§ went unchecked — the line under its pill,
+ * or null where the group has none.
  *
- * **No status line since 02.10.2026.** Until then one stood over every
- * comparison: the result in counts, „n nicht gezeigt", „n nicht geprüft",
- * the rows without a §, and the PDF caveat. What moved where:
+ * **Per law since 03.10.2026.** Until then one sentence stood above the whole
+ * comparison, „Nicht gegen das geltende Recht im RIS geprüft: …", with every
+ * reason the check had collected anywhere in the draft joined by semicolons —
+ * so one law carried the reasons of another, and the reader met them before
+ * knowing which §§ they were about. The reasons now travel with the rows
+ * (`uncheckedReason`), and each group names its own where its pill is.
  *
- * - **The counts** are pills in each law's header (`DiffGroup`), in §§, and
- *   visible while the group is collapsed. „39 von 46 Paragraphen bestätigt"
- *   was the shown §§ minus the withheld ones, and beside the pills it
- *   invited a sum that could not work: the 46 leaves out the new §§, which
- *   owe no check (115/ME and 32/ME XXVIII).
- * - **The rows without a §** count into their law's „nicht geprüft".
- * - **The PDF caveat** is the credit line's „Zeilenzuordnung:
- *   Begutachtungs-Monitor" (`SectionCredits`), in the grammar of its
- *   „Markierung"; its long form stands at every withheld block, in the
- *   doubtful note and on /so-funktionierts. 48 of 120 annexes of GP XXVIII
- *   are read from the PDF — a rare-warning box would have stood on four in
- *   ten drafts.
- * - **The causes** stood at each withheld block before (`annexWithheldText`),
- *   the Stichtag on /so-funktionierts.
+ * Before that (until 02.10.2026) a status line stood over every comparison;
+ * what it said moved into the group pills, the credit line's
+ * „Zeilenzuordnung" and the withheld blocks.
  *
- * **Why silence is safe now.** The line had to be „never empty": silence
- * reads as „checked, nothing to report" — 21 drafts of GP XXVIII until
- * 2026-09-10. A check that did not run now marks every § that owed one as
- * „nicht geprüft" in its header (measured 02.10.2026 over GP XXVIII: 28,
- * 34, 40, 44, 75, 80, 90, 92/ME), so the page is not silent. What the pills
- * cannot say is why, and that is draft-specific and rare: this caveat.
- * Only where a check was owed — an annex of new §§ alone (57, 91/ME) has
- * nothing to check and nothing to report.
- *
- * `notRunReason` is the server's own fragment (`REASON_*` in
- * `server/utils/annex/verdict.ts`), written to follow a colon.
+ * Silence where no reason was recorded is safe: the pill still counts the
+ * §§, so the page never reads as „checked, nothing to report". The reasons
+ * are the server's fragments (`REASON_*` in `server/utils/annex/verdict.ts`),
+ * written to follow a colon; first seen first.
  */
-export function annexNotRunNote(v: Verification): string | null {
-  // Null verification with `available: true` is not a state the server
-  // produces; if it ever did, the honest reading is "no check happened".
-  if (!v) return 'Nicht gegen das geltende Recht im RIS geprüft.'
-  if (v.judged > 0 || v.uncheckedParagraphs + v.rowsWithoutParagraph === 0) return null
-  return v.notRunReason ? `Nicht gegen das geltende Recht im RIS geprüft: ${v.notRunReason}.` : 'Nicht gegen das geltende Recht im RIS geprüft.'
+export function annexUncheckedNote(reasons: readonly string[]): string | null {
+  return reasons.length ? `Nicht geprüft: ${reasons.join('; ')}.` : null
 }
 
 /**

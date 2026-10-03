@@ -36,7 +36,7 @@
 
 import type { TextComparisonResponse, TraceLink } from '#shared/types'
 import { annexDocumentsOf, annexSourceFor, annexSourceForDraft, NO_ANNEX, offersAnnex, parliamentAnnex, READ_PARLIAMENT_COPY } from './annexSource'
-import { checkAnnexRows, notRunReason } from './gateRows'
+import { checkAnnexRows } from './gateRows'
 import { getAnnexVerification } from './annexGuardService'
 import { draftArticlesOfXml, getDraftArticles, type DraftText } from '../lawtext/draftArticlesService'
 import { getRisMapForGp } from '../ris/begutCorpus'
@@ -106,7 +106,6 @@ async function readAndCheck(
     stats: checked.stats,
     verification: {
       ran: verification.ran,
-      notRunReason: notRunReason(verification),
       // The day the ministry wrote the annex, so the page can name the
       // version of the law its left column was held against instead of
       // leaving the reader to assume "today".

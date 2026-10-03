@@ -338,6 +338,21 @@ describe('verifyAnnex', () => {
     expect(notRunReason(check)).toBe(REASON_NO_SUCH_PARAGRAPH)
   })
 
+  it('records the reason per §, so one § does not carry another\'s', async () => {
+    // The page names reasons per law since 03.10.2026; a draft-wide list
+    // put one law's reasons under another's pill.
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE }), row({ gld: '§ 9.', para: '§ 9.', current: PROSE })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('verified')
+    expect(check.uncheckedReasons).toEqual({ '#§ 9.': REASON_NO_SUCH_PARAGRAPH })
+  })
+
+  it('gives every § the reason when the check stops before looking at any', async () => {
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
+    const check = await verifyAnnex(rows, draft({ asOf: '' }), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.uncheckedReasons).toEqual({ '#§ 1.': REASON_NO_ASOF })
+  })
+
   it('finds the standing Anlage behind a heading that cites §§', async () => {
     // The shape of all 12 §§ GP XXVIII lost to the composite key: the annex
     // prints the schedule under its full title, RIS holds it as "Anl. 3", and

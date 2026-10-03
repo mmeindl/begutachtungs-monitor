@@ -9,11 +9,12 @@ import { summarizeComparison, type ComparisonRow, type ComparisonStats } from '.
 import type { AnnexWithheldCause, TextComparisonRow } from '../../../shared/types'
 import { annexParagraphKey } from './annexText'
 import { isDisplayedChange } from './coverage'
-import type { AnnexVerification } from './verdict'
+import { REASON_UNREADABLE_DESIGNATION, type AnnexVerification } from './verdict'
 
 /**
- * The one sentence fragment the page needs when the check produced no verdict
- * at all — null when it produced one.
+ * Why the check produced no verdict at all, draft-wide — null when it
+ * produced one. The harness and the golden record read it; the page has not
+ * since 03.10.2026, and says why per law instead (`uncheckedReason`).
  *
  * Keyed on `judged`, not on `ran`: a check that reached RIS for ten §§ and
  * found nothing judgeable in any of them has also said nothing, and the page
@@ -101,10 +102,13 @@ export function checkAnnexRows(rows: readonly ComparisonRow[], verification: Ann
     const para = row.gld ?? row.para
     if (para === null) {
       if (isDisplayedChange(row)) rowsWithoutParagraph++
-      return { ...row, check: 'unchecked' as const }
+      return { ...row, check: 'unchecked' as const, uncheckedReason: REASON_UNREADABLE_DESIGNATION }
     }
     const key = annexParagraphKey(row.law, para)
     const verdict = verification.verdicts[key] ?? 'unchecked'
+    // The reason travels with the row for the same cause as the withheld
+    // one below: the page says it per law, and only the rows know their law.
+    if (verdict === 'unchecked') return { ...row, check: verdict, uncheckedReason: verification.uncheckedReasons[key] ?? null }
     if (verdict !== 'withheld') return { ...row, check: verdict }
     // The cause travels with the row, because the notice that replaces the
     // text stands inside the § and has to name what was found there.

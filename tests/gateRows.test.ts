@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { annexParagraphKey } from '../server/utils/annex/annexText'
 import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
-import { REASON_NO_ARTICLES, REASON_TOO_SHORT, REASON_UNRESOLVED, type AnnexVerification } from '../server/utils/annex/verdict'
+import { REASON_NO_ARTICLES, REASON_NO_SUCH_PARAGRAPH, REASON_TOO_SHORT, REASON_UNREADABLE_DESIGNATION, REASON_UNRESOLVED, type AnnexVerification } from '../server/utils/annex/verdict'
 import { comparisonRow as row } from './helpers/builders'
 
 // ---------------------------------------------------------------------------
@@ -13,6 +13,7 @@ const verification = (over: Partial<AnnexVerification> = {}): AnnexVerification 
   reasons: [],
   verdicts: {},
   withheldCauses: {},
+  uncheckedReasons: {},
   doubtfulLaws: [],
   judged: 0,
   verified: 0,
@@ -39,6 +40,20 @@ describe('checkAnnexRows', () => {
     expect(out.withheldByCause).toEqual({ standing: 1, alreadyStanding: 1, notInDraft: 1 })
     expect(Object.values(out.withheldByCause).reduce((a, b) => a + b, 0)).toBe(out.withheldParagraphs)
     expect(out.rows.map((r) => r.withheldCause)).toEqual(['standing', 'alreadyStanding', 'notInDraft', undefined])
+  })
+
+  it('carries the reason onto each unchecked row, and onto no other', () => {
+    // The page names it per law under the „nicht geprüft" pill (03.10.2026).
+    const rows = [
+      row({ gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu' }),
+      row({ gld: '§ 2.', para: '§ 2.', current: 'alt', proposed: 'neu' }),
+      row({ gld: null, para: null, current: 'alt', proposed: 'neu' }),
+    ]
+    const out = checkAnnexRows(rows, verification({
+      verdicts: { '#§ 1.': 'unchecked', '#§ 2.': 'verified' },
+      uncheckedReasons: { '#§ 1.': REASON_NO_SUCH_PARAGRAPH },
+    }))
+    expect(out.rows.map((r) => r.uncheckedReason)).toEqual([REASON_NO_SUCH_PARAGRAPH, undefined, REASON_UNREADABLE_DESIGNATION])
   })
 
   it('vouches for nothing the check did not name', () => {

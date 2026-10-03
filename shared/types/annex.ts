@@ -147,6 +147,15 @@ export interface TextComparisonRow {
    * causes.
    */
   withheldCause?: AnnexWithheldCause
+  /**
+   * Why the check did not reach the row's §, present only on an unchecked
+   * pair row: a German fragment written to follow „Nicht geprüft:"
+   * (`REASON_*` in `server/utils/annex/verdict.ts`). Null where the check
+   * recorded none. Collected per law under the group's „nicht geprüft" pill
+   * since 03.10.2026; it stood once above the whole comparison before, as a
+   * draft-wide list that put one law's reasons on another.
+   */
+  uncheckedReason?: string | null
 }
 
 /**
@@ -245,16 +254,6 @@ export interface TextComparisonResponse {
      * labelled as verified. False means the comparison is unvouched-for.
      */
     ran: boolean
-    /**
-     * Why no § could be judged, as a German sentence fragment fit to print
-     * after "Nichts konnte geprüft werden: …" — for example "im RIS fehlt
-     * der Beginn der Begutachtungsfrist". Null exactly when `judged > 0`.
-     *
-     * A RIS outage never appears here: the request fails instead of
-     * answering, so no cache can hold a definitive-sounding sentence about a
-     * network hiccup (`server/utils/annex/textComparisonService.ts`).
-     */
-    notRunReason: string | null
     /**
      * The date the standing law was read at — RIS's own start of the
      * Begutachtungsfrist, the day the Ressort wrote the annex, ISO or null.

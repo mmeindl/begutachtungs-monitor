@@ -299,6 +299,16 @@ export interface AnnexVerification {
    */
   withheldCauses: Record<string, AnnexWithheldCause>
   /**
+   * Why each unchecked § went unchecked (`REASON_*`), under the same key as
+   * `verdicts`. One reason per §: the step at which the check gave up on it.
+   *
+   * Since 03.10.2026 the page says why at each law's „nicht geprüft" pill
+   * instead of in one sentence above the comparison, and a draft-wide list
+   * of reasons would hand one law the reasons of another. A verified or
+   * withheld § has no entry.
+   */
+  uncheckedReasons: Record<string, string>
+  /**
    * Laws where enough §§ failed to doubt the whole annex for that law. Named
    * on the page; their §§ are withheld only where each failed on its own.
    *
@@ -390,9 +400,16 @@ export async function verifyAnnex(
   const verdicts: Record<string, ParagraphVerdict> = {}
   for (const key of groups.keys()) verdicts[key] = 'unchecked'
   const withheldCauses: Record<string, AnnexWithheldCause> = {}
+  const uncheckedReasons: Record<string, string> = {}
+  /** The check gives up on one §, and says why — draft-wide and for that §. */
+  const skip = (key: string, reason: string): void => {
+    reasons.add(reason)
+    uncheckedReasons[key] = reason
+  }
   const nothing = (reason: string): AnnexVerification => {
     reasons.add(reason)
-    return { ran: false, reasons: [...reasons], verdicts, withheldCauses, doubtfulLaws: [], judged: 0, verified: 0 }
+    for (const key of groups.keys()) uncheckedReasons[key] = reason
+    return { ran: false, reasons: [...reasons], verdicts, withheldCauses, uncheckedReasons, doubtfulLaws: [], judged: 0, verified: 0 }
   }
   if (groups.size === 0) return nothing(REASON_NO_PARAGRAPHS)
   if (!asOf) return nothing(REASON_NO_ASOF)
@@ -423,36 +440,29 @@ export async function verifyAnnex(
   else if (amending.length === 0) reasons.add(REASON_NO_AMENDING)
 
   const byKey = new Map<string | null, DraftArticle>(articles.map((a) => [a.key, a]))
-  const resolved = new Map<string | null, Promise<LawIndex | null>>()
-  const resolveOnce = async (key: string | null): Promise<LawIndex | null> => {
+  /** A law's §§ ready to look up, or why the law could not be (`REASON_*`). */
+  type Resolved = LawIndex | string
+  const resolved = new Map<string | null, Promise<Resolved>>()
+  const resolveOnce = async (key: string | null): Promise<Resolved> => {
     // An unattributed row can only be resolved when the draft amends exactly
     // one law; with several, which § 5 it means is unknowable and guessing is
     // what the boundary refusal exists to prevent.
     const article = key === null ? (amending.length === 1 ? amending[0]! : null) : byKey.get(key)
     if (!article) {
-      if (key === null && amending.length > 1) reasons.add(REASON_BOUNDARY)
-      else if (key !== null) reasons.add(REASON_UNRESOLVED)
-      return null
+      if (key !== null) return REASON_UNRESOLVED
+      if (amending.length > 1) return REASON_BOUNDARY
+      return articles.length === 0 ? REASON_NO_ARTICLES : REASON_NO_AMENDING
     }
-    if (!article.amends) {
-      reasons.add(REASON_NO_AMENDING)
-      return null
-    }
+    if (!article.amends) return REASON_NO_AMENDING
     // The UGB's Stammnorm is "dRGBl. S. 219/1897": the Artikel amends a law
     // all right, but no Bundesgesetzblatt addresses it.
-    if (!article.bgbl) {
-      reasons.add(REASON_NO_BGBL)
-      return null
-    }
+    if (!article.bgbl) return REASON_NO_BGBL
     const law = await sources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '')
-    if (!law) {
-      reasons.add(REASON_UNRESOLVED)
-      return null
-    }
+    if (!law) return REASON_UNRESOLVED
     return indexOf(law)
   }
   /** One RIS lookup per law of the package, not per §. */
-  const lawOf = (key: string | null): Promise<LawIndex | null> => {
+  const lawOf = (key: string | null): Promise<Resolved> => {
     const pending = resolved.get(key) ?? resolveOnce(key)
     resolved.set(key, pending)
     return pending
@@ -464,29 +474,17 @@ export async function verifyAnnex(
   // `failFast`: stop the other workers too — a RIS that just failed four
   // times over is not worth another 150 requests, and the answer is thrown
   // away. The only call site of the pool that asks for it.
-  await mapWithConcurrency([...groups.values()], concurrency, async (group) => {
-    if (looked >= maxParagraphs) {
-      reasons.add(REASON_CEILING)
-      return
-    }
+  await mapWithConcurrency([...groups.entries()], concurrency, async ([groupKey, group]) => {
+    if (looked >= maxParagraphs) return skip(groupKey, REASON_CEILING)
     looked++
     const index = await lawOf(group.law)
-    if (!index) return
+    if (typeof index === 'string') return skip(groupKey, index)
     const key = designationKey(group.para)
-    if (key === null) {
-      reasons.add(REASON_UNREADABLE_DESIGNATION)
-      return
-    }
+    if (key === null) return skip(groupKey, REASON_UNREADABLE_DESIGNATION)
     const ref = index.paragraphs.get(key)
-    if (!ref) {
-      reasons.add(REASON_NO_SUCH_PARAGRAPH)
-      return
-    }
+    if (!ref) return skip(groupKey, REASON_NO_SUCH_PARAGRAPH)
     const standing = await sources.standingText(ref)
-    if (standing === null) {
-      reasons.add(REASON_NOT_REPRESENTABLE)
-      return
-    }
+    if (standing === null) return skip(groupKey, REASON_NOT_REPRESENTABLE)
     const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()
     byPara.set(group.para, coverageOfParagraph(group.rows, standing.text))
     coverage.set(group.law, byPara)
@@ -529,7 +527,7 @@ export async function verifyAnnex(
       // may promote such a § either: the draft bag passes happily on garbage
       // lifted from another part of the same draft.
       if (!cover.prose) {
-        reasons.add(cover.comparable === 0 ? REASON_NOTHING_TO_COMPARE : REASON_TOO_SHORT)
+        skip(key, cover.comparable === 0 ? REASON_NOTHING_TO_COMPARE : REASON_TOO_SHORT)
         continue
       }
       verdicts[key] = 'verified'
@@ -538,5 +536,5 @@ export async function verifyAnnex(
   // Counted off the verdicts rather than summed per law, so "bestätigt" means
   // "came through everything" and cannot drift from what the rows show.
   const verified = Object.values(verdicts).filter((v) => v === 'verified').length
-  return { ran: compared > 0, reasons: [...reasons], verdicts, withheldCauses, doubtfulLaws, judged, verified }
+  return { ran: compared > 0, reasons: [...reasons], verdicts, withheldCauses, uncheckedReasons, doubtfulLaws, judged, verified }
 }
