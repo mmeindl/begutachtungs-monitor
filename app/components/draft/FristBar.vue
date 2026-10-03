@@ -88,7 +88,7 @@ const END_DOT = 'absolute top-0 box-border size-3 -translate-x-1/2 rounded-full 
       <span
         v-for="mark in marks"
         :key="mark.key"
-        class="absolute top-0 h-3 w-0.5 -translate-x-1/2 bg-ink-muted ring-2 ring-[var(--frist-cut,var(--color-page))]"
+        class="absolute top-0 h-3 w-0.5 -translate-x-1/2 bg-ink-muted ring-2 ring-page"
         :style="{ left: pct(mark.days) }"
       />
       <span :class="END_DOT" :style="{ left: pct(days) }" />

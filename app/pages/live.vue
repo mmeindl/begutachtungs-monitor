@@ -24,9 +24,10 @@ usePageSeo({
     'Online-Workshop bei der Demokratiewoche 2026: Donnerstag, 22. Oktober 2026, 19:00–20:30 Uhr. Der Teilnahmelink erscheint hier.',
 })
 
-// In FactList's grammar, a name over each fact, as the draft pages'
-// station cards have it (02.10.2026). A label column stood here, the form
-// FactList records as having read as a form.
+// In FactList's grammar, a name over each fact, as the draft pages' fact
+// lists have it (02.10.2026), in the same unfilled frame (03.10.2026). A
+// label column stood here, the form FactList records as having read as a
+// form.
 const facts: Fact[] = [
   // Word joiners around the dash and a no-break space before „Uhr": the range
   // broke as „19:00– / 20:30 Uhr" on a phone (30.09.2026).
@@ -48,7 +49,7 @@ const facts: Fact[] = [
       <span class="bg-mark px-1">Was wurde aus den Stellungnahmen?</span>
     </p>
 
-    <FactList :facts="facts" card class="mt-8" />
+    <FactList :facts="facts" frame class="mt-8" />
 
     <!-- The promise this page exists for: the printed/linked URL stays,
          the destination changes. Wording must survive being read on

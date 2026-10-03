@@ -25,9 +25,9 @@ import { countLabelDe, formatDateDe } from '#shared/utils/format'
 const props = defineProps<{
   data: RvStatementsResponse
   /** Parliament still takes Stellungnahmen on this Vorlage (`enactment.filingOpen`).
-   *  The door for it is the card at the top of the page; here it is one
-   *  sentence with a link, so the section states the fact without a second
-   *  button competing with the first. */
+   *  The door for it is the card at the top of the page, repeated under this
+   *  block by the page itself (`FilingButton`, 03.10.2026) — not in here,
+   *  because this block renders only once its data has loaded. */
   filingOpen?: boolean
 }>()
 
@@ -49,31 +49,15 @@ const summary = computed(() => props.data.summary)
  */
 const organisationsOnly = computed(() => Boolean(summary.value) && props.data.unlisted > 0)
 
-/**
- * WHERE A STELLUNGNAHME ZUR VORLAGE GOES — read from sources on 24.09.2026,
- * and the one thing this panel showed without saying (docs/architecture.md
- * §12.14, `verfahrensfragen.md` C2).
- *
- * Three facts, all documented and none of them a measurement of ours:
- * Parliament's own page on statements to legislative initiatives says
- * approved statements are made available to the parliamentary clubs and to
- * the responsible ministry; they are published at the Gegenstand; and § 23b
- * GOG-NR regulates that publication and nothing else — there is no committee
- * procedure for them.
- *
- * The third clause names the Geschäftsordnung rather than an omission: „wer
- * sie liest, entscheidet niemand hier" would be a verdict, „die
- * Geschäftsordnung sieht dafür kein eigenes Verfahren vor" is the rule as it
- * stands (framing rule, docs/architecture.md §4). What it is NOT allowed to
- * grow into is a sentence about what statements achieve — the one case we
- * read end to end (95/ME → 2238 d.B.) says nothing either way, and „ohne
- * Wirkung" would be exactly the cynicism engine this product must not be.
- *
- * Local to this component on purpose: it is true of the second round, not of
- * the Begutachtung, whose statements go to the Ressort.
- */
-const STATEMENT_DESTINATION =
-  'Freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden beim Gegenstand veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung dafür nicht vor.'
+/* WHERE A STELLUNGNAHME ZUR VORLAGE GOES (Klubs, Ministerium, published at
+ * the Gegenstand, no committee procedure — read from sources on 24.09.2026,
+ * docs/architecture.md §12.14) stood here as a sentence until 03.10.2026.
+ * It is a rule of procedure, the same for every Vorlage, and stood word for
+ * word on /so-funktionierts#parlament already. Not linked beside the
+ * filing button either: there its last clause reads as „filing is
+ * pointless", and the publication it names is asked on Parliament's form,
+ * at the moment of filing. Whatever replaces it may not grow into a sentence
+ * about what statements achieve (framing rule, docs/architecture.md §4). */
 
 /**
  * UNLESS THE COMMITTEE ASKED (27.09.2026). A committee can call for written
@@ -81,11 +65,12 @@ const STATEMENT_DESTINATION =
  * and the answers are published in the same list 142 this panel reads: RV
  * 313 of GP XXVIII, 98 institutions written to on 20.11.2025, 21
  * Stellungnahmen from institutions between 25.11. and 03.12. Under the
- * sentence above they read as unsolicited input no committee procedure
+ * rule above they read as unsolicited input no committee procedure
  * takes up — the exact opposite of what happened. So where the Verlauf
- * records a consultation, the panel says so first and scopes the rule to
- * the Stellungnahmen someone files on their own. Both halves are facts
- * from Parliament's record; neither says what the answers achieved.
+ * records a consultation, the panel says so: a fact about this Vorlage, not
+ * a rule, so it stays when the rule moved to the explainer (03.10.2026). It
+ * comes from Parliament's record and says nothing about what the answers
+ * achieved.
  */
 const consultation = computed(() => props.data.committeeConsultation ?? null)
 
@@ -98,12 +83,6 @@ const consultationSentence = computed<string | null>(() => {
   const answers = props.data.total > 0 ? 'ihre Antworten stehen unter den Stellungnahmen hier' : 'eingelangt ist bisher keine'
   return `${who} hat${when} beschlossen, schriftliche Stellungnahmen einzuholen${whom} (Ausschussbegutachtung); ${answers}.`
 })
-
-const destination = computed(() =>
-  consultation.value
-    ? 'Stellungnahmen, die jemand von sich aus einbringt, gehen an die parlamentarischen Klubs und an das zuständige Ministerium und werden beim Gegenstand veröffentlicht; ein eigenes Verfahren im Ausschuss sieht die Geschäftsordnung für sie nicht vor.'
-    : STATEMENT_DESTINATION,
-)
 </script>
 
 <template>
@@ -111,7 +90,8 @@ const destination = computed(() =>
     <!-- The fact alone since 30.09.2026. That one can file on a
          Regierungsvorlage, until when, and the button to do it stand in the
          action card at the top of the page whenever `filingOpen` is true —
-         it is the same window (`windows.vorlage`). -->
+         it is the same window (`windows.vorlage`) — and the button once
+         more under this block (03.10.2026). -->
     <p v-if="data.total === 0" class="mt-2 text-sm text-ink-secondary">
       {{ filingOpen ? 'Bisher keine eingebracht.' : 'Keine eingebracht.' }}
     </p>
@@ -120,12 +100,8 @@ const destination = computed(() =>
       {{ consultationSentence }}
     </p>
 
-    <p v-if="data.total === 0 && filingOpen" class="mt-2 text-sm text-ink-secondary">
-      {{ destination }}
-    </p>
-
     <!-- `v-if`, not `v-else` (30.09.2026): a `v-else` binds to the sibling
-         directly above it — the `total === 0 && filingOpen` paragraph — so a
+         directly above it — then a `total === 0 && filingOpen` paragraph — so a
          closed Vorlage without Stellungnahmen got both branches: „keine
          eingebracht" and „0 Stellungnahmen ein". -->
     <template v-if="data.total > 0">
@@ -151,12 +127,6 @@ const destination = computed(() =>
            the names, not after them. -->
       <p v-if="consultationSentence" class="mt-2 text-sm text-ink-secondary">
         {{ consultationSentence }}
-      </p>
-      <!-- Where they go, only while one can still file (30.09.2026): then it
-           belongs to the decision to file. Once the window is shut it is a
-           rule of procedure, and it stands on /so-funktionierts#parlament. -->
-      <p v-if="filingOpen" class="mt-2 text-sm text-ink-secondary">
-        {{ destination }}
       </p>
 
       <!-- One pointer, not two in a row (30.09.2026): „– sie stehen

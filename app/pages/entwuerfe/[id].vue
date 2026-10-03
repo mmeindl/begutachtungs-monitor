@@ -92,8 +92,12 @@ const fristFacts = computed<Fact[]>(() => {
   }]
 })
 
-/* Same contract as on the draft page: only a section this page renders. */
-const stationAnchors: Partial<Record<StationId, string>> = { entwurf: '#dokumente' }
+/* Same contract as on the draft page: only a section this page renders.
+   „Die Begutachtung" is unconditional, as there. */
+const stationAnchors: Partial<Record<StationId, string>> = {
+  entwurf: '#dokumente',
+  begutachtung: '#begutachtung',
+}
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() =>
   data.value?.textComparison ? { vorschlag: '#gegenueberstellung' } : {})
 
@@ -252,32 +256,17 @@ const documents = computed(() => {
                rows carry the dates, and the Verordnung hint („erlässt ein
                Ministerium selbst … geht nicht durch das Parlament") only
                restated what the three rows show — the link above answers it
-               at the fork. What stays is the sentence nothing else says once
-               the Frist is over and no action card can say where a
-               Stellungnahme went: why the Begutachtung row carries no count. -->
-          <p
-            v-if="!stationList.length || !data.active"
-            class="mt-3 text-sm text-ink-secondary"
-          >
-            <template v-if="!stationList.length && data.startedAt">
+               at the fork. The closed Frist and the sentence on the
+               Stellungnahmen moved to „Die Begutachtung" below (03.10.2026),
+               the slot the draft page gives them. -->
+          <p v-if="!stationList.length" class="mt-3 text-sm text-ink-secondary">
+            <template v-if="data.startedAt">
               In Begutachtung seit {{ formatDateDe(data.startedAt) }}<template v-if="data.deadline">, Frist bis {{ formatDateWeekdayDe(data.deadline) }}</template>.
             </template>
             <template v-if="RIS_KIND_HINT[data.kind]">
               {{ RIS_KIND_HINT[data.kind] }}
             </template>
-            <!-- Why there is no list stands on the explainer (30.09.2026). -->
-            <template v-if="!data.active">
-              Die Stellungnahmen werden nicht veröffentlicht&nbsp;–
-              <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
-            </template>
           </p>
-          <!-- While the Frist runs the action card carries it; one place
-               at a time, as on the draft page. -->
-          <FactList v-if="fristFacts.length" :facts="fristFacts" class="mt-3">
-            <template #after-frist>
-              <FristBar :start="data.startedAt" :deadline="data.deadline" class="[--frist-cut:var(--color-surface)]" />
-            </template>
-          </FactList>
         </div>
       </div>
 
@@ -387,12 +376,13 @@ const documents = computed(() => {
           <!-- The house <details> with the heading in the <summary>, as on the
                draft page and in DraftDescription: the outline does not depend on
                what is open, find-in-page still opens it, and nothing above it
-               moves when it opens. -->
-          <details class="group border-t border-hairline">
+               moves when it opens. No border-t since 03.10.2026, as on the draft
+               page: the full-width hairline outranked the section boundary. -->
+          <details class="group">
             <summary
               class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
             >
-              <h3 id="dokumente" class="text-base font-semibold text-ink">
+              <h3 id="dokumente" class="text-lg font-semibold text-ink">
                 Dokumente<template v-if="documents.length"> ({{ documents.length }})</template>
               </h3>
               <UIcon
@@ -455,6 +445,43 @@ const documents = computed(() => {
                    item's identity, not mid-page as an action it is not. -->
             </div>
           </details>
+        </div>
+      </section>
+
+      <!-- The Begutachtung, as on the draft page and unconditional as there:
+           it is what the page is about, running or closed (03.10.2026 — until
+           then the page had no such section, and while the Frist ran the
+           station had nothing below the bar to lead to). What it holds is
+           what this procedure publishes: the closed Frist, and that the
+           Stellungnahmen are not published — where the draft page has its
+           list. -->
+      <section id="begutachtung" class="page-section scroll-mt-6" aria-labelledby="begutachtung-heading">
+        <h2 id="begutachtung-heading" class="section-heading">Die Begutachtung</h2>
+        <div class="mt-4 space-y-8">
+          <!-- While the Frist runs the action card carries it; one place
+               at a time, as on the draft page. -->
+          <FactList v-if="fristFacts.length" :facts="fristFacts" frame>
+            <template #after-frist>
+              <FristBar :start="data.startedAt" :deadline="data.deadline" />
+            </template>
+          </FactList>
+          <PageSubsection heading="Stellungnahmen">
+            <!-- Why there is no list stands on the explainer (30.09.2026).
+                 In both states: it is as true while the Frist runs, and the
+                 action card above only says where they go. -->
+            <p class="text-sm text-ink-secondary">
+              Die Stellungnahmen werden nicht veröffentlicht&nbsp;–
+              <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
+            </p>
+            <!-- The card's door once more (`FilingButton`). Only with a
+                 Begleitschreiben: without one the card's fallback is the RIS
+                 record, and a second way to it here is not an action. -->
+            <div v-if="data.active && data.coverLetter" class="mt-4">
+              <FilingButton :href="data.coverLetter.pdf ?? data.coverLetter.html ?? data.risUrl">
+                Begleitschreiben öffnen
+              </FilingButton>
+            </div>
+          </PageSubsection>
         </div>
       </section>
 

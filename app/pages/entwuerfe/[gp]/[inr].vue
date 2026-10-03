@@ -86,7 +86,7 @@ const { data: rvStatements } = await useFetch<RvStatementsResponse>(
   { lazy: true, server: false, immediate: Boolean(data.value?.enactment) },
 )
 
-/* What the Vorlage made of the draft — the rows of its station card that
+/* What the Vorlage made of the draft — the rows of its station frame that
  * come from the ME→RV comparison (`useVorlageOutcome`, 02.10.2026). */
 const vorlageOutcome = useVorlageOutcome(() => ({ gp: gp.value, inr: inr.value }), Boolean(data.value?.enactment))
 const shareValue = computed(() => {
@@ -162,8 +162,8 @@ const parliament = computed(() => (data.value ? parliamentOutcome(data.value) : 
  * sentence less rather than a vaguer one. */
 const voteLine = computed(() => voteLineDe(data.value?.enactment?.vote))
 
-/* What parliament did, as the card's first row. One sentence per outcome;
- * the comment at the card says why none of them names a motive. */
+/* What parliament did, as the frame's first row. One sentence per outcome;
+ * the comment at the frame says why none of them names a motive. */
 const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutcome>>, string> = {
   unchanged: 'Der Nationalrat hat den Text der Regierungsvorlage unverändert beschlossen.',
   // Where it changed — Ausschuss, Plenum — stands in the bar and in the
@@ -411,9 +411,9 @@ const noRvBaseRate = computed(() =>
   lapsed.value || chainUnlinked.value || viaAntrag.value ? null : rvBaseRateSentenceDe(data.value?.gp),
 )
 
-/* The Regierungsvorlage's station card, in both outcomes. The verdict is
+/* The Regierungsvorlage's station frame, in both outcomes. The verdict is
  * the row; what explains it (`rvContext`, the base rate, the Antrag's
- * matching) stands under the card. Without a verdict the row says
+ * matching) stands under the frame. Without a verdict the row says
  * „Bisher keine" and the waiting sentence would only repeat it. */
 const rvFacts = computed<Fact[]>(() => {
   const d = data.value
@@ -439,16 +439,16 @@ const rvFacts = computed<Fact[]>(() => {
   if (d.successor) facts.push({ key: 'nachfolger', title: 'Gleichlautender späterer Entwurf' })
   return facts
 })
-/* The card carries our own counts, so its credit line names them. */
+/* The frame carries our own counts, so its credit line names them. */
 const rvCounted = computed(() => rvFacts.value.some((f) => f.key === 'aenderung' || f.key === 'begruendung'))
 const rvContext = computed(() => (viaAntrag.value || !noRvVerdict.value ? null : noRvBody.value))
 
-/* The law in force the draft would change, as the Entwurf's station card.
+/* The law in force the draft would change, as the Entwurf's station frame.
  * A Sammelgesetz names forty; past five the rest fold. */
 const LAW_FOLD_AT = 5
 
-/* The credit lines under the station cards (02.10.2026): the laws the
- * Entwurf's card links are RIS's consolidated texts; the other three cards
+/* The credit lines under the station frames (02.10.2026): the laws the
+ * Entwurf's frame links are RIS's consolidated texts; the other three frames
  * show Parliament's Verlauf — of the draft (Begutachtung data, which no open
  * data grant covers) and of the Regierungsvorlage (a history page, CC BY). */
 const AMENDED_LAWS_SOURCES: SourceEntry[] = [risSource('Geltende Fassung')]
@@ -877,18 +877,20 @@ const ministryLinks = computed(() => {
                  Erläuterungen are the Ressort's own reasoning, and they belong
                  to the draft, not to the procedure. -->
 
-            <!-- The station card (01.10.2026): what the draft would change in
-                 the law in force, before the comparison that measures it. Below
-                 the comparison and the reasoning it was the baseline read last.
-                 Keeps `id="recht"`: that anchor is in circulation. The one text
-                 version we hold no document for — what we can offer is the
-                 consolidated text in RIS, at the version in force when the draft
-                 was filed (`amendedLawsService.ts`). -->
+            <!-- The section's lede, in the unfilled frame of the facts you
+                 consult (03.10.2026; a white station card from 01.10.2026):
+                 what the draft would change in the law in force, before the
+                 comparison that measures it. Below the comparison and the
+                 reasoning it was the baseline read last. Keeps `id="recht"`:
+                 that anchor is in circulation. The one text version we hold no
+                 document for — what we can offer is the consolidated text in
+                 RIS, at the version in force when the draft was filed
+                 (`amendedLawsService.ts`). -->
             <div v-if="entwurfFacts.length && amendedLaws">
               <FactList
                 id="recht"
                 :facts="entwurfFacts"
-                card
+                frame
                 class="scroll-mt-6"
               >
                 <template #value-recht>
@@ -912,7 +914,7 @@ const ministryLinks = computed(() => {
                 </template>
               </FactList>
               <!-- Which version the links open is provenance, so it stands in the
-                   credit line under the card, not inside a fact (02.10.2026). -->
+                   credit line under the frame, not inside a fact (02.10.2026). -->
               <SectionCredits v-if="amendedLaws.asOf" :sources="AMENDED_LAWS_SOURCES" :marked="false">
                 <span>Verlinkt in der Fassung vom {{ formatDateDe(amendedLaws.asOf) }}</span>
               </SectionCredits>
@@ -940,14 +942,18 @@ const ministryLinks = computed(() => {
                  and nothing above it moves when it opens. Folded because the
                  documents are what a citing or downloading reader looks for,
                  and that reader expects them at the end. -->
+            <!-- No border-t since 03.10.2026: the full-width hairline
+                 was the strongest line inside the section and outranked the
+                 section boundary itself; the summary's hover ground and the
+                 chevron carry the fold alone. -->
             <details
               v-if="data.documents.length || data.risDraft"
-              class="group border-t border-hairline"
+              class="group"
             >
               <summary
                 class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
               >
-                <h3 class="text-base font-semibold text-ink">
+                <h3 class="text-lg font-semibold text-ink">
                   Dokumente<template v-if="documentCount"> ({{ documentCount }})</template>
                 </h3>
                 <UIcon
@@ -989,12 +995,13 @@ const ministryLinks = computed(() => {
                  condition under which every one of them was written. The
                  handoff to the ressort is the stage's other date: under the
                  list it read as the pagination's footnote and moved with every
-                 „Weitere" (01.10.2026). On a card: the Frist with its bar is a
-                 measurement with a scale, a page object with a job of its own,
-                 and without an edge it floated — the bar ended mid-column with
-                 nothing to align to. -->
+                 „Weitere" (01.10.2026). In the frame (03.10.2026): the Frist
+                 with its bar is a measurement with a scale, and without an
+                 edge it floated — the bar ended mid-column with nothing to
+                 align to. The frame gives it that edge without the white sheet
+                 of the instruments you operate. -->
             <div v-if="begutachtungFacts.length">
-              <FactList :facts="begutachtungFacts" card>
+              <FactList :facts="begutachtungFacts" frame>
                 <template #after-frist>
                   <FristBar :start="data.arrivedAt" :deadline="data.deadline" />
                 </template>
@@ -1007,7 +1014,7 @@ const ministryLinks = computed(() => {
                 :own="begutachtungFacts.some((f) => f.key === 'frist') ? 'Median' : undefined"
                 method="/so-funktionierts#stationen"
               >
-                <ExternalLink :href="data.parliamentUrl" class="link-quiet">Verlauf</ExternalLink>
+                <ExternalLink :href="data.parliamentUrl" class="link-muted">Verlauf</ExternalLink>
               </SectionCredits>
             </div>
             <!-- A sub-section like the Entwurf's, spaced by the section body
@@ -1052,12 +1059,19 @@ const ministryLinks = computed(() => {
               <p v-else class="text-sm text-ink-secondary">
                 {{ data.active ? 'Noch keine Stellungnahmen. Die Frist läuft.' : 'Keine Stellungnahmen.' }}
               </p>
+              <!-- The card's door once more, under the list where the decision
+                   to file is made (`FilingButton`). The card's condition. -->
+              <div v-if="windows.begutachtung" class="mt-4">
+                <FilingButton :href="data.parliamentUrl">
+                  Stellungnahme auf parlament.gv.at abgeben
+                </FilingButton>
+              </div>
             </PageSubsection>
             <!-- No closing line since 02.10.2026. „Die Regierungsvorlage hat
                  193 von 311 Paragraphen … umgeschrieben oder gestrichen" stood
                  here from 01.10.2026, to answer „und dann?" under the
                  Stellungnahmen. Since the next day the same count is the first
-                 figure of the Regierungsvorlage's station card, one section
+                 figure of the Regierungsvorlage's station frame, one section
                  down, and the spine links the comparison: the line said it a
                  third time, and was the only sentence trailing a section. -->
           </div>
@@ -1078,26 +1092,27 @@ const ministryLinks = computed(() => {
         >
           <h2 id="rv-heading" class="section-heading">Die Regierungsvorlage</h2>
           <div class="mt-4 space-y-8">
-            <!-- The station card (01.10.2026), in both outcomes — the win and
-                 the non-win get the same form and the same weight (framing
-                 rule). Rows only: the box carries facts, never prose (the
-                 reason the prose box went on 18.09.2026), so whatever explains
-                 a row stands under the card, in the section's free text.
+            <!-- The station frame (a card from 01.10.2026, the frame since
+                 03.10.2026), in both outcomes — the win and the non-win get
+                 the same form and the same weight (framing rule). Rows only:
+                 the box carries facts, never prose (the reason the prose box
+                 went on 18.09.2026), so whatever explains a row stands under
+                 the frame, in the section's free text.
 
-                 `id="ergebnis"` stays on the card: the anchor is in circulation.
+                 `id="ergebnis"` stays on the frame: the anchor is in circulation.
 
                  No Stellungnahmen count here: the section above IS that number
                  (18.09.2026). ME→RV is 1:n, so a split draft's further Vorlagen
                  get a row (4 of 132 in the GP-XXVIII corpus). -->
-            <!-- The card and the sentences that explain its verdict are one
-                 block: the section body spaces blocks, not the card's notes.
+            <!-- The frame and the sentences that explain its verdict are one
+                 block: the section body spaces blocks, not the frame's notes.
                `empty:hidden`: with neither, the block would still take a gap. -->
             <div class="empty:hidden">
               <FactList
                 v-if="rvFacts.length"
                 id="ergebnis"
                 :facts="rvFacts"
-                card
+                frame
               >
                 <template v-if="data.enactment" #value-rv>
                   <p>
@@ -1122,8 +1137,8 @@ const ministryLinks = computed(() => {
                 <!-- Where the Ressort says why — the document, never a cause
                      (framing rule): the Erläuterungen are the Ressort's reasons,
                      and whether a Stellungnahme stood behind a change is what a
-                     submitter looks for there. The one sentence left on the
-                     card, because it is an invitation, not a fact. -->
+                     submitter looks for there. The one sentence left in the
+                     frame, because it is an invitation, not a fact. -->
                 <template v-if="data.enactment" #value-begruendung>
                   <p v-if="reasoningValue">{{ reasoningValue }}</p>
                   <p v-if="vorlageOutcome.rvExplanations.value" :class="reasoningValue ? 'mt-1 text-ink-secondary' : ''">
@@ -1157,7 +1172,7 @@ const ministryLinks = computed(() => {
                   </p>
                 </template>
               </FactList>
-              <!-- No link: the card's first fact is the Vorlage. The counts
+              <!-- No link: the frame's first fact is the Vorlage. The counts
                    are the comparison's, ours (`useVorlageOutcome`). -->
               <SectionCredits
                 v-if="rvFacts.length"
@@ -1166,7 +1181,7 @@ const ministryLinks = computed(() => {
                 :own="rvCounted ? 'Zählung' : undefined"
                 :method="rvCounted ? '/so-funktionierts#vergleich' : undefined"
               />
-              <!-- What explains the card's verdict: what is open, the base rate
+              <!-- What explains the frame's verdict: what is open, the base rate
                    that puts the waiting in proportion, and how an Initiativantrag
                    was matched. -->
               <div v-if="!data.enactment && !data.active && (rvContext || noRvBaseRate || data.antragPath)" class="mt-4 space-y-2">
@@ -1203,6 +1218,19 @@ const ministryLinks = computed(() => {
               :data="rvStatements"
               :filing-open="windows.vorlage"
             />
+            <!-- The second window's door once more, at the end of its station
+                 (`FilingButton`). Outside RvStatements: that block is
+                 client-side and absent until loaded, the window is not.
+                 Where a Stellungnahme goes is neither a sentence nor a link
+                 here (03.10.2026): the consent to publication is asked on
+                 Parliament's form, and „kein eigenes Verfahren im Ausschuss"
+                 beside the button reads as „filing is pointless" — it stands
+                 on /so-funktionierts#parlament, next to its exception. -->
+            <div v-if="windows.vorlage && data.enactment">
+              <FilingButton :href="data.enactment.rvUrl">
+                Stellungnahme zur Regierungsvorlage abgeben
+              </FilingButton>
+            </div>
           </div>
         </section>
 
@@ -1221,8 +1249,8 @@ const ministryLinks = computed(() => {
         >
           <h2 id="parlament-heading" class="section-heading">Im Parlament</h2>
           <div class="mt-4 space-y-8">
-            <!-- The station card (01.10.2026): the outcome, who carried it, and
-                 the record. The vote stood under the comparison until then, cut
+            <!-- The station frame (a card from 01.10.2026, the frame since
+                 03.10.2026): the outcome, who carried it, and the record. The vote stood under the comparison until then, cut
                  off from the state it belongs to.
 
                  The outcome is the same function the bar's fact line uses
@@ -1240,7 +1268,7 @@ const ministryLinks = computed(() => {
                  effect. The row is missing rather than vaguer where upstream
                  kept no club list (`parseVote`). -->
             <div>
-              <FactList :facts="parliamentFacts" card>
+              <FactList :facts="parliamentFacts" frame>
                 <template v-if="committeeReport" #value-ausschuss>
                   Bericht <ExternalLink :href="committeeReport.url" class="link-inline">{{ committeeReport.label }}</ExternalLink>
                 </template>
@@ -1250,11 +1278,11 @@ const ministryLinks = computed(() => {
                   <template v-for="(motion, i) in plenaryAmendments.amendments" :key="motion.url"><template v-if="i > 0">{{ i === plenaryAmendments.amendments.length - 1 ? ' und ' : ', ' }}</template><ExternalLink :href="motion.url" class="link-inline">{{ motion.label }}</ExternalLink></template><template v-if="plenaryAmendments.session">, <ExternalLink :href="plenaryAmendments.session.url" class="link-inline">{{ plenaryAmendments.session.label }}</ExternalLink></template>
                 </template>
               </FactList>
-              <!-- Where the card's facts come from, under it in the credit line
+              <!-- Where the frame's facts come from, under it in the credit line
                    like every other box's source (02.10.2026). It stood inside the
-                   card as a footer row. -->
+                   box as a footer row. -->
               <SectionCredits :sources="PARLIAMENT_HISTORY_SOURCES" :marked="false">
-                <ExternalLink :href="data.enactment.rvUrl" class="link-quiet">Verlauf</ExternalLink>
+                <ExternalLink :href="data.enactment.rvUrl" class="link-muted">Verlauf</ExternalLink>
               </SectionCredits>
             </div>
             <!-- What the committee and the plenary did to the text, one step
@@ -1279,14 +1307,15 @@ const ministryLinks = computed(() => {
                  comparison names them (`parliamentDocuments`). The
                  Regierungsvorlage itself is not among them: the section above
                  offers it. -->
+            <!-- No border-t, as at the Entwurf's fold (03.10.2026). -->
             <details
               v-if="parliamentDocuments.length"
-              class="group border-t border-hairline"
+              class="group"
             >
               <summary
                 class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
               >
-                <h3 class="text-base font-semibold text-ink">
+                <h3 class="text-lg font-semibold text-ink">
                   Dokumente ({{ parliamentDocuments.length }})
                 </h3>
                 <UIcon
@@ -1320,7 +1349,7 @@ const ministryLinks = computed(() => {
         >
           <h2 id="bgbl-heading" class="section-heading">Im Bundesgesetzblatt</h2>
           <div class="mt-4 space-y-8">
-            <FactList :facts="[{ key: 'kundmachung', title: 'Kundgemacht' }]" card>
+            <FactList :facts="[{ key: 'kundmachung', title: 'Kundgemacht' }]" frame>
               <template #value-kundmachung>
                 <p v-if="data.enactment.bgblNumber">
                   <ExternalLink
