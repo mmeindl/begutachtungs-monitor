@@ -128,10 +128,22 @@ export function annexDroppedPagesNote(n: number): string | null {
 export function annexDoubtfulNote(laws: readonly string[], readFrom: ReadFrom): string | null {
   if (laws.length === 0) return null
   const named = laws.length === 1 ? `„${laws[0]}“` : laws.map((l) => `„${l}“`).join(', ')
-  // One clause since 30.09.2026, as at the withheld blocks.
-  const cause =
-    readFrom === 'pdf'
-      ? 'das kann an unserer Lesung des PDF liegen'
-      : 'die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen'
-  return `Auffällig viele Stellen weichen vom geltenden Text ab bei ${named} – ${cause}.`
+  return `Auffällig viele Stellen weichen vom geltenden Text ab bei ${named} – ${doubtfulCause(readFrom)}.`
+}
+
+// One clause since 30.09.2026, as at the withheld blocks.
+const doubtfulCause = (readFrom: ReadFrom) =>
+  readFrom === 'pdf'
+    ? 'das kann an unserer Lesung des PDF liegen'
+    : 'die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen'
+
+/**
+ * The same finding inside the law's own group (since 03.10.2026), where it
+ * needs no name: it stood above the whole comparison before and named the
+ * law, so a reader met it before knowing which §§ it was about — the move
+ * the „nicht geprüft" reasons made the same day. `annexDoubtfulNote` stays
+ * for a law no group carries.
+ */
+export function annexDoubtfulGroupNote(readFrom: ReadFrom): string {
+  return `Auffällig viele Stellen dieses Gesetzes weichen vom geltenden Text ab – ${doubtfulCause(readFrom)}.`
 }

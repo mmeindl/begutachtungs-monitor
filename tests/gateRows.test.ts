@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { annexParagraphKey } from '../server/utils/annex/annexText'
 import { checkAnnexRows, notRunReason } from '../server/utils/annex/gateRows'
-import { REASON_NO_ARTICLES, REASON_NO_SUCH_PARAGRAPH, REASON_TOO_SHORT, REASON_UNREADABLE_DESIGNATION, REASON_UNRESOLVED, type AnnexVerification } from '../server/utils/annex/verdict'
+import { REASON_NO_ARTICLES, REASON_NOTHING_TO_COMPARE, REASON_NO_SUCH_PARAGRAPH, REASON_TOO_SHORT, REASON_UNREADABLE_DESIGNATION, REASON_UNRESOLVED, type AnnexVerification } from '../server/utils/annex/verdict'
 import { comparisonRow as row } from './helpers/builders'
 
 // ---------------------------------------------------------------------------
@@ -113,6 +113,23 @@ describe('checkAnnexRows', () => {
     expect(checkAnnexRows(rows, verification({ verdicts })).uncheckedParagraphs).toBe(2)
     // A verdict of its own takes a § out of the count whichever way it went.
     expect(checkAnnexRows(rows, verification({ verdicts: { ...verdicts, '#§ 1.': 'verified', '#§ 4.': 'withheld' } })).uncheckedParagraphs).toBe(0)
+  })
+
+  it('owes no check for a § with nothing in force to compare — and says so per row (03.10.2026)', () => {
+    // „§ 20. (1) bis (5) …" against a new Abs. 6: a change, but its left
+    // column is elision alone. The page counted it „nicht geprüft" with its
+    // own copy of the rule; the server decides now, once.
+    const rows = [
+      row({ gld: '§ 1.', para: '§ 1.', current: 'alt', proposed: 'neu' }),
+      row({ gld: '§ 20.', para: '§ 20.', current: '§ 20. (1) bis (5) …', proposed: '(6) Neu.' }),
+      row({ gld: '§ 3.', para: '§ 3.', current: '', proposed: 'ganz neu', change: 'inserted' }),
+    ]
+    const out = checkAnnexRows(rows, verification({
+      verdicts: { '#§ 1.': 'unchecked', '#§ 20.': 'unchecked', '#§ 3.': 'unchecked' },
+      uncheckedReasons: { '#§ 1.': REASON_TOO_SHORT, '#§ 20.': REASON_NOTHING_TO_COMPARE, '#§ 3.': REASON_NOTHING_TO_COMPARE },
+    }))
+    expect(out.rows.map((r) => r.owesCheck)).toEqual([true, false, false])
+    expect(out.uncheckedParagraphs).toBe(1)
   })
 
   it('carries the verdict of the § a continuation row inherited', () => {

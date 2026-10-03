@@ -141,6 +141,15 @@ export interface TextComparisonRow {
    */
   check: 'verified' | 'unchecked' | 'withheld'
   /**
+   * Whether the row owes a check at all: a displayed change to text in force
+   * (`isDisplayedChange`) in a § that shows comparable text. A new § and a §
+   * whose left column is elision alone owe none. Decided on the server only —
+   * the page counts „nicht geprüft" as `check === 'unchecked' && owesCheck`.
+   * Until 03.10.2026 the page kept its own copy of the rule, which had
+   * drifted: it counted elided rows the server never owed (§12.41).
+   */
+  owesCheck: boolean
+  /**
    * Which check refused the row's §, present only on a withheld row. The
    * notice that replaces the text stands inside the §, so it has to be able
    * to name what was found *there* rather than one sentence for all three

@@ -24,6 +24,7 @@ import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, UNCHECKED_PILL, badgeCounts,
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { absaetze } from '~/utils/absaetze'
 import {
+  annexDoubtfulGroupNote,
   annexDoubtfulNote,
   annexDroppedPagesNote,
   annexUncheckedNote,
@@ -227,15 +228,10 @@ function paragraphKeyOf(row: TextComparisonRow, index: number): string {
   return row.gld ?? row.para ?? `#${index}`
 }
 
-/** The server's „a check is owed" rule (`isDisplayedChange`): a change to
- *  text in force. A new § has none, so it owes no check and is no gap. */
-function owesCheck(row: TextComparisonRow): boolean {
-  return row.current.length > 0 && (row.change === 'changed' || row.change === 'removed')
-}
-
-/** Owed a check and did not get one — „nicht geprüft". */
+/** Owed a check and did not get one — „nicht geprüft". Whether a check is
+ *  owed is the server's call (`owesCheck`, `gateRows`), never re-derived here. */
 function isUnchecked(row: TextComparisonRow): boolean {
-  return row.check === 'unchecked' && owesCheck(row)
+  return row.check === 'unchecked' && row.owesCheck
 }
 
 /**
@@ -513,9 +509,14 @@ const annexTag = computed(() => {
   return annex && mixedPublishers(sources.value) ? ` (${PUBLISHER_NAME_DE[annex.publisher]})` : ''
 })
 const droppedPagesNote = computed(() => annexDroppedPagesNote(data.value?.droppedPages ?? 0))
-const doubtfulNote = computed(() =>
-  annexDoubtfulNote(data.value?.verification?.doubtfulLaws ?? [], data.value?.readFrom ?? null),
-)
+/** The laws whose §§ fail in a cluster — said inside each law's group. */
+const doubtfulLaws = computed(() => new Set(data.value?.verification?.doubtfulLaws ?? []))
+const doubtfulGroupNote = computed(() => annexDoubtfulGroupNote(data.value?.readFrom ?? null))
+/** Above the comparison only for a named law no group carries, so nothing is lost. */
+const doubtfulNote = computed(() => {
+  const keys = new Set(groups.value.map((g) => g.key))
+  return annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !keys.has(l)), data.value?.readFrom ?? null)
+})
 const withheldText = annexWithheldText
 function withheldBlame(cause: AnnexWithheldCause | null): string | null {
   return annexWithheldBlame(cause, data.value?.readFrom ?? null)
@@ -602,6 +603,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           :open="groupOpen(g.key)"
           @toggle="toggleGroup(g.key)"
         >
+          <p v-if="doubtfulLaws.has(g.key)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ doubtfulGroupNote }}</p>
           <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-4 py-3 last:border-b-0">
             <!-- The paragraph as law prints it: designation and title on one
                  line, once, above its Absätze — and no rule between the two,

@@ -9,7 +9,7 @@ import { summarizeComparison, type ComparisonRow, type ComparisonStats } from '.
 import type { AnnexWithheldCause, TextComparisonRow } from '../../../shared/types'
 import { annexParagraphKey } from './annexText'
 import { isDisplayedChange } from './coverage'
-import { REASON_UNREADABLE_DESIGNATION, type AnnexVerification } from './verdict'
+import { REASON_NOTHING_TO_COMPARE, REASON_UNREADABLE_DESIGNATION, type AnnexVerification } from './verdict'
 
 /**
  * Why the check produced no verdict at all, draft-wide — null when it
@@ -88,31 +88,40 @@ export interface CheckedComparison {
  */
 export function checkAnnexRows(rows: readonly ComparisonRow[], verification: AnnexVerification): CheckedComparison {
   let rowsWithoutParagraph = 0
+  /**
+   * A § whose displayed changes carry no comparable word of text in force —
+   * every change an insertion, or the left column elision alone („§ 20. (1)
+   * bis (5) …"). It shows a change but owes no check: there is nothing in
+   * force to hold it against (`REASON_NOTHING_TO_COMPARE`, §12.41).
+   */
+  const nothingOwed = (key: string) => verification.uncheckedReasons[key] === REASON_NOTHING_TO_COMPARE
   /** §§ the page shows at least one change for — the only ones a check is owed. */
   const showsChange = new Set<string>()
   for (const row of rows) {
     if (row.kind !== 'pair' || !isDisplayedChange(row)) continue
     const para = row.gld ?? row.para
-    if (para !== null) showsChange.add(annexParagraphKey(row.law, para))
+    if (para !== null && !nothingOwed(annexParagraphKey(row.law, para))) showsChange.add(annexParagraphKey(row.law, para))
   }
   const out: TextComparisonRow[] = rows.map((row) => {
     // An Artikel heading is a divider, not law text: nothing to check, and
     // nothing to vouch for either.
-    if (row.kind !== 'pair') return { ...row, check: 'unchecked' as const }
+    if (row.kind !== 'pair') return { ...row, check: 'unchecked' as const, owesCheck: false }
     const para = row.gld ?? row.para
     if (para === null) {
-      if (isDisplayedChange(row)) rowsWithoutParagraph++
-      return { ...row, check: 'unchecked' as const, uncheckedReason: REASON_UNREADABLE_DESIGNATION }
+      const owes = isDisplayedChange(row)
+      if (owes) rowsWithoutParagraph++
+      return { ...row, check: 'unchecked' as const, owesCheck: owes, uncheckedReason: REASON_UNREADABLE_DESIGNATION }
     }
     const key = annexParagraphKey(row.law, para)
     const verdict = verification.verdicts[key] ?? 'unchecked'
+    const owesCheck = isDisplayedChange(row) && !nothingOwed(key)
     // The reason travels with the row for the same cause as the withheld
     // one below: the page says it per law, and only the rows know their law.
-    if (verdict === 'unchecked') return { ...row, check: verdict, uncheckedReason: verification.uncheckedReasons[key] ?? null }
-    if (verdict !== 'withheld') return { ...row, check: verdict }
+    if (verdict === 'unchecked') return { ...row, check: verdict, owesCheck, uncheckedReason: verification.uncheckedReasons[key] ?? null }
+    if (verdict !== 'withheld') return { ...row, check: verdict, owesCheck }
     // The cause travels with the row, because the notice that replaces the
     // text stands inside the § and has to name what was found there.
-    return { ...row, current: '', proposed: '', segments: null, check: 'withheld' as const, withheldCause: causeOf(verification, key) }
+    return { ...row, current: '', proposed: '', segments: null, check: 'withheld' as const, owesCheck, withheldCause: causeOf(verification, key) }
   })
   const withheldByCause: Record<AnnexWithheldCause, number> = { standing: 0, alreadyStanding: 0, notInDraft: 0 }
   for (const [key, verdict] of Object.entries(verification.verdicts)) {

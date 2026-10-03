@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  annexDoubtfulGroupNote,
   annexDoubtfulNote,
   annexDroppedPagesNote,
   annexUncheckedNote,
@@ -75,5 +76,12 @@ describe('annexDoubtfulNote', () => {
     expect(annexDoubtfulNote(['A', 'B'], 'table')).toBe(
       'Auffällig viele Stellen weichen vom geltenden Text ab bei „A“, „B“ – die Beilage dürfte dort einen anderen Stand des Gesetzes zugrunde legen.',
     )
+  })
+})
+
+describe('annexDoubtfulGroupNote — the cluster finding inside its own law (03.10.2026)', () => {
+  it('needs no name and keeps the cause per path', () => {
+    expect(annexDoubtfulGroupNote('pdf')).toBe('Auffällig viele Stellen dieses Gesetzes weichen vom geltenden Text ab – das kann an unserer Lesung des PDF liegen.')
+    expect(annexDoubtfulGroupNote('table')).toContain('die Beilage dürfte dort einen anderen Stand')
   })
 })
