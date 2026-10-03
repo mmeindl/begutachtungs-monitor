@@ -658,18 +658,18 @@ export function stations(d: DraftDetail, ctx: StationContext = {}, today: string
                 `seit ${formatDateDe(e.bundesratDecidedAt ?? e.decidedAt ?? '')} nicht kundgemacht`,
               )
             : outcome === null
-          ? []
-          : outcome === 'unchanged'
-            ? ['Text unverändert beschlossen']
-            : outcome === 'rejected'
-              ? ['abgelehnt']
-              : outcome === 'withdrawn'
-                ? ['zurückgezogen']
-                : outcome === 'recommitted'
-                  ? ['an den Ausschuss zurückverwiesen']
-                  : outcome === 'decided'
-                    ? kept('beschlossen', amended)
-                    : kept(running, amended)),
+              ? []
+              : outcome === 'unchanged'
+                ? ['Text unverändert beschlossen']
+                : outcome === 'rejected'
+                  ? ['abgelehnt']
+                  : outcome === 'withdrawn'
+                    ? ['zurückgezogen']
+                    : outcome === 'recommitted'
+                      ? ['an den Ausschuss zurückverwiesen']
+                      : outcome === 'decided'
+                        ? kept('beschlossen', amended)
+                        : kept(running, amended)),
         voteLine,
       ),
       // Only where a changed text is ON THIS PAGE — `lastParliamentStation`,
