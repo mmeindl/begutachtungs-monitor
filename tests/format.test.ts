@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bgblShort, daysUntil, endorsementUnit, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe, todayIso } from '../shared/utils/format'
+import { bgblLong, bgblShort, daysUntil, endorsementUnit, formatNumberDe, fristLabel, moreLabelDe, shownLabelDe, todayIso } from '../shared/utils/format'
 
 describe('shownLabelDe', () => {
   it('states position only — the remainder is not spelled out', () => {
@@ -113,6 +113,23 @@ describe('bgblShort', () => {
   it('shortens the long spelling and leaves the short one alone', () => {
     expect(bgblShort('Bundesgesetzblatt I Nr. 69/2026')).toBe('BGBl. I Nr. 69/2026')
     expect(bgblShort('BGBl. II Nr. 50/2026')).toBe('BGBl. II Nr. 50/2026')
+  })
+})
+
+/* The inverse, for a number RIS supplies: stored as Parliament writes it. */
+describe('bgblLong', () => {
+  it('spells the short form out and leaves the long one alone', () => {
+    expect(bgblLong('BGBl. I Nr. 65/2025')).toBe('Bundesgesetzblatt I Nr. 65/2025')
+    expect(bgblLong('Bundesgesetzblatt I Nr. 65/2025')).toBe('Bundesgesetzblatt I Nr. 65/2025')
+  })
+
+  it('round-trips with bgblShort both ways', () => {
+    for (const short of ['BGBl. I Nr. 69/2026', 'BGBl. II Nr. 50/2026', 'BGBl. III Nr. 7/2025']) {
+      expect(bgblShort(bgblLong(short))).toBe(short)
+    }
+    for (const long of ['Bundesgesetzblatt I Nr. 69/2026', 'Bundesgesetzblatt II Nr. 50/2026']) {
+      expect(bgblLong(bgblShort(long))).toBe(long)
+    }
   })
 })
 

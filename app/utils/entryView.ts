@@ -40,13 +40,16 @@
 import type {
   ClosedOutcome,
   DraftChain,
+  DraftStation,
   DraftSummary,
   OpenVorlage,
   RisConsultation,
 } from '#shared/types'
 import { aliasesFor } from '#shared/utils/draftAliases'
-import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival } from './deadlines'
-import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel } from '#shared/utils/format'
+import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
+import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWithinNewWindow } from './deadlines'
+import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
+import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
 
 /**
@@ -114,7 +117,12 @@ export interface EntryView {
    * Wochen" (`openFristNote`).
    */
   note: string | null
-  isNew: boolean
+  /**
+   * The „Neu" chip's text, null for no chip: „Neu: <Station>" for the
+   * station the row reached this week, from „Neu: Begutachtung" to „Neu:
+   * Bundesgesetzblatt" (`stationNewLabel`).
+   */
+  newLabel: string | null
   participation: Participation
   state: EntryState
 }
@@ -182,7 +190,7 @@ function endedState(deadline: string | null, label: string): EntryState {
 }
 
 /**
- * What became of a Ministerialentwurf — from the station card (`DraftChain`)
+ * What became of a Ministerialentwurf — from the stage record (`DraftChain`)
  * or from the end of the chain (`ClosedOutcome`), which say the same thing in
  * two types.
  *
@@ -222,9 +230,54 @@ function outcomeState(
   return endedState(deadline, 'Bisher keine Regierungsvorlage')
 }
 
+/**
+ * The open window at the Bundesrat (03.10.2026): the Nationalrat has
+ * decided, the form is still open — it is until the end of the
+ * parliamentary procedure (§12.26). The parallel of „zur Vorlage seit …",
+ * dated by the step the text is at: its arrival in the Bundesrat, or failing
+ * that the Nationalrat's Beschluss.
+ */
+function bundesratWindowState(chain: DraftChain): EntryState {
+  return {
+    label: 'Stellungnahme möglich',
+    detail: chain.bundesratArrivedAt
+      ? `im Bundesrat seit ${formatDateDe(chain.bundesratArrivedAt)}`
+      : chain.decidedAt
+        ? `Nationalrat hat beschlossen am ${formatDateDe(chain.decidedAt)}`
+        : null,
+    tone: 'neutral',
+    actionable: true,
+  }
+}
+
 /** The chain's state, including the one case where it is still actionable. */
-function chainState(chain: DraftChain, deadline: string | null): EntryState {
-  if (chain.filingOpen) return openVorlageState(chain.rvDate)
+function chainState(chain: DraftChain, deadline: string | null, today: string): EntryState {
+  if (chain.filingOpen) {
+    return chain.station === 'parlament' ? bundesratWindowState(chain) : openVorlageState(chain.rvDate)
+  }
+  /* Decided and not promulgated (§12.33, Nachtrag 03.10.2026) — Parliament's
+   * stage or the calendar past every measured Kundmachung, by the one rule
+   * the spine reads too (`promulgationState`). Dated, never explained: the
+   * cause belongs to the detail page, and only where Parliament gives one.
+   * A successor that reached the Bundesgesetzblatt is not this case — that
+   * chain stands at `bgbl`, with the Antrag in zone 2. */
+  if (chain.station === 'parlament' && promulgationState(chain, today)) {
+    const date = chain.notPromulgated?.date ?? chain.bundesratDecidedAt ?? chain.decidedAt
+    return {
+      label: 'Beschlossen, nicht kundgemacht',
+      detail: date ? formatDateDe(date) : null,
+      tone: 'inactive',
+      actionable: false,
+    }
+  }
+  /* Decided, and line 2 is a DATE here, not a Fundstelle (03.10.2026): the
+   * Beschluss has no Fundstelle on the row — its BNR number is not in the
+   * chain — and the day it fell is what pins it down. Without a readable
+   * Beschluss stage (a recommitted Vorlage, an older record) the station
+   * keeps its old words and the Vorlage's citation. */
+  if (chain.station === 'parlament' && chain.decidedAt) {
+    return { label: 'Im Nationalrat beschlossen', detail: formatDateDe(chain.decidedAt), tone: 'inactive', actionable: false }
+  }
   if (chain.station === 'parlament') {
     return { label: 'Im Parlament behandelt', detail: chain.rvCitation, tone: 'inactive', actionable: false }
   }
@@ -238,6 +291,80 @@ function chainState(chain: DraftChain, deadline: string | null): EntryState {
     return { label: 'Ohne Beschluss – GP beendet', detail: chain.rvCitation, tone: 'inactive', actionable: false }
   }
   return outcomeState(chain, deadline)
+}
+
+/* ------------------------------------------------------------------ *
+ * The „Neu" mark
+ * ------------------------------------------------------------------ */
+
+/**
+ * „Neu: <Station>" when a row's CURRENT station was reached inside the
+ * window (`isWithinNewWindow`), else null — the one function every label
+ * comes from.
+ *
+ * WHY EVERY STATION (03.10.2026): the weekly reader's question is not only
+ * which Begutachtung began, but which Vorlage arrived and what became law
+ * this week. A win on the list has to be as visible as a shelving (framing
+ * rule, docs/architecture.md §4), and a Kundmachung this week is one.
+ *
+ * ONE RULE, NO EXCEPTION: the chip names the station reached, the kind label
+ * in zone 2 names the document. So the Begutachtung says „Neu: Begutachtung"
+ * too, and a Vorlage row reads „Regierungsvorlage 625 d.B. · Neu:
+ * Regierungsvorlage" — the repetition is the accepted price of a chip that
+ * never means something different from one row to the next. A bare „Neu"
+ * stood on the Begutachtung and the open Vorlage until the same day.
+ *
+ * The chip only ever names the current station: a draft whose Vorlage
+ * arrived on Monday and was promulgated on Friday says „Neu:
+ * Bundesgesetzblatt", not both. The words are the tabs' (`DRAFT_STATION_LABEL`),
+ * so the chip and the tab that filters for it say the same thing.
+ */
+function stationNewLabel(station: DraftStation | null, date: string | null | undefined): string | null {
+  if (!station || !isWithinNewWindow(date)) return null
+  return `Neu: ${DRAFT_STATION_LABEL[station]}`
+}
+
+/**
+ * The Begutachtung's own event, its start — marked only while the window
+ * runs (`isNewArrival`): „neu" on a closed Verfahren would mark the one
+ * thing nobody can act on any more.
+ */
+function begutachtungNewLabel(startedAt: string | null | undefined, active: boolean): string | null {
+  return isNewArrival(startedAt, active) ? stationNewLabel('begutachtung', startedAt) : null
+}
+
+/** The date a chain reached its current station — one per station, by source. */
+function chainStationDate(chain: DraftChain): string | null | undefined {
+  switch (chain.station) {
+    case 'begutachtung':
+      // A chain belongs to a closed draft, and a closed Begutachtung is
+      // never marked (`begutachtungNewLabel`).
+      return null
+    case 'rv':
+      return chain.rvDate
+    case 'parlament':
+      return chain.decidedAt
+    case 'bgbl':
+      return chain.bgblDate
+  }
+}
+
+/** What the homepage's outcome rows say about a draft — `ClosedOutcome`'s own half. */
+type OutcomeFacts = Pick<ClosedOutcome, 'rvCitation' | 'bgblNumber' | 'rvDate' | 'bgblDate'>
+
+/**
+ * The mark on a Ministerialentwurf row, from the same three sources its
+ * state is read from: the running Frist, the homepage's outcome, the chain.
+ * An outcome without dates — the ranked section reads none — carries no
+ * mark, which is what absent means there: not read.
+ */
+function draftNewLabel(draft: DraftSummary, outcome?: OutcomeFacts | null): string | null {
+  if (draft.active) return begutachtungNewLabel(draft.arrivedAt, true)
+  if (outcome) {
+    if (outcome.bgblNumber) return stationNewLabel('bgbl', outcome.bgblDate)
+    return outcome.rvCitation ? stationNewLabel('rv', outcome.rvDate) : null
+  }
+  return draft.chain ? stationNewLabel(draft.chain.station, chainStationDate(draft.chain)) : null
 }
 
 /* ------------------------------------------------------------------ *
@@ -255,14 +382,14 @@ function chainState(chain: DraftChain, deadline: string | null): EntryState {
  */
 export function viewOfDraft(
   draft: DraftSummary,
-  outcome?: { rvCitation: string | null; bgblNumber: string | null } | null,
+  outcome?: OutcomeFacts | null,
 ): EntryView {
   const state = draft.active
     ? openState(draft.deadline, true)
     : outcome
       ? outcomeState(outcome, draft.deadline)
       : draft.chain
-        ? chainState(draft.chain, draft.deadline)
+        ? chainState(draft.chain, draft.deadline, todayIso())
         : endedState(draft.deadline, 'Begutachtung abgeschlossen')
 
   return {
@@ -284,7 +411,7 @@ export function viewOfDraft(
       !draft.active && draft.chain?.antragCitation
         ? `als Initiativantrag ${draft.chain.antragCitation}`
         : openFristNote(draft.arrivedAt, draft.deadline, draft.active),
-    isNew: isNewArrival(draft.arrivedAt, draft.active),
+    newLabel: draftNewLabel(draft, outcome),
     participation: { kind: 'count', count: draft.statementCount },
     state,
   }
@@ -330,7 +457,13 @@ export function viewOfRis(c: RisConsultation): EntryView {
     coMinistries: [],
     alias: null,
     note: openFristNote(c.startedAt, c.deadline, c.active),
-    isNew: isNewArrival(c.startedAt, c.active),
+    // Its two events: the Begutachtung, and — the one later station such a
+    // record can reach — the Kundmachung, dated by RIS's Ausgabedatum.
+    newLabel: c.active
+      ? begutachtungNewLabel(c.startedAt, true)
+      : c.outcome?.state === 'kundgemacht' && c.outcome.nummer
+        ? stationNewLabel('bgbl', c.outcome.datum)
+        : null,
     participation: { kind: 'unpublished' },
     /**
      * Zone 4 no longer necessarily ends with the Begutachtung.
@@ -389,7 +522,10 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
     coMinistries: [],
     alias: null,
     note: c.kind === 'none' ? 'ohne Begutachtung' : null,
-    isNew: false,
+    // „Neu: Regierungsvorlage" although zone 2 already says
+    // „Regierungsvorlage": the chip names the station, the kind label the
+    // document, and the rule has no exception (`stationNewLabel`).
+    newLabel: stationNewLabel('rv', v.date || null),
     participation:
       v.statementCount === null ? { kind: 'unavailable' } : { kind: 'count', count: v.statementCount },
     state: openVorlageState(v.date || null),

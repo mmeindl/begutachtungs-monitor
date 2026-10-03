@@ -59,7 +59,7 @@ vi.mock('../server/utils/ris/risOnly', () => ({
 const { getRisConsultation, getRisOnlyForGp } = vi.mocked(
   await import('../server/utils/ris/risOnly'),
 )
-const { getBgblOutcome, getBgblOutcomesForGp, getBgblTeil2Year } = await import(
+const { findBgblIForVorlage, getBgblOutcome, getBgblOutcomesForGp, getBgblTeil2Year } = await import(
   '../server/utils/ris/bgblService'
 )
 
@@ -74,6 +74,9 @@ interface Kundmachung {
   titel: string
   stelle: string
   teil?: string
+  /** A law's parliamentary key — Teil I only (`bgblVorlage.ts`). */
+  gp?: string
+  rv?: string | string[]
 }
 
 /** One `OgdDocumentReference` in the shape `mapRecord` reads it. */
@@ -85,7 +88,13 @@ function reference(k: Kundmachung) {
         Bundesrecht: {
           Kurztitel: k.titel,
           Titel: k.titel,
-          BgblAuth: { Teil: k.teil ?? 'Teil2', Bgblnummer: k.nummer, Ausgabedatum: k.datum },
+          BgblAuth: {
+            Teil: k.teil ?? 'Teil2',
+            Bgblnummer: k.nummer,
+            Ausgabedatum: k.datum,
+            Gesetzgebungsperiode: k.gp,
+            Regierungsvorlage: k.rv === undefined ? undefined : { item: k.rv },
+          },
         },
       },
     },
@@ -364,5 +373,51 @@ describe('der Stand einer ganzen Periode', () => {
 
     pin('2026-07-01')
     expect((await getBgblOutcomesForGp('XXVIII')).BEGUT_1?.state).toBe('ausstehend')
+  })
+})
+
+/**
+ * The second source for a law's BGBl number (03.10.2026): where Parliament
+ * links none, RIS by period and Vorlage. What the service adds to the pure
+ * join is the calendar — every Jahrgang from the Beschluss to the running
+ * one — and the spelling: Parliament's long form, RIS's document page.
+ */
+describe('die Kundmachung einer Regierungsvorlage', () => {
+  const nr69: Kundmachung = {
+    id: 'BGBLA_2026_I_69',
+    nummer: 'BGBl. I Nr. 69/2026',
+    datum: '2026-07-29',
+    titel: 'Sterbeverfügungsgesetz-Novelle 2026',
+    stelle: '',
+    teil: 'Teil1',
+    gp: 'XXVIII',
+    rv: '525',
+  }
+
+  it('findet sie über Periode und Vorlage, in der Schreibweise des Parlaments', async () => {
+    pin('2026-10-03')
+    jahrgang.set(2026, [nr69])
+    expect(await findBgblIForVorlage('XXVIII', 525, '2026-07-07')).toEqual({
+      number: 'Bundesgesetzblatt I Nr. 69/2026',
+      datum: '2026-07-29',
+      url: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_I_69',
+    })
+    expect(viaCache).toContain('bgbl-teil1-jahrgang-laufend')
+  })
+
+  it('fragt jeden Jahrgang vom Beschluss bis heute', async () => {
+    pin('2026-10-03')
+    jahrgang.set(2026, [nr69])
+    expect((await findBgblIForVorlage('XXVIII', 525, '2025-12-10'))?.number).toBe('Bundesgesetzblatt I Nr. 69/2026')
+    expect(yearsAsked()).toEqual([2025, 2026])
+  })
+
+  /* 80 d.B.: no Kundmachung names it, and a law of the same period with
+   * another Vorlage — or a Teil-II record — is not its Kundmachung. */
+  it('findet nichts, wo keine Kundmachung die Vorlage nennt', async () => {
+    pin('2026-10-03')
+    jahrgang.set(2025, [{ ...nr69, id: 'BGBLA_2025_I_65', nummer: 'BGBl. I Nr. 65/2025', rv: undefined }])
+    jahrgang.set(2026, [nr69, { ...nr69, id: 'BGBLA_2026_II_80', teil: 'Teil2', rv: '80' }])
+    expect(await findBgblIForVorlage('XXVIII', 80, '2025-07-10')).toBeNull()
   })
 })

@@ -22,6 +22,9 @@ function record(over: Partial<BgblRecord> = {}): BgblRecord {
     titel:
       'Verordnung der Bundesministerin für Arbeit, Soziales, Gesundheit, Pflege und Konsumentenschutz, mit der die Honigverordnung geändert wird',
     stelle: 'BMASGPK (Bundesministerium für Arbeit, Soziales, Gesundheit, Pflege und Konsumentenschutz)',
+    gp: null,
+    regierungsvorlagen: [],
+    datumNationalrat: null,
     ...over,
   }
 }

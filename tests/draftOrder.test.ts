@@ -231,7 +231,7 @@ describe('rowOrderKey', () => {
   })
 
   it('dates a Regierungsvorlage by its Einlangen and claims no running Frist', () => {
-    // Its form closes with the vote, so there is no Frist to be urgent about.
+    // Its form closes with the end of the procedure, so there is no Frist to be urgent about.
     expect(rowOrderKey(vorlageRow('594 d.B.', '2026-09-11'))).toEqual({
       active: false,
       deadline: null,

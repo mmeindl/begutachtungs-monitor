@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   readCommitteeConsultation,
+  findBundesratArrival,
+  findBundesratDecisionDate,
   findCommitteeReport,
+  findHouseDecisionDate,
+  findNoPromulgation,
   findPlenaryAmendments,
   amendedStationsOf,
   bgblOrderKey,
@@ -670,5 +674,106 @@ describe('findPlenaryAmendments (02.10.2026)', () => {
   it('keeps the session where no motion was adopted, and is null without a plenary phase', () => {
     expect(findPlenaryAmendments(plenary([agenda, motion(20, 'abgelehnt'), third]))).toEqual({ session, amendments: [] })
     expect(findPlenaryAmendments([{ name: 'Ausschussberatungen NR', stages: [] }])).toBeNull()
+  })
+})
+
+describe('findHouseDecisionDate (03.10.2026)', () => {
+  // 525 d.B. of GP XXVIII as its Verlauf records it, shortened — the
+  // Bundesrat's own „Beschluss im Bundesrat" a week later included.
+  const einlangen = { name: 'Einlangen NR', stages: [{ date: '10.06.2026', text: 'Einlangen im Nationalrat' }] }
+  const decision = { date: '07.07.2026', text: 'Beschluss im Nationalrat <a href="/gegenstand/XXVIII/BNR/192">192/BNR</a>' }
+  const nrPlenary = (stages: { date: string; text: string }[]) => ({ name: 'Plenarberatungen NR', stages })
+  const nrStages = [
+    { date: '07.07.2026', text: '87. Sitzung des Nationalrates: Gesetzesvorschlag in dritter Lesung <b>angenommen</b>' },
+    decision,
+    { date: '09.07.2026', text: 'Übermittlung des Beschlusses an den Bundesrat' },
+  ]
+  const brPlenary = {
+    name: 'Plenarberatungen BR',
+    stages: [{ date: '15.07.2026', text: 'Beschluss im Bundesrat <a href="/gegenstand/XXVIII/BNR/192">192/BNR</a>' }],
+  }
+
+  it("reads the day of the Nationalrat's decision", () => {
+    expect(findHouseDecisionDate([einlangen, nrPlenary(nrStages), brPlenary])).toBe('2026-07-07')
+  })
+
+  it('is null without the plenary phase, or without the decision stage', () => {
+    expect(findHouseDecisionDate([einlangen])).toBeNull()
+    expect(findHouseDecisionDate([einlangen, nrPlenary(nrStages.filter((s) => s !== decision))])).toBeNull()
+    expect(findHouseDecisionDate(null)).toBeNull()
+  })
+
+  it("does not take the Bundesrat's decision for the Nationalrat's", () => {
+    expect(findHouseDecisionDate([einlangen, brPlenary])).toBeNull()
+  })
+})
+
+/* 80 d.B. of GP XXVIII as its Verlauf records it, shortened and without
+ * names: decided in both chambers, then not promulgated, and Parliament
+ * says why and what came instead (read 03.10.2026). */
+const brArrival = {
+  name: 'Einlangen BR',
+  stages: [
+    { date: '11.07.2025', text: 'Einlangen im Bundesrat (Frist: 05.09.2025)' },
+    { date: '11.07.2025', text: 'Mitwirkungsrecht des Bundesrates' },
+  ],
+}
+const brPlenary80 = {
+  name: 'Plenarberatungen BR',
+  stages: [
+    { date: '17.07.2025', text: 'Auf der Tagesordnung der <a href="/gegenstand/BR/BRSITZ/980">980. Sitzung</a>' },
+    { date: '17.07.2025', text: '980. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b>' },
+    { date: '17.07.2025', text: 'Beschluss im Bundesrat <a href="/gegenstand/XXVIII/BNR/48">48/BNR</a>' },
+    {
+      date: '24.09.2025',
+      text: 'Keine Kundmachung des Gesetzesbeschlusses aufgrund eines Formalfehlers sowie Einbringung eines neuen Antrages (416/A) (<a href="/gegenstand/XXVIII/GO/615">615/GO</a>)',
+    },
+  ],
+}
+/* XXVII/1435 d.B.: the same procedure up to the Bundesrat's Beschluss, and
+ * nothing after it — never promulgated, and the record does not say so. */
+const brPlenary1435 = {
+  name: 'Plenarberatungen BR',
+  stages: [
+    { date: '29.06.2022', text: '942. Sitzung: Antrag, keinen Einspruch zu erheben, <b>angenommen</b><br>Einhellig' },
+    { date: '29.06.2022', text: 'Beschluss im Bundesrat <a href="/gegenstand/XXVII/BNR/550">550/BNR</a>' },
+  ],
+}
+const nrPlenary80 = {
+  name: 'Plenarberatungen NR',
+  stages: [{ date: '10.07.2025', text: 'Beschluss im Nationalrat <a href="/gegenstand/XXVIII/BNR/48">48/BNR</a>' }],
+}
+
+describe('findBundesratArrival / findBundesratDecisionDate (03.10.2026)', () => {
+  it('reads the Bundesrat half of the procedure', () => {
+    const phases = [nrPlenary80, brArrival, brPlenary80]
+    expect(findBundesratArrival(phases)).toBe('2025-07-11')
+    expect(findBundesratDecisionDate(phases)).toBe('2025-07-17')
+  })
+
+  it("is null before the Bundesrat has it, and never takes the Nationalrat's stages", () => {
+    expect(findBundesratArrival([nrPlenary80])).toBeNull()
+    expect(findBundesratDecisionDate([nrPlenary80])).toBeNull()
+    expect(findBundesratDecisionDate(null)).toBeNull()
+  })
+})
+
+describe('findNoPromulgation (03.10.2026)', () => {
+  it('reads the stage, the stated cause and the stated successor', () => {
+    expect(findNoPromulgation([nrPlenary80, brArrival, brPlenary80], 'XXVIII')).toEqual({
+      date: '2025-09-24',
+      reason: 'formalfehler',
+      successorAntrag: { gp: 'XXVIII', inr: 416, citation: '416/A' },
+    })
+  })
+
+  it('names no cause and no successor the stage does not name', () => {
+    const bare = { name: 'Plenarberatungen BR', stages: [{ date: '01.10.2025', text: 'Keine Kundmachung des Gesetzesbeschlusses' }] }
+    expect(findNoPromulgation([bare], 'XXVIII')).toEqual({ date: '2025-10-01', reason: 'unbekannt', successorAntrag: null })
+  })
+
+  it('is null where the record says nothing — XXVII/1435 d.B.', () => {
+    expect(findNoPromulgation([brArrival, brPlenary1435], 'XXVII')).toBeNull()
+    expect(findNoPromulgation(undefined, 'XXVII')).toBeNull()
   })
 })

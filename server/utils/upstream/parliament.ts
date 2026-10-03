@@ -59,7 +59,8 @@ export interface GegenstandResponse {
     /**
      * What the house did with the item. `number` is list 101's `Status`
      * column as a number (1 = Einlangen im Nationalrat, 2 = in Behandlung,
-     * 3 = zurückverwiesen, 5 = erledigt), `description` the free-text
+     * 3 = zurückverwiesen, 4 = beim Bundesrat — inferred from four cases on
+     * 03.10.2026, `STATUS_AT_BUNDESRAT` —, 5 = erledigt), `description` the free-text
      * record of it, with markup and the voting lines
      * (`docs/api-exploration.md` §101). Upstream prose: read by the
      * classifier in `app/utils/spine.ts`, never printed.

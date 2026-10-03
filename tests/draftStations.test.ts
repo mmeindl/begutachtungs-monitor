@@ -36,6 +36,31 @@ describe('stationFor', () => {
     expect(stationFor('Bundesgesetzblatt I Nr. 81/2026', '3')).toBe('bgbl')
   })
 
+  /* The Beschluss is the fact the status stood for (03.10.2026): a Vorlage
+   * the Nationalrat has decided is at Parlament while the Bundesrat still
+   * has it — list 101 then says „4" (590 d.B.), which nothing mapped
+   * until the same day; the Beschluss decides even without it. */
+  it('puts a Vorlage the Nationalrat has decided at Parlament, whatever the status', () => {
+    expect(stationFor(null, '4', '2026-09-23')).toBe('parlament')
+    expect(stationFor(null, '2', '2026-09-23')).toBe('parlament')
+    expect(stationFor('Bundesgesetzblatt I Nr. 81/2026', '4', '2026-09-23')).toBe('bgbl')
+  })
+
+  it('stays at rv without a Beschluss and without a status that means one', () => {
+    expect(stationFor(null, '2', null)).toBe('rv')
+    expect(stationFor(null, '2', undefined)).toBe('rv')
+  })
+
+  /* „4" is inferred from four cases (539, 589, 590, 592 d.B. on 03.10.2026:
+   * each decided by the Nationalrat on 23.09., each with the Bundesrat) and
+   * documented nowhere upstream. It puts a Vorlage at Parlament even where
+   * the Beschluss stage could not be read. */
+  it('puts a Vorlage at the Bundesrat at Parlament without a readable Beschluss', () => {
+    expect(stationFor(null, '4')).toBe('parlament')
+    expect(stationFor(null, '4', null)).toBe('parlament')
+    expect(stationFor('Bundesgesetzblatt I Nr. 81/2026', '4')).toBe('bgbl')
+  })
+
   it('falls back to the weakest claim when the house status is unknown', () => {
     /* The Vorlage exists — that came from the draft's own stage record. What
      * parliament did with it is what we failed to learn, so the row may not

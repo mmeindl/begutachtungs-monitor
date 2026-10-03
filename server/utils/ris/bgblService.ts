@@ -17,13 +17,14 @@
  * the kind of rule that still changes.
  */
 import type { BgblOutcome, RisConsultation } from '#shared/types'
-import { bgblOutcomeState, isRunningYear, joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
+import { bgblOutcomeState, bgblRecordOf, isRunningYear, joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
+import { pickBgblIForVorlage } from './bgblVorlage'
 import { DERIVED_CACHE } from '../cache/base'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
 import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
-import { bgblShort, todayIso } from '#shared/utils/format'
+import { bgblLong, bgblShort, todayIso } from '#shared/utils/format'
 
 const TIMEOUT_MS = 20_000
 /**
@@ -108,24 +109,12 @@ function fetchBgblPage(key: string): Promise<any> {
   return stillRunning(year) ? fetchCurrentYearPage(key) : fetchClosedYearPage(key)
 }
 
-function mapRecord(doc: any): BgblRecord | null {
-  const m = doc?.Data?.Metadaten
-  const b = m?.Bundesrecht?.BgblAuth
-  const id = String(m?.Technisch?.ID ?? '')
-  if (!id) return null
-  return {
-    id,
-    teil: String(b?.Teil ?? ''),
-    nummer: String(b?.Bgblnummer ?? ''),
-    datum: String(b?.Ausgabedatum ?? '').slice(0, 10),
-    kurztitel: m?.Bundesrecht?.Kurztitel ?? null,
-    titel: m?.Bundesrecht?.Titel ?? null,
-    stelle: m?.Technisch?.Einbringer ?? m?.Technisch?.Organ ?? null,
-  }
-}
-
-/** Teil II of one year — derived, because `mapRecord` is our code. */
-async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
+/**
+ * One Teil of one year — derived, because `bgblRecordOf` is our code. The
+ * pages are the same for every Teil (RIS cannot filter by it, see above),
+ * so Teil I costs no request Teil II has not already paid.
+ */
+async function loadTeilYear(year: number, teil: 'Teil1' | 'Teil2'): Promise<BgblRecord[]> {
   const out: BgblRecord[] = []
   const seen = new Set<string>()
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -133,8 +122,8 @@ async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
     const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
     const hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
     for (const doc of docs) {
-      const rec = mapRecord(doc)
-      if (rec && rec.teil === 'Teil2' && !seen.has(rec.id)) {
+      const rec = bgblRecordOf(doc)
+      if (rec && rec.teil === teil && !seen.has(rec.id)) {
         seen.add(rec.id)
         out.push(rec)
       }
@@ -143,6 +132,9 @@ async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
   }
   return out
 }
+
+const loadTeil2Year = (year: number) => loadTeilYear(year, 'Teil2')
+const loadTeil1Year = (year: number) => loadTeilYear(year, 'Teil1')
 
 /**
  * Two lifetimes, two functions — the same split as for the pages underneath,
@@ -155,7 +147,7 @@ async function loadTeil2Year(year: number): Promise<BgblRecord[]> {
  *
  * A month on a derived value is no contradiction to `cache/base.ts` here:
  * the derived layer lives in memory and dies with the worker — and a
- * `mapRecord` that changes is a code change, which is to say exactly that
+ * `bgblRecordOf` that changes is a code change, which is to say exactly that
  * restart.
  */
 const getClosedTeil2Year = defineCachedFunction(loadTeil2Year, {
@@ -176,6 +168,31 @@ const getCurrentTeil2Year = defineCachedFunction(loadTeil2Year, {
 
 export function getBgblTeil2Year(year: number): Promise<BgblRecord[]> {
   return stillRunning(year) ? getCurrentTeil2Year(year) : getClosedTeil2Year(year)
+}
+
+/**
+ * Teil I of one year — the laws, for the exact join from a Vorlage to its
+ * Kundmachung (`findBgblIForVorlage`). The same two lifetimes as Teil II,
+ * for the same reason.
+ */
+const getClosedTeil1Year = defineCachedFunction(loadTeil1Year, {
+  name: 'bgbl-teil1-jahrgang',
+  base: DERIVED_CACHE,
+  getKey: (year: number) => String(year),
+  maxAge: PUBLISHED_DOCUMENT_TTL_S,
+  swr: false,
+})
+
+const getCurrentTeil1Year = defineCachedFunction(loadTeil1Year, {
+  name: 'bgbl-teil1-jahrgang-laufend',
+  base: DERIVED_CACHE,
+  getKey: (year: number) => String(year),
+  maxAge: CURRENT_YEAR_TTL_S,
+  swr: false,
+})
+
+export function getBgblTeil1Year(year: number): Promise<BgblRecord[]> {
+  return stillRunning(year) ? getCurrentTeil1Year(year) : getClosedTeil1Year(year)
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -219,6 +236,13 @@ interface BgblDocument {
    * (docs/architecture.md §12.33).
    */
   kurztitel: string | null
+  /**
+   * The issue date (Ausgabedatum), ISO — read from the same field the
+   * Jahrgang listing reads (`bgblRecordOf`): `BgblAuth.Ausgabedatum`,
+   * „2026-07-29" for BGBl. I Nr. 69/2026 (checked 03.10.2026). The `bgbl`
+   * station's date, for the list's „Neu" mark.
+   */
+  datum: string | null
 }
 
 /**
@@ -242,10 +266,53 @@ export const getBgblDocument = defineCachedFunction(
       html: urls.find((u: any) => u?.DataType === 'Html')?.Url ?? null,
       page: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${id}`,
       kurztitel: String(ref?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '').trim() || null,
+      datum: String(ref?.Data?.Metadaten?.Bundesrecht?.BgblAuth?.Ausgabedatum ?? '').slice(0, 10) || null,
     }
   },
   { name: 'bgbl-dokument', base: DERIVED_CACHE, getKey: (nummer: string) => nummer, maxAge: PUBLISHED_DOCUMENT_TTL_S, swr: false },
 )
+
+/**
+ * A Kundmachung's issue date, or null — the `bgbl` station's date for the
+ * lists' „Neu" mark. A read of `getBgblDocument`, so the station map and the
+ * homepage's enacted rows ask the same cached record. Callers bound it with
+ * `withinBudget`, each by its own reason.
+ */
+export async function getBgblIssueDate(nummer: string): Promise<string | null> {
+  return (await getBgblDocument(nummer))?.datum ?? null
+}
+
+/**
+ * The Kundmachung of a Regierungsvorlage from RIS, for when Parliament's
+ * record of the Vorlage carries no `bgbllinks` — or null.
+ *
+ * `from` is the earliest day the Kundmachung can carry: the Beschluss, or
+ * failing that the Vorlage's arrival. Every Jahrgang from its year to the
+ * running one is read (cached; the pages are the Teil-II join's) and the
+ * exact key decides (`pickBgblIForVorlage`). The number comes back in
+ * PARLIAMENT'S spelling (`bgblLong`), because the chain, `bgblOrderKey` and
+ * every display expect that; the address is the one Parliament's own link
+ * has, `Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=…`.
+ */
+export async function findBgblIForVorlage(
+  gp: string,
+  rvInr: number,
+  from: string,
+): Promise<{ number: string; datum: string; url: string } | null> {
+  const first = Number(from.slice(0, 4))
+  const now = currentYear()
+  if (!Number.isFinite(first) || first > now) return null
+  const years: number[] = []
+  for (let y = first; y <= now; y++) years.push(y)
+  const records = (await Promise.all(years.map((y) => getBgblTeil1Year(y)))).flat()
+  const hit = pickBgblIForVorlage(records, gp, rvInr)
+  if (!hit) return null
+  return {
+    number: bgblLong(hit.nummer),
+    datum: hit.datum,
+    url: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${hit.id}`,
+  }
+}
 
 /** The years a Frist's Kundmachung can fall into. */
 function yearsFor(ende: string): number[] {

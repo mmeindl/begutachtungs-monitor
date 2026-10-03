@@ -15,8 +15,9 @@
  *    Verordnungsentwurf — its terminus is the Begutachtung itself.
  */
 import { describe, expect, it } from 'vitest'
-import type { ClosedOutcome, DraftDetail, DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
+import type { ClosedOutcome, DraftChain, DraftDetail, DraftSummary, OpenVorlage, RisConsultation } from '../shared/types'
 import { todayIso } from '../shared/utils/format'
+import { NEW_ARRIVAL_DAYS } from '../app/utils/deadlines'
 import { isVorlageGpEnded } from '../server/utils/parliament/detailJson'
 import { procedureStatusDe, stations } from '../app/utils/spine'
 import {
@@ -29,6 +30,14 @@ import { draftSummary, risConsultation } from './helpers/builders'
 
 /** A deadline far in the past, so `active` never has a say. */
 const PAST = '2025-08-31'
+
+/** ISO date N days before the Vienna day — the day `daysUntil` counts by,
+ *  as in `deadlines.test.ts`. Negative N is in the future. */
+function daysAgo(n: number): string {
+  const d = new Date(`${todayIso()}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - n)
+  return d.toISOString().slice(0, 10)
+}
 
 /** 126/ME Bundesstaatsanwaltschaft — 846 Stellungnahmen, the row with the number. */
 const draft = (overrides: Partial<DraftSummary> = {}): DraftSummary => draftSummary({
@@ -139,6 +148,68 @@ describe('Zone 4 — Stand', () => {
       label: 'Regierungsvorlage liegt vor',
       detail: '594 d.B.',
     })
+  })
+
+  /* The window runs to the end of the procedure (§12.26, 03.10.2026): at
+   * the Bundesrat the form is still open, dated by the step the text is at. */
+  it('keeps the window open at the Bundesrat, dated by its arrival there', () => {
+    const atBundesrat = (over: Partial<DraftChain>) => viewOfDraft(draft({
+      chain: { station: 'parlament', rvCitation: '592 d.B.', rvDate: '2026-07-10', bgblNumber: null, filingOpen: true, decidedAt: '2026-09-23', ...over },
+    })).state
+    expect(atBundesrat({ bundesratArrivedAt: '2026-09-24' })).toEqual({
+      label: 'Stellungnahme möglich',
+      detail: 'im Bundesrat seit 24.09.2026',
+      tone: 'neutral',
+      actionable: true,
+    })
+    expect(atBundesrat({}).detail).toBe('Nationalrat hat beschlossen am 23.09.2026')
+  })
+
+  /* Decided and not promulgated: dated, never explained on the row. */
+  it('says a Beschluss was not promulgated, by the stage or by the calendar', () => {
+    const atParliament = (over: Partial<DraftChain>) => viewOfDraft(draft({
+      chain: { station: 'parlament', rvCitation: '80 d.B.', rvDate: '2025-05-07', bgblNumber: null, filingOpen: false, ...over },
+    })).state
+    expect(atParliament({
+      decidedAt: '2025-07-10',
+      bundesratDecidedAt: '2025-07-17',
+      notPromulgated: { date: '2025-09-24', reason: 'formalfehler', successorAntrag: null },
+    })).toEqual({ label: 'Beschlossen, nicht kundgemacht', detail: '24.09.2025', tone: 'inactive', actionable: false })
+    // XXVII/1435 d.B.: no stage, past every measured Kundmachung — from the Bundesrat.
+    expect(atParliament({ decidedAt: '2022-06-15', bundesratDecidedAt: '2022-06-29' }).detail).toBe('29.06.2022')
+  })
+
+  /* 80 d.B. → 416/A → BGBl. I Nr. 65/2025: Kundgemacht, with the route in zone 2. */
+  it('renders the stated successor route like the Antrag route', () => {
+    const v = viewOfDraft(draft({
+      chain: {
+        station: 'bgbl',
+        rvCitation: '80 d.B.',
+        rvDate: '2025-05-07',
+        bgblNumber: 'Bundesgesetzblatt I Nr. 65/2025',
+        filingOpen: false,
+        antragCitation: '416/A',
+        notPromulgated: { date: '2025-09-24', reason: 'formalfehler', successorAntrag: { gp: 'XXVIII', inr: 416, citation: '416/A' } },
+      },
+    }))
+    expect(v.state).toMatchObject({ label: 'Kundgemacht', detail: 'BGBl. I Nr. 65/2025' })
+    expect(v.note).toBe('als Initiativantrag 416/A')
+  })
+
+  /* The Beschluss pins the Parlament station by its day: it has no
+   * Fundstelle on the row. Without a readable Beschluss the old words stand. */
+  it('dates a Nationalrat Beschluss, and keeps the old words without one', () => {
+    const atParliament = (decidedAt?: string | null) => viewOfDraft(draft({
+      chain: { station: 'parlament', rvCitation: '592 d.B.', rvDate: '2026-07-10', bgblNumber: null, filingOpen: false, decidedAt },
+    })).state
+    expect(atParliament('2026-09-23')).toMatchObject({
+      label: 'Im Nationalrat beschlossen',
+      detail: '23.09.2026',
+      tone: 'inactive',
+      actionable: false,
+    })
+    expect(atParliament(null)).toMatchObject({ label: 'Im Parlament behandelt', detail: '592 d.B.' })
+    expect(atParliament(undefined)).toMatchObject({ label: 'Im Parlament behandelt', detail: '592 d.B.' })
   })
 
   /* Here the deadline's end is the statement: the time that has passed IS
@@ -259,7 +330,7 @@ describe('Zone 4 — Stand', () => {
   })
 
   /* A Vorlage without a Begutachtung has no deadline by nature — its window
-   * closes with the vote, not on a date. */
+   * closes with the end of the parliamentary procedure, not on a date. */
   it('gives the Vorlage an open window without inventing a Frist', () => {
     expect(viewOfVorlage(vorlage()).state).toMatchObject({
       label: 'Stellungnahme möglich',
@@ -339,7 +410,65 @@ describe('Zone 2 — Kennung', () => {
     // take is tomorrow's date in Austria between 22:00 and 24:00 UTC, and the
     // first expectation then failed for two hours a night.
     const today = todayIso()
-    expect(viewOfRis(ris({ startedAt: today, active: true })).isNew).toBe(true)
-    expect(viewOfRis(ris({ startedAt: today, active: false })).isNew).toBe(false)
+    expect(viewOfRis(ris({ startedAt: today, active: true })).newLabel).toBe('Neu: Begutachtung')
+    expect(viewOfRis(ris({ startedAt: today, active: false })).newLabel).toBeNull()
+  })
+})
+
+/* „Neu" at every station (03.10.2026): the mark names the station the row
+ * reached this week — the current one, never an earlier one. */
+describe('The „Neu" mark', () => {
+  const chain = (overrides: Partial<DraftChain>): DraftChain => ({
+    station: 'rv',
+    rvCitation: '594 d.B.',
+    rvDate: null,
+    bgblNumber: null,
+    filingOpen: false,
+    ...overrides,
+  })
+  const closed = (c: DraftChain) => viewOfDraft(draft({ active: false, chain: c })).newLabel
+
+  it('names the Begutachtung too, on one that began this week', () => {
+    expect(viewOfDraft(draft({ active: true, arrivedAt: daysAgo(0), deadline: daysAgo(-30) })).newLabel).toBe('Neu: Begutachtung')
+  })
+
+  it('names the station a chain reached inside the window', () => {
+    expect(closed(chain({ rvDate: daysAgo(3) }))).toBe('Neu: Regierungsvorlage')
+    expect(closed(chain({ station: 'parlament', rvDate: daysAgo(30), decidedAt: daysAgo(0) }))).toBe('Neu: Parlament')
+    expect(closed(chain({ station: 'bgbl', bgblNumber: 'Bundesgesetzblatt I Nr. 69/2026', bgblDate: daysAgo(NEW_ARRIVAL_DAYS) })))
+      .toBe('Neu: Bundesgesetzblatt')
+  })
+
+  it('stops at the window, and says nothing where the date was not read', () => {
+    const bgbl = { station: 'bgbl' as const, bgblNumber: 'Bundesgesetzblatt I Nr. 69/2026' }
+    expect(closed(chain({ ...bgbl, bgblDate: daysAgo(NEW_ARRIVAL_DAYS + 1) }))).toBeNull()
+    expect(closed(chain(bgbl))).toBeNull()
+  })
+
+  // Its event was the start, and „neu" on what nobody can act on stays wrong.
+  it('never marks a closed Begutachtung', () => {
+    expect(closed(chain({ station: 'begutachtung', rvCitation: null }))).toBeNull()
+    expect(viewOfDraft(draft({ active: false, arrivedAt: daysAgo(0) })).newLabel).toBeNull()
+  })
+
+  it('marks the homepage’s enacted row by its Kundmachung', () => {
+    expect(viewOfOutcome({
+      ...draft(),
+      rvCitation: '594 d.B.',
+      bgblNumber: 'Bundesgesetzblatt I Nr. 69/2026',
+      bgblDate: daysAgo(0),
+    } as ClosedOutcome).newLabel).toBe('Neu: Bundesgesetzblatt')
+  })
+
+  it('marks a Verordnung promulgated this week', () => {
+    const outcome = { state: 'kundgemacht' as const, nummer: 'BGBl. II Nr. 50/2026', datum: daysAgo(0), url: null, days: 12 }
+    expect(viewOfRis(ris({ active: false, outcome })).newLabel).toBe('Neu: Bundesgesetzblatt')
+  })
+
+  // The chip names the station even where zone 2 already names the
+  // document — one rule, no exception, and the repetition is its price.
+  it('names the station on a Vorlage that arrived this week, too', () => {
+    expect(viewOfVorlage(vorlage({ date: daysAgo(0) })).newLabel).toBe('Neu: Regierungsvorlage')
+    expect(viewOfVorlage(vorlage({ date: daysAgo(NEW_ARRIVAL_DAYS + 1) })).newLabel).toBeNull()
   })
 })

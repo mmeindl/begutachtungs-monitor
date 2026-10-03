@@ -37,6 +37,14 @@ export interface ClosedOutcome extends DraftSummary {
   rvCitation: string | null
   /** e.g. "Bundesgesetzblatt I Nr. 37/2026" — null while not enacted */
   bgblNumber: string | null
+  /**
+   * The Vorlage's Einlangen and the Kundmachung's issue date, ISO — the
+   * dates of the two stations, so the homepage's enacted rows can carry the
+   * „Neu" mark (`entryView.ts`). Optional: the ranked outcomes do not read
+   * them, and absent there means not read, never „did not happen".
+   */
+  rvDate?: string | null
+  bgblDate?: string | null
 }
 
 /**
@@ -78,8 +86,39 @@ export interface DashboardEnacted {
 }
 
 /**
+ * Payload of /api/dashboard/beschlossen — "Im Nationalrat beschlossen"
+ * (docs/architecture.md §12.21, Nachtrag 03.10.2026).
+ *
+ * The rows are Ministerialentwürfe again, with their chain attached: the
+ * drafts whose Vorlage the Nationalrat has decided and the Bundesgesetzblatt
+ * has not yet carried, newest Beschluss first, at most five
+ * (`pickDecided`). EMPTY IS A NORMAL STATE — between plenary blocks, and
+ * whenever the station map was not ready in time — and the section then
+ * hides rather than saying so.
+ */
+export interface DashboardDecided {
+  /**
+   * The running period, and the only one: no fallback to the period before.
+   * A Beschluss from an ended period that never reached the
+   * Bundesgesetzblatt is a different statement from „on its way there".
+   */
+  gp: string
+  items: ClosedOutcome[]
+  /**
+   * The period's drafts at the Parlament station — the set behind the
+   * section's link (`/entwuerfe?station=parlament`), for `ListHeader`'s
+   * number. It exceeds `items` by the cap, by a Beschluss older than the
+   * window or recorded as not promulgated (`promulgationState`), and by a
+   * recommitted Vorlage, which
+   * stands at that station without one.
+   */
+  total: number
+}
+
+/**
  * One Regierungsvorlage that is taking Stellungnahmen right now — the second
- * window for input, which closes with the vote and has no published Frist.
+ * window for input, which closes with the end of the parliamentary procedure
+ * (the Bundesrat's Beschluss) and has no published Frist.
  */
 export interface OpenVorlage {
   /** e.g. "594 d.B." */

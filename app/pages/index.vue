@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  DashboardDecided,
   DashboardEnacted,
   DashboardOutcomes,
   DashboardPayload,
@@ -89,6 +90,16 @@ const enactedFetch = useFetch<DashboardEnacted>('/api/dashboard/enacted', {
   timeout: 4000,
 })
 
+/* „Beschlossen, noch nicht kundgemacht" (§12.21, Nachtrag 03.10.2026) —
+ * server-rendered like the sections around it, and for their reason: it is
+ * the accountability layer. It pays no upstream request of its own (list 81
+ * and the station map are cached leaves), and its endpoint answers empty
+ * rather than wait for a cold map, which hides the section; the 4 s budget
+ * only guards against a stalled server. */
+const decidedFetch = useFetch<DashboardDecided>('/api/dashboard/beschlossen', {
+  timeout: 4000,
+})
+
 /* The second window for input: Regierungsvorlagen that are taking
  * Stellungnahmen right now. Client-side and lazy on purpose — unlike the
  * outcomes section this is an ADDITION to the page, not the reason it
@@ -126,6 +137,7 @@ const { data: risOnly } = await useFetch<RisConsultationsResponse>(
 const { data, error, refresh, status } = await dashboardFetch
 const { data: outcomes } = await outcomesFetch
 const { data: enacted } = await enactedFetch
+const { data: decided } = await decidedFetch
 
 const { webcalUrl, googleCalUrl } = useFeedUrls()
 
@@ -211,7 +223,8 @@ const rankedRows = computed(() => {
  * Five Vorlagen, and the rest on `/entwuerfe` — no longer three with a
  * „weitere anzeigen" button under them (§12.24).
  *
- * The section has no Frist to rank by — the door closes with the vote — so
+ * The section has no Frist to rank by — the door closes with the end of the
+ * parliamentary procedure, the Bundesrat's Beschluss — so
  * it cannot be cut by urgency the way the open list is, and it sits between
  * the two halves the page promises. What changed on 18.09.2026 is not the
  * cutting but WHERE THE REST IS: the button grew this page for one reader
@@ -228,6 +241,13 @@ const visibleSecondRound = computed(
  * tell „nichts kundgemacht" from „nicht abrufbar"; that is done by the two
  * sentences in the template, which still ask `enacted` themselves. */
 const enactedEntries = computed(() => enacted.value?.items.map(viewOfOutcome) ?? [])
+
+/* The chain route, not `viewOfOutcome`: the Stand „Im Nationalrat
+ * beschlossen" and its date live on the chain (`entryView.chainState`), and
+ * the outcome route knows only the Vorlage and the Kundmachung. Uncapped
+ * here, like the enacted rows: the endpoint delivers at most
+ * `HOME_LIST_LENGTH`. */
+const decidedEntries = computed(() => decided.value?.items.map((d) => viewOfDraft(d)) ?? [])
 
 /**
  * The Gesetzgebungsperiode each accountability section is counted over,
@@ -464,11 +484,26 @@ const enactedHref = computed(
           :total="secondRound.items.length"
           :visible="visibleSecondRound.length"
         >
-          Zweite Runde: Stellungnahme im Nationalrat möglich
+          <!-- Led by the station, „Regierungsvorlage", not by „Zweite
+               Runde" (03.10.2026): the page names its sections in the words
+               the tabs, the spine and the „Neu" chip share (§12.26, „ein
+               Vokabular"). „Zweite Runde" stays the name of the SET, in
+               code and docs. „im Parlament", not „im Nationalrat", since the
+               same day: the window runs through the Bundesrat's phase, and
+               the section lists those Vorlagen too. -->
+          Regierungsvorlage: Stellungnahme im Parlament möglich
         </ListHeader>
+        <!-- The first sentence says where a Stellungnahme goes, which is true
+             of every row here — Parliament's own description of the window
+             (parlament.gv.at, „Stellung nehmen zu Gesetzesinitiativen"). It
+             said „dort kann der Ausschuss den Text noch ändern" until
+             03.10.2026, which stops being true at the Nationalrat's
+             Beschluss, while the section now also lists Vorlagen at the
+             Bundesrat. -->
         <p class="mt-2 text-sm text-ink-secondary">
-          Auch zu einer Regierungsvorlage kann Stellung genommen werden – dort
-          kann der Ausschuss den Text noch ändern. {{ SECOND_ROUND_WINDOW }}
+          Auch zu einer Regierungsvorlage kann Stellung genommen werden –
+          freigegebene Stellungnahmen gehen an die parlamentarischen Klubs und
+          an das zuständige Ministerium. {{ SECOND_ROUND_WINDOW }}
         </p>
         <!-- The column header is NOT called „Entwurf" here: these rows are
              Regierungsvorlagen, and the header is the one place where the list
@@ -545,6 +580,61 @@ const enactedHref = computed(
              alignment, not enlargement. An ordered list, because the order
              carries meaning here. -->
         <EntryList :entries="rankedRows" ordered class="mt-4" />
+      </section>
+
+      <!-- THE ONE STATION WITHOUT A LIST, until 03.10.2026 (§12.21). Between
+           the Nationalrat's Beschluss and the Kundmachung lie three weeks at
+           the median, and in those weeks the decision stood nowhere on this
+           page once the procedure was over: the Regierungsvorlage section
+           above ends with the procedure, „Zuletzt Gesetz geworden" below
+           begins with the Bundesgesetzblatt. After
+           the ranking, the track half now walks the spine's stations in
+           order.
+
+           Hidden when empty, like the Regierungsvorlage section: between
+           plenary blocks nothing is decided and not yet promulgated, and an
+           empty section would announce the calendar, not a fact about any
+           Begutachtung. Its endpoint also answers empty while the station
+           map is cold — it claims something about every row, and without
+           the map it can claim nothing.
+
+           ONE PROCEDURE, ONE PLACE (03.10.2026). While its window is open —
+           through the Bundesrat's phase, until its Beschluss — a decided
+           procedure stands in the act half, as its Vorlage under
+           „Regierungsvorlage: Stellungnahme im Parlament möglich"; it comes
+           here only once nothing can be filed any more (`pickDecided`). So
+           the heading says what this section's rows have in common: the
+           procedure is over, the Kundmachung is not. The link goes to the
+           same set, the Parlament tab without open windows
+           (`status=closed`, a link-only value, §12.26). -->
+      <section
+        v-if="decided?.items.length"
+        class="page-section"
+        aria-labelledby="decided-heading"
+      >
+        <ListHeader
+          id="decided-heading"
+          to="/entwuerfe?station=parlament&status=closed"
+          noun="beschlossenen Entwürfe"
+          :total="decided.total"
+          :visible="decidedEntries.length"
+        >
+          Beschlossen, noch nicht kundgemacht
+        </ListHeader>
+        <!-- The period is named, not pointed at (§12.35), and taken from the
+             payload like every other section's. The median, though, is a
+             measurement over GP XXVIII (§12.21, Nachtrag 03.10.2026): once
+             the next period has laws of its own, re-measure it, or the
+             sentence claims a number nobody took. A fact about the
+             procedure, no verdict on the wait. -->
+        <p class="mt-2 text-sm text-ink-secondary">
+          Das parlamentarische Verfahren ist abgeschlossen, die Kundmachung im
+          Bundesgesetzblatt steht noch aus – in der {{ decided.gp }}.
+          Gesetzgebungsperiode vergingen vom Beschluss im Nationalrat bis dahin
+          im Median rund drei Wochen. Dazu die Begutachtung, aus der der
+          Beschluss hervorgegangen ist.
+        </p>
+        <EntryList :entries="decidedEntries" class="mt-4" />
       </section>
 
       <!-- The end of the chain, and the page's last word on purpose

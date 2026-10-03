@@ -64,21 +64,21 @@ usePageSeo({
  * (`activeFilters`). The value „open" stays what the homepage's sections link
  * through, so the chip stays in view.
  *
- * Under „Parlament" and „Bundesgesetzblatt" the chip is unavailable: the
- * combination is empty by what the stations mean. „Parlament" is not „lies
- * in Parliament" — it is the Nationalrat DONE with the Vorlage (list-101
- * status 5, or sent back to committee, status 3; `stationFor`), and a
- * Vorlage that is merely before it stays at „Regierungsvorlage". Parliament's
- * form takes Stellungnahmen while the Nationalrat has the text and closes
- * with its decision. Measured 03.10.2026: Parlament + open is 0 in GP XXVIII
- * (of 1 row there; all 13 open Vorlagen stand at „Regierungsvorlage") and in
- * XXVII and XXVI, where a lapsed period's Vorlage takes nothing anyway. The
- * one unobserved exception — a Vorlage sent back whose form reopens — loses
- * nothing: it still stands under „Alle" with the chip on.
+ * Under „Bundesgesetzblatt" the chip is unavailable: after the Kundmachung
+ * nothing can be filed, so the combination is empty by what the station
+ * means. Not under „Parlament" since 03.10.2026. „Parlament" is the
+ * Nationalrat done with the Vorlage (its Beschluss, or list-101 status 5, 4
+ * or 3; `stationFor`) — but the window does not close with that Beschluss:
+ * it runs to the end of the parliamentary procedure, through the Bundesrat
+ * (Parliament's own description of it, § 23b Abs. 1 GOG-NR;
+ * docs/architecture.md §12.26). That day 4 rows of GP XXVIII stood at
+ * Parlament with the form open; until then the chip was unavailable there
+ * with the reason „Der Nationalrat hat über die Vorlage schon entschieden",
+ * and the measurement „Parlament + open is 0" only held because those
+ * Vorlagen were wrongly at „Regierungsvorlage".
  */
 /** Why the chip is unavailable at a station, where it is. */
 const OPEN_UNAVAILABLE: Partial<Record<DraftStation, string>> = {
-  parlament: 'Der Nationalrat hat über die Vorlage schon entschieden',
   bgbl: 'Nach der Kundmachung ist keine Stellungnahme mehr möglich',
 }
 const VERORDNUNG_NO_STATION = 'Verordnungsentwürfe kommen nicht ins Parlament'
@@ -758,23 +758,30 @@ const countLabel = computed(() => {
                    (`?status=open&station=begutachtung`, `…&station=rv`).
                    „Nicht möglich" was only the rest; it survives as a chip
                    for old links (`activeFilters`). Unavailable, not hidden,
-                   under „Parlament" and „Bundesgesetzblatt", where the
-                   combination is empty by what the stations mean
-                   (`OPEN_UNAVAILABLE`) — drawn as unavailable, not as a faded
+                   under „Bundesgesetzblatt", where the combination is empty
+                   by what the station means (`OPEN_UNAVAILABLE`; under
+                   „Parlament" no longer since 03.10.2026, the window runs
+                   through the Bundesrat) — drawn as unavailable, not as a faded
                    „on": no tint, the page's grey, muted text and a dashed
                    outline, the tick kept (`wantsOpen`). Fading the tinted
                    chip read as „on, a bit lighter" (03.10.2026). The dashes
                    are an outline, not a border: like the variants' ring it
                    takes no space, so the chip keeps its width either way.
-                   `aria-disabled` keeps it focusable with its reason. -->
+                   `aria-disabled` keeps it focusable with its reason.
+                   Ticked, it is ink and not blue (03.10.2026): selection is
+                   ink (main.css), so „on" is the subtle variant's
+                   ink-tinted ground with an ink ring in place of its grey
+                   one. The ring is the selection and the tick says what is
+                   selected — the ground alone is also what an unticked chip
+                   shows under the pointer. -->
               <UButton
-                :color="wantsOpen && !openUnavailable ? 'primary' : 'neutral'"
+                color="neutral"
                 :variant="wantsOpen && !openUnavailable ? 'subtle' : 'outline'"
                 :aria-pressed="wantsOpen"
                 :aria-disabled="openUnavailable ? true : undefined"
                 :title="openUnavailable ?? undefined"
                 class="shrink-0"
-                :class="openUnavailable && 'cursor-not-allowed outline-1 outline-dashed -outline-offset-1 outline-baseline bg-page text-ink-muted ring-0 hover:bg-page'"
+                :class="openUnavailable ? 'cursor-not-allowed outline-1 outline-dashed -outline-offset-1 outline-baseline bg-page text-ink-muted ring-0 hover:bg-page' : wantsOpen && 'ring-ink'"
                 @click="toggleOpen"
               >
                 <!-- A box, ticked when on: says „toggle" in both states,

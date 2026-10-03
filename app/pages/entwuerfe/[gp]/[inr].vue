@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AmendedLawsResponse, DraftDetail, RvStatementsResponse } from '#shared/types'
+import type { AmendedLawsResponse, DraftDetail, EnactmentInfo, RvStatementsResponse } from '#shared/types'
 import type { ComparisonId, StationContext, StationId } from '~/utils/spine'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristRangeDe } from '~/utils/deadlines'
@@ -14,7 +14,8 @@ import {
 } from '~/utils/spine'
 import { aliasesFor } from '#shared/utils/draftAliases'
 import { antragUrl, carriesDraft } from '#shared/utils/antragPath'
-import { bgblShort } from '#shared/utils/format'
+import { bgblShort, todayIso } from '#shared/utils/format'
+import { promulgationState } from '#shared/utils/promulgation'
 import AmendedLawLine from '~/components/draft/AmendedLawLine.vue'
 import ChangeShareBar from '~/components/draft/ChangeShareBar.vue'
 import PageSubsection from '~/components/ui/PageSubsection.vue'
@@ -134,7 +135,7 @@ const stationAnchors = computed<Partial<Record<StationId, string>>>(() => {
     begutachtung: '#begutachtung',
     ...(showOutcome.value ? { rv: '#regierungsvorlage' } : {}),
     ...(d.enactment ? { parlament: '#parlament' } : {}),
-    ...(d.enactment?.bgblNumber ? { bgbl: '#bundesgesetzblatt' } : {}),
+    ...(d.enactment?.bgblNumber || d.enactment?.successor?.bgblNumber ? { bgbl: '#bundesgesetzblatt' } : {}),
   }
 })
 
@@ -168,7 +169,8 @@ const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutc
   // Where it changed — Ausschuss, Plenum — stands in the bar and in the
   // comparison's toggle below.
   amended: 'Der Text wurde im Parlament weiter geändert.',
-  decided: 'Der Nationalrat hat den Text beschlossen; kundgemacht ist er bisher nicht.',
+  // The plain case only; every other „beschlossen" is `decidedStandDe` below.
+  decided: 'Der Nationalrat hat den Text beschlossen; die Kundmachung im Bundesgesetzblatt steht aus.',
   rejected: 'Die Regierungsvorlage wurde im Nationalrat abgelehnt.',
   withdrawn: 'Die Regierungsvorlage wurde zurückgezogen.',
   recommitted: 'Die Regierungsvorlage wurde an den Ausschuss zurückverwiesen.',
@@ -176,13 +178,56 @@ const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutc
   lapsed: 'Das Verfahren endete mit der Gesetzgebungsperiode ohne Kundmachung.',
 }
 
+/**
+ * „Beschlossen" in the states it can be in after 03.10.2026 — one sentence
+ * each, chosen by the same rule the spine and the list row read
+ * (`promulgationState`, §12.33).
+ *
+ * Temporal, never causal, except where Parliament's own record names the
+ * cause („Formalfehler") or the successor (80 d.B. → 416/A): what we infer
+ * from the calendar alone is said as time only („seit dem … nicht"). A
+ * second chamber is named only where its Beschluss was read. „bisher" is
+ * gone from the plain case: it promised a Kundmachung for the texts that
+ * never got one.
+ */
+function decidedStandDe(e: EnactmentInfo, today: string): string {
+  const state = promulgationState(e, today)
+  if (state === 'explicit') {
+    const notDone = e.notPromulgated?.reason === 'formalfehler'
+      ? 'kundgemacht wurde er wegen eines Formalfehlers nicht.'
+      : 'kundgemacht wurde er nicht.'
+    const sentence = `Nationalrat und Bundesrat haben den Text beschlossen; ${notDone}`
+    return e.successor?.bgblNumber
+      ? `${sentence} Neu eingebracht als Initiativantrag ${e.successor.citation}, ist er als ${bgblShort(e.successor.bgblNumber)} kundgemacht.`
+      : sentence
+  }
+  if (state === 'overdue') {
+    const since = formatDateDe(e.bundesratDecidedAt ?? e.decidedAt ?? '')
+    return e.bundesratDecidedAt
+      ? `Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
+      : `Der Nationalrat hat den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
+  }
+  // At the Bundesrat: the window is still open there (§12.26), and this is
+  // the step the text is at.
+  if ((e.filingOpen || e.houseStatus === '4') && e.bundesratArrivedAt && !e.bundesratDecidedAt) {
+    return `Der Nationalrat hat den Text beschlossen; der Bundesrat befasst sich seit ${formatDateDe(e.bundesratArrivedAt)} damit.`
+  }
+  return PARLIAMENT_OUTCOME_DE.decided
+}
+
 const committeeReport = computed(() => data.value?.enactment?.committeeReport ?? null)
 const plenaryAmendments = computed(() => data.value?.enactment?.plenaryAmendments ?? null)
 
 const parliamentFacts = computed<Fact[]>(() => {
   const outcome = parliament.value ?? 'lapsed'
+  const e = data.value?.enactment
+  // A Beschluss that was not promulgated reads as one whatever the status
+  // prose said; every other „beschlossen" goes through the same function.
+  const stand = e && (outcome === 'decided' || promulgationState(e, todayIso()))
+    ? decidedStandDe(e, todayIso())
+    : PARLIAMENT_OUTCOME_DE[outcome]
   return [
-    { key: 'stand', title: 'Stand', text: PARLIAMENT_OUTCOME_DE[outcome] },
+    { key: 'stand', title: 'Stand', text: stand },
     // Where the Abänderungsanträge are named, in procedural order between
     // the state and the vote (02.10.2026). Values in the template's slots,
     // they carry links. A row is missing where the Verlauf names nothing —
@@ -688,7 +733,8 @@ const ministryLinks = computed(() => {
           </h2>
           <!-- The second window alone: the Begutachtung is over, parliament
                still listens. No date, because upstream publishes none — the
-               form closes with the vote, and the card says exactly that. -->
+               form closes with the end of the parliamentary procedure, the
+               Bundesrat's Beschluss, and the card says exactly that. -->
           <!-- Short since 30.09.2026: that the Begutachtung is over and when
                it ended stands in the bar directly above. -->
           <h2 v-else class="font-sans text-base font-semibold text-ink">
@@ -1261,8 +1307,13 @@ const ministryLinks = computed(() => {
              law itself was a footnote to the draft for it. This is also the
              natural home for a later "so steht das Gesetz heute" link into RIS
              Bundesrecht. -->
+        <!-- Also where the Vorlage's own Beschluss was not promulgated and
+             Parliament names the Antrag that replaced it, once that Antrag is
+             in the Bundesgesetzblatt (80 d.B. → 416/A → BGBl. I Nr. 65/2025,
+             §12.33, 03.10.2026): the text did become law, on a route
+             Parliament states. The section says which route. -->
         <section
-          v-if="data.enactment?.bgblNumber"
+          v-if="data.enactment && (data.enactment.bgblNumber || data.enactment.successor?.bgblNumber)"
           id="bundesgesetzblatt"
           class="page-section scroll-mt-6"
           aria-labelledby="bgbl-heading"
@@ -1271,12 +1322,21 @@ const ministryLinks = computed(() => {
           <div class="mt-4 space-y-8">
             <FactList :facts="[{ key: 'kundmachung', title: 'Kundgemacht' }]" card>
               <template #value-kundmachung>
-                <p>
+                <p v-if="data.enactment.bgblNumber">
                   <ExternalLink
                     v-if="data.enactment.bgblRisUrl"
                     :href="data.enactment.bgblRisUrl"
                     class="link-inline"
                   >{{ data.enactment.bgblNumber }}</ExternalLink><span v-else>{{ data.enactment.bgblNumber }}</span>
+                </p>
+                <p v-else-if="data.enactment.successor?.bgblNumber">
+                  <ExternalLink
+                    v-if="data.enactment.successor.bgblRisUrl"
+                    :href="data.enactment.successor.bgblRisUrl"
+                    class="link-inline"
+                  >{{ data.enactment.successor.bgblNumber }}</ExternalLink><span v-else>{{ data.enactment.successor.bgblNumber }}</span>,
+                  über Initiativantrag
+                  <ExternalLink :href="data.enactment.successor.url" class="link-inline">{{ data.enactment.successor.citation }}</ExternalLink>
                 </p>
               </template>
             </FactList>
@@ -1285,7 +1345,12 @@ const ministryLinks = computed(() => {
                  be answered in full (`lawDiffSteps`, 01.10.2026). The steps and
                  who took them stand in the sections above. Deferred, as the
                  parliament's. -->
+            <!-- Only for the Vorlage's own Kundmachung. The comparison reads
+                 the number off the Vorlage's record itself (`lawDiffService`),
+                 and a successor Antrag is a text of its own: holding the
+                 Vorlage against it would compare two different bills. -->
             <LawDiffSection
+              v-if="data.enactment.bgblNumber"
               :gp="data.gp"
               :inr="data.inr"
               scope="bgbl"

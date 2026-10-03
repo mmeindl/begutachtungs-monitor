@@ -6,14 +6,20 @@ import type {
   DraftDetail,
   DraftSummary,
   EnactmentInfo,
+  NoPromulgation,
   RelatedDraft,
 } from '#shared/types'
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
+import { STATUS_AT_BUNDESRAT, STATUS_FINISHED } from '#shared/utils/draftStations'
 import { gpHasEnded, intToRoman, romanToInt } from '#shared/utils/gp'
 import {
   amendedStationsOf,
   extractBgblLink,
+  findBundesratArrival,
+  findBundesratDecisionDate,
   findCommitteeReport,
+  findHouseDecisionDate,
+  findNoPromulgation,
   findPlenaryAmendments,
   findLastRvLink,
   findRvLinks,
@@ -21,6 +27,7 @@ import {
   isVorlageGpEnded,
   parseStages,
   parseVote,
+  type RawPhase,
   type RvLink,
 } from './detailJson'
 import { assembleDraftDetail } from './draftDetailAssembly'
@@ -70,6 +77,52 @@ const RIS_JOIN_BUDGET_MS = 2_000
 const STATION_MAP_BUDGET_MS = 2_000
 
 /**
+ * The Kundmachung of a Vorlage whose record at Parliament carries no link —
+ * from RIS, by the exact key of period and Vorlage (`findBgblIForVorlage`,
+ * docs/architecture.md §12.33, Nachtrag 03.10.2026) — or null.
+ *
+ * Asked only where a Kundmachung can exist: a „Beschluss im Nationalrat" in
+ * the record, or a status that means one (`5`, `4`). Enrichment like the
+ * RIS join above, so the same budget: past it, or on any failure, the
+ * fields stay what Parliament said. (Nitro auto-import from ./ris, for the
+ * reason given at `getRisMapForGp` below.)
+ */
+async function bgblFromRis(
+  rvLink: RvLink,
+  content: { phase?: RawPhase[] | null; status?: { number?: unknown } | null } | null | undefined,
+): Promise<{ number: string; url: string } | null> {
+  const decidedAt = findHouseDecisionDate(content?.phase)
+  const status = content?.status?.number == null ? null : String(content.status.number)
+  if (!decidedAt && status !== STATUS_FINISHED && status !== STATUS_AT_BUNDESRAT) return null
+  const from = decidedAt ?? rvLink.date
+  if (!from) return null
+  return withinBudget(findBgblIForVorlage(rvLink.gp, rvLink.inr, from), RIS_JOIN_BUDGET_MS)
+}
+
+/**
+ * The Antrag a not-promulgated Gesetzesbeschluss names as its successor
+ * (`NoPromulgation.successorAntrag`, 80 d.B. → 416/A), with its Kundmachung
+ * read from ITS record — or null without a named successor.
+ *
+ * One extra fetch, only in this rare case. Its failure keeps what the
+ * Vorlage's record already said — the Antrag's citation and page — and
+ * leaves the BGBl fields null: the successor is Parliament's statement, its
+ * Kundmachung our enrichment.
+ */
+async function successorOf(notPromulgated: NoPromulgation | null): Promise<EnactmentInfo['successor']> {
+  const a = notPromulgated?.successorAntrag
+  if (!a) return null
+  const base = { citation: a.citation, url: `https://www.parlament.gv.at/gegenstand/${a.gp}/A/${a.inr}` }
+  try {
+    const antrag = await getGegenstand(a.gp, 'A', a.inr)
+    const link = extractBgblLink(antrag.content?.status?.bgbllinks)
+    return { ...base, bgblNumber: link?.number ?? null, bgblRisUrl: link?.url ?? null }
+  } catch {
+    return { ...base, bgblNumber: null, bgblRisUrl: null }
+  }
+}
+
+/**
  * Chain state of one consultation (RV citation + BGBl number) WITHOUT the
  * statements fetch — the dashboard's recently-closed section needs only
  * the outcome, and getDraftDetail would drag list 142 along for
@@ -87,6 +140,12 @@ export async function getDraftOutcome(
   try {
     const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
     bgblNumber = extractBgblLink(rv.content?.status?.bgbllinks)?.number ?? null
+    // No link at Parliament: where the record says the Beschluss was not
+    // promulgated, the Kundmachung of the successor it names (the same
+    // route the station map takes); otherwise RIS, where one can exist.
+    const notPromulgated = findNoPromulgation(rv.content?.phase, rvLink.gp)
+    if (!bgblNumber && notPromulgated) bgblNumber = (await successorOf(notPromulgated))?.bgblNumber ?? null
+    else bgblNumber ??= (await bgblFromRis(rvLink, rv.content))?.number ?? null
   } catch {
     // RV enrichment is optional: the RV citation alone is still an answer.
   }
@@ -141,10 +200,27 @@ async function enactmentOf(
     // carried-over Vorlage the house still has read as „Ohne Beschluss –
     // Gesetzgebungsperiode beendet" while its list row said „liegt vor".
     rvGpEnded: isVorlageGpEnded(rvLink.gp, currentGp),
+    notPromulgated: null,
+    successor: null,
   }
   try {
     const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
-    const bgbl = extractBgblLink(rv.content?.status?.bgbllinks)
+    // Parliament's link first; without one, RIS by the exact key — the
+    // address is then RIS's own document page, the same shape as the link.
+    // The procedure's dates after the Ausschuss, and whether Parliament
+    // records the Gesetzesbeschluss as not promulgated — all from the same
+    // `phase` record, so they are about the Vorlage the fields above are.
+    const phase = rv.content?.phase
+    enactment.decidedAt = findHouseDecisionDate(phase)
+    enactment.bundesratArrivedAt = findBundesratArrival(phase)
+    enactment.bundesratDecidedAt = findBundesratDecisionDate(phase)
+    enactment.notPromulgated = findNoPromulgation(phase, rvLink.gp)
+    enactment.successor = await successorOf(enactment.notPromulgated)
+    // No RIS lookup where Parliament says this text was not promulgated:
+    // there is no Kundmachung of it to find.
+    const bgbl =
+      extractBgblLink(rv.content?.status?.bgbllinks) ??
+      (enactment.notPromulgated ? null : await bgblFromRis(rvLink, rv.content))
     if (bgbl) {
       enactment.bgblNumber = bgbl.number
       enactment.bgblRisUrl = bgbl.url
@@ -178,8 +254,9 @@ async function enactmentOf(
     enactment.filingOpen = isVorlageFilingOpen(rv.content, rvLink.gp, currentGp)
   } catch {
     // RV enrichment is optional: bgblNumber/bgblRisUrl, amendedIn,
-    // committeeReport, plenaryAmendments, both status fields and the vote
-    // stay null, filingOpen false.
+    // committeeReport, plenaryAmendments, both status fields, the vote, the
+    // procedure's later dates, notPromulgated and successor stay null,
+    // filingOpen false.
   }
   return enactment
 }

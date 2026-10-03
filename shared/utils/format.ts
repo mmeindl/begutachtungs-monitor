@@ -192,6 +192,20 @@ export function bgblShort(citation: string): string {
 }
 
 /**
+ * "BGBl. I Nr. 69/2026" → "Bundesgesetzblatt I Nr. 69/2026" — the inverse
+ * of `bgblShort`.
+ *
+ * For a number that comes from RIS rather than from Parliament
+ * (`findBgblIForVorlage`, 03.10.2026): the chain, `bgblOrderKey` and every
+ * place that shortens the citation for display expect what Parliament
+ * writes, so a RIS number is stored in that spelling and looks exactly like
+ * one Parliament linked.
+ */
+export function bgblLong(citation: string): string {
+  return citation.replace(/^BGBl\./, 'Bundesgesetzblatt')
+}
+
+/**
  * One wording for a Frist that has ended (decided 22.09.2026): the chip said
  * „Endete am …" and the row detail „Frist endete …" — one fact, two spellings.
  * The dateless sibling stays „Frist abgelaufen".

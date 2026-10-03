@@ -565,3 +565,77 @@ describe('regulationStations — the Verordnung path', () => {
     }
   })
 })
+
+/* A Gesetzesbeschluss that was not promulgated (03.10.2026, §12.33): two
+ * signals, two wordings. Parliament's own stage may say why and what came
+ * instead; the calendar alone may only say since when. */
+describe('a Gesetzesbeschluss that was not promulgated', () => {
+  const TODAY = '2026-10-03'
+  const decided = {
+    ...draft().enactment!,
+    bgblNumber: null,
+    houseStatus: '5',
+    houseStatusText: 'Beschlossen im Nationalrat',
+    notPromulgated: null,
+    successor: null,
+  }
+  const at = (over: Record<string, unknown>) => {
+    const d = draft({ enactment: { ...decided, ...over } as DraftDetail['enactment'] })
+    const list = stations(d, {}, TODAY)
+    return {
+      parlament: list.find((s) => s.id === 'parlament')!,
+      bgbl: list.find((s) => s.id === 'bgbl')!,
+      headline: procedureStatusDe(d, TODAY),
+    }
+  }
+
+  /* 80 d.B. (2/ME): both chambers decided, a Formalfehler, 416/A instead,
+   * and 416/A became BGBl. I Nr. 65/2025 — all of it on Parliament's record. */
+  it('follows the stated successor to the Bundesgesetzblatt', () => {
+    const { parlament, bgbl, headline } = at({
+      decidedAt: '2025-07-10',
+      bundesratDecidedAt: '2025-07-17',
+      notPromulgated: { date: '2025-09-24', reason: 'formalfehler', successorAntrag: { gp: 'XXVIII', inr: 416, citation: '416/A' } },
+      successor: {
+        citation: '416/A',
+        url: 'https://www.parlament.gv.at/gegenstand/XXVIII/A/416',
+        bgblNumber: 'Bundesgesetzblatt I Nr. 65/2025',
+        bgblRisUrl: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2025_I_65',
+      },
+    })
+    expect(parlament.state).toBe('done')
+    expect(parlament.facts).toEqual(['beschlossen', 'nicht kundgemacht – Formalfehler', 'neu eingebracht als Initiativantrag 416/A'])
+    expect(bgbl).toMatchObject({
+      state: 'done',
+      facts: ['BGBl. I Nr. 65/2025', 'über Initiativantrag 416/A'],
+      source: { href: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2025_I_65', label: 'Kundmachung im RIS' },
+    })
+    expect(headline).toBe('Gesetz geworden – als Initiativantrag')
+  })
+
+  it('without a successor in the Bundesgesetzblatt, the last station is not reached and the cause is not invented', () => {
+    const { parlament, bgbl, headline } = at({
+      decidedAt: '2025-07-10',
+      notPromulgated: { date: '2025-09-24', reason: 'unbekannt', successorAntrag: null },
+    })
+    expect(parlament.facts).toEqual(['beschlossen', 'nicht kundgemacht'])
+    expect(bgbl).toMatchObject({ state: 'never', facts: [] })
+    expect(headline).toBe('Beschlossen – nicht kundgemacht')
+  })
+
+  /* XXVII/1435 d.B.: decided in both chambers in June 2022, nothing after —
+   * the record says nothing, so the page says only since when. */
+  it('past the window without a stage: since when, and the last station stays open', () => {
+    const { parlament, bgbl, headline } = at({ decidedAt: '2022-06-15', bundesratDecidedAt: '2022-06-29' })
+    expect(parlament.state).toBe('done')
+    expect(parlament.facts).toEqual(['beschlossen', 'seit 29.06.2022 nicht kundgemacht'])
+    expect(bgbl).toMatchObject({ state: 'open', facts: ['nicht kundgemacht'] })
+    expect(headline).toBe('Beschlossen – nicht kundgemacht')
+  })
+
+  it('inside the window nothing changes: the Kundmachung is still on its way', () => {
+    const { bgbl, headline } = at({ decidedAt: '2026-09-23' })
+    expect(bgbl).toMatchObject({ state: 'open', facts: ['ausstehend'] })
+    expect(headline).toBe('Beschlossen – Kundmachung ausständig')
+  })
+})

@@ -195,7 +195,7 @@ const externalHost = computed(() => {
           <span aria-hidden="true">·</span>
           <span class="text-ink">„<HighlightedText :text="entry.alias" :query="query" />“</span>
         </template>
-        <NewBadge v-if="entry.isNew" class="ms-0.5" />
+        <NewBadge v-if="entry.newLabel" :label="entry.newLabel" class="ms-0.5" />
       </p>
 
       <!-- THE EVIDENCE, and only where the row has one: the full-text

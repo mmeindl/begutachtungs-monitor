@@ -29,6 +29,20 @@ export const STATUS_FINISHED = '5'
 export const STATUS_RECOMMITTED = '3'
 
 /**
+ * `Status` 4: the Nationalrat has decided, the Bundesrat has the text —
+ * AN INFERENCE FROM FOUR CASES, not a documented value. The legend in
+ * docs/api-exploration.md §101 names `2` and `5` (the code knew `1` and `3`
+ * besides); on 03.10.2026 four GP-XXVIII Vorlagen stood at `4` — 539, 589,
+ * 590 and 592 d.B. — and every one of them had its „Beschluss im
+ * Nationalrat" on 23.09.2026 and its „Einlangen im Bundesrat" the day after.
+ *
+ * At `parlament` for the reason `3` is: the house has acted on the text. It
+ * matters only where the Beschluss stage itself could not be read — with it,
+ * `decidedAt` decides first (`stationFor`).
+ */
+export const STATUS_AT_BUNDESRAT = '4'
+
+/**
  * The four stations in procedural order — the one runtime list of them.
  *
  * It was spelled out three times: in both list endpoints, which validate the
@@ -57,17 +71,36 @@ const REACH: Record<DraftStation, number> = { begutachtung: 0, rv: 1, parlament:
 
 /**
  * A promulgated law is at the Bundesgesetzblatt whatever the list column
- * says; otherwise the house's own status decides between „liegt vor" and
- * „behandelt" — two of its values mean the house acted, `5` and `3`.
+ * says; otherwise the Nationalrat's Beschluss puts the Vorlage at
+ * `parlament` — the house is done with the text — and without one the
+ * house's own status decides between „liegt vor" and „behandelt": two of
+ * its values mean the house acted, `5` and `3`.
+ *
+ * THE BESCHLUSS IS THE FACT THE STATUS STOOD FOR (03.10.2026). Until
+ * `decidedAt` was read (`findHouseDecisionDate`) the status was the only
+ * sign of it, and a late one: `5` means done in BOTH houses. While the
+ * Bundesrat has the text, list 101 carries `4`, which no code here mapped
+ * until 03.10.2026 (`STATUS_AT_BUNDESRAT`) and which fell through to `rv` —
+ * so 117/ME, 103/ME, 96/ME and 89/ME, decided 23.09.2026, still read
+ * „Regierungsvorlage liegt vor" ten days later. `5`, `4` and `3` remain for
+ * a record without a readable Beschluss stage; `3`, recommitted, has none
+ * by nature.
  *
  * An unknown status stays at `rv`, deliberately: that a Vorlage exists was
  * read from the draft's own stage record, while what parliament did with it
  * is exactly what we then failed to learn. The weakest claim the evidence
  * supports is the honest one.
  */
-export function stationFor(bgblNumber: string | null, houseStatus: string | null): DraftStation {
+export function stationFor(
+  bgblNumber: string | null,
+  houseStatus: string | null,
+  decidedAt?: string | null,
+): DraftStation {
   if (bgblNumber) return 'bgbl'
-  return houseStatus === STATUS_FINISHED || houseStatus === STATUS_RECOMMITTED
+  return decidedAt ||
+    houseStatus === STATUS_FINISHED ||
+    houseStatus === STATUS_AT_BUNDESRAT ||
+    houseStatus === STATUS_RECOMMITTED
     ? 'parlament'
     : 'rv'
 }

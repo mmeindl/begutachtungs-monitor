@@ -175,7 +175,8 @@ export type DraftListRow =
  * What the list's order asks of a row, whichever kind it is.
  *
  * A Regierungsvorlage without a Begutachtung has no Frist that could be
- * running — its form closes with the vote. So `active: false` with the
+ * running — its form closes with the end of the parliamentary procedure,
+ * not on a date. So `active: false` with the
  * Einlangen as the date: the row sorts below the running Fristen and among
  * the second round, where it belongs, instead of claiming an urgency it
  * cannot date.

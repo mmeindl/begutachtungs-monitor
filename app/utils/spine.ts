@@ -43,7 +43,8 @@
  */
 import type { BgblOutcome, DraftDetail, HouseVote, LawStationId, RisConsultation } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
-import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays } from '#shared/utils/format'
+import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
+import { promulgationState } from '#shared/utils/promulgation'
 import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 
@@ -195,10 +196,19 @@ function daysAfterFristDe(days: number | null): string | null {
  * CTA card below already state the remaining days, and this would have
  * been the third.
  */
-export function procedureStatusDe(d: DraftDetail): string {
+export function procedureStatusDe(d: DraftDetail, today: string = todayIso()): string {
   const e = d.enactment
   if (e?.bgblNumber) return 'Gesetz geworden'
   if (e) {
+    // A Gesetzesbeschluss that was not promulgated (§12.33, Nachtrag
+    // 03.10.2026): where Parliament's record says so and names a successor
+    // that reached the Bundesgesetzblatt, the draft's text did become law —
+    // on the route the headline already has words for. Otherwise the gap is
+    // stated, temporal and without a cause: the cause stands in the
+    // Parlament row, and only where Parliament gives one.
+    const unpromulgated = promulgationState(e, today)
+    if (unpromulgated === 'explicit' && e.successor?.bgblNumber) return 'Gesetz geworden – als Initiativantrag'
+    if (unpromulgated) return 'Beschlossen – nicht kundgemacht'
     // Each of these four used to read „Im Parlament" or, after the period,
     // „Ohne Beschluss" — both wrong in a different direction. Temporal and
     // factual (framing rule, docs/architecture.md §4): what the house did,
@@ -264,16 +274,22 @@ export function regulationStatusDe(active: boolean, promulgated: boolean): strin
  * It was explained in six places and in six wordings, which mixed two
  * different facts: that no Frist is published, and when the window closes.
  *
- * Chosen is „solange der Nationalrat den Text behandelt" and not „endet mit
- * der Abstimmung": it covers the Ausschuss too and does not promise that
- * filing is possible up to the second of the vote.
+ * „bis zum Beschluss im Bundesrat" since 03.10.2026. It said „solange der
+ * Nationalrat den Text behandelt", which was too short by a whole chamber:
+ * Parliament describes the window as open until the end of the
+ * parliamentary procedure (parlament.gv.at, „Stellung nehmen zu
+ * Gesetzesinitiativen"), § 23b Abs. 1 GOG-NR admits Stellungnahmen during
+ * the parliamentary procedure, and the form stays open through the
+ * Bundesrat's phase (list-101 status 4). The Bundesrat's Beschluss is where
+ * that procedure ends for a law it does not object to.
  *
  * The full sentence is built from the clause so the two cannot drift apart.
- * Whoever already has a sentence running takes the clause.
+ * Whoever already has a sentence running takes the clause; it reads both
+ * after „möglich" and after „Ohne Frist –".
  */
-export const SECOND_ROUND_CLAUSE = 'solange der Nationalrat den Text behandelt'
+export const SECOND_ROUND_CLAUSE = 'bis zum Beschluss im Bundesrat'
 export const SECOND_ROUND_WINDOW =
-  `Eine veröffentlichte Frist gibt es dafür nicht – möglich, ${SECOND_ROUND_CLAUSE}.`
+  `Eine veröffentlichte Frist gibt es dafür nicht – möglich ${SECOND_ROUND_CLAUSE}.`
 
 /** Upstream's own wording, from the one place that maps it to a station. */
 const AUSSCHUSS = UPSTREAM_AUSSCHUSS_TITLE
@@ -440,8 +456,16 @@ export function voteLineDe(vote: HouseVote | null | undefined): string | null {
 const kept = (...facts: (string | null | undefined)[]): string[] =>
   facts.filter((f): f is string => Boolean(f))
 
-export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
+export function stations(d: DraftDetail, ctx: StationContext = {}, today: string = todayIso()): Station[] {
   const e = d.enactment
+
+  /** A Gesetzesbeschluss that was not promulgated (§12.33, Nachtrag
+   *  03.10.2026) — Parliament's own stage (`explicit`) or the calendar past
+   *  every measured Kundmachung (`overdue`). The same reading as the list
+   *  row's (`promulgationState`). */
+  const unpromulgated = e ? promulgationState(e, today) : null
+  const noPromulgation = e?.notPromulgated ?? null
+  const successor = e?.successor ?? null
 
   /** Which body changed the text — the one thing the parliament station can
    *  report without a comparison behind it. Read from the Vorlage that
@@ -593,7 +617,7 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // says what happened, not when.
       state: !e
         ? viaAntrag ? 'done' : d.gpEnded && !d.active ? 'never' : 'open'
-        : e.bgblNumber || houseDone
+        : e.bgblNumber || houseDone || unpromulgated
           ? 'done'
           : e.rvGpEnded ? 'never' : 'current',
       // The outcome word is what happened; `running` is whether it is over.
@@ -614,7 +638,26 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
         // this station has here. `outcome` is null on that route (no
         // Vorlage), so the chain below adds nothing to it.
         ...(viaAntrag ? [`Initiativantrag ${viaAntrag.antrag.citation}`, formatDateDe(viaAntrag.antrag.einlangen)] : []),
-        ...(outcome === null
+        // Decided and not promulgated: the Beschluss and what it went
+        // through, then the gap — with its cause and its successor only
+        // where Parliament's record names them; otherwise as time alone,
+        // counted from the end of the procedure.
+        ...(unpromulgated === 'explicit' && noPromulgation
+          ? kept(
+              'beschlossen',
+              amended,
+              noPromulgation.reason === 'formalfehler' ? 'nicht kundgemacht – Formalfehler' : 'nicht kundgemacht',
+              noPromulgation.successorAntrag
+                ? `neu eingebracht als Initiativantrag ${noPromulgation.successorAntrag.citation}`
+                : null,
+            )
+          : unpromulgated === 'overdue' && e
+            ? kept(
+                'beschlossen',
+                amended,
+                `seit ${formatDateDe(e.bundesratDecidedAt ?? e.decidedAt ?? '')} nicht kundgemacht`,
+              )
+            : outcome === null
           ? []
           : outcome === 'unchanged'
             ? ['Text unverändert beschlossen']
@@ -649,27 +692,50 @@ export function stations(d: DraftDetail, ctx: StationContext = {}): Station[] {
       // Beschluss outlives its period — the Kundmachung follows it, so the
       // station stays `open` even after the GP ended: XXVII/1435 d.B. was
       // decided in both chambers and carries no BGBl link, and „never" would
-      // have been our claim, not a fact.
-      state: e?.bgblNumber || viaAntrag
-        ? 'done'
-        : noBgblEver
-          ? 'never'
-          : outcome === 'decided'
-            ? 'open'
-            : periodEnded ? 'never' : 'open',
-      // "ausstehend" while the chain can still continue; nothing at all once
-      // it cannot, because the station before it already says why.
-      facts: e?.bgblNumber
-        ? [bgblShort(e.bgblNumber)]
-        : viaAntrag
-          ? [bgblShort(viaAntrag.antrag.bgblNumber)]
-          : noBgblEver
-            ? []
-            : outcome === 'decided'
-              ? ['ausstehend']
-              : periodEnded
-                ? []
-                : ['ausstehend'],
+      // have been our claim, not a fact. It is still `open`, but since
+      // 03.10.2026 its word no longer promises: past
+      // `PROMULGATION_WINDOW_DAYS` the fact reads „nicht kundgemacht", not
+      // „ausstehend".
+      //
+      // Where Parliament's record says the Beschluss was NOT promulgated, the
+      // station is decided by that record: reached through the successor it
+      // names, when that Antrag carries a Kundmachung — the number, the route
+      // and the document in RIS —, otherwise `never`, with the station before
+      // it saying why.
+      ...(unpromulgated === 'explicit'
+        ? successor?.bgblNumber
+          ? {
+              state: 'done' as const,
+              facts: [bgblShort(successor.bgblNumber), `über Initiativantrag ${successor.citation}`],
+              ...(successor.bgblRisUrl
+                ? { source: { lead: null, href: successor.bgblRisUrl, label: 'Kundmachung im RIS' } }
+                : {}),
+            }
+          : { state: 'never' as const, facts: [] }
+        : {
+            state: e?.bgblNumber || viaAntrag
+              ? 'done' as const
+              : noBgblEver
+                ? 'never' as const
+                : outcome === 'decided'
+                  ? 'open' as const
+                  : periodEnded ? 'never' as const : 'open' as const,
+            // "ausstehend" while the chain can still continue; nothing at all
+            // once it cannot, because the station before it already says why.
+            facts: e?.bgblNumber
+              ? [bgblShort(e.bgblNumber)]
+              : viaAntrag
+                ? [bgblShort(viaAntrag.antrag.bgblNumber)]
+                : noBgblEver
+                  ? []
+                  : unpromulgated === 'overdue'
+                    ? ['nicht kundgemacht']
+                    : outcome === 'decided'
+                      ? ['ausstehend']
+                      : periodEnded
+                        ? []
+                        : ['ausstehend'],
+          }),
       comparison: null,
     },
   ]

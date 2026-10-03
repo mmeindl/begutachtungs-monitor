@@ -7,7 +7,7 @@
  * implementation of the mapper would see.
  */
 import { flattenRisRecord, type RisBegutFlat } from '../../server/utils/ris/risRecord'
-import type { BgblRecord } from '../../server/utils/ris/bgblJoin'
+import { bgblRecordOf, type BgblRecord } from '../../server/utils/ris/bgblJoin'
 import { RIS_API, getJson } from './http'
 import { sleep } from './async'
 
@@ -113,20 +113,12 @@ export async function fetchBgblRecords(script: string, from: string, to: string)
     const docs: any[] = [result.OgdDocumentResults?.OgdDocumentReference ?? []].flat()
     const hits = Number(result.OgdDocumentResults?.Hits?.['#text'] ?? 0)
     for (const doc of docs) {
-      const m = doc?.Data?.Metadaten
-      const b = m?.Bundesrecht?.BgblAuth
-      const id = String(m?.Technisch?.ID ?? '')
-      if (!id || seen.has(id)) continue
-      seen.add(id)
-      out.push({
-        id,
-        teil: String(b?.Teil ?? ''),
-        nummer: String(b?.Bgblnummer ?? ''),
-        datum: String(b?.Ausgabedatum ?? '').slice(0, 10),
-        kurztitel: m?.Bundesrecht?.Kurztitel ?? null,
-        titel: m?.Bundesrecht?.Titel ?? null,
-        stelle: m?.Technisch?.Einbringer ?? m?.Technisch?.Organ ?? null,
-      })
+      // The service's own reading of the record (`bgblRecordOf`), so a
+      // script measures what the app would see.
+      const rec = bgblRecordOf(doc)
+      if (!rec || seen.has(rec.id)) continue
+      seen.add(rec.id)
+      out.push(rec)
     }
     process.stderr.write(`\rbgbl: page ${page} · ${out.length}/${hits} records`)
     if (docs.length < PAGE_SIZE || page * PAGE_SIZE >= hits) break

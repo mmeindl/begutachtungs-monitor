@@ -44,7 +44,61 @@ export interface BgblRecord {
   titel: string | null
   /** „BMASGPK (Bundesministerium für …)" — the same spelling as in Begut. */
   stelle: string | null
+  /**
+   * The parliamentary key of a Teil-I law, for the exact join from a
+   * Vorlage to its Kundmachung (`bgblVorlage.ts`, 03.10.2026): the
+   * Gesetzgebungsperiode („XXVIII"), the Regierungsvorlagen it enacts (525
+   * for „525 d.B."; empty for a law from an Initiativantrag, and on every
+   * Teil-II record) and the day of the Nationalrat's Beschluss, ISO. Null
+   * and empty where RIS carries none.
+   */
+  gp: string | null
+  regierungsvorlagen: number[]
+  datumNationalrat: string | null
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/**
+ * The Vorlage numbers of a `Regierungsvorlage` field — `{ item: "525" }`,
+ * and by the shape RIS uses for every repeatable field (`CelexNummer`)
+ * `{ item: ["525", "526"] }` for a law that enacts more than one. Anything
+ * that is not a whole number is dropped rather than guessed at.
+ */
+function vorlagenOf(field: any): number[] {
+  const raw = [field?.item ?? []].flat()
+  return raw
+    .map((v: unknown) => String(v ?? '').trim())
+    .filter((v: string) => /^\d+$/.test(v))
+    .map(Number)
+}
+
+/**
+ * One `OgdDocumentReference` of the `BgblAuth` application → a record, or
+ * null without an ID. The one reading of that shape: the service's year
+ * pages and the corpus scripts both go through it, so a field added here
+ * reaches both (it was written out twice until 03.10.2026).
+ */
+export function bgblRecordOf(doc: any): BgblRecord | null {
+  const m = doc?.Data?.Metadaten
+  const b = m?.Bundesrecht?.BgblAuth
+  const id = String(m?.Technisch?.ID ?? '')
+  if (!id) return null
+  return {
+    id,
+    teil: String(b?.Teil ?? ''),
+    nummer: String(b?.Bgblnummer ?? ''),
+    datum: String(b?.Ausgabedatum ?? '').slice(0, 10),
+    kurztitel: m?.Bundesrecht?.Kurztitel ?? null,
+    titel: m?.Bundesrecht?.Titel ?? null,
+    stelle: m?.Technisch?.Einbringer ?? m?.Technisch?.Organ ?? null,
+    gp: String(b?.Gesetzgebungsperiode ?? '').trim() || null,
+    regierungsvorlagen: vorlagenOf(b?.Regierungsvorlage),
+    datumNationalrat: String(b?.DatumNationalrat ?? '').slice(0, 10) || null,
+  }
+}
+
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /** The draft's side of the join, as far as it is read. */
 export interface BgblJoinDraft {

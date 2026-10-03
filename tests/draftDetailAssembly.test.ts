@@ -59,6 +59,8 @@ function enactment(over: Partial<EnactmentInfo> = {}): EnactmentInfo {
     vote: null,
     filingOpen: false,
     rvGpEnded: false,
+    notPromulgated: null,
+    successor: null,
     ...over,
   }
 }

@@ -13,29 +13,49 @@ const DEADLINE_SERIOUS_DAYS = 7
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
- * Started ≤ N days ago → „Neu" on the row.
+ * Started ≤ N days ago → the „Neu" mark on the row („Neu: Begutachtung").
  *
  * Seven days, for the reader who looks once a week — the same week the
  * deadline warning means. Measured 17.09.2026 over 2025-01-01 → today: a
  * median of 3 open rows carry the mark (p90 8, max 24). In a list that is
  * typically 13 rows long that is a findable minority and not a column of
  * flags.
+ *
+ * Since 03.10.2026 the same window marks a row whose current station was
+ * reached in it (`isWithinNewWindow`); the measurement above counts
+ * Begutachtungen only.
  */
 export const NEW_ARRIVAL_DAYS = 7
+
+/**
+ * Whether a date lies inside that window: today, or up to
+ * `NEW_ARRIVAL_DAYS` back, on the Vienna day `daysUntil` counts by. A future
+ * date is not new, and neither is a missing one.
+ *
+ * No `active` guard, unlike `isNewArrival` below, and on purpose: the later
+ * stations have no such condition. A Kundmachung is news whether or not
+ * anything can still be done about it — nobody files a Stellungnahme on a
+ * law in the Bundesgesetzblatt, and that it got there this week is exactly
+ * what the weekly reader came to find out.
+ */
+export function isWithinNewWindow(date: string | null | undefined): boolean {
+  const days = daysUntil(date)
+  return days !== null && days <= 0 && days >= -NEW_ARRIVAL_DAYS
+}
 
 /**
  * Whether a still-running Begutachtung began inside that window.
  *
  * `active` is part of the question, not a caller's concern: "neu" on a
  * closed Verfahren would mark the one thing nobody can act on any more.
+ * The guard is specific to this event, the Begutachtung; the later
+ * stations are marked by `isWithinNewWindow` alone.
  */
 export function isNewArrival(
   startedAt: string | null | undefined,
   active: boolean,
 ): boolean {
-  if (!active) return false
-  const days = daysUntil(startedAt)
-  return days !== null && days <= 0 && days >= -NEW_ARRIVAL_DAYS
+  return active && isWithinNewWindow(startedAt)
 }
 
 export type DeadlineTone = 'critical' | 'serious' | 'neutral' | 'inactive'

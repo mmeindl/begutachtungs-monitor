@@ -71,6 +71,7 @@ badges. Tone: factual, precise, no exclamation marks.
 | `GET /api/dashboard` | `DashboardPayload` | List 81 (current GP) — plus list 81 of the period before it in two independent places, both only around a Periodenwechsel: the still-running Fristen it carries into `open` (§12.36) and, while the new period is too young to be ranked, the volume ranking (§12.35) |
 | `GET /api/dashboard/outcomes` | `DashboardOutcomes` | The outcomes of the volume ranking — of the SAME period `/api/dashboard` ranked, through `rankedPeriod.ts` (§12.35) — (closed rows only, ≤5 ME-Gegenstand + their RV leg through the 30-min leaf caches). Server-rendered on `/` with a 4 s timeout. The recency pool and its extension probe were removed on 18.09.2026 with the section they fed (§12.23) |
 | `GET /api/dashboard/enacted` | `DashboardEnacted` | "Zuletzt Gesetz geworden": list 101 narrowed by `Status` to the finished Vorlagen, detail JSON for the newest 30 of them, ordered by BGBl number (Teil I), deduplicated per draft, top 4 joined against list 81; falls back to the period before while the running one has promulgated nothing, and names which it read (§12.35). Server-rendered with a 4 s timeout — measured 0.93 s fully cold (30 parallel Gegenstand fetches: 0.54 s), 14 ms warm |
+| `GET /api/dashboard/beschlossen` | `DashboardDecided` | "Beschlossen, noch nicht kundgemacht" („Im Nationalrat beschlossen" until the evening of 03.10.2026): the running period's drafts whose Vorlage carries a Nationalrat Beschluss (`DraftChain.decidedAt`) and no Kundmachung, newest Beschluss first, at most 5, none whose Stellungnahme window is still open (`filingOpen` — that procedure stands in the act half), none Parliament records as not promulgated and none past `PROMULGATION_WINDOW_DAYS` = 120 days (`promulgationState`; `pickDecided`, `decidedOrder.ts`); `total` is the same set uncapped — at the Parlament station, no open window, nothing not promulgated — for `ListHeader`; the link is `/entwuerfe?station=parlament&status=closed`. No upstream request of its own — list 81 plus the station map under the list's 2.5 s budget; past it the answer is empty and the section hides. No fallback to the period before (§12.21, Nachtrag 03.10.2026). Server-rendered on `/` with a 4 s timeout |
 | `GET /api/drafts?gp&status&station&ministry&q` | `DraftsResponse` | List 81 + the station map (§12.26). **Without `gp` the answer carries the Fristen that outlive a Periodenwechsel** and names their period in `carriedOverFrom`; with a `gp` it is strictly that period (§12.36). `status`: `open\|closed\|all` (default `all`), where **`open` = „Stellungnahme möglich"**: laufende Frist ODER offenes Vorlagen-Formular. `station`: comma list of `begutachtung\|rv\|parlament\|bgbl` (default all), read under a 2.5 s budget — on timeout the answer carries `stationsAvailable: false` and is NOT filtered. `q` searches title/citation/ministry CODE and the debate names server-side: the words of the query are AND-linked and each one a substring, read raw or with umlauts, transliterations and punctuation folded — either reading may match, so „oekostrom" finds „Ökostromförderung" and „ergesetz" still finds „Paketsteuergesetz" (`shared/utils/textMatch.ts`, measured 22.09.2026). No `art`: this list holds Ministerialentwürfe and nothing else, so the Art filter of `/entwuerfe` does not narrow it — it decides whether the endpoint is asked at all (§7) |
 | `GET /api/stations/:gp` | counts per station | The station map of one period (`aktuell` = running GP), awaited in full — the prewarm call that pays the cold build (227 requests for GP XXVIII, 650 for XXVII). Its counts are the live base rate of a running period (§12.26) |
 | `GET /api/drafts/:gp/:inr` | `DraftDetail` | Detail JSON + list-81 row + statements summary + RV enrichment |
@@ -254,7 +255,7 @@ name has to stay globally unique.
 | `EntryItem` | `entry: EntryView` + slot `evidence` | **Every list entry on the site, in one anatomy** (§12.28): Titel · Kennung · Stellungnahmen · Stand, in fixed zones. One markup: a stacked row under `md`, laid flat into the dense sheet's row by its `md:` classes (since 01.10.2026; until then a `density` prop and every entry rendered twice). Knows nothing about the kinds — what each kind puts in each zone is decided in `app/utils/entryView.ts` |
 | `EntryList` | `entries: EntryView[]; ordered?: boolean; lead?: string` + slot `evidence` | **Every list of them** (§12.28): one sheet with rules at every width (cards with gaps below `md` until 03.10.2026), the sticky column header from `md` up, switched purely by CSS on ONE `ul`. Until 01.10.2026 both versions stood in the HTML, every entry twice; one list took the DOM of a 50-row `/entwuerfe` from 1.990 to 1.132 nodes and the homepage's from 862 to 514, pixel-identical below `md`; from `md` the row's title is a heading like the card's and hyphenates like it, so a few long titles lose a line (main thread on a 4× throttled phone −8 % resp. −4 %). `ordered` → `ol`, only where the order is the statement; `lead` names the first column where the rows are not drafts |
 | `EntryState` | `state: EntryState` | Zone 4: the state over what pins it down, as one box of two lines. One component for countdown, open Vorlagen window and every reached station — only a row someone can still act on is loud; everything closed is calm ink without pill or dot |
-| `NewBadge` | – | „Neu" on a Begutachtung that began inside the last week (`isNewArrival`, `app/utils/deadlines.ts`); rendered by the call site's `v-if` and merging into the phrase that follows (§12.21) |
+| `NewBadge` | `label: string` | The „Neu" mark on a row whose current station was reached inside the last week, always naming that station — „Neu: Begutachtung" / „Regierungsvorlage" / „Parlament" / „Bundesgesetzblatt" (`EntryView.newLabel`, §12.22 Nachtrag 03.10.2026); rendered by the call site's `v-if`, last in zone 2 (§12.28) |
 | `SearchEvidence` | `hit?: Pick<BegutSearchHit, 'place'\|'designation'\|'snippet'\|'ministryOnly'>\|null` | The evidence under a full-text hit: the Fundstelle plus the sentence the word stands in (§12.31). No frame — it already stands inside the hit's row |
 
 **`draft/` — the two detail pages**
@@ -8816,6 +8817,94 @@ nebeneinander;
 eine Umschaltung zwischen „nach Beteiligung" und „zuletzt" würde die
 Hälfte der Belege hinter einen Klick legen.
 
+**Nachtrag 03.10.2026 — „Im Nationalrat beschlossen", und die Abschnitte
+folgen den Stationen.** Die Startseite steht jetzt so: *Jetzt in
+Begutachtung* · *Regierungsvorlage: Stellungnahme im Parlament möglich* ·
+*Wo am meisten mitgeredet wurde* · *Beschlossen, noch nicht kundgemacht*
+(bis zum Abend „Im Nationalrat beschlossen") · *Zuletzt Gesetz geworden*. Die Rangliste bleibt das Scharnier; danach geht die
+Nachverfolgungshälfte die Stationen der Spine (`SpineRail`) in ihrer
+Reihenfolge ab.
+
+**Die Lücke, die der neue Abschnitt schließt.** „Parlament" war die einzige
+Station ohne eigene Liste. Zwischen dem Beschluss im Nationalrat und der
+Kundmachung stand ein Entwurf nirgends auf der Startseite: Der Abschnitt
+der Regierungsvorlagen schnitt bei Status 1 und 2 ab, „Zuletzt Gesetz
+geworden" beginnt mit dem Bundesgesetzblatt. *Seit dem Abend desselben
+Tages* führt der Abschnitt der Regierungsvorlagen auch die Vorlagen beim
+Bundesrat, deren Formular offen ist (§12.26, zweiter Nachtrag 03.10.2026) —
+dieselben Verfahren standen damit zweimal auf der Startseite, oben als
+Vorlage mit offener Tür und hier als beschlossener Entwurf.
+
+**Am selben Abend entschieden: ein Verfahren, ein Ort.** Solange sein
+Fenster offen ist — bis zum Beschluss im Bundesrat —, steht ein Verfahren in
+der Hälfte zum Mitreden, als Vorlage unter „Regierungsvorlage: Stellungnahme
+im Parlament möglich"; hierher kommt es erst, wenn sich nichts mehr
+einbringen lässt (`pickDecided` schließt `filingOpen` aus). Dieselbe Regel
+wie im Stand-Kasten: eine Frage zur Zeit, und was sich noch tun lässt, geht
+vor (§12.26). Der Abschnitt heißt deshalb **„Beschlossen, noch nicht
+kundgemacht"** — das, was seine Zeilen gemeinsam haben: das
+parlamentarische Verfahren ist abgeschlossen, die Kundmachung steht aus.
+Sein Link führt auf den Reiter „Parlament" ohne offene Fenster
+(`?station=parlament&status=closed`, ein Wert nur für Links, §12.26), und
+`total` zählt dieselbe Menge ohne das, was nicht kundgemacht wird. Gemessen
+am Abend des 03.10.2026: 0 Zeilen, `total` 0 — die vier Beschlüsse vom
+23.09. liegen beim Bundesrat, mit offenem Formular, und stehen oben; der
+Abschnitt ist ausgeblendet, bis der Bundesrat beschließt.
+**Gemessen am 03.10.2026** über die 84 Gesetze der GP XXVIII, deren Kette
+beide Daten trägt (`decidedAt`, `bgblDate`): Vom Beschluss bis zur
+Kundmachung vergingen im Median **20 Tage**, p90 **29**, höchstens **82**
+(ein Beschluss im Juli, über den Sommer). Das sind die „rund drei Wochen"
+des Erklärsatzes — mit der Periode beim Namen statt „in dieser
+Gesetzgebungsperiode" (siehe oben und §12.35). Seit dem Abend kommt der
+Name aus der Antwort des Endpunkts wie in den anderen Abschnitten; die Zahl
+bleibt eine Messung über GP XXVIII und muss neu gemessen werden, sobald die
+nächste Periode eigene Gesetze hat. Der Erklärsatz lautet seither: „Das
+parlamentarische Verfahren ist abgeschlossen, die Kundmachung im
+Bundesgesetzblatt steht noch aus – in der XXVIII. Gesetzgebungsperiode
+vergingen vom Beschluss im Nationalrat bis dahin im Median rund drei
+Wochen."
+
+Gezeigt werden die Entwürfe der laufenden Periode, deren Vorlage
+beschlossen und nicht kundgemacht ist, jüngster Beschluss zuerst,
+höchstens fünf (`pickDecided`); ohne solche Zeilen blendet sich der
+Abschnitt aus — zwischen zwei Plenarblöcken ist das der Normalfall. Kein
+Rückgriff auf die Periode davor: „beschlossen und nie kundgemacht" aus
+einer beendeten Periode ist eine andere Aussage als „auf dem Weg dorthin".
+**Und was nicht mehr kommt, steht hier nicht** (`promulgationState`,
+§12.33, zweiter Nachtrag 03.10.2026), weil „noch nicht kundgemacht" eine
+Aussage ist — es verspricht eine Kundmachung. Zwei Signale halten eine
+Zeile heraus: die Stufe „Keine Kundmachung …" im Verlauf der Vorlage (80
+d.B., 2/ME: Formalfehler, neu eingebracht als 416/A — die Kette steht
+seither über 416/A beim Bundesgesetzblatt) und ein Beschluss, der älter ist
+als `PROMULGATION_WINDOW_DAYS` = 120 Tage (XXVII/1435 d.B., beschlossen im
+Juni 2022, nie kundgemacht, ohne ein Wort dazu im Verlauf). Was hinausfällt,
+ist Schweigen, und das lässt sich korrigieren. Gemessen am Abend: Der
+Abschnitt nennt `total` 4, nicht mehr 5.
+*Korrigiert am selben Tag:* Die erste Fassung dieses Absatzes nannte BGBl.
+I Nr. 65/2025 als ihre Kundmachung — gefunden über den gleichen Kurztitel.
+Das Gesetz kommt aber aus dem Initiativantrag 416/A (Beschluss im
+Nationalrat am 15.10.2025), nicht aus 80 d.B.; der Kurztitel war das
+falsche Merkmal, genau das, was die genaue Verknüpfung über Periode und
+Vorlage ausschließt.
+
+**Die Überschrift der zweiten Runde nennt die Station:** „Regierungsvorlage:
+Stellungnahme im Parlament möglich" statt „Zweite Runde: …". Die
+Startseite spricht in den Wörtern, die Reiter, Spine und die Marke „Neu"
+teilen (§12.26, ein Vokabular); „Zweite Runde" bleibt der Name der Menge.
+„Im Parlament" und nicht „im Nationalrat", seit der Abschnitt auch die
+Vorlagen beim Bundesrat führt; aus demselben Grund sagt der Erklärsatz nicht
+mehr „dort kann der Ausschuss den Text noch ändern" — das stimmt nach dem
+Beschluss im Nationalrat nicht mehr —, sondern wohin eine Stellungnahme geht:
+an die parlamentarischen Klubs und das zuständige Ministerium.
+
+**Nicht gebaut: „Zuletzt Gesetz geworden" um die Verordnungen erweitern.**
+Gemessen am 03.10.2026 über GP XXVIII: 161 kundgemachte Verordnungen
+(jüngste am 02.10.2026) gegen 89 Gesetze aus Ministerialentwürfen (jüngstes
+am 06.08.2026). Verordnungen erscheinen laufend, Gesetze in Blöcken; nach
+Datum gemischt wären die Gesetze binnen einer Woche von der Startseite
+verschwunden. Die Verordnungen behalten ihre Kundmachung auf `/entwuerfe`:
+im Stand-Kasten und als „Neu: Bundesgesetzblatt" (§12.22).
+
 
 ### 12.22 „Was ist neu" — eine Marke auf der Zeile, keine eigene Liste
 
@@ -8889,6 +8978,54 @@ gebaut wird, ist eine Produktentscheidung und keine Folge davon.
 **Nicht gebaut:** keine Zählzeile „3 neu diese Woche" über oder unter der
 Liste. Das ist die Zahl im Fließtext, die §12.20 gerade abgeschafft hat —
 die Marke steht bei dem, was sie meint.
+
+**Nachtrag 03.10.2026 — die Marke reist zu jeder Station.** Neu ist seither
+nicht nur, dass eine Begutachtung begonnen hat, sondern dass die *aktuelle*
+Station einer Zeile innerhalb der Woche erreicht wurde. Die wöchentliche
+Leserin fragt auch, welche Vorlage eingelangt ist und was diese Woche Gesetz
+wurde — und ein Erfolg muss auf der Liste so sichtbar sein wie ein
+Liegenbleiben (Framing-Regel, §4). Drei Daten, je Station eines:
+
+- **Regierungsvorlage:** das Einlangen im Nationalrat aus Liste 101
+  (`DraftChain.rvDate`), das die Stationskarte ohnehin liest.
+- **Parlament:** die Stufe „Beschluss im Nationalrat" im `phase`-Verlauf
+  der Vorlage (`findHouseDecisionDate`, `DraftChain.decidedAt`) — hier zum
+  ersten Mal gelesen, denn Liste 101 kennt nur das Einlangen. Bei 525 d.B.
+  der 07.07.2026, derselbe Tag, den RIS auf der Kundmachung als
+  `DatumNationalrat` führt.
+- **Bundesgesetzblatt:** das Ausgabedatum der Kundmachung aus RIS
+  (`BgblAuth.Ausgabedatum` über `bgbl-dokument`; `DraftChain.bgblDate`,
+  auf der Startseite `ClosedOutcome.bgblDate`). Eine gecachte Abfrage je
+  kundgemachter Vorlage, in der Stationskarte nur im Hintergrundaufbau, in
+  „Zuletzt Gesetz geworden" nur für die höchstens fünf gezeigten Zeilen,
+  beide mit Zeitbudget: Das Datum ist Anreicherung, kein Grund, auf etwas
+  zu warten. Ein Verordnungsentwurf nimmt das `datum` des `BgblOutcome`,
+  das er schon hat.
+
+Der Wortlaut kommt aus `DRAFT_STATION_LABEL`, und die Marke nennt die
+erreichte Station **in jedem Fall**: „Neu: Begutachtung", „Neu:
+Regierungsvorlage", „Neu: Parlament", „Neu: Bundesgesetzblatt" — ein
+Vokabular für die Reiter und die Marke (§12.26). Auch an der Begutachtung,
+die bis zu diesem Tag das bloße „Neu" trug, und auch auf der offenen
+Vorlage der Startseite (`viewOfVorlage`), deren Zeile schon „Regierungsvorlage
+625 d.B." sagt. Eine Regel ohne Ausnahme: Die Marke nennt die Station, das
+Etikett in Zone 2 das Dokument. Ein bloßes „Neu" hieße je nach Zeile etwas
+anderes — begonnen, eingelangt —, und wer die Marke liest, müsste die
+Zeilenart dazulesen, um zu wissen, was neu ist. Die Wiederholung auf der
+Vorlagenzeile ist der Preis dafür, und er ist klein. Die Marke nennt nur
+die aktuelle Station, nie zwei. Das Fenster bleibt das von oben, sieben Tage (`isWithinNewWindow`), nur
+ohne die `active`-Bedingung: Die gehört zum Ereignis Begutachtung allein,
+eine Kundmachung ist eine Nachricht, auch wenn sich nichts mehr tun lässt.
+Die Messung von oben zählt nur Begutachtungen; wie viele Zeilen die Marke
+jetzt tragen, ist nicht gemessen.
+
+**Nicht markiert:** eine abgeschlossene Begutachtung — ihr Ereignis war der
+Beginn, und „neu" auf dem, was niemand mehr beeinflussen kann, bliebe
+falsch. Die Zeilen von „Wo am meisten mitgeredet wurde", deren Ausgang ohne
+Daten kommt (`rankedOutcomes`); fehlend heißt dort „nicht gelesen", nicht
+„nichts geschehen". Und eine Vorlage, die an `parlament` steht, weil sie an
+den Ausschuss zurückverwiesen wurde: Sie hat keinen „Beschluss im
+Nationalrat", also kein Datum.
 
 
 ### 12.23 Das Ende der Kette steht auf der Vorlage, nicht auf dem Entwurf
@@ -9377,6 +9514,58 @@ Produkt geht — was aus einem Entwurf wurde. Jetzt:
 - **„Nicht möglich" ist aus der Oberfläche verschwunden.** Es war nur die
   Negation, und kein Link der Seite zeigt mehr darauf. Ein alter
   `?status=closed`-Link gilt weiter und steht als entfernbarer Chip da.
+
+**Nachtrag 03.10.2026 — „Parlament" heißt: Der Nationalrat hat
+beschlossen.** Seit `DraftChain.decidedAt` das Datum der Stufe „Beschluss
+im Nationalrat" trägt (`findHouseDecisionDate`, §12.22), entscheidet dieser
+Beschluss die Station; der Status ist nur noch Ersatz (`stationFor`). Er
+war von Anfang an der Stellvertreter genau dieser Tatsache, aber ein
+später: Status 5 heißt „erledigt" in **beiden** Kammern. Solange der
+Bundesrat den Text hat, trägt Liste 101 einen Wert, den hier bis dahin
+nichts kannte, **4**, und der fiel auf `rv` zurück. Seit demselben Tag
+steht er ebenfalls bei „Parlament" (`STATUS_AT_BUNDESRAT`) — erschlossen
+aus vier Fällen, nicht dokumentiert: 539, 589, 590 und 592 d.B., jede mit
+„Beschluss im Nationalrat" am 23.09.2026 und „Einlangen im Bundesrat" am
+Tag darauf (docs/api-exploration.md §101). Er zählt nur, wo die
+Beschluss-Stufe selbst nicht lesbar ist. So standen 117/ME, 103/ME, 96/ME und 89/ME, am 23.09.2026 im
+Nationalrat beschlossen, zehn Tage später bei „Regierungsvorlage liegt
+vor" — über einem Text, den der Nationalrat schon beschlossen hatte. Jetzt
+stehen sie bei „Parlament", und der Stand-Kasten sagt „Im Nationalrat
+beschlossen" mit dem Tag (eine Fundstelle hat der Beschluss auf der Zeile
+nicht). Status 5, 4 und 3 bleiben für einen Verlauf ohne lesbare
+Beschluss-Stufe.
+
+**Und eine Korrektur am Nachtrag davor.** „Das Formular … schließt mit dem
+Beschluss" stimmt nicht: Auf 592 und 539 d.B. ist es am 03.10.2026, zehn
+Tage nach dem Beschluss, offen (`statementsstate` „1", das Formular wird
+ausgeliefert), solange der Bundesrat den Text hat; auf der kundgemachten
+525 d.B. ist es zu. Die Messung „Parlament + offen = 0" hielt nur, weil
+diese Vorlagen fälschlich bei „Regierungsvorlage" standen.
+
+**Zweiter Nachtrag 03.10.2026 — das Fenster ist das ganze parlamentarische
+Verfahren.** Für einen Nachmittag stand im Stationsplan eine Festlegung, die
+die zweite Runde mit dem Beschluss im Nationalrat enden ließ (`filingOpen`
+nur ohne `decidedAt`), begründet mit dem Wortlaut der Seite („solange der
+Nationalrat den Text behandelt"). Der Wortlaut war falsch, nicht das Flag.
+Zwei öffentliche Quellen: Das Parlament beschreibt die Stellungnahme zu
+Gesetzesinitiativen als möglich bis zum Ende des parlamentarischen
+Verfahrens (parlament.gv.at, „Stellung nehmen zu Gesetzesinitiativen"), und
+§ 23b Abs. 1 GOG-NR (BGBl. I Nr. 81/2024, in Kraft seit 15.07.2024) sieht
+Stellungnahmen zu Regierungsvorlagen und selbständigen Anträgen während des
+parlamentarischen Gesetzgebungsverfahrens vor. `statementsstate` „1" in der
+Phase des Bundesrats ist also die Regel, keine Verzögerung. Die Festlegung
+ist wieder draußen; der Satz lautet seither „möglich bis zum Beschluss im
+Bundesrat" (`SECOND_ROUND_CLAUSE`), der Startseitenabschnitt nimmt Status 4
+dazu (`STATUS_IN_PROCEDURE`), und die Zeile einer Vorlage beim Bundesrat sagt
+„Stellungnahme möglich · im Bundesrat seit …", parallel zu „zur Vorlage seit
+…". **„Parlament + Stellungnahme möglich" ist damit nicht mehr leer durch
+die Bedeutung der Stationen.** Gemessen am Abend des 03.10.2026 auf GP
+XXVIII: 4 Zeilen (117/ME, 103/ME, 96/ME, 89/ME); die Zweite-Runde-Liste der
+Startseite stieg von 9 auf 13 Vorlagen (dazu 539, 589, 590, 592 d.B.). Der
+Chip „Stellungnahme möglich" ist unter „Parlament" deshalb nicht mehr durch
+die Stationen ausgeschlossen: `OPEN_UNAVAILABLE` führt seit demselben Abend
+nur noch „Bundesgesetzblatt", und der Reiter „Parlament" mit dem Chip zeigt
+die vier Zeilen. Zeile und Tür der Detailseite sagen wieder dasselbe.
 
 ### 12.27 Eine Lücke ist kein Befund: wo die Seite über Stationen schweigen muss
 
@@ -10992,6 +11181,121 @@ auch, wo der Text des Entwurfs nicht lesbar ist.
   105 (1), 92/ME 19 (10), XXVII 6/ME und 11/ME der Fall oben.
 - **Die Entwurfsliste und die Stationsleiste nennen den Akt nicht**, nur der
   Vergleich, wo die Zahlen stehen.
+
+**Nachtrag 03.10.2026 — das RIS als zweite Quelle der Fundstelle.** Die
+strukturierte Fundstelle oben hat eine Lücke: Trägt der Verlauf einer
+beschlossenen Vorlage keinen `bgbllinks`-Eintrag, stand die Kette bisher
+ohne Kundmachung da. Jetzt fragt sie dort das RIS (`findBgblIForVorlage`),
+und zwar genau: Ein Teil-I-Datensatz von `BgblAuth` führt
+`Gesetzgebungsperiode`, `Regierungsvorlage.item` (eine Nummer oder eine
+Liste), `DatumNationalrat`, `Teil` und `Ausgabedatum`, dazu `Technisch.ID`
+(`BGBLA_2026_I_69`; Feldliste in docs/api-exploration.md, „BgblAuth").
+Periode und Vorlage sind der Schlüssel — keine Titelähnlichkeit, keine
+Schwelle (`pickBgblIForVorlage`); nennen zwei Gesetze dieselbe Vorlage,
+gilt das frühere. Die Nummer wird in der Schreibweise des Parlaments
+gespeichert (`bgblLong`), die Adresse ist die Dokumentseite des RIS, dieselbe
+Form wie der Link des Parlaments. Gefragt wird nur, wo eine Kundmachung
+bestehen kann — ein „Beschluss im Nationalrat" im Verlauf oder Status 5
+oder 4 —, im Stationsplan wie auf der Detailseite und im Ergebnis der
+Rangliste, jeweils unter dem Zeitbudget der Stelle; die Jahrgangsseiten
+sind die der Verordnungs-Verknüpfung (§12.32), Teil I kostet keine eigene
+Anfrage.
+
+**Gemessen am 03.10.2026.** Gegen die Fundstellen, die das Parlament für die
+kundgemachten Ministerialentwürfe der GP XXVIII selbst verlinkt, liefert der
+Schlüssel in 81 von 81 Fällen dieselbe Nummer, keine zweite, keine fehlende
+(drei Entwürfe mit „… und Zu … d.B." in der Zählung ausgelassen). Das Feld
+`Regierungsvorlage` fehlt im RIS bei 59 von 121 Teil-I-Datensätzen des
+Jahrgangs 2025 und 32 von 83 des Jahrgangs 2026; bei den 81 Gesetzen aus
+Ministerialentwürfen war es ausnahmslos gesetzt.
+
+**Was die zweite Quelle nicht tut.** Sie löst den Fall nicht, an dem sie
+entdeckt wurde. 80 d.B. (2/ME), am 10.07.2025 im Nationalrat beschlossen,
+am 17.07.2025 im Bundesrat ohne Einspruch, trägt keinen BGBl-Link — und
+kein Teil-I-Datensatz der Jahrgänge 2025 und 2026 nennt Vorlage 80. Das
+Gesetz mit demselben Kurztitel („Strafrechtliches EU-Anpassungsgesetz
+2025") ist BGBl. I Nr. 65/2025, aber aus dem Initiativantrag 416/A,
+beschlossen am 15.10.2025. Dasselbe Muster bei XXVII/1435 d.B. (im Juni
+2022 in beiden Kammern beschlossen, ohne Link): Das gleichnamige Gesetz ist
+BGBl. I Nr. 18/2023, im Nationalrat am 14.12.2022, ohne Vorlage. Beides
+sind keine fehlenden Links, sondern Texte, die so nie kundgemacht wurden;
+ein Titelvergleich hätte ihnen eine Kundmachung zugeschrieben, die sie nicht
+haben. Abgedeckt ist die Zeit zwischen einer Kundmachung und dem Link des
+Parlaments darauf. Gemessen vorher wie nachher: eine Zeile der GP XXVIII
+mit Beschluss, ohne Fundstelle und älter als 120 Tage (2/ME);
+`/api/dashboard/beschlossen` nennt `total` 5. Dass die Spine für 80 d.B. an
+der Station Bundesgesetzblatt „ausstehend" sagte — ein Versprechen für einen
+Text, der so nicht mehr kundgemacht wird —, löst der nächste Nachtrag.
+
+**Zweiter Nachtrag 03.10.2026 — ein Gesetzesbeschluss, der nicht
+kundgemacht wird.** Beide Fälle oben sagen in ihrem eigenen Verlauf
+verschieden viel:
+
+- **80 d.B. (2/ME, GP XXVIII):** Nationalrat am 10.07.2025, Bundesrat am
+  17.07.2025, dann eine Stufe vom 24.09.2025 in „Plenarberatungen BR":
+  „Keine Kundmachung des Gesetzesbeschlusses aufgrund eines Formalfehlers
+  sowie Einbringung eines neuen Antrages (416/A)", mit Link auf 615/GO. Der
+  Antrag 416/A (gleicher Titel) wurde am 15.10.2025 im Nationalrat und am
+  23.10.2025 im Bundesrat beschlossen und trägt selbst den Link auf BGBl. I
+  Nr. 65/2025. Die Nachfolge nennt das Parlament selbst.
+- **1435 d.B. (171/ME, GP XXVII):** Nationalrat am 15.06.2022, Bundesrat am
+  29.06.2022, danach keine Stufe, kein Link, nie kundgemacht. Der Grund
+  steht nur in den Erläuterungen eines späteren Gegenstands; im Verlauf von
+  1435 d.B. nennt nichts einen Nachfolger.
+
+**Zwei Signale, zwei Wortlaute** (`shared/utils/promulgation.ts`, eine Regel
+für Zeile, Spine, Kopfzeile und den Startseitenabschnitt):
+
+- **Ausdrücklich** (`findNoPromulgation`): die Stufe „Keine Kundmachung …".
+  Der Grund wird nur übernommen, wie die Stufe ihn nennt („Formalfehler",
+  sonst keiner), der Nachfolger nur, wo sie einen Antrag nennt — eine
+  Verknüpfung, die das Parlament selbst angibt, keine Ähnlichkeit wie bei
+  `antragPath`. Trägt der Nachfolger eine Kundmachung, steht die Kette dort:
+  Station Bundesgesetzblatt mit dessen Nummer und Datum, „als Initiativantrag
+  416/A" in Zone 2, Kopfzeile „Gesetz geworden – als Initiativantrag",
+  Parlament „beschlossen · nicht kundgemacht – Formalfehler · neu
+  eingebracht als Initiativantrag 416/A", Bundesgesetzblatt „BGBl. I Nr.
+  65/2025 · über Initiativantrag 416/A" mit der Kundmachung im RIS. Ohne
+  Nachfolger im Bundesgesetzblatt: „Beschlossen – nicht kundgemacht", die
+  letzte Station wird nicht erreicht.
+- **Überfällig** (`promulgationOverdue`): keine Kundmachung, und der
+  Beschluss — der des Bundesrats, sonst der des Nationalrats — liegt länger
+  zurück als `PROMULGATION_WINDOW_DAYS` = 120 Tage. Gemessen über 84 Gesetze
+  der GP XXVIII: vom Beschluss bis zur Kundmachung im Median 20 Tage, p90 29,
+  höchstens 82; 120 ist das Maximum plus die Hälfte. Der Wortlaut ist nur
+  zeitlich: „seit 29.06.2022 nicht kundgemacht", Kopfzeile „Beschlossen –
+  nicht kundgemacht", die Zeile „Beschlossen, nicht kundgemacht ·
+  29.06.2022". Die letzte Station bleibt offen — „nie" wäre unsere Aussage,
+  nicht die des Parlaments —, ihr Wort ist aber nicht mehr „ausstehend",
+  sondern „nicht kundgemacht".
+
+Beide Wortlaute sind zeitlich; eine Ursache steht nur dort, wo das
+Parlament sie nennt (Framing-Regel, §4). Eine Abfrage im RIS (Nachtrag
+davor) unterbleibt, wo der Verlauf ausdrücklich keine Kundmachung nennt.
+**Gemessen am Abend des 03.10.2026** auf dem Entwicklungsserver: 2/ME steht
+bei „Bundesgesetzblatt" mit BGBl. I Nr. 65/2025 (31.10.2025) über 416/A,
+die Detailseite sagt „Gesetz geworden – als Initiativantrag";
+`/api/drafts/XXVII/171` trägt Beschlussdaten ohne Stufe, die Seite sagt
+„Beschlossen – nicht kundgemacht" und „seit 29.06.2022 nicht kundgemacht";
+„Im Nationalrat beschlossen" nennt `total` 4. Der Satz zum Stand im
+Abschnitt „Parlament" der Detailseite unterscheidet die Fälle seit demselben
+Abend (`decidedStandDe`), „bisher" ist weg:
+
+- 80 d.B.: „Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht
+  wurde er wegen eines Formalfehlers nicht. Neu eingebracht als
+  Initiativantrag 416/A, ist er als BGBl. I Nr. 65/2025 kundgemacht."
+- XXVII/1435 d.B.: „Nationalrat und Bundesrat haben den Text beschlossen;
+  kundgemacht ist er seit dem 29.06.2022 nicht."
+- beim Bundesrat (590 d.B.): „Der Nationalrat hat den Text beschlossen; der
+  Bundesrat befasst sich seit 24.09.2026 damit."
+- sonst: „Der Nationalrat hat den Text beschlossen; die Kundmachung im
+  Bundesgesetzblatt steht aus."
+
+Der Abschnitt „Im Bundesgesetzblatt" erscheint auch für den Nachfolger
+(„Bundesgesetzblatt I Nr. 65/2025, über Initiativantrag 416/A", beide
+verlinkt). Der §-Vergleich bis zur Kundmachung bleibt dort der eigenen
+Kundmachung der Vorlage vorbehalten: Er liest die Nummer selbst aus dem
+Verlauf der Vorlage, und ein neuer Antrag ist ein eigener Text.
 
 ### 12.34 Wie die Klubs abgestimmt haben — der letzte Fakt der Kette
 

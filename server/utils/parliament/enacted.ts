@@ -27,6 +27,8 @@ import { bgblOrderKey, extractBgblLink } from './detailJson'
 import { pickEnacted, type EnactedCandidate } from './enactedOrder'
 import { previousGp } from '#shared/utils/gp'
 import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp, reconcileActive } from './drafts'
+import { getBgblIssueDate } from '../ris/bgblService'
+import { withinBudget } from '../http/budget'
 
 /**
  * How many finished Vorlagen are opened before the order is applied.
@@ -42,12 +44,23 @@ import { getCurrentGp, getDraftsForGp, getGegenstand, getVorlagenForGp, reconcil
 const SCAN = 30
 
 /**
+ * How long a shown row waits for its Kundmachung's date — the „Neu" mark's
+ * date, and nothing else. This runs while the homepage waits: RIS answers
+ * in 0.16 s when it is well (03.10.2026), and a lookup that times out takes
+ * 20 s (`bgblService.ts`), so the bound is an emergency brake, ten times
+ * the normal answer.
+ */
+const BGBL_DATE_BUDGET_MS = 1_500
+
+/**
  * One candidate: the Vorlage's Kundmachung plus the draft it came from.
  * What is done with a list of them — order, one row per draft — is
  * `enactedOrder.ts`, where it can be read back.
  */
 interface Candidate extends EnactedCandidate {
   rvCitation: string
+  /** The Vorlage's Einlangen, ISO, from list 101 — its station's date. */
+  rvDate: string | null
   bgblNumber: string
 }
 
@@ -80,6 +93,7 @@ async function enactedOf(gp: string): Promise<ClosedOutcome[]> {
         return {
           order,
           rvCitation: v.citation,
+          rvDate: v.date || null,
           bgblNumber: bgbl.number,
           draft: { gp: String(me.gp_code), inr: Number(me.inr) },
         }
@@ -118,10 +132,24 @@ async function enactedOf(gp: string): Promise<ClosedOutcome[]> {
       ...reconcileActive(draft),
       rvCitation: c.rvCitation,
       bgblNumber: c.bgblNumber,
+      rvDate: c.rvDate,
     })
   }
 
-  return items
+  /* The Kundmachung's issue date, for the „Neu" mark (`entryView.ts`) —
+   * asked for the rows that are shown, after the cut, not for every
+   * candidate of the scan: at most `HOME_LIST_LENGTH` cached RIS lookups
+   * instead of up to thirty. Past the budget, or on any failure, a row
+   * renders without the mark this once, and the lookup goes on filling the
+   * cache for the next visitor (`withinBudget`). */
+  return Promise.all(
+    items.map(async (item) => ({
+      ...item,
+      bgblDate: item.bgblNumber
+        ? await withinBudget(getBgblIssueDate(item.bgblNumber), BGBL_DATE_BUDGET_MS)
+        : null,
+    })),
+  )
 }
 
 /**

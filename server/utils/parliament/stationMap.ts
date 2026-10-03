@@ -39,11 +39,12 @@
  * ours, so an edit to any of them must not survive in dev
  * (`server/utils/cache/base.ts`).
  */
-import type { DraftChain } from '#shared/types'
-import { furtherChain, stationFor } from '#shared/utils/draftStations'
+import type { DraftChain, NoPromulgation } from '#shared/types'
+import { STATUS_AT_BUNDESRAT, STATUS_FINISHED, furtherChain, stationFor } from '#shared/utils/draftStations'
 import { antragPathFor, carriesDraft } from '#shared/utils/antragPath'
 import type { VorlageRow } from './list101'
 import { mapWithConcurrency } from '../pool'
+import { withinBudget } from '../http/budget'
 
 /** Six hours: a station moves on the scale of days, and this way at most
  *  four cold builds a day can land on a visitor — the nightly prewarm
@@ -55,6 +56,28 @@ const STATION_MAP_TTL_S = 60 * 60 * 6
  *  without opening 353 sockets on a service that documents no rate limit
  *  (§13.6). */
 const CONCURRENCY = 12
+
+/**
+ * How long one chain waits for RIS — for its Kundmachung's date, and where
+ * Parliament has no link, for the Kundmachung itself. Answered in 0.16 s
+ * when RIS is well (03.10.2026); the bound exists for when it is not — a
+ * lookup that times out takes 20 s (`bgblService.ts`), and every enacted
+ * draft of a period would pay that inside the cold build.
+ */
+const BGBL_DATE_BUDGET_MS = 5_000
+
+/**
+ * The Kundmachung's issue date, for the list's „Neu" mark — or null.
+ *
+ * One cached RIS lookup per enacted Vorlage (`bgbl-dokument`, a month's
+ * lifetime), in the background build only: the list waits for this map at
+ * most its budget and answers without it, so no row waits for a date. Null
+ * on any failure and past the budget — the chain must never fail, nor
+ * stall, for its date.
+ */
+function kundmachungDateOf(bgblNumber: string): Promise<string | null> {
+  return withinBudget(getBgblIssueDate(bgblNumber), BGBL_DATE_BUDGET_MS)
+}
 
 /**
  * The chain of one draft, read from its own stage record.
@@ -88,7 +111,13 @@ async function chainOf(
        * Kundmachung is the Antrag's. A table lookup, no request. */
       const path = antragPathFor(gp, inr)
       return carriesDraft(path)
-        ? { ...nothing, station: 'bgbl', bgblNumber: path.antrag.bgblNumber, antragCitation: path.antrag.citation }
+        ? {
+            ...nothing,
+            station: 'bgbl',
+            bgblNumber: path.antrag.bgblNumber,
+            antragCitation: path.antrag.citation,
+            bgblDate: await kundmachungDateOf(path.antrag.bgblNumber),
+          }
         : nothing
     }
 
@@ -99,13 +128,55 @@ async function chainOf(
     const rvGpEnded = isVorlageGpEnded(rv.gp, currentGp)
     let bgblNumber: string | null = null
     let filingOpen = false
+    let decidedAt: string | null = null
+    let bundesratArrivedAt: string | null = null
+    let bundesratDecidedAt: string | null = null
+    let notPromulgated: NoPromulgation | null = null
+    let antragCitation: string | undefined
     try {
       const rvDetail = await getGegenstand(rv.gp, 'I', rv.inr)
+      const phase = rvDetail.content?.phase
       bgblNumber = extractBgblLink(rvDetail.content?.status?.bgbllinks)?.number ?? null
-      // The same function as the detail page (`draftDetail.ts`), so door
-      // and row cannot disagree: a Vorlage that lapsed with its period
-      // takes nothing, whatever a stale flag says.
+      /* The same function as the detail page (`draftDetail.ts`), so door and
+       * row cannot disagree: a Vorlage that lapsed with its period takes
+       * nothing, whatever a stale flag says. Otherwise the flag decides, and
+       * it stays "1" through the Bundesrat's phase — by design, not by lag:
+       * Parliament describes the window as open until the end of the
+       * parliamentary procedure (parlament.gv.at, „Stellung nehmen zu
+       * Gesetzesinitiativen"), and § 23b Abs. 1 GOG-NR admits Stellungnahmen
+       * „während des parlamentarischen Gesetzgebungsverfahrens" (BGBl. I Nr.
+       * 81/2024). A gate that closed it with the Nationalrat's Beschluss
+       * stood here for an afternoon on 03.10.2026 and went the same day
+       * (docs/architecture.md §12.26). */
       filingOpen = isVorlageFilingOpen(rvDetail.content, rv.gp, currentGp)
+      // The procedure's dates after the Ausschuss — the `parlament`
+      // station's fact and dates (`stationFor`, the „Neu" mark, the open
+      // window's „im Bundesrat seit …") — from the record already in hand,
+      // so they cost no request.
+      decidedAt = findHouseDecisionDate(phase)
+      bundesratArrivedAt = findBundesratArrival(phase)
+      bundesratDecidedAt = findBundesratDecisionDate(phase)
+      notPromulgated = findNoPromulgation(phase, rv.gp)
+      /* A Gesetzesbeschluss Parliament records as not promulgated, and the
+       * Antrag it names as the text's successor (80 d.B. → 416/A, §12.33,
+       * Nachtrag 03.10.2026). Where that Antrag's own record links a
+       * Kundmachung, the draft did reach the Bundesgesetzblatt — on the
+       * route Parliament states, not one we infer — and the chain says so
+       * the way the Antrag route does. One extra fetch, only in this rare
+       * case; its failure leaves the Vorlage's own facts standing. */
+      const successor = notPromulgated?.successorAntrag
+      if (!bgblNumber && successor) {
+        try {
+          const antrag = await getGegenstand(successor.gp, 'A', successor.inr)
+          const link = extractBgblLink(antrag.content?.status?.bgbllinks)
+          if (link?.number) {
+            bgblNumber = link.number
+            antragCitation = successor.citation
+          }
+        } catch {
+          // Per-item tolerance: the stated successor is enrichment.
+        }
+      }
     } catch {
       // The Vorlage exists — the stage record says so. Only what the Vorlage
       // itself would have added is missing, so the station stays `rv`: the
@@ -116,8 +187,47 @@ async function chainOf(
      * arrived there. Both come from the same list-101 row, so asking for
      * the row rather than the status alone costs nothing. */
     const row = await houseRow(rv.gp, rv.inr)
-    const station = stationFor(bgblNumber, row?.status ?? null)
-    return { station, rvCitation: rv.label, rvDate: row?.date || null, bgblNumber, filingOpen, rvGpEnded }
+
+    /* THE SECOND SOURCE FOR THE KUNDMACHUNG (03.10.2026): RIS, where
+     * Parliament's record of a decided Vorlage carries no link. RIS keys a
+     * law by period and Vorlage — an exact join, no title similarity
+     * (`bgblVorlage.ts`), and it returned Parliament's own number for 81 of
+     * 81 enacted drafts of GP XXVIII. What it guards is the lag between a
+     * Kundmachung and Parliament's link to it; it does NOT resolve the two
+     * decided Vorlagen known to lack one (80 d.B., XXVIII; 1435 d.B., XXVII),
+     * because no Kundmachung names them (docs/architecture.md §12.33,
+     * Nachtrag 03.10.2026). Asked only where a Kundmachung can exist — a
+     * Beschluss, or a status that means one — and within the date lookup's
+     * budget; the Jahrgang pages are the Verordnung join's, cached. */
+    let bgblDate: string | null = null
+    const decided = decidedAt || row?.status === STATUS_FINISHED || row?.status === STATUS_AT_BUNDESRAT
+    const from = decidedAt || row?.date || rv.date
+    // Not where Parliament says this Vorlage's text was not promulgated:
+    // there is no Kundmachung of it to find.
+    if (!bgblNumber && !notPromulgated && decided && from) {
+      const ris = await withinBudget(findBgblIForVorlage(rv.gp, rv.inr, from), BGBL_DATE_BUDGET_MS)
+      if (ris) {
+        bgblNumber = ris.number
+        bgblDate = ris.datum
+      }
+    }
+
+    const station = stationFor(bgblNumber, row?.status ?? null, decidedAt)
+    if (bgblNumber && !bgblDate) bgblDate = await kundmachungDateOf(bgblNumber)
+    return {
+      station,
+      rvCitation: rv.label,
+      rvDate: row?.date || null,
+      bgblNumber,
+      filingOpen,
+      rvGpEnded,
+      decidedAt,
+      bgblDate,
+      bundesratArrivedAt,
+      bundesratDecidedAt,
+      notPromulgated,
+      ...(antragCitation ? { antragCitation } : {}),
+    }
   } catch {
     return nothing
   }

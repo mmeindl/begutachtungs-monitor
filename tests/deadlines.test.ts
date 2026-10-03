@@ -6,6 +6,7 @@ import {
   fristDivergence,
   fristRangeDe,
   isNewArrival,
+  isWithinNewWindow,
   NEW_ARRIVAL_DAYS,
   noRvVerdictDe,
   RV_LATENCY_CONTEXT_DAYS,
@@ -118,6 +119,25 @@ describe('isNewArrival', () => {
     expect(isNewArrival(null, true)).toBe(false)
     expect(isNewArrival(undefined, true)).toBe(false)
     expect(isNewArrival(daysAgo(-3), true)).toBe(false)
+  })
+})
+
+/* The same window for every later station (03.10.2026) — without the
+ * `active` guard, which belongs to the Begutachtung alone. */
+describe('isWithinNewWindow', () => {
+  it('holds from today back to the boundary, inclusive', () => {
+    expect(isWithinNewWindow(daysAgo(0))).toBe(true)
+    expect(isWithinNewWindow(daysAgo(NEW_ARRIVAL_DAYS))).toBe(true)
+  })
+
+  it('stops a day past the boundary, and for a future date', () => {
+    expect(isWithinNewWindow(daysAgo(NEW_ARRIVAL_DAYS + 1))).toBe(false)
+    expect(isWithinNewWindow(daysAgo(-1))).toBe(false)
+  })
+
+  it('says no without a date', () => {
+    expect(isWithinNewWindow(null)).toBe(false)
+    expect(isWithinNewWindow(undefined)).toBe(false)
   })
 })
 

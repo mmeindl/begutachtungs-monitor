@@ -13,6 +13,7 @@ import type {
   Handoff,
   HouseVote,
   LawStationId,
+  NoPromulgation,
   PlenaryAmendments,
   TextVersion,
   TraceLink,
@@ -231,6 +232,107 @@ export function findPlenaryAmendments(phases: RawPhase[] | null | undefined): Pl
     session: sessions.find((s) => s.label === decidedIn) ?? sessions.at(-1) ?? null,
     amendments: adopted.filter((a) => a.session === decidedIn).map((a) => a.motion),
   }
+}
+
+const HOUSE_DECISION_STAGE = /^Beschluss im Nationalrat\b/
+
+/**
+ * The day the Nationalrat decided a Vorlage, ISO — or null.
+ *
+ * One stage „Beschluss im Nationalrat <a href="/gegenstand/XXVIII/BNR/192">
+ * 192/BNR</a>" in the phase „Plenarberatungen NR", dated the day of the
+ * third reading — 525 d.B. of GP XXVIII: 07.07.2026, read 03.10.2026, the
+ * same day RIS records as `DatumNationalrat` on the law's Kundmachung. The
+ * Bundesrat's „Beschluss im Bundesrat" stands in a phase of its own and is
+ * not this one. Should a Vorlage carry two, the first counts: the
+ * `parlament` station was reached with it.
+ *
+ * Read for that station's date, the list's „Neu" mark — list 101 carries
+ * only the Einlangen, and a Vorlage's arrival is not its decision.
+ */
+export function findHouseDecisionDate(phases: RawPhase[] | null | undefined): string | null {
+  return firstStageDate(phases, NR_PLENARY_PHASE, HOUSE_DECISION_STAGE)
+}
+
+/** The date of the first stage matching `stage` in a phase matching `phase`. */
+function firstStageDate(
+  phases: RawPhase[] | null | undefined,
+  phase: RegExp,
+  stage: RegExp,
+): string | null {
+  if (!Array.isArray(phases)) return null
+  for (const p of phases) {
+    if (!phase.test((p?.name ?? '').trim()) || !Array.isArray(p.stages)) continue
+    for (const s of p.stages) {
+      if (!stage.test(stripHtmlToText(s?.text ?? '').trim())) continue
+      return parseGermanDate(s.date) ?? parseIsoDate(s.date)
+    }
+  }
+  return null
+}
+
+const BR_ARRIVAL_PHASE = /^Einlangen BR$/i
+const BR_ARRIVAL_STAGE = /^Einlangen im Bundesrat\b/
+const BR_PLENARY_PHASE = /^Plenarberatungen BR$/i
+const BR_DECISION_STAGE = /^Beschluss im Bundesrat\b/
+
+/**
+ * The day the Bundesrat received the Nationalrat's Beschluss, ISO — or
+ * null. One stage „Einlangen im Bundesrat (Frist: 05.09.2025)" in the phase
+ * „Einlangen BR" (80 d.B. of GP XXVIII: 11.07.2025). The window for
+ * Stellungnahmen is still open then (§12.26, Nachtrag 03.10.2026); this is
+ * the date the list states for it.
+ */
+export function findBundesratArrival(phases: RawPhase[] | null | undefined): string | null {
+  return firstStageDate(phases, BR_ARRIVAL_PHASE, BR_ARRIVAL_STAGE)
+}
+
+/**
+ * The day the Bundesrat concluded, ISO — or null: the stage „Beschluss im
+ * Bundesrat <a …>48/BNR</a>" in „Plenarberatungen BR" (80 d.B.: 17.07.2025),
+ * after „Antrag, keinen Einspruch zu erheben, angenommen". The end of the
+ * parliamentary procedure, from which a missing Kundmachung is counted
+ * (`promulgationOverdue`).
+ */
+export function findBundesratDecisionDate(phases: RawPhase[] | null | undefined): string | null {
+  return firstStageDate(phases, BR_PLENARY_PHASE, BR_DECISION_STAGE)
+}
+
+const NO_PROMULGATION_STAGE = /^Keine Kundmachung\b/i
+const SUCCESSOR_ANTRAG = /\b(\d+)\/A\b/
+
+/**
+ * A Gesetzesbeschluss Parliament records as not promulgated — or null.
+ *
+ * One stage, in any phase, whose text begins „Keine Kundmachung" — on 80
+ * d.B. of GP XXVIII, dated 24.09.2025 in „Plenarberatungen BR": „Keine
+ * Kundmachung des Gesetzesbeschlusses aufgrund eines Formalfehlers sowie
+ * Einbringung eines neuen Antrages (416/A) (615/GO)". The cause is taken
+ * only as the stage words it (`formalfehler`, else `unbekannt`), and the
+ * successor only where it names an Antrag, numbered in the Vorlage's own
+ * period `gp`. Read 03.10.2026; XXVII/1435 d.B., decided in both chambers
+ * and never promulgated, carries no such stage.
+ */
+export function findNoPromulgation(
+  phases: RawPhase[] | null | undefined,
+  gp: string,
+): NoPromulgation | null {
+  if (!Array.isArray(phases)) return null
+  for (const phase of phases) {
+    if (!Array.isArray(phase?.stages)) continue
+    for (const stage of phase.stages) {
+      const text = stripHtmlToText(stage?.text ?? '').trim()
+      if (!NO_PROMULGATION_STAGE.test(text)) continue
+      const antrag = SUCCESSOR_ANTRAG.exec(text)
+      const inr = antrag ? Number(antrag[1]) : null
+      return {
+        date: parseGermanDate(stage.date) ?? parseIsoDate(stage.date),
+        reason: /Formalfehler/i.test(text) ? 'formalfehler' : 'unbekannt',
+        successorAntrag: inr ? { gp, inr, citation: `${inr}/A` } : null,
+      }
+    }
+  }
+  return null
 }
 
 export interface RvLink {

@@ -60,6 +60,23 @@ export type DraftStation = 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
  */
 export type ChainCoverage = 'linked' | 'unlinked' | 'unknown'
 
+/**
+ * A Gesetzesbeschluss that Parliament's own record says was NOT promulgated
+ * — the stage „Keine Kundmachung des Gesetzesbeschlusses …" that follows
+ * the Bundesrat's Beschluss (`findNoPromulgation`, docs/architecture.md
+ * §12.33, Nachtrag 03.10.2026). A fact read upstream, like everything in
+ * the chain: the cause is named only where that stage names it
+ * (`formalfehler`), and the successor only where it names an Antrag — no
+ * similarity, unlike `AntragPath`.
+ */
+export interface NoPromulgation {
+  /** The stage's date, ISO; null when undated. */
+  date: string | null
+  reason: 'formalfehler' | 'unbekannt'
+  /** The Antrag the stage says the text was brought in again as, e.g. 416/A. */
+  successorAntrag: { gp: string; inr: number; citation: string } | null
+}
+
 /** What the stage record says became of a draft. Every field is a fact read
  *  upstream, never an inference: no Vorlage means the stage record names
  *  none, which is not the same as "the draft failed". */
@@ -74,11 +91,17 @@ export interface DraftChain {
    * Read off the Vorlagen list the station map already fetches for the
    * house status, so it costs no upstream request. It exists because a row
    * whose window is the zweite Runde has no Frist to date itself by — the
-   * form closes with the vote — and the one date it does have is this one
+   * form closes with the end of the parliamentary procedure — and the one
+   * date it does have is this one
    * (docs/architecture.md §12.28).
    */
   rvDate: string | null
-  /** e.g. "Bundesgesetzblatt I Nr. 81/2026"; null until promulgated. */
+  /**
+   * e.g. "Bundesgesetzblatt I Nr. 81/2026"; null until promulgated. From
+   * Parliament's link on the Vorlage, or — where that record carries none —
+   * from RIS by the exact key of period and Vorlage (`findBgblIForVorlage`,
+   * 03.10.2026), stored in the same spelling.
+   */
   bgblNumber: string | null
   /** Stellungnahmen can still be filed on the Vorlage — the zweite Runde. */
   filingOpen: boolean
@@ -103,8 +126,53 @@ export interface DraftChain {
    * is by wording (`shared/utils/antragPath.ts`). Set only where it carries
    * the draft (`carriesDraft`), and then the station is `bgbl` with the
    * Antrag's Kundmachung as `bgblNumber` and no `rvCitation`.
+   *
+   * SECOND ROUTE, AND NOT AN INFERENCE (03.10.2026): where the Vorlage's own
+   * record says its Gesetzesbeschluss was not promulgated and names the
+   * Antrag that replaced it (`notPromulgated.successorAntrag`, 80 d.B. →
+   * 416/A), and that Antrag's record links a Kundmachung. Then `rvCitation`
+   * stays — the draft did become a Vorlage — and this names the route the
+   * text finally took to the Bundesgesetzblatt.
    */
   antragCitation?: string
+  /**
+   * When the Nationalrat decided the Vorlage, ISO — the date of the stage
+   * „Beschluss im Nationalrat" in the Vorlage's `phase` record
+   * (`findHouseDecisionDate`). The `parlament` station's date, for the
+   * list's „Neu" mark.
+   *
+   * ABSENT means not read (an older payload, or no Vorlage to read it
+   * from), never „the house did not decide": a decision without this stage
+   * is possible (a Vorlage sent back to committee is at `parlament` too),
+   * and null then says only that the record names no such stage.
+   */
+  decidedAt?: string | null
+  /**
+   * The Kundmachung's issue date (Ausgabedatum), ISO, from RIS's record of
+   * `bgblNumber` (`getBgblDocument`). The `bgbl` station's date, for the
+   * list's „Neu" mark. Absent or null means not read — RIS unreachable, or
+   * no Kundmachung — never „not promulgated"; that is `bgblNumber`'s to say.
+   */
+  bgblDate?: string | null
+  /**
+   * The Bundesrat's half of the procedure, ISO, read from the same `phase`
+   * record as `decidedAt` (`findBundesratArrival`,
+   * `findBundesratDecisionDate`): the stage „Einlangen im Bundesrat" and the
+   * stage „Beschluss im Bundesrat". Absent means not read, never „did not
+   * happen". The window for Stellungnahmen runs through this phase — until
+   * the end of the parliamentary procedure (§12.26, Nachtrag 03.10.2026) —
+   * so the list dates an open window here by its arrival in the Bundesrat.
+   */
+  bundesratArrivedAt?: string | null
+  bundesratDecidedAt?: string | null
+  /**
+   * The stage „Keine Kundmachung des Gesetzesbeschlusses …", when the
+   * Vorlage's record carries it (`NoPromulgation`). Absent or null: no such
+   * stage was read. Where it names a successor Antrag whose own record links
+   * a Kundmachung, the chain stands at `bgbl` with that number and the
+   * Antrag as `antragCitation`.
+   */
+  notPromulgated?: NoPromulgation | null
 }
 
 /**
@@ -266,8 +334,9 @@ export interface EnactmentInfo {
   plenaryAmendments: PlenaryAmendments | null
   /**
    * The Vorlage's house status as list 101 numbers it — '1' Einlangen im
-   * Nationalrat, '2' in Behandlung, '3' zurückverwiesen, '5' erledigt. Null
-   * when the Vorlage's record could not be read.
+   * Nationalrat, '2' in Behandlung, '3' zurückverwiesen, '4' beim Bundesrat
+   * (inferred, `STATUS_AT_BUNDESRAT`), '5' erledigt. Null when the Vorlage's
+   * record could not be read.
    */
   houseStatus: string | null
   /**
@@ -294,9 +363,12 @@ export interface EnactmentInfo {
   vote: HouseVote | null
   /**
    * Whether parliament currently accepts Stellungnahmen on this Vorlage —
-   * upstream's `statementsstate` on the RV's detail JSON, "1" while the
-   * Nationalrat has the text, "0" once it voted. The second window for
-   * input; false when the RV record could not be read.
+   * upstream's `statementsstate` on the RV's detail JSON: "1" for the whole
+   * parliamentary procedure, through the Bundesrat's phase (list-101 status
+   * 4) until its Beschluss, "0" once the procedure has ended (status 5). The
+   * second window for input; false when the RV record could not be read.
+   * Corrected 03.10.2026 — this said „until the Nationalrat voted", which
+   * Parliament's own description of the window does not support (§12.26).
    */
   filingOpen: boolean
   /**
@@ -312,6 +384,29 @@ export interface EnactmentInfo {
    * boundary only where there is no Vorlage.
    */
   rvGpEnded: boolean
+  /**
+   * The procedure's dates after the Ausschuss, ISO, from the Vorlage's own
+   * `phase` record — the Nationalrat's Beschluss (`findHouseDecisionDate`),
+   * the Bundesrat's arrival and Beschluss. Same meaning as the fields of the
+   * same names on `DraftChain`. Absent or null: not read.
+   */
+  decidedAt?: string | null
+  bundesratArrivedAt?: string | null
+  bundesratDecidedAt?: string | null
+  /**
+   * The stage „Keine Kundmachung des Gesetzesbeschlusses …" on that Vorlage
+   * (`NoPromulgation`), null without one. Read from the same record, so it
+   * is about the Vorlage the BGBl field above is about.
+   */
+  notPromulgated: NoPromulgation | null
+  /**
+   * The Antrag that stage names as the text's successor, and what became of
+   * it: its page and — from ITS record — its Kundmachung. Null without a
+   * named successor; the two BGBl fields null while the Antrag links none or
+   * its record could not be read. 80 d.B. → 416/A → BGBl. I Nr. 65/2025
+   * (§12.33, Nachtrag 03.10.2026).
+   */
+  successor: { citation: string; url: string; bgblNumber: string | null; bgblRisUrl: string | null } | null
 }
 
 /**
