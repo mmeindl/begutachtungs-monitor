@@ -428,6 +428,8 @@ export interface Alignment {
   pairs: { from: LawUnit; to: LawUnit }[]
   onlyFrom: LawUnit[]
   onlyTo: LawUnit[]
+  /** `pairArticles`: each earlier Artikel title → the later one it was paired with. */
+  articles: Map<string | null, string | null>
 }
 
 /**
@@ -528,6 +530,7 @@ export function alignUnits(fromUnits: readonly LawUnit[], to: readonly LawUnit[]
     pairs: pairs.map((p) => ({ from: original.get(p.from)!, to: p.to })),
     onlyFrom: from.filter((u) => !pairedFrom.has(u)).map((u) => original.get(u)!),
     onlyTo: to.filter((u) => !pairedTo.has(u)),
+    articles: articleMap,
   }
 }
 
@@ -589,13 +592,33 @@ function toUnit(change: LawUnitChange, from: LawUnit | null, to: LawUnit | null,
   }
 }
 
+/**
+ * A removed unit, filed under its law's LATER title where the law was paired —
+ * as every changed and unchanged unit of that law is, by `toUnit`. Under its
+ * own title it opened a group of its own wherever the two texts spell the law
+ * differently: 7/ME XXVIII showed „Änderung des SEGesetzes" (2 geändert, 1
+ * unverändert) and „Änderung des SE-Gesetzes" (1 entfallen) as two laws
+ * (03.10.2026). The draft's title stays in `fromArticle`, which the
+ * Erläuterungen join reads for the draft side. A law nothing pairs keeps its
+ * own title: it is a dropped law (`keepDroppedLaws`), not a spelling.
+ */
+function removedUnit(u: LawUnit, articles: ReadonlyMap<string | null, string | null>): LawDiffUnit {
+  const unit = toUnit('removed', u, null, null)
+  const later = articles.get(u.article)
+  if (articles.has(u.article) && later !== u.article) {
+    unit.article = later ?? null
+    if (u.article) unit.fromArticle = u.article
+  }
+  return unit
+}
+
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * Units of both texts → one list in reading order of the LATER version, with
  * removed units placed where they stood in the earlier one.
  */
 export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
-  const { pairs, onlyFrom, onlyTo } = alignUnits(from, to)
+  const { pairs, onlyFrom, onlyTo, articles } = alignUnits(from, to)
   const toPartner = new Map(pairs.map((p) => [p.to, p.from]))
   const renumbered = renumberedParagraphs(pairs)
   const removedSet = new Set(onlyFrom)
@@ -611,7 +634,7 @@ export function diffLawUnits(from: readonly LawUnit[], to: readonly LawUnit[]): 
     const stop = fromUnit ? (fromIndex.get(fromUnit) ?? -1) : from.length
     while (fromCursor < stop) {
       const u = from[fromCursor++]!
-      if (removedSet.has(u)) out.push(toUnit('removed', u, null, null))
+      if (removedSet.has(u)) out.push(removedUnit(u, articles))
     }
     if (fromUnit) fromCursor = Math.max(fromCursor, stop + 1)
   }

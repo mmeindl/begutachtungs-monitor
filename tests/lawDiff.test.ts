@@ -764,6 +764,23 @@ describe('diffLawPackage: a law the Vorlage adds to its own draft (03.10.2026)',
   })
 })
 
+describe('a removed unit files under the law\'s later title (03.10.2026)', () => {
+  // 7/ME XXVIII: the draft spells „SE-Gesetzes", the Vorlage „SEGesetzes" —
+  // the removed Ziffer opened a second group for the same law.
+  const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
+  const art = (title: string, paras: number[]): LawUnit[] =>
+    paras.map((p, i) => ({ article: title, articleNumber: 'Artikel 2', id: `Z${i + 1}`, heading: null, quotedHeadings: [], text: ins(p), blocks: [], stammnorm: null }))
+
+  it('groups it with the rest of its law and keeps the draft\'s spelling in fromArticle', () => {
+    const units = diffLawUnits(art('Änderung des SE-Gesetzes', [3, 9]), art('Änderung des SEGesetzes', [3]))
+    expect(units.map((u) => [u.change, u.article])).toEqual([
+      ['unchanged', 'Änderung des SEGesetzes'],
+      ['removed', 'Änderung des SEGesetzes'],
+    ])
+    expect(units[1]!.fromArticle).toBe('Änderung des SE-Gesetzes')
+  })
+})
+
 describe('the Artikel number counts only with the §§ behind it (27.09.2026)', () => {
   const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
   const u = (article: string | null, id: string, text: string, articleNumber: string | null): LawUnit => ({
