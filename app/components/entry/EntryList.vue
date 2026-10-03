@@ -6,16 +6,23 @@ import type { EntryView } from '~/utils/entryView'
  * site (docs/architecture.md §12.28).
  *
  * `EntryItem` settles what stands IN a row; this component settles what a
- * list of rows is: cards below `md`, from `md` up a sheet with a column
- * header and rules. Switched purely by CSS, without JS and without a client
- * hook.
+ * list of rows is: ONE SHEET at every width, rows parted by rules, with a
+ * column header from `md` up. Below `md` the row stacks and carries its own
+ * unit words. Switched purely by CSS, without JS and without a client hook.
  *
  * ONE LIST, since 01.10.2026. Until then both versions stood in the SSR HTML
  * — every entry twice, a card list for phones and a sheet from `md`, one of
  * them `display: none`. Measured on a 50-row page of `/entwuerfe`: the
  * hidden half was 40 % of the DOM, parsed and hydrated on every device that
- * never shows it. Now the sheet is the same `ul` with its frame switched on
- * at `md`, and the row is the card with `md:` classes (`EntryItem`).
+ * never shows it. Now one `ul`, and the row is the stacked layout with `md:`
+ * classes (`EntryItem`).
+ *
+ * NO CARDS ON A PHONE, since 03.10.2026. Below `md` every row was a card of
+ * its own, 12 px apart: about 14 px of gap and border per row, a phone
+ * screen of nothing on a 50-row page, and the list's controls floated above
+ * the cards while from `md` they stand in the sheet. The rows are all one
+ * kind, so a rule parts them as well as a gap, and the list box is the same
+ * box at every width.
  *
  * SINCE 18.09.2026 THAT INCLUDES THE HOMEPAGE. The header used to stand on
  * `/entwuerfe` only, on the argument that over five cards it is more scaffold
@@ -64,19 +71,18 @@ defineEmits<{ 'update:sort': [key: string] }>()
 </script>
 
 <template>
-  <!-- Cards up to `md`: enough width per row, two title lines, and every
-       cell carries its own unit word — there is no header here that could
-       say it for them. From `md` a sheet: this frame switches on, the gaps
-       between the cards become rules, and the header below appears.
+  <!-- One sheet at every width. Up to `md` the rows stack: enough width
+       per row, two title lines, and every cell carries its own unit word —
+       there is no header here that could say it for them. From `md` the
+       header below appears and the row lies flat.
 
        `overflow-clip` and not `overflow-hidden` on the sheet: both keep the
        rounded corners, but `hidden` makes the sheet a scroll container, and
        a sticky header inside one sticks to that and never to the window. -->
-  <div class="md:overflow-clip md:rounded-xl md:border md:border-hairline md:bg-surface">
-    <!-- The list's controls, inside the sheet from `md` up (the head of a
-         `ListBox`, 02.10.2026); above the cards on a phone, where there is no
-         sheet to hold them. -->
-    <div v-if="$slots.head" class="mb-3 md:mb-0 md:border-b md:border-hairline md:px-4">
+  <div class="overflow-clip rounded-xl border border-hairline bg-surface">
+    <!-- The list's controls, inside the sheet (the head of a `ListBox`,
+         02.10.2026). -->
+    <div v-if="$slots.head" class="border-b border-hairline px-4">
       <slot name="head" />
     </div>
     <!-- `aria-hidden`, because the rows below are links and not table
@@ -123,7 +129,7 @@ defineEmits<{ 'update:sort': [key: string] }>()
     <component
       :is="ordered ? 'ol' : 'ul'"
       v-if="entries.length"
-      class="space-y-3 md:space-y-0 md:divide-y md:divide-hairline"
+      class="divide-y divide-hairline"
     >
       <li v-for="entry in entries" :key="entry.key">
         <EntryItem :entry="entry">

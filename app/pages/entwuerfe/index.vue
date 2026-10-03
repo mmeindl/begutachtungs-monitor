@@ -747,7 +747,7 @@ const countLabel = computed(() => {
             :options="stationTabs"
             group-label="Wo steht es"
             collapse
-            class="border-b border-hairline md:-mx-4 md:px-4"
+            class="-mx-4 border-b border-hairline px-4"
           />
           <div class="flex flex-col gap-3 py-3">
             <div class="flex flex-wrap items-center gap-2">
@@ -978,7 +978,7 @@ const countLabel = computed(() => {
         <!-- Not under a station conflict: the sentence in the head already
              says that the combination itself is empty, and how out. -->
         <template v-if="!stationConflict" #empty>
-          <div class="md:px-4 md:py-4">
+          <div class="p-4">
             <!-- EMPTY LIST, BUT NOT AN EMPTY PAGE: while the full text below is
                  still answering, the large „Keine Entwürfe gefunden" card would be
                  a claim about an answer that does not exist yet. One line then
