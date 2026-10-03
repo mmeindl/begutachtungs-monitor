@@ -14,17 +14,19 @@
  * the frame as under a chart, and warnings on how to read the list, above
  * it. A page-level filter bar (`/entwuerfe`) is the page's, not a box's.
  *
- * The head stands on the paper tone (`bg-page`), GitHub's box header: the
- * controls were drawn for that ground (outline buttons, segment groups),
- * the white search field reads as a field on it, and the box has three
- * zones (controls, rows, foot) instead of one white slab. Tried white
- * first, on 02.10.2026, and it was too much white. Not the argument
- * against the comparison's tinted group headers: those were a stack of
- * grey bars, and a box has one head. The foot stays white, a hairline
- * over it; the pager is one row, a second band would add weight without
- * structure. Rows in the head are spaced by `gap-3`, and a `sr-only` live
- * region inside takes no gap (absolutely positioned children are no flex
- * items).
+ * The head is WHITE since the second pass on 02.10.2026, in three layers
+ * that every box shares: the `tabs` slot chooses WHAT is listed
+ * (`ListTabs`), the `header` slot narrows and searches it in one tool row,
+ * and the column header inside the sheet orders it. It stood on the paper
+ * tone for a few hours first, because the outlined segments were drawn for
+ * that ground; with underlined tabs and fewer outlined buttons the reason
+ * fell away, and a tinted band over three rows of controls was the heaviest
+ * thing in the box. A hairline under each layer — under the tabs too where
+ * they are a select on the phone, so the layers read the same at every
+ * width and the box need not know which form the tabs took.
+ *
+ * A `sr-only` live region inside takes no gap (absolutely positioned
+ * children are no flex items).
  *
  * The foot is not a slot: each row under the list carries its own
  * `border-t border-hairline px-4 py-3`, so a row that has nothing to say
@@ -36,12 +38,27 @@
  * inside (`DiffGroup`, `StatementListHeader`) would stick to it instead of
  * the window.
  */
+defineProps<{
+  /**
+   * Classes on the tool row — for a row whose content is all
+   * breakpoint-bound (the Stellungnahmen panel's phone-only sort select):
+   * hiding the content alone would leave an empty padded band.
+   */
+  headerClass?: string | false
+}>()
 </script>
 
 <template>
   <div class="overflow-clip rounded-xl border border-hairline bg-surface">
-    <div v-if="$slots.header" class="flex flex-col gap-3 border-b border-hairline bg-page px-4 py-3">
-      <slot name="header" />
+    <div v-if="$slots.tabs || $slots.header" class="border-b border-hairline">
+      <div v-if="$slots.tabs" class="px-4">
+        <slot name="tabs" />
+      </div>
+      <!-- The line between tabs and tool row is the tool row's own top edge,
+           so a tool row hidden at some width takes it along. -->
+      <div v-if="$slots.header" class="flex flex-col gap-3 px-4 py-3" :class="[$slots.tabs && 'border-t border-hairline', headerClass]">
+        <slot name="header" />
+      </div>
     </div>
     <slot />
   </div>
