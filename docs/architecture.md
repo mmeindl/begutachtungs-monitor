@@ -277,7 +277,7 @@ name has to stay globally unique.
 | `StatementsPanel` | `gp: string; inr: number; summary: StatementsSummary` | Summary tiles (total/orgs/private/non-public), top organisations; the full list lazy via the statements route and paginated client-side (`ListMore`, steps of 10), organisation search above 20 rows, persons as "Privatperson" |
 | `StatementRow` | `date: string\|null; label: string; links?: { citation; href }[]\|null; detail?: string\|null; submitter?: string\|null` + slots `meta`, default | One row of the panel, in the grammar all three of its lists share: date · identity · citation(s) · Zustimmungen |
 | `OrganisationStatementLinks` | `org: StatementsSummary['organisationList'][number]` | The statements of ONE organisation that filed more than once in the same Verfahren — the grouped row above cannot carry them, because a Zustimmung is counted per Stellungnahme |
-| `StatementDocumentTag` | `pageUrl: string; citation: string; submitter?: string\|null` | The PDF of one Stellungnahme, as the same format tag `DocumentList` uses — one vocabulary for "here is a file" on the whole page. It appears ONLY where a file exists |
+| `StatementDocumentTag` | `pageUrl: string; citation: string; submitter?: string\|null` | The PDF of one Stellungnahme, as the same format link `DocumentList` uses — one vocabulary for "here is a file" on the whole page. It appears ONLY where a file exists |
 | `RvStatements` | `data: RvStatementsResponse; filingOpen?: boolean` | The Stellungnahmen filed on the Regierungsvorlage itself — the second round, which anyone can file in the Nationalrat the way they filed on the Ministerialentwurf |
 
 **`compare/` — the comparison sections and their shared parts**
@@ -293,7 +293,7 @@ name has to stay globally unique.
 
 ## 7. Pages
 
-- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (plain text: the anchor into the accountability section went on 18.09.2026 — a promise is not navigation, and the reorder removed the distance it was saving), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline (§12.20; the four StatTiles were removed on 17.09.2026), **"Zweite Runde: Stellungnahme im Nationalrat möglich"** (the Regierungsvorlagen still taking Stellungnahmen — client-side and lazy, hidden when empty), **"Wo am meisten mitgeredet wurde"** (the GP's top by statement count, each closed row with its outcome chip), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here) — **all four cut to `HOME_LIST_LENGTH` = 5 and each with exactly one link, top right, to the filter that shows the same list uncut (§12.24: `ListHeader`, no `ListMore` on this page)**, and then the page simply ends. Its whole foot went on 18.09.2026, in three steps, and the reasoning is worth keeping because each step failed a different test. The lastSync note, because the field is one global index timestamp, identical for GP XX as for today, so it could never read "old" (`docs/api-exploration.md`). The scope sentence, because the accountability sections count over the CURRENT Gesetzgebungsperiode only and each names it in its own subline — a third statement at the foot added nothing. Note what was NOT done: moving the period down there as a footnote in the manner of the Quelle notes. A source note is looked up after reading and its absence leaves the sentence above true; the period is part of the claim — without it "die Entwürfe mit den meisten Stellungnahmen" reads as an all-time superlative the list is not, and a qualifier below the claim no longer qualifies it. And finally the pointer "Frühere Perioden – zurück bis 1979 – stehen unter Alle Entwürfe", which survived one round on the ground that "back to 1979" was stated nowhere else. Unique is not the same as useful: `/entwuerfe` is already in the main nav on every page and behind all four `ListHeader` links, and the corpus depth is not this project's claim — it is what list 81 hands to anyone who queries it, while the accountability chain is what has to be earned. A foot note advertising the range advertised the wrong thing, and for the older periods it also promises a depth the product does not deliver there (no diff layer, thin chain). Both dashboard fetches are server-side and started together, so both accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
+- `/` **Dashboard**, in two halves — mitreden, then nachverfolgen, the order the H1 promises (§12.21): mission one-liner (plain text: the anchor into the accountability section went on 18.09.2026 — a promise is not navigation, and the reorder removed the distance it was saving), subscribe line, **one** "Jetzt in Begutachtung" list — Ministerialentwürfe and the Begutachtungen without a Gegenstand interleaved by deadline (§12.20; the four StatTiles were removed on 17.09.2026), **"Regierungsvorlage: Stellungnahme im Parlament möglich"** (the Regierungsvorlagen still taking Stellungnahmen, through the Bundesrat's phase — client-side and lazy, hidden when empty; „Zweite Runde: …" until 03.10.2026, when the headings took the station words), **"Wo am meisten mitgeredet wurde"** (the GP's top by statement count, each closed row with its outcome chip), **"Beschlossen, noch nicht kundgemacht"** (the procedure over — no window open any more — and no Kundmachung yet, newest Beschluss first, hidden when empty — since 03.10.2026, §12.21), **"Zuletzt Gesetz geworden"** (the newest promulgations, each rendered as the Begutachtung it came out of — §12.23 replaced the "Zuletzt abgeschlossen" recency list here) — **all five cut to `HOME_LIST_LENGTH` = 5 and each with exactly one link, top right, to the filter that shows the same list uncut (§12.24: `ListHeader`, no `ListMore` on this page)**, and then the page simply ends. Its whole foot went on 18.09.2026, in three steps, and the reasoning is worth keeping because each step failed a different test. The lastSync note, because the field is one global index timestamp, identical for GP XX as for today, so it could never read "old" (`docs/api-exploration.md`). The scope sentence, because the accountability sections count over the CURRENT Gesetzgebungsperiode only and each names it in its own subline — a third statement at the foot added nothing. Note what was NOT done: moving the period down there as a footnote in the manner of the Quelle notes. A source note is looked up after reading and its absence leaves the sentence above true; the period is part of the claim — without it "die Entwürfe mit den meisten Stellungnahmen" reads as an all-time superlative the list is not, and a qualifier below the claim no longer qualifies it. And finally the pointer "Frühere Perioden – zurück bis 1979 – stehen unter Alle Entwürfe", which survived one round on the ground that "back to 1979" was stated nowhere else. Unique is not the same as useful: `/entwuerfe` is already in the main nav on every page and behind all five `ListHeader` links, and the corpus depth is not this project's claim — it is what list 81 hands to anyone who queries it, while the accountability chain is what has to be earned. A foot note advertising the range advertised the wrong thing, and for the older periods it also promises a depth the product does not deliver there (no diff layer, thin chain). The accountability fetches are server-side and started together, so all three accountability sections are in the SSR HTML — they are what the page exists for, and client-only kept them out of crawls, shares and no-JS.
 - `/entwuerfe` **List**, filtered on **two axes (§12.26)**: **station chips (multi-select: Begutachtung · Regierungsvorlage · Parlament · Bundesgesetzblatt — where a draft stands)** over the segmented control **Alle / Stellungnahme möglich / Abgeschlossen** (what a reader can do — „Stellungnahme möglich" is a running Frist OR an open Vorlagen-Formular, so „zweite Runde" is the cut `?status=open&station=rv`), **Art select — the one filter that names a HALF instead of narrowing the list, and therefore decides which endpoint is asked at all (23.09.2026)**: under „Ministerialentwürfe" the RIS half is not fetched, under „Verordnungsentwürfe u. a." `/api/drafts` is not, on the server either (`enabled`, watched on the half's own wanted-ness, so switching between the halves fetches only the one that is newly wanted). The server-rendered payload then carries only the half it renders — 218 KB unfiltered against 152 KB resp. 67 KB, measured 23.09.2026 — and count line, Ressort menu and „Darunter … in zweiter Runde" state what stands in the list rather than what was fetched. Its value is not passed to `/api/ris-drafts?art=`, which means the instrument kind (§5). GP select, ministry select (from the halves that are fetched), **sort select (Frist | Meiste Stellungnahmen — §12.24, client-side, the target of the homepage ranking's link)**, search field (debounced); filter state in the URL query; result counter; EmptyState. **The rows are paged, 50 at a time (`ListMore`, „Alle N anzeigen" above 50 remaining — 30.09.2026)**: all 339 rows of a period stood in the SSR HTML, each in both densities, 1,24 MB and 12.153 DOM nodes; paged it is 398 KB and 1.989 nodes, main thread on a 4× throttled phone 830 → 400 ms, measured on production builds. Only the render is cut — counts, Ressort menu and the full-text matching read the whole list — and under a search query the list stays uncut (§12.15's rule), so „stehen schon in der Liste oben" is only said of rows that are on the page. The page count is not in the URL and resets with every filter and sort change. Rows carry their station in the slot the Frist-Countdown owns while the Frist runs. A station chip takes the RIS half out entirely — those records have no station at all (§12.26) — and „Verordnungsentwürfe u. a." plus a station is an empty set that says so instead of showing an EmptyState. Under the list, when the status filter is „Stellungnahme möglich" and the stations allow it: the section **„Ohne Begutachtung: Stellungnahme im Nationalrat möglich"** (`#zweite-runde`, the anchor the homepage links to), which since §12.26 holds only the Vorlagen **without** a Begutachtung — the others are rows.
 - `/entwuerfe/[gp]/[inr]` **Detail** (a Ministerialentwurf): `DraftHeader`, short info, CTA "Stellungnahme auf parlament.gv.at abgeben" (only when active) + "Auf parlament.gv.at ansehen", draft documents, statements panel, the comparison sections, source footnote — and `SpineRail`, the five stations (§12.26), each linking into the section that carries it. Closed without RV, the outcome card adds the measured base rate under the waiting sentence; once the draft's GP is over it leads with the boundary date instead ("Die XXVII. Gesetzgebungsperiode endete am 23.10.2024 – ohne Regierungsvorlage …", §12.10). Same-title drafts are linked in both lifecycle states: a predecessor without RV beside the station rail, a successor inside the no-RV card.
 - `/entwuerfe/[id]` **Detail of a Begutachtung without a Gegenstand at Parliament** (§12.16): a RIS record, addressed by its `BEGUT_…` id. One link shape for every Entwurf since 18.09.2026 — the id shape decides which of the two detail pages renders, so a reader never has to know which half of the corpus a draft is in to guess its URL (§12.19). It deliberately has no statements panel and no ME→RV comparison: neither can exist here, because there is no Gegenstand to hang them on. What it does carry is the RIS documents, the Textgegenüberstellung where one exists, and — for a Verordnung, since 26.09.2026 — a three-station `SpineRail` (Entwurf · Begutachtung · Bundesgesetzblatt II) whose last row is what became of it (§12.32). A Gesetz or an untyped record keeps the card in words: no path after the Begutachtung can be read for them.
@@ -11732,6 +11732,180 @@ da schon vor (zwei weitere kamen am selben Tag) — „konnte nicht aufnehmen"
 wäre dort falsch. Der Tag des Fristendes zählt mit, und die Rechnung ist dieselbe wie
 das „noch vor Fristende" am Verfahrensstrang (`tabledBeforeFristEnd`,
 `app/utils/outcomes.ts`).
+
+### 12.39 Die Kasten-Grammatik: vier Behälter, vier Verben (03.10.2026)
+
+Der Anlass: die Abschnitte der Entwurfsseite lasen sich als Folge gleich
+lauter Blöcke — Karte mit Quellenzeile, Überschrift mit Karte und
+Quellenzeile, Überschrift mit Prosa —, und nichts am Bild sagte, welcher
+Block was für ein Ding ist. Zwei Ursachen, beide Bau, beide am 03.10.
+geschlossen; vier Zustände wurden nacheinander am Schirm verglichen
+(117/ME trägt alle fünf Abschnitte), nicht aus der Erinnerung.
+
+**Eine Schriftform tat vier Arbeiten.** Unter dem h2 trug alles 16 px
+halbfett: die h3 der Unterabschnitte, die Titel in den Kästen, die
+Faktennamen, der Dokumente-Falz. Die Unterabschnittsebene existierte im
+Markup und war im Bild unsichtbar. Seither: h3 auf `text-lg`
+(`PageSubsection`, die Dokumente-Falze); 16 px halbfett ist den Titeln *in*
+einem Kasten vorbehalten.
+
+**Der Kasten trug keine Bedeutung.** Stationsfakten, Vergleichswerkzeug und
+Stellungnahmen-Tabelle trugen dieselbe weiße Karte, die Quellenzeilen
+hingen frei dazwischen. Die Grammatik seither, einmal gesagt im Docblock
+von `FactList.vue`: **Akzentkasten = handeln** (die Tür), **weiße Karte =
+bedienen** (Verfahrensleiste, Vergleich, Tabellen), **ungefüllter Rahmen =
+nachschlagen** (die Faktenlisten, `frame`; `card` und `divided` sind
+ersatzlos weg), **nackt = lesen** (Prosa). Farbe über Fläche über Rahmen
+über nichts — ein Blick sagt, was für ein Ding vor einem steht. Die Kästen
+oben auf der Seite mussten dafür nicht angefasst werden; die Grammatik
+erklärt sie nachträglich, statt mit ihnen zu konkurrieren.
+
+Der Rahmen beantwortet nebenbei, woran die Quellenzeile hängt: eine Caption
+braucht ein abgegrenztes Objekt. Die naheliegende Regel „hat Quellen →
+Rahmen" wäre trotzdem falsch — die Erläuterungs-Prosa trägt auch eine, und
+Prosa im Rahmen ist das eine klar schlechte Ergebnis. Dort bindet die Nähe,
+und die Zeile benennt ihr Objekt selbst („Erläuterungen des Ressorts …").
+Zweiter Nebengewinn: der Frist-Balken behält seine Kante — das stärkste
+Argument für die weiße Stationskarte vom 01.10. ist ohne weiße Fläche
+erfüllt, und der Ring seines Medianstrichs schneidet seither schlicht in
+Seitenfarbe (`ring-page`, die Variable `--frist-cut` ist weg).
+
+**Links in zwei Registern.** `link-muted` (`main.css`): Tinte der Umgebung
+plus Unterstrich in Ruhe, für Links in Metadaten-Zeilen — Quellenzeilen und
+der Footer, der genau diese Behandlung siebenmal von Hand schrieb. Blau
+bleibt dem Inhalt. Das revidiert nicht „Blau heißt ‚hier geht etwas‘" vom
+selben Tag, es schneidet ein Register: in einer ganz grauen Zeile sagt der
+Unterstrich „Link" (dieselbe 1.4.1-Begründung wie bei `link-inline`), und
+drei blaue Posten unter jedem Kasten waren das Lauteste am leisesten Text
+der Seite. Außerdem ist „Zeilenzuordnung und Markierung:
+Begutachtungs-Monitor" seither EIN Posten, wo beides unseres ist — zwei
+benachbarte „…: Begutachtungs-Monitor" sagten dieselbe Urheberschaft
+zweimal (`SectionCredits.vue`).
+
+#### Verworfen, mit Grund
+
+- **Ikonen je Station** (Überschriften, Leiste): für Begutachtung,
+  Regierungsvorlage, Bundesgesetzblatt existiert keine Ikonographie — jedes
+  Set wäre willkürlich, also Legende statt Zeichen; und ein Glyph je Zeile
+  konkurriert mit dem Punktsystem der Leiste, deren eine Marke die der
+  Marke ist.
+- **Fakten ganz rahmenlos:** die beste Rhythmik, aber die Quellenzeile
+  schwebt, und der Frist-Balken verliert seine Kante.
+- **Rahmenlos mit Trennlinien** (`divided` ohne Rahmen): die Haarlinien in
+  voller Spaltenbreite lesen sich als Tabellenscheiben und wiederholen die
+  Abschnittstrenner.
+- **„Stand" als h3 über jeder Lede:** passt der Begutachtung und dem
+  Parlament, ist am Entwurf („Ändert 2 Gesetze") falsch; der Rahmen direkt
+  unter dem h2 markiert die Lede ohne Wort.
+
+#### Nachtrag, noch am 03.10.: die Grenzen zwischen den Abschnitten, und das Namensregister
+
+Die zweite Runde desselben Tages galt den Abschnittsgrenzen, und die
+Diagnose war eine Inversion: die stärkste horizontale Linie der Seite lag
+IN den Abschnitten — der `border-t` des Dokumente-Falzes, volle Breite —,
+während die schwächste die Grenze markierte (der 2rem-Balken). Beide
+lauteren Kandidaten (unten) versuchten, ein Wettrüsten zu gewinnen, das
+nach dem Degradieren des Konkurrenten niemand mehr führen muss. Der Fix
+blieb in der vorhandenen Vokabel, nur das Gewicht wanderte: der
+Kapitelkopf eine Stufe größer (`2xl → 3xl` ab `sm` — bei 24 px über 16 px
+Lauftext trug der Kopf den Schnitt nicht selbst, bei der doppelten
+Textgröße tut er es), der Balken 3 rem × 3 px, und die Dokumente-Falze
+beider Entwurfsseiten ohne `border-t`. Die Falten der Kurzinfo
+(`DraftDescription`) behalten ihre Linien: sie trennen innerhalb eines
+Abschnitts, nicht zwischen zweien.
+
+Verworfen, beides am Schirm beurteilt: **der Balken in Gelb an jedem
+Abschnitt** — `#ffd84d` auf Papier trennt schwächer als Tinte, die Runde
+war aber angetreten, um stärker zu trennen; und fünf gelbe Balken je Seite
+geben den Textmarker für Chrome aus, wonach die Gelbs, die etwas bedeuten
+(der Punkt der Leiste, „Neu", eine markierte Suchzeile), genau so viel
+verlieren, wie das Chrome gewinnt. **Die Markierung der aktuellen
+Station** — der `mark-wash` hinter dem einen Kapitelkopf, dessen Station
+den gelben Punkt trägt — war gebaut und wurde wieder ausgebaut: die Leiste
+beantwortet „wo steht der Text" bereits, der Wash war eine zweite Antwort
+auf eine gelöste Frage. Nicht weiter verfolgt: der Balken in den Bundsteg
+hinein, die durchgehende Linie (hätte die eben entfernte Linienart wieder
+eingeführt), Kapitelnummern (die Leiste zeigt die Ordnung schon).
+
+Der Frist-Balken bleibt ohne Gelb, aus dem Grund, den sein eigener
+Docblock seit dem 01.10. trägt und der am 03.10. bekräftigt wurde: eine
+geschlossene Frist ist eine erreichte Station, und Gelb hieße „bewegt sich
+noch". Die eine grammatikalisch richtige Gelb-Variante — eine *laufende*
+Frist mit gelber Heute-Marke auf der Strecke — wäre eine neue Fläche auf
+den offenen Entwürfen und steht als offene Produktentscheidung in
+`TODO.md` Teil 6.
+
+Am selben Tag festgehalten, weil es sich aus der Kasten-Grammatik ergab,
+ohne dass es jemand entworfen hätte — **das Register der Namen**: der
+Serifen-Kapitelkopf mit Balken benennt ein Kapitel; `text-lg` halbfett
+(serifenlos) einen Unterabschnitt; 16 px halbfett den Namen eines Kastens
+(die Leiste, die Tür, die Titel in den Werkzeugen); 14 px medium das Label
+eines Fakts im Rahmen. Serife benennt die Struktur des Inhalts,
+Serifenlose den Apparat. Zwei Spannungen sind bekannt und hingenommen: die
+Karten-h2 oben auf der Seite sind optisch kleiner als die h3 darunter
+(Outline-Rang gegen Schriftgrad — niemand vergleicht die beiden über den
+Falz hinweg, Screenreader gehen nach Ebene); und die Dringlichkeit der Tür
+hängt allein an ihrer Waschfarbe, nicht an ihrer Überschrift — wer die
+Fristtöne neu kalibriert, prüft die Tür nach.
+
+### 12.40 Ein Gesetz, das die Regierungsvorlage hinzufügt: Änderung, nicht Fußnote (03.10.2026)
+
+Bis zum 03.10. schnitt `diffLawPackage` jedes Gesetz, das nur die
+Regierungsvorlage trägt, aus dem §-Vergleich und nannte es in einem Satz
+darüber — mit der Begründung „Eine Regierungsvorlage fasst häufig mehrere
+Ministerialentwürfe zusammen". Gemessen über GP XXVI–XXVIII
+(`scripts/corpus/mergedLaws.ts`): von 488 ME→RV-Vergleichen trugen 126
+diesen Satz, und bei **90 (71 %)** war er falsch. Deren Vorlage nennt im
+`preconst` nur diesen einen Entwurf; das Ressort hat das Gesetz nach der
+Begutachtung selbst dazugenommen (XXVIII 121/ME: drei Ziffern der StPO in
+der Strafvollzugsnovelle 2026). Median 5–8 Einheiten, 73 von 90 höchstens
+10; der Ausreißer ist 4/ME mit 217 in neun Gesetzen. Die echten
+Sammelvorlagen (`bundlesOtherDrafts` wahr, 36) liegen bei Median 41–614
+Einheiten. Ohne Eintrag im `preconst` war keiner der 488.
+
+**Entscheidung.** Ein solches Gesetz ist eine Änderung zwischen Entwurf und
+Vorlage wie jede andere, und genau die soll die Seite zeigen. Für ME→RV mit
+`bundlesOtherDrafts === false` bleibt es im Vergleich (`keepAddedLaws`):
+seine Einheiten erscheinen als „neu" in einer eigenen Gruppe (die
+Zuordnung überquert nie einen Artikel), die Antwort nennt es in
+`addedLaws`, und die Gruppe sagt in einer Zeile, dass das Gesetz im
+Entwurf nicht vorkommt. Der Anteil geänderter Entwurfseinheiten (§12.38)
+bleibt unberührt, `ownChangeShare` zählt Eingefügtes nicht.
+
+Nur am Protokoll, nie an der Größe: eine Regel „wenige Gesetze" hätte 4/ME
+falsch und 13/ME (ein Gesetz aus 26/ME) ebenso falsch entschieden. Nur
+ME→RV: ein Gesetz, das erst später auftaucht, kann vom Ausschuss stammen,
+und darüber sagt der `preconst` der Vorlage nichts.
+
+Wo die Vorlage andere Entwürfe bündelt, bleibt der Satz, aber er rät nicht
+mehr: er nennt die Entwürfe aus demselben Eintrag (`otherBundledDrafts`,
+„mit dem Ministerialentwurf 26/ME"). Der alte Satz steht nur noch für den
+Fall ohne Eintrag.
+
+**Die Gegenrichtung, am selben Tag.** Ein Gesetz, das der Entwurf trug und
+die Vorlage nicht mehr, bleibt ebenso im Vergleich (`keepDroppedLaws`, seine
+Einheiten „entfallen", `droppedLaws`) — mit einer Bedingung mehr: der
+Entwurf mündet laut Stufenprotokoll in genau eine Vorlage. Ein geteilter
+Entwurf kann das Gesetz in der anderen tragen (XXVII 21/ME, XXVIII 74/ME);
+dort bleibt der Satz „möglicherweise steht es in einer anderen". Die Zeile
+der Gruppe sagt nur, was die beiden Texte zeigen („Der Entwurf änderte
+dieses Gesetz; die Regierungsvorlage ändert es nicht mehr"), nichts darüber,
+wohin es ging — ein Initiativantrag kann es weitertragen.
+
+Zwei der 21 Fälle waren keine Gesetze, sondern das Inhaltsverzeichnis des
+Pakets: `parseLawUnitsFromRis` las „Artikel 1 – Änderung der
+Gewerbeordnung 1994" als eigene Einheit unter dem Titel des Pakets (XXVI
+93/ME, XXVII 115/ME). `dropTocEntries` nimmt sie heraus, am Muster der
+Nummer, nicht des Titels — 115/ME nennt im Verzeichnis
+„Hochschulgesetzes 2002" für ein Artikel „… 2005". Alt gegen neu über die
+1.622 Dokumente in `.cache/aenderungsrate/docs/`: genau diese zwei
+Dokumente, zehn Einheiten, jede eine Verzeichniszeile.
+
+Weil `ownChangeShare` Entfallenes zählt, verschiebt das die Basisrate
+(§12.38) — neu gemessen mit `aenderungsrate.ts`, das die Vorlage jetzt so
+liest wie `getLawDiff`: XXVII p75 75 → 77 %, XXVI p25 34 → 35 %, sonst
+gleich. Mit `keepDroppedLaws` aus reproduziert dasselbe Skript die alten
+Werte exakt; die Verschiebung kommt also allein aus diesen Gesetzen.
 
 ## 13. Open questions
 

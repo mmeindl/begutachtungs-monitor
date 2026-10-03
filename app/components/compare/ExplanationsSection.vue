@@ -222,7 +222,7 @@ const loadAnnouncement = computed(() => {
         <ExternalLink
           v-if="data.document"
           :href="data.document.url"
-          class="link-quiet"
+          class="link-muted"
         >{{ sourceLabel }}</ExternalLink>
       </SectionCredits>
     </template>

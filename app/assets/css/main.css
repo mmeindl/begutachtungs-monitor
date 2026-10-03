@@ -118,6 +118,12 @@
      paper and over a wash. Replaced five near-identical grounds (bg-page,
      bg-hairline/40, bg-ink/6, #ebe9e1, none) on 03.10.2026. */
   --color-hover: color-mix(in srgb, var(--color-ink) 5%, transparent);
+  /* The hover edge — what a bordered form control's border (or ring)
+     darkens to under the pointer: buttons, selects, text inputs. Two steps
+     past baseline, 3.3:1 on surface and 3.0:1 on page, so the change is
+     visible as a change and not as a rendering artefact (hairline →
+     baseline was 1.4 → 1.8, which nobody saw). */
+  --color-hover-edge: #8f8e84;
 
   /* Der Textmarker — LOOK AT THIS: the brand, „Neu", a search hit, the
      spine's "the text is here" dot and current row. NEVER a text color, only a ground
@@ -383,15 +389,25 @@
 }
 
 @utility section-heading {
-  @apply relative pt-3.5 text-2xl font-semibold text-ink;
+  /* Since 03.10.2026 the chapter head is a step larger (2xl → 3xl from sm):
+     at 24px over 16px body the boundary leaned on the gap and the dash;
+     a chapter head that is twice the body carries the cut itself. */
+  @apply relative pt-3.5 text-2xl font-semibold text-ink sm:text-3xl;
 
   &::before {
     content: "";
     position: absolute;
     top: 0;
     inset-inline-start: 0;
-    width: 2rem;
-    height: 2px;
+    /* 2rem × 2px until 03.10.2026: at a glance the short bar lost against
+       the full-width hairlines that often END a section (a fold's
+       border-t), so it grew. */
+    width: 3rem;
+    height: 3px;
+    /* Ink, and it stays ink: the bar in the brand's yellow was mocked and
+       rejected on sight (03.10.2026) — at #ffd84d on paper it divides
+       weaker than ink, and five yellow bars a page spend the highlighter
+       on chrome. */
     background-color: var(--color-ink);
   }
 }
@@ -402,7 +418,17 @@
  *   sheet, row, label: the primary text underlines at 2 px
  *                      (group-hover:underline group-hover:decoration-2)
  *   bordered sheet:    border darkens   (hover:border-baseline)
- *   bordered chip:     border darkens + its text underlines
+ *   form control:      edge darkens     (hover-edge) — and a control you
+ *                      press (button, select) also takes the ink tint;
+ *                      one you type into (text input) does not, a grey
+ *                      field reads as disabled. Rest edge is baseline for
+ *                      all of them. No underline: a select's value and a
+ *                      toggle's label are not links. Set once in
+ *                      app.config.ts and TokenSelect, not per call site.
+ * The split, in one line: what has an edge answers with ground and edge;
+ * only bare text underlines. A link is never drawn with an edge — the
+ * PDF/HTML format tags were, and answered as two things at once, until
+ * they became plain `link-quiet` links (03.10.2026).
  *   row inside sheet:  ink tint         (hover:bg-hover — rows own no border)
  *   naked bar/label:   text only
  * One ground for all of them, `--color-hover`; there were five.
@@ -476,6 +502,21 @@
  */
 @utility link-quiet {
   @apply rounded text-link underline-offset-2 hover:underline hover:decoration-2;
+}
+
+/*
+ * The metadata link — a link inside a line that is muted throughout: the
+ * caption under a box, the footer. Blue there would be the loudest thing in
+ * the quietest text on the page. So it wears its surroundings' ink, and the
+ * rest underline is what says "link" — WCAG 1.4.1, the inline link's
+ * reasoning above, now that the colour no longer does. Its hover is every
+ * link's hover, the same 2 px underline. Adopted 03.10.2026, and named once
+ * like the two above: the footer wrote it out by hand seven times
+ * (`underline underline-offset-2 hover:decoration-2`, twice with `rounded`),
+ * inheriting the muted ink from its container — the copies are folded in.
+ */
+@utility link-muted {
+  @apply rounded text-ink-muted underline underline-offset-2 hover:decoration-2;
 }
 
 /* In-page anchor jumps glide — but only for users without reduced motion. */

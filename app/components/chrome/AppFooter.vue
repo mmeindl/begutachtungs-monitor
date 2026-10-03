@@ -41,26 +41,26 @@
           Datenquellen: Republik Österreich – Parlamentsdirektion
           (<ExternalLink
             href="https://www.parlament.gv.at"
-            class="underline underline-offset-2 hover:no-underline"
+            class="link-muted"
           >parlament.gv.at</ExternalLink>) und Rechtsinformationssystem des Bundes
           (<ExternalLink
             href="https://www.ris.bka.gv.at"
-            class="underline underline-offset-2 hover:no-underline"
+            class="link-muted"
           >ris.bka.gv.at</ExternalLink>).
           <NuxtLink
             to="/impressum#imp-license"
-            class="underline underline-offset-2 hover:no-underline"
+            class="link-muted"
           >Lizenzen im Impressum</NuxtLink>. Kein amtliches Angebot.
         </p>
         <p>
           <ExternalLink
             href="https://github.com/mmeindl/begutachtungs-monitor"
-            class="underline underline-offset-2 hover:no-underline"
+            class="link-muted"
           >Quellcode auf GitHub</ExternalLink>
           · Kontakt:
           <a
             href="mailto:kontakt@begutachtungs-monitor.at"
-            class="underline underline-offset-2 hover:no-underline"
+            class="link-muted"
           >kontakt@begutachtungs-monitor.at</a>
         </p>
         <nav aria-label="Rechtliches">
@@ -68,13 +68,13 @@
             <li>
               <NuxtLink
                 to="/impressum"
-                class="tap-target rounded underline underline-offset-2 hover:no-underline"
+                class="tap-target link-muted"
               >Impressum &amp; Offenlegung</NuxtLink>
             </li>
             <li>
               <NuxtLink
                 to="/datenschutz"
-                class="tap-target rounded underline underline-offset-2 hover:no-underline"
+                class="tap-target link-muted"
               >Datenschutz</NuxtLink>
             </li>
           </ul>

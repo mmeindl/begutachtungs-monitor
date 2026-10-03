@@ -1,5 +1,5 @@
 /**
- * What the Regierungsvorlage made of the draft, for its station card
+ * What the Regierungsvorlage made of the draft, for its station frame
  * (02.10.2026): how much of the text it changed, how many Begründungen, and
  * where its Erläuterungen are.
  *

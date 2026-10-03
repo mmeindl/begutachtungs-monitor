@@ -2,7 +2,7 @@
 import type { AmendedLaw } from '#shared/types'
 
 /**
- * One law in force the draft would change, in the Entwurf's station card:
+ * One law in force the draft would change, in the Entwurf's station frame:
  * its RIS link, and under it the Stammnorm.
  *
  * A law whose Stammnorm is no Bundesgesetzblatt has no consolidated RIS

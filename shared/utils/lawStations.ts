@@ -227,7 +227,7 @@ export function lawDiffKey(gp: string, inr: number, from: LawStationId, to: LawS
 }
 
 /** The same for the reasoning comparison (`/begruendung`): the Vorlage's
- *  station card and the comparison below it read one request (02.10.2026). */
+ *  station frame and the comparison below it read one request (02.10.2026). */
 export function lawReasoningKey(gp: string, inr: number, from: LawStationId, to: LawStationId): string {
   return `law-reasoning:${gp}:${inr}:${from}>${to}`
 }

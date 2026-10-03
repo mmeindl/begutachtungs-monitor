@@ -27,7 +27,10 @@
  * itself — a Textgegenüberstellung read from the PDF, which RIS publishes
  * only as an image (02.10.2026). The same grammar for the same kind of
  * claim: the pairing is ours, as the marking is, and may be wrong; the
- * method page says how. It replaced the caveat over the comparison.
+ * method page says how. It replaced the caveat over the comparison. Where
+ * both claims are ours they merge into one item, „Zeilenzuordnung und
+ * Markierung" (03.10.2026): two adjacent „…: Begutachtungs-Monitor" said the
+ * same authorship twice.
  *
  * „Methode" closes the line since 02.10.2026, after the marking it explains —
  * where the caption convention puts it („Daten & Methodik"). It stood above
@@ -36,7 +39,7 @@
  * its anchor on /so-funktionierts, the component writes the word.
  *
  * `own` names anything else on the box that is ours rather than the
- * publisher's (02.10.2026): a station card shows Parliament's facts beside
+ * publisher's (02.10.2026): a station frame shows Parliament's facts beside
  * figures we compute from them, the Frist median or the count of rewritten
  * paragraphs, and „Quelle: Parlament" alone would claim those for Parliament.
  * Same grammar as the marking, in the same place: after the other people's things.
@@ -61,9 +64,10 @@ const line = computed(() => sourceLineDe(props.sources))
   <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
     <span v-if="line">{{ line }}</span>
     <slot />
-    <span v-if="paired">Zeilenzuordnung: Begutachtungs-Monitor</span>
+    <span v-if="paired && !marked">Zeilenzuordnung: Begutachtungs-Monitor</span>
     <span v-if="own">{{ own }}: Begutachtungs-Monitor</span>
-    <span v-if="marked">Markierung: Begutachtungs-Monitor</span>
-    <NuxtLink v-if="method" :to="method" class="link-quiet">Methode</NuxtLink>
+    <span v-if="paired && marked">Zeilenzuordnung und Markierung: Begutachtungs-Monitor</span>
+    <span v-else-if="marked">Markierung: Begutachtungs-Monitor</span>
+    <NuxtLink v-if="method" :to="method" class="link-muted">Methode</NuxtLink>
   </div>
 </template>

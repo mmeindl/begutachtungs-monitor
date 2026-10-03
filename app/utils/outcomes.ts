@@ -78,8 +78,10 @@ export interface ChangeShareRate {
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /** Newest GP first. */
 export const CHANGE_SHARE_RATES: readonly ChangeShareRate[] = [
-  { gp: 'XXVII', drafts: 283, p25: 46, median: 63, p75: 75 },
-  { gp: 'XXVI', drafts: 104, p25: 34, median: 50, p75: 73 },
+  // Re-run 03.10.2026: a law the Ressort dropped from its own bill counts
+  // as dropped since §12.40 (XXVII p75 75 → 77, XXVI p25 34 → 35).
+  { gp: 'XXVII', drafts: 283, p25: 46, median: 63, p75: 77 },
+  { gp: 'XXVI', drafts: 104, p25: 35, median: 50, p75: 73 },
 ]
 
 /** The measured row for `gp`, else the newest one — a running GP has no row of its own yet. */
@@ -93,7 +95,7 @@ export function changeShareRateFor(gp: string | null | undefined): ChangeShareRa
  *
  * A row since 02.10.2026, not a sentence: two sentences over the comparison
  * — this count with the period's range, and the reasoning rate — changed
- * shape with every draft, and the station card is where the page states its
+ * shape with every draft, and the station frame is where the page states its
  * facts (`FactList`). One form for every count, zero and all included: the
  * row's title says what is counted, so „im Wortlaut übernommen" — and the
  * qualifier that sentence needed — has nothing left to say. The range is the

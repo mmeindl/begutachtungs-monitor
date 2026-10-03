@@ -16,6 +16,9 @@
  *
  * Its content carries no outer margin. The `mt-4` here is the gap, and a
  * first child's own margin collapses into it rather than adding to it.
+ *
+ * `text-lg`, not `text-base` (03.10.2026): at `text-base` the h3 wore the same
+ * face as every title inside a card, so the sub-section level was invisible.
  */
 defineProps<{
   heading: string
@@ -24,7 +27,7 @@ defineProps<{
 
 <template>
   <div class="scroll-mt-6">
-    <h3 class="text-base font-semibold text-ink">
+    <h3 class="text-lg font-semibold text-ink">
       <slot name="heading">{{ heading }}</slot>
     </h3>
     <div class="mt-4">

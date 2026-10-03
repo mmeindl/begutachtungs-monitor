@@ -4,7 +4,7 @@ import type { ChangeShareRate } from '~/utils/outcomes'
 /**
  * How much of the draft the Regierungsvorlage changed, against the middle
  * half of a whole period (docs/architecture.md §12.38) — under the row
- * „Umgeschrieben oder gestrichen" of the Vorlage's station card
+ * „Umgeschrieben oder gestrichen" of the Vorlage's station frame
  * (02.10.2026). Until then the comparison said it in a sentence („Üblich in
  * der XXVII. GP: 46–75 %"), which the reader had to turn into a picture.
  *
