@@ -112,3 +112,27 @@ describe('a draft inside a larger act', () => {
     expect(s).not.toContain('Im Parlament werden Vorlagen')
   })
 })
+
+describe('the merged note names the drafts the record names (03.10.2026)', () => {
+  it('one other draft', () => {
+    const s = mergedLawsNote(laws('A'), 'me', 'rv', null, { others: [{ gp: 'XXVIII', inr: 45 }], gp: 'XXVIII' })!
+    expect(s).toContain('Die Regierungsvorlage fasst diesen Entwurf mit dem Ministerialentwurf 45/ME zusammen')
+    expect(s).not.toContain('häufig')
+  })
+
+  it('many, counted past three, another period cited with its GP', () => {
+    const others = [{ gp: 'XXVII', inr: 6 }, ...[17, 18, 20, 21].map((inr) => ({ gp: 'XXVIII', inr }))]
+    const s = mergedLawsNote(laws('A', 'B'), 'me', 'rv', null, { others, gp: 'XXVIII' })!
+    expect(s).toContain('mit 5 anderen Ministerialentwürfen (6/ME (XXVII. GP), 17/ME, 18/ME und 2 weiteren) zusammen')
+  })
+
+  it('keeps the general sentence without a record, and the act where there is one', () => {
+    expect(mergedLawsNote(laws('A'), 'me', 'rv')).toContain('häufig')
+    const act = { citation: 'BGBl. I Nr. 50/2025', title: 'IFG-Anpassungsgesetz' }
+    expect(mergedLawsNote(laws('A'), 'me', 'bgbl', act, { others: [{ gp: 'XXVIII', inr: 45 }], gp: 'XXVIII' })).toContain('als Teil eines größeren Gesetzes kundgemacht')
+  })
+
+  it('never names drafts in a pair that does not start at the draft', () => {
+    expect(mergedLawsNote(laws('A'), 'rv', 'ausschuss', null, { others: [{ gp: 'XXVIII', inr: 45 }], gp: 'XXVIII' })).not.toContain('45/ME')
+  })
+})

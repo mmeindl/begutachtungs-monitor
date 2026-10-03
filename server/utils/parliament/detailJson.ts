@@ -427,6 +427,22 @@ export function bundlesOtherDrafts(
 }
 
 /**
+ * The other Ministerialentwürfe the Vorlage bundles — what `bundlesOtherDrafts`
+ * answers yes to, by name, so the page can say which drafts the laws this
+ * draft does not carry came from instead of guessing at the mechanism.
+ */
+export function otherBundledDrafts(
+  preconst: { gp_code?: string | null; ityp?: string | null; inr?: number | string | null }[] | null | undefined,
+  gp: string,
+  inr: number,
+): { gp: string; inr: number }[] {
+  return (preconst ?? [])
+    .filter((p) => p?.ityp === 'ME' && p.gp_code && p.inr != null)
+    .map((p) => ({ gp: String(p.gp_code), inr: Number(p.inr) }))
+    .filter((d) => d.gp !== gp || d.inr !== inr)
+}
+
+/**
  * The Übermittlung stage → who received the Stellungnahmen and when. Text
  * is ministries' free wording behind a fixed prefix ("Übermittlung an das
  * Bundesministerium für …", "… an das Bundeskanzleramt"), so match the

@@ -730,6 +730,40 @@ describe('diffLawPackage: nothing pairs', () => {
   })
 })
 
+describe('diffLawPackage: a law the Vorlage adds to its own draft (03.10.2026)', () => {
+  // XXVIII 121/ME: the Strafvollzugsnovelle 2026, whose Vorlage adds three
+  // Ziffern to the StPO and bundles no other draft.
+  const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
+  const art = (title: string, n: number, paras: number[]): LawUnit[] =>
+    paras.map((p, i) => ({ article: title, articleNumber: `Artikel ${n}`, id: `Z${i + 1}`, heading: null, quotedHeadings: [], text: ins(p), blocks: [], stammnorm: null }))
+  const me = art('Änderung des Strafvollzugsgesetzes', 1, [3, 4])
+  const rv = [...art('Änderung des Strafvollzugsgesetzes', 1, [3, 4]), ...art('Änderung der Strafprozeßordnung 1975', 2, [5, 6, 7])]
+
+  it('cuts it by default and names it', () => {
+    const d = diffLawPackage(me, rv)
+    expect(d.units.map((u) => u.article)).not.toContain('Änderung der Strafprozeßordnung 1975')
+    expect(d.lawsOnlyInTo).toEqual([{ article: 'Änderung der Strafprozeßordnung 1975', units: 3 }])
+    expect(d.addedLaws).toEqual([])
+  })
+
+  it('keeps its units as inserted with keepAddedLaws — never paired across the Artikel', () => {
+    const d = diffLawPackage(me, rv, { keepAddedLaws: true })
+    const stpo = d.units.filter((u) => u.article === 'Änderung der Strafprozeßordnung 1975')
+    expect(stpo.map((u) => u.change)).toEqual(['inserted', 'inserted', 'inserted'])
+    expect(d.units.filter((u) => u.article === 'Änderung des Strafvollzugsgesetzes').map((u) => u.change)).toEqual(['unchanged', 'unchanged'])
+    expect(d.lawsOnlyInTo).toEqual([])
+    expect(d.addedLaws).toEqual([{ article: 'Änderung der Strafprozeßordnung 1975', units: 3 }])
+  })
+
+  it('keeps a law the draft had and the Vorlage dropped as removed with keepDroppedLaws', () => {
+    const d = diffLawPackage(rv, me, { keepDroppedLaws: true })
+    expect(d.units.filter((u) => u.article === 'Änderung der Strafprozeßordnung 1975').map((u) => u.change)).toEqual(['removed', 'removed', 'removed'])
+    expect(d.lawsOnlyInFrom).toEqual([])
+    expect(d.droppedLaws).toEqual([{ article: 'Änderung der Strafprozeßordnung 1975', units: 3 }])
+    expect(diffLawPackage(rv, me).droppedLaws).toEqual([])
+  })
+})
+
 describe('the Artikel number counts only with the §§ behind it (27.09.2026)', () => {
   const ins = (p: number) => `In § ${p} Abs. 1 wird das Wort „a" durch das Wort „b" ersetzt.`
   const u = (article: string | null, id: string, text: string, articleNumber: string | null): LawUnit => ({

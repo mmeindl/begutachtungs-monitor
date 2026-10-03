@@ -26,7 +26,7 @@ import { LAW_STATION_LABEL, LAW_STATION_ORDER } from '#shared/utils/lawStations'
 import { diffLawPackage, scopeToDraft, summarizeDiff } from './lawDiff'
 import { findLawStations, missingStationReason } from './stationDocuments'
 import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../lawtext/lawUnits'
-import { bundlesOtherDrafts, extractBgblLink, findComparisonRvLink, findLastRvLink, parseStages } from '../parliament/detailJson'
+import { bundlesOtherDrafts, extractBgblLink, otherBundledDrafts, findComparisonRvLink, findLastRvLink, findRvLinks, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
@@ -84,6 +84,7 @@ export const getLawDiff = defineCachedFunction(
     // Whether the Vorlage bundles this draft with others — read off the same
     // Vorlage detail the Kundmachung comes from, so it costs no request.
     let bundled: boolean | null = null
+    let otherDrafts: { gp: string; inr: number }[] = []
     try {
       // The Kundmachung of the Vorlage whose text this comparison reads, not
       // of the latest one: a split draft has one per Vorlage.
@@ -92,6 +93,7 @@ export const getLawDiff = defineCachedFunction(
       if (rvLink) {
         const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
         bundled = bundlesOtherDrafts(rv.content?.preconst, gp, inr)
+        otherDrafts = otherBundledDrafts(rv.content?.preconst, gp, inr)
         const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
         const doc = nummer ? await getBgblDocument(nummer) : null
         if (doc?.xml && nummer) {
@@ -141,7 +143,10 @@ export const getLawDiff = defineCachedFunction(
       lawsOnlyInTo: [],
       lawsOnlyInFrom: [],
       lawsOutsideDraft: [],
+      addedLaws: [],
+      droppedLaws: [],
       bundledWithOtherDrafts: bundled === true,
+      otherDrafts,
       largerAct: null,
       units: [],
       ...extra,
@@ -217,7 +222,22 @@ export const getLawDiff = defineCachedFunction(
     // the draft's own Vorlage needs no introduction.
     const largerAct = to === 'bgbl' && bundled === true ? act : null
 
-    const { units, lawsOnlyInTo, lawsOnlyInFrom, unpaired } = diffLawPackage(fromUnits, toUnits)
+    // A Vorlage built from this draft alone: the laws it adds are the
+    // Ressort's own, and stay in the comparison (`keepAddedLaws`). Only for
+    // ME→RV — a law that appears later may be a committee's, and a later
+    // Vorlage merged in there is no part of this record.
+    const keepAddedLaws = from === 'me' && to === 'rv' && bundled === false
+    // A law the draft carried and the Vorlage does not is the Ressort's
+    // cut only where the draft went into this one Vorlage: a draft split
+    // into two (XXVII 21/ME, XXVIII 74/ME) can carry it in the other.
+    let rvCount = 0
+    try {
+      rvCount = new Set(findRvLinks(parseStages(content.stages)).map((l) => `${l.gp}/${l.inr}`)).size
+    } catch {
+      // An unreadable stage record proves nothing; the law stays named, not shown.
+    }
+    const keepDroppedLaws = keepAddedLaws && rvCount === 1
+    const { units, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws, unpaired } = diffLawPackage(fromUnits, toUnits, { keepAddedLaws, keepDroppedLaws })
     if (unpaired) {
       // Showing the units here would put the whole draft under „entfallen"
       // and the whole later text under „neu" — a claim about the draft the
@@ -236,6 +256,8 @@ export const getLawDiff = defineCachedFunction(
       stats: summarizeDiff(units),
       lawsOnlyInTo,
       lawsOnlyInFrom,
+      addedLaws,
+      droppedLaws,
       lawsOutsideDraft,
       largerAct,
       units,

@@ -637,6 +637,10 @@ export interface LawPackageDiff {
   units: LawDiffUnit[]
   lawsOnlyInTo: LawPackageEntry[]
   lawsOnlyInFrom: LawPackageEntry[]
+  /** With `keepAddedLaws`: the laws only the later text carries, whose units ARE in `units` (as inserted). */
+  addedLaws: LawPackageEntry[]
+  /** With `keepDroppedLaws`: the laws only the earlier text carries, whose units ARE in `units` (as removed). */
+  droppedLaws: LawPackageEntry[]
   /**
    * No Artikel of the one document could be matched to one of the other.
    * The units are then every unit removed and every unit inserted — not a
@@ -683,18 +687,40 @@ function lawsOf(units: readonly LawUnit[], keep: (article: string) => boolean): 
  * Units without an article always stay in the comparison. When no article
  * pairs at all, there is no scoping to do — and no comparison either, only
  * every unit on both sides; `unpaired` says so.
+ *
+ * `keepAddedLaws` turns the cut off for the later side, for the one case
+ * where the laws it adds are known to be this text's own: a Regierungsvorlage
+ * Parliament records as built from this draft alone (`bundlesOtherDrafts`
+ * false). Measured over GP XXVI–XXVIII (`scripts/corpus/mergedLaws.ts`,
+ * 03.10.2026): 90 of the 126 ME→RV comparisons that named such laws were of
+ * that kind, median 5–8 units, 73 of them at most 10 — the Ressort extending
+ * its own bill, a change between draft and Vorlage like any other. Their
+ * units come out inserted (alignment never crosses an Artikel), and
+ * `addedLaws` names them.
+ *
+ * `keepDroppedLaws` is the same for the earlier side: a law the Ressort took
+ * out of its own bill. The caller decides when that is known — it needs one
+ * more fact than the added case (§12.40).
  */
-export function diffLawPackage(from: readonly LawUnit[], to: readonly LawUnit[]): LawPackageDiff {
+export function diffLawPackage(
+  from: readonly LawUnit[],
+  to: readonly LawUnit[],
+  { keepAddedLaws = false, keepDroppedLaws = false }: { keepAddedLaws?: boolean; keepDroppedLaws?: boolean } = {},
+): LawPackageDiff {
   const map = pairArticles(from, to)
-  if (map.size === 0) return { units: diffLawUnits(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [], unpaired: from.length > 0 && to.length > 0 }
+  if (map.size === 0) return { units: diffLawUnits(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [], addedLaws: [], droppedLaws: [], unpaired: from.length > 0 && to.length > 0 }
   const pairedFrom = new Set(map.keys())
   const pairedTo = new Set(map.values())
-  const keepFrom = (u: LawUnit) => u.article === null || pairedFrom.has(u.article)
-  const keepTo = (u: LawUnit) => u.article === null || pairedTo.has(u.article)
+  const keepFrom = (u: LawUnit) => keepDroppedLaws || u.article === null || pairedFrom.has(u.article)
+  const keepTo = (u: LawUnit) => keepAddedLaws || u.article === null || pairedTo.has(u.article)
+  const onlyInTo = lawsOf(to, (a) => pairedTo.has(a))
+  const onlyInFrom = lawsOf(from, (a) => pairedFrom.has(a))
   return {
     units: diffLawUnits(from.filter(keepFrom), to.filter(keepTo)),
-    lawsOnlyInTo: lawsOf(to, (a) => pairedTo.has(a)),
-    lawsOnlyInFrom: lawsOf(from, (a) => pairedFrom.has(a)),
+    lawsOnlyInTo: keepAddedLaws ? [] : onlyInTo,
+    lawsOnlyInFrom: keepDroppedLaws ? [] : onlyInFrom,
+    addedLaws: keepAddedLaws ? onlyInTo : [],
+    droppedLaws: keepDroppedLaws ? onlyInFrom : [],
     unpaired: false,
   }
 }

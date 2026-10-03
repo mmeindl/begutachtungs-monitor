@@ -259,6 +259,21 @@ export interface LawDiffResponse {
   /** Laws the earlier text carried and the later one does not. Their units are NOT in `units` or `stats`. */
   lawsOnlyInFrom: LawPackageEntry[]
   /**
+   * Laws the Regierungsvorlage adds to a draft it was built from alone
+   * (`bundlesOtherDrafts` false; ME→RV only). Unlike `lawsOnlyInTo`, their
+   * units ARE in `units` and `stats`, as inserted: the Ressort extended its
+   * own bill, and that is a change like any other (docs/architecture.md
+   * §12.40).
+   */
+  addedLaws: LawPackageEntry[]
+  /**
+   * The other direction: laws the draft carried and the Vorlage no longer
+   * does, where the Vorlage was built from this draft alone AND the draft
+   * went into no other Vorlage. Their units ARE in `units` and `stats`, as
+   * removed. Where the law went, if anywhere, is not claimed.
+   */
+  droppedLaws: LawPackageEntry[]
+  /**
    * Laws BOTH texts carry and the draft does not — the rest of a
    * Regierungsvorlage that bundles this draft with other
    * Ministerialentwürfe, cut from a pair of two later stations
@@ -276,6 +291,8 @@ export interface LawDiffResponse {
    * cut by law has nothing to cut there.
    */
   bundledWithOtherDrafts: boolean
+  /** The other Ministerialentwürfe that Vorlage bundles, from the same record; empty unless `bundledWithOtherDrafts`. */
+  otherDrafts: { gp: string; inr: number }[]
   /**
    * The act the draft was kundgemacht in, where the pair ends at the
    * Bundesgesetzblatt and the Vorlage bundles other drafts: the draft is then

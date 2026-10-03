@@ -57,12 +57,40 @@ type LargerAct = LawDiffResponse['largerAct']
 const actPhrase = (act: NonNullable<LargerAct>) =>
   `als Teil eines größeren Gesetzes kundgemacht: ${act.title ? `${act.title}, ` : ''}${act.citation}`
 
-/** Laws the later text carries and the earlier one never had. */
+type DraftRef = { gp: string; inr: number }
+
+/** „45/ME", „6/ME (XXVII. GP)" where the draft is of another period. */
+const draftCitation = (d: DraftRef, gp: string) => (d.gp === gp ? `${d.inr}/ME` : `${d.inr}/ME (${d.gp}. GP)`)
+
+/**
+ * „mit dem Ministerialentwurf 45/ME" — „mit 11 anderen Ministerialentwürfen
+ * (17/ME, 18/ME, 20/ME und 8 weiteren)": the drafts Parliament's record says
+ * the Vorlage absorbed, in the dative the sentence needs.
+ */
+function bundledWith(others: readonly DraftRef[], gp: string): string {
+  const names = others.map((d) => draftCitation(d, gp))
+  if (names.length === 1) return `mit dem Ministerialentwurf ${names[0]}`
+  const listed =
+    names.length > MAX_NAMES
+      ? `${names.slice(0, MAX_NAMES).join(', ')} und ${names.length - MAX_NAMES} weiteren`
+      : `${names.slice(0, -1).join(', ')} und ${names.at(-1)}`
+  return `mit ${names.length} anderen Ministerialentwürfen (${listed})`
+}
+
+/**
+ * Laws the later text carries and the earlier one never had.
+ *
+ * `bundled` is the record behind it: the other drafts the Regierungsvorlage
+ * absorbed, and this draft's period to cite them against. Where the
+ * Vorlage was built from this draft alone, the server keeps those laws in
+ * the comparison (`addedLaws`) and this sentence is not asked for.
+ */
 export function mergedLawsNote(
   laws: readonly LawPackageEntry[],
   from: LawStationId,
   to: LawStationId,
   act: LargerAct = null,
+  bundled: { others: readonly DraftRef[]; gp: string } | null = null,
 ): string | null {
   if (!laws.length) return null
   const clause =
@@ -75,12 +103,15 @@ export function mergedLawsNote(
   // part that is true of the pair at hand is said.
   //
   // And where the act is known to bundle this draft with others, the
-  // mechanism is not a guess: the sentence names the act.
+  // mechanism is not a guess: the sentence names the act — or, short of the
+  // Kundmachung, the drafts the Vorlage absorbed.
   const why = act
     ? `Der Entwurf wurde ${actPhrase(act)}; verglichen wird deshalb, was in beiden Texten steht.`
-    : from === 'me' && to === 'rv'
-      ? 'Eine Regierungsvorlage fasst häufig mehrere Ministerialentwürfe zusammen; verglichen wird deshalb, was in beiden Texten steht.'
-      : 'Im Parlament werden Vorlagen zusammengefasst und geteilt; verglichen wird deshalb, was in beiden Texten steht.'
+    : from === 'me' && bundled?.others.length
+      ? `Die Regierungsvorlage fasst diesen Entwurf ${bundledWith(bundled.others, bundled.gp)} zusammen; verglichen wird deshalb, was in beiden Texten steht.`
+      : from === 'me' && to === 'rv'
+        ? 'Eine Regierungsvorlage fasst häufig mehrere Ministerialentwürfe zusammen; verglichen wird deshalb, was in beiden Texten steht.'
+        : 'Im Parlament werden Vorlagen zusammengefasst und geteilt; verglichen wird deshalb, was in beiden Texten steht.'
   return `${subject(to)} ändert ${clause}: ${formatLawList(laws)}. ${why}`
 }
 

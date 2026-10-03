@@ -10,6 +10,7 @@ import {
   amendedStationsOf,
   bgblOrderKey,
   bundlesOtherDrafts,
+  otherBundledDrafts,
   extractBgblLink,
   isFilingOpen,
   isVorlageFilingOpen,
@@ -775,5 +776,13 @@ describe('findNoPromulgation (03.10.2026)', () => {
   it('is null where the record says nothing — XXVII/1435 d.B.', () => {
     expect(findNoPromulgation([brArrival, brPlenary1435], 'XXVII')).toBeNull()
     expect(findNoPromulgation(undefined, 'XXVII')).toBeNull()
+  })
+})
+
+describe('otherBundledDrafts', () => {
+  it('lists every other draft, not this one, and nothing that is no draft', () => {
+    const pre = [{ gp_code: 'XXVIII', ityp: 'ME', inr: '17' }, { gp_code: 'XXVIII', ityp: 'ME', inr: 18 }, { gp_code: 'XXVIII', ityp: 'A', inr: 5 }, { gp_code: 'XXVII', ityp: 'ME', inr: 17 }]
+    expect(otherBundledDrafts(pre, 'XXVIII', 17)).toEqual([{ gp: 'XXVIII', inr: 18 }, { gp: 'XXVII', inr: 17 }])
+    expect(otherBundledDrafts(undefined, 'XXVIII', 17)).toEqual([])
   })
 })

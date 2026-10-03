@@ -93,7 +93,7 @@ const requested = ref(pairFromRoute())
 /** Whether the three requests below may go out — at once, unless `deferred`. */
 const enabled = ref(!props.deferred)
 
-/* Keyed by draft and pair, so the Regierungsvorlage's station card, which
+/* Keyed by draft and pair, so the Regierungsvorlage's station frame, which
  * reads the same ME→RV count (`useVorlageOutcome`), shares this request — and
  * `defer`, because Nuxt's default `cancel` aborts the first caller's request
  * and sends it again (two requests on 11/ME XXVIII, measured 01.10.2026). */
@@ -135,7 +135,7 @@ const { data: fetchedTitles, execute: executeTitles } = await useFetch<Paragraph
 const { data: fetchedReasoning, execute: executeReasoning } = await useFetch<ReasoningDiffResponse>(
   () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${requested.value.from}&bis=${requested.value.to}`,
   {
-    // Shared with the Vorlage's station card, which counts the same
+    // Shared with the Vorlage's station frame, which counts the same
     // Begründungen (`useVorlageOutcome`, 02.10.2026).
     key: () => lawReasoningKey(props.gp, props.inr, requested.value.from, requested.value.to),
     lazy: true,
@@ -288,10 +288,10 @@ const reasoningNote = computed<string | null>(() => {
  * [Entwurf, Regierungsvorlage] (`reasoningDiffService`), and only where both
  * were found. */
 const reasoningDocs = computed(() => (reasoning.value?.sources?.length === 2 ? reasoning.value.sources : null))
-/** ME→RV states its counts in the Regierungsvorlage's station card
+/** ME→RV states its counts in the Regierungsvorlage's station frame
  *  (`useVorlageOutcome`, 02.10.2026), so the comparison under it repeats
  *  none of them. */
-const countsInCard = computed(() => pair.value.from === 'me' && pair.value.to === 'rv')
+const countsInFrame = computed(() => pair.value.from === 'me' && pair.value.to === 'rv')
 /** A side's Erläuterungen for the credit line — only where the comparison of them ran. */
 function reasoningDocFor(station: LawStationId) {
   const stats = reasoning.value?.stats
@@ -661,8 +661,23 @@ function unitLabel(u: LawDiffUnit): string | null {
  * The sentences live in app/utils/lawPackage.ts, where they are tested.
  */
 const mergedNote = computed(() =>
-  mergedLawsNote(data.value?.lawsOnlyInTo ?? [], pair.value.from, pair.value.to, data.value?.largerAct ?? null),
+  mergedLawsNote(
+    data.value?.lawsOnlyInTo ?? [],
+    pair.value.from,
+    pair.value.to,
+    data.value?.largerAct ?? null,
+    data.value?.otherDrafts?.length ? { others: data.value.otherDrafts, gp: props.gp } : null,
+  ),
 )
+/**
+ * Laws the Regierungsvorlage added to a draft it was built from alone. They
+ * stand in the list as groups of their own, every unit „neu" — and the
+ * group says why, or „3 neu" reads as three new §§ in a law the draft
+ * already changed (docs/architecture.md §12.40).
+ */
+const addedLaws = computed(() => new Set((data.value?.addedLaws ?? []).map((l) => l.article)))
+/** The same for a law the Ressort took out of its own bill: said as a fact about the two texts, nothing about where it went. */
+const droppedLaws = computed(() => new Set((data.value?.droppedLaws ?? []).map((l) => l.article)))
 /**
  * Between two later stations of a Vorlage that bundles this draft with
  * others, the counts are the draft's — and this sentence is what says so
@@ -686,12 +701,12 @@ const droppedNote = computed(() =>
         <!-- Above the list only what is specific to THIS comparison. The
              ME→RV counts — how much changed, against the period's range, and
              how many Begründungen — and the way to the Erläuterungen stand in
-             the Regierungsvorlage's station card since 02.10.2026, as rows
+             the Regierungsvorlage's station frame since 02.10.2026, as rows
              instead of two paragraphs (`useVorlageOutcome`). What stays: a
-             reasoning rate for a pair the card does not hold, and the
+             reasoning rate for a pair the frame does not hold, and the
              warnings. -->
         <div class="space-y-3">
-          <p v-if="reasoningNote && !countsInCard" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
+          <p v-if="reasoningNote && !countsInFrame" class="text-sm text-ink-secondary">{{ reasoningNote }}</p>
           <ComparisonCaveats :notes="[outsideNote, mergedNote, droppedNote]" />
         </div>
       </template>
@@ -741,6 +756,12 @@ const droppedNote = computed(() =>
               :open="groupOpen(g.article)"
               @toggle="toggleGroup(g.article)"
             >
+              <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
+                Dieses Gesetz kommt im Entwurf nicht vor; die Regierungsvorlage ändert es zusätzlich.
+              </p>
+              <p v-else-if="droppedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
+                Der Entwurf änderte dieses Gesetz; die Regierungsvorlage ändert es nicht mehr.
+              </p>
               <template v-for="b in g.blocks" :key="blockKey(b)">
                 <details v-if="b.kind === 'context'" class="group border-b border-hairline last:border-b-0">
                   <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 px-4 py-2 text-xs text-ink-muted hover:bg-hover [&::-webkit-details-marker]:hidden">
@@ -922,7 +943,7 @@ const droppedNote = computed(() =>
                name. The links are there for the reader. -->
           <span v-for="side in creditSides" :key="side.station">
             {{ side.label }}:
-            <ExternalLink v-if="side.text" :href="side.text.url" class="link-quiet">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="link-quiet">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
+            <ExternalLink v-if="side.text" :href="side.text.url" class="link-muted">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="link-muted">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
           </span>
           <!-- The § names come from a third source; a page that shows text has
                to say where it is from, even when the text is one word long.
