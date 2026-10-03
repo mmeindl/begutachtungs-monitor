@@ -3,8 +3,8 @@ import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentForm
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
 import type { Fact } from '~/components/ui/FactList.vue'
-import PageSubsection from '~/components/ui/PageSubsection.vue'
-import { deadlineCardClass, deadlineTone, fristClassOf, fristContextDe, fristRangeDe } from '~/utils/deadlines'
+import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
+import { fristContextFor, fristFact, fristStateDe } from '~/utils/deadlines'
 import { regulationStations, regulationStatusDe } from '~/utils/spine'
 
 /**
@@ -76,7 +76,7 @@ const stationList = computed(() =>
 const fristContext = computed(() => {
   const d = data.value
   if (!d || !stationList.value.length) return null
-  return fristContextDe(fristClassOf(d.startedAt, d.deadline), 'verordnung')
+  return fristContextFor(d.startedAt, d.deadline, 'verordnung')
 })
 
 /* The closed Frist as a fact, as on the draft page: length and dates,
@@ -84,12 +84,7 @@ const fristContext = computed(() => {
 const fristFacts = computed<Fact[]>(() => {
   const d = data.value
   if (!d || d.active || !d.deadline || !stationList.value.length) return []
-  const range = fristRangeDe(d.startedAt, d.deadline)
-  return [{
-    key: 'frist',
-    title: 'Begutachtungsfrist',
-    text: range,
-  }]
+  return [fristFact(d.startedAt, d.deadline)]
 })
 
 /* Same contract as on the draft page: only a section this page renders.
@@ -112,10 +107,7 @@ usePageSeo({
   description: () => {
     const d = data.value
     if (!d) return undefined
-    const frist = d.active
-      ? d.deadline ? `in Begutachtung bis ${formatDateDe(d.deadline)}` : 'in Begutachtung'
-      : d.deadline ? `Begutachtung endete am ${formatDateDe(d.deadline)}` : 'Begutachtung abgeschlossen'
-    return `${RIS_KIND_LABEL[d.kind]}, ${frist} · ${d.ministryName}`
+    return `${RIS_KIND_LABEL[d.kind]}, ${fristStateDe(d.active, d.deadline, 'clause')} · ${d.ministryName}`
   },
 })
 
@@ -129,30 +121,40 @@ useSeoMeta({
 function toDocument(
   title: string,
   formats: RisDocumentFormats | null,
-  hint: string,
-): DraftDocument & { hint: string } | null {
+): DraftDocument | null {
   if (!formats) return null
   const out: DraftDocument['formats'] = []
   if (formats.pdf) out.push({ type: 'pdf', url: formats.pdf })
   if (formats.html) out.push({ type: 'html', url: formats.html })
-  return out.length ? { title, formats: out, hint } : null
+  return out.length ? { title, formats: out } : null
 }
 
 /* Reading order, not RIS's document order: reasoning first, then the text,
- * then what changes against current law. The hints are DocumentList's
- * DOC_HINTS wording, so the same document reads the same on both pages. */
+ * then what changes against current law. The sub-lines are DocumentList's
+ * DOC_HINTS, so the same document reads the same on both pages. */
 const documents = computed(() => {
   const d = data.value
   if (!d) return []
   return [
-    toDocument('Erläuterungen', d.explanations, 'Die Begründung des Ministeriums'),
-    toDocument('Entwurfstext', d.mainDocument, 'Der Entwurfstext selbst'),
-    toDocument(
-      'Textgegenüberstellung',
-      d.textComparison,
-      'Geltendes Recht und Entwurf nebeneinander',
-    ),
-  ].filter((x): x is DraftDocument & { hint: string } => x !== null)
+    toDocument('Erläuterungen', d.explanations),
+    toDocument('Entwurfstext', d.mainDocument),
+    toDocument('Textgegenüberstellung', d.textComparison),
+  ].filter((x): x is DraftDocument => x !== null)
+})
+
+/* Who sent it, as on the draft page. One Stelle per RIS record — the joint
+ * submission of two ressorts exists only in list 81. */
+const ministryLinks = computed(() => {
+  const d = data.value
+  if (!d?.ministryCode) return []
+  return [ministryLinkFor(d.ministryCode, d.ministryName ?? d.ministryCode, { art: 'verordnung' })]
+})
+
+/** The Begleitschreiben is the door: it names where a Stellungnahme goes. */
+const coverLetterHref = computed(() => {
+  const d = data.value
+  const c = d?.coverLetter
+  return d && c ? c.pdf ?? c.html ?? d.risUrl : null
 })
 </script>
 
@@ -197,17 +199,8 @@ const documents = computed(() => {
         <p v-if="data.longTitle" class="mt-1 text-sm text-ink-secondary">
           {{ data.longTitle }}
         </p>
-        <!-- Who sent it, as on the draft page. One Stelle per RIS record —
-             the joint submission of two ressorts exists only in list 81. -->
         <p v-if="data.ministryCode" class="mt-2 text-sm text-ink-secondary">
-          <MinistryLinks
-            :ministries="[{
-              code: data.ministryCode,
-              name: data.ministryName ?? data.ministryCode,
-              to: `/entwuerfe?art=verordnung&ministry=${data.ministryCode}`,
-              label: `Alle Verordnungsentwürfe des Ministeriums ${data.ministryName ?? data.ministryCode} anzeigen`,
-            }]"
-          />
+          <MinistryLinks :ministries="ministryLinks" />
         </p>
         <p v-else-if="data.ministryName" class="mt-2 text-sm text-ink-secondary">
           Vom {{ data.ministryName }}
@@ -226,66 +219,46 @@ const documents = computed(() => {
            (`regulationStations`, docs/architecture.md §12.32). A Gesetz or
            an untyped record keeps the card in words: neither has a path
            here that can be read to its end. -->
-      <div class="mt-6">
-        <div class="rounded-xl border border-hairline bg-surface p-4">
-          <!-- Heading and link as on the Ministerialentwurf page: the same
-               card, the same place, the same weights. -->
-          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 class="font-sans text-base font-semibold text-ink">
-              {{ regulationStatusDe(data.active, outcome?.state === 'kundgemacht') }}
-            </h2>
-            <!-- With a bar, straight to the fork: „why three stations and
-                 not five" is answered there, and the card no longer says it
-                 itself (the sentence that did went on 26.09.2026). -->
-            <NuxtLink
-              :to="stationList.length ? '/so-funktionierts#wege' : '/so-funktionierts'"
-              class="tap-target text-sm font-medium link-quiet"
-            >
-              Wie funktioniert das Verfahren? →
-            </NuxtLink>
-          </div>
-          <SpineRail
-            v-if="stationList.length"
-            class="mt-4"
-            :stations="stationList"
-            :anchors="stationAnchors"
-            :comparison-anchors="comparisonAnchors"
-          />
-          <!-- Without a bar the dates are the sentence, and the kind hint
-               says why the card has no path to draw. With a bar both go: the
-               rows carry the dates, and the Verordnung hint („erlässt ein
-               Ministerium selbst … geht nicht durch das Parlament") only
-               restated what the three rows show — the link above answers it
-               at the fork. The closed Frist and the sentence on the
-               Stellungnahmen moved to „Die Begutachtung" below (03.10.2026),
-               the slot the draft page gives them. -->
-          <p v-if="!stationList.length" class="mt-3 text-sm text-ink-secondary">
-            <template v-if="data.startedAt">
-              In Begutachtung seit {{ formatDateDe(data.startedAt) }}<template v-if="data.deadline">, Frist bis {{ formatDateWeekdayDe(data.deadline) }}</template>.
-            </template>
-            <template v-if="RIS_KIND_HINT[data.kind]">
-              {{ RIS_KIND_HINT[data.kind] }}
-            </template>
-          </p>
-        </div>
-      </div>
+      <ProcedureCard
+        :status="regulationStatusDe(data.active, outcome?.state === 'kundgemacht')"
+        :stations="stationList"
+        :anchors="stationAnchors"
+        :comparison-anchors="comparisonAnchors"
+        :how-to="stationList.length ? '/so-funktionierts#wege' : '/so-funktionierts'"
+      >
+        <!-- With a bar, the link leads straight to the fork: „why three
+             stations and not five" is answered there, and the card no longer
+             says it itself (the sentence that did went on 26.09.2026). -->
+        <!-- Without a bar the dates are the sentence, and the kind hint
+             says why the card has no path to draw. With a bar both go: the
+             rows carry the dates, and the Verordnung hint („erlässt ein
+             Ministerium selbst … geht nicht durch das Parlament") only
+             restated what the three rows show — the link above answers it
+             at the fork. The closed Frist and the sentence on the
+             Stellungnahmen moved to „Die Begutachtung" below (03.10.2026),
+             the slot the draft page gives them. -->
+        <p v-if="!stationList.length" class="mt-3 text-sm text-ink-secondary">
+          <template v-if="data.startedAt">
+            In Begutachtung seit {{ formatDateDe(data.startedAt) }}<template v-if="data.deadline">, Frist bis {{ formatDateWeekdayDe(data.deadline) }}</template>.
+          </template>
+          <template v-if="RIS_KIND_HINT[data.kind]">
+            {{ RIS_KIND_HINT[data.kind] }}
+          </template>
+        </p>
+      </ProcedureCard>
 
       <!-- The one place to act, in the slot and the shape the draft page
            uses for its Stellungnahme-CTA. Only while the Frist runs: an
            expired window with a button is an invitation to waste an
            afternoon. -->
-      <div
+      <DraftDoorCard
         v-if="data.active"
-        class="mt-6 rounded-xl border p-4"
-        :class="deadlineCardClass(deadlineTone(data.deadline, data.active))"
+        frist
+        :deadline="data.deadline"
+        :context="fristContext"
+        :ics-href="`/entwuerfe/${data.id}/frist.ics`"
+        :filing-href="coverLetterHref"
       >
-        <!-- A heading, not a paragraph: the one action the page offers
-             belongs in the outline. -->
-        <h2 class="font-sans text-base font-semibold text-ink">
-          <!-- The countdown alone since 30.09.2026: the date stands in the
-               bar directly above. -->
-          {{ fristLabel(data.deadline, data.active) }}
-        </h2>
         <!-- „Ministerium" rather than „Ressort", here and in
              `risFilingNote`: one word per thing. The page carried both side by
              side, and „Ressort" is the administration's word, not the
@@ -305,38 +278,14 @@ const documents = computed(() => {
             der RIS-Eintrag.
           </template>
         </p>
-        <p v-if="fristContext" class="mt-2 text-sm text-ink">
-          {{ fristContext }}
-        </p>
-        <div class="mt-3 flex flex-wrap items-center gap-3">
-          <!-- Linked, never read out. Measured 2026-09-17 over 40 records:
-               34 of 40 Begleitschreiben are scanned images with no text
-               layer at all, so an extracted address would be absent exactly
-               where it is needed most — and the six readable ones name an
-               individual official's work address, which is a decision of
-               its own, not a side effect of a parser. -->
-          <UButton
-            v-if="data.coverLetter"
-            :to="data.coverLetter.pdf ?? data.coverLetter.html ?? data.risUrl"
-            target="_blank"
-            rel="noopener"
-            color="primary"
-            class="min-h-target"
-          >
-            Begleitschreiben öffnen<span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
-          </UButton>
-          <UButton
-            v-if="data.deadline"
-            :to="`/entwuerfe/${data.id}/frist.ics`"
-            external
-            color="neutral"
-            variant="outline"
-            class="min-h-target"
-          >
-            Frist in den Kalender (.ics)
-          </UButton>
-        </div>
-      </div>
+        <!-- Linked, never read out. Measured 2026-09-17 over 40 records:
+             34 of 40 Begleitschreiben are scanned images with no text
+             layer at all, so an extracted address would be absent exactly
+             where it is needed most — and the six readable ones name an
+             individual official's work address, which is a decision of
+             its own, not a side effect of a parser. -->
+        <template #filing>Begleitschreiben öffnen</template>
+      </DraftDoorCard>
 
       <!-- ONE chapter, „Der Entwurf", with h3 blocks — the draft page's
            anatomy. Until 30.09.2026 comparison, reasoning and documents were

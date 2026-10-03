@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { BgblOutcome, DraftDetail, LawStationId } from '../shared/types'
-import { formatNumberDe } from '../shared/utils/format'
+import { bgblShort, formatNumberDe } from '../shared/utils/format'
 import {
   houseOutcomeOf,
   lastParliamentStation,
   parliamentOutcome,
+  parliamentStandDe,
   procedureStatusDe,
   regulationStations,
   stations,
@@ -637,5 +638,64 @@ describe('a Gesetzesbeschluss that was not promulgated', () => {
     const { bgbl, headline } = at({ decidedAt: '2026-09-23' })
     expect(bgbl).toMatchObject({ state: 'open', facts: ['ausstehend'] })
     expect(headline).toBe('Beschlossen – Kundmachung ausständig')
+  })
+})
+
+/* The „Stand" row of „Im Parlament", moved out of the draft page on
+ * 03.10.2026. The expected sentences are the page's, branch by branch. */
+describe('parliamentStandDe', () => {
+  const TODAY = '2026-10-03'
+  const pending = (enactment: Partial<NonNullable<DraftDetail['enactment']>>) => {
+    const base = draft()
+    return draft({ enactment: { ...base.enactment!, bgblNumber: null, rvGpEnded: false, ...enactment } })
+  }
+
+  it('says unchanged where the Vorlage reached the Bundesgesetzblatt as it was', () => {
+    expect(parliamentStandDe(draft(), TODAY)).toBe('Der Nationalrat hat den Text der Regierungsvorlage unverändert beschlossen.')
+  })
+
+  it('says amended where parliament changed the text', () => {
+    const base = draft()
+    const d = draft({ enactment: { ...base.enactment!, amendedIn: ['ausschuss'] } })
+    expect(parliamentStandDe(d, TODAY)).toBe('Der Text wurde im Parlament weiter geändert.')
+  })
+
+  it('names each house outcome by its step', () => {
+    expect(parliamentStandDe(pending({ houseStatusText: 'abgelehnt' }), TODAY)).toBe('Die Regierungsvorlage wurde im Nationalrat abgelehnt.')
+    expect(parliamentStandDe(pending({ houseStatusText: 'zurückgezogen' }), TODAY)).toBe('Die Regierungsvorlage wurde zurückgezogen.')
+    expect(parliamentStandDe(pending({ houseStatus: '3' }), TODAY)).toBe('Die Regierungsvorlage wurde an den Ausschuss zurückverwiesen.')
+    expect(parliamentStandDe(pending({}), TODAY)).toBe('Die Regierungsvorlage ist im Nationalrat in Behandlung.')
+    expect(parliamentStandDe(pending({ rvGpEnded: true }), TODAY)).toBe('Das Verfahren endete mit der Gesetzgebungsperiode ohne Kundmachung.')
+  })
+
+  it('reads the lapsed sentence where there is no Vorlage at all', () => {
+    expect(parliamentStandDe(draft({ enactment: null }), TODAY)).toBe('Das Verfahren endete mit der Gesetzgebungsperiode ohne Kundmachung.')
+  })
+
+  it('keeps the plain „beschlossen" inside the Kundmachung window', () => {
+    expect(parliamentStandDe(pending({ houseStatusText: 'beschlossen', decidedAt: '2026-09-23' }), TODAY))
+      .toBe('Der Nationalrat hat den Text beschlossen; die Kundmachung im Bundesgesetzblatt steht aus.')
+  })
+
+  it('names the Bundesrat while the text is there', () => {
+    const d = pending({ houseStatusText: 'beschlossen', decidedAt: '2026-09-23', filingOpen: true, bundesratArrivedAt: '2026-09-25' })
+    expect(parliamentStandDe(d, TODAY)).toBe('Der Nationalrat hat den Text beschlossen; der Bundesrat befasst sich seit 25.09.2026 damit.')
+  })
+
+  it('says overdue as time only, naming the Bundesrat only where its Beschluss was read', () => {
+    expect(parliamentStandDe(pending({ houseStatusText: 'beschlossen', decidedAt: '2026-01-15' }), TODAY))
+      .toBe('Der Nationalrat hat den Text beschlossen; kundgemacht ist er seit dem 15.01.2026 nicht.')
+    expect(parliamentStandDe(pending({ houseStatusText: 'beschlossen', decidedAt: '2026-01-15', bundesratDecidedAt: '2026-01-29' }), TODAY))
+      .toBe('Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht ist er seit dem 29.01.2026 nicht.')
+  })
+
+  it('reads an unpromulgated Beschluss as one whatever the status prose said', () => {
+    // No „beschlossen" in the status text: the explicit stage alone decides.
+    const notPromulgated = { date: '2025-03-01', reason: 'formalfehler' as const, successorAntrag: null }
+    expect(parliamentStandDe(pending({ notPromulgated }), TODAY))
+      .toBe('Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht wurde er wegen eines Formalfehlers nicht.')
+    const successor = { citation: '416/A', url: 'https://example.invalid', bgblNumber: 'Bundesgesetzblatt I Nr. 65/2025', bgblRisUrl: null }
+    expect(parliamentStandDe(pending({ notPromulgated: { ...notPromulgated, reason: 'unbekannt' }, successor }), TODAY))
+      .toBe(`Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht wurde er nicht. Neu eingebracht als Initiativantrag 416/A, ist er als ${bgblShort('Bundesgesetzblatt I Nr. 65/2025')} kundgemacht.`)
   })
 })

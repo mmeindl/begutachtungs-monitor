@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import type { DraftDocument } from '#shared/types'
 
-/** A row may carry its own sub-line: source-specific hints (the RIS
- *  Entwurfstext) have no place in the shared DOC_HINTS prefix table,
- *  which describes the ministries' standard parliament document set. */
-type DocumentListItem = DraftDocument & { hint?: string }
-
 withDefaults(
   defineProps<{
-    documents: DocumentListItem[]
+    documents: DraftDocument[]
     /** Named in the aria-label so screen-reader users hear where a link
      *  goes — the page shows the same documents from two sources. */
     source?: string
@@ -19,7 +14,7 @@ withDefaults(
 const formatNames: Record<'pdf' | 'html', string> = { pdf: 'PDF', html: 'HTML' }
 const FORMAT_ORDER = ['pdf', 'html'] as const
 
-function formatOf(doc: DocumentListItem, type: 'pdf' | 'html') {
+function formatOf(doc: DraftDocument, type: 'pdf' | 'html') {
   return doc.formats.find((f) => f.type === type) ?? null
 }
 
@@ -27,9 +22,15 @@ function formatOf(doc: DocumentListItem, type: 'pdf' | 'html') {
  * Textgegenüberstellung line quietly routes first-timers to the one
  * document written for "what would actually change". Doc names are
  * ministries' free text (docs/api-exploration.md §1): exact/prefix match
- * only, unknown titles get no sub-line. */
+ * only, unknown titles get no sub-line.
+ *
+ * The RIS page names its three documents itself (`[id].vue`), so the same
+ * table serves both sources: „Entwurfstext" is the RIS page's word for what
+ * Parliament calls „Gesetzestext", with the same sub-line. It used to pass
+ * its hints in per row, copied from this table (until 03.10.2026). */
 const DOC_HINTS: [prefix: string, hint: string][] = [
   ['Gesetzestext', 'Der Entwurfstext selbst'],
+  ['Entwurfstext', 'Der Entwurfstext selbst'],
   ['Erläuterungen', 'Die Begründung des Ministeriums'],
   ['Vorblatt und WFA', 'Kurzüberblick und Folgenabschätzung'],
   ['Textgegenüberstellung', 'Geltendes Recht und Entwurf nebeneinander'],
@@ -38,8 +39,7 @@ const DOC_HINTS: [prefix: string, hint: string][] = [
   // restated the title.
 ]
 
-function docHint(doc: DocumentListItem): string | null {
-  if (doc.hint) return doc.hint
+function docHint(doc: DraftDocument): string | null {
   const t = doc.title.trim()
   const hit = DOC_HINTS.find(([prefix]) => t === prefix || t.startsWith(prefix))
   return hit ? hit[1] : null

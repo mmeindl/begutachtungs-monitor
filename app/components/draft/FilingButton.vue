@@ -19,10 +19,15 @@
  * No countdown, no tone — two deadline cards would read as two deadlines.
  * Render it only while that window is open, with the card's condition
  * copied, not paraphrased.
+ *
+ * The card's own buttons are this one too, so the door and its repetition
+ * cannot drift apart. `variant` is for the card's row only: there the
+ * Vorlage's button steps back to an outline beside the Begutachtung's.
  */
-defineProps<{
+withDefaults(defineProps<{
   href: string
-}>()
+  variant?: 'solid' | 'outline'
+}>(), { variant: 'solid' })
 </script>
 
 <template>
@@ -31,7 +36,7 @@ defineProps<{
     target="_blank"
     rel="noopener"
     color="primary"
-    variant="solid"
+    :variant="variant"
     class="min-h-target"
   >
     <slot /><span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>

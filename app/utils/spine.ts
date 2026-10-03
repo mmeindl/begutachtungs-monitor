@@ -41,7 +41,7 @@
  * (the amended laws, the Regierungsvorlage's own Stellungnahmen count), so
  * the values are handed in rather than guessed or fetched here.
  */
-import type { BgblOutcome, DraftDetail, HouseVote, LawStationId, RisConsultation } from '#shared/types'
+import type { BgblOutcome, DraftDetail, EnactmentInfo, HouseVote, LawStationId, RisConsultation } from '#shared/types'
 import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
@@ -450,6 +450,76 @@ export function voteLineDe(vote: HouseVote | null | undefined): string | null {
   if (!against.length) return 'alle Klubs dafür'
   if (!infavor.length) return 'alle Klubs dagegen'
   return `${clubsDe(infavor)} dafür, ${clubsDe(against)} dagegen`
+}
+
+/* What parliament did, as the first row of „Im Parlament"'s frame. One
+ * sentence per outcome; the comment at the frame says why none of them names
+ * a motive. */
+const PARLIAMENT_OUTCOME_DE: Record<NonNullable<ReturnType<typeof parliamentOutcome>>, string> = {
+  unchanged: 'Der Nationalrat hat den Text der Regierungsvorlage unverändert beschlossen.',
+  // Where it changed — Ausschuss, Plenum — stands in the bar and in the
+  // comparison's toggle below.
+  amended: 'Der Text wurde im Parlament weiter geändert.',
+  // The plain case only; every other „beschlossen" is `decidedStandDe` below.
+  decided: 'Der Nationalrat hat den Text beschlossen; die Kundmachung im Bundesgesetzblatt steht aus.',
+  rejected: 'Die Regierungsvorlage wurde im Nationalrat abgelehnt.',
+  withdrawn: 'Die Regierungsvorlage wurde zurückgezogen.',
+  recommitted: 'Die Regierungsvorlage wurde an den Ausschuss zurückverwiesen.',
+  pending: 'Die Regierungsvorlage ist im Nationalrat in Behandlung.',
+  lapsed: 'Das Verfahren endete mit der Gesetzgebungsperiode ohne Kundmachung.',
+}
+
+/**
+ * „Beschlossen" in the states it can be in after 03.10.2026 — one sentence
+ * each, chosen by the same rule the spine and the list row read
+ * (`promulgationState`, §12.33).
+ *
+ * Temporal, never causal, except where Parliament's own record names the
+ * cause („Formalfehler") or the successor (80 d.B. → 416/A): what we infer
+ * from the calendar alone is said as time only („seit dem … nicht"). A
+ * second chamber is named only where its Beschluss was read. „bisher" is
+ * gone from the plain case: it promised a Kundmachung for the texts that
+ * never got one.
+ */
+function decidedStandDe(e: EnactmentInfo, today: string): string {
+  const state = promulgationState(e, today)
+  if (state === 'explicit') {
+    const notDone = e.notPromulgated?.reason === 'formalfehler'
+      ? 'kundgemacht wurde er wegen eines Formalfehlers nicht.'
+      : 'kundgemacht wurde er nicht.'
+    const sentence = `Nationalrat und Bundesrat haben den Text beschlossen; ${notDone}`
+    return e.successor?.bgblNumber
+      ? `${sentence} Neu eingebracht als Initiativantrag ${e.successor.citation}, ist er als ${bgblShort(e.successor.bgblNumber)} kundgemacht.`
+      : sentence
+  }
+  if (state === 'overdue') {
+    const since = formatDateDe(e.bundesratDecidedAt ?? e.decidedAt ?? '')
+    return e.bundesratDecidedAt
+      ? `Nationalrat und Bundesrat haben den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
+      : `Der Nationalrat hat den Text beschlossen; kundgemacht ist er seit dem ${since} nicht.`
+  }
+  // At the Bundesrat: the window is still open there (§12.26), and this is
+  // the step the text is at.
+  if ((e.filingOpen || e.houseStatus === '4') && e.bundesratArrivedAt && !e.bundesratDecidedAt) {
+    return `Der Nationalrat hat den Text beschlossen; der Bundesrat befasst sich seit ${formatDateDe(e.bundesratArrivedAt)} damit.`
+  }
+  return PARLIAMENT_OUTCOME_DE.decided
+}
+
+/**
+ * The „Stand" row of „Im Parlament": what parliament did with the Vorlage,
+ * in one sentence. Built on `parliamentOutcome`, the function the bar's fact
+ * line reads, so the row and the bar cannot disagree. A Beschluss that was
+ * not promulgated reads as one whatever the status prose said; every other
+ * „beschlossen" goes through `decidedStandDe`. Without a Vorlage it says
+ * what a page without one never asks for: the lapsed sentence.
+ */
+export function parliamentStandDe(d: DraftDetail, today: string = todayIso()): string {
+  const outcome = parliamentOutcome(d) ?? 'lapsed'
+  const e = d.enactment
+  return e && (outcome === 'decided' || promulgationState(e, today))
+    ? decidedStandDe(e, today)
+    : PARLIAMENT_OUTCOME_DE[outcome]
 }
 
 /** Empty slots are dropped rather than rendered, so a row never reads "· ·". */

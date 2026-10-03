@@ -10,8 +10,14 @@ import {
   reasoningShareValueDe,
   earlyVorlageWhenDe,
   tabledBeforeFristEnd,
+  chainUnlinkedBodyDe,
+  chainUnlinkedHeadlineDe,
+  rvStationView,
+  type VorlageOutcomeState,
 } from '../app/utils/outcomes'
 import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
+import type { DraftDetail } from '../shared/types'
+import { todayIso } from '../shared/utils/format'
 import { GP_STARTS, gpEndedOn, romanToInt } from '../shared/utils/gp'
 
 describe('RV base rates (scripts/corpus/rvLatency.ts, 2026-09-08)', () => {
@@ -137,5 +143,137 @@ describe('a Vorlage tabled while the Begutachtung ran (29.09.2026)', () => {
   it('never says why', () => {
     expect(earlyVorlageWhenDe({ arrivedAt: '2026-06-11', deadline: '2026-06-21', rvDate: '2026-06-10' }))
       .not.toMatch(/Zum Vergleich|ignoriert|konnte|nicht aufgenommen|Wirkung|erfolgreich/)
+  })
+})
+
+/* The Regierungsvorlage station of the draft page, moved out of its ten
+ * computeds on 03.10.2026. Every expectation is what the page's computeds
+ * returned for the same record. */
+describe('rvStationView', () => {
+  /* ISO date N days before today, on the Vienna day `daysUntil` counts by. */
+  function daysAgo(n: number): string {
+    const d = new Date(`${todayIso()}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() - n)
+    return d.toISOString().slice(0, 10)
+  }
+
+  /* Only what `rvStationView` reads. A closed Begutachtung of a running,
+   * linked GP without a Vorlage, a month after its Frist. */
+  function draft(overrides: Partial<DraftDetail> = {}): DraftDetail {
+    return {
+      gp: 'XXVIII',
+      deadline: daysAgo(30),
+      active: false,
+      gpEnded: false,
+      gpEndedOn: null,
+      chainCoverage: 'linked',
+      antragPath: null,
+      successor: null,
+      enactment: null,
+      ...overrides,
+    } as unknown as DraftDetail
+  }
+  const NOTHING: VorlageOutcomeState = { share: null, sharePending: false, reasoningStats: null, rvExplanations: null }
+  const enactment = (furtherRv: unknown[] = []) => ({ rvCitation: '518 d.B.', furtherRv }) as unknown as DraftDetail['enactment']
+  const antragPath = (draftShare: number) => ({ antrag: { citation: '1065/A' }, draftShare }) as unknown as DraftDetail['antragPath']
+
+  it('is all off without a draft', () => {
+    expect(rvStationView(null, NOTHING)).toEqual({
+      showOutcome: false,
+      lapsed: false,
+      chainUnlinked: false,
+      viaAntrag: false,
+      noRvVerdict: null,
+      noRvBaseRate: null,
+      facts: [],
+      counted: false,
+      context: null,
+    })
+  })
+
+  it('stays away while the Frist runs and no Vorlage exists', () => {
+    const v = rvStationView(draft({ active: true, deadline: daysAgo(-10) }), NOTHING)
+    expect(v.showOutcome).toBe(false)
+    expect(v.facts).toEqual([])
+    expect(v.context).toBeNull()
+  })
+
+  it('says „Bisher keine" in the row while the silence is fresh, with the base rate under it', () => {
+    const v = rvStationView(draft(), NOTHING)
+    expect(v.showOutcome).toBe(true)
+    expect(v.noRvVerdict).toBeNull()
+    expect(v.facts).toEqual([{ key: 'stand', title: 'Stand', text: 'Bisher keine Regierungsvorlage.' }])
+    expect(v.context).toBeNull()
+    expect(v.noRvBaseRate).toBe(rvBaseRateSentenceDe('XXVIII'))
+    expect(v.counted).toBe(false)
+  })
+
+  it('puts the verdict in the row once the quiet stretch passes the latency window', () => {
+    const v = rvStationView(draft({ deadline: daysAgo(400) }), NOTHING)
+    expect(v.noRvVerdict).toBe('Seit Ende der Begutachtungsfrist vor über einem Jahr liegt keine Regierungsvorlage vor.')
+    expect(v.facts).toEqual([{ key: 'stand', title: 'Stand', text: v.noRvVerdict }])
+    expect(v.context).toBe('Ob und wie es weitergeht, ist offen.')
+    expect(v.noRvBaseRate).toBe(rvBaseRateSentenceDe('XXVIII'))
+  })
+
+  it('states the period\'s end once the GP is over, with the carry-over rate instead of the base rate', () => {
+    const v = rvStationView(draft({ gp: 'XXVII', gpEnded: true, gpEndedOn: '2024-10-23', deadline: daysAgo(900) }), NOTHING)
+    expect(v.lapsed).toBe(true)
+    expect(v.noRvVerdict).toBe(gpEndedHeadlineDe('XXVII', '2024-10-23'))
+    expect(v.context).toBe(gpEndedBodyDe('XXVII'))
+    expect(v.noRvBaseRate).toBeNull()
+  })
+
+  it('claims nothing where the period records no links, over the GP\'s end too', () => {
+    const v = rvStationView(draft({ gp: 'XVI', gpEnded: true, chainCoverage: 'unknown' }), NOTHING)
+    expect(v.chainUnlinked).toBe(true)
+    expect(v.lapsed).toBe(true)
+    expect(v.noRvVerdict).toBe(chainUnlinkedHeadlineDe('XVI'))
+    expect(v.context).toBe(chainUnlinkedBodyDe())
+    expect(v.noRvBaseRate).toBeNull()
+  })
+
+  it('names the Initiativantrag instead of any waiting sentence, and the successor draft', () => {
+    const v = rvStationView(draft({ deadline: daysAgo(400), antragPath: antragPath(0.9), successor: {} as DraftDetail['successor'] }), NOTHING)
+    expect(v.viaAntrag).toBe(true)
+    expect(v.noRvVerdict).toBeNull()
+    expect(v.context).toBeNull()
+    expect(v.noRvBaseRate).toBeNull()
+    expect(v.facts.map((f) => f.key)).toEqual(['antrag', 'nachfolger'])
+  })
+
+  it('keeps the waiting sentence where the Antrag carries too little of the draft', () => {
+    const v = rvStationView(draft({ antragPath: antragPath(0.2) }), NOTHING)
+    expect(v.viaAntrag).toBe(false)
+    expect(v.facts.map((f) => f.key)).toEqual(['stand'])
+  })
+
+  it('lists the Vorlage and the comparison\'s rows as they arrive', () => {
+    const d = draft({ enactment: enactment() })
+    expect(rvStationView(d, NOTHING).facts.map((f) => f.key)).toEqual(['rv'])
+    expect(rvStationView(d, { ...NOTHING, sharePending: true }).facts.map((f) => f.key)).toEqual(['rv', 'aenderung'])
+    const full = rvStationView(draft({ enactment: enactment([{}]) }), { share: {}, sharePending: false, reasoningStats: null, rvExplanations: {} })
+    expect(full.facts).toEqual([
+      { key: 'rv', title: 'Eingebracht' },
+      { key: 'aenderung', title: 'Umgeschrieben oder gestrichen' },
+      { key: 'begruendung', title: 'Begründung' },
+      { key: 'weitere', title: 'Außerdem aus dem Entwurf hervorgegangen' },
+    ])
+    expect(full.counted).toBe(true)
+    expect(full.showOutcome).toBe(true)
+  })
+
+  it('counts only where a count row stands', () => {
+    expect(rvStationView(draft({ enactment: enactment([{}]) }), NOTHING).counted).toBe(false)
+  })
+
+  /* As on the page: with a Vorlage the verdict and its context are still
+   * computed for an old Frist, and the template's own guard
+   * (`!data.enactment`) keeps them off the screen. Pinned, not endorsed. */
+  it('computes the verdict even beside a Vorlage, which the page does not render', () => {
+    const v = rvStationView(draft({ deadline: daysAgo(400), enactment: enactment() }), NOTHING)
+    expect(v.noRvVerdict).not.toBeNull()
+    expect(v.context).toBe('Ob und wie es weitergeht, ist offen.')
+    expect(v.facts.map((f) => f.key)).toEqual(['rv'])
   })
 })

@@ -1,3 +1,34 @@
+<script lang="ts">
+export interface MinistryLink {
+  code: string
+  name: string
+  /** The filtered list this name leads to — a different one per page. */
+  to: string
+  /** The link's accessible name; it contains the visible name (WCAG 2.5.3). */
+  label: string
+}
+
+/**
+ * One Ressort's link into its own list, narrowed the way the page is: a
+ * Ministerialentwurf's to its GP, a Verordnungsentwurf's to the Verordnungen.
+ * The parameter order is the one both pages always wrote, so the URLs stay
+ * what they were.
+ */
+export function ministryLinkFor(
+  code: string,
+  name: string,
+  scope: { gp: string } | { art: 'verordnung' },
+): MinistryLink {
+  const regulation = 'art' in scope
+  return {
+    code,
+    name,
+    to: regulation ? `/entwuerfe?art=${scope.art}&ministry=${code}` : `/entwuerfe?ministry=${code}&gp=${scope.gp}`,
+    label: `Alle ${regulation ? 'Verordnungsentwürfe' : 'Entwürfe'} des Ministeriums ${name} anzeigen`,
+  }
+}
+</script>
+
 <script setup lang="ts">
 /**
  * The Ressort in a detail page's byline, written out and linked into that
@@ -24,14 +55,7 @@
  * own link, because each leads to a different list.
  */
 defineProps<{
-  ministries: {
-    code: string
-    name: string
-    /** The filtered list this name leads to — a different one per page. */
-    to: string
-    /** The link's accessible name; it contains the visible name (WCAG 2.5.3). */
-    label: string
-  }[]
+  ministries: MinistryLink[]
 }>()
 </script>
 

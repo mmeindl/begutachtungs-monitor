@@ -3,8 +3,11 @@ import {
   deadlineTone,
   fristClassOf,
   fristContextDe,
+  fristContextFor,
   fristDivergence,
+  fristFact,
   fristRangeDe,
+  fristStateDe,
   isNewArrival,
   isWithinNewWindow,
   NEW_ARRIVAL_DAYS,
@@ -193,5 +196,42 @@ describe('fristRangeDe — the Frist as dates', () => {
 
   it('falls back to the deadline alone without a usable start', () => {
     expect(fristRangeDe(null, '2026-06-17')).toBe('bis 17.06.2026')
+  })
+})
+
+/* The detail pages' Frist phrases, moved out of both pages on 03.10.2026.
+ * The expected strings are what each page built inline before. */
+describe('fristStateDe', () => {
+  it('words an open Begutachtung as a fact for the og facts', () => {
+    expect(fristStateDe(true, '2026-10-16')).toBe('Frist bis 16.10.2026')
+    expect(fristStateDe(true, null)).toBe('Begutachtung läuft')
+  })
+
+  it('words it as a clause after the type word for the RIS description', () => {
+    expect(fristStateDe(true, '2026-10-16', 'clause')).toBe('in Begutachtung bis 16.10.2026')
+    expect(fristStateDe(true, undefined, 'clause')).toBe('in Begutachtung')
+  })
+
+  it('says the same about a closed one in both shapes, never „in Begutachtung"', () => {
+    for (const shape of ['fact', 'clause'] as const) {
+      expect(fristStateDe(false, '2026-08-10', shape)).toBe('Begutachtung endete am 10.08.2026')
+      expect(fristStateDe(false, null, shape)).toBe('Begutachtung abgeschlossen')
+    }
+  })
+})
+
+describe('fristContextFor', () => {
+  it('is fristContextDe on the class of the dates', () => {
+    expect(fristContextFor('2026-06-03', '2026-06-17')).toBe(fristContextDe('short'))
+    expect(fristContextFor('2026-06-29', '2026-08-10', 'verordnung')).toBe(fristContextDe('full', 'verordnung'))
+    expect(fristContextFor('2026-06-03', '2026-07-01')).toBeNull()
+    expect(fristContextFor(null, '2026-07-01')).toBeNull()
+  })
+})
+
+describe('fristFact', () => {
+  it('is the „Begutachtungsfrist" row under the key the bar\'s slot is named by', () => {
+    expect(fristFact('2026-06-03', '2026-06-17')).toEqual({ key: 'frist', title: 'Begutachtungsfrist', text: '03.06.–17.06.2026' })
+    expect(fristFact(null, '2026-06-17')).toEqual({ key: 'frist', title: 'Begutachtungsfrist', text: 'bis 17.06.2026' })
   })
 })

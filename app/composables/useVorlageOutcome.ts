@@ -21,6 +21,7 @@
 import type { LawDiffResponse, ReasoningDiffResponse } from '#shared/types'
 import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'
 import { lawDiffKey, lawReasoningKey } from '#shared/utils/lawStations'
+import { changeShareValueDe, reasoningShareValueDe } from '~/utils/outcomes'
 
 export function useVorlageOutcome(source: () => { gp: string; inr: number }, enabled: boolean) {
   const { data: diff, status: diffStatus } = useFetch<LawDiffResponse>(
@@ -50,5 +51,15 @@ export function useVorlageOutcome(source: () => { gp: string; inr: number }, ena
    *  [Entwurf, Regierungsvorlage], and only where both were found. */
   const rvExplanations = computed(() => (reasoning.value?.sources?.length === 2 ? reasoning.value.sources[1] ?? null : null))
 
-  return { share, sharePending, reasoningStats, rvExplanations }
+  /** The two counts as the frame's rows print them; null while absent. */
+  const shareDe = computed(() => {
+    const s = share.value
+    return s ? changeShareValueDe(s.changed, s.own, s.noun) : null
+  })
+  const reasoningDe = computed(() => {
+    const r = reasoningStats.value
+    return r ? reasoningShareValueDe(r.changed, r.compared) : null
+  })
+
+  return { share, sharePending, reasoningStats, rvExplanations, shareDe, reasoningDe }
 }

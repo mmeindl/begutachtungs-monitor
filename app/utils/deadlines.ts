@@ -306,3 +306,48 @@ export function fristRangeDe(start: string | null | undefined, deadline: string)
   const from = formatDateDe(start)
   return from.slice(-4) === end.slice(-4) ? `${from.slice(0, -4)}–${end}` : `${from} – ${end}`
 }
+
+/** The yardstick sentence for a Frist from its dates — `fristContextDe` on
+ *  `fristClassOf`, the pair both detail pages put in their action card. */
+export function fristContextFor(
+  start: string | null | undefined,
+  deadline: string | null | undefined,
+  kind: 'entwurf' | 'verordnung' = 'entwurf',
+): string | null {
+  return fristContextDe(fristClassOf(start, deadline), kind)
+}
+
+/**
+ * The closed Frist as the fact under „Die Begutachtung": its range, with the
+ * `FristBar` hung under it through the slot `after-frist`. One row for both
+ * detail pages, so the title and the key the bar's slot is named by cannot
+ * part. Structurally a `Fact` (`FactList`), kept free of the component here.
+ */
+export function fristFact(
+  start: string | null | undefined,
+  deadline: string,
+): { key: 'frist'; title: string; text: string } {
+  return { key: 'frist', title: 'Begutachtungsfrist', text: fristRangeDe(start, deadline) }
+}
+
+/**
+ * Where a Begutachtung stands, in a few words for a link preview or a search
+ * snippet: open with or without a Frist, closed with or without a date.
+ *
+ * Two shapes, for where the phrase stands. `fact` stands alone between „·"
+ * („Frist bis 16.10.2026 · 12 Stellungnahmen", the draft page's og facts);
+ * `clause` continues a sentence after the type word („Verordnungsentwurf, in
+ * Begutachtung bis 16.10.2026", the RIS page's description). Closed, both say
+ * the same, so a closed one never reads „in Begutachtung".
+ */
+export function fristStateDe(
+  active: boolean,
+  deadline: string | null | undefined,
+  shape: 'fact' | 'clause' = 'fact',
+): string {
+  if (active) {
+    if (shape === 'clause') return deadline ? `in Begutachtung bis ${formatDateDe(deadline)}` : 'in Begutachtung'
+    return deadline ? `Frist bis ${formatDateDe(deadline)}` : 'Begutachtung läuft'
+  }
+  return deadline ? `Begutachtung endete am ${formatDateDe(deadline)}` : 'Begutachtung abgeschlossen'
+}
