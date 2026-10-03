@@ -8,7 +8,7 @@
  * `/entwuerfe`. Both orders of the panel ARE two of its columns (Datum,
  * Zustimmungen), and two of the three on `/entwuerfe` are too (Stellungnahmen,
  * Stand). So the control moved into the header — still ONE control for one
- * sort, the rule `StatementListHeader` was written to keep, and no row of
+ * sort, the rule `StatementColumnHeader` was written to keep, and no row of
  * its own.
  *
  * The arrow is always drawn, muted where the column is not the order, so a

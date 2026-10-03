@@ -67,10 +67,5 @@ export function useStatementDocuments() {
     return entry.doc?.kind === 'pdf' ? entry.doc.url : null
   }
 
-  /** True until the answer is in — the row reserves the tag's place meanwhile. */
-  function isPending(ref: string): boolean {
-    return entries.get(ref)?.status !== 'done'
-  }
-
-  return { request, pdfUrl, isPending }
+  return { request, pdfUrl }
 }

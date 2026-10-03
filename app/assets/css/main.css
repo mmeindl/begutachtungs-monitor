@@ -268,7 +268,7 @@
 
 /*
  * The five tracks of that layout, in one place: the rows (StatementRow) and
- * the column header above them (StatementListHeader) have to agree on them
+ * the column header above them (StatementColumnHeader) have to agree on them
  * to the pixel, or the labels drift off the values they name. Used only
  * under `row-cols:`.
  */

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { endorsementUnit, formatNumberDe } from '#shared/utils/format'
+import { statementLinkName } from '~/utils/statementRows'
 
 /**
  * One row of the statements panel, in the grammar every list in it shares:
@@ -63,8 +64,7 @@ const props = defineProps<{
  * the column beside it says: who filed. Never a person's name — `submitter`
  * is passed for organisations only. */
 function linkAriaLabel(citation: string): string {
-  const who = props.submitter ? ` von ${props.submitter}` : ''
-  return `Stellungnahme ${citation}${who} auf parlament.gv.at öffnen`
+  return `${statementLinkName(citation, props.submitter)} auf parlament.gv.at öffnen`
 }
 </script>
 
@@ -195,7 +195,7 @@ function linkAriaLabel(citation: string): string {
            Zustimmungen" on one line — at 7.5rem a three-digit count already
            pushed the word onto a second line.
            From row-cols up the word goes to the column header
-           (StatementListHeader, 02.10.2026): written out on every row it
+           (StatementColumnHeader, 02.10.2026): written out on every row it
            was the loudest thing in the column, and the digits are what the
            eye compares down it. On a phone there is no header, so the cell
            keeps its word. The `meta` slot is for what follows the number

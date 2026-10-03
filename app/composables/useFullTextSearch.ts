@@ -31,7 +31,8 @@
 import type { Ref } from 'vue'
 import type { BegutSearchHit, BegutSearchResponse } from '#shared/types'
 import type { EntryView } from '~/utils/entryView'
-import { viewOfDraft, viewOfRis } from '~/utils/entryView'
+import { viewOfRow } from '~/utils/entryView'
+import { meRow, risRow } from '#shared/utils/draftOrder'
 import type { DraftFilters } from '~/composables/useDraftFilters'
 
 const FULLTEXT_MIN_LEN = 3
@@ -155,7 +156,7 @@ export async function useFullTextSearch(
   const fullTextViews = computed(() =>
     fullTextHits.value.map((hit) => ({
       hit,
-      view: hit.entry.kind === 'draft' ? viewOfDraft(hit.entry.draft) : viewOfRis(hit.entry.consultation),
+      view: viewOfRow(hit.entry.kind === 'draft' ? meRow(hit.entry.draft) : risRow(hit.entry.consultation)),
     })),
   )
 
@@ -210,9 +211,7 @@ export async function useFullTextSearch(
     fullTextActive,
     fullTextPending,
     fullTextError,
-    fullTextHits,
     hitByKey,
-    fullTextExtra,
     fullTextExtraEntries,
     fullTextInList,
     fullTextFilteredOut,

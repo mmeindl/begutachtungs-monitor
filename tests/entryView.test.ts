@@ -24,8 +24,10 @@ import {
   viewOfDraft,
   viewOfOutcome,
   viewOfRis,
+  viewOfRow,
   viewOfVorlage,
 } from '../app/utils/entryView'
+import { draftRows } from '../shared/utils/draftOrder'
 import { draftSummary, risConsultation } from './helpers/builders'
 
 /** A deadline far in the past, so `active` never has a say. */
@@ -470,5 +472,21 @@ describe('The „Neu" mark', () => {
   it('names the station on a Vorlage that arrived this week, too', () => {
     expect(viewOfVorlage(vorlage({ date: daysAgo(0) })).newLabel).toBe('Neu: Regierungsvorlage')
     expect(viewOfVorlage(vorlage({ date: daysAgo(NEW_ARRIVAL_DAYS + 1) })).newLabel).toBeNull()
+  })
+})
+
+describe('viewOfRow', () => {
+  it('sends each row kind through its own adapter', () => {
+    const [me, r, rv] = draftRows([draft()], [ris()], [vorlage()])
+    expect(viewOfRow(me!)).toEqual(viewOfDraft(draft()))
+    expect(viewOfRow(r!)).toEqual(viewOfRis(ris()))
+    expect(viewOfRow(rv!)).toEqual(viewOfVorlage(vorlage()))
+  })
+
+  it('keeps the row key and the entry key one key', () => {
+    // The full-text hits are matched to list rows by this key (`hitByKey`).
+    for (const row of draftRows([draft()], [ris()], [vorlage()])) {
+      expect(viewOfRow(row).key).toBe(row.key)
+    }
   })
 })

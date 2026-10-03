@@ -32,21 +32,17 @@ defineProps<{ sortable: boolean }>()
 </script>
 
 <template>
-  <!-- `aria-hidden` per label, as in EntryList: the rows are not table
-       cells, and the one value whose meaning the header carries visually —
-       the Zustimmungen count — keeps its unit as screen-reader text in the
-       cell. The sort buttons are the exception and stay reachable.
-       Sticky inside the panel's sheet, so past the first screen of a long
-       list the right-hand digits still have a name. -->
-  <!-- Less padding where the labels are buttons: the button brings its own
-       target height (main.css), and the row should not grow by it. -->
-  <div
-    :class="sortable ? 'py-0.5' : 'py-2'"
-    class="sticky top-0 z-10 hidden items-center gap-x-3 border-b border-hairline bg-surface px-4 text-xs font-medium uppercase tracking-wide text-ink-muted row-cols:grid row-cols:statement-tracks"
-  >
-    <span><SortHeader v-if="sortable" label="Datum" order="neueste zuerst" :active="sort === 'date'" @choose="sort = 'date'" /><span v-else aria-hidden="true">Datum</span></span>
-    <span aria-hidden="true">Eingebracht von</span>
-    <span aria-hidden="true" class="col-span-2">Stellungnahme</span>
-    <span class="text-right"><SortHeader v-if="sortable" label="Zustimmungen" order="meiste zuerst" align="end" :active="sort === 'endorsements'" @choose="sort = 'endorsements'" /><span v-else aria-hidden="true">Zustimmungen</span></span>
-  </div>
+  <!-- `aria-hidden` per label, as in EntryList (`ColumnHeader`,
+       `ColumnLabel`): the rows are not table cells, and the one value whose
+       meaning the header carries visually — the Zustimmungen count — keeps
+       its unit as screen-reader text in the cell. The sort buttons are the
+       exception and stay reachable. Sticky inside the panel's sheet, so past
+       the first screen of a long list the right-hand digits still have a
+       name. -->
+  <ColumnHeader :sortable="sortable" class="gap-x-3 row-cols:grid row-cols:statement-tracks">
+    <ColumnLabel label="Datum" :sort="sortable ? { order: 'neueste zuerst', active: sort === 'date' } : null" @choose="sort = 'date'" />
+    <ColumnLabel label="Eingebracht von" />
+    <ColumnLabel label="Stellungnahme" class="col-span-2" />
+    <ColumnLabel label="Zustimmungen" :sort="sortable ? { order: 'meiste zuerst', active: sort === 'endorsements' } : null" align="end" class="text-right" @choose="sort = 'endorsements'" />
+  </ColumnHeader>
 </template>

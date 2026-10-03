@@ -41,5 +41,5 @@ export function useFoldedGroups(query: Ref<string>) {
     return fullyShown.value.has(key) ? Number.POSITIVE_INFINITY : SHOWN_CHANGES
   }
 
-  return { openGroups, toggleGroup, groupOpen, fullyShown, showAll, limitFor }
+  return { toggleGroup, groupOpen, showAll, limitFor }
 }

@@ -137,7 +137,6 @@ const sortOptions: { value: StatementSort; label: string }[] = [
 ]
 
 const sort = ref<StatementSort>('endorsements')
-const visibleCount = ref(PAGE_SIZE)
 
 /* Lazy: nothing is requested until a segment needs the item list
  * (immediate: false leaves status at 'idle' until execute()) — unless the
@@ -168,25 +167,12 @@ const orgQuery = ref('')
 const searchActive = computed(() => foldForSearch(orgQuery.value).length > 0)
 
 watch(filter, async (value) => {
-  visibleCount.value = PAGE_SIZE
   /* The field is unmounted with the segment; a query left behind would
    * filter a list the reader can no longer see the field for. */
   orgQuery.value = ''
   if (value !== 'organisations' && fetchesList && fetchStatus.value === 'idle') {
     await execute()
   }
-})
-
-/* A narrower set is a new first page — otherwise three matches arrive on
- * page four of the unfiltered list, i.e. as an empty list. */
-watch(orgQuery, () => {
-  visibleCount.value = PAGE_SIZE
-})
-
-/* A new order means a new first page — keeping 75 rows open across a re-sort
- * would show the top of one order and the middle of the other. */
-watch(sort, () => {
-  visibleCount.value = PAGE_SIZE
 })
 
 /* The item list is one row per Stellungnahme — no grouping. An organisation
@@ -203,7 +189,17 @@ const items = computed<StatementMeta[]>(() => {
   return all
 })
 
-const visibleItems = computed(() => items.value.slice(0, visibleCount.value))
+/* Another segment, a narrower set and a new order are each a new first
+ * page — otherwise three matches arrive on page four of the unfiltered list,
+ * i.e. as an empty list, and 75 rows kept open across a re-sort show the top
+ * of one order and the middle of the other (`usePagedList`). `visible` also
+ * cuts the organisation rows below, which are not `items`. */
+const {
+  visible: visibleCount,
+  shown: visibleItems,
+  more: showMore,
+  all: showAll,
+} = usePagedList(items, PAGE_SIZE, [filter, orgQuery, sort])
 
 /* One staleness sentence per page. When the summary above is already a
  * last-good fallback, the detail page states it under this panel and the
@@ -213,10 +209,6 @@ const visibleItems = computed(() => items.value.slice(0, visibleCount.value))
 const listStaleAsOf = computed(() =>
   !props.summary.staleAsOf ? (data.value?.staleAsOf ?? null) : null,
 )
-
-function statementCountLabel(n: number): string {
-  return countLabelDe(n, 'Stellungnahme', 'Stellungnahmen')
-}
 
 /* Sorting, grouping and the rows themselves live in
  * `app/utils/statementRows.ts`, where they are tested. */
@@ -323,28 +315,14 @@ const setLine = computed(() => {
      * explained a gap no reader was asking about. */
     return countLabelDe(orgRows.value.length, 'Organisation', 'Organisationen')
   }
-  return statementCountLabel(segmentTotal.value)
+  return countLabelDe(segmentTotal.value, 'Stellungnahme', 'Stellungnahmen')
 })
 
-/* The size of a segment is already the number on its filter button, so
- * stating it again under the controls is the same sentence twice.
- *
- * So the line stays in the DOM and goes visually silent outside a search: it
- * is the panel's live region, and switching a segment swaps the list without
- * moving focus, which leaves a screen-reader user with no other feedback that
- * anything happened.
- *
- * Under a query it is never redundant: no number anywhere else on the panel
- * says how many rows the query found. */
 /* Whether the sheet shows rows — the column header stands over rows only. */
 const showColumnHeader = computed(() =>
   needsList.value
     ? status.value !== 'pending' && status.value !== 'error' && visibleItems.value.length > 0
     : renderedOrgRows.value.length > 0,
-)
-
-const setLineRedundant = computed(
-  () => !searchActive.value,
 )
 </script>
 
@@ -367,15 +345,10 @@ const setLineRedundant = computed(
          never gets wider than the page's max-w-3xl column. The head is part
          of the box and does not change its width.
 
-         The two control groups, the search, the set line and the stale note
-         stand in the box's head since 02.10.2026, the pager and the ways to
-         more in rows at its foot (`ListBox`): before, a list here was up to
-         three loose rows of controls, the sheet, a pager and a link. -->
-    <!-- Named query container: the rows inside decide their layout on THIS
-         box's width (row-cols in main.css), not on the window's — the panel
-         never gets wider than the page's max-w-3xl column. The head is part
-         of the box and does not change its width.
-         Three layers since 02.10.2026, the grammar of every list box
+         The controls stand in the box's head since 02.10.2026, the pager
+         and the ways to more in rows at its foot (`ListBox`): before, a list
+         here was up to three loose rows of controls, the sheet, a pager and
+         a link. Three layers since 02.10.2026, the grammar of every list box
          (`ListBox`): WHO filed as tabs, the search as the tool row, the
          order in the column header. Before, the head was three rows of
          equal-looking button groups, on a phone five. -->
@@ -422,10 +395,15 @@ const setLineRedundant = computed(
       <!-- The panel's live region, in the sheet and not in the head: the
            head's tool row is display:none where it would hold only the
            phone's sort select, and a live region inside it would be silent
-           there. Visible only under a query, where it is the result count
-           nothing else states; otherwise the number is on the tab. -->
+           there.
+           Visible only under a query, where it is the result count nothing
+           else states. Outside one the size of a segment is already the
+           number on its tab, and stating it again is the same sentence
+           twice — so the line goes visually silent but stays in the DOM:
+           switching a segment swaps the list without moving focus, and this
+           is a screen-reader user's only feedback that anything happened. -->
       <p
-        :class="setLineRedundant ? 'sr-only' : 'px-4 pt-3 text-sm text-ink-muted'"
+        :class="!searchActive ? 'sr-only' : 'px-4 pt-3 text-sm text-ink-muted'"
         aria-live="polite"
       >{{ setLine }}</p>
       <!-- Same wording as the summary-level note on the detail page: a stale
@@ -436,7 +414,7 @@ const setLineRedundant = computed(
       </p>
       <!-- Over rows only: above a loading line, an error or „keine
            gefunden" it would name columns nothing stands in. -->
-      <StatementListHeader v-if="showColumnHeader" v-model:sort="sort" :sortable="showSort" />
+      <StatementColumnHeader v-if="showColumnHeader" v-model:sort="sort" :sortable="showSort" />
       <!-- Organisations: from the SSR summary, so they are in the HTML a
            crawler and a find-in-page see — which is what lets an organisation
            find itself on this page. -->
@@ -476,10 +454,11 @@ const setLineRedundant = computed(
              here reads as "did not file" when the truth is that we do not
              publish that name (GDPR, docs/architecture.md §3). The field is ours, so it
              can say which of the two it is. -->
-        <div v-else-if="searchActive" class="px-4 py-4 text-sm">
-          <p class="font-medium text-ink">Keine Organisation gefunden</p>
-          <p class="mt-0.5 text-ink-secondary">Gesucht wird nur in Organisationen; Privatpersonen stehen hier nicht mit Namen.</p>
-        </div>
+        <ListBoxNotice
+          v-else-if="searchActive"
+          title="Keine Organisation gefunden"
+          description="Gesucht wird nur in Organisationen; Privatpersonen stehen hier nicht mit Namen."
+        />
         <!-- No third branch: this segment is offered only where an
              organisation filed, so without a query the list has rows. The
              draft on which none did lands in Privatpersonen instead of
@@ -488,16 +467,14 @@ const setLineRedundant = computed(
 
       <!-- Everything else needs the item list, fetched on the first switch -->
       <template v-else>
-        <!-- The states inside the sheet are rows of it, in the facts'
-             grammar (a name, the fact under it), not `EmptyState` cards: a
-             bordered card with 48px of air inside a bordered card was a box
-             in a box, and heavier than the rows it stood in for (02.10.2026).
-             The centred card stays for a page's own list. -->
+        <!-- The states inside the sheet are rows of it (`ListBoxNotice`
+             says why not `EmptyState` cards). -->
         <LoadingState v-if="status === 'pending'" label="Stellungnahmen werden geladen …" />
-        <div v-else-if="status === 'error'" role="alert" class="flex flex-wrap items-center justify-between gap-3 px-4 py-4 text-sm">
-          <p class="font-medium text-ink">Stellungnahmen konnten nicht geladen werden</p>
-          <UButton color="primary" @click="execute()">Erneut versuchen</UButton>
-        </div>
+        <ListBoxNotice v-else-if="status === 'error'" role="alert" title="Stellungnahmen konnten nicht geladen werden">
+          <template #action>
+            <UButton color="primary" @click="execute()">Erneut versuchen</UButton>
+          </template>
+        </ListBoxNotice>
         <ul v-else-if="visibleItems.length" class="divide-y divide-hairline">
           <StatementRow
             v-for="item in visibleItems"
@@ -509,19 +486,16 @@ const setLineRedundant = computed(
             :endorsements="item.endorsements"
           />
         </ul>
-        <p v-else class="px-4 py-4 text-sm font-medium text-ink">
-          Keine Stellungnahmen in dieser Auswahl
-        </p>
+        <ListBoxNotice v-else title="Keine Stellungnahmen in dieser Auswahl" />
       </template>
 
       <ListMore
-        inset
         :visible="visibleCount"
         :total="segmentTotal"
         :step="PAGE_SIZE"
         :all-above="ALL_ABOVE"
-        @more="visibleCount += PAGE_SIZE"
-        @all="visibleCount = segmentTotal"
+        @more="showMore()"
+        @all="showAll(segmentTotal)"
       />
 
       <p v-if="!needsList && hiddenOrgCount > 0" class="border-t border-hairline px-4 py-3 text-sm text-ink-muted">

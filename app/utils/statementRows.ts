@@ -86,6 +86,17 @@ export function submitterName(s: StatementMeta): string | null {
   return s.submitterKind === 'organisation' ? s.submitterName : null
 }
 
+/**
+ * The head of a Stellungnahme's link names — „Stellungnahme 95/SN-132/ME
+ * von Arbeiterkammer" — which the citation link and the PDF link each
+ * complete with where they go. The visible text is the citation alone, so
+ * the name adds what the column beside it says: who filed. `submitter` is
+ * passed for organisations only (`submitterName`), never a person.
+ */
+export function statementLinkName(citation: string, submitter?: string | null): string {
+  return `Stellungnahme ${citation}${submitter ? ` von ${submitter}` : ''}`
+}
+
 type OrgEntry = StatementsSummary['organisationList'][number]
 
 /* A grouped entry sorts by its LATEST submission, and prints that same date

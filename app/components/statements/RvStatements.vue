@@ -102,8 +102,31 @@ const consultationSentence = computed<string | null>(() => {
     <p v-if="data.total === 0" class="mt-2 text-sm text-ink-secondary">
       {{ filingOpen ? 'Bisher keine eingebracht.' : 'Keine eingebracht.' }}
     </p>
+    <!-- Only where the panel cannot carry the count: above the cap its
+         buttons count what was read, not what was filed. The remainder is
+         stated as what upstream says it is — not as Privatpersonen,
+         because the flag separates institutions from everything else and
+         a non-public submission can sit on either side of it.
+         A `v-else-if` of the line above, deliberately: both say how many
+         were filed, and only one of them may (`data.total > 0` is the
+         `else`). -->
+    <p v-else-if="organisationsOnly || !summary" class="mt-2 text-sm text-ink">
+      {{ countLabelDe(data.total, 'Stellungnahme', 'Stellungnahmen') }}.
+      <template v-if="organisationsOnly">
+        Aufgeschlüsselt sind nur die Organisationen, die übrigen
+        {{ formatNumberDe(data.unlisted) }} nicht.
+      </template>
+      <template v-else>
+        Bei mehr als {{ formatNumberDe(data.cap) }} entfällt die Aufschlüsselung
+        nach Einbringern.
+      </template>
+    </p>
 
-    <p v-if="data.total === 0 && consultationSentence" class="mt-2 text-sm text-ink-secondary">
+    <!-- After the count and above the rows: it is the answer to the
+         question a list of Stellungnahmen raises („und dann?"), so it has to
+         be read before the names, not after them. One paragraph for both
+         states since 03.10.2026; it stood twice, once per branch. -->
+    <p v-if="consultationSentence" class="mt-2 text-sm text-ink-secondary">
       {{ consultationSentence }}
     </p>
 
@@ -112,30 +135,6 @@ const consultationSentence = computed<string | null>(() => {
          closed Vorlage without Stellungnahmen got both branches: „keine
          eingebracht" and „0 Stellungnahmen ein". -->
     <template v-if="data.total > 0">
-      <!-- Only where the panel cannot carry the count: above the cap its
-           buttons count what was read, not what was filed. The remainder is
-           stated as what upstream says it is — not as Privatpersonen,
-           because the flag separates institutions from everything else and
-           a non-public submission can sit on either side of it. -->
-      <p v-if="organisationsOnly || !summary" class="mt-2 text-sm text-ink">
-        {{ countLabelDe(data.total, 'Stellungnahme', 'Stellungnahmen') }}.
-        <template v-if="organisationsOnly">
-          Aufgeschlüsselt sind nur die Organisationen, die übrigen
-          {{ formatNumberDe(data.unlisted) }} nicht.
-        </template>
-        <template v-else>
-          Bei mehr als {{ formatNumberDe(data.cap) }} entfällt die Aufschlüsselung
-          nach Einbringern.
-        </template>
-      </p>
-
-      <!-- Above the rows: it is the answer to the question a list of
-           Stellungnahmen raises („und dann?"), so it has to be read before
-           the names, not after them. -->
-      <p v-if="consultationSentence" class="mt-2 text-sm text-ink-secondary">
-        {{ consultationSentence }}
-      </p>
-
       <!-- One pointer, not two in a row (30.09.2026): „– sie stehen
            vollständig beim Gegenstand" and the link under it said the same,
            and whether one can still file is the action card's job.

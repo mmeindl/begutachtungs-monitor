@@ -27,7 +27,6 @@ export interface DraftFilters {
   qDebounced: Ref<string>
   sort: Ref<SortKey>
   stations: Ref<DraftStation[]>
-  toggleStation: (value: DraftStation) => void
   query: ComputedRef<ReturnType<typeof draftApiQuery>>
 }
 
@@ -48,15 +47,6 @@ export function useDraftFilters(): DraftFilters {
    * the two halves happens in the page anyway (`rows`). */
   const sort = ref<SortKey>(initial.sort)
   const stations = ref<DraftStation[]>(initial.stations)
-
-  /* One chip on/off. An empty selection means „alle Stationen" and does not
-   * go into the URL — a filter that excludes nothing does not belong in a
-   * link somebody passes on. */
-  function toggleStation(value: DraftStation): void {
-    stations.value = stations.value.includes(value)
-      ? stations.value.filter((s) => s !== value)
-      : [...stations.value, value]
-  }
 
   let qTimer: ReturnType<typeof setTimeout> | undefined
   watch(q, (value) => {
@@ -97,5 +87,5 @@ export function useDraftFilters(): DraftFilters {
     })
   })
 
-  return { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, toggleStation, query }
+  return { statusFilter, art, gp, ministry, q, qDebounced, sort, stations, query }
 }

@@ -12,6 +12,11 @@
  * where a reader asks "how far in am I?", and the answer belongs beside the
  * control that answers it — not 25 rows above, where whoever is standing at
  * the button cannot see it.
+ *
+ * A row at the foot of a `ListBox`, and only that since 03.10.2026 (the
+ * `inset` switch went with the last line-under-a-list caller): the box's
+ * hairline and inset while there is something to show, nothing visible once
+ * everything is shown, so no empty band is left.
  */
 const props = defineProps<{
   /** How many rows the list is currently showing (may exceed `total`). */
@@ -21,10 +26,6 @@ const props = defineProps<{
   step: number
   /** Above this remainder, a second button skips to the end. Omitted → none. */
   allAbove?: number
-  /** A row at the foot of a `ListBox` instead of a line under a list: the
-   *  box's hairline and inset while there is something to show, nothing
-   *  visible once everything is shown, so no empty band is left. */
-  inset?: boolean
 }>()
 
 const emit = defineEmits<{ more: []; all: [] }>()
@@ -54,7 +55,7 @@ const pageable = computed(() => props.total > props.step)
   <div
     v-if="pageable"
     class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-    :class="inset ? remaining > 0 && 'border-t border-hairline px-4 py-3' : 'mt-3'"
+    :class="remaining > 0 && 'border-t border-hairline px-4 py-3'"
   >
     <p
       :class="['text-sm tabular-nums text-ink-muted', remaining === 0 && 'sr-only']"

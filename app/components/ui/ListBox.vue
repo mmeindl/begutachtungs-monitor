@@ -31,11 +31,11 @@
  * The foot is not a slot: each row under the list carries its own
  * `border-t border-hairline px-4 py-3`, so a row that has nothing to say
  * leaves no empty band (the pager goes visually silent once everything is
- * shown, but stays mounted as a live region, see `ListMore`'s `inset`).
+ * shown, but stays mounted as a live region, see `ListMore`).
  *
  * `overflow-clip`, not `overflow-hidden`: both keep the rounded corners,
  * but `hidden` makes the sheet a scroll container, and a sticky header
- * inside (`DiffGroup`, `StatementListHeader`) would stick to it instead of
+ * inside (`DiffGroup`, `ColumnHeader`) would stick to it instead of
  * the window.
  */
 defineProps<{

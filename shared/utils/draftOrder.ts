@@ -187,6 +187,41 @@ export function rowOrderKey(row: DraftListRow): OrderedDraft {
   return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
 }
 
+/* One row per kind, keyed the way `entryView` keys the entry it becomes —
+ * so a row and its view can be told apart by neither. */
+export function meRow(draft: DraftSummary): DraftListRow {
+  return { kind: 'me', key: `me-${draft.gp}-${draft.inr}`, draft }
+}
+
+export function risRow(item: RisConsultation): DraftListRow {
+  return { kind: 'ris', key: `ris-${item.id}`, item }
+}
+
+export function vorlageRow(vorlage: OpenVorlage): DraftListRow {
+  return { kind: 'vorlage', key: `rv-${vorlage.citation}`, vorlage }
+}
+
+/**
+ * The halves merged into one list of rows, UNORDERED — the caller sorts,
+ * because the homepage knows one order and `/entwuerfe` two.
+ *
+ * Written three times until 03.10.2026 (the homepage's open list, the corpus
+ * list, the full-text hits), the homepage with a row type of its own. The
+ * kinds stay apart (§12.19); only the merge is shared.
+ */
+export function draftRows(
+  me: readonly DraftSummary[],
+  ris: readonly RisConsultation[],
+  vorlagen: readonly OpenVorlage[] = [],
+): DraftListRow[] {
+  return [...me.map(meRow), ...ris.map(risRow), ...vorlagen.map(vorlageRow)]
+}
+
+/** The list's own order — open first, nearest Frist on top — over rows of any kind. */
+export function compareRowsByFrist(a: DraftListRow, b: DraftListRow): number {
+  return compareDrafts(rowOrderKey(a), rowOrderKey(b))
+}
+
 /**
  * Most Stellungnahmen first — and the half that cannot be ranked stays a
  * block, it does not get interleaved at zero.

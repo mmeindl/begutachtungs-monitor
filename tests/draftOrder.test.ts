@@ -3,9 +3,11 @@ import type { DraftSummary, OpenVorlage, RisConsultation } from '../shared/types
 import {
   canRankPeriod,
   compareDrafts,
+  compareRowsByFrist,
   compareRowsByStatements,
   type DraftListRow,
   draftOrderKey,
+  draftRows,
   HOME_LIST_LENGTH,
   type OrderedDraft,
   rowOrderKey,
@@ -327,5 +329,39 @@ describe('canRankPeriod', () => {
     expect(canRankPeriod(growing)).toBe(true)
     growing.push({ statementCount: 0 })
     expect(canRankPeriod(growing)).toBe(true)
+  })
+})
+
+/**
+ * The merge three places wrote for themselves until 03.10.2026: the
+ * homepage's open list, `/entwuerfe`, the full-text hits.
+ */
+describe('draftRows', () => {
+  const me = meRow(7, 3)
+  const ris = risRow('BEGUT_1')
+  const rv = vorlageRow('594 d.B.', '2026-09-11')
+  const unwrap = (r: DraftListRow) => (r.kind === 'me' ? r.draft : r.kind === 'ris' ? r.item : r.vorlage)
+
+  it('keys each kind the way the entry it becomes is keyed', () => {
+    const rows = draftRows([unwrap(me) as DraftSummary], [unwrap(ris) as RisConsultation], [unwrap(rv) as OpenVorlage])
+    expect(rows.map((r) => r.key)).toEqual(['me-XXVIII-7', 'ris-BEGUT_1', 'rv-594 d.B.'])
+    expect(rows.map((r) => r.kind)).toEqual(['me', 'ris', 'vorlage'])
+  })
+
+  it('leaves the order to the caller and the Vorlagen optional', () => {
+    const rows = draftRows([], [unwrap(ris) as RisConsultation])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toEqual(ris)
+  })
+
+  it('sorts the merged rows by Frist through each kind\'s own key', () => {
+    const soon = risRow('BALD', { deadline: '2026-09-20', title: 'Bald' })
+    const later = meRow(9, 0, { deadline: '2026-11-30' })
+    const closed = meRow(1, 99, { active: false, deadline: '2025-01-01' })
+    const sorted = draftRows(
+      [unwrap(closed) as DraftSummary, unwrap(later) as DraftSummary],
+      [unwrap(soon) as RisConsultation],
+    ).sort(compareRowsByFrist)
+    expect(sorted.map((r) => r.key)).toEqual(['ris-BALD', 'me-XXVIII-9', 'me-XXVIII-1'])
   })
 })

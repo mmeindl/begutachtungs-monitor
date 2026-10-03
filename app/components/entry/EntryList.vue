@@ -75,55 +75,47 @@ defineEmits<{ 'update:sort': [key: string] }>()
 </script>
 
 <template>
-  <!-- One sheet at every width. Up to `md` the rows stack: enough width
-       per row, two title lines, and every cell carries its own unit word —
-       there is no header here that could say it for them. From `md` the
-       header below appears and the row lies flat.
+  <!-- One sheet at every width (`ListBox`, since 03.10.2026 the component
+       itself — EntryList redrew its sheet and head until then). Up to `md`
+       the rows stack: enough width per row, two title lines, and every cell
+       carries its own unit word — there is no header here that could say it
+       for them. From `md` the header below appears and the row lies flat.
 
-       `overflow-clip` and not `overflow-hidden` on the sheet: both keep the
-       rounded corners, but `hidden` makes the sheet a scroll container, and
-       a sticky header inside one sticks to that and never to the window. -->
-  <div class="overflow-clip rounded-xl border border-hairline bg-surface">
-    <!-- The list's controls, inside the sheet (the head of a `ListBox`,
-         02.10.2026). -->
-    <div v-if="$slots.head" class="border-b border-hairline px-4">
-      <slot name="head" />
-    </div>
-    <!-- `aria-hidden`, because the rows below are links and not table
-         cells — the header is a visual aid, the reading order stands in the
-         row itself.
-
-         The header is STICKY since 30.09.2026: past the first screen of a
-         339-row list the two right columns were digits nobody had named.
-         It sticks inside its own sheet only, so the homepage's four lists
-         each carry theirs and hand over at the boundary. Rows keep a scroll
-         margin (`EntryItem`), so a row reached by Tab is never scrolled in
-         under the header (WCAG 2.2 2.4.12). -->
+       The list's controls stand in the box's head: `tabs` and `header` are
+       passed through to `ListBox`'s slots of the same name. -->
+  <ListBox>
+    <template v-if="$slots.tabs" #tabs>
+      <slot name="tabs" />
+    </template>
+    <template v-if="$slots.header" #header>
+      <slot name="header" />
+    </template>
     <!-- With `sortable`, `aria-hidden` moves from the row to its plain
          labels: the sort buttons are the one part a screen reader must
-         reach (`SortHeader`). -->
-    <div
-      v-if="entries.length"
-      :aria-hidden="sortable ? undefined : 'true'"
-      :class="sortable ? 'py-0.5' : 'py-2'"
-      class="sticky top-0 z-10 hidden items-center gap-4 border-b border-hairline bg-surface px-4 text-xs font-medium uppercase tracking-wide text-ink-muted md:flex"
-    >
-      <span class="min-w-0 flex-1" :aria-hidden="sortable ? 'true' : undefined">{{ lead ?? 'Entwurf' }}</span>
+         reach (`SortHeader`). Sticky inside its own sheet (`ColumnHeader`). -->
+    <ColumnHeader v-if="entries.length" :sortable="!!sortable" class="gap-4 md:flex">
+      <ColumnLabel :label="lead ?? 'Entwurf'" class="min-w-0 flex-1" />
       <!-- One line, and any excess spills LEFT, into the empty gap: the
            label is 121 px against a 112 px column at `md` (128 in 128 at
            `lg`, measured 30.09.2026). The right edge is what has to meet
            the digits; `justify-end` keeps it there, where a plain
            right-aligned text box overflows to the right, and the site-wide
            `overflow-wrap: break-word` broke it as „STELLUNGNAHME / N". -->
-      <span class="entry-col-count flex justify-end whitespace-nowrap">
-        <SortHeader v-if="sortable?.count" label="Stellungnahmen" :order="sortable.count.order" align="end" :active="sort === sortable.count.key" @choose="$emit('update:sort', sortable.count.key)" />
-        <span v-else :aria-hidden="sortable ? 'true' : undefined">Stellungnahmen</span>
-      </span>
-      <span class="entry-col-state">
-        <SortHeader v-if="sortable?.state" label="Stand" :order="sortable.state.order" align="end" :active="sort === sortable.state.key" @choose="$emit('update:sort', sortable.state.key)" />
-        <span v-else :aria-hidden="sortable ? 'true' : undefined">Stand</span>
-      </span>
-    </div>
+      <ColumnLabel
+        label="Stellungnahmen"
+        :sort="sortable?.count ? { order: sortable.count.order, active: sort === sortable.count.key } : null"
+        align="end"
+        class="entry-col-count flex justify-end whitespace-nowrap"
+        @choose="sortable?.count && $emit('update:sort', sortable.count.key)"
+      />
+      <ColumnLabel
+        label="Stand"
+        :sort="sortable?.state ? { order: sortable.state.order, active: sort === sortable.state.key } : null"
+        align="end"
+        class="entry-col-state"
+        @choose="sortable?.state && $emit('update:sort', sortable.state.key)"
+      />
+    </ColumnHeader>
     <!-- No rows: the list's own empty state, in the sheet's grammar (a
          name, the fact under it) instead of a card in the card. -->
     <slot v-if="!entries.length" name="empty" />
@@ -143,8 +135,8 @@ defineEmits<{ 'update:sort': [key: string] }>()
     <!-- The rows under the list, inside the sheet as a `ListBox`'s foot
          (03.10.2026): the pager stood under the frame on `/entwuerfe` while
          the Stellungnahmen panel carried it in its own. Each row brings its
-         own hairline and inset (`ListMore inset`), so nothing here draws an
-         empty band. -->
+         own hairline and inset (`ListMore`), so nothing here draws an empty
+         band. -->
     <slot name="foot" />
-  </div>
+  </ListBox>
 </template>

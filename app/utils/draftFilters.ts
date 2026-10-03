@@ -12,8 +12,10 @@
  * endpoints validate the same query independently, because a request can
  * arrive without this page.
  */
-import type { DraftStation, DraftStatus } from '#shared/types'
-import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
+import type { DraftStation, DraftStatus, OpenVorlage } from '#shared/types'
+import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
+import { countLabelDe, formatNumberDe } from '#shared/utils/format'
+import { romanToInt } from '#shared/utils/gp'
 import { firstQueryValue } from '#shared/utils/queryParams'
 
 /**
@@ -28,6 +30,26 @@ import { firstQueryValue } from '#shared/utils/queryParams'
  * which of the two endpoints is asked at all.
  */
 export type ArtFilter = '' | 'ministerialentwurf' | 'verordnung'
+
+/**
+ * `verordnung` therefore selects all 201 records without a Gegenstand, of
+ * which 198 are Verordnungen and the rest are drafts that likewise never
+ * reached Parliament. The label admits that rather than pretending, and
+ * each row carries its own type word.
+ *
+ * ONE noun, used by the option and by the count line under the filters
+ * (`draftCountLabel`). They named the same set two ways until 18.09.2026 —
+ * „Verordnungsentwürfe u. a." here, „ohne Gegenstand im Parlament" there —
+ * and a reader comparing the two had no way to know it was one set. Written
+ * out rather than „u. a.", which a screen reader reads as „u a".
+ */
+export const ART_VERORDNUNG_NOUN = 'Verordnungsentwürfe und andere'
+
+export const ART_OPTIONS: { value: ArtFilter; label: string }[] = [
+  { value: '', label: 'Alle Arten' },
+  { value: 'ministerialentwurf', label: 'Ministerialentwürfe' },
+  { value: 'verordnung', label: ART_VERORDNUNG_NOUN },
+]
 
 /**
  * Two orders since 02.10.2026, each a column of the list. „Zuletzt
@@ -117,4 +139,152 @@ export function draftUrlQuery(f: DraftFilterValues): Record<string, string> {
   if (f.q) query.q = f.q
   if (f.sort !== 'frist') query.sort = f.sort
   return query
+}
+
+/* ------------------------------------------------------------------ *
+ * What the list page builds from the filters — pure, so it is tested
+ * ------------------------------------------------------------------ */
+
+/* The value of the tab a multi-station link lands on — no station has it. */
+export const SEVERAL_STATIONS = 'mehrere'
+
+const VERORDNUNG_NO_STATION = 'Verordnungsentwürfe kommen nicht ins Parlament'
+
+export interface StationTab {
+  value: string
+  label: string
+  disabled?: boolean
+  reason?: string
+  selectLabel?: string
+}
+
+/**
+ * The station tabs, single-select over the filter's list: the URL still
+ * carries a list (`station=rv,parlament`), so a link naming several keeps
+ * its set and lands on a tab that names them — no tab silently drops a
+ * station from a shared link. Choosing a tab narrows to that one.
+ *
+ * Under „Verordnungsentwürfe" two tabs cannot hold anything — without a
+ * Gegenstand there is no Regierungsvorlage — and stay in place, unavailable,
+ * so the strip does not change shape with the Art filter.
+ */
+export function stationTabsFor(art: ArtFilter, stations: readonly DraftStation[]): StationTab[] {
+  const tabs: StationTab[] = [
+    { value: '', label: 'Alle', selectLabel: 'Alle Stationen' },
+    ...DRAFT_STATION_ORDER.map((value) => {
+      const noVorlage = art === 'verordnung' && (value === 'rv' || value === 'parlament')
+      return { value: value as string, label: DRAFT_STATION_LABEL[value], disabled: noVorlage, reason: noVorlage ? VERORDNUNG_NO_STATION : undefined }
+    }),
+  ]
+  if (stations.length > 1) {
+    tabs.push({ value: SEVERAL_STATIONS, label: stations.map((st) => DRAFT_STATION_LABEL[st]).join(' + ') })
+  }
+  return tabs
+}
+
+/**
+ * Both halves know the periods and the ressorts; the union is the menu — the
+ * union of the halves that are ASKED FOR (the caller passes nothing for a
+ * half it did not fetch). Under an Art filter the menu therefore names the
+ * Ressorts of the half on the page: a Ressort that could only empty the list
+ * is not a choice.
+ *
+ * Newest period first, by the NUMBER the Roman code stands for — comparing
+ * the strings would put XXVIII before XXX, and the table reaches far enough
+ * that this stops being hypothetical.
+ */
+export function unionGps(...halves: (readonly string[] | undefined)[]): string[] {
+  const all = new Set(halves.flatMap((h) => h ?? []))
+  return [...all].sort((a, b) => (romanToInt(b) ?? 0) - (romanToInt(a) ?? 0))
+}
+
+/* By code; a name wins over an empty one, whichever half brings it. */
+export function unionMinistries(
+  ...halves: (readonly { code: string; name: string }[] | undefined)[]
+): { code: string; name: string }[] {
+  const byCode = new Map<string, string>()
+  for (const m of halves.flatMap((h) => h ?? [])) {
+    if (!byCode.has(m.code) || (!byCode.get(m.code) && m.name)) byCode.set(m.code, m.name)
+  }
+  return [...byCode].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code, 'de-AT'))
+}
+
+export type FilterChipKey = 'status' | 'art' | 'gp' | 'ministry'
+
+/**
+ * The closed panel's values, each as a chip that removes it. Data, not
+ * closures: what a press resets is the page's (it owns the refs).
+ *
+ * `status` appears only for an old `?status=closed` link — „Nicht möglich"
+ * left the controls on 02.10.2026 and survives as this chip.
+ */
+export function activeFilterChips(
+  f: Pick<DraftFilterValues, 'status' | 'art' | 'gp' | 'ministry'>,
+): { key: FilterChipKey; label: string }[] {
+  const out: { key: FilterChipKey; label: string }[] = []
+  if (f.status === 'closed') out.push({ key: 'status', label: 'Nicht möglich' })
+  if (f.art) out.push({ key: 'art', label: ART_OPTIONS.find((o) => o.value === f.art)?.label ?? f.art })
+  if (f.gp) out.push({ key: 'gp', label: `GP ${f.gp}` })
+  if (f.ministry) out.push({ key: 'ministry', label: f.ministry })
+  return out
+}
+
+/**
+ * The count line: each kind counted on its own, never summed
+ * (docs/architecture.md §12.19).
+ *
+ * A single "336 Entwürfe" would put the Stellungnahmen figures of a third of
+ * the rows over all of them. The search placeholder does name the total,
+ * because there it is a statement about the search scope rather than about
+ * the corpus.
+ */
+export function draftCountLabel(c: {
+  /** Ministerialentwürfe; null where the half is not asked for. */
+  me: number | null
+  /** The Regierungsvorlagen without a draft that stand in the list. */
+  vorlagen: readonly Pick<OpenVorlage, 'consultation'>[]
+  /** The other half: its total, `failed`, or null where it is not asked for. */
+  ris: number | 'failed' | null
+  /** Only stations selected that a record without a Gegenstand cannot reach. */
+  laterStationsOnly: boolean
+}): string {
+  const parts: string[] = []
+  if (c.me !== null) {
+    parts.push(countLabelDe(c.me, 'Ministerialentwurf', 'Ministerialentwürfe'))
+  }
+  /* A third term, never added up (§12.19): a Regierungsvorlage without a
+   * Begutachtung is neither a Ministerialentwurf nor a Verordnungsentwurf —
+   * folding it into either number would claim about it what holds for the
+   * other half. Before the station-filter exit, because these rows do come
+   * along under „Regierungsvorlage". */
+  /* The addition „ohne Begutachtung" only where it is evidenced for EVERY
+   * counted row. It is the aggregate form of the statement that stands in the
+   * row, so it must not reach further either: as soon as one Vorlage is in
+   * whose history is merely unevidenced (`unknown`), the number counts rows
+   * and claims nothing about them. */
+  if (c.vorlagen.length) {
+    const count = countLabelDe(c.vorlagen.length, 'Regierungsvorlage', 'Regierungsvorlagen')
+    const allChecked = c.vorlagen.every((v) => v.consultation.kind === 'none')
+    parts.push(allChecked ? `${count} ohne Begutachtung` : count)
+  }
+  /* Under a station filter the Verordnung half does not count — neither as
+   * „0" nor as „gerade nicht abrufbar". Both would answer a question nobody
+   * asked: it is neither empty nor broken, it does not belong to this axis.
+   * The sentence above the list says why. */
+  if (c.laterStationsOnly) return parts.join(' · ')
+  /* The same noun as in the Art filter, so the two numbers on the page
+   * cannot count two different things. „ohne Gegenstand im Parlament" was
+   * Parliament's category, not this list's — and it stood beside a box
+   * carrying a join statistic under the same word. */
+  /* `failed` only reaches this line while both halves are asked for. Where
+   * the RIS half carries the page alone, its failure is the page's failure
+   * and the gate says so. */
+  if (c.ris !== null) {
+    parts.push(
+      c.ris === 'failed'
+        ? 'die Verordnungsentwürfe sind gerade nicht abrufbar'
+        : `${formatNumberDe(c.ris)} ${ART_VERORDNUNG_NOUN}`,
+    )
+  }
+  return parts.join(' · ')
 }

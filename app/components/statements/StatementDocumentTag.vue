@@ -19,6 +19,7 @@
  * its tag is there.
  */
 import { statementRefFromPageUrl } from '#shared/utils/statementRef'
+import { statementLinkName } from '~/utils/statementRows'
 
 const props = defineProps<{
   /** The statement's page on parlament.gv.at — its address is read from this. */
@@ -63,10 +64,9 @@ onBeforeUnmount(() => {
   observer = null
 })
 
-const ariaLabel = computed(() => {
-  const who = props.submitter ? ` von ${props.submitter}` : ''
-  return `Stellungnahme ${props.citation}${who} als PDF öffnen (neues Fenster)`
-})
+const ariaLabel = computed(
+  () => `${statementLinkName(props.citation, props.submitter)} als PDF öffnen (neues Fenster)`,
+)
 </script>
 
 <template>

@@ -5,12 +5,10 @@ import type {
   DashboardOutcomes,
   DashboardPayload,
   DashboardSecondRound,
-  DraftSummary,
-  RisConsultation,
   RisConsultationsResponse,
 } from '#shared/types'
-import { HOME_LIST_LENGTH, compareDrafts, draftOrderKey } from '#shared/utils/draftOrder'
-import { viewOfDraft, viewOfOutcome, viewOfRis, viewOfVorlage } from '~/utils/entryView'
+import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/draftOrder'
+import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
 
@@ -24,16 +22,16 @@ const pageDescription =
 
 const { siteUrl } = useRuntimeConfig().public
 
-useSeoMeta({
+usePageSeo({
   // The one title that does not follow the template: the home page is what a
   // search for the name finds, and a result reading „Aktuell · …" says
   // nothing about what the site is. Name first, then what it watches.
   title: 'Begutachtungs-Monitor · Laufende Begutachtungen in Österreich',
   description: pageDescription,
-  // Homepage shares (the demo case) get the product name, not "Aktuell".
-  ogTitle: 'Begutachtungs-Monitor',
-  ogDescription: pageDescription,
 })
+// Homepage shares (the demo case) get the product name, not "Aktuell" — the
+// preview's half overridden after `usePageSeo`, as its doc comment says.
+useSeoMeta({ ogTitle: 'Begutachtungs-Monitor' })
 
 useHead({
   titleTemplate: '%s',
@@ -139,21 +137,14 @@ const { data: outcomes } = await outcomesFetch
 const { data: enacted } = await enactedFetch
 const { data: decided } = await decidedFetch
 
-const { webcalUrl, googleCalUrl } = useFeedUrls()
-
 /**
  * What is open right now, both kinds, in ONE deadline-ordered list
  * (docs/architecture.md §12.20).
  *
- * Same shape as `/entwuerfe`: two row types, one order, never a pooled
- * total. What differs is the cap — this is the front door, not the corpus
- * view.
- */
-type OpenRow =
-  | { kind: 'me'; draft: DraftSummary }
-  | { kind: 'ris'; item: RisConsultation }
-
-/**
+ * Same rows as `/entwuerfe` (`draftRows`): two row types, one order, never a
+ * pooled total. What differs is the cap — this is the front door, not the
+ * corpus view.
+ *
  * Five rows, then out to the filter — `HOME_LIST_LENGTH`, the same length
  * every list on this page is cut to (§12.24).
  *
@@ -164,26 +155,14 @@ type OpenRow =
  * this page exists, past a third viewport on an ordinary week. What sits
  * behind the cap is named in the link above the list, and only there.
  */
-const openRows = computed<OpenRow[]>(() => {
-  const out: OpenRow[] = []
-  for (const d of data.value?.open ?? []) out.push({ kind: 'me', draft: d })
-  for (const c of risOnly.value?.items ?? []) out.push({ kind: 'ris', item: c })
-  return out.sort((a, b) =>
-    compareDrafts(
-      a.kind === 'me' ? draftOrderKey(a.draft) : a.item,
-      b.kind === 'me' ? draftOrderKey(b.draft) : b.item,
-    ),
-  )
-})
+const openRows = computed(() =>
+  draftRows(data.value?.open ?? [], risOnly.value?.items ?? []).sort(compareRowsByFrist),
+)
 
 /* The mapping onto the anatomy happens HERE, not in the template:
  * `EntryList` receives finished `EntryView`s, and every section of the page
  * says in one line which adapter is responsible for its kind. */
-const visibleOpenRows = computed(() =>
-  openRows.value
-    .slice(0, HOME_LIST_LENGTH)
-    .map((row) => (row.kind === 'me' ? viewOfDraft(row.draft) : viewOfRis(row.item))),
-)
+const visibleOpenRows = computed(() => openRows.value.slice(0, HOME_LIST_LENGTH).map(viewOfRow))
 
 /**
  * NO count line on this page, unlike `/entwuerfe`.
@@ -298,12 +277,11 @@ const rankedGpStart = computed(() => {
  * true only in the weeks after a Wechsel, and independently of each other —
  * measured 2026-09-25, the Kundmachungen of GP XXVIII were 201 days behind
  * the period while its ranking was usable after 83. */
-const rankedIsFallback = computed(
-  () => !!rankedGp.value && !!currentGp.value && rankedGp.value !== currentGp.value,
-)
-const enactedIsFallback = computed(
-  () => !!enactedGp.value && !!currentGp.value && enactedGp.value !== currentGp.value,
-)
+function isFallbackGp(sectionGp: string | null): boolean {
+  return !!sectionGp && !!currentGp.value && sectionGp !== currentGp.value
+}
+const rankedIsFallback = computed(() => isFallbackGp(rankedGp.value))
+const enactedIsFallback = computed(() => isFallbackGp(enactedGp.value))
 
 /* The section's one way out points at the filter that shows the same list
  * uncut (§12.24) — and during a fallback that filter needs the period
@@ -324,7 +302,7 @@ const enactedHref = computed(
 <template>
   <div class="mx-auto w-full max-w-5xl">
     <header>
-      <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+      <h1 class="page-title">
         Was passiert in der Begutachtung –<br>
         und was wird daraus?
       </h1>
@@ -425,17 +403,12 @@ const enactedHref = computed(
             title="Derzeit ist keine Begutachtung offen"
             description="Neue Entwürfe erscheinen hier, sobald sie zur Begutachtung aufliegen – Ministerialentwürfe aus dem Parlament und Verordnungsentwürfe aus dem RIS."
           >
-            <p class="text-sm text-ink-secondary">
-              <a
-                :href="webcalUrl"
-                class="tap-target link-inline font-medium"
-              >Fristen-Kalender abonnieren</a>
-              (Apple/Outlook) oder
-              <ExternalLink
-                :href="googleCalUrl"
-                class="tap-target link-inline font-medium"
-              >zu Google Kalender hinzufügen</ExternalLink>
-              – die nächste Begutachtung landet automatisch im Kalender.
+            <!-- The header's own links (`SubscribeLinks`) rather than a
+                 second set built here: one wording for the same three ways
+                 to follow, wherever they stand. `leading-7` for the header's
+                 reason, the links are `tap-target` boxes in the line. -->
+            <p class="text-sm leading-7 text-ink-secondary">
+              <SubscribeLinks />
             </p>
           </EmptyState>
         </div>

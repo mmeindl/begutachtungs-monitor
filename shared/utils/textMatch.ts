@@ -8,7 +8,7 @@
  * Klimagesetz), RIS whole words with an asterisk.
  *
  * Pure module in `shared`, because both endpoints AND the rows the page
- * filters client-side (`vorlageRows`) need the one rule.
+ * filters client-side (`openVorlagen`) need the one rule.
  */
 
 // One rule for both lists since 22.09.2026: the tokens of a query are

@@ -46,6 +46,7 @@ import type {
   RisConsultation,
 } from '#shared/types'
 import { aliasesFor } from '#shared/utils/draftAliases'
+import type { DraftListRow } from '#shared/utils/draftOrder'
 import { DRAFT_STATION_LABEL } from '#shared/utils/draftStations'
 import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWithinNewWindow } from './deadlines'
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
@@ -530,4 +531,16 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
       v.statementCount === null ? { kind: 'unavailable' } : { kind: 'count', count: v.statementCount },
     state: openVorlageState(v.date || null),
   }
+}
+
+/**
+ * A row of the merged lists (`draftRows`), through the adapter of its kind.
+ *
+ * The one dispatch over the three kinds; the pages and the full-text search
+ * each wrote it themselves until 03.10.2026.
+ */
+export function viewOfRow(row: DraftListRow): EntryView {
+  if (row.kind === 'me') return viewOfDraft(row.draft)
+  if (row.kind === 'ris') return viewOfRis(row.item)
+  return viewOfVorlage(row.vorlage)
 }
