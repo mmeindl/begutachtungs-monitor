@@ -22,7 +22,9 @@
  * of them a § may draw on is the rule's decision, not the caller's.
  */
 import { verifyAnnex, type AnnexSources, type AnnexVerification } from './verdict'
-import { fetchParagraphXml, resolveKonsLaw } from '../kons/konsCache'
+import { readParagraphHistory, fetchParagraphXml, resolveKonsLaw } from '../kons/konsCache'
+import { bridgeVersionGap } from '../ris/konsLaw'
+import { designationKey } from './annexText'
 import { parseKonsParagraph, plainText } from '../lawtext/konsTree'
 import type { TextBlock } from '../lawtext/lawUnits'
 import type { DraftArticle } from '../lawtext/draftArticles'
@@ -31,6 +33,11 @@ import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 const sources: AnnexSources = {
   resolveLaw: (organ, nummer, date, title) => resolveKonsLaw(organ, nummer, date, title),
+  paragraphAcrossGap: async (gesetzesnummer, key, date) => {
+    const history = await readParagraphHistory(gesetzesnummer)
+    if (!history) return null
+    return bridgeVersionGap(history.filter((v) => designationKey(v.ref.label) === key), date)
+  },
   standingText: async (ref) => {
     if (!ref.xmlUrl) return null
     // The fetch is outside the try on purpose. A RIS that will not answer is

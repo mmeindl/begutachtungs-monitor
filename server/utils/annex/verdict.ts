@@ -57,7 +57,7 @@ import type { KonsLawAtDate, KonsParagraphRef } from '../ris/konsLaw'
 import type { ComparisonRow } from './comparisonRows'
 import type { AnnexWithheldCause } from '../../../shared/types'
 import { annexParagraphKey, designationKey } from './annexText'
-import { PARAGRAPH_THRESHOLD, coverageOfParagraph, type Coverage } from './coverage'
+import { PARAGRAPH_THRESHOLD, coverageOfParagraph, isDisplayedChange, type Coverage } from './coverage'
 import { draftBags, draftReference, rightColumnCheck, type RightColumnCheck, type StandingText, type WordBag } from './rightColumn'
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
@@ -155,6 +155,13 @@ export interface AnnexSources {
    * rather than scored against nothing.
    */
   standingText: (ref: KonsParagraphRef) => Promise<StandingText | null>
+  /**
+   * The version of a § that stood on `date` where RIS has a hole there
+   * (`bridgeVersionGap`, §12.42) — asked only for a § the law lacks on the
+   * Stichtag and that owes a check. Optional: without it a missing § stays
+   * missing, as it always did.
+   */
+  paragraphAcrossGap?: (gesetzesnummer: string, key: string, date: string) => Promise<KonsParagraphRef | null>
 }
 
 /**
@@ -347,7 +354,38 @@ function indexOf(law: KonsLawAtDate): LawIndex {
     // not shown yet.
     if (key !== null && !paragraphs.has(key)) paragraphs.set(key, ref)
   }
+  addBareParagraphKeys(paragraphs)
   return { law, paragraphs }
+}
+
+const ARTICLE_PARAGRAPH_KEY_RE = /^Art \S+ (§ \S+)$/
+
+/**
+ * „§ 13" for a law RIS files as „Art. 2 § 13" — only where the law itself
+ * proves the Artikel is no part of the §'s identity.
+ *
+ * `designationKey` keeps the Artikel on purpose: in a law whose §§ restart in
+ * each Artikel, „§ 5" is several provisions. But RIS also files laws that
+ * number their §§ straight through as „Art. N § M" (Preisgesetz 1992 § 13 is
+ * „Art. 2 § 13", Finanzstrafgesetz § 57a „Art. 1 § 57a", Nationalbankgesetz
+ * 1984 § 45 „Art. 9 § 45"), and the annex cites them as plain §§: 68 §§ of
+ * GP XXVIII went unchecked as „führt diese Paragraphen nicht" (03.10.2026,
+ * §12.41).
+ *
+ * The test is the whole law, not the one §: no plain „§ N" label besides
+ * § 0, and no § number under two Artikel. Then a bare key names exactly one
+ * provision. Added only where the exact key is absent, so it never shadows one.
+ */
+function addBareParagraphKeys(paragraphs: Map<string, KonsParagraphRef>): void {
+  const bare = new Map<string, KonsParagraphRef>()
+  for (const [key, ref] of paragraphs) {
+    if (key.startsWith('§ ') && key !== '§ 0') return
+    const m = ARTICLE_PARAGRAPH_KEY_RE.exec(key)
+    if (!m) continue
+    if (bare.has(m[1]!)) return
+    bare.set(m[1]!, ref)
+  }
+  for (const [key, ref] of bare) if (!paragraphs.has(key)) paragraphs.set(key, ref)
 }
 
 /** Every pair row of a §, grouped by the law it belongs to. */
@@ -481,7 +519,11 @@ export async function verifyAnnex(
     if (typeof index === 'string') return skip(groupKey, index)
     const key = designationKey(group.para)
     if (key === null) return skip(groupKey, REASON_UNREADABLE_DESIGNATION)
-    const ref = index.paragraphs.get(key)
+    const ref =
+      index.paragraphs.get(key) ??
+      (group.rows.some(isDisplayedChange) && sources.paragraphAcrossGap
+        ? await sources.paragraphAcrossGap(index.law.gesetzesnummer, key, asOf)
+        : undefined)
     if (!ref) return skip(groupKey, REASON_NO_SUCH_PARAGRAPH)
     const standing = await sources.standingText(ref)
     if (standing === null) return skip(groupKey, REASON_NOT_REPRESENTABLE)

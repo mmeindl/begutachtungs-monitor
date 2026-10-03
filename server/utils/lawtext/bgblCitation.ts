@@ -146,6 +146,35 @@ function organParts(organ: string): { series: string; teil: string | null } {
  * predates the Teile. A missing Teil is therefore no contradiction; two
  * different Teile still are.
  */
+/** The year the Bundesgesetzblatt was divided into Teile I–III. */
+const TEILE_SINCE = 1997
+
+/**
+ * A citation from a draft against the Stammnorm RIS stores (03.10.2026,
+ * §12.41) — the RIS join's rule, stricter than `sameStammnormCited` and
+ * looser than `sameBgbl`.
+ *
+ * RIS writes the Teil exactly; a ministry does not. 18 laws of GP XXVIII
+ * failed to resolve on nothing else: „BGBl. I Nr. 532/1993" for the
+ * Bankwesengesetz, which predates the Teile, „BGBl. Nr. 165/1999" for the
+ * Datenschutzgesetz, which is BGBl. I. So the draft's Teil is set by the year
+ * before comparing: none before 1997, I where a later citation names none.
+ * A Teil the draft does name after 1996 stays, and II or III is never
+ * inferred — Teil-blindness would pull in Verordnungen of the same number
+ * (the Schwerarbeitsverordnung is BGBl. II 104/2006).
+ */
+export function sameRisStammnorm(ris: BgblCitation, cited: BgblCitation): boolean {
+  if (ris.nummer !== cited.nummer) return false
+  const r = organParts(ris.organ)
+  const c = organParts(cited.organ)
+  if (r.series !== c.series) return false
+  if (c.series !== 'bgbl') return r.teil === c.teil
+  const year = Number(/\/(\d{4})$/.exec(cited.nummer)?.[1])
+  if (!Number.isFinite(year)) return r.teil === c.teil
+  const teil = year < TEILE_SINCE ? null : (c.teil ?? 'i')
+  return r.teil === teil
+}
+
 export function sameStammnormCited(a: BgblCitation, b: BgblCitation): boolean {
   if (a.nummer !== b.nummer) return false
   const x = organParts(a.organ)

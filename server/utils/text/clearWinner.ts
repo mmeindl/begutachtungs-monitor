@@ -14,6 +14,17 @@
 import { lawNameScore } from '../lawtext/lawNames'
 
 /**
+ * The best score of `name` against any of a candidate's names. A law answers
+ * to its Kurztitel and to its Abkürzung („Einrichtung und Betrieb einer
+ * Abbaumanagementgesellschaft des Bundes" is the „ABBAG-Gesetz"), and a
+ * draft may use either (03.10.2026, §12.41).
+ */
+export function bestNameScore(name: string, names: string | readonly string[]): number {
+  const list = typeof names === 'string' ? [names] : names
+  return Math.max(0, ...list.filter(Boolean).map((n) => lawNameScore(name, n)))
+}
+
+/**
  * The one candidate whose name matches `name` best — null if the best is
  * below `threshold`, or no better than the runner-up.
  *
@@ -23,13 +34,13 @@ import { lawNameScore } from '../lawtext/lawNames'
 export function pickClearWinner<T>(
   candidates: Iterable<T>,
   name: string,
-  nameOf: (candidate: T) => string,
+  nameOf: (candidate: T) => string | readonly string[],
   threshold: number,
 ): T | null {
   let best: { candidate: T; score: number } | null = null
   let runnerUp = 0
   for (const candidate of candidates) {
-    const score = lawNameScore(name, nameOf(candidate))
+    const score = bestNameScore(name, nameOf(candidate))
     if (!best || score > best.score) {
       runnerUp = best?.score ?? 0
       best = { candidate, score }

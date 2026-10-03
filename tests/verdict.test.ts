@@ -140,6 +140,26 @@ function draft(over: Partial<AnnexDraft> = {}): AnnexDraft {
   return { articles: [article()], asOf: '2026-01-01', blocks: DRAFT_BLOCKS, ...over }
 }
 
+describe('verifyAnnex: a law RIS files by Artikel (03.10.2026)', () => {
+  it('finds „§ 1" as „Art. 2 § 1" where the law numbers its §§ straight through', async () => {
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 0': PROSE, 'Art. 1 § 1': PROSE, 'Art. 2 § 2': OTHER_PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('verified')
+  })
+
+  it('refuses where a § number repeats across Artikel — there the Artikel is part of its name', async () => {
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { 'Art. 1 § 1': PROSE, 'Art. 2 § 1': OTHER_PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('unchecked')
+  })
+
+  it('refuses where the law also carries plain §§', async () => {
+    const rows = [row({ gld: '§ 1.', para: '§ 1.', current: PROSE })]
+    const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 5': OTHER_PROSE, 'Art. 1 § 1': PROSE } }))
+    expect(check.verdicts['#§ 1.']).toBe('unchecked')
+  })
+})
+
 describe('verifyAnnex', () => {
   it('verifies a § the standing text accounts for and withholds one it does not', async () => {
     const rows = [

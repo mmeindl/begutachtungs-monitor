@@ -145,11 +145,17 @@ function titleStem(word: string): string {
  * apart from `articleNameTokens` on purpose.
  */
 function titleNameTokens(title: string): Set<string> {
+  // Short words are filler („des", „vom") — except an abbreviation, which is
+  // the most specific word a title has: „BFW-Gesetz", „SCE-Gesetz",
+  // „ORF-Gesetz" scored 0 against their own Kurztitel while „BFW" was dropped
+  // and „gesetz" is a stop word (03.10.2026, §12.41). Recognised by its
+  // capitals before the text is lowered.
   const words = normalizeText(title)
-    .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .split(' ')
-    .filter((w) => w.length > 3 && !TITLE_STOPWORDS.has(w))
+    .filter((w) => w.length > 3 || /^\p{Lu}{2,3}$/u.test(w))
+    .map((w) => w.toLowerCase())
+    .filter((w) => !TITLE_STOPWORDS.has(w))
   // After stemming too: „geänderten" becomes „geändert" and is then the same
   // filler the list above already knows.
   return new Set(words.map(titleStem).filter((w) => !TITLE_STOPWORDS.has(w)))
@@ -165,4 +171,44 @@ function titleNameTokens(title: string): Set<string> {
  */
 export function lawNameScore(a: string, b: string): number {
   return jaccardSimilarity(titleNameTokens(a), titleNameTokens(b))
+}
+
+/** The generic ends of a law's name word, which every second law shares. */
+const NAME_AFFIX_RE = /^bundes|(?:gesetzbuch|verordnung|gesetz|ordnung)$/g
+/** Letters two word cores must share in a row to count as naming the same thing. */
+const SHARED_RUN = 5
+
+function longestSharedRun(a: string, b: string): number {
+  let best = 0
+  for (let i = 0; i < a.length; i++) {
+    for (let j = 0; j < b.length; j++) {
+      let k = 0
+      while (a[i + k] !== undefined && a[i + k] === b[j + k]) k++
+      if (k > best) best = k
+    }
+  }
+  return best
+}
+
+/**
+ * Whether two names of a law could name the same law at all — the weakest
+ * test there is, for the one place that needs no more: refusing a sole RIS
+ * candidate whose name contradicts the draft's (`soleUnlessContradicted`).
+ *
+ * Whole words are too strict for that. A law's name is a compound, and the
+ * draft paraphrases it: „Bundesgesetz über den Zivildienst" for the
+ * Zivildienstgesetz 1986, „… über die Errichtung einer Buchhaltungsagentur
+ * des Bundes" for the Buchhaltungsagenturgesetz, „Waldfondsgesetz" for a law
+ * since renamed Waldresilienzfondsgesetz — all four scored 0 by
+ * `lawNameScore` and were the right law (03.10.2026, §12.41). So: strip the
+ * generic ends („Bundes-", „-gesetz", „-ordnung"), and call two names
+ * compatible when any two word cores share five letters in a row. The
+ * Bundesvergabegesetz and the Bundesverwaltungsgerichtsgesetz share „ver".
+ */
+export function namesCompatible(a: string, b: string): boolean {
+  // Years are left out: a shared „1975" is no evidence two laws are one.
+  const core = (t: string) => [...titleNameTokens(t)].map((w) => w.replace(NAME_AFFIX_RE, '')).filter((w) => w.length >= SHARED_RUN && !/^\d+$/.test(w))
+  const x = core(a)
+  const y = core(b)
+  return x.some((w) => y.some((v) => longestSharedRun(w, v) >= SHARED_RUN))
 }

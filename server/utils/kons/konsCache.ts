@@ -19,7 +19,7 @@
  *    RIS results and decides which law a BGBl means, which is our reasoning
  *    and not RIS's answer.
  */
-import { getText, resolveLawByBgbl } from '../ris/konsLaw'
+import { getText, paragraphHistory, resolveLawByBgbl } from '../ris/konsLaw'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 
 /** One § document as RIS sent it, keyed by its NOR — parsed fresh by callers. */
@@ -51,6 +51,24 @@ export const resolveKonsLaw = defineCachedFunction(
     name: 'kons-law-by-bgbl',
     base: DERIVED_CACHE,
     getKey: (organ: string, nummer: string, date: string, title: string) => `${organ}|${nummer}|${date}|${title}`,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+  },
+)
+
+/**
+ * A law's version history, for the one case that needs it: a § missing on
+ * the Stichtag (`bridgeVersionGap`, §12.42). **Derived**, like the law
+ * resolution above: it walks result pages and keeps our reading of each
+ * record, not a document RIS sent. RIS adds versions as laws are amended, so
+ * a day. Null (too long a history) is an answer like any other.
+ */
+export const readParagraphHistory = defineCachedFunction(
+  (gesetzesnummer: string) => paragraphHistory(gesetzesnummer),
+  {
+    name: 'kons-history',
+    base: DERIVED_CACHE,
+    getKey: (gesetzesnummer: string) => gesetzesnummer,
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },

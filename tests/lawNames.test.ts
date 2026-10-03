@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { articleNameTokens, jaccardSimilarity, lawNameScore } from '../server/utils/lawtext/lawNames'
+import { articleNameTokens, jaccardSimilarity, lawNameScore, namesCompatible } from '../server/utils/lawtext/lawNames'
 
 describe('jaccardSimilarity', () => {
   it('is 1 for the same tokens and 0 for none in common', () => {
@@ -80,5 +80,31 @@ describe('lawNameScore — die Gesetze eines Bundesgesetzblatts', () => {
     expect(lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994')).toBeGreaterThan(
       lawNameScore('Änderung des Umsatzsteuergesetzes 1994', 'Umsatzsteuergesetz 1994 – Anhang (Binnenmarkt)'),
     )
+  })
+})
+
+describe('lawNameScore keeps an abbreviation (03.10.2026)', () => {
+  it('„BFW-Gesetz" and „ORF-Gesetz" share their one specific word with themselves', () => {
+    expect(lawNameScore('Änderung des BFW-Gesetzes', 'BFW-Gesetz')).toBeGreaterThan(0)
+    expect(lawNameScore('Änderung des ORF-Gesetzes', 'ORF-Gesetz')).toBeGreaterThan(0)
+  })
+  it('still drops lower-case filler', () => {
+    expect(lawNameScore('Änderung des BFW-Gesetzes', 'Bundesverwaltungsgerichtsgesetz')).toBe(0)
+  })
+})
+
+describe('namesCompatible — could these name one law at all (03.10.2026)', () => {
+  it('accepts a paraphrase, a compound and a renamed law (22/ME, 27/ME, 116/ME XXVIII)', () => {
+    expect(namesCompatible('Änderung des Bundesgesetzes über den Zivildienst', 'Zivildienstgesetz 1986')).toBe(true)
+    expect(namesCompatible('Änderung des Bundesgesetzes über die Errichtung einer Buchhaltungsagentur des Bundes', 'Buchhaltungsagenturgesetz')).toBe(true)
+    expect(namesCompatible('Änderung des Bundesgesetzes über die Verwaltung und Koordination der Finanz und sonstigen Bundesschulden', 'Bundesfinanzierungsgesetz')).toBe(true)
+    expect(namesCompatible('Änderung des Waldfondsgesetzes', 'Waldresilienzfondsgesetz')).toBe(true)
+  })
+  it('refuses the wrong law a mistyped Stammnorm finds (58/ME XXVIII)', () => {
+    expect(namesCompatible('Änderung des Bundesvergabegesetzes Verteidigung und Sicherheit 2012', 'Bundesverwaltungsgerichtsgesetz')).toBe(false)
+  })
+  it('takes no evidence from a shared year or a generic ending', () => {
+    expect(namesCompatible('Änderung des Strafgesetzbuches 1975', 'Strafprozeßordnung 1975')).toBe(true) // „straf" is shared, not the year
+    expect(namesCompatible('Änderung der Gewerbeordnung 1994', 'Strafprozeßordnung 1994')).toBe(false)
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseBgbl, sameBgbl, sameStammnormCited, stammnormOf } from '../server/utils/lawtext/bgblCitation'
+import { parseBgbl, sameBgbl, sameRisStammnorm, sameStammnormCited, stammnormOf } from '../server/utils/lawtext/bgblCitation'
 
 describe('parseBgbl', () => {
   it('splits organ and number the way RIS stores them', () => {
@@ -109,5 +109,23 @@ describe('sameStammnormCited — two ministry texts citing one law (01.10.2026)'
     expect(sameStammnormCited({ organ: 'BGBl. I Nr.', nummer: '84/2001' }, { organ: 'BGBl. III Nr.', nummer: '84/2001' })).toBe(false)
     expect(sameStammnormCited({ organ: 'JGS Nr.', nummer: '946/1811' }, { organ: 'RGBl. Nr.', nummer: '946/1811' })).toBe(false)
     expect(sameStammnormCited({ organ: 'BGBl. I Nr.', nummer: '36/2004' }, { organ: 'BGBl. I Nr.', nummer: '36/2005' })).toBe(false)
+  })
+})
+
+describe('sameRisStammnorm — the draft\'s Teil set by the year (03.10.2026)', () => {
+  const c = (organ: string, nummer: string) => ({ organ, nummer })
+  it('drops a Teil the draft wrote before 1997 (Bankwesengesetz, 6/ME XXVIII)', () => {
+    expect(sameRisStammnorm(c('BGBl. Nr.', '532/1993'), c('BGBl. I Nr.', '532/1993'))).toBe(true)
+  })
+  it('reads a missing Teil after 1996 as I (Datenschutzgesetz, 18/ME XXVIII)', () => {
+    expect(sameRisStammnorm(c('BGBl. I Nr.', '165/1999'), c('BGBl. Nr.', '165/1999'))).toBe(true)
+  })
+  it('never infers II or III — a Verordnung of the same number stays out', () => {
+    expect(sameRisStammnorm(c('BGBl. II Nr.', '104/2006'), c('BGBl. Nr.', '104/2006'))).toBe(false)
+    expect(sameRisStammnorm(c('BGBl. III Nr.', '84/2001'), c('BGBl. I Nr.', '84/2001'))).toBe(false)
+  })
+  it('keeps every other organ exact', () => {
+    expect(sameRisStammnorm(c('dRGBl. S', '219/1897'), c('dRGBl. S.', '219/1897'))).toBe(true)
+    expect(sameRisStammnorm(c('BGBl. I Nr.', '10/2013'), c('BGBl. I Nr.', '10/2012'))).toBe(false)
   })
 })

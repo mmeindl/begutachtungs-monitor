@@ -11907,6 +11907,100 @@ liest wie `getLawDiff`: XXVII p75 75 → 77 %, XXVI p25 34 → 35 %, sonst
 gleich. Mit `keepDroppedLaws` aus reproduziert dasselbe Skript die alten
 Werte exakt; die Verschiebung kommt also allein aus diesen Gesetzen.
 
+**Nebenbefund am Schirm.** 7/ME XXVIII zeigte „Änderung des SEGesetzes"
+(2 geändert, 1 unverändert) und „Änderung des SE-Gesetzes" (1 entfallen)
+als zwei Gesetze: Entwurf und Vorlage schreiben den Titel verschieden, und
+eine entfallene Einheit trug den Titel ihrer eigenen Seite, alle anderen
+den der späteren. Seither steht sie unter dem Titel, mit dem ihr Gesetz
+gepaart wurde (`removedUnit`), der eigene bleibt in `fromArticle` — den
+liest der Erläuterungen-Abgleich für die Entwurfsseite, er sieht also
+denselben Titel wie zuvor.
+
+### 12.41 „Nicht geprüft", gezählt wie die Seite zählt — und was davon unser Fehler war (03.10.2026)
+
+Ausgangsfrage: welche Hinweistexte der Vergleiche ließen sich durch Code
+statt durch Umformulieren loswerden? Gemessen über die 117 Beilagen der GP
+XXVIII durch den laufenden Server, gezählt wie die Seite zählt (je §, nur
+was eine Prüfung schuldet): **624 §§ „nicht geprüft"** vorher, **407**
+nachher; bestätigt 2.246 → 2.365, nicht gezeigt 273 → 276. Eine erste
+Zählung über die rohen Zeilen (3.755) war falsch, weil die Seite Neues und
+Unverändertes nie als Lücke zählt.
+
+**Die Regel „schuldet eine Prüfung" gab es zweimal**, auf dem Server
+(`isDisplayedChange`) und als Kopie im Client, und die Kopie war auseinander-
+gelaufen (sie kannte `elided` nicht). Seither entscheidet nur der Server und
+schickt `owesCheck` je Zeile. Ein § ohne einen Vergleichstext im linken
+Feld — nur Auslassung, „§ 60. (1) bis (46) …" — schuldet keine: 85 §§.
+Stichprobe gelesen, jede Zeile so; das Parserflag `elided` erkennt diese
+Zeilen nicht, darum hatte die alte Regel sie mitgezählt.
+
+**Drei Fehler der RIS-Auflösung**, von einem Agenten untersucht und hier
+nachgemessen:
+
+- **Falsches Gesetz angenommen.** Ein einziger Kandidat zur BGBl-Nummer
+  wurde ohne Namensprüfung genommen. 58/ME zitiert das BVergGVS 2012 als
+  „BGBl. I Nr. 10/2013" — das ist das Bundesverwaltungsgerichtsgesetz; 21
+  §§ wurden gegen dessen Text gehalten, vier zurückgehalten, und die Seite
+  nannte die Beilage des Ministeriums auffällig. Jetzt weist
+  `soleUnlessContradicted` den Kandidaten ab, wenn der Name ihm
+  *widerspricht*: weder Wortüberlappung (`lawNameScore`, gegen Kurztitel
+  und Abkürzung) noch fünf gemeinsame Buchstaben in einem Wortkern
+  (`namesCompatible`). Die zweite Prüfung war nötig: ein reiner
+  Wortvergleich wies im ersten Lauf vier richtige Gesetze ab
+  (Zivildienstgesetz 1986, Bundesfinanzierungsgesetz,
+  Buchhaltungsagenturgesetz, das umbenannte Waldresilienzfondsgesetz).
+  Kurze Großbuchstaben-Abkürzungen (BFW, SCE, ORF) zählen seither als Wort.
+- **Teil des BGBl.** RIS schreibt den Teil exakt, Ministerien nicht
+  („BGBl. I Nr. 532/1993" für das BWG, „BGBl. Nr. 165/1999" für das DSG).
+  `sameRisStammnorm` setzt den Teil des Entwurfs nach dem Jahr — keiner vor
+  1997, I wo später keiner steht; II und III nie erschlossen. 65 §§ jetzt
+  bestätigt.
+- **Gesetze, die RIS nach Artikeln ablegt** („Art. 2 § 13" im
+  Preisgesetz 1992): `addBareParagraphKeys` macht „§ 13" auffindbar, nur wo
+  das ganze Gesetz es trägt — keine schlichten §§ außer § 0, keine
+  §-Nummer unter zwei Artikeln. 54 §§ jetzt bestätigt.
+
+Alt gegen neu je § gelesen, nicht nur gezählt: keine bestätigte Stelle
+wurde ungeprüft; sieben §§ werden neu zurückgehalten, alle aus PDF-Beilagen,
+alle mit der Ursache, die die Seite schon ehrlich benennt („kann an unserer
+Lesung des PDF liegen").
+
+**Verschoben:** „Auffällig viele Stellen weichen ab bei „X"" stand über dem
+ganzen Vergleich und nannte Gesetze; seither steht es in der Gruppe des
+Gesetzes (`annexDoubtfulGroupNote`), wie die Gründe für „nicht geprüft".
+
+**Offen, gemessen aber nicht gebaut** (je wenige §§, je eigenes Risiko):
+ein kundgemachter, noch nicht geltender § (1),
+ein Artikel ohne eigene Überschrift im Entwurf-XML (PatV-EG/GMG, 83/ME,
+7), Zitate als Bezeichnung im PDF-Leser („Art. 8 EMRK", 5), Überschriften
+des Folge-§ unter einem neuen § (6), zwei falsch zitierte Stammnormen, die
+nur eine Suche nach dem Titel lösen würde, und zwei verrauschte
+Artikeltitel (28/ME, 55/ME).
+
+### 12.42 Eine Lücke in den RIS-Daten überbrücken — nur mit ihrer Signatur (03.10.2026)
+
+Das Kulturgüterrückgabegesetz (34/ME XXVIII) hatte am Stichtag 2025-07-22
+für elf §§ keine Fassung: §§ 1, 2, 20 … enden am **2025-03-24**, ihre
+Nachfolger beginnen am 2026-03-25 durch BGBl. I Nr. 10/2026, und § 0
+desselben Gesetzes endet am **2026-03-24**. Ein Tippfehler in der Jahreszahl;
+die Seite meldete „das RIS Bundesrecht führt diese Paragraphen nicht".
+
+`bridgeVersionGap` nimmt in diesem Fall die frühere Fassung, und nur wenn
+alles gilt: keine Fassung deckt den Stichtag (eine Aufhebung ist in RIS eine
+eigene Fassung „aufgehoben durch …" und deckt ihn — gesehen am PatV-EG § 8);
+der Nachfolger kam durch eine Novelle eines *späteren* Jahres als der
+Stichtag (eine Novelle, die es noch nicht gab, kann die alte Fassung nicht
+beendet haben); keine Seite ist eine Aufhebung.
+
+Die Fassungsgeschichte kommt je Gesetz (`paragraphHistory`, einen Tag
+gecacht): RIS ignoriert `Paragraph` und `Paragraph.Von` auf diesem
+Endpunkt, gemessen. Darum wird sie nur für einen § geholt, der fehlt **und**
+eine Prüfung schuldet, und ab 20 Seiten Geschichte gar nicht — ein solcher §
+bleibt ungeprüft wie zuvor.
+
+Alt gegen neu über alle 117 Beilagen der GP XXVIII: genau diese elf §§
+wechseln, alle auf bestätigt; sonst bewegt sich nichts.
+
 ## 13. Open questions
 
 1. **Legal (restated 2026-09-16 — the old wording asked the wrong question).** It assumed the metadata was CC-BY and only the full texts excluded. Parliament's licence page for the Begutachtungsverfahren excludes *Beteiligungen zu Ministerialentwürfen* from open-data reuse as such, and no licensed dataset covers Ministerialentwürfe at all. So the question is now: **on what basis may the metadata of lists 81/142/305 be reused?** Two halves — the factual one (how is that sentence meant, is a case-by-case release possible) goes to the Parlamentsdirektion, the legal one (is factual metadata protectable at all; Datenbankherstellerrecht §§ 76c ff vs. § 42h UrhG) to a university partner. The inline web-form texts remain a sub-question of it, not a separate one. It blocks a blanket CC-BY claim on the site, which was removed on 2026-09-16. **And "stage 1 is metadata-only either way", which stood here until 2026-09-19, is not quite true — one block breaks it.** Under „Worum geht es?" the draft page prints Parliament's `shortinfo`: Ziele, Inhalt, Hauptgesichtspunkte. That is prose from the excluded dataset, and no enumeration of "Fristen, Geschäftszahlen, Anzahl" covers it. The obvious escape was measured and does not hold (`pnpm corpus:kurzinfo`, GP XXVII, 337 drafts): the Kurzinformation is *not* simply the ministry's text, which RIS publishes CC BY. 53 % of drafts carry no prose at all, only the Vorblatt lists (67 % of all characters, untested here because the Vorblatt is a RIS document the corpus mapper does not carry); where there is prose, a median of 60 % of its eight-word windows occur verbatim in the ministry's documents, p10 25 %, and only 6.6 % of drafts are covered to 90 % or more. It is Parliament's editorial work on the ministry's material — related, but not the same document, so it cannot be sourced from RIS instead. Consequence: `/impressum` and `/ueber` name it since 2026-09-19, and **the question to the Parlamentsdirektion has to name it too** — an answer of the form "only the contents of the Stellungnahmen are excluded" would not settle it, because the Kurzinformation is neither a Stellungnahme nor a metadatum. And a third block, found 23.09.2026, which unlike the Kurzinformation sits in code: the § comparison reads the Ministerialentwurf's Gesetzestext from Parliament's HTML wherever Parliament publishes one (`diff/lawDiffService.ts`, RIS XML only where it does not), and the Begründungsvergleich reads the draft's Erläuterungen from the same copy on both sides (`explanations/reasoningDiffService.ts`) — both for a measured reason, one Word template on both sides (§12.12, sixth measurement), and both against the source order the Textgegenüberstellung follows (`annex/annexSource.ts`). The argument that carries it is the one the annex switch refuses for the drafts RIS does not hold — the same documents stand in RIS under CC BY — and for those drafts (12 of 350 in GP XXVII) the comparison shows Parliament's text with no RIS twin. `/ueber` and `/impressum` name it since 23.09.2026. Open, and part of the question above: whether to read the draft's text RIS-first like the annex, at the measured cost to the alignment, or to keep the parser symmetry and say so — as the copy now does. Read live on 23.09.2026, Parliament's own dataset pages (Regierungsvorlagen, Anträge, Ausschussberichte, Beschlüsse — one template) call the documents of those items „freie Werke und somit ohne Lizenzierung frei nutzbar“ and license only the result lists, the API and the history pages as CC BY 4.0; the exclusion sentence on the Beteiligungen page names *Beteiligungen* zu Ministerialentwürfen, not the drafts or their documents. (What stood here until 30.09.2026 — that the Beteiligungen lists are CC BY and that the Stellungnahmen zur Regierungsvorlage, §12.14, run under that grant — was a misreading: the Beteiligungen dataset is „Aktuelle Beteiligungen", list 143, items open for participation on the day of the query, and its page says „Ministerialentwürfe und Stellungnahmen fallen nicht darunter"; the Regierungsvorlagen page excludes „sämtliche Informationen zu Stellungnahmen" from free use and licensing, for data protection and copyright. The Stellungnahmen zur Regierungsvorlage therefore carry no licence either, and `/impressum` says so since 30.09.2026.) So the sharp form of the question to the Parlamentsdirektion is whether „die Dokumente selbst sind freie Werke“ holds for a Ministerialentwurf's documents too — and, separately, on what basis list 81 as such and the Kurzinformation may be reused. **The § comparison's own credit line was corrected to those facts on 23.09.2026:** it claimed „CC BY 4.0" whenever neither side was the Ministerialentwurf (`isLicensedPair`), which named a licence Parliament does not grant for these documents — the correct note for a Regierungsvorlage, Ausschuss- or Plenarfassung read from Parliament is „Dokumente: freie Werke, § 7 UrhG", a RIS-sourced side stays CC BY 4.0, and the Ministerialentwurf is credited by name with no claim at all, because what may be claimed for it is precisely this open question (`lawDiffSourceCredit`).
