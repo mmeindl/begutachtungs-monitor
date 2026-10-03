@@ -762,7 +762,9 @@ const countLabel = computed(() => {
                    (`OPEN_UNAVAILABLE`) — drawn as unavailable, not as a faded
                    „on": no tint, the page's grey, muted text and a dashed
                    outline, the tick kept (`wantsOpen`). Fading the tinted
-                   chip read as „on, a bit lighter" (03.10.2026).
+                   chip read as „on, a bit lighter" (03.10.2026). The dashes
+                   are an outline, not a border: like the variants' ring it
+                   takes no space, so the chip keeps its width either way.
                    `aria-disabled` keeps it focusable with its reason. -->
               <UButton
                 :color="wantsOpen && !openUnavailable ? 'primary' : 'neutral'"
@@ -771,7 +773,7 @@ const countLabel = computed(() => {
                 :aria-disabled="openUnavailable ? true : undefined"
                 :title="openUnavailable ?? undefined"
                 class="shrink-0"
-                :class="openUnavailable && 'cursor-not-allowed border border-dashed border-baseline bg-page text-ink-muted ring-0 hover:bg-page'"
+                :class="openUnavailable && 'cursor-not-allowed outline-1 outline-dashed -outline-offset-1 outline-baseline bg-page text-ink-muted ring-0 hover:bg-page'"
                 @click="toggleOpen"
               >
                 <!-- A box, ticked when on: says „toggle" in both states,
