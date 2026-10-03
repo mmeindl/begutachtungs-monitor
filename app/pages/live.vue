@@ -42,7 +42,7 @@ const facts: Fact[] = [
     <p class="text-sm font-medium uppercase tracking-wide text-ink-secondary">
       Online-Workshop · Demokratiewoche 2026
     </p>
-    <h1 class="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+    <h1 class="mt-2 page-title">
       Begutachtungs-Monitor live
     </h1>
     <p class="mt-3 text-xl text-ink">
@@ -55,7 +55,7 @@ const facts: Fact[] = [
          the destination changes. Wording must survive being read on
          22.10. at 18:55 by someone who just wants in. -->
     <div class="mt-6 rounded-xl bg-mark-wash p-4">
-      <h2 class="font-sans text-base font-semibold text-ink">Noch kein Teilnahmelink</h2>
+      <h2 class="card-heading">Noch kein Teilnahmelink</h2>
       <p class="mt-2 leading-relaxed text-ink-secondary">
         Der Videokonferenz-Raum wird rechtzeitig vor der Veranstaltung
         eingerichtet. Diese Adresse bleibt gleich:

@@ -173,7 +173,7 @@ const toc = [
 
 <template>
   <div class="mx-auto w-full max-w-2xl">
-    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+    <h1 class="page-title">
       So funktioniert die Begutachtung
     </h1>
     <p class="mt-3 leading-relaxed text-ink-secondary">
@@ -198,10 +198,9 @@ const toc = [
       </ul>
     </nav>
 
-    <section id="betrifft-mich" class="page-section scroll-mt-6">
-      <h2 class="section-heading">Betrifft mich das?</h2>
+    <ProseSection id="betrifft-mich" heading="Betrifft mich das?">
 
-      <p class="mt-3 leading-relaxed text-ink-secondary">
+      <p>
         Eine Stellungnahme darf jede und jeder abgeben. Es braucht keine
         Organisation hinter sich, keine juristische Ausbildung und keine
         bestimmte Form – ein Schreiben genügt, das sagt, worum es geht und was
@@ -211,7 +210,7 @@ const toc = [
         wer rechtzeitig erfährt, dass ein Entwurf aufliegt.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Und es geht nicht nur um die großen Gesetze. Der größere Teil der
         Begutachtungen betrifft Verordnungen – Gebühren, Grenzwerte, Fristen,
         Prüfvorschriften, Lehrpläne, Formulare. Das sind die Regeln, die eine
@@ -219,7 +218,7 @@ const toc = [
         laufen meist ohne öffentliche Aufmerksamkeit durch.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Rechtzeitig erfahren lässt sich das auf drei Wegen, alle ohne Konto:
         <NuxtLink
           to="/entwuerfe?status=open"
@@ -241,7 +240,7 @@ const toc = [
           class="link-inline font-medium"
         >Kalender-Abo aller Fristen</NuxtLink>.
       </p>
-    </section>
+    </ProseSection>
 
     <!-- The design risk behind the mission, and the reason this page is
          prose at all:
@@ -254,10 +253,9 @@ const toc = [
          — on a page whose whole claim is checkability. The evidence is the
          list, which recomputes itself; the base rates over hundreds of
          Verfahren are a work package of their own. -->
-    <section id="wirkung" class="page-section scroll-mt-6">
-      <h2 class="section-heading">Was eine Stellungnahme bewirkt</h2>
+    <ProseSection id="wirkung" heading="Was eine Stellungnahme bewirkt">
 
-      <p class="mt-3 leading-relaxed text-ink-secondary">
+      <p>
         Entwürfe ändern sich nach der Begutachtung – regelmäßig, nicht
         ausnahmsweise. Das Ministerium überarbeitet den Text, bevor er
         weitergeht, und die eingelangten Stellungnahmen liegen ihm dabei vor.
@@ -266,7 +264,7 @@ const toc = [
         ging, etwas getan hat.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Genau das zeigt der Monitor. Wo es die Fassungen gibt, stellt er sie
         nebeneinander und markiert, was sich Paragraph für Paragraph geändert
         hat. Und er zeigt die Entwürfe, aus denen nichts wurde: Ein Teil
@@ -274,7 +272,7 @@ const toc = [
         es nicht.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Was der Monitor <strong class="font-medium text-ink">nicht</strong>
         behauptet, ist der Zusammenhang. Dass ein Paragraph nach der
         Begutachtung anders lautet, heißt nicht, dass eine bestimmte
@@ -289,11 +287,10 @@ const toc = [
         >nach den meisten Stellungnahmen reihen</NuxtLink> – jede Zeile mit
         dem, was aus dem Entwurf geworden ist.
       </p>
-    </section>
+    </ProseSection>
 
-    <section id="stationen" class="page-section scroll-mt-6">
-      <h2 class="section-heading">Der Weg eines Entwurfs</h2>
-      <p class="mt-3 leading-relaxed text-ink-secondary">
+    <ProseSection id="stationen" heading="Der Weg eines Entwurfs">
+      <p>
         Die ersten beiden Stationen sind für jeden Entwurf dieselben. Danach
         trennen sich die Wege: Ein Gesetz geht über die Regierung ins
         Parlament, eine Verordnung erlässt das Ministerium selbst.
@@ -422,7 +419,7 @@ const toc = [
           </li>
         </ol>
       </section>
-    </section>
+    </ProseSection>
 
     <!-- The fork's consequence for what the reader sees on the rows. Its own
          section and not part of the fork, because it answers a different
@@ -431,12 +428,9 @@ const toc = [
          here too, because here somebody came looking for them; on a draft page
          they would be information about us given to a reader who asked about a
          draft. -->
-    <section id="ohne-stellungnahmen" class="page-section scroll-mt-6">
-      <h2 class="section-heading">
-        Warum manche Entwürfe keine Stellungnahmen zeigen
-      </h2>
+    <ProseSection id="ohne-stellungnahmen" heading="Warum manche Entwürfe keine Stellungnahmen zeigen">
 
-      <p class="mt-3 leading-relaxed text-ink-secondary">
+      <p>
         Zu einem Gesetzesentwurf führt das Parlament eine eigene Seite: Dort
         wird die Stellungnahme abgegeben, und dort steht anschließend auch,
         wer sie abgegeben hat. Eine Verordnung kommt nie ins Parlament. Die
@@ -446,7 +440,7 @@ const toc = [
         niemand Stellung genommen hätte, sondern weil niemand zählt.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Seltener trifft es einen Gesetzesentwurf. Beide amtlichen Listen haben
         Lücken: Ein Entwurf kann im Rechtsinformationssystem stehen und in der
         Liste des Parlaments fehlen. Der Monitor liest deshalb beide, damit
@@ -455,7 +449,7 @@ const toc = [
         oder Vereinbarungen zwischen Bund und Ländern; welchen Weg sie nehmen,
         sagt das Dokument selbst.
       </p>
-    </section>
+    </ProseSection>
 
     <!-- Not a station: a note on one section of the detail page, which links
          here from its credit line („Methode", until 02.10.2026 „Wie wir
@@ -463,10 +457,9 @@ const toc = [
          the numbered lists because it describes a document, not a step of the
          procedure — but keeps the page's typography, because it answers the
          same kind of question. -->
-    <section id="gegenueberstellung" class="page-section scroll-mt-6">
-      <h2 class="section-heading">Woher „Was ändert der Entwurf?“ kommt</h2>
+    <ProseSection id="gegenueberstellung" heading="Woher „Was ändert der Entwurf?“ kommt">
 
-      <p class="mt-3 leading-relaxed text-ink-secondary">
+      <p>
         Zu den meisten Entwürfen legt das Ministerium eine
         <strong class="font-medium text-ink">Textgegenüberstellung</strong> bei:
         links die geltende Fassung, rechts die vorgeschlagene, in der Form, die
@@ -478,7 +471,7 @@ const toc = [
         dass es keine gibt.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Von uns stammt die <strong class="font-medium text-ink">Markierung</strong>:
         Wir vergleichen die beiden Spalten Wort für Wort und heben hervor, was
         wegfällt und was dazukommt. Dieselbe Markierung und dieselben Abzeichen
@@ -490,7 +483,7 @@ const toc = [
         zählt jeder geänderte Verweis als Änderung.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Die linke Spalte behauptet, das geltende Recht zu sein – und das lässt
         sich nachsehen. Wir halten sie gegen den Text im
         <strong class="font-medium text-ink">RIS Bundesrecht</strong>, und zwar
@@ -498,7 +491,7 @@ const toc = [
         Ministerium beim Schreiben vor sich hatte.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Auch die rechte Spalte prüfen wir: Was dort als
         <strong class="font-medium text-ink">neu</strong> markiert ist, darf im
         geltenden Paragraphen nicht schon stehen – sonst fehlt links Text, und
@@ -507,7 +500,7 @@ const toc = [
         vorkommen, die der Entwurf für diesen Paragraphen trifft.
       </p>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Was dabei herauskommt, zählt der Kopf jedes Gesetzes, Paragraph für
         Paragraph; was nicht aufging, steht auch am Paragraphen selbst.
         Bestätigte Paragraphen bleiben ohne Hinweis, ebenso neu eingefügte:
@@ -515,7 +508,7 @@ const toc = [
         Ergebnisse brauchen eine Erklärung:
       </p>
 
-      <dl class="mt-4 space-y-3 leading-relaxed text-ink-secondary">
+      <dl>
         <div>
           <dt class="font-medium text-ink">„nicht gezeigt“</dt>
           <dd>
@@ -541,7 +534,7 @@ const toc = [
         </div>
       </dl>
 
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Ein Vorbehalt zum Schluss: Bei einem Teil der Entwürfe veröffentlicht
         das RIS die Beilage nur als Bild. Dann lesen wir das PDF des
         Ministeriums und erschließen aus dem Seitenlayout, welche Zeile links
@@ -556,7 +549,7 @@ const toc = [
            each disclosure on a draft page says „Nicht amtliche Lesefassung"
            and links here. -->
       <h3 id="lesefassung" class="mt-8 scroll-mt-6 text-base font-semibold text-ink">Die Lesefassung</h3>
-      <p class="mt-2 leading-relaxed text-ink-secondary">
+      <p class="mt-2">
         Bei manchen Paragraphen lässt sich aufklappen, wie die Bestimmung nach
         dem Entwurf ganz lauten würde. Das ist keine amtliche Fassung: Wir
         nehmen den geltenden Text aus dem RIS und wenden die Anweisungen des
@@ -565,16 +558,15 @@ const toc = [
         Lesefassung bei einem Paragraphen, heißt das nicht, dass er gleich
         bleibt – nur, dass wir sie nicht bestätigen konnten.
       </p>
-    </section>
+    </ProseSection>
 
     <!-- The comparison AFTER the Begutachtung, since 30.09.2026 with an
          address of its own: its method link (since 02.10.2026 „Methode" in
          the credit line, „Wie wir vergleichen" before) used to land on
          the Gegenüberstellung above, which explains a different document,
          and its method sentence stood on every draft page instead. -->
-    <section id="vergleich" class="page-section scroll-mt-6">
-      <h2 class="section-heading">Wie wir Entwurf und Regierungsvorlage vergleichen</h2>
-      <p class="mt-3 leading-relaxed text-ink-secondary">
+    <ProseSection id="vergleich" heading="Wie wir Entwurf und Regierungsvorlage vergleichen">
+      <p>
         Nach der Begutachtung vergleichen wir die Texte selbst: den Entwurf mit
         der Regierungsvorlage, und weiter mit den Fassungen aus Ausschuss,
         Plenum und Bundesgesetzblatt. Ein Gesetz, das ein bestehendes ändert,
@@ -582,7 +574,7 @@ const toc = [
         wird dann Anordnung für Anordnung. Ein neues Gesetz vergleichen wir
         Paragraph für Paragraph.
       </p>
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Wie viel die Regierungsvorlage am Entwurf geändert hat, zählen wir an
         den Einheiten des Entwurfs – Änderungsanordnungen, auf der Seite kurz
         „Änderungen“, oder Paragraphen: wie viele davon sie umgeschrieben oder
@@ -594,14 +586,14 @@ const toc = [
         darüber. Kam die Vorlage noch während der Begutachtung, fehlt dieser
         Vergleich: Die Spanne wurde an Vorlagen gemessen, die danach kamen.
       </p>
-      <p class="mt-4 leading-relaxed text-ink-secondary">
+      <p>
         Auch die Erläuterungen beider Fassungen halten wir gegeneinander.
         Gezählt werden nur Begründungen, die in beiden Fassungen zur selben
         Änderung stehen, und davon die, die das Ressort umgeschrieben hat. Ob
         eine Änderung auf eine Stellungnahme zurückgeht, sagt keiner der
         beiden Vergleiche.
       </p>
-    </section>
+    </ProseSection>
 
     <!-- „Nachverfolgung, nicht Bewertung" has stood only on /ueber since
          18.09.2026, where it belongs: a statement about the project, not about

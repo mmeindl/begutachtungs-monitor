@@ -8,7 +8,7 @@
     </a>
     <AppHeader />
     <!-- The layout owns page padding; pages only set their own max width. -->
-    <main id="main" class="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <main id="main" class="page-frame flex-1 py-8 sm:py-12">
       <slot />
     </main>
     <AppFooter />

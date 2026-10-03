@@ -4,7 +4,8 @@
  * of the browser's own. Native, not USelect: in Vite 8 (rolldown) + Nuxt UI
  * 4.10, reka-ui's SelectItem reaches the browser without a render function
  * and crashes hydration (Aug 2026). Options come through the slot; the
- * caller labels the control (aria-label or a <label for>).
+ * caller labels the control with a <label for> on `id` — an `aria-label`
+ * attribute would fall through to the wrapper, not the <select>.
  */
 const model = defineModel<string>({ required: true })
 /**
@@ -23,7 +24,7 @@ const model = defineModel<string>({ required: true })
  * stays the default: a lone select in a section (LawDiffSection) should
  * still be as wide as its content.
  */
-defineProps<{ id?: string; ariaLabel?: string; block?: boolean }>()
+defineProps<{ id?: string; block?: boolean }>()
 </script>
 
 <template>
@@ -36,7 +37,6 @@ defineProps<{ id?: string; ariaLabel?: string; block?: boolean }>()
     <select
       :id="id"
       v-model="model"
-      :aria-label="ariaLabel"
       class="min-h-target w-full min-w-0 appearance-none truncate rounded-md border border-baseline bg-surface py-2 pl-3 pr-9 text-sm text-ink hover:border-hover-edge hover:bg-hover"
     >
       <slot />

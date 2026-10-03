@@ -1,20 +1,11 @@
 <script setup lang="ts">
-withDefaults(
-  defineProps<{
-    title?: string
-  }>(),
-  {
-    title: 'Daten konnten nicht geladen werden',
-  },
-)
-
 defineEmits<{
   retry: []
 }>()
 </script>
 
 <template>
-  <EmptyState role="alert" :title="title">
+  <EmptyState role="alert" title="Daten konnten nicht geladen werden">
     <UButton color="primary" @click="$emit('retry')">Erneut versuchen</UButton>
   </EmptyState>
 </template>

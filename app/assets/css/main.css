@@ -356,6 +356,24 @@
 }
 
 /*
+ * The column header, main and footer share (03.10.2026). The three edges
+ * lined up because three copies of the same four classes agreed; now they
+ * read it from one place. Vertical padding stays at the call site — the
+ * header, the page and the footer each breathe differently.
+ */
+@utility page-frame {
+  @apply mx-auto w-full max-w-5xl px-4 sm:px-6;
+}
+
+/*
+ * A page's h1, named once (03.10.2026): the same five classes stood on every
+ * page title. The serif comes from the h1,h2 rule above.
+ */
+@utility page-title {
+  @apply text-3xl font-semibold tracking-tight text-ink sm:text-4xl;
+}
+
+/*
  * Section rhythm. The page's strongest visual objects are white bordered
  * sheets INSIDE sections; an 18px heading floating in whitespace lost to
  * them, so section boundaries were invisible. The heading outranks anything
@@ -410,6 +428,59 @@
        on chrome. */
     background-color: var(--color-ink);
   }
+}
+
+/*
+ * Running text under a section-heading on the prose pages (/ueber,
+ * /impressum, /datenschutz, /so-funktionierts), set by `ProseSection`
+ * (03.10.2026). Each paragraph, list and address there carried the same
+ * `mt-3 leading-relaxed text-ink-secondary` — about 45 times — and the
+ * copies had drifted: /so-funktionierts spaced its paragraphs at mt-4, the
+ * other three at mt-3. One value now, the majority's.
+ *
+ * Direct children only: the numbered stations on /so-funktionierts nest
+ * their own paragraphs at their own rhythm and stay untouched. And every
+ * selector sits in `:where()`, so it weighs nothing — a child that says
+ * otherwise (`mt-2` under an h3, `mt-8` on a list) wins with a plain
+ * utility class, whatever order the layer emits them in.
+ */
+@utility prose-flow {
+  :where(& > p, & > ul, & > dl, & > address) {
+    margin-top: calc(var(--spacing) * 3);
+    line-height: var(--leading-relaxed);
+    color: var(--color-ink-secondary);
+  }
+
+  /* The browser default italic is the only reason for this one: <address>
+     is the semantic element for a section's contact block. */
+  :where(& > address) {
+    font-style: normal;
+  }
+
+  :where(& > ul) {
+    list-style-type: disc;
+    padding-left: calc(var(--spacing) * 5);
+  }
+
+  :where(& > ul > li + li) {
+    margin-top: calc(var(--spacing) * 2);
+  }
+
+  :where(& > ul > li)::marker {
+    color: var(--color-ink-muted);
+  }
+
+  :where(& > dl > * + *) {
+    margin-top: calc(var(--spacing) * 3);
+  }
+}
+
+/*
+ * The title of a card or a callout box — sans and body size, because the
+ * serif h2 face belongs to the page's chapters, not to a box inside one.
+ */
+@utility card-heading {
+  @apply font-sans text-base font-semibold text-ink;
 }
 
 /*

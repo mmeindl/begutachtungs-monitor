@@ -35,289 +35,266 @@ usePageSeo({
 
 <template>
   <div class="mx-auto w-full max-w-2xl">
-    <h1 class="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+    <h1 class="page-title">
       Impressum &amp; Offenlegung
     </h1>
     <p class="mt-4 leading-relaxed text-ink-secondary">
       Offenlegung nach § 25 Mediengesetz.
     </p>
 
-    <div class="mt-10 space-y-14 sm:space-y-20">
-      <section aria-labelledby="imp-owner">
-        <h2 id="imp-owner" class="section-heading">
-          Medieninhaber &amp; Herausgeber
-        </h2>
-        <!-- <address> is the semantic element for the contact block of its
-             nearest section; the browser default italic is the only reason
-             for not-italic. -->
-        <address class="mt-3 not-italic leading-relaxed text-ink-secondary">
-          Manuel Meindl<br>
-          Wohnort: Linz, Österreich<br>
-          E-Mail:
-          <a
-            href="mailto:kontakt@begutachtungs-monitor.at"
-            class="link-inline"
-          >kontakt@begutachtungs-monitor.at</a>
-        </address>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Begutachtungs-Monitor ist ein privates, nichtkommerzielles
-          Civic-Tech-Projekt einer Einzelperson. Er steht in keiner Verbindung
-          zum Parlament, zu einem Bundesministerium oder zum Arbeitgeber des
-          Medieninhabers.
-        </p>
-      </section>
+    <ProseSection id="imp-owner" heading="Medieninhaber & Herausgeber" first>
+      <!-- <address> is the semantic element for the contact block of its
+           nearest section; `prose-flow` takes the browser's default italic
+           back. -->
+      <address>
+        Manuel Meindl<br>
+        Wohnort: Linz, Österreich<br>
+        E-Mail:
+        <a
+          href="mailto:kontakt@begutachtungs-monitor.at"
+          class="link-inline"
+        >kontakt@begutachtungs-monitor.at</a>
+      </address>
+      <p>
+        Der Begutachtungs-Monitor ist ein privates, nichtkommerzielles
+        Civic-Tech-Projekt einer Einzelperson. Er steht in keiner Verbindung
+        zum Parlament, zu einem Bundesministerium oder zum Arbeitgeber des
+        Medieninhabers.
+      </p>
+    </ProseSection>
 
-      <section aria-labelledby="imp-object">
-        <h2 id="imp-object" class="section-heading">
-          Unternehmensgegenstand
-        </h2>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Betrieb einer nichtkommerziellen Informationsplattform zum
-          österreichischen Begutachtungsverfahren: Aufbereitung öffentlich
-          zugänglicher Daten zu Ministerialentwürfen, Begutachtungsfristen und
-          Stellungnahmen sowie Nachverfolgung des weiteren Verlaufs bis zur
-          Kundmachung im Bundesgesetzblatt.
-        </p>
-      </section>
+    <ProseSection id="imp-object" heading="Unternehmensgegenstand">
+      <p>
+        Betrieb einer nichtkommerziellen Informationsplattform zum
+        österreichischen Begutachtungsverfahren: Aufbereitung öffentlich
+        zugänglicher Daten zu Ministerialentwürfen, Begutachtungsfristen und
+        Stellungnahmen sowie Nachverfolgung des weiteren Verlaufs bis zur
+        Kundmachung im Bundesgesetzblatt.
+      </p>
+    </ProseSection>
 
-      <section aria-labelledby="imp-shares">
-        <h2 id="imp-shares" class="section-heading">
-          Beteiligungsverhältnisse
-        </h2>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Medieninhaber ist eine natürliche Person. Es bestehen keine
-          Beteiligungen anderer Personen oder Unternehmen, keine stillen
-          Beteiligungen und keine Treuhandverhältnisse. Das Projekt wird nicht
-          finanziert, weder durch Förderungen noch durch Spenden, Werbung oder
-          Auftraggeber. Sollte sich das ändern, steht es hier.
-        </p>
-      </section>
+    <ProseSection id="imp-shares" heading="Beteiligungsverhältnisse">
+      <p>
+        Medieninhaber ist eine natürliche Person. Es bestehen keine
+        Beteiligungen anderer Personen oder Unternehmen, keine stillen
+        Beteiligungen und keine Treuhandverhältnisse. Das Projekt wird nicht
+        finanziert, weder durch Förderungen noch durch Spenden, Werbung oder
+        Auftraggeber. Sollte sich das ändern, steht es hier.
+      </p>
+    </ProseSection>
 
-      <section aria-labelledby="imp-line">
-        <h2 id="imp-line" class="section-heading">
-          Grundlegende Richtung (Blattlinie)
-        </h2>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Begutachtungs-Monitor macht die Begutachtungsphase der
-          österreichischen Gesetzgebung sichtbar und verfolgt nach, was aus
-          den eingebrachten Stellungnahmen wird. Übernommene Anregungen
-          werden so deutlich gezeigt wie übergangene.
-        </p>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Monitor ist parteipolitisch unabhängig und keiner Regierung,
-          Partei, Interessenvertretung, Kirche oder Behörde verbunden. Er
-          bewertet Gesetzesvorhaben nicht inhaltlich und empfiehlt keine
-          Positionen. Kennzahlen zu einzelnen Ministerien zeigt er dort, wo
-          sie belegbar sind – aber stets für übernommene wie für übergangene
-          Anregungen und nie als Rangliste. Was er zeigt, sind nachprüfbare Vorgänge: Fristen,
-          Zahlen, Dokumente und die Unterschiede zwischen ihnen, jeweils mit
-          Link auf die amtliche Quelle.
-        </p>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Dahinter steht die Überzeugung, dass öffentliche Beteiligung nur
-          dann etwas wert ist, wenn nachvollziehbar bleibt, was mit ihr
-          geschieht – und dass diese Nachvollziehbarkeit heute an Aufwand
-          scheitert, nicht an Geheimhaltung. Nachverfolgung statt Bewertung.
-        </p>
-      </section>
+    <ProseSection id="imp-line" heading="Grundlegende Richtung (Blattlinie)">
+      <p>
+        Der Begutachtungs-Monitor macht die Begutachtungsphase der
+        österreichischen Gesetzgebung sichtbar und verfolgt nach, was aus
+        den eingebrachten Stellungnahmen wird. Übernommene Anregungen
+        werden so deutlich gezeigt wie übergangene.
+      </p>
+      <p>
+        Der Monitor ist parteipolitisch unabhängig und keiner Regierung,
+        Partei, Interessenvertretung, Kirche oder Behörde verbunden. Er
+        bewertet Gesetzesvorhaben nicht inhaltlich und empfiehlt keine
+        Positionen. Kennzahlen zu einzelnen Ministerien zeigt er dort, wo
+        sie belegbar sind – aber stets für übernommene wie für übergangene
+        Anregungen und nie als Rangliste. Was er zeigt, sind nachprüfbare Vorgänge: Fristen,
+        Zahlen, Dokumente und die Unterschiede zwischen ihnen, jeweils mit
+        Link auf die amtliche Quelle.
+      </p>
+      <p>
+        Dahinter steht die Überzeugung, dass öffentliche Beteiligung nur
+        dann etwas wert ist, wenn nachvollziehbar bleibt, was mit ihr
+        geschieht – und dass diese Nachvollziehbarkeit heute an Aufwand
+        scheitert, nicht an Geheimhaltung. Nachverfolgung statt Bewertung.
+      </p>
+    </ProseSection>
 
-      <section aria-labelledby="imp-data">
-        <h2 id="imp-data" class="section-heading">
-          Hinweis zu den Daten
-        </h2>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Monitor ist kein amtliches Angebot. Er bereitet Daten der
-          Parlamentsdirektion auf und leitet daraus Darstellungen ab, etwa den
-          Textvergleich zwischen Entwurf und Regierungsvorlage. Fehler in
-          dieser Aufbereitung sind möglich; maßgeblich ist immer die
-          Originalquelle auf
-          <ExternalLink
-            href="https://www.parlament.gv.at"
-            class="link-inline"
-          >parlament.gv.at</ExternalLink>, auf die jede Angabe verlinkt ist. Hinweise auf Fehler sind
-          willkommen – per
-          <a
-            href="mailto:kontakt@begutachtungs-monitor.at"
-            class="link-inline"
-          >E-Mail</a>
-          oder als
-          <ExternalLink
-            href="https://github.com/mmeindl/begutachtungs-monitor/issues"
-            class="link-inline"
-          >GitHub-Issue</ExternalLink>.
-        </p>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Stellungnahmen von Privatpersonen werden nicht namentlich
-          wiedergegeben; warum, steht
-          <NuxtLink
-            to="/ueber#about-privacy"
-            class="link-inline"
-          >auf der Über-Seite</NuxtLink>.
-        </p>
-      </section>
+    <ProseSection id="imp-data" heading="Hinweis zu den Daten">
+      <p>
+        Der Monitor ist kein amtliches Angebot. Er bereitet Daten der
+        Parlamentsdirektion auf und leitet daraus Darstellungen ab, etwa den
+        Textvergleich zwischen Entwurf und Regierungsvorlage. Fehler in
+        dieser Aufbereitung sind möglich; maßgeblich ist immer die
+        Originalquelle auf
+        <ExternalLink
+          href="https://www.parlament.gv.at"
+          class="link-inline"
+        >parlament.gv.at</ExternalLink>, auf die jede Angabe verlinkt ist. Hinweise auf Fehler sind
+        willkommen – per
+        <a
+          href="mailto:kontakt@begutachtungs-monitor.at"
+          class="link-inline"
+        >E-Mail</a>
+        oder als
+        <ExternalLink
+          href="https://github.com/mmeindl/begutachtungs-monitor/issues"
+          class="link-inline"
+        >GitHub-Issue</ExternalLink>.
+      </p>
+      <p>
+        Stellungnahmen von Privatpersonen werden nicht namentlich
+        wiedergegeben; warum, steht
+        <NuxtLink
+          to="/ueber#about-privacy"
+          class="link-inline"
+        >auf der Über-Seite</NuxtLink>.
+      </p>
+    </ProseSection>
 
-      <section aria-labelledby="imp-license">
-        <h2 id="imp-license" class="section-heading">
-          Urheberrecht &amp; Lizenzen
-        </h2>
-        <!-- Per dataset, not across the board: the monitor draws on two
-             official sources whose terms of use are not the same. A shared
-             line „Metadaten CC BY 4.0" levelled that and claimed for the
-             Begutachtungsverfahren's data what Parliament excludes on its own
-             licence page.
+    <ProseSection id="imp-license" heading="Urheberrecht & Lizenzen">
+      <!-- Per dataset, not across the board: the monitor draws on two
+           official sources whose terms of use are not the same. A shared
+           line „Metadaten CC BY 4.0" levelled that and claimed for the
+           Begutachtungsverfahren's data what Parliament excludes on its own
+           licence page.
 
-             And „ausschließlich Metadaten" was not true either (corrected
-             19.09.2026): under „Worum geht es?" stands Parliament's
-             Kurzinformation, and that is prose. The obvious escape — that it
-             is only the Ressort's text, which RIS publishes under CC BY —
-             does not survive measurement: over 337 drafts of GP XXVII, 53 %
-             carry no prose at all but only the lists from the Vorblatt, and
-             where there is prose a median 60 % of its eight-word windows
-             occur verbatim in the Ressort's documents, for a third of them
-             less than half (`pnpm corpus:kurzinfo`, docs/architecture.md
-             §13.1). The Kurzinformation is therefore Parliament's editorial
-             work on the Ressort's material — and belongs named rather than
-             carried along under „Metadaten".
+           And „ausschließlich Metadaten" was not true either (corrected
+           19.09.2026): under „Worum geht es?" stands Parliament's
+           Kurzinformation, and that is prose. The obvious escape — that it
+           is only the Ressort's text, which RIS publishes under CC BY —
+           does not survive measurement: over 337 drafts of GP XXVII, 53 %
+           carry no prose at all but only the lists from the Vorblatt, and
+           where there is prose a median 60 % of its eight-word windows
+           occur verbatim in the Ressort's documents, for a third of them
+           less than half (`pnpm corpus:kurzinfo`, docs/architecture.md
+           §13.1). The Kurzinformation is therefore Parliament's editorial
+           work on the Ressort's material — and belongs named rather than
+           carried along under „Metadaten".
 
-             A third block, 23.09.2026: the two comparisons read the draft's
-             own Gesetzestext and its Erläuterungen from Parliament's copy
-             wherever Parliament publishes one — for parser symmetry, because
-             both sides then come out of the same Word template, and thus
-             against the source order the Textgegenüberstellung follows,
-             which reads RIS first for the licence. The same documents stand
-             in RIS under CC BY, so the copy names what it shows rather than
-             claiming a licence for it; whether the exclusion reaches these
-             documents at all is part of the open question
-             (docs/architecture.md §13.1).
+           A third block, 23.09.2026: the two comparisons read the draft's
+           own Gesetzestext and its Erläuterungen from Parliament's copy
+           wherever Parliament publishes one — for parser symmetry, because
+           both sides then come out of the same Word template, and thus
+           against the source order the Textgegenüberstellung follows,
+           which reads RIS first for the licence. The same documents stand
+           in RIS under CC BY, so the copy names what it shows rather than
+           claiming a licence for it; whether the exclusion reaches these
+           documents at all is part of the open question
+           (docs/architecture.md §13.1).
 
-             And the Beteiligungen became a block of their own the same day,
-             after the dataset pages were read line by line: Parliament
-             licenses the result lists of Beteiligungen as CC BY 4.0 and
-             excludes only those zu Ministerialentwürfen, so the
-             Stellungnahmen zur Regierungsvorlage and those zum Entwurf
-             cannot stand under one heading. The same reading narrowed the
-             exclusion sentence here — it names the Stellungnahmen, not the
-             Ministerialentwürfe — and moved the documents of the
-             parliamentary stations out of CC BY: Parliament calls them
-             freie Werke and licenses the lists around them.
+           And the Beteiligungen became a block of their own the same day,
+           after the dataset pages were read line by line: Parliament
+           licenses the result lists of Beteiligungen as CC BY 4.0 and
+           excludes only those zu Ministerialentwürfen, so the
+           Stellungnahmen zur Regierungsvorlage and those zum Entwurf
+           cannot stand under one heading. The same reading narrowed the
+           exclusion sentence here — it names the Stellungnahmen, not the
+           Ministerialentwürfe — and moved the documents of the
+           parliamentary stations out of CC BY: Parliament calls them
+           freie Werke and licenses the lists around them.
 
-             The Beteiligungen half of that reading was wrong (corrected
-             30.09.2026). The Beteiligungen dataset is „Aktuelle
-             Beteiligungen" (list 143): initiatives, Bürgerinitiativen and
-             petitions open for participation on the day of the query, and
-             its page says „Ministerialentwürfe und Stellungnahmen fallen
-             nicht darunter". Its CC BY grant never reached list 142. The
-             Regierungsvorlagen page excludes „sämtliche Informationen zu
-             Stellungnahmen" from free use and licensing alike, for data
-             protection and copyright — so the Stellungnahmen zur
-             Regierungsvorlage stand where those zum Entwurf stand: no
-             licence, and the same open question. -->
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
-          Nutzungsbedingungen unterscheiden sich je nach Datensatz. Unter
-          jedem Text auf einer Entwurfsseite steht, aus welcher der beiden
-          er stammt; Gliederung und Markierung sind vom Monitor.
-        </p>
-        <dl class="mt-3 space-y-3 leading-relaxed text-ink-secondary">
-          <div>
-            <dt class="font-medium text-ink">
-              Rechtsinformationssystem des Bundes (Bundeskanzleramt)
-            </dt>
-            <dd>
-              Entwurfstexte und Erläuterungen der Ressorts,
-              Textgegenüberstellungen, geltendes Bundesrecht und das
-              Bundesgesetzblatt –
-              <ExternalLink
-                href="https://creativecommons.org/licenses/by/4.0/deed.de"
-                class="link-inline"
-              >CC BY 4.0</ExternalLink>.
-            </dd>
-          </div>
-          <div>
-            <dt class="font-medium text-ink">
-              Parlamentsdirektion, Stationen nach der Begutachtung
-            </dt>
-            <dd>
-              Regierungsvorlagen, Ausschussberichte und Beschlüsse: die
-              Ergebnislisten der Filter und der API sowie die Geschichtsseiten,
-              ausgenommen alles zu Stellungnahmen –
-              <ExternalLink
-                href="https://creativecommons.org/licenses/by/4.0/deed.de"
-                class="link-inline"
-              >CC BY 4.0</ExternalLink>. Daraus stammt auch, welche Klubs in
-              dritter Lesung dafür und dagegen gestimmt haben. Die Dokumente
-              selbst – Gesetzestexte,
-              Erläuterungen, Ausschuss- und Plenarfassungen – bezeichnet das
-              Parlament als freie Werke, „ohne Lizenzierung frei nutzbar“.
-            </dd>
-          </div>
-          <div>
-            <dt class="font-medium text-ink">
-              Parlamentsdirektion, Stellungnahmen zu Regierungsvorlagen
-            </dt>
-            <dd>
-              Für diese Daten weist das Parlament keine Open-Data-Lizenz aus:
-              „sämtliche Informationen zu Stellungnahmen“ nimmt es von der
-              freien Nutzung und Lizenzierung ausdrücklich aus, aus Gründen
-              des Datenschutzes und des Schutzes von Urheber- und
-              Persönlichkeitsrechten. Der Monitor zeigt daraus Anzahl, Datum
-              und Zustimmungen, die Namen einreichender Organisationen und den
-              Link auf die Stellungnahme. Ob der Ausschluss auch diese Angaben
-              erfasst, ist Teil unserer Frage an die Parlamentsdirektion.
-            </dd>
-          </div>
-          <div>
-            <dt class="font-medium text-ink">
-              Parlamentsdirektion, Begutachtungsverfahren
-            </dt>
-            <dd>
-              Ministerialentwürfe, Stellungnahmen und Zustimmungen – für diese
-              Daten weist das Parlament keine Open-Data-Lizenz aus; die
-              Stellungnahmen zu Ministerialentwürfen nimmt es von der
-              Weiterverwendung als Open Data ausdrücklich aus. Der
-              Monitor zeigt daraus Metadaten – Fristen, Geschäftszahlen,
-              Anzahl der Einreichungen und die Namen einreichender
-              Organisationen – und die Kurzinformation, die das Parlament zu
-              einem Entwurf veröffentlicht (Ziele, Inhalt, Hauptgesichtspunkte;
-              auf der Entwurfsseite unter „Worum geht es?“).
-              Dazu kommen im Textvergleich der Gesetzestext und die
-              Erläuterungen des Entwurfs in der Fassung, die das Parlament
-              veröffentlicht – Dokumente des Ressorts, die das RIS unter
-              CC BY 4.0 führt. Ob der Ausschluss die Kurzinformation oder
-              diese Dokumente erfasst, ist offen; wir haben die
-              Parlamentsdirektion um Klärung gebeten, wie weit er reicht.
-              Volltexte von Stellungnahmen übernimmt er nicht, sondern
-              verlinkt sie auf
-              <ExternalLink
-                href="https://www.parlament.gv.at"
-                class="link-inline"
-              >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
-            </dd>
-          </div>
-        </dl>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Der Quellcode des Monitors ist unter der
-          <ExternalLink
-            href="https://github.com/mmeindl/begutachtungs-monitor"
-            class="link-inline"
-          >AGPL-3.0 veröffentlicht</ExternalLink>. Texte dieser Website dürfen unter Nennung der Quelle
-          weiterverwendet werden.
-        </p>
-      </section>
+           The Beteiligungen half of that reading was wrong (corrected
+           30.09.2026). The Beteiligungen dataset is „Aktuelle
+           Beteiligungen" (list 143): initiatives, Bürgerinitiativen and
+           petitions open for participation on the day of the query, and
+           its page says „Ministerialentwürfe und Stellungnahmen fallen
+           nicht darunter". Its CC BY grant never reached list 142. The
+           Regierungsvorlagen page excludes „sämtliche Informationen zu
+           Stellungnahmen" from free use and licensing alike, for data
+           protection and copyright — so the Stellungnahmen zur
+           Regierungsvorlage stand where those zum Entwurf stand: no
+           licence, and the same open question. -->
+      <p>
+        Der Monitor bezieht Daten aus zwei amtlichen Quellen. Die
+        Nutzungsbedingungen unterscheiden sich je nach Datensatz. Unter
+        jedem Text auf einer Entwurfsseite steht, aus welcher der beiden
+        er stammt; Gliederung und Markierung sind vom Monitor.
+      </p>
+      <dl>
+        <div>
+          <dt class="font-medium text-ink">
+            Rechtsinformationssystem des Bundes (Bundeskanzleramt)
+          </dt>
+          <dd>
+            Entwurfstexte und Erläuterungen der Ressorts,
+            Textgegenüberstellungen, geltendes Bundesrecht und das
+            Bundesgesetzblatt –
+            <ExternalLink
+              href="https://creativecommons.org/licenses/by/4.0/deed.de"
+              class="link-inline"
+            >CC BY 4.0</ExternalLink>.
+          </dd>
+        </div>
+        <div>
+          <dt class="font-medium text-ink">
+            Parlamentsdirektion, Stationen nach der Begutachtung
+          </dt>
+          <dd>
+            Regierungsvorlagen, Ausschussberichte und Beschlüsse: die
+            Ergebnislisten der Filter und der API sowie die Geschichtsseiten,
+            ausgenommen alles zu Stellungnahmen –
+            <ExternalLink
+              href="https://creativecommons.org/licenses/by/4.0/deed.de"
+              class="link-inline"
+            >CC BY 4.0</ExternalLink>. Daraus stammt auch, welche Klubs in
+            dritter Lesung dafür und dagegen gestimmt haben. Die Dokumente
+            selbst – Gesetzestexte,
+            Erläuterungen, Ausschuss- und Plenarfassungen – bezeichnet das
+            Parlament als freie Werke, „ohne Lizenzierung frei nutzbar“.
+          </dd>
+        </div>
+        <div>
+          <dt class="font-medium text-ink">
+            Parlamentsdirektion, Stellungnahmen zu Regierungsvorlagen
+          </dt>
+          <dd>
+            Für diese Daten weist das Parlament keine Open-Data-Lizenz aus:
+            „sämtliche Informationen zu Stellungnahmen“ nimmt es von der
+            freien Nutzung und Lizenzierung ausdrücklich aus, aus Gründen
+            des Datenschutzes und des Schutzes von Urheber- und
+            Persönlichkeitsrechten. Der Monitor zeigt daraus Anzahl, Datum
+            und Zustimmungen, die Namen einreichender Organisationen und den
+            Link auf die Stellungnahme. Ob der Ausschluss auch diese Angaben
+            erfasst, ist Teil unserer Frage an die Parlamentsdirektion.
+          </dd>
+        </div>
+        <div>
+          <dt class="font-medium text-ink">
+            Parlamentsdirektion, Begutachtungsverfahren
+          </dt>
+          <dd>
+            Ministerialentwürfe, Stellungnahmen und Zustimmungen – für diese
+            Daten weist das Parlament keine Open-Data-Lizenz aus; die
+            Stellungnahmen zu Ministerialentwürfen nimmt es von der
+            Weiterverwendung als Open Data ausdrücklich aus. Der
+            Monitor zeigt daraus Metadaten – Fristen, Geschäftszahlen,
+            Anzahl der Einreichungen und die Namen einreichender
+            Organisationen – und die Kurzinformation, die das Parlament zu
+            einem Entwurf veröffentlicht (Ziele, Inhalt, Hauptgesichtspunkte;
+            auf der Entwurfsseite unter „Worum geht es?“).
+            Dazu kommen im Textvergleich der Gesetzestext und die
+            Erläuterungen des Entwurfs in der Fassung, die das Parlament
+            veröffentlicht – Dokumente des Ressorts, die das RIS unter
+            CC BY 4.0 führt. Ob der Ausschluss die Kurzinformation oder
+            diese Dokumente erfasst, ist offen; wir haben die
+            Parlamentsdirektion um Klärung gebeten, wie weit er reicht.
+            Volltexte von Stellungnahmen übernimmt er nicht, sondern
+            verlinkt sie auf
+            <ExternalLink
+              href="https://www.parlament.gv.at"
+              class="link-inline"
+            >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
+          </dd>
+        </div>
+      </dl>
+      <p>
+        Der Quellcode des Monitors ist unter der
+        <ExternalLink
+          href="https://github.com/mmeindl/begutachtungs-monitor"
+          class="link-inline"
+        >AGPL-3.0 veröffentlicht</ExternalLink>. Texte dieser Website dürfen unter Nennung der Quelle
+        weiterverwendet werden.
+      </p>
+    </ProseSection>
 
-      <section aria-labelledby="imp-privacy">
-        <h2 id="imp-privacy" class="section-heading">
-          Datenschutz
-        </h2>
-        <p class="mt-3 leading-relaxed text-ink-secondary">
-          Welche Daten beim Besuch dieser Website verarbeitet werden – und
-          welche nicht – steht in der
-          <NuxtLink
-            to="/datenschutz"
-            class="link-inline"
-          >Datenschutzerklärung</NuxtLink>.
-        </p>
-      </section>
-    </div>
+    <ProseSection id="imp-privacy" heading="Datenschutz">
+      <p>
+        Welche Daten beim Besuch dieser Website verarbeitet werden – und
+        welche nicht – steht in der
+        <NuxtLink
+          to="/datenschutz"
+          class="link-inline"
+        >Datenschutzerklärung</NuxtLink>.
+      </p>
+    </ProseSection>
   </div>
 </template>

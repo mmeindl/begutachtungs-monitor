@@ -36,7 +36,7 @@
 
 <template>
   <footer class="border-t border-hairline">
-    <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+    <div class="page-frame py-8">
       <div class="flex flex-col gap-2 text-sm leading-relaxed text-ink-muted">
         <p>
           <NuxtLink

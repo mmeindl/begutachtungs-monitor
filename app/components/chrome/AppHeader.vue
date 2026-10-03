@@ -21,7 +21,7 @@ function isActive(to: string): boolean {
          viewport. Decorative (no contrast obligation). -->
     <div class="h-0.75 bg-mark" aria-hidden="true" />
     <div
-      class="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2 sm:px-6"
+      class="page-frame flex flex-wrap items-center justify-between gap-x-6 gap-y-2 py-2"
     >
       <!-- Target size: 44px on touch, 36px with a mouse (main.css) -->
       <NuxtLink

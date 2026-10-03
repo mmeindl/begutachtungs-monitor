@@ -28,7 +28,7 @@ defineProps<{
 <template>
   <div class="scroll-mt-6">
     <h3 class="text-lg font-semibold text-ink">
-      <slot name="heading">{{ heading }}</slot>
+      {{ heading }}
     </h3>
     <div class="mt-4">
       <slot />
