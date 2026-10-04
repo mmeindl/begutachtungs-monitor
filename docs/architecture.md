@@ -12029,6 +12029,67 @@ des Folge-§ unter einem neuen § (6), zwei falsch zitierte Stammnormen, die
 nur eine Suche nach dem Titel lösen würde, und zwei verrauschte
 Artikeltitel (28/ME, 55/ME).
 
+**Nachtrag 04.10.2026 — die offenen Klassen gebaut, alt gegen neu gemessen.**
+Die Zählung hat jetzt einen Befehl: `pnpm corpus:annex-census -- --out <datei>`
+gegen einen laufenden Server (Produktionsbuild, kalte Caches), `--compare a b`
+für den Vergleich je Gesetz × §. Ausgangsstand am selben Tag: 398 §§ „nicht
+geprüft" (der Korpus ist seit dem 03.10. gewachsen). Danach **310**; bestätigt
+2.443 → 2.524, zurückgehalten 280 → 266, Entwürfe mit „auffällig" 13 → 11.
+Jede Klasse für sich, mit dem, was sie bewegt:
+
+- **Die fehlende Artikelzeile** (83/ME): das Dokument druckt „Artikel 3" nicht,
+  nur „Änderung des Gebrauchsmustergesetzes" und dessen
+  Promulgationsklausel. `missingArticleLines` (`lawtext/articleHeadings.ts`)
+  setzt die Zeile ein, wenn drei Dinge übereinstimmen: eine Überschrift
+  außerhalb zitierten Texts nach einer Anordnung, die Klausel direkt darunter,
+  und das Inhaltsverzeichnis, das ein Artikel unter genau diesem Namen führt
+  und die Nummer liefert. 10 GMG-§§ bestätigt, die fünf gegen das PatV-EG
+  zurückgehaltenen verschwinden. Über die 300 Entwurfs-XML auf der Platte
+  greift die Regel kein einziges Mal: eine Form, kein Muster.
+- **Zitate im PDF-Leser** nach ihrer Form statt nach einer Wortliste: hinter
+  einer Artikel-, Anlage- oder Anhangbezeichnung steht bei einer Überschrift
+  ein Titel, „zu § …", eine Klammer oder nichts; ein anderes kleines Wort, ein
+  Beistrich, ein EU-Rechtsakt oder ein Vertrag („Art. 8 EMRK") ist ein Zitat.
+  Zwölf Scheingruppen „Art. N" verschwinden.
+- **Die geänderte Überschrift des nächsten §** („samt Überschrift", in beiden
+  Spalten, verschieden) wartet jetzt wie die einseitige auf den §, den die
+  nächste Zeile öffnet, und bleibt eine Zeile. Sie war die letzte Zeile neu
+  eingefügter §§ (AuslBG § 12e, ORF-G § 26a, AWG § 69a) und machte sie
+  prüfpflichtig; und sie lag in fremden §§, die deshalb zurückgehalten
+  wurden — 14 §§ wechseln von zurückgehalten zu bestätigt, darunter VBG
+  § 5c (23/ME) und das Informationssicherheitsgesetz § 9 im Gate-Golden.
+  Gelesen: jeder dieser §§ verliert genau die fremde Überschrift.
+- **Zwei Gründe, die stimmen**, statt „das RIS führt diese Paragraphen nicht"
+  und „ließ sich nicht auflösen": „der Entwurf fügt diese Paragraphen erst
+  ein" (ein § mit Gliederungssymbol unter einer einfügenden, anfügenden oder
+  ersetzenden Anordnung in einem Artikel derselben Stammnorm — 126/ME, wo
+  Artikel 3 den § 8b einfügt und Artikel 4 „Teil II" ihn ändert), und „das
+  geänderte Gesetz ist selbst ein Änderungsgesetz" (116/ME). Nur Wortlaut,
+  kein Urteil.
+- **Kundgemacht, noch nicht in Kraft** (95/ME ÄrzteG § 260, BGBl. I Nr.
+  21/2024, gilt ab 2026-06-01, Stichtag 2026-04-10):
+  `promulgatedBeforeInForce` nimmt die erste Fassung, wo keine vor dem
+  Stichtag beginnt und das BGBl aus einem früheren *Jahr* stammt — ein BGBl
+  desselben Jahres lässt sich aus diesen Feldern nicht auf den Tag datieren.
+- **Das Gesetz über die Promulgationsklausel.** `draftArticles` liest Name und
+  Abkürzung aus der Klausel („Die Gewerbeordnung 1994 - GewO 1994, BGBl. …");
+  `resolveLawByBgbl` nimmt sie als zweiten Zeugen, wo der Artikeltitel nichts
+  entscheidet (28/ME, 55/ME, 27/ME), und sucht mit ihnen nach dem Gesetz, wo
+  die zitierte Stammnorm keines findet: genommen nur bei *gleichem*
+  Kurztitel oder gleicher Abkürzung, einer Stammnorm im Abstand genau eines
+  Zeichens und genau einem Treffer (58/ME „10/2013" statt 10/2012, 108/ME
+  „6/2015" statt 6/2025). 53 von 71 vorher unauflösbaren §§ werden bestätigt
+  — das ist der Beleg, dass es die richtigen Gesetze sind —, 8 zurückgehalten,
+  je aus eigenem Befund (BVergGVS: 36 bestätigt, 5 zurückgehalten; KKG: 3
+  und 2, daher „auffällig" für 108/ME). Das WPFG in 30/ME bleibt mit Absicht
+  ungelöst: zitiert 135/2013, im RIS ein neu erlassenes Gesetz 237/2022 —
+  keine Verschreibung, sondern ein anderes Gesetz. Dieselbe Klausel nutzt
+  „Geltendes Recht" (`amendedLawsService`): die fünf Gesetze stehen dort jetzt
+  unter ihrem RIS-Kurztitel und mit Link.
+
+Der Prüfstand der Konsolidierung (`harness:kons --discover=40 --sammel`)
+bewegt sich um keine Zeile, die Verweigerungen sind byte-gleich.
+
 ### 12.42 Eine Lücke in den RIS-Daten überbrücken — nur mit ihrer Signatur (03.10.2026)
 
 Das Kulturgüterrückgabegesetz (34/ME XXVIII) hatte am Stichtag 2025-07-22
