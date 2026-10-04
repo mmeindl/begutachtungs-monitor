@@ -21,6 +21,7 @@ import type {
 } from '../../../shared/types'
 import { gpHasEnded } from '../../../shared/utils/gp'
 import { lawStationOf } from '../../../shared/utils/lawStations'
+import { parliamentPathname, safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
 import { parseGermanDate, parseIsoDate } from './dates'
 import { absolutizeUrl, extractLinks, stripHtmlToText } from './htmlText'
 
@@ -153,7 +154,17 @@ export function readCommitteeConsultation(phases: RawPhase[] | null | undefined)
 
 const NR_COMMITTEE_PHASE = /^Ausschussberatungen NR$/i
 const COMMITTEE_REPORT_STAGE = /:\s*Bericht\b/
-const NR_REPORT_LINK = /\/gegenstand\/[IVXLC]+\/I\/\d+(?:[/?#]|$)/
+const NR_REPORT_LINK = /^\/gegenstand\/[IVXLC]+\/I\/\d+(?:\/|$)/
+
+/**
+ * Whether a link is the Parliament page `path` describes. Matched against
+ * the PATH of a link on Parliament's host only, so the same path on any
+ * other host is no Gegenstand.
+ */
+function isParliamentPath(url: string, path: RegExp): boolean {
+  const pathname = parliamentPathname(url)
+  return pathname !== null && path.test(pathname)
+}
 
 /**
  * The Nationalrat committee's report on a Vorlage (Ausschussbericht, „11
@@ -174,15 +185,15 @@ export function findCommitteeReport(phases: RawPhase[] | null | undefined): Trac
     for (const stage of phase.stages) {
       const html = stage?.text ?? ''
       if (!COMMITTEE_REPORT_STAGE.test(stripHtmlToText(html))) continue
-      report = extractLinks(html).find((link) => NR_REPORT_LINK.test(link.url)) ?? report
+      report = extractLinks(html).find((link) => isParliamentPath(link.url, NR_REPORT_LINK)) ?? report
     }
   }
   return report
 }
 
 const NR_PLENARY_PHASE = /^Plenarberatungen NR$/i
-const NR_SESSION_LINK = /\/gegenstand\/[IVXLC]+\/NRSITZ\/\d+(?:[/?#]|$)/
-const AMENDMENT_LINK = /\/gegenstand\/[IVXLC]+\/AA\/\d+(?:[/?#]|$)/
+const NR_SESSION_LINK = /^\/gegenstand\/[IVXLC]+\/NRSITZ\/\d+(?:\/|$)/
+const AMENDMENT_LINK = /^\/gegenstand\/[IVXLC]+\/AA\/\d+(?:\/|$)/
 const OUTCOME = /\b(angenommen|abgelehnt)\b/
 const THIRD_READING = /\bdritter Lesung\b/
 
@@ -216,10 +227,10 @@ export function findPlenaryAmendments(phases: RawPhase[] | null | undefined): Pl
       const sessionName = colon > 0 ? text.slice(0, colon).trim() : null
       const links = extractLinks(html)
       for (const link of links) {
-        if (NR_SESSION_LINK.test(link.url) && !sessions.some((s) => s.url === link.url)) sessions.push(link)
+        if (isParliamentPath(link.url, NR_SESSION_LINK) && !sessions.some((s) => s.url === link.url)) sessions.push(link)
       }
       if (sessionName && THIRD_READING.test(text)) thirdReadingIn = sessionName
-      const motion = links.find((link) => AMENDMENT_LINK.test(link.url))
+      const motion = links.find((link) => isParliamentPath(link.url, AMENDMENT_LINK))
       if (!motion || !sessionName) continue
       // The outcome follows the motion's own number; the names before it are not read.
       const after = text.slice(text.indexOf(motion.label) + motion.label.length)
@@ -345,7 +356,7 @@ export interface RvLink {
 }
 
 /**
- * Every /gegenstand/{gp}/I/{nr} link in the process history, in stage order
+ * Every /gegenstand/{gp}/I/{nr} link on Parliament's host in the process history, in stage order
  * = the Regierungsvorlagen this draft produced (ME→RV is 1:n,
  * docs/architecture.md §5). Each carries the date of the stage it sits in —
  * the RV station's date in the SpineRail, available nowhere else.
@@ -354,7 +365,7 @@ export function findRvLinks(trace: TraceStep[]): RvLink[] {
   const found: RvLink[] = []
   for (const step of trace) {
     for (const link of step.links) {
-      const m = /\/gegenstand\/([IVXLC]+)\/I\/(\d+)(?:[/?#]|$)/.exec(link.url)
+      const m = /^\/gegenstand\/([IVXLC]+)\/I\/(\d+)(?:\/|$)/.exec(parliamentPathname(link.url) ?? '')
       if (m?.[1] && m[2]) {
         found.push({
           gp: m[1],
@@ -467,9 +478,12 @@ export function mapDocuments(groups: RawDocumentGroup[] | null | undefined): Dra
     for (const doc of group?.documents ?? []) {
       const link = doc?.link ?? ''
       const type = (doc?.type ?? '').toUpperCase()
-      if (!link) continue
-      if (type === 'PDF') formats.push({ type: 'pdf', url: absolutizeUrl(link) })
-      else if (type === 'HTML') formats.push({ type: 'html', url: absolutizeUrl(link) })
+      // A link the guard refuses is left out like a missing one: the group
+      // keeps its other format, or drops out with none.
+      const url = link ? absolutizeUrl(link) : null
+      if (!url) continue
+      if (type === 'PDF') formats.push({ type: 'pdf', url })
+      else if (type === 'HTML') formats.push({ type: 'html', url })
     }
     if (formats.length > 0) {
       result.push({ title: stripHtmlToText(group?.title ?? '') || 'Dokument', formats })
@@ -639,15 +653,18 @@ function bgblNumberOf(entry: RawBgblLink): string | null {
 /**
  * content.status.bgbllinks[] of the RV → BGBl entry.
  * Selected via `Abfrage=BgblAuth` in the link — NEVER blindly [0]
- * (a "Kunsttext" entry exists alongside it).
+ * (a "Kunsttext" entry exists alongside it). The URL is held to the
+ * upstream allowlist and comes back as https; an entry that fails it is no
+ * entry, as if the Vorlage carried none.
  */
 export function extractBgblLink(
   bgbllinks: RawBgblLink[] | null | undefined,
 ): { number: string | null; url: string } | null {
   if (!Array.isArray(bgbllinks)) return null
   const entry = bgbllinks.find((l) => (l?.link ?? '').includes('Abfrage=BgblAuth'))
-  if (!entry?.link) return null
-  return { number: bgblNumberOf(entry), url: entry.link }
+  const url = safeExternalUrl(entry?.link)
+  if (!entry || !url) return null
+  return { number: bgblNumberOf(entry), url }
 }
 
 /** In procedural order, so the answer does not depend on upstream's ordering. */

@@ -28,6 +28,14 @@ describe('mapDraftRow', () => {
     })
   })
 
+  it('a path off the upstream allowlist falls back to the one gp and inr spell', () => {
+    const row = [...LIST81_ROW]
+    row[7] = 'https://evil.example/gegenstand/XXVIII/ME/133'
+    expect(mapDraftRow(row).parliamentUrl).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/ME/133')
+    row[7] = ''
+    expect(mapDraftRow(row).parliamentUrl).toBe('https://www.parlament.gv.at/gegenstand/XXVIII/ME/133')
+  })
+
   it('AKTIV "N" → active false, empty Fristsort → deadline null', () => {
     const row = [...LIST81_ROW]
     row[11] = 'N'

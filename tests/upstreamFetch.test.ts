@@ -6,6 +6,7 @@ import {
   upstreamBytes,
   upstreamJson,
   UpstreamHttpError,
+  UpstreamRefusedError,
   UpstreamTooLargeError,
   UpstreamUnreachableError,
   USER_AGENT,
@@ -212,5 +213,62 @@ describe('risJson', () => {
     )
     await expect(risJson('https://example.test/ris', { timeoutMs: 100, retries: 2 })).resolves.toEqual({ ok: true })
     expect(calls).toHaveLength(2)
+  })
+})
+
+describe('upstreamHostsOnly', () => {
+  /* The clients whose URL comes out of upstream data set this flag: the
+   * URL and every redirect hop must stay on the upstream allowlist. */
+  const GATED: UpstreamPolicy = { timeoutMs: 1_000, retries: 2, upstreamHostsOnly: true }
+
+  function redirect(location: string, status = 302): Response {
+    return new Response(null, { status, headers: { location } })
+  }
+
+  /** Records the URLs requested, answering the queue in order. */
+  function stubFetchUrls(...answers: Response[]): string[] {
+    const urls: string[] = []
+    let i = 0
+    vi.stubGlobal('fetch', (url: string) => {
+      urls.push(url)
+      return Promise.resolve(answers[Math.min(i++, answers.length - 1)]!.clone())
+    })
+    return urls
+  }
+
+  it('never requests a URL off the allowlist, and does not retry it', async () => {
+    const urls = stubFetchUrls(jsonResponse({ ok: true }))
+    await expect(upstreamJson('http://127.0.0.1:3000/api', GATED)).rejects.toThrow(UpstreamRefusedError)
+    await expect(upstreamJson('https://www.parlament.gv.at.evil.example/x', GATED)).rejects.toThrow(UpstreamRefusedError)
+    expect(urls).toEqual([])
+  })
+
+  it('upgrades http before the request', async () => {
+    const urls = stubFetchUrls(jsonResponse({ ok: true }))
+    await upstreamJson('http://www.ris.bka.gv.at/x', GATED)
+    expect(urls).toEqual(['https://www.ris.bka.gv.at/x'])
+  })
+
+  it('follows a redirect within the allowlist by hand', async () => {
+    const urls = stubFetchUrls(redirect('/dokument/b.html'), jsonResponse({ ok: true }))
+    await expect(upstreamJson('https://www.parlament.gv.at/dokument/a.html', GATED)).resolves.toEqual({ ok: true })
+    expect(urls).toEqual(['https://www.parlament.gv.at/dokument/a.html', 'https://www.parlament.gv.at/dokument/b.html'])
+  })
+
+  it('refuses a redirect off the allowlist without requesting it', async () => {
+    const urls = stubFetchUrls(redirect('http://169.254.169.254/latest/meta-data/'), jsonResponse({ ok: true }))
+    await expect(upstreamJson('https://www.parlament.gv.at/x', GATED)).rejects.toThrow(UpstreamRefusedError)
+    expect(urls).toEqual(['https://www.parlament.gv.at/x'])
+  })
+
+  it('gives up on a redirect loop', async () => {
+    stubFetchUrls(redirect('https://www.parlament.gv.at/x'))
+    await expect(upstreamJson('https://www.parlament.gv.at/x', GATED)).rejects.toThrow(UpstreamHttpError)
+  })
+
+  it('asks fetch not to follow redirects itself', async () => {
+    const { calls } = stubFetch(jsonResponse({ ok: true }))
+    await upstreamJson('https://www.parlament.gv.at/x', GATED)
+    expect(calls[0]!.redirect).toBe('manual')
   })
 })

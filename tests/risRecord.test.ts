@@ -88,6 +88,25 @@ describe('flattenRisRecord', () => {
     })
   })
 
+  it('reads a ContentUrl off the upstream allowlist as a missing format, and upgrades http', () => {
+    const flat = flattenRisRecord(
+      record([
+        {
+          ContentType: 'MainDocument',
+          Name: 'Hauptdokument',
+          Urls: {
+            ContentUrl: [
+              { DataType: 'Xml', Url: 'http://127.0.0.1:3000/x.xml' },
+              { DataType: 'Html', Url: 'javascript:alert(1)' },
+              { DataType: 'Pdf', Url: 'http://ogd.ris.bka.gv.at/x.pdf' },
+            ],
+          },
+        },
+      ]),
+    )!
+    expect(flat.mainDocument).toEqual({ xml: null, html: null, pdf: 'https://ogd.ris.bka.gv.at/x.pdf' })
+  })
+
   it('returns null without a technical ID — the only identity these records have', () => {
     expect(flattenRisRecord({ Data: { Metadaten: { Technisch: {} } } })).toBeNull()
     expect(flattenRisRecord(null)).toBeNull()

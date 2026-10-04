@@ -108,6 +108,14 @@ describe('findRvLinks / findLastRvLink', () => {
     ])
   })
 
+  it('reads /gegenstand/ only on Parliament\'s host', () => {
+    const trace = parseStages([
+      { text: '<a href="https://www.ris.bka.gv.at/gegenstand/XXVIII/I/1">1 d.B.</a>' },
+      { text: '<a href="https://evil.example/gegenstand/XXVIII/I/2">2 d.B.</a>' },
+    ])
+    expect(findRvLinks(trace)).toEqual([])
+  })
+
   it('takes the LAST RV link (ME→RV is 1:n)', () => {
     expect(findLastRvLink(parseStages(SPLIT))?.inr).toBe(733)
   })
@@ -173,6 +181,26 @@ describe('mapDocuments / mapTextEvolution', () => {
           { type: 'pdf', url: 'https://www.parlament.gv.at/dokument/XXVIII/ME/88/fname_1744270.pdf' },
           { type: 'html', url: 'https://www.parlament.gv.at/dokument/XXVIII/ME/88/fnameorig_1744270.html' },
         ],
+      },
+    ])
+  })
+
+  it('drops a format whose link fails the upstream allowlist, and a group left empty', () => {
+    expect(
+      mapDocuments([
+        {
+          title: 'Gesetzestext',
+          documents: [
+            { link: 'https://evil.example/x.pdf', type: 'PDF' },
+            { link: '/dokument/XXVIII/ME/88/fnameorig_1744270.html', type: 'HTML' },
+          ],
+        },
+        { title: 'Kurzinformation', documents: [{ link: 'javascript:alert(1)', type: 'PDF' }] },
+      ]),
+    ).toEqual([
+      {
+        title: 'Gesetzestext',
+        formats: [{ type: 'html', url: 'https://www.parlament.gv.at/dokument/XXVIII/ME/88/fnameorig_1744270.html' }],
       },
     ])
   })
@@ -319,9 +347,17 @@ describe('extractBgblLink', () => {
   it('selects the BgblAuth entry, never blindly [0]', () => {
     expect(extractBgblLink(BGBLLINKS)).toEqual({
       number: 'Bundesgesetzblatt I Nr. 37/2026',
-      url: 'http://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_I_37',
+      // Upgraded: upstream still sends http, RIS serves https.
+      url: 'https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=BGBLA_2026_I_37',
     })
     expect(extractBgblLink([...BGBLLINKS].reverse())).toEqual(extractBgblLink(BGBLLINKS))
+  })
+
+  it('a BgblAuth link off the upstream allowlist is no entry', () => {
+    expect(
+      extractBgblLink([{ title: 'Bundesgesetzblatt I Nr. 37/2026', link: 'https://evil.example/Dokument.wxe?Abfrage=BgblAuth' }]),
+    ).toBeNull()
+    expect(extractBgblLink([{ title: 'x', link: 'javascript:alert(1)//Abfrage=BgblAuth' }])).toBeNull()
   })
 
   it('no BgblAuth entry / no links → null', () => {

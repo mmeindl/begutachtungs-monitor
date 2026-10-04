@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DraftDocument } from '#shared/types'
+import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
 
 withDefaults(
   defineProps<{
@@ -14,8 +15,9 @@ withDefaults(
 const formatNames: Record<'pdf' | 'html', string> = { pdf: 'PDF', html: 'HTML' }
 const FORMAT_ORDER = ['pdf', 'html'] as const
 
+/** A format whose URL fails `isSafeLinkHref` counts as missing — an empty column. */
 function formatOf(doc: DraftDocument, type: 'pdf' | 'html') {
-  return doc.formats.find((f) => f.type === type) ?? null
+  return doc.formats.find((f) => f.type === type && isSafeLinkHref(f.url)) ?? null
 }
 
 /* The standard draft-document types, explained for non-insiders — the

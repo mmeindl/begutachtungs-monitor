@@ -8,7 +8,8 @@
  * in sync, and it is what the (now removed) per-statement redirect needed,
  * not what the lookup needs.
  */
-import { GP_RE, INR_RE } from './gp'
+import { GP_RE, parseInr } from './gp'
+import { parliamentPathname } from './safeExternalUrl'
 
 export type StatementItemTypeRef = 'SNME' | 'SN'
 
@@ -21,10 +22,11 @@ export interface StatementRefParts {
 /**
  * "XXVIII/SNME/5408" out of
  * "https://www.parlament.gv.at/gegenstand/XXVIII/SNME/5408".
- * Null for any other URL — a Stellungnahme is the only thing this addresses.
+ * Null for any other URL — a Stellungnahme is the only thing this addresses,
+ * and only on Parliament's host: the same path anywhere else is not one.
  */
 export function statementRefFromPageUrl(pageUrl: string | null | undefined): string | null {
-  const m = /\/gegenstand\/([IVXLC]+)\/(SNME|SN)\/(\d+)(?:[/?#]|$)/.exec(pageUrl ?? '')
+  const m = /^\/gegenstand\/([IVXLC]+)\/(SNME|SN)\/(\d+)(?:\/|$)/.exec(parliamentPathname(pageUrl) ?? '')
   return m ? `${m[1]}/${m[2]}/${m[3]}` : null
 }
 
@@ -37,6 +39,7 @@ export function parseStatementRef(ref: string): StatementRefParts | null {
   const ityp = itypRaw.toUpperCase()
   if (!GP_RE.test(gp)) return null
   if (ityp !== 'SNME' && ityp !== 'SN') return null
-  if (!INR_RE.test(inrRaw) || Number(inrRaw) < 1) return null
-  return { gp, ityp, inr: Number(inrRaw) }
+  const inr = parseInr(inrRaw)
+  if (inr === null) return null
+  return { gp, ityp, inr }
 }

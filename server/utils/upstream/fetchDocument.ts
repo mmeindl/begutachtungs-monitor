@@ -8,6 +8,7 @@
 import {
   upstreamBytes,
   UpstreamHttpError,
+  UpstreamRefusedError,
   UpstreamTooLargeError,
   type UpstreamPolicy,
 } from './fetch'
@@ -26,6 +27,9 @@ const HTML_POLICY: UpstreamPolicy = {
   timeoutMs: HTML_TIMEOUT_MS,
   retries: 2,
   maxBytes: HTML_MAX_BYTES,
+  // Every URL here comes out of upstream data (a document link, a RIS
+  // `ContentUrl`): held to the upstream hosts, redirects included.
+  upstreamHostsOnly: true,
 }
 
 /** One published Gesetzestext HTML, by URL. Leaf cache. */
@@ -37,6 +41,9 @@ export const fetchDocument = defineCachedFunction(
     } catch (err) {
       if (err instanceof UpstreamTooLargeError) {
         throw createError({ statusCode: 502, statusMessage: 'Dokument zu groß für den Vergleich' })
+      }
+      if (err instanceof UpstreamRefusedError) {
+        throw createError({ statusCode: 502, statusMessage: 'Dokument nicht abrufbar (Adresse abgelehnt)' })
       }
       if (err instanceof UpstreamHttpError) {
         throw createError({ statusCode: 502, statusMessage: `Dokument nicht abrufbar (Status ${err.status})` })

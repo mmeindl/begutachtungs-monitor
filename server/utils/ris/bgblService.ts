@@ -25,6 +25,7 @@ import { getRisConsultation, getRisOnlyForGp } from './risOnly'
 import { withRisActiveOn } from './risRecord'
 import { RIS_API_BASE, risJson, type UpstreamPolicy } from '../upstream/fetch'
 import { bgblLong, bgblShort, todayIso } from '#shared/utils/format'
+import { safeExternalUrl } from '#shared/utils/safeExternalUrl'
 
 const TIMEOUT_MS = 20_000
 /**
@@ -262,9 +263,11 @@ export const getBgblDocument = defineCachedFunction(
     const urls = [main?.Urls?.ContentUrl ?? []].flat()
     return {
       id,
-      xml: urls.find((u: any) => u?.DataType === 'Xml')?.Url ?? null,
-      html: urls.find((u: any) => u?.DataType === 'Html')?.Url ?? null,
-      page: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${id}`,
+      // Held to the upstream allowlist: the comparison fetches the XML and
+      // the page links the HTML. A refused URL reads as a missing format.
+      xml: safeExternalUrl(urls.find((u: any) => u?.DataType === 'Xml')?.Url),
+      html: safeExternalUrl(urls.find((u: any) => u?.DataType === 'Html')?.Url),
+      page: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${encodeURIComponent(id)}`,
       kurztitel: String(ref?.Data?.Metadaten?.Bundesrecht?.Kurztitel ?? '').trim() || null,
       datum: String(ref?.Data?.Metadaten?.Bundesrecht?.BgblAuth?.Ausgabedatum ?? '').slice(0, 10) || null,
     }
@@ -310,7 +313,7 @@ export async function findBgblIForVorlage(
   return {
     number: bgblLong(hit.nummer),
     datum: hit.datum,
-    url: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${hit.id}`,
+    url: `https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=BgblAuth&Dokumentnummer=${encodeURIComponent(hit.id)}`,
   }
 }
 
@@ -365,10 +368,17 @@ function outcomeOf(
   }
 }
 
+/**
+ * A record without a Frist is a real state and is cached as `unbekannt`. An
+ * id the corpus does not hold is not a state at all: it throws, and errors
+ * are never cached — otherwise every syntactically valid `BEGUT_…` anyone
+ * makes up would leave an entry behind.
+ */
 export const getBgblOutcome = defineCachedFunction(
   async (risId: string): Promise<BgblOutcome> => {
     const detail = await getRisConsultation(risId)
-    if (!detail?.deadline) return UNKNOWN
+    if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
+    if (!detail.deadline) return UNKNOWN
     const records = (await Promise.all(yearsFor(detail.deadline).map((y) => getBgblTeil2Year(y)))).flat()
     return outcomeOf(detail, joinDraftToBgbl(draftOf(detail), records))
   },

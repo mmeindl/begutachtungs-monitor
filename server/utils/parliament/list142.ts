@@ -107,9 +107,10 @@ export function pickStatementDocument(
 ): StatementDocument {
   for (const group of groups ?? []) {
     for (const doc of group?.documents ?? []) {
-      if ((doc?.type ?? '').toUpperCase() === 'PDF' && doc?.link) {
-        return { kind: 'pdf', url: absolutizeUrl(doc.link) }
-      }
+      if ((doc?.type ?? '').toUpperCase() !== 'PDF' || !doc?.link) continue
+      // A link the guard refuses is no document; the page still is.
+      const url = absolutizeUrl(doc.link)
+      if (url) return { kind: 'pdf', url }
     }
   }
   return { kind: 'page', url: pageUrl }

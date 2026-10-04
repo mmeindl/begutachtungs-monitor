@@ -42,7 +42,8 @@ const PDF_TIMEOUT_MS = 25_000
  */
 const PDF_MAX_BYTES = 16 * 1024 * 1024
 /** No retry: this client never had one, and the bytes are fetched once per URL. */
-const PDF_POLICY: UpstreamPolicy = { timeoutMs: PDF_TIMEOUT_MS, retries: 0, maxBytes: PDF_MAX_BYTES }
+// The annex URL comes out of upstream data: held to the upstream hosts.
+const PDF_POLICY: UpstreamPolicy = { timeoutMs: PDF_TIMEOUT_MS, retries: 0, maxBytes: PDF_MAX_BYTES, upstreamHostsOnly: true }
 
 /**
  * The annex PDF as base64.

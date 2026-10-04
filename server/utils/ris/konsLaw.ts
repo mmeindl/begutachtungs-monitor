@@ -20,6 +20,7 @@ import { sameRisStammnorm, type BgblCitation } from '../lawtext/bgblCitation'
 import { bestNameScore, pickClearWinner } from '../text/clearWinner'
 import { namesCompatible } from '../lawtext/lawNames'
 import { RIS_API_BASE, upstreamJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
+import { safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
 
 const TIMEOUT_MS = 20_000
 /**
@@ -34,6 +35,9 @@ const KONS_POLICY: UpstreamPolicy = {
   retries: 2,
   backoffMs: (attempt) => 600 * attempt,
   retryOnHttpError: true,
+  // `getText` reads URLs out of RIS records (the Erläuterungen, a § XML):
+  // held to the upstream hosts.
+  upstreamHostsOnly: true,
 }
 /**
  * More hits than this means the filter was ignored (the whole corpus is
@@ -93,7 +97,8 @@ export function konsRefOf(ref: any): KonsParagraphRef | null {
   const b = meta?.Bundesrecht?.BrKons
   if (!nor || !b) return null
   const main = asArray<any>(ref?.Data?.Dokumentliste?.ContentReference).find((c) => c?.ContentType === 'MainDocument')
-  const xmlUrl = asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url ?? null
+  // Held to the upstream allowlist: the server fetches it.
+  const xmlUrl = safeExternalUrl(asArray<any>(main?.Urls?.ContentUrl).find((u) => u?.DataType === 'Xml')?.Url)
   const label = String(b.ArtikelParagraphAnlage ?? '')
   return {
     nor,

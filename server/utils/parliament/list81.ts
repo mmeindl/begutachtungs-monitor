@@ -10,7 +10,7 @@
  */
 import type { DraftSummary } from '../../../shared/types'
 import { parseFristsort, parseGermanDate, parseIsoDate } from './dates'
-import { absolutizeUrl, stripHtmlToText } from './htmlText'
+import { absolutizeUrl, PARLIAMENT_BASE, stripHtmlToText } from './htmlText'
 import { asNumber, asString } from './rowCells'
 
 // ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ import { asNumber, asString } from './rowCells'
 export function mapDraftRow(row: unknown[]): DraftSummary {
   const gp = asString(row[0])
   const inr = asNumber(row[2])
-  const path = asString(row[7]) || `/gegenstand/${gp}/ME/${inr}`
+  const own = `/gegenstand/${gp}/ME/${inr}`
   return {
     gp,
     inr,
@@ -40,7 +40,9 @@ export function mapDraftRow(row: unknown[]): DraftSummary {
     deadline: parseFristsort(row[14] as number | string | null | undefined),
     active: row[11] === 'J',
     statementCount: asNumber(row[13]),
-    parliamentUrl: absolutizeUrl(path),
+    // Upstream's own path where it passes the guard, else the one its
+    // three keys spell — the row keeps a page either way.
+    parliamentUrl: absolutizeUrl(asString(row[7]) || own) ?? `${PARLIAMENT_BASE}${own}`,
   }
 }
 

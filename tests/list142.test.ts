@@ -219,6 +219,25 @@ describe('pickStatementDocument', () => {
     )
   })
 
+  it('skips a PDF link off the upstream allowlist — the page stands in', () => {
+    const groups = [
+      {
+        title: 'Stellungnahme',
+        documents: [
+          { link: 'http://127.0.0.1:3000/internal.pdf', type: 'PDF' },
+          { link: '/dokument/XXVII/SNME/81457/imfname_942193.pdf', type: 'PDF' },
+        ],
+      },
+    ]
+    expect(pickStatementDocument(groups, PAGE).url).toBe(
+      'https://www.parlament.gv.at/dokument/XXVII/SNME/81457/imfname_942193.pdf',
+    )
+    expect(pickStatementDocument([{ title: 'x', documents: [{ link: 'https://evil.example/a.pdf', type: 'PDF' }] }], PAGE)).toEqual({
+      kind: 'page',
+      url: PAGE,
+    })
+  })
+
   it('falls back to the page for web-form submissions and odd payloads', () => {
     expect(pickStatementDocument([], PAGE)).toEqual({ kind: 'page', url: PAGE })
     expect(pickStatementDocument(null, PAGE)).toEqual({ kind: 'page', url: PAGE })

@@ -5,6 +5,7 @@
  * so vitest can execute the module directly.
  */
 import type { TraceLink } from '../../../shared/types'
+import { safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
 
 export const PARLIAMENT_BASE = 'https://www.parlament.gv.at'
 
@@ -69,12 +70,26 @@ export function decodeEntities(s: string): string {
 }
 
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
-/** Make site-relative parliament links absolute; leave absolute ones untouched. */
-export function absolutizeUrl(url: string): string {
+/**
+ * A link out of Parliament's data as an absolute URL the server may fetch
+ * and the page may link — or null.
+ *
+ * Resolved against Parliament's site the way a browser on that site would
+ * resolve it, then held to the upstream allowlist (`safeExternalUrl`): a
+ * site-relative path always passes, an absolute link only to an allowlisted
+ * host. Everything else — another host, `javascript:`, `mailto:` — is
+ * dropped, and callers treat null as „no link".
+ */
+export function absolutizeUrl(url: string): string | null {
   const trimmed = url.trim()
-  if (/^https?:\/\//i.test(trimmed)) return trimmed
-  if (trimmed.startsWith('//')) return `https:${trimmed}`
-  return `${PARLIAMENT_BASE}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`
+  if (!trimmed) return null
+  let resolved: string
+  try {
+    resolved = new URL(trimmed, `${PARLIAMENT_BASE}/`).href
+  } catch {
+    return null
+  }
+  return safeExternalUrl(resolved)
 }
 
 /** HTML → single-line plain text (tags removed, entities decoded, whitespace collapsed). */
@@ -86,7 +101,11 @@ export function stripHtmlToText(html: string): string {
     .trim()
 }
 
-/** Extract all <a href> pairs from an HTML fragment, absolutizing the URLs. */
+/**
+ * Extract all <a href> pairs from an HTML fragment, absolutizing the URLs.
+ * A link `absolutizeUrl` refuses is left out; its text stays in the stage's
+ * plain text, which is read separately.
+ */
 export function extractLinks(html: string): TraceLink[] {
   const links: TraceLink[] = []
   const re = /<a\b[^>]*href\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi
@@ -95,6 +114,7 @@ export function extractLinks(html: string): TraceLink[] {
     const href = (match[1] ?? match[2] ?? '').trim()
     if (!href) continue
     const url = absolutizeUrl(href)
+    if (!url) continue
     const label = stripHtmlToText(match[3] ?? '') || url
     links.push({ label, url })
   }

@@ -230,6 +230,16 @@ describe('welche Jahrgänge gefragt werden', () => {
     expect(yearsAsked()).toEqual([2026, 2027, 2028])
   })
 
+  /* A made-up id is not a state: it throws, and an error is never cached,
+   * so no entry is left behind for it. A record WITHOUT a Frist below is a
+   * real state and does get one. */
+  it('throws 404 for an id the corpus does not hold, without asking RIS', async () => {
+    pin('2026-09-26')
+    getRisConsultation.mockResolvedValue(null)
+    await expect(getBgblOutcome('BEGUT_UNBEKANNT')).rejects.toMatchObject({ statusCode: 404 })
+    expect(asked).toEqual([])
+  })
+
   /* Ohne Frist gibt es kein Fenster und also keine Frage an RIS — die vierte
    * Antwort `unbekannt`, für das, was das Fenster gar nicht entscheiden kann. */
   it('fragt gar nicht, wo keine Frist steht', async () => {

@@ -10,6 +10,7 @@
  */
 import type { RisConsultation } from '../../../shared/types'
 import { todayIso } from '../../../shared/utils/format'
+import { safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
 import type { RisBegutRecord } from './risJoin'
 
 /** The formats RIS offers for one document of a Begut record. */
@@ -324,7 +325,10 @@ export function flattenRisRecord(doc: any): RisBegutFlat | null {
   const formatsOf = (ref: any): RisDocumentUrls | null => {
     if (!ref) return null
     const list = asArray<any>(ref?.Urls?.ContentUrl)
-    const of = (type: string) => str(list.find((u) => u?.DataType === type)?.Url)
+    // Held to the upstream allowlist here, where it leaves the record: the
+    // server fetches these and the page links them. A refused URL reads as
+    // a missing format.
+    const of = (type: string) => safeExternalUrl(str(list.find((u) => u?.DataType === type)?.Url))
     return { html: of('Html'), xml: of('Xml'), pdf: of('Pdf') }
   }
   const nameOf = (c: any) => String(c?.Name ?? '')

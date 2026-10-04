@@ -70,7 +70,9 @@ const SEARCH_TIMEOUT_MS = 20_000
  * No retry — as before the shared client, and for the reason stated at
  * `searchRisIds`: someone is waiting on this request.
  */
-const SEARCH_POLICY: UpstreamPolicy = { timeoutMs: SEARCH_TIMEOUT_MS, retries: 0 }
+// The document fetches below take their URLs from RIS records: held to the
+// upstream hosts, like the API queries that share the policy.
+const SEARCH_POLICY: UpstreamPolicy = { timeoutMs: SEARCH_TIMEOUT_MS, retries: 0, upstreamHostsOnly: true }
 /**
  * This many records get a place of the hit — the first of that many in the
  * order RIS names them. Over the running Begutachtungen it never binds (7

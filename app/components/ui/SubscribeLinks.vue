@@ -30,7 +30,7 @@ const { webcalUrl, googleCalUrl } = useFeedUrls()
   Keine Frist verpassen:
   <template v-if="ministry">
     <ExternalLink
-      :href="`/feed.xml?ressort=${ministry}`"
+      :href="`/feed.xml?ressort=${encodeURIComponent(ministry)}`"
       class="tap-target link-inline font-medium"
     >RSS-Feed für dieses Ministerium</ExternalLink>
     ·

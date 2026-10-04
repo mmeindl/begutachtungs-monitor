@@ -37,18 +37,28 @@
  * Not every link that leaves the page is one of these: the `webcal://`
  * link in `SubscribeLinks` opens an app, not a window, and stays a plain
  * <a> (see there).
+ *
+ * An `href` that `isSafeLinkHref` refuses (a `javascript:` URL, a `//host`
+ * path) renders the label as plain text — the second line behind the
+ * server, which already holds upstream URLs to the allowlist.
  */
-defineProps<{
+import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
+
+const props = defineProps<{
   href: string
 }>()
+
+const safe = computed(() => isSafeLinkHref(props.href))
 </script>
 
 <template>
   <a
+    v-if="safe"
     :href="href"
     target="_blank"
     rel="noopener"
   >
     <slot /><span aria-hidden="true">&nbsp;↗</span><span class="sr-only"> (neues Fenster)</span>
   </a>
+  <span v-else><slot /></span>
 </template>

@@ -7,7 +7,7 @@
  * Row indices: docs/architecture.md §5 / docs/api-exploration.md §101.
  */
 import { parseFristsort } from './dates'
-import { absolutizeUrl, stripHtmlToText } from './htmlText'
+import { absolutizeUrl, PARLIAMENT_BASE, stripHtmlToText } from './htmlText'
 import { asNumber, asString } from './rowCells'
 
 // ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ export interface VorlageRow {
 export function mapVorlageRow(row: unknown[]): VorlageRow {
   const gp = asString(row[0])
   const inr = asNumber(row[2])
-  const path = asString(row[14]) || `/gegenstand/${gp}/I/${inr}`
+  const own = `/gegenstand/${gp}/I/${inr}`
   return {
     gp,
     inr,
@@ -52,6 +52,8 @@ export function mapVorlageRow(row: unknown[]): VorlageRow {
     // display column next to it is dd.mm.yyyy and stays unread (§5).
     date: parseFristsort(row[8] as number | string | null | undefined) ?? '',
     status: asString(row[10]),
-    parliamentUrl: absolutizeUrl(path),
+    // Upstream's own path where it passes the guard, else the one its
+    // three keys spell — the row keeps a page either way.
+    parliamentUrl: absolutizeUrl(asString(row[14]) || own) ?? `${PARLIAMENT_BASE}${own}`,
   }
 }

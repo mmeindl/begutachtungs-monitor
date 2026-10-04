@@ -28,6 +28,12 @@ describe('statementRefFromPageUrl', () => {
     // The Ministerialentwurf itself is not a Stellungnahme.
     expect(statementRefFromPageUrl('https://www.parlament.gv.at/gegenstand/XXVIII/ME/132')).toBeNull()
   })
+
+  it('reads the path only on Parliament\'s host', () => {
+    expect(statementRefFromPageUrl('https://evil.example/gegenstand/XXVIII/SNME/5408')).toBeNull()
+    expect(statementRefFromPageUrl('https://www.parlament.gv.at.evil.example/gegenstand/XXVIII/SNME/5408')).toBeNull()
+    expect(statementRefFromPageUrl('https://evil.example/?u=/gegenstand/XXVIII/SNME/5408')).toBeNull()
+  })
 })
 
 describe('parseStatementRef', () => {
@@ -36,10 +42,9 @@ describe('parseStatementRef', () => {
     expect(parseStatementRef('xxviii/snme/5408')).toEqual({ gp: 'XXVIII', ityp: 'SNME', inr: 5408 })
   })
 
-  /* The same shape guard the redirect endpoint applies (GP_RE is a character
-   * class, not a roman-numeral parser): its job is to refuse input that must
-   * not become an upstream URL. A well-formed but nonexistent GP costs a
-   * lookup that fails and is dropped from the answer. */
+  /* The shape guard the batch endpoint applies: its job is to refuse input
+   * that must not become an upstream URL. A well-formed but nonexistent GP
+   * costs a lookup that fails and is dropped from the answer. */
   it('refuses malformed refs instead of building a request out of them', () => {
     expect(parseStatementRef('XXVIII/SNME')).toBeNull()
     expect(parseStatementRef('XXVIII/SNME/5408/extra')).toBeNull()
@@ -49,5 +54,8 @@ describe('parseStatementRef', () => {
     expect(parseStatementRef('XXVIII/SNME/-3')).toBeNull()
     expect(parseStatementRef('XXVIII/SNME/abc')).toBeNull()
     expect(parseStatementRef('')).toBeNull()
+    // Bounded like every other GP and INR: no minted keys, no `Infinity`.
+    expect(parseStatementRef(`${'I'.repeat(500)}/SNME/1`)).toBeNull()
+    expect(parseStatementRef(`XXVIII/SNME/${'9'.repeat(400)}`)).toBeNull()
   })
 })

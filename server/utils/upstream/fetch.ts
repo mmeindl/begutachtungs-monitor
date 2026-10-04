@@ -15,6 +15,8 @@
  * from RIS is a missing document. The caller that knows translates.
  */
 
+import { safeExternalUrl } from '../../../shared/utils/safeExternalUrl'
+
 /** One identity for every request this server makes (decided 22.09.2026). */
 export const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-monitor.at)'
 
@@ -54,6 +56,15 @@ export interface UpstreamPolicy {
    * their own, which is what this replaces (23.09.2026).
    */
   userAgent?: string
+  /**
+   * Fetch only URLs on the upstream allowlist (`safeExternalUrl`), and follow
+   * redirects by hand so every hop is held to it too. Set by every client
+   * whose URL comes out of upstream DATA rather than from a constant here —
+   * a document link, a RIS `ContentUrl` — so a compromised upstream cannot
+   * point this server at an internal address. A refused URL throws
+   * `UpstreamRefusedError` and is never requested.
+   */
+  upstreamHostsOnly?: boolean
 }
 
 /** Base of the errors this module throws, so a caller can match on one class. */
@@ -93,6 +104,15 @@ export class RisEnvelopeError extends UpstreamError {
   }
 }
 
+/** A URL, or a redirect target, off the upstream allowlist. Never requested, never retried. */
+export class UpstreamRefusedError extends UpstreamError {
+  readonly retryable = false
+  constructor(readonly url: string) {
+    super(`Adresse außerhalb der Quellen abgelehnt: ${url}`)
+    this.name = 'UpstreamRefusedError'
+  }
+}
+
 /** Every attempt failed. `cause` is the last failure, whatever kind it was. */
 export class UpstreamUnreachableError extends UpstreamError {
   readonly retryable = false
@@ -105,6 +125,9 @@ export class UpstreamUnreachableError extends UpstreamError {
 function requestInit(policy: UpstreamPolicy): RequestInit {
   return {
     method: policy.method ?? 'GET',
+    // Manual where the hosts are held to the allowlist: `fetch` would
+    // otherwise follow a redirect to any host before anything could look.
+    ...(policy.upstreamHostsOnly ? { redirect: 'manual' as const } : {}),
     headers: {
       'User-Agent': policy.userAgent ?? USER_AGENT,
       ...(policy.accept ? { Accept: policy.accept } : {}),
@@ -129,14 +152,23 @@ async function withRetries<T>(
   policy: UpstreamPolicy,
   consume: (res: Response) => Promise<T> | T,
 ): Promise<T> {
+  if (policy.upstreamHostsOnly) {
+    const safe = safeExternalUrl(url)
+    if (!safe) throw new UpstreamRefusedError(url)
+    url = safe
+  }
   let lastError: unknown
   for (let attempt = 0; attempt <= policy.retries; attempt++) {
     if (attempt > 0 && policy.backoffMs) await sleep(policy.backoffMs(attempt))
 
     let res: Response
     try {
-      res = await fetch(url, requestInit(policy))
+      res = policy.upstreamHostsOnly
+        ? await fetchWithinUpstreams(url, requestInit(policy))
+        : await fetch(url, requestInit(policy))
     } catch (err) {
+      // A refused hop or a broken redirect chain is an answer, not a bad minute.
+      if (err instanceof UpstreamError && !err.retryable) throw err
       // Network error or timeout.
       lastError = err
       continue
@@ -156,6 +188,39 @@ async function withRetries<T>(
     }
   }
   throw new UpstreamUnreachableError(url, lastError)
+}
+
+/** Redirect hops followed by hand before the chain counts as a failure. */
+const MAX_REDIRECTS = 5
+
+/**
+ * `fetch` with redirects followed by hand, each target held to the upstream
+ * allowlist before it is requested. A 303, and a 301/302 after a POST, turn
+ * into a GET without a body, as `fetch` itself would do.
+ */
+async function fetchWithinUpstreams(url: string, init: RequestInit): Promise<Response> {
+  let current = url
+  let currentInit = init
+  for (let hop = 0; ; hop++) {
+    const res = await fetch(current, currentInit)
+    if (res.status < 300 || res.status >= 400 || res.status === 304) return res
+    const location = res.headers.get('location')
+    await res.body?.cancel()
+    if (!location) throw new UpstreamHttpError(res.status, current)
+    if (hop >= MAX_REDIRECTS) throw new UpstreamHttpError(res.status, current)
+    let target: string | null
+    try {
+      target = safeExternalUrl(new URL(location, current).href)
+    } catch {
+      target = null
+    }
+    if (!target) throw new UpstreamRefusedError(location)
+    const method = (currentInit.method ?? 'GET').toUpperCase()
+    if (res.status === 303 || ((res.status === 301 || res.status === 302) && method === 'POST')) {
+      currentInit = { ...currentInit, method: 'GET', body: undefined }
+    }
+    current = target
+  }
 }
 
 /**
