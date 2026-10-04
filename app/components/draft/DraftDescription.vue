@@ -64,15 +64,15 @@ const sections = computed<Section[]>(() => {
          before that the open section carried an <h3> and the closed one a
          <span>, so the page's outline depended on what the reader happened
          to have open). Open, the same h3 face without the fold.
-         The border-t stayed when the fold moved into `FoldSection`
-         (04.10.2026), although the „Dokumente" folds dropped theirs on
-         03.10.2026; whether it should go here too is still open. -->
+         No border-t since 04.10.2026, as at the „Dokumente" folds
+         (03.10.2026): the hairline outranked the section boundary, and the
+         summary's hover ground and the chevron carry the fold alone. -->
     <component
       :is="section.collapsed ? FoldSection : 'div'"
       v-for="(section, s) in sections"
       :key="s"
       v-bind="section.collapsed ? { heading: section.heading ?? '', size: 'base' } : {}"
-      :class="['mt-5 first:mt-0', section.collapsed ? 'border-t border-hairline' : '']"
+      class="mt-5 first:mt-0"
     >
       <h3 v-if="!section.collapsed && section.heading" class="text-base font-semibold text-ink">
         {{ section.heading }}

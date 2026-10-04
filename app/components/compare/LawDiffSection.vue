@@ -21,7 +21,7 @@
  */
 import type { LawDiffSegment, LawDiffUnit, LawStationId, ReasoningDiffEntry } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
-import { formatDateDe } from '#shared/utils/format'
+import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
 import { type DiffBadge, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
@@ -146,6 +146,30 @@ const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(par
 const sentencesShown = computed(() => status.value !== 'error' && !!data.value?.available)
 /** A list to read, and with it the view switch and the search. */
 const hasList = computed(() => status.value === 'success' && !!data.value?.available && data.value.units.length > 0)
+
+/**
+ * The screen-reader announcement once the comparison is there (04.10.2026) —
+ * the last of the three sections to get one: the list replaced the skeleton
+ * mutely, and whoever reads the page linearly waited for an answer that
+ * never came. The same mechanics as the Textgegenüberstellung's: empty while
+ * loading, because the skeleton's sentence says that already and a region
+ * that carries text when it is mounted is read out at once.
+ *
+ * It counts the changes, not the units: the unchanged ones are context, and
+ * „413 Paragraphen" for a comparison with five changes would announce the
+ * wrong thing. A step switch is announced only where its count differs: the
+ * previous list stays on screen until the next arrives, so the region never
+ * passes through „loading" in between (`useLawDiffStep`).
+ */
+const loadAnnouncement = computed(() => {
+  if (status.value === 'pending' || status.value === 'idle') return ''
+  if (status.value === 'error' || !data.value) return 'Der Vergleich ist gerade nicht verfügbar.'
+  if (!data.value.available) return data.value.unavailableReason ?? ''
+  const changes = data.value.units.filter((u) => badgeOf(u) !== 'unchanged').length
+  return changes
+    ? `Vergleich geladen, ${countLabelDe(changes, 'Änderung', 'Änderungen')}.`
+    : 'Vergleich geladen, keine Änderungen.'
+})
 
 /**
  * The section's heading never changes, and the question of the selected pair
@@ -439,6 +463,8 @@ const droppedNote = computed(() =>
   <!-- id: the outcome card above links here ("der Vergleich der beiden Texte"). -->
   <div :id="anchorId" ref="root" class="scroll-mt-24">
     <PageSubsection :heading="heading">
+      <p class="sr-only" role="status">{{ loadAnnouncement }}</p>
+
       <template v-if="sentencesShown">
         <!-- Above the list only what is specific to THIS comparison. The
              ME→RV counts — how much changed, against the period's range, and
