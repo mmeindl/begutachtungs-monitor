@@ -235,6 +235,20 @@ describe('escapeIcsText', () => {
   it('escapes backslash, semicolon, comma, and newline', () => {
     expect(escapeIcsText('a\\b;c,d\ne')).toBe('a\\\\b\\;c\\,d\\ne')
   })
+
+  it('never lets a raw CR through, alone or before LF', () => {
+    expect(escapeIcsText('a\r\nb\rc')).toBe('a\\nbc')
+  })
+})
+
+describe('ICS injection', () => {
+  /* A RIS id is upstream data, and it is printed into the UID and the URL
+   * line verbatim. A CR/LF in it must not start a property of its own. */
+  it('a CR/LF in a RIS id cannot open a property of its own', () => {
+    const ics = buildIcsCalendar(SITE, [], [risConsultation({ id: 'BEGUT_X\r\nATTACH:http://evil.example/' })])
+    expect(ics.split('\r\n').some((line) => line.startsWith('ATTACH'))).toBe(false)
+    expect(unfoldIcs(ics)).toContain(`URL:${SITE}/entwuerfe/BEGUT_X%0D%0AATTACH%3Ahttp%3A%2F%2Fevil.example%2F`)
+  })
 })
 
 describe('foldIcsLine', () => {

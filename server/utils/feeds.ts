@@ -27,7 +27,9 @@ function pageUrl(siteUrl: string, item: DraftSummary): string {
  * subscribers nothing.
  */
 function risPageUrl(siteUrl: string, item: RisConsultation): string {
-  return `${siteUrl}/entwuerfe/${item.id}`
+  // Encoded although a valid id (`RIS_ID_RE`) needs none: the id is RIS's
+  // string, and this URL lands in an ICS content line and an RSS <link>.
+  return `${siteUrl}/entwuerfe/${encodeURIComponent(item.id)}`
 }
 
 /**
@@ -351,6 +353,8 @@ export function escapeIcsText(s: string): string {
     .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
     .replace(/\r?\n/g, '\\n')
+    // A lone CR ends a content line for some parsers: never let one through.
+    .replace(/\r/g, '')
 }
 
 const utf8 = new TextEncoder()
@@ -446,5 +450,8 @@ export function buildIcsCalendar(
   }
 
   lines.push('END:VCALENDAR')
-  return `${lines.flatMap(foldIcsLine).join('\r\n')}\r\n`
+  // No content line may carry a raw CR or LF — `escapeIcsText` covers the
+  // text properties, this covers the ones printed verbatim (UID, URL), so a
+  // value from upstream can never start a property of its own.
+  return `${lines.map((line) => line.replace(/[\r\n]/g, '')).flatMap(foldIcsLine).join('\r\n')}\r\n`
 }
