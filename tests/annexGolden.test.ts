@@ -259,9 +259,10 @@ const GATE_ANNEXES: { name: string; elidedChanges: number; undesignatedChanges: 
   { name: 'gate-leitungspositionen', elidedChanges: 0, undesignatedChanges: 3 },
   { name: 'gate-organtransplantation', elidedChanges: 0, undesignatedChanges: 0 },
   { name: 'gate-avg', elidedChanges: 0, undesignatedChanges: 0 },
-  // The Langtitel, a section heading and the heading of the first § — all
-  // above the first row that carries a designation.
-  { name: 'gate-informationssicherheit', elidedChanges: 0, undesignatedChanges: 3 },
+  // The Langtitel, above the first row that carries a designation. The
+  // section heading and the changed heading of § 1 stood here too until
+  // 04.10.2026; both now wait for the § they head (`heldHeadings`).
+  { name: 'gate-informationssicherheit', elidedChanges: 0, undesignatedChanges: 1 },
 ]
 
 interface GateAnnex {

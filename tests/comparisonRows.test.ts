@@ -518,6 +518,22 @@ describe('a § heading printed in one column only', () => {
     ])
   })
 
+  // The changed heading of the § below, printed on both sides („samt
+  // Überschrift"): it was the last row of the new § 12e of the AuslBG (45/ME
+  // XXVIII), and made a § without standing text owe a check (04.10.2026).
+  it('gives a changed two-sided heading to the § the next row opens, as a change', () => {
+    const rows = parse(annex([
+      pair('', para('12e', '(1) Ganz neu.')),
+      pair(heading('para', 'Zulassungsverfahren für Schlüsselkräfte'), heading('para', 'Zulassungsverfahren für Fachkräfte')),
+      pair(para('13', '(1) Alt.'), para('13', '(1) Neu.')),
+    ]))
+    expect(rows.map((r) => [r.change, r.para])).toEqual([
+      ['inserted', '§ 12e.'],
+      ['changed', '§ 13.'],
+      ['changed', '§ 13.'],
+    ])
+  })
+
   // Nothing opens below it, so there is no evidence to move it on — and the
   // answer that shipped is kept rather than guessed at.
   it('leaves a one-sided heading with the § above when no § follows', () => {
@@ -585,8 +601,9 @@ describe('a heading of the law printed in both columns', () => {
   it('keeps a heading the draft changes a visible change', () => {
     // „samt Überschrift" — the two columns differ, so the row *is* the change
     // and stays a row of its own, where the word diff can see it. 119 rows of
-    // GP XXVIII. Its § is the one it had: moving that would move a *displayed*
-    // change between the gate's paragraph bags, which is its own measurement.
+    // GP XXVIII. Until 04.10.2026 it kept the § above; that moved a displayed
+    // change into the wrong paragraph bag, measured over GP XXVIII with
+    // `pnpm corpus:annex-census` (§12.41), so it now waits for the § below.
     const rows = parse(annex([
       pair(para('12', '(1) Alt.'), para('12', '(1) Neu.')),
       pair(heading('g2', 'Alte Abschnittsüberschrift'), heading('g2', 'Neue Abschnittsüberschrift')),
@@ -594,7 +611,7 @@ describe('a heading of the law printed in both columns', () => {
     ]))
     expect(rows.map((r) => [r.change, r.para])).toEqual([
       ['changed', '§ 12.'],
-      ['changed', '§ 12.'],
+      ['changed', '§ 13.'],
       ['changed', '§ 13.'],
     ])
     expect(rows[1]!.current).toBe('Alte Abschnittsüberschrift')

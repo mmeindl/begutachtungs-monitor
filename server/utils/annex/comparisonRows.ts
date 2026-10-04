@@ -423,7 +423,9 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
    * **Only where both columns print it.** A heading printed on one side is the
    * change itself and stays a row (`heldHeadings`); a heading that *differs*
    * between the columns is „samt Überschrift" and stays inside the compared
-   * text — 119 rows of GP XXVIII, none of them touched here.
+   * text — 119 rows of GP XXVIII, none of them touched here. Since 04.10.2026
+   * such a row waits in `heldHeadings` too, as a row: its change is shown,
+   * only its § moves to the one below.
    */
   let heldTwoSided: ComparisonRow[] = []
   const releaseTwoSided = (): void => {
@@ -586,7 +588,15 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
     // followed by a row that opens a §; the other 61 open nothing and keep the
     // § above. RIS types every one of the 297 as `<ueberschrift>` — none has to
     // be recognised from its wording (`headingOnly`).
-    if (gld === null && (current === '') !== (proposed === '') && headingOnly(current === '' ? proposedHtml : currentHtml)) {
+    //
+    // A heading printed on **both** sides and changed between them („samt
+    // Überschrift") is the same case: the change is the row, and the § it
+    // heads is the one below. Filed under the § above, it was the last row of
+    // a newly inserted § — AuslBG § 12e carried the changed heading of § 13,
+    // ORF-G § 26a that of § 27, AWG § 69a that of § 70 (2/45/48/131/ME
+    // XXVIII, 04.10.2026) — and made a § with no standing text owe a check.
+    const changedTwoSided = current !== '' && proposed !== '' && current !== proposed && headingOnly(currentHtml) && headingOnly(proposedHtml)
+    if (gld === null && !elided && (changedTwoSided || ((current === '') !== (proposed === '') && headingOnly(current === '' ? proposedHtml : currentHtml)))) {
       const only = current || proposed
       // Unless it is a schedule heading, which is a designation and not a
       // title: what stands under "Anhang" is addressed as the Anlage, so the

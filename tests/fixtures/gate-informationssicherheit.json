@@ -270,7 +270,7 @@
    "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 3.": "verified",
    "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 4.": "verified",
    "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 6.": "verified",
-   "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 9.": "withheld",
+   "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 9.": "verified",
    "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 11.": "verified",
    "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 12.": "verified",
    "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 14.": "verified",
@@ -279,8 +279,7 @@
    "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 18.": "verified"
   },
   "withheldCauses": {
-   "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 2.": "standing",
-   "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 9.": "standing"
+   "Bundesgesetz, mit dem das Bundesgesetz über die Umsetzung völkerrechtlicher Verpflichtungen zur sicheren Verwendung von Informationen (Informationssicherheitsgesetz) geändert wird#§ 2.": "standing"
   }
  }
 }
