@@ -210,6 +210,23 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
       </p>
     </ProseSection>
 
+    <ProseSection id="about-support" heading="Unterstützen">
+      <p>
+        Der Monitor ist werbefrei und ohne Bezahlschranke; Betrieb und
+        Weiterentwicklung trägt eine Privatperson. Wer das Projekt
+        unterstützen möchte, kann das über
+        <ExternalLink
+          href="https://liberapay.com/manuelmeindl/donate"
+          class="link-inline"
+        >Liberapay</ExternalLink>
+        tun – oder per Überweisung an Manuel Meindl, IBAN
+        <span class="select-all font-medium text-ink">AT59 1501 3002 3104 4157</span>.
+        Beiträge decken Server und Domain, darüber hinaus fließen sie in
+        die Weiterentwicklung. Da hinter dem Projekt keine gemeinnützige
+        Organisation steht, sind Beiträge steuerlich nicht absetzbar.
+      </p>
+    </ProseSection>
+
     <ProseSection id="about-contact" heading="Kontakt">
       <p>
         Fragen, Hinweise und Feedback:

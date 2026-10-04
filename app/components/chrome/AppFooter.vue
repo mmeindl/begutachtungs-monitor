@@ -23,6 +23,9 @@
  *     interaction: this link is the implementation, not an extra;
  *   - contact — the project's addressees should not have to go to the
  *     Impressum first;
+ *   - „Projekt unterstützen" — a pointer to /ueber, not a donate button:
+ *     the ask, its channels and the no-deductibility caveat stand together
+ *     there; the footer carries the pointer, not the pitch;
  *   - Impressum/Datenschutz — § 25 Abs 1 MedienG, „ständig leicht und
  *     unmittelbar auffindbar".
  *
@@ -54,6 +57,11 @@
             href="mailto:kontakt@begutachtungs-monitor.at"
             class="link-muted"
           >kontakt@begutachtungs-monitor.at</a>
+          ·
+          <NuxtLink
+            to="/ueber#about-support"
+            class="link-muted"
+          >Projekt unterstützen</NuxtLink>
         </p>
         <nav aria-label="Rechtliches">
           <ul class="flex flex-wrap items-center gap-x-4">
