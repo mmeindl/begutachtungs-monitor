@@ -13,6 +13,7 @@
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer [--list]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --ziffer --save file | --against file [--list]
  *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVII --pairs | --unpaired
+ *          npx vite-node scripts/corpus/aenderungsrate.ts -- --gp XXVIII --phantoms   (lists the phantom pairs)
  *
  * WHY THE SHIPPED COMPARISON AND NOT A NEW ONE. A base rate the page cannot
  * reproduce is a second opinion, not a number about the page. So every draft
@@ -354,6 +355,28 @@ interface Diagnosis {
   articlesPaired: number
   /** An inserted and a removed unit with the same text: one unit the alignment failed to pair */
   phantom: number
+  /**
+   * The same, for texts that are equal only once everything but the letters
+   * is dropped — „OTC-Derivaten" / „OTCDerivaten" (9/ME XXVIII, TODO § 5b,
+   * „Phantompaar"). Counted after the exact phantoms, within one Artikel.
+   */
+  phantomLetters: number
+  /**
+   * Candidates, not findings: a removed and an inserted unit of one Artikel
+   * whose words overlap by `NEAR_PHANTOM` or more (Jaccard on letter words),
+   * after both counts above. Read the list (`--phantoms`) before calling any
+   * of them the alignment's fault — a renumbered § that is also reworded is
+   * the same shape.
+   */
+  phantomNear: number
+  /**
+   * Candidates as well: a removed and an inserted instruction of one Artikel
+   * that address the same place — the text before the verb, „In § 74 Abs. 1"
+   * — after the three counts above. 9/ME XXVIII's own pair is this shape: the
+   * Vorlage respells „OTC-Derivaten" *and* appends a second change to the
+   * same instruction, so neither the letters nor the overlap test sees it.
+   */
+  phantomAddress: number
   /** Non-editorial changed units whose words differ (letters only, case-folded) */
   wordChanged: number
   /** Non-editorial changed units whose words are identical — only digits, punctuation or spacing moved */
@@ -365,6 +388,24 @@ interface Diagnosis {
 }
 
 const IN_FORCE = /\b(in|au(ß|ss)er)\s+Kraft\b|Inkrafttret/i
+
+/** Word overlap at which a removed and an inserted unit count as a near-phantom candidate. */
+const NEAR_PHANTOM = 0.9
+const lettersOf = (t: string | null) => (t ?? '').toLowerCase().replace(/[^a-zäöüß]+/g, '')
+function jaccard(a: string, b: string): number {
+  const x = new Set(a.split(' ').filter(Boolean)), y = new Set(b.split(' ').filter(Boolean))
+  if (x.size === 0 || y.size === 0) return 0
+  let both = 0
+  for (const w of x) if (y.has(w)) both++
+  return both / (x.size + y.size - both)
+}
+/** „In § 74 Abs. 1 wird der Wortfolge …" → „in § 74 abs. 1": an instruction's address, before its verb. */
+function instructionPlace(t: string | null): string | null {
+  const m = /^(.{3,80}?)\s+(?:wird|werden|lautet|lauten|entfällt|entfallen|erhält|erhalten)\b/.exec(spaced(t))
+  return m && /§|Art|Anl|Z\s/.test(m[1]!) ? m[1]!.toLowerCase().replace(/^(?:\d+\.\s*)/, '') : null
+}
+/** Near-phantom pairs per draft, for `--phantoms`. */
+const phantomLog: string[] = []
 
 const wordsOf = (t: string | null) => (t ?? '').toLowerCase().replace(/[^a-zäöüß]+/g, ' ').trim()
 const spaced = (t: string | null) => (t ?? '').replace(/\s+/g, ' ').trim()
@@ -383,6 +424,33 @@ function diagnose(fromUnits: readonly LawUnit[], toUnits: readonly LawUnit[], un
       phantom++
       removed.set(k, left - 1)
       phantomTexts.set(k, (phantomTexts.get(k) ?? 0) + 2)
+    }
+  }
+  // Letters-only and near phantoms: what the exact test leaves, per Artikel.
+  const exactLeft = new Map(phantomTexts)
+  const used = new Set<LawDiffUnit>()
+  for (const u of units) {
+    if (u.change !== 'removed' && u.change !== 'inserted') continue
+    const k = spaced(u.change === 'removed' ? u.fromText : u.toText)
+    if ((exactLeft.get(k) ?? 0) > 0) { exactLeft.set(k, exactLeft.get(k)! - 1); used.add(u) }
+  }
+  const open = (kind: 'removed' | 'inserted') => units.filter((u) => u.change === kind && !used.has(u))
+  let phantomLetters = 0
+  let phantomNear = 0
+  let phantomAddress = 0
+  for (const pass of ['letters', 'near', 'address'] as const) {
+    for (const r of open('removed')) {
+      const match = open('inserted').find((i) => !used.has(i) && i.article === r.article && (pass === 'letters'
+        ? lettersOf(i.toText) === lettersOf(r.fromText) && lettersOf(r.fromText) !== ''
+        : pass === 'near'
+          ? jaccard(wordsOf(r.fromText), wordsOf(i.toText)) >= NEAR_PHANTOM
+          : instructionPlace(r.fromText) !== null && instructionPlace(r.fromText) === instructionPlace(i.toText)))
+      if (!match) continue
+      used.add(r).add(match)
+      if (pass === 'letters') phantomLetters++
+      else if (pass === 'near') phantomNear++
+      else phantomAddress++
+      phantomLog.push(`${pass === 'letters' ? 'Buchstaben' : pass === 'near' ? 'nah' : 'Adresse'}  ${r.id} → ${match.id}  „${spaced(r.fromText).slice(0, 70)}" / „${spaced(match.toText).slice(0, 70)}"`)
     }
   }
   // The units that carry the robust count, phantoms taken out once per side.
@@ -405,6 +473,9 @@ function diagnose(fromUnits: readonly LawUnit[], toUnits: readonly LawUnit[], un
     articlesTo: arts(toUnits),
     articlesPaired: pairArticles(fromUnits, toUnits).size,
     phantom,
+    phantomLetters,
+    phantomNear,
+    phantomAddress,
     wordChanged,
     nonWordChanged: sub.length - wordChanged,
     robust: wordChanged + ins + rem - 2 * phantom,
@@ -496,7 +567,9 @@ async function measure(rows: unknown[][], inr: number, citation: string, title: 
   const substantive = units.filter((u) => u.change === 'changed' && !u.editorial).length + stats.inserted + stats.removed
   const bucket: Bucket =
     stats.changed + stats.inserted + stats.removed === 0 ? 3 : substantive === 0 ? 4 : 5
+  const logged = phantomLog.length
   const diag = diagnose(fromUnits, toUnits, units)
+  for (let i = logged; i < phantomLog.length; i++) phantomLog[i] = `${inr}/ME  ${phantomLog[i]}`
   parsed.get(inr)!.units = units
   return { row: { ...row, bucket, stats, substantive, lawsOnlyInTo, lawsOnlyInFrom, addedLaws, droppedLaws, diag }, units }
 }
@@ -628,6 +701,13 @@ const onlyNonWord = b5.filter((r) => r.diag!.wordChanged === 0 && r.stats!.inser
 console.log(`\n  Eimer 5 — woraus das Urteil besteht (Diagnose, keine eigenen Eimer):`)
 console.log(`    Artikel gar nicht gepaart (pairArticles leer, ungeschnittener Vergleich): ${unpaired.length}  ${unpaired.map((r) => `${r.inr}/ME (${r.diag!.articlesFrom}→${r.diag!.articlesTo})`).join(', ')}`)
 console.log(`    mit Phantom-Paaren (neu + entfallen, gleicher Text): ${phantomDrafts.length} Entwürfe, ${d5.reduce((a, d) => a + d.phantom, 0)} Paare`)
+const lettersDrafts = b5.filter((r) => r.diag!.phantomLetters > 0)
+const nearDrafts = b5.filter((r) => r.diag!.phantomNear > 0)
+console.log(`    … gleich bis auf Nicht-Buchstaben (OTC-Derivaten/OTCDerivaten): ${lettersDrafts.length} Entwürfe, ${d5.reduce((a, d) => a + d.phantomLetters, 0)} Paare  ${lettersDrafts.map((r) => `${r.inr}/ME`).join(', ')}`)
+console.log(`    … Kandidaten mit ≥ ${NEAR_PHANTOM * 100} % Wortüberlappung (lesen, nicht zählen): ${nearDrafts.length} Entwürfe, ${d5.reduce((a, d) => a + d.phantomNear, 0)} Paare`)
+const addressDrafts = b5.filter((r) => r.diag!.phantomAddress > 0)
+console.log(`    … Kandidaten mit gleicher Adresse („In § 74 Abs. 1", lesen, nicht zählen): ${addressDrafts.length} Entwürfe, ${d5.reduce((a, d) => a + d.phantomAddress, 0)} Paare`)
+if (process.argv.includes('--phantoms')) for (const line of phantomLog) console.log(`      ${line}`)
 console.log(`    nur Ziffern/Satzzeichen geändert, nichts neu/entfallen: ${onlyNonWord.length}  ${onlyNonWord.map((r) => `${r.inr}/ME`).join(', ')}`)
 console.log(`    ohne jede Wortänderung nach Abzug der Phantome: ${robustZero.length}  ${robustZero.map((r) => `${r.inr}/ME`).join(', ')}`)
 console.log(`    geänderte Einheiten ohne Wortunterschied: ${d5.reduce((a, d) => a + d.nonWordChanged, 0)} von ${b5.reduce((a, r) => a + r.stats!.changed - r.stats!.editorial, 0)} nicht-redaktionellen`)
