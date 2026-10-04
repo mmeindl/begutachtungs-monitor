@@ -61,8 +61,14 @@ is the how-to-rebuild runbook.
 SERVER=root@<SERVER_IP> ./deploy/deploy.sh
 ```
 
-That is: local `pnpm build`, rsync `.output/` to `/srv/begutachtungs-monitor`,
-restart the service, smoke-check that it answers on localhost.
+That is: refuse a dirty working tree, local `pnpm build`, rsync `.output/` to
+`/srv/begutachtungs-monitor` (owned by root, read-only for `app`), install the
+units and scripts from `deploy/systemd/` and `deploy/bin/`, restart the
+service, smoke-check that it answers on localhost, wait for the prewarm.
+
+The commit that runs is in `/srv/begutachtungs-monitor/REVISION`. To ship
+uncommitted changes on purpose, pass `--allow-dirty` — the revision then ends
+in `-dirty`.
 
 **When the systemd unit changes** (it did on 2026-08-31: `StateDirectory=`),
 `deploy.sh` is not enough — it only ships `.output/`. Re-run the bootstrap,
@@ -78,6 +84,127 @@ Until that runs, the app falls back to `/srv/begutachtungs-monitor/.data`
 deploy. Verify with
 `ssh root@<SERVER_IP> ls /var/lib/begutachtungs-monitor/statements`.
 
+## Retrofit 2026-10-04: hardening the live box
+
+The live box was bootstrapped with the script as it was before 2026-10-04.
+Only the deploy-side half of that day's hardening arrives with `deploy.sh`
+(root-owned code, staged unit install, prewarm units as `app`, the
+watchdog's sandbox). The rest lives in `bootstrap.sh` — sshd drop-in with
+self-check, Caddy headers and body limit, unattended-upgrades for Node and
+Caddy, the sandboxed main unit with `MemoryMax=` — and has to be applied
+once. Re-running the bootstrap does that, and it stays the single source of
+truth; the steps around it are ordered so that each one fails before it can
+lock you out or take the site down. Run them from the repo root:
+
+```sh
+S=root@85.235.66.11
+```
+
+**0. Keep a second SSH session to the box open** until step 3 has passed.
+Reloading sshd does not end existing sessions.
+
+**1. Deploy from a clean tree** — ships the deploy-side half and re-owns
+`/srv/begutachtungs-monitor` to root. The app still runs under the old main
+unit, so this step tests the ownership change alone. Note the old security
+score for comparison:
+
+```sh
+SERVER=$S ./deploy/deploy.sh
+ssh $S 'cat /srv/begutachtungs-monitor/REVISION
+  stat -c "%U:%G %a %n" /srv/begutachtungs-monitor /srv/begutachtungs-monitor/server/index.mjs /etc/systemd/system /usr/local/lib/begutachtungs-monitor/*.sh
+  systemctl show -p User --value begutachtungs-monitor-prewarm begutachtungs-monitor-prewarm-pages
+  journalctl -u begutachtungs-monitor-prewarm-pages -n 2 --no-pager
+  systemd-analyze security begutachtungs-monitor | tail -1'
+```
+
+Expect `root:root 755` / `644` / `755` / `755`, `app` twice, and a
+`prewarm-pages: … pages warm` line from after the deploy — that one proves
+`OnSuccess=` started it.
+
+**2. Back up what the bootstrap overwrites, then re-run it:**
+
+```sh
+ssh $S 'cp -a /etc/systemd/system/begutachtungs-monitor.service /root/begutachtungs-monitor.service.bak-2026-10-04
+  cp -a /etc/caddy/Caddyfile /root/Caddyfile.bak-2026-10-04'
+scp deploy/bootstrap.sh $S:
+ssh $S 'DOMAIN=begutachtungs-monitor.at bash bootstrap.sh'
+ssh $S 'diff /root/Caddyfile.bak-2026-10-04 /etc/caddy/Caddyfile
+  diff /root/begutachtungs-monitor.service.bak-2026-10-04 /etc/systemd/system/begutachtungs-monitor.service'
+```
+
+Where it stops on its own: `sshd -t` before the reload, the `sshd -T`
+assertion after it (✘ and exit), `caddy validate` before the new Caddyfile
+replaces the live one. It writes the new main unit and reloads systemd but
+does **not** restart the app — that is step 4. The diffs must show only the
+intended changes; anything else was a hand edit on the box that the
+bootstrap has just overwritten (the backups have it).
+
+**3. SSH — in a new terminal, before closing the old session:**
+
+```sh
+ssh $S true && echo "key login ok"
+ssh $S "sshd -T | grep -E '^(passwordauthentication|kbdinteractiveauthentication|permitrootlogin) '; ls /etc/ssh/sshd_config.d/"
+ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive $S true
+```
+
+Expect `no`, `no`, `permitrootlogin without-password` (sshd's own name for
+`prohibit-password`), `00-hardening.conf` without `90-hardening.conf`, and
+`Permission denied (publickey)` for the last line.
+
+**4. Restart the app under the hardened unit, and warm it:**
+
+```sh
+ssh $S 'systemctl restart begutachtungs-monitor && sleep 3
+  systemctl is-active begutachtungs-monitor
+  curl -fsS -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:3000/
+  systemctl start begutachtungs-monitor-prewarm.service && echo "prewarm ok"'
+```
+
+The prewarm is the real test: it makes the app resolve and fetch from
+Parliament and RIS under `RestrictAddressFamilies=` and `SystemCallFilter=`.
+If anything here fails, read the log and roll back, then take the hardening
+lines out one at a time (first suspects: add `AF_NETLINK` to
+`RestrictAddressFamilies=`; then `SystemCallFilter=`):
+
+```sh
+ssh $S 'journalctl -u begutachtungs-monitor -n 40 --no-pager'
+ssh $S 'cp /root/begutachtungs-monitor.service.bak-2026-10-04 /etc/systemd/system/begutachtungs-monitor.service
+  systemctl daemon-reload && systemctl restart begutachtungs-monitor'
+```
+
+**5. Sandbox, memory, report directory, watchdog:**
+
+```sh
+ssh $S 'systemd-analyze security begutachtungs-monitor | tail -1
+  systemctl show -p MemoryMax -p MemoryCurrent begutachtungs-monitor
+  tr "\0" " " < /proc/$(systemctl show -p MainPID --value begutachtungs-monitor)/cmdline; echo'
+ssh $S 'kill -USR2 $(systemctl show -p MainPID --value begutachtungs-monitor); sleep 2
+  ls -t /var/lib/begutachtungs-monitor/reports | head -1'
+ssh $S 'systemctl start begutachtungs-monitor-watchdog.service
+  journalctl -u begutachtungs-monitor-watchdog -n 2 --no-pager'
+```
+
+Expect a clearly lower exposure score than in step 1, `MemoryMax=536870912`,
+`--max-old-space-size=384` in the command line, a report file from just now
+(the state directory is writable under `ProtectSystem=strict`), and a watchdog
+line such as `app up …s — not judging` (its unit starts under its sandbox).
+
+**6. Caddy and unattended-upgrades:**
+
+```sh
+curl -sI https://begutachtungs-monitor.at/ | grep -iE '^(strict-transport-security|x-content-type-options|referrer-policy|x-frame-options|content-security-policy|server):'
+head -c 2000000 /dev/zero | curl -s -o /dev/null -w '%{http_code}\n' --data-binary @- https://begutachtungs-monitor.at/api/drafts
+ssh $S 'unattended-upgrade --dry-run --debug 2>&1 | grep -i "allowed origins"'
+```
+
+Expect the five headers and no `Server:` line; `413` for the 2-MB body; the
+allowed origins listing `site=deb.nodesource.com,suite=nodistro` and
+`site=dl.cloudsmith.io,origin=cloudsmith/caddy/stable` next to Ubuntu's own.
+A Node update installed this way takes effect at the app's next restart.
+
+**7. Clean up** once all of the above holds: `ssh $S 'rm bootstrap.sh'`; keep
+the two backups in `/root` for a week.
+
 ## Notes
 
 - The service binds to `127.0.0.1:3000`; only Caddy is reachable from outside
@@ -88,7 +215,11 @@ deploy. Verify with
   adds a 1 GB swapfile as headroom for the running app.
 - Before a public launch: uptime monitoring (architecture.md §12.7 — the
   predecessor died in operation).
-- **RIS prewarm:** the units in `deploy/systemd/` are rsynced to
+- **The uptime job goes quiet on its own:** GitHub disables a scheduled
+  workflow after 60 days without a commit in the repo and mails about it —
+  re-enable `uptime.yml` in the Actions tab ([infrastructure.md](infrastructure.md),
+  "Uptime: current state").
+- **RIS prewarm:** the units in `deploy/systemd/` are installed into
   `/etc/systemd/system/` and enabled on every deploy. The timer curls
   `/api/ris-map/aktuell` nightly at 04:30, and `deploy.sh` **waits for** the
   same oneshot after every restart, so the ~46-request RIS corpus fetch never

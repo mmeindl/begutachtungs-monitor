@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build locally, deploy to the server, restart, smoke-check, warm the caches.
 #
-#   SERVER=root@<SERVER_IP> ./deploy/deploy.sh
+#   SERVER=root@<SERVER_IP> ./deploy/deploy.sh                # a commit
+#   SERVER=root@<SERVER_IP> ./deploy/deploy.sh --allow-dirty  # the working tree
 #
 # The server only needs the Node runtime (see bootstrap.sh) — .output/ is
 # self-contained, pure-JS, platform-independent.
@@ -9,35 +10,86 @@ set -euo pipefail
 
 SERVER="${SERVER:?Set SERVER, e.g. SERVER=root@203.0.113.1 ./deploy/deploy.sh}"
 APP_DIR=/srv/begutachtungs-monitor
+# Where units and scripts land before they are installed into place. Under
+# /root, so nobody but root can touch them in between.
+STAGE=/root/begutachtungs-monitor-deploy
+
+ALLOW_DIRTY=no
+for arg in "$@"; do
+  case "$arg" in
+    --allow-dirty) ALLOW_DIRTY=yes ;;
+    *) echo "unknown argument: $arg (the only one is --allow-dirty)" >&2; exit 2 ;;
+  esac
+done
 
 cd "$(dirname "$0")/.."
 
+# What runs on the box should be a commit that can be checked out again. A
+# dirty tree ships code no commit holds — sometimes on purpose, hence the
+# flag, but never by accident. Untracked files count: Nuxt auto-imports
+# components and composables, so a stray file is part of the build.
+REVISION=$(git rev-parse HEAD)
+if [ -n "$(git status --porcelain)" ]; then
+  if [ "$ALLOW_DIRTY" != yes ]; then
+    echo "✘ the working tree has changes — commit them, or ship them on purpose with --allow-dirty:" >&2
+    git status --short >&2
+    exit 1
+  fi
+  REVISION="$REVISION-dirty"
+  echo "⚠ shipping the working tree on top of $(git log -1 --format='%h %s')"
+else
+  echo "… shipping $(git log -1 --format='%h %s')"
+fi
+
 pnpm install --frozen-lockfile
 pnpm build
+# The box records what runs: /srv/begutachtungs-monitor/REVISION. Not
+# public — Nitro serves .output/public/ only.
+echo "$REVISION" > .output/REVISION
 
-# macOS ships openrsync (no --chown) → chown in a separate step.
-rsync -az --delete .output/ "$SERVER:$APP_DIR/"
-# systemd units live in git (deploy/systemd/) and are installed on every
-# deploy — idempotent, no manual step on the server when a unit changes.
-rsync -az deploy/systemd/ "$SERVER:/etc/systemd/system/"
-# What those units execute when it is more than one command (deploy/bin/).
-# Outside $APP_DIR, which is rsynced with --delete.
-ssh "$SERVER" "mkdir -p /usr/local/lib/begutachtungs-monitor"
-rsync -az deploy/bin/ "$SERVER:/usr/local/lib/begutachtungs-monitor/"
-# rsync -a keeps the owner of the source files, and as root on the other end
-# that is the local uid (501:staff on the Mac) — on files root executes. With
-# a trailing slash on the source it hands the target DIRECTORY the source
-# directory's owner too, so /etc/systemd/system itself is put back.
-ssh "$SERVER" "chmod +x /usr/local/lib/begutachtungs-monitor/*.sh \
-  && chown -R root:root /usr/local/lib/begutachtungs-monitor \
-  && chown root:root /etc/systemd/system \
-  && chown -R root:root /etc/systemd/system/begutachtungs-monitor* \
-  && chown -R app:app $APP_DIR \
-  && systemctl daemon-reload \
-  && systemctl enable --now --quiet begutachtungs-monitor-prewarm.timer \
-  && systemctl enable --now --quiet begutachtungs-monitor-list81-snapshot.timer \
-  && systemctl enable --now --quiet begutachtungs-monitor-watchdog.timer \
-  && systemctl restart begutachtungs-monitor"
+# -rlptz, not -a: -a includes -o/-g, which as root on the other end hands
+# every file the Mac's uid (501:staff). Without them rsync creates the files
+# as root. (macOS ships openrsync, which has no --chown or --chmod; owner and
+# modes are therefore set on the server below.)
+rsync -rlptz --delete .output/ "$SERVER:$APP_DIR/"
+# systemd units (deploy/systemd/) and what they execute when it is more than
+# one command (deploy/bin/) live in git and are installed on every deploy —
+# idempotent, no manual step on the server when a unit changes. Staged, not
+# rsynced into /etc/systemd/system: rsync with a trailing-slash source
+# re-owned that directory itself, and a connection dropped before the next
+# chown left it — and root-run units — with the Mac's uid. The network copy
+# now ends in /root; only `install` on the box, with owner and mode, writes
+# into place.
+rsync -rlptz --delete deploy/systemd deploy/bin "$SERVER:$STAGE/"
+
+ssh "$SERVER" "APP_DIR=$APP_DIR STAGE=$STAGE bash -s" <<'REMOTE'
+set -euo pipefail
+# The code is root's and only readable for `app`: a compromised process must
+# not be able to rewrite the bundle it is restarted from. `app` writes only
+# to its StateDirectory, /var/lib/begutachtungs-monitor.
+chown -R root:root "$APP_DIR"
+find "$APP_DIR" -type d -exec chmod 0755 {} +
+find "$APP_DIR" -type f -exec chmod 0644 {} +
+
+install -o root -g root -m 0644 -t /etc/systemd/system \
+  "$STAGE"/systemd/*.service "$STAGE"/systemd/*.timer
+for dropin in "$STAGE"/systemd/*.d; do
+  # Without nullglob an unmatched pattern arrives literally, and install -d
+  # would create a directory named '*.d'.
+  [ -d "$dropin" ] || continue
+  target=/etc/systemd/system/$(basename "$dropin")
+  install -d -o root -g root -m 0755 "$target"
+  install -o root -g root -m 0644 -t "$target" "$dropin"/*
+done
+install -d -o root -g root -m 0755 /usr/local/lib/begutachtungs-monitor
+install -o root -g root -m 0755 -t /usr/local/lib/begutachtungs-monitor "$STAGE"/bin/*
+
+systemctl daemon-reload
+systemctl enable --now --quiet begutachtungs-monitor-prewarm.timer
+systemctl enable --now --quiet begutachtungs-monitor-list81-snapshot.timer
+systemctl enable --now --quiet begutachtungs-monitor-watchdog.timer
+systemctl restart begutachtungs-monitor
+REMOTE
 
 sleep 2
 ssh "$SERVER" \
@@ -73,4 +125,4 @@ if ! ssh "$SERVER" "systemctl start begutachtungs-monitor-prewarm.service"; then
   echo "    ssh $SERVER journalctl -u begutachtungs-monitor-prewarm -n 30 --no-pager"
 fi
 
-echo "✔ deployed"
+echo "✔ deployed $REVISION"

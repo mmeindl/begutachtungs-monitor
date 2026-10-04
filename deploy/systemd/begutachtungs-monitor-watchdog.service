@@ -12,3 +12,9 @@ StateDirectory=begutachtungs-monitor-watchdog
 # restart and its wait for the port — about three minutes at worst.
 TimeoutStartSec=300
 PrivateTmp=true
+# Root, but it writes in two places only: its StateDirectory (kept writable
+# by systemd) and the app's report directory, where it deletes reports older
+# than 30 days. "-": a missing directory must not stop the unit — the app
+# creates it at its first start.
+ProtectSystem=strict
+ReadWritePaths=-/var/lib/begutachtungs-monitor/reports

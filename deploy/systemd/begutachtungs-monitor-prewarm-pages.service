@@ -1,11 +1,12 @@
-# Installed by deploy/deploy.sh on every deploy (rsync + daemon-reload).
+# Installed by deploy/deploy.sh on every deploy (install + daemon-reload).
 # Renders the page of every open draft once (deploy/bin/prewarm-pages.sh).
 #
 # Its own unit and not a sixth line of the prewarm unit, because deploy.sh
 # BLOCKS on that one and must not grow with the number of open drafts (the
 # argument recorded there against warming `/konsolidiert`). This unit is
-# started by the prewarm unit's ExecStartPost with --no-block: after the
-# corpora are in — the pages read them — and without anyone waiting for it.
+# started by the prewarm unit's OnSuccess= (until 04.10.2026 an
+# ExecStartPost with --no-block): after the corpora are in — the pages read
+# them — and without anyone waiting for it.
 # So it runs nightly behind the timer and after every deploy, and needs no
 # timer of its own.
 #
@@ -17,5 +18,10 @@ Requires=begutachtungs-monitor.service
 
 [Service]
 Type=oneshot
+# Nothing here needs root: curl against localhost, node to read the JSON.
+User=app
+Group=app
+NoNewPrivileges=true
+PrivateTmp=true
 TimeoutStartSec=1800
 ExecStart=/usr/local/lib/begutachtungs-monitor/prewarm-pages.sh

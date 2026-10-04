@@ -55,17 +55,27 @@ Managed via the INWX panel → Hosting → *manage* (Froxlor).
 ## What runs on it
 
 Everything below is created by [bootstrap.sh](bootstrap.sh), which is
-idempotent and safe to re-run:
+idempotent and safe to re-run. What is marked 2026-10-04 reaches the live
+box only through the retrofit in [README.md](README.md) ("Retrofit
+2026-10-04"):
 
 - **Node 22** (NodeSource apt repo) — runs the self-contained Nitro bundle.
 - **systemd service `begutachtungs-monitor`** — dedicated `app` system
-  user, app dir `/srv/begutachtungs-monitor`, binds `127.0.0.1:3000`,
-  restarts on crash and on reboot.
+  user, app dir `/srv/begutachtungs-monitor` (owned by root, read-only for
+  `app`; the deployed commit is in its `REVISION` file), binds
+  `127.0.0.1:3000`, restarts on crash and on reboot. Sandboxed since
+  2026-10-04 (`ProtectSystem=strict` and friends — writable only
+  `/var/lib/begutachtungs-monitor`), `MemoryMax=512M` with a 384 MB V8 heap.
 - **Caddy** (official apt repo) — TLS termination + reverse proxy in front
-  of the app; Let's Encrypt certificates renew automatically.
+  of the app; Let's Encrypt certificates renew automatically. Sets the
+  security headers (HSTS, nosniff, Referrer-Policy, frame denial), drops
+  `Server:`, caps request bodies at 1 MB. **No access log** — the privacy
+  statement (`/datenschutz`) says so and cites the Caddyfile.
 - **ufw** — default deny inbound; only 22/80/443 open.
-- **SSH hardening** — key-only logins.
-- **unattended-upgrades** — automatic security patches.
+- **SSH hardening** — key-only logins (`/etc/ssh/sshd_config.d/00-hardening.conf`,
+  checked against `sshd -T` by the bootstrap).
+- **unattended-upgrades** — automatic security patches from Ubuntu, and
+  since 2026-10-04 every update from the NodeSource (22.x) and Caddy repos.
 - **1 GB swapfile** — headroom next to the 1 GB RAM.
 
 Three systemd timers come with [deploy.sh](deploy.sh) rather than with
@@ -105,7 +115,8 @@ VPS (the scripts are provider-agnostic).
 
 | Task | Command (from the repo root) |
 |---|---|
-| Deploy | `SERVER=root@85.235.66.11 ./deploy/deploy.sh` |
+| Deploy | `SERVER=root@85.235.66.11 ./deploy/deploy.sh` — refuses a dirty working tree; `--allow-dirty` ships it anyway, marked `-dirty` in the box's `REVISION` |
+| What runs | `ssh root@85.235.66.11 cat /srv/begutachtungs-monitor/REVISION` |
 | Uptime: run the probe now | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor` (or the "Run workflow" button in the Actions tab) |
 | Uptime: test the alarm mail | `gh workflow run uptime.yml --repo mmeindl/begutachtungs-monitor -f simulate=down` — opens a `downtime` issue titled "Testalarm" with the @mention (= the e-mail an outage sends); the next scheduled run, at most 30 min later, closes it. First tested 08.09.2026 |
 | Uptime: current state | open issues with label `downtime`: `gh issue list --repo mmeindl/begutachtungs-monitor --label downtime` — none means up. **Trap:** GitHub disables the schedule after 60 days without a commit and mails about it; re-enable in the Actions tab. **Timing:** GitHub's cron is best-effort — after the workflow was first pushed (08.09.2026, 11:35 UTC) the first scheduled run came at 15:17 UTC, six slots later, and runs start ~10 min after their slot. Good enough to catch an outage of hours, not one of minutes |
@@ -130,3 +141,10 @@ VPS (the scripts are provider-agnostic).
 - **Domain and mail package** renew annually at INWX (August). The domain
   must outlive any rename or provider move: the published feed and calendar
   URLs (`webcal://…`) resolve through it.
+- **Node 22 end of life: 30 April 2027.** After that NodeSource's `node_22.x`
+  repo gets no more security fixes, and unattended-upgrades only ever
+  patches within it. Move to the next LTS (Node 24) before then: change
+  `setup_22.x` and the version check in [bootstrap.sh](bootstrap.sh), run the
+  app locally on the new major, then on the box `curl -fsSL
+  https://deb.nodesource.com/setup_24.x | bash - && apt-get install -y nodejs`
+  and restart the service.

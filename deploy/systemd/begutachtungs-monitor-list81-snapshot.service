@@ -1,4 +1,4 @@
-# Installed by deploy/deploy.sh on every deploy (rsync + daemon-reload).
+# Installed by deploy/deploy.sh on every deploy (install + daemon-reload).
 # One daily copy of list 81 into /var/lib/begutachtungs-monitor/list81/, for
 # the two questions in the script's header (docs/architecture.md §13.3 and the
 # size of the persistence package). Started 24.09.2026, planned for about two

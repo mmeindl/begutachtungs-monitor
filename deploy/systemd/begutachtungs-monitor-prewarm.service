@@ -1,4 +1,4 @@
-# Installed by deploy/deploy.sh on every deploy (rsync + daemon-reload).
+# Installed by deploy/deploy.sh on every deploy (install + daemon-reload).
 # Warms the RIS↔ME map of the current GP: ~46 upstream requests that must
 # not land on a visitor (docs/ris-join.md §4a). Started by the timer nightly
 # and by deploy.sh after each restart, because the Nitro cache is in-memory.
@@ -71,9 +71,23 @@
 Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes and both station maps
 After=begutachtungs-monitor.service
 Requires=begutachtungs-monitor.service
+# Since 30.09.2026: the pages of the open drafts, in their own unit and
+# without blocking (begutachtungs-monitor-prewarm-pages.service) — after the
+# corpora below, which those pages read. OnSuccess= rather than an
+# ExecStartPost that runs `systemctl start`: this unit runs as `app`, which
+# may not start units, and `ExecStartPost=+…` would hand a root command to an
+# otherwise unprivileged job. OnSuccess= queues the job from systemd itself,
+# only when every ExecStart below succeeded — the condition ExecStartPost had —
+# and without blocking whoever started this unit (deploy.sh, the watchdog).
+OnSuccess=begutachtungs-monitor-prewarm-pages.service
 
 [Service]
 Type=oneshot
+# Nothing here needs root: curl against localhost.
+User=app
+Group=app
+NoNewPrivileges=true
+PrivateTmp=true
 # The unit's own worst case, stated rather than inherited: the five --max-time
 # budgets below add up to 2.820 s, and deploy.sh blocks on this job.
 TimeoutStartSec=2900
@@ -87,7 +101,3 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/a
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode
-# Since 30.09.2026: the pages of the open drafts, in their own unit and
-# without blocking (begutachtungs-monitor-prewarm-pages.service) — after the
-# corpora above, which those pages read.
-ExecStartPost=/usr/bin/systemctl start --no-block begutachtungs-monitor-prewarm-pages.service
