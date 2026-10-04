@@ -30,6 +30,10 @@
  *  - „Artikel x1": the placeholder number in lower case (XXVI 115/ME), see
  *    `ARTICLE_RE`
  *  - „A r t i k e l 2": letter-spaced by hand (292/ME)
+ *  - no Artikel line at all: the law's name and its Promulgationsklausel
+ *    directly behind the previous law's last instruction (83/ME XXVIII,
+ *    Gebrauchsmustergesetz behind the Patentverträge-Einführungsgesetz) —
+ *    see `missingArticleLines`, the one shape that adds a block
  */
 import type { TextBlock } from './lawUnits'
 import { normalizeText } from './normalize'
@@ -139,12 +143,75 @@ function quoteShift(text: string): { flips: number; depth: number } {
 }
 
 /**
+ * „Artikel 3" from the table of contents, for the law named `name` — or null
+ * when the table does not list it under exactly that name.
+ */
+function tocArticleFor(blocks: readonly TextBlock[], name: string): string | null {
+  for (const b of blocks) {
+    if (b.kind !== 'toc' && !TOC_HEADING_CLASSES.has(b.cls)) continue
+    const m = /^(Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+))\.?\s+(.+)$/.exec(textOf(b))
+    if (m && m[2] === name) return m[1]!
+  }
+  return null
+}
+
+/**
+ * The Artikel line a ressort left out. 83/ME XXVIII prints „Artikel 1" and
+ * „Artikel 2", and then, behind the last instruction for the
+ * Patentverträge-Einführungsgesetz, only „Änderung des
+ * Gebrauchsmustergesetzes" and that law's Promulgationsklausel. Every reader
+ * after this point closes a law's name window at its first instruction, so
+ * the second law had no boundary: its §§ were filed under the first, and the
+ * annex held five of them against the PatV-EG and withheld them (§12.41).
+ *
+ * Inserted only where three things agree: a heading outside quoted text after
+ * an instruction of the same Artikel (a heading an instruction installs is
+ * quoted, `segmentUnits`' window), a Promulgationsklausel directly under it,
+ * and the table of contents listing an Artikel under exactly that name — which
+ * also supplies the number. Without the table there is no number to give, and
+ * none is guessed.
+ */
+function missingArticleLines(blocks: readonly TextBlock[]): TextBlock[] {
+  const out: TextBlock[] = []
+  let quoted = false
+  let guillemets = 0
+  let instructed = false
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]!
+    if (i > 0) {
+      const { flips, depth } = quoteShift(blocks[i - 1]!.text)
+      if (flips % 2 === 1) quoted = !quoted
+      guillemets = Math.max(0, guillemets + depth)
+    }
+    if (b.kind === 'article') {
+      quoted = false
+      guillemets = 0
+      instructed = false
+    } else if (b.kind === 'novao') {
+      instructed = true
+    } else if (b.kind === 'section' && instructed && !quoted && guillemets === 0 && !textOf(b).startsWith('"') && isAmendmentClause(blocks[i + 1])) {
+      const line = tocArticleFor(blocks, textOf(b))
+      if (line) {
+        out.push({ kind: 'article', cls: 'inferred/artikel', text: line, gld: null })
+        quoted = false
+        guillemets = 0
+        instructed = false
+      }
+    }
+    out.push(b)
+  }
+  return out
+}
+
+/**
  * Blocks → the same blocks with the package's Artikel headings, their names
  * and a missing law title marked. Changes `kind` only — and, for a
- * letter-spaced line, the text to the word it spells — never order or count.
+ * letter-spaced line, the text to the word it spells — never order; the
+ * count only where an Artikel line is missing altogether
+ * (`missingArticleLines`).
  */
 export function refineArticleHeadings(input: readonly TextBlock[]): TextBlock[] {
-  const blocks = input.map((b) => ({ ...b }))
+  let blocks = input.map((b) => ({ ...b }))
 
   // 1. Artikel lines the class mapping could not see.
   let quoted = false
@@ -183,6 +250,7 @@ export function refineArticleHeadings(input: readonly TextBlock[]): TextBlock[] 
 
   // 2. The name directly under an Artikel line, as a `section` — the kind
   //    both name windows read. A name that already is one stays as it is.
+  blocks = missingArticleLines(blocks)
   for (let i = 0; i < blocks.length - 1; i++) {
     if (blocks[i]!.kind !== 'article') continue
     const n = blocks[i + 1]!

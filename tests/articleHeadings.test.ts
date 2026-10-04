@@ -392,3 +392,38 @@ describe('what stays as it was', () => {
     expect(blocks.filter((b) => b.cls === '44UeberschrArt').map((b) => b.kind)).toEqual(['other', 'other'])
   })
 })
+
+describe('an Artikel line the ressort left out (83/ME XXVIII)', () => {
+  const toc: [string, string][] = [
+    ['inhaltsvz/spalte', 'Artikel 1 Änderung des Patentverträge-Einführungsgesetzes'],
+    ['inhaltsvz/spalte', 'Artikel 2 Änderung des Gebrauchsmustergesetzes'],
+  ]
+  const body: [string, string][] = [
+    ['ueberschrift/g1', 'Artikel 1'],
+    ['ueberschrift/g2', 'Änderung des Patentverträge-Einführungsgesetzes'],
+    ['absatz/promkleinlsatz', 'Das Patentverträge-Einführungsgesetz, BGBl. Nr. 52/1979, wird wie folgt geändert:'],
+    ['absatz/novao1', '1. § 26 wird folgender Absatz 7 angefügt:'],
+    ['absatz/abs', '"(7) Für Übersetzungen gilt § 5 Abs. 1 in der bisherigen Fassung."'],
+    ['ueberschrift/g1', 'Änderung des Gebrauchsmustergesetzes'],
+    ['absatz/promkleinlsatz', 'Das Gebrauchsmustergesetz, BGBl. Nr. 211/1994, wird wie folgt geändert:'],
+    ['absatz/novao1', '1. § 8 lautet:'],
+    ['absatz/abs', '"(1) Der Erfinder hat Anspruch auf Nennung."'],
+  ]
+
+  it('restores it from the table of contents, so the second law is its own Artikel', () => {
+    const units = parseLawUnitsFromRis(ris([...toc, ...body]))
+    expect(articles(units)).toEqual(['Änderung des Patentverträge-Einführungsgesetzes', 'Änderung des Gebrauchsmustergesetzes'])
+    expect(units.map((u) => u.articleNumber)).toEqual(['Artikel 1', 'Artikel 2'])
+  })
+
+  it('guesses no number where the table of contents does not list the law', () => {
+    const blocks = parseRisXml(ris(body))
+    expect(blocks.filter((b) => b.kind === 'article').map((b) => b.text)).toEqual(['Artikel 1'])
+  })
+
+  it('leaves a heading alone that no Promulgationsklausel follows', () => {
+    const rows = body.map(([el, text]): [string, string] => [el, text.startsWith('Das Gebrauchsmustergesetz') ? 'Für Gebrauchsmuster gilt Folgendes:' : text])
+    const blocks = parseRisXml(ris([...toc, ...rows]))
+    expect(blocks.filter((b) => b.kind === 'article').map((b) => b.text)).toEqual(['Artikel 1'])
+  })
+})
