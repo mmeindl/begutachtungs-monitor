@@ -19,9 +19,9 @@
  * already does not belong here. A fact whose value carries a link fills the
  * slot `value-<key>`.
  *
- * `frame` is the unfilled hairline frame (03.10.2026), and every station
- * section of the draft page opens with one — the section's state and its
- * facts, before any comparison or list. The pages box by what the reader
+ * The facts stand in an unfilled hairline frame (03.10.2026), and every
+ * station section of the draft page opens with one — the section's state
+ * and its facts, before any comparison or list. The pages box by what the reader
  * does with a thing: the accent-washed box is the door you act on, the
  * white card the instrument you operate (the rail, the comparison, the
  * statement tables), the frame the facts you consult, and prose you read
@@ -31,6 +31,8 @@
  * white station card of 01.10.2026, which gave facts the instruments'
  * surface and so made the two look alike. Transparent, it leaves the
  * page as the ground the FristBar's page-coloured ring cuts against.
+ * Always framed since 04.10.2026: every caller passed `frame`, so the bare
+ * form it switched off was a second layout nobody rendered.
  *
  * No footer (02.10.2026). Its one user put „Verlauf auf parlament.gv.at"
  * inside the box under a hairline, while every other box on the page says
@@ -48,20 +50,13 @@ export interface Fact {
 
 defineProps<{
   facts: readonly Fact[]
-  /** The unfilled frame: hairline, divided rows, no surface. Without it
-   *  the facts stand bare, spaced instead of divided. */
-  frame?: boolean
 }>()
 </script>
 
 <template>
-  <div :class="frame ? 'rounded-xl border border-hairline px-4' : ''">
-    <ul
-      role="list"
-      class="flex flex-col text-sm text-ink"
-      :class="frame ? 'divide-y divide-hairline' : 'gap-4'"
-    >
-      <li v-for="fact in facts" :key="fact.key" :class="frame ? 'py-4' : ''">
+  <div class="rounded-xl border border-hairline px-4">
+    <ul role="list" class="flex flex-col divide-y divide-hairline text-sm text-ink">
+      <li v-for="fact in facts" :key="fact.key" class="py-4">
         <p v-if="fact.title" class="font-medium text-ink">{{ fact.title }}</p>
         <div v-if="$slots[`value-${fact.key}`]" :class="fact.title ? 'mt-0.5' : ''">
           <slot :name="`value-${fact.key}`" />

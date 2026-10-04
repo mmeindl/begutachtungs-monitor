@@ -19,7 +19,7 @@ import { deadlineCardClass, deadlineTone } from '~/utils/deadlines'
  *
  * Slots, in the card's order: `heading`; the default slot, the body under
  * it; the Frist's context line (`context`); `after-context`; the button row
- * — `filing` (the door itself, a `FilingButton` while `filingHref` is set),
+ * — `filing` (the door itself, a `DoorButton` while `filingHref` is set),
  * the .ics button, then `actions`; and `footer` under the row.
  */
 const props = defineProps<{
@@ -33,6 +33,9 @@ const props = defineProps<{
   filingHref?: string | null
 }>()
 
+/* Decision and sign convention live in app/utils/deadlines.ts, next to
+ * the other deadline rules and covered by tests — a flipped sign here would
+ * tell a submitter the wrong date. */
 const doorClass = computed(() =>
   props.frist
     ? deadlineCardClass(deadlineTone(props.deadline, true))
@@ -61,9 +64,9 @@ const doorClass = computed(() =>
     </p>
     <slot name="after-context" />
     <div class="mt-3 flex flex-wrap items-center gap-3">
-      <FilingButton v-if="frist && filingHref" :href="filingHref">
+      <DoorButton v-if="frist && filingHref" :href="filingHref">
         <slot name="filing" />
-      </FilingButton>
+      </DoorButton>
       <UButton
         v-if="frist && deadline && icsHref"
         :to="icsHref"

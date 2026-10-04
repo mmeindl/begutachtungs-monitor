@@ -1,5 +1,10 @@
 <script setup lang="ts">
 /**
+ * The door's button: the one that leaves for a form or a document in a new
+ * window — Parliament's Stellungnahme form, a Begleitschreiben — with the ↗
+ * and the screen reader's warning that a window opens. `FilingButton` until
+ * 04.10.2026; the RIS page's door opens a document, not a filing.
+ *
  * The second door, at the end of a station's section (03.10.2026).
  *
  * The action card at the top of the page stays the one place for the

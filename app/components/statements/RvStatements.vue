@@ -33,7 +33,7 @@ const props = defineProps<{
   data: RvStatementsResponse
   /** Parliament still takes Stellungnahmen on this Vorlage (`enactment.filingOpen`).
    *  The door for it is the card at the top of the page, repeated under this
-   *  block by the page itself (`FilingButton`, 03.10.2026) — not in here,
+   *  block by the page itself (`DoorButton`, 03.10.2026) — not in here,
    *  because this block renders only once its data has loaded. */
   filingOpen?: boolean
 }>()

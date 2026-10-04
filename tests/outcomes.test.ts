@@ -13,6 +13,7 @@ import {
   chainUnlinkedBodyDe,
   chainUnlinkedHeadlineDe,
   rvStationView,
+  relatedGpSuffixDe,
   type VorlageOutcomeState,
 } from '../app/utils/outcomes'
 import { RV_LATENCY_CONTEXT_DAYS } from '../app/utils/deadlines'
@@ -275,5 +276,12 @@ describe('rvStationView', () => {
     expect(v.noRvVerdict).not.toBeNull()
     expect(v.context).toBe('Ob und wie es weitergeht, ist offen.')
     expect(v.facts.map((f) => f.key)).toEqual(['rv'])
+  })
+})
+
+describe('relatedGpSuffixDe', () => {
+  it('names the GP only where it differs from the page\'s own', () => {
+    expect(relatedGpSuffixDe('XXVIII', 'XXVIII')).toBe('')
+    expect(relatedGpSuffixDe('XXVII', 'XXVIII')).toBe(' (XXVII. GP)')
   })
 })

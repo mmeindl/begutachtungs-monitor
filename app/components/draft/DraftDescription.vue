@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { DescriptionBlock } from '#shared/types'
+// Explicit: a component chosen by `:is` needs the object, not the name.
+import FoldSection from '~/components/ui/FoldSection.vue'
 
 /**
  * Kurzinformation of a Ministerialentwurf, grouped into its own sections.
@@ -56,32 +58,23 @@ const sections = computed<Section[]>(() => {
 
 <template>
   <div>
+    <!-- Folded, the house fold (`FoldSection`): native <details> keeps the
+         no-script behaviour, the marker is the page-wide chevron on the
+         right, and the heading stands IN the summary (since 18.09.2026 —
+         before that the open section carried an <h3> and the closed one a
+         <span>, so the page's outline depended on what the reader happened
+         to have open). Open, the same h3 face without the fold.
+         The border-t stayed when the fold moved into `FoldSection`
+         (04.10.2026), although the „Dokumente" folds dropped theirs on
+         03.10.2026; whether it should go here too is still open. -->
     <component
-      :is="section.collapsed ? 'details' : 'div'"
+      :is="section.collapsed ? FoldSection : 'div'"
       v-for="(section, s) in sections"
       :key="s"
-      :class="['mt-5 first:mt-0', section.collapsed ? 'group border-t border-hairline' : '']"
+      v-bind="section.collapsed ? { heading: section.heading ?? '', size: 'base' } : {}"
+      :class="['mt-5 first:mt-0', section.collapsed ? 'border-t border-hairline' : '']"
     >
-      <!-- Native <details> keeps the no-script behaviour; the marker is the
-           page-wide chevron on the right (as on the diff groups), rotating
-           when open, instead of the browser's triangle on the left. -->
-      <summary
-        v-if="section.collapsed"
-        class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 text-base font-semibold text-ink hover:bg-hover [&::-webkit-details-marker]:hidden"
-      >
-        <!-- The heading stands IN the summary, since 18.09.2026. Before that
-             the open section carried an <h3> and the closed one a <span>: the
-             page's outline depended on what the reader happened to have open,
-             and a screen-reader jump through the headings found a section only
-             in its open state. Heading content is allowed in <summary>. -->
-        <h3 class="text-base font-semibold text-ink">{{ section.heading }}</h3>
-        <UIcon
-          name="i-lucide-chevron-down"
-          class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
-          aria-hidden="true"
-        />
-      </summary>
-      <h3 v-else-if="section.heading" class="text-base font-semibold text-ink">
+      <h3 v-if="!section.collapsed && section.heading" class="text-base font-semibold text-ink">
         {{ section.heading }}
       </h3>
 

@@ -46,6 +46,7 @@ import { carriesDraft } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe, formatNumberDe, fristEndedDe, spanInDays, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
 import { PARLIAMENT_COMPARISON_QUESTION, UPSTREAM_AUSSCHUSS_TITLE, UPSTREAM_PLENUM_TITLE } from '#shared/utils/lawStations'
+import type { SourceEntry } from '#shared/utils/provenance'
 import { fristClassLineDe, fristRangeDe, fristSpanDe } from './deadlines'
 
 export type StationId = 'entwurf' | 'begutachtung' | 'rv' | 'parlament' | 'bgbl'
@@ -521,6 +522,13 @@ export function parliamentStandDe(d: DraftDetail, today: string = todayIso()): s
     ? decidedStandDe(e, today)
     : PARLIAMENT_OUTCOME_DE[outcome]
 }
+
+/* The credit line under the frames of „Die Regierungsvorlage" and „Im
+ * Parlament" (02.10.2026): both show Parliament's Verlauf of the
+ * Regierungsvorlage, a history page, which the open data grant covers
+ * (CC BY). One constant for both stations, so the licence claim is made in
+ * one place. */
+export const PARLIAMENT_HISTORY_SOURCES: SourceEntry[] = [{ what: 'Verlauf', publisher: 'parlament', terms: 'cc-by' }]
 
 /** Empty slots are dropped rather than rendered, so a row never reads "· ·". */
 const kept = (...facts: (string | null | undefined)[]): string[] =>

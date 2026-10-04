@@ -322,24 +322,14 @@ const coverLetterHref = computed(() => {
             <ExplanationsSection :ris-id="data.id" />
           </PageSubsection>
 
-          <!-- The house <details> with the heading in the <summary>, as on the
-               draft page and in DraftDescription: the outline does not depend on
-               what is open, find-in-page still opens it, and nothing above it
-               moves when it opens. No border-t since 03.10.2026, as on the draft
-               page: the full-width hairline outranked the section boundary. -->
-          <details class="group">
-            <summary
-              class="-mx-3 flex min-h-target cursor-pointer list-none items-center justify-between gap-3 rounded px-3 py-3 hover:bg-hover [&::-webkit-details-marker]:hidden"
-            >
-              <h3 id="dokumente" class="text-lg font-semibold text-ink">
-                Dokumente<template v-if="documents.length"> ({{ documents.length }})</template>
-              </h3>
-              <UIcon
-                name="i-lucide-chevron-down"
-                class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
-                aria-hidden="true"
-              />
-            </summary>
+          <!-- The house fold (`FoldSection`), as on the draft page and in
+               DraftDescription: the outline does not depend on what is open,
+               find-in-page still opens it, and nothing above it moves when it
+               opens. -->
+          <FoldSection
+            :heading="documents.length ? `Dokumente (${documents.length})` : 'Dokumente'"
+            heading-id="dokumente"
+          >
             <div class="pb-2">
               <!-- THE ZITIERFORM, since 26.09.2026 — the one deliberate gap the
                    anatomy comparison of 17.09.2026 left open
@@ -393,7 +383,7 @@ const coverLetterHref = computed(() => {
                    parlament.gv.at ansehen" — provenance belongs next to the
                    item's identity, not mid-page as an action it is not. -->
             </div>
-          </details>
+          </FoldSection>
         </div>
       </section>
 
@@ -409,7 +399,7 @@ const coverLetterHref = computed(() => {
         <div class="mt-4 space-y-8">
           <!-- While the Frist runs the action card carries it; one place
                at a time, as on the draft page. -->
-          <FactList v-if="fristFacts.length" :facts="fristFacts" frame>
+          <FactList v-if="fristFacts.length" :facts="fristFacts">
             <template #after-frist>
               <FristBar :start="data.startedAt" :deadline="data.deadline" />
             </template>
@@ -422,13 +412,13 @@ const coverLetterHref = computed(() => {
               Die Stellungnahmen werden nicht veröffentlicht&nbsp;–
               <NuxtLink to="/so-funktionierts#ohne-stellungnahmen" class="link-inline">warum?</NuxtLink>
             </p>
-            <!-- The card's door once more (`FilingButton`). Only with a
+            <!-- The card's door once more (`DoorButton`). Only with a
                  Begleitschreiben: without one the card's fallback is the RIS
                  record, and a second way to it here is not an action. -->
             <div v-if="data.active && data.coverLetter" class="mt-4">
-              <FilingButton :href="data.coverLetter.pdf ?? data.coverLetter.html ?? data.risUrl">
+              <DoorButton :href="data.coverLetter.pdf ?? data.coverLetter.html ?? data.risUrl">
                 Begleitschreiben öffnen
-              </FilingButton>
+              </DoorButton>
             </div>
           </PageSubsection>
         </div>

@@ -368,3 +368,10 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
     context,
   }
 }
+
+/* A related draft — the gleichlautend predecessor, the successor — is named
+ * by citation and GP; the GP only where it differs from the page's own,
+ * which is the case that carries information. */
+export function relatedGpSuffixDe(related: string, own: string | null | undefined): string {
+  return related === own ? '' : ` (${related}. GP)`
+}

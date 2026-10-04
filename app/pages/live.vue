@@ -49,7 +49,7 @@ const facts: Fact[] = [
       <span class="bg-mark px-1">Was wurde aus den Stellungnahmen?</span>
     </p>
 
-    <FactList :facts="facts" frame class="mt-8" />
+    <FactList :facts="facts" class="mt-8" />
 
     <!-- The promise this page exists for: the printed/linked URL stays,
          the destination changes. Wording must survive being read on
