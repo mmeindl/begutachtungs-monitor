@@ -5,11 +5,45 @@
  * (auto-imported; pure module so vitest can import it relatively).
  */
 
-/** Valid GP code: Roman numerals (value range of the Parliament API). */
-export const GP_RE = /^[IVXLC]+$/
+/**
+ * Valid GP code: a canonical Roman numeral from I to XCIX — never empty,
+ * never longer than eight characters (LXXXVIII).
+ *
+ * Canonical and bounded on purpose, not a character class: every code that
+ * passes becomes a cache key and an upstream filter value, so the pattern
+ * is what keeps the key space finite (99 values, against ~5^n for
+ * `[IVXLC]+`). GP XCIX lies centuries out; the running period is XXVIII.
+ * A numeric "is this period real" check needs the running GP, which is an
+ * upstream call — that lives server-side (`isPlausibleGp`).
+ */
+export const GP_RE = /^(?=[IVXL])(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$/
 
-/** Valid item number (INR): digit sequence. */
-export const INR_RE = /^\d+$/
+/**
+ * Valid item number (INR): one to seven digits. Parliament's largest
+ * numbers (Stellungnahmen, six digits) leave a factor of ten of headroom;
+ * the cap keeps `Number(inr)` a safe integer, so an oversized string cannot
+ * turn into `Infinity` and slip past a `< 1` check.
+ */
+export const INR_RE = /^\d{1,7}$/
+
+/** An INR string as a number, or null unless it is a positive integer within `INR_RE`. */
+export function parseInr(raw: string): number | null {
+  if (!INR_RE.test(raw)) return null
+  const n = Number(raw)
+  return Number.isSafeInteger(n) && n >= 1 ? n : null
+}
+
+/**
+ * Whether `gp` names a period that exists or is about to: I up to the one
+ * after `currentGp`. One ahead because `currentGp` may be a stale fallback
+ * on the day a period convenes — the same tolerance `gpHasEnded` keeps.
+ */
+export function isPlausibleGp(gp: string, currentGp: string): boolean {
+  const n = romanToInt(gp)
+  const current = romanToInt(currentGp)
+  if (n === null) return false
+  return current === null ? true : n <= current + 1
+}
 
 const ROMAN_TOKENS: [string, number][] = [
   ['C', 100],

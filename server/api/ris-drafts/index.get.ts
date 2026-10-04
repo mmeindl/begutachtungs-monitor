@@ -18,7 +18,7 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { sortConsultations } from '#shared/utils/risConsultations'
-import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
+import { ministryFilterOptions, readListQuery, requirePlausibleGp } from '../../utils/http/params'
 import { filterRisConsultations, risStationWants } from '../../utils/ris/risList'
 import { getCarryOverRisConsultations } from '../../utils/ris/risOnly'
 import { previousGp } from '#shared/utils/gp'
@@ -38,7 +38,8 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
   const art = artParam as RisConsultationKind | undefined
 
   const currentGp = await getCurrentGp()
-  const gp = query.gp ?? currentGp
+  // Before the cached functions below: their key is the period.
+  const gp = requirePlausibleGp(query.gp ?? currentGp, currentGp)
   const cached = await getRisOnlyForGp(gp)
   const { withGegenstand, undecided } = cached
   /* `active` and the order that follows from it are decided HERE, per

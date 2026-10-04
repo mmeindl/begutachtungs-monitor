@@ -52,12 +52,19 @@ const getStatementsForMe = defineCachedFunction(
         BEZUG_ITYP: ['ME'],
         BEZUG_INR: [inr],
       })
-    let res = await query()
+    // List 81 alongside, not before: it is a warm leaf on every real draft,
+    // so the parallel read costs nothing — and it is the existence check. A
+    // number that is no draft throws here, and an error is never cached, so
+    // made-up numbers leave no empty list behind.
+    const [first, draft] = await Promise.all([
+      query(),
+      getDraftsForGp(gp).then(({ items }) => items.find((i) => i.inr === inr)),
+    ])
+    if (!draft) throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
+    let res = first
     let rows = res.rows ?? []
     if (rows.length === 0) {
-      const { items } = await getDraftsForGp(gp)
-      const claimed = items.find((i) => i.inr === inr)?.statementCount ?? 0
-      if (claimed > 0) {
+      if (draft.statementCount > 0) {
         res = await query()
         rows = res.rows ?? []
         if (rows.length === 0) {

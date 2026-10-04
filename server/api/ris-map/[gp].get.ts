@@ -5,10 +5,11 @@
  * nightly prewarm timer calls those so no GP is hardcoded on the server.
  */
 import type { RisMapResponse } from '#shared/types'
-import { gpFromParam, readGpParam } from '../../utils/http/params'
+import { gpFromParam, readGpParam, requirePlausibleGp } from '../../utils/http/params'
 
 // Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async (event): Promise<RisMapResponse> => {
-  const gp = gpFromParam(readGpParam(event), await getCurrentGp())
+  const currentGp = await getCurrentGp()
+  const gp = requirePlausibleGp(gpFromParam(readGpParam(event), currentGp), currentGp)
   return getRisMapForGp(gp)
 })

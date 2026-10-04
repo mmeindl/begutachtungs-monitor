@@ -10,7 +10,7 @@
 import type { DraftsResponse } from '#shared/types'
 import { chainCoverageOf, mayClaimOutcome } from '#shared/utils/draftStations'
 import { gpHasEnded } from '#shared/utils/gp'
-import { ministryFilterOptions, readListQuery } from '../../utils/http/params'
+import { ministryFilterOptions, readListQuery, requirePlausibleGp } from '../../utils/http/params'
 import { dedupeDraftList, filterDraftList, sortDraftList } from '../../utils/parliament/draftList'
 import { getCarryOverDrafts } from '../../utils/parliament/carryOver'
 
@@ -24,7 +24,8 @@ export default defineEventHandler(async (event): Promise<DraftsResponse> => {
   const query = readListQuery(event)
 
   const currentGp = await getCurrentGp()
-  const gp = query.gp ?? currentGp
+  // Before the cached functions below: their key is the period.
+  const gp = requirePlausibleGp(query.gp ?? currentGp, currentGp)
   /* Folded before anything counts or filters: a draft two ressorts sent
    * jointly stands in list 81 twice, and the list showed it twice and
    * reported 353 of 350 entries for GP XXVII (`dedupeDraftList`). Every

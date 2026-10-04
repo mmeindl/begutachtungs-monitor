@@ -8,6 +8,7 @@ import {
   readLawStationPair,
   readListQuery,
   readRisId,
+  requirePlausibleGp,
   validateGpInrParams,
 } from '../server/utils/http/params'
 import type { FakeError, FakeEvent } from './helpers/nitroGlobals'
@@ -58,12 +59,14 @@ describe('validateGpInrParams', () => {
   it('refuses a period that is not a Roman numeral', () => {
     expect(refusal(() => validateGpInrParams(params({ gp: '28', inr: '1' })))?.statusCode).toBe(400)
     expect(refusal(() => validateGpInrParams(params({ gp: 'XXVIIIA', inr: '1' })))?.statusCode).toBe(400)
+    // Roman letters, but no canonical numeral — and no unbounded cache key.
+    expect(refusal(() => validateGpInrParams(params({ gp: 'I'.repeat(16_000), inr: '1' })))?.statusCode).toBe(400)
     // An absent param is the same answer as a malformed one.
     expect(refusal(() => validateGpInrParams(params({ inr: '1' })))?.statusCode).toBe(400)
   })
 
   it('refuses an item number that is not a positive integer', () => {
-    for (const inr of ['abc', '1a', '-1', '1.5', '']) {
+    for (const inr of ['abc', '1a', '-1', '1.5', '', '9'.repeat(400), '12345678']) {
       expect(refusal(() => validateGpInrParams(params({ gp: 'XXVIII', inr }))), inr).not.toBeNull()
     }
   })
@@ -79,6 +82,19 @@ describe('validateGpInrParams', () => {
   it('names the wrong half in its message', () => {
     expect(refusal(() => validateGpInrParams(params({ gp: '28', inr: '1' })))?.statusMessage)
       .toContain('Gesetzgebungsperiode')
+  })
+})
+
+describe('requirePlausibleGp', () => {
+  it('passes the running period, older ones and the one about to convene', () => {
+    expect(requirePlausibleGp('XXVIII', 'XXVIII')).toBe('XXVIII')
+    expect(requirePlausibleGp('XIV', 'XXVIII')).toBe('XIV')
+    expect(requirePlausibleGp('XXIX', 'XXVIII')).toBe('XXIX')
+  })
+
+  /* Well-formed, so not a 400 — the period simply does not exist. */
+  it('answers 404 for a period beyond that', () => {
+    expect(refusal(() => requirePlausibleGp('LXX', 'XXVIII'))?.statusCode).toBe(404)
   })
 })
 

@@ -12,7 +12,7 @@
 import type { H3Event } from 'h3'
 import type { DraftStation, DraftStatus, LawStationId } from '#shared/types'
 import { DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
-import { GP_RE, INR_RE, previousGp } from '#shared/utils/gp'
+import { GP_RE, isPlausibleGp, parseInr, previousGp } from '#shared/utils/gp'
 import {
   DEFAULT_LAW_STATION_PAIR,
   LAW_STATION_ORDER,
@@ -34,14 +34,27 @@ export function validateGpInrParams(event: H3Event): { gp: string; inr: number }
       statusMessage: 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)',
     })
   }
-  const inrRaw = getRouterParam(event, 'inr') ?? ''
-  if (!INR_RE.test(inrRaw) || Number(inrRaw) < 1) {
+  const inr = parseInr(getRouterParam(event, 'inr') ?? '')
+  if (inr === null) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Ungültige Gegenstandsnummer (positive Ganzzahl erwartet)',
     })
   }
-  return { gp: gpRaw, inr: Number(inrRaw) }
+  return { gp: gpRaw, inr }
+}
+
+/**
+ * 404 for a well-formed period that does not exist yet — checked BEFORE a
+ * cached function sees the code, so a request for GP LXX leaves no entry
+ * behind. Takes `currentGp` as an argument for the reason `gpFromParam`
+ * does: this module makes no upstream call.
+ */
+export function requirePlausibleGp(gp: string, currentGp: string): string {
+  if (!isPlausibleGp(gp, currentGp)) {
+    throw createError({ statusCode: 404, statusMessage: 'Gesetzgebungsperiode nicht gefunden' })
+  }
+  return gp
 }
 
 /**

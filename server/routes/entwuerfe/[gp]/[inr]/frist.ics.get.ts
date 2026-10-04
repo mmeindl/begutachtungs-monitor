@@ -5,15 +5,15 @@
  * UID stays identical to the event in the full /kalender.ics subscription —
  * importing both never duplicates the event.
  */
-import { GP_RE, INR_RE } from '#shared/utils/gp'
+import { GP_RE, parseInr } from '#shared/utils/gp'
 
 export default defineEventHandler(async (event) => {
   const gp = String(getRouterParam(event, 'gp') ?? '').toUpperCase()
   const inrRaw = String(getRouterParam(event, 'inr') ?? '')
-  if (!GP_RE.test(gp) || !INR_RE.test(inrRaw)) {
+  const inr = parseInr(inrRaw)
+  if (!GP_RE.test(gp) || inr === null) {
     throw createError({ statusCode: 404, statusMessage: 'Entwurf nicht gefunden' })
   }
-  const inr = Number(inrRaw)
 
   const siteUrl = useRuntimeConfig(event).public.siteUrl
   const { items } = await getDraftsForGp(gp)

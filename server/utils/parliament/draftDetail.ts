@@ -278,7 +278,7 @@ export async function getDraftDetail(
 ): Promise<DraftDetail> {
   // All three leaf calls are independent → parallel. For an unknown INR the
   // first failing 404 wins (list 81 or Gegenstand) — equivalent for the
-  // client. List 142 then just returns zero rows.
+  // client. List 142 refuses an unknown INR as well, and caches nothing.
   const [summary, detail, statementsResult, risMap, stationMap, currentGp] = await Promise.all([
     requireDraft(gp, inr),
     getGegenstand(gp, 'ME', inr),

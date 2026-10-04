@@ -21,11 +21,12 @@
  * knowledge of which ones those are.
  */
 import type { DraftStation } from '#shared/types'
-import { gpFromParam, readGpParam } from '../../utils/http/params'
+import { gpFromParam, readGpParam, requirePlausibleGp } from '../../utils/http/params'
 
 // Prewarm-only: no page calls this; deploy/systemd/begutachtungs-monitor-prewarm.service does, to pay the cold build where nobody waits.
 export default defineEventHandler(async (event) => {
-  const gp = gpFromParam(readGpParam(event, { defaultsToCurrent: true }), await getCurrentGp())
+  const currentGp = await getCurrentGp()
+  const gp = requirePlausibleGp(gpFromParam(readGpParam(event, { defaultsToCurrent: true }), currentGp), currentGp)
 
   const chains = await getStationMapForGp(gp)
   const counts: Record<DraftStation, number> = { begutachtung: 0, rv: 0, parlament: 0, bgbl: 0 }

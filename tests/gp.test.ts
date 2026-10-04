@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  GP_RE,
   GP_STARTS,
+  INR_RE,
   gpEndedOn,
   gpHasEnded,
   intToRoman,
+  isPlausibleGp,
+  parseInr,
   previousGp,
   romanToInt,
   windowPeriodFor,
@@ -16,6 +20,45 @@ describe('Roman numerals', () => {
     expect(romanToInt('XIV')).toBe(14)
     expect(romanToInt('IIX')).toBeNull()
     expect(romanToInt('abc')).toBeNull()
+  })
+})
+
+/**
+ * Every code that passes becomes a cache key and an upstream filter value,
+ * so the patterns are the bound on how many of each anyone can mint.
+ */
+describe('GP_RE and INR_RE', () => {
+  it('accepts every canonical numeral from I to XCIX and nothing else', () => {
+    for (let n = 1; n <= 99; n++) expect(GP_RE.test(intToRoman(n)), intToRoman(n)).toBe(true)
+    for (const bad of ['', 'C', 'CI', 'IIII', 'IIX', 'VV', 'XXXX', 'LL', 'XXVIIIA', 'xxviii', 'I'.repeat(16_000)]) {
+      expect(GP_RE.test(bad), bad.slice(0, 12)).toBe(false)
+    }
+  })
+
+  it('caps the item number at seven digits', () => {
+    expect(INR_RE.test('1234567')).toBe(true)
+    expect(INR_RE.test('12345678')).toBe(false)
+    expect(INR_RE.test('')).toBe(false)
+  })
+
+  /* The reason for the cap: 400 digits are `Infinity` as a Number, which
+   * passed a `< 1` check and went upstream as `[null]`. */
+  it('parses an item number only into a positive safe integer', () => {
+    expect(parseInr('88')).toBe(88)
+    expect(parseInr('0007')).toBe(7)
+    expect(parseInr('0')).toBeNull()
+    expect(parseInr('9'.repeat(400))).toBeNull()
+    expect(parseInr('1e3')).toBeNull()
+    expect(parseInr('-1')).toBeNull()
+  })
+
+  it('takes a period as plausible up to one after the running one', () => {
+    expect(isPlausibleGp('XXVIII', 'XXVIII')).toBe(true)
+    expect(isPlausibleGp('XIV', 'XXVIII')).toBe(true)
+    expect(isPlausibleGp('XXIX', 'XXVIII')).toBe(true)
+    expect(isPlausibleGp('XXX', 'XXVIII')).toBe(false)
+    expect(isPlausibleGp('LXX', 'XXVIII')).toBe(false)
+    expect(isPlausibleGp('IIX', 'XXVIII')).toBe(false)
   })
 })
 

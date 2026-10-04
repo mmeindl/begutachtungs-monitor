@@ -14,8 +14,8 @@ import { validateGpInrParams } from '../../../../utils/http/params'
 export default defineEventHandler(async (event): Promise<StatementsResponse> => {
   const { gp, inr } = validateGpInrParams(event)
 
-  // Existence check and list 142 are independent → parallel; for an unknown
-  // item the 404 wins, the list then just returns zero rows.
+  // Existence check and list 142 run in parallel; for an unknown item both
+  // answer 404, and nothing is cached for it.
   const [, statements] = await Promise.all([
     requireDraft(gp, inr),
     getStatementsWithFallback(gp, inr),
