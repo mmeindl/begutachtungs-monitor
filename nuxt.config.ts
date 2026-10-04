@@ -64,11 +64,12 @@ export default defineNuxtConfig({
   // 301, because the move is permanent.
   routeRules: {
     // Security headers on every response, shipped with the app so they hold
-    // whatever sits in front of it. The CSP is framing-only on purpose: a
-    // full policy has to admit Nuxt's inline payload script (a nonce or
-    // 'unsafe-inline'), and one that gets it wrong breaks hydration on every
-    // page — a deliberate follow-up, not an oversight. X-Frame-Options says
-    // the same as frame-ancestors for browsers that predate it.
+    // whatever sits in front of it. The CSP here is the framing-only one for
+    // responses that are not rendered pages (feeds, JSON, files); every
+    // rendered HTML page replaces it with the full policy, which hashes that
+    // page's inline scripts (server/plugins/csp.ts) and keeps
+    // frame-ancestors 'none'. X-Frame-Options says the same as
+    // frame-ancestors for browsers that predate it.
     '/**': {
       headers: {
         'strict-transport-security': 'max-age=31536000',

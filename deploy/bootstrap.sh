@@ -202,7 +202,10 @@ systemctl enable begutachtungs-monitor
 #
 # header: also sent by the app itself; Caddy's values win, because deleting a
 # header (-Server) defers all of these to the moment the response is written.
-# No full Content-Security-Policy yet — only frame-ancestors.
+# Content-Security-Policy is the exception: the app builds the full policy
+# per response (server/plugins/csp.ts, with per-build script hashes), so
+# Caddy must not overwrite it — `?` sets the framing-only fallback ONLY when
+# the response carries none, i.e. when the app is down.
 cat > /etc/caddy/Caddyfile.new <<CADDY
 $DOMAIN {
 	encode zstd gzip
@@ -214,7 +217,7 @@ $DOMAIN {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
 		X-Frame-Options DENY
-		Content-Security-Policy "frame-ancestors 'none'"
+		?Content-Security-Policy "frame-ancestors 'none'"
 		-Server
 	}
 	reverse_proxy 127.0.0.1:3000

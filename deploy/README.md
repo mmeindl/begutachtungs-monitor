@@ -197,7 +197,10 @@ head -c 2000000 /dev/zero | curl -s -o /dev/null -w '%{http_code}\n' --data-bina
 ssh $S 'unattended-upgrade --dry-run --debug 2>&1 | grep -i "allowed origins"'
 ```
 
-Expect the five headers and no `Server:` line; `413` for the 2-MB body; the
+Expect the five headers and no `Server:` line — `content-security-policy`
+must be the app's full policy (`default-src 'self'; script-src 'self'
+'sha256-…' …`), not the framing-only fallback: the fallback appearing means
+Caddy still runs the old Caddyfile or the app is down; `413` for the 2-MB body; the
 allowed origins listing `site=deb.nodesource.com,suite=nodistro` and
 `site=dl.cloudsmith.io,origin=cloudsmith/caddy/stable` next to Ubuntu's own.
 A Node update installed this way takes effect at the app's next restart.
