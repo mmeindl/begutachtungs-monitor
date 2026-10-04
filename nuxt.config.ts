@@ -31,15 +31,53 @@ export default defineNuxtConfig({
   // Cached-function storage, split by provenance (server/utils/cache/base.ts):
   // the default `cache` mount keeps documents we fetched and stays on disk,
   // `derived` keeps what we computed and is memory, so a parser change shows
-  // on the next request instead of in 24 hours. Production mounts neither —
-  // there both are memory already.
-  nitro: { devStorage: { derived: { driver: 'memory' } } },
+  // on the next request instead of in 24 hours.
+  //
+  // Production mounts both as bounded LRUs. Without a mount they fall to the
+  // root memory driver, a plain Map that never evicts — `maxAge` only decides
+  // whether an entry is fresh, not whether it is kept — so every document
+  // ever fetched and every key a visitor can mint stayed resident until the
+  // heap ran out. `devStorage` wins over `storage` in dev, so dev keeps the
+  // disk cache and the memory `derived` mount above.
+  //
+  // The sizes, as constraints: Node runs with --max-old-space-size=384 under
+  // MemoryMax=512M (deploy/bootstrap.sh) and measured ~90–130 MB warm. The
+  // driver counts an entry as the UTF-8 length of its serialised JSON, and
+  // V8 holds German text with „“ as a two-byte string, so the heap cost is
+  // up to twice the count: 64 + 48 MB stays under ~225 MB of heap in the
+  // worst case, beside the app. `derived` gets its own budget so a run of
+  // large PDFs cannot push out the RIS corpus and the station maps every
+  // page reads (and LRU keeps those, being read on every request). `max`
+  // lifts the driver's default of 1000 entries: `statement-document` alone
+  // writes one tiny entry per Stellungnahme, hundreds per draft.
+  nitro: {
+    storage: {
+      cache: { driver: 'lru-cache', maxSize: 64 * 1024 * 1024, max: 20_000 },
+      derived: { driver: 'lru-cache', maxSize: 48 * 1024 * 1024, max: 20_000 },
+    },
+    devStorage: { derived: { driver: 'memory' } },
+  },
   // The object of a detail page is the Entwurf, not the Begutachtung, and
   // the URL now says so. Links from the first weeks are in circulation —
   // the RSS feed, the calendar, shared links — and they are the only thing
   // this project has that it cannot re-issue, so they keep working.
   // 301, because the move is permanent.
   routeRules: {
+    // Security headers on every response, shipped with the app so they hold
+    // whatever sits in front of it. The CSP is framing-only on purpose: a
+    // full policy has to admit Nuxt's inline payload script (a nonce or
+    // 'unsafe-inline'), and one that gets it wrong breaks hydration on every
+    // page — a deliberate follow-up, not an oversight. X-Frame-Options says
+    // the same as frame-ancestors for browsers that predate it.
+    '/**': {
+      headers: {
+        'strict-transport-security': 'max-age=31536000',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+        'x-frame-options': 'DENY',
+        'content-security-policy': 'frame-ancestors \'none\'',
+      },
+    },
     '/begutachtungen': { redirect: { to: '/entwuerfe', statusCode: 301 } },
     '/begutachtungen/**': { redirect: { to: '/entwuerfe/**', statusCode: 301 } },
     // The Begutachtungen without a Gegenstand had their own list for a few

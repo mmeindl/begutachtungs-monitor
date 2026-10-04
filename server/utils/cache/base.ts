@@ -25,9 +25,12 @@
  *    dies with the Nitro worker, which is to say with every edit to a
  *    server file.
  *
- * Production is unaffected either way: the `node-server` preset mounts no
- * storage, so both layers are memory there and `systemctl restart` empties
- * them (`deploy/deploy.sh`).
+ * In production both layers are memory, each a size-bounded LRU
+ * (`nuxt.config.ts`, `nitro.storage`), and `systemctl restart` empties them
+ * (`deploy/deploy.sh`). The bound is the LRU's and nothing else's: `maxAge`
+ * only decides whether an entry is still fresh when it is read — Nitro's
+ * cache never deletes an expired entry by itself — so a TTL is no memory
+ * limit, and an entry evicted early is simply fetched again.
  *
  * A function that fetches *and* parses belongs to neither layer and cannot
  * be made correct while it stays one function — any invalidation that
