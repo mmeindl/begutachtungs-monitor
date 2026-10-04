@@ -204,9 +204,9 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
         </li>
       </ul>
       <p>
-        „Begutachtungs-Monitor“ ist ein Arbeitstitel. Das Projekt ist ein
-        unabhängiges Civic-Tech-Vorhaben und steht in keiner Verbindung zum
-        Parlament oder zu Bundesministerien.
+        Der Begutachtungs-Monitor ist ein unabhängiges Civic-Tech-Vorhaben
+        und steht in keiner Verbindung zum Parlament oder zu
+        Bundesministerien.
       </p>
     </ProseSection>
 
