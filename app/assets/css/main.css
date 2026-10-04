@@ -502,6 +502,14 @@
  * they became plain `link-quiet` links (03.10.2026).
  *   row inside sheet:  ink tint         (hover:bg-hover — rows own no border)
  *   naked bar/label:   text only
+ *   disclosure:        ink tint over its hit area (hover:bg-hover on the
+ *                      <summary>, rounded, bled out with -mx). Every
+ *                      <summary>, section head or „Weiterlesen" alike: what
+ *                      opens in place answers with ground, what goes
+ *                      somewhere underlines — so an underline always means
+ *                      a link. A short toggle under prose takes `w-fit`, so
+ *                      the hit area (and the tint) is its label, not a bar
+ *                      across the column (03.10.2026).
  * One ground for all of them, `--color-hover`; there were five.
  * And one hover state for every link: a 2 px underline. Inline links are
  * underlined at rest and thicken to 2 px under the pointer (`link-inline`);

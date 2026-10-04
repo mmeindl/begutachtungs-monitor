@@ -843,7 +843,7 @@ const droppedNote = computed(() =>
                          <details>, so the browser's find-in-page opens it
                          instead of running past it. -->
                     <details v-if="b.reasoning" class="group mt-2">
-                      <summary class="-mx-1 flex min-h-target cursor-pointer list-none items-center gap-2 rounded px-1 py-2 text-xs font-medium text-ink-secondary hover:bg-hover [&::-webkit-details-marker]:hidden">
+                      <summary class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 py-2 text-xs font-medium text-ink-secondary rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden">
                         <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                         <!-- Says what was compared (01.10.2026): the passage on
                              this change, or — where the Erläuterungen are titled

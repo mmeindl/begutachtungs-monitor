@@ -901,7 +901,7 @@ const ministryLinks = computed(() => {
                     </li>
                   </ul>
                   <details v-if="amendedLaws.laws.length > LAW_FOLD_AT" class="group mt-2">
-                    <summary class="flex min-h-target cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
+                    <summary class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden">
                       <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                       <span class="group-open:hidden">Alle {{ amendedLaws.laws.length }} Gesetze anzeigen</span>
                       <span class="hidden group-open:inline">Weniger anzeigen</span>

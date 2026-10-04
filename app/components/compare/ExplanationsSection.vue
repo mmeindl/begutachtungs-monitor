@@ -177,7 +177,7 @@ const loadAnnouncement = computed(() => {
            with the credit line caught between their rules. -->
       <details v-if="folded.length" class="group mt-3">
         <summary
-          class="flex min-h-target cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden"
+          class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden"
         >
           <UIcon
             name="i-lucide-chevron-down"
