@@ -21,6 +21,7 @@
  * and town — none of it is cached and none of it leaves this handler. What
  * is returned is a URL and a kind, nothing personal.
  */
+import type { H3Event } from 'h3'
 import type { StatementDocument } from '#shared/types'
 import { parseStatementRef } from '#shared/utils/statementRef'
 import { mapWithConcurrency } from '../../utils/pool'
@@ -30,9 +31,69 @@ import { getStatementDocument } from '../../utils/parliament/statementDocument'
 const BATCH_MAX = 32
 /** Same ceiling the other fan-outs against parliament use. */
 const CONCURRENCY = 6
+/**
+ * The largest body this endpoint reads. A full legit batch is 32 refs of at
+ * most ~24 characters each (`LXXXVIII/SNME/9999999` quoted, plus a comma) —
+ * under 1 KB as JSON. 8 KB leaves room for whitespace and still keeps h3
+ * from buffering whatever a client chooses to send: `readBody` has no limit
+ * of its own.
+ */
+const BODY_MAX_BYTES = 8 * 1024
+
+const TOO_LARGE = { statusCode: 413, statusMessage: 'Anfrage zu groß' }
+
+/**
+ * The JSON body, read with a ceiling — h3's `readBody` buffers whatever
+ * arrives. A declared Content-Length over the ceiling is refused before a
+ * byte is read; without one (HTTP/2 lets a client omit it, and the proxy
+ * then forwards the body chunked) the stream is counted and dropped at the
+ * ceiling, so a missing header is no way around it.
+ *
+ * Refusing mid-stream pauses the request and closes the connection after
+ * the 413 rather than destroying the request: a destroyed request detaches
+ * its socket before the response finishes, and Nitro's shutdown hook then
+ * throws on `req.socket` being null. `Connection: close` also keeps Node
+ * from draining the rest of the body for keep-alive.
+ */
+async function readCappedJson(event: H3Event): Promise<unknown> {
+  const declared = getRequestHeader(event, 'content-length')
+  if (declared !== undefined && !(Number(declared) <= BODY_MAX_BYTES)) {
+    setResponseHeader(event, 'Connection', 'close')
+    throw createError(TOO_LARGE)
+  }
+  const req = event.node.req
+  const raw = await new Promise<Buffer | null>((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    const onData = (chunk: Buffer) => {
+      size += chunk.length
+      if (size <= BODY_MAX_BYTES) {
+        chunks.push(chunk)
+        return
+      }
+      req.off('data', onData)
+      req.pause()
+      resolve(null)
+    }
+    req.on('data', onData)
+    req.once('end', () => resolve(Buffer.concat(chunks)))
+    req.once('error', reject)
+  })
+  if (raw === null) {
+    setResponseHeader(event, 'Connection', 'close')
+    throw createError(TOO_LARGE)
+  }
+  const text = raw.toString('utf8')
+  if (!text) return undefined
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw createError({ statusCode: 400, statusMessage: 'Ungültiges JSON' })
+  }
+}
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ refs?: unknown }>(event)
+  const body = (await readCappedJson(event)) as { refs?: unknown } | undefined
   const refs = Array.isArray(body?.refs) ? body.refs : null
   if (!refs || refs.length === 0 || refs.length > BATCH_MAX) {
     throw createError({
@@ -60,8 +121,8 @@ export default defineEventHandler(async (event) => {
     if (doc) documents[ref] = doc
   })
 
-  // A filed Stellungnahme does not change; the answer is a URL, so a shared
-  // cache may keep it.
-  setResponseHeader(event, 'Cache-Control', 'public, max-age=86400')
+  // No Cache-Control: a POST response is not reused from a cache for a later
+  // request, so a max-age here would promise nothing. The per-statement
+  // answers are cached server-side (`getStatementDocument`).
   return { documents }
 })
