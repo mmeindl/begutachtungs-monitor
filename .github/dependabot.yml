@@ -1,0 +1,17 @@
+# Weekly update PRs for the GitHub Actions the workflows use.
+#
+# The workflows pin every action to a full commit SHA with the release tag as
+# a trailing comment; Dependabot bumps both together. All action updates come
+# as one grouped PR a week.
+#
+# npm is deliberately not listed: dependencies are updated by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
