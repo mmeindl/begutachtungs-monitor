@@ -58,6 +58,7 @@ export function useDraftHalves(filters: {
     query,
     enabled: wantsMe,
     watch: [wantsMe],
+    lazy: true,
   })
 
   /**
@@ -78,7 +79,7 @@ export function useDraftHalves(filters: {
    */
   const risFetch = useFetch<RisConsultationsResponse>(
     '/api/ris-drafts',
-    { query, timeout: 8000, enabled: wantsRis, watch: [wantsRis] },
+    { query, timeout: 8000, enabled: wantsRis, watch: [wantsRis], lazy: true },
   )
 
   const { data: meFetched, error, refresh, status } = draftsFetch
@@ -92,6 +93,23 @@ export function useDraftHalves(filters: {
   const risData = computed(() => (wantsRis.value ? risFetched.value : null))
 
   /**
+   * Both fetches are `lazy` (04.10.2026): a click shows the page at once
+   * instead of holding the previous one until the halves have answered — the
+   * RIS half's 8 s budget included. The server ignores `lazy` and waits, so
+   * the HTML of a shared link or a crawl is what it was.
+   *
+   * After a click the gate therefore holds until every half that is asked
+   * for has its FIRST answer: the RIS rows sort in between the others by
+   * Frist, and a list drawn from one half would reorder under the reader and
+   * count „0" of the other in the meantime. Only the first: a filter that
+   * refetches keeps the rows standing, as before (`FetchGate`).
+   */
+  const firstAnswerPending = computed(() =>
+    (wantsMe.value && !meFetched.value && !error.value) ||
+    (wantsRis.value && !risFetched.value && !risError.value),
+  )
+
+  /**
    * The gate follows the half that carries the page.
    *
    * That is the Ministerialentwürfe wherever they are asked for; the RIS half
@@ -100,9 +118,13 @@ export function useDraftHalves(filters: {
    * beside it: it is the page's own data then, and it decides loading,
    * failure and retry the way the other half does otherwise.
    */
-  const gateStatus = computed(() => (wantsMe.value ? status.value : risStatus.value))
+  const gateStatus = computed(() =>
+    firstAnswerPending.value ? 'pending' : wantsMe.value ? status.value : risStatus.value,
+  )
   const gateError = computed(() => (wantsMe.value ? error.value : risError.value))
-  const gateData = computed(() => (wantsMe.value ? meData.value : risData.value))
+  const gateData = computed(() =>
+    firstAnswerPending.value ? null : wantsMe.value ? meData.value : risData.value,
+  )
 
   /* Retries whichever halves this `art` asks for — a switched-off handle
    * refuses by itself (`enabled`). */

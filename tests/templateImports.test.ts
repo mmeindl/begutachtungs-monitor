@@ -148,7 +148,9 @@ function scriptBindings(script: string): Set<string> {
     for (const part of bare) add(part)
   }
 
-  for (const m of script.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) add(m[1])
+  // Not the `const` of an `as const`: before a line that opens with `const X`
+  // it matched `const\nconst` and swallowed the declaration behind it.
+  for (const m of script.matchAll(/(?<!\bas\s+)\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) add(m[1])
   for (const m of script.matchAll(/\b(?:function|class)\s+([A-Za-z_$][\w$]*)/g)) add(m[1])
   // Destructured declarations, both shapes: `const { a, b: c } = …`, `const [a] = …`.
   for (const m of script.matchAll(/\b(?:const|let|var)\s*\{([^}]*)\}\s*=/g)) {

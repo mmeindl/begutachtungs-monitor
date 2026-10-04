@@ -6,6 +6,12 @@
  *
  * `status === 'pending' && !data`, never `pending` alone: a refresh keeps
  * the page the reader is looking at instead of replacing it with a spinner.
+ * `idle` counts as loading too: since every page fetch is `lazy`
+ * (04.10.2026), a click renders the page before its request has started,
+ * and a gate that answered nothing in that moment would show an empty page.
+ *
+ * The loading state is the `loading` slot where a page has a shape to hold
+ * its place (the detail pages' `DraftSkeleton`), the spinner otherwise.
  *
  * The slot hands the data back although the page already holds it, and that
  * is the whole reason this component is generic: `v-else-if="data"` on the
@@ -34,12 +40,15 @@ defineEmits<{
 
 defineSlots<{
   default(props: { data: T }): unknown
+  loading?(props: { label?: string }): unknown
 }>()
 </script>
 
 <template>
-  <div v-if="status === 'pending' && !data" :class="stateClass">
-    <LoadingState :label="loadingLabel" />
+  <div v-if="(status === 'pending' || status === 'idle') && !data" :class="stateClass">
+    <slot name="loading" :label="loadingLabel">
+      <LoadingState :label="loadingLabel" />
+    </slot>
   </div>
   <div v-else-if="error" :class="stateClass">
     <ErrorState @retry="$emit('retry')" />

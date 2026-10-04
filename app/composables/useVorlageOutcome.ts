@@ -16,21 +16,23 @@
  * for that.
  *
  * @param enabled Whether a Vorlage exists — the endpoints have nothing to
- * compare otherwise.
+ * compare otherwise. A ref, because after a click the page's draft arrives
+ * after this runs (`lazy`, 04.10.2026): read once, it was false for good.
  */
+import type { Ref } from 'vue'
 import type { LawDiffResponse, ReasoningDiffResponse } from '#shared/types'
 import { changeShareNounDe, ownChangeShare } from '#shared/utils/changeShare'
 import { lawDiffKey, lawReasoningKey } from '#shared/utils/lawStations'
 import { changeShareValueDe, reasoningShareValueDe } from '~/utils/outcomes'
 
-export function useVorlageOutcome(source: () => { gp: string; inr: number }, enabled: boolean) {
+export function useVorlageOutcome(source: () => { gp: string; inr: number }, enabled: Ref<boolean>) {
   const { data: diff, status: diffStatus } = useFetch<LawDiffResponse>(
     () => `/api/drafts/${source().gp}/${source().inr}/diff?von=me&bis=rv`,
-    { key: () => lawDiffKey(source().gp, source().inr, 'me', 'rv'), lazy: true, server: false, dedupe: 'defer', immediate: enabled },
+    { key: () => lawDiffKey(source().gp, source().inr, 'me', 'rv'), lazy: true, server: false, dedupe: 'defer', enabled, watch: [enabled] },
   )
   const { data: reasoning } = useFetch<ReasoningDiffResponse>(
     () => `/api/drafts/${source().gp}/${source().inr}/begruendung?von=me&bis=rv`,
-    { key: () => lawReasoningKey(source().gp, source().inr, 'me', 'rv'), lazy: true, server: false, dedupe: 'defer', immediate: enabled },
+    { key: () => lawReasoningKey(source().gp, source().inr, 'me', 'rv'), lazy: true, server: false, dedupe: 'defer', enabled, watch: [enabled] },
   )
 
   /** Null once the comparison is there and has nothing to count. */
@@ -41,7 +43,7 @@ export function useVorlageOutcome(source: () => { gp: string; inr: number }, ena
     return s ? { ...s, noun: changeShareNounDe(d.units) } : null
   })
   /** Still on its way — the card holds the row's place meanwhile. */
-  const sharePending = computed(() => enabled && !diff.value && diffStatus.value !== 'error')
+  const sharePending = computed(() => enabled.value && !diff.value && diffStatus.value !== 'error')
 
   const reasoningStats = computed(() => {
     const stats = reasoning.value?.stats

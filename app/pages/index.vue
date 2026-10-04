@@ -11,6 +11,7 @@ import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/d
 import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
+import type { AsyncDataRequestStatus } from '#app'
 
 /* „Gesetzes- und Verordnungsentwürfe" since 18.09.2026. It said
    „Gesetzesentwürfe" from before the RIS half shipped, and then went on
@@ -53,8 +54,18 @@ useHead({
 /* Both fetches are started here and awaited below, so they overlap instead
  * of queueing: the outcomes endpoint shares its cached leaves with
  * /api/dashboard, and awaiting them one after the other would add its
- * latency to the page's instead of hiding inside it. */
-const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard')
+ * latency to the page's instead of hiding inside it.
+ *
+ * EVERY FETCH ON THIS PAGE IS `lazy` (04.10.2026), and that changes nothing
+ * the comments below say about the server: there `lazy` is ignored, the
+ * render waits for each of them, and the HTML a crawler, a link preview or a
+ * reader without JavaScript gets is the same as before. It changes the
+ * click: the page appears at once and its sections fill in, instead of the
+ * previous page standing still until the slowest endpoint — up to the 4 s
+ * budgets below — has answered. So a missing answer on the client may also
+ * mean „still on its way", and every „nicht abrufbar" in the template asks
+ * the fetch's status before it says so (`loading`). */
+const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard', { lazy: true })
 
 /* Server-rendered on purpose. This section IS the product's point
  * (mechanism 1: shelving visible, mechanism 3: wins equally visible), and
@@ -76,6 +87,7 @@ const dashboardFetch = useFetch<DashboardPayload>('/api/dashboard')
  * uncached fan-out per visitor and change nothing. */
 const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
   timeout: 4000,
+  lazy: true,
 })
 
 /* The end of the chain, read from the Vorlage side (§12.23). Server-rendered
@@ -86,6 +98,7 @@ const outcomesFetch = useFetch<DashboardOutcomes>('/api/dashboard/outcomes', {
  * 14 ms warm, so the 4 s budget is a guard, not a plan. */
 const enactedFetch = useFetch<DashboardEnacted>('/api/dashboard/enacted', {
   timeout: 4000,
+  lazy: true,
 })
 
 /* „Beschlossen, noch nicht kundgemacht" (§12.21, Nachtrag 03.10.2026) —
@@ -96,6 +109,7 @@ const enactedFetch = useFetch<DashboardEnacted>('/api/dashboard/enacted', {
  * only guards against a stalled server. */
 const decidedFetch = useFetch<DashboardDecided>('/api/dashboard/beschlossen', {
   timeout: 4000,
+  lazy: true,
 })
 
 /* The second window for input: Regierungsvorlagen that are taking
@@ -121,7 +135,7 @@ const { data: secondRound } = await useFetch<DashboardSecondRound>(
  *
  * It costs no upstream request the page does not already pay: the RIS corpus
  * and the GP's join map are the same cached leaves the draft pages read. */
-const { data: risOnly } = await useFetch<RisConsultationsResponse>(
+const { data: risOnly, status: risStatus } = await useFetch<RisConsultationsResponse>(
   '/api/ris-drafts',
   // 4 s is the outcomes section's budget, and that endpoint answers in
   // 0.41 s cold. This one sits on the RIS corpus — 46 upstream requests with
@@ -129,13 +143,17 @@ const { data: risOnly } = await useFetch<RisConsultationsResponse>(
   // Warm it is milliseconds; cold it is a minute, and no homepage may wait
   // for that. 6 s covers a slow-but-answering upstream without ever being
   // the reason first paint is late.
-  { query: { status: 'open' }, timeout: 6000 },
+  { query: { status: 'open' }, timeout: 6000, lazy: true },
 )
 
 const { data, error, refresh, status } = await dashboardFetch
 const { data: outcomes } = await outcomesFetch
-const { data: enacted } = await enactedFetch
+const { data: enacted, status: enactedStatus } = await enactedFetch
 const { data: decided } = await decidedFetch
+
+/** No answer yet, as opposed to none: only after a click, never on the
+ *  server, which waits (see `dashboardFetch`). */
+const loading = (s: AsyncDataRequestStatus) => s === 'idle' || s === 'pending'
 
 /**
  * What is open right now, both kinds, in ONE deadline-ordered list
@@ -381,7 +399,7 @@ const enactedHref = computed(
              state where its gloss below the list was suppressed — the
              gloss only rendered when such a row was present, and this line
              only renders when none is. -->
-        <p v-if="!risOnly" class="mt-2 text-sm text-ink-muted">
+        <p v-if="!risOnly && !loading(risStatus)" class="mt-2 text-sm text-ink-muted">
           Die Verordnungsentwürfe aus dem RIS sind gerade nicht abrufbar –
           <NuxtLink
             to="/entwuerfe?art=verordnung&status=open"
@@ -394,7 +412,13 @@ const enactedHref = computed(
           >im RIS nachsehen</ExternalLink>.
         </p>
 
-        <EntryList v-if="visibleOpenRows.length" :entries="visibleOpenRows" class="mt-4" />
+        <!-- Until both halves are here: the RIS rows sort in between the
+             others by Frist, so a list drawn from one half would reorder
+             under the reader's eyes. -->
+        <ListSkeleton v-if="loading(risStatus)" class="mt-4">
+          Offene Entwürfe werden geladen …
+        </ListSkeleton>
+        <EntryList v-else-if="visibleOpenRows.length" :entries="visibleOpenRows" class="mt-4" />
         <div v-else-if="risOnly" class="mt-4">
           <!-- The no-open moment is exactly the moment to subscribe. Said
                only when BOTH halves are known to be empty — with the RIS
@@ -656,6 +680,9 @@ const enactedHref = computed(
         <!-- Same row and the same chip as the section above: the object
              is the Begutachtung, and what became of it goes in the aside. -->
         <EntryList v-if="enactedEntries.length" :entries="enactedEntries" class="mt-4" />
+        <ListSkeleton v-else-if="loading(enactedStatus)" class="mt-4">
+          Kundmachungen werden geladen …
+        </ListSkeleton>
         <!-- Two different silences, said differently: nothing promulgated
              yet is a fact about the period, an unreachable endpoint is a
              fact about us. -->

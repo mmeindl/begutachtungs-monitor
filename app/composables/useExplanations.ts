@@ -58,7 +58,22 @@ export function useExplanations(source: () => { gp?: string; inr?: number; risId
     // starts its own. Measured 19.09.2026 with a probe in the endpoint: two
     // calls per page build, already before this file. `defer` hands the second
     // one the running fetch.
-    { lazy: true, dedupe: 'defer' },
+    //
+    // `getCachedData` for the case `defer` cannot reach: the answer is already
+    // THERE when the second reader registers. Since the draft page's own fetch
+    // is `lazy` too (04.10.2026), a click starts the page's call at once and
+    // mounts `ExplanationsSection` only when the draft has arrived — by then
+    // the first request has usually finished, and the second sent it again.
+    // Only the initial call reads it; every refresh still goes out, and the
+    // rest is Nuxt's default (the payload while hydrating).
+    {
+      lazy: true,
+      dedupe: 'defer',
+      getCachedData: (key, nuxtApp, ctx) =>
+        ctx.cause === 'initial' && key in nuxtApp.payload.data
+          ? nuxtApp.payload.data[key]
+          : nuxtApp.isHydrating ? nuxtApp.payload.data[key] : nuxtApp.static.data[key],
+    },
   )
 
   // AFTER hydration, not in `onMounted`: while hydration runs, Nuxt answers
