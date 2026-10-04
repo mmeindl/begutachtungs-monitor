@@ -8,10 +8,15 @@
  * the one `?von=…&bis=…`: the instance whose scope holds `bis` reads it, the
  * others show their defaults, so a shared link still opens one comparison.
  *
- * Async because the requests are awaited, as they were in the section's
- * setup: everything that needs the component instance — the requests, the
- * watchers — is set up BEFORE the await, and the snapshot of what is on
- * screen is taken after it, where the section took it.
+ * NOT async, since 04.10.2026. The three requests were awaited, as they
+ * had been in the section's setup — which did nothing on the server, where
+ * they are `server: false`, and broke hydration in the browser: the
+ * Vorlage's station frame starts the same ME→RV comparison before this
+ * section is set up (`useVorlageOutcome`, shared key), so the await held the
+ * section until the answer was there and it hydrated with a list the
+ * server's HTML did not have. Every draft page with a Vorlage logged the
+ * mismatch, in production too. An answer that arrives later reaches the
+ * screen through the watcher on the fetch's status, as every other one does.
  */
 import type { MaybeRefOrGetter } from 'vue'
 import type { LawDiffResponse, LawStationId, ParagraphTitlesResponse, ReasoningDiffResponse } from '#shared/types'
@@ -25,7 +30,7 @@ import {
   lawReasoningKey,
 } from '#shared/utils/lawStations'
 
-export async function useLawDiffStep(options: {
+export function useLawDiffStep(options: {
   gp: MaybeRefOrGetter<string>
   inr: MaybeRefOrGetter<number>
   /** Which station's step this instance shows; „rv" by default. */
@@ -220,16 +225,6 @@ export async function useLawDiffStep(options: {
       if (step) chooseStep(step)
     },
   })
-
-  await Promise.all([diffFetch, titlesFetch, reasoningFetch])
-  // The snapshot as the section took it, after its awaits: a request this
-  // page already had in flight (the station frame's, same key) may have
-  // answered while they ran.
-  pair.value = { ...requested.value }
-  data.value = fetchedDiff.value
-  status.value = fetchStatus.value
-  paraTitles.value = fetchedTitles.value
-  reasoning.value = fetchedReasoning.value
 
   return { steps, scopeDefault, requested, enabled, enable, pair, data, status, paraTitles, reasoning, chooseStep, stepOptions, selectedStep }
 }

@@ -76,7 +76,7 @@ const {
   reasoning,
   stepOptions,
   selectedStep,
-} = await useLawDiffStep({
+} = useLawDiffStep({
   gp: () => props.gp,
   inr: () => props.inr,
   scope,
