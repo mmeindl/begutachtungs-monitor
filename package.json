@@ -40,6 +40,7 @@
     "corpus:tgu-deckung": "vite-node scripts/corpus/tguDeckung.ts --",
     "corpus:aenderungsrate": "vite-node scripts/corpus/aenderungsrate.ts --",
     "corpus:anhoerungen": "vite-node scripts/corpus/anhoerungen.ts --",
+    "corpus:annex-census": "vite-node scripts/corpus/annexCensus.ts --",
     "ci:annex-drift": "vite-node scripts/ci/annexDrift.ts --",
     "ci:ssr-smoke": "vite-node scripts/ci/ssrSmoke.ts --",
     "ci:gate-record": "vite-node scripts/ci/gateGoldenRecord.ts --",
