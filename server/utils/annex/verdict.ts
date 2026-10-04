@@ -51,7 +51,7 @@
  * turned every one of those states into a vouched-for comparison.
  */
 import type { TextBlock } from '../lawtext/lawUnits'
-import type { DraftArticle } from '../lawtext/draftArticles'
+import { articleBlocks, type ClauseName, type DraftArticle } from '../lawtext/draftArticles'
 import { mapWithConcurrency } from '../pool'
 import type { KonsLawAtDate, KonsParagraphRef } from '../ris/konsLaw'
 import type { ComparisonRow } from './comparisonRows'
@@ -145,7 +145,7 @@ export function lawCheck(law: string | null, byParagraph: ReadonlyMap<string, Co
  */
 export interface AnnexSources {
   /** Which law a Stammnorm means at a date, with its § index. */
-  resolveLaw: (organ: string, nummer: string, date: string, title: string) => Promise<KonsLawAtDate | null>
+  resolveLaw: (organ: string, nummer: string, date: string, title: string, clause: ClauseName | null) => Promise<KonsLawAtDate | null>
   /**
    * The standing text of one §, group headings included — the Abschnitt and
    * Hauptstück lines above a § are outside `plainText` but the annex prints
@@ -157,7 +157,8 @@ export interface AnnexSources {
   standingText: (ref: KonsParagraphRef) => Promise<StandingText | null>
   /**
    * The version of a § that stood on `date` where RIS has a hole there
-   * (`bridgeVersionGap`, §12.42) — asked only for a § the law lacks on the
+   * (`bridgeVersionGap`, §12.42), or that was promulgated but not yet in
+   * force (`promulgatedBeforeInForce`) — asked only for a § the law lacks on the
    * Stichtag and that owes a check. Optional: without it a missing § stays
    * missing, as it always did.
    */
@@ -251,6 +252,22 @@ export const REASON_NO_BGBL = 'im Entwurf steht keine Fundstelle im Bundesgesetz
 export const REASON_UNRESOLVED = 'das geänderte Gesetz ließ sich im RIS Bundesrecht nicht auflösen'
 export const REASON_UNREADABLE_DESIGNATION = 'die Beilage bezeichnet diese Stellen nicht als Paragraphen'
 export const REASON_NO_SUCH_PARAGRAPH = 'das RIS Bundesrecht führt diese Paragraphen nicht'
+/**
+ * The § RIS does not hold is one the draft itself creates — so the annex's
+ * „Geltende Fassung" beside it is either the text an earlier Artikel of the
+ * same draft writes (126/ME XXVIII: Artikel 3 inserts § 8b, Artikel 4 „Teil
+ * II" amends it) or text the ressort moved there from another §. Until
+ * 04.10.2026 these said „das RIS führt diese Paragraphen nicht", true and
+ * misleading: it read as a gap in RIS or in our lookup (§12.41).
+ */
+export const REASON_INSERTED_BY_DRAFT = 'der Entwurf fügt diese Paragraphen erst ein — im geltenden Recht gibt es sie noch nicht'
+/**
+ * The law the Artikel amends is itself an amending act — „Änderung des
+ * Bundesgesetzes, mit dem das … geändert werden" (116/ME XXVIII). RIS
+ * Bundesrecht consolidates the laws such an act changed, not the act, so
+ * there is nothing to resolve; „ließ sich nicht auflösen" read as our failure.
+ */
+export const REASON_AMENDING_ACT = 'das geänderte Gesetz ist selbst ein Änderungsgesetz, das das RIS Bundesrecht nicht als eigene Fassung führt'
 /**
  * Narrowed on 26.09.2026: a table alone is no longer a reason. `konsTree`
  * reads it as one opaque block, and only a § whose designations then repeat —
@@ -406,6 +423,44 @@ function paragraphGroups(rows: readonly ComparisonRow[]): Map<string, { law: str
   return groups
 }
 
+/** „Änderung des Bundesgesetzes, mit dem das … geändert werden" — an Artikel that amends an amending act. */
+const AMENDING_ACT_TITLE_RE = /^Änderung de[rs]\s+Bundesgesetze?s?,\s+mit\s+dem\b[\s\S]*\bgeändert\s+(?:wird|werden)\b/
+
+export function isAmendingActTitle(title: string | null): boolean {
+  return title !== null && AMENDING_ACT_TITLE_RE.test(title.replace(/\s+/g, ' ').trim())
+}
+
+/** An instruction that brings §§ into being: „wird folgender § 12e … eingefügt", „durch folgende §§ 8 bis 8c … ersetzt". */
+const CREATES_RE = /\b(?:eingefügt|angefügt|ersetzt)\b/
+
+/**
+ * The §§ the draft writes into the law `article` amends with an instruction
+ * that creates them — read off the Gliederungssymbol each new § is printed
+ * with, under an instruction that inserts, appends or replaces. Every Artikel
+ * of the draft that amends the same Stammnorm counts, not just this one: a
+ * „Teil II" Artikel amends what „Teil I" inserted (126/ME XXVIII).
+ *
+ * Only consulted once RIS has no such §, so a „lautet:" over an existing §
+ * never reaches here, and a § this set names is one RIS cannot hold yet.
+ */
+export function paragraphsInsertedBy(blocks: readonly TextBlock[], article: DraftArticle): Set<string> {
+  const same = (a: DraftArticle): boolean =>
+    a.key === article.key || (a.bgbl !== null && article.bgbl !== null && a.bgbl.organ === article.bgbl.organ && a.bgbl.nummer === article.bgbl.nummer)
+  const out = new Set<string>()
+  for (const part of articleBlocks(blocks)) {
+    if (!same(part.article)) continue
+    let creating = false
+    for (const b of part.blocks) {
+      if (b.kind === 'novao') creating = CREATES_RE.test(b.text)
+      else if (creating && b.gld) {
+        const key = designationKey(b.gld)
+        if (key !== null) out.add(key)
+      }
+    }
+  }
+  return out
+}
+
 /**
  * Check every § of a parsed comparison against RIS and against the draft.
  *
@@ -478,6 +533,16 @@ export async function verifyAnnex(
   else if (amending.length === 0) reasons.add(REASON_NO_AMENDING)
 
   const byKey = new Map<string | null, DraftArticle>(articles.map((a) => [a.key, a]))
+  const inserted = new Map<string | null, Set<string>>()
+  const insertedByDraft = (law: string | null): Set<string> => {
+    let keys = inserted.get(law)
+    if (!keys) {
+      const article = law === null ? (amending.length === 1 ? amending[0]! : null) : byKey.get(law)
+      keys = article ? paragraphsInsertedBy(draft.blocks, article) : new Set<string>()
+      inserted.set(law, keys)
+    }
+    return keys
+  }
   /** A law's §§ ready to look up, or why the law could not be (`REASON_*`). */
   type Resolved = LawIndex | string
   const resolved = new Map<string | null, Promise<Resolved>>()
@@ -495,8 +560,8 @@ export async function verifyAnnex(
     // The UGB's Stammnorm is "dRGBl. S. 219/1897": the Artikel amends a law
     // all right, but no Bundesgesetzblatt addresses it.
     if (!article.bgbl) return REASON_NO_BGBL
-    const law = await sources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '')
-    if (!law) return REASON_UNRESOLVED
+    const law = await sources.resolveLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '', article.clause)
+    if (!law) return isAmendingActTitle(article.title) ? REASON_AMENDING_ACT : REASON_UNRESOLVED
     return indexOf(law)
   }
   /** One RIS lookup per law of the package, not per §. */
@@ -524,7 +589,7 @@ export async function verifyAnnex(
       (group.rows.some(isDisplayedChange) && sources.paragraphAcrossGap
         ? await sources.paragraphAcrossGap(index.law.gesetzesnummer, key, asOf)
         : undefined)
-    if (!ref) return skip(groupKey, REASON_NO_SUCH_PARAGRAPH)
+    if (!ref) return skip(groupKey, insertedByDraft(group.law).has(key) ? REASON_INSERTED_BY_DRAFT : REASON_NO_SUCH_PARAGRAPH)
     const standing = await sources.standingText(ref)
     if (standing === null) return skip(groupKey, REASON_NOT_REPRESENTABLE)
     const byPara = coverage.get(group.law) ?? new Map<string, Coverage>()

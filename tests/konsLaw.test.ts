@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bridgeVersionGap, pickByName, soleUnlessContradicted, type KonsVersion } from '../server/utils/ris/konsLaw'
+import { bridgeVersionGap, oneCharApart, pickByName, promulgatedBeforeInForce, soleUnlessContradicted, type KonsVersion } from '../server/utils/ris/konsLaw'
 
 /**
  * Which law of a Bundesgesetzblatt a caller meant.
@@ -89,5 +89,41 @@ describe('bridgeVersionGap — a hole in RIS with one signature (03.10.2026)', (
     expect(bridgeVersionGap([old], '2025-07-22')).toBeNull()
     expect(bridgeVersionGap([next], '2025-07-22')).toBeNull()
     expect(bridgeVersionGap([old, v('MID', '2025-03-25', null, null), next], '2025-07-22')).toBeNull()
+  })
+})
+
+describe('promulgatedBeforeInForce — law on paper, not yet in force (04.10.2026)', () => {
+  const v = (nor: string, from: string, to: string | null, novelle: string | null, kundmachung = 'BGBl. I Nr. 169/1998 zuletzt geändert durch BGBl. I Nr. 21/2024'): KonsVersion => ({
+    ref: { nor, label: '§ 260', id: '260', inkrafttreten: from, ausserkrafttreten: to, kundmachungsorgan: null, stammnorm: null, gesetzesnummer: '10011138', xmlUrl: null },
+    novelle,
+    kundmachung,
+  })
+  // ÄrzteG § 260 as RIS holds it: brought by BGBl. I Nr. 21/2024, in force from 2026-06-01.
+  const first = v('FIRST', '2026-06-01', '2026-07-29', '21/2024')
+  const later = v('LATER', '2026-07-30', null, '65/2026')
+
+  it('takes the promulgated version for a Stichtag before it applies (95/ME XXVIII, 2026-04-10)', () => {
+    expect(promulgatedBeforeInForce([later, first], '2026-04-10')?.nor).toBe('FIRST')
+  })
+  it('does not date a BGBl of the Stichtag\'s own year', () => {
+    expect(promulgatedBeforeInForce([v('SAME', '2026-06-01', null, '21/2026')], '2026-04-10')).toBeNull()
+  })
+  it('stays out where any version began before the date', () => {
+    expect(promulgatedBeforeInForce([v('OLD', '2020-01-01', '2025-12-31', null), first], '2026-04-10')).toBeNull()
+  })
+  it('never takes a repeal', () => {
+    expect(promulgatedBeforeInForce([v('REP', '2026-06-01', null, '21/2024', 'BGBl. … aufgehoben durch BGBl. I Nr. 21/2024')], '2026-04-10')).toBeNull()
+  })
+})
+
+describe('oneCharApart — the misquote misquotedStammnorm accepts (04.10.2026)', () => {
+  it('takes a single mistyped digit (58/ME, 108/ME XXVIII)', () => {
+    expect(oneCharApart('10/2013', '10/2012')).toBe(true)
+    expect(oneCharApart('6/2015', '6/2025')).toBe(true)
+  })
+  it('refuses a re-enacted law, an equal number and a different length (30/ME WPFG)', () => {
+    expect(oneCharApart('135/2013', '237/2022')).toBe(false)
+    expect(oneCharApart('10/2012', '10/2012')).toBe(false)
+    expect(oneCharApart('10/2012', '100/2012')).toBe(false)
   })
 })

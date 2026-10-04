@@ -52,6 +52,7 @@ export const draftArticle = (over: Partial<DraftArticle> = {}): DraftArticle => 
   key: 'X-Gesetz',
   amends: true,
   bgbl: { organ: 'BGBl. I', nummer: '1/2020' },
+  clause: null,
   ...over,
 })
 
@@ -74,6 +75,7 @@ export function draftArticles(...articles: { n?: string; title?: string | null; 
     key: a.title ?? (a.n ? `Artikel ${a.n}` : null),
     amends: a.amends ?? true,
     bgbl: null,
+    clause: null,
   }))
 }
 

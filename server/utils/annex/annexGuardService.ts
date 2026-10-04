@@ -23,7 +23,7 @@
  */
 import { verifyAnnex, type AnnexSources, type AnnexVerification } from './verdict'
 import { readParagraphHistory, fetchParagraphXml, resolveKonsLaw } from '../kons/konsCache'
-import { bridgeVersionGap } from '../ris/konsLaw'
+import { bridgeVersionGap, promulgatedBeforeInForce } from '../ris/konsLaw'
 import { designationKey } from './annexText'
 import { parseKonsParagraph, plainText } from '../lawtext/konsTree'
 import type { TextBlock } from '../lawtext/lawUnits'
@@ -32,11 +32,12 @@ import type { ComparisonRow } from './comparisonRows'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 const sources: AnnexSources = {
-  resolveLaw: (organ, nummer, date, title) => resolveKonsLaw(organ, nummer, date, title),
+  resolveLaw: (organ, nummer, date, title, clause) => resolveKonsLaw(organ, nummer, date, title, clause),
   paragraphAcrossGap: async (gesetzesnummer, key, date) => {
     const history = await readParagraphHistory(gesetzesnummer)
     if (!history) return null
-    return bridgeVersionGap(history.filter((v) => designationKey(v.ref.label) === key), date)
+    const versions = history.filter((v) => designationKey(v.ref.label) === key)
+    return bridgeVersionGap(versions, date) ?? promulgatedBeforeInForce(versions, date)
   },
   standingText: async (ref) => {
     if (!ref.xmlUrl) return null

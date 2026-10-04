@@ -21,8 +21,8 @@
  */
 import type { AmendedLaw, AmendedLawsResponse } from '#shared/types'
 import type { TextBlock } from './lawUnits'
-import { stammnormOf, type BgblCitation } from './bgblCitation'
-import { isAmendmentClause } from './draftArticles'
+import { sameRisStammnorm, stammnormOf, type BgblCitation } from './bgblCitation'
+import { clauseNameOf, isAmendmentClause, type ClauseName } from './draftArticles'
 import { getDraftArticles } from './draftArticlesService'
 import { getDraftsForGp } from '../parliament/drafts'
 import { resolveKonsLaw } from '../kons/konsCache'
@@ -39,7 +39,7 @@ const CONCURRENCY = 6
  * a BGBl cited inside a § (a cross-reference) cannot be mistaken for it, and
  * `stammnormOf` returns null for an instruction line, which names no BGBl.
  */
-function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null; bgbl: BgblCitation } | null {
+function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null; bgbl: BgblCitation; clause: ClauseName | null } | null {
   let title: string | null = null
   for (const b of blocks) {
     if (b.kind === 'section' || b.kind === 'title') {
@@ -48,7 +48,7 @@ function leadingStammnorm(blocks: readonly TextBlock[]): { title: string | null;
     }
     if (isAmendmentClause(b.text)) {
       const bgbl = stammnormOf(b.text)
-      if (bgbl) return { title, bgbl }
+      if (bgbl) return { title, bgbl, clause: clauseNameOf(b.text) }
     }
     // Past the first real instruction the clause can no longer follow.
     if (b.kind === 'novao') return null
@@ -90,7 +90,7 @@ export const getAmendedLaws = defineCachedFunction(
     // Ministerialentwurf, the three sections of the draft page read the RIS
     // XML (`lawtext/draftArticlesService.ts`).
     const { blocks, articles } = await getDraftArticles(gp, inr, 'parliament-first')
-    let wanted = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl }))
+    let wanted = articles.filter((a) => a.amends).map((a) => ({ title: a.title, bgbl: a.bgbl, clause: a.clause }))
 
     // A single-law Novelle prints no "Artikel" line, and its
     // Promulgationsklausel reads as an instruction, so `draftArticles` —
@@ -118,7 +118,9 @@ export const getAmendedLaws = defineCachedFunction(
       const cited = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}` : null
       const resolved = w.bgbl && asOf
         // `w.title` is the Artikel heading this entry came from — the same
-        // disambiguator `annex/annexGuardService.ts` passes, and the string
+        // disambiguator `annex/annexGuardService.ts` passes, with the
+        // clause's own name of the law as the second witness (`clause`,
+        // 04.10.2026: 28/55/27/58/108/ME XXVIII resolve only with it), and the string
         // used as the display fallback one line below. Withheld from the
         // lookup it turned every law of an ambiguous Bundesgesetzblatt into
         // a row without a RIS link and with the draft's own wording instead
@@ -128,12 +130,18 @@ export const getAmendedLaws = defineCachedFunction(
         // no such law or cannot tell two apart, and throws only when RIS
         // is unreachable — the distinction its own doc comment draws
         // (`kons/konsCache.ts`). Catching it here undid that one layer up.
-        ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '')
+        ? await resolveKonsLaw(w.bgbl.organ, w.bgbl.nummer, asOf, w.title ?? '', w.clause)
         : null
+      // Where the law was found by its name despite a misprinted Stammnorm,
+      // the citation stays as the draft wrote it and RIS's own stands beside
+      // it — a link to the right law under the wrong number reads as our
+      // error otherwise.
+      const held = resolved ? Object.values(resolved.paragraphs).find((p) => p.stammnorm)?.stammnorm ?? null : null
       return {
         title: resolved?.kurztitel || w.title || cited || 'Unbenanntes Gesetz',
         bgbl: cited,
         risUrl: resolved ? konsLawUrl(resolved.gesetzesnummer, asOf) : null,
+        risBgbl: held && w.bgbl && !sameRisStammnorm(held, w.bgbl) ? `${held.organ} ${held.nummer}` : null,
       }
     })
     for (const r of results) if (r) laws.push(r)

@@ -17,6 +17,7 @@
  */
 
 import { sameRisStammnorm, type BgblCitation } from '../lawtext/bgblCitation'
+import type { ClauseName } from '../lawtext/draftArticles'
 import { bestNameScore, pickClearWinner } from '../text/clearWinner'
 import { namesCompatible } from '../lawtext/lawNames'
 import { RIS_API_BASE, upstreamJson, upstreamText, type UpstreamPolicy } from '../upstream/fetch'
@@ -156,8 +157,15 @@ export interface KonsLawAtDate {
  * Returns null unless exactly one law survives. An ambiguous or missing
  * match must yield no heading rather than a heading from the wrong law:
  * a wrong name on someone's paragraph is worse than no name.
+ *
+ * `clause` is the law as the Promulgationsklausel names it — a second
+ * witness, asked only where `name` decided nothing (04.10.2026, §12.41): the
+ * Artikel title may be a whole Novelle's name („GewO-EU-Finanzberufs-
+ * verordnungen Novelle 2025", 28/ME) or misspelt („Gewerbeordung", 55/ME).
+ * And where the cited Stammnorm finds no law at all, the clause is what
+ * `misquotedStammnorm` searches by.
  */
-export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: string | null): Promise<KonsLawAtDate | null> {
+export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: string | null, clause?: ClauseName | null): Promise<KonsLawAtDate | null> {
   const byLaw = new Map<string, { kurztitel: string; abkuerzung: string; paragraphs: Record<string, KonsParagraphRef> }>()
   let seen = 0
   for (let page = 1; page <= 20; page++) {
@@ -184,11 +192,56 @@ export async function resolveLawByBgbl(bgbl: BgblCitation, date: string, name?: 
     seen += refs.length
     if (seen >= hits || refs.length === 0) break
   }
-  if (byLaw.size === 0) return null
-  const chosen = byLaw.size === 1 ? soleUnlessContradicted([...byLaw][0]!, name) : (name ? pickByName(byLaw, name) : null)
-  if (!chosen) return null
-  const [gesetzesnummer, entry] = chosen
-  return { gesetzesnummer, kurztitel: entry.kurztitel, paragraphs: entry.paragraphs }
+  const choose = (by: string | null | undefined) => (byLaw.size === 0 ? null : byLaw.size === 1 ? soleUnlessContradicted([...byLaw][0]!, by) : by ? pickByName(byLaw, by) : null)
+  const chosen = choose(name) ?? (clause ? (choose(clause.name) ?? (clause.abbreviation ? choose(clause.abbreviation) : null)) : null)
+  if (chosen) {
+    const [gesetzesnummer, entry] = chosen
+    return { gesetzesnummer, kurztitel: entry.kurztitel, paragraphs: entry.paragraphs }
+  }
+  return clause ? misquotedStammnorm(bgbl, date, clause) : null
+}
+
+/** Two BGBl numbers that differ in exactly one character: „10/2013" and „10/2012", „6/2015" and „6/2025". */
+export function oneCharApart(a: string, b: string): boolean {
+  if (a.length !== b.length || a === b) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff++
+  return diff === 1
+}
+
+const normName = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
+
+/**
+ * The law a draft names correctly and cites with a mistyped Stammnorm.
+ * 58/ME XXVIII cites the BVergGVS 2012 as „BGBl. I Nr. 10/2013" (it is
+ * 10/2012), 108/ME the KKG as „BGBl. I Nr. 6/2015" (6/2025) — and every §
+ * of both went unchecked as „ließ sich nicht auflösen" (§12.41).
+ *
+ * Searched by the clause's name, and taken only when all of it holds: the
+ * RIS Kurztitel or Abkürzung **equals** the clause's (not a score — a near
+ * name is a different law as often as not), the Stammnorm is one character
+ * away from the cited one in the same series and Teil, and exactly one law
+ * passes. 30/ME's WPFG fails on purpose: it cites the Wertpapierfirmengesetz
+ * as 135/2013, RIS's is 237/2022 — a re-enacted law, not a typo.
+ */
+async function misquotedStammnorm(bgbl: BgblCitation, date: string, clause: ClauseName): Promise<KonsLawAtDate | null> {
+  const body = await konsJson(konsQuery({ Titel: clause.name, 'Fassung.FassungVom': date, DokumenteProSeite: 'OneHundred' }))
+  const found = new Map<string, BgblCitation>()
+  for (const r of asArray<any>(body?.OgdSearchResult?.OgdDocumentResults?.OgdDocumentReference)) {
+    const p = konsRefOf(r)
+    const meta = r?.Data?.Metadaten?.Bundesrecht
+    if (!p?.gesetzesnummer || !p.stammnorm) continue
+    const kurztitel = typeof meta?.Kurztitel === 'string' ? meta.Kurztitel : ''
+    const abkuerzung = typeof meta?.BrKons?.Abkuerzung === 'string' ? meta.BrKons.Abkuerzung : ''
+    const named = normName(kurztitel) === normName(clause.name) || (clause.abbreviation !== null && normName(abkuerzung) === normName(clause.abbreviation))
+    if (!named || !oneCharApart(p.stammnorm.nummer, bgbl.nummer)) continue
+    if (!sameRisStammnorm(p.stammnorm, { organ: bgbl.organ, nummer: p.stammnorm.nummer })) continue
+    found.set(p.gesetzesnummer, p.stammnorm)
+  }
+  if (found.size !== 1) return null
+  const [stammnorm] = [...found.values()]
+  // Read the law in full, by its own Stammnorm, the same way as any other.
+  return resolveLawByBgbl(stammnorm!, date, clause.name)
 }
 
 /**
@@ -272,6 +325,28 @@ export async function paragraphHistory(gesetzesnummer: string): Promise<KonsVers
 }
 
 const yearOf = (nummer: string | null) => Number(/\/(\d{4})\b/.exec(nummer ?? '')?.[1]) || null
+
+/**
+ * The first version of a § that was promulgated before `date` but enters into
+ * force after it — or null. Not a hole in RIS, a fact of the law: ÄrzteG
+ * § 260 came by BGBl. I Nr. 21/2024 and applies from 2026-06-01, so on 95/ME's
+ * Stichtag, 2026-04-10, RIS had no version of it, and the ressort quoted the
+ * promulgated text as „geltende Fassung" — correctly (04.10.2026, §12.41).
+ *
+ * Only where the § has no version before the date at all (otherwise that one
+ * stood, or `bridgeVersionGap` decides), and only where the BGBl's YEAR lies
+ * before the date's: a same-year BGBl cannot be dated to the day from these
+ * fields, and is not guessed at. A repeal is never taken.
+ */
+export function promulgatedBeforeInForce(versions: readonly KonsVersion[], date: string): KonsParagraphRef | null {
+  const from = (v: KonsVersion) => v.ref.inkrafttreten ?? ''
+  if (versions.some((v) => from(v) <= date)) return null
+  const first = [...versions].sort((a, b) => from(a).localeCompare(from(b)))[0]
+  if (!first || /aufgehoben/i.test(first.kundmachung)) return null
+  const promulgated = yearOf(first.novelle)
+  if (promulgated === null || promulgated >= Number(date.slice(0, 4))) return null
+  return first.ref
+}
 
 /**
  * The version of a § that stood on `date` where RIS has a hole there —

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { articleBlocks, draftArticles, isAmendmentClause, promulgationByArticle } from '../server/utils/lawtext/draftArticles'
+import { articleBlocks, clauseNameOf, draftArticles, isAmendmentClause, promulgationByArticle } from '../server/utils/lawtext/draftArticles'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
 
 /** A package Artikel with its Promulgationsklausel, in RIS's element vocabulary. */
@@ -135,8 +135,19 @@ describe('draftArticles', () => {
       `<absatz typ="promkleinlsatz">Das Bäderhygienegesetz, BGBl. Nr. 254/1976, wird wie folgt geändert:</absatz>`,
     )
     expect(draftArticles(parseRisXml(xml))).toEqual([
-      { index: 0, number: null, numeral: null, title: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', key: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', amends: true, bgbl: { organ: 'BGBl. Nr.', nummer: '254/1976' } },
+      { index: 0, number: null, numeral: null, title: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', key: 'Bundesgesetz, mit dem das Bäderhygienegesetz geändert wird', amends: true, bgbl: { organ: 'BGBl. Nr.', nummer: '254/1976' }, clause: { name: 'Bäderhygienegesetz', abbreviation: null } },
     ])
+  })
+
+  // The clause names the law where the Artikel title does not, or misspells
+  // it (55/ME XXVIII: „Änderung der Gewerbeordung 1994").
+  it.each([
+    ['Die Gewerbeordnung 1994 - GewO 1994, BGBl. Nr. 194/1994, zuletzt geändert durch das Bundesgesetz BGBl. I Nr. 150/2024, wird wie folgt geändert:', { name: 'Gewerbeordnung 1994', abbreviation: 'GewO 1994' }],
+    ['Das Wertpapierfirmengesetz - WPFG, BGBl. I Nr. 135/2013, wird wie folgt geändert:', { name: 'Wertpapierfirmengesetz', abbreviation: 'WPFG' }],
+    ['Das Bundesvergabegesetz Verteidigung und Sicherheit 2012 - BVergGVS 2012, BGBl. I Nr. 10/2013, wird wie folgt geändert:', { name: 'Bundesvergabegesetz Verteidigung und Sicherheit 2012', abbreviation: 'BVergGVS 2012' }],
+    ['Das Kreditdienstleister- und Kreditkäufergesetz - KKG, BGBl. I Nr. 6/2015, wird wie folgt geändert:', { name: 'Kreditdienstleister- und Kreditkäufergesetz', abbreviation: 'KKG' }],
+  ])('reads the law’s name from „%s"', (text, expected) => {
+    expect(clauseNameOf(text)).toEqual(expected)
   })
 
   // An instruction that rewrites an Anlage prints the heading it installs, and

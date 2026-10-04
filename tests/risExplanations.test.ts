@@ -165,7 +165,7 @@ describe('parseExplanations — the part heading one level down', () => {
 
 describe('explanationsByParagraph — die Passage an ihrem Paragraphen', () => {
   const articles = (...as: { numeral: string | null; key: string }[]) =>
-    as.map((a, index) => ({ index, number: a.numeral ? `Artikel ${a.numeral}` : null, numeral: a.numeral, title: a.key, key: a.key, amends: true, bgbl: null }))
+    as.map((a, index) => ({ index, number: a.numeral ? `Artikel ${a.numeral}` : null, numeral: a.numeral, title: a.key, key: a.key, amends: true, bgbl: null, clause: null }))
 
   const besonderer = (body: string) => parseExplanations(doc(head('erlz', 'Besonderer Teil') + body))
 

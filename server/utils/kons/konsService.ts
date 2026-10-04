@@ -226,7 +226,7 @@ async function consolidate(
       // day — and it *throws* where RIS is unreachable. An error caught into
       // null would be an outage cached as a verdict about the draft; that is
       // exactly what `annex/annexGuardService.ts` cost once already.
-      const law = article.bgbl ? await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '') : null
+      const law = article.bgbl ? await resolveKonsLaw(article.bgbl.organ, article.bgbl.nummer, asOf, article.title ?? '', article.clause) : null
       if (!law) return null
       // Two §§ of this Artikel share a number under different Artikel of the
       // standing law. The stock is held by bare id, so one of them would

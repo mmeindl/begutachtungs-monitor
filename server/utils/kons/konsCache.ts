@@ -19,6 +19,7 @@
  *    RIS results and decides which law a BGBl means, which is our reasoning
  *    and not RIS's answer.
  */
+import type { ClauseName } from '../lawtext/draftArticles'
 import { getText, paragraphHistory, resolveLawByBgbl } from '../ris/konsLaw'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 
@@ -46,11 +47,11 @@ export const fetchParagraphXml = defineCachedFunction(
  * nothing to check against.
  */
 export const resolveKonsLaw = defineCachedFunction(
-  async (organ: string, nummer: string, date: string, title: string) => resolveLawByBgbl({ organ, nummer }, date, title || undefined),
+  async (organ: string, nummer: string, date: string, title: string, clause: ClauseName | null = null) => resolveLawByBgbl({ organ, nummer }, date, title || undefined, clause),
   {
     name: 'kons-law-by-bgbl',
     base: DERIVED_CACHE,
-    getKey: (organ: string, nummer: string, date: string, title: string) => `${organ}|${nummer}|${date}|${title}`,
+    getKey: (organ: string, nummer: string, date: string, title: string, clause: ClauseName | null = null) => `${organ}|${nummer}|${date}|${title}|${clause ? `${clause.name}|${clause.abbreviation ?? ''}` : ''}`,
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },

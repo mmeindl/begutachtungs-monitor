@@ -10,6 +10,8 @@ import {
   REASON_NO_ARTICLES,
   REASON_NO_ASOF,
   REASON_NO_PARAGRAPHS,
+  REASON_AMENDING_ACT,
+  REASON_INSERTED_BY_DRAFT,
   REASON_NO_SUCH_PARAGRAPH,
   REASON_NOTHING_TO_COMPARE,
   REASON_NOT_REPRESENTABLE,
@@ -356,6 +358,42 @@ describe('verifyAnnex', () => {
     const check = await verifyAnnex(rows, draft(), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
     expect(check.verdicts['#§ 9.']).toBe('unchecked')
     expect(notRunReason(check)).toBe(REASON_NO_SUCH_PARAGRAPH)
+  })
+
+  it('says the draft inserts a § RIS does not hold, where the draft prints it under an inserting instruction', async () => {
+    // 45/ME, 48/ME, 131/ME XXVIII: a new § whose annex row shows text on the
+    // left read „das RIS führt diese Paragraphen nicht" — true, and taken for
+    // a gap in RIS (§12.41).
+    const rows = [row({ gld: '§ 9.', para: '§ 9.', current: PROSE })]
+    const blocks: TextBlock[] = [
+      { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 1', gld: null },
+      { kind: 'section', cls: 'ueberschrift/g2', text: 'X-Gesetz', gld: null },
+      { kind: 'other', cls: 'absatz/promkleinlsatz', text: 'Das X-Gesetz, BGBl. I Nr. 1/2020, wird wie folgt geändert:', gld: null },
+      instruction('1. Nach § 8 wird folgender § 9 samt Überschrift eingefügt:'),
+      { kind: 'abs', cls: 'absatz/abs', text: PROSE, gld: '§ 9.' },
+    ]
+    const check = await verifyAnnex(rows, draft({ blocks }), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.uncheckedReasons).toEqual({ '#§ 9.': REASON_INSERTED_BY_DRAFT })
+  })
+
+  it('keeps „führt nicht" where the draft only rewrites the § with „lautet"', async () => {
+    const rows = [row({ gld: '§ 9.', para: '§ 9.', current: PROSE })]
+    const blocks: TextBlock[] = [
+      { kind: 'article', cls: 'ueberschrift/g1', text: 'Artikel 1', gld: null },
+      { kind: 'section', cls: 'ueberschrift/g2', text: 'X-Gesetz', gld: null },
+      { kind: 'other', cls: 'absatz/promkleinlsatz', text: 'Das X-Gesetz, BGBl. I Nr. 1/2020, wird wie folgt geändert:', gld: null },
+      instruction('1. § 9 lautet:'),
+      { kind: 'abs', cls: 'absatz/abs', text: PROSE, gld: '§ 9.' },
+    ]
+    const check = await verifyAnnex(rows, draft({ blocks }), fakeSources({ 'BGBl. I 1/2020': { '§ 1': PROSE } }))
+    expect(check.uncheckedReasons).toEqual({ '#§ 9.': REASON_NO_SUCH_PARAGRAPH })
+  })
+
+  it('says why an amending act does not resolve (116/ME XXVIII)', async () => {
+    const title = 'Änderung des Bundesgesetzes, mit dem das eEltern-Kind-Pass-Gesetz und das Kinderbetreuungsgeldgesetz geändert werden'
+    const rows = [row({ gld: '§ 4.', para: '§ 4.', current: PROSE })]
+    const check = await verifyAnnex(rows, draft({ articles: [article({ title, key: title })] }), fakeSources({}))
+    expect(notRunReason(check)).toBe(REASON_AMENDING_ACT)
   })
 
   it('records the reason per §, so one § does not carry another\'s', async () => {

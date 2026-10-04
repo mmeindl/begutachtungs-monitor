@@ -31,6 +31,14 @@ export interface AmendedLaw {
   bgbl: string | null
   /** RIS consolidated text at `asOf`, null when no Gesetzesnummer resolved. */
   risUrl: string | null
+  /**
+   * The Stammnorm RIS holds for the law, set ONLY where it differs from
+   * `bgbl` — the draft cited it with a misprint („BGBl. I Nr. 10/2013" for
+   * 10/2012, 58/ME XXVIII) and the law was found by its name instead
+   * (`resolveLawByBgbl`, §12.41). Null everywhere else, including where the
+   * two differ only in how the Teil is written.
+   */
+  risBgbl: string | null
 }
 
 export interface AmendedLawsResponse {

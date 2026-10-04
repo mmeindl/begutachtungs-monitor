@@ -99,6 +99,37 @@ export interface DraftArticle {
   amends: boolean
   /** The Stammnorm this Artikel amends; null when it creates law instead. */
   bgbl: BgblCitation | null
+  /**
+   * The law as the Promulgationsklausel names it — „Die Gewerbeordnung 1994 -
+   * GewO 1994, BGBl. Nr. 194/1994 …" gives `{ name: 'Gewerbeordnung 1994',
+   * abbreviation: 'GewO 1994' }`. A second witness for which law is meant,
+   * beside `title`: the Artikel title can be a whole Novelle's name or carry
+   * a typo („Änderung der Gewerbeordung 1994", 55/ME XXVIII), the clause names
+   * the law itself (`resolveLawByBgbl`, 04.10.2026). Null without a clause or
+   * where its wording is not that shape.
+   */
+  clause: ClauseName | null
+}
+
+export interface ClauseName {
+  name: string
+  abbreviation: string | null
+}
+
+/**
+ * „Das Wertpapierfirmengesetz - WPFG, BGBl. I Nr. 135/2013, wird …" → the name
+ * and the abbreviation the clause gives the law. The same reading the
+ * consolidation harness has used since 09.09.2026 (`lawNameFromClause`), with
+ * the abbreviation kept instead of dropped.
+ */
+export function clauseNameOf(text: string): ClauseName | null {
+  const m = /^(?:Das|Die|Der)\s+(.+?),\s*(?:d?RGBl|BGBl|StGBl|JGS)\b/i.exec(text.replace(/\s+/g, ' ').trim())
+  if (!m) return null
+  const paren = /\(([^()]+?)\)\s*$/.exec(m[1]!)
+  const designation = paren ? paren[1]! : m[1]!
+  const dash = /^(.+?)\s+[-–]\s+(\S+(?:\s+\d{4})?)$/.exec(designation)
+  const name = (dash ? dash[1]! : designation).trim()
+  return name ? { name, abbreviation: dash ? dash[2]!.trim() : null } : null
 }
 
 /**
@@ -134,7 +165,7 @@ export interface DraftArticle {
 export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   const out: DraftArticle[] = []
   let seenNovao = false
-  let current: DraftArticle = { index: 0, number: null, numeral: null, title: null, key: null, amends: false, bgbl: null }
+  let current: DraftArticle = { index: 0, number: null, numeral: null, title: null, key: null, amends: false, bgbl: null, clause: null }
   /** An implicit leading article is only real once it carries something. */
   const filled = (a: DraftArticle): boolean => a.number !== null || a.key !== null || a.amends
 
@@ -152,7 +183,7 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
   for (const b of blocks) {
     if (b.kind === 'article') {
       close()
-      current = { index: out.length, number: b.text, numeral: ARTICLE_NUMERAL_RE.exec(b.text)?.[1]?.replace(/^x(?=\d)/, 'X') ?? null, title: null, key: null, amends: false, bgbl: null }
+      current = { index: out.length, number: b.text, numeral: ARTICLE_NUMERAL_RE.exec(b.text)?.[1]?.replace(/^x(?=\d)/, 'X') ?? null, title: null, key: null, amends: false, bgbl: null, clause: null }
       seenNovao = false
       continue
     }
@@ -181,6 +212,7 @@ export function draftArticles(blocks: readonly TextBlock[]): DraftArticle[] {
     if (!AMENDS_RE.test(b.text)) continue
     current.amends = true
     current.bgbl = stammnormOf(b.text)
+    current.clause = clauseNameOf(b.text)
   }
   close()
   return out
