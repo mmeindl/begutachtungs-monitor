@@ -19,31 +19,25 @@
  * reads it, the others show their defaults, so a shared link still opens one
  * comparison.
  */
-import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
-import LawStepToggle from '~/components/compare/LawStepToggle.vue'
-import ListBox from '~/components/ui/ListBox.vue'
-import PageSubsection from '~/components/ui/PageSubsection.vue'
-import type { LawDiffResponse, LawDiffSegment, LawDiffUnit, LawStationId, ParagraphTitlesResponse, Publisher, ReasoningDiffEntry, ReasoningDiffResponse } from '#shared/types'
+import type { LawDiffSegment, LawDiffUnit, LawStationId, ReasoningDiffEntry } from '#shared/types'
 import { diffUnitKey } from '#shared/utils/diffKey'
 import { formatDateDe } from '#shared/utils/format'
 import { isNovelleUnits } from '#shared/utils/changeShare'
-import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, badgeCounts, badgeLabels } from '~/utils/diffBadges'
+import { type DiffBadge, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { readsSideBySide, splitSegments } from '~/utils/diffSides'
 import { displayId, extraHeading, unitName } from '#shared/utils/unitName'
 import { droppedLawsNote, mergedLawsNote, outsideDraftNote } from '~/utils/lawPackage'
+import { lawDiffCredits } from '~/utils/lawDiffCredits'
+import { reasoningRateNote } from '~/utils/reasoningNotes'
 import {
   LAW_STATION_LABEL,
   PARLIAMENT_COMPARISON_QUESTION,
   type LawDiffScope,
-  type LawStationPair,
   isLawStationId,
-  lawDiffKey,
   lawDiffScopeOf,
-  lawDiffSteps,
-  lawReasoningKey,
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
-import { documentSource, mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
+import { mixedPublishers } from '#shared/utils/provenance'
 
 const props = defineProps<{
   gp: string
@@ -61,141 +55,36 @@ const props = defineProps<{
 }>()
 
 const scope: LawDiffScope = props.scope ?? 'rv'
-const steps: LawStationPair[] = lawDiffSteps(scope, props.parliamentTexts ?? [])
-/** The pair this instance shows when the URL names none of its own. */
-const scopeDefault: LawStationPair = steps[0] ?? { from: 'me', to: 'rv' }
 /** `#textvergleich` stays the Vorlage's: that anchor is in circulation. */
 const anchorId = scope === 'rv' ? 'textvergleich' : `textvergleich-${scope}`
 
 const route = useRoute()
 const router = useRouter()
 
-/**
- * The pair from the URL, falling back to the default rather than erroring:
- * a hand-typed or stale link should show the comparison everyone means, not
- * a validation message. The server validates the same query independently
- * (`readLawStationPair`), because a request can arrive without this page.
- */
-function pairFromRoute(): LawStationPair {
-  const bis = route.query.bis
-  const von = route.query.von
-  // Only a step of this section: a pair that ends at another station is that
-  // instance's to show, and a pair offered before 01.10.2026 that is no step
-  // (`?von=me&bis=plenum`) opens the section's default.
-  const step = steps.find((s) => s.to === bis && (!isLawStationId(von) || s.from === von))
-  return { ...(step ?? scopeDefault) }
-}
-/** The step the reader asked for: the requests, the URL and the toggle follow
- *  it at once. What is on screen follows it once its comparison is there
- *  (`pair` below). */
-const requested = ref(pairFromRoute())
-
-/** Whether the three requests below may go out — at once, unless `deferred`. */
-const enabled = ref(!props.deferred)
-
-/* Keyed by draft and pair, so the Regierungsvorlage's station frame, which
- * reads the same ME→RV count (`useVorlageOutcome`), shares this request — and
- * `defer`, because Nuxt's default `cancel` aborts the first caller's request
- * and sends it again (two requests on 11/ME XXVIII, measured 01.10.2026). */
-const { data: fetchedDiff, status: fetchStatus, execute: executeDiff } = await useFetch<LawDiffResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/diff?von=${requested.value.from}&bis=${requested.value.to}`,
-  {
-    key: () => lawDiffKey(props.gp, props.inr, requested.value.from, requested.value.to),
-    lazy: true,
-    server: false,
-    dedupe: 'defer',
-    immediate: enabled.value,
-  },
-)
-
-/**
- * The name of each amended § (docs/architecture.md §12.11), fetched
- * separately so a slow lookup never delays the comparison and a failing one
- * never takes it down. Names appear when they arrive.
- *
- * Keyed on the same pair as the comparison: a Ziffer renumbered between two
- * stations addresses a different §, so names from another pair would be
- * wrong names.
- */
-const { data: fetchedTitles, execute: executeTitles } = await useFetch<ParagraphTitlesResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/paragraphtitel?von=${requested.value.from}&bis=${requested.value.to}`,
-  { lazy: true, server: false, immediate: enabled.value },
-)
-
-/**
- * And whether the Ressort changed its **reasoning** for this provision
- * (docs/architecture.md §12.10b).
- *
- * Measured over GP XXVIII: for 48 % of the Paragraphen carrying a reasoning
- * on both sides it became a different one — so the question is worth asking.
- * A fetch of its own for the same reason as the names: two more documents
- * from Parliament must neither hold the comparison up nor take it down with
- * them.
- */
-const { data: fetchedReasoning, execute: executeReasoning } = await useFetch<ReasoningDiffResponse>(
-  () => `/api/drafts/${props.gp}/${props.inr}/begruendung?von=${requested.value.from}&bis=${requested.value.to}`,
-  {
-    // Shared with the Vorlage's station frame, which counts the same
-    // Begründungen (`useVorlageOutcome`, 02.10.2026).
-    key: () => lawReasoningKey(props.gp, props.inr, requested.value.from, requested.value.to),
-    lazy: true,
-    server: false,
-    dedupe: 'defer',
-    immediate: enabled.value,
-  },
-)
-
-/**
- * What is on screen: one step with its comparison, its § names and its
- * reasoning, swapped together once the requested step's comparison has
- * arrived (02.10.2026). Rendering the requests directly made every switch
- * flicker: a new key empties the fetch, so for at least a frame the list and
- * the toolbar went and „wird verglichen …" stood in their place — measured
- * on 115/ME XXVIII, the section fell from 286 to 164 px and came back.
- *
- * The names and the reasoning swap with the comparison, never on their own:
- * a renumbered Ziffer addresses a different § in another step, so a name
- * from one step on the other's list would be a wrong name. Where they arrive
- * after the comparison they appear when they do, as on the first load.
- */
-const pair = shallowRef<LawStationPair>({ ...requested.value })
-const data = shallowRef(fetchedDiff.value)
-const status = shallowRef(fetchStatus.value)
-const paraTitles = shallowRef(fetchedTitles.value)
-const reasoning = shallowRef(fetchedReasoning.value)
-const isShown = () => pair.value.from === requested.value.from && pair.value.to === requested.value.to
-watch([fetchStatus, fetchedDiff], ([s]) => {
-  if (s === 'success' || s === 'error') {
-    pair.value = { ...requested.value }
-    data.value = fetchedDiff.value
-    paraTitles.value = fetchedTitles.value
-    reasoning.value = fetchedReasoning.value
-    status.value = s
-  } else if (!data.value) {
-    // Nothing to keep — the first load, or a step that failed: say that
-    // the comparison is on its way.
-    status.value = s
-  }
-})
-watch(fetchedTitles, (v) => {
-  if (isShown()) paraTitles.value = v
-})
-watch(fetchedReasoning, (v) => {
-  if (isShown()) reasoning.value = v
+/* The step, the URL's pair, the three requests and what is on screen —
+ * `useLawDiffStep`, where the reasons for their keys and their swapping
+ * stand. */
+const {
+  steps,
+  scopeDefault,
+  enabled,
+  enable,
+  pair,
+  data,
+  status,
+  paraTitles,
+  reasoning,
+  stepOptions,
+  selectedStep,
+} = await useLawDiffStep({
+  gp: () => props.gp,
+  inr: () => props.inr,
+  scope,
+  parliamentTexts: props.parliamentTexts,
+  deferred: props.deferred,
 })
 
 const root = useTemplateRef<HTMLElement>('root')
-let observer: IntersectionObserver | null = null
-
-function enable() {
-  if (enabled.value) return
-  enabled.value = true
-  observer?.disconnect()
-  observer = null
-  void executeDiff()
-  void executeTitles()
-  void executeReasoning()
-}
 
 onMounted(() => {
   // A link from before 01.10.2026 — `?von=rv&bis=plenum#textvergleich` —
@@ -210,27 +99,12 @@ onMounted(() => {
     enable()
     root.value?.scrollIntoView()
     void router.replace({ query: route.query, hash: `#${anchorId}` })
-    return
   }
-  if (enabled.value) return
-  // No IntersectionObserver (old browser, jsdom): load straight away.
-  if (!root.value || typeof IntersectionObserver === 'undefined') {
-    enable()
-    return
-  }
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (entries.some((e) => e.isIntersecting)) enable()
-    },
-    { rootMargin: '600px 0px' },
-  )
-  observer.observe(root.value)
 })
 
-onBeforeUnmount(() => {
-  observer?.disconnect()
-  observer = null
-})
+// A deferred instance asks once it comes within 600 px — registered after
+// the redirect above, which may have enabled it already.
+useNearViewport(root, enable, '600px 0px', () => enabled.value)
 
 /**
  * The reasoning to show at one unit: a changed one, or one shown without a
@@ -247,142 +121,21 @@ function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
   return entry && (entry.changed || !entry.comparable) ? entry : null
 }
 
-/**
- * The sentence above the comparison that explains the disclosures below it.
- *
- * Here rather than on every row: printing „unverändert" on 33 rows would be
- * noise, naming the rate once is the information. And it names both numbers —
- * how often the reasoning moved with the text and how often it did not —
- * because an unchanged reasoning for a changed text is a statement of its
- * own.
- */
-const reasoningNote = computed<string | null>(() => {
-  const stats = reasoning.value?.stats
-  if (!stats?.compared) return null
-  const { compared, changed } = stats
-  // Shorter since 30.09.2026; „— aufklappbar an der Änderung" went, the
-  // disclosure at each change announces itself. Counts Begründungen since
-  // 01.10.2026, not Paragraphen: what is compared is the ressort's passage to
-  // a change — one passage on three Ziffern is one Begründung, and only where
-  // the Erläuterungen are titled by § is it the Paragraph's.
-  //
-  // Shorter again on 01.10.2026: „die beide Fassungen zu den Änderungen
-  // führen" became „die in beiden Fassungen stehen" — the same restriction,
-  // the one the count needs to be read right.
-  if (compared === 1) {
-    return changed === 0
-      ? 'Die Begründung, die in beiden Fassungen steht, hat das Ressort nicht geändert.'
-      : 'Die Begründung, die in beiden Fassungen steht, hat das Ressort geändert.'
-  }
-  //
-  // „…, die in beiden Fassungen stehen" left the plural on 02.10.2026: it
-  // shares a paragraph with the pointer to the Erläuterungen now, and the
-  // restriction stands on /so-funktionierts. The singular keeps it — „Die
-  // Begründung" alone would not say which one.
-  if (changed === 0) return `Keine der ${compared} Begründungen hat das Ressort geändert.`
-  if (changed === compared) return `Alle ${compared} Begründungen hat das Ressort geändert.`
-  return `${changed} der ${compared} Begründungen hat das Ressort geändert.`
-})
+/** The sentence above the comparison that explains the disclosures below
+ *  it (`reasoningRateNote`). */
+const reasoningNote = computed(() => reasoningRateNote(reasoning.value?.stats))
 
-/* The two Erläuterungen, one per side. The service sends them as
- * [Entwurf, Regierungsvorlage] (`reasoningDiffService`), and only where both
- * were found. */
-const reasoningDocs = computed(() => (reasoning.value?.sources?.length === 2 ? reasoning.value.sources : null))
 /** ME→RV states its counts in the Regierungsvorlage's station frame
  *  (`useVorlageOutcome`, 02.10.2026), so the comparison under it repeats
  *  none of them. */
 const countsInFrame = computed(() => pair.value.from === 'me' && pair.value.to === 'rv')
-/** A side's Erläuterungen for the credit line — only where the comparison of them ran. */
-function reasoningDocFor(station: LawStationId) {
-  const stats = reasoning.value?.stats
-  // Uncompared passages are text on the page too, so their documents are credited.
-  if (!stats || stats.compared + (stats.uncompared ?? 0) === 0 || !reasoningDocs.value) return null
-  if (station === 'me') return reasoningDocs.value[0] ?? null
-  if (station === 'rv') return reasoningDocs.value[1] ?? null
-  return null
-}
 /**
- * What this comparison shows, per document, for its credit line
- * (`#shared/utils/provenance`): each side's text where it was read, the
- * Erläuterungen where their comparison ran — those are always Parliament's
- * copies — and the § names from RIS.
+ * What this comparison shows, per document, and one entry per compared
+ * version for the credit line (`lawDiffCredits`).
  */
-const REASONING_DE: Partial<Record<LawStationId, string>> = {
-  me: 'Erläuterungen zum Ministerialentwurf',
-  rv: 'Erläuterungen zur Regierungsvorlage',
-}
-const sources = computed<SourceEntry[]>(() => {
-  const d = data.value
-  if (!d?.available) return []
-  const out: SourceEntry[] = []
-  for (const side of [{ station: pair.value.from, publisher: d.fromSource }, { station: pair.value.to, publisher: d.toSource }]) {
-    if (side.publisher) out.push(documentSource(LAW_STATION_LABEL[side.station], side.station, side.publisher))
-    const reasoningName = REASONING_DE[side.station]
-    if (reasoningName && reasoningDocFor(side.station)) out.push(parliamentDocumentSource(reasoningName, side.station))
-  }
-  if (namedCount.value) out.push(risSource('Paragraphenüberschriften'))
-  return out
-})
-/**
- * One entry per compared version for the credit line: its name, its text, its
- * Erläuterungen — and, where the line mixes publishers, whose each is. The
- * Erläuterungen are always Parliament's copy, the text may be RIS's, so a
- * side whose two documents differ names the publisher at each link.
- */
-const creditSides = computed(() => {
-  const d = data.value
-  if (!d) return []
-  const mixed = mixedPublishers(sources.value)
-  const tag = (p: Publisher | null) => (mixed && p ? ` (${PUBLISHER_NAME_DE[p]})` : '')
-  return [
-    { station: pair.value.from, text: d.fromDocument, textBy: d.fromSource },
-    { station: pair.value.to, text: d.toDocument, textBy: d.toSource },
-  ].flatMap(({ station, text, textBy }) => {
-    const reasoning = reasoningDocFor(station)
-    if (!text && !reasoning) return []
-    const by = [...new Set([text ? textBy : null, reasoning ? 'parlament' as const : null].filter((p) => p !== null))]
-    const oneBy = by.length === 1 ? by[0]! : null
-    return [{
-      station,
-      label: `${LAW_STATION_LABEL[station]}${tag(oneBy)}`,
-      text,
-      textTag: oneBy ? '' : tag(textBy),
-      reasoning,
-      reasoningTag: oneBy ? '' : tag('parlament'),
-    }]
-  })
-})
-const paraTitlesTag = computed(() => (mixedPublishers(sources.value) ? ' (RIS)' : ''))
+const credits = computed(() => lawDiffCredits(data.value, reasoning.value, pair.value, namedCount.value))
+const paraTitlesTag = computed(() => (mixedPublishers(credits.value.sources) ? ' (RIS)' : ''))
 const paraTitlesAsOf = computed(() => (paraTitles.value?.asOf ? formatDateDe(paraTitles.value.asOf) : null))
-
-/**
- * Where a section has two steps — the committee's and the plenary's — a
- * two-button toggle picks one, named by the body that took it. It replaced a
- * select of every ordered pair (up to nine) on 01.10.2026: most of those
- * mixed two actors in one column of differences, and none of them was the
- * question a section asks.
- */
-function chooseStep(step: LawStationPair) {
-  // The pressed button changes nothing — not even the URL: rewritten
-  // without its hash, the same query read as a link to the top of the page
-  // (`app/router.options.ts`), and the reader landed in the header.
-  if (step.from === requested.value.from && step.to === requested.value.to) return
-  requested.value = { ...step }
-  // `replace`, not `push`: the pair belongs in the URL so it can be
-  // shared, but flipping between comparisons should not fill the back
-  // button with steps the reader has to walk out of. The default pair
-  // leaves the query empty, so the canonical URL of a draft stays clean —
-  // and an empty query is what makes this instance show it again.
-  const query = { ...route.query }
-  if (step.from === scopeDefault.from && step.to === scopeDefault.to) {
-    delete query.von
-    delete query.bis
-  } else {
-    query.von = step.from
-    query.bis = step.to
-  }
-  router.replace({ query })
-}
 
 /** The sentences above the list wait for a comparison to stand under: none
  *  on the first load (02.10.2026). Until then the reasoning rate, which often
@@ -430,7 +183,8 @@ const namedCount = computed(() => Object.keys(paraTitles.value?.titles ?? {}).le
 const BADGE_LABEL = badgeLabels('entfallen')
 
 function badgeOf(u: LawDiffUnit): DiffBadge {
-  return isMinor(u) ? 'editorial' : u.change
+  // Server-decided: every changed piece is a citation, number, date or punctuation.
+  return u.editorial ? 'editorial' : u.change
 }
 
 /**
@@ -444,12 +198,7 @@ function badgeOf(u: LawDiffUnit): DiffBadge {
  * default — suppression is one press, and the legend prints the overall
  * total the per-law pills do not.
  */
-const query = ref('')
-const hiddenKinds = ref<DiffBadge[]>([])
-
-function key(u: LawDiffUnit): string {
-  return diffUnitKey(u)
-}
+const { query, hiddenKinds, folding, toggleGroup, groupOpen, showAll, limitFor } = useDiffFilters()
 
 /**
  * The identity of a rendered block, for `v-for`.
@@ -537,9 +286,8 @@ const groups = computed<ArticleGroup[]>(() => {
  * be opened one by one — user feedback, and the argument behind it: without
  * attribution of a change to an actor (which Austria does not have),
  * splitting the instructions apart buys nothing. The rest of the folding —
- * closed until asked, a search opens everything — is in `useFoldedGroups`.
+ * closed until asked, a search opens everything — is in `useDiffFilters`.
  */
-const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
 
 /**
  * Blocks in reading order: every change as flowing text, runs of untouched
@@ -576,8 +324,7 @@ function viewOf(u: LawDiffUnit): UnitView {
 
 function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Block[]; hidden: number } {
   // Searching IS the reader asking for specific units — then nothing gets
-  // folded away behind a context line.
-  const folding = !query.value.trim()
+  // folded away behind a context line (`folding`).
   const limit = limitFor(article)
   const blocks: Block[] = []
   let context: UnitView[] = []
@@ -588,7 +335,7 @@ function blocksOf(units: readonly LawDiffUnit[], article: string): { blocks: Blo
     context = []
   }
   for (const u of units) {
-    if (folding && badgeOf(u) === 'unchanged') {
+    if (folding.value && badgeOf(u) === 'unchanged') {
       context.push(viewOf(u))
       continue
     }
@@ -616,11 +363,6 @@ const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...blocks
 function unitNoun(n: number): string {
   if (isNovelle.value) return n === 1 ? 'Änderungsanordnung' : 'Änderungsanordnungen'
   return n === 1 ? 'Paragraph' : 'Paragraphen'
-}
-
-/** Server-decided: every changed piece is a citation, number, date or punctuation. */
-function isMinor(u: LawDiffUnit): boolean {
-  return u.editorial
 }
 
 /** A Novelle has no §§ of its own; its units are the numbered amendment instructions. */
@@ -715,7 +457,7 @@ const droppedNote = computed(() =>
            so a reader who picked a step that cannot be compared keeps the
            way back. With one it is in the list's head (below). -->
       <div v-if="!hasList && steps.length > 1" class="mt-4 border-b border-hairline">
-        <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
+        <ListTabs v-model="selectedStep" :options="stepOptions" group-label="Welcher Schritt im Parlament" />
       </div>
 
       <!-- Only on the first load: a later step keeps the previous list until
@@ -737,7 +479,7 @@ const droppedNote = computed(() =>
                  one hint for both — so it chooses what the list compares, the
                  first layer of the box (`ListBox`). -->
             <template v-if="steps.length > 1" #tabs>
-              <LawStepToggle :steps="steps" :current="requested" @choose="chooseStep" />
+              <ListTabs v-model="selectedStep" :options="stepOptions" group-label="Welcher Schritt im Parlament" />
             </template>
             <template #header>
               <DiffToolbar
@@ -754,7 +496,9 @@ const droppedNote = computed(() =>
               :title="g.article"
               :badges="badgeCounts(g.counts, BADGE_LABEL)"
               :open="groupOpen(g.article)"
+              :more="g.hidden"
               @toggle="toggleGroup(g.article)"
+              @more="showAll(g.article)"
             >
               <p v-if="addedLaws.has(g.article)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">
                 Dieses Gesetz kommt im Entwurf nicht vor; die Regierungsvorlage ändert es zusätzlich.
@@ -769,7 +513,7 @@ const droppedNote = computed(() =>
                     {{ b.units.length }} {{ unitNoun(b.units.length) }} unverändert
                   </summary>
                   <div class="space-y-3 px-4 pb-3 pl-10 text-sm leading-relaxed text-ink-secondary">
-                    <p v-for="u in b.units" :key="key(u.unit)" class="hyphens-auto">
+                    <p v-for="u in b.units" :key="diffUnitKey(u.unit)" class="hyphens-auto">
                       <span class="font-medium text-ink">{{ displayId(u.unit.id) }}</span>
                       <span v-if="u.label" class="font-medium text-ink"> {{ u.label }}</span>
                       <span v-else-if="u.extra"> {{ u.extra }}</span>
@@ -793,48 +537,19 @@ const droppedNote = computed(() =>
                     <span v-if="b.label" class="min-w-0 text-ink-secondary">{{ b.label }}</span>
                     <span v-else-if="b.extra" class="min-w-0 text-ink-secondary">{{ b.extra }}</span>
                   </p>
-                  <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.unit)]">
-                    <p class="mb-1 text-sm">
-                      <span
-                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-                        :class="BADGE_CLASS[badgeOf(b.unit)]"
-                      >
-                        {{ BADGE_LABEL[badgeOf(b.unit)] }}
-                      </span>
-                    </p>
-
-                    <!-- Inline: one sentence, old struck out where the new
-                         stands. Right for most changes; which ones read
-                         better as two columns is decided per unit
-                         (`readsSideBySide`), not by a switch. -->
-                    <p v-if="b.unit.change === 'changed' && !b.split && b.unit.segments" class="hyphens-auto text-sm leading-relaxed text-ink">
-                      <DiffText :segments="b.unit.segments" />
-                    </p>
-                    <!-- Side by side. ONE shape for two cases: the unit was
-                         rewritten too thoroughly to read inline, or the word
-                         diff hit its ceiling
-                         and there are no segments to inline (then
-                         `splitSegments` marks each side whole). The fallback
-                         used to be its own layout, which made a technical
-                         limit look like a different kind of change. -->
-                    <div v-else-if="b.unit.change === 'changed'" class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                      <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
-                        <p class="hyphens-auto text-ink">
-                          <DiffText :segments="b.from" side="from" />
-                        </p>
-                      </div>
-                      <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
-                        <p class="hyphens-auto text-ink">
-                          <DiffText :segments="b.to" side="to" />
-                        </p>
-                      </div>
-                    </div>
-                    <p v-else-if="b.unit.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.toText }}</p>
-                    <p v-else-if="b.unit.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.unit.fromText }}</p>
-                    <p v-else class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.unit.toText }}</p>
-
+                  <DiffBody
+                    :badge="badgeOf(b.unit)"
+                    :label="BADGE_LABEL[badgeOf(b.unit)]"
+                    :change="b.unit.change"
+                    :segments="b.unit.segments"
+                    :from="b.from"
+                    :to="b.to"
+                    :split="b.split"
+                    :from-text="b.unit.fromText"
+                    :to-text="b.unit.toText"
+                    :from-label="fromLabel"
+                    :to-label="toLabel"
+                  >
                     <!-- What the Ressort says about it — and whether it says
                          so differently after the Begutachtung than before.
                          Closed, like the reasoning at the
@@ -842,15 +557,14 @@ const droppedNote = computed(() =>
                          it answers a second question, not the first. A native
                          <details>, so the browser's find-in-page opens it
                          instead of running past it. -->
-                    <details v-if="b.reasoning" class="group mt-2">
-                      <summary class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 py-2 text-xs font-medium text-ink-secondary rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden">
-                        <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                        <!-- Says what was compared (01.10.2026): the passage on
-                             this change, or — where the Erläuterungen are titled
-                             by § — everything they say about the Paragraph. -->
+                    <Disclosure v-if="b.reasoning" size="xs" tone="secondary" class="mt-2">
+                      <!-- Says what was compared (01.10.2026): the passage on
+                           this change, or — where the Erläuterungen are titled
+                           by § — everything they say about the Paragraph. -->
+                      <template #summary>
                         <template v-if="!b.reasoning.comparable">Die Begründung des Ressorts zu dieser Änderung</template>
                         <template v-else>{{ b.reasoning.basis === 'ziffer' ? 'Die Begründung des Ressorts zu dieser Änderung hat sich geändert' : 'Die Begründung des Ressorts zu diesem Paragraphen hat sich geändert' }}</template>
-                      </summary>
+                      </template>
                       <!-- Shown, not compared (01.10.2026): the two documents
                            explain this change together with different others,
                            so a word diff would measure the regrouping. One
@@ -858,18 +572,16 @@ const droppedNote = computed(() =>
                            headings — no „geändert", no „unverändert". -->
                       <div v-if="!b.reasoning.comparable" class="pb-2 pl-6">
                         <p class="mb-2 text-xs text-ink-muted">Entwurf und Regierungsvorlage fassen die Begründung zu dieser Änderung verschieden zusammen; verglichen wird sie deshalb nicht.</p>
-                        <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed" :class="b.reasoning.fromText ? 'sm:grid-cols-2' : ''">
-                          <div v-if="b.reasoning.fromText">
-                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                        <SideBySide :from-label="fromLabel" :to-label="toLabel">
+                          <template v-if="b.reasoning.fromText" #from>
                             <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.fromHeading }}</p>
                             <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
-                          </div>
-                          <div>
-                            <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                          </template>
+                          <template #to>
                             <p class="mb-1 text-xs text-ink-muted">{{ b.reasoning.label }}</p>
                             <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
-                          </div>
-                        </div>
+                          </template>
+                        </SideBySide>
                       </div>
                       <template v-else>
                         <!-- The Vorlage's heading, because one passage often
@@ -887,41 +599,22 @@ const droppedNote = computed(() =>
                            ceiling is ours, not the Ressort's. -->
                         <div v-else class="pb-2 pl-6">
                           <p class="mb-2 text-xs text-ink-muted">Für einen Wortvergleich ist die Passage zu lang — hier beide Fassungen im Ganzen.</p>
-                          <div class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                            <div>
-                              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ fromLabel }}</p>
+                          <SideBySide :from-label="fromLabel" :to-label="toLabel">
+                            <template #from>
                               <p class="hyphens-auto text-ink">{{ b.reasoning.fromText }}</p>
-                            </div>
-                            <div>
-                              <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ toLabel }}</p>
+                            </template>
+                            <template #to>
                               <p class="hyphens-auto text-ink">{{ b.reasoning.toText }}</p>
-                            </div>
-                          </div>
+                            </template>
+                          </SideBySide>
                         </div>
                       </template>
-                    </details>
-                  </div>
+                    </Disclosure>
+                  </DiffBody>
                 </div>
               </template>
-
-              <button
-                v-if="g.hidden"
-                type="button"
-                class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-hover"
-                @click="showAll(g.article)"
-              >
-                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
-                {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
-              </button>
             </DiffGroup>
-            <!-- Stays in the DOM as a live region and goes empty rather than
-                 disappearing: a region that comes into being with its text is
-                 not announced — whoever searched and found nothing would
-                 otherwise get silence back. A row of the box, under its head. -->
-            <p
-              role="status"
-              :class="visibleUnits.length ? 'sr-only' : 'px-4 py-4 text-sm text-ink-secondary'"
-            >{{ visibleUnits.length ? '' : 'Nichts gefunden.' }}</p>
+            <NoMatches :found="visibleUnits.length > 0" />
           </ListBox>
         </template>
 
@@ -937,11 +630,11 @@ const droppedNote = computed(() =>
              RIS" over two documents left open which came from where, and
              „Parlament (Dokumente: freie Werke)" under ME→RV read as covering
              the draft too. -->
-        <SectionCredits :sources="sources" method="/so-funktionierts#vergleich">
+        <SectionCredits :sources="credits.sources" method="/so-funktionierts#vergleich">
           <!-- Grouped by version since 30.09.2026: „Entwurf: Text ·
                Erläuterungen" instead of four links each carrying its version's
                name. The links are there for the reader. -->
-          <span v-for="side in creditSides" :key="side.station">
+          <span v-for="side in credits.sides" :key="side.station">
             {{ side.label }}:
             <ExternalLink v-if="side.text" :href="side.text.url" class="link-muted">Text{{ side.textTag }}</ExternalLink><template v-if="side.text && side.reasoning"> · </template><ExternalLink v-if="side.reasoning" :href="side.reasoning.url" class="link-muted">Erläuterungen{{ side.reasoningTag }}</ExternalLink>
           </span>

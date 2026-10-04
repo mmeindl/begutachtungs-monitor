@@ -15,14 +15,12 @@
  * neighbouring questions and a second visual language would suggest a
  * difference that is not there.
  */
-import ComparisonCaveats from '~/components/compare/ComparisonCaveats.vue'
-import ListBox from '~/components/ui/ListBox.vue'
-import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, LawDiffSegment, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
+import type { AnnexWithheldCause, ConsolidatedParagraph, ConsolidatedTextResponse, ParagraphExplanationView, TextComparisonResponse, TextComparisonRow } from '#shared/types'
 import { explanationKey, explanationParaId } from '#shared/utils/explanationKey'
 import { mixedPublishers, parliamentDocumentSource, PUBLISHER_NAME_DE, risSource, type SourceEntry } from '#shared/utils/provenance'
-import { BADGE_CLASS, type DiffBadge, GUTTER_CLASS, UNCHECKED_PILL, badgeCounts, badgeLabels, paragraphBadge } from '~/utils/diffBadges'
-import { readsSideBySide, splitSegments } from '~/utils/diffSides'
+import { UNCHECKED_PILL, badgeCounts, badgeLabels } from '~/utils/diffBadges'
 import { absaetze } from '~/utils/absaetze'
+import { annexBadge, annexParas, groupAnnexRows } from '~/utils/annexGroups'
 import {
   annexDoubtfulGroupNote,
   annexDoubtfulNote,
@@ -155,8 +153,7 @@ function explanationsFor(law: string | null, para: string | null): ParagraphExpl
  * so a reader with a term in mind ("Verwaltungsstrafe", "§ 40") has no other
  * way through. The diff section at least lets its pills lead the way.
  */
-const query = ref('')
-const hiddenKinds = ref<DiffBadge[]>([])
+const { query, hiddenKinds, folding, toggleGroup, groupOpen, showAll, limitFor } = useDiffFilters()
 
 /**
  * Both columns, the designation and the law are searchable — as one
@@ -192,272 +189,27 @@ const haystacks = computed(() => {
 const BADGE_LABEL = badgeLabels('entfällt')
 
 /**
- * A row whose two columns are nothing but the annex's elision notation, reaching
- * differently far („(1) bis (54) …" against „(1) bis (55) …"), is not the § changing
- * — it is the ressort leaving one Absatz more out. 13 such rows in the corpus
- * (26.09.2026). „redaktionell" is the pill this section already has for a
- * difference that is not one of substance, so it gets no sixth word; the line
- * below the pill says which case it is.
+ * The groups, one per law, and the legend's counts in §§ — the search and
+ * the hidden kinds applied in one pass (`groupAnnexRows`, where the rules
+ * and their reasons stand).
  */
-function badgeOf(row: TextComparisonRow): DiffBadge {
-  return row.editorial || row.elisionRange ? 'editorial' : row.change
-}
-
-interface Group {
-  /** Stable identity for the open/expanded state — the law, not its label */
-  key: string
-  article: string
-  rows: TextComparisonRow[]
-  /** The header's pills, in §§ (`paragraphBadge`). */
-  counts: Record<DiffBadge, number>
-  /** §§ the check withheld — a pill of their own, so a collapsed group says
-   *  itself that something is missing. */
-  withheld: number
-  /** §§ shown with a change the check could not reach (`nicht geprüft`). */
-  unchecked: number
-  /** Why, as the server worded it — distinct, first seen first. */
-  uncheckedReasons: Set<string>
-}
-
-/**
- * The § a row belongs to, as the check keys it (`gateRows`: `gld ?? para`).
- * A row without one is a unit of its own — counting it into a „§ null"
- * would merge unrelated rows.
- */
-function paragraphKeyOf(row: TextComparisonRow, index: number): string {
-  return row.gld ?? row.para ?? `#${index}`
-}
-
-/** Owed a check and did not get one — „nicht geprüft". Whether a check is
- *  owed is the server's call (`owesCheck`, `gateRows`), never re-derived here. */
-function isUnchecked(row: TextComparisonRow): boolean {
-  return row.check === 'unchecked' && row.owesCheck
-}
-
-/**
- * One group per **law** of the package, not per heading the annex prints.
- *
- * Grouping by heading made one group per Abschnitt, per Hauptstück and per
- * heading over a group of §§: one draft showed 38 groups for its 5 laws.
- * `row.law` is the law the draft itself names (`annexBoundaries.ts`), so a
- * heading that divides *one* law now stands over its rows instead of
- * splitting the comparison.
- *
- * Rows the ressort abbreviated to "2. bis 26b. …" carry no text and only
- * interrupt the read, so they drop out — the context line already says how
- * much is unchanged. Since 2026-09-10 a row is `elided` only when it consists
- * of nothing *but* that syntax (`isElidedPair`), so the skip drops exactly
- * what it means to: the 919 rows that carried a real change behind a trailing
- * "…" are no longer among them.
- */
-/** One § per law: the key both the legend and the filter count by. */
-function paragraphIdOf(row: TextComparisonRow, index: number): string {
-  return `${row.law ?? ''}|${paragraphKeyOf(row, index)}`
-}
-
-/**
- * Each §'s pill over the rows the search leaves — the same rule the group
- * headers apply below (`paragraphBadge`), and the same exclusion: a § the
- * check withheld is no kind of change on screen, so it is neither counted
- * nor ever hidden.
- */
-const paragraphKinds = computed(() => {
-  const byPara = new Map<string, { badges: Set<DiffBadge>; withheld: boolean }>()
+const grouped = computed(() => {
   const q = query.value.trim().toLowerCase()
-  for (const [index, row] of (data.value?.available ? data.value.rows : []).entries()) {
-    if (row.kind === 'article' || row.elided) continue
-    if (q && !haystacks.value.get(row)!.includes(q)) continue
-    const id = paragraphIdOf(row, index)
-    let p = byPara.get(id)
-    if (!p) byPara.set(id, (p = { badges: new Set(), withheld: false }))
-    if (row.check === 'withheld') p.withheld = true
-    else p.badges.add(badgeOf(row))
-  }
-  const out = new Map<string, DiffBadge>()
-  for (const [id, p] of byPara) if (!p.withheld && p.badges.size) out.set(id, paragraphBadge(p.badges))
-  return out
+  return groupAnnexRows(data.value?.available ? data.value.rows : [], {
+    matches: q ? (row) => haystacks.value.get(row)!.includes(q) : null,
+    hidden: hiddenKinds.value,
+  })
 })
+const groups = computed(() => grouped.value.groups)
+const kindCounts = computed(() => grouped.value.kindCounts)
 
-/** The legend's counts, in §§ over the whole comparison. */
-const kindCounts = computed(() => {
-  const counts: Record<DiffBadge, number> = { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }
-  for (const badge of paragraphKinds.value.values()) counts[badge]++
-  return counts
-})
-
-const groups = computed<Group[]>(() => {
-  if (!data.value?.available) return []
-  const out: Group[] = []
-  const start = (row: TextComparisonRow): Group => {
-    const group: Group = { key: row.law ?? `#${out.length}`, article: row.kind === 'article' ? (row.heading ?? '') : '', rows: [], counts: { unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 }, withheld: 0, unchecked: 0, uncheckedReasons: new Set() }
-    out.push(group)
-    return group
-  }
-  // The query filters here rather than in a step of its own: an `article`
-  // row is structural — it opens a group and carries the law's title — so it
-  // always survives, and a group left without rows drops out below.
-  const q = query.value.trim().toLowerCase()
-  let current: Group | null = null
-  /* Per group and §: the pills of its shown rows, and the check's state.
-   * The verdict is per §, so a § is withheld or unchecked as a whole. */
-  const paras = new Map<Group, Map<string, { badges: Set<DiffBadge>; withheld: boolean; unchecked: boolean }>>()
-  for (const [index, row] of data.value.rows.entries()) {
-    if (row.kind === 'article') {
-      current = start(row)
-      continue
-    }
-    if (row.elided) continue
-    if (q && !haystacks.value.get(row)!.includes(q)) continue
-    if (hiddenKinds.value.length) {
-      const kind = paragraphKinds.value.get(paragraphIdOf(row, index))
-      if (kind && hiddenKinds.value.includes(kind)) continue
-    }
-    if (!current || (row.law !== null && current.key !== row.law)) current = start(row)
-    current.rows.push(row)
-    let byPara = paras.get(current)
-    if (!byPara) paras.set(current, (byPara = new Map()))
-    const key = paragraphKeyOf(row, index)
-    let p = byPara.get(key)
-    if (!p) byPara.set(key, (p = { badges: new Set(), withheld: false, unchecked: false }))
-    // A withheld row keeps its `change` but lost its text, so counting it
-    // would put a change in the header pill that the block below says is not
-    // shown — and `stats` already leaves those rows out. It is counted as
-    // what it is: a § not shown.
-    if (row.check === 'withheld') p.withheld = true
-    else p.badges.add(badgeOf(row))
-    // Rows without a § too, one unit each: they owe a check no verdict can
-    // reach (they stood in the status line as „ohne Paragraphenangabe").
-    if (isUnchecked(row)) {
-      p.unchecked = true
-      if (row.uncheckedReason) current.uncheckedReasons.add(row.uncheckedReason)
-    }
-  }
-  // In §§ since 02.10.2026, not rows: every pill counts the same unit, so a
-  // law's pills add up to its §§ (`paragraphBadge`).
-  for (const [group, byPara] of paras) {
-    for (const p of byPara.values()) {
-      if (p.withheld) group.withheld++
-      else group.counts[paragraphBadge(p.badges)]++
-      if (p.unchecked) group.unchecked++
-    }
-  }
-  return out.filter((g) => g.rows.length > 0)
-})
-
-const { toggleGroup, groupOpen, showAll, limitFor } = useFoldedGroups(query)
-
-type Block =
-  /** The two columns come along computed: the template asked for each of them
-   *  twice per row, on every render, and a render happens per keystroke. */
-  | { kind: 'row'; row: TextComparisonRow; from: LawDiffSegment[]; to: LawDiffSegment[]; split: boolean; unchecked: boolean }
-  | { kind: 'context'; rows: TextComparisonRow[] }
-  /**
-   * Changes the RIS check would not vouch for. The server sends these rows
-   * without their text (`server/utils/annex/gateRows.ts`), so there is
-   * nothing to render but the fact — and that fact is worth a line: a
-   * comparison that silently drops a § is a different kind of wrong answer
-   * from one that says it did.
-   */
-  | { kind: 'withheld'; count: number; cause: AnnexWithheldCause | null }
-
-/**
- * One block per **paragraph**, its Absätze beneath it.
- *
- * The annex prints one row per Absatz, so a § arrives as a run of rows of
- * which only the first carries the designation and the heading. Rendered row
- * by row that put the § heading over a single Absatz, repeated the
- * designation on every row that had one — and printed it twice, because the
- * text began with it as well — and set an inherited designation in a
- * different weight from an own one, which is a distinction about our parse
- * and not about the law. Collected per §, all three questions disappear:
- * designation and title stand once, on one line, the way law is printed.
- */
-interface Para {
-  /**
-   * The § this block belongs to — `row.para`, '' for the rows before the
-   * first designation. Doubles as the `v-for` key, and is unique within a
-   * group because `para` is INHERITED by every row that opens no designation
-   * of its own: a § therefore arrives as one contiguous run, never twice.
-   */
-  key: string
-  /** "§ 40." — null for rows that precede the first designation */
-  gld: string | null
-  /** The annex's own heading for the paragraph */
-  heading: string | null
-  blocks: Block[]
-  /** What the Ressort explains about this very §; empty when nothing was found. */
-  explanations: ParagraphExplanationView[]
-  /** The whole § as it would read after the draft; null where the gate withholds it. */
-  consolidated: ConsolidatedParagraph | null
-  /** Whether a row of this § already carries the „nicht geprüft" pill. */
-  uncheckedMarked: boolean
-}
-
-function parasOf(g: Group): { paras: Para[]; hidden: number } {
-  const limit = limitFor(g.key)
-  // Searching means the reader asked for these very rows, so an unchanged
-  // hit gets its own block instead of disappearing into a folded context
-  // line that says only how many there were.
-  const folding = !query.value.trim()
-  const paras: Para[] = []
-  let current: Para = { key: '\u0000', gld: null, heading: null, blocks: [], explanations: [], consolidated: null, uncheckedMarked: false }
-  let context: TextComparisonRow[] = []
-  let shown = 0
-  let hidden = 0
-  let withheld = 0
-  // Every withheld row of a § carries the same cause — the verdict is per §.
-  let withheldCause: AnnexWithheldCause | null = null
-  const flush = () => {
-    // The context line also stands on §§ that carry a Lesefassung, and that
-    // is a decision rather than an oversight (19.09.2026): it folds the
-    // unchanged rows OF THE ANNEX, in the same column logic as the changed
-    // ones above — the Lesefassung below is our text from RIS. For a reader
-    // reading the annex, „was hat das Ressort hier unverändert abgedruckt" is
-    // different information from „so lautet der Paragraph dann". Dropping it
-    // on those §§ was tried briefly and undone.
-    if (context.length) current.blocks.push({ kind: 'context', rows: context })
-    context = []
-    if (withheld > 0) current.blocks.push({ kind: 'withheld', count: withheld, cause: withheldCause })
-    withheld = 0
-    withheldCause = null
-  }
-  for (const row of g.rows) {
-    const key = row.para ?? ''
-    if (current.key !== key) {
-      flush()
-      current = { key, gld: row.para, heading: null, blocks: [], explanations: explanationsFor(row.law, row.para), consolidated: consolidatedFor(row.law, row.para), uncheckedMarked: false }
-      paras.push(current)
-    }
-    // The heading belongs to the paragraph, not to the Absatz that carries it.
-    current.heading ??= row.heading
-    if (row.check === 'withheld') {
-      withheld++
-      withheldCause ??= row.withheldCause ?? null
-      continue
-    }
-    if (row.change === 'unchanged' && folding) {
-      context.push(row)
-      continue
-    }
-    if (shown >= limit) {
-      hidden++
-      continue
-    }
-    flush()
-    // „nicht geprüft" beside the change badge, once per § (02.10.2026): the
-    // verdict is per §, and on every row of a five-row § it would repeat
-    // itself. At the first SHOWN row that owed a check, so a fold cannot
-    // swallow it. A row without a § is a unit of its own and always gets it.
-    const unchecked = isUnchecked(row) && (row.para === null || !current.uncheckedMarked)
-    if (unchecked && row.para !== null) current.uncheckedMarked = true
-    current.blocks.push({ kind: 'row', row, ...splitSegments(row.segments, row.current, row.proposed), split: readsSideBySide(row.segments), unchecked })
-    shown++
-  }
-  flush()
-  return { paras: paras.filter((p) => p.blocks.length > 0), hidden }
-}
-
-const renderedGroups = computed(() => groups.value.map((g) => ({ ...g, ...parasOf(g) })))
+/** One block per Paragraph, its Absätze beneath it (`annexParas`). */
+const renderedGroups = computed(() =>
+  groups.value.map((g) => ({
+    ...g,
+    ...annexParas(g, { limit: limitFor(g.key), folding: folding.value, explanationsFor, consolidatedFor }),
+  })),
+)
 
 /** Whether the annex has rows at all — the toolbar's condition, unfiltered,
  *  so a search that finds nothing cannot remove the control that caused it. */
@@ -517,9 +269,11 @@ const doubtfulNote = computed(() => {
   const keys = new Set(groups.value.map((g) => g.key))
   return annexDoubtfulNote([...doubtfulLaws.value].filter((l) => !keys.has(l)), data.value?.readFrom ?? null)
 })
-const withheldText = annexWithheldText
-function withheldBlame(cause: AnnexWithheldCause | null): string | null {
-  return annexWithheldBlame(cause, data.value?.readFrom ?? null)
+/** Why the §'s changes are not shown, and — where the cause is the layout
+ *  — whose layout: the blame asked for once. */
+function withheldReason(cause: AnnexWithheldCause | null): string {
+  const blame = annexWithheldBlame(cause, data.value?.readFrom ?? null)
+  return blame ? `${annexWithheldText(cause)} ${blame}` : annexWithheldText(cause)
 }
 </script>
 
@@ -601,7 +355,9 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
           :unchecked="g.unchecked"
           :unchecked-note="annexUncheckedNote([...g.uncheckedReasons])"
           :open="groupOpen(g.key)"
+          :more="g.hidden"
           @toggle="toggleGroup(g.key)"
+          @more="showAll(g.key)"
         >
           <p v-if="doubtfulLaws.has(g.key)" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ doubtfulGroupNote }}</p>
           <section v-for="p in g.paras" :key="p.key" class="border-b border-hairline px-4 py-3 last:border-b-0">
@@ -629,7 +385,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                  passages are short (the Besonderer Teil spreads over many),
                  and a second fold inside the disclosure would be a door
                  behind a door. -->
-            <details v-if="p.explanations.length" class="group mb-2">
+            <Disclosure v-if="p.explanations.length" size="xs" tone="ink" class="mb-2">
               <!-- In ink, not in the accent colour (18.09.2026). Blue is the
                    house colour of a link, and this disclosure leads
                    nowhere. What decides it is the frequency: it stands on
@@ -641,10 +397,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                    `font-medium text-ink` against the `text-ink-muted` of the
                    unchanged rows two lines below. The chevron carries the
                    affordance, as on every other disclosure of this page. -->
-              <summary class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden">
-                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                Begründung des Ressorts
-              </summary>
+              <template #summary>Begründung des Ressorts</template>
               <!-- Indented, without a rule (18.09.2026). A rule on the left
                    means something in this section: it is the coloured gutter
                    marking a row as „geändert" or „neu". A grey gutter on the
@@ -658,7 +411,7 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                   <p v-for="(t, ti) in e.text" :key="ti" class="mt-1 hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ t }}</p>
                 </div>
               </div>
-            </details>
+            </Disclosure>
 
             <!-- Keyed by KIND and position, not by position alone. The blocks
                  are rebuilt on every keystroke of the search field, and the
@@ -675,75 +428,53 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                 <!-- The space as a string: Vue's whitespace condensing drops
                      a leading space inside `<template v-if>`, which printed
                      „…im RIS.Das kann …" (seen 30.09.2026). -->
-                {{ withheldText(b.cause) }}{{ withheldBlame(b.cause) ? ` ${withheldBlame(b.cause)}` : '' }}
+                {{ withheldReason(b.cause) }}
                 Die Beilage des Ministeriums sagt, was sich ändert.
               </p>
-              <details v-else-if="b.kind === 'context'" class="group">
-                <summary class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 text-xs text-ink-muted rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden">
-                  <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                  {{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert
-                </summary>
+              <Disclosure v-else-if="b.kind === 'context'" size="xs" tone="muted">
+                <template #summary>{{ b.rows.length }} {{ b.rows.length === 1 ? 'Stelle' : 'Stellen' }} unverändert</template>
                 <div class="mt-2 space-y-3 pl-6 text-sm leading-relaxed text-ink-secondary">
                   <p v-for="(r, ri) in b.rows" :key="`${r.gld ?? r.para ?? ''}-${ri}`" class="hyphens-auto">{{ r.current }}</p>
                 </div>
-              </details>
+              </Disclosure>
 
-              <div v-else>
-                <div class="border-l-2 pl-3" :class="GUTTER_CLASS[badgeOf(b.row)]">
-                  <p class="mb-1 text-sm">
-                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium" :class="BADGE_CLASS[badgeOf(b.row)]">
-                      {{ BADGE_LABEL[badgeOf(b.row)] }}
-                    </span>
-                    <!-- The check's state beside the change, as in the law
-                         header: identity on the § line above, state here.
-                         Confirmed §§ carry nothing — only the exception is
-                         marked, as „nicht gezeigt" is by its notice; the
-                         reasons stand on /so-funktionierts. -->
-                    <span v-if="b.unchecked" :class="['ml-1.5', UNCHECKED_PILL]">nicht geprüft</span>
-                  </p>
-
-                  <!-- Both columns are the annex's own notation and reach
+              <!-- The ressort's own two columns, under the ressort's own
+                   headings, where a row reads better side by side. An
+                   unchanged row prints its Geltende Fassung. -->
+              <DiffBody
+                v-else
+                :badge="annexBadge(b.row)"
+                :label="BADGE_LABEL[annexBadge(b.row)]"
+                :change="b.row.change"
+                :segments="b.row.segments"
+                :from="b.from"
+                :to="b.to"
+                :split="b.split"
+                :from-text="b.row.current"
+                :to-text="b.row.proposed"
+                :unchanged-text="b.row.current"
+                from-label="Geltende Fassung"
+                to-label="Vorgeschlagene Fassung"
+              >
+                <!-- The check's state beside the change, as in the law
+                     header: identity on the § line above, state here.
+                     Confirmed §§ carry nothing — only the exception is
+                     marked, as „nicht gezeigt" is by its notice; the
+                     reasons stand on /so-funktionierts. -->
+                <template v-if="b.unchecked" #pill-after>
+                  <span :class="['ml-1.5', UNCHECKED_PILL]">nicht geprüft</span>
+                </template>
+                <!-- Both columns are the annex's own notation and reach
                      differently far: what changed is how much it leaves
                      out, not the provision. Said in words, because the word
                      diff of „(54)" against „(55)" shows the difference and
                      hides what it means. -->
-                  <p v-if="b.row.elisionRange" class="mb-1 text-sm leading-relaxed text-ink-secondary">
+                <template v-if="b.row.elisionRange" #lead>
+                  <p class="mb-1 text-sm leading-relaxed text-ink-secondary">
                     Nicht der Paragraph ändert sich, sondern der Bereich, den die Beilage auslässt.
                   </p>
-
-                  <!-- An unchanged row only reaches a block of its own while
-                     a search is running; both columns hold the same text,
-                     so it reads as the one sentence it is. -->
-                  <p v-if="b.row.change === 'unchanged'" class="hyphens-auto text-sm leading-relaxed text-ink-secondary">{{ b.row.current }}</p>
-                  <p v-else-if="b.row.segments && !b.split" class="hyphens-auto text-sm leading-relaxed text-ink">
-                    <DiffText :segments="b.row.segments" />
-                  </p>
-                  <!-- A row with only one side has one text; a column to hold
-                     nothing beside it would be a column about our layout,
-                     not about the law. Same rule as in the § comparison. -->
-                  <p v-else-if="b.row.change === 'inserted'" class="hyphens-auto rounded bg-status-good/15 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.proposed }}</p>
-                  <p v-else-if="b.row.change === 'removed'" class="hyphens-auto rounded bg-status-critical/10 px-2 py-1 text-sm leading-relaxed text-ink">{{ b.row.current }}</p>
-                  <!-- The ressort's own two columns, under the ressort's own
-                     headings. ONE shape for two cases: the Absatz was recast
-                     too thoroughly to read inline, or the word diff was too
-                     long to compute and
-                     `splitSegments` marks each side whole. -->
-                  <div v-else class="grid gap-x-4 gap-y-2 text-sm leading-relaxed sm:grid-cols-2">
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Geltende Fassung</p>
-                      <p class="hyphens-auto text-ink">
-                        <DiffText :segments="b.from" side="from" />
-                      </p>
-                    </div>
-                    <div>
-                      <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Vorgeschlagene Fassung</p>
-                      <p class="hyphens-auto text-ink">
-                        <DiffText :segments="b.to" side="to" />
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                </template>
+              </DiffBody>
             </div>
 
             <!-- The third layer on the same Paragraph: not what changes and
@@ -756,11 +487,8 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                  arises — at the end. Above the rows it would be a door in
                  front of the answer. The reasoning stays on top: it belongs
                  to the change, not to the result. -->
-            <details v-if="p.consolidated" class="group mt-3">
-              <summary class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 text-xs font-medium text-ink rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden">
-                <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-                Ganzer Paragraph danach (nicht amtlich)
-              </summary>
+            <Disclosure v-if="p.consolidated" size="xs" tone="ink" class="mt-3">
+              <template #summary>Ganzer Paragraph danach (nicht amtlich)</template>
               <div class="mt-1 pl-6">
                 <!-- „nicht amtlich" stands IN the summary since 30.09.2026,
                      so it is read before the disclosure opens, not after;
@@ -784,30 +512,11 @@ function withheldBlame(cause: AnnexWithheldCause | null): string | null {
                   <DiffText :segments="abs" />
                 </p>
               </div>
-            </details>
+            </Disclosure>
           </section>
-
-          <button
-            v-if="g.hidden"
-            type="button"
-            class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-hover"
-            @click="showAll(g.key)"
-          >
-            <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
-            {{ g.hidden }} weitere {{ g.hidden === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
-          </button>
         </DiffGroup>
-        <!-- A search box with no answer is worse than none: the section
-             would just end, and an empty comparison reads as a claim about
-             the draft. Same wording as the § comparison. Stays in the DOM as
-             a live region and goes empty rather than disappearing: a region
-             that comes into being with its text is not announced. A row of
-             the box, under its head. -->
-        <p
-          v-if="hasRows"
-          role="status"
-          :class="matchCount ? 'sr-only' : 'px-4 py-4 text-sm text-ink-secondary'"
-        >{{ matchCount ? '' : 'Nichts gefunden.' }}</p>
+        <!-- Same wording as the § comparison (`NoMatches`). -->
+        <NoMatches v-if="hasRows" :found="matchCount > 0" />
       </ListBox>
 
       <!-- Provenance under the text it belongs to, the way a source note

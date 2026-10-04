@@ -35,34 +35,18 @@ const statementRef = computed(() => statementRefFromPageUrl(props.pageUrl))
 const href = computed(() => (statementRef.value ? pdfUrl(statementRef.value) : null))
 
 const root = useTemplateRef<HTMLElement>('root')
-let observer: IntersectionObserver | null = null
 
-onMounted(() => {
-  const ref = statementRef.value
-  if (!ref) return
-  // No IntersectionObserver (old browser, jsdom): ask straight away. The
-  // batch queue still collects the whole list into calls of 32, so the
-  // fallback is slower, never broken.
-  if (!root.value || typeof IntersectionObserver === 'undefined') {
-    request(ref)
-    return
-  }
-  observer = new IntersectionObserver(
-    (entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return
-      observer?.disconnect()
-      observer = null
-      request(ref)
-    },
-    { rootMargin: '400px 0px' },
-  )
-  observer.observe(root.value)
-})
-
-onBeforeUnmount(() => {
-  observer?.disconnect()
-  observer = null
-})
+// Without an IntersectionObserver every tag asks at once (`useNearViewport`).
+// The batch queue still collects the whole list into calls of 32, so the
+// fallback is slower, never broken.
+useNearViewport(
+  root,
+  () => {
+    if (statementRef.value) request(statementRef.value)
+  },
+  '400px 0px',
+  () => !statementRef.value,
+)
 
 const ariaLabel = computed(
   () => `${statementLinkName(props.citation, props.submitter)} als PDF öffnen (neues Fenster)`,

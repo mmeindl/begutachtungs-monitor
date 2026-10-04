@@ -23,6 +23,7 @@
  * stands in `useExplanations`.
  */
 import { risSource, type SourceEntry } from '#shared/utils/provenance'
+import { foldByBudget } from '~/utils/foldByBudget'
 
 /**
  * Two routes to the same document, because the two kinds of draft reach it
@@ -49,45 +50,14 @@ const items = computed<Item[]>(() =>
   ]),
 )
 
-/**
- * Where the fold goes.
- *
- * The Allgemeiner Teil is a median 2.359 characters long, p90 7.727 and at
- * most 40.335 (`pnpm corpus:erlaeuterungen`, window from 2024) — a
- * distribution in which „show everything" makes the page unusable for half
- * the drafts and „always fold" puts a click in front of two paragraphs for
- * the other half.
- *
- * Hence a character budget rather than a paragraph count: one long paragraph
- * is capped like twenty short ones. And the budget is checked BEFORE a
- * paragraph is added, not after — otherwise exactly the long paragraph the
- * exercise was about slips in whole (132/ME: 3.000 characters in one run,
- * checked on the page).
- *
- * The first paragraph always stands, however long it is: a disclosure as the
- * first element would be the page hiding its own answer. A paragraph is never
- * cut mid-sentence — it is the Ressort's text, not ours.
- */
+/** Where the fold goes: a character budget, the first paragraph always
+ *  shown, never a dangling heading (`foldByBudget`, where the numbers
+ *  behind it stand). */
 const BUDGET = 1400
 
-const visibleCount = computed(() => {
-  let spent = 0
-  let shown = 0
-  let paragraphs = 0
-  for (const [i, item] of items.value.entries()) {
-    if (paragraphs >= 1 && spent + item.text.length > BUDGET) break
-    spent += item.text.length
-    if (item.kind === 'text') paragraphs += 1
-    shown = i + 1
-  }
-  // No dangling heading at the cut: it belongs to what stands below it, so
-  // it moves into the disclosure with it.
-  if (shown < items.value.length && items.value[shown - 1]?.kind === 'heading') shown -= 1
-  return shown
-})
-
-const visible = computed(() => items.value.slice(0, visibleCount.value))
-const folded = computed(() => items.value.slice(visibleCount.value))
+const fold = computed(() => foldByBudget(items.value, BUDGET))
+const visible = computed(() => fold.value.visible)
+const folded = computed(() => fold.value.folded)
 const foldedParagraphs = computed(() => folded.value.filter((i) => i.kind === 'text').length)
 
 /**
@@ -114,7 +84,9 @@ const loading = computed(() => status.value !== 'error' && !data.value)
 /**
  * The screen-reader announcement once the section has been fetched — the same
  * mechanics as in the comparison: the region is empty when mounted and filled
- * afterwards, or some screen readers read it out at once.
+ * afterwards, or some screen readers read it out at once. And the same
+ * region: `role="status"` since 04.10.2026, where an `aria-live="polite"`
+ * said the same thing in another word.
  */
 const loadAnnouncement = computed(() => {
   if (loading.value) return ''
@@ -126,7 +98,7 @@ const loadAnnouncement = computed(() => {
 
 <template>
   <div>
-    <p aria-live="polite" class="sr-only">{{ loadAnnouncement }}</p>
+    <p class="sr-only" role="status">{{ loadAnnouncement }}</p>
 
     <p v-if="loading" class="text-sm text-ink-muted">
       Die Erläuterungen werden geladen …
@@ -166,27 +138,19 @@ const loadAnnouncement = computed(() => {
         </template>
       </div>
 
-      <!-- A native <details> as for the Kurzbeschreibung and the comparison's
-           context lines: usable without hydration, reachable by keyboard, and
-           the browser's find-in-page opens it instead of running past it.
+      <!-- A native <details> (`Disclosure`) as for the Kurzbeschreibung and
+           the comparison's context lines.
 
            The quiet toggle of „Alle N Gesetze anzeigen", chevron first, no
            rule (02.10.2026): it shows more of the same text. A full-width
            row under a hairline is what a collapsed sub-section wears
            („Dokumente", just below), and the two read as one kind of thing,
            with the credit line caught between their rules. -->
-      <details v-if="folded.length" class="group mt-3">
-        <summary
-          class="-mx-2 flex w-fit min-h-target cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink rounded px-2 hover:bg-hover [&::-webkit-details-marker]:hidden"
-        >
-          <UIcon
-            name="i-lucide-chevron-down"
-            class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
-            aria-hidden="true"
-          />
+      <Disclosure v-if="folded.length" size="sm" tone="ink" class="mt-3">
+        <template #summary>
           <span class="group-open:hidden">Weiterlesen – noch {{ foldedParagraphs }} {{ foldedParagraphs === 1 ? 'Absatz' : 'Absätze' }}</span>
           <span class="hidden group-open:inline">Weniger anzeigen</span>
-        </summary>
+        </template>
         <div class="pb-2">
           <template v-for="(item, i) in folded" :key="i">
             <h4 v-if="item.kind === 'heading'" class="mt-5 text-sm font-semibold text-ink">
@@ -197,7 +161,7 @@ const loadAnnouncement = computed(() => {
             </p>
           </template>
         </div>
-      </details>
+      </Disclosure>
 
       <!-- What deliberately does NOT stand here: tables and figures (we do
            not print image file paths as sentences). Named, not passed over in

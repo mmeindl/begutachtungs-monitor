@@ -47,10 +47,14 @@ const props = defineProps<{
    *  open group (`annexUncheckedNote`). */
   uncheckedNote?: string | null
   open: boolean
+  /** Changes left unprinted under the „N weitere Änderungen anzeigen" line
+   *  at the group's foot (`limitFor`); nothing there where none are. */
+  more?: number
 }>()
 
 const emit = defineEmits<{
   toggle: []
+  more: []
 }>()
 
 const section = useTemplateRef<HTMLElement>('section')
@@ -188,6 +192,17 @@ async function toggle() {
            is not read out as part of the button's name. -->
       <p v-if="uncheckedNote" class="border-b border-hairline px-4 py-2.5 text-sm text-ink-secondary">{{ uncheckedNote }}</p>
       <slot />
+      <!-- The way to the rest of a long group, as the group's last row: both
+           sections wrote this button out until 04.10.2026. -->
+      <button
+        v-if="more"
+        type="button"
+        class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-hover"
+        @click="emit('more')"
+      >
+        <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
+        {{ more }} weitere {{ more === 1 ? 'Änderung' : 'Änderungen' }} anzeigen
+      </button>
     </div>
   </section>
 </template>
