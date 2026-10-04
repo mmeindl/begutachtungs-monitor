@@ -86,10 +86,14 @@ sshd -t && systemctl reload ssh
 # Trust the effective configuration, not the file: whatever another drop-in
 # or the main config says, these must be what sshd actually runs with.
 # `sshd -T` prints prohibit-password under its old name, without-password.
+# Read once into a variable, never piped into `grep -q`: grep exits on the
+# first match, sshd -T dies of SIGPIPE while still writing, and pipefail
+# turns the found line into a failure (seen on the live box, 2026-10-04).
+effective=$(sshd -T)
 for want in 'passwordauthentication no' \
             'kbdinteractiveauthentication no' \
             'permitrootlogin (prohibit-password|without-password)'; do
-  if ! sshd -T | grep -qxE "$want"; then
+  if ! grep -qxE "$want" <<<"$effective"; then
     echo "✘ sshd does not run with '$want' — another file in /etc/ssh/sshd_config.d wins:" >&2
     grep -rniE 'passwordauthentication|kbdinteractive|challengeresponse|permitrootlogin' \
       /etc/ssh/sshd_config /etc/ssh/sshd_config.d/ >&2 || true

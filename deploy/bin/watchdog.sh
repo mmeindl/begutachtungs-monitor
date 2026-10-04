@@ -81,7 +81,11 @@ done
 # SIGUSR2 only where the process was started with the report handler: without
 # it the signal's default action is to terminate — harmless one line before
 # a restart, but then the report this is all for silently never exists.
-if tr '\0' '\n' < "/proc/$pid/environ" | grep -q '^NODE_OPTIONS=.*--report-on-signal'; then
+# Read into a variable, not piped into `grep -q`: under pipefail a writer
+# killed by SIGPIPE after grep's early exit reads as „not found" (the same
+# trap bootstrap.sh's sshd check fell into, 2026-10-04).
+environ=$(tr '\0' '\n' < "/proc/$pid/environ")
+if grep -q '^NODE_OPTIONS=.*--report-on-signal' <<<"$environ"; then
   marker=$(mktemp)
   kill -USR2 "$pid"
   report=""

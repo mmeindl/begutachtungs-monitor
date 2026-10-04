@@ -147,8 +147,8 @@ ssh $S "sshd -T | grep -E '^(passwordauthentication|kbdinteractiveauthentication
 ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive $S true
 ```
 
-Expect `no`, `no`, `permitrootlogin without-password` (sshd's own name for
-`prohibit-password`), `00-hardening.conf` without `90-hardening.conf`, and
+Expect `no`, `no`, `permitrootlogin prohibit-password` (older sshd prints it
+as `without-password`), `00-hardening.conf` without `90-hardening.conf`, and
 `Permission denied (publickey)` for the last line.
 
 **4. Restart the app under the hardened unit, and warm it:**
