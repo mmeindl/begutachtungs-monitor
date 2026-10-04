@@ -543,8 +543,16 @@ const UNIT_RE = /^(?:\[\s*(?:\.\.\.|…)\s*\]\s*|(?:\.\.\.|…)\s*)*(§\s*\d+[a-
  * that opens a provision is followed by the provision, not by a subdivision
  * of something else. 23 of the worst-scoring rows carrying real prose were
  * this one shape (2026-09-09).
+ *
+ * Widened on 04.10.2026 from a word list to its shape (§12.41, five groups in
+ * GP XXVIII): a heading's tail is a capitalised title, „zu § 5", a bracket or
+ * nothing. So a tail that opens with any other lowercase word („Anhang XVI
+ * gelten …", „Art. 6 oder Art. 7"), a comma, an EU act („Art. 39 Richtlinie
+ * 2009/72/EG", „Art. 29a Bilanz-Richtlinie", „der Statusverordnung") or a
+ * treaty („Art. 8 EMRK") is a citation. „Art. 8 EMRK" alone had filed a
+ * § of the Asylgesetz under an Artikel the law does not have.
  */
-const CITATION_TAIL_RE = /^\s*(?:Abs\.|Z\s|lit\b|Buchstabe|Unterabsatz|Nr\.|Nummer|der\b|des\b|dieser\b|dieses\b|und\b|bis\b|sowie\b|zur\b|zum\b|in\b)/
+const CITATION_TAIL_RE = /^\s*(?:Abs\.|Z\s|Buchstabe|Unterabsatz|Nr\.|Nummer|,|(?!zu\b)[a-zäöüß]|[\wÄÖÜäöüß-]*(?:[Rr]ichtlinie|[Vv]erordnung|-VO)\b|\((?:EU|EG|EWG)\)|(?:EMRK|B-VG|AEUV|EUV|GRC|DSGVO|StGG)\b)/
 /** "Artikel 3" with nothing else on the line. */
 const BARE_ARTICLE_RE = /^Artikel\s+(?:[Xx]?\d+[a-z]?|[IVXL]+)$/
 /** A qualifier that stands where the law's name would, and is not one. */

@@ -482,6 +482,32 @@ describe('what looks like a provision but is not', () => {
     expect(rows[0]!.current).toContain('Art. 92 Abs. 1 Buchstabe d')
   })
 
+  // The shapes GP XXVIII still filed as provisions (§12.41): a treaty, a
+  // directive by name, a lowercase continuation. And the two that must stay
+  // headings: a title, and „zu § 14".
+  it.each([
+    'Art. 8 EMRK führen würde.',
+    'Art. 39 Richtlinie 2009/72/EG bzw. Art. 43 der Richtlinie 2009/73/EG.',
+    'Art. 29a Bilanz-Richtlinie erstellt wurde.',
+    'Art. 6 oder Art. 7 Abs. 1 bis 11 der Verordnung.',
+    'Anhang XVI gelten ausschließlich die Bestimmungen dieses Abschnittes.',
+    'Anhang XVI, oder bei Verkehrsdiensten.',
+  ])('reads „%s" on a wrapped line as a citation', (text) => {
+    const rows = parse([page([
+      { y: 700, left: '§ 5. (1) Die Behörde entscheidet nach', right: '§ 5. (1) Das Gericht entscheidet nach' },
+      { y: 686, left: text, right: text },
+    ])])
+    expect(rows.map((r) => r.gld)).toEqual(['§ 5.'])
+  })
+
+  it.each(['Anlage 5 zu § 14 Liquiditätsmanagement-Instrumente', 'Anhang III Liste der zentralen öffentlichen Auftraggeber'])('keeps „%s" a heading', (text) => {
+    const rows = parse([page([
+      { y: 700, left: '§ 5. (1) Die Behörde entscheidet.', right: '§ 5. (1) Das Gericht entscheidet.' },
+      { y: 660, left: text, right: text },
+    ])])
+    expect(rows.map((r) => r.gld)).toContain(text.split(' ').slice(0, 2).join(' '))
+  })
+
   // A law numbered in decimals ("§ 1.08") lost everything after the first
   // period and every one of its §§ collapsed onto "§ 1".
   it('keeps a decimal paragraph number whole', () => {
