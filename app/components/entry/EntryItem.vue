@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { NuxtLink } from '#components'
+import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
 import type { EntryView } from '~/utils/entryView'
 import { keepDashWithPrecedingWord } from '~/utils/typography'
 
@@ -66,7 +67,18 @@ const props = defineProps<{
  * hydration replaced it.
  */
 const displayTitle = computed(() => keepDashWithPrecedingWord(props.entry.title))
-const linkComponent = computed(() => (props.entry.to ? NuxtLink : 'a'))
+
+/**
+ * The outward target, or null when there is none or `isSafeLinkHref` refuses
+ * it. Then the row is no link at all: a `<div>`, without the ↗, the hover
+ * ground and the title's underline — the facts stand, nothing pretends to
+ * lead anywhere.
+ */
+const externalHref = computed(() =>
+  !props.entry.to && isSafeLinkHref(props.entry.href) ? props.entry.href : null,
+)
+const isLink = computed(() => Boolean(props.entry.to || externalHref.value))
+const linkComponent = computed(() => (props.entry.to ? NuxtLink : externalHref.value ? 'a' : 'div'))
 
 /**
  * `target="_blank"` on the external rows — the same rule as in
@@ -83,7 +95,9 @@ const linkComponent = computed(() => (props.entry.to ? NuxtLink : 'a'))
 const linkProps = computed(() =>
   props.entry.to
     ? { to: props.entry.to }
-    : { href: props.entry.href ?? undefined, target: '_blank', rel: 'noopener' },
+    : externalHref.value
+      ? { href: externalHref.value, target: '_blank', rel: 'noopener' }
+      : {},
 )
 
 /**
@@ -95,9 +109,9 @@ const linkProps = computed(() =>
  * does not know what kind of entry it renders.
  */
 const externalHost = computed(() => {
-  if (props.entry.to || !props.entry.href) return null
+  if (!externalHref.value) return null
   try {
-    return new URL(props.entry.href).hostname.replace(/^www\./, '')
+    return new URL(externalHref.value).hostname.replace(/^www\./, '')
   } catch {
     return null
   }
@@ -108,7 +122,8 @@ const externalHost = computed(() => {
   <component
     :is="linkComponent"
     v-bind="linkProps"
-    class="group flex flex-col gap-3 p-4 hover:bg-hover sm:flex-row sm:items-start sm:gap-4 md:min-h-target md:scroll-mt-12 md:items-center md:py-3"
+    :class="{ 'hover:bg-hover': isLink }"
+    class="group flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4 md:min-h-target md:scroll-mt-12 md:items-center md:py-3"
   >
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <!-- ZONE 1 — the title, WHOLE, in both densities. No `truncate`, no
@@ -139,10 +154,11 @@ const externalHost = computed(() => {
            „Bundesstaatsanwaltschaft" went whole onto a line of its own and the
            row stood a line taller than the card it is (01.10.2026). -->
       <h3
-        class="font-medium text-ink group-hover:underline group-hover:decoration-2"
+        class="font-medium text-ink"
+        :class="{ 'group-hover:underline group-hover:decoration-2': isLink }"
         :title="entry.titleFull ?? entry.title"
       >
-        <HighlightedText :text="displayTitle" :query="query" /><span v-if="!entry.to" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
+        <HighlightedText :text="displayTitle" :query="query" /><span v-if="externalHref" aria-hidden="true">&nbsp;↗</span><span v-if="externalHost" class="sr-only"> (auf {{ externalHost }}, neues Fenster)</span>
       </h3>
 
       <!-- ZONE 2 — Kennung: what kind of thing, which one, from whom. Fixed

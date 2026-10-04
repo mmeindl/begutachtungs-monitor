@@ -18,6 +18,7 @@
  * observer fires a screen early (rootMargin), so by the time a row is read
  * its tag is there.
  */
+import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
 import { statementRefFromPageUrl } from '#shared/utils/statementRef'
 import { statementLinkName } from '~/utils/statementRows'
 
@@ -32,7 +33,15 @@ const props = defineProps<{
 
 const { request, pdfUrl } = useStatementDocuments()
 const statementRef = computed(() => statementRefFromPageUrl(props.pageUrl))
-const href = computed(() => (statementRef.value ? pdfUrl(statementRef.value) : null))
+/**
+ * A URL that `isSafeLinkHref` refuses counts as no file: the slot stays
+ * empty, as for a web-form statement, rather than `ExternalLink`'s plain-text
+ * fallback leaving a lone „PDF" that looks like a link and is not one.
+ */
+const href = computed(() => {
+  const url = statementRef.value ? pdfUrl(statementRef.value) : null
+  return isSafeLinkHref(url) ? url : null
+})
 
 const root = useTemplateRef<HTMLElement>('root')
 

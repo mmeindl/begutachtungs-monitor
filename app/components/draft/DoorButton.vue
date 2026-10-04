@@ -28,15 +28,26 @@
  * The card's own buttons are this one too, so the door and its repetition
  * cannot drift apart. `variant` is for the card's row only: there the
  * Vorlage's button steps back to an outline beside the Begutachtung's.
+ *
+ * An `href` that `isSafeLinkHref` refuses renders no button at all — the
+ * same as a missing one, which every caller already hides behind a `v-if`.
+ * `UButton` is no guard of its own here: with `target="_blank"` Nuxt UI's
+ * `ULink` skips `NuxtLink` and binds `to` raw onto the `<a>`, so Nuxt's
+ * own `javascript:` filter never sees it.
  */
-withDefaults(defineProps<{
+import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
+
+const props = withDefaults(defineProps<{
   href: string
   variant?: 'solid' | 'outline'
 }>(), { variant: 'solid' })
+
+const safe = computed(() => isSafeLinkHref(props.href))
 </script>
 
 <template>
   <UButton
+    v-if="safe"
     :to="href"
     target="_blank"
     rel="noopener"

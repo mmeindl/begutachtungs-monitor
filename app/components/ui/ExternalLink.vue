@@ -40,9 +40,13 @@
  *
  * An `href` that `isSafeLinkHref` refuses (a `javascript:` URL, a `//host`
  * path) renders the label as plain text — the second line behind the
- * server, which already holds upstream URLs to the allowlist.
+ * server, which already holds upstream URLs to the allowlist. The caller's
+ * attributes land only on the `<a>`: a refused label must not wear the
+ * caller's link classes and read as clickable.
  */
 import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
+
+defineOptions({ inheritAttrs: false })
 
 const props = defineProps<{
   href: string
@@ -54,6 +58,7 @@ const safe = computed(() => isSafeLinkHref(props.href))
 <template>
   <a
     v-if="safe"
+    v-bind="$attrs"
     :href="href"
     target="_blank"
     rel="noopener"
