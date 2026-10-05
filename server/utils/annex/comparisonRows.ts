@@ -182,6 +182,10 @@ const DIVISION_MAX = 60
  */
 const ANLAGE_TYP_RE = /<ueberschrift\b[^>]*\btyp="anlage"/i
 const ANLAGE_TEXT_RE = /^(?:Anlage|Anhang)\b/i
+/** The open unit is a schedule; `"Anlage 1` keeps the quote the annex printed. */
+const OPEN_ANLAGE_RE = /^"?\s*(?:Anlage|Anhang)\b/i
+/** The heading of the act itself — its Langtitel — not of anything in it. */
+const TITEL_TYP_RE = /<ueberschrift\b[^>]*\btyp="titel"/i
 
 function opensAnlage(text: string, html: string): boolean {
   if (ANLAGE_TYP_RE.test(html)) return true
@@ -617,8 +621,18 @@ export function parseTextComparison(xml: string | readonly string[], articles: r
         rows.push({ ...row, para: openPara })
         continue
       }
-      heldHeadings.push(row)
-      continue
+      // Not where the changed heading heads no § below it, and it then stays
+      // the ordinary row it was before 04.10.2026. The act's own title
+      // (`typ="titel"`), changed because a ministry was renamed, became foreign
+      // text in the first § — VGÜ § 5, LF-VGÜ § 6, MPBV § 1 and four
+      // Verordnungen of one bundle withheld. And inside a schedule the next
+      // unit to open is the next schedule: the Bäderhygieneverordnung's
+      // "Hinweis für Badegäste", typeset as headings, moved from Anlage 7 into
+      // Anlage 8 (Annex-Drift, 05.10.2026).
+      if (!changedTwoSided || !(TITEL_TYP_RE.test(currentHtml) || (openPara !== null && OPEN_ANLAGE_RE.test(openPara)))) {
+        heldHeadings.push(row)
+        continue
+      }
     }
     // Two-sided first: where both stacks are open at once — twice in GP XXVIII
     // — the two-sided rows are the ones the annex printed first.

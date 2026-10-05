@@ -12059,6 +12059,16 @@ Jede Klasse für sich, mit dem, was sie bewegt:
   wurden — 14 §§ wechseln von zurückgehalten zu bestätigt, darunter VBG
   § 5c (23/ME) und das Informationssicherheitsgesetz § 9 im Gate-Golden.
   Gelesen: jeder dieser §§ verliert genau die fremde Überschrift.
+  **Zwei Ausnahmen, vom Annex-Drift am 05.10.2026 gefunden:** der Langtitel
+  (`typ="titel"`, geändert, weil ein Ministerium umbenannt wurde) überschreibt
+  keinen § und wurde fremder Text im ersten — VGÜ § 5, LF-VGÜ § 6, MPBV § 1
+  und vier Verordnungen eines Bündels zurückgehalten; und in einer offenen
+  Anlage öffnet die nächste Zeile die nächste Anlage — der „Hinweis für
+  Badegäste" der Bäderhygieneverordnung wanderte von Anlage 7 in Anlage 8.
+  Beide bleiben die Zeile, die sie vorher waren: 8 §§ wieder bestätigt, 7
+  Zurückhaltungen weniger, sonst bewegt sich über GP XXVIII nichts. Zwei
+  Langtitel, die ein Ressort `g2` und `para` setzt, wandern weiter; am Wortlaut
+  erkannt würden sie erst mit einer Wortliste.
 - **Zwei Gründe, die stimmen**, statt „das RIS führt diese Paragraphen nicht"
   und „ließ sich nicht auflösen": „der Entwurf fügt diese Paragraphen erst
   ein" (ein § mit Gliederungssymbol unter einer einfügenden, anfügenden oder

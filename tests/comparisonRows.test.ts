@@ -534,6 +534,35 @@ describe('a § heading printed in one column only', () => {
     ])
   })
 
+  // The act's own title, changed because a ministry was renamed, heads no §:
+  // in § 5 of the VGÜ it was foreign text and the § was withheld (05.10.2026).
+  it('leaves a changed Langtitel without a §', () => {
+    const rows = parse(annex([
+      pair(heading('titel', 'Verordnung des Bundesministers für Arbeit und Wirtschaft'), heading('titel', 'Verordnung der Bundesministerin für Arbeit und Soziales')),
+      pair(para('5', '(1) Alt.'), para('5', '(1) Neu.')),
+    ]))
+    expect(rows.map((r) => [r.change, r.para])).toEqual([
+      ['changed', null],
+      ['changed', '§ 5.'],
+    ])
+  })
+
+  // Inside a schedule the next unit to open is the next schedule, not the one
+  // the heading belongs to — the Bäderhygieneverordnung's Anlage 7 text
+  // landed in Anlage 8 (05.10.2026).
+  it('keeps a changed heading inside the open Anlage', () => {
+    const rows = parse(annex([
+      pair(heading('anlage', 'Anlage 7'), heading('anlage', 'Anlage 7')),
+      pair(heading('g1min', 'Hinweis für Badegäste'), heading('g1min', 'Hinweis für Badegäste an Kleinbadeteichen')),
+      pair(heading('anlage', 'Anlage 8'), heading('anlage', 'Anlage 8')),
+      pair('(1) Alt.', '(1) Neu.'),
+    ]))
+    expect(rows.filter((r) => r.change === 'changed').map((r) => [r.current, r.para])).toEqual([
+      ['Hinweis für Badegäste', 'Anlage 7'],
+      ['(1) Alt.', 'Anlage 8'],
+    ])
+  })
+
   // Nothing opens below it, so there is no evidence to move it on — and the
   // answer that shipped is kept rather than guessed at.
   it('leaves a one-sided heading with the § above when no § follows', () => {
