@@ -4,7 +4,8 @@ import {
   gpEndedHeadlineDe,
   RV_BASE_RATES,
   rvBaseRateFor,
-  rvBaseRateSentenceDe,
+  rvWaitScale,
+  daysSinceFristDe,
   changeShareRateFor,
   changeShareValueDe,
   reasoningShareValueDe,
@@ -68,10 +69,32 @@ describe('RV base rates (scripts/corpus/rvLatency.ts, 2026-09-08)', () => {
     expect(RV_BASE_RATES[0]!.gp).toBe(ended[0])
   })
 
-  it('states the rate as numbers, without a verdict word', () => {
-    expect(rvBaseRateSentenceDe('XXVIII')).toBe(
-      'In der XXVII. Gesetzgebungsperiode wurden 296 von 353 Entwürfen zur Regierungsvorlage, 9 von 10 davon binnen 6 Monaten nach Fristende.',
-    )
+  it('draws the wait on the latency window, with the median and the window as ticks', () => {
+    const r = rvBaseRateFor('XXVIII')
+    const { value, marks } = rvWaitScale(18, r)
+    expect(value).toBeCloseTo(10)
+    expect(marks.map((m) => [m.key, Math.round(m.at), m.align, m.lines.join(' ')])).toEqual([
+      ['median', 22, 'center', 'Hälfte der Vorlagen nach 40 Tagen'],
+      ['window', 100, 'end', '9 von 10 Vorlagen binnen 6 Monaten'],
+    ])
+  })
+
+  it('stretches the track past the window, and drops the median where its label would collide', () => {
+    const r = rvBaseRateFor('XXVIII')
+    const past = rvWaitScale(240, r)
+    expect(past.value).toBe(100)
+    expect(past.marks.map((m) => [m.key, m.at, m.align])).toEqual([
+      ['median', (40 / 240) * 100, 'center'],
+      ['window', 75, 'center'],
+    ])
+    const long = rvWaitScale(1000, r)
+    expect(long.marks.map((m) => [m.key, m.align])).toEqual([['window', 'start']])
+  })
+
+  it('names the wait in days', () => {
+    expect(daysSinceFristDe(0)).toBe('Frist endete heute')
+    expect(daysSinceFristDe(1)).toBe('1 Tag seit Fristende')
+    expect(daysSinceFristDe(13)).toBe('13 Tage seit Fristende')
   })
 })
 
@@ -94,7 +117,7 @@ describe('GP-ended copy', () => {
   })
 
   it('never uses the vocabulary the framing rule forbids', () => {
-    for (const s of [gpEndedHeadlineDe('XXVII', '2024-10-23'), gpEndedBodyDe('XXVII'), rvBaseRateSentenceDe('XXVII')]) {
+    for (const s of [gpEndedHeadlineDe('XXVII', '2024-10-23'), gpEndedBodyDe('XXVII'), ...rvWaitScale(20, rvBaseRateFor('XXVII')).marks.flatMap((m) => m.lines)]) {
       expect(s).not.toMatch(/gescheitert|versenkt|ignoriert|verschleppt|Schublade/i)
     }
   })
@@ -205,7 +228,7 @@ describe('rvStationView', () => {
     expect(v.noRvVerdict).toBeNull()
     expect(v.facts).toEqual([{ key: 'stand', title: 'Stand', text: 'Bisher keine Regierungsvorlage.' }])
     expect(v.context).toBeNull()
-    expect(v.noRvBaseRate).toBe(rvBaseRateSentenceDe('XXVIII'))
+    expect(v.noRvBaseRate).toBe(rvBaseRateFor('XXVIII'))
     expect(v.counted).toBe(false)
   })
 
@@ -214,7 +237,7 @@ describe('rvStationView', () => {
     expect(v.noRvVerdict).toBe('Seit Ende der Begutachtungsfrist vor über einem Jahr liegt keine Regierungsvorlage vor.')
     expect(v.facts).toEqual([{ key: 'stand', title: 'Stand', text: v.noRvVerdict }])
     expect(v.context).toBe('Ob und wie es weitergeht, ist offen.')
-    expect(v.noRvBaseRate).toBe(rvBaseRateSentenceDe('XXVIII'))
+    expect(v.noRvBaseRate).toBe(rvBaseRateFor('XXVIII'))
   })
 
   it('states the period\'s end once the GP is over, with the carry-over rate instead of the base rate', () => {
@@ -241,6 +264,18 @@ describe('rvStationView', () => {
     expect(v.context).toBeNull()
     expect(v.noRvBaseRate).toBeNull()
     expect(v.facts.map((f) => f.key)).toEqual(['antrag', 'nachfolger'])
+  })
+
+  it('dates the handoff in its own row while the GP runs', () => {
+    const handoff = { date: '2026-09-22', recipient: 'das Bundesministerium für Justiz' }
+    expect(rvStationView(draft({ handoff }), NOTHING).facts).toEqual([
+      { key: 'stand', title: 'Stand', text: 'Bisher keine Regierungsvorlage.' },
+      { key: 'ressort', title: 'Beim Ressort', text: 'seit 22.09.2026' },
+    ])
+    // The period's end closes the wait; the Begutachtung's row dates it then.
+    const ended = rvStationView(draft({ handoff, gp: 'XXVII', gpEnded: true, gpEndedOn: '2024-10-23' }), NOTHING)
+    expect(ended.facts.map((f) => f.key)).toEqual(['stand'])
+    expect(rvStationView(draft({ handoff: { date: null, recipient: 'x' } }), NOTHING).facts.map((f) => f.key)).toEqual(['stand'])
   })
 
   it('keeps the waiting sentence where the Antrag carries too little of the draft', () => {

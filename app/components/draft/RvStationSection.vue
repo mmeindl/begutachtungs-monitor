@@ -45,6 +45,20 @@ const earlyVorlageWhen = computed(() => {
   if (!d.deadline || !rvDate || !tabledBeforeFristEnd(d.deadline, rvDate)) return null
   return earlyVorlageWhenDe({ arrivedAt: d.arrivedAt, deadline: d.deadline, rvDate })
 })
+
+/* The wait's bar stands under the last waiting row: „Beim Ressort" where
+ * the handoff is dated, „Stand" where it is not. */
+const waitSlot = computed(() => `after-${props.view.facts.some((f) => f.key === 'ressort') ? 'ressort' : 'stand'}`)
+/* What on the frame is ours: the comparison's counts, or the waiting
+ * bar's yardstick — whose population (how many drafts got a Vorlage at
+ * all) stands behind „Methode", not under the frame (05.10.2026): it
+ * describes the period, not this draft. */
+const credit = computed(() => {
+  const v = props.view
+  if (v.counted) return { own: 'Zählung', method: '/so-funktionierts#vergleich' }
+  if (v.noRvBaseRate) return { own: `Vergleichswerte (${v.noRvBaseRate.gp}.\u00a0GP)`, method: '/so-funktionierts#wartezeit' }
+  return null
+})
 </script>
 
 <template>
@@ -124,6 +138,12 @@ const earlyVorlageWhen = computed(() => {
           </template>
           <!-- The win side of the same mechanism: the draft that finds a
                lapsed one also finds the one that took its place. -->
+          <!-- How long the draft has waited, against how long the last
+               closed period waited (`RvWaitBar`); whether a Vorlage came
+               at all stands behind the credit line's „Methode". -->
+          <template v-if="view.noRvBaseRate" #[waitSlot]>
+            <RvWaitBar :deadline="draft.deadline" :rate="view.noRvBaseRate" />
+          </template>
           <template v-if="draft.successor" #value-nachfolger>
             <p>
               <NuxtLink
@@ -140,22 +160,20 @@ const earlyVorlageWhen = computed(() => {
           v-if="view.facts.length"
           :sources="PARLIAMENT_HISTORY_SOURCES"
           :marked="false"
-          :own="view.counted ? 'Zählung' : undefined"
-          :method="view.counted ? '/so-funktionierts#vergleich' : undefined"
+          :own="credit?.own"
+          :method="credit?.method"
         />
-        <!-- What explains the frame's verdict: what is open, the base rate
-             that puts the waiting in proportion, and how an Initiativantrag
-             was matched. -->
-        <div v-if="!draft.enactment && !draft.active && (view.context || view.noRvBaseRate || draft.antragPath)" class="mt-4 space-y-2">
+        <!-- What explains the frame's verdict: what is open, and how an
+             Initiativantrag was matched. -->
+        <div v-if="!draft.enactment && !draft.active && (view.context || draft.antragPath)" class="mt-4 space-y-2">
           <p v-if="view.context" class="text-sm text-ink-secondary">{{ view.context }}</p>
-          <p v-if="view.noRvBaseRate" class="text-sm text-ink-secondary">{{ view.noRvBaseRate }}</p>
           <AntragPathNote
             v-if="draft.antragPath"
             :path="draft.antragPath"
             :gp="draft.gp"
             :deadline="draft.deadline"
             :lead="!view.viaAntrag"
-            :class="view.context || view.noRvBaseRate ? 'pt-1' : ''"
+            :class="view.context ? 'pt-1' : ''"
           />
         </div>
       </div>

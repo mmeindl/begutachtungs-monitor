@@ -242,9 +242,9 @@ const handoffFact = computed<Fact | null>(() => {
   const d = data.value
   const h = d?.handoff
   if (!d || !h?.date) return null
-  // The bar's Regierungsvorlage row says „bisher keine · seit … beim Ressort"
-  // exactly while no Vorlage exists and the GP runs (`spine.ts`); there the
-  // row only repeated it (30.09.2026).
+  // While no Vorlage exists and the GP runs, the Vorlage's own station says
+  // it — „Beim Ressort" in its frame (`rvStationView`, 05.10.2026), as the
+  // bar's row does (`spine.ts`); here the row only repeated it (30.09.2026).
   if (!d.enactment && !d.gpEnded) return null
   return { key: 'uebermittelt', title: 'Übermittelt', text: `${formatDateDe(h.date)} an ${h.recipient}` }
 })

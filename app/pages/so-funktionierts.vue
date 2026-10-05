@@ -26,13 +26,16 @@
  *
  * ANCHORS. `#gegenueberstellung` is linked from `TextComparisonSection` and
  * must stay; so are `#lesefassung` (its disclosures) and `#vergleich`
- * (`LawDiffSection`), both since 30.09.2026. `#leiste` is gone — a legend for a UI element on another page,
+ * (`LawDiffSection`), both since 30.09.2026; `#wartezeit` (the waiting
+ * station's credit line) since 05.10.2026. `#leiste` is gone — a legend for a UI element on another page,
  * reached by no link at all, and stale within a day of the third comparison
  * („die beiden Fragen in der Leiste"). The rail says its own state in words
  * instead.
  */
 import { EDITORIAL_BADGE_SENTENCE } from '#shared/utils/lawStations'
 import { SECOND_ROUND_WINDOW } from '~/utils/spine'
+import { RV_LATENCY_CONTEXT_DAYS } from '~/utils/deadlines'
+import { rvBaseRateFor } from '~/utils/outcomes'
 
 usePageSeo({
   title: "So funktioniert's",
@@ -167,8 +170,15 @@ const toc = [
   { to: '#stationen', label: 'Der Weg eines Entwurfs' },
   { to: '#ohne-stellungnahmen', label: 'Warum manche Entwürfe keine Stellungnahmen zeigen' },
   { to: '#gegenueberstellung', label: 'Woher „Was ändert der Entwurf?“ kommt' },
+  { to: '#wartezeit', label: 'Wie lange es bis zur Regierungsvorlage dauert' },
   { to: '#vergleich', label: 'Wie wir Entwurf und Regierungsvorlage vergleichen' },
 ]
+
+/* The yardstick of the waiting bar (`RvWaitBar`): the newest closed period,
+ * the row the draft pages fall back to while their own GP still runs. */
+const waitRate = rvBaseRateFor(null)
+const waitTenths = Math.round(waitRate.withinLatencyWindow * 10)
+const waitMonths = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
 </script>
 
 <template>
@@ -557,6 +567,35 @@ const toc = [
         Gegenüberstellung des Ministeriums zum selben Text kommt. Fehlt die
         Lesefassung bei einem Paragraphen, heißt das nicht, dass er gleich
         bleibt – nur, dass wir sie nicht bestätigen konnten.
+      </p>
+    </ProseSection>
+
+    <!-- The waiting bar's yardstick (05.10.2026). Its base rate stood as a
+         sentence under the Vorlage's frame on every waiting draft; there it
+         described the population, not the draft, so it moved here and the
+         frame's credit line links it. -->
+    <ProseSection id="wartezeit" heading="Wie lange es bis zur Regierungsvorlage dauert">
+      <p>
+        Nach der Begutachtung übermittelt das Parlament die Stellungnahmen an
+        das Ressort, meist wenige Tage nach Fristende. Dort wird der Entwurf
+        überarbeitet, bis die Regierung ihn als Vorlage beschließt – oder
+        nicht.
+      </p>
+      <p>
+        Wie lange das üblicherweise dauert, messen wir an der letzten
+        abgeschlossenen Gesetzgebungsperiode. In der
+        {{ waitRate.gp }}.&nbsp;GP wurden {{ waitRate.withRv }}
+        von {{ waitRate.drafts }} Entwürfen zur Regierungsvorlage. Die Hälfte
+        dieser Vorlagen kam binnen {{ waitRate.medianDays }} Tagen nach
+        Fristende, {{ waitTenths }} von 10 binnen {{ waitMonths }} Monaten.
+        Gezählt wird ab dem Ende der Begutachtungsfrist, nicht ab der
+        Übermittlung.
+      </p>
+      <p>
+        An diesen beiden Marken zeigt der Balken bei einem Entwurf ohne
+        Regierungsvorlage, wie lange er schon wartet. Ein Urteil ist das
+        nicht: Auch nach {{ waitMonths }} Monaten kommt noch etwa jede zehnte
+        Vorlage.
       </p>
     </ProseSection>
 

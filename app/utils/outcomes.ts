@@ -47,12 +47,54 @@ export function rvBaseRateFor(gp: string | null | undefined): RvBaseRate {
   return RV_BASE_RATES.find((r) => r.gp === gp) ?? RV_BASE_RATES[0]!
 }
 
-/** "In der XXVII. Gesetzgebungsperiode wurden 296 von 353 Entwürfen zur Regierungsvorlage, 9 von 10 davon binnen 6 Monaten nach Fristende." */
-export function rvBaseRateSentenceDe(gp: string | null | undefined): string {
-  const r = rvBaseRateFor(gp)
+export interface RvWaitMark {
+  key: 'median' | 'window'
+  /** Percent of the track. */
+  at: number
+  align: 'start' | 'center' | 'end'
+  tick: true
+  lines: [string, string]
+}
+
+/**
+ * The wait since the Fristende against the period's latency, as `ScaleBar`
+ * draws it (`RvWaitBar`, 05.10.2026; a sentence until then, „… 9 von 10
+ * davon binnen 6 Monaten nach Fristende", which the reader had to turn into
+ * a picture; how many drafts got a Vorlage at all stands on
+ * /so-funktionierts#wartezeit, behind the frame's credit line). Counted
+ * from the Fristende and not from the handoff, because the base rate is:
+ * the handoff is Parliament forwarding the papers a few days later.
+ *
+ * The track is the latency window, or the wait where it ran longer — the
+ * dot then passes the window's tick, as a long Frist passes the Regelfall
+ * on `FristBar`. Past twice the window the median's label would run into
+ * the window's, and the verdict row has long said it in words, so the
+ * median goes.
+ */
+export function rvWaitScale(days: number, r: RvBaseRate): { value: number; marks: RvWaitMark[] } {
+  const scale = Math.max(RV_LATENCY_CONTEXT_DAYS, days)
+  const pct = (n: number) => (n / scale) * 100
+  const marks: RvWaitMark[] = []
+  if (scale <= 2 * RV_LATENCY_CONTEXT_DAYS) {
+    marks.push({ key: 'median', at: pct(r.medianDays), align: 'center', tick: true, lines: ['Hälfte der Vorlagen', `nach ${r.medianDays} Tagen`] })
+  }
+  const window = pct(RV_LATENCY_CONTEXT_DAYS)
   const tenths = Math.round(r.withinLatencyWindow * 10)
   const months = Math.round(RV_LATENCY_CONTEXT_DAYS / 30.44)
-  return `In der ${r.gp}. Gesetzgebungsperiode wurden ${r.withRv} von ${r.drafts} Entwürfen zur Regierungsvorlage, ${tenths} von 10 davon binnen ${months} Monaten nach Fristende.`
+  marks.push({
+    key: 'window',
+    at: window,
+    align: window >= 100 ? 'end' : window < 20 ? 'start' : 'center',
+    tick: true,
+    lines: [`${tenths} von 10 Vorlagen`, `binnen ${months} Monaten`],
+  })
+  return { value: pct(days), marks }
+}
+
+/** "13 Tage seit Fristende" — the value over the wait's dot. */
+export function daysSinceFristDe(days: number): string {
+  if (days <= 0) return 'Frist endete heute'
+  return `${days} ${days === 1 ? 'Tag' : 'Tage'} seit Fristende`
 }
 
 /**
@@ -245,8 +287,8 @@ export interface RvStationView {
   viaAntrag: boolean
   /** The verdict sentence, in the frame's „Stand" row. */
   noRvVerdict: string | null
-  /** The base rate under the waiting sentence. */
-  noRvBaseRate: string | null
+  /** The period's base rate, drawn under the waiting rows (`RvWaitBar`). */
+  noRvBaseRate: RvBaseRate | null
   facts: RvFact[]
   /** The frame carries our own counts, so its credit line names them. */
   counted: boolean
@@ -329,11 +371,11 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
         ? gpEndedBodyDe(d.gp)
         : 'Ob und wie es weitergeht, ist offen.'
 
-  /* The base rate under the waiting sentence, while the GP still runs: how
+  /* The base rate under the waiting rows, while the GP still runs: how
    * many drafts of the last closed GP got their Regierungsvorlage and how
    * fast. Numbers, so the reader can weigh the silence without the page
    * weighing it for them. */
-  const noRvBaseRate = lapsed || chainUnlinked || viaAntrag ? null : rvBaseRateSentenceDe(d.gp)
+  const noRvBaseRate = lapsed || chainUnlinked || viaAntrag ? null : rvBaseRateFor(d.gp)
 
   /* The station frame. The verdict is the row; what explains it (`context`,
    * the base rate, the Antrag's matching) stands under the frame. */
@@ -353,6 +395,14 @@ export function rvStationView(d: DraftDetail | null | undefined, vorlage: Vorlag
   } else if (!d.active) {
     if (viaAntrag) facts.push({ key: 'antrag', title: 'Eingebracht' })
     else facts.push({ key: 'stand', title: 'Stand', text: noRvVerdict ?? 'Bisher keine Regierungsvorlage.' })
+    // Where the ministry's clock starts (05.10.2026): the bar's row said
+    // „seit … beim Ressort" and the station below did not. Not once the GP
+    // is over — the Begutachtung's „Übermittelt" row carries the date then
+    // (`handoffFact` on the page), and „beim Ressort" would claim a wait
+    // the period's end has closed.
+    if (!viaAntrag && !d.gpEnded && d.handoff?.date) {
+      facts.push({ key: 'ressort', title: 'Beim Ressort', text: `seit ${formatDateDe(d.handoff.date)}` })
+    }
     if (d.successor) facts.push({ key: 'nachfolger', title: 'Gleichlautender späterer Entwurf' })
   }
 
