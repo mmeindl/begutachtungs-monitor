@@ -49,10 +49,20 @@ import type { DraftIdentity } from '../ris/draftIdentity'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { oracleVerdict, paragraphRows, rowsByParagraph } from './tguOracle'
 
-/** A Sammelgesetz names dozens; the display needs not all of them, the page needs an answer. */
-const MAX_LAWS = 12
-/** Ceiling on § documents per draft — the same worry as `MAX_HEADINGS` in `diff/paraTitleService.ts`. */
-const MAX_PARAGRAPHS = 80
+/**
+ * Ceilings, not budgets: the same values the two neighbours that read the
+ * same documents already use — `MAX_LAWS` in `lawtext/amendedLawsService.ts`
+ * and `MAX_PARAGRAPHS` in `annex/verdict.ts`, whose annex check fetches the
+ * very § documents this module does, out of the same cache
+ * (`fetchParagraphXml`). Until 06.10.2026 they stood at 12 and 80, and 80
+ * cut off the eleven largest drafts of GP XXVIII: 815 of 3.914 changed §§
+ * were never looked at, for no reason but the ceiling. What raising them
+ * costs is CPU on the first request of the day, not RIS calls — the
+ * Gegenüberstellung above has fetched those documents already — and this
+ * section is fetched lazily, so the page never waits for it.
+ */
+const MAX_LAWS = 40
+const MAX_PARAGRAPHS = 500
 const CONCURRENCY = 4
 
 /**
@@ -188,7 +198,7 @@ async function consolidate(
 
     // ALL Artikel are counted, those beyond `MAX_LAWS` included: the
     // denominator on the page is „wie viele Paragraphen ändert dieser
-    // Entwurf", not "how many did we look at". The first twelve are worked.
+    // Entwurf", not "how many did we look at". The first `MAX_LAWS` are worked.
     //
     // THREE STEPS, and their order is the reason for the cut: first read
     // purely what each Artikel addresses, then allot the budget in INPUT
