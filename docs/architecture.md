@@ -4018,6 +4018,177 @@ nicht an allen geänderten; die Zahl je Entwurf (Median 12 %) und die 45 von
 452 aus §12.12a stammen vom 18./19.09., vor dem PDF-Pfad im Prüfstand, und
 sind seither nicht neu gemessen.
 
+**Nachtrag 05.10.2026 — die Deckung je Entwurf, neu gemessen, und die Lücke
+ist keine.** Gemessen am Produktionspfad, nicht am Prüfstand: für jeden der
+138 Entwürfe der GP XXVIII `/api/drafts/XXVIII/:inr/konsolidiert`
+(gezeigte §§ gegen `touched`, den Nenner der Seite) und
+`/gegenueberstellung` (Anhang lesbar ja/nein), am warmen Dev-Server, ohne
+Fehler. 122 Entwürfe ändern mindestens einen Paragraphen; über sie zeigt das
+Tor **1.074 von 3.914 geänderten §§ (27,4 %)**, je Entwurf **Median 36 %**
+(p25 17 %, p75 50 %), und **107 der 122 (88 %) zeigen mindestens einen**.
+Am 19.09. waren es 45 von 452 (10,0 %), Median 12 %, die Hälfte mit
+mindestens einem — über 15 Entwürfe, also eine andere Grundgesamtheit; der
+Vergleich zeigt die Richtung, nicht ein Maß des Fortschritts. 126/ME, die
+Kontrolle: 33 von 61 (am 19.09. 32).
+
+Die Gegenprobe zum Satz „die Deckung des Tors ist die Deckung des Anhangs":
+Von den 122 haben **119 einen lesbaren Anhang**. Die übrigen drei sind zwei
+Lesefehler unsererseits (119/ME „ließ sich nicht auslesen", 20/ME „keine
+zweispaltige Gegenüberstellung") und ein Entwurf ohne Gegenüberstellung
+(5/ME). **Die Entwürfe ohne Anhang sind fast alle neue Gesetze:** 16
+Entwürfe ändern keinen Paragraphen (`touched` 0), 15 davon ohne Anhang —
+RKEG, IFI-Beitragsgesetze, Stromkosten-Ausgleichsgesetz, Klimagesetz,
+ReFuelEU Aviation-Gesetz und so fort, dazu eine Aufhebung (139/ME) und zwei
+Zuordnungsfälle, deren Anhang beim Parlament liegt (11/ME, 60/ME). Für ein
+neues Gesetz gibt es nichts zu konsolidieren, und die Legistik verlangt dort
+auch keine Gegenüberstellung: Das Rundschreiben des Verfassungsdienstes vom
+10.12.2015 (BKA-600.824/0001-V/2/2015, Pkt. I.1) knüpft sie an „Sollen
+Rechtsvorschriften geändert werden". **Was die Anzeige begrenzt, liegt
+damit innerhalb der Entwürfe mit Anhang** (28,7 % ihrer §§) — die Gründe
+der §12.12a-Tabelle, nicht ein fehlendes Dokument.
+
+*Was dort zurückhält, gezählt am ME-Prüfstand* (`harness/me.ts
+--discover=140 --cache`, 140 Entwürfe, 1.895 §§ mit Text, 784 bestätigt;
+der Prüfstand liest die Parlamentskopie der Beilage nicht und liegt deshalb
+unter der Seite): Die Beilage widerspricht 454-mal, davon 343-mal „Vorgeschlagene
+Fassung nicht im Ergebnis", und ist 329-mal `fremd` — ihre geltende Fassung
+steht nicht im Ausgangstext. Beide Klassen ballen sich: acht Gesetze tragen
+197 der einen und 244 der anderen, und es sind dieselben (Gewerbeordnung,
+Luftfahrtgesetz, Versorgungssicherungsgesetz, Leistungsbeurteilungsverordnung,
+GeoSphere Austria-Gesetz).
+
+**Die naheliegende Erklärung ist gemessen und falsch:** dass das Ressort
+gegen eine andere Fassung geschrieben hat als die am ersten Begutachtungstag
+geltende — etwa schon mit einer parallel laufenden Novelle. `--standing-at=`
+legt den Entwurf auf eine andere Fassung (Datum oder `beginn±N`); über
+`beginn-180`, `beginn+60` und den 05.10.2026 bleiben **323 bis 327 der 329
+`fremd`**, und der erste Begutachtungstag ist das Maximum der Bestätigungen
+(784 gegen 772 · 734 · 534). Die Wahl der Fassung ist also kein Hebel, und
+die Seite liegt richtig.
+
+*Was es stattdessen ist*, an den 205 `fremd`, die sonst plausibel wären,
+heuristisch nach dem 60-Zeichen-Auszug der Notiz sortiert (eine Zählung zum
+Priorisieren, kein Befund je Klasse): **56 tragen eine Gliederungsüberschrift
+in der Zeile** („2. Abschnitt Umstellungsförderung", „10. Kapitel
+Schlussbestimmungen") — verwandt mit der verweigerten Klasse der Hauptstück-
+und Abschnittsüberschriften, hier aber auf der Seite der Beilage; **67 stehen
+gar nicht im Ausgangs-§** — eine Zeile, die zu einem anderen § oder einer
+Anlage gehört (Bäderhygieneverordnung „Becken D", die Anlage in der Zeile
+eines §); 72 stimmen am Anfang überein und weichen später ab, 10 sind
+Bruchstücke („Inkrafttreten", „______"). Die ersten beiden sind Lese- und
+Zuordnungsarbeit an der Beilage, gewöhnliche Arbeit; welche zuerst, sagt erst
+die volle Strecke statt des Auszugs.
+
+**Nachtrag 06.10.2026 — an der vollen Strecke gezählt, und die
+Überschriften gebaut.** Der Prüfstand schreibt seither je `fremd` die Zeile,
+an der Prüfung 1 hält, mit der ganzen fehlenden Strecke in den Dump
+(`containmentKey` als Messfläche neben `unaccountedStretch`). Von den 205:
+**56 sind Gliederungsüberschriften**, in Formen, an denen
+`withoutHeadingStack` vorbeiging — eine Strecke, die nur noch die Überschrift
+des § selbst übrig lässt („2. Abschnitt Umstellungsförderung (58-01)
+Fördervoraussetzungen", dann die Marken „§ 209. (1) bis (5) …"; der
+24-Zeichen-Kopf des Ausgangstexts kann darin nie stehen), die Überschrift
+der *nächsten* Gruppe am Fuß eines § oder als ganze Zeile („… (5) bis (8) …
+3. Abschnitt"), die zweimal gedruckte Überschrift („1. Abschnitt Status des
+Asylberechtigten Status des Asylberechtigten § 3." — der Schnitt fiel auf die
+erste Kopie) und der Doppelpunkt nach der Einheit („3. TEIL:"). 62 stehen gar
+nicht im Ausgangs-§, 87 passen am Anfang und weichen später ab.
+
+Gebaut in `kons/tguOracle.ts`: jeder Schnitt statt des ersten, ein Rest ab
+acht Zeichen, der den Ausgangstext eröffnen muss, der Doppelpunkt nach der
+Einheit, und eine Strecke, die nur eine **nummerierte** Gruppenüberschrift
+ist, sagt nichts — am Rohtext entschieden, weil die Vergleichsform „3." als
+Marke streicht und „Teile der Förderung" dann wie eine Überschrift begänne.
+Die Einheit muss außerdem enden (Großbuchstabe, Ziffer, Doppelpunkt oder
+Schluss danach): ohne Leerzeichen begann „Teilnehmer" wie „Teil", und der neue
+Schnitt hätte es angenommen — ein Test fand es, bevor der Korpus es tat.
+Gemessen:
+
+| | vorher | nachher |
+|---|---|---|
+| ME-Prüfstand, bestätigt | 784 | **822** (+38, 0 verloren) |
+| ME-Prüfstand, `fremd` | 329 | 272 (36 → bestätigt, 21 → widersprochen) |
+| Seite, XXVIII, gezeigt | 1.074 von 3.914 | **1.122** (14 Entwürfe, keiner verliert) |
+| `harness:kons --oracle`, bestätigt und abweichend | 0 | 0 (jede Zeile gleich) |
+| Fehlerinjektion E „eine Einheit zu viel" | 79 von 81 | 87 von 90 |
+
+Alle 38 Zugänge von Hand gelesen: jeder eine der vier Formen. Die eine neue
+Durchlassung der Fehlerinjektion (Transparenzdatenbankgesetz § 32) ist
+dieselbe Klasse wie die zwei bestehenden — eine einzeilige Zusatzeinheit, wo
+die Beilage auslässt —, also die alte Blindstelle an einem neu bestätigten §,
+keine neue. Der BGBl-Prüfstand sieht die Formen kaum (er läuft fast nur über
+den XML-Pfad); er belegt das Ausbleiben eines Rückschritts, nicht die Zugänge.
+
+**Zweiter Durchgang, derselbe Tag — der Rest der Liste.** Je Klasse erst
+gelesen, dann gebaut, und nach jedem Schritt der Prüfstand gegen den
+vorigen Stand, jeder Zugang gelesen:
+
+| Schritt | bestätigt | verloren |
+|---|---|---|
+| Überschrift „wie eine Überschrift" statt „mit Einheit": „Dritter Abschnitt", „III. Form …", „B. Geteilte Abgaben", „GEMEINSAME BESTIMMUNGEN", „(Waldfondsgesetz)", die RIS-Reste „Text …" und „Beachte für folgende Bestimmung" | +28 | 0 |
+| Strich-Zeile „______", ein Kopf von genau acht Zeichen (der Bereich zählte um eins zu kurz), „Siebenter Teil", „ABSCHNITT IIA" | +3 | 0 |
+| Die Handabschrift: Bindestrich, Gedankenstrich und „&" fallen in der Vergleichsform, ebenso „(Anm.: …)"; die Überschrift der nächsten Gruppe nach dem letzten Satz einer Strecke; der alte Stil „VI. Hauptstück. … ." | +29 | 0 |
+| Die Zahl am Zellenende („gilt § 49f Abs. 7." — `stripMarkers` nahm „7." nur vor einem Leerzeichen), das Platzhalter-BGBl als eigenes Wort („xxx/xxxx", „xxx/yyyy", „XX/20XX"), „Aufgehoben" | +19 | 0 |
+
+ME-Prüfstand damit **784 → 901**. Zwei Fehler fanden die Tests, bevor der
+Korpus sie fand: Der alte Stil, zuerst als „Schlusspunkt weg" gebaut, ließ
+„2. Abschnitt … § 6. (1) Zuständig ist das Landesgericht." als Überschrift
+durch, und eine fremde Zeile kam bestätigt heraus — der Schlusspunkt fällt
+jetzt nur, wo die Einheit selbst einen trägt. Und der Platzhalter, zuerst nur
+mit „Nr." davor erkannt, widersprach vier zuvor bestätigten §§: Der Wortdiff
+reicht Prüfung 3 „xxx/2026" ohne sein „Nr." weiter.
+
+**Bewusst nicht gebaut: Kommas und Klammern ignorieren** (geschätzt bis 18
+§§). Einer der Fälle ist BFA-VG § 28, wo unser Ergebnis „(Bundesagentur))"
+trägt — und das ist kein Fehler der Engine, sondern des Entwurfs: Die
+Anordnung ersetzt „(§ 1 Abs. 1 BBU-Errichtungsgesetz, BGBl. I Nr. 53/2019"
+mit der öffnenden Klammer und ohne die schließende durch einen Text, der auf
+„(Bundesagentur)" endet. Die Beilage zeigt, was gemeint war. Genau diesen
+Widerspruch soll das Orakel melden.
+
+**Zwei Beilagen, die gar nicht gelesen wurden.** 20/ME (94 geänderte §§):
+Die Vorlage stellt jeder Zeile eine leere Abstandsspalte voran, auf einem
+sechsspaltigen Raster mit Zeilen 1+2+3, 2+4, 1+3+2 — das Kopfpaar wurde in
+Abstand und linker Spalte gesucht, und „keine zweispaltige
+Gegenüberstellung" war falsch. Die Spalte fällt jetzt, wenn die *Kopfzeile*
+mit ihr beginnt (`withoutSpacerColumn`, in `itemsInOrder`, also für jeden
+Lesepfad). 119/ME (Luftfahrtgesetz, 72 §§): Die Textebene ist Windows-1252,
+als Mac Roman gelesen — „ü" als „¸", „ß" als „ﬂ", und „§" als „ß", sodass
+keine §-Marke je gefunden wurde. `pagesOf` liest ein so befundenes Dokument
+ein zweites Mal ohne die Ligaturauflösung von pdf.js (sonst wird das „ﬂ" für
+„ß" zum „fl" in „Pflicht") und übersetzt jeden falsch gelesenen Lauf zurück —
+je Lauf, weil dieselbe Beilage eine Wendung in einer richtig gelesenen
+Schrift setzt. Annex-Drift meldet genau diese zwei Einträge (20/ME 0 → 51
+bestätigt, 119/ME 0 → 62), keinen Befund der Klasse A; die Grundlinie wird
+wie immer aus dem Artefakt des CI-Laufs gezogen. ME-Prüfstand danach **934**.
+
+**Gegenproben.** `harness:kons --oracle`: bestätigt und abweichend weiter 0;
+zwei §§ wechseln innerhalb der zurückgehaltenen Zeilen von `fremd` zu
+widersprochen. Fehlerinjektion E („eine Einheit zu viel") über die
+bestätigten §§: **101 von 107 (94,4 %) gegen 79 von 81 (97,5 %)** am Morgen.
+Die vier neuen Durchlassungen (Budgetbegleitgesetz 2025 §§ 412, 417, 808,
+Nachhaltigkeitsberichtsgesetz § 267) sind eine *behaltene* Einheit, die
+ersetzt gehört hätte, in §§, deren Beilage denselben Satz je Absatz
+wiederholt — Prüfung 3 sieht sie nicht, weil nichts eingefügt ist, und
+Prüfung 4 nicht, weil derselbe Wortlaut rechts mit anderem Jahr steht. Eine
+gezählte Prüfung 3 wurde gebaut, gemessen und **zurückgenommen**: Sie fing
+keine der vier und kostete sieben Bestätigungen (Bindestrich-Komposita, die
+die Beilage am Zeilenende bricht), mit Ausnahme der Komposita noch zwei. Die
+Lücke gehört zu Prüfung 4 und bleibt offen. Ohne Injektion sind die neu
+bestätigten §§ richtig (die Kontrolle verschiebt 0).
+
+**Auf der Seite, GP XXVIII, alle 138 Entwürfe** (dieselbe Messung wie am
+05.10., am Produktionspfad):
+
+| | 05.10. | nach den Überschriften | 06.10., Ende |
+|---|---|---|---|
+| gezeigt von 3.914 geänderten §§ | 1.074 (27,4 %) | 1.122 (28,7 %) | **1.304 (33,3 %)** |
+| Median je Entwurf (p25–p75) | 36 % (17–50) | 37 % (18–50) | **41 % (25–52)** |
+| Entwürfe mit mindestens einem § | 107 von 122 | 107 | **110** |
+| Entwürfe mit lesbarer Beilage | 119 von 122 | 119 | **121** |
+
+Kein Entwurf verliert einen gezeigten §; 20/ME zeigt 25, 119/ME 33.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
