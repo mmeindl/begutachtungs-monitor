@@ -424,7 +424,11 @@ async function verifyLaw(
     const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
     if (!address) continue
     if (address.level === 'document') wholeText = true
-    if (address.para) wanted.add(labelKey(address.para))
+    // Every § the address names, as the site fetches them
+    // (`addressedParagraphs`): „§§ 21 und 22 entfallen" fetched § 21 only,
+    // and the bench refused § 22 as „nicht im geltenden Text" — 34 §§ of the
+    // refusal census were this bench's own blind spot (06.10.2026).
+    for (const p of namedParagraphs(address)) wanted.add(labelKey(p))
   }
   const paragraphs: LawNode[] = []
   for (const [label, ref] of Object.entries(resolved.paragraphs)) {
