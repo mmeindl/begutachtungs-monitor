@@ -4306,6 +4306,49 @@ den Rest Schritt 1; was jetzt fehlt, ist überwiegend, was die Engine nicht
 anwenden kann, und was der Anhang nicht bestätigt — echte Abweichung oder
 Schweigen, und für das Schweigen bleibt das zweite Signal das Antragspaket.
 
+**Nachtrag 06.10.2026, Abend — der Widerspruch des Anhangs, gelesen.** Wie
+viel von „Anhang widerspricht" ist unser Fehler? 40 zufällige der 155 Fälle
+„Vorgeschlagene Fassung nicht im Ergebnis", je an der Stelle gelesen, an der
+die Strecke abbricht (Marken abgezogen, längstes enthaltenes Anfangsstück):
+18 echte Abweichung der Wortlaute (still modernisierte Schreibung
+„hierfür"/„hiefür", „Strafurteils"/„Strafurteiles", ein anderes Zitat,
+„in Verbindung mit" für „iVm", „Siehe § 24m neu!" statt Text), 8 nur ein
+Satzzeichen, 5 Artefakte des Orakels, 9 ohne die Anweisung nicht
+entscheidbar. Eine Probe von 15 aus den Prüfungen 3 und 4 dazu. Die
+Artefakte, gebaut: das am Bindestrich umbrochene Kompositum („ESG- Faktoren",
+1095829), das Wortpaar auf beiden Seiten des Diffs und die Silbentrennung
+(59df04d). Zusammen ME-Prüfstand 1.022 → 1.034, BGBl-Wahrheit bestätigt
+106 → 107 bei weiter 0 falsch, Fehlerinjektion unverändert. Übrig bleiben die
+Überschrift des nächsten „Hauptstücks" am Fuß der Zelle und Einzelfälle —
+zusammen unter einem Punkt.
+
+*Was das als Befund heißt.* Über die 1.337 §§, für die wir sauberen Text
+haben und der Anhang spricht (78 Entwürfe, ME-Prüfstand): bestätigt 77,3 %,
+**die vorgeschlagene Fassung des Anhangs weicht vom Entwurf ab 15,4 %**, seine
+geltende Fassung weicht vom geltenden Recht ab 7,3 %. Nach der Probe sind von
+den 15,4 % etwa 65–88 % echt, also **10–13 % der §§ mit Satzzeichen, 7–10 %
+ohne** — eine Probe von 40, die Spanne ist die Unsicherheit der neun nicht
+entscheidbaren Fälle. Je Ressort gerechnet schwankt das zwischen 7 und 22 %,
+aber ein Ressort steht dort oft für zwei oder drei Entwürfe: keine Zahl, die
+etwas über ein Ressort sagt, bevor eine ganze Gesetzgebungsperiode darunter
+liegt. Die Gegenüberstellung ist eine Lesehilfe des Ressorts, keine Wahrheit
+über den Entwurf (Rundschreiben BKA-VD 10.12.2015 verlangt sie, regelt aber
+nicht, wie genau sie sein muss) — genau deshalb bestätigt sie hier nur und
+setzt nie Text.
+
+*Die Engine, nach §§ statt nach Verweigerungen gezählt.* Der Prüfstand nennt
+je verweigertem § seine Gründe und zählt, wie viele §§ nur an einem hängen
+(also frei würden). Erst musste er selbst stimmen: er holte je Anweisung nur
+den ersten genannten §, und 34 §§ der Zählung waren „nicht im geltenden Text"
+nur bei ihm (05ab643). Danach, über 2.167 adressierte §§, nur an diesem Grund:
+„Textstelle N× gefunden" 38 (meist zweimal in einer Einheit — echte
+Mehrdeutigkeit), „Textstelle nicht gefunden" 35 (Entwürfe gegen eine andere
+Fassung, Tippfehler), „kein bekanntes Verb" 30, „Eingefügte Einheit nicht
+bestimmbar" 24 (ein Satz „nach dem ersten Satz eingefügt"), „Bezeichnung N
+existiert bereits" 21 (eine Paragraphenkette, nach oben umbenannt, stößt an
+sich selbst). Die letzten drei sind Fähigkeiten, keine Streitfälle — zusammen
+75 §§, gut drei Punkte des Nenners, bevor das Orakel sie prüft.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
