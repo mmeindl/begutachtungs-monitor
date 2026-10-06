@@ -49,6 +49,7 @@ import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/u
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
 import { addressedParagraphs, refusedUnits } from '../../server/utils/kons/konsGate'
+import { isTocInstruction, namedParagraphs, opAddress, refusedAddresses } from '../../server/utils/kons/novao'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
@@ -147,6 +148,8 @@ interface Draft {
   annexNote: string | null
   /** The Erläuterungen as a RIS document of their own (`--erl`) */
   erlXml: string | null
+  /** The ministry that submitted it, as RIS names it */
+  stelle: string
 }
 
 function draftOf(ref: any): Draft | null {
@@ -167,6 +170,7 @@ function draftOf(ref: any): Draft | null {
     annexPdf: annex ? pdfOf(annex) : null,
     annexNote: !annex ? 'ohne Textgegenüberstellung' : xmlOf(annex) ? null : 'Textgegenüberstellung nur als PDF',
     erlXml: xmlOf(pickExplanations(contents, (c) => String(c?.Name ?? ''))),
+    stelle: String(meta?.Bundesrecht?.Begut?.EinbringendeStelle ?? '').trim(),
   }
 }
 
@@ -261,6 +265,15 @@ const oracleTally = new Map<string, number>()
  * Text", which is half of what the page divides by.
  */
 const census = new Map<string, number>()
+/**
+ * Why a § the engine left without clean text is held — every reason that
+ * touches it, and separately the §§ where it is the ONLY one: those are the
+ * §§ a fix of that class would free. Counts of refusals mislead here; one
+ * line can block twenty §§ and twenty lines one.
+ */
+const blockedBy = new Map<string, number>()
+const blockedOnlyBy = new Map<string, number>()
+const reasonClass = (r: string): string => r.replace(/"[^"]*"?/g, '"…"').replace(/\d+/g, 'N').slice(0, 70)
 const bump = (key: string, n = 1): void => {
   census.set(key, (census.get(key) ?? 0) + n)
 }
@@ -492,7 +505,7 @@ async function verifyLaw(
         : []
       appendFileSync(
         dumpFile,
-        `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], unexplained: flags.has('unerklärt') ? guard.unexplained : undefined, oracle: verdict, note: report?.note ?? null, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey)) : null })}\n`,
+        `${JSON.stringify({ begut: draft.id, stelle: draft.stelle, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], unexplained: flags.has('unerklärt') ? guard.unexplained : undefined, oracle: verdict, note: report?.note ?? null, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey)) : null })}\n`,
       )
     }
   }
@@ -506,8 +519,28 @@ async function verifyLaw(
     if (id && op.kind === 'delete' && address?.level === 'para') deleted.add(id)
     if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) inserted.add(p.id)
   }
+  const why = new Map<string, Set<string>>()
+  const blame = (id: string | null | undefined, reason: string): void => {
+    if (!id) return
+    if (!why.has(id)) why.set(id, new Set())
+    why.get(id)!.add(reason)
+  }
+  // Every unit a refusal names, as `refusedUnits` locks them on the site.
+  for (const r of refused) {
+    if (isTocInstruction(r.line)) continue
+    for (const p of refusedAddresses(r.line) ?? [/§+\s*\d+[a-z]*/.exec(r.line)?.[0] ?? '']) blame(p ? harnessKey(p) : null, `Grammatik: ${reasonClass(r.reason ?? '')}`)
+  }
+  instructions.forEach(({ op }, i) => {
+    if (results[i]!.applied || op.kind === 'toc') return
+    for (const p of namedParagraphs(opAddress(op))) blame(harnessKey(p), `Anwendung: ${reasonClass(results[i]!.reason ?? '')}`)
+  })
   for (const id of addressed) {
     const known = outcome.get(id)
+    if (known === 'Text, verweigert' || (!known && !read.has(id) && !inserted.has(id) && !deleted.has(id))) {
+      const reasons = [...(why.get(id) ?? new Set(['(kein Grund zugeordnet)']))]
+      for (const r of reasons) blockedBy.set(r, (blockedBy.get(r) ?? 0) + 1)
+      if (reasons.length === 1) blockedOnlyBy.set(reasons[0]!, (blockedOnlyBy.get(reasons[0]!) ?? 0) + 1)
+    }
     if (known) bump(known)
     else if (deleted.has(id)) bump('kein Text: § aufgehoben')
     else if (!read.has(id) && !inserted.has(id)) bump('kein Text: Anweisung nicht gelesen')
@@ -644,6 +677,10 @@ for (const [note, n] of [...annexNotes].sort((a, b) => b[1] - a[1])) console.log
   const total = [...census.values()].reduce((a, b) => a + b, 0)
   console.log(`\n  Nenner der Seite (${total} adressierte §§), je ein Fach:`)
   for (const [key, n] of [...census].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${key} (${pct(n, total)})`)
+}
+console.log(`\n  Verweigert oder nicht gelesen — je Grund, in §§ (davon §§ mit nur diesem Grund):`)
+for (const [r, n] of [...blockedBy].sort((a, b) => (blockedOnlyBy.get(b[0]) ?? 0) - (blockedOnlyBy.get(a[0]) ?? 0) || b[1] - a[1]).slice(0, 25)) {
+  console.log(`    ${String(n).padStart(4)} (${String(blockedOnlyBy.get(r) ?? 0).padStart(3)})  ${r}`)
 }
 console.log(`\n  Paragraphen: Plausibilität × Orakel:`)
 for (const [key, n] of [...oracleTally].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${key.replace('|', ', Orakel ')}`)

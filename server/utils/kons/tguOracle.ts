@@ -275,7 +275,27 @@ function words(t: string): string[] {
  * the same characters, so nothing the annex does not print gets in.
  */
 function cellWords(t: string): string[] {
-  return [...words(t), ...words(t.replace(/(\p{L})- (?=\p{L})/gu, '$1-'))]
+  // And the syllable break, where the hyphen belongs to the line and not to
+  // the word: „Konzentrations- schwellen" is „Konzentrationsschwellen".
+  return [...words(t), ...words(t.replace(/(\p{L})- (?=\p{L})/gu, '$1-')), ...words(t.replace(/(\p{Ll})- (?=\p{Ll})/gu, '$1'))]
+}
+
+/**
+ * A minus b as multisets. Check 3 subtracts the words on BOTH sides of the
+ * diff first, for the reason `applyGuard` does (b4d7e38): where an inserted
+ * phrase repeats a word beside it, the LCS reports the old word as removed
+ * and re-inserted — „bestimmten" in FPG § 77, „Chemikalien" in AußWG § 81 —
+ * and check 3 then asked the annex's geltende column for a word nobody
+ * removed. Word order is check 2's to judge.
+ */
+function bagMinus(a: readonly string[], b: readonly string[]): string[] {
+  const counts = new Map<string, number>()
+  for (const t of b) counts.set(t, (counts.get(t) ?? 0) + 1)
+  return a.filter((t) => {
+    const n = counts.get(t) ?? 0
+    if (n > 0) counts.set(t, n - 1)
+    return n === 0
+  })
 }
 
 /**
@@ -864,13 +884,15 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   const { segments } = diffTokens(stripMarkers(before ?? ''), stripMarkers(got))
   if (segments === null) return { para: id, verdict: 'widersprochen', rows: rows.length, note: 'Wortdiff zu groß für den Abgleich' }
   const pairs = rows.filter((r) => r.kind === 'pair')
-  const inserted = segments.filter((s) => s.type === 'inserted').flatMap((s) => words(s.text))
+  const insertedRaw = segments.filter((s) => s.type === 'inserted').flatMap((s) => words(s.text))
+  const removedRaw = segments.filter((s) => s.type === 'removed').flatMap((s) => words(s.text))
+  const inserted = bagMinus(insertedRaw, removedRaw)
   const shown = new Set(pairs.flatMap((r) => cellWords(r.proposed)))
   const unshown = inserted.filter((w) => !shown.has(w))
   if (unshown.length > 0) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine fügte ein, was die Gegenüberstellung nicht zeigt: ${unshown.slice(0, 6).join(' ')}` }
   }
-  const removed = segments.filter((s) => s.type === 'removed').flatMap((s) => words(s.text))
+  const removed = bagMinus(removedRaw, insertedRaw)
   const dropped = new Set(pairs.flatMap((r) => cellWords(r.current)))
   const unshownRemoved = removed.filter((w) => !dropped.has(w))
   if (unshownRemoved.length > 0) {

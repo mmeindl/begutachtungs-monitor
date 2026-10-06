@@ -577,3 +577,21 @@ describe('a compound broken at its hyphen in the PDF (06.10.2026)', () => {
     expect(oracleVerdict('39d', before, got, rows)).toMatchObject({ verdict: 'widersprochen' })
   })
 })
+
+describe('check 3 and the diff around an insertion (06.10.2026)', () => {
+  it('does not ask the annex for a word the diff only re-paired', () => {
+    // „bestimmten" stays; the inserted phrase after it makes the LCS report
+    // it as removed and re-inserted.
+    const before = '§ 77. (1) Die Anordnung, in vom Bundesamt bestimmten Räumen Unterkunft zu nehmen.'
+    const got = '§ 77. (1) Die Anordnung, in vom Bundesamt bestimmten, gegebenenfalls familiengerechten, Räumen Unterkunft zu nehmen.'
+    const rows = [pair('(1) Die Anordnung, in vom Bundesamt Räumen', '(1) Die Anordnung, in vom Bundesamt bestimmten, gegebenenfalls familiengerechten, Räumen Unterkunft zu nehmen.', '§ 77.')]
+    expect(oracleVerdict('77', before, got, rows).note ?? '').not.toMatch(/entfernte/)
+  })
+
+  it('reads a syllable break in the annex as one word', () => {
+    const before = '§ 12. Mengenschwellen für die Anwendung.'
+    const got = '§ 12. Mengenschwellen und Konzentrationsschwellen für die Anwendung.'
+    const rows = [pair('Mengenschwellen für die Anwendung.', 'Mengenschwellen und Konzentrations- schwellen für die Anwendung.', '§ 12.')]
+    expect(oracleVerdict('12', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+})
