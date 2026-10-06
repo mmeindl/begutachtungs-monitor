@@ -4202,6 +4202,24 @@ größten Teil echte Abweichung — eine andere Paragraphenzählung als im RIS,
 alte Ministeriumsnamen, andere Zitate — und zwei Zeilen Anlagentext, die die
 PDF-Beilage dem letzten § zuschlägt.
 
+**Nachtrag, später am Abend — die zwei Reste.** Erstens die Strukturlücke von
+Prüfung 4: `printedLayout(…, eachMark)` hält für sie eine Marke je
+Auslassung, sodass „(1) und (2) … (3) bis (3b) …" gegen einen neuen Abs. 2a
+zwei Marken paart und die behaltene Fassung danach in einer gewöhnlichen
+Region steht. Fehlerinjektion **E 106 von 107 (99,1 %), E-neben 190 von 190**
+— auch die zwei älteren Durchlassungen der GAP-Strategieplan-Anwendungsverordnung
+hatten diese Form —, ohne Injektion weiter dieselben drei Meldungen, der
+Prüfstand bewegt sich nicht. Zweitens der „Anlagentext beim letzten §": kein
+Lesefehler der Beilage. Die Tabelle legt die Zeilen richtig unter „Anlage 1"
+ab, aber in `para`; `rowsByParagraph` folgte nur `gld` und hielt sie gegen den
+§ davor. Eine Anlage in `para` öffnet jetzt ihren Schlüssel: +8 bestätigt,
+alle der letzte § einer Verordnung, nichts verloren, Annex-Drift unverändert.
+
+Stand am Ende des Tages: ME-Prüfstand **944** bestätigt (morgens 784). Auf der
+Seite, GP XXVIII: **1.313 von 3.914 geänderten §§ (33,5 %)**, Median je Entwurf
+**42 %** (p25 25, p75 52), 110 von 122 Entwürfen mit mindestens einem §; kein
+Entwurf verliert gegenüber dem 05.10. einen gezeigten §.
+
 **Auf der Seite, GP XXVIII, alle 138 Entwürfe** (dieselbe Messung wie am
 05.10., am Produktionspfad):
 
