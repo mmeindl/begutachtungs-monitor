@@ -368,6 +368,22 @@ function oldStyleDotsOff(stretch: string): string {
 }
 
 /**
+ * „… ist zu bestrafen. Begehung einer Verwaltungsübertretung in einem die
+ * Zurechnungsfähigkeit" — the next §'s heading, cut where the PDF wraps it,
+ * left at the foot of this § (SPG § 82, AIFMG § 38, NAG § 49). The oracle
+ * does not know the neighbour, so the shape has to carry it: after a
+ * sentence's end, the last thing in the cell, a capital first, at most 14
+ * words, and no full stop, colon, semicolon, digit or § of its own — law text
+ * ends its sentences, a heading does not.
+ */
+const NEXT_HEADING_RE = /(?<=[.;!?])\s+\p{Lu}[^.;:!?§\d]*$/u
+
+function isNextHeading(stretch: string): boolean {
+  const trailer = NEXT_HEADING_RE.exec(stretch)?.[0]
+  return trailer !== undefined && trailer.trim().split(/\s+/).length <= 14
+}
+
+/**
  * „… wenn das Zertifikat wieder auflebt. 2. Hauptstück" — the next group's
  * heading in the same stretch as the last sentence of this §, with no mark
  * between them. Only after a sentence's end, only numbered or counted in
@@ -403,7 +419,8 @@ const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+)\.\s*|(?:Ers
 export function unaccountedStretch(text: string, cell: string): string | null {
   let at = 0
   let first = true
-  for (const stretch of printedStretches(cell)) {
+  const stretches = printedStretches(cell)
+  for (const [index, stretch] of stretches.entries()) {
     let piece = key(stretch)
     // A stretch that is nothing but markers — "§ 5." alone at the head of a
     // PDF row — keys to the empty string and says nothing either way.
@@ -414,6 +431,16 @@ export function unaccountedStretch(text: string, cell: string): string | null {
     // Nor does a stretch that is nothing but a group heading — wherever it
     // stands, since the next group's heading comes at the foot of a §.
     if (found < 0 && isGroupHeadingOnly(stretch)) continue
+    // The next §'s heading, wrapped at the foot of the cell: only the last
+    // stretch, only after a finished sentence (`NEXT_HEADING_RE`).
+    if (found < 0 && index === stretches.length - 1 && isNextHeading(stretch)) {
+      const trimmed = key(stretch.replace(NEXT_HEADING_RE, ''))
+      const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
+      if (retry >= 0) {
+        piece = trimmed
+        found = retry
+      }
+    }
     if (found < 0 && TRAILING_GROUP_RE.test(stretch)) {
       const trimmed = key(stretch.replace(TRAILING_GROUP_RE, ''))
       const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)

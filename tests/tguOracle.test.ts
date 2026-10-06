@@ -516,3 +516,18 @@ it('still sees an Absatz kept where the annex prints „Aufgehoben"', () => {
   expect(oracleVerdict('412', before, 'Schlussbestimmungen § 85 tritt mit 1. Jänner 2025 in Kraft.', rows)).toMatchObject({ verdict: 'bestätigt' })
   expect(oracleVerdict('412', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
 })
+
+describe('oracleVerdict — the next §\'s heading at the foot of the cell', () => {
+  const before = 'Aggressives Verhalten Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist zu bestrafen.'
+  const got = 'Aggressives Verhalten Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist mit Geldstrafe zu bestrafen.'
+
+  it('passes over it after the last sentence', () => {
+    const rows = [pair('§ 82. (1) Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist zu bestrafen. Begehung einer Verwaltungsübertretung in einem die Zurechnungsfähigkeit', '§ 82. (1) Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist mit Geldstrafe zu bestrafen. Begehung einer Verwaltungsübertretung in einem die Zurechnungsfähigkeit', '§ 82.')]
+    expect(oracleVerdict('82', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('does not pass over a trailing line that carries a number or ends a sentence', () => {
+    const rows = [pair('§ 82. (1) Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist zu bestrafen. Höchstens 500 Euro', '§ 82. (1) Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist mit Geldstrafe zu bestrafen. Höchstens 500 Euro', '§ 82.')]
+    expect(oracleVerdict('82', before, got, rows)).toMatchObject({ verdict: 'fremd' })
+  })
+})
