@@ -4192,6 +4192,16 @@ LCS paart nur eine, die übrige macht die Region zu „das Ressort lässt aus",
 und eine behaltene Fassung darin bleibt ungefragt — für jeden §, in dem ein
 eingefügter Absatz eine Auslassung teilt.
 
+Zuletzt die Überschrift des *nächsten* § am Fuß der Zelle, wo das PDF sie
+umbricht („… zu bestrafen. Begehung einer Verwaltungsübertretung in einem die
+Zurechnungsfähigkeit", SPG § 82). Das Orakel kennt den Nachbarn nicht, also
+trägt die Form: letzte Strecke, nach einem Satzende, groß beginnend, höchstens
+14 Wörter, ohne Satzzeichen, Ziffer oder §. +2 bestätigt (936), nichts
+verloren, Fehlerinjektion unverändert. Was danach `fremd` bleibt, ist zum
+größten Teil echte Abweichung — eine andere Paragraphenzählung als im RIS,
+alte Ministeriumsnamen, andere Zitate — und zwei Zeilen Anlagentext, die die
+PDF-Beilage dem letzten § zuschlägt.
+
 **Auf der Seite, GP XXVIII, alle 138 Entwürfe** (dieselbe Messung wie am
 05.10., am Produktionspfad):
 
