@@ -4232,6 +4232,80 @@ Entwurf verliert gegenüber dem 05.10. einen gezeigten §.
 
 Kein Entwurf verliert einen gezeigten §; 20/ME zeigt 25, 119/ME 33.
 
+**Nachtrag 06.10.2026, Nachmittag — wohin die anderen zwei Drittel gehen.**
+Die Zahlen oben teilen durch den Nenner der Seite (`addressedParagraphs`:
+jeder §, den eine Anweisung nennt oder anlegt), der Prüfstand zählte bis
+heute erst ab „Paragraphen mit Text" — der Hälfte davon. Er legt jetzt jeden
+adressierten § in genau ein Fach (b863426). Über die 140 Entwürfe, 2.167
+adressierte §§, morgens:
+
+| Fach | Anteil |
+|---|---:|
+| gezeigt | 43,6 % |
+| Text, aber verweigert / Anweisung nicht gelesen | 13,2 % + 7,4 % |
+| Text, aber unplausibel | 11,5 % |
+| Anhang widerspricht / fremd | 8,8 % + 4,0 % |
+| Anhang schweigt / kein Anhang | 4,8 % + 1,2 % |
+| kein Text: nicht im RIS-Stand / aufgehoben / Gesetz nicht auflösbar / sonst | 2,6 / 1,7 / 0,5 / 0,6 % |
+
+Dazu, nur am Produktionspfad, **die Obergrenzen**: 12 Gesetze und 80 §§ je
+Entwurf. Elf Entwürfe tragen 1.695 der 3.914 geänderten §§, und **815 davon
+wurden nie angesehen** — ein Fünftel des Nenners, ohne jede Frage der
+Richtigkeit. Vier Schritte, in dieser Reihenfolge gemessen:
+
+1. **„Unplausibel" bei bestätigtem Anhang** (87 §§): 82 hingen an
+   `unerklärt`, und zwei Formen davon waren unsere Bilanz, nicht die Engine.
+   *Ein Wort auf beiden Seiten des Diffs* — wo eine eingefügte Wortfolge ein
+   Wort wiederholt, paart die LCS die neue Kopie mit der alten (b4d7e38).
+   *Eine Wortfolge in mehreren Einheiten* — „In § 14 Abs. 1 und 3 entfällt
+   jeweils …" wurde einmal angerechnet, zweimal ausgeführt; `replace` und
+   `delete` zählten die Geschwister längst (aabd600). Zusammen: ME-Prüfstand
+   gezeigt 944 → 1.022. BGBl-Wahrheit: plausibel 1.204 → 1.368, 154
+   identische §§ frei, keiner neu gesperrt; abweichend unter den plausiblen
+   4 → 7, alle drei neuen ohne bestätigendes Orakel; **bestätigt und falsch
+   weiter 0** (93 → 106 bestätigt). Fehlerinjektion unverändert. Die
+   Wortreihenfolge prüft `unerklärt` damit nicht mehr, das tut Prüfung 2.
+2. **Aufgehobene §§ als „entfällt" zeigen — verworfen.** Die Lesefassung
+   steht als „Ganzer Paragraph danach" unter der Zeile des Anhangs, und für
+   einen aufgehobenen § gibt es kein Danach; die Zeile darüber zeigt das
+   Entfallen schon. Den Nenner zeigt die Seite seit 30.09. nicht mehr, die
+   1,7 % verzerren nur unsere eigene Zahl — der Zensus weist sie getrennt aus.
+3. **Die Obergrenzen** auf die Werte der Nachbarn, die dieselben Dokumente
+   lesen: 40 Gesetze wie `amendedLawsService`, 500 §§ wie `annex/verdict.ts`,
+   dessen Anhangprüfung genau diese §-Dokumente aus demselben Cache holt
+   (ae72c91). Am Produktionsbuild lokal, kalt, `--max-old-space-size=384`,
+   dieselbe Folge über die elf (RIS-Karte, dann je Entwurf Gegenüberstellung
+   und Lesefassung), alte gegen neue Grenzen: gezeigt **422 → 808**,
+   Lesefassung nach der Gegenüberstellung 0,2–2,0 s → 0,2–3,4 s, Spitzen-RSS
+   **601 → 585 MB**. Den Speicher treibt die Gegenüberstellung, die es schon
+   gibt; die Grenzen kosten Rechenzeit beim ersten Abruf des Tages, keine
+   RIS-Abrufe, und der Abschnitt wird lazy geholt.
+4. **Die Verweigerungen der Engine**, 751 im Prüfstand. Die größte Klasse,
+   „Textstelle N× gefunden" (64): eine Adresse aus mehreren Einheiten ohne
+   „jeweils" ist ein Ort, und die Wortfolge musste über alle eindeutig sein
+   (26.09.). Neu eine Lesart mehr — einmal in *jeder* genannten Einheit und
+   nirgends zweimal heißt Einheit für Einheit (5d856cc); die Sorge der Regel,
+   zwei genannte Einheiten, die eine meinen, hat die Wortfolge in einer und
+   bleibt unberührt. Richtig, aber klein: BGBl-Wahrheit +8 angewendet, sechs
+   §§ neu identisch, keine neue Abweichung; im Prüfstand +3 angewendet,
+   gezeigt unverändert — die meisten der 64 tragen die Wortfolge zweimal in
+   einer Einheit. „Textstelle nicht gefunden" (60) ist keine Klasse: Entwürfe
+   gegen eine andere Fassung, §§ „neu" aus einem anderen Artikel, Tippfehler
+   im Entwurf. Der Rest bleibt Einzelfall.
+
+Auf der Seite, dieselbe Messung am Produktionspfad über alle 138 Entwürfe:
+
+| | 06.10., morgens Ende | 06.10., Nachmittag |
+|---|---|---|
+| gezeigt von 3.914 geänderten §§ | 1.304 (33,3 %) | **1.845 (47,1 %)** |
+| Median je Entwurf (p25–p75) | 41 % (25–52) | **48 % (32–57)** |
+| Entwürfe mit mindestens einem § | 110 von 122 | **111** |
+
+Kein Entwurf verliert einen gezeigten §. Den größten Teil trägt Schritt 3,
+den Rest Schritt 1; was jetzt fehlt, ist überwiegend, was die Engine nicht
+anwenden kann, und was der Anhang nicht bestätigt — echte Abweichung oder
+Schweigen, und für das Schweigen bleibt das zweite Signal das Antragspaket.
+
 ### 12.12a Die Lesefassung auf der Seite — und was das Tor kostet
 
 Gebaut 19.09.2026: `server/utils/kons/konsGate.ts` (das Tor, rein und getestet),
