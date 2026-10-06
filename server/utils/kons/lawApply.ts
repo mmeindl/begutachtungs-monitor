@@ -1407,6 +1407,25 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     }
 
     case 'insertAfter': {
+      // „In § 16 Abs. 1 wird nach dem ersten Satz folgender Satz eingefügt":
+      // a Satz is not a node, so it joins the text of the sentence it is
+      // anchored to, as the `append` branch joins it to the end. Refused as
+      // „Eingefügte Einheit nicht bestimmbar" until 06.10.2026 — 24 §§ of the
+      // ME-Prüfstand that hung on nothing else, in a dozen drafts. One place:
+      // the sentence must be found where the address says, or nothing is
+      // written (`sentenceSlot`, which also refuses a sentence through a list).
+      if (op.child === 'satz' && op.anchor.satz) {
+        if (op.anchor.siblings.length > 0) return ONE_PLACE_SIBLINGS
+        const host = resolveTarget(law, op.anchor)
+        if (!host) return `Nicht im geltenden Text: ${op.anchor.raw.slice(0, 60)}`
+        const added = payload.map((p) => plainText(p)).join(' ').trim()
+        if (!added) return 'Einfügung ohne Text'
+        const slot = sentenceSlot(host, op.anchor.satz, op.anchor.satzCount)
+        if (!slot) return `Satz ${op.anchor.satz} nicht auffindbar`
+        const text = slot.read().trim()
+        slot.write((op.where === 'before' ? `${added} ${text}` : `${text} ${added}`).replace(/\s+/g, ' '))
+        return null
+      }
       const level = levelOf(op.child)
       if (!level) return 'Eingefügte Einheit nicht bestimmbar'
       if (payload.length === 0) return 'Einfügung ohne Text'

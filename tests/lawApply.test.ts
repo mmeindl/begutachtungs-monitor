@@ -1632,3 +1632,30 @@ describe('„als Abs. 9 bezeichnet" (30.09.2026)', () => {
     expect(out.paragraphs[0]!.children.slice(6).map((c) => [c.id, c.marker, c.text])).toEqual([['7', '(7)', 'Sieben.'], ['8', '(8)', 'Neu acht.'], ['9', '(9)', 'Acht.']])
   })
 })
+
+describe('a sentence inserted after or before a named sentence (06.10.2026)', () => {
+  const l = (): StandingLaw => ({ paragraphs: [para('16', 'Aufsicht', ['Die Behörde prüft. Sie entscheidet binnen vier Wochen. Die Frist ist zu verlängern.'])] })
+
+  it('joins the new sentence behind the named one', () => {
+    const { law: out, results } = run(l(), instr('In § 16 Abs. 1 wird nach dem ersten Satz folgender Satz eingefügt:', ['Sie hört die Partei an.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Behörde prüft. Sie hört die Partei an. Sie entscheidet binnen vier Wochen. Die Frist ist zu verlängern.')
+  })
+
+  it('puts it in front of the named one with „vor"', () => {
+    const { law: out, results } = run(l(), instr('In § 16 Abs. 1 wird vor dem letzten Satz folgender Satz eingefügt:', ['Sie hört die Partei an.']))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Behörde prüft. Sie entscheidet binnen vier Wochen. Sie hört die Partei an. Die Frist ist zu verlängern.')
+  })
+
+  it('takes several sentences as one block', () => {
+    const { law: out } = run(l(), instr('In § 16 Abs. 1 werden nach dem zweiten Satz folgende Sätze eingefügt:', ['Sie hört an. Sie begründet.']))
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Behörde prüft. Sie entscheidet binnen vier Wochen. Sie hört an. Sie begründet. Die Frist ist zu verlängern.')
+  })
+
+  it('refuses where the named sentence is not there, and writes nothing', () => {
+    const { law: out, results } = run(l(), instr('In § 16 Abs. 1 wird nach dem fünften Satz folgender Satz eingefügt:', ['Sie hört die Partei an.']))
+    expect(results[0]!.reason).toMatch(/nicht auffindbar/)
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Behörde prüft. Sie entscheidet binnen vier Wochen. Die Frist ist zu verlängern.')
+  })
+})
