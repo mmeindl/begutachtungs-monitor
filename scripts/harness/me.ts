@@ -48,7 +48,7 @@ import { articleBlocks, draftArticles, type DraftArticle } from '../../server/ut
 import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/utils/ris/konsLaw'
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
-import { refusedUnits } from '../../server/utils/kons/konsGate'
+import { addressedParagraphs, refusedUnits } from '../../server/utils/kons/konsGate'
 import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
@@ -254,6 +254,16 @@ interface LawResult {
 const joinNotes = new Map<string, number>()
 const annexNotes = new Map<string, number>()
 const oracleTally = new Map<string, number>()
+/**
+ * Every § the page counts in its denominator (`addressedParagraphs`), in
+ * exactly one bucket: shown, which stage of the gate held it, or why no text
+ * was produced at all. The bench's own counts start at „Paragraphen mit
+ * Text", which is half of what the page divides by.
+ */
+const census = new Map<string, number>()
+const bump = (key: string, n = 1): void => {
+  census.set(key, (census.get(key) ?? 0) + n)
+}
 const tally = (map: Map<string, number>, key: string): void => {
   map.set(key, (map.get(key) ?? 0) + 1)
 }
@@ -375,6 +385,7 @@ async function verifyLaw(
   const { instructions, refused } = instructionsFromUnits(units)
   result.instructions = instructions.length + refused.length
   result.read = instructions.length
+  const addressed = addressedParagraphs(instructions, refused.map((r) => r.line))
   if (result.instructions === 0) {
     result.note = 'keine Novellierungsanordnungen'
     return result
@@ -387,6 +398,7 @@ async function verifyLaw(
   const resolved = await resolveLaw(article, standingDate(draft.beginn))
   if (typeof resolved === 'string') {
     tally(joinNotes, resolved)
+    bump('kein Text: Gesetz nicht auflösbar', addressed.length)
     result.note = resolved
     return result
   }
@@ -437,6 +449,7 @@ async function verifyLaw(
   // same package (`tguOracle.ts`). Asking without a key would answer from
   // whichever law happened to come first.
   const lawKey = isPackage ? article.key : undefined
+  const outcome = new Map<string, string>()
 
   for (const id of [...touched].sort()) {
     const node = after.paragraphs.find((p) => p.id === id)
@@ -464,6 +477,7 @@ async function verifyLaw(
     const report = rows ? oracleVerdict(id, beforeNode ? plainText(beforeNode) : null, plainText(node), paragraphRows(rows, id, lawKey)) : null
     const verdict: OracleVerdict | 'kein Anhang' = report?.verdict ?? 'kein Anhang'
     tally(oracleTally, `${plausible ? 'plausibel' : 'unplausibel'}|${verdict}`)
+    outcome.set(id, isRefused ? 'Text, verweigert' : !guard.plausible ? 'Text, unplausibel' : verdict === 'bestätigt' ? 'gezeigt' : `Text, Orakel ${verdict}`)
     if (plausible && verdict === 'bestätigt') result.gated++
     if (verbose && report && report.verdict !== 'stumm' && report.verdict !== 'bestätigt') {
       console.log(`    ↳ § ${id}: Orakel ${report.verdict}${plausible ? '' : ' (ohnehin unplausibel)'} — ${report.note ?? ''}`)
@@ -481,6 +495,25 @@ async function verifyLaw(
         `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], oracle: verdict, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey)) : null })}\n`,
       )
     }
+  }
+  const read = new Set<string>()
+  const deleted = new Set<string>()
+  const inserted = new Set<string>()
+  for (const { op, payload } of instructions) {
+    const address = 'target' in op ? op.target : 'anchor' in op ? op.anchor : null
+    const id = address?.para ? harnessKey(address.para) : null
+    if (id) read.add(id)
+    if (id && op.kind === 'delete' && address?.level === 'para') deleted.add(id)
+    if ((op.kind === 'insertAfter' || op.kind === 'append') && op.child === 'para') for (const p of payload) if (p.id) inserted.add(p.id)
+  }
+  for (const id of addressed) {
+    const known = outcome.get(id)
+    if (known) bump(known)
+    else if (deleted.has(id)) bump('kein Text: § aufgehoben')
+    else if (!read.has(id) && !inserted.has(id)) bump('kein Text: Anweisung nicht gelesen')
+    else if (inserted.has(id)) bump('kein Text: neuer § nicht eingefügt')
+    else if (!law.paragraphs.some((p) => p.id === id)) bump('kein Text: nicht im RIS-Stand')
+    else bump('kein Text: sonst')
   }
   return result
 }
@@ -607,5 +640,10 @@ console.log(`\n  Join „welches Gesetz ändert dieser Artikel?" (nur Artikel mi
 for (const [note, n] of [...joinNotes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${note}`)
 console.log(`\n  Textgegenüberstellung je Entwurf (${drafts.length}):`)
 for (const [note, n] of [...annexNotes].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${note}`)
+{
+  const total = [...census.values()].reduce((a, b) => a + b, 0)
+  console.log(`\n  Nenner der Seite (${total} adressierte §§), je ein Fach:`)
+  for (const [key, n] of [...census].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${key} (${pct(n, total)})`)
+}
 console.log(`\n  Paragraphen: Plausibilität × Orakel:`)
 for (const [key, n] of [...oracleTally].sort((a, b) => b[1] - a[1])) console.log(`    ${String(n).padStart(4)}× ${key.replace('|', ', Orakel ')}`)
