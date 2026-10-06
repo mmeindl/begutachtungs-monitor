@@ -122,6 +122,15 @@ describe('a word on both sides of the diff (06.10.2026)', () => {
   })
 })
 
+describe('a phrase operation on several units (06.10.2026)', () => {
+  it('charges the operand once per unit the target names', () => {
+    const l: StandingLaw = { paragraphs: [para('6', 'Aufsicht', ['Das Bundesministerium für Verfassung und Justiz überwacht.', 'Das Bundesministerium für Verfassung und Justiz berichtet.'])] }
+    const r = guard(l, instr('In § 6 Abs. 1 und 2 entfällt jeweils die Wortfolge "Verfassung und".'))
+    expect(r.unexplained).toEqual({ inserted: [], removed: [] })
+    expect(r.flags).toEqual([])
+  })
+})
+
 describe('a „jeweils" inside a Halbsatz (28.09.2026)', () => {
   it('is counted in the sentence the engine searches, not in the whole unit', () => {
     const l: StandingLaw = { paragraphs: [para('6', 'Zuständigkeit', ['Die Behörde prüft. Die Behörde entscheidet; die Behörde hört an.'])] }

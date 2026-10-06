@@ -127,6 +127,13 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
     if (op.target.halbsatz) return addressedHalbsatzHost(node, op.target)
     return op.target.satz ? addressedSentence(node, op.target.satz, op.target.satzCount) : plainText(node)
   }
+  // Every unit a phrase operation names, as `replace` and `delete` below
+  // count them: „In § 14 Abs. 1 und Abs. 3 entfällt die Wortfolge …" is one
+  // operation the engine carries out twice, and charging it once flagged the
+  // second as unexplained — the renamed ministry in nine Strafvollzugsgesetz
+  // §§ the annex confirmed (ME-Prüfstand, 06.10.2026). Null is the whole §.
+  const phraseUnits = (target: { satz: string | null; level: string; lit: string | null; z: string | null; abs: string | null; siblings: readonly string[] }): (string | null)[] =>
+    target.satz || target.level !== 'para' ? [target.lit ?? target.z ?? target.abs ?? id, ...target.siblings] : [null]
   for (const { op, payload } of ops) {
     // A payload of several §§ ("folgende §§ 10h und 10i") is charged to the §
     // it creates, not to every § it names; the first version charged both
@@ -135,22 +142,24 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
     const payloadText = own.map((p) => plainText(p)).join(' ')
     switch (op.kind) {
       case 'replacePhrase': {
-        // "jeweils" replaces every occurrence in the scope; each one weighs.
-        const scope = op.target.satz || op.target.level !== 'para' ? unitText(op, op.target.lit ?? op.target.z ?? op.target.abs ?? id) : beforeTree ? plainText(beforeTree) : null
-        const n = op.everywhere && scope ? Math.max(1, scope.split(op.from).length - 1) : 1
-        for (let k = 0; k < n; k++) {
-          gain(op.to)
-          loss(op.from)
+        for (const unit of phraseUnits(op.target)) {
+          // "jeweils" replaces every occurrence in the scope; each one weighs.
+          const scope = unit !== null ? unitText(op, unit) : beforeTree ? plainText(beforeTree) : null
+          const n = op.everywhere && scope ? Math.max(1, scope.split(op.from).length - 1) : 1
+          for (let k = 0; k < n; k++) {
+            gain(op.to)
+            loss(op.from)
+          }
+          // The Halbsatz behind the mark goes with it.
+          if (op.truncate && scope) loss(scope.slice(scope.indexOf(op.from) + op.from.length))
         }
-        // The Halbsatz behind the mark goes with it.
-        if (op.truncate && scope) loss(scope.slice(scope.indexOf(op.from) + op.from.length))
         break
       }
       case 'insertPhrase':
-        gain(op.text)
+        for (const _ of phraseUnits(op.target)) gain(op.text)
         break
       case 'deletePhrase':
-        loss(op.text)
+        for (const _ of phraseUnits(op.target)) loss(op.text)
         break
       case 'replaceHeading':
         gain(payloadText)
