@@ -97,6 +97,14 @@ export function rowsByParagraph(rows: readonly ComparisonRow[]): Map<string, Com
       continue
     }
     let id = paraIdOfGld(row.gld)
+    // A schedule the annex opens with a line printed once per column carries
+    // its name in `para`, not in `gld` (`comparisonRows`, `opensAnlage`), and
+    // followed only by `gld` its rows stayed under the § before it: „Armenien,
+    // Aserbaidschan," was held against § 3 of the Zweite
+    // Außenwirtschaftsverordnung, „a) Die Sperrstrecke d" against § 109 of
+    // the Eisenbahnkreuzungsverordnung (06.10.2026). Schedules only — a §
+    // still opens with its own symbol.
+    if (!id && row.para && isSchedule(normalizeText(row.para))) id = paraIdOfGld(row.para)
     // A § heading is printed as its own row *above* the row that carries the
     // § symbol. Read in order it landed in the § before — "Tabakfreie
     // Nikotinerzeugnisse" was checked against § 10g and contradicted a

@@ -546,3 +546,16 @@ it('still sees a kept Absatz behind a new one that splits two omissions', () => 
   expect(keptDeletion(right, rows)).toBeNull()
   expect(keptDeletion(kept, rows)).not.toBeNull()
 })
+
+it('files the rows of a schedule opened by a mirrored line under the schedule, not the last §', () => {
+  // Zweite Außenwirtschaftsverordnung: „Anlage 1 | Anlage 1", then the list —
+  // `para` names the schedule, `gld` stays empty.
+  const row = (current: string, gld: string | null, para: string | null): ComparisonRow => ({ ...pair(current, current, gld), para })
+  const grouped = rowsByParagraph([
+    row('§ 3. (7) Tritt in Kraft.', '§ 3.', '§ 3.'),
+    row('Anlage 1', null, 'Anlage 1'),
+    row('Armenien, Aserbaidschan,', null, 'Anlage 1'),
+  ])
+  expect(grouped.get('#3')).toHaveLength(1)
+  expect(grouped.get('#Anl. 1')).toHaveLength(2)
+})
