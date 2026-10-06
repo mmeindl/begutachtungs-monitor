@@ -128,12 +128,21 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
     return op.target.satz ? addressedSentence(node, op.target.satz, op.target.satzCount) : plainText(node)
   }
   // Every unit a phrase operation names, as `replace` and `delete` below
-  // count them: „In § 14 Abs. 1 und Abs. 3 entfällt die Wortfolge …" is one
-  // operation the engine carries out twice, and charging it once flagged the
-  // second as unexplained — the renamed ministry in nine Strafvollzugsgesetz
-  // §§ the annex confirmed (ME-Prüfstand, 06.10.2026). Null is the whole §.
-  const phraseUnits = (target: { satz: string | null; level: string; lit: string | null; z: string | null; abs: string | null; siblings: readonly string[] }): (string | null)[] =>
-    target.satz || target.level !== 'para' ? [target.lit ?? target.z ?? target.abs ?? id, ...target.siblings] : [null]
+  // count them: „In § 14 Abs. 1 und 3 entfällt jeweils die Wortfolge …" is
+  // one operation the engine carries out twice, and charging it once flagged
+  // the second as unexplained — the renamed ministry in nine
+  // Strafvollzugsgesetz §§ the annex confirmed (ME-Prüfstand, 06.10.2026).
+  // Only the units that carry the phrase, as the engine reads them
+  // (`locatePhrase`): without „jeweils" an address of two units may mean the
+  // one that has it, and charging both would claim a change that never came.
+  // A unit that cannot be read is charged, and at least one always is.
+  const carrying = (op: Extract<Instruction['op'], { kind: 'replacePhrase' | 'insertPhrase' | 'deletePhrase' }>, needle: string): (string | null)[] => {
+    const t = op.target
+    const units = t.satz || t.level !== 'para' ? [t.lit ?? t.z ?? t.abs ?? id, ...t.siblings] : [null]
+    const scopes = units.map((unit) => (unit !== null ? unitText(op, unit) : beforeTree ? plainText(beforeTree) : null))
+    const hit = scopes.filter((scope) => scope === null || scope.includes(needle))
+    return hit.length > 0 ? hit : scopes.slice(0, 1)
+  }
   for (const { op, payload } of ops) {
     // A payload of several §§ ("folgende §§ 10h und 10i") is charged to the §
     // it creates, not to every § it names; the first version charged both
@@ -142,9 +151,8 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
     const payloadText = own.map((p) => plainText(p)).join(' ')
     switch (op.kind) {
       case 'replacePhrase': {
-        for (const unit of phraseUnits(op.target)) {
+        for (const scope of carrying(op, op.from)) {
           // "jeweils" replaces every occurrence in the scope; each one weighs.
-          const scope = unit !== null ? unitText(op, unit) : beforeTree ? plainText(beforeTree) : null
           const n = op.everywhere && scope ? Math.max(1, scope.split(op.from).length - 1) : 1
           for (let k = 0; k < n; k++) {
             gain(op.to)
@@ -156,10 +164,10 @@ function announced(before: StandingLaw, id: string, beforeTree: LawNode | null, 
         break
       }
       case 'insertPhrase':
-        for (const _ of phraseUnits(op.target)) gain(op.text)
+        for (const _ of carrying(op, op.anchor)) gain(op.text)
         break
       case 'deletePhrase':
-        for (const _ of phraseUnits(op.target)) loss(op.text)
+        for (const _ of carrying(op, op.text)) loss(op.text)
         break
       case 'replaceHeading':
         gain(payloadText)

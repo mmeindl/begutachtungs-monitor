@@ -1009,13 +1009,30 @@ describe('„jeweils" über mehrere Einheiten einer Adresse (26.09.2026)', () =>
     expect(plainText(ins.paragraphs[0]!.children[1]!)).toContain('Abs. 4 oder § 46a')
   })
 
-  // The guard that makes the loosening safe: without „jeweils" the address is
-  // ONE place however many units it spans, and the phrase must be unique
-  // across all of them. An instruction that names two Absätze and means one
-  // of them must not write into both.
-  it('keeps demanding one occurrence across the whole address without „jeweils"', () => {
-    const { results } = run(twoAbsaetze(), instr('In § 81 Abs. 1 und 2 wird das Wort "Acten" durch das Wort "Akten" ersetzt.'))
+  // Without „jeweils" the address is ONE place however many units it spans,
+  // and the phrase must be unique across all of them — with one reading more
+  // since 06.10.2026 (`locatePhrase`): once in EACH named unit and nowhere
+  // twice is the instruction meant unit by unit. The worry the rule names,
+  // an address of two units that means one, has the phrase in one of them.
+  it('reads the phrase once in each named unit as meant unit by unit', () => {
+    const { law: out, results } = run(twoAbsaetze(), instr('In § 81 Abs. 1 und 2 wird das Wort "Acten" durch das Wort "Akten" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Akten sind zu führen.')
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Die Akten sind aufzubewahren.')
+  })
+
+  it('applies once where only one of the named units carries the phrase', () => {
+    const l: StandingLaw = { paragraphs: [para('81', 'Akteneinsicht', ['Die Acten sind zu führen.', 'Die Unterlagen sind aufzubewahren.'])] }
+    const { law: out, results } = run(l, instr('In § 81 Abs. 1 und 2 wird das Wort "Acten" durch das Wort "Akten" ersetzt.'))
+    expect(results[0]!.reason).toBeNull()
+    expect(plainText(out.paragraphs[0]!.children[0]!)).toBe('Die Akten sind zu führen.')
+  })
+
+  it('keeps refusing where one named unit carries the phrase twice', () => {
+    const l: StandingLaw = { paragraphs: [para('81', 'Akteneinsicht', ['Die Acten sind zu führen, die Acten sind zu ordnen.', 'Die Acten sind aufzubewahren.'])] }
+    const { law: out, results } = run(l, instr('In § 81 Abs. 1 und 2 wird das Wort "Acten" durch das Wort "Akten" ersetzt.'))
     expect(results[0]!.reason).toMatch(/nicht eindeutig/)
+    expect(plainText(out.paragraphs[0]!.children[1]!)).toBe('Die Acten sind aufzubewahren.')
   })
 
   // „jeweils" is the ressort saying every one of the units carries the

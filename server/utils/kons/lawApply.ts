@@ -1036,6 +1036,26 @@ function locateInUnits(units: readonly (readonly Slot[])[], needle: string, word
 }
 
 /**
+ * `locateInUnits`, and one reading more where the address names several
+ * units without „jeweils": **the phrase once in each of them, and nowhere
+ * twice**, is that instruction meant unit by unit. „In § 15 Abs. 1 Z 1, Z 2
+ * und Z 3 wird die Wortfolge … ersetzt" over three Ziffern that each carry it
+ * once was refused as „3× gefunden" — 64 refusals in the ME-Prüfstand
+ * (06.10.2026), the largest class. The rule above `phraseUnits` stays: the
+ * worry it names is an address of two units that means one, and there the
+ * phrase stands in one of them — found once, applied once, as before. A unit
+ * without the phrase, or with it twice, still refuses the whole instruction.
+ */
+function locatePhrase(law: StandingLaw, a: NovaoAddress, units: readonly (readonly Slot[])[], eachUnit: boolean, needle: string, wordBound: boolean): ReturnType<typeof locateInUnits> {
+  const located = locateInUnits(units, needle, wordBound)
+  if (!('error' in located) || eachUnit || !/nicht eindeutig/.test(located.error)) return located
+  const groups = phraseSlotGroups(law, a)
+  if ('error' in groups || groups.length < 2) return located
+  const each = locateInUnits(groups, needle, wordBound)
+  return 'error' in each ? located : each
+}
+
+/**
  * Rule 1 in practice: find the one slot containing `needle` exactly once,
  * across the whole addressed scope. Anything else — not found, found twice,
  * found in two units — is a refusal, not a choice.
@@ -1492,7 +1512,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
       // „jeweils" is the ressort saying every one of them carries it, so a
       // unit that does not is a disagreement about the standing text and not
       // a place to skip quietly.
-      const located = locateInUnits(units, op.from, op.wordBound)
+      const located = locatePhrase(law, op.target, units, op.eachUnit, op.from, op.wordBound)
       if ('error' in located) {
         // „vor der Wortfolge ‚des Sachverständigen' das Wort ‚oder'": where
         // the operand recurs, the anchor says which one — the operand and
@@ -1538,7 +1558,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
         }
         return null
       }
-      const located = locateInUnits(units, op.anchor, op.wordBound)
+      const located = locatePhrase(law, op.target, units, op.eachUnit, op.anchor, op.wordBound)
       if ('error' in located) return located.error
       for (const { slot, at, len } of located.hits) {
         const current = slot.read()
@@ -1555,7 +1575,7 @@ function applyOne(law: StandingLaw, { op, payload }: Instruction): string | null
     case 'deletePhrase': {
       const units = phraseUnits(law, op.target, op.eachUnit)
       if ('error' in units) return units.error
-      const located = locateInUnits(units, op.text, op.wordBound)
+      const located = locatePhrase(law, op.target, units, op.eachUnit, op.text, op.wordBound)
       if ('error' in located) return located.error
       for (const { slot, at, len } of located.hits) {
         const current = slot.read()
