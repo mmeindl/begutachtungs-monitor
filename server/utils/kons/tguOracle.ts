@@ -264,6 +264,21 @@ function words(t: string): string[] {
 }
 
 /**
+ * The annex's words for check 3, and the same words with a line-break hyphen
+ * closed up as well. The PDF annexes break a compound at its hyphen and the
+ * reader keeps the space („ESG- Faktoren", „E- GovG"), so the engine's
+ * „ESG-Faktoren" stood in no cell and check 3 reported an invention — about
+ * two dozen of the §§ the annex „contradicted" in the ME-Prüfstand
+ * (06.10.2026). Check 2 never saw it: `key` drops spaces and hyphens. A set
+ * of both readings and not a rewrite, because „Status- oder" is a suspended
+ * hyphen and has to stay a word of its own; the closed form is built from
+ * the same characters, so nothing the annex does not print gets in.
+ */
+function cellWords(t: string): string[] {
+  return [...words(t), ...words(t.replace(/(\p{L})- (?=\p{L})/gu, '$1-'))]
+}
+
+/**
  * How much of the standing text's beginning has to reappear in the cell
  * before a prefix counts as a heading stack. Long enough that the §'s own
  * Überschrift is what was found and not a stray word, short enough that a
@@ -850,13 +865,13 @@ export function oracleVerdict(id: string, before: string | null, got: string, ro
   if (segments === null) return { para: id, verdict: 'widersprochen', rows: rows.length, note: 'Wortdiff zu groß für den Abgleich' }
   const pairs = rows.filter((r) => r.kind === 'pair')
   const inserted = segments.filter((s) => s.type === 'inserted').flatMap((s) => words(s.text))
-  const shown = new Set(pairs.flatMap((r) => words(r.proposed)))
+  const shown = new Set(pairs.flatMap((r) => cellWords(r.proposed)))
   const unshown = inserted.filter((w) => !shown.has(w))
   if (unshown.length > 0) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine fügte ein, was die Gegenüberstellung nicht zeigt: ${unshown.slice(0, 6).join(' ')}` }
   }
   const removed = segments.filter((s) => s.type === 'removed').flatMap((s) => words(s.text))
-  const dropped = new Set(pairs.flatMap((r) => words(r.current)))
+  const dropped = new Set(pairs.flatMap((r) => cellWords(r.current)))
   const unshownRemoved = removed.filter((w) => !dropped.has(w))
   if (unshownRemoved.length > 0) {
     return { para: id, verdict: 'widersprochen', rows: rows.length, note: `Engine entfernte, was die Gegenüberstellung nicht zeigt: ${unshownRemoved.slice(0, 6).join(' ')}` }

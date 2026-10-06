@@ -559,3 +559,21 @@ it('files the rows of a schedule opened by a mirrored line under the schedule, n
   expect(grouped.get('#3')).toHaveLength(1)
   expect(grouped.get('#Anl. 1')).toHaveLength(2)
 })
+
+describe('a compound broken at its hyphen in the PDF (06.10.2026)', () => {
+  const before = '§ 39d. (1) Die Kreditinstitute haben Risiken zu bewerten.'
+  const got = '§ 39d. (1) Die Kreditinstitute haben Risiken, die auf ESG-Faktoren zurückzuführen sind, zu bewerten.'
+
+  it('finds the engine’s compound in the annex’s broken spelling', () => {
+    const rows = [pair('(1) Die Kreditinstitute haben Risiken zu bewerten.', '(1) Die Kreditinstitute haben Risiken, die auf ESG- Faktoren zurückzuführen sind, zu bewerten.', '§ 39d.')]
+    expect(oracleVerdict('39d', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('keeps a suspended hyphen a word of its own', () => {
+    // „Status- oder" reads as two words in the annex; the closed form is an
+    // addition, never a replacement, so an engine that wrote „ESG-Faktoren"
+    // where the annex prints something else is still contradicted.
+    const rows = [pair('(1) Die Kreditinstitute haben Risiken zu bewerten.', '(1) Die Kreditinstitute haben Risiken, die auf Status- oder Klimafaktoren zurückzuführen sind, zu bewerten.', '§ 39d.')]
+    expect(oracleVerdict('39d', before, got, rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+})
