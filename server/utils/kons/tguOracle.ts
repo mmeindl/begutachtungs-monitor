@@ -498,8 +498,15 @@ function words4(t: string): string[] {
  * that announces a mark („(3) bis (7) …") is gone exactly where checks 1 and
  * 2 drop it.
  */
+/**
+ * Through `sameText` like every other comparison, and check 4 is where it
+ * mattered most (06.10.2026): once check 2 read „(2) Aufgehoben." as the
+ * repealed Absatz it is, this check still looked for „Aufgehoben" in the
+ * result to find the edge of the stretch — RIS never prints it — and a kept
+ * Absatz beside it went unasked (Budgetbegleitgesetz 2025 §§ 412, 417, 808).
+ */
 function cellTokens(t: string): string[] {
-  return printedLayout(t).flatMap((piece) => (piece === null ? [ELISION] : words4(piece)))
+  return printedLayout(sameText(t)).flatMap((piece) => (piece === null ? [ELISION] : words4(piece)))
 }
 
 type TokenOp = 'equal' | 'removed' | 'inserted'
@@ -680,7 +687,7 @@ function regionsOf(runs: readonly TokenRun[]): Region[] {
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 export function keptDeletion(got: string, rows: readonly ComparisonRow[]): string | null {
   const pairs = rows.filter((r) => r.kind === 'pair')
-  const gotTokens = words4(got)
+  const gotTokens = words4(sameText(got))
   const shownRight = cellTokens(pairs.map((r) => r.proposed).join(' '))
   for (const row of pairs) {
     if (row.elided || row.change === 'unchanged' || !row.current || !row.proposed) continue

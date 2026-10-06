@@ -507,3 +507,12 @@ it('normalises a placeholder the word diff hands over without its „Nr."', () =
   const rows = [pair('Diese Verordnung tritt in Kraft.', 'Diese Verordnung tritt in Kraft. § 8a in der Fassung BGBl. II Nr. XX/20XX tritt in Kraft.')]
   expect(oracleVerdict('9', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
 })
+
+it('still sees an Absatz kept where the annex prints „Aufgehoben"', () => {
+  // Budgetbegleitgesetz 2025 § 412: check 2 reads „(2) Aufgehoben." as the
+  // repealed Absatz; check 4 must then find the Absatz still standing.
+  const before = 'Schlussbestimmungen § 85 tritt mit 1. Jänner 2025 in Kraft. § 46 Abs. 1a ist bei der Pensionsanpassung für das Kalenderjahr 2026 nicht anzuwenden.'
+  const rows = [pair('§ 412. (1) ... (2) § 46 Abs. 1a ist bei der Pensionsanpassung für das Kalenderjahr 2026 nicht anzuwenden.', '§ 412. (1) ... (2) Aufgehoben.', '§ 412.')]
+  expect(oracleVerdict('412', before, 'Schlussbestimmungen § 85 tritt mit 1. Jänner 2025 in Kraft.', rows)).toMatchObject({ verdict: 'bestätigt' })
+  expect(oracleVerdict('412', before, before, rows)).toMatchObject({ verdict: 'widersprochen' })
+})
