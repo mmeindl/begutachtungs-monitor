@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { columnBoundary, linesFromPage, parseAnnexPdf, sameTypesetting, type AnnexItem, type AnnexPage, type AnnexParse, type PageGeometry } from '../server/utils/annex/annexPdf'
-import { uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
+import { fromMacRoman, isMacRomanMisread, uprightRuns, type RawRun } from '../server/utils/annex/annexPdfPages'
 import type { DraftArticle } from '../server/utils/lawtext/draftArticles'
 import { draftArticles as draft } from './helpers/builders'
 import type { TextComparisonResponse } from '../shared/types'
@@ -892,5 +892,28 @@ describe('sameTypesetting — when several PDFs are one annex (26.09.2026)', () 
     // A title page in another format must not decide what the document is.
     const doc = [pageOf([], 595), pageOf([], 842), pageOf([], 842), pageOf([], 842)]
     expect(sameTypesetting(doc, [pageOf([], 842)])).toBe(true)
+  })
+})
+
+describe('a text layer read in the wrong code page', () => {
+  // 119/ME XXVIII: Windows-1252 read as Mac Roman — „§" came out as „ß", so no
+  // § mark was ever found and the annex yielded no row (06.10.2026).
+  const pageOf = (...texts: string[]): AnnexPage => ({ items: texts.map((text) => ({ text })) }) as unknown as AnnexPage
+
+  it('turns a misread run back, „ﬂ" to „ß" and „ß 13" to „§ 13"', () => {
+    expect(fromMacRoman('ß 13. Auﬂenabfl¸ge gem‰ﬂ Abs. 2 unber¸hrt ˆffentlichen')).toBe('§ 13. Außenabflüge gemäß Abs. 2 unberührt öffentlichen')
+  })
+
+  it('leaves a correctly set run alone, even in a misread document', () => {
+    expect(fromMacRoman('(„Interoperabilitäts-Verordnung")')).toBe('(„Interoperabilitäts-Verordnung")')
+    expect(fromMacRoman('Pflicht und Fläche')).toBe('Pflicht und Fläche')
+    expect(fromMacRoman('Maß … Ende')).toBe('Maß … Ende')
+  })
+
+  it('decides by the whole document, and tolerates one correct font among many misread runs', () => {
+    const misread = Array.from({ length: 25 }, () => 'f¸r die Fl‰chen')
+    expect(isMacRomanMisread([pageOf(...misread, 'Interoperabilitäts')])).toBe(true)
+    expect(isMacRomanMisread([pageOf('§ 5. Die Behörde prüft', 'f¸r')])).toBe(false)
+    expect(isMacRomanMisread([pageOf('Ein Text mit 5 ‰ Promille')])).toBe(false)
   })
 })

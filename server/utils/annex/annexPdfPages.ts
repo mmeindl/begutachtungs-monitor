@@ -137,15 +137,60 @@ export function uprightRuns(runs: readonly RawRun[], viewport: RawViewport): Ann
 export async function pagesOf(bytes: Uint8Array): Promise<AnnexPage[]> {
   const { getDocumentProxy } = await import('unpdf')
   const doc = await getDocumentProxy(bytes)
-  const pages: AnnexPage[] = []
-  for (let n = 1; n <= doc.numPages; n++) {
-    const page = await doc.getPage(n)
-    const viewport = page.getViewport({ scale: 1 })
-    const content = await page.getTextContent()
-    const runs: RawRun[] = content.items
-      .filter((i: any) => typeof i.str === 'string')
-      .map((i: any) => ({ transform: i.transform, width: i.width ?? 0, text: i.str }))
-    pages.push(uprightRuns(runs, { transform: viewport.transform, width: viewport.width, height: viewport.height }))
+  const read = async (misread: boolean): Promise<AnnexPage[]> => {
+    const pages: AnnexPage[] = []
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n)
+      const viewport = page.getViewport({ scale: 1 })
+      // Unnormalised for a misread document only: pdf.js otherwise splits the
+      // „ﬂ" that stands for „ß" into the „fl" of „Pflicht", and nothing tells
+      // them apart afterwards.
+      const content = await page.getTextContent(misread ? ({ disableNormalization: true } as any) : undefined)
+      const runs: RawRun[] = content.items
+        .filter((i: any) => typeof i.str === 'string')
+        .map((i: any) => ({ transform: i.transform, width: i.width ?? 0, text: misread ? fromMacRoman(i.str) : i.str }))
+      pages.push(uprightRuns(runs, { transform: viewport.transform, width: viewport.width, height: viewport.height }))
+    }
+    return pages
   }
-  return pages
+  const pages = await read(false)
+  return isMacRomanMisread(pages) ? read(true) : pages
+}
+
+/**
+ * A Beilage whose text layer is Windows-1252 read as Mac Roman: „ü" prints as
+ * „¸", „ä" as „‰", „ö" as „ˆ", „ß" as „ﬂ" and — the one that cost the rows —
+ * „§" as „ß", so no § mark is ever found. 119/ME XXVIII (Luftfahrtgesetz, 72
+ * changed §§) came back with no row at all and „ließ sich nicht auslesen"
+ * (06.10.2026).
+ *
+ * Decided for the whole document — at least 20 such characters, twenty times
+ * as many as real umlauts and §§ — and repaired PER RUN: the same Beilage
+ * sets one phrase in a font that reads correctly („Interoperabilitäts", one
+ * run in 49 pages against 2.496 misread characters), and a real „ä" is
+ * Mac Roman 0x8A, which the table would turn into „Š".
+ */
+export function isMacRomanMisread(pages: readonly AnnexPage[]): boolean {
+  const text = pages.flatMap((page) => page.items.map((item) => item.text)).join('')
+  const misread = (text.match(/[¸‰ˆ]/g) ?? []).length
+  const real = (text.match(/[äöüÄÖÜ§]/g) ?? []).length
+  return misread >= 20 && misread >= 20 * real
+}
+
+/** What a misread run carries and a correct one does not: the signs above, or „ß" before a number — a misread „§ 13". */
+const MISREAD_RUN_RE = /[¸‰ˆ‹÷ƒﬂ]|ß\s*\d/
+
+let macRomanToWindows: Map<string, string> | null = null
+
+/** The character the Mac Roman reading made of each Windows-1252 byte, turned back — for a misread run only. */
+export function fromMacRoman(text: string): string {
+  if (!MISREAD_RUN_RE.test(text) || /[äöüÄÖÜ§]/.test(text)) return text
+  if (!macRomanToWindows) {
+    const mac = new TextDecoder('macintosh')
+    const win = new TextDecoder('windows-1252')
+    macRomanToWindows = new Map()
+    for (let byte = 0x80; byte <= 0xff; byte++) macRomanToWindows.set(mac.decode(Uint8Array.of(byte)), win.decode(Uint8Array.of(byte)))
+  }
+  const map = macRomanToWindows
+  return [...text].map((ch) => map.get(ch) ?? ch).join('')
 }

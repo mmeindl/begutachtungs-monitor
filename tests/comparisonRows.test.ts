@@ -1123,3 +1123,40 @@ describe('parseTextComparison — die Parlamentskopie desselben Anhangs', () => 
     expect(row!.gld).toBeNull()
   })
 })
+
+describe('an annex that opens every row with a spacer column', () => {
+  // 20/ME XXVIII: an empty one-column cell before „Geltende Fassung" (colspan 2)
+  // and „Vorgeschlagene Fassung" (colspan 3), on a grid whose rows run 1+2+3,
+  // 2+4 and 1+5 — refused as „keine zweispaltige Gegenüberstellung" until
+  // 06.10.2026.
+  const xml = `<table>
+    <tr><td><nbsp /></td><td colspan="2">Geltende Fassung</td><td colspan="3">Vorgeschlagene Fassung</td></tr>
+    <tr><td><nbsp /></td><td colspan="5">Artikel 2</td></tr>
+    <tr><td><nbsp /></td><td colspan="2"><gldsym>§ 5.</gldsym>Die Behoerde entscheidet.</td><td colspan="3">Das Gericht entscheidet.</td></tr>
+    <tr><td colspan="2"><gldsym>§ 6.</gldsym>Alt.</td><td colspan="4">Neu.</td></tr>
+    <tr><td><nbsp /></td><td colspan="2"><nbsp /></td><td colspan="3"><gldsym>§ 7.</gldsym>Eingefuegt.</td></tr>
+  </table>`
+
+  it('reads the pairs on both sides of the cut, whatever the row shape', () => {
+    const pairs = parse(xml).filter((r) => r.kind === 'pair')
+    expect(pairs.find((r) => r.gld === '§ 5.')).toMatchObject({ proposed: 'Das Gericht entscheidet.', change: 'changed' })
+    expect(pairs.find((r) => r.gld === '§ 6.')).toMatchObject({ proposed: 'Neu.', change: 'changed' })
+  })
+
+  it('keeps an empty left side — an inserted provision — empty', () => {
+    expect(parse(xml).find((r) => r.para === '§ 7.')).toMatchObject({ current: '', change: 'inserted' })
+  })
+
+  it('reads the full-width line as the Artikel heading it is', () => {
+    const articles = draft({ n: '1', title: 'Änderung des Aktiengesetzes' }, { n: '2', title: 'Änderung des GmbH-Gesetzes' })
+    expect(parse(xml, articles).filter((r) => r.kind === 'article').map((r) => r.heading)).toEqual(['Artikel 2 — Änderung des GmbH-Gesetzes'])
+  })
+
+  it('does not take a spacer for granted where the header has none', () => {
+    const plain = `<table>
+      <tr><td>Geltende Fassung</td><td>Vorgeschlagene Fassung</td></tr>
+      <tr><td><nbsp /></td><td><gldsym>§ 8.</gldsym>Neu eingefuegt.</td></tr>
+    </table>`
+    expect(parse(plain).find((r) => r.kind === 'pair')).toMatchObject({ current: '', change: 'inserted' })
+  })
+})

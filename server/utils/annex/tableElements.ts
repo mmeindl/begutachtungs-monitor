@@ -269,10 +269,41 @@ export function itemsInOrder(body: string): ComparisonItem[] {
     // starts, and the § sequence ends there (`opensAnlage`).
     .map((m) => ({ kind: 'heading' as const, text: cellText(m[1]!), at: m.index, html: m[0] }))
     .filter((h) => h.text !== '' && !ANNEX_TITLE_RE.test(h.text.replace(/\s+/g, '')))
-  const rows: ComparisonItem[] = rowsInOrder(body).map((r) => ({ kind: 'row' as const, inner: r.inner, at: r.at }))
+  const rows: ComparisonItem[] = withoutSpacerColumn(rowsInOrder(body)).map((r) => ({ kind: 'row' as const, inner: r.inner, at: r.at }))
   // A stable sort keeps the rows of one table in their own order while the
   // document-level headings fall into place between the tables.
   return [...headings, ...rows].sort((a, b) => a.at - b.at)
+}
+
+/**
+ * The rows without the spacer column some ressorts' templates open every row
+ * with — evidenced by the header pair, never guessed.
+ *
+ * 20/ME XXVIII prints `<td><nbsp/></td>` before „Geltende Fassung" (colspan
+ * 2) and „Vorgeschlagene Fassung" (colspan 3), on a six-column Word grid whose
+ * pair rows run 1+2+3, but also 2+4, 1+3+2 and 1+4+1. The header pair was
+ * looked for in the spacer and the left column, and a readable annex of 94
+ * changed §§ was refused as „keine zweispaltige Gegenüberstellung"
+ * (06.10.2026). Without the spacer the grid is five wide, the header pair
+ * reads 2 + 3, and every one of those shapes falls on the right side of the
+ * cut — 1+5 becomes a heading across the width, as it is.
+ *
+ * Only where the HEADER row opens with an empty cell one column wide, and only
+ * such a cell is taken off any row: the empty left side of an inserted
+ * provision spans the left column, never one grid column of a spacer.
+ */
+function withoutSpacerColumn<T extends { inner: string }>(rows: readonly T[]): T[] {
+  const isSpacer = (cell: Element): boolean => spanOf(cell) === 1 && cellText(cell.inner) === ''
+  const spaced = rows.some((r) => {
+    const cells = outermost(r.inner, 'td')
+    return cells.length >= 3 && isSpacer(cells[0]!) && HEADER_CURRENT_RE.test(cellText(cells[1]!.inner)) && HEADER_PROPOSED_RE.test(cellText(cells[2]!.inner))
+  })
+  if (!spaced) return [...rows]
+  return rows.map((r) => {
+    const cells = outermost(r.inner, 'td')
+    if (cells.length < 2 || !isSpacer(cells[0]!)) return r
+    return { ...r, inner: r.inner.slice(0, cells[0]!.open) + r.inner.slice(cells[0]!.close) }
+  })
 }
 
 /**
