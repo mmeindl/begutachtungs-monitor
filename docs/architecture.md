@@ -4174,8 +4174,23 @@ Prüfung 4 nicht, weil derselbe Wortlaut rechts mit anderem Jahr steht. Eine
 gezählte Prüfung 3 wurde gebaut, gemessen und **zurückgenommen**: Sie fing
 keine der vier und kostete sieben Bestätigungen (Bindestrich-Komposita, die
 die Beilage am Zeilenende bricht), mit Ausnahme der Komposita noch zwei. Die
-Lücke gehört zu Prüfung 4 und bleibt offen. Ohne Injektion sind die neu
-bestätigten §§ richtig (die Kontrolle verschiebt 0).
+Lücke gehört zu Prüfung 4. Ohne Injektion sind die neu bestätigten §§
+richtig (die Kontrolle verschiebt 0).
+
+*Nachtrag, derselbe Abend — die Lücke war unsere.* Die drei §§ des
+Budgetbegleitgesetzes 2025 drucken rechts „(2) Aufgehoben.". Seit dem
+Platzhalter-Schritt liest Prüfung 2 das als den aufgehobenen Absatz;
+Prüfung 4 suchte „Aufgehoben" aber weiter im Ergebnis, um den Rand der
+Strecke zu finden, und fand ihn nie. Prüfung 4 liest die Spalten jetzt durch
+dieselbe Normalform (`sameText` in `cellTokens`): **E 104 von 107 (97,2 %)**,
+ohne Injektion unverändert drei Meldungen, der Prüfstand bewegt sich nicht.
+Die eine verbleibende neue Durchlassung (E-neben, Nachhaltigkeitsberichtsgesetz
+§ 267) ist eine Strukturlücke von `regionsOf`: Die geltende Spalte führt zwei
+Auslassungen hintereinander („(1) und (2) … (3) bis (3b) …"), die als eine
+gelesen werden; die vorgeschlagene trennt sie durch einen neuen Abs. 2a. Die
+LCS paart nur eine, die übrige macht die Region zu „das Ressort lässt aus",
+und eine behaltene Fassung darin bleibt ungefragt — für jeden §, in dem ein
+eingefügter Absatz eine Auslassung teilt.
 
 **Auf der Seite, GP XXVIII, alle 138 Entwürfe** (dieselbe Messung wie am
 05.10., am Produktionspfad):
