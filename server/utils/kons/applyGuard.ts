@@ -238,7 +238,15 @@ export function guardParagraph(
   } else {
     const ins = segments.filter((s) => s.type === 'inserted').flatMap((s) => punctuationTokens(s.text))
     const rem = segments.filter((s) => s.type === 'removed').flatMap((s) => punctuationTokens(s.text))
-    unexplained = { inserted: multisetMinus(ins, said.inserted), removed: multisetMinus(rem, said.removed) }
+    const inserted = multisetMinus(ins, said.inserted)
+    const removed = multisetMinus(rem, said.removed)
+    // A word on both sides is the diff's alignment, not the engine's
+    // invention: where an inserted phrase repeats a word that stands beside
+    // it, LCS pairs the new copy with the old one and reports the old one as
+    // removed and re-inserted — „ermöglicht"/„ermöglicht", „33"/„33". The bag
+    // of words is unchanged by it. 53 of the 82 §§ this flag held back while
+    // the annex confirmed them carried nothing else (ME-Prüfstand, 06.10.2026).
+    unexplained = { inserted: multisetMinus(inserted, removed), removed: multisetMinus(removed, inserted) }
     if (unexplained.inserted.length || unexplained.removed.length) flags.add('unerklärt')
   }
 

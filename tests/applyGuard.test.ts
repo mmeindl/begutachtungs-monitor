@@ -100,6 +100,28 @@ describe('guardParagraph', () => {
   })
 })
 
+describe('a word on both sides of the diff (06.10.2026)', () => {
+  // The diff pairs a repeated word with its neighbour and reports the old
+  // one as removed and re-inserted; the bag of words is unchanged. Word ORDER
+  // is not this flag's to judge — the oracle's check 2 holds the annex's
+  // proposed wording against the result.
+  it('cancels out instead of reading as an invented word', () => {
+    const r = guard(law(), instr('In § 6 Abs. 1 wird das Wort "Behörde" durch das Wort "Bezirksbehörde" ersetzt.'), (after) => {
+      after.children[0]!.text = after.children[0]!.text.replace('Sie entscheidet binnen sechs Wochen.', 'Sie binnen sechs Wochen entscheidet.')
+    })
+    expect(r.unexplained).toEqual({ inserted: [], removed: [] })
+    expect(r.flags).not.toContain('unerklärt')
+  })
+
+  it('keeps a word that stands on one side only', () => {
+    const r = guard(law(), instr('In § 6 Abs. 1 wird das Wort "Behörde" durch das Wort "Bezirksbehörde" ersetzt.'), (after) => {
+      after.children[0]!.text = after.children[0]!.text.replace('sechs Wochen.', 'Wochen sechs Monaten.')
+    })
+    expect(r.flags).toContain('unerklärt')
+    expect(r.unexplained).toEqual({ inserted: ['Monaten'], removed: [] })
+  })
+})
+
 describe('a „jeweils" inside a Halbsatz (28.09.2026)', () => {
   it('is counted in the sentence the engine searches, not in the whole unit', () => {
     const l: StandingLaw = { paragraphs: [para('6', 'Zuständigkeit', ['Die Behörde prüft. Die Behörde entscheidet; die Behörde hört an.'])] }

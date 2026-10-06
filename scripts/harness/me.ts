@@ -492,7 +492,7 @@ async function verifyLaw(
         : []
       appendFileSync(
         dumpFile,
-        `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], oracle: verdict, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey)) : null })}\n`,
+        `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], unexplained: flags.has('unerklärt') ? guard.unexplained : undefined, oracle: verdict, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey)) : null })}\n`,
       )
     }
   }
