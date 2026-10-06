@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KEPT_DELETION_NOTE, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
+import { KEPT_DELETION_NOTE, keptDeletion, oracleVerdict, paraIdOfGld, paragraphRows, rowsByParagraph, stripMarkers } from '../server/utils/kons/tguOracle'
 import type { ComparisonRow } from '../server/utils/annex/comparisonRows'
 
 function pair(current: string, proposed: string, gld: string | null = null, elided = false, law: string | null = null): ComparisonRow {
@@ -530,4 +530,19 @@ describe('oracleVerdict — the next §\'s heading at the foot of the cell', () 
     const rows = [pair('§ 82. (1) Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist zu bestrafen. Höchstens 500 Euro', '§ 82. (1) Wer sich aggressiv verhält, begeht eine Verwaltungsübertretung. Sie ist mit Geldstrafe zu bestrafen. Höchstens 500 Euro', '§ 82.')]
     expect(oracleVerdict('82', before, got, rows)).toMatchObject({ verdict: 'fremd' })
   })
+})
+
+it('still sees a kept Absatz behind a new one that splits two omissions', () => {
+  // Nachhaltigkeitsberichtsgesetz § 267: „(1) und (2) … (3) bis (3b) …" left,
+  // a new (2a) between the two omissions right — read as one omission, the
+  // region counted as the ressort leaving text out and went unasked.
+  const rows = [pair(
+    '§ 267. (1) und (2) ... (3) bis (3b) ... (4) § 251 Abs. 3 über die Zusammenfassung von Konzernanhang und Anhang ist entsprechend anzuwenden.',
+    '§ 267. (1) und (2) ... (2a) Der Bericht hat auch Ressourcen zu erläutern. (3) bis (3b) ... (4) Der Bericht und der Lagebericht dürfen zusammengefasst werden.',
+    '§ 267.',
+  )]
+  const right = 'Konzernlagebericht Abs eins. Abs zwei. Der Bericht hat auch Ressourcen zu erläutern. Abs drei. Der Bericht und der Lagebericht dürfen zusammengefasst werden.'
+  const kept = 'Konzernlagebericht Abs eins. Abs zwei. Der Bericht hat auch Ressourcen zu erläutern. Abs drei. § 251 Abs. 3 über die Zusammenfassung von Konzernanhang Der Bericht und der Lagebericht dürfen zusammengefasst werden.'
+  expect(keptDeletion(right, rows)).toBeNull()
+  expect(keptDeletion(kept, rows)).not.toBeNull()
 })

@@ -237,15 +237,21 @@ export function printedStretches(text: string): string[] {
  * ressort's choice and one that ends at the cell's edge ends with the law.
  * One function rather than a second copy of the cut, so the two cannot
  * disagree about where a stretch begins.
+ *
+ * `eachMark` keeps one null per mark where marks follow one another with
+ * nothing printed between them: „(1) und (2) … (3) bis (3b) …" is two
+ * omissions, and where the other column prints a new „(2a)" between them,
+ * a diff that sees only one of the two cannot pair the second (06.10.2026,
+ * `kons/tguOracle.keptDeletion`).
  */
-export function printedLayout(text: string): (string | null)[] {
+export function printedLayout(text: string, eachMark = false): (string | null)[] {
   const out: (string | null)[] = []
   let at = 0
   ELISION_RUN_RE.lastIndex = 0
   for (let mark = ELISION_RUN_RE.exec(text); mark; mark = ELISION_RUN_RE.exec(text)) {
     const stretch = text.slice(at, mark.index).replace(ELISION_HEAD_RE_TAIL, '').trim()
     if (stretch !== '') out.push(stretch)
-    if (out[out.length - 1] !== null) out.push(null)
+    if (eachMark || out[out.length - 1] !== null) out.push(null)
     at = mark.index + mark[0].length
   }
   const rest = text.slice(at).trim()

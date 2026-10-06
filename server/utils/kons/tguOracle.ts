@@ -533,7 +533,7 @@ function words4(t: string): string[] {
  * Absatz beside it went unasked (Budgetbegleitgesetz 2025 §§ 412, 417, 808).
  */
 function cellTokens(t: string): string[] {
-  return printedLayout(sameText(t)).flatMap((piece) => (piece === null ? [ELISION] : words4(piece)))
+  return printedLayout(sameText(t), true).flatMap((piece) => (piece === null ? [ELISION] : words4(piece)))
 }
 
 type TokenOp = 'equal' | 'removed' | 'inserted'
