@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * /live — the stable address behind the Demokratiewoche event listing
- * (buendnis2025.at links here as the online venue, 22.10.2026). Until the
+ * (buendnis2025.at links here as the online venue, 21.10.2026). Until the
  * video room exists this is a holding page with the event facts; once
  * MEETING_URL is set, the same address becomes a 302 into the room — so
  * the event page never needs to be touched again.
@@ -21,7 +21,7 @@ if (MEETING_URL) {
 usePageSeo({
   title: 'Begutachtungs-Monitor live',
   description:
-    'Online-Workshop bei der Demokratiewoche 2026: Donnerstag, 22. Oktober 2026, 19:00–20:30 Uhr. Der Teilnahmelink erscheint hier.',
+    'Online-Workshop bei der Demokratiewoche 2026: Mittwoch, 21. Oktober 2026, 19:00–20:30 Uhr. Der Teilnahmelink erscheint hier.',
 })
 
 // In FactList's grammar, a name over each fact, as the draft pages' fact
@@ -31,7 +31,7 @@ usePageSeo({
 const facts: Fact[] = [
   // Word joiners around the dash and a no-break space before „Uhr": the range
   // broke as „19:00– / 20:30 Uhr" on a phone (30.09.2026).
-  { key: 'wann', title: 'Wann', text: 'Donnerstag, 22. Oktober 2026, 19:00\u2060–\u206020:30\u00a0Uhr' },
+  { key: 'wann', title: 'Wann', text: 'Mittwoch, 21. Oktober 2026, 19:00\u2060–\u206020:30\u00a0Uhr' },
   { key: 'wo', title: 'Wo', text: 'Online – der Teilnahmelink erscheint auf dieser Seite' },
   { key: 'kosten', title: 'Kosten', text: 'Kostenlos, ohne Anmeldung' },
 ]
@@ -53,7 +53,7 @@ const facts: Fact[] = [
 
     <!-- The promise this page exists for: the printed/linked URL stays,
          the destination changes. Wording must survive being read on
-         22.10. at 18:55 by someone who just wants in. -->
+         21.10. at 18:55 by someone who just wants in. -->
     <div class="mt-6 rounded-xl bg-mark-wash p-4">
       <h2 class="card-heading">Noch kein Teilnahmelink</h2>
       <p class="mt-2 leading-relaxed text-ink-secondary">
