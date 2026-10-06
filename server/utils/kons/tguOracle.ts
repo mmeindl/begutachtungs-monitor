@@ -206,7 +206,7 @@ export function stripMarkers(t: string): string {
     normalizeText(t)
       .replace(/§+\s*\d+[a-z]*\.\s*/g, ' ')
       .replace(/(^|\s)\(\d+[a-z]*\)(?=\s|$)/g, '$1')
-      .replace(/(^|\s)\d+[a-z]*\.(?=\s)/g, '$1')
+      .replace(/(^|\s)\d+[a-z]*\.(?=\s|$)/g, '$1')
       .replace(/(^|\s)[a-z]{1,2}\)(?=\s)/g, '$1'),
   )
 }
@@ -215,14 +215,44 @@ export function stripMarkers(t: string): string {
  * Whitespace- and quote-free form for containment: the two sources break
  * lines differently, and the annex sometimes quotes a citation the law does
  * not ("die Einhaltung der „§§ 4 bis 6 …“", Tabakgesetz § 14, 2026-09-09).
+ *
+ * Hyphens, dashes and „&" go too, and RIS's own notes: the ressorts copy the
+ * geltende Fassung out of RIS by hand, and the copy differs from RIS's text
+ * in exactly these — „Schieneninfrastruktur Dienstleistungsgesellschaft"
+ * against „Schieneninfrastruktur-Dienstleistungsgesellschaft", „wenn sie -
+ * im Falle" against „wenn sie im Falle", „F&E" against „FE", „(Anm.: Abs. 7
+ * aufgehoben durch …)", which `plainText` never prints. 17 `fremd` over 140
+ * drafts were nothing else (06.10.2026, §12.12).
  */
 function key(t: string): string {
-  return stripMarkers(t).replace(/[\s"'„“‚‘]/g, '')
+  return stripMarkers(sameText(t)).replace(/[\s"'„“‚‘\-‐‑–—&]/g, '')
 }
+
+/** What the comparison form and the word list both drop: the copy's spellings of the same text. */
+function sameText(t: string): string {
+  return t.replace(RIS_NOTE_RE, ' ').replace(PLACEHOLDER_RE, 'XXX').replace(REPEALED_RE, ' ')
+}
+
+/** „(Anm.: Abs. 2 aufgehoben durch Art. 4 Z 54, BGBl. I Nr. 118/2016)" */
+const RIS_NOTE_RE = /\(Anm\.?:[^()]*\)/g
+/**
+ * The citation of a Bundesgesetzblatt not yet issued: the draft writes „BGBl.
+ * I Nr. xxx/xxxx", its own annex „xxx/yyyy" or „XX/2025" — one placeholder,
+ * spelt three ways (06.10.2026). Only where an x or y stands in it, and as a
+ * token of its own: the word diff hands check 3 „xxx/2026" without its „Nr.",
+ * and a placeholder normalised on one side only contradicted four §§ the
+ * first version had confirmed.
+ */
+const PLACEHOLDER_RE = /(?<![\p{L}\d])(?=[\dxXyY]*\/?[\dxXyY]*[xXyY])[\dxXyY]+\s*\/\s*[\dxXyY]+(?![\p{L}\d])/gu
+/** „Aufgehoben" where a repealed Absatz stood — the annex prints it, RIS's text does not. */
+const REPEALED_RE = /(?<!\p{L})(?:Aufgehoben|\(aufgehoben\))(?!\p{L})/gu
+
+// --- Measured surface: the harness asks `unaccountedStretch` in this form. ---
+export const containmentKey = key
 
 /** Words without punctuation — "36," and "36" are the same word. */
 function words(t: string): string[] {
-  return punctuationTokens(stripMarkers(t))
+  return punctuationTokens(stripMarkers(sameText(t)))
 }
 
 /**
@@ -232,10 +262,8 @@ function words(t: string): string[] {
  * ressort's hyphen or footnote mark inside the heading does not defeat it.
  */
 const HEAD_PROBE = 24
-/** „3. Abschnitt", „1. Hauptstück", „II. Teil" — a group heading opens with its unit. */
-const STACK_HEAD_RE = /^(?:\d+[a-z]*\.|[IVXLCDM]+\.)?(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)/i
 /** The dots that belong to a designation rather than to a sentence. */
-const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+)\./g
+const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+|(?<!\p{L})\p{Lu})\./gu
 
 /**
  * The cell without the stack of group headings the PDF path prints above a §
@@ -251,24 +279,101 @@ const DESIGNATION_DOT_RE = /(?:\d+[a-z]*|[IVXLCDM]+)\./g
  * measured 26.09.2026, §12.12a.
  *
  * **The rule is structural, and both halves of it carry weight.** What is
- * dropped has to *open with a group unit* and contain no sentence punctuation
+ * dropped has to *open like a heading* and contain no sentence punctuation
  * of its own, and what remains has to be the standing text's own beginning.
  * Without the first half the previous §'s last words would be dropped too —
  * „beträgt 75 000 € je Förderwerber Ausmaß der Förderung" — and a row
  * carrying foreign text would pass a check whose whole purpose is to catch
- * it. That is not a hypothetical: over 60 drafts the guard refuses exactly 5
- * such rows while admitting 24 true stacks.
+ * it. That is not a hypothetical: over 60 drafts the guard refused exactly 5
+ * such rows while admitting 24 true stacks (26.09.2026).
+ *
+ * „Like a heading" was „with a group unit" until 06.10.2026, and that missed
+ * every group the law names otherwise: „Dritter Abschnitt", „III. Form der
+ * letztwilligen Verfügung", „B. Zwischen Bund und Ländern (Gemeinden)
+ * geteilte Abgaben", „GEMEINSAME BESTIMMUNGEN …", the tail of a long title
+ * „(Waldfondsgesetz)". A capital, a digit or a bracket opens all of them; the
+ * previous §'s tail opens in lower case, and that half of the guard stands.
  */
-function withoutHeadingStack(piece: string, text: string): string | null {
-  const head = text.slice(0, HEAD_PROBE)
-  if (head.length < HEAD_PROBE) return null
-  const at = piece.indexOf(head)
-  if (at <= 0) return null
-  const dropped = piece.slice(0, at)
-  if (!STACK_HEAD_RE.test(dropped)) return null
-  if (/[.;:!?]/.test(dropped.replace(DESIGNATION_DOT_RE, ''))) return null
-  return piece.slice(at)
+function withoutHeadingStack(piece: string, text: string, from: number): { piece: string; found: number } | null {
+  if (!HEADING_START_RE.test(piece)) return null
+  // EVERY cut, not the first: the PDF path prints a group whose name is the
+  // §'s own heading twice — „1. Abschnitt Status des Asylberechtigten Status
+  // des Asylberechtigten § 3." — and cutting at the first copy leaves a
+  // remainder that starts with the heading and still is not the standing
+  // text (05.10.2026, §12.12).
+  for (let cut = 1; cut <= piece.length - MIN_HEAD_REST; cut++) {
+    const rest = piece.slice(cut)
+    // The §'s own heading may be all the stretch has left — „2. Abschnitt
+    // Umstellungsförderung (58-01) Fördervoraussetzungen" before the marks of
+    // „§ 209. (1) bis (5) …" — so a remainder shorter than the probe has to
+    // open the standing text whole.
+    if (!text.startsWith(rest.slice(0, HEAD_PROBE))) continue
+    if (!isStack(piece.slice(0, cut))) continue
+    const found = text.indexOf(rest, from)
+    if (found >= 0) return { piece: rest, found }
+  }
+  return null
 }
+
+/** The fewest characters a remainder must keep to count as the §'s own heading. */
+const MIN_HEAD_REST = 8
+/** „3. TEIL: SCHLUSSBESTIMMUNGEN" — a colon after the unit is a heading's, not a sentence's. */
+const UNIT_COLON_RE = /(Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel):/gi
+
+/** A heading opens with a capital, a number or a bracket — never in lower case. */
+const HEADING_START_RE = /^[\p{Lu}\d(]/u
+
+/** Opens like a heading and has no sentence punctuation of its own. */
+function isStack(dropped: string): boolean {
+  if (!HEADING_START_RE.test(dropped)) return false
+  return !/[.;:!?]/.test(dropped.replace(DESIGNATION_DOT_RE, '').replace(UNIT_COLON_RE, '$1'))
+}
+
+/**
+ * „3. Abschnitt", „4. Abschnitt: Pflichten des Seilbahnunternehmens",
+ * „ABSCHNITT IIA", „Siebenter Teil" — the heading of a group, numbered or
+ * counted in words, as a stretch of its own.
+ * Read on the RAW stretch: the comparison form strips „3." as a marker, and
+ * without its number „Teile der Förderung" would open like a heading. The
+ * unit has to end where the word ends, or „1. Teilnehmer" opens like „1. Teil".
+ */
+const NUMBERED_UNIT_RE = /^\s*(?:(?:(?:\d+[a-z]*|[IVXLCDM]+)\.|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?)\s*(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})|(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)\s+(?:\d+[a-z]*|[IVXLCDM]+[A-Z]?)(?![\p{L}\d]))/iu
+
+/**
+ * Whether a stretch is nothing but a group heading. The ressort prints the
+ * NEXT group's heading at the foot of a § — „… (5) bis (8) … 3. Abschnitt"
+ * (Bäderhygieneverordnung § 43), or as the whole of a row (§ 9 of the
+ * Seilbahn-Verordnung); RIS files it with no § at all (`konsTree.context`).
+ * It says nothing about the § either way, like a stretch of bare markers.
+ */
+function isGroupHeadingOnly(stretch: string): boolean {
+  if (!NUMBERED_UNIT_RE.test(stretch)) return false
+  return !/[.;:!?]/.test(oldStyleDotsOff(stretch).replace(DESIGNATION_DOT_RE, '').replace(UNIT_COLON_RE, '$1'))
+}
+
+/**
+ * The older laws close the unit and the title with a full stop — „VI.
+ * Hauptstück. Behandlung der aufzubewahrenden Acten.", „II. Abschnitt."
+ * (Notariatsordnung). Those two dots are a heading's; any other is not.
+ *
+ * **Only where the unit itself carries the stop.** Dropping the final stop
+ * of any numbered stretch let „2. Abschnitt … § 6. (1) Zuständig ist das
+ * Landesgericht." pass as a heading, its one full stop being the last — and
+ * a foreign row came out confirmed. A test caught it (06.10.2026).
+ */
+function oldStyleDotsOff(stretch: string): string {
+  const unitStop = /(Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)\./i
+  if (!unitStop.test(stretch)) return stretch
+  return stretch.replace(unitStop, '$1').replace(/\.\s*$/, '')
+}
+
+/**
+ * „… wenn das Zertifikat wieder auflebt. 2. Hauptstück" — the next group's
+ * heading in the same stretch as the last sentence of this §, with no mark
+ * between them. Only after a sentence's end, only numbered or counted in
+ * words, and with no sentence punctuation of its own.
+ */
+const TRAILING_GROUP_RE = /(?<=[.;!?])\s*(?:(?:\d+[a-z]*|[IVXLCDM]+)\.\s*|(?:Erst|Zweit|Dritt|Viert|Fünft|Sechst|Siebent|Sieb|Acht|Neunt|Zehnt|Elft|Zwölft)e[rs]?\s+)(?:Teil|Hauptst(?:ü|ue)ck|Abschnitt|Unterabschnitt|Kapitel|Titel)(?!\p{L})[^.;:!?]*$/iu
 
 /**
  * The stretch of a cell that `text` does not account for — null when it
@@ -302,17 +407,26 @@ export function unaccountedStretch(text: string, cell: string): string | null {
     let piece = key(stretch)
     // A stretch that is nothing but markers — "§ 5." alone at the head of a
     // PDF row — keys to the empty string and says nothing either way.
-    if (piece === '') continue
+    // Nor a rule the PDF draws as underscores („______________"): no letter,
+    // no digit, nothing it could say about the §.
+    if (piece === '' || !/[\p{L}\d]/u.test(piece)) continue
     let found = text.indexOf(piece, at)
+    // Nor does a stretch that is nothing but a group heading — wherever it
+    // stands, since the next group's heading comes at the foot of a §.
+    if (found < 0 && isGroupHeadingOnly(stretch)) continue
+    if (found < 0 && TRAILING_GROUP_RE.test(stretch)) {
+      const trimmed = key(stretch.replace(TRAILING_GROUP_RE, ''))
+      const retry = trimmed === '' ? -1 : text.indexOf(trimmed, at)
+      if (retry >= 0) {
+        piece = trimmed
+        found = retry
+      }
+    }
     // Only the first stretch of a cell can carry the heading stack: it is
     // what stands above the § itself.
     if (found < 0 && first) {
-      const rescued = withoutHeadingStack(piece, text)
-      const retry = rescued === null ? -1 : text.indexOf(rescued, at)
-      if (retry >= 0) {
-        piece = rescued!
-        found = retry
-      }
+      const rescued = withoutHeadingStack(piece, text, at)
+      if (rescued) ({ piece, found } = rescued)
     }
     if (found < 0) return stretch
     at = found + piece.length

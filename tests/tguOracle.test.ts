@@ -328,3 +328,182 @@ describe('a result that holds more than the annex proposes (01.10.2026)', () => 
     expect(oracleVerdict('6', standing, 'Das Amt entscheidet über den Antrag. Sie hat dabei die Fristen des Abs. 2 zu wahren.', rows)).toMatchObject({ verdict: 'bestätigt' })
   })
 })
+
+// The group headings the PDF path prints into a row, in the shapes the corpus
+// showed on 05.10.2026 (docs/architecture.md §12.12) — and the shapes that
+// must stay foreign.
+describe('oracleVerdict — group headings in the row', () => {
+  const before = 'Verfahren Zuständig ist die Behörde am Sitz der Partei. Sie entscheidet binnen sechs Wochen.'
+  const got = 'Verfahren Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. Sie entscheidet binnen sechs Wochen.'
+
+  it('reads past a stack whose last word before the marks is the §\'s own heading', () => {
+    const rows = [
+      pair(
+        '2. Abschnitt Umstellungsförderung (58-01) Verfahren § 6. (1) Zuständig ist die Behörde am Sitz der Partei. (2) …',
+        '2. Abschnitt Umstellungsförderung (58-01) Verfahren § 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. (2) …',
+        '§ 6.',
+      ),
+    ]
+    expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('cuts at the second copy when the group bears the §\'s own heading', () => {
+    const rows = [
+      pair(
+        '1. Abschnitt Verfahren Verfahren § 6. (1) Zuständig ist die Behörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '1. Abschnitt Verfahren Verfahren § 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '§ 6.',
+      ),
+    ]
+    expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('takes a colon after the unit for a heading\'s', () => {
+    const rows = [
+      pair(
+        '3. TEIL: SCHLUSSBESTIMMUNGEN Verfahren § 6. (1) Zuständig ist die Behörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '3. TEIL: SCHLUSSBESTIMMUNGEN Verfahren § 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '§ 6.',
+      ),
+    ]
+    expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('passes over the next group\'s heading at the foot of the §', () => {
+    const rows = [
+      pair(
+        '§ 6. (1) Zuständig ist die Behörde am Sitz der Partei. (2) bis (4) … 3. Abschnitt',
+        '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. (2) bis (4) … 3. Abschnitt',
+        '§ 6.',
+      ),
+    ]
+    expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('still calls a row foreign when its own text is not the standing §', () => {
+    const rows = [
+      pair(
+        '2. Abschnitt Umstellungsförderung Verfahren § 6. (1) Zuständig ist das Landesgericht.',
+        '2. Abschnitt Umstellungsförderung Verfahren § 6. (1) Zuständig ist das Bezirksgericht.',
+        '§ 6.',
+      ),
+    ]
+    expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'fremd' })
+  })
+
+  it('does not take an unnumbered „Teile …" for a heading', () => {
+    const rows = [pair('Teile der Förderung', 'Teile der Förderung und mehr')]
+    expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'fremd' })
+  })
+
+  it('does not skip a numbered list item that only starts like a unit', () => {
+    const rows = [pair('§ 6. (1) Zuständig ist die Behörde am Sitz der Partei. … 1. Teilnehmer am Verfahren', '§ 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. … 1. Teilnehmer am Verfahren', '§ 6.')]
+    expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'fremd' })
+  })
+
+  it('reads past a group named without a unit word', () => {
+    for (const group of ['Dritter Abschnitt Fahrtkosten', 'III. Form der Verfügung', 'B. Geteilte Abgaben', 'GEMEINSAME BESTIMMUNGEN', '(Waldfondsgesetz)']) {
+      const rows = [
+        pair(
+          `${group} Verfahren § 6. (1) Zuständig ist die Behörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.`,
+          `${group} Verfahren § 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.`,
+          '§ 6.',
+        ),
+      ]
+      expect(oracleVerdict('6', before, got, rows), group).toMatchObject({ verdict: 'bestätigt' })
+    }
+  })
+
+  it('still calls a sentence in front of the § foreign', () => {
+    const rows = [
+      pair(
+        'Die Förderung beträgt 75 000 Euro. Verfahren § 6. (1) Zuständig ist die Behörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        'Die Förderung beträgt 75 000 Euro. Verfahren § 6. (1) Zuständig ist die Bezirksverwaltungsbehörde am Sitz der Partei. … Sie entscheidet binnen sechs Wochen.',
+        '§ 6.',
+      ),
+    ]
+    expect(oracleVerdict('6', before, got, rows)).toMatchObject({ verdict: 'fremd' })
+  })
+})
+
+describe('oracleVerdict — stretches that say nothing', () => {
+  const before = 'Vorstand Der Vorstand besteht aus zwei Mitgliedern. Er wird bestellt.'
+  const got = 'Vorstand Der Vorstand besteht aus drei Mitgliedern. Er wird bestellt.'
+  const row = (head: string, tail = ''): ComparisonRow[] => [
+    pair(`${head} § 5. (1) Der Vorstand besteht aus zwei Mitgliedern. … Er wird bestellt.${tail}`, `${head} § 5. (1) Der Vorstand besteht aus drei Mitgliedern. … Er wird bestellt.${tail}`, '§ 5.'),
+  ]
+
+  it('reads a §\'s own heading of exactly eight letters behind a prefix', () => {
+    expect(oracleVerdict('5', before, got, row('Text Vorstand'))).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('passes over a rule of underscores and a group counted in words', () => {
+    expect(oracleVerdict('5', before, got, row('Vorstand', ' … ______________'))).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('5', before, got, row('Vorstand', ' … Siebenter Teil'))).toMatchObject({ verdict: 'bestätigt' })
+    expect(oracleVerdict('5', before, got, row('Vorstand', ' … ABSCHNITT IIA BEITRAG'))).toMatchObject({ verdict: 'bestätigt' })
+  })
+})
+
+describe('oracleVerdict — the ressort\'s hand copy of RIS', () => {
+  const before = 'Aufgaben Die Schieneninfrastruktur-Dienstleistungsgesellschaft mbH hat F&E zu fördern. Sie berichtet jährlich.'
+  const got = 'Aufgaben Die Schieneninfrastruktur-Dienstleistungsgesellschaft mbH hat F&E zu fördern. Sie berichtet halbjährlich.'
+
+  it('does not tell a hyphen, a dash, an ampersand or a RIS note from their absence', () => {
+    const rows = [
+      pair(
+        '§ 4. (1) Die Schieneninfrastruktur Dienstleistungsgesellschaft mbH hat FE zu fördern. (Anm.: Abs. 2 aufgehoben durch BGBl. I Nr. 5/2025) Sie berichtet jährlich.',
+        '§ 4. (1) Die Schieneninfrastruktur Dienstleistungsgesellschaft mbH hat FE zu fördern. Sie berichtet halbjährlich.',
+        '§ 4.',
+      ),
+    ]
+    expect(oracleVerdict('4', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('passes over the next group\'s heading after the last sentence', () => {
+    const rows = [pair('Sie berichtet jährlich. 2. Hauptstück Asylverfahrensrecht', 'Sie berichtet halbjährlich. 2. Hauptstück Asylverfahrensrecht')]
+    expect(oracleVerdict('4', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('reads an old-style heading with its full stops as a heading', () => {
+    const rows = [pair('Sie berichtet jährlich. … VI. Hauptstück. Behandlung der aufzubewahrenden Acten.', 'Sie berichtet halbjährlich. … VI. Hauptstück. Behandlung der aufzubewahrenden Acten.')]
+    expect(oracleVerdict('4', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('still calls a trailing sentence foreign, heading-like or not', () => {
+    const rows = [pair('Sie berichtet jährlich. 2. Teil der Kosten trägt der Bund.', 'Sie berichtet halbjährlich. 2. Teil der Kosten trägt der Bund.')]
+    expect(oracleVerdict('4', before, got, rows)).toMatchObject({ verdict: 'fremd' })
+  })
+})
+
+it('does not take a numbered sentence for an old-style heading by its final stop', () => {
+  const before = 'Verfahren Zuständig ist die Behörde am Sitz der Partei.'
+  const rows = [pair('2. Abschnitt. Zuständig ist das Landesgericht. Es entscheidet.', '2. Abschnitt. Zuständig ist das Bezirksgericht. Es entscheidet.')]
+  expect(oracleVerdict('6', before, before, rows)).toMatchObject({ verdict: 'fremd' })
+})
+
+describe('oracleVerdict — the same text, written differently', () => {
+  const before = 'Wahl Für die Anfechtung der Wahl gilt § 49f Abs. 5. Die Wahl ist geheim.'
+  const got = 'Wahl Für die Anfechtung der Wahl gilt § 49f Abs. 7. Die Wahl ist geheim. Die §§ 3 und 4 in der Fassung BGBl. I Nr. xxx/xxxx treten mit Juli 2027 in Kraft.'
+
+  it('reads a number ending the cell like the same number inside a sentence', () => {
+    const rows = [pair('Für die Anfechtung der Wahl gilt § 49f Abs. 5.', 'Für die Anfechtung der Wahl gilt § 49f Abs. 7.')]
+    expect(oracleVerdict('5', before, got.split(' Die §§')[0]!, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('takes every spelling of a not yet issued BGBl number for the same placeholder', () => {
+    const rows = [pair('Die Wahl ist geheim.', 'Die Wahl ist geheim. Die §§ 3 und 4 in der Fassung BGBl. I Nr. xxx/yyyy treten mit Juli 2027 in Kraft.')]
+    expect(oracleVerdict('5', 'Wahl Für die Anfechtung der Wahl gilt § 49f Abs. 7. Die Wahl ist geheim.', got, rows)).toMatchObject({ verdict: 'bestätigt' })
+  })
+
+  it('keeps a real BGBl number a number', () => {
+    const rows = [pair('Die Wahl ist geheim.', 'Die Wahl ist geheim. Die §§ 3 und 4 in der Fassung BGBl. I Nr. 12/2026 treten mit Juli 2027 in Kraft.')]
+    expect(oracleVerdict('5', 'Wahl Für die Anfechtung der Wahl gilt § 49f Abs. 7. Die Wahl ist geheim.', got, rows)).toMatchObject({ verdict: 'widersprochen' })
+  })
+})
+
+it('normalises a placeholder the word diff hands over without its „Nr."', () => {
+  const before = 'Inkrafttreten Diese Verordnung tritt in Kraft.'
+  const got = 'Inkrafttreten Diese Verordnung tritt in Kraft. § 8a in der Fassung BGBl. II Nr. xxx/2026 tritt in Kraft.'
+  const rows = [pair('Diese Verordnung tritt in Kraft.', 'Diese Verordnung tritt in Kraft. § 8a in der Fassung BGBl. II Nr. XX/20XX tritt in Kraft.')]
+  expect(oracleVerdict('9', before, got, rows)).toMatchObject({ verdict: 'bestätigt' })
+})
