@@ -49,11 +49,11 @@ import { getText, resolveLawByBgbl, type KonsParagraphRef } from '../../server/u
 import { fetchLawAsOf, fetchParagraphTree, resolveGesetzesnummer } from '../../server/utils/harness/risKonsHistory'
 import { guardParagraph, type GuardFlag } from '../../server/utils/kons/applyGuard'
 import { refusedUnits } from '../../server/utils/kons/konsGate'
-import { parseTextComparison } from '../../server/utils/annex/comparisonRows'
+import { parseTextComparison, type ComparisonRow } from '../../server/utils/annex/comparisonRows'
 import { parseAnnexPdf } from '../../server/utils/annex/annexPdf'
 import { pagesOf } from '../../server/utils/annex/annexPdfPages'
 import { isScanned } from '../../server/utils/annex/tableCells'
-import { oracleVerdict, paragraphRows, rowsByParagraph, type OracleVerdict } from '../../server/utils/kons/tguOracle'
+import { containmentKey, oracleVerdict, paragraphRows, rowsByParagraph, unaccountedStretch, type OracleVerdict } from '../../server/utils/kons/tguOracle'
 import { dedupeMeRows, joinRisToMe, type MeListRow, type RisBegutRecord } from '../../server/utils/ris/risJoin'
 import { parseExplanations } from '../../server/utils/explanations/risExplanations'
 import { explanationsByParagraph } from '../../server/utils/explanations/explanationsJoin'
@@ -107,6 +107,24 @@ const withExplanations = argFlag('erl')
  * which locked § 4 here under its number.
  */
 const harnessKey = (label: string): string | null => (isDivision(label) ? null : bareParaId(label))
+
+/**
+ * Which version of the standing law the draft is applied to: the first day
+ * of the consultation unless `--standing-at=` says otherwise — a date
+ * (`2026-10-05`) or an offset from that day (`beginn+60`, `beginn-180`).
+ * A probe, not a reading: the site always uses the first day. It exists to
+ * ask whether an annex whose geltende Fassung is `fremd` was written against
+ * another version (docs/architecture.md §12.12, Nachtrag 05.10.2026).
+ */
+const standingAt = argAssigned('standing-at') ?? null
+function standingDate(beginn: string): string {
+  if (!standingAt) return beginn
+  const offset = /^beginn([+-]\d+)$/.exec(standingAt)
+  if (!offset) return standingAt
+  const d = new Date(`${beginn}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + Number(offset[1]))
+  return d.toISOString().slice(0, 10)
+}
 
 const verbose = !argFlag('quiet')
 const dumpFile = argAssigned('dump') ?? null
@@ -366,7 +384,7 @@ async function verifyLaw(
   // arithmetic is possible here and none is needed: unlike an enacted
   // Novelle, a draft has not taken effect, so "the law the drafter was
   // looking at" is simply the version in force when the draft was published.
-  const resolved = await resolveLaw(article, draft.beginn)
+  const resolved = await resolveLaw(article, standingDate(draft.beginn))
   if (typeof resolved === 'string') {
     tally(joinNotes, resolved)
     result.note = resolved
@@ -460,7 +478,7 @@ async function verifyLaw(
         : []
       appendFileSync(
         dumpFile,
-        `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], oracle: verdict, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl })}\n`,
+        `${JSON.stringify({ begut: draft.id, law: result.law, article: article.number, id, refused: isRefused, plausible, flags: [...flags], oracle: verdict, before: beforeNode ? plainText(beforeNode) : null, got: plainText(node), erl, fremd: verdict === 'fremd' && rows ? fremdRow(beforeNode ? plainText(beforeNode) : '', paragraphRows(rows, id, lawKey)) : null, missing: verdict === 'widersprochen' && rows ? missingRow(plainText(node), paragraphRows(rows, id, lawKey)) : null })}\n`,
       )
     }
   }
@@ -479,6 +497,36 @@ async function verifyLaw(
  * failing on purpose: a name the lookup cannot confirm must not become a
  * confident wrong law.
  */
+/**
+ * The row check 1 stops at, with the whole stretch it could not find — the
+ * verdict's note carries only 60 characters of it, too few to sort `fremd`
+ * by cause (docs/architecture.md §12.12, Nachtrag 05.10.2026).
+ */
+function fremdRow(before: string, rows: readonly ComparisonRow[]): { stretch: string; current: string } | null {
+  const text = containmentKey(before)
+  for (const row of rows) {
+    if (row.kind !== 'pair' || row.elided || row.change === 'unchanged' || !row.current) continue
+    const stretch = unaccountedStretch(text, row.current)
+    if (stretch !== null) return { stretch, current: row.current }
+  }
+  return null
+}
+
+/**
+ * The row check 2 stops at: the proposed column's stretch the result does not
+ * carry — the counterpart of `fremdRow` for „Vorgeschlagene Fassung nicht im
+ * Ergebnis".
+ */
+function missingRow(got: string, rows: readonly ComparisonRow[]): { stretch: string; proposed: string } | null {
+  const text = containmentKey(got)
+  for (const row of rows) {
+    if (row.kind !== 'pair' || row.elided || row.change === 'unchanged' || !row.proposed) continue
+    const stretch = unaccountedStretch(text, row.proposed)
+    if (stretch !== null) return { stretch, proposed: row.proposed }
+  }
+  return null
+}
+
 async function resolveLaw(article: DraftArticle, date: string): Promise<{ gesetzesnummer: string; kurztitel: string; paragraphs: Record<string, KonsParagraphRef> } | string> {
   if (article.bgbl) {
     const law = await resolveLawByBgbl(article.bgbl, date, article.title)
