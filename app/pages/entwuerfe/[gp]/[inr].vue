@@ -249,16 +249,18 @@ const handoffFact = computed<Fact | null>(() => {
   return { key: 'uebermittelt', title: 'Übermittelt', text: `${formatDateDe(h.date)} an ${h.recipient}` }
 })
 
-/* The Begutachtung's own dates, before the Stellungnahmen. The Frist only
- * once it has closed — while it runs, the action card above carries it.
- * Its length and dates stand here although the rail names them too: the
- * bar under them needs the value it draws beside it (01.10.2026; the
+/* The Begutachtung's own dates, before the Stellungnahmen. The Frist in
+ * both states (13.10.2026; until then only once closed): the action card
+ * counts down how long is left, the bar measures whether the window is
+ * fair — two questions, and the second matters most while it can still be
+ * raised. Its length and dates stand here although the rail names them too:
+ * the bar under them needs the value it draws beside it (01.10.2026; the
  * sentence that stood here alone compared nothing a reader could see). */
 const begutachtungFacts = computed<Fact[]>(() => {
   const d = data.value
   if (!d) return []
   const facts: Fact[] = []
-  if (!windows.value.begutachtung && d.deadline) facts.push(fristFact(d.arrivedAt, d.deadline))
+  if (d.deadline) facts.push(fristFact(d.arrivedAt, d.deadline))
   if (handoffFact.value) facts.push(handoffFact.value)
   return facts
 })

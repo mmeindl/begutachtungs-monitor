@@ -318,10 +318,10 @@ export function fristContextFor(
 }
 
 /**
- * The closed Frist as the fact under „Die Begutachtung": its range, with the
- * `FristBar` hung under it through the slot `after-frist`. One row for both
- * detail pages, so the title and the key the bar's slot is named by cannot
- * part. Structurally a `Fact` (`FactList`), kept free of the component here.
+ * The Frist, running or closed, as the fact under „Die Begutachtung": its
+ * range, with the `FristBar` hung under it through the slot `after-frist`.
+ * One row for both detail pages, so the title and the key the bar's slot is
+ * named by cannot part. Structurally a `Fact` (`FactList`), kept free of the component here.
  */
 export function fristFact(
   start: string | null | undefined,

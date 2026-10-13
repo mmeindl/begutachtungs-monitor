@@ -85,11 +85,12 @@ const fristContext = computed(() => {
   return fristContextFor(d.startedAt, d.deadline, 'verordnung')
 })
 
-/* The closed Frist as a fact, as on the draft page: length and dates,
-   drawn against the Regelfall under them (01.10.2026). */
+/* The Frist as a fact, as on the draft page: length and dates, drawn
+   against the Regelfall under them (01.10.2026) — running or closed since
+   13.10.2026, as there. */
 const fristFacts = computed<Fact[]>(() => {
   const d = data.value
-  if (!d || d.active || !d.deadline || !stationList.value.length) return []
+  if (!d || !d.deadline || !stationList.value.length) return []
   return [fristFact(d.startedAt, d.deadline)]
 })
 
@@ -406,8 +407,8 @@ const coverLetterHref = computed(() => {
         <section id="begutachtung" class="page-section scroll-mt-6" aria-labelledby="begutachtung-heading">
           <h2 id="begutachtung-heading" class="section-heading">Die Begutachtung</h2>
           <div class="mt-4 space-y-8">
-            <!-- While the Frist runs the action card carries it; one place
-               at a time, as on the draft page. -->
+            <!-- In both states, as on the draft page: the action card counts
+               down, the bar measures the window against the Regelfall. -->
             <FactList v-if="fristFacts.length" :facts="fristFacts">
               <template #after-frist>
                 <FristBar :start="data.startedAt" :deadline="data.deadline" />

@@ -3,7 +3,7 @@ import { spanInDays } from '#shared/utils/format'
 import { FULL_FRIST_DAYS, MEDIAN_FRIST_DAYS, fristSpanDe } from '~/utils/deadlines'
 
 /**
- * A closed Frist against the Regelfall, drawn in the rail's station grammar
+ * A Frist against the Regelfall, drawn in the rail's station grammar
  * turned on its side (01.10.2026): the same dot (12 px, 2 px border) and
  * the same line (ink where reached, hairline beyond). One station: the
  * Frist's end, reached and so filled, with the length over it. The start
@@ -13,8 +13,10 @@ import { FULL_FRIST_DAYS, MEDIAN_FRIST_DAYS, fristSpanDe } from '~/utils/deadlin
  * is `ScaleBar`'s since 03.10.2026, shared with `ChangeShareBar`.
  *
  * No yellow. In the rail yellow is where the procedure stands now — a
- * state that will still move. A closed Frist will not, so its end is a
- * reached station like any other.
+ * state that will still move. The Frist's length does not: it is fixed the
+ * day the Begutachtung opens, so the bar draws it the same while the Frist
+ * runs (13.10.2026) as once it has closed — the countdown is the door
+ * card's, not the bar's.
  *
  * The median and the Regelfall are not stations: the draft does not pass
  * through them, they are yardsticks. So they are ticks across the line,
