@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { endorsementUnit, formatNumberDe } from '#shared/utils/format'
-import { statementLinkName } from '~/utils/statementRows'
+import { statementAnchor, statementLinkName } from '~/utils/statementRows'
 
 /**
  * One row of the statements panel, in the grammar every list in it shares:
@@ -66,6 +66,13 @@ const props = defineProps<{
 function linkAriaLabel(citation: string): string {
   return `${statementLinkName(citation, props.submitter)} auf parlament.gv.at öffnen`
 }
+
+/* A row that IS one Stellungnahme answers to its fragment. A grouped
+ * organisation's row stands for several and carries none — its sub-rows,
+ * this same component, carry one each. */
+const anchor = computed(() =>
+  props.links?.length === 1 ? statementAnchor(props.links[0]!.citation) : undefined,
+)
 </script>
 
 <template>
@@ -88,8 +95,11 @@ function linkAriaLabel(citation: string): string {
        the row is about, and on a phone it is also the first line — so
        auto-placement would push the date, which sits in the track to its
        left, onto a second row. -->
+  <!-- The targeted row wears the highlighter: a reader arriving by a link
+       to one Stellungnahme is shown which of twenty rows it is. -->
   <li
-    class="grid grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 row-cols:statement-tracks"
+    :id="anchor"
+    class="grid scroll-mt-24 grid-cols-1 items-baseline gap-x-3 gap-y-1 px-4 py-2.5 target:bg-mark-wash row-cols:statement-tracks"
   >
     <!-- Two lines, not one: what distinguishes these submitters sits at the
          END of the name ("Amt der Kärntner Landesregierung; Abteilung 1 –

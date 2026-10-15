@@ -97,6 +97,30 @@ export function statementLinkName(citation: string, submitter?: string | null): 
   return `Stellungnahme ${citation}${submitter ? ` von ${submitter}` : ''}`
 }
 
+/**
+ * The fragment one Stellungnahme answers to: „12/SN-115/ME" → `sn-12-SN-115-ME`.
+ *
+ * So a link can point at ONE submission — the one a submitter is looking
+ * for. Without it the address was the draft page, and an organisation with
+ * no Zustimmungen stood behind „Weitere anzeigen" — where the organisation
+ * itself, looking for its own submission, did not find it (October 2026).
+ *
+ * Built from the citation because the citation is unique across both panels
+ * of a page: the Begutachtung's read „n/SN-115/ME", the Vorlage's „n/SN".
+ */
+export function statementAnchor(citation: string): string {
+  return `sn-${citation.replaceAll('/', '-')}`
+}
+
+/**
+ * The organisation row holding the Stellungnahme a fragment names, or -1 —
+ * a grouped row counts for each of its submissions. What the panel needs to
+ * open its pager far enough for the row to be on screen.
+ */
+export function orgRowIndexOfAnchor(rows: OrgRow[], anchor: string): number {
+  return rows.findIndex((r) => r.org.statements.some((s) => statementAnchor(s.citation) === anchor))
+}
+
 type OrgEntry = StatementsSummary['organisationList'][number]
 
 /* A grouped entry sorts by its LATEST submission, and prints that same date

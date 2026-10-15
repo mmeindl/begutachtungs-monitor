@@ -4,8 +4,10 @@ import {
   availableStatementFilters,
   compareStatementRows,
   orgRowDate,
+  orgRowIndexOfAnchor,
   orgRowsOf,
   orgSortDate,
+  statementAnchor,
   submitterLabel,
   submitterName,
 } from '../app/utils/statementRows'
@@ -225,5 +227,27 @@ describe('availableStatementFilters', () => {
 
   it('offers no „Alle" over a partial count', () => {
     expect(availableStatementFilters(counts(17, 0, 0), { partial: true })).toEqual(['organisations'])
+  })
+})
+
+/* A link to ONE Stellungnahme: the fragment, and the row the panel has to
+ * open its pager to. */
+describe('statementAnchor', () => {
+  it('turns a citation into a fragment, and keeps the two panels apart', () => {
+    expect(statementAnchor('12/SN-115/ME')).toBe('sn-12-SN-115-ME')
+    expect(statementAnchor('12/SN')).toBe('sn-12-SN')
+  })
+
+  it('finds the row holding a submission — a grouped one included', () => {
+    const rows = orgRowsOf(summary([
+      org('Alpha', 5, [{ citation: '1/SN-9/ME', date: '2026-09-01' }]),
+      org('Beta', 0, [
+        { citation: '2/SN-9/ME', date: '2026-09-02' },
+        { citation: '3/SN-9/ME', date: '2026-09-03' },
+      ]),
+    ]), 'endorsements')
+    expect(orgRowIndexOfAnchor(rows, 'sn-1-SN-9-ME')).toBe(0)
+    expect(orgRowIndexOfAnchor(rows, 'sn-3-SN-9-ME')).toBe(1)
+    expect(orgRowIndexOfAnchor(rows, 'sn-4-SN-9-ME')).toBe(-1)
   })
 })

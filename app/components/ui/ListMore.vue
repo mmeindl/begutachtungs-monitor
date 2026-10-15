@@ -62,6 +62,9 @@ const pageable = computed(() => props.total > props.step)
       aria-live="polite"
     >{{ shownLabelDe(visible, total) }}<span class="sr-only"> angezeigt</span></p>
 
+    <!-- The verb is visible since 15.10.2026. „Weitere 8" alone read as a
+         count beside the count, not as a control: a reader looking for
+         their own organisation stopped at row ten. -->
     <UFieldGroup v-if="remaining > 0" class="w-full sm:w-auto">
       <UButton
         color="neutral"
@@ -69,7 +72,7 @@ const pageable = computed(() => props.total > props.step)
         class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"
         @click="emit('more')"
       >
-        {{ moreLabelDe(remaining, step) }}<span class="sr-only"> anzeigen</span>
+        {{ moreLabelDe(remaining, step) }} anzeigen
       </UButton>
       <!-- The escape hatch for the long lists — 88/ME carries 707
            Stellungnahmen, where stepping in tens is 70 presses. Hidden on
@@ -82,7 +85,7 @@ const pageable = computed(() => props.total > props.step)
         class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"
         @click="emit('all')"
       >
-        Alle {{ formatNumberDe(total) }}<span class="sr-only"> anzeigen</span>
+        Alle {{ formatNumberDe(total) }} anzeigen
       </UButton>
     </UFieldGroup>
   </div>

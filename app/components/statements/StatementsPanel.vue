@@ -8,6 +8,7 @@ import {
   type StatementSort,
   availableStatementFilters,
   compareStatementRows,
+  orgRowIndexOfAnchor,
   orgRowsOf,
   submitterLabel,
   submitterName,
@@ -251,6 +252,37 @@ const renderedOrgRows = computed(() =>
 function orgRowHidden(index: number): 'until-found' | undefined {
   return !searchActive.value && index >= visibleCount.value ? 'until-found' : undefined
 }
+
+/**
+ * A link to one Stellungnahme (`#sn-12-SN-115-ME`, StatementRow) whose row
+ * sits in the fold: open the pager to the page that holds it, then scroll.
+ *
+ * `until-found` alone does not carry this. Where the browser supports it, a
+ * fragment reveals the row — but the pager still counts ten and offers
+ * „Weitere 8" with one of them already open. Where it does not, the row is
+ * plain `hidden` and the fragment goes nowhere. Opening whole pages, not
+ * just up to the row, keeps the foot line counting in the steps it offers.
+ *
+ * Organisations only: they are the rows a submitter finds themselves in,
+ * and the only segment the page lands on. A fragment naming a private
+ * person's row is left alone — that list is fetched on demand.
+ */
+const route = useRoute()
+
+async function revealAnchor(hash: string): Promise<void> {
+  const anchor = hash.replace(/^#/, '')
+  if (!anchor.startsWith('sn-') || needsList.value || searchActive.value) return
+  const index = orgRowIndexOfAnchor(orgRows.value, anchor)
+  if (index < 0) return
+  if (index >= visibleCount.value) {
+    visibleCount.value = Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE
+    await nextTick()
+  }
+  document.getElementById(anchor)?.scrollIntoView({ block: 'center' })
+}
+
+onMounted(() => revealAnchor(route.hash))
+watch(() => route.hash, revealAnchor)
 
 /* Offered on the size of the WHOLE list, not of the current result — a field
  * that disappears once it has narrowed the list to three rows takes away the
