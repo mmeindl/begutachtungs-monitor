@@ -12,7 +12,7 @@
  */
 import type { Fact } from '~/components/ui/FactList.vue'
 
-const MEETING_URL = '' // Videokonferenz-URL eintragen + deployen → /live leitet weiter
+const MEETING_URL = 'https://meet.jit.si/begutachtungs-monitor-demokratiewoche' // leer setzen + deployen → wieder die Ankündigung
 
 if (MEETING_URL) {
   await navigateTo(MEETING_URL, { external: true, redirectCode: 302 })
