@@ -4,6 +4,7 @@
  * (`EntryState`).
  */
 import { daysUntil, formatDateDe, spanInDays } from '#shared/utils/format'
+import { GP_STARTS, gpInSentenceDe, gpNameDe } from '#shared/utils/gp'
 
 /** Deadline ends in ≤ N days → critical (red badge tone). */
 const DEADLINE_CRITICAL_DAYS = 3
@@ -219,12 +220,84 @@ export const SHORT_FRIST_DAYS = 21
 export const FULL_FRIST_DAYS = 42
 
 /**
- * The median Frist, the same 28 days in every period of the measurement
- * above (list 81, GP XXV–XXVIII, i.e. since 2013) and for the
- * Verordnungsentwürfe of the RIS corpus (`fristYardstickDe`). Context on the
- * `FristBar`, never its yardstick.
+ * Frist practice per Gesetzgebungsperiode — the context the `FristBar` and
+ * the yardstick sentence give, measured for the period the draft's Frist
+ * began in (21.10.2026). Until then one median „seit 2013" stood for every
+ * draft; readers who write Stellungnahmen asked to be compared with the
+ * practice of the government in office, not with an average over four.
+ *
+ * Measured 21.10.2026, Beginn → Frist (`spanInDays`, Frists of at least a
+ * day): Ministerialentwürfe from list 81 (`/api/drafts?gp=`), Verordnungs-
+ * entwürfe from the RIS Begut corpus (`/api/ris-drafts?gp=&art=verordnung`,
+ * assigned to a period by `gpWindow`). The median barely moves — 28 days
+ * everywhere but the Verordnungen of XXV (29) — the share that reaches the
+ * Regelfall does: 17 → 25 % for the Entwürfe, 15–21 % for the Verordnungen.
+ * The running period's row is a snapshot (Stand 21.10.2026) and is
+ * re-measured when the period closes, with `outcomes.ts`.
+ *
+ * Under three weeks, for the record and not on the page: Entwürfe 26,2 /
+ * 27,0 / 25,7 / 31,9 %, Verordnungen 16,6 / 15,3 / 21,8 / 21,1 %.
  */
-export const MEDIAN_FRIST_DAYS = 28
+export interface FristPractice {
+  /** Frists measured. */
+  drafts: number
+  /** Median length in days. */
+  median: number
+  /** Share that reached the Regelfall (`FULL_FRIST_DAYS`). */
+  fullShare: number
+}
+
+// --- Measured surface: exported for tests and harness scripts, not for the app. ---
+export const FRIST_PRACTICE: Readonly<Record<FristKind, Readonly<Record<string, FristPractice>>>> = {
+  entwurf: {
+    XXVIII: { drafts: 144, median: 28, fullShare: 0.25 },
+    XXVII: { drafts: 350, median: 28, fullShare: 0.24 },
+    XXVI: { drafts: 163, median: 28, fullShare: 0.221 },
+    XXV: { drafts: 324, median: 28, fullShare: 0.173 },
+  },
+  verordnung: {
+    XXVIII: { drafts: 204, median: 28, fullShare: 0.206 },
+    XXVII: { drafts: 624, median: 28, fullShare: 0.146 },
+    XXVI: { drafts: 287, median: 28, fullShare: 0.164 },
+    XXV: { drafts: 500, median: 29, fullShare: 0.162 },
+  },
+}
+
+export type FristKind = 'entwurf' | 'verordnung'
+
+export interface FristPeriod {
+  gp: string
+  practice: FristPractice
+  /** „XXVIII. GP" — under the bar's tick (`gpNameDe`). */
+  basisShort: string
+  /** „in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024)" — in a sentence. */
+  basisLong: string
+}
+
+/**
+ * The period a Frist began in, with its practice row — by date, so the
+ * Ministerialentwurf and the RIS record are placed the same way (the RIS
+ * records carry no GP, `gpWindow`). Null before GP XXV or without a start:
+ * there is no measured row, and the bar then shows the Regelfall alone
+ * rather than borrow another period's median.
+ */
+export function fristPeriodFor(start: string | null | undefined, kind: FristKind = 'entwurf'): FristPeriod | null {
+  if (!start) return null
+  const day = start.slice(0, 10)
+  const gp = Object.keys(GP_STARTS)
+    .filter((g) => GP_STARTS[g]! <= day)
+    .sort((a, b) => GP_STARTS[b]!.localeCompare(GP_STARTS[a]!))[0]
+  const practice = gp ? FRIST_PRACTICE[kind][gp] : undefined
+  if (!gp || !practice) return null
+  return { gp, practice, basisShort: gpNameDe(gp), basisLong: gpInSentenceDe(gp) }
+}
+
+const ORDINAL: Record<number, string> = { 3: 'dritte', 4: 'vierte', 5: 'fünfte', 6: 'sechste', 7: 'siebte', 8: 'achte' }
+
+/** „vierte" for a share of 0.25 — the „jeder n-te" a reader can picture. */
+function everyNthDe(share: number): string | null {
+  return share > 0 ? ORDINAL[Math.round(1 / share)] ?? null : null
+}
 
 /**
  * Where a Frist sits against practice and the Verordnung — only at the
@@ -267,34 +340,37 @@ export function fristClassLineDe(start: string | null | undefined, deadline: str
 
 /**
  * The yardstick for the rail's „Kurze Frist" or „Volle Frist": how this
- * Frist compares with the Regelfall and with practice. Null in the middle.
+ * Frist compares with the Regelfall and with the practice of its own period
+ * (`fristPeriodFor`, 21.10.2026 — „seit 2013" until then). Null in the
+ * middle, and null without a measured period: a sentence about practice
+ * needs the practice it names.
  *
- * A Verordnungsentwurf is compared with its own kind. Measured on
- * 30.09.2026 over the RIS Begut corpus, Beginn → Ende der
- * Begutachtungsfrist, since 2013 (1.707 Verordnungen): the median is 28
- * days as for the Gesetze and 66 % ran at least four weeks, but only
- * 16,8 % reached six — one in six, not one in four (the RIS Gesetze of the
- * same pass: 23,0 %, which matches list 81's 22–25 % and so checks the
- * instrument). Under three weeks 18,7 %, stable across 2013–2019,
- * 2020–2022 and since 2023.
+ * A Verordnungsentwurf is compared with its own kind: it reaches the
+ * Regelfall less often (one in five to one in seven, against one in four
+ * for the Entwürfe of the last two periods).
  */
-function fristYardstickDe(cls: FristClass, kind: 'entwurf' | 'verordnung'): string | null {
-  const drafts = kind === 'verordnung' ? 'Verordnungsentwürfe' : 'Entwürfe'
+function fristYardstickDe(cls: FristClass, kind: FristKind, period: FristPeriod | null): string | null {
+  if (!period) return null
+  const { practice, basisLong } = period
   if (cls === 'short') {
-    return `Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der ${drafts} seit 2013 hatte mindestens vier.`
+    const drafts = kind === 'verordnung' ? 'Verordnungsentwürfe' : 'Entwürfe'
+    return practice.median >= 28
+      ? `Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der ${drafts} ${basisLong} hatte mindestens vier.`
+      : 'Im Regelfall vorgesehen sind sechs Wochen.'
   }
   if (cls === 'full') {
-    return kind === 'verordnung'
-      ? 'Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Verordnungsentwurf.'
-      : 'Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder vierte Entwurf.'
+    const nth = everyNthDe(practice.fullShare)
+    if (!nth) return null
+    const draft = kind === 'verordnung' ? 'Verordnungsentwurf' : 'Entwurf'
+    return `Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder ${nth} ${draft} ${basisLong}.`
   }
   return null
 }
 
 /** The yardstick as a sentence of its own, for the action card while the
  *  Frist runs: the countdown heads that card, the rail names the class. */
-export function fristContextDe(cls: FristClass, kind: 'entwurf' | 'verordnung' = 'entwurf'): string | null {
-  const yardstick = fristYardstickDe(cls, kind)
+export function fristContextDe(cls: FristClass, kind: FristKind, period: FristPeriod | null): string | null {
+  const yardstick = fristYardstickDe(cls, kind, period)
   return yardstick ? `Zum Vergleich: ${yardstick}` : null
 }
 
@@ -312,9 +388,9 @@ export function fristRangeDe(start: string | null | undefined, deadline: string)
 export function fristContextFor(
   start: string | null | undefined,
   deadline: string | null | undefined,
-  kind: 'entwurf' | 'verordnung' = 'entwurf',
+  kind: FristKind = 'entwurf',
 ): string | null {
-  return fristContextDe(fristClassOf(start, deadline), kind)
+  return fristContextDe(fristClassOf(start, deadline), kind, fristPeriodFor(start, kind))
 }
 
 /**

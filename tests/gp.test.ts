@@ -5,6 +5,9 @@ import {
   INR_RE,
   gpEndedOn,
   gpHasEnded,
+  gpInSentenceDe,
+  gpNameDe,
+  gpYearsDe,
   intToRoman,
   isPlausibleGp,
   parseInr,
@@ -169,5 +172,23 @@ describe('windowPeriodFor', () => {
   it('refuses what it cannot read', () => {
     expect(windowPeriodFor('IIX')).toBeNull()
     expect(windowPeriodFor('')).toBeNull()
+  })
+})
+
+describe('how a period is named', () => {
+  it('names it by its GP, the unit the site counts in', () => {
+    expect(gpNameDe('XXVII')).toBe('XXVII.\u00a0GP')
+  })
+
+  it('gives the years where there is room: a closed period by its span, the running one by its start', () => {
+    expect(gpYearsDe('XXVII')).toBe('2019–2024')
+    expect(gpYearsDe('XXVIII')).toBe('seit Oktober 2024')
+    expect(gpYearsDe('XIV')).toBeNull()
+  })
+
+  it('puts both in a sentence, and the GP alone where the calendar does not reach', () => {
+    expect(gpInSentenceDe('XXVIII')).toBe('in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024)')
+    expect(gpInSentenceDe('XXVII')).toBe('in der XXVII. Gesetzgebungsperiode (2019–2024)')
+    expect(gpInSentenceDe('XIV')).toBe('in der XIV. Gesetzgebungsperiode')
   })
 })

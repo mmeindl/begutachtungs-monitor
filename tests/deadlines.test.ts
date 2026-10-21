@@ -6,6 +6,7 @@ import {
   fristContextFor,
   fristDivergence,
   fristFact,
+  fristPeriodFor,
   fristRangeDe,
   fristStateDe,
   isNewArrival,
@@ -160,28 +161,58 @@ describe('fristClassOf — only the edges carry a class', () => {
 })
 
 describe('fristContextDe — the yardstick sentence', () => {
-  it('compares a short Frist with the Regelfall and with practice', () => {
-    expect(fristContextDe('short')).toBe(
-      'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Entwürfe seit 2013 hatte mindestens vier.',
+  const now = fristPeriodFor('2026-06-03')
+  const xxvii = fristPeriodFor('2021-03-01')
+
+  it('compares a short Frist with the Regelfall and with the practice of its period', () => {
+    expect(fristContextDe('short', 'entwurf', now)).toBe(
+      'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Entwürfe in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024) hatte mindestens vier.',
+    )
+    expect(fristContextDe('short', 'entwurf', xxvii)).toBe(
+      'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Entwürfe in der XXVII. Gesetzgebungsperiode (2019–2024) hatte mindestens vier.',
     )
   })
 
-  it('names how rare a full Frist is', () => {
-    expect(fristContextDe('full')).toMatch(/^Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen/)
+  it('names how rare a full Frist is, in its period', () => {
+    expect(fristContextDe('full', 'entwurf', now)).toBe(
+      'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder vierte Entwurf in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024).',
+    )
+    expect(fristContextDe('full', 'entwurf', fristPeriodFor('2015-05-01'))).toBe(
+      'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Entwurf in der XXV. Gesetzgebungsperiode (2013–2017).',
+    )
   })
 
-  it('is silent in the middle', () => {
-    expect(fristContextDe(null)).toBeNull()
-    expect(fristContextDe(null, 'verordnung')).toBeNull()
+  it('is silent in the middle, and without a measured period', () => {
+    expect(fristContextDe(null, 'entwurf', now)).toBeNull()
+    expect(fristContextDe(null, 'verordnung', now)).toBeNull()
+    expect(fristContextDe('short', 'entwurf', fristPeriodFor('2010-01-01'))).toBeNull()
   })
 
   it('compares a Verordnungsentwurf with its own kind', () => {
-    expect(fristContextDe('short', 'verordnung')).toBe(
-      'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Verordnungsentwürfe seit 2013 hatte mindestens vier.',
+    const v = fristPeriodFor('2026-06-03', 'verordnung')
+    expect(fristContextDe('short', 'verordnung', v)).toBe(
+      'Zum Vergleich: Im Regelfall vorgesehen sind sechs Wochen, und die Hälfte der Verordnungsentwürfe in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024) hatte mindestens vier.',
     )
-    expect(fristContextDe('full', 'verordnung')).toBe(
-      'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder sechste Verordnungsentwurf.',
+    expect(fristContextDe('full', 'verordnung', v)).toBe(
+      'Zum Vergleich: Die im Regelfall vorgesehenen sechs Wochen erreicht nur etwa jeder fünfte Verordnungsentwurf in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024).',
     )
+  })
+})
+
+describe('fristPeriodFor — the period a Frist began in', () => {
+  it('places a date by the GP calendar, and labels the running period by its start', () => {
+    expect(fristPeriodFor('2026-06-03')).toMatchObject({ gp: 'XXVIII', basisShort: 'XXVIII.\u00a0GP' })
+    expect(fristPeriodFor('2024-10-11')).toMatchObject({ gp: 'XXVII', basisShort: 'XXVII.\u00a0GP' })
+    expect(fristPeriodFor('2024-10-24')?.gp).toBe('XXVIII')
+  })
+
+  it('has no row before GP XXV or without a start', () => {
+    expect(fristPeriodFor('2012-05-01')).toBeNull()
+    expect(fristPeriodFor(null)).toBeNull()
+  })
+
+  it('reads the Verordnungen from their own row', () => {
+    expect(fristPeriodFor('2015-05-01', 'verordnung')?.practice.median).toBe(29)
   })
 })
 
@@ -222,8 +253,10 @@ describe('fristStateDe', () => {
 
 describe('fristContextFor', () => {
   it('is fristContextDe on the class of the dates', () => {
-    expect(fristContextFor('2026-06-03', '2026-06-17')).toBe(fristContextDe('short'))
-    expect(fristContextFor('2026-06-29', '2026-08-10', 'verordnung')).toBe(fristContextDe('full', 'verordnung'))
+    expect(fristContextFor('2026-06-03', '2026-06-17')).toBe(fristContextDe('short', 'entwurf', fristPeriodFor('2026-06-03')))
+    expect(fristContextFor('2026-06-29', '2026-08-10', 'verordnung')).toBe(
+      fristContextDe('full', 'verordnung', fristPeriodFor('2026-06-29', 'verordnung')),
+    )
     expect(fristContextFor('2026-06-03', '2026-07-01')).toBeNull()
     expect(fristContextFor(null, '2026-07-01')).toBeNull()
   })

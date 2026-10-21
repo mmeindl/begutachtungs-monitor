@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { spanInDays } from '#shared/utils/format'
-import { FULL_FRIST_DAYS, MEDIAN_FRIST_DAYS, fristSpanDe } from '~/utils/deadlines'
+import type { FristKind } from '~/utils/deadlines'
+import { FULL_FRIST_DAYS, fristPeriodFor, fristSpanDe } from '~/utils/deadlines'
 
 /**
  * A Frist against the Regelfall, drawn in the rail's station grammar
@@ -36,19 +37,26 @@ import { FULL_FRIST_DAYS, MEDIAN_FRIST_DAYS, fristSpanDe } from '~/utils/deadlin
  *
  * The reference values are labelled under their ticks, term above number,
  * centred — the Regelfall's aligned right at the track's end, where
- * centring would leave it. Below `sm` the median's basis („seit 2013")
+ * centring would leave it. Below `sm` the median's basis („XXVIII. GP")
  * drops: past six weeks the two ticks sit a third of a phone apart, and the
  * long term ran into the Regelfall's (4 px at 390 px for 62 days);
  * /so-funktionierts states it. The median is context, never the yardstick:
  * half of all drafts lie below it by definition.
  *
+ * The median is the one of the period the Frist began in (21.10.2026, „seit
+ * 2013" until then): a draft is held against the practice of the government
+ * that sent it (`fristPeriodFor`). Before GP XXV there is no measured row,
+ * and the bar shows the Regelfall alone.
+ *
  * Line, dot and ticks are decoration; the length above and the labels below are
  * text, so a screen reader loses nothing.
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   start: string | null | undefined
   deadline: string | null | undefined
-}>()
+  /** Whose practice the median is: Ministerialentwürfe or Verordnungen. */
+  kind?: FristKind
+}>(), { kind: 'entwurf' })
 
 const days = computed(() => {
   const n = spanInDays(props.start, props.deadline)
@@ -61,8 +69,17 @@ const span = computed(() => fristSpanDe(props.start, props.deadline))
 const scale = computed(() => Math.max(FULL_FRIST_DAYS, days.value ?? 0))
 const pct = (n: number) => (n / scale.value) * 100
 
+const period = computed(() => fristPeriodFor(props.start, props.kind))
+
+/** „4 Wochen", or the days where the median is no whole number of weeks. */
+function lengthDe(days: number): string {
+  return days % 7 === 0 ? `${days / 7} Wochen` : `${days} Tage`
+}
+
 const marks = computed(() => [
-  { key: 'median', days: MEDIAN_FRIST_DAYS, term: 'Median', basis: 'seit 2013', value: '4 Wochen' },
+  ...(period.value
+    ? [{ key: 'median', days: period.value.practice.median, term: 'Median', basis: period.value.basisShort, value: lengthDe(period.value.practice.median) }]
+    : []),
   { key: 'regelfall', days: FULL_FRIST_DAYS, term: 'Regelfall', basis: null, value: '6 Wochen' },
 ].map((m) => ({
   ...m,

@@ -113,7 +113,8 @@ describe('GP-ended copy', () => {
     expect(gpEndedBodyDe('XXVII')).toContain('4 von 61 solcher Entwürfe')
     // XXVI: 49 + 14 = 63.
     expect(gpEndedBodyDe('XXVI')).toContain('14 von 63 solcher Entwürfe')
-    expect(gpEndedBodyDe('XXV')).toContain('XXVII. Gesetzgebungsperiode')
+    // An unmeasured GP borrows the newest row, and names which.
+    expect(gpEndedBodyDe('XXV')).toContain('In der XXVII. Gesetzgebungsperiode (2019–2024)')
   })
 
   it('never uses the vocabulary the framing rule forbids', () => {

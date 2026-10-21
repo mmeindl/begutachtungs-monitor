@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { gpNameDe } from '#shared/utils/gp'
 import type { ChangeShareRate } from '~/utils/outcomes'
 
 /**
@@ -40,8 +41,9 @@ const marks = computed(() => [{
 
 <template>
   <ScaleBar :value="share * 100" :band="[rate.p25, rate.p75]" :marks="marks">
-    <template #mark>
-      Üblich in der {{ rate.gp }}.&nbsp;GP<br>{{ rate.p25 }}–{{ rate.p75 }}&nbsp;%
-    </template>
+    <!-- On one line with its tags: the template's line breaks were a
+         space after the „%", and the flush-right line stopped short of the
+         edge. -->
+    <template #mark>Üblich in der {{ gpNameDe(rate.gp) }}<br>{{ rate.p25 }}–{{ rate.p75 }}&nbsp;%</template>
   </ScaleBar>
 </template>

@@ -20,6 +20,7 @@ import { carriesDraft } from '#shared/utils/antragPath'
 // auto-imports, so that server map and vitest run the same functions.
 import { mayClaimOutcome } from '#shared/utils/draftStations'
 import { formatDateDe, spanInDays } from '#shared/utils/format'
+import { gpInSentenceDe } from '#shared/utils/gp'
 
 export interface RvBaseRate {
   gp: string
@@ -256,7 +257,8 @@ export function gpEndedBodyDe(gp: string): string {
   // The number alone since 30.09.2026; the rule of thumb around it („nur
   // selten … häufiger beginnt das Ministerium von vorne") stands on
   // /so-funktionierts#regierungsvorlage.
-  return `In der ${r.gp}. Gesetzgebungsperiode wurden ${r.rvInLaterGp} von ${openAtEnd} solcher Entwürfe später noch als Regierungsvorlage eingebracht.`
+  const period = gpInSentenceDe(r.gp)
+  return `${period[0]!.toUpperCase()}${period.slice(1)} wurden ${r.rvInLaterGp} von ${openAtEnd} solcher Entwürfe später noch als Regierungsvorlage eingebracht.`
 }
 
 /** What the ME→RV comparison has delivered so far — the values of

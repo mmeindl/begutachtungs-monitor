@@ -140,6 +140,37 @@ export function gpWindow(gp: string): { from: string; to: string | null } | null
   return { from, to: gpEndedOn(gp) }
 }
 
+const MONTHS = ['Jänner', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember']
+
+/**
+ * How the site names a Gesetzgebungsperiode it measures over — one wording
+ * everywhere (21.10.2026). The GP is the name: it is the unit the site
+ * counts in (the period select, every citation, the URLs), and the readers
+ * who file Stellungnahmen think in it. The years go where there is room, in
+ * a sentence, so that nobody has to know when XXVIII began. A label said
+ * „XXVII. GP" and the next „seit Okt. 2024" for a few hours that day; two
+ * names for one kind of thing.
+ */
+
+/** „XXVIII. GP" — the label under a tick, the credit line. */
+export function gpNameDe(gp: string): string {
+  return `${gp}.\u00a0GP`
+}
+
+/** „2019–2024", „seit Oktober 2024" — the years of a period; null where the calendar does not reach. */
+export function gpYearsDe(gp: string): string | null {
+  const w = gpWindow(gp)
+  if (!w) return null
+  const [y, m] = w.from.split('-').map(Number) as [number, number]
+  return w.to === null ? `seit ${MONTHS[m - 1]} ${y}` : `${y}–${w.to.slice(0, 4)}`
+}
+
+/** „in der XXVIII. Gesetzgebungsperiode (seit Oktober 2024)" — in a sentence. */
+export function gpInSentenceDe(gp: string): string {
+  const years = gpYearsDe(gp)
+  return `in der ${gp}. Gesetzgebungsperiode${years ? ` (${years})` : ''}`
+}
+
 /**
  * The Gesetzgebungsperiode immediately before `gp` — XXVIII → XXVII. Null
  * for a code that is not a Roman numeral and below GP I, where there is no
