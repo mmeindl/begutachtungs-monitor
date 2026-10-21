@@ -45,8 +45,12 @@
  * A selected control is the one you cannot act on, and blue means you can;
  * ink is already how the spine marks position (its rail and dots).
  *
- * Not coloured at all: „geändert" in a diff (a fact, so neither hue). Status
- * colours below carry urgency and the diff direction, nothing else.
+ * The diff's own kinds are in neither hue either (21.10.2026): „geändert"
+ * amber, „redaktionell" a neutral grey fill (the `diff-*` tokens below). Until then
+ * „geändert" was hueless ink and „redaktionell" wore „unverändert"'s
+ * outline, and readers who write Stellungnahmen could no longer tell the
+ * categories apart — the substance looked the quietest thing on the page.
+ * Status colours below carry urgency and the diff direction, nothing else.
  *
  * Tried for a day and reverted: Graphit, the chrome in ink only with
  * yellow as "you can act". Two reasons it did not hold: a highlighter
@@ -142,8 +146,9 @@
      GitHub. Still state, never decoration, and never colour alone: the
      block names it in words and the gutter repeats it. The strikethrough
      stays in the word-level diff only — on a whole removed passage it would
-     just make the text harder to read. The diff's grounds use the /10 and
-     /15 washes with full ink; the deadline tones use /30, also under full
+     just make the text harder to read. The diff's grounds use the /18 and
+     /15 washes with full ink (red /10 until 21.10.2026, when the pills were
+     weighed against each other — `diff-*` below); the deadline tones use /30, also under full
      ink, since 03.10.2026. Serious moved toward orange then: #ec835a at
      /15 composited to #fcece6 beside critical's #f8e2e2 — two pinks (CIE76
      ΔE 4.7), and fainter than the common calm box, accent-50, that the
@@ -160,6 +165,39 @@
   --color-status-good: #0ca30c;
   --color-status-serious: #ee8c2a;
   --color-status-critical: #d03b3b;
+
+  /* The diff's middle kinds, between red (goes) and green (arrives)
+     (21.10.2026). Amber for an edited passage — the warm middle between the
+     two, and the colour diff tools use for „modified" where blue is taken.
+     Neutral grey for an editorial change — something moved, but only
+     numbers, dates or punctuation: nothing of substance, so no hue; the
+     hues stay with the substance.
+
+     WEIGHT FOLLOWS THE ORDER OF EVENTS (`BADGE_ORDER`): neu ≈ entfallen >
+     geändert > redaktionell > unverändert, measured as ΔE from the white
+     card the pills stand on — green /15 15.5, red /18 14.1, amber 13.8,
+     grey 8.3. The first amber (#f0d28a, ΔE 42) was the loudest thing in the
+     row and made the edit outshout the whole paragraphs that came and went;
+     red at /10 (7.9) was the quietest. The price of a light amber is its
+     nearness to mark-wash, the highlighter: ΔE 10.2, so it leans to ochre
+     (#d18f00 at 16 %), away from the lemon of `mark`; 11.9 from serious /30.
+     Ink on amber 16.1:1, on grey 15.2:1. The gutters carry the strong
+     tones, paired with words like every diff state.
+
+     Three forms, not three shades: amber fill, grey fill, no fill
+     („unverändert" is white with a hairline ring). Two warm grounds were
+     tried the same day and failed side by side — a sand (#edebe6) read as
+     the page grey „unverändert" then stood on, a tan (#f2e8de) as a paler
+     amber (ΔE 6,8); the grey is 12,6 from amber. Refused on the numbers:
+     yellow for „geändert" (ΔE 3,5 from mark-wash, the colour of a search
+     hit in the very same text), a more orange amber (ΔE 4 from this one,
+     and nearer serious and red), a slate grey (5,4 from accent-50 — blue
+     means act), a lilac grey (a hue with no meaning, near the violet
+     already refused). */
+  --color-diff-changed: #a87d1c;
+  --color-diff-changed-wash: #f8edd6;
+  --color-diff-editorial: #9a988f;
+  --color-diff-editorial-wash: #e8e7e7;
 }
 
 /*
