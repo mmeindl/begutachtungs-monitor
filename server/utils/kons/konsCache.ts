@@ -21,6 +21,7 @@
  */
 import type { ClauseName } from '../lawtext/draftArticles'
 import { getText, paragraphHistory, resolveLawByBgbl } from '../ris/konsLaw'
+import { lawsOfBgbl } from '../ris/bgblLaws'
 import { DERIVED_ANALYSIS_TTL_S, PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
 
 /** One § document as RIS sent it, keyed by its NOR — parsed fresh by callers. */
@@ -70,6 +71,24 @@ export const readParagraphHistory = defineCachedFunction(
     name: 'kons-history',
     base: DERIVED_CACHE,
     getKey: (gesetzesnummer: string) => gesetzesnummer,
+    maxAge: DERIVED_ANALYSIS_TTL_S,
+    swr: false,
+  },
+)
+
+/**
+ * The laws a Bundesgesetzblatt changed (`ris/bgblLaws.ts`), for the BGBl
+ * station's „Geltende Fassung". **Derived**, a day: an empty list — RIS has
+ * not consolidated the change yet — is an answer for that long and no
+ * longer; the consolidation trails the Kundmachung by days. A failure
+ * throws through and is not stored.
+ */
+export const readBgblLaws = defineCachedFunction(
+  (number: string) => lawsOfBgbl(number),
+  {
+    name: 'kons-bgbl-gesetze',
+    base: DERIVED_CACHE,
+    getKey: (number: string) => number.replace(/\s+/g, ' ').trim(),
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
   },

@@ -543,7 +543,9 @@ describe('regulationStations — the Verordnung path', () => {
     }))
     expect(row.state).toBe('done')
     expect(row.facts).toEqual(['BGBl. II Nr. 50/2026', '20.03.2026, 32 Tage nach Fristende'])
-    expect(row.source).toEqual({ lead: null, href: 'https://www.ris.bka.gv.at/eli/bgbl/II/2026/50', label: 'Kundmachung im RIS' })
+    // The record is linked from „Im Bundesgesetzblatt", the section the
+    // row leads to (21.10.2026) — not from the row.
+    expect(row.source).toBeUndefined()
   })
 
   it('says it takes time inside the usual span, and claims no finding', () => {

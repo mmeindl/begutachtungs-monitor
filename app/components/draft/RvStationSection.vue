@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { gpNameDe } from '#shared/utils/gp'
 import type { DraftDetail, RvStatementsResponse, TraceLink } from '#shared/types'
 import type { RvStationView } from '~/utils/outcomes'
 import { antragUrl } from '#shared/utils/antragPath'
 import { bgblShort, formatDateDe } from '#shared/utils/format'
 import { changeShareRateFor, earlyVorlageWhenDe, relatedGpSuffixDe, tabledBeforeFristEnd } from '~/utils/outcomes'
 import { PARLIAMENT_HISTORY_SOURCES } from '~/utils/spine'
+import { beilageOfUrl, blgNrDe, citeLineDe } from '#shared/utils/citations'
 
 /**
  * „Die Regierungsvorlage" of the draft page, in both outcomes
@@ -35,6 +37,26 @@ const props = defineProps<{
   filingOpen: boolean
 }>()
 
+/* The Vorlage and its Erläuterungen as a footnote cites them (21.10.2026):
+ * „RV 525 BlgNR 28. GP", „ErläutRV 525 BlgNR 28. GP" — the period read off
+ * the Vorlage's own address, which may lie after the draft's. */
+const rvBeilage = computed(() => {
+  const e = props.draft.enactment
+  const gp = /\/gegenstand\/([IVXLC]+)\//.exec(e?.rvUrl ?? '')?.[1] ?? props.draft.gp
+  return e ? { citation: e.rvCitation, gp } : null
+})
+const rvCite = computed(() => {
+  const b = rvBeilage.value
+  const cited = b ? blgNrDe('RV', b.citation, b.gp) : null
+  return cited && props.draft.enactment ? citeLineDe(cited, props.draft.enactment.rvUrl) : null
+})
+const erlCite = computed(() => {
+  const url = props.rvExplanations?.url
+  const b = beilageOfUrl(url) ?? rvBeilage.value
+  const cited = b ? blgNrDe('ErläutRV', b.citation, b.gp) : null
+  return cited && url ? citeLineDe(cited, url) : null
+})
+
 const shareRate = computed(() => changeShareRateFor(props.draft.gp))
 /* A Vorlage tabled while the Frist still ran is not held against the range:
  * that range was measured on Vorlagen that came after the Begutachtung
@@ -56,7 +78,7 @@ const waitSlot = computed(() => `after-${props.view.facts.some((f) => f.key === 
 const credit = computed(() => {
   const v = props.view
   if (v.counted) return { own: 'Zählung', method: '/so-funktionierts#vergleich' }
-  if (v.noRvBaseRate) return { own: `Vergleichswerte (${v.noRvBaseRate.gp}.\u00a0GP)`, method: '/so-funktionierts#wartezeit' }
+  if (v.noRvBaseRate) return { own: `Vergleichswerte (${gpNameDe(v.noRvBaseRate.gp)})`, method: '/so-funktionierts#wartezeit' }
   return null
 })
 </script>
@@ -91,11 +113,14 @@ const credit = computed(() => {
           :facts="view.facts"
         >
           <template v-if="draft.enactment" #value-rv>
-            <p>
-              <ExternalLink
-                :href="draft.enactment.rvUrl"
-                class="link-inline"
-              >Regierungsvorlage {{ draft.enactment.rvCitation }}</ExternalLink><template v-if="draft.enactment.rvDate">, am {{ formatDateDe(draft.enactment.rvDate) }}</template>
+            <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>
+                <ExternalLink
+                  :href="draft.enactment.rvUrl"
+                  class="link-inline"
+                >Regierungsvorlage {{ draft.enactment.rvCitation }}</ExternalLink><template v-if="draft.enactment.rvDate">, am {{ formatDateDe(draft.enactment.rvDate) }}</template>
+              </span>
+              <CiteButton v-if="rvCite" :text="rvCite" subject="Die Regierungsvorlage" />
             </p>
           </template>
           <template v-if="draft.enactment" #value-aenderung>
@@ -120,6 +145,13 @@ const credit = computed(() => {
             <p v-if="rvExplanations" :class="reasoningDe ? 'mt-1 text-ink-secondary' : ''">
               In den <ExternalLink :href="rvExplanations.url" class="link-inline">Erläuterungen der Regierungsvorlage</ExternalLink>
               steht oft, ob eine Stellungnahme dahintersteht.
+            </p>
+            <!-- Under the sentence, not in it: a control in the middle of a
+                 sentence breaks the sentence. -->
+            <p v-if="erlCite" class="mt-1">
+              <!-- `-ml-2`: alone on its line, the icon aligns with the text above
+                   instead of the ghost button's padding. -->
+              <CiteButton class="-ml-2" :text="erlCite" subject="Die Erläuterungen der Regierungsvorlage" />
             </p>
           </template>
           <template v-if="draft.enactment?.furtherRv.length" #value-weitere>

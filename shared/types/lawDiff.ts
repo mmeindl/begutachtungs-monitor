@@ -39,6 +39,12 @@ export interface AmendedLaw {
    * two differ only in how the Teil is written.
    */
   risBgbl: string | null
+  /**
+   * The law's latest amendment in force at `asOf` („BGBl. I Nr. 50/2024"),
+   * for the „idF" of its citation (21.10.2026); null where RIS shows none or
+   * the law was not resolved.
+   */
+  amendedBy?: string | null
 }
 
 export interface AmendedLawsResponse {
@@ -51,6 +57,30 @@ export interface AmendedLawsResponse {
    *  also mean the draft text was not readable. */
   createsNewLaw: boolean
   laws: AmendedLaw[]
+}
+
+/** One law a Bundesgesetzblatt changed or created, as RIS consolidates it. */
+export interface BgblLaw {
+  /** Kurztitel from RIS. */
+  title: string
+  gesetzesnummer: string
+  /** The law's geltende Fassung in RIS — today's, no `FassungVom`. */
+  url: string
+  /** Its Stammnorm as RIS cites it („BGBl. Nr. 663/1994", „JGS Nr.
+   *  946/1811"), for the citation; null where RIS gives none. */
+  stammnorm?: string | null
+}
+
+/**
+ * The laws in force a Bundesgesetzblatt changed, for „Geltende Fassung" in
+ * the BGBl station (21.10.2026). An empty list with a `bgbl` means RIS
+ * holds no consolidated version carrying this number yet — the
+ * consolidation trails the Kundmachung by days to weeks.
+ */
+export interface BgblLawsResponse {
+  /** „BGBl. I Nr. 69/2026"; null where the draft has no Kundmachung. */
+  bgbl: string | null
+  laws: BgblLaw[]
 }
 
 /**

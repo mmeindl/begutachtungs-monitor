@@ -38,6 +38,7 @@ import {
   lawStationPairQuestion,
 } from '#shared/utils/lawStations'
 import { mixedPublishers } from '#shared/utils/provenance'
+import { beilageOfUrl, blgNrDe, citeLineDe, erlRvPassageDe } from '#shared/utils/citations'
 
 const props = defineProps<{
   gp: string
@@ -124,6 +125,21 @@ function reasoningOf(u: LawDiffUnit): ReasoningDiffEntry | null {
 /** The sentence above the comparison that explains the disclosures below
  *  it (`reasoningRateNote`). */
 const reasoningNote = computed(() => reasoningRateNote(reasoning.value?.stats))
+
+/* The Vorlage's Erläuterungen as cited, „ErläutRV 297 BlgNR 28. GP" — read
+ * off the address of the document the reasoning came from (21.10.2026). */
+const erlRv = computed(() => {
+  const src = reasoning.value?.sources?.find((x) => /Regierungsvorlage/.test(x.label)) ?? null
+  const b = beilageOfUrl(src?.url)
+  const cited = b ? blgNrDe('ErläutRV', b.citation, b.gp) : null
+  return cited && src ? { cited, url: src.url } : null
+})
+
+/** „ErläutRV 297 BlgNR 28. GP, zu Z 4 (Art. II § 1 Abs. 5), <link>" for one drawer. */
+function reasoningCite(entry: ReasoningDiffEntry): string | null {
+  const e = erlRv.value
+  return e ? citeLineDe(erlRvPassageDe(e.cited, entry.label), e.url) : null
+}
 
 /** ME→RV states its counts in the Regierungsvorlage's station frame
  *  (`useVorlageOutcome`, 02.10.2026), so the comparison under it repeats
@@ -635,6 +651,12 @@ const droppedNote = computed(() =>
                           </SideBySide>
                         </div>
                       </template>
+                      <!-- The passage as a footnote cites it, under the text
+                           it cites (21.10.2026); `-ml-2` aligns the icon with
+                           that text rather than the button's padding. -->
+                      <p v-if="reasoningCite(b.reasoning)" class="pb-2 pl-6">
+                        <CiteButton class="-ml-2" :text="reasoningCite(b.reasoning)!" subject="Diese Begründung" />
+                      </p>
                     </Disclosure>
                   </DiffBody>
                 </div>

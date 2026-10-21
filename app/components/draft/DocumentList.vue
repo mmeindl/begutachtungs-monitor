@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import type { DraftDocument } from '#shared/types'
 import { isSafeLinkHref } from '#shared/utils/safeExternalUrl'
+import { citeLineDe } from '#shared/utils/citations'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     documents: DraftDocument[]
     /** Named in the aria-label so screen-reader users hear where a link
      *  goes — the page shows the same documents from two sources. */
     source?: string
+    /** The item the documents belong to, as the citation names it
+     *  („Ministerialentwurf 115/ME XXVIII. GP"). Given, each row gets a
+     *  „Zitieren" column (21.10.2026). */
+    citeAs?: string
   }>(),
   { source: 'parlament.gv.at' },
 )
@@ -40,6 +45,17 @@ const DOC_HINTS: [prefix: string, hint: string][] = [
   // Plenum", DraftDetail.textEvolution) since 30.09.2026: the sub-line only
   // restated the title.
 ]
+
+/** „Erläuterungen zu Ministerialentwurf 115/ME XXVIII. GP, <PDF>" — „zu",
+ *  not a comma: the Ausschussfassung of a Vorlage is published in the
+ *  committee report, not in the Vorlage, and a comma would cite it as the
+ *  Vorlage's own document. The PDF first, as in the columns: it is the
+ *  document as published, the HTML a rendering of it. Null without a
+ *  citable address. */
+function citeOf(doc: DraftDocument): string | null {
+  const f = formatOf(doc, 'pdf') ?? formatOf(doc, 'html')
+  return props.citeAs && f ? citeLineDe(`${doc.title} zu ${props.citeAs}`, f.url) : null
+}
 
 function docHint(doc: DraftDocument): string | null {
   const t = doc.title.trim()
@@ -88,7 +104,14 @@ function docHint(doc: DraftDocument): string | null {
         <!-- Fixed track widths: every row's grid is the same width, so PDF
              sits at the same x whether or not an HTML link follows. Sized
              to the labels in text-sm — „PDF ↗" ~42px, „HTML ↗" ~54px. -->
-        <span class="grid shrink-0 grid-cols-[3rem_3.75rem] gap-x-3">
+        <!-- The „Zitieren" column, where the list is given what to cite, is
+             a third fixed track for the same reason — sized to the button
+             with „Zitieren" or „Kopiert", so the label's swap moves nothing;
+             on a phone the icon alone, or the titles broke mid-word. -->
+        <span
+          class="grid shrink-0 gap-x-3"
+          :class="citeAs ? 'grid-cols-[3rem_3.75rem_2rem] sm:grid-cols-[3rem_3.75rem_5.75rem]' : 'grid-cols-[3rem_3.75rem]'"
+        >
           <template v-for="type in FORMAT_ORDER" :key="type">
             <a
               v-if="formatOf(doc, type)"
@@ -100,6 +123,12 @@ function docHint(doc: DraftDocument): string | null {
             >
               {{ formatNames[type] }}<span aria-hidden="true">&nbsp;↗</span>
             </a>
+            <span v-else aria-hidden="true" />
+          </template>
+          <template v-if="citeAs">
+            <span v-if="citeOf(doc)" class="flex min-h-target items-center">
+              <CiteButton :text="citeOf(doc)!" :subject="doc.title" compact />
+            </span>
             <span v-else aria-hidden="true" />
           </template>
         </span>

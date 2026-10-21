@@ -14,6 +14,7 @@ import { relatedGpSuffixDe, rvStationView } from '~/utils/outcomes'
 import { withoutMainPoints } from '~/utils/kurzinfo'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { aliasesFor } from '#shared/utils/draftAliases'
+import { citeLineDe, draftCitationDe } from '#shared/utils/citations'
 import { countLabelDe, formatDateDe } from '#shared/utils/format'
 import { GP_RE, INR_RE } from '#shared/utils/gp'
 import type { SourceEntry } from '#shared/utils/provenance'
@@ -302,11 +303,19 @@ const ministryLinks = computed(() => {
             <!-- `link-inline`, underlined at rest (WCAG 1.4.1), and tap-target
                for the hit area. The mid-page CTA stays the only door; this is
                the receipt. -->
+            <!-- „Zitieren" beside it (21.10.2026): the citation and the same
+               address the link opens, for a footnote — never this page's. -->
             <template #source>
-              <ExternalLink
-                :href="data.parliamentUrl"
-                class="link-inline tap-target"
-              >Auf parlament.gv.at ansehen</ExternalLink>
+              <span class="inline-flex flex-wrap items-center gap-x-4">
+                <ExternalLink
+                  :href="data.parliamentUrl"
+                  class="link-inline tap-target"
+                >Auf parlament.gv.at ansehen</ExternalLink>
+                <CiteButton
+                  :text="citeLineDe(draftCitationDe(data.citation, data.gp), data.title, data.parliamentUrl)"
+                  subject="Den Ministerialentwurf"
+                />
+              </span>
             </template>
             <template #identity>
               <!-- The type word leads, exactly as on the row — and the row's
@@ -541,7 +550,7 @@ const ministryLinks = computed(() => {
                 :heading="data.documents.length ? `Dokumente (${data.documents.length})` : 'Dokumente'"
               >
                 <div class="pb-2">
-                  <DocumentList v-if="data.documents.length" :documents="data.documents" />
+                  <DocumentList v-if="data.documents.length" :documents="data.documents" :cite-as="draftCitationDe(data.citation, data.gp)" />
                   <!-- The same draft at the other official source, as one line
                      (30.09.2026). A heading „Zweite Quelle", a sentence and a
                      second list with the RIS text stood here; the RIS-Eintrag

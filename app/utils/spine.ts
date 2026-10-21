@@ -861,7 +861,9 @@ export function regulationStations(
               ? kept(formatDateDe(o.datum), daysAfterFristDe(o.days)).join(', ')
               : null,
           ),
-          source: o.url ? { lead: null, href: o.url, label: 'Kundmachung im RIS' } : undefined,
+          // No link out since 21.10.2026: the Kundmachung, its citation and
+          // the geltende Fassung stand in „Im Bundesgesetzblatt" on the
+          // page, and the row links there — as the law's row does.
         }
       : o?.state === 'ausstehend'
         // It names the usual span, because without it the absence after six

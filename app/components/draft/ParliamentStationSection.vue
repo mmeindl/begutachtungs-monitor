@@ -2,6 +2,7 @@
 import type { DraftDetail, EnactmentInfo, LawStationId } from '#shared/types'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { LAW_STATION_LABEL, lawStationOf } from '#shared/utils/lawStations'
+import { blgNrDe, citeLineDe, rvCitationDe } from '#shared/utils/citations'
 import { PARLIAMENT_HISTORY_SOURCES, parliamentStandDe, voteLineDe } from '~/utils/spine'
 
 /**
@@ -58,6 +59,25 @@ const facts = computed<Fact[]>(() => {
  * in a fold right under a toggle and a source line that say
  * „Ausschussfassung", the same document must not carry a second name. A
  * title upstream gives that is no station keeps its own. */
+/* What the versions are cited as: they are the Vorlage's texts, not the
+ * draft's. Its period read off its own address — a Vorlage can come in the
+ * period after its draft (`rvInLaterGp`). */
+const citeAs = computed(() => {
+  const e = props.enactment
+  if (!e.rvCitation) return undefined
+  const gp = /\/gegenstand\/([IVXLC]+)\//.exec(e.rvUrl)?.[1] ?? props.draft.gp
+  return rvCitationDe(e.rvCitation, gp)
+})
+
+/* „AB 567 BlgNR 28. GP, <link>" — the committee report as a footnote
+ * cites it, the period read off its own address (21.10.2026). */
+const abCite = computed(() => {
+  const r = props.enactment.committeeReport
+  const gp = /\/gegenstand\/([IVXLC]+)\//.exec(r?.url ?? '')?.[1] ?? props.draft.gp
+  const cited = r ? blgNrDe('AB', r.label, gp) : null
+  return cited && r ? citeLineDe(cited, r.url) : null
+})
+
 const documents = computed(() =>
   (props.draft.textEvolution ?? []).map((doc) => {
     const station = lawStationOf(doc.title)
@@ -95,7 +115,10 @@ const documents = computed(() =>
       <div>
         <FactList :facts="facts">
           <template v-if="enactment.committeeReport" #value-ausschuss>
-            Bericht <ExternalLink :href="enactment.committeeReport.url" class="link-inline">{{ enactment.committeeReport.label }}</ExternalLink>
+            <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>Bericht <ExternalLink :href="enactment.committeeReport.url" class="link-inline">{{ enactment.committeeReport.label }}</ExternalLink></span>
+              <CiteButton v-if="abCite" :text="abCite" subject="Den Ausschussbericht" />
+            </span>
           </template>
           <!-- By number only, never who tabled the motion. -->
           <template v-if="enactment.plenaryAmendments?.amendments.length" #value-plenum>
@@ -137,7 +160,7 @@ const documents = computed(() =>
         :heading="`Dokumente (${documents.length})`"
       >
         <div class="pb-2">
-          <DocumentList :documents="documents" />
+          <DocumentList :documents="documents" :cite-as="citeAs" />
         </div>
       </FoldSection>
     </div>

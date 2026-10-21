@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
+import type { BgblLawsResponse, BgblOutcome, DraftDocument, RisConsultationDetail, RisDocumentFormats } from '#shared/types'
 import type { ComparisonId, StationId } from '~/utils/spine'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
+import { citeLineDe } from '#shared/utils/citations'
 import type { Fact } from '~/components/ui/FactList.vue'
 import { ministryLinkFor } from '~/components/draft/MinistryLinks.vue'
 import { fristContextFor, fristFact, fristStateDe } from '~/utils/deadlines'
@@ -69,10 +70,22 @@ const { data: fetchedOutcome } = await useFetch<BgblOutcome>(
 )
 const outcome = computed(() => data.value?.outcome ?? fetchedOutcome.value ?? null)
 
+/* „Verordnungsentwurf „…"" — what the „Zitieren" buttons name the record as. */
+const citeAs = computed(() => (data.value ? `${RIS_KIND_LABEL[data.value.kind]} „${data.value.title}“` : ''))
+
 /* Only a Verordnung has a path the monitor follows to its end. A Gesetz
    without a Gegenstand would need the five stations, and none of the three
    after the Begutachtung can be read for it; `unbestimmt` has no path to
    draw at all. Those two keep the card in words. */
+/* The Verordnung's geltende Fassung, once it is kundgemacht — for
+   „Im Bundesgesetzblatt" (21.10.2026). Client-side and lazy like the outcome:
+   the RIS search must not hold up the page. */
+const kundgemacht = computed(() => outcome.value?.state === 'kundgemacht')
+const { data: fassung } = await useFetch<BgblLawsResponse>(
+  () => `/api/ris-drafts/${id.value}/geltende-fassung`,
+  { lazy: true, server: false, enabled: kundgemacht, watch: [kundgemacht] },
+)
+
 const stationList = computed(() =>
   data.value?.kind === 'verordnung' ? regulationStations(data.value, outcome.value) : [])
 
@@ -96,10 +109,12 @@ const fristFacts = computed<Fact[]>(() => {
 
 /* Same contract as on the draft page: only a section this page renders.
    „Die Begutachtung" is unconditional, as there. */
-const stationAnchors: Partial<Record<StationId, string>> = {
+const stationAnchors = computed<Partial<Record<StationId, string>>>(() => ({
   entwurf: '#dokumente',
   begutachtung: '#begutachtung',
-}
+  // The Kundmachung has its own section since 21.10.2026.
+  ...(kundgemacht.value ? { bgbl: '#bundesgesetzblatt' } : {}),
+}))
 const comparisonAnchors = computed<Partial<Record<ComparisonId, string>>>(() =>
   data.value?.textComparison ? { vorschlag: '#gegenueberstellung' } : {})
 
@@ -194,10 +209,18 @@ const coverLetterHref = computed(() => {
                to its source rendered as grey body text while the draft
                page's rendered blue. Two pages, one anatomy: the provenance
                link may not differ by half a utility class. -->
-            <ExternalLink
-              :href="data.risUrl"
-              class="link-inline tap-target"
-            >Im RIS ansehen</ExternalLink>
+            <span class="inline-flex flex-wrap items-center gap-x-4">
+              <ExternalLink
+                :href="data.risUrl"
+                class="link-inline tap-target"
+              >Im RIS ansehen</ExternalLink>
+              <!-- As on the draft page (21.10.2026). No Geschäftszahl to cite,
+                 so the type word and the title name it. -->
+              <CiteButton
+                :text="citeLineDe(citeAs, data.risUrl)"
+                subject="Den Entwurf"
+              />
+            </span>
           </template>
           <template #identity>
             <span class="text-sm font-medium text-ink-muted">
@@ -386,7 +409,7 @@ const coverLetterHref = computed(() => {
                   <span class="break-all font-mono text-xs text-ink">{{ data.id }}</span>.
                 </p>
                 <div class="mt-3">
-                  <DocumentList :documents="documents" source="ris.bka.gv.at" />
+                  <DocumentList :documents="documents" source="ris.bka.gv.at" :cite-as="citeAs" />
                 </div>
               <!-- No second "Datensatz im RIS" link here: the header line already
                    carries it, in the slot where the draft page puts "Auf
@@ -411,7 +434,7 @@ const coverLetterHref = computed(() => {
                down, the bar measures the window against the Regelfall. -->
             <FactList v-if="fristFacts.length" :facts="fristFacts">
               <template #after-frist>
-                <FristBar :start="data.startedAt" :deadline="data.deadline" />
+                <FristBar :start="data.startedAt" :deadline="data.deadline" :kind="data.kind === 'verordnung' ? 'verordnung' : 'entwurf'" />
               </template>
             </FactList>
             <PageSubsection heading="Stellungnahmen">
@@ -434,6 +457,14 @@ const coverLetterHref = computed(() => {
           </div>
         </section>
 
+        <!-- The end of a Verordnung's path, where it was found (21.10.2026):
+             the Kundmachung, its citation and the geltende Fassung — the
+             law's section on the draft page, in the same anatomy. -->
+        <RegulationBgblSection
+          v-if="outcome?.state === 'kundgemacht' && outcome.nummer"
+          :outcome="outcome"
+          :fassung="fassung ?? null"
+        />
       </template>
     </FetchGate>
   </div>

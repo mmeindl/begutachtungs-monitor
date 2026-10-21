@@ -28,6 +28,7 @@ import { getDraftsForGp } from '../parliament/drafts'
 import { resolveKonsLaw } from '../kons/konsCache'
 import { mapWithConcurrency } from '../pool'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
+import { latestAmendmentOf } from '../../../shared/utils/citations'
 
 /** A Sammelgesetz can name dozens; one slow RIS lookup must not hang a page. */
 const MAX_LAWS = 40
@@ -142,6 +143,7 @@ export const getAmendedLaws = defineCachedFunction(
         bgbl: cited,
         risUrl: resolved ? konsLawUrl(resolved.gesetzesnummer, asOf) : null,
         risBgbl: held && w.bgbl && !sameRisStammnorm(held, w.bgbl) ? `${held.organ} ${held.nummer}` : null,
+        amendedBy: resolved ? latestAmendmentOf(Object.values(resolved.paragraphs).map((p) => p.kundmachungsorgan)) : null,
       }
     })
     for (const r of results) if (r) laws.push(r)
