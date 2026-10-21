@@ -11112,6 +11112,36 @@ Messung dazu — 84,2 % gefunden, 92,3 % bei Fristen von vor über einem Jahr,
 Median 57 Tage. Das ist die Verordnungs-Version von Mechanismus 2, und sie
 steht dort, wo die Methode ohnehin erklärt wird, nicht über jedem Ergebnis.
 
+**Nachtrag 21.10.2026: der Ressortname war ein Zeuge, und ein falscher.**
+Acht BMLUK-Entwürfe standen als „kundgemacht" mit derselben Nummer, BGBl. II
+Nr. 303/2026 — der Änderung der Schutzwaldverordnung; einer davon war noch in
+Begutachtung. Der Präambel-Schnitt (`bgblJoin.ts`) endete am ersten Komma,
+und die Ressortnamen seit 2025 tragen Kommas: „für Land- und Forstwirtschaft,
+Klima- und Umweltschutz, Regionen und Wasserwirtschaft" verlor nur seinen
+ersten Teil, der Rest stand in jedem Titel des Ressorts und ergab allein
+0,720 — genau `BGBL_ACCEPT`. Der Schnitt rückt jetzt an den Beginn des
+Inhalts („, mit der", „über", „betreffend"), **aber nur, wo ein Komma vor
+diesem Beginn liegt**. Den Schnitt überall an den Inhaltsbeginn zu legen,
+bewegte 21 von 1.720 Zuordnungen seit 2013, richtige darunter: Das erste
+Komma liegt manchmal im Inhalt („(USt-BildungsleistungsVO, UStBLV)"), beide
+Seiten schrumpfen dann auf denselben Rest, und der trägt die 1,000.
+
+Alt gegen neu über alle 1.720 Verordnungsentwürfe seit 2013, jede Zeile
+gelesen: 1.111 → 1.103 Zuordnungen. **Zehn falsche fallen weg** (die sechs
+BMLUK-Fälle, Abfallverbrennung → Ammoniakreduktion, VbF → ein
+Frauenförderungsplan, 1. → 2. Altlastenatlas-Novelle, die neue
+COVID-19-Einreiseverordnung → eine Änderung der alten), **zwei falsche werden
+richtig** (AbfallendeVO, die fachlichen Voraussetzungen der
+Gesundheitsdokumentation), **drei richtige kommen dazu** (Lehrberufsliste,
+Schifffahrtsrechtsnovelle, BIFIE-Erhebungen). Dagegen **zwei richtige
+verloren** (Reisegebühren für Schulveranstaltungen 2024, EKB-InvestitionsV)
+und **eine falsche gewonnen** (EAG-Wasserstoff → EAG-Gas). Die drei zeigen,
+was der Ressortrest verdeckt hat: Der Titelvergleich allein ist an diesen
+Fällen zu grob — bei der EKB-InvestitionsV stehen drei Kandidaten gleichauf
+bei 0,900, darunter eine fremde Investitionskostenersatzverordnung, und der
+Gleichstand heißt keine Antwort. Das ist eine eigene Arbeit, nicht dieser
+Fix.
+
 ### 12.33 Die BGBl-Station — gebaut, und die fünf falschen Unterschiede, die sie aufgedeckt hat
 
 Die Stationsleiste des §-Vergleichs endet bei der Plenarfassung (§12.18). Die

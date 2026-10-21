@@ -48,10 +48,49 @@ describe('bgblTitleCore', () => {
     expect(core).toContain('sachbezugswerteverordnung')
   })
 
+  it('drops a ministry name with commas whole, not only up to its first comma', () => {
+    // BMLUK's name carries two commas; cut at the first, „klima und
+    // umweltschutz regionen und wasserwirtschaft" stayed in every title of
+    // the Ressort (21.10.2026).
+    const core = bgblTitleCore(
+      'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft, mit der die Schutzwaldverordnung geändert wird',
+    )
+    expect(core).toBe('mit der die schutzwaldverordnung geändert wird')
+    expect(bgblTitleCore(
+      'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft über die Vermarktung von Eiern',
+    )).toBe('über die vermarktung von eiern')
+  })
+
+  it('keeps the first-comma cut where that comma lies inside the content', () => {
+    // Both sides cut to the same tail, which is what matches them at 1,000.
+    expect(bgblTitleCore(
+      'Verordnung des Bundesministers für Finanzen über das Vorliegen einer vergleichbaren Zielsetzung bei Bildungsleistungen (USt-BildungsleistungsVO, UStBLV)',
+    )).toBe('ustblv')
+  })
+
   it('drops the word that stands on every record of Teil II', () => {
     // "Verordnung" here is what "Bundesgesetz" is in Teil I: on both sides of
     // every pair, so it can only inflate a score.
     expect(bgblTitleCore('Ratenzahlungs-Verordnung')).toBe('ratenzahlungs')
+  })
+})
+
+describe('joinDraftToBgbl — the ministry name is no evidence', () => {
+  it('does not give eight BMLUK drafts the one Schutzwaldverordnung', () => {
+    const bmluk = 'BMLUK (Bundesministerium für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft)'
+    const schutzwald = record({
+      id: 'BGBLA_2026_II_303',
+      nummer: 'BGBl. II Nr. 303/2026',
+      datum: '2026-10-14',
+      kurztitel: 'Änderung der Schutzwaldverordnung',
+      titel: 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft, mit der die Schutzwaldverordnung geändert wird',
+      stelle: bmluk,
+    })
+    const pre = 'Verordnung des Bundesministers für Land- und Forstwirtschaft, Klima- und Umweltschutz, Regionen und Wasserwirtschaft'
+    const eier = draft({ kurztitel: 'Verordnung über die Vermarktung von Eiern', titel: `${pre} über die Vermarktung von Eiern`, stelle: bmluk, ende: '2026-06-15' })
+    const own = draft({ kurztitel: 'Verordnung, mit der die Schutzwaldverordnung geändert wird', titel: `${pre}, mit der die Schutzwaldverordnung geändert wird`, stelle: bmluk, ende: '2026-06-24' })
+    expect(joinDraftToBgbl(eier, [schutzwald])).toBeNull()
+    expect(joinDraftToBgbl(own, [schutzwald])?.record.nummer).toBe('BGBl. II Nr. 303/2026')
   })
 })
 

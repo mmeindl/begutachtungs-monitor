@@ -234,6 +234,41 @@ const BGBL_TIE_DAYS = 60
 const PREAMBLE_RE =
   /^verordnung\s+(?:des|der)\s+bundesminister(?:s|in)?[^,]*,\s*/i
 /**
+ * Where the content of a Verordnung's title begins: „, mit der …", „über …",
+ * „betreffend …". No ministry name contains these words.
+ */
+const CONTENT_START_RE = /,\s*(?:mit|durch)\s+(?:der|dem|die|welcher|welchem)\b|\s(?:über|betreffend|hinsichtlich)\s/i
+
+/**
+ * The preamble cut — at the first comma, unless that comma still lies
+ * inside the ministry's name (21.10.2026).
+ *
+ * The first comma was the only cut until then, and it broke on the
+ * ministries of 2025, whose names carry commas: „für Land- und
+ * Forstwirtschaft, Klima- und Umweltschutz, Regionen und
+ * Wasserwirtschaft" lost only its first part, the rest of the name stayed
+ * in every BMLUK title, and that remnant alone scored 0,720 — exactly
+ * `BGBL_ACCEPT`. Eight BMLUK drafts, one of them still in Begutachtung,
+ * were „kundgemacht" as the one Schutzwaldverordnung of BGBl. II Nr.
+ * 303/2026. So where a comma comes BEFORE the content starts, the cut moves
+ * to the content's start.
+ *
+ * Only there. Cutting every title at its content start was tried and moved
+ * 21 of 1.720 matches since 2013, right ones among them: the first comma
+ * sometimes lies inside the content („… Bildungsleistungen
+ * (USt-BildungsleistungsVO, UStBLV)"), both sides are then cut to the same
+ * tail, and that is what makes them match at 1,000.
+ */
+function cutPreamble(title: string): string {
+  const preamble = PREAMBLE_RE.exec(title)
+  if (!preamble) return title
+  const content = CONTENT_START_RE.exec(title)
+  if (content && title.indexOf(',') < content.index) {
+    return ` ${title.slice(content.index).replace(/^,\s*/, '')}`
+  }
+  return title.replace(PREAMBLE_RE, ' ')
+}
+/**
  * „Verordnung" itself is to Teil II what „Bundesgesetz" is to Teil I: on
  * both sides of every record, hence noise. `risJoin.STOP` throws
  * „bundesgesetz" away for the same reason, but cannot throw „verordnung"
@@ -243,7 +278,7 @@ const NOISE_RE = /\b(?:verordnungen|verordnung|kundmachung|novelle)\b/gi
 
 /** The title without formula and without the noise word — what is compared. */
 export function bgblTitleCore(title: string | null | undefined): string {
-  const t = (title ?? '').replace(PREAMBLE_RE, ' ').replace(NOISE_RE, ' ')
+  const t = cutPreamble(title ?? '').replace(NOISE_RE, ' ')
   return normalizeTitleText(t)
 }
 
