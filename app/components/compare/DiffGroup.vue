@@ -60,6 +60,7 @@ const emit = defineEmits<{
 const section = useTemplateRef<HTMLElement>('section')
 const sentinel = useTemplateRef<HTMLElement>('sentinel')
 const header = useTemplateRef<HTMLElement>('header')
+const body = useTemplateRef<HTMLElement>('body')
 
 /* Stuck = the point above the header has left the top of the viewport.
  * It stays true once the whole group has scrolled past, and that is
@@ -124,6 +125,34 @@ async function toggle() {
   // across the following groups first.
   window.scrollTo({ top, behavior: 'instant' })
 }
+
+/* The press shows the rest of the group and so takes away the button it was
+ * made on; the focus then fell to <body>, where a screen reader starts over
+ * at the top of the page. It goes to the first change the press revealed,
+ * which is what the reader asked for. Found as the first element that was
+ * not there before, not as the button's neighbour, because what is revealed
+ * need not follow what was shown: the Textgegenüberstellung cuts after a
+ * number of rows, not at a §, and keeps listing the §§ its check withheld
+ * past the cut. So the rest lands inside and between elements that were
+ * already there (74/ME, Asylgesetz: § 38 opens after § 36, ahead of the
+ * withheld §§ 41, 53 and 28 that stood above the button). */
+async function showMore(event: MouseEvent) {
+  const hadFocus = event.currentTarget === document.activeElement
+  const before = new Set<Node>(body.value?.querySelectorAll('*') ?? [])
+  emit('more')
+  if (!hadFocus) return
+  await nextTick()
+  if (!body.value) return
+  const walker = document.createTreeWalker(body.value, NodeFilter.SHOW_ELEMENT)
+  let node = walker.nextNode()
+  while (node && before.has(node)) node = walker.nextNode()
+  if (!(node instanceof HTMLElement)) return
+  const first = node
+  // A row is text, not a control: focusable for this one move only.
+  first.tabIndex = -1
+  first.addEventListener('blur', () => first.removeAttribute('tabindex'), { once: true })
+  first.focus()
+}
 </script>
 
 <template>
@@ -185,7 +214,7 @@ async function toggle() {
       </span>
     </button>
 
-    <div v-if="open" class="border-t border-hairline">
+    <div v-if="open" ref="body" class="border-t border-hairline">
       <!-- A text line, not a tooltip on the pill (03.10.2026): the pill sits
            in the header button, and a reason only reachable by hovering
            would be lost on a phone. Inside the body, not the header, so it
@@ -198,7 +227,7 @@ async function toggle() {
         v-if="more"
         type="button"
         class="flex min-h-target w-full items-center gap-2 px-4 py-2 text-left text-xs font-medium text-accent-deep hover:bg-hover"
-        @click="emit('more')"
+        @click="showMore"
       >
         <UIcon name="i-lucide-chevron-down" class="size-4 shrink-0" aria-hidden="true" />
         {{ more }} weitere {{ more === 1 ? 'Änderung' : 'Änderungen' }} anzeigen

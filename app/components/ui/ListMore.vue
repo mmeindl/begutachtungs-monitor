@@ -30,9 +30,28 @@ const props = defineProps<{
 
 const emit = defineEmits<{ more: []; all: [] }>()
 
+const root = useTemplateRef<HTMLElement>('root')
+const status = useTemplateRef<HTMLElement>('status')
+
 const remaining = computed(() =>
   Math.max(0, props.total - Math.min(props.visible, props.total)),
 )
+
+/* The last press takes the buttons away from under the focus, which then
+ * fell to <body>, where a screen reader starts over at the top of the page.
+ * It goes to the count line instead: mounted for this very press, it says
+ * what the press did, and it keeps the focus at the list's foot, where the
+ * earlier presses leave it, so the next Tab goes on from there. Only when
+ * a button had the focus: a click in a browser that does not focus buttons
+ * moves nothing. */
+async function press(action: 'more' | 'all') {
+  const hadFocus = root.value?.contains(document.activeElement) ?? false
+  if (action === 'more') emit('more')
+  else emit('all')
+  if (!hadFocus) return
+  await nextTick()
+  if (remaining.value === 0) status.value?.focus()
+}
 
 /* Mounted for as long as the list is pageable AT ALL, not only while
  * something is still hidden. This paragraph is the live region that tells a
@@ -54,10 +73,14 @@ const pageable = computed(() => props.total > props.step)
        it stacks, the control across the full column. -->
   <div
     v-if="pageable"
+    ref="root"
     class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     :class="remaining > 0 && 'border-t border-hairline px-4 py-3'"
   >
+    <!-- Focusable only once it stands in for the buttons (`press`). -->
     <p
+      ref="status"
+      :tabindex="remaining === 0 ? -1 : undefined"
       :class="['text-sm tabular-nums text-ink-muted', remaining === 0 && 'sr-only']"
       aria-live="polite"
     >{{ shownLabelDe(visible, total) }}<span class="sr-only"> angezeigt</span></p>
@@ -70,7 +93,7 @@ const pageable = computed(() => props.total > props.step)
         color="neutral"
         variant="outline"
         class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"
-        @click="emit('more')"
+        @click="press('more')"
       >
         {{ moreLabelDe(remaining, step) }} anzeigen
       </UButton>
@@ -83,7 +106,7 @@ const pageable = computed(() => props.total > props.step)
         color="neutral"
         variant="outline"
         class="min-h-target flex-1 justify-center tabular-nums sm:flex-none"
-        @click="emit('all')"
+        @click="press('all')"
       >
         Alle {{ formatNumberDe(total) }} anzeigen
       </UButton>
