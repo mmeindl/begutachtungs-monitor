@@ -18,6 +18,19 @@
  * 17.09.2026): 276 of 353 GP-XXVII drafts do publish their Gesetzestext as
  * HTML, and every single one of the 296 Regierungsvorlagen, 80 Ausschuss- and
  * 59 Plenarfassungen does.
+ *
+ * **A failure is not an answer** (the §12.13 rule, 22.10.2026). Four reads
+ * here ended in a catch, and the answer they left was cached for a day: a
+ * RIS timeout became „ist bisher nicht als Gesetz kundgemacht worden" on the
+ * Kundmachung's own comparison, a RIS map that did not load became „ist im
+ * RIS nicht veröffentlicht", a Vorlage record that did not arrive left
+ * `bundled` unknown — so a Sammelgesetz was counted whole, under no note,
+ * as if every change in it were the draft's — and the draft's own text not
+ * arriving became „lässt sich im Text nicht trennen". Now the reads whose
+ * answer the comparison states throw, and the section says it is
+ * unavailable right now. Only the Kundmachung beside a pair that does not
+ * reach it is optional: that answer goes out without the station and is
+ * not stored (`cache/gathered.ts`).
  */
 
 import type { LawDiffResponse, LawPackageEntry, LawStationId, LawStationOption, TraceLink } from '#shared/types'
@@ -29,6 +42,9 @@ import { parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../lawtext/la
 import { bundlesOtherDrafts, extractBgblLink, otherBundledDrafts, findComparisonRvLink, findLastRvLink, findRvLinks, parseStages } from '../parliament/detailJson'
 import { getGegenstand } from '../parliament/drafts'
 import { getRisMapForGp } from '../ris/begutCorpus'
+import { getBgblDocument } from '../ris/bgblService'
+import { DERIVED_CACHE } from '../cache/base'
+import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { fetchDocument } from '../upstream/fetchDocument'
 
@@ -36,12 +52,17 @@ import { fetchDocument } from '../upstream/fetchDocument'
  * The draft's own law text as units, for cutting a later pair to its laws —
  * Parliament's HTML, else the RIS XML the station carries for a PDF-only
  * draft. Null when neither is readable: then nothing is cut.
+ *
+ * The fetch stands OUTSIDE the try, the parse inside it. Null says
+ * „Welche Änderungen aus diesem Entwurf stammen, lässt sich im Text nicht
+ * trennen" on the page (`outsideDraftNote`), which is a fact about a
+ * document we read, never about one that did not arrive.
  */
 async function readDraftUnits(station: { html: string | null; xml: string | null } | undefined): Promise<LawUnit[] | null> {
   const url = station?.html ?? station?.xml
   if (!url) return null
+  const doc = await fetchDocument(url)
   try {
-    const doc = await fetchDocument(url)
     const units = station!.html ? parseLawUnits(doc) : parseLawUnitsFromRis(doc)
     return units.length ? units : null
   } catch {
@@ -49,8 +70,9 @@ async function readDraftUnits(station: { html: string | null; xml: string | null
   }
 }
 
-export const getLawDiff = defineCachedFunction(
-  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<LawDiffResponse> => {
+/** The comparison of one pair — cached, and stored only when complete (`getLawDiff`). */
+const readLawDiff = defineCachedFunction(
+  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<Gathered<LawDiffResponse>> => {
     const detail = await getGegenstand(gp, 'ME', inr)
     const content = detail.content ?? {}
     const found = findLawStations(content)
@@ -60,11 +82,16 @@ export const getLawDiff = defineCachedFunction(
     // holds the same text as legistic XML. Only ever the draft side — the
     // parliamentary stations are published as HTML without exception in the
     // three measured periods.
+    //
+    // No catch on the RIS map: without it there is no telling whether RIS
+    // has the text, and the sentence for a PDF-only draft says exactly that
+    // („… und ist im RIS nicht veröffentlicht"). The map is the period's,
+    // cached and prewarmed; it fails only cold and with RIS down.
     const meStation = found.get('me')
     let risLink: TraceLink | null = null
     let risRowExists = false
     if (meStation && !meStation.html) {
-      const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
+      const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
       risRowExists = Boolean(row?.risId)
       meStation.xml = row?.risDocument?.xml ?? null
       if (meStation.xml) risLink = { label: 'Ministerialentwurf, Gesetzestext (RIS)', url: row?.risUrl ?? meStation.xml }
@@ -76,8 +103,12 @@ export const getLawDiff = defineCachedFunction(
      *
      * The way there is a lookup, not a search: the Regierungsvorlage carries
      * the Fundstelle as structured data (`status.bgbllinks`), and RIS returns
-     * exactly one record for that citation. If any of it fails the station is
-     * simply absent — the comparison of the other four must not hang on it.
+     * exactly one record for that citation. A Vorlage without a Fundstelle,
+     * or a citation RIS has no readable record for, leaves the station absent
+     * — an answer. A lookup that FAILS is not one (see the header): the pair
+     * that compares against the Kundmachung throws; every other pair goes
+     * out without the station and is not stored, because the comparison of
+     * the other four must not hang on it.
      */
     let bgblLink: TraceLink | null = null
     let act: LawDiffResponse['largerAct'] = null
@@ -85,25 +116,36 @@ export const getLawDiff = defineCachedFunction(
     // Vorlage detail the Kundmachung comes from, so it costs no request.
     let bundled: boolean | null = null
     let otherDrafts: { gp: string; inr: number }[] = []
-    try {
-      // The Kundmachung of the Vorlage whose text this comparison reads, not
-      // of the latest one: a split draft has one per Vorlage.
-      const rvText = found.get('rv')
-      const rvLink = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)
-      if (rvLink) {
-        const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
-        bundled = bundlesOtherDrafts(rv.content?.preconst, gp, inr)
-        otherDrafts = otherBundledDrafts(rv.content?.preconst, gp, inr)
-        const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
-        const doc = nummer ? await getBgblDocument(nummer) : null
-        if (doc?.xml && nummer) {
-          found.set('bgbl', { id: 'bgbl', html: null, xml: doc.xml, fallbackUrl: doc.html ?? doc.page })
-          bgblLink = { label: `${nummer} (RIS)`, url: doc.page }
-          act = { citation: bgblShort(nummer), title: doc.kurztitel }
+    // False where the Kundmachung's lookup failed and this pair could do
+    // without it — the answer is then served and not stored.
+    let complete = true
+    // The Kundmachung of the Vorlage whose text this comparison reads, not
+    // of the latest one: a split draft has one per Vorlage.
+    const rvText = found.get('rv')
+    const rvLink = findComparisonRvLink(parseStages(content.stages), rvText?.html ?? rvText?.fallbackUrl)
+    if (rvLink) {
+      // No catch: the record decides `bundled`, and with it what this
+      // comparison counts (`scopeToDraft`, `keepAddedLaws`) and whether the
+      // page names the act. Parliament not answering throws, as it does for
+      // the draft's own record above.
+      const rv = await getGegenstand(rvLink.gp, 'I', rvLink.inr)
+      bundled = bundlesOtherDrafts(rv.content?.preconst, gp, inr)
+      otherDrafts = otherBundledDrafts(rv.content?.preconst, gp, inr)
+      const nummer = extractBgblLink(rv.content?.status?.bgbllinks)?.number
+      let doc: Awaited<ReturnType<typeof getBgblDocument>> = null
+      if (nummer) {
+        try {
+          doc = await getBgblDocument(nummer)
+        } catch (err) {
+          if (from === 'bgbl' || to === 'bgbl') throw err
+          complete = false
         }
       }
-    } catch {
-      // Without a Kundmachung the parliamentary stations are all there is.
+      if (doc?.xml && nummer) {
+        found.set('bgbl', { id: 'bgbl', html: null, xml: doc.xml, fallbackUrl: doc.html ?? doc.page })
+        bgblLink = { label: `${nummer} (RIS)`, url: doc.page }
+        act = { citation: bgblShort(nummer), title: doc.kurztitel }
+      }
     }
 
     const comparable = (id: LawStationId) => Boolean(found.get(id)?.html) || Boolean(found.get(id)?.xml)
@@ -127,29 +169,32 @@ export const getLawDiff = defineCachedFunction(
       document: documentOf(id),
     }))
 
-    const answer = (reason: string | null, extra: Partial<LawDiffResponse> = {}): LawDiffResponse => ({
-      gp,
-      inr,
-      from,
-      to,
-      available: reason === null,
-      unavailableReason: reason,
-      fromDocument: documentOf(from),
-      toDocument: documentOf(to),
-      fromSource: null,
-      toSource: null,
-      stations,
-      stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
-      lawsOnlyInTo: [],
-      lawsOnlyInFrom: [],
-      lawsOutsideDraft: [],
-      addedLaws: [],
-      droppedLaws: [],
-      bundledWithOtherDrafts: bundled === true,
-      otherDrafts,
-      largerAct: null,
-      units: [],
-      ...extra,
+    const answer = (reason: string | null, extra: Partial<LawDiffResponse> = {}): Gathered<LawDiffResponse> => ({
+      value: {
+        gp,
+        inr,
+        from,
+        to,
+        available: reason === null,
+        unavailableReason: reason,
+        fromDocument: documentOf(from),
+        toDocument: documentOf(to),
+        fromSource: null,
+        toSource: null,
+        stations,
+        stats: { total: 0, unchanged: 0, changed: 0, editorial: 0, inserted: 0, removed: 0 },
+        lawsOnlyInTo: [],
+        lawsOnlyInFrom: [],
+        lawsOutsideDraft: [],
+        addedLaws: [],
+        droppedLaws: [],
+        bundledWithOtherDrafts: bundled === true,
+        otherDrafts,
+        largerAct: null,
+        units: [],
+        ...extra,
+      },
+      complete,
     })
 
     // Whether the stage record links a Vorlage, asked apart from the text
@@ -269,5 +314,17 @@ export const getLawDiff = defineCachedFunction(
     getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
+    // An answer without the Kundmachung, for want of RIS, is not kept.
+    validate: onlyComplete,
   },
 )
+
+/**
+ * The comparison of one pair, for every caller: the route, the § names and
+ * the Begründungsvergleich. The cached half above, unwrapped — the two
+ * derived caches that read it use `units` and `available`, which an answer
+ * without the Kundmachung carries in full.
+ */
+export async function getLawDiff(gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<LawDiffResponse> {
+  return (await readLawDiff(gp, inr, from, to)).value
+}

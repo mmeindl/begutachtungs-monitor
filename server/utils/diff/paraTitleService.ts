@@ -22,6 +22,16 @@
  * is identified by the Stammnorm of its Promulgationsklausel, not by title
  * matching, and `resolveLawByBgbl` returns nothing when the match is
  * ambiguous. Anything unresolved is simply absent from the map.
+ *
+ * **Unresolved is not unreachable** (the §12.13 rule, 22.10.2026). Four reads
+ * here ended in `.catch(() => null)`, and a day's cache kept what they left:
+ * the list row, the comparison or the RIS map not arriving meant no names
+ * for the whole draft until tomorrow, one § document not arriving meant that
+ * § unnamed until tomorrow. The first three now throw — without them there
+ * is nothing to name — and the section shows the comparison without names,
+ * as it does while they load. A single § that fails still leaves the others
+ * standing, but the answer is then not stored (`cache/gathered.ts`), so the
+ * next request asks for the missing name again.
  */
 import type { LawStationId, ParagraphTitlesResponse } from '#shared/types'
 import { getLawDiff } from './lawDiffService'
@@ -40,6 +50,8 @@ import { getRisMapForGp } from '../ris/begutCorpus'
 import { fetchParagraphXml, resolveKonsLaw } from '../kons/konsCache'
 import type { KonsParagraphRef } from '../ris/konsLaw'
 import { mapWithConcurrency } from '../pool'
+import { DERIVED_CACHE } from '../cache/base'
+import { onlyComplete, type Gathered } from '../cache/gathered'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 
 /** Ceiling on lookups per draft, so one monster Sammelgesetz cannot hang a request. */
@@ -79,25 +91,29 @@ async function clauseBlocks(
       continue
     }
     // Only the draft has a second source; the parliamentary stations are
-    // published as HTML throughout the measured periods.
+    // published as HTML throughout the measured periods. No catch: a map
+    // that did not load is not a draft without a clause.
     if (id !== 'me') continue
-    const row = (await getRisMapForGp(gp).catch(() => null))?.rows.find((r) => r.inr === inr) ?? null
+    const row = (await getRisMapForGp(gp)).rows.find((r) => r.inr === inr) ?? null
     const xml = row?.risDocument?.xml
     if (xml) out.push(parseRisXml(await fetchDocument(xml)))
   }
   return out
 }
 
-export const getParagraphTitles = defineCachedFunction(
-  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ParagraphTitlesResponse> => {
+/** The names of one pair — cached, and stored only when complete (`getParagraphTitles`). */
+const readParagraphTitles = defineCachedFunction(
+  async (gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<Gathered<ParagraphTitlesResponse>> => {
     const detail = await getGegenstand(gp, 'ME', inr)
     // The reference date is the draft's Einlangen — the law as the draft
     // found it, not as it stands today. It lives on the list row, not on the
     // Gegenstand, and the list is cached anyway.
-    const listed = (await getDraftsForGp(gp).catch(() => null))?.items.find((i) => i.inr === inr) ?? null
+    const listed = (await getDraftsForGp(gp)).items.find((i) => i.inr === inr) ?? null
     const asOf = listed?.arrivedAt || null
 
-    const diff = await getLawDiff(gp, inr, from, to).catch(() => null)
+    // Throws only where the comparison itself could not be made; every
+    // „not comparable" is an answer with `available: false` (`lawDiffService`).
+    const diff = await getLawDiff(gp, inr, from, to)
     // The addressed Paragraph stands in the instruction itself and hangs on
     // no resolution. It therefore goes out even where RIS owes the name — the
     // display puts it in front of the name, because „Z 2" is the number of
@@ -108,8 +124,8 @@ export const getParagraphTitles = defineCachedFunction(
       if (para) paragraphs[diffUnitKey(units[i]!)] = para
     }
 
-    const empty: ParagraphTitlesResponse = { asOf, titles: {}, paragraphs }
-    if (!asOf || !diff?.available) return empty
+    const empty: Gathered<ParagraphTitlesResponse> = { value: { asOf, titles: {}, paragraphs }, complete: true }
+    if (!asOf || !diff.available) return empty
 
     // Clauses come from whichever of the two documents exist; the later
     // station wins where both name an Artikel, because the diff's articles
@@ -135,6 +151,9 @@ export const getParagraphTitles = defineCachedFunction(
 
     const titles: Record<string, string> = {}
     let fetched = 0
+    // False once a § document did not arrive — the names that did go out,
+    // and the answer is not stored.
+    let complete = true
     for (const [article, byPara] of wanted) {
       const bgbl = clauses.get(article)
       if (!bgbl) continue
@@ -158,7 +177,10 @@ export const getParagraphTitles = defineCachedFunction(
         // returned early.
         if (fetched >= MAX_HEADINGS) return
         fetched++
-        const raw = await fetchHeading(law.paragraphs[para]!).catch(() => null)
+        const raw = await fetchHeading(law.paragraphs[para]!).catch(() => {
+          complete = false
+          return null
+        })
         // The card prints the § in front of the name; a heading that
         // carries its own „§ 37." would print it twice (`withoutOwnDesignation`).
         const heading = raw ? withoutOwnDesignation(raw, para) : null
@@ -166,7 +188,7 @@ export const getParagraphTitles = defineCachedFunction(
         for (const key of keys) titles[key] = heading
       })
     }
-    return { asOf, titles, paragraphs }
+    return { value: { asOf, titles, paragraphs }, complete }
   },
   {
     name: 'para-titles',
@@ -177,5 +199,11 @@ export const getParagraphTitles = defineCachedFunction(
     getKey: (gp: string, inr: number, from: LawStationId, to: LawStationId) => `${gp}-${inr}-${from}-${to}`,
     maxAge: DERIVED_ANALYSIS_TTL_S,
     swr: false,
+    validate: onlyComplete,
   },
 )
+
+/** The § names of one pair, for the route — the cached half above, unwrapped. */
+export async function getParagraphTitles(gp: string, inr: number, from: LawStationId, to: LawStationId): Promise<ParagraphTitlesResponse> {
+  return (await readParagraphTitles(gp, inr, from, to)).value
+}
