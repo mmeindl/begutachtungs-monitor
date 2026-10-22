@@ -17,7 +17,7 @@
  * the kind of rule that still changes.
  */
 import type { BgblOutcome, RisConsultation } from '#shared/types'
-import { bgblOutcomeState, bgblRecordOf, isRunningYear, joinDraftToBgbl, type BgblJoinDraft, type BgblRecord } from './bgblJoin'
+import { bgblRecordOf, bgblVerdict, bgblVerdictState, isRunningYear, type BgblJoinDraft, type BgblRecord, type BgblVerdict } from './bgblJoin'
 import { pickBgblIForVorlage } from './bgblVorlage'
 import { DERIVED_CACHE } from '../cache/base'
 import { PUBLISHED_DOCUMENT_TTL_S } from '../cache/ttl'
@@ -366,13 +366,15 @@ function draftOf(c: Pick<RisConsultation, 'title' | 'longTitle' | 'ministryCode'
   }
 }
 
-/** The match as an answer — one place, so list and detail page say the same. */
-function outcomeOf(
-  c: Pick<RisConsultation, 'deadline' | 'active'>,
-  hit: ReturnType<typeof joinDraftToBgbl>,
-): BgblOutcome {
+/**
+ * The verdict as an answer — one place, so list and detail page say the
+ * same. A refusal of the join is `unbekannt`, never „keine"
+ * (`bgblJoin.bgblVerdictState`).
+ */
+function outcomeOf(c: Pick<RisConsultation, 'deadline' | 'active'>, verdict: BgblVerdict): BgblOutcome {
+  const hit = verdict.match
   return {
-    state: bgblOutcomeState(c.deadline, c.active, hit !== null),
+    state: bgblVerdictState(c.deadline, c.active, verdict),
     nummer: hit?.record.nummer ?? null,
     datum: hit?.record.datum ?? null,
     url: hit ? `https://www.ris.bka.gv.at/eli/bgbl/II/${hit.record.datum.slice(0, 4)}/${numberOf(hit.record.nummer)}` : null,
@@ -398,7 +400,7 @@ export const getBgblOutcome = defineCachedFunction(
     if (!detail) throw createError({ statusCode: 404, statusMessage: 'Begutachtung nicht gefunden' })
     if (detail.kind !== 'verordnung' || !detail.deadline) return UNKNOWN
     const records = (await Promise.all(yearsFor(detail.deadline).map((y) => getBgblTeil2Year(y)))).flat()
-    return outcomeOf(detail, joinDraftToBgbl(draftOf(detail), records))
+    return outcomeOf(detail, bgblVerdict(draftOf(detail), records))
   },
   { name: 'bgbl-outcome', base: DERIVED_CACHE, getKey: (risId: string) => risId, maxAge: JOIN_TTL_S, swr: false },
 )
@@ -442,7 +444,7 @@ export const getBgblOutcomesForGp = defineCachedFunction(
     for (const [i, item] of relevant.entries()) {
       if (i > 0 && i % JOIN_YIELD_EVERY === 0) await new Promise((resolve) => setImmediate(resolve))
       const records = yearsFor(item.deadline!).flatMap((y) => byYear.get(y) ?? [])
-      out[item.id] = outcomeOf(item, joinDraftToBgbl(draftOf(item), records))
+      out[item.id] = outcomeOf(item, bgblVerdict(draftOf(item), records))
     }
     return out
   },

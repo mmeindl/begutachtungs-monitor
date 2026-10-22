@@ -192,6 +192,24 @@ export function bgblOutcomeState(
   return days < BGBL_SILENCE_MEANS_SOMETHING_DAYS ? 'ausstehend' : 'keine'
 }
 
+/**
+ * The state for a verdict of the join (22.10.2026): `bgblOutcomeState` —
+ * except where Kundmachungen WERE found and the join will not give this
+ * draft one (`BgblVerdict.undecided`). Then neither „bisher keine
+ * Kundmachung" nor „keine Kundmachung gefunden" is true, and the page says
+ * nothing: `unbekannt`. While the Frist runs, `begutachtung` still answers;
+ * the question does not arise yet.
+ */
+export function bgblVerdictState(
+  ende: string | null,
+  active: boolean,
+  verdict: BgblVerdict,
+  now: Date = new Date(),
+): BgblOutcomeState {
+  const state = bgblOutcomeState(ende, active, verdict.match !== null, now)
+  return verdict.undecided && (state === 'ausstehend' || state === 'keine') ? 'unbekannt' : state
+}
+
 // --- Measured surface: exported for tests and harness scripts, not for the app. ---
 /**
  * The window between the end of the Frist and the date of issue, in days.
@@ -451,6 +469,21 @@ interface BgblMatch extends BgblCandidate {
 }
 
 /**
+ * What the join says about one draft: the Kundmachung it gets, or none — and
+ * whether that none is a finding or a refusal (22.10.2026).
+ *
+ * `undecided` is the refusal: Kundmachungen above `BGBL_ACCEPT` were found,
+ * and the join will not say which one is this draft's, because two tie on
+ * the title (below). Until then the refusal came back as the same null as an
+ * empty search, and 180 days after the Frist the page said „keine
+ * Kundmachung gefunden" about a draft for which two had been found.
+ */
+export interface BgblVerdict {
+  match: BgblMatch | null
+  undecided: boolean
+}
+
+/**
  * The candidates in the window, scored and sorted descending — all of them,
  * or for the `verdict` only those it may choose: of the draft's own Ressort
  * and its lineage, and not issued before the Begutachtung began.
@@ -508,7 +541,7 @@ export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecor
 }
 
 /**
- * The Kundmachung belonging to a draft — or null.
+ * The Kundmachung belonging to a draft — or none, and why (`BgblVerdict`).
  *
  * A foreign Ressort is a hard no, not a deduction. Two titles can resemble
  * each other by accident („Ratenzahlungs-Verordnung" of the E-Control board
@@ -516,7 +549,7 @@ export function bgblCandidates(draft: BgblJoinDraft, records: readonly BgblRecor
  * Verordnung cannot be. The lineage groups from `risJoin` absorb the change
  * of government that can fall between Frist and Kundmachung.
  */
-export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblMatch | null {
+export function bgblVerdict(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblVerdict {
   // The same ranking as `bgblCandidates(…).filter((c) => c.ministry > 0 &&
   // !c.beforeBeginn)` — the sort is stable, so dropping those records first
   // changes no order — without scoring what would be thrown away. Nor is a
@@ -524,7 +557,7 @@ export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblReco
   // this draft's at all.
   const ranked = rankCandidates(draft, records, true)
   const best = ranked[0]
-  if (!best || best.score < BGBL_ACCEPT) return null
+  if (!best || best.score < BGBL_ACCEPT) return { match: null, undecided: false }
   const second = ranked[1]
   const margin = best.score - (second?.score ?? 0)
   // A tie on the titles: then the time decides, in favour of the FIRST
@@ -544,6 +577,11 @@ export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblReco
   // title. (Every near-tie instead of the second: one decision in 2.402
   // changes, and it loses a right match — a draft in two parts, both
   // promulgated on the same day.)
-  if (ranked.slice(1).some((c, i) => (i === 0 || c.days < 0) && unclear(c))) return null
-  return { ...best, margin: Math.round(margin * 1000) / 1000 }
+  if (ranked.slice(1).some((c, i) => (i === 0 || c.days < 0) && unclear(c))) return { match: null, undecided: true }
+  return { match: { ...best, margin: Math.round(margin * 1000) / 1000 }, undecided: false }
+}
+
+/** The match alone — what the measurement scripts count. */
+export function joinDraftToBgbl(draft: BgblJoinDraft, records: readonly BgblRecord[]): BgblMatch | null {
+  return bgblVerdict(draft, records).match
 }

@@ -53,7 +53,7 @@ vi.stubGlobal(
 
 /**
  * Every draft the period's join compares, and every turn of the event loop
- * that came between two of them — `joinDraftToBgbl` itself, passed through.
+ * that came between two of them — `bgblVerdict` itself, passed through.
  */
 const trace = vi.hoisted(() => [] as string[])
 
@@ -61,9 +61,9 @@ vi.mock('../server/utils/ris/bgblJoin', async (importOriginal) => {
   const real = await importOriginal<typeof import('../server/utils/ris/bgblJoin')>()
   return {
     ...real,
-    joinDraftToBgbl: (...args: Parameters<typeof real.joinDraftToBgbl>) => {
+    bgblVerdict: (...args: Parameters<typeof real.bgblVerdict>) => {
       trace.push('draft')
-      return real.joinDraftToBgbl(...args)
+      return real.bgblVerdict(...args)
     },
   }
 })
@@ -359,6 +359,18 @@ describe('der Stand einer Verordnung', () => {
     jahrgang.set(2026, [{ ...kundmachung, datum: '2026-06-01' }])
     expect((await getBgblOutcome('BEGUT_1')).state).toBe('kundgemacht')
     expect((await getBgblOutcomesForGp('XXVIII')).BEGUT_1?.state).toBe('kundgemacht')
+  })
+
+  /* Zwei gleich gute Kundmachungen, 17 Tage auseinander: der Abgleich
+   * entscheidet nicht — und sagt deshalb nicht „keine", weder auf der Seite
+   * noch in der Liste (22.10.2026). */
+  it('sagt „unbekannt", wo zwei gleich gute Kundmachungen nahe beieinander liegen', async () => {
+    pin('2026-12-10') // 180 Tage nach dem 13.06.
+    jahrgang.set(2026, [kundmachung, { ...kundmachung, id: 'NOR40260900', nummer: 'BGBl. II Nr. 230/2026', datum: '2026-08-17' }])
+    getRisConsultation.mockResolvedValue(detail())
+    getRisOnlyForGp.mockResolvedValue(corpus([verordnung({ id: 'BEGUT_1' })]))
+    expect((await getBgblOutcome('BEGUT_1')).state).toBe('unbekannt')
+    expect((await getBgblOutcomesForGp('XXVIII')).BEGUT_1?.state).toBe('unbekannt')
   })
 
   it('sagt „begutachtung", solange die Frist läuft', async () => {

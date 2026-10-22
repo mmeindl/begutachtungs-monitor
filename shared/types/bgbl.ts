@@ -22,7 +22,11 @@ export type BgblOutcomeState =
   | 'ausstehend'
   /** Long over and nothing found. A statement about our search, not about the Ressort. */
   | 'keine'
-  /** No Fristende, no record — we cannot even ask the question. */
+  /**
+   * No Fristende, no record — we cannot even ask the question. Or the join
+   * found Kundmachungen and will not say which is this draft's (two tie on
+   * the title): an answer neither „bisher keine" nor „keine" may give.
+   */
   | 'unbekannt'
 
 export interface BgblOutcome {

@@ -7,6 +7,8 @@ import {
   bgblOutcomeState,
   bgblTitleCore,
   bgblTitleScore,
+  bgblVerdict,
+  bgblVerdictState,
   isRunningYear,
   joinDraftToBgbl,
   type BgblJoinDraft,
@@ -396,6 +398,40 @@ describe('joinDraftToBgbl — not before the Begutachtung began', () => {
     })
     expect(joinDraftToBgbl({ ...salzburg, beginn: null }, [tirol, a10])).toBeNull()
     expect(joinDraftToBgbl(salzburg, [tirol, a10])?.record.id).toBe('A10')
+  })
+})
+
+/**
+ * A refusal is not an empty search (22.10.2026). Until then both came back
+ * as null, and 180 days after the Frist the page said „keine Kundmachung
+ * gefunden" about a draft for which two had been found — 57 drafts of
+ * GP XXII–XXVII.
+ */
+describe('bgblVerdict — found but undecided', () => {
+  const a = record({ id: 'A', nummer: 'BGBl. II Nr. 50/2026', datum: '2026-03-16' })
+  const close = record({ id: 'B', nummer: 'BGBl. II Nr. 60/2026', datum: '2026-04-02' })
+  /** A fixed Vienna noon, as in `bgblOutcomeState` below. */
+  const on = (iso: string) => new Date(`${iso}T12:00:00+02:00`)
+
+  it('tells a refused tie from an empty search', () => {
+    expect(bgblVerdict(draft(), [a, close])).toEqual({ match: null, undecided: true })
+    expect(bgblVerdict(draft(), [])).toEqual({ match: null, undecided: false })
+    expect(bgblVerdict(draft(), [a])).toMatchObject({ match: { record: { id: 'A' } }, undecided: false })
+  })
+
+  it('says unbekannt where it found two, neither keine nor „bisher keine"', () => {
+    const refused = bgblVerdict(draft(), [a, close])
+    expect(bgblVerdictState('2026-01-15', false, refused, on('2026-09-23'))).toBe('unbekannt')
+    expect(bgblVerdictState('2026-01-15', false, refused, on('2026-02-20'))).toBe('unbekannt')
+    // While the Frist runs, the question does not arise yet.
+    expect(bgblVerdictState('2026-12-01', true, refused, on('2026-09-23'))).toBe('begutachtung')
+  })
+
+  it('keeps keine where nothing was found', () => {
+    const none = bgblVerdict(draft(), [])
+    expect(bgblVerdictState('2026-01-15', false, none, on('2026-09-23'))).toBe('keine')
+    expect(bgblVerdictState('2026-01-15', false, none, on('2026-02-20'))).toBe('ausstehend')
+    expect(bgblVerdictState('2026-01-15', false, bgblVerdict(draft(), [a]), on('2026-09-23'))).toBe('kundgemacht')
   })
 })
 
