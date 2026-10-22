@@ -15,7 +15,7 @@
 import type { DraftStation, DraftStatus, OpenVorlage } from '#shared/types'
 import { DRAFT_STATION_LABEL, DRAFT_STATION_ORDER } from '#shared/utils/draftStations'
 import { countLabelDe, formatNumberDe } from '#shared/utils/format'
-import { romanToInt } from '#shared/utils/gp'
+import { GP_STARTS, intToRoman, isPlausibleGp, romanToInt } from '#shared/utils/gp'
 import { firstQueryValue } from '#shared/utils/queryParams'
 
 /**
@@ -100,12 +100,36 @@ function parseSort(v: unknown): SortKey {
   return s === 'stellungnahmen' ? s : 'frist'
 }
 
+/* The newest period the calendar has a row for — it gains one the day a
+ * period convenes (`GP_STARTS`). */
+const NEWEST_CALENDAR_GP = intToRoman(Math.max(...Object.keys(GP_STARTS).map((g) => romanToInt(g) ?? 0)))
+
+/**
+ * A period both endpoints will answer for, or none — which is the running
+ * one.
+ *
+ * Passed through unchecked until 22.10.2026, and the endpoints refuse what
+ * does not pass here: 400 for a code that is no Roman numeral, 404 for one
+ * past the running period's successor (`readListQuery`,
+ * `requirePlausibleGp`). `?gp=XYZ` left the list as an error card without
+ * its filters, and „Erneut versuchen" asked the same question again. So the
+ * server's rule (`isPlausibleGp`), held against the newest period the
+ * calendar knows: the running one is an upstream call the browser does not
+ * make, and a calendar a period behind only drops a code that would have
+ * shown an empty list. Lower case is read the way the server reads it — a
+ * messenger lowercases links.
+ */
+function parseGp(v: unknown): string {
+  const s = (firstQueryValue(v) ?? '').trim().toUpperCase()
+  return isPlausibleGp(s, NEWEST_CALENDAR_GP) ? s : ''
+}
+
 export function draftFiltersFromQuery(query: Record<string, unknown>): DraftFilterValues {
   return {
     status: parseStatus(query.status),
     stations: parseStations(query.station),
     art: parseArt(query.art),
-    gp: firstQueryValue(query.gp) ?? '',
+    gp: parseGp(query.gp),
     ministry: firstQueryValue(query.ministry) ?? '',
     q: firstQueryValue(query.q) ?? '',
     sort: parseSort(query.sort),

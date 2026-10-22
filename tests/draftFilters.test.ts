@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { GP_STARTS, intToRoman, romanToInt } from '../shared/utils/gp'
 import {
   ART_VERORDNUNG_NOUN,
   type DraftFilterValues,
@@ -65,6 +66,31 @@ describe('draftFiltersFromQuery', () => {
 
   it('takes the first value of a repeated parameter', () => {
     expect(draftFiltersFromQuery({ gp: ['XXVII', 'XXVIII'] }).gp).toBe('XXVII')
+  })
+
+  describe('the period', () => {
+    // Relative to the calendar, so the day a row is added changes nothing here.
+    const newest = Math.max(...Object.keys(GP_STARTS).map((g) => romanToInt(g) ?? 0))
+
+    it('reads a lowercased code the way the server does', () => {
+      expect(draftFiltersFromQuery({ gp: 'xxvii' }).gp).toBe('XXVII')
+      expect(draftFiltersFromQuery({ gp: ' XIV ' }).gp).toBe('XIV')
+    })
+
+    it('drops a code the endpoints would refuse, so the list opens instead of an error', () => {
+      // 400 there: no Roman numeral, or not a canonical one.
+      expect(draftFiltersFromQuery({ gp: 'XYZ' }).gp).toBe('')
+      expect(draftFiltersFromQuery({ gp: 'IIII' }).gp).toBe('')
+      expect(draftFiltersFromQuery({ gp: '28' }).gp).toBe('')
+      // 404 there: further out than the running period's successor.
+      expect(draftFiltersFromQuery({ gp: intToRoman(newest + 2) }).gp).toBe('')
+      expect(draftFiltersFromQuery({ gp: 'LXX' }).gp).toBe('')
+    })
+
+    it('keeps the successor of the newest period, which the server answers too', () => {
+      // `isPlausibleGp`'s one period of headroom, on the day a period convenes.
+      expect(draftFiltersFromQuery({ gp: intToRoman(newest + 1) }).gp).toBe(intToRoman(newest + 1))
+    })
   })
 
   it('reads each of the two orders, and nothing else', () => {
