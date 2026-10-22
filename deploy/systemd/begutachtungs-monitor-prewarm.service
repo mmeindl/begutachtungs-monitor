@@ -52,6 +52,16 @@
 # Periodenwechsel — and then it would warm the period that just ended while
 # the list shows the one that just began.
 #
+# Sixth call since 22.10.2026: the Länder of the running period, every
+# draft open and closed — what `/entwuerfe` shows once a Land is chosen, and
+# what every closed Land draft page reads. Cold it is the Salzburg register
+# (13 s), the Landesgesetzblatt of three Länder from RIS (about 40 requests)
+# and the title search over all of it (docs/architecture.md §12.43). All
+# three are held stale-while-revalidate, so one warm run after the restart
+# keeps them warm. It stands before the previous period's map: a Land is a
+# choice too, but a cheaper one to have ready. `status=all` without `gp` is
+# the current period, for the reason `aktuell` exists.
+#
 # MEASURED AND DELIBERATELY NOT DONE: warming
 # `/api/drafts/:gp/:inr/konsolidiert` for the drafts in Begutachtung (cold
 # ~12 s, warm 10 ms, day cache). Three reasons, and the first is the one that
@@ -68,7 +78,7 @@
 # §§ (§12.12a). The first visitor of the day pays 12 s for a section that
 # says „lädt"; that is the right one to pay it.
 [Unit]
-Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes and both station maps
+Description=Begutachtungs-Monitor: warm the RIS corpus, BGBl volumes, both station maps and the Länder
 After=begutachtungs-monitor.service
 Requires=begutachtungs-monitor.service
 # Since 30.09.2026: the pages of the open drafts, in their own unit and
@@ -88,9 +98,9 @@ User=app
 Group=app
 NoNewPrivileges=true
 PrivateTmp=true
-# The unit's own worst case, stated rather than inherited: the five --max-time
-# budgets below add up to 2.820 s, and deploy.sh blocks on this job.
-TimeoutStartSec=2900
+# The unit's own worst case, stated rather than inherited: the six --max-time
+# budgets below add up to 3.120 s, and deploy.sh blocks on this job.
+TimeoutStartSec=3200
 # The first request waits for the port. `After=` orders this job behind the
 # app's START, not behind its LISTEN: after a hand-typed `systemctl restart`
 # the curl came at 16:56:15 and Node listened at 16:56:16 (29.09.2026,
@@ -100,4 +110,5 @@ ExecStart=/usr/bin/curl -fsS -o /dev/null --retry 10 --retry-connrefused --retry
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 http://127.0.0.1:3000/api/bgbl/teil2
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 120 "http://127.0.0.1:3000/api/ris-drafts?status=open"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/aktuell
+ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 300 "http://127.0.0.1:3000/api/laender?status=all"
 ExecStart=/usr/bin/curl -fsS -o /dev/null --max-time 900 http://127.0.0.1:3000/api/stations/vorperiode

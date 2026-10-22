@@ -119,7 +119,7 @@ ssh "$SERVER" \
 # A failed prewarm does NOT fail the deploy. The app is up — that was checked
 # above — and what is lost is a warm cache, not a release; rolling back would
 # be the wrong answer to an upstream hiccup. It is said out loud instead.
-echo "… prewarming (RIS corpus, BGBl volumes, both station maps) — cold, this is the slow part"
+echo "… prewarming (RIS corpus, BGBl volumes, both station maps, Länder) — cold, this is the slow part"
 if ! ssh "$SERVER" "systemctl start begutachtungs-monitor-prewarm.service"; then
   echo "⚠ prewarm failed — the first visitor pays for it:"
   echo "    ssh $SERVER journalctl -u begutachtungs-monitor-prewarm -n 30 --no-pager"
