@@ -14,10 +14,19 @@
 
 export interface PoolOptions {
   /**
-   * Stop pulling work at the first rejection and rethrow it once every
-   * worker has come to rest. Without it — the default — a rejection rejects
-   * the whole call at once while the other workers run their current item
-   * out, which is what four of the five call sites always did.
+   * Rethrow the first rejection only once every worker has come to rest.
+   * Without it — the default — the first rejection rejects the whole call
+   * at once. Either way no worker pulls another item after a rejection; the
+   * ones in flight run their current item out.
+   *
+   * The default used to keep pulling: the call had rejected, but the other
+   * workers worked through the rest of the list in the background — the
+   * hand-written pools this replaced did exactly that, and this comment
+   * claimed otherwise. Found on 22.10.2026, when a probe saw the call reject
+   * after 22 ms and all 40 items started 500 ms later. Whatever those items
+   * cost was spent for an answer already thrown away, and against an
+   * upstream that had just failed: a § fetch that gave up on RIS left three
+   * workers fetching the rest of up to 500 §§ (`kons/konsService.ts`).
    */
   failFast?: boolean
 }
@@ -38,15 +47,14 @@ export async function mapWithConcurrency<T, R>(
     while (failures.length === 0) {
       const i = next++
       if (i >= items.length) return
-      if (!options.failFast) {
-        out[i] = await fn(items[i]!, i)
-        continue
-      }
       try {
         out[i] = await fn(items[i]!, i)
       } catch (err) {
+        // Recorded in both modes, because it is what stops the others
+        // pulling: the loop condition reads it.
         failures.push(err)
-        return
+        if (options.failFast) return
+        throw err
       }
     }
   }

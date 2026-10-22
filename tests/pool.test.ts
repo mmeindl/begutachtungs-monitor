@@ -112,23 +112,35 @@ describe('mapWithConcurrency', () => {
   })
 
   /**
-   * The default: the call rejects at once, and the workers that are already
-   * running do NOT stop — they finish the list in the background. Frozen
-   * because it is the rule four of the call sites were written under, and
-   * because it is the opposite of what the name `mapWithConcurrency`
-   * suggests on its own.
+   * The default: the call rejects at once — before the other workers are
+   * done — and they run their current item out without pulling another.
+   *
+   * This test froze the opposite until 22.10.2026: the workers finished the
+   * list in the background, as the hand-written pools had. That work was
+   * paid for an answer the caller had already thrown away, against an
+   * upstream that had just failed, so it stopped (`server/utils/pool.ts`).
    */
-  it('rejects with the first error and keeps the other workers going', async () => {
-    const seen: number[] = []
-    const run = mapWithConcurrency([1, 2, 3, 4], 2, async (item) => {
-      seen.push(item)
-      if (item === 2) throw new Error('upstream 502')
+  it('rejects at once with the first error, and nothing more is started', async () => {
+    const items = [0, 1, 2, 3, 4, 5]
+    const gates = items.map(() => deferred())
+    const started: number[] = []
+    const run = mapWithConcurrency(items, 2, async (item, i) => {
+      started.push(item)
+      await gates[i]!.promise
+      if (item === 1) throw new Error('upstream 502')
       return item
     })
+    const outcome = run.catch((err: Error) => err.message)
 
-    await expect(run).rejects.toThrow('upstream 502')
+    // Item 1 fails while item 0 is still in flight, and the call does not
+    // wait for item 0 to say so.
+    gates[1]!.resolve()
+    expect(await outcome).toBe('upstream 502')
+
+    // The other worker runs its item out — and that is all it does.
+    gates[0]!.resolve()
     await flush()
-    expect(seen).toEqual([1, 2, 3, 4])
+    expect(started).toEqual([0, 1])
   })
 
   /**
