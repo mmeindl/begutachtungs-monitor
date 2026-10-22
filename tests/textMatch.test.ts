@@ -6,7 +6,7 @@
  * one field.
  */
 import { describe, expect, it } from 'vitest'
-import { foldForSearch, matchRanges, matchesQuery, queryTokens } from '../shared/utils/textMatch'
+import { foldForSearch, matchRanges, matchesQuery, queryReadings, queryTokens } from '../shared/utils/textMatch'
 
 /* Real names from the corpus wherever one makes the point — the folding
  * rules exist because of how ministries and offices actually spell
@@ -127,6 +127,35 @@ describe('matchesQuery — beide Lesarten, und eine genügt', () => {
     expect(matchesQuery(draft, '133/ME')).toBe(true)
     expect(matchesQuery(draft, '133 me')).toBe(true)
     expect(matchesQuery(draft, '132/ME')).toBe(false)
+  })
+})
+
+describe('queryReadings — die Abfrage wird einmal gefaltet, nicht je Zeile', () => {
+  /* A list filter asks `matchesQuery` once per row with the same query.
+     Folding it again for every row was where a 14,7 KB `?q=` spent 139 ms
+     per request (22.10.2026); the readings are now kept for the last query. */
+  it('gibt für dieselbe Abfrage dieselben Lesarten zurück, ohne neu zu falten', () => {
+    const first = queryReadings('Ökostrom 133/ME')
+    expect(first).toEqual({ raw: ['ökostrom', '133/me'], folded: ['okostrom', '133', 'me'] })
+    expect(queryReadings('Ökostrom 133/ME')).toBe(first)
+  })
+
+  it('ersetzt die Lesarten, sobald eine andere Abfrage kommt', () => {
+    const klima = queryReadings('klima')
+    expect(queryReadings('zoll').raw).toEqual(['zoll'])
+    expect(queryReadings('klima')).not.toBe(klima)
+    expect(queryReadings('klima')).toEqual(klima)
+  })
+
+  it('antwortet bei wechselnden Abfragen jedes Mal auf die gestellte', () => {
+    // Two filters taking turns — the memo may never answer the one before.
+    const draft = 'Bundesgesetz über die Ökostromförderung, Änderung 133/ME BMLUK'
+    for (let round = 0; round < 3; round++) {
+      expect(matchesQuery(draft, 'oekostrom')).toBe(true)
+      expect(matchesQuery(draft, 'zoll')).toBe(false)
+      expect(matchRanges(draft, 'zoll')).toEqual([])
+      expect(matchRanges(draft, '133')).not.toEqual([])
+    }
   })
 })
 

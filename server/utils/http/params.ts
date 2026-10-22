@@ -22,9 +22,36 @@ import {
 } from '#shared/utils/lawStations'
 import { RIS_ID_RE } from '#shared/utils/risConsultations'
 import { firstQueryValue } from '#shared/utils/queryParams'
+import { queryReadings } from '#shared/utils/textMatch'
 
 const INVALID_GP = 'Ungültige Gesetzgebungsperiode (römische Ziffern erwartet)'
 const STATUS_VALUES: DraftStatus[] = ['open', 'closed', 'all']
+
+/**
+ * The longest `?q=` the two list endpoints take, and the most words in it.
+ *
+ * Beyond them there is no search, only cost. Each word is a substring test
+ * on every row, in two readings, so the work grows with words times rows:
+ * a 14,7 KB query of 4.900 words that all occur cost 139 ms per pass over
+ * GP XXVII's 350 rows, and still 18 ms once the query was folded only once
+ * (`textMatch.queryReadings`) — while one client may send 240 requests at
+ * once (`RATE_RULES.global`). Measured 22.10.2026; under both caps the worst
+ * pass costs 0,7 ms.
+ *
+ * Both numbers stand above what a reader can produce. The longest text a
+ * row is searched by is a RIS long title, 741 characters and 77 words (GP
+ * XXVIII, 22.10.2026; the Ministerialentwürfe stop at 254 characters), and
+ * pasting a whole title is a normal way to find a draft again — the field on
+ * `/entwuerfe` sets no `maxlength`. Words are counted in both readings,
+ * because the folded one splits at punctuation too: „a,b,c" is one word as
+ * typed and three folded.
+ *
+ * 400, as `/api/suche` answers above its own cap, and not a query cut short:
+ * a shortened query answers a different question, and a list that quietly
+ * searched for less than was typed would read as an answer.
+ */
+export const MAX_LIST_QUERY_CHARS = 1_000
+export const MAX_LIST_QUERY_TERMS = 100
 
 export function validateGpInrParams(event: H3Event): { gp: string; inr: number } {
   const gpRaw = (getRouterParam(event, 'gp') ?? '').toUpperCase()
@@ -236,9 +263,26 @@ export function readListQuery(event: H3Event): ListQuery {
     status: status as DraftStatus,
     stations,
     ministry: firstQueryValue(query.ministry)?.toUpperCase(),
-    q: firstQueryValue(query.q)?.toLowerCase(),
+    q: readListSearch(firstQueryValue(query.q)),
   }
 }
+
+/** `?q=`, lowercased, within `MAX_LIST_QUERY_CHARS` and `MAX_LIST_QUERY_TERMS` — else 400. */
+function readListSearch(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined
+  // The length before anything is done with the string, the words after:
+  // counting them folds the query, and that is the work being capped.
+  if (raw.length > MAX_LIST_QUERY_CHARS) throw searchTooLong()
+  const q = raw.toLowerCase()
+  // The same string the filters will pass to `matchesQuery`, so the readings
+  // worked out here are the ones it finds in its one-entry memo.
+  const { raw: words, folded } = queryReadings(q)
+  if (Math.max(words.length, folded.length) > MAX_LIST_QUERY_TERMS) throw searchTooLong()
+  return q
+}
+
+/** `/api/suche`'s sentence for the same refusal. */
+const searchTooLong = () => createError({ statusCode: 400, statusMessage: 'Die Suche ist zu lang' })
 
 /**
  * The ministries of a period, for the filter menu — every one present in

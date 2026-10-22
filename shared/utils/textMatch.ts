@@ -93,6 +93,36 @@ export function queryTokens(q: string): string[] {
     .filter(Boolean)
 }
 
+/** A query in the two readings `matchesQuery` compares: as typed, and folded. */
+export interface QueryReadings {
+  raw: readonly string[]
+  folded: readonly string[]
+}
+
+let lastReadings: { q: string; readings: QueryReadings } | null = null
+
+/**
+ * Both readings of a query, worked out once per query rather than once per
+ * row.
+ *
+ * Every list filter calls `matchesQuery(haystack, q)` row after row with the
+ * same `q`, and both readings depend on `q` alone — yet the query was folded
+ * again for each row. Harmless for a word; for a 14,7 KB `?q=` of 4.900
+ * words it was the whole cost: 139 ms per pass over GP XXVII's 350 rows
+ * against 0,6 ms for „klima" (measured 22.10.2026), so one client's burst of
+ * requests held the server's event loop for half a minute.
+ *
+ * ONE entry is enough, because a filter asks about one query at a time; the
+ * next query replaces it. Plain module state, but no shared answer: the entry
+ * is a function of `q` and nothing else, and nothing in here awaits.
+ */
+export function queryReadings(q: string): QueryReadings {
+  if (lastReadings?.q !== q) {
+    lastReadings = { q, readings: { raw: queryTokens(q), folded: foldForSearch(q).split(' ').filter(Boolean) } }
+  }
+  return lastReadings.readings
+}
+
 /**
  * Every token of the query somewhere in the haystack, in any order — so
  * "wiener recht" finds "Amt der Wiener Landesregierung; Magistratsdirektion
@@ -109,11 +139,11 @@ export function queryTokens(q: string): string[] {
  * both lists use.
  */
 export function matchesQuery(haystack: string, q: string): boolean {
-  const folded = foldForSearch(q).split(' ').filter(Boolean)
+  const { raw, folded } = queryReadings(q)
   // Nothing searchable typed — punctuation only, or nothing at all.
   if (!folded.length) return true
   const lower = haystack.toLowerCase()
-  if (queryTokens(q).every((t) => lower.includes(t))) return true
+  if (raw.every((t) => lower.includes(t))) return true
   const hay = foldForSearch(haystack)
   return folded.every((t) => hay.includes(t))
 }
@@ -187,7 +217,7 @@ function foldWithMap(s: string): MappedText {
   return out
 }
 
-function rangesIn(mapped: MappedText, tokens: string[]): Array<[number, number]> {
+function rangesIn(mapped: MappedText, tokens: readonly string[]): Array<[number, number]> {
   const text = mapped.chars.join('')
   const ranges: Array<[number, number]> = []
   for (const t of tokens) {
@@ -214,10 +244,10 @@ function rangesIn(mapped: MappedText, tokens: string[]): Array<[number, number]>
  * and each of those fields is marked on its own.
  */
 export function matchRanges(text: string, q: string): Array<[number, number]> {
-  const folded = foldForSearch(q).split(' ').filter(Boolean)
+  const { raw, folded } = queryReadings(q)
   if (!folded.length || !text) return []
   const ranges = [
-    ...rangesIn(lowerWithMap(text), queryTokens(q)),
+    ...rangesIn(lowerWithMap(text), raw),
     ...rangesIn(foldWithMap(text), folded),
   ].sort((a, b) => a[0] - b[0])
   const merged: Array<[number, number]> = []

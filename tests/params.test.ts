@@ -1,6 +1,8 @@
 import type { H3Event } from 'h3'
 import { describe, expect, it } from 'vitest'
 import {
+  MAX_LIST_QUERY_CHARS,
+  MAX_LIST_QUERY_TERMS,
   PREVIOUS_PERIOD,
   gpFromParam,
   ministryFilterOptions,
@@ -179,6 +181,31 @@ describe('readListQuery', () => {
   it('drops an unknown station instead of refusing the request', () => {
     expect(readListQuery(query({ station: 'senat' })).stations).toEqual([])
     expect(readListQuery(query({ station: 'rv,senat,bgbl' })).stations).toEqual(['rv', 'bgbl'])
+  })
+
+  /* The cap on `?q=` (22.10.2026): a long query costs every row a substring
+   * test per word, and the burst of one client is 240 requests. The caps sit
+   * above anything a reader pastes — the longest searched text is a RIS long
+   * title of 741 characters and 77 words — so the reader never meets them. */
+  it('takes a whole pasted title as a search', () => {
+    const longTitle = 'Verordnung über die Änderung der Durchführung '.repeat(17).slice(0, 741).trim()
+    expect(longTitle.length).toBeGreaterThan(735)
+    expect(readListQuery(query({ q: longTitle })).q).toBe(longTitle.toLowerCase())
+    expect(readListQuery(query({ q: 'x'.repeat(MAX_LIST_QUERY_CHARS) })).q).toHaveLength(MAX_LIST_QUERY_CHARS)
+    expect(readListQuery(query({ q: Array(MAX_LIST_QUERY_TERMS).fill('wort').join(' ') })).q).toBeDefined()
+  })
+
+  it('refuses a search longer than the cap, the way /api/suche does', () => {
+    const err = refusal(() => readListQuery(query({ q: 'x'.repeat(MAX_LIST_QUERY_CHARS + 1) })))
+    expect(err).toEqual({ statusCode: 400, statusMessage: 'Die Suche ist zu lang' })
+  })
+
+  it('refuses more words than the cap, counted in either reading', () => {
+    const words = (n: number, sep: string) => Array(n).fill('zz').join(sep)
+    expect(refusal(() => readListQuery(query({ q: words(MAX_LIST_QUERY_TERMS + 1, ' ') })))?.statusCode).toBe(400)
+    // One word as typed, a hundred and one once folded: the punctuation splits it.
+    expect(refusal(() => readListQuery(query({ q: words(MAX_LIST_QUERY_TERMS + 1, ',') })))?.statusCode).toBe(400)
+    expect(refusal(() => readListQuery(query({ q: words(MAX_LIST_QUERY_TERMS, ',') })))).toBeNull()
   })
 
   it('never silently drops a valid station', () => {
