@@ -12,7 +12,11 @@
  *   - no access logs: the Caddyfile in deploy/bootstrap.sh has no `log`
  *     directive, and without one Caddy writes no access log;
  *   - no third parties at runtime: the fonts live in public/fonts, no CDN,
- *     no analytics, no cookies;
+ *     no analytics;
+ *   - one cookie, `laender`, and only after a Land chip was pressed:
+ *     app/composables/useLandChoice.ts (22.10.2026). The only browser
+ *     storage on the site — grep for localStorage/useCookie before changing
+ *     the sentence;
  *   - processors and locations: deploy/infrastructure.md;
  *   - private individuals without names: server/utils/parliament/privacy.ts.
  * Art 14 (data from Parliament) is the part standard texts do not know at
@@ -21,7 +25,7 @@
 usePageSeo({
   title: 'Datenschutz',
   description:
-    'Welche Daten der Begutachtungs-Monitor verarbeitet: keine Cookies, kein Tracking, keine Zugriffsprotokolle – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
+    'Welche Daten der Begutachtungs-Monitor verarbeitet: kein Tracking, keine Zugriffsprotokolle, ein Cookie nur für die Auswahl der Länder – und wie mit den Namen aus den Parlamentsdaten umgegangen wird.',
 })
 </script>
 
@@ -31,8 +35,9 @@ usePageSeo({
       Datenschutz
     </h1>
     <p class="mt-4 leading-relaxed text-ink-secondary">
-      Der Monitor kennt keine Konten, setzt keine Cookies, bindet keine
-      Drittanbieter ein und führt keine Zugriffsprotokolle. Deshalb ist diese
+      Der Monitor kennt keine Konten, bindet keine Drittanbieter ein und
+      führt keine Zugriffsprotokolle. Ein Cookie setzt er nur, wenn Sie
+      Länder zur Liste hinzufügen. Deshalb ist diese
       Erklärung kurz – und sie beschreibt nur, was tatsächlich passiert.
     </p>
 
@@ -71,9 +76,32 @@ usePageSeo({
       </p>
     </ProseSection>
 
+    <ProseSection id="dse-cookie" heading="Wenn Sie Länder auswählen">
+      <p>
+        Wählen Sie über „Auch aus den Ländern“ ein Land aus, merkt sich der
+        Monitor diese Auswahl in einem Cookie namens <code>laender</code>.
+        Es enthält nur die Kürzel der gewählten Länder (etwa
+        <code>sbg</code>), keine Kennung und nichts, was Sie von anderen
+        Besucherinnen und Besuchern unterscheidet. Es wird nur gesetzt,
+        wenn Sie ein Land an- oder abwählen, und gilt ein Jahr. Der Server
+        liest es, um die Liste gleich mit Ihren Ländern auszuliefern.
+      </p>
+      <p>
+        Das Cookie ist für eine Funktion nötig, die Sie selbst aufrufen;
+        dafür braucht es keine Einwilligung (§ 165 Abs 3 TKG 2021). Löschen
+        können Sie es in Ihrem Browser oder indem Sie alle Länder wieder
+        abwählen. Die Auswahl steht außerdem in der Adresse
+        (<code>?land=sbg</code>), sodass ein geteilter Link dieselbe Liste
+        zeigt.
+      </p>
+    </ProseSection>
+
     <ProseSection id="dse-none" heading="Was nicht passiert">
       <ul>
-        <li>Keine Cookies und keine vergleichbare Speicherung im Browser.</li>
+        <li>
+          Keine weiteren Cookies und keine vergleichbare Speicherung im
+          Browser – außer dem einen Cookie für die Auswahl der Länder.
+        </li>
         <li>
           Keine Reichweitenmessung, keine Analytik, kein Tracking, keine
           Profilbildung, keine automatisierte Entscheidungsfindung.

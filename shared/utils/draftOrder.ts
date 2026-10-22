@@ -12,7 +12,7 @@
  * Pure module: no Nuxt auto-imports, so the server list, the client merge
  * and vitest all run the same function.
  */
-import type { DraftSummary, OpenVorlage, RisConsultation } from '../types'
+import type { DraftSummary, LandConsultation, OpenVorlage, RisConsultation } from '../types'
 
 /**
  * What ordering needs from a row, and nothing else.
@@ -170,6 +170,7 @@ export type DraftListRow =
   | { kind: 'me'; key: string; draft: DraftSummary }
   | { kind: 'ris'; key: string; item: RisConsultation }
   | { kind: 'vorlage'; key: string; vorlage: OpenVorlage }
+  | { kind: 'land'; key: string; item: LandConsultation }
 
 /**
  * What the list's order asks of a row, whichever kind it is.
@@ -184,6 +185,8 @@ export type DraftListRow =
 export function rowOrderKey(row: DraftListRow): OrderedDraft {
   if (row.kind === 'me') return draftOrderKey(row.draft)
   if (row.kind === 'ris') return row.item
+  // A Land states no start; only the end orders it, which is all an open row needs.
+  if (row.kind === 'land') return { active: row.item.active, deadline: row.item.deadline, startedAt: null, title: row.item.title }
   return { active: false, deadline: null, startedAt: row.vorlage.date || null, title: row.vorlage.title }
 }
 
@@ -195,6 +198,10 @@ export function meRow(draft: DraftSummary): DraftListRow {
 
 export function risRow(item: RisConsultation): DraftListRow {
   return { kind: 'ris', key: `ris-${item.id}`, item }
+}
+
+export function landRow(item: LandConsultation): DraftListRow {
+  return { kind: 'land', key: `land-${item.id}`, item }
 }
 
 export function vorlageRow(vorlage: OpenVorlage): DraftListRow {
@@ -213,8 +220,9 @@ export function draftRows(
   me: readonly DraftSummary[],
   ris: readonly RisConsultation[],
   vorlagen: readonly OpenVorlage[] = [],
+  laender: readonly LandConsultation[] = [],
 ): DraftListRow[] {
-  return [...me.map(meRow), ...ris.map(risRow), ...vorlagen.map(vorlageRow)]
+  return [...me.map(meRow), ...ris.map(risRow), ...vorlagen.map(vorlageRow), ...laender.map(landRow)]
 }
 
 /** The list's own order — open first, nearest Frist on top — over rows of any kind. */

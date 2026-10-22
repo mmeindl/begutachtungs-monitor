@@ -295,6 +295,9 @@ export function draftCountLabel(c: {
   risKindOfOne?: RisConsultationKind | null
   /** Only stations selected that a record without a Gegenstand cannot reach. */
   laterStationsOnly: boolean
+  /** The chosen Länder's rows in the list; null where none is chosen or
+   *  the view cannot carry them (`LandChips`). */
+  laender?: number | null
 }): string {
   const parts: string[] = []
   if (c.me !== null) {
@@ -333,6 +336,11 @@ export function draftCountLabel(c: {
         ? 'die Verordnungsentwürfe sind gerade nicht abrufbar'
         : countLabelDe(c.ris, RIS_KIND_ONE[c.risKindOfOne ?? 'unbestimmt'], ART_VERORDNUNG_NOUN),
     )
+  }
+  /* A fourth term, never added up either: a Land's draft is neither kind
+   * of the Bund's. */
+  if (c.laender !== null && c.laender !== undefined) {
+    parts.push(`${countLabelDe(c.laender, 'Entwurf', 'Entwürfe')} aus den Ländern`)
   }
   return parts.join(' · ')
 }

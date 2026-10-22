@@ -91,8 +91,11 @@ export function useDraftFilters(): DraftFilters {
   })
 
   // Keep the URL in sync with the filters (defaults stay out of the URL).
+  /* `land` is not this list's filter but the site's choice of Länder
+   * (`useLandChoice`), and the write-back must not drop it. */
   watch([query, art, sort], () => {
-    router.replace({ query: draftUrlQuery(current()) })
+    const land = route.query.land
+    router.replace({ query: { ...draftUrlQuery(current()), ...(land !== undefined ? { land } : {}) } })
   })
 
   /**

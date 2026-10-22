@@ -42,6 +42,7 @@ import type {
   DraftChain,
   DraftStation,
   DraftSummary,
+  LandConsultation,
   OpenVorlage,
   RisConsultation,
 } from '#shared/types'
@@ -52,6 +53,7 @@ import { type DeadlineTone, deadlineTone, fristClassLineDe, isNewArrival, isWith
 import { bgblShort, formatDateDe, formatDateWeekdayDe, fristEndedDe, fristLabel, todayIso } from '#shared/utils/format'
 import { promulgationState } from '#shared/utils/promulgation'
 import { RIS_KIND_LABEL } from '#shared/utils/risConsultations'
+import { LAND_NAME, landShortTitle } from '#shared/utils/laender'
 
 /**
  * Zone 3 — what was filed in this Verfahren.
@@ -539,8 +541,36 @@ export function viewOfVorlage(v: OpenVorlage): EntryView {
  * The one dispatch over the three kinds; the pages and the full-text search
  * each wrote it themselves until 03.10.2026.
  */
+/**
+ * A Land's draft (22.10.2026): read off the Land's own list, so the row
+ * links there and nowhere inside the monitor — there is no chain to show.
+ * The Land stands where a Bund row names its Ressort: who put it out. No
+ * „Neu" chip and no Frist class: the Länder state no start date.
+ */
+export function viewOfLand(c: LandConsultation): EntryView {
+  const name = LAND_NAME[c.land]
+  return {
+    key: `land-${c.id}`,
+    to: null,
+    href: c.url,
+    title: landShortTitle(c.title) ?? c.title,
+    titleFull: c.title,
+    kindLabel: RIS_KIND_LABEL[c.kind],
+    citation: null,
+    ministry: { code: name, name: `Land ${name}` },
+    coMinistries: [],
+    alias: null,
+    note: null,
+    newLabel: null,
+    // Filed with the Land, counted by nobody — the RIS rows' state.
+    participation: { kind: 'unpublished' },
+    state: c.active ? openState(c.deadline, true) : endedState(c.deadline, 'Begutachtung abgeschlossen'),
+  }
+}
+
 export function viewOfRow(row: DraftListRow): EntryView {
   if (row.kind === 'me') return viewOfDraft(row.draft)
   if (row.kind === 'ris') return viewOfRis(row.item)
+  if (row.kind === 'land') return viewOfLand(row.item)
   return viewOfVorlage(row.vorlage)
 }

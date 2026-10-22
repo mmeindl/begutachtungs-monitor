@@ -5,8 +5,10 @@ import type {
   DashboardOutcomes,
   DashboardPayload,
   DashboardSecondRound,
+  LaenderResponse,
   RisConsultationsResponse,
 } from '#shared/types'
+import { LAND_NAME, formatLandList } from '#shared/utils/laender'
 import { HOME_LIST_LENGTH, compareRowsByFrist, draftRows } from '#shared/utils/draftOrder'
 import { viewOfDraft, viewOfOutcome, viewOfRow, viewOfVorlage } from '~/utils/entryView'
 import { gpWindow } from '#shared/utils/gp'
@@ -147,6 +149,18 @@ const { data: risOnly, status: risStatus } = await useFetch<RisConsultationsResp
   { query: { status: 'open' }, timeout: 6000, lazy: true },
 )
 
+/* The Länder the reader chose (`useLandChoice`, 22.10.2026). Server-rendered
+ * like the RIS half, and for its reason: a chosen Land's rows sort in among
+ * the others by Frist, so they cannot arrive after the list. Asked only when
+ * a Land is chosen — the default homepage pays nothing for them. One answer
+ * carries every Land; the choice is applied below. */
+const { chosen: landChoice } = useLandChoice()
+const { data: laender, status: laenderStatus } = await useAsyncData<LaenderResponse | null>(
+  'home-laender',
+  () => (landChoice.value.length ? $fetch<LaenderResponse>('/api/laender', { timeout: 6000 }) : Promise.resolve(null)),
+  { watch: [landChoice], lazy: true },
+)
+
 const { data, error, refresh, status } = await dashboardFetch
 const { data: outcomes } = await outcomesFetch
 const { data: enacted, status: enactedStatus } = await enactedFetch
@@ -155,6 +169,25 @@ const { data: decided } = await decidedFetch
 /** No answer yet, as opposed to none: only after a click, never on the
  *  server, which waits (see `dashboardFetch`). */
 const loading = (s: AsyncDataRequestStatus) => s === 'idle' || s === 'pending'
+
+/* The chosen Länder's rows, and the chosen Länder that could not be read —
+ * a failed fetch counts as every chosen Land unreadable, never as none open. */
+const chosenLandItems = computed(() =>
+  (laender.value?.items ?? []).filter((item) => landChoice.value.includes(item.land)),
+)
+const unreadableLaender = computed(() => {
+  if (!landChoice.value.length || loading(laenderStatus.value)) return []
+  const sources = laender.value?.sources
+  return landChoice.value
+    .map((land) => sources?.find((s) => s.land === land) ?? { land, state: 'unavailable' as const, listUrl: null })
+    .filter((s) => s.state === 'unavailable')
+})
+/* The list link carries the choice when it came from the address alone: the
+ * cookie would carry it otherwise, a shared link has none. */
+const openListHref = computed(() => {
+  const land = formatLandList(landChoice.value)
+  return `/entwuerfe?status=open&station=begutachtung${land ? `&land=${land}` : ''}`
+})
 
 /**
  * What is open right now, both kinds, in ONE deadline-ordered list
@@ -175,7 +208,7 @@ const loading = (s: AsyncDataRequestStatus) => s === 'idle' || s === 'pending'
  * behind the cap is named in the link above the list, and only there.
  */
 const openRows = computed(() =>
-  draftRows(data.value?.open ?? [], risOnly.value?.items ?? []).sort(compareRowsByFrist),
+  draftRows(data.value?.open ?? [], risOnly.value?.items ?? [], [], chosenLandItems.value).sort(compareRowsByFrist),
 )
 
 /* The mapping onto the anatomy happens HERE, not in the template:
@@ -423,7 +456,7 @@ function submitSearch() {
       <section class="page-section" aria-labelledby="open-heading">
         <ListHeader
           id="open-heading"
-          to="/entwuerfe?status=open&station=begutachtung"
+          :to="openListHref"
           noun="offenen Entwürfe"
           :total="openRows.length"
           :visible="visibleOpenRows.length"
@@ -440,6 +473,16 @@ function submitSearch() {
              state where its gloss below the list was suppressed — the
              gloss only rendered when such a row was present, and this line
              only renders when none is. -->
+        <!-- Which Länder join the list (`LandChips`): directly under the
+             heading, above everything the choice changes. -->
+        <LandChips class="mt-3" />
+        <!-- A chosen Land that could not be read, said like the RIS half
+             below: its rows are missing, and the list must not read as if
+             that Land had nothing open. -->
+        <p v-for="s in unreadableLaender" :key="s.land" class="mt-2 text-sm text-ink-muted">
+          {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
+            <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
+        </p>
         <p v-if="!risOnly && !loading(risStatus)" class="mt-2 text-sm text-ink-muted">
           Die Verordnungsentwürfe aus dem RIS sind gerade nicht abrufbar –
           <NuxtLink
@@ -456,7 +499,7 @@ function submitSearch() {
         <!-- Until both halves are here: the RIS rows sort in between the
              others by Frist, so a list drawn from one half would reorder
              under the reader's eyes. -->
-        <ListSkeleton v-if="loading(risStatus)" class="mt-4">
+        <ListSkeleton v-if="loading(risStatus) || (landChoice.length > 0 && loading(laenderStatus))" class="mt-4">
           Offene Entwürfe werden geladen …
         </ListSkeleton>
         <EntryList v-else-if="visibleOpenRows.length" :entries="visibleOpenRows" class="mt-4" />

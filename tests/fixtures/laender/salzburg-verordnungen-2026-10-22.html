@@ -1,0 +1,911 @@
+<!-- prettier-ignore -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+
+
+    
+        
+    
+    
+
+
+<html lang="de">
+
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+
+
+
+<link rel="icon" type="image/gif" href="../.././webjars/sbgLayout/images/favicon.ico">
+
+
+    <title>pub - Verordnungsentwurf</title>
+
+
+
+
+
+
+<!-- Font Awesome -->
+<link href="../.././webjars/font-awesome/5.2.0/css/all.css" rel="stylesheet" type="text/css">
+
+<!-- jQuery -->
+<script src="../.././webjars/jquery/3.3.1/jquery.min.js"></script>
+
+<!-- jQuery UI -->
+<link href="../.././webjars/jquery-ui-1.12.1.Smoothness/jquery-ui.min.css" rel="stylesheet" type="text/css">
+<script src="../.././webjars/jquery-ui-1.12.1.Smoothness/jquery-ui.min.js"></script>
+<!-- german localisation von jquery-ui datepicker -->
+<script src="../.././webjars/jquery-ui-i18n/datepicker-de.js"></script>
+
+<!-- Bootstrap -->
+<link href="../.././webjars/bootstrap-4.6.2/dist/css/bootstrap.css" rel="stylesheet" type="text/css">
+<script src="../.././webjars/bootstrap-4.6.2/dist/js/bootstrap.bundle.js"></script>
+
+<!-- Datatables with Bootstrap Layout -->
+<link href="../.././webjars/DataTables-1.13.8/DataTables-1.13.8/css/dataTables.bootstrap4.css" rel="stylesheet" type="text/css">
+<script src="../.././webjars/DataTables-1.13.8/DataTables-1.13.8/js/jquery.dataTables.js"></script>
+<script src="../.././webjars/DataTables-1.13.8/DataTables-1.13.8/js/dataTables.bootstrap4.js"></script>
+<!-- default configuration of datatables -->
+<script>
+	// disable default search field and use german strings
+	$.extend($.fn.dataTable.defaults, {
+        'stateSave': true,
+        'stateDuration': -1,
+        'lengthMenu': [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Alle"]],
+        'pageLength': 25,
+        'searching': false,
+        'language': {'url': '../.././webjars/DataTables-1.13.8/Plugins/i18n/de-DE.json'},
+        "dom": "<'row'<'col-5 col-sm-6'l><'col-7 col-sm-6 text-right'pf>r>t<'row'<'col-3 col-sm-4 col-md-5'i><'col-9 col-sm-8 col-md-7 text-right'p>>"
+    });
+</script>
+ 
+<!-- frame -->
+<link href="../.././webjars/sbgLayout/css/frame-public.css" rel="stylesheet" type="text/css" />
+
+<!-- Sbg Layout Public: muss jQuery und Bootstrap CSS ueberschreiben -->
+<link href="../.././webjars/sbgLayout/css/sbgLayout-public.css" rel="stylesheet" type="text/css" />
+
+<!-- includes from application -->
+<link href="../.././css/pub.css" rel="stylesheet" type="text/css" />
+    	<meta name="monitoring" content="8fc5c282-cda7-4e34-88d2-538c8f28bc88"> 
+        
+
+</head>
+
+<body>
+    <link href="https://webcache-eu.datareporter.eu/c/0a7eeb56-d1f1-4eb2-90f9-8b976301637e/a6tRR21W8rD/je/banner.css" rel="stylesheet">
+	<script src="https://webcache-eu.datareporter.eu/c/0a7eeb56-d1f1-4eb2-90f9-8b976301637e/a6tRR21W8rD/je/banner.js" type="text/javascript" charset="utf-8"></script>
+	<script>
+		window.cookieconsent.initialise(dr_cookiebanner_options);
+	</script>
+	
+	<div id="app-skiplinks">
+        <section id="skiplinks" class="container">
+			<a href="#app-content" class="skip">Zum Inhalt springen</a>
+			
+			<a href="#footer" class="skip">Zum Footer Land Salzburg</a>
+    	</section>
+    </div>
+    
+    <div id="public-wrapper">
+        <div id="app-header" class="container pt-3 pt-lg-5 ">
+            <div class="row align-items-center">
+            	
+            		
+            		
+		            	<div class="col" id="logo-sbg">
+		    				<a href="https://www.salzburg.gv.at/" title="Link zur Startseite">
+		    	            	<img alt="Logo Land Salzburg" src="../.././webjars/sbgLayout/images/logo-sbg.svg" id="img:logo-sbg"/>
+		    	            </a>
+		    	        </div>
+            		
+            	
+
+                <!-- Burger Menu Toggle (visible only on small screens) -->
+                <div class="col-auto d-flex d-lg-none pb-5">
+                    <button class="navbar-toggler rounded-0" type="button" id="search-toggler" aria-controls="header-search-collapse" aria-expanded="false" aria-label="Suche ein-/ausblenden">
+                        <span class="menu-btn-click">
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </span>
+                        <span class="menu-btn-close">
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </span>
+                    </button>
+                </div>
+            
+
+	            <!-- Search area: visible by default on large screens, collapsible on small screens -->
+	            <div id="header-search-collapse" class="header-search-collapse">
+	                <nav class="navbar" role="navigation" aria-label="Hauptnavigation">
+		                <div class="d-flex flex-nowrap" id="header-search">
+		                    <form role="search" aria-label="Seitensuche" method="get" class="searchform" id="tx-solr-search-form-pi-results" action="https://www.salzburg.gv.at/suche" data-suggest="https://www.salzburg.gv.at/suche?type=7384" data-suggest-header="Top Results" accept-charset="utf-8">
+		                        <label for="tx-solr-search-input" class="sr-only">Suche Landeswebseite</label>
+		                        <div class="input-group">
+		                           <input type="text" id="tx-solr-search-input" class="tx-solr-q js-solr-q tx-solr-suggest tx-solr-suggest-focus form-control" name="tx_solr[q]" value="" placeholder="Hier Suchbegriff eingeben..."><!-- style="flex-basis: 90%;" -->
+		                           <div class="input-group-append">
+			                           <button  class="btn btn-primary tx-solr-submit form-control" type="submit" aria-label="Suche starten" value="Suchen">
+			                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-search" aria-hidden="true" focusable="false">
+			                                   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+			                                   <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"></path>
+			                                   <path d="M21 21l-6 -6"></path>
+			                               </svg>
+			                               <span class="visually-hidden">Suchen</span>
+			                           </button>
+		                           </div>
+		                        </div>
+		                    </form>
+		                </div>
+	                </nav>
+	            </div>
+            </div>
+        </div> <!-- app-header -->
+
+        <div id="app-content-wrapper">
+            <section id="app-content" class="container">
+        		
+    	
+        <div class="container-fluid">
+            <!-- Skiplinks -->
+            <a class="sr-only sr-only-focusable" href="#header">Beschreibung der Veröffentlichung und einleitender Text</a>
+            <a class="sr-only sr-only-focusable" href="#entryList">Liste der Veröffentlichungen</a>
+            <a class="sr-only sr-only-focusable" href="#footer">Fußzeile</a>
+
+            <div class="row pt-4 pb-4">
+                <div class="col-sm-12 breadcrumb-path">
+                    <a href="http://www.salzburg.gv.at/">Land Salzburg</a>
+                    / Verordnungsentwurf
+                </div>
+            </div>
+
+            <div id="header" class="row margin-bottom-medium">
+                <div class="col-12"><h2>&sect; Aktuelle Verordnungsentw&uuml;rfe</h2>
+
+<p>Derzeit befinden sich folgende Verordnungsentw&uuml;rfe in Begutachtung. Sie haben Gelegenheit, uns Ihre Meinung innerhalb der Begutachtungsfrist unter&nbsp;<a href="mailto:Begutachtung@salzburg.gv.at">Begutachtung@salzburg.gv.at</a>&nbsp;zukommen zu lassen.<br />
+Ihre Stellungnahme wird einschlie&szlig;lich Ihres Namens und Ihrer Kontaktdaten den zust&auml;ndigen Dienststellen des Amtes der Landesregierung und der Landesregierung zum Zweck der Verordnungsvorbereitung zur Verf&uuml;gung gestellt. Sie wird dar&uuml;ber hinaus auf der Homepage des Landes ver&ouml;ffentlicht, wenn Sie dazu im Rahmen der Stellungnahme oder durch gesonderte Mitteilung ausdr&uuml;cklich zustimmen. Die <a href="https://service.salzburg.gv.at/pub/list/verord_entw/landesrecht-archiv">ver&ouml;ffentlichten Stellungnahmen</a> k&ouml;nnen Sie hier nach Ende des Begutachtungsverfahrens abrufen.</p>
+
+<p>Alle neuen Gesetz- und Verordnungsentw&uuml;rfe k&ouml;nnen per Newsletter bezogen werden. Sie k&ouml;nnen sich f&uuml;r den&nbsp;<a href="https://service.salzburg.gv.at/publicnews/subscription/new?specialNewsletter=gesetz_verordentw" target="_blank">Newsletter</a>&nbsp;anmelden.</p>
+
+<p>&nbsp;</p>
+</div>
+            </div>
+
+            <div class="row margin-bottom-medium">
+                <div class="col-sm-2 col-6 pull-right">
+                    
+                        
+                        
+                        10 Einträge
+                    
+                </div>
+            </div>
+
+            <div id="entryList" class="row margin-bottom-medium">
+                <div class="col-12">
+                    <ul class="list-unstyled">
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35573" target="_blank">
+            Verordnung der Salzburger Landesregierung über die Erhöhung der Grenzwerte gemäß § 23a Abs 1 des Salzburger Bezügegesetzes 1992
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 19.11.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35575" target="_blank">
+            Verordnung der Salzburger Landesregierung, mit der die Grenzwerte gemäß § 2 Abs 1 des Landes-Sonderpensionengesetzes erhöht werden (Sonderpensionsverordnung 2027)
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 19.11.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35580" target="_blank">
+            Verordnung der Landeshauptfrau von Salzburg, mit der Anordnungen zum Schutz des Grundwasservorkommens für die allgemeine Wasserversorgung durch die Wasserversorgungsanlage der Stadtgemeinde Hallein erlassen werden (Schongebietsverordnung Rehhof)
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 19.11.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35581" target="_blank">
+            Verordnung der Landeshauptfrau von Salzburg, mit der Anordnungen zum Schutz des Grundwasservorkommens für die allgemeine Wasserversorgung durch die Wasserversorgungsanlage der Stadtgemeinde Hallein erlassen werden (Schongebietsverordnung Rehhof) - Anlage I
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 19.11.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35582" target="_blank">
+            Verordnung der Landeshauptfrau von Salzburg, mit der Anordnungen zum Schutz des Grundwasservorkommens für die allgemeine Wasserversorgung durch die Wasserversorgungsanlage der Stadtgemeinde Hallein erlassen werden (Schongebietsverordnung Rehhof) - Anlage II
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 19.11.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35572" target="_blank">
+            Verordnung der Salzburger Landesregierung, mit der pensionsrechtliche Bestimmungen erlassen werden (Pensionsverordnung 2027) 
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 18.11.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35558" target="_blank">
+            Kundmachung der Salzburger Landesregierung über den im Jahr 2027 von den Trägern von Senioren- und Seniorenpflegeheimen für Aufgaben der Pflegeanwaltschaft zu leistenden Kostenbeitrag
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 16.11.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35436" target="_blank">
+            Kundmachung der Salzburger Landesregierung über die Richtsätze für das Pflegekindergeld und die Ausstattungspauschale im Jahr 2027
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 27.10.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35430" target="_blank">
+            Verordnung der Salzburger Landesregierung, mit der die Gemeinde-Instanzenzug-Verordnung hinsichtlich der Gemeinde Hallwang geändert wird
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 26.10.2026</strong></div>
+                            </li>
+                        
+                            <li class="margin-bottom-big">
+                                <!-- prettier-ignore -->
+
+
+
+
+    
+        
+
+
+
+
+
+    
+        <i class="far fa-file-pdf" aria-hidden="true"></i>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+
+
+        <a href="../.././get/35553" target="_blank">
+            Verordnung der Salzburger Landesregierung, mit der die Wohnbauförderungsverordnung 2025 geändert wird
+        </a>
+        
+    
+    
+
+
+                                <div><strong>Ende der Begutachtungsfrist: 23.10.2026</strong></div>
+                            </li>
+                        
+                    </ul>
+                </div>
+            </div>
+
+            <div id="footer" class="row pb-4">
+                <div class="col-12"><table style="width:100%">
+	<tbody>
+		<tr>
+			<td><a href="javascript:window.scrollTo(0,0)">Seitenanfang</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+            </div>
+        </div>
+    
+    
+        	</section>
+        </div>
+        
+       	<footer id="app-footer" role="contentinfo" class="ms-dialogHidden ">
+            <div class="container">
+                <!-- Red Top Bar -->
+                <div class="footer-top-bg"></div>
+
+                <!-- Dark Footer Content -->
+                <div class="footer-content py-5">
+                    <div class="footer-top-content">
+                        <div class="row">
+                            <!-- Logo -->
+                            <div class="col-lg-4 col-left mb-5">
+                                <div class="col-inner px-4 px-lg-0">
+                                    
+                                        
+                                        
+                                            <a href="https://www.salzburg.gv.at/" title="Link zur Startseite">
+                                                <img alt="Logo Land Salzburg" src="../.././webjars/sbgLayout/images/footer_logo_sbg.svg" class="footer-logo-img">
+                                            </a>
+                                        
+                                    
+                                </div>
+                            </div>
+
+                            <!-- App Store Links -->
+                            <div class="col-lg-5 offset-lg-3 col-right mb-lg-5">
+                                <div class="col-inner px-4 px-lg-0">
+                                    <h3>Download Land Salzburg App</h3>
+                                    <ul class="list-unstyled d-flex flex-row">
+                                        <li class="mr-2">
+                                            <a href="https://apps.apple.com/de/app/land-salzburg/id1542245242" target="_blank" rel="noopener">
+                                                <span class="sr-only">App Land Salzburg im Apple App Store</span>
+                                                <img src="../.././webjars/sbgLayout/images/app_store_badge.svg" width="146" height="44" loading="lazy" alt="App Land Salzburg im Apple App Store">
+                                            </a>
+                                        </li>
+                                        <li class="mr-2">
+                                            <a href="https://play.google.com/store/apps/details?id=gv.landsalzburg.landsalzburgapp&amp;gl=AT" target="_blank" rel="noopener">
+                                                <span class="sr-only">App Land Salzburg im Google Play Store</span>
+                                                <img src="../.././webjars/sbgLayout/images/google_play_badge.svg" width="150" height="44" loading="lazy" alt="App Land Salzburg im Google Play Store">
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="col">
+	                            <!-- Social Media Icons -->
+	                            <ul class="footer-icons d-flex justify-content-center px-4 px-lg-0">
+	                                <li>
+	                                    <a href="https://www.facebook.com/LandSalzburg/" target="_blank" rel="noopener" aria-label="Facebook Seite von Land Salzburg" title="Facebook Land Salzburg">
+	                                        <span class="sr-only">Facebook Seite von Land Salzburg</span>
+	                                        <span aria-hidden="true">
+	                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                                               <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                   <path d="M7 10v4h3v7h4v-7h3l1 -4h-4v-2a1 1 0 0 1 1 -1h3v-4h-3a5 5 0 0 0 -5 5v2h-3"></path>
+	                                            </svg>
+	                                        </span>
+	                                    </a>
+	                                </li>
+	                                <li>
+	                                    <a href="https://www.instagram.com/land_salzburg/" target="_blank" rel="noopener" aria-label="Instagram Seite von Land Salzburg" title="Instagram Land Salzburg">
+	                                        <span class="sr-only">Instagram Seite von Land Salzburg</span>
+	                                        <span aria-hidden="true">
+	                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                    <path d="M4 4m0 4a4 4 0 0 1 4 -4h8a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-8a4 4 0 0 1 -4 -4z"></path>
+                                                    <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path>
+                                                    <path d="M16.5 7.5l0 .01"></path>
+	                                            </svg>
+	                                        </span>
+	                                    </a>
+	                                </li>
+	                                <li>
+	                                    <a href="https://on.salzburg.gv.at/" target="_blank" rel="noopener" aria-label="Salzburg ON" title="Salzburg ON Plattform">
+	                                        <span class="sr-only">Salzburg ON</span>
+	                                        <span aria-hidden="true">
+	                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                    <path d="M8.3 5v14l11.6 -7z"></path>
+                                                    <circle cx="12" cy="12" r="9"></circle>
+	                                            </svg>
+	                                        </span>
+	                                    </a>
+	                                </li>
+	                                <li>
+	                                    <a href="https://service.salzburg.gv.at/publicnews/subscription/new?mandant=normal" target="_blank" rel="noopener" aria-label="Newsletter abonnieren" title="Newsletter Land Salzburg">
+	                                        <span class="sr-only">Newsletter abonnieren</span>
+	                                        <span aria-hidden="true">
+	                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+	                                                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                                    <path d="M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10z"></path>
+                                                    <path d="M3.5 7.5l8.5 5.5l8.5 -5.5"></path>
+	                                            </svg>
+	                                        </span>
+	                                    </a>
+	                                </li>
+	                            </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Navigation -->
+                    <div class="footer-menu">
+                        
+                            
+                            
+                                <div class="footer-menu-row-wrap">
+                                    <ul class="list-unstyled row">
+                                        <li class="col-md-7 col-left">
+                                            <div class="list-item-wrap px-4 px-lg-0">
+                                                <a href="https://www.salzburg.gv.at/dienststellen/kontakt">Kontakt</a>
+                                            </div>
+                                        </li>
+                                        <li class="col-md-5 col-right">
+                                            <div class="list-item-wrap px-4 px-lg-0">
+                                                <a href="https://www.salzburg.gv.at/dienststellen/kontakt/rechnung">Rechnungen</a>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="footer-menu-row-wrap">
+                                    <ul class="list-unstyled row">
+                                        <li class="col-md-7 col-left">
+                                            <div class="list-item-wrap px-4 px-lg-0">
+                                                <a href="https://www.salzburg.gv.at/dienststellen/kontakt/impressum">Impressum</a>
+                                            </div>
+                                        </li>
+                                        <li class="col-md-5 col-right">
+                                            <div class="list-item-wrap px-4 px-lg-0">
+                                                <a href="https://www.salzburg.gv.at/dienststellen/kontakt/rechtliche-hinweise">Rechtliche&nbsp;Hinweise</a>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="footer-menu-row-wrap">
+                                    <ul class="list-unstyled row">
+                                        <li class="col-md-7 col-left">
+                                            <div class="list-item-wrap px-4 px-lg-0">
+                                                <a href="https://www.salzburg.gv.at/dienststellen/kontakt/datenschutz">Datenschutz</a>
+                                            </div>
+                                        </li>
+                                        <li class="col-md-5 col-right">
+                                            <div class="list-item-wrap px-4 px-lg-0">
+                                                <a href="https://www.salzburg.gv.at/dienststellen/digitale-dienste/barrierefrei">Barrierefreiheit</a>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="footer-menu-row-wrap">
+                                    <ul class="list-unstyled row">
+                                        <li class="col-md-7 col-left">
+                                            <div class="list-item-wrap px-4 px-lg-0">
+                                                <a href="https://www.salzburg.gv.at/dienststellen/hinweisgebersystem">Hinweisgebersystem</a>
+                                            </div>
+                                        </li>
+                                        <li class="col-md-5 col-right">
+				                            <div class="list-item-wrap px-4 px-lg-0">
+				                                <a href="https://www.salzburg.gv.at/formulare">Allgemeine Formulare</a>
+				                            </div>
+				                        </li>
+                                    </ul>
+                                </div>
+                            
+                        
+                    </div>
+                </div>
+
+                <!-- Footer Bottom (Copyright) -->
+                <div class="footer-bottom-bg py-3 px-0 px-lg-3" id="footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="mb-0">
+                                
+                                    
+                                    &copy; Land Salzburg
+                                
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+	    </footer>
+    </div>
+    
+    <!-- Burger Menu Toggle Script -->
+    <script>
+        $(function() {
+            var $toggler = $('#search-toggler');
+            var $collapse = $('#header-search-collapse');
+            $toggler.on('click', function() {
+                $toggler.toggleClass('open');
+                $collapse.toggleClass('open');
+                var isOpen = $toggler.hasClass('open');
+                $toggler.attr('aria-expanded', isOpen ? 'true' : 'false');
+            });
+        });
+    </script>
+</body>
+
+</html>
+

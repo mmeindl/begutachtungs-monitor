@@ -53,8 +53,11 @@ const { webcalUrl, googleCalUrl, icsDisplayUrl } = useFeedUrls()
           class="link-inline"
         >Rechtsinformationssystems des Bundes</ExternalLink>. Der Monitor
         ruft sie bei Bedarf ab und hält sie rund 30 Minuten im
-        Zwischenspeicher; eine eigene Datenbank gibt es nicht. Es gibt keine
-        Konten, kein Tracking und keine Cookies.
+        Zwischenspeicher; eine eigene Datenbank gibt es nicht. Die
+        Begutachtungen der Länder haben keine solche Schnittstelle: Der
+        Monitor liest sie von den Seiten der Länder selbst, derzeit von
+        Salzburg. Es gibt keine Konten und kein Tracking; ein Cookie nur,
+        wenn Sie Länder zur Liste hinzufügen.
       </p>
     </ProseSection>
 

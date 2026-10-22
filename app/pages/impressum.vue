@@ -275,6 +275,24 @@ usePageSeo({
             >parlament.gv.at</ExternalLink>. Namen von Privatpersonen veröffentlicht er nicht.
           </dd>
         </div>
+        <!-- The Länder since 22.10.2026, read off each Land's own list
+             (`server/utils/laender/`). No licence claimed: none is stated
+             for those lists. What the monitor takes is a title, a date and a
+             link — the documents stay on the Land's site. -->
+        <div>
+          <dt>
+            Land Salzburg, Gesetz- und Verordnungsentwürfe in Begutachtung
+          </dt>
+          <dd>
+            Titel und Ende der Begutachtungsfrist aus den Listen auf
+            <ExternalLink
+              href="https://service.salzburg.gv.at/pub/list/gesetz_entw/landesrecht-list"
+              class="link-inline"
+            >service.salzburg.gv.at</ExternalLink>. Eine Open-Data-Lizenz
+            weist das Land für diese Listen nicht aus. Der Monitor übernimmt
+            die Entwürfe nicht, sondern verlinkt sie beim Land.
+          </dd>
+        </div>
       </dl>
       <p>
         Der Quellcode des Monitors ist unter der

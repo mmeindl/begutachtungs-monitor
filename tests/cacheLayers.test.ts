@@ -50,6 +50,7 @@ const FETCHED: Record<string, string> = {
   'annex-pdf': "the ressort's annex PDF, byte for byte as base64 — cached in dev only",
   'drafts-list': 'list 81 of one GP, exactly as the API answered',
   'parliament-me-config': "the ME list's page configuration, as served",
+  'land-list-page': "a Land's list of drafts in Begutachtung as its site served it; parsed and gated fresh on every call",
 }
 
 const UTILS = join(import.meta.dirname, '..', 'server', 'utils')

@@ -22,6 +22,8 @@
  *   `status.bgbllinks` (sent as `http://`), and the pages built here.
  * - `ogd.ris.bka.gv.at`: RIS OGD document files (`ContentUrl.Url`).
  * - `data.bka.gv.at`: the RIS OGD API itself.
+ * - `service.salzburg.gv.at`: Salzburg's list of drafts in Begutachtung and
+ *   its documents (`server/utils/laender/salzburg.ts`).
  *
  * A bare-domain variant is added only once upstream data is seen using it.
  */
@@ -30,6 +32,7 @@ export const UPSTREAM_HOSTS: ReadonlySet<string> = new Set([
   'www.ris.bka.gv.at',
   'ogd.ris.bka.gv.at',
   'data.bka.gv.at',
+  'service.salzburg.gv.at',
 ])
 
 /** Parliament's host — the one `/gegenstand/…` paths are read from. */

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { DashboardSecondRound, DraftStation } from '#shared/types'
+import type { DashboardSecondRound, DraftStation, LaenderResponse } from '#shared/types'
+import { LAND_NAME } from '#shared/utils/laender'
 import {
   compareRowsByFrist,
   compareRowsByStatements,
@@ -285,8 +286,54 @@ const secondRoundFetch = useFetch<DashboardSecondRound>(
   { lazy: true, server: false },
 )
 
+/**
+ * The Länder the reader chose (`useLandChoice`, 22.10.2026) — rows only
+ * where the view can carry them. The monitor reads the Länder's RUNNING
+ * Begutachtungen and nothing else: no period, no Ressort, no chain, no
+ * archive. So the chips stand unavailable, with the reason, wherever the
+ * view asks for one of those (`ToggleChip`), and keep their state for the
+ * view that can. Greyed rather than hidden: a chip that vanishes reads as
+ * the Länder having gone, and the reason is true — the monitor does not have
+ * this yet (`TODO.md` 5L).
+ */
+const { chosen: landChoice } = useLandChoice()
+const landUnavailable = computed<string | null>(() => {
+  if (statusFilter.value === 'closed' || gp.value) return 'Aus den Ländern nur laufende Begutachtungen'
+  if (stations.value.length && !stations.value.includes('begutachtung')) return 'Aus den Ländern nur die Begutachtung'
+  if (art.value === 'ministerialentwurf') return 'Länder-Entwürfe sind keine Ministerialentwürfe'
+  if (ministry.value) return 'Länder-Entwürfe haben kein Ministerium'
+  return null
+})
+const landsApply = computed(() => landChoice.value.length > 0 && !landUnavailable.value)
+const laenderFetch = useAsyncData<LaenderResponse | null>(
+  'entwuerfe-laender',
+  () => (landsApply.value ? $fetch<LaenderResponse>('/api/laender', { timeout: 6000 }) : Promise.resolve(null)),
+  { watch: [landsApply], lazy: true },
+)
+
 await halves.ready
 const { data: secondRound } = await secondRoundFetch
+const { data: laender, status: laenderStatus } = await laenderFetch
+
+/* Under the same controls as everything else, as far as they reach: the
+ * Land chosen, „Verordnungsentwürfe" keeps the Länder's Verordnungen, the
+ * search the same word rule (`matchesQuery`). */
+const landItems = computed(() => {
+  if (!landsApply.value) return []
+  return (laender.value?.items ?? [])
+    .filter((item) => landChoice.value.includes(item.land))
+    .filter((item) => art.value !== 'verordnung' || item.kind === 'verordnung')
+    .filter((item) => matchesQuery(item.title, qDebounced.value))
+})
+/* A chosen Land that could not be read — a failed fetch counts as every
+ * chosen Land unreadable, never as none open. */
+const unreadableLaender = computed(() => {
+  if (!landsApply.value || laenderStatus.value === 'pending' || laenderStatus.value === 'idle') return []
+  const sources = laender.value?.sources
+  return landChoice.value
+    .map((land) => sources?.find((s) => s.land === land) ?? { land, state: 'unavailable' as const, listUrl: null })
+    .filter((s) => s.state === 'unavailable')
+})
 
 /**
  * The third row kind, since 18.09.2026: a Regierungsvorlage that never had a
@@ -320,7 +367,7 @@ const openVorlagen = computed(() => {
 /* No Art test of its own any more: a half that this `art` excludes was never
  * fetched, and `meData`/`risData` are null for it. */
 const rows = computed<DraftListRow[]>(() =>
-  draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value)
+  draftRows(meData.value?.items ?? [], risData.value?.items ?? [], openVorlagen.value, landItems.value)
     .sort(rowComparators[sort.value]),
 )
 
@@ -405,7 +452,7 @@ const {
  * `draftCountLabel`). */
 const meTotal = computed(() => meData.value?.total ?? 0)
 const risTotal = computed(() => risData.value?.total ?? 0)
-const visibleTotal = computed(() => meTotal.value + risTotal.value)
+const visibleTotal = computed(() => meTotal.value + risTotal.value + landItems.value.length)
 
 /**
  * Only stations selected that a record WITHOUT a Gegenstand at Parliament
@@ -485,6 +532,7 @@ const countLabel = computed(() =>
     // At exactly one, the line names what it is („1 Verordnungsentwurf").
     risKindOfOne: risTotal.value === 1 ? (risData.value?.items[0]?.kind ?? null) : null,
     laterStationsOnly: laterStationsOnly.value,
+    laender: landsApply.value ? landItems.value.length : null,
   }),
 )
 
@@ -598,35 +646,12 @@ const countLabel = computed(() =>
                  under „Bundesgesetzblatt", where the combination is empty
                  by what the station means (`OPEN_UNAVAILABLE`; under
                  „Parlament" no longer since 03.10.2026, the window runs
-                 through the Bundesrat) — drawn as unavailable, not as a faded
-                 „on": no tint, the page's grey, muted text and a dashed
-                 outline, the tick kept (`wantsOpen`). Fading the tinted
-                 chip read as „on, a bit lighter" (03.10.2026). The dashes
-                 are an outline, not a border: like the variants' ring it
-                 takes no space, so the chip keeps its width either way.
-                 `aria-disabled` keeps it focusable with its reason.
-                 Ticked, it is ink and not blue (03.10.2026): selection is
-                 ink (main.css), so „on" is the subtle variant's
-                 ink-tinted ground with an ink ring in place of its grey
-                 one. The ring is the selection and the tick says what is
-                 selected — the ground alone is also what an unticked chip
-                 shows under the pointer. -->
-            <UButton
-              color="neutral"
-              :variant="wantsOpen && !openUnavailable ? 'subtle' : 'outline'"
-              :aria-pressed="wantsOpen"
-              :aria-disabled="openUnavailable ? true : undefined"
-              :title="openUnavailable ?? undefined"
-              class="shrink-0"
-              :class="openUnavailable ? 'cursor-not-allowed outline-1 outline-dashed -outline-offset-1 outline-baseline bg-page text-ink-muted ring-0 hover:bg-page' : wantsOpen && 'ring-ink'"
-              @click="toggleOpen"
-            >
-              <!-- A box, ticked when on: says „toggle" in both states,
-                   and both icons are one width, so pressing moves nothing. -->
-              <UIcon :name="wantsOpen ? 'i-lucide-square-check' : 'i-lucide-square'" class="size-4 shrink-0" aria-hidden="true" />
+                 through the Bundesrat). How on, off and unavailable are
+                 drawn: `ToggleChip`, shared with the Länder since
+                 22.10.2026. -->
+            <ToggleChip :pressed="wantsOpen" :unavailable="openUnavailable" @toggle="toggleOpen">
               Stellungnahme möglich
-              <span v-if="openUnavailable" class="sr-only">({{ openUnavailable }})</span>
-            </UButton>
+            </ToggleChip>
             <!-- Art, period and Ressort stand in the same line from `md`
                  up (03.10.2026), each select stating its own value; on a
                  phone four selects cannot share a line, so they open with
@@ -685,6 +710,14 @@ const countLabel = computed(() =>
               </div>
             </div>
           </div>
+          <!-- Which Länder join the list (`LandChips`), on a line of its
+               own: three more chips do not fit beside the selects. Part of
+               what fixes the set, so above the search. -->
+          <LandChips :unavailable="landUnavailable" />
+          <p v-for="s in unreadableLaender" :key="s.land" class="text-sm text-ink-muted">
+            {{ LAND_NAME[s.land] }} ist gerade nicht abrufbar<template v-if="s.listUrl"> –
+              <ExternalLink :href="s.listUrl" class="link-inline font-medium">beim Land nachsehen</ExternalLink></template>.
+          </p>
           <!-- What the closed panel holds, each removable in one press —
                on a phone; from `md` up the selects state it themselves,
                and only the status chip of an old link stands here. -->
