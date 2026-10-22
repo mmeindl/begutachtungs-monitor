@@ -235,11 +235,18 @@ export function compareRowsByFrist(a: DraftListRow, b: DraftListRow): number {
  *
  * The ME comparison is `rankByStatements`' one, tie-break included, because
  * the homepage's five rows must be the first five in the list.
+ *
+ * The block boundary runs between the Ministerialentwürfe and the rest, not
+ * between kinds: a RIS record and a Regierungsvorlage meet in the Frist
+ * order like any two rows of that half. Separating every pair of kinds made
+ * each of those two sort behind the other — no order at all, so the result
+ * followed the input, and the Vorlagen landed behind every RIS row, past
+ * the first page.
  */
 export function compareRowsByStatements(a: DraftListRow, b: DraftListRow): number {
-  if (a.kind !== b.kind) return a.kind === 'me' ? -1 : 1
   if (a.kind === 'me' && b.kind === 'me') {
     return b.draft.statementCount - a.draft.statementCount || b.draft.inr - a.draft.inr
   }
+  if (a.kind === 'me' || b.kind === 'me') return a.kind === 'me' ? -1 : 1
   return compareDrafts(rowOrderKey(a), rowOrderKey(b))
 }

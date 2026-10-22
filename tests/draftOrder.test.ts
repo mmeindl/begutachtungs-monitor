@@ -283,6 +283,53 @@ describe('compareRowsByStatements', () => {
       ]),
     ).toEqual(['ris-bald', 'ris-spaet'])
   })
+
+  /* Every kind at once: running and closed RIS records, Vorlagen dated
+   * between them. Until 22.10.2026 a RIS record and a Vorlage each sorted
+   * behind the other, so the result depended on the input order, and the
+   * Vorlagen tended to land behind every RIS row — past the first page. */
+  const mixed = [
+    meRow(1, 3),
+    risRow('offen-spaet', { deadline: '2026-12-01' }),
+    vorlageRow('594 d.B.', '2026-09-11'),
+    risRow('zu-alt', { active: false, deadline: '2026-06-01' }),
+    meRow(2, 240),
+    vorlageRow('600 d.B.', '2026-10-02'),
+    risRow('offen-bald', { deadline: '2026-10-20' }),
+    risRow('zu-neu', { active: false, deadline: '2026-09-30' }),
+  ]
+
+  it('is antisymmetric for every pair of kinds', () => {
+    const broken = mixed.flatMap((a) =>
+      mixed
+        .filter((b) => Math.sign(compareRowsByStatements(a, b)) !== -Math.sign(compareRowsByStatements(b, a)))
+        .map((b) => `${a.key} / ${b.key}`),
+    )
+    expect(broken).toEqual([])
+  })
+
+  it('follows the ranked rows with the rest in the list’s own Frist order, whatever the input order', () => {
+    const expected = [
+      'me-XXVIII-2',
+      'me-XXVIII-1',
+      ...mixed.filter((r) => r.kind !== 'me').sort(compareRowsByFrist).map((r) => r.key),
+    ]
+    // The Vorlagen stand among the closed records by their Einlangen, as in the Frist order.
+    expect(expected.slice(2)).toEqual([
+      'ris-offen-bald',
+      'ris-offen-spaet',
+      'rv-600 d.B.',
+      'ris-zu-neu',
+      'rv-594 d.B.',
+      'ris-zu-alt',
+    ])
+    // Every rotation of the list and of its reverse: one result.
+    for (const base of [mixed, [...mixed].reverse()]) {
+      for (let i = 0; i < base.length; i++) {
+        expect(sorted([...base.slice(i), ...base.slice(0, i)])).toEqual(expected)
+      }
+    }
+  })
 })
 
 /**
