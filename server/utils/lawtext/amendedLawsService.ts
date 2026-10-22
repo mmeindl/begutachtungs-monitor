@@ -30,7 +30,16 @@ import { mapWithConcurrency } from '../pool'
 import { DERIVED_ANALYSIS_TTL_S } from '../cache/ttl'
 import { latestAmendmentOf } from '../../../shared/utils/citations'
 
-/** A Sammelgesetz can name dozens; one slow RIS lookup must not hang a page. */
+/**
+ * How many laws are looked up in RIS — not how many are listed. A
+ * Sammelgesetz can name dozens; one slow RIS lookup must not hang a page.
+ *
+ * Until 22.10.2026 this cut the LIST: 116/ME XXVIII (Budgetbegleitgesetz
+ * 2027–2028) names 65 laws, the page said „ändert 40 Gesetze" and 25 were
+ * missing — the silently shortened list the header above rules out. The laws
+ * beyond it stand in the list as the draft names them, without a RIS link,
+ * which is how a law RIS cannot resolve already reads (`AmendedLawLine.vue`).
+ */
 const MAX_LAWS = 40
 const CONCURRENCY = 6
 
@@ -111,13 +120,14 @@ export const getAmendedLaws = defineCachedFunction(
       if (seen.has(key)) return false
       seen.add(key)
       return true
-    }).slice(0, MAX_LAWS)
+    })
 
-    // One RIS round trip per law, in parallel: a Sammelgesetz names dozens
-    // (116/ME hits the ceiling at 40) and sequentially that was 36 s cold.
-    const results = await mapWithConcurrency(jobs, CONCURRENCY, async (w) => {
+    // One RIS round trip per law, in parallel, for the first `MAX_LAWS`: a
+    // Sammelgesetz names dozens (116/ME 65) and sequentially that was 36 s
+    // cold. Every law is listed; the ceiling bounds the lookups only.
+    const results = await mapWithConcurrency(jobs, CONCURRENCY, async (w, index) => {
       const cited = w.bgbl ? `${w.bgbl.organ} ${w.bgbl.nummer}` : null
-      const resolved = w.bgbl && asOf
+      const resolved = w.bgbl && asOf && index < MAX_LAWS
         // `w.title` is the Artikel heading this entry came from — the same
         // disambiguator `annex/annexGuardService.ts` passes, with the
         // clause's own name of the law as the second witness (`clause`,
