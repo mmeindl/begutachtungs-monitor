@@ -18,9 +18,15 @@ import type {
   RisConsultationsResponse,
 } from '#shared/types'
 import { sortConsultations } from '#shared/utils/risConsultations'
+import { firstQueryValue } from '#shared/utils/queryParams'
 import { ministryFilterOptions, readListQuery, requirePlausibleGp } from '../../utils/http/params'
+import { withinBudget } from '../../utils/http/budget'
+import { getCurrentGp, listAvailableGps } from '../../utils/parliament/drafts'
 import { filterRisConsultations, risStationWants } from '../../utils/ris/risList'
-import { getCarryOverRisConsultations } from '../../utils/ris/risOnly'
+import { getBgblOutcomesForGp } from '../../utils/ris/bgblService'
+import { getCarryOverRisConsultations, getRisOnlyForGp } from '../../utils/ris/risOnly'
+import { withRisActiveOn } from '../../utils/ris/risRecord'
+import { ministryTokens } from '../../utils/search/searchHaystack'
 import { previousGp } from '#shared/utils/gp'
 
 /** How long the list waits for the outcome while it only fills a column. */
@@ -72,10 +78,14 @@ export default defineEventHandler(async (event): Promise<RisConsultationsRespons
    * abgeschlossen" instead of „Kundgemacht", which is incomplete and not
    * wrong. As a FILTER it may not be missing — an exhausted budget would
    * produce an empty list, and „keine kundgemachten Verordnungen" would be
-   * an answer we never checked (§12.13). There it waits.
+   * an answer we never checked (§12.13). There it waits, and a failure
+   * throws: the page then says the Verordnungsentwürfe are „gerade nicht
+   * abrufbar". Until 22.10.2026 a `.catch(() => ({}))` stood here and turned
+   * every RIS failure into exactly the empty list this comment rules out —
+   * 200, total 0, „0 Verordnungsentwürfe" under „Bundesgesetzblatt".
    */
   const outcomes: Record<string, BgblOutcome> = wants.bgbl
-    ? await getBgblOutcomesForGp(gp).catch(() => ({}) as Record<string, BgblOutcome>)
+    ? await getBgblOutcomesForGp(gp)
     : (await withinBudget(getBgblOutcomesForGp(gp), OUTCOMES_BUDGET_MS)) ?? {}
 
   const filtered = filterRisConsultations(items, { ...query, art, wants, ministryTokens: ministryTokenList, outcomes })

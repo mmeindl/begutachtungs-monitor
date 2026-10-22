@@ -53,11 +53,18 @@
  * every file that CALLS it lives under `server/`, which `pnpm typecheck`
  * checks against Nitro's real types. What this declaration has to do is stop
  * the tools project failing on a file it does not own.
+ *
+ * `validate` and `defineEventHandler` came with the failure tests of
+ * 22.10.2026: a cached function that may serve an answer without storing it
+ * says so through Nitro's `validate` (`server/utils/cache/gathered.ts`), and
+ * `tests/risDraftsRoute.test.ts` runs a route handler, which is h3's
+ * `defineEventHandler` around a function — faked there as the identity.
  */
 declare global {
   const createError: typeof import('h3').createError
   const getQuery: typeof import('h3').getQuery
   const getRouterParam: typeof import('h3').getRouterParam
+  const defineEventHandler: typeof import('h3').defineEventHandler
   const defineCachedFunction: <T, A extends unknown[]>(
     fn: (...args: A) => Promise<T>,
     opts: {
@@ -67,6 +74,7 @@ declare global {
       swr?: boolean
       base?: string
       shouldBypassCache?: (...args: A) => boolean
+      validate?: (entry: { value?: T; mtime?: number }) => boolean
     },
   ) => (...args: A) => Promise<T>
   const DERIVED_CACHE: typeof import('../../server/utils/cache/base').DERIVED_CACHE
