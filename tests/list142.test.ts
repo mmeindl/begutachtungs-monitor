@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
   mapStatementRow,
+  mapStoredStatementRow,
   pickStatementDocument,
+  recheckStoredStatement,
+  servedStatement,
   statementPageUrl,
   statementRowMatchesParent,
+  type StoredStatement,
 } from '../server/utils/parliament/list142'
+import { classifySubmitter } from '../server/utils/parliament/privacy'
+import { ORG_ALLOWLIST } from '../server/utils/parliament/orgAllowlist'
 
 // Real list-142 row (sample from 2026-08-15, 237/SN-126/ME); the submitter
 // is a private person, so the name here is synthetic and the shape is not.
@@ -247,5 +253,145 @@ describe('pickStatementDocument', () => {
 
   it('builds the page URL for both item types', () => {
     expect(statementPageUrl('XXVII', 'SN', 277139)).toBe('https://www.parlament.gv.at/gegenstand/XXVII/SN/277139')
+  })
+})
+
+/* The same GDPR path for a row the last-good store kept (22.10.2026). A
+ * record outlives the classifier that wrote it — the local records of
+ * 18.09.2026 still carried 289 names three tightenings had stopped — so
+ * every name is held against TODAY's classifier on the way out.
+ *
+ * The invariant: a stored name is served only where today's classifier
+ * prints exactly that name — for the name itself under the stored flag, or
+ * for an allowlist entry under it. Every name here is synthetic. */
+describe('recheckStoredStatement', () => {
+  const stored = (submitterName: string | null, over: Partial<StoredStatement> = {}): StoredStatement => ({
+    citation: '12/SN-88/ME',
+    date: '2026-09-18',
+    submitterKind: 'organisation',
+    submitterName,
+    endorsements: 3,
+    parliamentUrl: 'https://www.parlament.gv.at/gegenstand/XXVIII/SNME/12',
+    ...over,
+  })
+
+  it('serves a name today\'s classifier prints exactly as stored', () => {
+    expect(recheckStoredStatement(stored('Arbeiterkammer Musterstadt'))).toEqual(servedStatement(stored('Arbeiterkammer Musterstadt')))
+    expect(recheckStoredStatement(stored('Musterverband für Musterwesen; Abteilung Recht', { upstreamFlag: 'I' })).submitterName)
+      .toBe('Musterverband für Musterwesen; Abteilung Recht')
+  })
+
+  /* The shapes the classifier stopped publishing after 18.09.2026, each as
+   * an older one stored it. The row stays — date, citation, Zustimmungen and
+   * the link are public — and only the name goes. */
+  it('withholds a name today\'s classifier no longer publishes, and keeps the row', () => {
+    for (const name of [
+      'Muster, Max; Universität Musterstadt', // a person in front of an affiliation
+      'Musterverein Musterstadt; Obmann Max Muster', // a function before a name
+      'Musterverein Musterstadt*Obmann*Max Muster', // the separator of GP XXVI
+      'Muster GmbH; Mag. Max Muster', // the person behind the organisation's head
+      'Max Muster e.U.', // the sole trader
+    ]) {
+      expect(recheckStoredStatement(stored(name)), name).toEqual({
+        ...servedStatement(stored(name)),
+        submitterKind: 'person',
+        submitterName: null,
+      })
+    }
+  })
+
+  /* Shortening a stale name to what today's rules print from it would
+   * publish a cut nobody classified: the raw string it came from is gone. */
+  it('does not shorten a stale name to today\'s print of it', () => {
+    expect(classifySubmitter('Muster GmbH; Mag. Max Muster').name).toBe('Muster GmbH')
+    expect(recheckStoredStatement(stored('Muster GmbH; Mag. Max Muster')).submitterName).toBeNull()
+  })
+
+  it('applies the veto of the stored TYP flag, and the string rules alone without one', () => {
+    expect(recheckStoredStatement(stored('Muster Energie GmbH', { upstreamFlag: 'P' })).submitterName).toBeNull()
+    expect(recheckStoredStatement(stored('Muster Energie GmbH', { upstreamFlag: 'I' })).submitterName).toBe('Muster Energie GmbH')
+    expect(recheckStoredStatement(stored('Muster Energie GmbH')).submitterName).toBe('Muster Energie GmbH')
+    // Anything but the two documented values is no flag, as in the mapper.
+    expect(recheckStoredStatement(stored('Muster Energie GmbH', { upstreamFlag: 'X' as never })).submitterName).toBe('Muster Energie GmbH')
+  })
+
+  /* An allowlist display name is printed for another string than itself,
+   * and where the staff filed privately the flag vetoes it once it stands
+   * alone — the case the allowlist outranks the flag for. Both are real
+   * entries of `ORG_ALLOWLIST`, both organisations. */
+  it('keeps an allowlist display name where today\'s classifier prints it under that flag', () => {
+    expect(classifySubmitter('Österreichische Patentanwaltskammer', 'P').kind).toBe('person')
+    expect(recheckStoredStatement(stored('Österreichische Patentanwaltskammer', { upstreamFlag: 'P' })).submitterName)
+      .toBe('Österreichische Patentanwaltskammer')
+    expect(classifySubmitter('TU Wien, Studienkommission Raumplanung').kind).toBe('person')
+    expect(recheckStoredStatement(stored('TU Wien, Studienkommission Raumplanung')).submitterName)
+      .toBe('TU Wien, Studienkommission Raumplanung')
+  })
+
+  it('never serves a name from a person\'s or a non-public row, whatever the record says', () => {
+    expect(recheckStoredStatement(stored('Muster, Max', { submitterKind: 'person' }))).toMatchObject({ submitterKind: 'person', submitterName: null })
+    expect(recheckStoredStatement(stored('Musterverein', { submitterKind: 'nonpublic' }))).toMatchObject({ submitterKind: 'nonpublic', submitterName: null })
+    expect(recheckStoredStatement(stored(null))).toMatchObject({ submitterKind: 'person', submitterName: null })
+  })
+
+  it('serves the six fields of the API and nothing stored beside them', () => {
+    const row = recheckStoredStatement({ ...stored('Arbeiterkammer Musterstadt', { upstreamFlag: 'I' }), extra: 'x' } as StoredStatement)
+    expect(Object.keys(row).sort()).toEqual(['citation', 'date', 'endorsements', 'parliamentUrl', 'submitterKind', 'submitterName'])
+  })
+
+  /* The invariant, over every shape above plus every allowlist entry under
+   * every flag and a run of mutations of each. */
+  it('serves a stored name only where today\'s classifier prints exactly that name', () => {
+    const names = [
+      'Arbeiterkammer Musterstadt', 'Muster Energie GmbH', 'Muster GmbH; Mag. Max Muster', 'Max Muster e.U.',
+      'Muster, Max; Universität Musterstadt', 'Musterverein Musterstadt*Obmann*Max Muster', 'Muster, Max',
+      ...[...ORG_ALLOWLIST].flatMap(([key, display]) => [key, display ?? key]),
+    ]
+    const variants = names.flatMap((n) => [n, `${n}; Mag. Max Muster`, `Muster, Max; ${n}`, n.toUpperCase(), `${n} (1010 Wien)`])
+    const allowlistPrints = (flag: 'I' | 'P' | null) =>
+      new Set([...ORG_ALLOWLIST.keys()].map((k) => classifySubmitter(k, flag)).filter((v) => v.kind === 'organisation').map((v) => v.name))
+    for (const flag of ['I', 'P', null] as const) {
+      const viaAllowlist = allowlistPrints(flag)
+      for (const name of variants) {
+        const served = recheckStoredStatement(stored(name, { upstreamFlag: flag })).submitterName
+        if (served === null) continue
+        expect(served).toBe(name)
+        const verdict = classifySubmitter(name, flag)
+        expect(verdict.name === name || viaAllowlist.has(name), `${flag} ${name}`).toBe(true)
+      }
+    }
+  })
+
+  /* The other direction, which the invariant alone does not hold: a row
+   * mapped by today's classifier must come back unchanged, or the fallback
+   * shows organisations as „Privatperson" that the live page names. Through
+   * the mapper, with each shape under each flag. */
+  it('changes nothing in a row today\'s classifier stored', () => {
+    const submitters = [
+      'Vegane Gesellschaft Musterland', 'Musterverband für Musterwesen ; Abteilung Recht',
+      'Musterverband für Musterwesen; Mag. Max Muster', 'Muster GmbH; Mag. Max Muster', 'Muster, Max',
+      'Nicht-öffentliche Stellungnahme', 'Patentanwaltskammer, Österr.', '(TU Wien), Studienkommission Raumplanung',
+      'Vier Pfoten; Stiftung für Tierschutz', 'epicenter.works',
+    ]
+    for (const typ of ['I', 'P', null]) {
+      for (const submitter of submitters) {
+        const row = [...LIST142_PERSON_ROW]
+        row[6] = `<a href="/gegenstand/XXVIII/SNME/4983/">${submitter} (237/SN-126/ME)</a>`
+        row[19] = typ
+        const kept = mapStoredStatementRow(row)
+        expect(recheckStoredStatement(kept), `${typ} ${submitter}`).toEqual(mapStatementRow(row))
+      }
+    }
+  })
+})
+
+describe('mapStoredStatementRow', () => {
+  it('keeps the TYP flag beside an organisation\'s name, and nowhere else', () => {
+    const org = [...LIST142_PERSON_ROW]
+    org[6] = '<a href="/gegenstand/XXVIII/SNME/4983/">Vegane Gesellschaft Musterland (237/SN-126/ME)</a>'
+    org[19] = 'I'
+    expect(mapStoredStatementRow(org)).toEqual({ ...mapStatementRow(org), upstreamFlag: 'I' })
+    expect(mapStoredStatementRow(LIST142_PERSON_ROW)).toEqual(mapStatementRow(LIST142_PERSON_ROW))
+    expect('upstreamFlag' in mapStoredStatementRow(LIST142_PERSON_ROW)).toBe(false)
   })
 })

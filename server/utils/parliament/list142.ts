@@ -1,6 +1,7 @@
 /**
  * List 142 — Stellungnahmen: the row mapper with its GDPR path, the item's
- * page URL and the document behind it.
+ * page URL and the document behind it — and, since 22.10.2026, the same GDPR
+ * path for a row the last-good store kept (`recheckStoredStatement`).
  *
  * PURE MODULE — no Nuxt auto-imports, only relative imports,
  * so vitest can execute the module directly.
@@ -12,6 +13,7 @@ import type { StatementDocument, StatementMeta } from '../../../shared/types'
 import { parseGermanDate, parseIsoDate } from './dates'
 import type { RawDocumentGroup } from './detailJson'
 import { absolutizeUrl, PARLIAMENT_BASE, stripHtmlToText } from './htmlText'
+import { ORG_ALLOWLIST } from './orgAllowlist'
 import { normalizeOrgName } from './organisations'
 import { classifySubmitter, readUpstreamFlag } from './privacy'
 import { asNumber, asString } from './rowCells'
@@ -172,4 +174,116 @@ export function mapStatementRow(row: unknown[]): StatementMeta {
     endorsements: asNumber(row[12]),
     parliamentUrl: `${PARLIAMENT_BASE}/gegenstand/${gp}/${ityp}/${snInr}`,
   }
+}
+
+/** List 142's `TYP` flag as the classifier reads it — `I`, `P` or no answer. */
+type SubmitterFlag = ReturnType<typeof readUpstreamFlag>
+
+/**
+ * A Stellungnahme as the last-good store keeps it: the row the API serves,
+ * plus the one input of the GDPR decision the row does not carry — list
+ * 142's `TYP` flag (column 19), which can veto a name (`classifySubmitter`).
+ * Without it a stored name can be checked against the string rules only.
+ *
+ * On organisation rows only, because a name is all the flag can act on, and
+ * a person's or a non-public row keeps nothing it could be checked for. The
+ * raw submitter string, the other input, is never kept: it is what names
+ * the private persons.
+ */
+export interface StoredStatement extends StatementMeta {
+  upstreamFlag?: SubmitterFlag
+}
+
+/** `mapStatementRow`, with the flag beside the name it was classified with. */
+export function mapStoredStatementRow(row: unknown[]): StoredStatement {
+  const item = mapStatementRow(row)
+  return item.submitterName !== null ? { ...item, upstreamFlag: readUpstreamFlag(row[19]) } : item
+}
+
+/** The row as the API serves it: the six fields of `StatementMeta`, nothing stored beside them. */
+export function servedStatement(stored: StoredStatement): StatementMeta {
+  return {
+    citation: stored.citation,
+    date: stored.date,
+    submitterKind: stored.submitterKind,
+    submitterName: stored.submitterName,
+    endorsements: stored.endorsements,
+    parliamentUrl: stored.parliamentUrl,
+  }
+}
+
+/**
+ * A stored row as it may be served TODAY: its name only where today's
+ * classifier would print exactly that name, otherwise no name at all.
+ *
+ * WHY. The last-good store serves rows an earlier process classified, and
+ * the classifier keeps tightening: 23.09., 28.09. and 30.09.2026 each
+ * stopped publishing names it had published before — a person whose name
+ * the form rules could not read, in front of an affiliation (23.09.); the
+ * person behind an organisation's head, and the „*" separator of GP XXVI
+ * (28.09.); the sole trader and the function before a name (30.09.). A
+ * record keeps its names until the next successful fetch overwrites it, and
+ * that fetch is exactly what does not come while list 142 has dropped a
+ * draft — for days, the case the store exists for. So a record from 18.09.
+ * went on serving what the 18.09. classifier let through. Measured on the
+ * 596 local records of 22.10.2026: 292 stored organisation names fail
+ * today's classifier, 289 of them in the 101 records of 18.09.
+ *
+ * HOW. The stored name goes through `classifySubmitter` again, as if it
+ * were the submitter string, with the stored flag where there is one: it is
+ * served if the verdict is an organisation printed exactly as stored. The
+ * rules stay in `privacy.ts` — nothing here repeats one. Where the record
+ * predates the flag, the string rules decide alone; that is all a record
+ * written without it can be checked against.
+ *
+ * The one name that cannot survive this unaided is an allowlist display
+ * name („Österreichische Patentanwaltskammer" for „Patentanwaltskammer,
+ * Österr."): it is printed for a different string than itself, and where the
+ * staff filed privately the flag vetoes it once it is read on its own — the
+ * very case the allowlist outranks the flag for. So a name is also served
+ * where today's classifier prints it for an allowlist entry under the same
+ * flag (`allowlistOutputs`), which asks `classifySubmitter` again rather
+ * than reading the allowlist's values: an entry the rules stop honouring
+ * stops being served here too.
+ *
+ * A name that fails is not shortened to what the classifier would print
+ * now: the raw string it came from is gone, and a cut of a stale name is
+ * not what today's rules would make of the original. The row stays, as the
+ * classifier's default — a Privatperson, unnamed — or non-public where that
+ * is the verdict. An organisation shown as a person is the cosmetic error
+ * `privacy.ts` accepts; the other direction is the one it exists to stop.
+ */
+export function recheckStoredStatement(stored: StoredStatement): StatementMeta {
+  const row = { ...servedStatement(stored), submitterName: null }
+  if (stored.submitterKind !== 'organisation') return row
+  const name = stored.submitterName
+  const flag = readUpstreamFlag(stored.upstreamFlag)
+  if (typeof name !== 'string') return { ...row, submitterKind: 'person' }
+  if (publishedToday(name, flag)) return { ...row, submitterName: name }
+  return { ...row, submitterKind: classifySubmitter(name, flag).kind === 'nonpublic' ? 'nonpublic' : 'person' }
+}
+
+function publishedToday(name: string, flag: SubmitterFlag): boolean {
+  const verdict = classifySubmitter(name, flag)
+  if (verdict.kind === 'organisation' && verdict.name !== null && normalizeOrgName(verdict.name) === name) return true
+  return allowlistOutputs(flag).has(name)
+}
+
+const allowlistOutputsByFlag = new Map<SubmitterFlag, Set<string>>()
+
+/**
+ * Every name today's classifier prints for an allowlist entry under this
+ * flag — computed through `classifySubmitter`, once per flag and process.
+ */
+function allowlistOutputs(flag: SubmitterFlag): Set<string> {
+  let names = allowlistOutputsByFlag.get(flag)
+  if (!names) {
+    names = new Set()
+    for (const entry of ORG_ALLOWLIST.keys()) {
+      const verdict = classifySubmitter(entry, flag)
+      if (verdict.kind === 'organisation' && verdict.name !== null) names.add(normalizeOrgName(verdict.name))
+    }
+    allowlistOutputsByFlag.set(flag, names)
+  }
+  return names
 }

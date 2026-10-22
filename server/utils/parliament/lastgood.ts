@@ -15,9 +15,18 @@
  * growth) are a later, grant-funded work package (persistence/history) and
  * need a real store, not this.
  *
- * GDPR: what lands here is exactly what the API hands the client —
- * `mapStatementRow` has already dropped the names of private persons
- * (privacy.ts, architecture.md §3). No new class of personal data on disk.
+ * GDPR: what lands here is what the API hands the client — `mapStatementRow`
+ * has already dropped the names of private persons (privacy.ts,
+ * architecture.md §3) — plus list 142's `TYP` flag beside each
+ * organisation's name, how its submitter registered. No new class of
+ * personal data on disk.
+ *
+ * AND WHAT LEAVES IT IS CHECKED AGAIN (since 22.10.2026). A record outlives
+ * the classifier that wrote it, so every name in it is held against today's
+ * on the way out (`recheckStoredStatement`): a name is served only where
+ * today's classifier would print exactly that name. Until then a record
+ * written on 18.09. served the names the classifier of 18.09. let through,
+ * three tightenings later — on exactly the drafts list 142 had dropped.
  *
  * PURE MODULE — only relative imports and node: builtins, so vitest can
  * execute it directly.
@@ -26,8 +35,9 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { StatementMeta } from '../../../shared/types'
 import { GP_RE } from '../../../shared/utils/gp'
-import { STATEMENTS_CAP } from './list142'
+import { recheckStoredStatement, STATEMENTS_CAP, type StoredStatement } from './list142'
 
+/** What the store hands back: rows as the API serves them, names re-checked. */
 export interface LastGoodStatements {
   items: StatementMeta[]
   /**
@@ -41,18 +51,25 @@ export interface LastGoodStatements {
   fetchedAt: string
 }
 
+/** What the store writes: the rows with the `TYP` flag a re-check reads. */
+export interface LastGoodRecord extends Omit<LastGoodStatements, 'items'> {
+  items: StoredStatement[]
+}
+
 /**
  * Bumped whenever the shape of a stored record changes. A record from an
  * older version is dropped, not migrated — it is a fallback, the next
  * successful fetch rewrites it within the cache window.
  *
  * Version 1 is the one exception, and it is read, not migrated. It is the
- * record before `unlisted` (22.10.2026), when every record held a list read
- * whole — so it reads as `unlisted: 0`, unless it holds more rows than the
- * cap. Those predate the cap and are refused (`loadLastGoodStatements`).
- * Dropping the rest as well would cost more than a cache window: list 142
- * loses whole drafts for days, and their records are the fallback a deploy
- * must not take with it.
+ * record before `unlisted` and the `TYP` flag (22.10.2026), when every
+ * record held a list read whole — so it reads as `unlisted: 0`, unless it
+ * holds more rows than the cap. Those predate the cap and are refused
+ * (`loadLastGoodStatements`). Its names are re-checked like every other,
+ * on the string rules alone, which is all a row without the flag can be
+ * checked against. Dropping these records as well would cost more than a
+ * cache window: list 142 loses whole drafts for days, and their records are
+ * the fallback a deploy must not take with it.
  */
 const RECORD_VERSION = 2
 
@@ -115,7 +132,7 @@ let tmpSeq = 0
 export async function saveLastGoodStatements(
   gp: string,
   inr: number,
-  record: LastGoodStatements,
+  record: LastGoodRecord,
 ): Promise<void> {
   const file = recordPath(gp, inr)
   if (!file) return
@@ -145,6 +162,10 @@ export async function saveLastGoodStatements(
  * cut short, whose counts would be served as the whole list's. Serving
  * either would put back the load the cap takes away, on the failure path;
  * the next successful fetch writes the institutions instead.
+ *
+ * Every row leaves through `recheckStoredStatement`: with its name only
+ * where today's classifier prints that name, and as the six fields the API
+ * serves — never the stored flag.
  */
 export async function loadLastGoodStatements(
   gp: string,
@@ -163,7 +184,7 @@ export async function loadLastGoodStatements(
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<LastGoodStatements> & { version?: unknown }
+    const parsed = JSON.parse(raw) as Partial<LastGoodRecord> & { version?: unknown }
     if (parsed.version !== RECORD_VERSION && parsed.version !== 1) return null
     if (typeof parsed.fetchedAt !== 'string' || !parsed.fetchedAt) return null
     // An empty list carries no information and is exactly the shape the
@@ -172,7 +193,7 @@ export async function loadLastGoodStatements(
     if (parsed.items.length > STATEMENTS_CAP) return null
     const unlisted = parsed.version === 1 ? 0 : parsed.unlisted
     if (typeof unlisted !== 'number' || !Number.isInteger(unlisted) || unlisted < 0) return null
-    return { items: parsed.items, unlisted, fetchedAt: parsed.fetchedAt }
+    return { items: parsed.items.map(recheckStoredStatement), unlisted, fetchedAt: parsed.fetchedAt }
   } catch {
     return null
   }

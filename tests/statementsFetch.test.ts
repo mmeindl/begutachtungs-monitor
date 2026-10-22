@@ -301,4 +301,28 @@ describe('the record a capped read leaves', () => {
     expect(file.items).toHaveLength(3)
     expect(file.unlisted).toBe(STATEMENTS_CAP + 2)
   })
+
+  /* The flag a later classifier needs to re-check a name goes to the
+   * record, beside the names only — and not to the cache or the API. */
+  it('keeps the TYP flag beside each stored name, and out of what is served', async () => {
+    parent('XXVIII', 'ME', 107, 2, 3)
+    listed(107, 5)
+    const result = await getStatementsWithFallback('XXVIII', 107)
+    expect(result.items.some((i) => 'upstreamFlag' in i)).toBe(false)
+
+    const file = JSON.parse(
+      await readFile(join(process.env.BM_STATE_DIR!, 'statements', 'XXVIII-107.json'), 'utf8'),
+    ) as { items: { submitterKind: string; upstreamFlag?: string }[] }
+    expect(file.items.map((i) => [i.submitterKind, i.upstreamFlag ?? null]).sort()).toEqual([
+      ['organisation', 'I'], ['organisation', 'I'], ['person', null], ['person', null], ['person', null],
+    ])
+  })
+
+  it('serves the Vorlage\'s institutions without the flag', async () => {
+    parent('XXVII', 'I', 1290, 3, STATEMENTS_CAP + 1)
+
+    const result = await getStatementsForRv('XXVII', 1290)
+    expect(result.items).toHaveLength(3)
+    expect(result.items!.some((i) => 'upstreamFlag' in i)).toBe(false)
+  })
 })

@@ -15,7 +15,14 @@
 import type { StatementMeta } from '#shared/types'
 import { findLastRvLink, parseStages, type RvLink } from './detailJson'
 import { getDraftsForGp, getGegenstand } from './drafts'
-import { mapStatementRow, STATEMENTS_CAP, type StatementParentType } from './list142'
+import {
+  mapStatementRow,
+  mapStoredStatementRow,
+  servedStatement,
+  STATEMENTS_CAP,
+  type StatementParentType,
+  type StoredStatement,
+} from './list142'
 import {
   loadLastGoodStatements,
   saveLastGoodStatements,
@@ -99,7 +106,11 @@ const getStatementsForMe = defineCachedFunction(
     }
     if (total === 0) return { items: [], unlisted: 0 }
 
-    let result: MeStatements
+    /* Mapped with the TYP flag beside each name, for the last-good record
+     * alone (`StoredStatement`): what the cache keeps and the API serves is
+     * the row without it. */
+    let stored: StoredStatement[]
+    let unlisted = 0
     if (total > STATEMENTS_CAP) {
       const institutions = await fetchInstitutionStatements(body, gp, 'ME', inr)
       /* Unknown, never none (see there) — and unlike the Vorlage's line, this
@@ -112,12 +123,13 @@ const getStatementsForMe = defineCachedFunction(
           statusMessage: 'Organisationen der Stellungnahmen-Liste derzeit nicht abrufbar',
         })
       }
-      result = { items: institutions, unlisted: Math.max(0, total - institutions.length) }
+      stored = institutions
+      unlisted = Math.max(0, total - institutions.length)
     } else {
-      const rows = await fetchWholeList(body, head, gp, 'ME', inr)
-      result = { items: sortByDateDesc(rows.map(mapStatementRow)), unlisted: 0 }
+      stored = sortByDateDesc((await fetchWholeList(body, head, gp, 'ME', inr)).map(mapStoredStatementRow))
     }
-    await rememberStatements(gp, inr, result)
+    const result = { items: stored.map(servedStatement), unlisted }
+    await rememberStatements(gp, inr, stored, result)
     return result
   },
   {
@@ -130,7 +142,7 @@ const getStatementsForMe = defineCachedFunction(
 )
 
 /** Date descending; a missing date sorts last. */
-function sortByDateDesc(items: StatementMeta[]): StatementMeta[] {
+function sortByDateDesc<T extends StatementMeta>(items: T[]): T[] {
   return items.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 }
 
@@ -265,13 +277,17 @@ export interface RvStatements {
  * Null is „unknown", never „none": this runs where the whole list could not
  * be read, so a zero here would print „keine Organisation" about an item
  * nobody looked at. The caller keeps the total and says nothing else.
+ *
+ * The rows come with their TYP flag beside the name (`StoredStatement`) —
+ * the draft stores them as its last-good record; the Vorlage, which keeps
+ * none, serves them without it.
  */
 async function fetchInstitutionStatements(
   body: Record<string, unknown>,
   gp: string,
   ityp: StatementParentType,
   inr: number,
-): Promise<StatementMeta[] | null> {
+): Promise<StoredStatement[] | null> {
   const typBody = { ...body, TYP: ['I'] }
   const head = await fetchFilterList(142, typBody, {}, { all: false })
   const count = countOf(head)
@@ -289,7 +305,7 @@ async function fetchInstitutionStatements(
   assertListHeader(142, res)
   assertInstitutionRows(rows)
   /* Same order as the uncapped path, so one list renders both. */
-  return sortByDateDesc(rows.map(mapStatementRow))
+  return sortByDateDesc(rows.map(mapStoredStatementRow))
 }
 
 /**
@@ -340,7 +356,7 @@ export const getStatementsForRv = defineCachedFunction(
     const total = countOf(head)
     if (total === 0) return { total: 0, items: [], unlisted: 0 }
     if (total > STATEMENTS_CAP) {
-      const institutions = await fetchInstitutionStatements(body, gp, 'I', inr)
+      const institutions = (await fetchInstitutionStatements(body, gp, 'I', inr))?.map(servedStatement) ?? null
       return { total, items: institutions, unlisted: Math.max(0, total - (institutions?.length ?? 0)) }
     }
 
@@ -376,10 +392,15 @@ const lastGoodStatements = new Map<string, LastGoodStatements>()
  * Success path, called from inside the leaf cache — i.e. once per real
  * upstream fetch, not once per request, which also makes `fetchedAt` the
  * time the data actually came from upstream.
+ *
+ * The map gets the rows as served; the disk gets them with the TYP flag,
+ * which a later process needs to re-check the names (`lastgood.ts`). This
+ * process needs no re-check: it classified them itself, a moment ago.
  */
 async function rememberStatements(
   gp: string,
   inr: number,
+  stored: StoredStatement[],
   { items, unlisted }: MeStatements,
 ): Promise<void> {
   // An empty list is never worth remembering, and must never overwrite a
@@ -390,12 +411,17 @@ async function rememberStatements(
   // travels with them: without it a recalled record would present them as
   // the whole list.
   if (items.length === 0) return
-  const record: LastGoodStatements = { items, unlisted, fetchedAt: new Date().toISOString() }
-  lastGoodStatements.set(`${gp}-${inr}`, record)
-  await saveLastGoodStatements(gp, inr, record)
+  const fetchedAt = new Date().toISOString()
+  lastGoodStatements.set(`${gp}-${inr}`, { items, unlisted, fetchedAt })
+  await saveLastGoodStatements(gp, inr, { items: stored, unlisted, fetchedAt })
 }
 
-/** Failure path: memory first, then disk — a disk hit warms the memory. */
+/**
+ * Failure path: memory first, then disk — a disk hit warms the memory. What
+ * comes off the disk has been re-checked against today's classifier by the
+ * store (`loadLastGoodStatements`), so the map holds only names this process
+ * would publish.
+ */
 async function recallStatements(
   gp: string,
   inr: number,

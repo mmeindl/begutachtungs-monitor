@@ -211,6 +211,58 @@ describe('last-good statements store', () => {
     }
   })
 
+  /* What leaves the store is held against TODAY's classifier (22.10.2026).
+   * A record of 18.09.2026, written three tightenings ago, went on serving
+   * the names the classifier of that day let through — on exactly the
+   * drafts list 142 had dropped, which is when the store is read. Synthetic
+   * names; each shape is one the classifier stopped publishing. */
+  it('withholds every stored name today\'s classifier would not print, and keeps the rows', async () => {
+    await mkdir(join(dir, 'statements'), { recursive: true })
+    const items = [
+      statement({ citation: '1/SN-88/ME', submitterName: 'Arbeiterkammer Musterstadt' }),
+      statement({ citation: '2/SN-88/ME', submitterName: 'Muster, Max; Universität Musterstadt' }),
+      statement({ citation: '3/SN-88/ME', submitterName: 'Muster GmbH; Mag. Max Muster' }),
+      statement({ citation: '4/SN-88/ME', submitterName: 'Musterverein Musterstadt*Obmann*Max Muster' }),
+      statement({ citation: '5/SN-88/ME', submitterKind: 'person', submitterName: null }),
+    ]
+    await writeFile(
+      recordFile('XXVIII', 88),
+      JSON.stringify({ version: 1, items, fetchedAt: '2026-09-18T00:00:00.000Z' }),
+      'utf8',
+    )
+
+    const loaded = await loadLastGoodStatements('XXVIII', 88)
+    expect(loaded?.items.map((i) => [i.citation, i.submitterKind, i.submitterName])).toEqual([
+      ['1/SN-88/ME', 'organisation', 'Arbeiterkammer Musterstadt'],
+      ['2/SN-88/ME', 'person', null],
+      ['3/SN-88/ME', 'person', null],
+      ['4/SN-88/ME', 'person', null],
+      ['5/SN-88/ME', 'person', null],
+    ])
+    // The rest of each row is public and stays: date, Zustimmungen, link.
+    expect(loaded?.items[1]).toMatchObject({ date: '2026-04-08', endorsements: 12 })
+  })
+
+  /* Going forward the record carries list 142's TYP flag beside each name,
+   * so a later classifier can apply its veto too — and the flag stays in
+   * the store: what is served is the API's six fields. */
+  it('stores the TYP flag, applies it on the way out, and never serves it', async () => {
+    await saveLastGoodStatements('XXVIII', 88, {
+      items: [
+        { ...statement({ citation: '1/SN-88/ME', submitterName: 'Muster Energie GmbH' }), upstreamFlag: 'I' },
+        { ...statement({ citation: '2/SN-88/ME', submitterName: 'Muster Energie GmbH' }), upstreamFlag: 'P' },
+      ],
+      unlisted: 0,
+      fetchedAt: '2026-10-22T00:00:00.000Z',
+    })
+    const file = JSON.parse(await readFile(recordFile('XXVIII', 88), 'utf8')) as { items: { upstreamFlag?: string }[] }
+    expect(file.items.map((i) => i.upstreamFlag)).toEqual(['I', 'P'])
+
+    const loaded = await loadLastGoodStatements('XXVIII', 88)
+    expect(loaded?.items.map((i) => i.submitterName)).toEqual(['Muster Energie GmbH', null])
+    expect(loaded?.items.some((i) => 'upstreamFlag' in i)).toBe(false)
+  })
+
   /**
    * Must stay the ONLY test that provokes an I/O failure: the warning is
    * emitted once per process and operation (warnOnce), so a second such
