@@ -714,7 +714,7 @@ export function diffLawPackage(
   { keepAddedLaws = false, keepDroppedLaws = false }: { keepAddedLaws?: boolean; keepDroppedLaws?: boolean } = {},
 ): LawPackageDiff {
   const map = pairArticles(from, to)
-  if (map.size === 0) return { units: diffLawUnits(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [], addedLaws: [], droppedLaws: [], unpaired: from.length > 0 && to.length > 0 }
+  if (map.size === 0) return { units: diffAtSamePlace(from, to), lawsOnlyInTo: [], lawsOnlyInFrom: [], addedLaws: [], droppedLaws: [], unpaired: from.length > 0 && to.length > 0 }
   const pairedFrom = new Set(map.keys())
   const pairedTo = new Set(map.values())
   const keepFrom = (u: LawUnit) => keepDroppedLaws || u.article === null || pairedFrom.has(u.article)
@@ -722,13 +722,91 @@ export function diffLawPackage(
   const onlyInTo = lawsOf(to, (a) => pairedTo.has(a))
   const onlyInFrom = lawsOf(from, (a) => pairedFrom.has(a))
   return {
-    units: diffLawUnits(from.filter(keepFrom), to.filter(keepTo)),
+    units: diffAtSamePlace(from.filter(keepFrom), to.filter(keepTo)),
     lawsOnlyInTo: keepAddedLaws ? [] : onlyInTo,
     lawsOnlyInFrom: keepDroppedLaws ? [] : onlyInFrom,
     addedLaws: keepAddedLaws ? onlyInTo : [],
     droppedLaws: keepDroppedLaws ? onlyInFrom : [],
     unpaired: false,
   }
+}
+
+/** The provision an instruction addresses first: „§ 14 Abs. 8", „§ 5". */
+export function addressOf(heading: string | null): string | null {
+  // „§ 82 (neu) (= bisheriger § 60) Abs. 3": the brackets are no address.
+  const h = (heading ?? '').replace(/\s*\((?:neu|=[^)]*)\)/g, '')
+  const m = /§\s*(\d+[a-z]*)(?:\s+Abs\.\s*(\d+[a-z]*))?(?:\s+(Z\s*\d+[a-z]*|lit\.\s*[a-z]+|(?:erster|zweiter|dritter|vierter|fünfter|sechster|siebter|achter|neunter|zehnter|vorletzter|letzter)\s+Satz))?/.exec(h)
+  // The finer place right after it belongs to the address: „§ 22 Abs. 5 Z 1"
+  // and „… Z 2" are two places, „vorletzter" and „letzter Satz" too.
+  return m ? `§${m[1]}${m[2] ? ` Abs.${m[2]}` : ''}${m[3] ? ` ${m[3].replace(/\s+/g, '')}` : ''}` : null
+}
+
+/** Lower than the engine's 0.6, because the address already says it is the
+ *  same place (§12.44 Nachtrag 3, raised from 0.35 in §12.46). */
+export const SAME_PLACE_SIMILARITY = 0.4
+/** Or the shorter of the two stands almost whole in the longer: the same
+ *  intervention, extended — „der Punkt wird durch einen Strichpunkt ersetzt"
+ *  against „… ersetzt und folgende Z 3 angefügt" (§12.46). */
+export const SAME_PLACE_CONTAINED = 0.8
+
+/** The share of the shorter word list's words the longer one has too, counted with multiplicity. */
+function wordContainment(a: readonly string[], b: readonly string[]): number {
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
+  if (!short.length) return 0
+  const bag = new Map<string, number>()
+  for (const w of long) bag.set(w, (bag.get(w) ?? 0) + 1)
+  let hit = 0
+  for (const w of short) {
+    const n = bag.get(w) ?? 0
+    if (n > 0) {
+      hit++
+      bag.set(w, n - 1)
+    }
+  }
+  return hit / short.length
+}
+
+/**
+ * `diffLawUnits`, and one pass after it: an instruction reworded so far that
+ * the engine reports it removed and a new one inserted — „Im § 1 Abs. 2 wird
+ * folgende Z 3a eingefügt" against „Im § 1 Abs. 2 wird nach Z 3 folgende
+ * Z 3a eingefügt" — is paired as one changed instruction, where it is the
+ * ONLY such pair at that address in its Artikel and the two still share a
+ * third of their words. Done by giving the later one the earlier one's
+ * instruction line, which the engine's first rule (same Artikel, same
+ * heading) pairs. Measured on the Länder first (§12.44 Nachtrag 3), then for
+ * the Bund (§12.46).
+ */
+export function diffAtSamePlace(from: readonly LawUnit[], to: readonly LawUnit[]): LawDiffUnit[] {
+  const first = diffLawUnits(from, to)
+  const key = (u: LawDiffUnit, address: string) => `${u.articleKey ?? u.fromArticleKey ?? ''}|${address}`
+  const removed = new Map<string, LawDiffUnit[]>()
+  const inserted = new Map<string, LawDiffUnit[]>()
+  const unitOf = (u: LawDiffUnit): LawUnit | undefined => u.change === 'removed'
+    ? from.find((x) => x.id === (u.fromId ?? u.id) && x.article === (u.fromArticle ?? u.article))
+    : to.find((x) => x.id === u.id && x.article === u.article)
+  for (const u of first) {
+    if (u.change !== 'removed' && u.change !== 'inserted') continue
+    const address = addressOf(unitOf(u)?.heading ?? u.heading)
+    if (!address) continue
+    const map = u.change === 'removed' ? removed : inserted
+    map.set(key(u, address), [...(map.get(key(u, address)) ?? []), u])
+  }
+  let paired = 0
+  const renamed = to.map((t) => ({ ...t }))
+  for (const [k, ins] of inserted) {
+    const rem = removed.get(k)
+    if (ins.length !== 1 || rem?.length !== 1) continue
+    const a = unitOf(rem[0]!)
+    const at = to.findIndex((x) => x.id === ins[0]!.id && x.article === ins[0]!.article)
+    if (!a || at < 0) continue
+    const x = compareWords(a.text)
+    const y = compareWords(to[at]!.text)
+    if (tokenSimilarity(x, y) < SAME_PLACE_SIMILARITY && wordContainment(x, y) < SAME_PLACE_CONTAINED) continue
+    renamed[at]!.heading = a.heading
+    paired++
+  }
+  return paired ? diffLawUnits(from, renamed) : first
 }
 
 /** Two later texts, cut to the laws of the draft — and what was cut. */

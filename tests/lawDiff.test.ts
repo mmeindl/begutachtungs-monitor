@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alignUnits, articlePairs, diffLawPackage, diffLawUnits, pairArticles, scopeToDraft, summarizeDiff } from '../server/utils/diff/lawDiff'
+import { alignUnits, articlePairs, diffAtSamePlace, diffLawPackage, diffLawUnits, pairArticles, scopeToDraft, summarizeDiff } from '../server/utils/diff/lawDiff'
 import { normalizeGld, novaoHeading, parseLawUnits, parseLawUnitsFromRis, type LawUnit } from '../server/utils/lawtext/lawUnits'
 import { parseParliamentHtml } from '../server/utils/lawtext/parliamentHtml'
 import { parseRisXml } from '../server/utils/lawtext/risXml'
@@ -936,5 +936,29 @@ describe('the Stammnorm stands in for the name: a long title against an abbrevia
       article(3, 'Änderung des BFA-Verfahrensgesetzes', 'Das BFA-Verfahrensgesetz, BGBl. I Nr. 87/2012, wird wie folgt geändert:', [9, 10]),
     )
     expect(articlePairs(withSibling, rv).filter((p) => p.via === 'stammnorm')).toEqual([])
+  })
+})
+
+describe('diffAtSamePlace — an instruction reworded at the same place (§12.46)', () => {
+  const z = (n: number, heading: string, text: string): LawUnit => ({
+    article: 'Artikel 1', articleNumber: 'Artikel 1', id: `Z${n}`, heading, quotedHeadings: [], text,
+    blocks: [{ kind: 'novao', cls: 'novao', text, gld: null }], stammnorm: null,
+  })
+
+  it('pairs the same intervention, extended — the shorter stands whole in the longer', () => {
+    const units = diffAtSamePlace(
+      [z(1, 'In § 146 Abs. 1 entfällt der vorletzte Satz.', 'In § 146 Abs. 1 entfällt der vorletzte Satz.')],
+      [z(1, 'In § 146 Abs. 1 wird die Zeichenfolge "BGBl. I Nr. 227/2021" durch die Zeichenfolge "BGBl. Nr. 703/1994" ersetzt und es entfällt der vorletzte Satz.',
+        'In § 146 Abs. 1 wird die Zeichenfolge "BGBl. I Nr. 227/2021" durch die Zeichenfolge "BGBl. Nr. 703/1994" ersetzt und es entfällt der vorletzte Satz.')],
+    )
+    expect(units.map((u) => u.change)).toEqual(['changed'])
+  })
+
+  it('keeps two places of one Absatz apart', () => {
+    const units = diffAtSamePlace(
+      [z(1, 'In § 22 Abs. 5 Z 1 wird das Wort "Gemeinde" ersetzt.', 'In § 22 Abs. 5 Z 1 wird das Wort "Gemeinde" durch das Wort "Behörde" ersetzt.')],
+      [z(1, 'In § 22 Abs. 5 Z 2 wird das Wort "Gemeinde" ersetzt.', 'In § 22 Abs. 5 Z 2 wird das Wort "Gemeinde" durch das Wort "Behörde" ersetzt.')],
+    )
+    expect(units.map((u) => u.change).sort()).toEqual(['inserted', 'removed'])
   })
 })

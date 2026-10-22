@@ -12957,8 +12957,8 @@ fünf falsch — Z 1 gegen Z 2, „vorletzter" gegen „letzter Satz", lit. d ge
 lit. a, Abs. 3 gegen Abs. 2 hinter einer Klammer, zwei verschiedene Eingriffe
 mit 0,33. Mit der feineren Stelle und 35 %: 24 (Entwurf → Kundmachung) und
 16 (Entwurf → Vorlage), alle gelesen und richtig. Im Zweifel bleibt es bei
-entfallen + neu. Für den Bund nicht gebaut — Änderung der Bundesmaschine,
-eigene Messung.
+entfallen + neu. Für den Bund gebaut am Abend desselben Tages, mit einer
+geänderten Schwelle — §12.46.
 
 #### Nachtrag 4, 22.10.: die Titelsuche, ohne die Klammer des Entwurfs
 
@@ -13088,6 +13088,32 @@ dazu, gefunden an den Auslassungen der Textgegenüberstellung: „1. und 2. …"
 ist eine Spanne, keine zwei Ziffern. Über `corpus:absatz-marker` (40 Gesetze,
 4.132 §§) ändert sie nichts — 17.780 gefunden, 262 erfunden, vorher wie
 nachher.
+
+### 12.46 Dieselbe Stelle, neu gefasst — auch beim Bund (22.10.2026)
+
+Der Durchgang aus §12.44 Nachtrag 3 sitzt jetzt in der Maschine
+(`diffAtSamePlace`, `diff/lawDiff.ts`) und gilt für jeden Vergleich, den
+`diffLawPackage` rechnet, und für die Länder. Gemessen alt gegen neu über
+`corpus:aenderungsrate` (XXVII, XXVIII, Cache): kein Entwurf wechselt seinen
+Befund, nur die Zählung — 100 bzw. 31 Entwürfe zählen je Paar eine Änderung
+statt zweier.
+
+Die Schwelle der Länder (35 % gemeinsame Wörter) hielt beim Bund zuerst
+nicht — scheinbar: In abgeschnittenen Zeilen gelesen sah die Hälfte der
+Paare zwischen 0,35 und 0,40 wie zwei verschiedene Eingriffe aus. Im vollen
+Wortlaut waren sie fast alle derselbe Eingriff, erweitert: „In § 146 Abs. 1
+entfällt der vorletzte Satz" gegen „… ersetzt und es entfällt der vorletzte
+Satz"; „nach Z 39 folgende Ziffer 40" gegen „c) Nach Z 39 werden folgende
+Ziffern 40 und 41 angefügt". Ihr Merkmal ist nicht die Ähnlichkeit — die
+längere Anordnung macht sie klein —, sondern dass die kürzere fast ganz in
+der längeren steht. Die Regel ist daher: gepaart wird ab 40 % gemeinsamer
+Wörter **oder** wo die kürzere Anordnung zu mindestens 80 % in der längeren
+steht. Ergebnis: 291 Paare beim Bund, 27 bei den Ländern (vorher 23; die vier
+neuen gelesen, alle richtig). Stichprobe über 25 zufällige Bundespaare unter
+0,6, im vollen Wortlaut: 24 richtig, eines grenzwertig (§ 31 lit. c: zwei
+verschiedene Eingriffe in dieselbe Aufzählung). Auch ein „falsches" Paar
+sagt nichts Falsches: dieselbe Stelle, ein Kasten mit dem alten Eingriff
+gestrichen und dem neuen eingefügt statt zweier Kästen.
 
 ## 13. Open questions
 
