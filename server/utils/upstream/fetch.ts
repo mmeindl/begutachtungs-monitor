@@ -23,6 +23,24 @@ export const USER_AGENT = 'begutachtungs-monitor/0.1 (+https://begutachtungs-mon
 /** The RIS OGD endpoint every Applikation (Begut, BrKons, BgblAuth) is queried through. */
 export const RIS_API_BASE = 'https://data.bka.gv.at/ris/api/v2.6/Bundesrecht'
 
+/**
+ * The largest body a read takes when its policy names no cap of its own.
+ *
+ * A ceiling, set above every legitimate body measured on 22.10.2026: list
+ * 142 of one Ministerialentwurf reaches ~42 MB (XXVII 164/ME, 106.183
+ * Stellungnahmen), a RIS Begut page of 100 records is 1,9 MB, and nothing
+ * else either upstream sends passes 300 KB. Until then JSON and text had no
+ * ceiling at all, and the byte cap was compared only once the whole body sat
+ * in memory — against a local server sending without a length, a 1 MB cap
+ * refused after 64 MB had arrived. The server runs with a 384 MB heap.
+ *
+ * Callers with a measured number of their own pass it (`fetchDocument`, the
+ * PDFs, Parliament's lists in `parliament.ts`). The scripts pass `Infinity`:
+ * a measurement over a whole period reads list 142 in one piece — ~95 MB for
+ * GP XXVII — and runs on a machine that is not the server.
+ */
+export const DEFAULT_MAX_BYTES = 64 * 1024 * 1024
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -43,7 +61,11 @@ export interface UpstreamPolicy {
    * did so before the move; nothing else should start.
    */
   retryOnHttpError?: boolean
-  /** Refuse a body larger than this, by the declared and by the real length. */
+  /**
+   * Refuse a body larger than this, by the declared length before the
+   * download and by the bytes counted during it. Omitted:
+   * `DEFAULT_MAX_BYTES`. `Infinity` reads whatever comes.
+   */
   maxBytes?: number
   /**
    * Who is calling, for the upstream's log. Defaults to `USER_AGENT`, which
@@ -226,7 +248,8 @@ async function fetchWithinUpstreams(url: string, init: RequestInit): Promise<Res
 /**
  * The raw answer, retried per policy. A non-OK status below 500 is
  * RETURNED, not thrown — the callers that map 404 onto their own answer
- * need to see it.
+ * need to see it. The body is left unread, and with it `maxBytes`: whoever
+ * reads it owns the cap.
  */
 export function fetchUpstream(url: string, policy: UpstreamPolicy): Promise<Response> {
   return withRetries(url, policy, (res) => res)
@@ -236,11 +259,67 @@ function assertOk(res: Response, url: string): void {
   if (!res.ok) throw new UpstreamHttpError(res.status, url)
 }
 
+/**
+ * The body, counted while it arrives and dropped the moment it passes the
+ * cap — every read below goes through here, whatever it decodes to.
+ *
+ * Read by hand rather than with `arrayBuffer()`, `json()` or `text()`:
+ * those buffer the whole body before anything can compare, so a cap
+ * checked after them limits what is kept, not what is downloaded. The
+ * declared `content-length` is still checked first — refusing before the
+ * download is cheaper still — but it is a claim, not a fact, and a chunked
+ * answer makes none.
+ */
+async function readCapped(res: Response, url: string, policy: UpstreamPolicy): Promise<Uint8Array<ArrayBuffer>> {
+  const max = policy.maxBytes ?? DEFAULT_MAX_BYTES
+  const declared = Number(res.headers.get('content-length') ?? 0)
+  if (declared > max) {
+    abandon(res.body)
+    throw new UpstreamTooLargeError(url, declared)
+  }
+  const chunks: Uint8Array[] = []
+  let total = 0
+  const reader = res.body?.getReader()
+  while (reader) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      abandon(reader)
+      throw new UpstreamTooLargeError(url, total)
+    }
+    chunks.push(value)
+  }
+  // One fresh buffer even for a single chunk: a chunk may be a view into a
+  // larger pooled buffer, and `upstreamBytes` hands out the buffer itself.
+  const body = new Uint8Array(total)
+  let at = 0
+  for (const chunk of chunks) {
+    body.set(chunk, at)
+    at += chunk.byteLength
+  }
+  return body
+}
+
+/**
+ * Cancels a body that will not be read: that ends the download, not only the
+ * reading of it. Not awaited — the refusal does not depend on it, and the
+ * cancel of a teed stream settles only once its twin is cancelled too.
+ */
+function abandon(body: { cancel(): Promise<void> } | null | undefined): void {
+  void body?.cancel().catch(() => {})
+}
+
+/** UTF-8 with a byte-order mark dropped — what `Response.text()` and `json()` do. */
+function utf8(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes)
+}
+
 /** Parsed JSON. A non-OK status throws `UpstreamHttpError`, a bad body is retried. */
 export function upstreamJson<T>(url: string, policy: UpstreamPolicy): Promise<T> {
   return withRetries(url, policy, async (res) => {
     assertOk(res, url)
-    return (await res.json()) as T
+    return JSON.parse(utf8(await readCapped(res, url, policy))) as T
   })
 }
 
@@ -248,7 +327,7 @@ export function upstreamJson<T>(url: string, policy: UpstreamPolicy): Promise<T>
 export function upstreamText(url: string, policy: UpstreamPolicy): Promise<string> {
   return withRetries(url, policy, async (res) => {
     assertOk(res, url)
-    return res.text()
+    return utf8(await readCapped(res, url, policy))
   })
 }
 
@@ -258,21 +337,12 @@ export interface UpstreamBody {
   contentType: string | null
 }
 
-/**
- * The body as bytes, refused above `policy.maxBytes`.
- *
- * The declared length is checked before the download and the real one
- * after, because `content-length` is a claim, not a fact.
- */
+/** The body as bytes, refused above `policy.maxBytes` (`readCapped`). */
 export function upstreamBytes(url: string, policy: UpstreamPolicy): Promise<UpstreamBody> {
   return withRetries(url, policy, async (res) => {
     assertOk(res, url)
-    const max = policy.maxBytes ?? Number.POSITIVE_INFINITY
-    const declared = Number(res.headers.get('content-length') ?? 0)
-    if (declared > max) throw new UpstreamTooLargeError(url, declared)
-    const bytes = await res.arrayBuffer()
-    if (bytes.byteLength > max) throw new UpstreamTooLargeError(url, bytes.byteLength)
-    return { bytes, contentType: res.headers.get('content-type') }
+    const bytes = await readCapped(res, url, policy)
+    return { bytes: bytes.buffer, contentType: res.headers.get('content-type') }
   })
 }
 
@@ -287,7 +357,7 @@ export async function risJson<T>(url: string, policy: UpstreamPolicy): Promise<T
   try {
     return await withRetries(url, policy, async (res) => {
       assertOk(res, url)
-      const body = (await res.json()) as { OgdSearchResult?: { Error?: unknown } } | null
+      const body = JSON.parse(utf8(await readCapped(res, url, policy))) as { OgdSearchResult?: { Error?: unknown } } | null
       const result = body?.OgdSearchResult
       if (!result || result.Error) throw new RisEnvelopeError(url, result?.Error ?? body)
       return result as T

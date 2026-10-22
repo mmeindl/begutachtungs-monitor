@@ -20,7 +20,7 @@ import type {
   RawStage,
   RawVote,
 } from '../parliament/detailJson'
-import { upstreamJson, UpstreamHttpError, type UpstreamPolicy } from './fetch'
+import { upstreamJson, UpstreamHttpError, UpstreamTooLargeError, type UpstreamPolicy } from './fetch'
 
 /**
  * Timeout per attempt. Deliberately tight: the risk is not the fast 502 but
@@ -32,11 +32,29 @@ import { upstreamJson, UpstreamHttpError, type UpstreamPolicy } from './fetch'
 const TIMEOUT_MS = 8_000
 const MAX_RETRIES = 2
 const RETRY_BACKOFF_MS = 300
+
+/**
+ * The largest answer read from this API — two numbers, because one list is
+ * a hundred times the rest (measured 22.10.2026).
+ *
+ * List 142 of one Ministerialentwurf reaches ~42 MB: XXVII 164/ME carries
+ * 106.183 Stellungnahmen, and the list is read whole (`getStatementsForMe`).
+ * 64 MB leaves it room to grow by half. Everything else stays far below a
+ * megabyte — list 101 of GP XXVII 262 KB, list 81 of a period at most
+ * 114 KB, a Gegenstand 26 KB even for the Vorlage with 41.376 Stellungnahmen
+ * — so it gets 8 MB, the cap of a published document: the station map reads
+ * twelve of them at once, and twelve runaway answers at 64 MB would be
+ * twice the heap.
+ */
+const LIST_142_MAX_BYTES = 64 * 1024 * 1024
+const ANSWER_MAX_BYTES = 8 * 1024 * 1024
+
 const PARLIAMENT_POLICY: UpstreamPolicy = {
   timeoutMs: TIMEOUT_MS,
   retries: MAX_RETRIES,
   backoffMs: () => RETRY_BACKOFF_MS,
   accept: 'application/json',
+  maxBytes: ANSWER_MAX_BYTES,
 }
 
 export interface FilterListResponse {
@@ -92,17 +110,21 @@ export interface GegenstandResponse {
 
 /**
  * GET/POST with the policy above: 8-s timeout, 2 retries on 5xx and network
- * errors, 300 ms backoff, 4xx not retried. The statuses are translated here
- * and nowhere else — `upstream/fetch.ts` stays free of Nitro globals, so it
- * cannot know that a 404 from this API is a 404 for the reader.
+ * errors, 300 ms backoff, 4xx not retried, 8 MB per answer (64 MB for list
+ * 142). The statuses are translated here and nowhere else —
+ * `upstream/fetch.ts` stays free of Nitro globals, so it cannot know that a
+ * 404 from this API is a 404 for the reader.
  */
 async function parliamentJson<T>(
   url: string,
-  init: { method?: 'GET' | 'POST'; body?: unknown } = {},
+  init: { method?: 'GET' | 'POST'; body?: unknown; maxBytes?: number } = {},
 ): Promise<T> {
   try {
     return await upstreamJson<T>(url, { ...PARLIAMENT_POLICY, ...init })
   } catch (err) {
+    if (err instanceof UpstreamTooLargeError) {
+      throw createError({ statusCode: 502, statusMessage: 'Antwort der Parlament-API zu groß' })
+    }
     if (err instanceof UpstreamHttpError) {
       if (err.status === 404) {
         throw createError({ statusCode: 404, statusMessage: 'Gegenstand nicht gefunden' })
@@ -148,7 +170,11 @@ export function fetchFilterList(
     ...query,
   })
   const url = `${PARLIAMENT_BASE}/Filter/api/filter/data/${listId}?${params.toString()}`
-  return parliamentJson<FilterListResponse>(url, { method: 'POST', body })
+  return parliamentJson<FilterListResponse>(url, {
+    method: 'POST',
+    body,
+    ...(listId === 142 ? { maxBytes: LIST_142_MAX_BYTES } : {}),
+  })
 }
 
 /** GET /gegenstand/{gp}/{ityp}/{inr}?json=True */

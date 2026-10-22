@@ -78,6 +78,11 @@ function policyOf(opts: HttpOptions, accept?: string): UpstreamPolicy {
     body: opts.body,
     accept: opts.accept ?? accept,
     userAgent: scriptUserAgent(opts.script),
+    // No ceiling: the server's `DEFAULT_MAX_BYTES` guards a 384 MB process,
+    // and a measurement reads larger lists than any page does —
+    // `audit:classifier` over GP XXVII is list 142 in one piece, 235.863
+    // rows, ~95 MB (22.10.2026).
+    maxBytes: Number.POSITIVE_INFINITY,
   }
 }
 

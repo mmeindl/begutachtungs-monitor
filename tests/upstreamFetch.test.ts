@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  DEFAULT_MAX_BYTES,
   fetchUpstream,
   RisEnvelopeError,
   risJson,
@@ -9,6 +10,7 @@ import {
   UpstreamRefusedError,
   UpstreamTooLargeError,
   UpstreamUnreachableError,
+  upstreamText,
   USER_AGENT,
   type UpstreamPolicy,
 } from '../server/utils/upstream/fetch'
@@ -181,6 +183,90 @@ describe('upstreamBytes', () => {
     const body = await upstreamBytes('https://example.test/x', NOW)
     expect(body.contentType).toBe('text/html; charset=windows-1252')
     expect(body.bytes.byteLength).toBe(2)
+  })
+})
+
+/**
+ * The cap is counted while the body arrives (22.10.2026). It used to be
+ * compared after `arrayBuffer()` — against a local server sending without a
+ * length, a 1 MB cap refused only after 64 MB had been read — and JSON and
+ * text had none at all.
+ */
+describe('the size cap, while the body arrives', () => {
+  const MB = 1024 * 1024
+
+  /** A body without end and without a length, counting what is pulled from it. */
+  function endlessBody(chunkBytes: number): { stream: ReadableStream<Uint8Array>; state: { pulled: number; cancelled: boolean } } {
+    // The same chunk every time: what is under test is how much is pulled,
+    // and holding one megabyte instead of sixty-four keeps the test cheap.
+    const chunk = new Uint8Array(chunkBytes).fill(120)
+    const state = { pulled: 0, cancelled: false }
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        state.pulled += chunkBytes
+        controller.enqueue(chunk)
+      },
+      cancel() {
+        state.cancelled = true
+      },
+    })
+    return { stream, state }
+  }
+
+  function serveEndless(chunkBytes: number, headers: Record<string, string> = {}) {
+    const { stream, state } = endlessBody(chunkBytes)
+    const calls: string[] = []
+    vi.stubGlobal('fetch', (url: string) => {
+      calls.push(url)
+      return Promise.resolve(new Response(stream, { headers }))
+    })
+    return { state, calls }
+  }
+
+  it('stops downloading at the cap, and does not try again', async () => {
+    const { state, calls } = serveEndless(64 * 1024)
+    await expect(upstreamBytes('https://example.test/x', { timeoutMs: 5_000, retries: 2, maxBytes: MB })).rejects.toThrow(
+      UpstreamTooLargeError,
+    )
+    expect(state.pulled).toBeLessThanOrEqual(MB + 2 * 64 * 1024)
+    expect(state.cancelled).toBe(true)
+    expect(calls).toHaveLength(1)
+  })
+
+  it('caps text and JSON by default', async () => {
+    for (const read of [upstreamText, upstreamJson]) {
+      const { state } = serveEndless(MB)
+      await expect(read('https://example.test/x', { timeoutMs: 5_000, retries: 0 })).rejects.toThrow(UpstreamTooLargeError)
+      expect(state.pulled).toBeGreaterThan(DEFAULT_MAX_BYTES)
+      expect(state.pulled).toBeLessThanOrEqual(DEFAULT_MAX_BYTES + 2 * MB)
+      expect(state.cancelled).toBe(true)
+    }
+  })
+
+  it('refuses a declared length above the cap before reading anything', async () => {
+    const { state } = serveEndless(64 * 1024, { 'content-length': String(2 * MB) })
+    await expect(upstreamJson('https://example.test/x', { ...NOW, maxBytes: MB })).rejects.toThrow(UpstreamTooLargeError)
+    expect(state.pulled).toBeLessThanOrEqual(64 * 1024)
+  })
+
+  it('reads a body of any size where the caller says so', async () => {
+    const chunks = [new Uint8Array(MB).fill(97), new Uint8Array(MB).fill(98)]
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response(new Blob(chunks))))
+    const text = await upstreamText('https://example.test/x', { ...NOW, maxBytes: Number.POSITIVE_INFINITY })
+    expect(text).toHaveLength(2 * MB)
+    expect(text.at(-1)).toBe('b')
+  })
+
+  it('decodes as fetch does: UTF-8, byte-order mark dropped', async () => {
+    stubFetch(new Response('\uFEFF{"name":"Grüße – „Ökostrom“"}'), new Response('\uFEFFGrüße'))
+    await expect(upstreamJson('https://example.test/x', NOW)).resolves.toEqual({ name: 'Grüße – „Ökostrom“' })
+    await expect(upstreamText('https://example.test/x', NOW)).resolves.toBe('Grüße')
+  })
+
+  it('hands out a buffer that holds the body and nothing else', async () => {
+    stubFetch(new Response(new Blob([new Uint8Array([1, 2]), new Uint8Array([3])])))
+    const { bytes } = await upstreamBytes('https://example.test/x', NOW)
+    expect([...new Uint8Array(bytes)]).toEqual([1, 2, 3])
   })
 })
 
