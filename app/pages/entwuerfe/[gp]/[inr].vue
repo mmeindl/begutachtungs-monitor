@@ -22,13 +22,16 @@ import type { SourceEntry } from '#shared/utils/provenance'
 definePageMeta({
   // Messenger/autocorrect lowercasing kills valid shared links — 301 to
   // the canonical uppercase URL instead of 404ing (one URL truth for SEO).
+  // The query and the anchor go along: a comparison's `?von=…&bis=…` and a
+  // section's `#…` are what the link was shared for (both were dropped
+  // until 22.10.2026).
   middleware: [
     (to) => {
       const gpParam = String(to.params.gp ?? '')
       const canonical = gpParam.toUpperCase()
       if (gpParam !== canonical && GP_RE.test(canonical)) {
         return navigateTo(
-          `/entwuerfe/${canonical}/${String(to.params.inr ?? '')}`,
+          { path: `/entwuerfe/${canonical}/${String(to.params.inr ?? '')}`, query: to.query, hash: to.hash },
           { redirectCode: 301 },
         )
       }
