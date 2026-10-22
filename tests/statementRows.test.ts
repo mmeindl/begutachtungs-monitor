@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { StatementMeta, StatementsSummary } from '../shared/types'
+import { formatNumberDe } from '../shared/utils/format'
 import {
   availableStatementFilters,
   compareStatementRows,
+  countDriftSentenceDe,
   orgRowDate,
   orgRowIndexOfAnchor,
   orgRowsOf,
@@ -249,5 +251,33 @@ describe('statementAnchor', () => {
     expect(orgRowIndexOfAnchor(rows, 'sn-1-SN-9-ME')).toBe(0)
     expect(orgRowIndexOfAnchor(rows, 'sn-3-SN-9-ME')).toBe(1)
     expect(orgRowIndexOfAnchor(rows, 'sn-4-SN-9-ME')).toBe(-1)
+  })
+})
+
+/* The sentence under the Begutachtung's panel where list 81 and list 142
+ * disagree. Plural-only until 22.10.2026: „zählt 1 Stellungnahmen", „stehen
+ * bisher 1". */
+describe('countDriftSentenceDe', () => {
+  it('says „bisher" where the list is behind the counter', () => {
+    expect(countDriftSentenceDe(707, 690)).toBe('Das Parlament zählt 707 Stellungnahmen, in der Liste stehen bisher 690.')
+  })
+
+  it('claims no lag where the list is ahead of the counter', () => {
+    expect(countDriftSentenceDe(4, 5)).toBe('Das Parlament zählt 4 Stellungnahmen, in der Liste stehen 5.')
+  })
+
+  it('puts either side in the singular at one', () => {
+    expect(countDriftSentenceDe(1, 2)).toBe('Das Parlament zählt 1 Stellungnahme, in der Liste stehen 2.')
+    expect(countDriftSentenceDe(2, 1)).toBe('Das Parlament zählt 2 Stellungnahmen, in der Liste steht bisher 1.')
+    expect(countDriftSentenceDe(0, 1)).toBe('Das Parlament zählt 0 Stellungnahmen, in der Liste steht 1.')
+  })
+
+  /* With the shared formatter, so the separator is whatever every other
+   * count on the page prints (de-AT: a narrow space, not a dot). */
+  it('groups the thousands the way every other count on the page does', () => {
+    expect(countDriftSentenceDe(106183, 105000)).toBe(
+      `Das Parlament zählt ${formatNumberDe(106183)} Stellungnahmen, in der Liste stehen bisher ${formatNumberDe(105000)}.`,
+    )
+    expect(formatNumberDe(106183)).not.toBe('106183')
   })
 })

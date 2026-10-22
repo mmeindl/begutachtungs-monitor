@@ -2,7 +2,8 @@
  * What `StatementsPanel` prints about the Stellungnahmen: which segments it
  * offers at all, the order of its rows, the grouping of an organisation that
  * filed more than once — and the GDPR guard on what a row is allowed to say
- * at all.
+ * at all. Since 22.10.2026 also the one sentence the draft page prints under
+ * the panel about the panel's own count (`countDriftSentenceDe`).
  *
  * Pure module with tests, and the guard is the reason. It used to sit in the
  * component, where nothing could reach it: a rule that decides whether a
@@ -11,7 +12,7 @@
  * simplified (CLAUDE.md, GDPR; refactor-plan.md §9).
  */
 import type { StatementMeta, StatementsSummary } from '#shared/types'
-import { countLabelDe } from '#shared/utils/format'
+import { countLabelDe, formatNumberDe } from '#shared/utils/format'
 
 /**
  * The panel's segments, in the order it offers them — the order of the
@@ -203,4 +204,28 @@ export function orgRowsOf(summary: StatementsSummary, sort: StatementSort): OrgR
       },
     }
   })
+}
+
+/**
+ * The sentence under the Begutachtung's panel where Parliament's two counts
+ * of it disagree: list 81's counter, which the cards show, and list 142's
+ * own count of the list the panel is built from („Das Parlament zählt 707
+ * Stellungnahmen, in der Liste stehen bisher 690."). Both are stated because
+ * silence serves nobody — a journalist who cites the card's number and
+ * screenshots the page must not find a contradiction nobody explained
+ * (`DraftStatementsBlock`).
+ *
+ * Each number agrees with its own words: „zählt 1 Stellungnahme", „in der
+ * Liste steht 1". The sentence was plural-only until 22.10.2026 and printed
+ * „zählt 1 Stellungnahmen" and „stehen bisher 1" wherever one side was one.
+ *
+ * „bisher" only where the list is BEHIND the counter. List 142 indexes a new
+ * Stellungnahme later than list 81 counts it, so that gap is lag, and the
+ * word says so; where the list is ahead, it would claim a lag that is not
+ * there.
+ */
+export function countDriftSentenceDe(overviewTotal: number, listTotal: number): string {
+  const verb = listTotal === 1 ? 'steht' : 'stehen'
+  const lag = overviewTotal > listTotal ? 'bisher ' : ''
+  return `Das Parlament zählt ${countLabelDe(overviewTotal, 'Stellungnahme', 'Stellungnahmen')}, in der Liste ${verb} ${lag}${formatNumberDe(listTotal)}.`
 }

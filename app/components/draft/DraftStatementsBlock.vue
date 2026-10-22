@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { DraftDetail } from '#shared/types'
 import type { SourceEntry } from '#shared/utils/provenance'
-import { countLabelDe, formatDateTimeDe, formatNumberDe } from '#shared/utils/format'
+import { countLabelDe, formatDateTimeDe } from '#shared/utils/format'
+import { countDriftSentenceDe } from '~/utils/statementRows'
 
 /**
  * The Begutachtung's Stellungnahmen on the draft page — the station's
@@ -12,13 +13,22 @@ import { countLabelDe, formatDateTimeDe, formatNumberDe } from '#shared/utils/fo
  * facts stand to each other, and read as the list's next label
  * (01.10.2026).
  */
-defineProps<{
+const props = defineProps<{
   draft: DraftDetail
   /** The paginated list's endpoint (`/api/drafts/:gp/:inr/statements`). */
   listUrl: string
   /** The Begutachtung's window is open — the door card's condition. */
   filingOpen: boolean
 }>()
+
+/* Silent disagreement between the two upstream sources is the one option
+ * that serves nobody — a journalist who cites the card's number and
+ * screenshots this page must not find a contradiction. The sentence, and
+ * the singular it needs where either side is one, are `countDriftSentenceDe`. */
+const countDrift = computed(() => {
+  const { overviewTotal, total } = props.draft.statements
+  return overviewTotal != null && overviewTotal !== total ? countDriftSentenceDe(overviewTotal, total) : null
+})
 
 /* The list's credit line: the Stellungnahmen are Begutachtung data, which
  * no open data grant covers. */
@@ -41,20 +51,9 @@ const STATEMENTS_SOURCES: SourceEntry[] = [{ what: 'Stellungnahmen', publisher: 
     </p>
     <template v-else-if="draft.statements.total > 0">
       <StatementsPanel :list-url="listUrl" :summary="draft.statements" />
-      <!-- Silent disagreement between the two upstream sources is the
-           one option that serves nobody — a journalist who cites the
-           card's number and screenshots this page must not find a
-           contradiction. -->
-      <p
-        v-if="
-          draft.statements.overviewTotal != null
-            && draft.statements.overviewTotal !== draft.statements.total
-        "
-        class="mt-3 text-xs text-ink-muted"
-      >
-        Das Parlament zählt
-        {{ formatNumberDe(draft.statements.overviewTotal) }} Stellungnahmen,
-        in der Liste stehen <template v-if="draft.statements.overviewTotal > draft.statements.total">bisher </template>{{ formatNumberDe(draft.statements.total) }}.
+      <!-- The two upstream counts, where they disagree (`countDrift`). -->
+      <p v-if="countDrift" class="mt-3 text-xs text-ink-muted">
+        {{ countDrift }}
       </p>
       <p v-if="draft.statements.staleAsOf" class="mt-3 text-xs text-ink-muted">
         Stand der Liste: {{ formatDateTimeDe(draft.statements.staleAsOf) }}
