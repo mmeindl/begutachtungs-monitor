@@ -106,6 +106,14 @@ describe('Oberösterreich — what the Landtag did', () => {
     expect(eingang.linkText).toBe('Wortprotokolle des Oö. Landtags')
     expect(eingang.label.endsWith('Wortprotokolle des Oö. Landtags')).toBe(true)
   })
+
+  it('says „Antrag angenommen" once where the record typed it twice', () => {
+    const html = `<div id="uebersicht">Langtitel:<div class="col-sm-10">Oö. Testgesetz</div></div>
+      <ul id="verfahren"><li><span class="col-sm-3 datum">11.06.2026</span><span>Antrag angenommen - Antrag angenommen - Art VII mehrstimmig - Dafür: ÖVP</span></li></ul>`
+    const d = parseOoeDetail(html)!
+    expect(d.procedure[0]!.label).toBe('Antrag angenommen - Art VII mehrstimmig - Dafür: ÖVP')
+    expect(ooeLandtagOf(d.procedure)!.decision!.vote).toBe('Art VII mehrstimmig - Dafür: ÖVP')
+  })
 })
 
 describe('Oberösterreich — the station a draft reached', () => {

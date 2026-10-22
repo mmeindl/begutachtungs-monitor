@@ -205,6 +205,10 @@ export function parseOoeDetail(html: string): OoeDetail | null {
   }
   const steps: LandProcedureStep[] = entries('verfahren').map((e) => {
     const label = e.body.replace(/\s*\((?:PDF|DOC|DOCX)-Dokument[^)]*\)/gi, '').trim()
+      // „Antrag angenommen - Antrag angenommen - Art VII …" (16113, 1 of 8
+      // votes on 22.10.2026): the phrase typed again into the vote the
+      // record already prefixes with it. Said once; the rest stays verbatim.
+      .replace(/^(Antrag angenommen)\s*[-–]\s*\1\b/, '$1')
     const link = e.links[0]
     // The link covers only the end („… XXIX. GP" + „Wortprotokolle des Oö.
     // Landtags"): said, so the page does not link the whole sentence.
